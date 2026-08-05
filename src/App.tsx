@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { checkFonts, checkCascade, type FontCheck } from './lib/font-check'
 import { Diagnostics } from './components/Diagnostics'
 import { S3Konfigurator } from './screens/S3Konfigurator'
+import { S2Vorbereitung } from './screens/S2Vorbereitung'
 
-type View = 'konfigurator' | 'grundlagen'
+type View = 'vorbereitung' | 'konfigurator' | 'grundlagen'
 
 export function App() {
   const [view, setView] = useState<View>('konfigurator')
@@ -22,7 +23,7 @@ export function App() {
       {/* Переключатель вида — временный, до появления S1 с очередью проектов. */}
       <nav className="border-b border-border-subtle px-5 py-2" aria-label="Ansicht">
         <div className="mx-auto flex max-w-content gap-3">
-          {(['konfigurator', 'grundlagen'] as const).map((v) => (
+          {(['vorbereitung', 'konfigurator', 'grundlagen'] as const).map((v) => (
             <button
               key={v}
               type="button"
@@ -35,19 +36,22 @@ export function App() {
                 'focus-visible:outline-offset-2 focus-visible:outline-focus-ring ' +
                 (view === v ? 'font-medium text-text-primary' : 'text-text-secondary')}
             >
-              {v === 'konfigurator' ? 'S3 Konfigurator' : 'Grundlagen'}
+              {v === 'vorbereitung' ? 'S2 Vorbereitung' : v === 'konfigurator' ? 'S3 Konfigurator' : 'Grundlagen'}
             </button>
           ))}
         </div>
       </nav>
-      {view === 'konfigurator'
-        ? <S3Konfigurator />
-        : <main className="mx-auto max-w-content px-5 py-7">
+      {view === 'vorbereitung' && (
+        <S2Vorbereitung openKonfigurator={() => setView('konfigurator')} />
+      )}
+      {view === 'konfigurator' && <S3Konfigurator />}
+      {view === 'grundlagen' && <main className="mx-auto max-w-content px-5 py-7">
             <h1 className="text-display-numeric-narrow font-bold text-text-primary">
               Grundlagen
             </h1>
             <Diagnostics fonts={fonts} cascade={cascade} />
           </main>}
+      {null}
     </>
   )
 }

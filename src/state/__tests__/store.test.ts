@@ -87,11 +87,17 @@ describe('S3: интервал сужается подтверждением, н
     expect(useStore.getState().projection().uncertaintyPp).toBe(22)
   })
 
-  it('подтверждение клиентом сужает интервал', () => {
+  it('подтверждение WFL сужает на 5 Pp, ответ об энергостандарте — ещё на 4', () => {
     useStore.getState().editField('wfl', new Decimal('1560.00'), true)
     expect(useStore.getState().projection().uncertaintyPp).toBe(17)
-    useStore.getState().editField('bgfOber', new Decimal('2100.00'), true)
+    useStore.getState().confirmEnergiestandardAnswer()
     expect(useStore.getState().projection().uncertaintyPp).toBe(13)
+  })
+
+  it('подтверждение bgfOber интервал НЕ сужает: фикстура Δ не объявляет', () => {
+    // Δ для bgfOber фикстурой не задана, и выдумывать её нельзя (R-25).
+    useStore.getState().editField('bgfOber', new Decimal('2100.00'), true)
+    expect(useStore.getState().projection().uncertaintyPp).toBe(22)
   })
 
   it('правка без подтверждения интервал не сужает', () => {
@@ -123,5 +129,36 @@ describe('S3: ворота клиентского вида', () => {
     const p = useStore.getState().projection()
     expect(p.result.completeness).toBe('complete')
     expect(p.result.totalLabel).toBe('Gesamt netto · Grundleistung All3')
+  })
+})
+
+describe('S2: конфликт значения и версии документов', () => {
+  it('решение конфликта в пользу клиента меняет только знаменатель', () => {
+    const before = useStore.getState().projection()
+    useStore.getState().resolveWflConflict('customer')
+    const after = useStore.getState().projection()
+    expect(after.result.total.exact.toFixed(2)).toBe(before.result.total.exact.toFixed(2))
+    expect(after.leadRate.prefix + after.leadRate.display).toBe('≈2.447')
+    expect(useStore.getState().wflConflictOpen).toBe(false)
+    // Конфликт закрыт событием, а не молча.
+    expect(useStore.getState().journal.some((e) => e.kind === 'conflict.resolved')).toBe(true)
+  })
+
+  it('сохранение документного значения — тоже событие, кандидат остаётся', () => {
+    useStore.getState().resolveWflConflict('document')
+    const s = useStore.getState()
+    expect(s.fields.wfl.value.toFixed(2)).toBe('1500.00')
+    expect(s.fields.wfl.provenance).toBe('vom Kunden bestätigt')
+    expect(s.journal.at(-1)!.label).toContain('beibehalten')
+  })
+
+  it('смена активной версии планов — событие журнала с обеими версиями', () => {
+    useStore.getState().activateGrundrisse('V1')
+    const e = useStore.getState().journal.at(-1)!
+    expect(e.kind).toBe('document.activated')
+    expect(e.label).toContain('V1')
+    expect(e.label).toContain('V2')
+    useStore.getState().undo()
+    expect(useStore.getState().activeGrundrisse).toBe('V2')
   })
 })

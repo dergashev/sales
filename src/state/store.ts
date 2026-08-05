@@ -28,6 +28,7 @@ const D = (s: string) => new Decimal(s)
 export type EventKind =
   | 'value.edited' | 'value.confirmed'
   | 'option.selected' | 'coverage.changed'
+  | 'document.activated' | 'conflict.resolved'
   | 'undo'
 
 export type JournalEvent = {
@@ -105,6 +106,12 @@ type Store = {
   coverage: Coverage
   fields: { wfl: FieldState; bgfOber: FieldState; we: FieldState }
   journal: JournalEvent[]
+  /** Ответ на вопрос об энергостандарте — подтверждение, не выбор (D-19). */
+  esConfirmed: boolean
+  /** Открытый конфликт значения WFL: Dokument 1.500,00 против Kunde 1.560,00. */
+  wflConflictOpen: boolean
+  /** Активная версия планов этажей. Выбор — решение sales, не дата (VERSION-002). */
+  activeGrundrisse: 'V2' | 'V1'
   /** Дельта-чип живёт 4 секунды, потом уезжает в журнал (DC-2). */
   activeDelta: { label: string; deltaExact: Decimal; percent: Decimal } | null
   openChapter: number
@@ -116,12 +123,17 @@ type Store = {
   setUntergeschoss: (v: BuildingInput['untergeschoss']) => void
   setCoverage: (g: CostGroup, s: CoverageState) => void
   confirmGebaeudeklasse: () => void
+  confirmEnergiestandardAnswer: () => void
+  resolveWflConflict: (candidate: 'document' | 'customer') => void
+  activateGrundrisse: (v: 'V2' | 'V1') => void
   clearDelta: () => void
   openChapterAt: (n: number) => void
   undo: () => void
 }
 
-function computeProjection(s: Pick<Store, 'building' | 'coverage' | 'fields'>): Projection {
+function computeProjection(
+  s: Pick<Store, 'building' | 'coverage' | 'fields' | 'esConfirmed'>,
+): Projection {
   const result = calculateBuilding(s.building, CATALOG, s.coverage)
   const total = result.total.exact
   const noUg = calculateBuilding(
@@ -138,10 +150,15 @@ function computeProjection(s: Pick<Store, 'building' | 'coverage' | 'fields'>): 
     modelDuration(s.building.bgfAboveGround, D('1.00'), D('1.15')),
   )
 
-  // Интервал: базовые 22 пункта минус подтверждённые параметры.
-  // Выбор опции интервал не меняет — он не подтверждение (D-19).
-  const confirmed = Object.values(s.fields).filter((f) => f.provenance === 'vom Kunden bestätigt')
-  const narrowing = confirmed.length >= 2 ? 9 : confirmed.length === 1 ? 5 : 0
+  // Интервал: базовые 22 пункта минус объявленные фикстурой сужения.
+  // Фикстура задаёт Δ ровно для двух подтверждений: WFL −5 Pp и
+  // Energiestandard −4 Pp (DEMO-SC-02). Δ остальных параметров фикстурой
+  // не объявлены, и выдумывать их нельзя (R-25) — подтверждение bgfOber
+  // поэтому интервал не сужает, и это честно, а не забыто. Выбор опции
+  // не сужает ничего: он не подтверждение (D-19).
+  const narrowing =
+    (s.fields.wfl.provenance === 'vom Kunden bestätigt' ? 5 : 0) +
+    (s.esConfirmed ? 4 : 0)
 
   return {
     result,
@@ -165,6 +182,9 @@ export const useStore = create<Store>((set, get) => ({
     we: { value: D(fx.areas.wohneinheiten!), provenance: 'aus Dokument' },
   },
   journal: [],
+  esConfirmed: false,
+  wflConflictOpen: true,
+  activeGrundrisse: 'V2',
   activeDelta: null,
   openChapter: 3,
 
@@ -291,6 +311,55 @@ export const useStore = create<Store>((set, get) => ({
           gebaeudeklasse: { ...x.building.gebaeudeklasse, confirmed: false },
         },
       })),
+    })
+  },
+
+  confirmEnergiestandardAnswer: () => {
+    if (get().esConfirmed) return
+    set({ esConfirmed: true })
+    get().apply({
+      kind: 'value.confirmed',
+      label: 'Energiestandard vom Kunden bestätigt',
+      deltaExact: null,
+      inverse: () => set({ esConfirmed: false }),
+    })
+  },
+
+  resolveWflConflict: (candidate) => {
+    const s = get()
+    if (!s.wflConflictOpen) return
+    // Решение конфликта объясняет последствие ДО выбора: меняется только
+    // знаменатель ведущей ставки, тотал не меняется (фикстура DEMO-CONF-0001).
+    if (candidate === 'customer') {
+      s.editField('wfl', D('1560.00'), true)
+    } else {
+      // Документное значение остаётся авторитетным; подтверждение клиентом
+      // самого факта проверки — тоже событие.
+      set((x) => ({
+        fields: { ...x.fields, wfl: { ...x.fields.wfl, provenance: 'vom Kunden bestätigt' } },
+      }))
+    }
+    set({ wflConflictOpen: false })
+    get().apply({
+      kind: 'conflict.resolved',
+      label: candidate === 'customer'
+        ? 'WFL-Konflikt: Kundenwert 1.560,00 m² übernommen'
+        : 'WFL-Konflikt: Dokumentwert 1.500,00 m² beibehalten',
+      deltaExact: null,
+      inverse: () => set({ wflConflictOpen: true }),
+    })
+  },
+
+  activateGrundrisse: (v) => {
+    const s = get()
+    if (s.activeGrundrisse === v) return
+    const prev = s.activeGrundrisse
+    set({ activeGrundrisse: v })
+    get().apply({
+      kind: 'document.activated',
+      label: `Grundrisse: Version ${v} aktiviert (vorher ${prev})`,
+      deltaExact: null,
+      inverse: () => set({ activeGrundrisse: prev }),
     })
   },
 
