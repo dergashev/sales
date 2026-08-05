@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { Decimal } from 'decimal.js'
 import demo from '../fixtures/demo-0001.json'
+import catalog from '../fixtures/catalog.json'
 import { useStore } from '../state/store'
 import { NNBSP, formatDE, rateLabel } from '../engine/money'
 import { Button, NumericField, ProvenanceChip, UncertaintyBadge } from '../components/primitives'
@@ -181,7 +182,7 @@ function P2Projektdaten() {
         />
 
         {/* Открытый конфликт значения: последствие названо ДО выбора. */}
-        {s.wflConflictOpen && (
+        {s.wflConflict.state === 'open' && (
           <div className="mt-2 border-contrast border-border-warning p-3">
             <p className="text-body text-text-primary">
               <span aria-hidden="true">▲ </span>
@@ -205,7 +206,19 @@ function P2Projektdaten() {
           </div>
         )}
 
-        <StaticRow label="Balkon-Anrechnung" value={`25${NNBSP}%`} provenance="WoFlV §4" />
+        {s.wflConflict.state === 'resolved' && (
+          <p className="mt-2 text-small text-text-secondary">
+            <span aria-hidden="true">✓ </span>
+            Konflikt gelöst. Alternative bleibt nachvollziehbar:{' '}
+            {s.wflConflict.candidates
+              .filter((c) => c.selectionStatus === 'alternative')
+              .map((c) => `${formatDE(new Decimal(c.value), 2)}${NNBSP}m² (${c.origin === 'document' ? 'Dokument' : 'Kunde'})`)
+              .join(' · ')}{' '}
+            — selectionStatus «alternative», nicht «superseded» (SOURCE-001).
+          </p>
+        )}
+
+        <StaticRow label="Balkon-Anrechnung" value={`${catalog.internalConfig.balconyDefaultPercent}${NNBSP}%`} provenance={`${catalog.internalConfig.balconySource} · Standard, auf Kundenwunsch 50 %`} />
 
         <NumericField
           label="Wohneinheiten"
@@ -224,7 +237,7 @@ function P2Projektdaten() {
                 ? <ProvenanceChip provenance="vom Kunden bestätigt" />
                 : <span className="text-small text-text-secondary">
                     <span aria-hidden="true">▲ </span>
-                    Prüfung erforderlich · Prüfauslöser: 5 Vollgeschosse · Δ{NNBSP}±3{NNBSP}%
+                    Prüfung erforderlich · Prüfauslöser: 5 Vollgeschosse · Δ{NNBSP}±{NNBSP}{catalog.internalConfig.gebaeudeklasseDeltaPp}{NNBSP}%
                   </span>}
             </p>
           </div>
@@ -350,10 +363,13 @@ function P4Annahmen({ setTab }: { setTab: (t: Tab) => void }) {
   if (!s.building.gebaeudeklasse.confirmed) {
     items.push({
       id: 'gk',
+      // Дословно t0-fallback-rules.md:106; в слот значения подставлен
+      // проектный GK 5 (в тексте правила стоит пример GK 4).
       text: 'Die Gebäudeklasse ist noch nicht bestätigt. Die Geschossanzahl ist ' +
         'lediglich Prüfauslöser und kein Nachweis; die Einstufung nach MBO §2 ' +
         'erfolgt über das Brandschutzkonzept und die zugehörigen Nachweise. ' +
-        'Für die Kalkulation ist vorläufig GK 5 hinterlegt.',
+        'Für die Kalkulation ist vorläufig GK 5 hinterlegt, Stand ' +
+        '«Prüfung erforderlich».',
       resolve: () => s.confirmGebaeudeklasse(),
       resolveLabel: 'Klassifikation bestätigen',
     })
@@ -361,11 +377,15 @@ function P4Annahmen({ setTab }: { setTab: (t: Tab) => void }) {
   if (s.coverage.KG_500 === 'unknown') {
     items.push({
       id: 'kg500',
-      text: 'Für die Kostengruppe 500 (Außenanlagen und Freiflächen) liegt noch ' +
-        'keine Deckungsentscheidung vor: sie ist weder eingeschlossen noch ' +
+      // Дословно t0-fallback-rules.md:245, включая вводную о KG 300/400.
+      text: 'Das Angebot umfasst die Kostengruppen 300 und 400 nach DIN 276. ' +
+        'Die Kostengruppen 100, 200, 600 und 800 sind nicht enthalten. Für die ' +
+        'Kostengruppe 500 (Außenanlagen und Freiflächen) liegt noch keine ' +
+        'Deckungsentscheidung vor: sie ist weder eingeschlossen noch ' +
         'ausgeschlossen und bislang unbewertet. Solange dieser Zustand besteht, ' +
         'weist das Angebot eine Zwischensumme der kalkulierten Positionen und ' +
-        'keinen Gesamtpreis aus.',
+        'keinen Gesamtpreis aus. Die vollständige Abgrenzung ist der ' +
+        'Leistungsübersicht zu entnehmen.',
     })
   }
 
@@ -375,9 +395,10 @@ function P4Annahmen({ setTab }: { setTab: (t: Tab) => void }) {
         Aktive Annahmen · {items.length}
       </h2>
       <p className="mt-1 text-small text-text-secondary">
-        Texte stammen wörtlich aus den Fallback-Regeln und gehen so in das
-        Angebot. Eine Annahme verschwindet, sobald der Wert erfasst ist —
-        die Liste wird abgeleitet, nicht gepflegt.
+        Texte stammen aus den Fallback-Regeln; das Wertfeld (z. B. die
+        Gebäudeklasse) wird mit dem Projektwert belegt — der Regeltext nennt
+        einen Beispielwert. Eine Annahme verschwindet, sobald der Wert
+        erfasst ist — die Liste wird abgeleitet, nicht gepflegt.
       </p>
       {items.length === 0 && (
         <p className="mt-4 border border-border-default p-4 text-body text-text-secondary">

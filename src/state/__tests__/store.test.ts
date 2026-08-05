@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Decimal } from 'decimal.js'
-import { useStore } from '../store'
+import { __resetStoreForTests, useStore } from '../store'
 
 /**
  * Проекция обязана воспроизводить мокап S3 из `screen-map.md` до цента.
@@ -10,8 +10,7 @@ import { useStore } from '../store'
  * экран врёт, либо мокап устарел, — и то и другое дефект.
  */
 
-const initial = useStore.getState()
-beforeEach(() => useStore.setState(initial, true))
+beforeEach(() => __resetStoreForTests())
 
 describe('S3: проекция воспроизводит мокап', () => {
   it('три со-главных героя и вторичная строка', () => {
@@ -139,17 +138,31 @@ describe('S2: конфликт значения и версии документ
     const after = useStore.getState().projection()
     expect(after.result.total.exact.toFixed(2)).toBe(before.result.total.exact.toFixed(2))
     expect(after.leadRate.prefix + after.leadRate.display).toBe('≈2.447')
-    expect(useStore.getState().wflConflictOpen).toBe(false)
+    expect(useStore.getState().wflConflict.state).toBe('resolved')
     // Конфликт закрыт событием, а не молча.
     expect(useStore.getState().journal.some((e) => e.kind === 'conflict.resolved')).toBe(true)
   })
 
-  it('сохранение документного значения — тоже событие, кандидат остаётся', () => {
+  it('сохранение документного значения — событие; кандидат клиента остаётся альтернативой', () => {
     useStore.getState().resolveWflConflict('document')
     const s = useStore.getState()
     expect(s.fields.wfl.value.toFixed(2)).toBe('1500.00')
     expect(s.fields.wfl.provenance).toBe('vom Kunden bestätigt')
     expect(s.journal.at(-1)!.label).toContain('beibehalten')
+    // SOURCE-001: непринятый кандидат хранится, не исчезает.
+    const alt = s.wflConflict.candidates.find((c) => c.origin === 'customer')!
+    expect(alt.selectionStatus).toBe('alternative')
+    expect(alt.value).toBe('1560.00')
+  })
+
+  it('отмена разрешения конфликта атомарна: значение, provenance и статус', () => {
+    useStore.getState().resolveWflConflict('customer')
+    useStore.getState().undo()
+    const s = useStore.getState()
+    // Восстановлено ВСЁ, что событие меняло, — не только флаг.
+    expect(s.wflConflict.state).toBe('open')
+    expect(s.fields.wfl.value.toFixed(2)).toBe('1500.00')
+    expect(s.fields.wfl.provenance).toBe('aus Dokument')
   })
 
   it('смена активной версии планов — событие журнала с обеими версиями', () => {
@@ -160,5 +173,44 @@ describe('S2: конфликт значения и версии документ
     expect(e.label).toContain('V2')
     useStore.getState().undo()
     expect(useStore.getState().activeGrundrisse).toBe('V2')
+  })
+})
+
+
+describe('M-4: недостаточно happy-path — курсор отмены и снапшот', () => {
+  it('двойной undo отменяет ДВА разных события, третий — no-op', () => {
+    useStore.getState().setEnergiestandard('EH_40')
+    useStore.getState().setUntergeschoss('kein_ug')
+    useStore.getState().undo() // отменяет UG
+    useStore.getState().undo() // отменяет EH — не UG второй раз
+    const s = useStore.getState()
+    expect(s.building.untergeschoss).toBe('vollausbau')
+    expect(s.building.energiestandard).toBe('EH_55')
+    expect(s.projection().result.total.exact.toFixed(2)).toBe('3817835.00')
+    const undos = s.journal.filter((e) => e.kind === 'undo')
+    expect(undos).toHaveLength(2)
+    expect(undos[0]!.undoOf).not.toBe(undos[1]!.undoOf)
+    // Третий undo: отменять нечего — журнал не растёт.
+    const len = s.journal.length
+    useStore.getState().undo()
+    expect(useStore.getState().journal).toHaveLength(len)
+  })
+
+  it('setState не экспортируется: данные не меняются мимо журнала', () => {
+    // Публичный API хранилища не содержит setState — это проверка
+    // конструкции, а не поведения: обходной двери не существует.
+    expect((useStore as unknown as { setState?: unknown }).setState).toBeUndefined()
+  })
+
+  it('отправка создаёт снапшот с флагом Regionalfaktor и точным итогом', () => {
+    useStore.getState().toggleRegionalfaktor()
+    const snap = useStore.getState().sendOffer('email', '3.0')
+    expect(snap.regionalfaktorActive).toBe(true)
+    expect(snap.totalExact).toBe('4123261.80')
+    expect(snap.discountPercent).toBe('3.0')
+    const s = useStore.getState()
+    expect(s.snapshots).toHaveLength(1)
+    expect(s.journal.at(-1)!.kind).toBe('offer.emailed')
+    expect(s.journal.at(-1)!.label).toContain(snap.id)
   })
 })

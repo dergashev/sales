@@ -29,6 +29,14 @@ const ARTIFACTS = [
 
 type Stage = 'compose' | 'preflight' | 'confirm' | 'gesendet' | 'zugestellt'
 
+/**
+ * Доставка в прототипе СИМУЛИРУЕТСЯ таймером — и это сказано пользователю
+ * на экране, а не только в комментарии. Первая редакция автоматически
+ * показывала «Zugestellt» как факт, одновременно объясняя, что второй
+ * статус не следует из первого, — симуляция, выданная за реализацию.
+ */
+const DELIVERY_SIMULATION_MS = 2500
+
 export function S5Export() {
   const s = useStore()
   const p = s.projection()
@@ -88,9 +96,7 @@ export function S5Export() {
                     className="h-4 w-4 accent-[color:var(--color-selection-border)]"
                   />
                   {a.label}
-                  {a.id !== 'praesentation' && (
-                    <span className="ml-auto text-small text-text-muted">Muster</span>
-                  )}
+                  <span className="ml-auto text-small text-text-muted">Muster</span>
                 </label>
               </li>
             ))}
@@ -160,7 +166,7 @@ export function S5Export() {
               <div className="mt-3 border border-border-default p-3">
                 <p className="text-small font-medium text-text-primary">Finale Prüfung</p>
                 <ul className="mt-1 text-small text-text-secondary">
-                  <li>Anhänge: {selected.size} · alle clientSafe (Muster)</li>
+                  <li>Anhänge: {selected.size} · Muster-Dateien des Prototyps, als clientSafe klassifiziert</li>
                   <li>Aktive Annahmen: {s.building.gebaeudeklasse.confirmed ? 1 : 2}</li>
                   <li><UncertaintyBadge pp={p.uncertaintyPp} /></li>
                   <li>Sprache: DE · vollständig</li>
@@ -200,10 +206,11 @@ export function S5Export() {
                   disabled={!sendEnabled}
                   disabledReason="Preflight nicht vollständig"
                   onClick={() => {
-                    s.apply({ kind: 'offer.emailed', label: 'Angebot per E-Mail gesendet', deltaExact: null })
+                    // Отправка = снапшот + событие (M-3): состояние, от
+                    // которого клиент получил числа, зафиксировано до письма.
+                    s.sendOffer('email', discountOn ? '3.0' : null)
                     setStage('gesendet')
-                    // Симуляция доставки: Gesendet ≠ Zugestellt.
-                    setTimeout(() => setStage('zugestellt'), 2500)
+                    setTimeout(() => setStage('zugestellt'), DELIVERY_SIMULATION_MS)
                   }}
                 >
                   Bestätigen &amp; senden
@@ -217,13 +224,26 @@ export function S5Export() {
               <p className="text-body text-text-primary">
                 {stage === 'gesendet'
                   ? <><span aria-hidden="true">◌ </span>Gesendet — Zustellung ausstehend</>
-                  : <><span aria-hidden="true">✓ </span>Zugestellt</>}
+                  : <><span aria-hidden="true">✓ </span>Zugestellt (simulierte Zustellbestätigung)</>}
               </p>
               <p className="mt-1 text-small text-text-secondary">
                 «Gesendet» und «Zugestellt» sind zwei Zustände: der zweite
-                folgt nicht aus dem ersten (EMAIL-007). Ereignis
-                offer.emailed steht im Journal.
+                folgt nicht aus dem ersten (EMAIL-007). Der Prototyp hat
+                keinen E-Mail-Versand — die Zustellbestätigung wird nach
+                2,5{NNBSP}Sekunden simuliert und ist als Simulation
+                gekennzeichnet. Snapshot und Ereignis offer.emailed stehen
+                im Journal.
               </p>
+              {s.snapshots.length > 0 && (
+                <p className="mt-2 text-small text-text-muted">
+                  Snapshot {s.snapshots.at(-1)!.id}: Zwischensumme{' '}
+                  {s.snapshots.at(-1)!.totalExact}{NNBSP}€ exakt ·
+                  Regionalfaktor {s.snapshots.at(-1)!.regionalfaktorActive
+                    ? 'aktiviert' : 'nicht aktiviert'} · ±{NNBSP}
+                  {s.snapshots.at(-1)!.uncertaintyPp}{NNBSP}% ·
+                  Journal-Stand {s.snapshots.at(-1)!.journalSeqAt}
+                </p>
+              )}
             </div>
           )}
         </section>

@@ -145,8 +145,12 @@ export function NumericField({
       <label className="block text-small font-medium text-text-primary">{label}</label>
       <div className="mt-2 flex flex-wrap items-center gap-3">
         <input
-          className={`${FOCUS} numeric w-[12ch] border border-border-default px-3 text-body`}
-          style={{ minHeight: 'var(--size-control-visual-md)' }}
+          // У input нет ::before, поэтому псевдо-расширение зоны нажатия
+          // недоступно — минимальная высота ставится равной самой цели
+          // нажатия 44 px (R-04: видимая высота МОЖЕТ быть 40, но только
+          // если цель достигается иначе; здесь иначе нечем).
+          className={`${FOCUS} numeric w-field border border-border-default px-3 text-body`}
+          style={{ minHeight: 'var(--size-hit-target-default)' }}
           value={shown}
           inputMode="decimal"
           onChange={(e) => setDraft(e.target.value)}

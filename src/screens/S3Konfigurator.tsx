@@ -166,7 +166,7 @@ export function S3Konfigurator() {
                   return (
                     <SegmentedThree
                       key={g}
-                      label={`${g.replace('_', '${NNBSP}')} ${KG_LABELS[g]}`}
+                      label={`${g.replace('_', NNBSP)} ${KG_LABELS[g]}`}
                       value={state}
                       options={COVERAGE_OPTIONS}
                       onChange={(v) => s.setCoverage(g, v)}
@@ -192,7 +192,7 @@ export function S3Konfigurator() {
                     variant={s.building.energiestandard === v ? 'primary' : 'secondary'}
                     onClick={() => s.setEnergiestandard(v)}
                   >
-                    {v.replace('_', '${NNBSP}')}
+                    {v.replace('_', NNBSP)}
                   </Button>
                 ))}
               </div>
@@ -211,7 +211,10 @@ export function S3Konfigurator() {
               <span aria-hidden="true">{p.result.total.prefix}{NNBSP}</span>
             )}
             {totalCount}
-            <span className="ml-2 text-display-numeric-narrow">€</span>
+            {/* Единица меньшим кеглем, но разделитель — СИМВОЛ U+202F, не
+                CSS-отступ: в буфере обмена и у скринридера число обязано
+                оставаться «3.818.000 €», а не «3.818.000€». */}
+            <span className="text-display-numeric-narrow">{NNBSP}€</span>
           </p>
           <p className="mt-1 text-body text-text-secondary">
             netto · <UncertaintyBadge pp={p.uncertaintyPp} />
@@ -241,7 +244,7 @@ export function S3Konfigurator() {
           </p>
 
           {/* Дельта-чип: зарезервированный слот, появление не сдвигает вёрстку. */}
-          <div className="mt-4 min-h-[calc(var(--space-6)+var(--space-2))]">
+          <div className="mt-4 min-h-delta-slot">
             <AnimatePresence>
               {s.activeDelta && (
                 <motion.p

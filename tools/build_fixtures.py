@@ -365,9 +365,68 @@ class Builder:
         return self.checked
 
 
+def internal_config():
+    """Внутренняя конфигурация S2/S6 — ИЗВЛЕКАЕТСЯ из документов-источников.
+
+    Аудит прототипа нашёл маржу, драйверы риска, потолок, балконную долю и
+    Δ класса здания захардкоженными в экранах — числа, которых нет в фикстуре.
+    Удалять их неверно: это законная конфигурация продукта из calculation-spec
+    §1.1 и t0-fallback §5.1. Верно — вывести их тем же построителем, которым
+    выведено всё остальное: один источник, одна сверка, одно место правки.
+    """
+    spec = SRC.parent.parent / 'product' / 'calculation-spec.md'
+    fb = SRC.parent.parent / 'product' / 't0-fallback-rules.md'
+    ts = spec.read_text(encoding='utf-8')
+    tf = fb.read_text(encoding='utf-8')
+    for ch in Builder.SPACES:
+        ts = ts.replace(ch, ' '); tf = tf.replace(ch, ' ')
+
+    m_eig = re.search(r'`Marge Eigenleistung`[^|]*\|\s*\*\*(\d+) %\*\*', ts)
+    m_fremd = re.search(r'`Marge Fremdleistung`[^|]*\|\s*\*\*(\d+) %\*\*', ts)
+    if not (m_eig and m_fremd):
+        raise Mismatch('маржа не извлечена из calculation-spec §1.1')
+
+    drivers = re.findall(
+        r'^\| ([A-ZÄÖÜ][^|]+?) \| (KG \d+) \| \*\*\+(\d+) %\*\* \|', ts, re.M)
+    if len(drivers) != 6:
+        raise Mismatch(f'драйверов риска извлечено {len(drivers)}, ожидалось 6')
+
+    cap = re.search(r'ограничена \*\*(\d+) % от Bauwerk\*\*', ts)
+    if not cap:
+        raise Mismatch('потолок суммы драйверов не извлечён')
+
+    gk_delta = re.search(r'### \d+\. Gebäudeklasse \(GK\) · Δ ±(\d+) %', tf)
+    if not gk_delta:
+        raise Mismatch('Δ Gebäudeklasse не извлечена из t0-fallback §5.1')
+
+    balcony = re.search(r'Balkone und Loggien wurden mit (\d+) % angerechnet', tf)
+    if not balcony:
+        raise Mismatch('балконная доля не извлечена из t0-fallback')
+
+    return {
+        '$comment': 'Извлечено из calculation-spec.md §1.1 и t0-fallback-rules.md '
+                    '§5.1 построителем; в экранах не хардкодится.',
+        'margins': {
+            'eigenleistungPercent': m_eig.group(1),
+            'fremdleistungPercent': m_fremd.group(1),
+            'provisional': True,
+            'hiddenFromClient': True,
+        },
+        'riskDrivers': [
+            {'label': d[0].strip(), 'base': d[1], 'ratePercent': d[2]}
+            for d in drivers
+        ],
+        'riskCapPercentOfBauwerk': cap.group(1),
+        'gebaeudeklasseDeltaPp': gk_delta.group(1),
+        'balconyDefaultPercent': balcony.group(1),
+        'balconySource': 'WoFlV §4',
+    }
+
+
 def build(write=True):
     b = Builder(SRC.read_text(encoding='utf-8'))
     cat = b.catalog()
+    cat['internalConfig'] = internal_config()
     ar = b.areas()
     runs = b.runs(cat, ar)
     rates = b.rates(runs, ar)

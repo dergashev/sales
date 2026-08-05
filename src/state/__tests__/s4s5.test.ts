@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { useStore } from '../store'
+import { __resetStoreForTests, useStore } from '../store'
 import { calculateBuilding } from '../../engine/calculate'
 import { withRegionalFactor } from '../catalog'
 const CATALOG = withRegionalFactor(false)
@@ -8,8 +8,7 @@ import { Decimal } from 'decimal.js'
 
 /** S4/S5: колонки сравнения и гейт отправки — против фикстуры. */
 
-const initial = useStore.getState()
-beforeEach(() => useStore.setState(initial, true))
+beforeEach(() => __resetStoreForTests())
 
 describe('S4: три колонки от одного движка', () => {
   it('варианты дают фикстурные итоги, дельты — к названной базе', () => {
@@ -45,9 +44,10 @@ describe('S5: гейт отправки', () => {
     expect(d.disclosure).toContain('3.703.299,95')
   })
 
-  it('offer.emailed — событие журнала', () => {
-    useStore.getState().apply({ kind: 'offer.emailed', label: 'Angebot per E-Mail gesendet', deltaExact: null })
+  it('offer.emailed — событие журнала со снапшотом', () => {
+    useStore.getState().sendOffer('email', null)
     expect(useStore.getState().journal.at(-1)!.kind).toBe('offer.emailed')
+    expect(useStore.getState().snapshots).toHaveLength(1)
   })
 })
 

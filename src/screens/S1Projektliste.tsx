@@ -32,9 +32,19 @@ export function S1Projektliste({ openVorbereitung }: { openVorbereitung: () => v
         HEUTE ZU ERLEDIGEN
       </h2>
 
-      <article
-        className="mt-2 cursor-pointer border border-border-default p-4 outline-none focus-within:outline-none hover:bg-surface-subtle"
+      {/* Карточка — один клик-контейнер (правило 26). Вложенный <button>
+          внутри <button> невалиден, поэтому контейнер — div с ролью, полным
+          клавиатурным путём и видимым фокусом; настоящая кнопка внутри
+          останавливает всплытие. */}
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label={`${demo.project.name} vorbereiten`}
         onClick={openVorbereitung}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openVorbereitung() }
+        }}
+        className="mt-2 min-h-hit-target cursor-pointer border border-border-default p-4 outline-none hover:bg-surface-subtle focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
       >
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h3 className="text-body font-bold text-text-primary">
@@ -59,7 +69,7 @@ export function S1Projektliste({ openVorbereitung }: { openVorbereitung: () => v
             </Button>
           </span>
         </div>
-      </article>
+      </div>
 
       <div className="mt-6">
         {[

@@ -118,10 +118,19 @@ const config: Config = {
       slow: 'var(--motion-duration-slow)',
     },
     extend: {
-      height: { row: 'var(--row-height)', 'row-financial': 'var(--row-height-financial)' },
-      minHeight: { 'hit-target': 'var(--size-hit-target-default)' },
+      // Один ключ height: дубль ключа в объекте молча затирает первый —
+      // row/row-financial уже однажды пропали именно так.
+      height: {
+        row: 'var(--row-height)',
+        'row-financial': 'var(--row-height-financial)',
+      },
+      minHeight: {
+        'hit-target': 'var(--size-hit-target-default)',
+        'delta-slot': 'calc(var(--space-6) + var(--space-2))',
+      },
       minWidth: { 'hit-target': 'var(--size-hit-target-default)' },
       maxWidth: { content: 'var(--content-max-width)' },
+      width: { field: '12ch' },
     },
   },
   corePlugins: {

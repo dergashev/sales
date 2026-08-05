@@ -1,3 +1,4 @@
+import catalog from '../fixtures/catalog.json'
 import { useStore } from '../state/store'
 import { NNBSP } from '../engine/money'
 import { Button } from '../components/primitives'
@@ -12,6 +13,9 @@ import { Button } from '../components/primitives'
  */
 export function S6Einstellungen() {
   const s = useStore()
+  // Числа не хардкодятся в экране: internalConfig извлечён построителем
+  // из calculation-spec §1.1 — один источник, одно место правки.
+  const cfg = catalog.internalConfig
 
   return (
     <div className="mx-auto max-w-content px-5 py-5">
@@ -52,18 +56,23 @@ export function S6Einstellungen() {
         </h2>
         <div className="mt-2 overflow-x-auto">
           <table className="w-full border-collapse text-body">
+            <caption className="sr-only">Margensätze nach Leistungsart</caption>
             <tbody>
               <tr className="border-b border-border-subtle">
                 <th scope="row" className="py-2 pr-4 text-left font-regular text-text-secondary">
                   Marge Eigenleistung
                 </th>
-                <td className="numeric py-2 text-right text-text-primary">12{NNBSP}% ⚙</td>
+                <td className="numeric py-2 text-right text-text-primary">
+                  {cfg.margins.eigenleistungPercent}{NNBSP}% ⚙
+                </td>
               </tr>
               <tr className="border-b border-border-subtle">
                 <th scope="row" className="py-2 pr-4 text-left font-regular text-text-secondary">
                   Marge Fremdleistung
                 </th>
-                <td className="numeric py-2 text-right text-text-primary">6{NNBSP}% ⚙</td>
+                <td className="numeric py-2 text-right text-text-primary">
+                  {cfg.margins.fremdleistungPercent}{NNBSP}% ⚙
+                </td>
               </tr>
             </tbody>
           </table>
@@ -79,6 +88,7 @@ export function S6Einstellungen() {
         <h2 className="text-body font-bold text-text-primary">Risikozuschlag-Treiber (D-02)</h2>
         <div className="mt-2 overflow-x-auto">
           <table className="w-full border-collapse text-body">
+            <caption className="sr-only">Risikozuschlag-Treiber mit Basis und Satz</caption>
             <thead>
               <tr className="border-b border-border-strong text-left">
                 <th className="py-2 pr-4 font-medium">Treiber</th>
@@ -87,18 +97,17 @@ export function S6Einstellungen() {
               </tr>
             </thead>
             <tbody>
-              {[
-                ['Baugrundgutachten liegt nicht vor', 'KG 320', '+4 %'],
-                ['Grundwasser / Abdichtungsklasse offen', 'KG 320', '+3 %'],
-                ['Statik nicht geprüft', 'KG 300', '+2 %'],
-                ['Beengte Baustelle / Kranstellung unklar', 'KG 300', '+3 %'],
-                ['Bestandsgebäude / Abbruchumfang unklar', 'KG 200', '+5 %'],
-                ['Denkmalschutz / Erhaltungssatzung offen', 'KG 300', '+3 %'],
-              ].map(([t, b, r]) => (
-                <tr key={t} className="border-b border-border-subtle">
-                  <td className="py-2 pr-4 text-text-primary">{t}</td>
-                  <td className="py-2 pr-4 text-text-secondary">{b}</td>
-                  <td className="numeric py-2 text-right text-text-primary">{r}</td>
+              {cfg.riskDrivers.map((d) => (
+                <tr key={d.label} className="border-b border-border-subtle">
+                  {/* Код параметра из источника не показывается: формулировки
+                      на языке следствий, не кодов (DC-44). */}
+                  <td className="py-2 pr-4 text-text-primary">
+                    {d.label.replace(/ \(`[^`]+`\)/, '')}
+                  </td>
+                  <td className="py-2 pr-4 text-text-secondary">{d.base}</td>
+                  <td className="numeric py-2 text-right text-text-primary">
+                    +{NNBSP}{d.ratePercent}{NNBSP}%
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -106,7 +115,8 @@ export function S6Einstellungen() {
         </div>
         <p className="mt-2 text-small text-text-muted">
           Der Treiber existiert, damit ihn ein nachgereichtes Dokument
-          auflöst. Summe aktiver Treiber gedeckelt bei 12{NNBSP}% vom Bauwerk.
+          auflöst. Summe aktiver Treiber gedeckelt bei{' '}
+          {cfg.riskCapPercentOfBauwerk}{NNBSP}% vom Bauwerk.
         </p>
       </section>
 

@@ -77,5 +77,50 @@
       "absoluteDateRequired": true,
       "decision": "D-17"
     }
+  },
+  "internalConfig": {
+    "$comment": "Извлечено из calculation-spec.md §1.1 и t0-fallback-rules.md §5.1 построителем; в экранах не хардкодится.",
+    "margins": {
+      "eigenleistungPercent": "12",
+      "fremdleistungPercent": "6",
+      "provisional": true,
+      "hiddenFromClient": true
+    },
+    "riskDrivers": [
+      {
+        "label": "Baugrundgutachten liegt nicht vor",
+        "base": "KG 320",
+        "ratePercent": "4"
+      },
+      {
+        "label": "Grundwasser / Abdichtungsklasse offen",
+        "base": "KG 320",
+        "ratePercent": "3"
+      },
+      {
+        "label": "Statik nicht geprüft",
+        "base": "KG 300",
+        "ratePercent": "2"
+      },
+      {
+        "label": "Beengte Baustelle / Kranstellung unklar (`C0.22`)",
+        "base": "KG 300",
+        "ratePercent": "3"
+      },
+      {
+        "label": "Bestandsgebäude / Abbruchumfang unklar (`C0.20`)",
+        "base": "KG 200",
+        "ratePercent": "5"
+      },
+      {
+        "label": "Denkmalschutz / Erhaltungssatzung offen",
+        "base": "KG 300",
+        "ratePercent": "3"
+      }
+    ],
+    "riskCapPercentOfBauwerk": "12",
+    "gebaeudeklasseDeltaPp": "3",
+    "balconyDefaultPercent": "25",
+    "balconySource": "WoFlV §4"
   }
 }
