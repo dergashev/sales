@@ -1558,32 +1558,54 @@ class Verifier:
         # не связывал акцент с поверхностью машинно.
         acc = contrast(CLR['accent'], CLR['white'])
         canv = contrast(CLR['accent'], CLR['canvas'])
+        seen_accent = False
         for dc, name, ln, body in contracts:
             mt = re.search(r'\*\*Токены:\*\*(.*?)(?=\n\*\*[А-ЯA-Z]|\Z)', body, re.S)
             if not mt or '--color-text-display-accent' not in mt.group(1):
                 continue
-            toks = mt.group(1)
-            # позиция акцента и ближайшая поверхность в том же перечислении
-            near = toks[toks.index('--color-text-display-accent'):][:220]
-            if '--color-surface-canvas' in near:
-                self.emit('RM-ACCENT', rel, ln, f'RM-ACCENT:{dc or name}',
-                          f'{dc or name} `{name}`: акцентный текст объявлен на '
+            seen_accent = True
+            who = dc or name
+            # Привязка выражается КВАЛИФИКАТОРОМ в скобках прямо у токена, а не
+            # соседством в перечислении: `--color-surface-default` встречается
+            # в списке токенов и сам по себе, поэтому проверка «есть рядом»
+            # проходила при полностью снятом квалификаторе.
+            mq = re.search(r'`--color-text-display-accent`\s*\(([^)]*)\)', mt.group(1), re.S)
+            if not mq:
+                self.emit('RM-ACCENT', rel, ln, f'RM-ACCENT:unbound-{who}',
+                          f'{who} `{name}`: `--color-text-display-accent` перечислен без '
+                          f'квалификатора поверхности. Акцент без названной подложки не '
+                          f'является утверждением: {fmt_ratio(acc)}:1 на '
+                          f'`--color-surface-default` против {fmt_ratio(canv)}:1 на '
+                          f'`--color-surface-canvas` (R-01)')
+            elif '--color-surface-canvas' in mq.group(1):
+                self.emit('RM-ACCENT', rel, ln, f'RM-ACCENT:{who}',
+                          f'{who} `{name}`: акцентный текст объявлен на '
                           f'`--color-surface-canvas` — {fmt_ratio(canv)}:1, ниже порога R-01 '
                           f'(3:1). Допустима только `--color-surface-default` '
                           f'({fmt_ratio(acc)}:1); подложка — часть условия, а не контекст')
-            elif '--color-surface-default' not in near:
-                self.emit('RM-ACCENT', rel, ln, f'RM-ACCENT:unbound-{dc or name}',
-                          f'{dc or name} `{name}`: `--color-text-display-accent` перечислен '
-                          f'без названной поверхности. Акцент без подложки не является '
-                          f'утверждением: {fmt_ratio(acc)}:1 на `surface-default` против '
-                          f'{fmt_ratio(canv)}:1 на `surface-canvas` (R-01)')
-        # запрет обязан остаться сформулированным, а не только соблюдаться
-        if not re.search(r'акцентн\w+\s+геро\w+\s+на\s+поверхности\s*`?--color-surface-canvas',
-                         readme):
+            elif '--color-surface-default' not in mq.group(1):
+                self.emit('RM-ACCENT', rel, ln, f'RM-ACCENT:unnamed-{who}',
+                          f'{who} `{name}`: квалификатор акцента «{mq.group(1)[:50]}» не '
+                          f'называет `--color-surface-default` — порог R-01 достигается '
+                          f'только на ней')
+            # Запрет обязан быть сформулирован в «Запретах» ТОГО КОНТРАКТА,
+            # который применяет акцент. Прежняя редакция искала формулировку по
+            # всему файлу — и перекрёстная ссылка из §1.5 («полный запрет —
+            # DC-38, „Запреты“») закрывала снятие самого запрета.
+            mb = re.search(r'\*\*Запреты:\*\*(.*?)(?=\n---|\n\*\*[А-ЯA-Z]|\Z)', body, re.S)
+            if not mb:
+                self.emit('RM-ACCENT', rel, ln, f'RM-ACCENT:noban-{who}',
+                          f'{who} `{name}` применяет акцентный цвет, но не имеет блока '
+                          f'«Запреты» — условие подложки нигде не зафиксировано')
+            elif not re.search(r'акцентн\w+[^\n]{0,40}`?--color-surface-canvas', mb.group(1)):
+                self.emit('RM-ACCENT', rel, ln, f'RM-ACCENT:ban-{who}',
+                          f'{who} `{name}`: в «Запретах» нет запрета акцентного героя на '
+                          f'`--color-surface-canvas`. Правило, которое соблюдается, но не '
+                          f'записано, восстанавливается первой же правкой')
+        if not seen_accent:
             self.fail('RM-ACCENT', rel,
-                      'README не формулирует запрет акцентного героя на '
-                      '`--color-surface-canvas` — правило, которое соблюдается, но не '
-                      'записано, восстанавливается первой же правкой')
+                      '[вакуум] ни один контракт не перечисляет '
+                      '`--color-text-display-accent` — условие подложки R-01 не проверяется')
 
     def _reasons(self, rel, who, name, ln, blocks, axis_label, min_chars, min_words):
         """`notApplicableReason` несёт причину, а не слово.
@@ -1615,27 +1637,47 @@ class Verifier:
         self._sched_d17(rel, readme)
         if not self.fx:
             return
-        # скидка считается от ТОЧНОГО итога, никогда от отображаемого
+        # Скидка считается от ТОЧНОГО итога, никогда от отображаемого.
+        # Разбор позиционный, не по словам: после ставки скидки идут три
+        # денежные величины — база, точный результат, показ. Порядок задан
+        # арифметикой, а не формулировкой, и потому переживает правку прозы.
         rab = self.fx['rabatt']
         mult = 1 - rab / 100
-        for i, line in enumerate(rows, 1):
-            for m in re.finditer(r'`?Rabatt\s*([\d,]+)\s*%`?[^\n]{0,80}?'
-                                 r'итога\s*`?([\d.,]+)\s*€', line):
-                if de(m.group(1)) != rab:
-                    self.emit('RM-FIXTURE', rel, i, 'RM-FIXTURE:rabatt-rate',
-                              f'README называет Rabatt {m.group(1)} %, фикстура — {rab} %')
-                base = de(m.group(2))
-                if base != self.fx['A']:
-                    self.emit('RM-FIXTURE', rel, i, f'RM-FIXTURE:rabatt-base-{m.group(2)}',
-                              f'база скидки {m.group(2)} € не равна ТОЧНОМУ итогу '
-                              f'{self.fx["A"]} €: CALC-007 и инвариант 14.1 запрещают '
-                              f'участие отображаемых значений во внутренних расчётах '
-                              f'(округлённая база завышает цену)')
-                    continue
-                mres = re.search(r'даёт\s*`?([\d.,]+)\s*€', line)
-                if mres and de(mres.group(1)) != base * mult:
-                    self.emit('RM-FIXTURE', rel, i, 'RM-FIXTURE:rabatt-product',
-                              f'{base} × {mult} = {base * mult}, README пишет {mres.group(1)}')
+        found_rabatt = False
+        for dc, name, ln, body in (self._contracts(readme, rows) or []):
+            m = re.search(r'`?Rabatt\s*([\d,]+)\s*[  ]?%`?', body)
+            if not m:
+                continue
+            found_rabatt = True
+            if de(m.group(1)) != rab:
+                self.emit('RM-FIXTURE', rel, ln, 'RM-FIXTURE:rabatt-rate',
+                          f'{dc or name} называет Rabatt {m.group(1)} %, фикстура — {rab} %')
+            nums = [de(x) for x in re.findall(
+                r'(?<![\d.,])(\d{1,3}(?:\.\d{3})+(?:,\d+)?)\s*[  ]?€', body[m.end():])]
+            if len(nums) < 3:
+                self.fail('RM-FIXTURE', rel, f'[вакуум] {dc or name}: после ставки скидки '
+                                             f'найдено {len(nums)} денежных величин, нужны три '
+                                             f'(база · точный результат · показ)')
+                continue
+            base, res, shown = nums[0], nums[1], nums[2]
+            if base != self.fx['A']:
+                self.emit('RM-FIXTURE', rel, ln, f'RM-FIXTURE:rabatt-base-{base}',
+                          f'{dc or name}: база скидки {base} € не равна ТОЧНОМУ итогу '
+                          f'{self.fx["A"]} € — CALC-007 и инвариант 14.1 запрещают участие '
+                          f'отображаемых значений во внутренних расчётах: округление базы '
+                          f'до {r1000(self.fx["A"])} завышает цену на '
+                          f'{r2((r1000(self.fx["A"]) - self.fx["A"]) * mult)} €')
+            elif res != base * mult:
+                self.emit('RM-FIXTURE', rel, ln, 'RM-FIXTURE:rabatt-product',
+                          f'{dc or name}: {base} × {mult} = {base * mult}, '
+                          f'README пишет {res}')
+            elif shown != r1000(res):
+                self.emit('RM-FIXTURE', rel, ln, 'RM-FIXTURE:rabatt-display',
+                          f'{dc or name}: показ {shown} ≠ округления точного {res} '
+                          f'до 1.000 € ({r1000(res)})')
+        if not found_rabatt:
+            self.fail('RM-FIXTURE', rel, '[вакуум] ни один контракт не называет ставку '
+                                         'Rabatt — база скидки не проверяется')
         # Агрегация комплекса — от СУММ, никогда как среднее из средних
         # (правило проекта 39). Якорь структурный и нормативный: подписи
         # `Σ BGF oberirdisch` и `Σ BGF R+S` заданы правилом, а не вёрсткой,
@@ -3309,8 +3351,8 @@ MUTATIONS = [
      {'RM-AXES'}),
     ('RM-AXES: у контракта снят весь блок «Состояния — данные»',
      'design-system/README.md',
-     _sub(r'\*\*Состояния — данные:\*\*\n`loading` — очередь загружается',
-          '**Zustände:**\n`loading` — очередь загружается'), {'RM-AXES'}),
+     _sub(r'\*\*Состояния — данные([^*]*)\*\*(\s*\n`loading` — очередь загружается)',
+          r'**Zustände\1**\2'), {'RM-AXES'}),
     ('RM-MATRIX: одна ячейка матрицы §2.4 разошлась с телом контракта',
      'design-system/README.md',
      _sub(r'^\| DC-38 `KeyMetricsGrid` \| ● \| ●', '| DC-38 `KeyMetricsGrid` | ○ | ●', re.M),
@@ -3322,7 +3364,7 @@ MUTATIONS = [
      {'RM-NAREASON'}),
     ('RM-FIXTURE: база скидки взята от округлённого итога (CALC-007)',
      'design-system/README.md',
-     _sub(r'итога\s*`3\.817\.835,00 €`', 'итога `3.818.000 €`'), {'RM-FIXTURE'}),
+     _sub(r'итога\s*\n?`3\.817\.835,00\s*[  ]?€`', 'итога `3.818.000 €`'), {'RM-FIXTURE'}),
     ('RM-FIXTURE: несводимый тотал в прозе', 'design-system/README.md',
      'Beispiel: Gesamtsumme ≈ 5.900.000 € netto.', {'RM-FIXTURE'}),
     ('RM-FIXTURE: агрегация комплекса под подписью oberirdisch включила UG (DATA-001)',
