@@ -8,7 +8,7 @@ import {
   type BuildingInput, type Coverage, type CoverageState,
   type CostGroup, type BuildingResult,
 } from '../engine/calculate'
-import { present, rate, type Rate } from '../engine/money'
+import { present, rate, NNBSP, type Rate } from '../engine/money'
 import { modelDuration, presentDuration, type DurationDisplay } from '../engine/schedule'
 
 /**
@@ -49,6 +49,12 @@ export type JournalEvent = {
   undoOf?: number
   /** Обратное применение. Обязано восстанавливать ВСЁ, что событие меняло. */
   inverse?: () => void
+  /**
+   * Прямое применение — то же изменение ещё раз. Нужно ровно для одного:
+   * «отмена отмены — тоже событие» (DC-29). Событие отмены получает
+   * inverse = forward отменённого, и потому само отменяемо.
+   */
+  forward?: () => void
 }
 
 export type Provenance =
@@ -145,6 +151,13 @@ type Store = {
    * Клик фиксирует выбор обычным событием, превью гаснет.
    */
   preview: { label: string; deltaExact: Decimal } | null
+  /**
+   * Undo-тост (DC-29): производная ПОСЛЕДНЕГО события журнала, не отдельное
+   * состояние. Каждое событие с inverse создаёт тост; событие без inverse
+   * (отправка) гасит его — более новая голова делает старый тост stale
+   * (CHANGE-006), а откат остаётся доступен из журнала DC-12.
+   */
+  undoToast: { seq: number; statusText: string; deltaText: string | null } | null
   openChapter: number
 
   projection: () => Projection
@@ -168,6 +181,9 @@ type Store = {
       | null,
   ) => void
   undo: () => void
+  /** Адресная отмена события из тоста DC-29. Умеет отменять и отмену. */
+  undoEvent: (seq: number) => void
+  dismissUndoToast: () => void
 }
 
 function computeProjection(
@@ -213,16 +229,36 @@ function computeProjection(
   }
 }
 
+/**
+ * Дельта тоста DC-29 по фикстурному образцу контракта:
+ * `− 476.000 € gegenüber DEMO-VV-0003` (префикс ≈ — до знака, как в DC-12).
+ */
+function dc29Delta(d: Decimal): string {
+  const pr = present(d.abs())
+  const sign = d.isNegative() ? '−' : '+'
+  return `${pr.prefix ? pr.prefix + NNBSP : ''}${sign}${NNBSP}${pr.display}${NNBSP}€` +
+    `${NNBSP}gegenüber DEMO-VV-0003`
+}
+
 // Сырой store — приватный. Наружу не выходит ни он, ни его setState.
 const store = createStore<Store>((set, get) => {
-  /** Единственная дверь для изменения данных: событие + журнал. */
+  /**
+   * Единственная дверь для изменения данных: событие + журнал.
+   * Тост DC-29 — производная этой же двери: событие с inverse отменяемо и
+   * получает тост, событие без inverse гасит предыдущий (новая голова).
+   */
   const apply = (e: Omit<JournalEvent, 'seq' | 'at'>) => {
     const { journal } = get()
+    const seq = journal.length + 1
     set({
-      journal: [
-        ...journal,
-        { ...e, seq: journal.length + 1, at: new Date().toISOString() },
-      ],
+      journal: [...journal, { ...e, seq, at: new Date().toISOString() }],
+      undoToast: e.inverse
+        ? {
+            seq,
+            statusText: e.label,
+            deltaText: e.deltaExact ? dc29Delta(e.deltaExact) : null,
+          }
+        : null,
     })
   }
 
@@ -254,6 +290,7 @@ const store = createStore<Store>((set, get) => {
     snapshots: [],
     activeDelta: null,
     preview: null,
+    undoToast: null,
     openChapter: 3,
 
     projection: () => computeProjection(get()),
@@ -282,6 +319,17 @@ const store = createStore<Store>((set, get) => {
           building: key === 'bgfOber'
             ? { ...s.building, bgfAboveGround: prev.value } : s.building,
         })),
+        forward: () => set((s) => ({
+          fields: {
+            ...s.fields,
+            [key]: {
+              value,
+              provenance: confirmed ? 'vom Kunden bestätigt' : 'manuell erfasst',
+            },
+          },
+          building: key === 'bgfOber'
+            ? { ...s.building, bgfAboveGround: value } : s.building,
+        })),
       })
       if (!delta.isZero()) {
         set({
@@ -307,6 +355,7 @@ const store = createStore<Store>((set, get) => {
         label: `Energiestandard ${prev.replace('_', ' ')} → ${v.replace('_', ' ')}`,
         deltaExact: delta,
         inverse: () => set((st) => ({ building: { ...st.building, energiestandard: prev } })),
+        forward: () => set((st) => ({ building: { ...st.building, energiestandard: v } })),
       })
       // Клик — фиксация: превью гаснет, начинается волна дельты (DC-28).
       set({
@@ -332,6 +381,7 @@ const store = createStore<Store>((set, get) => {
         label: `Untergeschoss ${LABEL_UG[prev]} → ${LABEL_UG[v]}`,
         deltaExact: delta,
         inverse: () => set((st) => ({ building: { ...st.building, untergeschoss: prev } })),
+        forward: () => set((st) => ({ building: { ...st.building, untergeschoss: v } })),
       })
       set({
         preview: null,
@@ -353,6 +403,7 @@ const store = createStore<Store>((set, get) => {
         label: `${g} ${COVERAGE_LABEL[prev]} → ${COVERAGE_LABEL[st]}`,
         deltaExact: null,
         inverse: () => set((x) => ({ coverage: { ...x.coverage, [g]: prev } })),
+        forward: () => set((x) => ({ coverage: { ...x.coverage, [g]: st } })),
       })
     },
 
@@ -375,6 +426,12 @@ const store = createStore<Store>((set, get) => {
             gebaeudeklasse: { ...x.building.gebaeudeklasse, confirmed: false },
           },
         })),
+        forward: () => set((x) => ({
+          building: {
+            ...x.building,
+            gebaeudeklasse: { ...x.building.gebaeudeklasse, confirmed: true },
+          },
+        })),
       })
     },
 
@@ -386,6 +443,7 @@ const store = createStore<Store>((set, get) => {
         label: 'Energiestandard vom Kunden bestätigt',
         deltaExact: null,
         inverse: () => set({ esConfirmed: false }),
+        forward: () => set({ esConfirmed: true }),
       })
     },
 
@@ -429,6 +487,13 @@ const store = createStore<Store>((set, get) => {
           fields: { ...x.fields, wfl: prevField },
           wflConflict: prevConflict,
         })),
+        forward: () => set((x) => ({
+          fields: {
+            ...x.fields,
+            wfl: { value: D(chosen.value), provenance: 'vom Kunden bestätigt' },
+          },
+          wflConflict: { ...x.wflConflict, state: 'resolved', candidates: nextCandidates },
+        })),
       })
     },
 
@@ -442,6 +507,7 @@ const store = createStore<Store>((set, get) => {
         label: `Grundrisse: Version ${v} aktiviert (vorher ${prev})`,
         deltaExact: null,
         inverse: () => set({ activeGrundrisse: prev }),
+        forward: () => set({ activeGrundrisse: v }),
       })
     },
 
@@ -457,6 +523,7 @@ const store = createStore<Store>((set, get) => {
         label: `Regionalfaktor Musterland 1,08 ${next ? 'aktiviert' : 'deaktiviert'}`,
         deltaExact: delta,
         inverse: () => set({ regionalfaktorActive: !next }),
+        forward: () => set({ regionalfaktorActive: next }),
       })
       set({
         activeDelta: {
@@ -528,7 +595,8 @@ const store = createStore<Store>((set, get) => {
     /**
      * Отмена с курсором: берётся последнее ещё не отменённое событие с
      * inverse; его seq попадает в `undone`, поэтому второй вызов отменяет
-     * ПРЕДЫДУЩЕЕ событие, а не то же самое ещё раз.
+     * ПРЕДЫДУЩЕЕ событие, а не то же самое ещё раз. Кнопка журнала не
+     * целится в события отмены — редо доступно только адресно из тоста.
      */
     undo: () => {
       const { journal, undone } = get()
@@ -536,15 +604,32 @@ const store = createStore<Store>((set, get) => {
         .reverse()
         .find((e) => e.kind !== 'undo' && e.inverse && !undone.includes(e.seq))
       if (!target) return
-      target.inverse!()
-      set((s) => ({ undone: [...s.undone, target.seq] }))
+      get().undoEvent(target.seq)
+    },
+
+    /**
+     * Адресная отмена (DC-29). Событие отмены получает inverse = forward
+     * отменяемого, поэтому «отмена отмены» — обычное событие журнала,
+     * а не спецрежим. Уже отменённый seq — no-op: курсор не даёт применить
+     * один inverse дважды.
+     */
+    undoEvent: (seq) => {
+      const { journal, undone } = get()
+      const target = journal.find((e) => e.seq === seq)
+      if (!target || !target.inverse || undone.includes(seq)) return
+      target.inverse()
+      set((s) => ({ undone: [...s.undone, seq] }))
       apply({
         kind: 'undo',
         label: `Rückgängig: ${target.label}`,
         deltaExact: target.deltaExact ? target.deltaExact.negated() : null,
-        undoOf: target.seq,
+        undoOf: seq,
+        inverse: target.forward,
+        forward: target.inverse,
       })
     },
+
+    dismissUndoToast: () => set({ undoToast: null }),
   }
 })
 

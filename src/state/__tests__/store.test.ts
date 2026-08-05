@@ -79,6 +79,50 @@ describe('S3: журнал событий как хребет (M-4)', () => {
   })
 })
 
+describe('DC-29: Undo-тост — производная журнала', () => {
+  it('рискованное действие создаёт тост с дельтой и базой', () => {
+    useStore.getState().setUntergeschoss('kein_ug')
+    const toast = useStore.getState().undoToast!
+    expect(toast.seq).toBe(1)
+    expect(toast.statusText).toContain('Untergeschoss')
+    expect(toast.deltaText).toContain('476.000')
+    expect(toast.deltaText).toContain('gegenüber DEMO-VV-0003')
+  })
+
+  it('отправка (без inverse) гасит тост: новая голова — stale (CHANGE-006)', () => {
+    useStore.getState().confirmGebaeudeklasse()
+    useStore.getState().setCoverage('KG_500', 'excluded')
+    expect(useStore.getState().undoToast).not.toBeNull()
+    useStore.getState().sendOffer('email', null)
+    expect(useStore.getState().undoToast).toBeNull()
+  })
+
+  it('отмена отмены — тоже событие: адресный undoEvent умеет редо', () => {
+    useStore.getState().setEnergiestandard('EH_40')            // seq 1
+    useStore.getState().undoEvent(1)                           // seq 2 (undo)
+    let s = useStore.getState()
+    expect(s.projection().result.total.exact.toFixed(2)).toBe('3817835.00')
+    // Тост события отмены существует и снова несёт Rückgängig.
+    expect(s.undoToast!.seq).toBe(2)
+    useStore.getState().undoEvent(2)                           // seq 3 (redo)
+    s = useStore.getState()
+    expect(s.projection().result.total.exact.toFixed(2)).toBe('3915170.00')
+    expect(s.journal).toHaveLength(3)
+    expect(s.journal[2]!.kind).toBe('undo')
+    expect(s.journal[2]!.undoOf).toBe(2)
+    expect(s.journal[2]!.deltaExact!.toFixed(2)).toBe('97335.00')
+  })
+
+  it('уже отменённый seq — no-op: один inverse не применяется дважды', () => {
+    useStore.getState().setEnergiestandard('EH_40')
+    useStore.getState().undoEvent(1)
+    useStore.getState().undoEvent(1)
+    const s = useStore.getState()
+    expect(s.journal).toHaveLength(2)
+    expect(s.projection().result.total.exact.toFixed(2)).toBe('3817835.00')
+  })
+})
+
 describe('S3: Geist-Vorschau — последствие до клика (DC-28)', () => {
   it('превью считает дельту тем же движком и не пишет в журнал', () => {
     useStore.getState().previewOption({ kind: 'energiestandard', value: 'EH_40' })

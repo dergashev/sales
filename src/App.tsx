@@ -3,6 +3,7 @@ import { checkFonts, checkCascade, type FontCheck } from './lib/font-check'
 import { Diagnostics } from './components/Diagnostics'
 import { Sidebar, type View } from './components/Sidebar'
 import { OfferPanel } from './components/OfferPanel'
+import { UndoToast } from './components/UndoToast'
 import { S3Konfigurator } from './screens/S3Konfigurator'
 import { S2Vorbereitung } from './screens/S2Vorbereitung'
 import { S4Vergleich } from './screens/S4Vergleich'
@@ -72,6 +73,8 @@ export function App() {
 
         <OfferPanel />
       </div>
+
+      <UndoToast />
     </div>
   )
 }
