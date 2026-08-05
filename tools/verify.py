@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Проверяльщик инвариантов дизайн-системы и документации.
-v4 · 2026-08-05 · перестроен после третьего мутационного аудита (два аудитора).
+v4 · 2026-08-05 · перестроен после третьего и четвёртого мутационных аудитов.
 
 ═══════════════════════════════════════════════════════════════════════════════
 ПРАВИЛО ВХОДА АРТЕФАКТА (v4, выведено из трёх одинаковых случаев подряд)
@@ -35,6 +35,55 @@ v4 · 2026-08-05 · перестроен после третьего мутац�
 и ни один из них не является «проверкой по ключевым словам»: каждый читает
 структуру (нумерацию, таблицу, тело типа, тело контракта) и сверяет её с
 другой структурой того же или соседнего файла.
+
+ЧЕТВЁРТЫЙ АУДИТ (Codex, другой вендор): 43 мутации, поймано 7 — и все семь
+контрольные, то есть построенные аудитором ради проверки, что детектор жив.
+Из 36 настоящих атак не поймана ни одна. Вердикт целиком —
+`docs/audit/verdicts/codex-verify-mutations-260805.md`.
+
+Он назвал не regex-ы, а ДЕСЯТЬ КОНСТРУКТИВНЫХ ПРОБЕЛОВ, и v4b закрывает их
+классами:
+
+  1. Эффективная семантика CSS       → `_css_rules` (декларации, каскад,
+     shorthand `font`, `calc()`, нормализация единиц), `CSS-EFFECTIVE`,
+     `CSS-LITERAL`, `CSS-LAYOUT`.
+  2. Роль токена в месте применения  → `R-01` по selector/property, не только
+     по разрешению объявления.
+  3. Полнота контрактов примитивов   → `CORE-AXES`, `CORE-A11Y`
+     (`components-core.md` был вне охвата целиком).
+  4. Семантика state machine         → `RM-TRANSITION`, `OUT-DELIVERY`,
+     `DM-TRUTH` (порядок приоритетов).
+  5. Содержание табличного условия   → `OUT-SEND` проверяет ПРЕДИКАТ каждой
+     строки, а не «шесть строк».
+  6. Истинность инвариантов модели   → `DM-TRUTH` (знак, единица, порядок,
+     tax basis) вместо покрытия идентификаторами.
+  7. Согласованность дублей          → определение и инвариант §9 сверяются
+     РАЗДЕЛЬНО и по своему разделу: верная копия не оправдывает испорченный
+     оригинал.
+  8. Семантика отрицания             → `CHARTER` с положительным предикатом на
+     каждое неприкосновенное правило; ядро запрета проверяется окном
+     отрицания перед ним.
+  9. Содержательность причины        → `RM-NAREASON` отклоняет самоописание;
+     связка причиной не считается, нужен НАЗВАННЫЙ объект.
+ 10. Изоляция зависимых проверок     → `_publish_fx()` отдельным extractor'ом.
+
+Два его замечания о ДИАГНОСТИКЕ были важнее самих пропусков, и они закрыты
+первыми:
+
+  · Один сломавшийся парсер обрывал весь арифметический конвейер, и `OUT-MONEY`
+    с `RM-FIXTURE` обвиняли ДВА КОРРЕКТНЫХ ФАЙЛА. Ложное обвинение корректного
+    файла хуже пропуска: партия тратится на поиск дефекта, которого нет.
+  · Контрастная проверка ОБНУЛЯЛА СЕБЯ САМА: строки, выбрасывавшие из разбора
+    любое `3:1`, `4,5:1`, `7:1`, не давали заведомо ложному измерению дойти до
+    формулы. Это тот же анти-паттерн, за который эскалировали Batch 1, —
+    исключение по значению вместо разбора по структуре. Теперь порог
+    опознаётся ПОЗИЦИЕЙ знака сравнения (перед числом — норматив, после —
+    утверждение о прохождении), а измерение без десятичных знаков измерением
+    не считается: `3:1` накрывает интервал 2,50…3,49, внутри которого лежит
+    сам порог.
+  · `--selftest` смешивал три исхода в одно число. Теперь считаются раздельно:
+    поймано · слепой класс · мутация неприменима · негатив дал находку, и
+    каждый случай сравнивается с ДЕЛЬТОЙ к базе, а не с нулём.
 ═══════════════════════════════════════════════════════════════════════════════
 
 Почему v3. Независимый аудитор прогнал 51 мутацию: поймано 8, прошло 43.
@@ -113,7 +162,7 @@ import shutil
 import sys
 import tempfile
 import pathlib
-from decimal import Decimal as D, ROUND_HALF_UP
+from decimal import Decimal as D, ROUND_HALF_UP, ROUND_DOWN
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
@@ -130,6 +179,8 @@ CHECK_CLASSES = (
     'LAYOUT-001', 'LAYOUT-003', 'LAYOUT-007', 'R-24', 'R-24-CAPTION',
     # CSS-текст целиком (v3, группа 1)
     'CSS-COLOR', 'CSS-RADIUS', 'CSS-SHADOW', 'CSS-GRADIENT', 'CSS-SPACING',
+    # v4: CSS разбирается как CSS — каскад, дубли, shorthand, calc(), единицы
+    'CSS-EFFECTIVE', 'CSS-LITERAL', 'CSS-LAYOUT',
     # контраст (v3, группа 2)
     'CONTRAST', 'CONTRAST-UNREG', 'A11Y-ACCENT-BG',
     # гейты закрытых требований (v3, группа 4)
@@ -139,16 +190,27 @@ CHECK_CLASSES = (
     # главный артефакт партии инструментом не проверялся вовсе, и ноль
     # срабатываний означал ноль проверок, а не корректность.
     'DM-TYPE', 'DM-TYPE-FIELD', 'DM-INVARIANT', 'DM-ROUND', 'DM-DECISION',
+    'DM-TRUTH',
     # клиентский текст Annahmen (t0-fallback-rules.md): самая дорогая
     # поверхность продукта, до v3 — ноль вхождений в инструменте.
     'T0-FACT', 'T0-COVERAGE',
     # модель выдач и гейтов (output-model.md): до v4
-    # `grep output-model tools/verify.py` = 0 при 58 объявленных инвариантах.
+    # `grep output-model tools/verify.py` = 0 при десятках объявленных
+    # инвариантов. Их число ЗДЕСЬ НЕ ФИКСИРУЕТСЯ: партия уже дописала
+    # OUT-59…66, и зашитая цифра устарела бы тем самым способом,
+    # против которого написан класс INDEX. Проверяется непрерывность.
     'OUT-SEQ', 'OUT-REF', 'OUT-SEND', 'OUT-ATTACH', 'OUT-R07', 'OUT-POLICY',
     'OUT-PROFILE', 'OUT-MONEY',
+    # v4, второй заход собственными мутациями: числительное против таблицы,
+    # инвариантные таблицы доставки, круговой хеш, перечень исключённых полей.
+    'OUT-COUNT', 'OUT-DELIVERY', 'OUT-HASH', 'OUT-EXCL', 'OUT-LOCALE',
     # контракты design-system/README.md: сводная матрица против тел контрактов,
     # семь осей данных, причина неприменимости, спесимены против фикстуры.
-    'RM-AXES', 'RM-MATRIX', 'RM-NAREASON', 'RM-FIXTURE', 'RM-ACCENT',
+    'RM-AXES', 'RM-MATRIX', 'RM-NAREASON', 'RM-FIXTURE', 'RM-ACCENT', 'RM-CARD',
+    'RM-TRANSITION',
+    # контракты примитивов components-core.md: до v4 семь осей разбирались
+    # только из README, и удаление оси из примитива не ловилось ничем.
+    'CORE-AXES', 'CORE-A11Y',
     # подпись длительности (D-17/R-26): десятичный месяц при целом интервале
     'SCHED-D17',
     # копирайт и домен
@@ -276,15 +338,33 @@ CLR_TOKEN = {
     '--primitive-color-green-bright-500': 'lime',
 }
 
-# ── профили выдачи: канонические имена (data-model.md §5.11) ────────────────
-# Короткого `clientLive` не существует: по такому имени не сопоставляется ни
-# одна политика видимости. Дефект уже ловили руками в фикстуре, и он остался
-# в `output-model.md` §15 как заявление о чужом файле — то есть класс, а не
-# случай, и потому он здесь.
-OUTPUT_PROFILES = ('internalWorkspace', 'clientReadOnly', 'clientLiveConfiguration',
-                   'clientPdf', 'clientEmail', 'clientPrint', 'internalExport')
-CLIENT_PROFILES = ('clientReadOnly', 'clientLiveConfiguration',
-                   'clientPdf', 'clientEmail', 'clientPrint')
+# ── профили выдачи: канонические имена ЧИТАЮТСЯ ИЗ `data-model.md` §5.11 ────
+# Второй литеральный источник правды в инструменте есть тот же дефект, что
+# второй источник правды в документах, — и за него отклонили две партии. До v4
+# кортеж был вписан в инструмент руками; вердикт Codex (пункт 12) справедливо
+# назвал это второй копией enum'а. Теперь enum разбирается из модели, а
+# инструмент держит только то, чего модель не выражает: какие из профилей
+# КЛИЕНТСКИЕ (префикс `client`) и какие имена похожи на профиль, но им не
+# являются. Короткого `clientLive` в enum нет — и именно поэтому по такому
+# имени не сопоставляется ни одна политика видимости.
+def output_profiles(root):
+    """(все профили, клиентские) из `type OutputProfile = …` модели данных.
+
+    Возврат `(None, None)` означает: enum не прочитан. Инструмент обязан
+    назвать это вакуумом, а не подставить свою копию по памяти.
+    """
+    p = pathlib.Path(root) / 'docs/product/data-model.md'
+    if not p.exists():
+        return None, None
+    m = re.search(r'type\s+OutputProfile\s*=\s*(.*?);', p.read_text(encoding='utf-8'), re.S)
+    if not m:
+        return None, None
+    names = tuple(dict.fromkeys(re.findall(r'"([A-Za-z][A-Za-z0-9]*)"', m.group(1))))
+    if not names:
+        return None, None
+    return names, tuple(n for n in names if n.startswith('client'))
+
+
 # Идентификаторы на `client*`/`internal*`, профилями НЕ являющиеся. Список
 # закрытый: любое новое имя вида `clientXxx` обязано быть либо профилем, либо
 # объявлено здесь — иначе это опечатка в имени профиля, а её цена — молча
@@ -391,7 +471,56 @@ KNOWN_OPEN_FILE = {
     ('docs/product/roadmap.md',            'INDEX'):
         'Batch 5 · шапка roadmap заявляет число классов проверок и счёт selftest '
         'по редакции v2; обновляется тем же батчем, что и остальные индексы',
+    ('docs/audit/verdicts/TASK-01-verify-mutations.md', 'INDEX'):
+        'текст задания описывает редакцию v3 (77 классов, selftest 34/34) и старел '
+        'вместе с инструментом; правка — у автора задания. Отличается от вердикта '
+        'Codex: тот пришпилен к commit и SHA-256 и потому индексом не считается',
+    # ТРЕТИЙ файл зоны `docs/audit/verdicts/` с тем же классом за одну сессию:
+    # задания и вердикты цитируют длительности и подписи с плоским пробелом
+    # перед единицей. PROTOCOL.md правило 2 это уже запрещает («описание дефекта
+    # не воспроизводит дефект»), и правка принадлежит автору задания — зона не
+    # моя. Регистрация именная, по файлу и классу: каталожная запись покрывала
+    # бы и будущие вердикты, то есть была бы шире долга (принцип 8).
+    # Если это повторится в четвёртый раз — вопрос не к инструменту, а к
+    # протоколу: цитировать дефект адресом `файл:строка`, а не воспроизводить.
+    ('docs/audit/verdicts/TASK-02-fix-verification.md', 'NBSP'):
+        'PROTOCOL.md правило 2 · текст задания воспроизводит подпись длительности '
+        'с U+0020 вместо U+202F; правка — у автора задания',
+    # НАЙДЕНО ЭТИМ ЖЕ ПРОГОНОМ, детектором, введённым по пункту 5 вердикта
+    # Codex: четыре подписи `7,5 Monate` без обязательного префикса `≈`.
+    # Фикстура пишет `≈ 7,5 Monate ab OKBP` — у Haus A день месяца начала и
+    # конца не совпадает (04.04 → 19.11), показ отличается от точного
+    # `7,283333…`, и CALC-007 требует префикс. Batch 5b отклонён независимым
+    # аудитором тем же днём; правка — у владельца README, ремонт файловый
+    # (все подписи длительности разом), поэтому регистрация по файлу и классу.
+    # Найдено этим же прогоном, детектором по второй половине пункта 5
+    # вердикта Codex, и совпадает с его находкой дословно: DC-32 собирает
+    # спесимен конфликта из двух НЕЗАВИСИМО объявленных площадей Haus B
+    # (1.200,00 BGF и 960,00 NUF) и не ссылается на объявленный
+    # `DEMO-CONF-0001` (1.500,00 ↔ 1.560,00). Числа существуют, состояние — нет.
+    ('design-system/README.md', 'RM-FIXTURE'):
+        'Batch 5b · DC-32 строит конфликт из двух независимо объявленных величин '
+        'вместо объявленного `DEMO-CONF-0001`; правка — у владельца README '
+        '(рекомендация 3 вердикта codex-fixes-260805)',
+    ('design-system/README.md', 'SCHED-D17'):
+        'Batch 5b · подписи длительности Haus A приведены без префикса `≈` при '
+        'показе, отличающемся от точного значения (CALC-007, D-17); адреса '
+        'печатаются построчно выше. Правка — у владельца README',
 }
+
+# KNOWN_OPEN_DIR НЕ СУЩЕСТВУЕТ — и это решение, а не пропуск.
+# Соблазн был конкретный: `docs/audit/verdicts/` — зона, в которую по
+# PROTOCOL.md §2 пишет только второй инструмент, а вердикты по построению
+# описывают дефекты продуктовой копии и норовят их дословно воспроизвести
+# (`Gesamt netto` без scope, плоский пробел перед единицей). Каждая сдача
+# аудита красила сборку. Регистрация по префиксу каталога закрыла бы это
+# одной записью на класс.
+# Не сделано, потому что долга на момент прогона нет: владелец зоны исправил
+# свой вердикт сам, назвав дефекты адресами вместо цитат — ровно как требует
+# правило 2 того же протокола («описание дефекта не воспроизводит дефект»).
+# Регистрация, покрывающая ноль находок, шире долга целиком — это и есть
+# запрещённый принципом 8 случай, только в максимальной форме. Класс
+# продуктовой копии в вердикте валит сборку, и правка делается в вердикте.
 
 # KNOWN_OPEN_CLASS — открытое ПРОТИВОРЕЧИЕ ПРАВИЛ, а не дефект отдельного
 # файла. Пока владелец не выбрал символ, инструмент обязан называть факт и
@@ -623,8 +752,46 @@ class Verifier:
             if rx.search(line):
                 self.emit(cls, rel, i, line, f'{msg} — {line.strip()[:80]}')
 
+    @staticmethod
+    def _soften(pattern: str) -> str:
+        """Литеральный пробел в шаблоне → «любой пробельный, хотя бы один».
+
+        Класс дефекта, найденный дважды за одну сессию: правка документа по
+        вердикту (перенос строки в `components-core.md`, добавление слов
+        «точно … показ …» в `calculation-spec.md`) ломала РАЗБОР, и сверка
+        превращалась в вакуум. Перенос строки внутри абзаца или ячейки —
+        нормальная типографская правка, и ни один `grab` не имеет права от
+        неё падать. Преобразование строго расширяющее: пробел остаётся
+        обязательным, но теперь им может быть `\\n`, NBSP или U+202F, поэтому
+        ни один сегодня работающий шаблон не может от него сломаться.
+        Внутри классов `[...]` и после `\\` ничего не меняется.
+        """
+        out, i, in_class = [], 0, False
+        while i < len(pattern):
+            ch = pattern[i]
+            if ch == '\\' and i + 1 < len(pattern):
+                out.append(pattern[i:i + 2])
+                i += 2
+                continue
+            if ch == '[':
+                in_class = True
+            elif ch == ']':
+                in_class = False
+            if ch == ' ' and not in_class:
+                # квантификатор после пробела означает, что автор уже управляет
+                # его количеством — такой пробел не трогаем
+                if i + 1 < len(pattern) and pattern[i + 1] in '*+?{':
+                    out.append(ch)
+                else:
+                    out.append('[\\s  ]+')
+                i += 1
+                continue
+            out.append(ch)
+            i += 1
+        return ''.join(out)
+
     def grab(self, text, pattern, cls, desc, flags=0):
-        m = re.search(pattern, text, flags)
+        m = re.search(self._soften(pattern), text, flags)
         if not m:
             self.fail(cls, desc, f'[вакуум] паттерн не найден: {desc} — проверка не может быть выполнена')
             raise Vacuum(desc)
@@ -768,6 +935,290 @@ class Verifier:
             for m in re.finditer(r'```(?:css|scss|less)\s*\n(.*?)```', text, re.S):
                 yield rel, m.group(1), text[:m.start()].count('\n') + 1
 
+    # ── CSS как CSS, а не как строки ────────────────────────────────────────
+    # Вердикт Codex, класс 1 и пункт 2: девять мутаций прошли, потому что
+    # разбор был построчным. Прошли: `border-radius` с переносом после
+    # двоеточия; тень через `filter: drop-shadow()`; кегль в shorthand `font`;
+    # отступ в `rem`; зона нажатия через `calc(var(...) - 1px)`; поздний дубль
+    # `--content-max-width`, переопределяющий правильное значение; `border: 3px`
+    # и `transition: 333ms` сырыми литералами; `overflow-x: visible` у таблицы.
+    # Разбор ниже даёт декларации с номером строки, раскрывает shorthand `font`,
+    # нормализует единицы и вычисляет `calc()` в объёме сложения/вычитания.
+
+    @staticmethod
+    def _css_rules(raw: str, _off: int = 0, _scope: str = ''):
+        """[(область, [(свойство, значение, номер строки)])] — по декларациям.
+
+        Комментарии вырезаются с сохранением нумерации, поэтому смещение строк
+        совпадает с исходником. Значение склеивается через переносы, поэтому
+        `border-radius:\\n  4px` — одна декларация, а не две строки текста.
+
+        ОБЛАСТЬ включает условие at-rule: `@media (prefers-reduced-motion) :root`
+        и `:root` — РАЗНЫЕ области, и переопределение длительностей в нулевые
+        внутри media-query не является дублем. Без этого различия проверка
+        дублей обвиняла бы обязательную реализацию правила 21.
+        """
+        code = re.sub(r'/\*.*?\*/', lambda m: '\n' * m.group(0).count('\n'), raw, flags=re.S)
+        out, i, n = [], 0, len(code)
+        while i < n:
+            j = code.find('{', i)
+            if j < 0:
+                break
+            sel = ' '.join(code[i:j].split())
+            depth, k = 1, j + 1
+            while k < n and depth:
+                if code[k] == '{':
+                    depth += 1
+                elif code[k] == '}':
+                    depth -= 1
+                k += 1
+            body = code[j + 1:k - 1]
+            scope = (_scope + ' ' + sel).strip()
+            if '{' in body:                      # at-rule: разобрать вложенное
+                out.extend(Verifier._css_rules(
+                    body, _off + code[:j + 1].count('\n'), scope))
+            else:
+                decls, pos = [], 0
+                for part in body.split(';'):
+                    if ':' in part:
+                        prop, _, val = part.partition(':')
+                        ln = _off + code[:j + 1].count('\n') + body[:pos].count('\n') + 1
+                        decls.append((prop.strip().lower(), ' '.join(val.split()), ln))
+                    pos += len(part) + 1
+                out.append((scope, decls))
+            i = k
+        return out
+
+    # Абсолютные единицы → px. `pt` разрешён только в печатных стилях
+    # (требование foundation), и это исключение названо в README §0.
+    _UNIT_PX = {'px': D('1'), 'rem': D('16'), 'em': D('16'), 'pt': D('4') / D('3'),
+                'cm': D('96') / D('2.54'), 'mm': D('96') / D('25.4'), 'in': D('96')}
+
+    @classmethod
+    def _lengths_px(cls, value: str):
+        """[(число в px, как записано)] для всех длин значения, включая calc()."""
+        out = []
+        for m in re.finditer(r'(-?\d+(?:\.\d+)?)(px|rem|em|pt|cm|mm|in)\b', value):
+            out.append((D(m.group(1)) * cls._UNIT_PX[m.group(2)], m.group(0)))
+        return out
+
+    @staticmethod
+    def _expand_font(value: str):
+        """shorthand `font` → (кегль px, интерлиньяж px) либо None.
+
+        Аудитор спрятал внеканоническую пару 15/19 в `font: 500 15px/19px …`:
+        запасная проверка R-24 знала только соседние longhand.
+        """
+        m = re.search(r'(-?\d+(?:\.\d+)?)(px|rem|em|pt)\s*/\s*(-?\d+(?:\.\d+)?)(px|rem|em|pt|$|\s)',
+                      value)
+        if not m:
+            m2 = re.search(r'(-?\d+(?:\.\d+)?)(px|rem|em|pt)', value)
+            return (D(m2.group(1)) * Verifier._UNIT_PX[m2.group(2)], None) if m2 else None
+        u2 = m.group(4).strip() or 'px'
+        return (D(m.group(1)) * Verifier._UNIT_PX[m.group(2)],
+                D(m.group(3)) * Verifier._UNIT_PX.get(u2, D('1')))
+
+    def check_css_effective(self):
+        """Эффективная семантика CSS: каскад, дубли, shorthand, calc(), единицы."""
+        raw = self.read('design-system/tokens.css')
+        if raw is None:
+            self.fail('CSS-EFFECTIVE', 'tokens.css',
+                      '[вакуум] tokens.css отсутствует — эффективные декларации не разбираются')
+            return
+        rules = self._css_rules(raw)
+        if not rules:
+            self.fail('CSS-EFFECTIVE', 'tokens.css',
+                      '[вакуум] ни одного CSS-правила не разобрано — парсер потерял файл')
+            return
+        rel = 'design-system/tokens.css'
+        SCALE = {D(x) for x in (0, 4, 8, 12, 16, 24, 32, 48, 64)}
+        TYPE_SIZES = {D(x) for x in (12, 14, 16, 24, 32, 36, 48, 64)}
+        SPACING = ('margin', 'padding', 'gap', 'row-gap', 'column-gap', 'inset',
+                   'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
+                   'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
+                   'top', 'right', 'bottom', 'left', 'outline-offset', 'text-indent')
+        # (1) ДУБЛИ канонических custom properties в одном блоке: эффективным
+        # становится ПОСЛЕДНЕЕ объявление, и правильная первая строка ничего
+        # не доказывает (T06).
+        seen = {}
+        for sel, decls in rules:
+            for prop, val, ln in decls:
+                if not prop.startswith('--'):
+                    continue
+                key = (sel, prop)
+                if key in seen:
+                    self.emit('CSS-EFFECTIVE', rel, ln, f'CSS-EFFECTIVE:dup{prop}',
+                              f'`{prop}` объявлен в `{sel}` повторно (первый раз — строка '
+                              f'{seen[key][0]}, значение «{seen[key][1]}»; здесь «{val}»). '
+                              f'Эффективным становится последнее: наличие правильной строки '
+                              f'выше ничего не доказывает')
+                seen[key] = (ln, val)
+        # (2) Зона нажатия: значение обязано быть РОВНО токеном, без арифметики.
+        for sel, decls in rules:
+            for prop, val, ln in decls:
+                if prop not in ('width', 'height', 'min-width', 'min-height'):
+                    continue
+                if 'hit-target' not in val:
+                    continue
+                if re.search(r'calc\(|[-+*/]\s*\d', val):
+                    px = self._lengths_px(val)
+                    self.emit('CSS-EFFECTIVE', rel, ln, 'CSS-EFFECTIVE:hit-calc',
+                              f'`{sel} {{ {prop}: {val} }}` — арифметика вокруг токена зоны '
+                              f'нажатия. R-04/XSC-07 требуют ровно 44 px; любое уменьшающее '
+                              f'выражение{" (" + px[0][1] + ")" if px else ""} делает цель '
+                              f'меньше нормы, а проверка подстроки этого не видит')
+        # (3) Тень любым свойством, а не только box-shadow/text-shadow (T10),
+        # и скругление по РАЗОБРАННОЙ декларации, а не по строке (T09):
+        # `border-radius:\n  4px` — одна декларация, разрезанная переносом.
+        for sel, decls in rules:
+            for prop, val, ln in decls:
+                if prop in ('filter', 'backdrop-filter') and 'drop-shadow' in val:
+                    self.emit('CSS-SHADOW', rel, ln, 'CSS-SHADOW:filter',
+                              f'`{sel} {{ {prop}: {val[:40]} }}` — тень через filter. '
+                              f'Правило 4 запрещает тени как эффект, а не одно свойство')
+                if prop in ('box-shadow', 'text-shadow'):
+                    if not re.match(r'^(none|0\s+0\s+0(\s|$))', val):
+                        self.emit('CSS-SHADOW', rel, ln, f'CSS-SHADOW:{prop}:{sel}',
+                                  f'`{sel} {{ {prop}: {val[:40]} }}` — тени запрещены '
+                                  f'(правило 4); `0 0 0 …` есть кольцо фокуса R-03, '
+                                  f'а не тень')
+                if prop == 'border-radius' or prop.startswith('border-') and prop.endswith('-radius'):
+                    if not re.fullmatch(r'0(?:px|rem|%)?(?:\s+0(?:px|rem|%)?)*', val.strip()):
+                        self.emit('CSS-RADIUS', rel, ln, f'CSS-RADIUS:{sel}:{prop}',
+                                  f'`{sel} {{ {prop}: {val[:30]} }}` — правило 4 требует 0 '
+                                  f'везде: прямоугольники и идеальные круги, скруглённых '
+                                  f'прямоугольников в системе нет')
+                if prop == '--radius' and not re.fullmatch(r'0(?:px|rem|%)?', val.strip()):
+                    self.emit('CSS-RADIUS', rel, ln, 'CSS-RADIUS:token',
+                              f'`--radius: {val}` ≠ 0 (правило 4)')
+                if re.search(r'\b(?:linear|radial|conic|repeating-\w+)-gradient\s*\(', val):
+                    self.emit('CSS-GRADIENT', rel, ln, f'CSS-GRADIENT:{sel}:{prop}',
+                              f'`{sel} {{ {prop}: {val[:40]} }}` — градиент запрещён '
+                              f'(правило 4)')
+        # (4) Отступы во ВСЕХ абсолютных единицах, не только px (T08).
+        for sel, decls in rules:
+            for prop, val, ln in decls:
+                if prop not in SPACING:
+                    continue
+                for px, asis in self._lengths_px(val):
+                    if abs(px) not in SCALE:
+                        self.emit('CSS-SPACING', rel, ln, f'CSS-SPACING:{prop}:{asis}',
+                                  f'`{sel} {{ {prop}: {val[:40]} }}` — «{asis}» это {px} px, '
+                                  f'вне шкалы 4/8/12/16/24/32/48/64 (LAYOUT-001). Единица '
+                                  f'значения роли не играет: шкала задана в пикселях')
+        # (5) Кегль/интерлиньяж: каждый эффективный font-size, плюс shorthand
+        # `font` (T13, T35). Пары уже проверяет R-24 по токенам — здесь
+        # проверяется, что сырое значение вообще принадлежит шкале.
+        for sel, decls in rules:
+            pair = {}
+            for prop, val, ln in decls:
+                if prop == 'font':
+                    got = self._expand_font(val)
+                    if got:
+                        pair['font-size'] = (got[0], ln, f'font: {val[:30]}')
+                        if got[1] is not None:
+                            pair['line-height'] = (got[1], ln, f'font: {val[:30]}')
+                elif prop in ('font-size', 'line-height'):
+                    px = self._lengths_px(val)
+                    if px:
+                        pair[prop] = (px[0][0], ln, f'{prop}: {val}')
+            if 'font-size' in pair:
+                size, ln, asis = pair['font-size']
+                if size not in TYPE_SIZES:
+                    self.emit('R-24', rel, ln, f'R-24:size{size}',
+                              f'`{sel} {{ {asis} }}` — кегль {size} px вне типографической '
+                              f'шкалы R-24 ({", ".join(str(int(x)) for x in sorted(TYPE_SIZES))})')
+                elif 'line-height' in pair:
+                    line = pair['line-height'][0]
+                    if int(line) not in R24_GENERIC.get(int(size), set()):
+                        self.emit('R-24', rel, ln, f'R-24:pair{size}/{line}',
+                                  f'`{sel}` — пара {size}/{line} отсутствует в матрице R-24 '
+                                  f'§1.9 (для {size} допустимы '
+                                  f'{sorted(R24_GENERIC.get(int(size), set())) or "—"})')
+        # (6) Сырые дизайн-литералы там, где устав требует токен (T36).
+        LITERAL = (('border-width', r'\d+(?:px|rem|em)'),
+                   ('border', r'(?<![\w-])\d+(?:px|rem|em)'),
+                   ('border-top', r'(?<![\w-])\d+(?:px|rem|em)'),
+                   ('border-bottom', r'(?<![\w-])\d+(?:px|rem|em)'),
+                   ('transition', r'\d+m?s\b'),
+                   ('transition-duration', r'\d+m?s\b'),
+                   ('animation', r'\d+m?s\b'),
+                   ('animation-duration', r'\d+m?s\b'))
+        for sel, decls in rules:
+            for prop, val, ln in decls:
+                for p, pat in LITERAL:
+                    if prop != p:
+                        continue
+                    if 'var(' in val:
+                        continue
+                    m = re.search(pat, val)
+                    if m and m.group(0) not in ('0', '0px', '0s'):
+                        self.emit('CSS-LITERAL', rel, ln, f'CSS-LITERAL:{prop}:{m.group(0)}',
+                                  f'`{sel} {{ {prop}: {val[:40]} }}` — сырое дизайн-значение '
+                                  f'«{m.group(0)}» вместо семантического токена (правило 2). '
+                                  f'Токен, которого нет, добавляется в tokens.css с пометкой '
+                                  f'provisional, а не инлайнится')
+        # (7) Таблица обязана скроллиться в своём контейнере (правило 3a, T14).
+        for sel, decls in rules:
+            for prop, val, ln in decls:
+                if prop not in ('overflow-x', 'overflow'):
+                    continue
+                if not re.search(r'table|tabelle|kostentabelle|\bdata-table\b', sel, re.I):
+                    continue
+                eff = val.split()[-1] if prop == 'overflow' else val
+                if eff.strip() not in ('auto', 'scroll'):
+                    self.emit('CSS-LAYOUT', rel, ln, f'CSS-LAYOUT:{sel}:{eff.strip()}',
+                              f'`{sel} {{ {prop}: {val} }}` — таблица обязана лежать в '
+                              f'контейнере `overflow-x: auto` (правило 3a): смена шрифта '
+                              f'меняет естественную ширину, и `{eff.strip()}` обрезает '
+                              f'колонки либо ломает страницу горизонтальным скроллом')
+        # (8) Эффективный контейнер контента: единственное значение (T06, T07).
+        eff_max = [(sel, val, ln) for sel, decls in rules for prop, val, ln in decls
+                   if prop == '--content-max-width']
+        if not eff_max:
+            self.fail('LAYOUT-003', rel, '[вакуум] `--content-max-width` не объявлен — '
+                                         'ограничение контента не проверяется')
+        else:
+            for sel, val, ln in eff_max:
+                px = self._lengths_px(val)
+                if px and px[0][0] != D('1200'):
+                    self.emit('LAYOUT-003', rel, ln, f'LAYOUT-003:token{px[0][1]}',
+                              f'`--content-max-width: {val}` = {px[0][0]} px, LAYOUT-003 '
+                              f'требует 1200 px')
+        for sel, decls in rules:
+            for prop, val, ln in decls:
+                if prop != 'max-width' or 'var(' in val:
+                    continue
+                px = self._lengths_px(val)
+                if px and px[0][0] > D('1200'):
+                    self.emit('LAYOUT-003', rel, ln, f'LAYOUT-003:{sel}:{px[0][1]}',
+                              f'`{sel} {{ max-width: {val} }}` = {px[0][0]} px обходит токен '
+                              f'`--content-max-width` (1200 px, LAYOUT-003)')
+        # (9) Правильный токен в неправильной роли (T11, T12).
+        # R-01 проверял, во что разрешаются объявления; куда токен ПРИМЕНЁН —
+        # не проверялось вовсе, и валидный `--color-brand-accent` проходил
+        # фоном выделения.
+        ACCENT = ('--color-brand-accent', '--color-text-display-accent',
+                  '--primitive-color-brand-orange-500')
+        for sel, decls in rules:
+            for prop, val, ln in decls:
+                if prop.startswith('--') or not any(a in val for a in ACCENT):
+                    continue
+                tok = next(a for a in ACCENT if a in val)
+                bad_prop = prop in ('background', 'background-color', 'border-color',
+                                    'border', 'border-top-color', 'border-bottom-color',
+                                    'outline-color', 'fill', 'accent-color')
+                bad_role = re.search(r'selected|selection|checked|focus|status|error|'
+                                     r'success|warning|action|btn|button', sel, re.I)
+                if bad_prop or bad_role:
+                    how = 'фон/бордер' if bad_prop else 'семантика состояния'
+                    self.emit('R-01', rel, ln, f'R-01:role:{sel}:{prop}',
+                              f'`{sel} {{ {prop}: {val[:40]} }}` — бренд-оранжевый `{tok}` '
+                              f'применён как {how}. R-01 запрещает оранжевый как цвет '
+                              f'действия, выделения, фокуса и статуса независимо от того, '
+                              f'через какой токен он записан. Разрешён единственный случай: '
+                              f'`color` героя №1 DC-38 на `--color-surface-default`')
+
     def check_css(self):
         SCALE = {0, 4, 8, 12, 16, 24, 32, 48, 64}
         SPACING = (r'margin|margin-top|margin-right|margin-bottom|margin-left|'
@@ -825,12 +1276,35 @@ class Verifier:
                           f'{CLR[key]} — реестр и токены разошлись')
 
         rx_ratio = re.compile(r'(?<![\d,.])(\d{1,2})(?:[.,](\d{1,2}))?\s*:\s*1(?![\d])')
-        rx_thresh = re.compile(r'≥|≤|>=|<=|не\s+проход|проход|требуем|требует|минимум|'
-                               r'ниже|gate|порог', re.I)
+        # НОРМАТИВНОЕ НЕРАВЕНСТВО ≠ ИЗМЕРЕНИЕ. Прежняя редакция выбрасывала из
+        # разбора ЛЮБОЕ `3:1`, `4,5:1`, `7:1`, если на строке стояло слово о
+        # пороге, — и создавала этим ровно ту слепоту, за которую партию
+        # эскалировали в Batch 1: исключение ПО ЗНАЧЕНИЮ вместо разбора по
+        # структуре. Аудитор показал цену: ложное измерение accent/canvas,
+        # объявленное «ровно 3:1, проходит», не доходило до формулы вовсе,
+        # тогда как соседнее `3,01:1` ловилось. Три мутации T01–T03.
+        #
+        # Теперь различие структурное и по месту в строке: числом ПОРОГА
+        # считается только величина, у которой непосредственно перед ней стоит
+        # знак сравнения (`≥ 4,5:1`, `>= 3:1`, `не проходит 4,5:1`). Всё
+        # остальное — измерение, и оно ВСЕГДА пересчитывается формулой,
+        # каким бы круглым ни было.
+        # Маркер порога стоит ПЕРЕД числом («ниже 3:1», «не проходит 4,5:1»),
+        # маркер прохождения — ПОСЛЕ («3:1, проходит R-01»). Разница в позиции
+        # и есть разница между нормативом и измерением: именно так выглядели
+        # мутации T01–T03, где слово стояло после числа.
+        rx_thresh_at = re.compile(
+            r'(?:≥|≤|>=|<=|больше|меньше|ниже|выше|минимум|максимум|порог\w*|'
+            r'(?:не\s*[*_]*\s*)?проход\w*|требуе\w*|гейт\w*|gate|'
+            r'достига\w*|обязан\w*)'
+            r'[\s*_`:,—–-]*$', re.I)
 
         def claims_on(line):
+            """Измерения строки. Порог опознаётся по знаку ПЕРЕД числом."""
             out = []
             for m in rx_ratio.finditer(line):
+                if rx_thresh_at.search(line[:m.start()]):
+                    continue          # нормативное неравенство, не измерение
                 whole, frac = m.group(1), m.group(2)
                 val = float(f'{whole}.{frac}') if frac else float(whole)
                 dec = len(frac) if frac else 0
@@ -893,8 +1367,7 @@ class Verifier:
                 continue
             rows = text.split('\n')
             for i, line in enumerate(rows, 1):
-                claims = [c for c in claims_on(line)
-                          if not (rx_thresh.search(line) and c[1] in (3.0, 4.5, 7.0))]
+                claims = claims_on(line)
                 if not claims:
                     continue
                 # Блок = абзац смежных непустых строк. Исключение: строка
@@ -915,6 +1388,20 @@ class Verifier:
                 pool = list(dict.fromkeys(cols + IMPLICIT))
                 pairs = [(x, y) for n, x in enumerate(pool) for y in pool[n + 1:]]
                 for raw, val, dec in claims:
+                    # ИЗМЕРЕНИЕ БЕЗ ДЕСЯТИЧНЫХ ЗНАКОВ НЕ ЯВЛЯЕТСЯ ИЗМЕРЕНИЕМ.
+                    # `3:1` покрывает всё от 2,50 до 3,49 — а порог R-01 лежит
+                    # внутри этого интервала, поэтому фактические 2,60:1
+                    # «совпадали» с заявленным 3:1 при округлении до целого.
+                    # Именно так проходила мутация T01. Пороги здесь уже
+                    # отсеяны по позиции знака сравнения.
+                    if dec == 0:
+                        self.emit('CONTRAST', rel, i, line,
+                                  f'измерение контраста {raw} записано без десятичных знаков: '
+                                  f'интервал {val - 0.5:.2f}…{val + 0.49:.2f} накрывает порог, '
+                                  f'и утверждение непроверяемо. Система пишет измерения двумя '
+                                  f'знаками ({fmt_ratio(contrast(CLR["accent"], CLR["white"]))}'
+                                  f':1); одно целое — это порог, а не измерение')
+                        continue
                     if matches(val, dec, pairs):
                         continue
                     key = (rel, raw.replace(' ', ''))
@@ -1403,9 +1890,24 @@ class Verifier:
                       '«Compose → Preflight → Confirm & Send → Delivery status» (EMAIL-001)')
         self.scan('R-09', rel, readme, r'«Senden»\s*→\s*`offer\.emailed`',
                   'одноклик-отправка без preflight (R-09/EMAIL-001)')
-        # CALC-014: label сессионной дельты
-        if 'Preisänderung gegenüber' not in readme:
-            self.fail('CALC-014', rel, 'DC-12 не задаёт label «Preisänderung gegenüber <Vergleichsbasis>»')
+        # CALC-014: label сессионной дельты. Проверяются ВСЕ места, где label
+        # приводится, а не «встречается ли он в файле»: у DC-12 их два —
+        # видимая подпись и доступное имя, — и верная копия во втором месте
+        # закрывала порчу первого (класс 7 вердикта Codex).
+        want_label = 'Preisänderung gegenüber'
+        base_rx = re.compile(r'(?:Preis|Gesamt|Kosten|Wert)änderung\s+gegenüber')
+        spots = [(i, l) for i, l in enumerate(readme.split('\n'), 1) if base_rx.search(l)]
+        if not spots:
+            self.fail('CALC-014', rel, '[вакуум] DC-12 не задаёт label '
+                                       '«Preisänderung gegenüber <Vergleichsbasis>» — '
+                                       'сессионная дельта без baseline не проверяется')
+        for i, l in spots:
+            if want_label not in l:
+                self.emit('CALC-014', rel, i, l,
+                          f'label сессионной дельты записан не канонически: CALC-014 требует '
+                          f'«{want_label} <Vergleichsbasis>». Каждое место, где label '
+                          f'приводится, обязано совпадать — видимая подпись и доступное имя '
+                          f'не бывают разными')
         self.scan('CALC-014', rel, readme, r'Änderungen\s*·\s*\+',
                   'сессионная дельта без baseline/расшифровки (CALC-014)')
 
@@ -1413,6 +1915,21 @@ class Verifier:
     RX_CONTRACT_HEAD = re.compile(r'^###\s+(?:(DC-\d+)\s*·\s*)?`([A-Za-z][A-Za-z0-9]*)`')
     RX_AXIS_DECL = re.compile(r'`(' + '|'.join(DATA_AXES) + r')`\s*(?:—|–|-)\s')
     RX_NAR = re.compile(r'notApplicableReason:\s*(.*?)(?=`[a-zA-Z]+`\s*(?:—|–|/)|\Z)', re.S)
+    # Тавтология: причина повторяет вывод («неприменимо», «не применяется»,
+    # «не предполагает данного состояния») вместо основания.
+    RX_TAUTOLOGY = re.compile(
+        r'не\s*применим|неприменим|не\s+предполагает|не\s+поддерживает\s+это|'
+        r'отсутствует\s+как\s+состояние|данного\s+состояния\s+нет|'
+        r'этого\s+состояния\s+не\s+бывает', re.I)
+    # НАЗВАННЫЙ ОБЪЕКТ, а не связка. Связка («поскольку», «потому что») сама
+    # причиной не является: аудитор построил тавтологию именно со связкой —
+    # «неприменимо, поскольку компонент не предполагает данного состояния».
+    # Причина обязана назвать ОБЪЕКТ: где состояние живёт вместо этого, какой
+    # компонент его объявляет, каким утверждением оно стало бы.
+    RX_CAUSAL = re.compile(
+        r'DC-\d+|R-\d+|`[A-Za-z][\w.-]*`|принадлежит|живёт|объявля\w+\s+там|'
+        r'прочит\w+\s+как|было\s+бы|стал\w+\s+бы|означал\w+\s+бы|'
+        r'вместо\s+(?:неё|него|них|этого)\s+\w+', re.I)
 
     def _contracts(self, readme, rows):
         """[(dc, имя, первая строка, тело)] для каждого контракта §2.6.
@@ -1544,6 +2061,37 @@ class Verifier:
             else:
                 self._reasons(rel, dc or name, name, ln,
                               [('взаимодействие', blk_i)], 'взаимодействие', 10, 2)
+            # RM-TRANSITION: граф переходов, а не только наличие имён (T22).
+            # Прежде проверялось присутствие осей и совпадение ●/○; сам порядок
+            # не разбирался, и `default → ready → loading` проходил насквозь.
+            mt2 = re.search(r'\*\*Переходы[^*\n]{0,40}\*\*(.*?)(?=\n\*\*[А-ЯA-Z]|\Z)', body, re.S)
+            if not mt2:
+                self.emit('RM-TRANSITION', rel, ln, f'RM-TRANSITION:none-{dc or name}',
+                          f'{dc or name} `{name}`: блок «Переходы» отсутствует — разрешённые '
+                          f'переходы не объявлены, и любая реализация допустима')
+                continue
+            chains = re.findall(r'`([^`]*(?:→|->)[^`]*)`', mt2.group(1))
+            if not chains:
+                continue
+            steps = re.split(r'\s*(?:→|->)\s*', chains[0])
+            seq = [{w for w in re.split(r'[|\s]+', s.strip('` ')) if w in DATA_AXES}
+                   for s in steps]
+            pos = {}
+            for idx, st in enumerate(seq):
+                for w in st:
+                    pos.setdefault(w, idx)
+            if 'loading' in pos and 'ready' in pos and pos['loading'] > pos['ready']:
+                self.emit('RM-TRANSITION', rel, ln, f'RM-TRANSITION:order-{dc or name}',
+                          f'{dc or name} `{name}`: в цепочке «{chains[0][:60]}» `loading` '
+                          f'стоит ПОСЛЕ `ready`. Готовое значение не уходит в загрузку само: '
+                          f'обратный переход существует только через названную причину '
+                          f'(изменение authoritative-входа → `stale → loading`, R-10, '
+                          f'STALE-001), и она обязана быть в цепочке названа')
+            if seq and seq[0] and not (seq[0] & {'default', 'empty', 'loading'}):
+                self.emit('RM-TRANSITION', rel, ln, f'RM-TRANSITION:start-{dc or name}',
+                          f'{dc or name} `{name}`: цепочка начинается с {sorted(seq[0])} — '
+                          f'начальным состоянием может быть только `default`, `empty` '
+                          f'или `loading`')
 
         for key, cells in sorted(matrix.items()):
             if key not in bodies:
@@ -1551,6 +2099,139 @@ class Verifier:
                           f'матрица §2.4 объявляет состояния для {key[0] or key[1]} '
                           f'`{key[1]}`, у которого нет контракта в §2.6 — индекс утверждает '
                           f'о том, чего нет')
+
+        # --- §2.3 обязана объявлять все семь осей поимённо -------------------
+        # Собственная мутация: удаление `stale` из объявления прошло, потому что
+        # семь осей были константой ИНСТРУМЕНТА, а не читались из документа.
+        # Константа осталась (она нормативна), но документ обязан её называть:
+        # правило, которого нет в тексте, восстанавливается первой же правкой.
+        m23 = re.search(r'^###\s*2\.3(.*?)(?=^###\s|\Z)', readme, re.S | re.M)
+        if not m23:
+            self.fail('RM-AXES', rel, '[вакуум] раздел §2.3 «Пять состояний данных плюс две '
+                                      'оси» не найден — общий контракт осей не объявлен')
+        else:
+            s23, ln23 = m23.group(1), readme[:m23.start()].count('\n') + 1
+            # (а) таблица §2.3 — по строке на каждую ось, ровно один раз
+            trows = re.findall(r'^\|\s*`([a-z]+)`\s*\|', s23, re.M)
+            for axis in DATA_AXES:
+                if trows.count(axis) != 1:
+                    self.emit('RM-AXES', rel, ln23, f'RM-AXES:§2.3-table:{axis}',
+                              f'таблица §2.3 содержит ось `{axis}` {trows.count(axis)} раз '
+                              f'вместо одного: значение оси в доменных терминах объявляется '
+                              f'здесь ровно однажды')
+            # (б) объявление двух НЕЗАВИСИМЫХ осей обязано называть обе поимённо.
+            # Присутствия имени где-нибудь в разделе недостаточно: собственная
+            # мутация убрала `stale` из объявления, а строка таблицы осталась —
+            # и проверка «есть в разделе» прошла насквозь.
+            md = re.search(r'(?:независим\w+\s+ос\w+|дву[хм]\s+ос\w+)([^\n.]{0,120})', s23)
+            if not md:
+                self.fail('RM-AXES', rel, '[вакуум] §2.3 не содержит объявления двух '
+                                          'независимых осей STATE-001 — состав семи осей '
+                                          'не выводится')
+            else:
+                for axis in ('stale', 'permission'):
+                    if f'`{axis}`' not in md.group(1):
+                        self.emit('RM-AXES', rel, ln23, f'RM-AXES:§2.3-decl:{axis}',
+                                  f'объявление независимых осей §2.3 не называет `{axis}`: '
+                                  f'«{md.group(1).strip()[:60]}». Ось, исчезнувшая из '
+                                  f'объявления, исчезнет и из следующего контракта — на этом '
+                                  f'отклонили партию примитивов (STATE-001/003/008)')
+            # (в) пять обязательных состояний правила проекта 30 названы группой
+            mfive = re.search(r'пяти\s+обязательных\s+состояний[^\n]{0,80}?'
+                              r'((?:`[a-z]+`\s*[·,]?\s*){3,})', s23)
+            if mfive:
+                named = set(re.findall(r'`([a-z]+)`', mfive.group(1)))
+                for axis in ('loading', 'empty', 'partial', 'ready', 'error'):
+                    if axis not in named:
+                        self.emit('RM-AXES', rel, ln23, f'RM-AXES:§2.3-five:{axis}',
+                                  f'перечень пяти обязательных состояний правила проекта 30 '
+                                  f'не называет `{axis}`')
+
+        # --- ведущая метрика уровня Gesamt: знаменатель совпадает с подписью -
+        # Правило проекта 39: ведущая метрика комплекса в клиентских выдачах —
+        # `€/m² BGF oberirdisch`. Подмена знаменателя на R+S складывает
+        # надземную и подземную площадь под подписью «oberirdisch» (DATA-001).
+        LEAD = '€/m² BGF oberirdisch'
+        mg = re.search(r'[Нн]а\s+уровне\s+`?Gesamt`?[^\n]{0,80}?герой\s*№?\s*2\s*—\s*'
+                       r'\*{0,2}`([^`]+)`', readme)
+        if not mg:
+            self.fail('RM-FIXTURE', rel, '[вакуум] README не называет ведущую метрику уровня '
+                                         '`Gesamt` — правило проекта 39 не проверяется')
+        elif mg.group(1).strip() != LEAD:
+            self.emit('RM-FIXTURE', rel, readme[:mg.start()].count('\n') + 1,
+                      f'RM-FIXTURE:lead-{mg.group(1).strip()}',
+                      f'ведущая метрика уровня `Gesamt` названа `{mg.group(1).strip()}`, '
+                      f'правило проекта 39 требует `{LEAD}`: знаменатель обязан совпадать '
+                      f'с подписью, и складывать надземную с подземной под подписью '
+                      f'«oberirdisch» запрещено (DATA-001, R-11)')
+
+        # --- минимумы плотности §1.3 против DENSITY-007 ----------------------
+        # Прозаические минимумы не сверялись ни с чем: 52 → 48 px проходило,
+        # хотя DENSITY-007 объявлен закрытым и «не подлежит уменьшению».
+        m13 = re.search(r'Строка\s+финансовых/табличных\s+данных\s*\|\s*\*\*≥\s*(\d+)\s*px\*\*'
+                        r'\s*\|\s*\*\*≥\s*(\d+)\s*px\*\*', readme)
+        if not m13:
+            self.fail('GATE-DENSITY', rel, '[вакуум] строка минимумов плотности §1.3 '
+                                           '(«Строка финансовых/табличных данных») не найдена — '
+                                           'DENSITY-007 в прозе не проверяется')
+        else:
+            ln13 = readme[:m13.start()].count('\n') + 1
+            for got, want, which in ((int(m13.group(1)), 52, 'Komfortabel'),
+                                     (int(m13.group(2)), 44, 'Kompakt')):
+                if got != want:
+                    self.emit('GATE-DENSITY', rel, ln13, f'GATE-DENSITY:prose-{which}',
+                              f'§1.3: минимум строки финансовых данных в плотности {which} '
+                              f'записан {got} px, DENSITY-007 требует {want} px и «не '
+                              f'подлежит уменьшению». Прежние высоты обеих плотностей лежали '
+                              f'ниже нормы и были исправлены — ослабление возвращает дефект')
+
+        # --- таблица мощностей §2.2 против фактического состава --------------
+        # Раздел сам объявляет четыре множества и их мощности — именно та
+        # форма, которую можно и обязано выводить. Собственная мутация
+        # («47 доменных, из них 45» → 46/44 и удаление строки реестра) прошла
+        # насквозь: числа не сверялись ни с чем.
+        dc_nums = sorted({int(x) for x in re.findall(r'\bDC-(\d+)\b', readme)})
+        reg_rows = [l for l in rows[
+            next((i for i, l in enumerate(rows) if l.startswith('### 2.2')), 0):
+            next((i for i, l in enumerate(rows) if l.startswith('### 2.3')), len(rows))]
+            if re.match(r'^\|\s*(?:DC-\d+|—)\s*\|', l)]
+        dc_contracts = [c for c in contracts if c[0]]
+        facts = {
+            'номера серии': (max(dc_nums) if dc_nums else 0),
+            'контракты доменных': len(dc_contracts),
+            'тела контрактов': len(contracts),
+            'строки реестровой': len(reg_rows),
+        }
+        card_rx = (
+            (r'номера\s+серии\s*`?DC-\*`?\s*\|\s*\*\*(\d+)\*\*', 'номера серии'),
+            (r'контракты\s+доменных\s+компонентов\s*\|\s*\*\*(\d+)\*\*', 'контракты доменных'),
+            (r'тела\s+контрактов[^|]*\|\s*\*\*(\d+)\*\*', 'тела контрактов'),
+            (r'строки\s+реестровой\s+таблицы[^|]*\|\s*\*\*(\d+)\*\*', 'строки реестровой'),
+        )
+        seen_card = 0
+        for pat, key in card_rx:
+            m = re.search(pat, readme)
+            if not m:
+                continue
+            seen_card += 1
+            declared, ln = int(m.group(1)), readme[:m.start()].count('\n') + 1
+            if declared != facts[key]:
+                self.emit('RM-CARD', rel, ln, f'RM-CARD:{key}',
+                          f'§2.2 объявляет мощность множества «{key}» = {declared}, '
+                          f'фактически {facts[key]}. Раздел сам предупреждает, что четыре '
+                          f'числа описывают четыре разных множества и не являются '
+                          f'источником — тогда каждое обязано выводиться скриптом')
+        if seen_card < len(card_rx):
+            self.fail('RM-CARD', rel, f'[вакуум] таблица мощностей §2.2 распознана на '
+                                      f'{seen_card} из {len(card_rx)} строк — числа компонентов '
+                                      f'не сверяются с составом')
+        # непрерывность серии DC-*: пропуск номера означает потерянный компонент
+        if dc_nums:
+            gaps = [n for n in range(1, max(dc_nums) + 1) if n not in dc_nums]
+            if gaps:
+                self.emit('RM-CARD', rel, 1, 'RM-CARD:gaps',
+                          f'в серии `DC-*` пропущены номера {gaps}: реестр §2.2 объявляет '
+                          f'«DC-1…DC-{max(dc_nums)} без пропусков»')
 
         # --- акцентный оранжевый только на `--color-surface-default` ---------
         # Подложка — часть условия R-01, а не контекст: на канве та же краска
@@ -1619,14 +2300,140 @@ class Verifier:
             for m in self.RX_NAR.finditer(seg):
                 why = re.sub(r'\s+', ' ', m.group(1)).strip().strip('·').strip()
                 words = [w for w in re.split(r'[\s·]+', why) if len(w) > 1]
-                if len(why) >= min_chars and len(words) >= min_words:
+                if len(why) < min_chars or len(words) < min_words:
+                    self.emit('RM-NAREASON', rel, ln, f'RM-NAREASON:{who}.{axis_label}.{axis}',
+                              f'{who} `{name}`, ось {axis_label} `{axis}`: '
+                              f'`notApplicableReason: {why[:40]}` — {len(why)} знаков, '
+                              f'{len(words)} слов. Запись без текста причины состояние не '
+                              f'объявляет; это тот самый пропуск, из-за которого отклонили '
+                              f'партию примитивов (§2.3)')
                     continue
-                self.emit('RM-NAREASON', rel, ln, f'RM-NAREASON:{who}.{axis_label}.{axis}',
-                          f'{who} `{name}`, ось {axis_label} `{axis}`: '
-                          f'`notApplicableReason: {why[:40]}` — {len(why)} знаков, '
-                          f'{len(words)} слов. Запись без текста причины состояние не '
-                          f'объявляет; это тот самый пропуск, из-за которого отклонили '
-                          f'партию примитивов (§2.3)')
+                # СОДЕРЖАТЕЛЬНОСТЬ, а не длина (вердикт Codex, класс 9 и T21).
+                # Длинная тавтология проходила счётчик знаков: «состояние
+                # неприменимо к этому компоненту, поскольку компонент не
+                # предполагает данного состояния» — 90 знаков и ноль причины.
+                # Причина обязана называть ПРИЧИННЫЙ ОБЪЕКТ: чем состояние
+                # заменено, где живёт, почему невозможно, что было бы неверным.
+                if self.RX_TAUTOLOGY.search(why) and not self.RX_CAUSAL.search(why):
+                    self.emit('RM-NAREASON', rel, ln,
+                              f'RM-NAREASON:tautology:{who}.{axis_label}.{axis}',
+                              f'{who} `{name}`, ось {axis_label} `{axis}`: причина '
+                              f'самоописательна — «{why[:60]}». Она повторяет вывод '
+                              f'(«неприменимо») вместо основания. Причина обязана называть '
+                              f'причинный объект: где состояние живёт вместо этого, что его '
+                              f'делает невозможным или каким утверждением оно стало бы. '
+                              f'Длина доказательством не является')
+                # Требовать причинную связку у КАЖДОЙ причины оказалось шире
+                # долга: формулировки вида «бейдж не является выбором» называют
+                # субъект и отрицают состояние — это причина, а не тавтология.
+                # Порог оставлен там, где его назвал аудитор: самоописание.
+
+    # -- 2b2. Контракты примитивов: components-core.md был вне охвата ---------
+    # Вердикт Codex, класс 3: семь осей разбирались ТОЛЬКО из README, и удаление
+    # оси из контракта примитива не ловилось ничем (T18), как и снятый keyboard
+    # contract (T19) и разрешение icon-only без доступного имени (T20).
+    # Формат контрактов там другой (`*Данные*:` вместо `**Состояния — данные:**`,
+    # оси группируются `loading / empty / partial / error`), поэтому парсер свой,
+    # но правило то же: семь осей у каждого из 22 контрактов.
+    def check_core_contracts(self):
+        rel = 'design-system/components-core.md'
+        txt = self.read(rel)
+        if txt is None:
+            self.fail('CORE-AXES', rel, '[вакуум] components-core.md отсутствует — '
+                                        '22 контракта примитивов не проверяются')
+            return
+        rows = txt.split('\n')
+        try:
+            a = next(i for i, l in enumerate(rows) if re.match(r'^## 2\.', l))
+            b = next(i for i, l in enumerate(rows) if re.match(r'^## 9\.', l))
+        except StopIteration:
+            self.fail('CORE-AXES', rel, '[вакуум] границы разделов контрактов (## 2 … ## 9) '
+                                        'не найдены — ни один контракт не разобран')
+            return
+        heads = [(i, rows[i][4:].strip()) for i in range(a, b) if rows[i].startswith('### ')]
+        heads.append((b, ''))
+        if len(heads) - 1 < 20:
+            self.fail('CORE-AXES', rel, f'[вакуум] распознано {len(heads) - 1} контрактов '
+                                        f'примитивов; раздел 7 аудита объявляет 22')
+        contracts = {}
+        for k in range(len(heads) - 1):
+            i, name = heads[k]
+            contracts[name] = (i + 1, '\n'.join(rows[i:heads[k + 1][0]]))
+        complete = set()
+        for name, (ln, body) in contracts.items():
+            m = re.search(r'\*Данные\*\s*:?(.*?)(?=\n\*\*[А-ЯA-Z]|\n\*[А-ЯA-Z]|\Z)', body, re.S) \
+                or re.search(r'\*\*Состояния:\*\*(.*?)(?=\n\*\*[А-ЯA-Z]|\Z)', body, re.S)
+            if not m:
+                self.emit('CORE-AXES', rel, ln, f'CORE-AXES:noblock-{name}',
+                          f'`{name}`: блок состояний по оси данных отсутствует. Компонент '
+                          f'без пяти состояний плюс двух осей в прототип не попадает '
+                          f'(правило проекта 30, STATE-001)')
+                continue
+            blk = m.group(1)
+            # НАСЛЕДОВАНИЕ — законная форма объявления, и она проверяемая:
+            # родитель обязан существовать и сам объявлять все семь осей.
+            inh = re.search(r'наследу\w*\s+от\s+`?([A-Z][A-Za-z0-9]*)|'
+                            r'все\s+семь\s+состояний\s+`?([A-Z][A-Za-z0-9]*)', blk)
+            if inh:
+                parent = inh.group(1) or inh.group(2)
+                if parent not in contracts:
+                    self.emit('CORE-AXES', rel, ln, f'CORE-AXES:parent-{name}',
+                              f'`{name}` наследует оси состояний от `{parent}`, которого '
+                              f'в разделе контрактов нет — висячее наследование')
+                else:
+                    complete.add((name, parent))
+                continue
+            found = set()
+            for span in re.findall(r'`([^`]*)`', blk):
+                found |= {w for w in re.split(r'[\s/·,]+', span) if w in DATA_AXES}
+            for axis in DATA_AXES:
+                if axis not in found:
+                    self.emit('CORE-AXES', rel, ln, f'CORE-AXES:{name}.{axis}',
+                              f'`{name}`: ось `{axis}` не объявлена. Семь осей — '
+                              f'`{" · ".join(DATA_AXES)}` — обязательны каждая; на этом '
+                              f'отклонили партию примитивов (STATE-001)')
+            # причина неприменимости — та же семантическая проверка, что в README
+            self._reasons(rel, name, name, ln, [('данные', blk)], 'данные', 12, 3)
+        # наследование обязано вести к полному контракту
+        for name, parent in complete:
+            pln, pbody = contracts[parent]
+            pm = re.search(r'\*Данные\*\s*:?(.*?)(?=\n\*\*[А-ЯA-Z]|\n\*[А-ЯA-Z]|\Z)', pbody, re.S)
+            if not pm:
+                continue
+            pfound = set()
+            for span in re.findall(r'`([^`]*)`', pm.group(1)):
+                pfound |= {w for w in re.split(r'[\s/·,]+', span) if w in DATA_AXES}
+            gaps = [x for x in DATA_AXES if x not in pfound]
+            if gaps:
+                self.emit('CORE-AXES', rel, contracts[name][0], f'CORE-AXES:inherit-{name}',
+                          f'`{name}` наследует оси от `{parent}`, у которого сами не объявлены '
+                          f'{gaps} — наследование неполноты остаётся неполнотой')
+        # CORE-A11Y: обязательные разделы доступности и доступное имя icon-only
+        for name, (ln, body) in contracts.items():
+            for need, why in ((r'\*+Клавиатура[^*\n]{0,60}\*+|\*Клавиатура\*',
+                               'клавиатурный контракт (правило 22, раздел 10 аудита)'),
+                              (r'Screen\s*reader',
+                               'контракт screen reader: роль, доступное имя, объявление '
+                               'состояния')):
+                if not re.search(need, body):
+                    self.emit('CORE-A11Y', rel, ln, f'CORE-A11Y:{name}:{need[:14]}',
+                              f'`{name}`: отсутствует {why}. Контракт без него не проверяем '
+                              f'вручную и не проверяем машиной — он просто не существует')
+        allow_icon = re.compile(
+            r'(?:icon-only|nur\s+Icon|иконк\w*)[^\n]{0,120}?'
+            r'(?:aria-label|доступное\s+имя|accessible\s+name)[^\n]{0,60}?'
+            r'(?:не\s+обязат\w*|не\s+требу\w*|можно\s+опуст\w*|допустимо\s+без|'
+            r'вправе\s+обойтись|необязат\w*)', re.I)
+        rev = re.compile(
+            r'(?:aria-label|доступное\s+имя)[^\n]{0,80}?(?:не\s+обязат\w*|не\s+требу\w*|'
+            r'необязат\w*)[^\n]{0,80}?(?:icon-only|иконк\w*)', re.I)
+        for i, line in enumerate(rows, 1):
+            if allow_icon.search(line) or rev.search(line):
+                self.emit('CORE-A11Y', rel, i, f'CORE-A11Y:icon-name:{i}',
+                          f'контролу без видимой подписи разрешено обходиться без доступного '
+                          f'имени — «{line.strip()[:70]}». ICON-002 и gate 15: иконка никогда '
+                          f'не единственный носитель смысла, а контрол без имени не существует '
+                          f'для screen reader')
 
     # -- 2c. Числа README сводятся с фикстурой и несут провенанс --------------
     def check_readme_numbers(self):
@@ -1703,6 +2510,47 @@ class Verifier:
                           f'(сумма зданий, проверенная классом CALC-FIXTURE) — удельные '
                           f'величины считаются от сумм, знаменатель обязан совпадать '
                           f'с подписью (правило проекта 39, DATA-001)')
+        # СПЕСИМЕН КОНФЛИКТА ССЫЛАЕТСЯ НА СОСТОЯНИЕ, А НЕ НА ДВА ЧИСЛА.
+        # Вердикт Codex: DC-32 заменил несуществовавшие числа существующими, но
+        # не существующим состоянием — оба значения объявлены в фикстуре
+        # независимо, а описываемого конфликта в ней нет. Проверка сходимости
+        # каждого числа по отдельности такой спесимен пропускает по построению.
+        conflicts = self.fx.get('conflicts') or {}
+        for dc, name, ln, body in (self._contracts(readme, rows) or []):
+            # Только контракт конфликт-резолвера: «конфликт» упоминают многие
+            # контракты, а спесимен состояния есть у одного.
+            if 'Conflict' not in name:
+                continue
+            if not conflicts:
+                self.fail('RM-FIXTURE', rel,
+                          f'[вакуум] {dc or name} описывает конфликт значений, а фикстура '
+                          f'не объявляет ни одного `DEMO-CONF-nnnn` — сверять состояние '
+                          f'не с чем')
+                break
+            named = set(re.findall(r'`?(DEMO-CONF-\d+)`?', body))
+            if not named:
+                self.emit('RM-FIXTURE', rel, ln, f'RM-FIXTURE-CONFLICT:noref-{dc or name}',
+                          f'{dc or name} `{name}`: спесимен конфликта не ссылается ни на один '
+                          f'объявленный `Conflict` фикстуры ({", ".join(sorted(conflicts))}). '
+                          f'Два независимо объявленных числа изображают конфликт, а не '
+                          f'воспроизводят его: описываемого СОСТОЯНИЯ в фикстуре нет, и '
+                          f'посверочная проверка каждого числа по отдельности это пропускает')
+                continue
+            for cid in sorted(named):
+                if cid not in conflicts:
+                    self.emit('RM-FIXTURE', rel, ln, f'RM-FIXTURE-CONFLICT:dangling-{cid}',
+                              f'{dc or name}: ссылка на `{cid}`, которого фикстура '
+                              f'не объявляет')
+                    continue
+                want = conflicts[cid]
+                got = {de(x) for x in re.findall(r'([\d.]+,\d+)\s*[\u00a0\u202f ]?m²', body)}
+                missing = [str(w) for w in want if w not in got]
+                if missing:
+                    self.emit('RM-FIXTURE', rel, ln, f'RM-FIXTURE-CONFLICT:cand-{cid}',
+                              f'{dc or name}: спесимен ссылается на `{cid}`, но не приводит '
+                              f'его кандидатов {missing}: конфликт обязан быть показан теми '
+                              f'значениями, которыми он объявлен')
+
         # провенанс: денежный блок обязан называть прогон или сценарий фикстуры
         contracts = self._contracts(readme, rows) or []
         for dc, name, ln, body in contracts:
@@ -1902,6 +2750,152 @@ class Verifier:
                                   f'ссылка на решение D-{n}, которого нет в decisions.md '
                                   f'(есть D-{min(heads, key=int)}…D-{max(heads, key=int)})')
 
+    # -- 3b2. Истинность инвариантов модели, а не покрытие идентификаторами ---
+    # Вердикт Codex, класс 6 и пункт 9: `DM-INVARIANT` доказывал только, что ID
+    # требований охвата встречаются в §9. Прошли перевёрнутый знак дельты,
+    # проценты вместо процентных пунктов, порядок приоритета котировок,
+    # `taxBasis = gross` у полного итога и неупорядоченный список в хеше.
+    # Здесь проверяется СОДЕРЖАНИЕ: формула, знак, единица, порядок, базис.
+    #
+    # Каждое правило — (класс, что искать в определении, что обязано быть
+    # рядом, что запрещено рядом, объяснение). Определение и инвариант §9
+    # сверяются РАЗДЕЛЬНО: верная копия в §9 не имеет права оправдывать
+    # испорченное определение (класс 7 вердикта).
+    DM_TRUTH = (
+        ('absoluteDelta', r'absoluteDelta',
+         r'[Ss]ubject\w*\s*[−–-]\s*\w*[Tt]arget',
+         r'[Tt]arget\w*\s*[−–-]\s*\w*[Ss]ubject',
+         'знак дельты: `absoluteDelta = subject − target`. Перевёрнутый знак '
+         'превращает удорожание в экономию во всех дельта-чипах сразу'),
+        ('relativeDeltaPercent', r'relativeDeltaPercent',
+         r'относительн\w*\s*процент|процент\w*\s*от|relative',
+         r'процентн\w+\s+пункт',
+         'единица: `relativeDeltaPercent` — относительный процент. Процентные '
+         'пункты и проценты не взаимозаменяемы: `± 22 %` → `± 17 %` есть '
+         '−5 процентных пунктов, а не −5 %'),
+        ('marginDeltaPp', r'marginDeltaPp|Pp\b',
+         r'процентн\w+\s+пункт|percentage\s*point',
+         r'(?<!не\s)процент\w*\s+от\s+span',
+         'единица сужения неопределённости — процентные пункты (суффикс `Pp`)'),
+        ('сужение неопределённости', r'[Сс]ужение\s+неопределённости\s+выражается',
+         r'процентных\s+пунктах',
+         r'выражается\s+в\s+процентах(?!\w)',
+         'сужение интервала выражается в процентных пунктах: путь от `±22 %` '
+         'к `±13 %` есть `−9` процентных пунктов, и «минус 9 %» утверждает '
+         'другое число'),
+        ('налоговая база итога', r'входящие\s+в\s+один\s+итог',
+         r'`?taxBasis\s*=\s*net`?',
+         r'`?taxBasis\s*=\s*(?:gross|brutto)`?',
+         'все значения одного итога абсолютно в `taxBasis = net`: две строки '
+         'могут добросовестно делить между собой brutto и сложиться под '
+         'подписью `Gesamt netto`, где слово `netto` уже произнесено'),
+        ('normalizationSnapshotRefs', r'normalizationSnapshotRefs',
+         r'упорядоч\w*|ordered|порядк\w*\s+объявлен|стабильн\w+\s+порядк',
+         r'произвольн\w+\s+порядк|неупорядоч\w*|порядок\s+не\s+(?:важ|значи)',
+         'состав `evaluationContextHash` включает УПОРЯДОЧЕННЫЙ список '
+         'снапшотов: при произвольном порядке один и тот же контекст даёт '
+         'разные хеши, и повторная оценка перестаёт воспроизводиться'),
+    )
+    # Упорядоченные перечисления, чей порядок есть приоритет.
+    DM_ORDER = (
+        ('QuoteEvaluation', ('withdrawn', 'expired', 'valid'),
+         'приоритет состояния котировки: отозванная старше истёкшей. '
+         'Иначе отозванное предложение снова показывается как «просто истекло»'),
+    )
+
+    def check_data_model_truth(self):
+        rel = 'docs/product/data-model.md'
+        dm = self.read(rel)
+        if dm is None:
+            self.fail('DM-TRUTH', rel, '[вакуум] модель данных отсутствует')
+            return
+        rows = dm.split('\n')
+
+        def para_of(idx):
+            """Абзац (смежные непустые строки) вокруг позиции — единица смысла."""
+            ln = dm[:idx].count('\n')
+            a = b = ln
+            while a > 0 and rows[a - 1].strip():
+                a -= 1
+            while b + 1 < len(rows) and rows[b + 1].strip():
+                b += 1
+            return '\n'.join(rows[a:b + 1]), ln + 1
+
+        # Границы разделов `## …`. `need` ищется в СВОЁМ разделе, а не по всему
+        # файлу: инвариант §9 — вторая копия утверждения, и позволить ей
+        # закрывать проверку значило бы воспроизвести класс 7 вердикта
+        # («правильная копия маскирует испорченное определение»).
+        heads = [i for i, l in enumerate(rows) if l.startswith('## ')] + [len(rows)]
+
+        def section_of(idx):
+            ln = dm[:idx].count('\n')
+            a = max([h for h in heads if h <= ln], default=0)
+            b = min([h for h in heads if h > ln], default=len(rows))
+            return '\n'.join(rows[a:b])
+
+        NEG = re.compile(r'(?:никогда\s+не|\bне\b|запрещ\w*|вместо|а\s+не|исключ\w*|'
+                         r'недопуст\w*|нельзя)[\s,«"`*_]*$', re.I)
+
+        for name, anchor, need, ban, why in self.DM_TRUTH:
+            hits = list(re.finditer(anchor, dm))
+            if not hits:
+                self.fail('DM-TRUTH', rel, f'[вакуум] `{name}` в модели не найден — '
+                                           f'истинность инварианта не проверяется: {why}')
+                continue
+            ok, offenders = False, []
+            for m in hits:
+                blk, ln = para_of(m.start())
+                for b in re.finditer(ban, blk, re.I):
+                    # СЕМАНТИКА ОТРИЦАНИЯ (класс 8 вердикта): «никогда не
+                    # процентный пункт» есть запрет, а не нарушение. Отрицание
+                    # опознаётся по позиции — непосредственно перед формой.
+                    if NEG.search(blk[max(0, b.start() - 40):b.start()]):
+                        continue
+                    offenders.append((ln, b.group(0)))
+                if re.search(need, section_of(m.start()), re.I):
+                    ok = True
+            for ln, frag in offenders:
+                self.emit('DM-TRUTH', rel, ln, f'DM-TRUTH:{name}:ban',
+                          f'`{name}`: в определении утверждается запрещённая форма '
+                          f'«{frag[:40]}» без отрицания. {why}')
+            if not ok:
+                self.emit('DM-TRUTH', rel, dm[:hits[0].start()].count('\n') + 1,
+                          f'DM-TRUTH:{name}:need',
+                          f'`{name}`: раздел определения не утверждает требуемого. {why}')
+
+        # Порядок приоритета читается из ПРОЗЫ, не из union типа: `"valid" |
+        # "expired" | "withdrawn"` — перечисление допустимых значений, и его
+        # порядок ничего не значит. Fenced-блоки поэтому вырезаются.
+        prose = re.sub(r'```.*?```', lambda m: '\n' * m.group(0).count('\n'), dm, flags=re.S)
+        for name, canon, why in self.DM_ORDER:
+            m = re.search(re.escape(name) + r'(.{0,1500})', prose, re.S)
+            if not m or not re.search('|'.join(canon), m.group(1)):
+                self.fail('DM-TRUTH', rel, f'[вакуум] порядок приоритета `{name}` в прозе '
+                                           f'модели не найден — precedence не проверяется')
+                continue
+            first = []
+            for x in re.findall('|'.join(canon), m.group(1)):
+                if x not in first:
+                    first.append(x)
+            if tuple(first[:len(canon)]) != canon:
+                self.emit('DM-TRUTH', rel, prose[:m.start()].count('\n') + 1,
+                          f'DM-TRUTH:{name}:order',
+                          f'`{name}`: порядок {first[:len(canon)]}, канонический '
+                          f'{list(canon)}. {why}')
+
+        # Налоговая база полного итога: `net` абсолютно, `gross` — только после
+        # явного преобразования (T29). Проверяется рядом с подписью итога.
+        for m in re.finditer(r'taxBasis[^\n]{0,120}', dm):
+            frag = m.group(0)
+            if re.search(r'"gross"', frag) and not re.search(
+                    r'преобразован|umgerechnet|только\s+после|explicit|конверт', frag, re.I):
+                blk, ln = para_of(m.start())
+                if re.search(r'Gesamt netto|Declared Pricing Scope|полн\w+\s+итог', blk):
+                    self.emit('DM-TRUTH', rel, ln, 'DM-TRUTH:taxBasis-gross',
+                              'итог с полным Declared Pricing Scope допускает '
+                              '`taxBasis = "gross"` без явного преобразования: клиент '
+                              'сравнивает брутто с нетто, не зная об этом')
+
     # -- 3c. Annahmen: текст, уходящий клиенту --------------------------------
     def check_annahmen(self):
         """`docs/product/t0-fallback-rules.md` — источник текстов Annahmen.
@@ -1987,7 +2981,7 @@ class Verifier:
               'семь': 7, 'восемь': 8, 'девять': 9, 'десять': 10}
 
     def check_output_model(self):
-        """`docs/product/output-model.md` — 58 инвариантов, охват до v4 был ноль.
+        """`docs/product/output-model.md` — охват до v4 был ноль.
 
         Из десяти мутаций аудитора прошли шесть. Все шесть — структурные:
         нумерация инвариантов, число условий в определении против числа,
@@ -2003,6 +2997,12 @@ class Verifier:
                                       'артефакт партии Batch 6 инструментом не проверяется')
             return
         rows = txt.split('\n')
+        profiles, clients = output_profiles(self.root)
+        if not profiles:
+            self.fail('OUT-PROFILE', 'docs/product/data-model.md',
+                      '[вакуум] `type OutputProfile` не прочитан из data-model.md — '
+                      'канонические имена профилей неизвестны, и подставлять свою копию '
+                      'инструмент не имеет права (второй источник правды)')
 
         # (1) OUT-SEQ: непрерывность и совпадение порядкового номера с меткой.
         # Мутация `OUT-30 → OUT-31` даёт одновременно дубль и пропуск.
@@ -2134,7 +3134,7 @@ class Verifier:
 
         # (4) OUT-R07: матрица блокировки называет ВСЕ пять клиентских профилей.
         # Ослабление до трёх прошло — это прямое ослабление R-07.
-        n_client = len(CLIENT_PROFILES)
+        n_client = len(clients or ())
         mm = re.search(r'^\|\s*Категория при[^\n]*\n\|[-\s|]+\|\n((?:\|[^\n]*\n)+)', txt, re.M)
         if not mm:
             self.fail('OUT-R07', rel, '[вакуум] матрица блокировки §7.2 не распознана — '
@@ -2206,27 +3206,205 @@ class Verifier:
                       '`ProjectedField.serialization` не объявляет, что `"omit"` в проекцию '
                       'не попадает — опущенное поле снова получает представимое состояние')
 
-        # (6) OUT-PROFILE: канонические имена профилей.
-        vocab = set(OUTPUT_PROFILES) | set(PROFILE_VOCAB_OK)
-        fx = self.read('docs/audit/synthetic-fixtures.md') or ''
-        for name in sorted(set(re.findall(r'\b((?:client|internal)[A-Z][A-Za-z]*)', txt))):
-            if name in vocab:
+        # (6) OUT-PROFILE: канонические имена профилей (enum читается из модели).
+        # Вакуум enum'а гасит ТОЛЬКО этот блок: остальные классы независимы —
+        # изоляция зависимых проверок, пункт 10 вердикта.
+        if profiles:
+            vocab = set(profiles) | set(PROFILE_VOCAB_OK)
+            fx = self.read('docs/audit/synthetic-fixtures.md') or ''
+            for name in sorted(set(re.findall(r'\b((?:client|internal)[A-Z][A-Za-z]*)', txt))):
+                if name in vocab:
+                    continue
+                ln = next((i for i, l in enumerate(rows, 1) if name in l), 1)
+                extra = ''
+                if name not in fx:
+                    extra = (f' Заявление о фикстуре устарело: `synthetic-fixtures.md` имени '
+                             f'`{name}` не содержит — сверять надо с файлом, а не с памятью.')
+                self.emit('OUT-PROFILE', rel, ln, f'OUT-PROFILE:{name}',
+                          f'имя `{name}` не является каноническим профилем выдачи '
+                          f'(data-model.md §5.11 объявляет {", ".join(profiles)}): '
+                          f'по неканоническому имени не сопоставляется ни одна политика '
+                          f'видимости.{extra}')
+            for p in clients:
+                if not re.search(r'###\s*3\.\d+\.\s*`?' + p, txt):
+                    self.emit('OUT-PROFILE', rel, 1, f'OUT-PROFILE:missing-{p}',
+                              f'§3 «клиентские профили поимённо» не содержит секции профиля '
+                              f'`{p}` — профиль без описания политики не имеет')
+            # Реестр профилей §2 обязан содержать РОВНО ОДНУ строку на каждое
+            # значение enum'а: удаление строки означает профиль без объявленной
+            # аудитории, интерактивности и гейта — то есть без политики.
+            reg = self._rows_by_header(txt, r'Профиль\s*\|\s*Аудитория')
+            if reg is None:
+                self.fail('OUT-PROFILE', rel, '[вакуум] таблица реестра профилей §2 '
+                                              '(«Профиль · Аудитория · …») не распознана')
+            else:
+                for p in profiles:
+                    if not re.search(r'^\|\s*`' + p + r'`\s*\|', txt, re.M):
+                        self.emit('OUT-PROFILE', rel, 1, f'OUT-PROFILE:noreg-{p}',
+                                  f'реестр профилей §2 не содержит строки профиля `{p}`, '
+                                  f'объявленного enum\'ом data-model.md. Профиль без '
+                                  f'объявленной аудитории, интерактивности и гейта политики '
+                                  f'не имеет')
+                if reg != len(profiles):
+                    self.emit('OUT-PROFILE', rel, 1, 'OUT-PROFILE:regcount',
+                              f'реестр профилей §2 содержит {reg} строк при {len(profiles)} '
+                              f'значениях enum\'а — лишняя строка описывает профиль, '
+                              f'которого в модели нет')
+
+        # (6a) OUT-SEND, содержание условий: «шесть строк» — не то же, что
+        # «шесть верных условий» (T23, T25). Проверяется ПРЕДИКАТ каждой
+        # названной строки и порядок стадий §9.1.
+        cond_need = (
+            (1, r'получател', r'\bto\b',        'условие получателей обязано требовать ≥ 1 `to`'),
+            (2, r'\bтел\w+',  r'preflight',     'условие тела обязано связывать его с preflight'),
+            (3, r'локал',     r'missingKeys',   'условие локали обязано требовать пустых `missingKeys`'),
+            (4, r'вложени',   r'clientSafe',    'условие вложений обязано требовать `clientSafe` '
+                                                '— `internalOnly` в клиентском письме недопустим '
+                                                '(EMAIL-002, R-17)'),
+            (5, r'preflight', r'resultHash',    'условие preflight обязано требовать воспроизведения '
+                                                '`resultHash` (§6.4)'),
+            (6, r'разрешен',  r'сервер',        'условие авторизации обязано называть серверную '
+                                                'проверку (R-16)'),
+        )
+        m93 = re.search(r'^###\s*9\.3\.(.*?)(?=^###\s|\Z)', txt, re.S | re.M)
+        if not m93:
+            self.fail('OUT-SEND', rel, '[вакуум] раздел §9.3 не найден — предикаты условий '
+                                       '`sendEnabled` не проверяются')
+        else:
+            base93 = txt[:m93.start(1)].count('\n') + 1
+            cells93 = {}
+            for k, line in enumerate(m93.group(1).split('\n')):
+                mr = re.match(r'^\|\s*(\d+)\s*\|(.*)$', line)
+                if mr:
+                    cells93[int(mr.group(1))] = (base93 + k, mr.group(2))
+            for num, subj, pred, why in cond_need:
+                if num not in cells93:
+                    continue          # число строк уже проверено выше
+                ln93, body93 = cells93[num]
+                if not re.search(subj, body93, re.I):
+                    self.emit('OUT-SEND', rel, ln93, f'OUT-SEND:cond{num}-subject',
+                              f'условие №{num} §9.3 больше не о том, о чём было: в строке нет '
+                              f'предмета «{subj}» — порядок условий переставлен либо условие '
+                              f'подменено')
+                elif not re.search(pred, body93, re.I):
+                    self.emit('OUT-SEND', rel, ln93, f'OUT-SEND:cond{num}-predicate',
+                              f'условие №{num} §9.3 не содержит обязательного предиката '
+                              f'`{pred}`: {why}')
+        # порядок стадий письма (§9.1) против OUT-34 и против README
+        STAGES = ('Compose', 'Preflight', 'Confirm & Send', 'Delivery status')
+        chain = ' → '.join(STAGES)
+        if chain not in txt:
+            found = re.search(r'`?(Compose[^\n`]{0,80}Delivery status)`?', txt)
+            self.emit('OUT-SEND', rel,
+                      txt[:found.start()].count('\n') + 1 if found else 1,
+                      'OUT-SEND:stage-order',
+                      f'порядок стадий письма не равен каноническому «{chain}» '
+                      f'(найдено: «{found.group(1) if found else "ничего"}»). '
+                      f'R-09/EMAIL-001: `Confirm & Send` не может стоять перед `Preflight` — '
+                      f'иначе подтверждение относится к непроверенному черновику')
+
+        # (6b) OUT-POLICY, импликация разрешений: `permission ∧ ¬allowed ⇒ omit`.
+        # Связка «ни одно разрешение не переопределяет allowed = false» (R-16,
+        # OUT-11) не проверялась вовсе — T33.
+        if ms51:
+            if not re.search(r'ни\s+одно\s+разрешение\s+не\s+переопределяет'
+                             r'[^\n]{0,30}`allowed\s*=\s*false`', ms51.group(1)):
+                self.emit('OUT-POLICY', rel, ln51, 'OUT-POLICY:permission-override',
+                          '§5.1 больше не утверждает, что ни одно разрешение не '
+                          'переопределяет `allowed = false`. Авторизация и видимость '
+                          'независимы (R-16): разрешение, способное открыть запрещённое '
+                          'политикой поле, превращает allowlist в рекомендацию')
+        mi11 = re.search(r'\*\*OUT-11\.\*\*([^\n]*)', txt)
+        if not mi11:
+            self.fail('OUT-POLICY', rel, '[вакуум] инвариант OUT-11 не найден')
+        elif not re.search(r'ни\s+одно\s+разрешение\s+не\s+переопределяет', mi11.group(1)):
+            self.emit('OUT-POLICY', rel, txt[:mi11.start()].count('\n') + 1,
+                      'OUT-POLICY:OUT-11',
+                      'OUT-11 перестал требовать независимости авторизации и видимости')
+
+        # (6c) OUT-DELIVERY: приоритет исходов доставки выводится ИЗ ТАБЛИЦЫ
+        # и сверяется с OUT-39. Прежде правильная фраза инварианта маскировала
+        # испорченное определение (T24) — «согласованность дублированных
+        # нормативных утверждений», класс 7 вердикта.
+        CANON = ('Beschwerde', 'Unzustellbar', 'Zugestellt', 'Gesendet')
+        order = [m.group(1) for m in re.finditer(
+            r'^\|[^|]*\|\s*`?(' + '|'.join(CANON) + r')`?\s*\|', txt, re.M)]
+        if len(order) < len(CANON):
+            self.fail('OUT-DELIVERY', rel, f'[вакуум] таблица вывода исхода доставки не '
+                                           f'распознана (найдено {len(order)} строк из '
+                                           f'{len(CANON)}) — precedence не проверяется')
+        else:
+            if tuple(order[:len(CANON)]) != CANON:
+                ln = next((i for i, l in enumerate(rows, 1) if order[0] in l), 1)
+                self.emit('OUT-DELIVERY', rel, ln, 'OUT-DELIVERY:order',
+                          f'приоритет исходов доставки в таблице — {order[:len(CANON)]}, '
+                          f'канонический — {list(CANON)}. `delivered` выше `complained` '
+                          f'означает, что жалоба получателя перестаёт быть текущим исходом '
+                          f'(EMAIL-007/EMAIL-008)')
+            mi39 = re.search(r'\*\*OUT-39\.\*\*([^\n]*(?:\n(?!\d+\.)[^\n]*)*)', txt)
+            if not mi39:
+                self.fail('OUT-DELIVERY', rel, '[вакуум] инвариант OUT-39 не найден')
+            else:
+                inv_order = tuple(x for x in re.findall('|'.join(CANON), mi39.group(1)))
+                if inv_order[:len(CANON)] != tuple(order[:len(CANON)]):
+                    self.emit('OUT-DELIVERY', rel, txt[:mi39.start()].count('\n') + 1,
+                              'OUT-DELIVERY:invariant-vs-table',
+                              f'OUT-39 называет порядок {list(inv_order[:len(CANON)])}, '
+                              f'таблица §9.6 даёт {order[:len(CANON)]} — верная копия '
+                              f'инварианта маскирует испорченное определение')
+        # инварианты статусов попытки: требует/запрещает по каждому статусу
+        STATUS = {
+            'queued':             (set(), {'finishedAt', 'providerMessageId', 'failureCode'}),
+            'sending':            (set(), {'finishedAt', 'providerMessageId', 'failureCode'}),
+            'acceptedByProvider': ({'finishedAt', 'providerMessageId'}, {'failureCode'}),
+            'failed':             ({'finishedAt', 'failureCode'}, {'providerMessageId'}),
+        }
+        seen_status = 0
+        for st, (need, ban) in STATUS.items():
+            mr = re.search(r'^\|\s*`' + st + r'`\s*\|([^|]*)\|([^|]*)\|', txt, re.M)
+            if not mr:
                 continue
-            ln = next((i for i, l in enumerate(rows, 1) if name in l), 1)
-            extra = ''
-            if name not in fx:
-                extra = (f' Заявление о фикстуре устарело: `synthetic-fixtures.md` имени '
-                         f'`{name}` не содержит — сверять надо с файлом, а не с памятью.')
-            self.emit('OUT-PROFILE', rel, ln, f'OUT-PROFILE:{name}',
-                      f'имя `{name}` не является каноническим профилем выдачи '
-                      f'(data-model.md §5.11 объявляет {", ".join(OUTPUT_PROFILES)}): '
-                      f'по неканоническому имени не сопоставляется ни одна политика '
-                      f'видимости.{extra}')
-        for p in CLIENT_PROFILES:
-            if not re.search(r'###\s*3\.\d+\.\s*`?' + p, txt):
-                self.emit('OUT-PROFILE', rel, 1, f'OUT-PROFILE:missing-{p}',
-                          f'§3 «Пять клиентских профилей поимённо» не содержит секции '
-                          f'профиля `{p}` — профиль без описания политики не имеет')
+            seen_status += 1
+            ln = txt[:mr.start()].count('\n') + 1
+            got_need = set(re.findall(r'`([a-zA-Z]+)`', mr.group(1)))
+            got_ban = set(re.findall(r'`([a-zA-Z]+)`', mr.group(2)))
+            if got_need != need or got_ban != ban:
+                self.emit('OUT-DELIVERY', rel, ln, f'OUT-DELIVERY:status-{st}',
+                          f'`{st}`: требует {sorted(got_need) or "—"} / запрещает '
+                          f'{sorted(got_ban) or "—"}; канонически требует {sorted(need) or "—"} '
+                          f'/ запрещает {sorted(ban) or "—"}. Статус, требующий '
+                          f'`providerMessageId` у неудачи, объявляет провал принятым')
+        if seen_status != len(STATUS):
+            self.fail('OUT-DELIVERY', rel, f'[вакуум] таблица инвариантов `DeliveryAttempt` '
+                                           f'распознана на {seen_status} из {len(STATUS)} '
+                                           f'статусов')
+
+        # (6d) OUT-LOCALE: гейт локали — предикаты, а не наличие раздела (T34).
+        m83 = re.search(r'^###\s*8\.3\.(.*?)(?=^###\s|^---|\Z)', txt, re.S | re.M)
+        if not m83:
+            self.fail('OUT-LOCALE', rel, '[вакуум] раздел §8.3 «Правило» локали не найден — '
+                                         'LOCALE-001 не проверяется')
+        else:
+            s83, ln83 = m83.group(1), txt[:m83.start()].count('\n') + 1
+            for pat, why in (
+                (r'пуст\w*\s*`?missingKeys`?|`missingKeys`[^\n]{0,30}пуст',
+                 'клиентская выдача обязана требовать ПУСТЫХ `missingKeys`'),
+                (r'`unapprovedKeys`',
+                 'клиентская выдача обязана требовать пустых `unapprovedKeys`'),
+                (r'целиком\s+в\s+одной\s+локали|одной\s+локали\s+или\s+не\s+генерируется',
+                 'артефакт генерируется целиком в одной локали или не генерируется'),
+                (r'[Мм]олчаливый\s+фолбэк[^\n]{0,200}?(?:запрещ|не\s+существ|недостиж)|'
+                 r'(?:запрещ|недостиж)\w*[^\n]{0,80}?молчаливый\s+фолбэк',
+                 'молчаливый фолбэк на немецкий обязан быть запрещён (R-08)')):
+                if not re.search(pat, s83):
+                    self.emit('OUT-LOCALE', rel, ln83, f'OUT-LOCALE:{pat[:24]}',
+                              f'§8.3 не содержит обязательного предиката: {why}. '
+                              f'Смешанный по языку артефакт не является состоянием системы, '
+                              f'а не «не рекомендуется» (LOCALE-001)')
+            if re.search(r'непуст\w*\s*`?missingKeys`?[^\n]{0,40}(?:допус|разреш|вправе)', s83):
+                self.emit('OUT-LOCALE', rel, ln83, 'OUT-LOCALE:nonempty-allowed',
+                          '§8.3 разрешает клиентскую выдачу при непустых `missingKeys` — '
+                          'прямое снятие гейта локали (LOCALE-001)')
 
         # (7) OUT-MONEY: денежные и удельные спесимены §7.3/§9.7 против фикстуры
         # в Decimal. Порча округления (`≈ 5.824.000` при точном `5.822.936,00`)
@@ -2235,6 +3413,108 @@ class Verifier:
 
         # (8) SCHED-D17: десятичный месяц при целом календарном интервале
         self._sched_d17(rel, txt)
+
+        # (9) OUT-COUNT: числительное в прозе против числа строк таблицы,
+        # которую оно описывает. Собственные мутации показали, что «семь
+        # значений OutputProfile», «шесть групп содержимого вердикта» и «шесть
+        # языковых атрибутов» не сверялись ни с чем: удаление строки из таблицы
+        # проходило, как и правка самого числительного.
+        # Источник факта назван для КАЖДОГО утверждения отдельно: таблица
+        # опознаётся по своей шапке, а не «ближайшая ниже». Общая эвристика
+        # близости давала ложные срабатывания на перекрёстных ссылках и на
+        # списках-абзацах — то есть ровно тот шум, из-за которого проверку
+        # потом отключают.
+        counted = [
+            (r'`OutputProfile`\s*—\s*([А-Яа-яЁё]+)\s+значени', 'значения OutputProfile',
+             len(profiles) if profiles else None,
+             'enum `type OutputProfile` в data-model.md §5.11'),
+            (r'([А-Яа-яЁё]+)\s+из\s+них\s+клиентски', 'клиентские профили',
+             len(clients) if clients else None,
+             'имена с префиксом `client` в том же enum'),
+            (r'перечисляет\s+([А-Яа-яЁё]+)\s+групп\w*\s+содержимого',
+             'группы вердикта preflight',
+             self._rows_by_header(txt, r'Группа\s+содержимого'),
+             'таблица §6.5 «Группа содержимого · Откуда выводится»'),
+            (r'([А-Яа-яЁё]+)\s+языковых\s+атрибут', 'языковые атрибуты локали',
+             self._rows_by_header(txt, r'Атрибут\s*\|\s*Кому\s+принадлежит'),
+             'таблица §8.1 «Атрибут · Кому принадлежит»'),
+        ]
+        for claim_rx, what, fact, src in counted:
+            hits = [(m, self.RU_NUM.get(m.group(1).lower()))
+                    for m in re.finditer(claim_rx, txt)]
+            hits = [(m, d) for m, d in hits if d is not None]
+            if not hits:
+                continue
+            if fact is None:
+                self.fail('OUT-COUNT', rel, f'[вакуум] утверждение «{what}» есть, а источник '
+                                            f'({src}) не прочитан — число заявляется, '
+                                            f'а не выводится')
+                continue
+            for m, declared in hits:
+                ln = txt[:m.start()].count('\n') + 1
+                if declared != fact:
+                    self.emit('OUT-COUNT', rel, ln, f'OUT-COUNT:{what}:{declared}',
+                              f'проза называет {m.group(1)} ({declared}) — {what}; '
+                              f'источник ({src}) даёт {fact}. Сводное число, не выводимое '
+                              f'из состава, верно ровно до следующей правки')
+        # (10) OUT-EXCL: перечень семейств, исключённых во всех клиентских
+        # профилях (§5.4). Удаление строки `Interne Bezugsgröße` прошло —
+        # а это прямое снятие R-11 из политики полей.
+        m54 = re.search(r'^###\s*5\.4\.(.*?)(?=^###\s|^---|\Z)', txt, re.S | re.M)
+        if not m54:
+            self.fail('OUT-EXCL', rel, '[вакуум] раздел §5.4 «Семейства полей, исключённые '
+                                       'во всех клиентских профилях» не найден')
+        else:
+            s54, ln54 = m54.group(1), txt[:m54.start()].count('\n') + 1
+            for need, why in (
+                    (r'марж', 'маржа и база скидки (правило 11, DISCOUNT-006)'),
+                    (r'KG-700-Modus', '`KG-700-Modus` (правило 11)'),
+                    (r'заметк', 'заметки и их синк-состояние (NOTE-006, D-12, правило 34)'),
+                    (r'Interne\s+Bezugsgröße', '`Interne Bezugsgröße` (R-11, правило 39)'),
+                    (r'reasonCode', '`reasonCode`/`policyVersion` проблем валидации (R-17)'),
+                    (r'preview', 'preview-прогоны и их числа (§6.3)'),
+                    (r'устаревш\w+\s+authoritative', 'устаревший прогон (STALE-001, R-18)')):
+                if not re.search(need, s54, re.I):
+                    self.emit('OUT-EXCL', rel, ln54, f'OUT-EXCL:{need[:20]}',
+                              f'§5.4 больше не исключает из клиентских профилей: {why}. '
+                              f'Перечень исключений — это и есть allowlist наоборот: '
+                              f'исчезнувшая строка означает, что поле поедет в клиентский PDF')
+
+        # (11) OUT-HASH: круговой хеш. `evaluationContextHash` НЕ включает
+        # результаты `ValidationIssue`, иначе проблемы находятся оценкой
+        # контекста, который они же определяют. Снятие отрицания прошло.
+        m64 = re.search(r'^###\s*6\.4\.(.*?)(?=^###\s|^---|\Z)', txt, re.S | re.M)
+        mh = re.search(r'`evaluationContextHash`([^\n]*(?:\n(?!\n)[^\n]*){0,4})',
+                       m64.group(1)) if m64 else None
+        if not m64:
+            self.fail('OUT-HASH', rel, '[вакуум] раздел §6.4 «Два хеша и повторная оценка» '
+                                       'не найден — круговой хеш не проверяется')
+        elif not mh:
+            self.fail('OUT-HASH', rel, '[вакуум] `evaluationContextHash` в §6.4 не найден — '
+                                       'круговой хеш не проверяется')
+        else:
+            frag = mh.group(1)
+            lnh = txt[:m64.start(1)].count('\n') + m64.group(1)[:mh.start()].count('\n') + 1
+            if not re.search(r'не\s+включает', frag):
+                self.emit('OUT-HASH', rel, lnh, 'OUT-HASH:circular',
+                          '§6.4 больше не утверждает, что `evaluationContextHash` НЕ включает '
+                          'ID и результаты `ValidationIssue`. Хеш, включающий их, становится '
+                          'круговым: проблемы находятся оценкой контекста, который они же '
+                          'определяли бы, и повторная оценка перестаёт что-либо доказывать')
+
+    @staticmethod
+    def _rows_by_header(txt, header_rx):
+        """Число строк таблицы, опознанной по ШАПКЕ. None — таблицы нет.
+
+        Опора на шапку, а не на близость: шапка называет предмет таблицы и
+        меняется только вместе с ним, тогда как «ближайшая ниже таблица»
+        зависит от вёрстки абзацев.
+        """
+        m = re.search(r'^\|[^\n]*' + header_rx + r'[^\n]*\|\n\|[-:\s|]+\|\n'
+                      r'((?:\|[^\n]*\|\n)+)', txt, re.M)
+        if not m:
+            return None
+        return len([r for r in m.group(1).strip().split('\n') if r.strip()])
 
     # -- 3e. Спесимены денег и площадей против фикстуры -----------------------
     RX_MONEY = re.compile(r'(?<![\d.,])(\d{1,3}(?:\.\d{3})+(?:,\d+)?)\s*[  ]?(?:€(?!/)|Euro\b)')
@@ -2253,6 +3533,37 @@ class Verifier:
                                 'сверять спесимены не с чем')
             return
         for i, line in enumerate(txt.split('\n'), 1):
+            # Срок и дата завершения — такие же спесимены, как деньги: они
+            # уходят клиенту в том же письме. Собственные мутации показали, что
+            # ни длительность (`7,283` → `7,285`), ни дата (`19.11.2027` →
+            # `19.12.2027`) ни с чем не сверялись.
+            for m in re.finditer(r'(?<![\d,])(\d{1,3}(?:,\d+)?)\s*[  ]?Monate', line):
+                if de(m.group(1)) not in self.fx['durations']:
+                    self.emit(cls, rel, i, f'{cls}:dur:{m.group(1)}',
+                              f'длительность {m.group(1)} Monate не сводится ни с одной '
+                              f'величиной ScheduleModel фикстуры '
+                              f'({", ".join(str(x) for x in sorted(self.fx["durations"]))})')
+            for m in re.finditer(r'(?:Fertigstellung|завершения|Abschluss)\s*[:\s]?\s*'
+                                 r'(\d{2}\.\d{2}\.\d{4})', line):
+                if m.group(1) not in self.fx['dates']:
+                    self.emit(cls, rel, i, f'{cls}:date:{m.group(1)}',
+                              f'дата завершения {m.group(1)} отсутствует в ScheduleModel '
+                              f'фикстуры: подпись длительности обязана стоять рядом с '
+                              f'АБСОЛЮТНОЙ датой из модели (D-17, METRIC-004), а не с '
+                              f'правдоподобной')
+            for m in re.finditer(r'(GK 5 Zeit|GK 4 Zeit|Form MFH|Form Büro|GK 5|GK 4|'
+                                 r'EH 55|EH 40)[^\n]{0,30}?(?:×|множител\w+\s*)'
+                                 r'(\d,\d+)|×\s*(\d,\d+)\s*\((GK 5 Zeit|GK 4 Zeit|Form MFH|'
+                                 r'Form Büro|GK 5|GK 4|EH 55|EH 40)\)', line):
+                lbl = m.group(1) or m.group(4)
+                val = m.group(2) or m.group(3)
+                want = self.fx['factors'].get(lbl)
+                if want is not None and de(val) != want:
+                    self.emit(cls, rel, i, f'{cls}:factor:{lbl}:{val}',
+                              f'множитель драйвера `{lbl}` записан {val}, каталог фикстуры '
+                              f'даёт {want}. Стоимостная и срочная таблицы факторов '
+                              f'РАЗНЫЕ, и смешение их — та самая ошибка, что завышала '
+                              f'Haus B на 100.000 €')
             for rx, pool, what in ((self.RX_RATE, self.fx['rates'], 'удельная величина'),
                                    (self.RX_MONEY, self.fx['exact'] | self.fx['disp'], 'сумма')):
                 for m in rx.finditer(line):
@@ -2285,6 +3596,164 @@ class Verifier:
                       f'`{m.group(1)} Monate` там, где интервал является целым числом '
                       f'календарных месяцев; десятичный перевод создаёт ложную точность '
                       f'(R-26). Отклонение сужено до случая несовпадающих дней месяца')
+        # ВТОРАЯ ПОЛОВИНА D-17 (вердикт Codex, пункт 5): проверка ловила лишний
+        # `,0`, но не ловила ОТСУТСТВИЕ `≈` у нецелого округлённого срока.
+        # Признак берётся из самих дат фикстуры, а не из списка величин: `≈`
+        # обязателен ровно тогда, когда день месяца у начала и конца интервала
+        # НЕ совпадает — тогда показ отличается от точного (CALC-007). При
+        # совпадении дня интервал есть целое число календарных месяцев, и
+        # префикс был бы ложным утверждением о неточности. Обратное — тоже
+        # дефект, и он проверяется здесь же.
+        need_prefix = (self.fx or {}).get('dur_needs_prefix') or {}
+        for m in re.finditer(r'(≈\s*)?(?<![\d,])(\d{1,3}(?:,\d+)?)\s*[\u00a0\u202f ]?Monate',
+                             txt) if need_prefix else ():
+            val, has = de(m.group(2)), bool(m.group(1))
+            if val not in need_prefix:
+                continue
+            ln = txt[:m.start()].count('\n') + 1
+            if need_prefix[val] and not has:
+                self.emit('SCHED-D17', rel, ln, f'SCHED-D17:noprefix:{m.group(2)}',
+                          f'`{m.group(2)} Monate` без префикса `≈`: у этого интервала день '
+                          f'месяца начала и конца НЕ совпадает, показ отличается от точного, '
+                          f'и CALC-007 требует `≈` вместе с раскрытием точной длительности. '
+                          f'Подпись без префикса утверждает точность, которой нет')
+            elif not need_prefix[val] and has:
+                self.emit('SCHED-D17', rel, ln, f'SCHED-D17:falseprefix:{m.group(2)}',
+                          f'`≈ {m.group(2)} Monate` — префикс у величины, которая от '
+                          f'округления не меняется: интервал есть целое число календарных '
+                          f'месяцев (день месяца совпадает), и `≈` — ложное утверждение '
+                          f'о неточности (D-17, CALC-007)')
+
+    # -- 4a. Устав как каноническая политика, а не шесть дословных фраз -------
+    # Вердикт Codex, класс 8 и пункт 5: `check_governance()` имел три
+    # blacklist-паттерна и три обязательных предложения. Прошли: инверсия
+    # правила 12 («блокировки при клиенте допустимы»), снятое отрицание запрета
+    # скруглений, разворот `.numeric` с выравнивания вправо на влево,
+    # ослабление Bold-порога оранжевого с 18,67 px до 18 px.
+    #
+    # Реестр ниже — ПОЛОЖИТЕЛЬНЫЙ предикат на каждое неприкосновенное правило:
+    # что обязано утверждаться (`need`) и что не имеет права утверждаться
+    # (`ban`, с учётом отрицания). Проверяется утверждение, а не присутствие
+    # строки, поэтому переписанная формулировка правило не теряет, а
+    # перевёрнутая — не проходит.
+    # Каждая запись: (имя правила, якорь предмета, положительный предикат,
+    # ЯДРО запрещённого утверждения, объяснение цены). Ядро — короткая форма
+    # без отрицания: отрицание проверяется окном перед ядром, иначе
+    # «никогда не перезаписываются» само выглядело бы нарушением.
+    CHARTER = (
+        ('правило 12 · никаких блокировок при клиенте',
+         r'блокиров\w*[^\n]{0,60}клиент|клиент\w*[^\n]{0,40}блокиров',
+         r'[Нн]икаких\s+блокиров\w*|не\s+запреты|предупреждения\s+и\s+автодействия',
+         r'(?<![\w-])(?:допустим|разрешен|возможн|приемлем)\w*',
+         'V1–V11 — предупреждения и автодействия, НЕ запреты. Инверсия этого '
+         'правила разрешает запирать поля на глазах заказчика'),
+        ('правило 4 · никаких скруглений',
+         r'скруглен|border-radius',
+         r'[Нн]икаких\s+скруглений|border-radius:\s*0|скруглен\w*\s+запрещ',
+         r'(?<![\w-])(?:допустим|разрешен|возможн|приемлем)\w*',
+         'прямоугольники и идеальные круги; ненулевой радиус запрещён везде'),
+        ('правило 7 · .numeric выравнивается вправо',
+         r'\.numeric',
+         r'вправо',
+         r'(?<![\w-])(?:влево|text-align:\s*left)',
+         'числа денег и площадей выравниваются ВПРАВО (tnum): выравнивание '
+         'влево ломает сопоставление разрядов в колонке'),
+        ('правило 14 · bestätigt не перезаписывается',
+         r'bestätigt',
+         r'никогда\s+не\s+перезаписыва\w*',
+         r'(?<![\w-])перезаписыва\w*',
+         'M-1/D-08: повторный анализ не перезаписывает подтверждённое'),
+        ('правило 15 · отправленный вариант неизменяем',
+         r'[Оо]тправленный\s+вариант',
+         r'неизменяем\w*\s+снапшот',
+         r'(?<![\w-])(?:изменя|правит|перезапис)\w*',
+         'M-3: снапшот отправленного оффера неизменяем'),
+        ('правило 13 · нет изменения данных без события',
+         r'без\s+события',
+         r'не\s+могут\s+измениться\s+без\s+события',
+         r'(?<![\w-])могут\s+измениться\s+без\s+события',
+         'M-4: данные не могут измениться без события журнала'),
+        ('правило 16 · строка без расчётной базы не показывает ноль',
+         r'без\s+расчётной\s+базы',
+         r'ноль\s+запрещ\w*|никогда\s+не\s+0\s*€|не\s+0\s*€',
+         r'(?<![\w-])(?:показыва\w*|допустим\w*)\s*(?:ноль|0\s*€)',
+         'R-18: неполнота никогда не показывается как 0 € — ноль есть '
+         'утверждение о цене, а не отсутствие данных'),
+        ('правило 21 · prefers-reduced-motion гасит всё',
+         r'prefers-reduced-motion',
+         r'гасит\s+всё|включая\s+счёт\s+чисел',
+         r'(?<![\w-])(?:кроме|за\s+исключением|исключая)',
+         'правило 21: гасится всё, включая счёт чисел; исключений нет'),
+    )
+
+    def check_charter(self):
+        rel = 'CLAUDE.md'
+        txt = self.read(rel)
+        if txt is None:
+            self.fail('CLAUDE', rel, '[вакуум] CLAUDE.md отсутствует — устав не проверяется')
+            return
+        rows = txt.split('\n')
+        NEG = re.compile(r'(?:никогда\s+не|\bне\b|запрещ\w*|вместо|а\s+не|нельзя|'
+                         r'недопуст\w*|исключ\w*|прежн\w*|отменен\w*|ошибк\w*)[\s,«"`*_—-]*$',
+                         re.I)
+        for title, anchor, need, ban, why in self.CHARTER:
+            hits = [(i, l) for i, l in enumerate(rows, 1) if re.search(anchor, l, re.I)]
+            if not hits:
+                self.fail('CLAUDE', rel, f'[вакуум] {title}: в уставе нет ни одной строки о '
+                                         f'предмете правила — утверждение отсутствует, '
+                                         f'а не выполнено. {why}')
+                continue
+            if not any(re.search(need, l, re.I) for _, l in hits):
+                self.emit('CLAUDE', rel, hits[0][0], f'CLAUDE:need:{title}',
+                          f'{title}: устав больше не утверждает требуемого. {why}')
+            for i, l in hits:
+                for m in re.finditer(ban, l, re.I):
+                    if NEG.search(l[max(0, m.start() - 40):m.start()]):
+                        continue      # это запрет формы, а не её разрешение
+                    self.emit('CLAUDE', rel, i, f'CLAUDE:ban:{title}',
+                              f'{title}: устав утверждает противоположное — '
+                              f'«{m.group(0)[:50]}». {why}')
+        # Порог бренд-оранжевого: ДВЕ пары, не одна (T04). Прежняя проверка
+        # читала только первое целое `≥ N px` — ветка Bold не читалась вовсе,
+        # и ослабление 18,67 → 18 проходило.
+        m = re.search(r'#FD5E00([^\n]*)', txt)
+        if not m:
+            self.fail('CLAUDE', rel, '[вакуум] правило 5 не называет #FD5E00')
+        else:
+            frag, ln = m.group(1), txt[:m.start()].count('\n') + 1
+            pairs = re.findall(r'≥\s*(\d+(?:[.,]\d+)?)\s*px(?:\s*(bold|Bold|Regular))?', frag)
+            got = {}
+            for val, kind in pairs:
+                got[(kind or '').lower() or 'regular'] = de(val)
+            # Порог выводится из контраста: 3,10:1 проходит только large text,
+            # а large text по WCAG — 24 px Regular либо 18,67 px Bold.
+            for kind, want in (('regular', D('24')), ('bold', D('18.67'))):
+                if kind not in got:
+                    self.emit('CLAUDE', rel, ln, f'CLAUDE:threshold-{kind}',
+                              f'правило 5 не называет порог кегля для варианта {kind}: '
+                              f'при контрасте {fmt_ratio(contrast(CLR["accent"], CLR["white"]))}'
+                              f':1 WCAG допускает только large text — ≥ 24 px Regular '
+                              f'И ≥ 18,67 px Bold, обе ветки обязательны')
+                elif got[kind] != want:
+                    self.emit('CLAUDE', rel, ln, f'CLAUDE:threshold-{kind}',
+                              f'правило 5: порог {kind} записан {got[kind]} px, WCAG large '
+                              f'text требует {want} px. Ослабление порога делает оранжевый '
+                              f'текст нечитаемым при контрасте '
+                              f'{fmt_ratio(contrast(CLR["accent"], CLR["white"]))}:1')
+        # Согласованность устава с реализацией (T17): правило `.numeric`
+        # проверяется НЕ только по CSS-факту, но и по совпадению утверждений.
+        css = self.read('design-system/tokens.css') or ''
+        mn = re.search(r'\.numeric\s*\{([^}]*)\}', css)
+        if mn:
+            impl_right = 'right' in mn.group(1)
+            says_right = bool(re.search(r'\.numeric[^\n]{0,80}вправо|вправо[^\n]{0,40}\.numeric|'
+                                        r'`\.numeric`[^\n]{0,40}вправо', txt))
+            if impl_right != says_right:
+                self.emit('CLAUDE', rel, 1, 'CLAUDE:numeric-consistency',
+                          f'устав и реализация расходятся о выравнивании `.numeric`: '
+                          f'tokens.css выравнивает {"вправо" if impl_right else "НЕ вправо"}, '
+                          f'CLAUDE.md утверждает {"вправо" if says_right else "иное"}. '
+                          f'Правильный объект реализации не доказывает правильного правила')
 
     # -- 4. CLAUDE.md и decisions.md: отменённые правила ----------------------
     def check_governance(self):
@@ -2466,10 +3935,175 @@ class Verifier:
         self.eq(cls, f'{desc}: показ = округление ожидаемого', shown, r1000(expect))
 
     def check_arithmetic(self):
+        # ИЗОЛЯЦИЯ ЗАВИСИМЫХ ПРОВЕРОК (вердикт Codex, пункты 2 и 10).
+        # Прежде `Vacuum` перехватывался вокруг ВСЕЙ `_arithmetic()`, а
+        # публикация `self.fx` стояла в её конце. Один сломавшийся extractor —
+        # контрольный пример R-01 в calculation-spec, который другой владелец
+        # правил по вердикту, — обрывал конвейер, и `OUT-MONEY`/`RM-FIXTURE`
+        # обвиняли ДВА КОРРЕКТНЫХ ФАЙЛА, которые никто не портил. Ложное
+        # обвинение корректного файла хуже пропуска: оно тратит партию на
+        # поиск дефекта, которого нет.
+        # Теперь величины фикстуры извлекаются отдельным extractor'ом, который
+        # читает ТОЛЬКО synthetic-fixtures.md и не зависит ни от спеки, ни от
+        # сроков, ни от неопределённости.
+        self._publish_fx()
         try:
             self._arithmetic()
         except Vacuum:
             pass
+
+    # -- 7a. Независимый extractor величин фикстуры ---------------------------
+    def _publish_fx(self):
+        """`self.fx` из `synthetic-fixtures.md` — независимо от прочих проверок.
+
+        Каждая величина берётся своим шаблоном; отсутствие ЛЮБОЙ из ядровых
+        (итоги, площади, ставка каталога) означает, что сверять цитаты не с
+        чем, и это называется одним вакуумом с ИМЕНЕМ несработавшего шаблона,
+        а не молчанием и не обвинением цитирующих файлов.
+        """
+        fx = self.read('docs/audit/synthetic-fixtures.md')
+        if fx is None:
+            self.fail('CALC-FIXTURE', 'synthetic-fixtures.md',
+                      '[вакуум] синтетическая фикстура отсутствует — ни одна цитата '
+                      'денежных величин не проверяется')
+            return
+        miss = []
+
+        def one(name, pattern, group=1, flags=0):
+            m = re.search(self._soften(pattern), fx, flags)
+            if not m:
+                miss.append(name)
+                return None
+            try:
+                return de(m.group(group))
+            except Exception:
+                miss.append(name)
+                return None
+
+        v = {
+            'k': one('K_base', r'K_base = ([\d.]+) €'),
+            'gk5': one('F_gk GK 5', r'F_gk:.*?GK 5 = ([\d,]+)'),
+            'gk4': one('F_gk GK 4', r'F_gk:.*?GK 4 = ([\d,]+)'),
+            'gk13': one('F_gk GK 1–3', r'F_gk: GK 1–3 = ([\d,]+)'),
+            'eh55': one('F_energie EH 55', r'F_energie: EH 55 = ([\d,]+)'),
+            'eh40': one('F_energie EH 40', r'F_energie:.*?EH 40 = ([\d,]+)'),
+            'buero': one('F_form_büro', r'F_form_büro = ([\d,]+)'),
+            'ug_rate': one('ставка UG', r'UG vollausbau \+ TG = [\d.]+ \+ [\d.]+ = ([\d.]+) €'),
+            'ug_a': one('UG vollausbau', r'UG vollausbau \+ TG = ([\d.]+) \+'),
+            'ug_b': one('TG-Zuschlag', r'UG vollausbau \+ TG = [\d.]+ \+ ([\d.]+) ='),
+            'gk5z': one('F_gk_zeit GK 5', r'F_gk_zeit:.*?GK 5 = ([\d,]+)'),
+            'gk4z': one('F_gk_zeit GK 4', r'F_gk_zeit:.*?GK 4 = ([\d,]+)'),
+            'mfhz': one('F_form_zeit MFH', r'F_form_zeit: MFH = ([\d,]+)'),
+            'bueroz': one('F_form_zeit Büro', r'F_form_zeit:.*?Büro = ([\d,]+)'),
+            'A': one('итог Haus A', r'\*\*Zwischensumme der kalkulierten Positionen\*\* \| '
+                                    r'\*\*([\d.,]+)\*\*'),
+            'B': one('итог Haus B', r'\(EH 55\) = ([\d.,]+)`'),
+            'G': one('итог Komplex', r'\| Zwischensumme der kalkulierten Positionen \| '
+                                     r'([\d.,]+) \|'),
+            'basis': one('строка Basis', r'\| Basis: [\d.,]+ × [\d.]+ \| ([\d.,]+) \|'),
+            'gk_add': one('вклад GK 5', r'Gebäudeklasse 5 \(× [\d,]+\) \| \+ ([\d.,]+)'),
+            'eh_add': one('вклад EH 55', r'Energiestandard EH 55 \(× [\d,]+\) \| \+ ([\d.,]+)'),
+            'ug_add': one('вклад UG', r'Untergeschoss inkl\. Tiefgarage \([\d.,]+ × [\d.,]+\) '
+                                      r'\| \+ ([\d.,]+)'),
+            'kg3': one('KG 300', r'KG 300 `([\d.,]+)`'),
+            'kg4': one('KG 400', r'KG 400 `([\d.,]+)`'),
+            'kg7': one('KG 700', r'KG 700 `([\d.,]+)`'),
+            'tot40': one('итог EH 40', r'\+ [\d.]+ = ([\d.,]+)` → ≈ `[\d.,]+ €`'),
+            'noug': one('итог Ohne UG', r'[−-] [\d.]+ = ([\d.,]+)` → ≈ `[\d.,]+ €`'),
+            'disc': one('точный итог со скидкой', r'× 0,\d+ = ([\d.,]+)` →'),
+            'rab': one('ставка Rabatt', r'Rabatt ([\d,]+) %'),
+            'wfl': one('WFL', r'\| WFL nach WoFlV \| ([\d.,]+)'),
+            'nuf': one('NUF', r'\| NUF nach DIN 277 \| [\d.,—-]+ (?:m²)? *\| ([\d.,]+)'),
+            'bgf_a': one('BGF ober A', r'\| BGF oberirdisch \| ([\d.,]+)'),
+            'bgf_b': one('BGF ober B', r'\| BGF oberirdisch \| [\d.,]+ (?:m²)? *\| ([\d.,]+)'),
+            'rs_a': one('BGF R\\+S A', r'\| BGF R\+S \| ([\d.,]+)'),
+            'rs_b': one('BGF R\\+S B', r'\| BGF R\+S \| [\d.,]+ (?:m²)? *\| ([\d.,]+)'),
+            'ug_area': one('BGF unterirdisch', r'\| BGF unterirdisch \| ([\d.,]+)'),
+            'we': one('Wohneinheiten', r'\| Wohneinheiten \| (\d+)'),
+            'sum_ober': one('Σ BGF ober', r'\| Σ BGF \*\*oberirdisch\*\* \| ([\d.,]+)'),
+            'sum_rs': one('Σ BGF R\\+S', r'\| Σ BGF \*\*R\+S\*\*[^|]*\| ([\d.,]+)'),
+            'ib': one('Interne Bezugsgröße', r'Interne Bezugsgröße[^|]*\| ([\d.,]+) m²'),
+            'reg': one('Regionalfaktor', r'Regionalfaktor `Musterland` ([\d,]+)'),
+        }
+        core = ('k', 'A', 'B', 'G', 'wfl', 'nuf', 'bgf_a', 'bgf_b', 'sum_ober', 'sum_rs',
+                'ib', 'we', 'rs_a', 'rab', 'disc')
+        if any(v[k] is None for k in core):
+            self.fail('CALC-FIXTURE', 'synthetic-fixtures.md',
+                      f'[вакуум] в фикстуре не прочитаны величины: {", ".join(sorted(miss))} — '
+                      f'сверка цитат в README и output-model не выполняется. Это дефект '
+                      f'ШАБЛОНА извлечения, а не цитирующих файлов')
+            return
+        exact = {v[k] for k in ('basis', 'gk_add', 'eh_add', 'ug_add', 'A', 'kg3', 'kg4',
+                                'kg7', 'tot40', 'noug', 'B', 'G', 'disc') if v[k] is not None}
+        exact |= {v['tot40'] - v['A'], v['A'] - v['noug'], v['A'] - v['disc']}
+        if v['reg'] is not None:
+            exact.add(r1000(v['A'] * (v['reg'] - 1)))
+        disp = {r1000(x) for x in exact} | {r1(x) for x in exact} | {D('1000')}
+        if None not in (v['kg3'], v['kg4'], v['kg7']):
+            disp.add(r1000(v['kg3']) + r1000(v['kg4']) + r1000(v['kg7']))
+        pairs = [(v['A'], v['wfl']), (v['A'], v['rs_a']), (v['A'], v['bgf_a']),
+                 (v['A'], v['we']), (v['B'], v['nuf']), (v['B'], v['bgf_b']),
+                 (v['G'], v['sum_ober']), (v['G'], v['sum_rs']), (v['G'], v['ib'])]
+        if v['tot40'] is not None:
+            pairs.append((v['tot40'], v['wfl']))
+        if v['noug'] is not None:
+            pairs.append((v['noug'], v['wfl']))
+        rates = {r1(n / d) for n, d in pairs} | {r2(n / d) for n, d in pairs}
+        rates |= {x for x in (v['k'], v['ug_rate'], v['ug_a'], v['ug_b']) if x is not None}
+        wfl_rates = [r2(x / v['wfl']) for x in (v['A'], v['tot40'], v['noug']) if x is not None]
+        for a_ in wfl_rates:
+            for b_ in wfl_rates:
+                if a_ != b_:
+                    rates |= {r1(abs(a_ - b_)), r2(abs(a_ - b_))}
+        for d_ in (v['tot40'] - v['A'] if v['tot40'] else None,
+                   v['A'] - v['noug'] if v['noug'] else None,
+                   v['ug_add'], v['gk_add'], v['eh_add']):
+            if d_ is not None:
+                rates |= {r1(abs(d_) / v['wfl']), r2(abs(d_) / v['wfl'])}
+        # Сроки и даты фикстуры — для сверки спесименов расписания
+        # Длительности: и отображаемые, и СЫРЫЕ. Сырое значение в фикстуре
+        # пишется усечённым (`7,283333…`), а цитирующий файл вправе привести его
+        # с меньшей точностью (`7,283`) — поэтому хранится и набор усечений.
+        durations = {de(x) for x in re.findall(r'(\d+(?:,\d+)?)\s*[  ]?Monate', fx)}
+        raws = {de(x) for x in re.findall(r'=\s*(\d+,\d+)', fx)}
+        durations |= raws
+        for r_ in raws:
+            for prec in range(1, 7):
+                durations.add(r_.quantize(D(1).scaleb(-prec), rounding=ROUND_DOWN))
+                durations.add(r_.quantize(D(1).scaleb(-prec), rounding=ROUND_HALF_UP))
+        dates = set(re.findall(r'\b\d{2}\.\d{2}\.\d{4}\b', fx))
+        # Нужен ли префикс `≈` у подписи длительности — выводится ИЗ ДАТ строки
+        # расписания: совпадает день месяца → интервал целый, префикс запрещён;
+        # не совпадает → показ отличается от точного, префикс обязателен (D-17).
+        needs = {}
+        for row in re.finditer(r'^\|[^|\n]*\|\s*(\d{2})\.(\d{2})\.(\d{4})\s*\|\s*'
+                               r'\**(\d{2})\.(\d{2})\.(\d{4})\**\s*\|\s*\**≈?\s*'
+                               r'(\d+(?:,\d+)?)\s*[\u00a0\u202f ]?Monate', fx, re.M):
+            d1, d2, shown = row.group(1), row.group(4), de(row.group(7))
+            needs[shown] = (d1 != d2)
+        # Объявленные КОНФЛИКТЫ значений: id, оба кандидата, дельта. Нужны,
+        # чтобы спесимен конфликт-резолвера ссылался на существующее СОСТОЯНИЕ,
+        # а не собирался из двух независимо объявленных величин (вердикт Codex).
+        conflicts = {}
+        for mc in re.finditer(r'`(DEMO-CONF-\d+)`(.*?)(?=\n###\s|\Z)', fx, re.S):
+            blk = mc.group(2)
+            cands = re.findall(r'Кандидат\s*\d[^|]*\|\s*`?([\d.,]+)\s*m²', blk)
+            if len(cands) >= 2:
+                conflicts[mc.group(1)] = tuple(de(x) for x in cands[:2])
+        factors = {}
+        for lbl, key in (('GK 5 Zeit', 'gk5z'), ('GK 4 Zeit', 'gk4z'), ('Form MFH', 'mfhz'),
+                        ('GK 5', 'gk5'), ('GK 4', 'gk4'), ('EH 55', 'eh55'),
+                        ('EH 40', 'eh40'), ('Form Büro', 'buero')):
+            if v[key] is not None:
+                factors[lbl] = v[key]
+        self.fx = dict(v)
+        self.fx.update({'exact': exact, 'disp': disp, 'rates': rates, 'durations': durations,
+                        'dates': dates, 'factors': factors, 'dur_needs_prefix': needs,
+                        'conflicts': conflicts, 'rabatt': v['rab'],
+                        'discount_exact': v['disc'],
+                        'areas': {v[k] for k in ('wfl', 'nuf', 'bgf_a', 'bgf_b', 'rs_a', 'rs_b',
+                                                 'ug_area', 'sum_ober', 'sum_rs', 'ib')
+                                  if v[k] is not None}})
 
     def _arithmetic(self):
         fx = self.read('docs/audit/synthetic-fixtures.md') or ''
@@ -2696,23 +4330,55 @@ class Verifier:
         m = self.grab(fx, r'\|\s*Planung\s*\|[^|]*\|[^|]*\|\s*([\d,]+)\s*Monate', S, 'фикстура: строка Planung')
         planung = de(m.group(1))
         self.eq(S, 'Planung = planung(n) из спеки', planung, plan_sp)
-        m = self.grab(fx, r'\|\s*Haus A\s*\|[^|]*\|[^|]*\|\s*([\d,]+)\s*Monate ab OKBP\s*\|\s*`\(5 \+ ([\d.,]+)/([\d.,]+)\)\s*×\s*([\d,]+)\s*\(Form MFH\)\s*×\s*([\d,]+)\s*\(GK 5 Zeit\)`\s*=\s*([\d,]+)\s*→\s*([\d,]+)', S, 'фикстура: Bauzeit Haus A')
-        d_a = de(m.group(1))
-        raw = (5 + de(m.group(2)) / de(m.group(3))) * de(m.group(4)) * de(m.group(5))
-        self.eq(S, 'Haus A: формула использует каталожные факторы', (de(m.group(4)), de(m.group(5))), (mfhz_fx, gk5z_fx))
-        self.eq(S, 'Haus A: BGF-числитель формулы', de(m.group(2)), bgf_a - 1000)
-        self.eq(S, 'Haus A: сырой срок 3dp', de(m.group(6)), r3(raw))
-        self.eq(S, 'Haus A: округление к 0,5', de(m.group(7)), r05(raw))
-        self.eq(S, 'Haus A: отображаемая длительность', d_a, r05(raw))
-        m = self.grab(fx, r'\|\s*Haus B\s*\|[^|]*\|[^|]*\|\s*([\d,]+)\s*Monate ab OKBP\s*\|\s*`\(5 \+ ([\d.,]+)/([\d.,]+)\)\s*×\s*([\d,]+)\s*\(Form Büro\)\s*×\s*([\d,]+)\s*\(GK 4 Zeit\)`\s*=\s*([\d,]+)\s*→\s*([\d,]+)[^|]*Staffelstart \+ (\d+)', S, 'фикстура: Bauzeit Haus B')
-        d_b = de(m.group(1))
-        raw_b = (5 + de(m.group(2)) / de(m.group(3))) * de(m.group(4)) * de(m.group(5))
-        self.eq(S, 'Haus B: формула использует каталожные факторы', (de(m.group(4)), de(m.group(5))), (bueroz_fx, gk4z_fx))
-        self.eq(S, 'Haus B: BGF-числитель формулы', de(m.group(2)), bgf_b - 1000)
-        self.eq(S, 'Haus B: сырой срок 3dp', de(m.group(6)), r3(raw_b))
-        self.eq(S, 'Haus B: округление к 0,5', de(m.group(7)), r05(raw_b))
-        self.eq(S, 'Haus B: отображаемая длительность', d_b, r05(raw_b))
-        stag = de(m.group(8))
+        # Строки Bauzeit разбираются СТРУКТУРНО: подпись длительности, база
+        # `5 + (BGF − 1.000)/N`, множители через `×`, сырое значение после `=`,
+        # округлённое после `→`. Прежняя редакция требовала дословной вёрстки
+        # (`= 7,283 → 7,5`); правка по CALC-007 добавила префикс `≈`, слова
+        # «округление 0,5 →» и многоточие усечения — и сверка сроков стала
+        # вакуумом. Тот же класс, что дважды до этого.
+        def bauzeit(label, form_label, zeit_label, area, f_form, f_gk, extra=''):
+            m = self.grab(fx, r'\|\s*' + label + r'\s*\|[^|]*\|[^|]*\|\s*≈?\s*([\d,]+)\s*'
+                              r'Monate ab OKBP\s*\|([^|]*' + extra + r'[^|]*)\|',
+                          S, f'фикстура: Bauzeit {label}')
+            shown, cell = de(m.group(1)), m.group(2)
+            mb = self.grab(cell, r'5\s*\+\s*\(?\s*([\d.,]+)\s*(?:[−–-]\s*([\d.,]+)\s*)?\)?\s*/'
+                                 r'\s*([\d.,]+)', S, f'фикстура: база срока {label}')
+            num = de(mb.group(1)) - (de(mb.group(2)) if mb.group(2) else D('0'))
+            self.eq(S, f'{label}: BGF-числитель формулы', num, area - 1000)
+            facs = [de(x) for x in re.findall(r'×\s*([\d,]+)', cell)]
+            self.eq(S, f'{label}: формула использует каталожные факторы',
+                    tuple(sorted(facs)), tuple(sorted((f_form, f_gk))))
+            raw_l = 5 + num / de(mb.group(3))
+            for x in facs:
+                raw_l *= x
+            mraw = self.grab(cell, r'=\s*([\d,]+)', S, f'фикстура: сырой срок {label}')
+            got = de(mraw.group(1))
+            # Значение может быть усечено многоточием — сверяем по его точности.
+            prec = len(mraw.group(1).split(',')[1]) if ',' in mraw.group(1) else 0
+            if abs(got - raw_l.quantize(D(1).scaleb(-prec), rounding=ROUND_HALF_UP)) \
+                    > D('0.0000001') and abs(got - raw_l) >= D(1).scaleb(-prec):
+                self.fail(S, f'фикстура: Bauzeit {label}',
+                          f'сырой срок записан {mraw.group(1)}, формула даёт {raw_l}')
+            self.eq(S, f'{label}: округление к 0,5 и подпись', shown, r05(raw_l))
+            # Округлённое значение внутри самой формулы (после последнего `→`)
+            # обязано совпадать и с формулой, и с подписью колонки: иначе
+            # ячейка показывает один расчёт, а колонка — другой.
+            arrows = re.findall(r'→\s*(?:округление[^→]*?→\s*)?([\d,]+)', cell)
+            if not arrows:
+                self.fail(S, f'фикстура: Bauzeit {label}',
+                          '[вакуум] округлённое значение срока после `→` не найдено')
+            else:
+                self.eq(S, f'{label}: округление в формуле', de(arrows[-1]), r05(raw_l))
+                self.eq(S, f'{label}: формула и подпись колонки совпадают',
+                        de(arrows[-1]), shown)
+            return shown, raw_l
+
+        d_a, raw = bauzeit('Haus A', 'Form MFH', 'GK 5 Zeit', bgf_a, mfhz_fx, gk5z_fx)
+        d_b, raw_b = bauzeit('Haus B', 'Form Büro', 'GK 4 Zeit', bgf_b, bueroz_fx, gk4z_fx,
+                             extra=r'Staffelstart')
+        m = self.grab(fx, r'\|\s*Haus B\s*\|[^|]*\|[^|]*\|[^|]*\|[^|]*Staffelstart \+ (\d+)',
+                      S, 'фикстура: Staffelstart Haus B')
+        stag = de(m.group(1))
         self.eq(S, 'Staffelstart = stagger(n) из спеки', stag, stag_sp)
         m = self.grab(fx, r'\|\s*\*\*Projekt\*\*\s*\|[^|]*\|[^|]*\|\s*\*\*([\d,]+)\s*Monate\*\*', S, 'фикстура: строка Projekt')
         self.eq(S, 'Projekt = max(start+dauer)', de(m.group(1)),
@@ -2732,47 +4398,11 @@ class Verifier:
             m = self.grab(fx, r'Итого `[−-](\d+)`', U, 'фикстура: итоговое сужение')
             self.eq(U, 'итоговое сужение', D(m.group(1)), u[0] - u[2])
 
-        # ── публикация фикстурных величин для сверки ЦИТАТ в других файлах ──
-        # До v4 инструмент разбирал арифметику ВНУТРИ `synthetic-fixtures.md`
-        # и не проверял, что `README.md` и `output-model.md` цитируют её верно.
-        # Прошли: скидка от округлённой базы и несводимый тотал `≈ 5.900.000 €`.
-        # Множества строятся ИЗ фикстуры (не из констант инструмента), поэтому
-        # правка фикстуры автоматически перестраивает допустимый набор.
-        exact_set = {basis, gk_add, eh_add, ug_add, A, kg3, kg4, kg7,
-                     tot40, tot40 - A, noug, A - noug, B, G, exact,
-                     A - exact, r1000(A * (reg - 1))}
-        disp = {r1000(x) for x in exact_set} | {r1(x) for x in exact_set}
-        disp |= {D('1000'), kg3d + kg4d + kg7d}
-        # Удельные: пары (числитель, знаменатель) — ровно те, что использует
-        # фикстура. Знаменатель обязан называть норматив, поэтому пары именные.
-        pairs = [(A, wfl), (A, rs_a), (A, bgf_a), (A, we), (tot40, wfl), (noug, wfl),
-                 (B, nuf), (B, bgf_b), (G, sum_ober), (G, sum_rs), (G, ib)]
-        rates = {r1(n / d) for n, d in pairs} | {r2(n / d) for n, d in pairs}
-        rates |= {k_fx, ug_rate, ug_a, ug_b}          # ставки каталога
-        # Дельта удельной величины при одном знаменателе (WFL) — законный
-        # спесимен `rateDelta`; считается от точных 2dp, как требует CALC-007.
-        wfl_rates = [r2(x / wfl) for x in (A, tot40, noug)]
-        for a_ in wfl_rates:
-            for b_ in wfl_rates:
-                if a_ == b_:
-                    continue
-                rates |= {r1(abs(a_ - b_)), r2(abs(a_ - b_))}
-        # та же дельта, посчитанная как «дельта денег / знаменатель» — обе
-        # формы законны и обе встречаются в контрактах (`476.000 / 1.500,00`)
-        for d_ in (tot40 - A, A - noug, ug_add, gk_add, eh_add):
-            rates |= {r1(abs(d_) / wfl), r2(abs(d_) / wfl)}
-        areas = {wfl, nuf, bgf_a, bgf_b, rs_a, rs_b, ug_area, sum_ober, sum_rs, ib}
-        self.fx = {
-            'exact': exact_set, 'disp': disp, 'rates': rates, 'areas': areas,
-            'A': A, 'B': B, 'G': G, 'wfl': wfl, 'nuf': nuf, 'ib': ib,
-            'bgf_a': bgf_a, 'bgf_b': bgf_b, 'rs_a': rs_a, 'rs_b': rs_b,
-            'sum_ober': sum_ober, 'sum_rs': sum_rs, 'rabatt': rab,
-            'discount_exact': exact,
-        }
-        # Публикация стоит ВЫШЕ контрольного примера §6 намеренно: `grab` там
-        # умеет бросить `Vacuum`, и при прежнем порядке одна изменившаяся
-        # формулировка в calculation-spec обнуляла бы сверку спесименов в двух
-        # других файлах — молча, вакуумом вместо находки.
+        # Публикация `self.fx` живёт в `_publish_fx()` — отдельном extractor'е,
+        # читающем ТОЛЬКО фикстуру. Здесь её больше нет намеренно: вакуум любого
+        # шаблона ниже не имеет права обнулять сверку цитат в README и
+        # output-model (вердикт Codex, пункты 2 и 10 — два ложных обвинения
+        # корректных файлов из одного сломавшегося парсера).
 
         # ── контрольный пример calculation-spec §6 (Referenzprojekt R-01) ────
         # Разбор СТРУКТУРНЫЙ, не по формулировке. Прежняя редакция ждала
@@ -2873,6 +4503,7 @@ class Verifier:
     def run(self):
         self.check_tokens()
         self.check_css()
+        self.check_css_effective()
         self.check_contrast()
         self.check_gates()
         self.check_r24_prose()
@@ -2881,7 +4512,9 @@ class Verifier:
         self.check_copy()
         self.check_controls()
         self.check_data_model()
+        self.check_data_model_truth()
         self.check_annahmen()
+        self.check_charter()
         self.check_governance()
         self.check_plan()
         self.check_privacy()
@@ -2890,6 +4523,7 @@ class Verifier:
         self.check_arithmetic()
         self.check_output_model()
         self.check_readme_contracts()
+        self.check_core_contracts()
         self.check_readme_numbers()
         self.check_index()
         # ALLOW подавляет по МЕСТУ, а не по содержанию: дословный дубль
@@ -2929,11 +4563,17 @@ class Verifier:
 # ───────────────────────── selftest ─────────────────────────────────────────
 
 def _bump_control_total(text: str) -> str:
-    """Порча контрольного итога §6 независимо от разделителей разрядов."""
-    new, n = re.subn(r'(=\s*\*\*)3([\s.\u00a0\u202f]?)682([\s.\u00a0\u202f]?)000',
-                     r'\g<1>3\g<2>692\g<3>000', text, count=1)
+    """Порча ПОКАЗА контрольного итога §6 независимо от вёрстки числа.
+
+    Прежняя редакция требовала формы `= **3 682 000`; правка по вердикту
+    CALC-007 добавила «точно …, показ **≈ …», и мутация стала неприменимой —
+    то есть класс остался непроверенным, а selftest этого не различал.
+    Теперь привязка к самому числу, а не к тому, что стоит перед ним.
+    """
+    new, n = re.subn(r'3([\s.\u00a0\u202f])682([\s.\u00a0\u202f])000(\s*[\u00a0\u202f ]?€)',
+                     r'3\g<1>692\g<2>000\g<3>', text, count=1)
     if not n:
-        raise AssertionError('контрольный итог 3 682 000 не найден')
+        raise AssertionError('показ контрольного итога 3.682.000 € не найден')
     return new
 
 
@@ -3068,8 +4708,12 @@ MUTATIONS = [
      ('= 1.819,67', '= 1.891,67'), {'CALC-FIXTURE'}),
     ('CALC-FIXTURE: порча базы скидки', 'docs/audit/synthetic-fixtures.md',
      ('× 0,97 = 3.703.299,95', '× 0,96 = 3.703.299,95'), {'CALC-FIXTURE'}),
+    # Привязка к самому числу, а не к вёрстке строки вокруг него: подпись
+    # Bauzeit переписывалась дважды (префикс `≈`, слова «округление 0,5 →»),
+    # и дословная мутация становилась неприменимой — то есть класс оставался
+    # непроверенным, а прежний selftest этого не различал.
     ('CALC-SCHEDULE: порча округления Bauzeit', 'docs/audit/synthetic-fixtures.md',
-     ('= 7,283 → 7,5', '= 7,283 → 8,0'), {'CALC-SCHEDULE'}),
+     _sub(r'(→\s*(?:округление 0,5\s*→\s*)?)7,5;', r'\g<1>8,0;'), {'CALC-SCHEDULE'}),
     ('CALC-SCHEDULE: порча каталога сроков', 'docs/audit/synthetic-fixtures.md',
      ('GK 5 = 1,15', 'GK 5 = 1,10'), {'CALC-CATALOG', 'CALC-SCHEDULE'}),
     ('CALC-UNCERT: порча цепочки ±', 'docs/audit/synthetic-fixtures.md',
@@ -3225,8 +4869,12 @@ MUTATIONS = [
      'Termin: 14.05.27.', {'DATE-FORMAT'}),
     ('R-18-LABEL: усечённый label итога', 'design-system/README.md',
      '| Zwischensumme | ≈ 3.818.000 € |', {'R-18-LABEL'}),
+    # Негативная мутация обязана вносить РОВНО проверяемую конструкцию: с
+    # обычным пробелом перед единицей она вносила ещё и нарушение NBSP,
+    # и «ложное срабатывание» приписывалось не тому классу.
     ('R-18-LABEL (негативная): `Anteil an Zwischensumme` — корректный label',
-     'design-system/README.md', '| Anteil an Zwischensumme | 12,5 % · 3.818.000 € |', None),
+     'design-system/README.md',
+     '| Anteil an Zwischensumme | 12,5 % · 3.818.000 € |', None),
     ('check_copy в *.json: живая UI-строка `ab Decke`', 'docs/product/parameters-t0-t1.json',
      '{"_leak": {"de": "Bau ab Decke, im UG nur Ausbau"}}', {'COPY-007'}),
 
@@ -3302,7 +4950,8 @@ MUTATIONS = [
      '> **Annahme:** Die Kostengruppe 500 ist nicht enthalten.', {'T0-COVERAGE'}),
 
     # ─────────── v4 · модель выдач (docs/product/output-model.md) ───────────
-    # До v4 охват файла был ноль: 58 объявленных инвариантов, ни одной проверки.
+    # До v4 охват файла был ноль: десятки объявленных инвариантов, ни одной
+    # проверки. Число инвариантов нигде не зашито — только непрерывность.
     # По одной мутации на каждую закрытую дыру совместного списка двух аудиторов.
     ('OUT-SEQ: метка OUT-30 переписана в OUT-31 (дубль + пропуск)',
      'docs/product/output-model.md',
@@ -3343,6 +4992,17 @@ MUTATIONS = [
      _sub(r'### 3\.5\. `clientPrint`', '### 3.5. `clientDruck`'), {'OUT-PROFILE'}),
     ('SCHED-D17: десятичный месяц при целом интервале', 'docs/product/output-model.md',
      'Срок проекта — 12,0 Monate.', {'SCHED-D17'}),
+    ('RM-FIXTURE: спесимен конфликта ссылается на несуществующий Conflict',
+     'design-system/README.md',
+     _sub(r'(### DC-32 · `ConflictResolver`[^\n]*\n)',
+          r'\g<1>\nКонфликт `DEMO-CONF-0999`: `1.500,00 m²` против `1.560,00 m²`.\n'),
+     {'RM-FIXTURE'}),
+    ('SCHED-D17: ложный префикс ≈ у целого интервала (обратная сторона D-17)',
+     'docs/product/output-model.md', 'Bauzeit Haus B — ≈ 6 Monate ab OKBP.',
+     {'SCHED-D17'}),
+    ('SCHED-D17: снят обязательный префикс ≈ у нецелого срока',
+     'docs/product/output-model.md', 'Bauzeit Haus A — 7,5 Monate ab OKBP.',
+     {'SCHED-D17'}),
 
     # ─────────── v4 · контракты design-system/README.md ───────────
     ('RM-AXES: из тела контракта DC-38 удалена ось stale (STATE-001)',
@@ -3395,11 +5055,225 @@ MUTATIONS = [
     ('INDEX: раздел реестра ADR заявляет не своё число записей',
      'docs/audit/adr-blocking.md',
      _sub(r'^## 1\. Цвет — 23 записи', '## 1. Цвет — 24 записи', re.M), {'INDEX'}),
+
+    # ═══════ v4b · по вердикту Codex: 36 прошедших мутаций, по классам ═══════
+    # Каждая запись воспроизводит атаку аудитора, а не её пересказ.
+
+    # T01–T03 · контраст сам себя обнулял исключением по значению
+    ('T01 CONTRAST: ложное «ровно 3:1, проходит» для accent/canvas',
+     'design-system/components-core.md',
+     'Акцент `#FD5E00` на `#E8ECE9` даёт 3:1, проходит R-01.', {'CONTRAST'}),
+    ('T02 CONTRAST: ложное «4,5:1, проходит» для accent/white',
+     'design-system/components-core.md',
+     'Акцент `#FD5E00` на `#FFFFFF` даёт 4,5:1, проходит для обычного текста.',
+     {'CONTRAST'}),
+    ('T03 CONTRAST: ложное «7:1» для primary/white', 'design-system/components-core.md',
+     'Кнопка `#C94700` на `#FFFFFF` даёт 7:1, проходит AAA.', {'CONTRAST'}),
+    ('CONTRAST (негативная): нормативный порог «ниже 3:1» измерением не считается',
+     'design-system/components-core.md',
+     'Бордер `#DEDEDE` на `#FFFFFF`: 1,35:1 — ниже 3:1 (WCAG 1.4.11).', None),
+
+    # T05–T10, T13, T14, T35, T36 · CSS разбирается как CSS
+    ('T05 CSS-EFFECTIVE: зона нажатия 43 px через calc(var(...) − 1px)',
+     'design-system/tokens.css',
+     '.leak-hit::before{width:calc(var(--size-hit-target-default) - 1px);'
+     'height:var(--size-hit-target-default)}', {'CSS-EFFECTIVE'}),
+    ('T06 CSS-EFFECTIVE: поздний дубль --content-max-width переопределяет 1200',
+     'design-system/tokens.css',
+     _sub(r'(--content-max-width: 1200px;)', r'\g<1>\n  --content-max-width: 1000px;'),
+     {'CSS-EFFECTIVE', 'LAYOUT-003'}),
+    ('T07 LAYOUT-003: контейнер обходит токен через max-width: 1600px',
+     'design-system/tokens.css', '.leak-wide{max-width:1600px}', {'LAYOUT-003'}),
+    ('T08 CSS-SPACING: отступ в rem вне канонической шкалы (единица '
+     'нормализуется, шкала задана в px)', 'design-system/tokens.css',
+     '.leak-rem{padding:1.25rem}', {'CSS-SPACING'}),
+    ('CSS-SPACING (негативная): 1rem = 16px лежит НА шкале и нарушением не является',
+     'design-system/tokens.css', '.ok-rem{padding:1rem}', None),
+    ('T09 CSS-RADIUS: ненулевой радиус перенесён на следующую строку',
+     'design-system/tokens.css', '.leak-radius{\n  border-radius:\n    4px;\n}',
+     {'CSS-RADIUS', 'CSS-EFFECTIVE', 'CSS-SPACING'}),
+    ('T10 CSS-SHADOW: тень через filter: drop-shadow()', 'design-system/tokens.css',
+     '.leak-shadow{filter:drop-shadow(0 2px 8px rgba(0,0,0,.2))}',
+     {'CSS-SHADOW', 'CSS-COLOR'}),
+    ('T13 R-24: типографика 15/19 спрятана в shorthand font',
+     'design-system/tokens.css', '.leak-font{font:500 15px/19px "Visuelt Pro"}', {'R-24'}),
+    ('T14 CSS-LAYOUT: таблица получила overflow-x: visible',
+     'design-system/tokens.css', '.kostentabelle{overflow-x:visible}', {'CSS-LAYOUT'}),
+    ('T35 R-24: одиночный сырой font-size вне шкалы', 'design-system/tokens.css',
+     '.leak-size{font-size:15px}', {'R-24'}),
+    ('T36 CSS-LITERAL: сырые border: 3px и transition: 333ms',
+     'design-system/tokens.css', '.leak-lit{border:3px solid var(--color-border-default);'
+     'transition:333ms linear}', {'CSS-LITERAL'}),
+
+    # T11, T12 · правильный токен в неправильной роли
+    ('T11 R-01: бренд-акцент как фон selected-состояния', 'design-system/tokens.css',
+     '.tile-selected{background:var(--color-brand-accent)}', {'R-01'}),
+    ('T12 R-01: акцент героя применён к вторичной кнопке', 'design-system/tokens.css',
+     '.button-secondary{color:var(--color-text-display-accent)}', {'R-01'}),
+
+    # T04, T15–T17 · устав как каноническая политика
+    ('T04 CLAUDE: Bold-порог оранжевого ослаблен 18,67 → 18 px', 'CLAUDE.md',
+     _sub(r'≥ 18,67 px Bold', '≥ 18 px Bold'), {'CLAUDE'}),
+    ('T15 CLAUDE: снято отрицание — блокировки при клиенте объявлены допустимыми',
+     'CLAUDE.md',
+     _sub(r'\*\*Никаких блокировок при клиенте\.\*\*',
+          '**Блокировки при клиенте допустимы.**'), {'CLAUDE'}),
+    ('T16 CLAUDE: снято отрицание запрета скруглений', 'CLAUDE.md',
+     _sub(r'\*\*Никаких скруглений\*\*', '**Скругления допустимы**'), {'CLAUDE'}),
+    ('T17 CLAUDE: `.numeric` переписан с выравнивания вправо на влево', 'CLAUDE.md',
+     _sub(r'\(tnum, вправо\)', '(tnum, влево)'), {'CLAUDE'}),
+
+    # T18–T20 · контракты примитивов
+    ('T18 CORE-AXES: из контракта Link удалена ось permission',
+     'design-system/components-core.md',
+     _sub(r'`permission` — вместо ссылки текст с причиной ·',
+          '`berechtigung` — вместо ссылки текст с причиной ·'), {'CORE-AXES'}),
+    ('T19 CORE-A11Y: из Link удалён клавиатурный контракт',
+     'design-system/components-core.md',
+     _sub(r'\*\*Клавиатура:\*\* `Tab` — вход, `Enter` — переход',
+          '**Bedienung:** `Tab` — вход, `Enter` — переход'), {'CORE-A11Y'}),
+    ('T20 CORE-A11Y: icon-only разрешено обходиться без aria-label',
+     'design-system/components-core.md',
+     'Для icon-only кнопки `aria-label` не обязателен.', {'CORE-A11Y'}),
+
+    # T21, T22 · состояния по смыслу, а не по форме
+    ('T21 RM-NAREASON: длинная бессодержательная причина', 'design-system/README.md',
+     _sub(r'notApplicableReason: пустой призрак[^·]*·',
+          'notApplicableReason: это состояние неприменимо к данному компоненту, '
+          'поскольку компонент не предполагает данного состояния ·'), {'RM-NAREASON'}),
+    ('T22 RM-TRANSITION: переход preview переставлен в default → ready → loading',
+     'design-system/README.md',
+     _sub(r'`default → loading → ready\|partial\|error → default`',
+          '`default → ready → loading|partial|error → default`'), {'RM-TRANSITION'}),
+
+    # T23–T25, T30, T33, T34 · смысл, а не количество строк
+    ('T23 OUT-SEND: условие вложений принимает internalOnly вместо clientSafe',
+     'docs/product/output-model.md',
+     _sub(r'(\|\s*4\s*\|\s*каждое вложение\s*)`clientSafe`', r'\g<1>`internalOnly`'),
+     {'OUT-SEND'}),
+    ('T24 OUT-DELIVERY: delivered получил приоритет над complained',
+     'docs/product/output-model.md',
+     _sub(r'(\| есть событие `complained` \| `Beschwerde` \|\n)'
+          r'(\| иначе есть `bounced` \| `Unzustellbar` \|\n)'
+          r'(\| иначе есть `delivered` \| `Zugestellt` \|\n)', r'\g<3>\g<1>\g<2>'),
+     {'OUT-DELIVERY'}),
+    ('T25 OUT-SEND: Confirm & Send переставлен перед Preflight',
+     'docs/product/output-model.md',
+     _sub(r'Compose → Preflight → Confirm & Send → Delivery status',
+          'Compose → Confirm & Send → Preflight → Delivery status'), {'OUT-SEND'}),
+    ('T30 OUT-POLICY: allowed=true разрешил policy-driven omit',
+     'docs/product/output-model.md',
+     _sub(r'`allowed = true` запрещает `omit`', '`allowed = true` допускает `omit`'),
+     {'OUT-POLICY'}),
+    ('T33 OUT-POLICY: разрешение объявлено переопределяющим allowed=false',
+     'docs/product/output-model.md',
+     _sub(r'\*\*ни одно разрешение не переопределяет `allowed = false`\*\*',
+          '**разрешение переопределяет `allowed = false`**'), {'OUT-POLICY'}),
+    ('T34 OUT-LOCALE: клиентская локаль разрешена с непустыми missingKeys',
+     'docs/product/output-model.md',
+     _sub(r'\*\*Клиентская выдача требует пустых `missingKeys` и пустых '
+          r'`unapprovedKeys`\*\*',
+          '**Клиентская выдача допускается при непустых `missingKeys`**'), {'OUT-LOCALE'}),
+
+    # T26–T29, T31, T32 · истинность инвариантов модели данных
+    ('T26 DM-TRUTH: знак absoluteDelta перевёрнут', 'docs/product/data-model.md',
+     _sub(r'`absoluteDelta = normalizedSubjectRate − normalizedTargetRate`',
+          '`absoluteDelta = normalizedTargetRate − normalizedSubjectRate`'), {'DM-TRUTH'}),
+    ('T27 DM-TRUTH: relativeDeltaPercent объявлен процентными пунктами',
+     'docs/product/data-model.md',
+     _sub(r'`relativeDeltaPercent` — относительный процент, \*\*никогда не '
+          r'процентный пункт\*\*',
+          '`relativeDeltaPercent` — процентный пункт'), {'DM-TRUTH'}),
+    ('T28 DM-TRUTH: expired поставлен раньше withdrawn',
+     'docs/product/data-model.md',
+     _sub(r'сначала `withdrawn`', 'сначала `expired`'), {'DM-TRUTH'}),
+    ('T31 DM-TRUTH: снапшоты нормализации разрешено хешировать в любом порядке',
+     'docs/product/data-model.md',
+     _sub(r'из `normalizationSnapshotRefs`, в объявленном порядке',
+          'из `normalizationSnapshotRefs`, в произвольном порядке'), {'DM-TRUTH'}),
+    ('T29 DM-TRUTH: итог с полным scope разрешил taxBasis = gross',
+     'docs/product/data-model.md',
+     _sub(r'(входящие в один итог, используют валюту проекта и )`taxBasis = net`',
+          r'\g<1>`taxBasis = gross`'), {'DM-TRUTH'}),
+    ('T32 DM-TRUTH: сужение неопределённости переименовано в проценты',
+     'docs/product/data-model.md',
+     _sub(r'\*\*Сужение неопределённости выражается в процентных пунктах\*\* \(`Pp`\)',
+          '**Сужение неопределённости выражается в процентах**'), {'DM-TRUTH'}),
+
+    # Собственные мутации второго захода, закрытые классами OUT-COUNT/EXCL/RM-CARD
+    ('OUT-COUNT: «семь значений OutputProfile» против таблицы реестра',
+     'docs/product/output-model.md',
+     _sub(r'`OutputProfile` — семь значений', '`OutputProfile` — восемь значений'),
+     {'OUT-COUNT'}),
+    ('OUT-PROFILE: из реестра профилей §2 удалена строка профиля',
+     'docs/product/output-model.md',
+     _drop_line(r'^\| `clientPrint` \| клиент получает'), {'OUT-PROFILE'}),
+    ('OUT-COUNT: «шесть групп содержимого» против таблицы §6.5',
+     'docs/product/output-model.md',
+     _drop_line(r'^\| полнота локали \|'), {'OUT-COUNT'}),
+    ('OUT-COUNT: «шесть языковых атрибутов» против таблицы §8.1',
+     'docs/product/output-model.md',
+     _drop_line(r'^\| локаль PDF \|'), {'OUT-COUNT'}),
+    ('OUT-EXCL: из §5.4 удалена Interne Bezugsgröße (снятие R-11)',
+     'docs/product/output-model.md',
+     _drop_line(r'^\| `Interne Bezugsgröße`'), {'OUT-EXCL'}),
+    ('OUT-HASH: снято отрицание кругового хеша', 'docs/product/output-model.md',
+     _sub(r'Он \*\*не включает\*\* ID и результаты', 'Он **включает** ID и результаты'),
+     {'OUT-HASH'}),
+    ('RM-CARD: мощность множества контрактов разошлась с составом',
+     'design-system/README.md',
+     _sub(r'(\| контракты доменных компонентов \| \*\*)45(\*\*)', r'\g<1>44\g<2>'),
+     {'RM-CARD'}),
+    ('RM-CARD: из реестровой таблицы §2.2 удалена строка компонента',
+     'design-system/README.md',
+     _drop_line(r'^\| DC-9 \| `OpenQuestionRow`'), {'RM-CARD'}),
+
+    ('RM-AXES: из объявления §2.3 удалена ось stale', 'design-system/README.md',
+     _sub(r'`stale` и `permission`', '`permission`'), {'RM-AXES'}),
+    ('RM-FIXTURE: ведущая метрика уровня Gesamt подменена знаменателем R+S',
+     'design-system/README.md',
+     _sub(r'(герой №2 — \*\*)`€/m² BGF oberirdisch`', r'\g<1>`€/m² BGF R+S`'),
+     {'RM-FIXTURE'}),
+    ('GATE-DENSITY: минимум строки финансовых данных ослаблен 52 → 48 px в прозе',
+     'design-system/README.md',
+     _sub(r'(Строка финансовых/табличных данных \| \*\*≥ )52( px\*\*)', r'\g<1>48\g<2>'),
+     {'GATE-DENSITY'}),
+
+    # Спесимены расписания и каталога факторов — те же цитаты фикстуры
+    ('RM-FIXTURE: точная длительность разошлась с ScheduleModel фикстуры',
+     'design-system/README.md',
+     _sub(r'7,283\s*[  ]?Monate', '7,285 Monate'), {'RM-FIXTURE'}),
+    ('RM-FIXTURE: дата завершения не из ScheduleModel', 'design-system/README.md',
+     _sub(r'Fertigstellung 19\.11\.2027', 'Fertigstellung 19.12.2027'), {'RM-FIXTURE'}),
+    ('OUT-MONEY: множитель драйвера GK 5 разошёлся с каталогом фикстуры',
+     'docs/product/output-model.md',
+     _sub(r'драйвер `GK 5` со множителем 1,05', 'драйвер `GK 5` со множителем 1,10'),
+     {'OUT-MONEY'}),
+
+    # Негативные: перенос строки — типографская правка, а не поломка разбора.
+    # Оба случая, из-за которых сверка дважды превращалась в вакуум, были
+    # именно такими: добавленное слово и перенос строки.
+    ('LINE-WRAP (негативная): перенос внутри формулы Haus B',
+     'docs/audit/synthetic-fixtures.md',
+     _sub(r'(× 1,05 \(Form Büro\)) ', r'\g<1>\n'), None),
+    ('LINE-WRAP (негативная): перенос внутри строки скидки',
+     'docs/audit/synthetic-fixtures.md',
+     _sub(r'(`3\.817\.835,00 ×) ', r'\g<1>\n'), None),
 ]
 
 def selftest():
+    """Мутационная самопроверка. Три исхода считаются РАЗДЕЛЬНО.
+
+    Вердикт Codex, пункт 11: прежняя редакция фиксировала грязную базу и
+    продолжала все случаи, а для негативной мутации считала ложным
+    срабатыванием ЛЮБОЙ `got_new`, а не дельту к базе. Итог «133/144» смешивал
+    три разных исхода — живой детектор, неприменимую мутацию и грязную базу —
+    и не был доказательством ни одного из них. Заявленный счёт, который нельзя
+    прочитать однозначно, — это тот же дефект, что «0 новых нарушений» на файле
+    с нулевым охватом.
+    """
     print('SELFTEST: копирую репозиторий во временный каталог и порчу копии…')
-    failures = []
+    missed, inapplicable, false_pos = [], [], []
     with tempfile.TemporaryDirectory(prefix='all3-verify-selftest-') as tmp:
         tmp = pathlib.Path(tmp)
         base = tmp / 'clean'
@@ -3409,11 +5283,17 @@ def selftest():
         for d in ['design-system', 'docs']:
             shutil.copytree(ROOT / d, base / d,
                             ignore=shutil.ignore_patterns('*.png', '*.woff2', 'fonts'))
-        # 0. чистая копия обязана давать 0 новых нарушений
+        # 0. База. Каждый случай сравнивается с ДЕЛЬТОЙ к ней, а не с нулём:
+        # иначе чужая незакрытая правка в момент прогона обвиняет негативные
+        # мутации в ложном срабатывании, которого они не совершали.
         v0 = Verifier(base).run()
+        base_keys = {(c, w) for c, w, _ in v0.new}
         if v0.new:
-            failures.append(('база', f'чистая копия даёт {len(v0.new)} новых нарушений: '
-                             + '; '.join(f'[{c}] {w}: {m[:60]}' for c, w, m in v0.new[:5])))
+            print(f'\n⚠ SELFTEST: база НЕ ЧИСТАЯ — {len(v0.new)} новых нарушений в '
+                  f'немутированной копии. Счёт ниже считается ДЕЛЬТОЙ к базе, поэтому '
+                  f'остаётся достоверным, но само это состояние обязано быть закрыто:')
+            for c, w, m in v0.new:
+                print(f'    · [{c}] {w} — {m[:90]}')
         for idx, entry in enumerate(MUTATIONS):
             desc, rel, mut, expect = entry[0], entry[1], entry[2], entry[3]
             where = entry[4] if len(entry) > 4 else 'new'
@@ -3425,13 +5305,13 @@ def selftest():
                 try:
                     p.write_text(mut(text), encoding='utf-8')
                 except AssertionError as exc:
-                    failures.append((desc, f'мутация неприменима: {exc}'))
+                    inapplicable.append((desc, f'{exc}'))
                     shutil.rmtree(case)
                     continue
             elif isinstance(mut, tuple):
                 old, new_s = mut
                 if old not in text:
-                    failures.append((desc, f'мутация неприменима: «{old[:50]}» не найдено в {rel}'))
+                    inapplicable.append((desc, f'«{old[:50]}» не найдено в {rel}'))
                     shutil.rmtree(case)
                     continue
                 p.write_text(text.replace(old, new_s, 1), encoding='utf-8')
@@ -3439,35 +5319,56 @@ def selftest():
                 p.parent.mkdir(parents=True, exist_ok=True)
                 p.write_text((text + '\n' if text else '') + mut + '\n', encoding='utf-8')
             v = Verifier(case).run()
-            got_new = {c for c, _, _ in v.new}
+            # Дельта к базе, а не абсолютное множество: находка, которая была и
+            # без мутации, ничего о детекторе не доказывает и никого не обвиняет.
+            delta = [(c, w, m) for c, w, m in v.new if (c, w) not in base_keys]
+            got_new = {c for c, _, _ in delta}
             got_known = {c for c, _, _, _ in v.known}
             if expect is None:
-                # негативная мутация: инструмент обязан промолчать
                 if got_new:
-                    failures.append((desc, f'ложное срабатывание: {sorted(got_new)}'))
+                    false_pos.append((desc, f'{sorted(got_new)} — '
+                                            f'{delta[0][1]}: {delta[0][2][:70]}'))
             elif where == 'known':
                 if not (got_known & expect):
-                    failures.append((desc, f'мутация НЕ зарегистрирована; ожидались {sorted(expect)} '
-                                           f'среди известных открытых, получено {sorted(got_known)}'))
+                    missed.append((desc, f'не зарегистрирована; ожидались {sorted(expect)} '
+                                         f'среди известных открытых, получено {sorted(got_known)}'))
             elif not (got_new & expect):
-                failures.append((desc, f'мутация НЕ поймана; ожидались {sorted(expect)}, '
-                                       f'новые классы: {sorted(got_new)}'))
+                missed.append((desc, f'ожидались {sorted(expect)}, новые классы сверх базы: '
+                                     f'{sorted(got_new) or "ни одного"}'))
             shutil.rmtree(case)
         # Структурная проба TOOL-REGISTRY: класс, не объявленный в реестре,
         # обязан валить прогон. Файлами это не мутируется — проверяется прямо.
         probe = Verifier(base)
         probe.fail('НЕЗАРЕГИСТРИРОВАННЫЙ-КЛАСС', 'проба', 'проверка двусторонности реестра')
         probe.check_tool_registry()
-        if not any(c == 'TOOL-REGISTRY' for c, _, _ in probe.new):
-            failures.append(('TOOL-REGISTRY (структурная проба)',
-                             'необъявленный класс не свалил прогон — реестр не двусторонний'))
-    print(f'SELFTEST: {len(MUTATIONS)} мутаций, поймано {len(MUTATIONS) - sum(1 for d, _ in failures if d not in ("база", "TOOL-REGISTRY (структурная проба)"))}')
-    if failures:
-        for desc, msg in failures:
+        registry_ok = any(c == 'TOOL-REGISTRY' for c, _, _ in probe.new)
+    total = len(MUTATIONS)
+    caught = total - len(missed) - len(inapplicable) - len(false_pos)
+    print(f'\nSELFTEST · {total} мутаций. Исходы считаются РАЗДЕЛЬНО:')
+    print(f'  поймано (детектор жив)      : {caught}')
+    print(f'  НЕ поймано (слепой класс)   : {len(missed)}')
+    print(f'  мутация неприменима         : {len(inapplicable)}')
+    print(f'  негатив дал новую находку   : {len(false_pos)}')
+    print(f'  база немутированной копии   : {len(v0.new)} новых нарушений '
+          f'(счёт выше — дельта к ней)')
+    print(f'  двусторонность CHECK_CLASSES: {"да" if registry_ok else "НЕТ"}')
+    if missed:
+        print('\nСЛЕПЫЕ КЛАССЫ — мутация прошла насквозь:')
+        for desc, msg in missed:
             print(f'  ✗ {desc}: {msg}')
-        print('SELFTEST: ПРОВАЛ — есть слепые классы проверок.')
+    if inapplicable:
+        print('\nНЕПРИМЕНИМЫЕ МУТАЦИИ — конструкция исчезла из файла. Это НЕ доказательство '
+              'живого детектора: класс остался непроверенным.')
+        for desc, msg in inapplicable:
+            print(f'  ? {desc}: {msg}')
+    if false_pos:
+        print('\nЛОЖНЫЕ СРАБАТЫВАНИЯ на негативных мутациях:')
+        for desc, msg in false_pos:
+            print(f'  ! {desc}: {msg}')
+    if missed or inapplicable or false_pos or not registry_ok:
+        print('\nSELFTEST: ПРОВАЛ. Оригиналы не тронуты.')
         return 2
-    print('SELFTEST: каждый класс проверок ловит свою мутацию. Оригиналы не тронуты.')
+    print('\nSELFTEST: каждый класс проверок ловит свою мутацию. Оригиналы не тронуты.')
     return 0
 
 
