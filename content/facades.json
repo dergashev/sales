@@ -1,0 +1,165 @@
+{
+  "schemaVersion": "1.0",
+  "inventory": {
+    "sourceClassification": "external_private_render_library",
+    "topLevelDirectoryCount": 8,
+    "topLevelNonImageFileCount": 2,
+    "imageFileCount": 10,
+    "variantCount": 8,
+    "declaredCountMatchesObserved": false
+  },
+  "privacy": {
+    "identifiers": "synthetic_only",
+    "realPathMapping": "not_created",
+    "repositoryContainsRealPaths": false,
+    "decision": "owner_required_for_secure_storage_location"
+  },
+  "parameterSource": "docs/product/parameters-t0-t1.json:915",
+  "facades": [
+    {
+      "id": "FACADE-01",
+      "viewCount": 1,
+      "visualTraits": {
+        "claddingMaterials": ["light mineral-render appearance", "vertical timber-like cladding"],
+        "windowRhythm": "repeated vertical full-height bays with controlled variation",
+        "roofType": "flat",
+        "storeys": { "observed": 5, "approximate": true },
+        "balconies": { "present": true, "type": "projecting" }
+      },
+      "parameterMatches": [
+        { "parameterId": "C6.10", "optionCode": "flachdach", "confidence": "high", "basis": "A continuous flat roof line is visible." }
+      ],
+      "notDetermined": [
+        { "parameterId": "C6.04", "reason": "The image does not distinguish render finish, timber species or cladding build-up." },
+        { "parameterId": "C7.14", "reason": "Balcony structure and thermal separation are not visually verifiable." }
+      ]
+    },
+    {
+      "id": "FACADE-02",
+      "viewCount": 1,
+      "visualTraits": {
+        "claddingMaterials": ["red and light brick masonry appearance"],
+        "windowRhythm": "strongly regular vertical bays",
+        "roofType": "gable roof with tiled appearance and dormers",
+        "storeys": { "observed": 3, "approximate": true, "qualifier": "including the occupied roof level" },
+        "balconies": { "present": false, "type": null }
+      },
+      "parameterMatches": [
+        { "parameterId": "C6.10", "optionCode": "satteldach", "confidence": "high", "basis": "The main volume has clearly visible paired roof slopes and gable ends." }
+      ],
+      "notDetermined": [
+        { "parameterId": "C6.04", "candidateOptionCodes": ["klinker_verblend", "klinker_riemchen"], "reason": "Facing brickwork and brick slips cannot be distinguished from the rendered surface." }
+      ]
+    },
+    {
+      "id": "FACADE-03",
+      "viewCount": 1,
+      "visualTraits": {
+        "claddingMaterials": ["white mineral-render appearance", "dominant vertical timber-like slat cladding"],
+        "windowRhythm": "highly regular repetition of tall narrow openings",
+        "roofType": "flat",
+        "storeys": { "observed": 5, "approximate": true },
+        "balconies": { "present": true, "type": "shallow guarded balconettes" }
+      },
+      "parameterMatches": [
+        { "parameterId": "C6.10", "optionCode": "flachdach", "confidence": "high", "basis": "The roof edge is horizontal without a visible pitched volume." }
+      ],
+      "notDetermined": [
+        { "parameterId": "C6.04", "reason": "The render finish and the species and build-up of the timber-like cladding are not visible." },
+        { "parameterId": "C7.14", "reason": "Balconette construction is not represented by a visually provable structural option." }
+      ]
+    },
+    {
+      "id": "FACADE-04",
+      "viewCount": 1,
+      "visualTraits": {
+        "claddingMaterials": ["vertical timber-like cladding", "mineral or concrete plinth"],
+        "windowRhythm": "regular groupings that vary between ensemble volumes",
+        "roofType": "mixed flat green roofs and pitched gable roof",
+        "storeys": { "observed": 4, "approximate": true },
+        "balconies": { "present": true, "type": "courtyard balconies and loggias" }
+      },
+      "parameterMatches": [],
+      "notDetermined": [
+        { "parameterId": "C6.10", "candidateOptionCodes": ["flachdach", "satteldach"], "reason": "The ensemble visibly combines roof forms while the parameter accepts one option." },
+        { "parameterId": "C6.04", "reason": "Exact finish, species and facade build-up are not visually distinguishable." },
+        { "parameterId": "C6.12", "reason": "Green appearance does not prove retention boxes or the specified roof assembly." }
+      ]
+    },
+    {
+      "id": "FACADE-05",
+      "viewCount": 1,
+      "visualTraits": {
+        "claddingMaterials": ["dominant vertical timber-like cladding", "mineral or concrete plinth"],
+        "windowRhythm": "alternating and locally irregular vertical bays",
+        "roofType": "mixed gable-ended and flat or low-slope massing",
+        "storeys": { "observed": 5, "approximate": true },
+        "balconies": { "present": true, "type": "projecting" }
+      },
+      "parameterMatches": [],
+      "notDetermined": [
+        { "parameterId": "C6.10", "candidateOptionCodes": ["flachdach", "satteldach", "steildach_geneigt"], "reason": "The image shows mixed massing and does not establish a single catalogue roof form." },
+        { "parameterId": "C6.04", "reason": "The exact timber species, panel system and plinth finish are not visually provable." },
+        { "parameterId": "C7.14", "reason": "A projecting balcony does not reveal its structural or thermal-break system." }
+      ]
+    },
+    {
+      "id": "FACADE-06",
+      "viewCount": 1,
+      "visualTraits": {
+        "claddingMaterials": ["light mineral-render appearance", "vertical timber-like slat panels"],
+        "windowRhythm": "strong regular grid",
+        "roofType": "flat",
+        "storeys": { "observed": 5, "approximate": true, "qualifier": "including the open ground level" },
+        "balconies": { "present": true, "type": "recessed continuous loggias" }
+      },
+      "parameterMatches": [
+        { "parameterId": "C6.10", "optionCode": "flachdach", "confidence": "high", "basis": "The main roof edge is continuously horizontal." }
+      ],
+      "notDetermined": [
+        { "parameterId": "C6.04", "reason": "The surface appearance cannot distinguish catalogue render finishes or verify timber species." },
+        { "parameterId": "C7.14", "reason": "Recessed loggias do not expose the catalogue balcony construction details." }
+      ]
+    },
+    {
+      "id": "FACADE-07",
+      "viewCount": 1,
+      "visualTraits": {
+        "claddingMaterials": ["muted green-grey vertical siding appearance", "white horizontal bands and light base"],
+        "windowRhythm": "regular grid",
+        "roofType": "flat green roof",
+        "storeys": { "observed": 6, "approximate": true },
+        "balconies": { "present": true, "type": "small projecting and recessed balconies" }
+      },
+      "parameterMatches": [
+        { "parameterId": "C6.10", "optionCode": "flachdach", "confidence": "high", "basis": "The roof outline is flat." },
+        { "parameterId": "C6.16", "optionCode": "extensiv", "confidence": "medium", "basis": "Low roof vegetation is visible, but the technical build-up is not." }
+      ],
+      "notDetermined": [
+        { "parameterId": "C6.04", "candidateOptionCodes": ["holz_fichte", "faserzement", "hpl_platten", "metall_paneel"], "reason": "Colour and vertical joints do not identify the cladding material or build-up." },
+        { "parameterId": "C6.12", "reason": "Visible vegetation does not prove retention boxes or any specified top-layer assembly." },
+        { "parameterId": "C7.14", "reason": "Balcony construction is concealed by the facade view." }
+      ]
+    },
+    {
+      "id": "FACADE-08",
+      "viewCount": 3,
+      "visualTraits": {
+        "claddingMaterials": ["light and dark mineral-render appearance"],
+        "windowRhythm": "regular but staggered narrow and wide openings",
+        "roofType": "flat with a setback upper volume",
+        "storeys": { "observed": 6, "approximate": true },
+        "balconies": { "present": true, "type": "projecting balconies and continuous setback terrace" }
+      },
+      "parameterMatches": [
+        { "parameterId": "C6.10", "optionCode": "flachdach", "confidence": "high", "basis": "All visible roof edges of the building are flat." },
+        { "parameterId": "C7.16", "optionCode": "glasbruestung_vsg", "confidence": "medium", "basis": "Transparent glass balustrades are visible; the exact glass composition is not visually verifiable." }
+      ],
+      "notDetermined": [
+        { "parameterId": "C6.04", "candidateOptionCodes": ["putz_reibe", "putz_filz"], "reason": "The images do not resolve the render finish or wall build-up." },
+        { "parameterId": "C6.12", "reason": "The setback terrace does not reveal paving support or roof assembly." },
+        { "parameterId": "C7.14", "reason": "Balcony slab structure and thermal separation are not visible." }
+      ]
+    }
+  ]
+}

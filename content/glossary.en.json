@@ -1,0 +1,176 @@
+{
+  "schemaVersion": "1.0",
+  "locale": "en-GB",
+  "contentLanguage": "en",
+  "formatting": {
+    "strategy": "Intl",
+    "numberUnitSeparator": null,
+    "source": "docs/product/output-model.md:454"
+  },
+  "terms": [
+    {
+      "id": "indicative_offer",
+      "term": "Indicative offer",
+      "definition": "A non-binding result whose status remains visible in the interface and exported artifact.",
+      "source": "docs/audit/requirements-registry.md:799",
+      "forbidden": []
+    },
+    {
+      "id": "calculation",
+      "term": "Calculation",
+      "definition": "A versioned, reproducible calculation run containing input, ruleset and benchmark snapshots together with the engine version and output hash.",
+      "source": "docs/product/data-model.md:298",
+      "forbidden": []
+    },
+    {
+      "id": "variant",
+      "term": "Variant",
+      "definition": "A named configuration branch whose versions are immutable snapshots.",
+      "source": "docs/product/data-model.md:267",
+      "forbidden": []
+    },
+    {
+      "id": "costs",
+      "term": "Costs",
+      "definition": "Cost lines and contributions for a calculation run cover items in the declared scope and are summed as exact money values before display rounding.",
+      "source": "docs/product/data-model.md:643",
+      "forbidden": []
+    },
+    {
+      "id": "price",
+      "term": "Price",
+      "definition": "The money value reported by PricingSummary for a named Declared Pricing Scope; a missing price is never presented as zero.",
+      "source": "docs/product/data-model.md:613",
+      "forbidden": []
+    },
+    {
+      "id": "subtotal",
+      "term": "Subtotal",
+      "definition": "The sum of calculated items when PricingSummary is incomplete; excluded, on-request and not-applicable items are reported separately.",
+      "source": "docs/product/data-model.md:630",
+      "forbidden": [
+        {
+          "form": "Anteil",
+          "reason": "A share-column heading must identify the reference value of the incomplete PricingSummary.",
+          "source": "docs/audit/requirements-registry.md:378"
+        }
+      ]
+    },
+    {
+      "id": "total",
+      "term": "Total",
+      "definition": "The qualified net total of a complete authoritative calculation run; its label names the Declared Pricing Scope.",
+      "source": "docs/product/data-model.md:630",
+      "forbidden": [
+        {
+          "form": "Gesamt \u006eetto",
+          "reason": "A qualified total without a named Declared Pricing Scope promises an unstated scope.",
+          "source": "docs/audit/requirements-registry.md:805"
+        }
+      ]
+    },
+    {
+      "id": "bgf",
+      "term": "BGF",
+      "definition": "An area value with a mandatory standard reference; the client comparison rate uses above-ground gross floor area only.",
+      "source": "docs/product/data-model.md:431",
+      "denominator": "€/m² BGF oberirdisch",
+      "forbidden": []
+    },
+    {
+      "id": "wfl",
+      "term": "WFL",
+      "definition": "Residential floor area under WoFlV; non-normative communal areas are excluded.",
+      "source": "docs/product/data-model.md:462",
+      "denominator": "€/m² WFL nach WoFlV",
+      "forbidden": [
+        {
+          "form": "WFL + NUF",
+          "reason": "Areas governed by WoFlV and DIN 277 do not form a shared normative client metric.",
+          "source": "docs/audit/requirements-registry.md:40"
+        }
+      ]
+    },
+    {
+      "id": "nuf",
+      "term": "NUF",
+      "definition": "Usable floor area under DIN 277, represented as its own area type and as the denominator of a segment rate.",
+      "source": "docs/product/data-model.md:431",
+      "denominator": "€/m² NUF nach DIN 277",
+      "forbidden": [
+        {
+          "form": "WFL + NUF",
+          "reason": "Areas governed by WoFlV and DIN 277 do not form a shared normative client metric.",
+          "source": "docs/audit/requirements-registry.md:40"
+        }
+      ]
+    },
+    {
+      "id": "scope",
+      "term": "Scope",
+      "definition": "The versioned set of scope items and their coverage decisions; the Declared Pricing Scope equals exactly the items selected as included.",
+      "source": "docs/product/data-model.md:509",
+      "forbidden": [
+        {
+          "form": "ohne Kennwertbasis immer auf Anfrage",
+          "reason": "A missing benchmark basis does not choose a coverage state automatically.",
+          "source": "docs/audit/requirements-registry.md:384"
+        }
+      ]
+    },
+    {
+      "id": "option",
+      "term": "Option",
+      "definition": "The catalogue definition, the subject selection and the calculation evaluation are three separate records.",
+      "source": "docs/product/data-model.md:681",
+      "forbidden": []
+    },
+    {
+      "id": "service",
+      "term": "Service",
+      "definition": "A scope item with coverage, responsibility and provenance, rendered from the same block in the service and interface lists.",
+      "source": "design-system/README.md:4036",
+      "forbidden": []
+    },
+    {
+      "id": "assumption",
+      "term": "Assumption",
+      "definition": "The active state reached when the fallback cascade enters its fourth level; assumptions are not stored as separate records.",
+      "source": "docs/product/data-model.md:99",
+      "forbidden": []
+    },
+    {
+      "id": "conflict",
+      "term": "Conflict",
+      "definition": "A separate append-only record that declares a slot disputed without changing the competing values or their sources.",
+      "source": "docs/product/data-model.md:399",
+      "forbidden": []
+    },
+    {
+      "id": "estimate_uncertainty",
+      "term": "Estimate uncertainty",
+      "definition": "Lower and upper money bounds together with the relative form of the estimate interval; reductions use percentage points and risk remains separate.",
+      "source": "design-system/README.md:1136",
+      "forbidden": [
+        {
+          "form": "Genauigkeit \u00b119\u0020%",
+          "reason": "Only the established production term may identify the estimate interval.",
+          "source": "docs/audit/requirements-registry.md:801"
+        }
+      ]
+    },
+    {
+      "id": "risk",
+      "term": "Risk",
+      "definition": "A separate typed record with category, probability, cost impact and affected object; it is not blended into the estimate interval.",
+      "source": "design-system/README.md:1151",
+      "forbidden": [
+        {
+          "form": "Risiko \u22124\u0020%",
+          "reason": "A risk impact without category, scale and affected object is ambiguous.",
+          "source": "docs/audit/requirements-registry.md:802"
+        }
+      ]
+    }
+  ]
+}

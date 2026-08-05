@@ -1,0 +1,176 @@
+{
+  "schemaVersion": "1.0",
+  "locale": "de-DE",
+  "contentLanguage": "de",
+  "formatting": {
+    "strategy": "Intl",
+    "numberUnitSeparator": " ",
+    "source": "docs/product/output-model.md:454"
+  },
+  "terms": [
+    {
+      "id": "indicative_offer",
+      "term": "Indikatives Angebot",
+      "definition": "Ein nicht rechtsverbindliches Ergebnis, dessen Status in Benutzeroberfläche und Export sichtbar bleibt.",
+      "source": "docs/audit/requirements-registry.md:799",
+      "forbidden": []
+    },
+    {
+      "id": "calculation",
+      "term": "Kalkulation",
+      "definition": "Ein versionierter und reproduzierbarer Rechenlauf mit Snapshots von Eingaben, Regeln und Benchmarks sowie Engine-Version und Ausgangshash.",
+      "source": "docs/product/data-model.md:298",
+      "forbidden": []
+    },
+    {
+      "id": "variant",
+      "term": "Variante",
+      "definition": "Eine benannte Konfigurationsbranche, deren Versionen unveränderliche Snapshots sind.",
+      "source": "docs/product/data-model.md:267",
+      "forbidden": []
+    },
+    {
+      "id": "costs",
+      "term": "Kosten",
+      "definition": "Kostenzeilen und Kostenbeiträge eines Rechenlaufs decken Positionen des erklärten Leistungsumfangs ab und werden als exakte Geldwerte vor der Anzeige-Rundung summiert.",
+      "source": "docs/product/data-model.md:643",
+      "forbidden": []
+    },
+    {
+      "id": "price",
+      "term": "Preis",
+      "definition": "Der in der PricingSummary ausgewiesene Geldwert für einen benannten Declared Pricing Scope; eine fehlende Preisangabe wird nicht als Null ausgegeben.",
+      "source": "docs/product/data-model.md:613",
+      "forbidden": []
+    },
+    {
+      "id": "subtotal",
+      "term": "Zwischensumme",
+      "definition": "Die Summe der kalkulierten Positionen bei einer unvollständigen PricingSummary; ausgeschlossene, angefragte und nicht anwendbare Positionen werden separat ausgewiesen.",
+      "source": "docs/product/data-model.md:630",
+      "forbidden": [
+        {
+          "form": "Anteil",
+          "reason": "Die Überschrift einer Anteilsspalte muss den Bezugswert der unvollständigen PricingSummary nennen.",
+          "source": "docs/audit/requirements-registry.md:378"
+        }
+      ]
+    },
+    {
+      "id": "total",
+      "term": "Gesamt",
+      "definition": "Der qualifizierte Netto-Gesamtwert eines vollständigen authoritative-Rechenlaufs; seine Beschriftung nennt den Declared Pricing Scope.",
+      "source": "docs/product/data-model.md:630",
+      "forbidden": [
+        {
+          "form": "Gesamt \u006eetto",
+          "reason": "Ein qualifizierter Gesamtwert ohne benannten Declared Pricing Scope verspricht einen nicht ausgewiesenen Umfang.",
+          "source": "docs/audit/requirements-registry.md:805"
+        }
+      ]
+    },
+    {
+      "id": "bgf",
+      "term": "BGF",
+      "definition": "Eine Flächenangabe mit verpflichtendem Normbezug; die kundenbezogene Vergleichsrate verwendet ausschließlich die oberirdische Brutto-Grundfläche.",
+      "source": "docs/product/data-model.md:431",
+      "denominator": "€/m² BGF oberirdisch",
+      "forbidden": []
+    },
+    {
+      "id": "wfl",
+      "term": "WFL",
+      "definition": "Wohnfläche nach WoFlV; nicht normative Gemeinschaftsflächen sind darin nicht enthalten.",
+      "source": "docs/product/data-model.md:462",
+      "denominator": "€/m² WFL nach WoFlV",
+      "forbidden": [
+        {
+          "form": "WFL + NUF",
+          "reason": "Flächen nach WoFlV und DIN 277 bilden keine gemeinsame normative Kundenmetrik.",
+          "source": "docs/audit/requirements-registry.md:40"
+        }
+      ]
+    },
+    {
+      "id": "nuf",
+      "term": "NUF",
+      "definition": "Nutzungsfläche nach DIN 277 als eigener Flächentyp und eigener Nenner einer segmentbezogenen Rate.",
+      "source": "docs/product/data-model.md:431",
+      "denominator": "€/m² NUF nach DIN 277",
+      "forbidden": [
+        {
+          "form": "WFL + NUF",
+          "reason": "Flächen nach WoFlV und DIN 277 bilden keine gemeinsame normative Kundenmetrik.",
+          "source": "docs/audit/requirements-registry.md:40"
+        }
+      ]
+    },
+    {
+      "id": "scope",
+      "term": "Scope",
+      "definition": "Die versionierte Menge der Scope-Positionen mit ihren Coverage-Entscheidungen; der Declared Pricing Scope entspricht genau den als enthalten ausgewählten Positionen.",
+      "source": "docs/product/data-model.md:509",
+      "forbidden": [
+        {
+          "form": "ohne Kennwertbasis immer auf Anfrage",
+          "reason": "Eine fehlende Kennwertbasis entscheidet den Coverage-Status nicht automatisch.",
+          "source": "docs/audit/requirements-registry.md:384"
+        }
+      ]
+    },
+    {
+      "id": "option",
+      "term": "Option",
+      "definition": "Katalogdefinition, Auswahl am Subjekt und Bewertung durch die Kalkulation sind drei getrennte Datensätze.",
+      "source": "docs/product/data-model.md:681",
+      "forbidden": []
+    },
+    {
+      "id": "service",
+      "term": "Leistung",
+      "definition": "Eine Position des Leistungsumfangs mit Coverage, Verantwortung und Herkunft, die in Leistungen und Schnittstellenliste aus demselben Baustein dargestellt wird.",
+      "source": "design-system/README.md:4036",
+      "forbidden": []
+    },
+    {
+      "id": "assumption",
+      "term": "Annahme",
+      "definition": "Der aktive Zustand, wenn die Fallback-Kaskade die vierte Stufe erreicht; Annahmen werden nicht als eigener Datensatz gespeichert.",
+      "source": "docs/product/data-model.md:99",
+      "forbidden": []
+    },
+    {
+      "id": "conflict",
+      "term": "Konflikt",
+      "definition": "Ein eigener append-only Datensatz, der einen Slot als strittig erklärt, ohne konkurrierende Werte oder deren Quellen zu verändern.",
+      "source": "docs/product/data-model.md:399",
+      "forbidden": []
+    },
+    {
+      "id": "estimate_uncertainty",
+      "term": "Schätzunsicherheit",
+      "definition": "Ein unterer und oberer Geldwert zusammen mit der relativen Form des Schätzintervalls; eine Verringerung wird in Prozentpunkten ausgedrückt und Risiko bleibt getrennt.",
+      "source": "design-system/README.md:1136",
+      "forbidden": [
+        {
+          "form": "Genauigkeit \u00b119\u0020%",
+          "reason": "Für das Schätzintervall ist ausschließlich der festgelegte Production-Term zulässig.",
+          "source": "docs/audit/requirements-registry.md:801"
+        }
+      ]
+    },
+    {
+      "id": "risk",
+      "term": "Risiko",
+      "definition": "Ein separater typisierter Eintrag mit Kategorie, Wahrscheinlichkeit, Kostenwirkung und Bezugsobjekt; er wird nicht in das Schätzintervall eingemischt.",
+      "source": "design-system/README.md:1151",
+      "forbidden": [
+        {
+          "form": "Risiko \u22124\u0020%",
+          "reason": "Eine Risikowirkung ohne Kategorie, Skala und Bezugsobjekt ist nicht eindeutig.",
+          "source": "docs/audit/requirements-registry.md:802"
+        }
+      ]
+    }
+  ]
+}

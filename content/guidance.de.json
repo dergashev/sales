@@ -1,0 +1,230 @@
+{
+  "schemaVersion": "1.0",
+  "locale": "de-DE",
+  "parallelLocale": "en-GB",
+  "source": "docs/product/guidance-system.md:68",
+  "entries": [
+    {
+      "key": "G1",
+      "text": {
+        "value": "erkenne Flächenberechnungen … prüfe Versionen",
+        "status": "verbatim_fragment",
+        "omissionReason": "Der vorangestellte Seitenwert ist nicht in docs/audit/synthetic-fixtures.md freigegeben."
+      },
+      "carrier": { "screen": "documentAnalysis", "component": "AnalysisLoader" },
+      "showWhen": "analysisJobRunning",
+      "modes": ["preparation"],
+      "source": "docs/product/guidance-system.md:76"
+    },
+    {
+      "key": "G2",
+      "text": {
+        "value": null,
+        "status": "described_not_written",
+        "description": "Begründung der gewählten Dokumentversion, Wechselweg und Folgen der Neuberechnung."
+      },
+      "carrier": { "screen": "documentAnalysis", "component": "DocumentVersionSelector" },
+      "showWhen": "systemSelectedDocumentVersion",
+      "modes": ["preparation"],
+      "source": "docs/product/guidance-system.md:77"
+    },
+    {
+      "key": "G3",
+      "text": {
+        "value": "Wohnflächenberechnung anfordern",
+        "status": "verbatim_fragment",
+        "omissionReason": "Die geschriebene Delta-Form verwendet Prozent statt der festgelegten Prozentpunkte."
+      },
+      "carrier": { "screen": "parameterReview", "component": "DerivedValueTooltip" },
+      "showWhen": "parameterProvenanceIsDerived",
+      "modes": ["preparation"],
+      "source": "docs/product/guidance-system.md:78"
+    },
+    {
+      "key": "G4",
+      "text": {
+        "value": "Nach Wirkung sortiert.",
+        "status": "verbatim_fragment",
+        "omissionReason": "Die numerische Wirkungsangabe ist nicht in docs/audit/synthetic-fixtures.md freigegeben; die Export-Beschriftung ist nur beschrieben."
+      },
+      "carrier": { "screen": "customerQuestions", "component": "QuestionList" },
+      "showWhen": "questionListFirstOpened",
+      "modes": ["preparation"],
+      "source": "docs/product/guidance-system.md:79"
+    },
+    {
+      "key": "G5",
+      "text": {
+        "value": null,
+        "status": "described_not_written",
+        "description": "Fertiger Annahmetext und die Quelle, die die Annahme auflöst."
+      },
+      "carrier": { "screen": "assumptionsP4", "component": "AssumptionCard" },
+      "showWhen": "assumptionActive",
+      "modes": ["preparation"],
+      "source": "docs/product/guidance-system.md:80"
+    },
+    {
+      "key": "G6",
+      "text": {
+        "value": null,
+        "status": "described_not_written",
+        "description": "Privater Preflight mit offenen blockierenden Fragen, Schätzunsicherheitszone und Liste der ausgeblendeten Inhalte."
+      },
+      "carrier": { "screen": "modeSwitch", "component": "PresentationPreflight" },
+      "showWhen": "beforeEnteringClientMode",
+      "modes": ["preparation"],
+      "source": "docs/product/guidance-system.md:81"
+    },
+    {
+      "key": "G7",
+      "text": { "value": "Nicht präsentationsreif", "status": "verbatim_fragment" },
+      "carrier": { "screen": "preparationReadiness", "component": "EstimateUncertaintyBadge" },
+      "showWhen": "estimateUncertaintyZoneIsRed",
+      "modes": ["preparation"],
+      "source": "docs/product/guidance-system.md:82"
+    },
+    {
+      "key": "G8",
+      "text": { "value": "vom Kunden bestätigt", "status": "verbatim_fragment" },
+      "carrier": { "screen": "clientLiveConfiguration", "component": "ManualValueField" },
+      "showWhen": "customerValueCommitted",
+      "modes": ["presentation.clientLiveConfiguration"],
+      "source": "docs/product/guidance-system.md:88"
+    },
+    {
+      "key": "G9",
+      "text": { "value": "Wirkt auf: Preis, Leistungen (n Positionen), SSL (n Zeilen)", "status": "verbatim" },
+      "carrier": { "screen": "clientLiveConfiguration", "component": "CostGroupToggle" },
+      "showWhen": "beforeCostGroupToggleCommit",
+      "modes": ["presentation.clientLiveConfiguration"],
+      "source": "docs/product/guidance-system.md:89"
+    },
+    {
+      "key": "G10",
+      "text": {
+        "value": null,
+        "status": "described_not_written",
+        "description": "Vorschau der Verantwortungsgrenze zwischen Auftraggeber und All3."
+      },
+      "carrier": { "screen": "clientLiveConfiguration", "component": "ScopePreview" },
+      "showWhen": "beforeUndergroundScopeCommit",
+      "modes": ["presentation.clientLiveConfiguration"],
+      "source": "docs/product/guidance-system.md:90"
+    },
+    {
+      "key": "G11",
+      "text": { "value": "25 % — Regelfall nach WoFlV §4", "status": "verbatim_fragment" },
+      "carrier": { "screen": "clientLiveConfiguration", "component": "BalconyFactorControl" },
+      "showWhen": "balconyFactorControlFocusedOrPreviewed",
+      "modes": ["presentation.clientLiveConfiguration"],
+      "source": "docs/product/guidance-system.md:91"
+    },
+    {
+      "key": "G12",
+      "text": {
+        "value": null,
+        "status": "verbatim_fragments",
+        "fragments": ["Summe manuell", "Zinssatz erforderlich", "auf Anfrage"]
+      },
+      "carrier": { "screen": "costOverview", "component": "CostGroupRow" },
+      "showWhen": "costGroupHasNoRateBasis",
+      "modes": ["presentation.clientReadOnly", "presentation.clientLiveConfiguration"],
+      "source": "docs/product/guidance-system.md:92"
+    },
+    {
+      "key": "G13",
+      "text": { "value": "Einstufung GK 4/GK 5 wird über das Brandschutzkonzept final bestätigt.", "status": "verbatim" },
+      "carrier": { "screen": "clientPresentation", "component": "ValidationWarning" },
+      "showWhen": "validationWarningPresentAndUserOpensInfo",
+      "modes": ["presentation.clientReadOnly", "presentation.clientLiveConfiguration"],
+      "source": "docs/product/guidance-system.md:62"
+    },
+    {
+      "key": "G14",
+      "text": { "value": "Rabatt wird im Angebot ausgewiesen und protokolliert", "status": "verbatim" },
+      "carrier": { "screen": "pricing", "component": "DiscountControl" },
+      "showWhen": "beforeDiscountCommit",
+      "modes": ["presentation.clientLiveConfiguration"],
+      "source": "docs/product/guidance-system.md:94"
+    },
+    {
+      "key": "G15",
+      "text": { "value": "Nur Unterschiede sichtbar — alle Zeilen über den Schalter", "status": "verbatim_fragment" },
+      "carrier": { "screen": "variantComparison", "component": "VariantComparisonTable" },
+      "showWhen": "variantComparisonFirstOpened",
+      "modes": ["preparation"],
+      "modeNote": "Als L3-Coaching ist die Zeile nach der globalen Modusregel im Präsentationsmodus ausgeschaltet.",
+      "source": "docs/product/guidance-system.md:95"
+    },
+    {
+      "key": "G16",
+      "text": {
+        "value": "EH 55 → EH 40",
+        "status": "verbatim_fragment",
+        "omissionReason": "Der geschriebene Geldbetrag ist nicht in docs/audit/synthetic-fixtures.md freigegeben."
+      },
+      "carrier": { "screen": "clientLiveConfiguration", "component": "PriceDeltaChip" },
+      "showWhen": "committedConfigurationChangeHasBaseline",
+      "modes": ["presentation.clientLiveConfiguration"],
+      "source": "docs/product/guidance-system.md:96"
+    },
+    {
+      "key": "G17",
+      "text": {
+        "value": null,
+        "status": "described_not_written",
+        "description": "Export-Checkliste für Annahmen, Schätzintervall und Artefaktzusammensetzung sowie protokollierte Bestätigung in der roten Zone."
+      },
+      "carrier": { "screen": "exportPreflight", "component": "ExportChecklist" },
+      "showWhen": "beforeArtifactGeneration",
+      "modes": ["preparation"],
+      "source": "docs/product/guidance-system.md:102"
+    },
+    {
+      "key": "G18",
+      "text": {
+        "value": null,
+        "status": "described_not_written",
+        "description": "Letzte private Ansicht mit Empfänger, Paketinhalt, Variante und benanntem Point of no Return."
+      },
+      "carrier": { "screen": "emailSend", "component": "SendConfirmation" },
+      "showWhen": "beforeConfirmAndSend",
+      "modes": ["preparation"],
+      "source": "docs/product/guidance-system.md:103"
+    },
+    {
+      "key": "G19",
+      "text": { "value": "wechselt Kennwert-Tabelle · blendet n Optionen aus · Leitkennzahl → NUF nach DIN 277", "status": "verbatim_fragment" },
+      "carrier": { "screen": "clientLiveConfiguration", "component": "ClassificationAxisControl" },
+      "showWhen": "beforeClassificationAxisCommit",
+      "modes": ["preparation"],
+      "modeNote": "Eine neutrale Client-Fassung ist nicht geschrieben; die interne Folgenvorschau bleibt privat.",
+      "source": "docs/product/guidance-system.md:109"
+    },
+    {
+      "key": "G20",
+      "text": {
+        "value": "Standard: Bundesdurchschnitt",
+        "status": "verbatim_fragment",
+        "omissionReason": "Das numerische Beispiel ist nicht in docs/audit/synthetic-fixtures.md freigegeben."
+      },
+      "carrier": { "screen": "clientLiveConfiguration", "component": "RegionalFactorControl" },
+      "showWhen": "regionalFactorDisabledOrPreviewed",
+      "modes": ["preparation", "presentation.clientLiveConfiguration"],
+      "source": "docs/product/guidance-system.md:110"
+    },
+    {
+      "key": "G21",
+      "text": {
+        "value": null,
+        "status": "described_not_written",
+        "description": "Der aktive Gebäudeumfang wird bei der Hero-Kennzahl in der Präsentation wiederholt."
+      },
+      "carrier": { "screen": "clientPresentation", "component": "BuildingSwitchAndMetricsHero" },
+      "showWhen": "scopeSelectionChangesOrHeroRenders",
+      "modes": ["presentation.clientReadOnly", "presentation.clientLiveConfiguration"],
+      "source": "docs/product/guidance-system.md:111"
+    }
+  ]
+}

@@ -1,0 +1,177 @@
+{
+  "schemaVersion": "1.0",
+  "locale": "en-GB",
+  "parallelLocale": "de-DE",
+  "source": "docs/product/guidance-system.md:68",
+  "entries": [
+    {
+      "key": "G1",
+      "text": { "value": null, "status": "missing_not_authored", "description": "No approved English copy is written in the source." },
+      "carrier": { "screen": "documentAnalysis", "component": "AnalysisLoader" },
+      "showWhen": "analysisJobRunning",
+      "modes": ["preparation"],
+      "source": "docs/product/guidance-system.md:76"
+    },
+    {
+      "key": "G2",
+      "text": { "value": null, "status": "described_not_written", "description": "Reason for the selected document version, switching route and recalculation consequences; no English copy is authored." },
+      "carrier": { "screen": "documentAnalysis", "component": "DocumentVersionSelector" },
+      "showWhen": "systemSelectedDocumentVersion",
+      "modes": ["preparation"],
+      "source": "docs/product/guidance-system.md:77"
+    },
+    {
+      "key": "G3",
+      "text": { "value": null, "status": "missing_not_authored", "description": "No approved English copy is written in the source." },
+      "carrier": { "screen": "parameterReview", "component": "DerivedValueTooltip" },
+      "showWhen": "parameterProvenanceIsDerived",
+      "modes": ["preparation"],
+      "source": "docs/product/guidance-system.md:78"
+    },
+    {
+      "key": "G4",
+      "text": { "value": null, "status": "missing_not_authored", "description": "No approved English copy is written in the source." },
+      "carrier": { "screen": "customerQuestions", "component": "QuestionList" },
+      "showWhen": "questionListFirstOpened",
+      "modes": ["preparation"],
+      "source": "docs/product/guidance-system.md:79"
+    },
+    {
+      "key": "G5",
+      "text": { "value": null, "status": "described_not_written", "description": "Ready assumption copy and the source that resolves it; no English copy is authored." },
+      "carrier": { "screen": "assumptionsP4", "component": "AssumptionCard" },
+      "showWhen": "assumptionActive",
+      "modes": ["preparation"],
+      "source": "docs/product/guidance-system.md:80"
+    },
+    {
+      "key": "G6",
+      "text": { "value": null, "status": "described_not_written", "description": "Private preflight covering blocking questions, uncertainty zone and hidden content; no English copy is authored." },
+      "carrier": { "screen": "modeSwitch", "component": "PresentationPreflight" },
+      "showWhen": "beforeEnteringClientMode",
+      "modes": ["preparation"],
+      "source": "docs/product/guidance-system.md:81"
+    },
+    {
+      "key": "G7",
+      "text": { "value": null, "status": "missing_not_authored", "description": "No approved English copy is written in the source." },
+      "carrier": { "screen": "preparationReadiness", "component": "EstimateUncertaintyBadge" },
+      "showWhen": "estimateUncertaintyZoneIsRed",
+      "modes": ["preparation"],
+      "source": "docs/product/guidance-system.md:82"
+    },
+    {
+      "key": "G8",
+      "text": { "value": null, "status": "missing_not_authored", "description": "No approved English copy is written in the source." },
+      "carrier": { "screen": "clientLiveConfiguration", "component": "ManualValueField" },
+      "showWhen": "customerValueCommitted",
+      "modes": ["presentation.clientLiveConfiguration"],
+      "source": "docs/product/guidance-system.md:88"
+    },
+    {
+      "key": "G9",
+      "text": { "value": null, "status": "missing_not_authored", "description": "No approved English copy is written in the source." },
+      "carrier": { "screen": "clientLiveConfiguration", "component": "CostGroupToggle" },
+      "showWhen": "beforeCostGroupToggleCommit",
+      "modes": ["presentation.clientLiveConfiguration"],
+      "source": "docs/product/guidance-system.md:89"
+    },
+    {
+      "key": "G10",
+      "text": { "value": null, "status": "described_not_written", "description": "Preview of the responsibility boundary between the client and All3; no English copy is authored." },
+      "carrier": { "screen": "clientLiveConfiguration", "component": "ScopePreview" },
+      "showWhen": "beforeUndergroundScopeCommit",
+      "modes": ["presentation.clientLiveConfiguration"],
+      "source": "docs/product/guidance-system.md:90"
+    },
+    {
+      "key": "G11",
+      "text": { "value": null, "status": "missing_not_authored", "description": "No approved English copy is written in the source." },
+      "carrier": { "screen": "clientLiveConfiguration", "component": "BalconyFactorControl" },
+      "showWhen": "balconyFactorControlFocusedOrPreviewed",
+      "modes": ["presentation.clientLiveConfiguration"],
+      "source": "docs/product/guidance-system.md:91"
+    },
+    {
+      "key": "G12",
+      "text": { "value": null, "status": "missing_not_authored", "description": "No approved English copy is written in the source." },
+      "carrier": { "screen": "costOverview", "component": "CostGroupRow" },
+      "showWhen": "costGroupHasNoRateBasis",
+      "modes": ["presentation.clientReadOnly", "presentation.clientLiveConfiguration"],
+      "source": "docs/product/guidance-system.md:92"
+    },
+    {
+      "key": "G13",
+      "text": { "value": null, "status": "missing_not_authored", "description": "No approved English copy is written in the source." },
+      "carrier": { "screen": "clientPresentation", "component": "ValidationWarning" },
+      "showWhen": "validationWarningPresentAndUserOpensInfo",
+      "modes": ["presentation.clientReadOnly", "presentation.clientLiveConfiguration"],
+      "source": "docs/product/guidance-system.md:62"
+    },
+    {
+      "key": "G14",
+      "text": { "value": null, "status": "missing_not_authored", "description": "No approved English copy is written in the source." },
+      "carrier": { "screen": "pricing", "component": "DiscountControl" },
+      "showWhen": "beforeDiscountCommit",
+      "modes": ["presentation.clientLiveConfiguration"],
+      "source": "docs/product/guidance-system.md:94"
+    },
+    {
+      "key": "G15",
+      "text": { "value": null, "status": "missing_not_authored", "description": "No approved English copy is written in the source." },
+      "carrier": { "screen": "variantComparison", "component": "VariantComparisonTable" },
+      "showWhen": "variantComparisonFirstOpened",
+      "modes": ["preparation"],
+      "modeNote": "The global L3 rule disables this coaching copy in presentation mode.",
+      "source": "docs/product/guidance-system.md:95"
+    },
+    {
+      "key": "G16",
+      "text": { "value": null, "status": "missing_not_authored", "description": "No approved English copy is written in the source." },
+      "carrier": { "screen": "clientLiveConfiguration", "component": "PriceDeltaChip" },
+      "showWhen": "committedConfigurationChangeHasBaseline",
+      "modes": ["presentation.clientLiveConfiguration"],
+      "source": "docs/product/guidance-system.md:96"
+    },
+    {
+      "key": "G17",
+      "text": { "value": null, "status": "described_not_written", "description": "Export checklist for assumptions, estimate interval and artifact contents; no English copy is authored." },
+      "carrier": { "screen": "exportPreflight", "component": "ExportChecklist" },
+      "showWhen": "beforeArtifactGeneration",
+      "modes": ["preparation"],
+      "source": "docs/product/guidance-system.md:102"
+    },
+    {
+      "key": "G18",
+      "text": { "value": null, "status": "described_not_written", "description": "Final private view with recipient, package contents, variant and point of no return; no English copy is authored." },
+      "carrier": { "screen": "emailSend", "component": "SendConfirmation" },
+      "showWhen": "beforeConfirmAndSend",
+      "modes": ["preparation"],
+      "source": "docs/product/guidance-system.md:103"
+    },
+    {
+      "key": "G19",
+      "text": { "value": null, "status": "missing_not_authored", "description": "No approved English copy or neutral client version is written in the source." },
+      "carrier": { "screen": "clientLiveConfiguration", "component": "ClassificationAxisControl" },
+      "showWhen": "beforeClassificationAxisCommit",
+      "modes": ["preparation"],
+      "source": "docs/product/guidance-system.md:109"
+    },
+    {
+      "key": "G20",
+      "text": { "value": null, "status": "missing_not_authored", "description": "No approved English copy is written in the source." },
+      "carrier": { "screen": "clientLiveConfiguration", "component": "RegionalFactorControl" },
+      "showWhen": "regionalFactorDisabledOrPreviewed",
+      "modes": ["preparation", "presentation.clientLiveConfiguration"],
+      "source": "docs/product/guidance-system.md:110"
+    },
+    {
+      "key": "G21",
+      "text": { "value": null, "status": "described_not_written", "description": "The active building scope is repeated next to the hero metric in presentation; no English copy is authored." },
+      "carrier": { "screen": "clientPresentation", "component": "BuildingSwitchAndMetricsHero" },
+      "showWhen": "scopeSelectionChangesOrHeroRenders",
+      "modes": ["presentation.clientReadOnly", "presentation.clientLiveConfiguration"],
+      "source": "docs/product/guidance-system.md:111"
+    }
+  ]
+}
