@@ -363,6 +363,8 @@
                                  Значение из документации, утверждает владелец */
   --size-toast-max-width: 420px; /* [provisional] DC-29: ADR-PENDING; в компоненте
                                  всегда через min(токен, 100vw − 2·gutter) */
+  --size-popover-max-width: 360px; /* [provisional] DC-21: ADR-PENDING; в компоненте
+                                 всегда через min(токен, 100vw − 2·gutter-narrow) */
 }
 
 /* Kompakt — независимое предпочтение пользователя (D-16, LAYOUT-007).

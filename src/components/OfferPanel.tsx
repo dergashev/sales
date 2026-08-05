@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Decimal } from 'decimal.js'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useStore } from '../state/store'
@@ -6,6 +6,7 @@ import { CATALOG } from '../state/catalog'
 import { NNBSP, present, rateLabel, formatDE, label as moneyLabel } from '../engine/money'
 import type { CostGroup, CoverageState } from '../engine/calculate'
 import { Button, UncertaintyBadge, useCountUp, useReducedMotion } from './primitives'
+import { OriginPopover } from './OriginPopover'
 
 /**
  * Правая панель оффера — постоянная зона всего приложения.
@@ -39,12 +40,27 @@ export function OfferPanel() {
   const p = s.projection()
   const reduced = useReducedMotion()
   const [journalOpen, setJournalOpen] = useState(false)
+  // Правило 24: чип «долетает» до журнала — при уходе чипа журнал вспыхивает
+  // один раз. Цветовой transition, не кейфрейм (правило 20); гаснет при
+  // prefers-reduced-motion (правило 21).
+  const [journalFlash, setJournalFlash] = useState(false)
+  const prevDelta = useRef(s.activeDelta)
 
   useEffect(() => {
     if (!s.activeDelta) return
     const t = setTimeout(() => s.clearDelta(), 4000)
     return () => clearTimeout(t)
   }, [s.activeDelta])
+
+  useEffect(() => {
+    const was = prevDelta.current
+    prevDelta.current = s.activeDelta
+    if (was && !s.activeDelta && !reduced) {
+      setJournalFlash(true)
+      const t = setTimeout(() => setJournalFlash(false), 600)
+      return () => clearTimeout(t)
+    }
+  }, [s.activeDelta, reduced])
 
   const totalCount = useCountUp(
     new Decimal(p.result.total.display.replace(/\./g, '')), 0,
@@ -80,6 +96,29 @@ export function OfferPanel() {
         </p>
         <p className="mt-1 text-small text-text-secondary">
           netto · <UncertaintyBadge pp={p.uncertaintyPp} />
+          {' · '}
+          {/* DC-21 moneyOrigin: цепочка драйверов + округление + runRef.
+              Regionalfaktor в Herkunft — «deaktiviert» (правило 40). */}
+          <OriginPopover
+            rows={[
+              ...p.result.drivers.map((d) => ({
+                label: d.label,
+                value: moneyLabel(present(d.exact)),
+              })),
+              ...(!s.regionalfaktorActive
+                ? [{ label: 'Regionalfaktor', value: 'deaktiviert', muted: true }]
+                : []),
+              {
+                label: 'Exakter Rechenwert',
+                value: `${formatDE(p.result.total.exact, 2)}${NNBSP}€`,
+                strong: true,
+              },
+            ]}
+            rounding={p.result.total.disclosure}
+            runRef={s.mode === 'intern'
+              ? 'Regelsatz RS-2026.2 · DEMO-SC-01 · DEMO-RUN-0007 · authoritative · 04.08.2026'
+              : null}
+          />
         </p>
 
         {/* ── Герои №2 и №3: ведущая ставка и срок, чёрные (DC-38) ─────── */}
@@ -88,6 +127,29 @@ export function OfferPanel() {
         </p>
         <p className="numeric mt-1 text-small text-text-secondary">
           {rateLabel(p.secondaryRateBgf)} · {rateLabel(p.perUnit)}
+          {' · '}
+          {/* DC-21 rateOrigin: знаменатель называет норматив, деление показано. */}
+          <OriginPopover
+            rows={[
+              {
+                label: 'Zähler (Gesamt exakt)',
+                value: `${formatDE(p.leadRate.numerator, 0)}${NNBSP}€`,
+              },
+              {
+                label: `Nenner (${p.leadRate.denominatorLabel})`,
+                value: `${formatDE(p.leadRate.denominator, 2)}${NNBSP}m²`,
+              },
+              {
+                label: 'Quotient exakt',
+                value: `${formatDE(p.leadRate.exact, 2)}${NNBSP}€/m²`,
+                strong: true,
+              },
+            ]}
+            rounding={p.leadRate.disclosure}
+            runRef={s.mode === 'intern'
+              ? 'Regelsatz RS-2026.2 · DEMO-SC-01 · DEMO-RUN-0007 · authoritative · 04.08.2026'
+              : null}
+          />
         </p>
 
         <p className="numeric mt-4 text-display-numeric-narrow font-bold text-text-primary">
@@ -266,7 +328,8 @@ export function OfferPanel() {
         )}
 
         {/* ── Журнал сессии (DC-12): подпись с названной базой ───────────── */}
-        <div className="mt-3">
+        <div className={'mt-3 transition-colors duration-base ' +
+          (journalFlash ? 'bg-surface-subtle' : '')}>
           <button
             type="button"
             onClick={() => setJournalOpen((v) => !v)}
