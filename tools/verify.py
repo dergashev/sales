@@ -1093,7 +1093,21 @@ class Verifier:
         if pattern not in self._globs:
             out = []
             for p in sorted(self.root.rglob(pattern)):
-                if p.is_file():
+                if not p.is_file():
+                    continue
+                # Стороннее и производное исключается ПО ПРИРОДЕ, а не
+                # разрешением: node_modules — чужой код, dist — вывод
+                # сборки, ни то ни другое здесь не авторствуется, и
+                # предъявлять к ним правила проекта бессмысленно.
+                # Первый прогон после установки зависимостей дал 265
+                # нарушений, и все 265 были строками версий пакетов,
+                # прочитанными детектором дат как двузначные годы.
+                # Основание то же, что у реестра требований: исключение
+                # по конструкции, не по каталогу удобства.
+                if any(d in p.parts for d in ('node_modules', 'dist',
+                                              '.git', '__pycache__', '.vite')):
+                    continue
+                if True:
                     rel = p.relative_to(self.root).as_posix()
                     txt = p.read_text(encoding='utf-8', errors='replace')
                     self._cache[rel] = txt

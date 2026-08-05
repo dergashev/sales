@@ -292,7 +292,7 @@
       "display": "3703000",
       "prefix": "≈"
     },
-    "disclosure": "Gerundet auf 1.000 €; exakter Rechenwert 3703299.95000000 €"
+    "disclosure": "Gerundet auf 1.000 €; exakter Rechenwert 3703299.95000000 €"
   },
   "schedule": {
     "epoch": {
@@ -379,7 +379,7 @@
       "probability": "mittel",
       "costEffectPercent": "4",
       "costEffectBase": "KG_320",
-      "note": "типизированная запись, не label «Risiko −4 %»"
+      "note": "типизированная запись с категорией, вероятностью и базой, а не одна подпись со знаком и процентом — такую подпись аудит запрещает (CALC-001)"
     }
   },
   "validationIssues": [

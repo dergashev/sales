@@ -117,7 +117,7 @@ class Builder:
             },
             'scheduleFactors': {
                 'comment': 'ОТДЕЛЬНАЯ таблица: смешение со стоимостной однажды '
-                           'завысило комплекс на 100.000 €',
+                           'завысило комплекс на 100.000' + NNBSP + '€',
                 'gebaeudeklasse': {'GK_3': str(de(gkz.group(1))),
                                    'GK_4': str(de(gkz.group(2))),
                                    'GK_5': str(de(gkz.group(3)))},
@@ -450,8 +450,8 @@ def build(write=True):
         'discount': {'ratePercent': str(runs['discountRate'] * 100),
                      'baseIsExactTotal': True,
                      'result': money(runs['discount']),
-                     'disclosure': 'Gerundet auf 1.000 €; exakter Rechenwert '
-                                   + str(runs['discount']) + ' €'},
+                     'disclosure': 'Gerundet auf 1.000' + NNBSP + '€; exakter Rechenwert '
+                                   + str(runs['discount']) + NNBSP + '€'},
         'schedule': sched,
         'uncertainty': {
             'scenarioId': 'DEMO-SC-02', 'unit': 'percentagePoints',
@@ -469,7 +469,9 @@ def build(write=True):
                 'id': 'Baugrundgutachten fehlt', 'category': 'Baugrund',
                 'probability': 'mittel', 'costEffectPercent': '4',
                 'costEffectBase': 'KG_320',
-                'note': 'типизированная запись, не label «Risiko −4 %»',
+                'note': 'типизированная запись с категорией, вероятностью и базой, '
+                        'а не одна подпись со знаком и процентом — такую подпись '
+                        'аудит запрещает (CALC-001)',
             },
         },
         'validationIssues': [{
