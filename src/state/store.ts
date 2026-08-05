@@ -1,10 +1,10 @@
 import { create } from 'zustand'
 import { Decimal } from 'decimal.js'
 import demo from '../fixtures/demo-0001.json'
-import catalog from '../fixtures/catalog.json'
+import { CATALOG } from './catalog'
 import {
   calculateBuilding, kgSplitVereinfacht,
-  type BuildingInput, type Catalog, type Coverage, type CoverageState,
+  type BuildingInput, type Coverage, type CoverageState,
   type CostGroup, type BuildingResult,
 } from '../engine/calculate'
 import { present, rate, type Rate } from '../engine/money'
@@ -29,6 +29,7 @@ export type EventKind =
   | 'value.edited' | 'value.confirmed'
   | 'option.selected' | 'coverage.changed'
   | 'document.activated' | 'conflict.resolved'
+  | 'offer.emailed' | 'offer.printed'
   | 'undo'
 
 export type JournalEvent = {
@@ -50,24 +51,6 @@ export type FieldState = {
   provenance: Provenance
 }
 
-const CATALOG: Catalog = {
-  kBase: D(catalog.kBase.value),
-  costFactors: {
-    gebaeudeklasse: Object.fromEntries(
-      Object.entries(catalog.costFactors.gebaeudeklasse).map(([k, v]) => [k, D(v)]),
-    ),
-    energiestandard: Object.fromEntries(
-      Object.entries(catalog.costFactors.energiestandard).map(([k, v]) => [k, D(v)]),
-    ),
-    gebaeudeform: Object.fromEntries(
-      Object.entries(catalog.costFactors.gebaeudeform).map(([k, v]) => [k, D(v)]),
-    ),
-    untergeschoss: {
-      vollausbauMitTiefgarage: D(catalog.costFactors.untergeschoss.vollausbauMitTiefgarage),
-    },
-  },
-  regionalFactor: { active: false, value: D(catalog.regionalFactor.value) },
-}
 
 /** Покрытие фикстуры: KG 500 неизвестно — именно поэтому итог промежуточный. */
 const INITIAL_COVERAGE: Coverage = {
