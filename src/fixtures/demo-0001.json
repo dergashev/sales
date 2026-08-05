@@ -115,7 +115,7 @@
       "energiestandard": "EH_55",
       "total": {
         "exact": "3817835.00",
-        "display": "3818000",
+        "display": "3.818.000",
         "prefix": "≈"
       },
       "label": "Zwischensumme der kalkulierten Positionen",
@@ -134,23 +134,23 @@
       "kgSplit": {
         "KG_300": {
           "exact": "2672484.50",
-          "display": "2672000",
+          "display": "2.672.000",
           "prefix": "≈"
         },
         "KG_400": {
           "exact": "839923.70",
-          "display": "840000",
+          "display": "840.000",
           "prefix": "≈"
         },
         "KG_700": {
           "exact": "305426.80",
-          "display": "305000",
+          "display": "305.000",
           "prefix": "≈"
         }
       },
       "untergeschoss": {
         "exact": "476000.00",
-        "display": "476000",
+        "display": "476.000",
         "prefix": ""
       }
     },
@@ -161,14 +161,14 @@
       "energiestandard": "EH_40",
       "total": {
         "exact": "3915170.00",
-        "display": "3915000",
+        "display": "3.915.000",
         "prefix": "≈"
       },
       "label": "Zwischensumme der kalkulierten Positionen",
       "completeness": "incomplete",
       "deltaToBase": {
         "exact": "97335.00",
-        "display": "97000",
+        "display": "97.000",
         "prefix": "≈"
       }
     },
@@ -178,14 +178,14 @@
       "variant": "Ohne UG",
       "total": {
         "exact": "3341835.00",
-        "display": "3342000",
+        "display": "3.342.000",
         "prefix": "≈"
       },
       "label": "Zwischensumme der kalkulierten Positionen",
       "completeness": "incomplete",
       "deltaToBase": {
         "exact": "-476000.00",
-        "display": "-476000",
+        "display": "-476.000",
         "prefix": ""
       },
       "impactSnapshotId": "DEMO-IMP-0004"
@@ -197,7 +197,7 @@
       "energiestandard": "EH_55",
       "total": {
         "exact": "2005101.00",
-        "display": "2005000",
+        "display": "2.005.000",
         "prefix": "≈"
       },
       "label": "Zwischensumme der kalkulierten Positionen",
@@ -209,7 +209,7 @@
       "variant": "Komplex Gesamt",
       "total": {
         "exact": "5822936.00",
-        "display": "5823000",
+        "display": "5.823.000",
         "prefix": "≈"
       },
       "label": "Zwischensumme der kalkulierten Positionen",
@@ -226,7 +226,7 @@
       "denominator": "1500.00",
       "denominatorType": "WFL_WOFLV",
       "exact": "2545.2233",
-      "display": "2545",
+      "display": "2.545",
       "prefix": "≈"
     },
     {
@@ -235,7 +235,7 @@
       "denominator": "2400.00",
       "denominatorType": "BGF_R_S",
       "exact": "1590.7646",
-      "display": "1591",
+      "display": "1.591",
       "prefix": "≈"
     },
     {
@@ -244,7 +244,7 @@
       "denominator": "2000.00",
       "denominatorType": "BGF_ABOVE_GROUND",
       "exact": "1908.9175",
-      "display": "1909",
+      "display": "1.909",
       "prefix": "≈"
     },
     {
@@ -253,7 +253,7 @@
       "denominator": "960.00",
       "denominatorType": "NUF_DIN277",
       "exact": "2088.6469",
-      "display": "2089",
+      "display": "2.089",
       "prefix": "≈"
     },
     {
@@ -262,7 +262,7 @@
       "denominator": "1200.00",
       "denominatorType": "BGF_ABOVE_GROUND",
       "exact": "1670.9175",
-      "display": "1671",
+      "display": "1.671",
       "prefix": "≈"
     },
     {
@@ -271,7 +271,7 @@
       "denominator": "3200.00",
       "denominatorType": "BGF_ABOVE_GROUND",
       "exact": "1819.6675",
-      "display": "1820",
+      "display": "1.820",
       "prefix": "≈"
     },
     {
@@ -280,7 +280,7 @@
       "denominator": "3600.00",
       "denominatorType": "BGF_R_S",
       "exact": "1617.4822",
-      "display": "1617",
+      "display": "1.617",
       "prefix": "≈"
     }
   ],
@@ -289,7 +289,7 @@
     "baseIsExactTotal": true,
     "result": {
       "exact": "3703299.95",
-      "display": "3703000",
+      "display": "3.703.000",
       "prefix": "≈"
     },
     "disclosure": "Gerundet auf 1.000 €; exakter Rechenwert 3703299.95000000 €"

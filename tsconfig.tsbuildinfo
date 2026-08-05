@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/components/diagnostics.tsx","./src/lib/font-check.ts","./vite.config.ts","./tailwind.config.ts"],"version":"5.9.3"}
+{"root":["./src/app.tsx","./src/main.tsx","./src/components/diagnostics.tsx","./src/engine/calculate.ts","./src/engine/money.ts","./src/engine/schedule.ts","./src/engine/__tests__/fixture.test.ts","./src/lib/font-check.ts","./vite.config.ts","./tailwind.config.ts"],"version":"5.9.3"}

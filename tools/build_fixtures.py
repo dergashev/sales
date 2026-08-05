@@ -42,6 +42,31 @@ def de(s):
     return D(str(s).replace('.', '').replace(',', '.').replace(NNBSP, '').strip())
 
 
+def fmt_de(x, decimals=0):
+    """Немецкий формат: точка — разделитель тысяч, запятая — десятичная.
+
+    Поле `display` называется показом, значит оно обязано БЫТЬ показом.
+    Первая редакция отдавала сырые цифры Python (`2545` вместо `2.545`), и
+    это поймал тест движка: движок форматировал верно, фикстура нет. Поле,
+    названное показом и не являющееся им, — то же самое, что величина без
+    названной подложки: утверждение, которое не проверяется.
+    """
+    s = f'{x:.{decimals}f}'
+    neg = s.startswith('-')
+    if neg:
+        s = s[1:]
+    whole, _, frac = s.partition('.')
+    groups = []
+    while len(whole) > 3:
+        groups.insert(0, whole[-3:])
+        whole = whole[:-3]
+    groups.insert(0, whole)
+    out = '.'.join(groups)
+    if frac:
+        out += ',' + frac
+    return ('-' if neg else '') + out
+
+
 def r(x, step):
     """Округление к ближайшему шагу, половина вверх."""
     return (x / step).quantize(D('1'), ROUND_HALF_UP) * step
@@ -274,7 +299,7 @@ class Builder:
             out.append({'label': label, 'numerator': str(num.quantize(D('0.01'))),
                         'denominator': str(den.quantize(D('0.01'))),
                         'denominatorType': denom_type, 'exact': str(exact),
-                        'display': str(disp), 'prefix': '≈' if disp != exact else ''})
+                        'display': fmt_de(disp), 'prefix': '≈' if disp != exact else ''})
 
         a, b = ar['A'], ar['B']
         rate(runs['A_basis'], a['wflWoFlV'], 'WFL_WOFLV', 'Haus A · €/m² WFL nach WoFlV',
@@ -356,7 +381,7 @@ def build(write=True):
         # однозначными.
         exact = exact.quantize(D('0.01'))
         disp = r(exact, D(1000)).quantize(D('1'))
-        return {'exact': str(exact), 'display': str(disp),
+        return {'exact': str(exact), 'display': fmt_de(disp),
                 'prefix': '≈' if disp != exact else ''}
 
     project = {
