@@ -43,7 +43,18 @@ const COVERAGE_OPTIONS = [
   { value: 'unknown' as CoverageState, label: COVERAGE_LABEL.unknown },
 ]
 
-const GEIST_VORSCHAU_DELAY_MS = 200
+/**
+ * Задержка Geist-Vorschau — из токена `--motion-delay-hover-preview`
+ * (ADR-запись 11: значение «200 мс» жило словами в README без токена).
+ * Fallback на 200 нужен только вне DOM (SSR-тесты).
+ */
+function geistVorschauDelayMs(): number {
+  if (typeof document === 'undefined') return 200
+  const raw = getComputedStyle(document.documentElement)
+    .getPropertyValue('--motion-delay-hover-preview')
+  const ms = parseInt(raw, 10)
+  return Number.isFinite(ms) && ms > 0 ? ms : 200
+}
 
 export function S3Konfigurator() {
   const s = useStore()
@@ -119,7 +130,7 @@ function OptionButton({ selected, onSelect, onPreview, children }: {
   const timer = useRef<ReturnType<typeof setTimeout>>()
   const start = () => {
     clearTimeout(timer.current)
-    timer.current = setTimeout(() => onPreview(true), GEIST_VORSCHAU_DELAY_MS)
+    timer.current = setTimeout(() => onPreview(true), geistVorschauDelayMs())
   }
   const stop = () => {
     clearTimeout(timer.current)
