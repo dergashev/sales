@@ -12,6 +12,15 @@
 Вызывается из `tools/verify.py` (класс `INDEX`, метод `Verifier.check_index`)
 и работает автономно: `python3 tools/check_indices.py [--strict]`.
 
+Четвёртый охваченный индекс (v4) — **число открытых блокирующих ADR**. Тот же
+класс дефекта, найденный в четвёртый раз: `design-system/README.md` §0 заявлял
+«34 блокирующих ADR», при том что тот же документ в §2 называет 51, а реестр
+`docs/audit/adr-blocking.md` ввёл 17 новых записей разделом 6a — то есть
+партия увеличила число и продолжила цитировать старое. Фактическая величина
+выводится из состава реестра тремя независимыми путями (заголовки разделов,
+таблица пересчёта, номера строк таблиц) и сверяется с итогом §7; расхождение
+внутри самого реестра — тоже находка, а не повод довериться одному числу.
+
 Почему счёт классов больше не инструментируется прогоном. Прежняя редакция
 считала классы двумя способами сразу: динамически (инструментировала точки
 регистрации нарушения и прогоняла verify.py) и статически (литералы
@@ -101,6 +110,87 @@ def registry(root=None):
     return tuple(classes), muts
 
 
+def adr_registry(root=ROOT):
+    """(фактическое число открытых ADR, список расхождений внутри реестра).
+
+    Величина выводится, а не читается: три независимых пути обязаны дать одно
+    и то же число, иначе расхождение внутри реестра само является находкой.
+      · заголовки разделов 1–3 («— N записей») в сумме;
+      · таблица пересчёта («**ВСЕГО** | 31 строка | 34 имени»);
+      · номера строк таблицы §1 (максимальный `| N |`) — против её заголовка;
+      · раздел 6a: заголовок «— N токенов» против номеров строк его таблицы;
+      · итог §7 («N открытый ADR (A из разделов 1–3 + B из раздела 6a)»).
+    Возврат `None` означает: реестр не разобран, число заявлять нельзя.
+    """
+    p = pathlib.Path(root) / 'docs/audit/adr-blocking.md'
+    if not p.exists():
+        return None, [('docs/audit/adr-blocking.md', 1,
+                       'реестр блокирующих ADR отсутствует — число открытых ADR '
+                       'в шапках документов не проверяется')]
+    t = p.read_text(encoding='utf-8')
+    rel, bad = 'docs/audit/adr-blocking.md', []
+
+    def lineno(pos):
+        return t[:pos].count('\n') + 1
+
+    # заголовки разделов 1–3 и 6a
+    heads = {}
+    for m in re.finditer(r'^##\s*(\d+a?)\.[^\n—]*—\s*(\d+)\s*(?:запис\w+|токен\w+)', t, re.M):
+        heads[m.group(1)] = (int(m.group(2)), lineno(m.start()))
+    missing = [k for k in ('1', '2', '3', '6a') if k not in heads]
+    if missing:
+        bad.append((rel, 1, f'в реестре ADR не найдены заголовки разделов с числом записей: '
+                            f'{", ".join(missing)} — фактическое число открытых ADR '
+                            f'невыводимо'))
+        return None, bad
+    sum_1_3 = sum(heads[k][0] for k in ('1', '2', '3'))
+    n6a = heads['6a'][0]
+
+    # таблица пересчёта: «**ВСЕГО** | **31 строка** | **34 имени**»
+    m = re.search(r'\|\s*\*\*ВСЕГО\*\*\s*\|[^|]*\|\s*\*\*(\d+)\s*им', t)
+    if not m:
+        bad.append((rel, 1, 'таблица пересчёта состава раздела 13 («**ВСЕГО** … имён») '
+                            'не найдена — число записей разделов 1–3 подтверждается '
+                            'только заголовками'))
+    elif int(m.group(1)) != sum_1_3:
+        bad.append((rel, lineno(m.start()),
+                    f'таблица пересчёта даёт {m.group(1)} имён, заголовки разделов 1–3 '
+                    f'в сумме дают {sum_1_3} — реестр расходится сам с собой'))
+
+    # номера строк таблиц §1 и §6a против заголовков
+    for sec, want in (('1', heads['1'][0]), ('6a', n6a)):
+        m = re.search(r'^##\s*' + sec + r'\.(.*?)(?=^##\s|\Z)', t, re.S | re.M)
+        if not m:
+            continue
+        nums = [int(x) for x in re.findall(r'^\|\s*(\d+)\s*\|', m.group(1), re.M)]
+        if not nums:
+            continue
+        if sorted(nums) != list(range(1, len(nums) + 1)):
+            bad.append((rel, heads[sec][1],
+                        f'раздел {sec}: номера строк таблицы не образуют непрерывный '
+                        f'1…{len(nums)} — состав не пересчитывается'))
+        if len(nums) != want:
+            bad.append((rel, heads[sec][1],
+                        f'раздел {sec} заявляет {want} записей, таблица содержит '
+                        f'{len(nums)} строк'))
+
+    total = sum_1_3 + n6a
+    # итог §7 обязан совпадать со составом
+    m = re.search(r'\*\*(\d+)\s*открыт\w*\s+ADR\*\*\s*\((\d+)\s*из\s*разделов\s*1[–-]3\s*\+\s*'
+                  r'(\d+)\s*из\s*раздела\s*6a\)', t)
+    if not m:
+        bad.append((rel, 1, 'раздел 7 реестра не называет итог в форме '
+                            '«N открытый ADR (A из разделов 1–3 + B из раздела 6a)» — '
+                            'итог не сверяется с составом'))
+    else:
+        a, b, c = (int(x) for x in m.groups())
+        if (b, c) != (sum_1_3, n6a) or a != b + c:
+            bad.append((rel, lineno(m.start()),
+                        f'итог §7 «{a} = {b} + {c}» против состава реестра '
+                        f'«{total} = {sum_1_3} + {n6a}»'))
+    return total, bad
+
+
 def collect(root=ROOT):
     root = pathlib.Path(root)
     out = {}
@@ -129,6 +219,8 @@ def run(root=ROOT):
     """→ [(relpath, lineno, сообщение)]. Исключение = поломка инструмента."""
     root = pathlib.Path(root)
     real, bad = collect(root), []
+    adr, adr_bad = adr_registry(root)
+    bad.extend(adr_bad)
     for f in sorted(root.rglob('*.md')):
         if any(p in f.parts for p in ('node_modules', '.git')):
             continue
@@ -151,6 +243,13 @@ def run(root=ROOT):
                 if int(m.group(2)) != real['SELFTEST'] or int(m.group(1)) != int(m.group(2)):
                     bad.append((rel, i, f'заявлен selftest {m.group(1)}/{m.group(2)}, '
                                         f'фактически {real["SELFTEST"]}/{real["SELFTEST"]}'))
+            if adr is None:
+                continue
+            for m in re.finditer(r'(\d+)\s+(?:открыт\w*|блокирующ\w*)\s+ADR', line):
+                if int(m.group(1)) != adr:
+                    bad.append((rel, i, f'заявлено {m.group(1)} открытых блокирующих ADR, '
+                                        f'фактический состав реестра '
+                                        f'docs/audit/adr-blocking.md даёт {adr}'))
     return bad
 
 
@@ -159,6 +258,8 @@ def _kind(msg):
         return 'CHECKS'
     if 'selftest' in msg:
         return 'SELFTEST'
+    if 'ADR' in msg:
+        return 'ADR'
     return 'RANGE'
 
 

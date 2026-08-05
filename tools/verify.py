@@ -1400,6 +1400,271 @@ class Verifier:
         self.scan('CALC-014', rel, readme, r'Änderungen\s*·\s*\+',
                   'сессионная дельта без baseline/расшифровки (CALC-014)')
 
+    # -- 2b. Контракты README: матрица против тел, семь осей, причины ---------
+    RX_CONTRACT_HEAD = re.compile(r'^###\s+(?:(DC-\d+)\s*·\s*)?`([A-Za-z][A-Za-z0-9]*)`')
+    RX_AXIS_DECL = re.compile(r'`(' + '|'.join(DATA_AXES) + r')`\s*(?:—|–|-)\s')
+    RX_NAR = re.compile(r'notApplicableReason:\s*(.*?)(?=`[a-zA-Z]+`\s*(?:—|–|/)|\Z)', re.S)
+
+    def _contracts(self, readme, rows):
+        """[(dc, имя, первая строка, тело)] для каждого контракта §2.6.
+
+        Границы берутся структурно: от `### 2.6` до `### 2.7`, контракт — от
+        своего заголовка до следующего. Отсутствие границ — вакуум.
+        """
+        try:
+            a = next(i for i, l in enumerate(rows) if l.startswith('### 2.6'))
+            b = next(i for i, l in enumerate(rows) if l.startswith('### 2.7'))
+        except StopIteration:
+            return None
+        heads = []
+        for i in range(a, b):
+            m = self.RX_CONTRACT_HEAD.match(rows[i])
+            if m:
+                heads.append((i, m.group(1) or '', m.group(2)))
+        heads.append((b, '', ''))
+        out = []
+        for k in range(len(heads) - 1):
+            i, dc, name = heads[k]
+            out.append((dc, name, i + 1, '\n'.join(rows[i:heads[k + 1][0]])))
+        return out
+
+    def _state_block(self, body, label):
+        m = re.search(r'\*\*Состояния\s*—\s*' + label + r'[^*]*\*\*(.*?)(?=\n\*\*[А-ЯA-Z])',
+                      body, re.S)
+        return m.group(1) if m else None
+
+    def check_readme_contracts(self):
+        rel = 'design-system/README.md'
+        readme = self.read(rel) or ''
+        rows = readme.split('\n')
+        contracts = self._contracts(readme, rows)
+        if not contracts:
+            self.fail('RM-AXES', rel, '[вакуум] раздел контрактов §2.6…§2.7 не найден — '
+                                      'ни один контракт не проверяется')
+            return
+        if len(contracts) < 40:
+            self.fail('RM-AXES', rel, f'[вакуум] в §2.6 распознано {len(contracts)} контрактов; '
+                                      f'реестр §2.2 объявляет 45 доменных плюс два '
+                                      f'документационных — парсер потерял границы')
+
+        # --- матрица §2.4 как ДАННЫЕ, а не как проза -------------------------
+        try:
+            ms = next(i for i, l in enumerate(rows) if l.startswith('### 2.4'))
+            me = next(i for i, l in enumerate(rows) if l.startswith('### 2.5'))
+        except StopIteration:
+            self.fail('RM-MATRIX', rel, '[вакуум] матрица §2.4 не найдена')
+            return
+        matrix, mat_line = {}, {}
+        for i in range(ms, me):
+            line = rows[i]
+            if not line.startswith('|'):
+                continue
+            cells = [c.strip() for c in line.strip('|').split('|')]
+            if len(cells) != len(DATA_AXES) + 1 or cells[1] not in ('●', '○'):
+                continue
+            m = re.match(r'^(?:(DC-\d+)\s+)?`([A-Za-z][A-Za-z0-9]*)`', cells[0])
+            if not m:
+                self.emit('RM-MATRIX', rel, i + 1, f'RM-MATRIX:row-{i}',
+                          f'строка матрицы §2.4 не называет компонент распознаваемо: '
+                          f'«{cells[0][:40]}»')
+                continue
+            key = (m.group(1) or '', m.group(2))
+            if key in matrix:
+                self.emit('RM-MATRIX', rel, i + 1, f'RM-MATRIX:dup-{key[1]}',
+                          f'компонент {key[1]} встречается в матрице §2.4 дважды')
+            matrix[key] = cells[1:]
+            mat_line[key] = i + 1
+        if len(matrix) < 40:
+            self.fail('RM-MATRIX', rel, f'[вакуум] в матрице §2.4 распознано {len(matrix)} строк '
+                                        f'— парсер потерял таблицу, сверка стала бы вакуумной')
+            return
+
+        bodies = {}
+        for dc, name, ln, body in contracts:
+            key = (dc, name)
+            bodies[key] = (ln, body)
+            blk = self._state_block(body, 'данные')
+            if blk is None:
+                self.emit('RM-AXES', rel, ln, f'RM-AXES:noblock-{dc or name}',
+                          f'{dc or name} `{name}`: блок «Состояния — данные» отсутствует — '
+                          f'компонент без пяти состояний плюс двух осей в прототип '
+                          f'не попадает (правило проекта 30, STATE-001)')
+                continue
+            decl = {}
+            for m in self.RX_AXIS_DECL.finditer(blk):
+                decl.setdefault(m.group(1), m.start())
+            for axis in DATA_AXES:
+                if axis not in decl:
+                    self.emit('RM-AXES', rel, ln, f'RM-AXES:{dc or name}.{axis}',
+                              f'{dc or name} `{name}`: ось `{axis}` не объявлена в теле '
+                              f'контракта. Семь осей — `{" · ".join(DATA_AXES)}` — '
+                              f'обязательны каждая (правило проекта 30, STATE-001)')
+            # сегменты: от объявления оси до объявления следующей
+            order = sorted(decl.items(), key=lambda x: x[1])
+            segs = {}
+            for idx, (axis, pos) in enumerate(order):
+                nxt = order[idx + 1][1] if idx + 1 < len(order) else len(blk)
+                segs[axis] = blk[pos:nxt]
+            # --- матрица против тела: каждая ячейка выводится, а не заявляется
+            if key not in matrix:
+                self.emit('RM-MATRIX', rel, ln, f'RM-MATRIX:missing-{dc or name}',
+                          f'{dc or name} `{name}` имеет контракт, но отсутствует строкой '
+                          f'в матрице §2.4 — индекс не покрывает источник')
+            else:
+                cells = matrix[key]
+                for idx, axis in enumerate(DATA_AXES):
+                    if axis not in segs:
+                        continue
+                    want = '○' if 'notApplicableReason' in segs[axis] else '●'
+                    if cells[idx] != want:
+                        self.emit('RM-MATRIX', rel, mat_line[key],
+                                  f'RM-MATRIX:{dc or name}.{axis}',
+                                  f'матрица §2.4 ставит {cells[idx]} для {dc or name} `{name}` '
+                                  f'по оси `{axis}`, а тело контракта (строка {ln}) объявляет '
+                                  f'{want}: {"причина неприменимости" if want == "○" else "живое состояние"}. '
+                                  f'Сводная таблица, не сверяемая с источником, — заготовка '
+                                  f'для расхождения (§2.3: «`○` действителен ровно настолько, '
+                                  f'насколько в контракте стоит названная причина»)')
+            # --- причина неприменимости несёт причину, а не слово ------------
+            self._reasons(rel, dc or name, name, ln, segs.items(), 'данные', 12, 3)
+            blk_i = self._state_block(body, 'взаимодействие')
+            if blk_i is None:
+                self.emit('RM-AXES', rel, ln, f'RM-AXES:nointeraction-{dc or name}',
+                          f'{dc or name} `{name}`: блок «Состояния — взаимодействие» '
+                          f'отсутствует — вторая ось STATE-001 не документирована')
+            else:
+                self._reasons(rel, dc or name, name, ln,
+                              [('взаимодействие', blk_i)], 'взаимодействие', 10, 2)
+
+        for key, cells in sorted(matrix.items()):
+            if key not in bodies:
+                self.emit('RM-MATRIX', rel, mat_line[key], f'RM-MATRIX:orphan-{key[1]}',
+                          f'матрица §2.4 объявляет состояния для {key[0] or key[1]} '
+                          f'`{key[1]}`, у которого нет контракта в §2.6 — индекс утверждает '
+                          f'о том, чего нет')
+
+        # --- акцентный оранжевый только на `--color-surface-default` ---------
+        # Подложка — часть условия R-01, а не контекст: на канве та же краска
+        # даёт 2,60:1. Перенос героя на канву прошёл, потому что README нигде
+        # не связывал акцент с поверхностью машинно.
+        acc = contrast(CLR['accent'], CLR['white'])
+        canv = contrast(CLR['accent'], CLR['canvas'])
+        for dc, name, ln, body in contracts:
+            mt = re.search(r'\*\*Токены:\*\*(.*?)(?=\n\*\*[А-ЯA-Z]|\Z)', body, re.S)
+            if not mt or '--color-text-display-accent' not in mt.group(1):
+                continue
+            toks = mt.group(1)
+            # позиция акцента и ближайшая поверхность в том же перечислении
+            near = toks[toks.index('--color-text-display-accent'):][:220]
+            if '--color-surface-canvas' in near:
+                self.emit('RM-ACCENT', rel, ln, f'RM-ACCENT:{dc or name}',
+                          f'{dc or name} `{name}`: акцентный текст объявлен на '
+                          f'`--color-surface-canvas` — {fmt_ratio(canv)}:1, ниже порога R-01 '
+                          f'(3:1). Допустима только `--color-surface-default` '
+                          f'({fmt_ratio(acc)}:1); подложка — часть условия, а не контекст')
+            elif '--color-surface-default' not in near:
+                self.emit('RM-ACCENT', rel, ln, f'RM-ACCENT:unbound-{dc or name}',
+                          f'{dc or name} `{name}`: `--color-text-display-accent` перечислен '
+                          f'без названной поверхности. Акцент без подложки не является '
+                          f'утверждением: {fmt_ratio(acc)}:1 на `surface-default` против '
+                          f'{fmt_ratio(canv)}:1 на `surface-canvas` (R-01)')
+        # запрет обязан остаться сформулированным, а не только соблюдаться
+        if not re.search(r'акцентн\w+\s+геро\w+\s+на\s+поверхности\s*`?--color-surface-canvas',
+                         readme):
+            self.fail('RM-ACCENT', rel,
+                      'README не формулирует запрет акцентного героя на '
+                      '`--color-surface-canvas` — правило, которое соблюдается, но не '
+                      'записано, восстанавливается первой же правкой')
+
+    def _reasons(self, rel, who, name, ln, blocks, axis_label, min_chars, min_words):
+        """`notApplicableReason` несёт причину, а не слово.
+
+        Порог измерен по файлу: у оси данных самая короткая причина — 49 знаков
+        и 6 слов, у оси взаимодействия — 20 знаков и 3 слова. Пороги ниже
+        измеренных минимумов с запасом, поэтому ловят `notApplicableReason: нет`
+        и не спорят с законной краткой формулировкой.
+        """
+        for axis, seg in blocks:
+            for m in self.RX_NAR.finditer(seg):
+                why = re.sub(r'\s+', ' ', m.group(1)).strip().strip('·').strip()
+                words = [w for w in re.split(r'[\s·]+', why) if len(w) > 1]
+                if len(why) >= min_chars and len(words) >= min_words:
+                    continue
+                self.emit('RM-NAREASON', rel, ln, f'RM-NAREASON:{who}.{axis_label}.{axis}',
+                          f'{who} `{name}`, ось {axis_label} `{axis}`: '
+                          f'`notApplicableReason: {why[:40]}` — {len(why)} знаков, '
+                          f'{len(words)} слов. Запись без текста причины состояние не '
+                          f'объявляет; это тот самый пропуск, из-за которого отклонили '
+                          f'партию примитивов (§2.3)')
+
+    # -- 2c. Числа README сводятся с фикстурой и несут провенанс --------------
+    def check_readme_numbers(self):
+        rel = 'design-system/README.md'
+        readme = self.read(rel) or ''
+        rows = readme.split('\n')
+        self._specimens('RM-FIXTURE', rel, readme)
+        self._sched_d17(rel, readme)
+        if not self.fx:
+            return
+        # скидка считается от ТОЧНОГО итога, никогда от отображаемого
+        rab = self.fx['rabatt']
+        mult = 1 - rab / 100
+        for i, line in enumerate(rows, 1):
+            for m in re.finditer(r'`?Rabatt\s*([\d,]+)\s*%`?[^\n]{0,80}?'
+                                 r'итога\s*`?([\d.,]+)\s*€', line):
+                if de(m.group(1)) != rab:
+                    self.emit('RM-FIXTURE', rel, i, 'RM-FIXTURE:rabatt-rate',
+                              f'README называет Rabatt {m.group(1)} %, фикстура — {rab} %')
+                base = de(m.group(2))
+                if base != self.fx['A']:
+                    self.emit('RM-FIXTURE', rel, i, f'RM-FIXTURE:rabatt-base-{m.group(2)}',
+                              f'база скидки {m.group(2)} € не равна ТОЧНОМУ итогу '
+                              f'{self.fx["A"]} €: CALC-007 и инвариант 14.1 запрещают '
+                              f'участие отображаемых значений во внутренних расчётах '
+                              f'(округлённая база завышает цену)')
+                    continue
+                mres = re.search(r'даёт\s*`?([\d.,]+)\s*€', line)
+                if mres and de(mres.group(1)) != base * mult:
+                    self.emit('RM-FIXTURE', rel, i, 'RM-FIXTURE:rabatt-product',
+                              f'{base} × {mult} = {base * mult}, README пишет {mres.group(1)}')
+        # Агрегация комплекса — от СУММ, никогда как среднее из средних
+        # (правило проекта 39). Якорь структурный и нормативный: подписи
+        # `Σ BGF oberirdisch` и `Σ BGF R+S` заданы правилом, а не вёрсткой,
+        # поэтому переформатирование абзаца проверку не ломает. Знаменатель
+        # обязан совпадать с подписью — складывать надземную и подземную
+        # площадь под подписью «oberirdisch» запрещено (DATA-001).
+        for label, exp in (('oberirdisch', self.fx['sum_ober']),
+                           (r'R\+S', self.fx['sum_rs'])):
+            hits = list(re.finditer(r'Σ\s*BGF\s*(?:\*\*)?' + label + r'(?:\*\*)?\s*'
+                                    r'([\d.]+(?:,\d+)?)\s*[  ]?m²', readme))
+            if not hits:
+                self.fail('RM-FIXTURE', rel,
+                          f'[вакуум] README не называет `Σ BGF {label} <N> m²` ни разу — '
+                          f'агрегация комплекса не проверяется (правило проекта 39)')
+                continue
+            for m in hits:
+                got = de(m.group(1))
+                if got == exp:
+                    continue
+                self.emit('RM-FIXTURE', rel, readme[:m.start()].count('\n') + 1,
+                          f'RM-FIXTURE:agg-{label}-{m.group(1)}',
+                          f'`Σ BGF {label}` = {m.group(1)} m², фикстура даёт {exp} m² '
+                          f'(сумма зданий, проверенная классом CALC-FIXTURE) — удельные '
+                          f'величины считаются от сумм, знаменатель обязан совпадать '
+                          f'с подписью (правило проекта 39, DATA-001)')
+        # провенанс: денежный блок обязан называть прогон или сценарий фикстуры
+        contracts = self._contracts(readme, rows) or []
+        for dc, name, ln, body in contracts:
+            if not (self.RX_MONEY.search(body) or self.RX_RATE.search(body)):
+                continue
+            if not re.search(r'DEMO-(?:SC|RUN)-\d+', body):
+                self.emit('RM-FIXTURE', rel, ln, f'RM-FIXTURE-PROV:{dc or name}',
+                          f'{dc or name} `{name}` показывает денежные или удельные величины, '
+                          f'но не называет ни `scenarioId` (`DEMO-SC-nn`), ни '
+                          f'`calculationRunId` (`DEMO-RUN-nnnn`) — §2.1 требует провенанс '
+                          f'у любого денежного, площадного, ставочного и срочного блока '
+                          f'(CALC-002, XSC-05)')
+
     # -- 3. Копирайт-инварианты по всем документам ----------------------------
     def check_copy(self):
         # Каждый паттерн переписан после того, как аудитор обошёл все восемь
@@ -1662,6 +1927,303 @@ class Verifier:
                 self.fail('T0-COVERAGE', rel,
                           '[вакуум] Annahmen не упоминают Kostengruppe 500 — состояние покрытия '
                           'клиенту не сообщается вовсе (R-18/CALC-006)')
+
+    # -- 3d. Модель выдач, видимости и гейтов --------------------------------
+    RU_NUM = {'одного': 1, 'одного условия': 1, 'двух': 2, 'трёх': 3, 'трех': 3,
+              'четырёх': 4, 'четырех': 4, 'пяти': 5, 'шести': 6, 'семи': 7,
+              'восьми': 8, 'девяти': 9, 'десяти': 10,
+              'один': 1, 'два': 2, 'три': 3, 'четыре': 4, 'пять': 5, 'шесть': 6,
+              'семь': 7, 'восемь': 8, 'девять': 9, 'десять': 10}
+
+    def check_output_model(self):
+        """`docs/product/output-model.md` — 58 инвариантов, охват до v4 был ноль.
+
+        Из десяти мутаций аудитора прошли шесть. Все шесть — структурные:
+        нумерация инвариантов, число условий в определении против числа,
+        названного инвариантом, состав обязательных полей типа, число
+        клиентских профилей в матрице блокировки, связка политики и
+        сериализации, денежный спесимен против фикстуры. Ни одна не требует
+        понимания текста — только сверки структуры со структурой.
+        """
+        rel = 'docs/product/output-model.md'
+        txt = self.read(rel)
+        if txt is None:
+            self.fail('OUT-SEQ', rel, '[вакуум] docs/product/output-model.md отсутствует — '
+                                      'артефакт партии Batch 6 инструментом не проверяется')
+            return
+        rows = txt.split('\n')
+
+        # (1) OUT-SEQ: непрерывность и совпадение порядкового номера с меткой.
+        # Мутация `OUT-30 → OUT-31` даёт одновременно дубль и пропуск.
+        items = []
+        for i, line in enumerate(rows, 1):
+            m = re.match(r'^\s*(\d+)\.\s+\*\*OUT-(\d+)\.\*\*', line)
+            if m:
+                items.append((int(m.group(1)), int(m.group(2)), i, line))
+        if not items:
+            self.fail('OUT-SEQ', rel, '[вакуум] ни одного инварианта вида `nn. **OUT-nn.**` '
+                                      'не найдено — §14 не проверяем')
+        seen_lbl, seen_ord = {}, {}
+        for ordn, lbl, ln, line in items:
+            if ordn != lbl:
+                self.emit('OUT-SEQ', rel, ln, f'OUT-SEQ:ord{ordn}/lbl{lbl}',
+                          f'порядковый номер {ordn} не совпадает с меткой OUT-{lbl:02d} — '
+                          f'ссылка «output-model OUT-{lbl:02d}» указывает не на этот пункт')
+            for reg, key, what in ((seen_lbl, lbl, 'метка OUT'), (seen_ord, ordn, 'порядковый номер')):
+                if key in reg:
+                    self.emit('OUT-SEQ', rel, ln, f'OUT-SEQ:dup-{what}-{key}',
+                              f'{what} {key} встречается второй раз (первый — строка {reg[key]})')
+                else:
+                    reg[key] = ln
+        if items:
+            lbls = sorted(seen_lbl)
+            for n in range(1, max(lbls) + 1):
+                if n not in seen_lbl:
+                    self.emit('OUT-SEQ', rel, items[0][2], f'OUT-SEQ:gap-{n}',
+                              f'в нумерации инвариантов пропущен OUT-{n:02d} '
+                              f'(объявлены 1…{max(lbls)}, фактически {len(lbls)} штук)')
+            # OUT-REF: ссылка на инвариант, которого нет
+            for r2_, t2 in self.files('*.md'):
+                if r2_.startswith('tools/'):
+                    continue
+                for i, line in enumerate(t2.split('\n'), 1):
+                    for m in re.finditer(r'\bOUT-(\d{1,3})\b', line):
+                        n = int(m.group(1))
+                        if n not in seen_lbl:
+                            self.emit('OUT-REF', r2_, i, f'OUT-REF:OUT-{n}',
+                                      f'ссылка на инвариант OUT-{n:02d}, которого нет в '
+                                      f'output-model.md §14 (объявлены OUT-01…OUT-{max(lbls):02d})')
+
+        # (2) OUT-SEND: `sendEnabled` — конъюнкция N условий. Число, названное
+        # в определении §9.3, число строк его таблицы и число, названное
+        # инвариантом OUT-36, обязаны совпадать. Снятие одного условия из
+        # таблицы прошло молча: инвариант продолжал говорить «шести».
+        m = re.search(r'`sendEnabled`\s*—\s*конъюнкция\s+([а-яё]+)\s+услови', txt)
+        if not m:
+            self.fail('OUT-SEND', rel, '[вакуум] §9.3 не формулирует `sendEnabled` как '
+                                       'конъюнкцию названного числа условий')
+        else:
+            declared = self.RU_NUM.get(m.group(1).lower())
+            ln_def = txt[:m.start()].count('\n') + 1
+            if declared is None:
+                self.emit('OUT-SEND', rel, ln_def, 'OUT-SEND:числительное',
+                          f'число условий записано словом «{m.group(1)}», которое инструмент '
+                          f'не умеет прочитать — утверждение непроверяемо')
+            else:
+                # таблица условий: строки `| N | … | … |` сразу после определения
+                tail = txt[m.end():]
+                cut = re.search(r'\n###\s', tail)
+                block = tail[:cut.start()] if cut else tail
+                nums = [int(x) for x in re.findall(r'^\|\s*(\d+)\s*\|', block, re.M)]
+                if not nums:
+                    self.fail('OUT-SEND', rel, '[вакуум] таблица условий §9.3 не распознана')
+                else:
+                    if nums != list(range(1, len(nums) + 1)):
+                        self.emit('OUT-SEND', rel, ln_def, 'OUT-SEND:нумерация-таблицы',
+                                  f'условия §9.3 пронумерованы {nums} — ожидалась '
+                                  f'непрерывная 1…{len(nums)}')
+                    if len(nums) != declared:
+                        self.emit('OUT-SEND', rel, ln_def, 'OUT-SEND:число-условий',
+                                  f'§9.3 называет конъюнкцию {declared} условий, а таблица '
+                                  f'содержит {len(nums)} — одно из двух неверно, и кнопка '
+                                  f'отправки открывается по неполному набору (EMAIL-001)')
+                    mi = re.search(r'\*\*OUT-36\.\*\*[^\n]*конъюнкции\s+([а-яё]+)\s+услови', txt)
+                    if not mi:
+                        self.fail('OUT-SEND', rel, '[вакуум] OUT-36 не называет число условий '
+                                                   '`sendEnabled` — инвариант непроверяем')
+                    else:
+                        inv = self.RU_NUM.get(mi.group(1).lower())
+                        if inv != len(nums):
+                            self.emit('OUT-SEND', rel, txt[:mi.start()].count('\n') + 1,
+                                      'OUT-SEND:инвариант-против-таблицы',
+                                      f'OUT-36 требует конъюнкцию {mi.group(1)} ({inv}) условий, '
+                                      f'таблица §9.3 содержит {len(nums)} — инвариант '
+                                      f'отчитывается о том, чего в определении нет')
+
+        # (3) OUT-ATTACH: обязательные носители `AttachmentPreflightItem`.
+        # Удаление `contentHash` прошло: тип потерял идентичность вложения,
+        # а OUT-43 продолжал её требовать.
+        NEED = {
+            'clientTitle':             'клиентское название (EMAIL-006)',
+            'source':                  'неизменяемая ссылка на версию (EMAIL-002)',
+            'contentHash':             'хеш байтов — идентичность вложения (EMAIL-002)',
+            'generatedAt':             '«когда это посчитано» (EMAIL-002)',
+            'visibilityClassification': 'клиентская безопасность (EMAIL-002, R-17)',
+            'stalenessState':          'цена в файле = цена в теле (STALE-001)',
+            'calculationBindings':     'какой прогон отвечает за числа (§6.2)',
+        }
+        mt = re.search(r'AttachmentPreflightItem\s*\{(.*?)\n\}', txt, re.S)
+        if not mt:
+            self.fail('OUT-ATTACH', rel, '[вакуум] тип `AttachmentPreflightItem` не объявлен — '
+                                         'OUT-43 требует его состав')
+        else:
+            body = mt.group(1)
+            ln = txt[:mt.start()].count('\n') + 1
+            fields = set(re.findall(r'^\s*([a-z][A-Za-z0-9]*)\??\s*:', body, re.M))
+            for f, why in sorted(NEED.items()):
+                if f not in fields:
+                    self.emit('OUT-ATTACH', rel, ln, f'OUT-ATTACH:{f}',
+                              f'`AttachmentPreflightItem` не несёт `{f}` — {why}; '
+                              f'OUT-43 требует все семь носителей')
+                # каждый носитель обязан быть обоснован таблицей §10.1
+                elif f'`{f}`' not in txt.split('### 10.1')[-1][:4000]:
+                    self.emit('OUT-ATTACH', rel, ln, f'OUT-ATTACH:justify-{f}',
+                              f'`{f}` объявлен в типе, но не назван в таблице обоснований '
+                              f'§10.1 «Поле · Зачем именно оно · Требование»')
+            # снапшот вложения существует только для клиент-безопасного (OUT-48)
+            ms = re.search(r'AttachmentSnapshot\s*\{(.*?)\n\}', txt, re.S)
+            if not ms:
+                self.fail('OUT-ATTACH', rel, '[вакуум] тип `AttachmentSnapshot` не объявлен')
+            elif not re.search(r'visibilityClassification\s*:\s*"clientSafe"\s*;', ms.group(1)):
+                self.emit('OUT-ATTACH', rel, txt[:ms.start()].count('\n') + 1,
+                          'OUT-ATTACH:snapshot-union',
+                          '`AttachmentSnapshot.visibilityClassification` перестал быть union '
+                          'из одного значения `"clientSafe"` — у внутреннего файла появился '
+                          'путь в снапшот (OUT-48)')
+
+        # (4) OUT-R07: матрица блокировки называет ВСЕ пять клиентских профилей.
+        # Ослабление до трёх прошло — это прямое ослабление R-07.
+        n_client = len(CLIENT_PROFILES)
+        mm = re.search(r'^\|\s*Категория при[^\n]*\n\|[-\s|]+\|\n((?:\|[^\n]*\n)+)', txt, re.M)
+        if not mm:
+            self.fail('OUT-R07', rel, '[вакуум] матрица блокировки §7.2 не распознана — '
+                                      'R-07 не проверяется')
+        else:
+            base = txt[:mm.start(1)].count('\n') + 1
+            hard = ('compliance', 'scope', 'financial', 'stale', 'privacy', 'security')
+            got_rows = 0
+            for k, row in enumerate(mm.group(1).strip().split('\n')):
+                cells = [c.strip() for c in row.strip('|').split('|')]
+                if len(cells) < 2:
+                    continue
+                cats = set(re.findall(r'`([a-zA-Z]+)`', cells[0]))
+                if not (cats & set(hard)):
+                    continue
+                got_rows += 1
+                mw = re.search(r'(?:ровно\s+)?(?:все\s+)?([а-яё]+)\s+клиентск', cells[1])
+                if not mw:
+                    self.emit('OUT-R07', rel, base + k, 'OUT-R07:' + '+'.join(sorted(cats)),
+                              f'строка матрицы блокировки «{cells[0][:40]}» не называет число '
+                              f'заблокированных клиентских профилей — R-07 требует все {n_client}')
+                    continue
+                got = self.RU_NUM.get(mw.group(1).lower())
+                if got != n_client:
+                    self.emit('OUT-R07', rel, base + k, 'OUT-R07:' + '+'.join(sorted(cats)),
+                              f'строка «{cells[0][:40]}» блокирует {mw.group(1)} ({got}) '
+                              f'клиентских профилей вместо всех {n_client} — прямое ослабление '
+                              f'R-07 (открытый Material Blocker блокирует все клиентские '
+                              f'профили без исключения)')
+            if got_rows < 3:
+                self.fail('OUT-R07', rel, f'[вакуум] в матрице §7.2 найдено {got_rows} строк '
+                                          f'жёстких категорий из ожидаемых ≥ 3 '
+                                          f'(compliance/scope/financial · stale · privacy/security)')
+
+        # (5) OUT-POLICY: `allowed = false` → `serialization = "omit"`.
+        # Разрыв связки означает, что запрещённое поле вправе сериализоваться.
+        rx_bind = re.compile(r'`allowed\s*=\s*false`[^\n]{0,60}?требует[^\n]{0,60}?'
+                             r'`serialization\s*=\s*"omit"`')
+        if not rx_bind.search(txt):
+            self.fail('OUT-POLICY', rel,
+                      '§5.1 не связывает `allowed = false` с `serialization = "omit"`: '
+                      'без этой связки запрещённое политикой поле вправе сериализоваться '
+                      '(SECURITY-001)')
+        if not re.search(r'`allowed\s*=\s*true`[^\n]{0,40}запрещает[^\n]{0,20}`?omit`?', txt):
+            self.fail('OUT-POLICY', rel,
+                      '§5.1 не запрещает `omit` при `allowed = true` — политика вправе '
+                      'молча опустить разрешённое поле')
+        mi = re.search(r'\*\*OUT-10\.\*\*([^\n]*)', txt)
+        if not mi:
+            self.fail('OUT-POLICY', rel, '[вакуум] инвариант OUT-10 не найден')
+        elif not ('allowed = false' in mi.group(1) and '"omit"' in mi.group(1)):
+            self.emit('OUT-POLICY', rel, txt[:mi.start()].count('\n') + 1,
+                      'OUT-POLICY:OUT-10',
+                      'OUT-10 перестал называть обе стороны связки '
+                      '(`allowed = false` → `serialization = "omit"`)')
+        # проекция физически не несёт `omit`
+        if not re.search(r'"omit"\s*сюда\s*не\s*попадает|//\s*"omit"', txt):
+            self.emit('OUT-POLICY', rel, 1, 'OUT-POLICY:projection-omit',
+                      '`ProjectedField.serialization` не объявляет, что `"omit"` в проекцию '
+                      'не попадает — опущенное поле снова получает представимое состояние')
+
+        # (6) OUT-PROFILE: канонические имена профилей.
+        vocab = set(OUTPUT_PROFILES) | set(PROFILE_VOCAB_OK)
+        fx = self.read('docs/audit/synthetic-fixtures.md') or ''
+        for name in sorted(set(re.findall(r'\b((?:client|internal)[A-Z][A-Za-z]*)', txt))):
+            if name in vocab:
+                continue
+            ln = next((i for i, l in enumerate(rows, 1) if name in l), 1)
+            extra = ''
+            if name not in fx:
+                extra = (f' Заявление о фикстуре устарело: `synthetic-fixtures.md` имени '
+                         f'`{name}` не содержит — сверять надо с файлом, а не с памятью.')
+            self.emit('OUT-PROFILE', rel, ln, f'OUT-PROFILE:{name}',
+                      f'имя `{name}` не является каноническим профилем выдачи '
+                      f'(data-model.md §5.11 объявляет {", ".join(OUTPUT_PROFILES)}): '
+                      f'по неканоническому имени не сопоставляется ни одна политика '
+                      f'видимости.{extra}')
+        for p in CLIENT_PROFILES:
+            if not re.search(r'###\s*3\.\d+\.\s*`?' + p, txt):
+                self.emit('OUT-PROFILE', rel, 1, f'OUT-PROFILE:missing-{p}',
+                          f'§3 «Пять клиентских профилей поимённо» не содержит секции '
+                          f'профиля `{p}` — профиль без описания политики не имеет')
+
+        # (7) OUT-MONEY: денежные и удельные спесимены §7.3/§9.7 против фикстуры
+        # в Decimal. Порча округления (`≈ 5.824.000` при точном `5.822.936,00`)
+        # прошла: в файле не было ни одной проверки арифметики.
+        self._specimens('OUT-MONEY', rel, txt)
+
+        # (8) SCHED-D17: десятичный месяц при целом календарном интервале
+        self._sched_d17(rel, txt)
+
+    # -- 3e. Спесимены денег и площадей против фикстуры -----------------------
+    RX_MONEY = re.compile(r'(?<![\d.,])(\d{1,3}(?:\.\d{3})+(?:,\d+)?)\s*[  ]?(?:€(?!/)|Euro\b)')
+    RX_RATE = re.compile(r'(?<![\d.,])(\d{1,3}(?:\.\d{3})*(?:,\d+)?)\s*[  ]?€/m²')
+
+    def _specimens(self, cls, rel, txt):
+        """Каждое денежное и удельное число документа сводится с фикстурой.
+
+        Допустимое множество строится ИЗ `synthetic-fixtures.md` (см. конец
+        `_arithmetic`), а не из констант инструмента: иначе проверка сверяла бы
+        собственные ожидания с собственными константами. Отсутствие множества
+        (фикстура не разобрана) — вакуум, а не молчаливый пропуск.
+        """
+        if not self.fx:
+            self.fail(cls, rel, '[вакуум] величины фикстуры не вычислены — '
+                                'сверять спесимены не с чем')
+            return
+        for i, line in enumerate(txt.split('\n'), 1):
+            for rx, pool, what in ((self.RX_RATE, self.fx['rates'], 'удельная величина'),
+                                   (self.RX_MONEY, self.fx['exact'] | self.fx['disp'], 'сумма')):
+                for m in rx.finditer(line):
+                    try:
+                        val = de(m.group(1))
+                    except Exception:
+                        continue
+                    if val in pool:
+                        continue
+                    self.emit(cls, rel, i, f'{cls}:{m.group(1)}',
+                              f'{what} {m.group(1)} не сводится ни с одной величиной '
+                              f'синтетической фикстуры и её производными (правило проекта 32: '
+                              f'число, не сходящееся с собственной фикстурой, — '
+                              f'release-blocker)')
+
+    RX_WHOLE_MONTH = re.compile(r'(?<![\d,])(\d{1,3}),0\s*[  ]?Monate?\b')
+
+    def _sched_d17(self, rel, txt):
+        """D-17: целый календарный интервал подписывается `n Monate` без `,0`.
+
+        Область — продуктовые и дизайн-документы: там число является
+        СПЕСИМЕНОМ, который уйдёт клиенту. Корпус `docs/audit/` цитирует
+        формулировку отклонения (`7,0 Monate` в плане и реестре требований) —
+        это текст решения, а не подпись длительности.
+        """
+        for m in self.RX_WHOLE_MONTH.finditer(txt):
+            ln = txt[:m.start()].count('\n') + 1
+            self.emit('SCHED-D17', rel, ln, f'SCHED-D17:{m.group(1)},0',
+                      f'подпись `{m.group(0).strip()}`: D-17 требует целое '
+                      f'`{m.group(1)} Monate` там, где интервал является целым числом '
+                      f'календарных месяцев; десятичный перевод создаёт ложную точность '
+                      f'(R-26). Отклонение сужено до случая несовпадающих дней месяца')
 
     # -- 4. CLAUDE.md и decisions.md: отменённые правила ----------------------
     def check_governance(self):
@@ -2113,7 +2675,15 @@ class Verifier:
         # Дельта удельной величины при одном знаменателе (WFL) — законный
         # спесимен `rateDelta`; считается от точных 2dp, как требует CALC-007.
         wfl_rates = [r2(x / wfl) for x in (A, tot40, noug)]
-        rates |= {r1(abs(a - b)) for a in wfl_rates for b in wfl_rates if a != b}
+        for a_ in wfl_rates:
+            for b_ in wfl_rates:
+                if a_ == b_:
+                    continue
+                rates |= {r1(abs(a_ - b_)), r2(abs(a_ - b_))}
+        # та же дельта, посчитанная как «дельта денег / знаменатель» — обе
+        # формы законны и обе встречаются в контрактах (`476.000 / 1.500,00`)
+        for d_ in (tot40 - A, A - noug, ug_add, gk_add, eh_add):
+            rates |= {r1(abs(d_) / wfl), r2(abs(d_) / wfl)}
         areas = {wfl, nuf, bgf_a, bgf_b, rs_a, rs_b, ug_area, sum_ober, sum_rs, ib}
         self.fx = {
             'exact': exact_set, 'disp': disp, 'rates': rates, 'areas': areas,
@@ -2179,7 +2749,12 @@ class Verifier:
         self.check_governance()
         self.check_plan()
         self.check_privacy()
+        # Арифметика идёт ПЕРЕД проверками цитат: она публикует величины
+        # фикстуры, с которыми сводятся спесимены README и output-model.
         self.check_arithmetic()
+        self.check_output_model()
+        self.check_readme_contracts()
+        self.check_readme_numbers()
         self.check_index()
         # ALLOW подавляет по МЕСТУ, а не по содержанию: дословный дубль
         # allow-строки, дописанный как новое нарушение, подавлялся бы той же
@@ -2233,6 +2808,51 @@ def _bump_nuf_rate(text: str) -> str:
         raise AssertionError('ставка 2.089 €/m² NUF не найдена')
     return new
 
+
+
+def _sub(pattern, repl, flags=0, count=1):
+    """Мутация регуляркой. Существует потому, что `output-model.md` и README
+    переписываются другими владельцами параллельно: мутация, привязанная к
+    дословной строке, становится «неприменимой» от переноса абзаца, и selftest
+    молча терял бы класс. Неприменимость по-прежнему валит selftest —
+    но теперь только когда исчезла сама КОНСТРУКЦИЯ, а не её вёрстка."""
+    def go(text: str) -> str:
+        new, n = re.subn(pattern, repl, text, count=count, flags=flags)
+        if not n:
+            raise AssertionError(f'конструкция не найдена: {pattern[:60]}')
+        return new
+    return go
+
+
+def _drop_line(pattern, flags=0):
+    """Удаление первой строки, подходящей под шаблон (снятие условия/поля)."""
+    def go(text: str) -> str:
+        rows = text.split('\n')
+        rx = re.compile(pattern, flags)
+        for i, line in enumerate(rows):
+            if rx.search(line):
+                return '\n'.join(rows[:i] + rows[i + 1:])
+        raise AssertionError(f'строка не найдена: {pattern[:60]}')
+    return go
+
+
+def _insert_contract(text: str) -> str:
+    """Вставка контракта с денежным спесименом без провенанса перед §2.7."""
+    marker = '### 2.7'
+    if marker not in text:
+        raise AssertionError('раздел §2.7 не найден — границы §2.6 неизвестны')
+    block = (
+        '### DC-99 · `LeakMetricTile` — Leck-Kachel\n\n'
+        '**Анатомия:** `root` → `value`.\n\n'
+        '**Состояния — взаимодействие:** `default` · `hover` · `focus` · `pressed` ·\n'
+        '`selected` — notApplicableReason: плитка не является выбором из набора ·\n'
+        '`disabled` / `readOnly` — notApplicableReason: плитка ничего не редактирует.\n\n'
+        '**Состояния — данные:**\n'
+        '`loading` — считается · `empty` — данных нет · `partial` — часть входов ·\n'
+        '`ready` — готово: `≈ 3.818.000 €` · `error` — упало · `stale` — устарело ·\n'
+        '`permission` — роли недоступно.\n\n'
+        '**Токены:** `--color-text-primary`.\n\n---\n\n')
+    return text.replace(marker, block + marker, 1)
 
 
 def _dup_allowed_line(text: str) -> str:
@@ -2544,6 +3164,101 @@ MUTATIONS = [
     ('T0-COVERAGE: покрытие KG 500 объявлено решённым при фактическом unknown',
      'docs/product/t0-fallback-rules.md',
      '> **Annahme:** Die Kostengruppe 500 ist nicht enthalten.', {'T0-COVERAGE'}),
+
+    # ─────────── v4 · модель выдач (docs/product/output-model.md) ───────────
+    # До v4 охват файла был ноль: 58 объявленных инвариантов, ни одной проверки.
+    # По одной мутации на каждую закрытую дыру совместного списка двух аудиторов.
+    ('OUT-SEQ: метка OUT-30 переписана в OUT-31 (дубль + пропуск)',
+     'docs/product/output-model.md',
+     _sub(r'\*\*OUT-30\.\*\*', '**OUT-31.**'), {'OUT-SEQ'}),
+    ('OUT-SEQ: порядковый номер разошёлся с меткой', 'docs/product/output-model.md',
+     _sub(r'^7\.\s+\*\*OUT-07\.\*\*', '8. **OUT-07.**', re.M), {'OUT-SEQ'}),
+    ('OUT-REF: ссылка на инвариант, которого нет', 'docs/product/output-model.md',
+     'Приёмка описана инвариантом `OUT-99`.', {'OUT-REF'}),
+    ('OUT-SEND: из таблицы §9.3 снято одно условие', 'docs/product/output-model.md',
+     _drop_line(r'^\|\s*6\s*\|.*EMAIL-011'), {'OUT-SEND'}),
+    ('OUT-SEND: определение называет пять условий вместо шести',
+     'docs/product/output-model.md',
+     _sub(r'конъюнкция шести услови', 'конъюнкция пяти услови'), {'OUT-SEND'}),
+    ('OUT-SEND: инвариант OUT-36 разошёлся с определением',
+     'docs/product/output-model.md',
+     _sub(r'(\*\*OUT-36\.\*\*[^\n]*?конъюнкции )шести', r'\g<1>пяти'), {'OUT-SEND'}),
+    ('OUT-ATTACH: у AttachmentPreflightItem удалён contentHash',
+     'docs/product/output-model.md',
+     _drop_line(r'^\s*contentHash:\s*string;\s*//\s*хеш байтов'), {'OUT-ATTACH'}),
+    ('OUT-ATTACH: union снапшота вложения расширен', 'docs/product/output-model.md',
+     _sub(r'visibilityClassification:\s*"clientSafe";',
+          'visibilityClassification: "clientSafe" | "unclassified";'), {'OUT-ATTACH'}),
+    ('OUT-R07: матрица блокировки ослаблена до трёх клиентских профилей',
+     'docs/product/output-model.md',
+     _sub(r'\*\*ровно все пять клиентских\*\*', '**ровно три клиентских**'), {'OUT-R07'}),
+    ('OUT-POLICY: разорвана связка allowed=false → serialization="omit"',
+     'docs/product/output-model.md',
+     _sub(r'`allowed = false` требует `serialization = "omit"`',
+          '`allowed = false` допускает любую сериализацию'), {'OUT-POLICY'}),
+    ('OUT-MONEY: порча округления тотала комплекса (≈ 5.824.000 при 5.822.936,00)',
+     'docs/product/output-model.md',
+     _sub(r'5\.823\.000', '5.824.000'), {'OUT-MONEY'}),
+    ('OUT-MONEY: порча клиентской базы сравнения', 'docs/product/output-model.md',
+     _sub(r'1\.820\s*€/m² BGF oberirdisch', '1.850 €/m² BGF oberirdisch'), {'OUT-MONEY'}),
+    ('OUT-PROFILE: короткое имя профиля clientLive', 'docs/product/output-model.md',
+     'Заблокированы `clientReadOnly · clientLive · clientPdf`.', {'OUT-PROFILE'}),
+    ('OUT-PROFILE: секция профиля исчезла из §3', 'docs/product/output-model.md',
+     _sub(r'### 3\.5\. `clientPrint`', '### 3.5. `clientDruck`'), {'OUT-PROFILE'}),
+    ('SCHED-D17: десятичный месяц при целом интервале', 'docs/product/output-model.md',
+     'Срок проекта — 12,0 Monate.', {'SCHED-D17'}),
+
+    # ─────────── v4 · контракты design-system/README.md ───────────
+    ('RM-AXES: из тела контракта DC-38 удалена ось stale (STATE-001)',
+     'design-system/README.md',
+     _sub(r'`stale` — вход, правило, снапшот', '`veraltet` — вход, правило, снапшот'),
+     {'RM-AXES'}),
+    ('RM-AXES: у контракта снят весь блок «Состояния — данные»',
+     'design-system/README.md',
+     _sub(r'\*\*Состояния — данные:\*\*\n`loading` — очередь загружается',
+          '**Zustände:**\n`loading` — очередь загружается'), {'RM-AXES'}),
+    ('RM-MATRIX: одна ячейка матрицы §2.4 разошлась с телом контракта',
+     'design-system/README.md',
+     _sub(r'^\| DC-38 `KeyMetricsGrid` \| ● \| ●', '| DC-38 `KeyMetricsGrid` | ○ | ●', re.M),
+     {'RM-MATRIX'}),
+    ('RM-MATRIX: из матрицы §2.4 исчезла строка контракта', 'design-system/README.md',
+     _drop_line(r'^\| DC-44 `CostDriverBreakdown` \|'), {'RM-MATRIX'}),
+    ('RM-NAREASON: причина неприменимости заменена словом', 'design-system/README.md',
+     _sub(r'notApplicableReason: пустой призрак[^·]*·', 'notApplicableReason: нет ·'),
+     {'RM-NAREASON'}),
+    ('RM-FIXTURE: база скидки взята от округлённого итога (CALC-007)',
+     'design-system/README.md',
+     _sub(r'итога\s*`3\.817\.835,00 €`', 'итога `3.818.000 €`'), {'RM-FIXTURE'}),
+    ('RM-FIXTURE: несводимый тотал в прозе', 'design-system/README.md',
+     'Beispiel: Gesamtsumme ≈ 5.900.000 € netto.', {'RM-FIXTURE'}),
+    ('RM-FIXTURE: агрегация комплекса под подписью oberirdisch включила UG (DATA-001)',
+     'design-system/README.md',
+     _sub(r'Σ BGF oberirdisch 3\.200,00', 'Σ BGF oberirdisch 3.600,00'), {'RM-FIXTURE'}),
+    ('RM-FIXTURE: денежный блок без scenarioId и calculationRunId',
+     'design-system/README.md', _insert_contract, {'RM-FIXTURE'}),
+    ('RM-ACCENT: акцентный герой перенесён на канву (2,60:1)',
+     'design-system/README.md',
+     _sub(r'\(только герой №1, только на\n`--color-surface-default`\)',
+          '(только герой №1, только на\n`--color-surface-canvas`)'), {'RM-ACCENT'}),
+    ('RM-ACCENT: акцент перечислён без названной поверхности',
+     'design-system/README.md',
+     _sub(r'`--color-text-display-accent` \(только герой №1, только на\n'
+          r'`--color-surface-default`\)', '`--color-text-display-accent`'), {'RM-ACCENT'}),
+    ('RM-ACCENT: снята формулировка запрета акцента на канве',
+     'design-system/README.md',
+     _sub(r'- акцентный герой на поверхности `--color-surface-canvas`:',
+          '- герой на поверхности `--color-surface-subtle`:'), {'RM-ACCENT'}),
+
+    # ─────────── v4 · индекс открытых ADR ───────────
+    ('INDEX: README цитирует устаревшее число открытых ADR', 'design-system/README.md',
+     'По TOKEN-005 открыты 34 блокирующих ADR.', {'INDEX'}),
+    ('INDEX: итог реестра ADR разошёлся с собственным составом',
+     'docs/audit/adr-blocking.md',
+     _sub(r'\*\*51 открытый ADR\*\* \(34 из разделов 1–3',
+          '**52 открытый ADR** (35 из разделов 1–3'), {'INDEX'}),
+    ('INDEX: раздел реестра ADR заявляет не своё число записей',
+     'docs/audit/adr-blocking.md',
+     _sub(r'^## 1\. Цвет — 23 записи', '## 1. Цвет — 24 записи', re.M), {'INDEX'}),
 ]
 
 def selftest():
