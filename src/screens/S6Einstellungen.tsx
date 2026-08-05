@@ -132,6 +132,46 @@ export function S6Einstellungen() {
 
       </>)}
 
+      <section className="mt-6" aria-label="Dichte">
+        <h2 className="text-heading-3 font-bold text-text-primary">Dichte</h2>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-3 border border-border-default p-4">
+          <div>
+            <p className="text-body text-text-primary">Darstellungsdichte</p>
+            <p className="mt-1 text-small text-text-secondary">
+              Unabhängige Nutzereinstellung (D-16) — der Modus ändert sie nie.
+              Vor dem Teilen des Bildschirms wird Komfortabel empfohlen
+              (Checklisten-Punkt im Preflight, kein Zwang).
+            </p>
+          </div>
+          <div role="radiogroup" aria-label="Darstellungsdichte" className="flex">
+            {([['komfortabel', 'Komfortabel'], ['kompakt', 'Kompakt']] as const).map(([d, label]) => {
+              const active = s.density === d
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => s.setDensity(d)}
+                  className={'relative px-4 py-1 text-body outline-none ' +
+                    'before:absolute before:left-1/2 before:top-1/2 ' +
+                    'before:min-h-hit-target before:w-full before:-translate-x-1/2 ' +
+                    'before:-translate-y-1/2 before:content-[""] ' +
+                    'focus-visible:outline focus-visible:outline-2 ' +
+                    'focus-visible:outline-offset-2 focus-visible:outline-focus-ring ' +
+                    (active
+                      ? 'border-selected border-selection-border font-medium text-text-primary'
+                      : 'border border-border-default text-text-secondary')}
+                >
+                  {active && <span aria-hidden="true" className="mr-1">✓</span>}
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
       <section className="mt-6" aria-label="Sprache">
         <h2 className="text-heading-3 font-bold text-text-primary">Sprache</h2>
         <div className="mt-2 border border-border-default p-4">

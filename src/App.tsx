@@ -46,6 +46,11 @@ export function App() {
     document.documentElement.classList.toggle('mode-praesentation', praesentation)
   }, [praesentation])
 
+  // Плотность независима от режима (D-16): класс существует в tokens.css.
+  useEffect(() => {
+    document.documentElement.classList.toggle('density-compact', s.density === 'kompakt')
+  }, [s.density])
+
   return (
     <div className="flex h-screen flex-col bg-surface-canvas">
       <header className="z-header flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border-strong bg-surface-default px-5 py-3">

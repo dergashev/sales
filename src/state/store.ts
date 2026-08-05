@@ -168,6 +168,12 @@ type Store = {
   mode: 'intern' | 'praesentation'
   /** Язык UI (правило 36). Отдельная настройка от языка артефактов (D-13). */
   uiLanguage: 'de' | 'en'
+  /**
+   * Плотность (D-16) — независимое предпочтение пользователя: режимом НЕ
+   * управляется (LAYOUT-007). Рекомендация «Komfortabel перед шарингом» —
+   * пункт чек-листа G6-gate, не переопределение.
+   */
+  density: 'komfortabel' | 'kompakt'
   openChapter: number
 
   projection: () => Projection
@@ -197,6 +203,7 @@ type Store = {
   /** Правило 11: вход в презентацию закрыт, пока открыт material-блокер. */
   setMode: (m: 'intern' | 'praesentation') => void
   setUiLanguage: (l: 'de' | 'en') => void
+  setDensity: (d: 'komfortabel' | 'kompakt') => void
 }
 
 function computeProjection(
@@ -306,6 +313,7 @@ const store = createStore<Store>((set, get) => {
     undoToast: null,
     mode: 'intern',
     uiLanguage: 'de',
+    density: 'komfortabel',
     openChapter: 3,
 
     projection: () => computeProjection(get()),
@@ -652,6 +660,8 @@ const store = createStore<Store>((set, get) => {
     },
 
     setUiLanguage: (l) => set({ uiLanguage: l }),
+
+    setDensity: (d) => set({ density: d }),
   }
 })
 

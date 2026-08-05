@@ -170,6 +170,14 @@ export function S5Export() {
                   <li>Aktive Annahmen: {s.building.gebaeudeklasse.confirmed ? 1 : 2}</li>
                   <li><UncertaintyBadge pp={p.uncertaintyPp} /></li>
                   <li>Sprache: DE · vollständig</li>
+                  {/* Рекомендация G6-gate (правило 11/D-16): пункт чек-листа,
+                      не запрет — плотность остаётся выбором пользователя. */}
+                  <li>
+                    {s.density === 'kompakt'
+                      ? <><span aria-hidden="true">▲ </span>Dichte: Kompakt —
+                          vor dem Teilen des Bildschirms wird Komfortabel empfohlen</>
+                      : <><span aria-hidden="true">✓ </span>Dichte: Komfortabel</>}
+                  </li>
                 </ul>
               </div>
               <div className="mt-3 flex gap-2">
