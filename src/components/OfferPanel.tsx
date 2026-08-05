@@ -98,9 +98,13 @@ export function OfferPanel() {
           ab OKBP · Fertigstellung {formatDate(p.duration.completionDate)}
         </p>
 
-        <p className="mt-3 text-small text-text-muted">
-          DEMO-SC-01 · DEMO-RUN-0007
-        </p>
+        {/* Внутренние идентификаторы прогона — не для клиентской поверхности
+            (MODE-001): в презентации отсутствуют, а не скрыты стилем. */}
+        {s.mode === 'intern' && (
+          <p className="mt-3 text-small text-text-muted">
+            DEMO-SC-01 · DEMO-RUN-0007
+          </p>
+        )}
 
         {/* ── Слот дельта-чипа: зарезервирован, появление не двигает ──────
             Дельта фиксации всегда приоритетнее превью; превью (DC-28) —
@@ -118,7 +122,9 @@ export function OfferPanel() {
               >
                 {s.activeDelta.label}
                 <span className="mt-1 block font-medium">
-                  {signed(s.activeDelta.deltaExact)} ({signedPercent(s.activeDelta.percent)})
+                  {signed(s.activeDelta.deltaExact)}
+                  {/* Δ-проценты — только внутренние (правило 11). */}
+                  {s.mode === 'intern' && <> ({signedPercent(s.activeDelta.percent)})</>}
                 </span>
               </motion.p>
             ) : s.preview ? (

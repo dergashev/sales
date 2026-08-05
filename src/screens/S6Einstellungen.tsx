@@ -50,6 +50,16 @@ export function S6Einstellungen() {
         </div>
       </section>
 
+      {/* Маржа и риск-ставки в презентации ОТСУТСТВУЮТ, не скрыты стилем
+          (правило 11, R-17): содержимое не попадает в дерево. */}
+      {s.mode === 'praesentation' && (
+        <p className="mt-6 border border-border-default p-4 text-body text-text-secondary">
+          <span aria-hidden="true">○ </span>
+          Interne Kalibrierung (Marge, Risikozuschläge) ist im
+          Präsentationsmodus nicht verfügbar.
+        </p>
+      )}
+      {s.mode === 'intern' && (<>
       <section className="mt-6" aria-label="Marge">
         <h2 className="text-heading-3 font-bold text-text-primary">
           Marge (kundenseitig unsichtbar, D-01)
@@ -119,6 +129,8 @@ export function S6Einstellungen() {
           {cfg.riskCapPercentOfBauwerk}{NNBSP}% vom Bauwerk.
         </p>
       </section>
+
+      </>)}
 
       <section className="mt-6" aria-label="Sprache">
         <h2 className="text-heading-3 font-bold text-text-primary">Sprache</h2>

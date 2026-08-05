@@ -158,6 +158,14 @@ type Store = {
    * (CHANGE-006), а откат остаётся доступен из журнала DC-12.
    */
   undoToast: { seq: number; statusText: string; deltaText: string | null } | null
+  /**
+   * Режим показа (правило 11). Предпочтение UI, не данные варианта — как
+   * openChapter, без события. Вход в `praesentation` гейтуется открытым
+   * существенным блокером (R-07/DC-7): профиль с material-проблемой не
+   * формируется, поэтому переключение — no-op, пока класс не подтверждён.
+   * Плотность режимом НЕ управляется (D-16).
+   */
+  mode: 'intern' | 'praesentation'
   openChapter: number
 
   projection: () => Projection
@@ -184,6 +192,8 @@ type Store = {
   /** Адресная отмена события из тоста DC-29. Умеет отменять и отмену. */
   undoEvent: (seq: number) => void
   dismissUndoToast: () => void
+  /** Правило 11: вход в презентацию закрыт, пока открыт material-блокер. */
+  setMode: (m: 'intern' | 'praesentation') => void
 }
 
 function computeProjection(
@@ -291,6 +301,7 @@ const store = createStore<Store>((set, get) => {
     activeDelta: null,
     preview: null,
     undoToast: null,
+    mode: 'intern',
     openChapter: 3,
 
     projection: () => computeProjection(get()),
@@ -630,6 +641,11 @@ const store = createStore<Store>((set, get) => {
     },
 
     dismissUndoToast: () => set({ undoToast: null }),
+
+    setMode: (m) => {
+      if (m === 'praesentation' && !get().building.gebaeudeklasse.confirmed) return
+      set({ mode: m })
+    },
   }
 })
 

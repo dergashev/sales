@@ -45,7 +45,8 @@ export function Sidebar({ view, setView }: { view: View; setView: (v: View) => v
           Musterprojekt Nordfeld · Haus{NNBSP}A
         </p>
         <p className="mt-1 text-small text-text-secondary">
-          Variante «Basis» · ○ Vorbereitung · intern
+          Variante «Basis» · ○ Vorbereitung ·{' '}
+          {s.mode === 'praesentation' ? 'Präsentation' : 'intern'}
         </p>
       </div>
 

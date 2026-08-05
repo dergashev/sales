@@ -79,6 +79,19 @@ describe('S3: журнал событий как хребет (M-4)', () => {
   })
 })
 
+describe('Правило 11: вход в презентацию гейтуется блокером', () => {
+  it('переключение в praesentation — no-op, пока класс не подтверждён', () => {
+    useStore.getState().setMode('praesentation')
+    expect(useStore.getState().mode).toBe('intern')
+    useStore.getState().confirmGebaeudeklasse()
+    useStore.getState().setMode('praesentation')
+    expect(useStore.getState().mode).toBe('praesentation')
+    // Обратно в intern — всегда можно.
+    useStore.getState().setMode('intern')
+    expect(useStore.getState().mode).toBe('intern')
+  })
+})
+
 describe('DC-29: Undo-тост — производная журнала', () => {
   it('рискованное действие создаёт тост с дельтой и базой', () => {
     useStore.getState().setUntergeschoss('kein_ug')

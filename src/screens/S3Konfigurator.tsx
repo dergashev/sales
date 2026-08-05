@@ -83,16 +83,23 @@ export function S3Konfigurator() {
   )
 }
 
-/** Карточка раздела внутри главы: заголовок H3 из шкалы, воздух, бордер. */
+/**
+ * Карточка раздела внутри главы: заголовок H3 из шкалы, воздух, бордер.
+ * `intro` — коучинг-подсказка для sales: в презентации не существует
+ * (правило 11), данные карточки остаются.
+ */
 function Card({ title, intro, children }: {
   title: string
   intro?: string
   children: ReactNode
 }) {
+  const mode = useStore().mode
   return (
     <section className="border border-border-default p-5">
       <h2 className="text-heading-3 font-bold text-text-primary">{title}</h2>
-      {intro && <p className="mt-2 max-w-content text-body text-text-secondary">{intro}</p>}
+      {intro && mode === 'intern' && (
+        <p className="mt-2 max-w-content text-body text-text-secondary">{intro}</p>
+      )}
       <div className="mt-3">{children}</div>
     </section>
   )
