@@ -4122,7 +4122,7 @@ class Verifier:
         else:
             base = txt[:m.start(1)].count('\n') + 1
             cols = ('primaryAuthoritative', 'preview', 'comparisonAuthoritative')
-            seen_groups = set()
+            seen_groups, seen_profiles = set(), set()
             for k, row in enumerate(m.group(1).strip().split('\n')):
                 cells = [c.strip() for c in row.strip('|').split('|')]
                 if len(cells) < 2:
@@ -4131,8 +4131,8 @@ class Verifier:
                 group = next((g for g, members in OUT_BINDING_GROUPS.items()
                               if names and names <= set(members)), None)
                 if group is None:
-                    self.emit('OUT-BINDING', rel, base + k, 'OUT-BINDING:row:' +
-                              '+'.join(sorted(names)) or 'OUT-BINDING:row:пусто',
+                    self.emit('OUT-BINDING', rel, base + k,
+                              'OUT-BINDING:row:' + ('+'.join(sorted(names)) or 'пусто'),
                               f'строка §6.2 «{cells[0][:60]}» не соответствует ни одной '
                               f'группе профилей: группы объявлены как '
                               f'{ {g: v for g, v in OUT_BINDING_GROUPS.items()} }. '
@@ -4140,6 +4140,7 @@ class Verifier:
                               f'кардинальность привязок')
                     continue
                 seen_groups.add(group)
+                seen_profiles |= names
                 for i, col in enumerate(cols, 1):
                     canon = OUT_BINDING_TABLE.get((group, col))
                     if canon is None:
@@ -4148,23 +4149,26 @@ class Verifier:
                     cell = cells[i] if i < len(cells) else ''
                     got = card_parse_cell(cell)
                     if got != want_bind:
+                        said = (f'даёт {card_fmt(got)} привязок' if got is not None
+                                else 'не называет границу числа привязок')
                         self.emit('OUT-BINDING', rel, base + k,
                                   f'OUT-BINDING:{group}:{col}:{card_fmt(got)}',
-                                  f'§6.2, {group} · `{col}`: ячейка «{cell[:44]}» даёт '
-                                  f'{card_fmt(got)} привязок, канонически '
-                                  f'{card_fmt(want_bind)}. Кардинальность привязок '
-                                  f'определяет, какой прогон отвечает за числа выдачи '
-                                  f'(§6.2, OUT-18…22)')
+                                  f'§6.2, {group} · `{col}`: ячейка «{cell[:44]}» {said}, '
+                                  f'канонически {card_fmt(want_bind)}. Кардинальность '
+                                  f'привязок определяет, какой прогон отвечает за числа '
+                                  f'выдачи (§6.2, OUT-18…22)')
                     if want_run is not None:
                         tail = ','.join(re.sub(r'[*_`]', '', cell).split(',')[1:])
                         got_run = card_parse(tail) if 'Run' in tail else None
                         if got_run != want_run:
+                            said = (f'равно {card_fmt(got_run)}' if got_run is not None
+                                    else 'не названо')
                             self.emit('OUT-BINDING', rel, base + k,
                                       f'OUT-BINDING:{group}:{col}:runid:{card_fmt(got_run)}',
                                       f'§6.2, {group} · `{col}`: число различных Run ID в '
-                                      f'ячейке — {card_fmt(got_run)}, канонически '
-                                      f'{card_fmt(want_run)}. Две версии прогона в одной '
-                                      f'выдаче дают два разных итога под одной подписью')
+                                      f'ячейке {said}, канонически {card_fmt(want_run)}. '
+                                      f'Две версии прогона в одной выдаче дают два разных '
+                                      f'итога под одной подписью')
             for g in OUT_BINDING_GROUPS:
                 if g not in seen_groups:
                     self.emit('OUT-BINDING', rel, base, f'OUT-BINDING:norow-{g}',
@@ -4172,6 +4176,18 @@ class Verifier:
                               f'({", ".join(OUT_BINDING_GROUPS[g])}) — профиль без '
                               f'объявленной кардинальности привязок вправе '
                               f'сериализовать любой прогон')
+            # Присутствие ГРУППЫ не означает присутствия каждого профиля: строка
+            # группы `client` перечисляет четыре имени, и исчезновение одного из
+            # них оставляет строку на месте. Профиль, выпавший из таблицы,
+            # кардинальности привязок не имеет вовсе.
+            for g, members in OUT_BINDING_GROUPS.items():
+                for p in members:
+                    if p not in seen_profiles:
+                        self.emit('OUT-BINDING', rel, base, f'OUT-BINDING:noprofile-{p}',
+                                  f'профиль `{p}` не назван ни в одной строке таблицы '
+                                  f'§6.2 — для него не объявлено ни числа '
+                                  f'authoritative-привязок, ни запрета preview, и '
+                                  f'проверить выдачу этого профиля нечем')
         # Та же кардинальность, объявленная инвариантами §14. Проверяется против
         # ТОГО ЖЕ канона, а не против таблицы: иначе согласованная порча обеих
         # копий остаётся зелёной — ровно то, что показали M38/M39.
@@ -4184,10 +4200,12 @@ class Verifier:
             got, clause = card_in_clause(mi.group(1), anchor)
             ln = txt[:mi.start()].count('\n') + 1
             if got != canon:
+                said = (f'объявляет {card_fmt(got)}' if got is not None
+                        else 'не называет границу')
                 self.emit('OUT-BINDING', rel, ln,
                           f'OUT-BINDING:OUT-{n}:{anchor[:18]}:{card_fmt(got)}',
-                          f'OUT-{n} объявляет {card_fmt(got)} — {unit}; канонически '
-                          f'{card_fmt(canon)}. {why}. Придаточное: '
+                          f'OUT-{n} {said} — {unit}; канонически {card_fmt(canon)}. '
+                          f'{why}. Придаточное: '
                           f'«{(clause or mi.group(1).strip())[:80]}»')
 
     # -- 3b-ter. Жизненный цикл открытой клиентской сессии --------------------
@@ -4251,11 +4269,11 @@ class Verifier:
         if not inv63:
             self.fail('OUT-SESSION', rel, '[вакуум] инвариант OUT-63 не найден — '
                                           'ревалидация не имеет проверяемого инварианта')
-        for src, name, obj in ((m1211, '§12.1.1', m1211), (inv63, 'OUT-63', inv63)):
+        for src, name in ((m1211, '§12.1.1'), (inv63, 'OUT-63')):
             if not src:
                 continue
-            frag = obj.group(1)
-            ln = txt[:obj.start()].count('\n') + 1
+            frag = src.group(1)
+            ln = txt[:src.start()].count('\n') + 1
             for pat, why in OUT_SESSION_TRIGGERS:
                 if not re.search(pat, frag, re.I):
                     self.emit('OUT-SESSION', rel, ln,

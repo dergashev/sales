@@ -12,7 +12,7 @@ CPQ-прототип для All3 (Timber-девелопер, Германия): 
 | Формулы и ставки | `docs/product/calculation-spec.md` |
 | Параметры и опции | `docs/product/parameters-t0-t1.json` |
 | Fallback и тексты Annahmen | `docs/product/t0-fallback-rules.md` |
-| Продуктовые решения | `docs/product/decisions.md` (D-01…D-17) |
+| Продуктовые решения | `docs/product/decisions.md` (D-01…D-21) |
 | Подсказки и онбординг | `docs/product/guidance-system.md` (G1–G21) |
 | Токены и доменные компоненты | `design-system/tokens.css` + `design-system/README.md` (DC-1…DC-47) |
 | Контракты примитивов | `design-system/components-core.md` (22 контракта, владеет всеми требованиями раздела 7) |
