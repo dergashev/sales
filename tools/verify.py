@@ -4041,6 +4041,14 @@ class Verifier:
             'disc': one('точный итог со скидкой', r'× 0,\d+ = ([\d.,]+)` →'),
             'rab': one('ставка Rabatt', r'Rabatt ([\d,]+) %'),
             'wfl': one('WFL', r'\| WFL nach WoFlV \| ([\d.,]+)'),
+            # Кандидат 2 объявленного конфликта DEMO-CONF-0001: тот же слот
+            # WFL, другое значение. Без него удельная величина при кандидате 2
+            # читается как «не сводится с фикстурой», хотя фикстура её
+            # объявляет дословно. Пробел нашёл агент, правивший контракты, и
+            # правильно НЕ стал удалять объявленное число, чтобы получить
+            # зелёный отчёт: это была бы подгонка объекта под инструмент.
+            'wfl_alt': one('WFL кандидат 2 конфликта DEMO-CONF-0001',
+                           r'При кандидате 2 \| `[\d.]+ / ([\d.,]+) ='),
             'nuf': one('NUF', r'\| NUF nach DIN 277 \| [\d.,—-]+ (?:m²)? *\| ([\d.,]+)'),
             'bgf_a': one('BGF ober A', r'\| BGF oberirdisch \| ([\d.,]+)'),
             'bgf_b': one('BGF ober B', r'\| BGF oberirdisch \| [\d.,]+ (?:m²)? *\| ([\d.,]+)'),
@@ -4076,6 +4084,9 @@ class Verifier:
             pairs.append((v['tot40'], v['wfl']))
         if v['noug'] is not None:
             pairs.append((v['noug'], v['wfl']))
+        if v.get('wfl_alt') is not None:
+            # Тот же числитель, знаменатель альтернативного кандидата слота.
+            pairs.append((v['A'], v['wfl_alt']))
         rates = {r1(n / d) for n, d in pairs} | {r2(n / d) for n, d in pairs}
         rates |= {x for x in (v['k'], v['ug_rate'], v['ug_a'], v['ug_b']) if x is not None}
         wfl_rates = [r2(x / v['wfl']) for x in (v['A'], v['tot40'], v['noug']) if x is not None]
