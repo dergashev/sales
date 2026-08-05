@@ -174,56 +174,6 @@ export function NumericField({
 }
 
 /**
- * Сегментированный контрол на три позиции покрытия (D-18).
- *
- * Чекбокс с двумя состояниями не выражает «noch offen», а пустой чекбокс
- * читается как «решено исключить» — но одно коммерческое решение, другое
- * пробел в данных, и норматив требует их различать. Три позиции видны
- * одновременно, поэтому скрытого состояния не существует.
- */
-export function SegmentedThree<T extends string>({
-  label, value, options, onChange, disabled, disabledReason,
-}: {
-  label: string
-  value: T
-  options: ReadonlyArray<{ value: T; label: string }>
-  onChange: (v: T) => void
-  disabled?: boolean
-  disabledReason?: string
-}) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle py-3">
-      <span className="text-body text-text-primary">{label}</span>
-      <div role="radiogroup" aria-label={label} className="flex">
-        {options.map((o) => {
-          const active = o.value === value
-          return (
-            <button
-              key={o.value}
-              type="button"
-              role="radio"
-              aria-checked={active}
-              aria-disabled={disabled || undefined}
-              title={disabled ? disabledReason : undefined}
-              onClick={() => !disabled && onChange(o.value)}
-              className={`${HIT} ${FOCUS} border px-3 text-small ` +
-                (active
-                  ? 'border-selection-border border-selected text-text-primary'
-                  : 'border-border-default text-text-secondary') +
-                (disabled ? ' text-text-disabled' : '')}
-              style={{ minHeight: 'var(--size-control-visual-sm)' }}
-            >
-              {active && <span aria-hidden="true" className="mr-1">✓</span>}
-              {o.label}
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-/**
  * Skeleton (правило 30): плоские блоки БЕЗ shimmer-градиента — градиенты
  * запрещены правилом 4, и заглушка не притворяется контентом. Скринридеру
  * сообщается загрузка, блоки скрыты.

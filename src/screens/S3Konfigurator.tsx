@@ -1,9 +1,12 @@
-import { useRef, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { useStore, COVERAGE_LABEL, LABEL_UG } from '../state/store'
 import { NNBSP } from '../engine/money'
 import type { BuildingInput } from '../engine/calculate'
 import type { CostGroup, CoverageState } from '../engine/calculate'
-import { Button, NumericField, SegmentedThree, HIT } from '../components/primitives'
+import { Decimal } from 'decimal.js'
+import { Button, NumericField } from '../components/primitives'
+import { RadioCardGroup, SegmentedControl } from '../components/controls'
+import { present } from '../engine/money'
 
 /**
  * S3 Konfigurator — рабочая область главы. ТОЛЬКО она: навигация по главам
@@ -44,16 +47,15 @@ const COVERAGE_OPTIONS = [
 ]
 
 /**
- * Задержка Geist-Vorschau — из токена `--motion-delay-hover-preview`
- * (ADR-запись 11: значение «200 мс» жило словами в README без токена).
- * Fallback на 200 нужен только вне DOM (SSR-тесты).
+ * Последствие опции для consequenceLine — видно всегда, не по hover
+ * (R-05/OPTION-009). Образец контракта: `≈ +97.000 € Mehrpreis`.
  */
-function geistVorschauDelayMs(): number {
-  if (typeof document === 'undefined') return 200
-  const raw = getComputedStyle(document.documentElement)
-    .getPropertyValue('--motion-delay-hover-preview')
-  const ms = parseInt(raw, 10)
-  return Number.isFinite(ms) && ms > 0 ? ms : 200
+function consequenceLabel(delta: Decimal): string {
+  if (delta.isZero()) return `±${NNBSP}0${NNBSP}€`
+  const pr = present(delta.abs())
+  const sign = delta.isNegative() ? '−' : '+'
+  const word = delta.isNegative() ? 'Minderpreis' : 'Mehrpreis'
+  return `${pr.prefix ? pr.prefix + NNBSP : ''}${sign}${pr.display}${NNBSP}€${NNBSP}${word}`
 }
 
 export function S3Konfigurator() {
@@ -116,50 +118,6 @@ function Card({ title, intro, children }: {
   )
 }
 
-/**
- * Опция с Geist-Vorschau (DC-28): наведение/фокус — последствие у цены через
- * 200 мс; уход — превью гаснет; клик — фиксация. Выбранная несёт бордер
- * выделения И знак ✓ — статус не только цветом (правило 8).
- */
-function OptionButton({ selected, onSelect, onPreview, children }: {
-  selected: boolean
-  onSelect: () => void
-  onPreview: (on: boolean) => void
-  children: ReactNode
-}) {
-  const timer = useRef<ReturnType<typeof setTimeout>>()
-  const start = () => {
-    clearTimeout(timer.current)
-    timer.current = setTimeout(() => onPreview(true), geistVorschauDelayMs())
-  }
-  const stop = () => {
-    clearTimeout(timer.current)
-    onPreview(false)
-  }
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={selected}
-      onClick={() => { clearTimeout(timer.current); onSelect() }}
-      onMouseEnter={start}
-      onMouseLeave={stop}
-      onFocus={start}
-      onBlur={stop}
-      className={`${HIT} inline-flex items-center gap-2 px-4 text-body outline-none ` +
-        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ' +
-        'focus-visible:outline-focus-ring ' +
-        (selected
-          ? 'border-selected border-selection-border font-medium text-text-primary'
-          : 'border border-border-default text-text-secondary hover:bg-surface-subtle')}
-      style={{ minHeight: 'var(--size-control-visual-md)' }}
-    >
-      {selected && <span aria-hidden="true">✓</span>}
-      {children}
-    </button>
-  )
-}
-
 function ChapterUmfang() {
   const s = useStore()
   return (
@@ -173,16 +131,17 @@ function ChapterUmfang() {
           const state = s.coverage[g]
           const derived = state === 'notApplicable'
           return (
-            <SegmentedThree
+            <SegmentedControl
               key={g}
-              label={`${g.replace('_', NNBSP)} ${KG_LABELS[g]}`}
+              layout="row"
+              legend={`${g.replace('_', NNBSP)} ${KG_LABELS[g]}`}
               value={state}
               options={COVERAGE_OPTIONS}
               onChange={(v) => s.setCoverage(g, v)}
               disabled={derived}
-              disabledReason={
-                'nicht anwendbar für diese Konfiguration — abgeleitet, nicht gewählt'
-              }
+              disabledReason={derived
+                ? 'nicht anwendbar für diese Konfiguration — abgeleitet, nicht gewählt'
+                : undefined}
             />
           )
         })}
@@ -228,19 +187,21 @@ function ChapterFlaechen() {
         intro={'Die Vorschau am Preis erscheint beim Zeigen auf eine Option — ' +
           'entschieden ist erst der Klick.'}
       >
-        <div role="radiogroup" aria-label="Untergeschoss" className="flex flex-wrap gap-3">
-          {(['vollausbau', 'ab_decke', 'kein_ug'] as const).map((v) => (
-            <OptionButton
-              key={v}
-              selected={s.building.untergeschoss === v}
-              onSelect={() => s.setUntergeschoss(v)}
-              onPreview={(on) =>
-                s.previewOption(on ? { kind: 'untergeschoss', value: v } : null)}
-            >
-              {LABEL_UG[v]}
-            </OptionButton>
-          ))}
-        </div>
+        <RadioCardGroup
+          legend="Untergeschoss"
+          legendHidden
+          value={s.building.untergeschoss}
+          onChange={(v) => s.setUntergeschoss(v)}
+          onPreview={(v) =>
+            s.previewOption(v ? { kind: 'untergeschoss', value: v } : null)}
+          options={(['vollausbau', 'ab_decke', 'kein_ug'] as const).map((v) => ({
+            value: v,
+            title: LABEL_UG[v],
+            consequence: s.building.untergeschoss === v
+              ? 'aktuelle Auswahl'
+              : consequenceLabel(s.optionDelta({ kind: 'untergeschoss', value: v })),
+          }))}
+        />
       </Card>
     </div>
   )
@@ -258,19 +219,21 @@ function ChapterEnergie() {
         intro={'Die Wahl einer Option ist keine Bestätigung: das Unsicherheitsband ' +
           'verengt sich erst, wenn der Kunde den Standard bestätigt.'}
       >
-        <div role="radiogroup" aria-label="Energiestandard" className="flex flex-wrap gap-3">
-          {(['GEG', 'EH_55', 'EH_40'] as const).map((v) => (
-            <OptionButton
-              key={v}
-              selected={s.building.energiestandard === v}
-              onSelect={() => s.setEnergiestandard(v)}
-              onPreview={(on) =>
-                s.previewOption(on ? { kind: 'energiestandard', value: v } : null)}
-            >
-              {LABEL_ES[v]}
-            </OptionButton>
-          ))}
-        </div>
+        <RadioCardGroup
+          legend="Energiestandard"
+          legendHidden
+          value={s.building.energiestandard}
+          onChange={(v) => s.setEnergiestandard(v)}
+          onPreview={(v) =>
+            s.previewOption(v ? { kind: 'energiestandard', value: v } : null)}
+          options={(['GEG', 'EH_55', 'EH_40'] as const).map((v) => ({
+            value: v,
+            title: LABEL_ES[v],
+            consequence: s.building.energiestandard === v
+              ? 'aktuelle Auswahl'
+              : consequenceLabel(s.optionDelta({ kind: 'energiestandard', value: v })),
+          }))}
+        />
         {!s.esConfirmed && (
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-3">
             <p className="text-small text-text-secondary">

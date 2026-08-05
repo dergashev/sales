@@ -3,6 +3,7 @@ import { useStore } from './state/store'
 import { useT } from './i18n'
 import { checkFonts, checkCascade, type FontCheck } from './lib/font-check'
 import { Diagnostics } from './components/Diagnostics'
+import { SegmentedControl } from './components/controls'
 import { Sidebar, type View } from './components/Sidebar'
 import { OfferPanel } from './components/OfferPanel'
 import { UndoToast } from './components/UndoToast'
@@ -62,41 +63,21 @@ export function App() {
           {/* Режим показа (правило 11). Вход в презентацию гейтуется
               открытым material-блокером (R-07) — заблокированный контрол
               объясняет почему (правило 12). */}
-          <div role="radiogroup" aria-label="Modus" className="flex">
-            {([
-              ['intern', t('shell.mode.intern')],
-              ['praesentation', t('shell.mode.praesentation')],
-            ] as const).map(
-              ([m, label]) => {
-                const active = s.mode === m
-                const disabled = m === 'praesentation' && modeBlocked
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    role="radio"
-                    aria-checked={active}
-                    aria-disabled={disabled || undefined}
-                    title={disabled ? t('shell.mode.blockedReason') : undefined}
-                    onClick={() => !disabled && s.setMode(m)}
-                    className={'relative px-3 py-1 text-small outline-none ' +
-                      'before:absolute before:left-1/2 before:top-1/2 ' +
-                      'before:min-h-hit-target before:w-full before:-translate-x-1/2 ' +
-                      'before:-translate-y-1/2 before:content-[""] ' +
-                      'focus-visible:outline focus-visible:outline-2 ' +
-                      'focus-visible:outline-offset-2 focus-visible:outline-focus-ring ' +
-                      (active
-                        ? 'border-selected border-selection-border font-medium text-text-primary'
-                        : 'border border-border-default text-text-secondary') +
-                      (disabled ? ' text-text-disabled' : '')}
-                  >
-                    {active && <span aria-hidden="true" className="mr-1">✓</span>}
-                    {label}
-                  </button>
-                )
+          <SegmentedControl
+            layout="inline"
+            legend="Modus"
+            value={s.mode}
+            onChange={(m) => s.setMode(m)}
+            options={[
+              { value: 'intern', label: t('shell.mode.intern') },
+              {
+                value: 'praesentation',
+                label: t('shell.mode.praesentation'),
+                disabled: modeBlocked,
+                disabledReason: modeBlocked ? t('shell.mode.blockedReason') : undefined,
               },
-            )}
-          </div>
+            ]}
+          />
           {!praesentation && (
             <p className="text-small text-text-secondary">
               {t('shell.prototypeNote')} · {s.uiLanguage.toUpperCase()}

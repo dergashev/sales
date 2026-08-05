@@ -1,7 +1,7 @@
 import catalog from '../fixtures/catalog.json'
 import { useStore } from '../state/store'
 import { NNBSP } from '../engine/money'
-import { Button } from '../components/primitives'
+import { SegmentedControl, Switch } from '../components/controls'
 
 /**
  * S6 Einstellungen — скрыто от клиента.
@@ -42,11 +42,13 @@ export function S6Einstellungen() {
               deaktiviert mit dem Betrag, den er hinzufügen würde.
             </p>
           </div>
-          <Button variant={s.regionalfaktorActive ? 'primary' : 'secondary'}
-                  onClick={() => s.toggleRegionalfaktor()}
-                  aria-pressed={s.regionalfaktorActive}>
-            {s.regionalfaktorActive ? 'Deaktivieren' : 'Aktivieren'}
-          </Button>
+          {/* Switch — контрактный контрол именно для этой настройки
+              (components-core §Switch: «Regionalfaktor anwenden»). */}
+          <Switch
+            label="Regionalfaktor anwenden"
+            checked={s.regionalfaktorActive}
+            onChange={() => s.toggleRegionalfaktor()}
+          />
         </div>
       </section>
 
@@ -135,40 +137,20 @@ export function S6Einstellungen() {
       <section className="mt-6" aria-label="Dichte">
         <h2 className="text-heading-3 font-bold text-text-primary">Dichte</h2>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3 border border-border-default p-4">
-          <div>
-            <p className="text-body text-text-primary">Darstellungsdichte</p>
-            <p className="mt-1 text-small text-text-secondary">
-              Unabhängige Nutzereinstellung (D-16) — der Modus ändert sie nie.
-              Vor dem Teilen des Bildschirms wird Komfortabel empfohlen
-              (Checklisten-Punkt im Preflight, kein Zwang).
-            </p>
-          </div>
-          <div role="radiogroup" aria-label="Darstellungsdichte" className="flex">
-            {([['komfortabel', 'Komfortabel'], ['kompakt', 'Kompakt']] as const).map(([d, label]) => {
-              const active = s.density === d
-              return (
-                <button
-                  key={d}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  onClick={() => s.setDensity(d)}
-                  className={'relative px-4 py-1 text-body outline-none ' +
-                    'before:absolute before:left-1/2 before:top-1/2 ' +
-                    'before:min-h-hit-target before:w-full before:-translate-x-1/2 ' +
-                    'before:-translate-y-1/2 before:content-[""] ' +
-                    'focus-visible:outline focus-visible:outline-2 ' +
-                    'focus-visible:outline-offset-2 focus-visible:outline-focus-ring ' +
-                    (active
-                      ? 'border-selected border-selection-border font-medium text-text-primary'
-                      : 'border border-border-default text-text-secondary')}
-                >
-                  {active && <span aria-hidden="true" className="mr-1">✓</span>}
-                  {label}
-                </button>
-              )
-            })}
-          </div>
+          <p className="max-w-content text-small text-text-secondary">
+            Unabhängige Nutzereinstellung (D-16) — der Modus ändert sie nie.
+            Vor dem Teilen des Bildschirms wird Komfortabel empfohlen
+            (Checklisten-Punkt im Preflight, kein Zwang).
+          </p>
+          <SegmentedControl
+            legend="Darstellungsdichte"
+            value={s.density}
+            onChange={(d) => s.setDensity(d)}
+            options={[
+              { value: 'komfortabel', label: 'Komfortabel' },
+              { value: 'kompakt', label: 'Kompakt' },
+            ]}
+          />
         </div>
       </section>
 
@@ -176,37 +158,19 @@ export function S6Einstellungen() {
         <h2 className="text-heading-3 font-bold text-text-primary">Sprache</h2>
         <div className="mt-2 border border-border-default p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-body text-text-primary">Oberflächensprache</p>
             {/* Живой переключатель (правило 36): ключи словаря, de — источник
                 и fallback. Язык артефактов — ОТДЕЛЬНАЯ настройка (D-13),
                 которой в прототипе нет: числа и клиентские подписи остаются
                 немецкими при любом языке UI. */}
-            <div role="radiogroup" aria-label="Oberflächensprache" className="flex">
-              {(['de', 'en'] as const).map((l) => {
-                const active = s.uiLanguage === l
-                return (
-                  <button
-                    key={l}
-                    type="button"
-                    role="radio"
-                    aria-checked={active}
-                    onClick={() => s.setUiLanguage(l)}
-                    className={'relative px-4 py-1 text-body outline-none ' +
-                      'before:absolute before:left-1/2 before:top-1/2 ' +
-                      'before:min-h-hit-target before:w-full before:-translate-x-1/2 ' +
-                      'before:-translate-y-1/2 before:content-[""] ' +
-                      'focus-visible:outline focus-visible:outline-2 ' +
-                      'focus-visible:outline-offset-2 focus-visible:outline-focus-ring ' +
-                      (active
-                        ? 'border-selected border-selection-border font-medium text-text-primary'
-                        : 'border border-border-default text-text-secondary')}
-                  >
-                    {active && <span aria-hidden="true" className="mr-1">✓</span>}
-                    {l.toUpperCase()}
-                  </button>
-                )
-              })}
-            </div>
+            <SegmentedControl
+              legend="Oberflächensprache"
+              value={s.uiLanguage}
+              onChange={(l) => s.setUiLanguage(l)}
+              options={[
+                { value: 'de', label: 'DE' },
+                { value: 'en', label: 'EN' },
+              ]}
+            />
           </div>
           <p className="mt-3 text-small text-text-secondary">
             EN-Guidance-Texte sind nicht übersetzt und fallen sichtbar auf

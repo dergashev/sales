@@ -196,6 +196,15 @@ type Store = {
       | { kind: 'untergeschoss'; value: BuildingInput['untergeschoss'] }
       | null,
   ) => void
+  /**
+   * Чистая дельта опции против текущего выбора — для ВСЕГДА видимой
+   * consequenceLine карточки (R-05/OPTION-009). Состояние не меняет.
+   */
+  optionDelta: (
+    change:
+      | { kind: 'energiestandard'; value: BuildingInput['energiestandard'] }
+      | { kind: 'untergeschoss'; value: BuildingInput['untergeschoss'] },
+  ) => Decimal
   undo: () => void
   /** Адресная отмена события из тоста DC-29. Умеет отменять и отмену. */
   undoEvent: (seq: number) => void
@@ -591,6 +600,18 @@ const store = createStore<Store>((set, get) => {
     clearDelta: () => set({ activeDelta: null }),
     openChapterAt: (n) => set({ openChapter: n }),
 
+    optionDelta: (change) => {
+      // Тот же движок от точных значений — у последствия нет собственной
+      // арифметики, поэтому карточка, превью и клик не могут разойтись.
+      const s = get()
+      const before = computeProjection(s).result.total.exact
+      const after = computeProjection({
+        ...s,
+        building: { ...s.building, [change.kind]: change.value },
+      }).result.total.exact
+      return after.minus(before)
+    },
+
     previewOption: (change) => {
       if (change === null) {
         if (get().preview !== null) set({ preview: null })
@@ -602,17 +623,10 @@ const store = createStore<Store>((set, get) => {
         if (s.preview !== null) set({ preview: null })
         return
       }
-      // Последствие считается тем же движком от ТОЧНЫХ значений — превью
-      // не имеет собственной арифметики, поэтому не может разойтись с кликом.
-      const before = computeProjection(s).result.total.exact
-      const after = computeProjection({
-        ...s,
-        building: { ...s.building, [change.kind]: change.value },
-      }).result.total.exact
       const label = change.kind === 'energiestandard'
         ? `Energiestandard ${change.value.replace('_', ' ')}`
         : `Untergeschoss ${LABEL_UG[change.value as BuildingInput['untergeschoss']]}`
-      set({ preview: { label, deltaExact: after.minus(before) } })
+      set({ preview: { label, deltaExact: get().optionDelta(change) } })
     },
 
     /**
