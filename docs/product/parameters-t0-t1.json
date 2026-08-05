@@ -1,0 +1,2174 @@
+{
+ "C0.14": {
+  "tier": "T0",
+  "chapter": null,
+  "cluster": "C0",
+  "name_de": "Gebäudeform",
+  "name_en": "Building form",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "Mehrfamilienhäuser",
+  "options": [
+   {
+    "code": "mfh",
+    "de": "Mehrfamilienhäuser",
+    "en": "Multi-family house (apartment building)"
+   },
+   {
+    "code": "mfh_mix",
+    "de": "Mehrfamilienhäuser mit zusätzl. Nutzung",
+    "en": "Multi-family house (apartment building) with additional use"
+   },
+   {
+    "code": "efh",
+    "de": "Einfamilienhäuser",
+    "en": "Single-family house"
+   },
+   {
+    "code": "doppelhaus",
+    "de": "Doppelhäuser",
+    "en": "Semi-detached house (duplex)"
+   },
+   {
+    "code": "reihenhaus",
+    "de": "Reihenhäuser",
+    "en": "Terraced / row house"
+   },
+   {
+    "code": "seniorenwohneinrichtungen",
+    "de": "Seniorenwohneinrichtungen",
+    "en": "Retirement homes"
+   },
+   {
+    "code": "wohnheime",
+    "de": "Wohnheime mit gemeinschaftlichen Einrichtungen (Sanitär, Küche)",
+    "en": "Dormitory with shared facilities (bathrooms, kitchen)"
+   },
+   {
+    "code": "wohnheime_apartments",
+    "de": "Wohnheime mit Appartements",
+    "en": "Dormitory with self-contained apartments"
+   },
+   {
+    "code": "parkhäuser",
+    "de": "Parkhäuser",
+    "en": "Multi-storey car parks"
+   },
+   {
+    "code": "tiefgaragen",
+    "de": "Tiefgaragen",
+    "en": "Underground car parks"
+   },
+   {
+    "code": "hotels",
+    "de": "Hotels (ergänzt D-11)",
+    "en": "Hotels (added D-11)"
+   },
+   {
+    "code": "buero_verwaltung",
+    "de": "Büro- und Verwaltungsgebäude (ergänzt D-11)",
+    "en": "Office and administration buildings (added D-11)"
+   },
+   {
+    "code": "gewerbe",
+    "de": "Gewerbegebäude (ergänzt D-11)",
+    "en": "Commercial buildings (added D-11)"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C0.13": {
+  "tier": "T0",
+  "chapter": null,
+  "cluster": "C0",
+  "name_de": "Gebäudeklasse (MBO §2)",
+  "name_en": "Building class (MBO §2)",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "GK 4–GK 5 (typischer MFH-Bereich)",
+  "options": [
+   {
+    "code": "gk1",
+    "de": "GK 1 – freistehend, ≤7 m, max. 2 NE / ≤400 m² (sowie freistehende land-/forstwirtsch. Gebäude)",
+    "en": "Class 1 – detached, ≤7 m, max. 2 units / ≤400 m²"
+   },
+   {
+    "code": "gk2",
+    "de": "GK 2 – ≤7 m, max. 2 NE / ≤400 m² (nicht freistehend)",
+    "en": "Class 2 – ≤7 m, max. 2 units / ≤400 m² (non-detached)"
+   },
+   {
+    "code": "gk3",
+    "de": "GK 3 – sonstige Gebäude ≤7 m (>2 NE)",
+    "en": "Class 3 – other buildings ≤7 m (>2 units)"
+   },
+   {
+    "code": "gk4",
+    "de": "GK 4 – ≤13 m, NE jeweils ≤400 m²",
+    "en": "Class 4 – ≤13 m, units each ≤400 m²"
+   },
+   {
+    "code": "gk5",
+    "de": "GK 5 – sonstige Gebäude >13 m (kein Hochhaus), einschl. unterirdischer Gebäude",
+    "en": "Class 5 – other buildings >13 m (not high-rise), incl. underground"
+   },
+   {
+    "code": "hochhaus",
+    "de": "Hochhaus – Fußboden mind. eines Aufenthaltsraums >22 m über mittlerer Geländeoberfläche",
+    "en": "High-rise – floor level of at least one occupied room >22 m above average ground level"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C0.05": {
+  "tier": "T0",
+  "chapter": null,
+  "cluster": "C0",
+  "name_de": "Bundesland (Landesbauordnung)",
+  "name_en": "Federal state (state building code)",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "",
+  "options": [
+   {
+    "code": "be",
+    "de": "Berlin (BauO Bln)",
+    "en": "Berlin (BauO Bln)"
+   },
+   {
+    "code": "by",
+    "de": "Bayern (BayBO)",
+    "en": "Bavaria (BayBO)"
+   },
+   {
+    "code": "nw",
+    "de": "Nordrhein-Westfalen (BauO NRW)",
+    "en": "North Rhine-Westphalia (BauO NRW)"
+   },
+   {
+    "code": "bw",
+    "de": "Baden-Württemberg (LBO BW)",
+    "en": "Baden-Württemberg (LBO BW)"
+   },
+   {
+    "code": "st",
+    "de": "Sachsen-Anhalt (BauO LSA)",
+    "en": "Saxony-Anhalt (BauO LSA)"
+   },
+   {
+    "code": "rp",
+    "de": "Rheinland-Pfalz (LBauO RLP)",
+    "en": "Rhineland-Palatinate (LBauO RLP)"
+   },
+   {
+    "code": "bb",
+    "de": "Brandenburg (BbgBO)",
+    "en": "Brandenburg (BbgBO)"
+   },
+   {
+    "code": "hh",
+    "de": "Hamburg (HBauO)",
+    "en": "Hamburg (HBauO)"
+   },
+   {
+    "code": "he",
+    "de": "Hessen (HBO)",
+    "en": "Hesse (HBO)"
+   },
+   {
+    "code": "ni",
+    "de": "Niedersachsen (NBauO)",
+    "en": "Lower Saxony (NBauO)"
+   },
+   {
+    "code": "hb",
+    "de": "Bremen (BremLBO)",
+    "en": "Bremen (BremLBO)"
+   },
+   {
+    "code": "mv",
+    "de": "Mecklenburg-Vorpommern (LBauO M-V)",
+    "en": "Mecklenburg-Western Pomerania (LBauO M-V)"
+   },
+   {
+    "code": "sl",
+    "de": "Saarland (LBO Saar)",
+    "en": "Saarland (LBO Saar)"
+   },
+   {
+    "code": "sn",
+    "de": "Sachsen (SächsBO)",
+    "en": "Saxony (SächsBO)"
+   },
+   {
+    "code": "sh",
+    "de": "Schleswig-Holstein (LBO SH)",
+    "en": "Schleswig-Holstein (LBO SH)"
+   },
+   {
+    "code": "th",
+    "de": "Thüringen (ThürBO)",
+    "en": "Thuringia (ThürBO)"
+   }
+  ],
+  "ebene": "projekt"
+ },
+ "C1.01": {
+  "tier": "T0",
+  "chapter": null,
+  "cluster": "C1",
+  "name_de": "Brutto-Grundfläche BGF (DIN 277)",
+  "name_en": "Gross floor area GFA Aboveground",
+  "type": "Zahl",
+  "unit": "m²",
+  "all3_default": "oberirdisches Gebäude",
+  "options": [
+   {
+    "code": "BGF_oberirdisch",
+    "de": "Brutto-Grundfläche (oberirdisch)",
+    "en": ""
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C1.15": {
+  "tier": "T0",
+  "chapter": null,
+  "cluster": "C1",
+  "name_de": "Brutto-Grundfläche BGF (DIN 277)",
+  "name_en": "Gross floor area GFA Underground",
+  "type": "Zahl",
+  "unit": "m²",
+  "all3_default": "unterirdisch Gebäude",
+  "options": [
+   {
+    "code": "BGF_unterirdisch",
+    "de": "Brutto-Grundfläche (unterirdisch)",
+    "en": ""
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C1.09": {
+  "tier": "T0",
+  "chapter": null,
+  "cluster": "C1",
+  "name_de": "Wohnfläche WFL (WoFlV)",
+  "name_en": "Living area (WoFlV)",
+  "type": "Zahl",
+  "unit": "m²",
+  "all3_default": "WFL = Wohnraumfläche + anteilige Außenfläche",
+  "options": [],
+  "ebene": "gebaeude"
+ },
+ "C1.04": {
+  "tier": "T0",
+  "chapter": null,
+  "cluster": "C1",
+  "name_de": "Nutzungsfläche NUF (DIN 277)",
+  "name_en": "Usable floor area NUA",
+  "type": "Zahl",
+  "unit": "m²",
+  "all3_default": "",
+  "options": [],
+  "ebene": "gebaeude"
+ },
+ "C1.13": {
+  "tier": "T0",
+  "chapter": null,
+  "cluster": "C1",
+  "name_de": "Reine Wohnnutzung",
+  "name_en": "Purely residential",
+  "type": "Boolean",
+  "unit": "",
+  "all3_default": "ja (Standardgebäude)",
+  "options": [
+   {
+    "code": "ja",
+    "de": "Reine Wohnnutzung",
+    "en": "Purely residential use"
+   },
+   {
+    "code": "nein",
+    "de": "Mischnutzung (Wohnen + Gewerbe)",
+    "en": "Mixed use (residential + commercial)"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C1.16": {
+  "tier": "T0",
+  "chapter": null,
+  "cluster": "C1",
+  "name_de": "Anzahl Wohneinheiten (WE)",
+  "name_en": "Number of residential units",
+  "type": "Zahl",
+  "unit": "Stk",
+  "all3_default": "",
+  "options": [],
+  "ebene": "gebaeude"
+ },
+ "C1.21": {
+  "tier": "T0",
+  "chapter": null,
+  "cluster": "C1",
+  "name_de": "Anzahl Vollgeschosse",
+  "name_en": "Number of full storeys",
+  "type": "Zahl",
+  "unit": "Stk",
+  "all3_default": "",
+  "options": [],
+  "ebene": "gebaeude"
+ },
+ "C4.06": {
+  "tier": "T0",
+  "chapter": null,
+  "cluster": "C4",
+  "name_de": "Energiestandard",
+  "name_en": "Energy-efficiency standard",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "EH 40 / EH 55",
+  "options": [
+   {
+    "code": "geg_min",
+    "de": "GEG-Mindeststandard Neubau (Referenzgebäude/Höchstwerte)",
+    "en": "GEG minimum standard (new build)"
+   },
+   {
+    "code": "eh55",
+    "de": "Effizienzhaus 55 (EH 55)",
+    "en": "Efficiency House 55"
+   },
+   {
+    "code": "eh40",
+    "de": "Effizienzhaus 40 (EH 40)",
+    "en": "Efficiency House 40"
+   },
+   {
+    "code": "eh40_nh",
+    "de": "Effizienzhaus 40 mit Nachhaltigkeitsklasse / QNG (EH 40-NH)",
+    "en": "Efficiency House 40 with sustainability class / QNG"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C3.06": {
+  "tier": "T0",
+  "chapter": null,
+  "cluster": "C3",
+  "name_de": "DIN-276-Kostengruppen-Zuordnung",
+  "name_en": "DIN 276 cost-group allocation",
+  "type": "Mehrfachauswahl",
+  "unit": "",
+  "all3_default": "KG 300 + KG 400 + KG 700 (Festumfang)",
+  "options": [
+   {
+    "code": "kg100",
+    "de": "KG 100 – Grundstück",
+    "en": "Cost group (CG) 100 – Site/property"
+   },
+   {
+    "code": "kg200",
+    "de": "KG 200 – Vorbereitende Maßnahmen",
+    "en": "CG 200 – Preparatory measures"
+   },
+   {
+    "code": "kg300",
+    "de": "KG 300 – Bauwerk – Baukonstruktionen",
+    "en": "CG 300 – Building – construction works"
+   },
+   {
+    "code": "kg400",
+    "de": "KG 400 – Bauwerk – Technische Anlagen",
+    "en": "CG 400 – Building – technical/MEP systems"
+   },
+   {
+    "code": "kg500",
+    "de": "KG 500 – Außenanlagen und Freiflächen",
+    "en": "CG 500 – Outdoor facilities & open spaces"
+   },
+   {
+    "code": "kg600",
+    "de": "KG 600 – Ausstattung und Kunstwerke",
+    "en": "CG 600 – Furnishings & works of art"
+   },
+   {
+    "code": "kg700",
+    "de": "KG 700 – Baunebenkosten",
+    "en": "CG 700 – Ancillary construction costs"
+   },
+   {
+    "code": "kg800",
+    "de": "KG 800 – Finanzierung",
+    "en": "CG 800 – Financing"
+   }
+  ],
+  "ebene": "projekt"
+ },
+ "C2.10": {
+  "tier": "T0",
+  "chapter": null,
+  "cluster": "C2",
+  "name_de": "Geplanter Baubeginn (Datum)",
+  "name_en": "Planned construction start (date)",
+  "type": "Datum",
+  "unit": "",
+  "all3_default": "",
+  "options": [],
+  "ebene": "projekt"
+ },
+ "C3.02": {
+  "tier": "T1",
+  "chapter": "umfang",
+  "cluster": "C3",
+  "name_de": "All3-Festleistungen oberirdisches Gebäude",
+  "name_en": "All3 fixed scope (above-ground building)",
+  "type": "Mehrfachauswahl",
+  "unit": "",
+  "all3_default": "Alle gelisteten Positionen Festleistung",
+  "options": [
+   {
+    "code": "planung",
+    "de": "Entwurfs-/Genehmigungs-/Ausführungsplanung inkl. Statik, Brandschutzkonzept, Wärmeschutznachweis, TGA-Planung",
+    "en": "Concept/permit/execution design incl. structural, fire-safety, thermal & MEP design"
+   },
+   {
+    "code": "bauleitung_pm",
+    "de": "Bauleitung / Projektmanagement",
+    "en": "Site management / project management"
+   },
+   {
+    "code": "tragwerk",
+    "de": "Tragwerk (industriell vorgefertigte All3-Systemkomponenten)",
+    "en": "Load-bearing structure (industrially prefabricated system components)"
+   },
+   {
+    "code": "fassade",
+    "de": "Außenwände / Fassadenelemente mit Außenverkleidung",
+    "en": "External walls / facade elements with cladding"
+   },
+   {
+    "code": "dach_entwaesserung",
+    "de": "Dach inkl. Entwässerung und Notentwässerung",
+    "en": "Roof incl. drainage and emergency drainage"
+   },
+   {
+    "code": "fenster_sonnenschutz",
+    "de": "Fensterelemente mit oder ohne Sonnenschutz",
+    "en": "Window units with or without solar shading"
+   },
+   {
+    "code": "hauseingangstuer",
+    "de": "Hauseingangstür(en)",
+    "en": "Main entrance door(s)"
+   },
+   {
+    "code": "innenausbau",
+    "de": "Innenausbau (Böden, Wände, Decken, Innentüren)",
+    "en": "Interior fit-out (floors, walls, ceilings, internal doors)"
+   },
+   {
+    "code": "elektro_grund",
+    "de": "Elektro-Grundinstallation (Schalter, Steckdosen, Beleuchtung)",
+    "en": "Basic electrical installation (switches, sockets, lighting)"
+   },
+   {
+    "code": "flaechenheizung",
+    "de": "Flächenheizung (Niedertemperatur-FBH)",
+    "en": "Underfloor heating (low-temperature)"
+   },
+   {
+    "code": "balkon",
+    "de": "Balkonanlage (sofern genehmigungsfähig)",
+    "en": "Balcony (if permissible)"
+   },
+   {
+    "code": "aufzug",
+    "de": "Personenaufzug (sofern bauordnungsrechtlich erforderlich)",
+    "en": "Passenger lift (if required by building code)"
+   },
+   {
+    "code": "lueftung",
+    "de": "Lüftung (fensterintegriert / ALD bzw. mechanisch)",
+    "en": "Ventilation (window-integrated / mechanical)"
+   },
+   {
+    "code": "vorgefertigte_baeder",
+    "de": "Vorgefertigte Bäder",
+    "en": "Prefabricated bathrooms"
+   },
+   {
+    "code": "waermeerzeugung",
+    "de": "Wärmeerzeugung (Fernwärme oder Wärmepumpe)",
+    "en": "Heat generation (district heating or heat pump)"
+   },
+   {
+    "code": "leitungsnetz",
+    "de": "Leitungsnetz (Abwasser, Regenwasser, Heizung, Lüftung, Haustechnik) bis 1,0 m außerhalb Gebäudehülle",
+    "en": "Utility network (waste/rainwater, heating, ventilation, building services) up to 1.0 m outside the building envelope"
+   }
+  ],
+  "ebene": "projekt"
+ },
+ "C3.03": {
+  "tier": "T1",
+  "chapter": "umfang",
+  "cluster": "C3",
+  "name_de": "Optionspakete (gesonderte Angebotspositionen)",
+  "name_en": "Option packages (separate offer items)",
+  "type": "Mehrfachauswahl",
+  "unit": "",
+  "all3_default": "Optionspreis separat",
+  "options": [
+   {
+    "code": "tg_ug_schnittstelle",
+    "de": "TG-/UG-Schnittstellen (Planung/Abstimmung)",
+    "en": "Underground garage/basement interfaces (design/coordination)"
+   },
+   {
+    "code": "aussenanlagen",
+    "de": "Außenanlagen",
+    "en": "External/landscaping works"
+   },
+   {
+    "code": "pv",
+    "de": "Photovoltaik / PV-Vorbereitung",
+    "en": "Photovoltaics / PV provision"
+   },
+   {
+    "code": "sonnenschutz",
+    "de": "Außenliegender Sonnenschutz",
+    "en": "External solar shading"
+   },
+   {
+    "code": "digitale_zutrittskontrolle",
+    "de": "Digitale Zutrittskontrolle / elektronisches Schließsystem",
+    "en": "Digital access control / electronic locking system"
+   },
+   {
+    "code": "kuechen",
+    "de": "Küchen / Kompaktküchen",
+    "en": "Kitchens / compact kitchens"
+   },
+   {
+    "code": "ffe",
+    "de": "FF&E (lose Möblierung / Ausstattung)",
+    "en": "FF&E (loose furniture / equipment)"
+   },
+   {
+    "code": "kamera_wlan",
+    "de": "Kamera-/Videovorbereitung und WLAN-Infrastruktur",
+    "en": "Camera/video provision and Wi-Fi infrastructure"
+   },
+   {
+    "code": "erhoehter_energiestandard",
+    "de": "Erhöhter Energiestandard (z. B. Effizienzhaus 40 statt 55)",
+    "en": "Enhanced energy standard (e.g. Effizienzhaus 40 instead of 55)"
+   },
+   {
+    "code": "beschleunigter_terminplan",
+    "de": "Beschleunigter Terminplan",
+    "en": "Accelerated schedule"
+   },
+   {
+    "code": "e_mobilitaet",
+    "de": "E-Mobilität / Ladeinfrastruktur",
+    "en": "E-mobility / charging infrastructure"
+   },
+   {
+    "code": "qualitaetsoption_bad",
+    "de": "Qualitätsoption Bad (z. B. ESG-Glas-Duschabtrennung)",
+    "en": "Bathroom quality option (e.g. tempered-glass shower screen)"
+   }
+  ],
+  "ebene": "projekt"
+ },
+ "C10.01": {
+  "tier": "T1",
+  "chapter": "umfang",
+  "cluster": "C10",
+  "name_de": "Leistungsstatus Außenanlagen",
+  "name_en": "Scope status external works",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "All3-Ausschluss (AG/Dritte) – Option",
+  "options": [
+   {
+    "code": "all3_leistung",
+    "de": "Im All3-Umfang enthalten",
+    "en": "Included in All3 scope"
+   },
+   {
+    "code": "option",
+    "de": "Als Option angeboten",
+    "en": "Offered as option"
+   },
+   {
+    "code": "ausschluss_ag",
+    "de": "Bauseits / AG bzw. Dritte (nicht All3)",
+    "en": "By client/third party (excluded)"
+   }
+  ],
+  "ebene": "projekt"
+ },
+ "C1.28": {
+  "tier": "T1",
+  "chapter": "umfang",
+  "cluster": "C1",
+  "name_de": "Tiefgaragen-Stellplätze",
+  "name_en": "Underground parking spaces",
+  "type": "Zahl",
+  "unit": "Stk",
+  "all3_default": "TG-Bau nicht All3-Festumfang (Option/AG)",
+  "options": [],
+  "ebene": "gebaeude"
+ },
+ "C0.20": {
+  "tier": "T1",
+  "chapter": "umfang",
+  "cluster": "C0",
+  "name_de": "Bestandsgebäude / Abbruch erforderlich",
+  "name_en": "Existing building / demolition required",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "",
+  "options": [
+   {
+    "code": "ja",
+    "de": "Ja – Abbruch/Rückbau Bestand erforderlich",
+    "en": "Yes – demolition of existing buildings required"
+   },
+   {
+    "code": "nein",
+    "de": "Nein – unbebautes Grundstück / kein Abbruch",
+    "en": "No – vacant plot / no demolition"
+   },
+   {
+    "code": "teilabbruch",
+    "de": "Teilabbruch / Teilrückbau",
+    "en": "Partial demolition"
+   },
+   {
+    "code": "unklar",
+    "de": "Noch zu klären",
+    "en": "To be clarified"
+   }
+  ],
+  "ebene": "projekt"
+ },
+ "C1.20": {
+  "tier": "T1",
+  "chapter": "gebaeude",
+  "cluster": "C1",
+  "name_de": "Staffelgeschoss",
+  "name_en": "Setback (recessed) top floor",
+  "type": "Boolean",
+  "unit": "",
+  "all3_default": "",
+  "options": [
+   {
+    "code": "ja",
+    "de": "Mit Staffelgeschoss",
+    "en": "With setback top floor"
+   },
+   {
+    "code": "nein",
+    "de": "Ohne Staffelgeschoss",
+    "en": "Without setback top floor"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C1.23": {
+  "tier": "T1",
+  "chapter": "gebaeude",
+  "cluster": "C1",
+  "name_de": "Lichte Raumhöhe Wohnen",
+  "name_en": "Clear room height (living)",
+  "type": "Zahl",
+  "unit": "m",
+  "all3_default": "ca. 2,70 m",
+  "options": [],
+  "ebene": "gebaeude"
+ },
+ "C1.26": {
+  "tier": "T1",
+  "chapter": "gebaeude",
+  "cluster": "C1",
+  "name_de": "Anzahl Treppenhäuser",
+  "name_en": "Number of staircases",
+  "type": "Zahl",
+  "unit": "Stk",
+  "all3_default": "Stahlbeton-Treppenhaus",
+  "options": [],
+  "ebene": "gebaeude"
+ },
+ "C1.27": {
+  "tier": "T1",
+  "chapter": "gebaeude",
+  "cluster": "C1",
+  "name_de": "Anzahl Aufzüge",
+  "name_en": "Number of elevators",
+  "type": "Zahl",
+  "unit": "Stk",
+  "all3_default": "Personenaufzug, bauordnungsrechtl. Mindestanzahl zu prüfen",
+  "options": [],
+  "ebene": "gebaeude"
+ },
+ "C1.29": {
+  "tier": "T1",
+  "chapter": "gebaeude",
+  "cluster": "C1",
+  "name_de": "Oberirdische Stellplätze",
+  "name_en": "Surface parking spaces",
+  "type": "Zahl",
+  "unit": "Stk",
+  "all3_default": "Außenanlagen i.d.R. nicht All3-Festumfang",
+  "options": [],
+  "ebene": "gebaeude"
+ },
+ "C4.12": {
+  "tier": "T1",
+  "chapter": "energie_qualitaet",
+  "cluster": "C4",
+  "name_de": "Nachhaltigkeitszertifizierung",
+  "name_en": "Sustainability certification",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "",
+  "options": [
+   {
+    "code": "keine",
+    "de": "keine Zertifizierung",
+    "en": "None"
+   },
+   {
+    "code": "qng",
+    "de": "QNG (Qualitätssiegel Nachhaltiges Gebäude)",
+    "en": "QNG (Quality Seal Sustainable Building)"
+   },
+   {
+    "code": "dgnb",
+    "de": "DGNB-Zertifizierung",
+    "en": "DGNB certification"
+   },
+   {
+    "code": "bnb",
+    "de": "BNB (Bewertungssystem Nachhaltiges Bauen, öffentl. Bau)",
+    "en": "BNB assessment system"
+   },
+   {
+    "code": "nawoh",
+    "de": "NaWoh (Qualitätssiegel Nachhaltiger Wohnungsbau)",
+    "en": "NaWoh (Sustainable Housing seal)"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C4.13": {
+  "tier": "T1",
+  "chapter": "energie_qualitaet",
+  "cluster": "C4",
+  "name_de": "DGNB-/QNG-Zielniveau",
+  "name_en": "Target certification level",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "",
+  "options": [
+   {
+    "code": "qng_plus",
+    "de": "QNG-Plus",
+    "en": "QNG Plus"
+   },
+   {
+    "code": "qng_premium",
+    "de": "QNG-Premium",
+    "en": "QNG Premium"
+   },
+   {
+    "code": "dgnb_silber",
+    "de": "DGNB Silber",
+    "en": "DGNB Silver"
+   },
+   {
+    "code": "dgnb_gold",
+    "de": "DGNB Gold",
+    "en": "DGNB Gold"
+   },
+   {
+    "code": "dgnb_platin",
+    "de": "DGNB Platin",
+    "en": "DGNB Platinum"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C4.14": {
+  "tier": "T1",
+  "chapter": "energie_qualitaet",
+  "cluster": "C4",
+  "name_de": "KfW-/BEG-Förderung (Effizienzhaus)",
+  "name_en": "KfW/BEG funding (efficiency house)",
+  "type": "Mehrfachauswahl",
+  "unit": "",
+  "all3_default": "",
+  "options": [
+   {
+    "code": "keine",
+    "de": "keine KfW-Förderung",
+    "en": "No KfW funding"
+   },
+   {
+    "code": "kfw_297_298_nh",
+    "de": "KfW 297/298 EH 40 mit QNG (Klimafreundlicher Neubau – Wohngebäude)",
+    "en": "KfW 297/298 EH 40 with QNG"
+   },
+   {
+    "code": "kfw_297_298",
+    "de": "KfW 297/298 EH 40 ohne QNG (Klimafreundliches Wohngebäude)",
+    "en": "KfW 297/298 EH 40 without QNG"
+   },
+   {
+    "code": "kfw_eh40",
+    "de": "Zielstandard EH 40 (Vertragsanforderung, unabhängig vom Programm)",
+    "en": "EH 40 target standard (contractual)"
+   },
+   {
+    "code": "kfw_eh55",
+    "de": "Zielstandard EH 55 (Vertragsanforderung, KfW-Neubauförderung ausgelaufen)",
+    "en": "EH 55 target standard (contractual)"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C4.04": {
+  "tier": "T1",
+  "chapter": "energie_qualitaet",
+  "cluster": "C4",
+  "name_de": "Schallschutzniveau",
+  "name_en": "Sound insulation level",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "ALL3-Hausstandard (über erhöhtem Niveau)",
+  "options": [
+   {
+    "code": "min_4109",
+    "de": "Mindestschallschutz DIN 4109-1:2018 (Decken R'w >= 54 / L'n,w <= 50; Wände R'w >= 53)",
+    "en": "Minimum sound insulation per DIN 4109-1:2018"
+   },
+   {
+    "code": "erhoeht",
+    "de": "Erhöhter Schallschutz (DIN 4109-5:2020 bzw. VDI 4100 SSt II/III; Decken R'w >= 57 / L'n,w <= 46; Wände R'w >= 56)",
+    "en": "Increased sound insulation"
+   },
+   {
+    "code": "all3_standard",
+    "de": "ALL3-Hausstandard (Decken R'w >= 57 / L'n,w <= 45; Wände R'w >= 56; Aufzugswände R'w >= 57; Treppen L'n,w <= 47; Wohnungseingangstür R'w >= 37)",
+    "en": "ALL3 in-house standard"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C4.09": {
+  "tier": "T1",
+  "chapter": "energie_qualitaet",
+  "cluster": "C4",
+  "name_de": "Barrierefreiheit",
+  "name_en": "Accessibility (DIN 18040-2)",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "Eingangsschwelle <= 2 cm",
+  "options": [
+   {
+    "code": "nur_lbo",
+    "de": "barrierefrei nach LBO-Mindestquote",
+    "en": "Accessible per LBO minimum quota"
+   },
+   {
+    "code": "b_standard",
+    "de": "barrierefrei nutzbar (DIN 18040-2, Basis-Standard)",
+    "en": "Barrier-free usable (DIN 18040-2)"
+   },
+   {
+    "code": "r_standard",
+    "de": "uneingeschränkt mit Rollstuhl nutzbar (DIN 18040-2, R-Standard)",
+    "en": "Wheelchair-accessible (DIN 18040-2 R-standard)"
+   },
+   {
+    "code": "ready_qng",
+    "de": "BBSR \"ready\" (QNG-Bewertung altersgerecht/anpassbar)",
+    "en": "BBSR \"ready\" (QNG age-appropriate)"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C4.10": {
+  "tier": "T1",
+  "chapter": "energie_qualitaet",
+  "cluster": "C4",
+  "name_de": "Anteil barrierefreier Wohneinheiten",
+  "name_en": "Share of accessible dwelling units",
+  "type": "Zahl",
+  "unit": "%",
+  "all3_default": "",
+  "options": [],
+  "ebene": "gebaeude"
+ },
+ "C6.04": {
+  "tier": "T1",
+  "chapter": "konstruktion_fassade",
+  "cluster": "C6",
+  "name_de": "Fassadenoberfläche / Fassadenmaterial",
+  "name_en": "Facade surface / cladding material",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "Reibeputz/Filzputz auf WDVS; Holzverkleidung Fichte je Architektenkonzept",
+  "options": [
+   {
+    "code": "putz_reibe",
+    "de": "Reibeputz auf WDVS (Silikonharz, Körnung 2 mm)",
+    "en": "Float-finish render on ETICS (silicone-resin, 2 mm grain)"
+   },
+   {
+    "code": "putz_filz",
+    "de": "Filzputz auf WDVS (Mineral-/Silikatputz)",
+    "en": "Felt-finish render on ETICS (mineral/silicate)"
+   },
+   {
+    "code": "klinker_verblend",
+    "de": "Klinkerverblendmauerwerk (zweischalig)",
+    "en": "Facing brickwork (clinker, cavity wall)"
+   },
+   {
+    "code": "klinker_riemchen",
+    "de": "Klinkerriemchen auf WDVS",
+    "en": "Brick slips on ETICS"
+   },
+   {
+    "code": "holz_fichte",
+    "de": "Holzverkleidung Fichte, riffelgesägt",
+    "en": "Timber cladding, spruce, rough-sawn"
+   },
+   {
+    "code": "faserzement",
+    "de": "Faserzement-Tafeln (VHF)",
+    "en": "Fibre-cement panels (rear-ventilated)"
+   },
+   {
+    "code": "hpl_platten",
+    "de": "HPL-Platten (VHF)",
+    "en": "HPL panels (rear-ventilated)"
+   },
+   {
+    "code": "metall_paneel",
+    "de": "Metallpaneele (Aluminium/Titanzink, VHF)",
+    "en": "Metal panels (aluminium/titanium-zinc, rear-ventilated)"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C6.10": {
+  "tier": "T1",
+  "chapter": "konstruktion_fassade",
+  "cluster": "C6",
+  "name_de": "Dachform",
+  "name_en": "Roof shape",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "Flachdach (Kompaktdach, ohne Gefälle)",
+  "options": [
+   {
+    "code": "flachdach",
+    "de": "Flachdach (Kompaktdach, kein Gefälle)",
+    "en": "Flat roof (compact/warm roof, zero-slope)"
+   },
+   {
+    "code": "satteldach",
+    "de": "Satteldach",
+    "en": "Gable roof"
+   },
+   {
+    "code": "pultdach",
+    "de": "Pultdach",
+    "en": "Mono-pitch roof"
+   },
+   {
+    "code": "steildach_geneigt",
+    "de": "Geneigtes Dach / Steildach (allgemein)",
+    "en": "Pitched roof (generic)"
+   },
+   {
+    "code": "walmdach",
+    "de": "Walmdach",
+    "en": "Hip roof"
+   },
+   {
+    "code": "mansarddach",
+    "de": "Mansarddach",
+    "en": "Mansard roof"
+   },
+   {
+    "code": "sheddach",
+    "de": "Sheddach",
+    "en": "Sawtooth (monitor) roof"
+   },
+   {
+    "code": "tonnendach",
+    "de": "Tonnendach",
+    "en": "Barrel-vault roof"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C6.12": {
+  "tier": "T1",
+  "chapter": "konstruktion_fassade",
+  "cluster": "C6",
+  "name_de": "Deckschicht / Nutzung Flachdach",
+  "name_en": "Top layer / use of flat roof",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "Begrüntes Retentionsdach mit extensiver Begrünung + Retentionsboxen",
+  "options": [
+   {
+    "code": "begruenung_extensiv",
+    "de": "Extensive Dachbegrünung + Retentionsboxen",
+    "en": "Extensive green roof + retention boxes"
+   },
+   {
+    "code": "kiesschicht",
+    "de": "Kiesschicht (Auflast, ca. 50 mm)",
+    "en": "Gravel ballast layer (approx. 50 mm)"
+   },
+   {
+    "code": "terrasse",
+    "de": "Plattenbelag auf Stelzlagern (Dachterrasse)",
+    "en": "Paving slabs on pedestals (roof terrace)"
+   },
+   {
+    "code": "bekiest_abdichtung",
+    "de": "Nur bekieste Bitumen-/Kunststoffabdichtung (ohne Begrünung)",
+    "en": "Bare gravel-ballasted bitumen/synthetic membrane (no greening)"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C6.16": {
+  "tier": "T1",
+  "chapter": "konstruktion_fassade",
+  "cluster": "C6",
+  "name_de": "Dachbegrünung — Intensität",
+  "name_en": "Roof greening — intensity",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "extensive Begrünung",
+  "options": [
+   {
+    "code": "keine",
+    "de": "Keine Begrünung (Kies/Belag)",
+    "en": "No greening (gravel/paving)"
+   },
+   {
+    "code": "extensiv",
+    "de": "Extensive Begrünung (pflegearm, niedriger Aufbau)",
+    "en": "Extensive greening (low-maintenance, shallow build-up)"
+   },
+   {
+    "code": "intensiv",
+    "de": "Intensive Begrünung (Dachgarten, höherer Aufbau)",
+    "en": "Intensive greening (roof garden, deep build-up)"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C6.17": {
+  "tier": "T1",
+  "chapter": "konstruktion_fassade",
+  "cluster": "C6",
+  "name_de": "Retention / Regenwasserrückhalt am Dach",
+  "name_en": "Roof retention / stormwater storage",
+  "type": "Boolean",
+  "unit": "",
+  "all3_default": "Retentionsdach (gedrosselte Entwässerung)",
+  "options": [
+   {
+    "code": "ja",
+    "de": "Retention/Rückhalt am Dach vorgesehen (gedrosselt entwässert)",
+    "en": "Roof retention/storage provided (throttled discharge)"
+   },
+   {
+    "code": "nein",
+    "de": "Keine Retention am Dach",
+    "en": "No roof retention"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C7.14": {
+  "tier": "T1",
+  "chapter": "konstruktion_fassade",
+  "cluster": "C7",
+  "name_de": "Balkonstruktion / thermische Trennung",
+  "name_en": "Balcony structure / thermal break",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "StB-Platte thermisch getrennt über Isokorb",
+  "options": [
+   {
+    "code": "isokorb",
+    "de": "Stahlbetonplatte thermisch getrennt (Isokorb)",
+    "en": "RC slab, thermally separated (structural thermal break)"
+   },
+   {
+    "code": "edelstahlkonsolen",
+    "de": "Edelstahlkonsolen (Vierendeel-System)",
+    "en": "Stainless-steel brackets (Vierendeel)"
+   },
+   {
+    "code": "vorgestellte_stahlkonstruktion",
+    "de": "Vorgestellte Stahlkonstruktion (eigenständig gegründet)",
+    "en": "Independent self-supporting steel structure"
+   },
+   {
+    "code": "auskragend",
+    "de": "Auskragende Decke ohne thermische Trennung",
+    "en": "Cantilevered slab without thermal break"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C7.16": {
+  "tier": "T1",
+  "chapter": "konstruktion_fassade",
+  "cluster": "C7",
+  "name_de": "Absturzsicherung Balkone / Loggien",
+  "name_en": "Fall protection balconies / loggias",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "Stabgeländer Stahl",
+  "options": [
+   {
+    "code": "glasbruestung_vsg",
+    "de": "Glasbrüstung VSG (Verbundsicherheitsglas)",
+    "en": "Glass balustrade, laminated safety glass"
+   },
+   {
+    "code": "stabgelaender_vertikal",
+    "de": "Stabgeländer Stahl vertikal (Füllstäbe)",
+    "en": "Vertical-bar steel railing"
+   },
+   {
+    "code": "stabgelaender_horizontal",
+    "de": "Stabgeländer Stahl horizontal",
+    "en": "Horizontal-bar steel railing"
+   },
+   {
+    "code": "metall_lochblech",
+    "de": "Geschlossene / Lochblech-Brüstung Metall",
+    "en": "Metal sheet / perforated balustrade"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C7.01": {
+  "tier": "T1",
+  "chapter": "konstruktion_fassade",
+  "cluster": "C7",
+  "name_de": "Fensterrahmenmaterial",
+  "name_en": "Window frame material",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "Kunststoff (PVC) Wohnungen, Aluminium Treppenhaus, Aluminium-Kunststoff Gemeinschaft EG",
+  "options": [
+   {
+    "code": "kunststoff",
+    "de": "Kunststoff (PVC)",
+    "en": "uPVC"
+   },
+   {
+    "code": "holz",
+    "de": "Holz",
+    "en": "Timber"
+   },
+   {
+    "code": "aluminium",
+    "de": "Aluminium",
+    "en": "Aluminium"
+   },
+   {
+    "code": "holz_alu",
+    "de": "Holz-Aluminium",
+    "en": "Timber-aluminium composite"
+   },
+   {
+    "code": "alu_kunststoff",
+    "de": "Aluminium-Kunststoff",
+    "en": "Aluminium-uPVC composite"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C7.12": {
+  "tier": "T1",
+  "chapter": "konstruktion_fassade",
+  "cluster": "C7",
+  "name_de": "Sonnenschutz-Typ",
+  "name_en": "Solar shading type",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "Raffstore Aluminium, elektrisch",
+  "options": [
+   {
+    "code": "raffstore",
+    "de": "Raffstore Aluminium, elektrisch (Seilführung)",
+    "en": "Aluminium external venetian blind, electric"
+   },
+   {
+    "code": "rollladen",
+    "de": "Rollladen Kunststoff, elektrisch",
+    "en": "uPVC roller shutter, electric"
+   },
+   {
+    "code": "senkrechtmarkise",
+    "de": "Senkrechtmarkise, Seilführung, elektrisch",
+    "en": "Vertical/drop awning, cable-guided, electric"
+   },
+   {
+    "code": "innenliegend_textil",
+    "de": "Innenliegender textiler Sonnenschutz",
+    "en": "Internal textile shading"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C8.10": {
+  "tier": "T1",
+  "chapter": "ausbau_technik",
+  "cluster": "C8",
+  "name_de": "Bodenbelag Wohnräume",
+  "name_en": "Floor covering living areas",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "abh. Bemusterung/Ausstattungswert",
+  "options": [
+   {
+    "code": "PARK_EICHE",
+    "de": "Massivparkett/Landhausdiele Eiche geölt",
+    "en": "Solid oak parquet/plank, oiled"
+   },
+   {
+    "code": "PARK_MEHRSCHICHT",
+    "de": "Mehrschichtparkett (Fertigparkett)",
+    "en": "Engineered multilayer parquet"
+   },
+   {
+    "code": "LAMINAT_32",
+    "de": "Laminat, Nutzungsklasse 32+",
+    "en": "Laminate, use class 32+"
+   },
+   {
+    "code": "FSZ_GF",
+    "de": "Feinsteinzeug Großformat",
+    "en": "Porcelain stoneware, large format"
+   },
+   {
+    "code": "LVT_QV",
+    "de": "Quarzvinyl / LVT (Designbelag)",
+    "en": "Quartz vinyl / LVT (design flooring)"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C8.16": {
+  "tier": "T1",
+  "chapter": "ausbau_technik",
+  "cluster": "C8",
+  "name_de": "Einbauküche",
+  "name_en": "Fitted kitchen",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "Nicht im Umfang, Anschlüsse vorbereitet",
+  "options": [
+   {
+    "code": "NICHT_VORB",
+    "de": "Nicht beigestellt, Anschlüsse vorbereitet",
+    "en": "Not supplied, connections prepared"
+   },
+   {
+    "code": "GESTELLT",
+    "de": "Einbauküche beigestellt (inkl. Geräte)",
+    "en": "Fitted kitchen supplied (incl. appliances)"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C8.18": {
+  "tier": "T1",
+  "chapter": "ausbau_technik",
+  "cluster": "C8",
+  "name_de": "Ausstattungswert Elektro (Referenz)",
+  "name_en": "Electrical equipment value (reference)",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "Ausstattungswert 2 (Standard)",
+  "options": [
+   {
+    "code": "AW1",
+    "de": "Ausstattungswert 1 (Mindestausstattung)",
+    "en": "Equipment value 1 (minimum)"
+   },
+   {
+    "code": "AW2",
+    "de": "Ausstattungswert 2 (Standardausstattung)",
+    "en": "Equipment value 2 (standard)"
+   },
+   {
+    "code": "AW3",
+    "de": "Ausstattungswert 3 (Komfortausstattung)",
+    "en": "Equipment value 3 (comfort)"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C8.19": {
+  "tier": "T1",
+  "chapter": "ausbau_technik",
+  "cluster": "C8",
+  "name_de": "Bemusterung/Ausstattungslinie (Verweis)",
+  "name_en": "Sample selection/finish line (reference)",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "Standard-Bemusterungspaket",
+  "options": [
+   {
+    "code": "STANDARD",
+    "de": "Standard-Bemusterungspaket",
+    "en": "Standard sample package"
+   },
+   {
+    "code": "KOMFORT",
+    "de": "Komfort-/Upgrade-Linie",
+    "en": "Comfort/upgrade line"
+   },
+   {
+    "code": "INDIVIDUELL",
+    "de": "Individuelle Bemusterung (Sonderwünsche)",
+    "en": "Individual selection (custom)"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C9.01": {
+  "tier": "T1",
+  "chapter": "ausbau_technik",
+  "cluster": "C9",
+  "name_de": "Wärmeerzeuger",
+  "name_en": "Heat generator",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "Fernwärme-Übergabestation oder Luft/Wasser-Wärmepumpe",
+  "options": [
+   {
+    "code": "WE_LW_WP",
+    "de": "Luft/Wasser-Wärmepumpe",
+    "en": "Air-to-water heat pump"
+   },
+   {
+    "code": "WE_FW",
+    "de": "Fernwärme-Übergabestation",
+    "en": "District heating transfer station"
+   },
+   {
+    "code": "WE_SW_WP",
+    "de": "Sole/Wasser-Wärmepumpe (Erdsonde)",
+    "en": "Brine-to-water (ground-source) heat pump"
+   },
+   {
+    "code": "WE_GAS_BW",
+    "de": "Gas-Brennwert in EE-Hybrid (Wärmepumpen-/Solarthermie-Hybrid)",
+    "en": "Gas condensing in RE-hybrid (heat-pump/solar-thermal hybrid)"
+   },
+   {
+    "code": "WE_BIOMASSE",
+    "de": "Biomasse/Pellet-Kessel",
+    "en": "Biomass/pellet boiler"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C9.18": {
+  "tier": "T1",
+  "chapter": "ausbau_technik",
+  "cluster": "C9",
+  "name_de": "Wohnungslüftung",
+  "name_en": "Dwelling ventilation",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "zentrale Abluftanlage über Dach (DIN 18017-3), ALD-Nachströmung; mit WRG bei EH 55 / EH 40",
+  "options": [
+   {
+    "code": "WL_FENSTER",
+    "de": "Freie/Fensterlüftung (Lüftungskonzept DIN 1946-6)",
+    "en": "Natural/window ventilation (concept per DIN 1946-6)"
+   },
+   {
+    "code": "WL_ABLUFT_DACH",
+    "de": "Zentrale Abluftanlage über Dach, ALD-Nachströmung (DIN 18017-3)",
+    "en": "Central exhaust system over roof, outdoor-air-inlet supply"
+   },
+   {
+    "code": "WL_DEZ_WRG",
+    "de": "Dezentrale Lüftung mit Wärmerückgewinnung",
+    "en": "Decentralised ventilation with heat recovery"
+   },
+   {
+    "code": "WL_ZENTRAL_WRG",
+    "de": "Zentrale Lüftung mit Wärmerückgewinnung",
+    "en": "Central ventilation with heat recovery"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C9.22": {
+  "tier": "T1",
+  "chapter": "ausbau_technik",
+  "cluster": "C9",
+  "name_de": "E-Mobilitäts-Infrastruktur",
+  "name_en": "E-mobility infrastructure",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "Leerrohre (Leitungsinfrastruktur)",
+  "options": [
+   {
+    "code": "EV_LEERROHR",
+    "de": "Leitungsinfrastruktur/Leerrohre (GEIG)",
+    "en": "Cabling infrastructure / conduits (GEIG)"
+   },
+   {
+    "code": "EV_WALLBOX",
+    "de": "Wallbox/Ladepunkte (steuerbar §14a EnWG)",
+    "en": "Wallbox/charging points (controllable §14a)"
+   },
+   {
+    "code": "EV_LASTMANAGEMENT",
+    "de": "Wallbox mit Lastmanagement",
+    "en": "Wallbox with load management"
+   },
+   {
+    "code": "EV_KEINE",
+    "de": "Keine E-Mobilitäts-Infrastruktur",
+    "en": "None"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C9.32": {
+  "tier": "T1",
+  "chapter": "ausbau_technik",
+  "cluster": "C9",
+  "name_de": "Photovoltaikanlage",
+  "name_en": "Photovoltaic system",
+  "type": "Boolean",
+  "unit": "",
+  "all3_default": "ja (Dachfläche)",
+  "options": [
+   {
+    "code": "PV_JA",
+    "de": "PV-Anlage vorgesehen",
+    "en": "PV system included"
+   },
+   {
+    "code": "PV_NEIN",
+    "de": "Keine PV-Anlage",
+    "en": "No PV system"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C9.34": {
+  "tier": "T1",
+  "chapter": "ausbau_technik",
+  "cluster": "C9",
+  "name_de": "PV-Leistung",
+  "name_en": "PV capacity",
+  "type": "Zahl",
+  "unit": "kWp",
+  "all3_default": "nach Dachfläche",
+  "options": [],
+  "ebene": "gebaeude"
+ },
+ "C9.35": {
+  "tier": "T1",
+  "chapter": "ausbau_technik",
+  "cluster": "C9",
+  "name_de": "Batteriespeicher",
+  "name_en": "Battery storage",
+  "type": "Boolean",
+  "unit": "",
+  "all3_default": "optional",
+  "options": [
+   {
+    "code": "BAT_JA",
+    "de": "Batteriespeicher vorhanden",
+    "en": "Battery storage included"
+   },
+   {
+    "code": "BAT_NEIN",
+    "de": "Kein Batteriespeicher",
+    "en": "No battery storage"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "C5.01": {
+  "tier": "T1",
+  "chapter": "baugrund",
+  "cluster": "C5",
+  "name_de": "Topografie",
+  "name_en": "Site topography",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "eben; Geländemodellierung/Erdarbeiten AG/Dritte",
+  "options": [
+   {
+    "code": "eben",
+    "de": "eben / leicht geneigt (< ca. 5 %)",
+    "en": "flat / slightly sloping (< approx. 5%)"
+   },
+   {
+    "code": "geneigt",
+    "de": "geneigt / Hanglage (> ca. 5 %)",
+    "en": "sloping / hillside (> approx. 5%)"
+   },
+   {
+    "code": "terrassiert",
+    "de": "terrassiert / gestuft",
+    "en": "terraced / stepped"
+   }
+  ],
+  "ebene": "projekt"
+ },
+ "C5.02": {
+  "tier": "T1",
+  "chapter": "baugrund",
+  "cluster": "C5",
+  "name_de": "Baugrund",
+  "name_en": "Subsoil class",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "Baugrundgutachten durch AG beizustellen",
+  "options": [
+   {
+    "code": "tragfaehig",
+    "de": "tragfähig (Sand/Kies, Baugrundgutachten unbedenklich)",
+    "en": "load-bearing (sand/gravel, soil report unproblematic)"
+   },
+   {
+    "code": "bindig",
+    "de": "bindig/setzungsempfindlich (Ton/Schluff)",
+    "en": "cohesive/settlement-sensitive (clay/silt)"
+   },
+   {
+    "code": "gemischt",
+    "de": "gemischt/wechselhaft",
+    "en": "mixed/heterogeneous strata"
+   },
+   {
+    "code": "problematisch",
+    "de": "nicht/gering tragfähig (Auffüllung, Torf, organisch)",
+    "en": "non/low-bearing (fill, peat, organic)"
+   },
+   {
+    "code": "offen",
+    "de": "Baugrundgutachten ausstehend",
+    "en": "soil report pending"
+   }
+  ],
+  "ebene": "projekt"
+ },
+ "C5.03": {
+  "tier": "T1",
+  "chapter": "baugrund",
+  "cluster": "C5",
+  "name_de": "Grundwasser-/Feuchtebeanspruchung",
+  "name_en": "Groundwater & moisture exposure",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "Abdichtungsklasse je Feuchtebeanspruchung",
+  "options": [
+   {
+    "code": "W1E",
+    "de": "Bodenfeuchte / nicht drückendes Wasser (W1-E)",
+    "en": "soil moisture / non-pressurized water (W1-E)"
+   },
+   {
+    "code": "W2-1E",
+    "de": "drückendes Wasser, mäßige Einwirkung bis 3 m Eintauchtiefe (W2.1-E)",
+    "en": "pressurized water, moderate, up to 3 m submersion (W2.1-E)"
+   },
+   {
+    "code": "W2-2E",
+    "de": "drückendes Wasser, hohe Einwirkung > 3 m Eintauchtiefe (W2.2-E)",
+    "en": "pressurized water, high, > 3 m submersion (W2.2-E)"
+   },
+   {
+    "code": "W4E",
+    "de": "Spritzwasser / Kapillarwasser am Wandsockel (W4-E)",
+    "en": "splash/capillary water at wall base (W4-E)"
+   },
+   {
+    "code": "offen",
+    "de": "Grundwasserstand ausstehend",
+    "en": "groundwater level pending"
+   }
+  ],
+  "ebene": "projekt"
+ },
+ "C5.07": {
+  "tier": "T1",
+  "chapter": "baugrund",
+  "cluster": "C5",
+  "name_de": "Gründungsart",
+  "name_en": "Foundation type",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "Flachgründung auf StB-Bodenplatte bzw. Einzel-/Streifenfundamenten",
+  "options": [
+   {
+    "code": "bodenplatte",
+    "de": "Flachgründung auf StB-Bodenplatte (Fundamentplatte)",
+    "en": "shallow foundation on RC raft slab"
+   },
+   {
+    "code": "streifen_einzel",
+    "de": "Flachgründung Einzel-/Streifenfundamente",
+    "en": "shallow foundation, pad/strip footings"
+   },
+   {
+    "code": "bohrpfahl",
+    "de": "Tiefgründung Bohrpfähle",
+    "en": "deep foundation, bored piles"
+   },
+   {
+    "code": "pfahlplatte",
+    "de": "kombinierte Pfahl-Platten-Gründung (KPP)",
+    "en": "combined piled raft foundation (CPRF)"
+   },
+   {
+    "code": "bodenaustausch",
+    "de": "Bodenaustausch / Baugrundverbesserung (z. B. Rüttelstopfsäulen)",
+    "en": "soil replacement / ground improvement (e.g. vibro stone columns)"
+   }
+  ],
+  "ebene": "projekt"
+ },
+ "C0.22": {
+  "tier": "T1",
+  "chapter": "baugrund",
+  "cluster": "C0",
+  "name_de": "Baustellenzufahrt & Krananlieferung (Modultransport)",
+  "name_en": "Site access & crane delivery (module transport)",
+  "type": "Mehrfachauswahl",
+  "unit": "",
+  "all3_default": "",
+  "options": [
+   {
+    "code": "uneingeschraenkt",
+    "de": "Uneingeschränkt anlieferbar (Standardtransport)",
+    "en": "Unrestricted (standard transport)"
+   },
+   {
+    "code": "sondertransport",
+    "de": "Sonder-/Schwerlasttransport genehmigungspflichtig",
+    "en": "Heavy/oversized transport permit required"
+   },
+   {
+    "code": "beengte_zufahrt",
+    "de": "Beengte Zufahrt / Anliegerstraße (Modulgröße begrenzt)",
+    "en": "Restricted access / residential street (module size limited)"
+   },
+   {
+    "code": "kranstellflaeche_kritisch",
+    "de": "Kranstellfläche / Schwenkradius eingeschränkt",
+    "en": "Crane setup area / swing radius limited"
+   },
+   {
+    "code": "zu_klaeren",
+    "de": "Noch zu klären",
+    "en": "To be clarified"
+   }
+  ],
+  "ebene": "projekt"
+ },
+ "C3.04": {
+  "tier": "T1",
+  "chapter": "leistungsabgrenzung",
+  "cluster": "C3",
+  "name_de": "Ausschlüsse / AG- und Drittleistungen",
+  "name_en": "Exclusions / client & third-party works",
+  "type": "Mehrfachauswahl",
+  "unit": "",
+  "all3_default": "Ausschluss bzw. AG-Leistung",
+  "options": [
+   {
+    "code": "erd_aushub_gruendung",
+    "de": "Erd-/Aushub-/Gründungs-/Fundamentarbeiten",
+    "en": "Earthworks/excavation/foundation works"
+   },
+   {
+    "code": "vermessung_bodengutachten",
+    "de": "Vermessung / Bodengutachten / Baugrundgutachten",
+    "en": "Surveying / soil & geotechnical report"
+   },
+   {
+    "code": "tg_ug_bau",
+    "de": "Planung und Ausführung Tiefgarage/Untergeschoss",
+    "en": "Design & construction of underground garage/basement"
+   },
+   {
+    "code": "aussenanlagen_ausschluss",
+    "de": "Außenanlagen (Geländemodellierung, Wege, Grün, Beleuchtung)",
+    "en": "External works (grading, paths, planting, lighting)"
+   },
+   {
+    "code": "oberboden_belaege",
+    "de": "Oberbodenarbeiten, Unterbau, Tragschichten, Beläge (Pflaster/Beton/Asphalt inkl. Bordsteine)",
+    "en": "Topsoil works, sub-base, base courses, surfacing (paving/concrete/asphalt incl. kerbs)"
+   },
+   {
+    "code": "entwaesserung_grenze",
+    "de": "Entwässerung bis Grundstücksgrenze",
+    "en": "Drainage up to property boundary"
+   },
+   {
+    "code": "hausanschluesse",
+    "de": "Hausanschlüsse / Medienzuführung bis Grundstücksgrenze",
+    "en": "Utility connections / service supply to property boundary"
+   },
+   {
+    "code": "gebuehren",
+    "de": "Genehmigungs-/Prüfgebühren, behördliche Gebühren",
+    "en": "Permit/inspection & authority fees"
+   },
+   {
+    "code": "auflagen_mehrkosten",
+    "de": "Auflagen-Mehrkosten (behördliche Nebenbestimmungen/Sondervorschriften)",
+    "en": "Additional costs from authority conditions/special requirements"
+   },
+   {
+    "code": "moebel_ffe_ose",
+    "de": "Lose Möblierung / FF&E / OS&E",
+    "en": "Loose furniture / FF&E / OS&E"
+   },
+   {
+    "code": "betriebskosten",
+    "de": "Betriebskosten",
+    "en": "Operating costs"
+   },
+   {
+    "code": "pruefstatik",
+    "de": "Prüfstatik (soweit nicht All3)",
+    "en": "Independent structural checking (where not All3)"
+   }
+  ],
+  "ebene": "projekt"
+ },
+ "C3.05": {
+  "tier": "T1",
+  "chapter": "leistungsabgrenzung",
+  "cluster": "C3",
+  "name_de": "Schnittstellen-Verantwortlichkeit (LOIN-Zuordnung)",
+  "name_en": "Interface responsibility (LOIN allocation)",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "All3 (für Festumfang)",
+  "options": [
+   {
+    "code": "all3",
+    "de": "All3 (alleinverantwortlich)",
+    "en": "All3 (sole responsibility)"
+   },
+   {
+    "code": "ag",
+    "de": "AG (Auftraggeber/Bauherr)",
+    "en": "Client/owner"
+   },
+   {
+    "code": "all3_ag",
+    "de": "All3 / AG (gemeinsam / abzustimmen)",
+    "en": "All3 / Client (joint / to be coordinated)"
+   },
+   {
+    "code": "ag_dritte",
+    "de": "AG-Dritte (vom AG beauftragte Dritte)",
+    "en": "Client's third parties"
+   },
+   {
+    "code": "betreiber",
+    "de": "Betreiber",
+    "en": "Operator"
+   }
+  ],
+  "ebene": "projekt"
+ },
+ "C5.06": {
+  "tier": "T1",
+  "chapter": "leistungsabgrenzung",
+  "cluster": "C5",
+  "name_de": "Baugrubenverbau",
+  "name_en": "Excavation support",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "Erd-/Verbauarbeiten i.d.R. AG/Dritte",
+  "options": [
+   {
+    "code": "boeschung",
+    "de": "Böschung (geböschte Baugrube)",
+    "en": "open slope excavation"
+   },
+   {
+    "code": "bohrpfahlwand",
+    "de": "Bohrpfahlwand (überschnitten/aufgelöst)",
+    "en": "bored pile wall"
+   },
+   {
+    "code": "berliner",
+    "de": "Berliner Verbau / Trägerbohlwand",
+    "en": "soldier pile wall (Berlin-type)"
+   },
+   {
+    "code": "spundwand",
+    "de": "Spundwand",
+    "en": "sheet pile wall"
+   },
+   {
+    "code": "trogbaugrube",
+    "de": "wasserdichter Trog / Unterwasserbeton",
+    "en": "watertight cofferdam / underwater concrete"
+   },
+   {
+    "code": "kein",
+    "de": "kein Verbau erforderlich",
+    "en": "no support required"
+   }
+  ],
+  "ebene": "projekt"
+ },
+ "C5.13": {
+  "tier": "T1",
+  "chapter": "leistungsabgrenzung",
+  "cluster": "C5",
+  "name_de": "Hausanschlüsse",
+  "name_en": "Utility house connections",
+  "type": "Mehrfachauswahl",
+  "unit": "",
+  "all3_default": "Anschlüsse Wasser/Strom/Wärme/TK i.d.R. AG bis Grundstücksgrenze",
+  "options": [
+   {
+    "code": "wasser",
+    "de": "Trinkwasseranschluss",
+    "en": "potable water connection"
+   },
+   {
+    "code": "schmutzwasser",
+    "de": "Schmutzwasser-/Kanalanschluss",
+    "en": "foul water/sewer connection"
+   },
+   {
+    "code": "strom",
+    "de": "Stromanschluss (NS-Netz)",
+    "en": "electricity connection (LV grid)"
+   },
+   {
+    "code": "fernwaerme",
+    "de": "Fernwärmeanschluss",
+    "en": "district heating connection"
+   },
+   {
+    "code": "gas",
+    "de": "Gasanschluss",
+    "en": "gas connection"
+   },
+   {
+    "code": "tk",
+    "de": "Telekommunikation/Glasfaser",
+    "en": "telecommunications/fibre"
+   }
+  ],
+  "ebene": "projekt"
+ },
+ "C5.14": {
+  "tier": "T1",
+  "chapter": "leistungsabgrenzung",
+  "cluster": "C5",
+  "name_de": "Hausanschluss-Leistungsstatus",
+  "name_en": "Connection scope responsibility",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "Hausanschlüsse bis Grundstücksgrenze AG; Übergabe an Grundstücksgrenze",
+  "options": [
+   {
+    "code": "ag_grenze",
+    "de": "AG bis Grundstücksgrenze, All3 ab Übergabepunkt",
+    "en": "client to property line, All3 from handover point"
+   },
+   {
+    "code": "ag_komplett",
+    "de": "AG komplett inkl. Einführung ins Gebäude",
+    "en": "client fully incl. building entry"
+   },
+   {
+    "code": "all3_option",
+    "de": "All3 als Option (Erschließung beauftragt)",
+    "en": "All3 as option (servicing commissioned)"
+   },
+   {
+    "code": "offen",
+    "de": "Schnittstelle ungeklärt",
+    "en": "interface not yet clarified"
+   }
+  ],
+  "ebene": "projekt"
+ },
+ "C3.07": {
+  "tier": "T1",
+  "chapter": "leistungsabgrenzung",
+  "cluster": "C3",
+  "name_de": "Angebotsgliederung",
+  "name_en": "Offer structure",
+  "type": "",
+  "unit": "",
+  "all3_default": "",
+  "options": [
+   {
+    "code": "gesamtkostenschätzung",
+    "de": "Gesamtkostenschätzung",
+    "en": "Total price"
+   },
+   {
+    "code": "gesamtpreis",
+    "de": "Gesamtpreis netto/brutto (Bezug m² WFL)",
+    "en": "Total price net/gross (per m² living area)"
+   },
+   {
+    "code": "",
+    "de": "Gesamtpreis netto/brutto (Bezug m² unterirdischer BGF)",
+    "en": "Total price net/gross (per m² underground BGF)"
+   },
+   {
+    "code": "kg_aufschluesselung",
+    "de": "Aufschlüsselung nach KG 300/400/600/700",
+    "en": "Breakdown by cost groups 300/400/600/700"
+   },
+   {
+    "code": "optionspreise",
+    "de": "Optionspreise (gesonderte Positionen)",
+    "en": "Option prices (separate items)"
+   },
+   {
+    "code": "terminplan",
+    "de": "Terminplan (Planungsstart bis Fertigstellung)",
+    "en": "Schedule (design start to completion)"
+   },
+   {
+    "code": "annahmenliste",
+    "de": "Annahmenliste (Annahmen, Ausschlüsse, Risiken, AG-Vorleistungen)",
+    "en": "Assumptions list (assumptions, exclusions, risks, client pre-works)"
+   },
+   {
+    "code": "schnittstellenliste",
+    "de": "Schnittstellenliste (Zuständigkeiten/Leistungsgrenzen)",
+    "en": "Interface list (responsibilities/scope boundaries)"
+   },
+   {
+    "code": "einheitspreise_nachtrag",
+    "de": "Einheitspreise für Nachträge/Mengenänderungen",
+    "en": "Unit prices for variations/quantity changes"
+   }
+  ],
+  "ebene": "projekt"
+ },
+ "C2.15": {
+  "tier": "T1",
+  "chapter": "termine_kommerzielles",
+  "cluster": "C2",
+  "name_de": "Terminanforderung / Terminszenario",
+  "name_en": "Schedule requirement / scenario",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "Standard-Terminplan; beschleunigter Plan als Option",
+  "options": [
+   {
+    "code": "STANDARD",
+    "de": "Standard-Terminplan",
+    "en": "Standard schedule"
+   },
+   {
+    "code": "BESCHLEUNIGT",
+    "de": "Beschleunigter Terminplan (Fast-Track)",
+    "en": "Accelerated / fast-track schedule"
+   },
+   {
+    "code": "FIXTERMIN",
+    "de": "Gebundener Fixtermin / Stichtag",
+    "en": "Fixed deadline / milestone-bound"
+   },
+   {
+    "code": "OFFEN",
+    "de": "Termin offen / nicht definiert",
+    "en": "Schedule open / undefined"
+   }
+  ],
+  "ebene": "projekt"
+ },
+ "C3.08": {
+  "tier": "T1",
+  "chapter": "termine_kommerzielles",
+  "cluster": "C3",
+  "name_de": "Vergütungsmodell",
+  "name_en": "Remuneration model",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "Pauschalfestpreis (Global-Pauschalvertrag)",
+  "options": [
+   {
+    "code": "pauschalfestpreis",
+    "de": "Pauschalfestpreis (Global-Pauschalvertrag, funktionale Leistungsbeschreibung)",
+    "en": "Fixed lump-sum price (global lump-sum, functional spec)"
+   },
+   {
+    "code": "garantierter_maximalpreis",
+    "de": "Garantierter Maximalpreis (GMP) mit Einsparungsteilung",
+    "en": "Guaranteed maximum price (GMP) with savings sharing"
+   },
+   {
+    "code": "einheitspreisvertrag",
+    "de": "Einheitspreisvertrag (Abrechnung nach Aufmaß)",
+    "en": "Unit-price contract (measured quantities)"
+   },
+   {
+    "code": "detail_pauschalvertrag",
+    "de": "Detail-Pauschalvertrag (Pauschale auf detaillierter LV-Basis)",
+    "en": "Detailed lump-sum contract (lump-sum on itemised BoQ)"
+   }
+  ],
+  "ebene": "projekt"
+ },
+ "NEU.01": {
+  "tier": "T0",
+  "chapter": null,
+  "cluster": "NEU",
+  "name_de": "Anzahl Gebäude",
+  "name_en": "Number of buildings",
+  "type": "Zahl",
+  "unit": "Stk.",
+  "all3_default": "1",
+  "options": [],
+  "ebene": "projekt"
+ },
+ "NEU.02": {
+  "tier": "T0",
+  "chapter": null,
+  "cluster": "NEU",
+  "name_de": "BGF-Aufteilung R / S (DIN 277:2021)",
+  "name_en": "GFA split R / S (DIN 277:2021)",
+  "type": "Zahl",
+  "unit": "m²",
+  "all3_default": "S = 8 % der BGF bei vorhandenen Balkonen (provisorisch, zu kalibrieren)",
+  "options": [],
+  "ebene": "gebaeude"
+ },
+ "NEU.03": {
+  "tier": "T0",
+  "chapter": null,
+  "cluster": "NEU",
+  "name_de": "UG-Leistungsumfang",
+  "name_en": "Basement scope of works",
+  "type": "Auswahl",
+  "unit": "",
+  "all3_default": "ab_decke_ug",
+  "options": [
+   {
+    "code": "vollausbau",
+    "de": "Vollständiger UG-Bau inkl. Gründung",
+    "en": "Full basement construction incl. foundation"
+   },
+   {
+    "code": "ab_decke_ug",
+    "de": "Leistungsbeginn ab OK Decke über UG, im UG nur Ausbau",
+    "en": "Scope starts at top of slab above basement; basement fit-out only"
+   },
+   {
+    "code": "kein_ug",
+    "de": "Kein Untergeschoss",
+    "en": "No basement"
+   }
+  ],
+  "ebene": "projekt"
+ },
+ "NEU.04": {
+  "tier": "T1",
+  "chapter": "gebaeude",
+  "cluster": "NEU",
+  "name_de": "Balkon-Anrechnungsfaktor (WoFlV §4)",
+  "name_en": "Balcony accounting factor (WoFlV §4)",
+  "type": "Auswahl",
+  "unit": "%",
+  "all3_default": "25 % (Regelfall WoFlV §4)",
+  "options": [
+   {
+    "code": "woflv_25",
+    "de": "25 % — Regelfall nach WoFlV §4",
+    "en": "25% — standard case per WoFlV §4"
+   },
+   {
+    "code": "kundenwunsch_50",
+    "de": "50 % — auf Kundenwunsch",
+    "en": "50% — at client request"
+   },
+   {
+    "code": "kundenberechnung",
+    "de": "Kundenberechnung übernommen",
+    "en": "Client calculation adopted"
+   }
+  ],
+  "ebene": "gebaeude"
+ },
+ "NEU.05": {
+  "tier": "T1",
+  "chapter": "termine_kommerzielles",
+  "cluster": "NEU",
+  "name_de": "Angebotsgültigkeit",
+  "name_en": "Offer validity period",
+  "type": "Zahl",
+  "unit": "Monate",
+  "all3_default": "3",
+  "options": [],
+  "ebene": "projekt"
+ },
+ "NEU.06": {
+  "tier": "T1",
+  "chapter": "termine_kommerzielles",
+  "cluster": "NEU",
+  "name_de": "Preisstand",
+  "name_en": "Price basis date",
+  "type": "Datum",
+  "unit": "",
+  "all3_default": "Angebotsdatum (automatisch)",
+  "options": [],
+  "ebene": "projekt"
+ },
+ "NEU.07": {
+  "tier": "T1",
+  "chapter": "termine_kommerzielles",
+  "cluster": "NEU",
+  "name_de": "Finanzierungszinssatz (nur bei KG 800)",
+  "name_en": "Financing interest rate (KG 800 only)",
+  "type": "Zahl",
+  "unit": "% p.a.",
+  "all3_default": "",
+  "options": [],
+  "ebene": "projekt"
+ }
+}

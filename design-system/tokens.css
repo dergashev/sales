@@ -1,0 +1,469 @@
+/* ============================================================
+   All3 Design Tokens — Sales Platform
+   v0.5 · 2026-08-05 · Batch 1, четвёртая попытка (эскалация)
+
+   Архитектура по разделу 13 аудита: primitive → semantic → component.
+   Business state, permissions, Output Profiles и domain enums НЕ являются
+   design tokens (R-15) — они живут в data/policy контрактах.
+
+   Статусы: [official] — из бренд-гайда All3 · [audit] — предписано
+   аудитом с точным значением · [provisional] — закрывает открытое
+   решение foundation, подлежит утверждению · [ADR] — значение НЕ
+   выбрано: R-25 запрещает выдумывать, требуется решение владельца.
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   ШРИФТ. Три правила, каждое выросло из реального сбоя:
+   1. URL всегда в кавычках — data-URI содержит ";" и ",".
+   2. font-display: block — начертания локальные, FOUT недопустим.
+   3. font-family на html И на body И на элементах форм: внешний
+      reset может объявить font-family прямо на body, и прямое
+      объявление победит наследование от html.
+   ------------------------------------------------------------ */
+@font-face {
+  font-family: 'Visuelt Pro';
+  src: url('./fonts/visuelt-regular-pro.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: block;
+}
+@font-face {
+  font-family: 'Visuelt Pro';
+  src: url('./fonts/visuelt-medium-pro.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: block;
+}
+@font-face {
+  font-family: 'Visuelt Pro';
+  src: url('./fonts/visuelt-bold-pro.woff2') format('woff2');
+  font-weight: 700; font-style: normal; font-display: block;
+}
+
+:root {
+  /* ============ СЛОЙ 1 — PRIMITIVE ============
+     Сырые утверждённые значения. Компонентам обращаться к ним
+     напрямую запрещено (TOKEN-002): только через semantic-алиасы. */
+
+  /* Цвет — бренд [official] */
+  --primitive-color-brand-orange-500: #FD5E00; /* Pantone Orange 021 C · RAL 2005 */
+  --primitive-color-neutral-900:      #323232; /* All3 Black */
+  --primitive-color-neutral-100:      #E8ECE9; /* All3 Grey, только экран */
+  --primitive-color-white:            #FFFFFF;
+
+  /* Цвет — производные для действий [audit R-02]
+     Оранжевый #FD5E00 даёт с белым текстом лишь 3,10:1 и потому
+     запрещён как цвет действия (R-01). Эти три тона проходят 4,5:1
+     и сохраняют оранжевый характер бренда. */
+  --primitive-color-orange-700: #C94700;
+  --primitive-color-orange-800: #B83F00;
+  --primitive-color-orange-900: #A63800;
+
+  /* Цвет — фокус [audit R-03] */
+  --primitive-color-blue-focus-700: #005FCC;
+
+  --primitive-color-neutral-950: #1F1F1F;
+
+  /* Цвет — нейтральные производные и подложки [ADR-PENDING]
+     Значения — рабочие приближения из adr-blocking.md §1 (проценты
+     neutral.900 / orange.700 / neutral.100 на белом), НЕ утверждённые
+     дефолты. Оформлены primitive-слоем, чтобы semantic-слой не содержал
+     литеральных hex: семантика всегда ссылается на primitive (раздел 13).
+     Проверяется verify.py (класс TOKEN-LAYER). */
+  --primitive-color-neutral-700: #6B6B6B; /* 72 % neutral.900 */
+  --primitive-color-neutral-600: #8C8C8C; /* 56 % neutral.900 */
+  --primitive-color-neutral-500: #9D9D9D; /* 48 % neutral.900 */
+  --primitive-color-neutral-400: #BDBDBD; /* 32 % neutral.900 */
+  --primitive-color-neutral-300: #DEDEDE; /* 16 % neutral.900 */
+  --primitive-color-neutral-050: #F4F6F4; /* 50 % neutral.100 */
+  --primitive-color-orange-100:  #F2D1BF; /* 25 % orange.700 */
+  /* Альфа НАМЕРЕННАЯ (adr-blocking.md §1 №10: overlay = 48 % neutral.950):
+     скрим обязан просвечивать, статического hex-эквивалента у него нет
+     по определению. Единственный разрешённый не-hex цвет primitive-слоя.
+     Значение остаётся [ADR-PENDING] до утверждения владельцем дизайна. */
+  --primitive-color-neutral-950-a48: rgba(31, 31, 31, 0.48);
+
+  /* Цвет — расширенная палитра [official, только экран] */
+  --primitive-color-blue-500:        #0B24FB;
+  --primitive-color-green-dark-500:  #3C887E;
+  --primitive-color-green-bright-500:#98CE00;
+  --primitive-color-red-500:         #F04859;
+  --primitive-color-chart-grey:      #E3E3E3;
+
+  /* ============ СЛОЙ 2 — SEMANTIC ============ */
+
+  /* --- Бренд и действия --- */
+  --color-brand-accent:          var(--primitive-color-brand-orange-500);
+  --color-action-primary-bg:     var(--primitive-color-orange-700);
+  --color-action-primary-hover:  var(--primitive-color-orange-800);
+  --color-action-primary-pressed:var(--primitive-color-orange-900);
+  --color-action-primary-text:   var(--primitive-color-white);
+  --color-action-secondary-bg:     var(--primitive-color-white);
+  --color-action-secondary-border: var(--primitive-color-neutral-900);
+  --color-action-secondary-text:   var(--primitive-color-neutral-900);
+  --color-action-secondary-hover:  var(--primitive-color-neutral-100);
+
+  /* --- Выделение и фокус [audit R-03] --- */
+  --color-selection-border: var(--primitive-color-orange-700);
+  --color-focus-separator:  var(--primitive-color-white);
+  --color-focus-ring:       var(--primitive-color-blue-focus-700);
+
+  /* ⚠⚠ ВСЁ НИЖЕ ДО КОНЦА ЦВЕТОВОГО БЛОКА — [ADR-PENDING] ⚠⚠
+     Раздел 13 аудита перечисляет эти записи БЕЗ присвоенных значений.
+     По R-25 / TOKEN-005 значения обязаны быть утверждены владельцем
+     дизайна в ADR; приведённые ниже — рабочие приближения, выведенные
+     из бренд-гайда All3, и НЕ являются дефолтами. Полный перечень с
+     обоснованием и требуемой верификацией: docs/audit/adr-blocking.md.
+     Зависимый компонент не может достичь beta/stable до утверждения. */
+
+  /* --- Текст [ADR-PENDING] · derived from primitive.neutral.900 --- */
+  --color-text-primary:   var(--primitive-color-neutral-900);
+  --color-text-secondary: var(--primitive-color-neutral-700);
+  --color-text-muted:     var(--primitive-color-neutral-600);
+  --color-text-disabled:  var(--primitive-color-neutral-500);
+  --color-text-inverse:   var(--primitive-color-white);
+  /* Акцентный текст: только large display ≥24 px Regular или ≥18.67 px Bold
+     И ТОЛЬКО на --color-surface-default (белый): 3,10:1, проходит R-01.
+     На --color-surface-canvas #E8ECE9 даёт 2,60:1 и запрещён.
+     Подложка — часть условия, а не контекст: величина контраста без
+     названной подложки не является утверждением. */
+  --color-text-display-accent: var(--primitive-color-brand-orange-500);
+
+  /* ⚠ text-muted (3,36:1) и text-disabled (2,71:1) НЕ проходят 4,5:1.
+     Допустимы только там, где текст не несёт решения; для disabled
+     обязательно видимое текстовое объяснение причины (A11Y-001). */
+
+  /* --- Поверхности [ADR-PENDING] ---
+     ⚠ Измерено: subtle 1,09:1 к белому · selected 1,43:1 к белому и
+     1,20:1 к канве. Это СЛАБЫЕ различия, и они НЕ являются носителем
+     смысла. Носитель выделения — бордер `--border-selected` 2 px
+     #C94700 (4,79:1); заливка лишь поддерживает его.
+     Прежняя формулировка «выделение поверхностью» была неверной:
+     COLOR-010 выполняется бордером, а не фоном. --- */
+  --color-surface-canvas:   var(--primitive-color-neutral-100);
+  --color-surface-default:  var(--primitive-color-white);
+  --color-surface-subtle:   var(--primitive-color-neutral-050);
+  --color-surface-selected: var(--primitive-color-orange-100);
+  --color-surface-overlay:  var(--primitive-color-neutral-950-a48);
+
+  /* --- Бордеры [ADR-PENDING] --- */
+  --color-border-subtle:  var(--primitive-color-neutral-300);
+  --color-border-default: var(--primitive-color-neutral-400);
+  --color-border-strong:  var(--primitive-color-neutral-900);
+  --color-border-warning: var(--primitive-color-neutral-900);
+  --color-border-error:   var(--primitive-color-red-500);
+  --color-border-disclosure: var(--primitive-color-neutral-400);
+
+  /* --- Действие: disabled-пара [audit A11Y-001] ---
+     Требование: «disabled использует отдельную readable neutral pair и
+     видимое объяснение причины». Пара читаема (текст на светлом фоне),
+     в отличие от простого opacity, который давал 2,7:1. --- */
+  --color-action-disabled-bg:     var(--primitive-color-neutral-100);
+  --color-action-disabled-text:   var(--primitive-color-neutral-900);
+  --color-action-disabled-border: var(--primitive-color-neutral-400);
+
+  /* --- Статусы [ADR-PENDING]
+     Оранжевый как статус ЗАПРЕЩЁН (R-01).
+
+     ⚠ ОГРАНИЧЕНИЕ ИСПОЛЬЗОВАНИЯ (проверено расчётом контраста):
+       error   #F04859 на белом = 3,64:1 · на канве #E8ECE9 = 3,05:1
+       success #3C887E на белом = 4,19:1
+     Обе пары НЕ проходят 4,5:1 для обычного текста → допустимы только
+     как цвет бордера, иконки или заливки бейджа; текст статуса всегда
+     --color-text-primary. info #0B24FB (7,90:1) как текст допустим.
+
+     warning: собственного цветового решения нет. Нейтральный тон —
+     осознанный отказ от цвета в пользу текста и иконки; выбор цвета
+     warning вынесен в ADR (COLOR-006). --- */
+  --color-status-info:    var(--primitive-color-blue-500);
+  --color-status-success: var(--primitive-color-green-dark-500);
+  --color-status-warning: var(--primitive-color-neutral-900);
+  --color-status-error:   var(--primitive-color-red-500);
+
+  /* --- Семантика данных [ADR-PENDING] (отделена от статусов, XSC-16) --- */
+  --color-data-changed:   var(--primitive-color-neutral-900);
+  --color-data-uncertain: var(--primitive-color-neutral-900);
+  --color-deadline-warning:  var(--primitive-color-neutral-900);
+  --color-deadline-critical: var(--primitive-color-red-500);
+
+  /* --- Data-viz [ADR-PENDING · КОНФЛИКТ НЕ РАЗРЕШЁН] ---
+     COLOR-004 требует, чтобы палитра графиков не выглядела как статусная.
+     Сейчас она ею и выглядит: фазы графика — официальные цвета бренда
+     (blue / dark-green / bright-green), и те же значения служат
+     статусами info / success.
+
+     Первая попытка «развести» их осветлением дала различие 1,47:1 и
+     1,34:1 — то есть визуально те же цвета. Это была имитация решения,
+     и она отменена: значения возвращены к официальным бренд-цветам.
+
+     Конфликт нельзя закрыть внутри реализации — нужен либо отдельный
+     утверждённый chart-палитра-набор, либо отказ от цвета в статусах.
+     Зарегистрировано как блокирующее решение в adr-blocking.md §1 №23.
+     Пока конфликт открыт, статус НИКОГДА не передаётся только цветом
+     (иконка + текст обязательны), а график всегда несёт легенду. --- */
+  --color-dataviz-category-1: var(--primitive-color-blue-500);
+  --color-dataviz-category-2: var(--primitive-color-green-dark-500);
+  --color-dataviz-category-3: var(--primitive-color-green-bright-500);
+  --color-dataviz-neutral:    var(--primitive-color-chart-grey);
+
+  /* ============ ТИПОГРАФИКА [audit R-24] ============
+     Роли фиксированы аудитом.
+
+     ВЕС BODY = Regular [решение PO 04.08.2026, CONFLICT-C].
+     Это осознанное отклонение от бренд-гайда All3 §8.1, который как
+     официальное правило предписывает Medium для body и резервирует
+     Regular за caption/notes/dense tables. PO принял сторону аудита;
+     бренд-команду необходимо уведомить. Medium сохраняется за
+     labels, table headers, badges, кнопками и error-текстом. */
+  --font-family: 'Visuelt Pro', 'Hanken Grotesk', system-ui, 'Helvetica Neue', Arial, sans-serif;
+  --font-weight-regular: 400;
+  --font-weight-medium:  500;
+  --font-weight-bold:    700;
+  --font-weight-body:    var(--font-weight-regular);
+
+  /* Имена соответствуют каноническим идентификаторам раздела 13 буквально
+     (TOKEN-001: ручное расхождение с canonical source запрещено). */
+  --type-display-numeric-desktop-size: 64px; --type-display-numeric-desktop-line: 68px;
+  --type-display-numeric-narrow-size:  48px; --type-display-numeric-narrow-line:  52px;
+  --type-heading-1-desktop-size: 48px;  --type-heading-1-desktop-line: 56px;
+  --type-heading-1-narrow-size:  36px;  --type-heading-1-narrow-line:  44px;
+  --type-heading-2-size: 32px;  --type-heading-2-line: 40px;
+  --type-heading-3-size: 24px;  --type-heading-3-line: 32px;
+  --type-body-size:   16px;  --type-body-line:   24px;
+  --type-small-size:  14px;  --type-small-line:  20px;
+  --type-caption-size:12px;  --type-caption-line:16px;
+  --type-input-size:  16px;  --type-input-line:  24px;
+  --type-button-primary-size: 16px;  --type-button-primary-line: 20px;
+  --type-label-size:  14px;  --type-label-line:  20px;
+  --type-helper-size: 14px;  --type-helper-line: 20px;
+  --type-error-size:  14px;  --type-error-line:  20px;
+  --type-badge-status-size:   14px; --type-badge-status-line:   20px;
+  --type-badge-metadata-size: 12px; --type-badge-metadata-line: 16px;
+  --type-table-header-size:  14px; --type-table-header-line:  20px;
+  --type-table-body-size:    14px; --type-table-body-line:    20px;
+  --type-table-numeric-size: 14px; --type-table-numeric-line: 20px;
+  --type-delta-size: 14px; --type-delta-line: 20px;
+  /* TYPE-003 требует роли link / tooltip / kbd. Раздел 13 значений для
+     них не задаёт → [ADR-PENDING], приближение от body/small. */
+  --type-link-size:    16px; --type-link-line:    24px;
+  --type-tooltip-size: 14px; --type-tooltip-line: 20px;
+  --type-kbd-size:     12px; --type-kbd-line:     16px;
+  --paragraph-gap: 0.5em;
+  --font-numeric: 'tnum' 1, 'lnum' 1;
+
+  /* TYPE-001: каждой роли собственный вес, а не только глобальные три. */
+  --type-display-numeric-weight: var(--font-weight-bold);
+  --type-heading-weight:         var(--font-weight-bold);
+  --type-body-weight:            var(--font-weight-regular);
+  --type-small-weight:           var(--font-weight-regular);
+  --type-caption-weight:         var(--font-weight-regular);
+  --type-input-weight:           var(--font-weight-regular);
+  --type-button-primary-weight:  var(--font-weight-medium);
+  --type-label-weight:           var(--font-weight-medium);
+  --type-helper-weight:          var(--font-weight-regular);
+  --type-error-weight:           var(--font-weight-medium);
+  --type-badge-status-weight:    var(--font-weight-medium);
+  --type-badge-metadata-weight:  var(--font-weight-medium);
+  --type-table-header-weight:    var(--font-weight-medium);
+  --type-table-body-weight:      var(--font-weight-regular);
+  --type-table-numeric-weight:   var(--font-weight-regular);
+  --type-delta-weight:           var(--font-weight-medium);
+  --type-link-weight:            var(--font-weight-medium);
+  --type-tooltip-weight:         var(--font-weight-regular);
+  --type-kbd-weight:             var(--font-weight-regular);
+
+  /* ============ ОТСТУПЫ И РАЗМЕРЫ [audit §13] ============ */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 24px; --space-6: 32px; --space-7: 48px; --space-8: 64px;
+
+  /* Высота контрола — визуальная. Hit-area всегда ≥44 px (R-04, XSC-07):
+     разрешение конфликта «32 px против 44 px» — 32 px это ВИД,
+     44×44 это ЦЕЛЬ, достигаемая невидимым расширением ::before. */
+  --size-control-visual-sm: 32px;
+  --size-control-visual-md: 40px;
+  --size-control-visual-lg: 48px;
+  --size-hit-target-default:        44px;
+  --size-icon-sm: 16px; --size-icon-md: 20px; --size-icon-lg: 24px;
+
+  --border-width-default: 1px;
+  --border-width-strong:  2px;
+  --border-width-focus:   2px;
+  --radius: 0; /* [official] всегда */
+
+  /* Составные бордеры.
+     ⚠ Имена намеренно НЕ используют слово strong для толщины 1 px:
+     прежде `--border-strong` был 1 px, а `--border-width-strong` — 2 px,
+     и спецификации, требующие «2 px strong», получали 1 px. Теперь
+     толщина читается из имени однозначно. */
+  --border-hairline:      var(--border-width-default) solid var(--color-border-subtle);
+  --border-default:       var(--border-width-default) solid var(--color-border-default);
+  --border-contrast-1px:  var(--border-width-default) solid var(--color-border-strong);
+  --border-contrast-2px:  var(--border-width-strong)  solid var(--color-border-strong);
+  --border-selected:      var(--border-width-strong)  solid var(--color-selection-border);
+  --border-warning:       var(--border-width-strong)  solid var(--color-border-warning);
+  --border-error:         var(--border-width-strong)  solid var(--color-border-error);
+  --border-disclosure:    var(--border-width-default) solid var(--color-border-disclosure);
+
+  /* ============ СЛОИ [ADR-PENDING] ============
+     Раздел 13 перечисляет шесть записей layer.* БЕЗ значений.
+     Значения ниже — приближение из прежней системы; обязательная
+     верификация TOKEN-005 (collision test) НЕ выполнена. */
+  --layer-header:         10;
+  --layer-popover:        20;
+  --layer-tooltip:        30;
+  --layer-dialog-backdrop:90;
+  --layer-dialog:        100;
+  --layer-toast:         110;
+
+  /* ============ ДВИЖЕНИЕ [ADR-PENDING] ============
+     R-21: финальное значение доступно немедленно, motion никогда не
+     единственный feedback, гаснет при prefers-reduced-motion.
+     MOTION-001 требует токены ПО НАЗНАЧЕНИЮ (feedback, reveal, reorder,
+     value change), а не по длительности — поэтому ниже назначенческие
+     имена, а fast/base/slow оставлены только как их основа. */
+  --motion-easing-standard:   cubic-bezier(.25, .6, .3, 1);
+  --motion-easing-emphasized: cubic-bezier(.2, .8, .2, 1);
+  --motion-duration-fast: 120ms;
+  --motion-duration-base: 200ms;
+  --motion-duration-slow: 240ms;
+  /* Назначенческие токены (MOTION-001) */
+  --motion-feedback:     var(--motion-duration-fast); /* нажатие, выбор */
+  --motion-reveal:       var(--motion-duration-base); /* раскрытие, поповер */
+  --motion-reorder:      var(--motion-duration-slow); /* перестановка, панели */
+  --motion-value-change: 400ms;                       /* счёт чисел */
+  --motion-emphasis:     480ms;                       /* интервал, график */
+  --stagger-row:  30ms;
+  --stagger-wave: 80ms;
+  --enter-shift:  var(--space-2);
+
+  /* ============ ПЛОТНОСТЬ [audit DENSITY-001/002/006/007] ============
+     Плотность и Output Profile — НЕЗАВИСИМЫЕ контролы (DENSITY-001).
+     Пользовательские подписи — `Komfortabel | Kompakt` (DENSITY-002/006);
+     слова comfortable/compact остаются только в коде.
+
+     Минимальные высоты строк финансовых и табличных данных заданы
+     аудитом точно (DENSITY-007) и НЕ подлежат уменьшению:
+       Komfortabel ≥ 52 px · Kompakt ≥ 44 px.
+     Зона нажатия в обоих режимах ≥ 44×44 (R-04). */
+  --control-height: var(--size-control-visual-md);
+  --row-height-financial: 52px;
+  --row-height: 52px;
+  --cell-pad-y: var(--space-4);
+  --cell-pad-x: var(--space-4);
+  /* LAYOUT-003: контейнер контента 1200 px, внешние отступы 16/24/32,
+     мера основного текста ≤ 75ch. Прежние 1600 px были нарушением. */
+  --content-max-width: 1200px;
+  --measure-body-max: 75ch;
+  --gutter-narrow: var(--space-4);
+  --gutter-medium: var(--space-5);
+  --gutter-wide:   var(--space-6);
+  --panel-right-width: 400px; /* [ADR-PENDING] вне раздела 13 */
+}
+
+/* Kompakt — независимое предпочтение пользователя (D-16, LAYOUT-007).
+   Прежде здесь существовало правило `.mode-praesentation .density-compact`,
+   принудительно возвращавшее comfortable в клиентском режиме. Оно удалено:
+   это была техническая реализация запрета, смешивавшего visual-слой с
+   Output Profile. Рекомендация переключиться перед шарингом экрана —
+   пункт чек-листа G6-gate (DC-33), а не переопределение токенов. */
+.density-compact {
+  --control-height: var(--size-control-visual-sm);
+  --row-height-financial: 44px;
+  --row-height: 44px;
+  --cell-pad-y: var(--space-3);
+  --cell-pad-x: var(--space-3);
+}
+
+/* Уменьшение движения — уважается всегда (R-21). */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-fast: 0ms; --motion-duration-base: 0ms;
+    --motion-duration-slow: 0ms; --motion-value-change: 0ms;
+    --motion-emphasis: 0ms; --stagger-row: 0ms; --stagger-wave: 0ms;
+  }
+}
+
+/* ---------- Базовые правила применения ---------- */
+html, body { font-family: var(--font-family); color: var(--color-text-primary); }
+input, select, textarea, button, kbd { font-family: var(--font-family); }
+/* Фон страницы — БЕЛЫЙ (правило проекта 6). Канва All3 Grey #E8ECE9 — это
+   поверхность отдельных зон, а не подложка документа.
+   Найдено аудитом 05.08: пока body красился канвой, единственное разрешённое
+   применение бренд-оранжевого — герой-число DC-38 — давало 2,60:1 вместо
+   требуемых R-01 ≥ 3:1. Величина 3,10:1, на которую ссылались все документы,
+   верна только на белом, а белого в системе по умолчанию не было.
+   Это A11Y-001 той же формы, перенесённый с кнопки на главное число. */
+body {
+  background: var(--color-surface-default); margin: 0;
+  font-size: var(--type-body-size); line-height: var(--type-body-line);
+  font-weight: var(--font-weight-body);
+}
+
+/* Фокус [R-03]: белый separator + синий ring, видимый на белом,
+   сером и на выделенных поверхностях. */
+:focus-visible {
+  outline: var(--border-width-focus) solid var(--color-focus-ring);
+  outline-offset: var(--border-width-focus);
+  box-shadow: 0 0 0 var(--border-width-focus) var(--color-focus-separator);
+}
+
+/* Числовые ячейки — табличные цифры обязательны. */
+.numeric { font-feature-settings: var(--font-numeric); text-align: right; }
+
+/* Акцентный текст — только крупный (R-01). */
+.text-display-accent {
+  color: var(--color-text-display-accent);
+  font-size: var(--type-heading-3-size);
+  line-height: var(--type-heading-3-line);
+  font-weight: var(--font-weight-bold);
+}
+
+/* Расширение зоны нажатия до 44×44 без изменения визуального размера.
+   Применяется к любому контролу ниже --size-hit-target-default. */
+.hit-target { position: relative; }
+.hit-target::before {
+  content: ''; position: absolute; left: 50%; top: 50%;
+  width: var(--size-hit-target-default); height: var(--size-hit-target-default);
+  transform: translate(-50%, -50%);
+}
+
+/* ============================================================
+   СЛОЙ 3 — COMPONENT: НЕ РЕАЛИЗОВАН УМЫШЛЕННО [R-25 / TOKEN-005]
+
+   Раздел 13 аудита перечисляет 25 записей `component.*` (button, tabs,
+   segmentedControl, radioCard, input, slider, badge, card, dataTable,
+   disclosure, metric, optionTile, conflictResolver, changePreview,
+   variantComparison, workflowStepper, documentAnalysis,
+   documentVersionRow, facadeSelector, provenance, projectQueueCard,
+   scheduleTimeline, languageSelector, emailComposer, internalNote)
+   БЕЗ присвоенных значений. Прямая цитата раздела 13:
+   «Entries above without an assigned value are not defaults. They are
+   explicit blocking decisions under R-25 and may not be emitted into
+   Figma/code until approved in an ADR.»
+
+   Поэтому component-слой отсутствует намеренно: выдумывать значения
+   запрещено.
+
+   Semantic-записи раздела 13 без значений — их НЕ пять (прежнее
+   утверждение занижало число в шесть раз и снято по вердикту аудита):
+   их 31 строка / 34 имени. Полный построчный реестр с приближениями,
+   источником каждого приближения и требуемой верификацией —
+   docs/audit/adr-blocking.md. Состав:
+     semantic.color.*  — 23 записи [ADR-PENDING]:
+        text 5 · surface 5 · border 3 · action.secondary 1 · status 4 ·
+        data 2 · deadline 2 · dataViz.category 1
+     semantic.layer.*  — 6 записей [ADR-PENDING]: header · popover ·
+        tooltip · dialogBackdrop · dialog · toast
+        (collision test TOKEN-005 не выполнен)
+     semantic.motion.duration.fast/base/slow    [ADR-PENDING]
+     semantic.motion.easing.standard/emphasized [ADR-PENDING]
+
+   Каждая запись блокирует достижение зависимым компонентом статуса
+   beta/stable до утверждения ADR (TOKEN-005).
+   ============================================================ */
+
+/* ============================================================
+   НЕ ЯВЛЯЕТСЯ ТОКЕНАМИ (R-15). Живёт в data/policy контрактах:
+     policy.outputProfile.*   policy.visibility.*   policy.permission.*
+     domain.workflowState.*   domain.dataQualityState.*
+     domain.versionState.*    domain.deliveryState.*
+     domain.variantRole.*     domain.coverageState.*  domain.optionState.*
+   Ранее в этом файле были токены зон точности, чипов источников и
+   статусов режимов — они удалены как смешение visual и business слоёв.
+   ============================================================ */
