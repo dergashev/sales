@@ -139,6 +139,12 @@ type Store = {
   snapshots: OfferSnapshot[]
   /** Дельта-чип живёт 4 секунды, потом уезжает в журнал (DC-2). */
   activeDelta: { label: string; deltaExact: Decimal; percent: Decimal } | null
+  /**
+   * Geist-Vorschau (DC-28): последствие опции у цены ДО клика. Эфемерное
+   * UI-состояние вроде `openChapter` — данные не меняются, события нет.
+   * Клик фиксирует выбор обычным событием, превью гаснет.
+   */
+  preview: { label: string; deltaExact: Decimal } | null
   openChapter: number
 
   projection: () => Projection
@@ -154,6 +160,13 @@ type Store = {
   sendOffer: (kind: 'email' | 'print', discountPercent: string | null) => OfferSnapshot
   clearDelta: () => void
   openChapterAt: (n: number) => void
+  /** DC-28: показать последствие опции до клика; null — погасить. */
+  previewOption: (
+    change:
+      | { kind: 'energiestandard'; value: BuildingInput['energiestandard'] }
+      | { kind: 'untergeschoss'; value: BuildingInput['untergeschoss'] }
+      | null,
+  ) => void
   undo: () => void
 }
 
@@ -240,6 +253,7 @@ const store = createStore<Store>((set, get) => {
     regionalfaktorActive: false,
     snapshots: [],
     activeDelta: null,
+    preview: null,
     openChapter: 3,
 
     projection: () => computeProjection(get()),
@@ -294,7 +308,9 @@ const store = createStore<Store>((set, get) => {
         deltaExact: delta,
         inverse: () => set((st) => ({ building: { ...st.building, energiestandard: prev } })),
       })
+      // Клик — фиксация: превью гаснет, начинается волна дельты (DC-28).
       set({
+        preview: null,
         activeDelta: {
           label: `Energiestandard ${prev.replace('_', ' ')} → ${v.replace('_', ' ')}`,
           deltaExact: delta,
@@ -318,6 +334,7 @@ const store = createStore<Store>((set, get) => {
         inverse: () => set((st) => ({ building: { ...st.building, untergeschoss: prev } })),
       })
       set({
+        preview: null,
         activeDelta: {
           label: `Untergeschoss ${LABEL_UG[v]}`,
           deltaExact: delta,
@@ -483,6 +500,30 @@ const store = createStore<Store>((set, get) => {
 
     clearDelta: () => set({ activeDelta: null }),
     openChapterAt: (n) => set({ openChapter: n }),
+
+    previewOption: (change) => {
+      if (change === null) {
+        if (get().preview !== null) set({ preview: null })
+        return
+      }
+      const s = get()
+      const current = s.building[change.kind]
+      if (current === change.value) {
+        if (s.preview !== null) set({ preview: null })
+        return
+      }
+      // Последствие считается тем же движком от ТОЧНЫХ значений — превью
+      // не имеет собственной арифметики, поэтому не может разойтись с кликом.
+      const before = computeProjection(s).result.total.exact
+      const after = computeProjection({
+        ...s,
+        building: { ...s.building, [change.kind]: change.value },
+      }).result.total.exact
+      const label = change.kind === 'energiestandard'
+        ? `Energiestandard ${change.value.replace('_', ' ')}`
+        : `Untergeschoss ${LABEL_UG[change.value as BuildingInput['untergeschoss']]}`
+      set({ preview: { label, deltaExact: after.minus(before) } })
+    },
 
     /**
      * Отмена с курсором: берётся последнее ещё не отменённое событие с

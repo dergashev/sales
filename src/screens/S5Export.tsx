@@ -73,14 +73,14 @@ export function S5Export() {
     selected.size > 0 && body.trim().length > 0
 
   return (
-    <div className="mx-auto max-w-content px-5 py-5">
-      <header className="border-b border-border-strong pb-3">
-        <h1 className="text-body font-bold text-text-primary">Export · Musterprojekt Nordfeld</h1>
+    <div className="px-7 py-6">
+      <header className="border-b border-border-strong pb-4">
+        <h1 className="text-heading-2 font-bold text-text-primary">Export · Musterprojekt Nordfeld</h1>
       </header>
 
       <div className="grid gap-6 py-5 lg:grid-cols-2">
         <section aria-label="Artefakte und Rabatt">
-          <h2 className="text-body font-bold text-text-primary">Artefakte</h2>
+          <h2 className="text-heading-3 font-bold text-text-primary">Artefakte</h2>
           <ul className="mt-3">
             {ARTIFACTS.map((a) => (
               <li key={a.id} className="border-b border-border-subtle">
@@ -102,7 +102,7 @@ export function S5Export() {
             ))}
           </ul>
 
-          <h2 className="mt-6 text-body font-bold text-text-primary">Rabatt</h2>
+          <h2 className="mt-6 text-heading-3 font-bold text-text-primary">Rabatt</h2>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <Button variant={discountOn ? 'secondary' : 'primary'}
                     onClick={() => setDiscountOn(false)} aria-pressed={!discountOn}>
@@ -127,7 +127,7 @@ export function S5Export() {
         </section>
 
         <section aria-label="Versand">
-          <h2 className="text-body font-bold text-text-primary">
+          <h2 className="text-heading-3 font-bold text-text-primary">
             Versand · Stufe: {stageLabel(stage)}
           </h2>
 

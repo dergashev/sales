@@ -23,9 +23,9 @@ export function S1Projektliste({ openVorbereitung }: { openVorbereitung: () => v
   const blocked = !s.building.gebaeudeklasse.confirmed
 
   return (
-    <div className="mx-auto max-w-content px-5 py-5">
-      <header className="border-b border-border-strong pb-3">
-        <h1 className="text-body font-bold text-text-primary">Projekte</h1>
+    <div className="px-7 py-6">
+      <header className="border-b border-border-strong pb-4">
+        <h1 className="text-heading-2 font-bold text-text-primary">Projekte</h1>
       </header>
 
       <h2 className="mt-5 text-small font-medium text-text-secondary">

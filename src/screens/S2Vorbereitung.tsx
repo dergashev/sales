@@ -40,9 +40,9 @@ export function S2Vorbereitung({ openKonfigurator }: { openKonfigurator: () => v
   }
 
   return (
-    <div className="mx-auto max-w-content px-5 py-5">
+    <div className="px-7 py-6">
       <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-border-strong pb-3">
-        <h1 className="text-body font-bold text-text-primary">
+        <h1 className="text-heading-2 font-bold text-text-primary">
           Musterprojekt Nordfeld · Vorbereitung
         </h1>
         <span className="text-small text-text-secondary">intern · Δ-Werte sichtbar</span>
@@ -118,7 +118,7 @@ function P1Dokumente() {
 
       {/* Разрешение версий: дата — доказательство, решает sales. */}
       <div className="mt-5 border border-border-default p-4">
-        <h2 className="text-body font-bold text-text-primary">Versionsauflösung · Grundrisse</h2>
+        <h2 className="text-heading-3 font-bold text-text-primary">Versionsauflösung · Grundrisse</h2>
         <p className="mt-2 text-small text-text-secondary">
           Zwei Versionen gefunden. Vorschlag des Systems: V2 — Datum im
           Plankopf ist neuer. Das Datum ist ein Beleg, keine Entscheidung
@@ -158,7 +158,7 @@ function P2Projektdaten() {
   return (
     <section aria-label="Projektdaten">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 className="text-body font-bold text-text-primary">Gebäudekennzahlen</h2>
+        <h2 className="text-heading-3 font-bold text-text-primary">Gebäudekennzahlen</h2>
         <span className="text-small text-text-secondary">Haus{NNBSP}A</span>
       </div>
 
@@ -296,7 +296,7 @@ function P3OffeneFragen() {
 
   return (
     <section aria-label="Offene Fragen">
-      <h2 className="text-body font-bold text-text-primary">
+      <h2 className="text-heading-3 font-bold text-text-primary">
         {open.length > 0
           ? <>Diese {open.length} Fragen reduzieren die Schätzunsicherheit von
               ±{NNBSP}{p.uncertaintyPp}{NNBSP}% auf ±{NNBSP}{target}{NNBSP}%</>
@@ -391,7 +391,7 @@ function P4Annahmen({ setTab }: { setTab: (t: Tab) => void }) {
 
   return (
     <section aria-label="Annahmen">
-      <h2 className="text-body font-bold text-text-primary">
+      <h2 className="text-heading-3 font-bold text-text-primary">
         Aktive Annahmen · {items.length}
       </h2>
       <p className="mt-1 text-small text-text-secondary">
@@ -441,7 +441,7 @@ function P5Varianten({ openKonfigurator }: { openKonfigurator: () => void }) {
 
   return (
     <section aria-label="Varianten">
-      <h2 className="text-body font-bold text-text-primary">Varianten · Haus{NNBSP}A</h2>
+      <h2 className="text-heading-3 font-bold text-text-primary">Varianten · Haus{NNBSP}A</h2>
       <div className="mt-3 overflow-x-auto">
         <table className="w-full border-collapse text-body">
           <caption className="sr-only">Varianten des Projekts</caption>

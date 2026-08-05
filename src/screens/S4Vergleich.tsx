@@ -137,9 +137,9 @@ export function S4Vergleich() {
   const groups = [...new Set(visible.map((r) => r.group))]
 
   return (
-    <div className="mx-auto max-w-content px-5 py-5">
+    <div className="px-7 py-6">
       <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-border-strong pb-3">
-        <h1 className="text-body font-bold text-text-primary">
+        <h1 className="text-heading-2 font-bold text-text-primary">
           Variantenvergleich · Haus{NNBSP}A · DEMO-SC-01
         </h1>
         <Button onClick={() => setShowAll((v) => !v)} aria-pressed={showAll}>

@@ -18,15 +18,15 @@ export function S6Einstellungen() {
   const cfg = catalog.internalConfig
 
   return (
-    <div className="mx-auto max-w-content px-5 py-5">
-      <header className="border-b border-border-strong pb-3">
-        <h1 className="text-body font-bold text-text-primary">
+    <div className="px-7 py-6">
+      <header className="border-b border-border-strong pb-4">
+        <h1 className="text-heading-2 font-bold text-text-primary">
           Einstellungen · intern
         </h1>
       </header>
 
       <section className="mt-5" aria-label="Regionalfaktor">
-        <h2 className="text-body font-bold text-text-primary">Regionalfaktor</h2>
+        <h2 className="text-heading-3 font-bold text-text-primary">Regionalfaktor</h2>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3 border border-border-default p-4">
           <div>
             <p className="text-body text-text-primary">
@@ -51,7 +51,7 @@ export function S6Einstellungen() {
       </section>
 
       <section className="mt-6" aria-label="Marge">
-        <h2 className="text-body font-bold text-text-primary">
+        <h2 className="text-heading-3 font-bold text-text-primary">
           Marge (kundenseitig unsichtbar, D-01)
         </h2>
         <div className="mt-2 overflow-x-auto">
@@ -85,7 +85,7 @@ export function S6Einstellungen() {
       </section>
 
       <section className="mt-6" aria-label="Risikozuschlag">
-        <h2 className="text-body font-bold text-text-primary">Risikozuschlag-Treiber (D-02)</h2>
+        <h2 className="text-heading-3 font-bold text-text-primary">Risikozuschlag-Treiber (D-02)</h2>
         <div className="mt-2 overflow-x-auto">
           <table className="w-full border-collapse text-body">
             <caption className="sr-only">Risikozuschlag-Treiber mit Basis und Satz</caption>
@@ -121,7 +121,7 @@ export function S6Einstellungen() {
       </section>
 
       <section className="mt-6" aria-label="Sprache">
-        <h2 className="text-body font-bold text-text-primary">Sprache</h2>
+        <h2 className="text-heading-3 font-bold text-text-primary">Sprache</h2>
         <p className="mt-2 border border-border-default p-4 text-body text-text-secondary">
           Oberfläche: DE · EN-Guidance-Texte sind nicht übersetzt und werden
           intern als solche markiert; Kundenartefakte auf Englisch werden

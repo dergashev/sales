@@ -90,8 +90,13 @@ const config: Config = {
                           { lineHeight: 'var(--type-display-numeric-desktop-line)' }],
       'display-numeric-narrow': ['var(--type-display-numeric-narrow-size)',
                                  { lineHeight: 'var(--type-display-numeric-narrow-line)' }],
+      'heading-1': ['var(--type-heading-1-desktop-size)',
+                    { lineHeight: 'var(--type-heading-1-desktop-line)' }],
+      'heading-2': ['var(--type-heading-2-size)', { lineHeight: 'var(--type-heading-2-line)' }],
+      'heading-3': ['var(--type-heading-3-size)', { lineHeight: 'var(--type-heading-3-line)' }],
       body: ['var(--type-body-size)', { lineHeight: 'var(--type-body-line)' }],
       small: ['var(--type-small-size)', { lineHeight: 'var(--type-small-line)' }],
+      caption: ['var(--type-caption-size)', { lineHeight: 'var(--type-caption-line)' }],
     },
     fontWeight: {
       regular: 'var(--font-weight-regular)',
@@ -130,7 +135,11 @@ const config: Config = {
       },
       minWidth: { 'hit-target': 'var(--size-hit-target-default)' },
       maxWidth: { content: 'var(--content-max-width)' },
-      width: { field: '12ch' },
+      width: {
+        field: '12ch',
+        'panel-left': 'var(--panel-left-width)',
+        'panel-right': 'var(--panel-right-width)',
+      },
     },
   },
   corePlugins: {

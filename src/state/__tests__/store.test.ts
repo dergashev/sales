@@ -79,6 +79,35 @@ describe('S3: журнал событий как хребет (M-4)', () => {
   })
 })
 
+describe('S3: Geist-Vorschau — последствие до клика (DC-28)', () => {
+  it('превью считает дельту тем же движком и не пишет в журнал', () => {
+    useStore.getState().previewOption({ kind: 'energiestandard', value: 'EH_40' })
+    const s = useStore.getState()
+    // Та же дельта, что у будущей фиксации: у превью нет своей арифметики.
+    expect(s.preview!.deltaExact.toFixed(2)).toBe('97335.00')
+    expect(s.journal).toHaveLength(0)
+    expect(s.projection().result.total.exact.toFixed(2)).toBe('3817835.00')
+  })
+
+  it('уход с опции гасит превью; текущая опция превью не даёт', () => {
+    useStore.getState().previewOption({ kind: 'untergeschoss', value: 'kein_ug' })
+    expect(useStore.getState().preview!.deltaExact.toFixed(2)).toBe('-476000.00')
+    useStore.getState().previewOption(null)
+    expect(useStore.getState().preview).toBeNull()
+    useStore.getState().previewOption({ kind: 'energiestandard', value: 'EH_55' })
+    expect(useStore.getState().preview).toBeNull()
+  })
+
+  it('клик гасит превью и начинает волну дельты', () => {
+    useStore.getState().previewOption({ kind: 'energiestandard', value: 'EH_40' })
+    useStore.getState().setEnergiestandard('EH_40')
+    const s = useStore.getState()
+    expect(s.preview).toBeNull()
+    expect(s.activeDelta!.deltaExact.toFixed(2)).toBe('97335.00')
+    expect(s.journal).toHaveLength(1)
+  })
+})
+
 describe('S3: интервал сужается подтверждением, не выбором опции (D-19)', () => {
   it('выбор энергостандарта интервал не меняет', () => {
     expect(useStore.getState().projection().uncertaintyPp).toBe(22)
