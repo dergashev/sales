@@ -1,22 +1,16 @@
 import { useEffect, useState } from 'react'
 import { checkFonts, checkCascade, type FontCheck } from './lib/font-check'
 import { Diagnostics } from './components/Diagnostics'
+import { S3Konfigurator } from './screens/S3Konfigurator'
 
-/**
- * Шаг 1 каркаса. Единственная задача этого экрана — доказать, что основания
- * работают: фирменный шрифт применён во всех трёх местах каскада, фон белый,
- * токены читаются, фикстура загружается и её арифметика сходится.
- *
- * Это не заглушка «Hello world». Каждый пункт здесь — дефект, который уже
- * случался в проекте и стоил цикла аудита.
- */
+type View = 'konfigurator' | 'grundlagen'
+
 export function App() {
+  const [view, setView] = useState<View>('konfigurator')
   const [fonts, setFonts] = useState<FontCheck | null>(null)
   const [cascade, setCascade] = useState<string[] | null>(null)
 
   useEffect(() => {
-    // ПОСЛЕ ready: иначе проверка ответит «нет» просто потому, что загрузка
-    // не завершилась, и соврёт в безопасную сторону.
     document.fonts.ready.then(() => {
       setFonts(checkFonts())
       setCascade(checkCascade())
@@ -24,18 +18,36 @@ export function App() {
   }, [])
 
   return (
-    <main className="mx-auto max-w-content px-5 py-7">
-      <p className="text-small font-regular text-text-secondary">
-        All3 · Indicative Offer Engine · Prototyp v0.5
-      </p>
-      <h1 className="mt-2 text-display-numeric-narrow font-bold text-text-primary">
-        Grundlagen
-      </h1>
-      <p className="mt-3 max-w-content text-body font-regular text-text-secondary">
-        Каркас доказывает основания, а не показывает данные. Экраны продукта —
-        следующий шаг.
-      </p>
-      <Diagnostics fonts={fonts} cascade={cascade} />
-    </main>
+    <>
+      {/* Переключатель вида — временный, до появления S1 с очередью проектов. */}
+      <nav className="border-b border-border-subtle px-5 py-2" aria-label="Ansicht">
+        <div className="mx-auto flex max-w-content gap-3">
+          {(['konfigurator', 'grundlagen'] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setView(v)}
+              aria-current={view === v ? 'page' : undefined}
+              className={'relative py-1 text-small before:absolute before:left-1/2 ' +
+                'before:top-1/2 before:min-h-hit-target before:w-full ' +
+                'before:-translate-x-1/2 before:-translate-y-1/2 before:content-[""] ' +
+                'outline-none focus-visible:outline focus-visible:outline-2 ' +
+                'focus-visible:outline-offset-2 focus-visible:outline-focus-ring ' +
+                (view === v ? 'font-medium text-text-primary' : 'text-text-secondary')}
+            >
+              {v === 'konfigurator' ? 'S3 Konfigurator' : 'Grundlagen'}
+            </button>
+          ))}
+        </div>
+      </nav>
+      {view === 'konfigurator'
+        ? <S3Konfigurator />
+        : <main className="mx-auto max-w-content px-5 py-7">
+            <h1 className="text-display-numeric-narrow font-bold text-text-primary">
+              Grundlagen
+            </h1>
+            <Diagnostics fonts={fonts} cascade={cascade} />
+          </main>}
+    </>
   )
 }

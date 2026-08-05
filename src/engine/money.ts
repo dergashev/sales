@@ -91,12 +91,31 @@ export type AreaType =
   | 'BGF_TOTAL' | 'BGF_ABOVE_GROUND' | 'BGF_BELOW_GROUND' | 'BGF_R' | 'BGF_S'
   | 'BGF_R_S' | 'WFL_WOFLV' | 'NUF_DIN277' | 'COMMUNAL_AREA' | 'CUSTOM_EXPLICIT'
 
+/**
+ * Знаменатель ставки бывает **двух видов** (data-model §5.3): площадь с
+ * нормативом либо счётная величина. Смешивать их нельзя: у первой подпись
+ * обязана называть норматив, у второй норматива не существует, и требовать
+ * его значило бы выдумывать.
+ *
+ * Разница не теоретическая. `€ je Wohneinheit` считался деньгами и
+ * округлялся до 1.000 €, давая 239.000 вместо 238.615 — тест поймал это на
+ * первом же прогоне. Ставка округляется до единицы, деньги до тысячи, и
+ * различие между ними — вид знаменателя, а не размер числа.
+ */
+export type UnitCountType = 'WOHNEINHEITEN' | 'STELLPLAETZE'
+
 export type Rate = Displayed & {
   numerator: Decimal
   denominator: Decimal
-  denominatorType: AreaType
+  denominatorType: AreaType | UnitCountType
   /** Подпись знаменателя обязана называть норматив (R-11, DATA-001). */
   denominatorLabel: string
+  denominatorKind: 'area' | 'unitCount'
+}
+
+const UNIT_COUNT_LABEL: Record<UnitCountType, string> = {
+  WOHNEINHEITEN: 'je Wohneinheit',
+  STELLPLAETZE: 'je Stellplatz',
 }
 
 const DENOMINATOR_LABEL: Record<AreaType, string> = {
@@ -112,27 +131,39 @@ const DENOMINATOR_LABEL: Record<AreaType, string> = {
   CUSTOM_EXPLICIT: 'benutzerdefiniert',
 }
 
+function isUnitCount(t: AreaType | UnitCountType): t is UnitCountType {
+  return t in UNIT_COUNT_LABEL
+}
+
 export function rate(
   numerator: Decimal,
   denominator: Decimal,
-  denominatorType: AreaType,
+  denominatorType: AreaType | UnitCountType,
 ): Rate {
   if (denominator.lte(0)) {
     throw new Error(
       `знаменатель ставки должен быть положительным, получено ${denominator.toString()}`,
     )
   }
+  const unitCount = isUnitCount(denominatorType)
   const exact = numerator.div(denominator)
   return {
     ...present(exact, RATE),
     numerator,
     denominator,
     denominatorType,
-    denominatorLabel: DENOMINATOR_LABEL[denominatorType],
+    denominatorKind: unitCount ? 'unitCount' : 'area',
+    denominatorLabel: unitCount
+      ? UNIT_COUNT_LABEL[denominatorType]
+      : DENOMINATOR_LABEL[denominatorType],
   }
 }
 
-/** `≈ 2.545 €/m² WFL nach WoFlV` — знаменатель всегда назван. */
+/**
+ * `≈ 2.545 €/m² WFL nach WoFlV` либо `≈ 238.615 € je Wohneinheit`.
+ * Знаменатель назван всегда; `€/m²` появляется только у площадных.
+ */
 export function rateLabel(r: Rate): string {
-  return `${r.prefix}${r.prefix ? NNBSP : ''}${r.display}${NNBSP}€/m²${NNBSP}${r.denominatorLabel}`
+  const unit = r.denominatorKind === 'area' ? `€/m²${NNBSP}` : `€${NNBSP}`
+  return `${r.prefix}${r.prefix ? NNBSP : ''}${r.display}${NNBSP}${unit}${r.denominatorLabel}`
 }
