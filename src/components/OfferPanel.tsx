@@ -205,47 +205,77 @@ export function OfferPanel() {
           </AnimatePresence>
         </div>
 
-        {/* ── Kostentreiber (DC-44) — обязателен после каждой калькуляции ── */}
+        {/* ── Kostentreiber (DC-44) — обязателен после каждой калькуляции ──
+            DC-21 отвечает машине, DC-44 — клиенту: переговорный аргумент,
+            входит в клиентский PDF. Бары относительно наибольшего вклада и
+            дублируются числом (DRIVER-005). */}
         <section aria-label="Kostentreiber" className="mt-5 border-t border-border-subtle pt-4">
           <h2 className="text-small font-bold text-text-primary">Kostentreiber</h2>
+          {/* Шапка бенчмарка (DRIVER-001, CALC-008): фикстура объявляет только
+              ID снапшота — медианы нет, и выдумать её нельзя (R-25), поэтому
+              вывод «x % zur Mediane» честно заменён названной причиной. */}
+          <p className="numeric mt-1 text-small text-text-secondary">
+            {rateLabel(p.secondaryRateBgf)} gegen Snapshot
+            BM-BKI-2026Q1-SYNTH (Bundesdurchschnitt, Regionalfaktor
+            inaktiv{NNBSP}·{NNBSP}D-15) — nicht vergleichbar: Median im
+            Snapshot nicht deklariert.
+          </p>
           <div className="mt-2 overflow-x-auto">
             <table className="w-full border-collapse text-small">
               <caption className="sr-only">
                 Kostentreiber: Beiträge summieren sich exakt zur Zwischensumme
               </caption>
               <tbody>
-                {p.result.drivers.map((d) => (
-                  <tr key={d.key} className="border-b border-border-subtle">
-                    <th scope="row" className="py-2 pr-3 text-left font-regular text-text-secondary">
-                      {d.label}
-                    </th>
-                    <td className="numeric py-2 text-right text-text-primary">
-                      {moneyLabel(present(d.exact))}
-                    </td>
-                  </tr>
-                ))}
-                {/* Regionalfaktor — строкой ВСЕГДА (правило 40, D-15):
-                    выключенный показывает сумму, которую добавил бы.
-                    Величина — из каталога, не из константы экрана. */}
+                {(() => {
+                  const max = p.result.drivers.reduce(
+                    (m, d) => (d.exact.gt(m) ? d.exact : m),
+                    p.result.drivers[0]!.exact,
+                  )
+                  return p.result.drivers.map((d) => (
+                    <tr key={d.key} className="border-b border-border-subtle">
+                      <th scope="row" className="py-2 pr-3 text-left font-regular text-text-secondary">
+                        {driverLabel(d.key, d.label, s)}
+                      </th>
+                      <td className="w-8 py-2 pr-2" aria-hidden="true">
+                        <div
+                          className="h-2 bg-border-strong"
+                          style={{ width: `${d.exact.div(max).mul(100).toNumber()}%` }}
+                        />
+                      </td>
+                      <td className="numeric py-2 text-right text-text-primary">
+                        {moneyLabel(present(d.exact))}
+                      </td>
+                    </tr>
+                  ))
+                })()}
+                {/* Неактивный фактор — строкой (DRIVER-002, CALC-009, D-15):
+                    формулировка называет базу применения. 0 € без статуса
+                    запрещён; величина из каталога, не из константы экрана. */}
                 {!s.regionalfaktorActive && (
                   <tr className="border-b border-border-subtle">
-                    <th scope="row" className="py-2 pr-3 text-left font-regular text-text-muted">
-                      Regionalfaktor · nicht aktiviert
-                    </th>
-                    <td className="numeric py-2 text-right text-text-muted">
-                      würde {moneyLabel(present(
-                        p.result.bauwerk.mul(CATALOG.regionalFactor.value.minus(1)),
-                      ))} hinzufügen
+                    <td colSpan={3} className="py-2 text-text-muted">
+                      Regionalfaktor Musterland · nicht berücksichtigt — würde{' '}
+                      <span className="numeric">
+                        {moneyLabel(present(
+                          p.result.bauwerk.mul(CATALOG.regionalFactor.value.minus(1)),
+                        ))}
+                      </span>{' '}
+                      auf den Bauwerksblock bedeuten
                     </td>
                   </tr>
                 )}
+                <tr>
+                  <th scope="row" className="py-2 pr-3 text-left font-medium text-text-primary">
+                    {p.result.totalLabel}
+                  </th>
+                  <td aria-hidden="true" />
+                  <td className="numeric py-2 text-right font-medium text-text-primary">
+                    {moneyLabel(p.result.total)}
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
-          <p className="mt-2 text-small text-text-muted">
-            Benchmark BM-BKI-2026Q1-SYNTH: Median nicht deklariert —
-            kein Vergleich angezeigt.
-          </p>
         </section>
 
         {/* ── Разбивка KG ────────────────────────────────────────────────── */}
@@ -370,6 +400,28 @@ export function OfferPanel() {
       </div>
     </aside>
   )
+}
+
+/**
+ * Подпись драйвера по DC-44: где вклад — произведение, формула называется
+ * прямо в строке (`Basis 2.000,00 m² × 1.545 €/m² BGF oberirdisch`).
+ * Количества — из состояния, ставки — из каталога: собственных чисел у
+ * подписи нет.
+ */
+function driverLabel(
+  key: string,
+  engineLabel: string,
+  s: { building: { bgfAboveGround: Decimal; bgfBelowGround: Decimal } },
+): string {
+  if (key === 'basis') {
+    return `Basis ${formatDE(s.building.bgfAboveGround, 2)}${NNBSP}m² × ` +
+      `${formatDE(CATALOG.kBase, 0)}${NNBSP}€/m²${NNBSP}BGF oberirdisch`
+  }
+  if (key === 'untergeschoss_mit_tiefgarage') {
+    return `Untergeschoss inkl. Tiefgarage ${formatDE(s.building.bgfBelowGround, 2)}${NNBSP}m² × ` +
+      `${formatDE(CATALOG.costFactors.untergeschoss.vollausbauMitTiefgarage, 0)}${NNBSP}€/m²${NNBSP}BGF unterirdisch`
+  }
+  return engineLabel
 }
 
 function signed(d: Decimal): string {

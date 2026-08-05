@@ -79,6 +79,31 @@ describe('S3: журнал событий как хребет (M-4)', () => {
   })
 })
 
+describe('DC-44: сумма драйверов обязана давать итог — юнит-тест, не намерение', () => {
+  it('фикстурная цепочка сходится в точных значениях', () => {
+    const p = useStore.getState().projection()
+    const labels = p.result.drivers.map((d) => [d.key, d.exact.toFixed(2)])
+    expect(labels).toEqual([
+      ['basis', '3090000.00'],
+      ['gebaeudeklasse_GK_5', '154500.00'],
+      ['energiestandard_EH_55', '97335.00'],
+      ['untergeschoss_mit_tiefgarage', '476000.00'],
+    ])
+    const sum = p.result.drivers.reduce((a, d) => a.plus(d.exact), new Decimal(0))
+    expect(sum.toFixed(2)).toBe('3817835.00')
+    expect(sum.equals(p.result.total.exact)).toBe(true)
+  })
+
+  it('с активным Regionalfaktor драйверов пять и сумма снова равна итогу', () => {
+    useStore.getState().toggleRegionalfaktor()
+    const p = useStore.getState().projection()
+    expect(p.result.drivers.map((d) => d.key)).toContain('regionalfaktor')
+    const sum = p.result.drivers.reduce((a, d) => a.plus(d.exact), new Decimal(0))
+    expect(sum.equals(p.result.total.exact)).toBe(true)
+    expect(p.result.total.exact.toFixed(2)).toBe('4123261.80')
+  })
+})
+
 describe('Правило 11: вход в презентацию гейтуется блокером', () => {
   it('переключение в praesentation — no-op, пока класс не подтверждён', () => {
     useStore.getState().setMode('praesentation')
