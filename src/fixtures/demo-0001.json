@@ -1,0 +1,428 @@
+{
+  "$comment": "ВЫВЕДЕНО из docs/audit/synthetic-fixtures.md скриптом tools/build_fixtures.py. Руками не править: производные значения вычисляются в Decimal и сверяются с документом.",
+  "scenario": {
+    "scenarioId": "DEMO-SC-01",
+    "projectId": "DEMO-0001",
+    "variantId": "DEMO-VAR-BASIS",
+    "variantVersionId": "DEMO-VV-0003",
+    "calculationRunId": "DEMO-RUN-0007",
+    "runPurpose": "authoritative",
+    "calculatedAt": "2026-08-04T09:12:00+02:00",
+    "timezone": "Europe/Berlin",
+    "rulesetVersion": "RS-2026.2",
+    "benchmarkSnapshot": "BM-BKI-2026Q1-SYNTH",
+    "engineVersion": "ENG-0.5.0",
+    "regionalFactor": "inactive",
+    "kg700Mode": "vereinfacht"
+  },
+  "project": {
+    "id": "DEMO-0001",
+    "name": "Musterprojekt Nordfeld",
+    "currency": "EUR",
+    "bundesland": "Musterland"
+  },
+  "documents": [
+    {
+      "file": "Bauantrag_Mappe_Muster.pdf",
+      "pages": 68,
+      "lifecycleStatus": "active",
+      "parseStatus": "ready"
+    },
+    {
+      "file": "Grundrisse_Muster_V2.pdf",
+      "pages": 24,
+      "lifecycleStatus": "active",
+      "parseStatus": "ready",
+      "versions": 2
+    },
+    {
+      "file": "Grundrisse_Muster_V1.pdf",
+      "pages": 22,
+      "lifecycleStatus": "superseded",
+      "parseStatus": "ready"
+    },
+    {
+      "file": "Statik_Auszug_Muster.jpg",
+      "pages": 1,
+      "lifecycleStatus": "candidate",
+      "parseStatus": "failed",
+      "label": "nicht lesbar"
+    }
+  ],
+  "buildings": [
+    {
+      "id": "DEMO-B-A",
+      "stableName": "Haus A",
+      "gebaeudeform": "Freistehendes Mehrfamilienhaus",
+      "gebaeudeklasse": {
+        "value": "GK_5",
+        "state": "Prüfung erforderlich",
+        "reason": "CALC-004: число этажей — только триггер проверки"
+      },
+      "areas": {
+        "bgfAboveGround": "2000.00",
+        "bgfBelowGround": "400.00",
+        "bgfRS": "2400.00",
+        "wflWoFlV": "1500.00",
+        "nufDin277": null,
+        "wohneinheiten": "16",
+        "vollgeschosse": "5"
+      },
+      "segments": [
+        {
+          "id": "DEMO-S-A1",
+          "nutzungsart": "Wohnen",
+          "belegungsBarrierefreiheitsprofil": "Standard",
+          "benchmarkprofil": "BKI MFH",
+          "leitkennzahl": "EUR/m2 WFL nach WoFlV"
+        }
+      ]
+    },
+    {
+      "id": "DEMO-B-B",
+      "stableName": "Haus B",
+      "gebaeudeform": "Bürobaukörper",
+      "gebaeudeklasse": {
+        "value": "GK_4",
+        "state": "Prüfung erforderlich",
+        "reason": "CALC-004"
+      },
+      "areas": {
+        "bgfAboveGround": "1200.00",
+        "bgfBelowGround": "0.00",
+        "bgfRS": "1200.00",
+        "wflWoFlV": null,
+        "nufDin277": "960.00",
+        "wohneinheiten": null,
+        "vollgeschosse": "4"
+      },
+      "segments": [
+        {
+          "id": "DEMO-S-B1",
+          "nutzungsart": "Büro",
+          "belegungsBarrierefreiheitsprofil": null,
+          "benchmarkprofil": "BKI Büro/Verwaltung",
+          "leitkennzahl": "EUR/m2 NUF nach DIN 277"
+        }
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "calculationRunId": "DEMO-RUN-0007",
+      "subject": "DEMO-B-A",
+      "variant": "Basis",
+      "energiestandard": "EH_55",
+      "total": {
+        "exact": "3817835.00",
+        "display": "3818000",
+        "prefix": "≈"
+      },
+      "label": "Zwischensumme der kalkulierten Positionen",
+      "completeness": "incomplete",
+      "completenessReason": "KG 500 coverage unknown (SCOPE-001, CALC-006)",
+      "drivers": [
+        {
+          "key": "basis",
+          "exact": "3090000.00"
+        },
+        {
+          "key": "gebaeudeklasse_5",
+          "exact": "154500.0000"
+        }
+      ],
+      "kgSplit": {
+        "KG_300": {
+          "exact": "2672484.50",
+          "display": "2672000",
+          "prefix": "≈"
+        },
+        "KG_400": {
+          "exact": "839923.70",
+          "display": "840000",
+          "prefix": "≈"
+        },
+        "KG_700": {
+          "exact": "305426.80",
+          "display": "305000",
+          "prefix": "≈"
+        }
+      },
+      "untergeschoss": {
+        "exact": "476000.00",
+        "display": "476000",
+        "prefix": ""
+      }
+    },
+    {
+      "calculationRunId": "DEMO-RUN-0009",
+      "subject": "DEMO-B-A",
+      "variant": "EH 40",
+      "energiestandard": "EH_40",
+      "total": {
+        "exact": "3915170.00",
+        "display": "3915000",
+        "prefix": "≈"
+      },
+      "label": "Zwischensumme der kalkulierten Positionen",
+      "completeness": "incomplete",
+      "deltaToBase": {
+        "exact": "97335.00",
+        "display": "97000",
+        "prefix": "≈"
+      }
+    },
+    {
+      "calculationRunId": "DEMO-RUN-0011",
+      "subject": "DEMO-B-A",
+      "variant": "Ohne UG",
+      "total": {
+        "exact": "3341835.00",
+        "display": "3342000",
+        "prefix": "≈"
+      },
+      "label": "Zwischensumme der kalkulierten Positionen",
+      "completeness": "incomplete",
+      "deltaToBase": {
+        "exact": "-476000.00",
+        "display": "-476000",
+        "prefix": ""
+      },
+      "impactSnapshotId": "DEMO-IMP-0004"
+    },
+    {
+      "calculationRunId": "DEMO-RUN-0008",
+      "subject": "DEMO-B-B",
+      "variant": "Büro",
+      "energiestandard": "EH_55",
+      "total": {
+        "exact": "2005101.00",
+        "display": "2005000",
+        "prefix": "≈"
+      },
+      "label": "Zwischensumme der kalkulierten Positionen",
+      "completeness": "incomplete"
+    },
+    {
+      "calculationRunId": "DEMO-RUN-0012",
+      "subject": "complex",
+      "variant": "Komplex Gesamt",
+      "total": {
+        "exact": "5822936.00",
+        "display": "5823000",
+        "prefix": "≈"
+      },
+      "label": "Zwischensumme der kalkulierten Positionen",
+      "completeness": "incomplete",
+      "sumBgfAboveGround": "3200.00",
+      "sumBgfRS": "3600.00",
+      "nutzung": "Wohnen + Büro"
+    }
+  ],
+  "rates": [
+    {
+      "label": "Haus A · €/m² WFL nach WoFlV",
+      "numerator": "3817835.00",
+      "denominator": "1500.00",
+      "denominatorType": "WFL_WOFLV",
+      "exact": "2545.2233",
+      "display": "2545",
+      "prefix": "≈"
+    },
+    {
+      "label": "Haus A · €/m² BGF R+S",
+      "numerator": "3817835.00",
+      "denominator": "2400.00",
+      "denominatorType": "BGF_R_S",
+      "exact": "1590.7646",
+      "display": "1591",
+      "prefix": "≈"
+    },
+    {
+      "label": "Haus A · €/m² BGF oberirdisch",
+      "numerator": "3817835.00",
+      "denominator": "2000.00",
+      "denominatorType": "BGF_ABOVE_GROUND",
+      "exact": "1908.9175",
+      "display": "1909",
+      "prefix": "≈"
+    },
+    {
+      "label": "Haus B · €/m² NUF nach DIN 277",
+      "numerator": "2005101.00",
+      "denominator": "960.00",
+      "denominatorType": "NUF_DIN277",
+      "exact": "2088.6469",
+      "display": "2089",
+      "prefix": "≈"
+    },
+    {
+      "label": "Haus B · €/m² BGF oberirdisch",
+      "numerator": "2005101.00",
+      "denominator": "1200.00",
+      "denominatorType": "BGF_ABOVE_GROUND",
+      "exact": "1670.9175",
+      "display": "1671",
+      "prefix": "≈"
+    },
+    {
+      "label": "Komplex · €/m² BGF oberirdisch — клиентская база сравнения",
+      "numerator": "5822936.00",
+      "denominator": "3200.00",
+      "denominatorType": "BGF_ABOVE_GROUND",
+      "exact": "1819.6675",
+      "display": "1820",
+      "prefix": "≈"
+    },
+    {
+      "label": "Komplex · €/m² BGF R+S",
+      "numerator": "5822936.00",
+      "denominator": "3600.00",
+      "denominatorType": "BGF_R_S",
+      "exact": "1617.4822",
+      "display": "1617",
+      "prefix": "≈"
+    }
+  ],
+  "discount": {
+    "ratePercent": "3.00",
+    "baseIsExactTotal": true,
+    "result": {
+      "exact": "3703299.95",
+      "display": "3703000",
+      "prefix": "≈"
+    },
+    "disclosure": "Gerundet auf 1.000 €; exakter Rechenwert 3703299.95000000 €"
+  },
+  "schedule": {
+    "epoch": {
+      "kind": "OKBP",
+      "date": "2027-01-04"
+    },
+    "timezone": "Europe/Berlin",
+    "endpointConvention": "halfOpen",
+    "displayScale": "month",
+    "metrics": [
+      {
+        "metricKey": "project.planning",
+        "kind": "planning",
+        "startDate": "2027-01-04",
+        "endDate": "2027-04-04",
+        "wholeCalendarMonths": 3,
+        "presentationPolicy": "wholeCalendarMonthsElseDays",
+        "display": "3 Monate",
+        "prefix": ""
+      },
+      {
+        "metricKey": "building:DEMO-B-A.execution",
+        "kind": "buildingExecution",
+        "startDate": "2027-04-04",
+        "endDate": "2027-11-19",
+        "exact": "7.283333333333333333333333333",
+        "rounded": "7.5",
+        "presentationPolicy": "halfMonthRounded",
+        "display": "≈ 7,5 Monate ab OKBP",
+        "prefix": "≈",
+        "note": "единственная метрика, законно показывающая половину: день месяца у начала и конца не совпадает (D-17)"
+      },
+      {
+        "metricKey": "building:DEMO-B-B.execution",
+        "kind": "buildingExecution",
+        "startDate": "2027-07-04",
+        "endDate": "2028-01-04",
+        "exact": "5.806500000000000000000000000",
+        "rounded": "6",
+        "wholeCalendarMonths": 6,
+        "presentationPolicy": "wholeCalendarMonthsElseDays",
+        "display": "6 Monate ab OKBP",
+        "prefix": ""
+      },
+      {
+        "metricKey": "project.total",
+        "kind": "projectTotal",
+        "startDate": "2027-01-04",
+        "endDate": "2028-01-04",
+        "wholeCalendarMonths": 12,
+        "presentationPolicy": "wholeCalendarMonthsElseDays",
+        "display": "12 Monate",
+        "prefix": "",
+        "note": "max(start + dauer) по включённым зданиям, не сумма"
+      }
+    ]
+  },
+  "uncertainty": {
+    "scenarioId": "DEMO-SC-02",
+    "unit": "percentagePoints",
+    "note": "сужается ПОДТВЕРЖДЕНИЕМ параметра, не выбором опции (D-19); варианты, отличающиеся опцией, наследуют интервал базового прогона",
+    "states": [
+      {
+        "value": "22",
+        "runId": "DEMO-RUN-0007",
+        "reason": "4 из 16 T0-параметров abgeleitet"
+      },
+      {
+        "value": "17",
+        "runId": "DEMO-RUN-0013",
+        "deltaPp": "-5",
+        "reason": "WFL подтверждена клиентом"
+      },
+      {
+        "value": "13",
+        "runId": "DEMO-RUN-0014",
+        "deltaPp": "-4",
+        "reason": "Energiestandard подтверждён"
+      }
+    ],
+    "riskSeparate": {
+      "id": "Baugrundgutachten fehlt",
+      "category": "Baugrund",
+      "probability": "mittel",
+      "costEffectPercent": "4",
+      "costEffectBase": "KG_320",
+      "note": "типизированная запись, не label «Risiko −4 %»"
+    }
+  },
+  "validationIssues": [
+    {
+      "id": "DEMO-VI-0001",
+      "category": "compliance",
+      "subject": "Building DEMO-B-A · Gebäudeklasse",
+      "state": "open",
+      "materiality": "material",
+      "reason": "Klassifikation nach MBO §2 nicht bestätigt; Geschossanzahl ist nur Prüfauslöser, nicht Nachweis (CALC-004)",
+      "blockedOutputProfiles": [
+        "clientReadOnly",
+        "clientLiveConfiguration",
+        "clientPdf",
+        "clientEmail",
+        "clientPrint"
+      ]
+    }
+  ],
+  "conflicts": [
+    {
+      "id": "DEMO-CONF-0001",
+      "scenarioId": "DEMO-SC-03",
+      "slot": "WFL nach WoFlV · DEMO-B-A · DEMO-S-A1",
+      "state": "open",
+      "materiality": "warning",
+      "materialityReason": "площадь, не цена и не срок — клиентские профили не блокирует",
+      "candidates": [
+        {
+          "origin": "document",
+          "value": "1500.00",
+          "selectionStatus": "authoritative",
+          "source": "Grundrisse_Muster_V2.pdf, Seite 12",
+          "capturedAt": "2026-08-04"
+        },
+        {
+          "origin": "customer",
+          "value": "1560.00",
+          "selectionStatus": "alternative",
+          "verificationEventId": "DEMO-VE-0002",
+          "capturedAt": "2026-08-05"
+        }
+      ]
+    }
+  ]
+}

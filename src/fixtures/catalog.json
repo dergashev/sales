@@ -1,0 +1,81 @@
+{
+  "rulesetVersion": "RS-2026.2",
+  "provisional": true,
+  "kBase": {
+    "value": "1545",
+    "unit": "EUR/m2",
+    "denominator": "BGF_R_ABOVE_GROUND"
+  },
+  "costFactors": {
+    "gebaeudeklasse": {
+      "GK_1_3": "0.95",
+      "GK_4": "1.00",
+      "GK_5": "1.05"
+    },
+    "energiestandard": {
+      "EH_55": "1.03",
+      "EH_40": "1.06"
+    },
+    "gebaeudeform": {
+      "BUERO": "1.05"
+    },
+    "untergeschoss": {
+      "vollausbauMitTiefgarage": "1190",
+      "unit": "EUR/m2",
+      "denominator": "BGF_BELOW_GROUND"
+    }
+  },
+  "scheduleFactors": {
+    "comment": "ОТДЕЛЬНАЯ таблица: смешение со стоимостной однажды завысило комплекс на 100.000 €",
+    "gebaeudeklasse": {
+      "GK_3": "1.00",
+      "GK_4": "1.05",
+      "GK_5": "1.15"
+    },
+    "gebaeudeform": {
+      "MFH": "1.00",
+      "BUERO": "1.05"
+    }
+  },
+  "regionalFactor": {
+    "active": false,
+    "decision": "D-15",
+    "region": "Musterland",
+    "value": "1.08",
+    "appliesTo": [
+      "KG_300",
+      "KG_400",
+      "UG"
+    ],
+    "notAppliedTo": [
+      "KG_100",
+      "KG_200",
+      "KG_500",
+      "KG_600",
+      "KG_700",
+      "Risikozuschlag"
+    ]
+  },
+  "rounding": {
+    "money": {
+      "step": "1000",
+      "unit": "EUR",
+      "method": "halfUp",
+      "prefixWhenDiffers": "≈"
+    },
+    "rate": {
+      "step": "1",
+      "unit": "EUR/m2",
+      "method": "halfUp",
+      "prefixWhenDiffers": "≈"
+    },
+    "duration": {
+      "step": "0.5",
+      "unit": "month",
+      "method": "halfUp",
+      "prefixWhenDiffers": "≈",
+      "absoluteDateRequired": true,
+      "decision": "D-17"
+    }
+  }
+}
