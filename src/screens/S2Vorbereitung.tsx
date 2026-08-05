@@ -27,17 +27,27 @@ export function S2Vorbereitung({ openKonfigurator }: { openKonfigurator: () => v
   const [tab, setTab] = useState<Tab>('Projektdaten')
   const tablist = useRef<HTMLDivElement>(null)
 
-  // Табы: стрелки + roving tabindex (правило 22).
-  const onKey = (e: React.KeyboardEvent) => {
-    const i = TABS.indexOf(tab)
-    const next = e.key === 'ArrowRight' ? (i + 1) % TABS.length
-      : e.key === 'ArrowLeft' ? (i - 1 + TABS.length) % TABS.length
-        : null
-    if (next === null) return
-    e.preventDefault()
-    setTab(TABS[next]!)
+  // Табы по контракту (TABS-001, KEY-003): стрелки двигают ТОЛЬКО фокус
+  // (roving tabindex), активация ручная — Enter/Space; Home/End — края.
+  // Автоактивация на стрелке запускала бы пересчёт тяжёлых панелей.
+  const [focusIdx, setFocusIdx] = useState(TABS.indexOf(tab))
+  const moveFocus = (next: number) => {
+    setFocusIdx(next)
     const btns = tablist.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]')
     btns?.[next]?.focus()
+  }
+  const onKey = (e: React.KeyboardEvent) => {
+    const len = TABS.length
+    const next = e.key === 'ArrowRight' ? (focusIdx + 1) % len
+      : e.key === 'ArrowLeft' ? (focusIdx - 1 + len) % len
+        : e.key === 'Home' ? 0
+          : e.key === 'End' ? len - 1
+            : null
+    if (next !== null) { e.preventDefault(); moveFocus(next); return }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      setTab(TABS[focusIdx]!)
+    }
   }
 
   return (
@@ -53,10 +63,13 @@ export function S2Vorbereitung({ openKonfigurator }: { openKonfigurator: () => v
         {TABS.map((t, i) => (
           <button
             key={t}
+            type="button"
             role="tab"
+            id={`tab-p${i + 1}`}
             aria-selected={tab === t}
-            tabIndex={tab === t ? 0 : -1}
-            onClick={() => setTab(t)}
+            aria-controls="vorbereitung-panel"
+            tabIndex={focusIdx === i ? 0 : -1}
+            onClick={() => { setTab(t); setFocusIdx(i) }}
             className={'relative px-4 py-2 text-body before:absolute before:left-1/2 before:top-1/2 ' +
               'before:min-h-hit-target before:w-full before:-translate-x-1/2 before:-translate-y-1/2 before:content-[""] ' +
               'outline-none focus-visible:outline focus-visible:outline-2 ' +
@@ -70,7 +83,8 @@ export function S2Vorbereitung({ openKonfigurator }: { openKonfigurator: () => v
         ))}
       </div>
 
-      <div role="tabpanel" className="py-5">
+      <div role="tabpanel" id="vorbereitung-panel"
+           aria-labelledby={`tab-p${TABS.indexOf(tab) + 1}`} className="py-5">
         {tab === 'Dokumente' && <P1Dokumente onManualCapture={() => setTab('Projektdaten')} />}
         {tab === 'Projektdaten' && <P2Projektdaten />}
         {tab === 'Offene Fragen' && <P3OffeneFragen />}

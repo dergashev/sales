@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useStore } from './state/store'
 import { useT } from './i18n'
 import { checkFonts, checkCascade, type FontCheck } from './lib/font-check'
-import { Diagnostics } from './components/Diagnostics'
 import { SegmentedControl } from './components/controls'
 import { Sidebar, type View } from './components/Sidebar'
 import { OfferPanel } from './components/OfferPanel'
@@ -13,6 +12,7 @@ import { S4Vergleich } from './screens/S4Vergleich'
 import { S5Export } from './screens/S5Export'
 import { S1Projektliste } from './screens/S1Projektliste'
 import { S6Einstellungen } from './screens/S6Einstellungen'
+import { Grundlagen } from './screens/Grundlagen'
 
 /**
  * Оболочка на всю ширину экрана, три зоны (решение PO):
@@ -100,14 +100,7 @@ export function App() {
           {view === 'vergleich' && <S4Vergleich />}
           {view === 'export' && <S5Export />}
           {view === 'einstellungen' && <S6Einstellungen />}
-          {view === 'grundlagen' && (
-            <div className="px-7 py-6">
-              <h1 className="text-display-numeric-narrow font-bold text-text-primary">
-                Grundlagen
-              </h1>
-              <Diagnostics fonts={fonts} cascade={cascade} />
-            </div>
-          )}
+          {view === 'grundlagen' && <Grundlagen fonts={fonts} cascade={cascade} />}
         </main>
 
         <OfferPanel />
