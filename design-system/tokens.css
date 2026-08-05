@@ -66,14 +66,14 @@
      дефолты. Оформлены primitive-слоем, чтобы semantic-слой не содержал
      литеральных hex: семантика всегда ссылается на primitive (раздел 13).
      Проверяется verify.py (класс TOKEN-LAYER). */
-  --primitive-color-neutral-700: #6B6B6B; /* 72 % neutral.900 */
-  --primitive-color-neutral-600: #8C8C8C; /* 56 % neutral.900 */
-  --primitive-color-neutral-500: #9D9D9D; /* 48 % neutral.900 */
-  --primitive-color-neutral-400: #BDBDBD; /* 32 % neutral.900 */
-  --primitive-color-neutral-300: #DEDEDE; /* 16 % neutral.900 */
-  --primitive-color-neutral-050: #F4F6F4; /* 50 % neutral.100 */
-  --primitive-color-orange-100:  #F2D1BF; /* 25 % orange.700 */
-  /* Альфа НАМЕРЕННАЯ (adr-blocking.md §1 №10: overlay = 48 % neutral.950):
+  --primitive-color-neutral-700: #6B6B6B; /* 72 % neutral.900 */
+  --primitive-color-neutral-600: #8C8C8C; /* 56 % neutral.900 */
+  --primitive-color-neutral-500: #9D9D9D; /* 48 % neutral.900 */
+  --primitive-color-neutral-400: #BDBDBD; /* 32 % neutral.900 */
+  --primitive-color-neutral-300: #DEDEDE; /* 16 % neutral.900 */
+  --primitive-color-neutral-050: #F4F6F4; /* 50 % neutral.100 */
+  --primitive-color-orange-100:  #F2D1BF; /* 25 % orange.700 */
+  /* Альфа НАМЕРЕННАЯ (adr-blocking.md §1 №10: overlay = 48 % neutral.950):
      скрим обязан просвечивать, статического hex-эквивалента у него нет
      по определению. Единственный разрешённый не-hex цвет primitive-слоя.
      Значение остаётся [ADR-PENDING] до утверждения владельцем дизайна. */
