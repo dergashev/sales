@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useStore } from '../store'
 import { calculateBuilding } from '../../engine/calculate'
-import { CATALOG } from '../catalog'
+import { withRegionalFactor } from '../catalog'
+const CATALOG = withRegionalFactor(false)
 import { applyDiscount } from '../../engine/calculate'
 import { Decimal } from 'decimal.js'
 
@@ -47,5 +48,27 @@ describe('S5: гейт отправки', () => {
   it('offer.emailed — событие журнала', () => {
     useStore.getState().apply({ kind: 'offer.emailed', label: 'Angebot per E-Mail gesendet', deltaExact: null })
     expect(useStore.getState().journal.at(-1)!.kind).toBe('offer.emailed')
+  })
+})
+
+describe('S6: Regionalfaktor — живой флаг со снапшот-семантикой', () => {
+  it('включение даёт объявленный фикстурой эффект и событие с дельтой', () => {
+    const before = useStore.getState().projection().result.total.exact
+    useStore.getState().toggleRegionalfaktor()
+    const after = useStore.getState().projection().result.total.exact
+    const delta = after.minus(before)
+    // Фикстура объявляет: «дал бы ≈ 305.000 € на блок Bauwerk».
+    expect(delta.toFixed(2)).toBe('305426.80')
+    const e = useStore.getState().journal.at(-1)!
+    expect(e.label).toContain('aktiviert')
+    expect(e.deltaExact!.toFixed(2)).toBe('305426.80')
+  })
+
+  it('выключение возвращает и пишет отдельное событие', () => {
+    useStore.getState().toggleRegionalfaktor()
+    useStore.getState().toggleRegionalfaktor()
+    const s = useStore.getState()
+    expect(s.projection().result.total.exact.toFixed(2)).toBe('3817835.00')
+    expect(s.journal).toHaveLength(2)
   })
 })

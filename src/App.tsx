@@ -5,8 +5,10 @@ import { S3Konfigurator } from './screens/S3Konfigurator'
 import { S2Vorbereitung } from './screens/S2Vorbereitung'
 import { S4Vergleich } from './screens/S4Vergleich'
 import { S5Export } from './screens/S5Export'
+import { S1Projektliste } from './screens/S1Projektliste'
+import { S6Einstellungen } from './screens/S6Einstellungen'
 
-type View = 'vorbereitung' | 'konfigurator' | 'vergleich' | 'export' | 'grundlagen'
+type View = 'projekte' | 'vorbereitung' | 'konfigurator' | 'vergleich' | 'export' | 'einstellungen' | 'grundlagen'
 
 export function App() {
   const [view, setView] = useState<View>('konfigurator')
@@ -25,7 +27,7 @@ export function App() {
       {/* Переключатель вида — временный, до появления S1 с очередью проектов. */}
       <nav className="border-b border-border-subtle px-5 py-2" aria-label="Ansicht">
         <div className="mx-auto flex max-w-content gap-3">
-          {(['vorbereitung', 'konfigurator', 'vergleich', 'export', 'grundlagen'] as const).map((v) => (
+          {(['projekte', 'vorbereitung', 'konfigurator', 'vergleich', 'export', 'einstellungen', 'grundlagen'] as const).map((v) => (
             <button
               key={v}
               type="button"
@@ -38,11 +40,15 @@ export function App() {
                 'focus-visible:outline-offset-2 focus-visible:outline-focus-ring ' +
                 (view === v ? 'font-medium text-text-primary' : 'text-text-secondary')}
             >
-              {({vorbereitung: 'S2 Vorbereitung', konfigurator: 'S3 Konfigurator', vergleich: 'S4 Vergleich', export: 'S5 Export', grundlagen: 'Grundlagen'} as const)[v]}
+              {({projekte: 'S1 Projekte', vorbereitung: 'S2 Vorbereitung', konfigurator: 'S3 Konfigurator', vergleich: 'S4 Vergleich', export: 'S5 Export', einstellungen: 'S6 Einstellungen', grundlagen: 'Grundlagen'} as const)[v]}
             </button>
           ))}
         </div>
       </nav>
+      {view === 'projekte' && (
+        <S1Projektliste openVorbereitung={() => setView('vorbereitung')} />
+      )}
+      {view === 'einstellungen' && <S6Einstellungen />}
       {view === 'vorbereitung' && (
         <S2Vorbereitung openKonfigurator={() => setView('konfigurator')} />
       )}

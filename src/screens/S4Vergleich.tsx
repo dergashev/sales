@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Decimal } from 'decimal.js'
 import { useStore } from '../state/store'
 import { calculateBuilding, type BuildingInput } from '../engine/calculate'
-import { CATALOG } from '../state/catalog'
+import { withRegionalFactor } from '../state/catalog'
 import { NNBSP, present, rate, formatDE } from '../engine/money'
 import { Button } from '../components/primitives'
 
@@ -39,9 +39,9 @@ export function S4Vergleich() {
 
   const cols = useMemo(() => VARIANTS.map((v) => {
     const input: BuildingInput = { ...s.building, ...v.patch }
-    const res = calculateBuilding(input, CATALOG, s.coverage)
+    const res = calculateBuilding(input, withRegionalFactor(s.regionalfaktorActive), s.coverage)
     return { def: v, input, res, wflRate: rate(res.total.exact, s.fields.wfl.value, 'WFL_WOFLV') }
-  }), [s.building, s.coverage, s.fields.wfl.value])
+  }), [s.building, s.coverage, s.fields.wfl.value, s.regionalfaktorActive])
 
   const base = cols[0]!
 

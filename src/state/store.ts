@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { Decimal } from 'decimal.js'
 import demo from '../fixtures/demo-0001.json'
-import { CATALOG } from './catalog'
+import { withRegionalFactor } from './catalog'
 import {
   calculateBuilding, kgSplitVereinfacht,
   type BuildingInput, type Coverage, type CoverageState,
@@ -95,6 +95,8 @@ type Store = {
   wflConflictOpen: boolean
   /** Активная версия планов этажей. Выбор — решение sales, не дата (VERSION-002). */
   activeGrundrisse: 'V2' | 'V1'
+  /** Regionalfaktor: выключен по умолчанию (D-15); состояние входит в снапшот. */
+  regionalfaktorActive: boolean
   /** Дельта-чип живёт 4 секунды, потом уезжает в журнал (DC-2). */
   activeDelta: { label: string; deltaExact: Decimal; percent: Decimal } | null
   openChapter: number
@@ -109,14 +111,16 @@ type Store = {
   confirmEnergiestandardAnswer: () => void
   resolveWflConflict: (candidate: 'document' | 'customer') => void
   activateGrundrisse: (v: 'V2' | 'V1') => void
+  toggleRegionalfaktor: () => void
   clearDelta: () => void
   openChapterAt: (n: number) => void
   undo: () => void
 }
 
 function computeProjection(
-  s: Pick<Store, 'building' | 'coverage' | 'fields' | 'esConfirmed'>,
+  s: Pick<Store, 'building' | 'coverage' | 'fields' | 'esConfirmed' | 'regionalfaktorActive'>,
 ): Projection {
+  const CATALOG = withRegionalFactor(s.regionalfaktorActive)
   const result = calculateBuilding(s.building, CATALOG, s.coverage)
   const total = result.total.exact
   const noUg = calculateBuilding(
@@ -168,6 +172,7 @@ export const useStore = create<Store>((set, get) => ({
   esConfirmed: false,
   wflConflictOpen: true,
   activeGrundrisse: 'V2',
+  regionalfaktorActive: false,
   activeDelta: null,
   openChapter: 3,
 
@@ -330,6 +335,28 @@ export const useStore = create<Store>((set, get) => ({
         : 'WFL-Konflikt: Dokumentwert 1.500,00 m² beibehalten',
       deltaExact: null,
       inverse: () => set({ wflConflictOpen: true }),
+    })
+  },
+
+  toggleRegionalfaktor: () => {
+    const s = get()
+    const before = s.projection().result.total.exact
+    const next = !s.regionalfaktorActive
+    set({ regionalfaktorActive: next })
+    const after = get().projection().result.total.exact
+    const delta = after.minus(before)
+    get().apply({
+      kind: 'option.selected',
+      label: `Regionalfaktor Musterland 1,08 ${next ? 'aktiviert' : 'deaktiviert'}`,
+      deltaExact: delta,
+      inverse: () => set({ regionalfaktorActive: !next }),
+    })
+    set({
+      activeDelta: {
+        label: `Regionalfaktor ${next ? 'aktiviert' : 'deaktiviert'}`,
+        deltaExact: delta,
+        percent: delta.div(before).mul(100),
+      },
     })
   },
 

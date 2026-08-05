@@ -30,3 +30,12 @@ export const CATALOG: Catalog = {
   },
   regionalFactor: { active: false, value: D(catalogJson.regionalFactor.value) },
 }
+
+/**
+ * Каталог с состоянием регионального фактора. Сам флаг живёт в хранилище и
+ * входит в снапшот оффера (D-15): «почему у прошлого оффера другая цифра»
+ * отвечается снапшотом, а не памятью.
+ */
+export function withRegionalFactor(active: boolean): Catalog {
+  return { ...CATALOG, regionalFactor: { ...CATALOG.regionalFactor, active } }
+}
