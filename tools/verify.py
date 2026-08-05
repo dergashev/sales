@@ -529,6 +529,7 @@ class Verifier:
         self.new = []      # (cls, where, msg) — валят сборку
         self.known = []    # (cls, where, msg, ref) — известные открытые
         self.warn = []
+        self.vacuum = []   # подмножество self.new: «проверка НЕ ВЫПОЛНЕНА»
         self._used_allow = {}    # key → сколько строк подавила запись
         self._used_known = {}
         self._used_known_file = {}
@@ -607,6 +608,14 @@ class Verifier:
     def fail(self, cls, where, msg):
         self._classes.add(cls)
         self.new.append((cls, where, msg))
+        # ВАКУУМ УЧИТЫВАЕТСЯ ОТДЕЛЬНО И ГРОМЧЕ. Между «нашёл расхождение» и
+        # «не смог проверить» разница принципиальная: первое — дефект в
+        # документе, второе — дефект в ИНСТРУМЕНТЕ. Молчаливая сверка хуже
+        # отсутствующей, потому что зелёный отчёт по ней читают как
+        # доказательство. Вакуум по-прежнему валит сборку — но не растворяется
+        # среди обычных находок «одним из пяти».
+        if '[вакуум]' in msg:
+            self.vacuum.append((cls, where, msg))
 
     def scan(self, cls, rel, text, pattern, msg, flags=0):
         rx = re.compile(pattern, flags)
@@ -2120,17 +2129,27 @@ class Verifier:
 
         # (5) OUT-POLICY: `allowed = false` → `serialization = "omit"`.
         # Разрыв связки означает, что запрещённое поле вправе сериализоваться.
-        rx_bind = re.compile(r'`allowed\s*=\s*false`[^\n]{0,60}?требует[^\n]{0,60}?'
-                             r'`serialization\s*=\s*"omit"`')
-        if not rx_bind.search(txt):
-            self.fail('OUT-POLICY', rel,
-                      '§5.1 не связывает `allowed = false` с `serialization = "omit"`: '
-                      'без этой связки запрещённое политикой поле вправе сериализоваться '
-                      '(SECURITY-001)')
-        if not re.search(r'`allowed\s*=\s*true`[^\n]{0,40}запрещает[^\n]{0,20}`?omit`?', txt):
-            self.fail('OUT-POLICY', rel,
-                      '§5.1 не запрещает `omit` при `allowed = true` — политика вправе '
-                      'молча опустить разрешённое поле')
+        # Правила формы §5.1 и инвариант OUT-10 проверяются РАЗДЕЛЬНО: связка
+        # формулируется в обоих местах, и глобальный поиск по файлу означал,
+        # что порча одного из двух покрывается вторым.
+        ms51 = re.search(r'^###\s*5\.1\.(.*?)(?=^###\s)', txt, re.S | re.M)
+        if not ms51:
+            self.fail('OUT-POLICY', rel, '[вакуум] раздел §5.1 «Тип политики» не найден — '
+                                         'правила формы FieldOutputPolicy не проверяются')
+        else:
+            s51 = ms51.group(1)
+            ln51 = txt[:ms51.start()].count('\n') + 1
+            rx_bind = re.compile(r'`allowed\s*=\s*false`[^\n]{0,60}?требует[^\n]{0,60}?'
+                                 r'`serialization\s*=\s*"omit"`')
+            if not rx_bind.search(s51):
+                self.emit('OUT-POLICY', rel, ln51, 'OUT-POLICY:§5.1-false→omit',
+                          '§5.1 не связывает `allowed = false` с `serialization = "omit"`: '
+                          'без этой связки запрещённое политикой поле вправе '
+                          'сериализоваться (SECURITY-001)')
+            if not re.search(r'`allowed\s*=\s*true`[^\n]{0,40}запрещает[^\n]{0,20}`?omit`?', s51):
+                self.emit('OUT-POLICY', rel, ln51, 'OUT-POLICY:§5.1-true≠omit',
+                          '§5.1 не запрещает `omit` при `allowed = true` — политика вправе '
+                          'молча опустить разрешённое поле')
         mi = re.search(r'\*\*OUT-10\.\*\*([^\n]*)', txt)
         if not mi:
             self.fail('OUT-POLICY', rel, '[вакуум] инвариант OUT-10 не найден')
@@ -2372,6 +2391,38 @@ class Verifier:
                               'пред-ремедиационный цвет действия в отгружаемом HTML (A11Y-001)')
 
     # -- 7. Арифметика: фикстура + каталог, всё из файлов ----------------------
+    def _pair_after(self, cls, desc, tail, expect):
+        """Пара «точное значение · показ» после знака `=` — по СТРУКТУРЕ.
+
+        CALC-007 требует хранить точное значение и показывать округлённое с
+        префиксом `≈`. Структура, на которую опирается разбор: до первого `€`
+        стоят одно или два числа; последнее — показ, предыдущее (если есть) —
+        точное. Слова «точно», «показ», «нетто», их порядок, разметка и
+        переносы строк не участвуют: именно привязка к формулировке дважды за
+        сессию превращала сверку в вакуум.
+        """
+        m = re.search(r'(≈)?\s*\+?\s*([\d][\d.]*(?:,\d+)?)\s*[  ]?€', tail)
+        if not m:
+            self.fail(cls, desc, f'[вакуум] {desc}: после формулы нет величины со знаком € — '
+                                 f'сверить показ не с чем')
+            return
+        shown = de(m.group(2))
+        nums = re.findall(r'(?<![\d.,])([\d][\d.]*(?:,\d+)?)', tail[:m.start()])
+        exact = de(nums[-1]) if nums else None
+        if exact is None:
+            self.emit(cls, 'docs/product/calculation-spec.md', 1, f'{cls}:{desc}:no-exact',
+                      f'{desc}: назван только показ {m.group(2)} € без точного значения — '
+                      f'CALC-007 требует хранить и показывать точное рядом')
+        else:
+            self.eq(cls, f'{desc}: точное значение', exact, expect)
+            self.eq(cls, f'{desc}: показ (до 1.000 €)', shown, r1000(exact))
+            if shown != exact and not m.group(1):
+                self.emit(cls, 'docs/product/calculation-spec.md', 1,
+                          f'{cls}:{desc}:no-prefix',
+                          f'{desc}: показ {m.group(2)} отличается от точного {exact}, '
+                          f'но префикс `≈` отсутствует (CALC-007)')
+        self.eq(cls, f'{desc}: показ = округление ожидаемого', shown, r1000(expect))
+
     def check_arithmetic(self):
         try:
             self._arithmetic()
@@ -2639,22 +2690,6 @@ class Verifier:
             m = self.grab(fx, r'Итого `[−-](\d+)`', U, 'фикстура: итоговое сужение')
             self.eq(U, 'итоговое сужение', D(m.group(1)), u[0] - u[2])
 
-        # контрольный пример calculation-spec §6 (Referenzprojekt R-01)
-        m = self.grab(sp, r'([\d\s.,]+?)\s*×\s*([\d\s.,]+?)\s*×\s*([\d,]+)\s*×\s*([\d,]+)\s*\+\s*([\d\s.,]+?)\s*×\s*([\d\s.,]+?)\s*=\s*\*\*([\d\s.,]+?)\s*€',
-                      'CALC-SPEC', 'спека: контрольный пример R-01')
-        vals = [de(m.group(i)) for i in range(1, 8)]
-        bauwerk = vals[0] * vals[1] * vals[2] * vals[3] + vals[4] * vals[5]
-        self.eq('CALC-SPEC', 'R-01: факторы каталожные', (vals[1], vals[2], vals[3], vals[5]),
-                (k_sp, gk5_sp, eh55_sp, ugv_sp + tg_sp))
-        self.eq('CALC-SPEC', 'R-01: итог (до 1.000 €)', vals[6], r1000(bauwerk))
-        m = self.grab(sp, r'Berlin ([\d,]+) →\s*\+\s*([\d\s.]+?)\s*€', 'CALC-SPEC', 'спека: эффект Berlin')
-        self.eq('CALC-SPEC', 'R-01: эффект регфактора', de(m.group(2)), r1000(bauwerk * (de(m.group(1)) - 1)))
-        m = self.grab(sp, r'Bauzeit:\s*([\d,]+)\s*×\s*([\d,]+)\s*→\s*([\d,]+)\s*мес', 'CALC-SPEC', 'спека: Bauzeit R-01')
-        raw_z = 5 + (vals[0] - 1000) / de('750')
-        self.eq('CALC-SPEC', 'R-01: базовый срок 2dp', de(m.group(1)), r2(raw_z))
-        self.eq('CALC-SPEC', 'R-01: фактор срока GK5', de(m.group(2)), gk5z_sp)
-        self.eq('CALC-SPEC', 'R-01: округление к 0,5', de(m.group(3)), r05(raw_z * de(m.group(2))))
-
         # ── публикация фикстурных величин для сверки ЦИТАТ в других файлах ──
         # До v4 инструмент разбирал арифметику ВНУТРИ `synthetic-fixtures.md`
         # и не проверял, что `README.md` и `output-model.md` цитируют её верно.
@@ -2692,6 +2727,65 @@ class Verifier:
             'sum_ober': sum_ober, 'sum_rs': sum_rs, 'rabatt': rab,
             'discount_exact': exact,
         }
+        # Публикация стоит ВЫШЕ контрольного примера §6 намеренно: `grab` там
+        # умеет бросить `Vacuum`, и при прежнем порядке одна изменившаяся
+        # формулировка в calculation-spec обнуляла бы сверку спесименов в двух
+        # других файлах — молча, вакуумом вместо находки.
+
+        # ── контрольный пример calculation-spec §6 (Referenzprojekt R-01) ────
+        # Разбор СТРУКТУРНЫЙ, не по формулировке. Прежняя редакция ждала
+        # `= **<число> €`; вердикт аудитора по CALC-007 добавил в ту же строку
+        # точное значение и префикс (`= точно 3.681.809,272225, показ
+        # **≈ 3.682.000 € нетто**`) — и сверка ДЕНЕГ перестала выполняться
+        # целиком: `grab` бросал вакуум, `self.fx` не строился, и два самых
+        # дорогих класса (`RM-FIXTURE`, `OUT-MONEY`) печатали «не смог
+        # проверить» вместо сверки. Это второй случай за сессию: привязка
+        # к словам вместо привязки к структуре.
+        # Структура, на которую можно опираться: цепочка множителей, знак `=`,
+        # затем одно или два числа, последнее из которых стоит перед `€`.
+        # Слова «точно», «показ», «нетто», их порядок и разметка не участвуют.
+        row = self.grab(sp, r'^\|\s*Referenzprojekt R-01\s*\|([^\n]*)$', 'CALC-SPEC',
+                        'спека: строка Referenzprojekt R-01', re.M).group(1)
+        mf = self.grab(row, r'([\d.,]+)\s*×\s*([\d.,]+)\s*×\s*([\d,]+)\s*×\s*([\d,]+)\s*\+\s*'
+                            r'([\d.,]+)\s*×\s*([\d.,]+)\s*=',
+                       'CALC-SPEC', 'спека: формула Bauwerk в R-01')
+        f = [de(mf.group(i)) for i in range(1, 7)]
+        bauwerk = f[0] * f[1] * f[2] * f[3] + f[4] * f[5]
+        self.eq('CALC-SPEC', 'R-01: факторы каталожные', (f[1], f[2], f[3], f[5]),
+                (k_sp, gk5_sp, eh55_sp, ugv_sp + tg_sp))
+        self._pair_after('CALC-SPEC', 'R-01: Bauwerk', row[mf.end():], bauwerk)
+        mb = self.grab(row, r'Berlin\s*([\d,]+)', 'CALC-SPEC', 'спека: регфактор Berlin в R-01')
+        self._pair_after('CALC-SPEC', 'R-01: эффект регфактора', row[mb.end():],
+                         bauwerk * (de(mb.group(1)) - 1))
+        # Срок: структура — база `5 + (BGF − 1.000)/N`, множители через `×`,
+        # сырое значение после `=`, целая подпись перед `Monate`.
+        mz = self.grab(row, r'Bauzeit:([^|]*?)(\d+(?:,\d+)?)\s*[  ]?Monate',
+                       'CALC-SPEC', 'спека: Bauzeit R-01')
+        seg, label = mz.group(1), de(mz.group(2))
+        m2 = self.grab(seg, r'5\s*\+\s*\(?\s*([\d.,]+)\s*[−–-]\s*([\d.,]+)\s*\)?\s*/\s*([\d.,]+)',
+                       'CALC-SPEC', 'спека: база срока R-01')
+        facs = [de(x) for x in re.findall(r'×\s*([\d,]+)', seg)]
+        if not facs:
+            self.fail('CALC-SPEC', 'спека: Bauzeit R-01',
+                      '[вакуум] в формуле срока R-01 нет ни одного множителя `× N`')
+            facs = [D('1')]
+        raw_z = 5 + (de(m2.group(1)) - de(m2.group(2))) / de(m2.group(3))
+        for x in facs:
+            raw_z *= x
+        self.eq('CALC-SPEC', 'R-01: BGF в формуле срока = BGF расчёта', de(m2.group(1)), f[0])
+        if gk5z_sp not in facs:
+            self.fail('CALC-SPEC', 'спека: Bauzeit R-01',
+                      f'формула срока R-01 использует множители {facs}; каталожного фактора '
+                      f'GK 5 ({gk5z_sp}) среди них нет')
+        mr = re.search(r'=\s*([\d,]+)', seg)
+        if not mr:
+            self.fail('CALC-SPEC', 'спека: Bauzeit R-01',
+                      '[вакуум] сырое значение срока R-01 (после `=`) не найдено')
+        elif abs(de(mr.group(1)) - raw_z) >= D('0.000001'):
+            self.fail('CALC-SPEC', 'спека: Bauzeit R-01',
+                      f'сырой срок записан {mr.group(1)}, формула даёт {raw_z}')
+        self.eq('CALC-SPEC', 'R-01: округление к 0,5 и целая подпись (D-17)',
+                label, r05(raw_z))
 
     # -- 8. Индексы в шапках документов (tools/check_indices.py) --------------
     def check_index(self):
@@ -3351,12 +3445,23 @@ def main():
     v = Verifier(ROOT).run()
     bar = '=' * 72
     print(f'{bar}\nПРОВЕРКА ИНВАРИАНТОВ · новых нарушений: {len(v.new)} · '
+          f'из них ПРОВЕРОК НЕ ВЫПОЛНЕНО: {len(v.vacuum)} · '
           f'известных открытых: {len(v.known)} · предупреждений: {len(v.warn)}\n{bar}')
-    if v.new:
+    if v.vacuum:
+        # Отдельная секция и первой: это дефект инструмента, а не документа.
+        print('\n' + '‼' * 36)
+        print('ПРОВЕРКА НЕ ВЫПОЛНЕНА — инструмент не смог сверить, а не сверил и не нашёл.')
+        print('Это дефект ИНСТРУМЕНТА: молчаливая сверка хуже отсутствующей, потому что')
+        print('зелёный отчёт по ней читают как доказательство. Починить паттерн, не документ.')
+        print('‼' * 36)
+        for c, w, m in v.vacuum:
+            print(f'  ‼ [{c}] {w} — {m}')
+    other = [x for x in v.new if x not in v.vacuum]
+    if other:
         print('\nНОВЫЕ НАРУШЕНИЯ (валят сборку):')
-        for cls in sorted({c for c, _, _ in v.new}):
+        for cls in sorted({c for c, _, _ in other}):
             print(f'\n[{cls}]')
-            for c, w, m in v.new:
+            for c, w, m in other:
                 if c == cls:
                     print(f'  ✗ {w} — {m}')
     if v.known:
