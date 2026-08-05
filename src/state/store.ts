@@ -166,6 +166,8 @@ type Store = {
    * Плотность режимом НЕ управляется (D-16).
    */
   mode: 'intern' | 'praesentation'
+  /** Язык UI (правило 36). Отдельная настройка от языка артефактов (D-13). */
+  uiLanguage: 'de' | 'en'
   openChapter: number
 
   projection: () => Projection
@@ -194,6 +196,7 @@ type Store = {
   dismissUndoToast: () => void
   /** Правило 11: вход в презентацию закрыт, пока открыт material-блокер. */
   setMode: (m: 'intern' | 'praesentation') => void
+  setUiLanguage: (l: 'de' | 'en') => void
 }
 
 function computeProjection(
@@ -302,6 +305,7 @@ const store = createStore<Store>((set, get) => {
     preview: null,
     undoToast: null,
     mode: 'intern',
+    uiLanguage: 'de',
     openChapter: 3,
 
     projection: () => computeProjection(get()),
@@ -646,6 +650,8 @@ const store = createStore<Store>((set, get) => {
       if (m === 'praesentation' && !get().building.gebaeudeklasse.confirmed) return
       set({ mode: m })
     },
+
+    setUiLanguage: (l) => set({ uiLanguage: l }),
   }
 })
 

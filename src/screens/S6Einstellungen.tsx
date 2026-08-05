@@ -134,12 +134,47 @@ export function S6Einstellungen() {
 
       <section className="mt-6" aria-label="Sprache">
         <h2 className="text-heading-3 font-bold text-text-primary">Sprache</h2>
-        <p className="mt-2 border border-border-default p-4 text-body text-text-secondary">
-          Oberfläche: DE · EN-Guidance-Texte sind nicht übersetzt und werden
-          intern als solche markiert; Kundenartefakte auf Englisch werden
-          nicht erzeugt (D-20, LOCALE-001). Artefaktsprache ist eine eigene
-          Einstellung (D-13).
-        </p>
+        <div className="mt-2 border border-border-default p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-body text-text-primary">Oberflächensprache</p>
+            {/* Живой переключатель (правило 36): ключи словаря, de — источник
+                и fallback. Язык артефактов — ОТДЕЛЬНАЯ настройка (D-13),
+                которой в прототипе нет: числа и клиентские подписи остаются
+                немецкими при любом языке UI. */}
+            <div role="radiogroup" aria-label="Oberflächensprache" className="flex">
+              {(['de', 'en'] as const).map((l) => {
+                const active = s.uiLanguage === l
+                return (
+                  <button
+                    key={l}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => s.setUiLanguage(l)}
+                    className={'relative px-4 py-1 text-body outline-none ' +
+                      'before:absolute before:left-1/2 before:top-1/2 ' +
+                      'before:min-h-hit-target before:w-full before:-translate-x-1/2 ' +
+                      'before:-translate-y-1/2 before:content-[""] ' +
+                      'focus-visible:outline focus-visible:outline-2 ' +
+                      'focus-visible:outline-offset-2 focus-visible:outline-focus-ring ' +
+                      (active
+                        ? 'border-selected border-selection-border font-medium text-text-primary'
+                        : 'border border-border-default text-text-secondary')}
+                  >
+                    {active && <span aria-hidden="true" className="mr-1">✓</span>}
+                    {l.toUpperCase()}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          <p className="mt-3 text-small text-text-secondary">
+            EN-Guidance-Texte sind nicht übersetzt und fallen sichtbar auf
+            Deutsch zurück (D-20); Kundenartefakte auf Englisch werden nicht
+            erzeugt (LOCALE-001). Artefaktsprache ist eine eigene Einstellung
+            (D-13) und existiert im Prototyp nicht.
+          </p>
+        </div>
       </section>
     </div>
   )

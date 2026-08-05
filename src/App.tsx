@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useStore } from './state/store'
+import { useT } from './i18n'
 import { checkFonts, checkCascade, type FontCheck } from './lib/font-check'
 import { Diagnostics } from './components/Diagnostics'
 import { Sidebar, type View } from './components/Sidebar'
@@ -30,6 +31,7 @@ export function App() {
   const [fonts, setFonts] = useState<FontCheck | null>(null)
   const [cascade, setCascade] = useState<string[] | null>(null)
   const praesentation = s.mode === 'praesentation'
+  const t = useT()
   const modeBlocked = !s.building.gebaeudeklasse.confirmed
 
   useEffect(() => {
@@ -56,7 +58,10 @@ export function App() {
               открытым material-блокером (R-07) — заблокированный контрол
               объясняет почему (правило 12). */}
           <div role="radiogroup" aria-label="Modus" className="flex">
-            {([['intern', 'Intern'], ['praesentation', 'Präsentation']] as const).map(
+            {([
+              ['intern', t('shell.mode.intern')],
+              ['praesentation', t('shell.mode.praesentation')],
+            ] as const).map(
               ([m, label]) => {
                 const active = s.mode === m
                 const disabled = m === 'praesentation' && modeBlocked
@@ -67,9 +72,7 @@ export function App() {
                     role="radio"
                     aria-checked={active}
                     aria-disabled={disabled || undefined}
-                    title={disabled
-                      ? 'Erst nach bestätigter Klassifikation (offener Blocker DEMO-VI-0001)'
-                      : undefined}
+                    title={disabled ? t('shell.mode.blockedReason') : undefined}
                     onClick={() => !disabled && s.setMode(m)}
                     className={'relative px-3 py-1 text-small outline-none ' +
                       'before:absolute before:left-1/2 before:top-1/2 ' +
@@ -91,7 +94,7 @@ export function App() {
           </div>
           {!praesentation && (
             <p className="text-small text-text-secondary">
-              Prototyp · Arithmetik echt, Parsing simuliert · DE
+              {t('shell.prototypeNote')} · {s.uiLanguage.toUpperCase()}
             </p>
           )}
         </div>

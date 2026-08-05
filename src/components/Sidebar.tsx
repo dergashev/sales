@@ -1,6 +1,7 @@
 import { useStore } from '../state/store'
 import { NNBSP } from '../engine/money'
 import { CHAPTERS } from '../screens/S3Konfigurator'
+import { useT, type MessageKey } from '../i18n'
 
 /**
  * Левый сайдбар — навигация оболочки.
@@ -19,14 +20,14 @@ export type View =
   | 'projekte' | 'vorbereitung' | 'konfigurator'
   | 'vergleich' | 'export' | 'einstellungen' | 'grundlagen'
 
-const SCREENS: Array<{ id: View; label: string; hint?: string }> = [
-  { id: 'projekte', label: 'Projekte', hint: 'S1' },
-  { id: 'vorbereitung', label: 'Vorbereitung', hint: 'S2' },
-  { id: 'konfigurator', label: 'Konfigurator', hint: 'S3' },
-  { id: 'vergleich', label: 'Variantenvergleich', hint: 'S4' },
-  { id: 'export', label: 'Export', hint: 'S5' },
-  { id: 'einstellungen', label: 'Einstellungen', hint: 'S6' },
-  { id: 'grundlagen', label: 'Grundlagen', hint: 'QA' },
+const SCREENS: Array<{ id: View; labelKey: MessageKey; hint?: string }> = [
+  { id: 'projekte', labelKey: 'nav.projekte', hint: 'S1' },
+  { id: 'vorbereitung', labelKey: 'nav.vorbereitung', hint: 'S2' },
+  { id: 'konfigurator', labelKey: 'nav.konfigurator', hint: 'S3' },
+  { id: 'vergleich', labelKey: 'nav.vergleich', hint: 'S4' },
+  { id: 'export', labelKey: 'nav.export', hint: 'S5' },
+  { id: 'einstellungen', labelKey: 'nav.einstellungen', hint: 'S6' },
+  { id: 'grundlagen', labelKey: 'nav.grundlagen', hint: 'QA' },
 ]
 
 const FOCUS = 'outline-none focus-visible:outline focus-visible:outline-2 ' +
@@ -34,6 +35,7 @@ const FOCUS = 'outline-none focus-visible:outline focus-visible:outline-2 ' +
 
 export function Sidebar({ view, setView }: { view: View; setView: (v: View) => void }) {
   const s = useStore()
+  const t = useT()
 
   return (
     <nav
@@ -65,7 +67,7 @@ export function Sidebar({ view, setView }: { view: View; setView: (v: View) => v
                     : 'border-l-selected border-transparent text-text-secondary hover:bg-surface-subtle')}
               >
                 <span className="w-5 shrink-0 text-small text-text-muted">{item.hint}</span>
-                {item.label}
+                {t(item.labelKey)}
               </button>
 
               {/* Главы конфигуратора — второй уровень под активным пунктом. */}
@@ -102,7 +104,7 @@ export function Sidebar({ view, setView }: { view: View; setView: (v: View) => v
 
       <div className="border-t border-border-subtle px-5 py-3">
         <p className="text-small text-text-muted">
-          Prototyp v0.5 · Arithmetik echt, Parsing simuliert
+{t('shell.prototypeNote')} · v0.5
         </p>
       </div>
     </nav>

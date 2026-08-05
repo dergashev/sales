@@ -7,6 +7,7 @@ import { NNBSP, present, rateLabel, formatDE, label as moneyLabel } from '../eng
 import type { CostGroup, CoverageState } from '../engine/calculate'
 import { Button, UncertaintyBadge, useCountUp, useReducedMotion } from './primitives'
 import { OriginPopover } from './OriginPopover'
+import { useT } from '../i18n'
 
 /**
  * Правая панель оффера — постоянная зона всего приложения.
@@ -38,6 +39,7 @@ const COVERAGE_SHORT: Record<CoverageState, string> = {
 export function OfferPanel() {
   const s = useStore()
   const p = s.projection()
+  const t = useT()
   const reduced = useReducedMotion()
   const [journalOpen, setJournalOpen] = useState(false)
   // Правило 24: чип «долетает» до журнала — при уходе чипа журнал вспыхивает
@@ -368,7 +370,7 @@ export function OfferPanel() {
           >
             <span aria-hidden="true">{journalOpen ? '▾ ' : '▸ '}</span>
             {s.journal.length === 0
-              ? 'Journal: noch keine übernommenen Änderungen'
+              ? t('journal.empty')
               : <>Preisänderung gegenüber Vergleichsbasis DEMO-VV-0003:{' '}
                   <span className="numeric font-medium text-text-primary">
                     {dc12Delta(sessionDelta)}
@@ -393,7 +395,7 @@ export function OfferPanel() {
             <Button onClick={() => s.undo()}
                     disabled={s.journal.length === 0}
                     disabledReason="noch keine Änderung übernommen">
-              Rückgängig
+              {t('common.undo')}
             </Button>
           </div>
         </div>

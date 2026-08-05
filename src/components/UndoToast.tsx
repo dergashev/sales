@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useStore } from '../state/store'
 import { Button, useReducedMotion } from './primitives'
+import { useT } from '../i18n'
 
 /**
  * DC-29 · UndoToast — Rückgängig-Hinweis.
@@ -34,6 +35,7 @@ export function UndoToast() {
   const s = useStore()
   const toast = s.undoToast
   const reduced = useReducedMotion()
+  const t = useT()
   const [paused, setPaused] = useState(false)
 
   useEffect(() => {
@@ -78,9 +80,9 @@ export function UndoToast() {
             </p>
           )}
           <div className="mt-3 flex gap-2">
-            <Button onClick={() => s.undoEvent(toast.seq)}>Rückgängig</Button>
+            <Button onClick={() => s.undoEvent(toast.seq)}>{t('common.undo')}</Button>
             <Button variant="ghost" onClick={() => s.dismissUndoToast()}>
-              Schließen
+              {t('common.close')}
             </Button>
           </div>
         </motion.div>

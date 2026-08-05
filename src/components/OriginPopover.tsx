@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useReducedMotion } from './primitives'
+import { useT } from '../i18n'
 
 /**
  * DC-21 · CalculationOriginPopover — Herkunft-Popover.
@@ -29,7 +30,7 @@ export type OriginRow = {
   strong?: boolean
 }
 
-export function OriginPopover({ rows, rounding, runRef, triggerLabel = 'Herkunft anzeigen' }: {
+export function OriginPopover({ rows, rounding, runRef, triggerLabel }: {
   rows: OriginRow[]
   /** Раскрытие округления из `present().disclosure`; null — показ равен точному. */
   rounding: string | null
@@ -37,6 +38,8 @@ export function OriginPopover({ rows, rounding, runRef, triggerLabel = 'Herkunft
   runRef: string | null
   triggerLabel?: string
 }) {
+  const t = useT()
+  const label = triggerLabel ?? t('common.showOrigin')
   const [open, setOpen] = useState(false)
   const reduced = useReducedMotion()
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -84,7 +87,7 @@ export function OriginPopover({ rows, rounding, runRef, triggerLabel = 'Herkunft
           'before:-translate-y-1/2 before:content-[""] focus-visible:outline ' +
           'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring'}
       >
-        {triggerLabel}
+        {label}
       </button>
 
       <AnimatePresence>
@@ -137,7 +140,7 @@ export function OriginPopover({ rows, rounding, runRef, triggerLabel = 'Herkunft
                   'focus-visible:outline-2 focus-visible:outline-offset-2 ' +
                   'focus-visible:outline-focus-ring'}
               >
-                Schließen
+                {t('common.close')}
               </button>
             </div>
           </motion.div>
