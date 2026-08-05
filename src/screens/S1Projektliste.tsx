@@ -1,6 +1,11 @@
+import { useEffect, useState } from 'react'
 import demo from '../fixtures/demo-0001.json'
 import { useStore } from '../state/store'
-import { Button, UncertaintyBadge } from '../components/primitives'
+import { Button, Skeleton, UncertaintyBadge } from '../components/primitives'
+
+// Симулированная загрузка очереди — один раз за сессию, чтобы навигация
+// назад-вперёд не проигрывала скелетон заново (loading ≠ decor).
+let queueLoadedOnce = false
 
 /**
  * S1 Projektliste — очередь действий, не таблица проектов.
@@ -16,6 +21,13 @@ import { Button, UncertaintyBadge } from '../components/primitives'
 export function S1Projektliste({ openVorbereitung }: { openVorbereitung: () => void }) {
   const s = useStore()
   const p = s.projection()
+  const [loading, setLoading] = useState(!queueLoadedOnce)
+
+  useEffect(() => {
+    if (!loading) return
+    const t = setTimeout(() => { queueLoadedOnce = true; setLoading(false) }, 700)
+    return () => clearTimeout(t)
+  }, [loading])
 
   const openQuestions =
     (s.fields.wfl.provenance === 'vom Kunden bestätigt' ? 0 : 1) +
@@ -31,6 +43,16 @@ export function S1Projektliste({ openVorbereitung }: { openVorbereitung: () => v
       <h2 className="mt-5 text-small font-medium text-text-secondary">
         HEUTE ZU ERLEDIGEN
       </h2>
+
+      {/* loading: скелетон повторяет высоту карточки — снятие не сдвигает
+          вёрстку (правило 30; без shimmer). */}
+      {loading && (
+        <div className="mt-2 border border-border-subtle p-4"
+             style={{ minHeight: 'calc(var(--space-8) * 3)' }}>
+          <Skeleton lines={3} label="Projektliste wird geladen" />
+        </div>
+      )}
+      {!loading && (<>
 
       {/* Карточка — один клик-контейнер (правило 26). Вложенный <button>
           внутри <button> невалиден, поэтому контейнер — div с ролью, полным
@@ -86,6 +108,7 @@ export function S1Projektliste({ openVorbereitung }: { openVorbereitung: () => v
           Projekt ({demo.project.id}), die Warteschlange zeigt die Mechanik.
         </p>
       </div>
+      </>)}
     </div>
   )
 }

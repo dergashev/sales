@@ -5,6 +5,7 @@ import catalog from '../fixtures/catalog.json'
 import { useStore } from '../state/store'
 import { NNBSP, formatDE, rateLabel } from '../engine/money'
 import { Button, NumericField, ProvenanceChip, UncertaintyBadge } from '../components/primitives'
+import { DocumentAnalysis } from '../components/DocumentAnalysis'
 
 /**
  * S2 Vorbereitung — пять вкладок приватной подготовки.
@@ -70,7 +71,7 @@ export function S2Vorbereitung({ openKonfigurator }: { openKonfigurator: () => v
       </div>
 
       <div role="tabpanel" className="py-5">
-        {tab === 'Dokumente' && <P1Dokumente />}
+        {tab === 'Dokumente' && <P1Dokumente onManualCapture={() => setTab('Projektdaten')} />}
         {tab === 'Projektdaten' && <P2Projektdaten />}
         {tab === 'Offene Fragen' && <P3OffeneFragen />}
         {tab === 'Annahmen' && <P4Annahmen setTab={setTab} />}
@@ -82,13 +83,24 @@ export function S2Vorbereitung({ openKonfigurator }: { openKonfigurator: () => v
 
 /* ── P1 · Dokumente ──────────────────────────────────────────────────────── */
 
-function P1Dokumente() {
+function P1Dokumente({ onManualCapture }: { onManualCapture: () => void }) {
   const s = useStore()
   const docs = demo.documents
 
   return (
     <section aria-label="Dokumente">
-      <div className="overflow-x-auto">
+      {/* DC-10: анализ уже завершён по фикстуре — протокол сохранён; повторный
+          запуск проигрывает симуляцию, не трогая bestätigt-значения (M-1). */}
+      <DocumentAnalysis
+        docs={docs.map((d) => ({
+          file: d.file,
+          pages: typeof d.pages === 'number' ? d.pages : null,
+          parseStatus: d.parseStatus,
+        }))}
+        onManualCapture={onManualCapture}
+      />
+
+      <div className="mt-5 overflow-x-auto">
         <table className="w-full border-collapse text-body">
           <caption className="sr-only">Hochgeladene Dokumente</caption>
           <thead>

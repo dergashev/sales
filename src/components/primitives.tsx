@@ -223,6 +223,31 @@ export function SegmentedThree<T extends string>({
   )
 }
 
+/**
+ * Skeleton (правило 30): плоские блоки БЕЗ shimmer-градиента — градиенты
+ * запрещены правилом 4, и заглушка не притворяется контентом. Скринридеру
+ * сообщается загрузка, блоки скрыты.
+ */
+export function Skeleton({ lines = 3, label = 'Wird geladen' }: {
+  lines?: number
+  label?: string
+}) {
+  return (
+    <div role="status" aria-live="polite">
+      <span className="sr-only">{label}{NNBSP}…</span>
+      <div aria-hidden="true">
+        {Array.from({ length: lines }, (_, i) => (
+          <div
+            key={i}
+            className="mb-2 h-3 bg-surface-subtle"
+            style={{ width: `${100 - (i % 3) * 18}%` }}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 /** Интервал точности (DC-3). Термин производственный, не отменённый. */
 export function UncertaintyBadge({ pp }: { pp: number }) {
   return (
