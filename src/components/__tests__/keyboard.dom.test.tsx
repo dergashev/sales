@@ -36,8 +36,11 @@ async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
 
 describe('Табы S2 — ручная активация (TABS-001, KEY-003)', () => {
   async function openVorbereitung(user: ReturnType<typeof userEvent.setup>) {
-    await enterPipeline(user)
-    await user.click(screen.getAllByRole('button', { name: /Vorbereitung/ })[0]!)
+    // Подготовка живёт на уровне Opportunity, не в конвейере: пункт
+    // навигации, ведущий на другой уровень, был телепортом, и его больше нет.
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
+    await user.click(screen.getByRole('button', { name: 'Vorbereitung öffnen' }))
     return screen.getByRole('tablist', { name: 'Vorbereitung' })
   }
 

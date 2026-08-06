@@ -70,11 +70,11 @@ export function S3Konfigurator() {
 
   return (
     <div className="px-7 py-6">
-      <header className="border-b border-border-strong pb-4">
-        <p className="a3-cap">
-          Kapitel {n}{NNBSP}von{NNBSP}9 · Konfigurator
-        </p>
-        <h1 className="mt-1 text-heading-2 font-bold text-text-primary">{title}</h1>
+      {/* Заголовок экрана — masthead витрины: крупный титул и мета на
+          одной базовой линии, как в образце. */}
+      <header className="a3-masthead border-b border-border-strong">
+        <h1 className="a3-hero-title">{title}</h1>
+        <p className="a3-cap">Kapitel {n}{NNBSP}von{NNBSP}9 · Konfigurator</p>
       </header>
 
       {/* Ширина содержимого не ограничивается: центровщик остаётся пределом

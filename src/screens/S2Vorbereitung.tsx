@@ -138,10 +138,14 @@ function P1Dokumente({ onManualCapture }: { onManualCapture: () => void }) {
                 <td className="numeric py-2 pr-4 text-text-secondary">{d.pages}</td>
                 <td className="py-2 text-text-secondary">
                   {d.parseStatus === 'failed'
-                    ? <><span aria-hidden="true">✗ </span>nicht lesbar</>
+                    ? <span className="flex items-center gap-2">
+                        <span aria-hidden="true" className="a3-errc shrink-0">✗</span>
+                        nicht lesbar</span>
                     : d.lifecycleStatus === 'superseded'
                       ? <><span aria-hidden="true">◌ </span>ersetzt</>
-                      : <><span aria-hidden="true">✓ </span>aktiv · gelesen</>}
+                      : <span className="flex items-center gap-2">
+                          <span aria-hidden="true" className="a3-okc shrink-0">✓</span>
+                          aktiv · gelesen</span>}
                 </td>
               </tr>
             ))}

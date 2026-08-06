@@ -17,16 +17,22 @@ import { useT, type MessageKey } from '../i18n'
  */
 
 export type View =
-  | 'projekte' | 'vorbereitung' | 'konfigurator'
-  | 'vergleich' | 'export' | 'einstellungen' | 'grundlagen'
+  | 'konfigurator' | 'vergleich' | 'export' | 'einstellungen' | 'grundlagen'
 
+/**
+ * Навигация КОНВЕЙЕРА — только то, что относится к работе над Option.
+ *
+ * «Projekte» и «Vorbereitung» отсюда убраны намеренно: список проектов —
+ * это корень продукта (уровень выше, доступен крошкой в шапке), а
+ * подготовка — уровень Opportunity. Пункт навигации, ведущий на другой
+ * уровень иерархии, — не навигация, а телепорт: он ломает представление
+ * пользователя о том, где он находится.
+ */
 const SCREENS: Array<{ id: View; labelKey: MessageKey; hint?: string }> = [
-  { id: 'projekte', labelKey: 'nav.projekte', hint: 'S1' },
-  { id: 'vorbereitung', labelKey: 'nav.vorbereitung', hint: 'S2' },
-  { id: 'konfigurator', labelKey: 'nav.konfigurator', hint: 'S3' },
-  { id: 'vergleich', labelKey: 'nav.vergleich', hint: 'S4' },
-  { id: 'export', labelKey: 'nav.export', hint: 'S5' },
-  { id: 'einstellungen', labelKey: 'nav.einstellungen', hint: 'S6' },
+  { id: 'konfigurator', labelKey: 'nav.konfigurator', hint: '1' },
+  { id: 'vergleich', labelKey: 'nav.vergleich', hint: '2' },
+  { id: 'export', labelKey: 'nav.export', hint: '3' },
+  { id: 'einstellungen', labelKey: 'nav.einstellungen', hint: '⚙' },
   { id: 'grundlagen', labelKey: 'nav.grundlagen', hint: 'QA' },
 ]
 

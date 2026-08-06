@@ -7,6 +7,8 @@ import { NNBSP, formatDE } from '../engine/money'
 import { Button } from '../components/primitives'
 import { DocumentAnalysis } from '../components/DocumentAnalysis'
 import { ReadinessRing } from '../components/ReadinessRing'
+import { S2Vorbereitung } from './S2Vorbereitung'
+import { useState } from 'react'
 
 /**
  * Карточка Opportunity — уровень между списком и рабочим конвейером.
@@ -51,6 +53,9 @@ function Metric({ label, value, unit, note }: {
 export function OpportunityCard() {
   const s = useStore()
   const meta = opportunities.items.find((o) => o.id === s.opportunityId)
+  // Подготовка (вопросы, Annahmen, варианты) — уровень Opportunity, не
+  // Option: она общая для всех Options этого проекта. В конвейере её нет.
+  const [showVorbereitung, setShowVorbereitung] = useState(false)
 
   if (!meta) return null
 
@@ -96,6 +101,22 @@ export function OpportunityCard() {
     const v = d?.nrf?.value
     return v ? a.plus(D(v)) : a
   }, new Decimal(0))
+
+  if (showVorbereitung) {
+    return (
+      <div>
+        <div className="px-7 pt-5">
+          <Button onClick={() => setShowVorbereitung(false)}>
+            ← Zur Opportunity-Übersicht
+          </Button>
+        </div>
+        <S2Vorbereitung openKonfigurator={() => {
+          setShowVorbereitung(false)
+          if (s.options.length > 0) s.openOption(s.options[0]!.id)
+        }} />
+      </div>
+    )
+  }
 
   const konfliktOffen = s.wflConflict.state === 'open'
   const gateDone = [!konfliktOffen, s.projectParamsConfirmed].filter(Boolean).length
@@ -193,6 +214,18 @@ export function OpportunityCard() {
             <span aria-hidden="true">✓ </span>Projektparameter bestätigt.
           </p>
         )}
+      </section>
+
+      <section className="mt-6" aria-label="Vorbereitung">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="a3-cap">
+            Offene Fragen, Annahmen und Dokumente im Detail — die Vorbereitung
+            gilt für alle Optionen dieser Opportunity.
+          </p>
+          <Button onClick={() => setShowVorbereitung(true)}>
+            Vorbereitung öffnen
+          </Button>
+        </div>
       </section>
 
       {/* 4 · Гейт и Options. */}

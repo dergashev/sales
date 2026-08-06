@@ -95,7 +95,7 @@ export function DocumentAnalysis({ docs, onManualCapture }: {
         {phases.map((ph, i) => (
           <li key={ph.active} className="flex items-baseline gap-2 py-1 text-small">
             {i < phase ? (
-              <><span aria-hidden="true" className="w-3 shrink-0">✓</span>
+              <><span aria-hidden="true" className="a3-okc shrink-0">✓</span>
                 <span className="text-text-secondary">{ph.done}</span></>
             ) : i === phase && running ? (
               <><span aria-hidden="true" className="w-3 shrink-0">…</span>
@@ -112,8 +112,8 @@ export function DocumentAnalysis({ docs, onManualCapture }: {
           Успешные результаты остальных файлов не отменяются. */}
       {ready && failed.map((d) => (
         <div key={d.file} className="mt-3 border-contrast border-border-error p-3">
-          <p className="text-small text-text-primary">
-            <span aria-hidden="true">✗ </span>
+          <p className="flex items-center gap-2 text-small text-text-primary">
+            <span aria-hidden="true" className="a3-errc shrink-0">✗</span>
             {d.file} nicht lesbar: Auflösung zu gering
           </p>
           <p className="a3-cap mt-1">

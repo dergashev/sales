@@ -43,6 +43,11 @@ export function OfferPanel() {
   const t = useT()
   const reduced = useReducedMotion()
   const [journalOpen, setJournalOpen] = useState(false)
+  // Панель — сводка, центр — работа. Тяжёлые таблицы по умолчанию
+  // свёрнуты до одной итоговой строки: они разворачиваются, когда нужны
+  // как переговорный аргумент, а не занимают колонку постоянно.
+  const [treiberOpen, setTreiberOpen] = useState(false)
+  const [kgOpen, setKgOpen] = useState(false)
   // Правило 24: чип «долетает» до журнала — при уходе чипа журнал вспыхивает
   // один раз. Цветовой transition, не кейфрейм (правило 20); гаснет при
   // prefers-reduced-motion (правило 21).
@@ -289,7 +294,24 @@ export function OfferPanel() {
             входит в клиентский PDF. Бары относительно наибольшего вклада и
             дублируются числом (DRIVER-005). */}
         <section aria-label="Kostentreiber" className="mt-5 border-t border-border-subtle pt-4">
-          <h2 className="text-small font-bold text-text-primary">Kostentreiber</h2>
+          <h2 className="text-small font-bold text-text-primary">
+            <button
+              type="button"
+              aria-expanded={treiberOpen}
+              onClick={() => setTreiberOpen((v) => !v)}
+              className="a3-journal-disclose relative w-full text-left outline-none before:absolute before:left-1/2 before:top-1/2 before:min-h-hit-target before:w-full before:-translate-x-1/2 before:-translate-y-1/2 before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+            >
+              <span aria-hidden="true">{treiberOpen ? '▾ ' : '▸ '}</span>
+              Kostentreiber
+            </button>
+          </h2>
+          {!treiberOpen && (
+            <p className="a3-cap numeric mt-1">
+              {p.result.drivers.length}{NNBSP}Beiträge · Summe ={NNBSP}
+              {moneyLabel(p.result.total)}
+            </p>
+          )}
+          {treiberOpen && (<>
           {/* Шапка бенчмарка (DRIVER-001, CALC-008): фикстура объявляет только
               ID снапшота — медианы нет, и выдумать её нельзя (R-25), поэтому
               вывод «x % zur Mediane» честно заменён названной причиной. */}
@@ -413,13 +435,23 @@ export function OfferPanel() {
               </tbody>
             </table>
           </div>
+          </>)}
         </section>
 
         {/* ── Разбивка KG ────────────────────────────────────────────────── */}
         <section aria-label="Kostengruppen" className="mt-4 border-t border-border-subtle pt-4">
           <h2 className="text-small font-bold text-text-primary">
-            Kostengruppen nach DIN{NNBSP}276 · vereinfacht
+            <button
+              type="button"
+              aria-expanded={kgOpen}
+              onClick={() => setKgOpen((v) => !v)}
+              className="a3-journal-disclose relative w-full text-left outline-none before:absolute before:left-1/2 before:top-1/2 before:min-h-hit-target before:w-full before:-translate-x-1/2 before:-translate-y-1/2 before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+            >
+              <span aria-hidden="true">{kgOpen ? '▾ ' : '▸ '}</span>
+              Kostengruppen nach DIN{NNBSP}276 · vereinfacht
+            </button>
           </h2>
+          {kgOpen && (<>
           <div className="mt-2 overflow-x-auto">
             <table className="w-full border-collapse text-small">
               <caption className="sr-only">Verteilung 70/22/8</caption>
@@ -462,7 +494,8 @@ export function OfferPanel() {
           <p className="mt-2 text-small text-text-muted">
             Zeilen werden unabhängig gerundet; die Prüfung läuft über exakte Werte.
           </p>
-          {notIncluded.length > 0 && (
+          </>)}
+          {kgOpen && notIncluded.length > 0 && (
             <p className="a3-cap mt-2">
               ▸ Nicht enthalten / noch offen:{' '}
               {notIncluded.map((g) =>

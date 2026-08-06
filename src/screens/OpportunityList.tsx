@@ -19,6 +19,13 @@ import { NNBSP } from '../engine/money'
 
 const ALL = 'alle'
 
+/** Цвет стадии — вариант тега системы; текст остаётся носителем. */
+const STAGE_TAG: Record<string, string> = {
+  'neu aus HubSpot': 'a3-blue',
+  'in Vorbereitung': 'a3-orange',
+  'versendet': 'a3-green',
+}
+
 export function OpportunityList() {
   const s = useStore()
   const [q, setQ] = useState('')
@@ -137,8 +144,14 @@ export function OpportunityList() {
                 {o.city} · {o.country} · {o.owner}
               </span>
               <span className="a3-cap block">
-                {o.buildings}{NNBSP}Gebäude · {o.documents}{NNBSP}Dokumente · {o.stage}
+                {o.buildings}{NNBSP}Gebäude · {o.documents}{NNBSP}Dokumente
                 {o.meetingAt ? ` · Termin ${o.meetingAt}` : ''}
+              </span>
+              {/* Стадия — цветной статус-тег системы; цвет поддерживает,
+                  носителем остаётся текст (правило 8). */}
+              <span className={'a3-tag mt-1 ' + STAGE_TAG[o.stage]}>
+                <span aria-hidden="true" className="a3-dot" />
+                {o.stage}
               </span>
               {/* Честность объёма прототипа прямо на карточке: проработан
                   один кейс, и продукт говорит это до клика, а не после. */}

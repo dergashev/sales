@@ -53,7 +53,7 @@ describe('Сквозной сценарий продажи', () => {
     expect(useStore.getState().journal).toHaveLength(4)
 
     // Уход на другой экран и возврат: состояние переживает переход.
-    await user.click(nav(/Vorbereitung/))
+    await user.click(nav(/Variantenvergleich/))
     await user.click(nav(/Konfigurator/))
     expect(useStore.getState().journal).toHaveLength(4)
     expect(activeBuilding(useStore.getState()).energiestandard).toBe('EH_40')
@@ -130,12 +130,12 @@ describe('Сквозной сценарий продажи', () => {
   it('кольцо готовности считает пункты, а не проценты (DC-26)', async () => {
     const user = userEvent.setup()
     render(<App />)
-    await enterPipeline(user)
-    await user.click(nav(/^S1|Projekte/))
-    // Скелетон уходит через 700 мс — ждём появления карточки.
-    const ring = await screen.findByRole('group', { name: /Bereitschaft/ }, { timeout: 3000 })
+    // Кольцо живёт в карточке Opportunity (гейт создания Options), а не
+    // в списке проектов — списка S1 в конвейере больше не существует.
+    await user.click(await screen.findByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
+    const ring = screen.getByRole('group', { name: /Bereitschaft/ })
     // Подпись называет ПУНКТЫ: «73 %» не говорит, чего не хватает.
-    expect(within(ring).getByText(/von 3 Punkten erledigt/)).toBeInTheDocument()
+    expect(within(ring).getByText(/von 2 Punkten erledigt/)).toBeInTheDocument()
   })
 
   it('Recap после доставки выводится из журнала, а не пишется руками (DC-31)', async () => {

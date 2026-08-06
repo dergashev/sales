@@ -7,10 +7,8 @@ import { Sidebar, type View } from './components/Sidebar'
 import { OfferPanel } from './components/OfferPanel'
 import { UndoToast } from './components/UndoToast'
 import { S3Konfigurator } from './screens/S3Konfigurator'
-import { S2Vorbereitung } from './screens/S2Vorbereitung'
 import { S4Vergleich } from './screens/S4Vergleich'
 import { S5Export } from './screens/S5Export'
-import { S1Projektliste } from './screens/S1Projektliste'
 import { S6Einstellungen } from './screens/S6Einstellungen'
 import { Grundlagen } from './screens/Grundlagen'
 import { OpportunityList } from './screens/OpportunityList'
@@ -86,12 +84,6 @@ export function App() {
         <Sidebar view={view} setView={setView} />
 
         <main className="min-w-0 flex-1 overflow-y-auto bg-surface-default">
-          {view === 'projekte' && (
-            <S1Projektliste openVorbereitung={() => setView('vorbereitung')} />
-          )}
-          {view === 'vorbereitung' && (
-            <S2Vorbereitung openKonfigurator={() => setView('konfigurator')} />
-          )}
           {view === 'konfigurator' && <S3Konfigurator />}
           {view === 'vergleich' && <S4Vergleich />}
           {view === 'export' && <S5Export />}
