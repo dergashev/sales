@@ -532,8 +532,6 @@ export function chapterDone(
       // осталась `unknown`: непринятое решение — не пройденный шаг.
       return besucht
         && !Object.values(s.coverage).some((v) => v === 'unknown')
-    case 7:
-      return false
     default:
       return besucht
   }

@@ -95,6 +95,20 @@ describe('Сквозной сценарий продажи', () => {
     expect(within(table).getByText('19.11.2027')).toBeInTheDocument()
   })
 
+  it('глава 7 — глава данных: риск Baugrund типизирован, пустота Erschließung названа', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await enterPipeline(user)
+    await user.click(nav(/Konfigurator/))
+    await user.click(nav(/Baugrund & Erschließung/))
+    // Риск — категория · вероятность · следствие, и он НЕ в цене (CALC-001).
+    expect(screen.getByText('Baugrundgutachten liegt nicht vor')).toBeInTheDocument()
+    expect(screen.getByText(/Kostenwirkung \+ 4 % auf KG 320/)).toBeInTheDocument()
+    // Пустота по Erschließung названа с источником, решение — в главе 3.
+    expect(screen.getByText(/keine Angaben zur Erschließung/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Zu Kapitel 3/ })).toBeInTheDocument()
+  })
+
   it('интервал точности показан деньгами, а не только процентом (DC-3)', async () => {
     const user = userEvent.setup()
     render(<App />)

@@ -48,7 +48,7 @@
 .a3-pnav a{color:var(--color-text-primary);text-decoration:underline;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset);border-bottom:var(--border-width-strong) solid transparent;padding-bottom:var(--border-width-strong)}
 .a3-pnav a:hover{border-bottom-color:var(--color-selection-border)}
 .a3-masthead{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-5);margin:var(--space-6) 0;flex-wrap:wrap}
-.a3-masthead img{height:var(--size-hit-target-default);display:block}
+.a3-showcase .a3-masthead img{height:var(--size-hit-target-default);display:block}
 .a3-masthead .a3-meta{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);text-align:right}
 .a3-hero-title{font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:700;margin:var(--space-5) 0 var(--space-2)}
 .a3-masthead>.a3-hero-title{margin:0}
@@ -620,7 +620,8 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-scope-line-body{display:grid;gap:var(--space-2)}
 .a3-scope-line-status{display:flex;gap:var(--space-2);flex-wrap:wrap}
 
-/* SHOWCASE SHELL · print-only documentation harness, not component API.
+/* SHOWCASE PRINT HARNESS · not component API. It composes the public
+   SectionSheet but owns only the documentation/print behavior below.
    It hides interactive specimens and keeps documentation sheets printable.
    Classes: .a3-pnav · .a3-toasts · .a3-modal-scrim · .a3-savechip ·
    .a3-tour-stage · .a3-specimen-actions · .a3-showcase · .a3-reveal ·

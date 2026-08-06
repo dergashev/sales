@@ -748,9 +748,11 @@ describe('Настоящая модель Option (ревью № 13, дефек�
     expect(chapterDone(st(), 2)).toBe(false)
     st().confirmBuilding(st().activeBuildingId)
     expect(chapterDone(st(), 1)).toBe(true)
-    // Глава 7 не проработана и пройденной быть не может.
-    st().openChapterAt(7)
+    // Глава 7 — глава данных (партия 3): посещение проходит её,
+    // непосещённая — не пройдена.
     expect(chapterDone(st(), 7)).toBe(false)
+    st().openChapterAt(7)
+    expect(chapterDone(st(), 7)).toBe(true)
   })
 
   it('снапшот называет отправленную Option (M-3)', () => {

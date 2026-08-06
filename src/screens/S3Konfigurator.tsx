@@ -105,9 +105,10 @@ export function S3Konfigurator() {
           </div>
         )}
         {n === 6 && <ChapterFlaechen />}
+        {n === 7 && <ChapterBaugrund />}
         {n === 8 && <ChapterKg700 />}
         {n === 9 && <ChapterTermine />}
-        {![1, 2, 3, 4, 5, 6, 8, 9].includes(n) && <ChapterParked title={title} />}
+        {![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(n) && <ChapterParked title={title} />}
       </div>
 
       {/* Один следующий шаг всегда на экране (DC-27): маршрут, не принуждение. */}
@@ -492,6 +493,80 @@ function ChapterKg700() {
  * Честное состояние непроработанной главы (правило 30): прототип объявляет
  * границу своего объёма, вместо того чтобы показать пустоту или выдумку.
  */
+/**
+ * Глава 7 · Baugrund & Erschließung — глава ДАННЫХ, не выбора (дефект 4
+ * ревью № 13: раньше здесь стояло «не проработано» посреди золотого пути).
+ *
+ * Содержание строго из источников: риск Baugrund — типизированная запись
+ * фикстуры (категория · вероятность · Kostenwirkung +4 % auf KG 320,
+ * calculation-spec §«Baugrundgutachten liegt nicht vor»); риск НЕ входит
+ * в цену — он ось риска, не неопределённости, и до появления Gutachten
+ * остаётся названным риском (CALC-001: оси не смешиваются). По
+ * Erschließung документация фикстуры фактов не содержит — пустота названа
+ * с источником, решение о KG 200 живёт в главе 3 и здесь только
+ * показывается со ссылкой.
+ */
+function ChapterBaugrund() {
+  const s = useStore()
+  const kg200 = s.coverage.KG_200
+
+  return (
+    <div className="grid gap-5">
+      <Card
+        title="Baugrund"
+        intro={'Der Baugrund entscheidet über Gründung und KG 320. Ohne '
+          + 'Gutachten bleibt er ein benanntes Risiko — kein Preisbestandteil '
+          + 'und keine stillschweigende Annahme.'}
+      >
+        {/* Типизированный риск: категория · вероятность · следствие.
+            Не процент в списке неопределённости (CALC-001). */}
+        <div className="a3-konflikt">
+          <p className="text-body text-text-primary">
+            <span aria-hidden="true">▲ </span>
+            Baugrundgutachten liegt nicht vor
+          </p>
+          <p className="a3-cap mt-1">
+            Risiko · Kategorie Baugrund · Wahrscheinlichkeit mittel ·
+            Kostenwirkung +{NNBSP}4{NNBSP}% auf KG{NNBSP}320
+          </p>
+          <p className="a3-cap mt-1">
+            Wirkt nicht auf die Angebotssumme: Risiko und Schätzunsicherheit
+            sind getrennte Achsen. Mit dem Gutachten wird daraus entweder
+            eine Position oder Entwarnung.
+          </p>
+          <div className="mt-2">
+            <Button onClick={() => s.openOpportunity(s.opportunityId ?? '')}>
+              Frage an den Kunden · in der Vorbereitung
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      <Card
+        title="Erschließung"
+        intro={'Erschließung gehört zu KG 200 — die Entscheidung über den '
+          + 'Umfang fällt in Kapitel 3, hier steht ihr Stand.'}
+      >
+        {/* Пустота названа с источником (правило 30): факта нет в
+            документации, и это не то же самое, что «его нет». */}
+        <p className="a3-cap">
+          <span aria-hidden="true">○ </span>
+          Die Dokumentation der Opportunity enthält keine Angaben zur
+          Erschließung — kein Wert wird angenommen.
+        </p>
+        <p className="mt-3 text-body text-text-primary">
+          KG{NNBSP}200 im Angebot: {COVERAGE_LABEL[kg200]}
+        </p>
+        <div className="mt-2">
+          <Button onClick={() => s.openChapterAt(3)}>
+            Zu Kapitel 3 · Leistungsabgrenzung
+          </Button>
+        </div>
+      </Card>
+    </div>
+  )
+}
+
 function ChapterParked({ title }: { title: string }) {
   return (
     <div className="a3-sheet">
