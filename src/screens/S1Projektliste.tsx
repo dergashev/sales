@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import demo from '../fixtures/demo-0001.json'
-import { useStore } from '../state/store'
+import { activeBuilding, useStore } from '../state/store'
 import { Button, Skeleton, UncertaintyBadge } from '../components/primitives'
 import { ReadinessRing } from '../components/ReadinessRing'
 
@@ -33,7 +33,7 @@ export function S1Projektliste({ openVorbereitung }: { openVorbereitung: () => v
   const openQuestions =
     (s.fields.wfl.provenance === 'vom Kunden bestätigt' ? 0 : 1) +
     (s.esConfirmed ? 0 : 1)
-  const blocked = !s.building.gebaeudeklasse.confirmed
+  const blocked = !activeBuilding(s).gebaeudeklasse.confirmed
 
   return (
     <div className="px-7 py-6">

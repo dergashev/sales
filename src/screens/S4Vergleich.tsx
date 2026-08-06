@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Decimal } from 'decimal.js'
-import { useStore } from '../state/store'
+import { activeBuilding, useStore } from '../state/store'
 import { calculateBuilding, type BuildingInput } from '../engine/calculate'
 import { withRegionalFactor } from '../state/catalog'
 import { NNBSP, present, rate, formatDE } from '../engine/money'
@@ -38,10 +38,10 @@ export function S4Vergleich() {
   const p = s.projection()
 
   const cols = useMemo(() => VARIANTS.map((v) => {
-    const input: BuildingInput = { ...s.building, ...v.patch }
+    const input: BuildingInput = { ...activeBuilding(s), ...v.patch }
     const res = calculateBuilding(input, withRegionalFactor(s.regionalfaktorActive), s.coverage)
     return { def: v, input, res, wflRate: rate(res.total.exact, s.fields.wfl.value, 'WFL_WOFLV') }
-  }), [s.building, s.coverage, s.fields.wfl.value, s.regionalfaktorActive])
+  }), [s.buildings, s.activeBuildingId, s.coverage, s.fields.wfl.value, s.regionalfaktorActive])
 
   const base = cols[0]!
 
@@ -120,10 +120,10 @@ export function S4Vergleich() {
     },
     {
       group: 'QUALITÄT', label: 'Klassifikation nach MBO §2',
-      cells: cols.map(() => s.building.gebaeudeklasse.confirmed
+      cells: cols.map(() => activeBuilding(s).gebaeudeklasse.confirmed
         ? '✓ bestätigt' : '▲ nicht bestätigt'),
       differs: false,
-      warn: !s.building.gebaeudeklasse.confirmed,
+      warn: !activeBuilding(s).gebaeudeklasse.confirmed,
     },
   ]
 

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { __resetStoreForTests, useStore } from '../store'
+import { activeBuilding, __resetStoreForTests, useStore } from '../store'
 import { calculateBuilding } from '../../engine/calculate'
 import { withRegionalFactor } from '../catalog'
 const CATALOG = withRegionalFactor(false)
@@ -13,9 +13,9 @@ beforeEach(() => __resetStoreForTests())
 describe('S4: три колонки от одного движка', () => {
   it('варианты дают фикстурные итоги, дельты — к названной базе', () => {
     const s = useStore.getState()
-    const basis = calculateBuilding(s.building, CATALOG, s.coverage)
-    const ohneUg = calculateBuilding({ ...s.building, untergeschoss: 'kein_ug' }, CATALOG, s.coverage)
-    const eh40 = calculateBuilding({ ...s.building, energiestandard: 'EH_40' }, CATALOG, s.coverage)
+    const basis = calculateBuilding(activeBuilding(s), CATALOG, s.coverage)
+    const ohneUg = calculateBuilding({ ...activeBuilding(s), untergeschoss: 'kein_ug' }, CATALOG, s.coverage)
+    const eh40 = calculateBuilding({ ...activeBuilding(s), energiestandard: 'EH_40' }, CATALOG, s.coverage)
     expect(basis.total.exact.toFixed(2)).toBe('3817835.00')
     expect(ohneUg.total.exact.toFixed(2)).toBe('3341835.00')
     expect(eh40.total.exact.toFixed(2)).toBe('3915170.00')
@@ -31,9 +31,9 @@ describe('S4: три колонки от одного движка', () => {
 describe('S5: гейт отправки', () => {
   it('открытый блокер держит отправку закрытой; подтверждение открывает', () => {
     const s = useStore.getState()
-    expect(s.building.gebaeudeklasse.confirmed).toBe(false)
+    expect(activeBuilding(s).gebaeudeklasse.confirmed).toBe(false)
     s.confirmGebaeudeklasse()
-    expect(useStore.getState().building.gebaeudeklasse.confirmed).toBe(true)
+    expect(activeBuilding(useStore.getState()).gebaeudeklasse.confirmed).toBe(true)
     expect(useStore.getState().journal.at(-1)!.label).toContain('MBO')
   })
 

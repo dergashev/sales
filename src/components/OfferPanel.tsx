@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Decimal } from 'decimal.js'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useStore } from '../state/store'
+import { activeBuilding, useStore } from '../state/store'
 import { CATALOG } from '../state/catalog'
 import { NNBSP, present, rateLabel, formatDE, label as moneyLabel } from '../engine/money'
 import type { CostGroup, CoverageState } from '../engine/calculate'
@@ -68,7 +68,7 @@ export function OfferPanel() {
   const totalCount = useCountUp(
     new Decimal(p.result.total.display.replace(/\./g, '')), 0,
   )
-  const blocked = !s.building.gebaeudeklasse.confirmed
+  const blocked = !activeBuilding(s).gebaeudeklasse.confirmed
 
   // Сессионная дельта (DC-12, CALC-014): сумма точных дельт журнала —
   // undo несёт отрицание, поэтому простая сумма и есть «к базе», без
@@ -528,14 +528,15 @@ export function OfferPanel() {
 function driverLabel(
   key: string,
   engineLabel: string,
-  s: { building: { bgfAboveGround: Decimal; bgfBelowGround: Decimal } },
+  s: Parameters<typeof activeBuilding>[0],
 ): string {
+  const b = activeBuilding(s)
   if (key === 'basis') {
-    return `Basis ${formatDE(s.building.bgfAboveGround, 2)}${NNBSP}m² × ` +
+    return `Basis ${formatDE(b.bgfAboveGround, 2)}${NNBSP}m² × ` +
       `${formatDE(CATALOG.kBase, 0)}${NNBSP}€/m²${NNBSP}BGF oberirdisch`
   }
   if (key === 'untergeschoss_mit_tiefgarage') {
-    return `Untergeschoss inkl. Tiefgarage ${formatDE(s.building.bgfBelowGround, 2)}${NNBSP}m² × ` +
+    return `Untergeschoss inkl. Tiefgarage ${formatDE(b.bgfBelowGround, 2)}${NNBSP}m² × ` +
       `${formatDE(CATALOG.costFactors.untergeschoss.vollausbauMitTiefgarage, 0)}${NNBSP}€/m²${NNBSP}BGF unterirdisch`
   }
   return engineLabel

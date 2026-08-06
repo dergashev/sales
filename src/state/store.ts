@@ -116,6 +116,22 @@ const INITIAL_BUILDING: BuildingInput = {
   untergeschoss: 'vollausbau', hasParking: true,
 }
 
+/**
+ * Второе здание проекта — Bürogebäude. Оси классификации принадлежат
+ * зданию и сегменту (D-11 v2), поэтому у каждого здания они свои: форма
+ * читается со здания, назначение — с сегмента, и единого «типа проекта»
+ * не существует.
+ */
+const fxB = demo.buildings[1]!
+const INITIAL_BUILDING_B: BuildingInput = {
+  id: fxB.id, gebaeudeform: 'BUERO',
+  gebaeudeklasse: { value: 'GK_4', confirmed: false },
+  energiestandard: 'EH_55',
+  bgfAboveGround: D(fxB.areas.bgfAboveGround!),
+  bgfBelowGround: D(fxB.areas.bgfBelowGround!),
+  untergeschoss: 'kein_ug', hasParking: false,
+}
+
 export type Projection = {
   result: BuildingResult
   kgSplit: ReturnType<typeof kgSplitVereinfacht>
@@ -131,7 +147,22 @@ export type Projection = {
 }
 
 type Store = {
-  building: BuildingInput
+  /**
+   * Все здания проекта. Раньше здесь жило одно — и это была не упрощённая
+   * модель, а неверная: у комплекса нет «того самого» здания, а оси
+   * классификации принадлежат каждому в отдельности (D-11 v2).
+   */
+  buildings: Record<string, BuildingInput>
+  /** Какое здание правит конфигуратор. Не то же, что включённость. */
+  activeBuildingId: string
+  /**
+   * Какие здания входят в предложение. Пользователь решает это ПЕРВЫМ,
+   * до всех опций: невключённое здание не должно влиять ни на цену, ни
+   * на метрики, ни на срок.
+   */
+  included: Record<string, boolean>
+  /** Метрики и оси здания подтверждены — шаг вниз открыт. */
+  buildingConfirmed: Record<string, boolean>
   coverage: Coverage
   fields: { wfl: FieldState; bgfOber: FieldState; we: FieldState }
   journal: JournalEvent[]
@@ -253,6 +284,12 @@ type Store = {
   canCreateOptions: () => boolean
   createOption: (name: string) => void
   openOption: (id: string) => void
+  setActiveBuilding: (id: string) => void
+  /** Включить/исключить здание из предложения — событие журнала. */
+  toggleBuildingIncluded: (id: string) => void
+  confirmBuilding: (id: string) => void
+  /** Все включённые здания подтверждены — шаг вниз к сервисам открыт. */
+  allBuildingsConfirmed: () => boolean
   setUiLanguage: (l: 'de' | 'en') => void
   setDensity: (d: 'komfortabel' | 'kompakt') => void
 }
@@ -268,24 +305,65 @@ function undoTarget(s: Pick<Store, 'journal' | 'undone'>): JournalEvent | undefi
     .find((e) => e.kind !== 'undo' && e.inverse && !s.undone.includes(e.seq))
 }
 
+/**
+ * Активное здание — то, которое правит конфигуратор. Отдельная функция,
+ * потому что «какое здание я редактирую» и «какие здания в предложении»
+ * это разные вопросы, и путать их нельзя: пользователь может смотреть
+ * метрики здания, которое решил не включать.
+ */
+export function activeBuilding(s: Pick<Store, 'buildings' | 'activeBuildingId'>): BuildingInput {
+  const b = s.buildings[s.activeBuildingId]
+  if (!b) throw new Error(`нет здания ${s.activeBuildingId}`)
+  return b
+}
+
+/** Здания, входящие в предложение, в порядке фикстуры. */
+function includedBuildings(
+  s: Pick<Store, 'buildings' | 'included'>,
+): BuildingInput[] {
+  return Object.values(s.buildings).filter((b) => s.included[b.id])
+}
+
 function computeProjection(
-  s: Pick<Store, 'building' | 'coverage' | 'fields' | 'esConfirmed' | 'regionalfaktorActive'>,
+  s: Pick<Store, 'buildings' | 'activeBuildingId' | 'included' | 'coverage'
+    | 'fields' | 'esConfirmed' | 'regionalfaktorActive'>,
 ): Projection {
   const CATALOG = withRegionalFactor(s.regionalfaktorActive)
-  const result = calculateBuilding(s.building, CATALOG, s.coverage)
-  const total = result.total.exact
-  const noUg = calculateBuilding(
-    { ...s.building, untergeschoss: 'kein_ug' }, CATALOG, s.coverage,
-  )
-  const ug = total.minus(noUg.total.exact)
+  const list = includedBuildings(s)
+  if (list.length === 0) {
+    throw new Error('в предложении нет ни одного здания — проекции не существует')
+  }
+  // Итог комплекса — СУММА зданий; удельные считаются от сумм, никогда
+  // как среднее из средних (правило 39). Драйверы объединяются, сохраняя
+  // уникальность ID: вклад одного здания не смешивается с другим.
+  const perBuilding = list.map((b) => calculateBuilding(b, CATALOG, s.coverage))
+  const total = perBuilding.reduce((a, r) => a.plus(r.total.exact), new Decimal(0))
+  const result: BuildingResult = {
+    buildingId: list.map((b) => b.id).join('+'),
+    drivers: perBuilding.flatMap((r, i) =>
+      r.drivers.map((d) => ({ ...d, key: list.length > 1 ? `${list[i]!.id}:${d.key}` : d.key }))),
+    bauwerk: perBuilding.reduce((a, r) => a.plus(r.bauwerk), new Decimal(0)),
+    total: present(total),
+    totalLabel: perBuilding[0]!.totalLabel,
+    completeness: perBuilding.every((r) => r.completeness === 'complete')
+      ? 'complete' : 'incomplete',
+    incompleteReasons: perBuilding.flatMap((r) => r.incompleteReasons),
+  }
+  const noUg = perBuilding.reduce((a, _, i) => a.plus(
+    calculateBuilding({ ...list[i]!, untergeschoss: 'kein_ug' }, CATALOG, s.coverage).total.exact,
+  ), new Decimal(0))
+  const ug = total.minus(noUg)
 
   const duration = presentDuration(
     {
-      metricKey: `building:${s.building.id}.execution`,
+      metricKey: `building:${list[0]!.id}.execution`,
       kind: 'buildingExecution',
       startDate: '2027-04-04', endDate: '2027-11-19', durationBasis: 'calendarDay',
     },
-    modelDuration(s.building.bgfAboveGround, D('1.00'), D('1.15')),
+    modelDuration(
+      list.reduce((a, b) => a.plus(b.bgfAboveGround), new Decimal(0)),
+      D('1.00'), D('1.15'),
+    ),
   )
 
   // Интервал: базовые 22 пункта минус объявленные фикстурой сужения.
@@ -305,7 +383,7 @@ function computeProjection(
     secondaryRateBgf: rate(total, s.fields.bgfOber.value, 'BGF_ABOVE_GROUND'),
     perUnit: rate(total, s.fields.we.value, 'WOHNEINHEITEN'),
     duration,
-    aboveGround: present(noUg.total.exact),
+    aboveGround: present(noUg),
     belowGround: present(ug),
     uncertaintyPp: 22 - narrowing,
   }
@@ -369,7 +447,16 @@ const store = createStore<Store>((set, get) => {
   }
 
   return {
-    building: INITIAL_BUILDING,
+    buildings: {
+      [INITIAL_BUILDING.id]: INITIAL_BUILDING,
+      [INITIAL_BUILDING_B.id]: INITIAL_BUILDING_B,
+    },
+    activeBuildingId: INITIAL_BUILDING.id,
+    // По умолчанию в предложение входит одно здание: фикстура объявляет
+    // числа именно для этого случая, и добавление второго обязано быть
+    // видимым решением пользователя, а не молчаливым умолчанием.
+    included: { [INITIAL_BUILDING.id]: true, [INITIAL_BUILDING_B.id]: false },
+    buildingConfirmed: {},
     coverage: INITIAL_COVERAGE,
     fields: {
       wfl: { value: D(fx.areas.wflWoFlV!), provenance: 'aus Dokument' },
@@ -420,7 +507,9 @@ const store = createStore<Store>((set, get) => {
             provenance: confirmed ? 'vom Kunden bestätigt' : 'manuell erfasst',
           },
         },
-        building: key === 'bgfOber' ? { ...s.building, bgfAboveGround: value } : s.building,
+        buildings: key === 'bgfOber'
+          ? { ...s.buildings, [s.activeBuildingId]: { ...activeBuilding(s), bgfAboveGround: value } }
+          : s.buildings,
       }))
       const after = get().projection().result.total.exact
       const delta = after.minus(before)
@@ -430,8 +519,9 @@ const store = createStore<Store>((set, get) => {
         deltaExact: delta.isZero() ? null : delta,
         inverse: () => set((s) => ({
           fields: { ...s.fields, [key]: prev },
-          building: key === 'bgfOber'
-            ? { ...s.building, bgfAboveGround: prev.value } : s.building,
+          buildings: key === 'bgfOber'
+            ? { ...s.buildings, [s.activeBuildingId]: { ...activeBuilding(s), bgfAboveGround: prev.value } }
+            : s.buildings,
         })),
         forward: () => set((s) => ({
           fields: {
@@ -441,8 +531,9 @@ const store = createStore<Store>((set, get) => {
               provenance: confirmed ? 'vom Kunden bestätigt' : 'manuell erfasst',
             },
           },
-          building: key === 'bgfOber'
-            ? { ...s.building, bgfAboveGround: value } : s.building,
+          buildings: key === 'bgfOber'
+            ? { ...s.buildings, [s.activeBuildingId]: { ...activeBuilding(s), bgfAboveGround: value } }
+            : s.buildings,
         })),
       })
       if (!delta.isZero()) {
@@ -458,18 +549,20 @@ const store = createStore<Store>((set, get) => {
 
     setEnergiestandard: (v) => {
       const s = get()
-      if (s.building.energiestandard === v) return
+      const b = activeBuilding(s)
+      if (b.energiestandard === v) return
       const before = s.projection().result.total.exact
-      const prev = s.building.energiestandard
-      set({ building: { ...s.building, energiestandard: v } })
+      const prev = b.energiestandard
+      const id = s.activeBuildingId
+      set({ buildings: { ...s.buildings, [id]: { ...b, energiestandard: v } } })
       const after = get().projection().result.total.exact
       const delta = after.minus(before)
       apply({
         kind: 'option.selected',
         label: `Energiestandard ${prev.replace('_', ' ')} → ${v.replace('_', ' ')}`,
         deltaExact: delta,
-        inverse: () => set((st) => ({ building: { ...st.building, energiestandard: prev } })),
-        forward: () => set((st) => ({ building: { ...st.building, energiestandard: v } })),
+        inverse: () => set((st) => ({ buildings: { ...st.buildings, [id]: { ...st.buildings[id]!, energiestandard: prev } } })),
+        forward: () => set((st) => ({ buildings: { ...st.buildings, [id]: { ...st.buildings[id]!, energiestandard: v } } })),
       })
       // Клик — фиксация: превью гаснет, начинается волна дельты (DC-28).
       set({
@@ -484,18 +577,20 @@ const store = createStore<Store>((set, get) => {
 
     setUntergeschoss: (v) => {
       const s = get()
-      if (s.building.untergeschoss === v) return
+      const b = activeBuilding(s)
+      if (b.untergeschoss === v) return
       const before = s.projection().result.total.exact
-      const prev = s.building.untergeschoss
-      set({ building: { ...s.building, untergeschoss: v } })
+      const prev = b.untergeschoss
+      const id = s.activeBuildingId
+      set({ buildings: { ...s.buildings, [id]: { ...b, untergeschoss: v } } })
       const after = get().projection().result.total.exact
       const delta = after.minus(before)
       apply({
         kind: 'option.selected',
         label: `Untergeschoss ${LABEL_UG[prev]} → ${LABEL_UG[v]}`,
         deltaExact: delta,
-        inverse: () => set((st) => ({ building: { ...st.building, untergeschoss: prev } })),
-        forward: () => set((st) => ({ building: { ...st.building, untergeschoss: v } })),
+        inverse: () => set((st) => ({ buildings: { ...st.buildings, [id]: { ...st.buildings[id]!, untergeschoss: prev } } })),
+        forward: () => set((st) => ({ buildings: { ...st.buildings, [id]: { ...st.buildings[id]!, untergeschoss: v } } })),
       })
       set({
         preview: null,
@@ -523,29 +618,16 @@ const store = createStore<Store>((set, get) => {
 
     confirmGebaeudeklasse: () => {
       const s = get()
-      if (s.building.gebaeudeklasse.confirmed) return
-      set({
-        building: {
-          ...s.building,
-          gebaeudeklasse: { ...s.building.gebaeudeklasse, confirmed: true },
-        },
-      })
+      const b = activeBuilding(s)
+      const id = s.activeBuildingId
+      if (b.gebaeudeklasse.confirmed) return
+      set({ buildings: { ...s.buildings, [id]: { ...b, gebaeudeklasse: { ...b.gebaeudeklasse, confirmed: true } } } })
       apply({
         kind: 'value.confirmed',
         label: 'Gebäudeklasse nach MBO §2 bestätigt',
         deltaExact: null,
-        inverse: () => set((x) => ({
-          building: {
-            ...x.building,
-            gebaeudeklasse: { ...x.building.gebaeudeklasse, confirmed: false },
-          },
-        })),
-        forward: () => set((x) => ({
-          building: {
-            ...x.building,
-            gebaeudeklasse: { ...x.building.gebaeudeklasse, confirmed: true },
-          },
-        })),
+        inverse: () => set((x) => ({ buildings: { ...x.buildings, [id]: { ...x.buildings[id]!, gebaeudeklasse: { ...x.buildings[id]!.gebaeudeklasse, confirmed: false } } } })),
+        forward: () => set((x) => ({ buildings: { ...x.buildings, [id]: { ...x.buildings[id]!, gebaeudeklasse: { ...x.buildings[id]!.gebaeudeklasse, confirmed: true } } } })),
       })
     },
 
@@ -693,7 +775,7 @@ const store = createStore<Store>((set, get) => {
       const before = computeProjection(s).result.total.exact
       const after = computeProjection({
         ...s,
-        building: { ...s.building, [change.kind]: change.value },
+        buildings: { ...s.buildings, [s.activeBuildingId]: { ...activeBuilding(s), [change.kind]: change.value } },
       }).result.total.exact
       return after.minus(before)
     },
@@ -704,7 +786,7 @@ const store = createStore<Store>((set, get) => {
         return
       }
       const s = get()
-      const current = s.building[change.kind]
+      const current = activeBuilding(s)[change.kind]
       if (current === change.value) {
         if (s.preview !== null) set({ preview: null })
         return
@@ -717,7 +799,7 @@ const store = createStore<Store>((set, get) => {
       // считать в уме на переговорах.
       const future = computeProjection({
         ...s,
-        building: { ...s.building, [change.kind]: change.value },
+        buildings: { ...s.buildings, [s.activeBuildingId]: { ...activeBuilding(s), [change.kind]: change.value } },
       })
       set({
         preview: {
@@ -781,7 +863,7 @@ const store = createStore<Store>((set, get) => {
     dismissUndoToast: () => set({ undoToast: null }),
 
     setMode: (m) => {
-      if (m === 'praesentation' && !get().building.gebaeudeklasse.confirmed) return
+      if (m === 'praesentation' && !activeBuilding(get()).gebaeudeklasse.confirmed) return
       set({ mode: m })
     },
 
@@ -829,6 +911,61 @@ const store = createStore<Store>((set, get) => {
     },
 
     openOption: (id) => set({ level: 'option', activeOptionId: id }),
+
+    setActiveBuilding: (id) => set({ activeBuildingId: id }),
+
+    /**
+     * Включённость здания меняет ЦЕНУ, поэтому это событие журнала с
+     * дельтой, а не переключатель вида. Исключить здание и не увидеть
+     * этого в журнале значило бы потерять причину изменения итога.
+     */
+    toggleBuildingIncluded: (id) => {
+      const s = get()
+      if (!s.buildings[id]) return
+      const next = !s.included[id]
+      // Пустое предложение не имеет проекции: последнее включённое здание
+      // выключить нельзя, и причина названа в интерфейсе.
+      if (!next && Object.values(s.included).filter(Boolean).length === 1) return
+      const before = s.projection().result.total.exact
+      set({ included: { ...s.included, [id]: next } })
+      const after = get().projection().result.total.exact
+      const delta = after.minus(before)
+      apply({
+        kind: 'option.selected',
+        label: `${id} ${next ? 'in das Angebot aufgenommen' : 'aus dem Angebot genommen'}`,
+        deltaExact: delta.isZero() ? null : delta,
+        inverse: () => set((x) => ({ included: { ...x.included, [id]: !next } })),
+        forward: () => set((x) => ({ included: { ...x.included, [id]: next } })),
+      })
+      if (!delta.isZero()) {
+        set({
+          activeDelta: {
+            label: `${id} ${next ? 'aufgenommen' : 'entfernt'}`,
+            deltaExact: delta,
+            percent: delta.div(before).mul(100),
+          },
+        })
+      }
+    },
+
+    confirmBuilding: (id) => {
+      const s = get()
+      if (s.buildingConfirmed[id]) return
+      set({ buildingConfirmed: { ...s.buildingConfirmed, [id]: true } })
+      apply({
+        kind: 'value.confirmed',
+        label: `Gebäudedaten ${id} bestätigt`,
+        deltaExact: null,
+        inverse: () => set((x) => ({ buildingConfirmed: { ...x.buildingConfirmed, [id]: false } })),
+        forward: () => set((x) => ({ buildingConfirmed: { ...x.buildingConfirmed, [id]: true } })),
+      })
+    },
+
+    allBuildingsConfirmed: () => {
+      const s = get()
+      const ids = Object.keys(s.buildings).filter((id) => s.included[id])
+      return ids.length > 0 && ids.every((id) => s.buildingConfirmed[id])
+    },
 
     setUiLanguage: (l) => set({ uiLanguage: l }),
 

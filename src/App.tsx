@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useStore } from './state/store'
+import { activeBuilding, useStore } from './state/store'
 import { useT } from './i18n'
 import { checkFonts, checkCascade, type FontCheck } from './lib/font-check'
 import { SegmentedControl } from './components/controls'
@@ -116,7 +116,7 @@ export function App() {
 function AppHeader({ t }: { t: (k: Parameters<ReturnType<typeof useT>>[0]) => string }) {
   const s = useStore()
   const praesentation = s.mode === 'praesentation'
-  const modeBlocked = !s.building.gebaeudeklasse.confirmed
+  const modeBlocked = !activeBuilding(s).gebaeudeklasse.confirmed
 
   return (
     <header className="z-header flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border-strong bg-surface-default px-5 py-3">

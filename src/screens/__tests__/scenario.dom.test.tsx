@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
-import { __resetStoreForTests, useStore } from '../../state/store'
+import { activeBuilding, __resetStoreForTests, useStore } from '../../state/store'
 
 /**
  * Сквозной сценарий одним проходом: очередь → подготовка → конфигуратор →
@@ -56,12 +56,12 @@ describe('Сквозной сценарий продажи', () => {
     await user.click(nav(/Vorbereitung/))
     await user.click(nav(/Konfigurator/))
     expect(useStore.getState().journal).toHaveLength(4)
-    expect(useStore.getState().building.energiestandard).toBe('EH_40')
+    expect(activeBuilding(useStore.getState()).energiestandard).toBe('EH_40')
 
     // Гейт открывается изнутри потока, а не обходится.
-    expect(useStore.getState().building.gebaeudeklasse.confirmed).toBe(false)
+    expect(activeBuilding(useStore.getState()).gebaeudeklasse.confirmed).toBe(false)
     await user.click(screen.getByRole('button', { name: 'Klassifikation bestätigen' }))
-    expect(useStore.getState().building.gebaeudeklasse.confirmed).toBe(true)
+    expect(activeBuilding(useStore.getState()).gebaeudeklasse.confirmed).toBe(true)
 
     // Сравнение и отправка достижимы; журнал накопил оба события.
     await user.click(nav(/Variantenvergleich/))

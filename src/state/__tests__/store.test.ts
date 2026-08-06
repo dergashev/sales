@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Decimal } from 'decimal.js'
-import { __resetStoreForTests, useStore } from '../store'
+import { activeBuilding, __resetStoreForTests, useStore } from '../store'
 import type { JournalEvent, OfferSnapshot } from '../store'
 
 /**
@@ -124,10 +124,10 @@ describe('M-4/M-3: обход журнала невозможен по пост�
     // Типы не `readonly` намеренно: запрет обеспечен заморозкой в рантайме,
     // а не только системой типов — обойти `as any` можно, замороженный
     // объект обойти нельзя.
-    expect(() => { s.building.gebaeudeklasse.confirmed = true }).toThrow()
+    expect(() => { activeBuilding(s).gebaeudeklasse.confirmed = true }).toThrow()
     expect(() => { s.coverage.KG_500 = 'included' }).toThrow()
     const after = useStore.getState()
-    expect(after.building.gebaeudeklasse.confirmed).toBe(false)
+    expect(activeBuilding(after).gebaeudeklasse.confirmed).toBe(false)
     expect(after.coverage.KG_500).toBe('unknown')
     expect(after.journal).toHaveLength(0)
   })
@@ -169,8 +169,8 @@ describe('Курсор отмены: композиции, которых не �
     const s = st()
     const undoOf = s.journal.filter((e) => e.kind === 'undo').map((e) => e.undoOf)
     expect(undoOf).toEqual([2, 4, 1])
-    expect(s.building.energiestandard).toBe('EH_55')
-    expect(s.building.untergeschoss).toBe('vollausbau')
+    expect(activeBuilding(s).energiestandard).toBe('EH_55')
+    expect(activeBuilding(s).untergeschoss).toBe('vollausbau')
     expect(s.regionalfaktorActive).toBe(false)
     expect(s.projection().result.total.exact.toFixed(2)).toBe('3817835.00')
   })
@@ -428,8 +428,8 @@ describe('M-4: недостаточно happy-path — курсор отмены
     useStore.getState().undo() // отменяет UG
     useStore.getState().undo() // отменяет EH — не UG второй раз
     const s = useStore.getState()
-    expect(s.building.untergeschoss).toBe('vollausbau')
-    expect(s.building.energiestandard).toBe('EH_55')
+    expect(activeBuilding(s).untergeschoss).toBe('vollausbau')
+    expect(activeBuilding(s).energiestandard).toBe('EH_55')
     expect(s.projection().result.total.exact.toFixed(2)).toBe('3817835.00')
     const undos = s.journal.filter((e) => e.kind === 'undo')
     expect(undos).toHaveLength(2)
@@ -458,3 +458,64 @@ describe('M-4: недостаточно happy-path — курсор отмены
     expect(s.journal.at(-1)!.label).toContain(snap.id)
   })
 })
+
+describe('Уровень зданий: охват предложения (сценарий п. 6)', () => {
+  it('по умолчанию включено одно здание — фикстурный итог не меняется', () => {
+    const s = useStore.getState()
+    expect(Object.keys(s.buildings)).toHaveLength(2)
+    expect(s.included['DEMO-B-A']).toBe(true)
+    expect(s.included['DEMO-B-B']).toBe(false)
+    expect(s.projection().result.total.exact.toFixed(2)).toBe('3817835.00')
+  })
+
+  it('включение второго здания меняет итог событием с дельтой', () => {
+    useStore.getState().toggleBuildingIncluded('DEMO-B-B')
+    const s = useStore.getState()
+    // Haus B: 1.200 × 1.545 × 1,05 (Büro) × 1,00 (GK 4) × 1,03 (EH 55), UG нет.
+    const expected = new Decimal('1200').mul('1545').mul('1.05').mul('1.03')
+    expect(s.projection().result.total.exact.toFixed(2))
+      .toBe(new Decimal('3817835').plus(expected).toFixed(2))
+    const ev = s.journal.at(-1)!
+    expect(ev.label).toContain('DEMO-B-B')
+    expect(ev.deltaExact!.toFixed(2)).toBe(expected.toFixed(2))
+  })
+
+  it('последнее включённое здание выключить нельзя: без базы нет цены', () => {
+    useStore.getState().toggleBuildingIncluded('DEMO-B-A')
+    expect(useStore.getState().included['DEMO-B-A']).toBe(true)
+    expect(useStore.getState().journal).toHaveLength(0)
+  })
+
+  it('драйверы двух зданий не смешиваются: ID остаются уникальными', () => {
+    useStore.getState().toggleBuildingIncluded('DEMO-B-B')
+    const ds = useStore.getState().projection().result.drivers
+    expect(new Set(ds.map((d) => d.key)).size).toBe(ds.length)
+    expect(ds.some((d) => d.key.startsWith('DEMO-B-A:'))).toBe(true)
+    expect(ds.some((d) => d.key.startsWith('DEMO-B-B:'))).toBe(true)
+    // Сумма вкладов по-прежнему равна итогу — инвариант не зависит от числа зданий.
+    const sum = ds.reduce((a, d) => a.plus(d.exact), new Decimal(0))
+    expect(sum.equals(useStore.getState().projection().result.total.exact)).toBe(true)
+  })
+
+  it('шаг вниз открыт, только когда подтверждены ВСЕ включённые здания', () => {
+    const st = () => useStore.getState()
+    expect(st().allBuildingsConfirmed()).toBe(false)
+    st().confirmBuilding('DEMO-B-A')
+    expect(st().allBuildingsConfirmed()).toBe(true)
+    st().toggleBuildingIncluded('DEMO-B-B')
+    // Новое здание в предложении — снова не всё подтверждено.
+    expect(st().allBuildingsConfirmed()).toBe(false)
+    st().confirmBuilding('DEMO-B-B')
+    expect(st().allBuildingsConfirmed()).toBe(true)
+  })
+
+  it('оси классификации принадлежат зданию, а не проекту (D-11 v2)', () => {
+    const st = () => useStore.getState()
+    st().setActiveBuilding('DEMO-B-B')
+    st().setEnergiestandard('EH_40')
+    expect(st().buildings['DEMO-B-B']!.energiestandard).toBe('EH_40')
+    // У первого здания стандарт не изменился: правка адресна.
+    expect(st().buildings['DEMO-B-A']!.energiestandard).toBe('EH_55')
+  })
+})
+

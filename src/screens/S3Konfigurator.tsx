@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react'
-import { useStore, COVERAGE_LABEL, LABEL_UG } from '../state/store'
+import { activeBuilding, useStore, COVERAGE_LABEL, LABEL_UG } from '../state/store'
 import { NNBSP } from '../engine/money'
 import type { BuildingInput } from '../engine/calculate'
 import type { CostGroup, CoverageState } from '../engine/calculate'
@@ -7,6 +7,7 @@ import { Decimal } from 'decimal.js'
 import { Button, NumericField } from '../components/primitives'
 import { RadioCardGroup, SegmentedControl } from '../components/controls'
 import { ScheduleGantt } from '../components/ScheduleGantt'
+import { ChapterBuildings } from './ChapterBuildings'
 import demo from '../fixtures/demo-0001.json'
 import { present } from '../engine/money'
 
@@ -30,7 +31,7 @@ import { present } from '../engine/money'
  */
 
 export const CHAPTERS = [
-  'Projektverständnis', 'Umfang', 'Gebäude & Flächen', 'Energie & Qualität',
+  'Gebäude & Umfang', 'Leistungsumfang', 'Flächen im Detail', 'Energie & Qualität',
   'Konstruktion & Fassade', 'Ausbau & Technik', 'Baugrund & Erschließung',
   'Leistungsabgrenzung', 'Termine & Kommerzielles',
 ] as const
@@ -79,11 +80,12 @@ export function S3Konfigurator() {
           для рабочей области — аудит верно указал, что здесь он обнимал всю
           главу целиком. */}
       <div className="py-5">
+        {n === 1 && <ChapterBuildings />}
         {n === 2 && <ChapterUmfang />}
         {n === 3 && <ChapterFlaechen />}
         {n === 4 && <ChapterEnergie />}
         {n === 9 && <ChapterTermine />}
-        {![2, 3, 4, 9].includes(n) && <ChapterParked title={title} />}
+        {![1, 2, 3, 4, 9].includes(n) && <ChapterParked title={title} />}
       </div>
 
       {/* Один следующий шаг всегда на экране (DC-27): маршрут, не принуждение. */}
@@ -197,14 +199,14 @@ function ChapterFlaechen() {
         <RadioCardGroup
           legend="Untergeschoss"
           legendHidden
-          value={s.building.untergeschoss}
+          value={activeBuilding(s).untergeschoss}
           onChange={(v) => s.setUntergeschoss(v)}
           onPreview={(v) =>
             s.previewOption(v ? { kind: 'untergeschoss', value: v } : null)}
           options={(['vollausbau', 'ab_decke', 'kein_ug'] as const).map((v) => ({
             value: v,
             title: LABEL_UG[v],
-            consequence: s.building.untergeschoss === v
+            consequence: activeBuilding(s).untergeschoss === v
               ? 'aktuelle Auswahl'
               : consequenceLabel(s.optionDelta({ kind: 'untergeschoss', value: v })),
           }))}
@@ -229,14 +231,14 @@ function ChapterEnergie() {
         <RadioCardGroup
           legend="Energiestandard"
           legendHidden
-          value={s.building.energiestandard}
+          value={activeBuilding(s).energiestandard}
           onChange={(v) => s.setEnergiestandard(v)}
           onPreview={(v) =>
             s.previewOption(v ? { kind: 'energiestandard', value: v } : null)}
           options={(['GEG', 'EH_55', 'EH_40'] as const).map((v) => ({
             value: v,
             title: LABEL_ES[v],
-            consequence: s.building.energiestandard === v
+            consequence: activeBuilding(s).energiestandard === v
               ? 'aktuelle Auswahl'
               : consequenceLabel(s.optionDelta({ kind: 'energiestandard', value: v })),
           }))}

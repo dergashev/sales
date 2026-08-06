@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Decimal } from 'decimal.js'
-import { useStore } from '../state/store'
+import { activeBuilding, useStore } from '../state/store'
 import { NNBSP } from '../engine/money'
 import { DiscountControl } from '../components/DiscountControl'
 import { Button, UncertaintyBadge } from '../components/primitives'
@@ -60,7 +60,7 @@ export function S5Export() {
 
   // Preflight — вывод, не заявление: блокер, интервал, допущения.
   const blockers: string[] = []
-  if (!s.building.gebaeudeklasse.confirmed) {
+  if (!activeBuilding(s).gebaeudeklasse.confirmed) {
     blockers.push(
       'ValidationIssue offen: Klassifikation nach MBO §2 nicht bestätigt — ' +
       'blockiert alle fünf Kundenprofile (R-07)',
@@ -160,7 +160,7 @@ export function S5Export() {
                 <p className="text-small font-medium text-text-primary">Finale Prüfung</p>
                 <ul className="a3-cap mt-1">
                   <li>Anhänge: {selected.size} · Muster-Dateien des Prototyps, als clientSafe klassifiziert</li>
-                  <li>Aktive Annahmen: {s.building.gebaeudeklasse.confirmed ? 1 : 2}</li>
+                  <li>Aktive Annahmen: {activeBuilding(s).gebaeudeklasse.confirmed ? 1 : 2}</li>
                   <li><UncertaintyBadge pp={p.uncertaintyPp} /></li>
                   <li>Sprache: DE · vollständig</li>
                   {/* Рекомендация G6-gate (правило 11/D-16): пункт чек-листа,

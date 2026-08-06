@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { Decimal } from 'decimal.js'
 import demo from '../fixtures/demo-0001.json'
 import catalog from '../fixtures/catalog.json'
-import { useStore } from '../state/store'
+import { activeBuilding, useStore } from '../state/store'
 import { NNBSP, formatDE, rateLabel } from '../engine/money'
 import { Button, NumericField, ProvenanceChip, UncertaintyBadge } from '../components/primitives'
 import { DocumentAnalysis } from '../components/DocumentAnalysis'
@@ -268,7 +268,7 @@ function P2Projektdaten() {
             <p className="text-small font-medium text-text-primary">Gebäudeklasse</p>
             <p className="mt-1 text-body text-text-primary">
               GK{NNBSP}5{' '}
-              {s.building.gebaeudeklasse.confirmed
+              {activeBuilding(s).gebaeudeklasse.confirmed
                 ? <ProvenanceChip provenance="vom Kunden bestätigt" />
                 : <span className="a3-cap">
                     <span aria-hidden="true">▲ </span>
@@ -276,14 +276,14 @@ function P2Projektdaten() {
                   </span>}
             </p>
           </div>
-          {!s.building.gebaeudeklasse.confirmed && (
+          {!activeBuilding(s).gebaeudeklasse.confirmed && (
             <Button onClick={() => s.confirmGebaeudeklasse()}>Bestätigen</Button>
           )}
         </div>
 
         <StaticRow
           label="Energiestandard"
-          value={s.building.energiestandard.replace('_', NNBSP)}
+          value={activeBuilding(s).energiestandard.replace('_', NNBSP)}
           provenance={s.esConfirmed ? 'vom Kunden bestätigt' : 'Projektabstimmung'}
         />
       </div>
@@ -395,7 +395,7 @@ function P4Annahmen({ setTab }: { setTab: (t: Tab) => void }) {
   // из состояния, а не поддерживается руками — поэтому он всегда точен.
   const items: Array<{ id: string; text: string; resolve?: () => void; resolveLabel?: string }> = []
 
-  if (!s.building.gebaeudeklasse.confirmed) {
+  if (!activeBuilding(s).gebaeudeklasse.confirmed) {
     items.push({
       id: 'gk',
       // Дословно t0-fallback-rules.md:106; в слот значения подставлен
