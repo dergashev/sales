@@ -143,7 +143,14 @@ const config: Config = {
         'delta-slot': 'calc(var(--space-6) + var(--space-2))',
       },
       minWidth: { 'hit-target': 'var(--size-hit-target-default)' },
-      maxWidth: { content: 'var(--content-max-width)' },
+      maxWidth: {
+        content: 'var(--content-max-width)',
+        // Панель оффера не имеет права расти за свою ширину, что бы в неё
+        // ни положили: в флекс-строке минимальная ширина элемента равна
+        // min-content, и одна неразрывная строка кеглем 48 px уносила
+        // панель далеко за 400 px, съедая рабочую область.
+        'panel-right': 'var(--panel-right-width)',
+      },
       width: {
         field: '12ch',
         'panel-left': 'var(--panel-left-width)',

@@ -89,7 +89,7 @@ export function OfferPanel() {
   return (
     <aside
       aria-label="Angebot"
-      className="flex h-full w-panel-right shrink-0 flex-col overflow-y-auto border-l border-border-strong bg-surface-default"
+      className="flex h-full w-panel-right min-w-0 max-w-panel-right shrink-0 flex-col overflow-y-auto border-l border-border-strong bg-surface-default"
     >
       <div className="flex-1 px-5 py-5" aria-live="polite">
         {/* ── Герой №1: тотал — единственный оранжевый (DC-38) ───────────
@@ -140,10 +140,24 @@ export function OfferPanel() {
         </p>
 
         {/* ── Герои №2 и №3: ведущая ставка и срок, чёрные (DC-38) ─────── */}
-        <p className="a3-hb-num numeric mt-4">
-          {rateLabel(p.leadRate)}
-        </p>
-        <p className="a3-cap numeric mt-1">
+        {/* Структура системы: ЧИСЛО в `.a3-hb-num`, единица в `.a3-hb-unit`,
+            знаменатель в `.a3-hb-cap`. Прежде сюда клалась вся строка
+            `≈ 2.545 €/m² WFL nach WoFlV` целиком — а `.a3-hb-num` несёт
+            `white-space: nowrap`, и в флекс-строке минимальная ширина
+            элемента равна min-content. Панель раздувалась далеко за свои
+            400 px и съедала рабочую область. Дефект структурный: класс
+            применён не к тому, для чего объявлен. */}
+        <div className="a3-hb mt-4">
+          <p className="a3-hb-num numeric">
+            {p.leadRate.prefix && (
+              <span aria-hidden="true">{p.leadRate.prefix}{NNBSP}</span>
+            )}
+            {p.leadRate.display}
+            <span className="a3-hb-unit">{NNBSP}€/m²</span>
+          </p>
+          <span className="a3-hb-cap">{p.leadRate.denominatorLabel}</span>
+        </div>
+        <p className="a3-cap numeric mt-1" style={{ overflowWrap: 'anywhere' }}>
           {rateLabel(p.secondaryRateBgf)} · {rateLabel(p.perUnit)}
           {' · '}
           {/* DC-21 rateOrigin: знаменатель называет норматив, деление показано. */}
@@ -170,13 +184,16 @@ export function OfferPanel() {
           />
         </p>
 
-        <p className="a3-hb-num numeric mt-4">
-          {p.duration.prefix && <span aria-hidden="true">{p.duration.prefix}{NNBSP}</span>}
-          {p.duration.display}
-        </p>
-        <p className="a3-cap">
-          ab OKBP · Fertigstellung {formatDate(p.duration.completionDate)}
-        </p>
+        <div className="a3-hb mt-4">
+          <p className="a3-hb-num numeric">
+            {p.duration.prefix && <span aria-hidden="true">{p.duration.prefix}{NNBSP}</span>}
+            {p.duration.display.replace(`${NNBSP}Monate`, '')}
+            <span className="a3-hb-unit">{NNBSP}Monate</span>
+          </p>
+          <span className="a3-hb-cap">
+            ab OKBP · Fertigstellung {formatDate(p.duration.completionDate)}
+          </span>
+        </div>
 
         {/* Внутренние идентификаторы прогона — не для клиентской поверхности
             (MODE-001): в презентации отсутствуют, а не скрыты стилем. */}
