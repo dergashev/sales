@@ -72,7 +72,11 @@ export function S3Konfigurator() {
         <h1 className="mt-1 text-heading-2 font-bold text-text-primary">{title}</h1>
       </header>
 
-      <div className="max-w-content py-5">
+      {/* Ширина содержимого не ограничивается: центровщик остаётся пределом
+          ДЛИННОГО ТЕКСТА (он стоит на абзацах внутри карточек), а не клеткой
+          для рабочей области — аудит верно указал, что здесь он обнимал всю
+          главу целиком. */}
+      <div className="py-5">
         {n === 2 && <ChapterUmfang />}
         {n === 3 && <ChapterFlaechen />}
         {n === 4 && <ChapterEnergie />}

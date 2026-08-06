@@ -24,6 +24,7 @@ const TABS = ['Dokumente', 'Projektdaten', 'Offene Fragen', 'Annahmen', 'Variant
 type Tab = (typeof TABS)[number]
 
 export function S2Vorbereitung({ openKonfigurator }: { openKonfigurator: () => void }) {
+  const s = useStore()
   const [tab, setTab] = useState<Tab>('Projektdaten')
   const tablist = useRef<HTMLDivElement>(null)
 
@@ -56,7 +57,11 @@ export function S2Vorbereitung({ openKonfigurator }: { openKonfigurator: () => v
         <h1 className="text-heading-2 font-bold text-text-primary">
           Musterprojekt Nordfeld · Vorbereitung
         </h1>
-        <span className="text-small text-text-secondary">intern · Δ-Werte sichtbar</span>
+        <span className="text-small text-text-secondary">
+          {s.mode === 'praesentation'
+            ? 'Präsentation · interne Werte ausgeblendet'
+            : `intern · Δ-Werte sichtbar`}
+        </span>
       </header>
 
       <div ref={tablist} role="tablist" aria-label="Vorbereitung" className="mt-4 flex flex-wrap gap-1 border-b border-border-subtle" onKeyDown={onKey}>
@@ -213,7 +218,8 @@ function P2Projektdaten() {
             <p className="text-body text-text-primary">
               <span aria-hidden="true">▲ </span>
               Konflikt: Kunde nennt 1.560,00{NNBSP}m² (VerificationEvent
-              DEMO-VE-0002), Dokument zeigt 1.500,00{NNBSP}m².
+              {s.mode === 'intern' ? ' DEMO-VE-0002' : ''}), Dokument zeigt
+              1.500,00{NNBSP}m².
             </p>
             <p className="mt-1 text-small text-text-secondary">
               Folge der Übernahme: nur der Nenner ändert sich — Leitkennzahl
@@ -395,7 +401,9 @@ function P4Annahmen({ setTab }: { setTab: (t: Tab) => void }) {
         'lediglich Prüfauslöser und kein Nachweis; die Einstufung nach MBO §2 ' +
         'erfolgt über das Brandschutzkonzept und die zugehörigen Nachweise. ' +
         'Für die Kalkulation ist vorläufig GK 5 hinterlegt, Stand ' +
-        '«Prüfung erforderlich».',
+        '«Prüfung erforderlich». Die endgültige Einstufung kann die ' +
+        'Anforderungen an Tragwerk und Kapselung und damit den Preis ' +
+        'verändern; mit Vorlage des Brandschutzkonzepts bestätigen wir sie.',
       resolve: () => s.confirmGebaeudeklasse(),
       resolveLabel: 'Klassifikation bestätigen',
     })
@@ -409,9 +417,9 @@ function P4Annahmen({ setTab }: { setTab: (t: Tab) => void }) {
         'Kostengruppe 500 (Außenanlagen und Freiflächen) liegt noch keine ' +
         'Deckungsentscheidung vor: sie ist weder eingeschlossen noch ' +
         'ausgeschlossen und bislang unbewertet. Solange dieser Zustand besteht, ' +
-        'weist das Angebot eine Zwischensumme der kalkulierten Positionen und ' +
-        'keinen Gesamtpreis aus. Die vollständige Abgrenzung ist der ' +
-        'Leistungsübersicht zu entnehmen.',
+        'weist das Angebot eine «Zwischensumme der kalkulierten Positionen» ' +
+        'und keinen Gesamtpreis aus (R-18, CALC-006). Die vollständige ' +
+        'Abgrenzung ist der Leistungsübersicht zu entnehmen.',
     })
   }
 

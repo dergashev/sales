@@ -32,6 +32,9 @@ const de = {
   'shell.mode.praesentation': 'Präsentation',
   'shell.mode.blockedReason':
     'Erst nach bestätigter Klassifikation (offener Blocker DEMO-VI-0001)',
+  'shell.mode.legend': 'Modus',
+  'shell.variant': 'Variante «Basis»',
+  'shell.phase.vorbereitung': 'Vorbereitung',
   'common.undo': 'Rückgängig',
   'common.close': 'Schließen',
   'common.showOrigin': 'Herkunft anzeigen',
@@ -58,6 +61,9 @@ const en: Partial<Record<MessageKey, string>> = {
   'shell.mode.praesentation': 'Presentation',
   'shell.mode.blockedReason':
     'Available after the classification is confirmed (open blocker DEMO-VI-0001)',
+  'shell.mode.legend': 'Mode',
+  'shell.variant': 'Variant “Basis”',
+  'shell.phase.vorbereitung': 'Preparation',
   'common.undo': 'Undo',
   'common.close': 'Close',
   'common.showOrigin': 'Show origin',

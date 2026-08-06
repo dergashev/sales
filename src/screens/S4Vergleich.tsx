@@ -140,7 +140,8 @@ export function S4Vergleich() {
     <div className="px-7 py-6">
       <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-border-strong pb-3">
         <h1 className="text-heading-2 font-bold text-text-primary">
-          Variantenvergleich · Haus{NNBSP}A · DEMO-SC-01
+          Variantenvergleich · Haus{NNBSP}A
+          {s.mode === 'intern' && <> · DEMO-SC-01</>}
         </h1>
         <Button onClick={() => setShowAll((v) => !v)} aria-pressed={showAll}>
           {showAll ? 'nur Unterschiede' : 'alle Zeilen anzeigen'}

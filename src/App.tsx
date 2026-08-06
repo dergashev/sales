@@ -65,7 +65,7 @@ export function App() {
               объясняет почему (правило 12). */}
           <SegmentedControl
             layout="inline"
-            legend="Modus"
+            legend={t('shell.mode.legend')}
             value={s.mode}
             onChange={(m) => s.setMode(m)}
             options={[

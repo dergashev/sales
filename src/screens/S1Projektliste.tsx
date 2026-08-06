@@ -105,7 +105,8 @@ export function S1Projektliste({ openVorbereitung }: { openVorbereitung: () => v
         ))}
         <p className="mt-2 text-small text-text-muted">
           Gruppen sind Demo-Statik der Spezifikation: der Prototyp führt ein
-          Projekt ({demo.project.id}), die Warteschlange zeigt die Mechanik.
+          Projekt{s.mode === 'intern' ? ` (${demo.project.id})` : ''}, die
+          Warteschlange zeigt die Mechanik.
         </p>
       </div>
       </>)}
