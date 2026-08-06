@@ -65,17 +65,20 @@ export function S4Vergleich() {
   const perBuilding = (cfg: OptionConfig, f: (id: string) => string) =>
     Object.keys(cfg.buildings).filter((id) => cfg.included[id]).map(f).join(' · ')
 
-  type Row = { label: string; group: string; cells: string[] }
+  type Sub = { text: string; save: boolean } | null
+  type Row = { label: string; group: string; cells: string[]; subCells?: Sub[] }
 
   const rows: Row[] = [
     {
       group: 'ERGEBNIS', label: `${base.p.result.totalLabel} (€)`,
       cells: cols.map((c) => money(c.p.result.total.exact)),
+      // Дельта к базе — подстрочник той же ячейки (.a3-d контракта DC-11),
+      // экономия получает .a3-save; отдельная строка дельты не существует.
+      subCells: cols.map((c, i) => i === 0 ? null : ({
+        text: `${delta(c.p.result.total.exact.minus(base.p.result.total.exact))} gegenüber ${base.option.name}`,
+        save: c.p.result.total.exact.lt(base.p.result.total.exact),
+      })),
     },
-    ...(cols.length > 1 ? [{
-      group: 'ERGEBNIS', label: `Delta zur Vergleichsbasis (${base.option.name})`,
-      cells: cols.map((c) => delta(c.p.result.total.exact.minus(base.p.result.total.exact))),
-    }] : []),
     {
       group: 'ERGEBNIS', label: '€/m² WFL nach WoFlV',
       cells: cols.map((c) => `${c.p.leadRate.prefix}${c.p.leadRate.prefix ? NNBSP : ''}${c.p.leadRate.display}`),
@@ -168,15 +171,15 @@ export function S4Vergleich() {
       )}
 
       <div className="mt-4 overflow-x-auto">
-        <table className="w-full border-collapse text-body">
+        <table className="a3-cmp w-full border-collapse">
           <caption className="sr-only">Vergleich der Opportunity Options</caption>
           <thead>
-            <tr className="border-b border-border-strong text-left">
-              <th className="py-2 pr-4 font-medium">
+            <tr>
+              <th>
                 {showAll ? 'alle Zeilen' : 'nur Unterschiede'}
               </th>
               {cols.map((c, i) => (
-                <th key={c.option.id} className="py-2 pr-4 text-right font-medium">
+                <th key={c.option.id} className="a3-num">
                   {c.option.name}
                   <span className="block text-small font-regular text-text-secondary">
                     {c.option.id}
@@ -228,25 +231,31 @@ export function S4Vergleich() {
 function GroupRows({ group, span, rows }: {
   group: string
   span: number
-  rows: Array<{ label: string; cells: string[] }>
+  rows: Array<{
+    label: string
+    cells: string[]
+    subCells?: Array<{ text: string; save: boolean } | null>
+  }>
 }) {
   if (!rows.length) return null
   return (
     <>
       <tr>
-        <th colSpan={span} scope="colgroup"
-            className="border-b border-border-subtle pt-4 pb-1 text-left text-small font-medium text-text-secondary">
+        <th colSpan={span} scope="colgroup" className="text-small">
           {group}
         </th>
       </tr>
       {rows.map((r) => (
-        <tr key={r.label} className="border-b border-border-subtle">
-          <th scope="row" className="py-2 pr-4 text-left font-regular text-text-secondary">
-            {r.label}
-          </th>
+        <tr key={r.label}>
+          <td className="text-text-secondary">{r.label}</td>
           {r.cells.map((c, i) => (
-            <td key={i} className="numeric py-2 pr-4 text-right text-text-primary">
+            <td key={i} className="a3-num">
               {c}
+              {r.subCells?.[i] && (
+                <span className={'a3-d' + (r.subCells[i]!.save ? ' a3-save' : '')}>
+                  {r.subCells[i]!.text}
+                </span>
+              )}
             </td>
           ))}
         </tr>

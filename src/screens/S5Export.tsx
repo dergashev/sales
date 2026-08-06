@@ -127,10 +127,33 @@ export function S5Export() {
           </h2>
 
           {stage === 'compose' && (
-            <>
-              <p className="a3-cap mt-2">
-                An: kontakt@beispiel-entwickler.example (aus HubSpot)
-              </p>
+            <div className="a3-mailcard mt-2">
+              {/* Строки письма — контракт DC-41: адресат несёт провенанс
+                  (aus HubSpot), вложения видны как собранный пакет. */}
+              <div className="a3-mailrow">
+                <span className="a3-lb">An</span>
+                <span className="a3-chip-src">
+                  <span aria-hidden="true" className="a3-dot" />
+                  kontakt@beispiel-entwickler.example · aus HubSpot
+                </span>
+              </div>
+              <div className="a3-mailrow">
+                <span className="a3-lb">Betreff</span>
+                <input
+                  value={`Indikatives Angebot – ${s.options.find((o) => o.id === s.activeOptionId)?.name ?? 'Musterprojekt Nordfeld'}`}
+                  readOnly
+                  aria-label="Betreff"
+                />
+              </div>
+              <div className="a3-mailrow">
+                <span className="a3-lb">Anlagen</span>
+                {ARTIFACTS.filter((a) => selected.has(a.id)).map((a) => (
+                  <span key={a.id} className="a3-tag a3-green">{a.label} · Muster</span>
+                ))}
+                {selected.size === 0 && (
+                  <span className="a3-cap">keine — links auswählen</span>
+                )}
+              </div>
               <textarea
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
@@ -143,7 +166,7 @@ export function S5Export() {
                   Weiter zum Preflight
                 </Button>
               </div>
-            </>
+            </div>
           )}
 
           {stage === 'preflight' && (
@@ -158,20 +181,20 @@ export function S5Export() {
                   <span aria-hidden="true">▲ </span>{w}
                 </p>
               ))}
-              <div className="mt-3 border border-border-default p-3">
+              <div className="mt-3">
                 <p className="text-small font-medium text-text-primary">Finale Prüfung</p>
-                <ul className="a3-cap mt-1">
-                  <li>Anhänge: {selected.size} · Muster-Dateien des Prototyps, als clientSafe klassifiziert</li>
-                  <li>Aktive Annahmen: {activeBuilding(s).gebaeudeklasse.confirmed ? 1 : 2}</li>
+                <ul className="a3-preflight-list">
+                  <li>✓ Anhänge: {selected.size} · Muster-Dateien des Prototyps, als clientSafe klassifiziert</li>
+                  <li>✓ Aktive Annahmen: {activeBuilding(s).gebaeudeklasse.confirmed ? 1 : 2}</li>
                   <li><UncertaintyBadge pp={p.uncertaintyPp} /></li>
-                  <li>Sprache: DE · vollständig</li>
+                  <li>✓ Sprache: DE · vollständig</li>
                   {/* Рекомендация G6-gate (правило 11/D-16): пункт чек-листа,
                       не запрет — плотность остаётся выбором пользователя. */}
                   <li>
                     {s.density === 'kompakt'
-                      ? <><span aria-hidden="true">▲ </span>Dichte: Kompakt —
-                          vor dem Teilen des Bildschirms wird Komfortabel empfohlen</>
-                      : <><span aria-hidden="true">✓ </span>Dichte: Komfortabel</>}
+                      ? <>▲ Dichte: Kompakt — vor dem Teilen des Bildschirms
+                          wird Komfortabel empfohlen</>
+                      : <>✓ Dichte: Komfortabel</>}
                   </li>
                 </ul>
               </div>
@@ -198,6 +221,18 @@ export function S5Export() {
 
           {stage === 'confirm' && (
             <div className="mt-3 border border-border-default p-3">
+              {/* Пакет виден ДО отправки (DC-42): монохромное A4-превью
+                  первой страницы — «собранный товар», не абстрактный счётчик. */}
+              <div className="a3-paper-preview mb-3" aria-label="Monochrome Seitenvorschau A4"
+                   style={{ maxWidth: 'var(--measure-form-control)' }}>
+                <b>{s.options.find((o) => o.id === s.activeOptionId)?.name ?? 'Musterprojekt Nordfeld'}</b>
+                <hr />
+                {p.result.totalLabel}<br />
+                <b>{p.result.total.prefix ? `${p.result.total.prefix}${NNBSP}` : ''}{p.result.total.display}{NNBSP}€</b><br /><br />
+                Preisstand 08/2026<br />
+                Angebotsgültigkeit: Musterangabe
+                {s.mode === 'intern' && <><br />DEMO-RUN-0007</>}
+              </div>
               <p className="text-body text-text-primary">
                 {selected.size} Anhänge · Empfänger geprüft · Text geprüft ·
                 Sprache DE
