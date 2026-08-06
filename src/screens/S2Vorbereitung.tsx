@@ -64,7 +64,11 @@ export function S2Vorbereitung({ openKonfigurator }: { openKonfigurator: () => v
         </span>
       </header>
 
-      <div ref={tablist} role="tablist" aria-label="Vorbereitung" className="mt-4 flex flex-wrap gap-1 border-b border-border-subtle" onKeyDown={onKey}>
+      {/* Табы — примитив системы (`.a3-tabs[role=tablist] > [role=tab]`,
+          затем `.a3-tabpane[role=tabpanel]`): подчёркивание активного,
+          промежутки и типографика приходят оттуда. */}
+      <div ref={tablist} role="tablist" aria-label="Vorbereitung"
+           className="a3-tabs mt-4" onKeyDown={onKey}>
         {TABS.map((t, i) => (
           <button
             key={t}
@@ -75,13 +79,11 @@ export function S2Vorbereitung({ openKonfigurator }: { openKonfigurator: () => v
             aria-controls="vorbereitung-panel"
             tabIndex={focusIdx === i ? 0 : -1}
             onClick={() => { setTab(t); setFocusIdx(i) }}
-            className={'relative px-4 py-2 text-body before:absolute before:left-1/2 before:top-1/2 ' +
-              'before:min-h-hit-target before:w-full before:-translate-x-1/2 before:-translate-y-1/2 before:content-[""] ' +
-              'outline-none focus-visible:outline focus-visible:outline-2 ' +
-              'focus-visible:outline-offset-2 focus-visible:outline-focus-ring ' +
-              (tab === t
-                ? 'border-b-contrast border-border-strong font-medium text-text-primary'
-                : 'text-text-secondary')}
+            className={'relative before:absolute before:left-1/2 before:top-1/2 ' +
+              'before:min-h-hit-target before:w-full before:-translate-x-1/2 ' +
+              'before:-translate-y-1/2 before:content-[""] outline-none ' +
+              'focus-visible:outline focus-visible:outline-2 ' +
+              'focus-visible:outline-offset-2 focus-visible:outline-focus-ring'}
           >
             P{i + 1}{NNBSP}·{NNBSP}{t}
           </button>
@@ -89,7 +91,7 @@ export function S2Vorbereitung({ openKonfigurator }: { openKonfigurator: () => v
       </div>
 
       <div role="tabpanel" id="vorbereitung-panel"
-           aria-labelledby={`tab-p${TABS.indexOf(tab) + 1}`} className="py-5">
+           aria-labelledby={`tab-p${TABS.indexOf(tab) + 1}`} className="a3-tabpane py-5">
         {tab === 'Dokumente' && <P1Dokumente onManualCapture={() => setTab('Projektdaten')} />}
         {tab === 'Projektdaten' && <P2Projektdaten />}
         {tab === 'Offene Fragen' && <P3OffeneFragen />}

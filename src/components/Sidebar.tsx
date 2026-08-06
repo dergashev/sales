@@ -73,7 +73,7 @@ export function Sidebar({ view, setView }: { view: View; setView: (v: View) => v
 
               {/* Главы конфигуратора — второй уровень под активным пунктом. */}
               {item.id === 'konfigurator' && active && (
-                <ol className="border-b border-border-subtle pb-2">
+                <ol className="a3-chapters border-b border-border-subtle pb-2">
                   {CHAPTERS.map((c, i) => {
                     const n = i + 1
                     const open = s.openChapter === n
@@ -84,10 +84,10 @@ export function Sidebar({ view, setView }: { view: View; setView: (v: View) => v
                           type="button"
                           onClick={() => s.openChapterAt(n)}
                           aria-current={open ? 'true' : undefined}
-                          className={`relative flex min-h-hit-target w-full items-center gap-2 py-1 pl-8 pr-5 text-left text-small ${FOCUS} ` +
-                            (open ? 'font-medium text-text-primary' : 'text-text-secondary hover:text-text-primary')}
+                          className={`a3-ch relative flex min-h-hit-target w-full items-center gap-2 py-1 pl-8 pr-5 text-left ${FOCUS} ` +
+                            (open ? 'a3-cur' : '')}
                         >
-                          <span className="numeric w-4 shrink-0">{n}</span>
+                          <span className="a3-n numeric shrink-0">{n}</span>
                           <span aria-hidden="true" className="w-3 shrink-0">
                             {done ? '✓' : open ? '▸' : ''}
                           </span>
