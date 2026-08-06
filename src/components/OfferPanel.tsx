@@ -192,6 +192,28 @@ export function OfferPanel() {
           </p>
           <span className="a3-hb-cap">
             ab OKBP · Fertigstellung {formatDate(p.duration.completionDate)}
+            {' · '}
+            {/* DC-21 durationOrigin: срок — такая же расчётная величина, как
+                деньги, и обязан объяснять себя. Вариант поповера называет
+                основание длительности и соглашение о границах интервала —
+                «дни» и «рабочие дни» это разные числа. */}
+            <OriginPopover
+              rows={[
+                { label: 'Modellwert exakt', value: p.duration.exactMonths
+                    ? `${formatDE(p.duration.exactMonths, 4)}${NNBSP}Monate` : '—' },
+                { label: 'Anzeigepolitik', value: p.duration.policy === 'halfMonthRounded'
+                    ? 'auf halbe Monate gerundet' : 'ganze Kalendermonate' },
+                { label: 'Dauergrundlage', value: 'Kalendertage' },
+                { label: 'Fertigstellung', value: formatDate(p.duration.completionDate), strong: true },
+              ]}
+              rounding={p.duration.prefix
+                ? `Anzeige weicht vom Modellwert ab; exakt ${
+                    p.duration.exactMonths ? formatDE(p.duration.exactMonths, 4) : '—'}${NNBSP}Monate`
+                : null}
+              runRef={s.mode === 'intern'
+                ? 'Bauzeit-Methodik · DEMO-SC-01 · Staffelstart aus ScheduleModel'
+                : null}
+            />
           </span>
         </div>
 
@@ -277,8 +299,8 @@ export function OfferPanel() {
             inaktiv{NNBSP}·{NNBSP}D-15) — nicht vergleichbar: Median im
             Snapshot nicht deklariert.
           </p>
-          <div className="mt-2 overflow-x-auto">
-            <table className="w-full border-collapse text-small">
+          <div className="a3-tbl-scroll mt-2">
+            <table className="a3-driver-table">
               <caption className="sr-only">
                 Kostentreiber: Beiträge summieren sich exakt zur
                 Zwischensumme der kalkulierten Positionen
@@ -296,8 +318,7 @@ export function OfferPanel() {
                     const richtung = senkt ? 'senkt' : 'erhöht'
                     const shown = present(d.exact.abs())
                     return (
-                      <tr key={d.key} data-driver-id={d.key}
-                          className="border-b border-border-subtle hover:bg-surface-subtle">
+                      <tr key={d.key} data-driver-id={d.key} className="a3-drv">
                         <th scope="row" className="py-2 pr-3 text-left font-regular text-text-secondary">
                           {/* Доступное имя строки называет направление словом,
                               округление и точное значение (DRIVER-004). */}
@@ -314,13 +335,13 @@ export function OfferPanel() {
                               : 'Zuordnung offen'}
                           </span>
                         </th>
-                        <td className="w-8 py-2 pr-2" aria-hidden="true">
+                        <td className="a3-bar-cell" aria-hidden="true">
                           <div
-                            className="h-2 bg-border-strong"
+                            className="a3-bar"
                             style={{ width: `${shown.exact.div(max).mul(100).toNumber()}%` }}
                           />
                         </td>
-                        <td className="numeric py-2 text-right text-text-primary">
+                        <td className="a3-val">
                           <span aria-hidden="true">
                             {senkt ? '−' : ''}{moneyLabel(shown)}
                           </span>
@@ -368,8 +389,8 @@ export function OfferPanel() {
                     формулировка называет базу применения. 0 € без статуса
                     запрещён; величина из каталога, не из константы экрана. */}
                 {!s.regionalfaktorActive && (
-                  <tr className="border-b border-border-subtle">
-                    <td colSpan={3} className="py-2 text-text-muted">
+                  <tr className="a3-drv a3-inactive">
+                    <td colSpan={3}>
                       Regionalfaktor Musterland · nicht berücksichtigt — würde{' '}
                       <span className="numeric">
                         {moneyLabel(present(
@@ -380,12 +401,12 @@ export function OfferPanel() {
                     </td>
                   </tr>
                 )}
-                <tr>
-                  <th scope="row" className="py-2 pr-3 text-left font-medium text-text-primary">
+                <tr className="a3-drv a3-sum">
+                  <th scope="row" className="text-left">
                     {p.result.totalLabel}
                   </th>
                   <td aria-hidden="true" />
-                  <td className="numeric py-2 text-right font-medium text-text-primary">
+                  <td className="a3-val">
                     {moneyLabel(p.result.total)}
                   </td>
                 </tr>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useStore } from '../state/store'
 import { Button, useReducedMotion } from './primitives'
@@ -30,9 +30,26 @@ export function UndoToast() {
   const t = useT()
   const [paused, setPaused] = useState(false)
 
+  // Контракт требует ПАУЗЫ таймера на hover и focus, а не перезапуска.
+  // Прежняя редакция сбрасывала отсчёт заново: пользователь получал не
+  // меньше времени, поэтому дефект был невидим — но «навёл на секунду и
+  // снова восемь секунд» это другое поведение, чем «пока смотрю, время
+  // стоит». Остаток хранится явно.
+  const remaining = useRef(UNDO_WINDOW_MS)
+  const startedAt = useRef(0)
+
   useEffect(() => {
-    if (!toast || paused) return
-    const t = setTimeout(() => s.dismissUndoToast(), UNDO_WINDOW_MS)
+    remaining.current = UNDO_WINDOW_MS
+  }, [toast?.seq])
+
+  useEffect(() => {
+    if (!toast) return
+    if (paused) {
+      remaining.current = Math.max(0, remaining.current - (Date.now() - startedAt.current))
+      return
+    }
+    startedAt.current = Date.now()
+    const t = setTimeout(() => s.dismissUndoToast(), remaining.current)
     return () => clearTimeout(t)
   }, [toast?.seq, paused])
 
