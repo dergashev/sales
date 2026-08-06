@@ -3,7 +3,9 @@ import derived from '../fixtures/derived-prototype.json'
 import { activeBuilding, useStore } from '../state/store'
 import { NNBSP, present } from '../engine/money'
 import { choiceBlocked, isGroupActive, type OptionGroup } from '../engine/options'
-import { RadioCardGroup } from '../components/controls'
+import {
+  FacadeTileGroup, RadioCardGroup, type FacadeMaterial,
+} from '../components/controls'
 import { Button } from '../components/primitives'
 
 /**
@@ -31,6 +33,27 @@ import { Button } from '../components/primitives'
 
 const MARK = derived.marker
 const DERIVED_LABEL = derived.provenanceLabel
+
+/**
+ * Материал и оси фасадных вариантов (DC-20). Плейсхолдер-образцы системы,
+ * не рендеры (D-21). Оси — читаемая сводка выбранного под сеткой.
+ */
+const FACADE_PRESENTATION: Record<string, { material: FacadeMaterial; axes: string[] }> = {
+  plaster: { material: 'putz', axes: ['Material: Putz', 'Farbwelt: hell'] },
+  timber: { material: 'holz', axes: ['Material: Holz vertikal', 'Farbwelt: natur'] },
+  mixedTimber: {
+    material: 'kombi',
+    axes: ['Material: Putz + Holz', 'EG: Putz', 'ab 1. OG: Holz'],
+  },
+  klinker: {
+    material: 'klinker',
+    axes: ['Material: Klinkerriemchen', 'Farbwelt: siehe Klinkerfarbe'],
+  },
+  mixedKlinker: {
+    material: 'kombi',
+    axes: ['Material: Putz + Klinker', 'EG: Putz', 'ab 1. OG: Klinker'],
+  },
+}
 
 function euro(d: Decimal): string {
   if (d.isZero()) return `±${NNBSP}0${NNBSP}€`
@@ -106,12 +129,8 @@ export function OptionChapter({ groups, intro }: {
             )}
 
             <div className="mt-3">
-              <RadioCardGroup
-                legend={g.question}
-                legendHidden
-                value={value}
-                onChange={(v) => s.setKg300(g.id, v)}
-                options={g.choices.map((c) => {
+              {(() => {
+                const mapped = g.choices.map((c) => {
                   const rate = new Decimal(c.rate)
                   const qty = g.denominator === 'BGF_ABOVE_GROUND' ? b.bgfAboveGround
                     : g.denominator === 'BGF_BELOW_GROUND' ? b.bgfBelowGround
@@ -136,8 +155,36 @@ export function OptionChapter({ groups, intro }: {
                         ? 'Für dieses Gebäude gibt es keine Bezugsfläche für diese Leistung'
                         : undefined,
                   }
-                })}
-              />
+                })
+                // Фасад — витринные карточки материала (DC-20): материал
+                // различим до чтения. Остальные группы — плитки DC-40.
+                const facade = g.id === 'fassade'
+                  && mapped.every((m) => FACADE_PRESENTATION[m.value])
+                return facade ? (
+                  <FacadeTileGroup
+                    legend={g.question}
+                    value={value}
+                    onChange={(v) => s.setKg300(g.id, v)}
+                    options={mapped.map((m) => ({
+                      value: m.value,
+                      label: m.title,
+                      consequence: m.consequence,
+                      material: FACADE_PRESENTATION[m.value]!.material,
+                      axes: FACADE_PRESENTATION[m.value]!.axes,
+                      disabled: m.disabled,
+                      disabledReason: m.disabledReason,
+                    }))}
+                  />
+                ) : (
+                  <RadioCardGroup
+                    legend={g.question}
+                    legendHidden
+                    value={value}
+                    onChange={(v) => s.setKg300(g.id, v)}
+                    options={mapped}
+                  />
+                )
+              })()}
             </div>
           </section>
         )

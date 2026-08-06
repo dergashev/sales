@@ -202,11 +202,15 @@ export function RadioCardGroup<T extends string>({
           (components-core §RadioCardGroup). Роли не было вовсе: нативные
           radio работали, но группа как сущность в дереве доступности
           отсутствовала. */}
+      {/* Сетка и плитка — контракт DC-40 (`.a3-ogrid`/`.a3-okc-tile`).
+          Пробел системы, названный вслух: CSS знает выбранность только как
+          `[aria-pressed="true"]` (вкус-тумблер витрины), а радио-вкус
+          крючка не имеет — до его появления (заявка в TASK-15) выбранность
+          доносят две утилиты состояния: бордер и видимость ✓-круга. */}
       <div
         role="radiogroup"
         aria-label={legend}
-        className="mt-2 grid gap-3"
-        style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(22ch, 1fr))' }}
+        className="a3-ogrid mt-2"
       >
         {options.map((o) => {
           const active = o.value === value
@@ -221,10 +225,8 @@ export function RadioCardGroup<T extends string>({
               onMouseEnter={() => !o.disabled && previewStart(o.value)}
               onMouseLeave={previewStop}
               onTouchStart={() => !o.disabled && previewTap(o.value)}
-              className={'relative flex cursor-pointer flex-col gap-1 p-4 pr-7 ' +
-                (active
-                  ? 'border-selected border-selection-border bg-surface-selected'
-                  : 'border border-border-default hover:bg-surface-subtle') +
+              className={'a3-okc-tile block' +
+                (active ? ' border-selection-border' : '') +
                 (o.disabled ? ' cursor-default' : '')}
             >
               <input
@@ -239,43 +241,31 @@ export function RadioCardGroup<T extends string>({
                 onFocus={() => !o.disabled && previewStart(o.value)}
                 onBlur={previewStop}
               />
-              {/* Индикатор: круг + ✓. Размер — существующий токен иконки:
-                  собственный --size-control-indicator ждёт ADR (запись 14). */}
-              <span
-                aria-hidden="true"
-                className={'circle absolute right-3 top-4 inline-flex items-center justify-center text-small ' +
-                  (active
-                    ? 'border-selected border-selection-border text-text-primary'
-                    : 'border border-border-default text-transparent')}
-                style={{ width: 'var(--size-icon-lg)', height: 'var(--size-icon-lg)' }}
-              >
+              {/* checkIndicator контракта — `.a3-ok` (✓-круг системы). */}
+              <span aria-hidden="true"
+                    className={'a3-ok' + (active ? ' opacity-100' : '')}>
                 ✓
               </span>
               <span className={`absolute inset-0 ${FOCUS_RING}`} aria-hidden="true" />
               {/* Каждая подпись — блочный элемент: инлайновые склеиваются
                   (регрессия «PersonenaufzuginklusiveGK 5»). */}
-              <span className={'block text-body ' +
-                (active ? 'font-medium text-text-primary' : 'text-text-primary')}
-                style={{ overflowWrap: 'break-word', hyphens: 'auto' }}>
-                {o.title}
-              </span>
+              <b>{o.title}</b>
               {o.description && (
-                <span id={`${name}-${o.value}-desc`} className="block text-small text-text-secondary">
+                <span id={`${name}-${o.value}-desc`} className="a3-st">
                   {o.description}
                 </span>
               )}
-              <span id={`${name}-${o.value}-conseq`}
-                    className="numeric block text-small text-text-secondary">
+              {/* priceDelta контракта — `.a3-pd`: цена живёт на плитке. */}
+              <span id={`${name}-${o.value}-conseq`} className="a3-pd numeric">
                 {o.consequence}
               </span>
               {o.recommended && (
-                <span className="block text-small font-medium text-text-secondary">
+                <span className="a3-st font-medium">
                   <span aria-hidden="true">◆ </span>Empfohlen
                 </span>
               )}
               {o.disabled && o.disabledReason && (
-                <span id={`${name}-${o.value}-constraint`}
-                      className="block text-small text-text-secondary">
+                <span id={`${name}-${o.value}-constraint`} className="a3-st">
                   Nicht verfügbar · {o.disabledReason}
                 </span>
               )}
@@ -283,6 +273,102 @@ export function RadioCardGroup<T extends string>({
           )
         })}
       </div>
+    </fieldset>
+  )
+}
+
+/* ── FacadeTileGroup · DC-20 ───────────────────────────────────────────── */
+
+/**
+ * Фасадные карточки (DC-20): материал различим ДО чтения подписи —
+ * плитка несёт плейсхолдер-образец материала из системы (a3-f-putz
+ * и родственные классы),
+ * не рендер (D-21: реальные рендеры в прототип не копируются, витрина
+ * говорит это прямо). Семантика — та же радиогруппа, что у DC-40:
+ * взаимоисключающий выбор, switch запрещён (OPTION-008).
+ *
+ * Названные пробелы системы (заявка в TASK-15): радио-крючок выбранности
+ * (CSS знает только `[aria-pressed]`) и слот цены на фасадной плитке —
+ * цена здесь добавлена композицией, по критерию PO «цена на плитке».
+ */
+
+const FACADE_MATERIAL_CLS = {
+  putz: 'a3-f-putz', holz: 'a3-f-holz',
+  klinker: 'a3-f-klinker', kombi: 'a3-f-kombi',
+} as const
+
+export type FacadeMaterial = keyof typeof FACADE_MATERIAL_CLS
+
+export function FacadeTileGroup({ legend, value, onChange, options }: {
+  legend: string
+  value: string
+  onChange: (v: string) => void
+  options: Array<{
+    value: string
+    label: string
+    consequence: string
+    material: FacadeMaterial
+    axes: string[]
+    disabled?: boolean
+    disabledReason?: string
+  }>
+}) {
+  const name = useId()
+  const selected = options.find((o) => o.value === value)
+  return (
+    <fieldset>
+      <legend className="sr-only">{legend}</legend>
+      <div role="radiogroup" aria-label={legend} className="a3-fgrid">
+        {options.map((o) => {
+          const active = o.value === value
+          return (
+            <label
+              key={o.value}
+              className={'a3-fk block' +
+                (active ? ' border-selection-border' : '') +
+                (o.disabled ? ' cursor-default' : '')}
+            >
+              <input
+                type="radio"
+                className="sr-only"
+                name={name}
+                value={o.value}
+                checked={active}
+                disabled={o.disabled}
+                aria-describedby={`${name}-${o.value}-pd` +
+                  (o.disabled && o.disabledReason ? ` ${name}-${o.value}-why` : '')}
+                onChange={() => onChange(o.value)}
+              />
+              <span className={`absolute inset-0 ${FOCUS_RING}`} aria-hidden="true" />
+              <span aria-hidden="true"
+                    className={`a3-img ${FACADE_MATERIAL_CLS[o.material]} a3-f-win`} />
+              <span aria-hidden="true" className={'a3-ok' + (active ? ' opacity-100' : '')}>
+                ✓
+              </span>
+              <span className="a3-nm">{o.label}</span>
+              <span id={`${name}-${o.value}-pd`}
+                    className="numeric block px-2 pb-2 text-small text-text-primary">
+                {o.consequence}
+              </span>
+              {o.disabled && o.disabledReason && (
+                <span id={`${name}-${o.value}-why`}
+                      className="block px-2 pb-2 text-small text-text-secondary">
+                  Nicht verfügbar · {o.disabledReason}
+                </span>
+              )}
+            </label>
+          )
+        })}
+      </div>
+      {/* Оси выбранного варианта — читаемая сводка, не только картинка
+          (правило 8: смысл не передаётся одним цветом/паттерном). */}
+      {selected && (
+        <div className="a3-faxes">
+          {selected.axes.map((a, i) => (
+            <span key={a} className={'a3-tag' + (i === 0 ? ' a3-orange' : '')}>{a}</span>
+          ))}
+        </div>
+      )}
     </fieldset>
   )
 }
