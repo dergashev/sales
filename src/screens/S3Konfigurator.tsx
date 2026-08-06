@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react'
 import { activeBuilding, useStore, COVERAGE_LABEL, LABEL_UG } from '../state/store'
 import { NNBSP } from '../engine/money'
+import { useTx } from '../i18n'
 import type { BuildingInput } from '../engine/calculate'
 import type { CostGroup, CoverageState } from '../engine/calculate'
 import { Decimal } from 'decimal.js'
@@ -65,6 +66,7 @@ function consequenceLabel(delta: Decimal): string {
 
 export function S3Konfigurator() {
   const s = useStore()
+  const tx = useTx()
   const n = s.openChapter
   const title = CHAPTERS[n - 1] ?? CHAPTERS[0]
 
@@ -73,7 +75,7 @@ export function S3Konfigurator() {
       {/* Заголовок экрана — masthead витрины: крупный титул и мета на
           одной базовой линии, как в образце. */}
       <header className="a3-masthead border-b border-border-strong">
-        <h1 className="a3-hero-title">{title}</h1>
+        <h1 className="a3-hero-title">{tx(title)}</h1>
         <p className="a3-cap">Kapitel {n}{NNBSP}von{NNBSP}9 · Konfigurator</p>
       </header>
 
@@ -111,12 +113,12 @@ export function S3Konfigurator() {
       <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-4">
         {n > 1 ? (
           <Button onClick={() => s.openChapterAt(n - 1)}>
-            ← Kapitel {n - 1}: {CHAPTERS[n - 2]}
+            ← Kapitel {n - 1}: {tx(CHAPTERS[n - 2]!)}
           </Button>
         ) : <span />}
         {n < 9 && (
           <Button variant="primary" onClick={() => s.openChapterAt(n + 1)}>
-            Weiter · Kapitel {n + 1}: {CHAPTERS[n]}
+            Weiter · Kapitel {n + 1}: {tx(CHAPTERS[n]!)}
           </Button>
         )}
       </footer>

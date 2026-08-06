@@ -157,9 +157,19 @@ function AppHeader({ t }: { t: (k: Parameters<ReturnType<typeof useT>>[0]) => st
             },
           ]}
         />
+        <SegmentedControl
+          layout="inline"
+          legend="Sprache"
+          value={s.uiLanguage}
+          onChange={(l) => s.setUiLanguage(l)}
+          options={[
+            { value: 'de', label: 'DE' },
+            { value: 'en', label: 'EN' },
+          ]}
+        />
         {!praesentation && (
           <p className="text-small text-text-secondary">
-            {t('shell.prototypeNote')} · {s.uiLanguage.toUpperCase()}
+            {t('shell.prototypeNote')}
           </p>
         )}
       </div>

@@ -1,7 +1,7 @@
 import { useStore } from '../state/store'
 import { NNBSP } from '../engine/money'
 import { CHAPTERS } from '../screens/S3Konfigurator'
-import { useT, type MessageKey } from '../i18n'
+import { useT, useTx, type MessageKey } from '../i18n'
 
 /**
  * Левый сайдбар — навигация оболочки.
@@ -42,6 +42,7 @@ const FOCUS = 'outline-none focus-visible:outline focus-visible:outline-2 ' +
 export function Sidebar({ view, setView }: { view: View; setView: (v: View) => void }) {
   const s = useStore()
   const t = useT()
+  const tx = useTx()
 
   return (
     <nav
@@ -101,7 +102,7 @@ export function Sidebar({ view, setView }: { view: View; setView: (v: View) => v
                           <span aria-hidden="true" className="w-3 shrink-0">
                             {done ? '✓' : open ? '▸' : ''}
                           </span>
-                          <span>{c}</span>
+                          <span>{tx(c)}</span>
                         </button>
                       </li>
                     )
