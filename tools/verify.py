@@ -4460,7 +4460,11 @@ class Verifier:
             # уходят клиенту в том же письме. Собственные мутации показали, что
             # ни длительность (`7,283` → `7,285`), ни дата (`19.11.2027` →
             # `19.12.2027`) ни с чем не сверялись.
-            for m in re.finditer(r'(?<![\d,])(\d{1,3}(?:,\d+)?)\s*[  ]?Monate', line):
+            # `…?` — усечённая запись точного значения (`7,283333… Monate`):
+            # после переписывания README 06.08 цитата точной длительности
+            # существовала ТОЛЬКО в этой форме и не попадала под сверку вовсе —
+            # selftest показал это неприменимой мутацией, а не пойманной.
+            for m in re.finditer(r'(?<![\d,])(\d{1,3}(?:,\d+)?)…?\s*[  ]?Monate', line):
                 if de(m.group(1)) not in self.fx['durations']:
                     self.emit(cls, rel, i, f'{cls}:dur:{m.group(1)}',
                               f'длительность {m.group(1)} Monate не сводится ни с одной '
@@ -6261,9 +6265,9 @@ MUTATIONS = [
      {'GATE-DENSITY'}),
 
     # Спесимены расписания и каталога факторов — те же цитаты фикстуры
-    ('RM-FIXTURE: точная длительность разошлась с ScheduleModel фикстуры',
+    ('RM-FIXTURE: точная длительность (усечённая запись с …) разошлась с ScheduleModel',
      'design-system/README.md',
-     _sub(r'7,283\s*[  ]?Monate', '7,285 Monate'), {'RM-FIXTURE'}),
+     _sub(r'7,283333…\s*[  ]?Monate', '7,285333… Monate'), {'RM-FIXTURE'}),
     ('RM-FIXTURE: дата завершения не из ScheduleModel', 'design-system/README.md',
      _sub(r'Fertigstellung 19\.11\.2027', 'Fertigstellung 19.12.2027'), {'RM-FIXTURE'}),
     ('OUT-MONEY: множитель драйвера GK 5 разошёлся с каталогом фикстуры',

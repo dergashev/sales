@@ -224,8 +224,8 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-hb-total .a3-hb-unit{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line)}
 .a3-hb-cap{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight);color:var(--color-text-secondary)}
 .a3-hb-sub{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);font-variant-numeric:tabular-nums}
-.a3-ghost{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-body-weight);color:var(--color-text-secondary);font-variant-numeric:tabular-nums;opacity:0;transition:opacity var(--motion-reveal) var(--motion-easing-standard) var(--motion-delay-hover-preview)}
-.a3-ghost.a3-show{opacity:1;transition-delay:.2s}
+.a3-ghost-slot>.a3-ghost{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-body-weight);color:var(--color-text-secondary);font-variant-numeric:tabular-nums;opacity:0;transition:opacity var(--motion-reveal) var(--motion-easing-standard) var(--motion-delay-hover-preview)}
+.a3-ghost-slot>.a3-ghost.a3-show{opacity:1;transition-delay:.2s}
 .a3-ghost-slot{min-height:var(--size-ghost-row)}
 .a3-delta-slot{min-height:var(--size-delta-row)}
 .a3-iv-sub{display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap}

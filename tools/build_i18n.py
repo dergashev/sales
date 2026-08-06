@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Собирает словарь EN из поставки Codex — механически, без ручной копии.
 
-Источник — docs/audit/verdicts/content/i18n-en-260806.md: таблица
+Источник — docs/audit/verdicts/content/i18n-en-*.md (список SOURCES): таблица
 `key · de · en · где · числовое · длина`, которую Codex подготовил по
 заданию № 07 ровно для этого шага. Выход — src/i18n/generated.ts.
 
@@ -18,7 +18,13 @@ import pathlib
 import re
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-SRC = ROOT / 'docs/audit/verdicts/content/i18n-en-260806.md'
+# Поставки читаются все по списку; вторая (задание № 14) подхватится, как
+# только появится. Дубль ключа МЕЖДУ поставками — та же ошибка, что внутри
+# одной: молча выбрать одно из двух значений нельзя.
+SOURCES = [
+    ROOT / 'docs/audit/verdicts/content/i18n-en-260806.md',
+    ROOT / 'docs/audit/verdicts/content/i18n-en-2-260806.md',
+]
 OUT = ROOT / 'src/i18n/generated.ts'
 
 ROW = re.compile(r'^\|\s*`([^`]+)`\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|')
@@ -40,22 +46,27 @@ def unescape(cell: str) -> str:
 
 
 def main() -> None:
-    text = SRC.read_text(encoding='utf-8')
     de: dict[str, str] = {}
     en: dict[str, str] = {}
-    for line in text.split('\n'):
-        m = ROW.match(line)
-        if not m:
+    origin: dict[str, str] = {}
+    for src in SOURCES:
+        if not src.exists():
             continue
-        key, de_val, en_val = m.group(1), unescape(m.group(2)), unescape(m.group(3))
-        if not key or key == 'key':
-            continue
-        # Дубль ключа — дефект поставки: молча перезаписать значило бы
-        # выбрать одно из двух значений наугад.
-        if key in de:
-            raise SystemExit(f'дубль ключа в поставке: {key}')
-        de[key] = de_val
-        en[key] = en_val
+        for line in src.read_text(encoding='utf-8').split('\n'):
+            m = ROW.match(line)
+            if not m:
+                continue
+            key, de_val, en_val = m.group(1), unescape(m.group(2)), unescape(m.group(3))
+            if not key or key == 'key':
+                continue
+            # Дубль ключа — дефект поставки: молча перезаписать значило бы
+            # выбрать одно из двух значений наугад.
+            if key in de:
+                raise SystemExit(
+                    f'дубль ключа: {key} ({origin[key]} ↔ {src.name})')
+            de[key] = de_val
+            en[key] = en_val
+            origin[key] = src.name
 
     if len(de) < 300:
         raise SystemExit(f'подозрительно мало ключей: {len(de)} — формат таблицы изменился?')
