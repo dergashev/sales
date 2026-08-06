@@ -8,6 +8,7 @@ import { Button, NumericField } from '../components/primitives'
 import { RadioCardGroup, SegmentedControl } from '../components/controls'
 import { ScheduleGantt } from '../components/ScheduleGantt'
 import { ChapterBuildings } from './ChapterBuildings'
+import { ChapterKg300 } from './ChapterKg300'
 import demo from '../fixtures/demo-0001.json'
 import { present } from '../engine/money'
 
@@ -31,8 +32,8 @@ import { present } from '../engine/money'
  */
 
 export const CHAPTERS = [
-  'Gebäude & Umfang', 'Leistungsumfang', 'Flächen im Detail', 'Energie & Qualität',
-  'Konstruktion & Fassade', 'Ausbau & Technik', 'Baugrund & Erschließung',
+  'Gebäude & Umfang', 'Leistungen KG 300', 'Leistungsabgrenzung', 'Energie & Qualität',
+  'Flächen im Detail', 'Ausbau & Technik', 'Baugrund & Erschließung',
   'Leistungsabgrenzung', 'Termine & Kommerzielles',
 ] as const
 
@@ -81,11 +82,12 @@ export function S3Konfigurator() {
           главу целиком. */}
       <div className="py-5">
         {n === 1 && <ChapterBuildings />}
-        {n === 2 && <ChapterUmfang />}
-        {n === 3 && <ChapterFlaechen />}
+        {n === 2 && <ChapterKg300 />}
+        {n === 3 && <ChapterUmfang />}
         {n === 4 && <ChapterEnergie />}
+        {n === 5 && <ChapterFlaechen />}
         {n === 9 && <ChapterTermine />}
-        {![1, 2, 3, 4, 9].includes(n) && <ChapterParked title={title} />}
+        {![1, 2, 3, 4, 5, 9].includes(n) && <ChapterParked title={title} />}
       </div>
 
       {/* Один следующий шаг всегда на экране (DC-27): маршрут, не принуждение. */}

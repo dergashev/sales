@@ -9,6 +9,8 @@ import {
   type CostGroup, type BuildingResult,
 } from '../engine/calculate'
 import { present, rate, NNBSP, type Displayed, type Rate } from '../engine/money'
+import { defaultOptionChoices, optionDrivers, KG300_GROUPS } from '../engine/options'
+import derivedFx from '../fixtures/derived-prototype.json'
 import { modelDuration, presentDuration, type DurationDisplay } from '../engine/schedule'
 
 /**
@@ -163,6 +165,19 @@ type Store = {
   included: Record<string, boolean>
   /** Метрики и оси здания подтверждены — шаг вниз открыт. */
   buildingConfirmed: Record<string, boolean>
+  /**
+   * Выбор опций KG 300 по каждому зданию. Опции принадлежат зданию, а не
+   * предложению: у офиса нет балконов, и общий выбор был бы неверным для
+   * обоих.
+   */
+  kg300: Record<string, Record<string, string>>
+  /**
+   * Откуда взялся выбор: `Standard` — умолчание каталога, `aus Dokument` —
+   * найдено в клиентской документации (тогда рядом стоит ссылка на файл),
+   * `manuell erfasst` — переключено вручную. Провенанс обязателен: выбор
+   * без источника неотличим от догадки.
+   */
+  kg300Provenance: Record<string, Record<string, string>>
   coverage: Coverage
   fields: { wfl: FieldState; bgfOber: FieldState; we: FieldState }
   journal: JournalEvent[]
@@ -288,6 +303,8 @@ type Store = {
   /** Включить/исключить здание из предложения — событие журнала. */
   toggleBuildingIncluded: (id: string) => void
   confirmBuilding: (id: string) => void
+  /** Выбрать опцию KG 300 у активного здания — событие журнала с дельтой. */
+  setKg300: (groupId: string, value: string) => void
   /** Все включённые здания подтверждены — шаг вниз к сервисам открыт. */
   allBuildingsConfirmed: () => boolean
   setUiLanguage: (l: 'de' | 'en') => void
@@ -324,9 +341,16 @@ function includedBuildings(
   return Object.values(s.buildings).filter((b) => s.included[b.id])
 }
 
+/** Площадь S здания — выведенная величина (D-22), помечена на экране. */
+function bgfSOf(id: string): Decimal {
+  const b = (derivedFx.buildings as Record<string, { bgfSAboveGround?: { value: string | null } }>)[id]
+  const v = b?.bgfSAboveGround?.value
+  return v ? new Decimal(v) : new Decimal(0)
+}
+
 function computeProjection(
   s: Pick<Store, 'buildings' | 'activeBuildingId' | 'included' | 'coverage'
-    | 'fields' | 'esConfirmed' | 'regionalfaktorActive'>,
+    | 'fields' | 'esConfirmed' | 'regionalfaktorActive' | 'kg300'>,
 ): Projection {
   const CATALOG = withRegionalFactor(s.regionalfaktorActive)
   const list = includedBuildings(s)
@@ -337,11 +361,24 @@ function computeProjection(
   // как среднее из средних (правило 39). Драйверы объединяются, сохраняя
   // уникальность ID: вклад одного здания не смешивается с другим.
   const perBuilding = list.map((b) => calculateBuilding(b, CATALOG, s.coverage))
-  const total = perBuilding.reduce((a, r) => a.plus(r.total.exact), new Decimal(0))
+  // Вклады опций KG 300 идут ПОСЛЕ базового блока и до регион-фактора не
+  // домножаются: фактор применяется к Bauwerk по объявленному перечню
+  // §2.3, а опции в нём не названы. Приписать их туда значило бы
+  // расширить базу фактора собственным решением.
+  const optDrivers = list.flatMap((b, i) => optionDrivers(
+    b, s.kg300[b.id] ?? {}, bgfSOf(b.id),
+  ).map((d) => ({ ...d, key: list.length > 1 ? `${list[i]!.id}:${d.key}` : d.key })))
+  const optSum = optDrivers.reduce((a, d) => a.plus(d.exact), new Decimal(0))
+  const total = perBuilding
+    .reduce((a, r) => a.plus(r.total.exact), new Decimal(0))
+    .plus(optSum)
   const result: BuildingResult = {
     buildingId: list.map((b) => b.id).join('+'),
-    drivers: perBuilding.flatMap((r, i) =>
-      r.drivers.map((d) => ({ ...d, key: list.length > 1 ? `${list[i]!.id}:${d.key}` : d.key }))),
+    drivers: [
+      ...perBuilding.flatMap((r, i) =>
+        r.drivers.map((d) => ({ ...d, key: list.length > 1 ? `${list[i]!.id}:${d.key}` : d.key }))),
+      ...optDrivers,
+    ],
     bauwerk: perBuilding.reduce((a, r) => a.plus(r.bauwerk), new Decimal(0)),
     total: present(total),
     totalLabel: perBuilding[0]!.totalLabel,
@@ -457,6 +494,20 @@ const store = createStore<Store>((set, get) => {
     // видимым решением пользователя, а не молчаливым умолчанием.
     included: { [INITIAL_BUILDING.id]: true, [INITIAL_BUILDING_B.id]: false },
     buildingConfirmed: {},
+    // Умолчания приходят из каталога; там, где каталог говорит
+    // `documented`, провенанс сразу «aus Dokument» со ссылкой на файл —
+    // это пункт 8 сценария: найденное в документах предвыбрано, но
+    // остаётся переключаемым.
+    kg300: {
+      [INITIAL_BUILDING.id]: defaultOptionChoices(),
+      [INITIAL_BUILDING_B.id]: defaultOptionChoices(),
+    },
+    kg300Provenance: {
+      [INITIAL_BUILDING.id]: Object.fromEntries(
+        KG300_GROUPS.map((g) => [g.id, g.documented ? 'aus Dokument' : 'Standard'])),
+      [INITIAL_BUILDING_B.id]: Object.fromEntries(
+        KG300_GROUPS.map((g) => [g.id, g.documented ? 'aus Dokument' : 'Standard'])),
+    },
     coverage: INITIAL_COVERAGE,
     fields: {
       wfl: { value: D(fx.areas.wflWoFlV!), provenance: 'aus Dokument' },
@@ -941,6 +992,44 @@ const store = createStore<Store>((set, get) => {
         set({
           activeDelta: {
             label: `${id} ${next ? 'aufgenommen' : 'entfernt'}`,
+            deltaExact: delta,
+            percent: delta.div(before).mul(100),
+          },
+        })
+      }
+    },
+
+    setKg300: (groupId, value) => {
+      const s = get()
+      const id = s.activeBuildingId
+      const prev = s.kg300[id]?.[groupId]
+      if (prev === value) return
+      const group = KG300_GROUPS.find((g) => g.id === groupId)
+      if (!group) return
+      const prevProv = s.kg300Provenance[id]?.[groupId] ?? 'Standard'
+      const before = s.projection().result.total.exact
+      const write = (v: string, prov: string) => set((x) => ({
+        kg300: { ...x.kg300, [id]: { ...x.kg300[id], [groupId]: v } },
+        kg300Provenance: { ...x.kg300Provenance, [id]: { ...x.kg300Provenance[id], [groupId]: prov } },
+      }))
+      // Ручное переключение меняет провенанс: значение больше не «из
+      // документа», даже если совпадает с ним. Иначе продавец не отличит
+      // подтверждённое документом от собственного решения.
+      write(value, 'manuell erfasst')
+      const after = get().projection().result.total.exact
+      const delta = after.minus(before)
+      const choice = group.choices.find((c) => c.value === value)
+      apply({
+        kind: 'option.selected',
+        label: `${group.label}: ${choice?.label ?? value} (${id})`,
+        deltaExact: delta.isZero() ? null : delta,
+        inverse: () => write(prev ?? group.default, prevProv),
+        forward: () => write(value, 'manuell erfasst'),
+      })
+      if (!delta.isZero()) {
+        set({
+          activeDelta: {
+            label: `${group.label}: ${choice?.label ?? value}`,
             deltaExact: delta,
             percent: delta.div(before).mul(100),
           },

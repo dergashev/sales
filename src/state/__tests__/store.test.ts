@@ -519,3 +519,58 @@ describe('Уровень зданий: охват предложения (сце
   })
 })
 
+
+describe('Опции KG 300 (сценарий п. 7 и 8)', () => {
+  it('умолчания не меняют фикстурный итог: стандарт стоит ноль', () => {
+    // Если бы умолчание несло абсолютную ставку, итог менялся бы самим
+    // фактом открытия экрана — и фикстура перестала бы воспроизводиться.
+    expect(useStore.getState().projection().result.total.exact.toFixed(2))
+      .toBe('3817835.00')
+  })
+
+  it('найденное в документации предвыбрано и несёт ссылку на файл (п. 8)', () => {
+    const s = useStore.getState()
+    expect(s.kg300Provenance['DEMO-B-A']!.egBauweise).toBe('aus Dokument')
+    expect(s.kg300Provenance['DEMO-B-A']!.fassade).toBe('Standard')
+    expect(s.kg300['DEMO-B-A']!.egBauweise).toBe('holz')
+  })
+
+  it('ручное переключение меняет провенанс и пишет дельту', () => {
+    useStore.getState().setKg300('egBauweise', 'massiv')
+    const s = useStore.getState()
+    expect(s.kg300Provenance['DEMO-B-A']!.egBauweise).toBe('manuell erfasst')
+    // 2.000 m² BGF R × 65 €/m²
+    expect(s.journal.at(-1)!.deltaExact!.toFixed(2)).toBe('130000.00')
+    expect(s.projection().result.total.exact.toFixed(2)).toBe('3947835.00')
+  })
+
+  it('вклад опции — отдельный драйвер с уникальным ID и scope KG 300', () => {
+    useStore.getState().setKg300('fassade', 'klinker')
+    const ds = useStore.getState().projection().result.drivers
+    const d = ds.find((x) => x.key === 'kg300_fassade_klinker')!
+    expect(d.exact.toFixed(2)).toBe('220000.00')   // 2.000 × 110
+    expect(d.scopeRefs).toEqual(['KG 300'])
+    const sum = ds.reduce((a, x) => a.plus(x.exact), new Decimal(0))
+    expect(sum.equals(useStore.getState().projection().result.total.exact)).toBe(true)
+  })
+
+  it('скрытая группа не участвует в цене: цвет клинкера без клинкера', () => {
+    const st = () => useStore.getState()
+    st().setKg300('klinkerFarbe', 'weissgrau')
+    // Фасад ещё деревянный — цвет клинкера в цену не входит.
+    expect(st().projection().result.total.exact.toFixed(2)).toBe('3817835.00')
+    st().setKg300('fassade', 'klinker')
+    // Теперь входит: 2.000 × (110 + 14).
+    expect(st().projection().result.total.exact.toFixed(2)).toBe('4065835.00')
+  })
+
+  it('отмена возвращает и выбор, и его провенанс', () => {
+    const st = () => useStore.getState()
+    st().setKg300('garage', 'nein')
+    expect(st().kg300Provenance['DEMO-B-A']!.garage).toBe('manuell erfasst')
+    st().undo()
+    expect(st().kg300['DEMO-B-A']!.garage).toBe('ja')
+    expect(st().kg300Provenance['DEMO-B-A']!.garage).toBe('aus Dokument')
+    expect(st().projection().result.total.exact.toFixed(2)).toBe('3817835.00')
+  })
+})

@@ -4,14 +4,290 @@
   "marker": "⚙",
   "buildings": {
     "DEMO-B-A": {
-      "bgfSAboveGround": { "value": "160.00", "basis": "≈ 8 % der BGF R — Balkone und Loggien beim MFH" },
-      "nrf": { "value": "1700.00", "basis": "≈ 85 % der BGF R+S — üblicher Konstruktionsflächenanteil" },
-      "nufDin277": { "value": null, "basis": "beim Wohngebäude wird WFL nach WoFlV geführt, nicht NUF" }
+      "bgfSAboveGround": {
+        "value": "160.00",
+        "basis": "≈ 8 % der BGF R — Balkone und Loggien beim MFH"
+      },
+      "nrf": {
+        "value": "1700.00",
+        "basis": "≈ 85 % der BGF R+S — üblicher Konstruktionsflächenanteil"
+      },
+      "nufDin277": {
+        "value": null,
+        "basis": "beim Wohngebäude wird WFL nach WoFlV geführt, nicht NUF"
+      }
     },
     "DEMO-B-B": {
-      "bgfSAboveGround": { "value": "0.00", "basis": "Bürogebäude ohne Balkone" },
-      "nrf": { "value": "1020.00", "basis": "≈ 85 % der BGF R+S" },
-      "wflWoFlV": { "value": null, "basis": "beim Bürogebäude gilt NUF nach DIN 277, nicht WFL" }
+      "bgfSAboveGround": {
+        "value": "0.00",
+        "basis": "Bürogebäude ohne Balkone"
+      },
+      "nrf": {
+        "value": "1020.00",
+        "basis": "≈ 85 % der BGF R+S"
+      },
+      "wflWoFlV": {
+        "value": null,
+        "basis": "beim Bürogebäude gilt NUF nach DIN 277, nicht WFL"
+      }
     }
+  },
+  "kg300": {
+    "$comment": "Ставки опций KG 300. Выведены по ориентирам BKI решением D-22 и НЕ откалиброваны. Модель: базовая ставка K_base описывает СТАНДАРТНЫЙ объём (Holz-Modulbau, UG с Tiefgarage), поэтому значение по умолчанию не создаёт вклада вовсе — цену меняет только отклонение. Так фикстурный итог остаётся воспроизводимым, а каждый вклад имеет причину.",
+    "groups": [
+      {
+        "id": "erdarbeiten",
+        "label": "Erdarbeiten",
+        "question": "Erdarbeiten in das Angebot aufnehmen?",
+        "denominator": "BGF_BELOW_GROUND",
+        "default": "ja",
+        "documented": true,
+        "documentRef": "Bauantrag_Mappe_Muster.pdf · Baugrubenaushub im Leistungsverzeichnis",
+        "choices": [
+          {
+            "value": "ja",
+            "label": "aufnehmen",
+            "rate": "0",
+            "basis": "im Standardumfang der Basisrate enthalten"
+          },
+          {
+            "value": "nein",
+            "label": "nicht aufnehmen",
+            "rate": "-95",
+            "basis": "Aushub und Entsorgung je m² BGF UG"
+          }
+        ]
+      },
+      {
+        "id": "bodenplatte",
+        "label": "Bodenplatte",
+        "question": "Bodenplatte in das Angebot aufnehmen?",
+        "denominator": "BGF_BELOW_GROUND",
+        "default": "ja",
+        "documented": false,
+        "choices": [
+          {
+            "value": "ja",
+            "label": "aufnehmen",
+            "rate": "0",
+            "basis": "im Standardumfang enthalten"
+          },
+          {
+            "value": "nein",
+            "label": "nicht aufnehmen",
+            "rate": "-150",
+            "basis": "Stahlbetonplatte inkl. Bewehrung je m² BGF UG"
+          }
+        ]
+      },
+      {
+        "id": "ugVariante",
+        "label": "Untergeschoss",
+        "question": "Welcher Leistungsumfang im Untergeschoss?",
+        "denominator": "BGF_BELOW_GROUND",
+        "default": "rohbauAusbau",
+        "documented": true,
+        "documentRef": "Grundrisse_Muster_V2.pdf · Tiefgarage im UG",
+        "choices": [
+          {
+            "value": "rohbauAusbau",
+            "label": "Rohbau und Ausbau",
+            "rate": "0",
+            "basis": "Standard: UG-Rate bereits in der Kalkulation"
+          },
+          {
+            "value": "nurAusbau",
+            "label": "nur Ausbau",
+            "rate": "-714",
+            "basis": "Rohbauanteil der UG-Rate entfaellt"
+          },
+          {
+            "value": "keins",
+            "label": "kein Untergeschoss im Angebot",
+            "rate": "-1190",
+            "basis": "die volle UG-Rate entfaellt"
+          }
+        ]
+      },
+      {
+        "id": "balkone",
+        "label": "Balkone",
+        "question": "Balkone in das Angebot aufnehmen?",
+        "denominator": "BGF_S",
+        "default": "ja",
+        "documented": true,
+        "documentRef": "Grundrisse_Muster_V2.pdf · Balkone und Loggien, WoFlV §4",
+        "choices": [
+          {
+            "value": "ja",
+            "label": "aufnehmen",
+            "rate": "0",
+            "basis": "Preis folgt aus dem gewaehlten Typ"
+          },
+          {
+            "value": "nein",
+            "label": "nicht aufnehmen",
+            "rate": "-820",
+            "basis": "die im Standard enthaltene Balkonkonstruktion entfaellt"
+          }
+        ]
+      },
+      {
+        "id": "balkonTyp",
+        "label": "Balkontyp",
+        "question": "Welche Balkonkonstruktion?",
+        "denominator": "BGF_S",
+        "default": "diagonal",
+        "documented": false,
+        "dependsOn": {
+          "group": "balkone",
+          "values": [
+            "ja"
+          ]
+        },
+        "choices": [
+          {
+            "value": "diagonal",
+            "label": "Balkone mit Diagonalabstuetzung",
+            "rate": "0",
+            "basis": "Standardkonstruktion, in der Basisrate enthalten"
+          },
+          {
+            "value": "stuetzen",
+            "label": "Balkone auf Stuetzen",
+            "rate": "140",
+            "basis": "Mehrpreis gegenueber Diagonalabstuetzung, Gruendung je Stuetze"
+          },
+          {
+            "value": "konsole",
+            "label": "Betonkonsolen",
+            "rate": "330",
+            "basis": "Mehrpreis gegenueber Diagonalabstuetzung, thermische Trennung"
+          }
+        ],
+        "$comment": "Ставки ОТНОСИТЕЛЬНЫ стандартной конструкции. Базовая ставка описывает стандартный объём, а балконы документированы как существующие — значит стандарт их уже содержит, и умолчание обязано стоить ноль. Абсолютная ставка у умолчания меняла бы фикстурный итог самим фактом открытия экрана."
+      },
+      {
+        "id": "egBauweise",
+        "label": "Erdgeschoss",
+        "question": "Bauweise im Erdgeschoss?",
+        "denominator": "BGF_ABOVE_GROUND",
+        "default": "holz",
+        "documented": true,
+        "documentRef": "Bauantrag_Mappe_Muster.pdf · Holzbauweise im Erlaeuterungsbericht",
+        "choices": [
+          {
+            "value": "holz",
+            "label": "Holzbau",
+            "rate": "0",
+            "basis": "Basisrate ist aus Holz-Modulbau abgeleitet"
+          },
+          {
+            "value": "massiv",
+            "label": "Massivbau",
+            "rate": "65",
+            "basis": "Mehrpreis massives EG je m² BGF R"
+          }
+        ]
+      },
+      {
+        "id": "garage",
+        "label": "Garage im Erdgeschoss",
+        "question": "Garage bzw. Stellplaetze im EG aufnehmen?",
+        "denominator": "BGF_ABOVE_GROUND",
+        "default": "ja",
+        "documented": true,
+        "documentRef": "Grundrisse_Muster_V2.pdf · Stellplaetze im Erdgeschoss",
+        "choices": [
+          {
+            "value": "ja",
+            "label": "aufnehmen",
+            "rate": "0",
+            "basis": "im Standardumfang enthalten"
+          },
+          {
+            "value": "nein",
+            "label": "nicht aufnehmen",
+            "rate": "-38",
+            "basis": "ohne Garagenausbau je m² BGF R"
+          }
+        ]
+      },
+      {
+        "id": "fassade",
+        "label": "Fassade",
+        "question": "Welche Fassade?",
+        "denominator": "BGF_ABOVE_GROUND",
+        "default": "timber",
+        "documented": false,
+        "choices": [
+          {
+            "value": "plaster",
+            "label": "Putz",
+            "rate": "-45",
+            "basis": "guenstiger als Holzfassade je m² BGF R"
+          },
+          {
+            "value": "timber",
+            "label": "Holz",
+            "rate": "0",
+            "basis": "Basisrate enthaelt die Holzfassade"
+          },
+          {
+            "value": "mixedTimber",
+            "label": "Putz im EG, Holz ab 1.OG",
+            "rate": "-12",
+            "basis": "Putzanteil nur im EG"
+          },
+          {
+            "value": "klinker",
+            "label": "Klinker",
+            "rate": "110",
+            "basis": "Verblendmauerwerk je m² BGF R"
+          },
+          {
+            "value": "mixedKlinker",
+            "label": "Putz im EG, Klinker ab 1.OG",
+            "rate": "82",
+            "basis": "Klinkeranteil ohne EG"
+          }
+        ]
+      },
+      {
+        "id": "klinkerFarbe",
+        "label": "Klinkerfarbe",
+        "question": "Farbe des Klinkers?",
+        "denominator": "BGF_ABOVE_GROUND",
+        "default": "rotbunt",
+        "documented": false,
+        "dependsOn": {
+          "group": "fassade",
+          "values": [
+            "klinker",
+            "mixedKlinker"
+          ]
+        },
+        "choices": [
+          {
+            "value": "rotbunt",
+            "label": "rotbunt",
+            "rate": "0",
+            "basis": "Standardsortiment ohne Aufpreis"
+          },
+          {
+            "value": "anthrazit",
+            "label": "anthrazit",
+            "rate": "9",
+            "basis": "Sondersortiment"
+          },
+          {
+            "value": "weissgrau",
+            "label": "weissgrau",
+            "rate": "14",
+            "basis": "Sondersortiment mit Verguetung"
+          }
+        ]
+      }
+    ]
   }
 }
