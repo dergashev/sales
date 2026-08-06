@@ -1,0 +1,102 @@
+{
+  "$comment": "Список Opportunities для корневого экрана. Синтетика прототипа: имена, города и владельцы вымышлены и не соответствуют ни одному реальному объекту (D-21). Полностью проработан ОДИН — DEMO-0001: он ведёт в конвейер и считается настоящей арифметикой из demo-0001.json. Остальные существуют, чтобы фильтры и поиск можно было проверить на непустом множестве; открывая их, продукт честно говорит, что дальше в прототипе не проработано, а не показывает выдуманный расчёт. Поле provenance у каждого числа обязательно (D-22).",
+  "owners": ["A. Muster", "B. Beispiel", "C. Probe"],
+  "items": [
+    {
+      "id": "DEMO-0001",
+      "name": "Musterprojekt Nordfeld",
+      "country": "Deutschland",
+      "city": "Musterstadt",
+      "owner": "A. Muster",
+      "stage": "in Vorbereitung",
+      "meetingAt": "morgen 14:00",
+      "buildings": 2,
+      "documents": 3,
+      "worked": true
+    },
+    {
+      "id": "DEMO-0002",
+      "name": "Musterquartier Südhang",
+      "country": "Deutschland",
+      "city": "Beispielheim",
+      "owner": "B. Beispiel",
+      "stage": "neu aus HubSpot",
+      "meetingAt": null,
+      "buildings": 4,
+      "documents": 7,
+      "worked": false
+    },
+    {
+      "id": "DEMO-0003",
+      "name": "Musterhöfe Westpark",
+      "country": "Deutschland",
+      "city": "Musterstadt",
+      "owner": "C. Probe",
+      "stage": "in Vorbereitung",
+      "meetingAt": "Donnerstag 09:30",
+      "buildings": 1,
+      "documents": 2,
+      "worked": false
+    },
+    {
+      "id": "DEMO-0004",
+      "name": "Musteranlage Seeblick",
+      "country": "Österreich",
+      "city": "Beispielbach",
+      "owner": "A. Muster",
+      "stage": "versendet",
+      "meetingAt": null,
+      "buildings": 3,
+      "documents": 5,
+      "worked": false
+    },
+    {
+      "id": "DEMO-0005",
+      "name": "Musterensemble Talgrund",
+      "country": "Österreich",
+      "city": "Musterau",
+      "owner": "B. Beispiel",
+      "stage": "neu aus HubSpot",
+      "meetingAt": null,
+      "buildings": 2,
+      "documents": 4,
+      "worked": false
+    },
+    {
+      "id": "DEMO-0006",
+      "name": "Musterzeile Bahnhofsnord",
+      "country": "Schweiz",
+      "city": "Beispielwil",
+      "owner": "C. Probe",
+      "stage": "in Vorbereitung",
+      "meetingAt": "nächste Woche",
+      "buildings": 5,
+      "documents": 9,
+      "worked": false
+    },
+    {
+      "id": "DEMO-0007",
+      "name": "Musterpark Ostfeld",
+      "country": "Deutschland",
+      "city": "Beispielheim",
+      "owner": "A. Muster",
+      "stage": "versendet",
+      "meetingAt": null,
+      "buildings": 2,
+      "documents": 6,
+      "worked": false
+    },
+    {
+      "id": "DEMO-0008",
+      "name": "Musterkarree Altstadt",
+      "country": "Schweiz",
+      "city": "Musterau",
+      "owner": "B. Beispiel",
+      "stage": "neu aus HubSpot",
+      "meetingAt": null,
+      "buildings": 1,
+      "documents": 3,
+      "worked": false
+    }
+  ]
+}

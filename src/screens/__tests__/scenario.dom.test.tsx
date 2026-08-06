@@ -22,22 +22,40 @@ beforeEach(() => __resetStoreForTests())
 
 const nav = (name: RegExp) => screen.getAllByRole('button', { name })[0]!
 
+/**
+ * Путь до конвейера: корень → карточка → разрешить конфликт →
+ * подтвердить параметры → создать Option → открыть его. Раньше конвейер
+ * был корнем продукта; теперь он живёт внутри Option, и каждый тест,
+ * которому нужны панели, обязан пройти этот путь целиком — иначе он
+ * проверяет экран, до которого пользователь не дошёл.
+ */
+async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
+  await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
+  await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
+  await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
+  await user.click(screen.getByRole('button', { name: 'Öffnen' }))
+}
+
 describe('Сквозной сценарий продажи', () => {
   it('доходит от очереди до отправки, не теряя состояние между экранами', async () => {
     const user = userEvent.setup()
     render(<App />)
+    await enterPipeline(user)
 
     // Конфигуратор: смена энергостандарта — первое событие журнала.
     await user.click(nav(/Konfigurator/))
     await user.click(nav(/Energie & Qualität/))
     const es = await screen.findByRole('radiogroup', { name: 'Energiestandard' })
     await user.click(within(es).getAllByRole('radio')[2]!)
-    expect(useStore.getState().journal).toHaveLength(1)
+    // Путь до конвейера сам оставляет след: решённый конфликт,
+    // подтверждённые параметры, созданный Option — три события до этого.
+    expect(useStore.getState().journal).toHaveLength(4)
 
     // Уход на другой экран и возврат: состояние переживает переход.
     await user.click(nav(/Vorbereitung/))
     await user.click(nav(/Konfigurator/))
-    expect(useStore.getState().journal).toHaveLength(1)
+    expect(useStore.getState().journal).toHaveLength(4)
     expect(useStore.getState().building.energiestandard).toBe('EH_40')
 
     // Гейт открывается изнутри потока, а не обходится.
@@ -49,12 +67,13 @@ describe('Сквозной сценарий продажи', () => {
     await user.click(nav(/Variantenvergleich/))
     await user.click(nav(/^S5|Export/))
     expect(screen.getByRole('button', { name: /Preflight/ })).toBeInTheDocument()
-    expect(useStore.getState().journal).toHaveLength(2)
+    expect(useStore.getState().journal).toHaveLength(5)
   })
 
   it('глава 9 показывает Bauzeit обеими формами: полосой и таблицей', async () => {
     const user = userEvent.setup()
     render(<App />)
+    await enterPipeline(user)
     await user.click(nav(/Konfigurator/))
     await user.click(nav(/Termine & Kommerzielles/))
 
@@ -71,16 +90,22 @@ describe('Сквозной сценарий продажи', () => {
   })
 
   it('интервал точности показан деньгами, а не только процентом (DC-3)', async () => {
+    const user = userEvent.setup()
     render(<App />)
-    // ± 22 % от точного 3.817.835 → края 2.977.911,30 и 4.657.758,70,
-    // округление денег до тысячи. Считается от ТОЧНОГО, не от показанного.
-    expect(screen.getByText(/2\.978\.000/)).toBeInTheDocument()
-    expect(screen.getByText(/4\.658\.000/)).toBeInTheDocument()
+    await enterPipeline(user)
+    // Интервал уже сужен: путь до конвейера включает разрешение конфликта
+    // WFL, а оно делает значение подтверждённым клиентом — −5 Pp (D-19).
+    // Поэтому края считаются от ± 17 %, а не от исходных ± 22 %: полоса
+    // показывает ТЕКУЩУЮ точность, и это ровно то поведение, ради которого
+    // интервал показан деньгами.
+    expect(screen.getByText(/3\.169\.000/)).toBeInTheDocument()
+    expect(screen.getByText(/4\.467\.000/)).toBeInTheDocument()
   })
 
   it('скидка: слайдер называет последствие, сторож маржи — текстом (DC-25)', async () => {
     const user = userEvent.setup()
     render(<App />)
+    await enterPipeline(user)
     await user.click(nav(/^S5|Export/))
 
     const slider = screen.getByRole('slider', { name: /Rabatt in Prozent/ })
@@ -94,6 +119,7 @@ describe('Сквозной сценарий продажи', () => {
   it('маржа не существует в презентации, а не скрыта стилем (D-01)', async () => {
     const user = userEvent.setup()
     render(<App />)
+    await enterPipeline(user)
     await user.click(screen.getByRole('button', { name: 'Klassifikation bestätigen' }))
     const modus = screen.getByRole('radiogroup', { name: 'Modus' })
     await user.click(within(modus).getAllByRole('radio')[1]!)
@@ -104,6 +130,7 @@ describe('Сквозной сценарий продажи', () => {
   it('кольцо готовности считает пункты, а не проценты (DC-26)', async () => {
     const user = userEvent.setup()
     render(<App />)
+    await enterPipeline(user)
     await user.click(nav(/^S1|Projekte/))
     // Скелетон уходит через 700 мс — ждём появления карточки.
     const ring = await screen.findByRole('group', { name: /Bereitschaft/ }, { timeout: 3000 })
@@ -114,6 +141,7 @@ describe('Сквозной сценарий продажи', () => {
   it('Recap после доставки выводится из журнала, а не пишется руками (DC-31)', async () => {
     const user = userEvent.setup()
     render(<App />)
+    await enterPipeline(user)
 
     // Изменение, которое обязано попасть в итог встречи.
     await user.click(nav(/Konfigurator/))

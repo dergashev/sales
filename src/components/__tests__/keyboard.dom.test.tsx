@@ -20,10 +20,24 @@ import { __resetStoreForTests, useStore } from '../../state/store'
 
 beforeEach(() => __resetStoreForTests())
 
+/**
+ * Конвейер живёт внутри Opportunity Option, а не в корне продукта.
+ * Каждый тест панелей обязан пройти путь пользователя целиком: иначе он
+ * проверяет экран, до которого в продукте не дойти.
+ */
+async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
+  render(<App />)
+  await user.click(await screen.findByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
+  await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
+  await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
+  await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
+  await user.click(screen.getByRole('button', { name: 'Öffnen' }))
+}
+
 describe('Табы S2 — ручная активация (TABS-001, KEY-003)', () => {
   async function openVorbereitung(user: ReturnType<typeof userEvent.setup>) {
-    render(<App />)
-    await user.click(screen.getByRole('button', { name: /Vorbereitung/ }))
+    await enterPipeline(user)
+    await user.click(screen.getAllByRole('button', { name: /Vorbereitung/ })[0]!)
     return screen.getByRole('tablist', { name: 'Vorbereitung' })
   }
 
@@ -70,7 +84,7 @@ describe('Табы S2 — ручная активация (TABS-001, KEY-003)', 
 describe('Herkunft-Popover — Esc закрывает и ВОЗВРАЩАЕТ фокус (KEY-002)', () => {
   it('открытие, закрытие по Esc, фокус на триггере', async () => {
     const user = userEvent.setup()
-    render(<App />)
+    await enterPipeline(user)
     const trigger = screen.getAllByRole('button', { name: 'Herkunft anzeigen' })[0]!
 
     await user.click(trigger)
@@ -89,7 +103,7 @@ describe('Herkunft-Popover — Esc закрывает и ВОЗВРАЩАЕТ ф
 
   it('Tab внутри поповера циклится, наружу не уходит', async () => {
     const user = userEvent.setup()
-    render(<App />)
+    await enterPipeline(user)
     await user.click(screen.getAllByRole('button', { name: 'Herkunft anzeigen' })[0]!)
     const dialog = screen.getByRole('dialog', { name: 'Herkunft des Werts' })
 
@@ -103,7 +117,7 @@ describe('Herkunft-Popover — Esc закрывает и ВОЗВРАЩАЕТ ф
 describe('Опции — нативная radio-группа (RADIO-001)', () => {
   it('стрелка в группе опций двигает И выбирает, событие попадает в журнал', async () => {
     const user = userEvent.setup()
-    render(<App />)
+    await enterPipeline(user)
     // Навигация настоящая, через интерфейс: дёргать store мимо React
     // значило бы проверять не тот путь, которым ходит пользователь.
     // Пункт главы в сайдбаре — первый из совпадающих (второй появляется
@@ -127,7 +141,7 @@ describe('Опции — нативная radio-группа (RADIO-001)', () =>
 
 describe('Гейт режима презентации — блокировка объясняет причину (правило 12)', () => {
   it('сегмент недоступен и несёт видимую причину, а не только погашен', async () => {
-    render(<App />)
+    await enterPipeline(userEvent.setup())
     const group = screen.getByRole('radiogroup', { name: 'Modus' })
     const praesentation = within(group).getAllByRole('radio')[1] as HTMLInputElement
     expect(praesentation.disabled).toBe(true)
@@ -137,7 +151,7 @@ describe('Гейт режима презентации — блокировка 
 
   it('после подтверждения классификации переключение работает', async () => {
     const user = userEvent.setup()
-    render(<App />)
+    await enterPipeline(user)
     await user.click(screen.getByRole('button', { name: 'Klassifikation bestätigen' }))
 
     const group = screen.getByRole('radiogroup', { name: 'Modus' })

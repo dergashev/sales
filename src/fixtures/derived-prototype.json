@@ -1,0 +1,17 @@
+{
+  "$comment": "Значения, которых источники проекта не дают. Разрешены решением D-22 (06.08.2026) и обязаны нести пометку: каждое поле здесь имеет `provenance`, и оно доходит до интерфейса. Файл СОЗНАТЕЛЬНО отделён от demo-0001.json: тот выводится построителем из synthetic-fixtures.md с 27 сверками в Decimal, и смешивать выведенное с объявленным значило бы уничтожить смысл обеих категорий. Ни одно значение отсюда не является калиброванным.",
+  "provenanceLabel": "für den Prototyp abgeleitet, nicht kalibriert",
+  "marker": "⚙",
+  "buildings": {
+    "DEMO-B-A": {
+      "bgfSAboveGround": { "value": "160.00", "basis": "≈ 8 % der BGF R — Balkone und Loggien beim MFH" },
+      "nrf": { "value": "1700.00", "basis": "≈ 85 % der BGF R+S — üblicher Konstruktionsflächenanteil" },
+      "nufDin277": { "value": null, "basis": "beim Wohngebäude wird WFL nach WoFlV geführt, nicht NUF" }
+    },
+    "DEMO-B-B": {
+      "bgfSAboveGround": { "value": "0.00", "basis": "Bürogebäude ohne Balkone" },
+      "nrf": { "value": "1020.00", "basis": "≈ 85 % der BGF R+S" },
+      "wflWoFlV": { "value": null, "basis": "beim Bürogebäude gilt NUF nach DIN 277, nicht WFL" }
+    }
+  }
+}

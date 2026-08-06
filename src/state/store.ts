@@ -176,6 +176,29 @@ type Store = {
    * Плотность режимом НЕ управляется (D-16).
    */
   mode: 'intern' | 'praesentation'
+  /**
+   * Уровень, на котором находится пользователь. Три уровня, и они НЕ
+   * являются экранами: экран — это то, что показано внутри уровня.
+   *
+   * `liste` — корень продукта: Opportunities, фильтры, поиск.
+   * `opportunity` — карточка: анализ документов, конфликты, параметры
+   *   проекта, гейт создания Options.
+   * `option` — рабочий конвейер с двумя панелями; именно Options
+   *   сравниваются между собой.
+   *
+   * Переход с `opportunity` на `option` гейтуется: пока конфликты не
+   * разрешены, а параметры не подтверждены, создавать Option нельзя.
+   * Это блокировка ПОДГОТОВКИ, а не блокировка при клиенте — правило 12
+   * запрещает второе, а первое требует.
+   */
+  level: 'liste' | 'opportunity' | 'option'
+  /** Выбранная Opportunity; null на корневом уровне. */
+  opportunityId: string | null
+  /** Подтверждены ли верхнеуровневые параметры проекта (часть гейта). */
+  projectParamsConfirmed: boolean
+  /** Созданные Opportunity Options. Сравниваются между собой (S4). */
+  options: Array<{ id: string; name: string }>
+  activeOptionId: string | null
   /** Язык UI (правило 36). Отдельная настройка от языка артефактов (D-13). */
   uiLanguage: 'de' | 'en'
   /**
@@ -223,6 +246,13 @@ type Store = {
   dismissUndoToast: () => void
   /** Правило 11: вход в презентацию закрыт, пока открыт material-блокер. */
   setMode: (m: 'intern' | 'praesentation') => void
+  openOpportunity: (id: string) => void
+  backToList: () => void
+  confirmProjectParams: () => void
+  /** Гейт: можно ли создавать Options (конфликты решены, параметры приняты). */
+  canCreateOptions: () => boolean
+  createOption: (name: string) => void
+  openOption: (id: string) => void
   setUiLanguage: (l: 'de' | 'en') => void
   setDensity: (d: 'komfortabel' | 'kompakt') => void
 }
@@ -368,6 +398,11 @@ const store = createStore<Store>((set, get) => {
     preview: null,
     undoToast: null,
     mode: 'intern',
+    level: 'liste',
+    opportunityId: null,
+    projectParamsConfirmed: false,
+    options: [],
+    activeOptionId: null,
     uiLanguage: 'de',
     density: 'komfortabel',
     openChapter: 3,
@@ -749,6 +784,51 @@ const store = createStore<Store>((set, get) => {
       if (m === 'praesentation' && !get().building.gebaeudeklasse.confirmed) return
       set({ mode: m })
     },
+
+    openOpportunity: (id) => set({ level: 'opportunity', opportunityId: id }),
+    backToList: () => set({ level: 'liste', activeOptionId: null }),
+
+    /**
+     * Подтверждение верхнеуровневых параметров — СОБЫТИЕ журнала, а не
+     * флаг: оно открывает возможность создавать Options, то есть меняет
+     * то, что пользователю разрешено. Изменение без события невозможно
+     * по построению (M-4), и это относится к правам так же, как к числам.
+     */
+    confirmProjectParams: () => {
+      if (get().projectParamsConfirmed) return
+      set({ projectParamsConfirmed: true })
+      apply({
+        kind: 'value.confirmed',
+        label: 'Projektparameter bestätigt (Gebäude, Flächen, Einheiten)',
+        deltaExact: null,
+        inverse: () => set({ projectParamsConfirmed: false }),
+        forward: () => set({ projectParamsConfirmed: true }),
+      })
+    },
+
+    canCreateOptions: () => {
+      const s = get()
+      return s.wflConflict.state === 'resolved' && s.projectParamsConfirmed
+    },
+
+    createOption: (name) => {
+      if (!get().canCreateOptions()) return
+      const s = get()
+      const id = `OPT-${String(s.options.length + 1).padStart(2, '0')}`
+      set({ options: [...s.options, { id, name }], activeOptionId: id })
+      apply({
+        kind: 'value.edited',
+        label: `Opportunity Option «${name}» angelegt`,
+        deltaExact: null,
+        inverse: () => set((x) => ({
+          options: x.options.filter((o) => o.id !== id),
+          activeOptionId: null,
+        })),
+        forward: () => set((x) => ({ options: [...x.options, { id, name }] })),
+      })
+    },
+
+    openOption: (id) => set({ level: 'option', activeOptionId: id }),
 
     setUiLanguage: (l) => set({ uiLanguage: l }),
 
