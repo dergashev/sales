@@ -78,14 +78,15 @@ export function OfferPanel() {
   // Сессионная дельта (DC-12, CALC-014): сумма точных дельт журнала —
   // undo несёт отрицание, поэтому простая сумма и есть «к базе», без
   // второго источника в виде запомненного базового итога.
-  const sessionDelta = s.journal.reduce(
+  const ctxJournal = s.journal.filter((e) => e.optionId === s.activeOptionId)
+  const sessionDelta = ctxJournal.reduce(
     (acc, e) => (e.deltaExact ? acc.plus(e.deltaExact) : acc),
     new Decimal(0),
   )
   // «übernommene Änderungen» — это изменения ЦЕНЫ, а не все события журнала.
   // Прежде считалась длина журнала, и отправка оффера увеличивала счётчик
   // изменения цены, ничего не изменив: подпись утверждала неправду о деньгах.
-  const priceChangeCount = s.journal.filter((e) => e.deltaExact !== null).length
+  const priceChangeCount = ctxJournal.filter((e) => e.deltaExact !== null).length
 
   const notIncluded = (Object.keys(s.coverage) as CostGroup[]).filter(
     (g) => ['unknown', 'onRequest', 'excluded'].includes(s.coverage[g]),
@@ -101,7 +102,7 @@ export function OfferPanel() {
             Кегли, цвет и выравнивание по базовой линии приходят из системы
             (`.a3-hb-total .a3-hb-num` = 64 px accent, `.a3-hb-unit` = 24 px):
             иерархия метрик принадлежит дизайну, а не этому файлу. */}
-        <div className="a3-hb a3-hb-total">
+        <div className="a3-hb a3-hb-total min-w-0 max-w-full overflow-x-auto">
           <span className="a3-hb-cap">{p.result.totalLabel}</span>
           <p className="a3-hb-num numeric">
             {p.result.total.prefix && (
@@ -546,10 +547,10 @@ export function OfferPanel() {
                   {priceChangeCount === 1 ? 'übernommene Änderung' : 'übernommene Änderungen'}</>}
           </button>
 
-          {journalOpen && s.journal.length > 0 && (
+          {journalOpen && ctxJournal.length > 0 && (
             <ol className="a3-journal-items mt-2 overflow-y-auto border-t border-border-subtle pt-1"
                 style={{ maxHeight: 'calc(var(--space-8) * 3)' }}>
-              {[...s.journal].reverse().map((e) => (
+              {[...ctxJournal].reverse().map((e) => (
                 <li key={e.seq} className="flex justify-between gap-2 py-1 text-small">
                   <span className="text-text-secondary">{e.seq}. {e.label}</span>
                   <span className="numeric shrink-0 text-text-primary">

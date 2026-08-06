@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Decimal } from 'decimal.js'
-import { activeBuilding, __resetStoreForTests, useStore } from '../store'
+import {
+  activeBuilding, chapterDone, projectionForOption,
+  __resetStoreForTests, useStore,
+} from '../store'
 import { KG400_GROUPS, choiceBlocked } from '../../engine/options'
 import type { JournalEvent, OfferSnapshot } from '../store'
 
@@ -137,7 +140,7 @@ describe('M-4/M-3: обход журнала невозможен по пост�
     const s = useStore.getState()
     expect(() => (s.journal as JournalEvent[]).push({
       seq: 99, kind: 'value.edited', label: 'подделка', deltaExact: null,
-      at: '2026-08-06T00:00:00.000Z',
+      at: '2026-08-06T00:00:00.000Z', optionId: null,
     })).toThrow()
     expect(useStore.getState().journal).toHaveLength(0)
   })
@@ -650,5 +653,123 @@ describe('Покрытие групп затрат (сценарий п. 11)', (
     st().confirmGebaeudeklasse()
     expect(st().projection().result.totalLabel).toBe('Gesamt netto · Grundleistung All3')
     expect(st().projection().result.completeness).toBe('complete')
+  })
+})
+describe('Настоящая модель Option (ревью № 13, дефект 1)', () => {
+  const st = () => useStore.getState()
+
+  /** Путь подготовки: конфликт решён, параметры подтверждены. */
+  function prepare() {
+    st().openOpportunity('DEMO-0001')
+    st().resolveWflConflict('customer')
+    st().confirmProjectParams()
+  }
+
+  it('конфигурации Options независимы и переживают переключение', () => {
+    prepare()
+    st().createOption('Basis')
+    st().openOption('OPT-01')
+    const totalDefault = st().projection().result.total.exact
+    st().setKg300('balkone', 'nein')
+    const totalA = st().projection().result.total.exact
+    expect(totalA.equals(totalDefault)).toBe(false)
+
+    // Вторая Option создаётся с карточки — уровень Opportunity.
+    st().openOpportunity('DEMO-0001')
+    st().createOption('Ohne Balkone… nein, mit')
+    st().openOption('OPT-02')
+    // Свежая конфигурация: выбор по умолчанию, не выбор OPT-01.
+    expect(st().kg300[st().activeBuildingId]!['balkone']).not.toBe('nein')
+    expect(st().projection().result.total.exact.equals(totalDefault)).toBe(true)
+
+    // Возврат в OPT-01: её выбор жив.
+    st().openOption('OPT-01')
+    expect(st().kg300[st().activeBuildingId]!['balkone']).toBe('nein')
+    expect(st().projection().result.total.exact.equals(totalA)).toBe(true)
+  })
+
+  it('projectionForOption считает НЕАКТИВНУЮ Option из её конфигурации', () => {
+    prepare()
+    st().createOption('Basis')
+    st().openOption('OPT-01')
+    st().setKg300('balkone', 'nein')
+    const totalA = st().projection().result.total.exact
+    st().openOpportunity('DEMO-0001')
+    st().createOption('Variante B')
+    st().openOption('OPT-02')
+    // Активна OPT-02, но проекция OPT-01 доступна и равна её живому итогу.
+    const pA = projectionForOption(st(), 'OPT-01')!
+    expect(pA.result.total.exact.equals(totalA)).toBe(true)
+    // Несуществующая Option — null, а не выдуманная проекция.
+    expect(projectionForOption(st(), 'OPT-99')).toBeNull()
+  })
+
+  it('курсор Undo не пересекает границу Option', () => {
+    prepare()
+    st().createOption('Basis')
+    st().openOption('OPT-01')
+    st().setKg300('balkone', 'nein')
+    expect(st().canUndo()).toBe(true)
+
+    st().openOpportunity('DEMO-0001')
+    st().createOption('B')
+    st().openOption('OPT-02')
+    // В OPT-02 своих событий нет — отменять нечего, и undo() — no-op.
+    expect(st().canUndo()).toBe(false)
+    const journalLen = st().journal.length
+    st().undo()
+    expect(st().journal.length).toBe(journalLen)
+
+    // Вернувшись в OPT-01 — отмена доступна и действует на её данные.
+    st().openOption('OPT-01')
+    expect(st().canUndo()).toBe(true)
+    st().undo()
+    expect(st().kg300[st().activeBuildingId]!['balkone']).not.toBe('nein')
+  })
+
+  it('новая Option наследует подтверждённый на подготовке WFL', () => {
+    prepare()
+    st().createOption('Basis')
+    st().openOption('OPT-01')
+    expect(st().fields.wfl.provenance).toBe('vom Kunden bestätigt')
+    // Наследование — из состояния конфликта: интервал уже сужен на 5 Pp.
+    expect(st().projection().uncertaintyPp).toBe(17)
+  })
+
+  it('новая Option начинается с главы 1 и без ложного done (дефект 7)', () => {
+    prepare()
+    st().createOption('Basis')
+    st().openOption('OPT-01')
+    expect(st().openChapter).toBe(1)
+    expect(st().besuchteKapitel).toEqual([1])
+    // Здание не подтверждено — глава 1 не пройдена, каталожные не посещены.
+    expect(chapterDone(st(), 1)).toBe(false)
+    expect(chapterDone(st(), 2)).toBe(false)
+    st().confirmBuilding(st().activeBuildingId)
+    expect(chapterDone(st(), 1)).toBe(true)
+    // Глава 7 не проработана и пройденной быть не может.
+    st().openChapterAt(7)
+    expect(chapterDone(st(), 7)).toBe(false)
+  })
+
+  it('снапшот называет отправленную Option (M-3)', () => {
+    prepare()
+    st().createOption('Basis')
+    st().openOption('OPT-01')
+    const snap = st().sendOffer('email', null)
+    expect(snap.optionId).toBe('OPT-01')
+    expect(snap.optionName).toBe('Basis')
+  })
+
+  it('инвариант хранилища: ключа активной Option в optionConfigs нет', () => {
+    prepare()
+    st().createOption('A')
+    st().openOption('OPT-01')
+    st().openOpportunity('DEMO-0001')
+    st().createOption('B')
+    st().openOption('OPT-02')
+    expect(Object.keys(st().optionConfigs)).toEqual(['OPT-01'])
+    st().openOption('OPT-01')
+    expect(Object.keys(st().optionConfigs)).toEqual(['OPT-02'])
   })
 })

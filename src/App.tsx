@@ -3,7 +3,7 @@ import { activeBuilding, useStore } from './state/store'
 import { useT } from './i18n'
 import { checkFonts, checkCascade, type FontCheck } from './lib/font-check'
 import { SegmentedControl } from './components/controls'
-import { Sidebar, type View } from './components/Sidebar'
+import { Sidebar } from './components/Sidebar'
 import { OfferPanel } from './components/OfferPanel'
 import { UndoToast } from './components/UndoToast'
 import { S3Konfigurator } from './screens/S3Konfigurator'
@@ -28,7 +28,10 @@ import { OpportunityCard } from './screens/OpportunityCard'
  */
 export function App() {
   const s = useStore()
-  const [view, setView] = useState<View>('konfigurator')
+  // Экран конвейера живёт в сторе: CTA глав («Varianten vergleichen»,
+  // «Angebot prüfen») обязаны уметь вести к сравнению и экспорту — из
+  // локального состояния App они бы этого не могли (DC-27, ревью № 13).
+  const view = s.pipelineView
   const [fonts, setFonts] = useState<FontCheck | null>(null)
   const [cascade, setCascade] = useState<string[] | null>(null)
   const praesentation = s.mode === 'praesentation'
@@ -81,7 +84,7 @@ export function App() {
       <AppHeader t={t} />
 
       <div className="flex min-h-0 flex-1">
-        <Sidebar view={view} setView={setView} />
+        <Sidebar />
 
         <main className="min-w-0 flex-1 overflow-y-auto bg-surface-default">
           {view === 'konfigurator' && <S3Konfigurator />}

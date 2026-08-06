@@ -155,7 +155,7 @@ describe('Гейт режима презентации — блокировка 
   it('после подтверждения классификации переключение работает', async () => {
     const user = userEvent.setup()
     await enterPipeline(user)
-    await user.click(screen.getByRole('button', { name: 'Klassifikation bestätigen' }))
+    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
 
     const group = screen.getByRole('radiogroup', { name: 'Modus' })
     const praesentation = within(group).getAllByRole('radio')[1] as HTMLInputElement

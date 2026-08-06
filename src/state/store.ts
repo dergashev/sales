@@ -54,6 +54,14 @@ export type JournalEvent = {
   /** Точная денежная дельта события. Null, если событие не меняет цену. */
   deltaExact: Decimal | null
   at: string
+  /**
+   * Контекст события: внутри какой Option оно произошло. `null` — событие
+   * уровня Opportunity (разрешение конфликта, подтверждение параметров,
+   * создание Option). Журнал и курсор Undo фильтруются этим полем: отменить
+   * из Option A событие Option B невозможно по построению, а не по
+   * дисциплине.
+   */
+  optionId: string | null
   /** Какое событие отменено (только у kind='undo'). */
   undoOf?: number
   /** Обратное применение. Обязано восстанавливать ВСЁ, что событие меняло. */
@@ -97,6 +105,9 @@ export type OfferSnapshot = {
   id: string
   at: string
   kind: 'email' | 'print'
+  /** Какая Option отправлена: снапшот обязан называть свой вариант (M-3). */
+  optionId: string | null
+  optionName: string | null
   totalExact: string
   totalLabel: string
   uncertaintyPp: number
@@ -104,6 +115,45 @@ export type OfferSnapshot = {
   coverage: Coverage
   discountPercent: string | null
   journalSeqAt: number
+}
+
+export type PipelineView =
+  | 'konfigurator' | 'vergleich' | 'export' | 'einstellungen' | 'grundlagen'
+
+/**
+ * Всё, что принадлежит ОДНОЙ Option, — её независимая конфигурация.
+ * Ровно эти поля переезжают между плоским состоянием и `optionConfigs`
+ * при переключении; поле вне этого типа по построению общее для всех
+ * Options (уровень Opportunity). Ошибиться стороной нельзя: и захват,
+ * и раскладка построены на одном перечне `OPTION_CONFIG_KEYS`.
+ */
+export type OptionConfig = {
+  buildings: Record<string, BuildingInput>
+  activeBuildingId: string
+  included: Record<string, boolean>
+  buildingConfirmed: Record<string, boolean>
+  kg300: Record<string, Record<string, string>>
+  kg300Provenance: Record<string, Record<string, string>>
+  kg700Mode: 'vereinfacht' | 'hoaiAho'
+  coverage: Coverage
+  fields: { wfl: FieldState; bgfOber: FieldState; we: FieldState }
+  esConfirmed: boolean
+  regionalfaktorActive: boolean
+  openChapter: number
+  besuchteKapitel: number[]
+}
+
+const OPTION_CONFIG_KEYS = [
+  'buildings', 'activeBuildingId', 'included', 'buildingConfirmed',
+  'kg300', 'kg300Provenance', 'kg700Mode', 'coverage', 'fields',
+  'esConfirmed', 'regionalfaktorActive', 'openChapter', 'besuchteKapitel',
+] as const satisfies ReadonlyArray<keyof OptionConfig>
+
+/** Снять конфигурацию активной Option с плоского состояния. */
+function captureConfig(s: Pick<Store, keyof OptionConfig>): OptionConfig {
+  return Object.fromEntries(
+    OPTION_CONFIG_KEYS.map((k) => [k, s[k]]),
+  ) as unknown as OptionConfig
 }
 
 /** Покрытие фикстуры: KG 500 неизвестно — именно поэтому итог промежуточный. */
@@ -139,6 +189,58 @@ const INITIAL_BUILDING_B: BuildingInput = {
   bgfAboveGround: D(fxB.areas.bgfAboveGround!),
   bgfBelowGround: D(fxB.areas.bgfBelowGround!),
   untergeschoss: 'kein_ug', hasParking: false,
+}
+
+/**
+ * Свежая конфигурация Option — одно определение и для стартового состояния
+ * стора, и для каждой новой Option. Два литерала разъехались бы при первой
+ * правке: новая Option начинала бы жизнь не с того состояния, с которого
+ * начинает прототип.
+ *
+ * Объекты между конфигурациями РАЗДЕЛЯЮТСЯ (INITIAL_BUILDING и т. д.) —
+ * это безопасно, потому что стор меняет их только заменой ссылки, а после
+ * каждого set всё замораживается deepFreeze.
+ */
+function defaultOptionConfig(): OptionConfig {
+  return {
+    buildings: {
+      [INITIAL_BUILDING.id]: INITIAL_BUILDING,
+      [INITIAL_BUILDING_B.id]: INITIAL_BUILDING_B,
+    },
+    activeBuildingId: INITIAL_BUILDING.id,
+    // По умолчанию в предложение входит одно здание: фикстура объявляет
+    // числа именно для этого случая, и добавление второго обязано быть
+    // видимым решением пользователя, а не молчаливым умолчанием.
+    included: { [INITIAL_BUILDING.id]: true, [INITIAL_BUILDING_B.id]: false },
+    buildingConfirmed: {},
+    // Умолчания приходят из каталога; там, где каталог говорит
+    // `documented`, провенанс сразу «aus Dokument» со ссылкой на файл —
+    // пункт 8 сценария: найденное в документах предвыбрано, но переключаемо.
+    kg300: {
+      [INITIAL_BUILDING.id]: defaultOptionChoices(),
+      [INITIAL_BUILDING_B.id]: defaultOptionChoices(),
+    },
+    kg300Provenance: {
+      [INITIAL_BUILDING.id]: Object.fromEntries(
+        ALL_OPTION_GROUPS.map((g) => [g.id, g.documented ? 'aus Dokument' : 'Standard'])),
+      [INITIAL_BUILDING_B.id]: Object.fromEntries(
+        ALL_OPTION_GROUPS.map((g) => [g.id, g.documented ? 'aus Dokument' : 'Standard'])),
+    },
+    kg700Mode: 'vereinfacht',
+    coverage: INITIAL_COVERAGE,
+    fields: {
+      wfl: { value: D(fx.areas.wflWoFlV!), provenance: 'aus Dokument' },
+      bgfOber: { value: D(fx.areas.bgfAboveGround!), provenance: 'aus Dokument' },
+      we: { value: D(fx.areas.wohneinheiten!), provenance: 'aus Dokument' },
+    },
+    esConfirmed: false,
+    regionalfaktorActive: false,
+    // Новая Option начинается с ПЕРВОЙ главы — с решения, какие здания
+    // входят в предложение. Открывать её на середине конвейера значило бы
+    // объявить непройденные шаги пройденными (ревью № 13, дефект 7).
+    openChapter: 1,
+    besuchteKapitel: [1],
+  }
 }
 
 export type Projection = {
@@ -264,6 +366,23 @@ type Store = {
   /** Созданные Opportunity Options. Сравниваются между собой (S4). */
   options: Array<{ id: string; name: string }>
   activeOptionId: string | null
+  /**
+   * Конфигурации НЕАКТИВНЫХ Options. Плоские поля стора — рабочая копия
+   * активной Option; при переключении рабочая копия убирается сюда, а
+   * конфигурация открываемой Option достаётся и раскладывается в плоские
+   * поля. Так каждая Option — независимый вариант (ревью № 13, дефект 1),
+   * а все экраны и события продолжают работать с плоским состоянием.
+   * Инвариант: ключ `activeOptionId` в этой записи отсутствует.
+   */
+  optionConfigs: Record<string, OptionConfig>
+  /**
+   * Главы, которые пользователь открывал в АКТИВНОЙ Option. Навигационное
+   * состояние (как `openChapter`) — события не создаёт; прогресс в
+   * сайдбаре выводится из него и из данных, а не из номера главы.
+   */
+  besuchteKapitel: number[]
+  /** Экран конвейера. UI-состояние: CTA глав ведут к сравнению и экспорту. */
+  pipelineView: PipelineView
   /** Язык UI (правило 36). Отдельная настройка от языка артефактов (D-13). */
   uiLanguage: 'de' | 'en'
   /**
@@ -329,6 +448,8 @@ type Store = {
   allBuildingsConfirmed: () => boolean
   setUiLanguage: (l: 'de' | 'en') => void
   setDensity: (d: 'komfortabel' | 'kompakt') => void
+  /** Экран конвейера — konfigurator/vergleich/export/… (UI-состояние). */
+  setPipelineView: (v: PipelineView) => void
 }
 
 /**
@@ -336,10 +457,17 @@ type Store = {
  * кнопка, действие и тест обязаны спрашивать один и тот же курсор, иначе
  * доступность контрола расходится с его поведением.
  */
-function undoTarget(s: Pick<Store, 'journal' | 'undone'>): JournalEvent | undefined {
+function undoTarget(
+  s: Pick<Store, 'journal' | 'undone' | 'level' | 'activeOptionId'>,
+): JournalEvent | undefined {
+  // Курсор видит только события СВОЕГО контекста: из Option A нельзя
+  // отменить событие Option B или подготовки — их inverse-замыкания
+  // писали бы в чужую рабочую копию.
+  const ctx = s.level === 'option' ? s.activeOptionId : null
   return [...s.journal]
     .reverse()
-    .find((e) => e.kind !== 'undo' && e.inverse && !s.undone.includes(e.seq))
+    .find((e) => e.kind !== 'undo' && e.inverse && !s.undone.includes(e.seq)
+      && e.optionId === ctx)
 }
 
 /**
@@ -359,6 +487,56 @@ function includedBuildings(
   s: Pick<Store, 'buildings' | 'included'>,
 ): BuildingInput[] {
   return Object.values(s.buildings).filter((b) => s.included[b.id])
+}
+
+/**
+ * Проекция ЛЮБОЙ Option — активной или убранной в хранилище. Сравнение
+ * и экспорт считают из созданных Options, а не из зашитых сценариев
+ * (ревью № 13, дефект 1). Null — Option не существует.
+ */
+export function projectionForOption(
+  s: Pick<Store, 'activeOptionId' | 'optionConfigs' | keyof OptionConfig>,
+  optionId: string,
+): Projection | null {
+  const cfg = configForOption(s, optionId)
+  return cfg ? computeProjection(cfg) : null
+}
+
+/** Конфигурация любой Option: активная — с плоских полей, прочие — из хранилища. */
+export function configForOption(
+  s: Pick<Store, 'activeOptionId' | 'optionConfigs' | keyof OptionConfig>,
+  optionId: string,
+): OptionConfig | null {
+  return optionId === s.activeOptionId
+    ? captureConfig(s)
+    : s.optionConfigs[optionId] ?? null
+}
+
+/**
+ * Пройдена ли глава — из СОСТОЯНИЯ активной Option, не из номера главы.
+ * У глав с обязательным подтверждением или решением done наступает от
+ * данных; у каталожных глав, где умолчание — валидный выбор, done — это
+ * след посещения. Глава 7 не проработана и завершиться не может.
+ */
+export function chapterDone(
+  s: Pick<Store, 'buildings' | 'included' | 'buildingConfirmed' | 'coverage'
+    | 'besuchteKapitel'>,
+  n: number,
+): boolean {
+  const besucht = s.besuchteKapitel.includes(n)
+  switch (n) {
+    case 1:
+      return includedBuildings(s).every((b) => s.buildingConfirmed[b.id] === true)
+    case 3:
+      // Leistungsabgrenzung решена, когда ни одна решаемая группа не
+      // осталась `unknown`: непринятое решение — не пройденный шаг.
+      return besucht
+        && !Object.values(s.coverage).some((v) => v === 'unknown')
+    case 7:
+      return false
+    default:
+      return besucht
+  }
 }
 
 /** Площадь S здания — выведенная величина (D-22), помечена на экране. */
@@ -509,11 +687,15 @@ const store = createStore<Store>((set, get) => {
    * Тост DC-29 — производная этой же двери: событие с inverse отменяемо и
    * получает тост, событие без inverse гасит предыдущий (новая голова).
    */
-  const apply = (e: Omit<JournalEvent, 'seq' | 'at'>) => {
-    const { journal } = get()
+  const apply = (e: Omit<JournalEvent, 'seq' | 'at' | 'optionId'>) => {
+    const { journal, level, activeOptionId } = get()
     const seq = journal.length + 1
+    // Контекст события: внутри конвейера — активная Option, на уровнях
+    // списка и карточки — `null`. Создание Option происходит ДО входа в
+    // конвейер и потому остаётся событием уровня Opportunity.
+    const optionId = level === 'option' ? activeOptionId : null
     set({
-      journal: [...journal, { ...e, seq, at: new Date().toISOString() }],
+      journal: [...journal, { ...e, seq, at: new Date().toISOString(), optionId }],
       undoToast: e.inverse
         ? {
             seq,
@@ -525,40 +707,14 @@ const store = createStore<Store>((set, get) => {
   }
 
   return {
-    buildings: {
-      [INITIAL_BUILDING.id]: INITIAL_BUILDING,
-      [INITIAL_BUILDING_B.id]: INITIAL_BUILDING_B,
-    },
-    activeBuildingId: INITIAL_BUILDING.id,
-    // По умолчанию в предложение входит одно здание: фикстура объявляет
-    // числа именно для этого случая, и добавление второго обязано быть
-    // видимым решением пользователя, а не молчаливым умолчанием.
-    included: { [INITIAL_BUILDING.id]: true, [INITIAL_BUILDING_B.id]: false },
-    buildingConfirmed: {},
-    // Умолчания приходят из каталога; там, где каталог говорит
-    // `documented`, провенанс сразу «aus Dokument» со ссылкой на файл —
-    // это пункт 8 сценария: найденное в документах предвыбрано, но
-    // остаётся переключаемым.
-    kg300: {
-      [INITIAL_BUILDING.id]: defaultOptionChoices(),
-      [INITIAL_BUILDING_B.id]: defaultOptionChoices(),
-    },
-    kg700Mode: 'vereinfacht',
-    kg300Provenance: {
-      [INITIAL_BUILDING.id]: Object.fromEntries(
-        ALL_OPTION_GROUPS.map((g) => [g.id, g.documented ? 'aus Dokument' : 'Standard'])),
-      [INITIAL_BUILDING_B.id]: Object.fromEntries(
-        ALL_OPTION_GROUPS.map((g) => [g.id, g.documented ? 'aus Dokument' : 'Standard'])),
-    },
-    coverage: INITIAL_COVERAGE,
-    fields: {
-      wfl: { value: D(fx.areas.wflWoFlV!), provenance: 'aus Dokument' },
-      bgfOber: { value: D(fx.areas.bgfAboveGround!), provenance: 'aus Dokument' },
-      we: { value: D(fx.areas.wohneinheiten!), provenance: 'aus Dokument' },
-    },
+    // Конфигурация активной Option — плоские поля из единой фабрики.
+    // До создания первой Option эти же поля обслуживают уровень
+    // Opportunity (анализ, параметры): рабочая копия существует всегда.
+    ...defaultOptionConfig(),
+    optionConfigs: {},
+    pipelineView: 'konfigurator',
     journal: [],
     undone: [],
-    esConfirmed: false,
     wflConflict: {
       id: fxConflict.id,
       state: 'open',
@@ -572,7 +728,6 @@ const store = createStore<Store>((set, get) => {
       })),
     },
     activeGrundrisse: 'V2',
-    regionalfaktorActive: false,
     snapshots: [],
     activeDelta: null,
     preview: null,
@@ -585,7 +740,6 @@ const store = createStore<Store>((set, get) => {
     activeOptionId: null,
     uiLanguage: 'de',
     density: 'komfortabel',
-    openChapter: 3,
 
     projection: () => computeProjection(get()),
 
@@ -835,6 +989,8 @@ const store = createStore<Store>((set, get) => {
         id: `SNAP-${s.snapshots.length + 1}`,
         at: new Date().toISOString(),
         kind,
+        optionId: s.activeOptionId,
+        optionName: s.options.find((o) => o.id === s.activeOptionId)?.name ?? null,
         totalExact: p.result.total.exact.toFixed(2),
         totalLabel: p.result.totalLabel,
         uncertaintyPp: p.uncertaintyPp,
@@ -859,7 +1015,15 @@ const store = createStore<Store>((set, get) => {
     },
 
     clearDelta: () => set({ activeDelta: null }),
-    openChapterAt: (n) => set({ openChapter: n }),
+    openChapterAt: (n) => set((s) => ({
+      openChapter: n,
+      // След посещения — источник честного прогресса в сайдбаре: глава
+      // «пройдена», если её открывали, а не потому что её номер меньше
+      // текущего (ревью № 13, дефект 7).
+      besuchteKapitel: s.besuchteKapitel.includes(n)
+        ? s.besuchteKapitel
+        : [...s.besuchteKapitel, n],
+    })),
 
     optionDelta: (change) => {
       // Тот же движок от точных значений — у последствия нет собственной
@@ -931,9 +1095,12 @@ const store = createStore<Store>((set, get) => {
      * один inverse дважды.
      */
     undoEvent: (seq) => {
-      const { journal, undone } = get()
+      const { journal, undone, level, activeOptionId } = get()
       const target = journal.find((e) => e.seq === seq)
       if (!target || !target.inverse || undone.includes(seq)) return
+      // Inverse-замыкание пишет в рабочую копию ТОГО контекста, где событие
+      // родилось. Вызов из чужого контекста применил бы его к чужой Option.
+      if (target.optionId !== (level === 'option' ? activeOptionId : null)) return
       target.inverse()
       set((s) => ({
         // Отмена СОБЫТИЯ ОТМЕНЫ возвращает исходное событие в действующие.
@@ -961,7 +1128,18 @@ const store = createStore<Store>((set, get) => {
     },
 
     openOpportunity: (id) => set({ level: 'opportunity', opportunityId: id }),
-    backToList: () => set({ level: 'liste', activeOptionId: null }),
+    backToList: () => {
+      const s = get()
+      set({
+        level: 'liste',
+        activeOptionId: null,
+        // Рабочая копия покидаемой Option убирается в хранилище — иначе
+        // следующее открытие вернуло бы её к чужому состоянию.
+        ...(s.activeOptionId
+          ? { optionConfigs: { ...s.optionConfigs, [s.activeOptionId]: captureConfig(s) } }
+          : {}),
+      })
+    },
 
     /**
      * Подтверждение верхнеуровневых параметров — СОБЫТИЕ журнала, а не
@@ -990,20 +1168,72 @@ const store = createStore<Store>((set, get) => {
       if (!get().canCreateOptions()) return
       const s = get()
       const id = `OPT-${String(s.options.length + 1).padStart(2, '0')}`
-      set({ options: [...s.options, { id, name }], activeOptionId: id })
+      const fresh = defaultOptionConfig()
+      // Подготовка принадлежит Opportunity, и её результат наследуется
+      // КАЖДОЙ новой Option: разрешённый конфликт WFL даёт подтверждённое
+      // клиентом значение. Источник — само состояние конфликта, а не
+      // копия числа: второй источник разошёлся бы при первом изменении.
+      if (s.wflConflict.state === 'resolved') {
+        const chosen = s.wflConflict.candidates
+          .find((c) => c.selectionStatus === 'authoritative')!
+        fresh.fields = {
+          ...fresh.fields,
+          wfl: { value: D(chosen.value), provenance: 'vom Kunden bestätigt' },
+        }
+      }
+      set({
+        options: [...s.options, { id, name }],
+        activeOptionId: id,
+        // Новая Option — независимый вариант со свежей конфигурацией.
+        // Рабочая копия предыдущей активной Option убирается в хранилище,
+        // свежая раскладывается в плоские поля.
+        ...(s.activeOptionId
+          ? { optionConfigs: { ...s.optionConfigs, [s.activeOptionId]: captureConfig(s) } }
+          : {}),
+        ...fresh,
+      })
       apply({
         kind: 'value.edited',
         label: `Opportunity Option «${name}» angelegt`,
         deltaExact: null,
-        inverse: () => set((x) => ({
-          options: x.options.filter((o) => o.id !== id),
-          activeOptionId: null,
-        })),
+        inverse: () => set((x) => {
+          const { [id]: _gone, ...rest } = x.optionConfigs
+          return {
+            options: x.options.filter((o) => o.id !== id),
+            optionConfigs: rest,
+            ...(x.activeOptionId === id
+              ? { activeOptionId: null, level: 'opportunity' as const }
+              : {}),
+          }
+        }),
         forward: () => set((x) => ({ options: [...x.options, { id, name }] })),
       })
     },
 
-    openOption: (id) => set({ level: 'option', activeOptionId: id }),
+    openOption: (id) => {
+      const s = get()
+      if (!s.options.some((o) => o.id === id)) return
+      if (s.activeOptionId === id) {
+        set({ level: 'option' })
+        return
+      }
+      // Своп рабочих копий: уходящая — в хранилище, открываемая — в
+      // плоские поля. После свопа ключа открываемой Option в хранилище нет
+      // (инвариант `optionConfigs`).
+      const { [id]: next, ...rest } = s.optionConfigs
+      if (!next) return
+      set({
+        level: 'option',
+        activeOptionId: id,
+        pipelineView: 'konfigurator',
+        optionConfigs: s.activeOptionId
+          ? { ...rest, [s.activeOptionId]: captureConfig(s) }
+          : rest,
+        ...next,
+      })
+    },
+
+    setPipelineView: (v) => set({ pipelineView: v }),
 
     setActiveBuilding: (id) => set({ activeBuildingId: id }),
 

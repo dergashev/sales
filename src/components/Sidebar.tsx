@@ -1,4 +1,5 @@
-import { useStore } from '../state/store'
+import { chapterDone, useStore } from '../state/store'
+import type { PipelineView } from '../state/store'
 import { NNBSP } from '../engine/money'
 import { CHAPTERS } from '../screens/S3Konfigurator'
 import { useT, useTx, type MessageKey } from '../i18n'
@@ -16,9 +17,6 @@ import { useT, useTx, type MessageKey } from '../i18n'
  * (R-01/R-03).
  */
 
-export type View =
-  | 'konfigurator' | 'vergleich' | 'export' | 'einstellungen' | 'grundlagen'
-
 /**
  * Навигация КОНВЕЙЕРА — только то, что относится к работе над Option.
  *
@@ -28,7 +26,7 @@ export type View =
  * уровень иерархии, — не навигация, а телепорт: он ломает представление
  * пользователя о том, где он находится.
  */
-const SCREENS: Array<{ id: View; labelKey: MessageKey; hint?: string }> = [
+const SCREENS: Array<{ id: PipelineView; labelKey: MessageKey; hint?: string }> = [
   { id: 'konfigurator', labelKey: 'nav.konfigurator', hint: '1' },
   { id: 'vergleich', labelKey: 'nav.vergleich', hint: '2' },
   { id: 'export', labelKey: 'nav.export', hint: '3' },
@@ -39,8 +37,10 @@ const SCREENS: Array<{ id: View; labelKey: MessageKey; hint?: string }> = [
 const FOCUS = 'outline-none focus-visible:outline focus-visible:outline-2 ' +
   'focus-visible:outline-offset-2 focus-visible:outline-focus-ring'
 
-export function Sidebar({ view, setView }: { view: View; setView: (v: View) => void }) {
+export function Sidebar() {
   const s = useStore()
+  const view = s.pipelineView
+  const option = s.options.find((o) => o.id === s.activeOptionId)
   const t = useT()
   const tx = useTx()
 
@@ -51,11 +51,10 @@ export function Sidebar({ view, setView }: { view: View; setView: (v: View) => v
     >
       <div className="border-b border-border-strong px-5 py-4">
         <p className="text-body font-medium text-text-primary">
-          Musterprojekt Nordfeld · Haus{NNBSP}A
+          {option ? option.name : `Musterprojekt Nordfeld · Haus${NNBSP}A`}
         </p>
         <p className="a3-cap mt-1">
-          {t('shell.variant')} · <span aria-hidden="true">○ </span>
-          {t('shell.phase.vorbereitung')} ·{' '}
+          {option ? option.id : t('shell.variant')} ·{' '}
           {t(s.mode === 'praesentation' ? 'shell.mode.praesentation' : 'shell.mode.intern')}
         </p>
       </div>
@@ -67,7 +66,7 @@ export function Sidebar({ view, setView }: { view: View; setView: (v: View) => v
             <li key={item.id}>
               <button
                 type="button"
-                onClick={() => setView(item.id)}
+                onClick={() => s.setPipelineView(item.id)}
                 aria-current={active ? 'page' : undefined}
                 className={`relative flex min-h-hit-target w-full items-center gap-3 px-5 py-2 text-left text-body ${FOCUS} ` +
                   (active
@@ -84,7 +83,9 @@ export function Sidebar({ view, setView }: { view: View; setView: (v: View) => v
                   {CHAPTERS.map((c, i) => {
                     const n = i + 1
                     const open = s.openChapter === n
-                    const done = n < 3
+                    // Прогресс — из состояния активной Option (данные и след
+                    // посещения), не из номера главы (ревью № 13, дефект 7).
+                    const done = !open && chapterDone(s, n)
                     return (
                       <li key={c}>
                         <button

@@ -1,57 +1,56 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Decimal } from 'decimal.js'
-import { activeBuilding, useStore } from '../state/store'
-import { calculateBuilding, type BuildingInput } from '../engine/calculate'
-import { withRegionalFactor } from '../state/catalog'
-import { NNBSP, present, rate, formatDE } from '../engine/money'
+import {
+  configForOption, projectionForOption, useStore, type OptionConfig,
+} from '../state/store'
+import { NNBSP, present, formatDE } from '../engine/money'
 import { Button } from '../components/primitives'
 
 /**
- * S4 Variantenvergleich — до четырёх вариантов, по умолчанию только различия.
+ * S4 Variantenvergleich — созданные Opportunity Options рядом.
  *
- * Колонки считаются живым движком от текущего состояния, а не читаются из
- * фикстуры: тесты уже доказали, что движок фикстуру воспроизводит, и второй
- * источник значений здесь был бы вторым источником правды.
+ * Колонка = Option. До ревью № 13 здесь стояли три ЗАШИТЫХ сценария
+ * (Basis / Ohne UG / EH 40) — пользователь видел интерфейс сравнения, но
+ * сравнивал не то, что создал. Теперь каждая колонка считается живым
+ * движком из конфигурации своей Option (`projectionForOption`), и второй
+ * источник значений не существует.
  *
  * Дельты названы явно «zur Vergleichsbasis» — роли колонок независимы
- * (VARIANT-001): звезда зарезервирована за целевым оффером и не означает
- * базу сравнения. Интервал одинаков во всех колонках, потому что опция
- * варианта подтверждением параметра не является (D-19) — отдельные значения
- * для прогонов вариантов фикстура не объявляет, и выдумывать их нельзя.
+ * (VARIANT-001): звезда зарезервирована за целевым оффером и базу
+ * сравнения не означает. Интервал точности у каждой Option свой: он
+ * сужается подтверждениями, а подтверждения принадлежат Option (D-19).
  */
 
-type VariantDef = {
-  name: string
-  patch: Partial<BuildingInput>
-  roles: string[]
+const ES_LABEL: Record<string, string> = {
+  GEG: 'GEG', EH_55: `EH${NNBSP}55`, EH_40: `EH${NNBSP}40`,
 }
-
-const VARIANTS: VariantDef[] = [
-  { name: 'Basis', patch: {}, roles: ['Vergleichsbasis', '★ Zielangebot'] },
-  { name: 'Ohne UG', patch: { untergeschoss: 'kein_ug' }, roles: [] },
-  { name: 'EH 40', patch: { energiestandard: 'EH_40' }, roles: [] },
-]
 
 export function S4Vergleich() {
   const s = useStore()
   const [showAll, setShowAll] = useState(false)
-  const p = s.projection()
 
-  const cols = useMemo(() => VARIANTS.map((v) => {
-    const input: BuildingInput = { ...activeBuilding(s), ...v.patch }
-    const res = calculateBuilding(input, withRegionalFactor(s.regionalfaktorActive), s.coverage)
-    return { def: v, input, res, wflRate: rate(res.total.exact, s.fields.wfl.value, 'WFL_WOFLV') }
-  }), [s.buildings, s.activeBuildingId, s.coverage, s.fields.wfl.value, s.regionalfaktorActive])
+  const cols = s.options.flatMap((o) => {
+    const cfg = configForOption(s, o.id)
+    const p = projectionForOption(s, o.id)
+    return cfg && p ? [{ option: o, cfg, p }] : []
+  })
+
+  if (cols.length === 0) {
+    // В конвейер без Option не попасть, но состояние обязано объяснить
+    // себя, а не рендерить пустую таблицу (правило 30: empty — не пропуск).
+    return (
+      <div className="px-7 py-6">
+        <p className="text-body text-text-secondary">
+          <span aria-hidden="true">○ </span>
+          Noch keine Opportunity Option angelegt. Optionen entstehen auf der
+          Opportunity-Karte, nachdem Konflikte gelöst und Parameter bestätigt
+          sind.
+        </p>
+      </div>
+    )
+  }
 
   const base = cols[0]!
-
-  type Row = {
-    label: string
-    group: string
-    cells: string[]
-    differs: boolean
-    warn?: boolean
-  }
 
   const money = (d: Decimal) => {
     const pr = present(d)
@@ -63,84 +62,85 @@ export function S4Vergleich() {
     const sign = d.isNegative() ? '−' : '+'
     return `${sign}${NNBSP}${pr.prefix ? pr.prefix + NNBSP : ''}${pr.display}`
   }
+  const perBuilding = (cfg: OptionConfig, f: (id: string) => string) =>
+    Object.keys(cfg.buildings).filter((id) => cfg.included[id]).map(f).join(' · ')
+
+  type Row = { label: string; group: string; cells: string[] }
 
   const rows: Row[] = [
     {
-      group: 'ERGEBNIS', label: `Zwischensumme der kalkulierten Positionen (€)`,
-      cells: cols.map((c) => money(c.res.total.exact)), differs: true,
+      group: 'ERGEBNIS', label: `${base.p.result.totalLabel} (€)`,
+      cells: cols.map((c) => money(c.p.result.total.exact)),
     },
-    {
-      group: 'ERGEBNIS', label: 'Delta zur Vergleichsbasis (€)',
-      cells: cols.map((c) => delta(c.res.total.exact.minus(base.res.total.exact))),
-      differs: true,
-    },
+    ...(cols.length > 1 ? [{
+      group: 'ERGEBNIS', label: `Delta zur Vergleichsbasis (${base.option.name})`,
+      cells: cols.map((c) => delta(c.p.result.total.exact.minus(base.p.result.total.exact))),
+    }] : []),
     {
       group: 'ERGEBNIS', label: '€/m² WFL nach WoFlV',
-      cells: cols.map((c) => `${c.wflRate.prefix}${c.wflRate.prefix ? NNBSP : ''}${c.wflRate.display}`),
-      differs: true,
+      cells: cols.map((c) => `${c.p.leadRate.prefix}${c.p.leadRate.prefix ? NNBSP : ''}${c.p.leadRate.display}`),
     },
     {
       group: 'ERGEBNIS', label: 'Schätzunsicherheit',
-      cells: cols.map(() => `±${NNBSP}${p.uncertaintyPp}${NNBSP}%`), differs: false,
+      cells: cols.map((c) => `±${NNBSP}${c.p.uncertaintyPp}${NNBSP}%`),
     },
     {
       group: 'ERGEBNIS', label: 'Bauzeit (ab OKBP)',
-      cells: cols.map(() => `${p.duration.prefix}${p.duration.prefix ? NNBSP : ''}${p.duration.display}`),
-      differs: false,
+      cells: cols.map((c) => `${c.p.duration.prefix}${c.p.duration.prefix ? NNBSP : ''}${c.p.duration.display}`),
     },
     {
       group: 'ERGEBNIS', label: 'Fertigstellung',
-      cells: cols.map(() => formatDate(p.duration.completionDate)), differs: false,
+      cells: cols.map((c) => formatDate(c.p.duration.completionDate)),
+    },
+    {
+      group: 'UMFANG', label: 'Gebäude im Angebot',
+      cells: cols.map((c) => perBuilding(c.cfg, (id) => id)),
     },
     {
       group: 'UMFANG', label: 'Untergeschoss',
-      cells: cols.map((c) => c.input.untergeschoss === 'kein_ug'
-        ? 'nicht Bestandteil' : 'Vollständiger UG-Bau inkl. Gründung'),
-      differs: true,
+      cells: cols.map((c) => perBuilding(c.cfg, (id) =>
+        c.cfg.buildings[id]!.untergeschoss === 'kein_ug'
+          ? `${id}: nicht Bestandteil` : `${id}: enthalten`)),
     },
     {
       group: 'UMFANG', label: 'BGF unterirdisch (m²)',
-      cells: cols.map((c) => c.input.untergeschoss === 'kein_ug'
-        ? '0,00' : formatDE(c.input.bgfBelowGround, 2)),
-      differs: true,
+      cells: cols.map((c) => formatDE(
+        Object.keys(c.cfg.buildings)
+          .filter((id) => c.cfg.included[id] && c.cfg.buildings[id]!.untergeschoss !== 'kein_ug')
+          .reduce((a, id) => a.plus(c.cfg.buildings[id]!.bgfBelowGround), new Decimal(0)),
+        2)),
     },
     {
-      group: 'UMFANG', label: 'Tiefgarage im Untergeschoss',
-      cells: cols.map((c) => c.input.untergeschoss === 'kein_ug'
-        ? 'nicht Bestandteil' : 'enthalten'),
-      differs: true,
+      group: 'UMFANG', label: 'KG 700',
+      cells: cols.map((c) => c.cfg.kg700Mode === 'hoaiAho'
+        ? 'nach HOAI und AHO als eigene Position'
+        : 'im All3-Verfahren 70/22/8 verteilt'),
     },
     {
       group: 'QUALITÄT', label: 'Energiestandard',
-      cells: cols.map((c) => c.input.energiestandard.replace('_', NNBSP)), differs: true,
-    },
-    {
-      group: 'QUALITÄT', label: 'Gebäudeklasse',
-      cells: cols.map(() => `GK${NNBSP}5`), differs: false,
+      cells: cols.map((c) => perBuilding(c.cfg, (id) =>
+        `${id}: ${ES_LABEL[c.cfg.buildings[id]!.energiestandard]}`)),
     },
     {
       group: 'QUALITÄT', label: 'Klassifikation nach MBO §2',
-      cells: cols.map(() => activeBuilding(s).gebaeudeklasse.confirmed
-        ? '✓ bestätigt' : '▲ nicht bestätigt'),
-      differs: false,
-      warn: !activeBuilding(s).gebaeudeklasse.confirmed,
+      cells: cols.map((c) => perBuilding(c.cfg, (id) =>
+        c.cfg.buildings[id]!.gebaeudeklasse.confirmed
+          ? `${id}: ✓ bestätigt` : `${id}: ▲ nicht bestätigt`)),
     },
   ]
 
   // «Различается» — вычисляется из ячеек, а не объявляется: строка с
   // одинаковыми значениями во всех колонках различием не является.
-  const visible = rows.filter((r) => {
-    const actuallyDiffers = new Set(r.cells).size > 1
-    return showAll || actuallyDiffers
-  })
-
+  const visible = rows.filter((r) => showAll || new Set(r.cells).size > 1
+    || r.group === 'ERGEBNIS')
   const groups = [...new Set(visible.map((r) => r.group))]
 
   return (
     <div className="px-7 py-6">
       <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-border-strong pb-3">
         <h1 className="text-heading-2 font-bold text-text-primary">
-          Variantenvergleich · Haus{NNBSP}A
+          Variantenvergleich · {cols.length}{NNBSP}
+          {cols.length === 1 ? 'Option' : 'Optionen'}
           {s.mode === 'intern' && <> · DEMO-SC-01</>}
         </h1>
         <Button onClick={() => setShowAll((v) => !v)} aria-pressed={showAll}>
@@ -148,56 +148,93 @@ export function S4Vergleich() {
         </Button>
       </header>
 
+      {cols.length === 1 && (
+        <div className="a3-nextstep mt-4">
+          <p className="a3-mtag">Nächster Schritt</p>
+          <p className="text-body text-text-primary">
+            Zum Vergleichen braucht es eine zweite Option. Sie entsteht auf
+            der Opportunity-Karte — mit eigener Konfiguration, unabhängig von
+            dieser.
+          </p>
+          <div className="mt-2">
+            <Button
+              variant="primary"
+              onClick={() => s.opportunityId && s.openOpportunity(s.opportunityId)}
+            >
+              Zur Opportunity-Karte
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="mt-4 overflow-x-auto">
         <table className="w-full border-collapse text-body">
-          <caption className="sr-only">Vergleich der Varianten</caption>
+          <caption className="sr-only">Vergleich der Opportunity Options</caption>
           <thead>
             <tr className="border-b border-border-strong text-left">
               <th className="py-2 pr-4 font-medium">
                 {showAll ? 'alle Zeilen' : 'nur Unterschiede'}
               </th>
-              {cols.map((c) => (
-                <th key={c.def.name} className="py-2 pr-4 text-right font-medium">
-                  {c.def.name}
-                  {c.def.roles.length > 0 && (
-                    <span className="block text-small font-regular text-text-secondary">
-                      {c.def.roles.join(' · ')}
-                    </span>
-                  )}
+              {cols.map((c, i) => (
+                <th key={c.option.id} className="py-2 pr-4 text-right font-medium">
+                  {c.option.name}
+                  <span className="block text-small font-regular text-text-secondary">
+                    {c.option.id}
+                    {i === 0 && ' · Vergleichsbasis'}
+                    {c.option.id === s.activeOptionId && ' · in Arbeit'}
+                  </span>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {groups.map((g) => (
-              <GroupRows key={g} group={g} rows={visible.filter((r) => r.group === g)} />
+              <GroupRows key={g} group={g} span={cols.length + 1}
+                         rows={visible.filter((r) => r.group === g)} />
             ))}
           </tbody>
         </table>
       </div>
 
       <p className="mt-3 text-small text-text-muted">
-        Schätzunsicherheit ist in allen Spalten gleich: eine Options-Wahl ist
-        keine Parameterbestätigung (D-19), und eigene Werte für
-        Varianten-Läufe erklärt die Fixture nicht — sie zu erfinden wäre
-        derselbe Fehler wie ein ausgedachter Token (R-25). Bauzeit hängt nur
-        von BGF oberirdisch, Form und GK{NNBSP}Zeit ab — daher eine
-        Fertigstellung für alle drei.
+        Jede Spalte wird live aus der Konfiguration ihrer Option gerechnet —
+        es gibt keinen zweiten Zahlenbestand. Die Schätzunsicherheit gehört
+        der Option: sie verengt sich durch Bestätigungen, nicht durch
+        Options-Wahl (D-19).
       </p>
       <p className="mt-2 text-small text-text-muted">
-        Rollen sind unabhängige Text-Badges: ★ markiert das Zielangebot,
-        Deltas rechnen zur benannten Vergleichsbasis (VARIANT-001, XSC-08).
+        Rollen sind unabhängige Text-Badges: Deltas rechnen zur benannten
+        Vergleichsbasis (VARIANT-001, XSC-08).
       </p>
+
+      {cols.length > 1 && (
+        <div className="a3-nextstep mt-5">
+          <p className="a3-mtag">Nächster Schritt</p>
+          <p className="text-body text-text-primary">
+            Die aktive Option ist verglichen — weiter zur Prüfung und zum
+            Versand des Angebots.
+          </p>
+          <div className="mt-2">
+            <Button variant="primary" onClick={() => s.setPipelineView('export')}>
+              Angebot prüfen und exportieren
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function GroupRows({ group, rows }: { group: string; rows: Array<{ label: string; cells: string[]; warn?: boolean }> }) {
+function GroupRows({ group, span, rows }: {
+  group: string
+  span: number
+  rows: Array<{ label: string; cells: string[] }>
+}) {
   if (!rows.length) return null
   return (
     <>
       <tr>
-        <th colSpan={4} scope="colgroup"
+        <th colSpan={span} scope="colgroup"
             className="border-b border-border-subtle pt-4 pb-1 text-left text-small font-medium text-text-secondary">
           {group}
         </th>
@@ -208,8 +245,7 @@ function GroupRows({ group, rows }: { group: string; rows: Array<{ label: string
             {r.label}
           </th>
           {r.cells.map((c, i) => (
-            <td key={i} className={'numeric py-2 pr-4 text-right ' +
-              (r.warn ? 'text-text-primary' : 'text-text-primary')}>
+            <td key={i} className="numeric py-2 pr-4 text-right text-text-primary">
               {c}
             </td>
           ))}

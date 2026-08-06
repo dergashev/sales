@@ -60,7 +60,7 @@ describe('Сквозной сценарий продажи', () => {
 
     // Гейт открывается изнутри потока, а не обходится.
     expect(activeBuilding(useStore.getState()).gebaeudeklasse.confirmed).toBe(false)
-    await user.click(screen.getByRole('button', { name: 'Klassifikation bestätigen' }))
+    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
     expect(activeBuilding(useStore.getState()).gebaeudeklasse.confirmed).toBe(true)
 
     // Сравнение и отправка достижимы; журнал накопил оба события.
@@ -120,7 +120,7 @@ describe('Сквозной сценарий продажи', () => {
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
-    await user.click(screen.getByRole('button', { name: 'Klassifikation bestätigen' }))
+    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
     const modus = screen.getByRole('radiogroup', { name: 'Modus' })
     await user.click(within(modus).getAllByRole('radio')[1]!)
     await user.click(nav(/^S5|Export/))
@@ -148,7 +148,7 @@ describe('Сквозной сценарий продажи', () => {
     await user.click(nav(/Energie & Zertifikate/))
     const es = await screen.findByRole('radiogroup', { name: 'Energiestandard' })
     await user.click(within(es).getAllByRole('radio')[2]!)
-    await user.click(screen.getByRole('button', { name: 'Klassifikation bestätigen' }))
+    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
 
     await user.click(nav(/^S5|Export/))
     await user.click(screen.getByRole('button', { name: /Preflight/ }))

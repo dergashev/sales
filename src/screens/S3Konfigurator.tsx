@@ -359,6 +359,7 @@ function ChapterEnergie() {
  * одной даты обязаны приходить из одного места.
  */
 function ChapterTermine() {
+  const s = useStore()
   const metrics = demo.schedule.metrics
   const planning = metrics.find((m) => m.metricKey === 'project.planning')!
   const haus = metrics.find((m) => m.metricKey === 'building:DEMO-B-A.execution')!
@@ -380,6 +381,21 @@ function ChapterTermine() {
           ]}
         />
       </Card>
+
+      {/* Последняя глава конвейера обязана называть следующий шаг (DC-27):
+          продолжение в левой навигации — это поиск, а не маршрут. */}
+      <div className="a3-nextstep">
+        <p className="a3-mtag">Nächster Schritt</p>
+        <p className="text-body text-text-primary">
+          Die Konfiguration ist durchlaufen — weiter zum Vergleich der
+          Optionen nebeneinander.
+        </p>
+        <div className="mt-2">
+          <Button variant="primary" onClick={() => s.setPipelineView('vergleich')}>
+            Varianten vergleichen
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }

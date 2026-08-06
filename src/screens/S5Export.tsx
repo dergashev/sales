@@ -81,7 +81,9 @@ export function S5Export() {
   return (
     <div className="px-7 py-6">
       <header className="border-b border-border-strong pb-4">
-        <h1 className="text-heading-2 font-bold text-text-primary">Export · Musterprojekt Nordfeld</h1>
+        <h1 className="text-heading-2 font-bold text-text-primary">
+          Export · {s.options.find((o) => o.id === s.activeOptionId)?.name ?? 'Musterprojekt Nordfeld'}
+        </h1>
       </header>
 
       <div className="grid gap-6 py-5 lg:grid-cols-2">
@@ -262,7 +264,8 @@ export function S5Export() {
               </h3>
               <ul className="mt-2">
                 {s.journal
-                  .filter((e) => e.deltaExact !== null)
+                  .filter((e) => e.deltaExact !== null
+                    && e.optionId === s.activeOptionId)
                   .map((e) => (
                     <li key={e.seq} className="a3-cap">
                       <span aria-hidden="true">✓ </span>{e.label}
