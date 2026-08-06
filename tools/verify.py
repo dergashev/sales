@@ -5520,11 +5520,47 @@ class Verifier:
                                       f'класс «{used}» используется в коде, но не объявлен '
                                       f'в design-system/components.css — оформление пропадёт молча')
 
+    def check_dc_coverage(self):
+        """DC-COVERAGE (предупреждения): корень группы взят, дочерние — нет.
+
+        Машинная ловля класса «почти правильно», который ревью № 13 находило
+        глазами (дефект 17): компонент берёт корневой класс системы, а
+        дочернюю структуру из перечня `Classes:` собирает утилитами или не
+        собирает вовсе — и тихо разваливается при следующей правке CSS.
+
+        ПРЕДУПРЕЖДЕНИЕ, а не нарушение: перечень `Classes:` включает и
+        опциональные вариант-классы (a3-phase-ausbau, a3-hb-sub), чью
+        обязательность знает контракт, а не этот детектор. Предупреждение —
+        это адрес для сверки, зелёный прогон им не покупается.
+        """
+        css = self.read('design-system/components.css')
+        if css is None:
+            return
+        parts = []
+        for glob in ('*.tsx', '*.ts'):
+            for rel, text in self.files(glob):
+                if rel.startswith('src/') and '__tests__' not in rel:
+                    parts.append(text)
+        used = set(re.findall(r'(?<![\w-])(a3-[\w-]+)', '\n'.join(parts)))
+        for m in re.finditer(
+                r'/\*\s*(DC-[\d/a-zA-Z· -]+?)\.\s*Structure:.*?Classes:\s*(.+?)\*/',
+                css, re.S):
+            name = ' '.join(m.group(1).split())
+            classes = re.findall(r'\.(a3-[\w-]+)', m.group(2))
+            taken = [c for c in classes if c in used]
+            missing = [c for c in classes if c not in used]
+            if taken and missing:
+                self.warn.append(
+                    f'DC-COVERAGE: {name} — группа в прототипе, из перечня '
+                    f'Classes: не взяты {", ".join("." + c for c in missing)} '
+                    f'(обязательность — за контрактом)')
+
     # -- запуск ----------------------------------------------------------------
     def run(self):
         self.check_tokens()
         self.check_token_exists()
         self.check_ds_class_exists()
+        self.check_dc_coverage()
         self.check_css()
         self.check_css_effective()
         self.check_contrast()
