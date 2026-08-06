@@ -127,7 +127,7 @@ export function OfferPanel() {
         {/* Герои — в ленте контракта (.a3-heroband): базовая линия и
             переносы принадлежат системе, не этому файлу (дефект 17). */}
         <div className="a3-heroband">
-        <div className="a3-hb a3-hb-total min-w-0 max-w-full overflow-x-auto">
+        <div className="a3-hb a3-hb-total">
           <span className="a3-hb-cap">{p.result.totalLabel}</span>
           <p className="a3-hb-num numeric">
             {p.result.total.prefix && (
