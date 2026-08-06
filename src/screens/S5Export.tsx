@@ -52,6 +52,10 @@ export function S5Export() {
     'Angebot für das Musterprojekt Nordfeld.\n\nMit freundlichen Grüßen',
   )
 
+  // Открытые решения по покрытию — то же множество, что делает итог
+  // промежуточным: список Recap не может разойтись с подписью итога.
+  const offen = (Object.keys(s.coverage) as Array<keyof typeof s.coverage>)
+    .filter((g) => s.coverage[g] === 'unknown')
   const total = p.result.total.exact
 
   // Preflight — вывод, не заявление: блокер, интервал, допущения.
@@ -243,6 +247,39 @@ export function S5Export() {
                   Journal-Stand {s.snapshots.at(-1)!.journalSeqAt}
                 </p>
               )}
+            </div>
+          )}
+
+          {/* DC-31 · Termin-Zusammenfassung — послесловие встречи.
+              Не «спасибо за внимание», а список того, что решено и что
+              осталось: продавец уходит со встречи с этим на экране.
+              Пункты выводятся из журнала и покрытия, а не пишутся руками —
+              иначе список расходится с тем, что произошло. */}
+          {stage === 'zugestellt' && (
+            <div className="a3-recap mt-4">
+              <h3 className="text-heading-3 font-bold text-text-primary">
+                Termin-Zusammenfassung
+              </h3>
+              <ul className="mt-2">
+                {s.journal
+                  .filter((e) => e.deltaExact !== null)
+                  .map((e) => (
+                    <li key={e.seq} className="a3-cap">
+                      <span aria-hidden="true">✓ </span>{e.label}
+                    </li>
+                  ))}
+                {offen.map((g) => (
+                  <li key={g} className="a3-cap">
+                    <span aria-hidden="true">○ </span>
+                    {g.replace('_', NNBSP)} — Deckungsentscheidung offen
+                  </li>
+                ))}
+                <li className="a3-cap">
+                  <span aria-hidden="true">→ </span>
+                  Nächster Schritt: Rückmeldung des Kunden abwarten; der
+                  Snapshot bleibt unverändert und bleibt die Vergleichsbasis.
+                </li>
+              </ul>
             </div>
           )}
         </section>

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
 import { __resetStoreForTests, useStore } from '../../state/store'
@@ -99,5 +99,43 @@ describe('Сквозной сценарий продажи', () => {
     await user.click(within(modus).getAllByRole('radio')[1]!)
     await user.click(nav(/^S5|Export/))
     expect(screen.queryByText(/Marge Eigenleistung/)).not.toBeInTheDocument()
+  })
+
+  it('кольцо готовности считает пункты, а не проценты (DC-26)', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(nav(/^S1|Projekte/))
+    // Скелетон уходит через 700 мс — ждём появления карточки.
+    const ring = await screen.findByRole('group', { name: /Bereitschaft/ }, { timeout: 3000 })
+    // Подпись называет ПУНКТЫ: «73 %» не говорит, чего не хватает.
+    expect(within(ring).getByText(/von 3 Punkten erledigt/)).toBeInTheDocument()
+  })
+
+  it('Recap после доставки выводится из журнала, а не пишется руками (DC-31)', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    // Изменение, которое обязано попасть в итог встречи.
+    await user.click(nav(/Konfigurator/))
+    await user.click(nav(/Energie & Qualität/))
+    const es = await screen.findByRole('radiogroup', { name: 'Energiestandard' })
+    await user.click(within(es).getAllByRole('radio')[2]!)
+    await user.click(screen.getByRole('button', { name: 'Klassifikation bestätigen' }))
+
+    await user.click(nav(/^S5|Export/))
+    await user.click(screen.getByRole('button', { name: /Preflight/ }))
+    await user.click(screen.getByRole('button', { name: /Preflight bestanden/ }))
+    await user.click(screen.getByRole('button', { name: /Bestätigen/ }))
+
+    // Доставка симулируется 2,5 с. Ожидание обёрнуто в `act` намеренно:
+    // обновление приходит из голого setTimeout, и без обёртки React его
+    // не сбрасывает в разметку — тест ждал бы вечно то, что уже случилось.
+    await act(() => new Promise((r) => setTimeout(r, 3000)))
+    const recap = screen.getByRole('heading', { level: 3, name: 'Termin-Zusammenfassung' })
+    const box = recap.parentElement!
+    expect(within(box).getByText(/EH 55 → EH 40/)).toBeInTheDocument()
+    // Открытое покрытие KG 500 попадает в «что осталось» из того же
+    // множества, которое делает итог промежуточным.
+    expect(within(box).getByText(/KG.500 — Deckungsentscheidung offen/)).toBeInTheDocument()
   })
 })

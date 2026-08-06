@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import demo from '../fixtures/demo-0001.json'
 import { useStore } from '../state/store'
 import { Button, Skeleton, UncertaintyBadge } from '../components/primitives'
+import { ReadinessRing } from '../components/ReadinessRing'
 
 // Симулированная загрузка очереди — один раз за сессию, чтобы навигация
 // назад-вперёд не проигрывала скелетон заново (loading ≠ decor).
@@ -81,6 +82,16 @@ export function S1Projektliste({ openVorbereitung }: { openVorbereitung: () => v
             : 'alle Fragen beantwortet'}
           {blocked && <> · <span aria-hidden="true">▲ </span>Klassifikation offen</>}
         </p>
+        {/* Готовность к встрече — кольцо и список пунктов (DC-26). Пункты
+            выводятся из состояния, а не поддерживаются руками: подтверждён
+            ли класс здания, отвечены ли вопросы, разрешён ли конфликт. */}
+        <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+          <ReadinessRing
+            label={`Bereitschaft ${demo.project.name}`}
+            done={3 - openQuestions - (blocked ? 1 : 0)}
+            total={3}
+          />
+        </div>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
           <UncertaintyBadge pp={p.uncertaintyPp} />
           {/* Кнопка внутри клик-контейнера: всплытие останавливает обёртка
