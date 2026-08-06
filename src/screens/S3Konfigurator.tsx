@@ -363,6 +363,9 @@ function ChapterTermine() {
   const metrics = demo.schedule.metrics
   const planning = metrics.find((m) => m.metricKey === 'project.planning')!
   const haus = metrics.find((m) => m.metricKey === 'building:DEMO-B-A.execution')!
+  // Подпись длительности исполнения — из ТОЙ ЖЕ проекции, что герой срока
+  // в панели: два представления одной величины из одного места.
+  const dur = s.projection().duration
 
   return (
     <div className="grid gap-5">
@@ -373,11 +376,32 @@ function ChapterTermine() {
           'oben rechts als Kennzahl steht.'}
       >
         <ScheduleGantt
-          caption="Bauzeit nach Phasen mit Beginn, Ende und Dauer in Kalendertagen"
+          caption="Bauzeit nach Phasen mit Beginn, Ende, Dauer und Abhängigkeit"
           finishISO={haus.endDate}
+          provenance={s.mode === 'intern'
+            ? 'Kalender: Kalendermonate · Staffelstart aus ScheduleModel · DEMO-SC-01'
+            : undefined}
           phases={[
-            { key: planning.metricKey, label: 'Planung', startISO: planning.startDate, endISO: planning.endDate },
-            { key: haus.metricKey, label: `Ausführung Haus${NNBSP}A`, startISO: haus.startDate, endISO: haus.endDate },
+            {
+              key: planning.metricKey,
+              label: 'Planung',
+              unit: 'Gesamtprojekt',
+              dependency: 'Planungsbeginn',
+              startISO: planning.startDate,
+              endISO: planning.endDate,
+              durationLabel: `3${NNBSP}Monate`,
+              colorVar: '--color-dataviz-category-1',
+            },
+            {
+              key: haus.metricKey,
+              label: 'Rohbau + Ausbau',
+              unit: `Haus${NNBSP}A`,
+              dependency: 'nach Planung',
+              startISO: haus.startDate,
+              endISO: haus.endDate,
+              durationLabel: `${dur.prefix}${dur.prefix ? NNBSP : ''}${dur.display} ab${NNBSP}OKBP`,
+              colorVar: '--color-dataviz-category-2',
+            },
           ]}
         />
       </Card>

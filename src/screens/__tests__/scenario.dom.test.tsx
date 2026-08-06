@@ -81,7 +81,13 @@ describe('Сквозной сценарий продажи', () => {
     // (GANTT-003): полоса иллюстрирует, но не является носителем.
     const table = await screen.findByRole('table', { name: /Bauzeit nach Phasen/ })
     expect(within(table).getByText('Planung')).toBeInTheDocument()
-    expect(within(table).getByText(/Ausführung Haus/)).toBeInTheDocument()
+    // Полный каркас DC-19: фаза и единица — разные колонки таблицы.
+    expect(within(table).getByText('Rohbau + Ausbau')).toBeInTheDocument()
+    // Матчеры testing-library нормализуют пробелы: U+202F в DOM
+    // сравнивается как обычный пробел — норму U+202F держит verify, не тест.
+    expect(within(table).getByText(/Haus A/)).toBeInTheDocument()
+    // Подпись длительности — из той же модели, что герой срока (D-17).
+    expect(within(table).getByText(/≈ 7,5 Monate ab OKBP/)).toBeInTheDocument()
     // Даты — из фикстуры, а не из разметки. 04.04 встречается дважды по
     // построению: конец планирования и начало исполнения — одна дата
     // (halfOpen-конвенция фикстуры), и это правильно, а не дубль.
