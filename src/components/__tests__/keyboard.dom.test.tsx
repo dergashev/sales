@@ -122,7 +122,7 @@ describe('Опции — нативная radio-группа (RADIO-001)', () =>
     // значило бы проверять не тот путь, которым ходит пользователь.
     // Пункт главы в сайдбаре — первый из совпадающих (второй появляется
     // в подписи кнопки «Weiter» внизу рабочей области).
-    await user.click(screen.getAllByRole('button', { name: /Energie & Qualität/ })[0]!)
+    await user.click(screen.getAllByRole('button', { name: /Energie & Zertifikate/ })[0]!)
 
     const group = await screen.findByRole('radiogroup', { name: 'Energiestandard' })
     const radios = within(group).getAllByRole('radio')

@@ -45,7 +45,7 @@ describe('Сквозной сценарий продажи', () => {
 
     // Конфигуратор: смена энергостандарта — первое событие журнала.
     await user.click(nav(/Konfigurator/))
-    await user.click(nav(/Energie & Qualität/))
+    await user.click(nav(/Energie & Zertifikate/))
     const es = await screen.findByRole('radiogroup', { name: 'Energiestandard' })
     await user.click(within(es).getAllByRole('radio')[2]!)
     // Путь до конвейера сам оставляет след: решённый конфликт,
@@ -145,7 +145,7 @@ describe('Сквозной сценарий продажи', () => {
 
     // Изменение, которое обязано попасть в итог встречи.
     await user.click(nav(/Konfigurator/))
-    await user.click(nav(/Energie & Qualität/))
+    await user.click(nav(/Energie & Zertifikate/))
     const es = await screen.findByRole('radiogroup', { name: 'Energiestandard' })
     await user.click(within(es).getAllByRole('radio')[2]!)
     await user.click(screen.getByRole('button', { name: 'Klassifikation bestätigen' }))

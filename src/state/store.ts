@@ -9,7 +9,7 @@ import {
   type CostGroup, type BuildingResult,
 } from '../engine/calculate'
 import { present, rate, NNBSP, type Displayed, type Rate } from '../engine/money'
-import { defaultOptionChoices, optionDrivers, KG300_GROUPS } from '../engine/options'
+import { defaultOptionChoices, optionDrivers, ALL_OPTION_GROUPS } from '../engine/options'
 import derivedFx from '../fixtures/derived-prototype.json'
 import { modelDuration, presentDuration, type DurationDisplay } from '../engine/schedule'
 
@@ -31,6 +31,13 @@ import { modelDuration, presentDuration, type DurationDisplay } from '../engine/
  */
 
 const D = (s: string) => new Decimal(s)
+
+/**
+ * Доля KG 700 при расчёте по HOAI и AHO. Выведена (D-22): в упрощённом
+ * режиме KG 700 составляет 8 % от итога, то есть ≈ 8,7 % от блока
+ * KG 300+400 — эта величина взята ориентиром, а не измерена.
+ */
+const KG700_HOAI_SHARE = D('0.087')
 
 export type EventKind =
   | 'value.edited' | 'value.confirmed'
@@ -178,6 +185,18 @@ type Store = {
    * без источника неотличим от догадки.
    */
   kg300Provenance: Record<string, Record<string, string>>
+  /**
+   * Режим KG 700 (D-07, пункт 12 сценария). Настройка ВНУТРЕННЯЯ: клиент
+   * видит только то, что KG 700 включена, и её долю в смете. Как именно
+   * она посчитана — предмет подготовки предложения, а не переговоров.
+   *
+   * `vereinfacht` — итог KG 300+400 распределяется 70/22/8, тотал НЕ
+   *   меняется (calculation-spec §83): это перераспределение, а не
+   *   добавление, и именно оно воспроизводит текущую практику.
+   * `hoaiAho` — KG 700 считается собственной ставкой по HOAI и AHO и
+   *   ДОБАВЛЯЕТСЯ к итогу.
+   */
+  kg700Mode: 'vereinfacht' | 'hoaiAho'
   coverage: Coverage
   fields: { wfl: FieldState; bgfOber: FieldState; we: FieldState }
   journal: JournalEvent[]
@@ -305,6 +324,7 @@ type Store = {
   confirmBuilding: (id: string) => void
   /** Выбрать опцию KG 300 у активного здания — событие журнала с дельтой. */
   setKg300: (groupId: string, value: string) => void
+  setKg700Mode: (m: 'vereinfacht' | 'hoaiAho') => void
   /** Все включённые здания подтверждены — шаг вниз к сервисам открыт. */
   allBuildingsConfirmed: () => boolean
   setUiLanguage: (l: 'de' | 'en') => void
@@ -350,7 +370,7 @@ function bgfSOf(id: string): Decimal {
 
 function computeProjection(
   s: Pick<Store, 'buildings' | 'activeBuildingId' | 'included' | 'coverage'
-    | 'fields' | 'esConfirmed' | 'regionalfaktorActive' | 'kg300'>,
+    | 'fields' | 'esConfirmed' | 'regionalfaktorActive' | 'kg300' | 'kg700Mode'>,
 ): Projection {
   const CATALOG = withRegionalFactor(s.regionalfaktorActive)
   const list = includedBuildings(s)
@@ -369,9 +389,27 @@ function computeProjection(
     b, s.kg300[b.id] ?? {}, bgfSOf(b.id),
   ).map((d) => ({ ...d, key: list.length > 1 ? `${list[i]!.id}:${d.key}` : d.key })))
   const optSum = optDrivers.reduce((a, d) => a.plus(d.exact), new Decimal(0))
-  const total = perBuilding
+  const bauwerkSum = perBuilding
     .reduce((a, r) => a.plus(r.total.exact), new Decimal(0))
     .plus(optSum)
+  // KG 700 в режиме HOAI+AHO — СОБСТВЕННАЯ позиция поверх KG 300+400.
+  // В режиме `vereinfacht` тотал не меняется: 70/22/8 перераспределяет
+  // уже посчитанное, а не добавляет (calculation-spec §83). Ставка
+  // выведена (D-22) и помечена.
+  const kg700 = s.kg700Mode === 'hoaiAho'
+    ? bauwerkSum.mul(KG700_HOAI_SHARE)
+    : new Decimal(0)
+  if (!kg700.isZero()) {
+    optDrivers.push({
+      key: 'kg700_hoai_aho',
+      exact: kg700,
+      label: 'KG 700 · Baunebenkosten nach HOAI und AHO',
+      scopeRefs: ['KG 700'],
+      appliedTo: bauwerkSum,
+      factor: null,
+    })
+  }
+  const total = bauwerkSum.plus(kg700)
   const result: BuildingResult = {
     buildingId: list.map((b) => b.id).join('+'),
     drivers: [
@@ -502,11 +540,12 @@ const store = createStore<Store>((set, get) => {
       [INITIAL_BUILDING.id]: defaultOptionChoices(),
       [INITIAL_BUILDING_B.id]: defaultOptionChoices(),
     },
+    kg700Mode: 'vereinfacht',
     kg300Provenance: {
       [INITIAL_BUILDING.id]: Object.fromEntries(
-        KG300_GROUPS.map((g) => [g.id, g.documented ? 'aus Dokument' : 'Standard'])),
+        ALL_OPTION_GROUPS.map((g) => [g.id, g.documented ? 'aus Dokument' : 'Standard'])),
       [INITIAL_BUILDING_B.id]: Object.fromEntries(
-        KG300_GROUPS.map((g) => [g.id, g.documented ? 'aus Dokument' : 'Standard'])),
+        ALL_OPTION_GROUPS.map((g) => [g.id, g.documented ? 'aus Dokument' : 'Standard'])),
     },
     coverage: INITIAL_COVERAGE,
     fields: {
@@ -999,18 +1038,38 @@ const store = createStore<Store>((set, get) => {
       }
     },
 
+    setKg700Mode: (m) => {
+      const s = get()
+      if (s.kg700Mode === m) return
+      const prev = s.kg700Mode
+      const before = s.projection().result.total.exact
+      set({ kg700Mode: m })
+      const after = get().projection().result.total.exact
+      const delta = after.minus(before)
+      apply({
+        kind: 'option.selected',
+        label: m === 'hoaiAho'
+          ? 'KG 700 nach HOAI und AHO als eigene Position'
+          : 'KG 700 im All3-Verfahren 70/22/8 verteilt',
+        deltaExact: delta.isZero() ? null : delta,
+        inverse: () => set({ kg700Mode: prev }),
+        forward: () => set({ kg700Mode: m }),
+      })
+    },
+
     setKg300: (groupId, value) => {
       const s = get()
       const id = s.activeBuildingId
       const prev = s.kg300[id]?.[groupId]
       if (prev === value) return
-      const group = KG300_GROUPS.find((g) => g.id === groupId)
+      const group = ALL_OPTION_GROUPS.find((g) => g.id === groupId)
       if (!group) return
       const prevProv = s.kg300Provenance[id]?.[groupId] ?? 'Standard'
       const before = s.projection().result.total.exact
       const write = (v: string, prov: string) => set((x) => ({
         kg300: { ...x.kg300, [id]: { ...x.kg300[id], [groupId]: v } },
-        kg300Provenance: { ...x.kg300Provenance, [id]: { ...x.kg300Provenance[id], [groupId]: prov } },
+        kg700Mode: 'vereinfacht',
+    kg300Provenance: { ...x.kg300Provenance, [id]: { ...x.kg300Provenance[id], [groupId]: prov } },
       }))
       // Ручное переключение меняет провенанс: значение больше не «из
       // документа», даже если совпадает с ним. Иначе продавец не отличит

@@ -24,6 +24,14 @@ export type OptionChoice = {
   label: string
   rate: string
   basis: string
+  /**
+   * Классы здания, при которых выбор недоступен. Это НЕ коммерческое
+   * ограничение, а нормативное: при GK 5 лифт обязателен, и «дешевле без
+   * лифта» не является решением, которое продавец вправе принять.
+   * Причина обязательна — заблокированный элемент объясняет себя (правило 12).
+   */
+  blockedWhenGk?: string[]
+  blockedReason?: string
 }
 
 export type OptionGroup = {
@@ -39,10 +47,31 @@ export type OptionGroup = {
 }
 
 export const KG300_GROUPS = derived.kg300.groups as unknown as OptionGroup[]
+export const KG400_GROUPS = derived.kg400.groups as unknown as OptionGroup[]
+/**
+ * Сертификаты — ОТДЕЛЬНАЯ ось от энергостандарта: EH описывает
+ * энергетическое качество здания, QNG и DGNB — процедуру его
+ * подтверждения. Одно не выводится из другого, и складывать их в один
+ * селектор значило бы утверждать, что EH 40 автоматически даёт QNG.
+ */
+export const ZERT_GROUPS = derived.zertifikate.groups as unknown as OptionGroup[]
+
+/** Все группы опций, влияющие на цену. Один список — один обход. */
+export const ALL_OPTION_GROUPS: OptionGroup[] = [
+  ...KG300_GROUPS, ...KG400_GROUPS, ...ZERT_GROUPS,
+]
+
+/** Недоступен ли выбор при текущем классе здания, и почему. */
+export function choiceBlocked(
+  c: OptionChoice, gk: string,
+): { blocked: boolean; reason?: string } {
+  const blocked = (c.blockedWhenGk ?? []).includes(gk)
+  return blocked ? { blocked, reason: c.blockedReason } : { blocked: false }
+}
 
 /** Выбор по умолчанию для всех групп — состояние «стандартный объём». */
 export function defaultOptionChoices(): Record<string, string> {
-  return Object.fromEntries(KG300_GROUPS.map((g) => [g.id, g.default]))
+  return Object.fromEntries(ALL_OPTION_GROUPS.map((g) => [g.id, g.default]))
 }
 
 /**
@@ -53,6 +82,13 @@ export function defaultOptionChoices(): Record<string, string> {
 export function isGroupActive(g: OptionGroup, chosen: Record<string, string>): boolean {
   if (!g.dependsOn) return true
   return g.dependsOn.values.includes(chosen[g.dependsOn.group] ?? '')
+}
+
+/** Группа затрат вклада выводится из группы опции, а не назначается. */
+function scopeOf(groupId: string): string {
+  if (groupId.startsWith('kg4')) return 'KG 400'
+  if (groupId === 'qng' || groupId === 'dgnb') return 'KG 700'
+  return 'KG 300'
 }
 
 function denominatorValue(
@@ -78,7 +114,7 @@ export function optionDrivers(
   bgfS: Decimal,
 ): Driver[] {
   const out: Driver[] = []
-  for (const g of KG300_GROUPS) {
+  for (const g of ALL_OPTION_GROUPS) {
     if (!isGroupActive(g, chosen)) continue
     const value = chosen[g.id] ?? g.default
     const choice = g.choices.find((c) => c.value === value)
@@ -88,10 +124,10 @@ export function optionDrivers(
     const qty = denominatorValue(b, g.denominator, bgfS)
     if (qty.lte(0)) continue
     out.push({
-      key: `kg300_${g.id}_${choice.value}`,
+      key: `opt_${g.id}_${choice.value}`,
       exact: qty.mul(rate),
       label: `${g.label} · ${choice.label}`,
-      scopeRefs: ['KG 300'],
+      scopeRefs: [scopeOf(g.id)],
       appliedTo: qty,
       factor: null,
     })

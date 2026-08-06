@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Decimal } from 'decimal.js'
 import { activeBuilding, __resetStoreForTests, useStore } from '../store'
+import { KG400_GROUPS, choiceBlocked } from '../../engine/options'
 import type { JournalEvent, OfferSnapshot } from '../store'
 
 /**
@@ -547,7 +548,7 @@ describe('Опции KG 300 (сценарий п. 7 и 8)', () => {
   it('вклад опции — отдельный драйвер с уникальным ID и scope KG 300', () => {
     useStore.getState().setKg300('fassade', 'klinker')
     const ds = useStore.getState().projection().result.drivers
-    const d = ds.find((x) => x.key === 'kg300_fassade_klinker')!
+    const d = ds.find((x) => x.key === 'opt_fassade_klinker')!
     expect(d.exact.toFixed(2)).toBe('220000.00')   // 2.000 × 110
     expect(d.scopeRefs).toEqual(['KG 300'])
     const sum = ds.reduce((a, x) => a.plus(x.exact), new Decimal(0))
@@ -572,5 +573,50 @@ describe('Опции KG 300 (сценарий п. 7 и 8)', () => {
     expect(st().kg300['DEMO-B-A']!.garage).toBe('ja')
     expect(st().kg300Provenance['DEMO-B-A']!.garage).toBe('aus Dokument')
     expect(st().projection().result.total.exact.toFixed(2)).toBe('3817835.00')
+  })
+})
+
+describe('KG 400, сертификаты и режим KG 700 (сценарий п. 9, 10, 12)', () => {
+  it('раздел KG 400 даёт вклад со scope KG 400, а не KG 300', () => {
+    useStore.getState().setKg300('kg440', 'erhoeht')
+    const d = useStore.getState().projection().result.drivers
+      .find((x) => x.key === 'opt_kg440_erhoeht')!
+    expect(d.exact.toFixed(2)).toBe('68000.00')   // 2.000 × 34
+    expect(d.scopeRefs).toEqual(['KG 400'])
+  })
+
+  it('нормативное ограничение сильнее выбора: при GK 5 лифт обязателен', () => {
+    const lift = KG400_GROUPS.find((g) => g.id === 'kg460')!
+    const nein = lift.choices.find((c) => c.value === 'nein')!
+    expect(choiceBlocked(nein, 'GK_5').blocked).toBe(true)
+    expect(choiceBlocked(nein, 'GK_5').reason).toMatch(/GK 5/)
+    // При меньшем классе тот же выбор доступен.
+    expect(choiceBlocked(nein, 'GK_4').blocked).toBe(false)
+  })
+
+  it('сертификат — отдельная ось: QNG не следует из энергостандарта', () => {
+    const st = () => useStore.getState()
+    st().setEnergiestandard('EH_40')
+    expect(st().kg300['DEMO-B-A']!.qng).toBe('keins')
+    st().setKg300('qng', 'plus')
+    const d = st().projection().result.drivers.find((x) => x.key === 'opt_qng_plus')!
+    expect(d.exact.toFixed(2)).toBe('92000.00')   // 2.000 × 46
+  })
+
+  it('All3-режим KG 700 не меняет итог, HOAI+AHO добавляет позицию', () => {
+    const st = () => useStore.getState()
+    const base = st().projection().result.total.exact
+    expect(st().kg700Mode).toBe('vereinfacht')
+    // 70/22/8 перераспределяет уже посчитанное — тотал прежний.
+    st().setKg700Mode('hoaiAho')
+    const after = st().projection().result.total.exact
+    expect(after.gt(base)).toBe(true)
+    expect(after.minus(base).toFixed(2)).toBe(base.mul('0.087').toFixed(2))
+    const d = st().projection().result.drivers.find((x) => x.key === 'kg700_hoai_aho')!
+    expect(d.scopeRefs).toEqual(['KG 700'])
+    // Сумма драйверов по-прежнему равна итогу.
+    const sum = st().projection().result.drivers
+      .reduce((a, x) => a.plus(x.exact), new Decimal(0))
+    expect(sum.equals(after)).toBe(true)
   })
 })

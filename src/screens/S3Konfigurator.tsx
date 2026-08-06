@@ -8,9 +8,10 @@ import { Button, NumericField } from '../components/primitives'
 import { RadioCardGroup, SegmentedControl } from '../components/controls'
 import { ScheduleGantt } from '../components/ScheduleGantt'
 import { ChapterBuildings } from './ChapterBuildings'
-import { ChapterKg300 } from './ChapterKg300'
+import { OptionChapter } from './OptionChapter'
+import { KG300_GROUPS, KG400_GROUPS, ZERT_GROUPS } from '../engine/options'
 import demo from '../fixtures/demo-0001.json'
-import { present } from '../engine/money'
+import { present, label as moneyLabel } from '../engine/money'
 
 /**
  * S3 Konfigurator — рабочая область главы. ТОЛЬКО она: навигация по главам
@@ -32,9 +33,9 @@ import { present } from '../engine/money'
  */
 
 export const CHAPTERS = [
-  'Gebäude & Umfang', 'Leistungen KG 300', 'Leistungsabgrenzung', 'Energie & Qualität',
-  'Flächen im Detail', 'Ausbau & Technik', 'Baugrund & Erschließung',
-  'Leistungsabgrenzung', 'Termine & Kommerzielles',
+  'Gebäude & Umfang', 'Leistungen KG 300', 'Leistungsabgrenzung', 'Technik KG 400',
+  'Energie & Zertifikate', 'Flächen im Detail', 'Baugrund & Erschließung',
+  'Baunebenkosten KG 700', 'Termine & Kommerzielles',
 ] as const
 
 const KG_LABELS: Record<CostGroup, string> = {
@@ -82,12 +83,28 @@ export function S3Konfigurator() {
           главу целиком. */}
       <div className="py-5">
         {n === 1 && <ChapterBuildings />}
-        {n === 2 && <ChapterKg300 />}
+        {n === 2 && <OptionChapter groups={KG300_GROUPS}
+          intro={'Von oben nach unten: erst der Umfang, dann die Konstruktion, '
+            + 'zuletzt die Oberfläche. Jede Antwort zeigt ihre Folge am Preis, '
+            + 'bevor sie gewählt wird.'} />}
         {n === 3 && <ChapterUmfang />}
-        {n === 4 && <ChapterEnergie />}
-        {n === 5 && <ChapterFlaechen />}
+        {n === 4 && <OptionChapter groups={KG400_GROUPS}
+          intro={'Technische Anlagen nach DIN 276. Die Wahl der Erzeugung und der Lüftung entscheidet mit, welcher Energiestandard überhaupt erreichbar bleibt.'} />}
+        {n === 5 && (
+          <div className="grid gap-5">
+            <ChapterEnergie />
+            {/* Сертификаты — отдельная ось: EH описывает качество здания,
+                QNG и DGNB — процедуру его подтверждения (см. options.ts). */}
+            <OptionChapter groups={ZERT_GROUPS}
+              intro={'Zertifikate sind eine eigene Achse: der Energiestandard '
+                + 'beschreibt das Gebäude, das Siegel beschreibt das Verfahren, '
+                + 'mit dem es nachgewiesen wird.'} />
+          </div>
+        )}
+        {n === 6 && <ChapterFlaechen />}
+        {n === 8 && <ChapterKg700 />}
         {n === 9 && <ChapterTermine />}
-        {![1, 2, 3, 4, 5, 9].includes(n) && <ChapterParked title={title} />}
+        {![1, 2, 3, 4, 5, 6, 8, 9].includes(n) && <ChapterParked title={title} />}
       </div>
 
       {/* Один следующий шаг всегда на экране (DC-27): маршрут, не принуждение. */}
@@ -296,6 +313,67 @@ function ChapterTermine() {
             { key: haus.metricKey, label: `Ausführung Haus${NNBSP}A`, startISO: haus.startDate, endISO: haus.endDate },
           ]}
         />
+      </Card>
+    </div>
+  )
+}
+
+/**
+ * Глава 8 · KG 700 — настройка ПОДГОТОВКИ, не переговоров (пункт 12).
+ *
+ * Клиент видит, что KG 700 включена, и её долю в смете. Каким способом
+ * она посчитана — HOAI и AHO собственной ставкой или распределением
+ * 70/22/8 — внутреннее решение: клиенту оно ничего не объясняет, а
+ * продавцу даёт другую цену. Поэтому в презентации глава не существует
+ * (правило 11), а не показывается свёрнутой.
+ */
+function ChapterKg700() {
+  const s = useStore()
+  const p = s.projection()
+
+  if (s.mode === 'praesentation') {
+    return (
+      <div className="border border-border-default p-5">
+        <p className="text-body text-text-secondary">
+          <span aria-hidden="true">○ </span>
+          Die Berechnungsart der Baunebenkosten ist eine interne Einstellung
+          und im Präsentationsmodus nicht verfügbar.
+        </p>
+        <p className="a3-cap mt-2">
+          Für den Kunden gilt unverändert: KG{NNBSP}700 ist im Angebot
+          enthalten, ihr Anteil steht in der Kostenübersicht.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid gap-5">
+      <Card
+        title={`Baunebenkosten KG${NNBSP}700`}
+        intro={'Zwei Verfahren mit unterschiedlichem Ergebnis. Das All3-Verfahren '
+          + 'verteilt die bereits berechnete Summe und ändert den Gesamtbetrag '
+          + 'nicht; HOAI und AHO rechnen die Nebenkosten als eigene Position '
+          + 'hinzu. Der Kunde sieht in beiden Fällen dieselbe Aussage: '
+          + 'KG 700 ist enthalten.'}
+      >
+        <SegmentedControl
+          legend="Berechnungsart KG 700"
+          value={s.kg700Mode}
+          onChange={(m) => s.setKg700Mode(m)}
+          options={[
+            { value: 'vereinfacht', label: 'All3-Verfahren 70/22/8' },
+            { value: 'hoaiAho', label: 'nach HOAI und AHO' },
+          ]}
+        />
+        <p className="a3-cap mt-3">
+          {s.kg700Mode === 'vereinfacht'
+            ? 'Der Gesamtbetrag bleibt unverändert — 70/22/8 verteilt, was bereits gerechnet ist.'
+            : 'Die Nebenkosten kommen als eigene Zeile im Kostentreiber hinzu.'}
+        </p>
+        <p className="numeric mt-2 text-body text-text-primary">
+          Anteil KG{NNBSP}700: {moneyLabel(present(p.kgSplit.KG_700))}
+        </p>
       </Card>
     </div>
   )

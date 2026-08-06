@@ -289,5 +289,206 @@
         ]
       }
     ]
+  },
+  "kg400": {
+    "$comment": "Разделы KG 400 по DIN 276. Та же модель, что у KG 300: базовая ставка описывает стандартное оснащение, умолчание стоит ноль, цену меняет отклонение. Ставки выведены по ориентирам BKI (D-22), не откалиброваны.",
+    "groups": [
+      {
+        "id": "kg420",
+        "label": "KG 420 · Waermeversorgung",
+        "question": "Waermeerzeugung im Angebot?",
+        "denominator": "BGF_ABOVE_GROUND",
+        "default": "waermepumpe",
+        "documented": true,
+        "documentRef": "Bauantrag_Mappe_Muster.pdf · Waermepumpe im Energiekonzept",
+        "choices": [
+          {
+            "value": "waermepumpe",
+            "label": "Luft-Wasser-Waermepumpe",
+            "rate": "0",
+            "basis": "Standardloesung der Basisrate"
+          },
+          {
+            "value": "fernwaerme",
+            "label": "Fernwaermeanschluss",
+            "rate": "-28",
+            "basis": "ohne Erzeuger, dafuer Uebergabestation"
+          },
+          {
+            "value": "gas",
+            "label": "Gas-Brennwert",
+            "rate": "-42",
+            "basis": "guenstiger in der Anschaffung, EH-Ziel gefaehrdet"
+          }
+        ]
+      },
+      {
+        "id": "kg430",
+        "label": "KG 430 · Raumlufttechnik",
+        "question": "Lueftung im Angebot?",
+        "denominator": "BGF_ABOVE_GROUND",
+        "default": "zentralWrg",
+        "documented": true,
+        "documentRef": "Bauantrag_Mappe_Muster.pdf · Lueftungskonzept mit Waermerueckgewinnung",
+        "choices": [
+          {
+            "value": "zentralWrg",
+            "label": "Zentrale Lueftung mit Waermerueckgewinnung",
+            "rate": "0",
+            "basis": "im Standard enthalten, Voraussetzung fuer EH 55"
+          },
+          {
+            "value": "dezentral",
+            "label": "Dezentrale Lueftungsgeraete",
+            "rate": "-18",
+            "basis": "geringerer Kanalaufwand"
+          },
+          {
+            "value": "keine",
+            "label": "keine Lueftungsanlage",
+            "rate": "-46",
+            "basis": "Fensterlueftung; Nachweis fuer EH-Standard entfaellt"
+          }
+        ]
+      },
+      {
+        "id": "kg440",
+        "label": "KG 440 · Elektrische Anlagen",
+        "question": "Umfang der Elektroinstallation?",
+        "denominator": "BGF_ABOVE_GROUND",
+        "default": "standard",
+        "documented": false,
+        "choices": [
+          {
+            "value": "standard",
+            "label": "Standardausstattung",
+            "rate": "0",
+            "basis": "in der Basisrate enthalten"
+          },
+          {
+            "value": "erhoeht",
+            "label": "Erhoehte Ausstattung mit Ladeinfrastruktur",
+            "rate": "34",
+            "basis": "Ladepunkte je Stellplatz und verstaerkte Zuleitung"
+          }
+        ]
+      },
+      {
+        "id": "kg460",
+        "label": "KG 460 · Foerderanlagen",
+        "question": "Personenaufzug im Angebot?",
+        "denominator": "BGF_ABOVE_GROUND",
+        "default": "ja",
+        "documented": true,
+        "documentRef": "Grundrisse_Muster_V2.pdf · Aufzugsschacht im Kern",
+        "choices": [
+          {
+            "value": "ja",
+            "label": "Personenaufzug",
+            "rate": "0",
+            "basis": "im Standard enthalten"
+          },
+          {
+            "value": "nein",
+            "label": "kein Aufzug",
+            "rate": "-22",
+            "basis": "entfaellt nur bei Gebaeudeklassen ohne Aufzugspflicht",
+            "blockedWhenGk": [
+              "GK_5"
+            ],
+            "blockedReason": "Ab GK 5 ist ein Personenaufzug erforderlich — die Wahl ist keine kaufmaennische Entscheidung"
+          }
+        ]
+      },
+      {
+        "id": "kg480",
+        "label": "KG 480 · Gebaeudeautomation",
+        "question": "Gebaeudeautomation im Angebot?",
+        "denominator": "BGF_ABOVE_GROUND",
+        "default": "keine",
+        "documented": false,
+        "choices": [
+          {
+            "value": "keine",
+            "label": "keine Automation",
+            "rate": "0",
+            "basis": "Basisrate ohne Automation"
+          },
+          {
+            "value": "basis",
+            "label": "Smart-Home-Basispaket",
+            "rate": "26",
+            "basis": "Heizung, Licht und Verschattung je Wohneinheit"
+          }
+        ]
+      }
+    ]
+  },
+  "zertifikate": {
+    "$comment": "Сертификаты качества. Отдельная ось от энергокласса: EH описывает энергетический стандарт здания, QNG и DGNB — процедуру подтверждения качества, и одно не выводится из другого. Ставки выведены (D-22). Ориентир для QNG взят из объявленного множителя EH 40-NH (QNG) 1,09 против EH 40 1,06 — разница в 3 процентных пункта базы.",
+    "groups": [
+      {
+        "id": "qng",
+        "label": "QNG-Siegel",
+        "question": "Qualitaetssiegel Nachhaltiges Gebaeude?",
+        "denominator": "BGF_ABOVE_GROUND",
+        "default": "keins",
+        "documented": false,
+        "choices": [
+          {
+            "value": "keins",
+            "label": "kein QNG",
+            "rate": "0",
+            "basis": "Basisrate ohne Siegelverfahren"
+          },
+          {
+            "value": "plus",
+            "label": "QNG-PLUS",
+            "rate": "46",
+            "basis": "Nachweisfuehrung und Oekobilanz, ca. 3 % der Basisrate"
+          },
+          {
+            "value": "premium",
+            "label": "QNG-PREMIUM",
+            "rate": "78",
+            "basis": "verschaerfte Grenzwerte und erweiterte Nachweise"
+          }
+        ]
+      },
+      {
+        "id": "dgnb",
+        "label": "DGNB-Zertifikat",
+        "question": "DGNB-Zertifizierung?",
+        "denominator": "BGF_ABOVE_GROUND",
+        "default": "keins",
+        "documented": false,
+        "choices": [
+          {
+            "value": "keins",
+            "label": "keine Zertifizierung",
+            "rate": "0",
+            "basis": "Basisrate ohne Zertifizierung"
+          },
+          {
+            "value": "silber",
+            "label": "DGNB SILBER",
+            "rate": "34",
+            "basis": "Auditierung und Dokumentation"
+          },
+          {
+            "value": "gold",
+            "label": "DGNB GOLD",
+            "rate": "62",
+            "basis": "zusaetzliche Massnahmen in mehreren Kriteriengruppen"
+          },
+          {
+            "value": "platin",
+            "label": "DGNB PLATIN",
+            "rate": "104",
+            "basis": "hoechste Erfuellungsgrade, planungsseitig fruehe Festlegung noetig"
+          }
+        ]
+      }
+    ]
   }
 }

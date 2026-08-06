@@ -2,12 +2,17 @@ import { Decimal } from 'decimal.js'
 import derived from '../fixtures/derived-prototype.json'
 import { activeBuilding, useStore } from '../state/store'
 import { NNBSP, present } from '../engine/money'
-import { KG300_GROUPS, isGroupActive, type OptionGroup } from '../engine/options'
+import { choiceBlocked, isGroupActive, type OptionGroup } from '../engine/options'
 import { RadioCardGroup } from '../components/controls'
 import { Button } from '../components/primitives'
 
 /**
- * Глава 2 · Leistungsumfang KG 300 — уровень ниже зданий.
+ * Глава опций — один компонент на все группы затрат.
+ *
+ * KG 300 и KG 400 различаются содержанием каталога, а не поведением:
+ * вопрос, варианты, последствие у каждого, провенанс и зависимость. Две
+ * копии этого экрана разошлись бы при первой же правке — и разошлись бы
+ * молча, потому что обе продолжали бы работать.
  *
  * Каждая группа — один вопрос с последствием у каждого ответа, видимым
  * до клика (R-05/OPTION-009). Последствие считает тот же движок, что и
@@ -35,7 +40,10 @@ function euro(d: Decimal): string {
   return `${pr.prefix ? pr.prefix + NNBSP : ''}${sign}${NNBSP}${pr.display}${NNBSP}€${NNBSP}${word}`
 }
 
-export function ChapterKg300() {
+export function OptionChapter({ groups, intro }: {
+  groups: OptionGroup[]
+  intro: string
+}) {
   const s = useStore()
   const b = activeBuilding(s)
   const chosen = s.kg300[b.id] ?? {}
@@ -63,15 +71,13 @@ export function ChapterKg300() {
     )
   }
 
-  const visible = KG300_GROUPS.filter((g) => isGroupActive(g, chosen))
+  const visible = groups.filter((g) => isGroupActive(g, chosen))
 
   return (
     <div className="grid gap-5">
       {s.mode === 'intern' && (
         <p className="a3-cap a3-lede">
-          Von oben nach unten: erst der Umfang, dann die Konstruktion, zuletzt
-          die Oberfläche. Jede Antwort zeigt ihre Folge am Preis, bevor sie
-          gewählt wird.
+          {intro}
         </p>
       )}
 
@@ -112,6 +118,11 @@ export function ChapterKg300() {
                       : bgfS(b.id)
                   const current = new Decimal(
                     g.choices.find((x) => x.value === value)?.rate ?? '0')
+                  // Нормативное ограничение сильнее коммерческого выбора:
+                  // при GK 5 лифт обязателен, и «без лифта» не является
+                  // решением, которое продавец вправе принять.
+                  const norm = choiceBlocked(c, b.gebaeudeklasse.value)
+                  const noBase = qty.lte(0) && !rate.isZero()
                   return {
                     value: c.value,
                     title: c.label,
@@ -119,10 +130,11 @@ export function ChapterKg300() {
                     consequence: c.value === value
                       ? 'aktuelle Auswahl'
                       : euro(rate.minus(current).mul(qty)),
-                    disabled: qty.lte(0) && !rate.isZero(),
-                    disabledReason: qty.lte(0)
-                      ? 'Für dieses Gebäude gibt es keine Bezugsfläche für diese Leistung'
-                      : undefined,
+                    disabled: norm.blocked || noBase,
+                    disabledReason: norm.blocked ? norm.reason
+                      : noBase
+                        ? 'Für dieses Gebäude gibt es keine Bezugsfläche für diese Leistung'
+                        : undefined,
                   }
                 })}
               />
