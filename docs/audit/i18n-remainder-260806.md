@@ -5,7 +5,7 @@
 работу). Покрытие: значения GENERATED_DE + локальный словарь +
 LOCAL_TEXT_EN. Всё в таблице останется немецким на EN.
 
-**Строк: 94 в 15 файлах.**
+**Строк: 108 в 15 файлах.**
 
 | файл | немецкая строка |
 |---|---|
@@ -18,6 +18,7 @@ LOCAL_TEXT_EN. Всё в таблице останется немецким на
 | `src/components/OriginPopover.tsx` | Tab |
 | `src/components/ScheduleGantt.tsx` | (days(from, to) / span) * 100 const finishMonth = Math.round(days(start, finishISO) / DAYS_PER_MONTH) // Ось: отметка каждые 3 месяца от начала эпохи. const ticks: number[] = [] for (let m = 0; m * DAYS_PER_MONTH |
 | `src/components/ScheduleGantt.tsx` | Keine Terminphasen im Modell — der Zeitplan erscheint, sobald das ScheduleModel Phasen liefert. |
+| `src/components/ScheduleGantt.tsx` | Termindaten unvollständig — Beginn und Ende ergeben keinen darstellbaren Zeitraum; die Terminansicht erscheint mit korrigiertem ScheduleModel. |
 | `src/components/UndoToast.tsx` | Escape |
 | `src/components/controls.tsx` | Escape |
 | `src/components/controls.tsx` | ` (LOCALE-004), контрол этого не поддерживает. * Подпись — состояние, не действие (LAYOUT-008): `Kompakt`, не * `Kompakt umschalten`. */ export function SegmentedControl |
@@ -73,13 +74,26 @@ LOCAL_TEXT_EN. Всё в таблице останется немецким на
 | `src/screens/S2Vorbereitung.tsx` | verändern; mit Vorlage des Brandschutzkonzepts bestätigen wir sie. |
 | `src/screens/S2Vorbereitung.tsx` | weist das Angebot eine «Zwischensumme der kalkulierten Positionen» |
 | `src/screens/S2Vorbereitung.tsx` | «Prüfung erforderlich». Die endgültige Einstufung kann die |
+| `src/screens/S2Vorbereitung.tsx` | ✓ Fragenliste in die Zwischenablage kopiert |
+| `src/screens/S2Vorbereitung.tsx` | ✗ Kopieren nicht möglich — Zwischenablage in dieser Umgebung nicht verfügbar; Fragen unten manuell markieren |
+| `src/screens/S3Konfigurator.tsx` | Baugrund |
 | `src/screens/S3Konfigurator.tsx` | Bauzeit nach Phasen mit Beginn, Ende, Dauer und Abhängigkeit |
+| `src/screens/S3Konfigurator.tsx` | Der Baugrund entscheidet über Gründung und KG 320. Ohne |
+| `src/screens/S3Konfigurator.tsx` | Die Dokumentation der Opportunity enthält keine Angaben zur Erschließung — kein Wert wird angenommen. |
 | `src/screens/S3Konfigurator.tsx` | Die Konfiguration ist durchlaufen — weiter zum Vergleich der Optionen nebeneinander. |
+| `src/screens/S3Konfigurator.tsx` | Erschließung |
+| `src/screens/S3Konfigurator.tsx` | Erschließung gehört zu KG 200 — die Entscheidung über den |
+| `src/screens/S3Konfigurator.tsx` | Frage an den Kunden · in der Vorbereitung |
 | `src/screens/S3Konfigurator.tsx` | Gesamtprojekt |
+| `src/screens/S3Konfigurator.tsx` | Gutachten bleibt er ein benanntes Risiko — kein Preisbestandteil |
 | `src/screens/S3Konfigurator.tsx` | Kalender: Kalendermonate · Staffelstart aus ScheduleModel · DEMO-SC-01 |
 | `src/screens/S3Konfigurator.tsx` | Planungsbeginn |
 | `src/screens/S3Konfigurator.tsx` | Rohbau + Ausbau |
+| `src/screens/S3Konfigurator.tsx` | Umfang fällt in Kapitel 3, hier steht ihr Stand. |
+| `src/screens/S3Konfigurator.tsx` | Wirkt nicht auf die Angebotssumme: Risiko und Schätzunsicherheit sind getrennte Achsen. Mit dem Gutachten wird daraus entweder eine Position oder Entwarnung. |
+| `src/screens/S3Konfigurator.tsx` | Zu Kapitel 3 · Leistungsabgrenzung |
 | `src/screens/S3Konfigurator.tsx` | nach Planung |
+| `src/screens/S3Konfigurator.tsx` | und keine stillschweigende Annahme. |
 | `src/screens/S4Vergleich.tsx` | Die aktive Option ist verglichen — weiter zur Prüfung und zum Versand des Angebots. |
 | `src/screens/S4Vergleich.tsx` | Jede Spalte wird live aus der Konfiguration ihrer Option gerechnet — es gibt keinen zweiten Zahlenbestand. Die Schätzunsicherheit gehört der Option: sie verengt sich durch Bestätigungen, nicht durch Options-Wahl (D-19). |
 | `src/screens/S4Vergleich.tsx` | Noch keine Opportunity Option angelegt. Optionen entstehen auf der Opportunity-Karte, nachdem Konflikte gelöst und Parameter bestätigt sind. |
