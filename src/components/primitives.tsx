@@ -113,6 +113,9 @@ export function ProvenanceChip({ provenance }: { provenance: string }) {
       : provenance === 'abgeleitet' ? '▲' : '✎'
   return (
     <span className="a3-chip-src">
+      {/* `.a3-chip-src .a3-dot` — точка индикатора из системы; знак остаётся
+          рядом с ней, потому что цвет не является носителем (правило 8). */}
+      <span aria-hidden="true" className="a3-dot" />
       <span aria-hidden="true">{mark}</span>
       {provenance}
     </span>

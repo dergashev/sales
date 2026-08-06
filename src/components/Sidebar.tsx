@@ -84,9 +84,13 @@ export function Sidebar({ view, setView }: { view: View; setView: (v: View) => v
                           type="button"
                           onClick={() => s.openChapterAt(n)}
                           aria-current={open ? 'true' : undefined}
-                          className={`a3-ch relative flex min-h-hit-target w-full items-center gap-2 py-1 pl-8 pr-5 text-left ${FOCUS} ` +
-                            (open ? 'a3-cur' : '')}
+                          className={'a3-ch relative flex min-h-hit-target w-full items-center ' +
+                            `gap-2 py-1 pl-8 pr-5 text-left ${FOCUS} ` +
+                            (open ? 'a3-cur ' : '') + (done ? 'a3-done' : '')}
                         >
+                          {/* Номер главы несёт состояние классом системы
+                              (`.a3-ch.a3-done .a3-n`), а не подменой символа:
+                              статус остаётся и знаком, и подписью (правило 8). */}
                           <span className="a3-n numeric shrink-0">{n}</span>
                           <span aria-hidden="true" className="w-3 shrink-0">
                             {done ? '✓' : open ? '▸' : ''}
