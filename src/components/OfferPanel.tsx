@@ -25,6 +25,22 @@ import { useT } from '../i18n'
  * журнал сессии с подписью DC-12.
  */
 
+/**
+ * Класс `.a3-show` ставится кадром ПОСЛЕ монтирования: элемент, родившийся
+ * сразу с ним, не имеет стартового состояния и появляется без транзишна
+ * системы. Движение чипа принадлежит контракту DC-2 (`.a3-delta.a3-show`),
+ * а не framer-motion (ревью № 13, дефект 17).
+ */
+function useShownClass(active: boolean): boolean {
+  const [shown, setShown] = useState(false)
+  useEffect(() => {
+    if (!active) { setShown(false); return }
+    const raf = requestAnimationFrame(() => setShown(true))
+    return () => cancelAnimationFrame(raf)
+  }, [active])
+  return active && shown
+}
+
 const KG_LABELS: Record<CostGroup, string> = {
   KG_100: 'Grundstück', KG_200: 'Vorbereitende Maßnahmen',
   KG_300: 'Baukonstruktion', KG_400: 'Technische Anlagen',
@@ -74,6 +90,7 @@ export function OfferPanel() {
     new Decimal(p.result.total.display.replace(/\./g, '')), 0,
   )
   const blocked = !activeBuilding(s).gebaeudeklasse.confirmed
+  const deltaShown = useShownClass(s.activeDelta !== null)
 
   // Сессионная дельта (DC-12, CALC-014): сумма точных дельт журнала —
   // undo несёт отрицание, поэтому простая сумма и есть «к базе», без
@@ -88,6 +105,10 @@ export function OfferPanel() {
   // изменения цены, ничего не изменив: подпись утверждала неправду о деньгах.
   const priceChangeCount = ctxJournal.filter((e) => e.deltaExact !== null).length
 
+  // «Корзина»: вклады, рождённые решениями пользователя (опции, покрытие,
+  // KG 700 как позиция) — в отличие от базового блока здания.
+  const cart = p.result.drivers.filter((d) =>
+    /(^|:)(opt_|cov_|kg700_)/.test(d.key))
   const notIncluded = (Object.keys(s.coverage) as CostGroup[]).filter(
     (g) => ['unknown', 'onRequest', 'excluded'].includes(s.coverage[g]),
   )
@@ -102,6 +123,9 @@ export function OfferPanel() {
             Кегли, цвет и выравнивание по базовой линии приходят из системы
             (`.a3-hb-total .a3-hb-num` = 64 px accent, `.a3-hb-unit` = 24 px):
             иерархия метрик принадлежит дизайну, а не этому файлу. */}
+        {/* Герои — в ленте контракта (.a3-heroband): базовая линия и
+            переносы принадлежат системе, не этому файлу (дефект 17). */}
+        <div className="a3-heroband">
         <div className="a3-hb a3-hb-total min-w-0 max-w-full overflow-x-auto">
           <span className="a3-hb-cap">{p.result.totalLabel}</span>
           <p className="a3-hb-num numeric">
@@ -111,7 +135,6 @@ export function OfferPanel() {
             {totalCount}
             <span className="a3-hb-unit">{NNBSP}€</span>
           </p>
-        </div>
         {/* Интервал — полосой с денежными краями (DC-3): «± 22 %» отвечает
             «насколько точно», края отвечают «сколько это в деньгах», и на
             переговорах спрашивают второе. */}
@@ -144,6 +167,7 @@ export function OfferPanel() {
               : null}
           />
         </p>
+        </div>
 
         {/* ── Герои №2 и №3: ведущая ставка и срок, чёрные (DC-38) ─────── */}
         {/* Структура системы: ЧИСЛО в `.a3-hb-num`, единица в `.a3-hb-unit`,
@@ -153,7 +177,7 @@ export function OfferPanel() {
             элемента равна min-content. Панель раздувалась далеко за свои
             400 px и съедала рабочую область. Дефект структурный: класс
             применён не к тому, для чего объявлен. */}
-        <div className="a3-hb mt-4">
+        <div className="a3-hb">
           <p className="a3-hb-num numeric">
             {p.leadRate.prefix && (
               <span aria-hidden="true">{p.leadRate.prefix}{NNBSP}</span>
@@ -162,7 +186,6 @@ export function OfferPanel() {
             <span className="a3-hb-unit">{NNBSP}€/m²</span>
           </p>
           <span className="a3-hb-cap">{p.leadRate.denominatorLabel}</span>
-        </div>
         <p className="a3-cap numeric mt-1" style={{ overflowWrap: 'anywhere' }}>
           {rateLabel(p.secondaryRateBgf)} · {rateLabel(p.perUnit)}
           {' · '}
@@ -189,8 +212,9 @@ export function OfferPanel() {
               : null}
           />
         </p>
+        </div>
 
-        <div className="a3-hb mt-4">
+        <div className="a3-hb">
           <p className="a3-hb-num numeric">
             {p.duration.prefix && <span aria-hidden="true">{p.duration.prefix}{NNBSP}</span>}
             {p.duration.display.replace(`${NNBSP}Monate`, '')}
@@ -221,6 +245,7 @@ export function OfferPanel() {
                 : null}
             />
           </span>
+        </div>
         </div>
 
         {/* Внутренние идентификаторы прогона — не для клиентской поверхности
@@ -269,26 +294,50 @@ export function OfferPanel() {
 
         {/* ── Слот дельта-чипа: зарезервирован, появление не двигает ────── */}
         <div className="a3-delta-slot mt-3">
-          <AnimatePresence>
-            {s.activeDelta && (
-              <motion.p
-                key="delta"
-                initial={reduced ? {} : { opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={reduced ? {} : { opacity: 0 }}
-                transition={{ duration: reduced ? 0 : 0.2 }}
-                className="a3-delta numeric"
-              >
+          {s.activeDelta && (
+            <p
+              className={'a3-delta numeric' +
+                (deltaShown ? ' a3-show' : '') +
+                /* Ровно один класс направления (контракт DC-2). */
+                (s.activeDelta.deltaExact.isNegative() ? ' a3-saving' : ' a3-cost')}
+            >
+              <span>
                 {s.activeDelta.label}
                 <span className="mt-1 block font-medium">
                   {signed(s.activeDelta.deltaExact)}
                   {/* Δ-проценты — только внутренние (правило 11). */}
                   {s.mode === 'intern' && <> ({signedPercent(s.activeDelta.percent)})</>}
                 </span>
-              </motion.p>
-            )}
-          </AnimatePresence>
+              </span>
+            </p>
+          )}
         </div>
+
+        {/* ── Сводка выбранного — «корзина» (ревью № 13, дефект 21):
+            продавец видит СПИСОК своих решений, а не только их сумму.
+            Строки — те же вклады движка (opt_/cov_/kg700), что и в
+            Kostentreiber: второго источника выбранного не существует. */}
+        <section aria-label="Im Angebot gewählt" className="a3-recap mt-4">
+          <p className="a3-mtag">Im Angebot gewählt</p>
+          {cart.length === 0 ? (
+            <p className="a3-cap">
+              Standardumfang — keine Abweichungen gewählt. Jede Option in den
+              Kapiteln links zeigt ihren Preis vor dem Klick.
+            </p>
+          ) : (
+            <ul>
+              {cart.map((d) => (
+                <li key={d.key}
+                    className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
+                  <span className="text-text-secondary">{d.label}</span>
+                  <span className="numeric shrink-0 text-text-primary">
+                    {signed(d.exact)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
         {/* ── Kostentreiber (DC-44) — обязателен после каждой калькуляции ──
             DC-21 отвечает машине, DC-44 — клиенту: переговорный аргумент,
@@ -312,11 +361,12 @@ export function OfferPanel() {
               {moneyLabel(p.result.total)}
             </p>
           )}
-          {treiberOpen && (<>
+          {treiberOpen && (<div className="a3-drivers mt-2">
           {/* Шапка бенчмарка (DRIVER-001, CALC-008): фикстура объявляет только
               ID снапшота — медианы нет, и выдумать её нельзя (R-25), поэтому
-              вывод «x % zur Mediane» честно заменён названной причиной. */}
-          <p className="numeric mt-1 text-small text-text-secondary">
+              вывод «x % zur Mediane» честно заменён названной причиной.
+              Бенчмарк — выносной блок контракта (.a3-bmark). */}
+          <p className="a3-bmark numeric">
             {rateLabel(p.secondaryRateBgf)} gegen Snapshot
             BM-BKI-2026Q1-SYNTH (Bundesdurchschnitt, Regionalfaktor
             inaktiv{NNBSP}·{NNBSP}D-15) — nicht vergleichbar: Median im
@@ -350,7 +400,7 @@ export function OfferPanel() {
                             rund {shown.display} Euro, exakt {formatDE(d.exact.abs(), 2)} Euro
                           </span>
                           <span aria-hidden="true">{driverLabel(d.key, d.label, s)}</span>
-                          <span aria-hidden="true" className="block text-text-muted">
+                          <span aria-hidden="true" className="a3-driver-direction">
                             {richtung}
                             {' · '}
                             {d.scopeRefs.length > 0
@@ -436,7 +486,7 @@ export function OfferPanel() {
               </tbody>
             </table>
           </div>
-          </>)}
+          </div>)}
         </section>
 
         {/* ── Разбивка KG ────────────────────────────────────────────────── */}
@@ -548,7 +598,7 @@ export function OfferPanel() {
           </button>
 
           {journalOpen && ctxJournal.length > 0 && (
-            <ol className="a3-journal-items mt-2 overflow-y-auto border-t border-border-subtle pt-1"
+            <ol className="a3-journal-spec a3-journal-items mt-2 overflow-y-auto pt-1"
                 style={{ maxHeight: 'calc(var(--space-8) * 3)' }}>
               {[...ctxJournal].reverse().map((e) => (
                 <li key={e.seq} className="flex justify-between gap-2 py-1 text-small">
