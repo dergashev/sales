@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Decimal } from 'decimal.js'
 import { useStore } from '../state/store'
-import { applyDiscount } from '../engine/calculate'
-import { NNBSP, label as moneyLabel } from '../engine/money'
+import { NNBSP } from '../engine/money'
+import { DiscountControl } from '../components/DiscountControl'
 import { Button, UncertaintyBadge } from '../components/primitives'
 
 /**
@@ -43,7 +43,9 @@ export function S5Export() {
   const [selected, setSelected] = useState<Set<string>>(
     new Set(ARTIFACTS.filter((a) => a.default).map((a) => a.id)),
   )
-  const [discountOn, setDiscountOn] = useState(false)
+  // Скидка — величина, а не флаг: контракт DC-25 требует слайдер со
+  // значением, а не два состояния «есть / нет».
+  const [discountPct, setDiscountPct] = useState<Decimal | null>(null)
   const [stage, setStage] = useState<Stage>('compose')
   const [body, setBody] = useState(
     'Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unser indikatives ' +
@@ -51,7 +53,6 @@ export function S5Export() {
   )
 
   const total = p.result.total.exact
-  const discounted = applyDiscount(total, new Decimal('3'))
 
   // Preflight — вывод, не заявление: блокер, интервал, допущения.
   const blockers: string[] = []
@@ -104,27 +105,14 @@ export function S5Export() {
           </ul>
 
           <h2 className="mt-6 text-heading-3 font-bold text-text-primary">Rabatt</h2>
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-            <Button variant={discountOn ? 'secondary' : 'primary'}
-                    onClick={() => setDiscountOn(false)} aria-pressed={!discountOn}>
-              kein
-            </Button>
-            <Button variant={discountOn ? 'primary' : 'secondary'}
-                    onClick={() => setDiscountOn(true)} aria-pressed={discountOn}>
-              prozentual 3,0{NNBSP}%
-            </Button>
+          <div className="mt-2">
+            <DiscountControl
+              totalExact={total}
+              percent={discountPct}
+              onChange={setDiscountPct}
+              mode={s.mode}
+            />
           </div>
-          {discountOn && (
-            <div className="mt-3 border border-border-default p-3">
-              <p className="numeric text-body text-text-primary">
-                {moneyLabel(discounted)}
-              </p>
-              <p className="a3-cap mt-1">
-                Basis ist der exakte Rechenwert, nie der angezeigte
-                (CALC-007). {discounted.disclosure}
-              </p>
-            </div>
-          )}
         </section>
 
         <section aria-label="Versand">
@@ -217,7 +205,9 @@ export function S5Export() {
                   onClick={() => {
                     // Отправка = снапшот + событие (M-3): состояние, от
                     // которого клиент получил числа, зафиксировано до письма.
-                    s.sendOffer('email', discountOn ? '3.0' : null)
+                    // В снапшот идёт ФАКТИЧЕСКИЙ процент, а не признак «скидка была»:
+                    // снапшот обязан воспроизводить числа клиента (M-3).
+                    s.sendOffer('email', discountPct ? discountPct.toFixed(1) : null)
                     setStage('gesendet')
                     setTimeout(() => setStage('zugestellt'), DELIVERY_SIMULATION_MS)
                   }}

@@ -5,8 +5,9 @@ import { useStore } from '../state/store'
 import { CATALOG } from '../state/catalog'
 import { NNBSP, present, rateLabel, formatDE, label as moneyLabel } from '../engine/money'
 import type { CostGroup, CoverageState } from '../engine/calculate'
-import { Button, UncertaintyBadge, useCountUp, useReducedMotion } from './primitives'
+import { Button, useCountUp, useReducedMotion } from './primitives'
 import { OriginPopover } from './OriginPopover'
+import { UncertaintyBand } from './UncertaintyBand'
 import { useT } from '../i18n'
 
 /**
@@ -105,8 +106,14 @@ export function OfferPanel() {
             <span className="a3-hb-unit">{NNBSP}€</span>
           </p>
         </div>
+        {/* Интервал — полосой с денежными краями (DC-3): «± 22 %» отвечает
+            «насколько точно», края отвечают «сколько это в деньгах», и на
+            переговорах спрашивают второе. */}
+        <div className="mt-2">
+          <UncertaintyBand totalExact={p.result.total.exact} pp={p.uncertaintyPp} />
+        </div>
         <p className="a3-cap mt-1">
-          netto · <UncertaintyBadge pp={p.uncertaintyPp} />
+          netto
           {' · '}
           {/* DC-21 moneyOrigin: цепочка драйверов + округление + runRef.
               Regionalfaktor в Herkunft — «deaktiviert» (правило 40). */}

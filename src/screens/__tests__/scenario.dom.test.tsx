@@ -69,4 +69,35 @@ describe('Сквозной сценарий продажи', () => {
     expect(within(table).getAllByText('04.04.2027')).toHaveLength(2)
     expect(within(table).getByText('19.11.2027')).toBeInTheDocument()
   })
+
+  it('интервал точности показан деньгами, а не только процентом (DC-3)', async () => {
+    render(<App />)
+    // ± 22 % от точного 3.817.835 → края 2.977.911,30 и 4.657.758,70,
+    // округление денег до тысячи. Считается от ТОЧНОГО, не от показанного.
+    expect(screen.getByText(/2\.978\.000/)).toBeInTheDocument()
+    expect(screen.getByText(/4\.658\.000/)).toBeInTheDocument()
+  })
+
+  it('скидка: слайдер называет последствие, сторож маржи — текстом (DC-25)', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(nav(/^S5|Export/))
+
+    const slider = screen.getByRole('slider', { name: /Rabatt in Prozent/ })
+    // aria-valuetext называет деньги, а не только процент: процент без
+    // суммы заставляет считать в уме на переговорах.
+    expect(slider.getAttribute('aria-valuetext')).toMatch(/Endpreis/)
+    // Состояние маржи — текстом, не цветом (DC-25, правило 8).
+    expect(screen.getByText(/Marge Eigenleistung nach Rabatt/)).toBeInTheDocument()
+  })
+
+  it('маржа не существует в презентации, а не скрыта стилем (D-01)', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(screen.getByRole('button', { name: 'Klassifikation bestätigen' }))
+    const modus = screen.getByRole('radiogroup', { name: 'Modus' })
+    await user.click(within(modus).getAllByRole('radio')[1]!)
+    await user.click(nav(/^S5|Export/))
+    expect(screen.queryByText(/Marge Eigenleistung/)).not.toBeInTheDocument()
+  })
 })
