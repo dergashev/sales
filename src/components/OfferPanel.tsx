@@ -76,6 +76,10 @@ export function OfferPanel() {
     (acc, e) => (e.deltaExact ? acc.plus(e.deltaExact) : acc),
     new Decimal(0),
   )
+  // «übernommene Änderungen» — это изменения ЦЕНЫ, а не все события журнала.
+  // Прежде считалась длина журнала, и отправка оффера увеличивала счётчик
+  // изменения цены, ничего не изменив: подпись утверждала неправду о деньгах.
+  const priceChangeCount = s.journal.filter((e) => e.deltaExact !== null).length
 
   const notIncluded = (Object.keys(s.coverage) as CostGroup[]).filter(
     (g) => ['unknown', 'onRequest', 'excluded'].includes(s.coverage[g]),
@@ -369,12 +373,13 @@ export function OfferPanel() {
             className="relative w-full text-left text-small text-text-secondary outline-none before:absolute before:left-1/2 before:top-1/2 before:min-h-hit-target before:w-full before:-translate-x-1/2 before:-translate-y-1/2 before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
           >
             <span aria-hidden="true">{journalOpen ? '▾ ' : '▸ '}</span>
-            {s.journal.length === 0
+            {priceChangeCount === 0
               ? t('journal.empty')
               : <>Preisänderung gegenüber Vergleichsbasis DEMO-VV-0003:{' '}
                   <span className="numeric font-medium text-text-primary">
-                    {dc12Delta(sessionDelta)}
-                  </span>{' '}netto · {s.journal.length} übernommene Änderung(en)</>}
+                    {signed(sessionDelta)}
+                  </span>{' '}netto · {priceChangeCount}{NNBSP}
+                  {priceChangeCount === 1 ? 'übernommene Änderung' : 'übernommene Änderungen'}</>}
           </button>
 
           {journalOpen && s.journal.length > 0 && (
@@ -393,8 +398,8 @@ export function OfferPanel() {
 
           <div className="mt-2">
             <Button onClick={() => s.undo()}
-                    disabled={s.journal.length === 0}
-                    disabledReason="noch keine Änderung übernommen">
+                    disabled={!s.canUndo()}
+                    disabledReason="nichts mehr rückgängig zu machen">
               {t('common.undo')}
             </Button>
           </div>
@@ -426,15 +431,17 @@ function driverLabel(
   return engineLabel
 }
 
+/**
+ * Знаковая денежная величина. Порядок — `≈ + 97.000 €`: префикс округления
+ * стоит ДО знака, потому что приблизительность относится к величине целиком,
+ * а не к её направлению (образец DC-12/DC-29).
+ *
+ * Форматтер ОДИН на все места. Прежде их было два: общий ставил знак перед
+ * `≈`, правильный жил только в подписи журнала — и дельта-чип с превью
+ * показывали порядок, которого норматив не знает. Два форматтера одной
+ * величины расходятся всегда, вопрос только в том, когда это заметят.
+ */
 function signed(d: Decimal): string {
-  if (d.isZero()) return `±${NNBSP}0${NNBSP}€`
-  const pr = present(d.abs())
-  const sign = d.isNegative() ? '−' : '+'
-  return `${sign}${NNBSP}${pr.prefix ? pr.prefix + NNBSP : ''}${pr.display}${NNBSP}€`
-}
-
-/** Формат DC-12 (README §журнал): `≈ + 97.000 €` — префикс ДО знака. */
-function dc12Delta(d: Decimal): string {
   if (d.isZero()) return `±${NNBSP}0${NNBSP}€`
   const pr = present(d.abs())
   const sign = d.isNegative() ? '−' : '+'

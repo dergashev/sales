@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useStore } from '../state/store'
 import { Button, useReducedMotion } from './primitives'
+import { UNDO_WINDOW_MS } from '../config/ui-policy'
 import { useT } from '../i18n'
 
 /**
@@ -22,15 +23,6 @@ import { useT } from '../i18n'
  *   и тост события отмены снова несёт `Rückgängig`.
  */
 
-const FALLBACK_MS = 8000
-
-function toastLifetimeMs(): number {
-  const raw = getComputedStyle(document.documentElement)
-    .getPropertyValue('--duration-toast-undo')
-  const ms = parseInt(raw, 10)
-  return Number.isFinite(ms) && ms > 0 ? ms : FALLBACK_MS
-}
-
 export function UndoToast() {
   const s = useStore()
   const toast = s.undoToast
@@ -40,7 +32,7 @@ export function UndoToast() {
 
   useEffect(() => {
     if (!toast || paused) return
-    const t = setTimeout(() => s.dismissUndoToast(), toastLifetimeMs())
+    const t = setTimeout(() => s.dismissUndoToast(), UNDO_WINDOW_MS)
     return () => clearTimeout(t)
   }, [toast?.seq, paused])
 

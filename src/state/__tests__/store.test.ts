@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Decimal } from 'decimal.js'
 import { __resetStoreForTests, useStore } from '../store'
+import type { JournalEvent, OfferSnapshot } from '../store'
 
 /**
  * Проекция обязана воспроизводить мокап S3 из `screen-map.md` до цента.
@@ -114,6 +115,87 @@ describe('Правило 11: вход в презентацию гейтуетс
     // Обратно в intern — всегда можно.
     useStore.getState().setMode('intern')
     expect(useStore.getState().mode).toBe('intern')
+  })
+})
+
+describe('M-4/M-3: обход журнала невозможен по построению, не по соглашению', () => {
+  it('ссылки из getState() заморожены: присваивание бросает, состояние цело', () => {
+    const s = useStore.getState()
+    // Типы не `readonly` намеренно: запрет обеспечен заморозкой в рантайме,
+    // а не только системой типов — обойти `as any` можно, замороженный
+    // объект обойти нельзя.
+    expect(() => { s.building.gebaeudeklasse.confirmed = true }).toThrow()
+    expect(() => { s.coverage.KG_500 = 'included' }).toThrow()
+    const after = useStore.getState()
+    expect(after.building.gebaeudeklasse.confirmed).toBe(false)
+    expect(after.coverage.KG_500).toBe('unknown')
+    expect(after.journal).toHaveLength(0)
+  })
+
+  it('журнал и undone не дописываются снаружи', () => {
+    const s = useStore.getState()
+    expect(() => (s.journal as JournalEvent[]).push({
+      seq: 99, kind: 'value.edited', label: 'подделка', deltaExact: null,
+      at: '2026-08-06T00:00:00.000Z',
+    })).toThrow()
+    expect(useStore.getState().journal).toHaveLength(0)
+  })
+
+  it('снапшот неприкосновенен: ни поле не меняется, ни список не чистится', () => {
+    useStore.getState().confirmGebaeudeklasse()
+    const snap = useStore.getState().sendOffer('email', null)
+    expect(() => { snap.totalExact = '0.00' }).toThrow()
+    expect(() => (useStore.getState().snapshots as OfferSnapshot[]).splice(0, 1)).toThrow()
+    const stored = useStore.getState().snapshots[0]!
+    expect(stored.totalExact).toBe('3817835.00')
+    expect(useStore.getState().snapshots).toHaveLength(1)
+  })
+
+  it('сброс состояния недоступен вне тестовой среды по построению', () => {
+    // Санкционированный путь работает; production-ветка закрыта проверкой MODE.
+    expect(() => __resetStoreForTests()).not.toThrow()
+  })
+})
+
+describe('Курсор отмены: композиции, которых не было в тестах', () => {
+  it('undo → новое событие → undo → undo отменяет три разных события', () => {
+    const st = () => useStore.getState()
+    st().setEnergiestandard('EH_40')      // seq 1
+    st().setUntergeschoss('kein_ug')      // seq 2
+    st().undo()                            // seq 3 отменяет 2
+    st().toggleRegionalfaktor()            // seq 4
+    st().undo()                            // seq 5 отменяет 4
+    st().undo()                            // seq 6 отменяет 1
+    const s = st()
+    const undoOf = s.journal.filter((e) => e.kind === 'undo').map((e) => e.undoOf)
+    expect(undoOf).toEqual([2, 4, 1])
+    expect(s.building.energiestandard).toBe('EH_55')
+    expect(s.building.untergeschoss).toBe('vollausbau')
+    expect(s.regionalfaktorActive).toBe(false)
+    expect(s.projection().result.total.exact.toFixed(2)).toBe('3817835.00')
+  })
+
+  it('после отмены отмены курсор снова считает событие действующим', () => {
+    const st = () => useStore.getState()
+    st().setEnergiestandard('EH_40')   // seq 1
+    st().undoEvent(1)                   // seq 2 — отмена
+    st().undoEvent(2)                   // seq 3 — отмена отмены, EH 40 снова в силе
+    expect(st().projection().result.total.exact.toFixed(2)).toBe('3915170.00')
+    expect(st().canUndo()).toBe(true)   // прежде здесь было false при живой кнопке
+    st().undo()                          // seq 4 — снова отменяет seq 1
+    expect(st().projection().result.total.exact.toFixed(2)).toBe('3817835.00')
+    expect(st().journal[3]!.undoOf).toBe(1)
+  })
+
+  it('canUndo и undo() отвечают об одном и том же курсоре', () => {
+    const st = () => useStore.getState()
+    expect(st().canUndo()).toBe(false)
+    st().setEnergiestandard('EH_40')
+    expect(st().canUndo()).toBe(true)
+    st().undo()
+    // Журнал непуст, но отменять больше нечего — кнопка обязана это знать.
+    expect(st().journal.length).toBe(2)
+    expect(st().canUndo()).toBe(false)
   })
 })
 

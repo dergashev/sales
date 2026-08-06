@@ -74,7 +74,7 @@
 |---|---|---|
 | **Bereitschafts-Ring** `.ringwrap .ringnum` (56 px) | DC-26 | не строился |
 | **Bauzeit-Gantt** `.gantt .g-row .g-seg .g-track .g-axis` | DC-19 | не строился; в прототипе срок — только число |
-| **Genauigkeitsband** `.iv-band .iv-bandbox .iv-edges` | DC-3 | в прототипе интервал только текстом `± 22 %` |
+| **Genauigkeitsband** `.iv-band .iv-bandbox .iv-edges` | DC-3 | в прототипе интервал только текстом `± 22 %` |
 | **Rabatt-Steuerung + Margen-Wächter** `.rb .guard` | DC-25 | в S5 есть поле скидки, сторожа маржи нет |
 | **Termin-Zusammenfassung** `.recap` | DC-31 | не строился |
 | **Modal / Dialog** `.modal .modal-scrim` | DC-33 | не строился; гейт показан полосой, не диалогом |

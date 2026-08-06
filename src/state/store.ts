@@ -206,6 +206,8 @@ type Store = {
       | { kind: 'untergeschoss'; value: BuildingInput['untergeschoss'] },
   ) => Decimal
   undo: () => void
+  /** Есть ли действующее событие, которое отменит `undo()`. */
+  canUndo: () => boolean
   /** Адресная отмена события из тоста DC-29. Умеет отменять и отмену. */
   undoEvent: (seq: number) => void
   dismissUndoToast: () => void
@@ -213,6 +215,17 @@ type Store = {
   setMode: (m: 'intern' | 'praesentation') => void
   setUiLanguage: (l: 'de' | 'en') => void
   setDensity: (d: 'komfortabel' | 'kompakt') => void
+}
+
+/**
+ * Событие, которое отменит следующий `undo()`. Одно определение на всех:
+ * кнопка, действие и тест обязаны спрашивать один и тот же курсор, иначе
+ * доступность контрола расходится с его поведением.
+ */
+function undoTarget(s: Pick<Store, 'journal' | 'undone'>): JournalEvent | undefined {
+  return [...s.journal]
+    .reverse()
+    .find((e) => e.kind !== 'undo' && e.inverse && !s.undone.includes(e.seq))
 }
 
 function computeProjection(
@@ -267,6 +280,30 @@ function dc29Delta(d: Decimal): string {
   const sign = d.isNegative() ? '−' : '+'
   return `${pr.prefix ? pr.prefix + NNBSP : ''}${sign}${NNBSP}${pr.display}${NNBSP}€` +
     `${NNBSP}gegenüber DEMO-VV-0003`
+}
+
+/**
+ * Замораживание состояния — вторая половина инварианта M-4.
+ *
+ * Убрать `setState` из публичного API оказалось недостаточно: независимый
+ * аудит показал, что `getState()` отдавал **живые ссылки**, и присваивание
+ * `building.gebaeudeklasse.confirmed = true` меняло расчётное состояние при
+ * пустом журнале. Запрет, обеспеченный только тем, что «так писать не
+ * принято», не является запретом. Замороженный объект отвечает исключением
+ * в строгом режиме — модули ES строгие всегда.
+ *
+ * `Decimal` пропускается: значения decimal.js неизменяемы по построению
+ * (арифметика возвращает новые экземпляры), а заморозка чужих внутренних
+ * полей — риск без выигрыша.
+ */
+function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
+  if (value === null || typeof value !== 'object') return value
+  if (value instanceof Decimal) return value
+  const obj = value as unknown as object
+  if (seen.has(obj) || Object.isFrozen(obj)) return value
+  seen.add(obj)
+  for (const v of Object.values(obj)) deepFreeze(v, seen)
+  return Object.freeze(value)
 }
 
 // Сырой store — приватный. Наружу не выходит ни он, ни его setState.
@@ -586,7 +623,11 @@ const store = createStore<Store>((set, get) => {
         discountPercent,
         journalSeqAt: s.journal.length,
       }
-      set({ snapshots: [...s.snapshots, snap] })
+      // Снапшот неприкосновенен по построению (M-3): и сам объект, и список.
+      // Аудит показал, что возвращаемый объект был изменяем, а массив
+      // допускал `splice` — «неприкосновенность», которой не существовало.
+      deepFreeze(snap)
+      set({ snapshots: Object.freeze([...s.snapshots, snap]) as OfferSnapshot[] })
       apply({
         kind: kind === 'email' ? 'offer.emailed' : 'offer.printed',
         label: kind === 'email'
@@ -636,13 +677,17 @@ const store = createStore<Store>((set, get) => {
      * целится в события отмены — редо доступно только адресно из тоста.
      */
     undo: () => {
-      const { journal, undone } = get()
-      const target = [...journal]
-        .reverse()
-        .find((e) => e.kind !== 'undo' && e.inverse && !undone.includes(e.seq))
+      const target = undoTarget(get())
       if (!target) return
       get().undoEvent(target.seq)
     },
+
+    /**
+     * Есть ли что отменять. Кнопка обязана спрашивать КУРСОР, а не длину
+     * журнала: после отмены журнал непуст, а отменять уже нечего — аудит
+     * поймал живую кнопку, нажатие которой было no-op.
+     */
+    canUndo: () => undoTarget(get()) !== undefined,
 
     /**
      * Адресная отмена (DC-29). Событие отмены получает inverse = forward
@@ -655,7 +700,14 @@ const store = createStore<Store>((set, get) => {
       const target = journal.find((e) => e.seq === seq)
       if (!target || !target.inverse || undone.includes(seq)) return
       target.inverse()
-      set((s) => ({ undone: [...s.undone, seq] }))
+      set((s) => ({
+        // Отмена СОБЫТИЯ ОТМЕНЫ возвращает исходное событие в действующие.
+        // Прежняя редакция оставляла его в `undone` навсегда: состояние
+        // говорило «EH 40 применён», а курсор считал его отменённым, и
+        // следующий обычный undo молча ничего не делал. Курсор обязан
+        // описывать то же, что состояние.
+        undone: [...s.undone.filter((n) => n !== target.undoOf), seq],
+      }))
       apply({
         kind: 'undo',
         label: `Rückgängig: ${target.label}`,
@@ -679,6 +731,11 @@ const store = createStore<Store>((set, get) => {
   }
 })
 
+// Каждое состояние замораживается сразу после записи: подписчик zustand
+// выполняется синхронно за `set`, поэтому наружу живая ссылка не выходит.
+deepFreeze(store.getState())
+store.subscribe((s) => deepFreeze(s))
+
 // Снимок начального состояния — для тестового сброса.
 const INITIAL_SNAPSHOT = store.getState()
 
@@ -692,8 +749,20 @@ const hook = (() => useZustandStore(store)) as UseStore
 hook.getState = store.getState
 export const useStore = hook
 
-/** Тестовый сброс — единственная санкционированная замена состояния целиком. */
+/**
+ * Тестовый сброс — единственная санкционированная замена состояния целиком.
+ * В продакшн-сборке недоступен: аудит верно указал, что production-модуль
+ * экспортировал полную замену состояния без события. Экспорт остаётся ради
+ * простоты импорта в тестах, но вызов вне тестовой среды — исключение.
+ */
 export function __resetStoreForTests(): void {
+  const mode = (import.meta as { env?: { MODE?: string } }).env?.MODE
+  if (mode !== 'test') {
+    throw new Error(
+      '__resetStoreForTests доступен только в тестовой среде: замена состояния ' +
+        'целиком обходит журнал событий (M-4)',
+    )
+  }
   store.setState(INITIAL_SNAPSHOT, true)
 }
 
