@@ -103,11 +103,20 @@ const config: Config = {
       medium: 'var(--font-weight-medium)',
       bold: 'var(--font-weight-bold)',
     },
+    // Ширины бордеров — ровно три объявленных токена. Прежняя редакция
+    // ссылалась на `--border-width-hairline/-contrast/-selected`, которых в
+    // tokens.css НЕ СУЩЕСТВУЕТ: система объявляет `-default/-strong/-focus`.
+    // Каждый `border`, `border-contrast` и `border-selected` во всём
+    // прототипе получал `border-width: var(<нет такого>)` — объявление
+    // невалидно и отбрасывается, то есть ширина приходила от браузера, а не
+    // от системы. Нашла это проверка TOKEN-EXISTS на первом же прогоне;
+    // глазами дефект не виден, потому что бордер всё равно рисуется.
     borderWidth: {
       0: '0',
-      DEFAULT: 'var(--border-width-hairline)',
-      contrast: 'var(--border-width-contrast)',
-      selected: 'var(--border-width-selected)',
+      DEFAULT: 'var(--border-width-default)',
+      contrast: 'var(--border-width-strong)',
+      selected: 'var(--border-width-strong)',
+      focus: 'var(--border-width-focus)',
     },
     zIndex: {
       header: 'var(--layer-header)',

@@ -291,7 +291,7 @@ CHECK_CLASSES = (
     # единицы, типографика чисел, даты (v3, Batch 3)
     'NBSP', 'CYRILLIC-UNIT', 'AREA-SCOPE', 'DATE-FORMAT',
     # управление и план
-    'CLAUDE', 'DECISIONS', 'PLAN', 'INDEX',
+    'CLAUDE', 'DECISIONS', 'PLAN', 'INDEX', 'TOKEN-EXISTS',
     # приватность
     'PRIVACY-001', 'ARTIFACT-A11Y',
     # арифметика
@@ -5471,9 +5471,43 @@ class Verifier:
                 self.fail('TOOL-REGISTRY', 'CHECK_CLASSES',
                           f'класс «{cls}» объявлен в реестре, но нигде не используется')
 
+    def check_token_exists(self):
+        """Каждый var(--x) из кода обязан существовать в tokens.css.
+
+        Введено 06.08 вместе с передачей `tokens.css` второму инструменту
+        (PROTOCOL §2-bis). Размен «автор системы владеет токенами» безопасен
+        ровно постольку, поскольку сломанная ссылка обнаруживается прогоном,
+        а не глазами: переименование токена в системе без правки кода — это
+        молча пропавший стиль, худший вид поломки, потому что сборка зелёная.
+
+        Проверяется существование ИМЕНИ, а не значения: значение — предмет
+        дизайна, имя — контракт между системой и реализацией.
+        """
+        css = self.read('design-system/tokens.css') or ''
+        # Без якоря строки: tokens.css объявляет по нескольку токенов в
+        # строке («--space-7: 48px; --space-8: 64px;»), и якорь видел бы
+        # только первый. Ложные срабатывания на `var(--x)` невозможны: там
+        # за именем идёт «)», а не «:».
+        declared = set(re.findall(r'(--[\w-]+)\s*:', css))
+        if not declared:
+            self.fail('TOKEN-EXISTS', 'design-system/tokens.css',
+                      'ни одного объявленного токена не найдено — проверка потеряла предмет')
+            return
+        for glob in ('*.tsx', '*.ts'):
+            for rel, text in self.files(glob):
+                if rel.startswith('tools/') or '__tests__' in rel:
+                    continue
+                for i, line in enumerate(text.split('\n'), 1):
+                    for used in re.findall(r'var\((--[\w-]+)', line):
+                        if used not in declared:
+                            self.emit('TOKEN-EXISTS', rel, i, line,
+                                      f'токен «{used}» используется в коде, но не объявлен '
+                                      f'в design-system/tokens.css — стиль пропадёт молча')
+
     # -- запуск ----------------------------------------------------------------
     def run(self):
         self.check_tokens()
+        self.check_token_exists()
         self.check_css()
         self.check_css_effective()
         self.check_contrast()
