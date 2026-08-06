@@ -91,15 +91,20 @@ export function OfferPanel() {
       className="flex h-full w-panel-right shrink-0 flex-col overflow-y-auto border-l border-border-strong bg-surface-default"
     >
       <div className="flex-1 px-5 py-5" aria-live="polite">
-        {/* ── Герой №1: тотал — единственный оранжевый (DC-38) ─────────── */}
-        <p className="text-small text-text-secondary">{p.result.totalLabel}</p>
-        <p className="numeric mt-1 text-display-numeric font-bold text-text-display-accent">
-          {p.result.total.prefix && (
-            <span aria-hidden="true">{p.result.total.prefix}{NNBSP}</span>
-          )}
-          {totalCount}
-          <span className="text-display-numeric-narrow">{NNBSP}€</span>
-        </p>
+        {/* ── Герой №1: тотал — единственный оранжевый (DC-38) ───────────
+            Кегли, цвет и выравнивание по базовой линии приходят из системы
+            (`.a3-hb-total .a3-hb-num` = 64 px accent, `.a3-hb-unit` = 24 px):
+            иерархия метрик принадлежит дизайну, а не этому файлу. */}
+        <div className="a3-hb a3-hb-total">
+          <span className="a3-hb-cap">{p.result.totalLabel}</span>
+          <p className="a3-hb-num numeric">
+            {p.result.total.prefix && (
+              <span aria-hidden="true">{p.result.total.prefix}{NNBSP}</span>
+            )}
+            {totalCount}
+            <span className="a3-hb-unit">{NNBSP}€</span>
+          </p>
+        </div>
         <p className="mt-1 text-small text-text-secondary">
           netto · <UncertaintyBadge pp={p.uncertaintyPp} />
           {' · '}
@@ -128,7 +133,7 @@ export function OfferPanel() {
         </p>
 
         {/* ── Герои №2 и №3: ведущая ставка и срок, чёрные (DC-38) ─────── */}
-        <p className="numeric mt-4 text-display-numeric-narrow font-bold text-text-primary">
+        <p className="a3-hb-num numeric mt-4">
           {rateLabel(p.leadRate)}
         </p>
         <p className="numeric mt-1 text-small text-text-secondary">
@@ -158,7 +163,7 @@ export function OfferPanel() {
           />
         </p>
 
-        <p className="numeric mt-4 text-display-numeric-narrow font-bold text-text-primary">
+        <p className="a3-hb-num numeric mt-4">
           {p.duration.prefix && <span aria-hidden="true">{p.duration.prefix}{NNBSP}</span>}
           {p.duration.display}
         </p>
@@ -178,7 +183,7 @@ export function OfferPanel() {
             Анатомия контракта: префикс «Vorschau ·», будущее значение,
             дельта к названной базе, ссылка на прогон превью. Высота
             зарезервирована: появление призрака не двигает вёрстку. */}
-        <div className="mt-3 min-h-delta-slot">
+        <div className="a3-ghost-slot mt-3">
           <AnimatePresence>
             {s.preview && (
               <motion.p
@@ -187,7 +192,7 @@ export function OfferPanel() {
                 animate={{ opacity: 1 }}
                 exit={reduced ? {} : { opacity: 0 }}
                 transition={{ duration: reduced ? 0 : 0.12 }}
-                className="numeric border border-border-default p-3 text-small text-text-secondary"
+                className="a3-ghost numeric p-3"
               >
                 Vorschau · {s.preview.label}
                 <span className="mt-1 block text-body">
@@ -211,7 +216,7 @@ export function OfferPanel() {
         </div>
 
         {/* ── Слот дельта-чипа: зарезервирован, появление не двигает ────── */}
-        <div className="mt-3 min-h-delta-slot">
+        <div className="a3-delta-slot mt-3">
           <AnimatePresence>
             {s.activeDelta && (
               <motion.p
@@ -220,7 +225,7 @@ export function OfferPanel() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={reduced ? {} : { opacity: 0 }}
                 transition={{ duration: reduced ? 0 : 0.2 }}
-                className="numeric border-selected border-selection-border p-3 text-body text-text-primary"
+                className="a3-delta numeric"
               >
                 {s.activeDelta.label}
                 <span className="mt-1 block font-medium">

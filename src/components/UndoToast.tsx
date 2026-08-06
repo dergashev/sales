@@ -56,7 +56,10 @@ export function UndoToast() {
           animate={{ opacity: 1, y: 0 }}
           exit={reduced ? {} : { opacity: 0, transition: { duration: 0.12 } }}
           transition={{ duration: reduced ? 0 : 0.2 }}
-          className="fixed bottom-5 left-5 z-toast border-contrast border-border-strong bg-surface-default p-4"
+          // Вид тоста — из системы (`.a3-toast`, DC-29); позиционирование в
+          // нижнем левом углу принадлежит оболочке приложения, а не самому
+          // компоненту: справа живёт панель цены.
+          className="a3-toast fixed bottom-5 left-5 z-toast"
           style={{
             maxWidth: 'min(var(--size-toast-max-width), calc(100vw - 2 * var(--space-5)))',
           }}

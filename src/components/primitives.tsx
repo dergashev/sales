@@ -112,7 +112,7 @@ export function ProvenanceChip({ provenance }: { provenance: string }) {
     : provenance === 'aus Dokument' ? '◆'
       : provenance === 'abgeleitet' ? '▲' : '✎'
   return (
-    <span className="inline-flex items-center gap-1 text-small text-text-secondary">
+    <span className="a3-chip-src">
       <span aria-hidden="true">{mark}</span>
       {provenance}
     </span>
@@ -193,7 +193,7 @@ export function Skeleton({ lines = 3, label = 'Wird geladen' }: {
         {Array.from({ length: lines }, (_, i) => (
           <div
             key={i}
-            className="mb-2 h-3 bg-surface-subtle"
+            className="a3-skel mb-2"
             style={{ width: `${100 - (i % 3) * 18}%` }}
           />
         ))}
