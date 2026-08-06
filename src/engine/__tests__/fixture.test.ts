@@ -186,7 +186,8 @@ describe('R-18 и CALC-006: подпись итога выводится, не �
   it('unknown в покрытии даёт промежуточный итог', () => {
     const { completeness, reasons } = deriveCompleteness(COVERAGE_FIXTURE, [], 0)
     expect(completeness).toBe('incomplete')
-    expect(reasons.join(' ')).toContain('KG_500')
+    // Причина — типизированный код, не строка (дефект 13 ревью № 13).
+    expect(reasons).toContainEqual({ code: 'coverageUnknown', groups: ['KG_500'] })
     expect(totalLabel(completeness, 'Grundleistung All3'))
       .toBe('Zwischensumme der kalkulierten Positionen')
   })
@@ -207,7 +208,7 @@ describe('R-18 и CALC-006: подпись итога выводится, не �
     const cov: Coverage = { ...COVERAGE_FIXTURE, KG_500: 'onRequest' }
     const res = calculateBuilding(hausA, cat, cov)
     expect(res.completeness).toBe('incomplete')
-    expect(res.incompleteReasons.join(' ')).toContain('Prüfung erforderlich')
+    expect(res.incompleteReasons).toContainEqual({ code: 'gebaeudeklasseUnconfirmed' })
   })
 })
 

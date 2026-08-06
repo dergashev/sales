@@ -88,7 +88,7 @@ export type BuildingResult = {
   /** Подпись выводится из покрытия, а не назначается. */
   totalLabel: string
   completeness: 'complete' | 'incomplete'
-  incompleteReasons: string[]
+  incompleteReasons: IncompleteReason[]
 }
 
 const FORM_FACTOR_KEY: Record<BuildingInput['gebaeudeform'], string | null> = {
@@ -130,21 +130,33 @@ export function totalLabel(
  * ценообразования. Смешение его с «неизвестно» было настоящим дефектом
  * контракта: одно коммерческое решение, другое пробел в данных.
  */
+/**
+ * Причина неполноты — ТИПИЗИРОВАННЫЙ код, не строка (ревью № 13, дефект 13).
+ * Движок называет ЧТО случилось; КАК это сказать пользователю — забота UI
+ * и его локализации. Прежняя редакция отдавала машинные и русские строки
+ * (`coverage unknown: KG_500`) прямо на экран, включая презентацию.
+ */
+export type IncompleteReason =
+  | { code: 'coverageUnknown'; groups: CostGroup[] }
+  | { code: 'includedUnpriced'; groups: CostGroup[] }
+  | { code: 'openMaterialIssues'; count: number }
+  | { code: 'gebaeudeklasseUnconfirmed' }
+
 export function deriveCompleteness(
   coverage: Coverage,
   unpricedIncluded: CostGroup[],
   openMaterialIssues: number,
-): { completeness: 'complete' | 'incomplete'; reasons: string[] } {
-  const reasons: string[] = []
+): { completeness: 'complete' | 'incomplete'; reasons: IncompleteReason[] } {
+  const reasons: IncompleteReason[] = []
   const unknown = (Object.entries(coverage) as [CostGroup, CoverageState][])
     .filter(([, s]) => s === 'unknown')
     .map(([g]) => g)
-  if (unknown.length) reasons.push(`coverage unknown: ${unknown.join(', ')}`)
+  if (unknown.length) reasons.push({ code: 'coverageUnknown', groups: unknown })
   if (unpricedIncluded.length) {
-    reasons.push(`включено без цены: ${unpricedIncluded.join(', ')}`)
+    reasons.push({ code: 'includedUnpriced', groups: unpricedIncluded })
   }
   if (openMaterialIssues > 0) {
-    reasons.push(`открытых существенных проблем: ${openMaterialIssues}`)
+    reasons.push({ code: 'openMaterialIssues', count: openMaterialIssues })
   }
   return {
     completeness: reasons.length ? 'incomplete' : 'complete',
@@ -252,7 +264,7 @@ export function calculateBuilding(
     issues + (b.gebaeudeklasse.confirmed ? 0 : 1),
   )
   if (!b.gebaeudeklasse.confirmed) {
-    reasons.push('Gebäudeklasse: Prüfung erforderlich (CALC-004)')
+    reasons.push({ code: 'gebaeudeklasseUnconfirmed' })
   }
 
   return {

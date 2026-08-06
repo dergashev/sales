@@ -2,6 +2,7 @@ import { type ReactNode } from 'react'
 import { activeBuilding, useStore, COVERAGE_LABEL, LABEL_UG } from '../state/store'
 import { NNBSP } from '../engine/money'
 import { useTx } from '../i18n'
+import { incompleteReasonText } from '../i18n/reasons'
 import type { BuildingInput } from '../engine/calculate'
 import type { CostGroup, CoverageState } from '../engine/calculate'
 import { Decimal } from 'decimal.js'
@@ -226,8 +227,10 @@ function ChapterUmfang() {
         {p.result.completeness === 'incomplete' && (
           <ul className="mt-2">
             {p.result.incompleteReasons.map((r) => (
-              <li key={r} className="a3-cap">
-                <span aria-hidden="true">○ </span>{r}
+              <li key={r.code + ('groups' in r ? r.groups.join() : '')}
+                  className="a3-cap">
+                <span aria-hidden="true">○ </span>
+                {incompleteReasonText(r, s.mode)}
               </li>
             ))}
           </ul>

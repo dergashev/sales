@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { activeBuilding, useStore } from './state/store'
 import { useT } from './i18n'
 import { checkFonts, checkCascade, type FontCheck } from './lib/font-check'
@@ -62,6 +62,15 @@ export function App() {
     document.documentElement.classList.toggle('density-compact', s.density === 'kompakt')
   }, [s.density])
 
+  // Смена экрана/главы/Option/уровня открывает НОВЫЙ документ — с его
+  // начала, а не с высоты прошлого (ревью № 13, дефект 8): экран,
+  // открывшийся серединой карточек без H1, не объясняет свой вопрос.
+  const mainRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    // jsdom не реализует scrollTo на элементах — свойство надёжнее метода.
+    if (mainRef.current) mainRef.current.scrollTop = 0
+  }, [view, s.openChapter, s.activeOptionId, s.level])
+
   // Корень продукта — список Opportunities: ни панелей, ни цены. Цена не
   // может быть показана до выбора Option, а Option появляется только после
   // карточки. Три зоны существуют внутри конвейера, а не поверх всего.
@@ -71,7 +80,7 @@ export function App() {
     return (
       <div className="flex h-screen flex-col bg-surface-canvas">
         <AppHeader t={t} />
-        <main className="min-h-0 flex-1 overflow-y-auto bg-surface-default">
+        <main ref={mainRef} className="min-h-0 flex-1 overflow-y-auto bg-surface-default">
           {s.level === 'liste' ? <OpportunityList /> : <OpportunityCard />}
         </main>
         <UndoToast />
@@ -86,7 +95,7 @@ export function App() {
       <div className="flex min-h-0 flex-1">
         <Sidebar />
 
-        <main className="min-w-0 flex-1 overflow-y-auto bg-surface-default">
+        <main ref={mainRef} className="min-w-0 flex-1 overflow-y-auto bg-surface-default">
           {view === 'konfigurator' && <S3Konfigurator />}
           {view === 'vergleich' && <S4Vergleich />}
           {view === 'export' && <S5Export />}

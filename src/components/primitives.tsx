@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useId, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Decimal } from 'decimal.js'
 import { formatDE, NNBSP } from '../engine/money'
 
@@ -89,13 +89,15 @@ export function Button({
   disabledReason?: string
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   const look = variant === 'primary' ? '' : variant === 'ghost' ? 'a3-ghost' : 'a3-sec'
-  return (
+  const reasonId = useId()
+  const btn = (
     <button
       type="button"
       onClick={onClick}
       // aria-disabled, а не disabled: заблокированная кнопка не должна терять
       // фокус, иначе причина блокировки недостижима с клавиатуры.
       aria-disabled={disabled || undefined}
+      aria-describedby={disabled && disabledReason ? reasonId : undefined}
       title={disabled ? disabledReason : undefined}
       onClickCapture={(e) => { if (disabled) { e.stopPropagation(); e.preventDefault() } }}
       className={`a3-btn ${look} ${FOCUS}`}
@@ -103,6 +105,17 @@ export function Button({
     >
       {children}
     </button>
+  )
+  // Причина блокировки стоит В ПОРЯДКЕ ЧТЕНИЯ и связана aria-describedby
+  // (ревью № 13, дефект 12): title — дополнение, а не носитель.
+  if (!disabled || !disabledReason) return btn
+  return (
+    <span className="inline-flex max-w-full flex-col gap-1">
+      {btn}
+      <span id={reasonId} className="text-small text-text-secondary">
+        {disabledReason}
+      </span>
+    </span>
   )
 }
 

@@ -313,6 +313,7 @@ function StaticRow({ label, value, provenance }: { label: string; value: string;
 /* ── P3 · Offene Fragen ──────────────────────────────────────────────────── */
 
 function P3OffeneFragen() {
+  const [copyState, setCopyState] = useState<'idle' | 'ok' | 'error'>('idle')
   const s = useStore()
   const p = s.projection()
 
@@ -381,10 +382,22 @@ function P3OffeneFragen() {
       <div className="mt-4">
         <Button onClick={() => {
           const text = questions.filter((q) => !q.done).map((q, i) => `${i + 1}. ${q.text}`).join('\n')
-          void navigator.clipboard?.writeText(text || 'Alle Fragen beantwortet.')
+          // Отклик обязателен в обе стороны (ревью № 13, дефект 20): успех
+          // И ошибка; недоступный clipboard — не молчание, а причина.
+          if (!navigator.clipboard) {
+            setCopyState('error')
+            return
+          }
+          navigator.clipboard.writeText(text || 'Alle Fragen beantwortet.')
+            .then(() => setCopyState('ok'), () => setCopyState('error'))
         }}>
           Fragenliste kopieren
         </Button>
+        <p role="status" aria-live="polite" className="a3-cap mt-2">
+          {copyState === 'ok' && <>✓ Fragenliste in die Zwischenablage kopiert</>}
+          {copyState === 'error' && <>✗ Kopieren nicht möglich — Zwischenablage
+            in dieser Umgebung nicht verfügbar; Fragen unten manuell markieren</>}
+        </p>
       </div>
     </section>
   )

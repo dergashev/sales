@@ -358,13 +358,14 @@ describe('S3: ворота клиентского вида', () => {
   it('неподтверждённый класс держит итог неполным', () => {
     const p = useStore.getState().projection()
     expect(p.result.completeness).toBe('incomplete')
-    expect(p.result.incompleteReasons.join(' ')).toContain('Prüfung erforderlich')
+    expect(p.result.incompleteReasons).toContainEqual({ code: 'gebaeudeklasseUnconfirmed' })
   })
 
   it('подтверждение снимает свою причину, но KG 500 держит промежуточный итог', () => {
     useStore.getState().confirmGebaeudeklasse()
     const p = useStore.getState().projection()
-    expect(p.result.incompleteReasons.join(' ')).not.toContain('Prüfung erforderlich')
+    expect(p.result.incompleteReasons.map((r) => r.code))
+      .not.toContain('gebaeudeklasseUnconfirmed')
     // Покрытие KG 500 неизвестно — итог остаётся промежуточным.
     expect(p.result.completeness).toBe('incomplete')
     expect(p.result.totalLabel).toBe('Zwischensumme der kalkulierten Positionen')

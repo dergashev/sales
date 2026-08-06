@@ -1996,3 +1996,154 @@ R-10 требует, чтобы через Draft Revision → commit → Variant
 **Сводка:** тип A — 2 записи (обе адресованы ADR раздела 10) · тип B — 4 записи (закрыты
 прочтением здесь; одна из них, №7, дополнительно требует записи в реестре) · тип C — 1 запись
 (снята). Записей без владельца и без способа закрытия в разделе не осталось.
+
+---
+
+## 12. Продуктовые примитивы компоновки · TASK-15
+
+Четыре контракта ниже переводят уже существующие классы из статуса showcase-helper в
+публичную компонентную API. Имена сохранены: потребителям `src/**` не требуется миграция.
+Это не новые визуальные двойники Card и Link из разделов 6 и 2:
+
+- `SectionSheet` — статическая секция страницы; `Card` остаётся карточкой объекта с primary
+  destination и действиями;
+- `PageHeader` — заголовок текущего экрана, не глобальный AppHeader;
+- `SmallText` — типографическая роль метаданных, не источник статуса;
+- `InlineLink/LinkButton` — публичная CSS-реализация семантических `<a>` и `<button>`;
+  поведенческие требования Link/Button выше сохраняют приоритет.
+
+### SectionSheet · `.a3-sheet`
+
+**Назначение:** белая продуктовая секция, группирующая один вопрос или один связный блок
+данных. Не является кликабельной карточкой и не получает `role=button`.
+
+**Анатомия:** `root <section|article|div>.a3-sheet` →
+`heading.a3-sheet-title` (либо legacy direct child `h2`) → `[intro.a3-sub]` → `content`.
+У секционного `section/article` есть доступное имя через видимый heading и
+`aria-labelledby`; нейтральный `div` допустим только внутри уже названного региона.
+
+**Геометрия:** поверхность `--color-surface-default`; padding `--space-7`; расстояние до
+следующей секции `--space-5`; `scroll-margin-top: --space-8`. Заголовок — Heading 2,
+32/40 Bold, отступ снизу `--space-1`; intro — Small 14/20 и отступ снизу `--space-6`.
+При viewport ≤47,5 rem padding становится `--space-4`; длинный заголовок переносится.
+Тени, скругления и декоративная заливка отсутствуют.
+
+**Состояния взаимодействия:** все семь (`default / hover / focus / pressed / selected /
+disabled / readOnly`) неприменимы: root не является контролом и не меняет смысл от pointer
+или клавиатуры. Интерактивные дети используют собственные контракты и focus ring.
+
+**Состояния данных:** `loading / empty / partial / ready / error / stale / permission` не
+принадлежат layout-root: SectionSheet не загружает и не интерпретирует данные. Она сохраняет
+одну геометрию, а владелец содержимого обязан отрисовать внутри соответствующий Skeleton,
+EmptyState, partial/stale marker, error с cause-impact-remedy-retry или permission reason.
+Скрывать саму секцию как неявный `empty` запрещено. Это named notApplicableReason правила 30,
+а не освобождение дочернего data-компонента от семи состояний.
+
+**Клавиатура и screen reader:** root не получает `tabindex`; фокус идёт только по детям.
+Heading остаётся нативным и соблюдает иерархию страницы. Если секция повторяет название
+родительского региона без нового уровня, используется `div`, а не искусственный heading.
+
+**Токены:** `--color-surface-default` · `--space-1/-4/-5/-6/-7/-8` ·
+`--type-heading-2-size/-line` · `--type-heading-weight` · `--type-small-size/-line` ·
+`--color-text-secondary`.
+
+**Запреты:** primary destination на всей площади · `onclick` на root · вложенная интерактивная
+карточка · тень/радиус/градиент · использование пустой белой секции как empty-state.
+
+### PageHeader · `.a3-masthead`
+
+**Назначение:** заголовок текущего product screen: название, короткая meta-строка и
+опциональная вводная. Глобальная навигация и controls режима остаются вне примитива.
+
+**Анатомия:** `header.a3-masthead` → `heading.a3-hero-title` →
+`[meta.a3-meta|.a3-cap]` → `[lede.a3-lede]`. Title и meta выравниваются по базовой линии;
+lede занимает полную следующую строку. `a3-meta` выравнивает правую колонку вправо, `a3-cap`
+оставляет естественное направление текста. Title внутри root не имеет собственного внешнего
+margin: вертикальный ритм принадлежит PageHeader.
+
+**Геометрия:** flex с переносом, baseline alignment, gap `--space-5`, внешний вертикальный
+отступ `--space-6`. Title — Heading 1 desktop 48/56 Bold; на viewport ≤47,5 rem — narrow
+36/44 и безопасный перенос. Lede ограничен `--measure-wide`.
+
+**Состояния взаимодействия:** неприменимы — PageHeader не контрол. Ссылка «назад» или action
+в meta-слоте остаётся отдельным Link/Button и отдельным focus stop.
+
+**Состояния данных:** семь data states не принадлежат заголовку: он идентифицирует маршрут,
+а не результат запроса. Во всех состояниях целевого экрана title остаётся стабильным;
+loading/empty/partial/error/stale/permission объявляет контент ниже. Динамический meta-count
+форматируется владельцем данных и получает его state carrier; PageHeader только располагает
+готовый текст. Это named notApplicableReason правила 30.
+
+**Клавиатура и screen reader:** root и title не фокусируются; на странице ровно один `h1`.
+Meta не дублирует title в accessible name. Изменение маршрута обновляет document title и
+переносит фокус на h1 программно через product router, не через `tabindex` в CSS-контракте.
+
+**Токены:** `--space-2/-5/-6` · `--type-heading-1-desktop-size/-line` ·
+`--type-heading-1-narrow-size/-line` · `--type-heading-weight` ·
+`--type-small-size/-line` · `--color-text-primary/-secondary` · `--measure-wide`.
+
+**Запреты:** второй h1 · breadcrumbs, mode switch или save status внутри title · hero number
+вместо названия экрана · выравнивание meta абсолютным позиционированием · скрытый title.
+
+### SmallText · `.a3-cap`
+
+**Назначение:** вторичная мета-информация, provenance summary или нейтральная поясняющая
+строка, которую допустимо произнести после основного содержания. Legacy-имя `cap` сохранено
+для совместимости, но роль — **Small 14/20**, не Caption 12/16.
+
+**Анатомия:** семантически подходящий `p|span|figcaption|caption` с `.a3-cap`; HTML-элемент
+выбирается по смыслу, класс не меняет роль. Для таблицы используется настоящий `<caption>`,
+для изображения — `<figcaption>`.
+
+**Состояния взаимодействия:** неприменимы — SmallText не интерактивен. Добавление click-handler
+требует LinkButton/Button вместо смены курсора.
+
+**Состояния данных:** SmallText не является самостоятельным data carrier, поэтому семь
+состояний неприменимы. Если строка сообщает loading/error/stale/permission, состояние обязано
+иметь отдельный семантический компонент с иконкой/текстом и действием; уменьшенный серый текст
+не может быть единственным носителем. Числовой provenance остаётся `tabular-nums` у владельца
+числа, а не добавляется этим классом.
+
+**Доступность:** цвет `--color-text-secondary` проходит 5,33:1 на белой поверхности. Класс
+запрещён для причины disabled, critical warning, Declared Pricing Scope, ключевой метрики и
+любого текста, исчезновение которого меняет решение (R-24, STATE-006).
+
+**Токены:** `--type-small-size/-line/-weight` · `--color-text-secondary`.
+
+### InlineLink / LinkButton · `.a3-linkbtn`
+
+**Назначение:** один визуальный паттерн для текстовой навигации и текстового действия при
+разной нативной семантике. `a.a3-linkbtn[href]` меняет маршрут; `button.a3-linkbtn[type=button]`
+выполняет действие без навигации. Подмена одного другим запрещена.
+
+**Анатомия:** root → verb/object label → `[icon aria-hidden=true]` →
+`[visuallyHiddenPurpose]`. Постоянное сплошное подчёркивание — non-color affordance.
+Минимальная зона 44 × 44 задаётся `min-width/min-height`; визуально компонент остаётся
+текстовым. Hover усиливает толщину подчёркивания, не добавляя информации.
+
+**Состояния взаимодействия:** `default` — чёрный текст + underline · `hover` — underline
+`--border-width-strong` · `focus` — глобальный двухслойный `:focus-visible` · `pressed` —
+нативная активация без нового неутверждённого цвета · `disabled` — только для button как
+`aria-disabled=true` с видимой причиной и следующим шагом; anchor без доступной цели заменяется
+текстом + причиной · `selected/readOnly` — неприменимы: ссылка и действие не являются полем.
+
+**Состояния данных:** `ready` — цель/действие существует · `permission` — текст + видимая
+причина вместо anchor либо aria-disabled button с `aria-describedby` · `loading` — действие
+переходит на полный Button.loading, навигация показывает loading на целевом экране ·
+`empty/partial/error/stale` принадлежат целевому объекту и объявляются рядом с ним, а не цветом
+ссылки. Таким образом LinkButton не несёт собственный набор данных и не маскирует состояния.
+
+**Клавиатура:** anchor активируется `Enter`; button — `Enter` и `Space`. Оба входят в обычный
+Tab-order, собственного `tabindex` нет. `Space` на anchor не перехватывается. Видимая зона и
+focus ring не обрезаются родителем.
+
+**Screen reader:** нативные роли `link`/`button`; доступное имя называет цель или действие,
+не `hier/mehr`. External/download варианты наследуют полный контракт Link из §2; disabled
+action наследует reasonBlock из Button.
+
+**Токены:** `--size-hit-target-default` · `--color-text-primary` ·
+`--border-width-default/-strong/-focus` · `--size-text-underline-offset` ·
+`--color-focus-ring/-separator`.
+
+**Запреты:** `<span onclick>` · `role=link` на button · `href` без цели · цвет без underline ·
+hover-only смысл · зона меньше 44 × 44 · тултип как единственное доступное имя/причина.

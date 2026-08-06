@@ -422,7 +422,11 @@
   --gutter-narrow: var(--space-4);
   --gutter-medium: var(--space-5);
   --gutter-wide:   var(--space-6);
-  --panel-right-width: 400px; /* [ADR-PENDING] вне раздела 13 */
+  /* TASK-15 · принято по измерению Visuelt Pro, а не как provisional:
+     длиннейший тотал ≈ 10.489.000 € занимает 463,23 px при обязательных
+     64/68. Хост добавляет 2 × --space-5 (48 px) и бордер 1 px; 512,23 px
+     округлены вверх до следующего шага 8-px сетки. */
+  --panel-right-width: 520px;
   --panel-left-width: 280px;  /* [provisional] навигационный сайдбар оболочки;
                                  введён при пересборке прототипа 05.08 — правой
                                  панели токен уже существовал, левой не было.

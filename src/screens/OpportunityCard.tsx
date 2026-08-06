@@ -138,7 +138,9 @@ export function OpportunityCard() {
             pages: typeof d.pages === 'number' ? d.pages : null,
             parseStatus: d.parseStatus,
           }))}
-          onManualCapture={() => {}}
+          // Живое действие (дефект 10): ручной ввод живёт в подготовке —
+          // её вопросы и Annahmen и есть форма ручного восполнения.
+          onManualCapture={() => setShowVorbereitung(true)}
         />
       </section>
 

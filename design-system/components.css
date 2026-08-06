@@ -4,16 +4,15 @@
    owner and required DOM structure; showcase-shell helpers are explicitly
    marked as non-component API. */
 /* SHOWCASE SHELL · not component API. Structure: .a3-showcase > .a3-wrap
-   with navigation, masthead, documentation sheets and specimens. Consumers
-   must not use these helpers as component contracts.
-   Classes: .a3-showcase · .a3-wrap · .a3-sheet · .a3-reveal · .a3-in ·
-   .a3-pnav · .a3-masthead · .a3-meta · .a3-hero-title · .a3-lede ·
+   with documentation navigation and specimens. The shell composes the
+   product layout primitives declared below; those primitives are public API.
+   Classes: .a3-showcase · .a3-wrap · .a3-reveal · .a3-in ·
+   .a3-pnav ·
    .a3-pal · .a3-pal-ext · .a3-chip · .a3-swatch · .a3-info · .a3-rulebox ·
    .a3-spec · .a3-t-hero · .a3-t-h1 · .a3-t-h2 · .a3-t-h3 · .a3-t-body ·
    .a3-t-small · .a3-t-cap · .a3-sp-row · .a3-cell · .a3-bar ·
    .a3-demo-panel · .a3-specimen-stack · .a3-specimen-block ·
-   .a3-specimen-meta · .a3-cap · .a3-mono · .a3-numeric ·
-   .a3-visually-hidden · .a3-linkbtn. */
+   .a3-specimen-meta · .a3-mono · .a3-numeric · .a3-visually-hidden. */
 :where([class^="a3-"],[class*=" a3-"]){box-sizing:border-box;border-radius:0}
 .a3-showcase [hidden]{display:none}
 .a3-visually-hidden{position:absolute;width:var(--border-width-default);height:var(--border-width-default);padding:0;margin:calc(-1 * var(--border-width-default));overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
@@ -22,16 +21,28 @@
 .a3-numeric{font-feature-settings:var(--font-numeric);text-align:right}
 .a3-showcase :focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--border-width-focus);box-shadow:0 0 0 var(--border-width-focus) var(--color-focus-separator)}
 .a3-wrap{max-width:var(--content-max-width);margin:0 auto;padding:var(--space-6) var(--space-5) var(--space-8)}
+
+/* PRODUCT LAYOUT PRIMITIVES · public component API. These four contracts
+   promote the established class names, so current product consumers require
+   no rename.
+   SectionSheet: .a3-sheet > .a3-sheet-title|h2 + [.a3-sub] + content.
+   PageHeader: .a3-masthead > .a3-hero-title + [.a3-meta|.a3-cap] + [.a3-lede].
+   SmallText: .a3-cap. InlineLink/LinkButton: a|button.a3-linkbtn.
+   Classes: .a3-sheet · .a3-sheet-title · .a3-sub · .a3-masthead · .a3-meta ·
+   .a3-hero-title · .a3-lede · .a3-cap · .a3-linkbtn. */
 .a3-sheet{background:var(--color-surface-default);padding:var(--space-7);margin-bottom:var(--space-5);scroll-margin-top:var(--space-8)}
 .a3-reveal .a3-sheet{opacity:0;transform:translateY(var(--space-3));transition:opacity .48s var(--motion-easing-standard),transform .48s var(--motion-easing-standard)}
 .a3-reveal .a3-sheet.a3-in{opacity:1;transform:none}
-.a3-sheet>h2{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:700;margin:0 0 var(--space-1)}
+.a3-sheet>.a3-sheet-title,.a3-sheet>h2{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:var(--type-heading-weight);margin:0 0 var(--space-1)}
 .a3-sheet>.a3-sub{color:var(--color-text-secondary);margin:0 0 var(--space-6);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-cap{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight);color:var(--color-text-secondary)}
+.a3-linkbtn{appearance:none;display:inline-flex;align-items:center;justify-content:center;min-width:var(--size-hit-target-default);min-height:var(--size-hit-target-default);background:none;border:none;font:inherit;font-size:inherit;padding:0;cursor:pointer;text-decoration:underline;text-decoration-style:solid;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset);color:var(--color-text-primary)}
+.a3-linkbtn:hover{text-decoration-thickness:var(--border-width-strong)}
+.a3-linkbtn[aria-disabled="true"]{cursor:not-allowed;text-decoration:none}
+
 .a3-showcase h3{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:700;margin:var(--space-6) 0 var(--space-4)}
 .a3-showcase h3:first-of-type{margin-top:0}
-.a3-cap{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight);color:var(--color-text-secondary)}
 .a3-mono{font-variant-numeric:tabular-nums}
-.a3-linkbtn{background:none;border:none;font:inherit;font-size:inherit;padding:0;cursor:pointer;text-decoration:underline;text-decoration-style:solid;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset);color:inherit;min-height:var(--size-hit-target-default)}
 
 .a3-pnav{position:sticky;top:0;z-index:var(--layer-header);background:var(--color-surface-default);border-bottom:var(--border-hairline);margin:0 calc(-1*var(--space-5));padding:var(--space-3) var(--space-5);display:flex;gap:var(--space-5);flex-wrap:wrap;font-size:var(--type-small-size);line-height:var(--type-small-line);align-items:center}
 .a3-pnav a{color:var(--color-text-primary);text-decoration:underline;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset);border-bottom:var(--border-width-strong) solid transparent;padding-bottom:var(--border-width-strong)}
@@ -40,6 +51,8 @@
 .a3-masthead img{height:var(--size-hit-target-default);display:block}
 .a3-masthead .a3-meta{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);text-align:right}
 .a3-hero-title{font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:700;margin:var(--space-5) 0 var(--space-2)}
+.a3-masthead>.a3-hero-title{margin:0}
+.a3-masthead>.a3-lede{flex-basis:100%;margin:0}
 .a3-hero-title span{color:var(--color-text-primary)}
 .a3-lede{max-width:var(--measure-wide);margin:0 0 var(--space-4)}
 
@@ -633,7 +646,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    .a3-ring · .a3-fgc · .a3-loader · .a3-run. */
 @media (max-width:47.5rem){
   .a3-sheet{padding:var(--space-4)}
-  .a3-sheet>h2,.a3-specimen-block>h3{overflow-wrap:anywhere}
+  .a3-sheet>.a3-sheet-title,.a3-sheet>h2,.a3-specimen-block>h3{overflow-wrap:anywhere}
   .a3-hero-title,.a3-t-h1{font-size:var(--type-heading-1-narrow-size);line-height:var(--type-heading-1-narrow-line);overflow-wrap:anywhere}
   .a3-t-hero{font-size:var(--type-display-numeric-narrow-size);line-height:var(--type-display-numeric-narrow-line)}
   .a3-hb-total .a3-hb-num{font-size:var(--type-heading-1-narrow-size);line-height:var(--type-heading-1-narrow-line)}
