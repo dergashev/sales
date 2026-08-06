@@ -620,3 +620,35 @@ describe('KG 400, сертификаты и режим KG 700 (сценарий 
     expect(sum.equals(after)).toBe(true)
   })
 })
+
+describe('Покрытие групп затрат (сценарий п. 11)', () => {
+  it('включение группы ДОБАВЛЯЕТ стоимость: она не входит в базовую ставку', () => {
+    const st = () => useStore.getState()
+    const before = st().projection().result.total.exact
+    st().setCoverage('KG_500', 'included')
+    const d = st().projection().result.drivers.find((x) => x.key === 'cov_KG_500')!
+    expect(d.exact.toFixed(2)).toBe('230000.00')   // 2.000 × 115
+    expect(st().projection().result.total.exact.minus(before).toFixed(2)).toBe('230000.00')
+  })
+
+  it('исключение группы ничего не отнимает — её и не было в базе', () => {
+    const st = () => useStore.getState()
+    const before = st().projection().result.total.exact
+    st().setCoverage('KG_500', 'excluded')
+    expect(st().projection().result.total.exact.equals(before)).toBe(true)
+  })
+
+  it('подпись итога становится полной, когда решены ВСЕ пробелы', () => {
+    const st = () => useStore.getState()
+    // Пока KG 500 «ещё открыто», итог промежуточный — это пробел, не решение.
+    expect(st().projection().result.totalLabel)
+      .toBe('Zwischensumme der kalkulierten Positionen')
+    st().setCoverage('KG_500', 'excluded')
+    // Класс здания всё ещё не подтверждён — вторая причина неполноты.
+    expect(st().projection().result.totalLabel)
+      .toBe('Zwischensumme der kalkulierten Positionen')
+    st().confirmGebaeudeklasse()
+    expect(st().projection().result.totalLabel).toBe('Gesamt netto · Grundleistung All3')
+    expect(st().projection().result.completeness).toBe('complete')
+  })
+})

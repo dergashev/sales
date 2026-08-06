@@ -9,7 +9,7 @@ import {
   type CostGroup, type BuildingResult,
 } from '../engine/calculate'
 import { present, rate, NNBSP, type Displayed, type Rate } from '../engine/money'
-import { defaultOptionChoices, optionDrivers, ALL_OPTION_GROUPS } from '../engine/options'
+import { defaultOptionChoices, optionDrivers, coverageDrivers, ALL_OPTION_GROUPS } from '../engine/options'
 import derivedFx from '../fixtures/derived-prototype.json'
 import { modelDuration, presentDuration, type DurationDisplay } from '../engine/schedule'
 
@@ -385,9 +385,12 @@ function computeProjection(
   // домножаются: фактор применяется к Bauwerk по объявленному перечню
   // §2.3, а опции в нём не названы. Приписать их туда значило бы
   // расширить базу фактора собственным решением.
-  const optDrivers = list.flatMap((b, i) => optionDrivers(
-    b, s.kg300[b.id] ?? {}, bgfSOf(b.id),
-  ).map((d) => ({ ...d, key: list.length > 1 ? `${list[i]!.id}:${d.key}` : d.key })))
+  const optDrivers = list.flatMap((b, i) => [
+    ...optionDrivers(b, s.kg300[b.id] ?? {}, bgfSOf(b.id)),
+    // Группы затрат, включённые решением пользователя: они не входят в
+    // базовую ставку, поэтому включение ДОБАВЛЯЕТ, а не перераспределяет.
+    ...coverageDrivers(b, s.coverage as unknown as Record<string, string>, bgfSOf(b.id)),
+  ].map((d) => ({ ...d, key: list.length > 1 ? `${list[i]!.id}:${d.key}` : d.key })))
   const optSum = optDrivers.reduce((a, d) => a.plus(d.exact), new Decimal(0))
   const bauwerkSum = perBuilding
     .reduce((a, r) => a.plus(r.total.exact), new Decimal(0))

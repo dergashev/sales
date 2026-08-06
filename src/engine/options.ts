@@ -134,3 +134,47 @@ export function optionDrivers(
   }
   return out
 }
+
+/**
+ * Ставки групп затрат, включаемых решением пользователя.
+ *
+ * Отличие от опций KG 300/400 существенное: те описывают ОТКЛОНЕНИЕ от
+ * стандартного объёма, поэтому умолчание стоит ноль. Эти группы в
+ * базовую ставку не входят вовсе (`K_base` = KG 300+400), поэтому
+ * включение действительно добавляет стоимость, а исключение ничего не
+ * отнимает. Смешать две модели значило бы посчитать одно и то же дважды.
+ */
+export type CoverageRate = {
+  rate: string
+  denominator: 'BGF_ABOVE_GROUND' | 'BGF_BELOW_GROUND' | 'BGF_S'
+  label: string
+  basis: string
+}
+
+export const COVERAGE_RATES =
+  derived.coverage.rates as unknown as Record<string, CoverageRate>
+
+/** Вклады включённых групп затрат. Только `included` создаёт строку. */
+export function coverageDrivers(
+  b: BuildingInput,
+  coverage: Record<string, string>,
+  bgfS: Decimal,
+): Driver[] {
+  const out: Driver[] = []
+  for (const [kg, spec] of Object.entries(COVERAGE_RATES)) {
+    if (coverage[kg] !== 'included') continue
+    const rate = new Decimal(spec.rate)
+    if (rate.isZero()) continue
+    const qty = denominatorValue(b, spec.denominator, bgfS)
+    if (qty.lte(0)) continue
+    out.push({
+      key: `cov_${kg}`,
+      exact: qty.mul(rate),
+      label: `${kg.replace('_', ' ')} · ${spec.label}`,
+      scopeRefs: [kg.replace('_', ' ')],
+      appliedTo: qty,
+      factor: null,
+    })
+  }
+  return out
+}

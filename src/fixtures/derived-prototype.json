@@ -490,5 +490,34 @@
         ]
       }
     ]
+  },
+  "coverage": {
+    "$comment": "Ставки групп затрат, которые пользователь решает включать или нет. В отличие от опций KG 300/400 здесь умолчание НЕ ноль: эти группы в базовую ставку не входят вовсе (K_base описывает KG 300+400), поэтому включение действительно добавляет стоимость, а исключение ничего не отнимает. Ставки выведены (D-22), не откалиброваны.",
+    "rates": {
+      "KG_200": {
+        "rate": "48",
+        "denominator": "BGF_ABOVE_GROUND",
+        "label": "Vorbereitende Massnahmen",
+        "basis": "Baustelleneinrichtung, Erschliessungsanschluesse je m² BGF R"
+      },
+      "KG_500": {
+        "rate": "115",
+        "denominator": "BGF_ABOVE_GROUND",
+        "label": "Aussenanlagen und Freiflaechen",
+        "basis": "Wege, Stellplaetze im Freien, Bepflanzung je m² BGF R"
+      },
+      "KG_600": {
+        "rate": "62",
+        "denominator": "BGF_ABOVE_GROUND",
+        "label": "Ausstattung und Kunstwerke",
+        "basis": "Einbaukueche und Erstausstattung je m² BGF R"
+      },
+      "KG_800": {
+        "rate": "0",
+        "denominator": "BGF_ABOVE_GROUND",
+        "label": "Finanzierung",
+        "basis": "bauseits; im indikativen Angebot ohne Preisansatz"
+      }
+    }
   }
 }

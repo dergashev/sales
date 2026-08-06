@@ -9,7 +9,7 @@ import { RadioCardGroup, SegmentedControl } from '../components/controls'
 import { ScheduleGantt } from '../components/ScheduleGantt'
 import { ChapterBuildings } from './ChapterBuildings'
 import { OptionChapter } from './OptionChapter'
-import { KG300_GROUPS, KG400_GROUPS, ZERT_GROUPS } from '../engine/options'
+import { KG300_GROUPS, KG400_GROUPS, ZERT_GROUPS, COVERAGE_RATES } from '../engine/options'
 import demo from '../fixtures/demo-0001.json'
 import { present, label as moneyLabel } from '../engine/money'
 
@@ -146,33 +146,97 @@ function Card({ title, intro, children }: {
   )
 }
 
+/**
+ * Глава 3 · Leistungsabgrenzung — какие группы затрат входят в предложение
+ * (пункт 11 сценария).
+ *
+ * Группы разделены по природе решения, а не по номеру:
+ * · KG 300 и 400 — ядро предложения, их не выбирают: без них нет продукта;
+ * · KG 700 включена всегда, спорен лишь СПОСОБ расчёта (глава 8, только
+ *   внутренний режим) — клиент видит долю, а не метод;
+ * · KG 200, 500, 600, 800 — настоящее решение, и оно меняет цену;
+ * · KG 100 (Grundstück) вне объёма подрядчика.
+ *
+ * Три состояния вместо галочки: «не входит» — решение, «ещё открыто» —
+ * пробел в данных, и подпись итога зависит от второго, а не от первого
+ * (R-18/CALC-006).
+ */
 function ChapterUmfang() {
   const s = useStore()
+  const b = activeBuilding(s)
+  const p = s.projection()
+  const decidable: CostGroup[] = ['KG_200', 'KG_500', 'KG_600', 'KG_800']
+
   return (
     <div className="grid gap-5">
       <Card
-        title={`Leistungsumfang nach DIN${NNBSP}276`}
-        intro={'Drei Zustände, weil «nicht enthalten» eine Entscheidung ist und ' +
-          '«noch offen» eine Lücke — beides darf nicht dasselbe Feld teilen.'}
+        title={`Kern des Angebots`}
+        intro={'Baukonstruktion und technische Anlagen sind keine Auswahl: '
+          + 'ohne sie gibt es kein Angebot. Baunebenkosten sind immer enthalten '
+          + '— verhandelbar ist nur die Berechnungsart, und die ist intern.'}
       >
-        {(Object.keys(KG_LABELS) as CostGroup[]).map((g) => {
-          const state = s.coverage[g]
-          const derived = state === 'notApplicable'
+        <ul>
+          {(['KG_300', 'KG_400', 'KG_700'] as CostGroup[]).map((g) => (
+            <li key={g} className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle py-2">
+              <span className="text-body text-text-primary">
+                {g.replace('_', NNBSP)} {KG_LABELS[g]}
+              </span>
+              <span className="a3-cap">
+                <span aria-hidden="true">✓ </span>immer enthalten
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Card>
+
+      <Card
+        title={`Zu entscheiden`}
+        intro={'Drei Zustände, weil «nicht enthalten» eine Entscheidung ist und '
+          + '«noch offen» eine Lücke. Solange eine Lücke bleibt, weist das '
+          + 'Angebot eine Zwischensumme der kalkulierten Positionen aus und '
+          + 'keinen Gesamtpreis.'}
+      >
+        {decidable.map((g) => {
+          const spec = COVERAGE_RATES[g]
+          const qty = b.bgfAboveGround
+          const preis = spec ? new Decimal(spec.rate).mul(qty) : null
           return (
-            <SegmentedControl
-              key={g}
-              layout="row"
-              legend={`${g.replace('_', NNBSP)} ${KG_LABELS[g]}`}
-              value={state}
-              options={COVERAGE_OPTIONS}
-              onChange={(v) => s.setCoverage(g, v)}
-              disabled={derived}
-              disabledReason={derived
-                ? 'nicht anwendbar für diese Konfiguration — abgeleitet, nicht gewählt'
-                : undefined}
-            />
+            <div key={g}>
+              <SegmentedControl
+                layout="row"
+                legend={`${g.replace('_', NNBSP)} ${KG_LABELS[g]}`}
+                value={s.coverage[g]}
+                options={COVERAGE_OPTIONS}
+                onChange={(v) => s.setCoverage(g, v)}
+              />
+              <p className="a3-cap pb-2">
+                {preis && !preis.isZero()
+                  ? <>Aufnahme kostet {moneyLabel(present(preis))} ⚙ · {spec!.basis}</>
+                  : <>ohne Preisansatz im indikativen Angebot{spec ? ` · ${spec.basis}` : ''}</>}
+              </p>
+            </div>
           )
         })}
+      </Card>
+
+      <Card title="Folge für die Angebotssumme">
+        <p className="text-body text-text-primary">{p.result.totalLabel}</p>
+        {p.result.completeness === 'incomplete' && (
+          <ul className="mt-2">
+            {p.result.incompleteReasons.map((r) => (
+              <li key={r} className="a3-cap">
+                <span aria-hidden="true">○ </span>{r}
+              </li>
+            ))}
+          </ul>
+        )}
+        {p.result.completeness === 'complete' && (
+          <p className="a3-cap mt-2">
+            <span aria-hidden="true">✓ </span>
+            Alle Deckungsentscheidungen getroffen und keine offenen
+            wesentlichen Punkte — das Angebot weist einen Gesamtpreis aus.
+          </p>
+        )}
       </Card>
     </div>
   )
