@@ -36,6 +36,14 @@ export function App() {
   const modeBlocked = !s.building.gebaeudeklasse.confirmed
 
   useEffect(() => {
+    // Диагностика шрифта не имеет права ронять приложение: `document.fonts`
+    // существует не везде (jsdom, старые движки), а само приложение от неё
+    // не зависит — она только сообщает о провале загрузки. Прежняя редакция
+    // падала целиком там, где FontFaceSet отсутствует.
+    if (!document.fonts?.ready) {
+      setCascade(checkCascade())
+      return
+    }
     document.fonts.ready.then(() => {
       setFonts(checkFonts())
       setCascade(checkCascade())

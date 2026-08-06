@@ -89,6 +89,14 @@ class Builder:
         for ch in self.SPACES:
             text = text.replace(ch, ' ')
         self.t = text
+        # Второй источник — таблица множителей calculation-spec §1.1. Он
+        # нужен там, где фикстура значения не объявляет, но продукт эту
+        # конфигурацию предлагает: множитель GEG именно такой. Нормализуется
+        # теми же правилами, иначе шаблон молча не совпадёт.
+        spec_text = (ROOT / 'docs/product/calculation-spec.md').read_text(encoding='utf-8')
+        for ch in self.SPACES:
+            spec_text = spec_text.replace(ch, ' ')
+        self.spec = spec_text
         self.checked = []
 
     # ── извлечение ────────────────────────────────────────────────────────
@@ -112,6 +120,13 @@ class Builder:
         k = self.grab(r'K_base = ([\d.]+) €/m² BGF R oberirdisch', 'K_base')
         gk = re.search(r'F_gk: GK 1–3 = ([\d,]+) · GK 4 = ([\d,]+) · GK 5 = ([\d,]+)', self.t)
         eh = re.search(r'F_energie: EH 55 = ([\d,]+) · EH 40 = ([\d,]+)', self.t)
+        # GEG фикстурой не объявлен, а интерфейс эту опцию предлагает — и
+        # выбор её ронял движок исключением «нет множителя стандарта GEG».
+        # Значение берётся из calculation-spec §1.1 (таблица множителей) и
+        # проверяется на согласие с определением самой базы: K_base выведена
+        # «на уровне GEG-Mindeststandard», поэтому её множитель обязан быть
+        # единицей. Множитель ≠ 1 означал бы, что база противоречит себе.
+        geg = re.search(r'Energiestandard ⚙ \| GEG ([\d,]+)', self.spec)
         buero = self.grab(r'F_form_büro = ([\d,]+)', 'F_form_büro')
         ug = re.search(r'UG vollausbau \+ TG = ([\d.]+) \+ ([\d.]+) = ([\d.]+) €/m² BGF UG', self.t)
         gkz = re.search(r'F_gk_zeit: GK 3 = ([\d,]+) · GK 4 = ([\d,]+) · GK 5 = ([\d,]+)', self.t)
@@ -119,6 +134,14 @@ class Builder:
         region = self.grab(r'`Musterland` = ([\d,]+) ⚙', 'Regionalfaktor Musterland')
         if not all((gk, eh, ug, gkz, fz)):
             raise Mismatch('каталог: одна из строк множителей не найдена')
+        if not geg:
+            raise Mismatch('каталог: множитель GEG не найден в calculation-spec §1.1')
+        geg_v = de(geg.group(1))
+        if geg_v != D('1'):
+            raise Mismatch(
+                f'множитель GEG = {geg_v}, но K_base определена на уровне '
+                f'GEG-Mindeststandard — база противоречила бы себе')
+        self.checked.append('множитель GEG согласован с определением K_base')
 
         ug_total = de(ug.group(1)) + de(ug.group(2))
         if ug_total != de(ug.group(3)):
@@ -134,7 +157,8 @@ class Builder:
                 'gebaeudeklasse': {'GK_1_3': str(de(gk.group(1))),
                                    'GK_4': str(de(gk.group(2))),
                                    'GK_5': str(de(gk.group(3)))},
-                'energiestandard': {'EH_55': str(de(eh.group(1))),
+                'energiestandard': {'GEG': str(geg_v),
+                                    'EH_55': str(de(eh.group(1))),
                                     'EH_40': str(de(eh.group(2)))},
                 'gebaeudeform': {'BUERO': str(buero)},
                 'untergeschoss': {'vollausbauMitTiefgarage': str(ug_total),

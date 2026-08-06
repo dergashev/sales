@@ -72,7 +72,12 @@ export function SegmentedControl<T extends string>({
           : 'text-small font-medium text-text-primary'}>
         {legend}
       </legend>
-      <div role="radiogroup" className={'flex border-contrast border-border-strong ' +
+      {/* Имя группы обязано быть у ТОГО элемента, который несёт роль:
+          `legend` называет `fieldset`, а вложенная radiogroup оставалась
+          безымянной — скринридер объявлял «группа» без темы. Найдено
+          jsdom-тестом, не глазами. */}
+      <div role="radiogroup" aria-label={legend}
+           className={'flex border-contrast border-border-strong ' +
         (layout === 'stack' ? 'mt-2 w-max' : layout === 'row' ? 'ml-auto' : '')}>
         {options.map((o, i) => {
           const active = o.value === value
@@ -193,7 +198,13 @@ export function RadioCardGroup<T extends string>({
       </legend>
       {/* tileGrid: высота карточек в ряду выравнивается сеткой (OPTION-010);
           ширины через minmax, не фиксированные (правило 3a). */}
+      {/* Контракт требует `group [role="radiogroup"]` внутри fieldset
+          (components-core §RadioCardGroup). Роли не было вовсе: нативные
+          radio работали, но группа как сущность в дереве доступности
+          отсутствовала. */}
       <div
+        role="radiogroup"
+        aria-label={legend}
         className="mt-2 grid gap-3"
         style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(22ch, 1fr))' }}
       >
