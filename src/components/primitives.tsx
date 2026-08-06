@@ -65,6 +65,19 @@ export function useCountUp(target: Decimal, decimals = 0): string {
   return formatDE(shown, decimals)
 }
 
+/**
+ * Button — вид приходит из дизайн-системы (`.a3-btn`, DC-контракт в
+ * `components.css`), поведение остаётся здесь.
+ *
+ * Разделение буквальное: этот компонент больше не решает, какого кнопка
+ * цвета, размера и с каким наведением. Он решает, что она — настоящий
+ * `<button>`, что заблокированная не теряет фокус, и что причина блокировки
+ * достижима. Смена вида кнопки в системе приходит сюда сама.
+ *
+ * Зона нажатия 44 px тоже пришла из системы (`.a3-btn::before`), поэтому
+ * локальный HIT здесь снят: два псевдоэлемента на одном контроле — это
+ * две зоны нажатия, а не одна надёжная.
+ */
 export function Button({
   children, onClick, variant = 'secondary', disabled, disabledReason, ...rest
 }: {
@@ -75,14 +88,7 @@ export function Button({
   /** Заблокированный элемент всегда объясняет причину (правило 12). */
   disabledReason?: string
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  const base = `${HIT} ${FOCUS} inline-flex items-center justify-center px-4 ` +
-    'text-body font-medium transition-colors duration-fast'
-  const look = variant === 'primary'
-    ? 'bg-action-primary-bg text-action-primary-text hover:bg-action-primary-hover'
-    : variant === 'ghost'
-      ? 'text-action-secondary-text hover:bg-action-secondary-hover'
-      : 'border border-action-secondary-border bg-action-secondary-bg ' +
-        'text-action-secondary-text hover:bg-action-secondary-hover'
+  const look = variant === 'primary' ? '' : variant === 'ghost' ? 'a3-ghost' : 'a3-sec'
   return (
     <button
       type="button"
@@ -92,8 +98,7 @@ export function Button({
       aria-disabled={disabled || undefined}
       title={disabled ? disabledReason : undefined}
       onClickCapture={(e) => { if (disabled) { e.stopPropagation(); e.preventDefault() } }}
-      className={`${base} ${look} ${disabled ? 'text-text-disabled' : ''}`}
-      style={{ minHeight: 'var(--size-control-visual-md)' }}
+      className={`a3-btn ${look} ${FOCUS}`}
       {...rest}
     >
       {children}
@@ -143,25 +148,24 @@ export function NumericField({
   return (
     <div className="border-b border-border-subtle py-4">
       <label className="block text-small font-medium text-text-primary">{label}</label>
+      {/* Оболочка и единица — из системы (`.a3-input > input + .a3-unit`);
+          высота 44 px, бордер и типографика приходят оттуда же. */}
       <div className="mt-2 flex flex-wrap items-center gap-3">
-        <input
-          // У input нет ::before, поэтому псевдо-расширение зоны нажатия
-          // недоступно — минимальная высота ставится равной самой цели
-          // нажатия 44 px (R-04: видимая высота МОЖЕТ быть 40, но только
-          // если цель достигается иначе; здесь иначе нечем).
-          className={`${FOCUS} numeric w-field border border-border-default px-3 text-body`}
-          style={{ minHeight: 'var(--size-hit-target-default)' }}
-          value={shown}
-          inputMode="decimal"
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={() => commit(false)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') commit(true)
-            if (e.key === 'Escape') setDraft(null)
-          }}
-          aria-label={`${label}${unit ? ` in ${unit}` : ''}`}
-        />
-        {unit && <span className="text-body text-text-secondary">{unit}</span>}
+        <span className="a3-input">
+          <input
+            className={FOCUS}
+            value={shown}
+            inputMode="decimal"
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={() => commit(false)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commit(true)
+              if (e.key === 'Escape') setDraft(null)
+            }}
+            aria-label={`${label}${unit ? ` in ${unit}` : ''}`}
+          />
+          {unit && <span className="a3-unit">{unit}</span>}
+        </span>
         <ProvenanceChip provenance={draft !== null ? 'wird bearbeitet' : provenance} />
       </div>
       {draft !== null && (

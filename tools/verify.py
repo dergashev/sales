@@ -291,7 +291,7 @@ CHECK_CLASSES = (
     # единицы, типографика чисел, даты (v3, Batch 3)
     'NBSP', 'CYRILLIC-UNIT', 'AREA-SCOPE', 'DATE-FORMAT',
     # управление и план
-    'CLAUDE', 'DECISIONS', 'PLAN', 'INDEX', 'TOKEN-EXISTS',
+    'CLAUDE', 'DECISIONS', 'PLAN', 'INDEX', 'TOKEN-EXISTS', 'DS-CLASS-EXISTS',
     # приватность
     'PRIVACY-001', 'ARTIFACT-A11Y',
     # арифметика
@@ -5504,10 +5504,47 @@ class Verifier:
                                       f'токен «{used}» используется в коде, но не объявлен '
                                       f'в design-system/tokens.css — стиль пропадёт молча')
 
+    def check_ds_class_exists(self):
+        """Каждый класс `a3-*` из кода обязан существовать в components.css.
+
+        Второй замок той же двери, что TOKEN-EXISTS. Дизайн-система владеет
+        видом компонента, приложение ссылается на её классы по имени — и имя
+        является контрактом. Опечатка в нём или переименование класса в
+        системе не ломают сборку: элемент просто теряет оформление и
+        выглядит «почти правильно». Это худший режим отказа, потому что он
+        проходит и типизацию, и тесты, и беглый взгляд.
+
+        Проверяется существование ИМЕНИ. Соответствие разметки требуемой
+        структуре (`.a3-drivers > .a3-drv > .a3-val`) отсюда не видно и
+        остаётся за визуальной сверкой — заявлять обратное значило бы
+        закрыть пункт, не закрыв риск.
+        """
+        css = self.read('design-system/components.css')
+        if css is None:
+            self.fail('DS-CLASS-EXISTS', 'design-system/components.css',
+                      'единый файл классов не найден — приложение ссылается в пустоту')
+            return
+        declared = set(re.findall(r'\.(a3-[\w-]+)', css))
+        if not declared:
+            self.fail('DS-CLASS-EXISTS', 'design-system/components.css',
+                      'ни одного класса a3-* не объявлено — проверка потеряла предмет')
+            return
+        for glob in ('*.tsx', '*.ts'):
+            for rel, text in self.files(glob):
+                if rel.startswith('tools/') or '__tests__' in rel:
+                    continue
+                for i, line in enumerate(text.split('\n'), 1):
+                    for used in re.findall(r'(?<![\w-])(a3-[\w-]+)', line):
+                        if used not in declared:
+                            self.emit('DS-CLASS-EXISTS', rel, i, line,
+                                      f'класс «{used}» используется в коде, но не объявлен '
+                                      f'в design-system/components.css — оформление пропадёт молча')
+
     # -- запуск ----------------------------------------------------------------
     def run(self):
         self.check_tokens()
         self.check_token_exists()
+        self.check_ds_class_exists()
         self.check_css()
         self.check_css_effective()
         self.check_contrast()

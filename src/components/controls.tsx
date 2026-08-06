@@ -314,26 +314,12 @@ export function Switch({ label, checked, onChange, disabled, disabledReason, chi
         aria-labelledby={id}
         aria-disabled={disabled || undefined}
         onClick={() => !disabled && onChange(!checked)}
-        className={'relative flex w-6 items-center outline-none ' +
-          'before:absolute before:left-1/2 before:top-1/2 before:min-h-hit-target ' +
-          'before:min-w-hit-target before:-translate-x-1/2 before:-translate-y-1/2 ' +
-          'before:content-[""] focus-visible:outline focus-visible:outline-2 ' +
-          'focus-visible:outline-offset-2 focus-visible:outline-focus-ring ' +
-          (checked
-            ? 'border-selected border-selection-border'
-            : 'border-contrast border-border-strong') +
-          ' bg-surface-default hover:bg-surface-subtle'}
-        style={{ height: 'var(--size-icon-lg)' }}
-      >
-        {/* Дорожка 32 = ползунок 16 + ход 16: геометрия из токенов без
-            произвольных пикселей (правило 2). */}
-        <span
-          aria-hidden="true"
-          className={'block bg-border-strong transition-transform duration-fast ' +
-            (checked ? 'translate-x-4' : 'translate-x-0')}
-          style={{ width: 'var(--size-icon-sm)', height: 'var(--size-icon-sm)' }}
-        />
-      </button>
+        // Дорожка, ползунок и его ход — из системы (`.a3-toggle`, `.a3-on`):
+        // геометрия переключателя принадлежит дизайну, а не этому файлу.
+        className={`a3-toggle ${checked ? 'a3-on' : ''} outline-none ` +
+          'focus-visible:outline focus-visible:outline-2 ' +
+          'focus-visible:outline-offset-2 focus-visible:outline-focus-ring'}
+      />
       <span className="text-body text-text-secondary">{checked ? 'Ein' : 'Aus'}</span>
       {disabled && disabledReason && (
         <span className="text-small text-text-secondary">{disabledReason}</span>
