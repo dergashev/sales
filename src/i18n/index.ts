@@ -107,6 +107,32 @@ const LOCAL_TEXT_EN: Record<string, string> = {
   'Baunebenkosten KG 700': 'Incidental costs CG 700',
   'Ausbau & Technik': 'Fit-out & services',
   'Projektverständnis': 'Project understanding',
+  // Строки партий 1–2 ревью № 13 (созданы после поставки № 2) — уйдут в
+  // поставку № 3, дополнение сократится.
+  'Nächster Schritt': 'Next step',
+  'Varianten vergleichen': 'Compare options',
+  'Angebot prüfen und exportieren': 'Review and export offer',
+  'Im Angebot gewählt': 'Selected in this offer',
+  'Alle Filter zurücksetzen': 'Reset all filters',
+  'Analyse starten': 'Start analysis',
+  'Ansehen': 'View',
+  'Zur Opportunity-Karte': 'To the opportunity card',
+  'Keine Opportunity entspricht den Filtern.': 'No opportunity matches the filters.',
+  'Entfernen Sie einen Filter oben, um wieder Treffer zu sehen.':
+    'Remove a filter above to see results again.',
+  'Wurzel · alle Opportunities': 'Root · all opportunities',
+  'Vergleichsbasis': 'comparison base',
+  'in Arbeit': 'in progress',
+  'Tabellarische Terminansicht': 'Schedule as table',
+  'Einheit': 'Unit',
+  'Beginn': 'Start',
+  'Ende': 'End',
+  'Dauer': 'Duration',
+  'Abhängigkeit': 'Dependency',
+  'Gebäude im Angebot': 'Buildings in the offer',
+  'Finale Prüfung': 'Final check',
+  'nur Unterschiede': 'differences only',
+  'alle Zeilen anzeigen': 'show all rows',
 }
 
 const DE_TO_KEY = new Map(Object.entries(GENERATED_DE).map(([k, v]) => [v, k]))

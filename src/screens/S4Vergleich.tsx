@@ -5,6 +5,7 @@ import {
 } from '../state/store'
 import { NNBSP, present, formatDE } from '../engine/money'
 import { Button } from '../components/primitives'
+import { useTx } from '../i18n'
 
 /**
  * S4 Variantenvergleich — созданные Opportunity Options рядом.
@@ -27,6 +28,7 @@ const ES_LABEL: Record<string, string> = {
 
 export function S4Vergleich() {
   const s = useStore()
+  const tx = useTx()
   const [showAll, setShowAll] = useState(false)
 
   const cols = s.options.flatMap((o) => {
@@ -142,29 +144,27 @@ export function S4Vergleich() {
     <div className="px-7 py-6">
       <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-border-strong pb-3">
         <h1 className="text-heading-2 font-bold text-text-primary">
-          Variantenvergleich · {cols.length}{NNBSP}
+          {tx('Variantenvergleich')} · {cols.length}{NNBSP}
           {cols.length === 1 ? 'Option' : 'Optionen'}
           {s.mode === 'intern' && <> · DEMO-SC-01</>}
         </h1>
         <Button onClick={() => setShowAll((v) => !v)} aria-pressed={showAll}>
-          {showAll ? 'nur Unterschiede' : 'alle Zeilen anzeigen'}
+          {tx(showAll ? 'nur Unterschiede' : 'alle Zeilen anzeigen')}
         </Button>
       </header>
 
       {cols.length === 1 && (
         <div className="a3-nextstep mt-4">
-          <p className="a3-mtag">Nächster Schritt</p>
+          <p className="a3-mtag">{tx('Nächster Schritt')}</p>
           <p className="text-body text-text-primary">
-            Zum Vergleichen braucht es eine zweite Option. Sie entsteht auf
-            der Opportunity-Karte — mit eigener Konfiguration, unabhängig von
-            dieser.
+            {tx('Zum Vergleichen braucht es eine zweite Option. Sie entsteht auf der Opportunity-Karte — mit eigener Konfiguration, unabhängig von dieser.')}
           </p>
           <div className="mt-2">
             <Button
               variant="primary"
               onClick={() => s.opportunityId && s.openOpportunity(s.opportunityId)}
             >
-              Zur Opportunity-Karte
+              {tx('Zur Opportunity-Karte')}
             </Button>
           </div>
         </div>
@@ -183,8 +183,8 @@ export function S4Vergleich() {
                   {c.option.name}
                   <span className="block text-small font-regular text-text-secondary">
                     {c.option.id}
-                    {i === 0 && ' · Vergleichsbasis'}
-                    {c.option.id === s.activeOptionId && ' · in Arbeit'}
+                    {i === 0 && <> · {tx('Vergleichsbasis')}</>}
+                    {c.option.id === s.activeOptionId && <> · {tx('in Arbeit')}</>}
                   </span>
                 </th>
               ))}
@@ -212,14 +212,13 @@ export function S4Vergleich() {
 
       {cols.length > 1 && (
         <div className="a3-nextstep mt-5">
-          <p className="a3-mtag">Nächster Schritt</p>
+          <p className="a3-mtag">{tx('Nächster Schritt')}</p>
           <p className="text-body text-text-primary">
-            Die aktive Option ist verglichen — weiter zur Prüfung und zum
-            Versand des Angebots.
+            {tx('Die aktive Option ist verglichen — weiter zur Prüfung und zum Versand des Angebots.')}
           </p>
           <div className="mt-2">
             <Button variant="primary" onClick={() => s.setPipelineView('export')}>
-              Angebot prüfen und exportieren
+              {tx('Angebot prüfen und exportieren')}
             </Button>
           </div>
         </div>

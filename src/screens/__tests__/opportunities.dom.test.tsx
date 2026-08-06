@@ -75,6 +75,20 @@ describe('Уровень Opportunities', () => {
     expect(within(params).getByText(/Total BGF \(S\)/)).toBeInTheDocument()
   })
 
+  it('EN переключает содержимое экранов, не только хром (ревью № 13, дефект 2)', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    // Переключатель языка — в шапке; словарь = поставка Codex + локальное
+    // дополнение для строк, созданных после поставки.
+    await user.click(screen.getByRole('radio', { name: 'EN' }))
+    expect(screen.getByText('Root · all opportunities')).toBeInTheDocument()
+    // Немецкая строка поискового лейбла исчезла — заменена переводом.
+    expect(screen.queryByText('Opportunities durchsuchen')).toBeNull()
+    // Немецкий остаётся источником: переключение обратно восстанавливает.
+    await user.click(screen.getByRole('radio', { name: 'DE' }))
+    expect(screen.getByText('Wurzel · alle Opportunities')).toBeInTheDocument()
+  })
+
   it('непроработанная Opportunity говорит это до расчёта, а не показывает выдумку', async () => {
     const user = userEvent.setup()
     render(<App />)

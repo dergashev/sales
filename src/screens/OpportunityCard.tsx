@@ -5,6 +5,7 @@ import derived from '../fixtures/derived-prototype.json'
 import { useStore } from '../state/store'
 import { NNBSP, formatDE } from '../engine/money'
 import { Button } from '../components/primitives'
+import { useTx } from '../i18n'
 import { DocumentAnalysis } from '../components/DocumentAnalysis'
 import { ReadinessRing } from '../components/ReadinessRing'
 import { S2Vorbereitung } from './S2Vorbereitung'
@@ -52,6 +53,7 @@ function Metric({ label, value, unit, note }: {
 
 export function OpportunityCard() {
   const s = useStore()
+  const tx = useTx()
   const meta = opportunities.items.find((o) => o.id === s.opportunityId)
   // Подготовка (вопросы, Annahmen, варианты) — уровень Opportunity, не
   // Option: она общая для всех Options этого проекта. В конвейере её нет.
@@ -76,7 +78,7 @@ export function OpportunityCard() {
           Arithmetik.
         </p>
         <div className="mt-4">
-          <Button onClick={() => s.backToList()}>Zurück zu den Opportunities</Button>
+          <Button onClick={() => s.backToList()}>{tx('Zurück zu den Opportunities')}</Button>
         </div>
       </div>
     )
@@ -144,7 +146,7 @@ export function OpportunityCard() {
           из спорного значения, тоже спорен. */}
       <section className="a3-sheet mt-6" aria-label="Strittige Angaben">
         <h2 className="text-heading-3 font-bold text-text-primary">
-          Strittige Angaben aus der Dokumentation
+          {tx('Strittige Angaben aus der Dokumentation')}
         </h2>
         {konfliktOffen ? (
           <div className="a3-konflikt mt-3">
@@ -186,7 +188,7 @@ export function OpportunityCard() {
       {/* 3 · Параметры всего проекта. Суммы считаются от сумм (правило 39). */}
       <section className="a3-sheet mt-6" aria-label="Projektparameter">
         <h2 className="text-heading-3 font-bold text-text-primary">
-          Parameter des gesamten Projekts
+          {tx('Parameter des gesamten Projekts')}
         </h2>
         <div className="mt-3 grid gap-x-6"
              style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(26ch, 1fr))' }}>
@@ -223,14 +225,14 @@ export function OpportunityCard() {
             gilt für alle Optionen dieser Opportunity.
           </p>
           <Button onClick={() => setShowVorbereitung(true)}>
-            Vorbereitung öffnen
+            {tx('Vorbereitung öffnen')}
           </Button>
         </div>
       </section>
 
       {/* 4 · Гейт и Options. */}
       <section className="a3-sheet mt-6" aria-label="Opportunity Options">
-        <h2 className="text-heading-3 font-bold text-text-primary">Opportunity Options</h2>
+        <h2 className="text-heading-3 font-bold text-text-primary">{tx('Opportunity Options')}</h2>
         <div className="mt-3">
           <ReadinessRing
             label="Bereitschaft für Optionen"
@@ -252,7 +254,7 @@ export function OpportunityCard() {
             {s.options.map((o) => (
               <li key={o.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle py-2">
                 <span className="text-body text-text-primary">{o.name} · {o.id}</span>
-                <Button onClick={() => s.openOption(o.id)}>Öffnen</Button>
+                <Button onClick={() => s.openOption(o.id)}>{tx('Öffnen')}</Button>
               </li>
             ))}
           </ul>

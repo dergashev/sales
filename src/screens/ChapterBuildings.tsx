@@ -5,6 +5,7 @@ import { activeBuilding, useStore } from '../state/store'
 import { NNBSP, formatDE } from '../engine/money'
 import { Button } from '../components/primitives'
 import { RadioCardGroup, SegmentedControl } from '../components/controls'
+import { useTx } from '../i18n'
 import type { BuildingInput } from '../engine/calculate'
 
 /**
@@ -56,6 +57,7 @@ function Row({ label, value, unit, note }: {
 
 export function ChapterBuildings() {
   const s = useStore()
+  const tx = useTx()
   const active = activeBuilding(s)
   const fx = demo.buildings.find((b) => b.id === active.id)!
   const d = DERIVED[active.id] ?? {}
@@ -71,7 +73,7 @@ export function ChapterBuildings() {
       {/* 1 · Какие здания входят в предложение. */}
       <section className="a3-sheet">
         <h2 className="text-heading-3 font-bold text-text-primary">
-          Gebäude im Angebot · {includedCount} von {Object.keys(s.buildings).length}
+          {tx('Gebäude im Angebot')} · {includedCount} von {Object.keys(s.buildings).length}
         </h2>
         {s.mode === 'intern' && (
           <p className="a3-cap a3-lede mt-2">
@@ -98,14 +100,14 @@ export function ChapterBuildings() {
                     variant={b.id === active.id ? 'primary' : 'secondary'}
                     aria-pressed={b.id === active.id}
                   >
-                    Kennzahlen ansehen
+                    {tx('Kennzahlen ansehen')}
                   </Button>
                   <Button
                     onClick={() => s.toggleBuildingIncluded(b.id)}
                     disabled={cannotRemove}
                     disabledReason="Das letzte Gebäude kann nicht entfernt werden — ein Angebot ohne Gebäude hat keinen Preis"
                   >
-                    {on ? 'Aus dem Angebot nehmen' : 'In das Angebot aufnehmen'}
+                    {tx(on ? 'Aus dem Angebot nehmen' : 'In das Angebot aufnehmen')}
                   </Button>
                 </span>
               </li>
@@ -123,7 +125,7 @@ export function ChapterBuildings() {
       {/* 2 · Метрики выбранного здания. */}
       <section className="a3-sheet">
         <h2 className="text-heading-3 font-bold text-text-primary">
-          Kennzahlen · {active.id}
+          {tx('Kennzahlen')} · {active.id}
         </h2>
         <div className="a3-tbl-scroll mt-3">
           <table className="w-full border-collapse">
@@ -161,7 +163,7 @@ export function ChapterBuildings() {
       {/* 3 · Оси классификации — по одной на свой уровень (D-11 v2). */}
       <section className="a3-sheet">
         <h2 className="text-heading-3 font-bold text-text-primary">
-          Einstufung · {active.id}
+          {tx('Einstufung')} · {active.id}
         </h2>
         {s.mode === 'intern' && (
           <p className="a3-cap a3-lede mt-2">
@@ -175,7 +177,7 @@ export function ChapterBuildings() {
           <p className="a3-cap">Gebäudeform</p>
           <p className="mt-1 text-body text-text-primary">
             {FORM_LABEL[active.gebaeudeform]}
-            <span className="a3-cap"> · aus der Dokumentation übernommen</span>
+            <span className="a3-cap"> · {tx('aus der Dokumentation übernommen')}</span>
           </p>
         </div>
 
@@ -193,7 +195,7 @@ export function ChapterBuildings() {
           {!active.gebaeudeklasse.confirmed && (
             <div className="mt-2">
               <Button variant="primary" onClick={() => s.confirmGebaeudeklasse()}>
-                Klassifikation bestätigen
+                {tx('Klassifikation bestätigen')}
               </Button>
             </div>
           )}
@@ -233,7 +235,7 @@ export function ChapterBuildings() {
             </p>
             <div className="mt-2">
               <Button variant="primary" onClick={() => s.confirmBuilding(active.id)}>
-                Gebäudedaten bestätigen
+                {tx('Gebäudedaten bestätigen')}
               </Button>
             </div>
           </>

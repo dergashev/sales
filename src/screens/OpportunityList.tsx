@@ -3,6 +3,7 @@ import opportunities from '../fixtures/opportunities.json'
 import { useStore } from '../state/store'
 import { NNBSP } from '../engine/money'
 import { Button } from '../components/primitives'
+import { useTx } from '../i18n'
 
 /**
  * Корень продукта — список Opportunities (DC-34 · Suche & Filter,
@@ -39,6 +40,7 @@ const STAGE_CTA: Record<string, string> = {
 
 export function OpportunityList() {
   const s = useStore()
+  const tx = useTx()
   const [q, setQ] = useState('')
   const [country, setCountry] = useState(ALL)
   const [city, setCity] = useState(ALL)
@@ -100,7 +102,7 @@ export function OpportunityList() {
   return (
     <div className="px-7 py-6">
       <header className="a3-masthead border-b border-border-strong">
-        <p className="a3-cap">Wurzel · alle Opportunities</p>
+        <p className="a3-cap">{tx('Wurzel · alle Opportunities')}</p>
         <h1 className="a3-hero-title">Opportunities</h1>
       </header>
 
@@ -109,7 +111,7 @@ export function OpportunityList() {
       <div role="search" className="a3-project-search mt-5">
         <div className="a3-search-line">
           <div className="a3-form-field">
-            <label htmlFor="opp-suche">Opportunities durchsuchen</label>
+            <label htmlFor="opp-suche">{tx('Opportunities durchsuchen')}</label>
             <input
               id="opp-suche"
               type="search"
@@ -118,9 +120,9 @@ export function OpportunityList() {
               placeholder="Name, Stadt, Owner, ID"
             />
           </div>
-          {select('land', 'Land')}
-          {select('stadt', 'Stadt')}
-          {select('owner', 'Opportunity Owner')}
+          {select('land', tx('Land'))}
+          {select('stadt', tx('Stadt'))}
+          {select('owner', tx('Opportunity Owner'))}
         </div>
 
         {active.length > 0 && (
@@ -138,7 +140,7 @@ export function OpportunityList() {
               </button>
             ))}
             <button type="button" className="a3-linkbtn" onClick={resetAll}>
-              Alle Filter zurücksetzen
+              {tx('Alle Filter zurücksetzen')}
             </button>
           </div>
         )}
@@ -156,13 +158,13 @@ export function OpportunityList() {
           <span className="a3-empty-icon" aria-hidden="true">○</span>
           <div>
             <p className="text-body text-text-primary">
-              Keine Opportunity entspricht den Filtern.
+              {tx('Keine Opportunity entspricht den Filtern.')}
             </p>
             <p className="a3-cap mt-1">
-              Entfernen Sie einen Filter oben, um wieder Treffer zu sehen.
+              {tx('Entfernen Sie einen Filter oben, um wieder Treffer zu sehen.')}
             </p>
             <div className="mt-2">
-              <Button onClick={resetAll}>Alle Filter zurücksetzen</Button>
+              <Button onClick={resetAll}>{tx('Alle Filter zurücksetzen')}</Button>
             </div>
           </div>
         </div>
@@ -189,7 +191,7 @@ export function OpportunityList() {
                     носителем остаётся текст (правило 8). */}
                 <span className={'a3-tag ' + STAGE_TAG[o.stage]}>
                   <span aria-hidden="true" className="a3-dot" />
-                  {o.stage}
+                  {tx(o.stage)}
                 </span>
                 <span>
                   {o.city} · {o.country} · {o.owner}
@@ -201,7 +203,7 @@ export function OpportunityList() {
                     onClick={() => s.openOpportunity(o.id)}
                     aria-label={`${o.name} öffnen`}
                   >
-                    {STAGE_CTA[o.stage] ?? 'Öffnen'}
+                    {tx(STAGE_CTA[o.stage] ?? 'Öffnen')}
                   </Button>
                 </span>
               </div>
@@ -214,7 +216,7 @@ export function OpportunityList() {
                 {!o.worked && (
                   <span className="a3-cap">
                     <span aria-hidden="true">○ </span>
-                    im Prototyp nicht ausgearbeitet
+                    {tx('im Prototyp nicht ausgearbeitet')}
                   </span>
                 )}
               </div>

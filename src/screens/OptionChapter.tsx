@@ -7,6 +7,7 @@ import {
   FacadeTileGroup, RadioCardGroup, type FacadeMaterial,
 } from '../components/controls'
 import { Button } from '../components/primitives'
+import { useTx } from '../i18n'
 
 /**
  * Глава опций — один компонент на все группы затрат.
@@ -68,6 +69,7 @@ export function OptionChapter({ groups, intro }: {
   intro: string
 }) {
   const s = useStore()
+  const tx = useTx()
   const b = activeBuilding(s)
   const chosen = s.kg300[b.id] ?? {}
   const prov = s.kg300Provenance[b.id] ?? {}
@@ -79,15 +81,14 @@ export function OptionChapter({ groups, intro }: {
       <div className="a3-sheet">
         <p className="text-body text-text-primary">
           <span aria-hidden="true">▲ </span>
-          Zuerst die Gebäudedaten bestätigen.
+          {tx('Zuerst die Gebäudedaten bestätigen.')}
         </p>
         <p className="a3-cap mt-1">
-          Leistungen für ein Gebäude auszuwählen, dessen Flächen und Einstufung
-          noch offen sind, hiesse die Auswahl später vollständig zu wiederholen.
+          {tx('Leistungen für ein Gebäude auszuwählen, dessen Flächen und Einstufung noch offen sind, hiesse die Auswahl später vollständig zu wiederholen.')}
         </p>
         <div className="mt-3">
           <Button variant="primary" onClick={() => s.openChapterAt(1)}>
-            Zu Kapitel 1 · Gebäude &amp; Umfang
+            {tx('Zu Kapitel 1 · Gebäude & Umfang')}
           </Button>
         </div>
       </div>
@@ -109,8 +110,8 @@ export function OptionChapter({ groups, intro }: {
         const source = prov[g.id] ?? 'Standard'
         return (
           <section key={g.id} className="a3-sheet">
-            <h2 className="text-heading-3 font-bold text-text-primary">{g.label}</h2>
-            <p className="a3-cap mt-1">{g.question}</p>
+            <h2 className="text-heading-3 font-bold text-text-primary">{tx(g.label)}</h2>
+            <p className="a3-cap mt-1">{tx(g.question)}</p>
 
             {/* Провенанс выбора — пункт 8: найденное в документах предвыбрано
                 и называет файл, но остаётся переключаемым. */}
@@ -118,13 +119,13 @@ export function OptionChapter({ groups, intro }: {
               <p className="a3-chip-src mt-2">
                 <span aria-hidden="true" className="a3-dot" />
                 <span aria-hidden="true">◆ </span>
-                Anforderung aus der Dokumentation · {g.documentRef}
+                {tx('Anforderung aus der Dokumentation')} · {g.documentRef}
               </p>
             )}
             {source === 'manuell erfasst' && (
               <p className="a3-chip-src mt-2">
                 <span aria-hidden="true" className="a3-dot" />
-                <span aria-hidden="true">✎ </span>manuell geändert
+                <span aria-hidden="true">✎ </span>{tx('manuell geändert')}
               </p>
             )}
 
@@ -144,10 +145,10 @@ export function OptionChapter({ groups, intro }: {
                   const noBase = qty.lte(0) && !rate.isZero()
                   return {
                     value: c.value,
-                    title: c.label,
+                    title: tx(c.label),
                     description: `${c.basis} ${MARK}`,
                     consequence: c.value === value
-                      ? 'aktuelle Auswahl'
+                      ? tx('aktuelle Auswahl')
                       : euro(rate.minus(current).mul(qty)),
                     disabled: norm.blocked || noBase,
                     disabledReason: norm.blocked ? norm.reason

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useReducedMotion } from 'framer-motion'
+import { useTx } from '../i18n'
 
 /**
  * DC-19 · ScheduleGantt — Bauzeit-Leiste со сдвинутыми стартами.
@@ -58,6 +59,7 @@ export function ScheduleGantt({ phases, finishISO, caption, provenance }: {
   /** Строка происхождения расчёта (интерн): календарь, правило, прогон. */
   provenance?: string
 }) {
+  const tx = useTx()
   const reduced = useReducedMotion()
   // Сегменты въезжают транзишном системы (`.a3-gantt.a3-in`); при
   // prefers-reduced-motion класс ставится сразу — движения нет (правило 21).
@@ -148,18 +150,18 @@ export function ScheduleGantt({ phases, finishISO, caption, provenance }: {
 
       {/* Табличная альтернатива — равноправное представление, не сноска. */}
       <details className="a3-gantt-details" open>
-        <summary>Tabellarische Terminansicht</summary>
+        <summary>{tx('Tabellarische Terminansicht')}</summary>
         <div className="a3-tbl-scroll">
           <table className="a3-gantt-table">
             <caption className="a3-visually-hidden">{caption}</caption>
             <thead>
               <tr>
-                <th scope="col">Phase</th>
-                <th scope="col">Einheit</th>
-                <th scope="col">Beginn</th>
-                <th scope="col">Ende</th>
-                <th scope="col">Dauer</th>
-                <th scope="col">Abhängigkeit</th>
+                <th scope="col">{tx('Phase')}</th>
+                <th scope="col">{tx('Einheit')}</th>
+                <th scope="col">{tx('Beginn')}</th>
+                <th scope="col">{tx('Ende')}</th>
+                <th scope="col">{tx('Dauer')}</th>
+                <th scope="col">{tx('Abhängigkeit')}</th>
               </tr>
             </thead>
             <tbody>

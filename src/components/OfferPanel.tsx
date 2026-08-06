@@ -8,7 +8,7 @@ import type { CostGroup, CoverageState } from '../engine/calculate'
 import { Button, useCountUp, useReducedMotion } from './primitives'
 import { OriginPopover } from './OriginPopover'
 import { UncertaintyBand } from './UncertaintyBand'
-import { useT } from '../i18n'
+import { useT, useTx } from '../i18n'
 
 /**
  * Правая панель оффера — постоянная зона всего приложения.
@@ -57,6 +57,7 @@ export function OfferPanel() {
   const s = useStore()
   const p = s.projection()
   const t = useT()
+  const tx = useTx()
   const reduced = useReducedMotion()
   const [journalOpen, setJournalOpen] = useState(false)
   // Панель — сводка, центр — работа. Тяжёлые таблицы по умолчанию
@@ -318,18 +319,17 @@ export function OfferPanel() {
             Строки — те же вклады движка (opt_/cov_/kg700), что и в
             Kostentreiber: второго источника выбранного не существует. */}
         <section aria-label="Im Angebot gewählt" className="a3-recap mt-4">
-          <p className="a3-mtag">Im Angebot gewählt</p>
+          <p className="a3-mtag">{tx('Im Angebot gewählt')}</p>
           {cart.length === 0 ? (
             <p className="a3-cap">
-              Standardumfang — keine Abweichungen gewählt. Jede Option in den
-              Kapiteln links zeigt ihren Preis vor dem Klick.
+              {tx('Standardumfang — keine Abweichungen gewählt. Jede Option in den Kapiteln links zeigt ihren Preis vor dem Klick.')}
             </p>
           ) : (
             <ul>
               {cart.map((d) => (
                 <li key={d.key}
                     className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
-                  <span className="text-text-secondary">{d.label}</span>
+                  <span className="text-text-secondary">{tx(d.label)}</span>
                   <span className="numeric shrink-0 text-text-primary">
                     {signed(d.exact)}
                   </span>
@@ -352,7 +352,7 @@ export function OfferPanel() {
               className="a3-journal-disclose relative w-full text-left outline-none before:absolute before:left-1/2 before:top-1/2 before:min-h-hit-target before:w-full before:-translate-x-1/2 before:-translate-y-1/2 before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
             >
               <span aria-hidden="true">{treiberOpen ? '▾ ' : '▸ '}</span>
-              Kostentreiber
+              {tx('Kostentreiber')}
             </button>
           </h2>
           {!treiberOpen && (
@@ -499,7 +499,7 @@ export function OfferPanel() {
               className="a3-journal-disclose relative w-full text-left outline-none before:absolute before:left-1/2 before:top-1/2 before:min-h-hit-target before:w-full before:-translate-x-1/2 before:-translate-y-1/2 before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
             >
               <span aria-hidden="true">{kgOpen ? '▾ ' : '▸ '}</span>
-              Kostengruppen nach DIN{NNBSP}276 · vereinfacht
+              {tx('Kostengruppen nach DIN 276 · vereinfacht')}
             </button>
           </h2>
           {kgOpen && (<>
