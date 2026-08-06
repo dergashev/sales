@@ -1,0 +1,97 @@
+/**
+ * Декларации состояний данных (правило 30, дефект 3 ревью № 13).
+ *
+ * Каждый компонент с данными объявляет пять состояний плюс две оси —
+ * ЛИБО с названной причиной неприменимости: правило 30 разрешает второе
+ * ровно в этой форме, и прототип-симулятор пользуется этим честно, а не
+ * молча. Непроизводимость здесь — следствие архитектуры фикстур
+ * (синхронный импорт, синхронная проекция), а не забытая ветка.
+ *
+ * Тест `data-states.test.ts` держит полноту: каждая декларация обязана
+ * назвать все семь осей. Появление в прототипе реального источника данных
+ * (API) делает причину ложной — и тогда падает не тест, а ревью Codex,
+ * потому что причина перестала быть правдой. Это осознанная граница.
+ */
+
+export type DataStateKey =
+  | 'loading' | 'empty' | 'partial' | 'ready' | 'error'
+  | 'stale' | 'permission'
+
+export type DataStateDecl =
+  /** Ветка реализована — есть видимое состояние на экране. */
+  | { status: 'implemented'; where: string }
+  /** Ветка непроизводима в прототипе — причина обязана быть названа. */
+  | { status: 'notApplicable'; reason: string }
+
+const SYNC_FIXTURE = 'источник — синхронный импорт фикстуры: промежутка ' +
+  'загрузки и сетевой ошибки не существует по построению'
+const SYNC_PROJECTION = 'проекция пересчитывается синхронно при каждом ' +
+  'событии журнала (M-4): устаревшее значение не существует по построению'
+
+export const DATA_STATE_DECLARATIONS: Record<
+  string, Record<DataStateKey, DataStateDecl>
+> = {
+  opportunityList: {
+    loading: { status: 'notApplicable', reason: SYNC_FIXTURE },
+    empty: { status: 'implemented', where: 'a3-empty-spec при пустом результате фильтров' },
+    partial: { status: 'implemented', where: 'карточка worked:false — «im Prototyp nicht ausgearbeitet» до клика' },
+    ready: { status: 'implemented', where: 'список карточек' },
+    error: { status: 'notApplicable', reason: SYNC_FIXTURE },
+    stale: { status: 'notApplicable', reason: SYNC_FIXTURE },
+    permission: { status: 'notApplicable', reason: 'уровень выше конвейера: цены и внутренние ссылки здесь не существуют, режимной фильтрации нечего фильтровать' },
+  },
+  documentAnalysis: {
+    loading: { status: 'implemented', where: 'running: a3-analysis-track + активная фаза' },
+    empty: { status: 'notApplicable', reason: 'запуск без документов невозможен: анализ вызывается с фикстурным списком карточки' },
+    partial: { status: 'implemented', where: 'cancelled: «Angehalten nach N von M Phasen», завершённые фазы сохранены' },
+    ready: { status: 'implemented', where: 'протокол фаз + файлы со статусами' },
+    error: { status: 'implemented', where: 'a3-analysis-error: нечитаемый файл — причина · последствие · средство' },
+    stale: { status: 'implemented', where: 'повторный запуск: bestätigt/manuell erfasste значения объявлены неперезаписываемыми (D-08)' },
+    permission: { status: 'notApplicable', reason: 'анализ существует только на внутреннем уровне Opportunity — в презентации карточка не показывается' },
+  },
+  offerPanel: {
+    loading: { status: 'notApplicable', reason: SYNC_PROJECTION },
+    empty: { status: 'notApplicable', reason: 'проекция без единого здания невозможна по построению: последнее включённое здание не снимается (гейт стора)' },
+    partial: { status: 'implemented', where: 'Zwischensumme der kalkulierten Positionen + причины неполноты (IncompleteReason)' },
+    ready: { status: 'implemented', where: 'Gesamt netto при полном покрытии' },
+    error: { status: 'notApplicable', reason: SYNC_PROJECTION },
+    stale: { status: 'notApplicable', reason: SYNC_PROJECTION },
+    permission: { status: 'implemented', where: 'präsentation: маржа, Δ-проценты, runRef отсутствуют в дереве (не скрыты стилем)' },
+  },
+  optionTiles: {
+    loading: { status: 'notApplicable', reason: SYNC_FIXTURE },
+    empty: { status: 'notApplicable', reason: 'группа без вариантов не существует в каталоге; зависимая группа с невыполненным условием скрыта вместе с ценой (isGroupActive)' },
+    partial: { status: 'implemented', where: 'noBase: вариант без расчётной базы заблокирован с причиной' },
+    ready: { status: 'implemented', where: 'плитки DC-40/DC-20 с ценой и статусом' },
+    error: { status: 'notApplicable', reason: SYNC_FIXTURE },
+    stale: { status: 'notApplicable', reason: SYNC_PROJECTION },
+    permission: { status: 'implemented', where: 'gate: до подтверждения здания глава закрыта с причиной и следующим шагом' },
+  },
+  scheduleGantt: {
+    loading: { status: 'notApplicable', reason: SYNC_FIXTURE },
+    empty: { status: 'implemented', where: '«Keine Terminphasen im Modell» — не молчаливый null' },
+    partial: { status: 'implemented', where: '«Termindaten unvollständig» при непригодном интервале дат' },
+    ready: { status: 'implemented', where: 'полоса + таблица DC-19' },
+    error: { status: 'notApplicable', reason: SYNC_FIXTURE },
+    stale: { status: 'notApplicable', reason: 'даты приходят из ScheduleModel фикстуры и меняются только с ней' },
+    permission: { status: 'implemented', where: 'provenance-строка с DEMO-идентификаторами — только интерн' },
+  },
+  vergleich: {
+    loading: { status: 'notApplicable', reason: SYNC_PROJECTION },
+    empty: { status: 'implemented', where: '«Noch keine Opportunity Option angelegt» с объяснением пути' },
+    partial: { status: 'implemented', where: 'одна Option: сравнение с самой собой + CTA к созданию второй' },
+    ready: { status: 'implemented', where: 'колонки созданных Options живым расчётом' },
+    error: { status: 'notApplicable', reason: SYNC_PROJECTION },
+    stale: { status: 'notApplicable', reason: 'колонки считаются из конфигураций Options на каждом рендере — второго набора чисел нет' },
+    permission: { status: 'implemented', where: 'DEMO-SC-01 в заголовке — только интерн' },
+  },
+  export: {
+    loading: { status: 'implemented', where: 'gesendet → zugestellt: индикация доставки без выдуманных процентов' },
+    empty: { status: 'implemented', where: 'Anlagen: «keine — links auswählen»' },
+    partial: { status: 'implemented', where: 'preflight с блокерами: причина + активный следующий шаг' },
+    ready: { status: 'implemented', where: 'confirm с A4-превью пакета' },
+    error: { status: 'notApplicable', reason: 'доставка симулируется таймером без ветки сбоя: выдуманная сетевая ошибка была бы симуляцией, выданной за реализацию' },
+    stale: { status: 'implemented', where: 'отправленный снапшот неизменяем (M-3) и не устаревает по построению — сравнение всегда против него' },
+    permission: { status: 'implemented', where: 'интерн-идентификаторы прогона в recap — только интерн' },
+  },
+}

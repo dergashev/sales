@@ -83,7 +83,18 @@ export function ScheduleGantt({ phases, finishISO, caption, provenance }: {
   const start = phases.reduce((a, p) => (p.startISO < a ? p.startISO : a), phases[0]!.startISO)
   const end = phases.reduce((a, p) => (p.endISO > a ? p.endISO : a), phases[0]!.endISO)
   const span = days(start, end)
-  if (span <= 0) return null
+  if (span <= 0) {
+    // partial: даты есть, но интервал непригоден — названная неполнота,
+    // не молчаливый null (правило 30).
+    return (
+      <p className="a3-cap">
+        <span aria-hidden="true">▲ </span>
+        Termindaten unvollständig — Beginn und Ende ergeben keinen
+        darstellbaren Zeitraum; die Terminansicht erscheint mit korrigiertem
+        ScheduleModel.
+      </p>
+    )
+  }
   const pct = (from: string, to: string) => (days(from, to) / span) * 100
   const finishMonth = Math.round(days(start, finishISO) / DAYS_PER_MONTH)
 
