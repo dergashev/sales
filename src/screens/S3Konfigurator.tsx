@@ -6,6 +6,8 @@ import type { CostGroup, CoverageState } from '../engine/calculate'
 import { Decimal } from 'decimal.js'
 import { Button, NumericField } from '../components/primitives'
 import { RadioCardGroup, SegmentedControl } from '../components/controls'
+import { ScheduleGantt } from '../components/ScheduleGantt'
+import demo from '../fixtures/demo-0001.json'
 import { present } from '../engine/money'
 
 /**
@@ -80,7 +82,8 @@ export function S3Konfigurator() {
         {n === 2 && <ChapterUmfang />}
         {n === 3 && <ChapterFlaechen />}
         {n === 4 && <ChapterEnergie />}
-        {n !== 2 && n !== 3 && n !== 4 && <ChapterParked title={title} />}
+        {n === 9 && <ChapterTermine />}
+        {![2, 3, 4, 9].includes(n) && <ChapterParked title={title} />}
       </div>
 
       {/* Один следующий шаг всегда на экране (DC-27): маршрут, не принуждение. */}
@@ -254,6 +257,41 @@ function ChapterEnergie() {
             Vom Kunden bestätigt — Unsicherheitsband um 4{NNBSP}Prozentpunkte verengt.
           </p>
         )}
+      </Card>
+    </div>
+  )
+}
+
+/**
+ * Глава 9 · Termine — Bauzeit-Leiste (DC-19).
+ *
+ * Фазы берутся из метрик фикстуры, а не назначаются здесь: планирование —
+ * величина уровня проекта, исполнение — уровня здания, и это разные строки
+ * в `schedule.metrics`. Веха завершения — конец исполнения Haus A, то же
+ * значение, что показывает герой срока в правой панели: два представления
+ * одной даты обязаны приходить из одного места.
+ */
+function ChapterTermine() {
+  const metrics = demo.schedule.metrics
+  const planning = metrics.find((m) => m.metricKey === 'project.planning')!
+  const haus = metrics.find((m) => m.metricKey === 'building:DEMO-B-A.execution')!
+
+  return (
+    <div className="grid gap-5">
+      <Card
+        title="Bauzeit"
+        intro={'Planung ist Projektgröße, Ausführung gehört zum Gebäude — deshalb ' +
+          'zwei Zeilen und nicht eine. Die Fertigstellung ist dieselbe Zahl, die ' +
+          'oben rechts als Kennzahl steht.'}
+      >
+        <ScheduleGantt
+          caption="Bauzeit nach Phasen mit Beginn, Ende und Dauer in Kalendertagen"
+          finishISO={haus.endDate}
+          phases={[
+            { key: planning.metricKey, label: 'Planung', startISO: planning.startDate, endISO: planning.endDate },
+            { key: haus.metricKey, label: `Ausführung Haus${NNBSP}A`, startISO: haus.startDate, endISO: haus.endDate },
+          ]}
+        />
       </Card>
     </div>
   )
