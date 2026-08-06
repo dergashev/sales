@@ -69,7 +69,7 @@ export function ChapterBuildings() {
   return (
     <div className="grid gap-5">
       {/* 1 · Какие здания входят в предложение. */}
-      <section className="border border-border-default p-5">
+      <section className="a3-sheet">
         <h2 className="text-heading-3 font-bold text-text-primary">
           Gebäude im Angebot · {includedCount} von {Object.keys(s.buildings).length}
         </h2>
@@ -121,7 +121,7 @@ export function ChapterBuildings() {
       </section>
 
       {/* 2 · Метрики выбранного здания. */}
-      <section className="border border-border-default p-5">
+      <section className="a3-sheet">
         <h2 className="text-heading-3 font-bold text-text-primary">
           Kennzahlen · {active.id}
         </h2>
@@ -159,7 +159,7 @@ export function ChapterBuildings() {
       </section>
 
       {/* 3 · Оси классификации — по одной на свой уровень (D-11 v2). */}
-      <section className="border border-border-default p-5">
+      <section className="a3-sheet">
         <h2 className="text-heading-3 font-bold text-text-primary">
           Einstufung · {active.id}
         </h2>
@@ -218,7 +218,7 @@ export function ChapterBuildings() {
       </section>
 
       {/* 4 · Подтверждение здания — шаг вниз. */}
-      <section className="border border-border-default p-5">
+      <section className="a3-sheet">
         {s.buildingConfirmed[active.id] ? (
           <p className="a3-cap">
             <span aria-hidden="true">✓ </span>

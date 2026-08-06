@@ -1394,10 +1394,12 @@ IANA-таймзона в деталях — `04.08.2026, 14:32 Uhr (Europe/Berli
 незамеченным, не может привести к потере информации.
 
 **Тайминги.** Автозакрытие обычного тоста и тоста с `Rückgängig` — поведенческие пороги
-без утверждённого значения: **`[ADR-PENDING: нужны токены --duration-toast-default и
---duration-toast-undo]`** (в прозе фигурируют 4 с и 8 с; R-25 запрещает считать их дефолтом).
-До ADR тост не закрывается автоматически, если содержит действие, и закрывается по явному
-`closeButton`.
+UI-policy, а не CSS-токены: таймером владеет приложение, и визуальная тема не должна менять
+окно доступности действия. **`[ADR-PENDING: нужны значения
+policy.ui.toastDefaultDuration и policy.ui.toastUndoDuration]`** (в прозе фигурируют 4 с и
+8 с; R-25 запрещает считать их дефолтом). До ADR тост с действием не закрывается
+автоматически и закрывается по явному `closeButton`. CSS-duration допустим только для
+анимации появления/исчезновения и не является источником времени жизни.
 
 **Клавиатура:** тост-регион стоит последним в DOM и достижим `Tab` без ловушки.
 Фокус **не** переносится в тост автоматически (это прервало бы ввод). `Esc` закрывает тост
@@ -1793,6 +1795,44 @@ PROVENANCE-001, PROVENANCE-003, PROVENANCE-005, PROVENANCE-006, SKELETON-001, SK
 TYPE-004, TYPE-006, TYPE-010, TYPE-011, TYPE-012, MOTION-002, MOTION-004, MOTION-005,
 LOCALE-004, NOTE-001, NOTE-003, NOTE-004, NOTE-007, COPY-008.
 
+### 9.1 Готовность 22 контрактов к сборке · 06.08.2026
+
+**Критерий:** «ждёт владельца» означает, что сам контракт ссылается на токен без принятого
+значения; наличие прежнего CSS-скелета этот статус не повышает. «Готов» означает, что
+принятых и уже опубликованных токенов достаточно для эталонного класса и образца.
+
+Инвентаризация исправляет формулировку задания № 11: в файле действительно 22 заголовка
+примитивов, но `Skeleton` не является отдельным заголовком контракта (это доменный DC-35),
+а перечень задания пропустил реальные `CheckboxCard` и `Toast`.
+
+| Примитив | Статус сборки | Блокер либо доказательство |
+|---|---|---|
+| Button | ждёт владельца | `--color-action-destructive-*`, `--color-action-secondary-pressed`, `--color-action-ghost-pressed` |
+| Link | ждёт владельца | `--color-action-link-text` |
+| Tabs | готов | `.a3-tabs`, образец в действующей витрине |
+| SegmentedControl | готов | `.a3-seg` / `.a3-radio-segments`, образцы в витрине |
+| RadioCardGroup | ждёт владельца | `--size-control-indicator` |
+| CheckboxCard | ждёт владельца | наследует незакрытый `--size-control-indicator` RadioCardGroup |
+| Switch | готов | `.a3-switch-button`, образец в витрине |
+| FormField | готов | `.a3-form-field`, образец в витрине |
+| NumericInput | готов | `.a3-input`, образец в витрине |
+| Slider | ждёт владельца | `--size-slider-thumb-visual`, `--size-slider-track-thickness` |
+| Textarea | готов | `.a3-textarea-field`, образец в витрине |
+| DataTable | готов | `.a3-data-table`, образец в витрине |
+| DisclosureRow | готов | `.a3-disclosure-row`, образец в витрине |
+| Card | готов | `.a3-card-core`, образец в витрине |
+| Badge | готов | `.a3-badge`, status и metadata в витрине |
+| Chip | готов | `.a3-chip-control`, образец в витрине |
+| Tooltip | ждёт владельца | `--color-surface-inverse`, `--size-tooltip-max-width`, hover-delay до принятия ADR |
+| Toast | готов | `.a3-toast`, статический и runtime-образцы в витрине; длительность — UI-policy, не visual blocker |
+| Dialog | готов | `.a3-dialog-spec` и runtime `.a3-modal`, образцы в витрине |
+| SaveStatus | готов | `.a3-save-status`, образец подтверждённого состояния в витрине |
+| KeyboardShortcutService | готов | поведенческий сервис без visual root; доказательство — ShortcutHelpDialog и settings-switch |
+| ShortcutHelpDialog | готов | `.a3-shortcut-help`, образец с таблицей, конфликтами и switch в витрине |
+
+Итого: **16 готовы**, **6 ждут владельца**. Новые имена только добавлены; существующие
+`a3-*` не переименованы.
+
 **DENSITY-007 — где именно закрыт.** Контракт DataTable, абзац «DENSITY-007 — минимальные
 высоты строк»: `--row-height-financial` / `--row-height` = 52 px в `Komfortabel` и 44 px
 в `Kompakt` (значения из `tokens.css`, уменьшению не подлежат), зона нажатия и фокуса
@@ -1802,7 +1842,7 @@ LOCALE-004, NOTE-001, NOTE-003, NOTE-004, NOTE-007, COPY-008.
 
 ---
 
-## 10. Требуемые новые токены `[ADR-PENDING]`
+## 10. Требуемые новые токены и UI-policy `[ADR-PENDING]`
 
 По R-25 и TOKEN-005 значение выбирает владелец дизайна в ADR; ни одно из перечисленного
 не имеет значения по умолчанию. До утверждения зависимый компонент остаётся `experimental`.
@@ -1819,11 +1859,37 @@ LOCALE-004, NOTE-001, NOTE-003, NOTE-004, NOTE-007, COPY-008.
 | 6 | `--size-tooltip-max-width` | Tooltip | TOOLTIP-001 + мера читаемости; 320 px в прозе не утверждены | reflow 320 px, zoom 200 % |
 | 7 | `--size-toast-max-width` | Toast | FEEDBACK-001 — тост не должен перекрывать панель цены | reflow 320 px |
 | 8 | `--motion-delay-hover-preview` | Tooltip, Geist-Vorschau | TOOLTIP-001, DC-28; в прозе фигурируют 300 мс и 200 мс — два разных неутверждённых значения | reduced-motion: задержка не превращается в единственный feedback |
-| 9 | `--duration-toast-default`, `--duration-toast-undo` | Toast | FEEDBACK-001 + DC-29; 4 с / 8 с — поведенческие пороги без утверждения | тест: сообщение продублировано в постоянном месте |
+| 9 | `policy.ui.toastDefaultDuration`, `policy.ui.toastUndoDuration` (**UI-policy, не токены**) | Toast | FEEDBACK-001 + DC-29; 4 с / 8 с — поведенческие пороги без утверждения; тема не владеет доступностью действия | тест таймера + сообщение продублировано в постоянном месте |
 | 10 | `--size-control-indicator` | RadioCardGroup, CheckboxCard, Switch | RADIO-001 / OPTION-008 — геометрия чек-круга и чек-квадрата; 18 px из `README` §3 вне шкалы и без утверждения (LAYOUT-002) | geometry test + hit-area 44 × 44 |
 | 11 | `--size-slider-thumb-visual`, `--size-slider-track-thickness` | Slider | SLIDER-002 — «square thumb допускается», но размер не задан | geometry test + hit-area 44 × 44 + focus ring не обрезан |
 | 12 | `--layer-presentation-banner` | оверлей режима презентации | LAYER-001 перечисляет **presentation banner** среди обязательных слоёв; в `tokens.css` его нет | collision test со всеми слоями |
 | 13 | весь слой `component.*` (25 записей раздела 13) | все контракты | TOKEN-002 — компоненты обязаны ссылаться на component-алиасы; сейчас ссылаются на semantic напрямую | TOKEN-005: блокирует `beta`/`stable` для всех |
+
+### 10.1 Предложения владельцу по 17 записям §6a — 06.08.2026
+
+Ниже нет принятых значений: каждая строка помечена **`[provisional]`**, в `tokens.css` и
+UI-policy ничего из таблицы автоматически не публикуется. Владелец дизайн-системы принимает,
+меняет или отклоняет предложение отдельным ADR. Контраст посчитан по WCAG 2.x для sRGB.
+
+| # | Открытая запись | Предложение | Обоснование и обязательная проверка | Разблокирует после ADR |
+|---:|---|---|---|---|
+| 1 | `--color-action-destructive-bg` | `[provisional] #C23847` | Белый текст — **5,32:1**; красный отделён от информационного синего. Проверить normal text, forced-colors и CVD. | `Button.destructive` — default. |
+| 2 | `--color-action-destructive-hover` | `[provisional] #B83240` | Белый текст — **5,89:1**, состояние темнее default. Проверить различимость default/hover и отсутствие color-only feedback. | `Button.destructive` — hover. |
+| 3 | `--color-action-destructive-pressed` | `[provisional] #A12835` | Белый текст — **7,32:1**, pressed темнее hover. Проверить последовательность трёх состояний и keyboard activation. | `Button.destructive` — pressed. |
+| 4 | `--color-action-destructive-text` | `[provisional] #FFFFFF` | Проходит порог 4,5:1 на каждой из трёх поверхностей из строк 1–3. Проверить disabled отдельно: эта пара туда не наследуется. | Полную пару `Button.destructive`; вместе со строками 1–3 выводит вариант из `alpha`. |
+| 5 | `--color-action-secondary-pressed` | `[provisional] #DEDEDE` | С `#323232` — **9,53:1**; заметно темнее текущего hover `#E8ECE9`. Проверить pressed без сдвига геометрии. | `Button.secondary` — pressed; завершает его обязательную матрицу состояний. |
+| 6 | `--color-action-ghost-pressed` | `[provisional] #DEDEDE` | Та же нейтральная pressed-поверхность сохраняет единый feedback; с `#323232` — **9,53:1**. Проверить, что ghost остаётся без бордера. | `Button.ghost` — pressed; завершает его обязательную матрицу состояний. |
+| 7 | `--color-action-link-text` | `[provisional] #005FCC` + постоянное подчёркивание; изменить проверку соседнего текста | К белому — **5,98:1**, к `#323232` — **2,14:1**. Одним цветом невозможно одновременно получить ≥4,5:1 к белому и ≥3:1 к `#323232`: допустимые диапазоны относительной яркости не пересекаются. Предложение требует ADR явно заменить второе условие на non-color cue; без этого запись не принимается. | `Link`; принятие требует одновременно утвердить постоянное подчёркивание как non-color cue. |
+| 8 | `--color-surface-inverse` | `[provisional] #1F1F1F` | С `--color-text-inverse: #FFFFFF` — **16,48:1**. Проверить tooltip/`kbd`, forced-colors и отсутствие чёрной плашки как единственного признака. | `Tooltip` и inverse-вариант `kbd`. |
+| 9 | `--size-tooltip-max-width` | `[provisional] 40ch` | Мера следует длине текста, а не масштабу пикселей. Проверить reflow при viewport 320 px и zoom 200%; фактическая ширина ограничивается viewport inset. | Геометрию `Tooltip`; вместе со строкой 8 выводит компонент из `alpha`. |
+| 10 | `--size-toast-max-width` | `[provisional] 52ch` | Вмещает причину + следствие, не конкурируя с правой панелью. Проверить 1280/1920, viewport 320 px и collision с S3. | Финальную геометрию `Toast` и `UndoToast` (рабочий `[provisional]` уже показан в витрине). |
+| 11 | `--motion-delay-hover-preview` | `[provisional] 200ms` | Совпадает с уже испытанным приближением и снижает случайные preview при проезде указателя. Проверить pointer, focus (без задержки, если feedback иначе недоступен), touch и reduced-motion. | Hover-ветку `Tooltip` и DC-28 `ConsequencePreviewGhost`. |
+| 12 | `policy.ui.toastDefaultDuration` | `[provisional] 6000ms` | UI-policy, не CSS-токен: больше времени для немецкого текста; постоянный носитель обязателен. Проверить паузу на hover/focus и ручное закрытие. | Временную политику `Toast`; визуальный примитив от неё не зависит. |
+| 13 | `policy.ui.toastUndoDuration` | `[provisional] 8000ms` | UI-policy, не CSS-токен: действие требует прочитать следствие и принять решение. Проверить адресный undo, паузу и доступность отката после исчезновения тоста. | Временную политику `UndoToast` / DC-29. |
+| 14 | `--size-control-indicator` | `[provisional] 20px` | Совпадает с `--size-icon-md`, не вводит новый шаг. Проверить Radio/Checkbox/Switch, 44×44 hit-area и отсутствие clipping focus ring. | `RadioCardGroup` и `CheckboxCard`; `Switch` использует уже токенизированную геометрию, но входит в общий geometry-test. |
+| 15 | `--size-slider-thumb-visual` | `[provisional] 20px` | Совпадает с `--size-icon-md`; квадрат остаётся визуальным, hit-area — 44×44. Проверить drag, keyboard и 200% zoom. | Thumb `Slider`. |
+| 16 | `--size-slider-track-thickness` | `[provisional] 4px` | Совпадает с `--space-1`, достаточно различим на нейтральной поверхности. Проверить контраст трека/заполнения ≥3:1 и forced-colors. | Track `Slider`; вместе со строкой 15 выводит компонент из `alpha`. |
+| 17 | `--layer-presentation-banner` | `[provisional] 15` | Ставит баннер выше header `10`, но ниже popover `20`; не создаёт нового top layer. Провести collision test со sticky header, popover, tooltip, dialog и toast. | Presentation banner DC-22; не блокирует отдельный core-примитив. |
 
 ---
 

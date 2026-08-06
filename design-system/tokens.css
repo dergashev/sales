@@ -79,12 +79,32 @@
      Значение остаётся [ADR-PENDING] до утверждения владельцем дизайна. */
   --primitive-color-neutral-950-a48: rgba(31, 31, 31, 0.48);
 
+  /* Альфа-примитивы витрины [provisional]. Значения перенесены из
+     действующей витрины 06.08 без изменения. Они не являются публичной
+     семантикой: различающиеся назначения получают разные semantic-алиасы. */
+  --primitive-color-neutral-900-a10: rgba(50, 50, 50, 0.10);
+  --primitive-color-neutral-900-a16: rgba(50, 50, 50, 0.16);
+  --primitive-color-neutral-900-a25: rgba(50, 50, 50, 0.25);
+  --primitive-color-neutral-950-demo-a38: rgba(40, 40, 40, 0.38);
+  --primitive-color-white-a25: rgba(255, 255, 255, 0.25);
+
   /* Цвет — расширенная палитра [official, только экран] */
   --primitive-color-blue-500:        #0B24FB;
   --primitive-color-green-dark-500:  #3C887E;
   --primitive-color-green-bright-500:#98CE00;
   --primitive-color-red-500:         #F04859;
   --primitive-color-chart-grey:      #E3E3E3;
+
+  /* Материалы фасадных placeholder-плиток DC-20 [provisional].
+     Значения перенесены без изменения из витрины 04.08, а не придуманы
+     при нормализации словаря. Это именно цвет условной демонстрационной
+     схемы; реальный рендер материалов остаётся источником продукта.
+     До ADR не использовать вне DC-20. */
+  --primitive-color-material-plaster:      #EDEBE4;
+  --primitive-color-material-timber-light: #D9CFBB;
+  --primitive-color-material-timber-dark:  #CEC2A9;
+  --primitive-color-material-clinker:      #C08A6C;
+  --primitive-color-material-plinth:       #4A4A48;
 
   /* ============ СЛОЙ 2 — SEMANTIC ============ */
 
@@ -201,6 +221,20 @@
   --color-dataviz-category-2: var(--primitive-color-green-dark-500);
   --color-dataviz-category-3: var(--primitive-color-green-bright-500);
   --color-dataviz-neutral:    var(--primitive-color-chart-grey);
+  --color-dataviz-grid-line:  var(--primitive-color-neutral-900-a10);
+  --color-dataviz-neutral-bar:var(--primitive-color-neutral-900-a25);
+  --color-control-disabled-outline: var(--primitive-color-neutral-900-a16);
+
+  /* DC-20 · facade placeholder only [provisional]; semantic API for the
+     showcase/shared component stylesheet. Five primitive values above plus
+     these five aliases are ten new declarations for five visual concepts. */
+  --color-material-placeholder-plaster:      var(--primitive-color-material-plaster);
+  --color-material-placeholder-timber-light: var(--primitive-color-material-timber-light);
+  --color-material-placeholder-timber-dark:  var(--primitive-color-material-timber-dark);
+  --color-material-placeholder-clinker:      var(--primitive-color-material-clinker);
+  --color-material-placeholder-plinth:       var(--primitive-color-material-plinth);
+  --color-material-placeholder-mortar:       var(--primitive-color-white-a25);
+  --color-material-placeholder-window:       var(--primitive-color-neutral-950-demo-a38);
 
   /* ============ ТИПОГРАФИКА [audit R-24] ============
      Роли фиксированы аудитом.
@@ -280,6 +314,41 @@
   --size-control-visual-lg: 48px;
   --size-hit-target-default:        44px;
   --size-icon-sm: 16px; --size-icon-md: 20px; --size-icon-lg: 24px;
+
+  /* Геометрия, перенесённая из эталонной витрины [provisional].
+     Восьмишаговая spacing-шкала не заменяет эти значения без заметного
+     изменения пропорций контролов, диаграмм и демонстрационных материалов.
+     Токены локальны для shared stylesheet; владелец может принять их или
+     заменить геометрию отдельным ADR. */
+  --size-text-underline-offset: 3px;
+  --size-status-accent-width: 3px;
+  --size-control-inset: 6px;
+  --size-material-pattern-step: 7px;
+  --size-status-glyph: 9px;
+  --size-status-dot: 10px;
+  --size-status-icon: 14px;
+  --size-ghost-row: 21px;
+  --size-chapter-marker: 22px;
+  --size-delta-row: 29px;
+  --size-switch-track: 36px;
+  --size-progress-ring: 56px;
+  --size-numeric-control: 76px;
+  --size-timeline-label: 88px;
+  --measure-showcase-swatch: 96px;
+  --measure-showcase-narrow: 150px;
+  --measure-showcase-tile: 160px;
+  --measure-spec-label: 180px;
+  --measure-form-control: 200px;
+  --measure-conflict-column: 220px;
+  --measure-slider: 260px;
+  --measure-card-compact: 320px;
+  --measure-band: 420px;
+  --measure-component: 520px;
+  --measure-panel: 560px;
+  --measure-wide: 640px;
+  --measure-chart: 720px;
+  --measure-option-grid: 740px;
+  --measure-gallery: 900px;
 
   --border-width-default: 1px;
   --border-width-strong:  2px;

@@ -138,7 +138,7 @@ function Card({ title, intro, children }: {
 }) {
   const mode = useStore().mode
   return (
-    <section className="border border-border-default p-5">
+    <section className="a3-sheet">
       <h2 className="text-heading-3 font-bold text-text-primary">{title}</h2>
       {intro && mode === 'intern' && (
         <p className="mt-2 max-w-content text-body text-text-secondary">{intro}</p>
@@ -399,7 +399,7 @@ function ChapterKg700() {
 
   if (s.mode === 'praesentation') {
     return (
-      <div className="border border-border-default p-5">
+      <div className="a3-sheet">
         <p className="text-body text-text-secondary">
           <span aria-hidden="true">○ </span>
           Die Berechnungsart der Baunebenkosten ist eine interne Einstellung
@@ -451,7 +451,7 @@ function ChapterKg700() {
  */
 function ChapterParked({ title }: { title: string }) {
   return (
-    <div className="border border-border-default p-5">
+    <div className="a3-sheet">
       <p className="text-body text-text-primary">
         <span aria-hidden="true">○ </span>
         Kapitel «{title}» ist im Prototyp nicht ausgearbeitet.

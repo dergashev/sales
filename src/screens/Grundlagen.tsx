@@ -28,7 +28,7 @@ function Specimen({ title, note, children }: {
   children: React.ReactNode
 }) {
   return (
-    <section className="border border-border-default p-5">
+    <section className="a3-sheet">
       <h3 className="text-heading-3 font-bold text-text-primary">{title}</h3>
       {note && <p className="a3-cap a3-lede mt-1">{note}</p>}
       <div className="mt-3">{children}</div>

@@ -53,7 +53,7 @@ export function OptionChapter({ groups, intro }: {
   // метрики ещё спорны, придётся пересматривать целиком.
   if (!s.buildingConfirmed[b.id]) {
     return (
-      <div className="border border-border-default p-5">
+      <div className="a3-sheet">
         <p className="text-body text-text-primary">
           <span aria-hidden="true">▲ </span>
           Zuerst die Gebäudedaten bestätigen.
@@ -85,7 +85,7 @@ export function OptionChapter({ groups, intro }: {
         const value = chosen[g.id] ?? g.default
         const source = prov[g.id] ?? 'Standard'
         return (
-          <section key={g.id} className="border border-border-default p-5">
+          <section key={g.id} className="a3-sheet">
             <h2 className="text-heading-3 font-bold text-text-primary">{g.label}</h2>
             <p className="a3-cap mt-1">{g.question}</p>
 

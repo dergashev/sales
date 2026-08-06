@@ -129,7 +129,7 @@ export function OpportunityCard() {
       </header>
 
       {/* 1 · Анализ документации — верхний уровень карточки. */}
-      <section className="mt-5" aria-label="Dokumentanalyse">
+      <section className="a3-sheet mt-5" aria-label="Dokumentanalyse">
         <DocumentAnalysis
           docs={demo.documents.map((d) => ({
             file: d.file,
@@ -142,7 +142,7 @@ export function OpportunityCard() {
 
       {/* 2 · Спорное из документации — до параметров: параметр, выведенный
           из спорного значения, тоже спорен. */}
-      <section className="mt-6" aria-label="Strittige Angaben">
+      <section className="a3-sheet mt-6" aria-label="Strittige Angaben">
         <h2 className="text-heading-3 font-bold text-text-primary">
           Strittige Angaben aus der Dokumentation
         </h2>
@@ -184,7 +184,7 @@ export function OpportunityCard() {
       </section>
 
       {/* 3 · Параметры всего проекта. Суммы считаются от сумм (правило 39). */}
-      <section className="mt-6" aria-label="Projektparameter">
+      <section className="a3-sheet mt-6" aria-label="Projektparameter">
         <h2 className="text-heading-3 font-bold text-text-primary">
           Parameter des gesamten Projekts
         </h2>
@@ -216,7 +216,7 @@ export function OpportunityCard() {
         )}
       </section>
 
-      <section className="mt-6" aria-label="Vorbereitung">
+      <section className="a3-sheet mt-6" aria-label="Vorbereitung">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="a3-cap">
             Offene Fragen, Annahmen und Dokumente im Detail — die Vorbereitung
@@ -229,7 +229,7 @@ export function OpportunityCard() {
       </section>
 
       {/* 4 · Гейт и Options. */}
-      <section className="mt-6 border-t border-border-strong pt-4" aria-label="Opportunity Options">
+      <section className="a3-sheet mt-6" aria-label="Opportunity Options">
         <h2 className="text-heading-3 font-bold text-text-primary">Opportunity Options</h2>
         <div className="mt-3">
           <ReadinessRing

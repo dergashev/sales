@@ -1,0 +1,667 @@
+/* All3 shared component stylesheet · public class prefix: a3-
+   Shared design decisions reference tokens.css; component-specific geometry
+   remains here with its contract. Every component group below names its DC
+   owner and required DOM structure; showcase-shell helpers are explicitly
+   marked as non-component API. */
+/* SHOWCASE SHELL · not component API. Structure: .a3-showcase > .a3-wrap
+   with navigation, masthead, documentation sheets and specimens. Consumers
+   must not use these helpers as component contracts.
+   Classes: .a3-showcase · .a3-wrap · .a3-sheet · .a3-reveal · .a3-in ·
+   .a3-pnav · .a3-masthead · .a3-meta · .a3-hero-title · .a3-lede ·
+   .a3-pal · .a3-pal-ext · .a3-chip · .a3-swatch · .a3-info · .a3-rulebox ·
+   .a3-spec · .a3-t-hero · .a3-t-h1 · .a3-t-h2 · .a3-t-h3 · .a3-t-body ·
+   .a3-t-small · .a3-t-cap · .a3-sp-row · .a3-cell · .a3-bar ·
+   .a3-demo-panel · .a3-specimen-stack · .a3-specimen-block ·
+   .a3-specimen-meta · .a3-cap · .a3-mono · .a3-numeric ·
+   .a3-visually-hidden · .a3-linkbtn. */
+:where([class^="a3-"],[class*=" a3-"]){box-sizing:border-box;border-radius:0}
+.a3-showcase [hidden]{display:none}
+.a3-visually-hidden{position:absolute;width:var(--border-width-default);height:var(--border-width-default);padding:0;margin:calc(-1 * var(--border-width-default));overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.a3-showcase{font-family:var(--font-family);color:var(--color-text-primary);font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-body-weight)}
+.a3-showcase input,.a3-showcase select,.a3-showcase textarea,.a3-showcase button,.a3-showcase kbd{font-family:var(--font-family)}
+.a3-numeric{font-feature-settings:var(--font-numeric);text-align:right}
+.a3-showcase :focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--border-width-focus);box-shadow:0 0 0 var(--border-width-focus) var(--color-focus-separator)}
+.a3-wrap{max-width:var(--content-max-width);margin:0 auto;padding:var(--space-6) var(--space-5) var(--space-8)}
+.a3-sheet{background:var(--color-surface-default);padding:var(--space-7);margin-bottom:var(--space-5);scroll-margin-top:var(--space-8)}
+.a3-reveal .a3-sheet{opacity:0;transform:translateY(var(--space-3));transition:opacity .48s var(--motion-easing-standard),transform .48s var(--motion-easing-standard)}
+.a3-reveal .a3-sheet.a3-in{opacity:1;transform:none}
+.a3-sheet>h2{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:700;margin:0 0 var(--space-1)}
+.a3-sheet>.a3-sub{color:var(--color-text-secondary);margin:0 0 var(--space-6);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-showcase h3{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:700;margin:var(--space-6) 0 var(--space-4)}
+.a3-showcase h3:first-of-type{margin-top:0}
+.a3-cap{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight);color:var(--color-text-secondary)}
+.a3-mono{font-variant-numeric:tabular-nums}
+.a3-linkbtn{background:none;border:none;font:inherit;font-size:inherit;padding:0;cursor:pointer;text-decoration:underline;text-decoration-style:solid;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset);color:inherit;min-height:var(--size-hit-target-default)}
+
+.a3-pnav{position:sticky;top:0;z-index:var(--layer-header);background:var(--color-surface-default);border-bottom:var(--border-hairline);margin:0 calc(-1*var(--space-5));padding:var(--space-3) var(--space-5);display:flex;gap:var(--space-5);flex-wrap:wrap;font-size:var(--type-small-size);line-height:var(--type-small-line);align-items:center}
+.a3-pnav a{color:var(--color-text-primary);text-decoration:underline;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset);border-bottom:var(--border-width-strong) solid transparent;padding-bottom:var(--border-width-strong)}
+.a3-pnav a:hover{border-bottom-color:var(--color-selection-border)}
+.a3-masthead{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-5);margin:var(--space-6) 0;flex-wrap:wrap}
+.a3-masthead img{height:var(--size-hit-target-default);display:block}
+.a3-masthead .a3-meta{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);text-align:right}
+.a3-hero-title{font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:700;margin:var(--space-5) 0 var(--space-2)}
+.a3-hero-title span{color:var(--color-text-primary)}
+.a3-lede{max-width:var(--measure-wide);margin:0 0 var(--space-4)}
+
+.a3-pal{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-4)}
+.a3-pal .a3-chip{border:var(--border-hairline)}
+.a3-pal .a3-swatch{height:var(--measure-showcase-swatch)}
+.a3-pal .a3-info{padding:var(--space-3) var(--space-4);display:flex;justify-content:space-between;gap:var(--space-2);flex-wrap:wrap}
+.a3-pal .a3-info b{font-weight:700}
+.a3-pal-ext{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-4);margin-top:var(--space-4)}
+.a3-pal-ext .a3-swatch{height:var(--size-control-visual-md)}
+.a3-rulebox{border-left:var(--border-width-strong) solid var(--color-text-primary);background:var(--color-surface-subtle);padding:var(--space-3) var(--space-4);margin-top:var(--space-5);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+
+.a3-spec{display:grid;grid-template-columns:var(--measure-spec-label) 1fr;gap:var(--space-4) var(--space-5);align-items:baseline;border-top:var(--border-hairline);padding-top:var(--space-4)}
+.a3-spec+.a3-spec{margin-top:var(--space-4)}
+.a3-t-hero{font-size:var(--type-display-numeric-desktop-size);line-height:var(--type-display-numeric-desktop-line);font-weight:700;color:var(--color-brand-accent);font-variant-numeric:tabular-nums}
+.a3-t-h1{font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:700}
+.a3-t-h2{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:700}
+.a3-t-h3{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:700}
+.a3-t-body{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-body-weight)}
+.a3-t-small{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight)}
+.a3-t-cap{font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:400}
+
+.a3-sp-row{display:flex;align-items:flex-end;gap:var(--space-4);margin-top:var(--space-4)}
+.a3-sp-row .a3-bar{background:var(--color-text-primary)}
+.a3-sp-row .a3-cell{text-align:center;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-demo-panel{border:var(--border-default);padding:var(--space-5);display:flex;flex-direction:column;gap:var(--space-4);background:var(--color-surface-default);min-width:0}
+.a3-demo-panel>*{min-width:0}
+
+/* Added specimen shell · not component API. */
+.a3-specimen-stack{display:flex;flex-direction:column;gap:var(--space-7)}
+.a3-specimen-block{border-top:var(--border-contrast-2px);padding-top:var(--space-4);max-width:var(--measure-body-max);min-width:0}
+.a3-specimen-block>h3{margin-top:0}
+.a3-specimen-meta{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);margin:0 0 var(--space-4)}
+
+/* CORE PRIMITIVES · ready contracts with sufficient accepted tokens.
+   These additive classes do not rename any existing a3-* API. */
+/* FormField + Textarea. Structure: .a3-form-field > label + control +
+   .a3-form-helper/.a3-form-error; textarea uses .a3-textarea-field. */
+.a3-form-field{display:grid;gap:var(--space-2);max-width:var(--measure-component)}
+.a3-form-field>label{font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight)}
+.a3-form-field input,.a3-textarea-field{box-sizing:border-box;min-height:var(--size-hit-target-default);border:var(--border-default);padding:var(--space-2) var(--space-3);font-size:var(--type-input-size);line-height:var(--type-input-line);font-weight:var(--type-input-weight);color:var(--color-text-primary);background:var(--color-surface-default)}
+.a3-textarea-field{resize:vertical;min-height:var(--space-8);width:100%}
+.a3-form-helper,.a3-textarea-counter{font-size:var(--type-helper-size);line-height:var(--type-helper-line);font-weight:var(--type-helper-weight);color:var(--color-text-secondary)}
+.a3-form-error{border-left:var(--border-error);padding-left:var(--space-2);font-size:var(--type-error-size);line-height:var(--type-error-line);font-weight:var(--type-error-weight)}
+.a3-textarea-meta{display:flex;justify-content:space-between;gap:var(--space-3)}
+
+/* DataTable + DisclosureRow. Structure: .a3-data-table > caption + thead +
+   tbody; tr.a3-disclosure-row > th > button[aria-expanded] + cells. */
+.a3-data-table{width:100%;border-collapse:collapse}
+.a3-data-table caption{text-align:left;font-weight:var(--font-weight-bold);padding-bottom:var(--space-3)}
+.a3-data-table th{font-size:var(--type-table-header-size);line-height:var(--type-table-header-line);font-weight:var(--type-table-header-weight);text-align:left;border-bottom:var(--border-default);padding:var(--space-2) var(--space-3)}
+.a3-data-table td{font-size:var(--type-table-body-size);line-height:var(--type-table-body-line);font-weight:var(--type-table-body-weight);border-bottom:var(--border-hairline);padding:var(--cell-pad-y) var(--space-3)}
+.a3-data-table .a3-table-number{text-align:right;font-variant-numeric:tabular-nums}
+.a3-disclosure-row{cursor:pointer}
+.a3-disclosure-row:hover>*{background:var(--color-surface-subtle)}
+.a3-disclosure-button{min-height:var(--size-hit-target-default);border:0;background:transparent;font:inherit;font-weight:var(--type-label-weight);cursor:pointer;text-align:left;padding:0}
+.a3-disclosure-content td{padding-left:var(--space-7);color:var(--color-text-secondary)}
+
+/* Card + Badge + Chip. Card owns one primary destination; secondary actions
+   remain separate focus stops above the stretched destination. */
+.a3-card-core{position:relative;border:var(--border-default);background:var(--color-surface-default);padding:var(--space-4);display:grid;gap:var(--space-3)}
+.a3-card-core:hover{background:var(--color-surface-subtle)}
+.a3-card-title{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--type-heading-weight)}
+.a3-card-destination::after{content:'';position:absolute;inset:0}
+.a3-card-meta,.a3-card-noninteractive{position:relative;z-index:1;font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-card-actions{position:relative;z-index:2;display:flex;gap:var(--space-2);flex-wrap:wrap}
+.a3-badge.a3-badge-metadata{font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);font-weight:var(--type-badge-metadata-weight)}
+.a3-chip-control{min-height:var(--size-hit-target-default);display:inline-flex;align-items:center;gap:var(--space-2);border:var(--border-default);background:var(--color-surface-default);padding:0 var(--space-3);font:inherit;cursor:pointer}
+.a3-chip-control[aria-pressed="true"]{border:var(--border-selected);background:var(--color-surface-selected)}
+.a3-chip-remove{font-weight:var(--font-weight-bold)}
+
+/* Dialog + Toast + SaveStatus + ShortcutHelpDialog. KeyboardShortcutService
+   deliberately has no root selector: it is behavioral and is exposed through
+   .a3-shortcut-help plus the visible settings switch. */
+.a3-dialog-spec{border:var(--border-contrast-2px);background:var(--color-surface-default);padding:var(--space-5);max-width:var(--measure-component);display:grid;gap:var(--space-4)}
+.a3-dialog-spec h4{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:var(--type-heading-weight);margin:0}
+.a3-toast.a3-toast-spec{position:static;opacity:1;transform:none;width:min(var(--size-toast-max-width),100%)}
+.a3-save-status{display:inline-flex;align-items:center;gap:var(--space-2);font-size:var(--type-badge-status-size);line-height:var(--type-badge-status-line);font-weight:var(--type-badge-status-weight)}
+.a3-save-status.a3-save-error{border-left:var(--border-error);padding-left:var(--space-2)}
+.a3-shortcut-help{max-width:var(--measure-wide);min-width:0}
+.a3-shortcut-help kbd{border:var(--border-default);background:var(--color-surface-subtle);padding:var(--space-1) var(--space-2);font-size:var(--type-kbd-size);line-height:var(--type-kbd-line);font-weight:var(--type-kbd-weight)}
+table.a3-kg,table.a3-cmp,table.a3-kx,table.a3-data-table,table.a3-driver-table,table.a3-gantt-table{border-collapse:collapse;width:100%}
+.a3-tbl-scroll{overflow-x:auto;max-width:100%;min-width:0}
+
+/* DC-30 · AutosaveChip host. Structure: .a3-savechip[role=status] with
+   state text; retry is a sibling button only in the error state.
+   Classes: .a3-savechip · .a3-busy. */
+.a3-savechip{margin-left:auto;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);font-weight:var(--type-small-weight)}
+.a3-savechip.a3-busy{color:var(--color-text-primary)}
+
+/* DC-4 / DC-25 · Button + NumericInput + Switch primitives.
+   Structure: .a3-row > .a3-btn[.a3-sec|.a3-ghost] | .a3-input > input + .a3-unit |
+   button.a3-toggle[role=switch][aria-checked]. State classes belong on the root.
+   Classes: .a3-row · .a3-btn · .a3-sec · .a3-ghost · .a3-input · .a3-unit · .a3-toggle · .a3-on. */
+.a3-row{display:flex;gap:var(--space-4);flex-wrap:wrap;align-items:center}
+.a3-btn{font-size:var(--type-button-primary-size);line-height:var(--type-button-primary-line);font-weight:var(--type-button-primary-weight);height:var(--size-control-visual-md);min-width:var(--size-hit-target-default);padding:0 var(--space-5);border:none;cursor:pointer;background:var(--color-action-primary-bg);color:var(--color-action-primary-text);transition:background var(--motion-feedback) var(--motion-easing-standard);position:relative}
+.a3-btn::before{content:'';position:absolute;left:50%;top:50%;width:max(100%,var(--size-hit-target-default));height:var(--size-hit-target-default);transform:translate(-50%,-50%)}
+.a3-btn:hover{background:var(--color-action-primary-hover)}
+.a3-btn:active{background:var(--color-action-primary-pressed)}
+.a3-btn.a3-sec{background:var(--color-action-secondary-bg);color:var(--color-action-secondary-text);border:var(--border-contrast-1px)}
+.a3-btn.a3-sec:hover,.a3-btn.a3-ghost:hover{background:var(--color-action-secondary-hover)}
+.a3-btn.a3-ghost{background:transparent;color:var(--color-text-primary);border:none}
+.a3-btn[disabled],.a3-btn[aria-disabled="true"]{opacity:1;cursor:default;background:var(--color-action-disabled-bg);color:var(--color-action-disabled-text);border:var(--border-default)}
+.a3-input{display:inline-flex;align-items:center;border:var(--border-default);height:var(--size-hit-target-default);background:var(--color-surface-default)}
+.a3-input input{border:none;font:inherit;font-variant-numeric:tabular-nums;width:10ch;padding:0 var(--space-3);text-align:right;outline:none}
+.a3-input .a3-unit{padding:0 var(--space-3) 0 0;color:var(--color-text-secondary);font-size:var(--type-small-size)}
+.a3-toggle{width:var(--size-hit-target-default);height:var(--size-hit-target-default);background:transparent;position:relative;display:inline-block;vertical-align:middle;cursor:pointer;flex:none;border:none;padding:0}
+.a3-toggle::before{content:'';position:absolute;left:var(--space-1);top:var(--space-3);width:var(--size-switch-track);height:var(--size-icon-md);background:var(--color-surface-subtle);border:var(--border-contrast-1px);transition:background var(--motion-feedback) var(--motion-easing-standard)}
+.a3-toggle.a3-on::before{background:var(--color-surface-selected);border:var(--border-selected)}
+.a3-toggle::after{content:'';position:absolute;top:var(--size-status-icon);left:var(--size-control-inset);width:var(--space-4);height:var(--space-4);background:var(--color-text-primary);transition:transform var(--motion-feedback) var(--motion-easing-standard)}
+.a3-toggle.a3-on::after{transform:translateX(var(--space-4))}
+
+/* DC-3 / DC-16 · uncertainty/status badges.
+   Structure: .a3-badge > .a3-dot + text; .a3-zone > b + .a3-lbl.
+   Classes: .a3-badge · .a3-dot · .a3-zone · .a3-lbl · .a3-green · .a3-yellow · .a3-red · .a3-mini. */
+.a3-badge{display:inline-flex;align-items:center;gap:var(--space-2);border:var(--border-hairline);padding:var(--space-1) var(--space-3);font-size:var(--type-badge-status-size);line-height:var(--type-badge-status-line);font-weight:var(--type-badge-status-weight)}
+.a3-badge .a3-dot{width:var(--space-2);height:var(--space-2);border-radius:50%;flex:none}
+.a3-zone{display:inline-flex;align-items:baseline;gap:var(--space-2);padding:var(--space-2) var(--space-4);border:var(--border-default);transition:border-color .2s var(--motion-easing-standard)}
+.a3-zone b{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-variant-numeric:tabular-nums}
+.a3-zone .a3-lbl{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-zone.a3-green{border-left:var(--space-1) solid var(--color-dataviz-category-2)}
+.a3-zone.a3-yellow{border-left:var(--space-1) solid var(--color-status-warning)}
+.a3-zone.a3-red{border-left:var(--space-1) solid var(--color-status-error)}
+.a3-zone.a3-mini{padding:var(--border-width-strong) var(--space-2)}.a3-zone.a3-mini b{font-size:var(--type-small-size);line-height:var(--type-small-line)}
+
+/* DC-16 · StatusTag. Structure: span.a3-tag plus one variant class.
+   Classes: .a3-tag · .a3-blue · .a3-green · .a3-orange · .a3-red · .a3-mutedt. */
+.a3-tag{display:inline-flex;align-items:center;font-size:var(--type-badge-status-size);line-height:var(--type-badge-status-line);font-weight:var(--type-badge-status-weight);border-left:var(--border-width-strong) solid var(--color-text-primary);padding:var(--border-width-default) var(--space-2);background:var(--color-surface-subtle)}
+.a3-tag.a3-blue{border-color:var(--color-dataviz-category-1)}.a3-tag.a3-green{border-color:var(--color-dataviz-category-2)}
+.a3-tag.a3-orange{border-color:var(--color-status-warning)}.a3-tag.a3-red{border-color:var(--color-status-error)}
+.a3-tag.a3-mutedt{border-color:var(--color-border-default);color:var(--color-text-primary);background:transparent}
+
+/* DC-1 · ProvenanceChip. Structure: .a3-chip-src > .a3-dot + text.
+   Classes: .a3-chip-src · .a3-fade · .a3-dot. */
+.a3-chip-src{display:inline-flex;align-items:center;gap:var(--space-2);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight);color:var(--color-text-primary);transition:opacity var(--motion-reveal) var(--motion-easing-standard)}
+.a3-chip-src.a3-fade{opacity:0}
+.a3-chip-src .a3-dot{width:var(--space-2);height:var(--space-2);border-radius:50%;flex:none}
+
+/* DC-5 · CostStructureTable.
+   Structure: .a3-tbl-scroll > table.a3-kg; .a3-num is applied per numeric cell;
+   expandable rows use .a3-expand > .a3-twistbtn and adjacent .a3-kg-child rows.
+   Classes: .a3-kg · .a3-num · .a3-lvl2 · .a3-total · .a3-muted · .a3-anfrage · .a3-expand · .a3-twistbtn · .a3-open · .a3-kg-child · .a3-compact-zone · .a3-compact · .a3-flash. */
+.a3-kg th{font-size:var(--type-table-header-size);line-height:var(--type-table-header-line);font-weight:var(--type-table-header-weight);text-align:left;color:var(--color-text-secondary);border-bottom:var(--border-default);padding:0 var(--space-4) var(--space-2)}
+.a3-kg th.a3-num{text-align:right}
+.a3-kg tr{height:var(--row-height)}
+.a3-kg td{border-bottom:var(--border-hairline);padding:var(--a3-cell-pad-y-compact,var(--cell-pad-y)) var(--space-4);transition:padding var(--motion-reveal) var(--motion-easing-standard)}
+.a3-kg .a3-num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.a3-kg .a3-lvl2 td:first-child{padding-left:var(--space-7)}
+.a3-kg .a3-total td{border-top:var(--border-contrast-1px);border-bottom:none;font-weight:700}
+.a3-kg .a3-muted td{color:var(--color-text-secondary)}
+.a3-kg .a3-anfrage{font-style:italic;color:var(--color-text-primary)}
+.a3-kg .a3-expand{cursor:pointer}
+.a3-kg .a3-expand:hover td{background:var(--color-surface-canvas)}
+.a3-kg .a3-twistbtn{background:none;border:none;font:inherit;font-weight:inherit;padding:0;cursor:pointer;color:inherit}
+.a3-kg .a3-twistbtn::before{content:'▸ ';color:var(--color-text-primary)}
+.a3-kg .a3-open .a3-twistbtn::before{content:'▾ '}
+.a3-kg-child{animation:a3-row-in .2s var(--motion-easing-standard)}
+@keyframes a3-row-in{from{opacity:0}to{opacity:1}}
+.a3-compact-zone.a3-compact .a3-kg{--a3-cell-pad-y-compact:var(--space-3);--row-height:var(--size-hit-target-default);font-size:var(--type-table-body-size);line-height:var(--type-table-body-line)}
+tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
+@keyframes a3-flash{from{background:var(--color-surface-canvas)}to{background:transparent}}
+
+/* DC-2 · PriceDeltaChip. Structure: .a3-delta with state .a3-show and exactly
+   one direction class .a3-saving|.a3-cost.
+   Classes: .a3-delta · .a3-show · .a3-saving · .a3-cost. */
+.a3-delta{display:inline-flex;gap:var(--space-2);align-items:center;border:var(--border-default);padding:var(--space-1) var(--space-3);font-size:var(--type-small-size);font-variant-numeric:tabular-nums;background:var(--color-surface-default);opacity:0;transform:translateY(var(--space-2));transition:opacity .2s var(--motion-easing-standard),transform .2s var(--motion-easing-standard)}
+.a3-delta.a3-show{opacity:1;transform:none}
+.a3-delta.a3-saving{border-left:var(--size-status-accent-width) solid var(--color-dataviz-category-2)}
+.a3-delta.a3-cost{border-left:var(--size-status-accent-width) solid var(--color-text-primary)}
+
+/* DC-28 / DC-38 · ConsequencePreviewGhost + Kennzahlen-Leiste. Structure:
+   .a3-ghost-slot > .a3-ghost[.a3-show]; .a3-heroband > .a3-hb; total root
+   additionally has .a3-hb-total and contains .a3-hb-num + .a3-hb-unit +
+   .a3-hb-cap/.a3-hb-sub. Один оранжевый герой,
+   остальные — чёрные герои var(--space-7). КЛЮЧЕВАЯ метрика никогда не бывает сноской.
+   Classes: .a3-heroband · .a3-hb · .a3-hb-num · .a3-hb-unit · .a3-hb-total · .a3-hb-cap · .a3-hb-sub · .a3-ghost · .a3-show · .a3-ghost-slot · .a3-delta-slot · .a3-iv-sub · .a3-iv-bandbox · .a3-iv-band · .a3-fill · .a3-iv-edges. */
+.a3-heroband{display:flex;gap:var(--space-7);row-gap:var(--space-5);flex-wrap:wrap;align-items:baseline}
+.a3-hb{display:flex;flex-direction:column;gap:var(--border-width-strong);min-width:var(--measure-showcase-narrow);max-width:100%}
+.a3-hb-num{font-weight:var(--type-display-numeric-weight);font-size:var(--type-display-numeric-narrow-size);line-height:var(--type-display-numeric-narrow-line);font-variant-numeric:tabular-nums;white-space:nowrap}
+.a3-hb-unit{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line)}
+.a3-hb-total .a3-hb-num{font-size:var(--type-display-numeric-desktop-size);line-height:var(--type-display-numeric-desktop-line);color:var(--color-brand-accent)}
+.a3-hb-total .a3-hb-unit{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line)}
+.a3-hb-cap{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight);color:var(--color-text-secondary)}
+.a3-hb-sub{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);font-variant-numeric:tabular-nums}
+.a3-ghost{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-body-weight);color:var(--color-text-secondary);font-variant-numeric:tabular-nums;opacity:0;transition:opacity var(--motion-reveal) var(--motion-easing-standard) var(--motion-delay-hover-preview)}
+.a3-ghost.a3-show{opacity:1;transition-delay:.2s}
+.a3-ghost-slot{min-height:var(--size-ghost-row)}
+.a3-delta-slot{min-height:var(--size-delta-row)}
+.a3-iv-sub{display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap}
+.a3-iv-bandbox{flex:1;max-width:var(--measure-band)}
+.a3-iv-band{height:var(--space-2);background:var(--color-surface-canvas);position:relative}
+.a3-iv-band .a3-fill{position:absolute;top:0;bottom:0;left:18%;right:18%;background:var(--color-dataviz-category-2);transition:left .48s var(--motion-easing-emphasized),right .48s var(--motion-easing-emphasized)}
+.a3-iv-edges{display:flex;justify-content:space-between;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);margin-top:var(--space-1);font-variant-numeric:tabular-nums}
+/* DC-45 · LanguageSelector (2–3 locales). Structure: .a3-seg[role=group]
+   > buttons; completeness and scope rows follow the control.
+   Classes: .a3-seg. */
+.a3-seg{display:inline-flex;border:var(--border-default);background:var(--color-surface-default)}
+.a3-seg button{font:inherit;font-weight:var(--type-label-weight);height:var(--size-hit-target-default);padding:0 var(--space-4);background:var(--color-surface-default);border:none;border-bottom:var(--border-width-strong) solid transparent;cursor:pointer}
+.a3-seg button[aria-pressed="true"]{background:var(--color-surface-selected);border-bottom-color:var(--color-selection-border);font-weight:var(--type-label-weight)}
+
+/* DC-11 · VariantComparisonTable. Structure: table.a3-cmp; target header gets
+   .a3-target, numeric cells .a3-num, delta line .a3-d[.a3-save].
+   Classes: .a3-cmp · .a3-target · .a3-num · .a3-d · .a3-save. */
+.a3-cmp td,.a3-cmp th{padding:var(--space-3) var(--space-4);border-bottom:var(--border-hairline)}
+.a3-cmp th{font-size:var(--type-table-header-size);line-height:var(--type-table-header-line);font-weight:var(--type-table-header-weight);color:var(--color-text-secondary);text-align:left;border-bottom:var(--border-default)}
+.a3-cmp th.a3-target{border-top:var(--border-selected);color:var(--color-text-primary);font-weight:var(--type-table-header-weight)}
+.a3-cmp .a3-num{font-variant-numeric:tabular-nums;text-align:right}
+.a3-cmp .a3-d{display:block;font-size:var(--type-delta-size);line-height:var(--type-delta-line);font-weight:var(--type-delta-weight);color:var(--color-text-primary)}
+.a3-cmp .a3-d.a3-save{color:var(--color-dataviz-category-2)}
+
+/* DC-7 / DC-31 · preparation/client mode cards and notice popover.
+   Structure: .a3-mode-wrap > .a3-mode-card; trigger .a3-hinweis controls the
+   sibling .a3-pop and mirrors .a3-show in aria-expanded.
+   Classes: .a3-mode-wrap · .a3-mode-card · .a3-live · .a3-mtag · .a3-warn-prep · .a3-hinweis · .a3-pop · .a3-show. */
+.a3-mode-wrap{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)}
+.a3-mode-card{border:var(--border-default);padding:var(--space-4);background:var(--color-surface-default)}
+.a3-mode-card.a3-live{border-top:var(--space-1) solid var(--color-text-primary)}
+.a3-mode-card .a3-mtag{font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:700;letter-spacing:.04em;margin-bottom:var(--space-3)}
+.a3-warn-prep{border-left:var(--size-status-accent-width) solid var(--color-status-warning);background:var(--color-surface-subtle);padding:var(--space-3) var(--space-4);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-hinweis{width:var(--size-hit-target-default);height:var(--size-hit-target-default);border-radius:50%;background:var(--color-status-info);color:var(--color-text-inverse);display:inline-flex;align-items:center;justify-content:center;font-size:var(--type-caption-size);font-weight:var(--font-weight-bold);cursor:pointer;flex:none;border:none;font-family:inherit;position:relative}
+.a3-pop{border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-3) var(--space-4);font-size:var(--type-tooltip-size);line-height:var(--type-tooltip-line);margin-top:var(--space-2);max-width:min(var(--size-popover-max-width),calc(100vw - 2 * var(--gutter-narrow)));opacity:0;transform:translateY(var(--enter-shift));transition:opacity var(--motion-reveal) var(--motion-easing-standard),transform var(--motion-reveal) var(--motion-easing-standard)}
+.a3-pop.a3-show{opacity:1;transform:none}
+
+/* DC-9 · UncertaintyQuestion. Structure: .a3-q > question + .a3-fx.
+   Classes: .a3-q · .a3-fx. */
+.a3-q{display:flex;gap:var(--space-4);align-items:baseline;border-bottom:var(--border-hairline);padding:var(--space-3) 0}
+.a3-q .a3-fx{margin-left:auto;color:var(--color-dataviz-category-2);font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:700}
+
+/* DC-10 · DocumentAnalysisProgress (legacy compact form).
+   Structure: .a3-loader > .a3-track > .a3-run, then .a3-plog + .a3-phase.
+   Classes: .a3-loader · .a3-track · .a3-run · .a3-plog · .a3-okc · .a3-phase · .a3-fade. */
+.a3-loader{border:var(--border-default);padding:var(--space-4);max-width:var(--measure-component);background:var(--color-surface-default)}
+.a3-loader .a3-track{height:var(--space-1);background:var(--color-surface-canvas);margin-bottom:var(--space-3);overflow:hidden}
+.a3-loader .a3-run{height:100%;width:38%;background:var(--color-text-primary);animation:a3-sweep 1.6s var(--motion-easing-standard) infinite}
+@keyframes a3-sweep{from{transform:translateX(-110%)}to{transform:translateX(290%)}}
+.a3-plog{display:flex;flex-direction:column;gap:var(--border-width-strong);margin-bottom:var(--space-2)}
+.a3-plog span{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);display:flex;gap:var(--space-2);align-items:center;animation:a3-row-in var(--motion-reveal) var(--motion-easing-standard)}
+.a3-plog .a3-okc{width:var(--space-3);height:var(--space-3);border-radius:50%;background:var(--color-dataviz-category-2);color:var(--color-surface-default);font-size:var(--size-status-glyph);display:inline-flex;align-items:center;justify-content:center;flex:none}
+.a3-loader .a3-phase{font-size:var(--type-small-size);line-height:var(--type-small-line);min-height:var(--type-small-line);transition:opacity var(--motion-reveal) var(--motion-easing-standard)}
+.a3-loader .a3-phase.a3-fade{opacity:0}
+
+/* DC-12 / DC-13 · SessionJournalBar + ChapterStepper.
+   Structure: .a3-journal is one row; .a3-chapters > .a3-ch > .a3-n.
+   Classes: .a3-journal · .a3-flashJ · .a3-chapters · .a3-ch · .a3-n · .a3-done · .a3-cur. */
+.a3-journal{display:flex;justify-content:space-between;align-items:center;border-top:var(--border-hairline);border-bottom:var(--border-hairline);padding:var(--space-2) var(--space-4);font-size:var(--type-small-size);background:var(--color-surface-default)}
+.a3-journal.a3-flashJ{animation:a3-flash .6s var(--motion-easing-standard)}
+.a3-chapters{display:flex;flex-direction:column;max-width:var(--measure-card-compact);border:var(--border-hairline);background:var(--color-surface-default)}
+.a3-ch{display:flex;gap:var(--space-3);align-items:center;padding:var(--space-3) var(--space-4);border-left:var(--border-width-strong) solid transparent}
+.a3-ch .a3-n{width:var(--size-chapter-marker);height:var(--size-chapter-marker);border-radius:50%;border:var(--border-default);display:inline-flex;align-items:center;justify-content:center;font-size:var(--type-caption-size);flex:none}
+.a3-ch.a3-done .a3-n{background:var(--color-dataviz-category-2);border-color:var(--color-dataviz-category-2);color:var(--color-surface-default)}
+.a3-ch.a3-cur{border-left-color:var(--color-selection-border);background:var(--color-surface-selected);font-weight:var(--type-label-weight)}
+.a3-ch.a3-cur .a3-n{border-color:var(--color-selection-border);color:var(--color-selection-border)}
+
+/* DC-6 · OptionImpactPreview. Structure: .a3-folgen > title + ul + action row.
+   Classes: .a3-folgen. */
+.a3-folgen{border:var(--border-hairline);background:var(--color-surface-canvas);padding:var(--space-4);max-width:var(--measure-component)}
+.a3-folgen ul{margin:var(--space-2) 0 var(--space-4);padding-left:var(--space-5)}
+.a3-folgen li{margin-bottom:var(--space-1)}
+
+/* DC-8 · AssumptionCard. Structure: .a3-ann > .a3-ann-t + content/actions.
+   Classes: .a3-ann · .a3-gone · .a3-ann-t. */
+.a3-ann{border:var(--border-default);border-left:var(--size-status-accent-width) solid var(--color-text-primary);background:var(--color-surface-default);padding:var(--space-4);max-width:var(--measure-wide);transition:opacity var(--motion-reveal) var(--motion-easing-standard)}
+.a3-ann.a3-gone{opacity:0}
+.a3-ann .a3-ann-t{margin-bottom:var(--space-3)}
+
+/* DC-15 · ProjectCard. Structure: .a3-pcard > .a3-top + .a3-mid; CTA gets
+   .a3-cta, deadline .a3-term.
+   Classes: .a3-pcard · .a3-urgent · .a3-top · .a3-term · .a3-mid · .a3-cta. */
+.a3-pcard{border:var(--border-default);background:var(--color-surface-default);padding:var(--space-4) var(--space-5);display:flex;flex-direction:column;gap:var(--space-2)}
+.a3-pcard.a3-urgent{border-left:var(--space-1) solid var(--color-status-error)}
+.a3-pcard .a3-top{display:flex;justify-content:space-between;gap:var(--space-4);align-items:baseline;flex-wrap:wrap}
+.a3-pcard .a3-top b{font-size:var(--type-body-size)}
+.a3-pcard .a3-term{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-pcard.a3-urgent .a3-term{color:var(--color-status-error);font-weight:700}
+.a3-pcard .a3-mid{display:flex;gap:var(--space-4);align-items:center;flex-wrap:wrap;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
+.a3-pcard .a3-cta{margin-left:auto}
+
+/* DC-17 · DocumentRow. Structure: .a3-doc > .a3-ic + .a3-nm + .a3-pg +
+   .a3-right; status icon is .a3-okc|.a3-errc.
+   Classes: .a3-doc · .a3-ic · .a3-nm · .a3-pg · .a3-right · .a3-st · .a3-okc · .a3-errc. */
+.a3-doc{display:flex;align-items:center;gap:var(--space-3);border-bottom:var(--border-hairline);padding:var(--space-2) var(--space-3);font-size:var(--type-small-size);background:var(--color-surface-default)}
+.a3-doc .a3-ic{width:var(--size-icon-md);height:var(--size-icon-md);border:var(--border-default);display:inline-flex;align-items:center;justify-content:center;font-size:var(--size-status-glyph);font-weight:700;flex:none;color:var(--color-text-secondary)}
+.a3-doc .a3-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.a3-doc .a3-pg{color:var(--color-text-secondary);white-space:nowrap}
+.a3-doc .a3-right{margin-left:auto;display:flex;gap:var(--space-2);align-items:center;flex-wrap:wrap}
+.a3-doc .a3-st{display:inline-flex;align-items:center;gap:var(--space-1)}
+.a3-doc .a3-okc{width:var(--size-status-icon);height:var(--size-status-icon);border-radius:50%;background:var(--color-dataviz-category-2);color:var(--color-surface-default);font-size:var(--size-status-glyph);display:inline-flex;align-items:center;justify-content:center}
+.a3-doc .a3-errc{width:var(--size-status-icon);height:var(--size-status-icon);border-radius:50%;background:var(--color-status-error);color:var(--color-surface-default);font-size:var(--size-status-glyph);display:inline-flex;align-items:center;justify-content:center}
+
+/* DC-10 host navigation · Tabs primitive. Structure: .a3-tabs[role=tablist]
+   > [role=tab], followed by .a3-tabpane[role=tabpanel].
+   Classes: .a3-tabs · .a3-sum · .a3-tabpane. */
+.a3-tabs{display:flex;border-bottom:var(--border-default);gap:var(--space-1)}
+.a3-tabs [role="tab"]{font:inherit;font-weight:500;background:transparent;border:none;border-bottom:var(--border-width-strong) solid transparent;padding:var(--space-2) var(--space-4);cursor:pointer;margin-bottom:calc(-1 * var(--border-width-default))} /* отрицательный hairline: перекрытие бордера контейнера, структурное */
+.a3-tabs [role="tab"]:hover{background:var(--color-surface-canvas)}
+.a3-tabs [role="tab"][aria-selected="true"]{border-bottom-color:var(--color-selection-border);font-weight:var(--type-label-weight)}
+.a3-tabs .a3-sum{margin-left:auto;font-weight:700}
+.a3-tabpane{padding:var(--space-4) 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
+
+/* DC-19 · ScheduleGantt. Structure: .a3-gantt > .a3-gantt-scroll >
+   .a3-gantt-visual > .a3-g-row + .a3-g-axis + .a3-g-legend;
+   details.a3-gantt-details contains table.a3-gantt-table.
+   Classes: .a3-gantt · .a3-gantt-scroll · .a3-gantt-visual · .a3-gantt-epoch · .a3-g-row · .a3-lbl · .a3-g-track · .a3-g-seg · .a3-g-seg-label · .a3-phase-ausbau · .a3-in · .a3-g-fin · .a3-g-axis · .a3-scale · .a3-g-legend · .a3-gantt-details · .a3-tbl-scroll · .a3-gantt-table · .a3-gantt-provenance. */
+.a3-gantt{max-width:var(--measure-chart);min-width:0}
+.a3-gantt-scroll{overflow-x:auto;max-width:100%}
+.a3-gantt-visual{min-width:36rem}
+.a3-gantt-epoch{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight);margin:0 0 var(--space-3)}
+.a3-g-row{display:grid;grid-template-columns:var(--size-timeline-label) 1fr;gap:var(--space-3);align-items:center;margin-bottom:var(--space-3)}
+.a3-g-row .a3-lbl{font-size:var(--type-small-size)}
+.a3-g-track{position:relative;height:var(--space-5);background:var(--color-surface-canvas);border-bottom:var(--border-hairline)}
+.a3-g-seg{position:absolute;top:0;bottom:0;transform:scaleX(0);transform-origin:left;transition:transform .48s var(--motion-easing-emphasized);display:flex;align-items:center;justify-content:center;overflow:visible}
+.a3-g-seg-label{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-bold);color:var(--color-text-inverse);white-space:nowrap}
+.a3-g-seg.a3-phase-ausbau .a3-g-seg-label{color:var(--color-text-primary)}
+.a3-gantt.a3-in .a3-g-seg{transform:scaleX(1)}
+.a3-g-fin{position:absolute;top:calc(-1 * var(--space-1));bottom:calc(-1 * var(--space-1));width:var(--border-width-strong);background:var(--color-text-primary)}
+.a3-g-axis{display:grid;grid-template-columns:var(--size-timeline-label) 1fr;gap:var(--space-3)}
+.a3-g-axis .a3-scale{position:relative;height:var(--space-4);font-size:var(--type-caption-size);color:var(--color-text-muted)}
+.a3-g-axis .a3-scale span{position:absolute;transform:translateX(-50%)}
+.a3-g-legend{display:flex;gap:var(--space-5);margin-top:var(--space-4);font-size:var(--type-caption-size);color:var(--color-text-secondary);flex-wrap:wrap}
+.a3-g-legend i{display:inline-block;width:var(--space-3);height:var(--space-3);margin-right:var(--space-2);vertical-align:calc(-1 * var(--border-width-default))}
+.a3-gantt-details{margin-top:var(--space-4)}
+.a3-gantt-details summary{min-height:var(--size-hit-target-default);display:inline-flex;align-items:center;text-decoration:underline;text-underline-offset:var(--size-text-underline-offset);cursor:pointer;font-weight:var(--type-label-weight)}
+.a3-gantt-details .a3-tbl-scroll{margin-top:var(--space-2)}
+.a3-gantt-table{min-width:42rem}
+.a3-gantt-table th,.a3-gantt-table td{padding:var(--space-2) var(--space-3);border-bottom:var(--border-hairline);text-align:left;font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-gantt-table th{border-bottom:var(--border-default);font-weight:var(--type-table-header-weight)}
+.a3-gantt-provenance{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);margin:var(--space-3) 0 0}
+
+/* DC-20 · FacadeOptionGrid. Structure: .a3-fgrid > button.a3-fk >
+   .a3-img + .a3-nm + .a3-ok; material classes apply only to .a3-img.
+   Classes: .a3-fgrid · .a3-fk · .a3-img · .a3-nm · .a3-ok · .a3-f-putz · .a3-f-holz · .a3-f-klinker · .a3-f-kombi · .a3-f-win · .a3-faxes. */
+.a3-fgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-4);max-width:var(--measure-chart)}
+.a3-fk{border:var(--border-width-strong) solid transparent;outline:var(--border-hairline);cursor:pointer;position:relative;padding:0;background:none;font:inherit;transition:border-color .12s var(--motion-easing-standard)}
+.a3-fk:hover{border-color:var(--color-text-primary)}
+.a3-fk[aria-pressed="true"]{border-color:var(--color-selection-border)}
+.a3-fk .a3-img{display:block;aspect-ratio:4/3;background-size:auto}
+.a3-fk .a3-nm{display:block;font-size:var(--type-small-size);line-height:var(--type-small-line);padding:var(--space-2);text-align:left;font-weight:var(--type-small-weight);color:var(--color-text-primary)}
+.a3-fk .a3-ok{position:absolute;top:var(--space-2);right:var(--space-2);width:var(--size-icon-md);height:var(--size-icon-md);border-radius:50%;background:var(--color-selection-border);color:var(--color-text-inverse);font-size:var(--type-caption-size);font-weight:700;display:inline-flex;align-items:center;justify-content:center;opacity:0;transition:opacity var(--motion-reveal) var(--motion-easing-standard)}
+.a3-fk[aria-pressed="true"] .a3-ok{opacity:1}
+.a3-f-putz{background-color:var(--color-material-placeholder-plaster)}
+.a3-f-holz{background-color:var(--color-material-placeholder-timber-light);border-left:var(--space-3) solid var(--color-material-placeholder-timber-dark)}
+.a3-f-klinker{background-color:var(--color-material-placeholder-clinker);border-top:var(--border-width-strong) solid var(--color-material-placeholder-mortar)}
+.a3-f-kombi{background-color:var(--color-material-placeholder-plaster);border-bottom:var(--space-5) solid var(--color-material-placeholder-plinth)}
+.a3-f-win{border-left:var(--space-4) solid var(--color-material-placeholder-window);border-right:var(--space-4) solid var(--color-material-placeholder-window)}
+.a3-faxes{display:flex;gap:var(--space-2);margin-top:var(--space-3);flex-wrap:wrap}
+
+/* DC-21 · OriginPopover. Structure: .a3-hk-wrap > button.a3-hk-val +
+   .a3-hk-pop > rows .a3-r > label + .a3-fnum.
+   Classes: .a3-hk-wrap · .a3-hk-val · .a3-hk-pop · .a3-show · .a3-r · .a3-fnum. */
+.a3-hk-wrap{position:relative;display:inline-block}
+.a3-hk-val{cursor:pointer;text-decoration:underline;text-decoration-style:solid;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset);background:none;border:none;font:inherit;padding:0;color:inherit;min-height:var(--size-hit-target-default)}
+.a3-hk-pop{display:none;position:absolute;top:calc(100% + var(--space-1));right:0;z-index:var(--layer-popover);width:min(var(--size-popover-max-width),calc(100vw - 2 * var(--gutter-narrow)));border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-4);font-size:var(--type-small-size);line-height:var(--type-small-line);text-align:left;opacity:0;transform:translateY(var(--enter-shift));transition:opacity var(--motion-reveal) var(--motion-easing-standard),transform var(--motion-reveal) var(--motion-easing-standard);pointer-events:none;font-weight:var(--type-small-weight)}
+.a3-hk-pop.a3-show{display:block;opacity:1;transform:none;pointer-events:auto}
+.a3-hk-pop .a3-r{display:flex;justify-content:space-between;gap:var(--space-4);padding:var(--space-1) 0;border-bottom:var(--border-hairline)}
+.a3-hk-pop .a3-r:last-child{border-bottom:none;font-weight:700}
+.a3-hk-pop .a3-fnum{font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* DC-25 / DC-26 / DC-27 / DC-32 / DC-35 · discount, next-step, conflict, recap,
+   skeleton and keyboard specimens. Required structures are respectively:
+   .a3-rb + input.a3-rb-number + .a3-guard; .a3-nextstep > .a3-mtag/.a3-fx;
+   .a3-konflikt > .a3-kv; .a3-recap > ul > li; standalone .a3-skel.
+   Classes: .a3-ringwrap · .a3-ring · .a3-bgc · .a3-fgc · .a3-mech · .a3-in · .a3-ringnum · .a3-nextstep · .a3-mtag · .a3-fx · .a3-rb · .a3-rb-number · .a3-guard · .a3-konflikt · .a3-kv · .a3-recap · .a3-okc · .a3-skel · .a3-kbd-t. */
+.a3-ringwrap{position:relative;width:var(--size-progress-ring);height:var(--size-progress-ring);flex:none}
+.a3-ring{transform:rotate(-90deg)}
+.a3-ring .a3-bgc{fill:none;stroke:var(--color-surface-canvas);stroke-width:4}
+.a3-ring .a3-fgc{fill:none;stroke:var(--color-text-primary);stroke-width:4;stroke-dasharray:150.8;stroke-dashoffset:150.8;transition:stroke-dashoffset var(--motion-emphasis) var(--motion-easing-emphasized) var(--motion-reveal)}
+.a3-mech.a3-in .a3-ring .a3-fgc{stroke-dashoffset:27.1}
+.a3-ringnum{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:var(--type-small-size);font-weight:700;font-variant-numeric:tabular-nums}
+.a3-nextstep{border:var(--border-default);border-left:var(--size-status-accent-width) solid var(--color-text-primary);background:var(--color-surface-default);padding:var(--space-4);max-width:var(--measure-panel)}
+.a3-nextstep .a3-mtag{font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:700;letter-spacing:.04em;margin-bottom:var(--space-2)}
+.a3-nextstep .a3-fx{color:var(--color-dataviz-category-2);font-weight:700;font-variant-numeric:tabular-nums}
+.a3-rb{-webkit-appearance:none;appearance:none;width:var(--measure-slider);height:var(--size-hit-target-default);background:transparent;vertical-align:middle}
+.a3-rb::-webkit-slider-runnable-track{height:var(--space-1);background:var(--color-surface-canvas)}
+.a3-rb::-webkit-slider-thumb{-webkit-appearance:none;width:var(--size-icon-md);height:var(--size-icon-md);background:var(--color-action-primary-bg);margin-top:calc(-1 * var(--space-2))} /* 20 px — [provisional], ADR по геометрии Slider открыт */
+.a3-rb::-moz-range-track{height:var(--space-1);background:var(--color-surface-canvas)}
+.a3-rb::-moz-range-thumb{width:var(--size-icon-md);height:var(--size-icon-md);background:var(--color-action-primary-bg);border:none}
+.a3-rb-number{box-sizing:border-box;width:var(--size-numeric-control);min-height:var(--size-hit-target-default);border:var(--border-default);padding:0 var(--space-2);font:inherit;font-variant-numeric:tabular-nums;text-align:right;color:var(--color-text-primary);background:var(--color-surface-default)}
+.a3-guard{width:var(--size-status-dot);height:var(--size-status-dot);border-radius:50%;display:inline-block;vertical-align:middle}
+.a3-konflikt{border:var(--border-default);border-left:var(--size-status-accent-width) solid var(--color-status-error);background:var(--color-surface-default);padding:var(--space-4);max-width:var(--measure-wide)}
+.a3-konflikt .a3-kv{display:flex;gap:var(--space-5);flex-wrap:wrap;margin-top:var(--space-3)}
+.a3-konflikt .a3-kv>div{flex:1;min-width:var(--measure-conflict-column);border:var(--border-hairline);padding:var(--space-3)}
+.a3-konflikt .a3-kv b{display:block;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-variant-numeric:tabular-nums;margin:var(--space-1) 0 var(--space-2)}
+.a3-recap{border:var(--border-default);background:var(--color-surface-default);padding:var(--space-5);max-width:var(--measure-panel)}
+.a3-recap ul{margin:var(--space-3) 0 var(--space-4);padding:0;list-style:none}
+.a3-recap li{display:flex;gap:var(--space-2);align-items:baseline;padding:var(--space-1) 0;border-bottom:var(--border-hairline)}
+.a3-recap li:last-child{border-bottom:none}
+.a3-recap .a3-okc{width:var(--size-status-icon);height:var(--size-status-icon);border-radius:50%;background:var(--color-dataviz-category-2);color:var(--color-surface-default);font-size:var(--size-status-glyph);display:inline-flex;align-items:center;justify-content:center;flex:none;align-self:center}
+.a3-skel{height:var(--space-4);background:var(--color-surface-canvas);animation:a3-skeleton-pulse 1.6s ease-in-out infinite}
+@keyframes a3-skeleton-pulse{50%{opacity:.55}}
+.a3-kbd-t td{border-bottom:var(--border-hairline);padding:var(--space-2) var(--space-4) var(--space-2) 0;font-size:var(--type-small-size)}
+.a3-kbd-t kbd{font-family:inherit;border:var(--border-default);padding:var(--border-width-default) var(--space-2);font-size:var(--type-caption-size);background:var(--color-surface-canvas)}
+
+/* DC-29 / DC-33 · Toast and gate Dialog. Structure: .a3-toasts >
+   .a3-toast[role=status] > text + button.a3-act; .a3-modal-scrim >
+   .a3-modal[role=dialog] > .a3-item/.a3-hidelist/actions.
+   Classes: .a3-toasts · .a3-toast · .a3-show · .a3-act · .a3-modal-scrim · .a3-modal · .a3-item · .a3-okc · .a3-warnc · .a3-hidelist. */
+.a3-toasts{position:fixed;left:var(--space-5);bottom:var(--space-5);z-index:var(--layer-toast);display:flex;flex-direction:column;gap:var(--space-2);width:min(var(--size-toast-max-width),calc(100vw - 2 * var(--gutter-narrow)))}
+.a3-toast{background:var(--color-surface-default);border:var(--border-contrast-1px);border-left:var(--size-status-accent-width) solid var(--color-text-primary);padding:var(--space-3) var(--space-4);display:flex;gap:var(--space-4);align-items:center;font-size:var(--type-small-size);line-height:var(--type-small-line);opacity:0;transform:translateY(var(--enter-shift));transition:opacity var(--motion-reveal) var(--motion-easing-standard),transform var(--motion-reveal) var(--motion-easing-standard)}
+.a3-toast.a3-show{opacity:1;transform:none}
+.a3-toast .a3-act{background:none;border:none;font:inherit;font-weight:700;cursor:pointer;color:var(--color-text-primary);text-decoration:underline;text-underline-offset:var(--size-text-underline-offset);padding:0;white-space:nowrap}
+.a3-modal-scrim{position:fixed;inset:0;background:var(--color-surface-overlay);z-index:var(--layer-dialog-backdrop);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity var(--motion-reorder) var(--motion-easing-standard);padding:var(--space-5)}
+.a3-modal-scrim.a3-show{opacity:1;pointer-events:auto}
+.a3-modal{background:var(--color-surface-default);border:var(--border-contrast-2px);max-width:var(--measure-body-max);width:100%;padding:var(--space-5);z-index:var(--layer-dialog)}
+.a3-modal h4{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:700;margin:0 0 var(--space-4)}
+.a3-modal .a3-item{display:flex;gap:var(--space-2);align-items:baseline;padding:var(--space-1) 0;font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-modal .a3-okc{width:var(--size-status-icon);height:var(--size-status-icon);border-radius:50%;background:var(--color-dataviz-category-2);color:var(--color-surface-default);font-size:var(--size-status-glyph);display:inline-flex;align-items:center;justify-content:center;flex:none;align-self:center}
+.a3-modal .a3-warnc{width:var(--size-status-icon);height:var(--size-status-icon);border-radius:50%;background:var(--color-status-warning);color:var(--color-text-inverse);font-size:var(--size-status-glyph);display:inline-flex;align-items:center;justify-content:center;flex:none;align-self:center}
+.a3-modal .a3-hidelist{border-left:var(--border-width-strong) solid var(--color-status-warning);background:var(--color-surface-subtle);padding:var(--space-2) var(--space-3);font-size:var(--type-small-size);line-height:var(--type-small-line);margin:var(--space-4) 0}
+
+/* DC-39 / DC-40 · type and option tiles. Structure: .a3-tgrid > button.a3-tk
+   or .a3-ogrid > button.a3-okc-tile; each tile contains .a3-ok + icon + labels.
+   Classes: .a3-tgrid · .a3-tk · .a3-ok · .a3-kk · .a3-typline · .a3-ogrid · .a3-okc-tile · .a3-pd · .a3-st. */
+.a3-tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--measure-showcase-tile),1fr));gap:var(--space-4);max-width:var(--measure-gallery)}
+.a3-tk{border:var(--border-width-strong) solid transparent;outline:var(--border-hairline);background:var(--color-surface-default);cursor:pointer;padding:var(--space-4);text-align:left;font:inherit;position:relative;transition:border-color .12s var(--motion-easing-standard)}
+.a3-tk:hover{border-color:var(--color-text-primary)}
+.a3-tk[aria-pressed="true"]{border-color:var(--color-selection-border)}
+.a3-tk .a3-ok{position:absolute;top:var(--space-2);right:var(--space-2);width:var(--size-icon-md);height:var(--size-icon-md);border-radius:50%;background:var(--color-selection-border);color:var(--color-text-inverse);font-size:var(--type-caption-size);font-weight:700;display:inline-flex;align-items:center;justify-content:center;opacity:0;transition:opacity var(--motion-reveal) var(--motion-easing-standard)}
+.a3-tk[aria-pressed="true"] .a3-ok{opacity:1}
+.a3-tk svg{display:block;margin-bottom:var(--space-2)}
+.a3-tk b{display:block;font-size:var(--type-label-size);line-height:var(--type-label-line);overflow-wrap:break-word;hyphens:auto;padding-right:var(--space-5)}
+.a3-tk .a3-kk{display:block;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight);color:var(--color-text-secondary)}
+.a3-typline{border-left:var(--border-width-strong) solid var(--color-text-primary);background:var(--color-surface-subtle);padding:var(--space-3) var(--space-4);margin-top:var(--space-4);font-size:var(--type-small-size);line-height:var(--type-small-line);max-width:var(--measure-gallery)}
+.a3-ogrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--measure-showcase-tile),1fr));gap:var(--space-4);max-width:var(--measure-option-grid)}
+.a3-okc-tile{border:var(--border-width-strong) solid transparent;outline:var(--border-hairline);background:var(--color-surface-default);cursor:pointer;padding:var(--space-4);text-align:left;font:inherit;position:relative;transition:border-color .12s var(--motion-easing-standard)}
+.a3-okc-tile:hover{border-color:var(--color-text-primary)}
+.a3-okc-tile[aria-pressed="true"]{border-color:var(--color-selection-border)}
+.a3-okc-tile .a3-ok{position:absolute;top:var(--space-2);right:var(--space-2);width:var(--size-icon-md);height:var(--size-icon-md);border-radius:50%;background:var(--color-selection-border);color:var(--color-text-inverse);font-size:var(--type-caption-size);font-weight:700;display:inline-flex;align-items:center;justify-content:center;opacity:0;transition:opacity var(--motion-reveal) var(--motion-easing-standard)}
+.a3-okc-tile[aria-pressed="true"] .a3-ok{opacity:1}
+.a3-okc-tile[disabled]{cursor:default;opacity:1;outline-color:var(--color-control-disabled-outline)}
+.a3-okc-tile[disabled] .a3-ok{opacity:1;background:var(--color-dataviz-category-2)}
+.a3-okc-tile svg{display:block;margin-bottom:var(--space-2)}
+.a3-okc-tile b{display:block;font-size:var(--type-label-size);line-height:var(--type-label-line);overflow-wrap:break-word;hyphens:auto;padding-right:var(--space-5)}
+.a3-okc-tile .a3-pd{display:block;font-size:var(--type-small-size);line-height:var(--type-small-line);font-variant-numeric:tabular-nums;color:var(--color-text-primary)}
+.a3-okc-tile .a3-st{display:block;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight);color:var(--color-text-secondary)}
+
+/* DC-46 Umfang-Umschalter · DC-47 Komplex-Übersicht.
+   Structure: .a3-scope > buttons; table.a3-kx > .a3-krow/.a3-ktotal;
+   optional .a3-segs > .a3-sg.
+   Classes: .a3-scope · .a3-total · .a3-kx · .a3-num · .a3-krow · .a3-gname · .a3-ktotal · .a3-dash · .a3-segs · .a3-sg. */
+.a3-scope{display:inline-flex;border:var(--border-default);background:var(--color-surface-default);flex-wrap:wrap}
+.a3-scope button{font:inherit;font-weight:var(--type-label-weight);height:var(--size-hit-target-default);padding:0 var(--space-4);background:var(--color-surface-default);border:none;border-bottom:var(--border-width-strong) solid transparent;cursor:pointer;display:inline-flex;align-items:center;gap:var(--space-2)}
+.a3-scope button[aria-pressed="true"]{background:var(--color-surface-selected);border-bottom-color:var(--color-selection-border);font-weight:var(--type-label-weight)}
+.a3-scope button.a3-total{border-right:var(--border-default)}
+.a3-scope svg{flex:none}
+.a3-kx th{font-size:var(--type-table-header-size);line-height:var(--type-table-header-line);font-weight:var(--type-table-header-weight);text-align:left;color:var(--color-text-secondary);border-bottom:var(--border-default);padding:0 var(--space-3) var(--space-2) 0}
+.a3-kx td{border-bottom:var(--border-hairline);padding:var(--cell-pad-y) var(--space-3) var(--cell-pad-y) 0;font-size:var(--type-table-body-size);line-height:var(--type-table-body-line);vertical-align:middle}
+.a3-kx .a3-num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.a3-kx tr.a3-krow{cursor:pointer}
+.a3-kx tr.a3-krow:hover td{background:var(--color-surface-canvas)}
+.a3-kx .a3-gname{display:flex;align-items:center;gap:var(--space-2)}
+.a3-kx tr.a3-ktotal td{border-top:var(--border-contrast-1px);border-bottom:none;font-weight:700;padding-top:var(--space-3)}
+.a3-kx .a3-dash{color:var(--color-text-secondary);font-weight:var(--type-small-weight);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-segs{display:flex;gap:var(--space-6);flex-wrap:wrap;margin-top:var(--space-4);padding-top:var(--space-4);border-top:var(--border-hairline)}
+.a3-segs .a3-sg b{display:block;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-variant-numeric:tabular-nums}
+.a3-segs .a3-sg span{display:block;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+
+/* DC-44 · CostDriverContribution. Structure: .a3-drivers > .a3-bmark +
+   .a3-tbl-scroll > table.a3-driver-table > rows tr.a3-drv; every row keeps
+   native table display and contains heading, .a3-val, .a3-bar-cell/.a3-bar
+   and a details button. Total gets .a3-sum; inactive gets .a3-inactive.
+   Classes: .a3-drivers · .a3-driver-table · .a3-drv · .a3-val · .a3-driver-direction · .a3-bar-cell · .a3-bar · .a3-base · .a3-minus · .a3-inactive · .a3-sum · .a3-bmark. */
+.a3-drivers{border:var(--border-default);background:var(--color-surface-default);padding:var(--space-5);max-width:var(--measure-wide)}
+.a3-driver-table{min-width:48rem}
+.a3-driver-table th,.a3-driver-table td{padding:var(--space-2) var(--space-3);border-bottom:var(--border-hairline);font-size:var(--type-small-size);line-height:var(--type-small-line);vertical-align:middle;text-align:left}
+.a3-driver-table thead th{font-size:var(--type-table-header-size);line-height:var(--type-table-header-line);font-weight:var(--type-table-header-weight);border-bottom:var(--border-default)}
+.a3-drv>th{font-weight:var(--type-small-weight)}
+.a3-drv .a3-val{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.a3-driver-direction{display:block;font-weight:var(--font-weight-bold);margin-top:var(--space-1)}
+.a3-bar-cell{width:28%;min-width:10rem}
+.a3-drv .a3-bar{display:block;height:var(--space-3);background:var(--color-dataviz-category-1)}
+.a3-drv.a3-base .a3-bar{background:var(--color-dataviz-neutral-bar)}
+.a3-drv.a3-minus .a3-bar{background:var(--color-dataviz-category-2)}
+.a3-drv.a3-inactive .a3-bar{background:var(--color-dataviz-neutral)}
+.a3-driver-table .a3-drv.a3-sum>*{border-bottom:none;border-top:var(--border-contrast-1px);font-weight:700}
+.a3-bmark{border-left:var(--border-width-strong) solid var(--color-text-primary);background:var(--color-surface-subtle);padding:var(--space-3) var(--space-4);font-size:var(--type-small-size);line-height:var(--type-small-line);margin-bottom:var(--space-4)}
+
+/* DC-41 / DC-43 · EmailComposer / InternalNote. Structure: .a3-mailcard >
+   .a3-mailrow > .a3-lb + value; .a3-notecard > label + textarea + actions.
+   Classes: .a3-mailcard · .a3-notecard · .a3-mailrow · .a3-lb. */
+.a3-mailcard,.a3-notecard{border:var(--border-default);background:var(--color-surface-default);padding:var(--space-4);max-width:var(--measure-panel);display:flex;flex-direction:column;gap:var(--space-3)}
+.a3-mailrow{display:flex;gap:var(--space-3);align-items:baseline;flex-wrap:wrap;font-size:var(--type-small-size)}
+.a3-mailrow .a3-lb{min-width:var(--space-8);color:var(--color-text-secondary);flex:none}
+.a3-mailrow input{border:var(--border-default);font:inherit;font-size:var(--type-small-size);padding:var(--space-2) var(--space-3);flex:1;min-width:var(--measure-form-control)}
+.a3-notecard textarea{border:var(--border-default);font:inherit;font-size:var(--type-body-size);line-height:var(--type-body-line);padding:var(--space-3);resize:vertical;min-height:var(--space-8)}
+.a3-notecard textarea::placeholder{color:var(--color-text-secondary)}
+
+/* DC-14 · GuidedTourStep. Structure: .a3-tour-stage > .a3-tour-cutout +
+   .a3-tour-card[role=dialog] > content + .a3-tour-actions.
+   Classes: .a3-tour-stage · .a3-tour-cutout · .a3-tour-card · .a3-print-card · .a3-tour-actions · .a3-specimen-actions. */
+.a3-tour-stage{position:relative;min-height:18rem;background:var(--color-surface-subtle);border:var(--border-hairline);padding:var(--space-5);display:grid;grid-template-columns:minmax(9rem,1fr) minmax(16rem,1.4fr);gap:var(--space-5);align-items:center}
+.a3-tour-cutout{min-height:6rem;border:var(--border-contrast-2px);background:var(--color-surface-default);display:flex;align-items:center;justify-content:center;padding:var(--space-4)}
+.a3-tour-card{border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-5)}
+.a3-tour-card h4,.a3-print-card h4{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);margin:0 0 var(--space-3)}
+.a3-tour-actions,.a3-specimen-actions{display:flex;gap:var(--space-3);align-items:center;flex-wrap:wrap;margin-top:var(--space-4)}
+/* DC-22 · OutputProfileSwitch + SegmentedControl primitive. Structure:
+   .a3-radio-segments[role=radiogroup] > label > input[type=radio] + text;
+   .a3-profile-indicator is a sibling status.
+   Classes: .a3-radio-segments · .a3-profile-indicator. */
+.a3-radio-segments{display:inline-flex;border:var(--border-contrast-1px);padding:0}
+.a3-radio-segments label{position:relative;display:flex;align-items:center;gap:var(--space-2);min-height:var(--size-hit-target-default);padding:0 var(--space-4);border-right:var(--border-hairline);cursor:pointer;font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight)}
+.a3-radio-segments label:last-child{border-right:0}
+.a3-radio-segments label:has(input:checked){background:var(--color-surface-selected);box-shadow:inset 0 calc(-1 * var(--border-width-strong)) 0 var(--color-selection-border)}
+.a3-radio-segments input{accent-color:var(--color-selection-border)}
+.a3-profile-indicator{border-left:var(--border-contrast-2px);padding:var(--space-3) var(--space-4);margin-top:var(--space-4);font-size:var(--type-badge-status-size);line-height:var(--type-badge-status-line);font-weight:var(--type-badge-status-weight)}
+/* DC-24 · EmptyState. Structure: .a3-empty-spec > .a3-empty-icon +
+   content containing explanation and exactly one action.
+   Classes: .a3-empty-spec · .a3-empty-icon. */
+.a3-empty-spec{border:var(--border-hairline);padding:var(--space-5);display:grid;grid-template-columns:var(--size-icon-lg) 1fr;gap:var(--space-4);align-items:start}
+.a3-empty-icon{width:var(--size-icon-lg);height:var(--size-icon-lg);border:var(--border-contrast-2px);display:flex;align-items:center;justify-content:center;font-weight:var(--font-weight-bold)}
+/* DC-23 / DC-42 · OutputPreflightChecklist + PrintFlow. Structure:
+   .a3-preflight-list > result rows; .a3-print-card[role=dialog] >
+   .a3-paper-preview + content with .a3-preflight-list and actions.
+   Classes: .a3-print-card · .a3-paper-preview · .a3-preflight-list. */
+.a3-print-card{border:var(--border-contrast-2px);padding:var(--space-5);display:grid;grid-template-columns:minmax(10rem,15rem) 1fr;gap:var(--space-5)}
+.a3-paper-preview{aspect-ratio:210/297;border:var(--border-contrast-1px);padding:var(--space-3);font-size:var(--type-caption-size);line-height:var(--type-caption-line);background:var(--color-surface-default)}
+.a3-preflight-list{list-style:none;margin:var(--space-3) 0;padding:0;border-top:var(--border-hairline)}
+.a3-preflight-list li{padding:var(--space-2) 0;border-bottom:var(--border-hairline)}
+/* DC-29 · UndoToast full specimen. Structure: .a3-undo-spec[role=status] >
+   text/delta + .a3-specimen-actions.
+   Classes: .a3-undo-spec · .a3-journal-summary. */
+.a3-undo-spec{width:min(var(--size-toast-max-width),100%);border:var(--border-contrast-1px);border-left:var(--size-status-accent-width) solid var(--color-text-primary);padding:var(--space-4);display:grid;grid-template-columns:1fr auto;gap:var(--space-4);align-items:center}
+.a3-undo-spec strong,.a3-journal-summary strong{font-feature-settings:var(--font-numeric)}
+/* DC-46 host · Switch primitive. Structure: .a3-switch-row > label +
+   button.a3-switch-button[role=switch] > .a3-switch-track + .a3-switch-thumb + state text.
+   Classes: .a3-switch-row · .a3-switch-button · .a3-switch-track · .a3-switch-thumb. */
+.a3-switch-row{display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap}
+.a3-switch-button{width:var(--size-hit-target-default);height:var(--size-hit-target-default);border:0;background:transparent;position:relative;padding:0;cursor:pointer}
+.a3-switch-track{position:absolute;left:var(--space-1);top:var(--space-3);width:var(--size-switch-track);height:var(--size-icon-md);border:var(--border-contrast-1px);background:var(--color-surface-subtle)}
+.a3-switch-thumb{position:absolute;left:var(--size-control-inset);top:var(--size-status-icon);width:var(--space-4);height:var(--space-4);background:var(--color-text-primary);transition:transform var(--motion-feedback) var(--motion-easing-standard)}
+.a3-switch-button[aria-checked="true"] .a3-switch-track{border:var(--border-selected);background:var(--color-surface-selected)}
+.a3-switch-button[aria-checked="true"] .a3-switch-thumb{transform:translateX(var(--space-4))}
+/* DC-12 · SessionJournalBar full specimen. Structure: .a3-journal-spec >
+   button.a3-journal-disclose + ul.a3-journal-items.
+   Classes: .a3-journal-spec · .a3-journal-disclose · .a3-journal-items. */
+.a3-journal-spec{border-top:var(--border-hairline);border-bottom:var(--border-hairline)}
+.a3-journal-disclose{width:100%;min-height:var(--size-hit-target-default);display:flex;justify-content:space-between;align-items:center;gap:var(--space-4);padding:var(--space-2) var(--space-3);border:0;background:var(--color-surface-default);font:inherit;text-align:left;cursor:pointer}
+.a3-journal-items{margin:0;padding:0 var(--space-3) var(--space-3);list-style:none}
+.a3-journal-items li{display:grid;grid-template-columns:auto 1fr auto;gap:var(--space-3);padding:var(--space-3) 0;border-top:var(--border-hairline);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+/* DC-10 · DocumentAnalysisProgress full specimen. Structure:
+   .a3-analysis-spec[aria-busy] > .a3-analysis-track + .a3-analysis-log +
+   phase + .a3-analysis-files + actions.
+   Classes: .a3-analysis-spec · .a3-analysis-track · .a3-analysis-log · .a3-analysis-files · .a3-analysis-error. */
+.a3-analysis-spec{border:var(--border-default);padding:var(--space-4);min-height:20rem}
+.a3-analysis-track{height:var(--border-width-strong);background:var(--color-border-subtle);overflow:hidden;margin-bottom:var(--space-4)}
+.a3-analysis-track::before{content:'';display:block;width:38%;height:100%;background:var(--color-text-primary);animation:a3-sweep 1.6s var(--motion-easing-standard) infinite}
+.a3-analysis-log,.a3-analysis-files{list-style:none;margin:0;padding:0}
+.a3-analysis-log li,.a3-analysis-files li{padding:var(--space-2) 0;border-bottom:var(--border-hairline);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-analysis-files{margin-top:var(--space-4)}
+.a3-analysis-error{border-left:var(--border-error);padding-left:var(--space-3)}
+
+/* DC-34 · ProjectSearchFilter. Structure: .a3-project-search[role=search] >
+   .a3-form-field + .a3-filter-row + .a3-search-result-count + reset button.
+   Classes: .a3-project-search · .a3-search-line · .a3-form-field · .a3-filter-row · .a3-search-result-count. */
+.a3-project-search{border:var(--border-hairline);padding:var(--space-4);display:grid;gap:var(--space-3);max-width:var(--measure-wide)}
+.a3-search-line{display:flex;gap:var(--space-3);align-items:end;flex-wrap:wrap}
+.a3-search-line .a3-form-field{flex:1;min-width:var(--measure-form-control)}
+.a3-filter-row{display:flex;gap:var(--space-2);flex-wrap:wrap;align-items:center}
+.a3-search-result-count{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+
+/* DC-37 · ScopeLineItemBlock. Structure: article.a3-scope-line-item >
+   number/title + coverage/responsibility badges + provenance + details.
+   Classes: .a3-scope-line-item · .a3-scope-line-number · .a3-scope-line-body · .a3-scope-line-status. */
+.a3-scope-line-item{border:var(--border-hairline);background:var(--color-surface-default);padding:var(--space-4);display:grid;grid-template-columns:auto 1fr auto;gap:var(--space-3);align-items:start;max-width:var(--measure-wide)}
+.a3-scope-line-number{font-variant-numeric:tabular-nums;font-weight:var(--font-weight-bold)}
+.a3-scope-line-body{display:grid;gap:var(--space-2)}
+.a3-scope-line-status{display:flex;gap:var(--space-2);flex-wrap:wrap}
+
+/* SHOWCASE SHELL · print-only documentation harness, not component API.
+   It hides interactive specimens and keeps documentation sheets printable.
+   Classes: .a3-pnav · .a3-toasts · .a3-modal-scrim · .a3-savechip ·
+   .a3-tour-stage · .a3-specimen-actions · .a3-showcase · .a3-reveal ·
+   .a3-sheet. */
+@media print{
+  .a3-pnav,.a3-toasts,.a3-modal-scrim,.a3-savechip,.a3-tour-stage,.a3-specimen-actions{display:none}
+  .a3-showcase{background:var(--color-surface-default)}
+  .a3-reveal .a3-sheet{opacity:1;transform:none}
+  .a3-sheet{page-break-inside:avoid;margin-bottom:16pt;padding:0 0 16pt}
+}
+
+.a3-showcase footer{color:var(--color-text-secondary);font-size:var(--type-caption-size);line-height:var(--type-caption-line);max-width:var(--measure-body-max)}
+
+/* CONDITIONAL AMENDMENTS · owners DC-10/12/14/19/20/22/23/34/37/38/41/42/43.
+   Existing component structures stay unchanged at narrow viewports and with
+   reduced motion; this block introduces no standalone component API.
+   Classes: .a3-wrap · .a3-pnav · .a3-sheet · .a3-hero-title · .a3-t-h1 · .a3-t-hero ·
+   .a3-hb-total · .a3-hb · .a3-hb-num · .a3-hb-unit · .a3-pal ·
+   .a3-fgrid · .a3-pal-ext · .a3-mode-wrap · .a3-tour-stage ·
+   .a3-print-card · .a3-scope-line-item · .a3-spec · .a3-journal-items ·
+   .a3-sp-row · .a3-tabs · .a3-search-line · .a3-form-field · .a3-mailrow ·
+   .a3-radio-segments · .a3-undo-spec · .a3-reveal · .a3-g-seg ·
+   .a3-ring · .a3-fgc · .a3-loader · .a3-run. */
+@media (max-width:47.5rem){
+  .a3-sheet{padding:var(--space-4)}
+  .a3-sheet>h2,.a3-specimen-block>h3{overflow-wrap:anywhere}
+  .a3-hero-title,.a3-t-h1{font-size:var(--type-heading-1-narrow-size);line-height:var(--type-heading-1-narrow-line);overflow-wrap:anywhere}
+  .a3-t-hero{font-size:var(--type-display-numeric-narrow-size);line-height:var(--type-display-numeric-narrow-line)}
+  .a3-hb-total .a3-hb-num{font-size:var(--type-heading-1-narrow-size);line-height:var(--type-heading-1-narrow-line)}
+  .a3-hb-total .a3-hb-unit{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line)}
+  .a3-hb:not(.a3-hb-total) .a3-hb-num{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);white-space:normal;overflow-wrap:anywhere}
+  .a3-hb:not(.a3-hb-total) .a3-hb-unit{font-size:var(--type-small-size);line-height:var(--type-small-line)}
+  .a3-pal,.a3-fgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .a3-pal-ext{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .a3-mode-wrap,.a3-tour-stage,.a3-print-card,.a3-scope-line-item{grid-template-columns:1fr}
+  .a3-spec{grid-template-columns:1fr}
+  .a3-sp-row{flex-wrap:wrap}
+  .a3-tabs{flex-wrap:wrap}
+  .a3-form-field input{width:100%;min-width:0}
+  .a3-undo-spec{grid-template-columns:1fr}
+  .a3-journal-items li{grid-template-columns:1fr}
+  .a3-search-line .a3-form-field,.a3-mailrow input{min-width:0}
+  .a3-radio-segments{max-width:100%;flex-wrap:wrap}
+}
+@media (max-width:22.5rem){
+  .a3-wrap{padding-left:var(--space-4);padding-right:var(--space-4)}
+  .a3-pnav{margin-left:calc(-1 * var(--space-4));margin-right:calc(-1 * var(--space-4));padding-left:var(--space-4);padding-right:var(--space-4)}
+  .a3-t-hero,.a3-hb-total .a3-hb-num{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line)}
+  .a3-hb-total .a3-hb-unit{font-size:var(--type-small-size);line-height:var(--type-small-line)}
+}
+@media (prefers-reduced-motion:reduce){
+  :where([class^="a3-"],[class*=" a3-"]),:where([class^="a3-"],[class*=" a3-"])::before,:where([class^="a3-"],[class*=" a3-"])::after{transition:none!important;animation:none!important}
+  .a3-reveal .a3-sheet{opacity:1;transform:none}
+  .a3-g-seg{transform:scaleX(1)}
+  .a3-ring .a3-fgc{stroke-dashoffset:27.1}
+  .a3-loader .a3-run{transform:none;width:60%}
+}
