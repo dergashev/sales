@@ -75,7 +75,7 @@ export function Grundlagen({ fonts, cascade }: {
           </p>
         </Specimen>
 
-        <Specimen title="partial" note="Preis ohne Rechenbasis: nie 0 € (Regel 16, SCOPE-001).">
+        <Specimen title="partial" note={`Preis ohne Rechenbasis: nie 0 € (Regel 16, SCOPE-001).`}>
           <p className="numeric border border-border-default p-3 text-body text-text-primary">
             Preis nicht ermittelt
             <span className="mt-1 block text-small text-text-secondary">

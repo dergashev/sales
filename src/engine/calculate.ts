@@ -49,7 +49,35 @@ export type Catalog = {
   regionalFactor: { active: boolean; value: Decimal }
 }
 
-export type Driver = { key: string; exact: Decimal; label: string }
+/**
+ * Вклад в цену (DC-44, DRIVER-007).
+ *
+ * `key` — уникальный ID вклада: один вклад не входит в два тотала и в два
+ * драйвера. `scopeRefs` — позиции Scope Universe, на которые вклад ложится;
+ * они **выведены, не назначены**: база объявлена как KG 300+400
+ * (`calculation-spec.md` §1.1), множители применяются к ней же, а перечень
+ * для регионального фактора объявлен поимённо в §2.3. Там, где источник
+ * отнесения не объявлен, `scopeRefs` пуст — строка честно помечается
+ * `Zuordnung offen`, а не приписывается наугад (R-25).
+ *
+ * `appliedTo`/`factor` заполняются у множителей и питают DC-21: поповер
+ * происхождения обязан показать, к чему множитель применён, а не только
+ * результат.
+ */
+export type Driver = {
+  key: string
+  exact: Decimal
+  label: string
+  scopeRefs: string[]
+  appliedTo: Decimal | null
+  factor: Decimal | null
+}
+
+/** База KG 300+400 объявлена в `calculation-spec.md` §1.1 строкой K_base. */
+const SCOPE_BAUWERK_BASE = ['KG 300', 'KG 400']
+/** §2.3: «затронуто: KG 300 · KG 400 · UG (блок Bauwerk целиком)». */
+const SCOPE_BAUWERK_FULL = ['KG 300', 'KG 400', 'UG']
+const SCOPE_UG = ['UG']
 
 export type BuildingResult = {
   buildingId: string
@@ -133,7 +161,10 @@ export function calculateBuilding(
   const drivers: Driver[] = []
 
   const base = b.bgfAboveGround.mul(cat.kBase)
-  drivers.push({ key: 'basis', exact: base, label: 'Grundleistung' })
+  drivers.push({
+    key: 'basis', exact: base, label: 'Grundleistung',
+    scopeRefs: SCOPE_BAUWERK_BASE, appliedTo: null, factor: null,
+  })
 
   // Форма: множитель только если он есть в каталоге. MFH — базовая.
   const formKey = FORM_FACTOR_KEY[b.gebaeudeform]
@@ -143,7 +174,10 @@ export function calculateBuilding(
     if (!f) throw new Error(`нет множителя формы для ${formKey}`)
     const uplift = running.mul(f.minus(1))
     running = running.plus(uplift)
-    drivers.push({ key: `gebaeudeform_${formKey}`, exact: uplift, label: 'Gebäudeform' })
+    drivers.push({
+      key: `gebaeudeform_${formKey}`, exact: uplift, label: 'Gebäudeform',
+      scopeRefs: SCOPE_BAUWERK_BASE, appliedTo: running.minus(uplift), factor: f,
+    })
   }
 
   const gkFactor = cat.costFactors.gebaeudeklasse[b.gebaeudeklasse.value]
@@ -153,7 +187,12 @@ export function calculateBuilding(
     drivers.push({
       key: `gebaeudeklasse_${b.gebaeudeklasse.value}`,
       exact: gkUplift,
-      label: `Gebäudeklasse ${b.gebaeudeklasse.value.replace('GK_', '')}`,
+      // Язык следствий, не код параметра (D-13). Следствия названы в
+      // guidance-system.md и parameter-triage (C4.02/C4.03) — они не
+      // выдуманы здесь.
+      label: `Gebäudeklasse ${b.gebaeudeklasse.value.replace('GK_', '')} · `
+        + 'Feuerwiderstand und Kapselung',
+      scopeRefs: SCOPE_BAUWERK_BASE, appliedTo: running, factor: gkFactor,
     })
   }
   running = running.plus(gkUplift)
@@ -165,7 +204,12 @@ export function calculateBuilding(
     drivers.push({
       key: `energiestandard_${b.energiestandard}`,
       exact: ehUplift,
+      // `EH 55` — имя норматива KfW, а не код параметра: LOCALE-009 держит
+      // его в списке непереводимых нормативных терминов. Формулировки
+      // следствий для энергостандарта источниками не объявлены, и
+      // придумывать их здесь запрещено (R-25).
       label: `Energiestandard ${b.energiestandard.replace('_', ' ')}`,
+      scopeRefs: SCOPE_BAUWERK_BASE, appliedTo: running, factor: ehFactor,
     })
   }
   running = running.plus(ehUplift)
@@ -180,6 +224,7 @@ export function calculateBuilding(
       key: 'untergeschoss_mit_tiefgarage',
       exact: ug,
       label: 'Untergeschoss inkl. Tiefgarage',
+      scopeRefs: SCOPE_UG, appliedTo: null, factor: null,
     })
   }
 
@@ -189,7 +234,11 @@ export function calculateBuilding(
   let regional = new Decimal(0)
   if (cat.regionalFactor.active) {
     regional = bauwerk.mul(cat.regionalFactor.value.minus(1))
-    drivers.push({ key: 'regionalfaktor', exact: regional, label: 'Regionalfaktor' })
+    drivers.push({
+      key: 'regionalfaktor', exact: regional, label: 'Regionalfaktor',
+      scopeRefs: SCOPE_BAUWERK_FULL, appliedTo: bauwerk,
+      factor: cat.regionalFactor.value,
+    })
   }
 
   const total = bauwerk.plus(regional)

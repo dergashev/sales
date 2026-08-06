@@ -224,7 +224,8 @@ function P2Projektdaten() {
             <p className="mt-1 text-small text-text-secondary">
               Folge der Übernahme: nur der Nenner ändert sich — Leitkennzahl
               {NNBSP}≈{NNBSP}2.545 → ≈{NNBSP}2.447{NNBSP}€/m² WFL nach WoFlV,
-              die Zwischensumme bleibt unverändert. Der nicht gewählte
+              die «Zwischensumme der kalkulierten Positionen» bleibt
+              unverändert. Der nicht gewählte
               Kandidat bleibt als Alternative nachvollziehbar (SOURCE-001).
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -250,7 +251,7 @@ function P2Projektdaten() {
           </p>
         )}
 
-        <StaticRow label="Balkon-Anrechnung" value={`${catalog.internalConfig.balconyDefaultPercent}${NNBSP}%`} provenance={`${catalog.internalConfig.balconySource} · Standard, auf Kundenwunsch 50 %`} />
+        <StaticRow label="Balkon-Anrechnung" value={`${catalog.internalConfig.balconyDefaultPercent}${NNBSP}%`} provenance={`${catalog.internalConfig.balconySource} · Standard, auf Kundenwunsch 50 %`} />
 
         <NumericField
           label="Wohneinheiten"
@@ -482,7 +483,11 @@ function P5Varianten({ openKonfigurator }: { openKonfigurator: () => void }) {
           <thead>
             <tr className="border-b border-border-strong text-left">
               <th className="py-2 pr-4 font-medium">Variante</th>
-              <th className="py-2 pr-4 text-right font-medium">Zwischensumme</th>
+              {/* Метрика называется полностью и в шапке колонки: усечённое
+                  «Zwischensumme» — Unqualified Total (R-18/COPY-008). */}
+              <th className="py-2 pr-4 text-right font-medium">
+                Zwischensumme der kalkulierten Positionen
+              </th>
               <th className="py-2 pr-4 font-medium">Rollen</th>
               <th className="py-2 font-medium"><span className="sr-only">Aktion</span></th>
             </tr>

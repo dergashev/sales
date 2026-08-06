@@ -8,7 +8,7 @@ import {
   type BuildingInput, type Coverage, type CoverageState,
   type CostGroup, type BuildingResult,
 } from '../engine/calculate'
-import { present, rate, NNBSP, type Rate } from '../engine/money'
+import { present, rate, NNBSP, type Displayed, type Rate } from '../engine/money'
 import { modelDuration, presentDuration, type DurationDisplay } from '../engine/schedule'
 
 /**
@@ -150,7 +150,17 @@ type Store = {
    * UI-состояние вроде `openChapter` — данные не меняются, события нет.
    * Клик фиксирует выбор обычным событием, превью гаснет.
    */
-  preview: { label: string; deltaExact: Decimal } | null
+  preview: {
+    label: string
+    /** Будущее значение героя, а не только разница (анатомия DC-28). */
+    futureTotal: Displayed
+    deltaExact: Decimal
+    /** Прогон превью: без него два интервала на разных экранах неотличимы
+     *  от противоречия (CALC-002). */
+    contextRef: string
+    /** Полнота будущего прогона: при incomplete префикс называет её. */
+    futureLabel: string
+  } | null
   /**
    * Undo-тост (DC-29): производная ПОСЛЕДНЕГО события журнала, не отдельное
    * состояние. Каждое событие с inverse создаёт тост; событие без inverse
@@ -549,8 +559,8 @@ const store = createStore<Store>((set, get) => {
       apply({
         kind: 'conflict.resolved',
         label: candidate === 'customer'
-          ? 'WFL-Konflikt: Kundenwert 1.560,00 m² übernommen'
-          : 'WFL-Konflikt: Dokumentwert 1.500,00 m² beibehalten',
+          ? `WFL-Konflikt: Kundenwert 1.560,00${NNBSP}m² übernommen`
+          : `WFL-Konflikt: Dokumentwert 1.500,00${NNBSP}m² beibehalten`,
         deltaExact: null,
         inverse: () => set((x) => ({
           fields: { ...x.fields, wfl: prevField },
@@ -667,7 +677,22 @@ const store = createStore<Store>((set, get) => {
       const label = change.kind === 'energiestandard'
         ? `Energiestandard ${change.value.replace('_', ' ')}`
         : `Untergeschoss ${LABEL_UG[change.value as BuildingInput['untergeschoss']]}`
-      set({ preview: { label, deltaExact: get().optionDelta(change) } })
+      // Призрак показывает БУДУЩЕЕ значение героя, а не только разницу:
+      // «на сколько изменится» без «сколько станет» заставляет клиента
+      // считать в уме на переговорах.
+      const future = computeProjection({
+        ...s,
+        building: { ...s.building, [change.kind]: change.value },
+      })
+      set({
+        preview: {
+          label,
+          futureTotal: future.result.total,
+          deltaExact: get().optionDelta(change),
+          contextRef: 'DEMO-SC-01 · Vorschau-Lauf DEMO-RUN-0009',
+          futureLabel: future.result.totalLabel,
+        },
+      })
     },
 
     /**

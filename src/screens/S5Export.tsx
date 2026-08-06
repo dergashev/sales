@@ -66,7 +66,8 @@ export function S5Export() {
     warnings.push(`Schätzunsicherheit ±${NNBSP}${p.uncertaintyPp}${NNBSP}% liegt über ±${NNBSP}25${NNBSP}%`)
   }
   if (s.coverage.KG_500 === 'unknown') {
-    warnings.push('KG 500: Deckungsentscheidung offen — Angebot weist Zwischensumme aus')
+    warnings.push('KG 500: Deckungsentscheidung offen — Angebot weist eine '
+      + '«Zwischensumme der kalkulierten Positionen» aus')
   }
 
   const sendEnabled = stage === 'confirm' && blockers.length === 0 &&
@@ -244,7 +245,7 @@ export function S5Export() {
               </p>
               {s.snapshots.length > 0 && (
                 <p className="mt-2 text-small text-text-muted">
-                  Snapshot {s.snapshots.at(-1)!.id}: Zwischensumme{' '}
+                  Snapshot {s.snapshots.at(-1)!.id}: Zwischensumme der kalkulierten Positionen{' '}
                   {s.snapshots.at(-1)!.totalExact}{NNBSP}€ exakt ·
                   Regionalfaktor {s.snapshots.at(-1)!.regionalfaktorActive
                     ? 'aktiviert' : 'nicht aktiviert'} · ±{NNBSP}

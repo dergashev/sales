@@ -272,6 +272,57 @@ describe('S3: Geist-Vorschau — последствие до клика (DC-28)'
   })
 })
 
+describe('DC-28: призрак несёт будущее значение, а не только разницу', () => {
+  it('превью содержит будущий тотал, дельту, подпись полноты и прогон', () => {
+    useStore.getState().previewOption({ kind: 'energiestandard', value: 'EH_40' })
+    const pv = useStore.getState().preview!
+    expect(pv.futureTotal.exact.toFixed(2)).toBe('3915170.00')
+    expect(pv.futureTotal.display).toBe('3.915.000')
+    expect(pv.deltaExact.toFixed(2)).toBe('97335.00')
+    // Полнота будущего прогона называется: KG 500 остаётся unknown.
+    expect(pv.futureLabel).toBe('Zwischensumme der kalkulierten Positionen')
+    expect(pv.contextRef).toContain('DEMO-RUN-0009')
+    // И по-прежнему ничего не фиксирует.
+    expect(useStore.getState().journal).toHaveLength(0)
+    expect(useStore.getState().projection().result.total.exact.toFixed(2)).toBe('3817835.00')
+  })
+})
+
+describe('DC-44: направление, отнесение и ID вклада', () => {
+  it('каждый драйвер несёт уникальный ID и позиции Scope', () => {
+    const ds = useStore.getState().projection().result.drivers
+    expect(new Set(ds.map((d) => d.key)).size).toBe(ds.length)
+    expect(ds.find((d) => d.key === 'basis')!.scopeRefs).toEqual(['KG 300', 'KG 400'])
+    expect(ds.find((d) => d.key === 'untergeschoss_mit_tiefgarage')!.scopeRefs)
+      .toEqual(['UG'])
+  })
+
+  it('множитель несёт базу применения и сам множитель — их показывает DC-21', () => {
+    const gk = useStore.getState().projection().result
+      .drivers.find((d) => d.key === 'gebaeudeklasse_GK_5')!
+    expect(gk.appliedTo!.toFixed(2)).toBe('3090000.00')
+    expect(gk.factor!.toFixed(2)).toBe('1.05')
+    // База × (множитель − 1) = вклад: у поповера нет своей арифметики.
+    expect(gk.appliedTo!.mul(gk.factor!.minus(1)).toFixed(2)).toBe(gk.exact.toFixed(2))
+  })
+
+  it('экономящий драйвер поддержан симметрично: знак отрицателен, сумма сходится', () => {
+    useStore.getState().setUntergeschoss('kein_ug')
+    const r = useStore.getState().projection().result
+    expect(r.drivers.some((d) => d.key === 'untergeschoss_mit_tiefgarage')).toBe(false)
+    const sum = r.drivers.reduce((a, d) => a.plus(d.exact), new Decimal(0))
+    expect(sum.equals(r.total.exact)).toBe(true)
+  })
+
+  it('язык следствий у класса здания, нормативное имя у энергостандарта', () => {
+    const ds = useStore.getState().projection().result.drivers
+    expect(ds.find((d) => d.key === 'gebaeudeklasse_GK_5')!.label)
+      .toContain('Feuerwiderstand und Kapselung')
+    expect(ds.find((d) => d.key === 'energiestandard_EH_55')!.label)
+      .toBe('Energiestandard EH 55')
+  })
+})
+
 describe('S3: интервал сужается подтверждением, не выбором опции (D-19)', () => {
   it('выбор энергостандарта интервал не меняет', () => {
     expect(useStore.getState().projection().uncertaintyPp).toBe(22)

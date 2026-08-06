@@ -174,12 +174,46 @@ export function OfferPanel() {
           </p>
         )}
 
-        {/* ── Слот дельта-чипа: зарезервирован, появление не двигает ──────
-            Дельта фиксации всегда приоритетнее превью; превью (DC-28) —
-            вторичным цветом, потому что это гипотеза, а не факт. */}
+        {/* ── Слот призрака (DC-28) — СОБСТВЕННЫЙ, не общий с дельта-чипом.
+            Анатомия контракта: префикс «Vorschau ·», будущее значение,
+            дельта к названной базе, ссылка на прогон превью. Высота
+            зарезервирована: появление призрака не двигает вёрстку. */}
         <div className="mt-3 min-h-delta-slot">
           <AnimatePresence>
-            {s.activeDelta ? (
+            {s.preview && (
+              <motion.p
+                key="ghost"
+                initial={reduced ? {} : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={reduced ? {} : { opacity: 0 }}
+                transition={{ duration: reduced ? 0 : 0.12 }}
+                className="numeric border border-border-default p-3 text-small text-text-secondary"
+              >
+                Vorschau · {s.preview.label}
+                <span className="mt-1 block text-body">
+                  {s.preview.futureTotal.prefix && (
+                    <span aria-hidden="true">{s.preview.futureTotal.prefix}{NNBSP}</span>
+                  )}
+                  {s.preview.futureTotal.display}{NNBSP}€
+                  {' · '}
+                  {signed(s.preview.deltaExact)}{NNBSP}gegenüber DEMO-VV-0003
+                </span>
+                {/* Неполнота будущего прогона называется, а не подразумевается. */}
+                {s.preview.futureLabel !== 'Gesamt netto · Grundleistung All3' && (
+                  <span className="mt-1 block">Vorschau · {s.preview.futureLabel}</span>
+                )}
+                {s.mode === 'intern' && (
+                  <span className="mt-1 block text-text-muted">{s.preview.contextRef}</span>
+                )}
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* ── Слот дельта-чипа: зарезервирован, появление не двигает ────── */}
+        <div className="mt-3 min-h-delta-slot">
+          <AnimatePresence>
+            {s.activeDelta && (
               <motion.p
                 key="delta"
                 initial={reduced ? {} : { opacity: 0, y: 8 }}
@@ -195,19 +229,7 @@ export function OfferPanel() {
                   {s.mode === 'intern' && <> ({signedPercent(s.activeDelta.percent)})</>}
                 </span>
               </motion.p>
-            ) : s.preview ? (
-              <motion.p
-                key="preview"
-                initial={reduced ? {} : { opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={reduced ? {} : { opacity: 0 }}
-                transition={{ duration: reduced ? 0 : 0.12 }}
-                className="numeric border border-border-default p-3 text-body text-text-secondary"
-              >
-                Vorschau · {s.preview.label}
-                <span className="mt-1 block">{signed(s.preview.deltaExact)}</span>
-              </motion.p>
-            ) : null}
+            )}
           </AnimatePresence>
         </div>
 
@@ -229,30 +251,89 @@ export function OfferPanel() {
           <div className="mt-2 overflow-x-auto">
             <table className="w-full border-collapse text-small">
               <caption className="sr-only">
-                Kostentreiber: Beiträge summieren sich exakt zur Zwischensumme
+                Kostentreiber: Beiträge summieren sich exakt zur
+                Zwischensumme der kalkulierten Positionen
               </caption>
               <tbody>
                 {(() => {
+                  // Бар относителен наибольшему вкладу ПО МОДУЛЮ: экономящий
+                  // драйвер такой же полноправный, как удорожающий (DRIVER-004).
                   const max = p.result.drivers.reduce(
-                    (m, d) => (d.exact.gt(m) ? d.exact : m),
-                    p.result.drivers[0]!.exact,
+                    (m, d) => (d.exact.abs().gt(m) ? d.exact.abs() : m),
+                    p.result.drivers[0]!.exact.abs(),
                   )
-                  return p.result.drivers.map((d) => (
-                    <tr key={d.key} className="border-b border-border-subtle">
-                      <th scope="row" className="py-2 pr-3 text-left font-regular text-text-secondary">
-                        {driverLabel(d.key, d.label, s)}
-                      </th>
-                      <td className="w-8 py-2 pr-2" aria-hidden="true">
-                        <div
-                          className="h-2 bg-border-strong"
-                          style={{ width: `${d.exact.div(max).mul(100).toNumber()}%` }}
-                        />
-                      </td>
-                      <td className="numeric py-2 text-right text-text-primary">
-                        {moneyLabel(present(d.exact))}
-                      </td>
-                    </tr>
-                  ))
+                  return p.result.drivers.map((d) => {
+                    const senkt = d.exact.isNegative()
+                    const richtung = senkt ? 'senkt' : 'erhöht'
+                    const shown = present(d.exact.abs())
+                    return (
+                      <tr key={d.key} data-driver-id={d.key}
+                          className="border-b border-border-subtle hover:bg-surface-subtle">
+                        <th scope="row" className="py-2 pr-3 text-left font-regular text-text-secondary">
+                          {/* Доступное имя строки называет направление словом,
+                              округление и точное значение (DRIVER-004). */}
+                          <span className="sr-only">
+                            {driverLabel(d.key, d.label, s)}, {richtung},
+                            rund {shown.display} Euro, exakt {formatDE(d.exact.abs(), 2)} Euro
+                          </span>
+                          <span aria-hidden="true">{driverLabel(d.key, d.label, s)}</span>
+                          <span aria-hidden="true" className="block text-text-muted">
+                            {richtung}
+                            {' · '}
+                            {d.scopeRefs.length > 0
+                              ? d.scopeRefs.join(NNBSP + '· ')
+                              : 'Zuordnung offen'}
+                          </span>
+                        </th>
+                        <td className="w-8 py-2 pr-2" aria-hidden="true">
+                          <div
+                            className="h-2 bg-border-strong"
+                            style={{ width: `${shown.exact.div(max).mul(100).toNumber()}%` }}
+                          />
+                        </td>
+                        <td className="numeric py-2 text-right text-text-primary">
+                          <span aria-hidden="true">
+                            {senkt ? '−' : ''}{moneyLabel(shown)}
+                          </span>
+                          {/* Раскрытие строки — переход к DC-21, а не своё
+                              состояние. Настоящая кнопка: невидимый клик по
+                              строке как единственная affordance запрещён
+                              (DRIVER-006). */}
+                          <span className="mt-1 block font-regular">
+                            <OriginPopover
+                              triggerLabel="Details"
+                              rows={[
+                                ...(d.appliedTo
+                                  ? [{
+                                      label: 'Angewendet auf',
+                                      value: `${formatDE(d.appliedTo, 2)}${NNBSP}€`,
+                                    },
+                                    {
+                                      label: 'Faktor',
+                                      value: formatDE(d.factor!, 2),
+                                    }]
+                                  : []),
+                                {
+                                  label: d.scopeRefs.length > 0
+                                    ? `Scope · ${d.scopeRefs.join(' · ')}`
+                                    : 'Scope · Zuordnung offen',
+                                  value: richtung,
+                                  muted: d.scopeRefs.length === 0,
+                                },
+                                {
+                                  label: 'Beitrag exakt',
+                                  value: `${senkt ? '−' : '+'}${NNBSP}${formatDE(d.exact.abs(), 2)}${NNBSP}€`,
+                                  strong: true,
+                                },
+                              ]}
+                              rounding={shown.disclosure}
+                              runRef={s.mode === 'intern' ? `Beitrags-ID ${d.key}` : null}
+                            />
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })
                 })()}
                 {/* Неактивный фактор — строкой (DRIVER-002, CALC-009, D-15):
                     формулировка называет базу применения. 0 € без статуса

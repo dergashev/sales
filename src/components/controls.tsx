@@ -1,4 +1,4 @@
-import { useId, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 
 /**
  * Контролы выбора по контрактам `design-system/components-core.md` §3:
@@ -162,10 +162,30 @@ export function RadioCardGroup<T extends string>({
     clearTimeout(previewTimer.current)
     previewTimer.current = setTimeout(() => onPreview?.(v), previewDelayMs())
   }
+  /**
+   * `tapPreview` (DC-28): у касания нет наведения, поэтому и задержки нет —
+   * она существует, чтобы отличить намеренное наведение от проезда мышью.
+   * Ограничение названо честно: последующий клик фиксирует выбор обычным
+   * путём, двухшагового «первое касание показывает, второе подтверждает»
+   * здесь нет.
+   */
+  const previewTap = (v: T) => {
+    clearTimeout(previewTimer.current)
+    onPreview?.(v)
+  }
   const previewStop = () => {
     clearTimeout(previewTimer.current)
     onPreview?.(null)
   }
+
+  // Esc гасит призрак, не трогая выбор: превью — верхний временный слой
+  // над ценой, и выход из него обязан быть таким же дешёвым, как вход.
+  useEffect(() => {
+    if (!onPreview) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onPreview(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onPreview])
   return (
     <fieldset>
       <legend className={legendHidden ? 'sr-only' : 'text-small font-medium text-text-primary'}>
@@ -189,6 +209,7 @@ export function RadioCardGroup<T extends string>({
               key={o.value}
               onMouseEnter={() => !o.disabled && previewStart(o.value)}
               onMouseLeave={previewStop}
+              onTouchStart={() => !o.disabled && previewTap(o.value)}
               className={'relative flex cursor-pointer flex-col gap-1 p-4 pr-7 ' +
                 (active
                   ? 'border-selected border-selection-border bg-surface-selected'
