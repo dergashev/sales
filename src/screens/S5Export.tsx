@@ -119,7 +119,7 @@ export function S5Export() {
               <p className="numeric text-body text-text-primary">
                 {moneyLabel(discounted)}
               </p>
-              <p className="mt-1 text-small text-text-secondary">
+              <p className="a3-cap mt-1">
                 Basis ist der exakte Rechenwert, nie der angezeigte
                 (CALC-007). {discounted.disclosure}
               </p>
@@ -134,7 +134,7 @@ export function S5Export() {
 
           {stage === 'compose' && (
             <>
-              <p className="mt-2 text-small text-text-secondary">
+              <p className="a3-cap mt-2">
                 An: kontakt@beispiel-entwickler.example (aus HubSpot)
               </p>
               <textarea
@@ -166,7 +166,7 @@ export function S5Export() {
               ))}
               <div className="mt-3 border border-border-default p-3">
                 <p className="text-small font-medium text-text-primary">Finale Prüfung</p>
-                <ul className="mt-1 text-small text-text-secondary">
+                <ul className="a3-cap mt-1">
                   <li>Anhänge: {selected.size} · Muster-Dateien des Prototyps, als clientSafe klassifiziert</li>
                   <li>Aktive Annahmen: {s.building.gebaeudeklasse.confirmed ? 1 : 2}</li>
                   <li><UncertaintyBadge pp={p.uncertaintyPp} /></li>
@@ -235,7 +235,7 @@ export function S5Export() {
                   ? <><span aria-hidden="true">◌ </span>Gesendet — Zustellung ausstehend</>
                   : <><span aria-hidden="true">✓ </span>Zugestellt (simulierte Zustellbestätigung)</>}
               </p>
-              <p className="mt-1 text-small text-text-secondary">
+              <p className="a3-cap mt-1">
                 «Gesendet» und «Zugestellt» sind zwei Zustände: der zweite
                 folgt nicht aus dem ersten (EMAIL-007). Der Prototyp hat
                 keinen E-Mail-Versand — die Zustellbestätigung wird nach

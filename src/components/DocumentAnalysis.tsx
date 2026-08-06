@@ -116,7 +116,7 @@ export function DocumentAnalysis({ docs, onManualCapture }: {
             <span aria-hidden="true">✗ </span>
             {d.file} nicht lesbar: Auflösung zu gering
           </p>
-          <p className="mt-1 text-small text-text-secondary">
+          <p className="a3-cap mt-1">
             Werte aus dieser Datei fehlen — {readable.length} andere Dokumente
             sind vollständig analysiert.
           </p>

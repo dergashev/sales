@@ -66,7 +66,7 @@ export function S3Konfigurator() {
   return (
     <div className="px-7 py-6">
       <header className="border-b border-border-strong pb-4">
-        <p className="text-small text-text-secondary">
+        <p className="a3-cap">
           Kapitel {n}{NNBSP}von{NNBSP}9 · Konfigurator
         </p>
         <h1 className="mt-1 text-heading-2 font-bold text-text-primary">{title}</h1>
@@ -240,7 +240,7 @@ function ChapterEnergie() {
         />
         {!s.esConfirmed && (
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-3">
-            <p className="text-small text-text-secondary">
+            <p className="a3-cap">
               Standard gewählt, vom Kunden noch nicht bestätigt — Band unverändert.
             </p>
             <Button onClick={() => s.confirmEnergiestandardAnswer()}>

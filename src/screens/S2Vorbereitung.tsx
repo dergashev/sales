@@ -57,7 +57,7 @@ export function S2Vorbereitung({ openKonfigurator }: { openKonfigurator: () => v
         <h1 className="text-heading-2 font-bold text-text-primary">
           Musterprojekt Nordfeld · Vorbereitung
         </h1>
-        <span className="text-small text-text-secondary">
+        <span className="a3-cap">
           {s.mode === 'praesentation'
             ? 'Präsentation · interne Werte ausgeblendet'
             : `intern · Δ-Werte sichtbar`}
@@ -152,7 +152,7 @@ function P1Dokumente({ onManualCapture }: { onManualCapture: () => void }) {
       {/* Разрешение версий: дата — доказательство, решает sales. */}
       <div className="mt-5 border border-border-default p-4">
         <h2 className="text-heading-3 font-bold text-text-primary">Versionsauflösung · Grundrisse</h2>
-        <p className="mt-2 text-small text-text-secondary">
+        <p className="a3-cap mt-2">
           Zwei Versionen gefunden. Vorschlag des Systems: V2 — Datum im
           Plankopf ist neuer. Das Datum ist ein Beleg, keine Entscheidung
           (VERSION-002): die Auswahl trifft der Vertrieb, der Wechsel wird
@@ -192,7 +192,7 @@ function P2Projektdaten() {
     <section aria-label="Projektdaten">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="text-heading-3 font-bold text-text-primary">Gebäudekennzahlen</h2>
-        <span className="text-small text-text-secondary">Haus{NNBSP}A</span>
+        <span className="a3-cap">Haus{NNBSP}A</span>
       </div>
 
       <div className="mt-3 border border-border-default p-4">
@@ -223,7 +223,7 @@ function P2Projektdaten() {
               {s.mode === 'intern' ? ' DEMO-VE-0002' : ''}), Dokument zeigt
               1.500,00{NNBSP}m².
             </p>
-            <p className="mt-1 text-small text-text-secondary">
+            <p className="a3-cap mt-1">
               Folge der Übernahme: nur der Nenner ändert sich — Leitkennzahl
               {NNBSP}≈{NNBSP}2.545 → ≈{NNBSP}2.447{NNBSP}€/m² WFL nach WoFlV,
               die «Zwischensumme der kalkulierten Positionen» bleibt
@@ -242,7 +242,7 @@ function P2Projektdaten() {
         )}
 
         {s.wflConflict.state === 'resolved' && (
-          <p className="mt-2 text-small text-text-secondary">
+          <p className="a3-cap mt-2">
             <span aria-hidden="true">✓ </span>
             Konflikt gelöst. Alternative bleibt nachvollziehbar:{' '}
             {s.wflConflict.candidates
@@ -270,7 +270,7 @@ function P2Projektdaten() {
               GK{NNBSP}5{' '}
               {s.building.gebaeudeklasse.confirmed
                 ? <ProvenanceChip provenance="vom Kunden bestätigt" />
-                : <span className="text-small text-text-secondary">
+                : <span className="a3-cap">
                     <span aria-hidden="true">▲ </span>
                     Prüfung erforderlich · Prüfauslöser: 5 Vollgeschosse · Δ{NNBSP}±{NNBSP}{catalog.internalConfig.gebaeudeklasseDeltaPp}{NNBSP}%
                   </span>}
@@ -337,7 +337,7 @@ function P3OffeneFragen() {
               ±{NNBSP}{p.uncertaintyPp}{NNBSP}% auf ±{NNBSP}{target}{NNBSP}%</>
           : <>Alle Fragen beantwortet · <UncertaintyBadge pp={p.uncertaintyPp} /></>}
       </h2>
-      <p className="mt-1 text-small text-text-secondary">
+      <p className="a3-cap mt-1">
         Nach Wirkung sortiert; Verengung in Prozentpunkten. Eine Option zu
         wählen verengt nichts — nur die Bestätigung des Kunden (D-19).
       </p>
@@ -431,7 +431,7 @@ function P4Annahmen({ setTab }: { setTab: (t: Tab) => void }) {
       <h2 className="text-heading-3 font-bold text-text-primary">
         Aktive Annahmen · {items.length}
       </h2>
-      <p className="mt-1 text-small text-text-secondary">
+      <p className="a3-cap mt-1">
         Texte stammen aus den Fallback-Regeln; das Wertfeld (z. B. die
         Gebäudeklasse) wird mit dem Projektwert belegt — der Regeltext nennt
         einen Beispielwert. Eine Annahme verschwindet, sobald der Wert

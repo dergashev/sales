@@ -30,7 +30,7 @@ function Specimen({ title, note, children }: {
   return (
     <section className="border border-border-default p-5">
       <h3 className="text-heading-3 font-bold text-text-primary">{title}</h3>
-      {note && <p className="mt-1 max-w-content text-small text-text-secondary">{note}</p>}
+      {note && <p className="a3-cap a3-lede mt-1">{note}</p>}
       <div className="mt-3">{children}</div>
     </section>
   )
@@ -47,7 +47,7 @@ export function Grundlagen({ fonts, cascade }: {
   return (
     <div className="px-7 py-6">
       <header className="border-b border-border-strong pb-4">
-        <p className="text-small text-text-secondary">QA · intern</p>
+        <p className="a3-cap">QA · intern</p>
         <h1 className="mt-1 text-heading-2 font-bold text-text-primary">Grundlagen</h1>
       </header>
 
@@ -90,7 +90,7 @@ export function Grundlagen({ fonts, cascade }: {
               <span aria-hidden="true">✗ </span>
               Statik_Auszug_Muster.jpg nicht lesbar: Auflösung zu gering
             </p>
-            <p className="mt-1 text-small text-text-secondary">
+            <p className="a3-cap mt-1">
               Werte aus dieser Datei fehlen · Mittel: Manuell erfassen
             </p>
           </div>

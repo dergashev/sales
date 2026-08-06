@@ -169,7 +169,7 @@ export function NumericField({
         <ProvenanceChip provenance={draft !== null ? 'wird bearbeitet' : provenance} />
       </div>
       {draft !== null && (
-        <p className="mt-2 text-small text-text-secondary">
+        <p className="a3-cap mt-2">
           Enter — vom Kunden bestätigt · Tab — manuell erfasst · Esc — verwerfen
         </p>
       )}

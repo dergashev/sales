@@ -46,7 +46,7 @@ export function Sidebar({ view, setView }: { view: View; setView: (v: View) => v
         <p className="text-body font-medium text-text-primary">
           Musterprojekt Nordfeld · Haus{NNBSP}A
         </p>
-        <p className="mt-1 text-small text-text-secondary">
+        <p className="a3-cap mt-1">
           {t('shell.variant')} · <span aria-hidden="true">○ </span>
           {t('shell.phase.vorbereitung')} ·{' '}
           {t(s.mode === 'praesentation' ? 'shell.mode.praesentation' : 'shell.mode.intern')}

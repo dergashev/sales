@@ -322,7 +322,7 @@ export function Switch({ label, checked, onChange, disabled, disabledReason, chi
       />
       <span className="text-body text-text-secondary">{checked ? 'Ein' : 'Aus'}</span>
       {disabled && disabledReason && (
-        <span className="text-small text-text-secondary">{disabledReason}</span>
+        <span className="a3-cap">{disabledReason}</span>
       )}
       {children}
     </div>

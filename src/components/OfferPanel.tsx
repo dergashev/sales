@@ -105,7 +105,7 @@ export function OfferPanel() {
             <span className="a3-hb-unit">{NNBSP}€</span>
           </p>
         </div>
-        <p className="mt-1 text-small text-text-secondary">
+        <p className="a3-cap mt-1">
           netto · <UncertaintyBadge pp={p.uncertaintyPp} />
           {' · '}
           {/* DC-21 moneyOrigin: цепочка драйверов + округление + runRef.
@@ -136,7 +136,7 @@ export function OfferPanel() {
         <p className="a3-hb-num numeric mt-4">
           {rateLabel(p.leadRate)}
         </p>
-        <p className="numeric mt-1 text-small text-text-secondary">
+        <p className="a3-cap numeric mt-1">
           {rateLabel(p.secondaryRateBgf)} · {rateLabel(p.perUnit)}
           {' · '}
           {/* DC-21 rateOrigin: знаменатель называет норматив, деление показано. */}
@@ -167,7 +167,7 @@ export function OfferPanel() {
           {p.duration.prefix && <span aria-hidden="true">{p.duration.prefix}{NNBSP}</span>}
           {p.duration.display}
         </p>
-        <p className="text-small text-text-secondary">
+        <p className="a3-cap">
           ab OKBP · Fertigstellung {formatDate(p.duration.completionDate)}
         </p>
 
@@ -418,7 +418,7 @@ export function OfferPanel() {
             Zeilen werden unabhängig gerundet; die Prüfung läuft über exakte Werte.
           </p>
           {notIncluded.length > 0 && (
-            <p className="mt-2 text-small text-text-secondary">
+            <p className="a3-cap mt-2">
               ▸ Nicht enthalten / noch offen:{' '}
               {notIncluded.map((g) =>
                 `${g.replace('_', NNBSP)}${NNBSP}${COVERAGE_SHORT[s.coverage[g]]}`).join(' · ')}
@@ -430,7 +430,7 @@ export function OfferPanel() {
       {/* ── Гейт: причина и следующий шаг рядом (DC-33) ──────────────────── */}
       <div className="border-t border-border-strong px-5 py-3">
         {blocked ? (
-          <div className="border-contrast border-border-warning p-3">
+          <div className="a3-warn-prep">
             <p className="text-small text-text-primary">
               <span aria-hidden="true">▲ </span>
               Kundenansicht gesperrt: Klassifikation nach MBO{NNBSP}§2 nicht
@@ -443,7 +443,7 @@ export function OfferPanel() {
             </div>
           </div>
         ) : (
-          <p className="text-small text-text-primary">
+          <p className="a3-nextstep">
             <span aria-hidden="true">✓ </span>
             Eintritts-Gate offen — Kundenansicht prüfen öffnet den Preflight.
           </p>
@@ -469,7 +469,7 @@ export function OfferPanel() {
           </button>
 
           {journalOpen && s.journal.length > 0 && (
-            <ol className="mt-2 overflow-y-auto border-t border-border-subtle pt-1"
+            <ol className="a3-journal-items mt-2 overflow-y-auto border-t border-border-subtle pt-1"
                 style={{ maxHeight: 'calc(var(--space-8) * 3)' }}>
               {[...s.journal].reverse().map((e) => (
                 <li key={e.seq} className="flex justify-between gap-2 py-1 text-small">

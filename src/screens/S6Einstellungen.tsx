@@ -35,7 +35,7 @@ export function S6Einstellungen() {
                 ? <><span aria-hidden="true">✓ </span>aktiviert</>
                 : <>Standard: aus (D-15) — Kalkulation nach Bundesdurchschnitt</>}
             </p>
-            <p className="mt-1 text-small text-text-secondary">
+            <p className="a3-cap mt-1">
               Wirkt auf den Bauwerk-Block (KG{NNBSP}300{NNBSP}+{NNBSP}400{NNBSP}+{NNBSP}UG),
               nicht auf Risikozuschläge. Der Zustand geht in den Snapshot des
               Angebots ein; im Kostentreiber steht der Faktor immer als Zeile —
