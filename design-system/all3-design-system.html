@@ -75,7 +75,11 @@
           <span class="a3-hb-cap">Bauzeit ab OKBP · fertig 19.11.2027</span>
         </div>
       </div>
-      <div class="a3-ghost-slot" data-dc="28"><span class="a3-ghost" id="ghost" aria-hidden="true"></span></div>
+      <div class="a3-ghost-slot" data-dc="28"><span class="a3-ghost" id="ghost" aria-hidden="true">
+        <span class="a3-ghost-line" id="ghostFuture"></span>
+        <span class="a3-ghost-line" id="ghostDelta"></span>
+        <span class="a3-ghost-line" id="ghostRun"></span>
+      </span></div>
       <div class="a3-delta-slot" data-dc="2"><span class="a3-delta a3-cost" id="waveDelta" aria-live="polite">EH 55 → EH 40 · ≈ +97.000 € (+2,55 %) gegenüber Variante Basis</span></div>
       <div class="a3-hb-sub"><span id="waveBgf" data-val="1591">≈ 1.591</span> €/m² BGF R+S  ·  <span id="waveWe" data-val="238615">≈ 238.615</span> € je Wohneinheit  ·  16 WE</div>
       <div class="a3-hb-sub">scenarioId DEMO-SC-01 · calculationRunId DEMO-RUN-0007 · exakt 3.817.835,00 €</div>
@@ -326,6 +330,7 @@
     </div>
 
     <h3>Optionen als Kacheln (DC-40) — Preis auf der Kachel, Geist beim Hover</h3>
+    <div class="a3-grid-host">
     <div class="a3-ogrid" data-dc="40">
       <button class="a3-okc-tile" type="button" aria-pressed="true" onclick="optToggle(this)" data-on="im Angebot" data-off="nicht enthalten">
         <svg width="48" height="32" viewBox="0 0 48 32"><rect x="4" y="24" width="40" height="6" fill="var(--color-text-primary)"/><rect x="8" y="6" width="9" height="6" fill="var(--color-text-primary)"/><rect x="19" y="6" width="9" height="6" fill="var(--color-text-primary)"/><rect x="30" y="6" width="9" height="6" fill="var(--color-text-primary)"/><rect x="8" y="14" width="9" height="6" fill="var(--color-text-primary)"/><rect x="19" y="14" width="9" height="6" fill="var(--color-text-primary)"/><rect x="30" y="14" width="9" height="6" fill="var(--color-text-primary)"/></svg>
@@ -339,6 +344,7 @@
       <button class="a3-okc-tile" type="button" disabled title="Bei GK 5 bauordnungsrechtlich erforderlich">
         <img class="a3-option-media" src="./assets/options/opt-kg460-ja.webp" alt="" decoding="async" onerror="this.hidden=true">
         <span class="a3-ok">✓</span><b>Personenaufzug</b><span class="a3-pd">inklusive</span><span class="a3-st">GK 5 — erforderlich</span></button>
+    </div>
     </div>
 
     <h3>E-Mail-Versand (DC-41) &amp; Drucken (DC-42)</h3>
@@ -512,11 +518,13 @@
     </div>
 
     <h3>Fassaden-Kacheln — Foto-Slot mit textlichem Fallback</h3>
+    <div class="a3-grid-host">
     <div class="a3-fgrid" id="fgrid" data-dc="20">
       <button class="a3-fk" type="button" aria-pressed="true" data-axes="Material: Putz · Farbwelt: hell · Dach: Flachdach" onclick="setFk(this)"><img class="a3-img" src="./assets/options/opt-fassade-plaster.webp" alt="" decoding="async" onerror="this.hidden=true"><span class="a3-ok">✓</span><span class="a3-nm">Putz hell · Flachdach</span></button>
       <button class="a3-fk" type="button" aria-pressed="false" data-axes="Material: Holz vertikal · Farbwelt: natur · Dach: Flachdach" onclick="setFk(this)"><img class="a3-img" src="./assets/options/opt-fassade-timber.webp" alt="" decoding="async" onerror="this.hidden=true"><span class="a3-ok">✓</span><span class="a3-nm">Holz vertikal · Flachdach</span></button>
       <button class="a3-fk" type="button" aria-pressed="false" data-axes="Material: Klinkerriemchen · Farbwelt: warm · Dach: Flachdach" onclick="setFk(this)"><span class="a3-ok">✓</span><span class="a3-nm">Klinkerriemchen · Flachdach</span></button>
       <button class="a3-fk" type="button" aria-pressed="false" data-axes="Material: Kombination · Sockel: dunkel · Dach: Flachdach" onclick="setFk(this)"><span class="a3-ok">✓</span><span class="a3-nm">Kombination · Sockel dunkel</span></button>
+    </div>
     </div>
     <div class="a3-faxes" id="faxes"><span class="a3-tag a3-orange">Material: Putz</span><span class="a3-tag">Farbwelt: hell</span><span class="a3-tag">Dach: Flachdach</span></div>
     <p class="a3-cap" style="margin-top:var(--space-3)">Generierte, projektneutrale Optionsfotos; die beiden textlichen Kacheln zeigen den stabilen Fallback ohne Media-Slot.</p>
@@ -931,10 +939,13 @@ function setStd(s){
 function ghostShow(target){
   if(target===std)return;
   var v=VALS[target],g=document.getElementById('ghost');
-  g.textContent='→ ≈ '+fmt.format(v.p)+' € · ≈ '+fmt.format(v.wfl)+' €/m² WFL nach WoFlV · bei '+v.n;
+  document.getElementById('ghostFuture').textContent='Vorschau · ≈ '+fmt.format(v.p)+' € · '+v.n;
+  document.getElementById('ghostDelta').textContent='≈ +97.000 € gegenüber Variante Basis';
+  document.getElementById('ghostRun').textContent='calculationRunId DEMO-RUN-0009';
+  g.removeAttribute('aria-hidden');
   g.classList.add('a3-show');
 }
-function ghostHide(){document.getElementById('ghost').classList.remove('a3-show')}
+function ghostHide(){var g=document.getElementById('ghost');g.classList.remove('a3-show');g.setAttribute('aria-hidden','true')}
 [['segKfw','kfw55'],['segEh','eh40']].forEach(function(pair){
   var b=document.getElementById(pair[0]);
   b.addEventListener('mouseenter',function(){ghostShow(pair[1])});

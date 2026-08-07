@@ -224,20 +224,22 @@ table.a3-kg,table.a3-cmp,table.a3-kx,table.a3-data-table,table.a3-driver-table,t
 tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 @keyframes a3-flash{from{background:var(--color-surface-canvas)}to{background:transparent}}
 
-/* DC-2 · PriceDeltaChip. Structure: .a3-delta with state .a3-show and exactly
-   one direction class .a3-saving|.a3-cost.
+/* DC-2 · PriceDeltaChip. Structure: .a3-delta-slot > .a3-delta with state
+   .a3-show and exactly one direction class .a3-saving|.a3-cost. The slot
+   reserves the two-line maximum before content appears (TASK-22 option 2).
    Classes: .a3-delta · .a3-show · .a3-saving · .a3-cost. */
-.a3-delta{display:inline-flex;gap:var(--space-2);align-items:center;border:var(--border-default);padding:var(--space-1) var(--space-3);font-size:var(--type-small-size);font-variant-numeric:tabular-nums;background:var(--color-surface-default);opacity:0;transform:translateY(var(--space-2));transition:opacity .2s var(--motion-easing-standard),transform .2s var(--motion-easing-standard)}
+.a3-delta{display:inline-flex;gap:var(--space-2);align-items:center;flex-wrap:wrap;max-width:100%;border:var(--border-default);padding:var(--space-1) var(--space-3);font-size:var(--type-small-size);line-height:var(--type-small-line);font-variant-numeric:tabular-nums;background:var(--color-surface-default);opacity:0;transform:translateY(var(--space-2));transition:opacity .2s var(--motion-easing-standard),transform .2s var(--motion-easing-standard)}
 .a3-delta.a3-show{opacity:1;transform:none}
 .a3-delta.a3-saving{border-left:var(--size-status-accent-width) solid var(--color-dataviz-category-2)}
 .a3-delta.a3-cost{border-left:var(--size-status-accent-width) solid var(--color-text-primary)}
 
 /* DC-28 / DC-38 · ConsequencePreviewGhost + Kennzahlen-Leiste. Structure:
-   .a3-ghost-slot > .a3-ghost[.a3-show]; .a3-heroband > .a3-hb; total root
+   .a3-ghost-slot > .a3-ghost[.a3-show] > up to four visual rows
+   .a3-ghost-line; .a3-heroband > .a3-hb; total root
    additionally has .a3-hb-total and contains .a3-hb-num + .a3-hb-unit +
    .a3-hb-cap/.a3-hb-sub. Один оранжевый герой,
    остальные — чёрные герои var(--space-7). КЛЮЧЕВАЯ метрика никогда не бывает сноской.
-   Classes: .a3-heroband · .a3-hb · .a3-hb-num · .a3-hb-unit · .a3-hb-total · .a3-hb-cap · .a3-hb-sub · .a3-ghost · .a3-show · .a3-ghost-slot · .a3-delta-slot · .a3-iv-sub · .a3-iv-bandbox · .a3-iv-band · .a3-fill · .a3-iv-edges. */
+   Classes: .a3-heroband · .a3-hb · .a3-hb-num · .a3-hb-unit · .a3-hb-total · .a3-hb-cap · .a3-hb-sub · .a3-ghost · .a3-ghost-line · .a3-show · .a3-ghost-slot · .a3-delta-slot · .a3-iv-sub · .a3-iv-bandbox · .a3-iv-band · .a3-fill · .a3-iv-edges. */
 .a3-heroband{display:flex;gap:var(--space-7);row-gap:var(--space-5);flex-wrap:wrap;align-items:baseline}
 .a3-hb{display:flex;flex-direction:column;gap:var(--border-width-strong);min-width:var(--measure-showcase-narrow);max-width:100%}
 .a3-hb-num{font-weight:var(--type-display-numeric-weight);font-size:var(--type-display-numeric-narrow-size);line-height:var(--type-display-numeric-narrow-line);font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -246,10 +248,11 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-hb-total .a3-hb-unit{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line)}
 .a3-hb-cap{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight);color:var(--color-text-secondary)}
 .a3-hb-sub{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);font-variant-numeric:tabular-nums}
-.a3-ghost-slot>.a3-ghost{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-body-weight);color:var(--color-text-secondary);font-variant-numeric:tabular-nums;opacity:0;transition:opacity var(--motion-reveal) var(--motion-easing-standard) var(--motion-delay-hover-preview)}
+.a3-ghost-slot>.a3-ghost{display:block;max-width:100%;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-body-weight);color:var(--color-text-secondary);font-variant-numeric:tabular-nums;opacity:0;transition:opacity var(--motion-reveal) var(--motion-easing-standard) var(--motion-delay-hover-preview)}
+.a3-ghost-line{display:block}
 .a3-ghost-slot>.a3-ghost.a3-show{opacity:1;transition-delay:.2s}
-.a3-ghost-slot{min-height:var(--size-ghost-row)}
-.a3-delta-slot{min-height:var(--size-delta-row)}
+.a3-ghost-slot{min-height:var(--size-ghost-row);max-width:100%}
+.a3-delta-slot{min-height:var(--size-delta-row);max-width:100%}
 .a3-iv-sub{display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap}
 .a3-iv-bandbox{flex:1;max-width:var(--measure-band)}
 .a3-iv-band{height:var(--space-2);background:var(--color-surface-canvas);position:relative}
@@ -390,15 +393,18 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-gantt-table th{border-bottom:var(--border-default);font-weight:var(--type-table-header-weight)}
 .a3-gantt-provenance{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);margin:var(--space-3) 0 0}
 
-/* DC-20 · FacadeOptionGrid. Structure: .a3-fgrid > button.a3-fk >
+/* DC-20 · FacadeOptionGrid. Structure: .a3-grid-host > .a3-fgrid >
+   button.a3-fk >
    optional img.a3-img + .a3-nm + .a3-ok; legacy material classes apply only
-   to .a3-img. A missing/broken photo removes the media slot; text remains.
-   Classes: .a3-fgrid · .a3-fk · .a3-img · .a3-nm · .a3-ok · .a3-f-putz · .a3-f-holz · .a3-f-klinker · .a3-f-kombi · .a3-f-win · .a3-faxes. */
-.a3-fgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-4);max-width:var(--measure-chart)}
-.a3-fk{border:var(--border-width-strong) solid transparent;outline:var(--border-hairline);cursor:pointer;position:relative;padding:0;background:none;font:inherit;transition:border-color .12s var(--motion-easing-standard);display:flex;flex-direction:column}
+   to .a3-img. A missing/broken photo or a tile narrower than
+   --measure-option-media-min removes the media slot; text remains.
+   Classes: .a3-grid-host · .a3-fgrid · .a3-fk · .a3-img · .a3-nm · .a3-ok · .a3-f-putz · .a3-f-holz · .a3-f-klinker · .a3-f-kombi · .a3-f-win · .a3-faxes. */
+.a3-grid-host{container:a3-grid-host / inline-size;inline-size:100%;min-inline-size:0;max-inline-size:100%}
+.a3-fgrid{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-4);inline-size:100%;min-inline-size:0;max-inline-size:100%}
+.a3-fk{container:a3-option-tile / inline-size;min-inline-size:0;border:var(--border-width-strong) solid transparent;outline:var(--border-hairline);cursor:pointer;position:relative;padding:0;background:none;font:inherit;transition:border-color .12s var(--motion-easing-standard);display:flex;flex-direction:column}
 .a3-fk:hover{border-color:var(--color-text-primary)}
 .a3-fk[aria-pressed="true"]{border-color:var(--color-selection-border)}
-.a3-fk .a3-img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background-size:auto;background-color:var(--color-surface-canvas)}
+.a3-fk .a3-img{display:none;width:100%;aspect-ratio:4/3;object-fit:cover;background-size:auto;background-color:var(--color-surface-canvas)}
 .a3-fk .a3-img[hidden]{display:none}
 .a3-fk .a3-nm{display:block;width:100%;margin-top:auto;font-size:var(--type-small-size);line-height:var(--type-small-line);padding:var(--space-2);text-align:left;font-weight:var(--type-small-weight);color:var(--color-text-primary)}
 .a3-fk .a3-ok{position:absolute;top:var(--space-2);right:var(--space-2);width:var(--size-icon-md);height:var(--size-icon-md);border-radius:50%;background:var(--color-selection-border);color:var(--color-text-inverse);font-size:var(--type-caption-size);font-weight:700;display:inline-flex;align-items:center;justify-content:center;opacity:0;transition:opacity var(--motion-reveal) var(--motion-easing-standard)}
@@ -477,10 +483,11 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-modal .a3-hidelist{border-left:var(--border-width-strong) solid var(--color-status-warning);background:var(--color-surface-subtle);padding:var(--space-2) var(--space-3);font-size:var(--type-small-size);line-height:var(--type-small-line);margin:var(--space-4) 0}
 
 /* DC-39 / DC-40 · type and option tiles. Structure: .a3-tgrid > button.a3-tk
-   or .a3-ogrid > button.a3-okc-tile; an option tile may start with
+   or .a3-grid-host > .a3-ogrid > button.a3-okc-tile; an option tile may start with
    img.a3-option-media, followed by .a3-ok + icon + labels. Missing/broken
-   media is hidden, leaving the complete text contract.
-   Classes: .a3-tgrid · .a3-tk · .a3-ok · .a3-kk · .a3-typline · .a3-ogrid · .a3-okc-tile · .a3-option-media · .a3-pd · .a3-st. */
+   media and media below the tile-width threshold are hidden, leaving the
+   complete text contract.
+   Classes: .a3-grid-host · .a3-tgrid · .a3-tk · .a3-ok · .a3-kk · .a3-typline · .a3-ogrid · .a3-okc-tile · .a3-option-media · .a3-pd · .a3-st. */
 .a3-tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--measure-showcase-tile),1fr));gap:var(--space-4);max-width:var(--measure-gallery)}
 .a3-tk{border:var(--border-width-strong) solid transparent;outline:var(--border-hairline);background:var(--color-surface-default);cursor:pointer;padding:var(--space-4);text-align:left;font:inherit;position:relative;transition:border-color .12s var(--motion-easing-standard)}
 .a3-tk:hover{border-color:var(--color-text-primary)}
@@ -491,9 +498,9 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-tk b{display:block;font-size:var(--type-label-size);line-height:var(--type-label-line);overflow-wrap:break-word;hyphens:auto;padding-right:var(--space-5)}
 .a3-tk .a3-kk{display:block;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight);color:var(--color-text-secondary)}
 .a3-typline{border-left:var(--border-width-strong) solid var(--color-text-primary);background:var(--color-surface-subtle);padding:var(--space-3) var(--space-4);margin-top:var(--space-4);font-size:var(--type-small-size);line-height:var(--type-small-line);max-width:var(--measure-gallery)}
-.a3-ogrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--measure-showcase-tile),1fr));gap:var(--space-4);max-width:var(--measure-option-grid)}
-.a3-okc-tile{border:var(--border-width-strong) solid transparent;outline:var(--border-hairline);background:var(--color-surface-default);cursor:pointer;padding:var(--space-4);text-align:left;font:inherit;position:relative;transition:border-color .12s var(--motion-easing-standard)}
-.a3-okc-tile .a3-option-media{display:block;width:calc(100% + var(--space-4) + var(--space-4));aspect-ratio:4/3;object-fit:cover;margin:calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) var(--space-3);background:var(--color-surface-canvas)}
+.a3-ogrid{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-4);inline-size:100%;min-inline-size:0;max-inline-size:100%}
+.a3-okc-tile{container:a3-option-tile / inline-size;min-inline-size:0;border:var(--border-width-strong) solid transparent;outline:var(--border-hairline);background:var(--color-surface-default);cursor:pointer;padding:var(--space-4);text-align:left;font:inherit;position:relative;transition:border-color .12s var(--motion-easing-standard)}
+.a3-okc-tile .a3-option-media{display:none;width:calc(100% + var(--space-4) + var(--space-4));aspect-ratio:4/3;object-fit:cover;margin:calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) var(--space-3);background:var(--color-surface-canvas)}
 .a3-okc-tile .a3-option-media[hidden]{display:none}
 .a3-okc-tile:hover{border-color:var(--color-text-primary)}
 .a3-okc-tile[aria-pressed="true"]{border-color:var(--color-selection-border)}
@@ -505,6 +512,22 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-okc-tile b{display:block;font-size:var(--type-label-size);line-height:var(--type-label-line);overflow-wrap:break-word;hyphens:auto;padding-right:var(--space-5)}
 .a3-okc-tile .a3-pd{display:block;font-size:var(--type-small-size);line-height:var(--type-small-line);font-variant-numeric:tabular-nums;color:var(--color-text-primary)}
 .a3-okc-tile .a3-st{display:block;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight);color:var(--color-text-secondary)}
+
+/* TASK-22 · host-width reflow. Breakpoints are capacities derived from the
+   provisional 15rem readable-media tile plus 1rem gaps: 2/3/4 columns.
+   Four is a ceiling. The viewport is deliberately absent from this contract. */
+@container a3-grid-host (min-width:31rem){
+  .a3-fgrid,.a3-ogrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@container a3-grid-host (min-width:47rem){
+  .a3-fgrid,.a3-ogrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@container a3-grid-host (min-width:63rem){
+  .a3-fgrid,.a3-ogrid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@container a3-option-tile (min-width:15rem){
+  .a3-fk .a3-img:not([hidden]),.a3-okc-tile .a3-option-media:not([hidden]){display:block}
+}
 
 /* DC-46 Umfang-Umschalter · DC-47 Komplex-Übersicht.
    Structure: .a3-scope > buttons; table.a3-kx > .a3-krow/.a3-ktotal;
@@ -658,7 +681,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    reduced motion; this block introduces no standalone component API.
    Classes: .a3-wrap · .a3-pnav · .a3-sheet · .a3-hero-title · .a3-t-h1 · .a3-t-hero ·
    .a3-hb-total · .a3-hb · .a3-hb-num · .a3-hb-unit · .a3-pal ·
-   .a3-fgrid · .a3-pal-ext · .a3-mode-wrap · .a3-tour-stage ·
+   .a3-pal-ext · .a3-mode-wrap · .a3-tour-stage ·
    .a3-print-card · .a3-scope-line-item · .a3-spec · .a3-journal-items ·
    .a3-sp-row · .a3-tabs · .a3-search-line · .a3-form-field · .a3-mailrow ·
    .a3-radio-segments · .a3-undo-spec · .a3-reveal · .a3-g-seg ·
@@ -672,7 +695,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
   .a3-hb-total .a3-hb-unit{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line)}
   .a3-hb:not(.a3-hb-total) .a3-hb-num{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);white-space:normal;overflow-wrap:anywhere}
   .a3-hb:not(.a3-hb-total) .a3-hb-unit{font-size:var(--type-small-size);line-height:var(--type-small-line)}
-  .a3-pal,.a3-fgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .a3-pal{grid-template-columns:repeat(2,minmax(0,1fr))}
   .a3-pal-ext{grid-template-columns:repeat(2,minmax(0,1fr))}
   .a3-mode-wrap,.a3-tour-stage,.a3-print-card,.a3-scope-line-item{grid-template-columns:1fr}
   .a3-spec{grid-template-columns:1fr}

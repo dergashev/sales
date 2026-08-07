@@ -328,9 +328,14 @@
   --size-status-glyph: 9px;
   --size-status-dot: 10px;
   --size-status-icon: 14px;
-  --size-ghost-row: 21px;
+  /* TASK-22 · host-owned reserve. DC-28 has three semantic rows
+     (future total, delta/baseline, run); the fourth visual line is reserved
+     for the longest DE/EN +35% wrap. The slot never grows after reveal. */
+  --size-ghost-row: calc(4 * var(--type-body-line));
   --size-chapter-marker: 22px;
-  --size-delta-row: 29px;
+  /* Two Small-text flex rows + their gap + vertical padding + border: the
+     highest allowed DC-2 state, not the one-line showcase specimen. */
+  --size-delta-row: calc(2 * var(--type-small-line) + var(--space-2) + 2 * var(--space-1) + 2 * var(--border-width-default));
   --size-switch-track: 36px;
   --size-progress-ring: 56px;
   --size-numeric-control: 76px;
@@ -338,6 +343,9 @@
   --measure-showcase-swatch: 96px;
   --measure-showcase-narrow: 150px;
   --measure-showcase-tile: 160px;
+  /* [provisional] TASK-22 measured media threshold. Below 15rem the card
+     remains complete and selectable, but its decorative 4:3 media is absent. */
+  --measure-option-media-min: 15rem;
   --measure-spec-label: 180px;
   --measure-form-control: 200px;
   --measure-conflict-column: 220px;

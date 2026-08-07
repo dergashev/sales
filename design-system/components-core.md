@@ -421,7 +421,7 @@ Skeleton, `aria-busy` на панели (SKELETON-001) · `empty` · `partial` �
 **Закрывает:** RADIO-001 · RADIO-002 · (семантическая половина OPTION-008 —
 взаимоисключающие опции)
 
-**Анатомия:** `fieldset` → `legend` → `group` → `card[]`:
+**Анатомия:** `fieldset.a3-grid-host` → `legend` → `group` → `card[]`:
 `<input type="radio">` (визуально скрыт, но фокусируем и в потоке) + `<label>` →
 `[mediaSlot <img>]` → `checkIndicator` (круг + ✓) → `title` (блочный элемент) →
 `description` (блочный) →
@@ -435,6 +435,12 @@ Skeleton, `aria-busy` на панели (SKELETON-001) · `empty` · `partial` �
 `tileGrid` (сетка карточек с последствием). Высота карточек в ряду выравнивается сеткой,
 чтобы длина слова не создавала визуального ранжирования (OPTION-010).
 
+**Инвариант хоста (TASK-22):** `tileGrid` всегда живёт в
+`.a3-grid-host{container-type:inline-size}`. Число колонок выбирают `@container`,
+а не viewport media query: 1 / 2 / 3 / 4, где четыре — потолок. Контейнер
+и каждый grid item имеют `min-inline-size:0`; сетка не может быть
+шире хоста. Ширина окна не входит в контракт компонента.
+
 **Фото-слот DC-20 / DC-40:** в `tileGrid` первым визуальным дочерним элементом карточки
 может быть `mediaSlot` 4:3 (`object-fit: cover`, прямые углы). DC-20
 `FacadeRenderTile` использует его вместо декоративного паттерна; DC-40 `OptionTile`
@@ -444,6 +450,10 @@ Skeleton, `aria-busy` на панели (SKELETON-001) · `empty` · `partial` �
 декоративно для accessibility (`alt=""`), потому что единственные носители смысла —
 `title`, `description`, цена/срок и состояние выбора. Ракурс внутри одной пары/группы
 сохраняется одинаковым; hover не раскрывает дополнительную информацию.
+`карточка` сама является size-container; медиа появляется только при
+inline-size плитки ≥ `--measure-option-media-min` (15 rem, `[provisional]`). Ниже
+порога медиа-слот не рендерится; текст, цена, статус, выбор и hit target
+остаются полными. Это порог плитки, а не окна и не сетки.
 
 **Состояния:**
 
@@ -491,7 +501,8 @@ Skeleton, `aria-busy` на панели (SKELETON-001) · `empty` · `partial` �
 `--color-action-disabled-bg/-text/-border` · `--color-text-primary` · `--color-text-secondary` ·
 `--type-label-size/-line/-weight` · `--type-small-size/-line/-weight` ·
 `--type-badge-status-size/-line/-weight` · `--space-2` · `--space-3` · `--space-4` ·
-`--size-icon-md` · `--size-hit-target-default` · `--motion-feedback` · `--enter-shift`.
+`--size-icon-md` · `--size-hit-target-default` · `--measure-option-media-min` ·
+`--motion-feedback` · `--enter-shift`.
 Визуальный размер индикатора выбора токеном не задан —
 **`[ADR-PENDING: нужен токен --size-control-indicator]`** (в README §3 указано 18 px,
 это значение вне шкалы отступов и без утверждения; LAYOUT-002 требует отдельного

@@ -510,6 +510,12 @@ DC-18 и DC-36 в матрице отсутствуют осознанно: у �
 `deltaSlot` (DC-2). Оба слота имеют зарезервированную высоту: появление превью или дельты
 не сдвигает вёрстку. Порядок героев фиксирован и не меняется при переносе строки
 (`METRIC-001`): цена → ставка → срок.
+Выбран TASK-22, вариант 2: слоты резервируют высоту самого высокого
+разрешённого состояния до его появления: ghost — четыре body-line
+(`--size-ghost-row`), delta — две small-line с row-gap, padding и border
+(`--size-delta-row`). Переполнение не обрезается и не скроллится: пятая
+строка ghost и третья строка delta не входят в контракт и должны быть
+сокращены автором контента или вынесены в детали.
 
 **Варианты — три со-главных героя (правило проекта 31):**
 
@@ -641,9 +647,13 @@ Preis?` (DC-44) в порядке чтения после значения.
 замороженного `ConfigurationProposal`
 **Уровень:** `ConfigurationProposal`
 
-**Анатомия:** `ghostSlot` (высота зарезервирована) → `prefix` `Vorschau ·` → `previewValue`
-`.numeric` → `previewDelta` → `contextRef` (`scenarioId`/`calculationRunId` preview-прогона).
-Слот стоит под полосой героев и показывает будущее **всех** изменяющихся героев одной строкой.
+**Анатомия:** `ghostSlot` (четыре визуальные body-line зарезервированы) →
+`ghostLine[futureTotal]` (`prefix` `Vorschau ·` + `previewValue`) →
+`ghostLine[previewDelta]` (дельта + baseline) → `ghostLine[contextRef]`
+(`scenarioId`/`calculationRunId` preview-прогона). Это три обязательные
+смысловые строки; четвёртая визуальная строка — резерв для одного переноса
+на длинном DE/EN +35%. Слот стоит под полосой героев и показывает будущее
+**всех** изменяющихся героев.
 
 **Варианты:** `hoverPreview` (наведение на опцию) · `focusPreview` (фокус на той же опции) ·
 `tapPreview` (touch: превью до подтверждения) — три пути к одному и тому же содержимому.
@@ -690,7 +700,7 @@ erneut anfordern`), повтор — по кнопке · `permission` — ро�
 **Токены:** `--color-text-secondary` (вторичный тон превью) · `--color-text-primary` ·
 `--color-data-changed` · `--type-small-size/-line/-weight` · `--type-delta-size/-line/-weight` ·
 `--space-2` · `--space-3` · `--font-numeric` · `--motion-reveal` · `--enter-shift` ·
-`--motion-easing-standard`.
+`--motion-easing-standard` · `--size-ghost-row`.
 
 **Запреты:**
 - hover как единственный путь к следствию — R-05, `A11Y-002`, `OPTION-009`, gate 8;
@@ -709,7 +719,8 @@ erneut anfordern`), повтор — по кнопке · `permission` — ро�
 
 **Анатомия:** `root <span>` → `fromTo` (`EH 55 → EH 40`) → `signedValue` `.numeric` → `unit` →
 `baselineRef` (`gegenüber DEMO-VV-0003`) → `[icon]` (вторичный носитель). Живёт в
-`deltaSlot` DC-38 с зарезервированной высотой.
+`deltaSlot` DC-38 с зарезервированной высотой двух visual lines. Однострочный
+чип не уменьшает слот; двухстрочный не увеличивает его.
 **Фикстурный образец:** `Energiestandard EH 55 → EH 40 · ≈ +97.000 € (+2,55 %) gegenüber
 DEMO-VV-0003` (`DEMO-SC-01`, `DEMO-RUN-0007 → DEMO-RUN-0009`, точное `+97.335,00 €`).
 В UI стандарт называется `EH 55` / `EH 40`; термин программы субсидирования допустим только
@@ -759,7 +770,8 @@ notApplicableReason: чип показывает уже совершившеес
 **Токены:** `--type-delta-size/-line/-weight` · `--color-text-primary` ·
 `--color-status-success` · `--color-data-changed` · `--color-surface-subtle` ·
 `--border-hairline` · `--space-1` · `--space-2` · `--font-numeric` · `--motion-reveal` ·
-`--enter-shift` · `--stagger-wave` · `--size-icon-sm` · `--size-hit-target-default`.
+`--enter-shift` · `--stagger-wave` · `--size-icon-sm` · `--size-hit-target-default` ·
+`--size-delta-row`.
 
 **Запреты:**
 - дельта без baseline, знака или единицы — R-19;
@@ -2615,11 +2627,15 @@ Gebäudezeilen ab`), последствие (клиентская выдача �
 (взаимоисключающие опции)
 **Уровень:** `Variant Version`
 
-**Анатомия:** `root` (checkbox-card или radio-card) → `icon` → `title` (блочный элемент) →
+**Анатомия:** `gridHost.a3-grid-host` → `grid.a3-ogrid` →
+`root` (checkbox-card или radio-card) → `[mediaSlot]` → `icon` → `title` (блочный элемент) →
 `priceDelta` (блочный элемент) → `stateBadge` (блочный элемент) → `dependencyRow` →
 `scopeRow` → `detailsButton` (отдельное действие) → `checkIndicator`.
 Каждая подпись — **блочный** элемент: инлайновые `<span>`-подписи склеивались в
 `PersonenaufzuginklusiveGK 5 — erforderlich` (§6.5).
+Хост объявляет inline-size container; 1/2/3/4 колонки выбираются по его
+ширине, а не по viewport. Медиа-слот включается только при ширине
+самой плитки не меньше `--measure-option-media-min`; ниже плитка остаётся текстовой.
 
 **Семантика (`OPTION-008`):** бинарная аддитивная опция — checkbox-card; взаимоисключающие —
 radio-card group; **семантика switch для плитки опции запрещена**. Действие «подробности» —
@@ -2695,7 +2711,7 @@ ausstehend`, закоммиченные формулировки недосту�
 `--type-small-size/-line/-weight` · `--type-badge-status-size/-line/-weight` ·
 `--type-table-numeric-size/-line/-weight` · `--font-numeric` · `--space-2` · `--space-3` ·
 `--space-4` · `--size-icon-md` · `--size-hit-target-default` · `--motion-feedback` ·
-`--motion-value-change`.
+`--motion-value-change` · `--measure-option-media-min`.
 Размер чек-индикатора: **`[ADR-PENDING: нужен токен --size-control-indicator]`**.
 Задержка призрака DC-28 на плитке:
 **`[ADR-PENDING: нужен токен --motion-delay-hover-preview]`**.
@@ -3025,10 +3041,13 @@ DC-35 для анализа не применяется никогда (`SKELETO
 **Строится из:** `RadioCardGroup` (взаимоисключающие оси) · `CheckboxCard` (аддитивные)
 **Уровень:** `Building`
 
-**Анатомия:** `tile` → `thumbnail` (4:3, проектная миниатюра с постоянной камерой и
+**Анатомия:** `gridHost.a3-grid-host` → `grid.a3-fgrid` → `tile` →
+`[thumbnail]` (4:3, проектная миниатюра с постоянной камерой и
 освещением) → `title` (блочный элемент) → `structuredValues` (блочные элементы) →
 `impactLabel` → `checkIndicator` → `previewAction`. Сетка — `minmax()`, не фиксированные
-ширины; заголовок — `overflow-wrap: break-word` плюс `hyphens: auto` при `lang`.
+ширины; колонки пересчитываются `@container` по ширине хоста, четыре — потолок.
+При ширине плитки < `--measure-option-media-min` thumbnail отсутствует, а текстовый контракт
+остаётся. Заголовок — `overflow-wrap: break-word` плюс `hyphens: auto` при `lang`.
 **Все плитки сравнивают одни и те же атрибуты (`FACADE-002`):** составное значение вида
 «комбинация с тёмным основанием» не заменяет атрибут кровли, который есть у остальных плиток.
 **Структурированные поля (`FACADE-003`):** материал, фасадная система, ориентация или рисунок,
@@ -4129,7 +4148,7 @@ Leistungen и Schnittstellenliste блокирована), средство (`Le
 | Д-4 | `[ADR-PENDING: --size-dataviz-bar-thickness]` | DC-19, DC-44 | толщина полосы Gantt и бара водопада | geometry test при 200 % zoom |
 | Д-5 | `[ADR-PENDING: --dataviz-pattern-category-1]` (и далее по числу категорий) | DC-19, DC-44 | узор категории для монохромной печати и forced-colors; цвет там не работает | печать в оттенках серого + forced-colors (gate 21, `COLOR-010`) |
 | Д-6 | `[ADR-PENDING: --size-progress-track-thickness]` | DC-10 | толщина indeterminate-полосы | geometry test + reduced-motion |
-| Д-7 | `[ADR-PENDING: --size-facade-tile-min-width]` | DC-20 | минимальная ширина плитки для `minmax()`; фиксированные ширины запрещены правилом 3a | reflow 320 px + самый длинный словарь (+35 %) |
+| Д-7 | `[ADR-PENDING: утвердить --measure-option-media-min]` | DC-20, DC-40 | TASK-22 ввёл операционный `[provisional]` порог 15 rem: он решает, когда 4:3 media исчезает, а не фиксирует ширину плитки; до ADR компоненты остаются `alpha` | host 300/640/1240 px + псевдолокализация +35 % |
 | Д-8 | `[ADR-PENDING: --size-sticky-offset]` | `DocumentationNav`, DC-13, DC-46 | высота липкой шапки; `scroll-margin-top` и липкий охват сейчас держатся совпадением двух независимых чисел | тест положения после перехода по якорю (`NAV-002`) |
 | Д-9 | `[ADR-PENDING: --type-print-body-size]`, `[ADR-PENDING: --type-print-body-line]` | DC-42 | печатная типографика: правило «кегль плюс `1 pt`» задаёт отношение, но ни один печатный кегль не утверждён | печатный лист: разрывы, повторяющиеся заголовки, отсутствие обрезки (`PRINT-002`) |
 | Д-10 | `[ADR-PENDING: --size-popover-max-width]` | DC-21 | максимальная ширина поповера в `ch`; ширина в пикселях запрещена правилом 3a | reflow 320 px, zoom 200 % |
