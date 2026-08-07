@@ -4,6 +4,7 @@ import { activeBuilding, useStore } from '../state/store'
 import { NNBSP } from '../engine/money'
 import { DiscountControl } from '../components/DiscountControl'
 import { Button, UncertaintyBadge } from '../components/primitives'
+import { useTx } from '../i18n'
 
 /**
  * S5 Export — артефакты, скидка и отправка.
@@ -39,6 +40,7 @@ const DELIVERY_SIMULATION_MS = 2500
 
 export function S5Export() {
   const s = useStore()
+  const tx = useTx()
   const p = s.projection()
   const [selected, setSelected] = useState<Set<string>>(
     new Set(ARTIFACTS.filter((a) => a.default).map((a) => a.id)),
@@ -88,7 +90,7 @@ export function S5Export() {
 
       <div className="grid gap-6 py-5 lg:grid-cols-2">
         <section aria-label="Artefakte und Rabatt">
-          <h2 className="text-heading-3 font-bold text-text-primary">Artefakte</h2>
+          <h2 className="text-heading-3 font-bold text-text-primary">{tx('Artefakte')}</h2>
           <ul className="mt-3">
             {ARTIFACTS.map((a) => (
               <li key={a.id} className="border-b border-border-subtle">
@@ -110,7 +112,7 @@ export function S5Export() {
             ))}
           </ul>
 
-          <h2 className="mt-6 text-heading-3 font-bold text-text-primary">Rabatt</h2>
+          <h2 className="mt-6 text-heading-3 font-bold text-text-primary">{tx('Rabatt')}</h2>
           <div className="mt-2">
             <DiscountControl
               totalExact={total}
@@ -123,7 +125,7 @@ export function S5Export() {
 
         <section aria-label="Versand">
           <h2 className="text-heading-3 font-bold text-text-primary">
-            Versand · Stufe: {stageLabel(stage)}
+            {tx('Versand')} · {tx('Stufe')}: {stageLabel(stage)}
           </h2>
 
           {stage === 'compose' && (
@@ -163,7 +165,7 @@ export function S5Export() {
               />
               <div className="mt-3">
                 <Button variant="primary" onClick={() => setStage('preflight')}>
-                  Weiter zum Preflight
+                  {tx('Weiter zum Preflight')}
                 </Button>
               </div>
             </div>
@@ -182,7 +184,7 @@ export function S5Export() {
                 </p>
               ))}
               <div className="mt-3">
-                <p className="text-small font-medium text-text-primary">Finale Prüfung</p>
+                <p className="text-small font-medium text-text-primary">{tx('Finale Prüfung')}</p>
                 <ul className="a3-preflight-list">
                   <li>✓ Anhänge: {selected.size} · Muster-Dateien des Prototyps, als clientSafe klassifiziert</li>
                   <li>✓ Aktive Annahmen: {activeBuilding(s).gebaeudeklasse.confirmed ? 1 : 2}</li>
@@ -199,7 +201,7 @@ export function S5Export() {
                 </ul>
               </div>
               <div className="mt-3 flex gap-2">
-                <Button onClick={() => setStage('compose')}>Zurück</Button>
+                <Button onClick={() => setStage('compose')}>{tx('Zurück')}</Button>
                 <Button
                   variant="primary"
                   disabled={blockers.length > 0}
@@ -238,7 +240,7 @@ export function S5Export() {
                 Sprache DE
               </p>
               <div className="mt-3 flex gap-2">
-                <Button onClick={() => setStage('preflight')}>Zurück</Button>
+                <Button onClick={() => setStage('preflight')}>{tx('Zurück')}</Button>
                 <Button
                   variant="primary"
                   disabled={!sendEnabled}
@@ -253,7 +255,7 @@ export function S5Export() {
                     setTimeout(() => setStage('zugestellt'), DELIVERY_SIMULATION_MS)
                   }}
                 >
-                  Bestätigen &amp; senden
+                  {tx('Bestätigen & senden')}
                 </Button>
               </div>
             </div>

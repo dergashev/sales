@@ -68,11 +68,11 @@ def covered_values() -> set[str]:
     de_block = gen.split('GENERATED_DE')[1].split('GENERATED_EN')[0]
     for m in re.finditer(r":\s*'((?:[^'\\]|\\.)*)'", de_block):
         vals.add(m.group(1).replace("\\'", "'").replace('\\n', '\n'))
-    # Локальный словарь de и ключи LOCAL_TEXT_EN.
-    for name in ('const de', 'LOCAL_TEXT_EN'):
-        block = idx.split(name)[1].split('\n}')[0]
-        for m in re.finditer(r"'((?:[^'\\]|\\.)*)'", block):
-            vals.add(m.group(1).replace("\\'", "'"))
+    # Локальный словарь de (LOCAL_TEXT_EN упразднён поставкой № 3:
+    # источник EN — только поставки Codex).
+    block = idx.split('const de')[1].split('\n}')[0]
+    for m in re.finditer(r"'((?:[^'\\]|\\.)*)'", block):
+        vals.add(m.group(1).replace("\\'", "'"))
     return vals
 
 

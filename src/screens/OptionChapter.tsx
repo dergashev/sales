@@ -146,7 +146,7 @@ export function OptionChapter({ groups, intro }: {
                   return {
                     value: c.value,
                     title: tx(c.label),
-                    description: `${c.basis} ${MARK}`,
+                    description: `${tx(c.basis)} ${MARK}`,
                     consequence: c.value === value
                       ? tx('aktuelle Auswahl')
                       : euro(rate.minus(current).mul(qty)),
@@ -171,7 +171,7 @@ export function OptionChapter({ groups, intro }: {
                       label: m.title,
                       consequence: m.consequence,
                       material: FACADE_PRESENTATION[m.value]!.material,
-                      axes: FACADE_PRESENTATION[m.value]!.axes,
+                      axes: FACADE_PRESENTATION[m.value]!.axes.map(tx),
                       disabled: m.disabled,
                       disabledReason: m.disabledReason,
                     }))}

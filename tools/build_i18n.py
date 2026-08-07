@@ -24,6 +24,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 SOURCES = [
     ROOT / 'docs/audit/verdicts/content/i18n-en-260806.md',
     ROOT / 'docs/audit/verdicts/content/i18n-en-2-260806.md',
+    ROOT / 'docs/audit/verdicts/content/i18n-en-3-260806.md',
 ]
 OUT = ROOT / 'src/i18n/generated.ts'
 

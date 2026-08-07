@@ -75,8 +75,7 @@ export function ScheduleGantt({ phases, finishISO, caption, provenance }: {
     return (
       <p className="a3-cap">
         <span aria-hidden="true">○ </span>
-        Keine Terminphasen im Modell — der Zeitplan erscheint, sobald das
-        ScheduleModel Phasen liefert.
+        {tx('Keine Terminphasen im Modell — der Zeitplan erscheint, sobald das ScheduleModel Phasen liefert.')}
       </p>
     )
   }
@@ -89,9 +88,7 @@ export function ScheduleGantt({ phases, finishISO, caption, provenance }: {
     return (
       <p className="a3-cap">
         <span aria-hidden="true">▲ </span>
-        Termindaten unvollständig — Beginn und Ende ergeben keinen
-        darstellbaren Zeitraum; die Terminansicht erscheint mit korrigiertem
-        ScheduleModel.
+        {tx('Termindaten unvollständig — Beginn und Ende ergeben keinen darstellbaren Zeitraum; die Terminansicht erscheint mit korrigiertem ScheduleModel.')}
       </p>
     )
   }

@@ -93,55 +93,18 @@ export function translate(key: MessageKey | string, lang: UiLanguage): string {
  * а не скрытый.
  */
 /**
- * Дополнение моста для строк, созданных ПОСЛЕ поставки Codex (перестройка
- * сценария 06.08 переименовала главы и добавила уровни). EN здесь — хром
- * интерфейса, не guidance (D-20 не нарушен); при следующем задании
- * копирайта эти строки уходят в поставку, а дополнение сокращается.
+ * Локального дополнения больше нет: поставка № 3 забрала все строки хрома
+ * (включая пять, где черновик Claude разошёлся с каноном терминологии, —
+ * канон победил: KG — неизменяемый DIN-идентификатор). Источник EN —
+ * ТОЛЬКО поставки Codex; появление новых строк между поставками честно
+ * остаётся немецким до следующего задания копирайта.
  */
-const LOCAL_TEXT_EN: Record<string, string> = {
-  'Gebäude & Umfang': 'Buildings & scope',
-  'Leistungen KG 300': 'Services CG 300',
-  'Technik KG 400': 'Building services CG 400',
-  'Energie & Zertifikate': 'Energy & certificates',
-  'Flächen im Detail': 'Areas in detail',
-  'Baunebenkosten KG 700': 'Incidental costs CG 700',
-  'Ausbau & Technik': 'Fit-out & services',
-  'Projektverständnis': 'Project understanding',
-  // Строки партий 1–2 ревью № 13 (созданы после поставки № 2) — уйдут в
-  // поставку № 3, дополнение сократится.
-  'Nächster Schritt': 'Next step',
-  'Varianten vergleichen': 'Compare options',
-  'Angebot prüfen und exportieren': 'Review and export offer',
-  'Im Angebot gewählt': 'Selected in this offer',
-  'Alle Filter zurücksetzen': 'Reset all filters',
-  'Analyse starten': 'Start analysis',
-  'Ansehen': 'View',
-  'Zur Opportunity-Karte': 'To the opportunity card',
-  'Keine Opportunity entspricht den Filtern.': 'No opportunity matches the filters.',
-  'Entfernen Sie einen Filter oben, um wieder Treffer zu sehen.':
-    'Remove a filter above to see results again.',
-  'Wurzel · alle Opportunities': 'Root · all opportunities',
-  'Vergleichsbasis': 'comparison base',
-  'in Arbeit': 'in progress',
-  'Tabellarische Terminansicht': 'Schedule as table',
-  'Einheit': 'Unit',
-  'Beginn': 'Start',
-  'Ende': 'End',
-  'Dauer': 'Duration',
-  'Abhängigkeit': 'Dependency',
-  'Gebäude im Angebot': 'Buildings in the offer',
-  'Finale Prüfung': 'Final check',
-  'nur Unterschiede': 'differences only',
-  'alle Zeilen anzeigen': 'show all rows',
-}
 
 const DE_TO_KEY = new Map(Object.entries(GENERATED_DE).map(([k, v]) => [v, k]))
 
 export function translateText(deText: string, lang: UiLanguage): string {
   if (lang !== 'en') return deText
   const trimmed = deText.trim()
-  const local = LOCAL_TEXT_EN[trimmed]
-  if (local) return local
   const key = DE_TO_KEY.get(trimmed)
   return key ? (GENERATED_EN[key] ?? deText) : deText
 }

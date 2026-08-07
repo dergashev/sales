@@ -139,11 +139,12 @@ function Card({ title, intro, children }: {
   children: ReactNode
 }) {
   const mode = useStore().mode
+  const tx = useTx()
   return (
     <section className="a3-sheet">
-      <h2 className="text-heading-3 font-bold text-text-primary">{title}</h2>
+      <h2 className="text-heading-3 font-bold text-text-primary">{tx(title)}</h2>
       {intro && mode === 'intern' && (
-        <p className="mt-2 max-w-content text-body text-text-secondary">{intro}</p>
+        <p className="mt-2 max-w-content text-body text-text-secondary">{tx(intro)}</p>
       )}
       <div className="mt-3">{children}</div>
     </section>

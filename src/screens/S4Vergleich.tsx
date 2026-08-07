@@ -200,14 +200,10 @@ export function S4Vergleich() {
       </div>
 
       <p className="mt-3 text-small text-text-muted">
-        Jede Spalte wird live aus der Konfiguration ihrer Option gerechnet —
-        es gibt keinen zweiten Zahlenbestand. Die Schätzunsicherheit gehört
-        der Option: sie verengt sich durch Bestätigungen, nicht durch
-        Options-Wahl (D-19).
+        {tx('Jede Spalte wird live aus der Konfiguration ihrer Option gerechnet — es gibt keinen zweiten Zahlenbestand. Die Schätzunsicherheit gehört der Option: sie verengt sich durch Bestätigungen, nicht durch Options-Wahl (D-19).')}
       </p>
       <p className="mt-2 text-small text-text-muted">
-        Rollen sind unabhängige Text-Badges: Deltas rechnen zur benannten
-        Vergleichsbasis (VARIANT-001, XSC-08).
+        {tx('Rollen sind unabhängige Text-Badges: Deltas rechnen zur benannten Vergleichsbasis (VARIANT-001, XSC-08).')}
       </p>
 
       {cols.length > 1 && (
