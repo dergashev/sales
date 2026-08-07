@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 80** · перевод есть, мост не подключён: 31
-· перевода нет (в поставку копирайта): 49
+**Всего 83** · перевод есть, мост не подключён: 31
+· перевода нет (в поставку копирайта): 52
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -47,6 +47,7 @@
 - . Die Preiswirkung erscheint sofort in der Angebotsspalte rechts und im Kostentreiber.
 - 200 im Angebot:
 - Ab GK 5 ist ein Personenaufzug erforderlich — die Wahl ist keine kaufmaennische Entscheidung
+- Alle Zahlen rechts gelten für den gesamten Komplex.
 - Bauantrag_Mappe_Muster.pdf · Baugrubenaushub im Leistungsverzeichnis
 - Bauantrag_Mappe_Muster.pdf · Holzbauweise im Erlaeuterungsbericht
 - Bauantrag_Mappe_Muster.pdf · Lueftungskonzept mit Waermerueckgewinnung
@@ -56,6 +57,7 @@
 - Drei Zustände, weil «nicht enthalten» eine Entscheidung ist und «noch offen» eine Lücke. Solange eine Lücke bleibt, weist das Angebot eine Zwischensumme der kalkulierten Positionen aus und keinen Gesamtpreis.
 - Einbaukueche und Erstausstattung je m² BGF R ⚙
 - Entscheidung, keine Lücke: die Summe bleibt vollständig
+- Gebäude
 - Gebäude ·
 - Gebäudedaten
 - Gebäudedaten DEMO-B-A bestätigt
@@ -80,6 +82,7 @@
 anbei erhalten Sie unser indikatives Angebot für das Musterprojekt Nordfeld.
 
 Mit freundlichen Grüßen
+- Umfang der Anzeige
 - Von oben nach unten: erst der Umfang, dann die Konstruktion, zuletzt die Oberfläche. Jede Antwort zeigt ihre Folge am Preis, bevor sie gewählt wird.
 - Wege, Stellplaetze im Freien, Bepflanzung je m² BGF R ⚙
 - Werte aus

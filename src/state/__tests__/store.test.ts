@@ -826,3 +826,45 @@ describe('Отправленный снапшот устаревает отно�
     expect(st().projection().result.total.exact.toFixed(2)).not.toBe(snap.totalExact)
   })
 })
+
+describe('Охват показа DC-46: сужает показ, но не состав оффера (правило 38)', () => {
+  const st = () => useStore.getState()
+
+  it('переключение охвата меняет числа, но не включённость зданий', () => {
+    st().toggleBuildingIncluded('DEMO-B-B')
+    const komplex = st().projection().result.total.exact
+    const included = { ...st().included }
+
+    st().setScope('DEMO-B-A')
+    const hausA = st().projection().result.total.exact
+    // Показ сузился: комплекс дороже одного здания.
+    expect(hausA.lt(komplex)).toBe(true)
+    // Состав предложения НЕ тронут: охват — не коммерческое решение.
+    expect(st().included).toEqual(included)
+
+    st().setScope(null)
+    expect(st().projection().result.total.exact.equals(komplex)).toBe(true)
+  })
+
+  it('охват на исключённое здание не даёт пустоты — показывается комплекс', () => {
+    st().setScope('DEMO-B-B')
+    // Второе здание в предложение не входит по умолчанию: устаревшее
+    // предпочтение показа не должно оставлять экран без чисел.
+    expect(st().projection().result.total.exact.toFixed(2)).toBe('3817835.00')
+  })
+
+  it('охват принадлежит Option: у соседней он свой', () => {
+    st().openOpportunity('DEMO-0001')
+    st().resolveWflConflict('customer')
+    st().confirmProjectParams()
+    st().createOption('A')
+    st().openOption('OPT-01')
+    st().setScope('DEMO-B-A')
+    st().openOpportunity('DEMO-0001')
+    st().createOption('B')
+    st().openOption('OPT-02')
+    expect(st().scopeBuildingId).toBeNull()
+    st().openOption('OPT-01')
+    expect(st().scopeBuildingId).toBe('DEMO-B-A')
+  })
+})

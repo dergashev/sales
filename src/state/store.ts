@@ -152,13 +152,20 @@ export type OptionConfig = {
   risikoAktiv: Record<string, boolean>
   openChapter: number
   besuchteKapitel: number[]
+  /**
+   * Охват показа (DC-46, правило 38): `null` — весь комплекс, иначе id
+   * здания. Это ПРЕДПОЧТЕНИЕ ПОКАЗА, а не состав предложения: `included`
+   * решает, что продаётся, охват — на что сейчас смотрят. Смешать их
+   * значило бы убирать здание из оффера кликом по вкладке.
+   */
+  scopeBuildingId: string | null
 }
 
 const OPTION_CONFIG_KEYS = [
   'buildings', 'activeBuildingId', 'included', 'buildingConfirmed',
   'kg300', 'kg300Provenance', 'kg700Mode', 'coverage', 'fields',
   'esConfirmed', 'regionalfaktorActive', 'risikoAktiv',
-  'openChapter', 'besuchteKapitel',
+  'openChapter', 'besuchteKapitel', 'scopeBuildingId',
 ] as const satisfies ReadonlyArray<keyof OptionConfig>
 
 /** Снять конфигурацию активной Option с плоского состояния. */
@@ -253,6 +260,7 @@ function defaultOptionConfig(): OptionConfig {
     // объявить непройденные шаги пройденными (ревью № 13, дефект 7).
     openChapter: 1,
     besuchteKapitel: [1],
+    scopeBuildingId: null,
   }
 }
 
@@ -405,6 +413,7 @@ type Store = {
    * сайдбаре выводится из него и из данных, а не из номера главы.
    */
   besuchteKapitel: number[]
+  scopeBuildingId: string | null
   /** Экран конвейера. UI-состояние: CTA глав ведут к сравнению и экспорту. */
   pipelineView: PipelineView
   /**
@@ -495,6 +504,8 @@ type Store = {
   /** Ворота выдачи: единственный путь во внешний профиль (DC-33). */
   setGateOpen: (v: boolean) => void
   setTourOpen: (v: boolean) => void
+  /** Переключить охват показа: null — весь комплекс (DC-46). */
+  setScope: (buildingId: string | null) => void
 }
 
 /**
@@ -532,6 +543,22 @@ function includedBuildings(
   s: Pick<Store, 'buildings' | 'included'>,
 ): BuildingInput[] {
   return Object.values(s.buildings).filter((b) => s.included[b.id])
+}
+
+/**
+ * Здания, попадающие в ПОКАЗ. Охват сужает показ, но не состав оффера:
+ * здание, выведенное из охвата, остаётся проданным — просто на него
+ * сейчас не смотрят (DC-46, правило 38).
+ */
+function scopedBuildings(
+  s: Pick<Store, 'buildings' | 'included' | 'scopeBuildingId'>,
+): BuildingInput[] {
+  const all = includedBuildings(s)
+  if (!s.scopeBuildingId) return all
+  const one = all.filter((b) => b.id === s.scopeBuildingId)
+  // Охват на исключённое здание — не ошибка, а устаревшее предпочтение:
+  // показываем комплекс, а не пустоту.
+  return one.length ? one : all
 }
 
 /**
@@ -592,10 +619,10 @@ function bgfSOf(id: string): Decimal {
 function computeProjection(
   s: Pick<Store, 'buildings' | 'activeBuildingId' | 'included' | 'coverage'
     | 'fields' | 'esConfirmed' | 'regionalfaktorActive' | 'kg300' | 'kg700Mode'
-    | 'risikoAktiv'>,
+    | 'risikoAktiv' | 'scopeBuildingId'>,
 ): Projection {
   const CATALOG = withRegionalFactor(s.regionalfaktorActive)
-  const list = includedBuildings(s)
+  const list = scopedBuildings(s)
   if (list.length === 0) {
     throw new Error('в предложении нет ни одного здания — проекции не существует')
   }
@@ -1337,6 +1364,8 @@ const store = createStore<Store>((set, get) => {
     setGateOpen: (v) => set({ gateOpen: v }),
 
     setTourOpen: (v) => set({ tourOpen: v }),
+
+    setScope: (buildingId) => set({ scopeBuildingId: buildingId }),
 
     setActiveBuilding: (id) => set({ activeBuildingId: id }),
 

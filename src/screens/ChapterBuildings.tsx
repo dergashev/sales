@@ -72,6 +72,75 @@ export function ChapterBuildings() {
 
   return (
     <div className="grid gap-5">
+      {/* Охват показа — DC-46. Структура экрана от него НЕ меняется:
+          меняются значения и подписи (правило 38). Он стоит первым,
+          потому что отвечает на вопрос «о чём сейчас числа», который
+          предшествует любому решению ниже. */}
+      <section className="a3-sheet">
+        <h2 className="text-heading-3 font-bold text-text-primary">
+          {tx('Umfang der Anzeige')}
+        </h2>
+        <div className="a3-scope mt-3" role="group" aria-label={tx('Umfang')}>
+          <button type="button" className="a3-total"
+                  aria-pressed={s.scopeBuildingId === null}
+                  onClick={() => s.setScope(null)}>
+            {tx('Gesamt')} · {includedCount}{NNBSP}
+            {includedCount === 1 ? tx('Gebäude') : tx('Gebäude (Plural)')}
+          </button>
+          {Object.values(s.buildings).filter((b) => s.included[b.id]).map((b) => (
+            <button key={b.id} type="button"
+                    aria-pressed={s.scopeBuildingId === b.id}
+                    onClick={() => s.setScope(b.id)}>
+              {b.id}
+            </button>
+          ))}
+        </div>
+        <p className="a3-cap mt-2">
+          {s.scopeBuildingId
+            ? tx('Alle Zahlen rechts gelten für dieses Gebäude. Das Angebot umfasst weiterhin alle eingeschlossenen Gebäude.')
+            : tx('Alle Zahlen rechts gelten für den gesamten Komplex.')}
+        </p>
+      </section>
+
+      {/* Таблица комплекса — DC-47: одна строка на здание, метрики рядом.
+          Она отвечает на вопрос «где деньги», который список включённости
+          не отвечал: включено/исключено видно, а сравнить нечем. */}
+      {includedCount > 1 && (
+        <section className="a3-sheet">
+          <h2 className="text-heading-3 font-bold text-text-primary">
+            {tx('Gebäude im Vergleich')}
+          </h2>
+          <div className="a3-tbl-scroll mt-3">
+            <table className="a3-kx">
+              <tbody>
+                <tr>
+                  <th>{tx('Gebäude')}</th>
+                  <th>{tx('Form')}</th>
+                  <th className="a3-num">BGF</th>
+                  <th className="a3-num">{tx('Energiestandard')}</th>
+                </tr>
+                {Object.values(s.buildings).filter((b) => s.included[b.id]).map((b) => (
+                  <tr key={b.id} className="a3-krow"
+                      onClick={() => s.setScope(b.id)}>
+                    <td>
+                      <span className="a3-gname">
+                        {b.id}
+                        {s.scopeBuildingId === b.id && (
+                          <span className="a3-dash">{tx('angezeigt')}</span>
+                        )}
+                      </span>
+                    </td>
+                    <td>{tx(FORM_LABEL[b.gebaeudeform])}</td>
+                    <td className="a3-num">{formatDE(b.bgfAboveGround, 2)}{NNBSP}m²</td>
+                    <td className="a3-num">{ES_LABEL[b.energiestandard]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
       {/* 1 · Какие здания входят в предложение. */}
       <section className="a3-sheet">
         <h2 className="text-heading-3 font-bold text-text-primary">
