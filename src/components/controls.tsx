@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { useTx } from '../i18n'
 
 /**
  * Контролы выбора по контрактам `design-system/components-core.md` §3:
@@ -56,9 +57,11 @@ export function SegmentedControl<T extends string>({
       `SegmentedControl: ${options.length} сегментов — при 4+ значениях контракт требует <select> (LOCALE-004)`,
     )
   }
+  const tx = useTx()
   const reasons = [
-    ...(disabled && disabledReason ? [disabledReason] : []),
-    ...options.filter((o) => o.disabled && o.disabledReason).map((o) => o.disabledReason!),
+    ...(disabled && disabledReason ? [tx(disabledReason)] : []),
+    ...options.filter((o) => o.disabled && o.disabledReason)
+      .map((o) => tx(o.disabledReason!)),
   ]
 
   return (
@@ -168,6 +171,7 @@ export function RadioCardGroup<T extends string>({
   legendHidden?: boolean
 }) {
   const name = useId()
+  const tx = useTx()
   const previewTimer = useRef<ReturnType<typeof setTimeout>>()
   const previewStart = (v: T) => {
     clearTimeout(previewTimer.current)
@@ -285,7 +289,7 @@ export function RadioCardGroup<T extends string>({
               )}
               {o.disabled && o.disabledReason && (
                 <span id={`${name}-${o.value}-constraint`} className="a3-st">
-                  Nicht verfügbar · {o.disabledReason}
+                  {tx('Nicht verfügbar')} · {tx(o.disabledReason)}
                 </span>
               )}
             </label>

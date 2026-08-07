@@ -113,7 +113,7 @@ export function S5Export() {
                     className="h-4 w-4 accent-[color:var(--color-selection-border)]"
                   />
                   {a.label}
-                  <span className="ml-auto text-small text-text-muted">Muster</span>
+                  <span className="ml-auto text-small text-text-muted">{tx('Muster')}</span>
                 </label>
               </li>
             ))}
@@ -142,12 +142,10 @@ export function S5Export() {
               <div className="a3-mailrow">
                 <span className="a3-lb">An</span>
                 <span className="a3-chip-src">
-                  <span aria-hidden="true" className="a3-dot" />
-                  kontakt@beispiel-entwickler.example · aus HubSpot
-                </span>
+                  <span aria-hidden="true" className="a3-dot" />{tx('kontakt@beispiel-entwickler.example · aus HubSpot')}</span>
               </div>
               <div className="a3-mailrow">
-                <span className="a3-lb">Betreff</span>
+                <span className="a3-lb">{tx('Betreff')}</span>
                 <input
                   value={`Indikatives Angebot – ${s.options.find((o) => o.id === s.activeOptionId)?.name ?? 'Musterprojekt Nordfeld'}`}
                   readOnly
@@ -155,12 +153,12 @@ export function S5Export() {
                 />
               </div>
               <div className="a3-mailrow">
-                <span className="a3-lb">Anlagen</span>
+                <span className="a3-lb">{tx('Anlagen')}</span>
                 {ARTIFACTS.filter((a) => selected.has(a.id)).map((a) => (
                   <span key={a.id} className="a3-tag a3-green">{a.label} · Muster</span>
                 ))}
                 {selected.size === 0 && (
-                  <span className="a3-cap">keine — links auswählen</span>
+                  <span className="a3-cap">{tx('keine — links auswählen')}</span>
                 )}
               </div>
               <textarea
@@ -196,14 +194,13 @@ export function S5Export() {
                   <li>✓ Anhänge: {selected.size} · Muster-Dateien des Prototyps, als clientSafe klassifiziert</li>
                   <li>✓ Aktive Annahmen: {activeBuilding(s).gebaeudeklasse.confirmed ? 1 : 2}</li>
                   <li><UncertaintyBadge pp={p.uncertaintyPp} /></li>
-                  <li>✓ Sprache: DE · vollständig</li>
+                  <li>{tx('✓ Sprache: DE · vollständig')}</li>
                   {/* Рекомендация G6-gate (правило 11/D-16): пункт чек-листа,
                       не запрет — плотность остаётся выбором пользователя. */}
                   <li>
                     {s.density === 'kompakt'
-                      ? <>▲ Dichte: Kompakt — vor dem Teilen des Bildschirms
-                          wird Komfortabel empfohlen</>
-                      : <>✓ Dichte: Komfortabel</>}
+                      ? <>{tx('▲ Dichte: Kompakt — vor dem Teilen des Bildschirms wird Komfortabel empfohlen')}</>
+                      : <>{tx('✓ Dichte: Komfortabel')}</>}
                   </li>
                 </ul>
               </div>
@@ -220,9 +217,7 @@ export function S5Export() {
               </div>
               {blockers.length > 0 && (
                 <div className="mt-2">
-                  <Button onClick={() => s.confirmGebaeudeklasse()}>
-                    Nächster Schritt: Klassifikation bestätigen
-                  </Button>
+                  <Button onClick={() => s.confirmGebaeudeklasse()}>{tx('Nächster Schritt: Klassifikation bestätigen')}</Button>
                 </div>
               )}
             </div>
@@ -237,8 +232,7 @@ export function S5Export() {
                 <b>{s.options.find((o) => o.id === s.activeOptionId)?.name ?? 'Musterprojekt Nordfeld'}</b>
                 <hr />
                 {p.result.totalLabel}<br />
-                <b>{p.result.total.prefix ? `${p.result.total.prefix}${NNBSP}` : ''}{p.result.total.display}{NNBSP}€</b><br /><br />
-                Preisstand 08/2026<br />
+                <b>{p.result.total.prefix ? `${p.result.total.prefix}${NNBSP}` : ''}{p.result.total.display}{NNBSP}€</b><br /><br />{tx('Preisstand 08/2026')}<br />
                 Angebotsgültigkeit: Musterangabe
                 {s.mode === 'intern' && <><br />DEMO-RUN-0007</>}
               </div>
@@ -272,8 +266,8 @@ export function S5Export() {
             <div className="mt-3 border border-border-default p-3">
               <p className="text-body text-text-primary">
                 {stage === 'gesendet'
-                  ? <><span aria-hidden="true">◌ </span>Gesendet — Zustellung ausstehend</>
-                  : <><span aria-hidden="true">✓ </span>Zugestellt (simulierte Zustellbestätigung)</>}
+                  ? <><span aria-hidden="true">◌ </span>{tx('Gesendet — Zustellung ausstehend')}</>
+                  : <><span aria-hidden="true">✓ </span>{tx('Zugestellt (simulierte Zustellbestätigung)')}</>}
               </p>
               <p className="a3-cap mt-1">
                 «Gesendet» und «Zugestellt» sind zwei Zustände: der zweite
@@ -320,9 +314,7 @@ export function S5Export() {
               иначе список расходится с тем, что произошло. */}
           {stage === 'zugestellt' && (
             <div className="a3-recap mt-4">
-              <h3 className="text-heading-3 font-bold text-text-primary">
-                Termin-Zusammenfassung
-              </h3>
+              <h3 className="text-heading-3 font-bold text-text-primary">{tx('Termin-Zusammenfassung')}</h3>
               <ul className="mt-2">
                 {s.journal
                   .filter((e) => e.deltaExact !== null
@@ -339,10 +331,7 @@ export function S5Export() {
                   </li>
                 ))}
                 <li className="a3-cap">
-                  <span aria-hidden="true">→ </span>
-                  Nächster Schritt: Rückmeldung des Kunden abwarten; der
-                  Snapshot bleibt unverändert und bleibt die Vergleichsbasis.
-                </li>
+                  <span aria-hidden="true">→ </span>{tx('Nächster Schritt: Rückmeldung des Kunden abwarten; der Snapshot bleibt unverändert und bleibt die Vergleichsbasis.')}</li>
               </ul>
             </div>
           )}

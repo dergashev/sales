@@ -44,12 +44,13 @@ const ES_LABEL: Record<BuildingInput['energiestandard'], string> = {
 function Row({ label, value, unit, note }: {
   label: string; value: string | null; unit?: string; note?: string
 }) {
+  const tx = useTx()
   return (
     <tr className="border-b border-border-subtle">
       <th scope="row" className="a3-cap py-1 pr-4 text-left">{label}</th>
       <td className="numeric py-1 text-right text-body text-text-primary">
         {value === null
-          ? <span className="a3-cap">nicht erfasst</span>
+          ? <span className="a3-cap">{tx('nicht erfasst')}</span>
           : <>{value}{unit ? `${NNBSP}${unit}` : ''}{note ? `${NNBSP}${MARK}` : ''}</>}
       </td>
     </tr>
@@ -77,10 +78,7 @@ export function ChapterBuildings() {
           {tx('Gebäude im Angebot')} · {includedCount} von {Object.keys(s.buildings).length}
         </h2>
         {s.mode === 'intern' && (
-          <p className="a3-cap a3-lede mt-2">
-            Zuerst der Umfang, dann die Ausstattung: ein Gebäude, das später
-            herausfällt, nimmt die ganze Arbeit an seinen Optionen mit.
-          </p>
+          <p className="a3-cap a3-lede mt-2">{tx('Zuerst der Umfang, dann die Ausstattung: ein Gebäude, das später herausfällt, nimmt die ganze Arbeit an seinen Optionen mit.')}</p>
         )}
         <ul className="mt-3">
           {Object.values(s.buildings).map((b) => {
@@ -90,9 +88,9 @@ export function ChapterBuildings() {
               <li key={b.id}
                   className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle py-3">
                 <span className="text-body text-text-primary">
-                  {b.id} · {FORM_LABEL[b.gebaeudeform]}
+                  {b.id} · {tx(FORM_LABEL[b.gebaeudeform])}
                   {s.buildingConfirmed[b.id] && (
-                    <span className="a3-cap"> · <span aria-hidden="true">✓ </span>bestätigt</span>
+                    <span className="a3-cap"> · <span aria-hidden="true">✓ </span>{tx('bestätigt')}</span>
                   )}
                 </span>
                 <span className="a3-row">
@@ -116,10 +114,7 @@ export function ChapterBuildings() {
           })}
         </ul>
         {lastOne && (
-          <p className="a3-cap mt-2">
-            Das letzte eingeschlossene Gebäude bleibt im Angebot: ohne Gebäude
-            gibt es keine Berechnungsbasis und damit keinen Preis.
-          </p>
+          <p className="a3-cap mt-2">{tx('Das letzte eingeschlossene Gebäude bleibt im Angebot: ohne Gebäude gibt es keine Berechnungsbasis und damit keinen Preis.')}</p>
         )}
       </section>
 
@@ -167,17 +162,13 @@ export function ChapterBuildings() {
           {tx('Einstufung')} · {active.id}
         </h2>
         {s.mode === 'intern' && (
-          <p className="a3-cap a3-lede mt-2">
-            Drei getrennte Achsen statt eines Sammelbegriffs: die Gebäudeform
-            gehört zum Gebäude, Klasse und Energiestandard werden geprüft und
-            bestätigt. Ein Gebäude mit zwei Nutzungen hat keinen einen Typ.
-          </p>
+          <p className="a3-cap a3-lede mt-2">{tx('Drei getrennte Achsen statt eines Sammelbegriffs: die Gebäudeform gehört zum Gebäude, Klasse und Energiestandard werden geprüft und bestätigt. Ein Gebäude mit zwei Nutzungen hat keinen einen Typ.')}</p>
         )}
 
         <div className="mt-3">
-          <p className="a3-cap">Gebäudeform</p>
+          <p className="a3-cap">{tx('Gebäudeform')}</p>
           <p className="mt-1 text-body text-text-primary">
-            {FORM_LABEL[active.gebaeudeform]}
+            {tx(FORM_LABEL[active.gebaeudeform])}
             <span className="a3-cap"> · {tx('aus der Dokumentation übernommen')}</span>
           </p>
         </div>

@@ -177,7 +177,7 @@ export function OptionChapter({ groups, intro }: {
     <div className="grid gap-5">
       {s.mode === 'intern' && (
         <p className="a3-cap a3-lede">
-          {intro}
+          {tx(intro)}
         </p>
       )}
 

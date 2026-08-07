@@ -169,6 +169,7 @@ function Card({ title, intro, children }: {
  */
 function ChapterUmfang() {
   const s = useStore()
+  const tx = useTx()
   const b = activeBuilding(s)
   const p = s.projection()
   const decidable: CostGroup[] = ['KG_200', 'KG_500', 'KG_600', 'KG_800']
@@ -233,17 +234,14 @@ function ChapterUmfang() {
               <li key={r.code + ('groups' in r ? r.groups.join() : '')}
                   className="a3-cap">
                 <span aria-hidden="true">○ </span>
-                {incompleteReasonText(r, s.mode)}
+                {tx(incompleteReasonText(r, s.mode))}
               </li>
             ))}
           </ul>
         )}
         {p.result.completeness === 'complete' && (
           <p className="a3-cap mt-2">
-            <span aria-hidden="true">✓ </span>
-            Alle Deckungsentscheidungen getroffen und keine offenen
-            wesentlichen Punkte — das Angebot weist einen Gesamtpreis aus.
-          </p>
+            <span aria-hidden="true">✓ </span>{tx('Alle Deckungsentscheidungen getroffen und keine offenen wesentlichen Punkte — das Angebot weist einen Gesamtpreis aus.')}</p>
         )}
       </Card>
     </div>
@@ -308,6 +306,7 @@ function ChapterFlaechen() {
 }
 
 function ChapterEnergie() {
+  const tx = useTx()
   const s = useStore()
   const LABEL_ES: Record<BuildingInput['energiestandard'], string> = {
     GEG: 'GEG-Standard', EH_55: `Effizienzhaus${NNBSP}55`, EH_40: `Effizienzhaus${NNBSP}40`,
@@ -336,12 +335,8 @@ function ChapterEnergie() {
         />
         {!s.esConfirmed && (
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-3">
-            <p className="a3-cap">
-              Standard gewählt, vom Kunden noch nicht bestätigt — Band unverändert.
-            </p>
-            <Button onClick={() => s.confirmEnergiestandardAnswer()}>
-              Vom Kunden bestätigt
-            </Button>
+            <p className="a3-cap">{tx('Standard gewählt, vom Kunden noch nicht bestätigt — Band unverändert.')}</p>
+            <Button onClick={() => s.confirmEnergiestandardAnswer()}>{tx('Vom Kunden bestätigt')}</Button>
           </div>
         )}
         {s.esConfirmed && (
@@ -440,6 +435,7 @@ function ChapterTermine() {
  * (правило 11), а не показывается свёрнутой.
  */
 function ChapterKg700() {
+  const tx = useTx()
   const s = useStore()
   const p = s.projection()
 
@@ -447,10 +443,7 @@ function ChapterKg700() {
     return (
       <div className="a3-sheet">
         <p className="text-body text-text-secondary">
-          <span aria-hidden="true">○ </span>
-          Die Berechnungsart der Baunebenkosten ist eine interne Einstellung
-          und im Präsentationsmodus nicht verfügbar.
-        </p>
+          <span aria-hidden="true">○ </span>{tx('Die Berechnungsart der Baunebenkosten ist eine interne Einstellung und im Präsentationsmodus nicht verfügbar.')}</p>
         <p className="a3-cap mt-2">
           Für den Kunden gilt unverändert: KG{NNBSP}700 ist im Angebot
           enthalten, ihr Anteil steht in der Kostenübersicht.
@@ -586,17 +579,12 @@ function ChapterBaugrund() {
         {/* Пустота названа с источником (правило 30): факта нет в
             документации, и это не то же самое, что «его нет». */}
         <p className="a3-cap">
-          <span aria-hidden="true">○ </span>
-          Die Dokumentation der Opportunity enthält keine Angaben zur
-          Erschließung — kein Wert wird angenommen.
-        </p>
+          <span aria-hidden="true">○ </span>{tx('Die Dokumentation der Opportunity enthält keine Angaben zur Erschließung — kein Wert wird angenommen.')}</p>
         <p className="mt-3 text-body text-text-primary">
           KG{NNBSP}200 im Angebot: {COVERAGE_LABEL[kg200]}
         </p>
         <div className="mt-2">
-          <Button onClick={() => s.openChapterAt(3)}>
-            Zu Kapitel 3 · Leistungsabgrenzung
-          </Button>
+          <Button onClick={() => s.openChapterAt(3)}>{tx('Zu Kapitel 3 · Leistungsabgrenzung')}</Button>
         </div>
       </Card>
     </div>
@@ -604,17 +592,14 @@ function ChapterBaugrund() {
 }
 
 function ChapterParked({ title }: { title: string }) {
+  const tx = useTx()
   return (
     <div className="a3-sheet">
       <p className="text-body text-text-primary">
         <span aria-hidden="true">○ </span>
         Kapitel «{title}» ist im Prototyp nicht ausgearbeitet.
       </p>
-      <p className="mt-2 max-w-content text-small text-text-secondary">
-        Die Kalkulation der Fixture hängt an den Kapiteln 2–4; dieses Kapitel
-        zeigt im Prototyp bewusst keinen erfundenen Inhalt. Der volle
-        Kapitelumfang ist in der Screen-Map spezifiziert.
-      </p>
+      <p className="mt-2 max-w-content text-small text-text-secondary">{tx('Die Kalkulation der Fixture hängt an den Kapiteln 2–4; dieses Kapitel zeigt im Prototyp bewusst keinen erfundenen Inhalt. Der volle Kapitelumfang ist in der Screen-Map spezifiziert.')}</p>
     </div>
   )
 }

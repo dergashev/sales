@@ -1,6 +1,7 @@
 import { forwardRef, useId, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Decimal } from 'decimal.js'
 import { formatDE, NNBSP } from '../engine/money'
+import { useTx } from '../i18n'
 
 /**
  * Примитивы по контрактам `design-system/components-core.md`.
@@ -90,6 +91,11 @@ export const Button = forwardRef<HTMLButtonElement, {
 }, ref) {
   const look = variant === 'primary' ? '' : variant === 'ghost' ? 'a3-ghost' : 'a3-sec'
   const reasonId = useId()
+  // Причина блокировки — такой же текст интерфейса, как подпись кнопки
+  // (D-24): она проходит через мост здесь, а не в каждом из десятков
+  // мест вызова, иначе перевод забывался бы по одному.
+  const tx = useTx()
+  const reason = disabledReason ? tx(disabledReason) : undefined
   const btn = (
     <button
       ref={ref}
@@ -98,8 +104,8 @@ export const Button = forwardRef<HTMLButtonElement, {
       // aria-disabled, а не disabled: заблокированная кнопка не должна терять
       // фокус, иначе причина блокировки недостижима с клавиатуры.
       aria-disabled={disabled || undefined}
-      aria-describedby={disabled && disabledReason ? reasonId : undefined}
-      title={disabled ? disabledReason : undefined}
+      aria-describedby={disabled && reason ? reasonId : undefined}
+      title={disabled ? reason : undefined}
       onClickCapture={(e) => { if (disabled) { e.stopPropagation(); e.preventDefault() } }}
       className={`a3-btn ${look} ${FOCUS}`}
       {...rest}
@@ -109,12 +115,12 @@ export const Button = forwardRef<HTMLButtonElement, {
   )
   // Причина блокировки стоит В ПОРЯДКЕ ЧТЕНИЯ и связана aria-describedby
   // (ревью № 13, дефект 12): title — дополнение, а не носитель.
-  if (!disabled || !disabledReason) return btn
+  if (!disabled || !reason) return btn
   return (
     <span className="inline-flex max-w-full flex-col gap-1">
       {btn}
       <span id={reasonId} className="text-small text-text-secondary">
-        {disabledReason}
+        {reason}
       </span>
     </span>
   )

@@ -39,12 +39,13 @@ function Metric({ label, value, unit, note }: {
   /** Заполнено только у выведенных значений: пометка приходит из данных. */
   note?: string
 }) {
+  const tx = useTx()
   return (
     <div className="border-b border-border-subtle py-2">
       <span className="a3-cap block">{label}</span>
       <span className="numeric block text-body text-text-primary">
         {value === null
-          ? <span className="text-text-secondary">nicht erfasst</span>
+          ? <span className="text-text-secondary">{tx('nicht erfasst')}</span>
           : <>{value}{unit ? `${NNBSP}${unit}` : ''}{note ? `${NNBSP}${MARK}` : ''}</>}
       </span>
       {note && <span className="a3-cap block">{DERIVED} · {note}</span>}
@@ -109,9 +110,7 @@ export function OpportunityCard() {
     return (
       <div>
         <div className="px-7 pt-5">
-          <Button onClick={() => setShowVorbereitung(false)}>
-            ← Zur Opportunity-Übersicht
-          </Button>
+          <Button onClick={() => setShowVorbereitung(false)}>{tx('← Zur Opportunity-Übersicht')}</Button>
         </div>
         <S2Vorbereitung openKonfigurator={() => {
           setShowVorbereitung(false)
@@ -154,9 +153,7 @@ export function OpportunityCard() {
         {konfliktOffen ? (
           <div className="a3-konflikt mt-3">
             <p className="text-body text-text-primary">
-              <span aria-hidden="true">▲ </span>
-              Wohnfläche WFL nach WoFlV: zwei Kandidaten.
-            </p>
+              <span aria-hidden="true">▲ </span>{tx('Wohnfläche WFL nach WoFlV: zwei Kandidaten.')}</p>
             {/* Кандидаты — `.a3-kv` контракта DC-32: пара «источник →
                 значение» в ряд, а не список абзацев. Значения стоят рядом
                 именно потому, что решение принимается их сравнением. */}
@@ -171,26 +168,15 @@ export function OpportunityCard() {
                 </span>
               ))}
             </div>
-            <p className="a3-cap mt-2">
-              Folge der Wahl: nur der Nenner der Leitkennzahl ändert sich, die
-              Zwischensumme der kalkulierten Positionen bleibt gleich. Der
-              nicht gewählte Kandidat bleibt als Alternative nachvollziehbar.
-            </p>
+            <p className="a3-cap mt-2">{tx('Folge der Wahl: nur der Nenner der Leitkennzahl ändert sich, die Zwischensumme der kalkulierten Positionen bleibt gleich. Der nicht gewählte Kandidat bleibt als Alternative nachvollziehbar.')}</p>
             <div className="a3-row mt-3">
-              <Button variant="primary" onClick={() => s.resolveWflConflict('customer')}>
-                Kundenwert übernehmen
-              </Button>
-              <Button onClick={() => s.resolveWflConflict('document')}>
-                Dokumentwert beibehalten
-              </Button>
+              <Button variant="primary" onClick={() => s.resolveWflConflict('customer')}>{tx('Kundenwert übernehmen')}</Button>
+              <Button onClick={() => s.resolveWflConflict('document')}>{tx('Dokumentwert beibehalten')}</Button>
             </div>
           </div>
         ) : (
           <p className="a3-cap mt-2">
-            <span aria-hidden="true">✓ </span>
-            Alle Konflikte entschieden. Die nicht gewählte Alternative bleibt
-            im Journal nachvollziehbar.
-          </p>
+            <span aria-hidden="true">✓ </span>{tx('Alle Konflikte entschieden. Die nicht gewählte Alternative bleibt im Journal nachvollziehbar.')}</p>
         )}
       </section>
 
@@ -215,24 +201,18 @@ export function OpportunityCard() {
         </div>
         {!s.projectParamsConfirmed && (
           <div className="mt-4">
-            <Button variant="primary" onClick={() => s.confirmProjectParams()}>
-              Projektparameter bestätigen
-            </Button>
+            <Button variant="primary" onClick={() => s.confirmProjectParams()}>{tx('Projektparameter bestätigen')}</Button>
           </div>
         )}
         {s.projectParamsConfirmed && (
           <p className="a3-cap mt-3">
-            <span aria-hidden="true">✓ </span>Projektparameter bestätigt.
-          </p>
+            <span aria-hidden="true">✓ </span>{tx('Projektparameter bestätigt.')}</p>
         )}
       </section>
 
       <section className="a3-sheet mt-6" aria-label="Vorbereitung">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="a3-cap">
-            Offene Fragen, Annahmen und Dokumente im Detail — die Vorbereitung
-            gilt für alle Optionen dieser Opportunity.
-          </p>
+          <p className="a3-cap">{tx('Offene Fragen, Annahmen und Dokumente im Detail — die Vorbereitung gilt für alle Optionen dieser Opportunity.')}</p>
           <Button onClick={() => setShowVorbereitung(true)}>
             {tx('Vorbereitung öffnen')}
           </Button>
@@ -258,11 +238,7 @@ export function OpportunityCard() {
         </div>
         {!s.canCreateOptions() && (
           <p className="a3-warn-prep mt-3">
-            <span aria-hidden="true">▲ </span>
-            Optionen lassen sich anlegen, sobald die strittigen Angaben
-            entschieden und die Projektparameter bestätigt sind. Eine Option
-            auf strittigen Daten müsste vollständig neu gebaut werden.
-          </p>
+            <span aria-hidden="true">▲ </span>{tx('Optionen lassen sich anlegen, sobald die strittigen Angaben entschieden und die Projektparameter bestätigt sind. Eine Option auf strittigen Daten müsste vollständig neu gebaut werden.')}</p>
         )}
 
         {s.options.length > 0 && (
@@ -282,9 +258,7 @@ export function OpportunityCard() {
             disabled={!s.canCreateOptions()}
             disabledReason="Erst Konflikte entscheiden und Projektparameter bestätigen"
             onClick={() => s.createOption(`Option ${s.options.length + 1}`)}
-          >
-            Opportunity Option anlegen
-          </Button>
+          >{tx('Opportunity Option anlegen')}</Button>
         </div>
       </section>
     </div>

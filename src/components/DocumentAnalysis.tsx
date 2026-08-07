@@ -84,12 +84,8 @@ export function DocumentAnalysis({ docs, onManualCapture }: {
       className="a3-analysis-spec"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 id={phaseId} className="text-heading-3 font-bold text-text-primary">
-          Dokumentanalyse
-        </h2>
-        <span className="text-small text-text-muted">
-          Simulation · Parsing im Prototyp nachgestellt
-        </span>
+        <h2 id={phaseId} className="text-heading-3 font-bold text-text-primary">{tx('Dokumentanalyse')}</h2>
+        <span className="text-small text-text-muted">{tx('Simulation · Parsing im Prototyp nachgestellt')}</span>
       </div>
 
       {/* Полоса: indeterminate, потому что общее количество шагов внутри
@@ -154,10 +150,8 @@ export function DocumentAnalysis({ docs, onManualCapture }: {
                   {tx('nicht lesbar: Auflösung zu gering')}
                 </span>
                 <Button disabled
-                        disabledReason="Datei-Upload existiert im Prototyp nicht — Parsing ist simuliert">
-                  Besseren Scan hochladen
-                </Button>
-                <Button onClick={onManualCapture}>Manuell erfassen</Button>
+                        disabledReason="Datei-Upload existiert im Prototyp nicht — Parsing ist simuliert">{tx('Besseren Scan hochladen')}</Button>
+                <Button onClick={onManualCapture}>{tx('Manuell erfassen')}</Button>
               </span>
             </li>
           ))}
@@ -173,14 +167,13 @@ export function DocumentAnalysis({ docs, onManualCapture }: {
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <p className="text-small text-text-muted">
-          {ready && <>Protokoll gespeichert · bestätigte und manuell erfasste
-            Werte bleiben bei erneuter Analyse unverändert (D-08)</>}
-          {running && <>Stufe abbrechbar — abgeschlossene Phasen bleiben erhalten</>}
+          {ready && <>{tx('Protokoll gespeichert · bestätigte und manuell erfasste Werte bleiben bei erneuter Analyse unverändert (D-08)')}</>}
+          {running && <>{tx('Stufe abbrechbar — abgeschlossene Phasen bleiben erhalten')}</>}
         </p>
         <div className="flex gap-2">
-          {running && <Button onClick={cancel}>Abbrechen</Button>}
-          {cancelled && <Button variant="primary" onClick={resume}>Fortsetzen</Button>}
-          {ready && <Button onClick={start}>Analyse erneut ausführen</Button>}
+          {running && <Button onClick={cancel}>{tx('Abbrechen')}</Button>}
+          {cancelled && <Button variant="primary" onClick={resume}>{tx('Fortsetzen')}</Button>}
+          {ready && <Button onClick={start}>{tx('Analyse erneut ausführen')}</Button>}
         </div>
       </div>
     </div>

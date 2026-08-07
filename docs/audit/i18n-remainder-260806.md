@@ -5,49 +5,20 @@
 работу). Покрытие: значения GENERATED_DE + локальный словарь +
 LOCAL_TEXT_EN. Всё в таблице останется немецким на EN.
 
-**Строк: 111 в 20 файлах.**
+**Строк: 67 в 17 файлах.**
 
 | файл | немецкая строка |
 |---|---|
 | `src/App.tsx` | All3 |
-| `src/App.tsx` | EN ist noch ein Entwurf: die Übersetzung wird gerade vervollständigt |
-| `src/App.tsx` | EN · Entwurf |
-| `src/App.tsx` | EN: Entwurf — Übersetzung noch nicht vollständig |
 | `src/App.tsx` | Opportunities |
 | `src/App.tsx` | · Indicative Offer Engine |
-| `src/components/ClientOutputGateDialog.tsx` | Ansicht steht auf «Kompakt» — bei Bildschirmfreigabe ist «Komfortabel» besser lesbar |
 | `src/components/ClientOutputGateDialog.tsx` | Array.from( dialog.querySelectorAll |
-| `src/components/ClientOutputGateDialog.tsx` | Auf Komfortabel umstellen |
-| `src/components/ClientOutputGateDialog.tsx` | Ausgeblendet werden Marge, Δ-Werte, KG-700-Modus, Coaching-Hinweise und interne Notizen. Der Umfang folgt dem Ausgabeprofil, nicht dieser Liste. |
-| `src/components/ClientOutputGateDialog.tsx` | Bereit für die Präsentation? |
-| `src/components/ClientOutputGateDialog.tsx` | Blockierend |
 | `src/components/ClientOutputGateDialog.tsx` | Escape |
-| `src/components/ClientOutputGateDialog.tsx` | Kundenansicht starten |
-| `src/components/ClientOutputGateDialog.tsx` | Risikozuschlag ist aktiv und im Preis enthalten. |
-| `src/components/ClientOutputGateDialog.tsx` | Solange die Klassifikation nicht bestätigt ist, entsteht kein Kundenprofil |
 | `src/components/ClientOutputGateDialog.tsx` | Tab |
-| `src/components/ClientOutputGateDialog.tsx` | Zurück zur Vorbereitung |
 | `src/components/ClientOutputGateDialog.tsx` | void returnFocusTo: React.RefObject |
-| `src/components/DiscountControl.tsx` | Basis ist der exakte Rechenwert, nie der angezeigte (CALC-007). |
 | `src/components/DocumentAnalysis.tsx` | diesen Dateien |
 | `src/components/DocumentAnalysis.tsx` | dieser Datei |
-| `src/components/DocumentAnalysis.tsx` | nicht lesbar: Auflösung zu gering |
-| `src/components/InternalNote.tsx` | Fehler · erneut versuchen |
-| `src/components/InternalNote.tsx` | Interne Notiz |
-| `src/components/InternalNote.tsx` | Nur intern · synchronisiert in die HubSpot-Projektkarte · in Kundenprofilen vollständig ausgeblendet. |
-| `src/components/InternalNote.tsx` | Nur intern — synchronisiert in die HubSpot-Projektkarte |
-| `src/components/InternalNote.tsx` | Sichtbarkeit |
-| `src/components/InternalNote.tsx` | Verfasser |
-| `src/components/InternalNote.tsx` | nur internes Arbeitsumfeld |
 | `src/components/InternalNote.tsx` | wird |
-| `src/components/InternalNote.tsx` | → CRM · Entwurf, noch nicht gespeichert |
-| `src/components/InternalNote.tsx` | → CRM · noch keine Änderungen |
-| `src/components/InternalNote.tsx` | → HubSpot · wird synchronisiert |
-| `src/components/InternalNote.tsx` | ✓ synchronisiert · HubSpot-Projektkarte |
-| `src/components/OfferPanel.tsx` | Eintritts-Gate offen — vor dem Wechsel zeigt die Freigabe, was der Kunde nicht sieht. |
-| `src/components/OfferPanel.tsx` | Kostengruppen nach DIN 276, vereinfachte Verteilung |
-| `src/components/OfferPanel.tsx` | Kundenansicht prüfen |
-| `src/components/OfferPanel.tsx` | Vorschau |
 | `src/components/OriginPopover.tsx` | Array.from(dialog.querySelectorAll |
 | `src/components/OriginPopover.tsx` | Escape |
 | `src/components/OriginPopover.tsx` | Tab |
@@ -69,15 +40,9 @@ LOCAL_TEXT_EN. Всё в таблице останется немецким на
 | `src/screens/Grundlagen.tsx` | SegmentedControl |
 | `src/screens/Grundlagen.tsx` | Switch |
 | `src/screens/Grundlagen.tsx` | UncertaintyBadge (DC-3) |
-| `src/screens/OpportunityCard.tsx` | Interne Notiz |
 | `src/screens/OpportunityList.tsx` | && { label: `Suche: ${q.trim()}`, clear: () => setQ( |
 | `src/screens/OpportunityList.tsx` | Opportunities |
-| `src/screens/OpportunityList.tsx` | Termin |
-| `src/screens/OptionChapter.tsx` | Angebotssumme danach |
-| `src/screens/OptionChapter.tsx` | Preiswirkung |
 | `src/screens/OptionChapter.tsx` | Standard |
-| `src/screens/OptionChapter.tsx` | Varianten nebeneinander |
-| `src/screens/OptionChapter.tsx` | Vergleich der Varianten dieser Gruppe vor der Auswahl |
 | `src/screens/S2Vorbereitung.tsx` | ('Projektdaten') const tablist = useRef |
 | `src/screens/S2Vorbereitung.tsx` | Abgrenzung ist der Leistungsübersicht zu entnehmen. |
 | `src/screens/S2Vorbereitung.tsx` | Anforderungen an Tragwerk und Kapselung und damit den Preis |
@@ -102,15 +67,7 @@ LOCAL_TEXT_EN. Всё в таблице останется немецким на
 | `src/screens/S3Konfigurator.tsx` | Der Baugrund entscheidet über Gründung und KG 320. Ohne |
 | `src/screens/S3Konfigurator.tsx` | Erschließung gehört zu KG 200 — die Entscheidung über den |
 | `src/screens/S3Konfigurator.tsx` | Gutachten bleibt er ein benanntes Risiko — kein Preisbestandteil |
-| `src/screens/S3Konfigurator.tsx` | Im Angebot enthalten. Der Zuschlag ist die Rechnung für ein fehlendes Dokument und entfällt, sobald es vorliegt. |
-| `src/screens/S3Konfigurator.tsx` | Kategorie |
-| `src/screens/S3Konfigurator.tsx` | Noch nicht im Angebot. Die Schätzunsicherheit bleibt davon unberührt: sie ist Statistik und wird nicht addiert. |
 | `src/screens/S3Konfigurator.tsx` | Umfang fällt in Kapitel 3, hier steht ihr Stand. |
-| `src/screens/S3Konfigurator.tsx` | Wahrscheinlichkeit |
-| `src/screens/S3Konfigurator.tsx` | Zuschlag |
-| `src/screens/S3Konfigurator.tsx` | Zuschlag anwenden |
-| `src/screens/S3Konfigurator.tsx` | Zuschlag entfernen |
-| `src/screens/S3Konfigurator.tsx` | auf |
 | `src/screens/S3Konfigurator.tsx` | und keine stillschweigende Annahme. |
 | `src/screens/S4Vergleich.tsx` | Option |
 | `src/screens/S5Export.tsx` | ('compose') const [body, setBody] = useState( 'Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unser indikatives ' + 'Angebot für das Musterprojekt Nordfeld.\n\nMit freundlichen Grüßen', ) // Открытые решения по покрытию — то же множество, что делает итог // промежуточным: список Recap не может разойтись с подписью итога. const offen = (Object.keys(s.coverage) as Array |
@@ -119,4 +76,3 @@ LOCAL_TEXT_EN. Всё в таблице останется немецким на
 | `src/screens/S5Export.tsx` | Preisänderung |
 | `src/screens/S5Export.tsx` | Preisänderungen |
 | `src/screens/S5Export.tsx` | Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unser indikatives |
-| `src/screens/S5Export.tsx` | Stufe |

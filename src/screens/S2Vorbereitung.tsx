@@ -3,6 +3,7 @@ import { Decimal } from 'decimal.js'
 import demo from '../fixtures/demo-0001.json'
 import catalog from '../fixtures/catalog.json'
 import { activeBuilding, useStore } from '../state/store'
+import { useTx } from '../i18n'
 import { copyFor } from '../i18n/internal-refs'
 import { NNBSP, formatDE, rateLabel } from '../engine/money'
 import { Button, NumericField, ProvenanceChip, UncertaintyBadge } from '../components/primitives'
@@ -25,6 +26,7 @@ const TABS = ['Dokumente', 'Projektdaten', 'Offene Fragen', 'Annahmen', 'Variant
 type Tab = (typeof TABS)[number]
 
 export function S2Vorbereitung({ openKonfigurator }: { openKonfigurator: () => void }) {
+  const tx = useTx()
   const s = useStore()
   const [tab, setTab] = useState<Tab>('Projektdaten')
   const tablist = useRef<HTMLDivElement>(null)
@@ -55,9 +57,7 @@ export function S2Vorbereitung({ openKonfigurator }: { openKonfigurator: () => v
   return (
     <div className="px-7 py-6">
       <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-border-strong pb-3">
-        <h1 className="text-heading-2 font-bold text-text-primary">
-          Musterprojekt Nordfeld · Vorbereitung
-        </h1>
+        <h1 className="text-heading-2 font-bold text-text-primary">{tx('Musterprojekt Nordfeld · Vorbereitung')}</h1>
         <span className="a3-cap">
           {s.mode === 'praesentation'
             ? 'Präsentation · interne Werte ausgeblendet'
@@ -106,6 +106,7 @@ export function S2Vorbereitung({ openKonfigurator }: { openKonfigurator: () => v
 /* ── P1 · Dokumente ──────────────────────────────────────────────────────── */
 
 function P1Dokumente({ onManualCapture }: { onManualCapture: () => void }) {
+  const tx = useTx()
   const s = useStore()
   const docs = demo.documents
 
@@ -124,12 +125,12 @@ function P1Dokumente({ onManualCapture }: { onManualCapture: () => void }) {
 
       <div className="mt-5 overflow-x-auto">
         <table className="w-full border-collapse text-body">
-          <caption className="sr-only">Hochgeladene Dokumente</caption>
+          <caption className="sr-only">{tx('Hochgeladene Dokumente')}</caption>
           <thead>
             <tr className="border-b border-border-strong text-left">
-              <th className="py-2 pr-4 font-medium">Datei</th>
-              <th className="py-2 pr-4 font-medium">Seiten</th>
-              <th className="py-2 font-medium">Status</th>
+              <th className="py-2 pr-4 font-medium">{tx('Datei')}</th>
+              <th className="py-2 pr-4 font-medium">{tx('Seiten')}</th>
+              <th className="py-2 font-medium">{tx('Status')}</th>
             </tr>
           </thead>
           <tbody>
@@ -140,13 +141,11 @@ function P1Dokumente({ onManualCapture }: { onManualCapture: () => void }) {
                 <td className="py-2 text-text-secondary">
                   {d.parseStatus === 'failed'
                     ? <span className="flex items-center gap-2">
-                        <span aria-hidden="true" className="a3-errc shrink-0">✗</span>
-                        nicht lesbar</span>
+                        <span aria-hidden="true" className="a3-errc shrink-0">✗</span>{tx('nicht lesbar')}</span>
                     : d.lifecycleStatus === 'superseded'
-                      ? <><span aria-hidden="true">◌ </span>ersetzt</>
+                      ? <><span aria-hidden="true">◌ </span>{tx('ersetzt')}</>
                       : <span className="flex items-center gap-2">
-                          <span aria-hidden="true" className="a3-okc shrink-0">✓</span>
-                          aktiv · gelesen</span>}
+                          <span aria-hidden="true" className="a3-okc shrink-0">✓</span>{tx('aktiv · gelesen')}</span>}
                 </td>
               </tr>
             ))}
@@ -156,13 +155,8 @@ function P1Dokumente({ onManualCapture }: { onManualCapture: () => void }) {
 
       {/* Разрешение версий: дата — доказательство, решает sales. */}
       <div className="mt-5 border border-border-default p-4">
-        <h2 className="text-heading-3 font-bold text-text-primary">Versionsauflösung · Grundrisse</h2>
-        <p className="a3-cap mt-2">
-          Zwei Versionen gefunden. Vorschlag des Systems: V2 — Datum im
-          Plankopf ist neuer. Das Datum ist ein Beleg, keine Entscheidung
-          (VERSION-002): die Auswahl trifft der Vertrieb, der Wechsel wird
-          protokolliert, die ausgeschlossene Version bleibt nachvollziehbar.
-        </p>
+        <h2 className="text-heading-3 font-bold text-text-primary">{tx('Versionsauflösung · Grundrisse')}</h2>
+        <p className="a3-cap mt-2">{tx('Zwei Versionen gefunden. Vorschlag des Systems: V2 — Datum im Plankopf ist neuer. Das Datum ist ein Beleg, keine Entscheidung (VERSION-002): die Auswahl trifft der Vertrieb, der Wechsel wird protokolliert, die ausgeschlossene Version bleibt nachvollziehbar.')}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           {(['V2', 'V1'] as const).map((v) => (
             <Button
@@ -176,11 +170,7 @@ function P1Dokumente({ onManualCapture }: { onManualCapture: () => void }) {
             </Button>
           ))}
         </div>
-        <p className="mt-3 text-small text-text-muted">
-          Wiederholte Analyse überschreibt niemals Werte mit «manuell erfasst»
-          oder «vom Kunden bestätigt» — bei Konflikt entscheidet der Vertrieb
-          über den Diff (D-08).
-        </p>
+        <p className="mt-3 text-small text-text-muted">{tx('Wiederholte Analyse überschreibt niemals Werte mit «manuell erfasst» oder «vom Kunden bestätigt» — bei Konflikt entscheidet der Vertrieb über den Diff (D-08).')}</p>
       </div>
     </section>
   )
@@ -189,6 +179,7 @@ function P1Dokumente({ onManualCapture }: { onManualCapture: () => void }) {
 /* ── P2 · Projektdaten ───────────────────────────────────────────────────── */
 
 function P2Projektdaten() {
+  const tx = useTx()
   const s = useStore()
   const p = s.projection()
   const fxA = demo.buildings[0]!
@@ -196,7 +187,7 @@ function P2Projektdaten() {
   return (
     <section aria-label="Projektdaten">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 className="text-heading-3 font-bold text-text-primary">Gebäudekennzahlen</h2>
+        <h2 className="text-heading-3 font-bold text-text-primary">{tx('Gebäudekennzahlen')}</h2>
         <span className="a3-cap">Haus{NNBSP}A</span>
       </div>
 
@@ -236,12 +227,8 @@ function P2Projektdaten() {
               Kandidat bleibt als Alternative nachvollziehbar (SOURCE-001).
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <Button onClick={() => s.resolveWflConflict('customer')}>
-                Kundenwert übernehmen
-              </Button>
-              <Button onClick={() => s.resolveWflConflict('document')}>
-                Dokumentwert beibehalten
-              </Button>
+              <Button onClick={() => s.resolveWflConflict('customer')}>{tx('Kundenwert übernehmen')}</Button>
+              <Button onClick={() => s.resolveWflConflict('document')}>{tx('Dokumentwert beibehalten')}</Button>
             </div>
           </div>
         )}
@@ -270,7 +257,7 @@ function P2Projektdaten() {
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle py-4">
           <div>
-            <p className="text-small font-medium text-text-primary">Gebäudeklasse</p>
+            <p className="text-small font-medium text-text-primary">{tx('Gebäudeklasse')}</p>
             <p className="mt-1 text-body text-text-primary">
               GK{NNBSP}5{' '}
               {activeBuilding(s).gebaeudeklasse.confirmed
@@ -282,7 +269,7 @@ function P2Projektdaten() {
             </p>
           </div>
           {!activeBuilding(s).gebaeudeklasse.confirmed && (
-            <Button onClick={() => s.confirmGebaeudeklasse()}>Bestätigen</Button>
+            <Button onClick={() => s.confirmGebaeudeklasse()}>{tx('Bestätigen')}</Button>
           )}
         </div>
 
@@ -314,6 +301,7 @@ function StaticRow({ label, value, provenance }: { label: string; value: string;
 /* ── P3 · Offene Fragen ──────────────────────────────────────────────────── */
 
 function P3OffeneFragen() {
+  const tx = useTx()
   const [copyState, setCopyState] = useState<'idle' | 'ok' | 'error'>('idle')
   const s = useStore()
   const p = s.projection()
@@ -341,12 +329,9 @@ function P3OffeneFragen() {
         {open.length > 0
           ? <>Diese {open.length} Fragen reduzieren die Schätzunsicherheit von
               ±{NNBSP}{p.uncertaintyPp}{NNBSP}% auf ±{NNBSP}{target}{NNBSP}%</>
-          : <>Alle Fragen beantwortet · <UncertaintyBadge pp={p.uncertaintyPp} /></>}
+          : <>{tx('Alle Fragen beantwortet ·')}<UncertaintyBadge pp={p.uncertaintyPp} /></>}
       </h2>
-      <p className="a3-cap mt-1">
-        Nach Wirkung sortiert; Verengung in Prozentpunkten. Eine Option zu
-        wählen verengt nichts — nur die Bestätigung des Kunden (D-19).
-      </p>
+      <p className="a3-cap mt-1">{tx('Nach Wirkung sortiert; Verengung in Prozentpunkten. Eine Option zu wählen verengt nichts — nur die Bestätigung des Kunden (D-19).')}</p>
 
       <ol className="mt-4">
         {questions.map((q, i) => (
@@ -359,20 +344,16 @@ function P3OffeneFragen() {
               −{NNBSP}{q.deltaPp}{NNBSP}Prozentpunkte
             </span>
             {!q.done && q.action && (
-              <Button onClick={q.action}>Antwort erfassen</Button>
+              <Button onClick={q.action}>{tx('Antwort erfassen')}</Button>
             )}
             {!q.done && !q.action && (
-              <span className="text-small text-text-muted">
-                → P2: Wert erfassen oder Konflikt lösen
-              </span>
+              <span className="text-small text-text-muted">{tx('→ P2: Wert erfassen oder Konflikt lösen')}</span>
             )}
           </li>
         ))}
         {/* Риск — отдельная ось с отдельной арифметикой, не строка списка Δ. */}
         <li className="flex flex-wrap items-center justify-between gap-3 py-3">
-          <span className="text-body text-text-primary">
-            3. Ist ein Baugrundgutachten vorhanden?
-          </span>
+          <span className="text-body text-text-primary">{tx('3. Ist ein Baugrundgutachten vorhanden?')}</span>
           <span className="text-body text-text-secondary">
             → Risiko: Baugrund · Wahrscheinlichkeit mittel ·
             Kostenwirkung +{NNBSP}4{NNBSP}% auf KG{NNBSP}320
@@ -391,13 +372,10 @@ function P3OffeneFragen() {
           }
           navigator.clipboard.writeText(text || 'Alle Fragen beantwortet.')
             .then(() => setCopyState('ok'), () => setCopyState('error'))
-        }}>
-          Fragenliste kopieren
-        </Button>
+        }}>{tx('Fragenliste kopieren')}</Button>
         <p role="status" aria-live="polite" className="a3-cap mt-2">
-          {copyState === 'ok' && <>✓ Fragenliste in die Zwischenablage kopiert</>}
-          {copyState === 'error' && <>✗ Kopieren nicht möglich — Zwischenablage
-            in dieser Umgebung nicht verfügbar; Fragen unten manuell markieren</>}
+          {copyState === 'ok' && <>{tx('✓ Fragenliste in die Zwischenablage kopiert')}</>}
+          {copyState === 'error' && <>{tx('✗ Kopieren nicht möglich — Zwischenablage in dieser Umgebung nicht verfügbar; Fragen unten manuell markieren')}</>}
         </p>
       </div>
     </section>
@@ -407,6 +385,7 @@ function P3OffeneFragen() {
 /* ── P4 · Annahmen ───────────────────────────────────────────────────────── */
 
 function P4Annahmen({ setTab }: { setTab: (t: Tab) => void }) {
+  const tx = useTx()
   const s = useStore()
 
   // Активное допущение = каскад дошёл до подстановки (M-4). Список выводится
@@ -449,29 +428,20 @@ function P4Annahmen({ setTab }: { setTab: (t: Tab) => void }) {
       <h2 className="text-heading-3 font-bold text-text-primary">
         Aktive Annahmen · {items.length}
       </h2>
-      <p className="a3-cap mt-1">
-        Texte stammen aus den Fallback-Regeln; das Wertfeld (z. B. die
-        Gebäudeklasse) wird mit dem Projektwert belegt — der Regeltext nennt
-        einen Beispielwert. Eine Annahme verschwindet, sobald der Wert
-        erfasst ist — die Liste wird abgeleitet, nicht gepflegt.
-      </p>
+      <p className="a3-cap mt-1">{tx('Texte stammen aus den Fallback-Regeln; das Wertfeld (z. B. die Gebäudeklasse) wird mit dem Projektwert belegt — der Regeltext nennt einen Beispielwert. Eine Annahme verschwindet, sobald der Wert erfasst ist — die Liste wird abgeleitet, nicht gepflegt.')}</p>
       {items.length === 0 && (
-        <p className="mt-4 border border-border-default p-4 text-body text-text-secondary">
-          Keine aktiven Annahmen. Alle T0-Werte sind erfasst oder bestätigt.
-        </p>
+        <p className="mt-4 border border-border-default p-4 text-body text-text-secondary">{tx('Keine aktiven Annahmen. Alle T0-Werte sind erfasst oder bestätigt.')}</p>
       )}
       <ul className="mt-4">
         {items.map((a) => (
           <li key={a.id} className="mt-3 border border-border-default p-4">
             <p className="text-body text-text-primary">
-              <span className="font-medium">Annahme:</span> {copyFor(a.text, s.mode)}
+              <span className="font-medium">{tx('Annahme:')}</span> {copyFor(a.text, s.mode)}
             </p>
             <div className="mt-3">
               {a.resolve
                 ? <Button onClick={a.resolve}>{a.resolveLabel}</Button>
-                : <Button onClick={() => setTab('Projektdaten')}>
-                    Entscheidung im Konfigurator · Kapitel 2
-                  </Button>}
+                : <Button onClick={() => setTab('Projektdaten')}>{tx('Entscheidung im Konfigurator · Kapitel 2')}</Button>}
             </div>
           </li>
         ))}
@@ -483,6 +453,7 @@ function P4Annahmen({ setTab }: { setTab: (t: Tab) => void }) {
 /* ── P5 · Varianten ──────────────────────────────────────────────────────── */
 
 function P5Varianten({ openKonfigurator }: { openKonfigurator: () => void }) {
+  const tx = useTx()
   const s = useStore()
   const runs = demo.runs.filter((r) => r.subject === 'DEMO-B-A')
 
@@ -499,17 +470,15 @@ function P5Varianten({ openKonfigurator }: { openKonfigurator: () => void }) {
       <h2 className="text-heading-3 font-bold text-text-primary">Varianten · Haus{NNBSP}A</h2>
       <div className="mt-3 overflow-x-auto">
         <table className="w-full border-collapse text-body">
-          <caption className="sr-only">Varianten des Projekts</caption>
+          <caption className="sr-only">{tx('Varianten des Projekts')}</caption>
           <thead>
             <tr className="border-b border-border-strong text-left">
-              <th className="py-2 pr-4 font-medium">Variante</th>
+              <th className="py-2 pr-4 font-medium">{tx('Variante')}</th>
               {/* Метрика называется полностью и в шапке колонки: усечённое
                   «Zwischensumme» — Unqualified Total (R-18/COPY-008). */}
-              <th className="py-2 pr-4 text-right font-medium">
-                Zwischensumme der kalkulierten Positionen
-              </th>
-              <th className="py-2 pr-4 font-medium">Rollen</th>
-              <th className="py-2 font-medium"><span className="sr-only">Aktion</span></th>
+              <th className="py-2 pr-4 text-right font-medium">{tx('Zwischensumme der kalkulierten Positionen')}</th>
+              <th className="py-2 pr-4 font-medium">{tx('Rollen')}</th>
+              <th className="py-2 font-medium"><span className="sr-only">{tx('Aktion')}</span></th>
             </tr>
           </thead>
           <tbody>
@@ -527,20 +496,14 @@ function P5Varianten({ openKonfigurator }: { openKonfigurator: () => void }) {
                     if (r.variant === 'EH 40') s.setEnergiestandard('EH_40')
                     if (r.variant === 'Ohne UG') s.setUntergeschoss('kein_ug')
                     openKonfigurator()
-                  }}>
-                    Im Konfigurator öffnen
-                  </Button>
+                  }}>{tx('Im Konfigurator öffnen')}</Button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-small text-text-muted">
-        Zielangebot ist noch nicht gesetzt. Rollen sind unabhängige
-        Text-Badges: ★ ist für «Zielangebot» reserviert und trägt nie zwei
-        Bedeutungen (VARIANT-001).
-      </p>
+      <p className="mt-3 text-small text-text-muted">{tx('Zielangebot ist noch nicht gesetzt. Rollen sind unabhängige Text-Badges: ★ ist für «Zielangebot» reserviert und trägt nie zwei Bedeutungen (VARIANT-001).')}</p>
     </section>
   )
 }

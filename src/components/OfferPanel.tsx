@@ -389,10 +389,7 @@ export function OfferPanel() {
           </p>
           <div className="a3-tbl-scroll mt-2">
             <table className="a3-driver-table">
-              <caption className="sr-only">
-                Kostentreiber: Beiträge summieren sich exakt zur
-                Zwischensumme der kalkulierten Positionen
-              </caption>
+              <caption className="sr-only">{tx('Kostentreiber: Beiträge summieren sich exakt zur Zwischensumme der kalkulierten Positionen')}</caption>
               <tbody>
                 {(() => {
                   // Бар относителен наибольшему вкладу ПО МОДУЛЮ: экономящий
@@ -417,7 +414,7 @@ export function OfferPanel() {
                             {driverLabel(d.key, d.label, s)}, {richtung},
                             rund {shown.display} Euro, exakt {formatDE(d.exact.abs(), 2)} Euro
                           </span>
-                          <span aria-hidden="true">{driverLabel(d.key, d.label, s)}</span>
+                          <span aria-hidden="true">{tx(driverLabel(d.key, d.label, s))}</span>
                           <span aria-hidden="true" className="a3-driver-direction">
                             {richtung}
                             {' · '}
@@ -527,9 +524,7 @@ export function OfferPanel() {
               готовым контрактом (добор DC-COVERAGE приёмки № 17). */}
           <div className="a3-tbl-scroll mt-2">
             <table className="a3-kg w-full border-collapse">
-              <caption className="a3-visually-hidden">
-                Kostengruppen nach DIN 276, vereinfachte Verteilung
-              </caption>
+              <caption className="a3-visually-hidden">{tx('Kostengruppen nach DIN 276, vereinfachte Verteilung')}</caption>
               <tbody>
                 {([['KG_300', p.kgSplit.KG_300], ['KG_400', p.kgSplit.KG_400],
                    ['KG_700', p.kgSplit.KG_700]] as const).map(([g, v]) => (
@@ -582,9 +577,7 @@ export function OfferPanel() {
               </tbody>
             </table>
           </div>
-          <p className="mt-2 text-small text-text-muted">
-            Zeilen werden unabhängig gerundet; die Prüfung läuft über exakte Werte.
-          </p>
+          <p className="mt-2 text-small text-text-muted">{tx('Zeilen werden unabhängig gerundet; die Prüfung läuft über exakte Werte.')}</p>
           </>)}
           {kgOpen && notIncluded.length > 0 && (
             <p className="a3-cap mt-2">
@@ -606,9 +599,7 @@ export function OfferPanel() {
               bestätigt.
             </p>
             <div className="mt-2">
-              <Button variant="primary" onClick={() => s.confirmGebaeudeklasse()}>
-                Klassifikation bestätigen
-              </Button>
+              <Button variant="primary" onClick={() => s.confirmGebaeudeklasse()}>{tx('Klassifikation bestätigen')}</Button>
             </div>
           </div>
         ) : (
