@@ -8,6 +8,7 @@ import { NNBSP, present, rateLabel, formatDE, label as moneyLabel } from '../eng
 import type { CostGroup, CoverageState } from '../engine/calculate'
 import { Button, useCountUp, useReducedMotion } from './primitives'
 import { OriginPopover } from './OriginPopover'
+import { ClientOutputGateDialog } from './ClientOutputGateDialog'
 import { UncertaintyBand } from './UncertaintyBand'
 import { useT, useTx } from '../i18n'
 
@@ -77,6 +78,8 @@ export function OfferPanel() {
   const [treiberOpen, setTreiberOpen] = useState(false)
   const [kgOpen, setKgOpen] = useState(false)
   const [kg300Open, setKg300Open] = useState(false)
+  const [gateOpen, setGateOpen] = useState(false)
+  const gateBtnRef = useRef<HTMLButtonElement>(null)
   // Правило 24: чип «долетает» до журнала — при уходе чипа журнал вспыхивает
   // один раз. Цветовой transition, не кейфрейм (правило 20); гаснет при
   // prefers-reduced-motion (правило 21).
@@ -609,11 +612,28 @@ export function OfferPanel() {
             </div>
           </div>
         ) : (
-          <p className="a3-nextstep">
-            <span aria-hidden="true">✓ </span>
-            Eintritts-Gate offen — Kundenansicht prüfen öffnet den Preflight.
-          </p>
+          /* Ворота в клиентский вид — ЕДИНСТВЕННАЯ модалка системы
+             (DC-33). Полоса сообщала состояние; здесь нужно решение с
+             последствием, которое не проверить постфактум: после
+             переключения продавец уже не увидит скрытого. */
+          <div className="a3-nextstep">
+            <p className="a3-mtag">{tx('Nächster Schritt')}</p>
+            <p className="text-small text-text-primary">
+              {tx('Eintritts-Gate offen — vor dem Wechsel zeigt die Freigabe, was der Kunde nicht sieht.')}
+            </p>
+            <div className="mt-2">
+              <Button variant="primary" ref={gateBtnRef}
+                      onClick={() => setGateOpen(true)}>
+                {tx('Kundenansicht prüfen')}
+              </Button>
+            </div>
+          </div>
         )}
+        <ClientOutputGateDialog
+          open={gateOpen}
+          onClose={() => setGateOpen(false)}
+          returnFocusTo={gateBtnRef}
+        />
 
         {/* ── Журнал сессии (DC-12): подпись с названной базой ───────────── */}
         <div className={'a3-journal-spec mt-3 transition-colors duration-base ' +

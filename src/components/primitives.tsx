@@ -1,4 +1,4 @@
-import { useId, useEffect, useRef, useState, type ReactNode } from 'react'
+import { forwardRef, useId, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Decimal } from 'decimal.js'
 import { formatDE, NNBSP } from '../engine/money'
 
@@ -78,20 +78,21 @@ export function useCountUp(target: Decimal, decimals = 0): string {
  * локальный HIT здесь снят: два псевдоэлемента на одном контроле — это
  * две зоны нажатия, а не одна надёжная.
  */
-export function Button({
-  children, onClick, variant = 'secondary', disabled, disabledReason, ...rest
-}: {
+export const Button = forwardRef<HTMLButtonElement, {
   children: ReactNode
   onClick?: () => void
   variant?: 'primary' | 'secondary' | 'ghost'
   disabled?: boolean
   /** Заблокированный элемент всегда объясняет причину (правило 12). */
   disabledReason?: string
-} & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+} & React.ButtonHTMLAttributes<HTMLButtonElement>>(function Button({
+  children, onClick, variant = 'secondary', disabled, disabledReason, ...rest
+}, ref) {
   const look = variant === 'primary' ? '' : variant === 'ghost' ? 'a3-ghost' : 'a3-sec'
   const reasonId = useId()
   const btn = (
     <button
+      ref={ref}
       type="button"
       onClick={onClick}
       // aria-disabled, а не disabled: заблокированная кнопка не должна терять
@@ -117,7 +118,7 @@ export function Button({
       </span>
     </span>
   )
-}
+})
 
 /** Чип происхождения значения (DC-1). Знак плюс подпись, не только цвет. */
 export function ProvenanceChip({ provenance }: { provenance: string }) {

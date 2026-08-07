@@ -1,0 +1,157 @@
+import { useEffect, useId, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import { activeBuilding, useStore } from '../state/store'
+import { Button } from './primitives'
+import { useTx } from '../i18n'
+import { NNBSP } from '../engine/money'
+
+/**
+ * DC-33 · ClientOutputGateDialog — Freigabe-Dialog.
+ *
+ * **Единственная модалка-ворота в системе** (контракт говорит это прямо):
+ * всё остальное — инлайн. Она существует ради одного момента — перехода в
+ * клиентский вид, — и её задача не «спросить подтверждение», а показать
+ * ровно то, что перестанет быть видимым, ДО того как экран увидит клиент.
+ *
+ * Почему это диалог, а не полоса, которой гейт был раньше. Полоса
+ * сообщает состояние; здесь же нужно решение с последствиями, которые
+ * нельзя проверить постфактум: после переключения продавец уже не увидит
+ * скрытого и не сможет сравнить. Прерывание внимания здесь оправдано
+ * ровно потому, что момент необратим на глазах у клиента.
+ *
+ * Контрактные механики: focus-trap, `Esc` возвращает в подготовку, фокус
+ * возвращается на кнопку-инициатор. Строка плотности (D-16) —
+ * предупреждение, а не блокер: переключение `Komfortabel` происходит
+ * ЗДЕСЬ, до входа, чтобы вёрстка не перестраивалась на глазах у клиента.
+ */
+
+export function ClientOutputGateDialog({ open, onClose, returnFocusTo }: {
+  open: boolean
+  onClose: () => void
+  returnFocusTo: React.RefObject<HTMLElement>
+}) {
+  const s = useStore()
+  const tx = useTx()
+  const titleId = useId()
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const p = s.projection()
+  const b = activeBuilding(s)
+  const blockers = b.gebaeudeklasse.confirmed ? [] : ['Klassifikation nach MBO §2']
+  const risksActive = Object.values(s.risikoAktiv).some(Boolean)
+
+  useEffect(() => {
+    if (!open) return
+    const dialog = dialogRef.current
+    if (!dialog) return
+    const focusables = () => Array.from(
+      dialog.querySelectorAll<HTMLElement>('button, [href], input, textarea, select'))
+    focusables()[0]?.focus()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        onClose()
+        returnFocusTo.current?.focus()
+      }
+      if (e.key === 'Tab') {
+        const f = focusables()
+        if (f.length === 0) return
+        const first = f[0]!, last = f[f.length - 1]!
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault(); last.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault(); first.focus()
+        }
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, onClose, returnFocusTo])
+
+  return createPortal(
+    <div
+      className={'a3-modal-scrim' + (open ? ' a3-show' : '')}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      aria-hidden={open ? undefined : true}
+    >
+      <div className="a3-modal" ref={dialogRef}>
+        <h4 id={titleId}>{tx('Bereit für die Präsentation?')}</h4>
+
+        {/* Чек-лист DC-23: что готово и что мешает — фактами состояния,
+            а не бодрым «всё хорошо». */}
+        <div>
+          <div className="a3-item">
+            <span className="a3-okc" aria-hidden="true">✓</span>
+            {p.result.totalLabel} · {p.result.total.prefix}
+            {p.result.total.prefix ? NNBSP : ''}{p.result.total.display}{NNBSP}€
+          </div>
+          <div className="a3-item">
+            <span className={p.uncertaintyPp <= 17 ? 'a3-okc' : 'a3-warnc'} aria-hidden="true">
+              {p.uncertaintyPp <= 17 ? '✓' : '!'}
+            </span>
+            {tx('Schätzunsicherheit')} ±{NNBSP}{p.uncertaintyPp}{NNBSP}%
+          </div>
+          {risksActive && (
+            <div className="a3-item">
+              <span className="a3-warnc" aria-hidden="true">!</span>
+              {tx('Risikozuschlag ist aktiv und im Preis enthalten.')}
+            </div>
+          )}
+          {blockers.map((x) => (
+            <div key={x} className="a3-item">
+              <span className="a3-warnc" aria-hidden="true">!</span>
+              {tx('Blockierend')}: {x}
+            </div>
+          ))}
+        </div>
+
+        {/* Что перестанет быть видимым. Состав групп определён нормативом
+            (output-model §6.5) — второй перечень рядом с определением стал
+            бы заготовкой для расхождения, поэтому здесь общая формулировка
+            и ссылка на профиль, а не список ярлыков. */}
+        <div className="a3-hidelist">
+          {tx('Ausgeblendet werden Marge, Δ-Werte, KG-700-Modus, Coaching-Hinweise und interne Notizen. Der Umfang folgt dem Ausgabeprofil, nicht dieser Liste.')}
+        </div>
+
+        {/* Плотность (D-16): рекомендация, не запрет, и переключение —
+            ЗДЕСЬ, до входа, чтобы вёрстка не перестраивалась при клиенте. */}
+        {s.density === 'kompakt' && (
+          <div className="a3-item">
+            <span className="a3-warnc" aria-hidden="true">!</span>
+            <span>
+              {tx('Ansicht steht auf «Kompakt» — bei Bildschirmfreigabe ist «Komfortabel» besser lesbar')}
+              <span className="mt-2 block">
+                <Button onClick={() => s.setDensity('komfortabel')}>
+                  {tx('Auf Komfortabel umstellen')}
+                </Button>
+              </span>
+            </span>
+          </div>
+        )}
+
+        <div className="a3-row">
+          <Button
+            variant="primary"
+            disabled={blockers.length > 0}
+            disabledReason={blockers.length > 0
+              ? tx('Solange die Klassifikation nicht bestätigt ist, entsteht kein Kundenprofil')
+              : undefined}
+            onClick={() => {
+              s.setMode('praesentation')
+              onClose()
+            }}
+          >
+            {tx('Kundenansicht starten')}
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => { onClose(); returnFocusTo.current?.focus() }}
+          >
+            {tx('Zurück zur Vorbereitung')}
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body)
+}

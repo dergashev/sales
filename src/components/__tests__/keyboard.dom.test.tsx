@@ -209,3 +209,34 @@ describe('Herkunft-Popover: слой, фокус и выход (DC-21, KEY-002, 
     })
   })
 })
+
+describe('DC-33 · единственная модалка системы — ворота в клиентский вид', () => {
+  it('открывается, ловит фокус, Esc возвращает и в подготовку, и фокус', async () => {
+    const user = userEvent.setup()
+    await enterPipeline(user)
+    // Пока классификация не подтверждена, ворота показывают причину, а не
+    // диалог: блокировка объясняет себя (правило 12).
+    expect(screen.getByText(/Kundenansicht gesperrt/)).toBeInTheDocument()
+    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
+
+    const trigger = screen.getByRole('button', { name: 'Kundenansicht prüfen' })
+    await user.click(trigger)
+    const dialog = screen.getByRole('dialog', { name: /Bereit für die Präsentation/ })
+    expect(dialog.contains(document.activeElement)).toBe(true)
+    // Показано ИМЕННО то, что перестанет быть видимым.
+    expect(within(dialog).getByText(/Ausgeblendet werden/)).toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+    expect(useStore.getState().mode).toBe('intern')
+    expect(document.activeElement).toBe(trigger)
+  })
+
+  it('переход в клиентский вид происходит из диалога, а не мимо него', async () => {
+    const user = userEvent.setup()
+    await enterPipeline(user)
+    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
+    await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
+    await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
+    expect(useStore.getState().mode).toBe('praesentation')
+  })
+})
