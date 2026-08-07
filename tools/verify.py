@@ -5672,8 +5672,11 @@ class Verifier:
                 f'(переименование варианта?)')
         for e in entries:
             f = e.get('file')
-            if f and self.read(f'design-system/assets/options/{f}') is None \
-                    and not (self.root / 'design-system/assets/options' / f).exists():
+            # Существование ДВОИЧНОГО файла проверяется файловой системой,
+            # а не чтением как текста: `read()` декодирует UTF-8 и падает на
+            # первом же байте картинки. Поймано поставкой № 18 — замок,
+            # написанный до неё, рухнул на ней самой.
+            if f and not (self.root / 'design-system/assets/options' / f).exists():
                 self.warn.append(
                     f'{WARN_OPT_IMAGE}: файл {f} объявлен манифестом, но отсутствует')
 

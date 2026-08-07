@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { Decimal } from 'decimal.js'
 import demo from '../../fixtures/demo-0001.json'
 import catalog from '../../fixtures/catalog.json'
+import { KG300_SUBGROUPS, RISK_ITEMS, riskDriver, subgroupSum } from '../risk'
 import {
   aggregateComplex, applyDiscount, calculateBuilding, deriveCompleteness,
   driversSum, kgSplitVereinfacht, totalLabel,
@@ -319,5 +320,35 @@ describe('ни один итог фикстуры не называется по
       expect(r.label).toBe('Zwischensumme der kalkulierten Positionen')
       expect(r.completeness).toBe('incomplete')
     }
+  })
+})
+
+describe('Третий уровень KG 300 и надбавки за риск (решение PO 07.08, D-02)', () => {
+  it('сумма подгрупп равна группе — иначе разбиение врёт о самом себе', () => {
+    const kg300 = new Decimal('2672484.50')
+    expect(subgroupSum(kg300).toFixed(2)).toBe(kg300.toFixed(2))
+    // Восемь подгрупп DIN 276, доли объявлены фикстурой и в сумме дают 1.
+    expect(KG300_SUBGROUPS).toHaveLength(8)
+    const shares = KG300_SUBGROUPS.reduce((a, g) => a.plus(g.share), new Decimal(0))
+    expect(shares.toFixed(2)).toBe('1.00')
+  })
+
+  it('надбавка считается от СВОЕЙ базы, а не от группы целиком', () => {
+    const kg300 = new Decimal('1000000')
+    const baugrund = RISK_ITEMS.find((r) => r.id === 'RISK-BAUGRUND')!
+    const d = riskDriver(baugrund, kg300)!
+    // KG 320 = 11 % от KG 300; надбавка = 4 % от KG 320, а не от KG 300.
+    expect(d.appliedTo!.toFixed(2)).toBe('110000.00')
+    expect(d.exact.toFixed(2)).toBe('4400.00')
+    expect(d.exact.toFixed(2)).not.toBe(kg300.mul('0.04').toFixed(2))
+    expect(d.scopeRefs).toEqual(['KG 320'])
+  })
+
+  it('риск с базой KG 300 берёт группу целиком — база названа в самой записи', () => {
+    const kg300 = new Decimal('1000000')
+    const statik = RISK_ITEMS.find((r) => r.id === 'RISK-STATIK')!
+    const d = riskDriver(statik, kg300)!
+    expect(d.appliedTo!.toFixed(2)).toBe('1000000.00')
+    expect(d.exact.toFixed(2)).toBe('20000.00')
   })
 })

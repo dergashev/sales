@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { Decimal } from 'decimal.js'
 import { activeBuilding, useStore } from '../state/store'
 import { CATALOG } from '../state/catalog'
+import { splitKg300 } from '../engine/risk'
+import derivedFx from '../fixtures/derived-prototype.json'
 import { NNBSP, present, rateLabel, formatDE, label as moneyLabel } from '../engine/money'
 import type { CostGroup, CoverageState } from '../engine/calculate'
 import { Button, useCountUp, useReducedMotion } from './primitives'
@@ -47,6 +49,9 @@ function useLastValue<T>(current: T | null): T | null {
   return current ?? last
 }
 
+/** Пометка выведенной величины — из данных, не из разметки (D-22). */
+const MARK = derivedFx.marker
+
 const KG_LABELS: Record<CostGroup, string> = {
   KG_100: 'Grundstück', KG_200: 'Vorbereitende Maßnahmen',
   KG_300: 'Baukonstruktion', KG_400: 'Technische Anlagen',
@@ -71,6 +76,7 @@ export function OfferPanel() {
   // как переговорный аргумент, а не занимают колонку постоянно.
   const [treiberOpen, setTreiberOpen] = useState(false)
   const [kgOpen, setKgOpen] = useState(false)
+  const [kg300Open, setKg300Open] = useState(false)
   // Правило 24: чип «долетает» до журнала — при уходе чипа журнал вспыхивает
   // один раз. Цветовой transition, не кейфрейм (правило 20); гаснет при
   // prefers-reduced-motion (правило 21).
@@ -524,13 +530,35 @@ export function OfferPanel() {
               <tbody>
                 {([['KG_300', p.kgSplit.KG_300], ['KG_400', p.kgSplit.KG_400],
                    ['KG_700', p.kgSplit.KG_700]] as const).map(([g, v]) => (
-                  <tr key={g}>
-                    <td>{g.replace('_', NNBSP)} {KG_LABELS[g as CostGroup]}</td>
-                    <td className="a3-num">{moneyLabel(present(v))}</td>
-                    <td className="a3-num">
-                      {v.div(p.result.total.exact).mul(100).toFixed(0)}{NNBSP}%
-                    </td>
-                  </tr>
+                  <Fragment key={g}>
+                    {/* KG 300 раскрывается до третьего уровня: подгруппы —
+                        база надбавок за риск, и продавец обязан видеть, от
+                        чего считается «4 % на KG 320». Раскрытие — DC-5
+                        (.a3-expand/.a3-twistbtn/.a3-open/.a3-kg-child). */}
+                    <tr className={g === 'KG_300' ? 'a3-expand' + (kg300Open ? ' a3-open' : '') : ''}>
+                      <td>
+                        {g === 'KG_300' ? (
+                          <button type="button" className="a3-twistbtn"
+                                  aria-expanded={kg300Open}
+                                  onClick={() => setKg300Open((v2) => !v2)}>
+                            <span aria-hidden="true">{kg300Open ? '▾' : '▸'}</span>
+                            {' '}{g.replace('_', NNBSP)} {KG_LABELS[g as CostGroup]}
+                          </button>
+                        ) : <>{g.replace('_', NNBSP)} {KG_LABELS[g as CostGroup]}</>}
+                      </td>
+                      <td className="a3-num">{moneyLabel(present(v))}</td>
+                      <td className="a3-num">
+                        {v.div(p.result.total.exact).mul(100).toFixed(0)}{NNBSP}%
+                      </td>
+                    </tr>
+                    {g === 'KG_300' && kg300Open && splitKg300(v).map((sub) => (
+                      <tr key={sub.id} className="a3-kg-child a3-muted">
+                        <td>{sub.id.replace('_', NNBSP)} {sub.label} {MARK}</td>
+                        <td className="a3-num">{moneyLabel(present(sub.exact))}</td>
+                        <td className="a3-num" />
+                      </tr>
+                    ))}
+                  </Fragment>
                 ))}
                 {/* Надземная/подземная части — вложенный уровень той же
                     структуры, а не отдельные строки-сироты. Показ равен

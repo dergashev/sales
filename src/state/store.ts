@@ -12,6 +12,7 @@ import { present, rate, NNBSP, type Displayed, type Rate } from '../engine/money
 import { defaultOptionChoices, optionDrivers, coverageDrivers, ALL_OPTION_GROUPS } from '../engine/options'
 import derivedFx from '../fixtures/derived-prototype.json'
 import { modelDuration, presentDuration, type DurationDisplay } from '../engine/schedule'
+import { RISK_ITEMS, riskDriver } from '../engine/risk'
 
 /**
  * Состояние = журнал событий + проекция (M-4).
@@ -139,6 +140,15 @@ export type OptionConfig = {
   fields: { wfl: FieldState; bgfOber: FieldState; we: FieldState }
   esConfirmed: boolean
   regionalfaktorActive: boolean
+  /**
+   * Применённые надбавки за риск (D-02). Умолчание — пусто, и это НЕ
+   * означает «рисков нет»: риски объявлены фикстурой всегда, применение
+   * же меняет цену и потому является решением с событием. Контрольный
+   * пример calculation-spec §6.1 надбавок не содержит — включить их по
+   * умолчанию значило бы молча разойтись с нормативным спесименом
+   * (правило 32). Тот же приём, что у Regionalfaktor (D-15).
+   */
+  risikoAktiv: Record<string, boolean>
   openChapter: number
   besuchteKapitel: number[]
 }
@@ -146,7 +156,8 @@ export type OptionConfig = {
 const OPTION_CONFIG_KEYS = [
   'buildings', 'activeBuildingId', 'included', 'buildingConfirmed',
   'kg300', 'kg300Provenance', 'kg700Mode', 'coverage', 'fields',
-  'esConfirmed', 'regionalfaktorActive', 'openChapter', 'besuchteKapitel',
+  'esConfirmed', 'regionalfaktorActive', 'risikoAktiv',
+  'openChapter', 'besuchteKapitel',
 ] as const satisfies ReadonlyArray<keyof OptionConfig>
 
 /** Снять конфигурацию активной Option с плоского состояния. */
@@ -235,6 +246,7 @@ function defaultOptionConfig(): OptionConfig {
     },
     esConfirmed: false,
     regionalfaktorActive: false,
+    risikoAktiv: {},
     // Новая Option начинается с ПЕРВОЙ главы — с решения, какие здания
     // входят в предложение. Открывать её на середине конвейера значило бы
     // объявить непройденные шаги пройденными (ревью № 13, дефект 7).
@@ -309,6 +321,8 @@ type Store = {
   activeGrundrisse: 'V2' | 'V1'
   /** Regionalfaktor: выключен по умолчанию (D-15); состояние входит в снапшот. */
   regionalfaktorActive: boolean
+  /** Применённые надбавки за риск — часть конфигурации Option (D-02). */
+  risikoAktiv: Record<string, boolean>
   snapshots: OfferSnapshot[]
   /** Дельта-чип живёт 4 секунды, потом уезжает в журнал (DC-2). */
   activeDelta: { label: string; deltaExact: Decimal; percent: Decimal } | null
@@ -444,6 +458,8 @@ type Store = {
   /** Выбрать опцию KG 300 у активного здания — событие журнала с дельтой. */
   setKg300: (groupId: string, value: string) => void
   setKg700Mode: (m: 'vereinfacht' | 'hoaiAho') => void
+  /** Применить или снять надбавку за риск (D-02) — событие с дельтой. */
+  toggleRisiko: (id: string) => void
   /** Все включённые здания подтверждены — шаг вниз к сервисам открыт. */
   allBuildingsConfirmed: () => boolean
   setUiLanguage: (l: 'de' | 'en') => void
@@ -546,7 +562,8 @@ function bgfSOf(id: string): Decimal {
 
 function computeProjection(
   s: Pick<Store, 'buildings' | 'activeBuildingId' | 'included' | 'coverage'
-    | 'fields' | 'esConfirmed' | 'regionalfaktorActive' | 'kg300' | 'kg700Mode'>,
+    | 'fields' | 'esConfirmed' | 'regionalfaktorActive' | 'kg300' | 'kg700Mode'
+    | 'risikoAktiv'>,
 ): Projection {
   const CATALOG = withRegionalFactor(s.regionalfaktorActive)
   const list = includedBuildings(s)
@@ -589,7 +606,25 @@ function computeProjection(
       factor: null,
     })
   }
-  const total = bauwerkSum.plus(kg700)
+  // Надбавки за риск — аддитивно после блока Bauwerk (calculation-spec §2:
+  // «модификаторы мультипликативны до регионального фактора, надбавки и
+  // скидка — аддитивны после»). База каждой — своя группа затрат, поэтому
+  // считается от разбиения KG 300, а не от итога.
+  // База разбиения KG — итог ДО надбавок. Спецификация требует
+  // «Risikozuschlag … отдельной строкой»: включив надбавку в базу
+  // распределения 70/22/8, мы растворили бы её в KG 300 — она перестала
+  // бы быть отдельной строкой и вдобавок увеличила бы собственную базу.
+  const preRisk = bauwerkSum.plus(kg700)
+  const kg300Exact = kgSplitVereinfacht(preRisk).KG_300
+  for (const risk of RISK_ITEMS) {
+    if (!s.risikoAktiv[risk.id]) continue
+    const d = riskDriver(risk, kg300Exact)
+    if (d) optDrivers.push(d)
+  }
+  const riskSum = optDrivers
+    .filter((d) => d.key.startsWith('risk_'))
+    .reduce((a, d) => a.plus(d.exact), new Decimal(0))
+  const total = preRisk.plus(riskSum)
   const result: BuildingResult = {
     buildingId: list.map((b) => b.id).join('+'),
     drivers: [
@@ -633,7 +668,7 @@ function computeProjection(
 
   return {
     result,
-    kgSplit: kgSplitVereinfacht(total),
+    kgSplit: kgSplitVereinfacht(preRisk),
     leadRate: rate(total, s.fields.wfl.value, 'WFL_WOFLV'),
     secondaryRateBgf: rate(total, s.fields.bgfOber.value, 'BGF_ABOVE_GROUND'),
     perUnit: rate(total, s.fields.we.value, 'WOHNEINHEITEN'),
@@ -1263,6 +1298,37 @@ const store = createStore<Store>((set, get) => {
         set({
           activeDelta: {
             label: `${id} ${next ? 'aufgenommen' : 'entfernt'}`,
+            deltaExact: delta,
+            percent: delta.div(before).mul(100),
+          },
+        })
+      }
+    },
+
+    toggleRisiko: (id) => {
+      const s = get()
+      const risk = RISK_ITEMS.find((r) => r.id === id)
+      if (!risk) return
+      const next = !s.risikoAktiv[id]
+      const before = s.projection().result.total.exact
+      set({ risikoAktiv: { ...s.risikoAktiv, [id]: next } })
+      const after = get().projection().result.total.exact
+      const delta = after.minus(before)
+      apply({
+        kind: 'option.selected',
+        label: next
+          ? `Risikozuschlag angewendet · ${risk.label}`
+          : `Risikozuschlag entfernt · ${risk.label}`,
+        deltaExact: delta.isZero() ? null : delta,
+        inverse: () => set((x) => ({
+          risikoAktiv: { ...x.risikoAktiv, [id]: !next } })),
+        forward: () => set((x) => ({
+          risikoAktiv: { ...x.risikoAktiv, [id]: next } })),
+      })
+      if (!delta.isZero()) {
+        set({
+          activeDelta: {
+            label: next ? 'Risikozuschlag angewendet' : 'Risikozuschlag entfernt',
             deltaExact: delta,
             percent: delta.div(before).mul(100),
           },

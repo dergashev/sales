@@ -519,5 +519,65 @@
         "basis": "bauseits; im indikativen Angebot ohne Preisansatz"
       }
     }
+  },
+  "kg300Split": {
+    "$comment": "Третий уровень KG 300 — статическое разбиение (calculation-spec §2: «третий уровень KG в прототипе только для KG 300 как статическое разбиение ⚙»). Доли ВЫВЕДЕНЫ (D-22) ориентиром на типовое распределение жилого строительства и не калиброваны: они существуют, чтобы у надбавок за риск была объявленная база (KG 320 для Baugrundgutachten, calculation-spec §1.4), а не чтобы предсказывать смету подгруппы. Сумма долей = 1 проверяется юнит-тестом.",
+    "shares": {
+      "KG_310": {
+        "share": "0.04",
+        "label": "Baugrube · Erdbau"
+      },
+      "KG_320": {
+        "share": "0.11",
+        "label": "Gründung · Unterbau"
+      },
+      "KG_330": {
+        "share": "0.27",
+        "label": "Außenwände · Vertikale Baukonstruktionen"
+      },
+      "KG_340": {
+        "share": "0.13",
+        "label": "Innenwände · Vertikale Baukonstruktionen"
+      },
+      "KG_350": {
+        "share": "0.18",
+        "label": "Decken · Horizontale Baukonstruktionen"
+      },
+      "KG_360": {
+        "share": "0.11",
+        "label": "Dächer"
+      },
+      "KG_370": {
+        "share": "0.09",
+        "label": "Infrastrukturanlagen · Einbauten"
+      },
+      "KG_390": {
+        "share": "0.07",
+        "label": "Sonstige Maßnahmen für Baukonstruktionen"
+      }
+    }
+  },
+  "risiken": {
+    "$comment": "Risikozuschlag по D-02 и calculation-spec §1.4: «счёт за отсутствующий документ». Ставки и базы — из спецификации, не выведены. Применение НЕ по умолчанию: контрольный пример calculation-spec §6.1 надбавки не содержит, и молчаливое включение изменило бы нормативный спесимен (правило 32). Включается решением с событием, как Regionalfaktor (D-15).",
+    "items": [
+      {
+        "id": "RISK-BAUGRUND",
+        "label": "Baugrundgutachten liegt nicht vor",
+        "kategorie": "Baugrund",
+        "wahrscheinlichkeit": "mittel",
+        "base": "KG_320",
+        "rate": "0.04",
+        "remedy": "Baugrundgutachten beibringen — der Zuschlag entfällt"
+      },
+      {
+        "id": "RISK-STATIK",
+        "label": "Statik nicht geprüft",
+        "kategorie": "Tragwerk",
+        "wahrscheinlichkeit": "niedrig",
+        "base": "KG_300",
+        "rate": "0.02",
+        "remedy": "Geprüfte Statik beibringen — der Zuschlag entfällt"
+      }
+    ]
   }
 }

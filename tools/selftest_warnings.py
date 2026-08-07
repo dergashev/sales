@@ -66,7 +66,10 @@ def build(tmp: pathlib.Path, *, tsx: str, manifest=None, images=()):
         d.mkdir(parents=True, exist_ok=True)
         (d / 'manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
         for name in images:
-            (d / name).write_bytes(b'\x00')
+            # ДВОИЧНОЕ содержимое, недопустимое в UTF-8: прежний `b'\x00'`
+            # декодировался успешно, и проверка существования через чтение
+            # текста проходила тест, но падала на настоящем WebP.
+            (d / name).write_bytes(b'RIFF\xdc\xff\x00\x00WEBP')
 
 
 def warns(tmp: pathlib.Path, cls: str) -> list[str]:

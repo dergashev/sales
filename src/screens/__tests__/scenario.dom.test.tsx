@@ -103,11 +103,22 @@ describe('Сквозной сценарий продажи', () => {
     await user.click(nav(/Baugrund & Erschließung/))
     // Риск — категория · вероятность · следствие, и он НЕ в цене (CALC-001).
     expect(screen.getByText('Baugrundgutachten liegt nicht vor')).toBeInTheDocument()
-    // Приёмка № 17: надбавка — реальные деньги (D-02), и текст обязан
-    // это говорить; в фикстуре она не применена, и это названо отдельно.
-    expect(screen.getByText(/Risikozuschlag \+ 4 % auf KG 320/)).toBeInTheDocument()
-    expect(screen.getByText(/Der Zuschlag ist echtes Geld/)).toBeInTheDocument()
-    expect(screen.getByText(/noch nicht enthalten/)).toBeInTheDocument()
+    // Надбавка — реальные деньги (D-02) с НАЗВАННОЙ базой: подгруппа
+    // KG 320, а не «примерно от KG 300». Решение PO 07.08 о третьем
+    // уровне KG сделало сумму вычислимой.
+    expect(screen.getByText(/Baugrundgutachten liegt nicht vor/)).toBeInTheDocument()
+    expect(screen.getByText(/Zuschlag · 4 % auf KG 320/)).toBeInTheDocument()
+    expect(screen.getAllByText(/Noch nicht im Angebot/).length).toBe(2)
+
+    // Применение меняет ЦЕНУ и создаёт событие журнала.
+    const before = useStore.getState().projection().result.total.exact
+    await user.click(screen.getAllByRole('button', { name: 'Zuschlag anwenden' })[0]!)
+    const after = useStore.getState().projection().result.total.exact
+    expect(after.gt(before)).toBe(true)
+    // Ровно 4 % от подгруппы KG 320, а не от чего-то похожего.
+    const kg320 = useStore.getState().projection().kgSplit.KG_300.mul('0.11')
+    expect(after.minus(before).toFixed(2)).toBe(kg320.mul('0.04').toFixed(2))
+    expect(screen.getAllByText(/Im Angebot enthalten/).length).toBe(1)
     // Пустота по Erschließung названа с источником, решение — в главе 3.
     expect(screen.getByText(/keine Angaben zur Erschließung/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Zu Kapitel 3/ })).toBeInTheDocument()

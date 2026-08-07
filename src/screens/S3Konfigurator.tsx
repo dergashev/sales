@@ -12,6 +12,7 @@ import { ScheduleGantt } from '../components/ScheduleGantt'
 import { ChapterBuildings } from './ChapterBuildings'
 import { OptionChapter } from './OptionChapter'
 import { KG300_GROUPS, KG400_GROUPS, ZERT_GROUPS, COVERAGE_RATES } from '../engine/options'
+import { RISK_ITEMS, riskDriver } from '../engine/risk'
 import demo from '../fixtures/demo-0001.json'
 import { present, label as moneyLabel } from '../engine/money'
 
@@ -509,7 +510,9 @@ function ChapterKg700() {
  */
 function ChapterBaugrund() {
   const s = useStore()
+  const tx = useTx()
   const kg200 = s.coverage.KG_200
+  const kg300Exact = s.projection().kgSplit.KG_300
 
   return (
     <div className="grid gap-5">
@@ -519,46 +522,60 @@ function ChapterBaugrund() {
           + 'Gutachten bleibt er ein benanntes Risiko — kein Preisbestandteil '
           + 'und keine stillschweigende Annahme.'}
       >
-        {/* Типизированный риск: категория · вероятность · следствие.
-            Не процент в списке неопределённости (CALC-001). */}
-        <div className="a3-konflikt">
-          <p className="text-body text-text-primary">
-            <span aria-hidden="true">▲ </span>
-            Baugrundgutachten liegt nicht vor
-          </p>
-          <p className="a3-cap mt-1">
-            Risiko · Kategorie Baugrund · Wahrscheinlichkeit mittel ·
-            Risikozuschlag +{NNBSP}4{NNBSP}% auf KG{NNBSP}320
-          </p>
-          {/* Приёмка № 17 нашла здесь утверждение «на сумму не влияет» —
-              прямо противоположное D-02 и calculation-spec: Risikozuschlag
-              это РЕАЛЬНЫЕ деньги, счёт за отсутствующий документ, и он
-              снимается присланным Gutachten. Не смешивается он только с
-              Genauigkeitsband: та — статистика и к цене не прибавляется. */}
-          <p className="a3-cap mt-1">
-            Der Zuschlag ist echtes Geld — die Rechnung für ein fehlendes
-            Dokument, nicht die Schätzunsicherheit: Letztere wird als Band
-            gezeigt und nicht addiert. Mit dem Gutachten entfällt der
-            Zuschlag.
-          </p>
-          {/* Названный пробел вместо выдуманного числа (R-25): база
-              надбавки — KG 320, а модель прототипа разбивает затраты до
-              KG 300. Посчитать 4 % «примерно от KG 300» значило бы
-              применить ставку к чужому знаменателю — тот же класс, что
-              DATA-001. */}
-          <p className="a3-cap mt-1">
-            <span aria-hidden="true">○ </span>
-            Im aktuellen Angebot ist der Zuschlag noch nicht enthalten: die
-            Bezugsgröße KG{NNBSP}320 wird im Prototyp nicht getrennt
-            ausgewiesen, und 4{NNBSP}% auf eine andere Kostengruppe zu
-            rechnen wäre ein anderer Betrag, kein Näherungswert.
-          </p>
-          <div className="mt-2">
-            <Button onClick={() => s.openOpportunity(s.opportunityId ?? '')}>
-              Frage an den Kunden · in der Vorbereitung
-            </Button>
-          </div>
-        </div>
+        {/* Типизированные риски фикстуры: категория · вероятность ·
+            ставка · НАЗВАННАЯ база. Надбавка — реальные деньги (D-02),
+            и её сумма считается от своей группы затрат, а не «примерно
+            от KG 300»: для этого и появился третий уровень KG. */}
+        {RISK_ITEMS.map((r) => {
+          const d = riskDriver(r, kg300Exact)
+          const on = s.risikoAktiv[r.id] === true
+          return (
+            <div key={r.id} className="a3-konflikt mt-3">
+              <p className="text-body text-text-primary">
+                <span aria-hidden="true">{on ? '● ' : '▲ '}</span>
+                {tx(r.label)}
+              </p>
+              <div className="a3-kv">
+                <span>
+                  <span className="a3-cap block">{tx('Kategorie')}</span>
+                  {tx(r.kategorie)}
+                </span>
+                <span>
+                  <span className="a3-cap block">{tx('Wahrscheinlichkeit')}</span>
+                  {tx(r.wahrscheinlichkeit)}
+                </span>
+                <span>
+                  <span className="a3-cap block">
+                    {tx('Zuschlag')} · {(Number(r.rate) * 100).toFixed(0)}{NNBSP}%
+                    {' '}{tx('auf')} {r.base.replace('_', NNBSP)}
+                  </span>
+                  <span className="numeric">
+                    {d ? moneyLabel(present(d.exact)) : '—'}
+                  </span>
+                </span>
+              </div>
+              <p className="a3-cap mt-2">
+                {on
+                  ? tx('Im Angebot enthalten. Der Zuschlag ist die Rechnung für ein fehlendes Dokument und entfällt, sobald es vorliegt.')
+                  : tx('Noch nicht im Angebot. Die Schätzunsicherheit bleibt davon unberührt: sie ist Statistik und wird nicht addiert.')}
+              </p>
+              <p className="a3-cap mt-1">
+                <span aria-hidden="true">→ </span>{tx(r.remedy)}
+              </p>
+              <div className="a3-row mt-3">
+                <Button
+                  variant={on ? 'secondary' : 'primary'}
+                  onClick={() => s.toggleRisiko(r.id)}
+                >
+                  {on ? tx('Zuschlag entfernen') : tx('Zuschlag anwenden')}
+                </Button>
+                <Button onClick={() => s.opportunityId && s.openOpportunity(s.opportunityId)}>
+                  {tx('Frage an den Kunden · in der Vorbereitung')}
+                </Button>
+              </div>
+            </div>
+          )
+        })}
       </Card>
 
       <Card
