@@ -149,6 +149,25 @@ describe('Сквозной сценарий продажи', () => {
     expect(chip.querySelectorAll('.block')).toHaveLength(0)
   })
 
+  it('карточки опций несут фотографии, но смысл остаётся за подписью (D-21, правило 8)', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await enterPipeline(user)
+    await user.click(nav(/Konfigurator/))
+    await user.click(screen.getByRole('button', { name: 'Gebäudedaten bestätigen' }))
+    await user.click(nav(/Leistungen KG 300/))
+
+    const media = document.querySelectorAll('img.a3-option-media, img.a3-img')
+    expect(media.length).toBeGreaterThan(5)
+    // Изображение декоративно: вариант назван текстом, и повтор мотива
+    // вслух был бы вторым чтением того же (правило 8).
+    for (const img of media) expect(img.getAttribute('alt')).toBe('')
+    // Подпись и цена стоят на плитке независимо от картинки.
+    const tile = document.querySelector('.a3-okc-tile')!
+    expect(tile.querySelector('b')?.textContent?.length).toBeGreaterThan(1)
+    expect(tile.querySelector('.a3-pd')).not.toBeNull()
+  })
+
   it('варианты сравниваются бок о бок ДО фиксации, и итог сходится с плиткой', async () => {
     const user = userEvent.setup()
     render(<App />)

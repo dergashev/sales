@@ -125,6 +125,12 @@ export function SegmentedControl<T extends string>({
 export type RadioCard<T extends string> = {
   value: T
   title: string
+  /**
+   * Фотография варианта (поставка № 18). ВТОРИЧНЫЙ носитель: подпись и
+   * цена остаются на плитке при любой судьбе картинки — не загрузилась,
+   * не существует, отключена пользователем (правило 8).
+   */
+  image?: { url: string; motif: string } | null
   description?: string
   /**
    * Последствие видно ВСЕГДА, не по hover (R-05, OPTION-009):
@@ -241,6 +247,19 @@ export function RadioCardGroup<T extends string>({
                 onFocus={() => !o.disabled && previewStart(o.value)}
                 onBlur={previewStop}
               />
+              {/* Медиа-слот контракта идёт ПЕРВЫМ. `alt=""` намеренно:
+                  вариант уже назван подписью, и повтор мотива вслух был бы
+                  вторым чтением того же. Битая картинка снимает слот, а не
+                  ломает плитку. */}
+              {o.image && (
+                <img
+                  className="a3-option-media"
+                  src={o.image.url}
+                  alt=""
+                  loading="lazy"
+                  onError={(e) => { e.currentTarget.hidden = true }}
+                />
+              )}
               {/* checkIndicator контракта — `.a3-ok` (✓-круг системы). */}
               <span aria-hidden="true"
                     className={'a3-ok' + (active ? ' opacity-100' : '')}>
@@ -307,7 +326,9 @@ export function FacadeTileGroup({ legend, value, onChange, options }: {
     value: string
     label: string
     consequence: string
+    /** Плейсхолдер-образец материала — запасной вид, если фото нет. */
     material: FacadeMaterial
+    image?: { url: string; motif: string } | null
     axes: string[]
     disabled?: boolean
     disabledReason?: string
@@ -340,8 +361,16 @@ export function FacadeTileGroup({ legend, value, onChange, options }: {
                 onChange={() => onChange(o.value)}
               />
               <span className={`absolute inset-0 ${FOCUS_RING}`} aria-hidden="true" />
-              <span aria-hidden="true"
-                    className={`a3-img ${FACADE_MATERIAL_CLS[o.material]} a3-f-win`} />
+              {/* Фотография материала, если поставка её дала; иначе —
+                  плейсхолдер-образец системы. Контракт DC-20 объявляет
+                  `img.a3-img` опциональным ровно для этого. */}
+              {o.image ? (
+                <img className="a3-img" src={o.image.url} alt="" loading="lazy"
+                     onError={(e) => { e.currentTarget.hidden = true }} />
+              ) : (
+                <span aria-hidden="true"
+                      className={`a3-img ${FACADE_MATERIAL_CLS[o.material]} a3-f-win`} />
+              )}
               <span aria-hidden="true" className={'a3-ok' + (active ? ' opacity-100' : '')}>
                 ✓
               </span>

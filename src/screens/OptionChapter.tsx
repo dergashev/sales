@@ -9,6 +9,7 @@ import {
 import { useState } from 'react'
 import { Button } from '../components/primitives'
 import { useTx } from '../i18n'
+import { optionImage } from '../assets/option-images'
 
 /**
  * Глава опций — один компонент на все группы затрат.
@@ -221,6 +222,7 @@ export function OptionChapter({ groups, intro }: {
                   return {
                     value: c.value,
                     title: tx(c.label),
+                    image: optionImage(g.id, c.value),
                     description: `${tx(c.basis)} ${MARK}`,
                     consequence: c.value === value
                       ? tx('aktuelle Auswahl')
@@ -272,6 +274,7 @@ export function OptionChapter({ groups, intro }: {
                       value: m.value,
                       label: m.title,
                       consequence: m.consequence,
+                      image: m.image,
                       material: FACADE_PRESENTATION[m.value]!.material,
                       axes: FACADE_PRESENTATION[m.value]!.axes.map(tx),
                       disabled: m.disabled,
