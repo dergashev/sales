@@ -94,7 +94,7 @@ export function OpportunityList() {
           : id === 'stadt' ? setCity(e.target.value) : setOwner(e.target.value))}
       >
         {(id === 'land' ? countries : id === 'stadt' ? cities : owners).map((v) => (
-          <option key={v} value={v}>{v === ALL ? 'alle' : v}</option>
+          <option key={v} value={v}>{v === ALL ? tx('alle') : v}</option>
         ))}
       </select>
     </div>

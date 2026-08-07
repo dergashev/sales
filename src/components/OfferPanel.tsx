@@ -144,7 +144,7 @@ export function OfferPanel() {
             переносы принадлежат системе, не этому файлу (дефект 17). */}
         <div className="a3-heroband">
         <div className="a3-hb a3-hb-total">
-          <span className="a3-hb-cap">{p.result.totalLabel}</span>
+          <span className="a3-hb-cap">{tx(p.result.totalLabel)}</span>
           <p className="a3-hb-num numeric">
             {p.result.total.prefix && (
               <span aria-hidden="true">{p.result.total.prefix}{NNBSP}</span>
@@ -202,7 +202,7 @@ export function OfferPanel() {
             {p.leadRate.display}
             <span className="a3-hb-unit">{NNBSP}€/m²</span>
           </p>
-          <span className="a3-hb-cap">{p.leadRate.denominatorLabel}</span>
+          <span className="a3-hb-cap">{tx(p.leadRate.denominatorLabel)}</span>
         <p className="a3-cap numeric mt-1" style={{ overflowWrap: 'anywhere' }}>
           {rateLabel(p.secondaryRateBgf)} · {rateLabel(p.perUnit)}
           {' · '}
@@ -498,7 +498,7 @@ export function OfferPanel() {
                 )}
                 <tr className="a3-drv a3-sum">
                   <th scope="row" className="text-left">
-                    {p.result.totalLabel}
+                    {tx(p.result.totalLabel)}
                   </th>
                   <td aria-hidden="true" />
                   <td className="a3-val">
@@ -578,7 +578,7 @@ export function OfferPanel() {
                   <td className="a3-num" colSpan={2}>{moneyLabel(p.belowGround)}</td>
                 </tr>
                 <tr className="a3-total">
-                  <td>{p.result.totalLabel}</td>
+                  <td>{tx(p.result.totalLabel)}</td>
                   <td className="a3-num" colSpan={2}>{moneyLabel(p.result.total)}</td>
                 </tr>
               </tbody>

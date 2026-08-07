@@ -112,7 +112,7 @@ export function S5Export() {
                     }}
                     className="h-4 w-4 accent-[color:var(--color-selection-border)]"
                   />
-                  {a.label}
+                  {tx(a.label)}
                   <span className="ml-auto text-small text-text-muted">{tx('Muster')}</span>
                 </label>
               </li>
@@ -155,7 +155,7 @@ export function S5Export() {
               <div className="a3-mailrow">
                 <span className="a3-lb">{tx('Anlagen')}</span>
                 {ARTIFACTS.filter((a) => selected.has(a.id)).map((a) => (
-                  <span key={a.id} className="a3-tag a3-green">{a.label} · Muster</span>
+                  <span key={a.id} className="a3-tag a3-green">{tx(a.label)} · Muster</span>
                 ))}
                 {selected.size === 0 && (
                   <span className="a3-cap">{tx('keine — links auswählen')}</span>
@@ -231,7 +231,7 @@ export function S5Export() {
                    style={{ maxWidth: 'var(--measure-form-control)' }}>
                 <b>{s.options.find((o) => o.id === s.activeOptionId)?.name ?? 'Musterprojekt Nordfeld'}</b>
                 <hr />
-                {p.result.totalLabel}<br />
+                {tx(p.result.totalLabel)}<br />
                 <b>{p.result.total.prefix ? `${p.result.total.prefix}${NNBSP}` : ''}{p.result.total.display}{NNBSP}€</b><br /><br />{tx('Preisstand 08/2026')}<br />
                 Angebotsgültigkeit: Musterangabe
                 {s.mode === 'intern' && <><br />DEMO-RUN-0007</>}

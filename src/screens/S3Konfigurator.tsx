@@ -254,7 +254,7 @@ function ChapterUmfang() {
       </Card>
 
       <Card title="Folge für die Angebotssumme">
-        <p className="text-body text-text-primary">{p.result.totalLabel}</p>
+        <p className="text-body text-text-primary">{tx(p.result.totalLabel)}</p>
         {p.result.completeness === 'incomplete' && (
           <ul className="mt-2">
             {p.result.incompleteReasons.map((r) => (
@@ -276,6 +276,7 @@ function ChapterUmfang() {
 }
 
 function ChapterFlaechen() {
+  const tx = useTx()
   const s = useStore()
   return (
     <div className="grid gap-5">
@@ -288,7 +289,7 @@ function ChapterFlaechen() {
           label="BGF oberirdisch"
           value={s.fields.bgfOber.value}
           unit="m²"
-          provenance={s.fields.bgfOber.provenance}
+          provenance={tx(s.fields.bgfOber.provenance)}
           onCommit={(v, c) => s.editField('bgfOber', v, c)}
         />
         <NumericField

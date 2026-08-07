@@ -289,11 +289,12 @@ function P2Projektdaten() {
 }
 
 function StaticRow({ label, value, provenance }: { label: string; value: string; provenance: string }) {
+  const tx = useTx()
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle py-3">
       <span className="text-small font-medium text-text-primary">{label}</span>
       <span className="numeric text-body text-text-primary">{value}</span>
-      <ProvenanceChip provenance={provenance} />
+      <ProvenanceChip provenance={tx(provenance)} />
     </div>
   )
 }

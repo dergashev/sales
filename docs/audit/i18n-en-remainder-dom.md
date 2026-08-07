@@ -5,31 +5,24 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 83** · перевод есть, мост не подключён: 31
+**Всего 76** · перевод есть, мост не подключён: 24
 · перевода нет (в поставку копирайта): 52
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
-- Angebotspräsentation (PDF)
 - Basis ist der exakte Rechenwert, nie der angezeigte (CALC-007).
 - Der Gesamtbetrag bleibt unverändert — 70/22/8 verteilt, was bereits gerechnet ist.
 - EN: Entwurf — Übersetzung noch nicht vollständig
 - Gebäude im Projekt
 - Gebäudeklasse nach MBO §2
 - Kalender: Kalendermonate · Staffelstart aus ScheduleModel · DEMO-SC-01
-- Kostenübersicht KG
 - Kunde
-- Leistungen — enthalten / nicht enthalten
 - Leistungsbeginn ab OK Decke über UG
 - Schätzunsicherheit
 - Total NUF nach DIN 277
 - Total WFL nach WoFlV
-- Vertragsvorlagen für die Rechtsabteilung
 - Wohnfläche WFL nach WoFlV
-- Zwischensumme der kalkulierten Positionen
-- Zwischensumme der kalkulierten Positionen (€)
 - aktuelle Auswahl
-- alle
 - aus Dokument
 - enthält die abgeleitete S-Fläche
 - nach HOAI und AHO

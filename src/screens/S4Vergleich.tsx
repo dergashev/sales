@@ -73,7 +73,7 @@ export function S4Vergleich() {
 
   const rows: Row[] = [
     {
-      group: 'ERGEBNIS', label: `${base.p.result.totalLabel} (€)`,
+      group: 'ERGEBNIS', label: `${tx(base.p.result.totalLabel)} (€)`,
       cells: cols.map((c) => money(c.p.result.total.exact)),
       // Дельта к базе — подстрочник той же ячейки (.a3-d контракта DC-11),
       // экономия получает .a3-save; отдельная строка дельты не существует.
