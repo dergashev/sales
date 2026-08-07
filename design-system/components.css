@@ -382,13 +382,15 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-gantt-provenance{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);margin:var(--space-3) 0 0}
 
 /* DC-20 · FacadeOptionGrid. Structure: .a3-fgrid > button.a3-fk >
-   .a3-img + .a3-nm + .a3-ok; material classes apply only to .a3-img.
+   optional img.a3-img + .a3-nm + .a3-ok; legacy material classes apply only
+   to .a3-img. A missing/broken photo removes the media slot; text remains.
    Classes: .a3-fgrid · .a3-fk · .a3-img · .a3-nm · .a3-ok · .a3-f-putz · .a3-f-holz · .a3-f-klinker · .a3-f-kombi · .a3-f-win · .a3-faxes. */
 .a3-fgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-4);max-width:var(--measure-chart)}
 .a3-fk{border:var(--border-width-strong) solid transparent;outline:var(--border-hairline);cursor:pointer;position:relative;padding:0;background:none;font:inherit;transition:border-color .12s var(--motion-easing-standard)}
 .a3-fk:hover{border-color:var(--color-text-primary)}
 .a3-fk[aria-pressed="true"]{border-color:var(--color-selection-border)}
-.a3-fk .a3-img{display:block;aspect-ratio:4/3;background-size:auto}
+.a3-fk .a3-img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background-size:auto;background-color:var(--color-surface-canvas)}
+.a3-fk .a3-img[hidden]{display:none}
 .a3-fk .a3-nm{display:block;font-size:var(--type-small-size);line-height:var(--type-small-line);padding:var(--space-2);text-align:left;font-weight:var(--type-small-weight);color:var(--color-text-primary)}
 .a3-fk .a3-ok{position:absolute;top:var(--space-2);right:var(--space-2);width:var(--size-icon-md);height:var(--size-icon-md);border-radius:50%;background:var(--color-selection-border);color:var(--color-text-inverse);font-size:var(--type-caption-size);font-weight:700;display:inline-flex;align-items:center;justify-content:center;opacity:0;transition:opacity var(--motion-reveal) var(--motion-easing-standard)}
 .a3-fk[aria-pressed="true"] .a3-ok{opacity:1}
@@ -463,8 +465,10 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-modal .a3-hidelist{border-left:var(--border-width-strong) solid var(--color-status-warning);background:var(--color-surface-subtle);padding:var(--space-2) var(--space-3);font-size:var(--type-small-size);line-height:var(--type-small-line);margin:var(--space-4) 0}
 
 /* DC-39 / DC-40 · type and option tiles. Structure: .a3-tgrid > button.a3-tk
-   or .a3-ogrid > button.a3-okc-tile; each tile contains .a3-ok + icon + labels.
-   Classes: .a3-tgrid · .a3-tk · .a3-ok · .a3-kk · .a3-typline · .a3-ogrid · .a3-okc-tile · .a3-pd · .a3-st. */
+   or .a3-ogrid > button.a3-okc-tile; an option tile may start with
+   img.a3-option-media, followed by .a3-ok + icon + labels. Missing/broken
+   media is hidden, leaving the complete text contract.
+   Classes: .a3-tgrid · .a3-tk · .a3-ok · .a3-kk · .a3-typline · .a3-ogrid · .a3-okc-tile · .a3-option-media · .a3-pd · .a3-st. */
 .a3-tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--measure-showcase-tile),1fr));gap:var(--space-4);max-width:var(--measure-gallery)}
 .a3-tk{border:var(--border-width-strong) solid transparent;outline:var(--border-hairline);background:var(--color-surface-default);cursor:pointer;padding:var(--space-4);text-align:left;font:inherit;position:relative;transition:border-color .12s var(--motion-easing-standard)}
 .a3-tk:hover{border-color:var(--color-text-primary)}
@@ -477,6 +481,8 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-typline{border-left:var(--border-width-strong) solid var(--color-text-primary);background:var(--color-surface-subtle);padding:var(--space-3) var(--space-4);margin-top:var(--space-4);font-size:var(--type-small-size);line-height:var(--type-small-line);max-width:var(--measure-gallery)}
 .a3-ogrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--measure-showcase-tile),1fr));gap:var(--space-4);max-width:var(--measure-option-grid)}
 .a3-okc-tile{border:var(--border-width-strong) solid transparent;outline:var(--border-hairline);background:var(--color-surface-default);cursor:pointer;padding:var(--space-4);text-align:left;font:inherit;position:relative;transition:border-color .12s var(--motion-easing-standard)}
+.a3-okc-tile .a3-option-media{display:block;width:calc(100% + var(--space-4) + var(--space-4));aspect-ratio:4/3;object-fit:cover;margin:calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) var(--space-3);background:var(--color-surface-canvas)}
+.a3-okc-tile .a3-option-media[hidden]{display:none}
 .a3-okc-tile:hover{border-color:var(--color-text-primary)}
 .a3-okc-tile[aria-pressed="true"]{border-color:var(--color-selection-border)}
 .a3-okc-tile .a3-ok{position:absolute;top:var(--space-2);right:var(--space-2);width:var(--size-icon-md);height:var(--size-icon-md);border-radius:50%;background:var(--color-selection-border);color:var(--color-text-inverse);font-size:var(--type-caption-size);font-weight:700;display:inline-flex;align-items:center;justify-content:center;opacity:0;transition:opacity var(--motion-reveal) var(--motion-easing-standard)}

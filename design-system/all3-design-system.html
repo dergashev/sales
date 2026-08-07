@@ -337,7 +337,7 @@
         <svg width="48" height="32" viewBox="0 0 48 32"><rect x="4" y="12" width="40" height="2" fill="var(--color-text-primary)"/><rect x="8" y="16" width="32" height="14" fill="var(--color-text-primary)"/><rect x="13" y="22" width="10" height="5" fill="var(--color-surface-default)"/><rect x="26" y="22" width="10" height="5" fill="var(--color-surface-default)"/></svg>
         <span class="a3-ok">✓</span><b>Tiefgaragen-Zuschlag</b><span class="a3-pd">+30.000 €</span><span class="a3-st">nicht enthalten</span></button>
       <button class="a3-okc-tile" type="button" disabled title="Bei GK 5 bauordnungsrechtlich erforderlich">
-        <svg width="48" height="32" viewBox="0 0 48 32"><rect x="18" y="2" width="12" height="30" fill="var(--color-text-primary)"/><rect x="21" y="6" width="6" height="10" fill="var(--color-surface-default)"/><circle cx="24" cy="24" r="2" fill="var(--color-surface-default)"/></svg>
+        <img class="a3-option-media" src="./assets/options/opt-kg460-ja.webp" alt="" loading="lazy" decoding="async" onerror="this.hidden=true">
         <span class="a3-ok">✓</span><b>Personenaufzug</b><span class="a3-pd">inklusive</span><span class="a3-st">GK 5 — erforderlich</span></button>
     </div>
 
@@ -511,15 +511,15 @@
       <p class="a3-gantt-provenance">Kalender: Kalendermonate · Regel R-26 · zuletzt berechnet 06.08.2026, 14:32 Uhr (Europe/Belgrade) · DEMO-RUN-0012</p>
     </div>
 
-    <h3>Fassaden-Kacheln — Auswahl für Render</h3>
+    <h3>Fassaden-Kacheln — Foto-Slot mit textlichem Fallback</h3>
     <div class="a3-fgrid" id="fgrid" data-dc="20">
-      <button class="a3-fk" type="button" aria-pressed="true" data-axes="Material: Putz · Farbwelt: hell · Dach: Flachdach" onclick="setFk(this)"><span class="a3-img a3-f-putz a3-f-win"></span><span class="a3-ok">✓</span><span class="a3-nm">Putz hell · Flachdach</span></button>
-      <button class="a3-fk" type="button" aria-pressed="false" data-axes="Material: Holz vertikal · Farbwelt: natur · Dach: Flachdach" onclick="setFk(this)"><span class="a3-img a3-f-holz a3-f-win"></span><span class="a3-ok">✓</span><span class="a3-nm">Holz vertikal · Flachdach</span></button>
-      <button class="a3-fk" type="button" aria-pressed="false" data-axes="Material: Klinkerriemchen · Farbwelt: warm · Dach: Flachdach" onclick="setFk(this)"><span class="a3-img a3-f-klinker a3-f-win"></span><span class="a3-ok">✓</span><span class="a3-nm">Klinkerriemchen · Flachdach</span></button>
-      <button class="a3-fk" type="button" aria-pressed="false" data-axes="Material: Kombination · Sockel: dunkel · Dach: Flachdach" onclick="setFk(this)"><span class="a3-img a3-f-kombi a3-f-win"></span><span class="a3-ok">✓</span><span class="a3-nm">Kombination · Sockel dunkel</span></button>
+      <button class="a3-fk" type="button" aria-pressed="true" data-axes="Material: Putz · Farbwelt: hell · Dach: Flachdach" onclick="setFk(this)"><img class="a3-img" src="./assets/options/opt-fassade-plaster.webp" alt="" loading="lazy" decoding="async" onerror="this.hidden=true"><span class="a3-ok">✓</span><span class="a3-nm">Putz hell · Flachdach</span></button>
+      <button class="a3-fk" type="button" aria-pressed="false" data-axes="Material: Holz vertikal · Farbwelt: natur · Dach: Flachdach" onclick="setFk(this)"><img class="a3-img" src="./assets/options/opt-fassade-timber.webp" alt="" loading="lazy" decoding="async" onerror="this.hidden=true"><span class="a3-ok">✓</span><span class="a3-nm">Holz vertikal · Flachdach</span></button>
+      <button class="a3-fk" type="button" aria-pressed="false" data-axes="Material: Klinkerriemchen · Farbwelt: warm · Dach: Flachdach" onclick="setFk(this)"><span class="a3-ok">✓</span><span class="a3-nm">Klinkerriemchen · Flachdach</span></button>
+      <button class="a3-fk" type="button" aria-pressed="false" data-axes="Material: Kombination · Sockel: dunkel · Dach: Flachdach" onclick="setFk(this)"><span class="a3-ok">✓</span><span class="a3-nm">Kombination · Sockel dunkel</span></button>
     </div>
     <div class="a3-faxes" id="faxes"><span class="a3-tag a3-orange">Material: Putz</span><span class="a3-tag">Farbwelt: hell</span><span class="a3-tag">Dach: Flachdach</span></div>
-    <p class="a3-cap" style="margin-top:var(--space-3)">Platzhalter-Muster; der Prototyp nutzt echte Renders aus der All3-Bibliothek.</p>
+    <p class="a3-cap" style="margin-top:var(--space-3)">Generierte, projektneutrale Optionsfotos; die beiden textlichen Kacheln zeigen den stabilen Fallback ohne Media-Slot.</p>
 
     <h3>Quellen-Chips — jede Zahl kennt ihre Herkunft</h3>
     <div class="a3-row">

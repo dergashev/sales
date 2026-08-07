@@ -1,0 +1,303 @@
+[
+  {
+    "group": "erdarbeiten",
+    "value": "ja",
+    "file": "opt-erdarbeiten-ja.webp",
+    "motifDe": "Vorbereitete Baugrube vor einem Holz-MFH",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "erdarbeiten",
+    "value": "nein",
+    "file": "opt-erdarbeiten-nein.webp",
+    "motifDe": "Unberührtes Grundstück im gleichen Blickwinkel",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "bodenplatte",
+    "value": "ja",
+    "file": "opt-bodenplatte-ja.webp",
+    "motifDe": "Frisch betonierte Bodenplatte",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "bodenplatte",
+    "value": "nein",
+    "file": "opt-bodenplatte-nein.webp",
+    "motifDe": "Verdichtetes Schotterbett ohne Bodenplatte",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "ugVariante",
+    "value": "rohbauAusbau",
+    "file": "opt-ugVariante-rohbauAusbau.webp",
+    "motifDe": "Kellerrohbau mit beginnendem Innenausbau",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "ugVariante",
+    "value": "nurAusbau",
+    "file": "opt-ugVariante-nurAusbau.webp",
+    "motifDe": "Vollständig ausgebauter Kellerraum",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "ugVariante",
+    "value": "keins",
+    "file": "opt-ugVariante-keins.webp",
+    "motifDe": "Gebäude auf Bodenplatte ohne Untergeschoss",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "balkone",
+    "value": "ja",
+    "file": "opt-balkone-ja.webp",
+    "motifDe": "Holz-MFH mit Balkonreihen",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "balkone",
+    "value": "nein",
+    "file": "opt-balkone-nein.webp",
+    "motifDe": "Dasselbe Holz-MFH ohne Balkone",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "balkonTyp",
+    "value": "diagonal",
+    "file": "opt-balkonTyp-diagonal.webp",
+    "motifDe": "Balkone mit diagonalen Stahlstreben",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "balkonTyp",
+    "value": "stuetzen",
+    "file": "opt-balkonTyp-stuetzen.webp",
+    "motifDe": "Balkone auf senkrechten Stützen",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "balkonTyp",
+    "value": "konsole",
+    "file": "opt-balkonTyp-konsole.webp",
+    "motifDe": "Auskragende Betonbalkone ohne Stützen",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "egBauweise",
+    "value": "holz",
+    "file": "opt-egBauweise-holz.webp",
+    "motifDe": "Erdgeschoss als sichtbare Holzkonstruktion",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "egBauweise",
+    "value": "massiv",
+    "file": "opt-egBauweise-massiv.webp",
+    "motifDe": "Erdgeschoss in Beton und Mauerwerk",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "garage",
+    "value": "ja",
+    "file": "opt-garage-ja.webp",
+    "motifDe": "Integrierte Garagentore im Erdgeschoss",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "garage",
+    "value": "nein",
+    "file": "opt-garage-nein.webp",
+    "motifDe": "Wohnnutzung und Eingang statt Garagentoren",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "fassade",
+    "value": "plaster",
+    "file": "opt-fassade-plaster.webp",
+    "motifDe": "Durchgehend helle Putzfassade",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "fassade",
+    "value": "timber",
+    "file": "opt-fassade-timber.webp",
+    "motifDe": "Durchgehend vertikale Holzschalung",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "fassade",
+    "value": "mixedTimber",
+    "file": "opt-fassade-mixedTimber.webp",
+    "motifDe": "Kombination aus Putz und Holzschalung",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "fassade",
+    "value": "klinker",
+    "file": "opt-fassade-klinker.webp",
+    "motifDe": "Durchgehend rotbraune Klinkerfassade",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "fassade",
+    "value": "mixedKlinker",
+    "file": "opt-fassade-mixedKlinker.webp",
+    "motifDe": "Kombination aus Putz und Klinker",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "klinkerFarbe",
+    "value": "rotbunt",
+    "file": "opt-klinkerFarbe-rotbunt.webp",
+    "motifDe": "Klinkerfassade in rotbunter Farbwelt",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "klinkerFarbe",
+    "value": "anthrazit",
+    "file": "opt-klinkerFarbe-anthrazit.webp",
+    "motifDe": "Gleiche Klinkerfassade in Anthrazit",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "klinkerFarbe",
+    "value": "weissgrau",
+    "file": "opt-klinkerFarbe-weissgrau.webp",
+    "motifDe": "Gleiche Klinkerfassade in Weißgrau",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "kg420",
+    "value": "waermepumpe",
+    "file": "opt-kg420-waermepumpe.webp",
+    "motifDe": "Außengerät einer Luft-Wasser-Wärmepumpe",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "kg420",
+    "value": "fernwaerme",
+    "file": "opt-kg420-fernwaerme.webp",
+    "motifDe": "Fernwärme-Übergabeschrank mit Vor- und Rücklauf",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "kg420",
+    "value": "gas",
+    "file": "opt-kg420-gas.webp",
+    "motifDe": "Gas-Brennwertgerät mit Abgasführung",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "kg430",
+    "value": "zentralWrg",
+    "file": "opt-kg430-zentralWrg.webp",
+    "motifDe": "Zentrale Lüftungsanlage mit Wärmerückgewinnung",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "kg430",
+    "value": "dezentral",
+    "file": "opt-kg430-dezentral.webp",
+    "motifDe": "Mehrere dezentrale Lüftungsgeräte",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "kg430",
+    "value": "keine",
+    "file": "opt-kg430-keine.webp",
+    "motifDe": "Leerer Technikbereich und geöffnetes Fenster",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "kg440",
+    "value": "standard",
+    "file": "opt-kg440-standard.webp",
+    "motifDe": "Kompakter Standard-Elektroverteiler",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "kg440",
+    "value": "erhoeht",
+    "file": "opt-kg440-erhoeht.webp",
+    "motifDe": "Erweiterter Verteiler mit Mess- und Steuertechnik",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "kg460",
+    "value": "ja",
+    "file": "opt-kg460-ja.webp",
+    "motifDe": "Geöffnete Aufzugskabine neben dem Treppenraum",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "kg460",
+    "value": "nein",
+    "file": "opt-kg460-nein.webp",
+    "motifDe": "Treppenraum ohne Aufzug",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "kg480",
+    "value": "keine",
+    "file": "opt-kg480-keine.webp",
+    "motifDe": "Konventionelle Lichtschalter und Raumthermostat",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "kg480",
+    "value": "basis",
+    "file": "opt-kg480-basis.webp",
+    "motifDe": "Kompaktes Bedienpanel der Gebäudeautomation",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "qng",
+    "value": "keins",
+    "file": "opt-qng-keins.webp",
+    "motifDe": "Materialmuster ohne Prüf- oder Zertifizierungsmotiv",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "qng",
+    "value": "plus",
+    "file": "opt-qng-plus.webp",
+    "motifDe": "Neutrale Qualitätsprüfung mit Basismessgeräten",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "qng",
+    "value": "premium",
+    "file": "opt-qng-premium.webp",
+    "motifDe": "Umfassende neutrale Qualitätsprüfung am Holzbau",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "dgnb",
+    "value": "keins",
+    "file": "opt-dgnb-keins.webp",
+    "motifDe": "Materialtisch ohne Prüf- oder Zertifizierungsmotiv",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "dgnb",
+    "value": "silber",
+    "file": "opt-dgnb-silber.webp",
+    "motifDe": "Neutrale Basisprüfung von Material und Raumluft",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "dgnb",
+    "value": "gold",
+    "file": "opt-dgnb-gold.webp",
+    "motifDe": "Erweiterte neutrale Nachhaltigkeitsprüfung",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  },
+  {
+    "group": "dgnb",
+    "value": "platin",
+    "file": "opt-dgnb-platin.webp",
+    "motifDe": "Umfassendes neutrales Inbetriebnahme- und Prüfset",
+    "source": "OpenAI ImageGen, generiert am 2026-08-07"
+  }
+]

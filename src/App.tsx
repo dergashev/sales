@@ -177,20 +177,19 @@ function AppHeader({ t }: { t: (k: Parameters<ReturnType<typeof useT>>[0]) => st
             },
           ]}
         />
-        {/* EN честно назван ЧАСТИЧНЫМ — и назван ДО переключения, а не
-            обнаруживается после (приёмка № 17, дефект 2). Три причины
-            остатка разной природы, и смешивать их нельзя: словарь ещё
-            черновик; guidance на EN не переводится и не выдумывается
-            (D-20); доменные данные живут на языке артефакта, который
-            переключается отдельной настройкой (D-13). */}
+        {/* EN честно назван ЧАСТИЧНЫМ до переключения (приёмка № 17,
+            дефект 2). Причина теперь ОДНА и временная: перевод ещё не
+            доставлен целиком. Решение PO D-24 отменило D-20 — английская
+            версия обязана быть английской, включая guidance; пометка
+            снимается поставкой № 4, а не остаётся навсегда. */}
         <SegmentedControl
           layout="inline"
           legend="Sprache"
           value={s.uiLanguage}
           onChange={(l) => s.setUiLanguage(l)}
           helperText={s.uiLanguage === 'en'
-            ? 'EN: Entwurf · Guidance und Fachdaten bleiben deutsch'
-            : 'EN ist ein Entwurf: Oberfläche übersetzt, Guidance und Fachdaten bleiben deutsch'}
+            ? 'EN: Entwurf — Übersetzung noch nicht vollständig'
+            : 'EN ist noch ein Entwurf: die Übersetzung wird gerade vervollständigt'}
           options={[
             { value: 'de', label: 'DE' },
             { value: 'en', label: 'EN · Entwurf' },
