@@ -89,14 +89,23 @@
 
 /* CORE PRIMITIVES · ready contracts with sufficient accepted tokens.
    These additive classes do not rename any existing a3-* API. */
-/* FormField + Textarea. Structure: .a3-form-field > label + control +
-   .a3-form-helper/.a3-form-error; textarea uses .a3-textarea-field. */
+/* FormField + Select + Textarea. Structure: .a3-form-field > label + control +
+   .a3-form-helper/.a3-form-error/.a3-form-disabled-reason; select uses
+   .a3-select-field and textarea uses .a3-textarea-field.
+   Classes: .a3-form-field · .a3-select-field · .a3-form-helper ·
+   .a3-form-error · .a3-form-disabled-reason · .a3-textarea-field ·
+   .a3-textarea-meta · .a3-textarea-counter. */
 .a3-form-field{display:grid;gap:var(--space-2);max-width:var(--measure-component)}
 .a3-form-field>label{font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight)}
-.a3-form-field input,.a3-textarea-field{box-sizing:border-box;min-height:var(--size-hit-target-default);border:var(--border-default);padding:var(--space-2) var(--space-3);font-size:var(--type-input-size);line-height:var(--type-input-line);font-weight:var(--type-input-weight);color:var(--color-text-primary);background:var(--color-surface-default)}
+.a3-form-field input,.a3-select-field,.a3-textarea-field{box-sizing:border-box;min-height:var(--size-hit-target-default);border:var(--border-default);padding:var(--space-2) var(--space-3);font-size:var(--type-input-size);line-height:var(--type-input-line);font-weight:var(--type-input-weight);color:var(--color-text-primary);background:var(--color-surface-default)}
+.a3-select-field{display:block;width:100%;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.a3-select-field:hover:not(:disabled){border-color:var(--color-border-strong)}
+.a3-select-field:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--border-width-focus);box-shadow:0 0 0 var(--border-width-focus) var(--color-focus-separator)}
+.a3-select-field:disabled{opacity:1;cursor:not-allowed;color:var(--color-action-disabled-text);background:var(--color-action-disabled-bg);border-color:var(--color-action-disabled-border)}
 .a3-textarea-field{resize:vertical;min-height:var(--space-8);width:100%}
 .a3-form-helper,.a3-textarea-counter{font-size:var(--type-helper-size);line-height:var(--type-helper-line);font-weight:var(--type-helper-weight);color:var(--color-text-secondary)}
 .a3-form-error{border-left:var(--border-error);padding-left:var(--space-2);font-size:var(--type-error-size);line-height:var(--type-error-line);font-weight:var(--type-error-weight)}
+.a3-form-disabled-reason{border-left:var(--border-contrast-1px);padding-left:var(--space-2);font-size:var(--type-helper-size);line-height:var(--type-helper-line);font-weight:var(--type-helper-weight);color:var(--color-text-primary)}
 .a3-textarea-meta{display:flex;justify-content:space-between;gap:var(--space-3)}
 
 /* DataTable + DisclosureRow. Structure: .a3-data-table > caption + thead +
@@ -403,6 +412,9 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 
 /* DC-21 · OriginPopover. Structure: .a3-hk-wrap > button.a3-hk-val +
    .a3-hk-pop > rows .a3-r > label + .a3-fnum.
+   Absolute/right is the inline-host default. In an overflow host the app
+   portals the same visual class to body and owns fixed viewport coordinates
+   per the DC-21 contract; no visual token is overridden.
    Classes: .a3-hk-wrap · .a3-hk-val · .a3-hk-pop · .a3-show · .a3-r · .a3-fnum. */
 .a3-hk-wrap{position:relative;display:inline-block}
 .a3-hk-val{cursor:pointer;text-decoration:underline;text-decoration-style:solid;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset);background:none;border:none;font:inherit;padding:0;color:inherit;min-height:var(--size-hit-target-default)}
@@ -666,7 +678,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
   .a3-spec{grid-template-columns:1fr}
   .a3-sp-row{flex-wrap:wrap}
   .a3-tabs{flex-wrap:wrap}
-  .a3-form-field input{width:100%;min-width:0}
+  .a3-form-field input,.a3-select-field{width:100%;min-width:0}
   .a3-undo-spec{grid-template-columns:1fr}
   .a3-journal-items li{grid-template-columns:1fr}
   .a3-search-line .a3-form-field,.a3-mailrow input{min-width:0}

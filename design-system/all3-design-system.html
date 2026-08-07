@@ -750,12 +750,29 @@
       </section>
 
       <section class="a3-specimen-block" aria-labelledby="spec-forms-ready">
-        <h3 id="spec-forms-ready">FormField &amp; Textarea · Kernprimitive · ready</h3>
-        <p class="a3-specimen-meta">Sichtbare Labels, Helper und Fehler bleiben getrennte Textträger; Zähler ist kein Placeholder.</p>
+        <h3 id="spec-forms-ready">FormField, Select &amp; Textarea · Kernprimitive · ready / disabled</h3>
+        <p class="a3-specimen-meta">Sichtbare Labels, Helper, Fehler und Disabled-Grund bleiben getrennte Textträger; Zähler und erste Option sind keine Placeholder.</p>
         <div class="a3-form-field">
           <label for="spec-project-name">Projektbezeichnung</label>
           <input id="spec-project-name" value="Musterprojekt Nordfeld" aria-describedby="spec-project-helper">
           <span class="a3-form-helper" id="spec-project-helper">Diese Bezeichnung erscheint in internen Übersichten.</span>
+        </div>
+        <div class="a3-form-field">
+          <label for="spec-country">Land der Opportunity</label>
+          <select class="a3-select-field" id="spec-country" aria-describedby="spec-country-helper">
+            <option>Deutschland</option>
+            <option selected>Französische Republik · Region Auvergne-Rhône-Alpes</option>
+            <option>Spanien</option>
+            <option>Österreich</option>
+          </select>
+          <span class="a3-form-helper" id="spec-country-helper">Long-content-Probe: das gewählte FR-Beispiel erweitert weder Grid noch Panel.</span>
+        </div>
+        <div class="a3-form-field" data-disabled="true">
+          <label for="spec-owner">Opportunity Owner</label>
+          <select class="a3-select-field" id="spec-owner" disabled aria-describedby="spec-owner-reason">
+            <option selected>A. Muster</option>
+          </select>
+          <span class="a3-form-disabled-reason" id="spec-owner-reason">Nicht änderbar · Berechtigung «Opportunity bearbeiten» fehlt.</span>
         </div>
         <div class="a3-form-field">
           <label for="spec-note">Interne Notiz</label>
