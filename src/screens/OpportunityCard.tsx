@@ -223,9 +223,7 @@ export function OpportunityCard() {
       {/* Заметка — уровень проекта, не варианта: продавец записывает
           услышанное о проекте (DC-43). В презентации компонент не
           рендерится вовсе, а не прячется (NOTE-006). */}
-      <section className="a3-sheet mt-6" aria-label="Interne Notiz">
-        <InternalNote />
-      </section>
+      <InternalNote />
 
       <section className="a3-sheet mt-6" aria-label="Opportunity Options">
         <h2 className="text-heading-3 font-bold text-text-primary">{tx('Opportunity Options')}</h2>

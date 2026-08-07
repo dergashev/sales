@@ -233,6 +233,7 @@ describe('Сквозной сценарий продажи', () => {
     await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
     const modus = screen.getByRole('radiogroup', { name: 'Modus' })
     await user.click(within(modus).getAllByRole('radio')[1]!)
+    await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
     await user.click(nav(/^S5|Export/))
     expect(screen.queryByText(/Marge Eigenleistung/)).not.toBeInTheDocument()
   })
@@ -286,6 +287,7 @@ describe('Сквозной сценарий продажи', () => {
     await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
     const modes = screen.getByRole('radiogroup', { name: 'Modus' })
     await user.click(within(modes).getAllByRole('radio')[1]!)
+    await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
     expect(useStore.getState().mode).toBe('praesentation')
 
     // Коды реестра — доказательная база подготовки, не язык переговоров.

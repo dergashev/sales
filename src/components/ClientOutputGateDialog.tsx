@@ -25,12 +25,12 @@ import { NNBSP } from '../engine/money'
  * ЗДЕСЬ, до входа, чтобы вёрстка не перестраивалась на глазах у клиента.
  */
 
-export function ClientOutputGateDialog({ open, onClose, returnFocusTo }: {
-  open: boolean
-  onClose: () => void
+export function ClientOutputGateDialog({ returnFocusTo }: {
   returnFocusTo: React.RefObject<HTMLElement>
 }) {
   const s = useStore()
+  const open = s.gateOpen
+  const onClose = () => s.setGateOpen(false)
   const tx = useTx()
   const titleId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -45,7 +45,10 @@ export function ClientOutputGateDialog({ open, onClose, returnFocusTo }: {
     if (!dialog) return
     const focusables = () => Array.from(
       dialog.querySelectorAll<HTMLElement>('button, [href], input, textarea, select'))
-    focusables()[0]?.focus()
+    // Фокус — на ЗАГОЛОВОК: пользователь должен услышать, куда попал,
+    // прежде чем услышать первое доступное действие. Первая кнопка вместо
+    // заголовка съедала объявление контекста (приёмка волны C).
+    dialog.querySelector<HTMLElement>('h4')?.focus()
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation()
@@ -67,16 +70,21 @@ export function ClientOutputGateDialog({ open, onClose, returnFocusTo }: {
     return () => document.removeEventListener('keydown', onKey)
   }, [open, onClose, returnFocusTo])
 
+  // Закрытый диалог не остаётся в дереве: скрытая модалка — это узел,
+  // который скринридер может обойти, а тесты — «найти» (приёмка волны C).
+  if (!open) return null
+
   return createPortal(
     <div
-      className={'a3-modal-scrim' + (open ? ' a3-show' : '')}
+      className="a3-modal-scrim a3-show"
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
-      aria-hidden={open ? undefined : true}
     >
       <div className="a3-modal" ref={dialogRef}>
-        <h4 id={titleId}>{tx('Bereit für die Präsentation?')}</h4>
+        <h4 id={titleId} tabIndex={-1} className="outline-none">
+          {tx('Bereit für die Präsentation?')}
+        </h4>
 
         {/* Чек-лист DC-23: что готово и что мешает — фактами состояния,
             а не бодрым «всё хорошо». */}

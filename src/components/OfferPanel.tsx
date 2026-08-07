@@ -78,7 +78,6 @@ export function OfferPanel() {
   const [treiberOpen, setTreiberOpen] = useState(false)
   const [kgOpen, setKgOpen] = useState(false)
   const [kg300Open, setKg300Open] = useState(false)
-  const [gateOpen, setGateOpen] = useState(false)
   const gateBtnRef = useRef<HTMLButtonElement>(null)
   // Правило 24: чип «долетает» до журнала — при уходе чипа журнал вспыхивает
   // один раз. Цветовой transition, не кейфрейм (правило 20); гаснет при
@@ -614,17 +613,15 @@ export function OfferPanel() {
             </p>
             <div className="mt-2">
               <Button variant="primary" ref={gateBtnRef}
-                      onClick={() => setGateOpen(true)}>
+                      onClick={() => s.setGateOpen(true)}>
                 {tx('Kundenansicht prüfen')}
               </Button>
             </div>
           </div>
         )}
-        <ClientOutputGateDialog
-          open={gateOpen}
-          onClose={() => setGateOpen(false)}
-          returnFocusTo={gateBtnRef}
-        />
+        {/* Сам диалог живёт в оболочке: он один на приложение, и открыть
+            его вправе и панель, и переключатель режима в шапке. */}
+        <ClientOutputGateDialog returnFocusTo={gateBtnRef} />
 
         {/* ── Журнал сессии (DC-12): подпись с названной базой ───────────── */}
         <div className={'a3-journal-spec mt-3 transition-colors duration-base ' +

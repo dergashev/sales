@@ -4,6 +4,7 @@ import { useT } from './i18n'
 import { checkFonts, checkCascade, type FontCheck } from './lib/font-check'
 import { SegmentedControl } from './components/controls'
 import { Sidebar } from './components/Sidebar'
+import { ClientOutputGateDialog } from './components/ClientOutputGateDialog'
 import { OfferPanel } from './components/OfferPanel'
 import { UndoToast } from './components/UndoToast'
 import { S3Konfigurator } from './screens/S3Konfigurator'
@@ -66,6 +67,8 @@ export function App() {
   // начала, а не с высоты прошлого (ревью № 13, дефект 8): экран,
   // открывшийся серединой карточек без H1, не объясняет свой вопрос.
   const mainRef = useRef<HTMLElement>(null)
+  // Куда вернуть фокус после ворот, открытых из шапки.
+  const modeRef = useRef<HTMLElement>(null)
   const firstRender = useRef(true)
   useEffect(() => {
     // jsdom не реализует scrollTo на элементах — свойство надёжнее метода.
@@ -88,6 +91,7 @@ export function App() {
     return (
       <div className="flex h-screen flex-col bg-surface-canvas">
         <AppHeader t={t} />
+        <ClientOutputGateDialog returnFocusTo={modeRef} />
         <main ref={mainRef} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto bg-surface-default outline-none">
           {s.level === 'liste' ? <OpportunityList /> : <OpportunityCard />}
         </main>
@@ -162,11 +166,18 @@ function AppHeader({ t }: { t: (k: Parameters<ReturnType<typeof useT>>[0]) => st
         {/* Режим показа (правило 11). Вход в презентацию гейтуется
             открытым material-блокером (R-07) — заблокированный контрол
             объясняет почему (правило 12). */}
+        {/* Вход в клиентский вид идёт ЧЕРЕЗ ворота (DC-33), а не мимо:
+            прямой `setMode` в шапке обходил единственную модалку системы —
+            продавец попадал к клиенту, не увидев, что перестанет быть
+            видимым (приёмка волны C). Выход обратно прямой: возвращаться
+            во внутреннее пространство нечем гейтовать. */}
         <SegmentedControl
           layout="inline"
           legend={t('shell.mode.legend')}
           value={s.mode}
-          onChange={(m) => s.setMode(m)}
+          onChange={(m) => (m === 'praesentation'
+            ? s.setGateOpen(true)
+            : s.setMode(m))}
           options={[
             { value: 'intern', label: t('shell.mode.intern') },
             {

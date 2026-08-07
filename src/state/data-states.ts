@@ -94,4 +94,22 @@ export const DATA_STATE_DECLARATIONS: Record<
     stale: { status: 'implemented', where: 'после отправки: конфигурация, изменённая позже снапшота, помечается — клиент видит снимок, а не текущее состояние (M-3)' },
     permission: { status: 'implemented', where: 'интерн-идентификаторы прогона в recap — только интерн' },
   },
+  internalNote: {
+    loading: { status: 'notApplicable', reason: 'черновик живёт в сторе и рендерится синхронно: между «нет заметки» и «есть заметка» нет промежутка, который нужно объявлять' },
+    empty: { status: 'implemented', where: 'чип «→ CRM · noch keine Änderungen» — пустота названа текстом, а не пустым полем (NOTE-007)' },
+    partial: { status: 'implemented', where: 'чип «Entwurf, noch nicht gespeichert»: набрано, но пауза не истекла' },
+    ready: { status: 'implemented', where: 'чип «✓ synchronisiert · HubSpot-Projektkarte»' },
+    error: { status: 'notApplicable', reason: 'синк симулируется таймером без ветки сбоя; ветка `fehler` в типе объявлена и ждёт настоящего CRM — выдуманная сетевая ошибка была бы симуляцией, выданной за реализацию' },
+    stale: { status: 'notApplicable', reason: 'поле и стор — один источник; расхождение «показано старое» возникло бы только при втором редакторе той же заметки, которого в прототипе нет (разрешение конфликтов NOTE-003 ждёт реального CRM)' },
+    permission: { status: 'implemented', where: 'praesentation: компонент вместе со своей секцией не рендерится вовсе (NOTE-006)' },
+  },
+  clientOutputGate: {
+    loading: { status: 'notApplicable', reason: 'чек-лист считается из проекции синхронно (M-4)' },
+    empty: { status: 'notApplicable', reason: 'ворота без единого пункта не существуют: итог и интервал есть всегда' },
+    partial: { status: 'implemented', where: 'блокеры перечислены отдельными строками, переход заблокирован с причиной' },
+    ready: { status: 'implemented', where: 'все пункты ✓, кнопка «Kundenansicht starten» активна' },
+    error: { status: 'notApplicable', reason: 'диалог не выполняет операций, которые могут не удаться: он показывает состояние и переключает режим' },
+    stale: { status: 'notApplicable', reason: 'диалог читает проекцию в момент открытия и закрывается решением; жить дольше своего состояния он не может' },
+    permission: { status: 'implemented', where: 'это и есть контроль прав: единственный путь во внешний профиль' },
+  },
 }

@@ -79,7 +79,11 @@ export function InternalNote() {
   }
 
   return (
-    <div className="a3-notecard">
+    /* Секция принадлежит САМОМУ компоненту: обёртка снаружи оставалась в
+       дереве доступности пустой при `praesentation` — заметка была
+       «скрыта», а контракт требует, чтобы её не существовало (NOTE-006).
+       Приёмка волны C поймала именно оболочку, а не содержимое. */
+    <section className="a3-notecard a3-sheet mt-6" aria-label="Interne Notiz">
       {/* Видимая метка обязательна: placeholder подсказывает назначение,
           но подписью не является (NOTE-001). */}
       <label htmlFor={fieldId}><b>{tx('Interne Notiz')}</b></label>
@@ -105,6 +109,6 @@ export function InternalNote() {
         <span aria-hidden="true" className="a3-dot" />
         {tx(chipText[state])}
       </span>
-    </div>
+    </section>
   )
 }

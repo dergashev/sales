@@ -160,7 +160,11 @@ describe('Гейт режима презентации — блокировка 
     const group = screen.getByRole('radiogroup', { name: 'Modus' })
     const praesentation = within(group).getAllByRole('radio')[1] as HTMLInputElement
     expect(praesentation.disabled).toBe(false)
+    // Путь в клиентский вид — через ворота DC-33: переключатель их
+    // открывает, режим меняет кнопка диалога (приёмка волны C).
     await user.click(praesentation)
+    expect(useStore.getState().mode).toBe('intern')
+    await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
     expect(useStore.getState().mode).toBe('praesentation')
   })
 })

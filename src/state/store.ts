@@ -407,6 +407,13 @@ type Store = {
   besuchteKapitel: number[]
   /** Экран конвейера. UI-состояние: CTA глав ведут к сравнению и экспорту. */
   pipelineView: PipelineView
+  /**
+   * Открыты ли ворота выдачи (DC-33). Состояние в сторе, а не в компоненте,
+   * потому что открывают их ДВА места — переключатель режима в шапке и
+   * кнопка панели, — а диалог обязан быть один: контракт называет его
+   * единственной модалкой системы.
+   */
+  gateOpen: boolean
   /** Язык UI (правило 36). Отдельная настройка от языка артефактов (D-13). */
   uiLanguage: 'de' | 'en'
   /**
@@ -480,6 +487,8 @@ type Store = {
   setDensity: (d: 'komfortabel' | 'kompakt') => void
   /** Экран конвейера — konfigurator/vergleich/export/… (UI-состояние). */
   setPipelineView: (v: PipelineView) => void
+  /** Ворота выдачи: единственный путь во внешний профиль (DC-33). */
+  setGateOpen: (v: boolean) => void
 }
 
 /**
@@ -761,6 +770,7 @@ const store = createStore<Store>((set, get) => {
     ...defaultOptionConfig(),
     optionConfigs: {},
     pipelineView: 'konfigurator',
+    gateOpen: false,
     journal: [],
     undone: [],
     wflConflict: {
@@ -1316,6 +1326,8 @@ const store = createStore<Store>((set, get) => {
     },
 
     setPipelineView: (v) => set({ pipelineView: v }),
+
+    setGateOpen: (v) => set({ gateOpen: v }),
 
     setActiveBuilding: (id) => set({ activeBuildingId: id }),
 

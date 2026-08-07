@@ -149,7 +149,13 @@ export function OriginPopover({ rows, rounding, runRef, triggerLabel }: {
             animate={{ opacity: 1, y: 0 }}
             exit={reduced ? {} : { opacity: 0, transition: { duration: 0.12 } }}
             transition={{ duration: reduced ? 0 : 0.2 }}
-            className={'a3-hk-pop' + (pos ? ' a3-show' : '')}
+            /* `.a3-show` ставится СРАЗУ: без него контрактный класс
+               держит `display:none`, измеряемого бокса не существует, и
+               первое измерение даёт нулевую высоту — переворот у нижней
+               границы не срабатывал именно поэтому (приёмка волны C).
+               До вычисления позиции элемент скрыт `visibility`, который
+               размеров не отнимает. */
+            className={'a3-hk-pop' + (open ? ' a3-show' : '')}
             style={{
               /* Вид (рамка, фон, паддинг, ширина, типографика, движение)
                  приходит из `.a3-hk-pop`. Позиционирование — нет: контракт
