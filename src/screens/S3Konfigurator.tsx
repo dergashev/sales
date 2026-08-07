@@ -48,12 +48,6 @@ const KG_LABELS: Record<CostGroup, string> = {
   KG_700: 'Baunebenkosten', KG_800: 'Finanzierung',
 }
 
-const COVERAGE_OPTIONS = [
-  { value: 'included' as CoverageState, label: COVERAGE_LABEL.included },
-  { value: 'excluded' as CoverageState, label: COVERAGE_LABEL.excluded },
-  { value: 'unknown' as CoverageState, label: COVERAGE_LABEL.unknown },
-]
-
 /**
  * Последствие опции для consequenceLine — видно всегда, не по hover
  * (R-05/OPTION-009). Образец контракта: `≈ +97.000 € Mehrpreis`.
@@ -203,24 +197,57 @@ function ChapterUmfang() {
           + 'Angebot eine Zwischensumme der kalkulierten Positionen aus und '
           + 'keinen Gesamtpreis.'}
       >
+        {/* Карточки объёма вместо набора сегментных переключателей
+            (приёмка волны C: глава дважды оценена «налоговой формой»).
+            Решение здесь коммерческое — «берём ли мы это на себя», — и
+            выглядеть оно должно как выбор позиции, а не как заполнение
+            поля. Плитки те же, что в главах опций: у каждой цена
+            последствия на самой плитке и последствие видно ДО клика. */}
         {decidable.map((g) => {
           const spec = COVERAGE_RATES[g]
           const qty = b.bgfAboveGround
           const preis = spec ? new Decimal(spec.rate).mul(qty) : null
+          const money = preis && !preis.isZero()
+            ? moneyLabel(present(preis)) : null
           return (
-            <div key={g}>
-              <SegmentedControl
-                layout="row"
+            <div key={g} className="mt-4">
+              <RadioCardGroup
                 legend={`${g.replace('_', NNBSP)} ${KG_LABELS[g]}`}
                 value={s.coverage[g]}
-                options={COVERAGE_OPTIONS}
-                onChange={(v) => s.setCoverage(g, v)}
+                onChange={(v) => s.setCoverage(g, v as CoverageState)}
+                options={[
+                  {
+                    value: 'included' as const,
+                    title: tx(COVERAGE_LABEL.included),
+                    description: spec ? `${tx(spec.basis)} ⚙` : undefined,
+                    // Последствие — деньги, а не слово «включено»: цена
+                    // включения стоит на плитке до клика (R-05).
+                    consequence: s.coverage[g] === 'included'
+                      ? tx('aktuelle Auswahl')
+                      : money
+                        ? `+${NNBSP}${money}${NNBSP}€${NNBSP}${tx('Mehrpreis')}`
+                        : tx('ohne Preisansatz im indikativen Angebot'),
+                  },
+                  {
+                    value: 'excluded' as const,
+                    title: tx(COVERAGE_LABEL.excluded),
+                    description: tx('Entscheidung, keine Lücke: die Summe bleibt vollständig'),
+                    consequence: s.coverage[g] === 'excluded'
+                      ? tx('aktuelle Auswahl')
+                      : money
+                        ? `−${NNBSP}${money}${NNBSP}€${NNBSP}${tx('gegenüber Aufnahme')}`
+                        : `±${NNBSP}0${NNBSP}€`,
+                  },
+                  {
+                    value: 'unknown' as const,
+                    title: tx(COVERAGE_LABEL.unknown),
+                    description: tx('Lücke, keine Entscheidung: das Angebot weist keinen Gesamtpreis aus'),
+                    consequence: s.coverage[g] === 'unknown'
+                      ? tx('aktuelle Auswahl')
+                      : tx('Zwischensumme statt Gesamtpreis'),
+                  },
+                ]}
               />
-              <p className="a3-cap pb-2">
-                {preis && !preis.isZero()
-                  ? <>Aufnahme kostet {moneyLabel(present(preis))} ⚙ · {spec!.basis}</>
-                  : <>ohne Preisansatz im indikativen Angebot{spec ? ` · ${spec.basis}` : ''}</>}
-              </p>
             </div>
           )
         })}

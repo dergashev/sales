@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 77** · перевод есть, мост не подключён: 32
-· перевода нет (в поставку копирайта): 45
+**Всего 80** · перевод есть, мост не подключён: 31
+· перевода нет (в поставку копирайта): 49
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -36,7 +36,6 @@
 - nach Planung
 - nicht Bestandteil
 - nicht enthalten
-- noch offen
 - nur Unterschiede
 - vollständig inkl. Gründung
 - vom Kunden bestätigt
@@ -55,7 +54,8 @@
 - Baukonstruktion und technische Anlagen sind keine Auswahl: ohne sie gibt es kein Angebot. Baunebenkosten sind immer enthalten — verhandelbar ist nur die Berechnungsart, und die ist intern.
 - Beiträge · Summe =
 - Drei Zustände, weil «nicht enthalten» eine Entscheidung ist und «noch offen» eine Lücke. Solange eine Lücke bleibt, weist das Angebot eine Zwischensumme der kalkulierten Positionen aus und keinen Gesamtpreis.
-- Einbaukueche und Erstausstattung je m² BGF R
+- Einbaukueche und Erstausstattung je m² BGF R ⚙
+- Entscheidung, keine Lücke: die Summe bleibt vollständig
 - Gebäude ·
 - Gebäudedaten
 - Gebäudedaten DEMO-B-A bestätigt
@@ -66,6 +66,7 @@
 - Grundrisse_Muster_V2.pdf · Tiefgarage im UG
 - Kern des Angebots
 - Kundenansicht gesperrt: Klassifikation nach MBO
+- Lücke, keine Entscheidung: das Angebot weist keinen Gesamtpreis aus
 - Marge Eigenleistung nach Rabatt:
 - Musterhöfe Westpark
 - Musterquartier Südhang
@@ -80,17 +81,19 @@ anbei erhalten Sie unser indikatives Angebot für das Musterprojekt Nordfeld.
 
 Mit freundlichen Grüßen
 - Von oben nach unten: erst der Umfang, dann die Konstruktion, zuletzt die Oberfläche. Jede Antwort zeigt ihre Folge am Preis, bevor sie gewählt wird.
-- Wege, Stellplaetze im Freien, Bepflanzung je m² BGF R
+- Wege, Stellplaetze im Freien, Bepflanzung je m² BGF R ⚙
 - Werte aus
 - Werte extrahiert · Regelsatz RS 2026.2
 - Zertifikate sind eine eigene Achse: der Energiestandard beschreibt das Gebäude, das Siegel beschreibt das Verfahren, mit dem es nachgewiesen wird.
 - Zwei Verfahren mit unterschiedlichem Ergebnis. Das All3-Verfahren verteilt die bereits berechnete Summe und ändert den Gesamtbetrag nicht; HOAI und AHO rechnen die Nebenkosten als eigene Position hinzu. Der Kunde sieht in beiden Fällen dieselbe Aussage: KG 700 ist enthalten.
 - andere Dokumente sind vollständig analysiert.
+- bauseits; im indikativen Angebot ohne Preisansatz ⚙
 - bestätigt.
 - dieser Datei
 - für den Prototyp abgeleitet, nicht kalibriert
 - nächste Woche
 - ohne Preisansatz im indikativen Angebot
 - §2 nicht bestätigt.
-- · bauseits; im indikativen Angebot ohne Preisansatz
 - Österreich
+- − 124.000 € € gegenüber Aufnahme
+- − 230.000 € € gegenüber Aufnahme
