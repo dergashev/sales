@@ -386,12 +386,12 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    to .a3-img. A missing/broken photo removes the media slot; text remains.
    Classes: .a3-fgrid · .a3-fk · .a3-img · .a3-nm · .a3-ok · .a3-f-putz · .a3-f-holz · .a3-f-klinker · .a3-f-kombi · .a3-f-win · .a3-faxes. */
 .a3-fgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-4);max-width:var(--measure-chart)}
-.a3-fk{border:var(--border-width-strong) solid transparent;outline:var(--border-hairline);cursor:pointer;position:relative;padding:0;background:none;font:inherit;transition:border-color .12s var(--motion-easing-standard)}
+.a3-fk{border:var(--border-width-strong) solid transparent;outline:var(--border-hairline);cursor:pointer;position:relative;padding:0;background:none;font:inherit;transition:border-color .12s var(--motion-easing-standard);display:flex;flex-direction:column}
 .a3-fk:hover{border-color:var(--color-text-primary)}
 .a3-fk[aria-pressed="true"]{border-color:var(--color-selection-border)}
 .a3-fk .a3-img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background-size:auto;background-color:var(--color-surface-canvas)}
 .a3-fk .a3-img[hidden]{display:none}
-.a3-fk .a3-nm{display:block;font-size:var(--type-small-size);line-height:var(--type-small-line);padding:var(--space-2);text-align:left;font-weight:var(--type-small-weight);color:var(--color-text-primary)}
+.a3-fk .a3-nm{display:block;width:100%;margin-top:auto;font-size:var(--type-small-size);line-height:var(--type-small-line);padding:var(--space-2);text-align:left;font-weight:var(--type-small-weight);color:var(--color-text-primary)}
 .a3-fk .a3-ok{position:absolute;top:var(--space-2);right:var(--space-2);width:var(--size-icon-md);height:var(--size-icon-md);border-radius:50%;background:var(--color-selection-border);color:var(--color-text-inverse);font-size:var(--type-caption-size);font-weight:700;display:inline-flex;align-items:center;justify-content:center;opacity:0;transition:opacity var(--motion-reveal) var(--motion-easing-standard)}
 .a3-fk[aria-pressed="true"] .a3-ok{opacity:1}
 .a3-f-putz{background-color:var(--color-material-placeholder-plaster)}
