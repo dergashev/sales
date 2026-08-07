@@ -807,3 +807,22 @@ describe('Происхождение вкладов: корзина показы
     }
   })
 })
+
+describe('Отправленный снапшот устаревает относительно конфигурации (правило 30)', () => {
+  const st = () => useStore.getState()
+
+  it('журнал позволяет посчитать ценовые изменения ПОСЛЕ отправки', () => {
+    st().confirmGebaeudeklasse()
+    const snap = st().sendOffer('email', null)
+    const after = () => st().journal.filter(
+      (e) => e.seq > snap.journalSeqAt && e.deltaExact !== null).length
+    // Сразу после отправки расхождения нет: снимок равен состоянию.
+    expect(after()).toBe(0)
+    st().setEnergiestandard('EH_40')
+    // Теперь клиент видит снимок, а продавец — другое число: это stale,
+    // и он обязан быть видимым, а не подразумеваемым.
+    expect(after()).toBe(1)
+    expect(snap.totalExact).toBe('3817835.00')
+    expect(st().projection().result.total.exact.toFixed(2)).not.toBe(snap.totalExact)
+  })
+})

@@ -37,7 +37,7 @@ export const DATA_STATE_DECLARATIONS: Record<
     partial: { status: 'implemented', where: 'карточка worked:false — «im Prototyp nicht ausgearbeitet» до клика' },
     ready: { status: 'implemented', where: 'список карточек' },
     error: { status: 'notApplicable', reason: SYNC_FIXTURE },
-    stale: { status: 'notApplicable', reason: SYNC_FIXTURE },
+    stale: { status: 'notApplicable', reason: 'список — константа модуля: источника, который мог бы измениться после чтения, не существует; устаревать нечему относительно чего' },
     permission: { status: 'notApplicable', reason: 'уровень выше конвейера: цены и внутренние ссылки здесь не существуют, режимной фильтрации нечего фильтровать' },
   },
   documentAnalysis: {
@@ -46,7 +46,7 @@ export const DATA_STATE_DECLARATIONS: Record<
     partial: { status: 'implemented', where: 'cancelled: «Angehalten nach N von M Phasen», завершённые фазы сохранены' },
     ready: { status: 'implemented', where: 'протокол фаз + файлы со статусами' },
     error: { status: 'implemented', where: 'a3-analysis-error: нечитаемый файл — причина · последствие · средство' },
-    stale: { status: 'implemented', where: 'повторный запуск: bestätigt/manuell erfasste значения объявлены неперезаписываемыми (D-08)' },
+    stale: { status: 'notApplicable', reason: 'протокол показывает ПОСЛЕДНИЙ прогон и заменяется целиком при перезапуске: состояния «показано старое, есть новее» не возникает. Запрет перезаписи подтверждённых значений (D-08) — другое требование, к устареванию показа отношения не имеющее' },
     permission: { status: 'notApplicable', reason: 'анализ существует только на внутреннем уровне Opportunity — в презентации карточка не показывается' },
   },
   offerPanel: {
@@ -91,7 +91,7 @@ export const DATA_STATE_DECLARATIONS: Record<
     partial: { status: 'implemented', where: 'preflight с блокерами: причина + активный следующий шаг' },
     ready: { status: 'implemented', where: 'confirm с A4-превью пакета' },
     error: { status: 'notApplicable', reason: 'доставка симулируется таймером без ветки сбоя: выдуманная сетевая ошибка была бы симуляцией, выданной за реализацию' },
-    stale: { status: 'implemented', where: 'отправленный снапшот неизменяем (M-3) и не устаревает по построению — сравнение всегда против него' },
+    stale: { status: 'implemented', where: 'после отправки: конфигурация, изменённая позже снапшота, помечается — клиент видит снимок, а не текущее состояние (M-3)' },
     permission: { status: 'implemented', where: 'интерн-идентификаторы прогона в recap — только интерн' },
   },
 }

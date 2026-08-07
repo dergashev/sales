@@ -41,6 +41,13 @@ const DELIVERY_SIMULATION_MS = 2500
 export function S5Export() {
   const s = useStore()
   const tx = useTx()
+  // Сколько ЦЕНОВЫХ событий этой Option произошло после отправки. Считается
+  // из журнала против `journalSeqAt` снапшота — второго счётчика нет.
+  const lastSnap = s.snapshots.at(-1)
+  const changedAfterSend = lastSnap
+    ? s.journal.filter((e) => e.seq > lastSnap.journalSeqAt
+        && e.deltaExact !== null && e.optionId === s.activeOptionId).length
+    : 0
   const p = s.projection()
   const [selected, setSelected] = useState<Set<string>>(
     new Set(ARTIFACTS.filter((a) => a.default).map((a) => a.id)),
@@ -284,6 +291,23 @@ export function S5Export() {
                     ? 'aktiviert' : 'nicht aktiviert'} · ±{NNBSP}
                   {s.snapshots.at(-1)!.uncertaintyPp}{NNBSP}% ·
                   Journal-Stand {s.snapshots.at(-1)!.journalSeqAt}
+                </p>
+              )}
+
+              {/* Настоящее состояние `stale` (правило 30): снапшот
+                  неизменяем (M-3), но конфигурация после отправки могла
+                  уйти вперёд — и тогда экран продавца и письмо клиента
+                  показывают разные числа. Молчать об этом опаснее всего:
+                  расхождение обнаружится на встрече. */}
+              {changedAfterSend > 0 && (
+                <p className="a3-warn-prep mt-2">
+                  <span aria-hidden="true">▲ </span>
+                  Konfiguration nach dem Versand geändert:{' '}
+                  {changedAfterSend}{NNBSP}
+                  {changedAfterSend === 1 ? 'Preisänderung' : 'Preisänderungen'}{' '}
+                  seit Snapshot {s.snapshots.at(-1)!.id}. Der Kunde sieht den
+                  Stand des Snapshots — für den neuen Stand braucht es ein
+                  neues Angebot.
                 </p>
               )}
             </div>

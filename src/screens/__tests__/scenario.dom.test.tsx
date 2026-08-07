@@ -103,7 +103,11 @@ describe('Сквозной сценарий продажи', () => {
     await user.click(nav(/Baugrund & Erschließung/))
     // Риск — категория · вероятность · следствие, и он НЕ в цене (CALC-001).
     expect(screen.getByText('Baugrundgutachten liegt nicht vor')).toBeInTheDocument()
-    expect(screen.getByText(/Kostenwirkung \+ 4 % auf KG 320/)).toBeInTheDocument()
+    // Приёмка № 17: надбавка — реальные деньги (D-02), и текст обязан
+    // это говорить; в фикстуре она не применена, и это названо отдельно.
+    expect(screen.getByText(/Risikozuschlag \+ 4 % auf KG 320/)).toBeInTheDocument()
+    expect(screen.getByText(/Der Zuschlag ist echtes Geld/)).toBeInTheDocument()
+    expect(screen.getByText(/noch nicht enthalten/)).toBeInTheDocument()
     // Пустота по Erschließung названа с источником, решение — в главе 3.
     expect(screen.getByText(/keine Angaben zur Erschließung/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Zu Kapitel 3/ })).toBeInTheDocument()

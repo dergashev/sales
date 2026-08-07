@@ -528,12 +528,30 @@ function ChapterBaugrund() {
           </p>
           <p className="a3-cap mt-1">
             Risiko · Kategorie Baugrund · Wahrscheinlichkeit mittel ·
-            Kostenwirkung +{NNBSP}4{NNBSP}% auf KG{NNBSP}320
+            Risikozuschlag +{NNBSP}4{NNBSP}% auf KG{NNBSP}320
           </p>
+          {/* Приёмка № 17 нашла здесь утверждение «на сумму не влияет» —
+              прямо противоположное D-02 и calculation-spec: Risikozuschlag
+              это РЕАЛЬНЫЕ деньги, счёт за отсутствующий документ, и он
+              снимается присланным Gutachten. Не смешивается он только с
+              Genauigkeitsband: та — статистика и к цене не прибавляется. */}
           <p className="a3-cap mt-1">
-            Wirkt nicht auf die Angebotssumme: Risiko und Schätzunsicherheit
-            sind getrennte Achsen. Mit dem Gutachten wird daraus entweder
-            eine Position oder Entwarnung.
+            Der Zuschlag ist echtes Geld — die Rechnung für ein fehlendes
+            Dokument, nicht die Schätzunsicherheit: Letztere wird als Band
+            gezeigt und nicht addiert. Mit dem Gutachten entfällt der
+            Zuschlag.
+          </p>
+          {/* Названный пробел вместо выдуманного числа (R-25): база
+              надбавки — KG 320, а модель прототипа разбивает затраты до
+              KG 300. Посчитать 4 % «примерно от KG 300» значило бы
+              применить ставку к чужому знаменателю — тот же класс, что
+              DATA-001. */}
+          <p className="a3-cap mt-1">
+            <span aria-hidden="true">○ </span>
+            Im aktuellen Angebot ist der Zuschlag noch nicht enthalten: die
+            Bezugsgröße KG{NNBSP}320 wird im Prototyp nicht getrennt
+            ausgewiesen, und 4{NNBSP}% auf eine andere Kostengruppe zu
+            rechnen wäre ein anderer Betrag, kein Näherungswert.
           </p>
           <div className="mt-2">
             <Button onClick={() => s.openOpportunity(s.opportunityId ?? '')}>
