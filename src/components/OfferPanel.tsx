@@ -284,8 +284,14 @@ export function OfferPanel() {
           <p className={'a3-ghost numeric' + (s.preview ? ' a3-show' : '')}
              aria-hidden={s.preview ? undefined : true}>
             {shownPreview && (<>
-              {tx('Vorschau')} · {shownPreview.label}
-              <span className="block">
+              {/* Три смысловые строки призрака — `.a3-ghost-line`
+                  контракта: слот резервирует высоту самого высокого
+                  состояния (решение TASK-22, вариант 2), и строки обязаны
+                  быть объявлены, а не получаться из утилит. */}
+              <span className="a3-ghost-line">
+                {tx('Vorschau')} · {shownPreview.label}
+              </span>
+              <span className="a3-ghost-line">
                 {shownPreview.futureTotal.prefix && (
                   <span aria-hidden="true">{shownPreview.futureTotal.prefix}{NNBSP}</span>
                 )}
@@ -295,10 +301,12 @@ export function OfferPanel() {
               </span>
               {/* Неполнота будущего прогона называется, а не подразумевается. */}
               {shownPreview.futureLabel !== 'Gesamt netto · Grundleistung All3' && (
-                <span className="block">{tx('Vorschau')} · {shownPreview.futureLabel}</span>
+                <span className="a3-ghost-line">
+                  {tx('Vorschau')} · {shownPreview.futureLabel}
+                </span>
               )}
               {s.mode === 'intern' && (
-                <span className="block">{shownPreview.contextRef}</span>
+                <span className="a3-ghost-line">{shownPreview.contextRef}</span>
               )}
             </>)}
           </p>

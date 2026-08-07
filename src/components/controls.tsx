@@ -217,10 +217,15 @@ export function RadioCardGroup<T extends string>({
           `[aria-pressed="true"]` (вкус-тумблер витрины), а радио-вкус
           крючка не имеет — до его появления (заявка в TASK-15) выбранность
           доносят две утилиты состояния: бордер и видимость ✓-круга. */}
+      {/* `.a3-grid-host` — носитель container query (TASK-22): сетка
+          считает ширину КОЛОНКИ, в которой лежит, а не окна. Без него
+          плитки раскладывались по вьюпорту и вылезали из центральной
+          зоны между панелями. */}
+      <div className="a3-grid-host mt-2">
       <div
         role="radiogroup"
         aria-label={legend}
-        className="a3-ogrid mt-2"
+        className="a3-ogrid"
       >
         {options.map((o) => {
           const active = o.value === value
@@ -296,6 +301,7 @@ export function RadioCardGroup<T extends string>({
           )
         })}
       </div>
+      </div>
     </fieldset>
   )
 }
@@ -343,6 +349,7 @@ export function FacadeTileGroup({ legend, value, onChange, options }: {
   return (
     <fieldset>
       <legend className="sr-only">{legend}</legend>
+      <div className="a3-grid-host">
       <div role="radiogroup" aria-label={legend} className="a3-fgrid">
         {options.map((o) => {
           const active = o.value === value
@@ -392,6 +399,7 @@ export function FacadeTileGroup({ legend, value, onChange, options }: {
             </label>
           )
         })}
+      </div>
       </div>
       {/* Оси выбранного варианта — читаемая сводка, не только картинка
           (правило 8: смысл не передаётся одним цветом/паттерном). */}

@@ -83,21 +83,12 @@ export function OpportunityList() {
 
   const resetAll = () => { setQ(''); setCountry(ALL); setCity(ALL); setOwner(ALL) }
 
-  /**
-   * Селекты фильтров: контракта Select в CSS системы пока нет (в отличие
-   * от input в `.a3-form-field`) — до его появления селект несёт те же
-   * токены утилитами. Названный пробел, не двойник: собственный класс не
-   * заводится.
-   */
-  const selectCls = 'min-h-hit-target border border-border-default ' +
-    'bg-surface-default px-3 text-body text-text-primary'
-
   const select = (id: string, label: string) => (
     <div className="a3-form-field">
       <label htmlFor={`opp-${id}`}>{label}</label>
       <select
         id={`opp-${id}`}
-        className={selectCls}
+        className="a3-select-field"
         value={id === 'land' ? country : id === 'stadt' ? city : owner}
         onChange={(e) => (id === 'land' ? setCountry(e.target.value)
           : id === 'stadt' ? setCity(e.target.value) : setOwner(e.target.value))}
