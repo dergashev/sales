@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
 import { __resetStoreForTests, useStore } from '../../state/store'
@@ -97,5 +97,41 @@ describe('Уровень Opportunities', () => {
     await user.click(screen.getByRole('button', { name: /Musterquartier Südhang öffnen/ }))
     expect(screen.getByText(/im Prototyp nicht ausgearbeitet/)).toBeInTheDocument()
     expect(screen.queryByLabelText('Projektparameter')).not.toBeInTheDocument()
+  })
+
+  it('заметка: тихая запись, чип вместо тоста, в презентации не существует (DC-43, правило 34)', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(screen.getByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
+
+    const field = screen.getByRole('textbox', { name: /Interne Notiz/ })
+    // Нейтральный статус — ЯСНЫЙ ТЕКСТ, не необъяснённая точка (NOTE-007).
+    expect(screen.getByText(/noch keine Änderungen/)).toBeInTheDocument()
+
+    await user.type(field, 'Kunde will Klinker')
+    // До паузы — черновик: событие ещё не создано, тоста нет вообще.
+    expect(screen.getByText(/Entwurf, noch nicht gespeichert/)).toBeInTheDocument()
+    expect(useStore.getState().journal.filter((e) => e.kind === 'note.created'))
+      .toHaveLength(0)
+
+    // Тихая запись: событие журнала появляется, тост — нет (правило 34).
+    await act(() => new Promise((r) => setTimeout(r, 1000)))
+    expect(useStore.getState().journal.filter((e) => e.kind === 'note.created'))
+      .toHaveLength(1)
+    expect(useStore.getState().undoToast).toBeNull()
+    // Текст заметки в журнал не попадает: журнал читают на встрече.
+    expect(useStore.getState().journal.at(-1)!.label).not.toContain('Klinker')
+
+    // Синк — отдельное событие (правило 34).
+    await act(() => new Promise((r) => setTimeout(r, 1400)))
+    expect(useStore.getState().journal.filter((e) => e.kind === 'note.synced_to_hubspot'))
+      .toHaveLength(1)
+    expect(screen.getByText(/synchronisiert · HubSpot/)).toBeInTheDocument()
+
+    // В презентации заметки НЕ СУЩЕСТВУЕТ — не спрятана, а отсутствует.
+    act(() => { useStore.getState().confirmGebaeudeklasse() })
+    act(() => { useStore.getState().setMode('praesentation') })
+    expect(screen.queryByRole('textbox', { name: /Interne Notiz/ })).toBeNull()
+    expect(document.body.textContent).not.toContain('HubSpot-Projektkarte')
   })
 })

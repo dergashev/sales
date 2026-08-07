@@ -1,0 +1,110 @@
+import { useEffect, useId, useRef, useState } from 'react'
+import { useStore } from '../state/store'
+import { useTx } from '../i18n'
+
+/**
+ * DC-43 · InternalNote — Notiz. Плюс DC-30 · AutosaveChip как её
+ * подтверждение: правило 34 связывает их прямо — «тихая запись с
+ * подтверждением только через Speicher-Chip».
+ *
+ * Почему заметка вообще существует. Продавец на встрече записывает то, что
+ * услышал, и это не должно превращаться в отдельный ритуал: ни модалки, ни
+ * кнопки «Сохранить», ни тоста. Поле, в которое пишут, и чип, который
+ * говорит, что записано, — весь интерфейс.
+ *
+ * Контрактные требования, которые легко потерять:
+ * - **в клиентских профилях заметки не существует** (`NOTE-006`, R-17,
+ *   D-12): не скрыта стилем, а отсутствует в дереве. Здесь это
+ *   `mode === 'praesentation' → null` — компонент не рендерится вовсе;
+ * - видимая метка обязательна, placeholder её не заменяет (`NOTE-001`);
+ * - мета-строка называет автора, время и видимость (`NOTE-002`);
+ * - нейтральный статус синка выражается ТЕКСТОМ, а не серой точкой
+ *   (`NOTE-007`);
+ * - уход с экрана сохраняет черновик и не теряет его молча (`NOTE-004`).
+ *
+ * Симуляция названа: синка с HubSpot в прототипе нет, есть таймер и
+ * события журнала `note.created` / `note.synced_to_hubspot` (правило 34).
+ * Дефектом была бы симуляция, выданная за реализацию.
+ */
+
+/** Пауза без ввода, после которой запись считается состоявшейся. */
+const IDLE_MS = 900
+/** Симуляция круга до CRM. */
+const SYNC_MS = 1200
+
+type SyncState = 'leer' | 'entwurf' | 'wird' | 'ok' | 'fehler'
+
+export function InternalNote() {
+  const s = useStore()
+  const tx = useTx()
+  const fieldId = useId()
+  const helpId = useId()
+  const [text, setText] = useState(s.noteText)
+  const [state, setState] = useState<SyncState>(s.noteText ? 'ok' : 'leer')
+  const idle = useRef<ReturnType<typeof setTimeout>>()
+  const sync = useRef<ReturnType<typeof setTimeout>>()
+
+  // Черновик переживает уход с экрана: он живёт в сторе, а не в поле
+  // (NOTE-004 — потеря не должна быть молчаливой; здесь её просто нет).
+  useEffect(() => () => {
+    clearTimeout(idle.current)
+    clearTimeout(sync.current)
+  }, [])
+
+  if (s.mode === 'praesentation') return null
+
+  const onChange = (v: string) => {
+    setText(v)
+    setState('entwurf')
+    clearTimeout(idle.current)
+    clearTimeout(sync.current)
+    idle.current = setTimeout(() => {
+      // Тихая запись: событие журнала есть, тоста нет.
+      s.saveNote(v)
+      setState('wird')
+      sync.current = setTimeout(() => {
+        s.markNoteSynced()
+        setState('ok')
+      }, SYNC_MS)
+    }, IDLE_MS)
+  }
+
+  /** Статус синка — ясный текст (NOTE-007), не необъяснённая точка. */
+  const chipText: Record<SyncState, string> = {
+    leer: '→ CRM · noch keine Änderungen',
+    entwurf: '→ CRM · Entwurf, noch nicht gespeichert',
+    wird: '→ HubSpot · wird synchronisiert',
+    ok: '✓ synchronisiert · HubSpot-Projektkarte',
+    fehler: 'Fehler · erneut versuchen',
+  }
+
+  return (
+    <div className="a3-notecard">
+      {/* Видимая метка обязательна: placeholder подсказывает назначение,
+          но подписью не является (NOTE-001). */}
+      <label htmlFor={fieldId}><b>{tx('Interne Notiz')}</b></label>
+      <span className="a3-cap" id={helpId}>
+        {tx('Nur intern · synchronisiert in die HubSpot-Projektkarte · in Kundenprofilen vollständig ausgeblendet.')}
+      </span>
+      <textarea
+        id={fieldId}
+        aria-describedby={helpId}
+        value={text}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={tx('Nur intern — synchronisiert in die HubSpot-Projektkarte')}
+      />
+      {/* Мета-строка: кто, когда, кому видно (NOTE-002). */}
+      <span className="a3-cap">
+        {tx('Verfasser')}: M.{' '}Musterfrau · {tx('Sichtbarkeit')}:{' '}
+        {tx('nur internes Arbeitsumfeld')}
+        {s.noteSavedAt && <> · {tx('zuletzt gespeichert')} {s.noteSavedAt}</>}
+      </span>
+      {/* Speicher-Chip (DC-30) — единственное подтверждение записи. */}
+      <span className={'a3-chip-src a3-savechip' + (state === 'wird' ? ' a3-busy' : '')}
+            role="status" aria-live="polite">
+        <span aria-hidden="true" className="a3-dot" />
+        {tx(chipText[state])}
+      </span>
+    </div>
+  )
+}

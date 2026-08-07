@@ -7,6 +7,7 @@ import { NNBSP, formatDE } from '../engine/money'
 import { Button } from '../components/primitives'
 import { useTx } from '../i18n'
 import { DocumentAnalysis } from '../components/DocumentAnalysis'
+import { InternalNote } from '../components/InternalNote'
 import { ReadinessRing } from '../components/ReadinessRing'
 import { S2Vorbereitung } from './S2Vorbereitung'
 import { useState } from 'react'
@@ -239,6 +240,13 @@ export function OpportunityCard() {
       </section>
 
       {/* 4 · Гейт и Options. */}
+      {/* Заметка — уровень проекта, не варианта: продавец записывает
+          услышанное о проекте (DC-43). В презентации компонент не
+          рендерится вовсе, а не прячется (NOTE-006). */}
+      <section className="a3-sheet mt-6" aria-label="Interne Notiz">
+        <InternalNote />
+      </section>
+
       <section className="a3-sheet mt-6" aria-label="Opportunity Options">
         <h2 className="text-heading-3 font-bold text-text-primary">{tx('Opportunity Options')}</h2>
         <div className="mt-3">

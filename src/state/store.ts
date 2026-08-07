@@ -45,6 +45,7 @@ export type EventKind =
   | 'option.selected' | 'coverage.changed'
   | 'document.activated' | 'conflict.resolved'
   | 'offer.emailed' | 'offer.printed'
+  | 'note.created' | 'note.synced_to_hubspot'
   | 'undo'
 
 export type JournalEvent = {
@@ -377,6 +378,15 @@ type Store = {
   opportunityId: string | null
   /** Подтверждены ли верхнеуровневые параметры проекта (часть гейта). */
   projectParamsConfirmed: boolean
+  /**
+   * Внутренняя заметка (DC-43). Принадлежит УРОВНЮ Opportunity, а не
+   * Option: продавец записывает услышанное о проекте, и переключение
+   * варианта не должно её менять. В клиентских профилях не существует
+   * (NOTE-006) — не скрыта, а отсутствует.
+   */
+  noteText: string
+  noteSavedAt: string | null
+  noteSyncedAt: string | null
   /** Созданные Opportunity Options. Сравниваются между собой (S4). */
   options: Array<{ id: string; name: string }>
   activeOptionId: string | null
@@ -450,6 +460,10 @@ type Store = {
   /** Гейт: можно ли создавать Options (конфликты решены, параметры приняты). */
   canCreateOptions: () => boolean
   createOption: (name: string) => void
+  /** Тихая запись заметки: событие журнала есть, тоста нет (правило 34). */
+  saveNote: (text: string) => void
+  /** Симуляция круга до CRM завершилась — отдельное событие (NOTE-003). */
+  markNoteSynced: () => void
   openOption: (id: string) => void
   setActiveBuilding: (id: string) => void
   /** Включить/исключить здание из предложения — событие журнала. */
@@ -770,6 +784,9 @@ const store = createStore<Store>((set, get) => {
     level: 'liste',
     opportunityId: null,
     projectParamsConfirmed: false,
+    noteText: '',
+    noteSavedAt: null,
+    noteSyncedAt: null,
     options: [],
     activeOptionId: null,
     uiLanguage: 'de',
@@ -1241,6 +1258,37 @@ const store = createStore<Store>((set, get) => {
           }
         }),
         forward: () => set((x) => ({ options: [...x.options, { id, name }] })),
+      })
+    },
+
+    saveNote: (text) => {
+      const prev = get().noteText
+      if (prev === text) return
+      const at = new Date().toLocaleTimeString('de-DE',
+        { hour: '2-digit', minute: '2-digit' })
+      set({ noteText: text, noteSavedAt: at })
+      apply({
+        kind: 'note.created',
+        // Текст заметки в подпись НЕ попадает: журнал читают на встрече,
+        // а заметка внутренняя. Событие фиксирует факт и объём правки.
+        label: `Interne Notiz gespeichert · ${text.length} Zeichen`,
+        deltaExact: null,
+        // Без `inverse` НАМЕРЕННО: событие с обратным действием получает
+        // тост (DC-29), а правило 34 требует тихой записи — «ни панели,
+        // ни тостов, ни автодополнений». Отмену набора даёт само поле;
+        // журнал фиксирует факт, но не предлагает откатить фразу, которую
+        // продавец только что услышал от клиента.
+      })
+    },
+
+    markNoteSynced: () => {
+      const at = new Date().toLocaleTimeString('de-DE',
+        { hour: '2-digit', minute: '2-digit' })
+      set({ noteSyncedAt: at })
+      apply({
+        kind: 'note.synced_to_hubspot',
+        label: `Notiz in die HubSpot-Projektkarte synchronisiert · ${at}`,
+        deltaExact: null,
       })
     },
 
