@@ -3,6 +3,7 @@ import { Decimal } from 'decimal.js'
 import demo from '../fixtures/demo-0001.json'
 import catalog from '../fixtures/catalog.json'
 import { activeBuilding, useStore } from '../state/store'
+import { copyFor } from '../i18n/internal-refs'
 import { NNBSP, formatDE, rateLabel } from '../engine/money'
 import { Button, NumericField, ProvenanceChip, UncertaintyBadge } from '../components/primitives'
 import { DocumentAnalysis } from '../components/DocumentAnalysis'
@@ -463,7 +464,7 @@ function P4Annahmen({ setTab }: { setTab: (t: Tab) => void }) {
         {items.map((a) => (
           <li key={a.id} className="mt-3 border border-border-default p-4">
             <p className="text-body text-text-primary">
-              <span className="font-medium">Annahme:</span> {a.text}
+              <span className="font-medium">Annahme:</span> {copyFor(a.text, s.mode)}
             </p>
             <div className="mt-3">
               {a.resolve

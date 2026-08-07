@@ -62,8 +62,18 @@ export function OriginPopover({ rows, rounding, runRef, triggerLabel }: {
     const gutter = 8
     const box = dialogRef.current?.getBoundingClientRect()
     const w = box?.width ?? 0
-    const left = Math.max(gutter, Math.min(r.left, window.innerWidth - w - gutter))
-    setPos({ top: r.bottom + 4, left })
+    const h = box?.height ?? 0
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    const left = Math.max(gutter, Math.min(r.left, vw - w - gutter))
+    // Вертикаль: под триггером, но если снизу не помещается — НАД ним
+    // (приёмка № 17: у нижней границы диалог уезжал за экран на 194 px).
+    // Зажим остаётся страховкой на случай, когда не помещается и сверху.
+    const below = r.bottom + 4
+    const above = r.top - 4 - h
+    const flip = below + h > vh - gutter && above >= gutter
+    const top = Math.max(gutter, Math.min(flip ? above : below, vh - h - gutter))
+    setPos({ top, left })
   }, [open])
 
   // Прокрутка или resize меняют контекст — слой закрывается, а не едет.
@@ -79,7 +89,11 @@ export function OriginPopover({ rows, rounding, runRef, triggerLabel }: {
   }, [open])
 
   useEffect(() => {
-    if (!open) return
+    // `pos` в зависимостях не декоративен: до его вычисления диалог
+    // отрисован с `visibility: hidden`, а скрытый элемент фокус НЕ
+    // принимает — приёмка № 17 нашла фокус, оставшийся на BODY, и
+    // как следствие неработающий Esc.
+    if (!open || !pos) return
     const dialog = dialogRef.current
     if (!dialog) return
     const focusables = () =>
@@ -102,9 +116,13 @@ export function OriginPopover({ rows, rounding, runRef, triggerLabel }: {
         }
       }
     }
-    dialog.addEventListener('keydown', onKey)
-    return () => dialog.removeEventListener('keydown', onKey)
-  }, [open])
+    // Слушателя вешаем на ДОКУМЕНТ: Esc обязан закрывать верхний слой
+    // независимо от того, где сейчас фокус (KEY-002). На диалоге он
+    // работал только при фокусе внутри — то есть не работал при отказе
+    // фокусировки.
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, pos])
 
   return (
     <span className="relative inline-block">

@@ -1,4 +1,5 @@
 import { Decimal } from 'decimal.js'
+import { copyFor } from '../i18n/internal-refs'
 import catalog from '../fixtures/catalog.json'
 import { NNBSP, formatDE, label as moneyLabel, present } from '../engine/money'
 import { applyDiscount } from '../engine/calculate'
@@ -87,7 +88,7 @@ export function DiscountControl({ totalExact, percent, onChange, mode }: {
         </span>
       </p>
       <p className="a3-cap mt-1">
-        Basis ist der exakte Rechenwert, nie der angezeigte (CALC-007).
+        {copyFor('Basis ist der exakte Rechenwert, nie der angezeigte (CALC-007).', mode)}
         {discounted.disclosure ? ` ${discounted.disclosure}` : ''}
       </p>
 

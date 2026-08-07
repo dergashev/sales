@@ -109,6 +109,31 @@ describe('Сквозной сценарий продажи', () => {
     expect(screen.getByRole('button', { name: /Zu Kapitel 3/ })).toBeInTheDocument()
   })
 
+  it('дельта-чип и призрак ВИДИМЫ: состояние несёт .a3-show, не кадр анимации', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await enterPipeline(user)
+    await user.click(nav(/Konfigurator/))
+    await user.click(nav(/Energie & Zertifikate/))
+
+    // До изменения слоты существуют (высота зарезервирована), но пусты.
+    const chipBefore = document.querySelector('.a3-delta')!
+    expect(chipBefore).toBeInTheDocument()
+    expect(chipBefore.className).not.toContain('a3-show')
+
+    const es = await screen.findByRole('radiogroup', { name: 'Energiestandard' })
+    await user.click(within(es).getAllByRole('radio')[2]!)
+
+    // Приёмка № 17 нашла чип с opacity 0: класс ставился через rAF, который
+    // в неактивной вкладке не выполняется. Теперь состояние — это класс на
+    // постоянном элементе, и кадр анимации ни при чём.
+    const chip = document.querySelector('.a3-delta')!
+    expect(chip.className).toContain('a3-show')
+    expect(chip.className).toMatch(/a3-(saving|cost)/)
+    // Одна строка: двухстрочный чип распирал слот и сдвигал вёрстку.
+    expect(chip.querySelectorAll('.block')).toHaveLength(0)
+  })
+
   it('интервал точности показан деньгами, а не только процентом (DC-3)', async () => {
     const user = userEvent.setup()
     render(<App />)
@@ -185,5 +210,30 @@ describe('Сквозной сценарий продажи', () => {
     // Открытое покрытие KG 500 попадает в «что осталось» из того же
     // множества, которое делает итог промежуточным.
     expect(within(box).getByText(/KG.500 — Deckungsentscheidung offen/)).toBeInTheDocument()
+  })
+
+
+  it('клиентская поверхность не цитирует реестр требований (MODE-001, дефект 13)', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await enterPipeline(user)
+    // Вход в презентацию гейтуется подтверждением классификации.
+    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
+    const modes = screen.getByRole('radiogroup', { name: 'Modus' })
+    await user.click(within(modes).getAllByRole('radio')[1]!)
+    expect(useStore.getState().mode).toBe('praesentation')
+
+    // Коды реестра — доказательная база подготовки, не язык переговоров.
+    // Перечень префиксов явный: `OPT-01` (имя Option пользователя) и
+    // `KG 300`/`DIN 276` кодами реестра не являются и остаются.
+    const REGISTRY = /\b(?:CALC|XSC|VARIANT|MODE|OUT|GATE|LOCALE|EMAIL|SECURITY|DEMO|DC|RM|CORE|SCHED|DATA|OPTION|DRIVER|ANALYSIS|PROGRESS|STATE|LAYOUT|TOKEN|COLOR|TYPE|BORDER|MOTION|KEY|TABS|SOURCE|COMPLEX|METRIC|CHANGE|VERSION|SCOPE|PRINT|NOTE|ARCH|A11Y)-\d{2,3}\b|\bR-\d{2}\b|\bD-\d{2}\b/
+
+    for (const chapter of [/Gebäude & Umfang/, /Leistungen KG 300/, /Leistungsabgrenzung/,
+                           /Baugrund & Erschließung/, /Termine & Kommerzielles/]) {
+      await user.click(nav(chapter))
+      const text = document.body.textContent ?? ''
+      const hit = text.match(REGISTRY)
+      expect(hit?.[0] ?? null, `Kapitel ${chapter}: код реестра на клиентской поверхности`).toBeNull()
+    }
   })
 })

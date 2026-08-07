@@ -66,9 +66,17 @@ export function App() {
   // начала, а не с высоты прошлого (ревью № 13, дефект 8): экран,
   // открывшийся серединой карточек без H1, не объясняет свой вопрос.
   const mainRef = useRef<HTMLElement>(null)
+  const firstRender = useRef(true)
   useEffect(() => {
     // jsdom не реализует scrollTo на элементах — свойство надёжнее метода.
     if (mainRef.current) mainRef.current.scrollTop = 0
+    // Прокрутка возвращает НАЧАЛО документа глазам; клавиатуре и
+    // скринридеру его возвращает фокус (приёмка № 17, дефект 8: после
+    // перехода activeElement оставался BODY, и объявления контекста не
+    // происходило). Первый рендер пропускается: там фокус ничей и
+    // забирать его у пользователя не за что.
+    if (firstRender.current) { firstRender.current = false; return }
+    mainRef.current?.focus()
   }, [view, s.openChapter, s.activeOptionId, s.level])
 
   // Корень продукта — список Opportunities: ни панелей, ни цены. Цена не
@@ -80,7 +88,7 @@ export function App() {
     return (
       <div className="flex h-screen flex-col bg-surface-canvas">
         <AppHeader t={t} />
-        <main ref={mainRef} className="min-h-0 flex-1 overflow-y-auto bg-surface-default">
+        <main ref={mainRef} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto bg-surface-default outline-none">
           {s.level === 'liste' ? <OpportunityList /> : <OpportunityCard />}
         </main>
         <UndoToast />
@@ -95,7 +103,7 @@ export function App() {
       <div className="flex min-h-0 flex-1">
         <Sidebar />
 
-        <main ref={mainRef} className="min-w-0 flex-1 overflow-y-auto bg-surface-default">
+        <main ref={mainRef} tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto bg-surface-default outline-none">
           {view === 'konfigurator' && <S3Konfigurator />}
           {view === 'vergleich' && <S4Vergleich />}
           {view === 'export' && <S5Export />}

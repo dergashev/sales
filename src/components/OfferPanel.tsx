@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { Decimal } from 'decimal.js'
-import { AnimatePresence, motion } from 'framer-motion'
 import { activeBuilding, useStore } from '../state/store'
 import { CATALOG } from '../state/catalog'
 import { NNBSP, present, rateLabel, formatDE, label as moneyLabel } from '../engine/money'
@@ -26,19 +25,26 @@ import { useT, useTx } from '../i18n'
  */
 
 /**
- * Класс `.a3-show` ставится кадром ПОСЛЕ монтирования: элемент, родившийся
- * сразу с ним, не имеет стартового состояния и появляется без транзишна
- * системы. Движение чипа принадлежит контракту DC-2 (`.a3-delta.a3-show`),
- * а не framer-motion (ревью № 13, дефект 17).
+ * Последний показанный дельта-чип — чтобы содержимое пережило гашение.
+ *
+ * Приёмка № 17 нашла чип НЕВИДИМЫМ: `.a3-show` ставился через
+ * `requestAnimationFrame` после монтирования, а rAF не выполняется в
+ * неактивной вкладке — чип оставался с `opacity: 0`. Класс состояния,
+ * зависящий от кадра анимации, — это не «отложенный старт транзишна», а
+ * условие, которого может не наступить.
+ *
+ * Правильная анатомия контракта DC-2 та же, что в витрине: элемент
+ * `.a3-delta` живёт в слоте ПОСТОЯННО, а появление и уход — это класс
+ * `.a3-show` на нём. Стартовое состояние существует, потому что элемент
+ * существовал раньше класса; кадр анимации ни при чём. Содержимое
+ * сохраняется на время ухода — иначе чип гас бы пустым.
  */
-function useShownClass(active: boolean): boolean {
-  const [shown, setShown] = useState(false)
+function useLastValue<T>(current: T | null): T | null {
+  const [last, setLast] = useState<T | null>(current)
   useEffect(() => {
-    if (!active) { setShown(false); return }
-    const raf = requestAnimationFrame(() => setShown(true))
-    return () => cancelAnimationFrame(raf)
-  }, [active])
-  return active && shown
+    if (current) setLast(current)
+  }, [current])
+  return current ?? last
 }
 
 const KG_LABELS: Record<CostGroup, string> = {
@@ -91,7 +97,8 @@ export function OfferPanel() {
     new Decimal(p.result.total.display.replace(/\./g, '')), 0,
   )
   const blocked = !activeBuilding(s).gebaeudeklasse.confirmed
-  const deltaShown = useShownClass(s.activeDelta !== null)
+  const shownDelta = useLastValue(s.activeDelta)
+  const shownPreview = useLastValue(s.preview)
 
   // Сессионная дельта (DC-12, CALC-014): сумма точных дельт журнала —
   // undo несёт отрицание, поэтому простая сумма и есть «к базе», без
@@ -261,57 +268,55 @@ export function OfferPanel() {
             Анатомия контракта: префикс «Vorschau ·», будущее значение,
             дельта к названной базе, ссылка на прогон превью. Высота
             зарезервирована: появление призрака не двигает вёрстку. */}
+        {/* Призрак — тот же приём, что у чипа: элемент постоянен, появление
+            и уход несёт `.a3-show` контракта, а не framer-motion. Утилита
+            паддинга снята: вид принадлежит системе (NO-VISUAL-UTILITY). */}
         <div className="a3-ghost-slot mt-3">
-          <AnimatePresence>
-            {s.preview && (
-              <motion.p
-                key="ghost"
-                initial={reduced ? {} : { opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={reduced ? {} : { opacity: 0 }}
-                transition={{ duration: reduced ? 0 : 0.12 }}
-                className="a3-ghost numeric p-3"
-              >
-                Vorschau · {s.preview.label}
-                <span className="mt-1 block text-body">
-                  {s.preview.futureTotal.prefix && (
-                    <span aria-hidden="true">{s.preview.futureTotal.prefix}{NNBSP}</span>
-                  )}
-                  {s.preview.futureTotal.display}{NNBSP}€
-                  {' · '}
-                  {signed(s.preview.deltaExact)}{NNBSP}gegenüber DEMO-VV-0003
-                </span>
-                {/* Неполнота будущего прогона называется, а не подразумевается. */}
-                {s.preview.futureLabel !== 'Gesamt netto · Grundleistung All3' && (
-                  <span className="mt-1 block">Vorschau · {s.preview.futureLabel}</span>
+          <p className={'a3-ghost numeric' + (s.preview ? ' a3-show' : '')}
+             aria-hidden={s.preview ? undefined : true}>
+            {shownPreview && (<>
+              {tx('Vorschau')} · {shownPreview.label}
+              <span className="block">
+                {shownPreview.futureTotal.prefix && (
+                  <span aria-hidden="true">{shownPreview.futureTotal.prefix}{NNBSP}</span>
                 )}
-                {s.mode === 'intern' && (
-                  <span className="mt-1 block text-text-muted">{s.preview.contextRef}</span>
-                )}
-              </motion.p>
-            )}
-          </AnimatePresence>
+                {shownPreview.futureTotal.display}{NNBSP}€
+                {' · '}
+                {signed(shownPreview.deltaExact)}{NNBSP}gegenüber DEMO-VV-0003
+              </span>
+              {/* Неполнота будущего прогона называется, а не подразумевается. */}
+              {shownPreview.futureLabel !== 'Gesamt netto · Grundleistung All3' && (
+                <span className="block">{tx('Vorschau')} · {shownPreview.futureLabel}</span>
+              )}
+              {s.mode === 'intern' && (
+                <span className="block">{shownPreview.contextRef}</span>
+              )}
+            </>)}
+          </p>
         </div>
 
         {/* ── Слот дельта-чипа: зарезервирован, появление не двигает ────── */}
+        {/* Чип живёт в слоте постоянно и ОДНОЙ строкой (`.a3-delta` —
+            inline-flex витрины): двухстрочный распирал зарезервированную
+            высоту слота и сдвигал вёрстку на 27 px — ровно то, против чего
+            слот и существует (правило 24, приёмка № 17). */}
         <div className="a3-delta-slot mt-3">
-          {s.activeDelta && (
-            <p
-              className={'a3-delta numeric' +
-                (deltaShown ? ' a3-show' : '') +
-                /* Ровно один класс направления (контракт DC-2). */
-                (s.activeDelta.deltaExact.isNegative() ? ' a3-saving' : ' a3-cost')}
-            >
-              <span>
-                {s.activeDelta.label}
-                <span className="mt-1 block font-medium">
-                  {signed(s.activeDelta.deltaExact)}
-                  {/* Δ-проценты — только внутренние (правило 11). */}
-                  {s.mode === 'intern' && <> ({signedPercent(s.activeDelta.percent)})</>}
-                </span>
+          <p
+            aria-hidden={s.activeDelta ? undefined : true}
+            className={'a3-delta numeric' +
+              (s.activeDelta ? ' a3-show' : '') +
+              /* Ровно один класс направления (контракт DC-2). */
+              (shownDelta?.deltaExact.isNegative() ? ' a3-saving' : ' a3-cost')}
+          >
+            {shownDelta && (<>
+              <span>{shownDelta.label}</span>
+              <span className="font-medium">
+                {signed(shownDelta.deltaExact)}
+                {/* Δ-проценты — только внутренние (правило 11). */}
+                {s.mode === 'intern' && <> ({signedPercent(shownDelta.percent)})</>}
               </span>
-            </p>
-          )}
+            </>)}
+          </p>
         </div>
 
         {/* ── Сводка выбранного — «корзина» (ревью № 13, дефект 21):

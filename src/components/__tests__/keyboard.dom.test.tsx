@@ -164,3 +164,48 @@ describe('Гейт режима презентации — блокировка 
     expect(useStore.getState().mode).toBe('praesentation')
   })
 })
+
+describe('Herkunft-Popover: слой, фокус и выход (DC-21, KEY-002, приёмка № 17)', () => {
+  async function openPopover(user: ReturnType<typeof userEvent.setup>) {
+    await enterPipeline(user)
+    const trigger = screen.getAllByRole('button', { name: /Herkunft anzeigen/ })[0]!
+    await user.click(trigger)
+    return trigger
+  }
+
+  it('фокус уходит ВНУТРЬ диалога, а не остаётся на body', async () => {
+    const user = userEvent.setup()
+    await openPopover(user)
+    const dialog = await screen.findByRole('dialog', { name: 'Herkunft des Werts' })
+    // Приёмка нашла фокус на BODY: диалог рендерился с visibility:hidden
+    // до вычисления позиции, а скрытый элемент фокус не принимает.
+    expect(dialog.contains(document.activeElement)).toBe(true)
+    expect(document.activeElement).not.toBe(document.body)
+  })
+
+  it('Esc закрывает слой и возвращает фокус на триггер откуда угодно', async () => {
+    const user = userEvent.setup()
+    const trigger = await openPopover(user)
+    // Фокус нарочно уводится наружу: слушатель на самом диалоге в этом
+    // случае не срабатывал вовсе.
+    ;(document.body as HTMLElement).focus()
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Herkunft des Werts' })).toBeNull()
+    })
+    expect(document.activeElement).toBe(trigger)
+  })
+
+  it('прокрутка контейнера закрывает слой: объяснение не переживает смену контекста', async () => {
+    const user = userEvent.setup()
+    await openPopover(user)
+    expect(screen.getByRole('dialog', { name: 'Herkunft des Werts' })).toBeInTheDocument()
+    // Событие прокрутки не всплывает, но проходит фазу перехвата — слушатель
+    // на window ловит прокрутку ЛЮБОГО контейнера страницы.
+    const main = document.querySelector('main')!
+    main.dispatchEvent(new Event('scroll', { bubbles: false }))
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Herkunft des Werts' })).toBeNull()
+    })
+  })
+})

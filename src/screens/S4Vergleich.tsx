@@ -6,6 +6,7 @@ import {
 import { NNBSP, present, formatDE } from '../engine/money'
 import { Button } from '../components/primitives'
 import { useTx } from '../i18n'
+import { copyFor } from '../i18n/internal-refs'
 
 /**
  * S4 Variantenvergleich — созданные Opportunity Options рядом.
@@ -200,10 +201,10 @@ export function S4Vergleich() {
       </div>
 
       <p className="mt-3 text-small text-text-muted">
-        {tx('Jede Spalte wird live aus der Konfiguration ihrer Option gerechnet — es gibt keinen zweiten Zahlenbestand. Die Schätzunsicherheit gehört der Option: sie verengt sich durch Bestätigungen, nicht durch Options-Wahl (D-19).')}
+        {copyFor(tx('Jede Spalte wird live aus der Konfiguration ihrer Option gerechnet — es gibt keinen zweiten Zahlenbestand. Die Schätzunsicherheit gehört der Option: sie verengt sich durch Bestätigungen, nicht durch Options-Wahl (D-19).'), s.mode)}
       </p>
       <p className="mt-2 text-small text-text-muted">
-        {tx('Rollen sind unabhängige Text-Badges: Deltas rechnen zur benannten Vergleichsbasis (VARIANT-001, XSC-08).')}
+        {copyFor(tx('Rollen sind unabhängige Text-Badges: Deltas rechnen zur benannten Vergleichsbasis (VARIANT-001, XSC-08).'), s.mode)}
       </p>
 
       {cols.length > 1 && (

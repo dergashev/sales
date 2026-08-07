@@ -6,6 +6,7 @@ import { NNBSP, formatDE } from '../engine/money'
 import { Button } from '../components/primitives'
 import { RadioCardGroup, SegmentedControl } from '../components/controls'
 import { useTx } from '../i18n'
+import { copyFor } from '../i18n/internal-refs'
 import type { BuildingInput } from '../engine/calculate'
 
 /**
@@ -187,7 +188,7 @@ export function ChapterBuildings() {
             value={active.gebaeudeklasse.value}
             onChange={() => {}}
             disabled
-            disabledReason="Die Klasse folgt aus Geschossanzahl und Brandschutzkonzept — sie wird bestätigt, nicht gewählt (CALC-004)"
+            disabledReason={copyFor(tx('Die Klasse folgt aus Geschossanzahl und Brandschutzkonzept — sie wird bestätigt, nicht gewählt (CALC-004)'), s.mode)}
             options={(['GK_1_3', 'GK_4', 'GK_5'] as const).map((v) => ({
               value: v, label: GK_LABEL[v],
             }))}
