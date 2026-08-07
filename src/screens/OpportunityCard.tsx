@@ -46,7 +46,7 @@ function Metric({ label, value, unit, note }: {
           ? <span className="text-text-secondary">nicht erfasst</span>
           : <>{value}{unit ? `${NNBSP}${unit}` : ''}{note ? `${NNBSP}${MARK}` : ''}</>}
       </span>
-      {note && <span className="a3-cap block text-text-muted">{DERIVED} · {note}</span>}
+      {note && <span className="a3-cap block">{DERIVED} · {note}</span>}
     </div>
   )
 }
@@ -156,14 +156,20 @@ export function OpportunityCard() {
               <span aria-hidden="true">▲ </span>
               Wohnfläche WFL nach WoFlV: zwei Kandidaten.
             </p>
-            <ul className="mt-2">
+            {/* Кандидаты — `.a3-kv` контракта DC-32: пара «источник →
+                значение» в ряд, а не список абзацев. Значения стоят рядом
+                именно потому, что решение принимается их сравнением. */}
+            <div className="a3-kv">
               {s.wflConflict.candidates.map((c) => (
-                <li key={c.origin} className="a3-cap">
-                  {c.origin === 'customer' ? 'Kunde' : 'Dokument'}: {formatDE(D(c.value), 2)}
-                  {NNBSP}m² · {c.source}
-                </li>
+                <span key={c.origin}>
+                  <span className="a3-cap block">
+                    {c.origin === 'customer' ? 'Kunde' : 'Dokument'}
+                  </span>
+                  <span className="numeric">{formatDE(D(c.value), 2)}{NNBSP}m²</span>
+                  <span className="a3-cap block">{c.source}</span>
+                </span>
               ))}
-            </ul>
+            </div>
             <p className="a3-cap mt-2">
               Folge der Wahl: nur der Nenner der Leitkennzahl ändert sich, die
               Zwischensumme der kalkulierten Positionen bleibt gleich. Der

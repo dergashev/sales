@@ -71,6 +71,18 @@ export type Driver = {
   scopeRefs: string[]
   appliedTo: Decimal | null
   factor: Decimal | null
+  /**
+   * Откуда взялся вклад. Поле, а не догадка по имени ключа: приёмка № 17
+   * нашла «корзину», которая фильтровала драйверы префиксами `opt_/cov_/`
+   * и потому молчала про выбор подвала, изменивший сумму. Классификация
+   * принадлежит тому, кто вклад создаёт.
+   *
+   * `base` — базовая ставка объёма, не решение и не факт;
+   * `fact` — свойство здания, которое ПОДТВЕРЖДАЮТ, а не выбирают
+   *   (класс здания следует из этажности и пожарной концепции);
+   * `decision` — то, что продавец выбрал и может отменить.
+   */
+  origin: 'base' | 'fact' | 'decision'
 }
 
 /** База KG 300+400 объявлена в `calculation-spec.md` §1.1 строкой K_base. */
@@ -175,6 +187,7 @@ export function calculateBuilding(
   const base = b.bgfAboveGround.mul(cat.kBase)
   drivers.push({
     key: 'basis', exact: base, label: 'Grundleistung',
+      origin: 'base' as const,
     scopeRefs: SCOPE_BAUWERK_BASE, appliedTo: null, factor: null,
   })
 
@@ -188,6 +201,7 @@ export function calculateBuilding(
     running = running.plus(uplift)
     drivers.push({
       key: `gebaeudeform_${formKey}`, exact: uplift, label: 'Gebäudeform',
+      origin: 'fact' as const,
       scopeRefs: SCOPE_BAUWERK_BASE, appliedTo: running.minus(uplift), factor: f,
     })
   }
@@ -198,6 +212,7 @@ export function calculateBuilding(
   if (!gkUplift.isZero()) {
     drivers.push({
       key: `gebaeudeklasse_${b.gebaeudeklasse.value}`,
+      origin: 'fact' as const,
       exact: gkUplift,
       // Язык следствий, не код параметра (D-13). Следствия названы в
       // guidance-system.md и parameter-triage (C4.02/C4.03) — они не
@@ -215,6 +230,7 @@ export function calculateBuilding(
   if (!ehUplift.isZero()) {
     drivers.push({
       key: `energiestandard_${b.energiestandard}`,
+      origin: 'decision' as const,
       exact: ehUplift,
       // `EH 55` — имя норматива KfW, а не код параметра: LOCALE-009 держит
       // его в списке непереводимых нормативных терминов. Формулировки
@@ -234,6 +250,7 @@ export function calculateBuilding(
     ug = b.bgfBelowGround.mul(cat.costFactors.untergeschoss.vollausbauMitTiefgarage)
     drivers.push({
       key: 'untergeschoss_mit_tiefgarage',
+      origin: 'decision' as const,
       exact: ug,
       label: 'Untergeschoss inkl. Tiefgarage',
       scopeRefs: SCOPE_UG, appliedTo: null, factor: null,
@@ -248,6 +265,7 @@ export function calculateBuilding(
     regional = bauwerk.mul(cat.regionalFactor.value.minus(1))
     drivers.push({
       key: 'regionalfaktor', exact: regional, label: 'Regionalfaktor',
+      origin: 'decision' as const,
       scopeRefs: SCOPE_BAUWERK_FULL, appliedTo: bauwerk,
       factor: cat.regionalFactor.value,
     })

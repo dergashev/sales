@@ -113,10 +113,11 @@ export function OfferPanel() {
   // изменения цены, ничего не изменив: подпись утверждала неправду о деньгах.
   const priceChangeCount = ctxJournal.filter((e) => e.deltaExact !== null).length
 
-  // «Корзина»: вклады, рождённые решениями пользователя (опции, покрытие,
-  // KG 700 как позиция) — в отличие от базового блока здания.
-  const cart = p.result.drivers.filter((d) =>
-    /(^|:)(opt_|cov_|kg700_)/.test(d.key))
+  // «Корзина»: вклады, рождённые РЕШЕНИЯМИ, — по признаку самого вклада,
+  // а не по префиксу ключа. Приёмка № 17 показала цену догадки: фильтр по
+  // `opt_/cov_/kg700_` пропускал выбор подвала, и панель говорила
+  // «Standardumfang» при изменившейся сумме.
+  const cart = p.result.drivers.filter((d) => d.origin === 'decision')
   const notIncluded = (Object.keys(s.coverage) as CostGroup[]).filter(
     (g) => ['unknown', 'onRequest', 'excluded'].includes(s.coverage[g]),
   )
@@ -354,7 +355,7 @@ export function OfferPanel() {
               type="button"
               aria-expanded={treiberOpen}
               onClick={() => setTreiberOpen((v) => !v)}
-              className="a3-journal-disclose relative w-full text-left outline-none before:absolute before:left-1/2 before:top-1/2 before:min-h-hit-target before:w-full before:-translate-x-1/2 before:-translate-y-1/2 before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+              className="a3-journal-disclose outline-none before:absolute before:left-1/2 before:top-1/2 before:min-h-hit-target before:w-full before:-translate-x-1/2 before:-translate-y-1/2 before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
             >
               <span aria-hidden="true">{treiberOpen ? '▾ ' : '▸ '}</span>
               {tx('Kostentreiber')}
@@ -396,7 +397,10 @@ export function OfferPanel() {
                     const richtung = senkt ? 'senkt' : 'erhöht'
                     const shown = present(d.exact.abs())
                     return (
-                      <tr key={d.key} data-driver-id={d.key} className="a3-drv">
+                      <tr key={d.key} data-driver-id={d.key}
+                          className={'a3-drv'
+                            + (d.origin === 'base' ? ' a3-base' : '')
+                            + (senkt ? ' a3-minus' : '')}>
                         <th scope="row" className="py-2 pr-3 text-left font-regular text-text-secondary">
                           {/* Доступное имя строки называет направление словом,
                               округление и точное значение (DRIVER-004). */}
@@ -501,48 +505,48 @@ export function OfferPanel() {
               type="button"
               aria-expanded={kgOpen}
               onClick={() => setKgOpen((v) => !v)}
-              className="a3-journal-disclose relative w-full text-left outline-none before:absolute before:left-1/2 before:top-1/2 before:min-h-hit-target before:w-full before:-translate-x-1/2 before:-translate-y-1/2 before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+              className="a3-journal-disclose outline-none before:absolute before:left-1/2 before:top-1/2 before:min-h-hit-target before:w-full before:-translate-x-1/2 before:-translate-y-1/2 before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
             >
               <span aria-hidden="true">{kgOpen ? '▾ ' : '▸ '}</span>
               {tx('Kostengruppen nach DIN 276 · vereinfacht')}
             </button>
           </h2>
           {kgOpen && (<>
-          <div className="mt-2 overflow-x-auto">
-            <table className="w-full border-collapse text-small">
-              <caption className="sr-only">Verteilung 70/22/8</caption>
+          {/* Таблица структуры затрат — DC-5: корень `.a3-kg`, числовые
+              ячейки `.a3-num`, вложенный уровень `.a3-lvl2`, итоговая
+              строка `.a3-total`. Прежде это был utility-двойник рядом с
+              готовым контрактом (добор DC-COVERAGE приёмки № 17). */}
+          <div className="a3-tbl-scroll mt-2">
+            <table className="a3-kg w-full border-collapse">
+              <caption className="a3-visually-hidden">
+                Kostengruppen nach DIN 276, vereinfachte Verteilung
+              </caption>
               <tbody>
                 {([['KG_300', p.kgSplit.KG_300], ['KG_400', p.kgSplit.KG_400],
                    ['KG_700', p.kgSplit.KG_700]] as const).map(([g, v]) => (
-                  <tr key={g} className="h-row-financial border-b border-border-subtle">
-                    <th scope="row" className="py-1 pr-3 text-left font-regular text-text-secondary">
-                      {g.replace('_', NNBSP)} {KG_LABELS[g as CostGroup]}
-                    </th>
-                    <td className="numeric py-1 text-right text-text-primary">
-                      {moneyLabel(present(v))}
-                    </td>
-                    <td className="numeric py-1 pl-3 text-right text-text-secondary">
+                  <tr key={g}>
+                    <td>{g.replace('_', NNBSP)} {KG_LABELS[g as CostGroup]}</td>
+                    <td className="a3-num">{moneyLabel(present(v))}</td>
+                    <td className="a3-num">
                       {v.div(p.result.total.exact).mul(100).toFixed(0)}{NNBSP}%
                     </td>
                   </tr>
                 ))}
-                {/* Надземная/подземная части: показ равен точному у 476.000 —
-                    поэтому без префикса; ложный `≈` — тоже дефект (CALC-007). */}
-                <tr className="border-b border-border-subtle">
-                  <th scope="row" className="py-2 pr-3 text-left font-regular text-text-secondary">
-                    ── oberirdisch
-                  </th>
-                  <td className="numeric py-2 text-right text-text-primary" colSpan={2}>
-                    {moneyLabel(p.aboveGround)}
-                  </td>
+                {/* Надземная/подземная части — вложенный уровень той же
+                    структуры, а не отдельные строки-сироты. Показ равен
+                    точному у 476.000, поэтому без префикса: ложный `≈` —
+                    тоже дефект. */}
+                <tr className="a3-lvl2 a3-muted">
+                  <td>oberirdisch</td>
+                  <td className="a3-num" colSpan={2}>{moneyLabel(p.aboveGround)}</td>
                 </tr>
-                <tr>
-                  <th scope="row" className="py-2 pr-3 text-left font-regular text-text-secondary">
-                    ── unterirdisch
-                  </th>
-                  <td className="numeric py-2 text-right text-text-primary" colSpan={2}>
-                    {moneyLabel(p.belowGround)}
-                  </td>
+                <tr className="a3-lvl2 a3-muted">
+                  <td>unterirdisch</td>
+                  <td className="a3-num" colSpan={2}>{moneyLabel(p.belowGround)}</td>
+                </tr>
+                <tr className="a3-total">
+                  <td>{p.result.totalLabel}</td>
+                  <td className="a3-num" colSpan={2}>{moneyLabel(p.result.total)}</td>
                 </tr>
               </tbody>
             </table>
@@ -584,13 +588,13 @@ export function OfferPanel() {
         )}
 
         {/* ── Журнал сессии (DC-12): подпись с названной базой ───────────── */}
-        <div className={'mt-3 transition-colors duration-base ' +
+        <div className={'a3-journal-spec mt-3 transition-colors duration-base ' +
           (journalFlash ? 'bg-surface-subtle' : '')}>
           <button
             type="button"
             onClick={() => setJournalOpen((v) => !v)}
             aria-expanded={journalOpen}
-            className="relative w-full text-left text-small text-text-secondary outline-none before:absolute before:left-1/2 before:top-1/2 before:min-h-hit-target before:w-full before:-translate-x-1/2 before:-translate-y-1/2 before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+            className="a3-journal-disclose outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
           >
             <span aria-hidden="true">{journalOpen ? '▾ ' : '▸ '}</span>
             {priceChangeCount === 0
@@ -603,12 +607,13 @@ export function OfferPanel() {
           </button>
 
           {journalOpen && ctxJournal.length > 0 && (
-            <ol className="a3-journal-spec a3-journal-items mt-2 overflow-y-auto pt-1"
+            <ol className="a3-journal-items overflow-y-auto"
                 style={{ maxHeight: 'calc(var(--space-8) * 3)' }}>
               {[...ctxJournal].reverse().map((e) => (
-                <li key={e.seq} className="flex justify-between gap-2 py-1 text-small">
-                  <span className="text-text-secondary">{e.seq}. {e.label}</span>
-                  <span className="numeric shrink-0 text-text-primary">
+                <li key={e.seq}>
+                  <span className="numeric">{e.seq}</span>
+                  <span>{e.label}</span>
+                  <span className="numeric">
                     {e.deltaExact ? signed(e.deltaExact) : '—'}
                   </span>
                 </li>

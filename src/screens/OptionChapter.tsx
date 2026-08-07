@@ -191,7 +191,7 @@ export function OptionChapter({ groups, intro }: {
         )
       })}
 
-      <p className="a3-cap text-text-muted">
+      <p className="a3-cap">
         {MARK} · {DERIVED_LABEL}. Die Preiswirkung erscheint sofort in der
         Angebotsspalte rechts und im Kostentreiber.
       </p>

@@ -125,16 +125,13 @@ export function OriginPopover({ rows, rounding, runRef, triggerLabel }: {
   }, [open, pos])
 
   return (
-    <span className="relative inline-block">
+    <span className="a3-hk-wrap">
       <button
         ref={triggerRef}
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className={'relative text-small text-text-secondary underline-offset-2 ' +
-          'hover:underline outline-none before:absolute before:left-1/2 before:top-1/2 ' +
-          'before:min-h-hit-target before:min-w-hit-target before:-translate-x-1/2 ' +
-          'before:-translate-y-1/2 before:content-[""] focus-visible:outline ' +
+        className={'a3-hk-val outline-none focus-visible:outline ' +
           'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring'}
       >
         {label}
@@ -152,29 +149,31 @@ export function OriginPopover({ rows, rounding, runRef, triggerLabel }: {
             animate={{ opacity: 1, y: 0 }}
             exit={reduced ? {} : { opacity: 0, transition: { duration: 0.12 } }}
             transition={{ duration: reduced ? 0 : 0.2 }}
-            className="z-popover border-contrast border-border-strong bg-surface-default p-4"
+            className={'a3-hk-pop' + (pos ? ' a3-show' : '')}
             style={{
+              /* Вид (рамка, фон, паддинг, ширина, типографика, движение)
+                 приходит из `.a3-hk-pop`. Позиционирование — нет: контракт
+                 кладёт слой `absolute` внутрь обёртки, а обёртка живёт в
+                 прокручиваемой панели и обрезает его (дефект 6 приёмки
+                 № 13/№ 17). Портал с `fixed` — то, чем дефект закрыт;
+                 несовместимость названа в handoff для DC-21. */
               position: 'fixed',
               top: pos?.top ?? 0,
               left: pos?.left ?? 0,
+              right: 'auto',
               visibility: pos ? 'visible' : 'hidden',
-              width: 'max-content',
-              maxWidth: 'min(var(--size-popover-max-width), calc(100vw - 2 * var(--gutter-narrow)))',
             }}
           >
             <p id={headingId} className="text-small font-bold text-text-primary">
               Herkunft des Werts
             </p>
+            {/* Строка цепочки — `.a3-r` контракта, число — `.a3-fnum`. */}
             <ol className="mt-2">
               {rows.map((r) => (
-                <li
-                  key={r.label + r.value}
-                  className={'flex justify-between gap-4 border-b border-border-subtle py-1 text-small ' +
-                    (r.muted ? 'text-text-muted' : 'text-text-secondary') +
-                    (r.strong ? ' font-medium text-text-primary' : '')}
-                >
+                <li key={r.label + r.value}
+                    className={'a3-r' + (r.muted ? ' text-text-muted' : '')}>
                   <span>{r.label}</span>
-                  <span className="numeric shrink-0 text-right">{r.value}</span>
+                  <span className="a3-fnum">{r.value}</span>
                 </li>
               ))}
             </ol>
@@ -188,10 +187,7 @@ export function OriginPopover({ rows, rounding, runRef, triggerLabel }: {
               <button
                 type="button"
                 onClick={() => { setOpen(false); triggerRef.current?.focus() }}
-                className={'relative text-small text-text-secondary underline-offset-2 ' +
-                  'hover:underline outline-none before:absolute before:left-1/2 before:top-1/2 ' +
-                  'before:min-h-hit-target before:min-w-hit-target before:-translate-x-1/2 ' +
-                  'before:-translate-y-1/2 before:content-[""] focus-visible:outline ' +
+                className={'a3-hk-val outline-none focus-visible:outline ' +
                   'focus-visible:outline-2 focus-visible:outline-offset-2 ' +
                   'focus-visible:outline-focus-ring'}
               >

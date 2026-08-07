@@ -125,6 +125,7 @@ export function optionDrivers(
     if (qty.lte(0)) continue
     out.push({
       key: `opt_${g.id}_${choice.value}`,
+      origin: 'decision' as const,
       exact: qty.mul(rate),
       label: `${g.label} · ${choice.label}`,
       scopeRefs: [scopeOf(g.id)],
@@ -169,6 +170,7 @@ export function coverageDrivers(
     if (qty.lte(0)) continue
     out.push({
       key: `cov_${kg}`,
+      origin: 'decision' as const,
       exact: qty.mul(rate),
       label: `${kg.replace('_', ' ')} · ${spec.label}`,
       scopeRefs: [kg.replace('_', ' ')],

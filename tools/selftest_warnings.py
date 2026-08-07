@@ -48,6 +48,7 @@ CSS_GROUP = (
     '.a3-probe{display:block}\n'
     '.a3-probe-num{font-weight:700}\n'
     '.a3-probe-cap{color:#323232}\n'
+    '.a3-cap{font-size:14px}\n'
 )
 
 
@@ -98,6 +99,14 @@ CASES: list[tuple[str, str, dict, bool]] = [
     ('NO-VISUAL-UTILITY: отступ и сетка — композиция, не вид',
      'NO-VISUAL-UTILITY',
      {'tsx': 'export const P = () => <div className="a3-probe mt-4 flex gap-3" />'},
+     False),
+    ('NO-VISUAL-UTILITY: цвет поверх типографического примитива — переопределение роли',
+     'NO-VISUAL-UTILITY',
+     {'tsx': 'export const P = () => <div className="a3-cap text-text-muted" />'},
+     True),
+    ('NO-VISUAL-UTILITY: отступ у типографического примитива — композиция страницы',
+     'NO-VISUAL-UTILITY',
+     {'tsx': 'export const P = () => <div className="a3-cap py-1 pr-4 text-left" />'},
      False),
     ('NO-VISUAL-UTILITY: утилита без контрактного класса — не наш случай',
      'NO-VISUAL-UTILITY',

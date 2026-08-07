@@ -75,7 +75,7 @@ export function S3Konfigurator() {
     <div className="px-7 py-6">
       {/* Заголовок экрана — masthead витрины: крупный титул и мета на
           одной базовой линии, как в образце. */}
-      <header className="a3-masthead border-b border-border-strong">
+      <header className="a3-masthead">
         <h1 className="a3-hero-title">{tx(title)}</h1>
         <p className="a3-cap">Kapitel {n}{NNBSP}von{NNBSP}9 · Konfigurator</p>
       </header>

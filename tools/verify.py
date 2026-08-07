@@ -5598,6 +5598,16 @@ class Verifier:
             r'|font-(?:bold|medium|regular)'
             r'|rounded\S*|shadow\S*'
             r')$')
+        # Типографические примитивы (SmallText, PageHeader, заголовок,
+        # lede, имя) владеют РОЛЬЮ текста: кегль, начертание, цвет. Место
+        # текста на странице — её дело, поэтому паддинг и выравнивание на
+        # них нарушением границы не являются. Различение введено после
+        # разбора первых находок: единое правило обвиняло композицию.
+        typography = {'a3-cap', 'a3-hero-title', 'a3-lede', 'a3-meta', 'a3-nm',
+                      'a3-sub', 'a3-t-body', 'a3-t-cap', 'a3-t-small'}
+        role_only = re.compile(
+            r'^(?:text-(?:text-\w+|body|small|caption|heading-\d|display\w*)'
+            r'|bg-\w[\w-]*|font-(?:bold|medium|regular))$')
         for rel, text in self.files('*.tsx'):
             if not rel.startswith('src/') or '__tests__' in rel:
                 continue
@@ -5605,7 +5615,8 @@ class Verifier:
                 for m in re.finditer(r'className="([^"]*)"', line):
                     toks = m.group(1).split()
                     a3 = [x for x in toks if x.startswith('a3-')]
-                    bad = [x for x in toks if visual.match(x)]
+                    rx = role_only if a3 and set(a3) <= typography else visual
+                    bad = [x for x in toks if rx.match(x)]
                     if a3 and bad:
                         self.warn.append(
                             f'{WARN_NO_VISUAL_UTILITY}: {rel}:{i} — {", ".join(a3)} '

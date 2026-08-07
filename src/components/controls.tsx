@@ -260,7 +260,7 @@ export function RadioCardGroup<T extends string>({
                 {o.consequence}
               </span>
               {o.recommended && (
-                <span className="a3-st font-medium">
+                <span className="a3-st">
                   <span aria-hidden="true">◆ </span>Empfohlen
                 </span>
               )}

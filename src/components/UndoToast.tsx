@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
 import { useStore } from '../state/store'
-import { Button, useReducedMotion } from './primitives'
 import { UNDO_WINDOW_MS } from '../config/ui-policy'
 import { useT } from '../i18n'
 
@@ -26,9 +24,12 @@ import { useT } from '../i18n'
 export function UndoToast() {
   const s = useStore()
   const toast = s.undoToast
-  const reduced = useReducedMotion()
   const t = useT()
   const [paused, setPaused] = useState(false)
+  // Содержимое переживает уход: гасить пустой тост значило бы показывать
+  // пустую рамку в течение всего транзишна.
+  const [shown, setShown] = useState(toast)
+  useEffect(() => { if (toast) setShown(toast) }, [toast])
 
   // Контракт требует ПАУЗЫ таймера на hover и focus, а не перезапуска.
   // Прежняя редакция сбрасывала отсчёт заново: пользователь получал не
@@ -63,42 +64,42 @@ export function UndoToast() {
   }, [toast?.seq])
 
   return (
-    <AnimatePresence>
-      {toast && (
-        <motion.div
-          key={toast.seq}
-          role="status"
-          aria-live="polite"
-          initial={reduced ? {} : { opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={reduced ? {} : { opacity: 0, transition: { duration: 0.12 } }}
-          transition={{ duration: reduced ? 0 : 0.2 }}
-          // Вид тоста — из системы (`.a3-toast`, DC-29); позиционирование в
-          // нижнем левом углу принадлежит оболочке приложения, а не самому
-          // компоненту: справа живёт панель цены.
-          className="a3-toast fixed bottom-5 left-5 z-toast"
-          style={{
-            maxWidth: 'min(var(--size-toast-max-width), calc(100vw - 2 * var(--space-5)))',
-          }}
-          onMouseEnter={() => setPaused(true)}
-          onMouseLeave={() => setPaused(false)}
-          onFocusCapture={() => setPaused(true)}
-          onBlurCapture={() => setPaused(false)}
-        >
-          <p className="text-body text-text-primary">{toast.statusText}</p>
-          {toast.deltaText && (
-            <p className="numeric mt-1 text-small text-text-secondary">
-              {toast.deltaText}
-            </p>
-          )}
-          <div className="mt-3 flex gap-2">
-            <Button onClick={() => s.undoEvent(toast.seq)}>{t('common.undo')}</Button>
-            <Button variant="ghost" onClick={() => s.dismissUndoToast()}>
-              {t('common.close')}
-            </Button>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    /* Анатомия DC-29 целиком: хост `.a3-toasts` (он же владеет
+       позиционированием и шириной — раньше это делали утилиты приложения),
+       карточка `.a3-toast`, состояние `.a3-show`, действие `.a3-act`.
+       Движение — транзишн системы: элемент постоянен, класс несёт
+       появление; кадр анимации в условии не участвует (тот же урок, что
+       с дельта-чипом в приёмке № 17). */
+    <div className="a3-toasts">
+      <div
+        role="status"
+        aria-live="polite"
+        aria-hidden={toast ? undefined : true}
+        className={'a3-toast' + (toast ? ' a3-show' : '')}
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+        onFocusCapture={() => setPaused(true)}
+        onBlurCapture={() => setPaused(false)}
+      >
+        {shown && (<>
+          <span>
+            {shown.statusText}
+            {shown.deltaText && (
+              <span className="numeric block">{shown.deltaText}</span>
+            )}
+          </span>
+          {/* Действие тоста — `.a3-act` контракта: подчёркнутая ссылка-кнопка
+              в одной строке с сообщением, не блок кнопок под ним. */}
+          <button type="button" className="a3-act"
+                  onClick={() => s.undoEvent(shown.seq)}>
+            {t('common.undo')}
+          </button>
+          <button type="button" className="a3-act"
+                  onClick={() => s.dismissUndoToast()}>
+            {t('common.close')}
+          </button>
+        </>)}
+      </div>
+    </div>
   )
 }

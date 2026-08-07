@@ -581,6 +581,7 @@ function computeProjection(
   if (!kg700.isZero()) {
     optDrivers.push({
       key: 'kg700_hoai_aho',
+      origin: 'decision' as const,
       exact: kg700,
       label: 'KG 700 · Baunebenkosten nach HOAI und AHO',
       scopeRefs: ['KG 700'],

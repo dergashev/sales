@@ -79,7 +79,7 @@ export function Sidebar() {
 
               {/* Главы конфигуратора — второй уровень под активным пунктом. */}
               {item.id === 'konfigurator' && active && (
-                <ol className="a3-chapters border-b border-border-subtle pb-2">
+                <ol className="a3-chapters">
                   {CHAPTERS.map((c, i) => {
                     const n = i + 1
                     const open = s.openChapter === n

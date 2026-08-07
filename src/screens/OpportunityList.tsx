@@ -32,6 +32,16 @@ const STAGE_TAG: Record<string, string> = {
 }
 
 /** CTA карточки — следующая лучшая работа стадии, не общее «öffnen». */
+/**
+ * Срочность выводится из подписи встречи фикстуры, а не из отдельного
+ * флага: два источника «когда встреча» разошлись бы при первой правке.
+ * Слова «heute/morgen» — то, чем фикстура называет ближайшие сроки.
+ */
+function isUrgent(meetingAt: string | null | undefined): boolean {
+  if (!meetingAt) return false
+  return /\b(heute|morgen)\b/i.test(meetingAt)
+}
+
 const STAGE_CTA: Record<string, string> = {
   'neu aus HubSpot': 'Analyse starten',
   'in Vorbereitung': 'Vorbereiten',
@@ -101,7 +111,7 @@ export function OpportunityList() {
 
   return (
     <div className="px-7 py-6">
-      <header className="a3-masthead border-b border-border-strong">
+      <header className="a3-masthead">
         <p className="a3-cap">{tx('Wurzel · alle Opportunities')}</p>
         <h1 className="a3-hero-title">Opportunities</h1>
       </header>
@@ -176,14 +186,25 @@ export function OpportunityList() {
           <li key={o.id}>
             {/* Карточка = один клик-контейнер без собственного tabindex;
                 клавиатурный путь — CTA-кнопка внутри (правило 26). */}
+            {/* `.a3-urgent` — срочность встречи, не украшение: карточка со
+                встречей «сегодня/завтра» получает красную кромку контракта
+                DC-15 плюс подпись (правило 8: цвет не единственный
+                носитель). Добор DC-COVERAGE приёмки № 17. */}
             <div
-              className="a3-pcard h-full cursor-pointer"
+              className={'a3-pcard h-full cursor-pointer'
+                + (isUrgent(o.meetingAt) ? ' a3-urgent' : '')}
               onClick={() => s.openOpportunity(o.id)}
             >
               <div className="a3-top">
                 <b>{o.name}</b>
                 {o.meetingAt && (
-                  <span className="a3-term">Termin{NNBSP}{o.meetingAt}</span>
+                  <span className="a3-term">
+                    {isUrgent(o.meetingAt) && (
+                      <span aria-hidden="true">▲{NNBSP}</span>
+                    )}
+                    {tx('Termin')}{NNBSP}{tx(o.meetingAt)}
+                    {isUrgent(o.meetingAt) && ` · ${tx('dringend')}`}
+                  </span>
                 )}
               </div>
               <div className="a3-mid">

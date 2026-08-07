@@ -776,3 +776,34 @@ describe('Настоящая модель Option (ревью № 13, дефек�
     expect(Object.keys(st().optionConfigs)).toEqual(['OPT-02'])
   })
 })
+
+describe('Происхождение вкладов: корзина показывает решения (приёмка № 17)', () => {
+  const st = () => useStore.getState()
+
+  it('база и подтверждаемые факты решениями не считаются', () => {
+    const byKey = Object.fromEntries(
+      st().projection().result.drivers.map((d) => [d.key, d.origin]))
+    expect(byKey['basis']).toBe('base')
+    // Класс здания СЛЕДУЕТ из этажности и пожарной концепции: его
+    // подтверждают, а не выбирают, — в «выбранном» ему не место.
+    expect(byKey['gebaeudeklasse_GK_5']).toBe('fact')
+    expect(byKey['energiestandard_EH_55']).toBe('decision')
+    expect(byKey['untergeschoss_mit_tiefgarage']).toBe('decision')
+  })
+
+  it('выбор подвала попадает в решения — префиксный фильтр его терял', () => {
+    const decisions = () => st().projection().result.drivers
+      .filter((d) => d.origin === 'decision').map((d) => d.key)
+    expect(decisions()).toContain('untergeschoss_mit_tiefgarage')
+    st().setUntergeschoss('kein_ug')
+    // Решение снято — вклад исчез вместе с ним, сумма изменилась.
+    expect(decisions()).not.toContain('untergeschoss_mit_tiefgarage')
+  })
+
+  it('каждый вклад объявляет происхождение — новый драйвер не проскочит', () => {
+    st().toggleRegionalfaktor()
+    for (const d of st().projection().result.drivers) {
+      expect(['base', 'fact', 'decision'], d.key).toContain(d.origin)
+    }
+  })
+})

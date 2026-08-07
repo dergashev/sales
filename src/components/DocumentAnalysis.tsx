@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Button } from './primitives'
 import { NNBSP } from '../engine/money'
+import { useTx } from '../i18n'
 
 /**
  * DC-10 · DocumentAnalysisProgress — Dokumentanalyse.
@@ -35,11 +36,18 @@ type Doc = { file: string; pages: number | null; parseStatus: string }
 
 const PHASE_MS = 800
 
+/** Тип файла для `.a3-ic` — из имени, а не из отдельного поля фикстуры. */
+function ext(file: string): string {
+  const dot = file.lastIndexOf('.')
+  return dot < 0 ? '—' : file.slice(dot + 1).toUpperCase()
+}
+
 export function DocumentAnalysis({ docs, onManualCapture }: {
   docs: Doc[]
   onManualCapture: () => void
 }) {
   const phaseId = useId()
+  const tx = useTx()
   const readable = docs.filter((d) => d.parseStatus !== 'failed')
   const failed = docs.filter((d) => d.parseStatus === 'failed')
 
@@ -115,18 +123,36 @@ export function DocumentAnalysis({ docs, onManualCapture }: {
       {ready && (
         <ul className="a3-analysis-files">
           {readable.map((d) => (
-            <li key={d.file}>
-              <span aria-hidden="true" className="a3-okc">✓</span>{' '}
-              {d.file}{d.pages ? ` · ${d.pages}${NNBSP}Seiten` : ''} · analysiert
+            /* Строка документа — анатомия DC-17: тип файла, имя, объём и
+               правая группа статуса/действий. Прежде это был абзац
+               списка: страницы и статус читались как продолжение имени
+               файла, а не как отдельные факты (добор DC-COVERAGE). */
+            <li key={d.file} className="a3-doc">
+              <span className="a3-ic" aria-hidden="true">{ext(d.file)}</span>
+              <span className="a3-nm">{d.file}</span>
+              {d.pages !== null && (
+                <span className="a3-pg">{d.pages}{NNBSP}S.</span>
+              )}
+              <span className="a3-right">
+                <span className="a3-st">
+                  <span aria-hidden="true" className="a3-okc">✓</span>
+                  {tx('analysiert')}
+                </span>
+              </span>
             </li>
           ))}
           {failed.map((d) => (
-            <li key={d.file} className="a3-analysis-error">
-              <span aria-hidden="true" className="a3-errc">✗</span>{' '}
-              {d.file} nicht lesbar: Auflösung zu gering · Werte aus dieser
-              Datei fehlen — {readable.length} andere Dokumente sind
-              vollständig analysiert
-              <span className="mt-2 flex flex-wrap gap-2">
+            <li key={d.file} className="a3-doc a3-analysis-error">
+              <span className="a3-ic" aria-hidden="true">{ext(d.file)}</span>
+              <span className="a3-nm">{d.file}</span>
+              {d.pages !== null && (
+                <span className="a3-pg">{d.pages}{NNBSP}S.</span>
+              )}
+              <span className="a3-right">
+                <span className="a3-st">
+                  <span aria-hidden="true" className="a3-errc">✗</span>
+                  {tx('nicht lesbar: Auflösung zu gering')}
+                </span>
                 <Button disabled
                         disabledReason="Datei-Upload existiert im Prototyp nicht — Parsing ist simuliert">
                   Besseren Scan hochladen
@@ -136,6 +162,13 @@ export function DocumentAnalysis({ docs, onManualCapture }: {
             </li>
           ))}
         </ul>
+      )}
+
+      {ready && failed.length > 0 && (
+        <p className="a3-cap mt-2">
+          Werte aus {failed.length === 1 ? 'dieser Datei' : 'diesen Dateien'} fehlen
+          — {readable.length} andere Dokumente sind vollständig analysiert.
+        </p>
       )}
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">

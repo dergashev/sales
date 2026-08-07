@@ -92,7 +92,7 @@ export function S2Vorbereitung({ openKonfigurator }: { openKonfigurator: () => v
       </div>
 
       <div role="tabpanel" id="vorbereitung-panel"
-           aria-labelledby={`tab-p${TABS.indexOf(tab) + 1}`} className="a3-tabpane py-5">
+           aria-labelledby={`tab-p${TABS.indexOf(tab) + 1}`} className="a3-tabpane">
         {tab === 'Dokumente' && <P1Dokumente onManualCapture={() => setTab('Projektdaten')} />}
         {tab === 'Projektdaten' && <P2Projektdaten />}
         {tab === 'Offene Fragen' && <P3OffeneFragen />}

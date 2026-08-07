@@ -46,7 +46,7 @@ function Row({ label, value, unit, note }: {
 }) {
   return (
     <tr className="border-b border-border-subtle">
-      <th scope="row" className="a3-cap py-1 pr-4 text-left font-regular">{label}</th>
+      <th scope="row" className="a3-cap py-1 pr-4 text-left">{label}</th>
       <td className="numeric py-1 text-right text-body text-text-primary">
         {value === null
           ? <span className="a3-cap">nicht erfasst</span>
@@ -156,7 +156,7 @@ export function ChapterBuildings() {
             </tbody>
           </table>
         </div>
-        <p className="a3-cap mt-2 text-text-muted">
+        <p className="a3-cap mt-2">
           {MARK} · {DERIVED_LABEL}
         </p>
       </section>
