@@ -222,6 +222,7 @@ live-region, существование scroll-контейнера) НЕ зак
 import argparse
 import ast
 import hashlib
+import json
 import re
 import shutil
 import sys
@@ -230,6 +231,14 @@ import pathlib
 from decimal import Decimal as D, ROUND_HALF_UP, ROUND_DOWN
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+# Имена ПРЕДУПРЕЖДАЮЩИХ классов проверок. Константы, а не строки в f-шаблонах:
+# реестр CHECK_CLASSES требует литерал имени в теле файла, и без константы
+# запись в реестре была бы объявлением без употребления.
+WARN_DC_COVERAGE = 'DC-COVERAGE'
+WARN_NO_VISUAL_UTILITY = 'NO-VISUAL-UTILITY'
+WARN_OPT_IMAGE = 'OPT-IMAGE'
+
 
 # ───────────────────────── реестр классов проверок ──────────────────────────
 # Единственный источник правды о составе проверок. `check_indices.py` читает
@@ -292,6 +301,12 @@ CHECK_CLASSES = (
     'NBSP', 'CYRILLIC-UNIT', 'AREA-SCOPE', 'DATE-FORMAT',
     # управление и план
     'CLAUDE', 'DECISIONS', 'PLAN', 'INDEX', 'TOKEN-EXISTS', 'DS-CLASS-EXISTS',
+    # ПРЕДУПРЕЖДАЮЩИЕ классы: выводят адрес для решения, прогон не валят.
+    # Ограничение названо прямо: `--selftest` измеряет ПОЯВЛЕНИЕ НАРУШЕНИЯ,
+    # поэтому мутациями эти три класса не покрываются по построению —
+    # их живость доказывается ненулевым выводом на текущем дереве, а не
+    # мутацией. Считать их проверенными selftest'ом нельзя.
+    'DC-COVERAGE', 'NO-VISUAL-UTILITY', 'OPT-IMAGE',
     # приватность
     'PRIVACY-001', 'ARTIFACT-A11Y',
     # арифметика
@@ -5551,9 +5566,105 @@ class Verifier:
             missing = [c for c in classes if c not in used]
             if taken and missing:
                 self.warn.append(
-                    f'DC-COVERAGE: {name} — группа в прототипе, из перечня '
+                    f'{WARN_DC_COVERAGE}: {name} — группа в прототипе, из перечня '
                     f'Classes: не взяты {", ".join("." + c for c in missing)} '
                     f'(обязательность — за контрактом)')
+
+    def check_no_visual_utility(self):
+        """NO-VISUAL-UTILITY (предупреждения): утилита перекрашивает контракт.
+
+        Граница, объявленная при переводе на единый источник: **система
+        владеет видом компонента, приложение — композицией страницы.**
+        Отступ между блоками и место в сетке принадлежат странице; цвет,
+        типографика, паддинг и бордер внутри компонента — системе.
+
+        Совмещение `a3-*` с визуальной утилитой на одном элементе ломает
+        границу молча: пока значения совпадают, экран выглядит правильно, а
+        при правке системы утилита остаётся и переопределяет её — компонент
+        расходится с витриной, не сломавшись.
+
+        ПРЕДУПРЕЖДЕНИЕ, а не нарушение: часть совмещений законна (утилита
+        композиции, доборный класс на элементе-хосте). Предупреждение даёт
+        адрес для решения, зелёный прогон им не покупается.
+        """
+        # Визуальные утилиты: цвет, типографика, паддинг, бордер, скругление,
+        # тень. Отступы (m-*), сетка и размеры — композиция, не вид.
+        visual = re.compile(
+            r'^(?:'
+            r'text-(?:text-\w+|body|small|caption|heading-\d|display\w*|left|right|center)'
+            r'|bg-\w[\w-]*'
+            r'|border(?:-[trblxy])?(?:-(?:border-\w+|selected|contrast|hairline|\d+))?$'
+            r'|p[trblxy]?-\d'
+            r'|font-(?:bold|medium|regular)'
+            r'|rounded\S*|shadow\S*'
+            r')$')
+        for rel, text in self.files('*.tsx'):
+            if not rel.startswith('src/') or '__tests__' in rel:
+                continue
+            for i, line in enumerate(text.split('\n'), 1):
+                for m in re.finditer(r'className="([^"]*)"', line):
+                    toks = m.group(1).split()
+                    a3 = [x for x in toks if x.startswith('a3-')]
+                    bad = [x for x in toks if visual.match(x)]
+                    if a3 and bad:
+                        self.warn.append(
+                            f'{WARN_NO_VISUAL_UTILITY}: {rel}:{i} — {", ".join(a3)} '
+                            f'несёт визуальные утилиты {", ".join(bad)}: вид '
+                            f'принадлежит системе, странице — композиция')
+
+    def check_option_images(self):
+        """OPT-IMAGE (предупреждения): покрытие карточек опций изображениями.
+
+        Замок построен ДО поставки (задание № 18) намеренно — так же, как
+        сборщик словаря знал о поставке № 3 до её появления: проверка,
+        написанная после приёмки, проверяет то, что уже принято.
+
+        Пока манифеста нет, класс не молчит: он объявляет отсутствие
+        покрытия как известное состояние. Когда манифест появится,
+        предупреждениями станут ПРОПУСКИ — значения фикстуры без файла и
+        файлы без значения.
+        """
+        man = self.read('design-system/assets/options/manifest.json')
+        fx = self.read('src/fixtures/derived-prototype.json')
+        if fx is None:
+            return
+        try:
+            data = json.loads(fx)
+        except Exception:
+            return
+        values = set()
+        for sec in ('kg300', 'kg400', 'zertifikate'):
+            for g in data.get(sec, {}).get('groups', []):
+                for c in g.get('choices', []):
+                    values.add((g['id'], c['value']))
+        if man is None:
+            self.warn.append(
+                f'{WARN_OPT_IMAGE}: манифест изображений отсутствует — '
+                f'{len(values)} карточек опций без картинки (задание № 18 '
+                f'у Codex); подключение ждёт поставки')
+            return
+        try:
+            entries = json.loads(man)
+        except Exception:
+            self.warn.append(f'{WARN_OPT_IMAGE}: манифест не разбирается как JSON')
+            return
+        declared = {(e.get('group'), e.get('value')) for e in entries}
+        missing = sorted(values - declared)
+        extra = sorted(declared - values)
+        for g, v in missing:
+            self.warn.append(
+                f'{WARN_OPT_IMAGE}: {g}/{v} — значение каталога без изображения '
+                f'в манифесте')
+        for g, v in extra:
+            self.warn.append(
+                f'{WARN_OPT_IMAGE}: {g}/{v} — изображение без значения в каталоге '
+                f'(переименование варианта?)')
+        for e in entries:
+            f = e.get('file')
+            if f and self.read(f'design-system/assets/options/{f}') is None \
+                    and not (self.root / 'design-system/assets/options' / f).exists():
+                self.warn.append(
+                    f'{WARN_OPT_IMAGE}: файл {f} объявлен манифестом, но отсутствует')
 
     # -- запуск ----------------------------------------------------------------
     def run(self):
@@ -5561,6 +5672,8 @@ class Verifier:
         self.check_token_exists()
         self.check_ds_class_exists()
         self.check_dc_coverage()
+        self.check_no_visual_utility()
+        self.check_option_images()
         self.check_css()
         self.check_css_effective()
         self.check_contrast()
