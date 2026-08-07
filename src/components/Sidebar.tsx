@@ -115,6 +115,17 @@ export function Sidebar() {
         })}
       </ul>
 
+      {/* Тур — только во внутреннем пространстве (DC-14): в презентации
+          кнопки не существует, а не «она недоступна». */}
+      {s.mode === 'intern' && (
+        <div className="border-t border-border-subtle px-5 py-3">
+          <button type="button" className="a3-linkbtn"
+                  onClick={() => s.setTourOpen(true)}>
+            {t('nav.tour')}
+          </button>
+        </div>
+      )}
+
       <div className="border-t border-border-subtle px-5 py-3">
         <p className="text-small text-text-muted">
 {t('shell.prototypeNote')} · v0.5

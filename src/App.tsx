@@ -5,6 +5,7 @@ import { checkFonts, checkCascade, type FontCheck } from './lib/font-check'
 import { SegmentedControl } from './components/controls'
 import { Sidebar } from './components/Sidebar'
 import { ClientOutputGateDialog } from './components/ClientOutputGateDialog'
+import { GuidedTour } from './components/GuidedTour'
 import { OfferPanel } from './components/OfferPanel'
 import { UndoToast } from './components/UndoToast'
 import { S3Konfigurator } from './screens/S3Konfigurator'
@@ -118,6 +119,7 @@ export function App() {
         <OfferPanel />
       </div>
 
+      <GuidedTour />
       <UndoToast />
     </div>
   )

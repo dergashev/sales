@@ -6,13 +6,15 @@ import { GENERATED_DE, GENERATED_EN } from './generated'
  * `de` — источник и fallback. Конкатенация переводов запрещена: каждая
  * строка — целый ключ.
  *
- * Границы (D-13, D-20, LOCALE-001):
- * - язык UI ≠ язык артефактов: словарь переводит ХРОМ интерфейса (навигация,
- *   кнопки, служебные подписи), а клиентское содержимое (подписи итога из
- *   движка, Annahmen, Kostentreiber-строки) живёт на языке артефакта и
- *   переключается отдельной настройкой, которой в прототипе нет;
- * - EN-guidance не переведён и не выдумывается: guidance-ключи в `en`
- *   отсутствуют, показывается de-fallback (D-20).
+ * Границы (D-13, D-24, LOCALE-001):
+ * - язык UI ≠ язык артефактов: артефакт может быть немецким при английском
+ *   интерфейсе (D-13), но текст интерфейса вокруг него обязан быть
+ *   английским;
+ * - **D-20 отменён решением D-24**: guidance переводится наравне с хромом.
+ *   Прежняя редакция этого докстринга утверждала обратное — «EN-guidance
+ *   не переводится и не выдумывается»; правило сменилось, а комментарий
+ *   остался, и это ровно тот класс «документ пережил своё правило»,
+ *   против которого написан реестр решений.
  *
  * Числа сюда не входят по построению: они форматируются только через
  * `formatDE`/`Intl` (правило 7/36) и в словаре не существуют.
@@ -28,6 +30,7 @@ const de = {
   'nav.export': 'Export',
   'nav.einstellungen': 'Einstellungen',
   'nav.grundlagen': 'Grundlagen',
+  'nav.tour': 'Rundgang durch das Werkzeug',
   'shell.prototypeNote': 'Prototyp · Arithmetik echt, Parsing simuliert',
   'shell.mode.intern': 'Intern',
   'shell.mode.praesentation': 'Präsentation',
@@ -46,8 +49,9 @@ const de = {
 export type MessageKey = keyof typeof de
 
 /**
- * EN — частичный по построению: непереведённый ключ честно падает в de.
- * Guidance-ключей здесь не будет никогда (D-20).
+ * Локальный словарь оболочки. EN здесь полный: остаток перевода живёт в
+ * поставках Codex, а не в этой таблице, и меряется обходом DOM
+ * (`src/i18n/__tests__/en-remainder.dom.test.tsx`).
  */
 const en: Partial<Record<MessageKey, string>> = {
   'nav.projekte': 'Projects',
@@ -57,6 +61,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'nav.export': 'Export',
   'nav.einstellungen': 'Settings',
   'nav.grundlagen': 'Foundations',
+  'nav.tour': 'Tour of the tool',
   'shell.prototypeNote': 'Prototype · arithmetic real, parsing simulated',
   'shell.mode.intern': 'Internal',
   'shell.mode.praesentation': 'Presentation',

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
 import { __resetStoreForTests, useStore } from '../../state/store'
@@ -242,5 +242,42 @@ describe('DC-33 · единственная модалка системы — в
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
     expect(useStore.getState().mode).toBe('praesentation')
+  })
+})
+
+describe('DC-14 · тур: шаг без цели пропускается, а не ломает тур', () => {
+  it('собирается из целей, которые ЕСТЬ на экране, и считает шаги от них', async () => {
+    const user = userEvent.setup()
+    await enterPipeline(user)
+    await user.click(screen.getByRole('button', { name: /Rundgang durch das Werkzeug/ }))
+
+    const card = await screen.findByRole('dialog', { name: /Der Preis ist immer sichtbar/ })
+    expect(card).toBeInTheDocument()
+    // Счётчик считает ЖИВЫЕ шаги: заметки на этом экране нет, и её шаг в
+    // знаменатель не попадает — иначе тур обещал бы шаг, которого не будет.
+    const weiter = within(card).getByRole('button', { name: /Weiter/ })
+    const total = Number(weiter.textContent!.match(/\/(\d+)/)![1])
+    expect(total).toBeGreaterThan(1)
+    expect(total).toBeLessThan(6)
+
+    // Проходится до конца и закрывается сам.
+    for (let k = 0; k < total; k++) {
+      const btn = within(card).queryByRole('button', { name: /Weiter|Rundgang beenden/ })
+      if (!btn) break
+      await user.click(btn)
+    }
+    expect(useStore.getState().tourOpen).toBe(false)
+  })
+
+  it('в презентации тура не существует — ни кнопки, ни карточки', async () => {
+    const user = userEvent.setup()
+    await enterPipeline(user)
+    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
+    await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
+    await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
+
+    expect(screen.queryByRole('button', { name: /Rundgang/ })).toBeNull()
+    act(() => useStore.getState().setTourOpen(true))
+    expect(screen.queryByRole('dialog', { name: /Der Preis/ })).toBeNull()
   })
 })

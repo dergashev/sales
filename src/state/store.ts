@@ -414,6 +414,11 @@ type Store = {
    * единственной модалкой системы.
    */
   gateOpen: boolean
+  /**
+   * Идёт ли онбординг-тур (DC-14). Только внутреннее пространство: тур
+   * объясняет работу инструмента, а не оффер, и клиенту не адресован.
+   */
+  tourOpen: boolean
   /** Язык UI (правило 36). Отдельная настройка от языка артефактов (D-13). */
   uiLanguage: 'de' | 'en'
   /**
@@ -489,6 +494,7 @@ type Store = {
   setPipelineView: (v: PipelineView) => void
   /** Ворота выдачи: единственный путь во внешний профиль (DC-33). */
   setGateOpen: (v: boolean) => void
+  setTourOpen: (v: boolean) => void
 }
 
 /**
@@ -771,6 +777,7 @@ const store = createStore<Store>((set, get) => {
     optionConfigs: {},
     pipelineView: 'konfigurator',
     gateOpen: false,
+    tourOpen: false,
     journal: [],
     undone: [],
     wflConflict: {
@@ -1328,6 +1335,8 @@ const store = createStore<Store>((set, get) => {
     setPipelineView: (v) => set({ pipelineView: v }),
 
     setGateOpen: (v) => set({ gateOpen: v }),
+
+    setTourOpen: (v) => set({ tourOpen: v }),
 
     setActiveBuilding: (id) => set({ activeBuildingId: id }),
 
