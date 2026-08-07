@@ -1,11 +1,12 @@
 import { Decimal } from 'decimal.js'
 import derived from '../fixtures/derived-prototype.json'
 import { activeBuilding, useStore } from '../state/store'
-import { NNBSP, present } from '../engine/money'
+import { NNBSP, present, label as moneyLabel } from '../engine/money'
 import { choiceBlocked, isGroupActive, type OptionGroup } from '../engine/options'
 import {
   FacadeTileGroup, RadioCardGroup, type FacadeMaterial,
 } from '../components/controls'
+import { useState } from 'react'
 import { Button } from '../components/primitives'
 import { useTx } from '../i18n'
 
@@ -62,6 +63,80 @@ function euro(d: Decimal): string {
   const sign = d.isNegative() ? '−' : '+'
   const word = d.isNegative() ? 'Minderpreis' : 'Mehrpreis'
   return `${pr.prefix ? pr.prefix + NNBSP : ''}${sign}${NNBSP}${pr.display}${NNBSP}€${NNBSP}${word}`
+}
+
+/**
+ * Сравнение вариантов ОДНОЙ группы бок о бок — до фиксации (приёмка № 17,
+ * дефект 21; решение о форме — моё).
+ *
+ * Почему не на плитках. Плитка уже несёт последствие («+ 82.000 €
+ * Mehrpreis»), и второе число на ней превратило бы каталог в таблицу:
+ * нужное для сравнения мешало бы нужному для выбора. Поэтому сравнение —
+ * отдельный слой, раскрываемый по требованию, и он отвечает на другой
+ * вопрос: не «сколько стоит это», а «где мы окажемся».
+ *
+ * Почему таблица системы (`.a3-cmp`, DC-11). Сравнение вариантов уже
+ * существует как компонент — тот, что сравнивает созданные Options. Второй
+ * вид сравнения с собственной вёрсткой был бы двойником, а разница между
+ * «сравнить Options» и «сравнить варианты одной группы» — в данных, не в
+ * анатомии.
+ *
+ * Арифметики здесь нет: итог после выбора — текущий итог плюс то же
+ * последствие, что стоит на плитке. Вклады аддитивны (calculation-spec §2),
+ * поэтому второго способа посчитать не существует и разойтись не с чем.
+ */
+function VariantsSideBySide({ rows, currentValue }: {
+  rows: Array<{ value: string; label: string; consequence: string; after: Decimal | null }>
+  currentValue: string
+}) {
+  const tx = useTx()
+  const [open, setOpen] = useState(false)
+  if (rows.length < 2) return null
+  return (
+    <div className="mt-3">
+      <button
+        type="button"
+        className="a3-linkbtn"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span aria-hidden="true">{open ? '▾ ' : '▸ '}</span>
+        {tx('Varianten nebeneinander')}
+      </button>
+      {open && (
+        <div className="a3-tbl-scroll mt-2">
+          <table className="a3-cmp w-full border-collapse">
+            <caption className="a3-visually-hidden">
+              {tx('Vergleich der Varianten dieser Gruppe vor der Auswahl')}
+            </caption>
+            <thead>
+              <tr>
+                <th>{tx('Variante')}</th>
+                <th className="a3-num">{tx('Preiswirkung')}</th>
+                <th className="a3-num">{tx('Angebotssumme danach')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.value}>
+                  <td>
+                    {r.label}
+                    {r.value === currentValue && (
+                      <span className="a3-d">{tx('aktuelle Auswahl')}</span>
+                    )}
+                  </td>
+                  <td className="a3-num">{r.consequence}</td>
+                  <td className="a3-num">
+                    {r.after ? moneyLabel(present(r.after)) : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function OptionChapter({ groups, intro }: {
@@ -161,7 +236,34 @@ export function OptionChapter({ groups, intro }: {
                 // различим до чтения. Остальные группы — плитки DC-40.
                 const facade = g.id === 'fassade'
                   && mapped.every((m) => FACADE_PRESENTATION[m.value])
-                return facade ? (
+                // Итог после выбора: текущий плюс последствие варианта.
+                // Заблокированный вариант итога не получает — «где мы
+                // окажемся» не имеет смысла там, куда попасть нельзя.
+                const currentTotal = s.projection().result.total.exact
+                const compareRows = mapped.map((m) => {
+                  const choice = g.choices.find((c) => c.value === m.value)!
+                  const rate = new Decimal(choice.rate)
+                  const cur = new Decimal(
+                    g.choices.find((x) => x.value === value)?.rate ?? '0')
+                  const qty = g.denominator === 'BGF_ABOVE_GROUND' ? b.bgfAboveGround
+                    : g.denominator === 'BGF_BELOW_GROUND' ? b.bgfBelowGround
+                      : bgfS(b.id)
+                  return {
+                    value: m.value,
+                    label: m.title,
+                    // Колонка отвечает за ДЕНЬГИ: у текущего варианта это
+                    // ноль, а не подпись «aktuelle Auswahl» — та живёт
+                    // отдельной пометкой строки и не занимает числовую
+                    // ячейку (иначе в столбце цен стоит не цена).
+                    consequence: euro(rate.minus(cur).mul(qty)),
+                    after: m.disabled ? null
+                      : currentTotal.plus(rate.minus(cur).mul(qty)),
+                  }
+                })
+                const comparison = (
+                  <VariantsSideBySide rows={compareRows} currentValue={value} />
+                )
+                return facade ? (<>
                   <FacadeTileGroup
                     legend={g.question}
                     value={value}
@@ -176,7 +278,8 @@ export function OptionChapter({ groups, intro }: {
                       disabledReason: m.disabledReason,
                     }))}
                   />
-                ) : (
+                  {comparison}
+                </>) : (<>
                   <RadioCardGroup
                     legend={g.question}
                     legendHidden
@@ -184,7 +287,8 @@ export function OptionChapter({ groups, intro }: {
                     onChange={(v) => s.setKg300(g.id, v)}
                     options={mapped}
                   />
-                )
+                  {comparison}
+                </>)
               })()}
             </div>
           </section>

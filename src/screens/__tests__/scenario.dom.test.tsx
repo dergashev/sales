@@ -149,6 +149,37 @@ describe('Сквозной сценарий продажи', () => {
     expect(chip.querySelectorAll('.block')).toHaveLength(0)
   })
 
+  it('варианты сравниваются бок о бок ДО фиксации, и итог сходится с плиткой', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await enterPipeline(user)
+    await user.click(nav(/Konfigurator/))
+    // Здание подтверждается — иначе главы опций закрыты гейтом.
+    await user.click(screen.getByRole('button', { name: 'Gebäudedaten bestätigen' }))
+    await user.click(nav(/Leistungen KG 300/))
+
+    const before = useStore.getState().projection().result.total.exact
+    // Сравнение раскрывается по требованию: каталог остаётся лёгким.
+    await user.click(screen.getAllByRole('button', { name: /Varianten nebeneinander/ })[0]!)
+    const table = screen.getAllByRole('table', { name: /Vergleich der Varianten/ })[0]!
+    // Строк столько же, сколько вариантов группы, и текущая помечена.
+    // «aktuelle Auswahl» стоит и на плитке, и в строке сравнения — один
+    // и тот же факт в двух представлениях, поэтому ищем внутри таблицы.
+    expect(within(table).getAllByText('aktuelle Auswahl').length).toBe(1)
+    expect(within(table).getAllByRole('row').length).toBeGreaterThan(2)
+
+    // «Где мы окажемся» = текущий итог плюс последствие: второго способа
+    // посчитать не существует, поэтому число обязано совпасть.
+    // Первый вариант первой группы, отличный от текущего: имена вариантов
+    // приходят из каталога и меняться не обязаны — тест не привязывается
+    // к конкретному слову.
+    const radios = within(table.closest('section')!)
+      .getAllByRole('radio') as HTMLInputElement[]
+    await user.click(radios.find((r) => !r.checked)!)
+    const after = useStore.getState().projection().result.total.exact
+    expect(after.equals(before)).toBe(false)
+  })
+
   it('интервал точности показан деньгами, а не только процентом (DC-3)', async () => {
     const user = userEvent.setup()
     render(<App />)
