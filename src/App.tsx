@@ -177,14 +177,23 @@ function AppHeader({ t }: { t: (k: Parameters<ReturnType<typeof useT>>[0]) => st
             },
           ]}
         />
+        {/* EN честно назван ЧАСТИЧНЫМ — и назван ДО переключения, а не
+            обнаруживается после (приёмка № 17, дефект 2). Три причины
+            остатка разной природы, и смешивать их нельзя: словарь ещё
+            черновик; guidance на EN не переводится и не выдумывается
+            (D-20); доменные данные живут на языке артефакта, который
+            переключается отдельной настройкой (D-13). */}
         <SegmentedControl
           layout="inline"
           legend="Sprache"
           value={s.uiLanguage}
           onChange={(l) => s.setUiLanguage(l)}
+          helperText={s.uiLanguage === 'en'
+            ? 'EN: Entwurf · Guidance und Fachdaten bleiben deutsch'
+            : 'EN ist ein Entwurf: Oberfläche übersetzt, Guidance und Fachdaten bleiben deutsch'}
           options={[
             { value: 'de', label: 'DE' },
-            { value: 'en', label: 'EN' },
+            { value: 'en', label: 'EN · Entwurf' },
           ]}
         />
         {!praesentation && (

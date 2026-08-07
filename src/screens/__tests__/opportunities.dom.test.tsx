@@ -80,12 +80,14 @@ describe('Уровень Opportunities', () => {
     render(<App />)
     // Переключатель языка — в шапке; словарь = поставка Codex + локальное
     // дополнение для строк, созданных после поставки.
-    await user.click(screen.getByRole('radio', { name: 'EN' }))
+    // Подпись переключателя называет частичность ДО клика: «EN · Entwurf».
+    expect(screen.getByText(/EN ist ein Entwurf/)).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: /EN/ }))
     expect(screen.getByText('Root · all opportunities')).toBeInTheDocument()
     // Немецкая строка поискового лейбла исчезла — заменена переводом.
     expect(screen.queryByText('Opportunities durchsuchen')).toBeNull()
     // Немецкий остаётся источником: переключение обратно восстанавливает.
-    await user.click(screen.getByRole('radio', { name: 'DE' }))
+    await user.click(screen.getByRole('radio', { name: /^DE$/ }))
     expect(screen.getByText('Wurzel · alle Opportunities')).toBeInTheDocument()
   })
 
