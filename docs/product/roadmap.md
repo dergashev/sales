@@ -6,7 +6,7 @@
 
 | Этап | Артефакты |
 |---|---|
-| ✅ **0. Продуктовое описание** | `product-brief.md` (идея, JTBD, сценарии) · `metrics.md` · `parameter-triage.md` · `t0-fallback-rules.md` · `decisions.md` (D-01…D-27) · `guidance-system.md` · `parameters-t0-t1.json` (68 параметров, опции, уровни, умолчания) |
+| ✅ **0. Продуктовое описание** | `product-brief.md` (идея, JTBD, сценарии) · `metrics.md` · `parameter-triage.md` · `t0-fallback-rules.md` · `decisions.md` (D-01…D-28) · `guidance-system.md` · `parameters-t0-t1.json` (68 параметров, опции, уровни, умолчания) |
 | ⚠️ **1. Модель данных и состояний** *(артефакты переписаны, вердикт не получен: 20 release-блокеров в зоне)* | `data-model.md` (M-1…M-4, сущности, машины состояний, инварианты) · `calculation-spec.md` (ставки v0, формулы, Bauzeit, контрольные примеры) |
 | ⚠️ **2. Информационная архитектура** *(ждёт вердикта; косметический хвост по ASCII-макетам)* | `screen-map.md` (S1–S6, механики, демо-набор) |
 

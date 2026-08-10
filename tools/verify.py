@@ -5623,6 +5623,49 @@ class Verifier:
                             f'несёт визуальные утилиты {", ".join(bad)}: вид '
                             f'принадлежит системе, странице — композиция')
 
+    def check_gallery_single_source(self):
+        """GALLERY-SINGLE-SOURCE: у галереи нет собственной разметки образцов.
+
+        Механизм решения D-28. Прежде образец существовал дважды — рукописной
+        разметкой в витрине и второй рукописной разметкой в QA-галерее, — и
+        «дизайн-система поставляет компоненты» оставалось намерением:
+        сравнить две ручные разметки было нечем. Детекторы классов проверяют
+        одну треть компонента из трёх и по построению этого не видят.
+
+        Проверка держит ровно одно свойство: **экран галереи обходит реестр
+        и ничего не рисует сам**. Как только в нём появляется собственный
+        специмен, вторая витрина возрождается — а начинается это всегда с
+        одного «временного» блока.
+        """
+        gallery = self.read('src/design-system/Gallery.tsx')
+        screen = self.read('src/screens/Grundlagen.tsx')
+        registry = self.read('src/design-system/registry.tsx')
+        if gallery is None or screen is None or registry is None:
+            self.fail('GALLERY-SINGLE-SOURCE', 'src/design-system/registry.tsx',
+                      'реестр специменов, галерея или QA-страница отсутствуют — '
+                      'решение D-28 требует всех трёх: объявление, показ и '
+                      'страница, которая ничего не объявляет сама')
+            return
+        # QA-страница вправе показывать галерею и диагностику — и только.
+        for i, line in enumerate(screen.split('\n'), 1):
+            if 'Specimen' in line and 'design-system' not in line:
+                self.fail('GALLERY-SINGLE-SOURCE',
+                          f'src/screens/Grundlagen.tsx:{i}',
+                          'на QA-странице снова объявляется специмен; образец '
+                          'объявляется только в src/design-system/registry.tsx '
+                          '(D-28) — иначе возвращается вторая витрина')
+        # Галерея рисует ОПРАВУ образца, но не его содержимое: содержимое
+        # приходит функцией `render` из реестра.
+        if 'SPECIMEN_GROUPS' not in gallery:
+            self.fail('GALLERY-SINGLE-SOURCE', 'src/design-system/Gallery.tsx',
+                      'галерея не обходит реестр — значит рисует образцы сама')
+        for token in ('<Button', '<SegmentedControl', '<RadioCardGroup',
+                      '<NumericField', '<Skeleton', '<ProvenanceChip'):
+            if token in gallery:
+                self.fail('GALLERY-SINGLE-SOURCE', 'src/design-system/Gallery.tsx',
+                          f'галерея строит {token[1:]} сама; образец обязан '
+                          f'приходить из реестра функцией render')
+
     def check_option_images(self):
         """OPT-IMAGE (предупреждения): покрытие карточек опций изображениями.
 
@@ -5705,6 +5748,7 @@ class Verifier:
         self.check_dc_coverage()
         self.check_no_visual_utility()
         self.check_option_images()
+        self.check_gallery_single_source()
         self.check_css()
         self.check_css_effective()
         self.check_contrast()
