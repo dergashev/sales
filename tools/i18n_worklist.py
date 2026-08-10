@@ -96,6 +96,10 @@ def numeric_flags():
     return out
 
 
+SPACE_KINDS = '\u202f\u00a0\u2009'
+FLATTEN = str.maketrans({ch: ' ' for ch in SPACE_KINDS})
+
+
 def source_files():
     files = []
     for p in sorted(SRC.rglob('*')):
@@ -105,14 +109,23 @@ def source_files():
         # где строка попадает на экран, и маскирует отсутствие адреса.
         if p.name == 'generated.ts':
             continue
-        files.append((p, p.read_text(encoding='utf-8')))
+        raw = p.read_text(encoding='utf-8')
+        files.append((p, raw.translate(FLATTEN)))
     return files
 
 
 def locate(fragment, files):
-    """Адреса точного вхождения фрагмента в исходник."""
+    """Адреса вхождения фрагмента в исходник.
+
+    Сопоставление идёт по тексту с приведёнными пробелами, цитата — по
+    исходному. Перевод посимвольный, поэтому смещения не сдвигаются и номер
+    строки остаётся верным. Без этого литерал с `NNBSP` внутри
+    (`Regelsatz RS{U+202F}2026.2`) не находился, и адрес честно существующей
+    строки выглядел отсутствующим — то есть невидимый символ порождал
+    выдуманную причину «собрано в рантайме».
+    """
     hits = []
-    needle = fragment.strip()
+    needle = fragment.strip().translate(FLATTEN)
     if len(needle) < 4:
         return hits
     for path, text in files:
@@ -122,6 +135,48 @@ def locate(fragment, files):
         line = text.count('\n', 0, idx) + 1
         hits.append(f'{path.relative_to(ROOT)}:{line}')
     return hits
+
+
+# Места сборки, найденные чтением. Автоматически они не находятся по
+# построению: точного литерала нет, строку складывает шаблон. Таблица живёт
+# здесь, а не в отчёте, потому что отчёт перезаписывается — дописанное руками
+# в порождаемый файл исчезает при первом же прогоне.
+MANUAL_SITES = {
+    '. Die Preiswirkung erscheint': (
+        'src/screens/OptionChapter.tsx:302',
+        'JSX: `{MARK} · {DERIVED_LABEL}` и следом узел, начинающийся с точки'),
+    'Gebäudedaten DEMO-B-A bestätigt': (
+        'src/screens/ChapterBuildings.tsx:288 · src/state/store.ts:1507',
+        'шаблон с id здания — ДВА места, одна фраза: экран и подпись события '
+        'журнала; перевести надо оба одной правкой, иначе журнал останется '
+        'немецким при английском экране'),
+    'Opportunities · sortiert nach Reihenfolge': (
+        'src/screens/OpportunityList.tsx:152',
+        '`{shown.length} von {items.length} Opportunities · …` — два числа '
+        'перед текстом'),
+    'Sehr geehrte Damen und Herren': (
+        'src/screens/S5Export.tsx:62',
+        'конкатенация двух литералов через `+` с `\\n\\n`'),
+    'bauseits; im indikativen Angebot': (
+        'src/fixtures/derived-prototype.json:519',
+        'ДАННЫЕ, а не хром: `basis` производного значения по D-22; знак ⚙ '
+        'приписывается при показе'),
+    'Werte extrahiert · Regelsatz': (
+        'src/components/DocumentAnalysis.tsx:58',
+        'шаблон `Werte extrahiert · Regelsatz RS${NNBSP}2026.2`: узкий пробел '
+        'подставляется выражением, поэтому целой строки в файле нет вовсе'),
+    '§2 nicht bestätigt.': (
+        'src/screens/S5Export.tsx:76',
+        'часть длинной строки `ValidationIssue offen: … §2 nicht bestätigt — '
+        '…`, разрезанной переносом в исходнике'),
+}
+
+
+def manual_site(fragment):
+    for prefix, site in MANUAL_SITES.items():
+        if fragment.startswith(prefix):
+            return site
+    return None
 
 
 def main():
@@ -173,8 +228,13 @@ def main():
                       'это мост, а не решение')
         elif not hits:
             cause = CAUSE_NOSRC
-            action = (f'найти место сборки: точного литерала в `src` нет · '
-                      f'ключ `{key}`')
+            site = manual_site(one)
+            if site:
+                hits = [site[0]]
+                action = f'{site[1]} · ключ `{key}`'
+            else:
+                action = (f'найти место сборки: точного литерала в `src` нет · '
+                          f'ключ `{key}`')
         else:
             cause = CAUSE_WRAP
             action = f'обернуть в `tx()` · ключ `{key}`'
@@ -245,8 +305,11 @@ def main():
         f'здесь `tx()` значило бы закрыть остаток числом, оставив нарушение.',
         '',
         '«Собрано в рантайме» — точного литерала в `src` нет: строку сложила',
-        'логика. Прежде чем править, надо найти место сборки; адрес не',
-        'подставляется, потому что угаданный адрес хуже отсутствующего.',
+        'логика. Места сборки найдены чтением и объявлены таблицей в самом',
+        'скрипте (`MANUAL_SITES`), а не дописаны в этот файл: дописанное руками',
+        'в порождаемый файл исчезает при первом же прогоне. Там, где адреса',
+        'нет и в таблице, он не подставляется — угаданный адрес хуже',
+        'отсутствующего.',
         '',
         'Фрагменты фикстур сюда попадают потому, что DOM их видит, но работой',
         'по хрому они не являются: язык артефакта и язык интерфейса — разные',

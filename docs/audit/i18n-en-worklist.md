@@ -8,7 +8,7 @@
 
 **Всего в остатке 49** · обёртка `tx()` хватит: 20 · целый ключ с числом: 17 · данные фикстур D-13: 3 · собрано в рантайме: 7 · вне словаря: 0 · ждут копирайта: 2
 
-Адрес в исходнике найден у 34 из 47: остальные собираются из частей и точным литералом в коде не существуют — это и есть признак конкатенации, а не пропуска поиска.
+Адрес в исходнике найден у 41 из 47: остальные собираются из частей и точным литералом в коде не существуют — это и есть признак конкатенации, а не пропуска поиска.
 
 ## Работы в `src` — по причине, а не по алфавиту
 
@@ -38,13 +38,13 @@
 
 | фрагмент | адрес | что делать |
 |---|---|---|
-| . Die Preiswirkung erscheint sofort in der Angebotsspalte rechts und im Kostentreiber. | — | найти место сборки: точного литерала в `src` нет · ключ `remainder5.option.priceEffectSuffix` |
-| Gebäudedaten DEMO-B-A bestätigt | — | найти место сборки: точного литерала в `src` нет · ключ `remainder5.buildings.dataConfirmedDemoA` |
-| Opportunities · sortiert nach Reihenfolge der Übergabe aus HubSpot | — | найти место сборки: точного литерала в `src` нет · ключ `remainder5.opportunities.hubspotOrder` |
-| Sehr geehrte Damen und Herren, anbei erhalten Sie unser indikatives Angebot für das Muster | — | найти место сборки: точного литерала в `src` нет · ключ `remainder5.email.indicativeOfferNordfeld` |
-| Werte extrahiert · Regelsatz RS 2026.2 | — | найти место сборки: точного литерала в `src` нет · ключ `remainder5.analysis.valuesExtractedRuleset` |
-| bauseits; im indikativen Angebot ohne Preisansatz ⚙ | — | найти место сборки: точного литерала в `src` нет · ключ `remainder5.fixture.clientProvidedNoAllowance` |
-| §2 nicht bestätigt. | — | найти место сборки: точного литерала в `src` нет · ключ `remainder5.classification.section2Unconfirmed` |
+| . Die Preiswirkung erscheint sofort in der Angebotsspalte rechts und im Kostentreiber. | src/screens/OptionChapter.tsx:302 | JSX: `{MARK} · {DERIVED_LABEL}` и следом узел, начинающийся с точки · ключ `remainder5.option.priceEffectSuffix` |
+| Gebäudedaten DEMO-B-A bestätigt | src/screens/ChapterBuildings.tsx:288 · src/state/store.ts:1507 | шаблон с id здания — ДВА места, одна фраза: экран и подпись события журнала; перевести надо оба одной правкой, иначе журнал останется немецким при английском экране · ключ `remainder5.buildings.dataConfirmedDemoA` |
+| Opportunities · sortiert nach Reihenfolge der Übergabe aus HubSpot | src/screens/OpportunityList.tsx:152 | `{shown.length} von {items.length} Opportunities · …` — два числа перед текстом · ключ `remainder5.opportunities.hubspotOrder` |
+| Sehr geehrte Damen und Herren, anbei erhalten Sie unser indikatives Angebot für das Muster | src/screens/S5Export.tsx:62 | конкатенация двух литералов через `+` с `\n\n` · ключ `remainder5.email.indicativeOfferNordfeld` |
+| Werte extrahiert · Regelsatz RS 2026.2 | src/components/DocumentAnalysis.tsx:58 | шаблон `Werte extrahiert · Regelsatz RS${NNBSP}2026.2`: узкий пробел подставляется выражением, поэтому целой строки в файле нет вовсе · ключ `remainder5.analysis.valuesExtractedRuleset` |
+| bauseits; im indikativen Angebot ohne Preisansatz ⚙ | src/fixtures/derived-prototype.json:519 | ДАННЫЕ, а не хром: `basis` производного значения по D-22; знак ⚙ приписывается при показе · ключ `remainder5.fixture.clientProvidedNoAllowance` |
+| §2 nicht bestätigt. | src/screens/S5Export.tsx:76 | часть длинной строки `ValidationIssue offen: … §2 nicht bestätigt — …`, разрезанной переносом в исходнике · ключ `remainder5.classification.section2Unconfirmed` |
 
 ### обёртка `tx()` — строка целая, ключ есть — 20
 
@@ -96,8 +96,11 @@
 здесь `tx()` значило бы закрыть остаток числом, оставив нарушение.
 
 «Собрано в рантайме» — точного литерала в `src` нет: строку сложила
-логика. Прежде чем править, надо найти место сборки; адрес не
-подставляется, потому что угаданный адрес хуже отсутствующего.
+логика. Места сборки найдены чтением и объявлены таблицей в самом
+скрипте (`MANUAL_SITES`), а не дописаны в этот файл: дописанное руками
+в порождаемый файл исчезает при первом же прогоне. Там, где адреса
+нет и в таблице, он не подставляется — угаданный адрес хуже
+отсутствующего.
 
 Фрагменты фикстур сюда попадают потому, что DOM их видит, но работой
 по хрому они не являются: язык артефакта и язык интерфейса — разные
