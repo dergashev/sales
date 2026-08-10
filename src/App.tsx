@@ -201,8 +201,8 @@ function AppHeader({ t }: { t: (k: Parameters<ReturnType<typeof useT>>[0]) => st
           value={s.uiLanguage}
           onChange={(l) => s.setUiLanguage(l)}
           helperText={s.uiLanguage === 'en'
-            ? 'EN: Entwurf — Übersetzung noch nicht vollständig'
-            : 'EN ist noch ein Entwurf: die Übersetzung wird gerade vervollständigt'}
+            ? t('shell.en.draftActive')
+            : t('shell.en.draftHint')}
           options={[
             { value: 'de', label: 'DE' },
             { value: 'en', label: 'EN · Entwurf' },

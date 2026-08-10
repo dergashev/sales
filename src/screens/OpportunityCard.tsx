@@ -161,7 +161,7 @@ export function OpportunityCard() {
               {s.wflConflict.candidates.map((c) => (
                 <span key={c.origin}>
                   <span className="a3-cap block">
-                    {c.origin === 'customer' ? 'Kunde' : 'Dokument'}
+                    {tx(c.origin === 'customer' ? 'Kunde' : 'Dokument')}
                   </span>
                   <span className="numeric">{formatDE(D(c.value), 2)}{NNBSP}m²</span>
                   <span className="a3-cap block">{c.source}</span>

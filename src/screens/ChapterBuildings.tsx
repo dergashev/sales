@@ -244,7 +244,7 @@ export function ChapterBuildings() {
 
         <div className="mt-4">
           <SegmentedControl
-            legend="Gebäudeklasse nach MBO §2"
+            legend={tx('Gebäudeklasse nach MBO §2')}
             value={active.gebaeudeklasse.value}
             onChange={() => {}}
             disabled

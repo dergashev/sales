@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTx } from '../i18n'
 import { Decimal } from 'decimal.js'
 import { Diagnostics } from '../components/Diagnostics'
 import type { FontCheck } from '../lib/font-check'
@@ -40,6 +41,7 @@ export function Grundlagen({ fonts, cascade }: {
   fonts: FontCheck | null
   cascade: string[] | null
 }) {
+  const tx = useTx()
   const [segDemo, setSegDemo] = useState<'a' | 'b'>('a')
   const [switchDemo, setSwitchDemo] = useState(false)
   const [radioDemo, setRadioDemo] = useState<'x' | 'y' | 'z'>('x')
@@ -47,20 +49,14 @@ export function Grundlagen({ fonts, cascade }: {
   return (
     <div className="px-7 py-6">
       <header className="border-b border-border-strong pb-4">
-        <p className="a3-cap">QA · intern</p>
-        <h1 className="mt-1 text-heading-2 font-bold text-text-primary">Grundlagen</h1>
+        <p className="a3-cap">{tx('QA · intern')}</p>
+        <h1 className="mt-1 text-heading-2 font-bold text-text-primary">{tx('Grundlagen')}</h1>
       </header>
 
       <Diagnostics fonts={fonts} cascade={cascade} />
 
-      <h2 className="mt-7 text-heading-3 font-bold text-text-primary">
-        Zustände der Datenkomponenten (Regel 30)
-      </h2>
-      <p className="mt-1 max-w-content text-small text-text-secondary">
-        Fünf Datenzustände plus die Achsen stale und permission — hier sichtbar,
-        nicht nur im Vertrag deklariert. Werte sind Fixture- oder
-        Vertragsmuster.
-      </p>
+      <h2 className="mt-7 text-heading-3 font-bold text-text-primary">{tx('Zustände der Datenkomponenten (Regel 30)')}</h2>
+      <p className="mt-1 max-w-content text-small text-text-secondary">{tx('Fünf Datenzustände plus die Achsen stale und permission — hier sichtbar, nicht nur im Vertrag deklariert. Werte sind Fixture- oder Vertragsmuster.')}</p>
 
       <div className="mt-4 grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(38ch, 1fr))' }}>
         <Specimen title="loading" note="Skeleton: flache Blöcke ohne Shimmer (Regel 4/30).">
@@ -69,61 +65,42 @@ export function Grundlagen({ fonts, cascade }: {
 
         <Specimen title="empty" note="Leere ist benannt und erklärt, nie stumm.">
           <p className="border border-border-default p-3 text-body text-text-secondary">
-            <span aria-hidden="true">○ </span>
-            Keine Optionen verfügbar — die Fixture DEMO-0001 definiert für
-            dieses Kapitel keine Auswahl.
-          </p>
+            <span aria-hidden="true">○ </span>{tx('Keine Optionen verfügbar — die Fixture DEMO-0001 definiert für dieses Kapitel keine Auswahl.')}</p>
         </Specimen>
 
         <Specimen title="partial" note={`Preis ohne Rechenbasis: nie 0 € (Regel 16, SCOPE-001).`}>
-          <p className="numeric border border-border-default p-3 text-body text-text-primary">
-            Preis nicht ermittelt
-            <span className="mt-1 block text-small text-text-secondary">
-              Zwischensumme der kalkulierten Positionen statt Gesamt
-            </span>
+          <p className="numeric border border-border-default p-3 text-body text-text-primary">{tx('Preis nicht ermittelt')}<span className="mt-1 block text-small text-text-secondary">{tx('Zwischensumme der kalkulierten Positionen statt Gesamt')}</span>
           </p>
         </Specimen>
 
         <Specimen title="error" note="Ursache · Folge · Mittel — immer zu dritt.">
           <div className="border-contrast border-border-error p-3">
             <p className="text-body text-text-primary">
-              <span aria-hidden="true">✗ </span>
-              Statik_Auszug_Muster.jpg nicht lesbar: Auflösung zu gering
-            </p>
-            <p className="a3-cap mt-1">
-              Werte aus dieser Datei fehlen · Mittel: Manuell erfassen
-            </p>
+              <span aria-hidden="true">✗ </span>{tx('Statik_Auszug_Muster.jpg nicht lesbar: Auflösung zu gering')}</p>
+            <p className="a3-cap mt-1">{tx('Werte aus dieser Datei fehlen · Mittel: Manuell erfassen')}</p>
           </div>
         </Specimen>
 
         <Specimen title="stale" note="Veraltetes trägt seinen Stand, statt aktuell auszusehen.">
           <p className="border border-border-warning p-3 text-body text-text-primary">
-            <span aria-hidden="true">▲ </span>
-            Veraltet · Stand 04.08.2026 — Kalkulation erneut ausführen
-          </p>
+            <span aria-hidden="true">▲ </span>{tx('Veraltet · Stand 04.08.2026 — Kalkulation erneut ausführen')}</p>
         </Specimen>
 
         <Specimen title="permission" note="Nicht Berechtigtes fehlt im Baum, statt versteckt zu sein (R-17).">
           <p className="border border-border-default p-3 text-body text-text-secondary">
-            <span aria-hidden="true">○ </span>
-            Interne Kalibrierung ist in dieser Rolle nicht verfügbar.
-          </p>
+            <span aria-hidden="true">○ </span>{tx('Interne Kalibrierung ist in dieser Rolle nicht verfügbar.')}</p>
         </Specimen>
       </div>
 
-      <h2 className="mt-7 text-heading-3 font-bold text-text-primary">
-        Primitive nach components-core
-      </h2>
+      <h2 className="mt-7 text-heading-3 font-bold text-text-primary">{tx('Primitive nach components-core')}</h2>
 
       <div className="mt-4 grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(38ch, 1fr))' }}>
         <Specimen title="Button" note="aria-disabled statt disabled: Grund bleibt fokussierbar (Regel 12).">
           <div className="flex flex-wrap gap-2">
-            <Button variant="primary">Primär</Button>
-            <Button>Sekundär</Button>
-            <Button variant="ghost">Ghost</Button>
-            <Button disabled disabledReason="Demonstration der benannten Sperre">
-              Gesperrt
-            </Button>
+            <Button variant="primary">{tx('Primär')}</Button>
+            <Button>{tx('Sekundär')}</Button>
+            <Button variant="ghost">{tx('Ghost')}</Button>
+            <Button disabled disabledReason="Demonstration der benannten Sperre">{tx('Gesperrt')}</Button>
           </div>
         </Specimen>
 
@@ -202,9 +179,7 @@ export function Grundlagen({ fonts, cascade }: {
         </Specimen>
       </div>
 
-      <h2 className="mt-7 text-heading-3 font-bold text-text-primary">
-        DC-10 · Dokumentanalyse (Simulation live abspielbar)
-      </h2>
+      <h2 className="mt-7 text-heading-3 font-bold text-text-primary">{tx('DC-10 · Dokumentanalyse (Simulation live abspielbar)')}</h2>
       <div className="mt-4">
         <DocumentAnalysis
           docs={demo.documents.map((d) => ({
@@ -216,11 +191,7 @@ export function Grundlagen({ fonts, cascade }: {
         />
       </div>
 
-      <p className="mt-7 border-t border-border-subtle pt-3 text-small text-text-muted">
-        Nicht gebaute Contract-Primitive (Tooltip, Dialog, Link, Slider,
-        SaveStatus, KeyboardShortcuts) warten auf offene ADR-Token
-        (docs/audit/adr-blocking.md §6a) — Werte zu erfinden ist untersagt (R-25).
-      </p>
+      <p className="mt-7 border-t border-border-subtle pt-3 text-small text-text-muted">{tx('Nicht gebaute Contract-Primitive (Tooltip, Dialog, Link, Slider, SaveStatus, KeyboardShortcuts) warten auf offene ADR-Token (docs/audit/adr-blocking.md §6a) — Werte zu erfinden ist untersagt (R-25).')}</p>
     </div>
   )
 }

@@ -289,8 +289,7 @@ export function RadioCardGroup<T extends string>({
               </span>
               {o.recommended && (
                 <span className="a3-st">
-                  <span aria-hidden="true">◆ </span>Empfohlen
-                </span>
+                  <span aria-hidden="true">◆ </span>{tx('Empfohlen')}</span>
               )}
               {o.disabled && o.disabledReason && (
                 <span id={`${name}-${o.value}-constraint`} className="a3-st">

@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTx } from '../i18n'
 import type { FontCheck } from '../lib/font-check'
 import catalog from '../fixtures/catalog.json'
 import demo from '../fixtures/demo-0001.json'
@@ -86,12 +87,13 @@ export function Diagnostics({
   fonts: FontCheck | null
   cascade: string[] | null
 }) {
+  const tx = useTx()
   const rows = useChecks(fonts, cascade)
   const failed = rows.filter((r) => r.ok === false)
 
   return (
     <section className="mt-7">
-      <h2 className="text-body font-bold text-text-primary">Проверка оснований</h2>
+      <h2 className="text-body font-bold text-text-primary">{tx('Проверка оснований')}</h2>
 
       {failed.length > 0 && (
         <p className="mt-3 border-contrast border-border-error p-4 text-body font-medium text-text-primary">
@@ -106,9 +108,9 @@ export function Diagnostics({
         <table className="w-full border-collapse text-body">
           <thead>
             <tr className="border-b border-border-strong text-left">
-              <th className="py-3 pr-5 font-medium">Основание</th>
-              <th className="py-3 pr-5 font-medium">Состояние</th>
-              <th className="py-3 font-medium">Подробность</th>
+              <th className="py-3 pr-5 font-medium">{tx('Основание')}</th>
+              <th className="py-3 pr-5 font-medium">{tx('Состояние')}</th>
+              <th className="py-3 font-medium">{tx('Подробность')}</th>
             </tr>
           </thead>
           <tbody>

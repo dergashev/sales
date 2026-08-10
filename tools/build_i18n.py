@@ -26,6 +26,7 @@ SOURCES = [
     ROOT / 'docs/audit/verdicts/content/i18n-en-2-260806.md',
     ROOT / 'docs/audit/verdicts/content/i18n-en-3-260806.md',
     ROOT / 'docs/audit/verdicts/content/i18n-en-4-260807.md',
+    ROOT / 'docs/audit/verdicts/content/i18n-en-5-260807.md',
 ]
 OUT = ROOT / 'src/i18n/generated.ts'
 

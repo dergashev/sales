@@ -44,6 +44,8 @@ const de = {
   'common.showOrigin': 'Herkunft anzeigen',
   'common.loading': 'Wird geladen',
   'journal.empty': 'Journal: noch keine übernommenen Änderungen',
+  'shell.en.draftActive': 'EN: Entwurf — Übersetzung noch nicht vollständig',
+  'shell.en.draftHint': 'EN ist noch ein Entwurf: die Übersetzung wird gerade vervollständigt',
 } as const
 
 export type MessageKey = keyof typeof de
@@ -75,6 +77,8 @@ const en: Partial<Record<MessageKey, string>> = {
   'common.showOrigin': 'Show origin',
   'common.loading': 'Loading',
   'journal.empty': 'Journal: no adopted changes yet',
+  'shell.en.draftActive': 'EN: draft — translation not yet complete',
+  'shell.en.draftHint': 'EN is still a draft: the translation is being completed',
 }
 
 /**

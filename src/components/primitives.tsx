@@ -157,6 +157,7 @@ export function NumericField({
   decimals?: number
   onCommit: (v: Decimal, confirmed: boolean) => void
 }) {
+  const tx = useTx()
   const [draft, setDraft] = useState<string | null>(null)
   const shown = draft ?? formatDE(value, decimals)
 
@@ -192,9 +193,7 @@ export function NumericField({
         <ProvenanceChip provenance={draft !== null ? 'wird bearbeitet' : provenance} />
       </div>
       {draft !== null && (
-        <p className="a3-cap mt-2">
-          Enter — vom Kunden bestätigt · Tab — manuell erfasst · Esc — verwerfen
-        </p>
+        <p className="a3-cap mt-2">{tx('Enter — vom Kunden bestätigt · Tab — manuell erfasst · Esc — verwerfen')}</p>
       )}
     </div>
   )

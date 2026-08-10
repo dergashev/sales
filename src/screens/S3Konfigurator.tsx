@@ -416,7 +416,7 @@ function ChapterTermine() {
           caption="Bauzeit nach Phasen mit Beginn, Ende, Dauer und Abhängigkeit"
           finishISO={haus.endDate}
           provenance={s.mode === 'intern'
-            ? 'Kalender: Kalendermonate · Staffelstart aus ScheduleModel · DEMO-SC-01'
+            ? tx9('Kalender: Kalendermonate · Staffelstart aus ScheduleModel · DEMO-SC-01')
             : undefined}
           phases={[
             {

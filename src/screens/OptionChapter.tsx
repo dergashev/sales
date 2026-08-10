@@ -195,7 +195,7 @@ export function OptionChapter({ groups, intro }: {
               <p className="a3-chip-src mt-2">
                 <span aria-hidden="true" className="a3-dot" />
                 <span aria-hidden="true">◆ </span>
-                {tx('Anforderung aus der Dokumentation')} · {g.documentRef}
+                {tx('Anforderung aus der Dokumentation')} · {tx(g.documentRef!)}
               </p>
             )}
             {source === 'manuell erfasst' && (

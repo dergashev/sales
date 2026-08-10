@@ -2,7 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useReducedMotion } from './primitives'
-import { useT } from '../i18n'
+import { useT, useTx } from '../i18n'
 
 /**
  * DC-21 · CalculationOriginPopover — Herkunft-Popover.
@@ -44,6 +44,7 @@ export function OriginPopover({ rows, rounding, runRef, triggerLabel }: {
   runRef: string | null
   triggerLabel?: string
 }) {
+  const tx = useTx()
   const t = useT()
   const label = triggerLabel ?? t('common.showOrigin')
   const [open, setOpen] = useState(false)
@@ -170,9 +171,7 @@ export function OriginPopover({ rows, rounding, runRef, triggerLabel }: {
               visibility: pos ? 'visible' : 'hidden',
             }}
           >
-            <p id={headingId} className="text-small font-bold text-text-primary">
-              Herkunft des Werts
-            </p>
+            <p id={headingId} className="text-small font-bold text-text-primary">{tx('Herkunft des Werts')}</p>
             {/* Строка цепочки — `.a3-r` контракта, число — `.a3-fnum`. */}
             <ol className="mt-2">
               {rows.map((r) => (

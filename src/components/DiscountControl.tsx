@@ -1,5 +1,6 @@
 import { Decimal } from 'decimal.js'
 import { copyFor } from '../i18n/internal-refs'
+import { useTx } from '../i18n'
 import catalog from '../fixtures/catalog.json'
 import { NNBSP, formatDE, label as moneyLabel, present } from '../engine/money'
 import { applyDiscount } from '../engine/calculate'
@@ -31,6 +32,7 @@ export function DiscountControl({ totalExact, percent, onChange, mode }: {
   onChange: (p: Decimal | null) => void
   mode: 'intern' | 'praesentation'
 }) {
+  const tx = useTx()
   const p = percent ?? new Decimal(0)
   const discounted = applyDiscount(totalExact, p)
   const rabatt = present(totalExact.minus(discounted.exact))
@@ -88,7 +90,7 @@ export function DiscountControl({ totalExact, percent, onChange, mode }: {
         </span>
       </p>
       <p className="a3-cap mt-1">
-        {copyFor('Basis ist der exakte Rechenwert, nie der angezeigte (CALC-007).', mode)}
+        {copyFor(tx('Basis ist der exakte Rechenwert, nie der angezeigte (CALC-007).'), mode)}
         {discounted.disclosure ? ` ${discounted.disclosure}` : ''}
       </p>
 

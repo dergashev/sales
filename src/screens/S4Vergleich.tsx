@@ -44,11 +44,7 @@ export function S4Vergleich() {
     return (
       <div className="px-7 py-6">
         <p className="text-body text-text-secondary">
-          <span aria-hidden="true">○ </span>
-          Noch keine Opportunity Option angelegt. Optionen entstehen auf der
-          Opportunity-Karte, nachdem Konflikte gelöst und Parameter bestätigt
-          sind.
-        </p>
+          <span aria-hidden="true">○ </span>{tx('Noch keine Opportunity Option angelegt. Optionen entstehen auf der Opportunity-Karte, nachdem Konflikte gelöst und Parameter bestätigt sind.')}</p>
       </div>
     )
   }
@@ -173,7 +169,7 @@ export function S4Vergleich() {
 
       <div className="mt-4 overflow-x-auto">
         <table className="a3-cmp w-full border-collapse">
-          <caption className="sr-only">Vergleich der Opportunity Options</caption>
+          <caption className="sr-only">{tx('Vergleich der Opportunity Options')}</caption>
           <thead>
             <tr>
               <th>
