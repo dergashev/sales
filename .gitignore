@@ -12,3 +12,6 @@ coverage/
 # ходу его прохода — попадая в коммит Claude через `git add -A`, они
 # засоряют историю чужой незавершённой работой (случай 07.08).
 docs/audit/verdicts/.*.mjs
+.mcp.json
+.agentsroom/handoff-transcript-*.txt
+.agentsroom/handoff-summary-*.md
