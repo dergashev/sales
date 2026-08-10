@@ -168,6 +168,18 @@ export type OptionConfig = {
   scopeBuildingId: string | null
   /** Скидка принадлежит варианту, а не экрану (находка 14). */
   discountPercent: Decimal | null
+  /**
+   * Черновик письма: текст и выбранные артефакты. Принадлежит Option, как и
+   * всё остальное в её конфигурации.
+   *
+   * Прежде и текст, и набор вложений жили в `useState` экрана: уход в
+   * сравнение и возврат стирали написанное продавцом, а после отправки
+   * экран снова открывался в `compose`, не помня, что оффер уже ушёл
+   * (сплошное ревью 26, находка 15). Стадия доставки здесь НЕ хранится: она
+   * выводится из снапшотов и журнала — иначе состояние экрана и факт
+   * отправки могли бы противоречить друг другу.
+   */
+  offerDraft: { body: string; attachments: string[] }
 }
 
 const OPTION_CONFIG_KEYS = [
@@ -175,6 +187,7 @@ const OPTION_CONFIG_KEYS = [
   'kg300', 'kg300Provenance', 'kg700Mode', 'coverage', 'fields',
   'esConfirmed', 'regionalfaktorActive', 'risikoAktiv',
   'openChapter', 'besuchteKapitel', 'scopeBuildingId', 'discountPercent',
+  'offerDraft',
 ] as const satisfies ReadonlyArray<keyof OptionConfig>
 
 /** Снять конфигурацию активной Option с плоского состояния. */
@@ -275,6 +288,13 @@ function defaultOptionConfig(): OptionConfig {
     // объявить непройденные шаги пройденными (ревью № 13, дефект 7).
     openChapter: 1,
     discountPercent: null,
+    offerDraft: {
+      body: 'Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unser '
+        + 'indikatives Angebot für das Musterprojekt Nordfeld.\n\n'
+        + 'Mit freundlichen Grüßen',
+      attachments: ['angebot', 'kostentreiber', 'annahmen'],
+    },
+
     besuchteKapitel: [1],
     scopeBuildingId: null,
   }
@@ -421,6 +441,13 @@ type Store = {
    * входящая в проекцию, — это второй итог, о котором проекция не знает.
    */
   discountPercent: Decimal | null
+  /**
+   * Черновик письма — текст и вложения. Принадлежит Option: уход в
+   * сравнение и возврат стирали написанное продавцом (находка 15).
+   * Стадия доставки здесь НЕ живёт: она выводится из снапшотов и журнала,
+   * иначе экран мог бы противоречить факту отправки.
+   */
+  offerDraft: { body: string; attachments: string[] }
   /** Созданные Opportunity Options. Сравниваются между собой (S4). */
   options: Array<{ id: string; name: string }>
   activeOptionId: string | null
@@ -492,6 +519,12 @@ type Store = {
   sendOffer: (kind: 'email' | 'print') => OfferSnapshot
   /** Скидка как решение: событие журнала с дельтой (D-25, CALC-007). */
   setDiscount: (percent: Decimal | null) => void
+  /**
+   * Правка черновика письма. События журнала НЕ создаёт: текст письма — не
+   * данные варианта и цену не меняет, а M-4 говорит о данных. Но и терять
+   * его при переходе между экранами нельзя.
+   */
+  setOfferDraft: (patch: Partial<Store['offerDraft']>) => void
   clearDelta: () => void
   openChapterAt: (n: number) => void
   /** DC-28: показать последствие решения до клика; null — погасить. */
@@ -988,6 +1021,13 @@ const store = createStore<Store>((set, get) => {
     activeOptionId: null,
     optionSeq: 0,
     discountPercent: null,
+    offerDraft: {
+      body: 'Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unser '
+        + 'indikatives Angebot für das Musterprojekt Nordfeld.\n\n'
+        + 'Mit freundlichen Grüßen',
+      attachments: ['angebot', 'kostentreiber', 'annahmen'],
+    },
+
     uiLanguage: 'de',
     density: 'komfortabel',
 
@@ -1256,6 +1296,10 @@ const store = createStore<Store>((set, get) => {
         forward: () => set({ discountPercent: percent }),
       })
     },
+
+    setOfferDraft: (patch) => set((s) => ({
+      offerDraft: { ...s.offerDraft, ...patch },
+    })),
 
     sendOffer: (kind) => {
       const s = get()

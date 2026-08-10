@@ -203,3 +203,37 @@ describe('скидка принадлежит варианту, а не экра
     expect(st().projection().result.total.exact.toFixed(2)).toBe(before.toFixed(2))
   })
 })
+
+describe('черновик письма принадлежит Option (находка 15)', () => {
+  it('текст и вложения переживают уход с экрана', async () => {
+    await toPipeline()
+    st().setOfferDraft({ body: 'Sehr geehrte Frau Beispiel,' })
+    st().setOfferDraft({ attachments: ['angebot'] })
+    st().setPipelineView('vergleich')
+    st().setPipelineView('export')
+    expect(st().offerDraft.body).toBe('Sehr geehrte Frau Beispiel,')
+    expect(st().offerDraft.attachments).toEqual(['angebot'])
+  })
+
+  it('у каждой Option свой черновик', async () => {
+    await toPipeline()
+    st().setOfferDraft({ body: 'Text der ersten Option' })
+    st().createOption('Option 2')
+    expect(st().offerDraft.body).not.toBe('Text der ersten Option')
+    st().openOption('OPT-01')
+    expect(st().offerDraft.body).toBe('Text der ersten Option')
+  })
+
+  it('отправка Option 2 не приписывается Option 1', async () => {
+    await toPipeline()
+    st().createOption('Option 2')
+    const snap = st().sendOffer('email')
+    expect(snap.optionId).toBe('OPT-02')
+    st().openOption('OPT-01')
+    // Прежде экран экспорта брал ПОСЛЕДНИЙ снапшот вообще и рассказывал
+    // про чужую отправку.
+    const own = [...st().snapshots].reverse()
+      .find((x) => x.optionId === st().activeOptionId)
+    expect(own).toBeUndefined()
+  })
+})

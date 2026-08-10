@@ -44,22 +44,29 @@ export function S5Export() {
   const printBtnRef = useRef<HTMLButtonElement>(null)
   // Сколько ЦЕНОВЫХ событий этой Option произошло после отправки. Считается
   // из журнала против `journalSeqAt` снапшота — второго счётчика нет.
-  const lastSnap = s.snapshots.at(-1)
+  //
+  // Снапшот берётся СВОЕЙ Option, а не последний вообще: отправив Option 2 и
+  // открыв экспорт Option 1, экран рассказывал про чужую отправку и считал
+  // изменения против чужой отметки (находка 15).
+  const lastSnap = [...s.snapshots]
+    .reverse().find((x) => x.optionId === s.activeOptionId)
   const changedAfterSend = lastSnap
     ? s.journal.filter((e) => e.seq > lastSnap.journalSeqAt
         && e.deltaExact !== null && e.optionId === s.activeOptionId).length
     : 0
   const p = s.projection()
-  const [selected, setSelected] = useState<Set<string>>(
-    new Set(ARTIFACTS.filter((a) => a.default).map((a) => a.id)),
-  )
-  // Скидка — величина, а не флаг: контракт DC-25 требует слайдер со
-  // значением, а не два состояния «есть / нет».
-  const [stage, setStage] = useState<Stage>('compose')
-  const [body, setBody] = useState(
-    'Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unser indikatives ' +
-    'Angebot für das Musterprojekt Nordfeld.\n\nMit freundlichen Grüßen',
-  )
+  // Текст письма и вложения живут в конфигурации Option: уход в сравнение и
+  // возврат стирали написанное продавцом (находка 15).
+  const selected = new Set(s.offerDraft.attachments)
+  const setSelected = (next: Set<string>) =>
+    s.setOfferDraft({ attachments: [...next] })
+  const body = s.offerDraft.body
+  const setBody = (v: string) => s.setOfferDraft({ body: v })
+  // Стадия ДОСТАВКИ — состояние экрана, и это правильно: она описывает, где
+  // сейчас находится человек в потоке отправки. Но начальная стадия
+  // выводится из ФАКТА: если оффер по этой Option уже ушёл, экран не вправе
+  // открыться в «составить письмо», как будто ничего не было.
+  const [stage, setStage] = useState<Stage>(lastSnap ? 'zugestellt' : 'compose')
 
   // Открытые решения по покрытию — то же множество, что делает итог
   // промежуточным: список Recap не может разойтись с подписью итога.
