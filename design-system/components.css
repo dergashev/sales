@@ -138,7 +138,7 @@
    .a3-shortcut-help plus the visible settings switch. */
 .a3-dialog-spec{border:var(--border-contrast-2px);background:var(--color-surface-default);padding:var(--space-5);max-width:var(--measure-component);display:grid;gap:var(--space-4)}
 .a3-dialog-spec h4{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:var(--type-heading-weight);margin:0}
-.a3-toast.a3-toast-spec{position:static;opacity:1;transform:none;width:min(var(--size-toast-max-width),100%)}
+.a3-toast.a3-toast-spec{position:static;width:min(var(--size-toast-max-width),100%)}
 .a3-save-status{display:inline-flex;align-items:center;gap:var(--space-2);font-size:var(--type-badge-status-size);line-height:var(--type-badge-status-line);font-weight:var(--type-badge-status-weight)}
 .a3-save-status.a3-save-error{border-left:var(--border-error);padding-left:var(--space-2)}
 .a3-shortcut-help{max-width:var(--measure-wide);min-width:0}
@@ -469,9 +469,10 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    .a3-toast[role=status] > text + button.a3-act; .a3-modal-scrim >
    .a3-modal[role=dialog] > .a3-item/.a3-hidelist/actions.
    Classes: .a3-toasts · .a3-toast · .a3-show · .a3-act · .a3-modal-scrim · .a3-modal · .a3-item · .a3-okc · .a3-warnc · .a3-hidelist. */
-.a3-toasts{position:fixed;left:var(--space-5);bottom:var(--space-5);z-index:var(--layer-toast);display:flex;flex-direction:column;gap:var(--space-2);width:min(var(--size-toast-max-width),calc(100vw - 2 * var(--gutter-narrow)))}
+.a3-toasts{position:fixed;left:var(--space-5);bottom:var(--space-5);z-index:var(--layer-toast);display:flex;flex-direction:column;gap:var(--space-2);width:min(var(--size-toast-max-width),calc(100vw - 2 * var(--gutter-narrow)));pointer-events:none}
 .a3-toast{background:var(--color-surface-default);border:var(--border-contrast-1px);border-left:var(--size-status-accent-width) solid var(--color-text-primary);padding:var(--space-3) var(--space-4);display:flex;gap:var(--space-4);align-items:center;font-size:var(--type-small-size);line-height:var(--type-small-line);opacity:0;transform:translateY(var(--enter-shift));transition:opacity var(--motion-reveal) var(--motion-easing-standard),transform var(--motion-reveal) var(--motion-easing-standard)}
-.a3-toast.a3-show{opacity:1;transform:none}
+.a3-toast:not(.a3-show){pointer-events:none}
+.a3-toast.a3-show{opacity:1;transform:none;pointer-events:auto}
 .a3-toast .a3-act{background:none;border:none;font:inherit;font-weight:700;cursor:pointer;color:var(--color-text-primary);text-decoration:underline;text-underline-offset:var(--size-text-underline-offset);padding:0;white-space:nowrap}
 .a3-modal-scrim{position:fixed;inset:0;background:var(--color-surface-overlay);z-index:var(--layer-dialog-backdrop);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity var(--motion-reorder) var(--motion-easing-standard);padding:var(--space-5)}
 .a3-modal-scrim.a3-show{opacity:1;pointer-events:auto}
@@ -629,7 +630,8 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    button.a3-journal-disclose + ul.a3-journal-items.
    Classes: .a3-journal-spec · .a3-journal-disclose · .a3-journal-items. */
 .a3-journal-spec{border-top:var(--border-hairline);border-bottom:var(--border-hairline)}
-.a3-journal-disclose{width:100%;min-height:var(--size-hit-target-default);display:flex;justify-content:space-between;align-items:center;gap:var(--space-4);padding:var(--space-2) var(--space-3);border:0;background:var(--color-surface-default);font:inherit;text-align:left;cursor:pointer}
+.a3-journal-disclose{position:relative;width:100%;min-height:var(--size-hit-target-default);display:flex;justify-content:space-between;align-items:center;gap:var(--space-4);padding:var(--space-2) var(--space-3);border:0;background:var(--color-surface-default);font:inherit;text-align:left;cursor:pointer}
+.a3-journal-disclose::before{pointer-events:none}
 .a3-journal-items{margin:0;padding:0 var(--space-3) var(--space-3);list-style:none}
 .a3-journal-items li{display:grid;grid-template-columns:auto 1fr auto;gap:var(--space-3);padding:var(--space-3) 0;border-top:var(--border-hairline);font-size:var(--type-small-size);line-height:var(--type-small-line)}
 /* DC-10 · DocumentAnalysisProgress full specimen. Structure:

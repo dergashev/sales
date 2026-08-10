@@ -23,7 +23,11 @@
 |---|---|---|---|---|---|---|---:|---:|---:|---:|---|---|---:|---:|---:|---:|---:|
 | `DEMO2-B-A` | Haus A | `true` | `MFH` | `GK_4` | `confirmed` | `EH_55` | 1.600,00 m² | 100,00 m² | 300,00 m² | 0,00 m² | `vollausbau` | `false` | 1.220,00 m² | 1.340,00 m² | 1.490,00 m² | 14 | 4 |
 | `DEMO2-B-B` | Haus B | `true` | `MFH` | `GK_5` | `confirmed` | `EH_40` | 3.200,00 m² | 100,00 m² | 0,00 m² | 0,00 m² | `kein_ug` | `false` | 2.500,00 m² | 2.750,00 m² | 3.050,00 m² | 30 | 6 |
-| `DEMO2-B-C` | Büro C | `true` | `BUERO` | `GK_4` | `confirmed` | `GEG` | 1.200,00 m² | 100,00 m² | 200,00 m² | 0,00 m² | `ab_decke` | `true` | 0,00 m² | 940,00 m² | 1.100,00 m² | 0 | 4 |
+| `DEMO2-B-C` | Büro C | `true` | `null` | `GK_4` | `confirmed` | `GEG` | 1.200,00 m² | 100,00 m² | 200,00 m² | 0,00 m² | `ab_decke` | `true` | 0,00 m² | 940,00 m² | 1.100,00 m² | 0 | 4 |
+
+Ось `Gebäudeform` для нежилого объёма не определена. До решения PO значение
+остаётся `null`; множитель назначения `Büro = 1,05` принадлежит Usage Segment
+`DEMO2-S-C1`, а не Building.
 
 ## Usage segments
 
@@ -62,20 +66,20 @@
 | `DEMO2-SCH-A` | `buildingExecution` | `DEMO2-B-A` | 0 | `2028-05-01` | `2028-11-01` | 1.700,00 m² | 1,00 | 1,05 | 6,230000 | 6,0 | `wholeCalendarMonthsElseDays` | `""` |
 | `DEMO2-SCH-B` | `buildingExecution` | `DEMO2-B-B` | 3 | `2028-08-01` | `2029-05-16` | 3.300,00 m² | 1,00 | 1,15 | 9,276667 | 9,5 | `halfMonthRounded` | `≈` |
 | `DEMO2-SCH-C` | `buildingExecution` | `DEMO2-B-C` | 6 | `2028-11-01` | `2029-05-01` | 1.300,00 m² | 1,05 | 1,05 | 5,953500 | 6,0 | `wholeCalendarMonthsElseDays` | `""` |
-| `DEMO2-SCH-PROJECT` | `projectTotal` | `complex` | 0 | `2028-02-01` | `2029-05-16` | 6.300,00 m² | 1,00 | 1,00 | 15,500000 | 15,5 | `halfMonthRounded` | `≈` |
+| `DEMO2-SCH-PROJECT` | `projectTotal` | `complex` | 0 | `2028-02-01` | `2029-05-16` | `null` | `null` | `null` | 15,276667 | 15,5 | `halfMonthRounded` | `≈` |
 
 ## Coverage
 
-| costGroup | state | pricedAmountExact | completenessImpact |
-|---|---|---:|---|
-| `KG_100` | `notApplicable` | 0,00 € | `none` |
-| `KG_200` | `excluded` | 0,00 € | `none` |
-| `KG_300` | `included` | `allocation_70pct` | `none` |
-| `KG_400` | `included` | `allocation_22pct` | `none` |
-| `KG_500` | `unknown` | `null` | `incomplete` |
-| `KG_600` | `unknown` | `null` | `incomplete` |
-| `KG_700` | `included` | `allocation_8pct` | `none` |
-| `KG_800` | `notApplicable` | 0,00 € | `none` |
+| costGroup | state | pricedAmountExact | allocationShare | completenessImpact |
+|---|---|---:|---:|---|
+| `KG_100` | `notApplicable` | 0,00 € | `null` | `none` |
+| `KG_200` | `excluded` | 0,00 € | `null` | `none` |
+| `KG_300` | `included` | 7.427.601,58 € | 70 % | `none` |
+| `KG_400` | `included` | 2.334.389,068 € | 22 % | `none` |
+| `KG_500` | `unknown` | `null` | `null` | `incomplete` |
+| `KG_600` | `unknown` | `null` | `null` | `incomplete` |
+| `KG_700` | `included` | 848.868,752 € | 8 % | `none` |
+| `KG_800` | `notApplicable` | 0,00 € | `null` | `none` |
 
 ## Risk state
 
@@ -132,16 +136,16 @@
 
 | controlId | calculationRunId | scope | metric | numeratorOrExpression | denominator | denominatorType | storedExact | display |
 |---|---|---|---|---|---:|---|---:|---|
-| `DEMO2-CTRL-01` | `DEMO2-RUN-0001` | `DEMO2-B-A` | `subtotal` | `DEMO2-COST-A-TOTAL` | `null` | `null` | 2.939.814,00 € | ≈ 2.940.000 € |
-| `DEMO2-CTRL-02` | `DEMO2-RUN-0002` | `DEMO2-B-B` | `subtotal` | `DEMO2-COST-B-TOTAL` | `null` | `null` | 5.571.455,40 € | ≈ 5.571.000 € |
-| `DEMO2-CTRL-03` | `DEMO2-RUN-0003` | `DEMO2-B-C` | `subtotal` | `DEMO2-COST-C-TOTAL` | `null` | `null` | 2.099.590,00 € | ≈ 2.100.000 € |
+| `DEMO2-CTRL-01` | `DEMO2-RUN-0004` | `DEMO2-B-A` | `subtotal` | `DEMO2-COST-A-TOTAL` | `null` | `null` | 2.939.814,00 € | ≈ 2.940.000 € |
+| `DEMO2-CTRL-02` | `DEMO2-RUN-0004` | `DEMO2-B-B` | `subtotal` | `DEMO2-COST-B-TOTAL` | `null` | `null` | 5.571.455,40 € | ≈ 5.571.000 € |
+| `DEMO2-CTRL-03` | `DEMO2-RUN-0004` | `DEMO2-B-C` | `subtotal` | `DEMO2-COST-C-TOTAL` | `null` | `null` | 2.099.590,00 € | ≈ 2.100.000 € |
 | `DEMO2-CTRL-04` | `DEMO2-RUN-0004` | `complex` | `subtotal` | `DEMO2-CTRL-01 + DEMO2-CTRL-02 + DEMO2-CTRL-03` | `null` | `null` | 10.610.859,40 € | ≈ 10.611.000 € |
-| `DEMO2-CTRL-05` | `DEMO2-RUN-0001` | `DEMO2-S-A1` | `leadRate` | 2.939.814,00 € | 1.220,00 m² | `WFL_WOFLV` | 2.409,683606557377 €/m² | ≈ 2.410 €/m² WFL nach WoFlV |
-| `DEMO2-CTRL-06` | `DEMO2-RUN-0002` | `DEMO2-S-B1` | `leadRate` | 5.571.455,40 € | 2.500,00 m² | `WFL_WOFLV` | 2.228,582160000000 €/m² | ≈ 2.229 €/m² WFL nach WoFlV |
-| `DEMO2-CTRL-07` | `DEMO2-RUN-0003` | `DEMO2-S-C1` | `leadRate` | 2.099.590,00 € | 940,00 m² | `NUF_DIN277` | 2.233,606382978723 €/m² | ≈ 2.234 €/m² NUF nach DIN 277 |
+| `DEMO2-CTRL-05` | `DEMO2-RUN-0004` | `DEMO2-S-A1` | `leadRate` | 2.939.814,00 € | 1.220,00 m² | `WFL_WOFLV` | 2.409,683606557377 €/m² | ≈ 2.410 €/m² WFL nach WoFlV |
+| `DEMO2-CTRL-06` | `DEMO2-RUN-0004` | `DEMO2-S-B1` | `leadRate` | 5.571.455,40 € | 2.500,00 m² | `WFL_WOFLV` | 2.228,582160000000 €/m² | ≈ 2.229 €/m² WFL nach WoFlV |
+| `DEMO2-CTRL-07` | `DEMO2-RUN-0004` | `DEMO2-S-C1` | `leadRate` | 2.099.590,00 € | 940,00 m² | `NUF_DIN277` | 2.233,606382978723 €/m² | ≈ 2.234 €/m² NUF nach DIN 277 |
 | `DEMO2-CTRL-08` | `DEMO2-RUN-0004` | `complex:Wohnen` | `aggregatedSegmentRate` | `2.939.814,00 + 5.571.455,40` € | `1.220,00 + 2.500,00` m² | `WFL_WOFLV` | 2.287,975645161290 €/m² | ≈ 2.288 €/m² WFL nach WoFlV |
 | `DEMO2-CTRL-09` | `DEMO2-RUN-0004` | `complex` | `aboveGroundRate` | 10.610.859,40 € | `1.700,00 + 3.300,00 + 1.300,00` m² | `BGF_ABOVE_GROUND` | 1.684,263396825397 €/m² | ≈ 1.684 €/m² BGF oberirdisch |
-| `DEMO2-CTRL-10` | `DEMO2-RUN-0004` | `complex` | `projectDuration` | `max(3,0 + 0,0 + 6,0; 3,0 + 3,0 + 9,5; 3,0 + 6,0 + 6,0)` | `null` | `CALENDAR_MONTH` | 15,5 Monate | ≈ 15,5 Monate · 16.05.2029 |
+| `DEMO2-CTRL-10` | `DEMO2-RUN-0004` | `complex` | `projectDuration` | `max(3,0 + 0,0 + 6,23; 3,0 + 3,0 + 9,276667; 3,0 + 6,0 + 5,9535)` | `null` | `CALENDAR_MONTH` | 15,5 Monate | ≈ 15,5 Monate · 16.05.2029 |
 
 ## Completeness control
 

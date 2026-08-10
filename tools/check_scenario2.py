@@ -326,6 +326,14 @@ def main():
     # таком чтении арифметика поставки сходится до копейки, а значит 1,05
     # применён один раз, с сегмента.
     FORM = {'MFH': cat['F_FORM_MFH']}
+    # То же правило для таблицы СРОКА. Первая редакция этой проверки брала
+    # срочный множитель со строки ЗДАНИЯ — и держалась только потому, что
+    # поставка тогда объявляла `gebaeudeform: BUERO`. Как только Codex убрал
+    # значение чужой оси (правка по TASK-27), проверка объявила расхождением
+    # собственную непоследовательность: стоимостную ось я перенёс на сегмент,
+    # а срочную оставил на здании. Один и тот же дефект в инструменте,
+    # написанном против этого дефекта.
+    USAGE_TIME = {'Büro': cat['F_TIME_BUERO']}
     FORMZ = {'MFH': cat['F_TIME_MFH'], 'BUERO': cat['F_TIME_BUERO']}
 
     def usage_factor(bid):
@@ -341,7 +349,12 @@ def main():
     # применить множитель дважды — при том, что арифметика применяет его
     # ровно один раз. Пересчёт ниже берёт множитель с СЕГМЕНТА и сходится с
     # поставкой до копейки: значит, неверна подпись оси, а не число.
-    FORM_AXIS = {'MFH', 'EFH_ZFH', 'DH_REH'}
+    # `null` — законное ОТСУТСТВИЕ значения, а не чужая ось. У нежилого
+    # объёма допустимого значения формы просто нет: спецификация §1 относит
+    # к этой оси только три жилых значения. Требовать заполнения там, где
+    # источник значения не даёт, значило бы требовать выдумки (R-25) — а
+    # именно это правка TASK-27 и сняла.
+    FORM_AXIS = {'MFH', 'EFH_ZFH', 'DH_REH', 'null'}
     for bid, b in bld.items():
         form = cell(b['gebaeudeform'])
         if form not in FORM_AXIS:
@@ -353,7 +366,8 @@ def main():
                 f'сегменте ({", ".join(seg_of)}), и множитель 1,05 применён один '
                 f'раз — двойное объявление приглашает применить его дважды')
     if not any(c == 'AXIS-D11' for c, _ in findings):
-        ok('оси классификации: Gebäudeform на здании, Nutzungsart на сегменте')
+        ok('оси классификации: Gebäudeform на здании, Nutzungsart на сегменте; '
+           'у нежилого объёма форма не объявлена — это отсутствие, не подмена')
 
     # ── A3. провенанс расчётных прогонов ──────────────────────────────────
     ident = t['Scenario identity'][0]
@@ -446,7 +460,11 @@ def main():
         if bgf_above != de(row['bgfAbove']):
             bad('SCH-BGF', f'{mid}: bgfAbove {row["bgfAbove"]} ≠ BGF R + BGF S '
                            f'= {fmt_de(bgf_above, 2)} m²')
-        ff = FORMZ.get(cell(b['gebaeudeform']), D(1))
+        seg_of = next((s for s in seg.values() if cell(s['buildingId']) == bid), None)
+        nutzung = cell(seg_of['nutzungsart']) if seg_of else ''
+        ff = (FORMZ.get(cell(b['gebaeudeform']))
+              or USAGE_TIME.get(nutzung)
+              or cat['F_TIME_MFH'])
         gf = GKZ[cell(b['gebaeudeklasse'])]
         if ff != de(row['formFactorTime']):
             bad('SCH-FACTOR', f'{mid}: formFactorTime {row["formFactorTime"]} ≠ {ff}')
@@ -751,14 +769,18 @@ def main():
             ok('заголовок вердикта сходится с проверкой по всем четырём числам')
 
     eng = ENGINE.read_text(encoding='utf-8')
-    if any(de(b['bgfSAbove']) != 0 for b in bld.values()) and 'bgfS' not in eng:
+    if any(de(b['bgfSAbove']) != 0 for b in bld.values()) and 'bgfSAbove' not in eng:
         blocker('ENGINE-BGF-S',
                 'сценарий назначает BGF S (считается по f_S = 0,40 от ставки R), а '
                 '`BuildingInput` знает одну `bgfAboveGround` и множит её на полную '
                 'ставку. Сегодня выразить сценарий движок не может: подача 1.700 '
                 'даёт зданию A 2.705.295 € вместо 2.939.814 €')
+    # Признак умения — наличие СТАВКИ режима в движке, а не написание
+    # сравнения. Первая редакция искала `=== 'ab_decke'`; движок закрыл
+    # пробел таблицей соответствия, и детектор продолжал обвинять
+    # исправленный код. Проверять надо способность, а не синтаксис.
     if 'ab_decke' in {cell(b['untergeschoss']) for b in bld.values()} \
-            and "=== 'ab_decke'" not in eng:
+            and 'abDecke' not in eng:
         blocker('ENGINE-AB-DECKE',
                 "сценарий содержит `ab_decke`, а ветка UG в `calculate.ts` покрывает "
                 "только `vollausbau`: остальные режимы молча дают 0 €. Здание с "
@@ -827,23 +849,23 @@ def selftest():
         ('AXIS-D11', '| Haus A | `true` | `MFH` |', '| Haus A | `true` | `HOTEL` |',
          'значение оси назначения в колонке формы'),
     ]
-    # Лечащие мутации: применяем предложенное исправление и требуем, чтобы
-    # находка ИСЧЕЗЛА. Без этой стороны отчёт предлагал бы правки, ни одна из
-    # которых не проверена на то, что она чинит названное.
-    healings = [
-        ('SCH-PROJECT-EXACT', [('| 15,500000 | 15,5 |', '| 15,276667 | 15,5 |')],
-         'точный срок комплекса из точных длительностей'),
-        ('SCH-PREFIX-SELF', [('| 15,500000 | 15,5 |', '| 15,276667 | 15,5 |')],
-         'та же правка снимает и самопротиворечие подписи'),
-        ('RUN-UNDECLARED', [('`DEMO2-RUN-0001`', '`DEMO2-RUN-0004`'),
-                            ('`DEMO2-RUN-0002`', '`DEMO2-RUN-0004`'),
-                            ('`DEMO2-RUN-0003`', '`DEMO2-RUN-0004`')],
-         'все контрольные величины одного объявленного прогона'),
-        ('COV-TYPE', [('`allocation_70pct`', '7.427.601,58\u202f€'),
-                      ('`allocation_22pct`', '2.334.389,068\u202f€'),
-                      ('`allocation_8pct`', '848.868,752\u202f€')],
-         'доли заменены вычисленными суммами'),
+    # Прежде здесь были ЛЕЧАЩИЕ мутации: скрипт применял предложенное
+    # исправление и требовал, чтобы находка исчезла. Поставка исправлена,
+    # лечить нечего — и та же пара «до/после» продолжает работать, только
+    # с другой стороны: теперь дефект ВНОСИТСЯ в исправленный файл, и
+    # детектор обязан его поймать. Проверка не потеряла зубы вместе с
+    # находкой, она их переставила.
+    regressions = [
+        ('SCH-PROJECT-EXACT', [('| 15,276667 | 15,5 |', '| 15,500000 | 15,5 |')],
+         'срок комплекса снова из округлённых длительностей'),
+        ('RUN-UNDECLARED', [('| `DEMO2-CTRL-01` | `DEMO2-RUN-0004` |',
+                             '| `DEMO2-CTRL-01` | `DEMO2-RUN-0001` |')],
+         'контрольная величина снова ссылается на необъявленный прогон'),
+        ('AXIS-D11', [('| Büro C | `true` | `null` |',
+                       '| Büro C | `true` | `BUERO` |')],
+         'значение оси назначения снова в колонке формы'),
     ]
+    healings = []
     failures = []
     with tempfile.TemporaryDirectory() as tmp:
         path = pathlib.Path(tmp) / 'mutated.md'
@@ -856,14 +878,11 @@ def selftest():
             if code not in codes:
                 failures.append(f'{code}: подделка «{what}» НЕ поймана '
                                 f'(поймано: {sorted(set(codes)) or "ничего"})')
-        for code, pairs, what in healings:
-            if code not in base:
-                failures.append(f'{code}: лечить нечего — находки нет на исходнике')
-                continue
+        for code, pairs, what in regressions:
             text = original
             for old, new in pairs:
                 if old not in text:
-                    failures.append(f'{code}: якорь лечения не найден — «{old}»')
+                    failures.append(f'{code}: якорь регрессии не найден — «{old}»')
                     text = None
                     break
                 text = text.replace(old, new)
@@ -871,9 +890,10 @@ def selftest():
                 continue
             path.write_text(text, encoding='utf-8')
             codes = run_quiet(path)
-            if code in codes:
-                failures.append(f'{code}: исправление «{what}» находку НЕ сняло')
-    print(f'САМОТЕСТ: подделок {len(mutations)} · исправлений {len(healings)} · '
+            if code not in codes:
+                failures.append(f'{code}: возвращённый дефект «{what}» НЕ пойман '
+                                f'(поймано: {sorted(set(codes)) or "ничего"})')
+    print(f'САМОТЕСТ: подделок {len(mutations)} · регрессий {len(regressions)} · '
           f'не сработало {len(failures)} · '
           f'находок на неизменённой поставке {len(base)}')
     for f in failures:

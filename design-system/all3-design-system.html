@@ -661,8 +661,8 @@
 
       <section class="a3-specimen-block" data-dc="29" aria-labelledby="spec-dc29">
         <h3 id="spec-dc29">Rückgängig-Hinweis · DC-29 UndoToast</h3>
-        <p class="a3-specimen-meta">scenarioId DEMO-SC-01 · calculationRunId DEMO-RUN-0011 · derselbe ImpactSnapshot DEMO-IMP-0004 wie DC-6/DC-11</p>
-        <div class="a3-undo-spec" role="status" aria-live="polite">
+        <p class="a3-specimen-meta">scenarioId DEMO-SC-01 · calculationRunId DEMO-RUN-0011 · derselbe ImpactSnapshot DEMO-IMP-0004 wie DC-6/DC-11 · sichtbar nur mit .a3-show; exit/hidden nimmt keine Pointer-Events an</p>
+        <div class="a3-toast a3-toast-spec a3-show a3-undo-spec" role="status" aria-live="polite">
           <div><b>Untergeschoss entfernt</b><br><strong>−476.000 € gegenüber DEMO-VV-0003</strong><br><span class="a3-specimen-meta">Dauerhafter Rückweg: Versionsverlauf · Dauer [provisional]</span></div>
           <div class="a3-specimen-actions"><button class="a3-btn a3-sec" type="button">Änderung des Untergeschosses rückgängig machen</button><button class="a3-btn a3-ghost" type="button" aria-label="Benachrichtigung schließen">×</button></div>
         </div>
@@ -693,7 +693,7 @@
 
       <section class="a3-specimen-block" data-dc="12" aria-labelledby="spec-dc12">
         <h3 id="spec-dc12">Sitzungsjournal · DC-12 SessionJournal<wbr>Bar · aktuelle Form</h3>
-        <p class="a3-specimen-meta">Calculation Run DEMO-RUN-0007 → DEMO-RUN-0009 · nur committed events · itemized sum = head delta</p>
+        <p class="a3-specimen-meta">Calculation Run DEMO-RUN-0007 → DEMO-RUN-0009 · nur committed events · itemized sum = head delta · disclosure ist eigener containing block; ::before ist pointer-inert</p>
         <div class="a3-journal-spec">
           <button class="a3-journal-disclose" type="button" aria-expanded="true" aria-controls="journal-spec-items" onclick="toggleJournalSpec(this)"><span class="a3-journal-summary">Preisänderung gegenüber Vergleichsbasis DEMO-VV-0003: <strong>≈ +97.000 € netto</strong> · 1 übernommene Änderung</span><span aria-hidden="true">▾</span></button>
           <ul class="a3-journal-items" id="journal-spec-items">
@@ -824,7 +824,7 @@
           <p>Der Energiestandard ändert die Vergleichsvariante. Betroffen: Kostenübersicht und Client PDF.</p>
           <div class="a3-specimen-actions"><button class="a3-btn" type="button">Änderung übernehmen</button><button class="a3-btn a3-sec" type="button">Abbrechen</button></div>
         </div>
-        <div class="a3-toast a3-toast-spec" role="status"><span>Änderung übernommen · dauerhafter Rückweg im Sitzungsjournal</span><button class="a3-act" type="button">Rückgängig</button></div>
+        <div class="a3-toast a3-toast-spec a3-show" role="status"><span>Änderung übernommen · dauerhafter Rückweg im Sitzungsjournal</span><button class="a3-act" type="button">Rückgängig</button></div>
         <p><span class="a3-save-status" role="status"><span aria-hidden="true">✓</span> Gespeichert um 14:32 Uhr (Europe/Belgrade)</span></p>
       </section>
 
@@ -1030,7 +1030,13 @@ function showToast(text,actLabel,actFn){
   box.appendChild(t);
   requestAnimationFrame(function(){t.classList.add('a3-show')});
   var tm=setTimeout(kill,8000);
-  function kill(){clearTimeout(tm);t.classList.remove('a3-show');setTimeout(function(){t.remove()},reduced?0:200)}
+  function kill(){
+    clearTimeout(tm);
+    t.setAttribute('aria-hidden','true');
+    t.querySelectorAll('button').forEach(function(button){button.disabled=true});
+    t.classList.remove('a3-show');
+    setTimeout(function(){t.remove()},reduced?0:200)
+  }
 }
 
 /* Модалка G6 */
