@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 49** · перевод есть, мост не подключён: 47
-· перевода нет (в поставку копирайта): 2
+**Всего 49** · перевод есть, мост не подключён: 45
+· перевода нет (в поставку копирайта): 4
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -58,11 +58,11 @@ Mit freundlichen Grüßen
 - §2 nicht bestätigt.
 - Österreich
 - €/m² WFL nach WoFlV
-- − 124.000 € € gegenüber Aufnahme
-- − 230.000 € € gegenüber Aufnahme
 - ≈ 85 % der BGF R+S
 
 ## Перевода нет — в следующую поставку копирайта
 
 - Druckansicht öffnen
 - Eigenes Ausgabeprofil clientPrint mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.
+- − 124.000 € gegenüber Aufnahme
+- − 230.000 € gegenüber Aufnahme
