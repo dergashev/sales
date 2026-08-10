@@ -208,13 +208,19 @@ export function OptionChapter({ groups, intro }: {
 
             <div className="mt-3">
               {(() => {
+                // Последствие и будущий итог приходят из ТОЙ ЖЕ проекции,
+                // что и клик (предложение № 1 исследования рычага). Прежде
+                // карточка перемножала ставки сама — второй калькулятор той
+                // же величины, который на двух зданиях в предложении давал
+                // не то, что случалось после клика.
+                const outcome = (v: string) => s.outcomeOf({
+                  kind: 'kg300', buildingId: b.id, groupId: g.id, value: v,
+                })
                 const mapped = g.choices.map((c) => {
                   const rate = new Decimal(c.rate)
                   const qty = g.denominator === 'BGF_ABOVE_GROUND' ? bgfAboveGround(b)
                     : g.denominator === 'BGF_BELOW_GROUND' ? b.bgfBelowGround
                       : bgfS(b.id)
-                  const current = new Decimal(
-                    g.choices.find((x) => x.value === value)?.rate ?? '0')
                   // Нормативное ограничение сильнее коммерческого выбора:
                   // при GK 5 лифт обязателен, и «без лифта» не является
                   // решением, которое продавец вправе принять.
@@ -227,7 +233,7 @@ export function OptionChapter({ groups, intro }: {
                     description: `${tx(c.basis)} ${MARK}`,
                     consequence: c.value === value
                       ? tx('aktuelle Auswahl')
-                      : euro(rate.minus(current).mul(qty)),
+                      : euro(outcome(c.value).delta),
                     disabled: norm.blocked || noBase,
                     disabledReason: norm.blocked ? norm.reason
                       : noBase
@@ -242,15 +248,8 @@ export function OptionChapter({ groups, intro }: {
                 // Итог после выбора: текущий плюс последствие варианта.
                 // Заблокированный вариант итога не получает — «где мы
                 // окажемся» не имеет смысла там, куда попасть нельзя.
-                const currentTotal = s.projection().result.total.exact
                 const compareRows = mapped.map((m) => {
-                  const choice = g.choices.find((c) => c.value === m.value)!
-                  const rate = new Decimal(choice.rate)
-                  const cur = new Decimal(
-                    g.choices.find((x) => x.value === value)?.rate ?? '0')
-                  const qty = g.denominator === 'BGF_ABOVE_GROUND' ? bgfAboveGround(b)
-                    : g.denominator === 'BGF_BELOW_GROUND' ? b.bgfBelowGround
-                      : bgfS(b.id)
+                  const out = outcome(m.value)
                   return {
                     value: m.value,
                     label: m.title,
@@ -258,9 +257,11 @@ export function OptionChapter({ groups, intro }: {
                     // ноль, а не подпись «aktuelle Auswahl» — та живёт
                     // отдельной пометкой строки и не занимает числовую
                     // ячейку (иначе в столбце цен стоит не цена).
-                    consequence: euro(rate.minus(cur).mul(qty)),
-                    after: m.disabled ? null
-                      : currentTotal.plus(rate.minus(cur).mul(qty)),
+                    consequence: euro(out.delta),
+                    // «Станет» — не сложение в уме, а сам будущий итог из
+                    // проекции: прежде здесь складывали текущий с дельтой,
+                    // и при двух зданиях сумма расходилась с фактом.
+                    after: m.disabled ? null : out.futureTotal.exact,
                   }
                 })
                 const comparison = (
@@ -271,6 +272,9 @@ export function OptionChapter({ groups, intro }: {
                     legend={g.question}
                     value={value}
                     onChange={(v) => s.setKg300(g.id, v)}
+                    onPreview={(v: string | null) => s.previewOption(v
+                      ? { kind: 'kg300', buildingId: b.id, groupId: g.id, value: v }
+                      : null)}
                     options={mapped.map((m) => ({
                       value: m.value,
                       label: m.title,
@@ -289,6 +293,9 @@ export function OptionChapter({ groups, intro }: {
                     legendHidden
                     value={value}
                     onChange={(v) => s.setKg300(g.id, v)}
+                    onPreview={(v) => s.previewOption(v
+                      ? { kind: 'kg300', buildingId: b.id, groupId: g.id, value: v }
+                      : null)}
                     options={mapped}
                   />
                   {comparison}

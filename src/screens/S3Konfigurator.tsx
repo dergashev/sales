@@ -615,10 +615,26 @@ function ChapterBaugrund() {
               <p className="a3-cap mt-1">
                 <span aria-hidden="true">→ </span>{tx(r.remedy)}
               </p>
+              {/* Последствие видно ДО клика и приходит из той же проекции
+                  (R-05, предложение № 1 исследования рычага). Прежде у
+                  надбавки будущего итога не было вовсе: сумма самой
+                  надбавки есть, а «сколько станет» продавец складывал
+                  в голове. */}
+              <p className="a3-cap mt-1 numeric">
+                {consequenceLabel(
+                  s.outcomeOf({ kind: 'risiko', id: r.id, active: !on }).delta,
+                )}
+              </p>
               <div className="a3-row mt-3">
                 <Button
                   variant={on ? 'secondary' : 'primary'}
                   onClick={() => s.toggleRisiko(r.id)}
+                  onMouseEnter={() =>
+                    s.previewOption({ kind: 'risiko', id: r.id, active: !on })}
+                  onMouseLeave={() => s.previewOption(null)}
+                  onFocus={() =>
+                    s.previewOption({ kind: 'risiko', id: r.id, active: !on })}
+                  onBlur={() => s.previewOption(null)}
                 >
                   {on ? tx('Zuschlag entfernen') : tx('Zuschlag anwenden')}
                 </Button>

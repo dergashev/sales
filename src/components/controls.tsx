@@ -327,10 +327,18 @@ const FACADE_MATERIAL_CLS = {
 
 export type FacadeMaterial = keyof typeof FACADE_MATERIAL_CLS
 
-export function FacadeTileGroup({ legend, value, onChange, options }: {
+export function FacadeTileGroup({
+  legend, value, onChange, onPreview, options,
+}: {
   legend: string
   value: string
   onChange: (v: string) => void
+  /**
+   * Geist-Vorschau (DC-28): последствие у цены ДО клика. Витринные плитки
+   * фасада — такое же денежное решение, как карточки опций, и молчать о
+   * будущем итоге им нечем оправдаться.
+   */
+  onPreview?: (v: string | null) => void
   options: Array<{
     value: string
     label: string
@@ -358,6 +366,10 @@ export function FacadeTileGroup({ legend, value, onChange, options }: {
               className={'a3-fk block' +
                 (active ? ' border-selection-border' : '') +
                 (o.disabled ? ' cursor-default' : '')}
+              onMouseEnter={() => !o.disabled && onPreview?.(o.value)}
+              onMouseLeave={() => onPreview?.(null)}
+              onFocusCapture={() => !o.disabled && onPreview?.(o.value)}
+              onBlurCapture={() => onPreview?.(null)}
             >
               <input
                 type="radio"
