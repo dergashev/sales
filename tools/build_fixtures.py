@@ -139,6 +139,28 @@ class Builder:
         gkz = re.search(r'F_gk_zeit: GK 3 = ([\d,]+) · GK 4 = ([\d,]+) · GK 5 = ([\d,]+)', self.t)
         fz = re.search(r'F_form_zeit: MFH = ([\d,]+) · Büro = ([\d,]+)', self.t)
         region = self.grab(r'`Musterland` = ([\d,]+) ⚙', 'Regionalfaktor Musterland')
+        # Доли групп затрат объявлены СПЕЦИФИКАЦИЕЙ, а не выведены. До сих пор
+        # они жили строками в коде и производной ставкой в фикстуре: KG 500
+        # считалась 115 €/m² при существующей формуле 8 % от Bauwerk, KG 700 —
+        # 8,7 % при объявленных 12 % (сплошное ревью 26, находки 8 и 9;
+        # решение PO D-27). Значение, которое источник даёт, обязано приходить
+        # из источника.
+        kg500 = re.search(r'\| KG 500 ⚙ \| ([\d,]+) % от Bauwerk-блока', self.spec)
+        kg700 = re.search(r'\| KG 700 echt ⚙ \| ([\d,]+) % от Bauwerk-блока', self.spec)
+        split_echt = re.search(
+            r'Split внутри блока: KG 300 = ([\d,]+) % · KG 400 = ([\d,]+) %', self.spec)
+        split_verein = re.search(
+            r'Modus vereinfacht → тотал НЕ меняется, блок показывается (\d+)/(\d+)/(\d+)',
+            self.spec)
+        if not all((kg500, kg700, split_echt, split_verein)):
+            raise Mismatch('каталог: доли KG не найдены в calculation-spec §1/§2')
+        v300, v400, v700 = (D(split_verein.group(i)) for i in (1, 2, 3))
+        if v300 + v400 + v700 != D(100):
+            raise Mismatch(f'сплит vereinfacht не даёт 100 %: {v300}/{v400}/{v700}')
+        e300, e400 = de(split_echt.group(1)), de(split_echt.group(2))
+        if e300 + e400 != D(100):
+            raise Mismatch(f'сплит echt не даёт 100 %: {e300} + {e400}')
+        self.checked.append('доли KG складываются в 100 % в обоих режимах')
         if not all((gk, eh, ug, ug3, gkz, fz)):
             raise Mismatch('каталог: одна из строк множителей не найдена')
         if not geg:
@@ -199,6 +221,17 @@ class Builder:
                                    'GK_5': str(de(gkz.group(3)))},
                 'gebaeudeform': {'MFH': str(de(fz.group(1))),
                                  'BUERO': str(de(fz.group(2)))},
+            },
+            # Доли — в процентах, как объявлено источником. Переводить их в
+            # долю единицы здесь значило бы держать в каталоге величину,
+            # которой в спецификации нет.
+            'kgShares': {
+                'kg500PercentOfBauwerk': str(de(kg500.group(1))),
+                'kg700EchtPercentOfBauwerk': str(de(kg700.group(1))),
+                'vereinfacht': {'KG_300': str(v300), 'KG_400': str(v400),
+                                'KG_700': str(v700)},
+                'echt': {'KG_300': str(e300), 'KG_400': str(e400)},
+                'decision': 'D-27',
             },
             'regionalFactor': {'active': False, 'decision': 'D-15',
                                'region': 'Musterland', 'value': str(region),

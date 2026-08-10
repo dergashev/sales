@@ -32,6 +32,19 @@ export const CATALOG: Catalog = {
         D(catalogJson.costFactors.untergeschoss.vollausbauMitTiefgarage),
     },
   },
+  kgShares: {
+    kg500PercentOfBauwerk: D(catalogJson.kgShares.kg500PercentOfBauwerk),
+    kg700EchtPercentOfBauwerk: D(catalogJson.kgShares.kg700EchtPercentOfBauwerk),
+    vereinfacht: {
+      KG_300: D(catalogJson.kgShares.vereinfacht.KG_300),
+      KG_400: D(catalogJson.kgShares.vereinfacht.KG_400),
+      KG_700: D(catalogJson.kgShares.vereinfacht.KG_700),
+    },
+    echt: {
+      KG_300: D(catalogJson.kgShares.echt.KG_300),
+      KG_400: D(catalogJson.kgShares.echt.KG_400),
+    },
+  },
   regionalFactor: { active: false, value: D(catalogJson.regionalFactor.value) },
 }
 

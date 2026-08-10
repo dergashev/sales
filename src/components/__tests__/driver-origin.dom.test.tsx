@@ -64,10 +64,11 @@ describe('DC-21: происхождение раскрывается у кажд
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
-    act(() => useStore.getState().setCoverage('KG_500', 'included'))
-
+    // Вклад по ставке — подвал: количество в m², ставка в €/m². KG 500 для
+    // этого больше не годится, она считается долей блока (решение D-27), и
+    // это верно: вид основания следует за формулой, а не за экраном.
     await user.click(screen.getByRole('button', { name: /Kostentreiber/ }))
-    const row = document.querySelector('[data-driver-id="cov_KG_500"]')
+    const row = document.querySelector('[data-driver-id="untergeschoss_vollausbau"]')
     expect(row).not.toBeNull()
     const trigger = row!.querySelector('button')!
     await user.click(trigger)
@@ -78,7 +79,7 @@ describe('DC-21: происхождение раскрывается у кажд
     const popover = document.body.textContent ?? ''
     expect(popover).toContain('Menge')
     expect(popover).toContain('Satz')
-    expect(popover).not.toContain('Angewendet auf 2.000,00')
+    expect(popover).not.toContain('Angewendet auf 400,00')
   })
 
   it('вклад по множителю показывает базу в € и сам множитель', async () => {

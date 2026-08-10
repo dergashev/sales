@@ -39,25 +39,43 @@ export function useReducedMotion(): boolean {
 /**
  * Счёт числа вместо подмены (правило проекта 19): 400 мс, de-DE, tnum.
  * При `prefers-reduced-motion` — мгновенно, включая счёт (правило 21).
+ *
+ * Две вещи здесь неочевидны, и обе давали НЕВЕРНОЕ ЧИСЛО на экране.
+ *
+ * **Прогресс зажимается снизу, а не только сверху.** `requestAnimationFrame`
+ * отдаёт время НАЧАЛА кадра, и оно может быть РАНЬШЕ, чем `performance.now()`,
+ * взятое в том же кадре при выполнении эффекта. Тогда `t` отрицателен, а
+ * `1 − (1 − t)³` при отрицательном `t` уходит далеко в минус: первый кадр
+ * счёта рисовал на герое `−1.821.397 €` вместо четырёх миллионов. Отсутствие
+ * нижнего зажима выглядело безобидным ровно потому, что «время не идёт
+ * назад» — а оно и не идёт: назад смотрит отметка кадра.
+ *
+ * **Новая анимация стартует от ПОКАЗАННОГО, а не от прежней цели.** Стартовое
+ * значение обновлялось только по завершении, поэтому смена цели на лету
+ * начинала счёт от числа, которого на экране давно нет, — и это подмена,
+ * запрещённая правилом 19, а не счёт.
  */
 export function useCountUp(target: Decimal, decimals = 0): string {
   const reduced = useReducedMotion()
   const [shown, setShown] = useState(target)
-  const from = useRef(target)
+  /** То, что СЕЙЧАС на экране. Отсюда стартует следующий переход. */
+  const current = useRef(target)
   const raf = useRef<number>()
 
   useEffect(() => {
-    if (reduced) { setShown(target); from.current = target; return }
+    if (reduced) { setShown(target); current.current = target; return }
     const start = performance.now()
-    const a = from.current
+    const a = current.current
     const delta = target.minus(a)
     if (delta.isZero()) return
     const tick = (now: number) => {
-      const t = Math.min((now - start) / 400, 1)
+      const t = Math.min(Math.max((now - start) / 400, 0), 1)
       const eased = 1 - Math.pow(1 - t, 3)
-      setShown(a.plus(delta.mul(eased)))
+      const value = a.plus(delta.mul(eased))
+      current.current = value
+      setShown(value)
       if (t < 1) raf.current = requestAnimationFrame(tick)
-      else from.current = target
+      else current.current = target
     }
     raf.current = requestAnimationFrame(tick)
     return () => { if (raf.current) cancelAnimationFrame(raf.current) }

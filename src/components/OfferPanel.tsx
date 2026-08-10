@@ -527,8 +527,13 @@ export function OfferPanel() {
             <table className="a3-kg w-full border-collapse">
               <caption className="a3-visually-hidden">{tx('Kostengruppen nach DIN 276, vereinfachte Verteilung')}</caption>
               <tbody>
-                {([['KG_300', p.kgSplit.KG_300], ['KG_400', p.kgSplit.KG_400],
-                   ['KG_700', p.kgSplit.KG_700]] as const).map(([g, v]) => (
+                {/* В режиме `echt` KG 700 внутри блока не существует: она
+                    стоит собственной позицией 12 % и показана в водопаде.
+                    Печатать её здесь нулём или долей значило бы провести
+                    одну позицию дважды. */}
+                {(Object.entries(p.kgSplit)
+                  .filter((e): e is [string, Decimal] => e[1] !== undefined))
+                  .map(([g, v]) => (
                   <Fragment key={g}>
                     {/* KG 300 раскрывается до третьего уровня: подгруппы —
                         база надбавок за риск, и продавец обязан видеть, от

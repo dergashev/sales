@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 49** · перевод есть, мост не подключён: 45
-· перевода нет (в поставку копирайта): 4
+**Всего 51** · перевод есть, мост не подключён: 44
+· перевода нет (в поставку копирайта): 7
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -36,7 +36,6 @@ anbei erhalten Sie unser indikatives Angebot für das Musterprojekt Nordfeld.
 Mit freundlichen Grüßen
 - Total NUF nach DIN 277
 - Total WFL nach WoFlV
-- Wege, Stellplaetze im Freien, Bepflanzung je m² BGF R ⚙
 - Werte aus
 - Werte extrahiert · Regelsatz RS 2026.2
 - Wohnfläche WFL nach WoFlV
@@ -62,7 +61,10 @@ Mit freundlichen Grüßen
 
 ## Перевода нет — в следующую поставку копирайта
 
+- Anteil am Bauwerk (KG 300 + 400 + UG) nach calculation-spec §1 ⚙
 - Druckansicht öffnen
 - Eigenes Ausgabeprofil clientPrint mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.
+- Tiefgarage · Lüftung, OS-Beschichtung, Tore
+- Untergeschoss · Rohbau und Ausbau
 - − 124.000 € gegenüber Aufnahme
-- − 230.000 € gegenüber Aufnahme
+- − ≈ 305.000 € gegenüber Aufnahme

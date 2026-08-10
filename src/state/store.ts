@@ -4,7 +4,7 @@ import { Decimal } from 'decimal.js'
 import demo from '../fixtures/demo-0001.json'
 import { withRegionalFactor } from './catalog'
 import {
-  calculateBuilding, kgSplitVereinfacht,
+  calculateBuilding, kgSplit, sumOfBlock,
   type BuildingInput, type Coverage, type CoverageState,
   type CostGroup, type BuildingResult,
 } from '../engine/calculate'
@@ -33,12 +33,17 @@ import { RISK_ITEMS, riskDriver } from '../engine/risk'
 
 const D = (s: string) => new Decimal(s)
 
-/**
- * Доля KG 700 при расчёте по HOAI и AHO. Выведена (D-22): в упрощённом
- * режиме KG 700 составляет 8 % от итога, то есть ≈ 8,7 % от блока
- * KG 300+400 — эта величина взята ориентиром, а не измерена.
+/*
+ * Доля KG 700 в режиме HOAI+AHO больше не живёт здесь.
+ *
+ * Она была выведена (D-22) как «≈ 8,7 % от блока» при том, что
+ * `calculation-spec.md` §1 объявляет **12 % от Bauwerk-блока** прямо. D-22
+ * разрешает подобрать значение там, где источник его не даёт; здесь
+ * источник даёт, и производная величина не заполнила пробел, а подменила
+ * формулу — молча, потому что обе помечены ⚙ (решение D-27, сплошное
+ * ревью 26, находка 9). Теперь доля приходит из каталога, извлечённая
+ * построителем из спецификации.
  */
-const KG700_HOAI_SHARE = D('0.087')
 
 export type EventKind =
   | 'value.edited' | 'value.confirmed'
@@ -266,7 +271,7 @@ function defaultOptionConfig(): OptionConfig {
 
 export type Projection = {
   result: BuildingResult
-  kgSplit: ReturnType<typeof kgSplitVereinfacht>
+  kgSplit: ReturnType<typeof kgSplit>
   /** Ведущая ставка сегмента (D-11 v2): у Haus A единственный сегмент Wohnen. */
   leadRate: Rate
   secondaryRateBgf: Rate
@@ -641,50 +646,62 @@ function computeProjection(
     ...optionDrivers(b, s.kg300[b.id] ?? {}, bgfSOf(b.id)),
     // Группы затрат, включённые решением пользователя: они не входят в
     // базовую ставку, поэтому включение ДОБАВЛЯЕТ, а не перераспределяет.
-    ...coverageDrivers(b, s.coverage as unknown as Record<string, string>, bgfSOf(b.id)),
+    // База для групп с объявленной долей — блок Bauwerk ЭТОГО здания.
+    ...coverageDrivers(
+      b, s.coverage as unknown as Record<string, string>, bgfSOf(b.id),
+      perBuilding[i]!.bauwerk, CATALOG.kgShares,
+    ),
   ].map((d) => ({ ...d, key: list.length > 1 ? `${list[i]!.id}:${d.key}` : d.key })))
-  const optSum = optDrivers.reduce((a, d) => a.plus(d.exact), new Decimal(0))
-  const bauwerkSum = perBuilding
-    .reduce((a, r) => a.plus(r.total.exact), new Decimal(0))
-    .plus(optSum)
-  // KG 700 в режиме HOAI+AHO — СОБСТВЕННАЯ позиция поверх KG 300+400.
-  // В режиме `vereinfacht` тотал не меняется: 70/22/8 перераспределяет
-  // уже посчитанное, а не добавляет (calculation-spec §83). Ставка
-  // выведена (D-22) и помечена.
+  // Блок Bauwerk — это KG 300 + 400 + UG и ТОЛЬКО они. Прежде всё
+  // складывалось в один `bauwerkSum`, и включение KG 500 увеличивало базу
+  // KG 700, базу сплита и базу надбавок за риск: группа затрат вне блока
+  // повышала цену того, что от блока считается (сплошное ревью 26,
+  // находки 9 и 20). Место вклада объявляется его создателем полем `block`,
+  // а не выводится здесь из позиции: у надбавки за риск база названа
+  // `KG 320`, и по позиции она от вклада внутри блока неотличима.
+  const bauwerkBlock = sumOfBlock(
+    [...perBuilding.flatMap((r) => r.drivers), ...optDrivers], 'bauwerk',
+  )
+  // KG 700 в режиме HOAI+AHO — СОБСТВЕННАЯ позиция 12 % от блока
+  // (`calculation-spec` §1, решение D-27). В режиме `vereinfacht` тотал не
+  // меняется: доли 70/22/8 перераспределяют уже посчитанное. Прежде ставка
+  // была 8,7 % и сама попадала в базу сплита — та же позиция проводилась
+  // дважды.
   const kg700 = s.kg700Mode === 'hoaiAho'
-    ? bauwerkSum.mul(KG700_HOAI_SHARE)
+    ? bauwerkBlock.mul(CATALOG.kgShares.kg700EchtPercentOfBauwerk).div(100)
     : new Decimal(0)
   if (!kg700.isZero()) {
     optDrivers.push({
       key: 'kg700_hoai_aho',
       origin: 'decision' as const,
+      block: 'separatePosition' as const,
       exact: kg700,
       label: 'KG 700 · Baunebenkosten nach HOAI und AHO',
       scopeRefs: ['KG 700'],
       basis: {
-        kind: 'factor', appliedTo: bauwerkSum, factor: KG700_HOAI_SHARE,
+        kind: 'factor',
+        appliedTo: bauwerkBlock,
+        factor: CATALOG.kgShares.kg700EchtPercentOfBauwerk.div(100),
       },
     })
   }
   // Надбавки за риск — аддитивно после блока Bauwerk (calculation-spec §2:
   // «модификаторы мультипликативны до регионального фактора, надбавки и
   // скидка — аддитивны после»). База каждой — своя группа затрат, поэтому
-  // считается от разбиения KG 300, а не от итога.
-  // База разбиения KG — итог ДО надбавок. Спецификация требует
-  // «Risikozuschlag … отдельной строкой»: включив надбавку в базу
-  // распределения 70/22/8, мы растворили бы её в KG 300 — она перестала
-  // бы быть отдельной строкой и вдобавок увеличила бы собственную базу.
-  const preRisk = bauwerkSum.plus(kg700)
-  const kg300Exact = kgSplitVereinfacht(preRisk).KG_300
+  // считается от разбиения блока, а не от итога: включив надбавку в базу
+  // распределения, мы растворили бы её в KG 300 — она перестала бы быть
+  // отдельной строкой и вдобавок увеличила бы собственную базу.
+  const splitMode = s.kg700Mode === 'hoaiAho' ? 'echt' : 'vereinfacht'
+  const kg300Exact = kgSplit(bauwerkBlock, CATALOG.kgShares, splitMode).KG_300
   for (const risk of RISK_ITEMS) {
     if (!s.risikoAktiv[risk.id]) continue
     const d = riskDriver(risk, kg300Exact)
     if (d) optDrivers.push(d)
   }
-  const riskSum = optDrivers
-    .filter((d) => d.key.startsWith('risk_'))
-    .reduce((a, d) => a.plus(d.exact), new Decimal(0))
-  const total = preRisk.plus(riskSum)
+  const allDrivers = [...perBuilding.flatMap((r) => r.drivers), ...optDrivers]
+  const separateSum = sumOfBlock(allDrivers, 'separatePosition')
+  const surchargeSum = sumOfBlock(allDrivers, 'surcharge')
+  const total = bauwerkBlock.plus(separateSum).plus(surchargeSum)
   const result: BuildingResult = {
     buildingId: list.map((b) => b.id).join('+'),
     drivers: [
@@ -728,7 +745,7 @@ function computeProjection(
 
   return {
     result,
-    kgSplit: kgSplitVereinfacht(preRisk),
+    kgSplit: kgSplit(bauwerkBlock, CATALOG.kgShares, splitMode),
     leadRate: rate(total, s.fields.wfl.value, 'WFL_WOFLV'),
     secondaryRateBgf: rate(total, s.fields.bgfOber.value, 'BGF_ABOVE_GROUND'),
     perUnit: rate(total, s.fields.we.value, 'WOHNEINHEITEN'),

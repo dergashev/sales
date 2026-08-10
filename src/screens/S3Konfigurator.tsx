@@ -13,7 +13,11 @@ import { optionImage } from '../assets/option-images'
 import { ScheduleGantt } from '../components/ScheduleGantt'
 import { ChapterBuildings } from './ChapterBuildings'
 import { OptionChapter } from './OptionChapter'
-import { KG300_GROUPS, KG400_GROUPS, ZERT_GROUPS, COVERAGE_RATES } from '../engine/options'
+import {
+  KG300_GROUPS, KG400_GROUPS, ZERT_GROUPS, COVERAGE_RATES, coverageAmount,
+} from '../engine/options'
+import { CATALOG } from '../state/catalog'
+import derivedFx from '../fixtures/derived-prototype.json'
 import { RISK_ITEMS, riskDriver } from '../engine/risk'
 import demo from '../fixtures/demo-0001.json'
 import { present, label as moneyLabel } from '../engine/money'
@@ -46,6 +50,15 @@ const UG_IMAGE_VALUE: Record<'vollausbau' | 'ab_decke' | 'kein_ug', string> = {
   vollausbau: 'rohbauAusbau',
   ab_decke: 'nurAusbau',
   kein_ug: 'keins',
+}
+
+/** Производная площадь S здания — та же, что использует расчёт. */
+function bgfSOfBuilding(id: string): Decimal {
+  const b = (derivedFx.buildings as Record<string, {
+    bgfSAboveGround?: { value: string | null }
+  }>)[id]
+  const v = b?.bgfSAboveGround?.value
+  return v ? new Decimal(v) : new Decimal(0)
 }
 
 export const CHAPTERS = [
@@ -218,8 +231,13 @@ function ChapterUmfang() {
             последствия на самой плитке и последствие видно ДО клика. */}
         {decidable.map((g) => {
           const spec = COVERAGE_RATES[g]
-          const qty = b.bgfAboveGround
-          const preis = spec ? new Decimal(spec.rate).mul(qty) : null
+          // Один калькулятор с итогом и предпросмотром. Прежде плитка
+          // умножала сама и обещала цену, которой итог не соответствовал
+          // (ревью 26, находки 8 и 13).
+          const preis = spec
+            ? coverageAmount(spec, b, bgfSOfBuilding(b.id), p.result.bauwerk,
+                             CATALOG.kgShares)
+            : null
           // `moneyLabel` возвращает строку СО знаком валюты. Шаблоны ниже
           // добавляли второй, и карточки охвата показывали
           // «+ 124.000 € € Mehrpreis». Поставка копирайта № 5 перенесла этот
@@ -539,9 +557,13 @@ function ChapterKg700() {
             ? 'Der Gesamtbetrag bleibt unverändert — 70/22/8 verteilt, was bereits gerechnet ist.'
             : 'Die Nebenkosten kommen als eigene Zeile im Kostentreiber hinzu.'}
         </p>
-        <p className="numeric mt-2 text-body text-text-primary">
-          Anteil KG{NNBSP}700: {moneyLabel(present(p.kgSplit.KG_700))}
-        </p>
+        {/* В режиме echt доли KG 700 внутри блока нет: она стоит своей
+            позицией и живёт в водопаде, а не в разбивке блока. */}
+        {p.kgSplit.KG_700 && (
+          <p className="numeric mt-2 text-body text-text-primary">
+            Anteil KG{NNBSP}700: {moneyLabel(present(p.kgSplit.KG_700))}
+          </p>
+        )}
       </Card>
     </div>
   )

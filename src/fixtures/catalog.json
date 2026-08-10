@@ -41,6 +41,20 @@
       "BUERO": "1.05"
     }
   },
+  "kgShares": {
+    "kg500PercentOfBauwerk": "8",
+    "kg700EchtPercentOfBauwerk": "12",
+    "vereinfacht": {
+      "KG_300": "70",
+      "KG_400": "22",
+      "KG_700": "8"
+    },
+    "echt": {
+      "KG_300": "76.2",
+      "KG_400": "23.8"
+    },
+    "decision": "D-27"
+  },
   "regionalFactor": {
     "active": false,
     "decision": "D-15",

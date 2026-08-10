@@ -5,7 +5,7 @@ import catalog from '../../fixtures/catalog.json'
 import { KG300_SUBGROUPS, RISK_ITEMS, riskDriver, subgroupSum } from '../risk'
 import {
   aggregateComplex, applyDiscount, calculateBuilding, deriveCompleteness,
-  driversSum, kgSplitVereinfacht, totalLabel,
+  driversSum, kgSplit, totalLabel,
   type BuildingInput, type Catalog, type Coverage,
 } from '../calculate'
 import { label, present, rate, rateLabel, MONEY } from '../money'
@@ -44,6 +44,19 @@ const cat: Catalog = {
       tiefgarageZuschlag: D(catalog.costFactors.untergeschoss.tiefgarageZuschlag),
       vollausbauMitTiefgarage:
         D(catalog.costFactors.untergeschoss.vollausbauMitTiefgarage),
+    },
+  },
+  kgShares: {
+    kg500PercentOfBauwerk: D(catalog.kgShares.kg500PercentOfBauwerk),
+    kg700EchtPercentOfBauwerk: D(catalog.kgShares.kg700EchtPercentOfBauwerk),
+    vereinfacht: {
+      KG_300: D(catalog.kgShares.vereinfacht.KG_300),
+      KG_400: D(catalog.kgShares.vereinfacht.KG_400),
+      KG_700: D(catalog.kgShares.vereinfacht.KG_700),
+    },
+    echt: {
+      KG_300: D(catalog.kgShares.echt.KG_300),
+      KG_400: D(catalog.kgShares.echt.KG_400),
     },
   },
   regionalFactor: { active: false, value: D(catalog.regionalFactor.value) },
@@ -135,13 +148,25 @@ describe('инвариант: сумма драйверов равна итог�
 
   it('сплит KG складывается в итог, тотал не меняется (D-07)', () => {
     const res = calculateBuilding(hausA, cat, COVERAGE_FIXTURE)
-    const split = kgSplitVereinfacht(res.total.exact)
-    const sum = Object.values(split).reduce((a, b) => a.plus(b), new Decimal(0))
+    const split = kgSplit(res.total.exact, cat.kgShares, 'vereinfacht')
+    const sum = (Object.values(split) as (Decimal | undefined)[])
+      .reduce((a: Decimal, b) => a.plus(b ?? 0), new Decimal(0))
     expect(sum.toFixed(2)).toBe(res.total.exact.toFixed(2))
     const fx = run('DEMO-RUN-0007').kgSplit!
     expect(split.KG_300.toFixed(2)).toBe(fx.KG_300.exact)
     expect(split.KG_400.toFixed(2)).toBe(fx.KG_400.exact)
-    expect(split.KG_700.toFixed(2)).toBe(fx.KG_700.exact)
+    expect(split.KG_700!.toFixed(2)).toBe(fx.KG_700.exact)
+  })
+
+  it('в режиме echt KG 700 не является долей блока — иначе она проведена дважды', () => {
+    const res = calculateBuilding(hausA, cat, COVERAGE_FIXTURE)
+    const echt = kgSplit(res.total.exact, cat.kgShares, 'echt')
+    expect(echt.KG_700).toBeUndefined()
+    // Доли другие ровно потому, что KG 700 из блока вышла: 76,2 / 23,8.
+    expect(echt.KG_300.plus(echt.KG_400).toFixed(2))
+      .toBe(res.total.exact.toFixed(2))
+    expect(echt.KG_300.gt(kgSplit(res.total.exact, cat.kgShares, 'vereinfacht').KG_300))
+      .toBe(true)
   })
 })
 

@@ -138,6 +138,11 @@ export function optionDrivers(
     out.push({
       key: `opt_${g.id}_${choice.value}`,
       origin: 'decision' as const,
+      // Опции KG 300/400 меняют сам блок Bauwerk; сертификаты живут в
+      // KG 700 и блоком не являются. Место выводится из группы затрат
+      // опции, которая уже объявлена `scopeOf`.
+      block: scopeOf(g.id) === 'KG 700'
+        ? ('separatePosition' as const) : ('bauwerk' as const),
       exact: qty.mul(rate),
       label: `${g.label} · ${choice.label}`,
       scopeRefs: [scopeOf(g.id)],
@@ -158,35 +163,91 @@ export function optionDrivers(
  * включение действительно добавляет стоимость, а исключение ничего не
  * отнимает. Смешать две модели значило бы посчитать одно и то же дважды.
  */
-export type CoverageRate = {
-  rate: string
-  denominator: 'BGF_ABOVE_GROUND' | 'BGF_BELOW_GROUND' | 'BGF_S'
-  label: string
-  basis: string
-}
+export type CoverageRate =
+  | {
+      kind?: undefined
+      rate: string
+      denominator: 'BGF_ABOVE_GROUND' | 'BGF_BELOW_GROUND' | 'BGF_S'
+      label: string
+      basis: string
+    }
+  /**
+   * Группа, чью долю объявляет спецификация. Ставки за m² у неё нет и быть
+   * не может: подменить объявленную формулу выведенной ставкой — не то же
+   * самое, что заполнить пробел (решение D-27).
+   */
+  | { kind: 'percentOfBauwerk'; label: string; basis: string }
 
 export const COVERAGE_RATES =
   derived.coverage.rates as unknown as Record<string, CoverageRate>
+
+/**
+ * Сумма одной группы затрат. **Один калькулятор** для плитки выбора, для
+ * предпросмотра, для правой панели и для выдачи.
+ *
+ * Прежде плитка считала сама: `new Decimal(spec.rate).mul(bgfAboveGround)`.
+ * Она обещала `+230.000 €`, а итог менялся на другую величину, потому что
+ * итог считался по включённым зданиям, а плитка — по активному, и потому
+ * что ставка группы больше не ставка (сплошное ревью 26, находки 8 и 13).
+ * Второй калькулятор той же величины расходится с первым молча.
+ */
+export function coverageAmount(
+  spec: CoverageRate,
+  b: BuildingInput,
+  bgfS: Decimal,
+  bauwerk: Decimal,
+  shares: { kg500PercentOfBauwerk: Decimal },
+): Decimal | null {
+  if (spec.kind === 'percentOfBauwerk') {
+    if (bauwerk.lte(0)) return null
+    return bauwerk.mul(shares.kg500PercentOfBauwerk).div(100)
+  }
+  const rate = new Decimal(spec.rate)
+  if (rate.isZero()) return null
+  const qty = denominatorValue(b, spec.denominator, bgfS)
+  if (qty.lte(0)) return null
+  return qty.mul(rate)
+}
 
 /** Вклады включённых групп затрат. Только `included` создаёт строку. */
 export function coverageDrivers(
   b: BuildingInput,
   coverage: Record<string, string>,
   bgfS: Decimal,
+  /** Блок Bauwerk здания — база для групп, чью долю объявляет спецификация. */
+  bauwerk: Decimal,
+  shares: { kg500PercentOfBauwerk: Decimal },
 ): Driver[] {
   const out: Driver[] = []
   for (const [kg, spec] of Object.entries(COVERAGE_RATES)) {
     if (coverage[kg] !== 'included') continue
+    const common = {
+      key: `cov_${kg}`,
+      origin: 'decision' as const,
+      // Эти группы в блок Bauwerk не входят вовсе (`K_base` = KG 300+400),
+      // поэтому они добавляют к итогу, но базой для долей и надбавок не
+      // становятся.
+      block: 'separatePosition' as const,
+      label: `${kg.replace('_', ' ')} · ${spec.label}`,
+      scopeRefs: [kg.replace('_', ' ')],
+    }
+    if (spec.kind === 'percentOfBauwerk') {
+      if (bauwerk.lte(0)) continue
+      const factor = shares.kg500PercentOfBauwerk.div(100)
+      out.push({
+        ...common,
+        exact: bauwerk.mul(factor),
+        basis: { kind: 'factor', appliedTo: bauwerk, factor },
+      })
+      continue
+    }
     const rate = new Decimal(spec.rate)
     if (rate.isZero()) continue
     const qty = denominatorValue(b, spec.denominator, bgfS)
     if (qty.lte(0)) continue
     out.push({
-      key: `cov_${kg}`,
-      origin: 'decision' as const,
+      ...common,
       exact: qty.mul(rate),
-      label: `${kg.replace('_', ' ')} · ${spec.label}`,
-      scopeRefs: [kg.replace('_', ' ')],
       basis: {
         kind: 'rate', quantity: qty, denominator: AREA_OF[spec.denominator], rate,
       },

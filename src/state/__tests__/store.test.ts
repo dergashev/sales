@@ -48,7 +48,8 @@ describe('S3: проекция воспроизводит мокап', () => {
 
   it('строки KG округляются независимо и в сумме дают НЕ итог — это норма', () => {
     const p = useStore.getState().projection()
-    const exact = p.kgSplit.KG_300.plus(p.kgSplit.KG_400).plus(p.kgSplit.KG_700)
+    const exact = p.kgSplit.KG_300.plus(p.kgSplit.KG_400)
+      .plus(p.kgSplit.KG_700 ?? 0)
     expect(exact.toFixed(2)).toBe(p.result.total.exact.toFixed(2))
   })
 })
@@ -622,9 +623,14 @@ describe('KG 400, сертификаты и режим KG 700 (сценарий 
     st().setKg700Mode('hoaiAho')
     const after = st().projection().result.total.exact
     expect(after.gt(base)).toBe(true)
-    expect(after.minus(base).toFixed(2)).toBe(base.mul('0.087').toFixed(2))
+    // 12 % от БЛОКА Bauwerk, а не 8,7 % от итога (спецификация §1, D-27).
+    // В базовой конфигурации блок и есть итог: групп затрат вне блока нет.
+    expect(after.minus(base).toFixed(2)).toBe(base.mul('0.12').toFixed(2))
     const d = st().projection().result.drivers.find((x) => x.key === 'kg700_hoai_aho')!
     expect(d.scopeRefs).toEqual(['KG 700'])
+    // Своя позиция — значит НЕ доля блока: иначе она проведена дважды.
+    expect(d.block).toBe('separatePosition')
+    expect(st().projection().kgSplit.KG_700).toBeUndefined()
     // Сумма драйверов по-прежнему равна итогу.
     const sum = st().projection().result.drivers
       .reduce((a, x) => a.plus(x.exact), new Decimal(0))
@@ -638,8 +644,16 @@ describe('Покрытие групп затрат (сценарий п. 11)', (
     const before = st().projection().result.total.exact
     st().setCoverage('KG_500', 'included')
     const d = st().projection().result.drivers.find((x) => x.key === 'cov_KG_500')!
-    expect(d.exact.toFixed(2)).toBe('230000.00')   // 2.000 × 115
-    expect(st().projection().result.total.exact.minus(before).toFixed(2)).toBe('230000.00')
+    // 8 % от блока Bauwerk (спецификация §1, решение D-27). Прежде здесь
+    // стояла производная ставка 115 €/m², дававшая 230.000 € и подменявшая
+    // объявленную формулу.
+    expect(d.exact.toFixed(2)).toBe('305426.80')
+    expect(d.exact.toFixed(2)).toBe(before.mul('0.08').toFixed(2))
+    expect(st().projection().result.total.exact.minus(before).toFixed(2))
+      .toBe('305426.80')
+    // Группа вне блока: она добавляет к итогу, но базой для долей и
+    // надбавок не становится.
+    expect(d.block).toBe('separatePosition')
   })
 
   it('исключение группы ничего не отнимает — её и не было в базе', () => {

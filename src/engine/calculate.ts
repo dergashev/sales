@@ -55,6 +55,18 @@ export type Catalog = {
       vollausbauMitTiefgarage: Decimal
     }
   }
+  /**
+   * Доли групп затрат. Объявлены `calculation-spec.md` §1/§2 и приходят из
+   * каталога, а не из строк в коде: KG 500 считалась производной ставкой
+   * 115 €/m² при существующей формуле, KG 700 — 8,7 % при объявленных 12 %
+   * (решение D-27).
+   */
+  kgShares: {
+    kg500PercentOfBauwerk: Decimal
+    kg700EchtPercentOfBauwerk: Decimal
+    vereinfacht: { KG_300: Decimal; KG_400: Decimal; KG_700: Decimal }
+    echt: { KG_300: Decimal; KG_400: Decimal }
+  }
   regionalFactor: { active: boolean; value: Decimal }
 }
 
@@ -111,6 +123,32 @@ export type Driver = {
    * `decision` — то, что продавец выбрал и может отменить.
    */
   origin: 'base' | 'fact' | 'decision'
+  /**
+   * Место вклада в структуре сметы. Поле, а не вывод из `scopeRefs`: у
+   * надбавки за риск база названа как `KG 320`, и по позиции она неотличима
+   * от вклада внутри блока — а входить в блок она не имеет права, иначе
+   * увеличивает собственную базу.
+   *
+   * `bauwerk` — блок KG 300 + 400 + UG, к которому применяются доли и от
+   *   которого считаются проценты;
+   * `separatePosition` — группа затрат вне блока (KG 100/200/500/600/800 и
+   *   KG 700 в режиме echt): она добавляется к итогу, но базой не является;
+   * `surcharge` — аддитивная надбавка после блока (`calculation-spec` §2).
+   *
+   * Прежде всё складывалось в один `bauwerkSum`, и включение KG 500
+   * увеличивало базу KG 700, сплита 70/22/8 и надбавок за риск (сплошное
+   * ревью 26, находки 9 и 20).
+   */
+  block: 'bauwerk' | 'separatePosition' | 'surcharge'
+}
+
+/** Сумма вкладов одного места сметы. Один обход, одно определение. */
+export function sumOfBlock(
+  drivers: Driver[], block: Driver['block'],
+): Decimal {
+  return drivers
+    .filter((d) => d.block === block)
+    .reduce((a, d) => a.plus(d.exact), new Decimal(0))
 }
 
 /** База KG 300+400 объявлена в `calculation-spec.md` §1.1 строкой K_base. */
@@ -215,7 +253,7 @@ export function calculateBuilding(
   const base = b.bgfAboveGround.mul(cat.kBase)
   drivers.push({
     key: 'basis', exact: base, label: 'Grundleistung',
-      origin: 'base' as const,
+      origin: 'base' as const, block: 'bauwerk' as const,
     scopeRefs: SCOPE_BAUWERK_BASE,
     basis: {
       kind: 'rate', quantity: b.bgfAboveGround,
@@ -233,7 +271,7 @@ export function calculateBuilding(
     running = running.plus(uplift)
     drivers.push({
       key: `gebaeudeform_${formKey}`, exact: uplift, label: 'Gebäudeform',
-      origin: 'fact' as const,
+      origin: 'fact' as const, block: 'bauwerk' as const,
       scopeRefs: SCOPE_BAUWERK_BASE,
       basis: { kind: 'factor', appliedTo: running.minus(uplift), factor: f },
     })
@@ -245,7 +283,7 @@ export function calculateBuilding(
   if (!gkUplift.isZero()) {
     drivers.push({
       key: `gebaeudeklasse_${b.gebaeudeklasse.value}`,
-      origin: 'fact' as const,
+      origin: 'fact' as const, block: 'bauwerk' as const,
       exact: gkUplift,
       // Язык следствий, не код параметра (D-13). Следствия названы в
       // guidance-system.md и parameter-triage (C4.02/C4.03) — они не
@@ -264,7 +302,7 @@ export function calculateBuilding(
   if (!ehUplift.isZero()) {
     drivers.push({
       key: `energiestandard_${b.energiestandard}`,
-      origin: 'decision' as const,
+      origin: 'decision' as const, block: 'bauwerk' as const,
       exact: ehUplift,
       // `EH 55` — имя норматива KfW, а не код параметра: LOCALE-009 держит
       // его в списке непереводимых нормативных терминов. Формулировки
@@ -300,7 +338,7 @@ export function calculateBuilding(
     ug = b.bgfBelowGround.mul(baseRate)
     drivers.push({
       key: `untergeschoss_${b.untergeschoss}`,
-      origin: 'decision' as const,
+      origin: 'decision' as const, block: 'bauwerk' as const,
       exact: ug,
       label: b.untergeschoss === 'vollausbau'
         ? 'Untergeschoss · Rohbau und Ausbau'
@@ -319,7 +357,7 @@ export function calculateBuilding(
       ug = ug.plus(tgAmount)
       drivers.push({
         key: 'tiefgarage_zuschlag',
-        origin: 'decision' as const,
+        origin: 'decision' as const, block: 'bauwerk' as const,
         exact: tgAmount,
         label: 'Tiefgarage · Lüftung, OS-Beschichtung, Tore',
         basis: {
@@ -339,7 +377,7 @@ export function calculateBuilding(
     regional = bauwerk.mul(cat.regionalFactor.value.minus(1))
     drivers.push({
       key: 'regionalfaktor', exact: regional, label: 'Regionalfaktor',
-      origin: 'decision' as const,
+      origin: 'decision' as const, block: 'bauwerk' as const,
       scopeRefs: SCOPE_BAUWERK_FULL,
       basis: {
         kind: 'factor', appliedTo: bauwerk, factor: cat.regionalFactor.value,
@@ -381,22 +419,50 @@ export function driversSum(drivers: Driver[]): Decimal {
  * Разбивка KG в упрощённом режиме. Тотал **не меняется** (D-07):
  * это перераспределение, а не добавление.
  */
-export type KgSplitVereinfacht = {
+export type KgSplit = {
   KG_300: Decimal
   KG_400: Decimal
-  KG_700: Decimal
+  /** В режиме `echt` KG 700 — отдельная позиция, а не доля блока. */
+  KG_700?: Decimal
 }
 
-export function kgSplitVereinfacht(total: Decimal): KgSplitVereinfacht {
-  const split = {
-    KG_300: total.mul('0.70'),
-    KG_400: total.mul('0.22'),
-    KG_700: total.mul('0.08'),
-  }
-  const sum = Object.values(split).reduce((a, b) => a.plus(b), new Decimal(0))
-  if (!sum.equals(total)) {
+/**
+ * Разбивка блока Bauwerk по группам затрат.
+ *
+ * Долей ДВЕ, и выбор между ними — не оформление, а следствие режима KG 700
+ * (`calculation-spec.md` §1/§2):
+ *
+ * · `vereinfacht` — KG 700 внутри блока, доли 70/22/8, итог не меняется;
+ * · `echt` — KG 700 стоит СВОЕЙ позицией 12 % от блока, поэтому внутри
+ *   блока остаются только KG 300 и KG 400, и их доли другие: 76,2 / 23,8
+ *   (факт Referenzprojekt R-02).
+ *
+ * Прежде существовала одна редакция, 70/22/8, и режим `echt` применял её к
+ * блоку, уже содержавшему собственную KG 700, — то есть проводил ту же
+ * позицию дважды (сплошное ревью 26, находка 9).
+ */
+export function kgSplit(
+  bauwerkExact: Decimal,
+  shares: Catalog['kgShares'],
+  mode: 'vereinfacht' | 'echt',
+): KgSplit {
+  const pct = (p: Decimal) => bauwerkExact.mul(p).div(100)
+  const split: KgSplit = mode === 'vereinfacht'
+    ? {
+        KG_300: pct(shares.vereinfacht.KG_300),
+        KG_400: pct(shares.vereinfacht.KG_400),
+        KG_700: pct(shares.vereinfacht.KG_700),
+      }
+    : {
+        KG_300: pct(shares.echt.KG_300),
+        KG_400: pct(shares.echt.KG_400),
+      }
+  const sum = Object.values(split)
+    .reduce((a: Decimal, b) => a.plus(b ?? 0), new Decimal(0))
+  if (!sum.equals(bauwerkExact)) {
     throw new Error(
-      `сплит KG не сходится с итогом: ${sum.toString()} ≠ ${total.toString()}`,
+      `сплит KG (${mode}) не сходится с блоком: ${sum.toString()} ≠ `
+        + `${bauwerkExact.toString()}`,
     )
   }
   return split

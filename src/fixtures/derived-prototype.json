@@ -510,10 +510,11 @@
     "basis": "Baustelleneinrichtung, Erschliessungsanschluesse je m² BGF R"
    },
    "KG_500": {
-    "rate": "115",
-    "denominator": "BGF_ABOVE_GROUND",
+    "kind": "percentOfBauwerk",
     "label": "Aussenanlagen und Freiflaechen",
-    "basis": "Wege, Stellplaetze im Freien, Bepflanzung je m² BGF R"
+    "basis": "Anteil am Bauwerk (KG 300 + 400 + UG) nach calculation-spec §1",
+    "$comment": "Ставка 115 €/m² снята решением D-27 (10.08). D-22 разрешает подобрать значение там, где источник его НЕ даёт; здесь источник даёт формулу 8 % от Bauwerk-блока, и производная ставка не заполнила пробел, а подменила её — молча, потому что обе помечены ⚙ и на экране неразличимы. Сам процент живёт в catalog.json, извлечённый из calculation-spec построителем.",
+    "$formerRate": "115"
    },
    "KG_600": {
     "rate": "62",
