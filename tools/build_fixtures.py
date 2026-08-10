@@ -129,10 +129,17 @@ class Builder:
         geg = re.search(r'Energiestandard ⚙ \| GEG ([\d,]+)', self.spec)
         buero = self.grab(r'F_form_büro = ([\d,]+)', 'F_form_büro')
         ug = re.search(r'UG vollausbau \+ TG = ([\d.]+) \+ ([\d.]+) = ([\d.]+) €/m² BGF UG', self.t)
+        # Три ставки, а не одна сумма. Одна сумма означала, что подвал бывает
+        # ровно один — «vollausbau с паркингом»; движок так и считал, отчего
+        # `ab_decke` давал ноль, а `vollausbau` без паркинга был дороже на
+        # 90 €/m² (сплошное ревью 26, находки 6 и 7).
+        ug3 = re.search(
+            r'vollausbau = ([\d.]+) · ab_decke = ([\d.]+) · '
+            r'Tiefgaragen-Zuschlag = \+ ([\d.]+)', self.t)
         gkz = re.search(r'F_gk_zeit: GK 3 = ([\d,]+) · GK 4 = ([\d,]+) · GK 5 = ([\d,]+)', self.t)
         fz = re.search(r'F_form_zeit: MFH = ([\d,]+) · Büro = ([\d,]+)', self.t)
         region = self.grab(r'`Musterland` = ([\d,]+) ⚙', 'Regionalfaktor Musterland')
-        if not all((gk, eh, ug, gkz, fz)):
+        if not all((gk, eh, ug, ug3, gkz, fz)):
             raise Mismatch('каталог: одна из строк множителей не найдена')
         if not geg:
             raise Mismatch('каталог: множитель GEG не найден в calculation-spec §1.1')
@@ -148,6 +155,20 @@ class Builder:
             raise Mismatch(f'ставка UG: {ug.group(1)} + {ug.group(2)} ≠ {ug.group(3)}')
         self.checked.append('ставка UG складывается')
 
+        ug_voll, ug_decke, ug_tg = (de(ug3.group(i)) for i in (1, 2, 3))
+        # Две записи об одних ставках обязаны сойтись: строка «1.100 + 90 =
+        # 1.190» и строка трёх ставок описывают одно, и расхождение между
+        # ними — тот самый класс «одна величина, два места».
+        if ug_voll != de(ug.group(1)) or ug_tg != de(ug.group(2)):
+            raise Mismatch(
+                f'ставки UG разошлись между строками: {ug_voll} + {ug_tg} '
+                f'против {ug.group(1)} + {ug.group(2)}')
+        if ug_decke >= ug_voll:
+            raise Mismatch(
+                f'ab_decke ({ug_decke}) не дешевле vollausbau ({ug_voll}) — '
+                f'режим «только отделка» не может стоить больше полного')
+        self.checked.append('три ставки UG согласованы между собой')
+
         return {
             'rulesetVersion': 'RS-2026.2',
             'provisional': True,
@@ -161,7 +182,13 @@ class Builder:
                                     'EH_55': str(de(eh.group(1))),
                                     'EH_40': str(de(eh.group(2)))},
                 'gebaeudeform': {'BUERO': str(buero)},
-                'untergeschoss': {'vollausbauMitTiefgarage': str(ug_total),
+                'untergeschoss': {'vollausbau': str(ug_voll),
+                                  'abDecke': str(ug_decke),
+                                  'tiefgarageZuschlag': str(ug_tg),
+                                  # Сумма остаётся ВЫЧИСЛЯЕМОЙ и объявленной:
+                                  # на неё ссылается контрольная величина
+                                  # фикстуры Haus A.
+                                  'vollausbauMitTiefgarage': str(ug_total),
                                   'unit': 'EUR/m2', 'denominator': 'BGF_BELOW_GROUND'},
             },
             'scheduleFactors': {

@@ -46,7 +46,9 @@ describe('DC-21: происхождение раскрывается у кажд
     const drivers = useStore.getState().projection().result.drivers
     expect(drivers.some((d) => d.basis?.kind === 'rate')).toBe(true)
     expect(drivers.some((d) => d.basis?.kind === 'factor')).toBe(true)
-    expect(drivers.some((d) => d.basis === null)).toBe(true)
+    // Вклада без основания в этой конфигурации больше нет: базовая ставка
+    // объёма тоже «количество × ставка» и теперь это объявляет. Проверять
+    // отсутствующий вид значило бы держать тест на условии, которое сняли.
 
     await user.click(screen.getByRole('button', { name: /Kostentreiber/ }))
     const details = screen.getAllByRole('button', { name: 'Details' })

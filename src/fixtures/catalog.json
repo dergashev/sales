@@ -21,6 +21,9 @@
       "BUERO": "1.05"
     },
     "untergeschoss": {
+      "vollausbau": "1100",
+      "abDecke": "350",
+      "tiefgarageZuschlag": "90",
       "vollausbauMitTiefgarage": "1190",
       "unit": "EUR/m2",
       "denominator": "BGF_BELOW_GROUND"

@@ -1,5 +1,5 @@
 import { Decimal } from 'decimal.js'
-import { present, rate, type Displayed, type Rate } from './money'
+import { present, rate, type AreaType, type Displayed, type Rate } from './money'
 
 /**
  * Расчёт варианта чистыми функциями. Цепочка — из `calculation-spec.md` §2.
@@ -44,7 +44,16 @@ export type Catalog = {
     gebaeudeklasse: Record<string, Decimal>
     energiestandard: Record<string, Decimal>
     gebaeudeform: Record<string, Decimal>
-    untergeschoss: { vollausbauMitTiefgarage: Decimal }
+    untergeschoss: {
+      /** Конструктив + Gründung + Ausbau. */
+      vollausbau: Decimal
+      /** Только Ausbau: Rohbau подвала не в объёме. */
+      abDecke: Decimal
+      /** Надбавка за паркинг — складывается с базовой ставкой режима. */
+      tiefgarageZuschlag: Decimal
+      /** Вычисляемая сумма первой и третьей — на неё ссылается фикстура. */
+      vollausbauMitTiefgarage: Decimal
+    }
   }
   regionalFactor: { active: boolean; value: Decimal }
 }
@@ -62,12 +71,13 @@ export type Catalog = {
  *
  * Тип запрещает обе ошибки по построению: у множителя есть база и
  * множитель, у ставки — количество с единицей и сама ставка, а у плоской
- * суммы основания нет вовсе. Единица живёт в данных, потому что выводить её
- * из имени ключа — ровно та догадка, против которой заведено поле `origin`.
+ * суммы основания нет вовсе. Знаменатель ставки — ТИПИЗИРОВАННЫЙ `AreaType`,
+ * тот же, что у `Rate`: подпись обязана называть норматив, и брать её из
+ * одного места — ровно то, чем закрыт DATA-001 у ставок.
  */
 export type DriverBasis =
   | { kind: 'factor'; appliedTo: Decimal; factor: Decimal }
-  | { kind: 'rate'; quantity: Decimal; unit: 'm²'; rate: Decimal }
+  | { kind: 'rate'; quantity: Decimal; denominator: AreaType; rate: Decimal }
 
 /**
  * Вклад в цену (DC-44, DRIVER-007).
@@ -206,7 +216,11 @@ export function calculateBuilding(
   drivers.push({
     key: 'basis', exact: base, label: 'Grundleistung',
       origin: 'base' as const,
-    scopeRefs: SCOPE_BAUWERK_BASE, basis: null,
+    scopeRefs: SCOPE_BAUWERK_BASE,
+    basis: {
+      kind: 'rate', quantity: b.bgfAboveGround,
+      denominator: 'BGF_ABOVE_GROUND', rate: cat.kBase,
+    },
   })
 
   // Форма: множитель только если он есть в каталоге. MFH — базовая.
@@ -263,25 +277,58 @@ export function calculateBuilding(
   }
   running = running.plus(ehUplift)
 
-  // Подземный этаж. Ставка уже включает надбавку за паркинг, поэтому
-  // отдельной опции «Tiefgaragen-Zuschlag» при этом варианте существовать
-  // не может — иначе работа посчиталась бы дважды (CALC-013).
+  // Подземный этаж: РЕЖИМ ОТДЕЛКИ и ПАРКИНГ — две независимые величины.
+  //
+  // Прежняя редакция знала один случай, «vollausbau с паркингом», и брала
+  // единственную слитую ставку 1.190. Следствий было два, и оба находились
+  // на живых контролах: `ab_decke` проваливался в нулевой default — подвал
+  // есть, стоит 0 € (запрещённый ноль, правило 16), — а `vollausbau` без
+  // паркинга считался на 90 €/m² дороже, потому что `hasParking` объявлен
+  // во входе и не читался ни разу (сплошное ревью 26, находки 6 и 7).
+  //
+  // Надбавка выделена ОТДЕЛЬНЫМ вкладом, а не спрятана в ставку: иначе
+  // Kostentreiber не может назвать её причиной, а продавец — снять.
+  const UG_RATE_KEY = {
+    kein_ug: null,
+    ab_decke: 'abDecke',
+    vollausbau: 'vollausbau',
+  } as const
   let ug = new Decimal(0)
-  if (b.untergeschoss === 'vollausbau') {
-    ug = b.bgfBelowGround.mul(cat.costFactors.untergeschoss.vollausbauMitTiefgarage)
+  const ugKey = UG_RATE_KEY[b.untergeschoss]
+  if (ugKey && b.bgfBelowGround.gt(0)) {
+    const baseRate = cat.costFactors.untergeschoss[ugKey]
+    ug = b.bgfBelowGround.mul(baseRate)
     drivers.push({
-      key: 'untergeschoss_mit_tiefgarage',
+      key: `untergeschoss_${b.untergeschoss}`,
       origin: 'decision' as const,
       exact: ug,
-      label: 'Untergeschoss inkl. Tiefgarage',
+      label: b.untergeschoss === 'vollausbau'
+        ? 'Untergeschoss · Rohbau und Ausbau'
+        : 'Untergeschoss · nur Ausbau',
       // Вклад подвала — ставка × площадь, и поповер теперь это и
       // показывает: прежде он молчал о том, из чего сумма получена.
       basis: {
-        kind: 'rate', quantity: b.bgfBelowGround, unit: 'm²',
-        rate: cat.costFactors.untergeschoss.vollausbauMitTiefgarage,
+        kind: 'rate', quantity: b.bgfBelowGround,
+        denominator: 'BGF_BELOW_GROUND', rate: baseRate,
       },
       scopeRefs: SCOPE_UG,
     })
+    if (b.hasParking) {
+      const tgRate = cat.costFactors.untergeschoss.tiefgarageZuschlag
+      const tgAmount = b.bgfBelowGround.mul(tgRate)
+      ug = ug.plus(tgAmount)
+      drivers.push({
+        key: 'tiefgarage_zuschlag',
+        origin: 'decision' as const,
+        exact: tgAmount,
+        label: 'Tiefgarage · Lüftung, OS-Beschichtung, Tore',
+        basis: {
+          kind: 'rate', quantity: b.bgfBelowGround,
+          denominator: 'BGF_BELOW_GROUND', rate: tgRate,
+        },
+        scopeRefs: SCOPE_UG,
+      })
+    }
   }
 
   const bauwerk = running.plus(ug)

@@ -118,7 +118,13 @@ const UNIT_COUNT_LABEL: Record<UnitCountType, string> = {
   STELLPLAETZE: 'je Stellplatz',
 }
 
-const DENOMINATOR_LABEL: Record<AreaType, string> = {
+/**
+ * Подписи знаменателей — один экспортируемый источник. Прежде правая панель
+ * держала свои: `driverLabel` печатал «BGF oberirdisch» и «BGF unterirdisch»
+ * рядом со ставкой, взятой из каталога напрямую. Две записи об одном
+ * знаменателе расходятся при первой правке, и расходятся молча.
+ */
+export const DENOMINATOR_LABEL: Record<AreaType, string> = {
   BGF_TOTAL: 'BGF',
   BGF_ABOVE_GROUND: 'BGF oberirdisch',
   BGF_BELOW_GROUND: 'BGF unterirdisch',

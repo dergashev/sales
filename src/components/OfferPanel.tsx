@@ -4,7 +4,9 @@ import { activeBuilding, useStore } from '../state/store'
 import { CATALOG } from '../state/catalog'
 import { splitKg300 } from '../engine/risk'
 import derivedFx from '../fixtures/derived-prototype.json'
-import { NNBSP, present, rateLabel, formatDE, label as moneyLabel } from '../engine/money'
+import {
+  NNBSP, present, rateLabel, formatDE, DENOMINATOR_LABEL, label as moneyLabel,
+} from '../engine/money'
 import type { CostGroup, CoverageState, DriverBasis } from '../engine/calculate'
 import { Button, useCountUp, useReducedMotion } from './primitives'
 import { OriginPopover } from './OriginPopover'
@@ -419,10 +421,10 @@ export function OfferPanel() {
                           {/* Доступное имя строки называет направление словом,
                               округление и точное значение (DRIVER-004). */}
                           <span className="sr-only">
-                            {driverLabel(d.key, d.label, s)}, {richtung},
+                            {driverLabel(d.label, d.basis)}, {richtung},
                             rund {shown.display} Euro, exakt {formatDE(d.exact.abs(), 2)} Euro
                           </span>
-                          <span aria-hidden="true">{tx(driverLabel(d.key, d.label, s))}</span>
+                          <span aria-hidden="true">{tx(driverLabel(d.label, d.basis))}</span>
                           <span aria-hidden="true" className="a3-driver-direction">
                             {richtung}
                             {' · '}
@@ -695,25 +697,25 @@ function basisRows(basis: DriverBasis | null) {
       { label: 'Faktor', value: formatDE(basis.factor, 2) },
     ]
   }
+  const denom = DENOMINATOR_LABEL[basis.denominator]
   return [
-    { label: 'Menge', value: `${formatDE(basis.quantity, 2)}${NNBSP}${basis.unit}` },
-    { label: 'Satz', value: `${formatDE(basis.rate, 2)}${NNBSP}€/${basis.unit}` },
+    { label: `Menge · ${denom}`, value: `${formatDE(basis.quantity, 2)}${NNBSP}m²` },
+    { label: 'Satz', value: `${formatDE(basis.rate, 2)}${NNBSP}€/m²` },
   ]
 }
 
 function driverLabel(
-  key: string,
   engineLabel: string,
-  s: Parameters<typeof activeBuilding>[0],
+  basis: DriverBasis | null,
 ): string {
-  const b = activeBuilding(s)
-  if (key === 'basis') {
-    return `Basis ${formatDE(b.bgfAboveGround, 2)}${NNBSP}m² × ` +
-      `${formatDE(CATALOG.kBase, 0)}${NNBSP}€/m²${NNBSP}BGF oberirdisch`
-  }
-  if (key === 'untergeschoss_mit_tiefgarage') {
-    return `Untergeschoss inkl. Tiefgarage ${formatDE(b.bgfBelowGround, 2)}${NNBSP}m² × ` +
-      `${formatDE(CATALOG.costFactors.untergeschoss.vollausbauMitTiefgarage, 0)}${NNBSP}€/m²${NNBSP}BGF unterirdisch`
+  // Суффикс «количество × ставка» выводится ИЗ ОСНОВАНИЯ вклада, а не по
+  // списку ключей. Прежняя редакция перечисляла два ключа поимённо и брала
+  // ставку из каталога напрямую — второй источник той же величины, который
+  // разошёлся бы при первой правке ставки и промолчал бы о третьем ключе.
+  if (basis?.kind === 'rate') {
+    return `${engineLabel} · ${formatDE(basis.quantity, 2)}${NNBSP}m² × `
+      + `${formatDE(basis.rate, 0)}${NNBSP}€/m²${NNBSP}`
+      + DENOMINATOR_LABEL[basis.denominator]
   }
   return engineLabel
 }

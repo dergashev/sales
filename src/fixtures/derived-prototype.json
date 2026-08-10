@@ -1,583 +1,592 @@
 {
-  "$comment": "Значения, которых источники проекта не дают. Разрешены решением D-22 (06.08.2026) и обязаны нести пометку: каждое поле здесь имеет `provenance`, и оно доходит до интерфейса. Файл СОЗНАТЕЛЬНО отделён от demo-0001.json: тот выводится построителем из synthetic-fixtures.md с 27 сверками в Decimal, и смешивать выведенное с объявленным значило бы уничтожить смысл обеих категорий. Ни одно значение отсюда не является калиброванным.",
-  "provenanceLabel": "für den Prototyp abgeleitet, nicht kalibriert",
-  "marker": "⚙",
-  "buildings": {
-    "DEMO-B-A": {
-      "bgfSAboveGround": {
-        "value": "160.00",
-        "basis": "≈ 8 % der BGF R — Balkone und Loggien beim MFH"
-      },
-      "nrf": {
-        "value": "1700.00",
-        "basis": "≈ 85 % der BGF R+S — üblicher Konstruktionsflächenanteil"
-      },
-      "nufDin277": {
-        "value": null,
-        "basis": "beim Wohngebäude wird WFL nach WoFlV geführt, nicht NUF"
-      }
-    },
-    "DEMO-B-B": {
-      "bgfSAboveGround": {
-        "value": "0.00",
-        "basis": "Bürogebäude ohne Balkone"
-      },
-      "nrf": {
-        "value": "1020.00",
-        "basis": "≈ 85 % der BGF R+S"
-      },
-      "wflWoFlV": {
-        "value": null,
-        "basis": "beim Bürogebäude gilt NUF nach DIN 277, nicht WFL"
-      }
-    }
+ "$comment": "Значения, которых источники проекта не дают. Разрешены решением D-22 (06.08.2026) и обязаны нести пометку: каждое поле здесь имеет `provenance`, и оно доходит до интерфейса. Файл СОЗНАТЕЛЬНО отделён от demo-0001.json: тот выводится построителем из synthetic-fixtures.md с 27 сверками в Decimal, и смешивать выведенное с объявленным значило бы уничтожить смысл обеих категорий. Ни одно значение отсюда не является калиброванным.",
+ "provenanceLabel": "für den Prototyp abgeleitet, nicht kalibriert",
+ "marker": "⚙",
+ "buildings": {
+  "DEMO-B-A": {
+   "bgfSAboveGround": {
+    "value": "160.00",
+    "basis": "≈ 8 % der BGF R — Balkone und Loggien beim MFH"
+   },
+   "nrf": {
+    "value": "1700.00",
+    "basis": "≈ 85 % der BGF R+S — üblicher Konstruktionsflächenanteil"
+   },
+   "nufDin277": {
+    "value": null,
+    "basis": "beim Wohngebäude wird WFL nach WoFlV geführt, nicht NUF"
+   }
   },
-  "kg300": {
-    "$comment": "Ставки опций KG 300. Выведены по ориентирам BKI решением D-22 и НЕ откалиброваны. Модель: базовая ставка K_base описывает СТАНДАРТНЫЙ объём (Holz-Modulbau, UG с Tiefgarage), поэтому значение по умолчанию не создаёт вклада вовсе — цену меняет только отклонение. Так фикстурный итог остаётся воспроизводимым, а каждый вклад имеет причину.",
-    "groups": [
-      {
-        "id": "erdarbeiten",
-        "label": "Erdarbeiten",
-        "question": "Erdarbeiten in das Angebot aufnehmen?",
-        "denominator": "BGF_BELOW_GROUND",
-        "default": "ja",
-        "documented": true,
-        "documentRef": "Bauantrag_Mappe_Muster.pdf · Baugrubenaushub im Leistungsverzeichnis",
-        "choices": [
-          {
-            "value": "ja",
-            "label": "aufnehmen",
-            "rate": "0",
-            "basis": "im Standardumfang der Basisrate enthalten"
-          },
-          {
-            "value": "nein",
-            "label": "nicht aufnehmen",
-            "rate": "-95",
-            "basis": "Aushub und Entsorgung je m² BGF UG"
-          }
-        ]
-      },
-      {
-        "id": "bodenplatte",
-        "label": "Bodenplatte",
-        "question": "Bodenplatte in das Angebot aufnehmen?",
-        "denominator": "BGF_BELOW_GROUND",
-        "default": "ja",
-        "documented": false,
-        "choices": [
-          {
-            "value": "ja",
-            "label": "aufnehmen",
-            "rate": "0",
-            "basis": "im Standardumfang enthalten"
-          },
-          {
-            "value": "nein",
-            "label": "nicht aufnehmen",
-            "rate": "-150",
-            "basis": "Stahlbetonplatte inkl. Bewehrung je m² BGF UG"
-          }
-        ]
-      },
-      {
-        "id": "ugVariante",
-        "label": "Untergeschoss",
-        "question": "Welcher Leistungsumfang im Untergeschoss?",
-        "denominator": "BGF_BELOW_GROUND",
-        "default": "rohbauAusbau",
-        "documented": true,
-        "documentRef": "Grundrisse_Muster_V2.pdf · Tiefgarage im UG",
-        "choices": [
-          {
-            "value": "rohbauAusbau",
-            "label": "Rohbau und Ausbau",
-            "rate": "0",
-            "basis": "Standard: UG-Rate bereits in der Kalkulation"
-          },
-          {
-            "value": "nurAusbau",
-            "label": "nur Ausbau",
-            "rate": "-714",
-            "basis": "Rohbauanteil der UG-Rate entfaellt"
-          },
-          {
-            "value": "keins",
-            "label": "kein Untergeschoss im Angebot",
-            "rate": "-1190",
-            "basis": "die volle UG-Rate entfaellt"
-          }
-        ]
-      },
-      {
-        "id": "balkone",
-        "label": "Balkone",
-        "question": "Balkone in das Angebot aufnehmen?",
-        "denominator": "BGF_S",
-        "default": "ja",
-        "documented": true,
-        "documentRef": "Grundrisse_Muster_V2.pdf · Balkone und Loggien, WoFlV §4",
-        "choices": [
-          {
-            "value": "ja",
-            "label": "aufnehmen",
-            "rate": "0",
-            "basis": "Preis folgt aus dem gewaehlten Typ"
-          },
-          {
-            "value": "nein",
-            "label": "nicht aufnehmen",
-            "rate": "-820",
-            "basis": "die im Standard enthaltene Balkonkonstruktion entfaellt"
-          }
-        ]
-      },
-      {
-        "id": "balkonTyp",
-        "label": "Balkontyp",
-        "question": "Welche Balkonkonstruktion?",
-        "denominator": "BGF_S",
-        "default": "diagonal",
-        "documented": false,
-        "dependsOn": {
-          "group": "balkone",
-          "values": [
-            "ja"
-          ]
-        },
-        "choices": [
-          {
-            "value": "diagonal",
-            "label": "Balkone mit Diagonalabstuetzung",
-            "rate": "0",
-            "basis": "Standardkonstruktion, in der Basisrate enthalten"
-          },
-          {
-            "value": "stuetzen",
-            "label": "Balkone auf Stuetzen",
-            "rate": "140",
-            "basis": "Mehrpreis gegenueber Diagonalabstuetzung, Gruendung je Stuetze"
-          },
-          {
-            "value": "konsole",
-            "label": "Betonkonsolen",
-            "rate": "330",
-            "basis": "Mehrpreis gegenueber Diagonalabstuetzung, thermische Trennung"
-          }
-        ],
-        "$comment": "Ставки ОТНОСИТЕЛЬНЫ стандартной конструкции. Базовая ставка описывает стандартный объём, а балконы документированы как существующие — значит стандарт их уже содержит, и умолчание обязано стоить ноль. Абсолютная ставка у умолчания меняла бы фикстурный итог самим фактом открытия экрана."
-      },
-      {
-        "id": "egBauweise",
-        "label": "Erdgeschoss",
-        "question": "Bauweise im Erdgeschoss?",
-        "denominator": "BGF_ABOVE_GROUND",
-        "default": "holz",
-        "documented": true,
-        "documentRef": "Bauantrag_Mappe_Muster.pdf · Holzbauweise im Erlaeuterungsbericht",
-        "choices": [
-          {
-            "value": "holz",
-            "label": "Holzbau",
-            "rate": "0",
-            "basis": "Basisrate ist aus Holz-Modulbau abgeleitet"
-          },
-          {
-            "value": "massiv",
-            "label": "Massivbau",
-            "rate": "65",
-            "basis": "Mehrpreis massives EG je m² BGF R"
-          }
-        ]
-      },
-      {
-        "id": "garage",
-        "label": "Garage im Erdgeschoss",
-        "question": "Garage bzw. Stellplaetze im EG aufnehmen?",
-        "denominator": "BGF_ABOVE_GROUND",
-        "default": "ja",
-        "documented": true,
-        "documentRef": "Grundrisse_Muster_V2.pdf · Stellplaetze im Erdgeschoss",
-        "choices": [
-          {
-            "value": "ja",
-            "label": "aufnehmen",
-            "rate": "0",
-            "basis": "im Standardumfang enthalten"
-          },
-          {
-            "value": "nein",
-            "label": "nicht aufnehmen",
-            "rate": "-38",
-            "basis": "ohne Garagenausbau je m² BGF R"
-          }
-        ]
-      },
-      {
-        "id": "fassade",
-        "label": "Fassade",
-        "question": "Welche Fassade?",
-        "denominator": "BGF_ABOVE_GROUND",
-        "default": "timber",
-        "documented": false,
-        "choices": [
-          {
-            "value": "plaster",
-            "label": "Putz",
-            "rate": "-45",
-            "basis": "guenstiger als Holzfassade je m² BGF R"
-          },
-          {
-            "value": "timber",
-            "label": "Holz",
-            "rate": "0",
-            "basis": "Basisrate enthaelt die Holzfassade"
-          },
-          {
-            "value": "mixedTimber",
-            "label": "Putz im EG, Holz ab 1.OG",
-            "rate": "-12",
-            "basis": "Putzanteil nur im EG"
-          },
-          {
-            "value": "klinker",
-            "label": "Klinker",
-            "rate": "110",
-            "basis": "Verblendmauerwerk je m² BGF R"
-          },
-          {
-            "value": "mixedKlinker",
-            "label": "Putz im EG, Klinker ab 1.OG",
-            "rate": "82",
-            "basis": "Klinkeranteil ohne EG"
-          }
-        ]
-      },
-      {
-        "id": "klinkerFarbe",
-        "label": "Klinkerfarbe",
-        "question": "Farbe des Klinkers?",
-        "denominator": "BGF_ABOVE_GROUND",
-        "default": "rotbunt",
-        "documented": false,
-        "dependsOn": {
-          "group": "fassade",
-          "values": [
-            "klinker",
-            "mixedKlinker"
-          ]
-        },
-        "choices": [
-          {
-            "value": "rotbunt",
-            "label": "rotbunt",
-            "rate": "0",
-            "basis": "Standardsortiment ohne Aufpreis"
-          },
-          {
-            "value": "anthrazit",
-            "label": "anthrazit",
-            "rate": "9",
-            "basis": "Sondersortiment"
-          },
-          {
-            "value": "weissgrau",
-            "label": "weissgrau",
-            "rate": "14",
-            "basis": "Sondersortiment mit Verguetung"
-          }
-        ]
-      }
-    ]
-  },
-  "kg400": {
-    "$comment": "Разделы KG 400 по DIN 276. Та же модель, что у KG 300: базовая ставка описывает стандартное оснащение, умолчание стоит ноль, цену меняет отклонение. Ставки выведены по ориентирам BKI (D-22), не откалиброваны.",
-    "groups": [
-      {
-        "id": "kg420",
-        "label": "KG 420 · Waermeversorgung",
-        "question": "Waermeerzeugung im Angebot?",
-        "denominator": "BGF_ABOVE_GROUND",
-        "default": "waermepumpe",
-        "documented": true,
-        "documentRef": "Bauantrag_Mappe_Muster.pdf · Waermepumpe im Energiekonzept",
-        "choices": [
-          {
-            "value": "waermepumpe",
-            "label": "Luft-Wasser-Waermepumpe",
-            "rate": "0",
-            "basis": "Standardloesung der Basisrate"
-          },
-          {
-            "value": "fernwaerme",
-            "label": "Fernwaermeanschluss",
-            "rate": "-28",
-            "basis": "ohne Erzeuger, dafuer Uebergabestation"
-          },
-          {
-            "value": "gas",
-            "label": "Gas-Brennwert",
-            "rate": "-42",
-            "basis": "guenstiger in der Anschaffung, EH-Ziel gefaehrdet"
-          }
-        ]
-      },
-      {
-        "id": "kg430",
-        "label": "KG 430 · Raumlufttechnik",
-        "question": "Lueftung im Angebot?",
-        "denominator": "BGF_ABOVE_GROUND",
-        "default": "zentralWrg",
-        "documented": true,
-        "documentRef": "Bauantrag_Mappe_Muster.pdf · Lueftungskonzept mit Waermerueckgewinnung",
-        "choices": [
-          {
-            "value": "zentralWrg",
-            "label": "Zentrale Lueftung mit Waermerueckgewinnung",
-            "rate": "0",
-            "basis": "im Standard enthalten, Voraussetzung fuer EH 55"
-          },
-          {
-            "value": "dezentral",
-            "label": "Dezentrale Lueftungsgeraete",
-            "rate": "-18",
-            "basis": "geringerer Kanalaufwand"
-          },
-          {
-            "value": "keine",
-            "label": "keine Lueftungsanlage",
-            "rate": "-46",
-            "basis": "Fensterlueftung; Nachweis fuer EH-Standard entfaellt"
-          }
-        ]
-      },
-      {
-        "id": "kg440",
-        "label": "KG 440 · Elektrische Anlagen",
-        "question": "Umfang der Elektroinstallation?",
-        "denominator": "BGF_ABOVE_GROUND",
-        "default": "standard",
-        "documented": false,
-        "choices": [
-          {
-            "value": "standard",
-            "label": "Standardausstattung",
-            "rate": "0",
-            "basis": "in der Basisrate enthalten"
-          },
-          {
-            "value": "erhoeht",
-            "label": "Erhoehte Ausstattung mit Ladeinfrastruktur",
-            "rate": "34",
-            "basis": "Ladepunkte je Stellplatz und verstaerkte Zuleitung"
-          }
-        ]
-      },
-      {
-        "id": "kg460",
-        "label": "KG 460 · Foerderanlagen",
-        "question": "Personenaufzug im Angebot?",
-        "denominator": "BGF_ABOVE_GROUND",
-        "default": "ja",
-        "documented": true,
-        "documentRef": "Grundrisse_Muster_V2.pdf · Aufzugsschacht im Kern",
-        "choices": [
-          {
-            "value": "ja",
-            "label": "Personenaufzug",
-            "rate": "0",
-            "basis": "im Standard enthalten"
-          },
-          {
-            "value": "nein",
-            "label": "kein Aufzug",
-            "rate": "-22",
-            "basis": "entfaellt nur bei Gebaeudeklassen ohne Aufzugspflicht",
-            "blockedWhenGk": [
-              "GK_5"
-            ],
-            "blockedReason": "Ab GK 5 ist ein Personenaufzug erforderlich — die Wahl ist keine kaufmaennische Entscheidung"
-          }
-        ]
-      },
-      {
-        "id": "kg480",
-        "label": "KG 480 · Gebaeudeautomation",
-        "question": "Gebaeudeautomation im Angebot?",
-        "denominator": "BGF_ABOVE_GROUND",
-        "default": "keine",
-        "documented": false,
-        "choices": [
-          {
-            "value": "keine",
-            "label": "keine Automation",
-            "rate": "0",
-            "basis": "Basisrate ohne Automation"
-          },
-          {
-            "value": "basis",
-            "label": "Smart-Home-Basispaket",
-            "rate": "26",
-            "basis": "Heizung, Licht und Verschattung je Wohneinheit"
-          }
-        ]
-      }
-    ]
-  },
-  "zertifikate": {
-    "$comment": "Сертификаты качества. Отдельная ось от энергокласса: EH описывает энергетический стандарт здания, QNG и DGNB — процедуру подтверждения качества, и одно не выводится из другого. Ставки выведены (D-22). Ориентир для QNG взят из объявленного множителя EH 40-NH (QNG) 1,09 против EH 40 1,06 — разница в 3 процентных пункта базы.",
-    "groups": [
-      {
-        "id": "qng",
-        "label": "QNG-Siegel",
-        "question": "Qualitaetssiegel Nachhaltiges Gebaeude?",
-        "denominator": "BGF_ABOVE_GROUND",
-        "default": "keins",
-        "documented": false,
-        "choices": [
-          {
-            "value": "keins",
-            "label": "kein QNG",
-            "rate": "0",
-            "basis": "Basisrate ohne Siegelverfahren"
-          },
-          {
-            "value": "plus",
-            "label": "QNG-PLUS",
-            "rate": "46",
-            "basis": "Nachweisfuehrung und Oekobilanz, ca. 3 % der Basisrate"
-          },
-          {
-            "value": "premium",
-            "label": "QNG-PREMIUM",
-            "rate": "78",
-            "basis": "verschaerfte Grenzwerte und erweiterte Nachweise"
-          }
-        ]
-      },
-      {
-        "id": "dgnb",
-        "label": "DGNB-Zertifikat",
-        "question": "DGNB-Zertifizierung?",
-        "denominator": "BGF_ABOVE_GROUND",
-        "default": "keins",
-        "documented": false,
-        "choices": [
-          {
-            "value": "keins",
-            "label": "keine Zertifizierung",
-            "rate": "0",
-            "basis": "Basisrate ohne Zertifizierung"
-          },
-          {
-            "value": "silber",
-            "label": "DGNB SILBER",
-            "rate": "34",
-            "basis": "Auditierung und Dokumentation"
-          },
-          {
-            "value": "gold",
-            "label": "DGNB GOLD",
-            "rate": "62",
-            "basis": "zusaetzliche Massnahmen in mehreren Kriteriengruppen"
-          },
-          {
-            "value": "platin",
-            "label": "DGNB PLATIN",
-            "rate": "104",
-            "basis": "hoechste Erfuellungsgrade, planungsseitig fruehe Festlegung noetig"
-          }
-        ]
-      }
-    ]
-  },
-  "coverage": {
-    "$comment": "Ставки групп затрат, которые пользователь решает включать или нет. В отличие от опций KG 300/400 здесь умолчание НЕ ноль: эти группы в базовую ставку не входят вовсе (K_base описывает KG 300+400), поэтому включение действительно добавляет стоимость, а исключение ничего не отнимает. Ставки выведены (D-22), не откалиброваны.",
-    "rates": {
-      "KG_200": {
-        "rate": "48",
-        "denominator": "BGF_ABOVE_GROUND",
-        "label": "Vorbereitende Massnahmen",
-        "basis": "Baustelleneinrichtung, Erschliessungsanschluesse je m² BGF R"
-      },
-      "KG_500": {
-        "rate": "115",
-        "denominator": "BGF_ABOVE_GROUND",
-        "label": "Aussenanlagen und Freiflaechen",
-        "basis": "Wege, Stellplaetze im Freien, Bepflanzung je m² BGF R"
-      },
-      "KG_600": {
-        "rate": "62",
-        "denominator": "BGF_ABOVE_GROUND",
-        "label": "Ausstattung und Kunstwerke",
-        "basis": "Einbaukueche und Erstausstattung je m² BGF R"
-      },
-      "KG_800": {
-        "rate": "0",
-        "denominator": "BGF_ABOVE_GROUND",
-        "label": "Finanzierung",
-        "basis": "bauseits; im indikativen Angebot ohne Preisansatz"
-      }
-    }
-  },
-  "kg300Split": {
-    "$comment": "Третий уровень KG 300 — статическое разбиение (calculation-spec §2: «третий уровень KG в прототипе только для KG 300 как статическое разбиение ⚙»). Доли ВЫВЕДЕНЫ (D-22) ориентиром на типовое распределение жилого строительства и не калиброваны: они существуют, чтобы у надбавок за риск была объявленная база (KG 320 для Baugrundgutachten, calculation-spec §1.4), а не чтобы предсказывать смету подгруппы. Сумма долей = 1 проверяется юнит-тестом.",
-    "shares": {
-      "KG_310": {
-        "share": "0.04",
-        "label": "Baugrube · Erdbau"
-      },
-      "KG_320": {
-        "share": "0.11",
-        "label": "Gründung · Unterbau"
-      },
-      "KG_330": {
-        "share": "0.27",
-        "label": "Außenwände · Vertikale Baukonstruktionen"
-      },
-      "KG_340": {
-        "share": "0.13",
-        "label": "Innenwände · Vertikale Baukonstruktionen"
-      },
-      "KG_350": {
-        "share": "0.18",
-        "label": "Decken · Horizontale Baukonstruktionen"
-      },
-      "KG_360": {
-        "share": "0.11",
-        "label": "Dächer"
-      },
-      "KG_370": {
-        "share": "0.09",
-        "label": "Infrastrukturanlagen · Einbauten"
-      },
-      "KG_390": {
-        "share": "0.07",
-        "label": "Sonstige Maßnahmen für Baukonstruktionen"
-      }
-    }
-  },
-  "risiken": {
-    "$comment": "Risikozuschlag по D-02 и calculation-spec §1.4: «счёт за отсутствующий документ». Ставки и базы — из спецификации, не выведены. Применение НЕ по умолчанию: контрольный пример calculation-spec §6.1 надбавки не содержит, и молчаливое включение изменило бы нормативный спесимен (правило 32). Включается решением с событием, как Regionalfaktor (D-15).",
-    "items": [
-      {
-        "id": "RISK-BAUGRUND",
-        "label": "Baugrundgutachten liegt nicht vor",
-        "kategorie": "Baugrund",
-        "wahrscheinlichkeit": "mittel",
-        "base": "KG_320",
-        "rate": "0.04",
-        "remedy": "Baugrundgutachten beibringen — der Zuschlag entfällt"
-      },
-      {
-        "id": "RISK-STATIK",
-        "label": "Statik nicht geprüft",
-        "kategorie": "Tragwerk",
-        "wahrscheinlichkeit": "niedrig",
-        "base": "KG_300",
-        "rate": "0.02",
-        "remedy": "Geprüfte Statik beibringen — der Zuschlag entfällt"
-      }
-    ]
+  "DEMO-B-B": {
+   "bgfSAboveGround": {
+    "value": "0.00",
+    "basis": "Bürogebäude ohne Balkone"
+   },
+   "nrf": {
+    "value": "1020.00",
+    "basis": "≈ 85 % der BGF R+S"
+   },
+   "wflWoFlV": {
+    "value": null,
+    "basis": "beim Bürogebäude gilt NUF nach DIN 277, nicht WFL"
+   }
   }
+ },
+ "kg300": {
+  "$comment": "Ставки опций KG 300. Выведены по ориентирам BKI решением D-22 и НЕ откалиброваны. Модель: базовая ставка K_base описывает СТАНДАРТНЫЙ объём (Holz-Modulbau, UG с Tiefgarage), поэтому значение по умолчанию не создаёт вклада вовсе — цену меняет только отклонение. Так фикстурный итог остаётся воспроизводимым, а каждый вклад имеет причину.",
+  "groups": [
+   {
+    "id": "erdarbeiten",
+    "label": "Erdarbeiten",
+    "question": "Erdarbeiten in das Angebot aufnehmen?",
+    "denominator": "BGF_BELOW_GROUND",
+    "default": "ja",
+    "documented": true,
+    "documentRef": "Bauantrag_Mappe_Muster.pdf · Baugrubenaushub im Leistungsverzeichnis",
+    "choices": [
+     {
+      "value": "ja",
+      "label": "aufnehmen",
+      "rate": "0",
+      "basis": "im Standardumfang der Basisrate enthalten"
+     },
+     {
+      "value": "nein",
+      "label": "nicht aufnehmen",
+      "rate": "-95",
+      "basis": "Aushub und Entsorgung je m² BGF UG"
+     }
+    ]
+   },
+   {
+    "id": "bodenplatte",
+    "label": "Bodenplatte",
+    "question": "Bodenplatte in das Angebot aufnehmen?",
+    "denominator": "BGF_BELOW_GROUND",
+    "default": "ja",
+    "documented": false,
+    "choices": [
+     {
+      "value": "ja",
+      "label": "aufnehmen",
+      "rate": "0",
+      "basis": "im Standardumfang enthalten"
+     },
+     {
+      "value": "nein",
+      "label": "nicht aufnehmen",
+      "rate": "-150",
+      "basis": "Stahlbetonplatte inkl. Bewehrung je m² BGF UG"
+     }
+    ]
+   },
+   {
+    "id": "balkone",
+    "label": "Balkone",
+    "question": "Balkone in das Angebot aufnehmen?",
+    "denominator": "BGF_S",
+    "default": "ja",
+    "documented": true,
+    "documentRef": "Grundrisse_Muster_V2.pdf · Balkone und Loggien, WoFlV §4",
+    "choices": [
+     {
+      "value": "ja",
+      "label": "aufnehmen",
+      "rate": "0",
+      "basis": "Preis folgt aus dem gewaehlten Typ"
+     },
+     {
+      "value": "nein",
+      "label": "nicht aufnehmen",
+      "rate": "-820",
+      "basis": "die im Standard enthaltene Balkonkonstruktion entfaellt"
+     }
+    ]
+   },
+   {
+    "id": "balkonTyp",
+    "label": "Balkontyp",
+    "question": "Welche Balkonkonstruktion?",
+    "denominator": "BGF_S",
+    "default": "diagonal",
+    "documented": false,
+    "dependsOn": {
+     "group": "balkone",
+     "values": [
+      "ja"
+     ]
+    },
+    "choices": [
+     {
+      "value": "diagonal",
+      "label": "Balkone mit Diagonalabstuetzung",
+      "rate": "0",
+      "basis": "Standardkonstruktion, in der Basisrate enthalten"
+     },
+     {
+      "value": "stuetzen",
+      "label": "Balkone auf Stuetzen",
+      "rate": "140",
+      "basis": "Mehrpreis gegenueber Diagonalabstuetzung, Gruendung je Stuetze"
+     },
+     {
+      "value": "konsole",
+      "label": "Betonkonsolen",
+      "rate": "330",
+      "basis": "Mehrpreis gegenueber Diagonalabstuetzung, thermische Trennung"
+     }
+    ],
+    "$comment": "Ставки ОТНОСИТЕЛЬНЫ стандартной конструкции. Базовая ставка описывает стандартный объём, а балконы документированы как существующие — значит стандарт их уже содержит, и умолчание обязано стоить ноль. Абсолютная ставка у умолчания меняла бы фикстурный итог самим фактом открытия экрана."
+   },
+   {
+    "id": "egBauweise",
+    "label": "Erdgeschoss",
+    "question": "Bauweise im Erdgeschoss?",
+    "denominator": "BGF_ABOVE_GROUND",
+    "default": "holz",
+    "documented": true,
+    "documentRef": "Bauantrag_Mappe_Muster.pdf · Holzbauweise im Erlaeuterungsbericht",
+    "choices": [
+     {
+      "value": "holz",
+      "label": "Holzbau",
+      "rate": "0",
+      "basis": "Basisrate ist aus Holz-Modulbau abgeleitet"
+     },
+     {
+      "value": "massiv",
+      "label": "Massivbau",
+      "rate": "65",
+      "basis": "Mehrpreis massives EG je m² BGF R"
+     }
+    ]
+   },
+   {
+    "id": "garage",
+    "label": "Garage im Erdgeschoss",
+    "question": "Garage bzw. Stellplaetze im EG aufnehmen?",
+    "denominator": "BGF_ABOVE_GROUND",
+    "default": "ja",
+    "documented": true,
+    "documentRef": "Grundrisse_Muster_V2.pdf · Stellplaetze im Erdgeschoss",
+    "choices": [
+     {
+      "value": "ja",
+      "label": "aufnehmen",
+      "rate": "0",
+      "basis": "im Standardumfang enthalten"
+     },
+     {
+      "value": "nein",
+      "label": "nicht aufnehmen",
+      "rate": "-38",
+      "basis": "ohne Garagenausbau je m² BGF R"
+     }
+    ]
+   },
+   {
+    "id": "fassade",
+    "label": "Fassade",
+    "question": "Welche Fassade?",
+    "denominator": "BGF_ABOVE_GROUND",
+    "default": "timber",
+    "documented": false,
+    "choices": [
+     {
+      "value": "plaster",
+      "label": "Putz",
+      "rate": "-45",
+      "basis": "guenstiger als Holzfassade je m² BGF R"
+     },
+     {
+      "value": "timber",
+      "label": "Holz",
+      "rate": "0",
+      "basis": "Basisrate enthaelt die Holzfassade"
+     },
+     {
+      "value": "mixedTimber",
+      "label": "Putz im EG, Holz ab 1.OG",
+      "rate": "-12",
+      "basis": "Putzanteil nur im EG"
+     },
+     {
+      "value": "klinker",
+      "label": "Klinker",
+      "rate": "110",
+      "basis": "Verblendmauerwerk je m² BGF R"
+     },
+     {
+      "value": "mixedKlinker",
+      "label": "Putz im EG, Klinker ab 1.OG",
+      "rate": "82",
+      "basis": "Klinkeranteil ohne EG"
+     }
+    ]
+   },
+   {
+    "id": "klinkerFarbe",
+    "label": "Klinkerfarbe",
+    "question": "Farbe des Klinkers?",
+    "denominator": "BGF_ABOVE_GROUND",
+    "default": "rotbunt",
+    "documented": false,
+    "dependsOn": {
+     "group": "fassade",
+     "values": [
+      "klinker",
+      "mixedKlinker"
+     ]
+    },
+    "choices": [
+     {
+      "value": "rotbunt",
+      "label": "rotbunt",
+      "rate": "0",
+      "basis": "Standardsortiment ohne Aufpreis"
+     },
+     {
+      "value": "anthrazit",
+      "label": "anthrazit",
+      "rate": "9",
+      "basis": "Sondersortiment"
+     },
+     {
+      "value": "weissgrau",
+      "label": "weissgrau",
+      "rate": "14",
+      "basis": "Sondersortiment mit Verguetung"
+     }
+    ]
+   }
+  ],
+  "$removed_ugVariante": {
+   "$comment": "Группа снята 10.08: она моделировала ТО ЖЕ решение, что ось `untergeschoss` уровня Building, и несла собственные дельты −714 / −1190 от слитой ставки 1.190. Числа расходились со спецификацией (ab_decke + TG = 350 + 90 = 440, а дельта давала 476), а два независимых контрола над одной физической областью позволяли вычесть стоимость подвала дважды (сплошное ревью 26, находки 5 и 19). Решение принадлежит уровню Building (D-11 v2); цену считает движок по трём ставкам каталога. Карточки с изображениями сохранены: они переехали на ось `untergeschoss` и показывают те же три варианта.",
+   "imagesMovedTo": "building.untergeschoss",
+   "valueMap": {
+    "vollausbau": "rohbauAusbau",
+    "ab_decke": "nurAusbau",
+    "kein_ug": "keins"
+   },
+   "former": {
+    "id": "ugVariante",
+    "label": "Untergeschoss",
+    "question": "Welcher Leistungsumfang im Untergeschoss?",
+    "denominator": "BGF_BELOW_GROUND",
+    "default": "rohbauAusbau",
+    "documented": true,
+    "documentRef": "Grundrisse_Muster_V2.pdf · Tiefgarage im UG",
+    "choices": [
+     {
+      "value": "rohbauAusbau",
+      "label": "Rohbau und Ausbau",
+      "rate": "0",
+      "basis": "Standard: UG-Rate bereits in der Kalkulation"
+     },
+     {
+      "value": "nurAusbau",
+      "label": "nur Ausbau",
+      "rate": "-714",
+      "basis": "Rohbauanteil der UG-Rate entfaellt"
+     },
+     {
+      "value": "keins",
+      "label": "kein Untergeschoss im Angebot",
+      "rate": "-1190",
+      "basis": "die volle UG-Rate entfaellt"
+     }
+    ]
+   }
+  }
+ },
+ "kg400": {
+  "$comment": "Разделы KG 400 по DIN 276. Та же модель, что у KG 300: базовая ставка описывает стандартное оснащение, умолчание стоит ноль, цену меняет отклонение. Ставки выведены по ориентирам BKI (D-22), не откалиброваны.",
+  "groups": [
+   {
+    "id": "kg420",
+    "label": "KG 420 · Waermeversorgung",
+    "question": "Waermeerzeugung im Angebot?",
+    "denominator": "BGF_ABOVE_GROUND",
+    "default": "waermepumpe",
+    "documented": true,
+    "documentRef": "Bauantrag_Mappe_Muster.pdf · Waermepumpe im Energiekonzept",
+    "choices": [
+     {
+      "value": "waermepumpe",
+      "label": "Luft-Wasser-Waermepumpe",
+      "rate": "0",
+      "basis": "Standardloesung der Basisrate"
+     },
+     {
+      "value": "fernwaerme",
+      "label": "Fernwaermeanschluss",
+      "rate": "-28",
+      "basis": "ohne Erzeuger, dafuer Uebergabestation"
+     },
+     {
+      "value": "gas",
+      "label": "Gas-Brennwert",
+      "rate": "-42",
+      "basis": "guenstiger in der Anschaffung, EH-Ziel gefaehrdet"
+     }
+    ]
+   },
+   {
+    "id": "kg430",
+    "label": "KG 430 · Raumlufttechnik",
+    "question": "Lueftung im Angebot?",
+    "denominator": "BGF_ABOVE_GROUND",
+    "default": "zentralWrg",
+    "documented": true,
+    "documentRef": "Bauantrag_Mappe_Muster.pdf · Lueftungskonzept mit Waermerueckgewinnung",
+    "choices": [
+     {
+      "value": "zentralWrg",
+      "label": "Zentrale Lueftung mit Waermerueckgewinnung",
+      "rate": "0",
+      "basis": "im Standard enthalten, Voraussetzung fuer EH 55"
+     },
+     {
+      "value": "dezentral",
+      "label": "Dezentrale Lueftungsgeraete",
+      "rate": "-18",
+      "basis": "geringerer Kanalaufwand"
+     },
+     {
+      "value": "keine",
+      "label": "keine Lueftungsanlage",
+      "rate": "-46",
+      "basis": "Fensterlueftung; Nachweis fuer EH-Standard entfaellt"
+     }
+    ]
+   },
+   {
+    "id": "kg440",
+    "label": "KG 440 · Elektrische Anlagen",
+    "question": "Umfang der Elektroinstallation?",
+    "denominator": "BGF_ABOVE_GROUND",
+    "default": "standard",
+    "documented": false,
+    "choices": [
+     {
+      "value": "standard",
+      "label": "Standardausstattung",
+      "rate": "0",
+      "basis": "in der Basisrate enthalten"
+     },
+     {
+      "value": "erhoeht",
+      "label": "Erhoehte Ausstattung mit Ladeinfrastruktur",
+      "rate": "34",
+      "basis": "Ladepunkte je Stellplatz und verstaerkte Zuleitung"
+     }
+    ]
+   },
+   {
+    "id": "kg460",
+    "label": "KG 460 · Foerderanlagen",
+    "question": "Personenaufzug im Angebot?",
+    "denominator": "BGF_ABOVE_GROUND",
+    "default": "ja",
+    "documented": true,
+    "documentRef": "Grundrisse_Muster_V2.pdf · Aufzugsschacht im Kern",
+    "choices": [
+     {
+      "value": "ja",
+      "label": "Personenaufzug",
+      "rate": "0",
+      "basis": "im Standard enthalten"
+     },
+     {
+      "value": "nein",
+      "label": "kein Aufzug",
+      "rate": "-22",
+      "basis": "entfaellt nur bei Gebaeudeklassen ohne Aufzugspflicht",
+      "blockedWhenGk": [
+       "GK_5"
+      ],
+      "blockedReason": "Ab GK 5 ist ein Personenaufzug erforderlich — die Wahl ist keine kaufmaennische Entscheidung"
+     }
+    ]
+   },
+   {
+    "id": "kg480",
+    "label": "KG 480 · Gebaeudeautomation",
+    "question": "Gebaeudeautomation im Angebot?",
+    "denominator": "BGF_ABOVE_GROUND",
+    "default": "keine",
+    "documented": false,
+    "choices": [
+     {
+      "value": "keine",
+      "label": "keine Automation",
+      "rate": "0",
+      "basis": "Basisrate ohne Automation"
+     },
+     {
+      "value": "basis",
+      "label": "Smart-Home-Basispaket",
+      "rate": "26",
+      "basis": "Heizung, Licht und Verschattung je Wohneinheit"
+     }
+    ]
+   }
+  ]
+ },
+ "zertifikate": {
+  "$comment": "Сертификаты качества. Отдельная ось от энергокласса: EH описывает энергетический стандарт здания, QNG и DGNB — процедуру подтверждения качества, и одно не выводится из другого. Ставки выведены (D-22). Ориентир для QNG взят из объявленного множителя EH 40-NH (QNG) 1,09 против EH 40 1,06 — разница в 3 процентных пункта базы.",
+  "groups": [
+   {
+    "id": "qng",
+    "label": "QNG-Siegel",
+    "question": "Qualitaetssiegel Nachhaltiges Gebaeude?",
+    "denominator": "BGF_ABOVE_GROUND",
+    "default": "keins",
+    "documented": false,
+    "choices": [
+     {
+      "value": "keins",
+      "label": "kein QNG",
+      "rate": "0",
+      "basis": "Basisrate ohne Siegelverfahren"
+     },
+     {
+      "value": "plus",
+      "label": "QNG-PLUS",
+      "rate": "46",
+      "basis": "Nachweisfuehrung und Oekobilanz, ca. 3 % der Basisrate"
+     },
+     {
+      "value": "premium",
+      "label": "QNG-PREMIUM",
+      "rate": "78",
+      "basis": "verschaerfte Grenzwerte und erweiterte Nachweise"
+     }
+    ]
+   },
+   {
+    "id": "dgnb",
+    "label": "DGNB-Zertifikat",
+    "question": "DGNB-Zertifizierung?",
+    "denominator": "BGF_ABOVE_GROUND",
+    "default": "keins",
+    "documented": false,
+    "choices": [
+     {
+      "value": "keins",
+      "label": "keine Zertifizierung",
+      "rate": "0",
+      "basis": "Basisrate ohne Zertifizierung"
+     },
+     {
+      "value": "silber",
+      "label": "DGNB SILBER",
+      "rate": "34",
+      "basis": "Auditierung und Dokumentation"
+     },
+     {
+      "value": "gold",
+      "label": "DGNB GOLD",
+      "rate": "62",
+      "basis": "zusaetzliche Massnahmen in mehreren Kriteriengruppen"
+     },
+     {
+      "value": "platin",
+      "label": "DGNB PLATIN",
+      "rate": "104",
+      "basis": "hoechste Erfuellungsgrade, planungsseitig fruehe Festlegung noetig"
+     }
+    ]
+   }
+  ]
+ },
+ "coverage": {
+  "$comment": "Ставки групп затрат, которые пользователь решает включать или нет. В отличие от опций KG 300/400 здесь умолчание НЕ ноль: эти группы в базовую ставку не входят вовсе (K_base описывает KG 300+400), поэтому включение действительно добавляет стоимость, а исключение ничего не отнимает. Ставки выведены (D-22), не откалиброваны.",
+  "rates": {
+   "KG_200": {
+    "rate": "48",
+    "denominator": "BGF_ABOVE_GROUND",
+    "label": "Vorbereitende Massnahmen",
+    "basis": "Baustelleneinrichtung, Erschliessungsanschluesse je m² BGF R"
+   },
+   "KG_500": {
+    "rate": "115",
+    "denominator": "BGF_ABOVE_GROUND",
+    "label": "Aussenanlagen und Freiflaechen",
+    "basis": "Wege, Stellplaetze im Freien, Bepflanzung je m² BGF R"
+   },
+   "KG_600": {
+    "rate": "62",
+    "denominator": "BGF_ABOVE_GROUND",
+    "label": "Ausstattung und Kunstwerke",
+    "basis": "Einbaukueche und Erstausstattung je m² BGF R"
+   },
+   "KG_800": {
+    "rate": "0",
+    "denominator": "BGF_ABOVE_GROUND",
+    "label": "Finanzierung",
+    "basis": "bauseits; im indikativen Angebot ohne Preisansatz"
+   }
+  }
+ },
+ "kg300Split": {
+  "$comment": "Третий уровень KG 300 — статическое разбиение (calculation-spec §2: «третий уровень KG в прототипе только для KG 300 как статическое разбиение ⚙»). Доли ВЫВЕДЕНЫ (D-22) ориентиром на типовое распределение жилого строительства и не калиброваны: они существуют, чтобы у надбавок за риск была объявленная база (KG 320 для Baugrundgutachten, calculation-spec §1.4), а не чтобы предсказывать смету подгруппы. Сумма долей = 1 проверяется юнит-тестом.",
+  "shares": {
+   "KG_310": {
+    "share": "0.04",
+    "label": "Baugrube · Erdbau"
+   },
+   "KG_320": {
+    "share": "0.11",
+    "label": "Gründung · Unterbau"
+   },
+   "KG_330": {
+    "share": "0.27",
+    "label": "Außenwände · Vertikale Baukonstruktionen"
+   },
+   "KG_340": {
+    "share": "0.13",
+    "label": "Innenwände · Vertikale Baukonstruktionen"
+   },
+   "KG_350": {
+    "share": "0.18",
+    "label": "Decken · Horizontale Baukonstruktionen"
+   },
+   "KG_360": {
+    "share": "0.11",
+    "label": "Dächer"
+   },
+   "KG_370": {
+    "share": "0.09",
+    "label": "Infrastrukturanlagen · Einbauten"
+   },
+   "KG_390": {
+    "share": "0.07",
+    "label": "Sonstige Maßnahmen für Baukonstruktionen"
+   }
+  }
+ },
+ "risiken": {
+  "$comment": "Risikozuschlag по D-02 и calculation-spec §1.4: «счёт за отсутствующий документ». Ставки и базы — из спецификации, не выведены. Применение НЕ по умолчанию: контрольный пример calculation-spec §6.1 надбавки не содержит, и молчаливое включение изменило бы нормативный спесимен (правило 32). Включается решением с событием, как Regionalfaktor (D-15).",
+  "items": [
+   {
+    "id": "RISK-BAUGRUND",
+    "label": "Baugrundgutachten liegt nicht vor",
+    "kategorie": "Baugrund",
+    "wahrscheinlichkeit": "mittel",
+    "base": "KG_320",
+    "rate": "0.04",
+    "remedy": "Baugrundgutachten beibringen — der Zuschlag entfällt"
+   },
+   {
+    "id": "RISK-STATIK",
+    "label": "Statik nicht geprüft",
+    "kategorie": "Tragwerk",
+    "wahrscheinlichkeit": "niedrig",
+    "base": "KG_300",
+    "rate": "0.02",
+    "remedy": "Geprüfte Statik beibringen — der Zuschlag entfällt"
+   }
+  ]
+ }
 }

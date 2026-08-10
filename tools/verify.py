@@ -5648,6 +5648,23 @@ class Verifier:
             for g in data.get(sec, {}).get('groups', []):
                 for c in g.get('choices', []):
                     values.add((g['id'], c['value']))
+            # Снятая группа, чьи изображения ПЕРЕЕХАЛИ на ось уровня Building,
+            # остаётся законным владельцем своих файлов. Соответствие
+            # объявлено в фикстуре полем `valueMap`, а не выводится из
+            # совпадения имён: иначе первое же переименование варианта
+            # молча превратило бы живое изображение в сироту. Условие —
+            # именно объявление: без `imagesMovedTo` файлы остаются сиротами
+            # и предупреждение работает как прежде.
+            for key, removed in data.get(sec, {}).items():
+                if not key.startswith('$removed_') or not isinstance(removed, dict):
+                    continue
+                if not removed.get('imagesMovedTo'):
+                    continue
+                gid = (removed.get('former') or {}).get('id')
+                if not gid:
+                    continue
+                for v in (removed.get('valueMap') or {}).values():
+                    values.add((gid, v))
         if man is None:
             self.warn.append(
                 f'{WARN_OPT_IMAGE}: манифест изображений отсутствует — '

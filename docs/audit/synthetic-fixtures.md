@@ -123,6 +123,9 @@ K_base = 1.545 €/m² BGF R oberirdisch
   F_gk: GK 1–3 = 0,95 · GK 4 = 1,00 · GK 5 = 1,05
   F_energie: EH 55 = 1,03 · EH 40 = 1,06
   F_form_büro = 1,05
+  UG-Sätze по режиму отделки (calculation-spec §1):
+    vollausbau = 1.100 · ab_decke = 350 · Tiefgaragen-Zuschlag = + 90
+    — все €/m² BGF UG; надбавка складывается с базовой ставкой при has_parking
   UG vollausbau + TG = 1.100 + 90 = 1.190 €/m² BGF UG
 
 Факторы СРОКА — отдельная таблица (bauzeit-methodology §2.2), НЕ совпадает

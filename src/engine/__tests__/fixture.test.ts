@@ -39,7 +39,11 @@ const cat: Catalog = {
       Object.entries(catalog.costFactors.gebaeudeform).map(([k, v]) => [k, D(v)]),
     ),
     untergeschoss: {
-      vollausbauMitTiefgarage: D(catalog.costFactors.untergeschoss.vollausbauMitTiefgarage),
+      vollausbau: D(catalog.costFactors.untergeschoss.vollausbau),
+      abDecke: D(catalog.costFactors.untergeschoss.abDecke),
+      tiefgarageZuschlag: D(catalog.costFactors.untergeschoss.tiefgarageZuschlag),
+      vollausbauMitTiefgarage:
+        D(catalog.costFactors.untergeschoss.vollausbauMitTiefgarage),
     },
   },
   regionalFactor: { active: false, value: D(catalog.regionalFactor.value) },
@@ -120,10 +124,13 @@ describe('движок воспроизводит фикстуру', () => {
 })
 
 describe('инвариант: сумма драйверов равна итогу', () => {
-  it('Haus A — четыре драйвера складываются в итог', () => {
+  it('пять драйверов Haus A складываются в итог', () => {
     const res = calculateBuilding(hausA, cat, COVERAGE_FIXTURE)
     expect(driversSum(res.drivers).toFixed(2)).toBe(res.total.exact.toFixed(2))
-    expect(res.drivers).toHaveLength(4)
+    // База, класс, энергостандарт, подвал и надбавка за паркинг. Подвал и
+    // паркинг разделены (ревью 26, находки 6 и 7); сумма не изменилась,
+    // потому что 1.100 + 90 = 1.190.
+    expect(res.drivers).toHaveLength(5)
   })
 
   it('сплит KG складывается в итог, тотал не меняется (D-07)', () => {
@@ -135,6 +142,68 @@ describe('инвариант: сумма драйверов равна итог�
     expect(split.KG_300.toFixed(2)).toBe(fx.KG_300.exact)
     expect(split.KG_400.toFixed(2)).toBe(fx.KG_400.exact)
     expect(split.KG_700.toFixed(2)).toBe(fx.KG_700.exact)
+  })
+})
+
+describe('Подвал: режим отделки и паркинг — две независимые оси', () => {
+  const ug = (mode: BuildingInput['untergeschoss'], hasParking: boolean) =>
+    calculateBuilding(
+      { ...hausA, untergeschoss: mode, hasParking }, cat, COVERAGE_FIXTURE,
+    )
+  const ugPart = (mode: BuildingInput['untergeschoss'], hasParking: boolean) =>
+    ug(mode, hasParking).drivers
+      .filter((d) => d.scopeRefs.includes('UG'))
+      .reduce((a, d) => a.plus(d.exact), new Decimal(0))
+
+  it('четыре комбинации дают четыре РАЗНЫЕ суммы подвала', () => {
+    // 400 m² UG. Прежний движок знал одну: vollausbau с паркингом.
+    expect(ugPart('vollausbau', true).toFixed(2)).toBe('476000.00')
+    expect(ugPart('vollausbau', false).toFixed(2)).toBe('440000.00')
+    expect(ugPart('ab_decke', true).toFixed(2)).toBe('176000.00')
+    expect(ugPart('ab_decke', false).toFixed(2)).toBe('140000.00')
+  })
+
+  it('`ab_decke` перестал быть нулём — подвал есть, значит стоит (правило 16)', () => {
+    expect(ugPart('ab_decke', true).isZero()).toBe(false)
+    // Прежний движок покрывал только `vollausbau`, и выбор `ab_decke`
+    // убирал из оффера всю стоимость подвала, не добавляя ничего.
+    expect(ugPart('ab_decke', true).lt(ugPart('vollausbau', true))).toBe(true)
+  })
+
+  it('`hasParking` действительно читается: разница ровно ставка × площадь', () => {
+    const delta = ugPart('vollausbau', true).minus(ugPart('vollausbau', false))
+    expect(delta.toFixed(2)).toBe('36000.00')
+    expect(delta.toFixed(2))
+      .toBe(hausA.bgfBelowGround
+        .mul(cat.costFactors.untergeschoss.tiefgarageZuschlag).toFixed(2))
+  })
+
+  it('надбавка — ОТДЕЛЬНЫЙ вклад, иначе её нечем назвать и нечем снять', () => {
+    const withPark = ug('vollausbau', true).drivers.map((d) => d.key)
+    expect(withPark).toContain('untergeschoss_vollausbau')
+    expect(withPark).toContain('tiefgarage_zuschlag')
+    expect(ug('vollausbau', false).drivers.map((d) => d.key))
+      .not.toContain('tiefgarage_zuschlag')
+  })
+
+  it('нет подземной площади — нет и вклада, при любом режиме', () => {
+    for (const mode of ['vollausbau', 'ab_decke', 'kein_ug'] as const) {
+      const r = calculateBuilding(
+        { ...hausA, untergeschoss: mode, bgfBelowGround: new Decimal(0) },
+        cat, COVERAGE_FIXTURE,
+      )
+      expect(r.drivers.some((d) => d.scopeRefs.includes('UG')), mode).toBe(false)
+    }
+  })
+
+  it('сумма драйверов сходится с итогом во всех четырёх комбинациях', () => {
+    for (const mode of ['vollausbau', 'ab_decke'] as const) {
+      for (const hasParking of [true, false]) {
+        const r = ug(mode, hasParking)
+        expect(driversSum(r.drivers).toFixed(2), `${mode}/${hasParking}`)
+          .toBe(r.total.exact.toFixed(2))
+      }
+    }
   })
 })
 

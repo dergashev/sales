@@ -1,6 +1,7 @@
 import { Decimal } from 'decimal.js'
 import derived from '../fixtures/derived-prototype.json'
 import type { BuildingInput, Driver } from './calculate'
+import type { AreaType } from './money'
 
 /**
  * Опции KG 300 как вклады в цену.
@@ -91,6 +92,17 @@ function scopeOf(groupId: string): string {
   return 'KG 300'
 }
 
+/**
+ * Знаменатель опции — тот же типизированный `AreaType`, что у ставок. Имя
+ * оси в фикстуре и имя площади в движке совпадают по значению, но не по
+ * написанию, поэтому соответствие объявлено, а не угадано.
+ */
+const AREA_OF: Record<OptionGroup['denominator'], AreaType> = {
+  BGF_ABOVE_GROUND: 'BGF_ABOVE_GROUND',
+  BGF_BELOW_GROUND: 'BGF_BELOW_GROUND',
+  BGF_S: 'BGF_S',
+}
+
 function denominatorValue(
   b: BuildingInput,
   denominator: OptionGroup['denominator'],
@@ -129,7 +141,9 @@ export function optionDrivers(
       exact: qty.mul(rate),
       label: `${g.label} · ${choice.label}`,
       scopeRefs: [scopeOf(g.id)],
-      basis: { kind: 'rate', quantity: qty, unit: 'm²', rate },
+      basis: {
+        kind: 'rate', quantity: qty, denominator: AREA_OF[g.denominator], rate,
+      },
     })
   }
   return out
@@ -173,7 +187,9 @@ export function coverageDrivers(
       exact: qty.mul(rate),
       label: `${kg.replace('_', ' ')} · ${spec.label}`,
       scopeRefs: [kg.replace('_', ' ')],
-      basis: { kind: 'rate', quantity: qty, unit: 'm²', rate },
+      basis: {
+        kind: 'rate', quantity: qty, denominator: AREA_OF[spec.denominator], rate,
+      },
     })
   }
   return out

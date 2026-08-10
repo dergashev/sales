@@ -25,7 +25,11 @@ export const CATALOG: Catalog = {
       Object.entries(catalogJson.costFactors.gebaeudeform).map(([k, v]) => [k, D(v)]),
     ),
     untergeschoss: {
-      vollausbauMitTiefgarage: D(catalogJson.costFactors.untergeschoss.vollausbauMitTiefgarage),
+      vollausbau: D(catalogJson.costFactors.untergeschoss.vollausbau),
+      abDecke: D(catalogJson.costFactors.untergeschoss.abDecke),
+      tiefgarageZuschlag: D(catalogJson.costFactors.untergeschoss.tiefgarageZuschlag),
+      vollausbauMitTiefgarage:
+        D(catalogJson.costFactors.untergeschoss.vollausbauMitTiefgarage),
     },
   },
   regionalFactor: { active: false, value: D(catalogJson.regionalFactor.value) },

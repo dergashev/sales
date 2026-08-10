@@ -9,6 +9,7 @@ import { Decimal } from 'decimal.js'
 import { Button, NumericField } from '../components/primitives'
 import { ClientNotice } from '../components/ClientNotice'
 import { RadioCardGroup, SegmentedControl } from '../components/controls'
+import { optionImage } from '../assets/option-images'
 import { ScheduleGantt } from '../components/ScheduleGantt'
 import { ChapterBuildings } from './ChapterBuildings'
 import { OptionChapter } from './OptionChapter'
@@ -35,6 +36,17 @@ import { present, label as moneyLabel } from '../engine/money'
  * (класс здания не подтверждён по MBO §2), клиентские профили закрыты
  * гейтом в правой панели.
  */
+
+/**
+ * Имена изображений остались от снятой опции `ugVariante`: снимки сделаны
+ * по TASK-18 и описывают ровно эти три состояния подвала. Соответствие
+ * объявлено здесь, а не угадывается по совпадению строк.
+ */
+const UG_IMAGE_VALUE: Record<'vollausbau' | 'ab_decke' | 'kein_ug', string> = {
+  vollausbau: 'rohbauAusbau',
+  ab_decke: 'nurAusbau',
+  kein_ug: 'keins',
+}
 
 export const CHAPTERS = [
   'Gebäude & Umfang', 'Leistungen KG 300', 'Leistungsabgrenzung', 'Technik KG 400',
@@ -326,6 +338,15 @@ function ChapterFlaechen() {
         intro={'Die Vorschau am Preis erscheint beim Zeigen auf eine Option — ' +
           'entschieden ist erst der Klick.'}
       >
+        {/* Одно решение — один владелец. Прежде тот же выбор существовал
+            ВТОРОЙ раз опцией `ugVariante` в главе KG 300, со своими
+            дельтами −714 / −1190 от слитой ставки 1.190: числа расходились
+            со спецификацией на 36 €/m², а два контрола над одной физической
+            областью позволяли вычесть подвал дважды (ревью 26, находки 5 и
+            19). Ось принадлежит уровню Building (D-11 v2), цену считает
+            движок по трём ставкам каталога — а карточки с изображениями
+            переехали сюда, потому что выбор объёма подвала и должен
+            выглядеть выбором, а не полем формы. */}
         <RadioCardGroup
           legend="Untergeschoss"
           legendHidden
@@ -336,6 +357,7 @@ function ChapterFlaechen() {
           options={(['vollausbau', 'ab_decke', 'kein_ug'] as const).map((v) => ({
             value: v,
             title: LABEL_UG[v],
+            image: optionImage('ugVariante', UG_IMAGE_VALUE[v]),
             consequence: activeBuilding(s).untergeschoss === v
               ? 'aktuelle Auswahl'
               : consequenceLabel(s.optionDelta({ kind: 'untergeschoss', value: v })),

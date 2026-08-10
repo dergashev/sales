@@ -92,7 +92,11 @@ describe('DC-44: сумма драйверов обязана давать ит�
       ['basis', '3090000.00'],
       ['gebaeudeklasse_GK_5', '154500.00'],
       ['energiestandard_EH_55', '97335.00'],
-      ['untergeschoss_mit_tiefgarage', '476000.00'],
+      // Подвал и паркинг — два вклада, а не один: слитая ставка 1.190
+      // делала `ab_decke` нулём, а `hasParking` — нечитаемым (ревью 26,
+      // находки 6 и 7). Сумма прежняя, потому что 1.100 + 90 = 1.190.
+      ['untergeschoss_vollausbau', '440000.00'],
+      ['tiefgarage_zuschlag', '36000.00'],
     ])
     const sum = p.result.drivers.reduce((a, d) => a.plus(d.exact), new Decimal(0))
     expect(sum.toFixed(2)).toBe('3817835.00')
@@ -297,7 +301,7 @@ describe('DC-44: направление, отнесение и ID вклада',
     const ds = useStore.getState().projection().result.drivers
     expect(new Set(ds.map((d) => d.key)).size).toBe(ds.length)
     expect(ds.find((d) => d.key === 'basis')!.scopeRefs).toEqual(['KG 300', 'KG 400'])
-    expect(ds.find((d) => d.key === 'untergeschoss_mit_tiefgarage')!.scopeRefs)
+    expect(ds.find((d) => d.key === 'untergeschoss_vollausbau')!.scopeRefs)
       .toEqual(['UG'])
   })
 
@@ -315,7 +319,8 @@ describe('DC-44: направление, отнесение и ID вклада',
   it('экономящий драйвер поддержан симметрично: знак отрицателен, сумма сходится', () => {
     useStore.getState().setUntergeschoss('kein_ug')
     const r = useStore.getState().projection().result
-    expect(r.drivers.some((d) => d.key === 'untergeschoss_mit_tiefgarage')).toBe(false)
+    expect(r.drivers.some((d) => d.key.startsWith('untergeschoss_'))).toBe(false)
+    expect(r.drivers.some((d) => d.key === 'tiefgarage_zuschlag')).toBe(false)
     const sum = r.drivers.reduce((a, d) => a.plus(d.exact), new Decimal(0))
     expect(sum.equals(r.total.exact)).toBe(true)
   })
@@ -790,16 +795,16 @@ describe('Происхождение вкладов: корзина показы
     // подтверждают, а не выбирают, — в «выбранном» ему не место.
     expect(byKey['gebaeudeklasse_GK_5']).toBe('fact')
     expect(byKey['energiestandard_EH_55']).toBe('decision')
-    expect(byKey['untergeschoss_mit_tiefgarage']).toBe('decision')
+    expect(byKey['untergeschoss_vollausbau']).toBe('decision')
   })
 
   it('выбор подвала попадает в решения — префиксный фильтр его терял', () => {
     const decisions = () => st().projection().result.drivers
       .filter((d) => d.origin === 'decision').map((d) => d.key)
-    expect(decisions()).toContain('untergeschoss_mit_tiefgarage')
+    expect(decisions()).toContain('untergeschoss_vollausbau')
     st().setUntergeschoss('kein_ug')
     // Решение снято — вклад исчез вместе с ним, сумма изменилась.
-    expect(decisions()).not.toContain('untergeschoss_mit_tiefgarage')
+    expect(decisions()).not.toContain('untergeschoss_vollausbau')
   })
 
   it('каждый вклад объявляет происхождение — новый драйвер не проскочит', () => {
