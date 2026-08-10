@@ -130,3 +130,76 @@ describe('Option: идентификатор монотонен, отмена о
     expect(st().projection().result.total.exact.toFixed(2)).toBe(firstTotal)
   })
 })
+
+describe('эфемерное состояние принадлежит контексту (находка 35)', () => {
+  it('переключение Option гасит дельту, призрак и тост предыдущей', async () => {
+    await toPipeline()
+    st().createOption('Option 2')
+    st().setKg300('fassade', 'klinker')
+    st().previewOption({ kind: 'coverage', group: 'KG_500', value: 'included' })
+    expect(st().activeDelta).not.toBeNull()
+    expect(st().preview).not.toBeNull()
+    expect(st().undoToast).not.toBeNull()
+
+    st().openOption('OPT-01')
+
+    // Прежде продавец видел в Option 1 дельту и тост от Option 2, а
+    // «Rückgängig» на этом тосте молча не делал ничего: курсор отмены
+    // контекст учитывает, а тост — нет.
+    expect(st().activeDelta).toBeNull()
+    expect(st().preview).toBeNull()
+    expect(st().undoToast).toBeNull()
+  })
+
+  it('возврат к списку гасит их же', async () => {
+    await toPipeline()
+    st().setKg300('fassade', 'klinker')
+    expect(st().undoToast).not.toBeNull()
+    st().backToList()
+    expect(st().undoToast).toBeNull()
+    expect(st().activeDelta).toBeNull()
+  })
+})
+
+describe('скидка принадлежит варианту, а не экрану (находка 14)', () => {
+  it('итог, снапшот и печать говорят одно число', async () => {
+    await toPipeline()
+    const base = st().projection().result.total.exact
+    st().setDiscount(new Decimal('3'))
+
+    // Проекция уже содержит скидку: прежде её знал только контрол.
+    const withDiscount = st().projection().result.total.exact
+    expect(withDiscount.toFixed(2)).toBe(base.mul('0.97').toFixed(2))
+    // От ТОЧНОГО итога, не от показанного (CALC-007).
+    expect(withDiscount.toFixed(2)).not.toBe(
+      new Decimal(st().projection().result.total.display.replace(/\./g, ''))
+        .mul('0.97').toFixed(2))
+
+    const snap = st().sendOffer('email')
+    expect(snap.totalExact).toBe(withDiscount.toFixed(2))
+    expect(snap.discountPercent).toBe('3.0')
+    const print = st().sendOffer('print')
+    expect(print.discountPercent).toBe('3.0')
+  })
+
+  it('скидка переживает уход с экрана и принадлежит своей Option', async () => {
+    await toPipeline()
+    st().setDiscount(new Decimal('5'))
+    st().createOption('Option 2')
+    // Свежая Option начинает без скидки — она конфигурация варианта.
+    expect(st().discountPercent).toBeNull()
+    st().openOption('OPT-01')
+    expect(st().discountPercent!.toFixed(1)).toBe('5.0')
+  })
+
+  it('скидка — событие журнала с дельтой и отменяется', async () => {
+    await toPipeline()
+    const before = st().projection().result.total.exact
+    st().setDiscount(new Decimal('3'))
+    const ev = st().journal.at(-1)!
+    expect(ev.deltaExact!.isNegative()).toBe(true)
+    st().undo()
+    expect(st().discountPercent).toBeNull()
+    expect(st().projection().result.total.exact.toFixed(2)).toBe(before.toFixed(2))
+  })
+})

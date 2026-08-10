@@ -152,7 +152,7 @@ describe('M-4/M-3: обход журнала невозможен по пост�
 
   it('снапшот неприкосновенен: ни поле не меняется, ни список не чистится', () => {
     useStore.getState().confirmGebaeudeklasse()
-    const snap = useStore.getState().sendOffer('email', null)
+    const snap = useStore.getState().sendOffer('email')
     expect(() => { snap.totalExact = '0.00' }).toThrow()
     expect(() => (useStore.getState().snapshots as OfferSnapshot[]).splice(0, 1)).toThrow()
     const stored = useStore.getState().snapshots[0]!
@@ -222,7 +222,7 @@ describe('DC-29: Undo-тост — производная журнала', () =>
     useStore.getState().confirmGebaeudeklasse()
     useStore.getState().setCoverage('KG_500', 'excluded')
     expect(useStore.getState().undoToast).not.toBeNull()
-    useStore.getState().sendOffer('email', null)
+    useStore.getState().sendOffer('email')
     expect(useStore.getState().undoToast).toBeNull()
   })
 
@@ -461,9 +461,15 @@ describe('M-4: недостаточно happy-path — курсор отмены
 
   it('отправка создаёт снапшот с флагом Regionalfaktor и точным итогом', () => {
     useStore.getState().toggleRegionalfaktor()
-    const snap = useStore.getState().sendOffer('email', '3.0')
+    // Скидка больше не передаётся аргументом отправки: она часть
+    // конфигурации, и снапшот берёт её оттуда же, откуда берёт расчёт.
+    // Аргумент позволял отправить одно, а показать другое (находка 14).
+    useStore.getState().setDiscount(new Decimal('3'))
+    const snap = useStore.getState().sendOffer('email')
     expect(snap.regionalfaktorActive).toBe(true)
-    expect(snap.totalExact).toBe('4123261.80')
+    // Итог снапшота — СО скидкой: прежде контрол показывал 3.703.300 €,
+    // а снапшот хранил 3.817.835 €.
+    expect(snap.totalExact).toBe('3999563.95')
     expect(snap.discountPercent).toBe('3.0')
     const s = useStore.getState()
     expect(s.snapshots).toHaveLength(1)
@@ -780,7 +786,7 @@ describe('Настоящая модель Option (ревью № 13, дефек�
     prepare()
     st().createOption('Basis')
     st().openOption('OPT-01')
-    const snap = st().sendOffer('email', null)
+    const snap = st().sendOffer('email')
     expect(snap.optionId).toBe('OPT-01')
     expect(snap.optionName).toBe('Basis')
   })
@@ -834,7 +840,7 @@ describe('Отправленный снапшот устаревает отно�
 
   it('журнал позволяет посчитать ценовые изменения ПОСЛЕ отправки', () => {
     st().confirmGebaeudeklasse()
-    const snap = st().sendOffer('email', null)
+    const snap = st().sendOffer('email')
     const after = () => st().journal.filter(
       (e) => e.seq > snap.journalSeqAt && e.deltaExact !== null).length
     // Сразу после отправки расхождения нет: снимок равен состоянию.

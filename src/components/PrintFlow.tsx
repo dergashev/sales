@@ -123,13 +123,13 @@ export function PrintFlow({ returnFocusTo }: {
               disabledReason={blocked
                 ? 'clientPrint blockiert; interner Export bleibt mit Kennzeichnung «Nur intern» verfügbar'
                 : undefined}
-              onClick={() => { s.sendOffer('print', null); onClose() }}
+              onClick={() => { s.sendOffer('print'); onClose() }}
             >
               {tx('Druckauftrag starten')}
             </Button>
             {/* Внутренний экспорт остаётся доступным и при блокировке —
                 он маркирован «Nur intern» и клиенту не адресован. */}
-            <Button onClick={() => { s.sendOffer('print', null); onClose() }}>
+            <Button onClick={() => { s.sendOffer('print'); onClose() }}>
               {tx('Internen Muster-Export erzeugen')}
             </Button>
             <Button variant="ghost"

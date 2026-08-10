@@ -45,7 +45,7 @@ describe('S5: гейт отправки', () => {
   })
 
   it('offer.emailed — событие журнала со снапшотом', () => {
-    useStore.getState().sendOffer('email', null)
+    useStore.getState().sendOffer('email')
     expect(useStore.getState().journal.at(-1)!.kind).toBe('offer.emailed')
     expect(useStore.getState().snapshots).toHaveLength(1)
   })

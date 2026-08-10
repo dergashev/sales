@@ -8,7 +8,9 @@ import {
   type BuildingInput, type Coverage, type CoverageState,
   type CostGroup, type BuildingResult,
 } from '../engine/calculate'
-import { present, rate, NNBSP, type Displayed, type Rate } from '../engine/money'
+import {
+  present, rate, NNBSP, formatDE, type Displayed, type Rate,
+} from '../engine/money'
 import { defaultOptionChoices, optionDrivers, coverageDrivers, ALL_OPTION_GROUPS } from '../engine/options'
 import derivedFx from '../fixtures/derived-prototype.json'
 import { modelDuration, presentDuration, type DurationDisplay } from '../engine/schedule'
@@ -164,13 +166,15 @@ export type OptionConfig = {
    * значило бы убирать здание из оффера кликом по вкладке.
    */
   scopeBuildingId: string | null
+  /** Скидка принадлежит варианту, а не экрану (находка 14). */
+  discountPercent: Decimal | null
 }
 
 const OPTION_CONFIG_KEYS = [
   'buildings', 'activeBuildingId', 'included', 'buildingConfirmed',
   'kg300', 'kg300Provenance', 'kg700Mode', 'coverage', 'fields',
   'esConfirmed', 'regionalfaktorActive', 'risikoAktiv',
-  'openChapter', 'besuchteKapitel', 'scopeBuildingId',
+  'openChapter', 'besuchteKapitel', 'scopeBuildingId', 'discountPercent',
 ] as const satisfies ReadonlyArray<keyof OptionConfig>
 
 /** Снять конфигурацию активной Option с плоского состояния. */
@@ -270,6 +274,7 @@ function defaultOptionConfig(): OptionConfig {
     // входят в предложение. Открывать её на середине конвейера значило бы
     // объявить непройденные шаги пройденными (ревью № 13, дефект 7).
     openChapter: 1,
+    discountPercent: null,
     besuchteKapitel: [1],
     scopeBuildingId: null,
   }
@@ -406,6 +411,16 @@ type Store = {
   noteText: string
   noteSavedAt: string | null
   noteSyncedAt: string | null
+  /**
+   * Скидка в процентах — часть КОНФИГУРАЦИИ Option, а не состояние экрана.
+   *
+   * Прежде она жила в `useState` экрана экспорта: контрол показывал итог со
+   * скидкой, A4-предпросмотр и отправленный снапшот — итог без неё, печать
+   * передавала `discountPercent: null`, а возврат на экран скидку стирал
+   * (сплошное ревью 26, находка 14). Величина, влияющая на цену и не
+   * входящая в проекцию, — это второй итог, о котором проекция не знает.
+   */
+  discountPercent: Decimal | null
   /** Созданные Opportunity Options. Сравниваются между собой (S4). */
   options: Array<{ id: string; name: string }>
   activeOptionId: string | null
@@ -469,7 +484,14 @@ type Store = {
   resolveWflConflict: (candidate: 'document' | 'customer') => void
   activateGrundrisse: (v: 'V2' | 'V1') => void
   toggleRegionalfaktor: () => void
-  sendOffer: (kind: 'email' | 'print', discountPercent: string | null) => OfferSnapshot
+  /**
+   * Отправка. Скидка НЕ передаётся аргументом: она часть конфигурации, и
+   * снапшот берёт её оттуда же, откуда её берёт расчёт. Аргумент позволял
+   * отправить одно, а показать другое — и позволял печати передать `null`.
+   */
+  sendOffer: (kind: 'email' | 'print') => OfferSnapshot
+  /** Скидка как решение: событие журнала с дельтой (D-25, CALC-007). */
+  setDiscount: (percent: Decimal | null) => void
   clearDelta: () => void
   openChapterAt: (n: number) => void
   /** DC-28: показать последствие решения до клика; null — погасить. */
@@ -529,6 +551,22 @@ type Store = {
   /** Переключить охват показа: null — весь комплекс (DC-46). */
   setScope: (buildingId: string | null) => void
 }
+
+/**
+ * Эфемерное состояние, привязанное к КОНТЕКСТУ, а не к приложению.
+ *
+ * Дельта-чип, призрак и тост отмены рассказывают о последнем действии — а
+ * действие принадлежит своей Option. Прежде они были глобальными и
+ * переживали переключение: открыв Option B, продавец видел дельту и тост
+ * от Option A, а нажатие «Rückgängig» на нём молча не делало ничего,
+ * потому что курсор отмены контекст как раз учитывает (сплошное ревью 26,
+ * находка 35). Состояние утверждало одно, курсор — другое.
+ */
+const NO_TRANSIENT = {
+  activeDelta: null,
+  preview: null,
+  undoToast: null,
+} as const
 
 /**
  * Событие, которое отменит следующий `undo()`. Одно определение на всех:
@@ -701,7 +739,7 @@ function withChange<S extends Parameters<typeof computeProjection>[0] & {
 function computeProjection(
   s: Pick<Store, 'buildings' | 'activeBuildingId' | 'included' | 'coverage'
     | 'fields' | 'esConfirmed' | 'regionalfaktorActive' | 'kg300' | 'kg700Mode'
-    | 'risikoAktiv' | 'scopeBuildingId'>,
+    | 'risikoAktiv' | 'scopeBuildingId' | 'discountPercent'>,
 ): Projection {
   const CATALOG = withRegionalFactor(s.regionalfaktorActive)
   const list = scopedBuildings(s)
@@ -772,10 +810,29 @@ function computeProjection(
     const d = riskDriver(risk, kg300Exact)
     if (d) optDrivers.push(d)
   }
+  const separateSum = sumOfBlock(
+    [...perBuilding.flatMap((r) => r.drivers), ...optDrivers], 'separatePosition')
+  const surchargeSum = sumOfBlock(
+    [...perBuilding.flatMap((r) => r.drivers), ...optDrivers], 'surcharge')
+  // Скидка — «после всего» (`calculation-spec` §2) и от ТОЧНОГО итога, не от
+  // показанного (CALC-007). Она вклад, а не постобработка: иначе итог и
+  // Kostentreiber расходятся, и снапшот хранит цену, которой не было на
+  // экране (сплошное ревью 26, находка 14).
+  const beforeDiscount = bauwerkBlock.plus(separateSum).plus(surchargeSum)
+  if (s.discountPercent && !s.discountPercent.isZero()) {
+    const factor = s.discountPercent.div(100)
+    optDrivers.push({
+      key: 'rabatt',
+      origin: 'decision' as const,
+      block: 'discount' as const,
+      exact: beforeDiscount.mul(factor).negated(),
+      label: `Rabatt ${formatDE(s.discountPercent, 1)}${NNBSP}%`,
+      scopeRefs: [],
+      basis: { kind: 'factor', appliedTo: beforeDiscount, factor },
+    })
+  }
   const allDrivers = [...perBuilding.flatMap((r) => r.drivers), ...optDrivers]
-  const separateSum = sumOfBlock(allDrivers, 'separatePosition')
-  const surchargeSum = sumOfBlock(allDrivers, 'surcharge')
-  const total = bauwerkBlock.plus(separateSum).plus(surchargeSum)
+  const total = beforeDiscount.plus(sumOfBlock(allDrivers, 'discount'))
   const result: BuildingResult = {
     buildingId: list.map((b) => b.id).join('+'),
     drivers: [
@@ -930,6 +987,7 @@ const store = createStore<Store>((set, get) => {
     options: [],
     activeOptionId: null,
     optionSeq: 0,
+    discountPercent: null,
     uiLanguage: 'de',
     density: 'komfortabel',
 
@@ -1178,7 +1236,28 @@ const store = createStore<Store>((set, get) => {
      * событие ссылается на него; inverse отсутствует намеренно —
      * отправленное неприкосновенно, отменить отправку нельзя.
      */
-    sendOffer: (kind, discountPercent) => {
+    setDiscount: (percent) => {
+      const s = get()
+      const prev = s.discountPercent
+      const same = (a: Decimal | null, b: Decimal | null) =>
+        (a === null && b === null) || (!!a && !!b && a.equals(b))
+      if (same(prev, percent)) return
+      const before = s.projection().result.total.exact
+      set({ discountPercent: percent })
+      const after = get().projection().result.total.exact
+      const delta = after.minus(before)
+      apply({
+        kind: 'value.edited',
+        label: percent
+          ? `Rabatt ${formatDE(percent, 1)}${NNBSP}% angewendet`
+          : 'Rabatt zurückgenommen',
+        deltaExact: delta.isZero() ? null : delta,
+        inverse: () => set({ discountPercent: prev }),
+        forward: () => set({ discountPercent: percent }),
+      })
+    },
+
+    sendOffer: (kind) => {
       const s = get()
       const p = s.projection()
       const snap: OfferSnapshot = {
@@ -1192,7 +1271,7 @@ const store = createStore<Store>((set, get) => {
         uncertaintyPp: p.uncertaintyPp,
         regionalfaktorActive: s.regionalfaktorActive,
         coverage: { ...s.coverage },
-        discountPercent,
+        discountPercent: s.discountPercent ? s.discountPercent.toFixed(1) : null,
         journalSeqAt: s.journal.length,
       }
       // Снапшот неприкосновенен по построению (M-3): и сам объект, и список.
@@ -1324,6 +1403,7 @@ const store = createStore<Store>((set, get) => {
     backToList: () => {
       const s = get()
       set({
+        ...NO_TRANSIENT,
         level: 'liste',
         activeOptionId: null,
         // Рабочая копия покидаемой Option убирается в хранилище — иначе
@@ -1387,6 +1467,7 @@ const store = createStore<Store>((set, get) => {
         }
       }
       set({
+        ...NO_TRANSIENT,
         options: [...s.options, { id, name }],
         activeOptionId: id,
         optionSeq: seq,
@@ -1484,6 +1565,7 @@ const store = createStore<Store>((set, get) => {
         )
       }
       set({
+        ...NO_TRANSIENT,
         level: 'option',
         activeOptionId: id,
         pipelineView: 'konfigurator',

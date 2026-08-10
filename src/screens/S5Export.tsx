@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react'
-import { Decimal } from 'decimal.js'
 import { activeBuilding, useStore } from '../state/store'
 import { NNBSP } from '../engine/money'
 import { DiscountControl } from '../components/DiscountControl'
@@ -56,7 +55,6 @@ export function S5Export() {
   )
   // Скидка — величина, а не флаг: контракт DC-25 требует слайдер со
   // значением, а не два состояния «есть / нет».
-  const [discountPct, setDiscountPct] = useState<Decimal | null>(null)
   const [stage, setStage] = useState<Stage>('compose')
   const [body, setBody] = useState(
     'Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unser indikatives ' +
@@ -137,10 +135,13 @@ export function S5Export() {
 
           <h2 className="mt-6 text-heading-3 font-bold text-text-primary">{tx('Rabatt')}</h2>
           <div className="mt-2">
+            {/* Скидка живёт в конфигурации Option, а не в состоянии экрана:
+                иначе контрол показывает одно, снапшот хранит другое, а
+                возврат на экран её стирает (находка 14). */}
             <DiscountControl
               totalExact={total}
-              percent={discountPct}
-              onChange={setDiscountPct}
+              percent={s.discountPercent}
+              onChange={(v) => s.setDiscount(v)}
               mode={s.mode}
             />
           </div>
@@ -267,7 +268,7 @@ export function S5Export() {
                     // которого клиент получил числа, зафиксировано до письма.
                     // В снапшот идёт ФАКТИЧЕСКИЙ процент, а не признак «скидка была»:
                     // снапшот обязан воспроизводить числа клиента (M-3).
-                    s.sendOffer('email', discountPct ? discountPct.toFixed(1) : null)
+                    s.sendOffer('email')
                     setStage('gesendet')
                     setTimeout(() => setStage('zugestellt'), DELIVERY_SIMULATION_MS)
                   }}
