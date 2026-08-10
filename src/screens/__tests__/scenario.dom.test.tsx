@@ -279,6 +279,29 @@ describe('Сквозной сценарий продажи', () => {
   })
 
 
+  it('предупреждение у клиента свёрнуто в точку, у продавца развёрнуто (DC-7, правило 11)', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await enterPipeline(user)
+    await user.click(nav(/Leistungsabgrenzung/))
+
+    // Внутри: список причин, с которым можно работать.
+    expect(screen.getByText(/Deckungsentscheidung noch offen/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Hinweis' })).toBeNull()
+
+    // У клиента: та же правда, свёрнутая в нейтральную точку.
+    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
+    await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
+    await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
+
+    expect(screen.queryByText(/Deckungsentscheidung noch offen/)).toBeNull()
+    const dot = screen.getAllByRole('button', { name: 'Hinweis' })[0]!
+    expect(dot).toHaveAttribute('aria-expanded', 'false')
+    await user.click(dot)
+    // Клиентская формулировка упрощает детали, но не меняет правду.
+    expect(screen.getByText(/noch nicht entschieden/)).toBeInTheDocument()
+  })
+
   it('клиентская поверхность не цитирует реестр требований (MODE-001, дефект 13)', async () => {
     const user = userEvent.setup()
     render(<App />)

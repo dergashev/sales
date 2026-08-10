@@ -7,6 +7,7 @@ import type { BuildingInput } from '../engine/calculate'
 import type { CostGroup, CoverageState } from '../engine/calculate'
 import { Decimal } from 'decimal.js'
 import { Button, NumericField } from '../components/primitives'
+import { ClientNotice } from '../components/ClientNotice'
 import { RadioCardGroup, SegmentedControl } from '../components/controls'
 import { ScheduleGantt } from '../components/ScheduleGantt'
 import { ChapterBuildings } from './ChapterBuildings'
@@ -256,15 +257,21 @@ function ChapterUmfang() {
       <Card title="Folge für die Angebotssumme">
         <p className="text-body text-text-primary">{tx(p.result.totalLabel)}</p>
         {p.result.completeness === 'incomplete' && (
-          <ul className="mt-2">
-            {p.result.incompleteReasons.map((r) => (
-              <li key={r.code + ('groups' in r ? r.groups.join() : '')}
-                  className="a3-cap">
-                <span aria-hidden="true">○ </span>
-                {tx(incompleteReasonText(r, s.mode))}
-              </li>
-            ))}
-          </ul>
+          /* Правило 11: у клиента предупреждение свёрнуто в нейтральную
+             точку, у продавца остаётся списком причин, с которым можно
+             работать. Существенная проблема сюда не попадает по
+             построению: с ней клиентский вид не открывается вовсе. */
+          <ClientNotice clientText="Einzelne Kostengruppen sind noch nicht entschieden — das Angebot weist deshalb eine Zwischensumme aus.">
+            <ul className="mt-2">
+              {p.result.incompleteReasons.map((r) => (
+                <li key={r.code + ('groups' in r ? r.groups.join() : '')}
+                    className="a3-cap">
+                  <span aria-hidden="true">○ </span>
+                  {tx(incompleteReasonText(r, s.mode))}
+                </li>
+              ))}
+            </ul>
+          </ClientNotice>
         )}
         {p.result.completeness === 'complete' && (
           <p className="a3-cap mt-2">

@@ -9,6 +9,7 @@ import type { CostGroup, CoverageState } from '../engine/calculate'
 import { Button, useCountUp, useReducedMotion } from './primitives'
 import { OriginPopover } from './OriginPopover'
 import { ClientOutputGateDialog } from './ClientOutputGateDialog'
+import { ClientNotice } from './ClientNotice'
 import { UncertaintyBand } from './UncertaintyBand'
 import { useT, useTx } from '../i18n'
 
@@ -587,11 +588,13 @@ export function OfferPanel() {
           <p className="mt-2 text-small text-text-muted">{tx('Zeilen werden unabhängig gerundet; die Prüfung läuft über exakte Werte.')}</p>
           </>)}
           {kgOpen && notIncluded.length > 0 && (
-            <p className="a3-cap mt-2">
-              ▸ Nicht enthalten / noch offen:{' '}
-              {notIncluded.map((g) =>
-                `${g.replace('_', NNBSP)}${NNBSP}${COVERAGE_SHORT[s.coverage[g]]}`).join(' · ')}
-            </p>
+            <ClientNotice clientText="Nicht alle Kostengruppen sind Bestandteil dieses Angebots; die Abgrenzung steht in der Leistungsübersicht.">
+              <p className="a3-cap mt-2">
+                ▸ {tx('Nicht enthalten / noch offen')}:{' '}
+                {notIncluded.map((g) =>
+                  `${g.replace('_', NNBSP)}${NNBSP}${COVERAGE_SHORT[s.coverage[g]]}`).join(' · ')}
+              </p>
+            </ClientNotice>
           )}
         </section>
       </div>

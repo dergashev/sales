@@ -121,4 +121,13 @@ export const DATA_STATE_DECLARATIONS: Record<
     stale: { status: 'notApplicable', reason: 'тур не отображает расчётных значений — устаревать нечему' },
     permission: { status: 'implemented', where: 'praesentation: ни тура, ни кнопки запуска не существует — тур объясняет инструмент, а не оффер' },
   },
+  clientNotice: {
+    loading: { status: 'notApplicable', reason: 'текст предупреждения известен в момент рендера: он выводится из состояния покрытия, а не загружается' },
+    empty: { status: 'notApplicable', reason: 'точка появляется только когда есть что сообщить; нечего сообщать — значит точки нет (контракт DC-7 называет это прямо)' },
+    partial: { status: 'notApplicable', reason: 'предупреждение либо есть, либо нет: половины у него не бывает' },
+    ready: { status: 'implemented', where: 'свёрнутая точка с нейтральным текстом в поповере' },
+    error: { status: 'notApplicable', reason: 'компонент ничего не выполняет — он показывает то, что уже вычислено' },
+    stale: { status: 'notApplicable', reason: 'текст выводится из текущего состояния при каждом рендере' },
+    permission: { status: 'implemented', where: 'существует ТОЛЬКО в клиентских профилях; во внутреннем пространстве вместо точки остаётся развёрнутый список причин' },
+  },
 }
