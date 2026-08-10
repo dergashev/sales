@@ -208,6 +208,11 @@ function ChapterUmfang() {
           const spec = COVERAGE_RATES[g]
           const qty = b.bgfAboveGround
           const preis = spec ? new Decimal(spec.rate).mul(qty) : null
+          // `moneyLabel` возвращает строку СО знаком валюты. Шаблоны ниже
+          // добавляли второй, и карточки охвата показывали
+          // «+ 124.000 € € Mehrpreis». Поставка копирайта № 5 перенесла этот
+          // текст в словарь дословно и честно его пометила — дефект пережил
+          // и ревью, и перевод, потому что каждый слой считал его чужим.
           const money = preis && !preis.isZero()
             ? moneyLabel(present(preis)) : null
           return (
@@ -226,7 +231,7 @@ function ChapterUmfang() {
                     consequence: s.coverage[g] === 'included'
                       ? tx('aktuelle Auswahl')
                       : money
-                        ? `+${NNBSP}${money}${NNBSP}€${NNBSP}${tx('Mehrpreis')}`
+                        ? `+${NNBSP}${money}${NNBSP}${tx('Mehrpreis')}`
                         : tx('ohne Preisansatz im indikativen Angebot'),
                   },
                   {
@@ -236,7 +241,7 @@ function ChapterUmfang() {
                     consequence: s.coverage[g] === 'excluded'
                       ? tx('aktuelle Auswahl')
                       : money
-                        ? `−${NNBSP}${money}${NNBSP}€${NNBSP}${tx('gegenüber Aufnahme')}`
+                        ? `−${NNBSP}${money}${NNBSP}${tx('gegenüber Aufnahme')}`
                         : `±${NNBSP}0${NNBSP}€`,
                   },
                   {
@@ -310,6 +315,7 @@ function ChapterFlaechen() {
           label="Wohneinheiten"
           value={s.fields.we.value}
           decimals={0}
+          integer
           provenance={s.fields.we.provenance}
           onCommit={(v, c) => s.editField('we', v, c)}
         />

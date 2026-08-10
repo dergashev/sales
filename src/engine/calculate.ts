@@ -50,6 +50,26 @@ export type Catalog = {
 }
 
 /**
+ * Основание вклада — **одно типизированное поле**, а не два независимых.
+ *
+ * Прежняя пара `appliedTo`/`factor` допускала комбинацию «база есть,
+ * множителя нет», и на ней DC-21 падал: поповер по одному `appliedTo`
+ * печатал `formatDE(d.factor!)`, роняя весь экран при раскрытии любой
+ * ценовой опции (сплошное ревью 26, находка 1). Хуже падения было второе:
+ * ту же ветку он показывал у вкладов «ставка × количество», печатая
+ * `Angewendet auf 2.000,00 €` для двух тысяч **квадратных метров** — верный
+ * формат у неверной величины, и заметить это на переговорах нельзя.
+ *
+ * Тип запрещает обе ошибки по построению: у множителя есть база и
+ * множитель, у ставки — количество с единицей и сама ставка, а у плоской
+ * суммы основания нет вовсе. Единица живёт в данных, потому что выводить её
+ * из имени ключа — ровно та догадка, против которой заведено поле `origin`.
+ */
+export type DriverBasis =
+  | { kind: 'factor'; appliedTo: Decimal; factor: Decimal }
+  | { kind: 'rate'; quantity: Decimal; unit: 'm²'; rate: Decimal }
+
+/**
  * Вклад в цену (DC-44, DRIVER-007).
  *
  * `key` — уникальный ID вклада: один вклад не входит в два тотала и в два
@@ -60,17 +80,15 @@ export type Catalog = {
  * отнесения не объявлен, `scopeRefs` пуст — строка честно помечается
  * `Zuordnung offen`, а не приписывается наугад (R-25).
  *
- * `appliedTo`/`factor` заполняются у множителей и питают DC-21: поповер
- * происхождения обязан показать, к чему множитель применён, а не только
- * результат.
+ * `basis` питает DC-21: поповер происхождения обязан показать, из чего
+ * вклад получен, а не только результат.
  */
 export type Driver = {
   key: string
   exact: Decimal
   label: string
   scopeRefs: string[]
-  appliedTo: Decimal | null
-  factor: Decimal | null
+  basis: DriverBasis | null
   /**
    * Откуда взялся вклад. Поле, а не догадка по имени ключа: приёмка № 17
    * нашла «корзину», которая фильтровала драйверы префиксами `opt_/cov_/`
@@ -188,7 +206,7 @@ export function calculateBuilding(
   drivers.push({
     key: 'basis', exact: base, label: 'Grundleistung',
       origin: 'base' as const,
-    scopeRefs: SCOPE_BAUWERK_BASE, appliedTo: null, factor: null,
+    scopeRefs: SCOPE_BAUWERK_BASE, basis: null,
   })
 
   // Форма: множитель только если он есть в каталоге. MFH — базовая.
@@ -202,7 +220,8 @@ export function calculateBuilding(
     drivers.push({
       key: `gebaeudeform_${formKey}`, exact: uplift, label: 'Gebäudeform',
       origin: 'fact' as const,
-      scopeRefs: SCOPE_BAUWERK_BASE, appliedTo: running.minus(uplift), factor: f,
+      scopeRefs: SCOPE_BAUWERK_BASE,
+      basis: { kind: 'factor', appliedTo: running.minus(uplift), factor: f },
     })
   }
 
@@ -219,7 +238,8 @@ export function calculateBuilding(
       // выдуманы здесь.
       label: `Gebäudeklasse ${b.gebaeudeklasse.value.replace('GK_', '')} · `
         + 'Feuerwiderstand und Kapselung',
-      scopeRefs: SCOPE_BAUWERK_BASE, appliedTo: running, factor: gkFactor,
+      scopeRefs: SCOPE_BAUWERK_BASE,
+      basis: { kind: 'factor', appliedTo: running, factor: gkFactor },
     })
   }
   running = running.plus(gkUplift)
@@ -237,7 +257,8 @@ export function calculateBuilding(
       // следствий для энергостандарта источниками не объявлены, и
       // придумывать их здесь запрещено (R-25).
       label: `Energiestandard ${b.energiestandard.replace('_', ' ')}`,
-      scopeRefs: SCOPE_BAUWERK_BASE, appliedTo: running, factor: ehFactor,
+      scopeRefs: SCOPE_BAUWERK_BASE,
+      basis: { kind: 'factor', appliedTo: running, factor: ehFactor },
     })
   }
   running = running.plus(ehUplift)
@@ -253,7 +274,13 @@ export function calculateBuilding(
       origin: 'decision' as const,
       exact: ug,
       label: 'Untergeschoss inkl. Tiefgarage',
-      scopeRefs: SCOPE_UG, appliedTo: null, factor: null,
+      // Вклад подвала — ставка × площадь, и поповер теперь это и
+      // показывает: прежде он молчал о том, из чего сумма получена.
+      basis: {
+        kind: 'rate', quantity: b.bgfBelowGround, unit: 'm²',
+        rate: cat.costFactors.untergeschoss.vollausbauMitTiefgarage,
+      },
+      scopeRefs: SCOPE_UG,
     })
   }
 
@@ -266,8 +293,10 @@ export function calculateBuilding(
     drivers.push({
       key: 'regionalfaktor', exact: regional, label: 'Regionalfaktor',
       origin: 'decision' as const,
-      scopeRefs: SCOPE_BAUWERK_FULL, appliedTo: bauwerk,
-      factor: cat.regionalFactor.value,
+      scopeRefs: SCOPE_BAUWERK_FULL,
+      basis: {
+        kind: 'factor', appliedTo: bauwerk, factor: cat.regionalFactor.value,
+      },
     })
   }
 

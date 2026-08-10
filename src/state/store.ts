@@ -661,8 +661,9 @@ function computeProjection(
       exact: kg700,
       label: 'KG 700 · Baunebenkosten nach HOAI und AHO',
       scopeRefs: ['KG 700'],
-      appliedTo: bauwerkSum,
-      factor: null,
+      basis: {
+        kind: 'factor', appliedTo: bauwerkSum, factor: KG700_HOAI_SHARE,
+      },
     })
   }
   // Надбавки за риск — аддитивно после блока Bauwerk (calculation-spec §2:

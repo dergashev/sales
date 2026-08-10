@@ -129,8 +129,7 @@ export function optionDrivers(
       exact: qty.mul(rate),
       label: `${g.label} · ${choice.label}`,
       scopeRefs: [scopeOf(g.id)],
-      appliedTo: qty,
-      factor: null,
+      basis: { kind: 'rate', quantity: qty, unit: 'm²', rate },
     })
   }
   return out
@@ -174,8 +173,7 @@ export function coverageDrivers(
       exact: qty.mul(rate),
       label: `${kg.replace('_', ' ')} · ${spec.label}`,
       scopeRefs: [kg.replace('_', ' ')],
-      appliedTo: qty,
-      factor: null,
+      basis: { kind: 'rate', quantity: qty, unit: 'm²', rate },
     })
   }
   return out

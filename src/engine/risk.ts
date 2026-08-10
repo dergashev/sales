@@ -78,8 +78,7 @@ export function riskDriver(
     exact: base.mul(rate),
     label: `Risikozuschlag · ${risk.label}`,
     scopeRefs: [risk.base.replace('_', ' ')],
-    appliedTo: base,
-    factor: rate,
+    basis: { kind: 'factor', appliedTo: base, factor: rate },
     // Применение надбавки — решение продавца: он вправе её снять, получив
     // документ. Это не факт здания и не база.
     origin: 'decision',

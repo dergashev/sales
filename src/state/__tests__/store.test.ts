@@ -304,10 +304,12 @@ describe('DC-44: направление, отнесение и ID вклада',
   it('множитель несёт базу применения и сам множитель — их показывает DC-21', () => {
     const gk = useStore.getState().projection().result
       .drivers.find((d) => d.key === 'gebaeudeklasse_GK_5')!
-    expect(gk.appliedTo!.toFixed(2)).toBe('3090000.00')
-    expect(gk.factor!.toFixed(2)).toBe('1.05')
+    expect(gk.basis?.kind).toBe('factor')
+    const b = gk.basis as { kind: 'factor'; appliedTo: Decimal; factor: Decimal }
+    expect(b.appliedTo.toFixed(2)).toBe('3090000.00')
+    expect(b.factor.toFixed(2)).toBe('1.05')
     // База × (множитель − 1) = вклад: у поповера нет своей арифметики.
-    expect(gk.appliedTo!.mul(gk.factor!.minus(1)).toFixed(2)).toBe(gk.exact.toFixed(2))
+    expect(b.appliedTo.mul(b.factor.minus(1)).toFixed(2)).toBe(gk.exact.toFixed(2))
   })
 
   it('экономящий драйвер поддержан симметрично: знак отрицателен, сумма сходится', () => {

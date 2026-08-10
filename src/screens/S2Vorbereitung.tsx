@@ -251,6 +251,7 @@ function P2Projektdaten() {
           label="Wohneinheiten"
           value={s.fields.we.value}
           decimals={0}
+          integer
           provenance={s.fields.we.provenance}
           onCommit={(v, c) => s.editField('we', v, c)}
         />

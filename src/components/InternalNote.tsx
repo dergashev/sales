@@ -43,23 +43,51 @@ export function InternalNote() {
   const [state, setState] = useState<SyncState>(s.noteText ? 'ok' : 'leer')
   const idle = useRef<ReturnType<typeof setTimeout>>()
   const sync = useRef<ReturnType<typeof setTimeout>>()
+  /** Набранное, чья запись ещё не состоялась. `null` — ждать нечего. */
+  const pending = useRef<string | null>(null)
 
-  // Черновик переживает уход с экрана: он живёт в сторе, а не в поле
-  // (NOTE-004 — потеря не должна быть молчаливой; здесь её просто нет).
-  useEffect(() => () => {
+  /**
+   * Досрочная запись набранного.
+   *
+   * Комментарий прежней редакции утверждал «черновик переживает уход с
+   * экрана: он живёт в сторе» — и это было неправдой ровно в том случае,
+   * ради которого писалось: в сторе он оказывался только через 900 мс
+   * простоя, а cleanup гасил оба таймера, ничего не записав. Уйти быстрее
+   * паузы — и текста нет (сплошное ревью 26, находка 3). Здесь черновик
+   * действительно переживает уход, потому что уход его дописывает.
+   */
+  const flush = () => {
     clearTimeout(idle.current)
     clearTimeout(sync.current)
-  }, [])
+    const v = pending.current
+    pending.current = null
+    // Действие берётся из `getState()`, а не из замыкания рендера: cleanup с
+    // пустым списком зависимостей помнит стор на момент монтирования.
+    if (v !== null) useStore.getState().saveNote(v)
+  }
+  const flushRef = useRef(flush)
+  flushRef.current = flush
 
-  if (s.mode === 'praesentation') return null
+  useEffect(() => () => flushRef.current(), [])
+
+  // Переход в презентацию убирает поле с экрана, не размонтируя компонент, —
+  // для набранного это тот же уход, и он тоже обязан дописать.
+  const hidden = s.mode === 'praesentation'
+  useEffect(() => {
+    if (hidden) flushRef.current()
+  }, [hidden])
+
+  if (hidden) return null
 
   const onChange = (v: string) => {
     setText(v)
     setState('entwurf')
+    pending.current = v
     clearTimeout(idle.current)
     clearTimeout(sync.current)
     idle.current = setTimeout(() => {
       // Тихая запись: событие журнала есть, тоста нет.
+      pending.current = null
       s.saveNote(v)
       setState('wird')
       sync.current = setTimeout(() => {

@@ -143,30 +143,85 @@ export function ProvenanceChip({ provenance }: { provenance: string }) {
 }
 
 /**
+ * Домен числового ввода. Возвращает величину либо причину отказа — **не
+ * бросает**: `new Decimal('abc')` бросает `DecimalError` прямо из обработчика
+ * события, и экран уходит целиком (сплошное ревью 26, находка 5).
+ *
+ * Что здесь проверяется и почему именно это:
+ *
+ * · **разбор** — потому что поле принимает текст, а не число;
+ * · **положительность** — площадь и число единиц не бывают нулевыми или
+ *   отрицательными, и прежняя версия такие значения молча отбрасывала:
+ *   пользователь видел, что поле вернулось к старому, и не знал почему;
+ * · **целость для счётных величин** — `16,5 Wohneinheiten` не существует, а
+ *   прежняя версия принимала: стор делил на 16,5, поле показывало 17.
+ *
+ * Чего здесь СОЗНАТЕЛЬНО нет — верхней границы. Ни один источник её не
+ * объявляет, и назначить её здесь значило бы выдать выдуманный предел за
+ * правило (R-25). Всё, что проверяется, следует из природы величины, а не из
+ * политики.
+ */
+export function rejectNumericInput(
+  raw: string, opts: { integer?: boolean } = {},
+): 'notANumber' | 'notPositive' | 'notInteger' | null {
+  const cleaned = raw.trim().replace(/\./g, '').replace(',', '.')
+  if (!/^-?\d+(\.\d+)?$/.test(cleaned)) return 'notANumber'
+  const v = new Decimal(cleaned)
+  if (v.lte(0)) return 'notPositive'
+  if (opts.integer && !v.isInteger()) return 'notInteger'
+  return null
+}
+
+export function parseNumericInput(
+  raw: string, opts: { integer?: boolean } = {},
+): Decimal | null {
+  if (rejectNumericInput(raw, opts) !== null) return null
+  return new Decimal(raw.trim().replace(/\./g, '').replace(',', '.'))
+}
+
+const REJECTION_TEXT: Record<
+  NonNullable<ReturnType<typeof rejectNumericInput>>, string
+> = {
+  notANumber: 'Nur Zahlen — der eingegebene Wert wurde nicht übernommen',
+  notPositive: 'Der Wert muss größer als null sein — nicht übernommen',
+  notInteger: 'Nur ganze Einheiten — nicht übernommen',
+}
+
+/**
  * Числовое поле с происхождением (DC-4). Правка прямо в презентации —
  * самый сильный момент демонстрации: клиент называет площадь, sales вводит,
  * всё пересчитывается, интервал сужается на глазах.
+ *
+ * Отказ не откатывает поле молча: черновик остаётся на экране вместе с
+ * причиной, и цена при этом не меняется. Это правило 12 буквально — не
+ * запрет ввода, а невозможность им испортить расчёт.
  */
 export function NumericField({
-  label, value, unit, provenance, decimals = 2, onCommit,
+  label, value, unit, provenance, decimals = 2, integer = false, onCommit,
 }: {
   label: string
   value: Decimal
   unit?: string
   provenance: string
   decimals?: number
+  /** Счётная величина: дробное значение не существует (Wohneinheiten). */
+  integer?: boolean
   onCommit: (v: Decimal, confirmed: boolean) => void
 }) {
   const tx = useTx()
   const [draft, setDraft] = useState<string | null>(null)
+  const [rejection, setRejection] =
+    useState<ReturnType<typeof rejectNumericInput>>(null)
   const shown = draft ?? formatDE(value, decimals)
 
   const commit = (confirmed: boolean) => {
     if (draft === null) return
-    const parsed = draft.replace(/\./g, '').replace(',', '.')
-    const next = new Decimal(parsed || '0')
+    const why = rejectNumericInput(draft, { integer })
+    if (why !== null) { setRejection(why); return }
+    const next = parseNumericInput(draft, { integer })!
     setDraft(null)
-    if (!next.equals(value) && next.gt(0)) onCommit(next, confirmed)
+    setRejection(null)
+    if (!next.equals(value)) onCommit(next, confirmed)
   }
 
   return (
@@ -180,19 +235,23 @@ export function NumericField({
             className={FOCUS}
             value={shown}
             inputMode="decimal"
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => { setDraft(e.target.value); setRejection(null) }}
             onBlur={() => commit(false)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') commit(true)
-              if (e.key === 'Escape') setDraft(null)
+              if (e.key === 'Escape') { setDraft(null); setRejection(null) }
             }}
             aria-label={`${label}${unit ? ` in ${unit}` : ''}`}
+            aria-invalid={rejection !== null || undefined}
           />
           {unit && <span className="a3-unit">{unit}</span>}
         </span>
         <ProvenanceChip provenance={draft !== null ? 'wird bearbeitet' : provenance} />
       </div>
-      {draft !== null && (
+      {rejection !== null && (
+        <p role="alert" className="a3-cap mt-2">{tx(REJECTION_TEXT[rejection])}</p>
+      )}
+      {draft !== null && rejection === null && (
         <p className="a3-cap mt-2">{tx('Enter — vom Kunden bestätigt · Tab — manuell erfasst · Esc — verwerfen')}</p>
       )}
     </div>

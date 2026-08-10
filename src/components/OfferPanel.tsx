@@ -5,7 +5,7 @@ import { CATALOG } from '../state/catalog'
 import { splitKg300 } from '../engine/risk'
 import derivedFx from '../fixtures/derived-prototype.json'
 import { NNBSP, present, rateLabel, formatDE, label as moneyLabel } from '../engine/money'
-import type { CostGroup, CoverageState } from '../engine/calculate'
+import type { CostGroup, CoverageState, DriverBasis } from '../engine/calculate'
 import { Button, useCountUp, useReducedMotion } from './primitives'
 import { OriginPopover } from './OriginPopover'
 import { ClientOutputGateDialog } from './ClientOutputGateDialog'
@@ -449,16 +449,7 @@ export function OfferPanel() {
                             <OriginPopover
                               triggerLabel="Details"
                               rows={[
-                                ...(d.appliedTo
-                                  ? [{
-                                      label: 'Angewendet auf',
-                                      value: `${formatDE(d.appliedTo, 2)}${NNBSP}€`,
-                                    },
-                                    {
-                                      label: 'Faktor',
-                                      value: formatDE(d.factor!, 2),
-                                    }]
-                                  : []),
+                                ...basisRows(d.basis),
                                 {
                                   label: d.scopeRefs.length > 0
                                     ? `Scope · ${d.scopeRefs.join(' · ')}`
@@ -687,6 +678,29 @@ export function OfferPanel() {
  * Количества — из состояния, ставки — из каталога: собственных чисел у
  * подписи нет.
  */
+/**
+ * Строки происхождения по типу основания вклада (DC-21).
+ *
+ * Ветка выбирается по `kind`, а не по «заполнено ли поле»: прежняя версия
+ * решала по одному `appliedTo` и на вкладах «ставка × количество» печатала
+ * количество в квадратных метрах со знаком евро, а следом падала на
+ * отсутствующем множителе. Единица берётся из основания, а не назначается
+ * здесь.
+ */
+function basisRows(basis: DriverBasis | null) {
+  if (!basis) return []
+  if (basis.kind === 'factor') {
+    return [
+      { label: 'Angewendet auf', value: `${formatDE(basis.appliedTo, 2)}${NNBSP}€` },
+      { label: 'Faktor', value: formatDE(basis.factor, 2) },
+    ]
+  }
+  return [
+    { label: 'Menge', value: `${formatDE(basis.quantity, 2)}${NNBSP}${basis.unit}` },
+    { label: 'Satz', value: `${formatDE(basis.rate, 2)}${NNBSP}€/${basis.unit}` },
+  ]
+}
+
 function driverLabel(
   key: string,
   engineLabel: string,

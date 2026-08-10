@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../state/store'
-import { UNDO_WINDOW_MS } from '../config/ui-policy'
+import { TOAST_EXIT_MS, UNDO_WINDOW_MS } from '../config/ui-policy'
 import { useT } from '../i18n'
 
 /**
@@ -26,10 +26,17 @@ export function UndoToast() {
   const toast = s.undoToast
   const t = useT()
   const [paused, setPaused] = useState(false)
-  // Содержимое переживает уход: гасить пустой тост значило бы показывать
-  // пустую рамку в течение всего транзишна.
+  // Содержимое переживает уход — но только НА ВРЕМЯ ухода. Гасить его сразу
+  // значило бы показывать пустую рамку весь транзишн; оставлять навсегда —
+  // держать невидимые кнопки в порядке обхода и под курсором, что и нашло
+  // сплошное ревью 26 (находка 31): исчезнувший тост продолжал принимать
+  // Tab и клики в своей прежней области.
   const [shown, setShown] = useState(toast)
-  useEffect(() => { if (toast) setShown(toast) }, [toast])
+  useEffect(() => {
+    if (toast) { setShown(toast); return }
+    const t = setTimeout(() => setShown(null), TOAST_EXIT_MS)
+    return () => clearTimeout(t)
+  }, [toast])
 
   // Контракт требует ПАУЗЫ таймера на hover и focus, а не перезапуска.
   // Прежняя редакция сбрасывала отсчёт заново: пользователь получал не
@@ -90,11 +97,15 @@ export function UndoToast() {
           </span>
           {/* Действие тоста — `.a3-act` контракта: подчёркнутая ссылка-кнопка
               в одной строке с сообщением, не блок кнопок под ним. */}
-          <button type="button" className="a3-act"
+          {/* Пока тост уходит, его кнопки уже не действуют: `disabled`
+              убирает их и из порядка обхода, и из-под курсора. Полностью
+              зону нажатия закрывает `pointer-events` у невидимого хоста —
+              это правка дизайн-системы, она передана отдельно. */}
+          <button type="button" className="a3-act" disabled={!toast}
                   onClick={() => s.undoEvent(shown.seq)}>
             {t('common.undo')}
           </button>
-          <button type="button" className="a3-act"
+          <button type="button" className="a3-act" disabled={!toast}
                   onClick={() => s.dismissUndoToast()}>
             {t('common.close')}
           </button>

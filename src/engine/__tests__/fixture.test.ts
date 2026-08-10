@@ -338,7 +338,9 @@ describe('Третий уровень KG 300 и надбавки за риск (
     const baugrund = RISK_ITEMS.find((r) => r.id === 'RISK-BAUGRUND')!
     const d = riskDriver(baugrund, kg300)!
     // KG 320 = 11 % от KG 300; надбавка = 4 % от KG 320, а не от KG 300.
-    expect(d.appliedTo!.toFixed(2)).toBe('110000.00')
+    expect(d.basis).toMatchObject({ kind: 'factor' })
+    const b = d.basis as { kind: 'factor'; appliedTo: Decimal; factor: Decimal }
+    expect(b.appliedTo.toFixed(2)).toBe('110000.00')
     expect(d.exact.toFixed(2)).toBe('4400.00')
     expect(d.exact.toFixed(2)).not.toBe(kg300.mul('0.04').toFixed(2))
     expect(d.scopeRefs).toEqual(['KG 320'])
@@ -348,7 +350,8 @@ describe('Третий уровень KG 300 и надбавки за риск (
     const kg300 = new Decimal('1000000')
     const statik = RISK_ITEMS.find((r) => r.id === 'RISK-STATIK')!
     const d = riskDriver(statik, kg300)!
-    expect(d.appliedTo!.toFixed(2)).toBe('1000000.00')
+    const b = d.basis as { kind: 'factor'; appliedTo: Decimal; factor: Decimal }
+    expect(b.appliedTo.toFixed(2)).toBe('1000000.00')
     expect(d.exact.toFixed(2)).toBe('20000.00')
   })
 })
