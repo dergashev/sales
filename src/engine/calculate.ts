@@ -32,7 +32,18 @@ export type BuildingInput = {
   /** Класс здания. `state` важнее значения: спорное блокирует выдачу. */
   gebaeudeklasse: { value: 'GK_1_3' | 'GK_4' | 'GK_5'; confirmed: boolean }
   energiestandard: 'GEG' | 'EH_55' | 'EH_40'
-  bgfAboveGround: Decimal
+  /**
+   * Надземная BGF типа **R** — «überdeckt und allseitig umschlossen».
+   *
+   * Прежде поле называлось `bgfAboveGround` и означало сразу две вещи: экран
+   * подписывал его «BGF (R, oberirdisch)», а движок множил на полную ставку
+   * всю надземную площадь. Пока `S = 0`, разница невидима; сценарий 2
+   * приносит S ≠ 0, и тогда одно поле не может быть обоими (решение D-26,
+   * сплошное ревью 26, находка 17).
+   */
+  bgfRAbove: Decimal
+  /** Надземная BGF типа **S**: считается по доле `f_S` от ставки R. */
+  bgfSAbove: Decimal
   bgfBelowGround: Decimal
   untergeschoss: 'kein_ug' | 'ab_decke' | 'vollausbau'
   hasParking: boolean
@@ -40,6 +51,8 @@ export type BuildingInput = {
 
 export type Catalog = {
   kBase: Decimal
+  /** Доля ставки R для площадей S (`calculation-spec` §1, решение D-26). */
+  fS: Decimal
   costFactors: {
     gebaeudeklasse: Record<string, Decimal>
     energiestandard: Record<string, Decimal>
@@ -151,6 +164,15 @@ export function sumOfBlock(
     .reduce((a, d) => a.plus(d.exact), new Decimal(0))
 }
 
+/**
+ * Вся надземная BGF здания. Одно определение на продукт: «oberirdisch» —
+ * это R + S, и складывать их каждый раз заново значило бы заводить столько
+ * определений, сколько мест.
+ */
+export function bgfAboveGround(b: BuildingInput): Decimal {
+  return b.bgfRAbove.plus(b.bgfSAbove)
+}
+
 /** База KG 300+400 объявлена в `calculation-spec.md` §1.1 строкой K_base. */
 const SCOPE_BAUWERK_BASE = ['KG 300', 'KG 400']
 /** §2.3: «затронуто: KG 300 · KG 400 · UG (блок Bauwerk целиком)». */
@@ -250,20 +272,39 @@ export function calculateBuilding(
 ): BuildingResult {
   const drivers: Driver[] = []
 
-  const base = b.bgfAboveGround.mul(cat.kBase)
+  const base = b.bgfRAbove.mul(cat.kBase)
   drivers.push({
     key: 'basis', exact: base, label: 'Grundleistung',
-      origin: 'base' as const, block: 'bauwerk' as const,
+    origin: 'base' as const, block: 'bauwerk' as const,
     scopeRefs: SCOPE_BAUWERK_BASE,
     basis: {
-      kind: 'rate', quantity: b.bgfAboveGround,
-      denominator: 'BGF_ABOVE_GROUND', rate: cat.kBase,
+      kind: 'rate', quantity: b.bgfRAbove,
+      denominator: 'BGF_R', rate: cat.kBase,
     },
   })
 
+  // Площади S — отдельным вкладом по доле `f_S` (спецификация §2):
+  //   BGF_R × K × … + BGF_S × K × … × f_S
+  // Вклад отдельный, а не слитый с базой, потому что доля — решение
+  // норматива о том, что S дешевле R, и она обязана быть видимой.
+  let baseS = new Decimal(0)
+  if (b.bgfSAbove.gt(0)) {
+    const rateS = cat.kBase.mul(cat.fS)
+    baseS = b.bgfSAbove.mul(rateS)
+    drivers.push({
+      key: 'basis_s', exact: baseS,
+      label: 'Grundleistung · überdeckte Sonderflächen',
+      origin: 'base' as const, block: 'bauwerk' as const,
+      scopeRefs: SCOPE_BAUWERK_BASE,
+      basis: {
+        kind: 'rate', quantity: b.bgfSAbove, denominator: 'BGF_S', rate: rateS,
+      },
+    })
+  }
+
   // Форма: множитель только если он есть в каталоге. MFH — базовая.
   const formKey = FORM_FACTOR_KEY[b.gebaeudeform]
-  let running = base
+  let running = base.plus(baseS)
   if (formKey) {
     const f = cat.costFactors.gebaeudeform[formKey]
     if (!f) throw new Error(`нет множителя формы для ${formKey}`)

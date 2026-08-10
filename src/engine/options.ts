@@ -1,5 +1,6 @@
 import { Decimal } from 'decimal.js'
 import derived from '../fixtures/derived-prototype.json'
+import { bgfAboveGround } from './calculate'
 import type { BuildingInput, Driver } from './calculate'
 import type { AreaType } from './money'
 
@@ -109,7 +110,7 @@ function denominatorValue(
   bgfS: Decimal,
 ): Decimal {
   switch (denominator) {
-    case 'BGF_ABOVE_GROUND': return b.bgfAboveGround
+    case 'BGF_ABOVE_GROUND': return bgfAboveGround(b)
     case 'BGF_BELOW_GROUND': return b.bgfBelowGround
     case 'BGF_S': return bgfS
   }

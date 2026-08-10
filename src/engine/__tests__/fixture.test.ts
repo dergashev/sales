@@ -28,6 +28,7 @@ const D = (s: string) => new Decimal(s)
 
 const cat: Catalog = {
   kBase: D(catalog.kBase.value),
+  fS: D(catalog.fS),
   costFactors: {
     gebaeudeklasse: Object.fromEntries(
       Object.entries(catalog.costFactors.gebaeudeklasse).map(([k, v]) => [k, D(v)]),
@@ -74,7 +75,8 @@ const hausA: BuildingInput = {
   id: 'DEMO-B-A', gebaeudeform: 'MFH',
   gebaeudeklasse: { value: 'GK_5', confirmed: false },
   energiestandard: 'EH_55',
-  bgfAboveGround: D('2000.00'), bgfBelowGround: D('400.00'),
+  bgfRAbove: D('2000.00'), bgfSAbove: D('0.00'),
+  bgfBelowGround: D('400.00'),
   untergeschoss: 'vollausbau', hasParking: true,
 }
 
@@ -82,7 +84,8 @@ const hausB: BuildingInput = {
   id: 'DEMO-B-B', gebaeudeform: 'BUERO',
   gebaeudeklasse: { value: 'GK_4', confirmed: false },
   energiestandard: 'EH_55',
-  bgfAboveGround: D('1200.00'), bgfBelowGround: D('0.00'),
+  bgfRAbove: D('1200.00'), bgfSAbove: D('0.00'),
+  bgfBelowGround: D('0.00'),
   untergeschoss: 'kein_ug', hasParking: false,
 }
 
@@ -167,6 +170,53 @@ describe('инвариант: сумма драйверов равна итог�
       .toBe(res.total.exact.toFixed(2))
     expect(echt.KG_300.gt(kgSplit(res.total.exact, cat.kgShares, 'vereinfacht').KG_300))
       .toBe(true)
+  })
+})
+
+describe('BGF S считается по доле f_S (решение D-26)', () => {
+  it('у первого сценария S = 0, поэтому контрольные величины НЕ меняются', () => {
+    // Это и есть критерий правильности всей правки: если хоть одна
+    // контрольная величина DEMO-0001 поехала, разделение сделано неверно.
+    const res = calculateBuilding(hausA, cat, COVERAGE_FIXTURE)
+    expect(res.total.exact.toFixed(2)).toBe(run('DEMO-RUN-0007').total.exact)
+    expect(res.drivers.some((d) => d.key === 'basis_s')).toBe(false)
+  })
+
+  it('S оплачивается по 40 % ставки R — отдельным видимым вкладом', () => {
+    const withS = calculateBuilding(
+      { ...hausA, bgfSAbove: D('100.00') }, cat, COVERAGE_FIXTURE,
+    )
+    const s = withS.drivers.find((d) => d.key === 'basis_s')!
+    expect(s.basis).toMatchObject({ kind: 'rate', denominator: 'BGF_S' })
+    const b = s.basis as { kind: 'rate'; quantity: Decimal; rate: Decimal }
+    // 100 × 1.545 × 0,40 = 61.800; множители класса и энергостандарта
+    // ложатся на сумму базы и S, поэтому сам вклад — до них.
+    expect(b.rate.toFixed(2)).toBe('618.00')
+    expect(s.exact.toFixed(2)).toBe('61800.00')
+  })
+
+  it('множители ложатся и на R, и на S — формула §2 целиком', () => {
+    const withS = calculateBuilding(
+      { ...hausA, bgfSAbove: D('100.00') }, cat, COVERAGE_FIXTURE,
+    )
+    const base = calculateBuilding(hausA, cat, COVERAGE_FIXTURE)
+    const delta = withS.total.exact.minus(base.total.exact)
+    // 100 × 1.545 × 0,40 × 1,05 (GK 5) × 1,03 (EH 55) = 66.836,70
+    expect(delta.toFixed(2)).toBe('66836.70')
+    expect(driversSum(withS.drivers).toFixed(2)).toBe(withS.total.exact.toFixed(2))
+  })
+
+  it('S дешевле R ровно во столько раз, во сколько объявлено', () => {
+    const onlyR = calculateBuilding(
+      { ...hausA, bgfRAbove: D('2100.00') }, cat, COVERAGE_FIXTURE,
+    )
+    const rPlusS = calculateBuilding(
+      { ...hausA, bgfSAbove: D('100.00') }, cat, COVERAGE_FIXTURE,
+    )
+    const base = calculateBuilding(hausA, cat, COVERAGE_FIXTURE)
+    const deltaR = onlyR.total.exact.minus(base.total.exact)
+    const deltaS = rPlusS.total.exact.minus(base.total.exact)
+    expect(deltaS.div(deltaR).toFixed(2)).toBe(cat.fS.toFixed(2))
   })
 })
 

@@ -3,6 +3,7 @@ import derived from '../fixtures/derived-prototype.json'
 import { activeBuilding, useStore } from '../state/store'
 import { NNBSP, present, label as moneyLabel } from '../engine/money'
 import { choiceBlocked, isGroupActive, type OptionGroup } from '../engine/options'
+import { bgfAboveGround } from '../engine/calculate'
 import {
   FacadeTileGroup, RadioCardGroup, type FacadeMaterial,
 } from '../components/controls'
@@ -209,7 +210,7 @@ export function OptionChapter({ groups, intro }: {
               {(() => {
                 const mapped = g.choices.map((c) => {
                   const rate = new Decimal(c.rate)
-                  const qty = g.denominator === 'BGF_ABOVE_GROUND' ? b.bgfAboveGround
+                  const qty = g.denominator === 'BGF_ABOVE_GROUND' ? bgfAboveGround(b)
                     : g.denominator === 'BGF_BELOW_GROUND' ? b.bgfBelowGround
                       : bgfS(b.id)
                   const current = new Decimal(
@@ -247,7 +248,7 @@ export function OptionChapter({ groups, intro }: {
                   const rate = new Decimal(choice.rate)
                   const cur = new Decimal(
                     g.choices.find((x) => x.value === value)?.rate ?? '0')
-                  const qty = g.denominator === 'BGF_ABOVE_GROUND' ? b.bgfAboveGround
+                  const qty = g.denominator === 'BGF_ABOVE_GROUND' ? bgfAboveGround(b)
                     : g.denominator === 'BGF_BELOW_GROUND' ? b.bgfBelowGround
                       : bgfS(b.id)
                   return {

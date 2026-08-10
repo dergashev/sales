@@ -14,6 +14,7 @@ const D = (s: string) => new Decimal(s)
 
 export const CATALOG: Catalog = {
   kBase: D(catalogJson.kBase.value),
+  fS: D(catalogJson.fS),
   costFactors: {
     gebaeudeklasse: Object.fromEntries(
       Object.entries(catalogJson.costFactors.gebaeudeklasse).map(([k, v]) => [k, D(v)]),

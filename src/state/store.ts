@@ -4,7 +4,7 @@ import { Decimal } from 'decimal.js'
 import demo from '../fixtures/demo-0001.json'
 import { withRegionalFactor } from './catalog'
 import {
-  calculateBuilding, kgSplit, sumOfBlock,
+  bgfAboveGround, calculateBuilding, kgSplit, sumOfBlock,
   type BuildingInput, type Coverage, type CoverageState,
   type CostGroup, type BuildingResult,
 } from '../engine/calculate'
@@ -194,7 +194,12 @@ const INITIAL_BUILDING: BuildingInput = {
   id: fx.id, gebaeudeform: 'MFH',
   gebaeudeklasse: { value: 'GK_5', confirmed: false },
   energiestandard: 'EH_55',
-  bgfAboveGround: D(fx.areas.bgfAboveGround!),
+  // Фикстура объявляет `BGF S = 0` (synthetic-fixtures §5): балконов у
+  // Haus A нет. Производные 160 m² — площадь балконов по D-22, и она НЕ
+  // является BGF S: попав сюда, она изменила бы контрольные величины
+  // первого сценария (решение D-26).
+  bgfRAbove: D(fx.areas.bgfAboveGround!),
+  bgfSAbove: new Decimal(0),
   bgfBelowGround: D(fx.areas.bgfBelowGround!),
   untergeschoss: 'vollausbau', hasParking: true,
 }
@@ -210,7 +215,8 @@ const INITIAL_BUILDING_B: BuildingInput = {
   id: fxB.id, gebaeudeform: 'BUERO',
   gebaeudeklasse: { value: 'GK_4', confirmed: false },
   energiestandard: 'EH_55',
-  bgfAboveGround: D(fxB.areas.bgfAboveGround!),
+  bgfRAbove: D(fxB.areas.bgfAboveGround!),
+  bgfSAbove: new Decimal(0),
   bgfBelowGround: D(fxB.areas.bgfBelowGround!),
   untergeschoss: 'kein_ug', hasParking: false,
 }
@@ -728,7 +734,7 @@ function computeProjection(
       startDate: '2027-04-04', endDate: '2027-11-19', durationBasis: 'calendarDay',
     },
     modelDuration(
-      list.reduce((a, b) => a.plus(b.bgfAboveGround), new Decimal(0)),
+      list.reduce((a, b) => a.plus(bgfAboveGround(b)), new Decimal(0)),
       D('1.00'), D('1.15'),
     ),
   )
@@ -872,7 +878,7 @@ const store = createStore<Store>((set, get) => {
           },
         },
         buildings: key === 'bgfOber'
-          ? { ...s.buildings, [s.activeBuildingId]: { ...activeBuilding(s), bgfAboveGround: value } }
+          ? { ...s.buildings, [s.activeBuildingId]: { ...activeBuilding(s), bgfRAbove: value } }
           : s.buildings,
       }))
       const after = get().projection().result.total.exact
@@ -884,7 +890,7 @@ const store = createStore<Store>((set, get) => {
         inverse: () => set((s) => ({
           fields: { ...s.fields, [key]: prev },
           buildings: key === 'bgfOber'
-            ? { ...s.buildings, [s.activeBuildingId]: { ...activeBuilding(s), bgfAboveGround: prev.value } }
+            ? { ...s.buildings, [s.activeBuildingId]: { ...activeBuilding(s), bgfRAbove: prev.value } }
             : s.buildings,
         })),
         forward: () => set((s) => ({
@@ -896,7 +902,7 @@ const store = createStore<Store>((set, get) => {
             },
           },
           buildings: key === 'bgfOber'
-            ? { ...s.buildings, [s.activeBuildingId]: { ...activeBuilding(s), bgfAboveGround: value } }
+            ? { ...s.buildings, [s.activeBuildingId]: { ...activeBuilding(s), bgfRAbove: value } }
             : s.buildings,
         })),
       })

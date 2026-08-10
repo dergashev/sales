@@ -7,6 +7,7 @@ import { Button } from '../components/primitives'
 import { RadioCardGroup, SegmentedControl } from '../components/controls'
 import { useTx } from '../i18n'
 import { copyFor } from '../i18n/internal-refs'
+import { bgfAboveGround } from '../engine/calculate'
 import type { BuildingInput } from '../engine/calculate'
 
 /**
@@ -131,7 +132,7 @@ export function ChapterBuildings() {
                       </span>
                     </td>
                     <td>{tx(FORM_LABEL[b.gebaeudeform])}</td>
-                    <td className="a3-num">{formatDE(b.bgfAboveGround, 2)}{NNBSP}m²</td>
+                    <td className="a3-num">{formatDE(bgfAboveGround(b), 2)}{NNBSP}m²</td>
                     <td className="a3-num">{ES_LABEL[b.energiestandard]}</td>
                   </tr>
                 ))}
