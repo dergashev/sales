@@ -599,6 +599,17 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-radio-segments label:has(input:checked){background:var(--color-surface-selected);box-shadow:inset 0 calc(-1 * var(--border-width-strong)) 0 var(--color-selection-border)}
 .a3-radio-segments input{accent-color:var(--color-selection-border)}
 .a3-profile-indicator{border-left:var(--border-contrast-2px);padding:var(--space-3) var(--space-4);margin-top:var(--space-4);font-size:var(--type-badge-status-size);line-height:var(--type-badge-status-line);font-weight:var(--type-badge-status-weight)}
+/* DataStateBlock primitive. Structure: .a3-data-state plus one or more
+   explicit state modifiers; content names the state and its consequence.
+   Classes: .a3-data-state · .a3-data-state-empty · .a3-data-state-partial ·
+   .a3-data-state-error · .a3-data-state-stale · .a3-data-state-permission. */
+.a3-data-state{min-width:0;margin:0;padding:var(--space-3);border:var(--border-default);background:var(--color-surface-default);color:var(--color-text-primary);font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-body-weight);overflow-wrap:anywhere}
+.a3-data-state>p{margin:0}
+.a3-data-state>p+p,.a3-data-state-partial>span:not([aria-hidden="true"]){display:block;margin-top:var(--space-1);color:var(--color-text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight)}
+.a3-data-state.a3-data-state-empty,.a3-data-state.a3-data-state-partial,.a3-data-state.a3-data-state-permission{border:var(--border-default)}
+.a3-data-state.a3-data-state-stale{border:var(--border-warning);background:var(--color-surface-subtle)}
+.a3-data-state.a3-data-state-error{border:var(--border-error)}
+.a3-data-state.a3-data-state-permission{background:var(--color-surface-subtle)}
 /* DC-24 · EmptyState. Structure: .a3-empty-spec > .a3-empty-icon +
    content containing explanation and exactly one action.
    Classes: .a3-empty-spec · .a3-empty-icon. */

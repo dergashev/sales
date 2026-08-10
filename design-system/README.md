@@ -181,8 +181,8 @@ Lucide (открытая лицензия), stroke 1.75, размеры 16/20/24
 раздел 10 «Accessibility release gates», раздел 16 «Definition of Done».
 **Единственный источник значений:** `design-system/tokens.css`. Отсутствующее значение оформлено
 как `[ADR-PENDING]` и вынесено в §2.7; выдумывать значение запрещено (R-25).
-**Примитивы** описаны в `design-system/components-core.md` (23 контракта, включая добавленный
-по TASK-20 `Select`);
+**Примитивы** описаны в `design-system/components-core.md` (24 контракта, включая добавленные
+по TASK-20 `Select` и по TASK-30 `DataStateBlock`);
 доменный контракт их не переопределяет, а связывает с доменными данными.
 **Модель данных** — `docs/product/data-model.md`; политика профилей выдачи и allowlist —
 `docs/product/output-model.md`. Доменный компонент не вводит собственных enum-ов состояний
@@ -2308,10 +2308,12 @@ CTA создания письма блокируется до нового пр�
 ### DC-24 · `EmptyState` — Leerzustand
 
 **Закрывает:** `STATE-001` (полнота осей) · `DOCS-012` · `NAV-005` · `BUTTON-004`
-**Строится из:** `Card` · `Button` · иконка `--size-icon-lg`
+**Строится из:** `DataStateBlock` (`.a3-data-state-empty`) · `Card` · `Button` ·
+иконка `--size-icon-lg`
 **Уровень:** любой
 
-**Анатомия:** `icon` (24, `aria-hidden`) → `sentence` (зачем этот раздел) → `action`
+**Анатомия:** `root.a3-data-state.a3-data-state-empty.a3-empty-spec` →
+`icon.a3-empty-icon` (24, `aria-hidden`) → `sentence` (зачем этот раздел) → `action`
 (ровно одно). Максимум два предложения. Появление — `fade` без подъёма: пустота не «прилетает».
 **Подпись действия — глагол плюс объект (`BUTTON-004`):** `Dokumente hochladen`,
 `Kalkulation starten`, `Frage erfassen`; `Weiter` и `OK` запрещены.
@@ -4290,8 +4292,8 @@ DC-14. Внешнего действия не требуется.
 
 ## 3. Примитивы — краткие правила
 
-> Полные контракты примитивов — `design-system/components-core.md` (23 контракта, включая
-> `Select`, и четыре продуктовых layout-примитива TASK-15).
+> Полные контракты примитивов — `design-system/components-core.md` (24 контракта, включая
+> `Select` и `DataStateBlock`, плюс четыре продуктовых layout-примитива TASK-15).
 > Ниже — краткая сводка правил для быстрого чтения; при расхождении приоритет имеет файл контрактов.
 
 **SectionSheet (`.a3-sheet`):** статическая белая секция, не кликабельная Card; padding 48,

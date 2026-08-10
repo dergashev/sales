@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 51** · перевод есть, мост не подключён: 44
-· перевода нет (в поставку копирайта): 7
+**Всего 49** · перевод есть, мост не подключён: 44
+· перевода нет (в поставку копирайта): 5
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -66,5 +66,3 @@ Mit freundlichen Grüßen
 - Eigenes Ausgabeprofil clientPrint mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.
 - Tiefgarage · Lüftung, OS-Beschichtung, Tore
 - Untergeschoss · Rohbau und Ausbau
-- − 124.000 € gegenüber Aufnahme
-- − ≈ 305.000 € gegenüber Aufnahme
