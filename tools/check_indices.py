@@ -46,6 +46,11 @@ import re
 import sys
 import pathlib
 
+try:
+    from .validation_paths import is_external_repository_path
+except ImportError:  # Direct execution: python3 tools/check_indices.py
+    from validation_paths import is_external_repository_path
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 # Устаревшие индексы в файлах других владельцев: печатаются всегда, валят
@@ -237,7 +242,7 @@ def run(root=ROOT):
     adr, adr_bad = adr_registry(root)
     bad.extend(adr_bad)
     for f in sorted(root.rglob('*.md')):
-        if any(p in f.parts for p in ('node_modules', '.git')):
+        if is_external_repository_path(f, root):
             continue
         t = f.read_text(encoding='utf-8', errors='ignore')
         rel = f.relative_to(root).as_posix()

@@ -230,6 +230,11 @@ import tempfile
 import pathlib
 from decimal import Decimal as D, ROUND_HALF_UP, ROUND_DOWN
 
+try:
+    from .validation_paths import is_external_repository_path
+except ImportError:  # Direct execution: python3 tools/verify.py
+    from validation_paths import is_external_repository_path
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 # Имена ПРЕДУПРЕЖДАЮЩИХ классов проверок. Константы, а не строки в f-шаблонах:
@@ -1133,8 +1138,9 @@ class Verifier:
                 # прочитанными детектором дат как двузначные годы.
                 # Основание то же, что у реестра требований: исключение
                 # по конструкции, не по каталогу удобства.
-                if any(d in p.parts for d in ('node_modules', 'dist',
-                                              '.git', '__pycache__', '.vite')):
+                if (is_external_repository_path(p, self.root) or
+                        any(d in p.relative_to(self.root).parts
+                            for d in ('dist', '__pycache__', '.vite'))):
                     continue
                 if True:
                     rel = p.relative_to(self.root).as_posix()

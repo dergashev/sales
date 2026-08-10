@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { fileURLToPath, URL } from 'node:url'
 
@@ -28,6 +28,7 @@ export default defineConfig({
     },
   },
   test: {
+    exclude: [...configDefaults.exclude, '**/.worktrees/**'],
     environmentMatchGlobs: [['**/*.dom.test.tsx', 'jsdom']],
     setupFiles: ['./src/test/setup.ts'],
   },
