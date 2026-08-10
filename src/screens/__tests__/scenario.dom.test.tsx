@@ -279,6 +279,28 @@ describe('Сквозной сценарий продажи', () => {
   })
 
 
+  it('печать — свой профиль со СВОЕЙ проверкой, не наследует гейт письма (DC-42, PRINT-001)', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await enterPipeline(user)
+    await user.click(nav(/Export/))
+    await user.click(screen.getByRole('button', { name: /Druckansicht öffnen/ }))
+
+    const dialog = screen.getByRole('dialog', { name: /Drucken/ })
+    // Проверка печати — своя: на бумаге нет поповера, поэтому сноска
+    // округления и охват обязаны стоять на самой странице.
+    expect(within(dialog).getByText(/Rundungshinweise stehen auf derselben Seite/))
+      .toBeInTheDocument()
+    expect(within(dialog).getByText(/Umfang auf jeder Seite/)).toBeInTheDocument()
+    // Пока классификация не подтверждена, clientPrint заблокирован —
+    // и это НЕ следствие письма, которое здесь вообще не отправлялось.
+    const start = within(dialog).getByRole('button', { name: /Druckauftrag starten/ })
+    expect(start).toHaveAttribute('aria-disabled', 'true')
+    // Внутренний экспорт остаётся доступным: он маркирован и не клиентский.
+    expect(within(dialog).getByRole('button', { name: /Internen Muster-Export/ }))
+      .not.toHaveAttribute('aria-disabled')
+  })
+
   it('предупреждение у клиента свёрнуто в точку, у продавца развёрнуто (DC-7, правило 11)', async () => {
     const user = userEvent.setup()
     render(<App />)

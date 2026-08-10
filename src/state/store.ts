@@ -428,6 +428,8 @@ type Store = {
    * объясняет работу инструмента, а не оффер, и клиенту не адресован.
    */
   tourOpen: boolean
+  /** Открыт ли поток печати (DC-42): свой профиль выдачи, свой гейт. */
+  printOpen: boolean
   /** Язык UI (правило 36). Отдельная настройка от языка артефактов (D-13). */
   uiLanguage: 'de' | 'en'
   /**
@@ -504,6 +506,7 @@ type Store = {
   /** Ворота выдачи: единственный путь во внешний профиль (DC-33). */
   setGateOpen: (v: boolean) => void
   setTourOpen: (v: boolean) => void
+  setPrintOpen: (v: boolean) => void
   /** Переключить охват показа: null — весь комплекс (DC-46). */
   setScope: (buildingId: string | null) => void
 }
@@ -805,6 +808,7 @@ const store = createStore<Store>((set, get) => {
     pipelineView: 'konfigurator',
     gateOpen: false,
     tourOpen: false,
+    printOpen: false,
     journal: [],
     undone: [],
     wflConflict: {
@@ -1364,6 +1368,8 @@ const store = createStore<Store>((set, get) => {
     setGateOpen: (v) => set({ gateOpen: v }),
 
     setTourOpen: (v) => set({ tourOpen: v }),
+
+    setPrintOpen: (v) => set({ printOpen: v }),
 
     setScope: (buildingId) => set({ scopeBuildingId: buildingId }),
 

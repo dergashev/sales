@@ -130,4 +130,13 @@ export const DATA_STATE_DECLARATIONS: Record<
     stale: { status: 'notApplicable', reason: 'текст выводится из текущего состояния при каждом рендере' },
     permission: { status: 'implemented', where: 'существует ТОЛЬКО в клиентских профилях; во внутреннем пространстве вместо точки остаётся развёрнутый список причин' },
   },
+  printFlow: {
+    loading: { status: 'notApplicable', reason: 'превью собирается из проекции синхронно; печать в прототипе не уходит на устройство и ждать нечего' },
+    empty: { status: 'notApplicable', reason: 'печатать нечего невозможно: поток открывается из Option, у которой всегда есть итог' },
+    partial: { status: 'implemented', where: 'пункты собственного preflight с «!» — печать клиентского профиля заблокирована, внутренний экспорт остаётся' },
+    ready: { status: 'implemented', where: 'все пункты ✓, «Druckauftrag starten» активна' },
+    error: { status: 'notApplicable', reason: 'отправки на устройство нет — выдуманная ошибка принтера была бы симуляцией, выданной за реализацию' },
+    stale: { status: 'notApplicable', reason: 'превью читает проекцию в момент открытия и закрывается решением' },
+    permission: { status: 'implemented', where: 'clientPrint блокируется собственным гейтом; internalExport остаётся с пометкой «Nur intern»' },
+  },
 }

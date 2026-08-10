@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 76** · перевод есть, мост не подключён: 24
-· перевода нет (в поставку копирайта): 52
+**Всего 78** · перевод есть, мост не подключён: 24
+· перевода нет (в поставку копирайта): 54
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -48,6 +48,8 @@
 - Baukonstruktion und technische Anlagen sind keine Auswahl: ohne sie gibt es kein Angebot. Baunebenkosten sind immer enthalten — verhandelbar ist nur die Berechnungsart, und die ist intern.
 - Beiträge · Summe =
 - Drei Zustände, weil «nicht enthalten» eine Entscheidung ist und «noch offen» eine Lücke. Solange eine Lücke bleibt, weist das Angebot eine Zwischensumme der kalkulierten Positionen aus und keinen Gesamtpreis.
+- Druckansicht öffnen
+- Eigenes Ausgabeprofil clientPrint mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.
 - Einbaukueche und Erstausstattung je m² BGF R ⚙
 - Entscheidung, keine Lücke: die Summe bleibt vollständig
 - Gebäude

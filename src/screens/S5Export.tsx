@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Decimal } from 'decimal.js'
 import { activeBuilding, useStore } from '../state/store'
 import { NNBSP } from '../engine/money'
 import { DiscountControl } from '../components/DiscountControl'
 import { Button, UncertaintyBadge } from '../components/primitives'
 import { useTx } from '../i18n'
+import { PrintFlow } from '../components/PrintFlow'
 
 /**
  * S5 Export — артефакты, скидка и отправка.
@@ -41,6 +42,7 @@ const DELIVERY_SIMULATION_MS = 2500
 export function S5Export() {
   const s = useStore()
   const tx = useTx()
+  const printBtnRef = useRef<HTMLButtonElement>(null)
   // Сколько ЦЕНОВЫХ событий этой Option произошло после отправки. Считается
   // из журнала против `journalSeqAt` снапшота — второго счётчика нет.
   const lastSnap = s.snapshots.at(-1)
@@ -118,6 +120,20 @@ export function S5Export() {
               </li>
             ))}
           </ul>
+
+          {/* Печать — ОТДЕЛЬНЫЙ профиль выдачи со своим гейтом (PRINT-001),
+              а не побочное действие отправки: результат проверки письма
+              она не наследует. */}
+          <h2 className="mt-6 text-heading-3 font-bold text-text-primary">{tx('Drucken')}</h2>
+          <p className="a3-cap mt-1">
+            {tx('Eigenes Ausgabeprofil clientPrint mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.')}
+          </p>
+          <div className="mt-2">
+            <Button ref={printBtnRef} onClick={() => s.setPrintOpen(true)}>
+              {tx('Druckansicht öffnen')}
+            </Button>
+          </div>
+          <PrintFlow returnFocusTo={printBtnRef} />
 
           <h2 className="mt-6 text-heading-3 font-bold text-text-primary">{tx('Rabatt')}</h2>
           <div className="mt-2">
