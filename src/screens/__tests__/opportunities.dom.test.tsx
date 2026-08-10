@@ -65,6 +65,58 @@ describe('Уровень Opportunities', () => {
     expect(screen.getByRole('complementary', { name: 'Angebot' })).toBeInTheDocument()
   })
 
+  it.each([
+    {
+      label: 'обе предпосылки открыты', conflictResolved: false, paramsConfirmed: false,
+      reason: 'Erst Konflikte entscheiden und Projektparameter bestätigen',
+    },
+    {
+      label: 'остались только параметры', conflictResolved: true, paramsConfirmed: false,
+      reason: 'Erst Projektparameter bestätigen',
+    },
+    {
+      label: 'остался только конфликт', conflictResolved: false, paramsConfirmed: true,
+      reason: 'Erst Konflikte entscheiden',
+    },
+    {
+      label: 'обе предпосылки выполнены', conflictResolved: true, paramsConfirmed: true,
+      reason: null,
+    },
+  ])('гейт создания Option называет только актуальные причины: $label', async ({
+    conflictResolved, paramsConfirmed, reason,
+  }) => {
+    if (conflictResolved) useStore.getState().resolveWflConflict('customer')
+    if (paramsConfirmed) useStore.getState().confirmProjectParams()
+
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(screen.getByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
+
+    const create = screen.getByRole('button', { name: 'Opportunity Option anlegen' })
+    if (reason === null) {
+      expect(create).not.toHaveAttribute('aria-disabled')
+      expect(create).not.toHaveAttribute('aria-describedby')
+      return
+    }
+
+    const explanation = screen.getByText(reason)
+    expect(create).toHaveAttribute('aria-disabled', 'true')
+    expect(create).toHaveAttribute('aria-describedby', explanation.id)
+    if (!conflictResolved) {
+      expect(screen.getByRole('button', { name: 'Kundenwert übernehmen' })).toBeInTheDocument()
+    }
+    if (!paramsConfirmed) {
+      expect(screen.getByRole('button', { name: 'Projektparameter bestätigen' })).toBeInTheDocument()
+    }
+
+    create.focus()
+    await user.keyboard('{Enter}')
+    await user.keyboard(' ')
+    await user.click(create)
+    expect(useStore.getState().options).toHaveLength(0)
+    expect(create).toHaveFocus()
+  })
+
   it('выведенные значения несут пометку происхождения (D-22)', async () => {
     const user = userEvent.setup()
     render(<App />)

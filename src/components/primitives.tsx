@@ -1,7 +1,7 @@
 import { forwardRef, useId, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Decimal } from 'decimal.js'
 import { formatDE, NNBSP } from '../engine/money'
-import { useTx } from '../i18n'
+import { useT, useTx } from '../i18n'
 
 /**
  * Примитивы по контрактам `design-system/components-core.md`.
@@ -104,8 +104,20 @@ export const Button = forwardRef<HTMLButtonElement, {
   disabled?: boolean
   /** Заблокированный элемент всегда объясняет причину (правило 12). */
   disabledReason?: string
+  /**
+   * Управляемое состояние настоящей ожидающей операции. Оно сохраняет
+   * focus и enabled-палитру, но блокирует повторную активацию.
+   */
+  loading?: boolean
+  /** Доступная подпись процесса: «Wird berechnet …», не абстрактный loader. */
+  loadingLabel?: string
 } & React.ButtonHTMLAttributes<HTMLButtonElement>>(function Button({
-  children, onClick, variant = 'secondary', disabled, disabledReason, ...rest
+  children, onClick, variant = 'secondary', disabled, disabledReason,
+  loading = false, loadingLabel, className, type = 'button',
+  onClickCapture, onKeyDownCapture,
+  'aria-describedby': describedBy,
+  'aria-label': ariaLabel,
+  ...rest
 }, ref) {
   const look = variant === 'primary' ? '' : variant === 'ghost' ? 'a3-ghost' : 'a3-sec'
   const reasonId = useId()
@@ -113,27 +125,71 @@ export const Button = forwardRef<HTMLButtonElement, {
   // (D-24): она проходит через мост здесь, а не в каждом из десятков
   // мест вызова, иначе перевод забывался бы по одному.
   const tx = useTx()
+  const t = useT()
   const reason = disabledReason ? tx(disabledReason) : undefined
+  const processLabel = loadingLabel ? tx(loadingLabel) : t('common.loading')
+  const inoperable = Boolean(disabled || loading)
+  const blocked = Boolean(disabled && !loading)
+  const buttonDescription = blocked && reason
+    ? [describedBy, reasonId].filter(Boolean).join(' ')
+    : describedBy
   const btn = (
     <button
-      ref={ref}
-      type="button"
-      onClick={onClick}
-      // aria-disabled, а не disabled: заблокированная кнопка не должна терять
-      // фокус, иначе причина блокировки недостижима с клавиатуры.
-      aria-disabled={disabled || undefined}
-      aria-describedby={disabled && reason ? reasonId : undefined}
-      title={disabled ? reason : undefined}
-      onClickCapture={(e) => { if (disabled) { e.stopPropagation(); e.preventDefault() } }}
-      className={`a3-btn ${look} ${FOCUS}`}
       {...rest}
+      ref={ref}
+      type={type}
+      onClick={() => { if (!inoperable) onClick?.() }}
+      // aria-disabled, а не disabled: заблокированная кнопка не должна терять
+      // фокус. Loading использует ту же семантику, но сохраняет enabled-вид.
+      aria-disabled={inoperable || undefined}
+      aria-busy={loading || undefined}
+      aria-describedby={buttonDescription || undefined}
+      aria-label={loading ? processLabel : ariaLabel}
+      title={blocked ? reason : undefined}
+      data-loading={loading || undefined}
+      onClickCapture={(e) => {
+        if (inoperable) {
+          e.stopPropagation()
+          e.preventDefault()
+          return
+        }
+        onClickCapture?.(e)
+      }}
+      onKeyDownCapture={(e) => {
+        const activationKey = e.key === 'Enter' || e.key === ' '
+        // aria-disabled не подавляет нативный keyboard click сам. Кроме
+        // того, autorepeat не должен превращать удержание клавиши в серию
+        // заявок — новая отдельная активация возможна только после keyup.
+        if (activationKey && (inoperable || e.repeat)) {
+          e.stopPropagation()
+          e.preventDefault()
+          return
+        }
+        onKeyDownCapture?.(e)
+      }}
+      className={`a3-btn ${look}${className ? ` ${className}` : ''}`}
     >
-      {children}
+      {loadingLabel || loading ? (
+        <span className="a3-btn-content">
+          <span aria-hidden={loading || undefined}>{children}</span>
+          <span className="a3-btn-loading" aria-hidden={!loading || undefined}>
+            <span className="a3-btn-spinner" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <circle
+                  cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2"
+                  strokeLinecap="square" strokeDasharray="28 10"
+                />
+              </svg>
+            </span>
+            <span>{processLabel}</span>
+          </span>
+        </span>
+      ) : children}
     </button>
   )
   // Причина блокировки стоит В ПОРЯДКЕ ЧТЕНИЯ и связана aria-describedby
   // (ревью № 13, дефект 12): title — дополнение, а не носитель.
-  if (!disabled || !reason) return btn
+  if (loading || !disabled || !reason) return btn
   return (
     <span className="inline-flex max-w-full flex-col gap-1">
       {btn}

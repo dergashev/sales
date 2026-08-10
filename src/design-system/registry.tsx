@@ -165,6 +165,11 @@ export const SPECIMEN_GROUPS: SpecimenGroup[] = [
             <Button variant="primary">Primär</Button>
             <Button>Sekundär</Button>
             <Button variant="ghost">Ghost</Button>
+            <Button
+              variant="primary"
+              loading
+              loadingLabel="Option wird erstellt …"
+            >Opportunity Option anlegen</Button>
             <Button disabled disabledReason="Demonstration der benannten Sperre">
               Gesperrt
             </Button>

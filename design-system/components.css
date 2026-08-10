@@ -153,18 +153,30 @@ table.a3-kg,table.a3-cmp,table.a3-kx,table.a3-data-table,table.a3-driver-table,t
 .a3-savechip.a3-busy{color:var(--color-text-primary)}
 
 /* DC-4 / DC-25 · Button + NumericInput + Switch primitives.
-   Structure: .a3-row > .a3-btn[.a3-sec|.a3-ghost] | .a3-input > input + .a3-unit |
+   Structure: .a3-row > .a3-btn[.a3-sec|.a3-ghost] > .a3-btn-content >
+   label + .a3-btn-loading > .a3-btn-spinner + process label | .a3-input > input + .a3-unit |
    button.a3-toggle[role=switch][aria-checked]. State classes belong on the root.
-   Classes: .a3-row · .a3-btn · .a3-sec · .a3-ghost · .a3-input · .a3-unit · .a3-toggle · .a3-on. */
+   Classes: .a3-row · .a3-btn · .a3-sec · .a3-ghost · .a3-btn-content ·
+   .a3-btn-loading · .a3-btn-spinner · .a3-input · .a3-unit · .a3-toggle · .a3-on. */
 .a3-row{display:flex;gap:var(--space-4);flex-wrap:wrap;align-items:center}
-.a3-btn{font-size:var(--type-button-primary-size);line-height:var(--type-button-primary-line);font-weight:var(--type-button-primary-weight);height:var(--size-control-visual-md);min-width:var(--size-hit-target-default);padding:0 var(--space-5);border:none;cursor:pointer;background:var(--color-action-primary-bg);color:var(--color-action-primary-text);transition:background var(--motion-feedback) var(--motion-easing-standard);position:relative}
+.a3-btn{font-size:var(--type-button-primary-size);line-height:var(--type-button-primary-line);font-weight:var(--type-button-primary-weight);height:var(--size-control-visual-md);min-width:var(--size-hit-target-default);max-width:100%;padding:0 var(--space-5);border:none;cursor:pointer;background:var(--color-action-primary-bg);color:var(--color-action-primary-text);transition:background var(--motion-feedback) var(--motion-easing-standard);position:relative;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
 .a3-btn::before{content:'';position:absolute;left:50%;top:50%;width:max(100%,var(--size-hit-target-default));height:var(--size-hit-target-default);transform:translate(-50%,-50%)}
-.a3-btn:hover{background:var(--color-action-primary-hover)}
-.a3-btn:active{background:var(--color-action-primary-pressed)}
+.a3-btn:hover:not([aria-disabled="true"]){background:var(--color-action-primary-hover)}
+.a3-btn:active:not([aria-disabled="true"]){background:var(--color-action-primary-pressed);transition-duration:0ms}
 .a3-btn.a3-sec{background:var(--color-action-secondary-bg);color:var(--color-action-secondary-text);border:var(--border-contrast-1px)}
-.a3-btn.a3-sec:hover,.a3-btn.a3-ghost:hover{background:var(--color-action-secondary-hover)}
+.a3-btn.a3-sec:hover:not([aria-disabled="true"]),.a3-btn.a3-ghost:hover:not([aria-disabled="true"]){background:var(--color-action-secondary-hover)}
 .a3-btn.a3-ghost{background:transparent;color:var(--color-text-primary);border:none}
-.a3-btn[disabled],.a3-btn[aria-disabled="true"]{opacity:1;cursor:default;background:var(--color-action-disabled-bg);color:var(--color-action-disabled-text);border:var(--border-default)}
+.a3-btn[disabled],.a3-btn[aria-disabled="true"]{opacity:1;cursor:default;background:var(--color-action-disabled-bg);color:var(--color-action-disabled-text);border:var(--border-width-default) solid var(--color-action-disabled-border)}
+.a3-btn[data-loading="true"]{background:var(--color-action-primary-bg);color:var(--color-action-primary-text);border:none}
+.a3-btn.a3-sec[data-loading="true"]{background:var(--color-action-secondary-bg);color:var(--color-action-secondary-text);border:var(--border-contrast-1px)}
+.a3-btn.a3-ghost[data-loading="true"]{background:transparent;color:var(--color-text-primary);border:none}
+.a3-btn-content{display:grid;align-items:center;justify-items:center;min-width:0}
+.a3-btn-content>*{grid-area:1/1}
+.a3-btn-content>[aria-hidden="true"]{visibility:hidden}
+.a3-btn-loading{display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2)}
+.a3-btn-spinner{display:inline-flex;width:var(--size-icon-sm);height:var(--size-icon-sm);flex:none;animation:a3-btn-spin 800ms linear infinite}
+.a3-btn-spinner svg{display:block;width:100%;height:100%}
+@keyframes a3-btn-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 .a3-input{display:inline-flex;align-items:center;border:var(--border-default);height:var(--size-hit-target-default);background:var(--color-surface-default)}
 .a3-input input{border:none;font:inherit;font-variant-numeric:tabular-nums;width:10ch;padding:0 var(--space-3);text-align:right;outline:none}
 .a3-input .a3-unit{padding:0 var(--space-3) 0 0;color:var(--color-text-secondary);font-size:var(--type-small-size)}
@@ -692,7 +704,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 /* CONDITIONAL AMENDMENTS · owners DC-10/12/14/19/20/22/23/34/37/38/41/42/43.
    Existing component structures stay unchanged at narrow viewports and with
    reduced motion; this block introduces no standalone component API.
-   Classes: .a3-wrap · .a3-pnav · .a3-sheet · .a3-hero-title · .a3-t-h1 · .a3-t-hero ·
+   Classes: .a3-wrap · .a3-pnav · .a3-sheet · .a3-btn · .a3-hero-title · .a3-t-h1 · .a3-t-hero ·
    .a3-hb-total · .a3-hb · .a3-hb-num · .a3-hb-unit · .a3-pal ·
    .a3-pal-ext · .a3-mode-wrap · .a3-tour-stage ·
    .a3-print-card · .a3-scope-line-item · .a3-spec · .a3-journal-items ·
@@ -701,6 +713,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    .a3-ring · .a3-fgc · .a3-loader · .a3-run. */
 @media (max-width:47.5rem){
   .a3-sheet{padding:var(--space-4)}
+  .a3-btn{padding-inline:var(--space-4)}
   .a3-sheet>.a3-sheet-title,.a3-sheet>h2,.a3-specimen-block>h3{overflow-wrap:anywhere}
   .a3-hero-title,.a3-t-h1{font-size:var(--type-heading-1-narrow-size);line-height:var(--type-heading-1-narrow-line);overflow-wrap:anywhere}
   .a3-t-hero{font-size:var(--type-display-numeric-narrow-size);line-height:var(--type-display-numeric-narrow-line)}

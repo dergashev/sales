@@ -122,6 +122,13 @@ export function OpportunityCard() {
 
   const konfliktOffen = s.wflConflict.state === 'open'
   const gateDone = [!konfliktOffen, s.projectParamsConfirmed].filter(Boolean).length
+  const createOptionDisabledReason = konfliktOffen && !s.projectParamsConfirmed
+    ? 'Erst Konflikte entscheiden und Projektparameter bestätigen'
+    : konfliktOffen
+      ? 'Erst Konflikte entscheiden'
+      : !s.projectParamsConfirmed
+        ? 'Erst Projektparameter bestätigen'
+        : undefined
 
   return (
     <div className="px-7 py-6">
@@ -254,7 +261,7 @@ export function OpportunityCard() {
           <Button
             variant="primary"
             disabled={!s.canCreateOptions()}
-            disabledReason="Erst Konflikte entscheiden und Projektparameter bestätigen"
+            disabledReason={createOptionDisabledReason}
             onClick={() => s.createOption(`Option ${s.options.length + 1}`)}
           >{tx('Opportunity Option anlegen')}</Button>
         </div>
