@@ -410,6 +410,14 @@ type Store = {
   options: Array<{ id: string; name: string }>
   activeOptionId: string | null
   /**
+   * Сколько Options было создано за жизнь Opportunity. Идентификатор берётся
+   * отсюда, а не из длины списка: удалённый номер не переиспользуется, иначе
+   * события журнала прежней Option начинают ссылаться на чужую (сплошное
+   * ревью 26, находка 11). Отмена создания счётчик НЕ убавляет — это
+   * надгробие, а не свободное место.
+   */
+  optionSeq: number
+  /**
    * Конфигурации НЕАКТИВНЫХ Options. Плоские поля стора — рабочая копия
    * активной Option; при переключении рабочая копия убирается сюда, а
    * конфигурация открываемой Option достаётся и раскладывается в плоские
@@ -921,6 +929,7 @@ const store = createStore<Store>((set, get) => {
     noteSyncedAt: null,
     options: [],
     activeOptionId: null,
+    optionSeq: 0,
     uiLanguage: 'de',
     density: 'komfortabel',
 
@@ -929,6 +938,16 @@ const store = createStore<Store>((set, get) => {
     editField: (key, value, confirmed) => {
       const before = get().projection().result.total.exact
       const prev = get().fields[key]
+      // ЦЕЛЬ события фиксируется в момент события. Прежде `inverse` снова
+      // спрашивал `activeBuildingId` — уже во время отката, — и правка,
+      // сделанная в здании A, откатывалась в здание B, если между правкой и
+      // отменой продавец переключил активное (сплошное ревью 26, находка
+      // 12). Событие обязано знать свою цель, а не искать её при
+      // воспроизведении.
+      const target = get().activeBuildingId
+      const writeArea = (v: Decimal) => (s: Store) => (key === 'bgfOber'
+        ? { ...s.buildings, [target]: { ...s.buildings[target]!, bgfRAbove: v } }
+        : s.buildings)
       set((s) => ({
         fields: {
           ...s.fields,
@@ -937,9 +956,7 @@ const store = createStore<Store>((set, get) => {
             provenance: confirmed ? 'vom Kunden bestätigt' : 'manuell erfasst',
           },
         },
-        buildings: key === 'bgfOber'
-          ? { ...s.buildings, [s.activeBuildingId]: { ...activeBuilding(s), bgfRAbove: value } }
-          : s.buildings,
+        buildings: writeArea(value)(s),
       }))
       const after = get().projection().result.total.exact
       const delta = after.minus(before)
@@ -949,9 +966,7 @@ const store = createStore<Store>((set, get) => {
         deltaExact: delta.isZero() ? null : delta,
         inverse: () => set((s) => ({
           fields: { ...s.fields, [key]: prev },
-          buildings: key === 'bgfOber'
-            ? { ...s.buildings, [s.activeBuildingId]: { ...activeBuilding(s), bgfRAbove: prev.value } }
-            : s.buildings,
+          buildings: writeArea(prev.value)(s),
         })),
         forward: () => set((s) => ({
           fields: {
@@ -961,9 +976,7 @@ const store = createStore<Store>((set, get) => {
               provenance: confirmed ? 'vom Kunden bestätigt' : 'manuell erfasst',
             },
           },
-          buildings: key === 'bgfOber'
-            ? { ...s.buildings, [s.activeBuildingId]: { ...activeBuilding(s), bgfRAbove: value } }
-            : s.buildings,
+          buildings: writeArea(value)(s),
         })),
       })
       if (!delta.isZero()) {
@@ -1347,8 +1360,20 @@ const store = createStore<Store>((set, get) => {
     createOption: (name) => {
       if (!get().canCreateOptions()) return
       const s = get()
-      const id = `OPT-${String(s.options.length + 1).padStart(2, '0')}`
+      // Идентификатор МОНОТОНЕН, а не выведен из длины списка. Прежде
+      // удаление OPT-02 и создание новой давало снова `OPT-02`, и события
+      // журнала прежней Option начинали ссылаться на чужую (сплошное ревью
+      // 26, находка 11). Счётчик не убывает при отмене — это надгробие, а
+      // не свободное место.
+      const seq = s.optionSeq + 1
+      const id = `OPT-${String(seq).padStart(2, '0')}`
       const fresh = defaultOptionConfig()
+      // Состояние ДО создания — целиком, чтобы отмена вернула его, а не
+      // приблизила: рабочая копия, хранилище конфигураций, активная Option
+      // и уровень.
+      const prevActive = s.activeOptionId
+      const prevLevel = s.level
+      const prevFlat = captureConfig(s)
       // Подготовка принадлежит Opportunity, и её результат наследуется
       // КАЖДОЙ новой Option: разрешённый конфликт WFL даёт подтверждённое
       // клиентом значение. Источник — само состояние конфликта, а не
@@ -1364,6 +1389,7 @@ const store = createStore<Store>((set, get) => {
       set({
         options: [...s.options, { id, name }],
         activeOptionId: id,
+        optionSeq: seq,
         // Новая Option — независимый вариант со свежей конфигурацией.
         // Рабочая копия предыдущей активной Option убирается в хранилище,
         // свежая раскладывается в плоские поля.
@@ -1372,21 +1398,35 @@ const store = createStore<Store>((set, get) => {
           : {}),
         ...fresh,
       })
+      // Что вернуть при ПОВТОРЕ отмены. Прежде `forward` восстанавливал
+      // только `{id, name}`: карточка возвращалась без конфигурации, а
+      // `openOption` на отсутствующем ключе молча ничего не делал. Отмена
+      // отмены обязана вернуть то же, что отменила, целиком.
+      let removed: OptionConfig = fresh
       apply({
         kind: 'value.edited',
         label: `Opportunity Option «${name}» angelegt`,
         deltaExact: null,
         inverse: () => set((x) => {
-          const { [id]: _gone, ...rest } = x.optionConfigs
+          const { [id]: stored, ...rest } = x.optionConfigs
+          removed = stored ?? (x.activeOptionId === id ? captureConfig(x) : fresh)
           return {
             options: x.options.filter((o) => o.id !== id),
             optionConfigs: rest,
-            ...(x.activeOptionId === id
-              ? { activeOptionId: null, level: 'opportunity' as const }
-              : {}),
+            activeOptionId: prevActive,
+            level: prevLevel,
+            ...prevFlat,
           }
         }),
-        forward: () => set((x) => ({ options: [...x.options, { id, name }] })),
+        forward: () => set((x) => ({
+          options: [...x.options, { id, name }],
+          activeOptionId: id,
+          level: 'option' as const,
+          ...(x.activeOptionId && x.activeOptionId !== id
+            ? { optionConfigs: { ...x.optionConfigs, [x.activeOptionId]: captureConfig(x) } }
+            : {}),
+          ...removed,
+        })),
       })
     },
 
@@ -1432,7 +1472,17 @@ const store = createStore<Store>((set, get) => {
       // плоские поля. После свопа ключа открываемой Option в хранилище нет
       // (инвариант `optionConfigs`).
       const { [id]: next, ...rest } = s.optionConfigs
-      if (!next) return
+      if (!next) {
+        // Молчаливый выход прятал повреждение состояния: карточка есть,
+        // конфигурации нет, кнопка «Öffnen» не делает ничего и не объясняет
+        // почему (сплошное ревью 26, находка 11). Такого состояния не должно
+        // существовать — и если оно возникло, продукт обязан сказать это
+        // вслух, а не притвориться исправным.
+        throw new Error(
+          `Option ${id} есть в списке, но её конфигурация отсутствует — `
+          + 'состояние повреждено; открыть нечего',
+        )
+      }
       set({
         level: 'option',
         activeOptionId: id,
@@ -1549,10 +1599,17 @@ const store = createStore<Store>((set, get) => {
       if (!group) return
       const prevProv = s.kg300Provenance[id]?.[groupId] ?? 'Standard'
       const before = s.projection().result.total.exact
+      // Сеттер опции KG 300 меняет ОПЦИЮ KG 300 — и ничего больше. Прежде он
+      // молча ставил `kg700Mode: 'vereinfacht'`: выбор фасада отменял
+      // выбранный метод расчёта Baunebenkosten, превью обещало одно, а итог
+      // падал на другое, и `inverse` возвращал только фасад (сплошное ревью
+      // 26, находка 10). Событие обязано хранить ровно то, что меняет.
       const write = (v: string, prov: string) => set((x) => ({
         kg300: { ...x.kg300, [id]: { ...x.kg300[id], [groupId]: v } },
-        kg700Mode: 'vereinfacht',
-    kg300Provenance: { ...x.kg300Provenance, [id]: { ...x.kg300Provenance[id], [groupId]: prov } },
+        kg300Provenance: {
+          ...x.kg300Provenance,
+          [id]: { ...x.kg300Provenance[id], [groupId]: prov },
+        },
       }))
       // Ручное переключение меняет провенанс: значение больше не «из
       // документа», даже если совпадает с ним. Иначе продавец не отличит

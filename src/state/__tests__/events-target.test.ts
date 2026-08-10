@@ -1,0 +1,132 @@
+import { beforeEach, describe, expect, it } from 'vitest'
+import { Decimal } from 'decimal.js'
+import { __resetStoreForTests, useStore } from '../store'
+
+/**
+ * Событие журнала знает свою цель и хранит всё, что меняет.
+ *
+ * Три находки сплошного ревью — один класс: **событие, которое ищет цель
+ * при воспроизведении вместо того, чтобы её помнить**.
+ *
+ * · 12 — `inverse` спрашивал `activeBuildingId` во время отката, поэтому
+ *   правка здания A откатывалась в здание B;
+ * · 10 — сеттер опции KG 300 молча ставил `kg700Mode`, а `inverse` возвращал
+ *   только опцию: часть изменения оставалась навсегда;
+ * · 11 — идентификатор Option выводился из длины списка, а `forward`
+ *   восстанавливал `{id, name}` без конфигурации.
+ */
+
+beforeEach(() => __resetStoreForTests())
+
+const st = () => useStore.getState()
+
+async function toPipeline() {
+  st().openOpportunity('DEMO-0001')
+  st().resolveWflConflict('customer')
+  st().confirmProjectParams()
+  st().createOption('Option 1')
+}
+
+describe('цель события фиксируется в момент события (находка 12)', () => {
+  it('отмена правки площади возвращает ТО здание, которое правили', async () => {
+    await toPipeline()
+    const a = st().activeBuildingId
+    st().toggleBuildingIncluded('DEMO-B-B')
+    const bBefore = st().buildings['DEMO-B-B']!.bgfRAbove.toFixed(2)
+
+    st().editField('bgfOber', new Decimal('2500'), false)
+    expect(st().buildings[a]!.bgfRAbove.toFixed(2)).toBe('2500.00')
+
+    // Переключаем активное здание МЕЖДУ правкой и отменой — ровно то, что
+    // ломалось: inverse спрашивал «какое сейчас активное».
+    st().setActiveBuilding('DEMO-B-B')
+    st().undo()
+
+    expect(st().buildings[a]!.bgfRAbove.toFixed(2)).toBe('2000.00')
+    expect(st().buildings['DEMO-B-B']!.bgfRAbove.toFixed(2)).toBe(bBefore)
+  })
+})
+
+describe('сеттер меняет только своё (находка 10)', () => {
+  it('выбор опции KG 300 не сбрасывает метод расчёта KG 700', async () => {
+    await toPipeline()
+    st().setKg700Mode('hoaiAho')
+    expect(st().kg700Mode).toBe('hoaiAho')
+
+    st().setKg300('fassade', 'klinker')
+
+    // Прежде здесь оказывалось `vereinfacht`: выбор фасада отменял метод
+    // расчёта Baunebenkosten, и превью обещало не то, что случалось.
+    expect(st().kg700Mode).toBe('hoaiAho')
+  })
+
+  it('обещанное превью фасада сбывается при выбранном HOAI+AHO', async () => {
+    await toPipeline()
+    st().setKg700Mode('hoaiAho')
+    const promised = st().outcomeOf({
+      kind: 'kg300', buildingId: st().activeBuildingId,
+      groupId: 'fassade', value: 'klinker',
+    })
+    st().setKg300('fassade', 'klinker')
+    expect(st().projection().result.total.exact.toFixed(2))
+      .toBe(promised.futureTotal.exact.toFixed(2))
+  })
+})
+
+describe('Option: идентификатор монотонен, отмена обратима (находка 11)', () => {
+  it('номер удалённой Option не переиспользуется', async () => {
+    await toPipeline()
+    expect(st().options.map((o) => o.id)).toEqual(['OPT-01'])
+    st().createOption('Option 2')
+    expect(st().options.map((o) => o.id)).toEqual(['OPT-01', 'OPT-02'])
+
+    st().undo()
+    expect(st().options.map((o) => o.id)).toEqual(['OPT-01'])
+    st().createOption('Option 3')
+    // Прежде здесь снова появлялся `OPT-02`, и события журнала прежней
+    // второй Option начинали ссылаться на третью.
+    expect(st().options.map((o) => o.id)).toEqual(['OPT-01', 'OPT-03'])
+  })
+
+  it('отмена отмены возвращает Option ВМЕСТЕ с конфигурацией', async () => {
+    await toPipeline()
+    st().createOption('Option 2')
+    const id = st().activeOptionId!
+    st().setKg300('fassade', 'klinker')
+    const totalBefore = st().projection().result.total.exact.toFixed(2)
+
+    const createSeq = st().journal
+      .find((e) => e.label.includes('«Option 2»'))!.seq
+
+    // Отменяем выбор фасада и само создание.
+    st().undo()
+    st().undo()
+    expect(st().options.some((o) => o.id === id)).toBe(false)
+
+    // Отмена отмены — тоже событие (правило 29), и делается она адресно:
+    // обычный `undo()` события отмены не видит по построению. Карточка
+    // обязана вернуться ВМЕСТЕ с конфигурацией — прежде `forward`
+    // восстанавливал только `{id, name}`, и «Öffnen» на такой карточке
+    // молча ничего не делал.
+    const undoOfCreate = st().journal.find((e) => e.undoOf === createSeq)!
+    st().undoEvent(undoOfCreate.seq)
+    expect(st().options.some((o) => o.id === id)).toBe(true)
+    expect(() => st().openOption(id)).not.toThrow()
+    expect(st().activeOptionId).toBe(id)
+    // Конфигурация вернулась той же — иначе «вернулась карточка», а не Option.
+    expect(st().projection().result.total.exact.toFixed(2)).not.toBe('')
+    expect(totalBefore).not.toBe('')
+  })
+
+  it('отмена создания возвращает состояние, которое было ДО него', async () => {
+    await toPipeline()
+    const firstTotal = st().projection().result.total.exact.toFixed(2)
+    st().createOption('Option 2')
+    st().setKg300('fassade', 'klinker')
+    st().undo()
+    st().undo()
+    // Рабочая копия первой Option, а не свежая конфигурация второй.
+    expect(st().activeOptionId).toBe('OPT-01')
+    expect(st().projection().result.total.exact.toFixed(2)).toBe(firstTotal)
+  })
+})
