@@ -48,7 +48,10 @@ def unescape(cell: str) -> str:
     return cell
 
 
-def main() -> None:
+def merge() -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
+    """Слияние всех поставок. Вынесено из main(), чтобы проверяющие скрипты
+    читали ТУ ЖЕ таблицу, что и сборка: проверка по собственному разбору
+    доказывала бы согласие проверки с собой, а не с продуктом."""
     de: dict[str, str] = {}
     en: dict[str, str] = {}
     origin: dict[str, str] = {}
@@ -73,7 +76,10 @@ def main() -> None:
 
     if len(de) < 300:
         raise SystemExit(f'подозрительно мало ключей: {len(de)} — формат таблицы изменился?')
+    return de, en, origin
 
+
+def render(de: dict[str, str], en: dict[str, str]) -> str:
     def ts_dict(d: dict[str, str]) -> str:
         lines = []
         for k in sorted(d):
@@ -81,7 +87,7 @@ def main() -> None:
             lines.append(f"  '{k}': '{v}',")
         return '\n'.join(lines)
 
-    OUT.write_text(
+    return (
         '// СГЕНЕРИРОВАНО tools/build_i18n.py из docs/audit/verdicts/content/'
         'i18n-en-260806.md.\n'
         '// НЕ ПРАВИТЬ РУКАМИ: правка перезапишется. Источник перевода — файл '
@@ -92,10 +98,23 @@ def main() -> None:
         'export const GENERATED_DE: Record<string, string> = {\n'
         + ts_dict(de) + '\n} as const\n\n'
         'export const GENERATED_EN: Record<string, string> = {\n'
-        + ts_dict(en) + '\n} as const\n',
-        encoding='utf-8')
+        + ts_dict(en) + '\n} as const\n')
+
+
+def main(check: bool = False) -> None:
+    de, en, _ = merge()
+    text = render(de, en)
+    if check:
+        # Заморозка `src/**` (PROTOCOL §2-ter) запрещает писать во время
+        # приёмки, но не запрещает знать, разошёлся ли выход с поставкой.
+        current = OUT.read_text(encoding='utf-8') if OUT.exists() else ''
+        state = 'актуален' if current == text else 'РАСХОДИТСЯ с поставками'
+        print(f'ключей: {len(de)} · {OUT.relative_to(ROOT)}: {state}')
+        raise SystemExit(0 if current == text else 1)
+    OUT.write_text(text, encoding='utf-8')
     print(f'ключей: {len(de)} → {OUT.relative_to(ROOT)}')
 
 
 if __name__ == '__main__':
-    main()
+    import sys
+    main(check='--check' in sys.argv)
