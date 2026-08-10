@@ -14,10 +14,8 @@ import { ScheduleGantt } from '../components/ScheduleGantt'
 import { ChapterBuildings } from './ChapterBuildings'
 import { OptionChapter } from './OptionChapter'
 import {
-  KG300_GROUPS, KG400_GROUPS, ZERT_GROUPS, COVERAGE_RATES, coverageAmount,
+  KG300_GROUPS, KG400_GROUPS, ZERT_GROUPS, COVERAGE_RATES,
 } from '../engine/options'
-import { CATALOG } from '../state/catalog'
-import derivedFx from '../fixtures/derived-prototype.json'
 import { RISK_ITEMS, riskDriver } from '../engine/risk'
 import demo from '../fixtures/demo-0001.json'
 import { present, label as moneyLabel } from '../engine/money'
@@ -52,15 +50,6 @@ const UG_IMAGE_VALUE: Record<'vollausbau' | 'ab_decke' | 'kein_ug', string> = {
   kein_ug: 'keins',
 }
 
-/** Производная площадь S здания — та же, что использует расчёт. */
-function bgfSOfBuilding(id: string): Decimal {
-  const b = (derivedFx.buildings as Record<string, {
-    bgfSAboveGround?: { value: string | null }
-  }>)[id]
-  const v = b?.bgfSAboveGround?.value
-  return v ? new Decimal(v) : new Decimal(0)
-}
-
 export const CHAPTERS = [
   'Gebäude & Umfang', 'Leistungen KG 300', 'Leistungsabgrenzung', 'Technik KG 400',
   'Energie & Zertifikate', 'Flächen im Detail', 'Baugrund & Erschließung',
@@ -78,8 +67,8 @@ const KG_LABELS: Record<CostGroup, string> = {
  * Последствие опции для consequenceLine — видно всегда, не по hover
  * (R-05/OPTION-009). Образец контракта: `≈ +97.000 € Mehrpreis`.
  */
-function consequenceLabel(delta: Decimal): string {
-  if (delta.isZero()) return `±${NNBSP}0${NNBSP}€`
+function consequenceLabel(delta: Decimal, zero?: string): string {
+  if (delta.isZero()) return zero ?? `±${NNBSP}0${NNBSP}€`
   const pr = present(delta.abs())
   const sign = delta.isNegative() ? '−' : '+'
   const word = delta.isNegative() ? 'Minderpreis' : 'Mehrpreis'
@@ -190,7 +179,6 @@ function Card({ title, intro, children }: {
 function ChapterUmfang() {
   const s = useStore()
   const tx = useTx()
-  const b = activeBuilding(s)
   const p = s.projection()
   const decidable: CostGroup[] = ['KG_200', 'KG_500', 'KG_600', 'KG_800']
 
@@ -231,49 +219,36 @@ function ChapterUmfang() {
             последствия на самой плитке и последствие видно ДО клика. */}
         {decidable.map((g) => {
           const spec = COVERAGE_RATES[g]
-          // Один калькулятор с итогом и предпросмотром. Прежде плитка
-          // умножала сама и обещала цену, которой итог не соответствовал
-          // (ревью 26, находки 8 и 13).
-          const preis = spec
-            ? coverageAmount(spec, b, bgfSOfBuilding(b.id), p.result.bauwerk,
-                             CATALOG.kgShares)
-            : null
-          // `moneyLabel` возвращает строку СО знаком валюты. Шаблоны ниже
-          // добавляли второй, и карточки охвата показывали
-          // «+ 124.000 € € Mehrpreis». Поставка копирайта № 5 перенесла этот
-          // текст в словарь дословно и честно его пометила — дефект пережил
-          // и ревью, и перевод, потому что каждый слой считал его чужим.
-          const money = preis && !preis.isZero()
-            ? moneyLabel(present(preis)) : null
+          // Последствие приходит из ТОЙ ЖЕ проекции, что и клик: и охват
+          // считается по ВСЕМ включённым зданиям, а не по активному.
+          // Прежде плитка умножала ставку на площадь активного здания и
+          // обещала +230.000 €, тогда как итог менялся на +368.000 €
+          // (сплошное ревью 26, находка 13; предложение № 1 исследования
+          // рычага). Второй калькулятор последствия расходится молча.
+          const outcome = (v: CoverageState) =>
+            s.coverage[g] === v ? null : s.outcomeOf({ kind: 'coverage', group: g, value: v })
+          const tile = (v: CoverageState, title: string, zero: string) => ({
+            value: v,
+            title,
+            description: v === 'included' && spec ? `${tx(spec.basis)} ⚙` : undefined,
+            consequence: s.coverage[g] === v
+              ? tx('aktuelle Auswahl')
+              : consequenceLabel(outcome(v)!.delta, zero),
+          })
           return (
             <div key={g} className="mt-4">
               <RadioCardGroup
                 legend={`${g.replace('_', NNBSP)} ${KG_LABELS[g]}`}
                 value={s.coverage[g]}
                 onChange={(v) => s.setCoverage(g, v as CoverageState)}
+                onPreview={(v) => s.previewOption(
+                  v ? { kind: 'coverage', group: g, value: v as CoverageState } : null,
+                )}
                 options={[
-                  {
-                    value: 'included' as const,
-                    title: tx(COVERAGE_LABEL.included),
-                    description: spec ? `${tx(spec.basis)} ⚙` : undefined,
-                    // Последствие — деньги, а не слово «включено»: цена
-                    // включения стоит на плитке до клика (R-05).
-                    consequence: s.coverage[g] === 'included'
-                      ? tx('aktuelle Auswahl')
-                      : money
-                        ? `+${NNBSP}${money}${NNBSP}${tx('Mehrpreis')}`
-                        : tx('ohne Preisansatz im indikativen Angebot'),
-                  },
-                  {
-                    value: 'excluded' as const,
-                    title: tx(COVERAGE_LABEL.excluded),
-                    description: tx('Entscheidung, keine Lücke: die Summe bleibt vollständig'),
-                    consequence: s.coverage[g] === 'excluded'
-                      ? tx('aktuelle Auswahl')
-                      : money
-                        ? `−${NNBSP}${money}${NNBSP}${tx('gegenüber Aufnahme')}`
-                        : `±${NNBSP}0${NNBSP}€`,
-                  },
+                  tile('included', tx(COVERAGE_LABEL.included),
+                       tx('ohne Preisansatz im indikativen Angebot')),
+                  tile('excluded', tx(COVERAGE_LABEL.excluded),
+                       tx('Entscheidung, keine Lücke: die Summe bleibt vollständig')),
                   {
                     value: 'unknown' as const,
                     title: tx(COVERAGE_LABEL.unknown),

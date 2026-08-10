@@ -464,22 +464,22 @@ type Store = {
   sendOffer: (kind: 'email' | 'print', discountPercent: string | null) => OfferSnapshot
   clearDelta: () => void
   openChapterAt: (n: number) => void
-  /** DC-28: показать последствие опции до клика; null — погасить. */
-  previewOption: (
-    change:
-      | { kind: 'energiestandard'; value: BuildingInput['energiestandard'] }
-      | { kind: 'untergeschoss'; value: BuildingInput['untergeschoss'] }
-      | null,
-  ) => void
+  /** DC-28: показать последствие решения до клика; null — погасить. */
+  previewOption: (change: PriceChange | null) => void
   /**
-   * Чистая дельта опции против текущего выбора — для ВСЕГДА видимой
+   * Чистая дельта решения против текущего выбора — для ВСЕГДА видимой
    * consequenceLine карточки (R-05/OPTION-009). Состояние не меняет.
    */
-  optionDelta: (
-    change:
-      | { kind: 'energiestandard'; value: BuildingInput['energiestandard'] }
-      | { kind: 'untergeschoss'; value: BuildingInput['untergeschoss'] },
-  ) => Decimal
+  optionDelta: (change: PriceChange) => Decimal
+  /**
+   * Будущее состояние оффера, если решение принять: сумма, её подпись и
+   * разница. Один источник для плитки, призрака и клика.
+   */
+  outcomeOf: (change: PriceChange) => {
+    delta: Decimal
+    futureTotal: Displayed
+    futureLabel: string
+  }
   undo: () => void
   /** Есть ли действующее событие, которое отменит `undo()`. */
   canUndo: () => boolean
@@ -628,6 +628,66 @@ function bgfSOf(id: string): Decimal {
   const b = (derivedFx.buildings as Record<string, { bgfSAboveGround?: { value: string | null } }>)[id]
   const v = b?.bgfSAboveGround?.value
   return v ? new Decimal(v) : new Decimal(0)
+}
+
+/**
+ * Денежное решение продавца — **один тип на все места, где оно принимается**.
+ *
+ * Прежде превью знало два вида (энергостандарт и подвал), а остальные
+ * решения считали последствие сами: плитка охвата умножала ставку на площадь
+ * АКТИВНОГО здания, тогда как включение применяется ко всем включённым, и
+ * обещание `+230.000{NNBSP}€` кончалось изменением на `+368.000{NNBSP}€`
+ * (сплошное ревью 26, находка 13). Второй калькулятор последствия
+ * расходится с первым молча — и расходился.
+ */
+export type PriceChange =
+  | { kind: 'energiestandard'; value: BuildingInput['energiestandard'] }
+  | { kind: 'untergeschoss'; value: BuildingInput['untergeschoss'] }
+  | { kind: 'coverage'; group: CostGroup; value: CoverageState }
+  | { kind: 'risiko'; id: string; active: boolean }
+  | { kind: 'kg700'; value: 'vereinfacht' | 'hoaiAho' }
+  | { kind: 'kg300'; buildingId: string; groupId: string; value: string }
+
+/**
+ * Состояние, каким оно СТАНЕТ, если решение принять. Гипотеза, а не запись:
+ * из неё считают и превью, и плитка, и проверка того, что клик дал ровно
+ * обещанное.
+ */
+function withChange<S extends Parameters<typeof computeProjection>[0] & {
+  activeBuildingId: string
+}>(s: S, change: PriceChange): S {
+  switch (change.kind) {
+    case 'energiestandard':
+    case 'untergeschoss':
+      return {
+        ...s,
+        buildings: {
+          ...s.buildings,
+          [s.activeBuildingId]: {
+            ...s.buildings[s.activeBuildingId]!, [change.kind]: change.value,
+          },
+        },
+      }
+    case 'coverage':
+      return { ...s, coverage: { ...s.coverage, [change.group]: change.value } }
+    case 'risiko':
+      return {
+        ...s,
+        risikoAktiv: { ...s.risikoAktiv, [change.id]: change.active },
+      }
+    case 'kg700':
+      return { ...s, kg700Mode: change.value }
+    case 'kg300':
+      return {
+        ...s,
+        kg300: {
+          ...s.kg300,
+          [change.buildingId]: {
+            ...(s.kg300[change.buildingId] ?? {}), [change.groupId]: change.value,
+          },
+        },
+      }
+  }
 }
 
 function computeProjection(
@@ -1148,17 +1208,21 @@ const store = createStore<Store>((set, get) => {
         : [...s.besuchteKapitel, n],
     })),
 
-    optionDelta: (change) => {
-      // Тот же движок от точных значений — у последствия нет собственной
-      // арифметики, поэтому карточка, превью и клик не могут разойтись.
+    outcomeOf: (change) => {
+      // Тот же движок от точных значений и та же ПОЛНАЯ проекция, что у
+      // клика: у последствия нет собственной арифметики и нет своего охвата,
+      // поэтому плитка, призрак и клик разойтись не могут.
       const s = get()
-      const before = computeProjection(s).result.total.exact
-      const after = computeProjection({
-        ...s,
-        buildings: { ...s.buildings, [s.activeBuildingId]: { ...activeBuilding(s), [change.kind]: change.value } },
-      }).result.total.exact
-      return after.minus(before)
+      const before = computeProjection(s).result
+      const after = computeProjection(withChange(s, change)).result
+      return {
+        delta: after.total.exact.minus(before.total.exact),
+        futureTotal: after.total,
+        futureLabel: after.totalLabel,
+      }
     },
+
+    optionDelta: (change) => get().outcomeOf(change).delta,
 
     previewOption: (change) => {
       if (change === null) {
@@ -1166,28 +1230,21 @@ const store = createStore<Store>((set, get) => {
         return
       }
       const s = get()
-      const current = activeBuilding(s)[change.kind]
-      if (current === change.value) {
+      if (isCurrent(s, change)) {
         if (s.preview !== null) set({ preview: null })
         return
       }
-      const label = change.kind === 'energiestandard'
-        ? `Energiestandard ${change.value.replace('_', ' ')}`
-        : `Untergeschoss ${LABEL_UG[change.value as BuildingInput['untergeschoss']]}`
       // Призрак показывает БУДУЩЕЕ значение героя, а не только разницу:
       // «на сколько изменится» без «сколько станет» заставляет клиента
       // считать в уме на переговорах.
-      const future = computeProjection({
-        ...s,
-        buildings: { ...s.buildings, [s.activeBuildingId]: { ...activeBuilding(s), [change.kind]: change.value } },
-      })
+      const out = get().outcomeOf(change)
       set({
         preview: {
-          label,
-          futureTotal: future.result.total,
-          deltaExact: get().optionDelta(change),
+          label: changeLabel(change),
+          futureTotal: out.futureTotal,
+          deltaExact: out.delta,
           contextRef: 'DEMO-SC-01 · Vorschau-Lauf DEMO-RUN-0009',
-          futureLabel: future.result.totalLabel,
+          futureLabel: out.futureLabel,
         },
       })
     },
@@ -1586,6 +1643,51 @@ const LABELS: Record<'wfl' | 'bgfOber' | 'we', string> = {
   wfl: 'Wohnfläche WFL nach WoFlV',
   bgfOber: 'BGF oberirdisch',
   we: 'Wohneinheiten',
+}
+
+/**
+ * Уже выбрано ли то, что предлагает решение. Превью текущего выбора — не
+ * «нулевая дельта», а отсутствие решения: показывать призрак там, где
+ * менять нечего, значит обещать событие, которого не будет.
+ */
+function isCurrent(
+  s: Pick<Store, 'buildings' | 'activeBuildingId' | 'coverage' | 'risikoAktiv'
+    | 'kg700Mode' | 'kg300'>,
+  change: PriceChange,
+): boolean {
+  switch (change.kind) {
+    case 'energiestandard':
+    case 'untergeschoss':
+      return s.buildings[s.activeBuildingId]![change.kind] === change.value
+    case 'coverage':
+      return s.coverage[change.group] === change.value
+    case 'risiko':
+      return (s.risikoAktiv[change.id] ?? false) === change.active
+    case 'kg700':
+      return s.kg700Mode === change.value
+    case 'kg300':
+      return (s.kg300[change.buildingId] ?? {})[change.groupId] === change.value
+  }
+}
+
+/** Подпись решения для призрака. Немецкий текст — из тех же словарей. */
+function changeLabel(change: PriceChange): string {
+  switch (change.kind) {
+    case 'energiestandard':
+      return `Energiestandard ${change.value.replace('_', ' ')}`
+    case 'untergeschoss':
+      return `Untergeschoss ${LABEL_UG[change.value]}`
+    case 'coverage':
+      return `${change.group.replace('_', ' ')} ${COVERAGE_LABEL[change.value]}`
+    case 'risiko':
+      return change.active
+        ? 'Risikozuschlag anwenden' : 'Risikozuschlag zurücknehmen'
+    case 'kg700':
+      return change.value === 'hoaiAho'
+        ? 'KG 700 nach HOAI und AHO' : 'KG 700 vereinfacht'
+    case 'kg300':
+      return `${change.groupId} · ${change.value}`
+  }
 }
 
 const LABEL_UG: Record<BuildingInput['untergeschoss'], string> = {
