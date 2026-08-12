@@ -349,4 +349,41 @@ describe('Сквозной сценарий продажи', () => {
       expect(hit?.[0] ?? null, `Kapitel ${chapter}: код реестра на клиентской поверхности`).toBeNull()
     }
   })
+
+  it('клиентский профиль исключает внутреннюю навигацию, действия и идентификаторы из DOM', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await enterPipeline(user)
+
+    // Проверяем переход с внутренней главы: клиентский маршрут обязан
+    // нормализоваться до разрешённой главы без промежуточной утечки.
+    await user.click(nav(/Baunebenkosten KG 700/))
+    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
+    await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
+    await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
+
+    expect(screen.getByText('Kundenansicht — der Kunde sieht diesen Bildschirm'))
+      .toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Beenden' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Einstellungen/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Grundlagen/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Baunebenkosten KG 700/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Rundgang durch das Werkzeug' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Kundenansicht prüfen' })).toBeNull()
+    expect(screen.queryByText(/Journal|Marge|interne Notiz/i)).toBeNull()
+    expect(document.body.textContent).not.toMatch(/\b(?:DEMO|OPT|SNAP|BM)-[A-Z0-9-]+\b/)
+    expect(document.querySelector('[data-driver-id]')).toBeNull()
+
+    await user.click(nav(/Variantenvergleich/))
+    expect(document.body).not.toHaveTextContent(/(?:D-19|VARIANT-001|XSC-08|HOAI und AHO|70\/22\/8)/)
+    expect(document.body.textContent).not.toMatch(/\b(?:DEMO|OPT|SNAP|BM)-[A-Z0-9-]+\b/)
+
+    await user.click(nav(/^3Export/))
+    expect(document.body).not.toHaveTextContent(/(?:clientPrint|clientSafe|R-07|EMAIL-007)/)
+    expect(document.body.textContent).not.toMatch(/\b(?:DEMO|OPT|SNAP|BM)-[A-Z0-9-]+\b/)
+
+    await user.click(screen.getByRole('button', { name: 'Beenden' }))
+    expect(useStore.getState().mode).toBe('intern')
+    expect(screen.getByRole('button', { name: 'Kundenansicht prüfen' })).toBeInTheDocument()
+  })
 })

@@ -4,13 +4,13 @@ import { activeBuilding, useStore } from '../state/store'
 import { CATALOG } from '../state/catalog'
 import { splitKg300 } from '../engine/risk'
 import derivedFx from '../fixtures/derived-prototype.json'
+import demo from '../fixtures/demo-0001.json'
 import {
   NNBSP, present, rateLabel, formatDE, DENOMINATOR_LABEL, label as moneyLabel,
 } from '../engine/money'
 import type { CostGroup, CoverageState, DriverBasis } from '../engine/calculate'
 import { Button, useCountUp, useReducedMotion } from './primitives'
 import { OriginPopover } from './OriginPopover'
-import { ClientOutputGateDialog } from './ClientOutputGateDialog'
 import { ClientNotice } from './ClientNotice'
 import { UncertaintyBand } from './UncertaintyBand'
 import { useT, useTx } from '../i18n'
@@ -81,7 +81,6 @@ export function OfferPanel() {
   const [treiberOpen, setTreiberOpen] = useState(false)
   const [kgOpen, setKgOpen] = useState(false)
   const [kg300Open, setKg300Open] = useState(false)
-  const gateBtnRef = useRef<HTMLButtonElement>(null)
   // Правило 24: чип «долетает» до журнала — при уходе чипа журнал вспыхивает
   // один раз. Цветовой transition, не кейфрейм (правило 20); гаснет при
   // prefers-reduced-motion (правило 21).
@@ -107,9 +106,9 @@ export function OfferPanel() {
   const totalCount = useCountUp(
     new Decimal(p.result.total.display.replace(/\./g, '')), 0,
   )
-  const blocked = !activeBuilding(s).gebaeudeklasse.confirmed
   const shownDelta = useLastValue(s.activeDelta)
   const shownPreview = useLastValue(s.preview)
+  const blocked = !activeBuilding(s).gebaeudeklasse.confirmed
 
   // Сессионная дельта (DC-12, CALC-014): сумма точных дельт журнала —
   // undo несёт отрицание, поэтому простая сумма и есть «к базе», без
@@ -299,8 +298,10 @@ export function OfferPanel() {
                   <span aria-hidden="true">{shownPreview.futureTotal.prefix}{NNBSP}</span>
                 )}
                 {shownPreview.futureTotal.display}{NNBSP}€
-                {' · '}
-                {signed(shownPreview.deltaExact)}{NNBSP}gegenüber DEMO-VV-0003
+                {s.mode === 'intern' && <>
+                  {' · '}
+                  {signed(shownPreview.deltaExact)}{NNBSP}gegenüber DEMO-VV-0003
+                </>}
               </span>
               {/* Неполнота будущего прогона называется, а не подразумевается. */}
               {shownPreview.futureLabel !== 'Gesamt netto · Grundleistung All3' && (
@@ -320,7 +321,7 @@ export function OfferPanel() {
             inline-flex витрины): двухстрочный распирал зарезервированную
             высоту слота и сдвигал вёрстку на 27 px — ровно то, против чего
             слот и существует (правило 24, приёмка № 17). */}
-        <div className="a3-delta-slot mt-3">
+        {s.mode === 'intern' && <div className="a3-delta-slot mt-3">
           <p
             aria-hidden={s.activeDelta ? undefined : true}
             className={'a3-delta numeric' +
@@ -337,7 +338,7 @@ export function OfferPanel() {
               </span>
             </>)}
           </p>
-        </div>
+        </div>}
 
         {/* ── Сводка выбранного — «корзина» (ревью № 13, дефект 21):
             продавец видит СПИСОК своих решений, а не только их сумму.
@@ -392,10 +393,12 @@ export function OfferPanel() {
               вывод «x % zur Mediane» честно заменён названной причиной.
               Бенчмарк — выносной блок контракта (.a3-bmark). */}
           <p className="a3-bmark numeric">
-            {rateLabel(p.secondaryRateBgf)} gegen Snapshot
-            BM-BKI-2026Q1-SYNTH (Bundesdurchschnitt, Regionalfaktor
-            inaktiv{NNBSP}·{NNBSP}D-15) — nicht vergleichbar: Median im
-            Snapshot nicht deklariert.
+            {s.mode === 'intern'
+              ? <>{rateLabel(p.secondaryRateBgf)} gegen Snapshot BM-BKI-2026Q1-SYNTH
+                  {' '}(Bundesdurchschnitt, Regionalfaktor inaktiv{NNBSP}·{NNBSP}D-15)
+                  {' '}— nicht vergleichbar: Median im Snapshot nicht deklariert.</>
+              : <>{rateLabel(p.secondaryRateBgf)} · Bundesdurchschnitt;
+                  {' '}Regionalfaktor nicht angewendet. Ein Medianwert ist für diesen Vergleich nicht verfügbar.</>}
           </p>
           <div className="a3-tbl-scroll mt-2">
             <table className="a3-driver-table">
@@ -413,7 +416,7 @@ export function OfferPanel() {
                     const richtung = senkt ? 'senkt' : 'erhöht'
                     const shown = present(d.exact.abs())
                     return (
-                      <tr key={d.key} data-driver-id={d.key}
+                      <tr key={d.key} {...(s.mode === 'intern' ? { 'data-driver-id': d.key } : {})}
                           className={'a3-drv'
                             + (d.origin === 'base' ? ' a3-base' : '')
                             + (senkt ? ' a3-minus' : '')}>
@@ -429,7 +432,10 @@ export function OfferPanel() {
                             {richtung}
                             {' · '}
                             {d.scopeRefs.length > 0
-                              ? d.scopeRefs.join(NNBSP + '· ')
+                              ? d.scopeRefs.map((ref) => s.mode === 'intern'
+                                  ? ref
+                                  : demo.buildings.find((building) => building.id === ref)?.stableName ?? tx('Gebäude'))
+                                .join(NNBSP + '· ')
                               : 'Zuordnung offen'}
                           </span>
                         </th>
@@ -597,42 +603,20 @@ export function OfferPanel() {
         </section>
       </div>
 
-      {/* ── Гейт: причина и следующий шаг рядом (DC-33) ──────────────────── */}
-      <div className="border-t border-border-strong px-5 py-3">
-        {blocked ? (
-          <div className="a3-warn-prep">
-            <p className="text-small text-text-primary">
-              <span aria-hidden="true">▲ </span>
-              Kundenansicht gesperrt: Klassifikation nach MBO{NNBSP}§2 nicht
-              bestätigt.
-            </p>
-            <div className="mt-2">
-              <Button variant="primary" onClick={() => s.confirmGebaeudeklasse()}>{tx('Klassifikation bestätigen')}</Button>
-            </div>
+      {/* ── Журнал сессии (DC-12): внутренний след, не часть клиентской
+          проекции. DC-22 в шапке является единственной точкой входа. ── */}
+      {s.mode === 'intern' && <div className="border-t border-border-strong px-5 py-3">
+        {blocked && <div className="a3-warn-prep mb-3">
+          <p className="text-small text-text-primary">
+            <span aria-hidden="true">▲ </span>
+            Kundenansicht gesperrt: Klassifikation nach MBO{NNBSP}§2 nicht bestätigt.
+          </p>
+          <div className="mt-2">
+            <Button variant="primary" onClick={() => s.confirmGebaeudeklasse()}>
+              {tx('Klassifikation bestätigen')}
+            </Button>
           </div>
-        ) : (
-          /* Ворота в клиентский вид — ЕДИНСТВЕННАЯ модалка системы
-             (DC-33). Полоса сообщала состояние; здесь нужно решение с
-             последствием, которое не проверить постфактум: после
-             переключения продавец уже не увидит скрытого. */
-          <div className="a3-nextstep">
-            <p className="a3-mtag">{tx('Nächster Schritt')}</p>
-            <p className="text-small text-text-primary">
-              {tx('Eintritts-Gate offen — vor dem Wechsel zeigt die Freigabe, was der Kunde nicht sieht.')}
-            </p>
-            <div className="mt-2">
-              <Button variant="primary" ref={gateBtnRef}
-                      onClick={() => s.setGateOpen(true)}>
-                {tx('Kundenansicht prüfen')}
-              </Button>
-            </div>
-          </div>
-        )}
-        {/* Сам диалог живёт в оболочке: он один на приложение, и открыть
-            его вправе и панель, и переключатель режима в шапке. */}
-        <ClientOutputGateDialog returnFocusTo={gateBtnRef} />
-
-        {/* ── Журнал сессии (DC-12): подпись с названной базой ───────────── */}
+        </div>}
         <div className={'a3-journal-spec mt-3 transition-colors duration-base ' +
           (journalFlash ? 'bg-surface-subtle' : '')}>
           <button
@@ -674,7 +658,7 @@ export function OfferPanel() {
             </Button>
           </div>
         </div>
-      </div>
+      </div>}
     </aside>
   )
 }

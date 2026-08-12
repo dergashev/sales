@@ -66,6 +66,11 @@ export function ChapterBuildings() {
   const d = DERIVED[active.id] ?? {}
   const includedCount = Object.values(s.included).filter(Boolean).length
   const lastOne = includedCount === 1 && s.included[active.id] === true
+  const client = s.mode === 'praesentation'
+  const buildingName = (id: string) => client
+    ? demo.buildings.find((building) => building.id === id)?.stableName ?? tx('Gebäude')
+    : id
+  const activeName = buildingName(active.id)
 
   const bgfR = D(fx.areas.bgfAboveGround!)
   const bgfS = d.bgfSAboveGround?.value ? D(d.bgfSAboveGround.value) : new Decimal(0)
@@ -92,7 +97,7 @@ export function ChapterBuildings() {
             <button key={b.id} type="button"
                     aria-pressed={s.scopeBuildingId === b.id}
                     onClick={() => s.setScope(b.id)}>
-              {b.id}
+              {buildingName(b.id)}
             </button>
           ))}
         </div>
@@ -125,7 +130,7 @@ export function ChapterBuildings() {
                       onClick={() => s.setScope(b.id)}>
                     <td>
                       <span className="a3-gname">
-                        {b.id}
+                        {buildingName(b.id)}
                         {s.scopeBuildingId === b.id && (
                           <span className="a3-dash">{tx('angezeigt')}</span>
                         )}
@@ -158,7 +163,7 @@ export function ChapterBuildings() {
               <li key={b.id}
                   className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle py-3">
                 <span className="text-body text-text-primary">
-                  {b.id} · {tx(FORM_LABEL[b.gebaeudeform])}
+                  {buildingName(b.id)} · {tx(FORM_LABEL[b.gebaeudeform])}
                   {s.buildingConfirmed[b.id] && (
                     <span className="a3-cap"> · <span aria-hidden="true">✓ </span>{tx('bestätigt')}</span>
                   )}
@@ -191,12 +196,12 @@ export function ChapterBuildings() {
       {/* 2 · Метрики выбранного здания. */}
       <section className="a3-sheet">
         <h2 className="text-heading-3 font-bold text-text-primary">
-          {tx('Kennzahlen')} · {active.id}
+          {tx('Kennzahlen')} · {activeName}
         </h2>
         <div className="a3-tbl-scroll mt-3">
           <table className="w-full border-collapse">
             <caption className="sr-only">
-              Flächen und Einheiten des Gebäudes {active.id}
+              Flächen und Einheiten des Gebäudes {activeName}
             </caption>
             <tbody>
               <Row label="BGF (R, oberirdisch)" value={formatDE(bgfR, 2)} unit="m²" />
@@ -229,7 +234,7 @@ export function ChapterBuildings() {
       {/* 3 · Оси классификации — по одной на свой уровень (D-11 v2). */}
       <section className="a3-sheet">
         <h2 className="text-heading-3 font-bold text-text-primary">
-          {tx('Einstufung')} · {active.id}
+          {tx('Einstufung')} · {activeName}
         </h2>
         {s.mode === 'intern' && (
           <p className="a3-cap a3-lede mt-2">{tx('Drei getrennte Achsen statt eines Sammelbegriffs: die Gebäudeform gehört zum Gebäude, Klasse und Energiestandard werden geprüft und bestätigt. Ein Gebäude mit zwei Nutzungen hat keinen einen Typ.')}</p>
@@ -286,7 +291,7 @@ export function ChapterBuildings() {
         {s.buildingConfirmed[active.id] ? (
           <p className="a3-cap">
             <span aria-hidden="true">✓ </span>
-            Gebäudedaten {active.id} bestätigt.
+            Gebäudedaten {activeName} bestätigt.
             {!s.allBuildingsConfirmed() && ' Es fehlen noch andere Gebäude im Angebot.'}
           </p>
         ) : (

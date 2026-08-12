@@ -19,7 +19,7 @@
  * иначе изъятие начало бы съедать содержание.
  */
 
-const RX_REF_GROUP = /\s*\((?:[A-ZÄÖÜ][A-Z0-9-]{1,}-\d{2,3})(?:\s*[,·/]\s*[A-ZÄÖÜ][A-Z0-9-]{1,}-\d{2,3})*\)/g
+const RX_REF_GROUP = /\s*\((?:[A-ZÄÖÜ][A-Z0-9-]*-\d{2,3})(?:\s*[,·/]\s*[A-ZÄÖÜ][A-Z0-9-]*-\d{2,3})*\)/g
 
 export function stripInternalRefs(text: string): string {
   return text.replace(RX_REF_GROUP, '')

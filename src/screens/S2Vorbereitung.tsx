@@ -6,8 +6,12 @@ import { activeBuilding, useStore } from '../state/store'
 import { useTx } from '../i18n'
 import { copyFor } from '../i18n/internal-refs'
 import { NNBSP, formatDE, rateLabel } from '../engine/money'
-import { Button, NumericField, ProvenanceChip, UncertaintyBadge } from '../components/primitives'
+import {
+  Button, NumericField, ProvenanceChip, UncertaintyBadge,
+  type ProvenancePresentation,
+} from '../components/primitives'
 import { DocumentAnalysis } from '../components/DocumentAnalysis'
+import { PageHeader } from '../components/designSystem'
 
 /**
  * S2 Vorbereitung — пять вкладок приватной подготовки.
@@ -56,14 +60,12 @@ export function S2Vorbereitung({ openKonfigurator }: { openKonfigurator: () => v
 
   return (
     <div className="px-7 py-6">
-      <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-border-strong pb-3">
-        <h1 className="text-heading-2 font-bold text-text-primary">{tx('Musterprojekt Nordfeld · Vorbereitung')}</h1>
-        <span className="a3-cap">
-          {s.mode === 'praesentation'
-            ? 'Präsentation · interne Werte ausgeblendet'
-            : `intern · Δ-Werte sichtbar`}
-        </span>
-      </header>
+      <PageHeader
+        title={tx('Musterprojekt Nordfeld · Vorbereitung')}
+        meta={s.mode === 'praesentation'
+          ? 'Präsentation · interne Werte ausgeblendet'
+          : 'intern · Δ-Werte sichtbar'}
+      />
 
       {/* Табы — примитив системы (`.a3-tabs[role=tablist] > [role=tab]`,
           затем `.a3-tabpane[role=tabpanel]`): подчёркивание активного,
@@ -124,7 +126,7 @@ function P1Dokumente({ onManualCapture }: { onManualCapture: () => void }) {
       />
 
       <div className="mt-5 overflow-x-auto">
-        <table className="w-full border-collapse text-body">
+        <table className="a3-data-table">
           <caption className="sr-only">{tx('Hochgeladene Dokumente')}</caption>
           <thead>
             <tr className="border-b border-border-strong text-left">
@@ -196,17 +198,25 @@ function P2Projektdaten() {
           label="BGF oberirdisch"
           value={s.fields.bgfOber.value}
           unit="m²"
-          provenance={`${s.fields.bgfOber.provenance} · S. 15`}
+          provenance={{
+            kind: provenanceKind(s.fields.bgfOber.provenance),
+            label: tx(s.fields.bgfOber.provenance),
+            detail: 'S. 15',
+          }}
           onCommit={(v, c) => s.editField('bgfOber', v, c)}
         />
-        <StaticRow label="BGF unterirdisch" value={`${formatDE(new Decimal(fxA.areas.bgfBelowGround!), 2)}${NNBSP}m²`} provenance="aus Dokument · S. 7" />
-        <StaticRow label="BGF S (nicht umschlossen)" value={`0,00${NNBSP}m²`} provenance="aus Dokument" />
+        <StaticRow label="BGF unterirdisch" value={`${formatDE(new Decimal(fxA.areas.bgfBelowGround!), 2)}${NNBSP}m²`} provenance={{ kind: 'document', label: 'aus Dokument', detail: 'S. 7' }} />
+        <StaticRow label="BGF S (nicht umschlossen)" value={`0,00${NNBSP}m²`} provenance={{ kind: 'document', label: 'aus Dokument' }} />
 
         <NumericField
           label="Wohnfläche WFL nach WoFlV"
           value={s.fields.wfl.value}
           unit="m²"
-          provenance={`${s.fields.wfl.provenance} · S. 12`}
+          provenance={{
+            kind: provenanceKind(s.fields.wfl.provenance),
+            label: tx(s.fields.wfl.provenance),
+            detail: 'S. 12',
+          }}
           onCommit={(v, c) => s.editField('wfl', v, c)}
         />
 
@@ -245,14 +255,17 @@ function P2Projektdaten() {
           </p>
         )}
 
-        <StaticRow label="Balkon-Anrechnung" value={`${catalog.internalConfig.balconyDefaultPercent}${NNBSP}%`} provenance={`${catalog.internalConfig.balconySource} · Standard, auf Kundenwunsch 50 %`} />
+        <StaticRow label="Balkon-Anrechnung" value={`${catalog.internalConfig.balconyDefaultPercent}${NNBSP}%`} provenance={{ kind: 'document', label: catalog.internalConfig.balconySource, detail: 'Standard, auf Kundenwunsch 50 %' }} />
 
         <NumericField
           label="Wohneinheiten"
           value={s.fields.we.value}
           decimals={0}
           integer
-          provenance={s.fields.we.provenance}
+          provenance={{
+            kind: provenanceKind(s.fields.we.provenance),
+            label: tx(s.fields.we.provenance),
+          }}
           onCommit={(v, c) => s.editField('we', v, c)}
         />
 
@@ -262,7 +275,7 @@ function P2Projektdaten() {
             <p className="mt-1 text-body text-text-primary">
               GK{NNBSP}5{' '}
               {activeBuilding(s).gebaeudeklasse.confirmed
-                ? <ProvenanceChip provenance="vom Kunden bestätigt" />
+                ? <ProvenanceChip provenance={{ kind: 'customerConfirmed', label: tx('vom Kunden bestätigt') }} />
                 : <span className="a3-cap">
                     <span aria-hidden="true">▲ </span>
                     Prüfung erforderlich · Prüfauslöser: 5 Vollgeschosse · Δ{NNBSP}±{NNBSP}{catalog.internalConfig.gebaeudeklasseDeltaPp}{NNBSP}%
@@ -277,7 +290,9 @@ function P2Projektdaten() {
         <StaticRow
           label="Energiestandard"
           value={activeBuilding(s).energiestandard.replace('_', NNBSP)}
-          provenance={s.esConfirmed ? 'vom Kunden bestätigt' : 'Projektabstimmung'}
+          provenance={s.esConfirmed
+            ? { kind: 'customerConfirmed', label: 'vom Kunden bestätigt' }
+            : { kind: 'manual', label: 'Projektabstimmung' }}
         />
       </div>
 
@@ -289,13 +304,29 @@ function P2Projektdaten() {
   )
 }
 
-function StaticRow({ label, value, provenance }: { label: string; value: string; provenance: string }) {
+function provenanceKind(
+  provenance: 'aus Dokument' | 'vom Kunden bestätigt' | 'abgeleitet' | 'manuell erfasst',
+): ProvenancePresentation['kind'] {
+  return provenance === 'aus Dokument' ? 'document'
+    : provenance === 'vom Kunden bestätigt' ? 'customerConfirmed'
+      : provenance === 'abgeleitet' ? 'derived' : 'manual'
+}
+
+function StaticRow({ label, value, provenance }: {
+  label: string
+  value: string
+  provenance: ProvenancePresentation
+}) {
   const tx = useTx()
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle py-3">
       <span className="text-small font-medium text-text-primary">{label}</span>
       <span className="numeric text-body text-text-primary">{value}</span>
-      <ProvenanceChip provenance={tx(provenance)} />
+      <ProvenanceChip provenance={{
+        ...provenance,
+        label: tx(provenance.label),
+        detail: provenance.detail ? tx(provenance.detail) : undefined,
+      }} />
     </div>
   )
 }

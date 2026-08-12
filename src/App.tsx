@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { activeBuilding, useStore } from './state/store'
 import { useT } from './i18n'
 import { checkFonts, checkCascade, type FontCheck } from './lib/font-check'
 import { SegmentedControl } from './components/controls'
+import { OutputProfileSwitch } from './components/designSystem'
 import { Sidebar } from './components/Sidebar'
 import { ClientOutputGateDialog } from './components/ClientOutputGateDialog'
 import { GuidedTour } from './components/GuidedTour'
@@ -37,6 +38,9 @@ export function App() {
   const [fonts, setFonts] = useState<FontCheck | null>(null)
   const [cascade, setCascade] = useState<string[] | null>(null)
   const praesentation = s.mode === 'praesentation'
+  const renderedView = praesentation && (view === 'einstellungen' || view === 'grundlagen')
+    ? 'konfigurator'
+    : view
   const t = useT()
 
   useEffect(() => {
@@ -69,7 +73,7 @@ export function App() {
   // открывшийся серединой карточек без H1, не объясняет свой вопрос.
   const mainRef = useRef<HTMLElement>(null)
   // Куда вернуть фокус после ворот, открытых из шапки.
-  const modeRef = useRef<HTMLElement>(null)
+  const modeRef = useRef<HTMLButtonElement>(null)
   const firstRender = useRef(true)
   useEffect(() => {
     // jsdom не реализует scrollTo на элементах — свойство надёжнее метода.
@@ -80,8 +84,22 @@ export function App() {
     // происходило). Первый рендер пропускается: там фокус ничей и
     // забирать его у пользователя не за что.
     if (firstRender.current) { firstRender.current = false; return }
-    mainRef.current?.focus()
-  }, [view, s.openChapter, s.activeOptionId, s.level])
+    const heading = mainRef.current?.querySelector<HTMLElement>('[data-page-heading], h1')
+    if (heading) {
+      if (!heading.hasAttribute('tabindex')) heading.tabIndex = -1
+      heading.focus({ preventScroll: true })
+    }
+  }, [view, s.openChapter, s.activeOptionId, s.level, s.mode])
+
+  // Клиентский профиль — проекция разрешённых экранов, а не набор
+  // визуально спрятанных ссылок. Если внутренний маршрут был открыт до
+  // переключения, он покидается до следующего отображения профиля.
+  useEffect(() => {
+    if (praesentation && (view === 'einstellungen' || view === 'grundlagen')) {
+      s.setPipelineView('konfigurator')
+    }
+    if (praesentation && s.openChapter === 8) s.openChapterAt(9)
+  }, [praesentation, s.openChapter, s.openChapterAt, s.setPipelineView, view])
 
   // Корень продукта — список Opportunities: ни панелей, ни цены. Цена не
   // может быть показана до выбора Option, а Option появляется только после
@@ -90,9 +108,10 @@ export function App() {
   // конвейера, то есть внутри Option, а не поверх всего продукта.
   if (s.level !== 'option') {
     return (
-      <div className="flex h-screen flex-col bg-surface-canvas">
-        <AppHeader t={t} />
-        <ClientOutputGateDialog returnFocusTo={modeRef} />
+      <div className="a3-app-shell flex h-screen flex-col">
+        <ViewportWarning />
+        <AppHeader t={t} modeRef={modeRef} />
+        {!praesentation && <ClientOutputGateDialog returnFocusTo={modeRef} />}
         <main ref={mainRef} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto bg-surface-default outline-none">
           {s.level === 'liste' ? <OpportunityList /> : <OpportunityCard />}
         </main>
@@ -102,18 +121,20 @@ export function App() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-surface-canvas">
-      <AppHeader t={t} />
+    <div className="a3-app-shell flex h-screen flex-col">
+      <ViewportWarning />
+      <AppHeader t={t} modeRef={modeRef} />
+      {!praesentation && <ClientOutputGateDialog returnFocusTo={modeRef} />}
 
       <div className="flex min-h-0 flex-1">
         <Sidebar />
 
         <main ref={mainRef} tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto bg-surface-default outline-none">
-          {view === 'konfigurator' && <S3Konfigurator />}
-          {view === 'vergleich' && <S4Vergleich />}
-          {view === 'export' && <S5Export />}
-          {view === 'einstellungen' && <S6Einstellungen />}
-          {view === 'grundlagen' && <Grundlagen fonts={fonts} cascade={cascade} />}
+          {renderedView === 'konfigurator' && <S3Konfigurator />}
+          {renderedView === 'vergleich' && <S4Vergleich />}
+          {renderedView === 'export' && <S5Export />}
+          {renderedView === 'einstellungen' && <S6Einstellungen />}
+          {renderedView === 'grundlagen' && <Grundlagen fonts={fonts} cascade={cascade} />}
         </main>
 
         <OfferPanel />
@@ -131,19 +152,25 @@ export function App() {
  * обратно. Дублировать шапку было бы вторым источником правды о том, как
  * выглядит верх продукта.
  */
-function AppHeader({ t }: { t: (k: Parameters<ReturnType<typeof useT>>[0]) => string }) {
+function AppHeader({
+  t,
+  modeRef,
+}: {
+  t: (k: Parameters<ReturnType<typeof useT>>[0]) => string
+  modeRef: RefObject<HTMLButtonElement>
+}) {
   const s = useStore()
   const praesentation = s.mode === 'praesentation'
   const modeBlocked = !activeBuilding(s).gebaeudeklasse.confirmed
 
   return (
-    <header className="z-header flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border-strong bg-surface-default px-5 py-3">
+    <header className="a3-global-header z-header shrink-0">
       <div className="flex flex-wrap items-center gap-3">
         <p className="text-body text-text-primary">
           <span className="font-bold">All3</span>
           <span className="text-text-secondary"> · Indicative Offer Engine</span>
         </p>
-        {s.level !== 'liste' && (
+        {s.level !== 'liste' && !praesentation && (
           <nav aria-label="Pfad" className="flex flex-wrap items-center gap-2">
             <span aria-hidden="true" className="text-text-muted">/</span>
             <button
@@ -164,7 +191,7 @@ function AppHeader({ t }: { t: (k: Parameters<ReturnType<typeof useT>>[0]) => st
           </nav>
         )}
       </div>
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="a3-header-controls">
         {/* Режим показа (правило 11). Вход в презентацию гейтуется
             открытым material-блокером (R-07) — заблокированный контрол
             объясняет почему (правило 12). */}
@@ -173,47 +200,47 @@ function AppHeader({ t }: { t: (k: Parameters<ReturnType<typeof useT>>[0]) => st
             продавец попадал к клиенту, не увидев, что перестанет быть
             видимым (приёмка волны C). Выход обратно прямой: возвращаться
             во внутреннее пространство нечем гейтовать. */}
-        <SegmentedControl
-          layout="inline"
-          legend={t('shell.mode.legend')}
-          value={s.mode}
-          onChange={(m) => (m === 'praesentation'
-            ? s.setGateOpen(true)
-            : s.setMode(m))}
-          options={[
-            { value: 'intern', label: t('shell.mode.intern') },
-            {
-              value: 'praesentation',
-              label: t('shell.mode.praesentation'),
-              disabled: modeBlocked,
-              disabledReason: modeBlocked ? t('shell.mode.blockedReason') : undefined,
-            },
-          ]}
-        />
+        {s.level === 'option' && (
+          <OutputProfileSwitch
+            mode={s.mode}
+            blocked={modeBlocked}
+            blockedReason={modeBlocked ? t('shell.mode.blockedReason') : undefined}
+            checkButtonRef={modeRef}
+            onCheck={() => s.setGateOpen(true)}
+            onExit={() => s.setMode('intern')}
+          />
+        )}
         {/* EN честно назван ЧАСТИЧНЫМ до переключения (приёмка № 17,
             дефект 2). Причина теперь ОДНА и временная: перевод ещё не
             доставлен целиком. Решение PO D-24 отменило D-20 — английская
             версия обязана быть английской, включая guidance; пометка
             снимается поставкой № 4, а не остаётся навсегда. */}
-        <SegmentedControl
-          layout="inline"
-          legend="Sprache"
-          value={s.uiLanguage}
-          onChange={(l) => s.setUiLanguage(l)}
-          helperText={s.uiLanguage === 'en'
-            ? t('shell.en.draftActive')
-            : t('shell.en.draftHint')}
-          options={[
-            { value: 'de', label: 'DE' },
-            { value: 'en', label: 'EN · Entwurf' },
-          ]}
-        />
-        {!praesentation && (
-          <p className="text-small text-text-secondary">
-            {t('shell.prototypeNote')}
+        <div className="a3-language-control">
+          <SegmentedControl
+            layout="inline"
+            legend="Sprache"
+            value={s.uiLanguage}
+            onChange={(l) => s.setUiLanguage(l)}
+            options={[
+              { value: 'de', label: 'DE' },
+              { value: 'en', label: 'EN · Entwurf' },
+            ]}
+          />
+          <p className="a3-language-status">
+            {s.uiLanguage === 'en' ? t('shell.en.draftActive') : t('shell.en.draftHint')}
           </p>
-        )}
+        </div>
       </div>
     </header>
+  )
+}
+
+function ViewportWarning() {
+  const t = useT()
+  return (
+    <div className="a3-viewport-warning" role="status">
+      <strong>{t('shell.viewport.title')}</strong>
+      <span>{t('shell.viewport.body')}</span>
+    </div>
   )
 }

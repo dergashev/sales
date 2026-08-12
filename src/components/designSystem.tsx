@@ -9,6 +9,7 @@ import {
   type HTMLAttributes,
   type ReactElement,
   type ReactNode,
+  type Ref,
   type SelectHTMLAttributes,
 } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -17,6 +18,7 @@ import { useSemanticMotion } from '../design-system/motion'
 import { useT } from '../i18n'
 import { Skeleton } from './primitives'
 import { Button } from './primitives'
+import { SegmentedControl } from './controls'
 
 export function SectionSheet({
   title,
@@ -51,10 +53,77 @@ export function PageHeader({ title, meta, lede, ...rest }: {
 } & HTMLAttributes<HTMLElement>) {
   return (
     <header {...rest} className={`a3-masthead${rest.className ? ` ${rest.className}` : ''}`}>
-      <h1 className="a3-hero-title">{title}</h1>
+      <h1 className="a3-hero-title" tabIndex={-1} data-page-heading>{title}</h1>
       {meta && <div className="a3-meta">{meta}</div>}
       {lede && <p className="a3-lede">{lede}</p>}
     </header>
+  )
+}
+
+/**
+ * DC-22 · one canonical boundary between the private workspace and the
+ * customer projection. The profile remains textually explicit in both
+ * states; entering the customer view always delegates to DC-33.
+ */
+export function OutputProfileSwitch({
+  mode,
+  blocked = false,
+  blockedReason,
+  onCheck,
+  onExit,
+  checkButtonRef,
+}: {
+  mode: 'intern' | 'praesentation'
+  blocked?: boolean
+  blockedReason?: string
+  onCheck: () => void
+  onExit: () => void
+  checkButtonRef?: Ref<HTMLButtonElement>
+}) {
+  const t = useT()
+  const client = mode === 'praesentation'
+  const blockedReasonId = useId()
+
+  return (
+    <div className="a3-output-profile">
+      <SegmentedControl
+        layout="inline"
+        legend={t('shell.mode.legend')}
+        value={mode}
+        onChange={(next) => next === 'praesentation' ? onCheck() : onExit()}
+        options={[
+          { value: 'intern', label: t('shell.profile.internal') },
+          {
+            value: 'praesentation',
+            label: t('shell.profile.client'),
+            disabled: !client && blocked,
+            descriptionId: !client && blocked ? blockedReasonId : undefined,
+          },
+        ]}
+      />
+
+      {client ? (
+        <Button variant="secondary" onClick={onExit}>{t('shell.profile.exit')}</Button>
+      ) : (
+        <Button
+          ref={checkButtonRef}
+          variant="secondary"
+          disabled={blocked}
+          aria-describedby={blocked && blockedReason ? blockedReasonId : undefined}
+          onClick={onCheck}
+        >
+          {t('shell.profile.check')}
+        </Button>
+      )}
+
+      {!client && blocked && blockedReason && (
+        <p id={blockedReasonId} className="a3-output-blocked-reason">{blockedReason}</p>
+      )}
+      <p className="a3-mode-indicator" role="status" aria-live="polite" aria-atomic="true">
+        <span aria-hidden="true">{client ? '◉' : '○'}</span>
+        {client ? t('shell.profile.clientIndicator') : t('shell.profile.internalIndicator')}
+      </p>
+    </div>
   )
 }
 

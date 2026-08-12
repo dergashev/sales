@@ -6,7 +6,8 @@ import { incompleteReasonText } from '../i18n/reasons'
 import type { BuildingInput } from '../engine/calculate'
 import type { CostGroup, CoverageState } from '../engine/calculate'
 import { Decimal } from 'decimal.js'
-import { Button, NumericField } from '../components/primitives'
+import { Button, NumericField, type ProvenanceKind } from '../components/primitives'
+import { PageHeader, SectionSheet } from '../components/designSystem'
 import { ClientNotice } from '../components/ClientNotice'
 import { RadioCardGroup, SegmentedControl } from '../components/controls'
 import { optionImage } from '../assets/option-images'
@@ -78,17 +79,24 @@ function consequenceLabel(delta: Decimal, zero?: string): string {
 export function S3Konfigurator() {
   const s = useStore()
   const tx = useTx()
-  const n = s.openChapter
+  const client = s.mode === 'praesentation'
+  const n = client && s.openChapter === 8 ? 9 : s.openChapter
   const title = CHAPTERS[n - 1] ?? CHAPTERS[0]
+  const chapterRoute = client ? [1, 2, 3, 4, 5, 6, 7, 9] : [1, 2, 3, 4, 5, 6, 7, 8, 9]
+  const routeIndex = chapterRoute.indexOf(n)
+  const previous = routeIndex > 0 ? chapterRoute[routeIndex - 1] : null
+  const next = routeIndex >= 0 && routeIndex < chapterRoute.length - 1
+    ? chapterRoute[routeIndex + 1]
+    : null
 
   return (
     <div className="px-7 py-6">
       {/* Заголовок экрана — masthead витрины: крупный титул и мета на
           одной базовой линии, как в образце. */}
-      <header className="a3-masthead">
-        <h1 className="a3-hero-title">{tx(title)}</h1>
-        <p className="a3-cap">Kapitel {n}{NNBSP}von{NNBSP}9 · Konfigurator</p>
-      </header>
+      <PageHeader
+        title={tx(title)}
+        meta={<>Kapitel {routeIndex + 1}{NNBSP}von{NNBSP}{chapterRoute.length} · Konfigurator</>}
+      />
 
       {/* Ширина содержимого не ограничивается: центровщик остаётся пределом
           ДЛИННОГО ТЕКСТА (он стоит на абзацах внутри карточек), а не клеткой
@@ -123,14 +131,14 @@ export function S3Konfigurator() {
 
       {/* Один следующий шаг всегда на экране (DC-27): маршрут, не принуждение. */}
       <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-4">
-        {n > 1 ? (
-          <Button onClick={() => s.openChapterAt(n - 1)}>
-            ← Kapitel {n - 1}: {tx(CHAPTERS[n - 2]!)}
+        {previous ? (
+          <Button onClick={() => s.openChapterAt(previous)}>
+            ← Kapitel {routeIndex}: {tx(CHAPTERS[previous - 1]!)}
           </Button>
         ) : <span />}
-        {n < 9 && (
-          <Button variant="primary" onClick={() => s.openChapterAt(n + 1)}>
-            Weiter · Kapitel {n + 1}: {tx(CHAPTERS[n]!)}
+        {next && (
+          <Button variant="primary" onClick={() => s.openChapterAt(next)}>
+            Weiter · Kapitel {routeIndex + 2}: {tx(CHAPTERS[next - 1]!)}
           </Button>
         )}
       </footer>
@@ -151,13 +159,9 @@ function Card({ title, intro, children }: {
   const mode = useStore().mode
   const tx = useTx()
   return (
-    <section className="a3-sheet">
-      <h2 className="text-heading-3 font-bold text-text-primary">{tx(title)}</h2>
-      {intro && mode === 'intern' && (
-        <p className="mt-2 max-w-content text-body text-text-secondary">{tx(intro)}</p>
-      )}
+    <SectionSheet title={tx(title)} intro={intro && mode === 'intern' ? tx(intro) : undefined}>
       <div className="mt-3">{children}</div>
-    </section>
+    </SectionSheet>
   )
 }
 
@@ -306,14 +310,20 @@ function ChapterFlaechen() {
           label="BGF oberirdisch"
           value={s.fields.bgfOber.value}
           unit="m²"
-          provenance={tx(s.fields.bgfOber.provenance)}
+          provenance={{
+            kind: fieldProvenanceKind(s.fields.bgfOber.provenance),
+            label: tx(s.fields.bgfOber.provenance),
+          }}
           onCommit={(v, c) => s.editField('bgfOber', v, c)}
         />
         <NumericField
           label="Wohnfläche WFL nach WoFlV"
           value={s.fields.wfl.value}
           unit="m²"
-          provenance={s.fields.wfl.provenance}
+          provenance={{
+            kind: fieldProvenanceKind(s.fields.wfl.provenance),
+            label: tx(s.fields.wfl.provenance),
+          }}
           onCommit={(v, c) => s.editField('wfl', v, c)}
         />
         <NumericField
@@ -321,7 +331,10 @@ function ChapterFlaechen() {
           value={s.fields.we.value}
           decimals={0}
           integer
-          provenance={s.fields.we.provenance}
+          provenance={{
+            kind: fieldProvenanceKind(s.fields.we.provenance),
+            label: tx(s.fields.we.provenance),
+          }}
           onCommit={(v, c) => s.editField('we', v, c)}
         />
       </Card>
@@ -359,6 +372,14 @@ function ChapterFlaechen() {
       </Card>
     </div>
   )
+}
+
+function fieldProvenanceKind(
+  provenance: 'aus Dokument' | 'vom Kunden bestätigt' | 'abgeleitet' | 'manuell erfasst',
+): ProvenanceKind {
+  return provenance === 'aus Dokument' ? 'document'
+    : provenance === 'vom Kunden bestätigt' ? 'customerConfirmed'
+      : provenance === 'abgeleitet' ? 'derived' : 'manual'
 }
 
 function ChapterEnergie() {

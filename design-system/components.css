@@ -286,6 +286,11 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-cmp .a3-num{font-variant-numeric:tabular-nums;text-align:right}
 .a3-cmp .a3-d{display:block;font-size:var(--type-delta-size);line-height:var(--type-delta-line);font-weight:var(--type-delta-weight);color:var(--color-text-primary)}
 .a3-cmp .a3-d.a3-save{color:var(--color-dataviz-category-2)}
+.a3-comparison-controls{display:flex;justify-content:flex-end;gap:var(--space-2);flex-wrap:wrap}
+.a3-comparison-scroll{max-inline-size:100%;overflow-x:auto;overscroll-behavior-inline:contain;outline-offset:var(--space-1)}
+.a3-comparison-scroll>.a3-cmp{inline-size:max-content;min-inline-size:100%}
+.a3-comparison-scroll .a3-cmp tr:not(.a3-comparison-group)>:first-child{position:sticky;inset-inline-start:0;z-index:1;min-inline-size:var(--measure-conflict-column);background:var(--color-surface-default);box-shadow:var(--border-width-default) 0 var(--color-border-subtle)}
+.a3-comparison-scroll .a3-cmp thead tr>:first-child{z-index:2}
 
 /* DC-7 / DC-31 · preparation/client mode cards and notice popover.
    Structure: .a3-mode-wrap > .a3-mode-card; trigger .a3-hinweis controls the
@@ -682,6 +687,38 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-radio-segments label[data-disabled="true"]{cursor:default;color:var(--color-action-disabled-text);background:var(--color-action-disabled-bg)}
 .a3-segment-check{min-width:var(--size-icon-sm);font-weight:var(--font-weight-bold)}
 .a3-segmented-helper{grid-column:1/-1;margin:0;font-size:var(--type-helper-size);line-height:var(--type-helper-line);color:var(--color-text-secondary)}
+
+/* DC-22 · Output profile boundary. The permanent indicator is a text state,
+   not a transient toast or a color-only cue. */
+.a3-output-profile{display:grid;grid-template-columns:auto auto;align-items:center;gap:var(--space-2) var(--space-3)}
+.a3-output-profile>.a3-mode-indicator{grid-column:1/-1;justify-self:end}
+.a3-output-blocked-reason{grid-column:1;margin:0;max-inline-size:42ch;overflow-wrap:anywhere;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-output-blocked-reason+.a3-mode-indicator{grid-column:2}
+.a3-mode-indicator{display:flex;align-items:center;gap:var(--space-2);margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-label-weight);color:var(--color-text-secondary)}
+.mode-praesentation .a3-mode-indicator{color:var(--color-text-primary)}
+.a3-global-header{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-5);border-bottom:var(--border-contrast-1px);background:var(--color-surface-default)}
+.a3-header-controls{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:flex-end;gap:var(--space-4)}
+.a3-language-control{display:grid;gap:var(--space-1)}
+.a3-language-status{margin:0;max-inline-size:32ch;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+
+/* The product shell has a supported three-pane minimum. Below it the layout
+   remains geometrically stable while a persistent explanation covers the
+   unsupported workspace instead of silently crushing the offer panel. */
+.a3-app-shell{min-inline-size:var(--size-app-min-width);background:var(--color-surface-canvas)}
+.a3-viewport-warning{display:none}
+
+/* Center-host responsive composition. At the supported 1280 shell the center
+   is 480 px, so export content stays in one readable column. */
+.a3-export-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-6);padding-block:var(--space-5)}
+@container a3-grid-host (min-width:47rem){
+  .a3-export-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+@media (max-width:79.9375rem){
+  .a3-viewport-warning{position:fixed;inset:0;z-index:var(--layer-dialog);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-2);padding:var(--space-6);background:var(--color-surface-default);color:var(--color-text-primary);text-align:center}
+  .a3-viewport-warning strong{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line)}
+  .a3-viewport-warning span{max-width:var(--measure-body-max);font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-secondary)}
+}
 /* DC-12 · SessionJournalBar full specimen. Structure: .a3-journal-spec >
    button.a3-journal-disclose + ul.a3-journal-items.
    Classes: .a3-journal-spec · .a3-journal-disclose · .a3-journal-items. */

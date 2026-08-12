@@ -168,7 +168,25 @@ describe('Гейт режима презентации — блокировка 
     expect(useStore.getState().mode).toBe('praesentation')
     expect(useStore.getState().gateOpen).toBe(false)
     await waitFor(() => expect(screen.queryByRole('dialog', { name: /Bereit für die Präsentation/ })).toBeNull())
-    expect(screen.getByRole('main')).toHaveFocus()
+    expect(screen.getByRole('heading', { level: 1, name: 'Gebäude & Umfang' })).toHaveFocus()
+  })
+})
+
+describe('Маршрут экрана возвращает начало документа', () => {
+  it('сбрасывает прокрутку и фокусирует новый H1 при каждой смене экрана', async () => {
+    const user = userEvent.setup()
+    await enterPipeline(user)
+    const main = screen.getByRole('main')
+    main.scrollTop = 420
+
+    await user.click(screen.getByRole('button', { name: /Variantenvergleich/ }))
+    expect(main.scrollTop).toBe(0)
+    expect(screen.getByRole('heading', { level: 1, name: 'Variantenvergleich' })).toHaveFocus()
+
+    main.scrollTop = 320
+    await user.click(screen.getByRole('button', { name: /^3Export/ }))
+    expect(main.scrollTop).toBe(0)
+    expect(screen.getByRole('heading', { level: 1, name: /Export/ })).toHaveFocus()
   })
 })
 

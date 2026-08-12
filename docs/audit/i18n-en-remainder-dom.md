@@ -5,7 +5,7 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 50** · перевод есть, мост не подключён: 45
+**Всего 48** · перевод есть, мост не подключён: 43
 · перевода нет (в поставку копирайта): 5
 
 ## Перевод есть — строка не проходит через мост (правится в src)
@@ -42,7 +42,6 @@ Mit freundlichen Grüßen
 - Wohnfläche WFL nach WoFlV
 - aktuelle Auswahl
 - andere Dokumente sind vollständig analysiert.
-- aus Dokument
 - bauseits; im indikativen Angebot ohne Preisansatz ⚙
 - bestätigt.
 - dieser Datei
@@ -54,7 +53,6 @@ Mit freundlichen Grüßen
 - nicht enthalten
 - nur Unterschiede
 - vollständig inkl. Gründung
-- vom Kunden bestätigt
 - §2 nicht bestätigt.
 - Österreich
 - €/m² WFL nach WoFlV

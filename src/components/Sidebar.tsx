@@ -43,6 +43,14 @@ export function Sidebar() {
   const option = s.options.find((o) => o.id === s.activeOptionId)
   const t = useT()
   const tx = useTx()
+  const client = s.mode === 'praesentation'
+  const screens = client
+    ? SCREENS.filter(({ id }) => id !== 'einstellungen' && id !== 'grundlagen')
+    : SCREENS
+  const chapters = client
+    ? CHAPTERS.map((label, index) => ({ label, number: index + 1 }))
+      .filter(({ number }) => number !== 8)
+    : CHAPTERS.map((label, index) => ({ label, number: index + 1 }))
 
   return (
     <nav
@@ -54,13 +62,13 @@ export function Sidebar() {
           {option ? option.name : `Musterprojekt Nordfeld · Haus${NNBSP}A`}
         </p>
         <p className="a3-cap mt-1">
-          {option ? option.id : t('shell.variant')} ·{' '}
+          {!client && <>{option ? option.id : t('shell.variant')} · </>}
           {t(s.mode === 'praesentation' ? 'shell.mode.praesentation' : 'shell.mode.intern')}
         </p>
       </div>
 
       <ul className="flex-1 py-2">
-        {SCREENS.map((item) => {
+        {screens.map((item) => {
           const active = view === item.id
           return (
             <li key={item.id}>
@@ -80,8 +88,7 @@ export function Sidebar() {
               {/* Главы конфигуратора — второй уровень под активным пунктом. */}
               {item.id === 'konfigurator' && active && (
                 <ol className="a3-chapters">
-                  {CHAPTERS.map((c, i) => {
-                    const n = i + 1
+                  {chapters.map(({ label: c, number: n }) => {
                     const open = s.openChapter === n
                     // Прогресс — из состояния активной Option (данные и след
                     // посещения), не из номера главы (ревью № 13, дефект 7).
@@ -126,11 +133,13 @@ export function Sidebar() {
         </div>
       )}
 
-      <div className="border-t border-border-subtle px-5 py-3">
-        <p className="text-small text-text-muted">
-{t('shell.prototypeNote')} · v0.5
-        </p>
-      </div>
+      {!client && (
+        <div className="border-t border-border-subtle px-5 py-3">
+          <p className="text-small text-text-muted">
+            {t('shell.prototypeNote')} · v0.5
+          </p>
+        </div>
+      )}
     </nav>
   )
 }

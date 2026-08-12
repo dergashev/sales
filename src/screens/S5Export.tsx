@@ -3,6 +3,7 @@ import { activeBuilding, useStore } from '../state/store'
 import { NNBSP } from '../engine/money'
 import { DiscountControl } from '../components/DiscountControl'
 import { Button, UncertaintyBadge } from '../components/primitives'
+import { PageHeader } from '../components/designSystem'
 import { useTx } from '../i18n'
 import { PrintFlow } from '../components/PrintFlow'
 
@@ -78,8 +79,9 @@ export function S5Export() {
   const blockers: string[] = []
   if (!activeBuilding(s).gebaeudeklasse.confirmed) {
     blockers.push(
-      'ValidationIssue offen: Klassifikation nach MBO §2 nicht bestätigt — ' +
-      'blockiert alle fünf Kundenprofile (R-07)',
+      s.mode === 'intern'
+        ? 'ValidationIssue offen: Klassifikation nach MBO §2 nicht bestätigt — blockiert alle fünf Kundenprofile (R-07)'
+        : 'Klassifikation nach MBO §2 nicht bestätigt — das Angebot kann noch nicht freigegeben werden',
     )
   }
   const warnings: string[] = []
@@ -96,13 +98,10 @@ export function S5Export() {
 
   return (
     <div className="px-7 py-6">
-      <header className="border-b border-border-strong pb-4">
-        <h1 className="text-heading-2 font-bold text-text-primary">
-          Export · {s.options.find((o) => o.id === s.activeOptionId)?.name ?? 'Musterprojekt Nordfeld'}
-        </h1>
-      </header>
+      <PageHeader title={`Export · ${s.options.find((o) => o.id === s.activeOptionId)?.name ?? 'Musterprojekt Nordfeld'}`} />
 
-      <div className="grid gap-6 py-5 lg:grid-cols-2">
+      <div className="a3-grid-host">
+      <div className="a3-export-grid">
         <section aria-label="Artefakte und Rabatt">
           <h2 className="text-heading-3 font-bold text-text-primary">{tx('Artefakte')}</h2>
           <ul className="mt-3">
@@ -131,7 +130,9 @@ export function S5Export() {
               она не наследует. */}
           <h2 className="mt-6 text-heading-3 font-bold text-text-primary">{tx('Drucken')}</h2>
           <p className="a3-cap mt-1">
-            {tx('Eigenes Ausgabeprofil clientPrint mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.')}
+            {s.mode === 'intern'
+              ? tx('Eigenes Ausgabeprofil clientPrint mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.')
+              : tx('Die Druckansicht wird vor dem Öffnen eigenständig geprüft.')}
           </p>
           <div className="mt-2">
             <Button ref={printBtnRef} onClick={() => s.setPrintOpen(true)}>
@@ -215,7 +216,7 @@ export function S5Export() {
               <div className="mt-3">
                 <p className="text-small font-medium text-text-primary">{tx('Finale Prüfung')}</p>
                 <ul className="a3-preflight-list">
-                  <li>✓ Anhänge: {selected.size} · Muster-Dateien des Prototyps, als clientSafe klassifiziert</li>
+                  <li>✓ Anhänge: {selected.size}{s.mode === 'intern' && ' · Muster-Dateien des Prototyps, als clientSafe klassifiziert'}</li>
                   <li>✓ Aktive Annahmen: {activeBuilding(s).gebaeudeklasse.confirmed ? 1 : 2}</li>
                   <li><UncertaintyBadge pp={p.uncertaintyPp} /></li>
                   <li>{tx('✓ Sprache: DE · vollständig')}</li>
@@ -293,15 +294,15 @@ export function S5Export() {
                   ? <><span aria-hidden="true">◌ </span>{tx('Gesendet — Zustellung ausstehend')}</>
                   : <><span aria-hidden="true">✓ </span>{tx('Zugestellt (simulierte Zustellbestätigung)')}</>}
               </p>
-              <p className="a3-cap mt-1">
+              {s.mode === 'intern' && <p className="a3-cap mt-1">
                 «Gesendet» und «Zugestellt» sind zwei Zustände: der zweite
                 folgt nicht aus dem ersten (EMAIL-007). Der Prototyp hat
                 keinen E-Mail-Versand — die Zustellbestätigung wird nach
                 2,5{NNBSP}Sekunden simuliert und ist als Simulation
                 gekennzeichnet. Snapshot und Ereignis offer.emailed stehen
                 im Journal.
-              </p>
-              {s.snapshots.length > 0 && (
+              </p>}
+              {s.mode === 'intern' && s.snapshots.length > 0 && (
                 <p className="mt-2 text-small text-text-muted">
                   Snapshot {s.snapshots.at(-1)!.id}: Zwischensumme der kalkulierten Positionen{' '}
                   {s.snapshots.at(-1)!.totalExact}{NNBSP}€ exakt ·
@@ -323,8 +324,8 @@ export function S5Export() {
                   Konfiguration nach dem Versand geändert:{' '}
                   {changedAfterSend}{NNBSP}
                   {changedAfterSend === 1 ? 'Preisänderung' : 'Preisänderungen'}{' '}
-                  seit Snapshot {s.snapshots.at(-1)!.id}. Der Kunde sieht den
-                  Stand des Snapshots — für den neuen Stand braucht es ein
+                  {s.mode === 'intern' && <>seit Snapshot {s.snapshots.at(-1)!.id}. </>}
+                  Der Kunde sieht den zuletzt versendeten Stand — für den neuen Stand braucht es ein
                   neues Angebot.
                 </p>
               )}
@@ -360,6 +361,7 @@ export function S5Export() {
             </div>
           )}
         </section>
+      </div>
       </div>
     </div>
   )

@@ -28,6 +28,8 @@ export type Segment<T extends string> = {
   disabled?: boolean
   /** Недоступный сегмент существует только вместе с видимой причиной. */
   disabledReason?: string
+  /** A composed control may own the visible reason outside this fieldset. */
+  descriptionId?: string
 }
 
 /**
@@ -92,7 +94,9 @@ export function SegmentedControl<T extends string>({
                 value={o.value}
                 checked={active}
                 disabled={off}
-                aria-describedby={off && reasons.length > 0 ? descriptionId : undefined}
+                aria-describedby={off
+                  ? o.descriptionId ?? (reasons.length > 0 ? descriptionId : undefined)
+                  : undefined}
                 onChange={() => onChange(o.value)}
               />
               <span className={FOCUS_RING} aria-hidden="true" />

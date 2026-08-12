@@ -200,18 +200,48 @@ export const Button = forwardRef<HTMLButtonElement, {
   )
 })
 
-/** Чип происхождения значения (DC-1). Знак плюс подпись, не только цвет. */
-export function ProvenanceChip({ provenance }: { provenance: string }) {
-  const mark = provenance === 'vom Kunden bestätigt' ? '✓'
-    : provenance === 'aus Dokument' ? '◆'
-      : provenance === 'abgeleitet' ? '▲' : '✎'
+export type ProvenanceKind =
+  | 'document'
+  | 'derived'
+  | 'customerConfirmed'
+  | 'manual'
+  | 'editing'
+
+export type ProvenancePresentation = {
+  kind: ProvenanceKind
+  label: string
+  detail?: string
+}
+
+const PROVENANCE_MARK: Record<ProvenanceKind, string> = {
+  document: '◆',
+  derived: '▲',
+  customerConfirmed: '✓',
+  manual: '✎',
+  editing: '✎',
+}
+
+/**
+ * Чип происхождения значения (DC-1).
+ *
+ * Знак выбирается по типизированному источнику, а не по строке, которую
+ * видит пользователь. Поэтому деталь вроде «S. 15» или перевод подписи не
+ * может случайно превратить документ в ручной ввод.
+ */
+export function ProvenanceChip({ provenance }: {
+  provenance: ProvenancePresentation
+}) {
+  const mark = PROVENANCE_MARK[provenance.kind]
+  const accessibleLabel = `Herkunft: ${provenance.label}${
+    provenance.detail ? ` · ${provenance.detail}` : ''}`
   return (
-    <span className="a3-chip-src">
+    <span className="a3-chip-src" aria-label={accessibleLabel}>
       {/* `.a3-chip-src .a3-dot` — точка индикатора из системы; знак остаётся
           рядом с ней, потому что цвет не является носителем (правило 8). */}
       <span aria-hidden="true" className="a3-dot" />
       <span aria-hidden="true">{mark}</span>
-      {provenance}
+      <span>{provenance.label}</span>
+      {provenance.detail && <span>· {provenance.detail}</span>}
     </span>
   )
 }
@@ -276,7 +306,7 @@ export function NumericField({
   label: string
   value: Decimal
   unit?: string
-  provenance: string
+  provenance: ProvenancePresentation
   decimals?: number
   /** Счётная величина: дробное значение не существует (Wohneinheiten). */
   integer?: boolean
@@ -320,7 +350,9 @@ export function NumericField({
           />
           {unit && <span className="a3-unit">{unit}</span>}
         </span>
-        <ProvenanceChip provenance={draft !== null ? 'wird bearbeitet' : provenance} />
+        <ProvenanceChip provenance={draft !== null
+          ? { kind: 'editing', label: 'wird bearbeitet' }
+          : provenance} />
       </div>
       {rejection !== null && (
         <p role="alert" className="a3-cap mt-2">{tx(REJECTION_TEXT[rejection])}</p>

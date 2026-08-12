@@ -26,6 +26,7 @@ import {
   DisclosureRow,
   FormField,
   NextStep,
+  OutputProfileSwitch,
   PageHeader,
   ReadinessChecklist,
   SectionSheet,
@@ -129,6 +130,17 @@ function RadioCardDemo() {
           disabled: true, disabledReason: 'GK 5 nicht gewählt',
         },
       ]}
+    />
+  )
+}
+
+function OutputProfileDemo() {
+  const [mode, setMode] = useState<'intern' | 'praesentation'>('intern')
+  return (
+    <OutputProfileSwitch
+      mode={mode}
+      onCheck={() => setMode('praesentation')}
+      onExit={() => setMode('intern')}
     />
   )
 }
@@ -419,10 +431,21 @@ export const COMPONENT_REGISTRY: Specimen[] = [
     render: () => <NextStep description="Die Voraussetzungen sind erfüllt." action="Opportunity Option anlegen" onAction={() => {}} />,
   },
   {
+    id: 'output-profile', groupId: 'feedback', title: 'OutputProfileSwitch (DC-22)', contractId: 'DC-22',
+    requirements: ['GATE-001', 'GATE-003', 'GATE-005'], composedContracts: ['SegmentedControl', 'Button'],
+    interactionStates: ['default', 'focus', 'selected', 'disabled'], dataStates: ALL_DATA_STATES,
+    blockedVariants: [], maturity: 'alpha',
+    evidence: 'The client projection has a permanent text indicator, gated entry, and an explicit exit.',
+    render: () => <OutputProfileDemo />,
+  },
+  {
     id: 'provenance', groupId: 'domain', title: 'ProvenanceChip (DC-1)', contractId: 'DC-1',
     requirements: ['D-22'], composedContracts: [], interactionStates: ['default'], dataStates: STATIC_LAYOUT_STATES,
     blockedVariants: [], maturity: 'alpha', evidence: 'Sign and text, never color alone.',
-    render: () => <div className="a3-row"><ProvenanceChip provenance="aus Dokument" /><ProvenanceChip provenance="vom Kunden bestätigt" /></div>,
+    render: () => <div className="a3-row">
+      <ProvenanceChip provenance={{ kind: 'document', label: 'aus Dokument', detail: 'S. 15' }} />
+      <ProvenanceChip provenance={{ kind: 'customerConfirmed', label: 'vom Kunden bestätigt' }} />
+    </div>,
   },
   {
     id: 'origin', groupId: 'domain', title: 'OriginPopover (DC-21)', contractId: 'DC-21',
@@ -437,7 +460,7 @@ export const COMPONENT_REGISTRY: Specimen[] = [
     requirements: ['FORM-001'], composedContracts: ['FormField', 'ProvenanceChip'],
     interactionStates: ['default', 'focus', 'error'], dataStates: ALL_DATA_STATES,
     blockedVariants: [], maturity: 'alpha', evidence: 'Enter confirms, Tab records manually, Esc discards.',
-    render: () => <NumericField label="Demo-Fläche" value={new Decimal('1500')} unit="m²" provenance="aus Dokument" onCommit={() => {}} />,
+    render: () => <NumericField label="Demo-Fläche" value={new Decimal('1500')} unit="m²" provenance={{ kind: 'document', label: 'aus Dokument' }} onCommit={() => {}} />,
   },
   {
     id: 'uncertainty', groupId: 'domain', title: 'UncertaintyBadge (DC-3)', contractId: 'DC-3',

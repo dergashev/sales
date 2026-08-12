@@ -1,4 +1,4 @@
-import { useId, useRef } from 'react'
+import { useId, useRef, type RefObject } from 'react'
 import { activeBuilding, useStore } from '../state/store'
 import { Button } from './primitives'
 import { useTx } from '../i18n'
@@ -26,7 +26,7 @@ import { Dialog, type DialogHandle } from './Dialog'
  */
 
 export function ClientOutputGateDialog({ returnFocusTo }: {
-  returnFocusTo: React.RefObject<HTMLElement>
+  returnFocusTo: RefObject<HTMLElement>
 }) {
   const s = useStore()
   const open = s.gateOpen
@@ -114,7 +114,7 @@ export function ClientOutputGateDialog({ returnFocusTo }: {
               : undefined}
             onClick={() => {
               s.setMode('praesentation')
-              dialogRef.current?.close(() => document.querySelector<HTMLElement>('main'))
+              dialogRef.current?.close(() => document.querySelector<HTMLElement>('[data-page-heading], h1'))
             }}
           >
             {tx('Kundenansicht starten')}
