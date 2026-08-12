@@ -171,8 +171,7 @@ export function OpportunityList() {
         </div>
       )}
 
-      <ul className="mt-4 grid gap-3"
-          style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(38ch, 1fr))' }}>
+      <ul className="a3-opportunity-grid mt-4">
         {shown.map((o) => (
           <li key={o.id}>
             {/* Карточка = один клик-контейнер без собственного tabindex;

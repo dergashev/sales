@@ -1,8 +1,17 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react'
+import { AnimatePresence, motion, useIsPresent, type Variants } from 'framer-motion'
 import { useStore } from '../state/store'
 import { Button } from './primitives'
 import { useTx } from '../i18n'
+import { Dialog, type DialogHandle } from './Dialog'
+import { useSemanticMotion } from '../design-system/motion'
 
 /**
  * DC-14 · GuidedTourStep — Tour-Schritt.
@@ -18,10 +27,8 @@ import { useTx } from '../i18n'
  * пишется под один сценарий: тур, рассчитанный на «идеальный экран»,
  * ломается ровно там, где пользователь свернул не туда.
  *
- * Вырез прямоугольный — скруглений в системе нет (правило 4). Он рисуется
- * четырьмя затемнёнными полосами вокруг цели, а не «дыркой» в оверлее:
- * дырка потребовала бы маски, а маска — того же скругления, которого
- * система не допускает.
+ * Вырез прямоугольный — скруглений в системе нет (правило 4). Его внешняя
+ * тень затемняет всё вокруг цели без маски и без анимированного перемещения.
  */
 
 type Step = {
@@ -69,16 +76,73 @@ const STEPS: Step[] = [
   },
 ]
 
+function TourStepContent({
+  step,
+  index,
+  total,
+  titleId,
+  titleRef,
+  variants,
+  onNext,
+  onClose,
+}: {
+  step: Step
+  index: number
+  total: number
+  titleId: string
+  titleRef: RefObject<HTMLHeadingElement>
+  variants: Variants
+  onNext: () => void
+  onClose: () => void
+}) {
+  const tx = useTx()
+  const present = useIsPresent()
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  useLayoutEffect(() => {
+    if (rootRef.current) rootRef.current.inert = !present
+  }, [present])
+
+  return (
+    <motion.div
+      ref={rootRef}
+      aria-hidden={present ? undefined : 'true'}
+      variants={variants}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+    >
+      <h4
+        ref={present ? titleRef : undefined}
+        id={present ? titleId : undefined}
+        tabIndex={-1}
+      >
+        {tx(step.title)}
+      </h4>
+      <p>{tx(step.body)}</p>
+      <div className="a3-tour-actions">
+        <Button variant="primary" onClick={onNext}>
+          {index + 1 < total
+            ? `${tx('Weiter')} · ${index + 1}/${total}`
+            : tx('Rundgang beenden')}
+        </Button>
+        <Button variant="ghost" onClick={onClose}>{tx('Tour beenden')}</Button>
+      </div>
+    </motion.div>
+  )
+}
+
 export function GuidedTour() {
   const s = useStore()
-  const tx = useTx()
   const titleId = useId()
-  const cardRef = useRef<HTMLDivElement>(null)
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  const dialogRef = useRef<DialogHandle>(null)
   const [steps, setSteps] = useState<Step[]>([])
   const [i, setI] = useState(0)
   const [rect, setRect] = useState<DOMRect | null>(null)
 
   const open = s.tourOpen
+  const { fadeRise } = useSemanticMotion()
 
   // Сборка тура: шаги без цели на экране исключаются ЗДЕСЬ, при запуске.
   useEffect(() => {
@@ -86,6 +150,7 @@ export function GuidedTour() {
     const live = STEPS.filter((st) => document.querySelector(st.target))
     setSteps(live)
     setI(0)
+    if (live.length === 0) s.setTourOpen(false)
   }, [open])
 
   const step = steps[i]
@@ -96,60 +161,46 @@ export function GuidedTour() {
     setRect(el ? el.getBoundingClientRect() : null)
   }, [open, step])
 
-  useEffect(() => {
-    if (!open) return
-    cardRef.current?.focus()
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.stopPropagation(); s.setTourOpen(false) }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, i, s])
-
   // Тур в клиентских профилях недоступен: он про инструмент, не про оффер.
-  if (!open || s.mode === 'praesentation') return null
-  if (!step) return null
+  const dialogOpen = open && s.mode !== 'praesentation' && Boolean(step)
 
-  const next = () => (i + 1 < steps.length ? setI(i + 1) : s.setTourOpen(false))
+  const next = () => (i + 1 < steps.length
+    ? setI(i + 1)
+    : dialogRef.current?.close())
 
-  return createPortal(
-    <div className="a3-tour-stage">
-      {/* Вырез — четыре полосы вокруг цели, а не дырка в оверлее: дырка
-          потребовала бы маски со скруглением, которого система не знает. */}
-      {rect && (
+  return (
+    <Dialog
+      ref={dialogRef}
+      open={dialogOpen}
+      onOpenChange={(nextOpen) => { if (!nextOpen) s.setTourOpen(false) }}
+      labelledBy={titleId}
+      initialFocusRef={titleRef}
+      panelClassName="a3-tour-card a3-tour-card-live"
+      scrimClassName="a3-tour-scrim"
+      underlay={rect ? (
         <div className="a3-tour-cutout" aria-hidden="true"
              style={{
                position: 'fixed',
                top: rect.top, left: rect.left,
                width: rect.width, height: rect.height,
              }} />
+      ) : undefined}
+    >
+      {step && (
+        <AnimatePresence mode="sync" initial={false}>
+          <TourStepContent
+            key={step.target}
+            step={step}
+            index={i}
+            total={steps.length}
+            titleId={titleId}
+            titleRef={titleRef}
+            variants={fadeRise}
+            onNext={next}
+            onClose={() => dialogRef.current?.close()}
+          />
+        </AnimatePresence>
       )}
-      <div
-        className="a3-tour-card"
-        role="dialog"
-        aria-labelledby={titleId}
-        ref={cardRef}
-        tabIndex={-1}
-        style={{
-          position: 'fixed',
-          left: 'var(--space-5)',
-          bottom: 'var(--space-5)',
-          maxWidth: 'var(--measure-card-compact)',
-        }}
-      >
-        <h4 id={titleId}>{tx(step.title)}</h4>
-        <p>{tx(step.body)}</p>
-        <div className="a3-tour-actions">
-          <Button variant="primary" onClick={next}>
-            {i + 1 < steps.length
-              ? `${tx('Weiter')} · ${i + 1}/${steps.length}`
-              : tx('Rundgang beenden')}
-          </Button>
-          <Button variant="ghost" onClick={() => s.setTourOpen(false)}>
-            {tx('Tour beenden')}
-          </Button>
-        </div>
-      </div>
-    </div>,
-    document.body)
+    </Dialog>
+  )
 }

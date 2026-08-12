@@ -1,9 +1,9 @@
-import { useEffect, useId, useRef } from 'react'
-import { createPortal } from 'react-dom'
+import { useId, useRef } from 'react'
 import { activeBuilding, useStore } from '../state/store'
 import { Button } from './primitives'
 import { useTx } from '../i18n'
 import { NNBSP } from '../engine/money'
+import { Dialog, type DialogHandle } from './Dialog'
 
 /**
  * DC-33 · ClientOutputGateDialog — Freigabe-Dialog.
@@ -33,56 +33,23 @@ export function ClientOutputGateDialog({ returnFocusTo }: {
   const onClose = () => s.setGateOpen(false)
   const tx = useTx()
   const titleId = useId()
-  const dialogRef = useRef<HTMLDivElement>(null)
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  const dialogRef = useRef<DialogHandle>(null)
   const p = s.projection()
   const b = activeBuilding(s)
   const blockers = b.gebaeudeklasse.confirmed ? [] : ['Klassifikation nach MBO §2']
   const risksActive = Object.values(s.risikoAktiv).some(Boolean)
 
-  useEffect(() => {
-    if (!open) return
-    const dialog = dialogRef.current
-    if (!dialog) return
-    const focusables = () => Array.from(
-      dialog.querySelectorAll<HTMLElement>('button, [href], input, textarea, select'))
-    // Фокус — на ЗАГОЛОВОК: пользователь должен услышать, куда попал,
-    // прежде чем услышать первое доступное действие. Первая кнопка вместо
-    // заголовка съедала объявление контекста (приёмка волны C).
-    dialog.querySelector<HTMLElement>('h4')?.focus()
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        onClose()
-        returnFocusTo.current?.focus()
-      }
-      if (e.key === 'Tab') {
-        const f = focusables()
-        if (f.length === 0) return
-        const first = f[0]!, last = f[f.length - 1]!
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault(); last.focus()
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault(); first.focus()
-        }
-      }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose, returnFocusTo])
-
-  // Закрытый диалог не остаётся в дереве: скрытая модалка — это узел,
-  // который скринридер может обойти, а тесты — «найти» (приёмка волны C).
-  if (!open) return null
-
-  return createPortal(
-    <div
-      className="a3-modal-scrim a3-show"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={titleId}
+  return (
+    <Dialog
+      ref={dialogRef}
+      open={open}
+      onOpenChange={(nextOpen) => { if (!nextOpen) onClose() }}
+      labelledBy={titleId}
+      initialFocusRef={titleRef}
+      returnFocusTo={returnFocusTo}
     >
-      <div className="a3-modal" ref={dialogRef}>
-        <h4 id={titleId} tabIndex={-1} className="outline-none">
+        <h4 ref={titleRef} id={titleId} tabIndex={-1} className="outline-none">
           {tx('Bereit für die Präsentation?')}
         </h4>
 
@@ -147,19 +114,18 @@ export function ClientOutputGateDialog({ returnFocusTo }: {
               : undefined}
             onClick={() => {
               s.setMode('praesentation')
-              onClose()
+              dialogRef.current?.close(() => document.querySelector<HTMLElement>('main'))
             }}
           >
             {tx('Kundenansicht starten')}
           </Button>
           <Button
             variant="ghost"
-            onClick={() => { onClose(); returnFocusTo.current?.focus() }}
+            onClick={() => dialogRef.current?.close()}
           >
             {tx('Zurück zur Vorbereitung')}
           </Button>
         </div>
-      </div>
-    </div>,
-    document.body)
+    </Dialog>
+  )
 }

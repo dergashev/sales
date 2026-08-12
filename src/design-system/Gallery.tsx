@@ -28,13 +28,29 @@ export function Gallery() {
               {tx(group.intro)}
             </p>
           )}
-          <div className="a3-grid-host mt-4 grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(38ch,1fr))]">
+          <div className="a3-grid-host a3-specimen-grid mt-4">
             {group.specimens.map((s) => (
               <section key={s.id} className="a3-sheet" data-specimen={s.id}>
                 <h3 className="text-heading-3 font-bold text-text-primary">
                   {s.title}
                 </h3>
+                <p className="a3-specimen-meta">
+                  {s.contractId} · {s.maturity}
+                  {s.blockedVariants.length > 0
+                    ? ` · blockiert: ${s.blockedVariants.join(', ')}`
+                    : ''}
+                </p>
                 {s.note && <p className="a3-cap a3-lede mt-1">{tx(s.note)}</p>}
+                <details className="a3-specimen-contract">
+                  <summary>Vertrag und Evidenz</summary>
+                  <p>{s.requirements.join(' · ') || 'Keine Requirement-ID'}</p>
+                  <p>{s.evidence}</p>
+                  <p>
+                    Datenzustände: {Object.entries(s.dataStates)
+                      .map(([state, support]) => `${state}: ${support}`)
+                      .join(' · ')}
+                  </p>
+                </details>
                 <div className="mt-3">{s.render()}</div>
               </section>
             ))}

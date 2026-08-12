@@ -238,15 +238,16 @@ describe('Сквозной сценарий продажи', () => {
     expect(screen.queryByText(/Marge Eigenleistung/)).not.toBeInTheDocument()
   })
 
-  it('кольцо готовности считает пункты, а не проценты (DC-26)', async () => {
+  it('гейт готовности называет пункты вместо кольца и процентов (DC-26)', async () => {
     const user = userEvent.setup()
     render(<App />)
-    // Кольцо живёт в карточке Opportunity (гейт создания Options), а не
-    // в списке проектов — списка S1 в конвейере больше не существует.
+    // Гейт живёт в карточке Opportunity, а не в списке проектов.
     await user.click(await screen.findByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
-    const ring = screen.getByRole('group', { name: /Bereitschaft/ })
-    // Подпись называет ПУНКТЫ: «73 %» не говорит, чего не хватает.
-    expect(within(ring).getByText(/von 2 Punkten erledigt/)).toBeInTheDocument()
+    const gate = screen.getByRole('group', { name: /Bereitschaft/ })
+    expect(within(gate).getByText(/von 2 Punkten erledigt/)).toBeInTheDocument()
+    expect(within(gate).getAllByText('Strittige Angaben')).not.toHaveLength(0)
+    expect(within(gate).getByText('Projektparameter bestätigen')).toBeInTheDocument()
+    expect(gate.querySelector('svg, .a3-ring')).toBeNull()
   })
 
   it('Recap после доставки выводится из журнала, а не пишется руками (DC-31)', async () => {

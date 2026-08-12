@@ -52,12 +52,18 @@ export function SegmentedControl<T extends string>({
   disabledReason?: string
 }) {
   const name = useId()
+  const descriptionId = useId()
   if (options.length > 3) {
     throw new Error(
       `SegmentedControl: ${options.length} сегментов — при 4+ значениях контракт требует <select> (LOCALE-004)`,
     )
   }
   const tx = useTx()
+  const layoutClass = {
+    stack: 'a3-segmented-stack',
+    row: 'a3-segmented-row',
+    inline: 'a3-segmented-inline',
+  }[layout]
   const reasons = [
     ...(disabled && disabledReason ? [tx(disabledReason)] : []),
     ...options.filter((o) => o.disabled && o.disabledReason)
@@ -65,28 +71,20 @@ export function SegmentedControl<T extends string>({
   ]
 
   return (
-    <fieldset className={layout === 'row'
-      ? 'flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle py-3'
-      : layout === 'inline' ? 'flex flex-wrap items-center gap-3' : ''}>
-      <legend className={layout === 'row'
-        ? 'float-left text-body text-text-primary'
-        : layout === 'inline'
-          ? 'float-left text-small text-text-secondary'
-          : 'text-small font-medium text-text-primary'}>
+    <fieldset className={`a3-segmented-fieldset ${layoutClass}`}>
+      <legend>
         {legend}
       </legend>
       {/* Имя группы обязано быть у ТОГО элемента, который несёт роль:
           `legend` называет `fieldset`, а вложенная radiogroup оставалась
           безымянной — скринридер объявлял «группа» без темы. Найдено
           jsdom-тестом, не глазами. */}
-      <div role="radiogroup" aria-label={legend}
-           className={'flex border-contrast border-border-strong ' +
-        (layout === 'stack' ? 'mt-2 w-max' : layout === 'row' ? 'ml-auto' : '')}>
-        {options.map((o, i) => {
+      <div role="radiogroup" aria-label={legend} className="a3-radio-segments">
+        {options.map((o) => {
           const active = o.value === value
           const off = disabled || o.disabled
           return (
-            <label key={o.value} className={i > 0 ? 'border-l border-border-default' : ''}>
+            <label key={o.value} data-disabled={off || undefined}>
               <input
                 type="radio"
                 className="peer sr-only"
@@ -94,28 +92,20 @@ export function SegmentedControl<T extends string>({
                 value={o.value}
                 checked={active}
                 disabled={off}
+                aria-describedby={off && reasons.length > 0 ? descriptionId : undefined}
                 onChange={() => onChange(o.value)}
               />
-              <span
-                className={`relative flex cursor-pointer items-center gap-1 px-3 text-small ${FOCUS_RING} ` +
-                  'before:absolute before:left-1/2 before:top-1/2 before:min-h-hit-target ' +
-                  'before:w-full before:-translate-x-1/2 before:-translate-y-1/2 before:content-[""] ' +
-                  (active
-                    ? 'border-selected border-selection-border bg-surface-selected font-medium text-text-primary'
-                    : 'text-text-secondary hover:bg-action-secondary-hover') +
-                  (off ? ' cursor-default text-text-disabled hover:bg-surface-default' : '')}
-                style={{ minHeight: 'var(--control-height)' }}
-              >
-                {active && <span aria-hidden="true">✓</span>}
-                {o.label}
+              <span className={FOCUS_RING} aria-hidden="true" />
+              <span className="a3-segment-check" aria-hidden="true">
+                {active ? '✓' : ''}
               </span>
+              <span>{o.label}</span>
             </label>
           )
         })}
       </div>
       {(helperText || reasons.length > 0) && (
-        <p className={'text-small text-text-secondary ' +
-          (layout === 'row' ? 'w-full pt-1' : layout === 'inline' ? '' : 'mt-1')}>
+        <p id={descriptionId} className="a3-segmented-helper">
           {[helperText, ...reasons].filter(Boolean).join(' · ')}
         </p>
       )}
@@ -442,25 +432,29 @@ export function Switch({ label, checked, onChange, disabled, disabledReason, chi
   children?: ReactNode
 }) {
   const id = useId()
+  const reasonId = useId()
+  const tx = useTx()
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <span id={id} className="text-body text-text-primary">{label}</span>
+    <div className="a3-switch-row">
+      <span id={id}>{label}</span>
       <button
         type="button"
         role="switch"
         aria-checked={checked}
         aria-labelledby={id}
         aria-disabled={disabled || undefined}
+        aria-describedby={disabled && disabledReason ? reasonId : undefined}
         onClick={() => !disabled && onChange(!checked)}
-        // Дорожка, ползунок и его ход — из системы (`.a3-toggle`, `.a3-on`):
-        // геометрия переключателя принадлежит дизайну, а не этому файлу.
-        className={`a3-toggle ${checked ? 'a3-on' : ''} outline-none ` +
-          'focus-visible:outline focus-visible:outline-2 ' +
-          'focus-visible:outline-offset-2 focus-visible:outline-focus-ring'}
-      />
-      <span className="text-body text-text-secondary">{checked ? 'Ein' : 'Aus'}</span>
+        className="a3-switch-button"
+      >
+        <span className="a3-switch-track" aria-hidden="true" />
+        <span className="a3-switch-thumb" aria-hidden="true" />
+      </button>
+      <span className="a3-switch-state">{tx(checked ? 'Ein' : 'Aus')}</span>
       {disabled && disabledReason && (
-        <span className="a3-cap">{disabledReason}</span>
+        <span id={reasonId} className="a3-form-disabled-reason">
+          {tx(disabledReason)}
+        </span>
       )}
       {children}
     </div>

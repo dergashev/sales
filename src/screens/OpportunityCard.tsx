@@ -8,9 +8,9 @@ import { Button } from '../components/primitives'
 import { useTx } from '../i18n'
 import { DocumentAnalysis } from '../components/DocumentAnalysis'
 import { InternalNote } from '../components/InternalNote'
-import { ReadinessRing } from '../components/ReadinessRing'
+import { PrerequisiteChecklist } from '../components/PrerequisiteChecklist'
 import { S2Vorbereitung } from './S2Vorbereitung'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 /**
  * Карточка Opportunity — уровень между списком и рабочим конвейером.
@@ -60,6 +60,8 @@ export function OpportunityCard() {
   // Подготовка (вопросы, Annahmen, варианты) — уровень Opportunity, не
   // Option: она общая для всех Options этого проекта. В конвейере её нет.
   const [showVorbereitung, setShowVorbereitung] = useState(false)
+  const conflictSectionRef = useRef<HTMLElement>(null)
+  const parameterSectionRef = useRef<HTMLElement>(null)
 
   if (!meta) return null
 
@@ -121,7 +123,6 @@ export function OpportunityCard() {
   }
 
   const konfliktOffen = s.wflConflict.state === 'open'
-  const gateDone = [!konfliktOffen, s.projectParamsConfirmed].filter(Boolean).length
   const createOptionDisabledReason = konfliktOffen && !s.projectParamsConfirmed
     ? 'Erst Konflikte entscheiden und Projektparameter bestätigen'
     : konfliktOffen
@@ -153,7 +154,12 @@ export function OpportunityCard() {
 
       {/* 2 · Спорное из документации — до параметров: параметр, выведенный
           из спорного значения, тоже спорен. */}
-      <section className="a3-sheet mt-6" aria-label="Strittige Angaben">
+      <section
+        ref={conflictSectionRef}
+        tabIndex={-1}
+        className="a3-sheet mt-6 outline-none"
+        aria-label="Strittige Angaben"
+      >
         <h2 className="text-heading-3 font-bold text-text-primary">
           {tx('Strittige Angaben aus der Dokumentation')}
         </h2>
@@ -188,12 +194,16 @@ export function OpportunityCard() {
       </section>
 
       {/* 3 · Параметры всего проекта. Суммы считаются от сумм (правило 39). */}
-      <section className="a3-sheet mt-6" aria-label="Projektparameter">
+      <section
+        ref={parameterSectionRef}
+        tabIndex={-1}
+        className="a3-sheet mt-6 outline-none"
+        aria-label="Projektparameter"
+      >
         <h2 className="text-heading-3 font-bold text-text-primary">
           {tx('Parameter des gesamten Projekts')}
         </h2>
-        <div className="mt-3 grid gap-x-6"
-             style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(26ch, 1fr))' }}>
+        <div className="a3-opportunity-metrics mt-3">
           <Metric label="Gebäude im Projekt" value={String(bs.length)} />
           <Metric label={`Total BGF (R, oberirdisch)`} value={formatDE(totalBgfR, 2)} unit="m²" />
           <Metric label="Total BGF (S)" value={formatDE(totalBgfS, 2)} unit="m²"
@@ -235,16 +245,37 @@ export function OpportunityCard() {
       <section className="a3-sheet mt-6" aria-label="Opportunity Options">
         <h2 className="text-heading-3 font-bold text-text-primary">{tx('Opportunity Options')}</h2>
         <div className="mt-3">
-          <ReadinessRing
+          <PrerequisiteChecklist
             label="Bereitschaft für Optionen"
-            done={gateDone}
-            total={2}
+            requirements={[
+              {
+                id: 'conflict',
+                label: tx('Strittige Angaben'),
+                resolved: !konfliktOffen,
+                sourceLabel: tx('Strittige Angaben'),
+                nextActionLabel: tx('Strittige Angaben jetzt entscheiden'),
+                onOpenSource: () => {
+                  conflictSectionRef.current?.scrollIntoView?.({ block: 'start' })
+                  conflictSectionRef.current?.focus()
+                },
+              },
+              {
+                id: 'parameters',
+                label: tx('Projektparameter bestätigen'),
+                resolved: s.projectParamsConfirmed,
+                sourceLabel: tx('Projektparameter'),
+                nextActionLabel: tx('Projektparameter jetzt bestätigen'),
+                onOpenSource: () => {
+                  parameterSectionRef.current?.scrollIntoView?.({ block: 'start' })
+                  parameterSectionRef.current?.focus()
+                },
+              },
+            ]}
+            createLabel={tx('Opportunity Option anlegen')}
+            createDisabledReason={createOptionDisabledReason}
+            onCreate={() => s.createOption(`Option ${s.options.length + 1}`)}
           />
         </div>
-        {!s.canCreateOptions() && (
-          <p className="a3-warn-prep mt-3">
-            <span aria-hidden="true">▲ </span>{tx('Optionen lassen sich anlegen, sobald die strittigen Angaben entschieden und die Projektparameter bestätigt sind. Eine Option auf strittigen Daten müsste vollständig neu gebaut werden.')}</p>
-        )}
 
         {s.options.length > 0 && (
           <ul className="mt-3">
@@ -257,14 +288,6 @@ export function OpportunityCard() {
           </ul>
         )}
 
-        <div className="mt-3">
-          <Button
-            variant="primary"
-            disabled={!s.canCreateOptions()}
-            disabledReason={createOptionDisabledReason}
-            onClick={() => s.createOption(`Option ${s.options.length + 1}`)}
-          >{tx('Opportunity Option anlegen')}</Button>
-        </div>
       </section>
     </div>
   )

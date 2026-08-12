@@ -166,6 +166,9 @@ describe('Гейт режима презентации — блокировка 
     expect(useStore.getState().mode).toBe('intern')
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
     expect(useStore.getState().mode).toBe('praesentation')
+    expect(useStore.getState().gateOpen).toBe(false)
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /Bereit für die Präsentation/ })).toBeNull())
+    expect(screen.getByRole('main')).toHaveFocus()
   })
 })
 
@@ -232,7 +235,7 @@ describe('DC-33 · единственная модалка системы — в
 
     await user.keyboard('{Escape}')
     expect(useStore.getState().mode).toBe('intern')
-    expect(document.activeElement).toBe(trigger)
+    await waitFor(() => expect(document.activeElement).toBe(trigger))
   })
 
   it('переход в клиентский вид происходит из диалога, а не мимо него', async () => {
@@ -249,10 +252,13 @@ describe('DC-14 · тур: шаг без цели пропускается, а �
   it('собирается из целей, которые ЕСТЬ на экране, и считает шаги от них', async () => {
     const user = userEvent.setup()
     await enterPipeline(user)
+    const appHost = document.body.firstElementChild as HTMLElement
     await user.click(screen.getByRole('button', { name: /Rundgang durch das Werkzeug/ }))
 
     const card = await screen.findByRole('dialog', { name: /Der Preis ist immer sichtbar/ })
-    expect(card).toBeInTheDocument()
+    expect(card).toHaveAttribute('aria-modal', 'true')
+    expect(within(card).getByRole('heading', { name: /Der Preis ist immer sichtbar/ })).toHaveFocus()
+    expect(appHost.inert).toBe(true)
     // Счётчик считает ЖИВЫЕ шаги: заметки на этом экране нет, и её шаг в
     // знаменатель не попадает — иначе тур обещал бы шаг, которого не будет.
     const weiter = within(card).getByRole('button', { name: /Weiter/ })
@@ -267,6 +273,10 @@ describe('DC-14 · тур: шаг без цели пропускается, а �
       await user.click(btn)
     }
     expect(useStore.getState().tourOpen).toBe(false)
+    await waitFor(() => {
+      expect(document.querySelector('[role="dialog"]')).toBeNull()
+      expect(appHost.inert).toBe(false)
+    })
   })
 
   it('в презентации тура не существует — ни кнопки, ни карточки', async () => {

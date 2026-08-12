@@ -31,7 +31,7 @@
    Classes: .a3-sheet · .a3-sheet-title · .a3-sub · .a3-masthead · .a3-meta ·
    .a3-hero-title · .a3-lede · .a3-cap · .a3-linkbtn. */
 .a3-sheet{background:var(--color-surface-default);padding:var(--space-7);margin-bottom:var(--space-5);scroll-margin-top:var(--space-8)}
-.a3-reveal .a3-sheet{opacity:0;transform:translateY(var(--space-3));transition:opacity .48s var(--motion-easing-standard),transform .48s var(--motion-easing-standard)}
+.a3-reveal .a3-sheet{opacity:0;transform:translateY(var(--space-3));transition:opacity var(--motion-reveal) var(--motion-easing-standard),transform var(--motion-reveal) var(--motion-easing-standard)}
 .a3-reveal .a3-sheet.a3-in{opacity:1;transform:none}
 .a3-sheet>.a3-sheet-title,.a3-sheet>h2{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:var(--type-heading-weight);margin:0 0 var(--space-1)}
 .a3-sheet>.a3-sub{color:var(--color-text-secondary);margin:0 0 var(--space-6);font-size:var(--type-small-size);line-height:var(--type-small-line)}
@@ -47,10 +47,10 @@
 .a3-pnav{position:sticky;top:0;z-index:var(--layer-header);background:var(--color-surface-default);border-bottom:var(--border-hairline);margin:0 calc(-1*var(--space-5));padding:var(--space-3) var(--space-5);display:flex;gap:var(--space-5);flex-wrap:wrap;font-size:var(--type-small-size);line-height:var(--type-small-line);align-items:center}
 .a3-pnav a{color:var(--color-text-primary);text-decoration:underline;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset);border-bottom:var(--border-width-strong) solid transparent;padding-bottom:var(--border-width-strong)}
 .a3-pnav a:hover{border-bottom-color:var(--color-selection-border)}
-.a3-masthead{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-5);margin:var(--space-6) 0;flex-wrap:wrap}
+.a3-masthead{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-5);margin:var(--space-6) 0;flex-wrap:wrap;container-type:inline-size;container-name:a3-page-header}
 .a3-showcase .a3-masthead img{height:var(--size-hit-target-default);display:block}
 .a3-masthead .a3-meta{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);text-align:right}
-.a3-hero-title{font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:700;margin:var(--space-5) 0 var(--space-2)}
+.a3-hero-title{font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:700;margin:var(--space-5) 0 var(--space-2);overflow-wrap:anywhere}
 .a3-masthead>.a3-hero-title{margin:0}
 .a3-masthead>.a3-lede{flex-basis:100%;margin:0}
 .a3-hero-title span{color:var(--color-text-primary)}
@@ -95,7 +95,7 @@
    Classes: .a3-form-field · .a3-select-field · .a3-form-helper ·
    .a3-form-error · .a3-form-disabled-reason · .a3-textarea-field ·
    .a3-textarea-meta · .a3-textarea-counter. */
-.a3-form-field{display:grid;gap:var(--space-2);max-width:var(--measure-component)}
+.a3-form-field{display:grid;gap:var(--space-2);max-width:var(--measure-component);min-width:0}
 .a3-form-field>label{font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight)}
 .a3-form-field input,.a3-select-field,.a3-textarea-field{box-sizing:border-box;min-height:var(--size-hit-target-default);border:var(--border-default);padding:var(--space-2) var(--space-3);font-size:var(--type-input-size);line-height:var(--type-input-line);font-weight:var(--type-input-weight);color:var(--color-text-primary);background:var(--color-surface-default)}
 .a3-select-field{display:block;width:100%;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -123,7 +123,7 @@
 /* Card + Badge + Chip. Card owns one primary destination; secondary actions
    remain separate focus stops above the stretched destination. */
 .a3-card-core{position:relative;border:var(--border-default);background:var(--color-surface-default);padding:var(--space-4);display:grid;gap:var(--space-3)}
-.a3-card-core:hover{background:var(--color-surface-subtle)}
+.a3-card-core[data-interactive="true"]:hover{background:var(--color-surface-subtle)}
 .a3-card-title{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--type-heading-weight)}
 .a3-card-destination::after{content:'';position:absolute;inset:0}
 .a3-card-meta,.a3-card-noninteractive{position:relative;z-index:1;font-size:var(--type-small-size);line-height:var(--type-small-line)}
@@ -159,7 +159,7 @@ table.a3-kg,table.a3-cmp,table.a3-kx,table.a3-data-table,table.a3-driver-table,t
    Classes: .a3-row · .a3-btn · .a3-sec · .a3-ghost · .a3-btn-content ·
    .a3-btn-loading · .a3-btn-spinner · .a3-input · .a3-unit · .a3-toggle · .a3-on. */
 .a3-row{display:flex;gap:var(--space-4);flex-wrap:wrap;align-items:center}
-.a3-btn{font-size:var(--type-button-primary-size);line-height:var(--type-button-primary-line);font-weight:var(--type-button-primary-weight);height:var(--size-control-visual-md);min-width:var(--size-hit-target-default);max-width:100%;padding:0 var(--space-5);border:none;cursor:pointer;background:var(--color-action-primary-bg);color:var(--color-action-primary-text);transition:background var(--motion-feedback) var(--motion-easing-standard);position:relative;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
+.a3-btn{font-size:var(--type-button-primary-size);line-height:var(--type-button-primary-line);font-weight:var(--type-button-primary-weight);height:auto;min-height:var(--size-hit-target-default);min-width:var(--size-hit-target-default);max-width:100%;padding:var(--space-2) var(--space-5);border:none;cursor:pointer;background:var(--color-action-primary-bg);color:var(--color-action-primary-text);transition:background var(--motion-feedback) var(--motion-easing-standard);position:relative;display:inline-flex;align-items:center;justify-content:center;white-space:normal;overflow-wrap:anywhere;text-align:center}
 .a3-btn::before{content:'';position:absolute;left:50%;top:50%;width:max(100%,var(--size-hit-target-default));height:var(--size-hit-target-default);transform:translate(-50%,-50%)}
 .a3-btn:hover:not([aria-disabled="true"]){background:var(--color-action-primary-hover)}
 .a3-btn:active:not([aria-disabled="true"]){background:var(--color-action-primary-pressed);transition-duration:0ms}
@@ -357,7 +357,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 /* DC-17 · DocumentRow. Structure: .a3-doc > .a3-ic + .a3-nm + .a3-pg +
    .a3-right; status icon is .a3-okc|.a3-errc.
    Classes: .a3-doc · .a3-ic · .a3-nm · .a3-pg · .a3-right · .a3-st · .a3-okc · .a3-errc. */
-.a3-doc{display:flex;align-items:center;gap:var(--space-3);border-bottom:var(--border-hairline);padding:var(--space-2) var(--space-3);font-size:var(--type-small-size);background:var(--color-surface-default)}
+.a3-doc{display:flex;align-items:center;gap:var(--space-3);border-bottom:var(--border-hairline);padding:var(--space-2) var(--space-3);font-size:var(--type-small-size);background:var(--color-surface-default);container-type:inline-size;container-name:a3-document-row}
 .a3-doc .a3-ic{width:var(--size-icon-md);height:var(--size-icon-md);border:var(--border-default);display:inline-flex;align-items:center;justify-content:center;font-size:var(--size-status-glyph);font-weight:700;flex:none;color:var(--color-text-secondary)}
 .a3-doc .a3-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .a3-doc .a3-pg{color:var(--color-text-secondary);white-space:nowrap}
@@ -365,6 +365,14 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-doc .a3-st{display:inline-flex;align-items:center;gap:var(--space-1)}
 .a3-doc .a3-okc{width:var(--size-status-icon);height:var(--size-status-icon);border-radius:50%;background:var(--color-dataviz-category-2);color:var(--color-surface-default);font-size:var(--size-status-glyph);display:inline-flex;align-items:center;justify-content:center}
 .a3-doc .a3-errc{width:var(--size-status-icon);height:var(--size-status-icon);border-radius:50%;background:var(--color-status-error);color:var(--color-surface-default);font-size:var(--size-status-glyph);display:inline-flex;align-items:center;justify-content:center}
+
+@container a3-page-header (max-width:30rem){
+  .a3-hero-title{font-size:var(--type-heading-1-narrow-size);line-height:var(--type-heading-1-narrow-line)}
+}
+@container a3-document-row (max-width:24rem){
+  .a3-doc .a3-right{width:100%;min-width:0;margin-left:0}
+  .a3-doc .a3-st{white-space:normal;overflow-wrap:anywhere}
+}
 
 /* DC-10 host navigation · Tabs primitive. Structure: .a3-tabs[role=tablist]
    > [role=tab], followed by .a3-tabpane[role=tabpanel].
@@ -622,6 +630,9 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-data-state.a3-data-state-stale{border:var(--border-warning);background:var(--color-surface-subtle)}
 .a3-data-state.a3-data-state-error{border:var(--border-error)}
 .a3-data-state.a3-data-state-permission{background:var(--color-surface-subtle)}
+.a3-data-state-action{margin-top:var(--space-3)}
+.a3-data-owner{position:relative;display:grid;min-width:0;min-height:var(--size-hit-target-default)}
+.a3-data-owner>*{grid-area:1/1;min-width:0}
 /* DC-24 · EmptyState. Structure: .a3-empty-spec > .a3-empty-icon +
    content containing explanation and exactly one action.
    Classes: .a3-empty-spec · .a3-empty-icon. */
@@ -631,7 +642,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    .a3-preflight-list > result rows; .a3-print-card[role=dialog] >
    .a3-paper-preview + content with .a3-preflight-list and actions.
    Classes: .a3-print-card · .a3-paper-preview · .a3-preflight-list. */
-.a3-print-card{border:var(--border-contrast-2px);padding:var(--space-5);display:grid;grid-template-columns:minmax(10rem,15rem) 1fr;gap:var(--space-5)}
+.a3-print-card{border:var(--border-contrast-2px);padding:var(--space-5);display:grid;grid-template-columns:minmax(10rem,15rem) minmax(0,1fr);gap:var(--space-5);background:var(--color-surface-default);width:min(var(--measure-wide),100%);max-height:calc(100vh - 2 * var(--space-5));overflow:auto;z-index:var(--layer-dialog)}
 .a3-paper-preview{aspect-ratio:210/297;border:var(--border-contrast-1px);padding:var(--space-3);font-size:var(--type-caption-size);line-height:var(--type-caption-line);background:var(--color-surface-default)}
 .a3-preflight-list{list-style:none;margin:var(--space-3) 0;padding:0;border-top:var(--border-hairline)}
 .a3-preflight-list li{padding:var(--space-2) 0;border-bottom:var(--border-hairline)}
@@ -649,6 +660,28 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-switch-thumb{position:absolute;left:var(--size-control-inset);top:var(--size-status-icon);width:var(--space-4);height:var(--space-4);background:var(--color-text-primary);transition:transform var(--motion-feedback) var(--motion-easing-standard)}
 .a3-switch-button[aria-checked="true"] .a3-switch-track{border:var(--border-selected);background:var(--color-surface-selected)}
 .a3-switch-button[aria-checked="true"] .a3-switch-thumb{transform:translateX(var(--space-4))}
+.a3-switch-button[aria-disabled="true"]{cursor:default}
+.a3-switch-button[aria-disabled="true"] .a3-switch-track{border-color:var(--color-action-disabled-border);background:var(--color-action-disabled-bg)}
+.a3-switch-button[aria-disabled="true"] .a3-switch-thumb,.a3-switch-state{color:var(--color-text-secondary)}
+
+/* Canonical SegmentedControl React structure. The legacy .a3-seg button API
+   remains transitional showcase evidence; product/specimen consumers use the
+   native radio contract below. */
+.a3-segmented-fieldset{min-width:0;border:0;padding:0;margin:0;display:grid;gap:var(--space-2)}
+.a3-segmented-fieldset>legend{font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);padding:0}
+.a3-segmented-stack{display:grid}
+.a3-segmented-row{grid-template-columns:minmax(0,1fr) auto;align-items:center;border-bottom:var(--border-hairline);padding:var(--space-2) 0}
+.a3-segmented-row>legend{grid-column:1}
+.a3-segmented-row>.a3-radio-segments{grid-column:2}
+.a3-segmented-inline{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3)}
+.a3-segmented-inline>legend{float:none}
+.a3-radio-segments{max-width:100%;flex-wrap:wrap}
+.a3-radio-segments label{min-width:0}
+.a3-radio-segments label>input+.peer{position:absolute;inset:0;pointer-events:none}
+.a3-radio-segments label:has(input:focus-visible){outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--border-width-focus);box-shadow:0 0 0 var(--border-width-focus) var(--color-focus-separator)}
+.a3-radio-segments label[data-disabled="true"]{cursor:default;color:var(--color-action-disabled-text);background:var(--color-action-disabled-bg)}
+.a3-segment-check{min-width:var(--size-icon-sm);font-weight:var(--font-weight-bold)}
+.a3-segmented-helper{grid-column:1/-1;margin:0;font-size:var(--type-helper-size);line-height:var(--type-helper-line);color:var(--color-text-secondary)}
 /* DC-12 · SessionJournalBar full specimen. Structure: .a3-journal-spec >
    button.a3-journal-disclose + ul.a3-journal-items.
    Classes: .a3-journal-spec · .a3-journal-disclose · .a3-journal-items. */
@@ -674,9 +707,41 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    Classes: .a3-project-search · .a3-search-line · .a3-form-field · .a3-filter-row · .a3-search-result-count. */
 .a3-project-search{border:var(--border-hairline);padding:var(--space-4);display:grid;gap:var(--space-3);max-width:var(--measure-wide)}
 .a3-search-line{display:flex;gap:var(--space-3);align-items:end;flex-wrap:wrap}
-.a3-search-line .a3-form-field{flex:1;min-width:var(--measure-form-control)}
+.a3-search-line .a3-form-field{flex:1 1 var(--measure-form-control);min-width:min(100%,var(--measure-form-control))}
 .a3-filter-row{display:flex;gap:var(--space-2);flex-wrap:wrap;align-items:center}
 .a3-search-result-count{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+
+/* D-28 generated/live gallery and narrow-host product grids. */
+.a3-specimen-grid,.a3-opportunity-grid,.a3-opportunity-metrics{display:grid;min-width:0}
+.a3-specimen-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,var(--measure-card-compact)),1fr));gap:var(--space-5)}
+.a3-opportunity-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--measure-component)),1fr));gap:var(--space-3)}
+.a3-opportunity-metrics{grid-template-columns:repeat(auto-fit,minmax(min(100%,26ch),1fr));column-gap:var(--space-6)}
+
+/* Opportunity prerequisite gate: named rows, one next action, no aggregate
+   ring/percentage. Motion wrappers animate only opacity and use shared tokens. */
+.a3-prerequisites{min-width:0}
+.a3-readiness-checklist{min-width:0}
+.a3-prerequisite-summary{margin:0;color:var(--color-text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-prerequisite-list{list-style:none;margin:var(--space-3) 0 0;padding:0;border-top:var(--border-hairline)}
+.a3-prerequisite-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--space-3);padding:var(--space-3) 0;border-bottom:var(--border-hairline)}
+.a3-prerequisite-sign{width:var(--size-status-icon);height:var(--size-status-icon);display:inline-flex;align-items:center;justify-content:center;border:var(--border-default);font-size:var(--size-status-glyph);font-weight:var(--font-weight-bold)}
+.a3-prerequisite-row[data-state="resolved"] .a3-prerequisite-sign{border-color:var(--color-selection-border)}
+.a3-prerequisite-row strong,.a3-prerequisite-state{display:block}
+.a3-prerequisite-state{margin-top:var(--space-1);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-prerequisite-actions{display:flex;align-items:flex-start;gap:var(--space-3);flex-wrap:wrap;margin-top:var(--space-4)}
+.a3-link-action{display:inline-grid;justify-items:start;gap:var(--space-1);min-width:0}
+.a3-specimen-contract{margin-top:var(--space-3);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-specimen-contract summary{display:inline-flex;align-items:center;min-height:var(--size-hit-target-default);cursor:pointer;color:var(--color-text-primary);font-weight:var(--type-label-weight);text-decoration:underline;text-underline-offset:var(--size-text-underline-offset)}
+.a3-specimen-contract p{margin:var(--space-2) 0 0;overflow-wrap:anywhere}
+
+/* Runtime modal geometry; behavior and presence live in Dialog.tsx. */
+#a3_dialog_root{position:relative;z-index:var(--layer-dialog-backdrop)}
+.a3-modal{max-height:calc(100vh - 2 * var(--space-5));overflow:auto}
+.a3-modal,.a3-print-card,.a3-tour-card-live{will-change:opacity,transform}
+.a3-modal .a3-btn,.a3-print-card .a3-btn,.a3-tour-card-live .a3-btn{height:auto;min-height:var(--size-hit-target-default);white-space:normal}
+.a3-tour-scrim{background:transparent}
+.a3-tour-scrim .a3-tour-cutout{z-index:var(--layer-dialog-backdrop);background:transparent;box-shadow:0 0 0 100vmax var(--color-surface-overlay);pointer-events:none}
+.a3-tour-card-live{position:fixed;left:var(--space-5);bottom:var(--space-5);width:min(var(--measure-card-compact),calc(100vw - 2 * var(--space-5)));max-height:calc(100vh - 2 * var(--space-5));overflow:auto;z-index:var(--layer-dialog)}
 
 /* DC-37 · ScopeLineItemBlock. Structure: article.a3-scope-line-item >
    number/title + coverage/responsibility badges + provenance + details.
@@ -732,6 +797,13 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
   .a3-journal-items li{grid-template-columns:1fr}
   .a3-search-line .a3-form-field,.a3-mailrow input{min-width:0}
   .a3-radio-segments{max-width:100%;flex-wrap:wrap}
+  .a3-modal-scrim{padding:var(--space-4)}
+  .a3-modal,.a3-print-card{max-height:calc(100vh - 2 * var(--space-4));padding:var(--space-4)}
+  .a3-tour-card-live{left:var(--space-4);bottom:var(--space-4);width:calc(100vw - 2 * var(--space-4));max-height:calc(100vh - 2 * var(--space-4))}
+  .a3-prerequisite-row{grid-template-columns:auto minmax(0,1fr)}
+  .a3-prerequisite-row>.a3-link-action{grid-column:2}
+  .a3-segmented-row{grid-template-columns:1fr}
+  .a3-segmented-row>.a3-radio-segments{grid-column:1}
 }
 @media (max-width:22.5rem){
   .a3-wrap{padding-left:var(--space-4);padding-right:var(--space-4)}

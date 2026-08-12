@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 49** · перевод есть, мост не подключён: 44
-· перевода нет (в поставку копирайта): 5
+**Всего 50** · перевод есть, мост не подключён: 44
+· перевода нет (в поставку копирайта): 6
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -64,5 +64,6 @@ Mit freundlichen Grüßen
 - Anteil am Bauwerk (KG 300 + 400 + UG) nach calculation-spec §1 ⚙
 - Druckansicht öffnen
 - Eigenes Ausgabeprofil clientPrint mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.
+- Strittige Angaben jetzt entscheiden
 - Tiefgarage · Lüftung, OS-Beschichtung, Tore
 - Untergeschoss · Rohbau und Ausbau

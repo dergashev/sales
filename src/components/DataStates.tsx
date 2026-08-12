@@ -1,93 +1,215 @@
+import { AnimatePresence, motion, useIsPresent, type Variants } from 'framer-motion'
+import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import { useTx } from '../i18n'
+import { useSemanticMotion } from '../design-system/motion'
+import { Skeleton } from './primitives'
 
-/**
- * Семь состояний данных (правило 30) как КОМПОНЕНТЫ, а не как разметка
- * галереи.
- *
- * До D-28 эти образцы были нарисованы прямо в QA Foundation:
- * `<p className="border border-border-default p-3 …">`. То есть витрина
- * состояний существовала во второй, рукописной копии — и выглядела иначе,
- * чем дизайн-система, ровно потому, что была другой разметкой. Продукт при
- * этом рисовал те же состояния в третий раз, каждый экран по-своему.
- *
- * Здесь разметка одна. Знак рядом с текстом обязателен (правило 8): статус
- * никогда не передаётся только цветом.
- *
- * **Контрактного класса у этих блоков пока нет.** `DC-24 EmptyState`
- * объявлен в README, но `components.css` его не несёт, а `design-system/**`
- * — чужая зона: изобретать там имена нельзя (`PROTOCOL` §2-bis). Поэтому
- * вид пока собран токенами, как и был, и запрошен заданием № 30. Порядок
- * именно такой, а не обратный: сначала убрана ВТОРАЯ разметка, потом первая
- * получит контракт. Обратный порядок оставил бы копию жить дальше.
- */
+export type DataStateKind =
+  | 'loading'
+  | 'empty'
+  | 'partial'
+  | 'ready'
+  | 'error'
+  | 'stale'
+  | 'permission'
 
-const BOX = 'border p-3 text-body'
+export type DataStateBlockState = Exclude<DataStateKind, 'loading' | 'ready'>
 
-export function EmptyState({ children }: { children: string }) {
-  const tx = useTx()
-  return (
-    <p className={`${BOX} border-border-default text-text-secondary`}>
-      <span aria-hidden="true">○ </span>{tx(children)}
-    </p>
-  )
+type DataStateContent = {
+  sentence: string
+  detail?: string
+  impact?: string
+  remedy?: string
+  retryPolicy?: string
+  action?: ReactNode
+}
+
+type DataStateBlockProps =
+  | ({ state: 'error' } & DataStateContent & Required<Pick<
+    DataStateContent,
+    'impact' | 'remedy' | 'retryPolicy'
+  >>)
+  | ({ state: Exclude<DataStateBlockState, 'error'> } & DataStateContent)
+
+const STATE_SIGN: Record<DataStateBlockState, string> = {
+  empty: '○',
+  partial: '◐',
+  error: '✗',
+  stale: '▲',
+  permission: '○',
+}
+
+const STATE_CLASS: Record<DataStateBlockState, string> = {
+  empty: 'a3-data-state-empty',
+  partial: 'a3-data-state-partial',
+  error: 'a3-data-state-error',
+  stale: 'a3-data-state-stale',
+  permission: 'a3-data-state-permission',
 }
 
 /**
- * Частичные данные: величина без расчётной базы. Ноль запрещён
- * (правило 16), поэтому состояние называет отсутствие расчёта и его
- * следствие для итога — оба, а не одно.
+ * Canonical non-ready state surface. It is static by default: the owning
+ * component decides whether a newly completed transition warrants one polite
+ * announcement. The root never becomes an interactive control.
  */
-export function PartialState({ label, consequence }: {
-  label: string
-  consequence: string
-}) {
+export function DataStateBlock({
+  state,
+  sentence,
+  detail,
+  impact,
+  remedy,
+  retryPolicy,
+  action,
+}: DataStateBlockProps) {
   const tx = useTx()
   return (
-    <p className={`numeric ${BOX} border-border-default text-text-primary`}>
-      {tx(label)}
-      <span className="mt-1 block text-small text-text-secondary">
-        {tx(consequence)}
-      </span>
-    </p>
-  )
-}
-
-/** Ошибка — всегда втроём: причина, следствие, средство (STATE-005). */
-export function ErrorState({ cause, remedy }: {
-  cause: string
-  remedy: string
-}) {
-  const tx = useTx()
-  return (
-    <div className="border-contrast border-border-error p-3">
-      <p className="text-body text-text-primary">
-        <span aria-hidden="true">✗ </span>{tx(cause)}
+    <div className={`a3-data-state ${STATE_CLASS[state]}`}>
+      <p>
+        <span aria-hidden="true">{STATE_SIGN[state]} </span>
+        {tx(sentence)}
       </p>
-      <p className="a3-cap mt-1">{tx(remedy)}</p>
+      {detail && <p>{tx(detail)}</p>}
+      {impact && <p>{tx(impact)}</p>}
+      {remedy && <p>{tx(remedy)}</p>}
+      {retryPolicy && <p>{tx(retryPolicy)}</p>}
+      {action && <div className="a3-data-state-action">{action}</div>}
     </div>
   )
 }
 
-/** Устаревшее несёт свой возраст, а не выглядит актуальным. */
-export function StaleState({ children }: { children: string }) {
-  const tx = useTx()
+export type OwnerDataState<T> =
+  | { status: 'loading'; label?: string }
+  | { status: 'ready'; data: T }
+  | ({ status: 'error' } & Omit<Extract<DataStateBlockProps, { state: 'error' }>, 'state'>)
+  | ({ status: Exclude<DataStateBlockState, 'error'> } & Omit<
+    Extract<DataStateBlockProps, { state: Exclude<DataStateBlockState, 'error'> }>,
+    'state'
+  >)
+
+function StatePresence({ children, variants }: {
+  children: ReactNode
+  variants: Variants
+}) {
+  const present = useIsPresent()
+  const rootRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    if (rootRef.current) rootRef.current.inert = !present
+  }, [present])
   return (
-    <p className={`${BOX} border-border-warning text-text-primary`}>
-      <span aria-hidden="true">▲ </span>{tx(children)}
-    </p>
+    <motion.div
+      ref={rootRef}
+      aria-hidden={present ? undefined : 'true'}
+      variants={variants}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+    >
+      {children}
+    </motion.div>
   )
 }
 
 /**
- * Объяснение отсутствия по правам. Недоступное по правам ОТСУТСТВУЕТ в
- * дереве (R-17) — этот компонент не способ показать скрытое, а способ
- * назвать причину там, где называть уместно.
+ * Typed loading-to-result owner. `ready` renders the owner's actual content;
+ * it never becomes a decorative success panel. Semantics and aria-busy
+ * switch immediately, while Skeleton exit and result entry crossfade in the
+ * same geometry. A newer state replaces the previous presence transition.
  */
-export function PermissionState({ children }: { children: string }) {
-  const tx = useTx()
+export function DataStateBoundary<T>({
+  state,
+  renderReady,
+  skeletonLines = 3,
+  announce = false,
+  label,
+}: {
+  state: OwnerDataState<T>
+  renderReady: (data: T) => ReactNode
+  skeletonLines?: number
+  announce?: boolean
+  label: string
+}) {
+  const { fadeOnly, fadeRise } = useSemanticMotion()
+  const loading = state.status === 'loading'
   return (
-    <p className={`${BOX} border-border-default text-text-secondary`}>
-      <span aria-hidden="true">○ </span>{tx(children)}
-    </p>
+    <div
+      className="a3-data-owner"
+      aria-label={label}
+      aria-busy={loading}
+      aria-live={announce ? 'polite' : undefined}
+    >
+      <AnimatePresence initial={false} mode="sync">
+        {loading ? (
+          <StatePresence key="loading" variants={fadeOnly}>
+            <Skeleton lines={skeletonLines} label={state.label} />
+          </StatePresence>
+        ) : (
+          <StatePresence key={state.status} variants={fadeRise}>
+            {state.status === 'ready' ? renderReady(state.data) : state.status === 'error' ? (
+              <DataStateBlock
+                state="error"
+                sentence={state.sentence}
+                detail={state.detail}
+                impact={state.impact}
+                remedy={state.remedy}
+                retryPolicy={state.retryPolicy}
+                action={state.action}
+              />
+            ) : (
+                <DataStateBlock
+                  state={state.status}
+                  sentence={state.sentence}
+                  detail={state.detail}
+                  impact={state.impact}
+                  remedy={state.remedy}
+                  retryPolicy={state.retryPolicy}
+                  action={state.action}
+                />
+              )}
+          </StatePresence>
+        )}
+      </AnimatePresence>
+    </div>
   )
+}
+
+export function EmptyState({ children, action }: {
+  children: string
+  action?: ReactNode
+}) {
+  return <DataStateBlock state="empty" sentence={children} action={action} />
+}
+
+export function PartialState({ label, consequence }: {
+  label: string
+  consequence: string
+}) {
+  return <DataStateBlock state="partial" sentence={label} detail={consequence} />
+}
+
+/** Error anatomy is always cause → impact → remedy → retry policy. */
+export function ErrorState({ cause, impact, remedy, retryPolicy, action }: {
+  cause: string
+  impact: string
+  remedy: string
+  retryPolicy: string
+  action?: ReactNode
+}) {
+  return (
+    <DataStateBlock
+      state="error"
+      sentence={cause}
+      impact={impact}
+      remedy={remedy}
+      retryPolicy={retryPolicy}
+      action={action}
+    />
+  )
+}
+
+export function StaleState({ children }: { children: string }) {
+  return <DataStateBlock state="stale" sentence={children} />
+}
+
+export function PermissionState({ children }: { children: string }) {
+  return <DataStateBlock state="permission" sentence={children} />
 }

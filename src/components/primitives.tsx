@@ -337,12 +337,14 @@ export function NumericField({
  * запрещены правилом 4, и заглушка не притворяется контентом. Скринридеру
  * сообщается загрузка, блоки скрыты.
  */
-export function Skeleton({ lines = 3, label = 'Wird geladen' }: {
+export function Skeleton({ lines = 3, label = 'Wird geladen', announce = false }: {
   lines?: number
   label?: string
+  /** Static specimens are not live regions; dynamic owners opt in. */
+  announce?: boolean
 }) {
   return (
-    <div role="status" aria-live="polite">
+    <div role={announce ? 'status' : undefined} aria-live={announce ? 'polite' : undefined}>
       <span className="sr-only">{label}{NNBSP}…</span>
       <div aria-hidden="true">
         {Array.from({ length: lines }, (_, i) => (

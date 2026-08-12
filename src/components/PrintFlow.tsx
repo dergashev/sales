@@ -1,9 +1,9 @@
-import { useEffect, useId, useRef } from 'react'
-import { createPortal } from 'react-dom'
+import { useId, useRef } from 'react'
 import { activeBuilding, useStore } from '../state/store'
 import { Button } from './primitives'
 import { useTx } from '../i18n'
 import { NNBSP } from '../engine/money'
+import { Dialog, type DialogHandle } from './Dialog'
 
 /**
  * DC-42 · PrintFlow — Druckansicht.
@@ -32,7 +32,8 @@ export function PrintFlow({ returnFocusTo }: {
   const s = useStore()
   const tx = useTx()
   const titleId = useId()
-  const dialogRef = useRef<HTMLDivElement>(null)
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  const dialogRef = useRef<DialogHandle>(null)
   const open = s.printOpen
   const onClose = () => s.setPrintOpen(false)
   const p = s.projection()
@@ -64,26 +65,16 @@ export function PrintFlow({ returnFocusTo }: {
   ]
   const blocked = checks.some((c) => !c.ok)
 
-  useEffect(() => {
-    if (!open) return
-    dialogRef.current?.querySelector<HTMLElement>('h4')?.focus()
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        onClose()
-        returnFocusTo.current?.focus()
-      }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose, returnFocusTo])
-
-  if (!open) return null
-
-  return createPortal(
-    <div className="a3-modal-scrim a3-show" role="dialog" aria-modal="true"
-         aria-labelledby={titleId}>
-      <div className="a3-print-card" ref={dialogRef}>
+  return (
+    <Dialog
+      ref={dialogRef}
+      open={open}
+      onOpenChange={(nextOpen) => { if (!nextOpen) onClose() }}
+      labelledBy={titleId}
+      initialFocusRef={titleRef}
+      returnFocusTo={returnFocusTo}
+      panelClassName="a3-print-card"
+    >
         {/* Монохромное превью листа: то, что действительно ляжет на бумагу. */}
         <div className="a3-paper-preview" aria-label={tx('Monochrome Seitenvorschau A4')}>
           <b>{option?.name ?? 'Musterprojekt Nordfeld'}</b>
@@ -101,7 +92,7 @@ export function PrintFlow({ returnFocusTo }: {
         </div>
 
         <div>
-          <h4 id={titleId} tabIndex={-1} className="outline-none">
+          <h4 ref={titleRef} id={titleId} tabIndex={-1} className="outline-none">
             {tx('Drucken')} · {option?.name ?? '—'}
           </h4>
           <p className="a3-cap">
@@ -123,22 +114,21 @@ export function PrintFlow({ returnFocusTo }: {
               disabledReason={blocked
                 ? 'clientPrint blockiert; interner Export bleibt mit Kennzeichnung «Nur intern» verfügbar'
                 : undefined}
-              onClick={() => { s.sendOffer('print'); onClose() }}
+              onClick={() => { s.sendOffer('print'); dialogRef.current?.close() }}
             >
               {tx('Druckauftrag starten')}
             </Button>
             {/* Внутренний экспорт остаётся доступным и при блокировке —
                 он маркирован «Nur intern» и клиенту не адресован. */}
-            <Button onClick={() => { s.sendOffer('print'); onClose() }}>
+            <Button onClick={() => { s.sendOffer('print'); dialogRef.current?.close() }}>
               {tx('Internen Muster-Export erzeugen')}
             </Button>
             <Button variant="ghost"
-                    onClick={() => { onClose(); returnFocusTo.current?.focus() }}>
+                    onClick={() => dialogRef.current?.close()}>
               {tx('Schließen')}
             </Button>
           </div>
         </div>
-      </div>
-    </div>,
-    document.body)
+    </Dialog>
+  )
 }
