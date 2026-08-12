@@ -16,6 +16,11 @@ import { S6Einstellungen } from './screens/S6Einstellungen'
 import { Grundlagen } from './screens/Grundlagen'
 import { OpportunityList } from './screens/OpportunityList'
 import { OpportunityCard } from './screens/OpportunityCard'
+import {
+  isClientProjection,
+  isClientVisibleLevel,
+  pipelineViewForOutputProfile,
+} from './state/clientProjection'
 
 /**
  * Оболочка на всю ширину экрана, три зоны (решение PO):
@@ -37,10 +42,8 @@ export function App() {
   const view = s.pipelineView
   const [fonts, setFonts] = useState<FontCheck | null>(null)
   const [cascade, setCascade] = useState<string[] | null>(null)
-  const praesentation = s.mode === 'praesentation'
-  const renderedView = praesentation && (view === 'einstellungen' || view === 'grundlagen')
-    ? 'konfigurator'
-    : view
+  const praesentation = isClientProjection(s.mode)
+  const renderedView = pipelineViewForOutputProfile(s.mode, view)
   const t = useT()
 
   useEffect(() => {
@@ -91,15 +94,19 @@ export function App() {
     }
   }, [view, s.openChapter, s.activeOptionId, s.level, s.mode])
 
-  // Клиентский профиль — проекция разрешённых экранов, а не набор
-  // визуально спрятанных ссылок. Если внутренний маршрут был открыт до
-  // переключения, он покидается до следующего отображения профиля.
-  useEffect(() => {
-    if (praesentation && (view === 'einstellungen' || view === 'grundlagen')) {
-      s.setPipelineView('konfigurator')
-    }
-    if (praesentation && s.openChapter === 8) s.openChapterAt(9)
-  }, [praesentation, s.openChapter, s.openChapterAt, s.setPipelineView, view])
+  // Defensive fail-closed projection: normal store transitions leave client
+  // mode before changing level, but corrupted/external state still must not
+  // render the private Opportunity workspace for a client.
+  if (praesentation && !isClientVisibleLevel(s.level)) {
+    return (
+      <div className="a3-app-shell flex h-screen flex-col">
+        <ViewportWarning />
+        <AppHeader t={t} modeRef={modeRef} />
+        <main ref={mainRef} tabIndex={-1}
+              className="min-h-0 flex-1 bg-surface-default outline-none" />
+      </div>
+    )
+  }
 
   // Корень продукта — список Opportunities: ни панелей, ни цены. Цена не
   // может быть показана до выбора Option, а Option появляется только после
@@ -160,7 +167,7 @@ function AppHeader({
   modeRef: RefObject<HTMLButtonElement>
 }) {
   const s = useStore()
-  const praesentation = s.mode === 'praesentation'
+  const praesentation = isClientProjection(s.mode)
   const modeBlocked = !activeBuilding(s).gebaeudeklasse.confirmed
 
   return (
@@ -200,7 +207,7 @@ function AppHeader({
             продавец попадал к клиенту, не увидев, что перестанет быть
             видимым (приёмка волны C). Выход обратно прямой: возвращаться
             во внутреннее пространство нечем гейтовать. */}
-        {s.level === 'option' && (
+        {(s.level === 'option' || praesentation) && (
           <OutputProfileSwitch
             mode={s.mode}
             blocked={modeBlocked}

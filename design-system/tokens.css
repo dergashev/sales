@@ -440,7 +440,8 @@
                                  введён при пересборке прототипа 05.08 — правой
                                  панели токен уже существовал, левой не было.
                                  Значение рабочее, утверждает владелец дизайна */
-  --size-app-min-width: 1280px;
+  --size-app-min-width: 1280px; /* [provisional] supported shell minimum;
+                                   requires design-token ADR ratification */
   /* --duration-toast-undo здесь НЕ живёт: окно отмены — политика
      безопасности (SAFETY-001), а не визуальный токен раздела 13 (R-15).
      Значение — `src/config/ui-policy.ts`. */

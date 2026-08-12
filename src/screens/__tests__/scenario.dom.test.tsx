@@ -231,7 +231,7 @@ describe('Сквозной сценарий продажи', () => {
     render(<App />)
     await enterPipeline(user)
     await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
-    const modus = screen.getByRole('radiogroup', { name: 'Modus' })
+    const modus = screen.getByRole('radiogroup', { name: 'Ansicht' })
     await user.click(within(modus).getAllByRole('radio')[1]!)
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
     await user.click(nav(/^S5|Export/))
@@ -331,7 +331,7 @@ describe('Сквозной сценарий продажи', () => {
     await enterPipeline(user)
     // Вход в презентацию гейтуется подтверждением классификации.
     await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
-    const modes = screen.getByRole('radiogroup', { name: 'Modus' })
+    const modes = screen.getByRole('radiogroup', { name: 'Ansicht' })
     await user.click(within(modes).getAllByRole('radio')[1]!)
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
     expect(useStore.getState().mode).toBe('praesentation')
@@ -374,7 +374,27 @@ describe('Сквозной сценарий продажи', () => {
     expect(document.body.textContent).not.toMatch(/\b(?:DEMO|OPT|SNAP|BM)-[A-Z0-9-]+\b/)
     expect(document.querySelector('[data-driver-id]')).toBeNull()
 
+    const clientChapters = [
+      /Gebäude & Umfang/,
+      /Leistungen KG 300/,
+      /Leistungsabgrenzung/,
+      /Technik KG 400/,
+      /Energie & Zertifikate/,
+      /Flächen im Detail/,
+      /Baugrund & Erschließung/,
+      /Termine & Kommerzielles/,
+    ]
+    for (const chapter of clientChapters) {
+      await user.click(nav(chapter))
+      expect(screen.queryAllByRole('button', {
+        name: /Frage an den Kunden|Zur Opportunity-Karte/,
+      }), `Interne Navigation in ${chapter}`).toHaveLength(0)
+      expect(screen.getByRole('button', { name: 'Beenden' })).toBeInTheDocument()
+      expect(document.body.textContent).not.toMatch(/\b(?:DEMO|OPT|SNAP|BM)-[A-Z0-9-]+\b/)
+    }
+
     await user.click(nav(/Variantenvergleich/))
+    expect(screen.queryByRole('button', { name: 'Zur Opportunity-Karte' })).toBeNull()
     expect(document.body).not.toHaveTextContent(/(?:D-19|VARIANT-001|XSC-08|HOAI und AHO|70\/22\/8)/)
     expect(document.body.textContent).not.toMatch(/\b(?:DEMO|OPT|SNAP|BM)-[A-Z0-9-]+\b/)
 
@@ -385,5 +405,24 @@ describe('Сквозной сценарий продажи', () => {
     await user.click(screen.getByRole('button', { name: 'Beenden' }))
     expect(useStore.getState().mode).toBe('intern')
     expect(screen.getByRole('button', { name: 'Kundenansicht prüfen' })).toBeInTheDocument()
+  })
+
+  it('leaves the client projection before any workspace-level transition', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await enterPipeline(user)
+    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
+    await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
+    await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
+
+    expect(useStore.getState().mode).toBe('praesentation')
+    expect(useStore.getState().level).toBe('option')
+
+    act(() => useStore.getState().openOpportunity(useStore.getState().opportunityId!))
+
+    expect(useStore.getState().mode).toBe('intern')
+    expect(useStore.getState().level).toBe('opportunity')
+    expect(screen.queryByText('Kundenansicht — der Kunde sieht diesen Bildschirm')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Beenden' })).toBeNull()
   })
 })

@@ -4,7 +4,6 @@ import { activeBuilding, useStore } from '../state/store'
 import { CATALOG } from '../state/catalog'
 import { splitKg300 } from '../engine/risk'
 import derivedFx from '../fixtures/derived-prototype.json'
-import demo from '../fixtures/demo-0001.json'
 import {
   NNBSP, present, rateLabel, formatDE, DENOMINATOR_LABEL, label as moneyLabel,
 } from '../engine/money'
@@ -81,6 +80,11 @@ export function OfferPanel() {
   const [treiberOpen, setTreiberOpen] = useState(false)
   const [kgOpen, setKgOpen] = useState(false)
   const [kg300Open, setKg300Open] = useState(false)
+  const clientScopeLabel = Object.values(s.buildings)
+    .filter((building) => s.included[building.id]
+      && (!s.scopeBuildingId || s.scopeBuildingId === building.id))
+    .map((building) => building.stableName)
+    .join(`${NNBSP}· `) || tx('Gebäude')
   // Правило 24: чип «долетает» до журнала — при уходе чипа журнал вспыхивает
   // один раз. Цветовой transition, не кейфрейм (правило 20); гаснет при
   // prefers-reduced-motion (правило 21).
@@ -415,6 +419,11 @@ export function OfferPanel() {
                     const senkt = d.exact.isNegative()
                     const richtung = senkt ? 'senkt' : 'erhöht'
                     const shown = present(d.exact.abs())
+                    const scopeLabel = d.scopeRefs.length > 0
+                      ? s.mode === 'intern'
+                        ? d.scopeRefs.join(`${NNBSP}· `)
+                        : clientScopeLabel
+                      : 'Zuordnung offen'
                     return (
                       <tr key={d.key} {...(s.mode === 'intern' ? { 'data-driver-id': d.key } : {})}
                           className={'a3-drv'
@@ -431,12 +440,7 @@ export function OfferPanel() {
                           <span aria-hidden="true" className="a3-driver-direction">
                             {richtung}
                             {' · '}
-                            {d.scopeRefs.length > 0
-                              ? d.scopeRefs.map((ref) => s.mode === 'intern'
-                                  ? ref
-                                  : demo.buildings.find((building) => building.id === ref)?.stableName ?? tx('Gebäude'))
-                                .join(NNBSP + '· ')
-                              : 'Zuordnung offen'}
+                            {scopeLabel}
                           </span>
                         </th>
                         <td className="a3-bar-cell" aria-hidden="true">
@@ -459,9 +463,7 @@ export function OfferPanel() {
                               rows={[
                                 ...basisRows(d.basis),
                                 {
-                                  label: d.scopeRefs.length > 0
-                                    ? `Scope · ${d.scopeRefs.join(' · ')}`
-                                    : 'Scope · Zuordnung offen',
+                                  label: `Scope · ${scopeLabel}`,
                                   value: richtung,
                                   muted: d.scopeRefs.length === 0,
                                 },

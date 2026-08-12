@@ -3,6 +3,11 @@ import type { PipelineView } from '../state/store'
 import { NNBSP } from '../engine/money'
 import { CHAPTERS } from '../screens/S3Konfigurator'
 import { useT, useTx, type MessageKey } from '../i18n'
+import {
+  isClientProjection,
+  isClientVisibleChapter,
+  isClientVisiblePipelineView,
+} from '../state/clientProjection'
 
 /**
  * Левый сайдбар — навигация оболочки.
@@ -43,13 +48,13 @@ export function Sidebar() {
   const option = s.options.find((o) => o.id === s.activeOptionId)
   const t = useT()
   const tx = useTx()
-  const client = s.mode === 'praesentation'
+  const client = isClientProjection(s.mode)
   const screens = client
-    ? SCREENS.filter(({ id }) => id !== 'einstellungen' && id !== 'grundlagen')
+    ? SCREENS.filter(({ id }) => isClientVisiblePipelineView(id))
     : SCREENS
   const chapters = client
     ? CHAPTERS.map((label, index) => ({ label, number: index + 1 }))
-      .filter(({ number }) => number !== 8)
+      .filter(({ number }) => isClientVisibleChapter(number))
     : CHAPTERS.map((label, index) => ({ label, number: index + 1 }))
 
   return (
@@ -63,7 +68,7 @@ export function Sidebar() {
         </p>
         <p className="a3-cap mt-1">
           {!client && <>{option ? option.id : t('shell.variant')} · </>}
-          {t(s.mode === 'praesentation' ? 'shell.mode.praesentation' : 'shell.mode.intern')}
+          {t(client ? 'shell.profile.client' : 'shell.profile.internal')}
         </p>
       </div>
 

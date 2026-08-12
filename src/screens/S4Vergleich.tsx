@@ -8,7 +8,7 @@ import { Button, useReducedMotion } from '../components/primitives'
 import { Badge, NextStep, PageHeader } from '../components/designSystem'
 import { useT, useTx } from '../i18n'
 import { copyFor } from '../i18n/internal-refs'
-import demo from '../fixtures/demo-0001.json'
+import { isClientProjection, isVisibleInOutputProfile } from '../state/clientProjection'
 
 /**
  * S4 Variantenvergleich — созданные Opportunity Options рядом.
@@ -36,7 +36,7 @@ export function S4Vergleich() {
   const [showAll, setShowAll] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const reducedMotion = useReducedMotion()
-  const client = s.mode === 'praesentation'
+  const client = isClientProjection(s.mode)
 
   const cols = s.options.flatMap((o) => {
     const cfg = configForOption(s, o.id)
@@ -69,8 +69,8 @@ export function S4Vergleich() {
   }
   const perBuilding = (cfg: OptionConfig, f: (id: string) => string) =>
     Object.keys(cfg.buildings).filter((id) => cfg.included[id]).map(f).join(' · ')
-  const buildingLabel = (id: string) => client
-    ? demo.buildings.find((building) => building.id === id)?.stableName ?? tx('Gebäude')
+  const buildingLabel = (id: string, config: OptionConfig) => client
+    ? config.buildings[id]?.stableName ?? tx('Gebäude')
     : id
 
   type Sub = { text: string; save: boolean } | null
@@ -105,13 +105,14 @@ export function S4Vergleich() {
     },
     {
       group: 'UMFANG', label: 'Gebäude im Angebot',
-      cells: cols.map((c) => perBuilding(c.cfg, (id) => buildingLabel(id))),
+      cells: cols.map((c) => perBuilding(c.cfg, (id) => buildingLabel(id, c.cfg))),
     },
     {
       group: 'UMFANG', label: 'Untergeschoss',
       cells: cols.map((c) => perBuilding(c.cfg, (id) =>
         c.cfg.buildings[id]!.untergeschoss === 'kein_ug'
-          ? `${buildingLabel(id)}: nicht Bestandteil` : `${buildingLabel(id)}: enthalten`)),
+          ? `${buildingLabel(id, c.cfg)}: nicht Bestandteil`
+          : `${buildingLabel(id, c.cfg)}: enthalten`)),
     },
     {
       group: 'UMFANG', label: 'BGF unterirdisch (m²)',
@@ -130,13 +131,14 @@ export function S4Vergleich() {
     {
       group: 'QUALITÄT', label: 'Energiestandard',
       cells: cols.map((c) => perBuilding(c.cfg, (id) =>
-        `${buildingLabel(id)}: ${ES_LABEL[c.cfg.buildings[id]!.energiestandard]}`)),
+        `${buildingLabel(id, c.cfg)}: ${ES_LABEL[c.cfg.buildings[id]!.energiestandard]}`)),
     },
     {
       group: 'QUALITÄT', label: 'Klassifikation nach MBO §2',
       cells: cols.map((c) => perBuilding(c.cfg, (id) =>
         c.cfg.buildings[id]!.gebaeudeklasse.confirmed
-          ? `${buildingLabel(id)}: ✓ bestätigt` : `${buildingLabel(id)}: ▲ nicht bestätigt`)),
+          ? `${buildingLabel(id, c.cfg)}: ✓ bestätigt`
+          : `${buildingLabel(id, c.cfg)}: ▲ nicht bestätigt`)),
     },
   ]
 
@@ -162,7 +164,7 @@ export function S4Vergleich() {
         </Button>
       </div>
 
-      {cols.length === 1 && (
+      {cols.length === 1 && isVisibleInOutputProfile(s.mode, 'internalOnly') && (
         <div className="mt-4"><NextStep
           description={tx('Zum Vergleichen braucht es eine zweite Option. Sie entsteht auf der Opportunity-Karte — mit eigener Konfiguration, unabhängig von dieser.')}
           action={tx('Zur Opportunity-Karte')}

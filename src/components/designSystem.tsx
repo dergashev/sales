@@ -88,7 +88,7 @@ export function OutputProfileSwitch({
     <div className="a3-output-profile">
       <SegmentedControl
         layout="inline"
-        legend={t('shell.mode.legend')}
+        legend={t('shell.profile.legend')}
         value={mode}
         onChange={(next) => next === 'praesentation' ? onCheck() : onExit()}
         options={[

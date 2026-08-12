@@ -2,6 +2,14 @@ import { createStore } from 'zustand/vanilla'
 import { useStore as useZustandStore } from 'zustand'
 import { Decimal } from 'decimal.js'
 import demo from '../fixtures/demo-0001.json'
+import {
+  chapterForOutputProfile,
+  modeForLevelTransition,
+  pipelineViewForOutputProfile,
+  type OutputMode,
+  type PipelineView,
+  type ProductLevel,
+} from './clientProjection'
 import { withRegionalFactor } from './catalog'
 import {
   bgfAboveGround, calculateBuilding, kgSplit, sumOfBlock,
@@ -15,6 +23,11 @@ import { defaultOptionChoices, optionDrivers, coverageDrivers, ALL_OPTION_GROUPS
 import derivedFx from '../fixtures/derived-prototype.json'
 import { modelDuration, presentDuration, type DurationDisplay } from '../engine/schedule'
 import { RISK_ITEMS, riskDriver } from '../engine/risk'
+
+export type { PipelineView } from './clientProjection'
+
+/** Calculation input enriched with the active project's client-safe label. */
+export type ProjectBuilding = BuildingInput & { stableName: string }
 
 /**
  * Состояние = журнал событий + проекция (M-4).
@@ -126,9 +139,6 @@ export type OfferSnapshot = {
   journalSeqAt: number
 }
 
-export type PipelineView =
-  | 'konfigurator' | 'vergleich' | 'export' | 'einstellungen' | 'grundlagen'
-
 /**
  * Всё, что принадлежит ОДНОЙ Option, — её независимая конфигурация.
  * Ровно эти поля переезжают между плоским состоянием и `optionConfigs`
@@ -137,7 +147,7 @@ export type PipelineView =
  * и раскладка построены на одном перечне `OPTION_CONFIG_KEYS`.
  */
 export type OptionConfig = {
-  buildings: Record<string, BuildingInput>
+  buildings: Record<string, ProjectBuilding>
   activeBuildingId: string
   included: Record<string, boolean>
   buildingConfirmed: Record<string, boolean>
@@ -207,8 +217,8 @@ const INITIAL_COVERAGE: Coverage = {
 const fx = demo.buildings[0]!
 const fxConflict = demo.conflicts[0]!
 
-const INITIAL_BUILDING: BuildingInput = {
-  id: fx.id, gebaeudeform: 'MFH',
+const INITIAL_BUILDING: ProjectBuilding = {
+  id: fx.id, stableName: fx.stableName, gebaeudeform: 'MFH',
   gebaeudeklasse: { value: 'GK_5', confirmed: false },
   energiestandard: 'EH_55',
   // Фикстура объявляет `BGF S = 0` (synthetic-fixtures §5): балконов у
@@ -228,8 +238,8 @@ const INITIAL_BUILDING: BuildingInput = {
  * не существует.
  */
 const fxB = demo.buildings[1]!
-const INITIAL_BUILDING_B: BuildingInput = {
-  id: fxB.id, gebaeudeform: 'BUERO',
+const INITIAL_BUILDING_B: ProjectBuilding = {
+  id: fxB.id, stableName: fxB.stableName, gebaeudeform: 'BUERO',
   gebaeudeklasse: { value: 'GK_4', confirmed: false },
   energiestandard: 'EH_55',
   bgfRAbove: D(fxB.areas.bgfAboveGround!),
@@ -320,7 +330,7 @@ type Store = {
    * модель, а неверная: у комплекса нет «того самого» здания, а оси
    * классификации принадлежат каждому в отдельности (D-11 v2).
    */
-  buildings: Record<string, BuildingInput>
+  buildings: Record<string, ProjectBuilding>
   /** Какое здание правит конфигуратор. Не то же, что включённость. */
   activeBuildingId: string
   /**
@@ -401,7 +411,7 @@ type Store = {
    * формируется, поэтому переключение — no-op, пока класс не подтверждён.
    * Плотность режимом НЕ управляется (D-16).
    */
-  mode: 'intern' | 'praesentation'
+  mode: OutputMode
   /**
    * Уровень, на котором находится пользователь. Три уровня, и они НЕ
    * являются экранами: экран — это то, что показано внутри уровня.
@@ -417,7 +427,7 @@ type Store = {
    * Это блокировка ПОДГОТОВКИ, а не блокировка при клиенте — правило 12
    * запрещает второе, а первое требует.
    */
-  level: 'liste' | 'opportunity' | 'option'
+  level: ProductLevel
   /** Выбранная Opportunity; null на корневом уровне. */
   opportunityId: string | null
   /** Подтверждены ли верхнеуровневые параметры проекта (часть гейта). */
@@ -550,7 +560,7 @@ type Store = {
   undoEvent: (seq: number) => void
   dismissUndoToast: () => void
   /** Правило 11: вход в презентацию закрыт, пока открыт material-блокер. */
-  setMode: (m: 'intern' | 'praesentation') => void
+  setMode: (m: OutputMode) => void
   openOpportunity: (id: string) => void
   backToList: () => void
   confirmProjectParams: () => void
@@ -625,7 +635,7 @@ function undoTarget(
  * это разные вопросы, и путать их нельзя: пользователь может смотреть
  * метрики здания, которое решил не включать.
  */
-export function activeBuilding(s: Pick<Store, 'buildings' | 'activeBuildingId'>): BuildingInput {
+export function activeBuilding(s: Pick<Store, 'buildings' | 'activeBuildingId'>): ProjectBuilding {
   const b = s.buildings[s.activeBuildingId]
   if (!b) throw new Error(`нет здания ${s.activeBuildingId}`)
   return b
@@ -1334,15 +1344,18 @@ const store = createStore<Store>((set, get) => {
     },
 
     clearDelta: () => set({ activeDelta: null }),
-    openChapterAt: (n) => set((s) => ({
-      openChapter: n,
-      // След посещения — источник честного прогресса в сайдбаре: глава
-      // «пройдена», если её открывали, а не потому что её номер меньше
-      // текущего (ревью № 13, дефект 7).
-      besuchteKapitel: s.besuchteKapitel.includes(n)
-        ? s.besuchteKapitel
-        : [...s.besuchteKapitel, n],
-    })),
+    openChapterAt: (n) => set((s) => {
+      const visibleChapter = chapterForOutputProfile(s.mode, n)
+      return {
+        openChapter: visibleChapter,
+        // След посещения — источник честного прогресса в сайдбаре: глава
+        // «пройдена», если её открывали, а не потому что её номер меньше
+        // текущего (ревью № 13, дефект 7).
+        besuchteKapitel: s.besuchteKapitel.includes(visibleChapter)
+          ? s.besuchteKapitel
+          : [...s.besuchteKapitel, visibleChapter],
+      }
+    }),
 
     outcomeOf: (change) => {
       // Тот же движок от точных значений и та же ПОЛНАЯ проекция, что у
@@ -1439,15 +1452,26 @@ const store = createStore<Store>((set, get) => {
     dismissUndoToast: () => set({ undoToast: null }),
 
     setMode: (m) => {
-      if (m === 'praesentation' && !activeBuilding(get()).gebaeudeklasse.confirmed) return
-      set({ mode: m })
+      const s = get()
+      if (m === 'praesentation'
+        && (s.level !== 'option' || !activeBuilding(s).gebaeudeklasse.confirmed)) return
+      set({
+        mode: m,
+        pipelineView: pipelineViewForOutputProfile(m, s.pipelineView),
+        openChapter: chapterForOutputProfile(m, s.openChapter),
+      })
     },
 
-    openOpportunity: (id) => set({ level: 'opportunity', opportunityId: id }),
+    openOpportunity: (id) => set((s) => ({
+      mode: modeForLevelTransition(s.mode, 'opportunity'),
+      level: 'opportunity',
+      opportunityId: id,
+    })),
     backToList: () => {
       const s = get()
       set({
         ...NO_TRANSIENT,
+        mode: modeForLevelTransition(s.mode, 'liste'),
         level: 'liste',
         activeOptionId: null,
         // Рабочая копия покидаемой Option убирается в хранилище — иначе
@@ -1539,6 +1563,7 @@ const store = createStore<Store>((set, get) => {
             options: x.options.filter((o) => o.id !== id),
             optionConfigs: rest,
             activeOptionId: prevActive,
+            mode: modeForLevelTransition(x.mode, prevLevel),
             level: prevLevel,
             ...prevFlat,
           }
@@ -1620,7 +1645,9 @@ const store = createStore<Store>((set, get) => {
       })
     },
 
-    setPipelineView: (v) => set({ pipelineView: v }),
+    setPipelineView: (v) => set((s) => ({
+      pipelineView: pipelineViewForOutputProfile(s.mode, v),
+    })),
 
     setGateOpen: (v) => set({ gateOpen: v }),
 

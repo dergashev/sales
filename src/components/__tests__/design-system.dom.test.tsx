@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { FormField, SelectField } from '../designSystem'
 import { ProvenanceChip } from '../primitives'
+import { useStore } from '../../state/store'
 
 describe('Canonical form contracts', () => {
   it('connects labels, help, errors, and disabled reasons to the owned control', () => {
@@ -54,5 +55,11 @@ describe('Typed provenance contract', () => {
     )
     expect(chip).toHaveTextContent('◆')
     expect(chip).not.toHaveTextContent('✎')
+
+    act(() => useStore.getState().setUiLanguage('en'))
+    expect(screen.getByLabelText(
+      'Origin: aus Dokument · Flächenberechnung_v3.pdf · S. 15',
+    )).toBeInTheDocument()
+    act(() => useStore.getState().setUiLanguage('de'))
   })
 })

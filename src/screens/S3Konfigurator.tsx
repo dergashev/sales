@@ -20,6 +20,12 @@ import {
 import { RISK_ITEMS, riskDriver } from '../engine/risk'
 import demo from '../fixtures/demo-0001.json'
 import { present, label as moneyLabel } from '../engine/money'
+import {
+  CLIENT_VISIBLE_CHAPTERS,
+  chapterForOutputProfile,
+  isClientProjection,
+  isVisibleInOutputProfile,
+} from '../state/clientProjection'
 
 /**
  * S3 Konfigurator — рабочая область главы. ТОЛЬКО она: навигация по главам
@@ -79,10 +85,12 @@ function consequenceLabel(delta: Decimal, zero?: string): string {
 export function S3Konfigurator() {
   const s = useStore()
   const tx = useTx()
-  const client = s.mode === 'praesentation'
-  const n = client && s.openChapter === 8 ? 9 : s.openChapter
+  const client = isClientProjection(s.mode)
+  const n = chapterForOutputProfile(s.mode, s.openChapter)
   const title = CHAPTERS[n - 1] ?? CHAPTERS[0]
-  const chapterRoute = client ? [1, 2, 3, 4, 5, 6, 7, 9] : [1, 2, 3, 4, 5, 6, 7, 8, 9]
+  const chapterRoute: readonly number[] = client
+    ? CLIENT_VISIBLE_CHAPTERS
+    : [1, 2, 3, 4, 5, 6, 7, 8, 9]
   const routeIndex = chapterRoute.indexOf(n)
   const previous = routeIndex > 0 ? chapterRoute[routeIndex - 1] : null
   const next = routeIndex >= 0 && routeIndex < chapterRoute.length - 1
@@ -659,9 +667,11 @@ function ChapterBaugrund() {
                 >
                   {on ? tx('Zuschlag entfernen') : tx('Zuschlag anwenden')}
                 </Button>
-                <Button onClick={() => s.opportunityId && s.openOpportunity(s.opportunityId)}>
-                  {tx('Frage an den Kunden · in der Vorbereitung')}
-                </Button>
+                {isVisibleInOutputProfile(s.mode, 'internalOnly') && (
+                  <Button onClick={() => s.opportunityId && s.openOpportunity(s.opportunityId)}>
+                    {tx('Frage an den Kunden · in der Vorbereitung')}
+                  </Button>
+                )}
               </div>
             </div>
           )

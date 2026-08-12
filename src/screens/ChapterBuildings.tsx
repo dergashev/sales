@@ -68,7 +68,7 @@ export function ChapterBuildings() {
   const lastOne = includedCount === 1 && s.included[active.id] === true
   const client = s.mode === 'praesentation'
   const buildingName = (id: string) => client
-    ? demo.buildings.find((building) => building.id === id)?.stableName ?? tx('Gebäude')
+    ? s.buildings[id]?.stableName ?? tx('Gebäude')
     : id
   const activeName = buildingName(active.id)
 

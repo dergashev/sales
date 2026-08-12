@@ -145,7 +145,7 @@ describe('Опции — нативная radio-группа (RADIO-001)', () =>
 describe('Гейт режима презентации — блокировка объясняет причину (правило 12)', () => {
   it('сегмент недоступен и несёт видимую причину, а не только погашен', async () => {
     await enterPipeline(userEvent.setup())
-    const group = screen.getByRole('radiogroup', { name: 'Modus' })
+    const group = screen.getByRole('radiogroup', { name: 'Ansicht' })
     const praesentation = within(group).getAllByRole('radio')[1] as HTMLInputElement
     expect(praesentation.disabled).toBe(true)
     // Причина именно видима, а не спрятана в title.
@@ -157,7 +157,7 @@ describe('Гейт режима презентации — блокировка 
     await enterPipeline(user)
     await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
 
-    const group = screen.getByRole('radiogroup', { name: 'Modus' })
+    const group = screen.getByRole('radiogroup', { name: 'Ansicht' })
     const praesentation = within(group).getAllByRole('radio')[1] as HTMLInputElement
     expect(praesentation.disabled).toBe(false)
     // Путь в клиентский вид — через ворота DC-33: переключатель их

@@ -115,7 +115,16 @@ describe('DC-44: сумма драйверов обязана давать ит�
 })
 
 describe('Правило 11: вход в презентацию гейтуется блокером', () => {
-  it('переключение в praesentation — no-op, пока класс не подтверждён', () => {
+  it('переключение в praesentation — no-op вне Option и до подтверждения', () => {
+    useStore.getState().setMode('praesentation')
+    expect(useStore.getState().mode).toBe('intern')
+
+    useStore.getState().openOpportunity('DEMO-0001')
+    useStore.getState().resolveWflConflict('customer')
+    useStore.getState().confirmProjectParams()
+    useStore.getState().createOption('Basis')
+    useStore.getState().openOption('OPT-01')
+
     useStore.getState().setMode('praesentation')
     expect(useStore.getState().mode).toBe('intern')
     useStore.getState().confirmGebaeudeklasse()

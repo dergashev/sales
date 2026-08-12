@@ -32,17 +32,19 @@ describe('DC-43: набранное переживает уход с экран�
   })
 
   it('переход в презентацию убирает поле — и тоже дописывает', async () => {
+    useStore.getState().openOpportunity('DEMO-0001')
+    useStore.getState().resolveWflConflict('customer')
+    useStore.getState().confirmProjectParams()
+    useStore.getState().createOption('Basis')
+    useStore.getState().openOption('OPT-01')
+    useStore.getState().confirmGebaeudeklasse()
+
     const user = userEvent.setup()
     render(<InternalNote />)
     const field = document.querySelector('textarea')!
     await user.type(field, 'Nachbargrundstück gehört dem Kunden')
 
-    // Вход в презентацию гейтуется подтверждением класса (R-07) — сначала
-    // проходим гейт, иначе тест проверял бы отказ, а не уход.
-    act(() => {
-      useStore.getState().confirmGebaeudeklasse()
-      useStore.getState().setMode('praesentation')
-    })
+    act(() => { useStore.getState().setMode('praesentation') })
     // Поле исчезает, компонент остаётся смонтированным: cleanup
     // размонтирования тут не сработал бы вовсе.
     expect(document.querySelector('textarea')).toBeNull()

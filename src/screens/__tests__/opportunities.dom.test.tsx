@@ -180,9 +180,16 @@ describe('Уровень Opportunities', () => {
       .toHaveLength(1)
     expect(screen.getByText(/synchronisiert · HubSpot/)).toBeInTheDocument()
 
-    // В презентации заметки НЕ СУЩЕСТВУЕТ — не спрятана, а отсутствует.
-    act(() => { useStore.getState().confirmGebaeudeklasse() })
-    act(() => { useStore.getState().setMode('praesentation') })
+    // В клиентский профиль входят только из Option через реальный gate.
+    await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
+    await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
+    await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
+    await user.click(screen.getByRole('button', { name: 'Öffnen' }))
+    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
+    await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
+    await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
+
+    // In der Kundenansicht existiert die Notiz nicht im DOM.
     expect(screen.queryByRole('textbox', { name: /Interne Notiz/ })).toBeNull()
     expect(document.body.textContent).not.toContain('HubSpot-Projektkarte')
   })

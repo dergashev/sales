@@ -231,9 +231,14 @@ const PROVENANCE_MARK: Record<ProvenanceKind, string> = {
 export function ProvenanceChip({ provenance }: {
   provenance: ProvenancePresentation
 }) {
+  const t = useT()
   const mark = PROVENANCE_MARK[provenance.kind]
-  const accessibleLabel = `Herkunft: ${provenance.label}${
-    provenance.detail ? ` · ${provenance.detail}` : ''}`
+  const accessibleLabel = provenance.detail
+    ? t('provenance.accessibleLabelWithDetail', {
+      label: provenance.label,
+      detail: provenance.detail,
+    })
+    : t('provenance.accessibleLabel', { label: provenance.label })
   return (
     <span className="a3-chip-src" aria-label={accessibleLabel}>
       {/* `.a3-chip-src .a3-dot` — точка индикатора из системы; знак остаётся
