@@ -80,11 +80,6 @@ export function OfferPanel() {
   const [treiberOpen, setTreiberOpen] = useState(false)
   const [kgOpen, setKgOpen] = useState(false)
   const [kg300Open, setKg300Open] = useState(false)
-  const clientScopeLabel = Object.values(s.buildings)
-    .filter((building) => s.included[building.id]
-      && (!s.scopeBuildingId || s.scopeBuildingId === building.id))
-    .map((building) => building.stableName)
-    .join(`${NNBSP}· `) || tx('Gebäude')
   // Правило 24: чип «долетает» до журнала — при уходе чипа журнал вспыхивает
   // один раз. Цветовой transition, не кейфрейм (правило 20); гаснет при
   // prefers-reduced-motion (правило 21).
@@ -420,9 +415,7 @@ export function OfferPanel() {
                     const richtung = senkt ? 'senkt' : 'erhöht'
                     const shown = present(d.exact.abs())
                     const scopeLabel = d.scopeRefs.length > 0
-                      ? s.mode === 'intern'
-                        ? d.scopeRefs.join(`${NNBSP}· `)
-                        : clientScopeLabel
+                      ? d.scopeRefs.join(`${NNBSP}· `)
                       : 'Zuordnung offen'
                     return (
                       <tr key={d.key} {...(s.mode === 'intern' ? { 'data-driver-id': d.key } : {})}

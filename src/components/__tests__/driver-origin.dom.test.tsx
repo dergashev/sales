@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
 import { __resetStoreForTests, useStore } from '../../state/store'
@@ -95,5 +95,30 @@ describe('DC-21: происхождение раскрывается у кажд
     const text = document.body.textContent ?? ''
     expect(text).toContain('Angewendet auf')
     expect(text).toContain('Faktor')
+  })
+
+  it('в клиентском режиме сохраняет объявленный DIN 276 scope вместо имени здания', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await enterPipeline(user)
+
+    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
+    await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
+    await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
+    await user.click(screen.getByRole('button', { name: /Kostentreiber/ }))
+
+    const drivers = screen.getByRole('region', { name: 'Kostentreiber' })
+    const label = within(drivers).getByText(/^Untergeschoss · Rohbau und Ausbau ·/, {
+      selector: 'span[aria-hidden="true"]',
+    })
+    const row = label.closest('tr')
+    expect(row).not.toBeNull()
+    expect(row).toHaveTextContent(/erhöht\s*·\s*UG/)
+    expect(row).not.toHaveTextContent('Haus A')
+
+    await user.click(within(row!).getByRole('button', { name: 'Details' }))
+    const popover = screen.getByRole('dialog', { name: 'Herkunft des Werts' })
+    expect(within(popover).getByText('Scope · UG')).toBeInTheDocument()
+    expect(popover).not.toHaveTextContent('Haus A')
   })
 })
