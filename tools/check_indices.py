@@ -47,9 +47,9 @@ import sys
 import pathlib
 
 try:
-    from .validation_paths import is_external_repository_path
+    from .validation_paths import RepositoryValidationScope
 except ImportError:  # Direct execution: python3 tools/check_indices.py
-    from validation_paths import is_external_repository_path
+    from validation_paths import RepositoryValidationScope
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
@@ -238,11 +238,12 @@ def collect(root=ROOT):
 def run(root=ROOT):
     """→ [(relpath, lineno, сообщение)]. Исключение = поломка инструмента."""
     root = pathlib.Path(root)
+    path_scope = RepositoryValidationScope(root)
     real, bad = collect(root), []
     adr, adr_bad = adr_registry(root)
     bad.extend(adr_bad)
     for f in sorted(root.rglob('*.md')):
-        if is_external_repository_path(f, root):
+        if path_scope.excludes(f):
             continue
         t = f.read_text(encoding='utf-8', errors='ignore')
         rel = f.relative_to(root).as_posix()

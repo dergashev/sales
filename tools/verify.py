@@ -231,9 +231,9 @@ import pathlib
 from decimal import Decimal as D, ROUND_HALF_UP, ROUND_DOWN
 
 try:
-    from .validation_paths import is_external_repository_path
+    from .validation_paths import RepositoryValidationScope
 except ImportError:  # Direct execution: python3 tools/verify.py
-    from validation_paths import is_external_repository_path
+    from validation_paths import RepositoryValidationScope
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
@@ -1106,6 +1106,7 @@ class Verifier:
         self._allow_hits = {}    # key → [номера строк]
         self._known_hits = {}
         self._classes = set()    # какие классы реально зарегистрировали вывод
+        self._path_scope = RepositoryValidationScope(self.root)
         self._stale_ok = {}
         for rel, (h, _) in STALE_ARTIFACTS.items():
             p = self.root / rel
@@ -1138,7 +1139,7 @@ class Verifier:
                 # прочитанными детектором дат как двузначные годы.
                 # Основание то же, что у реестра требований: исключение
                 # по конструкции, не по каталогу удобства.
-                if (is_external_repository_path(p, self.root) or
+                if (self._path_scope.excludes(p) or
                         any(d in p.relative_to(self.root).parts
                             for d in ('dist', '__pycache__', '.vite'))):
                     continue
