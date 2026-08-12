@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react'
+import { StrictMode, useId, useRef, useState } from 'react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -59,6 +59,18 @@ function PrintHarness() {
   )
 }
 
+function InitiallyOpenDialog() {
+  const [open, setOpen] = useState(true)
+  const titleId = useId()
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  return (
+    <Dialog open={open} onOpenChange={setOpen} labelledBy={titleId} initialFocusRef={titleRef}>
+      <h2 ref={titleRef} id={titleId} tabIndex={-1}>Strict dialog</h2>
+      <Button onClick={() => setOpen(false)}>Close strict dialog</Button>
+    </Dialog>
+  )
+}
+
 describe('Dialog · shared modal lifecycle', () => {
   it('keeps background inert through exit, traps both Tab directions, and restores focus', async () => {
     const user = userEvent.setup()
@@ -100,5 +112,21 @@ describe('Dialog · shared modal lifecycle', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Erster Dialog' })).toBeNull())
     expect(firstTrigger).toHaveFocus()
+  })
+
+  it('creates and releases one portal safely under StrictMode effect replay', async () => {
+    const { container, unmount } = render(
+      <StrictMode>
+        <InitiallyOpenDialog />
+      </StrictMode>,
+    )
+
+    expect(document.querySelectorAll('#a3_dialog_root')).toHaveLength(1)
+    expect(screen.getAllByRole('dialog', { name: 'Strict dialog' })).toHaveLength(1)
+    expect(container.inert).toBe(true)
+
+    unmount()
+    await waitFor(() => expect(document.querySelector('#a3_dialog_root')).toBeNull())
+    expect(container.inert).toBe(false)
   })
 })

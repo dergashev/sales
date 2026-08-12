@@ -244,7 +244,7 @@ describe('Сквозной сценарий продажи', () => {
     // Гейт живёт в карточке Opportunity, а не в списке проектов.
     await user.click(await screen.findByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
     const gate = screen.getByRole('group', { name: /Bereitschaft/ })
-    expect(within(gate).getByText(/von 2 Punkten erledigt/)).toBeInTheDocument()
+    expect(within(gate).getByText(/von 2 Voraussetzungen erfüllt/)).toBeInTheDocument()
     expect(within(gate).getAllByText('Strittige Angaben')).not.toHaveLength(0)
     expect(within(gate).getByText('Projektparameter bestätigen')).toBeInTheDocument()
     expect(gate.querySelector('svg, .a3-ring')).toBeNull()

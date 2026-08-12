@@ -43,6 +43,13 @@ const de = {
   'common.close': 'Schließen',
   'common.showOrigin': 'Herkunft anzeigen',
   'common.loading': 'Wird geladen',
+  'common.fieldLoading': 'Feld wird geladen',
+  'common.fulfilled': 'Erfüllt',
+  'common.open': 'Offen',
+  'designSystem.readinessSummary': '{done} von {total} Punkten bereit',
+  'oppcard.prerequisitesSummary': '{done} von {total} Voraussetzungen erfüllt',
+  'oppcard.resolveConflictingInformation': 'Strittige Angaben jetzt entscheiden',
+  'oppcard.confirmProjectParametersNow': 'Projektparameter jetzt bestätigen',
   'journal.empty': 'Journal: noch keine übernommenen Änderungen',
   'shell.en.draftActive': 'EN: Entwurf — Übersetzung noch nicht vollständig',
   'shell.en.draftHint': 'EN ist noch ein Entwurf: die Übersetzung wird gerade vervollständigt',
@@ -76,6 +83,13 @@ const en: Partial<Record<MessageKey, string>> = {
   'common.close': 'Close',
   'common.showOrigin': 'Show origin',
   'common.loading': 'Loading',
+  'common.fieldLoading': 'Field is loading',
+  'common.fulfilled': 'Complete',
+  'common.open': 'Open',
+  'designSystem.readinessSummary': '{done} of {total} points ready',
+  'oppcard.prerequisitesSummary': '{done} of {total} prerequisites complete',
+  'oppcard.resolveConflictingInformation': 'Resolve conflicting information now',
+  'oppcard.confirmProjectParametersNow': 'Confirm project parameters now',
   'journal.empty': 'Journal: no adopted changes yet',
   'shell.en.draftActive': 'EN: draft — translation not yet complete',
   'shell.en.draftHint': 'EN is still a draft: the translation is being completed',
@@ -86,12 +100,34 @@ const en: Partial<Record<MessageKey, string>> = {
  * поставки Codex (434 ключа, состояние draft). Непереведённое падает в
  * de — честный fallback внутреннего пространства.
  */
-export function translate(key: MessageKey | string, lang: UiLanguage): string {
+export type MessageValues = Readonly<Record<string, string | number>>
+
+function interpolate(
+  message: string,
+  lang: UiLanguage,
+  values?: MessageValues,
+): string {
+  if (!values) return message
+  const numberFormat = new Intl.NumberFormat(lang === 'de' ? 'de-DE' : 'en-GB')
+  return message.replace(/\{([A-Za-z][A-Za-z0-9_]*)\}/g, (placeholder, name: string) => {
+    const value = values[name]
+    if (value === undefined) return placeholder
+    return typeof value === 'number' ? numberFormat.format(value) : value
+  })
+}
+
+export function translate(
+  key: MessageKey | string,
+  lang: UiLanguage,
+  values?: MessageValues,
+): string {
+  let message: string
   if (lang === 'en') {
     const hit = en[key as MessageKey] ?? GENERATED_EN[key]
-    if (hit !== undefined) return hit
+    if (hit !== undefined) return interpolate(hit, lang, values)
   }
-  return de[key as MessageKey] ?? GENERATED_DE[key] ?? key
+  message = de[key as MessageKey] ?? GENERATED_DE[key] ?? key
+  return interpolate(message, lang, values)
 }
 
 /**
@@ -119,9 +155,9 @@ export function translateText(deText: string, lang: UiLanguage): string {
 }
 
 /** Хук: словарная функция текущего языка UI. */
-export function useT(): (key: MessageKey | string) => string {
+export function useT(): (key: MessageKey | string, values?: MessageValues) => string {
   const lang = useStore().uiLanguage
-  return (key) => translate(key, lang)
+  return (key, values) => translate(key, lang, values)
 }
 
 /** Хук моста: перевод немецкой строки, если она есть в поставке Codex. */

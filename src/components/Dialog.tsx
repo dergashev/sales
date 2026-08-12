@@ -131,7 +131,7 @@ function DialogLayer({
     initiatorRef.current = returnFocusTo?.current
       ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null)
     pushLayer(id)
-    const host = portalHost(true)
+    const host = portalHost(false)
     if (host) acquireBackgroundInert(host)
     updateTop()
 
@@ -251,6 +251,7 @@ export const Dialog = forwardRef<DialogHandle, DialogProps>(function Dialog({
   ...layerProps
 }, ref) {
   const id = useId()
+  const [host, setHost] = useState<HTMLElement | null>(null)
   const focusAfterClose = useRef<FocusResolver>()
   const requestClose = (focus?: FocusResolver) => {
     focusAfterClose.current = focus
@@ -259,11 +260,28 @@ export const Dialog = forwardRef<DialogHandle, DialogProps>(function Dialog({
 
   useImperativeHandle(ref, () => ({ close: requestClose }), [onOpenChange])
 
-  const host = portalHost(open)
+  useLayoutEffect(() => {
+    if (!open) return
+    const mountedHost = portalHost(true)
+    setHost(mountedHost)
+    return () => {
+      queueMicrotask(() => {
+        if (layers.length === 0 && mountedHost?.childElementCount === 0) {
+          mountedHost.remove()
+        }
+      })
+    }
+  }, [open])
+
   if (!host) return null
 
   return createPortal(
-    <AnimatePresence>
+    <AnimatePresence
+      onExitComplete={() => {
+        if (layers.length === 0 && host.childElementCount === 0) host.remove()
+        setHost(null)
+      }}
+    >
       {open && (
         <DialogLayer
           {...layerProps}

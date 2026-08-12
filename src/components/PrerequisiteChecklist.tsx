@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
 import { useSemanticMotion } from '../design-system/motion'
+import { useT } from '../i18n'
 import { Button } from './primitives'
-import { LinkButton } from './designSystem'
+import { ChecklistPresentation, LinkButton } from './designSystem'
 
 export type Prerequisite = {
   id: string
@@ -22,16 +23,19 @@ export function PrerequisiteChecklist({
   label,
   requirements,
   createLabel,
+  canCreate,
   createDisabledReason,
   onCreate,
 }: {
   label: string
   requirements: ReadonlyArray<Prerequisite>
   createLabel: string
+  canCreate: boolean
   createDisabledReason?: string
   onCreate: () => void
 }) {
   const rootRef = useRef<HTMLDivElement>(null)
+  const t = useT()
   const previous = useRef<Record<string, boolean> | null>(null)
   const [visible, setVisible] = useState(false)
   const { reduced, transition } = useSemanticMotion()
@@ -73,65 +77,55 @@ export function PrerequisiteChecklist({
   const next = requirements.find((requirement) => !requirement.resolved)
   return (
     <div ref={rootRef} className="a3-prerequisites" role="group" aria-label={label}>
-      <motion.p
-        key={`summary-${signature}`}
-        className="a3-prerequisite-summary"
-        aria-live="polite"
-        initial={wave ? { opacity: 0 } : false}
-        animate={{ opacity: 1 }}
-        transition={transition('feedback', wave ? 1 : 0)}
-      >
-        {done} von {requirements.length} Punkten erledigt
-      </motion.p>
-
-      <ul className="a3-prerequisite-list">
-        {requirements.map((requirement) => {
+      <ChecklistPresentation
+        summary={t('oppcard.prerequisitesSummary', { done, total: requirements.length })}
+        summaryClassName="a3-prerequisite-summary"
+        announceSummary
+        summaryMotion={{
+          initial: false,
+          animate: wave ? { opacity: [0, 1] } : { opacity: 1 },
+          transition: transition('feedback', wave ? 1 : 0),
+        }}
+        items={requirements.map((requirement) => {
           const rowChanged = wave && changedIds.includes(requirement.id)
-          return (
-            <motion.li
-              key={`${requirement.id}-${requirement.resolved ? 'resolved' : 'open'}`}
-              className="a3-prerequisite-row"
-              data-state={requirement.resolved ? 'resolved' : 'open'}
-              initial={rowChanged ? { opacity: 0 } : false}
-              animate={{ opacity: 1 }}
-              transition={transition('feedback')}
-            >
-              <span className="a3-prerequisite-sign" aria-hidden="true">
-                {requirement.resolved ? '✓' : '▲'}
-              </span>
-              <span>
-                <strong>{requirement.label}</strong>
-                <span className="a3-prerequisite-state">
-                  {requirement.resolved ? 'Erfüllt' : 'Offen'}
-                </span>
-              </span>
+          return {
+            id: requirement.id,
+            label: requirement.label,
+            resolved: requirement.resolved,
+            detail: requirement.resolved ? t('common.fulfilled') : t('common.open'),
+            trailing: (
               <LinkButton onClick={requirement.onOpenSource}>
                 {requirement.sourceLabel}
               </LinkButton>
-            </motion.li>
-          )
+            ),
+            motion: {
+              initial: false,
+              animate: rowChanged ? { opacity: [0, 1] } : { opacity: 1 },
+              transition: transition('feedback'),
+            },
+          }
         })}
-      </ul>
+      />
 
       <motion.div
-        key={`action-${signature}`}
         className="a3-prerequisite-actions"
-        initial={wave ? { opacity: 0 } : false}
-        animate={{ opacity: 1 }}
+        initial={false}
+        animate={wave ? { opacity: [0, 1] } : { opacity: 1 }}
         transition={transition('feedback', wave ? 2 : 0)}
       >
-        {next ? (
-          <>
-            <Button variant="primary" onClick={next.onOpenSource}>
-              {next.nextActionLabel}
-            </Button>
-            <Button disabled disabledReason={createDisabledReason} onClick={onCreate}>
-              {createLabel}
-            </Button>
-          </>
-        ) : (
-          <Button variant="primary" onClick={onCreate}>{createLabel}</Button>
+        {next && !canCreate && (
+          <Button variant="primary" onClick={next.onOpenSource}>
+            {next.nextActionLabel}
+          </Button>
         )}
+        <Button
+          variant={canCreate ? 'primary' : 'secondary'}
+          disabled={!canCreate}
+          disabledReason={createDisabledReason}
+          onClick={onCreate}
+        >
+          {createLabel}
+        </Button>
       </motion.div>
     </div>
   )

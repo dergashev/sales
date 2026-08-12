@@ -63,7 +63,7 @@ const BUDGET = 51
  * `QNG`, `DGNB`) немецкими текстами не являются — это идентификаторы, и
  * они остаются немецкими по решению D-24.
  */
-const GERMAN = /[äöüÄÖÜß]|\b(der|die|das|und|oder|nicht|kein|keine|mit|ohne|für|nach|aus|bei|wird|werden|ist|sind|noch|schon|nur|alle|des|dem|den|im|zum|zur|vom|auf|über|unter|wie|wenn|dann|hier|jetzt|Angebot|Gebäude|Kunde|Preis|Auswahl|Werte|Datei|Frage|Zuschlag)\b/
+const GERMAN = /[äöüÄÖÜß]|\b(der|die|das|und|oder|nicht|kein|keine|mit|ohne|für|nach|aus|bei|wird|werden|ist|sind|noch|schon|nur|alle|des|dem|den|im|zum|zur|vom|auf|über|unter|wie|wenn|dann|hier|jetzt|Angebot|Gebäude|Kunde|Preis|Auswahl|Werte|Datei|Frage|Zuschlag|Offen|Erfüllt|Punkten|Voraussetzungen)\b/
 
 const DE_TO_KEY = new Set(Object.values(GENERATED_DE))
 const REPORT = 'docs/audit/i18n-en-remainder-dom.md'
@@ -106,6 +106,13 @@ describe('Остаток немецкого на английском пути (
       const s = useStore.getState()
       s.resolveWflConflict('customer')
       s.confirmProjectParams()
+    })
+    // Sample the same gate after resolution as well: the status labels and
+    // whole count sentence change only in this state.
+    germanFragments().forEach((f) => seen.add(f))
+
+    act(() => {
+      const s = useStore.getState()
       s.createOption('Basis')
       s.openOption('OPT-01')
       s.confirmBuilding(s.activeBuildingId)

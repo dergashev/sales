@@ -12,7 +12,9 @@ import {
   type SelectHTMLAttributes,
 } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import type { MotionProps } from 'framer-motion'
 import { useSemanticMotion } from '../design-system/motion'
+import { useT } from '../i18n'
 import { Skeleton } from './primitives'
 import { Button } from './primitives'
 
@@ -116,6 +118,7 @@ export function FormField({
     'aria-invalid'?: boolean | 'grammar' | 'spelling'
   }>
 }) {
+  const t = useT()
   const helperId = useId()
   const errorId = useId()
   const disabledId = useId()
@@ -134,7 +137,7 @@ export function FormField({
   return (
     <div className="a3-form-field" aria-busy={loading}>
       <label htmlFor={htmlFor}>{label}</label>
-      {loading ? <Skeleton lines={1} label="Feld wird geladen" /> : control}
+      {loading ? <Skeleton lines={1} label={t('common.fieldLoading')} /> : control}
       {helperText && <p id={helperId} className="a3-form-helper">{helperText}</p>}
       {error && <p id={errorId} className="a3-form-error">{error}</p>}
       {disabledReason && (
@@ -247,6 +250,71 @@ export type ReadinessItem = {
   detail?: ReactNode
 }
 
+type ChecklistMotion = {
+  initial?: MotionProps['initial']
+  animate?: MotionProps['animate']
+  transition?: MotionProps['transition']
+}
+
+export type ChecklistPresentationItem = {
+  id: string
+  label: ReactNode
+  resolved: boolean
+  detail?: ReactNode
+  trailing?: ReactNode
+  motion?: ChecklistMotion
+}
+
+/** Shared visual anatomy for readiness and prerequisite compositions. */
+export function ChecklistPresentation({
+  summary,
+  summaryClassName = 'a3-cap',
+  announceSummary = false,
+  summaryMotion,
+  items,
+}: {
+  summary: ReactNode
+  summaryClassName?: string
+  announceSummary?: boolean
+  summaryMotion?: ChecklistMotion
+  items: ReadonlyArray<ChecklistPresentationItem>
+}) {
+  return (
+    <>
+      <motion.p
+        className={summaryClassName}
+        aria-live={announceSummary ? 'polite' : undefined}
+        initial={summaryMotion?.initial}
+        animate={summaryMotion?.animate}
+        transition={summaryMotion?.transition}
+      >
+        {summary}
+      </motion.p>
+      <ul className="a3-prerequisite-list">
+        {items.map((item) => (
+          <motion.li
+            key={item.id}
+            className="a3-prerequisite-row"
+            data-state={item.resolved ? 'resolved' : 'open'}
+            initial={item.motion?.initial}
+            animate={item.motion?.animate}
+            transition={item.motion?.transition}
+          >
+            <span className="a3-prerequisite-sign" aria-hidden="true">
+              {item.resolved ? '✓' : '▲'}
+            </span>
+            <span>
+              <strong>{item.label}</strong>
+              {item.detail && <span className="a3-prerequisite-state">{item.detail}</span>}
+            </span>
+            {item.trailing}
+          </motion.li>
+        ))}
+      </ul>
+    </>
+  )
+}
+
 /** DC-26: explicit output-profile readiness, never an aggregate ring. */
 export function ReadinessChecklist({
   label,
@@ -257,38 +325,35 @@ export function ReadinessChecklist({
   items: ReadonlyArray<ReadinessItem>
   nextAction?: ReactNode
 }) {
+  const t = useT()
   const done = items.filter((item) => item.ready).length
   return (
     <section className="a3-readiness-checklist" aria-label={label}>
-      <p className="a3-cap">{done} von {items.length} Punkten bereit</p>
-      <ul className="a3-prerequisite-list">
-        {items.map((item) => (
-          <li key={item.id} className="a3-prerequisite-row" data-state={item.ready ? 'resolved' : 'open'}>
-            <span className="a3-prerequisite-sign" aria-hidden="true">
-              {item.ready ? '✓' : '▲'}
-            </span>
-            <span>
-              <strong>{item.label}</strong>
-              {item.detail && <span className="a3-prerequisite-state">{item.detail}</span>}
-            </span>
-          </li>
-        ))}
-      </ul>
+      <ChecklistPresentation
+        summary={t('designSystem.readinessSummary', { done, total: items.length })}
+        items={items.map((item) => ({
+          id: item.id,
+          label: item.label,
+          resolved: item.ready,
+          detail: item.detail,
+        }))}
+      />
       {nextAction && <div className="a3-prerequisite-actions">{nextAction}</div>}
     </section>
   )
 }
 
 /** DC-27: one visible continuation, with no competing primary action. */
-export function NextStep({ label = 'Nächster Schritt', description, action, onAction }: {
+export function NextStep({ label, description, action, onAction }: {
   label?: string
   description: ReactNode
   action: string
   onAction: () => void
 }) {
+  const t = useT()
   return (
     <div className="a3-nextstep">
-      <p className="a3-mtag">{label}</p>
+      <p className="a3-mtag">{label ?? t('chrome3.nextStep')}</p>
       <p>{description}</p>
       <div className="a3-prerequisite-actions">
         <Button variant="primary" onClick={onAction}>{action}</Button>

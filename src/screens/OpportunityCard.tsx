@@ -5,7 +5,7 @@ import derived from '../fixtures/derived-prototype.json'
 import { useStore } from '../state/store'
 import { NNBSP, formatDE } from '../engine/money'
 import { Button } from '../components/primitives'
-import { useTx } from '../i18n'
+import { useT, useTx } from '../i18n'
 import { DocumentAnalysis } from '../components/DocumentAnalysis'
 import { InternalNote } from '../components/InternalNote'
 import { PrerequisiteChecklist } from '../components/PrerequisiteChecklist'
@@ -55,6 +55,7 @@ function Metric({ label, value, unit, note }: {
 
 export function OpportunityCard() {
   const s = useStore()
+  const t = useT()
   const tx = useTx()
   const meta = opportunities.items.find((o) => o.id === s.opportunityId)
   // Подготовка (вопросы, Annahmen, варианты) — уровень Opportunity, не
@@ -123,12 +124,13 @@ export function OpportunityCard() {
   }
 
   const konfliktOffen = s.wflConflict.state === 'open'
+  const canCreateOptions = s.canCreateOptions()
   const createOptionDisabledReason = konfliktOffen && !s.projectParamsConfirmed
-    ? 'Erst Konflikte entscheiden und Projektparameter bestätigen'
+    ? tx('Erst Konflikte entscheiden und Projektparameter bestätigen')
     : konfliktOffen
-      ? 'Erst Konflikte entscheiden'
+      ? tx('Erst Konflikte entscheiden')
       : !s.projectParamsConfirmed
-        ? 'Erst Projektparameter bestätigen'
+        ? tx('Erst Projektparameter bestätigen')
         : undefined
 
   return (
@@ -246,14 +248,14 @@ export function OpportunityCard() {
         <h2 className="text-heading-3 font-bold text-text-primary">{tx('Opportunity Options')}</h2>
         <div className="mt-3">
           <PrerequisiteChecklist
-            label="Bereitschaft für Optionen"
+            label={t('oppcard.optionsReadiness')}
             requirements={[
               {
                 id: 'conflict',
                 label: tx('Strittige Angaben'),
                 resolved: !konfliktOffen,
                 sourceLabel: tx('Strittige Angaben'),
-                nextActionLabel: tx('Strittige Angaben jetzt entscheiden'),
+                nextActionLabel: t('oppcard.resolveConflictingInformation'),
                 onOpenSource: () => {
                   conflictSectionRef.current?.scrollIntoView?.({ block: 'start' })
                   conflictSectionRef.current?.focus()
@@ -264,7 +266,7 @@ export function OpportunityCard() {
                 label: tx('Projektparameter bestätigen'),
                 resolved: s.projectParamsConfirmed,
                 sourceLabel: tx('Projektparameter'),
-                nextActionLabel: tx('Projektparameter jetzt bestätigen'),
+                nextActionLabel: t('oppcard.confirmProjectParametersNow'),
                 onOpenSource: () => {
                   parameterSectionRef.current?.scrollIntoView?.({ block: 'start' })
                   parameterSectionRef.current?.focus()
@@ -272,6 +274,7 @@ export function OpportunityCard() {
               },
             ]}
             createLabel={tx('Opportunity Option anlegen')}
+            canCreate={canCreateOptions}
             createDisabledReason={createOptionDisabledReason}
             onCreate={() => s.createOption(`Option ${s.options.length + 1}`)}
           />
