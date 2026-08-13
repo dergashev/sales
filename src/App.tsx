@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
-import { activeBuilding, useStore } from './state/store'
+import { pipelineViewForBuildingGate, useStore } from './state/store'
 import { useT } from './i18n'
 import { checkFonts, checkCascade, type FontCheck } from './lib/font-check'
 import { SegmentedControl } from './components/controls'
@@ -16,6 +16,7 @@ import { S6Einstellungen } from './screens/S6Einstellungen'
 import { Grundlagen } from './screens/Grundlagen'
 import { OpportunityList } from './screens/OpportunityList'
 import { OpportunityCard } from './screens/OpportunityCard'
+import { BuildingScope, BuildingScopeReadiness } from './screens/BuildingScope'
 import {
   isClientProjection,
   isClientVisibleLevel,
@@ -43,7 +44,8 @@ export function App() {
   const [fonts, setFonts] = useState<FontCheck | null>(null)
   const [cascade, setCascade] = useState<string[] | null>(null)
   const praesentation = isClientProjection(s.mode)
-  const renderedView = pipelineViewForOutputProfile(s.mode, view)
+  const outputProfileView = pipelineViewForOutputProfile(s.mode, view)
+  const renderedView = pipelineViewForBuildingGate(s, outputProfileView)
   const t = useT()
 
   useEffect(() => {
@@ -92,7 +94,7 @@ export function App() {
       if (!heading.hasAttribute('tabindex')) heading.tabIndex = -1
       heading.focus({ preventScroll: true })
     }
-  }, [view, s.openChapter, s.activeOptionId, s.level, s.mode])
+  }, [renderedView, s.openChapter, s.activeOptionId, s.level, s.mode])
 
   // Defensive fail-closed projection: normal store transitions leave client
   // mode before changing level, but corrupted/external state still must not
@@ -137,6 +139,7 @@ export function App() {
         <Sidebar />
 
         <main ref={mainRef} tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto bg-surface-default outline-none">
+          {renderedView === 'buildingScope' && <BuildingScope />}
           {renderedView === 'konfigurator' && <S3Konfigurator />}
           {renderedView === 'vergleich' && <S4Vergleich />}
           {renderedView === 'export' && <S5Export />}
@@ -144,7 +147,7 @@ export function App() {
           {renderedView === 'grundlagen' && <Grundlagen fonts={fonts} cascade={cascade} />}
         </main>
 
-        <OfferPanel />
+        {renderedView === 'buildingScope' ? <BuildingScopeReadiness /> : <OfferPanel />}
       </div>
 
       <GuidedTour />
@@ -168,7 +171,7 @@ function AppHeader({
 }) {
   const s = useStore()
   const praesentation = isClientProjection(s.mode)
-  const modeBlocked = !activeBuilding(s).gebaeudeklasse.confirmed
+  const modeBlocked = s.level !== 'option' || !s.canBeginConfiguration()
 
   return (
     <header className="a3-global-header z-header shrink-0">

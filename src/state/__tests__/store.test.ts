@@ -127,7 +127,7 @@ describe('Правило 11: вход в презентацию гейтуетс
 
     useStore.getState().setMode('praesentation')
     expect(useStore.getState().mode).toBe('intern')
-    useStore.getState().confirmGebaeudeklasse()
+    useStore.getState().confirmBuilding(useStore.getState().activeBuildingId)
     useStore.getState().setMode('praesentation')
     expect(useStore.getState().mode).toBe('praesentation')
     // Обратно в intern — всегда можно.
@@ -496,7 +496,7 @@ describe('Уровень зданий: охват предложения (сце
     expect(s.projection().result.total.exact.toFixed(2)).toBe('3817835.00')
   })
 
-  it('включение второго здания меняет итог событием с дельтой', () => {
+  it('включение второго здания журналируется до запуска калькуляции без дельты', () => {
     useStore.getState().toggleBuildingIncluded('DEMO-B-B')
     const s = useStore.getState()
     // Haus B: 1.200 × 1.545 × 1,05 (Büro) × 1,00 (GK 4) × 1,03 (EH 55), UG нет.
@@ -505,13 +505,14 @@ describe('Уровень зданий: охват предложения (сце
       .toBe(new Decimal('3817835').plus(expected).toFixed(2))
     const ev = s.journal.at(-1)!
     expect(ev.label).toContain('DEMO-B-B')
-    expect(ev.deltaExact!.toFixed(2)).toBe(expected.toFixed(2))
+    expect(ev.deltaExact).toBeNull()
   })
 
-  it('последнее включённое здание выключить нельзя: без базы нет цены', () => {
+  it('последнее включённое здание можно выключить до запуска калькуляции', () => {
     useStore.getState().toggleBuildingIncluded('DEMO-B-A')
-    expect(useStore.getState().included['DEMO-B-A']).toBe(true)
-    expect(useStore.getState().journal).toHaveLength(0)
+    expect(useStore.getState().included['DEMO-B-A']).toBe(false)
+    expect(useStore.getState().journal).toHaveLength(1)
+    expect(useStore.getState().canBeginConfiguration()).toBe(false)
   })
 
   it('драйверы двух зданий не смешиваются: ID остаются уникальными', () => {
@@ -528,6 +529,7 @@ describe('Уровень зданий: охват предложения (сце
   it('шаг вниз открыт, только когда подтверждены ВСЕ включённые здания', () => {
     const st = () => useStore.getState()
     expect(st().allBuildingsConfirmed()).toBe(false)
+    st().resolveWflConflict('document')
     st().confirmBuilding('DEMO-B-A')
     expect(st().allBuildingsConfirmed()).toBe(true)
     st().toggleBuildingIncluded('DEMO-B-B')
@@ -773,16 +775,20 @@ describe('Настоящая модель Option (ревью № 13, дефек�
     expect(st().projection().uncertaintyPp).toBe(17)
   })
 
-  it('новая Option начинается с главы 1 и без ложного done (дефект 7)', () => {
+  it('новая Option начинается перед конфигуратором и без ложного chapter done', () => {
     prepare()
     st().createOption('Basis')
     st().openOption('OPT-01')
     expect(st().openChapter).toBe(1)
-    expect(st().besuchteKapitel).toEqual([1])
-    // Здание не подтверждено — глава 1 не пройдена, каталожные не посещены.
+    expect(st().besuchteKapitel).toEqual([])
+    expect(st().pipelineView).toBe('buildingScope')
+    // Der Konfigurator wurde noch nicht geöffnet.
     expect(chapterDone(st(), 1)).toBe(false)
     expect(chapterDone(st(), 2)).toBe(false)
     st().confirmBuilding(st().activeBuildingId)
+    expect(st().canBeginConfiguration()).toBe(true)
+    expect(chapterDone(st(), 1)).toBe(false)
+    st().setPipelineView('konfigurator')
     expect(chapterDone(st(), 1)).toBe(true)
     // Глава 7 — глава данных (партия 3): посещение проходит её,
     // непосещённая — не пройдена.

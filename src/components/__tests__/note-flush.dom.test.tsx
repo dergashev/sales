@@ -37,7 +37,7 @@ describe('DC-43: набранное переживает уход с экран�
     useStore.getState().confirmProjectParams()
     useStore.getState().createOption('Basis')
     useStore.getState().openOption('OPT-01')
-    useStore.getState().confirmGebaeudeklasse()
+    useStore.getState().confirmBuilding(useStore.getState().activeBuildingId)
 
     const user = userEvent.setup()
     render(<InternalNote />)

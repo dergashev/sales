@@ -1,5 +1,5 @@
 import { useId, useRef, type RefObject } from 'react'
-import { activeBuilding, useStore } from '../state/store'
+import { useStore } from '../state/store'
 import { Button } from './primitives'
 import { useTx } from '../i18n'
 import { NNBSP } from '../engine/money'
@@ -35,9 +35,13 @@ export function ClientOutputGateDialog({ returnFocusTo }: {
   const titleId = useId()
   const titleRef = useRef<HTMLHeadingElement>(null)
   const dialogRef = useRef<DialogHandle>(null)
-  const p = s.projection()
-  const b = activeBuilding(s)
-  const blockers = b.gebaeudeklasse.confirmed ? [] : ['Klassifikation nach MBO §2']
+  if (!open) return null
+  // Gebäude & Umfang is deliberately pre-calculation. Even its client-view
+  // gate must not invoke or reveal a projection before the Configurator.
+  const p = s.pipelineView === 'buildingScope' ? null : s.projection()
+  const blockers = s.canBeginConfiguration()
+    ? []
+    : ['Gebäude & Umfang nicht vollständig bestätigt']
   const risksActive = Object.values(s.risikoAktiv).some(Boolean)
 
   return (
@@ -56,22 +60,26 @@ export function ClientOutputGateDialog({ returnFocusTo }: {
         {/* Чек-лист DC-23: что готово и что мешает — фактами состояния,
             а не бодрым «всё хорошо». */}
         <div>
-          <div className="a3-item">
-            <span className="a3-okc" aria-hidden="true">✓</span>
-            {p.result.totalLabel} · {p.result.total.prefix}
-            {p.result.total.prefix ? NNBSP : ''}{p.result.total.display}{NNBSP}€
-          </div>
-          <div className="a3-item">
-            <span className={p.uncertaintyPp <= 17 ? 'a3-okc' : 'a3-warnc'} aria-hidden="true">
-              {p.uncertaintyPp <= 17 ? '✓' : '!'}
-            </span>
-            {tx('Schätzunsicherheit')} ±{NNBSP}{p.uncertaintyPp}{NNBSP}%
-          </div>
-          {risksActive && (
-            <div className="a3-item">
-              <span className="a3-warnc" aria-hidden="true">!</span>
-              {tx('Risikozuschlag ist aktiv und im Preis enthalten.')}
-            </div>
+          {p && (
+            <>
+              <div className="a3-item">
+                <span className="a3-okc" aria-hidden="true">✓</span>
+                {p.result.totalLabel} · {p.result.total.prefix}
+                {p.result.total.prefix ? NNBSP : ''}{p.result.total.display}{NNBSP}€
+              </div>
+              <div className="a3-item">
+                <span className={p.uncertaintyPp <= 17 ? 'a3-okc' : 'a3-warnc'} aria-hidden="true">
+                  {p.uncertaintyPp <= 17 ? '✓' : '!'}
+                </span>
+                {tx('Schätzunsicherheit')} ±{NNBSP}{p.uncertaintyPp}{NNBSP}%
+              </div>
+              {risksActive && (
+                <div className="a3-item">
+                  <span className="a3-warnc" aria-hidden="true">!</span>
+                  {tx('Risikozuschlag ist aktiv und im Preis enthalten.')}
+                </div>
+              )}
+            </>
           )}
           {blockers.map((x) => (
             <div key={x} className="a3-item">
@@ -86,7 +94,9 @@ export function ClientOutputGateDialog({ returnFocusTo }: {
             бы заготовкой для расхождения, поэтому здесь общая формулировка
             и ссылка на профиль, а не список ярлыков. */}
         <div className="a3-hidelist">
-          {tx('Ausgeblendet werden Marge, Δ-Werte, KG-700-Modus, Coaching-Hinweise und interne Notizen. Der Umfang folgt dem Ausgabeprofil, nicht dieser Liste.')}
+          {s.pipelineView === 'buildingScope'
+            ? tx('Interne Bearbeitungshinweise und Quellenreferenzen werden in der Kundenansicht ausgeblendet.')
+            : tx('Ausgeblendet werden Marge, Δ-Werte, KG-700-Modus, Coaching-Hinweise und interne Notizen. Der Umfang folgt dem Ausgabeprofil, nicht dieser Liste.')}
         </div>
 
         {/* Плотность (D-16): рекомендация, не запрет, и переключение —
@@ -110,7 +120,7 @@ export function ClientOutputGateDialog({ returnFocusTo }: {
             variant="primary"
             disabled={blockers.length > 0}
             disabledReason={blockers.length > 0
-              ? tx('Solange die Klassifikation nicht bestätigt ist, entsteht kein Kundenprofil')
+              ? tx('Zuerst mindestens ein Gebäude auswählen und jedes gewählte Gebäude bestätigen.')
               : undefined}
             onClick={() => {
               s.setMode('praesentation')

@@ -27,6 +27,8 @@ async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
   await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
   await user.click(screen.getByRole('button', { name: 'Öffnen' }))
+  await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
+  await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
 }
 
 describe('DC-21: происхождение раскрывается у каждого вида вклада', () => {
@@ -102,7 +104,6 @@ describe('DC-21: происхождение раскрывается у кажд
     render(<App />)
     await enterPipeline(user)
 
-    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
     await user.click(screen.getByRole('button', { name: /Kostentreiber/ }))

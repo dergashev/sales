@@ -25,13 +25,19 @@ beforeEach(() => __resetStoreForTests())
  * Каждый тест панелей обязан пройти путь пользователя целиком: иначе он
  * проверяет экран, до которого в продукте не дойти.
  */
-async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
+async function enterOption(user: ReturnType<typeof userEvent.setup>) {
   render(<App />)
   await user.click(await screen.findByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
   await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
   await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
   await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
   await user.click(screen.getByRole('button', { name: 'Öffnen' }))
+}
+
+async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
+  await enterOption(user)
+  await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
+  await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
 }
 
 describe('Табы S2 — ручная активация (TABS-001, KEY-003)', () => {
@@ -144,18 +150,17 @@ describe('Опции — нативная radio-группа (RADIO-001)', () =>
 
 describe('Гейт режима презентации — блокировка объясняет причину (правило 12)', () => {
   it('сегмент недоступен и несёт видимую причину, а не только погашен', async () => {
-    await enterPipeline(userEvent.setup())
+    await enterOption(userEvent.setup())
     const group = screen.getByRole('radiogroup', { name: 'Ansicht' })
     const praesentation = within(group).getAllByRole('radio')[1] as HTMLInputElement
     expect(praesentation.disabled).toBe(true)
     // Причина именно видима, а не спрятана в title.
-    expect(screen.getByText(/offener Blocker DEMO-VI-0001/)).toBeInTheDocument()
+    expect(screen.getAllByText(/mindestens ein Gebäude auswählen/).length).toBeGreaterThan(0)
   })
 
   it('после подтверждения классификации переключение работает', async () => {
     const user = userEvent.setup()
     await enterPipeline(user)
-    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
 
     const group = screen.getByRole('radiogroup', { name: 'Ansicht' })
     const praesentation = within(group).getAllByRole('radio')[1] as HTMLInputElement
@@ -168,7 +173,7 @@ describe('Гейт режима презентации — блокировка 
     expect(useStore.getState().mode).toBe('praesentation')
     expect(useStore.getState().gateOpen).toBe(false)
     await waitFor(() => expect(screen.queryByRole('dialog', { name: /Bereit für die Präsentation/ })).toBeNull())
-    expect(screen.getByRole('heading', { level: 1, name: 'Gebäude & Umfang' })).toHaveFocus()
+    expect(screen.getByRole('heading', { level: 1, name: 'Leistungen KG 300' })).toHaveFocus()
   })
 })
 
@@ -184,7 +189,7 @@ describe('Маршрут экрана возвращает начало доку
     expect(screen.getByRole('heading', { level: 1, name: 'Variantenvergleich' })).toHaveFocus()
 
     main.scrollTop = 320
-    await user.click(screen.getByRole('button', { name: /^3Export/ }))
+    await user.click(screen.getByRole('button', { name: /^4Export/ }))
     expect(main.scrollTop).toBe(0)
     expect(screen.getByRole('heading', { level: 1, name: /Export/ })).toHaveFocus()
   })
@@ -238,18 +243,20 @@ describe('Herkunft-Popover: слой, фокус и выход (DC-21, KEY-002, 
 describe('DC-33 · единственная модалка системы — ворота в клиентский вид', () => {
   it('открывается, ловит фокус, Esc возвращает и в подготовку, и фокус', async () => {
     const user = userEvent.setup()
-    await enterPipeline(user)
-    // Пока классификация не подтверждена, ворота показывают причину, а не
+    await enterOption(user)
+    // Пока здание не подтверждено, ворота показывают причину, а не
     // диалог: блокировка объясняет себя (правило 12).
-    expect(screen.getByText(/Kundenansicht gesperrt/)).toBeInTheDocument()
-    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
+    expect(screen.getAllByText(/mindestens ein Gebäude auswählen/).length).toBeGreaterThan(0)
+    await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
 
     const trigger = screen.getByRole('button', { name: 'Kundenansicht prüfen' })
     await user.click(trigger)
     const dialog = screen.getByRole('dialog', { name: /Bereit für die Präsentation/ })
     expect(dialog.contains(document.activeElement)).toBe(true)
-    // Показано ИМЕННО то, что перестанет быть видимым.
-    expect(within(dialog).getByText(/Ausgeblendet werden/)).toBeInTheDocument()
+    // Показано ИМЕННО то, что перестанет быть видимым; на vorgeschaltetem
+    // Gebäudeschritt ohne vorgezogene Kalkulationsdaten.
+    expect(within(dialog).getByText(/Bearbeitungshinweise und Quellenreferenzen/))
+      .toBeInTheDocument()
 
     await user.keyboard('{Escape}')
     expect(useStore.getState().mode).toBe('intern')
@@ -259,7 +266,6 @@ describe('DC-33 · единственная модалка системы — в
   it('переход в клиентский вид происходит из диалога, а не мимо него', async () => {
     const user = userEvent.setup()
     await enterPipeline(user)
-    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
     expect(useStore.getState().mode).toBe('praesentation')
@@ -300,7 +306,6 @@ describe('DC-14 · тур: шаг без цели пропускается, а �
   it('в презентации тура не существует — ни кнопки, ни карточки', async () => {
     const user = userEvent.setup()
     await enterPipeline(user)
-    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
 

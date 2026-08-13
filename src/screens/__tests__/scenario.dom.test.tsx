@@ -29,12 +29,18 @@ const nav = (name: RegExp) => screen.getAllByRole('button', { name })[0]!
  * которому нужны панели, обязан пройти этот путь целиком — иначе он
  * проверяет экран, до которого пользователь не дошёл.
  */
-async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
+async function enterOption(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
   await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
   await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
   await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
   await user.click(screen.getByRole('button', { name: 'Öffnen' }))
+}
+
+async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
+  await enterOption(user)
+  await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
+  await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
 }
 
 describe('Сквозной сценарий продажи', () => {
@@ -49,18 +55,16 @@ describe('Сквозной сценарий продажи', () => {
     const es = await screen.findByRole('radiogroup', { name: 'Energiestandard' })
     await user.click(within(es).getAllByRole('radio')[2]!)
     // Путь до конвейера сам оставляет след: решённый конфликт,
-    // подтверждённые параметры, созданный Option — три события до этого.
-    expect(useStore.getState().journal).toHaveLength(4)
+    // подтверждённые параметры, созданный Option и подтверждённое здание.
+    expect(useStore.getState().journal).toHaveLength(5)
 
     // Уход на другой экран и возврат: состояние переживает переход.
     await user.click(nav(/Variantenvergleich/))
     await user.click(nav(/Konfigurator/))
-    expect(useStore.getState().journal).toHaveLength(4)
+    expect(useStore.getState().journal).toHaveLength(5)
     expect(activeBuilding(useStore.getState()).energiestandard).toBe('EH_40')
 
-    // Гейт открывается изнутри потока, а не обходится.
-    expect(activeBuilding(useStore.getState()).gebaeudeklasse.confirmed).toBe(false)
-    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
+    // Гейт открывается на top-level шаге здания, а не обходится.
     expect(activeBuilding(useStore.getState()).gebaeudeklasse.confirmed).toBe(true)
 
     // Сравнение и отправка достижимы; журнал накопил оба события.
@@ -154,7 +158,6 @@ describe('Сквозной сценарий продажи', () => {
     render(<App />)
     await enterPipeline(user)
     await user.click(nav(/Konfigurator/))
-    await user.click(screen.getByRole('button', { name: 'Gebäudedaten bestätigen' }))
     await user.click(nav(/Leistungen KG 300/))
 
     const media = document.querySelectorAll('img.a3-option-media, img.a3-img')
@@ -173,8 +176,6 @@ describe('Сквозной сценарий продажи', () => {
     render(<App />)
     await enterPipeline(user)
     await user.click(nav(/Konfigurator/))
-    // Здание подтверждается — иначе главы опций закрыты гейтом.
-    await user.click(screen.getByRole('button', { name: 'Gebäudedaten bestätigen' }))
     await user.click(nav(/Leistungen KG 300/))
 
     const before = useStore.getState().projection().result.total.exact
@@ -230,7 +231,6 @@ describe('Сквозной сценарий продажи', () => {
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
-    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
     const modus = screen.getByRole('radiogroup', { name: 'Ansicht' })
     await user.click(within(modus).getAllByRole('radio')[1]!)
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
@@ -260,8 +260,6 @@ describe('Сквозной сценарий продажи', () => {
     await user.click(nav(/Energie & Zertifikate/))
     const es = await screen.findByRole('radiogroup', { name: 'Energiestandard' })
     await user.click(within(es).getAllByRole('radio')[2]!)
-    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
-
     await user.click(nav(/^S5|Export/))
     await user.click(screen.getByRole('button', { name: /Preflight/ }))
     await user.click(screen.getByRole('button', { name: /Preflight bestanden/ }))
@@ -283,7 +281,12 @@ describe('Сквозной сценарий продажи', () => {
   it('печать — свой профиль со СВОЕЙ проверкой, не наследует гейт письма (DC-42, PRINT-001)', async () => {
     const user = userEvent.setup()
     render(<App />)
-    await enterPipeline(user)
+    await enterOption(user)
+    const blockedExport = nav(/Export/)
+    expect(blockedExport).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getAllByText(/mindestens ein Gebäude auswählen/).length).toBeGreaterThan(0)
+    await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
+    await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
     await user.click(nav(/Export/))
     await user.click(screen.getByRole('button', { name: /Druckansicht öffnen/ }))
 
@@ -293,10 +296,14 @@ describe('Сквозной сценарий продажи', () => {
     expect(within(dialog).getByText(/Rundungshinweise stehen auf derselben Seite/))
       .toBeInTheDocument()
     expect(within(dialog).getByText(/Umfang auf jeder Seite/)).toBeInTheDocument()
-    // Пока классификация не подтверждена, clientPrint заблокирован —
-    // и это НЕ следствие письма, которое здесь вообще не отправлялось.
+    // Der eigene Druckpfad übernimmt nicht stillschweigend den E-Mail-
+    // Preflight: die offene Deckungsentscheidung bleibt sein eigener Blocker.
     const start = within(dialog).getByRole('button', { name: /Druckauftrag starten/ })
     expect(start).toHaveAttribute('aria-disabled', 'true')
+    expect(within(dialog).getByText(/Alle Deckungsentscheidungen getroffen/))
+      .toHaveTextContent(/^! /)
+    expect(within(dialog).getByText(/Klassifikation bestätigt/))
+      .toHaveTextContent(/^✓ /)
     // Внутренний экспорт остаётся доступным: он маркирован и не клиентский.
     expect(within(dialog).getByRole('button', { name: /Internen Muster-Export/ }))
       .not.toHaveAttribute('aria-disabled')
@@ -313,7 +320,6 @@ describe('Сквозной сценарий продажи', () => {
     expect(screen.queryByRole('button', { name: 'Hinweis' })).toBeNull()
 
     // У клиента: та же правда, свёрнутая в нейтральную точку.
-    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
 
@@ -329,8 +335,7 @@ describe('Сквозной сценарий продажи', () => {
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
-    // Вход в презентацию гейтуется подтверждением классификации.
-    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
+    // Вход в презентацию гейтуется подтверждением здания.
     const modes = screen.getByRole('radiogroup', { name: 'Ansicht' })
     await user.click(within(modes).getAllByRole('radio')[1]!)
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
@@ -341,7 +346,10 @@ describe('Сквозной сценарий продажи', () => {
     // `KG 300`/`DIN 276` кодами реестра не являются и остаются.
     const REGISTRY = /\b(?:CALC|XSC|VARIANT|MODE|OUT|GATE|LOCALE|EMAIL|SECURITY|DEMO|DC|RM|CORE|SCHED|DATA|OPTION|DRIVER|ANALYSIS|PROGRESS|STATE|LAYOUT|TOKEN|COLOR|TYPE|BORDER|MOTION|KEY|TABS|SOURCE|COMPLEX|METRIC|CHANGE|VERSION|SCOPE|PRINT|NOTE|ARCH|A11Y)-\d{2,3}\b|\bR-\d{2}\b|\bD-\d{2}\b/
 
-    for (const chapter of [/Gebäude & Umfang/, /Leistungen KG 300/, /Leistungsabgrenzung/,
+    await user.click(nav(/Gebäude & Umfang/))
+    expect((document.body.textContent ?? '').match(REGISTRY)?.[0] ?? null).toBeNull()
+    await user.click(nav(/Konfigurator/))
+    for (const chapter of [/Leistungen KG 300/, /Leistungsabgrenzung/,
                            /Baugrund & Erschließung/, /Termine & Kommerzielles/]) {
       await user.click(nav(chapter))
       const text = document.body.textContent ?? ''
@@ -358,7 +366,6 @@ describe('Сквозной сценарий продажи', () => {
     // Проверяем переход с внутренней главы: клиентский маршрут обязан
     // нормализоваться до разрешённой главы без промежуточной утечки.
     await user.click(nav(/Baunebenkosten KG 700/))
-    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
 
@@ -374,8 +381,12 @@ describe('Сквозной сценарий продажи', () => {
     expect(document.body.textContent).not.toMatch(/\b(?:DEMO|OPT|SNAP|BM)-[A-Z0-9-]+\b/)
     expect(document.querySelector('[data-driver-id]')).toBeNull()
 
+    await user.click(nav(/Gebäude & Umfang/))
+    expect(screen.queryAllByRole('button', {
+      name: /Frage an den Kunden|Zur Opportunity-Karte/,
+    })).toHaveLength(0)
+    await user.click(nav(/Konfigurator/))
     const clientChapters = [
-      /Gebäude & Umfang/,
       /Leistungen KG 300/,
       /Leistungsabgrenzung/,
       /Technik KG 400/,
@@ -398,7 +409,7 @@ describe('Сквозной сценарий продажи', () => {
     expect(document.body).not.toHaveTextContent(/(?:D-19|VARIANT-001|XSC-08|HOAI und AHO|70\/22\/8)/)
     expect(document.body.textContent).not.toMatch(/\b(?:DEMO|OPT|SNAP|BM)-[A-Z0-9-]+\b/)
 
-    await user.click(nav(/^3Export/))
+    await user.click(nav(/^4Export/))
     expect(document.body).not.toHaveTextContent(/(?:clientPrint|clientSafe|R-07|EMAIL-007)/)
     expect(document.body.textContent).not.toMatch(/\b(?:DEMO|OPT|SNAP|BM)-[A-Z0-9-]+\b/)
 
@@ -411,7 +422,6 @@ describe('Сквозной сценарий продажи', () => {
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
-    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
 

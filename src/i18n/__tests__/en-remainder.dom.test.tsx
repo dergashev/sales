@@ -116,8 +116,9 @@ describe('Остаток немецкого на английском пути (
       s.createOption('Basis')
       s.openOption('OPT-01')
       s.confirmBuilding(s.activeBuildingId)
+      s.setPipelineView('konfigurator')
     })
-    for (let chapter = 1; chapter <= 9; chapter++) {
+    for (let chapter = 1; chapter <= 8; chapter++) {
       act(() => useStore.getState().openChapterAt(chapter))
       germanFragments().forEach((f) => seen.add(f))
     }

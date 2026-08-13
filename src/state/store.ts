@@ -462,9 +462,8 @@ function defaultOptionConfig(): OptionConfig {
     esConfirmed: false,
     regionalfaktorActive: false,
     risikoAktiv: {},
-    // Новая Option начинается с ПЕРВОЙ главы — с решения, какие здания
-    // входят в предложение. Открывать её на середине конвейера значило бы
-    // объявить непройденные шаги пройденными (ревью № 13, дефект 7).
+    // Конфигуратор открывается только после отдельного шага «Gebäude &
+    // Umfang». Его первая оставшаяся глава — KG 300.
     openChapter: 1,
     discountPercent: null,
     offerDraft: {
@@ -474,7 +473,7 @@ function defaultOptionConfig(): OptionConfig {
       attachments: ['angebot', 'kostentreiber', 'annahmen'],
     },
 
-    besuchteKapitel: [1],
+    besuchteKapitel: [],
     scopeBuildingId: null,
   }
 }
@@ -1089,6 +1088,21 @@ export function canBeginConfiguration(
   return ids.length > 0 && ids.every((id) => buildingConfirmed(s, id))
 }
 
+/**
+ * The Building & Scope gate is fail-closed for every other Option view.
+ * This keeps an empty or unconfirmed proposal away from pricing surfaces
+ * without inventing a zero-price projection.
+ */
+export function pipelineViewForBuildingGate(
+  s: Pick<Store, 'buildings' | 'included' | 'buildingReviews'
+    | 'buildingConfirmation' | 'buildingConflicts'>,
+  view: PipelineView,
+): PipelineView {
+  return view !== 'buildingScope' && !canBeginConfiguration(s)
+    ? 'buildingScope'
+    : view
+}
+
 /** Existing S2 consumers read this view; conflict authority stays in the registry. */
 export function wflConflict(
   s: Pick<Store, 'buildingConflicts'>,
@@ -1163,9 +1177,7 @@ export function chapterDone(
 ): boolean {
   const besucht = s.besuchteKapitel.includes(n)
   switch (n) {
-    case 1:
-      return canBeginConfiguration(s)
-    case 3:
+    case 2:
       // Leistungsabgrenzung решена, когда ни одна решаемая группа не
       // осталась `unknown`: непринятое решение — не пройденный шаг.
       return besucht
@@ -1688,7 +1700,7 @@ const store = createStore<Store>((set, get) => {
     // Opportunity (анализ, параметры): рабочая копия существует всегда.
     ...defaultOptionConfig(),
     optionConfigs: {},
-    pipelineView: 'konfigurator',
+    pipelineView: 'buildingScope',
     gateOpen: false,
     tourOpen: false,
     printOpen: false,
@@ -2209,10 +2221,11 @@ const store = createStore<Store>((set, get) => {
     setMode: (m) => {
       const s = get()
       if (m === 'praesentation'
-        && (s.level !== 'option' || !activeBuilding(s).gebaeudeklasse.confirmed)) return
+        && (s.level !== 'option' || !canBeginConfiguration(s))) return
+      const outputView = pipelineViewForOutputProfile(m, s.pipelineView)
       set({
         mode: m,
-        pipelineView: pipelineViewForOutputProfile(m, s.pipelineView),
+        pipelineView: pipelineViewForBuildingGate(s, outputView),
         openChapter: chapterForOutputProfile(m, s.openChapter),
       })
     },
@@ -2276,6 +2289,7 @@ const store = createStore<Store>((set, get) => {
       // и уровень.
       const prevActive = s.activeOptionId
       const prevLevel = s.level
+      const prevPipelineView = s.pipelineView
       const prevFlat = captureConfig(s)
       // Подготовка принадлежит Opportunity, и её результат наследуется
       // КАЖДОЙ новой Option: разрешённый конфликт WFL даёт подтверждённое
@@ -2308,6 +2322,7 @@ const store = createStore<Store>((set, get) => {
         options: [...s.options, { id, name }],
         activeOptionId: id,
         optionSeq: seq,
+        pipelineView: 'buildingScope',
         // Новая Option — независимый вариант со свежей конфигурацией.
         // Рабочая копия предыдущей активной Option убирается в хранилище,
         // свежая раскладывается в плоские поля.
@@ -2332,6 +2347,7 @@ const store = createStore<Store>((set, get) => {
             options: x.options.filter((o) => o.id !== id),
             optionConfigs: rest,
             activeOptionId: prevActive,
+            pipelineView: prevPipelineView,
             mode: modeForLevelTransition(x.mode, prevLevel),
             level: prevLevel,
             ...prevFlat,
@@ -2341,6 +2357,7 @@ const store = createStore<Store>((set, get) => {
           options: [...x.options, { id, name }],
           activeOptionId: id,
           level: 'option' as const,
+          pipelineView: 'buildingScope' as const,
           ...(x.activeOptionId && x.activeOptionId !== id
             ? { optionConfigs: { ...x.optionConfigs, [x.activeOptionId]: captureConfig(x) } }
             : {}),
@@ -2384,7 +2401,13 @@ const store = createStore<Store>((set, get) => {
       const s = get()
       if (!s.options.some((o) => o.id === id)) return
       if (s.activeOptionId === id) {
-        set({ level: 'option' })
+        set({
+          level: 'option',
+          pipelineView: canBeginConfiguration(s) ? 'konfigurator' : 'buildingScope',
+          ...(canBeginConfiguration(s) && !s.besuchteKapitel.includes(s.openChapter)
+            ? { besuchteKapitel: [...s.besuchteKapitel, s.openChapter] }
+            : {}),
+        })
         return
       }
       // Своп рабочих копий: уходящая — в хранилище, открываемая — в
@@ -2406,7 +2429,10 @@ const store = createStore<Store>((set, get) => {
         ...NO_TRANSIENT,
         level: 'option',
         activeOptionId: id,
-        pipelineView: 'konfigurator',
+        pipelineView: canBeginConfiguration({
+          ...next,
+          buildingConflicts: s.buildingConflicts,
+        }) ? 'konfigurator' : 'buildingScope',
         optionConfigs: s.activeOptionId
           ? { ...rest, [s.activeOptionId]: captureConfig(s) }
           : rest,
@@ -2414,9 +2440,17 @@ const store = createStore<Store>((set, get) => {
       })
     },
 
-    setPipelineView: (v) => set((s) => ({
-      pipelineView: pipelineViewForOutputProfile(s.mode, v),
-    })),
+    setPipelineView: (v) => set((s) => {
+      const requested = pipelineViewForOutputProfile(s.mode, v)
+      const pipelineView = pipelineViewForBuildingGate(s, requested)
+      return {
+        pipelineView,
+        ...(pipelineView === 'konfigurator'
+          && !s.besuchteKapitel.includes(s.openChapter)
+          ? { besuchteKapitel: [...s.besuchteKapitel, s.openChapter] }
+          : {}),
+      }
+    }),
 
     setGateOpen: (v) => set({ gateOpen: v }),
 
@@ -2428,38 +2462,21 @@ const store = createStore<Store>((set, get) => {
 
     setActiveBuilding: (id) => set({ activeBuildingId: id }),
 
-    /**
-     * Включённость здания меняет ЦЕНУ, поэтому это событие журнала с
-     * дельтой, а не переключатель вида. Исключить здание и не увидеть
-     * этого в журнале значило бы потерять причину изменения итога.
-     */
+    /** Inclusion is decided before pricing starts. It remains a journalled
+     * domain event, but deliberately does not ask the non-empty pricing
+     * projection for a delta; zero selected is a valid gate-closed state. */
     toggleBuildingIncluded: (id) => {
       const s = get()
       if (!s.buildings[id]) return
       const next = !s.included[id]
-      // Пустое предложение не имеет проекции: последнее включённое здание
-      // выключить нельзя, и причина названа в интерфейсе.
-      if (!next && Object.values(s.included).filter(Boolean).length === 1) return
-      const before = s.projection().result.total.exact
       set({ included: { ...s.included, [id]: next } })
-      const after = get().projection().result.total.exact
-      const delta = after.minus(before)
       apply({
         kind: 'option.selected',
         label: `${id} ${next ? 'in das Angebot aufgenommen' : 'aus dem Angebot genommen'}`,
-        deltaExact: delta.isZero() ? null : delta,
+        deltaExact: null,
         inverse: () => set((x) => ({ included: { ...x.included, [id]: !next } })),
         forward: () => set((x) => ({ included: { ...x.included, [id]: next } })),
       })
-      if (!delta.isZero()) {
-        set({
-          activeDelta: {
-            label: `${id} ${next ? 'aufgenommen' : 'entfernt'}`,
-            deltaExact: delta,
-            percent: delta.div(before).mul(100),
-          },
-        })
-      }
     },
 
     toggleRisiko: (id) => {
@@ -2576,24 +2593,35 @@ const store = createStore<Store>((set, get) => {
       const s = get()
       const review = s.buildingReviews[id]
       if (!review || buildingConfirmed(s, id)) return
-      const previous = s.buildingConfirmation[id]
+      const hasOpenConflict = Object.values(s.buildingConflicts).some(
+        (conflict) => conflict.buildingId === id
+          && deriveConflictState(conflict).status === 'open',
+      )
+      if (hasOpenConflict) return
+      const previousReview = review
+      const previousConfirmation = s.buildingConfirmation[id]
+      const confirmedReview = withEngineState(review, { buildingClassConfirmed: true })
       const confirmed = {
-        fingerprint: buildingFingerprint(review, s.buildingConflicts),
+        fingerprint: buildingFingerprint(confirmedReview, s.buildingConflicts),
         at: new Date().toISOString(),
       }
-      const write = (value: BuildingConfirmation | undefined) => set((state) => {
+      const write = (
+        nextReview: BuildingReview,
+        value: BuildingConfirmation | undefined,
+      ) => set((state) => {
+        const patch = reviewedBuildingPatch(state, id, nextReview)
         const next = { ...state.buildingConfirmation }
         if (value) next[id] = value
         else delete next[id]
-        return { buildingConfirmation: next }
+        return { ...patch, buildingConfirmation: next }
       })
-      write(confirmed)
+      write(confirmedReview, confirmed)
       apply({
         kind: 'value.confirmed',
-        label: `Gebäudedaten ${id} bestätigt`,
+        label: `Gebäude ${effectiveFactValue(review.facts.documentationName) ?? id} bestätigt`,
         deltaExact: null,
-        inverse: () => write(previous),
-        forward: () => write(confirmed),
+        inverse: () => write(previousReview, previousConfirmation),
+        forward: () => write(confirmedReview, confirmed),
       })
     },
 

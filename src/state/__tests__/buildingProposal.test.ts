@@ -47,6 +47,7 @@ describe('building-aware reviewed proposal state', () => {
   })
 
   it('invalidates only the edited building confirmation and can be re-confirmed', () => {
+    st().resolveWflConflict('document')
     st().confirmBuilding('DEMO-B-A')
     st().confirmBuilding('DEMO-B-B')
     expect(buildingConfirmed(st(), 'DEMO-B-A')).toBe(true)
@@ -61,6 +62,17 @@ describe('building-aware reviewed proposal state', () => {
     const fingerprint = st().buildingConfirmation['DEMO-B-A']!.fingerprint
     st().confirmBuilding('DEMO-B-A')
     expect(st().buildingConfirmation['DEMO-B-A']!.fingerprint).toBe(fingerprint)
+  })
+
+  it('keeps the building gate open when Configurator choices change', () => {
+    st().resolveWflConflict('customer')
+    st().confirmBuilding('DEMO-B-A')
+    expect(canBeginConfiguration(st())).toBe(true)
+
+    st().setEnergiestandard('EH_40')
+
+    expect(buildingConfirmed(st(), 'DEMO-B-A')).toBe(true)
+    expect(canBeginConfiguration(st())).toBe(true)
   })
 
   it('requires the changed building class to be confirmed again', () => {
@@ -80,9 +92,10 @@ describe('building-aware reviewed proposal state', () => {
   })
 
   it('invalidates confirmation when a conflict on that building changes', () => {
+    st().resolveWflConflict('document')
     st().confirmBuilding('DEMO-B-A')
     expect(buildingConfirmed(st(), 'DEMO-B-A')).toBe(true)
-    st().resolveWflConflict('customer')
+    st().resolveBuildingConflict('DEMO-CONF-0001', { decision: 'defer' })
     expect(buildingConfirmed(st(), 'DEMO-B-A')).toBe(false)
   })
 
@@ -106,6 +119,7 @@ describe('building-aware reviewed proposal state', () => {
   })
 
   it('retracts a derived conflict once the disagreement disappears and restores confirmation', () => {
+    st().resolveWflConflict('document')
     st().confirmBuilding('DEMO-B-A')
     expect(buildingConfirmed(st(), 'DEMO-B-A')).toBe(true)
 
@@ -134,12 +148,11 @@ describe('building-aware reviewed proposal state', () => {
 })
 
 describe('selection and configuration modes', () => {
-  it('cannot remove the final building and the pure gate rejects zero included', () => {
+  it('allows zero selected before pricing and keeps the pure gate closed', () => {
     st().toggleBuildingIncluded('DEMO-B-A')
-    expect(st().included['DEMO-B-A']).toBe(true)
-    expect(canBeginConfiguration({ ...st(), included: {
-      'DEMO-B-A': false, 'DEMO-B-B': false,
-    } })).toBe(false)
+    expect(st().included['DEMO-B-A']).toBe(false)
+    expect(st().journal.at(-1)?.deltaExact).toBeNull()
+    expect(canBeginConfiguration(st())).toBe(false)
   })
 
   it('keeps excluded evidence intact while removing it from totals and metrics', () => {

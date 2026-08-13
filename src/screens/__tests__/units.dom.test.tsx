@@ -30,6 +30,8 @@ async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
   await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
   await user.click(screen.getByRole('button', { name: 'Öffnen' }))
+  await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
+  await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
 }
 
 describe('единицы: знак валюты не удваивается', () => {
@@ -49,7 +51,7 @@ describe('единицы: знак валюты не удваивается', ()
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
-    act(() => useStore.getState().openChapterAt(3))
+    act(() => useStore.getState().openChapterAt(2))
 
     const text = document.body.textContent ?? ''
     // Последствие на плитке обязано существовать — иначе тест доказывал бы

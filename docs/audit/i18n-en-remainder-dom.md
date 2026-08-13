@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 48** · перевод есть, мост не подключён: 42
-· перевода нет (в поставку копирайта): 6
+**Всего 44** · перевод есть, мост не подключён: 37
+· перевода нет (в поставку копирайта): 7
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -17,10 +17,7 @@
 - Einbaukueche und Erstausstattung je m² BGF R ⚙
 - Gebäude im Projekt
 - Gebäude ·
-- Gebäudedaten
-- Gebäudedaten DEMO-B-A bestätigt
 - Gerundet auf 1.000 €; exakter Rechenwert 3.817.835,00 €
-- Kundenansicht gesperrt: Klassifikation nach MBO
 - Leistungsbeginn ab OK Decke über UG
 - Marge Eigenleistung nach Rabatt:
 - Musterhöfe Westpark
@@ -43,7 +40,6 @@ Mit freundlichen Grüßen
 - aktuelle Auswahl
 - andere Dokumente sind vollständig analysiert.
 - bauseits; im indikativen Angebot ohne Preisansatz ⚙
-- bestätigt.
 - dieser Datei
 - enthält die abgeleitete S-Fläche
 - für den Prototyp abgeleitet, nicht kalibriert
@@ -53,7 +49,6 @@ Mit freundlichen Grüßen
 - nicht enthalten
 - nur Unterschiede
 - vollständig inkl. Gründung
-- §2 nicht bestätigt.
 - Österreich
 - ≈ 85 % der BGF R+S
 
@@ -62,6 +57,7 @@ Mit freundlichen Grüßen
 - Anteil am Bauwerk (KG 300 + 400 + UG) nach calculation-spec §1 ⚙
 - Druckansicht öffnen
 - Eigenes Ausgabeprofil clientPrint mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.
+- Gebäude Haus A bestätigt
 - Tiefgarage · Lüftung, OS-Beschichtung, Tore
 - Untergeschoss · Rohbau und Ausbau
 - ≈ 2.447 €/m² WFL nach WoFlV

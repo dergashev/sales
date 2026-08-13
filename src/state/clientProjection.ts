@@ -10,19 +10,21 @@
 export type OutputMode = 'intern' | 'praesentation'
 
 export type PipelineView =
-  | 'konfigurator' | 'vergleich' | 'export' | 'einstellungen' | 'grundlagen'
+  | 'buildingScope' | 'konfigurator' | 'vergleich' | 'export'
+  | 'einstellungen' | 'grundlagen'
 
 export type ProductLevel = 'liste' | 'opportunity' | 'option'
 
 export type ProjectionVisibility = 'clientSafe' | 'internalOnly'
 
 const CLIENT_VISIBLE_PIPELINE_VIEWS = new Set<PipelineView>([
+  'buildingScope',
   'konfigurator',
   'vergleich',
   'export',
 ])
 
-export const CLIENT_VISIBLE_CHAPTERS = [1, 2, 3, 4, 5, 6, 7, 9] as const
+export const CLIENT_VISIBLE_CHAPTERS = [1, 2, 3, 4, 5, 6, 8] as const
 const CLIENT_VISIBLE_CHAPTER_SET = new Set<number>(CLIENT_VISIBLE_CHAPTERS)
 
 export function isClientProjection(mode: OutputMode): boolean {
@@ -54,7 +56,7 @@ export function isClientVisibleChapter(chapter: number): boolean {
 }
 
 export function chapterForOutputProfile(mode: OutputMode, chapter: number): number {
-  return isClientProjection(mode) && !isClientVisibleChapter(chapter) ? 9 : chapter
+  return isClientProjection(mode) && !isClientVisibleChapter(chapter) ? 8 : chapter
 }
 
 export function isClientVisibleLevel(level: ProductLevel): boolean {

@@ -428,7 +428,10 @@ export function buildingFingerprint(
   return JSON.stringify({
     id: review.id,
     facts,
-    engine: canonicalValue(review.engine),
+    // The top-level review confirms identity, areas, units, storeys and
+    // class. Configurator choices must not close the gate that made the
+    // Configurator reachable in the first place.
+    buildingClassConfirmed: review.engine.buildingClassConfirmed,
     derived,
     conflicts: conflictState,
   })

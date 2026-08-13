@@ -1,4 +1,4 @@
-import { chapterDone, useStore } from '../state/store'
+import { chapterDone, pipelineViewForBuildingGate, useStore } from '../state/store'
 import type { PipelineView } from '../state/store'
 import { NNBSP } from '../engine/money'
 import { CHAPTERS } from '../screens/S3Konfigurator'
@@ -31,10 +31,15 @@ import {
  * уровень иерархии, — не навигация, а телепорт: он ломает представление
  * пользователя о том, где он находится.
  */
-const SCREENS: Array<{ id: PipelineView; labelKey: MessageKey; hint?: string }> = [
-  { id: 'konfigurator', labelKey: 'nav.konfigurator', hint: '1' },
-  { id: 'vergleich', labelKey: 'nav.vergleich', hint: '2' },
-  { id: 'export', labelKey: 'nav.export', hint: '3' },
+const SCREENS: Array<{
+  id: PipelineView
+  labelKey: MessageKey
+  hint?: string
+}> = [
+  { id: 'buildingScope', labelKey: 'nav.buildingScope', hint: '1' },
+  { id: 'konfigurator', labelKey: 'nav.konfigurator', hint: '2' },
+  { id: 'vergleich', labelKey: 'nav.vergleich', hint: '3' },
+  { id: 'export', labelKey: 'nav.export', hint: '4' },
   { id: 'einstellungen', labelKey: 'nav.einstellungen', hint: '⚙' },
   { id: 'grundlagen', labelKey: 'nav.grundlagen', hint: 'QA' },
 ]
@@ -44,11 +49,12 @@ const FOCUS = 'outline-none focus-visible:outline focus-visible:outline-2 ' +
 
 export function Sidebar() {
   const s = useStore()
-  const view = s.pipelineView
+  const view = pipelineViewForBuildingGate(s, s.pipelineView)
   const option = s.options.find((o) => o.id === s.activeOptionId)
   const t = useT()
   const tx = useTx()
   const client = isClientProjection(s.mode)
+  const gateOpen = s.canBeginConfiguration()
   const screens = client
     ? SCREENS.filter(({ id }) => isClientVisiblePipelineView(id))
     : SCREENS
@@ -75,20 +81,37 @@ export function Sidebar() {
       <ul className="flex-1 py-2">
         {screens.map((item) => {
           const active = view === item.id
+          const blocked = item.id !== 'buildingScope' && !gateOpen
+          const reasonId = `building-gate-${item.id}`
           return (
             <li key={item.id}>
               <button
                 type="button"
-                onClick={() => s.setPipelineView(item.id)}
+                onClick={() => { if (!blocked) s.setPipelineView(item.id) }}
                 aria-current={active ? 'page' : undefined}
+                aria-disabled={blocked || undefined}
+                aria-describedby={blocked ? reasonId : undefined}
                 className={`relative flex min-h-hit-target w-full items-center gap-3 px-5 py-2 text-left text-body ${FOCUS} ` +
                   (active
                     ? 'border-l-selected border-selection-border bg-surface-subtle font-medium text-text-primary'
-                    : 'border-l-selected border-transparent text-text-secondary hover:bg-surface-subtle')}
+                    : 'border-l-selected border-transparent text-text-secondary hover:bg-surface-subtle') +
+                  (blocked ? ' cursor-default text-text-disabled' : '')}
               >
                 <span className="w-5 shrink-0 text-small text-text-muted">{item.hint}</span>
                 {t(item.labelKey)}
               </button>
+
+              {blocked && item.id === 'konfigurator' && (
+                <p id={reasonId} className="px-5 pb-2 pl-8 text-small text-text-secondary">
+                  {t('buildingScope.gate.navigationReason')}
+                </p>
+              )}
+
+              {blocked && item.id !== 'konfigurator' && (
+                <span id={reasonId} className="sr-only">
+                  {t('buildingScope.gate.navigationReason')}
+                </span>
+              )}
 
               {/* Главы конфигуратора — второй уровень под активным пунктом. */}
               {item.id === 'konfigurator' && active && (

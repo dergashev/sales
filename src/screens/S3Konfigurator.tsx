@@ -12,7 +12,6 @@ import { ClientNotice } from '../components/ClientNotice'
 import { RadioCardGroup, SegmentedControl } from '../components/controls'
 import { optionImage } from '../assets/option-images'
 import { ScheduleGantt } from '../components/ScheduleGantt'
-import { ChapterBuildings } from './ChapterBuildings'
 import { OptionChapter } from './OptionChapter'
 import {
   KG300_GROUPS, KG400_GROUPS, ZERT_GROUPS, COVERAGE_RATES,
@@ -58,7 +57,7 @@ const UG_IMAGE_VALUE: Record<'vollausbau' | 'ab_decke' | 'kein_ug', string> = {
 }
 
 export const CHAPTERS = [
-  'Gebäude & Umfang', 'Leistungen KG 300', 'Leistungsabgrenzung', 'Technik KG 400',
+  'Leistungen KG 300', 'Leistungsabgrenzung', 'Technik KG 400',
   'Energie & Zertifikate', 'Flächen im Detail', 'Baugrund & Erschließung',
   'Baunebenkosten KG 700', 'Termine & Kommerzielles',
 ] as const
@@ -90,7 +89,7 @@ export function S3Konfigurator() {
   const title = CHAPTERS[n - 1] ?? CHAPTERS[0]
   const chapterRoute: readonly number[] = client
     ? CLIENT_VISIBLE_CHAPTERS
-    : [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    : [1, 2, 3, 4, 5, 6, 7, 8]
   const routeIndex = chapterRoute.indexOf(n)
   const previous = routeIndex > 0 ? chapterRoute[routeIndex - 1] : null
   const next = routeIndex >= 0 && routeIndex < chapterRoute.length - 1
@@ -111,15 +110,14 @@ export function S3Konfigurator() {
           для рабочей области — аудит верно указал, что здесь он обнимал всю
           главу целиком. */}
       <div className="py-5">
-        {n === 1 && <ChapterBuildings />}
-        {n === 2 && <OptionChapter groups={KG300_GROUPS}
+        {n === 1 && <OptionChapter groups={KG300_GROUPS}
           intro={'Von oben nach unten: erst der Umfang, dann die Konstruktion, '
             + 'zuletzt die Oberfläche. Jede Antwort zeigt ihre Folge am Preis, '
             + 'bevor sie gewählt wird.'} />}
-        {n === 3 && <ChapterUmfang />}
-        {n === 4 && <OptionChapter groups={KG400_GROUPS}
+        {n === 2 && <ChapterUmfang />}
+        {n === 3 && <OptionChapter groups={KG400_GROUPS}
           intro={'Technische Anlagen nach DIN 276. Die Wahl der Erzeugung und der Lüftung entscheidet mit, welcher Energiestandard überhaupt erreichbar bleibt.'} />}
-        {n === 5 && (
+        {n === 4 && (
           <div className="grid gap-5">
             <ChapterEnergie />
             {/* Сертификаты — отдельная ось: EH описывает качество здания,
@@ -130,11 +128,11 @@ export function S3Konfigurator() {
                 + 'mit dem es nachgewiesen wird.'} />
           </div>
         )}
-        {n === 6 && <ChapterFlaechen />}
-        {n === 7 && <ChapterBaugrund />}
-        {n === 8 && <ChapterKg700 />}
-        {n === 9 && <ChapterTermine />}
-        {![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(n) && <ChapterParked title={title} />}
+        {n === 5 && <ChapterFlaechen />}
+        {n === 6 && <ChapterBaugrund />}
+        {n === 7 && <ChapterKg700 />}
+        {n === 8 && <ChapterTermine />}
+        {![1, 2, 3, 4, 5, 6, 7, 8].includes(n) && <ChapterParked title={title} />}
       </div>
 
       {/* Один следующий шаг всегда на экране (DC-27): маршрут, не принуждение. */}

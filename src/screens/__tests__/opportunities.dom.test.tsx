@@ -60,9 +60,11 @@ describe('Уровень Opportunities', () => {
 
     await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
     expect(useStore.getState().options).toHaveLength(1)
-    // Панель цены появляется только внутри Option.
+    // Option startet im vorgeschalteten Gebäudeschritt — noch ohne Preis.
     await user.click(screen.getByRole('button', { name: 'Öffnen' }))
-    expect(screen.getByRole('complementary', { name: 'Angebot' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Gebäude & Umfang' })).toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: 'Angebot' })).not.toBeInTheDocument()
+    expect(screen.getByText('Kalkulation noch nicht gestartet')).toBeInTheDocument()
   })
 
   it.each([
@@ -185,7 +187,7 @@ describe('Уровень Opportunities', () => {
     await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
     await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
     await user.click(screen.getByRole('button', { name: 'Öffnen' }))
-    await user.click(screen.getAllByRole('button', { name: 'Klassifikation bestätigen' })[0]!)
+    await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
 
