@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { Decimal } from 'decimal.js'
 import demo from '../fixtures/demo-0001.json'
 import catalog from '../fixtures/catalog.json'
-import { activeBuilding, useStore } from '../state/store'
+import { activeBuilding, useStore, wflConflict } from '../state/store'
 import { useTx } from '../i18n'
 import { copyFor } from '../i18n/internal-refs'
 import { NNBSP, formatDE, rateLabel } from '../engine/money'
@@ -186,6 +186,7 @@ function P2Projektdaten() {
   const s = useStore()
   const p = s.projection()
   const fxA = demo.buildings[0]!
+  const conflict = wflConflict(s)
 
   return (
     <section aria-label="Projektdaten">
@@ -222,7 +223,7 @@ function P2Projektdaten() {
         />
 
         {/* Открытый конфликт значения: последствие названо ДО выбора. */}
-        {s.wflConflict.state === 'open' && (
+        {conflict.state === 'open' && (
           <div className="mt-2 border-contrast border-border-warning p-3">
             <p className="text-body text-text-primary">
               <span aria-hidden="true">▲ </span>
@@ -244,11 +245,11 @@ function P2Projektdaten() {
           </div>
         )}
 
-        {s.wflConflict.state === 'resolved' && (
+        {conflict.state === 'resolved' && (
           <p className="a3-cap mt-2">
             <span aria-hidden="true">✓ </span>
             Konflikt gelöst. Alternative bleibt nachvollziehbar:{' '}
-            {s.wflConflict.candidates
+            {conflict.candidates
               .filter((c) => c.selectionStatus === 'alternative')
               .map((c) => `${formatDE(new Decimal(c.value), 2)}${NNBSP}m² (${c.origin === 'document' ? 'Dokument' : 'Kunde'})`)
               .join(' · ')}{' '}

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { Decimal } from 'decimal.js'
 import {
   activeBuilding, chapterDone, projectionForOption,
-  __resetStoreForTests, useStore,
+  __resetStoreForTests, useStore, wflConflict,
 } from '../store'
 import { KG400_GROUPS, choiceBlocked } from '../../engine/options'
 import type { JournalEvent, OfferSnapshot } from '../store'
@@ -32,9 +32,9 @@ describe('S3: проекция воспроизводит мокап', () => {
 
   it('je Wohneinheit — точное 238.614,6875, показ ≈ 238.615', () => {
     const p = useStore.getState().projection()
-    expect(p.perUnit.exact.toFixed(4)).toBe('238614.6875')
-    expect(p.perUnit.prefix + p.perUnit.display).toBe('≈238.615')
-    expect(p.perUnit.denominatorKind).toBe('unitCount')
+    expect(p.perUnit!.exact.toFixed(4)).toBe('238614.6875')
+    expect(p.perUnit!.prefix + p.perUnit!.display).toBe('≈238.615')
+    expect(p.perUnit!.denominatorKind).toBe('unitCount')
   })
 
   it('разбиение по высоте сходится с итогом в точных значениях', () => {
@@ -404,7 +404,7 @@ describe('S2: конфликт значения и версии документ
     const after = useStore.getState().projection()
     expect(after.result.total.exact.toFixed(2)).toBe(before.result.total.exact.toFixed(2))
     expect(after.leadRate.prefix + after.leadRate.display).toBe('≈2.447')
-    expect(useStore.getState().wflConflict.state).toBe('resolved')
+    expect(wflConflict(useStore.getState()).state).toBe('resolved')
     // Конфликт закрыт событием, а не молча.
     expect(useStore.getState().journal.some((e) => e.kind === 'conflict.resolved')).toBe(true)
   })
@@ -416,7 +416,7 @@ describe('S2: конфликт значения и версии документ
     expect(s.fields.wfl.provenance).toBe('vom Kunden bestätigt')
     expect(s.journal.at(-1)!.label).toContain('beibehalten')
     // SOURCE-001: непринятый кандидат хранится, не исчезает.
-    const alt = s.wflConflict.candidates.find((c) => c.origin === 'customer')!
+    const alt = wflConflict(s).candidates.find((c) => c.origin === 'customer')!
     expect(alt.selectionStatus).toBe('alternative')
     expect(alt.value).toBe('1560.00')
   })
@@ -426,7 +426,7 @@ describe('S2: конфликт значения и версии документ
     useStore.getState().undo()
     const s = useStore.getState()
     // Восстановлено ВСЁ, что событие меняло, — не только флаг.
-    expect(s.wflConflict.state).toBe('open')
+    expect(wflConflict(s).state).toBe('open')
     expect(s.fields.wfl.value.toFixed(2)).toBe('1500.00')
     expect(s.fields.wfl.provenance).toBe('aus Dokument')
   })

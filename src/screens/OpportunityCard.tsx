@@ -2,7 +2,7 @@ import { Decimal } from 'decimal.js'
 import demo from '../fixtures/demo-0001.json'
 import opportunities from '../fixtures/opportunities.json'
 import derived from '../fixtures/derived-prototype.json'
-import { useStore } from '../state/store'
+import { useStore, wflConflict } from '../state/store'
 import { NNBSP, formatDE } from '../engine/money'
 import { Button } from '../components/primitives'
 import { useT, useTx } from '../i18n'
@@ -108,6 +108,7 @@ export function OpportunityCard() {
     const v = d?.nrf?.value
     return v ? a.plus(D(v)) : a
   }, new Decimal(0))
+  const conflict = wflConflict(s)
 
   if (showVorbereitung) {
     return (
@@ -123,7 +124,7 @@ export function OpportunityCard() {
     )
   }
 
-  const konfliktOffen = s.wflConflict.state === 'open'
+  const konfliktOffen = conflict.state === 'open'
   const canCreateOptions = s.canCreateOptions()
   const createOptionDisabledReason = konfliktOffen && !s.projectParamsConfirmed
     ? tx('Erst Konflikte entscheiden und Projektparameter bestätigen')
@@ -173,7 +174,7 @@ export function OpportunityCard() {
                 значение» в ряд, а не список абзацев. Значения стоят рядом
                 именно потому, что решение принимается их сравнением. */}
             <div className="a3-kv">
-              {s.wflConflict.candidates.map((c) => (
+              {conflict.candidates.map((c) => (
                 <span key={c.origin}>
                   <span className="a3-cap block">
                     {tx(c.origin === 'customer' ? 'Kunde' : 'Dokument')}

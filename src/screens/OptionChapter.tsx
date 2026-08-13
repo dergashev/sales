@@ -1,6 +1,8 @@
 import { Decimal } from 'decimal.js'
 import derived from '../fixtures/derived-prototype.json'
-import { activeBuilding, useStore } from '../state/store'
+import {
+  activeBuilding, buildingConfirmed, choiceProvenanceFor, choicesFor, useStore,
+} from '../state/store'
 import { NNBSP, present, label as moneyLabel } from '../engine/money'
 import { choiceBlocked, isGroupActive, type OptionGroup } from '../engine/options'
 import { bgfAboveGround } from '../engine/calculate'
@@ -148,12 +150,12 @@ export function OptionChapter({ groups, intro }: {
   const s = useStore()
   const tx = useTx()
   const b = activeBuilding(s)
-  const chosen = s.kg300[b.id] ?? {}
-  const prov = s.kg300Provenance[b.id] ?? {}
+  const chosen = choicesFor(s, b.id)
+  const prov = choiceProvenanceFor(s, b.id)
 
   // Пока здание не подтверждено, спускаться рано: опции у здания, чьи
   // метрики ещё спорны, придётся пересматривать целиком.
-  if (!s.buildingConfirmed[b.id]) {
+  if (!buildingConfirmed(s, b.id)) {
     return (
       <div className="a3-sheet">
         <p className="text-body text-text-primary">

@@ -89,7 +89,7 @@ export function S4Vergleich() {
       })),
     },
     {
-      group: 'ERGEBNIS', label: '€/m² WFL nach WoFlV',
+      group: 'ERGEBNIS', label: `€/m² ${base.p.leadRate.denominatorLabel}`,
       cells: cols.map((c) => `${c.p.leadRate.prefix}${c.p.leadRate.prefix ? NNBSP : ''}${c.p.leadRate.display}`),
     },
     {

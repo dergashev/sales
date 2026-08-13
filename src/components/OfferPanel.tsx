@@ -211,7 +211,8 @@ export function OfferPanel() {
           </p>
           <span className="a3-hb-cap">{tx(p.leadRate.denominatorLabel)}</span>
         <p className="a3-cap numeric mt-1" style={{ overflowWrap: 'anywhere' }}>
-          {rateLabel(p.secondaryRateBgf)} · {rateLabel(p.perUnit)}
+          {rateLabel(p.secondaryRateBgf)}
+          {p.perUnit && <> · {rateLabel(p.perUnit)}</>}
           {' · '}
           {/* DC-21 rateOrigin: знаменатель называет норматив, деление показано. */}
           <OriginPopover

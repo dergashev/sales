@@ -23,11 +23,42 @@ import { defaultOptionChoices, optionDrivers, coverageDrivers, ALL_OPTION_GROUPS
 import derivedFx from '../fixtures/derived-prototype.json'
 import { modelDuration, presentDuration, type DurationDisplay } from '../engine/schedule'
 import { RISK_ITEMS, riskDriver } from '../engine/risk'
+import {
+  appendConflictResolution,
+  buildingFingerprint,
+  deriveConflictState,
+  effectiveFactValue,
+  fact,
+  isBuildingConflict,
+  isBuildingConfirmed as reviewIsBuildingConfirmed,
+  isBuildingReview,
+  toBuildingInput,
+  upsertDerivedConflicts,
+  withEngineState,
+  withFactOverride,
+  withoutFactOverride,
+  type BuildingConfirmation,
+  type BuildingConflict,
+  type BuildingFactKey,
+  type BuildingFactValueMap,
+  type BuildingReview,
+  type ConflictResolution,
+  type ReviewedBuildingInput,
+  type StoreyStructure,
+} from './buildingReview'
+import {
+  browserProposalStorage,
+  clearPersistedProposal,
+  loadPersistedProposal,
+  savePersistedProposal,
+  serializeProposalPayload,
+  type StorageLike,
+} from './persistence'
 
 export type { PipelineView } from './clientProjection'
 
-/** Calculation input enriched with the active project's client-safe label. */
-export type ProjectBuilding = BuildingInput & { stableName: string }
+/** Calculation input enriched with proposal-review metadata. */
+export type ProjectBuilding = ReviewedBuildingInput
 
 /**
  * Состояние = журнал событий + проекция (M-4).
@@ -66,6 +97,7 @@ export type EventKind =
   | 'document.activated' | 'conflict.resolved'
   | 'offer.emailed' | 'offer.printed'
   | 'note.created' | 'note.synced_to_hubspot'
+  | 'state.restored'
   | 'undo'
 
 export type JournalEvent = {
@@ -118,6 +150,19 @@ export type WflConflict = {
   candidates: ConflictCandidate[]
 }
 
+export type ConfigurationMode = 'SHARED' | 'PER_BUILDING'
+
+export type SharedConfiguration = {
+  choices: Record<string, string>
+  provenance: Record<string, string>
+}
+
+export type BuildingConfigurationState = {
+  status: 'draft' | 'completed' | 'confirmed'
+  fingerprint: string | null
+  at: string | null
+}
+
 /**
  * Снапшот отправленного оффера (M-3, минимум прототипа): состояние,
  * от которого клиент получил числа, воспроизводимо из самого снапшота,
@@ -150,7 +195,11 @@ export type OptionConfig = {
   buildings: Record<string, ProjectBuilding>
   activeBuildingId: string
   included: Record<string, boolean>
-  buildingConfirmed: Record<string, boolean>
+  buildingReviews: Record<string, BuildingReview>
+  buildingConfirmation: Record<string, BuildingConfirmation>
+  configurationMode: ConfigurationMode
+  sharedConfiguration: SharedConfiguration
+  buildingConfigState: Record<string, BuildingConfigurationState>
   kg300: Record<string, Record<string, string>>
   kg300Provenance: Record<string, Record<string, string>>
   kg700Mode: 'vereinfacht' | 'hoaiAho'
@@ -193,7 +242,9 @@ export type OptionConfig = {
 }
 
 const OPTION_CONFIG_KEYS = [
-  'buildings', 'activeBuildingId', 'included', 'buildingConfirmed',
+  'buildings', 'activeBuildingId', 'included', 'buildingReviews',
+  'buildingConfirmation', 'configurationMode', 'sharedConfiguration',
+  'buildingConfigState',
   'kg300', 'kg300Provenance', 'kg700Mode', 'coverage', 'fields',
   'esConfirmed', 'regionalfaktorActive', 'risikoAktiv',
   'openChapter', 'besuchteKapitel', 'scopeBuildingId', 'discountPercent',
@@ -207,6 +258,34 @@ function captureConfig(s: Pick<Store, keyof OptionConfig>): OptionConfig {
   ) as unknown as OptionConfig
 }
 
+type PersistedProposalConfig = Pick<OptionConfig,
+  | 'activeBuildingId' | 'included' | 'buildingReviews' | 'buildingConfirmation'
+  | 'configurationMode' | 'sharedConfiguration' | 'buildingConfigState'
+  | 'kg300' | 'kg300Provenance' | 'fields'>
+
+const PERSISTED_CONFIG_KEYS = [
+  'activeBuildingId', 'included', 'buildingReviews', 'buildingConfirmation',
+  'configurationMode', 'sharedConfiguration', 'buildingConfigState',
+  'kg300', 'kg300Provenance', 'fields',
+] as const satisfies ReadonlyArray<keyof PersistedProposalConfig>
+
+function capturePersistedConfig(
+  config: Pick<OptionConfig, keyof PersistedProposalConfig>,
+): PersistedProposalConfig {
+  return Object.fromEntries(
+    PERSISTED_CONFIG_KEYS.map((key) => [key, config[key]]),
+  ) as unknown as PersistedProposalConfig
+}
+
+type PersistedProposalPayload = {
+  active: PersistedProposalConfig
+  options: Array<{ id: string; name: string }>
+  activeOptionId: string | null
+  optionSeq: number
+  optionConfigs: Record<string, PersistedProposalConfig>
+  buildingConflicts: Record<string, BuildingConflict>
+}
+
 /** Покрытие фикстуры: KG 500 неизвестно — именно поэтому итог промежуточный. */
 const INITIAL_COVERAGE: Coverage = {
   KG_100: 'notApplicable', KG_200: 'excluded',
@@ -216,36 +295,104 @@ const INITIAL_COVERAGE: Coverage = {
 
 const fx = demo.buildings[0]!
 const fxConflict = demo.conflicts[0]!
+const fxB = demo.buildings[1]!
+export const PROPOSAL_PROJECT_ID = demo.project.id
 
-const INITIAL_BUILDING: ProjectBuilding = {
-  id: fx.id, stableName: fx.stableName, gebaeudeform: 'MFH',
-  gebaeudeklasse: { value: 'GK_5', confirmed: false },
-  energiestandard: 'EH_55',
-  // Фикстура объявляет `BGF S = 0` (synthetic-fixtures §5): балконов у
-  // Haus A нет. Производные 160 m² — площадь балконов по D-22, и она НЕ
-  // является BGF S: попав сюда, она изменила бы контрольные величины
-  // первого сценария (решение D-26).
-  bgfRAbove: D(fx.areas.bgfAboveGround!),
-  bgfSAbove: new Decimal(0),
-  bgfBelowGround: D(fx.areas.bgfBelowGround!),
-  untergeschoss: 'vollausbau', hasParking: true,
+type FixtureBuilding = typeof fx
+
+function fixtureSource(buildingId: string, field: string) {
+  return {
+    kind: 'document' as const,
+    reference: `demo-0001.json#building:${buildingId}.${field}`,
+  }
 }
 
-/**
- * Второе здание проекта — Bürogebäude. Оси классификации принадлежат
- * зданию и сегменту (D-11 v2), поэтому у каждого здания они свои: форма
- * читается со здания, назначение — с сегмента, и единого «типа проекта»
- * не существует.
- */
-const fxB = demo.buildings[1]!
-const INITIAL_BUILDING_B: ProjectBuilding = {
-  id: fxB.id, stableName: fxB.stableName, gebaeudeform: 'BUERO',
-  gebaeudeklasse: { value: 'GK_4', confirmed: false },
-  energiestandard: 'EH_55',
-  bgfRAbove: D(fxB.areas.bgfAboveGround!),
-  bgfSAbove: new Decimal(0),
-  bgfBelowGround: D(fxB.areas.bgfBelowGround!),
-  untergeschoss: 'kein_ug', hasParking: false,
+const UNKNOWN_SOURCE = { kind: 'unknown', reference: null } as const
+
+function decimalFact(value: string | null, buildingId: string, field: string) {
+  return fact<Decimal>(
+    value === null ? null : D(value),
+    value === null ? UNKNOWN_SOURCE : fixtureSource(buildingId, field),
+  )
+}
+
+function fixtureReview(
+  building: FixtureBuilding,
+  form: BuildingInput['gebaeudeform'],
+  buildingClass: BuildingInput['gebaeudeklasse']['value'],
+  undergroundScope: BuildingInput['untergeschoss'],
+  hasParking: boolean,
+): BuildingReview {
+  const id = building.id
+  return {
+    id,
+    facts: {
+      documentationName: fact(building.stableName, fixtureSource(id, 'stableName')),
+      address: fact<string>(null, UNKNOWN_SOURCE),
+      buildingForm: fact(form, fixtureSource(id, 'gebaeudeform')),
+      buildingClass: fact(buildingClass, fixtureSource(id, 'gebaeudeklasse')),
+      // The accepted calculation fixture states BGF S = 0. Its derived
+      // balcony area is deliberately not reused as DIN 277 BGF S (D-26).
+      bgfRAbove: decimalFact(building.areas.bgfAboveGround, id, 'areas.bgfAboveGround'),
+      bgfSAbove: fact(new Decimal(0), {
+        kind: 'document', reference: 'docs/audit/synthetic-fixtures.md §4',
+      }),
+      bgfRSAbove: decimalFact(building.areas.bgfAboveGround, id, 'areas.bgfAboveGround'),
+      // The fixture supplies only the aggregate underground area. R/S
+      // components remain unknown rather than being reverse-engineered.
+      bgfRBelow: fact<Decimal>(null, UNKNOWN_SOURCE),
+      bgfSBelow: fact<Decimal>(null, UNKNOWN_SOURCE),
+      bgfRSBelow: decimalFact(building.areas.bgfBelowGround, id, 'areas.bgfBelowGround'),
+      bgfRSTotal: decimalFact(building.areas.bgfRS, id, 'areas.bgfRS'),
+      wfl: decimalFact(building.areas.wflWoFlV, id, 'areas.wflWoFlV'),
+      nuf: decimalFact(building.areas.nufDin277, id, 'areas.nufDin277'),
+      units: decimalFact(building.areas.wohneinheiten, id, 'areas.wohneinheiten'),
+      // `vollgeschosse` does not prove UG/EG/OG/SG semantics.
+      storeyStructure: fact<StoreyStructure>(null, UNKNOWN_SOURCE),
+    },
+    engine: {
+      energyStandard: 'EH_55', undergroundScope, hasParking,
+      buildingClassConfirmed: false,
+    },
+  }
+}
+
+const INITIAL_REVIEW = fixtureReview(fx, 'MFH', 'GK_5', 'vollausbau', true)
+const INITIAL_REVIEW_B = fixtureReview(fxB, 'BUERO', 'GK_4', 'kein_ug', false)
+
+function requiredBuildingInput(review: BuildingReview): ProjectBuilding {
+  const input = toBuildingInput(review)
+  if (!input) throw new Error(`fixture building ${review.id} lacks a pricing input`)
+  return input
+}
+
+const INITIAL_BUILDING = requiredBuildingInput(INITIAL_REVIEW)
+const INITIAL_BUILDING_B = requiredBuildingInput(INITIAL_REVIEW_B)
+
+const INITIAL_BUILDING_CONFLICTS: Record<string, BuildingConflict> = {
+  [fxConflict.id]: {
+    id: fxConflict.id,
+    buildingId: fx.id,
+    factKey: 'wfl',
+    candidates: fxConflict.candidates.map((candidate) => ({
+      id: `${fxConflict.id}:${candidate.origin}`,
+      origin: candidate.origin as 'document' | 'customer',
+      value: candidate.value,
+      source: candidate.origin === 'document'
+        ? {
+            kind: 'document',
+            reference: 'source' in candidate && typeof candidate.source === 'string'
+              ? candidate.source : 'demo-0001.json',
+          }
+        : {
+            kind: 'customer',
+            reference: 'verificationEventId' in candidate
+              && typeof candidate.verificationEventId === 'string'
+              ? candidate.verificationEventId : 'DEMO-VE-0002',
+          },
+    })),
+    resolutions: [],
+  },
 }
 
 /**
@@ -269,7 +416,24 @@ function defaultOptionConfig(): OptionConfig {
     // числа именно для этого случая, и добавление второго обязано быть
     // видимым решением пользователя, а не молчаливым умолчанием.
     included: { [INITIAL_BUILDING.id]: true, [INITIAL_BUILDING_B.id]: false },
-    buildingConfirmed: {},
+    buildingReviews: {
+      [INITIAL_REVIEW.id]: INITIAL_REVIEW,
+      [INITIAL_REVIEW_B.id]: INITIAL_REVIEW_B,
+    },
+    buildingConfirmation: {},
+    configurationMode: 'PER_BUILDING',
+    sharedConfiguration: {
+      choices: defaultOptionChoices(),
+      provenance: Object.fromEntries(
+        ALL_OPTION_GROUPS.map((group) => [
+          group.id, group.documented ? 'aus Dokument' : 'Standard',
+        ]),
+      ),
+    },
+    buildingConfigState: {
+      [INITIAL_BUILDING.id]: { status: 'draft', fingerprint: null, at: null },
+      [INITIAL_BUILDING_B.id]: { status: 'draft', fingerprint: null, at: null },
+    },
     // Умолчания приходят из каталога; там, где каталог говорит
     // `documented`, провенанс сразу «aus Dokument» со ссылкой на файл —
     // пункт 8 сценария: найденное в документах предвыбрано, но переключаемо.
@@ -310,13 +474,181 @@ function defaultOptionConfig(): OptionConfig {
   }
 }
 
+const FIXTURE_BUILDING_IDS = [fx.id, fxB.id] as const
+
+function record(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function hasOnlyKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  const actual = Object.keys(value).sort()
+  const expected = [...keys].sort()
+  return actual.length === expected.length
+    && actual.every((key, index) => key === expected[index])
+}
+
+function isStringRecord(value: unknown, requiredKeys?: readonly string[]): boolean {
+  if (!record(value) || !Object.values(value).every((item) => typeof item === 'string')) {
+    return false
+  }
+  return requiredKeys ? hasOnlyKeys(value, requiredKeys) : true
+}
+
+function isChoiceSet(value: unknown): boolean {
+  if (!record(value)) return false
+  const groupIds = ALL_OPTION_GROUPS.map((group) => group.id)
+  if (!hasOnlyKeys(value, groupIds)) return false
+  return ALL_OPTION_GROUPS.every((group) => group.choices.some(
+    (choice) => choice.value === value[group.id],
+  ))
+}
+
+function isFieldState(value: unknown): value is FieldState {
+  if (!record(value) || !Decimal.isDecimal(value.value)) return false
+  return value.provenance === 'aus Dokument'
+    || value.provenance === 'vom Kunden bestätigt'
+    || value.provenance === 'abgeleitet'
+    || value.provenance === 'manuell erfasst'
+}
+
+function isConfigurationState(value: unknown): value is BuildingConfigurationState {
+  if (!record(value)
+    || value.status !== 'draft' && value.status !== 'completed' && value.status !== 'confirmed'
+    || value.fingerprint !== null && typeof value.fingerprint !== 'string'
+    || value.at !== null && typeof value.at !== 'string') return false
+  return value.status !== 'confirmed' || typeof value.fingerprint === 'string'
+}
+
+function isPersistedProposalConfig(value: unknown): value is PersistedProposalConfig {
+  if (!record(value) || !hasOnlyKeys(value, PERSISTED_CONFIG_KEYS)) return false
+  if (typeof value.activeBuildingId !== 'string'
+    || !FIXTURE_BUILDING_IDS.includes(value.activeBuildingId as typeof FIXTURE_BUILDING_IDS[number])) {
+    return false
+  }
+
+  if (!record(value.included) || !hasOnlyKeys(value.included, FIXTURE_BUILDING_IDS)
+    || !Object.values(value.included).every((item) => typeof item === 'boolean')
+    || !Object.values(value.included).some(Boolean)) return false
+
+  const reviews = value.buildingReviews
+  if (!record(reviews)
+    || !hasOnlyKeys(reviews, FIXTURE_BUILDING_IDS)
+    || !FIXTURE_BUILDING_IDS.every((id) => {
+      const review = reviews[id]
+      return isBuildingReview(review) && review.id === id && toBuildingInput(review) !== null
+    })) return false
+
+  if (!record(value.buildingConfirmation)
+    || !Object.entries(value.buildingConfirmation).every(([id, confirmation]) =>
+      FIXTURE_BUILDING_IDS.includes(id as typeof FIXTURE_BUILDING_IDS[number])
+      && record(confirmation)
+      && typeof confirmation.fingerprint === 'string'
+      && typeof confirmation.at === 'string')) return false
+
+  if (value.configurationMode !== 'SHARED' && value.configurationMode !== 'PER_BUILDING') {
+    return false
+  }
+  if (!record(value.sharedConfiguration)
+    || !isChoiceSet(value.sharedConfiguration.choices)
+    || !isStringRecord(
+      value.sharedConfiguration.provenance,
+      ALL_OPTION_GROUPS.map((group) => group.id),
+    )) return false
+
+  const kg300 = value.kg300
+  if (!record(kg300) || !hasOnlyKeys(kg300, FIXTURE_BUILDING_IDS)
+    || !FIXTURE_BUILDING_IDS.every((id) => isChoiceSet(kg300[id]))) return false
+  const kg300Provenance = value.kg300Provenance
+  if (!record(kg300Provenance)
+    || !hasOnlyKeys(kg300Provenance, FIXTURE_BUILDING_IDS)
+    || !FIXTURE_BUILDING_IDS.every((id) => isStringRecord(
+      kg300Provenance[id], ALL_OPTION_GROUPS.map((group) => group.id),
+    ))) return false
+
+  const buildingConfigState = value.buildingConfigState
+  if (!record(buildingConfigState)
+    || !hasOnlyKeys(buildingConfigState, FIXTURE_BUILDING_IDS)
+    || !FIXTURE_BUILDING_IDS.every((id) => isConfigurationState(
+      buildingConfigState[id],
+    ))) return false
+
+  return record(value.fields)
+    && hasOnlyKeys(value.fields, ['wfl', 'bgfOber', 'we'])
+    && isFieldState(value.fields.wfl)
+    && isFieldState(value.fields.bgfOber)
+    && isFieldState(value.fields.we)
+}
+
+function isPersistedProposalPayload(value: unknown): value is PersistedProposalPayload {
+  if (!record(value)
+    || !hasOnlyKeys(value, [
+      'active', 'options', 'activeOptionId', 'optionSeq', 'optionConfigs',
+      'buildingConflicts',
+    ])
+    || !isPersistedProposalConfig(value.active)
+    || !Array.isArray(value.options)
+    || !Number.isInteger(value.optionSeq) || (value.optionSeq as number) < 0
+    || !record(value.optionConfigs)
+    || !record(value.buildingConflicts)) return false
+
+  const options = value.options
+  if (!options.every((option) => record(option)
+    && hasOnlyKeys(option, ['id', 'name'])
+    && typeof option.id === 'string'
+    && typeof option.name === 'string')) return false
+  const ids = options.map((option) => (option as { id: string }).id)
+  if (new Set(ids).size !== ids.length) return false
+  if (value.activeOptionId !== null
+    && (typeof value.activeOptionId !== 'string' || !ids.includes(value.activeOptionId))) {
+    return false
+  }
+  const expectedStored = ids.filter((id) => id !== value.activeOptionId).sort()
+  if (!hasOnlyKeys(value.optionConfigs, expectedStored)
+    || !Object.values(value.optionConfigs).every(isPersistedProposalConfig)) return false
+  const maxOptionSeq = ids.reduce((max, id) => {
+    const match = /^OPT-(\d+)$/.exec(id)
+    return match ? Math.max(max, Number(match[1])) : max
+  }, 0)
+  if ((value.optionSeq as number) < maxOptionSeq) return false
+
+  if (!Object.hasOwn(value.buildingConflicts, fxConflict.id)) return false
+  return Object.entries(value.buildingConflicts).every(([id, conflict]) =>
+    isBuildingConflict(conflict)
+    && conflict.id === id
+    && FIXTURE_BUILDING_IDS.includes(
+      conflict.buildingId as typeof FIXTURE_BUILDING_IDS[number],
+    ))
+}
+
+function restoredOptionConfig(persisted: PersistedProposalConfig): OptionConfig {
+  const base = defaultOptionConfig()
+  const buildings = Object.fromEntries(FIXTURE_BUILDING_IDS.map((id) => {
+    const building = toBuildingInput(persisted.buildingReviews[id]!)
+    if (!building) throw new Error(`persisted building ${id} is incomplete`)
+    return [id, building]
+  })) as Record<string, ProjectBuilding>
+  return { ...base, ...persisted, buildings }
+}
+
+function capturePersistedProposal(state: Store): PersistedProposalPayload {
+  return {
+    active: capturePersistedConfig(state),
+    options: state.options,
+    activeOptionId: state.activeOptionId,
+    optionSeq: state.optionSeq,
+    optionConfigs: Object.fromEntries(Object.entries(state.optionConfigs)
+      .map(([id, config]) => [id, capturePersistedConfig(config)])),
+    buildingConflicts: state.buildingConflicts,
+  }
+}
+
 export type Projection = {
   result: BuildingResult
   kgSplit: ReturnType<typeof kgSplit>
   /** Ведущая ставка сегмента (D-11 v2): у Haus A единственный сегмент Wohnen. */
   leadRate: Rate
   secondaryRateBgf: Rate
-  perUnit: Rate
+  perUnit: Rate | null
   duration: DurationDisplay
   aboveGround: ReturnType<typeof present>
   belowGround: ReturnType<typeof present>
@@ -339,8 +671,14 @@ type Store = {
    * на метрики, ни на срок.
    */
   included: Record<string, boolean>
-  /** Метрики и оси здания подтверждены — шаг вниз открыт. */
-  buildingConfirmed: Record<string, boolean>
+  /** Reviewed building facts remain separate from the pricing adapter. */
+  buildingReviews: Record<string, BuildingReview>
+  /** Confirmation is a fingerprint of the exact reviewed value set. */
+  buildingConfirmation: Record<string, BuildingConfirmation>
+  /** Shared and per-building choice sets coexist; mode selects the reader. */
+  configurationMode: ConfigurationMode
+  sharedConfiguration: SharedConfiguration
+  buildingConfigState: Record<string, BuildingConfigurationState>
   /**
    * Выбор опций KG 300 по каждому зданию. Опции принадлежат зданию, а не
    * предложению: у офиса нет балконов, и общий выбор был бы неверным для
@@ -372,7 +710,8 @@ type Store = {
   /** seq событий, уже отменённых: каждое отменяется не более одного раза. */
   undone: number[]
   esConfirmed: boolean
-  wflConflict: WflConflict
+  /** One conflict registry; the legacy WFL card is a derived view of it. */
+  buildingConflicts: Record<string, BuildingConflict>
   activeGrundrisse: 'V2' | 'V1'
   /** Regionalfaktor: выключен по умолчанию (D-15); состояние входит в снапшот. */
   regionalfaktorActive: boolean
@@ -513,12 +852,21 @@ type Store = {
 
   projection: () => Projection
   editField: (key: 'wfl' | 'bgfOber' | 'we', value: Decimal, confirmed: boolean) => void
+  setBuildingFactOverride: <K extends BuildingFactKey>(
+    id: string, key: K, value: BuildingFactValueMap[K], actor?: string,
+  ) => void
+  clearBuildingFactOverride: (id: string, key: BuildingFactKey) => void
   setEnergiestandard: (v: BuildingInput['energiestandard']) => void
   setUntergeschoss: (v: BuildingInput['untergeschoss']) => void
   setCoverage: (g: CostGroup, s: CoverageState) => void
   confirmGebaeudeklasse: () => void
   confirmEnergiestandardAnswer: () => void
   resolveWflConflict: (candidate: 'document' | 'customer') => void
+  resolveBuildingConflict: (
+    conflictId: string,
+    resolution: { decision: 'selectCandidate'; candidateId: string }
+      | { decision: 'defer' },
+  ) => void
   activateGrundrisse: (v: 'V2' | 'V1') => void
   toggleRegionalfaktor: () => void
   /**
@@ -576,6 +924,10 @@ type Store = {
   /** Включить/исключить здание из предложения — событие журнала. */
   toggleBuildingIncluded: (id: string) => void
   confirmBuilding: (id: string) => void
+  setConfigurationMode: (mode: ConfigurationMode) => void
+  markBuildingConfigurationCompleted: (id: string) => void
+  confirmBuildingConfiguration: (id: string) => void
+  buildingConfigurationStatus: (id: string) => BuildingConfigurationState['status']
   /** Выбрать опцию KG 300 у активного здания — событие журнала с дельтой. */
   setKg300: (groupId: string, value: string) => void
   setKg700Mode: (m: 'vereinfacht' | 'hoaiAho') => void
@@ -583,6 +935,7 @@ type Store = {
   toggleRisiko: (id: string) => void
   /** Все включённые здания подтверждены — шаг вниз к сервисам открыт. */
   allBuildingsConfirmed: () => boolean
+  canBeginConfiguration: () => boolean
   setUiLanguage: (l: 'de' | 'en') => void
   setDensity: (d: 'komfortabel' | 'kompakt') => void
   /** Экран конвейера — konfigurator/vergleich/export/… (UI-состояние). */
@@ -648,6 +1001,97 @@ function includedBuildings(
   return Object.values(s.buildings).filter((b) => s.included[b.id])
 }
 
+export function includedBuildingIds(
+  s: Pick<Store, 'buildings' | 'included'>,
+): string[] {
+  return Object.values(s.buildings).filter((building) => s.included[building.id])
+    .map((building) => building.id)
+}
+
+/** The only authoritative read path for per-building option choices. */
+export function choicesFor(
+  s: Pick<Store, 'configurationMode' | 'sharedConfiguration' | 'kg300' | 'included'>,
+  buildingId: string,
+): Record<string, string> {
+  return s.configurationMode === 'SHARED' && s.included[buildingId]
+    ? s.sharedConfiguration.choices
+    : s.kg300[buildingId] ?? {}
+}
+
+export function choiceProvenanceFor(
+  s: Pick<Store, 'configurationMode' | 'sharedConfiguration'
+    | 'kg300Provenance' | 'included'>,
+  buildingId: string,
+): Record<string, string> {
+  return s.configurationMode === 'SHARED' && s.included[buildingId]
+    ? s.sharedConfiguration.provenance
+    : s.kg300Provenance[buildingId] ?? {}
+}
+
+function configurationFingerprint(
+  s: Pick<Store, 'configurationMode' | 'sharedConfiguration' | 'kg300' | 'included'>,
+  buildingId: string,
+): string {
+  return JSON.stringify({
+    mode: s.configurationMode,
+    choices: Object.entries(choicesFor(s, buildingId))
+      .sort(([a], [b]) => a.localeCompare(b)),
+  })
+}
+
+export function configurationStatusFor(
+  s: Pick<Store, 'configurationMode' | 'sharedConfiguration' | 'kg300'
+    | 'included' | 'buildingConfigState'>,
+  buildingId: string,
+): BuildingConfigurationState['status'] {
+  const state = s.buildingConfigState[buildingId]
+  if (!state) return 'draft'
+  if (state.status !== 'confirmed') return state.status
+  return state.fingerprint === configurationFingerprint(s, buildingId)
+    ? 'confirmed' : 'completed'
+}
+
+export function buildingConfirmed(
+  s: Pick<Store, 'buildingReviews' | 'buildingConfirmation' | 'buildingConflicts'>,
+  buildingId: string,
+): boolean {
+  return reviewIsBuildingConfirmed(
+    s.buildingReviews[buildingId],
+    s.buildingConfirmation[buildingId],
+    s.buildingConflicts,
+  )
+}
+
+export function canBeginConfiguration(
+  s: Pick<Store, 'buildings' | 'included' | 'buildingReviews'
+    | 'buildingConfirmation' | 'buildingConflicts'>,
+): boolean {
+  const ids = includedBuildingIds(s)
+  return ids.length > 0 && ids.every((id) => buildingConfirmed(s, id))
+}
+
+/** Existing S2 consumers read this view; conflict authority stays in the registry. */
+export function wflConflict(
+  s: Pick<Store, 'buildingConflicts'>,
+): WflConflict {
+  const conflict = s.buildingConflicts[fxConflict.id]
+  if (!conflict) throw new Error(`missing fixture conflict ${fxConflict.id}`)
+  const state = deriveConflictState(conflict)
+  const fallback = conflict.candidates.find((candidate) => candidate.origin === 'document')
+    ?? conflict.candidates[0]
+  const selectedId = state.selectedCandidateId ?? fallback?.id ?? null
+  return {
+    id: conflict.id,
+    state: state.status,
+    candidates: conflict.candidates.map((candidate) => ({
+      origin: candidate.origin === 'customer' ? 'customer' : 'document',
+      value: candidate.value,
+      selectionStatus: candidate.id === selectedId ? 'authoritative' : 'alternative',
+      source: candidate.source.reference ?? 'unknown source',
+    })),
+  }
+}
+
 /**
  * Здания, попадающие в ПОКАЗ. Охват сужает показ, но не состав оффера:
  * здание, выведенное из охвата, остаётся проданным — просто на него
@@ -694,14 +1138,14 @@ export function configForOption(
  * след посещения. Глава 7 не проработана и завершиться не может.
  */
 export function chapterDone(
-  s: Pick<Store, 'buildings' | 'included' | 'buildingConfirmed' | 'coverage'
-    | 'besuchteKapitel'>,
+  s: Pick<Store, 'buildings' | 'included' | 'buildingReviews'
+    | 'buildingConfirmation' | 'buildingConflicts' | 'coverage' | 'besuchteKapitel'>,
   n: number,
 ): boolean {
   const besucht = s.besuchteKapitel.includes(n)
   switch (n) {
     case 1:
-      return includedBuildings(s).every((b) => s.buildingConfirmed[b.id] === true)
+      return canBeginConfiguration(s)
     case 3:
       // Leistungsabgrenzung решена, когда ни одна решаемая группа не
       // осталась `unknown`: непринятое решение — не пройденный шаг.
@@ -767,6 +1211,18 @@ function withChange<S extends Parameters<typeof computeProjection>[0] & {
     case 'kg700':
       return { ...s, kg700Mode: change.value }
     case 'kg300':
+      if (s.configurationMode === 'SHARED' && s.included[change.buildingId]) {
+        return {
+          ...s,
+          sharedConfiguration: {
+            ...s.sharedConfiguration,
+            choices: {
+              ...s.sharedConfiguration.choices,
+              [change.groupId]: change.value,
+            },
+          },
+        }
+      }
       return {
         ...s,
         kg300: {
@@ -782,7 +1238,8 @@ function withChange<S extends Parameters<typeof computeProjection>[0] & {
 function computeProjection(
   s: Pick<Store, 'buildings' | 'activeBuildingId' | 'included' | 'coverage'
     | 'fields' | 'esConfirmed' | 'regionalfaktorActive' | 'kg300' | 'kg700Mode'
-    | 'risikoAktiv' | 'scopeBuildingId' | 'discountPercent'>,
+    | 'risikoAktiv' | 'scopeBuildingId' | 'discountPercent'
+    | 'configurationMode' | 'sharedConfiguration' | 'buildingReviews'>,
 ): Projection {
   const CATALOG = withRegionalFactor(s.regionalfaktorActive)
   const list = scopedBuildings(s)
@@ -798,7 +1255,7 @@ function computeProjection(
   // §2.3, а опции в нём не названы. Приписать их туда значило бы
   // расширить базу фактора собственным решением.
   const optDrivers = list.flatMap((b, i) => [
-    ...optionDrivers(b, s.kg300[b.id] ?? {}, bgfSOf(b.id)),
+    ...optionDrivers(b, choicesFor(s, b.id), bgfSOf(b.id)),
     // Группы затрат, включённые решением пользователя: они не входят в
     // базовую ставку, поэтому включение ДОБАВЛЯЕТ, а не перераспределяет.
     // База для групп с объявленной долей — блок Bauwerk ЭТОГО здания.
@@ -917,12 +1374,31 @@ function computeProjection(
     (s.fields.wfl.provenance === 'vom Kunden bestätigt' ? 5 : 0) +
     (s.esConfirmed ? 4 : 0)
 
+  const reviewedValues = <K extends 'wfl' | 'nuf' | 'units'>(key: K) =>
+    list.map((building) => effectiveFactValue(s.buildingReviews[building.id]!.facts[key]))
+  const completeSum = (values: Array<Decimal | null>): Decimal | null =>
+    values.every((value): value is Decimal => value !== null)
+      ? values.reduce((sum, value) => sum.plus(value), new Decimal(0))
+      : null
+  const wfl = completeSum(reviewedValues('wfl'))
+  const nuf = completeSum(reviewedValues('nuf'))
+  const units = completeSum(reviewedValues('units'))
+  const bgf = list.reduce((sum, building) => sum.plus(bgfAboveGround(building)), new Decimal(0))
+  // A mixed complex has no single segment metric. Its leading denominator
+  // is therefore BGF above ground (rule 39), while a homogeneous proposal
+  // keeps the applicable segment denominator.
+  const leadRate = wfl !== null
+    ? rate(total, wfl, 'WFL_WOFLV')
+    : nuf !== null
+      ? rate(total, nuf, 'NUF_DIN277')
+      : rate(total, bgf, 'BGF_ABOVE_GROUND')
+
   return {
     result,
     kgSplit: kgSplit(bauwerkBlock, CATALOG.kgShares, splitMode),
-    leadRate: rate(total, s.fields.wfl.value, 'WFL_WOFLV'),
-    secondaryRateBgf: rate(total, s.fields.bgfOber.value, 'BGF_ABOVE_GROUND'),
-    perUnit: rate(total, s.fields.we.value, 'WOHNEINHEITEN'),
+    leadRate,
+    secondaryRateBgf: rate(total, bgf, 'BGF_ABOVE_GROUND'),
+    perUnit: units === null ? null : rate(total, units, 'WOHNEINHEITEN'),
     duration,
     aboveGround: present(noUg),
     belowGround: present(ug),
@@ -939,6 +1415,86 @@ function dc29Delta(d: Decimal): string {
   const sign = d.isNegative() ? '−' : '+'
   return `${pr.prefix ? pr.prefix + NNBSP : ''}${sign}${NNBSP}${pr.display}${NNBSP}€` +
     `${NNBSP}gegenüber DEMO-VV-0003`
+}
+
+function nextConflictSequence(conflicts: Record<string, BuildingConflict>): number {
+  return Object.values(conflicts).reduce(
+    (max, conflict) => conflict.resolutions.reduce(
+      (inner, resolution) => Math.max(inner, resolution.sequenceNumber), max,
+    ),
+    0,
+  ) + 1
+}
+
+function withConflictResolution(
+  conflicts: Record<string, BuildingConflict>,
+  conflictId: string,
+  decision: ConflictResolution['decision'],
+  selectedCandidateId: string | null,
+  actor: string,
+  reason: string,
+): Record<string, BuildingConflict> {
+  const conflict = conflicts[conflictId]
+  if (!conflict) throw new Error(`unknown building conflict ${conflictId}`)
+  const resolution: ConflictResolution = {
+    sequenceNumber: nextConflictSequence(conflicts),
+    decision,
+    selectedCandidateId,
+    actor,
+    at: new Date().toISOString(),
+    reason,
+  }
+  return {
+    ...conflicts,
+    [conflictId]: appendConflictResolution(conflict, resolution),
+  }
+}
+
+function reviewedBuildingPatch(
+  state: Store,
+  buildingId: string,
+  review: BuildingReview,
+): Pick<Store, 'buildingReviews' | 'buildings' | 'buildingConflicts'> {
+  const building = toBuildingInput(review)
+  if (!building) {
+    throw new Error(`reviewed building ${buildingId} lacks required pricing facts`)
+  }
+  return {
+    buildingReviews: { ...state.buildingReviews, [buildingId]: review },
+    buildings: { ...state.buildings, [buildingId]: building },
+    buildingConflicts: upsertDerivedConflicts(state.buildingConflicts, review),
+  }
+}
+
+type LegacyFieldKey = keyof Store['fields']
+
+function legacyFieldKey(key: BuildingFactKey): LegacyFieldKey | null {
+  if (key === 'wfl') return 'wfl'
+  if (key === 'units') return 'we'
+  if (key === 'bgfRAbove' || key === 'bgfSAbove' || key === 'bgfRSAbove') {
+    return 'bgfOber'
+  }
+  return null
+}
+
+function legacyFieldValue(review: BuildingReview, key: LegacyFieldKey): Decimal | null {
+  if (key === 'wfl') return effectiveFactValue(review.facts.wfl)
+  if (key === 'we') return effectiveFactValue(review.facts.units)
+  const input = toBuildingInput(review)
+  return input ? input.bgfRAbove.plus(input.bgfSAbove) : null
+}
+
+function sourceProvenance(review: BuildingReview, key: BuildingFactKey): Provenance {
+  if (review.facts[key].override) return 'manuell erfasst'
+  const source = review.facts[key].extracted.source.kind
+  if (source === 'customer') return 'vom Kunden bestätigt'
+  if (source === 'derived') return 'abgeleitet'
+  return 'aus Dokument'
+}
+
+function sameFactValue(left: unknown, right: unknown): boolean {
+  if (Decimal.isDecimal(left) && Decimal.isDecimal(right)) return left.equals(right)
+  return JSON.stringify(left) === JSON.stringify(right)
 }
 
 /**
@@ -991,6 +1547,53 @@ const store = createStore<Store>((set, get) => {
     })
   }
 
+  const commitReviewChange = (change: {
+    buildingId: string
+    previousReview: BuildingReview
+    nextReview: BuildingReview
+    label: string
+    kind: 'value.edited' | 'value.confirmed'
+    legacyKey: LegacyFieldKey | null
+    previousLegacy: FieldState | null
+    nextLegacy: FieldState | null
+  }) => {
+    const write = (
+      review: BuildingReview,
+      legacy: FieldState | null,
+    ) => set((state) => ({
+      ...reviewedBuildingPatch(state, change.buildingId, review),
+      ...(change.legacyKey && legacy
+        ? {
+            fields: {
+              ...state.fields,
+              [change.legacyKey]: legacy,
+            },
+          }
+        : {}),
+    }))
+
+    const before = get().projection().result.total.exact
+    write(change.nextReview, change.nextLegacy)
+    const after = get().projection().result.total.exact
+    const delta = after.minus(before)
+    apply({
+      kind: change.kind,
+      label: change.label,
+      deltaExact: delta.isZero() ? null : delta,
+      inverse: () => write(change.previousReview, change.previousLegacy),
+      forward: () => write(change.nextReview, change.nextLegacy),
+    })
+    if (!delta.isZero()) {
+      set({
+        activeDelta: {
+          label: change.label,
+          deltaExact: delta,
+          percent: delta.div(before).mul(100),
+        },
+      })
+    }
+  }
+
   return {
     // Конфигурация активной Option — плоские поля из единой фабрики.
     // До создания первой Option эти же поля обслуживают уровень
@@ -1003,18 +1606,7 @@ const store = createStore<Store>((set, get) => {
     printOpen: false,
     journal: [],
     undone: [],
-    wflConflict: {
-      id: fxConflict.id,
-      state: 'open',
-      candidates: fxConflict.candidates.map((c) => ({
-        origin: c.origin as 'document' | 'customer',
-        value: c.value,
-        selectionStatus: c.selectionStatus as 'authoritative' | 'alternative',
-        source: 'source' in c && typeof (c as { source?: unknown }).source === 'string'
-          ? (c as { source: string }).source
-          : 'VerificationEvent DEMO-VE-0002',
-      })),
-    },
+    buildingConflicts: INITIAL_BUILDING_CONFLICTS,
     activeGrundrisse: 'V2',
     snapshots: [],
     activeDelta: null,
@@ -1043,59 +1635,100 @@ const store = createStore<Store>((set, get) => {
 
     projection: () => computeProjection(get()),
 
+    setBuildingFactOverride: (id, key, value, actor = 'sales-user') => {
+      const s = get()
+      const previousReview = s.buildingReviews[id]
+      if (!previousReview) return
+      if (sameFactValue(effectiveFactValue(previousReview.facts[key]), value)
+        && previousReview.facts[key].override !== null) return
+
+      let nextReview = withFactOverride(
+        previousReview, key, value, actor, new Date().toISOString(),
+      )
+      if (key === 'buildingClass') {
+        nextReview = withEngineState(nextReview, { buildingClassConfirmed: false })
+      }
+      const fieldKey = id === s.activeBuildingId ? legacyFieldKey(key) : null
+      const nextValue = fieldKey ? legacyFieldValue(nextReview, fieldKey) : null
+      commitReviewChange({
+        buildingId: id,
+        previousReview,
+        nextReview,
+        kind: 'value.edited',
+        label: `Building ${id} · ${key} manually edited`,
+        legacyKey: fieldKey,
+        previousLegacy: fieldKey ? s.fields[fieldKey] : null,
+        nextLegacy: fieldKey && nextValue !== null
+          ? { value: nextValue, provenance: 'manuell erfasst' }
+          : null,
+      })
+    },
+
+    clearBuildingFactOverride: (id, key) => {
+      const s = get()
+      const previousReview = s.buildingReviews[id]
+      if (!previousReview?.facts[key].override) return
+      let nextReview = withoutFactOverride(previousReview, key)
+      if (key === 'buildingClass') {
+        nextReview = withEngineState(nextReview, { buildingClassConfirmed: false })
+      }
+      const fieldKey = id === s.activeBuildingId ? legacyFieldKey(key) : null
+      const nextValue = fieldKey ? legacyFieldValue(nextReview, fieldKey) : null
+      commitReviewChange({
+        buildingId: id,
+        previousReview,
+        nextReview,
+        kind: 'value.edited',
+        label: `Building ${id} · ${key} restored from source`,
+        legacyKey: fieldKey,
+        previousLegacy: fieldKey ? s.fields[fieldKey] : null,
+        nextLegacy: fieldKey && nextValue !== null
+          ? { value: nextValue, provenance: sourceProvenance(nextReview, key) }
+          : null,
+      })
+    },
+
     editField: (key, value, confirmed) => {
-      const before = get().projection().result.total.exact
-      const prev = get().fields[key]
+      const s = get()
+      const previousLegacy = s.fields[key]
       // ЦЕЛЬ события фиксируется в момент события. Прежде `inverse` снова
       // спрашивал `activeBuildingId` — уже во время отката, — и правка,
       // сделанная в здании A, откатывалась в здание B, если между правкой и
       // отменой продавец переключил активное (сплошное ревью 26, находка
       // 12). Событие обязано знать свою цель, а не искать её при
       // воспроизведении.
-      const target = get().activeBuildingId
-      const writeArea = (v: Decimal) => (s: Store) => (key === 'bgfOber'
-        ? { ...s.buildings, [target]: { ...s.buildings[target]!, bgfRAbove: v } }
-        : s.buildings)
-      set((s) => ({
-        fields: {
-          ...s.fields,
-          [key]: {
-            value,
-            provenance: confirmed ? 'vom Kunden bestätigt' : 'manuell erfasst',
-          },
-        },
-        buildings: writeArea(value)(s),
-      }))
-      const after = get().projection().result.total.exact
-      const delta = after.minus(before)
-      apply({
-        kind: confirmed ? 'value.confirmed' : 'value.edited',
-        label: `${LABELS[key]} ${prev.value.toFixed(2)} → ${value.toFixed(2)}`,
-        deltaExact: delta.isZero() ? null : delta,
-        inverse: () => set((s) => ({
-          fields: { ...s.fields, [key]: prev },
-          buildings: writeArea(prev.value)(s),
-        })),
-        forward: () => set((s) => ({
-          fields: {
-            ...s.fields,
-            [key]: {
-              value,
-              provenance: confirmed ? 'vom Kunden bestätigt' : 'manuell erfasst',
-            },
-          },
-          buildings: writeArea(value)(s),
-        })),
-      })
-      if (!delta.isZero()) {
-        set({
-          activeDelta: {
-            label: `${LABELS[key]} geändert`,
-            deltaExact: delta,
-            percent: delta.div(before).mul(100),
-          },
-        })
+      const target = s.activeBuildingId
+      const previousReview = s.buildingReviews[target]
+      if (!previousReview) return
+      const at = new Date().toISOString()
+      let nextReview = previousReview
+      if (key === 'wfl') {
+        nextReview = withFactOverride(previousReview, 'wfl', value, 'sales-user', at)
+      } else if (key === 'we') {
+        nextReview = withFactOverride(previousReview, 'units', value, 'sales-user', at)
+      } else {
+        const sArea = effectiveFactValue(previousReview.facts.bgfSAbove)
+        if (sArea === null) throw new Error(`building ${target} has unknown BGF S above`)
+        nextReview = withFactOverride(
+          previousReview, 'bgfRAbove', value, 'sales-user', at,
+        )
+        nextReview = withFactOverride(
+          nextReview, 'bgfRSAbove', value.plus(sArea), 'sales-user', at,
+        )
       }
+      commitReviewChange({
+        buildingId: target,
+        previousReview,
+        nextReview,
+        kind: confirmed ? 'value.confirmed' : 'value.edited',
+        label: `${LABELS[key]} ${previousLegacy.value.toFixed(2)} → ${value.toFixed(2)}`,
+        legacyKey: key,
+        previousLegacy,
+        nextLegacy: {
+          value,
+          provenance: confirmed ? 'vom Kunden bestätigt' : 'manuell erfasst',
+        },
+      })
     },
 
     setEnergiestandard: (v) => {
@@ -1105,15 +1738,22 @@ const store = createStore<Store>((set, get) => {
       const before = s.projection().result.total.exact
       const prev = b.energiestandard
       const id = s.activeBuildingId
-      set({ buildings: { ...s.buildings, [id]: { ...b, energiestandard: v } } })
+      const write = (value: BuildingInput['energiestandard']) => set((state) => {
+        const review = state.buildingReviews[id]
+        if (!review) return {}
+        return reviewedBuildingPatch(
+          state, id, withEngineState(review, { energyStandard: value }),
+        )
+      })
+      write(v)
       const after = get().projection().result.total.exact
       const delta = after.minus(before)
       apply({
         kind: 'option.selected',
         label: `Energiestandard ${prev.replace('_', ' ')} → ${v.replace('_', ' ')}`,
         deltaExact: delta,
-        inverse: () => set((st) => ({ buildings: { ...st.buildings, [id]: { ...st.buildings[id]!, energiestandard: prev } } })),
-        forward: () => set((st) => ({ buildings: { ...st.buildings, [id]: { ...st.buildings[id]!, energiestandard: v } } })),
+        inverse: () => write(prev),
+        forward: () => write(v),
       })
       // Клик — фиксация: превью гаснет, начинается волна дельты (DC-28).
       set({
@@ -1133,15 +1773,22 @@ const store = createStore<Store>((set, get) => {
       const before = s.projection().result.total.exact
       const prev = b.untergeschoss
       const id = s.activeBuildingId
-      set({ buildings: { ...s.buildings, [id]: { ...b, untergeschoss: v } } })
+      const write = (value: BuildingInput['untergeschoss']) => set((state) => {
+        const review = state.buildingReviews[id]
+        if (!review) return {}
+        return reviewedBuildingPatch(
+          state, id, withEngineState(review, { undergroundScope: value }),
+        )
+      })
+      write(v)
       const after = get().projection().result.total.exact
       const delta = after.minus(before)
       apply({
         kind: 'option.selected',
         label: `Untergeschoss ${LABEL_UG[prev]} → ${LABEL_UG[v]}`,
         deltaExact: delta,
-        inverse: () => set((st) => ({ buildings: { ...st.buildings, [id]: { ...st.buildings[id]!, untergeschoss: prev } } })),
-        forward: () => set((st) => ({ buildings: { ...st.buildings, [id]: { ...st.buildings[id]!, untergeschoss: v } } })),
+        inverse: () => write(prev),
+        forward: () => write(v),
       })
       set({
         preview: null,
@@ -1172,13 +1819,20 @@ const store = createStore<Store>((set, get) => {
       const b = activeBuilding(s)
       const id = s.activeBuildingId
       if (b.gebaeudeklasse.confirmed) return
-      set({ buildings: { ...s.buildings, [id]: { ...b, gebaeudeklasse: { ...b.gebaeudeklasse, confirmed: true } } } })
+      const write = (confirmed: boolean) => set((state) => {
+        const review = state.buildingReviews[id]
+        if (!review) return {}
+        return reviewedBuildingPatch(
+          state, id, withEngineState(review, { buildingClassConfirmed: confirmed }),
+        )
+      })
+      write(true)
       apply({
         kind: 'value.confirmed',
         label: 'Gebäudeklasse nach MBO §2 bestätigt',
         deltaExact: null,
-        inverse: () => set((x) => ({ buildings: { ...x.buildings, [id]: { ...x.buildings[id]!, gebaeudeklasse: { ...x.buildings[id]!.gebaeudeklasse, confirmed: false } } } })),
-        forward: () => set((x) => ({ buildings: { ...x.buildings, [id]: { ...x.buildings[id]!, gebaeudeklasse: { ...x.buildings[id]!.gebaeudeklasse, confirmed: true } } } })),
+        inverse: () => write(false),
+        forward: () => write(true),
       })
     },
 
@@ -1194,53 +1848,93 @@ const store = createStore<Store>((set, get) => {
       })
     },
 
+    resolveBuildingConflict: (conflictId, resolution) => {
+      const s = get()
+      const conflict = s.buildingConflicts[conflictId]
+      if (!conflict) return
+      if (resolution.decision === 'selectCandidate'
+        && !conflict.candidates.some((item) => item.id === resolution.candidateId)) {
+        return
+      }
+      const selectedId = resolution.decision === 'selectCandidate'
+        ? resolution.candidateId : null
+      const write = (
+        decision: ConflictResolution['decision'],
+        candidateId: string | null,
+        reason: string,
+      ) => set((state) => ({
+        buildingConflicts: withConflictResolution(
+          state.buildingConflicts,
+          conflictId,
+          decision,
+          candidateId,
+          'sales-user',
+          reason,
+        ),
+      }))
+      write(resolution.decision, selectedId, 'building fact review')
+      apply({
+        kind: 'conflict.resolved',
+        label: resolution.decision === 'defer'
+          ? `Building conflict ${conflictId} deferred`
+          : `Building conflict ${conflictId} resolved`,
+        deltaExact: null,
+        inverse: () => write('defer', null, 'undo'),
+        forward: () => write(resolution.decision, selectedId, 'redo'),
+      })
+    },
+
     /**
-     * Разрешение конфликта — ОДНО событие, атомарно обратимое.
-     *
-     * Первая редакция делала два шага (правка поля + закрытие флага) с двумя
-     * событиями, и inverse второго возвращал только флаг: после отмены
-     * конфликт снова стоял открытым, а значение оставалось клиентским —
-     * состояние, которого никогда не существовало. Отмена обязана
-     * восстанавливать ВСЁ, что событие меняло.
+     * The legacy WFL action is a thin adapter over the building registry.
+     * Its inverse appends `defer`; conflict history is never deleted.
      */
     resolveWflConflict: (candidate) => {
       const s = get()
-      if (s.wflConflict.state !== 'open') return
+      const view = wflConflict(s)
+      if (view.state !== 'open') return
+      const conflict = s.buildingConflicts[fxConflict.id]!
+      const selected = conflict.candidates.find((item) => item.origin === candidate)
+      if (!selected) return
       const prevField = s.fields.wfl
-      const prevConflict = s.wflConflict
-
-      const nextCandidates: ConflictCandidate[] = s.wflConflict.candidates.map((c) => ({
-        ...c,
-        selectionStatus:
-          (candidate === 'customer') === (c.origin === 'customer')
-            ? 'authoritative' : 'alternative',
-      }))
-      const chosen = nextCandidates.find((c) => c.selectionStatus === 'authoritative')!
-
-      set((x) => ({
-        fields: {
-          ...x.fields,
-          wfl: { value: D(chosen.value), provenance: 'vom Kunden bestätigt' },
-        },
-        wflConflict: { ...x.wflConflict, state: 'resolved', candidates: nextCandidates },
-      }))
+      const buildingId = conflict.buildingId
+      const prevReview = s.buildingReviews[buildingId]!
+      const selectedValue = D(selected.value)
+      const selectedReview = candidate === 'customer'
+        ? withFactOverride(
+            prevReview, 'wfl', selectedValue, 'customer confirmation',
+            new Date().toISOString(),
+          )
+        : withoutFactOverride(prevReview, 'wfl')
+      const write = (resolved: boolean) => set((state) => {
+        const review = resolved ? selectedReview : prevReview
+        const patch = reviewedBuildingPatch(state, buildingId, review)
+        return {
+          ...patch,
+          buildingConflicts: withConflictResolution(
+            patch.buildingConflicts,
+            conflict.id,
+            resolved ? 'selectCandidate' : 'defer',
+            resolved ? selected.id : null,
+            'sales-user',
+            resolved ? 'WFL candidate selected' : 'undo',
+          ),
+          fields: {
+            ...state.fields,
+            wfl: resolved
+              ? { value: selectedValue, provenance: 'vom Kunden bestätigt' }
+              : prevField,
+          },
+        }
+      })
+      write(true)
       apply({
         kind: 'conflict.resolved',
         label: candidate === 'customer'
           ? `WFL-Konflikt: Kundenwert 1.560,00${NNBSP}m² übernommen`
           : `WFL-Konflikt: Dokumentwert 1.500,00${NNBSP}m² beibehalten`,
         deltaExact: null,
-        inverse: () => set((x) => ({
-          fields: { ...x.fields, wfl: prevField },
-          wflConflict: prevConflict,
-        })),
-        forward: () => set((x) => ({
-          fields: {
-            ...x.fields,
-            wfl: { value: D(chosen.value), provenance: 'vom Kunden bestätigt' },
-          },
-          wflConflict: { ...x.wflConflict, state: 'resolved', candidates: nextCandidates },
-        })),
+        inverse: () => write(false),
+        forward: () => write(true),
       })
     },
 
@@ -1502,7 +2196,7 @@ const store = createStore<Store>((set, get) => {
 
     canCreateOptions: () => {
       const s = get()
-      return s.wflConflict.state === 'resolved' && s.projectParamsConfirmed
+      return wflConflict(s).state === 'resolved' && s.projectParamsConfirmed
     },
 
     createOption: (name) => {
@@ -1526,12 +2220,29 @@ const store = createStore<Store>((set, get) => {
       // КАЖДОЙ новой Option: разрешённый конфликт WFL даёт подтверждённое
       // клиентом значение. Источник — само состояние конфликта, а не
       // копия числа: второй источник разошёлся бы при первом изменении.
-      if (s.wflConflict.state === 'resolved') {
-        const chosen = s.wflConflict.candidates
+      const inheritedWflConflict = wflConflict(s)
+      if (inheritedWflConflict.state === 'resolved') {
+        const chosen = inheritedWflConflict.candidates
           .find((c) => c.selectionStatus === 'authoritative')!
         fresh.fields = {
           ...fresh.fields,
           wfl: { value: D(chosen.value), provenance: 'vom Kunden bestätigt' },
+        }
+        const buildingId = fx.id
+        const baseReview = fresh.buildingReviews[buildingId]!
+        const inheritedReview = chosen.origin === 'customer'
+          ? withFactOverride(
+              baseReview, 'wfl', D(chosen.value), 'customer confirmation',
+              new Date().toISOString(),
+            )
+          : withoutFactOverride(baseReview, 'wfl')
+        fresh.buildingReviews = {
+          ...fresh.buildingReviews,
+          [buildingId]: inheritedReview,
+        }
+        fresh.buildings = {
+          ...fresh.buildings,
+          [buildingId]: requiredBuildingInput(inheritedReview),
         }
       }
       set({
@@ -1746,24 +2457,38 @@ const store = createStore<Store>((set, get) => {
     setKg300: (groupId, value) => {
       const s = get()
       const id = s.activeBuildingId
-      const prev = s.kg300[id]?.[groupId]
+      const shared = s.configurationMode === 'SHARED' && s.included[id]
+      const prev = choicesFor(s, id)[groupId]
       if (prev === value) return
       const group = ALL_OPTION_GROUPS.find((g) => g.id === groupId)
       if (!group) return
-      const prevProv = s.kg300Provenance[id]?.[groupId] ?? 'Standard'
+      const prevProv = choiceProvenanceFor(s, id)[groupId] ?? 'Standard'
+      const appliesTo = shared ? includedBuildingIds(s) : [id]
       const before = s.projection().result.total.exact
       // Сеттер опции KG 300 меняет ОПЦИЮ KG 300 — и ничего больше. Прежде он
       // молча ставил `kg700Mode: 'vereinfacht'`: выбор фасада отменял
       // выбранный метод расчёта Baunebenkosten, превью обещало одно, а итог
       // падал на другое, и `inverse` возвращал только фасад (сплошное ревью
       // 26, находка 10). Событие обязано хранить ровно то, что меняет.
-      const write = (v: string, prov: string) => set((x) => ({
-        kg300: { ...x.kg300, [id]: { ...x.kg300[id], [groupId]: v } },
-        kg300Provenance: {
-          ...x.kg300Provenance,
-          [id]: { ...x.kg300Provenance[id], [groupId]: prov },
-        },
-      }))
+      const write = (v: string, prov: string) => set((state) => shared
+        ? {
+            sharedConfiguration: {
+              choices: { ...state.sharedConfiguration.choices, [groupId]: v },
+              provenance: {
+                ...state.sharedConfiguration.provenance, [groupId]: prov,
+              },
+            },
+          }
+        : {
+            kg300: {
+              ...state.kg300,
+              [id]: { ...state.kg300[id], [groupId]: v },
+            },
+            kg300Provenance: {
+              ...state.kg300Provenance,
+              [id]: { ...state.kg300Provenance[id], [groupId]: prov },
+            },
+          })
       // Ручное переключение меняет провенанс: значение больше не «из
       // документа», даже если совпадает с ним. Иначе продавец не отличит
       // подтверждённое документом от собственного решения.
@@ -1773,7 +2498,7 @@ const store = createStore<Store>((set, get) => {
       const choice = group.choices.find((c) => c.value === value)
       apply({
         kind: 'option.selected',
-        label: `${group.label}: ${choice?.label ?? value} (${id})`,
+        label: `${group.label}: ${choice?.label ?? value} (${appliesTo.join(', ')})`,
         deltaExact: delta.isZero() ? null : delta,
         inverse: () => write(prev ?? group.default, prevProv),
         forward: () => write(value, 'manuell erfasst'),
@@ -1791,22 +2516,105 @@ const store = createStore<Store>((set, get) => {
 
     confirmBuilding: (id) => {
       const s = get()
-      if (s.buildingConfirmed[id]) return
-      set({ buildingConfirmed: { ...s.buildingConfirmed, [id]: true } })
+      const review = s.buildingReviews[id]
+      if (!review || buildingConfirmed(s, id)) return
+      const previous = s.buildingConfirmation[id]
+      const confirmed = {
+        fingerprint: buildingFingerprint(review, s.buildingConflicts),
+        at: new Date().toISOString(),
+      }
+      const write = (value: BuildingConfirmation | undefined) => set((state) => {
+        const next = { ...state.buildingConfirmation }
+        if (value) next[id] = value
+        else delete next[id]
+        return { buildingConfirmation: next }
+      })
+      write(confirmed)
       apply({
         kind: 'value.confirmed',
         label: `Gebäudedaten ${id} bestätigt`,
         deltaExact: null,
-        inverse: () => set((x) => ({ buildingConfirmed: { ...x.buildingConfirmed, [id]: false } })),
-        forward: () => set((x) => ({ buildingConfirmed: { ...x.buildingConfirmed, [id]: true } })),
+        inverse: () => write(previous),
+        forward: () => write(confirmed),
       })
     },
 
-    allBuildingsConfirmed: () => {
+    setConfigurationMode: (mode) => {
       const s = get()
-      const ids = Object.keys(s.buildings).filter((id) => s.included[id])
-      return ids.length > 0 && ids.every((id) => s.buildingConfirmed[id])
+      if (s.configurationMode === mode) return
+      const previous = s.configurationMode
+      const before = s.projection().result.total.exact
+      const write = (value: ConfigurationMode) => set({ configurationMode: value })
+      write(mode)
+      const after = get().projection().result.total.exact
+      const delta = after.minus(before)
+      const appliesTo = includedBuildingIds(s).join(', ')
+      apply({
+        kind: 'option.selected',
+        label: mode === 'SHARED'
+          ? `Shared configuration applies to ${appliesTo}`
+          : 'Per-building configuration enabled',
+        deltaExact: delta.isZero() ? null : delta,
+        inverse: () => write(previous),
+        forward: () => write(mode),
+      })
     },
+
+    markBuildingConfigurationCompleted: (id) => {
+      const s = get()
+      if (!s.buildings[id] || configurationStatusFor(s, id) === 'completed') return
+      const previous = s.buildingConfigState[id]
+      const completed: BuildingConfigurationState = {
+        status: 'completed', fingerprint: null, at: new Date().toISOString(),
+      }
+      const write = (value: BuildingConfigurationState | undefined) => set((state) => ({
+        buildingConfigState: {
+          ...state.buildingConfigState,
+          ...(value ? { [id]: value } : {}),
+        },
+      }))
+      write(completed)
+      apply({
+        kind: 'value.edited',
+        label: `Building configuration ${id} completed`,
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(completed),
+      })
+    },
+
+    confirmBuildingConfiguration: (id) => {
+      const s = get()
+      if (!s.buildings[id] || configurationStatusFor(s, id) === 'confirmed') return
+      const previous = s.buildingConfigState[id]
+      const confirmed: BuildingConfigurationState = {
+        status: 'confirmed',
+        fingerprint: configurationFingerprint(s, id),
+        at: new Date().toISOString(),
+      }
+      const write = (value: BuildingConfigurationState | undefined) => set((state) => ({
+        buildingConfigState: {
+          ...state.buildingConfigState,
+          ...(value ? { [id]: value } : {}),
+        },
+      }))
+      write(confirmed)
+      apply({
+        kind: 'value.confirmed',
+        label: `Building configuration ${id} confirmed`,
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(confirmed),
+      })
+    },
+
+    buildingConfigurationStatus: (id) => configurationStatusFor(get(), id),
+
+    allBuildingsConfirmed: () => {
+      return canBeginConfiguration(get())
+    },
+
+    canBeginConfiguration: () => canBeginConfiguration(get()),
 
     setUiLanguage: (l) => set({ uiLanguage: l }),
 
@@ -1821,6 +2629,74 @@ store.subscribe((s) => deepFreeze(s))
 
 // Снимок начального состояния — для тестового сброса.
 const INITIAL_SNAPSHOT = store.getState()
+
+let stopProposalPersistence: (() => void) | null = null
+let activeProposalStorage: StorageLike | null = null
+
+/**
+ * Restore is explicit and atomic. A valid payload adds exactly one
+ * non-undoable event; absent or rejected payloads leave the fixture intact.
+ */
+export function hydrateProposalState(storage = browserProposalStorage()): boolean {
+  if (!storage) return false
+  const loaded = loadPersistedProposal(storage, PROPOSAL_PROJECT_ID)
+  if (loaded.status !== 'loaded') return false
+  if (!isPersistedProposalPayload(loaded.payload)) {
+    clearPersistedProposal(storage, PROPOSAL_PROJECT_ID)
+    return false
+  }
+
+  const payload = loaded.payload
+  const active = restoredOptionConfig(payload.active)
+  const optionConfigs = Object.fromEntries(
+    Object.entries(payload.optionConfigs).map(([id, config]) => [
+      id, restoredOptionConfig(config),
+    ]),
+  )
+  store.setState((state) => ({
+    ...active,
+    options: payload.options,
+    activeOptionId: payload.activeOptionId,
+    optionSeq: payload.optionSeq,
+    optionConfigs,
+    buildingConflicts: payload.buildingConflicts,
+    level: payload.activeOptionId ? 'option' : 'liste',
+    opportunityId: payload.activeOptionId ? PROPOSAL_PROJECT_ID : null,
+    mode: 'intern',
+    ...NO_TRANSIENT,
+    journal: [...state.journal, {
+      seq: state.journal.length + 1,
+      kind: 'state.restored',
+      label: 'Proposal state restored',
+      deltaExact: null,
+      at: new Date().toISOString(),
+      optionId: null,
+    }],
+  }))
+  return true
+}
+
+/** Explicit startup hook; importing the store never touches localStorage. */
+export function initializeProposalPersistence(
+  storage = browserProposalStorage(),
+): boolean {
+  if (!storage) return false
+  if (stopProposalPersistence) return true
+  activeProposalStorage = storage
+  hydrateProposalState(storage)
+  let lastSerialized = serializeProposalPayload(
+    PROPOSAL_PROJECT_ID, capturePersistedProposal(store.getState()),
+  )
+  stopProposalPersistence = store.subscribe((state) => {
+    const payload = capturePersistedProposal(state)
+    const serialized = serializeProposalPayload(PROPOSAL_PROJECT_ID, payload)
+    if (serialized === lastSerialized) return
+    if (savePersistedProposal(storage, PROPOSAL_PROJECT_ID, payload)) {
+      lastSerialized = serialized
+    }
+  })
+  return true
+}
 
 type UseStore = (() => Store) & { getState: () => Store }
 
@@ -1846,6 +2722,16 @@ export function __resetStoreForTests(): void {
         'целиком обходит журнал событий (M-4)',
     )
   }
+  stopProposalPersistence?.()
+  stopProposalPersistence = null
+  if (activeProposalStorage) {
+    clearPersistedProposal(activeProposalStorage, PROPOSAL_PROJECT_ID)
+  }
+  const browserStorage = browserProposalStorage()
+  if (browserStorage && browserStorage !== activeProposalStorage) {
+    clearPersistedProposal(browserStorage, PROPOSAL_PROJECT_ID)
+  }
+  activeProposalStorage = null
   store.setState(INITIAL_SNAPSHOT, true)
 }
 
@@ -1862,7 +2748,8 @@ const LABELS: Record<'wfl' | 'bgfOber' | 'we', string> = {
  */
 function isCurrent(
   s: Pick<Store, 'buildings' | 'activeBuildingId' | 'coverage' | 'risikoAktiv'
-    | 'kg700Mode' | 'kg300'>,
+    | 'kg700Mode' | 'kg300' | 'configurationMode' | 'sharedConfiguration'
+    | 'included'>,
   change: PriceChange,
 ): boolean {
   switch (change.kind) {
@@ -1876,7 +2763,7 @@ function isCurrent(
     case 'kg700':
       return s.kg700Mode === change.value
     case 'kg300':
-      return (s.kg300[change.buildingId] ?? {})[change.groupId] === change.value
+      return choicesFor(s, change.buildingId)[change.groupId] === change.value
   }
 }
 

@@ -1,7 +1,7 @@
 import { Decimal } from 'decimal.js'
 import demo from '../fixtures/demo-0001.json'
 import derived from '../fixtures/derived-prototype.json'
-import { activeBuilding, useStore } from '../state/store'
+import { activeBuilding, buildingConfirmed, useStore } from '../state/store'
 import { NNBSP, formatDE } from '../engine/money'
 import { Button } from '../components/primitives'
 import { RadioCardGroup, SegmentedControl } from '../components/controls'
@@ -164,7 +164,7 @@ export function ChapterBuildings() {
                   className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle py-3">
                 <span className="text-body text-text-primary">
                   {buildingName(b.id)} · {tx(FORM_LABEL[b.gebaeudeform])}
-                  {s.buildingConfirmed[b.id] && (
+                  {buildingConfirmed(s, b.id) && (
                     <span className="a3-cap"> · <span aria-hidden="true">✓ </span>{tx('bestätigt')}</span>
                   )}
                 </span>
@@ -288,7 +288,7 @@ export function ChapterBuildings() {
 
       {/* 4 · Подтверждение здания — шаг вниз. */}
       <section className="a3-sheet">
-        {s.buildingConfirmed[active.id] ? (
+        {buildingConfirmed(s, active.id) ? (
           <p className="a3-cap">
             <span aria-hidden="true">✓ </span>
             Gebäudedaten {activeName} bestätigt.
