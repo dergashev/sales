@@ -19,6 +19,8 @@ export function EstimateUncertaintyBadge(props: EstimateUncertaintyBadgeProps) {
     )
   }
 
+  // Calculate from the exact total, never the already rounded display value
+  // (CALC-007). Both interval edges remain textual; the band is illustrative.
   const factor = new Decimal(props.pp).div(100)
   const low = present(props.totalExact.mul(new Decimal(1).minus(factor)))
   const high = present(props.totalExact.mul(new Decimal(1).plus(factor)))

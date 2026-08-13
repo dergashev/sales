@@ -76,9 +76,12 @@ They do not expose a competing reusable package API.
   consumes the canonical `DataStateKind` type.
 - The unused `HIT` Tailwind helper, `.circle` CSS helper, `ALL_SPECIMENS` alias
   and unused `@ds` resolver alias were removed.
+- Opportunity search and filter controls now consume the canonical `FormField`
+  and `SelectField` wrappers instead of repeating their label/control markup.
 - The hand-maintained `Grundlagen` footer was removed. It duplicated capability
   status outside the registry and had already become false by listing `Dialog`
-  as unbuilt after the canonical shared implementation shipped.
+  as unbuilt after the canonical shared implementation shipped. Its retired
+  translation key was removed from the generator source and generated maps.
 
 No snapshot, test, verifier or protection was removed or weakened.
 
@@ -150,11 +153,6 @@ not reusable visual semantics.
   primitive export remains in the TypeScript/Vite public surface.
 - The manual showcase exception retains its own HTML/CSS access paths as listed
   above.
-- The retired `qa.notBuilt` sentence remains as an unreferenced entry in
-  `src/i18n/generated.ts` because that file is regenerated from an immutable
-  historical translation-delivery table. It has no live consumer and cannot
-  render in either profile. Owner: i18n generation; follow-up: add an approved
-  retired-key policy before pruning generated historical entries.
 - Documentation aliases DC-18 and DC-36 remain contract metadata rather than
   import aliases and are outside runtime cleanup.
 

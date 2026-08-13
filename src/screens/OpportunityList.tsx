@@ -3,6 +3,7 @@ import opportunities from '../fixtures/opportunities.json'
 import { useStore } from '../state/store'
 import { NNBSP } from '../engine/money'
 import { Button } from '../components/primitives'
+import { FormField, SelectField } from '../components/designSystem'
 import { useTx } from '../i18n'
 
 /**
@@ -84,20 +85,17 @@ export function OpportunityList() {
   const resetAll = () => { setQ(''); setCountry(ALL); setCity(ALL); setOwner(ALL) }
 
   const select = (id: string, label: string) => (
-    <div className="a3-form-field">
-      <label htmlFor={`opp-${id}`}>{label}</label>
-      <select
-        id={`opp-${id}`}
-        className="a3-select-field"
-        value={id === 'land' ? country : id === 'stadt' ? city : owner}
-        onChange={(e) => (id === 'land' ? setCountry(e.target.value)
-          : id === 'stadt' ? setCity(e.target.value) : setOwner(e.target.value))}
-      >
-        {(id === 'land' ? countries : id === 'stadt' ? cities : owners).map((v) => (
-          <option key={v} value={v}>{v === ALL ? tx('alle') : v}</option>
-        ))}
-      </select>
-    </div>
+    <SelectField
+      id={`opp-${id}`}
+      label={label}
+      value={id === 'land' ? country : id === 'stadt' ? city : owner}
+      onChange={(e) => (id === 'land' ? setCountry(e.target.value)
+        : id === 'stadt' ? setCity(e.target.value) : setOwner(e.target.value))}
+    >
+      {(id === 'land' ? countries : id === 'stadt' ? cities : owners).map((v) => (
+        <option key={v} value={v}>{v === ALL ? tx('alle') : v}</option>
+      ))}
+    </SelectField>
   )
 
   return (
@@ -111,8 +109,10 @@ export function OpportunityList() {
           одна рамка, один контракт. */}
       <div role="search" className="a3-project-search mt-5">
         <div className="a3-search-line">
-          <div className="a3-form-field">
-            <label htmlFor="opp-suche">{tx('Opportunities durchsuchen')}</label>
+          <FormField
+            htmlFor="opp-suche"
+            label={tx('Opportunities durchsuchen')}
+          >
             <input
               id="opp-suche"
               type="search"
@@ -120,7 +120,7 @@ export function OpportunityList() {
               onChange={(e) => setQ(e.target.value)}
               placeholder="Name, Stadt, Owner, ID"
             />
-          </div>
+          </FormField>
           {select('land', tx('Land'))}
           {select('stadt', tx('Stadt'))}
           {select('owner', tx('Opportunity Owner'))}
