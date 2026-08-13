@@ -38,10 +38,6 @@ export function Grundlagen({ fonts, cascade }: {
       <Diagnostics fonts={fonts} cascade={cascade} />
 
       <Gallery />
-
-      <p className="mt-7 border-t border-border-subtle pt-3 text-small text-text-muted">
-        {tx('Nicht gebaute Contract-Primitive (Tooltip, Dialog, Link, Slider, SaveStatus, KeyboardShortcuts) warten auf offene ADR-Token (docs/audit/adr-blocking.md §6a) — Werte zu erfinden ist untersagt (R-25).')}
-      </p>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useReducedMotion } from 'framer-motion'
 import { useTx } from '../i18n'
+import { useSemanticMotion } from '../design-system/motion'
 
 /**
  * DC-19 · ScheduleGantt — Bauzeit-Leiste со сдвинутыми стартами.
@@ -60,7 +60,7 @@ export function ScheduleGantt({ phases, finishISO, caption, provenance }: {
   provenance?: string
 }) {
   const tx = useTx()
-  const reduced = useReducedMotion()
+  const { reduced } = useSemanticMotion()
   // Сегменты въезжают транзишном системы (`.a3-gantt.a3-in`); при
   // prefers-reduced-motion класс ставится сразу — движения нет (правило 21).
   const [entered, setEntered] = useState(!!reduced)

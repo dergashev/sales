@@ -12,10 +12,7 @@
  * (API) делает причину ложной — и тогда падает не тест, а ревью Codex,
  * потому что причина перестала быть правдой. Это осознанная граница.
  */
-
-export type DataStateKey =
-  | 'loading' | 'empty' | 'partial' | 'ready' | 'error'
-  | 'stale' | 'permission'
+import type { DataStateKind } from '../components/DataStates'
 
 export type DataStateDecl =
   /** Ветка реализована — есть видимое состояние на экране. */
@@ -29,7 +26,7 @@ const SYNC_PROJECTION = 'проекция пересчитывается син�
   'событии журнала (M-4): устаревшее значение не существует по построению'
 
 export const DATA_STATE_DECLARATIONS: Record<
-  string, Record<DataStateKey, DataStateDecl>
+  string, Record<DataStateKind, DataStateDecl>
 > = {
   opportunityList: {
     loading: { status: 'notApplicable', reason: SYNC_FIXTURE },

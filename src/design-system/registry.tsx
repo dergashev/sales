@@ -7,8 +7,8 @@ import {
   NumericField,
   ProvenanceChip,
   Skeleton,
-  UncertaintyBadge,
 } from '../components/primitives'
+import { EstimateUncertaintyBadge } from '../components/EstimateUncertaintyBadge'
 import {
   DataStateBoundary,
   EmptyState,
@@ -463,9 +463,9 @@ export const COMPONENT_REGISTRY: Specimen[] = [
     render: () => <NumericField label="Demo-Fläche" value={new Decimal('1500')} unit="m²" provenance={{ kind: 'document', label: 'aus Dokument' }} onCommit={() => {}} />,
   },
   {
-    id: 'uncertainty', groupId: 'domain', title: 'UncertaintyBadge (DC-3)', contractId: 'DC-3',
+    id: 'uncertainty', groupId: 'domain', title: 'EstimateUncertaintyBadge (DC-3)', contractId: 'DC-3',
     requirements: ['R-08'], composedContracts: ['Badge'], interactionStates: ['default'], dataStates: ALL_DATA_STATES,
-    blockedVariants: [], maturity: 'alpha', evidence: 'Explicit ± interval in text.', render: () => <UncertaintyBadge pp={22} />,
+    blockedVariants: [], maturity: 'alpha', evidence: 'Explicit ± interval in text.', render: () => <EstimateUncertaintyBadge presentation="compact" pp={22} />,
   },
   {
     id: 'docanalysis', groupId: 'domain', title: 'DocumentAnalysis (DC-10)', contractId: 'DC-10',
@@ -491,5 +491,3 @@ export const SPECIMEN_GROUPS: SpecimenGroup[] = GROUP_META.map((group) => ({
   ...group,
   specimens: COMPONENT_REGISTRY.filter((specimen) => specimen.groupId === group.id),
 }))
-
-export const ALL_SPECIMENS = COMPONENT_REGISTRY

@@ -7,9 +7,10 @@ import { useTx } from '../i18n'
 import { copyFor } from '../i18n/internal-refs'
 import { NNBSP, formatDE, rateLabel } from '../engine/money'
 import {
-  Button, NumericField, ProvenanceChip, UncertaintyBadge,
+  Button, NumericField, ProvenanceChip,
   type ProvenancePresentation,
 } from '../components/primitives'
+import { EstimateUncertaintyBadge } from '../components/EstimateUncertaintyBadge'
 import { DocumentAnalysis } from '../components/DocumentAnalysis'
 import { PageHeader } from '../components/designSystem'
 
@@ -362,7 +363,7 @@ function P3OffeneFragen() {
         {open.length > 0
           ? <>Diese {open.length} Fragen reduzieren die Schätzunsicherheit von
               ±{NNBSP}{p.uncertaintyPp}{NNBSP}% auf ±{NNBSP}{target}{NNBSP}%</>
-          : <>{tx('Alle Fragen beantwortet ·')}<UncertaintyBadge pp={p.uncertaintyPp} /></>}
+          : <>{tx('Alle Fragen beantwortet ·')}<EstimateUncertaintyBadge presentation="compact" pp={p.uncertaintyPp} /></>}
       </h2>
       <p className="a3-cap mt-1">{tx('Nach Wirkung sortiert; Verengung in Prozentpunkten. Eine Option zu wählen verengt nichts — nur die Bestätigung des Kunden (D-19).')}</p>
 

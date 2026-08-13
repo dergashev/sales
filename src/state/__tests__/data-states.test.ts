@@ -1,14 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import {
-  DATA_STATE_DECLARATIONS, type DataStateKey,
-} from '../data-states'
+import { DATA_STATE_DECLARATIONS } from '../data-states'
+import type { DataStateKind } from '../../components/DataStates'
 
 /**
  * Правило 30: пять состояний данных плюс оси stale и permission — либо
  * названная причина неприменимости. Тест держит ПОЛНОТУ деклараций:
  * недостающая ось — упавший тест, а не молчание.
  */
-const ALL: DataStateKey[] = [
+const ALL: DataStateKind[] = [
   'loading', 'empty', 'partial', 'ready', 'error', 'stale', 'permission',
 ]
 

@@ -2,7 +2,9 @@ import { act, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { FormField, SelectField } from '../designSystem'
 import { ProvenanceChip } from '../primitives'
+import { EstimateUncertaintyBadge } from '../EstimateUncertaintyBadge'
 import { useStore } from '../../state/store'
+import { Decimal } from 'decimal.js'
 
 describe('Canonical form contracts', () => {
   it('connects labels, help, errors, and disabled reasons to the owned control', () => {
@@ -61,5 +63,27 @@ describe('Typed provenance contract', () => {
       'Origin: aus Dokument · Flächenberechnung_v3.pdf · S. 15',
     )).toBeInTheDocument()
     act(() => useStore.getState().setUiLanguage('de'))
+  })
+})
+
+describe('Canonical uncertainty contract', () => {
+  it('keeps the released compact label and monetary range presentations', () => {
+    const view = render(
+      <>
+        <EstimateUncertaintyBadge presentation="compact" pp={22} />
+        <EstimateUncertaintyBadge
+          presentation="range"
+          pp={10}
+          totalExact={new Decimal('100000')}
+        />
+      </>,
+    )
+
+    expect(view.container.querySelector('.text-body')?.textContent)
+      .toBe('Schätzunsicherheit ± 22 %')
+    expect([...view.container.querySelectorAll('.a3-iv-edges .numeric')]
+      .map((element) => element.textContent))
+      .toEqual(['90.000 €', '110.000 €'])
+    expect(view.container.querySelector('.a3-iv-sub')).toBeInTheDocument()
   })
 })

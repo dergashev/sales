@@ -4,8 +4,9 @@ import {
   configForOption, projectionForOption, useStore, type OptionConfig,
 } from '../state/store'
 import { NNBSP, present, formatDE } from '../engine/money'
-import { Button, useReducedMotion } from '../components/primitives'
+import { Button } from '../components/primitives'
 import { Badge, NextStep, PageHeader } from '../components/designSystem'
+import { useSemanticMotion } from '../design-system/motion'
 import { useT, useTx } from '../i18n'
 import { copyFor } from '../i18n/internal-refs'
 import { isClientProjection, isVisibleInOutputProfile } from '../state/clientProjection'
@@ -35,7 +36,7 @@ export function S4Vergleich() {
   const t = useT()
   const [showAll, setShowAll] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const reducedMotion = useReducedMotion()
+  const { reduced: reducedMotion } = useSemanticMotion()
   const client = isClientProjection(s.mode)
 
   const cols = s.options.flatMap((o) => {

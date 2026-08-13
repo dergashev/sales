@@ -1,7 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useReducedMotion } from './primitives'
+import { useSemanticMotion } from '../design-system/motion'
 import { useT, useTx } from '../i18n'
 
 /**
@@ -49,7 +49,7 @@ export function OriginPopover({ rows, rounding, runRef, triggerLabel }: {
   const label = triggerLabel ?? t('common.showOrigin')
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
-  const reduced = useReducedMotion()
+  const { reduced } = useSemanticMotion()
   const triggerRef = useRef<HTMLButtonElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   const headingId = useId()

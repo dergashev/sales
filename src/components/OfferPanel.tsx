@@ -8,11 +8,13 @@ import {
   NNBSP, present, rateLabel, formatDE, DENOMINATOR_LABEL, label as moneyLabel,
 } from '../engine/money'
 import type { CostGroup, CoverageState, DriverBasis } from '../engine/calculate'
-import { Button, useCountUp, useReducedMotion } from './primitives'
+import { Button, useCountUp } from './primitives'
 import { OriginPopover } from './OriginPopover'
 import { ClientNotice } from './ClientNotice'
-import { UncertaintyBand } from './UncertaintyBand'
+import { EstimateUncertaintyBadge } from './EstimateUncertaintyBadge'
 import { useT, useTx } from '../i18n'
+import { useSemanticMotion } from '../design-system/motion'
+import { DELTA_CHIP_MS } from '../config/ui-policy'
 
 /**
  * Правая панель оффера — постоянная зона всего приложения.
@@ -72,7 +74,7 @@ export function OfferPanel() {
   const p = s.projection()
   const t = useT()
   const tx = useTx()
-  const reduced = useReducedMotion()
+  const { reduced } = useSemanticMotion()
   const [journalOpen, setJournalOpen] = useState(false)
   // Панель — сводка, центр — работа. Тяжёлые таблицы по умолчанию
   // свёрнуты до одной итоговой строки: они разворачиваются, когда нужны
@@ -88,7 +90,7 @@ export function OfferPanel() {
 
   useEffect(() => {
     if (!s.activeDelta) return
-    const t = setTimeout(() => s.clearDelta(), 4000)
+    const t = setTimeout(() => s.clearDelta(), DELTA_CHIP_MS)
     return () => clearTimeout(t)
   }, [s.activeDelta])
 
@@ -157,7 +159,11 @@ export function OfferPanel() {
             «насколько точно», края отвечают «сколько это в деньгах», и на
             переговорах спрашивают второе. */}
         <div className="mt-2">
-          <UncertaintyBand totalExact={p.result.total.exact} pp={p.uncertaintyPp} />
+          <EstimateUncertaintyBadge
+            presentation="range"
+            totalExact={p.result.total.exact}
+            pp={p.uncertaintyPp}
+          />
         </div>
         <p className="a3-cap mt-1">
           netto

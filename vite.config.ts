@@ -7,9 +7,6 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      // Токены и шрифты живут в дизайн-системе и НЕ копируются в src:
-      // копия стала бы вторым источником правды.
-      '@ds': fileURLToPath(new URL('./design-system', import.meta.url)),
     },
   },
   server: { port: 5173, open: false },

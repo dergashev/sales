@@ -2,10 +2,12 @@ import { useRef, useState } from 'react'
 import { activeBuilding, useStore } from '../state/store'
 import { NNBSP } from '../engine/money'
 import { DiscountControl } from '../components/DiscountControl'
-import { Button, UncertaintyBadge } from '../components/primitives'
+import { Button } from '../components/primitives'
+import { EstimateUncertaintyBadge } from '../components/EstimateUncertaintyBadge'
 import { PageHeader } from '../components/designSystem'
 import { useTx } from '../i18n'
 import { PrintFlow } from '../components/PrintFlow'
+import { DELIVERY_SIMULATION_MS } from '../config/ui-policy'
 
 /**
  * S5 Export — артефакты, скидка и отправка.
@@ -30,14 +32,6 @@ const ARTIFACTS = [
 ] as const
 
 type Stage = 'compose' | 'preflight' | 'confirm' | 'gesendet' | 'zugestellt'
-
-/**
- * Доставка в прототипе СИМУЛИРУЕТСЯ таймером — и это сказано пользователю
- * на экране, а не только в комментарии. Первая редакция автоматически
- * показывала «Zugestellt» как факт, одновременно объясняя, что второй
- * статус не следует из первого, — симуляция, выданная за реализацию.
- */
-const DELIVERY_SIMULATION_MS = 2500
 
 export function S5Export() {
   const s = useStore()
@@ -218,7 +212,9 @@ export function S5Export() {
                 <ul className="a3-preflight-list">
                   <li>✓ Anhänge: {selected.size}{s.mode === 'intern' && ' · Muster-Dateien des Prototyps, als clientSafe klassifiziert'}</li>
                   <li>✓ Aktive Annahmen: {activeBuilding(s).gebaeudeklasse.confirmed ? 1 : 2}</li>
-                  <li><UncertaintyBadge pp={p.uncertaintyPp} /></li>
+                  <li>
+                    <EstimateUncertaintyBadge presentation="compact" pp={p.uncertaintyPp} />
+                  </li>
                   <li>{tx('✓ Sprache: DE · vollständig')}</li>
                   {/* Рекомендация G6-gate (правило 11/D-16): пункт чек-листа,
                       не запрет — плотность остаётся выбором пользователя. */}

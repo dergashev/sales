@@ -2,6 +2,7 @@ import { forwardRef, useId, useEffect, useRef, useState, type ReactNode } from '
 import { Decimal } from 'decimal.js'
 import { formatDE, NNBSP } from '../engine/money'
 import { useT, useTx } from '../i18n'
+import { useSemanticMotion } from '../design-system/motion'
 
 /**
  * Примитивы по контрактам `design-system/components-core.md`.
@@ -16,25 +17,8 @@ import { useT, useTx } from '../i18n'
  * при `prefers-reduced-motion`.
  */
 
-/** Зона нажатия ≥ 44 × 44 при любой видимой высоте контрола (R-04). */
-export const HIT = 'relative before:absolute before:left-1/2 before:top-1/2 ' +
-  'before:min-h-hit-target before:min-w-hit-target ' +
-  'before:-translate-x-1/2 before:-translate-y-1/2 before:content-[""]'
-
 const FOCUS = 'outline-none focus-visible:outline focus-visible:outline-2 ' +
   'focus-visible:outline-offset-2 focus-visible:outline-focus-ring'
-
-export function useReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false)
-  useEffect(() => {
-    const q = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setReduced(q.matches)
-    const on = (e: MediaQueryListEvent) => setReduced(e.matches)
-    q.addEventListener('change', on)
-    return () => q.removeEventListener('change', on)
-  }, [])
-  return reduced
-}
 
 /**
  * Счёт числа вместо подмены (правило проекта 19): 400 мс, de-DE, tnum.
@@ -56,7 +40,7 @@ export function useReducedMotion(): boolean {
  * запрещённая правилом 19, а не счёт.
  */
 export function useCountUp(target: Decimal, decimals = 0): string {
-  const reduced = useReducedMotion()
+  const { reduced } = useSemanticMotion()
   const [shown, setShown] = useState(target)
   /** То, что СЕЙЧАС на экране. Отсюда стартует следующий переход. */
   const current = useRef(target)
@@ -393,14 +377,5 @@ export function Skeleton({ lines = 3, label = 'Wird geladen', announce = false }
         ))}
       </div>
     </div>
-  )
-}
-
-/** Интервал точности (DC-3). Термин производственный, не отменённый. */
-export function UncertaintyBadge({ pp }: { pp: number }) {
-  return (
-    <span className="text-body text-text-secondary">
-      Schätzunsicherheit ±{NNBSP}{pp}{NNBSP}%
-    </span>
   )
 }
