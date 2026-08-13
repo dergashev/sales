@@ -128,7 +128,8 @@ DENSITY-007, R-21, три правила шрифта §1.8), не было ге
    их нарушения известны и зарегистрированы под sha256 всего файла. Любое
    изменение файла снимает карантин — все его нарушения становятся новыми.
 5. `--selftest` вносит заведомые нарушения во временные копии файлов и
-   проверяет, что КАЖДЫЙ класс проверок ловит свою мутацию. Класс, не
+   проверяет, что КАЖДЫЙ документный класс в его реестре ловит свою мутацию
+   (`GOV-*` имеет отдельный двусторонний harness для `src/**`). Класс, не
    поймавший мутацию, валит selftest. Оригиналы не изменяются.
 6. Ни одна сверка не выполняется под условием, вычисленным из проверяемых
    данных. Условие вида `if прочитанное == ожидаемое: сверить остальное`
@@ -217,12 +218,14 @@ live-region, существование scroll-контейнера) НЕ зак
 
 Запуск:   python3 tools/verify.py            → 0 = нет новых нарушений
           python3 tools/verify.py --strict   → 0 = нет вообще никаких
-          python3 tools/verify.py --selftest → 0 = все детекторы живы
+          python3 tools/verify.py --selftest → 0 = документные детекторы живы
+          python3 tools/selftest_governance.py → 0 = GOV-* границы живы
 """
 import argparse
 import ast
 import hashlib
 import json
+import posixpath
 import re
 import shutil
 import sys
@@ -243,6 +246,53 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 WARN_DC_COVERAGE = 'DC-COVERAGE'
 WARN_NO_VISUAL_UTILITY = 'NO-VISUAL-UTILITY'
 WARN_OPT_IMAGE = 'OPT-IMAGE'
+
+# Граница названа файлами, а не каталогами: канонические React-источники
+# дизайн-системы намеренно соседствуют с продуктовыми композициями в
+# `src/components`. Расширение любого из этих кортежей — архитектурное
+# изменение, которое должно идти вместе с проверкой и документацией.
+CANONICAL_DS_MODULES = (
+    'src/components/primitives.tsx',
+    'src/components/EstimateUncertaintyBadge.tsx',
+    'src/components/controls.tsx',
+    'src/components/designSystem.tsx',
+    'src/components/Dialog.tsx',
+    'src/components/DataStates.tsx',
+    'src/design-system/motion.ts',
+)
+
+QA_FOUNDATION_MODULES = (
+    'src/screens/Grundlagen.tsx',
+    'src/components/Diagnostics.tsx',
+    'src/design-system/Gallery.tsx',
+    'src/design-system/registry.tsx',
+    'src/state/data-states.ts',
+)
+
+CANONICAL_DS_EXTERNAL_DEPS = frozenset({
+    'react', 'react-dom', 'framer-motion', 'decimal.js',
+})
+
+# Эти два импорта — общая инфраструктура, а не бизнес-логика. Разрешение
+# намеренно точное: `../engine/money` не означает `../engine/*`.
+CANONICAL_DS_SHARED_MODULES = frozenset({
+    'src/i18n',
+    'src/engine/money',
+    'src/design-system/motion',
+})
+
+QA_ROUTE_EDGE = ('src/App', 'src/screens/Grundlagen')
+
+# Единственные цветовые литералы в production TypeScript на базовом снимке —
+# значения, которые возвращает браузерный `getComputedStyle`. Это не стиль и
+# не запасной токен: диагностика сравнивает нормализованный внешний результат.
+# Разрешение ограничено точным файлом, строкой объявления и двумя значениями.
+RUNTIME_COLOR_SENTINELS = {
+    'src/lib/font-check.ts': {
+        "const white = ['rgb(255, 255, 255)', 'rgba(0, 0, 0, 0)', 'transparent']":
+            frozenset({'rgb(255, 255, 255)', 'rgba(0, 0, 0, 0)'}),
+    },
+}
 
 
 # ───────────────────────── реестр классов проверок ──────────────────────────
@@ -306,6 +356,8 @@ CHECK_CLASSES = (
     'NBSP', 'CYRILLIC-UNIT', 'AREA-SCOPE', 'DATE-FORMAT',
     # управление и план
     'CLAUDE', 'DECISIONS', 'PLAN', 'INDEX', 'TOKEN-EXISTS', 'DS-CLASS-EXISTS',
+    # архитектурная граница Design System / Sales Platform / QA Foundation
+    'GOV-DS-DEP', 'GOV-QA-BOUNDARY', 'GOV-RETIRED-PATH', 'GOV-TOKEN',
     # ПРЕДУПРЕЖДАЮЩИЕ классы: выводят адрес для решения, прогон не валят.
     # `--selftest` измеряет ПОЯВЛЕНИЕ НАРУШЕНИЯ и потому проходит мимо них.
     # Дыра не оставлена названной: живость каждой ветки доказывается
@@ -1150,6 +1202,115 @@ class Verifier:
                     out.append((rel, txt))
             self._globs[pattern] = out
         return list(self._globs[pattern])
+
+    @staticmethod
+    def _path_key(path: str) -> str:
+        """Путь модуля без расширения и необязательного `/index`."""
+        key = path.replace('\\', '/')
+        for suffix in ('.tsx', '.ts', '.jsx', '.js'):
+            if key.endswith(suffix):
+                key = key[:-len(suffix)]
+                break
+        return key[:-len('/index')] if key.endswith('/index') else key
+
+    @classmethod
+    def _module_target(cls, importer: str, specifier: str):
+        """Разрешает только локальные relative/@ пути в стабильный ключ."""
+        if specifier.startswith('@/'):
+            target = 'src/' + specifier[len('@/'):]
+        elif specifier.startswith('.'):
+            target = posixpath.normpath(posixpath.join(
+                posixpath.dirname(importer), specifier))
+        else:
+            return None
+        return cls._path_key(target)
+
+    @staticmethod
+    def _module_references(text: str):
+        """Статические, побочные и динамические module specifier с адресом.
+
+        TypeScript AST здесь не нужен: проверяется контракт пути, а не
+        семантика выражения. Темперированный шаблон не пересекает следующую
+        import/export-декларацию, поэтому отсутствие `from` не присваивает
+        чужой specifier предыдущему `export function`.
+        """
+        refs = []
+        static = re.compile(
+            r'(?ms)^[ \t]*(?P<kind>import|export)\s+'
+            r'(?!default\b|function\b|class\b|const\b|let\b|var\b)'
+            r'(?:(?!^[ \t]*(?:import|export)\b).)*?'
+            r'\bfrom\s*(?P<quote>[\'\"])(?P<spec>[^\'\"]+)(?P=quote)')
+        side_effect = re.compile(
+            r'(?m)^[ \t]*import\s*(?P<quote>[\'\"])(?P<spec>[^\'\"]+)'
+            r'(?P=quote)')
+        dynamic = re.compile(
+            r'\bimport\s*\(\s*(?P<quote>[\'\"])(?P<spec>[^\'\"]+)'
+            r'(?P=quote)\s*\)')
+        for kind, rx in (('static', static), ('side-effect', side_effect),
+                         ('dynamic', dynamic)):
+            for match in rx.finditer(text):
+                declaration = match.group(0)
+                actual_kind = match.groupdict().get('kind') or kind
+                refs.append((
+                    match.start(),
+                    actual_kind,
+                    match.group('spec'),
+                    text.count('\n', 0, match.start()) + 1,
+                    declaration,
+                ))
+        # Один синтаксический узел не должен давать две находки, но два
+        # одинаковых импорта на разных строках обязаны оставаться видимыми.
+        unique = {}
+        for ref in refs:
+            unique[(ref[0], ref[1], ref[2])] = ref
+        return sorted(unique.values())
+
+    @staticmethod
+    def _mask_comments(text: str, *, line_comments: bool = True) -> str:
+        """Убирает комментарии, сохраняя строки и строковые литералы."""
+        out = []
+        i = 0
+        quote = None
+        escaped = False
+        while i < len(text):
+            char = text[i]
+            nxt = text[i + 1] if i + 1 < len(text) else ''
+            if quote is not None:
+                out.append(char)
+                if escaped:
+                    escaped = False
+                elif char == '\\':
+                    escaped = True
+                elif char == quote:
+                    quote = None
+                i += 1
+                continue
+            if char in ('\'', '\"', '`'):
+                quote = char
+                out.append(char)
+                i += 1
+                continue
+            if char == '/' and nxt == '*':
+                out.extend((' ', ' '))
+                i += 2
+                while i < len(text):
+                    if text[i] == '*' and i + 1 < len(text) and text[i + 1] == '/':
+                        out.extend((' ', ' '))
+                        i += 2
+                        break
+                    out.append('\n' if text[i] == '\n' else ' ')
+                    i += 1
+                continue
+            if line_comments and char == '/' and nxt == '/':
+                out.extend((' ', ' '))
+                i += 2
+                while i < len(text) and text[i] != '\n':
+                    out.append(' ')
+                    i += 1
+                continue
+            out.append(char)
+            i += 1
+        return ''.join(out)
 
     def emit(self, cls, rel, lineno, line, msg):
         self._classes.add(cls)
@@ -5673,6 +5834,231 @@ class Verifier:
                           f'галерея строит {token[1:]} сама; образец обязан '
                           f'приходить из реестра функцией render')
 
+    # -- архитектурное управление Design System -----------------------------
+    def _check_ds_dependencies(self):
+        """GOV-DS-DEP: канонический UI не зависит от продукта или QA."""
+        canonical = {self._path_key(path) for path in CANONICAL_DS_MODULES}
+        for rel in CANONICAL_DS_MODULES:
+            source = self.read(rel)
+            if source is None:
+                self.fail(
+                    'GOV-DS-DEP', rel,
+                    '[вакуум] модуль из CANONICAL_DS_MODULES отсутствует; '
+                    'переименование требует атомарно обновить явный манифест')
+                continue
+            raw_lines = source.split('\n')
+            references = self._module_references(self._mask_comments(source))
+            for _, _, specifier, lineno, _ in references:
+                if specifier in CANONICAL_DS_EXTERNAL_DEPS:
+                    continue
+                target = self._module_target(rel, specifier)
+                if target in canonical or target in CANONICAL_DS_SHARED_MODULES:
+                    continue
+                line = raw_lines[lineno - 1] if lineno <= len(raw_lines) else ''
+                self.emit(
+                    'GOV-DS-DEP', rel, lineno, line,
+                    f'канонический модуль импортирует «{specifier}» вне замороженной '
+                    'границы; Design System не зависит от Sales Platform/QA. '
+                    'Перенести продуктовую композицию к потребителю либо предложить '
+                    'общую возможность канонически')
+
+    def _check_qa_boundary(self):
+        """GOV-QA-BOUNDARY: QA Foundation рендерит канон, но не экспортирует UI."""
+        canonical = {self._path_key(path) for path in CANONICAL_DS_MODULES}
+        qa = {self._path_key(path) for path in QA_FOUNDATION_MODULES}
+        for rel in QA_FOUNDATION_MODULES:
+            if self.read(rel) is None:
+                self.fail(
+                    'GOV-QA-BOUNDARY', rel,
+                    '[вакуум] модуль из QA_FOUNDATION_MODULES отсутствует; '
+                    'граница не может молча потерять переименованный узел')
+
+        for glob in ('*.ts', '*.tsx'):
+            for rel, source in self.files(glob):
+                if not rel.startswith('src/') or '__tests__' in rel.split('/'):
+                    continue
+                importer = self._path_key(rel)
+                raw_lines = source.split('\n')
+                references = self._module_references(self._mask_comments(source))
+                for _, kind, specifier, lineno, _ in references:
+                    target = self._module_target(rel, specifier)
+                    if target in qa and importer not in qa and (importer, target) != QA_ROUTE_EDGE:
+                        line = raw_lines[lineno - 1] if lineno <= len(raw_lines) else ''
+                        self.emit(
+                            'GOV-QA-BOUNDARY', rel, lineno, line,
+                            f'продуктовый модуль импортирует QA Foundation «{specifier}»; '
+                            'единственная внешняя грань — App → Grundlagen. Импортировать '
+                            'канонический компонент напрямую, не через QA')
+                    if kind == 'export' and importer in canonical | qa:
+                        line = raw_lines[lineno - 1] if lineno <= len(raw_lines) else ''
+                        self.emit(
+                            'GOV-QA-BOUNDARY', rel, lineno, line,
+                            f'barrel re-export «{specifier}» создаёт второй публичный вход; '
+                            'потребитель обязан импортировать конкретный канонический модуль')
+
+    def _retired_source_files(self):
+        """Ровно авторские поверхности, где снятый путь может снова заработать."""
+        selected = {}
+        for glob in ('*.ts', '*.tsx', '*.css', '*.json'):
+            for rel, source in self.files(glob):
+                if rel.startswith('src/'):
+                    selected[rel] = source
+                elif (rel.startswith('design-system/') and rel.count('/') == 1
+                      and rel.endswith('.css')):
+                    selected[rel] = source
+        for rel in ('vite.config.ts', 'vitest.config.ts', 'tsconfig.json',
+                    'tailwind.config.ts'):
+            source = self.read(rel)
+            if source is not None:
+                selected[rel] = source
+        return sorted(selected.items())
+
+    def _check_retired_paths(self):
+        """GOV-RETIRED-PATH: снятые входы не возвращаются под прежним именем."""
+        retired = (
+            ('@ds', re.compile(r'(?<![\w-])@ds(?:/|\b)'),
+             '70ba769', 'использовать конкретный канонический файл/React-модуль без alias'),
+            ('ALL_SPECIMENS', re.compile(r'\bALL_SPECIMENS\b'),
+             '70ba769', 'использовать COMPONENT_REGISTRY или SPECIMEN_GROUPS'),
+            ('DataStateKey', re.compile(r'\bDataStateKey\b'),
+             '70ba769', 'импортировать DataStateKind из components/DataStates'),
+            ('UncertaintyBadge/UncertaintyBand',
+             re.compile(r'\bUncertainty(?:Badge|Band)\b'),
+             '70ba769', 'использовать единый EstimateUncertaintyBadge'),
+            ('HIT', re.compile(r'\bHIT\b'),
+             '70ba769', 'использовать канонический контроль и его hit-target контракт'),
+            ('qa.notBuilt', re.compile(r'\bqa\.notBuilt\b'),
+             'cf7a7bf', 'брать состояние возможностей из реестра специменов'),
+        )
+        for rel, source in self._retired_source_files():
+            suffix = pathlib.PurePosixPath(rel).suffix
+            clean = self._mask_comments(source, line_comments=suffix not in ('.css', '.json'))
+            raw_lines = source.split('\n')
+            clean_lines = clean.split('\n')
+
+            if re.search(r'/Uncertainty(?:Badge|Band)\.(?:ts|tsx)$', '/' + rel):
+                self.emit(
+                    'GOV-RETIRED-PATH', rel, 1, raw_lines[0] if raw_lines else '',
+                    'снятый модуль UncertaintyBadge/UncertaintyBand возвращён '
+                    '(удалён 70ba769); использовать EstimateUncertaintyBadge')
+
+            for lineno, (line, raw_line) in enumerate(
+                    zip(clean_lines, raw_lines), 1):
+                for name, pattern, commit, alternative in retired:
+                    if pattern.search(line):
+                        self.emit(
+                            'GOV-RETIRED-PATH', rel, lineno, raw_line,
+                            f'снятый вход «{name}» вернулся (удалён {commit}); '
+                            f'{alternative}')
+                if rel != 'src/design-system/motion.ts' and re.search(
+                        r'\buseReducedMotion\b', line):
+                    self.emit(
+                        'GOV-RETIRED-PATH', rel, lineno, raw_line,
+                        'локальный/прямой useReducedMotion снят в 70ba769; '
+                        'использовать useSemanticMotion из design-system/motion')
+                if suffix == '.css' and re.search(
+                        r'(?<![\w-])\.circle(?![\w-])', line):
+                    self.emit(
+                        'GOV-RETIRED-PATH', rel, lineno, raw_line,
+                        'общий CSS helper .circle снят в 70ba769; круг принадлежит '
+                        'конкретному каноническому a3-* компоненту')
+                if suffix in ('.ts', '.tsx') and 'className' in line and re.search(
+                        r'(?<![\w-])circle(?![\w-])', line):
+                    self.emit(
+                        'GOV-RETIRED-PATH', rel, lineno, raw_line,
+                        'className «circle» ссылается на снятый helper (70ba769); '
+                        'использовать класс конкретного канонического компонента')
+
+    def _check_governance_tokens(self):
+        """GOV-TOKEN: только узкие, измеримо надёжные случаи сырого вида."""
+        color = re.compile(
+            r'#[0-9a-fA-F]{3,8}\b|(?<![\w-])'
+            r'(?:rgba?|hsla?|lab|lch|oklab|oklch|color)\s*\([^)]*\)', re.I)
+        gradient = re.compile(
+            r'(?<![\w-])(?:repeating-)?(?:linear|radial|conic)-gradient\s*'
+            r'\([^)]*\)', re.I)
+
+        css_sources = {}
+        components = self.read('design-system/components.css')
+        if components is None:
+            self.fail(
+                'GOV-TOKEN', 'design-system/components.css',
+                '[вакуум] файл канонических component-стилей отсутствует')
+        else:
+            css_sources['design-system/components.css'] = components
+        for rel, source in self.files('*.css'):
+            if rel.startswith('src/'):
+                css_sources[rel] = source
+
+        for rel, source in sorted(css_sources.items()):
+            clean = self._mask_comments(source, line_comments=False)
+            raw_lines = source.split('\n')
+            for lineno, line in enumerate(clean.split('\n'), 1):
+                match = color.search(line) or gradient.search(line)
+                if match:
+                    self.emit(
+                        'GOV-TOKEN', rel, lineno, raw_lines[lineno - 1],
+                        f'сырой цвет/градиент «{match.group(0)}» обходит tokens.css; '
+                        'использовать семантический var(--token), а новый primitive '
+                        'объявлять только в каноническом слое токенов')
+
+        for glob in ('*.ts', '*.tsx'):
+            for rel, source in self.files(glob):
+                if not rel.startswith('src/') or '__tests__' in rel.split('/'):
+                    continue
+                clean = self._mask_comments(source)
+                raw_lines = source.split('\n')
+                sentinel_lines = RUNTIME_COLOR_SENTINELS.get(rel, {})
+                for lineno, line in enumerate(clean.split('\n'), 1):
+                    sentinels = sentinel_lines.get(line.strip(), frozenset())
+                    for match in color.finditer(line):
+                        literal = match.group(0)
+                        if literal in sentinels:
+                            continue
+                        self.emit(
+                            'GOV-TOKEN', rel, lineno, raw_lines[lineno - 1],
+                            f'цветовой литерал «{literal}» в production TypeScript '
+                            'обходит семантические токены; использовать var(--token) '
+                            'через канонический CSS/component API')
+
+        class_name = re.compile(
+            r'className\s*=\s*(?:\{\s*)?(?:'
+            r'\"(?P<double>(?:\\.|[^\"\\])*)\"|'
+            r"'(?P<single>(?:\\.|[^'\\])*)'|"
+            r'`(?P<template>(?:\\.|[^`\\])*)`)\s*\}?', re.S)
+        arbitrary = re.compile(
+            r'(?<!\S)(?:[\w-]+:)*[\w-]+-\[(?P<body>[^\]]*)\]')
+        raw_length = re.compile(
+            r'(?<![\w.])[-+]?(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem)\b', re.I)
+        for rel, source in self.files('*.tsx'):
+            if not rel.startswith('src/') or '__tests__' in rel.split('/'):
+                continue
+            clean = self._mask_comments(source)
+            raw_lines = source.split('\n')
+            for match in class_name.finditer(clean):
+                group = next(name for name in ('double', 'single', 'template')
+                             if match.group(name) is not None)
+                body = match.group(group)
+                for value in arbitrary.finditer(body):
+                    arbitrary_body = value.group('body')
+                    if not (re.search(r'#[0-9a-fA-F]{3,8}\b', arbitrary_body)
+                            or raw_length.search(arbitrary_body)):
+                        continue
+                    absolute = match.start(group) + value.start()
+                    lineno = clean.count('\n', 0, absolute) + 1
+                    self.emit(
+                        'GOV-TOKEN', rel, lineno, raw_lines[lineno - 1],
+                        f'Tailwind arbitrary value «{value.group(0)}» содержит raw '
+                        'hex/px/rem; использовать канонический token/класс. '
+                        'Структурные arbitrary values без сырого значения не запрещены')
+
+    def check_design_system_governance(self):
+        """Четыре механических границы принятой post-cleanup архитектуры."""
+        self._check_ds_dependencies()
+        self._check_qa_boundary()
+        self._check_retired_paths()
+        self._check_governance_tokens()
+
     def check_option_images(self):
         """OPT-IMAGE (предупреждения): покрытие карточек опций изображениями.
 
@@ -5748,7 +6134,7 @@ class Verifier:
                     f'{WARN_OPT_IMAGE}: файл {f} объявлен манифестом, но отсутствует')
 
     # -- запуск ----------------------------------------------------------------
-    def run(self):
+    def run(self, *, include_governance=True):
         self.check_tokens()
         self.check_token_exists()
         self.check_ds_class_exists()
@@ -5756,6 +6142,8 @@ class Verifier:
         self.check_no_visual_utility()
         self.check_option_images()
         self.check_gallery_single_source()
+        if include_governance:
+            self.check_design_system_governance()
         self.check_css()
         self.check_css_effective()
         self.check_contrast()
@@ -6676,7 +7064,11 @@ def selftest():
         # 0. База. Каждый случай сравнивается с ДЕЛЬТОЙ к ней, а не с нулём:
         # иначе чужая незакрытая правка в момент прогона обвиняет негативные
         # мутации в ложном срабатывании, которого они не совершали.
-        v0 = Verifier(base).run()
+        # GOV-* читает `src/**`; этот старый документный harness намеренно
+        # копирует только CLAUDE/design-system/docs. Его не расширяем второй
+        # несовместимой моделью дерева: двусторонние GOV-пробы живут в
+        # `tools/selftest_governance.py` и входят в `npm run verify`.
+        v0 = Verifier(base).run(include_governance=False)
         base_keys = {finding_key(c, w, m) for c, w, m in v0.new}
         if v0.new:
             print(f'\n⚠ SELFTEST: база НЕ ЧИСТАЯ — {len(v0.new)} новых нарушений в '
@@ -6708,7 +7100,7 @@ def selftest():
             else:
                 p.parent.mkdir(parents=True, exist_ok=True)
                 p.write_text((text + '\n' if text else '') + mut + '\n', encoding='utf-8')
-            v = Verifier(case).run()
+            v = Verifier(case).run(include_governance=False)
             # Дельта к базе, а не абсолютное множество: находка, которая была и
             # без мутации, ничего о детекторе не доказывает и никого не обвиняет.
             # Ключ — ВСЯ находка (`finding_key`), а не пара «класс + адрес»:
@@ -6762,7 +7154,8 @@ def selftest():
     if missed or inapplicable or false_pos or not registry_ok:
         print('\nSELFTEST: ПРОВАЛ. Оригиналы не тронуты.')
         return 2
-    print('\nSELFTEST: каждый класс проверок ловит свою мутацию. Оригиналы не тронуты.')
+    print('\nSELFTEST: каждый документный класс реестра ловит свою мутацию. '
+          'Оригиналы не тронуты.')
     return 0
 
 
@@ -6773,7 +7166,8 @@ def main():
     ap.add_argument('--strict', action='store_true',
                     help='известные открытые нарушения тоже валят сборку (гейт релиза)')
     ap.add_argument('--selftest', action='store_true',
-                    help='мутационная самопроверка детекторов на временных копиях')
+                    help='мутационная самопроверка документных детекторов; '
+                         'GOV-* проверяет tools/selftest_governance.py')
     args = ap.parse_args()
 
     if args.selftest:
