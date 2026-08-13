@@ -101,6 +101,23 @@ the product. The screen is production-reachable to internal users through the
 explicit QA navigation item, but is omitted from the client-projection DOM.
 Its diagnostics and framing are QA-only composition, not a public UI library.
 
+## PRODUCT-LOCAL PRIMITIVES REMAINING
+
+No independently reusable product-local primitive remains. The following
+native controls survive inside named Sales Platform domain compositions; they
+consume canonical CSS semantics and do not expose a generic component API:
+
+| Composition | Native control | Classification and follow-up |
+|---|---|---|
+| `src/screens/OpportunityList.tsx` · DC-34 | Search input | Legitimate filter composition; its field wrapper is canonical `FormField`. |
+| `src/components/DiscountControl.tsx` · DC-25 | Coupled range and numeric inputs | Legitimate commercial composition. A standalone canonical Slider React source is absent; extracting one would expand this task into Design System API work. Production-reachable internally; Sales Platform owns the composition. Adopt a released Slider later without changing discount semantics. |
+| `src/components/InternalNote.tsx` · DC-43 | Note textarea | Legitimate autosave/state composition. A standalone canonical Textarea React source is absent. Production-reachable only internally; Sales Platform owns it. Adopt the canonical source after it ships while preserving NOTE-001…007. |
+| `src/screens/S5Export.tsx` · DC-41/DC-23 | Attachment checkboxes, read-only subject input and email textarea | Legitimate offer-delivery composition. Canonical CheckboxCard/Textarea React sources are absent and introducing them is outside this cleanup. Production-reachable; Sales Platform owns the workflow. Migrate its subcontrols after those canonical sources ship, preserving EMAIL/OUTPUT semantics. |
+
+Navigation, disclosure, table-expansion and card-destination buttons remain
+native where their semantics belong to their owning composition. They do not
+recreate or export the canonical action `Button` API.
+
 ## APPROVED EXCEPTION
 
 `design-system/all3-design-system.html` remains a manual, repository-only
@@ -132,6 +149,15 @@ that capability is separate Design System work, not safe legacy deletion. The
 approved parity constraint therefore keeps the compact variant in the same
 single canonical source; expanding its information model requires later review.
 
+- Exact paths: `src/screens/S2Vorbereitung.tsx`, `src/screens/S5Export.tsx`,
+  `src/design-system/registry.tsx` and
+  `src/components/EstimateUncertaintyBadge.tsx`.
+- Production reachability: yes in S2 and S5; the registry consumer is internal
+  QA-only.
+- Owning area: canonical Design System source plus Sales Platform composition.
+- Required follow-up: complete the DC-3 information model under Design System
+  authority, then migrate compact consumers only with approved layout parity.
+
 ## UNKNOWN — REQUIRES REVIEW
 
 None after the definition-and-usage inventory.
@@ -155,6 +181,8 @@ not reusable visual semantics.
   above.
 - Documentation aliases DC-18 and DC-36 remain contract metadata rather than
   import aliases and are outside runtime cleanup.
+- Historical audit snapshots retain superseded source names as provenance; they
+  are not executable imports or supported aliases.
 
 ## Expected outcome
 
