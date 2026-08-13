@@ -149,6 +149,50 @@ describe('proposal store recovery', () => {
       .toBe('3817835.00')
   })
 
+  it.each(['wfl', 'units'] as const)(
+    'discards a payload whose Haus A %s cannot feed the legacy projection',
+    (factKey) => {
+      const sourceStorage = new MemoryStorage()
+      initializeProposalPersistence(sourceStorage)
+      useStore.getState().setDiscount(new Decimal('1'))
+      const key = proposalStorageKey('DEMO-0001')
+      const raw = sourceStorage.getItem(key)
+      expect(raw).not.toBeNull()
+
+      const envelope = JSON.parse(raw!) as {
+        payload: {
+          active: {
+            buildingReviews: Record<string, {
+              facts: Record<string, {
+                extracted: { value: unknown }
+                override: unknown
+              }>
+            }>
+          }
+        }
+      }
+      const fact = envelope.payload.active
+        .buildingReviews['DEMO-B-A']!.facts[factKey]!
+      fact.extracted.value = null
+      fact.override = null
+
+      __resetStoreForTests()
+      const restoredStorage = new MemoryStorage()
+      restoredStorage.setItem(key, JSON.stringify(envelope))
+
+      let restored: boolean | undefined
+      expect(() => {
+        restored = hydrateProposalState(restoredStorage)
+      }).not.toThrow()
+      expect(restored).toBe(false)
+      expect(restoredStorage.getItem(key)).toBeNull()
+      expect(useStore.getState().journal).toEqual([])
+      expect(useStore.getState().fields.wfl.value.toFixed()).toBe('1500')
+      expect(useStore.getState().projection().result.total.exact.toFixed(2))
+        .toBe('3817835.00')
+    },
+  )
+
   it('does not emit state.restored when no payload exists', () => {
     expect(hydrateProposalState(new MemoryStorage())).toBe(false)
     expect(useStore.getState().journal).toEqual([])

@@ -532,7 +532,10 @@ function isPersistedProposalConfig(value: unknown): value is PersistedProposalCo
     || !hasOnlyKeys(reviews, FIXTURE_BUILDING_IDS)
     || !FIXTURE_BUILDING_IDS.every((id) => {
       const review = reviews[id]
-      return isBuildingReview(review) && review.id === id && toBuildingInput(review) !== null
+      return isBuildingReview(review)
+        && review.id === id
+        && toBuildingInput(review) !== null
+        && (id !== LEGACY_FIELDS_BUILDING_ID || legacyFieldValues(review) !== null)
     })) return false
 
   if (!record(value.buildingConfirmation)
@@ -1521,16 +1524,28 @@ function combinedProvenance(
  * explicitly labelled Haus A. Values and provenance are derived from the
  * reviewed record; this slice is never an independent writable source.
  */
+function legacyFieldValues(review: BuildingReview): {
+  input: ReviewedBuildingInput
+  wfl: Decimal
+  units: Decimal
+} | null {
+  const input = toBuildingInput(review)
+  const wfl = effectiveFactValue(review.facts.wfl)
+  const units = effectiveFactValue(review.facts.units)
+  return input === null || wfl === null || units === null
+    ? null
+    : { input, wfl, units }
+}
+
 function legacyFieldsFromReview(
   review: BuildingReview,
   conflicts: Record<string, BuildingConflict> = {},
 ): Store['fields'] {
-  const input = toBuildingInput(review)
-  const wfl = effectiveFactValue(review.facts.wfl)
-  const units = effectiveFactValue(review.facts.units)
-  if (!input || !wfl || !units) {
+  const values = legacyFieldValues(review)
+  if (!values) {
     throw new Error(`legacy fields building ${review.id} lacks required facts`)
   }
+  const { input, wfl, units } = values
   const wflSource = sourceProvenance(review, 'wfl')
   const wflConfirmedByConflict = Object.values(conflicts).some((conflict) =>
     conflict.buildingId === review.id
@@ -2683,34 +2698,41 @@ export function hydrateProposalState(storage = browserProposalStorage()): boolea
     return false
   }
 
-  const payload = loaded.payload
-  const active = restoredOptionConfig(payload.active, payload.buildingConflicts)
-  const optionConfigs = Object.fromEntries(
-    Object.entries(payload.optionConfigs).map(([id, config]) => [
-      id, restoredOptionConfig(config, payload.buildingConflicts),
-    ]),
-  )
-  store.setState((state) => ({
-    ...active,
-    options: payload.options,
-    activeOptionId: payload.activeOptionId,
-    optionSeq: payload.optionSeq,
-    optionConfigs,
-    buildingConflicts: payload.buildingConflicts,
-    level: payload.activeOptionId ? 'option' : 'liste',
-    opportunityId: payload.activeOptionId ? PROPOSAL_PROJECT_ID : null,
-    mode: 'intern',
-    ...NO_TRANSIENT,
-    journal: [...state.journal, {
-      seq: state.journal.length + 1,
-      kind: 'state.restored',
-      label: 'Angebotsstand wiederhergestellt',
-      deltaExact: null,
-      at: new Date().toISOString(),
-      optionId: null,
-    }],
-  }))
-  return true
+  try {
+    const payload = loaded.payload
+    const active = restoredOptionConfig(payload.active, payload.buildingConflicts)
+    const optionConfigs = Object.fromEntries(
+      Object.entries(payload.optionConfigs).map(([id, config]) => [
+        id, restoredOptionConfig(config, payload.buildingConflicts),
+      ]),
+    )
+    store.setState((state) => ({
+      ...active,
+      options: payload.options,
+      activeOptionId: payload.activeOptionId,
+      optionSeq: payload.optionSeq,
+      optionConfigs,
+      buildingConflicts: payload.buildingConflicts,
+      level: payload.activeOptionId ? 'option' : 'liste',
+      opportunityId: payload.activeOptionId ? PROPOSAL_PROJECT_ID : null,
+      mode: 'intern',
+      ...NO_TRANSIENT,
+      journal: [...state.journal, {
+        seq: state.journal.length + 1,
+        kind: 'state.restored',
+        label: 'Angebotsstand wiederhergestellt',
+        deltaExact: null,
+        at: new Date().toISOString(),
+        optionId: null,
+      }],
+    }))
+    return true
+  } catch {
+    // Recovery is an application-start boundary: an incompatible payload must
+    // never prevent the fixture-backed store from mounting.
+    clearPersistedProposal(storage, PROPOSAL_PROJECT_ID)
+    return false
+  }
 }
 
 /** Explicit startup hook; importing the store never touches localStorage. */
