@@ -31,6 +31,21 @@ describe('building-aware reviewed proposal state', () => {
     }
   })
 
+  it('keeps the Haus A compatibility fields derived from its review when another building is active', () => {
+    st().setActiveBuilding('DEMO-B-B')
+    st().setBuildingFactOverride('DEMO-B-A', 'wfl', new Decimal('1234'))
+
+    expect(st().fields.wfl.value.toFixed()).toBe('1234')
+    expect(st().fields.wfl.provenance).toBe('manuell erfasst')
+    expect(st().buildings['DEMO-B-A']!.wfl!.toFixed()).toBe('1234')
+    expect(st().journal.at(-1)!.label)
+      .toBe('Gebäudedaten DEMO-B-A · WFL nach WoFlV manuell bearbeitet')
+
+    st().undo()
+    expect(st().fields.wfl.value.toFixed()).toBe('1500')
+    expect(st().buildingReviews['DEMO-B-A']!.facts.wfl.override).toBeNull()
+  })
+
   it('invalidates only the edited building confirmation and can be re-confirmed', () => {
     st().confirmBuilding('DEMO-B-A')
     st().confirmBuilding('DEMO-B-B')
@@ -89,6 +104,33 @@ describe('building-aware reviewed proposal state', () => {
     expect(conflict).toBeDefined()
     expect(wflConflict(st()).id).toBe('DEMO-CONF-0001')
   })
+
+  it('retracts a derived conflict once the disagreement disappears and restores confirmation', () => {
+    st().confirmBuilding('DEMO-B-A')
+    expect(buildingConfirmed(st(), 'DEMO-B-A')).toBe(true)
+
+    st().setBuildingFactOverride('DEMO-B-A', 'bgfRSAbove', new Decimal('2100'))
+    expect(st().buildingConflicts['DERIVED:DEMO-B-A:bgfRSAbove']).toBeDefined()
+    expect(buildingConfirmed(st(), 'DEMO-B-A')).toBe(false)
+
+    st().clearBuildingFactOverride('DEMO-B-A', 'bgfRSAbove')
+    expect(st().buildingConflicts['DERIVED:DEMO-B-A:bgfRSAbove']).toBeUndefined()
+    expect(buildingConfirmed(st(), 'DEMO-B-A')).toBe(true)
+  })
+
+  it('uses German-primary labels for the new journal events', () => {
+    st().setBuildingFactOverride('DEMO-B-A', 'wfl', new Decimal('1234'))
+    st().clearBuildingFactOverride('DEMO-B-A', 'wfl')
+    st().setConfigurationMode('SHARED')
+    st().markBuildingConfigurationCompleted('DEMO-B-A')
+    st().confirmBuildingConfiguration('DEMO-B-A')
+
+    const labels = st().journal.map((event) => event.label).join('\n')
+    expect(labels).not.toMatch(/\b(?:Building|Shared|Per-building|Proposal)\b/)
+    expect(labels).toContain('Gemeinsame Konfiguration')
+    expect(labels).toContain('Gebäudekonfiguration')
+  })
+
 })
 
 describe('selection and configuration modes', () => {
@@ -113,6 +155,16 @@ describe('selection and configuration modes', () => {
     expect(projection.perUnit).toBeNull()
     expect(st().buildingReviews['DEMO-B-A']!.facts.wfl.extracted.value)
       .toBe(hausAWfl)
+  })
+
+  it('uses BGF above ground for a complex even when every included building has WFL', () => {
+    st().setBuildingFactOverride('DEMO-B-B', 'wfl', new Decimal('900'))
+    st().toggleBuildingIncluded('DEMO-B-B')
+
+    const projection = st().projection()
+    expect(projection.leadRate.denominatorType).toBe('BGF_ABOVE_GROUND')
+    expect(projection.leadRate.denominatorLabel).toBe('BGF oberirdisch')
+    expect(projection.leadRate.denominator.toFixed()).toBe('3200')
   })
 
   it('uses one shared set for every included building and derives association', () => {

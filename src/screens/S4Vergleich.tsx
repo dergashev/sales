@@ -3,7 +3,7 @@ import { Decimal } from 'decimal.js'
 import {
   configForOption, projectionForOption, useStore, type OptionConfig,
 } from '../state/store'
-import { NNBSP, present, formatDE } from '../engine/money'
+import { NNBSP, present, formatDE, rateLabel } from '../engine/money'
 import { Button } from '../components/primitives'
 import { Badge, NextStep, PageHeader } from '../components/designSystem'
 import { useSemanticMotion } from '../design-system/motion'
@@ -89,8 +89,11 @@ export function S4Vergleich() {
       })),
     },
     {
-      group: 'ERGEBNIS', label: `€/m² ${base.p.leadRate.denominatorLabel}`,
-      cells: cols.map((c) => `${c.p.leadRate.prefix}${c.p.leadRate.prefix ? NNBSP : ''}${c.p.leadRate.display}`),
+      // Each Option can carry a different building set and therefore a
+      // different typed denominator. The denominator travels with its cell;
+      // a shared row label may never borrow it from the base column.
+      group: 'ERGEBNIS', label: t('comparison.leadRate'),
+      cells: cols.map((c) => rateLabel(c.p.leadRate)),
     },
     {
       group: 'ERGEBNIS', label: 'Schätzunsicherheit',

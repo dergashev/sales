@@ -205,7 +205,7 @@ function extractedCandidate(
     origin: manual ? 'manual' : candidateOrigin(aggregate.extracted.source),
     value: canonical,
     source: manual
-      ? { kind: 'derived', reference: `manual override by ${aggregate.override!.actor}` }
+      ? { kind: 'derived', reference: `manuelle Korrektur durch ${aggregate.override!.actor}` }
       : aggregate.extracted.source,
   }
 }
@@ -311,12 +311,23 @@ export function effectiveDerivedArea(
   }
 }
 
-export function upsertDerivedConflicts(
+export function synchronizeDerivedConflicts(
   registry: Record<string, BuildingConflict>,
   review: BuildingReview,
 ): Record<string, BuildingConflict> {
+  const current = derivedAreaConflicts(review)
+  const currentIds = new Set(current.map((conflict) => conflict.id))
+  const derivedPrefix = `DERIVED:${review.id}:`
   let next = registry
-  for (const conflict of derivedAreaConflicts(review)) {
+
+  for (const id of Object.keys(registry)) {
+    if (id.startsWith(derivedPrefix) && !currentIds.has(id)) {
+      if (next === registry) next = { ...registry }
+      delete next[id]
+    }
+  }
+
+  for (const conflict of current) {
     const previous = next[conflict.id]
     if (next === registry) next = { ...registry }
     next[conflict.id] = {

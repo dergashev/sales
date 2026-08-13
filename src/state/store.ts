@@ -33,7 +33,7 @@ import {
   isBuildingConfirmed as reviewIsBuildingConfirmed,
   isBuildingReview,
   toBuildingInput,
-  upsertDerivedConflicts,
+  synchronizeDerivedConflicts,
   withEngineState,
   withFactOverride,
   withoutFactOverride,
@@ -261,12 +261,14 @@ function captureConfig(s: Pick<Store, keyof OptionConfig>): OptionConfig {
 type PersistedProposalConfig = Pick<OptionConfig,
   | 'activeBuildingId' | 'included' | 'buildingReviews' | 'buildingConfirmation'
   | 'configurationMode' | 'sharedConfiguration' | 'buildingConfigState'
-  | 'kg300' | 'kg300Provenance' | 'fields'>
+  | 'kg300' | 'kg300Provenance' | 'kg700Mode' | 'coverage'
+  | 'esConfirmed' | 'regionalfaktorActive' | 'risikoAktiv' | 'discountPercent'>
 
 const PERSISTED_CONFIG_KEYS = [
   'activeBuildingId', 'included', 'buildingReviews', 'buildingConfirmation',
   'configurationMode', 'sharedConfiguration', 'buildingConfigState',
-  'kg300', 'kg300Provenance', 'fields',
+  'kg300', 'kg300Provenance', 'kg700Mode', 'coverage', 'esConfirmed',
+  'regionalfaktorActive', 'risikoAktiv', 'discountPercent',
 ] as const satisfies ReadonlyArray<keyof PersistedProposalConfig>
 
 function capturePersistedConfig(
@@ -292,11 +294,18 @@ const INITIAL_COVERAGE: Coverage = {
   KG_300: 'included', KG_400: 'included', KG_500: 'unknown',
   KG_600: 'notApplicable', KG_700: 'included', KG_800: 'notApplicable',
 }
+const COVERAGE_KEYS = Object.keys(INITIAL_COVERAGE) as Array<keyof Coverage>
+const COVERAGE_STATES: CoverageState[] = [
+  'included', 'excluded', 'notApplicable', 'unknown',
+]
+const RISK_IDS = new Set(RISK_ITEMS.map((risk) => risk.id))
 
 const fx = demo.buildings[0]!
 const fxConflict = demo.conflicts[0]!
 const fxB = demo.buildings[1]!
 export const PROPOSAL_PROJECT_ID = demo.project.id
+const LEGACY_FIELDS_BUILDING_ID = fx.id
+const CUSTOMER_CONFIRMATION_ACTOR = 'customer confirmation'
 
 type FixtureBuilding = typeof fx
 
@@ -449,11 +458,7 @@ function defaultOptionConfig(): OptionConfig {
     },
     kg700Mode: 'vereinfacht',
     coverage: INITIAL_COVERAGE,
-    fields: {
-      wfl: { value: D(fx.areas.wflWoFlV!), provenance: 'aus Dokument' },
-      bgfOber: { value: D(fx.areas.bgfAboveGround!), provenance: 'aus Dokument' },
-      we: { value: D(fx.areas.wohneinheiten!), provenance: 'aus Dokument' },
-    },
+    fields: legacyFieldsFromReview(INITIAL_REVIEW),
     esConfirmed: false,
     regionalfaktorActive: false,
     risikoAktiv: {},
@@ -501,14 +506,6 @@ function isChoiceSet(value: unknown): boolean {
   return ALL_OPTION_GROUPS.every((group) => group.choices.some(
     (choice) => choice.value === value[group.id],
   ))
-}
-
-function isFieldState(value: unknown): value is FieldState {
-  if (!record(value) || !Decimal.isDecimal(value.value)) return false
-  return value.provenance === 'aus Dokument'
-    || value.provenance === 'vom Kunden bestätigt'
-    || value.provenance === 'abgeleitet'
-    || value.provenance === 'manuell erfasst'
 }
 
 function isConfigurationState(value: unknown): value is BuildingConfigurationState {
@@ -572,11 +569,19 @@ function isPersistedProposalConfig(value: unknown): value is PersistedProposalCo
       buildingConfigState[id],
     ))) return false
 
-  return record(value.fields)
-    && hasOnlyKeys(value.fields, ['wfl', 'bgfOber', 'we'])
-    && isFieldState(value.fields.wfl)
-    && isFieldState(value.fields.bgfOber)
-    && isFieldState(value.fields.we)
+  if (value.kg700Mode !== 'vereinfacht' && value.kg700Mode !== 'hoaiAho') {
+    return false
+  }
+  if (!record(value.coverage)
+    || !hasOnlyKeys(value.coverage, COVERAGE_KEYS)
+    || !Object.values(value.coverage).every((item) =>
+      COVERAGE_STATES.includes(item as CoverageState))) return false
+  if (typeof value.esConfirmed !== 'boolean'
+    || typeof value.regionalfaktorActive !== 'boolean') return false
+  if (!record(value.risikoAktiv)
+    || !Object.entries(value.risikoAktiv).every(([id, active]) =>
+      RISK_IDS.has(id) && typeof active === 'boolean')) return false
+  return value.discountPercent === null || Decimal.isDecimal(value.discountPercent)
 }
 
 function isPersistedProposalPayload(value: unknown): value is PersistedProposalPayload {
@@ -620,14 +625,25 @@ function isPersistedProposalPayload(value: unknown): value is PersistedProposalP
     ))
 }
 
-function restoredOptionConfig(persisted: PersistedProposalConfig): OptionConfig {
+function restoredOptionConfig(
+  persisted: PersistedProposalConfig,
+  conflicts: Record<string, BuildingConflict>,
+): OptionConfig {
   const base = defaultOptionConfig()
   const buildings = Object.fromEntries(FIXTURE_BUILDING_IDS.map((id) => {
     const building = toBuildingInput(persisted.buildingReviews[id]!)
     if (!building) throw new Error(`persisted building ${id} is incomplete`)
     return [id, building]
   })) as Record<string, ProjectBuilding>
-  return { ...base, ...persisted, buildings }
+  return {
+    ...base,
+    ...persisted,
+    buildings,
+    fields: legacyFieldsFromReview(
+      persisted.buildingReviews[LEGACY_FIELDS_BUILDING_ID]!,
+      conflicts,
+    ),
+  }
 }
 
 function capturePersistedProposal(state: Store): PersistedProposalPayload {
@@ -1384,14 +1400,18 @@ function computeProjection(
   const nuf = completeSum(reviewedValues('nuf'))
   const units = completeSum(reviewedValues('units'))
   const bgf = list.reduce((sum, building) => sum.plus(bgfAboveGround(building)), new Decimal(0))
-  // A mixed complex has no single segment metric. Its leading denominator
-  // is therefore BGF above ground (rule 39), while a homogeneous proposal
-  // keeps the applicable segment denominator.
-  const leadRate = wfl !== null
-    ? rate(total, wfl, 'WFL_WOFLV')
-    : nuf !== null
-      ? rate(total, nuf, 'NUF_DIN277')
-      : rate(total, bgf, 'BGF_ABOVE_GROUND')
+  // A complex uses BGF above ground as its client-facing leading metric
+  // regardless of which optional segment areas happen to be populated.
+  // Data availability must never turn Σ WFL into a complex denominator
+  // (rule 39 / DATA-001). A single-building scope keeps its applicable
+  // segment denominator.
+  const leadRate = list.length > 1
+    ? rate(total, bgf, 'BGF_ABOVE_GROUND')
+    : wfl !== null
+      ? rate(total, wfl, 'WFL_WOFLV')
+      : nuf !== null
+        ? rate(total, nuf, 'NUF_DIN277')
+        : rate(total, bgf, 'BGF_ABOVE_GROUND')
 
   return {
     result,
@@ -1454,47 +1474,115 @@ function reviewedBuildingPatch(
   state: Store,
   buildingId: string,
   review: BuildingReview,
-): Pick<Store, 'buildingReviews' | 'buildings' | 'buildingConflicts'> {
+): Pick<Store, 'buildingReviews' | 'buildings' | 'buildingConflicts' | 'fields'> {
   const building = toBuildingInput(review)
   if (!building) {
     throw new Error(`reviewed building ${buildingId} lacks required pricing facts`)
   }
+  const buildingConflicts = synchronizeDerivedConflicts(
+    state.buildingConflicts, review,
+  )
   return {
     buildingReviews: { ...state.buildingReviews, [buildingId]: review },
     buildings: { ...state.buildings, [buildingId]: building },
-    buildingConflicts: upsertDerivedConflicts(state.buildingConflicts, review),
+    buildingConflicts,
+    fields: buildingId === LEGACY_FIELDS_BUILDING_ID
+      ? legacyFieldsFromReview(review, buildingConflicts)
+      : state.fields,
   }
-}
-
-type LegacyFieldKey = keyof Store['fields']
-
-function legacyFieldKey(key: BuildingFactKey): LegacyFieldKey | null {
-  if (key === 'wfl') return 'wfl'
-  if (key === 'units') return 'we'
-  if (key === 'bgfRAbove' || key === 'bgfSAbove' || key === 'bgfRSAbove') {
-    return 'bgfOber'
-  }
-  return null
-}
-
-function legacyFieldValue(review: BuildingReview, key: LegacyFieldKey): Decimal | null {
-  if (key === 'wfl') return effectiveFactValue(review.facts.wfl)
-  if (key === 'we') return effectiveFactValue(review.facts.units)
-  const input = toBuildingInput(review)
-  return input ? input.bgfRAbove.plus(input.bgfSAbove) : null
 }
 
 function sourceProvenance(review: BuildingReview, key: BuildingFactKey): Provenance {
-  if (review.facts[key].override) return 'manuell erfasst'
+  const override = review.facts[key].override
+  if (override) {
+    return override.actor === CUSTOMER_CONFIRMATION_ACTOR
+      ? 'vom Kunden bestätigt'
+      : 'manuell erfasst'
+  }
   const source = review.facts[key].extracted.source.kind
   if (source === 'customer') return 'vom Kunden bestätigt'
   if (source === 'derived') return 'abgeleitet'
   return 'aus Dokument'
 }
 
+function combinedProvenance(
+  review: BuildingReview,
+  keys: BuildingFactKey[],
+): Provenance {
+  const provenances = keys.map((key) => sourceProvenance(review, key))
+  if (provenances.includes('manuell erfasst')) return 'manuell erfasst'
+  if (provenances.includes('vom Kunden bestätigt')) return 'vom Kunden bestätigt'
+  if (provenances.includes('abgeleitet')) return 'abgeleitet'
+  return 'aus Dokument'
+}
+
+/**
+ * Compatibility projection for the pre-building-aware screens, which are
+ * explicitly labelled Haus A. Values and provenance are derived from the
+ * reviewed record; this slice is never an independent writable source.
+ */
+function legacyFieldsFromReview(
+  review: BuildingReview,
+  conflicts: Record<string, BuildingConflict> = {},
+): Store['fields'] {
+  const input = toBuildingInput(review)
+  const wfl = effectiveFactValue(review.facts.wfl)
+  const units = effectiveFactValue(review.facts.units)
+  if (!input || !wfl || !units) {
+    throw new Error(`legacy fields building ${review.id} lacks required facts`)
+  }
+  const wflSource = sourceProvenance(review, 'wfl')
+  const wflConfirmedByConflict = Object.values(conflicts).some((conflict) =>
+    conflict.buildingId === review.id
+    && conflict.factKey === 'wfl'
+    && deriveConflictState(conflict).status === 'resolved')
+  return {
+    wfl: {
+      value: wfl,
+      provenance: wflSource !== 'manuell erfasst' && wflConfirmedByConflict
+        ? 'vom Kunden bestätigt'
+        : wflSource,
+    },
+    bgfOber: {
+      value: input.bgfRAbove.plus(input.bgfSAbove),
+      provenance: combinedProvenance(review, ['bgfRAbove', 'bgfSAbove']),
+    },
+    we: { value: units, provenance: sourceProvenance(review, 'units') },
+  }
+}
+
+const BUILDING_FACT_LABELS: Record<BuildingFactKey, string> = {
+  documentationName: 'Dokumentationsname',
+  address: 'Adresse',
+  buildingForm: 'Gebäudeform',
+  buildingClass: 'Gebäudeklasse',
+  bgfRAbove: 'BGF R oberirdisch',
+  bgfSAbove: 'BGF S oberirdisch',
+  bgfRSAbove: 'BGF R+S oberirdisch',
+  bgfRBelow: 'BGF R unterirdisch',
+  bgfSBelow: 'BGF S unterirdisch',
+  bgfRSBelow: 'BGF R+S unterirdisch',
+  bgfRSTotal: 'BGF R+S gesamt',
+  wfl: 'WFL nach WoFlV',
+  nuf: 'NUF nach DIN 277',
+  units: 'Wohneinheiten',
+  storeyStructure: 'Geschossstruktur',
+}
+
 function sameFactValue(left: unknown, right: unknown): boolean {
   if (Decimal.isDecimal(left) && Decimal.isDecimal(right)) return left.equals(right)
   return JSON.stringify(left) === JSON.stringify(right)
+}
+
+function updateOptionalRecord<T>(
+  source: Record<string, T>,
+  id: string,
+  value: T | undefined,
+): Record<string, T> {
+  const next = { ...source }
+  if (value === undefined) delete next[id]
+  else next[id] = value
+  return next
 }
 
 /**
@@ -1553,35 +1641,20 @@ const store = createStore<Store>((set, get) => {
     nextReview: BuildingReview
     label: string
     kind: 'value.edited' | 'value.confirmed'
-    legacyKey: LegacyFieldKey | null
-    previousLegacy: FieldState | null
-    nextLegacy: FieldState | null
   }) => {
-    const write = (
-      review: BuildingReview,
-      legacy: FieldState | null,
-    ) => set((state) => ({
-      ...reviewedBuildingPatch(state, change.buildingId, review),
-      ...(change.legacyKey && legacy
-        ? {
-            fields: {
-              ...state.fields,
-              [change.legacyKey]: legacy,
-            },
-          }
-        : {}),
-    }))
+    const write = (review: BuildingReview) => set((state) =>
+      reviewedBuildingPatch(state, change.buildingId, review))
 
     const before = get().projection().result.total.exact
-    write(change.nextReview, change.nextLegacy)
+    write(change.nextReview)
     const after = get().projection().result.total.exact
     const delta = after.minus(before)
     apply({
       kind: change.kind,
       label: change.label,
       deltaExact: delta.isZero() ? null : delta,
-      inverse: () => write(change.previousReview, change.previousLegacy),
-      forward: () => write(change.nextReview, change.nextLegacy),
+      inverse: () => write(change.previousReview),
+      forward: () => write(change.nextReview),
     })
     if (!delta.isZero()) {
       set({
@@ -1648,19 +1721,12 @@ const store = createStore<Store>((set, get) => {
       if (key === 'buildingClass') {
         nextReview = withEngineState(nextReview, { buildingClassConfirmed: false })
       }
-      const fieldKey = id === s.activeBuildingId ? legacyFieldKey(key) : null
-      const nextValue = fieldKey ? legacyFieldValue(nextReview, fieldKey) : null
       commitReviewChange({
         buildingId: id,
         previousReview,
         nextReview,
         kind: 'value.edited',
-        label: `Building ${id} · ${key} manually edited`,
-        legacyKey: fieldKey,
-        previousLegacy: fieldKey ? s.fields[fieldKey] : null,
-        nextLegacy: fieldKey && nextValue !== null
-          ? { value: nextValue, provenance: 'manuell erfasst' }
-          : null,
+        label: `Gebäudedaten ${id} · ${BUILDING_FACT_LABELS[key]} manuell bearbeitet`,
       })
     },
 
@@ -1672,48 +1738,39 @@ const store = createStore<Store>((set, get) => {
       if (key === 'buildingClass') {
         nextReview = withEngineState(nextReview, { buildingClassConfirmed: false })
       }
-      const fieldKey = id === s.activeBuildingId ? legacyFieldKey(key) : null
-      const nextValue = fieldKey ? legacyFieldValue(nextReview, fieldKey) : null
       commitReviewChange({
         buildingId: id,
         previousReview,
         nextReview,
         kind: 'value.edited',
-        label: `Building ${id} · ${key} restored from source`,
-        legacyKey: fieldKey,
-        previousLegacy: fieldKey ? s.fields[fieldKey] : null,
-        nextLegacy: fieldKey && nextValue !== null
-          ? { value: nextValue, provenance: sourceProvenance(nextReview, key) }
-          : null,
+        label: `Gebäudedaten ${id} · ${BUILDING_FACT_LABELS[key]} auf Quellenwert zurückgesetzt`,
       })
     },
 
     editField: (key, value, confirmed) => {
       const s = get()
       const previousLegacy = s.fields[key]
-      // ЦЕЛЬ события фиксируется в момент события. Прежде `inverse` снова
-      // спрашивал `activeBuildingId` — уже во время отката, — и правка,
-      // сделанная в здании A, откатывалась в здание B, если между правкой и
-      // отменой продавец переключил активное (сплошное ревью 26, находка
-      // 12). Событие обязано знать свою цель, а не искать её при
-      // воспроизведении.
-      const target = s.activeBuildingId
+      // These compatibility controls are explicitly labelled Haus A. Their
+      // target must therefore be stable even if another building is active
+      // in the building-aware workflow.
+      const target = LEGACY_FIELDS_BUILDING_ID
       const previousReview = s.buildingReviews[target]
       if (!previousReview) return
       const at = new Date().toISOString()
+      const actor = confirmed ? CUSTOMER_CONFIRMATION_ACTOR : 'sales-user'
       let nextReview = previousReview
       if (key === 'wfl') {
-        nextReview = withFactOverride(previousReview, 'wfl', value, 'sales-user', at)
+        nextReview = withFactOverride(previousReview, 'wfl', value, actor, at)
       } else if (key === 'we') {
-        nextReview = withFactOverride(previousReview, 'units', value, 'sales-user', at)
+        nextReview = withFactOverride(previousReview, 'units', value, actor, at)
       } else {
         const sArea = effectiveFactValue(previousReview.facts.bgfSAbove)
         if (sArea === null) throw new Error(`building ${target} has unknown BGF S above`)
         nextReview = withFactOverride(
-          previousReview, 'bgfRAbove', value, 'sales-user', at,
+          previousReview, 'bgfRAbove', value, actor, at,
         )
         nextReview = withFactOverride(
-          nextReview, 'bgfRSAbove', value.plus(sArea), 'sales-user', at,
+          nextReview, 'bgfRSAbove', value.plus(sArea), actor, at,
         )
       }
       commitReviewChange({
@@ -1722,12 +1779,6 @@ const store = createStore<Store>((set, get) => {
         nextReview,
         kind: confirmed ? 'value.confirmed' : 'value.edited',
         label: `${LABELS[key]} ${previousLegacy.value.toFixed(2)} → ${value.toFixed(2)}`,
-        legacyKey: key,
-        previousLegacy,
-        nextLegacy: {
-          value,
-          provenance: confirmed ? 'vom Kunden bestätigt' : 'manuell erfasst',
-        },
       })
     },
 
@@ -1872,15 +1923,15 @@ const store = createStore<Store>((set, get) => {
           reason,
         ),
       }))
-      write(resolution.decision, selectedId, 'building fact review')
+      write(resolution.decision, selectedId, 'Prüfung der Gebäudedaten')
       apply({
         kind: 'conflict.resolved',
         label: resolution.decision === 'defer'
-          ? `Building conflict ${conflictId} deferred`
-          : `Building conflict ${conflictId} resolved`,
+          ? `Gebäudekonflikt ${conflictId} zurückgestellt`
+          : `Gebäudekonflikt ${conflictId} gelöst`,
         deltaExact: null,
-        inverse: () => write('defer', null, 'undo'),
-        forward: () => write(resolution.decision, selectedId, 'redo'),
+        inverse: () => write('defer', null, 'Rückgängig'),
+        forward: () => write(resolution.decision, selectedId, 'Wiederholt'),
       })
     },
 
@@ -1895,35 +1946,30 @@ const store = createStore<Store>((set, get) => {
       const conflict = s.buildingConflicts[fxConflict.id]!
       const selected = conflict.candidates.find((item) => item.origin === candidate)
       if (!selected) return
-      const prevField = s.fields.wfl
       const buildingId = conflict.buildingId
       const prevReview = s.buildingReviews[buildingId]!
       const selectedValue = D(selected.value)
       const selectedReview = candidate === 'customer'
         ? withFactOverride(
-            prevReview, 'wfl', selectedValue, 'customer confirmation',
+            prevReview, 'wfl', selectedValue, CUSTOMER_CONFIRMATION_ACTOR,
             new Date().toISOString(),
           )
         : withoutFactOverride(prevReview, 'wfl')
       const write = (resolved: boolean) => set((state) => {
         const review = resolved ? selectedReview : prevReview
         const patch = reviewedBuildingPatch(state, buildingId, review)
+        const buildingConflicts = withConflictResolution(
+          patch.buildingConflicts,
+          conflict.id,
+          resolved ? 'selectCandidate' : 'defer',
+          resolved ? selected.id : null,
+          'sales-user',
+          resolved ? 'WFL-Kandidat ausgewählt' : 'Rückgängig',
+        )
         return {
           ...patch,
-          buildingConflicts: withConflictResolution(
-            patch.buildingConflicts,
-            conflict.id,
-            resolved ? 'selectCandidate' : 'defer',
-            resolved ? selected.id : null,
-            'sales-user',
-            resolved ? 'WFL candidate selected' : 'undo',
-          ),
-          fields: {
-            ...state.fields,
-            wfl: resolved
-              ? { value: selectedValue, provenance: 'vom Kunden bestätigt' }
-              : prevField,
-          },
+          buildingConflicts,
+          fields: legacyFieldsFromReview(review, buildingConflicts),
         }
       })
       write(true)
@@ -2224,15 +2270,11 @@ const store = createStore<Store>((set, get) => {
       if (inheritedWflConflict.state === 'resolved') {
         const chosen = inheritedWflConflict.candidates
           .find((c) => c.selectionStatus === 'authoritative')!
-        fresh.fields = {
-          ...fresh.fields,
-          wfl: { value: D(chosen.value), provenance: 'vom Kunden bestätigt' },
-        }
         const buildingId = fx.id
         const baseReview = fresh.buildingReviews[buildingId]!
         const inheritedReview = chosen.origin === 'customer'
           ? withFactOverride(
-              baseReview, 'wfl', D(chosen.value), 'customer confirmation',
+              baseReview, 'wfl', D(chosen.value), CUSTOMER_CONFIRMATION_ACTOR,
               new Date().toISOString(),
             )
           : withoutFactOverride(baseReview, 'wfl')
@@ -2244,6 +2286,7 @@ const store = createStore<Store>((set, get) => {
           ...fresh.buildings,
           [buildingId]: requiredBuildingInput(inheritedReview),
         }
+        fresh.fields = legacyFieldsFromReview(inheritedReview, s.buildingConflicts)
       }
       set({
         ...NO_TRANSIENT,
@@ -2552,8 +2595,8 @@ const store = createStore<Store>((set, get) => {
       apply({
         kind: 'option.selected',
         label: mode === 'SHARED'
-          ? `Shared configuration applies to ${appliesTo}`
-          : 'Per-building configuration enabled',
+          ? `Gemeinsame Konfiguration gilt für ${appliesTo}`
+          : 'Konfiguration je Gebäude aktiviert',
         deltaExact: delta.isZero() ? null : delta,
         inverse: () => write(previous),
         forward: () => write(mode),
@@ -2568,15 +2611,12 @@ const store = createStore<Store>((set, get) => {
         status: 'completed', fingerprint: null, at: new Date().toISOString(),
       }
       const write = (value: BuildingConfigurationState | undefined) => set((state) => ({
-        buildingConfigState: {
-          ...state.buildingConfigState,
-          ...(value ? { [id]: value } : {}),
-        },
+        buildingConfigState: updateOptionalRecord(state.buildingConfigState, id, value),
       }))
       write(completed)
       apply({
         kind: 'value.edited',
-        label: `Building configuration ${id} completed`,
+        label: `Gebäudekonfiguration ${id} abgeschlossen`,
         deltaExact: null,
         inverse: () => write(previous),
         forward: () => write(completed),
@@ -2593,15 +2633,12 @@ const store = createStore<Store>((set, get) => {
         at: new Date().toISOString(),
       }
       const write = (value: BuildingConfigurationState | undefined) => set((state) => ({
-        buildingConfigState: {
-          ...state.buildingConfigState,
-          ...(value ? { [id]: value } : {}),
-        },
+        buildingConfigState: updateOptionalRecord(state.buildingConfigState, id, value),
       }))
       write(confirmed)
       apply({
         kind: 'value.confirmed',
-        label: `Building configuration ${id} confirmed`,
+        label: `Gebäudekonfiguration ${id} bestätigt`,
         deltaExact: null,
         inverse: () => write(previous),
         forward: () => write(confirmed),
@@ -2647,10 +2684,10 @@ export function hydrateProposalState(storage = browserProposalStorage()): boolea
   }
 
   const payload = loaded.payload
-  const active = restoredOptionConfig(payload.active)
+  const active = restoredOptionConfig(payload.active, payload.buildingConflicts)
   const optionConfigs = Object.fromEntries(
     Object.entries(payload.optionConfigs).map(([id, config]) => [
-      id, restoredOptionConfig(config),
+      id, restoredOptionConfig(config, payload.buildingConflicts),
     ]),
   )
   store.setState((state) => ({
@@ -2667,7 +2704,7 @@ export function hydrateProposalState(storage = browserProposalStorage()): boolea
     journal: [...state.journal, {
       seq: state.journal.length + 1,
       kind: 'state.restored',
-      label: 'Proposal state restored',
+      label: 'Angebotsstand wiederhergestellt',
       deltaExact: null,
       at: new Date().toISOString(),
       optionId: null,

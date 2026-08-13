@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 48** · перевод есть, мост не подключён: 43
-· перевода нет (в поставку копирайта): 5
+**Всего 48** · перевод есть, мост не подключён: 42
+· перевода нет (в поставку копирайта): 6
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -55,7 +55,6 @@ Mit freundlichen Grüßen
 - vollständig inkl. Gründung
 - §2 nicht bestätigt.
 - Österreich
-- €/m² WFL nach WoFlV
 - ≈ 85 % der BGF R+S
 
 ## Перевода нет — в следующую поставку копирайта
@@ -65,3 +64,4 @@ Mit freundlichen Grüßen
 - Eigenes Ausgabeprofil clientPrint mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.
 - Tiefgarage · Lüftung, OS-Beschichtung, Tore
 - Untergeschoss · Rohbau und Ausbau
+- ≈ 2.447 €/m² WFL nach WoFlV

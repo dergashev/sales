@@ -10,6 +10,7 @@ import {
 import {
   hydrateProposalState,
   initializeProposalPersistence,
+  projectionForOption,
   useStore,
   wflConflict,
   __resetStoreForTests,
@@ -69,7 +70,17 @@ describe('proposal store recovery', () => {
       'DEMO-B-A', 'bgfRAbove', new Decimal('2100.123456789'),
     )
     st().setKg300('fassade', 'klinker')
+    st().setKg700Mode('hoaiAho')
+    st().setDiscount(new Decimal('2.5'))
     st().createOption('Geteilt')
+    st().setCoverage('KG_500', 'included')
+    st().toggleRisiko('RISK-STATIK')
+    st().toggleRegionalfaktor()
+    st().setDiscount(new Decimal('3.5'))
+    st().confirmEnergiestandardAnswer()
+    const activeTotal = st().projection().result.total.exact.toFixed()
+    const activeUncertainty = st().projection().uncertaintyPp
+    const storedTotal = projectionForOption(st(), 'OPT-01')!.result.total.exact.toFixed()
     st().saveNote('must never leave the private session')
     st().sendOffer('email')
 
@@ -77,6 +88,7 @@ describe('proposal store recovery', () => {
     expect(raw).not.toContain('"journal"')
     expect(raw).not.toContain('"snapshots"')
     expect(raw).not.toContain('"noteText"')
+    expect(raw).not.toContain('"fields"')
     expect(raw).not.toContain('must never leave the private session')
 
     __resetStoreForTests()
@@ -86,17 +98,41 @@ describe('proposal store recovery', () => {
 
     expect(st().journal).toHaveLength(1)
     expect(st().journal[0]!.kind).toBe('state.restored')
+    expect(st().journal[0]!.label).toBe('Angebotsstand wiederhergestellt')
     expect(st().snapshots).toEqual([])
     expect(st().noteText).toBe('')
     expect(st().options.map((option) => option.name)).toEqual(['Hausweise', 'Geteilt'])
     expect(st().activeOptionId).toBe('OPT-02')
     expect(wflConflict(st()).state).toBe('resolved')
+    expect(st().projection().result.total.exact.toFixed()).toBe(activeTotal)
+    expect(st().projection().uncertaintyPp).toBe(activeUncertainty)
+    expect(st().coverage.KG_500).toBe('included')
+    expect(st().risikoAktiv['RISK-STATIK']).toBe(true)
+    expect(st().regionalfaktorActive).toBe(true)
+    expect(st().discountPercent!.toFixed()).toBe('3.5')
 
     st().openOption('OPT-01')
     const restored = st().buildingReviews['DEMO-B-A']!.facts.bgfRAbove.override!.value
     expect(Decimal.isDecimal(restored)).toBe(true)
     expect(restored.toFixed()).toBe('2100.123456789')
     expect(st().kg300['DEMO-B-A']!.fassade).toBe('klinker')
+    expect(st().kg700Mode).toBe('hoaiAho')
+    expect(st().discountPercent!.toFixed()).toBe('2.5')
+    expect(st().projection().result.total.exact.toFixed()).toBe(storedTotal)
+  })
+
+  it('does not persist a derived conflict after its source disagreement is removed', () => {
+    const storage = new MemoryStorage()
+    initializeProposalPersistence(storage)
+    const st = () => useStore.getState()
+
+    st().setBuildingFactOverride('DEMO-B-A', 'bgfRSAbove', new Decimal('2100'))
+    expect(storage.getItem(proposalStorageKey('DEMO-0001')))
+      .toContain('DERIVED:DEMO-B-A:bgfRSAbove')
+
+    st().clearBuildingFactOverride('DEMO-B-A', 'bgfRSAbove')
+    expect(storage.getItem(proposalStorageKey('DEMO-0001')))
+      .not.toContain('DERIVED:DEMO-B-A:bgfRSAbove')
   })
 
   it('rejects a schema-invalid payload without partially hydrating it', () => {
