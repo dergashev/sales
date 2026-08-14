@@ -217,12 +217,27 @@ async function main() {
     } catch (err) {
       fail(EXIT.PROVENANCE, `Could not read provenance from ${baseUrl}: ${err.message}. Refusing to validate an unverifiable runtime.`, provenance)
     }
+    // From here on, PROVENANCE describes the SERVED candidate, not the
+    // machine invoking this runner. QA/Release cite this block as evidence
+    // about the runtime under test — printing the local git state here
+    // (Tech Review finding P1) would silently substitute an unrelated
+    // machine's branch/worktree/dirty state for the candidate's own.
+    // A field the server didn't report is treated as untrustworthy, not
+    // absent: this mode exists specifically to avoid assuming an
+    // unverifiable runtime is fine.
+    provenance.candidateSha = sidecar.candidateSha
+    provenance.branch = sidecar.branch ?? 'UNKNOWN (server did not report it)'
+    provenance.worktreeRoot = sidecar.worktreeRoot ?? 'UNKNOWN (server did not report it)'
+    provenance.dirty = typeof sidecar.dirty === 'boolean' ? sidecar.dirty : true
+    provenance.builtAt = sidecar.builtAt
+    expectNonce = sidecar.nonce
+
     if (sidecar.candidateSha !== expectSha) {
       fail(EXIT.PROVENANCE, `Runtime at ${baseUrl} serves candidate ${sidecar.candidateSha}, expected ${expectSha}. Refusing to validate the wrong candidate.`, provenance)
     }
-    provenance.candidateSha = sidecar.candidateSha
-    provenance.builtAt = sidecar.builtAt
-    expectNonce = sidecar.nonce
+    if (provenance.dirty && !args.allowDirty) {
+      fail(EXIT.PROVENANCE, `Runtime at ${baseUrl} was built from a dirty candidate (uncommitted changes at build time). Pass --allow-dirty to explicitly accept a non-authoritative candidate.`, provenance)
+    }
   } else {
     // ── build mode ──────────────────────────────────────────────────
     if (expectSha && headSha !== expectSha) {
@@ -246,8 +261,14 @@ async function main() {
     const nonce = randomUUID()
     const builtAt = new Date().toISOString()
     provenance.builtAt = builtAt
+    // No `viewport` field here (Tech Review finding P1/3): viewport is a
+    // property of THIS test run's invocation (--width/--height), not of
+    // the build — a value baked in at build time would go stale the
+    // moment a later run used a different viewport, and nothing reads it
+    // back regardless. `provenance.viewport` (printed in the PROVENANCE
+    // block) always reflects the current run's actual --width/--height.
     const sidecar = {
-      candidateSha: headSha, branch, worktreeRoot, builtAt, dirty, viewport, nonce,
+      candidateSha: headSha, branch, worktreeRoot, builtAt, dirty, nonce,
     }
     writeFileSync(path.join(DIST_DIR, '__provenance.json'), JSON.stringify(sidecar, null, 2))
     expectSha = headSha
