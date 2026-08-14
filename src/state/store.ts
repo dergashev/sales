@@ -13,6 +13,7 @@ import {
 import { withRegionalFactor } from './catalog'
 import {
   bgfAboveGround, calculateBuilding, kgSplit, sumOfBlock,
+  totalLabel as calculationTotalLabel,
   type BuildingInput, type Coverage, type CoverageState,
   type CostGroup, type BuildingResult,
 } from '../engine/calculate'
@@ -206,8 +207,6 @@ export type OptionConfig = {
   configurationMode: ConfigurationMode
   /** The default mode is an engine fallback, never proof of user consent. */
   configurationModeChosen: boolean
-  /** Preparation-only UI state for the reversible inline mode step. */
-  configurationModeEditing: boolean
   /** Building-chapter progress is isolated by building or shared scope. */
   configurationVisitedChapters: Record<string, number[]>
   sharedConfiguration: SharedConfiguration
@@ -256,7 +255,7 @@ export type OptionConfig = {
 const OPTION_CONFIG_KEYS = [
   'buildings', 'activeBuildingId', 'included', 'buildingReviews',
   'buildingConfirmation', 'configurationMode', 'configurationModeChosen',
-  'configurationModeEditing', 'configurationVisitedChapters', 'sharedConfiguration',
+  'configurationVisitedChapters', 'sharedConfiguration',
   'buildingConfigState',
   'kg300', 'kg300Provenance', 'kg700Mode', 'coverage', 'fields',
   'esConfirmed', 'regionalfaktorActive', 'risikoAktiv',
@@ -457,7 +456,6 @@ function defaultOptionConfig(): OptionConfig {
     buildingConfirmation: {},
     configurationMode: 'PER_BUILDING',
     configurationModeChosen: false,
-    configurationModeEditing: false,
     configurationVisitedChapters: {},
     sharedConfiguration: {
       choices: defaultOptionChoices(),
@@ -684,7 +682,6 @@ function restoredOptionConfig(
     ...base,
     ...persisted,
     configurationModeChosen: persisted.configurationModeChosen === true,
-    configurationModeEditing: false,
     configurationVisitedChapters: persisted.configurationVisitedChapters ?? {},
     buildings,
     fields: legacyFieldsFromReview(
@@ -1014,8 +1011,6 @@ type Store = {
   setGateOpen: (v: boolean) => void
   setTourOpen: (v: boolean) => void
   setPrintOpen: (v: boolean) => void
-  /** Переключить охват показа: null — весь комплекс (DC-46). */
-  setScope: (buildingId: string | null) => void
   /** Atomically align edit scope, active building and offer scope. */
   setConfigurationScope: (buildingId: string | null) => void
 }
@@ -1251,7 +1246,9 @@ export function projectionForOption(
   optionId: string,
 ): Projection | null {
   const cfg = configForOption(s, optionId)
-  return cfg ? computeProjection(cfg) : null
+  // Comparison is always option-to-option at offer scope. A Configurator
+  // building selection is a reading/editing lens, never the sold scope.
+  return cfg ? projectProjection(cfg) : null
 }
 
 /** Конфигурация любой Option: активная — с плоских полей, прочие — из хранилища. */
@@ -1474,6 +1471,17 @@ function computeProjection(
   }
   const allDrivers = [...perBuilding.flatMap((r) => r.drivers), ...optDrivers]
   const total = beforeDiscount.plus(sumOfBlock(allDrivers, 'discount'))
+  const completeness = perBuilding.every((r) => r.completeness === 'complete')
+    ? 'complete' : 'incomplete'
+  const narrowedBuilding = s.scopeBuildingId && list.length === 1
+    && list[0]!.id === s.scopeBuildingId
+    ? effectiveFactValue(
+        s.buildingReviews[list[0]!.id]!.facts.documentationName,
+      ) ?? list[0]!.id
+    : null
+  const declaredPricingScope = narrowedBuilding
+    ? `Grundleistung All3 · ${narrowedBuilding}`
+    : 'Grundleistung All3'
   const result: BuildingResult = {
     buildingId: list.map((b) => b.id).join('+'),
     drivers: [
@@ -1483,9 +1491,8 @@ function computeProjection(
     ],
     bauwerk: perBuilding.reduce((a, r) => a.plus(r.bauwerk), new Decimal(0)),
     total: present(total),
-    totalLabel: perBuilding[0]!.totalLabel,
-    completeness: perBuilding.every((r) => r.completeness === 'complete')
-      ? 'complete' : 'incomplete',
+    totalLabel: calculationTotalLabel(completeness, declaredPricingScope),
+    completeness,
     incompleteReasons: perBuilding.flatMap((r) => r.incompleteReasons),
   }
   const noUg = perBuilding.reduce((a, _, i) => a.plus(
@@ -1551,6 +1558,13 @@ function computeProjection(
   }
 }
 
+/** The complete sold option, independent of the Configurator reading lens. */
+export function projectProjection(
+  s: Pick<Store, keyof OptionConfig>,
+): Projection {
+  return computeProjection({ ...s, scopeBuildingId: null })
+}
+
 /**
  * Mode changes may activate a retained choice set, but changing the visible
  * OfferPanel scope is navigation. Compare like-for-like project projections
@@ -1559,7 +1573,7 @@ function computeProjection(
 function projectTotal(
   s: Pick<Store, keyof OptionConfig>,
 ): Decimal {
-  return computeProjection({ ...s, scopeBuildingId: null }).result.total.exact
+  return projectProjection(s).result.total.exact
 }
 
 /**
@@ -1820,6 +1834,8 @@ const store = createStore<Store>((set, get) => {
     // До создания первой Option эти же поля обслуживают уровень
     // Opportunity (анализ, параметры): рабочая копия существует всегда.
     ...defaultOptionConfig(),
+    // Preparation-only UI state is deliberately outside OptionConfig.
+    configurationModeEditing: false,
     optionConfigs: {},
     pipelineView: 'buildingScope',
     gateOpen: false,
@@ -2201,7 +2217,9 @@ const store = createStore<Store>((set, get) => {
 
     sendOffer: (kind) => {
       const s = get()
-      const p = s.projection()
+      // M-3 snapshots freeze the sold option, never a temporary building
+      // lens used while editing the Configurator.
+      const p = projectProjection(s)
       const snap: OfferSnapshot = {
         id: `SNAP-${s.snapshots.length + 1}`,
         at: new Date().toISOString(),
@@ -2385,6 +2403,7 @@ const store = createStore<Store>((set, get) => {
         mode: modeForLevelTransition(s.mode, 'liste'),
         level: 'liste',
         activeOptionId: null,
+        configurationModeEditing: false,
         // Рабочая копия покидаемой Option убирается в хранилище — иначе
         // следующее открытие вернуло бы её к чужому состоянию.
         ...(s.activeOptionId
@@ -2473,6 +2492,7 @@ const store = createStore<Store>((set, get) => {
           ? { optionConfigs: { ...s.optionConfigs, [s.activeOptionId]: captureConfig(s) } }
           : {}),
         ...fresh,
+        configurationModeEditing: false,
       })
       // Что вернуть при ПОВТОРЕ отмены. Прежде `forward` восстанавливал
       // только `{id, name}`: карточка возвращалась без конфигурации, а
@@ -2494,6 +2514,7 @@ const store = createStore<Store>((set, get) => {
             mode: modeForLevelTransition(x.mode, prevLevel),
             level: prevLevel,
             ...prevFlat,
+            configurationModeEditing: false,
           }
         }),
         forward: () => set((x) => ({
@@ -2505,6 +2526,7 @@ const store = createStore<Store>((set, get) => {
             ? { optionConfigs: { ...x.optionConfigs, [x.activeOptionId]: captureConfig(x) } }
             : {}),
           ...removed,
+          configurationModeEditing: false,
         })),
       })
     },
@@ -2547,6 +2569,7 @@ const store = createStore<Store>((set, get) => {
         set({
           level: 'option',
           pipelineView: canBeginConfiguration(s) ? 'konfigurator' : 'buildingScope',
+          configurationModeEditing: false,
           ...(canBeginConfiguration(s) && s.configurationModeChosen
             && !s.configurationModeEditing
             && !s.besuchteKapitel.includes(s.openChapter)
@@ -2582,14 +2605,32 @@ const store = createStore<Store>((set, get) => {
           ? { ...rest, [s.activeOptionId]: captureConfig(s) }
           : rest,
         ...next,
+        configurationModeEditing: false,
       })
     },
 
     setPipelineView: (v) => set((s) => {
       const requested = pipelineViewForOutputProfile(s.mode, v)
       const pipelineView = pipelineViewForBuildingGate(s, requested)
+      const visibleChapter = chapterForOutputProfile(s.mode, s.openChapter)
+      const includedIds = includedBuildingIds(s)
+      const activeBuildingId = includedIds.includes(s.activeBuildingId)
+        ? s.activeBuildingId
+        : includedIds[0] ?? s.activeBuildingId
+      const buildingScoped = BUILDING_SCOPED_CHAPTERS.includes(
+        visibleChapter as typeof BUILDING_SCOPED_CHAPTERS[number],
+      )
       return {
         pipelineView,
+        // The narrow lens exists only inside a building-scoped Configurator
+        // chapter. Vergleich, Export and snapshots always cover the option.
+        scopeBuildingId: pipelineView === 'konfigurator'
+          && buildingScoped
+          && s.configurationMode === 'PER_BUILDING'
+          && s.configurationModeChosen
+          && !s.configurationModeEditing
+          ? activeBuildingId
+          : null,
         ...(pipelineView === 'konfigurator'
           && s.configurationModeChosen
           && !s.configurationModeEditing
@@ -2604,8 +2645,6 @@ const store = createStore<Store>((set, get) => {
     setTourOpen: (v) => set({ tourOpen: v }),
 
     setPrintOpen: (v) => set({ printOpen: v }),
-
-    setScope: (buildingId) => set({ scopeBuildingId: buildingId }),
 
     setConfigurationScope: (buildingId) => set((s) => {
       if (buildingId === null) return { scopeBuildingId: null }
@@ -3006,6 +3045,7 @@ export function hydrateProposalState(storage = browserProposalStorage()): boolea
     )
     store.setState((state) => ({
       ...active,
+      configurationModeEditing: false,
       options: payload.options,
       activeOptionId: payload.activeOptionId,
       optionSeq: payload.optionSeq,

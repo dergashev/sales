@@ -333,6 +333,48 @@ export function configurationScopeControlFor(
   return optionCount <= 3 ? 'segmented' : 'select'
 }
 
+type ConfigurationScopeOption = {
+  value: string
+  label: string
+  status: string
+}
+
+export function ConfigurationScopeControl({
+  legend,
+  selectLabel,
+  value,
+  options,
+  onChoose,
+}: {
+  legend: string
+  selectLabel: string
+  value: string
+  options: ConfigurationScopeOption[]
+  onChoose: (value: string) => void
+}) {
+  return configurationScopeControlFor(options.length) === 'segmented' ? (
+    <SegmentedControl
+      legend={legend}
+      value={value}
+      onChange={onChoose}
+      options={options.map(({ value: optionValue, label }) => ({
+        value: optionValue,
+        label,
+      }))}
+    />
+  ) : (
+    <SelectField
+      label={selectLabel}
+      value={value}
+      onChange={(event) => onChoose(event.currentTarget.value)}
+    >
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>{option.label}</option>
+      ))}
+    </SelectField>
+  )
+}
+
 function ConfigurationScopeNavigation({
   chapter,
   onAnnounce,
@@ -402,27 +444,13 @@ function ConfigurationScopeNavigation({
 
   return (
     <div className="mt-4 min-w-0">
-      {configurationScopeControlFor(options.length) === 'segmented' ? (
-        <SegmentedControl
-          legend={t('configurator.scope.legend')}
-          value={value}
-          onChange={choose}
-          options={options.map(({ value: optionValue, label }) => ({
-            value: optionValue,
-            label,
-          }))}
-        />
-      ) : (
-        <SelectField
-          label={t('configurator.scope.selectLabel')}
-          value={value}
-          onChange={(event) => choose(event.currentTarget.value)}
-        >
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
-          ))}
-        </SelectField>
-      )}
+      <ConfigurationScopeControl
+        legend={t('configurator.scope.legend')}
+        selectLabel={t('configurator.scope.selectLabel')}
+        value={value}
+        options={options}
+        onChoose={choose}
+      />
     </div>
   )
 }
@@ -493,7 +521,7 @@ export function ConfigurationModeReadiness() {
   const t = useT()
   return (
     <aside
-      aria-label={t('configurator.sidebar.title')}
+      aria-label={t('buildingScope.readiness.pricingNotStarted')}
       className="flex h-full w-panel-right min-w-0 max-w-panel-right shrink-0 flex-col overflow-y-auto border-l border-border-strong bg-surface-default"
     >
       <div className="p-6">

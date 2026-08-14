@@ -880,21 +880,20 @@ describe('Охват показа DC-46: сужает показ, но не со
     const komplex = st().projection().result.total.exact
     const included = { ...st().included }
 
-    st().setScope('DEMO-B-A')
+    st().setConfigurationScope('DEMO-B-A')
     const hausA = st().projection().result.total.exact
     // Показ сузился: комплекс дороже одного здания.
     expect(hausA.lt(komplex)).toBe(true)
     // Состав предложения НЕ тронут: охват — не коммерческое решение.
     expect(st().included).toEqual(included)
 
-    st().setScope(null)
+    st().setConfigurationScope(null)
     expect(st().projection().result.total.exact.equals(komplex)).toBe(true)
   })
 
-  it('охват на исключённое здание не даёт пустоты — показывается комплекс', () => {
-    st().setScope('DEMO-B-B')
-    // Второе здание в предложение не входит по умолчанию: устаревшее
-    // предпочтение показа не должно оставлять экран без чисел.
+  it('исключённое здание нельзя сделать видимым охватом', () => {
+    st().setConfigurationScope('DEMO-B-B')
+    expect(st().scopeBuildingId).toBeNull()
     expect(st().projection().result.total.exact.toFixed(2)).toBe('3817835.00')
   })
 
@@ -904,12 +903,27 @@ describe('Охват показа DC-46: сужает показ, но не со
     st().confirmProjectParams()
     st().createOption('A')
     st().openOption('OPT-01')
-    st().setScope('DEMO-B-A')
+    st().setConfigurationScope('DEMO-B-A')
     st().openOpportunity('DEMO-0001')
     st().createOption('B')
     st().openOption('OPT-02')
     expect(st().scopeBuildingId).toBeNull()
     st().openOption('OPT-01')
     expect(st().scopeBuildingId).toBe('DEMO-B-A')
+  })
+
+  it('сравнение считает сохранённую Option по всему предложению', () => {
+    st().openOpportunity('DEMO-0001')
+    st().resolveWflConflict('customer')
+    st().confirmProjectParams()
+    st().createOption('A')
+    st().openOption('OPT-01')
+    st().toggleBuildingIncluded('DEMO-B-B')
+    const complex = st().projection().result.total.exact
+    st().setConfigurationScope('DEMO-B-A')
+    expect(st().projection().result.total.exact.lt(complex)).toBe(true)
+
+    st().createOption('B')
+    expect(projectionForOption(st(), 'OPT-01')!.result.total.exact.eq(complex)).toBe(true)
   })
 })

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { activeBuilding, useStore } from '../state/store'
+import { activeBuilding, projectProjection, useStore } from '../state/store'
 import { NNBSP } from '../engine/money'
 import { DiscountControl } from '../components/DiscountControl'
 import { Button } from '../components/primitives'
@@ -49,7 +49,7 @@ export function S5Export() {
     ? s.journal.filter((e) => e.seq > lastSnap.journalSeqAt
         && e.deltaExact !== null && e.optionId === s.activeOptionId).length
     : 0
-  const p = s.projection()
+  const p = projectProjection(s)
   // Текст письма и вложения живут в конфигурации Option: уход в сравнение и
   // возврат стирали написанное продавцом (находка 15).
   const selected = new Set(s.offerDraft.attachments)
@@ -300,7 +300,7 @@ export function S5Export() {
               </p>}
               {s.mode === 'intern' && s.snapshots.length > 0 && (
                 <p className="mt-2 text-small text-text-muted">
-                  Snapshot {s.snapshots.at(-1)!.id}: Zwischensumme der kalkulierten Positionen{' '}
+                  Snapshot {s.snapshots.at(-1)!.id}: {tx(s.snapshots.at(-1)!.totalLabel)}{' '}
                   {s.snapshots.at(-1)!.totalExact}{NNBSP}€ exakt ·
                   Regionalfaktor {s.snapshots.at(-1)!.regionalfaktorActive
                     ? 'aktiviert' : 'nicht aktiviert'} · ±{NNBSP}

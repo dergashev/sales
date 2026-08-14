@@ -1,5 +1,5 @@
 import { useId, useRef } from 'react'
-import { activeBuilding, useStore } from '../state/store'
+import { activeBuilding, projectProjection, useStore } from '../state/store'
 import { Button } from './primitives'
 import { useTx } from '../i18n'
 import { NNBSP } from '../engine/money'
@@ -36,7 +36,7 @@ export function PrintFlow({ returnFocusTo }: {
   const dialogRef = useRef<DialogHandle>(null)
   const open = s.printOpen
   const onClose = () => s.setPrintOpen(false)
-  const p = s.projection()
+  const p = projectProjection(s)
   const b = activeBuilding(s)
   const option = s.options.find((o) => o.id === s.activeOptionId)
 
@@ -56,7 +56,7 @@ export function PrintFlow({ returnFocusTo }: {
     },
     {
       ok: true,
-      text: `Umfang auf jeder Seite: ${s.scopeBuildingId ?? tx('Gesamt')}`,
+      text: `Umfang auf jeder Seite: ${tx('Gesamt')}`,
     },
     {
       ok: p.result.completeness === 'complete',
@@ -87,7 +87,7 @@ export function PrintFlow({ returnFocusTo }: {
           {/* Колонтитул обязателен на бумаге (output-model §3.5). */}
           {tx('Preisstand')} 08/2026<br />
           {tx('Angebotsgültigkeit')}: {tx('Musterangabe')}<br />
-          {tx('Umfang')}: {s.scopeBuildingId ?? tx('Gesamt')}<br />
+          {tx('Umfang')}: {tx('Gesamt')}<br />
           {p.result.total.disclosure}
         </div>
 
@@ -96,7 +96,7 @@ export function PrintFlow({ returnFocusTo }: {
             {tx('Drucken')} · {option?.name ?? '—'}
           </h4>
           <p className="a3-cap">
-            A4 · clientPrint · {s.scopeBuildingId ?? tx('Gesamt')}
+            A4 · clientPrint · {tx('Gesamt')}
             {s.mode === 'intern' && s.activeOptionId ? ` · ${s.activeOptionId}` : ''}
           </p>
 

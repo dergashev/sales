@@ -204,6 +204,7 @@ const de = {
     'Den Konfigurationsmodus zuerst in der Vorbereitung festlegen.',
   'configurator.scope.legend': 'Konfigurationsumfang',
   'configurator.scope.selectLabel': 'Konfigurationsumfang auswählen',
+  'pricing.total.buildingScope': 'Gesamt netto · Grundleistung All3 · {building}',
   'configurator.scope.total': 'Gesamt · {confirmed} von {total} bestätigt',
   'configurator.scope.building': '{building} · {status}',
   'configurator.scope.project': 'Gilt für den gesamten Komplex',
@@ -422,6 +423,7 @@ const en: Partial<Record<MessageKey, string>> = {
     'Choose the configuration mode in Preparation first.',
   'configurator.scope.legend': 'Configuration scope',
   'configurator.scope.selectLabel': 'Select configuration scope',
+  'pricing.total.buildingScope': 'Net total · All3 core service · {building}',
   'configurator.scope.total': 'Total · {confirmed} of {total} confirmed',
   'configurator.scope.building': '{building} · {status}',
   'configurator.scope.project': 'Applies to the entire complex',
@@ -506,6 +508,12 @@ const DE_TO_KEY = new Map(Object.entries(GENERATED_DE).map(([k, v]) => [v, k]))
 export function translateText(deText: string, lang: UiLanguage): string {
   if (lang !== 'en') return deText
   const trimmed = deText.trim()
+  const narrowedTotalPrefix = 'Gesamt netto · Grundleistung All3 · '
+  if (trimmed.startsWith(narrowedTotalPrefix)) {
+    return translate('pricing.total.buildingScope', lang, {
+      building: trimmed.slice(narrowedTotalPrefix.length),
+    })
+  }
   const key = DE_TO_KEY.get(trimmed)
   return key ? (GENERATED_EN[key] ?? deText) : deText
 }

@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
-import { configurationScopeControlFor } from '../S3Konfigurator'
+import {
+  ConfigurationScopeControl,
+  configurationScopeControlFor,
+} from '../S3Konfigurator'
 import {
   __resetStoreForTests,
   choicesFor,
@@ -179,6 +182,51 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
       .toBeChecked()
   })
 
+  it('keeps narrowed pricing qualified and restores the complex before export', async () => {
+    const user = userEvent.setup()
+    await openModeStep(user, 2)
+    await startMode(user, 'PER_BUILDING')
+    act(() => useStore.getState().setCoverage('KG_500', 'excluded'))
+
+    const switcher = screen.getByRole('radiogroup', { name: 'Konfigurationsumfang' })
+    await user.click(within(switcher).getByRole('radio', {
+      name: /Gesamt · 0 von 2 bestätigt/,
+    }))
+    const complex = useStore.getState().projection().result
+    expect(complex.totalLabel).toBe('Gesamt netto · Grundleistung All3')
+
+    await user.click(within(switcher).getByRole('radio', { name: /Haus A · Offen/ }))
+    const narrowed = useStore.getState().projection().result
+    expect(narrowed.total.exact.lt(complex.total.exact)).toBe(true)
+    expect(narrowed.totalLabel).toBe('Gesamt netto · Grundleistung All3 · Haus A')
+    act(() => useStore.getState().setUiLanguage('en'))
+    expect(screen.getAllByText('Net total · All3 core service · Haus A'))
+      .not.toHaveLength(0)
+    act(() => useStore.getState().setUiLanguage('de'))
+
+    await user.click(nav(/Variantenvergleich/))
+    expect(useStore.getState().scopeBuildingId).toBeNull()
+    expect(useStore.getState().projection().result.total.exact.eq(complex.total.exact))
+      .toBe(true)
+
+    await user.click(nav(/Export/))
+    await user.click(screen.getByRole('button', { name: 'Weiter zum Preflight' }))
+    await user.click(screen.getByRole('button', { name: /Preflight bestanden/ }))
+    await user.click(screen.getByRole('button', { name: 'Bestätigen & senden' }))
+    const snapshot = useStore.getState().snapshots.at(-1)!
+    expect(snapshot.totalExact).toBe(complex.total.exact.toFixed(2))
+    expect(snapshot.totalLabel).toBe(complex.totalLabel)
+    expect(screen.getByText((content) => content.includes(
+      `Snapshot ${snapshot.id}: ${complex.totalLabel} ${snapshot.totalExact}`,
+    ))).toBeInTheDocument()
+
+    await user.click(nav(/Konfigurator/))
+    expect(useStore.getState().scopeBuildingId).toBe('DEMO-B-A')
+    const directSnapshot = useStore.getState().sendOffer('email')
+    expect(directSnapshot.totalExact).toBe(complex.total.exact.toFixed(2))
+    expect(directSnapshot.totalLabel).toBe(complex.totalLabel)
+  })
+
   it('surfaces upstream invalidation as recheck instead of reviving confirmation', async () => {
     const user = userEvent.setup()
     await openModeStep(user, 1)
@@ -222,5 +270,40 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
   it('uses the canonical select fallback once total plus buildings exceed three options', () => {
     expect(configurationScopeControlFor(3)).toBe('segmented')
     expect(configurationScopeControlFor(4)).toBe('select')
+  })
+
+  it('renders the 4+ scope fallback with status names and a working scope change', async () => {
+    const user = userEvent.setup()
+    const options = [
+      { value: '__TOTAL__', label: 'Gesamt · 0 von 3 bestätigt', status: '0 / 3' },
+      { value: 'DEMO-B-A', label: 'Haus A · Offen', status: 'Offen' },
+      { value: 'DEMO-B-B', label: 'Haus B · Bereit', status: 'Bereit' },
+      { value: 'DEMO-B-C', label: 'Haus C · Bestätigt', status: 'Bestätigt' },
+    ]
+
+    function FourScopeHarness() {
+      const s = useStore()
+      return (
+        <ConfigurationScopeControl
+          legend="Konfigurationsumfang"
+          selectLabel="Konfigurationsumfang"
+          value={s.scopeBuildingId ?? '__TOTAL__'}
+          options={options}
+          onChoose={(value) => s.setConfigurationScope(
+            value === '__TOTAL__' ? null : value,
+          )}
+        />
+      )
+    }
+
+    render(<FourScopeHarness />)
+    const select = screen.getByRole('combobox', { name: 'Konfigurationsumfang' })
+    for (const option of options) {
+      expect(within(select).getByRole('option', { name: option.label }))
+        .toBeInTheDocument()
+    }
+    await user.selectOptions(select, 'DEMO-B-A')
+    expect(useStore.getState().scopeBuildingId).toBe('DEMO-B-A')
+    expect(select).toHaveValue('DEMO-B-A')
   })
 })

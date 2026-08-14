@@ -54,8 +54,11 @@ import { GENERATED_DE } from '../generated'
  * стоят в `docs/audit/i18n-en-worklist.md` в разделе «перевода нет» и
  * уходят в поставку № 6. Собрать их из уже переведённых кусков нельзя:
  * правило 36 запрещает переводить конкатенацией.
+ * 51 → 44 (14.08): золотой путь снова подтверждает режим конфигуратора
+ * перед обходом глав. Бюджет теперь фиксирует все восемь живых глав,
+ * а не один и тот же экран выбора режима восемь раз.
  */
-const BUDGET = 51
+const BUDGET = 44
 
 /**
  * Немецкая лексика: умляуты и частотные служебные слова. Нормативные имена
@@ -117,6 +120,7 @@ describe('Остаток немецкого на английском пути (
       s.openOption('OPT-01')
       s.confirmBuilding(s.activeBuildingId)
       s.setPipelineView('konfigurator')
+      s.confirmConfigurationMode('PER_BUILDING')
     })
     for (let chapter = 1; chapter <= 8; chapter++) {
       act(() => useStore.getState().openChapterAt(chapter))
