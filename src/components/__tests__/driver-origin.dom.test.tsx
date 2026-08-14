@@ -31,6 +31,8 @@ async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
   await user.click(screen.getByRole('radio', { name: 'Je Gebäude konfigurieren' }))
   await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
+  await user.click(screen.getAllByRole('button', { name: /Leistungsabgrenzung/ })[0]!)
+  await user.click(screen.getAllByRole('button', { name: /Leistungen KG 300/ })[0]!)
 }
 
 describe('DC-21: происхождение раскрывается у каждого вида вклада', () => {

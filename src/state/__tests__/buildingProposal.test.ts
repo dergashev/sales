@@ -4,6 +4,8 @@ import {
   buildingConfirmed,
   canBeginConfiguration,
   choicesFor,
+  configurationComplete,
+  configurationDisplayStatusFor,
   configurationStatusFor,
   useStore,
   wflConflict,
@@ -224,5 +226,30 @@ describe('selection and configuration modes', () => {
     st().setKg300('fassade', 'timber')
     expect(configurationStatusFor(st(), 'DEMO-B-A')).toBe('completed')
     expect(configurationStatusFor(st(), 'DEMO-B-B')).toBe('draft')
+  })
+
+  it('cannot report completion or reconfirm while upstream review is stale', () => {
+    st().resolveWflConflict('customer')
+    st().confirmBuilding('DEMO-B-A')
+    st().confirmConfigurationMode('PER_BUILDING')
+    st().openChapterAt(3)
+    st().openChapterAt(4)
+    st().openChapterAt(5)
+    st().confirmVisibleConfiguration()
+    expect(configurationComplete(st())).toBe(true)
+
+    st().setBuildingFactOverride(
+      'DEMO-B-A', 'documentationName', 'Haus A Nord',
+    )
+    expect(buildingConfirmed(st(), 'DEMO-B-A')).toBe(false)
+    expect(configurationDisplayStatusFor(st(), 'DEMO-B-A')).toBe('recheck')
+    expect(configurationComplete(st())).toBe(false)
+
+    st().confirmVisibleConfiguration()
+    expect(configurationDisplayStatusFor(st(), 'DEMO-B-A')).toBe('recheck')
+    st().confirmBuilding('DEMO-B-A')
+    st().confirmVisibleConfiguration()
+    expect(configurationDisplayStatusFor(st(), 'DEMO-B-A')).toBe('confirmed')
+    expect(configurationComplete(st())).toBe(true)
   })
 })

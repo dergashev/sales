@@ -1,14 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { useState } from 'react'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
-import {
-  ConfigurationScopeControl,
-  configurationScopeControlFor,
-} from '../S3Konfigurator'
+import { ConfigurationScopeTabs } from '../S3Konfigurator'
 import {
   __resetStoreForTests,
   choicesFor,
+  configurationComplete,
   configurationDisplayStatusFor,
   useStore,
 } from '../../state/store'
@@ -82,8 +81,19 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
 
     await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
     expect(useStore.getState().configurationModeChosen).toBe(true)
+    expect(useStore.getState().pricingStarted).toBe(false)
     expect(screen.getByRole('heading', { level: 1, name: 'Leistungen KG 300' }))
       .toHaveFocus()
+    expect(screen.queryByRole('complementary', { name: 'Angebot' })).toBeNull()
+    expect(screen.getByText('Kalkulation noch nicht gestartet')).toBeInTheDocument()
+
+    await user.click(nav(/Variantenvergleich/))
+    expect(screen.queryByRole('complementary', { name: 'Angebot' })).toBeNull()
+    await user.click(nav(/Konfigurator/))
+    await user.click(nav(/Leistungsabgrenzung/))
+    expect(useStore.getState().pricingStarted).toBe(true)
+    expect(screen.getByRole('complementary', { name: 'Angebot' })).toBeInTheDocument()
+    await user.click(nav(/Leistungen KG 300/))
     expect(screen.getByRole('complementary', { name: 'Angebot' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Modus ändern' }))
@@ -95,6 +105,12 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
     expect(useStore.getState().configurationMode).toBe('PER_BUILDING')
     expect(useStore.getState().configurationModeChosen).toBe(true)
+    const oneBuildingTabs = screen.getByRole('tablist', {
+      name: 'Konfigurationsumfang',
+    })
+    expect(within(oneBuildingTabs).getAllByRole('tab')).toHaveLength(1)
+    expect(within(oneBuildingTabs).getByRole('tab', { name: /Haus A · Offen/ }))
+      .toHaveAttribute('aria-selected', 'true')
   })
 
   it('keeps shared choices common while building facts and costs remain separate', async () => {
@@ -102,7 +118,7 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     await openModeStep(user, 2)
     await startMode(user, 'SHARED')
 
-    expect(screen.queryByRole('radiogroup', { name: 'Konfigurationsumfang' })).toBeNull()
+    expect(screen.queryByRole('tablist', { name: 'Konfigurationsumfang' })).toBeNull()
     expect(screen.getAllByText(/Gemeinsame Konfiguration · gilt für Haus A und Haus B/))
       .not.toHaveLength(0)
 
@@ -126,6 +142,7 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
       .toBe('confirmed')
     expect(configurationDisplayStatusFor(useStore.getState(), 'DEMO-B-B'))
       .toBe('confirmed')
+    expect(configurationComplete(useStore.getState())).toBe(true)
   })
 
   it('isolates per-building progress and atomically aligns edit and offer scope', async () => {
@@ -138,19 +155,23 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
       deltaExact: null,
     })
 
-    const switcher = screen.getByRole('radiogroup', { name: 'Konfigurationsumfang' })
-    expect(within(switcher).getByRole('radio', { name: /Haus B · Offen/ })).toBeChecked()
+    const switcher = screen.getByRole('tablist', { name: 'Konfigurationsumfang' })
+    expect(within(switcher).getByRole('tab', { name: /Haus B · Offen/ }))
+      .toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel', { name: /Haus B · Offen/ }))
+      .toBeInTheDocument()
     await visitRequiredBuildingChapters(user)
-    expect(within(switcher).getByRole('radio', { name: /Haus B · Bereit/ }))
+    expect(within(switcher).getByRole('tab', { name: /Haus B · Bereit/ }))
       .toBeInTheDocument()
     await user.click(screen.getByRole('button', {
       name: 'Konfiguration für Haus B bestätigen',
     }))
-    expect(within(switcher).getByRole('radio', { name: /Haus B · Bestätigt/ }))
+    expect(within(switcher).getByRole('tab', { name: /Haus B · Bestätigt/ }))
       .toBeInTheDocument()
+    expect(configurationComplete(useStore.getState())).toBe(false)
 
     const beforeSwitchJournal = useStore.getState().journal.length
-    const hausA = within(switcher).getByRole('radio', { name: /Haus A · Offen/ })
+    const hausA = within(switcher).getByRole('tab', { name: /Haus A · Offen/ })
     await user.click(hausA)
     expect(document.activeElement).toBe(hausA)
     expect(useStore.getState().activeBuildingId).toBe('DEMO-B-A')
@@ -161,41 +182,64 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     expect(configurationDisplayStatusFor(useStore.getState(), 'DEMO-B-A')).toBe('open')
 
     await user.click(nav(/Leistungsabgrenzung/))
-    expect(screen.queryByRole('radiogroup', { name: 'Konfigurationsumfang' })).toBeNull()
+    expect(screen.queryByRole('tablist', { name: 'Konfigurationsumfang' })).toBeNull()
     expect(screen.getByText('Gilt für den gesamten Komplex')).toBeInTheDocument()
     expect(useStore.getState().activeBuildingId).toBe('DEMO-B-A')
     expect(useStore.getState().scopeBuildingId).toBeNull()
 
     await user.click(nav(/Leistungen KG 300/))
-    const restored = screen.getByRole('radiogroup', { name: 'Konfigurationsumfang' })
-    expect(within(restored).getByRole('radio', { name: /Haus A · Offen/ })).toBeChecked()
+    const restored = screen.getByRole('tablist', { name: 'Konfigurationsumfang' })
+    expect(within(restored).getByRole('tab', { name: /Haus A · Offen/ }))
+      .toHaveAttribute('aria-selected', 'true')
 
-    const current = within(restored).getByRole('radio', { name: /Haus A · Offen/ })
+    const current = within(restored).getByRole('tab', { name: /Haus A · Offen/ })
     current.focus()
     await user.keyboard('{Home}')
-    expect(within(restored).getByRole('radio', { name: /Gesamt · 1 von 2 bestätigt/ }))
-      .toBeChecked()
+    const total = within(restored).getByRole('tab', {
+      name: /Gesamt · 1 von 2 bestätigt/,
+    })
+    expect(document.activeElement).toBe(total)
+    expect(total).toHaveAttribute('aria-selected', 'false')
+    expect(current).toHaveAttribute('aria-selected', 'true')
+    await user.keyboard(' ')
+    expect(total).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel', { name: /Gesamt · 1 von 2 bestätigt/ }))
+      .toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 2, name: 'Konfigurationsstand' }))
       .toBeInTheDocument()
     await user.keyboard('{End}')
-    expect(within(restored).getByRole('radio', { name: /Haus B · Bestätigt/ }))
-      .toBeChecked()
+    const hausB = within(restored).getByRole('tab', { name: /Haus B · Bestätigt/ })
+    expect(document.activeElement).toBe(hausB)
+    expect(total).toHaveAttribute('aria-selected', 'true')
+    await user.keyboard('{Enter}')
+    expect(hausB).toHaveAttribute('aria-selected', 'true')
+
+    await user.click(within(restored).getByRole('tab', { name: /Haus A · Offen/ }))
+    await visitRequiredBuildingChapters(user)
+    await user.click(screen.getByRole('button', {
+      name: 'Konfiguration für Haus A bestätigen',
+    }))
+    expect(within(restored).getByRole('tab', { name: /Haus A · Bestätigt/ }))
+      .toBeInTheDocument()
+    expect(configurationComplete(useStore.getState())).toBe(true)
   })
 
   it('keeps narrowed pricing qualified and restores the complex before export', async () => {
     const user = userEvent.setup()
     await openModeStep(user, 2)
     await startMode(user, 'PER_BUILDING')
+    await user.click(nav(/Leistungsabgrenzung/))
     act(() => useStore.getState().setCoverage('KG_500', 'excluded'))
+    await user.click(nav(/Leistungen KG 300/))
 
-    const switcher = screen.getByRole('radiogroup', { name: 'Konfigurationsumfang' })
-    await user.click(within(switcher).getByRole('radio', {
+    const switcher = screen.getByRole('tablist', { name: 'Konfigurationsumfang' })
+    await user.click(within(switcher).getByRole('tab', {
       name: /Gesamt · 0 von 2 bestätigt/,
     }))
     const complex = useStore.getState().projection().result
     expect(complex.totalLabel).toBe('Gesamt netto · Grundleistung All3')
 
-    await user.click(within(switcher).getByRole('radio', { name: /Haus A · Offen/ }))
+    await user.click(within(switcher).getByRole('tab', { name: /Haus A · Offen/ }))
     const narrowed = useStore.getState().projection().result
     expect(narrowed.total.exact.lt(complex.total.exact)).toBe(true)
     expect(narrowed.totalLabel).toBe('Gesamt netto · Grundleistung All3 · Haus A')
@@ -267,43 +311,50 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     expect(before.isPositive()).toBe(true)
   })
 
-  it('uses the canonical select fallback once total plus buildings exceed three options', () => {
-    expect(configurationScopeControlFor(3)).toBe('segmented')
-    expect(configurationScopeControlFor(4)).toBe('select')
-  })
-
-  it('renders the 4+ scope fallback with status names and a working scope change', async () => {
+  it('keeps 4+ building views as an overflow tablist with manual activation', async () => {
     const user = userEvent.setup()
     const options = [
-      { value: '__TOTAL__', label: 'Gesamt · 0 von 3 bestätigt', status: '0 / 3' },
-      { value: 'DEMO-B-A', label: 'Haus A · Offen', status: 'Offen' },
-      { value: 'DEMO-B-B', label: 'Haus B · Bereit', status: 'Bereit' },
-      { value: 'DEMO-B-C', label: 'Haus C · Bestätigt', status: 'Bestätigt' },
+      { value: '__TOTAL__', label: 'Gesamt · 0 von 3 bestätigt' },
+      { value: 'DEMO-B-A', label: 'Haus A · Offen' },
+      { value: 'DEMO-B-B', label: 'Haus B · Bereit' },
+      { value: 'DEMO-B-C', label: 'Haus C · Bestätigt' },
     ]
 
     function FourScopeHarness() {
-      const s = useStore()
+      const [value, setValue] = useState('__TOTAL__')
       return (
-        <ConfigurationScopeControl
-          legend="Konfigurationsumfang"
-          selectLabel="Konfigurationsumfang"
-          value={s.scopeBuildingId ?? '__TOTAL__'}
-          options={options}
-          onChoose={(value) => s.setConfigurationScope(
-            value === '__TOTAL__' ? null : value,
-          )}
-        />
+        <>
+          <ConfigurationScopeTabs
+            legend="Konfigurationsumfang"
+            value={value}
+            options={options}
+            onChoose={setValue}
+          />
+          <output data-testid="scope-value">{value}</output>
+        </>
       )
     }
 
     render(<FourScopeHarness />)
-    const select = screen.getByRole('combobox', { name: 'Konfigurationsumfang' })
+    const tablist = screen.getByRole('tablist', { name: 'Konfigurationsumfang' })
+    expect(tablist).toHaveClass('overflow-x-auto', 'flex-nowrap')
+    expect(screen.queryByRole('combobox', { name: 'Konfigurationsumfang' })).toBeNull()
     for (const option of options) {
-      expect(within(select).getByRole('option', { name: option.label }))
+      expect(within(tablist).getByRole('tab', { name: option.label }))
         .toBeInTheDocument()
     }
-    await user.selectOptions(select, 'DEMO-B-A')
-    expect(useStore.getState().scopeBuildingId).toBe('DEMO-B-A')
-    expect(select).toHaveValue('DEMO-B-A')
+    const total = within(tablist).getByRole('tab', { name: options[0]!.label })
+    total.focus()
+    await user.keyboard('{End}')
+    const last = within(tablist).getByRole('tab', { name: options[3]!.label })
+    expect(document.activeElement).toBe(last)
+    expect(total).toHaveAttribute('aria-selected', 'true')
+    await user.keyboard(' ')
+    expect(last).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByTestId('scope-value')).toHaveTextContent('DEMO-B-C')
+    expect(screen.getByRole('button', { name: 'Zum ersten Konfigurationsumfang' }))
+      .toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Zum letzten Konfigurationsumfang' }))
+      .toBeInTheDocument()
   })
 })

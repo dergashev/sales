@@ -1,4 +1,10 @@
-import { useState, type ReactNode } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react'
 import {
   activeBuilding,
   BUILDING_SCOPED_CHAPTERS,
@@ -21,7 +27,6 @@ import {
   PageHeader,
   ReadinessChecklist,
   SectionSheet,
-  SelectField,
 } from '../components/designSystem'
 import { ClientNotice } from '../components/ClientNotice'
 import { RadioCardGroup, SegmentedControl } from '../components/controls'
@@ -100,7 +105,6 @@ function consequenceLabel(delta: Decimal, zero?: string): string {
 export function S3Konfigurator() {
   const s = useStore()
   const tx = useTx()
-  const [announcement, setAnnouncement] = useState('')
   const client = isClientProjection(s.mode)
   if (!s.configurationModeChosen || s.configurationModeEditing) {
     return <ConfigurationModeEntry />
@@ -123,6 +127,8 @@ export function S3Konfigurator() {
     && s.configurationMode === 'PER_BUILDING'
     && selectedIds.length > 1
     && s.scopeBuildingId === null
+  const buildingTabPanel = buildingScoped && s.configurationMode === 'PER_BUILDING'
+  const activeScopeValue = totalOverview ? TOTAL_SCOPE : s.activeBuildingId
 
   return (
     <div className="px-7 py-6">
@@ -134,61 +140,61 @@ export function S3Konfigurator() {
       />
 
       <ConfigurationModeContext />
-      <ConfigurationScopeNavigation
-        chapter={n}
-        onAnnounce={setAnnouncement}
-      />
-      <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-        {announcement}
-      </p>
+      <ConfigurationScopeNavigation chapter={n} />
 
-      {buildingScoped && !totalOverview && <ConfigurationStatusStrip />}
+      <div
+        role={buildingTabPanel ? 'tabpanel' : undefined}
+        id={buildingTabPanel ? configurationPanelId(activeScopeValue) : undefined}
+        aria-labelledby={buildingTabPanel ? configurationTabId(activeScopeValue) : undefined}
+      >
+        {buildingScoped && !totalOverview && <ConfigurationStatusStrip />}
 
-      {/* Ширина содержимого не ограничивается: центровщик остаётся пределом
-          ДЛИННОГО ТЕКСТА (он стоит на абзацах внутри карточек), а не клеткой
-          для рабочей области — аудит верно указал, что здесь он обнимал всю
-          главу целиком. */}
-      <div className="py-5">
-        {totalOverview && <ConfigurationOverview />}
-        {!totalOverview && n === 1 && <OptionChapter groups={KG300_GROUPS}
-          intro={'Von oben nach unten: erst der Umfang, dann die Konstruktion, '
-            + 'zuletzt die Oberfläche. Jede Antwort zeigt ihre Folge am Preis, '
-            + 'bevor sie gewählt wird.'} />}
-        {!totalOverview && n === 2 && <ChapterUmfang />}
-        {!totalOverview && n === 3 && <OptionChapter groups={KG400_GROUPS}
-          intro={'Technische Anlagen nach DIN 276. Die Wahl der Erzeugung und der Lüftung entscheidet mit, welcher Energiestandard überhaupt erreichbar bleibt.'} />}
-        {!totalOverview && n === 4 && (
-          <div className="grid gap-5">
-            <ChapterEnergie />
-            {/* Сертификаты — отдельная ось: EH описывает качество здания,
-                QNG и DGNB — процедуру его подтверждения (см. options.ts). */}
-            <OptionChapter groups={ZERT_GROUPS}
-              intro={'Zertifikate sind eine eigene Achse: der Energiestandard '
-                + 'beschreibt das Gebäude, das Siegel beschreibt das Verfahren, '
-                + 'mit dem es nachgewiesen wird.'} />
-          </div>
-        )}
-        {!totalOverview && n === 5 && <ChapterFlaechen />}
-        {!totalOverview && n === 6 && <ChapterBaugrund />}
-        {!totalOverview && n === 7 && <ChapterKg700 />}
-        {!totalOverview && n === 8 && <ChapterTermine />}
-        {!totalOverview && ![1, 2, 3, 4, 5, 6, 7, 8].includes(n)
-          && <ChapterParked title={title} />}
+        {/* Ширина содержимого не ограничивается: центровщик остаётся пределом
+            ДЛИННОГО ТЕКСТА (он стоит на абзацах внутри карточек), а не клеткой
+            для рабочей области — аудит верно указал, что здесь он обнимал всю
+            главу целиком. */}
+        <div className="py-5">
+          {totalOverview && <ConfigurationOverview />}
+          {!totalOverview && n === 1 && <OptionChapter groups={KG300_GROUPS}
+            intro={'Von oben nach unten: erst der Umfang, dann die Konstruktion, '
+              + 'zuletzt die Oberfläche. Jede Antwort zeigt ihre Folge am Preis, '
+              + 'bevor sie gewählt wird.'} />}
+          {!totalOverview && n === 2 && <ChapterUmfang />}
+          {!totalOverview && n === 3 && <OptionChapter groups={KG400_GROUPS}
+            intro={'Technische Anlagen nach DIN 276. Die Wahl der Erzeugung und der Lüftung entscheidet mit, welcher Energiestandard überhaupt erreichbar bleibt.'} />}
+          {!totalOverview && n === 4 && (
+            <div className="grid gap-5">
+              <ChapterEnergie />
+              {/* Сертификаты — отдельная ось: EH описывает качество здания,
+                  QNG и DGNB — процедуру его подтверждения (см. options.ts). */}
+              <OptionChapter groups={ZERT_GROUPS}
+                intro={'Zertifikate sind eine eigene Achse: der Energiestandard '
+                  + 'beschreibt das Gebäude, das Siegel beschreibt das Verfahren, '
+                  + 'mit dem es nachgewiesen wird.'} />
+            </div>
+          )}
+          {!totalOverview && n === 5 && <ChapterFlaechen />}
+          {!totalOverview && n === 6 && <ChapterBaugrund />}
+          {!totalOverview && n === 7 && <ChapterKg700 />}
+          {!totalOverview && n === 8 && <ChapterTermine />}
+          {!totalOverview && ![1, 2, 3, 4, 5, 6, 7, 8].includes(n)
+            && <ChapterParked title={title} />}
+        </div>
+
+        {/* Один следующий шаг всегда на экране (DC-27): маршрут, не принуждение. */}
+        {!totalOverview && <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-4">
+          {previous ? (
+            <Button onClick={() => s.openChapterAt(previous)}>
+              ← Kapitel {routeIndex}: {tx(CHAPTERS[previous - 1]!)}
+            </Button>
+          ) : <span />}
+          {next && (
+            <Button variant="primary" onClick={() => s.openChapterAt(next)}>
+              Weiter · Kapitel {routeIndex + 2}: {tx(CHAPTERS[next - 1]!)}
+            </Button>
+          )}
+        </footer>}
       </div>
-
-      {/* Один следующий шаг всегда на экране (DC-27): маршрут, не принуждение. */}
-      {!totalOverview && <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-4">
-        {previous ? (
-          <Button onClick={() => s.openChapterAt(previous)}>
-            ← Kapitel {routeIndex}: {tx(CHAPTERS[previous - 1]!)}
-          </Button>
-        ) : <span />}
-        {next && (
-          <Button variant="primary" onClick={() => s.openChapterAt(next)}>
-            Weiter · Kapitel {routeIndex + 2}: {tx(CHAPTERS[next - 1]!)}
-          </Button>
-        )}
-      </footer>}
     </div>
   )
 }
@@ -327,60 +333,130 @@ function ConfigurationModeContext() {
 
 const TOTAL_SCOPE = '__TOTAL__'
 
-export function configurationScopeControlFor(
-  optionCount: number,
-): 'segmented' | 'select' {
-  return optionCount <= 3 ? 'segmented' : 'select'
-}
-
 type ConfigurationScopeOption = {
   value: string
   label: string
-  status: string
 }
 
-export function ConfigurationScopeControl({
+function configurationTabId(value: string): string {
+  return `configurator-scope-tab-${value.replace(/[^a-zA-Z0-9_-]/g, '-')}`
+}
+
+function configurationPanelId(value: string): string {
+  return `configurator-scope-panel-${value.replace(/[^a-zA-Z0-9_-]/g, '-')}`
+}
+
+export function ConfigurationScopeTabs({
   legend,
-  selectLabel,
   value,
   options,
   onChoose,
 }: {
   legend: string
-  selectLabel: string
   value: string
   options: ConfigurationScopeOption[]
   onChoose: (value: string) => void
 }) {
-  return configurationScopeControlFor(options.length) === 'segmented' ? (
-    <SegmentedControl
-      legend={legend}
-      value={value}
-      onChange={onChoose}
-      options={options.map(({ value: optionValue, label }) => ({
-        value: optionValue,
-        label,
-      }))}
-    />
-  ) : (
-    <SelectField
-      label={selectLabel}
-      value={value}
-      onChange={(event) => onChoose(event.currentTarget.value)}
-    >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>{option.label}</option>
-      ))}
-    </SelectField>
+  const t = useT()
+  const tablistRef = useRef<HTMLDivElement>(null)
+  const optionSignature = options.map((option) => option.value).join('|')
+  const valueAvailable = options.some((option) => option.value === value)
+  const [focusedValue, setFocusedValue] = useState(value)
+
+  useEffect(() => {
+    if (valueAvailable) setFocusedValue(value)
+  }, [optionSignature, value, valueAvailable])
+
+  const moveFocus = (index: number) => {
+    const option = options[index]
+    if (!option) return
+    setFocusedValue(option.value)
+    const tabs = tablistRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]')
+    tabs?.[index]?.focus()
+    tabs?.[index]?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+  }
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const current = Math.max(
+      options.findIndex((option) => option.value === focusedValue),
+      0,
+    )
+    const last = options.length - 1
+    const next = event.key === 'ArrowRight' ? (current + 1) % options.length
+      : event.key === 'ArrowLeft'
+        ? (current - 1 + options.length) % options.length
+        : event.key === 'Home' ? 0
+          : event.key === 'End' ? last
+            : null
+    if (next !== null) {
+      event.preventDefault()
+      moveFocus(next)
+      return
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onChoose(options[current]!.value)
+    }
+  }
+
+  return (
+    <div className="flex min-w-0 items-stretch gap-1">
+      {options.length > 1 && (
+        <Button
+          variant="ghost"
+          aria-label={t('configurator.scope.first')}
+          onClick={() => moveFocus(0)}
+        >
+          ←
+        </Button>
+      )}
+      <div
+        ref={tablistRef}
+        role="tablist"
+        aria-label={legend}
+        aria-orientation="horizontal"
+        className="a3-tabs min-w-0 flex-1 flex-nowrap overflow-x-auto whitespace-nowrap"
+        onKeyDown={handleKeyDown}
+      >
+        {options.map((option, index) => (
+          <button
+            key={option.value}
+            type="button"
+            role="tab"
+            id={configurationTabId(option.value)}
+            aria-selected={option.value === value}
+            aria-controls={configurationPanelId(option.value)}
+            aria-posinset={index + 1}
+            aria-setsize={options.length}
+            tabIndex={option.value === focusedValue ? 0 : -1}
+            onFocus={() => setFocusedValue(option.value)}
+            onClick={() => {
+              setFocusedValue(option.value)
+              onChoose(option.value)
+            }}
+            className="shrink-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      {options.length > 1 && (
+        <Button
+          variant="ghost"
+          aria-label={t('configurator.scope.last')}
+          onClick={() => moveFocus(options.length - 1)}
+        >
+          →
+        </Button>
+      )}
+    </div>
   )
 }
 
 function ConfigurationScopeNavigation({
   chapter,
-  onAnnounce,
 }: {
   chapter: number
-  onAnnounce: (message: string) => void
 }) {
   const s = useStore()
   const t = useT()
@@ -405,48 +481,31 @@ function ConfigurationScopeNavigation({
     id,
     configurationDisplayStatusFor(s, id),
   ])) as Record<string, ConfigurationDisplayStatus>
-  if (selectedIds.length === 1) {
-    const id = selectedIds[0]!
-    return <p className="mt-4 text-small font-medium text-text-secondary">
-      {t('configurator.scope.single', {
-        building: buildingName(s, id),
-        status: statusLabel(statuses[id]!, t),
-      })}
-    </p>
-  }
-
   const confirmed = selectedIds.filter((id) => statuses[id] === 'confirmed').length
   const options = [
-    {
+    ...(selectedIds.length > 1 ? [{
       value: TOTAL_SCOPE,
       label: t('configurator.scope.total', { confirmed, total: selectedIds.length }),
-      status: `${confirmed} / ${selectedIds.length}`,
-    },
+    }] : []),
     ...selectedIds.map((id) => ({
       value: id,
       label: t('configurator.scope.building', {
         building: buildingName(s, id),
         status: statusLabel(statuses[id]!, t),
       }),
-      status: statusLabel(statuses[id]!, t),
     })),
   ]
-  const value = s.scopeBuildingId ?? TOTAL_SCOPE
+  const value = s.scopeBuildingId
+    ?? (selectedIds.length > 1 ? TOTAL_SCOPE : selectedIds[0]!)
   const choose = (next: string) => {
     const buildingId = next === TOTAL_SCOPE ? null : next
     s.setConfigurationScope(buildingId)
-    const option = options.find((item) => item.value === next)!
-    onAnnounce(t('configurator.scope.announcement', {
-      scope: option.label,
-      status: option.status,
-    }))
   }
 
   return (
     <div className="mt-4 min-w-0">
-      <ConfigurationScopeControl
+      <ConfigurationScopeTabs
         legend={t('configurator.scope.legend')}
-        selectLabel={t('configurator.scope.selectLabel')}
         value={value}
         options={options}
         onChoose={choose}
@@ -575,6 +634,13 @@ function ChapterUmfang() {
   const tx = useTx()
   const p = s.projection()
   const decidable: CostGroup[] = ['KG_200', 'KG_500', 'KG_600', 'KG_800']
+  // A complex projection can carry the same project-level gap once per
+  // building. The scope card presents that decision once, so its notice must
+  // do the same (and must not emit duplicate React keys).
+  const incompleteReasons = [...new Map(p.result.incompleteReasons.map((reason) => [
+    reason.code + ('groups' in reason ? reason.groups.join() : ''),
+    reason,
+  ])).values()]
 
   return (
     <div className="grid gap-5">
@@ -667,7 +733,7 @@ function ChapterUmfang() {
              построению: с ней клиентский вид не открывается вовсе. */
           <ClientNotice clientText="Einzelne Kostengruppen sind noch nicht entschieden — das Angebot weist deshalb eine Zwischensumme aus.">
             <ul className="mt-2">
-              {p.result.incompleteReasons.map((r) => (
+              {incompleteReasons.map((r) => (
                 <li key={r.code + ('groups' in r ? r.groups.join() : '')}
                     className="a3-cap">
                   <span aria-hidden="true">○ </span>

@@ -43,6 +43,8 @@ async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
   await user.click(screen.getByRole('radio', { name: /Je Gebäude konfigurieren/ }))
   await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
+  await user.click(nav(/Leistungsabgrenzung/))
+  await user.click(nav(/Leistungen KG 300/))
 }
 
 describe('Сквозной сценарий продажи', () => {

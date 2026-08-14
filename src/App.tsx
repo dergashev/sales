@@ -149,8 +149,9 @@ export function App() {
         </main>
 
         {renderedView === 'buildingScope' ? <BuildingScopeReadiness />
-          : renderedView === 'konfigurator'
-            && (!s.configurationModeChosen || s.configurationModeEditing)
+          : !s.pricingStarted
+            || renderedView === 'konfigurator'
+              && (!s.configurationModeChosen || s.configurationModeEditing)
             ? <ConfigurationModeReadiness />
             : <OfferPanel />}
       </div>

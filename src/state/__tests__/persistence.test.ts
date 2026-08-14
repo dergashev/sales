@@ -121,7 +121,7 @@ describe('proposal store recovery', () => {
     expect(st().projection().result.total.exact.toFixed()).toBe(storedTotal)
   })
 
-  it('persists explicit mode consent and per-scope chapter progress', () => {
+  it('persists explicit mode consent, pricing entry and per-scope progress', () => {
     const storage = new MemoryStorage()
     initializeProposalPersistence(storage)
     const st = () => useStore.getState()
@@ -133,9 +133,12 @@ describe('proposal store recovery', () => {
     st().confirmBuilding('DEMO-B-A')
     st().confirmConfigurationMode('PER_BUILDING')
     st().openChapterAt(3)
+    expect(st().pricingStarted).toBe(false)
+    st().openChapterAt(2)
 
     const raw = storage.getItem(proposalStorageKey('DEMO-0001'))!
     expect(raw).toContain('"configurationModeChosen":true')
+    expect(raw).toContain('"pricingStarted":true')
 
     __resetStoreForTests()
     const restoredStorage = new MemoryStorage()
@@ -143,7 +146,34 @@ describe('proposal store recovery', () => {
     expect(hydrateProposalState(restoredStorage)).toBe(true)
     expect(st().configurationModeChosen).toBe(true)
     expect(st().configurationMode).toBe('PER_BUILDING')
+    expect(st().pricingStarted).toBe(true)
     expect(st().configurationVisitedChapters['DEMO-B-A']).toEqual([1, 3])
+  })
+
+  it('defaults pre-boundary candidate payloads to pricing not started', () => {
+    const storage = new MemoryStorage()
+    initializeProposalPersistence(storage)
+    const st = () => useStore.getState()
+
+    st().openOpportunity('DEMO-0001')
+    st().resolveWflConflict('customer')
+    st().confirmProjectParams()
+    st().createOption('Legacy boundary')
+    st().confirmBuilding('DEMO-B-A')
+    st().confirmConfigurationMode('PER_BUILDING')
+
+    const key = proposalStorageKey('DEMO-0001')
+    const envelope = JSON.parse(storage.getItem(key)!) as {
+      payload: { active: { pricingStarted?: boolean } }
+    }
+    delete envelope.payload.active.pricingStarted
+
+    __resetStoreForTests()
+    const restoredStorage = new MemoryStorage()
+    restoredStorage.setItem(key, JSON.stringify(envelope))
+    expect(hydrateProposalState(restoredStorage)).toBe(true)
+    expect(st().configurationModeChosen).toBe(true)
+    expect(st().pricingStarted).toBe(false)
   })
 
   it('does not persist a derived conflict after its source disagreement is removed', () => {
