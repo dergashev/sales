@@ -424,7 +424,13 @@ export function CheckboxCard({ legend, legendHidden, options }: {
                 </span>
                 {o.mandatory && (
                   <span id={`${name}-${o.value}-mandatory`} className="a3-st">
-                    <span aria-hidden="true">🔒 </span>
+                    {/* Tech Review P2: geometric glyph, not a color emoji —
+                        every other status mark in this product is
+                        monochrome (✓ ✗ ✕ ✎ ⚙ ◆ ○); an emoji would be the
+                        only source of uncontrolled color in the UI. The
+                        glyph is decorative (aria-hidden): "Pflicht" carries
+                        the meaning (ICON-003). */}
+                    <span aria-hidden="true">■ </span>
                     {tx('Pflicht')}
                     {o.mandatoryReason ? ` · ${tx(o.mandatoryReason)}` : ''}
                   </span>

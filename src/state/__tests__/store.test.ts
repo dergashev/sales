@@ -107,6 +107,104 @@ describe('Leistungsabgrenzung: подтверждение и инвалидац�
     st().setCoverage('KG_300', 'included')
     expect(scopeBoundariesStatus(st())).toBe('confirmed')
   })
+
+  /**
+   * Tech Review P0 (ticket d21f8d48, commit 2871a63): `setEnergiestandard`
+   * only ever wrote the active building, even in SHARED mode, while
+   * Leistungsabgrenzung shows "gilt für den gesamten Komplex" with no
+   * building tabs — a live demo would silently price a mixed-standard
+   * complex under one displayed standard.
+   */
+  it('SHARED-Modus: Energiestandard gilt für ALLE einbezogenen Gebäude', () => {
+    const st = () => useStore.getState()
+    st().resolveWflConflict('customer')
+    st().confirmBuilding('DEMO-B-A')
+    st().toggleBuildingIncluded('DEMO-B-B')
+    st().confirmBuilding('DEMO-B-B')
+    st().confirmConfigurationMode('SHARED')
+    st().setActiveBuilding('DEMO-B-A')
+
+    expect(st().buildings['DEMO-B-A']!.energiestandard).toBe('EH_55')
+    expect(st().buildings['DEMO-B-B']!.energiestandard).toBe('EH_55')
+    const beforeTotal = st().projection().result.total.exact
+
+    st().setEnergiestandard('EH_40')
+
+    expect(st().buildings['DEMO-B-A']!.energiestandard).toBe('EH_40')
+    expect(st().buildings['DEMO-B-B']!.energiestandard).toBe('EH_40')
+    expect(st().projection().result.total.exact.equals(beforeTotal)).toBe(false)
+
+    // Undo restores BOTH buildings, not just the one that was active.
+    st().undo()
+    expect(st().buildings['DEMO-B-A']!.energiestandard).toBe('EH_55')
+    expect(st().buildings['DEMO-B-B']!.energiestandard).toBe('EH_55')
+  })
+
+  it('SHARED-Modus: unterschiedliche Vorwerte werden je Gebäude korrekt zurückgesetzt (undo)', () => {
+    const st = () => useStore.getState()
+    st().resolveWflConflict('customer')
+    st().confirmBuilding('DEMO-B-A')
+    st().toggleBuildingIncluded('DEMO-B-B')
+    st().confirmBuilding('DEMO-B-B')
+    // Per-building change BEFORE choosing SHARED mode — the two buildings
+    // legitimately start from different values.
+    st().setActiveBuilding('DEMO-B-B')
+    st().setEnergiestandard('EH_40')
+    st().confirmConfigurationMode('SHARED')
+
+    st().setActiveBuilding('DEMO-B-A')
+    st().setEnergiestandard('EH_40_NH')
+    expect(st().buildings['DEMO-B-A']!.energiestandard).toBe('EH_40_NH')
+    expect(st().buildings['DEMO-B-B']!.energiestandard).toBe('EH_40_NH')
+
+    st().undo()
+    // Each building's OWN prior value is restored, not a single shared one.
+    expect(st().buildings['DEMO-B-A']!.energiestandard).toBe('EH_55')
+    expect(st().buildings['DEMO-B-B']!.energiestandard).toBe('EH_40')
+  })
+
+  it('PER_BUILDING-Modus: setEnergiestandard bleibt auf das aktive Gebäude beschränkt', () => {
+    const st = () => useStore.getState()
+    st().resolveWflConflict('customer')
+    st().confirmBuilding('DEMO-B-A')
+    st().toggleBuildingIncluded('DEMO-B-B')
+    st().confirmBuilding('DEMO-B-B')
+    st().confirmConfigurationMode('PER_BUILDING')
+    st().setActiveBuilding('DEMO-B-A')
+
+    st().setEnergiestandard('EH_40')
+    expect(st().buildings['DEMO-B-A']!.energiestandard).toBe('EH_40')
+    expect(st().buildings['DEMO-B-B']!.energiestandard).toBe('EH_55')
+  })
+
+  /**
+   * Tech Review P1 (ticket d21f8d48, commit 2871a63): the fingerprint used
+   * to read `activeBuilding()`/`choicesFor(activeBuildingId)` — confirming
+   * while looking at Haus A and then changing Haus B's requirement left the
+   * confirmation reading "confirmed" again the moment the seller navigated
+   * back to Haus A. Invalidation must not be evadable by switching tabs.
+   */
+  it('PER_BUILDING: Änderung an einem NICHT aktiven Gebäude entwertet die Bestätigung', () => {
+    const st = () => useStore.getState()
+    st().resolveWflConflict('customer')
+    st().confirmBuilding('DEMO-B-A')
+    st().toggleBuildingIncluded('DEMO-B-B')
+    st().confirmBuilding('DEMO-B-B')
+    st().confirmConfigurationMode('PER_BUILDING')
+
+    st().setActiveBuilding('DEMO-B-A')
+    st().confirmScopeBoundaries()
+    expect(scopeBoundariesStatus(st())).toBe('confirmed')
+
+    st().setActiveBuilding('DEMO-B-B')
+    st().setEnergiestandard('EH_40')
+    expect(scopeBoundariesStatus(st())).toBe('recheck')
+
+    // The critical assertion: switching back to Haus A must NOT silently
+    // read "confirmed" again.
+    st().setActiveBuilding('DEMO-B-A')
+    expect(scopeBoundariesStatus(st())).toBe('recheck')
+  })
 })
 
 describe('S3: проекция воспроизводит мокап', () => {
@@ -153,7 +251,13 @@ describe('S3: журнал событий как хребет (M-4)', () => {
     s.setEnergiestandard('EH_40')
     const after = useStore.getState()
     expect(after.journal).toHaveLength(1)
-    expect(after.journal[0]!.label).toContain('EH 55 → EH 40')
+    // Label format aligned with `setKg300`'s established SHARED-fan-out
+    // convention (target value + `appliesTo`, no single "from" value —
+    // buildings can have started from different priors) after Tech Review
+    // P0 (ticket d21f8d48): the label must name which building(s) it
+    // applies to, since it may now be more than one.
+    expect(after.journal[0]!.label).toContain('EH 40')
+    expect(after.journal[0]!.label).toContain(s.activeBuildingId)
     expect(after.journal[0]!.deltaExact!.toFixed(2)).toBe('97335.00')
   })
 

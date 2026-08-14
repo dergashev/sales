@@ -14,6 +14,7 @@ import {
   COVERAGE_LABEL,
   LABEL_UG,
   scopeBoundariesStatus,
+  SCOPE_BOUNDARIES_DECIDABLE_GROUPS,
   type ConfigurationDisplayStatus,
   type ConfigurationMode,
 } from '../state/store'
@@ -866,7 +867,12 @@ function ChapterUmfang() {
 
 const SCOPE_ORDER: CostGroup[] =
   ['KG_200', 'KG_300', 'KG_400', 'KG_500', 'KG_600', 'KG_700']
-const MANDATORY_SCOPE_GROUPS = new Set<CostGroup>(['KG_300', 'KG_400', 'KG_700'])
+// Tech Review P2 (ticket d21f8d48): derived from the store's single
+// canonical decidable-groups list, not a second independently named set —
+// the two could otherwise drift apart silently.
+const MANDATORY_SCOPE_GROUPS = new Set<CostGroup>(
+  SCOPE_ORDER.filter((g) => !(SCOPE_BOUNDARIES_DECIDABLE_GROUPS as readonly CostGroup[]).includes(g)),
+)
 
 /**
  * Energiestandard-Auswahl, extrahiert aus `ChapterEnergie` (unten), damit

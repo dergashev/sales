@@ -275,7 +275,11 @@ describe('Сквозной сценарий продажи', () => {
     await act(() => new Promise((r) => setTimeout(r, 3000)))
     const recap = screen.getByRole('heading', { level: 3, name: 'Termin-Zusammenfassung' })
     const box = recap.parentElement!
-    expect(within(box).getByText(/EH 55 → EH 40/)).toBeInTheDocument()
+    // Label format aligned with `setKg300`'s established SHARED-fan-out
+    // convention after Tech Review P0 (ticket d21f8d48): target value +
+    // `appliesTo`, not a single "from → to" pair — a SHARED-mode change can
+    // apply to more than one building, which may not share one prior value.
+    expect(within(box).getByText(/Energiestandard.*EH 40/)).toBeInTheDocument()
     // Открытое покрытие KG 500 попадает в «что осталось» из того же
     // множества, которое делает итог промежуточным.
     expect(within(box).getByText(/KG.500 — Deckungsentscheidung offen/)).toBeInTheDocument()

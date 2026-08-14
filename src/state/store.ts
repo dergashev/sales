@@ -20,7 +20,9 @@ import {
 import {
   present, rate, NNBSP, formatDE, type Displayed, type Rate,
 } from '../engine/money'
-import { defaultOptionChoices, optionDrivers, coverageDrivers, ALL_OPTION_GROUPS } from '../engine/options'
+import {
+  defaultOptionChoices, optionDrivers, coverageDrivers, ALL_OPTION_GROUPS, ZERT_GROUPS,
+} from '../engine/options'
 import derivedFx from '../fixtures/derived-prototype.json'
 import { modelDuration, presentDuration, type DurationDisplay } from '../engine/schedule'
 import { RISK_ITEMS, riskDriver } from '../engine/risk'
@@ -1235,16 +1237,40 @@ export function configurationDisplayStatusFor(
  * только для сравнения «изменилось ли что-то с момента подтверждения», не
  * для хранения самого решения.
  */
+/**
+ * Die drei entscheidbaren KG-Gruppen der Leistungsabgrenzung (KG 300/400/700
+ * sind Pflicht, keine Entscheidung — Product Decision Brief, ticket
+ * d21f8d48). Kanonische, EINE Quelle: `ChapterUmfang` (S3Konfigurator.tsx)
+ * leitet daraus ihre `MANDATORY_SCOPE_GROUPS` ab, statt die Liste ein
+ * zweites Mal zu benennen (Tech Review P2: zwei benannte Listen konnten
+ * auseinanderlaufen).
+ */
+export const SCOPE_BOUNDARIES_DECIDABLE_GROUPS = ['KG_200', 'KG_500', 'KG_600'] as const
+
 function scopeBoundariesFingerprint(
-  s: Pick<Store, 'coverage' | 'buildings' | 'activeBuildingId' | 'configurationMode'
-    | 'sharedConfiguration' | 'kg300' | 'included'>,
+  s: Pick<Store, 'coverage' | 'buildings' | 'included' | 'configurationMode'
+    | 'sharedConfiguration' | 'kg300'>,
 ): string {
-  const b = activeBuilding(s)
-  const choices = choicesFor(s, s.activeBuildingId)
+  // Tech Review P1 (ticket d21f8d48): must NOT key off `activeBuildingId`.
+  // Leistungsabgrenzung has no building tabs (it is not in
+  // BUILDING_SCOPED_CHAPTERS) and Energiestandard/Zertifikate can differ
+  // per building in PER_BUILDING mode — confirming while looking at Haus A
+  // must still invalidate if Haus B's requirement changes, or switching
+  // back to Haus A would silently read "confirmed" again (evadable by
+  // navigation). Cover every included building, independent of which one
+  // is active.
+  const ids = includedBuildingIds(s).sort()
+  // Tech Review P2: derive from ZERT_GROUPS instead of a second hardcoded
+  // ['qng','dgnb'] list — a future certification group could not otherwise
+  // silently escape invalidation.
+  const zertIds = ZERT_GROUPS.map((g) => g.id)
   return JSON.stringify({
-    coverage: (['KG_200', 'KG_500', 'KG_600'] as const).map((g) => s.coverage[g]),
-    energiestandard: b.energiestandard,
-    zertifikate: ['qng', 'dgnb'].map((id) => choices[id] ?? null),
+    coverage: SCOPE_BOUNDARIES_DECIDABLE_GROUPS.map((g) => s.coverage[g]),
+    energiestandard: ids.map((id) => [id, s.buildings[id]?.energiestandard]),
+    zertifikate: ids.map((id) => {
+      const choices = choicesFor(s, id)
+      return [id, zertIds.map((cid) => choices[cid] ?? null)]
+    }),
   })
 }
 
@@ -1256,7 +1282,7 @@ function scopeBoundariesFingerprint(
  * bestehen).
  */
 export function scopeBoundariesStatus(
-  s: Pick<Store, 'coverage' | 'buildings' | 'activeBuildingId' | 'configurationMode'
+  s: Pick<Store, 'coverage' | 'buildings' | 'configurationMode'
     | 'sharedConfiguration' | 'kg300' | 'included' | 'scopeBoundariesConfirmedFingerprint'>,
 ): 'open' | 'confirmed' | 'recheck' {
   if (s.scopeBoundariesConfirmedFingerprint === null) return 'open'
@@ -1270,7 +1296,7 @@ export function configurationComplete(
     | 'configurationModeChosen' | 'configurationVisitedChapters'
     | 'sharedConfiguration' | 'kg300' | 'buildingConfigState'
     | 'buildingReviews' | 'buildingConfirmation' | 'buildingConflicts'
-    | 'coverage' | 'activeBuildingId' | 'scopeBoundariesConfirmedFingerprint'>,
+    | 'coverage' | 'scopeBoundariesConfirmedFingerprint'>,
 ): boolean {
   const ids = includedBuildingIds(s)
   return s.configurationModeChosen && ids.length > 0
@@ -2062,36 +2088,50 @@ const store = createStore<Store>((set, get) => {
 
     setEnergiestandard: (v) => {
       const s = get()
-      const b = activeBuilding(s)
-      if (b.energiestandard === v) return
-      const before = s.projection().result.total.exact
-      const prev = b.energiestandard
       const id = s.activeBuildingId
-      const write = (value: BuildingInput['energiestandard']) => set((state) => {
-        const review = state.buildingReviews[id]
-        if (!review) return {}
-        return reviewedBuildingPatch(
-          state, id, withEngineState(review, { energyStandard: value }),
-        )
-      })
-      write(v)
+      // Ticket d21f8d48 Tech Review P0: Energiestandard is a Scope
+      // Boundaries requirement ("configured once for all selected
+      // buildings" in SHARED mode) — it must fan out exactly like
+      // `setKg300` does, not silently stay per-building. Applying it to one
+      // building while Leistungsabgrenzung shows "gilt für den gesamten
+      // Komplex" produced a mixed-standard aggregate the screen never
+      // revealed.
+      const shared = s.configurationMode === 'SHARED' && s.included[id]
+      const appliesTo = shared ? includedBuildingIds(s) : [id]
+      const prevByBuilding = new Map(
+        appliesTo.map((bid) => [bid, s.buildings[bid]?.energiestandard]),
+      )
+      if (appliesTo.every((bid) => prevByBuilding.get(bid) === v)) return
+      const before = s.projection().result.total.exact
+      const write = (values: ReadonlyMap<string, BuildingInput['energiestandard'] | undefined>) =>
+        set((state) => {
+          let next = state
+          for (const [bid, value] of values) {
+            if (value === undefined) continue
+            const review = next.buildingReviews[bid]
+            if (!review) continue
+            next = {
+              ...next,
+              ...reviewedBuildingPatch(next, bid, withEngineState(review, { energyStandard: value })),
+            }
+          }
+          return next
+        })
+      write(new Map(appliesTo.map((bid) => [bid, v])))
       const after = get().projection().result.total.exact
       const delta = after.minus(before)
+      const label = `Energiestandard → ${v.replace('_', ' ')} (${appliesTo.join(', ')})`
       apply({
         kind: 'option.selected',
-        label: `Energiestandard ${prev.replace('_', ' ')} → ${v.replace('_', ' ')}`,
+        label,
         deltaExact: delta,
-        inverse: () => write(prev),
-        forward: () => write(v),
+        inverse: () => write(prevByBuilding),
+        forward: () => write(new Map(appliesTo.map((bid) => [bid, v]))),
       })
       // Клик — фиксация: превью гаснет, начинается волна дельты (DC-28).
       set({
         preview: null,
-        activeDelta: {
-          label: `Energiestandard ${prev.replace('_', ' ')} → ${v.replace('_', ' ')}`,
-          deltaExact: delta,
-          percent: delta.div(before).mul(100),
-        },
+        activeDelta: { label, deltaExact: delta, percent: delta.div(before).mul(100) },
       })
     },
 
