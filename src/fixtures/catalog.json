@@ -15,7 +15,8 @@
     "energiestandard": {
       "GEG": "1.00",
       "EH_55": "1.03",
-      "EH_40": "1.06"
+      "EH_40": "1.06",
+      "EH_40_NH": "1.09"
     },
     "gebaeudeform": {
       "BUERO": "1.05"

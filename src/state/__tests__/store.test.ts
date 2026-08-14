@@ -17,6 +17,46 @@ import type { JournalEvent, OfferSnapshot } from '../store'
 
 beforeEach(() => __resetStoreForTests())
 
+/**
+ * Scope Boundaries: умолчание покрытия (Product Decision Brief, тикет
+ * 627d3191, одобрено CPO). Ни одна `decidable`-группа не предрешена — KG
+ * 200/500/600 начинаются `unknown` («noch offen»). KG 300/400/700 сегодня не
+ * являются `decidable` нигде в интерфейсе (`ChapterUmfang` объявляет их
+ * «immer enthalten») и сохраняют прежнее умолчание D-07 `included` до тикета
+ * d21f8d48, который даёт им настоящую карточку активации — см. комментарий
+ * у `INITIAL_COVERAGE`. KG 100/800 вне перечня Scope Boundaries и остаются
+ * `notApplicable`.
+ */
+describe('Scope Boundaries: покрытие по умолчанию (ticket 627d3191)', () => {
+  it('decidable-группы KG 200/500/600 начинаются `unknown`, ни одна не предрешена', () => {
+    const coverage = useStore.getState().coverage
+    expect(coverage.KG_200).toBe('unknown')
+    expect(coverage.KG_500).toBe('unknown')
+    expect(coverage.KG_600).toBe('unknown')
+  })
+
+  it('KG 300/400/700 остаются `included` — интерфейс их ещё не делает decidable', () => {
+    const coverage = useStore.getState().coverage
+    expect(coverage.KG_300).toBe('included')
+    expect(coverage.KG_400).toBe('included')
+    expect(coverage.KG_700).toBe('included')
+  })
+
+  it('KG 100/800 вне перечня Scope Boundaries остаются `notApplicable`', () => {
+    const coverage = useStore.getState().coverage
+    expect(coverage.KG_100).toBe('notApplicable')
+    expect(coverage.KG_800).toBe('notApplicable')
+  })
+
+  it('свежий проект держит промежуточный итог, пока не решена ни одна decidable-группа', () => {
+    const p = useStore.getState().projection()
+    expect(p.result.completeness).toBe('incomplete')
+    expect(p.result.totalLabel).toBe('Zwischensumme der kalkulierten Positionen')
+    const codes = p.result.incompleteReasons.map((r) => r.code)
+    expect(codes).toContain('coverageUnknown')
+  })
+})
+
 describe('S3: проекция воспроизводит мокап', () => {
   it('три со-главных героя и вторичная строка', () => {
     const p = useStore.getState().projection()
@@ -388,9 +428,15 @@ describe('S3: ворота клиентского вида', () => {
     expect(p.result.totalLabel).toBe('Zwischensumme der kalkulierten Positionen')
   })
 
-  it('решённое покрытие KG 500 делает итог полным и названным', () => {
-    useStore.getState().confirmGebaeudeklasse()
-    useStore.getState().setCoverage('KG_500', 'excluded')
+  it('решённые покрытия делают итог полным и названным', () => {
+    const st = useStore.getState()
+    st.confirmGebaeudeklasse()
+    // Scope Boundaries: decidable-группы KG 200/500/600 начинаются `unknown`
+    // (ticket 627d3191, Product Decision Brief) — полнота требует решения по
+    // каждой из них, не только по KG 500.
+    st.setCoverage('KG_200', 'excluded')
+    st.setCoverage('KG_500', 'excluded')
+    st.setCoverage('KG_600', 'excluded')
     const p = useStore.getState().projection()
     expect(p.result.completeness).toBe('complete')
     expect(p.result.totalLabel).toBe('Gesamt netto · Grundleistung All3')
@@ -682,10 +728,16 @@ describe('Покрытие групп затрат (сценарий п. 11)', (
 
   it('подпись итога становится полной, когда решены ВСЕ пробелы', () => {
     const st = () => useStore.getState()
-    // Пока KG 500 «ещё открыто», итог промежуточный — это пробел, не решение.
+    // Пока хотя бы одна decidable-группа Scope Boundaries «ещё открыта»,
+    // итог промежуточный — это пробел, не решение (SCOPE-001).
     expect(st().projection().result.totalLabel)
       .toBe('Zwischensumme der kalkulierten Positionen')
+    st().setCoverage('KG_200', 'excluded')
     st().setCoverage('KG_500', 'excluded')
+    // KG 600 остаётся «ещё открыто» — итог всё ещё промежуточный.
+    expect(st().projection().result.totalLabel)
+      .toBe('Zwischensumme der kalkulierten Positionen')
+    st().setCoverage('KG_600', 'excluded')
     // Класс здания всё ещё не подтверждён — вторая причина неполноты.
     expect(st().projection().result.totalLabel)
       .toBe('Zwischensumme der kalkulierten Positionen')

@@ -549,7 +549,8 @@ export function isBuildingReview(value: unknown): value is BuildingReview {
   return isRecord(engine)
     && (engine.energyStandard === 'GEG'
       || engine.energyStandard === 'EH_55'
-      || engine.energyStandard === 'EH_40')
+      || engine.energyStandard === 'EH_40'
+      || engine.energyStandard === 'EH_40_NH')
     && (engine.undergroundScope === 'kein_ug'
       || engine.undergroundScope === 'ab_decke'
       || engine.undergroundScope === 'vollausbau')

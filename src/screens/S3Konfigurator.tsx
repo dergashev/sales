@@ -987,8 +987,14 @@ function ChapterFlaechen() {
 function ChapterEnergie() {
   const tx = useTx()
   const s = useStore()
+  // `EH_40_NH` (QNG) полностью описан в типе, но эта карточка ещё не
+  // предлагает его плиткой (`options` ниже остаётся из трёх значений) —
+  // добавление четвёртого варианта в UI принадлежит редизайну Client
+  // Experience (тикет d21f8d48), а не этому расчётному изменению. Запись
+  // здесь нужна только для полноты типа `Record`.
   const LABEL_ES: Record<BuildingInput['energiestandard'], string> = {
     GEG: 'GEG-Standard', EH_55: `Effizienzhaus${NNBSP}55`, EH_40: `Effizienzhaus${NNBSP}40`,
+    EH_40_NH: `Effizienzhaus${NNBSP}40${NNBSP}NH`,
   }
   return (
     <div className="grid gap-5">

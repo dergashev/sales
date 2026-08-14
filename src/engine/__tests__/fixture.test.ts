@@ -116,6 +116,23 @@ describe('движок воспроизводит фикстуру', () => {
     expect(delta.toFixed(2)).toBe(run('DEMO-RUN-0009').deltaToBase!.exact)
   })
 
+  it('вариант EH 40-NH (QNG) — множитель 1,09 применяется (calculation-spec.md §1)', () => {
+    // Ранее тип `energiestandard` не знал `EH_40_NH` при уже одобренном
+    // множителе 1,09 — дефект реализации (тикет 627d3191). База: 2.000,00 ×
+    // 1.545 = 3.090.000; × GK 5 (1,05) = 3.244.500; × EH 40-NH (1,09) =
+    // 3.536.505; + UG vollausbau mit Tiefgarage (400,00 × 1.190) = 476.000 →
+    // точно 4.012.505,00.
+    const ehNh = calculateBuilding(
+      { ...hausA, energiestandard: 'EH_40_NH' }, cat, COVERAGE_FIXTURE,
+    )
+    expect(ehNh.total.exact.toFixed(2)).toBe('4012505.00')
+    const driver = ehNh.drivers.find((d) => d.key === 'energiestandard_EH_40_NH')
+    expect(driver).toBeDefined()
+    expect(driver!.basis).toEqual({
+      kind: 'factor', appliedTo: D('3244500.00'), factor: D('1.09'),
+    })
+  })
+
   it('вариант Ohne UG — итог и дельта сходятся', () => {
     const noUg = calculateBuilding(
       { ...hausA, untergeschoss: 'kein_ug' }, cat, COVERAGE_FIXTURE,

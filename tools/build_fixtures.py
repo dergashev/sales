@@ -119,7 +119,16 @@ class Builder:
     def catalog(self):
         k = self.grab(r'K_base = ([\d.]+) €/m² BGF R oberirdisch', 'K_base')
         gk = re.search(r'F_gk: GK 1–3 = ([\d,]+) · GK 4 = ([\d,]+) · GK 5 = ([\d,]+)', self.t)
-        eh = re.search(r'F_energie: EH 55 = ([\d,]+) · EH 40 = ([\d,]+)', self.t)
+        eh = re.search(
+            r'F_energie: EH 55 = ([\d,]+) · EH 40 = ([\d,]+) · EH 40-NH = ([\d,]+)',
+            self.t)
+        # `EH_40_NH` (Effizienzhaus 40 mit Nachhaltigkeitsklasse / QNG)
+        # отсутствовал здесь при уже одобренном множителе 1,09 в
+        # calculation-spec.md §1 — дефект реализации (ticket 627d3191), не
+        # продуктовое решение. Значение перепроверяется против спецификации
+        # тем же способом, что и GEG: два документа не должны разойтись
+        # молча (тот самый класс дефекта, который этот скрипт и ловит).
+        eh40nh_spec = re.search(r'EH 40-NH \(QNG\) ([\d,]+)', self.spec)
         # GEG фикстурой не объявлен, а интерфейс эту опцию предлагает — и
         # выбор её ронял движок исключением «нет множителя стандарта GEG».
         # Значение берётся из calculation-spec §1.1 (таблица множителей) и
@@ -178,6 +187,20 @@ class Builder:
                 f'GEG-Mindeststandard — база противоречила бы себе')
         self.checked.append('множитель GEG согласован с определением K_base')
 
+        if not eh40nh_spec:
+            raise Mismatch(
+                'каталог: множитель EH 40-NH (QNG) не найден в '
+                'calculation-spec.md §1')
+        eh40nh_v = de(eh40nh_spec.group(1))
+        eh40nh_fixture = de(eh.group(3))
+        if eh40nh_v != eh40nh_fixture:
+            raise Mismatch(
+                f'множитель EH 40-NH: calculation-spec.md объявляет '
+                f'{eh40nh_v}, synthetic-fixtures.md — {eh40nh_fixture}')
+        self.checked.append(
+            'множитель EH 40-NH согласован между calculation-spec.md и '
+            'synthetic-fixtures.md')
+
         ug_total = de(ug.group(1)) + de(ug.group(2))
         if ug_total != de(ug.group(3)):
             raise Mismatch(f'ставка UG: {ug.group(1)} + {ug.group(2)} ≠ {ug.group(3)}')
@@ -208,7 +231,8 @@ class Builder:
                                    'GK_5': str(de(gk.group(3)))},
                 'energiestandard': {'GEG': str(geg_v),
                                     'EH_55': str(de(eh.group(1))),
-                                    'EH_40': str(de(eh.group(2)))},
+                                    'EH_40': str(de(eh.group(2))),
+                                    'EH_40_NH': str(eh40nh_fixture)},
                 'gebaeudeform': {'BUERO': str(buero)},
                 'untergeschoss': {'vollausbau': str(ug_voll),
                                   'abDecke': str(ug_decke),

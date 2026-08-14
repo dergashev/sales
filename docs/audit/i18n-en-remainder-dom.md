@@ -45,7 +45,7 @@ Mit freundlichen Grüßen
 - nach HOAI und AHO
 - nach Planung
 - nicht Bestandteil
-- nicht enthalten
+- noch offen
 - nur Unterschiede
 - vollständig inkl. Gründung
 - Österreich

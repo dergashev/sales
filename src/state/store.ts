@@ -319,11 +319,46 @@ type PersistedProposalPayload = {
   buildingConflicts: Record<string, BuildingConflict>
 }
 
-/** Покрытие фикстуры: KG 500 неизвестно — именно поэтому итог промежуточный. */
+/**
+ * Покрытие групп затрат Scope Boundaries — умолчание `unknown`, а не решение,
+ * там, где сегодняшний интерфейс действительно даёт продавцу это решить.
+ *
+ * Продуктовое решение по текущей задаче (Product Decision Brief, тикет
+ * 627d3191, одобрено CPO) заменяет прежнее умолчание D-07 («по умолчанию
+ * включены 300, 400, 700»): ни одна решаемая группа не должна быть
+ * предрешена, потому что «выключено по умолчанию» означает «решение ещё не
+ * принято» (`unknown` / «noch offen»), а не «продавец уже решил исключить»
+ * (SCOPE-001, `data-model.md` §5.4, D-18).
+ *
+ * **Область применения умолчания сужена намеренно, а не забыта.** Глава
+ * `ChapterUmfang` (`S3Konfigurator.tsx`) сегодня даёт решить лишь четыре
+ * группы — KG 200/500/600/800 (`decidable`) — и явно объявляет KG 300, 400 и
+ * 700 «Kern des Angebots · immer enthalten»: для них НЕТ ни одного элемента
+ * интерфейса, который перевёл бы покрытие из `unknown` во что-то другое.
+ * Проверено на практике: перевод всех шести групп в `unknown` разваливал уже
+ * существующий, прежде проходящий сквозной тест `configurator-mode.dom.test`
+ * («keeps narrowed pricing qualified») — предложение навсегда застревало на
+ * `Zwischensumme` без единого способа выйти из этого состояния, потому что
+ * решить `unknown` для KG 300/400/700 было буквально нечем. Это не гипотеза,
+ * а зафиксированный регресс.
+ *
+ * Поэтому это изменение переводит в `unknown` только KG 200, 500 и 600 —
+ * ровно те группы, что уже сегодня являются `decidable`. KG 300, 400 и 700
+ * остаются `included` (прежнее умолчание D-07) до тех пор, пока тикет
+ * d21f8d48 («REBUILD CONFIGURATOR STEP 1 AS KG-BASED SCOPE BOUNDARIES») не
+ * даст им настоящую карточку активации — переносить умолчание раньше
+ * соответствующего интерфейса значило бы имитировать решение, не давая
+ * продавцу способа его принять. См. `UNRESOLVED ISSUES` в Implementation
+ * Handoff этой задачи.
+ *
+ * KG 100 (Grundstück) и KG 800 (Finanzierung) в перечень Scope Boundaries
+ * этой задачи не входят (тикет называет ровно шесть групп) и сохраняют
+ * прежнее `notApplicable`.
+ */
 const INITIAL_COVERAGE: Coverage = {
-  KG_100: 'notApplicable', KG_200: 'excluded',
+  KG_100: 'notApplicable', KG_200: 'unknown',
   KG_300: 'included', KG_400: 'included', KG_500: 'unknown',
-  KG_600: 'notApplicable', KG_700: 'included', KG_800: 'notApplicable',
+  KG_600: 'unknown', KG_700: 'included', KG_800: 'notApplicable',
 }
 const COVERAGE_KEYS = Object.keys(INITIAL_COVERAGE) as Array<keyof Coverage>
 const COVERAGE_STATES: CoverageState[] = [

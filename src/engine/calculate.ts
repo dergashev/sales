@@ -31,7 +31,14 @@ export type BuildingInput = {
   gebaeudeform: 'MFH' | 'EFH_ZFH' | 'DH_REH' | 'BUERO'
   /** Класс здания. `state` важнее значения: спорное блокирует выдачу. */
   gebaeudeklasse: { value: 'GK_1_3' | 'GK_4' | 'GK_5'; confirmed: boolean }
-  energiestandard: 'GEG' | 'EH_55' | 'EH_40'
+  /**
+   * `EH_40_NH` (Effizienzhaus 40 mit Nachhaltigkeitsklasse / QNG) отсутствовал
+   * здесь при уже одобренном множителе 1,09 (`calculation-spec.md` §1:
+   * «Energiestandard ⚙ | GEG 1,00 · EH 55 1,03 · EH 40 1,06 ·
+   * EH 40-NH (QNG) 1,09»). Без этого варианта четвёртый уровень C4.06 не мог
+   * быть посчитан — дефект реализации, а не продуктовое решение.
+   */
+  energiestandard: 'GEG' | 'EH_55' | 'EH_40' | 'EH_40_NH'
   /**
    * Надземная BGF типа **R** — «überdeckt und allseitig umschlossen».
    *

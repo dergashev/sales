@@ -236,7 +236,12 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     await openModeStep(user, 2)
     await startMode(user, 'PER_BUILDING')
     await user.click(nav(/Leistungsabgrenzung/))
+    // Scope Boundaries (ticket 627d3191): KG 200/500/600 now start `unknown`
+    // instead of pre-decided — all three decidable groups must be resolved
+    // for the total to become complete again.
+    act(() => useStore.getState().setCoverage('KG_200', 'excluded'))
     act(() => useStore.getState().setCoverage('KG_500', 'excluded'))
+    act(() => useStore.getState().setCoverage('KG_600', 'excluded'))
     await user.click(nav(/Leistungen KG 300/))
 
     const switcher = screen.getByRole('tablist', { name: 'Konfigurationsumfang' })
