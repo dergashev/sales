@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:browser:desktop": "node tests/browser/run-desktop-smoke.mjs",
     "typecheck": "tsc -b --noEmit",
     "verify": "python3 -m unittest tools.test_validation_isolation && python3 tools/verify.py && python3 tools/check_indices.py && python3 tools/build_fixtures.py --check && python3 tools/selftest_governance.py && python3 tools/selftest_warnings.py && python3 tools/check_scenario2.py && python3 tools/check_scenario2.py --selftest"
   },
@@ -21,6 +22,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.3",

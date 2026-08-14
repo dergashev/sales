@@ -27,7 +27,7 @@ export default defineConfig({
     },
   },
   test: {
-    exclude: [...configDefaults.exclude, '**/.worktrees/**'],
+    exclude: [...configDefaults.exclude, '**/.worktrees/**', '**/tests/browser/**'],
     environmentMatchGlobs: [['**/*.dom.test.tsx', 'jsdom']],
     setupFiles: ['./src/test/setup.ts'],
   },
