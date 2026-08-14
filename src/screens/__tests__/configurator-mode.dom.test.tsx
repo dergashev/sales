@@ -236,12 +236,19 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     await openModeStep(user, 2)
     await startMode(user, 'PER_BUILDING')
     await user.click(nav(/Leistungsabgrenzung/))
-    // Scope Boundaries (ticket 627d3191): KG 200/500/600 now start `unknown`
-    // instead of pre-decided — all three decidable groups must be resolved
-    // for the total to become complete again.
+    // Scope Boundaries (ticket 627d3191): all six KG groups now start
+    // `unknown` instead of pre-decided, per the approved Product Decision
+    // Brief ("no KG is pre-selected as included, including 300/400/700").
+    // ChapterUmfang only exposes KG 200/500/600 as decidable tiles today —
+    // KG 300/400/700 have no interactive control yet (known interface
+    // limitation, see the INITIAL_COVERAGE comment in store.ts), so they are
+    // resolved directly via the store action here, same as the others.
     act(() => useStore.getState().setCoverage('KG_200', 'excluded'))
+    act(() => useStore.getState().setCoverage('KG_300', 'included'))
+    act(() => useStore.getState().setCoverage('KG_400', 'included'))
     act(() => useStore.getState().setCoverage('KG_500', 'excluded'))
     act(() => useStore.getState().setCoverage('KG_600', 'excluded'))
+    act(() => useStore.getState().setCoverage('KG_700', 'included'))
     await user.click(nav(/Leistungen KG 300/))
 
     const switcher = screen.getByRole('tablist', { name: 'Konfigurationsumfang' })
