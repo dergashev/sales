@@ -125,6 +125,12 @@ const de = {
   'buildingScope.announcement.confirmed': '{building} bestätigt.',
   'buildingScope.announcement.invalidated':
     'Bestätigung aufgehoben – Angaben geändert: {building}.',
+  'buildingScope.recovery.title':
+    'Konfigurationsbestätigung aufgehoben: {buildings}.',
+  'buildingScope.recovery.detail':
+    'Die betroffenen Gebäudedaten sind nicht mehr bestätigt. Andere gültige Konfigurationsarbeit bleibt gespeichert.',
+  'buildingScope.recovery.remedy':
+    'Angaben prüfen und das Gebäude erneut bestätigen. Danach die betroffene Konfiguration erneut bestätigen.',
   'buildingScope.tabs.label': 'Gewählte Gebäude',
   'buildingScope.tabs.first': 'Zum ersten Gebäude-Tab',
   'buildingScope.tabs.last': 'Zum letzten Gebäude-Tab',
@@ -213,12 +219,12 @@ const de = {
   'configurator.scope.shared': 'Gemeinsame Konfiguration · gilt für {buildings}',
   'configurator.scope.single': 'Konfiguration für {building} · {status}',
   'configurator.scope.announcement': '{scope} ausgewählt. Status: {status}.',
-  'configurator.status.open': 'Offen',
-  'configurator.status.ready': 'Bereit',
+  'configurator.status.open': 'Unvollständig',
+  'configurator.status.ready': 'Bereit zum Bestätigen',
   'configurator.status.confirmed': 'Bestätigt',
   'configurator.status.recheck': 'Erneut prüfen',
   'configurator.status.openDetail':
-    'Die Gebäudeschritte 1, 3, 4 und 5 noch vollständig durchgehen.',
+    'Leistungen KG 300, Technik KG 400, Energie & Zertifikate sowie Flächen im Detail vollständig durchgehen.',
   'configurator.status.readyDetail':
     'Alle erforderlichen Gebäudeschritte wurden durchgegangen. Die Konfiguration kann bestätigt werden.',
   'configurator.status.confirmedDetail': 'Die sichtbare Konfiguration ist bestätigt.',
@@ -226,6 +232,12 @@ const de = {
     'Gebäudeangaben oder Konfigurationswerte haben sich geändert. Vor der Bestätigung erneut prüfen.',
   'configurator.status.confirmBuilding': 'Konfiguration für {building} bestätigen',
   'configurator.status.confirmShared': 'Gemeinsame Konfiguration bestätigen',
+  'configurator.areas.title': 'Flächen · {building}',
+  'configurator.areas.unavailable':
+    '{field} ist für {building} noch nicht belastbar verfügbar.',
+  'configurator.areas.remedy':
+    'Die Angabe für {building} in Gebäude & Umfang prüfen oder ergänzen.',
+  'configurator.areas.review': 'In Gebäude & Umfang prüfen',
   'configurator.overview.title': 'Konfigurationsstand',
   'configurator.overview.label': 'Konfigurationsstand aller Gebäude',
   'configurator.sidebar.title': 'Vor der Kalkulation',
@@ -346,6 +358,12 @@ const en: Partial<Record<MessageKey, string>> = {
   'buildingScope.announcement.confirmed': '{building} confirmed.',
   'buildingScope.announcement.invalidated':
     'Confirmation removed — data changed: {building}.',
+  'buildingScope.recovery.title':
+    'Configuration confirmation removed: {buildings}.',
+  'buildingScope.recovery.detail':
+    'The affected building data is no longer confirmed. Other valid configuration work remains saved.',
+  'buildingScope.recovery.remedy':
+    'Review the data and confirm the building again. Then reconfirm the affected configuration.',
   'buildingScope.tabs.label': 'Selected buildings',
   'buildingScope.tabs.first': 'Go to first building tab',
   'buildingScope.tabs.last': 'Go to last building tab',
@@ -434,12 +452,12 @@ const en: Partial<Record<MessageKey, string>> = {
   'configurator.scope.shared': 'Shared configuration · applies to {buildings}',
   'configurator.scope.single': 'Configuration for {building} · {status}',
   'configurator.scope.announcement': '{scope} selected. Status: {status}.',
-  'configurator.status.open': 'Open',
-  'configurator.status.ready': 'Ready',
+  'configurator.status.open': 'Incomplete',
+  'configurator.status.ready': 'Ready to confirm',
   'configurator.status.confirmed': 'Confirmed',
   'configurator.status.recheck': 'Review again',
   'configurator.status.openDetail':
-    'Complete building steps 1, 3, 4 and 5.',
+    'Complete KG 300 services, KG 400 systems, Energy & certifications, and Area details.',
   'configurator.status.readyDetail':
     'All required building steps have been reviewed. The configuration can be confirmed.',
   'configurator.status.confirmedDetail': 'The visible configuration is confirmed.',
@@ -447,6 +465,12 @@ const en: Partial<Record<MessageKey, string>> = {
     'Building data or configuration values changed. Review them again before confirming.',
   'configurator.status.confirmBuilding': 'Confirm configuration for {building}',
   'configurator.status.confirmShared': 'Confirm shared configuration',
+  'configurator.areas.title': 'Areas · {building}',
+  'configurator.areas.unavailable':
+    '{field} is not yet reliably available for {building}.',
+  'configurator.areas.remedy':
+    'Review or add the value for {building} in Building & scope.',
+  'configurator.areas.review': 'Review in Building & scope',
   'configurator.overview.title': 'Configuration status',
   'configurator.overview.label': 'Configuration status for all buildings',
   'configurator.sidebar.title': 'Before pricing',

@@ -22,12 +22,19 @@ import { incompleteReasonText } from '../i18n/reasons'
 import type { BuildingInput } from '../engine/calculate'
 import type { CostGroup, CoverageState } from '../engine/calculate'
 import { Decimal } from 'decimal.js'
-import { Button, NumericField, type ProvenanceKind } from '../components/primitives'
 import {
+  Button,
+  NumericField,
+  type ProvenancePresentation,
+} from '../components/primitives'
+import {
+  Badge,
+  NextStep,
   PageHeader,
   ReadinessChecklist,
   SectionSheet,
 } from '../components/designSystem'
+import { DataStateBlock } from '../components/DataStates'
 import { ClientNotice } from '../components/ClientNotice'
 import { RadioCardGroup, SegmentedControl } from '../components/controls'
 import { optionImage } from '../assets/option-images'
@@ -45,7 +52,13 @@ import {
   isClientProjection,
   isVisibleInOutputProfile,
 } from '../state/clientProjection'
-import { effectiveFactValue } from '../state/buildingReview'
+import {
+  deriveConflictState,
+  effectiveDerivedArea,
+  effectiveFactValue,
+  type BuildingFact,
+  type FactSource,
+} from '../state/buildingReview'
 
 /**
  * S3 Konfigurator — рабочая область главы. ТОЛЬКО она: навигация по главам
@@ -129,6 +142,11 @@ export function S3Konfigurator() {
     && s.scopeBuildingId === null
   const buildingTabPanel = buildingScoped && s.configurationMode === 'PER_BUILDING'
   const activeScopeValue = totalOverview ? TOTAL_SCOPE : s.activeBuildingId
+  const visibleStatus = buildingScoped && !totalOverview
+    ? visibleConfigurationStatus(s, selectedIds)
+    : null
+  const confirmationAvailable = s.mode === 'intern'
+    && (visibleStatus === 'ready' || visibleStatus === 'recheck')
 
   return (
     <div className="px-7 py-6">
@@ -189,7 +207,10 @@ export function S3Konfigurator() {
             </Button>
           ) : <span />}
           {next && (
-            <Button variant="primary" onClick={() => s.openChapterAt(next)}>
+            <Button
+              variant={confirmationAvailable ? 'secondary' : 'primary'}
+              onClick={() => s.openChapterAt(next)}
+            >
               Weiter · Kapitel {routeIndex + 2}: {tx(CHAPTERS[next - 1]!)}
             </Button>
           )}
@@ -217,6 +238,37 @@ function buildingNames(
     style: 'long',
     type: 'conjunction',
   }).format(buildingIds.map((id) => buildingName(state, id)))
+}
+
+function sourcePresentation(
+  source: FactSource,
+  t: ReturnType<typeof useT>,
+): ProvenancePresentation | null {
+  switch (source.kind) {
+    case 'document':
+      return { kind: 'document', label: t('buildingScope.provenance.document') }
+    case 'customer':
+      return {
+        kind: 'customerConfirmed',
+        label: t('buildingScope.provenance.customer'),
+      }
+    case 'derived':
+      return { kind: 'derived', label: t('buildingScope.provenance.derived') }
+    case 'unknown':
+      return null
+  }
+}
+
+function factPresentation<T>(
+  fact: BuildingFact<T>,
+  t: ReturnType<typeof useT>,
+): ProvenancePresentation | null {
+  if (fact.override) {
+    return fact.override.actor === 'customer confirmation'
+      ? { kind: 'customerConfirmed', label: t('buildingScope.provenance.customer') }
+      : { kind: 'manual', label: t('buildingScope.provenance.manual') }
+  }
+  return sourcePresentation(fact.extracted.source, t)
 }
 
 function statusLabel(
@@ -538,18 +590,30 @@ function ConfigurationStatusStrip() {
   const action = s.configurationMode === 'SHARED'
     ? t('configurator.status.confirmShared')
     : t('configurator.status.confirmBuilding', { building })
+  const actionable = s.mode === 'intern' && (status === 'ready' || status === 'recheck')
+
+  if (actionable) {
+    return (
+      <section className="mt-5" aria-label={statusLabel(status, t)}>
+        <NextStep
+          label={statusLabel(status, t)}
+          description={detail}
+          action={action}
+          onAction={() => s.confirmVisibleConfiguration()}
+        />
+      </section>
+    )
+  }
 
   return (
-    <section className="a3-nextstep mt-5" aria-label={statusLabel(status, t)}>
-      <p className="a3-mtag">{statusLabel(status, t)}</p>
-      <p>{detail}</p>
-      {s.mode === 'intern' && (status === 'ready' || status === 'recheck') && (
-        <div className="mt-3">
-          <Button variant="primary" onClick={() => s.confirmVisibleConfiguration()}>
-            {action}
-          </Button>
-        </div>
-      )}
+    <section
+      className="mt-5 border-y border-border-subtle py-4"
+      aria-label={statusLabel(status, t)}
+    >
+      <Badge sign={status === 'confirmed' ? '✓' : '○'}>
+        {statusLabel(status, t)}
+      </Badge>
+      <p className="mt-2 text-small text-text-secondary">{detail}</p>
     </section>
   )
 }
@@ -752,47 +816,137 @@ function ChapterUmfang() {
   )
 }
 
+function derivedAboveGroundPresentation(
+  state: ReturnType<typeof useStore.getState>,
+  buildingId: string,
+  t: ReturnType<typeof useT>,
+): ProvenancePresentation | null {
+  const review = state.buildingReviews[buildingId]
+  if (!review) return null
+  const area = effectiveDerivedArea(review, state.buildingConflicts, 'bgfRSAbove')
+  if (area.basis === 'components') {
+    return { kind: 'derived', label: t('buildingScope.provenance.derived') }
+  }
+  if (area.basis === 'resolved' && area.conflict) {
+    const conflict = state.buildingConflicts[area.conflict.id]
+    const selectedId = conflict ? deriveConflictState(conflict).selectedCandidateId : null
+    const candidate = conflict?.candidates.find((item) => item.id === selectedId)
+    if (candidate?.origin === 'manual') {
+      return { kind: 'manual', label: t('buildingScope.provenance.manual') }
+    }
+    if (candidate) return sourcePresentation(candidate.source, t)
+  }
+  return factPresentation(review.facts.bgfRSAbove, t)
+}
+
+function UnavailableConfiguratorFact({
+  building,
+  field,
+  onReview,
+}: {
+  building: string
+  field: string
+  onReview: () => void
+}) {
+  const t = useT()
+  return (
+    <DataStateBlock
+      state="partial"
+      sentence={t('configurator.areas.unavailable', { building, field })}
+      remedy={t('configurator.areas.remedy', { building })}
+      action={(
+        <Button variant="secondary" onClick={onReview}>
+          {t('configurator.areas.review')}
+        </Button>
+      )}
+    />
+  )
+}
+
 function ChapterFlaechen() {
-  const tx = useTx()
+  const t = useT()
   const s = useStore()
+  const buildingId = s.activeBuildingId
+  const review = s.buildingReviews[buildingId]
+  const building = buildingName(s, buildingId)
+  const aboveGround = review
+    ? effectiveDerivedArea(review, s.buildingConflicts, 'bgfRSAbove')
+    : null
+  const aboveGroundProvenance = derivedAboveGroundPresentation(s, buildingId, t)
+  const wfl = review ? effectiveFactValue(review.facts.wfl) : null
+  const wflProvenance = review ? factPresentation(review.facts.wfl, t) : null
+  const units = review ? effectiveFactValue(review.facts.units) : null
+  const unitsProvenance = review ? factPresentation(review.facts.units, t) : null
+  const reviewBuilding = () => s.setPipelineView('buildingScope')
+
   return (
     <div className="grid gap-5">
       <Card
-        title="Flächen"
-        intro={'Werte aus Dokumenten tragen ihre Herkunft; eine Änderung wird ' +
-          'sofort durchgerechnet und im Journal festgehalten.'}
+        title={t('configurator.areas.title', { building })}
+        intro={'Geprüfte Gebäudewerte tragen ihre Herkunft; Änderungen heben ' +
+          'die Bestätigung auf und werden in Gebäude & Umfang erneut geprüft.'}
       >
-        <NumericField
-          label="BGF oberirdisch"
-          value={s.fields.bgfOber.value}
-          unit="m²"
-          provenance={{
-            kind: fieldProvenanceKind(s.fields.bgfOber.provenance),
-            label: tx(s.fields.bgfOber.provenance),
-          }}
-          onCommit={(v, c) => s.editField('bgfOber', v, c)}
-        />
-        <NumericField
-          label="Wohnfläche WFL nach WoFlV"
-          value={s.fields.wfl.value}
-          unit="m²"
-          provenance={{
-            kind: fieldProvenanceKind(s.fields.wfl.provenance),
-            label: tx(s.fields.wfl.provenance),
-          }}
-          onCommit={(v, c) => s.editField('wfl', v, c)}
-        />
-        <NumericField
-          label="Wohneinheiten"
-          value={s.fields.we.value}
-          decimals={0}
-          integer
-          provenance={{
-            kind: fieldProvenanceKind(s.fields.we.provenance),
-            label: tx(s.fields.we.provenance),
-          }}
-          onCommit={(v, c) => s.editField('we', v, c)}
-        />
+        {aboveGround?.value && aboveGroundProvenance ? (
+          <NumericField
+            label={t('buildingScope.fact.bgfRSAbove')}
+            value={aboveGround.value}
+            unit="m²"
+            provenance={aboveGroundProvenance}
+            onCommit={(value, confirmed) => s.setBuildingFactOverride(
+              buildingId,
+              'bgfRSAbove',
+              value,
+              confirmed ? 'customer confirmation' : 'sales-user',
+            )}
+          />
+        ) : (
+          <UnavailableConfiguratorFact
+            building={building}
+            field={t('buildingScope.fact.bgfRSAbove')}
+            onReview={reviewBuilding}
+          />
+        )}
+        {wfl && wflProvenance ? (
+          <NumericField
+            label={t('buildingScope.fact.wfl')}
+            value={wfl}
+            unit="m²"
+            provenance={wflProvenance}
+            onCommit={(value, confirmed) => s.setBuildingFactOverride(
+              buildingId,
+              'wfl',
+              value,
+              confirmed ? 'customer confirmation' : 'sales-user',
+            )}
+          />
+        ) : (
+          <UnavailableConfiguratorFact
+            building={building}
+            field={t('buildingScope.fact.wfl')}
+            onReview={reviewBuilding}
+          />
+        )}
+        {units && unitsProvenance ? (
+          <NumericField
+            label={t('buildingScope.fact.units')}
+            value={units}
+            decimals={0}
+            integer
+            provenance={unitsProvenance}
+            onCommit={(value, confirmed) => s.setBuildingFactOverride(
+              buildingId,
+              'units',
+              value,
+              confirmed ? 'customer confirmation' : 'sales-user',
+            )}
+          />
+        ) : (
+          <UnavailableConfiguratorFact
+            building={building}
+            field={t('buildingScope.fact.units')}
+            onReview={reviewBuilding}
+          />
+        )}
       </Card>
 
       <Card
@@ -828,14 +982,6 @@ function ChapterFlaechen() {
       </Card>
     </div>
   )
-}
-
-function fieldProvenanceKind(
-  provenance: 'aus Dokument' | 'vom Kunden bestätigt' | 'abgeleitet' | 'manuell erfasst',
-): ProvenanceKind {
-  return provenance === 'aus Dokument' ? 'document'
-    : provenance === 'vom Kunden bestätigt' ? 'customerConfirmed'
-      : provenance === 'abgeleitet' ? 'derived' : 'manual'
 }
 
 function ChapterEnergie() {

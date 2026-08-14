@@ -84,6 +84,8 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     expect(useStore.getState().pricingStarted).toBe(false)
     expect(screen.getByRole('heading', { level: 1, name: 'Leistungen KG 300' }))
       .toHaveFocus()
+    expect(screen.getByText(/Leistungen KG 300, Technik KG 400/)).toBeInTheDocument()
+    expect(screen.queryByText(/Gebäudeschritte 1, 3, 4 und 5/)).toBeNull()
     expect(screen.queryByRole('complementary', { name: 'Angebot' })).toBeNull()
     expect(screen.getByText('Kalkulation noch nicht gestartet')).toBeInTheDocument()
 
@@ -109,7 +111,7 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
       name: 'Konfigurationsumfang',
     })
     expect(within(oneBuildingTabs).getAllByRole('tab')).toHaveLength(1)
-    expect(within(oneBuildingTabs).getByRole('tab', { name: /Haus A · Offen/ }))
+    expect(within(oneBuildingTabs).getByRole('tab', { name: /Haus A · Unvollständig/ }))
       .toHaveAttribute('aria-selected', 'true')
   })
 
@@ -133,8 +135,11 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     expect(state.buildings['DEMO-B-A']).not.toEqual(state.buildings['DEMO-B-B'])
 
     await visitRequiredBuildingChapters(user)
-    expect(screen.getByRole('button', { name: 'Gemeinsame Konfiguration bestätigen' }))
-      .toBeInTheDocument()
+    const confirm = screen.getByRole('button', {
+      name: 'Gemeinsame Konfiguration bestätigen',
+    })
+    expect(confirm).not.toHaveClass('a3-sec')
+    expect(nav(/Weiter · Kapitel 6: Baugrund & Erschließung/)).toHaveClass('a3-sec')
     await user.click(screen.getByRole('button', {
       name: 'Gemeinsame Konfiguration bestätigen',
     }))
@@ -156,12 +161,12 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     })
 
     const switcher = screen.getByRole('tablist', { name: 'Konfigurationsumfang' })
-    expect(within(switcher).getByRole('tab', { name: /Haus B · Offen/ }))
+    expect(within(switcher).getByRole('tab', { name: /Haus B · Unvollständig/ }))
       .toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('tabpanel', { name: /Haus B · Offen/ }))
+    expect(screen.getByRole('tabpanel', { name: /Haus B · Unvollständig/ }))
       .toBeInTheDocument()
     await visitRequiredBuildingChapters(user)
-    expect(within(switcher).getByRole('tab', { name: /Haus B · Bereit/ }))
+    expect(within(switcher).getByRole('tab', { name: /Haus B · Bereit zum Bestätigen/ }))
       .toBeInTheDocument()
     await user.click(screen.getByRole('button', {
       name: 'Konfiguration für Haus B bestätigen',
@@ -171,7 +176,7 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     expect(configurationComplete(useStore.getState())).toBe(false)
 
     const beforeSwitchJournal = useStore.getState().journal.length
-    const hausA = within(switcher).getByRole('tab', { name: /Haus A · Offen/ })
+    const hausA = within(switcher).getByRole('tab', { name: /Haus A · Unvollständig/ })
     await user.click(hausA)
     expect(document.activeElement).toBe(hausA)
     expect(useStore.getState().activeBuildingId).toBe('DEMO-B-A')
@@ -189,10 +194,10 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
 
     await user.click(nav(/Leistungen KG 300/))
     const restored = screen.getByRole('tablist', { name: 'Konfigurationsumfang' })
-    expect(within(restored).getByRole('tab', { name: /Haus A · Offen/ }))
+    expect(within(restored).getByRole('tab', { name: /Haus A · Unvollständig/ }))
       .toHaveAttribute('aria-selected', 'true')
 
-    const current = within(restored).getByRole('tab', { name: /Haus A · Offen/ })
+    const current = within(restored).getByRole('tab', { name: /Haus A · Unvollständig/ })
     current.focus()
     await user.keyboard('{Home}')
     const total = within(restored).getByRole('tab', {
@@ -214,7 +219,9 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     await user.keyboard('{Enter}')
     expect(hausB).toHaveAttribute('aria-selected', 'true')
 
-    await user.click(within(restored).getByRole('tab', { name: /Haus A · Offen/ }))
+    await user.click(within(restored).getByRole('tab', {
+      name: /Haus A · Unvollständig/,
+    }))
     await visitRequiredBuildingChapters(user)
     await user.click(screen.getByRole('button', {
       name: 'Konfiguration für Haus A bestätigen',
@@ -239,7 +246,9 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     const complex = useStore.getState().projection().result
     expect(complex.totalLabel).toBe('Gesamt netto · Grundleistung All3')
 
-    await user.click(within(switcher).getByRole('tab', { name: /Haus A · Offen/ }))
+    await user.click(within(switcher).getByRole('tab', {
+      name: /Haus A · Unvollständig/,
+    }))
     const narrowed = useStore.getState().projection().result
     expect(narrowed.total.exact.lt(complex.total.exact)).toBe(true)
     expect(narrowed.totalLabel).toBe('Gesamt netto · Grundleistung All3 · Haus A')
@@ -291,14 +300,69 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     }))
     expect(configurationDisplayStatusFor(useStore.getState(), 'DEMO-B-A'))
       .toBe('recheck')
+    expect(screen.getByText('Konfigurationsbestätigung aufgehoben: Haus A Nord.'))
+      .toBeInTheDocument()
+    expect(screen.getByText(/Andere gültige Konfigurationsarbeit bleibt gespeichert/))
+      .toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
+    expect(screen.queryByText(/Konfigurationsbestätigung aufgehoben/)).toBeNull()
     await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
     expect(screen.getByText('Erneut prüfen')).toBeInTheDocument()
     expect(screen.queryByText('Die sichtbare Konfiguration ist bestätigt.')).toBeNull()
     expect(screen.getByRole('button', {
       name: 'Konfiguration für Haus A Nord bestätigen',
     })).toBeInTheDocument()
+  })
+
+  it('binds Chapter 5 facts to the active building and fails visibly for missing facts', async () => {
+    const user = userEvent.setup()
+    await openModeStep(user, 2)
+    await startMode(user, 'PER_BUILDING')
+    await user.click(nav(/Flächen im Detail/))
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Flächen · Haus B' }))
+      .toBeInTheDocument()
+    expect(screen.getByRole('textbox', {
+      name: 'BGF R+S · oberirdisch in m²',
+    })).toHaveValue('1.200,00')
+    expect(screen.queryByDisplayValue('2.000,00')).toBeNull()
+    expect(screen.getByText(/WFL nach WoFlV ist für Haus B noch nicht belastbar verfügbar/))
+      .toBeInTheDocument()
+    expect(screen.getByText(/Einheiten ist für Haus B noch nicht belastbar verfügbar/))
+      .toBeInTheDocument()
+
+    const tabs = screen.getByRole('tablist', { name: 'Konfigurationsumfang' })
+    await user.click(within(tabs).getByRole('tab', {
+      name: /Haus A · Unvollständig/,
+    }))
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Flächen · Haus A' }))
+      .toBeInTheDocument()
+    expect(screen.getByRole('textbox', {
+      name: 'BGF R+S · oberirdisch in m²',
+    })).toHaveValue('2.000,00')
+    expect(screen.getByRole('textbox', {
+      name: 'WFL nach WoFlV in m²',
+    })).toHaveValue('1.560,00')
+    expect(screen.getByRole('textbox', { name: 'Einheiten' })).toHaveValue('16')
+
+    await user.click(within(tabs).getByRole('tab', {
+      name: /Haus B · Unvollständig/,
+    }))
+    const hausBBgf = screen.getByRole('textbox', {
+      name: 'BGF R+S · oberirdisch in m²',
+    })
+    await user.clear(hausBBgf)
+    await user.type(hausBBgf, '1250')
+    await user.keyboard('{Enter}')
+
+    const state = useStore.getState()
+    expect(state.buildingReviews['DEMO-B-B']!.facts.bgfRSAbove.override?.value.eq(1250))
+      .toBe(true)
+    expect(state.buildingReviews['DEMO-B-A']!.facts.bgfRSAbove.override).toBeNull()
+    expect(screen.getByRole('heading', { level: 1, name: 'Gebäude & Umfang' }))
+      .toBeInTheDocument()
   })
 
   it('does not treat unrelated building price geometry as configuration consent', async () => {

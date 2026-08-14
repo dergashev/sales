@@ -44,7 +44,7 @@ import {
   rejectNumericInput,
   type ProvenancePresentation,
 } from '../components/primitives'
-import { DataStateBoundary, EmptyState } from '../components/DataStates'
+import { DataStateBlock, DataStateBoundary, EmptyState } from '../components/DataStates'
 import { useT } from '../i18n'
 
 const FORM_VALUES: ReadonlyArray<BuildingInput['gebaeudeform']> = [
@@ -160,6 +160,13 @@ export function BuildingScope() {
   const selectedIds = includedBuildingIds(s)
   const selectedCount = selectedIds.length
   const confirmedCount = selectedIds.filter((id) => buildingConfirmed(s, id)).length
+  const invalidatedConfigurationIds = selectedIds.filter((id) =>
+    s.buildingConfigState[id]?.status === 'confirmed' && !buildingConfirmed(s, id))
+  const invalidatedConfigurationNames = new Intl.ListFormat(
+    s.uiLanguage === 'de' ? 'de-DE' : 'en-GB',
+    { style: 'long', type: 'conjunction' },
+  ).format(invalidatedConfigurationIds.map((id) =>
+    stableName(s.buildingReviews[id]!, id)))
   const [focusedTabId, setFocusedTabId] = useState(
     selectedIds.includes(s.activeBuildingId) ? s.activeBuildingId : selectedIds[0] ?? '',
   )
@@ -270,6 +277,19 @@ export function BuildingScope() {
       <p className="sr-only" aria-live="polite" aria-atomic="true">
         {announcement}
       </p>
+
+      {invalidatedConfigurationIds.length > 0 && (
+        <div className="pt-5">
+          <DataStateBlock
+            state="stale"
+            sentence={t('buildingScope.recovery.title', {
+              buildings: invalidatedConfigurationNames,
+            })}
+            detail={t('buildingScope.recovery.detail')}
+            remedy={t('buildingScope.recovery.remedy')}
+          />
+        </div>
+      )}
 
       <div className="py-5">
         <SectionSheet
