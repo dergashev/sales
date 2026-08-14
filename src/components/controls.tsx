@@ -317,6 +317,132 @@ export function RadioCardGroup<T extends string>({
   )
 }
 
+/* ── CheckboxCard ──────────────────────────────────────────────────────── */
+
+export type CheckboxCardOption = {
+  value: string
+  title: string
+  /** Фотография — та же логика, что у RadioCardGroup: вторичный носитель. */
+  image?: { url: string; motif: string } | null
+  description?: string
+  /** Последствие видно ВСЕГДА, не по hover (R-05, OPTION-009). */
+  consequence: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+  /**
+   * Обязательная включённая опция (OPTION-002/OPTION-005): замок-иконка +
+   * видимая подпись `Pflicht`, а не `disabled` — `disabled` для неё запрещён
+   * контрактом. Контрол остаётся фокусируемым; снятие выбора блокируется на
+   * `click`, не через нативный атрибут `disabled` (иначе выпал бы из
+   * Tab-порядка, а «остаётся фокусируемым» — часть контракта).
+   */
+  mandatory?: boolean
+  mandatoryReason?: string
+  disabled?: boolean
+  disabledReason?: string
+}
+
+/**
+ * CheckboxCard (components-core.md §CheckboxCard, OPTION-008): анатомия
+ * идентична RadioCardGroup (медиа-слот, `title`, `description`,
+ * `consequenceLine`), но `<input type="checkbox">`, индикатор — квадрат с ✓
+ * (не круг RadioCardGroup — контракт называет форму явно), и карточки
+ * независимы: нет группового цикла стрелок, каждый checkbox — свой
+ * focus stop (родная семантика).
+ */
+export function CheckboxCard({ legend, legendHidden, options }: {
+  legend: string
+  options: ReadonlyArray<CheckboxCardOption>
+  /** Видимое имя группы уже даёт заголовок карточки-контейнера. */
+  legendHidden?: boolean
+}) {
+  const name = useId()
+  const tx = useTx()
+  return (
+    <fieldset>
+      <legend className={legendHidden ? 'sr-only' : 'text-small font-medium text-text-primary'}>
+        {legend}
+      </legend>
+      <div className="a3-grid-host mt-2">
+        <div role="group" aria-label={legend} className="a3-ogrid">
+          {options.map((o) => {
+            const describedBy = [
+              o.description && `${name}-${o.value}-desc`,
+              `${name}-${o.value}-conseq`,
+              o.mandatory && `${name}-${o.value}-mandatory`,
+              !o.mandatory && o.disabled && o.disabledReason && `${name}-${o.value}-constraint`,
+            ].filter(Boolean).join(' ')
+            return (
+              <label
+                key={o.value}
+                className={'a3-okc-tile block' +
+                  (o.checked ? ' border-selection-border' : '') +
+                  (o.disabled && !o.mandatory ? ' cursor-default' : '')}
+              >
+                <input
+                  type="checkbox"
+                  className="peer sr-only"
+                  checked={o.checked}
+                  aria-label={tx(o.title)}
+                  aria-describedby={describedBy}
+                  aria-disabled={o.mandatory || o.disabled || undefined}
+                  disabled={o.disabled && !o.mandatory}
+                  onClick={(e) => {
+                    if (!o.mandatory) return
+                    e.preventDefault()
+                    // Belt-and-suspenders: some test/browser environments
+                    // still flip the native `.checked` property as part of
+                    // dispatching `click` even when the default action is
+                    // cancelled. Re-assert synchronously so a mandatory tile
+                    // can never render/report unchecked, in code or in tests.
+                    e.currentTarget.checked = true
+                  }}
+                  onChange={() => { if (!o.mandatory) o.onChange(!o.checked) }}
+                />
+                {o.image && (
+                  <img
+                    className="a3-option-media"
+                    src={o.image.url}
+                    alt=""
+                    loading="lazy"
+                    onError={(e) => { e.currentTarget.hidden = true }}
+                  />
+                )}
+                <span aria-hidden="true"
+                      className={'a3-ok a3-ok-square' + (o.checked ? ' opacity-100' : '')}>
+                  ✓
+                </span>
+                <span className={`absolute inset-0 ${FOCUS_RING}`} aria-hidden="true" />
+                <b>{o.title}</b>
+                {o.description && (
+                  <span id={`${name}-${o.value}-desc`} className="a3-st">
+                    {o.description}
+                  </span>
+                )}
+                <span id={`${name}-${o.value}-conseq`} className="a3-pd numeric">
+                  {o.consequence}
+                </span>
+                {o.mandatory && (
+                  <span id={`${name}-${o.value}-mandatory`} className="a3-st">
+                    <span aria-hidden="true">🔒 </span>
+                    {tx('Pflicht')}
+                    {o.mandatoryReason ? ` · ${tx(o.mandatoryReason)}` : ''}
+                  </span>
+                )}
+                {!o.mandatory && o.disabled && o.disabledReason && (
+                  <span id={`${name}-${o.value}-constraint`} className="a3-st">
+                    {tx('Nicht verfügbar')} · {tx(o.disabledReason)}
+                  </span>
+                )}
+              </label>
+            )
+          })}
+        </div>
+      </div>
+    </fieldset>
+  )
+}
+
 /* ── FacadeTileGroup · DC-20 ───────────────────────────────────────────── */
 
 /**

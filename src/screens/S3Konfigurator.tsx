@@ -13,6 +13,7 @@ import {
   useStore,
   COVERAGE_LABEL,
   LABEL_UG,
+  scopeBoundariesStatus,
   type ConfigurationDisplayStatus,
   type ConfigurationMode,
 } from '../state/store'
@@ -36,7 +37,7 @@ import {
 } from '../components/designSystem'
 import { DataStateBlock } from '../components/DataStates'
 import { ClientNotice } from '../components/ClientNotice'
-import { RadioCardGroup, SegmentedControl } from '../components/controls'
+import { CheckboxCard, RadioCardGroup, SegmentedControl } from '../components/controls'
 import { optionImage } from '../assets/option-images'
 import { ScheduleGantt } from '../components/ScheduleGantt'
 import { OptionChapter } from './OptionChapter'
@@ -679,25 +680,40 @@ function Card({ title, intro, children }: {
 }
 
 /**
- * Глава 3 · Leistungsabgrenzung — какие группы затрат входят в предложение
- * (пункт 11 сценария).
+ * Глава 2 · Leistungsabgrenzung («Scope Boundaries», ticket d21f8d48) —
+ * welche Kostengruppen Teil des Angebots sind, plus die projektweiten
+ * Anforderungen an Energiestandard und Zertifizierung. Hier beginnt die
+ * Kalkulation (`pricingStarted`, building-aware-configurator-navigation).
  *
- * Группы разделены по природе решения, а не по номеру:
- * · KG 300 и 400 — ядро предложения, их не выбирают: без них нет продукта;
- * · KG 700 включена всегда, спорен лишь СПОСОБ расчёта (глава 8, только
- *   внутренний режим) — клиент видит долю, а не метод;
- * · KG 200, 500, 600, 800 — настоящее решение, и оно меняет цену;
- * · KG 100 (Grundstück) вне объёма подрядчика.
+ * Reihenfolge nach DIN 276 (KG 200 · 300 · 400 · 500 · 600 · 700), nicht
+ * nach Entscheidungsart getrennt:
+ * · KG 300, 400, 700 — Kern des Angebots, unveränderlich: ohne sie gibt es
+ *   kein Angebot; bei KG 700 ist nur die Berechnungsart verhandelbar, und
+ *   die ist intern (KG-700-Modus). Gezeigt als gesperrte CheckboxCard-
+ *   Kachel (`mandatory`, components-core.md §CheckboxCard, OPTION-002/
+ *   OPTION-005) — **nicht** `disabled`: eine wie abgeschaltet wirkende
+ *   Pflichtposition wäre in einer Live-Präsentation ein Vertrauensproblem
+ *   (Product Decision Brief auf diesem Ticket, RESOLVED DECISION #3;
+ *   CPO-Vorgabe). Echte Ab-/Anwahl für diese drei würde eine neue,
+ *   nicht autorisierte Kalkulations-Änderung voraussetzen (NON-GOAL "New
+ *   pricing rules") und ist bewusst nicht Teil dieses Tickets.
+ * · KG 200, 500, 600 — echte Entscheidung, ändert den Preis. Drei Zustände
+ *   statt einer Checkbox, weil «nicht enthalten» eine Entscheidung ist und
+ *   «noch offen» eine Lücke (D-18, SCOPE-001); solange eine Lücke bleibt,
+ *   weist das Angebot eine Zwischensumme statt eines Gesamtpreises aus
+ *   (R-18/CALC-006).
+ * · KG 100 (Grundstück) und KG 800 (Finanzierung) liegen außerhalb dieses
+ *   sechsteiligen Kartensatzes (Ticket-Vorgabe) und bleiben `notApplicable`.
  *
- * Три состояния вместо галочки: «не входит» — решение, «ещё открыто» —
- * пробел в данных, и подпись итога зависит от второго, а не от первого
- * (R-18/CALC-006).
+ * "Zeitwirkung" wird nicht erfunden: engine/schedule.ts hängt ausschließlich
+ * von BGF, Gebäudeform und Gebäudeklasse ab, nicht von der Abdeckung
+ * einzelner Kostengruppen — eine KG-Zeitwirkung wäre eine neue Formel ohne
+ * Quelle (D-22 erlaubt Ableitung, nicht Erfindung ohne jede Basis).
  */
 function ChapterUmfang() {
   const s = useStore()
   const tx = useTx()
   const p = s.projection()
-  const decidable: CostGroup[] = ['KG_200', 'KG_500', 'KG_600', 'KG_800']
   // A complex projection can carry the same project-level gap once per
   // building. The scope card presents that decision once, so its notice must
   // do the same (and must not emit duplicate React keys).
@@ -705,63 +721,65 @@ function ChapterUmfang() {
     reason.code + ('groups' in reason ? reason.groups.join() : ''),
     reason,
   ])).values()]
+  const scopeStatus = scopeBoundariesStatus(s)
 
   return (
     <div className="grid gap-5">
       <Card
-        title={`Kern des Angebots`}
-        intro={'Baukonstruktion und technische Anlagen sind keine Auswahl: '
-          + 'ohne sie gibt es kein Angebot. Baunebenkosten sind immer enthalten '
-          + '— verhandelbar ist nur die Berechnungsart, und die ist intern.'}
+        title="Leistungsumfang nach DIN 276"
+        intro={'Sechs Kostengruppen bestimmen den Angebotsumfang. KG 300, 400 '
+          + 'und 700 sind Kern des Angebots und nicht abwählbar — ohne sie '
+          + 'gibt es kein Angebot; bei KG 700 ist nur die Berechnungsart '
+          + 'verhandelbar, und die ist intern. KG 200, 500 und 600 sind '
+          + 'echte Entscheidungen: «noch offen» ist eine Lücke, keine '
+          + 'Entscheidung, und verhindert den Gesamtpreis, solange sie offen bleibt.'}
       >
-        <ul>
-          {(['KG_300', 'KG_400', 'KG_700'] as CostGroup[]).map((g) => (
-            <li key={g} className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle py-2">
-              <span className="text-body text-text-primary">
-                {g.replace('_', NNBSP)} {KG_LABELS[g]}
-              </span>
-              <span className="a3-cap">
-                <span aria-hidden="true">✓ </span>immer enthalten
-              </span>
-            </li>
-          ))}
-        </ul>
-      </Card>
-
-      <Card
-        title={`Zu entscheiden`}
-        intro={'Drei Zustände, weil «nicht enthalten» eine Entscheidung ist und '
-          + '«noch offen» eine Lücke. Solange eine Lücke bleibt, weist das '
-          + 'Angebot eine Zwischensumme der kalkulierten Positionen aus und '
-          + 'keinen Gesamtpreis.'}
-      >
-        {/* Карточки объёма вместо набора сегментных переключателей
-            (приёмка волны C: глава дважды оценена «налоговой формой»).
-            Решение здесь коммерческое — «берём ли мы это на себя», — и
-            выглядеть оно должно как выбор позиции, а не как заполнение
-            поля. Плитки те же, что в главах опций: у каждой цена
-            последствия на самой плитке и последствие видно ДО клика. */}
-        {decidable.map((g) => {
-          const spec = COVERAGE_RATES[g]
-          // Последствие приходит из ТОЙ ЖЕ проекции, что и клик: и охват
-          // считается по ВСЕМ включённым зданиям, а не по активному.
-          // Прежде плитка умножала ставку на площадь активного здания и
-          // обещала +230.000 €, тогда как итог менялся на +368.000 €
-          // (сплошное ревью 26, находка 13; предложение № 1 исследования
-          // рычага). Второй калькулятор последствия расходится молча.
-          const outcome = (v: CoverageState) =>
-            s.coverage[g] === v ? null : s.outcomeOf({ kind: 'coverage', group: g, value: v })
-          const tile = (v: CoverageState, title: string, zero: string) => ({
-            value: v,
-            title,
-            description: v === 'included' && spec ? `${tx(spec.basis)} ⚙` : undefined,
-            consequence: s.coverage[g] === v
-              ? tx('aktuelle Auswahl')
-              : consequenceLabel(outcome(v)!.delta, zero),
-          })
-          return (
-            <div key={g} className="mt-4">
+        <div className="grid gap-5">
+          {SCOPE_ORDER.map((g) => {
+            if (MANDATORY_SCOPE_GROUPS.has(g)) {
+              const share = p.kgSplit[g as 'KG_300' | 'KG_400' | 'KG_700']
+              return (
+                <CheckboxCard
+                  key={g}
+                  legend={`${g.replace('_', NNBSP)} ${KG_LABELS[g]}`}
+                  options={[{
+                    value: g,
+                    title: tx(`${g.replace('_', NNBSP)} ${KG_LABELS[g]}`),
+                    image: optionImage('scopeBoundaries', g),
+                    // Geldwert und Übersetzung bleiben getrennte Textknoten
+                    // (nicht verkettet, Regel 36/CALC-007): eine Verkettung
+                    // von Zahl und Wort würde pro Kostengruppe einen eigenen,
+                    // nie wiederverwendbaren „Rest" erzeugen.
+                    description: tx('Immer Bestandteil des Angebots · kein Einfluss auf die Bauzeit — keine Auswahl.'),
+                    consequence: share ? moneyLabel(present(share)) : tx('im Kostenwasserfall ausgewiesen'),
+                    checked: true,
+                    onChange: () => {},
+                    mandatory: true,
+                    mandatoryReason: 'Kern des Angebots',
+                  }]}
+                />
+              )
+            }
+            const spec = COVERAGE_RATES[g]
+            // Последствие приходит из ТОЙ ЖЕ проекции, что и клик: и охват
+            // считается по ВСЕМ включённым зданиям, а не по активному.
+            // Прежде плитка умножала ставку на площадь активного здания и
+            // обещала +230.000 €, тогда как итог менялся на +368.000 €
+            // (сплошное ревью 26, находка 13; предложение № 1 исследования
+            // рычага). Второй калькулятор последствия расходится молча.
+            const outcome = (v: CoverageState) =>
+              s.coverage[g] === v ? null : s.outcomeOf({ kind: 'coverage', group: g, value: v })
+            const tile = (v: CoverageState, title: string, zero: string) => ({
+              value: v,
+              title,
+              description: v === 'included' && spec ? `${tx(spec.basis)} ⚙` : undefined,
+              consequence: s.coverage[g] === v
+                ? tx('aktuelle Auswahl')
+                : consequenceLabel(outcome(v)!.delta, zero),
+            })
+            return (
               <RadioCardGroup
+                key={g}
                 legend={`${g.replace('_', NNBSP)} ${KG_LABELS[g]}`}
                 value={s.coverage[g]}
                 onChange={(v) => s.setCoverage(g, v as CoverageState)}
@@ -783,9 +801,19 @@ function ChapterUmfang() {
                   },
                 ]}
               />
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
+      </Card>
+
+      <Card title="Energiestandard und Zertifizierung">
+        <div className="grid gap-5">
+          <EnergiestandardPicker />
+          <OptionChapter groups={ZERT_GROUPS}
+            intro={'Zertifikate sind eine eigene Achse: der Energiestandard '
+              + 'beschreibt das Gebäude, das Siegel beschreibt das Verfahren, '
+              + 'mit dem es nachgewiesen wird.'} />
+        </div>
       </Card>
 
       <Card title="Folge für die Angebotssumme">
@@ -812,7 +840,62 @@ function ChapterUmfang() {
             <span aria-hidden="true">✓ </span>{tx('Alle Deckungsentscheidungen getroffen und keine offenen wesentlichen Punkte — das Angebot weist einen Gesamtpreis aus.')}</p>
         )}
       </Card>
+
+      <Card title="Leistungsabgrenzung bestätigen">
+        {scopeStatus === 'confirmed' ? (
+          <p className="a3-cap">
+            <span aria-hidden="true">✓ </span>
+            {tx('Leistungsabgrenzung bestätigt.')}
+          </p>
+        ) : (
+          <NextStep
+            label={scopeStatus === 'recheck'
+              ? tx('Leistungsabgrenzung erneut prüfen')
+              : tx('Leistungsabgrenzung bestätigen')}
+            description={scopeStatus === 'recheck'
+              ? tx('KG 200/500/600, Energiestandard oder Zertifizierung haben sich seit der letzten Bestätigung geändert.')
+              : tx('Erst nach Bestätigung gilt die nachfolgende Konfiguration als abschließbar.')}
+            action={tx('Bestätigen')}
+            onAction={() => s.confirmScopeBoundaries()}
+          />
+        )}
+      </Card>
     </div>
+  )
+}
+
+const SCOPE_ORDER: CostGroup[] =
+  ['KG_200', 'KG_300', 'KG_400', 'KG_500', 'KG_600', 'KG_700']
+const MANDATORY_SCOPE_GROUPS = new Set<CostGroup>(['KG_300', 'KG_400', 'KG_700'])
+
+/**
+ * Energiestandard-Auswahl, extrahiert aus `ChapterEnergie` (unten), damit
+ * Leistungsabgrenzung dieselbe Kachel-Auswahl zeigen kann, OHNE die
+ * bestehende Kunden-Bestätigung (`esConfirmed`) zu duplizieren — die bleibt
+ * ausschließlich in "Energie & Zertifikate" (Kapitel 4).
+ */
+function EnergiestandardPicker() {
+  const s = useStore()
+  const LABEL_ES: Record<BuildingInput['energiestandard'], string> = {
+    GEG: 'GEG-Standard', EH_55: `Effizienzhaus${NNBSP}55`, EH_40: `Effizienzhaus${NNBSP}40`,
+    EH_40_NH: `Effizienzhaus${NNBSP}40${NNBSP}NH (QNG)`,
+  }
+  return (
+    <RadioCardGroup
+      legend="Energiestandard"
+      legendHidden
+      value={activeBuilding(s).energiestandard}
+      onChange={(v) => s.setEnergiestandard(v)}
+      onPreview={(v) =>
+        s.previewOption(v ? { kind: 'energiestandard', value: v } : null)}
+      options={(['GEG', 'EH_55', 'EH_40', 'EH_40_NH'] as const).map((v) => ({
+        value: v,
+        title: LABEL_ES[v],
+        consequence: activeBuilding(s).energiestandard === v
+          ? 'aktuelle Auswahl'
+          : consequenceLabel(s.optionDelta({ kind: 'energiestandard', value: v })),
+      }))}
+    />
   )
 }
 
@@ -987,15 +1070,6 @@ function ChapterFlaechen() {
 function ChapterEnergie() {
   const tx = useTx()
   const s = useStore()
-  // `EH_40_NH` (QNG) полностью описан в типе, но эта карточка ещё не
-  // предлагает его плиткой (`options` ниже остаётся из трёх значений) —
-  // добавление четвёртого варианта в UI принадлежит редизайну Client
-  // Experience (тикет d21f8d48), а не этому расчётному изменению. Запись
-  // здесь нужна только для полноты типа `Record`.
-  const LABEL_ES: Record<BuildingInput['energiestandard'], string> = {
-    GEG: 'GEG-Standard', EH_55: `Effizienzhaus${NNBSP}55`, EH_40: `Effizienzhaus${NNBSP}40`,
-    EH_40_NH: `Effizienzhaus${NNBSP}40${NNBSP}NH`,
-  }
   return (
     <div className="grid gap-5">
       <Card
@@ -1003,21 +1077,7 @@ function ChapterEnergie() {
         intro={'Die Wahl einer Option ist keine Bestätigung: das Unsicherheitsband ' +
           'verengt sich erst, wenn der Kunde den Standard bestätigt.'}
       >
-        <RadioCardGroup
-          legend="Energiestandard"
-          legendHidden
-          value={activeBuilding(s).energiestandard}
-          onChange={(v) => s.setEnergiestandard(v)}
-          onPreview={(v) =>
-            s.previewOption(v ? { kind: 'energiestandard', value: v } : null)}
-          options={(['GEG', 'EH_55', 'EH_40'] as const).map((v) => ({
-            value: v,
-            title: LABEL_ES[v],
-            consequence: activeBuilding(s).energiestandard === v
-              ? 'aktuelle Auswahl'
-              : consequenceLabel(s.optionDelta({ kind: 'energiestandard', value: v })),
-          }))}
-        />
+        <EnergiestandardPicker />
         {!s.esConfirmed && (
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-3">
             <p className="a3-cap">{tx('Standard gewählt, vom Kunden noch nicht bestätigt — Band unverändert.')}</p>

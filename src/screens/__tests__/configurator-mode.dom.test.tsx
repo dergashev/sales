@@ -147,6 +147,10 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
       .toBe('confirmed')
     expect(configurationDisplayStatusFor(useStore.getState(), 'DEMO-B-B'))
       .toBe('confirmed')
+    // Scope Boundaries confirmation (ticket d21f8d48) is now its own
+    // prerequisite for configurationComplete, independent of the per-building
+    // configuration confirmation exercised above.
+    act(() => useStore.getState().confirmScopeBoundaries())
     expect(configurationComplete(useStore.getState())).toBe(true)
   })
 
@@ -228,6 +232,10 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     }))
     expect(within(restored).getByRole('tab', { name: /Haus A · Bestätigt/ }))
       .toBeInTheDocument()
+    // Scope Boundaries confirmation (ticket d21f8d48) is now its own
+    // prerequisite for configurationComplete, independent of the per-building
+    // configuration confirmation exercised above.
+    act(() => useStore.getState().confirmScopeBoundaries())
     expect(configurationComplete(useStore.getState())).toBe(true)
   })
 

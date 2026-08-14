@@ -217,6 +217,7 @@ export type OptionConfig = {
   kg300Provenance: Record<string, Record<string, string>>
   kg700Mode: 'vereinfacht' | 'hoaiAho'
   coverage: Coverage
+  scopeBoundariesConfirmedFingerprint: string | null
   fields: { wfl: FieldState; bgfOber: FieldState; we: FieldState }
   esConfirmed: boolean
   regionalfaktorActive: boolean
@@ -259,7 +260,8 @@ const OPTION_CONFIG_KEYS = [
   'buildingConfirmation', 'configurationMode', 'configurationModeChosen',
   'pricingStarted', 'configurationVisitedChapters', 'sharedConfiguration',
   'buildingConfigState',
-  'kg300', 'kg300Provenance', 'kg700Mode', 'coverage', 'fields',
+  'kg300', 'kg300Provenance', 'kg700Mode', 'coverage',
+  'scopeBoundariesConfirmedFingerprint', 'fields',
   'esConfirmed', 'regionalfaktorActive', 'risikoAktiv',
   'openChapter', 'besuchteKapitel', 'scopeBuildingId', 'discountPercent',
   'offerDraft',
@@ -278,13 +280,17 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
   | 'configurationVisitedChapters'
   | 'sharedConfiguration' | 'buildingConfigState'
   | 'kg300' | 'kg300Provenance' | 'kg700Mode' | 'coverage'
+  | 'scopeBoundariesConfirmedFingerprint'
   | 'esConfirmed' | 'regionalfaktorActive' | 'risikoAktiv' | 'discountPercent'>,
-  'configurationModeChosen' | 'pricingStarted' | 'configurationVisitedChapters'> & {
+  'configurationModeChosen' | 'pricingStarted' | 'configurationVisitedChapters'
+    | 'scopeBoundariesConfirmedFingerprint'> & {
     /** Optional only while reading v1 payloads saved before explicit entry. */
     configurationModeChosen?: boolean
     /** Optional while reading candidates saved before the pricing boundary. */
     pricingStarted?: boolean
     configurationVisitedChapters?: Record<string, number[]>
+    /** Optional while reading payloads saved before Scope Boundaries confirmation existed. */
+    scopeBoundariesConfirmedFingerprint?: string | null
   }
 
 const PERSISTED_CONFIG_KEYS = [
@@ -292,14 +298,16 @@ const PERSISTED_CONFIG_KEYS = [
   'configurationMode', 'configurationModeChosen', 'pricingStarted',
   'configurationVisitedChapters',
   'sharedConfiguration', 'buildingConfigState',
-  'kg300', 'kg300Provenance', 'kg700Mode', 'coverage', 'esConfirmed',
+  'kg300', 'kg300Provenance', 'kg700Mode', 'coverage',
+  'scopeBoundariesConfirmedFingerprint', 'esConfirmed',
   'regionalfaktorActive', 'risikoAktiv', 'discountPercent',
 ] as const satisfies ReadonlyArray<keyof PersistedProposalConfig>
 
 const LEGACY_PERSISTED_CONFIG_KEYS = PERSISTED_CONFIG_KEYS.filter(
   (key) => key !== 'configurationModeChosen'
     && key !== 'pricingStarted'
-    && key !== 'configurationVisitedChapters',
+    && key !== 'configurationVisitedChapters'
+    && key !== 'scopeBoundariesConfirmedFingerprint',
 )
 
 function capturePersistedConfig(
@@ -527,6 +535,7 @@ function defaultOptionConfig(): OptionConfig {
     },
     kg700Mode: 'vereinfacht',
     coverage: INITIAL_COVERAGE,
+    scopeBoundariesConfirmedFingerprint: null,
     fields: legacyFieldsFromReview(INITIAL_REVIEW),
     esConfirmed: false,
     regionalfaktorActive: false,
@@ -665,6 +674,9 @@ function isPersistedProposalConfig(value: unknown): value is PersistedProposalCo
     || !hasOnlyKeys(value.coverage, COVERAGE_KEYS)
     || !Object.values(value.coverage).every((item) =>
       COVERAGE_STATES.includes(item as CoverageState))) return false
+  if (value.scopeBoundariesConfirmedFingerprint !== undefined
+    && value.scopeBoundariesConfirmedFingerprint !== null
+    && typeof value.scopeBoundariesConfirmedFingerprint !== 'string') return false
   if (typeof value.esConfirmed !== 'boolean'
     || typeof value.regionalfaktorActive !== 'boolean') return false
   if (!record(value.risikoAktiv)
@@ -730,6 +742,8 @@ function restoredOptionConfig(
     configurationModeChosen: persisted.configurationModeChosen === true,
     pricingStarted: persisted.pricingStarted === true,
     configurationVisitedChapters: persisted.configurationVisitedChapters ?? {},
+    scopeBoundariesConfirmedFingerprint:
+      persisted.scopeBoundariesConfirmedFingerprint ?? null,
     buildings,
     fields: legacyFieldsFromReview(
       persisted.buildingReviews[LEGACY_FIELDS_BUILDING_ID]!,
@@ -817,6 +831,13 @@ type Store = {
    */
   kg700Mode: 'vereinfacht' | 'hoaiAho'
   coverage: Coverage
+  /**
+   * Отпечаток решений Leistungsabgrenzung (KG 200/500/600 + Energiestandard
+   * + Zertifikate) на момент подтверждения, `null` — ещё не подтверждено.
+   * Несовпадение с текущим отпечатком — «нужна повторная проверка»
+   * (`scopeBoundariesStatus`), а не тихое сохранение устаревшего решения.
+   */
+  scopeBoundariesConfirmedFingerprint: string | null
   fields: { wfl: FieldState; bgfOber: FieldState; we: FieldState }
   journal: JournalEvent[]
   /** seq событий, уже отменённых: каждое отменяется не более одного раза. */
@@ -973,6 +994,7 @@ type Store = {
   setCoverage: (g: CostGroup, s: CoverageState) => void
   confirmGebaeudeklasse: () => void
   confirmEnergiestandardAnswer: () => void
+  confirmScopeBoundaries: () => void
   resolveWflConflict: (candidate: 'document' | 'customer') => void
   resolveBuildingConflict: (
     conflictId: string,
@@ -1205,14 +1227,54 @@ export function configurationDisplayStatusFor(
     : 'open'
 }
 
+/**
+ * Отпечаток решений Leistungsabgrenzung, относящихся к её собственному
+ * контракту: решаемые группы затрат (KG 200/500/600 — KG 300/400/700
+ * обязательны и решением не являются, SCOPE-BOUNDARIES-001), Energiestandard
+ * и Zertifikate (`qng`/`dgnb`, engine/options.ts `ZERT_GROUPS`). Используется
+ * только для сравнения «изменилось ли что-то с момента подтверждения», не
+ * для хранения самого решения.
+ */
+function scopeBoundariesFingerprint(
+  s: Pick<Store, 'coverage' | 'buildings' | 'activeBuildingId' | 'configurationMode'
+    | 'sharedConfiguration' | 'kg300' | 'included'>,
+): string {
+  const b = activeBuilding(s)
+  const choices = choicesFor(s, s.activeBuildingId)
+  return JSON.stringify({
+    coverage: (['KG_200', 'KG_500', 'KG_600'] as const).map((g) => s.coverage[g]),
+    energiestandard: b.energiestandard,
+    zertifikate: ['qng', 'dgnb'].map((id) => choices[id] ?? null),
+  })
+}
+
+/**
+ * `open` — noch nicht bestätigt; `confirmed` — Bestätigung deckt den
+ * aktuellen Stand; `recheck` — eine gespeicherte Bestätigung existiert, aber
+ * KG 200/500/600, Energiestandard oder Zertifikate haben sich seither
+ * geändert (Ticket-Anforderung #6: Änderung invalidiert, statt still zu
+ * bestehen).
+ */
+export function scopeBoundariesStatus(
+  s: Pick<Store, 'coverage' | 'buildings' | 'activeBuildingId' | 'configurationMode'
+    | 'sharedConfiguration' | 'kg300' | 'included' | 'scopeBoundariesConfirmedFingerprint'>,
+): 'open' | 'confirmed' | 'recheck' {
+  if (s.scopeBoundariesConfirmedFingerprint === null) return 'open'
+  return s.scopeBoundariesConfirmedFingerprint === scopeBoundariesFingerprint(s)
+    ? 'confirmed'
+    : 'recheck'
+}
+
 export function configurationComplete(
   s: Pick<Store, 'buildings' | 'included' | 'configurationMode'
     | 'configurationModeChosen' | 'configurationVisitedChapters'
     | 'sharedConfiguration' | 'kg300' | 'buildingConfigState'
-    | 'buildingReviews' | 'buildingConfirmation' | 'buildingConflicts'>,
+    | 'buildingReviews' | 'buildingConfirmation' | 'buildingConflicts'
+    | 'coverage' | 'activeBuildingId' | 'scopeBoundariesConfirmedFingerprint'>,
 ): boolean {
   const ids = includedBuildingIds(s)
   return s.configurationModeChosen && ids.length > 0
+    && scopeBoundariesStatus(s) === 'confirmed'
     && ids.every((id) => configurationDisplayStatusFor(s, id) === 'confirmed')
 }
 
@@ -2112,6 +2174,21 @@ const store = createStore<Store>((set, get) => {
         deltaExact: null,
         inverse: () => set({ esConfirmed: false }),
         forward: () => set({ esConfirmed: true }),
+      })
+    },
+
+    confirmScopeBoundaries: () => {
+      const s = get()
+      const prev = s.scopeBoundariesConfirmedFingerprint
+      const next = scopeBoundariesFingerprint(s)
+      if (prev === next) return
+      set({ scopeBoundariesConfirmedFingerprint: next })
+      apply({
+        kind: 'value.confirmed',
+        label: 'Leistungsabgrenzung bestätigt',
+        deltaExact: null,
+        inverse: () => set({ scopeBoundariesConfirmedFingerprint: prev }),
+        forward: () => set({ scopeBoundariesConfirmedFingerprint: next }),
       })
     },
 

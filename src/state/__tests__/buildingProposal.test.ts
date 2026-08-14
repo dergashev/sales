@@ -236,6 +236,9 @@ describe('selection and configuration modes', () => {
     st().openChapterAt(4)
     st().openChapterAt(5)
     st().confirmVisibleConfiguration()
+    // Scope Boundaries confirmation (ticket d21f8d48) is its own prerequisite
+    // for configurationComplete, independent of per-building confirmation.
+    st().confirmScopeBoundaries()
     expect(configurationComplete(st())).toBe(true)
 
     st().setBuildingFactOverride(

@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 44** · перевод есть, мост не подключён: 36
-· перевода нет (в поставку копирайта): 8
+**Всего 48** · перевод есть, мост не подключён: 35
+· перевода нет (в поставку копирайта): 13
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -38,7 +38,6 @@ Mit freundlichen Grüßen
 - Werte extrahiert · Regelsatz RS 2026.2
 - aktuelle Auswahl
 - andere Dokumente sind vollständig analysiert.
-- bauseits; im indikativen Angebot ohne Preisansatz ⚙
 - dieser Datei
 - enthält die abgeleitete S-Fläche
 - für den Prototyp abgeleitet, nicht kalibriert
@@ -56,8 +55,13 @@ Mit freundlichen Grüßen
 - Anteil am Bauwerk (KG 300 + 400 + UG) nach calculation-spec §1 ⚙
 - Druckansicht öffnen
 - Eigenes Ausgabeprofil clientPrint mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.
+- Energiestandard und Zertifizierung
+- Erst nach Bestätigung gilt die nachfolgende Konfiguration als abschließbar.
 - Geprüfte Gebäudewerte tragen ihre Herkunft; Änderungen heben die Bestätigung auf und werden in Gebäude & Umfang erneut geprüft.
+- Immer Bestandteil des Angebots · kein Einfluss auf die Bauzeit — keine Auswahl.
 - Konfiguration je Gebäude bestätigt
+- Leistungsabgrenzung bestätigen
+- Sechs Kostengruppen bestimmen den Angebotsumfang. KG 300, 400 und 700 sind Kern des Angebots und nicht abwählbar — ohne sie gibt es kein Angebot; bei KG 700 ist nur die Berechnungsart verhandelbar, und die ist intern. KG 200, 500 und 600 sind echte Entscheidungen: «noch offen» ist eine Lücke, keine Entscheidung, und verhindert den Gesamtpreis, solange sie offen bleibt.
 - Tiefgarage · Lüftung, OS-Beschichtung, Tore
 - Untergeschoss · Rohbau und Ausbau
 - ≈ 2.447 €/m² WFL nach WoFlV

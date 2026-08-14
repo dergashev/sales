@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { Decimal } from 'decimal.js'
 import {
   activeBuilding, chapterDone, projectionForOption,
-  __resetStoreForTests, useStore, wflConflict,
+  __resetStoreForTests, useStore, wflConflict, scopeBoundariesStatus,
 } from '../store'
 import { KG400_GROUPS, choiceBlocked } from '../../engine/options'
 import type { JournalEvent, OfferSnapshot } from '../store'
@@ -24,11 +24,14 @@ beforeEach(() => __resetStoreForTests())
  * 600/700) начинаются `unknown` («noch offen»), ни одна не предрешена.
  * KG 100/800 вне перечня Scope Boundaries и остаются `notApplicable`.
  *
- * `ChapterUmfang` (`S3Konfigurator.tsx`) сегодня делает `decidable` только
- * четыре из шести — KG 200/500/600/800 — и показывает KG 300/400/700
- * статичной плиткой без интерактивного элемента; это известное ограничение
- * интерфейса (см. комментарий у `INITIAL_COVERAGE`), а не повод отступить от
- * одобренного умолчания.
+ * `ChapterUmfang` (`S3Konfigurator.tsx`, тикет d21f8d48) делает `decidable`
+ * три из шести — KG 200/500/600 — через тот же трёхпозиционный
+ * RadioCardGroup (D-18). KG 300/400/700 показаны канонической плиткой
+ * CheckboxCard в состоянии `mandatory` (components-core.md §CheckboxCard,
+ * OPTION-002/OPTION-005): зафиксированы, не `disabled`, снятие выбора
+ * невозможно — Product Decision Brief этого тикета одобрил именно это
+ * решение, а не разрешил их деактивацию. KG 100/800 вне шести карт этого
+ * экрана вовсе и остаются `notApplicable`.
  */
 describe('Scope Boundaries: покрытие по умолчанию (ticket 627d3191)', () => {
   it('все шесть решаемых групп начинаются `unknown`, ни одна не предрешена', () => {
@@ -53,6 +56,56 @@ describe('Scope Boundaries: покрытие по умолчанию (ticket 627
     expect(p.result.totalLabel).toBe('Zwischensumme der kalkulierten Positionen')
     const codes = p.result.incompleteReasons.map((r) => r.code)
     expect(codes).toContain('coverageUnknown')
+  })
+})
+
+/**
+ * Leistungsabgrenzung (Scope Boundaries, тикет d21f8d48): подтверждение и
+ * его инвалидация. Требование #6 тикета — изменение после подтверждения
+ * должно инвалидировать/направлять на повторную проверку, а не тихо
+ * сохранять устаревшее решение.
+ */
+describe('Leistungsabgrenzung: подтверждение и инвалидация (ticket d21f8d48)', () => {
+  it('начинается `open`, `confirmScopeBoundaries` переводит в `confirmed`', () => {
+    const st = () => useStore.getState()
+    expect(scopeBoundariesStatus(st())).toBe('open')
+    st().confirmScopeBoundaries()
+    expect(scopeBoundariesStatus(st())).toBe('confirmed')
+  })
+
+  it('изменение KG 200/500/600 после подтверждения переводит в `recheck`', () => {
+    const st = () => useStore.getState()
+    st().confirmScopeBoundaries()
+    expect(scopeBoundariesStatus(st())).toBe('confirmed')
+    st().setCoverage('KG_500', 'excluded')
+    expect(scopeBoundariesStatus(st())).toBe('recheck')
+  })
+
+  it('изменение Energiestandard nach Bestätigung ist ebenfalls eine Änderung', () => {
+    const st = () => useStore.getState()
+    st().confirmScopeBoundaries()
+    st().setEnergiestandard('EH_40')
+    expect(scopeBoundariesStatus(st())).toBe('recheck')
+  })
+
+  it('erneutes Bestätigen nach `recheck` fixiert den neuen Stand wieder als `confirmed`', () => {
+    const st = () => useStore.getState()
+    st().confirmScopeBoundaries()
+    st().setCoverage('KG_600', 'included')
+    expect(scopeBoundariesStatus(st())).toBe('recheck')
+    st().confirmScopeBoundaries()
+    expect(scopeBoundariesStatus(st())).toBe('confirmed')
+  })
+
+  it('KG 300/400/700 sind nicht Teil des Fingerprints — sie sind nicht entscheidbar', () => {
+    // Diese drei haben in ChapterUmfang keine interaktive Kontrolle
+    // (CheckboxCard `mandatory`); ein Store-seitiger `setCoverage` auf sie
+    // darf die Bestätigung trotzdem nicht unbemerkt entwerten, sonst würde
+    // ein Pfad existieren, den die UI gar nicht anbietet.
+    const st = () => useStore.getState()
+    st().confirmScopeBoundaries()
+    st().setCoverage('KG_300', 'included')
+    expect(scopeBoundariesStatus(st())).toBe('confirmed')
   })
 })
 
