@@ -789,6 +789,9 @@ describe('Настоящая модель Option (ревью № 13, дефек�
     expect(st().canBeginConfiguration()).toBe(true)
     expect(chapterDone(st(), 1)).toBe(false)
     st().setPipelineView('konfigurator')
+    expect(st().configurationModeChosen).toBe(false)
+    expect(chapterDone(st(), 1)).toBe(false)
+    st().confirmConfigurationMode('PER_BUILDING')
     expect(chapterDone(st(), 1)).toBe(true)
     // Глава 7 — глава данных (партия 3): посещение проходит её,
     // непосещённая — не пройдена.

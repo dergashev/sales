@@ -55,6 +55,7 @@ export function SegmentedControl<T extends string>({
 }) {
   const name = useId()
   const descriptionId = useId()
+  const groupRef = useRef<HTMLDivElement>(null)
   if (options.length > 3) {
     throw new Error(
       `SegmentedControl: ${options.length} сегментов — при 4+ значениях контракт требует <select> (LOCALE-004)`,
@@ -81,7 +82,23 @@ export function SegmentedControl<T extends string>({
           `legend` называет `fieldset`, а вложенная radiogroup оставалась
           безымянной — скринридер объявлял «группа» без темы. Найдено
           jsdom-тестом, не глазами. */}
-      <div role="radiogroup" aria-label={legend} className="a3-radio-segments">
+      <div
+        ref={groupRef}
+        role="radiogroup"
+        aria-label={legend}
+        className="a3-radio-segments"
+        onKeyDown={(event) => {
+          if (event.key !== 'Home' && event.key !== 'End') return
+          const radios = [...(groupRef.current?.querySelectorAll<HTMLInputElement>(
+            'input[type="radio"]:not(:disabled)',
+          ) ?? [])]
+          const target = event.key === 'Home' ? radios[0] : radios.at(-1)
+          if (!target) return
+          event.preventDefault()
+          target.focus()
+          target.click()
+        }}
+      >
         {options.map((o) => {
           const active = o.value === value
           const off = disabled || o.disabled
@@ -156,7 +173,7 @@ export function RadioCardGroup<T extends string>({
   legend, value, options, onChange, onPreview, legendHidden,
 }: {
   legend: string
-  value: T
+  value: T | null
   options: ReadonlyArray<RadioCard<T>>
   onChange: (v: T) => void
   /** Geist-Vorschau (DC-28): наведение/фокус на карточку, задержка — токен. */
@@ -245,6 +262,7 @@ export function RadioCardGroup<T extends string>({
                 value={o.value}
                 checked={active}
                 disabled={o.disabled}
+                aria-label={tx(o.title)}
                 aria-describedby={describedBy}
                 onChange={() => { clearTimeout(previewTimer.current); onChange(o.value) }}
                 onFocus={() => !o.disabled && previewStart(o.value)}

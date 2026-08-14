@@ -121,6 +121,31 @@ describe('proposal store recovery', () => {
     expect(st().projection().result.total.exact.toFixed()).toBe(storedTotal)
   })
 
+  it('persists explicit mode consent and per-scope chapter progress', () => {
+    const storage = new MemoryStorage()
+    initializeProposalPersistence(storage)
+    const st = () => useStore.getState()
+
+    st().openOpportunity('DEMO-0001')
+    st().resolveWflConflict('customer')
+    st().confirmProjectParams()
+    st().createOption('Mode persistence')
+    st().confirmBuilding('DEMO-B-A')
+    st().confirmConfigurationMode('PER_BUILDING')
+    st().openChapterAt(3)
+
+    const raw = storage.getItem(proposalStorageKey('DEMO-0001'))!
+    expect(raw).toContain('"configurationModeChosen":true')
+
+    __resetStoreForTests()
+    const restoredStorage = new MemoryStorage()
+    restoredStorage.setItem(proposalStorageKey('DEMO-0001'), raw)
+    expect(hydrateProposalState(restoredStorage)).toBe(true)
+    expect(st().configurationModeChosen).toBe(true)
+    expect(st().configurationMode).toBe('PER_BUILDING')
+    expect(st().configurationVisitedChapters['DEMO-B-A']).toEqual([1, 3])
+  })
+
   it('does not persist a derived conflict after its source disagreement is removed', () => {
     const storage = new MemoryStorage()
     initializeProposalPersistence(storage)

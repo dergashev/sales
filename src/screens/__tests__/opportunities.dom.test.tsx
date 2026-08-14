@@ -188,6 +188,9 @@ describe('Уровень Opportunities', () => {
     await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
     await user.click(screen.getByRole('button', { name: 'Öffnen' }))
     await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
+    await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
+    await user.click(screen.getByRole('radio', { name: 'Je Gebäude konfigurieren' }))
+    await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
 

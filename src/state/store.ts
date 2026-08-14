@@ -163,6 +163,12 @@ export type BuildingConfigurationState = {
   at: string | null
 }
 
+export type ConfigurationDisplayStatus = 'open' | 'ready' | 'confirmed' | 'recheck'
+
+export const BUILDING_SCOPED_CHAPTERS = [1, 3, 4, 5] as const
+
+const SHARED_CONFIGURATION_SCOPE = 'SHARED'
+
 /**
  * Снапшот отправленного оффера (M-3, минимум прототипа): состояние,
  * от которого клиент получил числа, воспроизводимо из самого снапшота,
@@ -198,6 +204,12 @@ export type OptionConfig = {
   buildingReviews: Record<string, BuildingReview>
   buildingConfirmation: Record<string, BuildingConfirmation>
   configurationMode: ConfigurationMode
+  /** The default mode is an engine fallback, never proof of user consent. */
+  configurationModeChosen: boolean
+  /** Preparation-only UI state for the reversible inline mode step. */
+  configurationModeEditing: boolean
+  /** Building-chapter progress is isolated by building or shared scope. */
+  configurationVisitedChapters: Record<string, number[]>
   sharedConfiguration: SharedConfiguration
   buildingConfigState: Record<string, BuildingConfigurationState>
   kg300: Record<string, Record<string, string>>
@@ -243,7 +255,8 @@ export type OptionConfig = {
 
 const OPTION_CONFIG_KEYS = [
   'buildings', 'activeBuildingId', 'included', 'buildingReviews',
-  'buildingConfirmation', 'configurationMode', 'sharedConfiguration',
+  'buildingConfirmation', 'configurationMode', 'configurationModeChosen',
+  'configurationModeEditing', 'configurationVisitedChapters', 'sharedConfiguration',
   'buildingConfigState',
   'kg300', 'kg300Provenance', 'kg700Mode', 'coverage', 'fields',
   'esConfirmed', 'regionalfaktorActive', 'risikoAktiv',
@@ -258,18 +271,30 @@ function captureConfig(s: Pick<Store, keyof OptionConfig>): OptionConfig {
   ) as unknown as OptionConfig
 }
 
-type PersistedProposalConfig = Pick<OptionConfig,
+type PersistedProposalConfig = Omit<Pick<OptionConfig,
   | 'activeBuildingId' | 'included' | 'buildingReviews' | 'buildingConfirmation'
-  | 'configurationMode' | 'sharedConfiguration' | 'buildingConfigState'
+  | 'configurationMode' | 'configurationModeChosen' | 'configurationVisitedChapters'
+  | 'sharedConfiguration' | 'buildingConfigState'
   | 'kg300' | 'kg300Provenance' | 'kg700Mode' | 'coverage'
-  | 'esConfirmed' | 'regionalfaktorActive' | 'risikoAktiv' | 'discountPercent'>
+  | 'esConfirmed' | 'regionalfaktorActive' | 'risikoAktiv' | 'discountPercent'>,
+  'configurationModeChosen' | 'configurationVisitedChapters'> & {
+    /** Optional only while reading v1 payloads saved before explicit entry. */
+    configurationModeChosen?: boolean
+    configurationVisitedChapters?: Record<string, number[]>
+  }
 
 const PERSISTED_CONFIG_KEYS = [
   'activeBuildingId', 'included', 'buildingReviews', 'buildingConfirmation',
-  'configurationMode', 'sharedConfiguration', 'buildingConfigState',
+  'configurationMode', 'configurationModeChosen', 'configurationVisitedChapters',
+  'sharedConfiguration', 'buildingConfigState',
   'kg300', 'kg300Provenance', 'kg700Mode', 'coverage', 'esConfirmed',
   'regionalfaktorActive', 'risikoAktiv', 'discountPercent',
 ] as const satisfies ReadonlyArray<keyof PersistedProposalConfig>
+
+const LEGACY_PERSISTED_CONFIG_KEYS = PERSISTED_CONFIG_KEYS.filter(
+  (key) => key !== 'configurationModeChosen'
+    && key !== 'configurationVisitedChapters',
+)
 
 function capturePersistedConfig(
   config: Pick<OptionConfig, keyof PersistedProposalConfig>,
@@ -431,6 +456,9 @@ function defaultOptionConfig(): OptionConfig {
     },
     buildingConfirmation: {},
     configurationMode: 'PER_BUILDING',
+    configurationModeChosen: false,
+    configurationModeEditing: false,
+    configurationVisitedChapters: {},
     sharedConfiguration: {
       choices: defaultOptionChoices(),
       provenance: Object.fromEntries(
@@ -516,7 +544,11 @@ function isConfigurationState(value: unknown): value is BuildingConfigurationSta
 }
 
 function isPersistedProposalConfig(value: unknown): value is PersistedProposalConfig {
-  if (!record(value) || !hasOnlyKeys(value, PERSISTED_CONFIG_KEYS)) return false
+  if (!record(value)
+    || !Object.keys(value).every((key) => PERSISTED_CONFIG_KEYS.includes(
+      key as typeof PERSISTED_CONFIG_KEYS[number],
+    ))
+    || !LEGACY_PERSISTED_CONFIG_KEYS.every((key) => Object.hasOwn(value, key))) return false
   if (typeof value.activeBuildingId !== 'string'
     || !FIXTURE_BUILDING_IDS.includes(value.activeBuildingId as typeof FIXTURE_BUILDING_IDS[number])) {
     return false
@@ -546,6 +578,17 @@ function isPersistedProposalConfig(value: unknown): value is PersistedProposalCo
 
   if (value.configurationMode !== 'SHARED' && value.configurationMode !== 'PER_BUILDING') {
     return false
+  }
+  if (value.configurationModeChosen !== undefined
+    && typeof value.configurationModeChosen !== 'boolean') return false
+  if (value.configurationVisitedChapters !== undefined) {
+    if (!record(value.configurationVisitedChapters)) return false
+    const allowedScopes = new Set<string>([...FIXTURE_BUILDING_IDS, SHARED_CONFIGURATION_SCOPE])
+    if (!Object.entries(value.configurationVisitedChapters).every(([scope, chapters]) =>
+      allowedScopes.has(scope)
+      && Array.isArray(chapters)
+      && chapters.every((chapter) => Number.isInteger(chapter)
+        && chapter >= 1 && chapter <= 8))) return false
   }
   if (!record(value.sharedConfiguration)
     || !isChoiceSet(value.sharedConfiguration.choices)
@@ -640,6 +683,9 @@ function restoredOptionConfig(
   return {
     ...base,
     ...persisted,
+    configurationModeChosen: persisted.configurationModeChosen === true,
+    configurationModeEditing: false,
+    configurationVisitedChapters: persisted.configurationVisitedChapters ?? {},
     buildings,
     fields: legacyFieldsFromReview(
       persisted.buildingReviews[LEGACY_FIELDS_BUILDING_ID]!,
@@ -695,6 +741,9 @@ type Store = {
   buildingConfirmation: Record<string, BuildingConfirmation>
   /** Shared and per-building choice sets coexist; mode selects the reader. */
   configurationMode: ConfigurationMode
+  configurationModeChosen: boolean
+  configurationModeEditing: boolean
+  configurationVisitedChapters: Record<string, number[]>
   sharedConfiguration: SharedConfiguration
   buildingConfigState: Record<string, BuildingConfigurationState>
   /**
@@ -943,8 +992,11 @@ type Store = {
   toggleBuildingIncluded: (id: string) => void
   confirmBuilding: (id: string) => void
   setConfigurationMode: (mode: ConfigurationMode) => void
+  confirmConfigurationMode: (mode: ConfigurationMode) => void
+  beginConfigurationModeEdit: () => void
   markBuildingConfigurationCompleted: (id: string) => void
   confirmBuildingConfiguration: (id: string) => void
+  confirmVisibleConfiguration: () => void
   buildingConfigurationStatus: (id: string) => BuildingConfigurationState['status']
   /** Выбрать опцию KG 300 у активного здания — событие журнала с дельтой. */
   setKg300: (groupId: string, value: string) => void
@@ -964,6 +1016,8 @@ type Store = {
   setPrintOpen: (v: boolean) => void
   /** Переключить охват показа: null — весь комплекс (DC-46). */
   setScope: (buildingId: string | null) => void
+  /** Atomically align edit scope, active building and offer scope. */
+  setConfigurationScope: (buildingId: string | null) => void
 }
 
 /**
@@ -1047,19 +1101,29 @@ export function choiceProvenanceFor(
 }
 
 function configurationFingerprint(
-  s: Pick<Store, 'configurationMode' | 'sharedConfiguration' | 'kg300' | 'included'>,
+  s: Pick<Store, 'configurationMode' | 'sharedConfiguration' | 'kg300' | 'included'
+    | 'buildingReviews' | 'buildingConflicts'>,
   buildingId: string,
 ): string {
+  const reviewIds = (s.configurationMode === 'SHARED'
+    ? Object.keys(s.included).filter((id) => s.included[id])
+    : [buildingId]).sort()
   return JSON.stringify({
     mode: s.configurationMode,
     choices: Object.entries(choicesFor(s, buildingId))
       .sort(([a], [b]) => a.localeCompare(b)),
+    buildingReviews: reviewIds.map((id) => [
+      id,
+      s.buildingReviews[id]
+        ? buildingFingerprint(s.buildingReviews[id]!, s.buildingConflicts)
+        : null,
+    ]),
   })
 }
 
 export function configurationStatusFor(
   s: Pick<Store, 'configurationMode' | 'sharedConfiguration' | 'kg300'
-    | 'included' | 'buildingConfigState'>,
+    | 'included' | 'buildingConfigState' | 'buildingReviews' | 'buildingConflicts'>,
   buildingId: string,
 ): BuildingConfigurationState['status'] {
   const state = s.buildingConfigState[buildingId]
@@ -1067,6 +1131,42 @@ export function configurationStatusFor(
   if (state.status !== 'confirmed') return state.status
   return state.fingerprint === configurationFingerprint(s, buildingId)
     ? 'confirmed' : 'completed'
+}
+
+function configurationScopeKey(
+  s: Pick<Store, 'configurationMode'>,
+  buildingId: string,
+): string {
+  return s.configurationMode === 'SHARED' ? SHARED_CONFIGURATION_SCOPE : buildingId
+}
+
+export function configurationDisplayStatusFor(
+  s: Pick<Store, 'configurationMode' | 'configurationModeChosen'
+    | 'configurationVisitedChapters' | 'sharedConfiguration' | 'kg300'
+    | 'included' | 'buildingConfigState' | 'buildingReviews' | 'buildingConflicts'>,
+  buildingId: string,
+): ConfigurationDisplayStatus {
+  if (!s.configurationModeChosen) return 'open'
+  const stored = s.buildingConfigState[buildingId]
+  const status = configurationStatusFor(s, buildingId)
+  if (stored?.status === 'confirmed' && status !== 'confirmed') return 'recheck'
+  if (status === 'confirmed') return 'confirmed'
+  const visited = s.configurationVisitedChapters[configurationScopeKey(s, buildingId)] ?? []
+  return status === 'completed'
+    || BUILDING_SCOPED_CHAPTERS.every((chapter) => visited.includes(chapter))
+    ? 'ready'
+    : 'open'
+}
+
+export function configurationComplete(
+  s: Pick<Store, 'buildings' | 'included' | 'configurationMode'
+    | 'configurationModeChosen' | 'configurationVisitedChapters'
+    | 'sharedConfiguration' | 'kg300' | 'buildingConfigState'
+    | 'buildingReviews' | 'buildingConflicts'>,
+): boolean {
+  const ids = includedBuildingIds(s)
+  return s.configurationModeChosen && ids.length > 0
+    && ids.every((id) => configurationDisplayStatusFor(s, id) === 'confirmed')
 }
 
 export function buildingConfirmed(
@@ -1172,9 +1272,19 @@ export function configForOption(
  */
 export function chapterDone(
   s: Pick<Store, 'buildings' | 'included' | 'buildingReviews'
-    | 'buildingConfirmation' | 'buildingConflicts' | 'coverage' | 'besuchteKapitel'>,
+    | 'buildingConfirmation' | 'buildingConflicts' | 'coverage' | 'besuchteKapitel'
+    | 'configurationMode' | 'configurationModeChosen'
+    | 'configurationVisitedChapters' | 'activeBuildingId'>,
   n: number,
 ): boolean {
+  if (BUILDING_SCOPED_CHAPTERS.includes(
+    n as typeof BUILDING_SCOPED_CHAPTERS[number],
+  )) {
+    if (!s.configurationModeChosen) return false
+    return (s.configurationVisitedChapters[
+      configurationScopeKey(s, s.activeBuildingId)
+    ] ?? []).includes(n)
+  }
   const besucht = s.besuchteKapitel.includes(n)
   switch (n) {
     case 2:
@@ -1439,6 +1549,17 @@ function computeProjection(
     belowGround: present(ug),
     uncertaintyPp: 22 - narrowing,
   }
+}
+
+/**
+ * Mode changes may activate a retained choice set, but changing the visible
+ * OfferPanel scope is navigation. Compare like-for-like project projections
+ * so a building-scoped panel never becomes a journalled price delta.
+ */
+function projectTotal(
+  s: Pick<Store, keyof OptionConfig>,
+): Decimal {
+  return computeProjection({ ...s, scopeBuildingId: null }).result.total.exact
 }
 
 /**
@@ -2113,8 +2234,30 @@ const store = createStore<Store>((set, get) => {
     clearDelta: () => set({ activeDelta: null }),
     openChapterAt: (n) => set((s) => {
       const visibleChapter = chapterForOutputProfile(s.mode, n)
+      const buildingScoped = BUILDING_SCOPED_CHAPTERS.includes(
+        visibleChapter as typeof BUILDING_SCOPED_CHAPTERS[number],
+      )
+      const includedIds = includedBuildingIds(s)
+      const activeBuildingId = includedIds.includes(s.activeBuildingId)
+        ? s.activeBuildingId
+        : includedIds[0] ?? s.activeBuildingId
+      const scopeKey = configurationScopeKey(s, activeBuildingId)
+      const scopedVisited = s.configurationVisitedChapters[scopeKey] ?? []
       return {
         openChapter: visibleChapter,
+        activeBuildingId,
+        scopeBuildingId: buildingScoped && s.configurationMode === 'PER_BUILDING'
+          ? activeBuildingId
+          : null,
+        ...(buildingScoped && s.configurationModeChosen && !s.configurationModeEditing
+          && !scopedVisited.includes(visibleChapter)
+          ? {
+              configurationVisitedChapters: {
+                ...s.configurationVisitedChapters,
+                [scopeKey]: [...scopedVisited, visibleChapter],
+              },
+            }
+          : {}),
         // След посещения — источник честного прогресса в сайдбаре: глава
         // «пройдена», если её открывали, а не потому что её номер меньше
         // текущего (ревью № 13, дефект 7).
@@ -2404,7 +2547,9 @@ const store = createStore<Store>((set, get) => {
         set({
           level: 'option',
           pipelineView: canBeginConfiguration(s) ? 'konfigurator' : 'buildingScope',
-          ...(canBeginConfiguration(s) && !s.besuchteKapitel.includes(s.openChapter)
+          ...(canBeginConfiguration(s) && s.configurationModeChosen
+            && !s.configurationModeEditing
+            && !s.besuchteKapitel.includes(s.openChapter)
             ? { besuchteKapitel: [...s.besuchteKapitel, s.openChapter] }
             : {}),
         })
@@ -2446,6 +2591,8 @@ const store = createStore<Store>((set, get) => {
       return {
         pipelineView,
         ...(pipelineView === 'konfigurator'
+          && s.configurationModeChosen
+          && !s.configurationModeEditing
           && !s.besuchteKapitel.includes(s.openChapter)
           ? { besuchteKapitel: [...s.besuchteKapitel, s.openChapter] }
           : {}),
@@ -2459,6 +2606,15 @@ const store = createStore<Store>((set, get) => {
     setPrintOpen: (v) => set({ printOpen: v }),
 
     setScope: (buildingId) => set({ scopeBuildingId: buildingId }),
+
+    setConfigurationScope: (buildingId) => set((s) => {
+      if (buildingId === null) return { scopeBuildingId: null }
+      if (!s.buildings[buildingId] || !s.included[buildingId]) return {}
+      return {
+        activeBuildingId: buildingId,
+        scopeBuildingId: buildingId,
+      }
+    }),
 
     setActiveBuilding: (id) => set({ activeBuildingId: id }),
 
@@ -2646,6 +2802,75 @@ const store = createStore<Store>((set, get) => {
       })
     },
 
+    confirmConfigurationMode: (mode) => {
+      const s = get()
+      if (!canBeginConfiguration(s)) return
+      if (s.configurationMode === mode
+        && s.configurationModeChosen
+        && !s.configurationModeEditing) return
+      const includedIds = includedBuildingIds(s)
+      const activeBuildingId = includedIds.includes(s.activeBuildingId)
+        ? s.activeBuildingId
+        : includedIds[0]!
+      const scopeKey = configurationScopeKey({ configurationMode: mode }, activeBuildingId)
+      const scopedVisited = s.configurationVisitedChapters[scopeKey] ?? []
+      const previous = {
+        configurationMode: s.configurationMode,
+        configurationModeChosen: s.configurationModeChosen,
+        configurationModeEditing: s.configurationModeEditing,
+        configurationVisitedChapters: s.configurationVisitedChapters,
+        activeBuildingId: s.activeBuildingId,
+        scopeBuildingId: s.scopeBuildingId,
+        openChapter: s.openChapter,
+        besuchteKapitel: s.besuchteKapitel,
+      }
+      const next = {
+        configurationMode: mode,
+        configurationModeChosen: true,
+        configurationModeEditing: false,
+        configurationVisitedChapters: scopedVisited.includes(1)
+          ? s.configurationVisitedChapters
+          : { ...s.configurationVisitedChapters, [scopeKey]: [...scopedVisited, 1] },
+        activeBuildingId,
+        scopeBuildingId: mode === 'PER_BUILDING' ? activeBuildingId : null,
+        openChapter: 1,
+        besuchteKapitel: s.besuchteKapitel.includes(1)
+          ? s.besuchteKapitel
+          : [...s.besuchteKapitel, 1],
+      }
+      const before = projectTotal(s)
+      const write = (value: typeof previous | typeof next) => set({
+        ...value,
+        preview: null,
+        activeDelta: null,
+      })
+      write(next)
+      const after = projectTotal(get())
+      const delta = after.minus(before)
+      const buildingNames = includedIds.map((id) => {
+        const review = s.buildingReviews[id]
+        return review ? effectiveFactValue(review.facts.documentationName) ?? id : id
+      }).join(', ')
+      apply({
+        kind: 'option.selected',
+        label: mode === 'SHARED'
+          ? `Gemeinsame Konfiguration gilt für ${buildingNames}`
+          : 'Konfiguration je Gebäude bestätigt',
+        deltaExact: delta.isZero() ? null : delta,
+        inverse: () => write(previous),
+        forward: () => write(next),
+      })
+    },
+
+    beginConfigurationModeEdit: () => set((s) => s.mode === 'intern'
+      && s.configurationModeChosen
+      ? {
+          configurationModeEditing: true,
+          preview: null,
+          activeDelta: null,
+        }
+      : {}),
+
     markBuildingConfigurationCompleted: (id) => {
       const s = get()
       if (!s.buildings[id] || configurationStatusFor(s, id) === 'completed') return
@@ -2682,6 +2907,51 @@ const store = createStore<Store>((set, get) => {
       apply({
         kind: 'value.confirmed',
         label: `Gebäudekonfiguration ${id} bestätigt`,
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(confirmed),
+      })
+    },
+
+    confirmVisibleConfiguration: () => {
+      const s = get()
+      if (s.mode !== 'intern' || !s.configurationModeChosen
+        || s.configurationModeEditing) return
+      const includedIds = includedBuildingIds(s)
+      const ids = s.configurationMode === 'SHARED'
+        ? includedIds
+        : s.included[s.activeBuildingId] ? [s.activeBuildingId] : []
+      if (ids.length === 0) return
+      const statuses = ids.map((id) => configurationDisplayStatusFor(s, id))
+      if (statuses.some((status) => status === 'open')
+        || statuses.every((status) => status === 'confirmed')) return
+      const at = new Date().toISOString()
+      const previous = Object.fromEntries(ids.map((id) => [id, s.buildingConfigState[id]]))
+      const confirmed = Object.fromEntries(ids.map((id) => [id, {
+        status: 'confirmed' as const,
+        fingerprint: configurationFingerprint(s, id),
+        at,
+      }]))
+      const write = (values: Record<string, BuildingConfigurationState | undefined>) =>
+        set((state) => {
+          const next = { ...state.buildingConfigState }
+          ids.forEach((id) => {
+            const value = values[id]
+            if (value) next[id] = value
+            else delete next[id]
+          })
+          return { buildingConfigState: next }
+        })
+      write(confirmed)
+      const activeReview = s.buildingReviews[s.activeBuildingId]
+      const activeName = activeReview
+        ? effectiveFactValue(activeReview.facts.documentationName) ?? s.activeBuildingId
+        : s.activeBuildingId
+      apply({
+        kind: 'value.confirmed',
+        label: s.configurationMode === 'SHARED'
+          ? 'Gemeinsame Konfiguration bestätigt'
+          : `Konfiguration für ${activeName} bestätigt`,
         deltaExact: null,
         inverse: () => write(previous),
         forward: () => write(confirmed),

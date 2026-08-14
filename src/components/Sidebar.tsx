@@ -114,7 +114,8 @@ export function Sidebar() {
               )}
 
               {/* Главы конфигуратора — второй уровень под активным пунктом. */}
-              {item.id === 'konfigurator' && active && (
+              {item.id === 'konfigurator' && active
+                && s.configurationModeChosen && !s.configurationModeEditing && (
                 <ol className="a3-chapters">
                   {chapters.map(({ label: c, number: n }) => {
                     const open = s.openChapter === n

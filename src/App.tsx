@@ -9,7 +9,7 @@ import { ClientOutputGateDialog } from './components/ClientOutputGateDialog'
 import { GuidedTour } from './components/GuidedTour'
 import { OfferPanel } from './components/OfferPanel'
 import { UndoToast } from './components/UndoToast'
-import { S3Konfigurator } from './screens/S3Konfigurator'
+import { ConfigurationModeReadiness, S3Konfigurator } from './screens/S3Konfigurator'
 import { S4Vergleich } from './screens/S4Vergleich'
 import { S5Export } from './screens/S5Export'
 import { S6Einstellungen } from './screens/S6Einstellungen'
@@ -94,7 +94,8 @@ export function App() {
       if (!heading.hasAttribute('tabindex')) heading.tabIndex = -1
       heading.focus({ preventScroll: true })
     }
-  }, [renderedView, s.openChapter, s.activeOptionId, s.level, s.mode])
+  }, [renderedView, s.openChapter, s.activeOptionId, s.level, s.mode,
+    s.configurationModeChosen, s.configurationModeEditing])
 
   // Defensive fail-closed projection: normal store transitions leave client
   // mode before changing level, but corrupted/external state still must not
@@ -147,7 +148,11 @@ export function App() {
           {renderedView === 'grundlagen' && <Grundlagen fonts={fonts} cascade={cascade} />}
         </main>
 
-        {renderedView === 'buildingScope' ? <BuildingScopeReadiness /> : <OfferPanel />}
+        {renderedView === 'buildingScope' ? <BuildingScopeReadiness />
+          : renderedView === 'konfigurator'
+            && (!s.configurationModeChosen || s.configurationModeEditing)
+            ? <ConfigurationModeReadiness />
+            : <OfferPanel />}
       </div>
 
       <GuidedTour />
@@ -171,7 +176,15 @@ function AppHeader({
 }) {
   const s = useStore()
   const praesentation = isClientProjection(s.mode)
-  const modeBlocked = s.level !== 'option' || !s.canBeginConfiguration()
+  const buildingGateBlocked = s.level !== 'option' || !s.canBeginConfiguration()
+  const configurationGateBlocked = s.level === 'option'
+    && (!s.configurationModeChosen || s.configurationModeEditing)
+  const modeBlocked = buildingGateBlocked || configurationGateBlocked
+  const modeBlockedReason = buildingGateBlocked
+    ? t('shell.mode.blockedReason')
+    : configurationGateBlocked
+      ? t('configurator.mode.clientBlocked')
+      : undefined
 
   return (
     <header className="a3-global-header z-header shrink-0">
@@ -214,7 +227,7 @@ function AppHeader({
           <OutputProfileSwitch
             mode={s.mode}
             blocked={modeBlocked}
-            blockedReason={modeBlocked ? t('shell.mode.blockedReason') : undefined}
+            blockedReason={modeBlockedReason}
             checkButtonRef={modeRef}
             onCheck={() => s.setGateOpen(true)}
             onExit={() => s.setMode('intern')}

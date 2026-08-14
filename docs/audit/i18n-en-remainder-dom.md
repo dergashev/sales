@@ -5,20 +5,15 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 44** · перевод есть, мост не подключён: 37
-· перевода нет (в поставку копирайта): 7
+**Всего 30** · перевод есть, мост не подключён: 24
+· перевода нет (в поставку копирайта): 6
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
-- . Die Preiswirkung erscheint sofort in der Angebotsspalte rechts und im Kostentreiber.
-- 200 im Angebot:
 - Beiträge · Summe =
-- Der Gesamtbetrag bleibt unverändert — 70/22/8 verteilt, was bereits gerechnet ist.
-- Einbaukueche und Erstausstattung je m² BGF R ⚙
 - Gebäude im Projekt
 - Gebäude ·
 - Gerundet auf 1.000 €; exakter Rechenwert 3.817.835,00 €
-- Leistungsbeginn ab OK Decke über UG
 - Marge Eigenleistung nach Rabatt:
 - Musterhöfe Westpark
 - Musterquartier Südhang
@@ -36,25 +31,16 @@ Mit freundlichen Grüßen
 - Total WFL nach WoFlV
 - Werte aus
 - Werte extrahiert · Regelsatz RS 2026.2
-- Wohnfläche WFL nach WoFlV
-- aktuelle Auswahl
 - andere Dokumente sind vollständig analysiert.
-- bauseits; im indikativen Angebot ohne Preisansatz ⚙
 - dieser Datei
 - enthält die abgeleitete S-Fläche
 - für den Prototyp abgeleitet, nicht kalibriert
-- nach HOAI und AHO
-- nach Planung
-- nicht Bestandteil
-- nicht enthalten
 - nur Unterschiede
-- vollständig inkl. Gründung
 - Österreich
 - ≈ 85 % der BGF R+S
 
 ## Перевода нет — в следующую поставку копирайта
 
-- Anteil am Bauwerk (KG 300 + 400 + UG) nach calculation-spec §1 ⚙
 - Druckansicht öffnen
 - Eigenes Ausgabeprofil clientPrint mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.
 - Gebäude Haus A bestätigt

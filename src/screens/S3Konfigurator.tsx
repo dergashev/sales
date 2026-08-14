@@ -1,13 +1,28 @@
-import { type ReactNode } from 'react'
-import { activeBuilding, useStore, COVERAGE_LABEL, LABEL_UG } from '../state/store'
+import { useState, type ReactNode } from 'react'
+import {
+  activeBuilding,
+  BUILDING_SCOPED_CHAPTERS,
+  configurationDisplayStatusFor,
+  includedBuildingIds,
+  useStore,
+  COVERAGE_LABEL,
+  LABEL_UG,
+  type ConfigurationDisplayStatus,
+  type ConfigurationMode,
+} from '../state/store'
 import { NNBSP } from '../engine/money'
-import { useTx } from '../i18n'
+import { useT, useTx } from '../i18n'
 import { incompleteReasonText } from '../i18n/reasons'
 import type { BuildingInput } from '../engine/calculate'
 import type { CostGroup, CoverageState } from '../engine/calculate'
 import { Decimal } from 'decimal.js'
 import { Button, NumericField, type ProvenanceKind } from '../components/primitives'
-import { PageHeader, SectionSheet } from '../components/designSystem'
+import {
+  PageHeader,
+  ReadinessChecklist,
+  SectionSheet,
+  SelectField,
+} from '../components/designSystem'
 import { ClientNotice } from '../components/ClientNotice'
 import { RadioCardGroup, SegmentedControl } from '../components/controls'
 import { optionImage } from '../assets/option-images'
@@ -25,6 +40,7 @@ import {
   isClientProjection,
   isVisibleInOutputProfile,
 } from '../state/clientProjection'
+import { effectiveFactValue } from '../state/buildingReview'
 
 /**
  * S3 Konfigurator — рабочая область главы. ТОЛЬКО она: навигация по главам
@@ -84,7 +100,11 @@ function consequenceLabel(delta: Decimal, zero?: string): string {
 export function S3Konfigurator() {
   const s = useStore()
   const tx = useTx()
+  const [announcement, setAnnouncement] = useState('')
   const client = isClientProjection(s.mode)
+  if (!s.configurationModeChosen || s.configurationModeEditing) {
+    return <ConfigurationModeEntry />
+  }
   const n = chapterForOutputProfile(s.mode, s.openChapter)
   const title = CHAPTERS[n - 1] ?? CHAPTERS[0]
   const chapterRoute: readonly number[] = client
@@ -95,6 +115,14 @@ export function S3Konfigurator() {
   const next = routeIndex >= 0 && routeIndex < chapterRoute.length - 1
     ? chapterRoute[routeIndex + 1]
     : null
+  const buildingScoped = BUILDING_SCOPED_CHAPTERS.includes(
+    n as typeof BUILDING_SCOPED_CHAPTERS[number],
+  )
+  const selectedIds = includedBuildingIds(s)
+  const totalOverview = buildingScoped
+    && s.configurationMode === 'PER_BUILDING'
+    && selectedIds.length > 1
+    && s.scopeBuildingId === null
 
   return (
     <div className="px-7 py-6">
@@ -105,19 +133,31 @@ export function S3Konfigurator() {
         meta={<>Kapitel {routeIndex + 1}{NNBSP}von{NNBSP}{chapterRoute.length} · Konfigurator</>}
       />
 
+      <ConfigurationModeContext />
+      <ConfigurationScopeNavigation
+        chapter={n}
+        onAnnounce={setAnnouncement}
+      />
+      <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {announcement}
+      </p>
+
+      {buildingScoped && !totalOverview && <ConfigurationStatusStrip />}
+
       {/* Ширина содержимого не ограничивается: центровщик остаётся пределом
           ДЛИННОГО ТЕКСТА (он стоит на абзацах внутри карточек), а не клеткой
           для рабочей области — аудит верно указал, что здесь он обнимал всю
           главу целиком. */}
       <div className="py-5">
-        {n === 1 && <OptionChapter groups={KG300_GROUPS}
+        {totalOverview && <ConfigurationOverview />}
+        {!totalOverview && n === 1 && <OptionChapter groups={KG300_GROUPS}
           intro={'Von oben nach unten: erst der Umfang, dann die Konstruktion, '
             + 'zuletzt die Oberfläche. Jede Antwort zeigt ihre Folge am Preis, '
             + 'bevor sie gewählt wird.'} />}
-        {n === 2 && <ChapterUmfang />}
-        {n === 3 && <OptionChapter groups={KG400_GROUPS}
+        {!totalOverview && n === 2 && <ChapterUmfang />}
+        {!totalOverview && n === 3 && <OptionChapter groups={KG400_GROUPS}
           intro={'Technische Anlagen nach DIN 276. Die Wahl der Erzeugung und der Lüftung entscheidet mit, welcher Energiestandard überhaupt erreichbar bleibt.'} />}
-        {n === 4 && (
+        {!totalOverview && n === 4 && (
           <div className="grid gap-5">
             <ChapterEnergie />
             {/* Сертификаты — отдельная ось: EH описывает качество здания,
@@ -128,15 +168,16 @@ export function S3Konfigurator() {
                 + 'mit dem es nachgewiesen wird.'} />
           </div>
         )}
-        {n === 5 && <ChapterFlaechen />}
-        {n === 6 && <ChapterBaugrund />}
-        {n === 7 && <ChapterKg700 />}
-        {n === 8 && <ChapterTermine />}
-        {![1, 2, 3, 4, 5, 6, 7, 8].includes(n) && <ChapterParked title={title} />}
+        {!totalOverview && n === 5 && <ChapterFlaechen />}
+        {!totalOverview && n === 6 && <ChapterBaugrund />}
+        {!totalOverview && n === 7 && <ChapterKg700 />}
+        {!totalOverview && n === 8 && <ChapterTermine />}
+        {!totalOverview && ![1, 2, 3, 4, 5, 6, 7, 8].includes(n)
+          && <ChapterParked title={title} />}
       </div>
 
       {/* Один следующий шаг всегда на экране (DC-27): маршрут, не принуждение. */}
-      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-4">
+      {!totalOverview && <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-4">
         {previous ? (
           <Button onClick={() => s.openChapterAt(previous)}>
             ← Kapitel {routeIndex}: {tx(CHAPTERS[previous - 1]!)}
@@ -147,8 +188,323 @@ export function S3Konfigurator() {
             Weiter · Kapitel {routeIndex + 2}: {tx(CHAPTERS[next - 1]!)}
           </Button>
         )}
-      </footer>
+      </footer>}
     </div>
+  )
+}
+
+function buildingName(
+  state: ReturnType<typeof useStore.getState>,
+  buildingId: string,
+): string {
+  const review = state.buildingReviews[buildingId]
+  return review
+    ? effectiveFactValue(review.facts.documentationName) ?? buildingId
+    : buildingId
+}
+
+function buildingNames(
+  state: ReturnType<typeof useStore.getState>,
+  buildingIds: string[],
+): string {
+  return new Intl.ListFormat(state.uiLanguage === 'de' ? 'de-DE' : 'en-GB', {
+    style: 'long',
+    type: 'conjunction',
+  }).format(buildingIds.map((id) => buildingName(state, id)))
+}
+
+function statusLabel(
+  status: ConfigurationDisplayStatus,
+  t: ReturnType<typeof useT>,
+): string {
+  return t(`configurator.status.${status}`)
+}
+
+function ConfigurationModeEntry() {
+  const s = useStore()
+  const t = useT()
+  const selectedIds = includedBuildingIds(s)
+  const names = buildingNames(s, selectedIds)
+  const [draftMode, setDraftMode] = useState<ConfigurationMode | null>(
+    s.configurationModeChosen ? s.configurationMode : null,
+  )
+
+  if (s.mode !== 'intern') {
+    return (
+      <div className="px-7 py-6">
+        <PageHeader
+          title={t('configurator.mode.title')}
+          lede={t('configurator.mode.clientBlocked')}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="px-7 py-6">
+      <PageHeader
+        title={t('configurator.mode.title')}
+        meta={t('configurator.mode.meta', { count: selectedIds.length })}
+        lede={t('configurator.mode.lede')}
+      />
+      <SectionSheet>
+        <RadioCardGroup
+          legend={t('configurator.mode.legend')}
+          value={draftMode}
+          onChange={setDraftMode}
+          options={[
+            {
+              value: 'SHARED',
+              title: t('configurator.mode.shared.title'),
+              description: t('configurator.mode.shared.description'),
+              consequence: t('configurator.mode.shared.consequence', {
+                buildings: names,
+              }),
+            },
+            {
+              value: 'PER_BUILDING',
+              title: t('configurator.mode.perBuilding.title'),
+              description: t('configurator.mode.perBuilding.description'),
+              consequence: selectedIds.length === 1
+                ? t('configurator.mode.perBuilding.consequenceOne')
+                : t('configurator.mode.perBuilding.consequence', {
+                    count: selectedIds.length,
+                  }),
+            },
+          ]}
+        />
+        {selectedIds.length === 1 && (
+          <p className="mt-4 text-small text-text-secondary">
+            {t('configurator.mode.oneBuildingHint')}
+          </p>
+        )}
+        <div className="mt-5 flex flex-wrap items-start gap-3">
+          <Button
+            variant="primary"
+            disabled={draftMode === null}
+            disabledReason={draftMode === null
+              ? t('configurator.mode.startReason')
+              : undefined}
+            onClick={() => draftMode && s.confirmConfigurationMode(draftMode)}
+          >
+            {t('configurator.mode.start')}
+          </Button>
+          <Button onClick={() => s.setPipelineView('buildingScope')}>
+            {t('configurator.mode.back')}
+          </Button>
+        </div>
+      </SectionSheet>
+    </div>
+  )
+}
+
+function ConfigurationModeContext() {
+  const s = useStore()
+  const t = useT()
+  const names = buildingNames(s, includedBuildingIds(s))
+  const summary = s.configurationMode === 'SHARED'
+    ? t('configurator.mode.currentShared', { buildings: names })
+    : t('configurator.mode.currentPerBuilding')
+  return (
+    <section
+      aria-label={t('configurator.mode.legend')}
+      className="flex flex-wrap items-start justify-between gap-3 border-y border-border-subtle py-3"
+    >
+      <p className="text-body text-text-primary">
+        <strong>{summary}</strong>
+        <span className="mt-1 block text-small font-normal text-text-secondary">
+          {t('configurator.mode.retained')}
+        </span>
+      </p>
+      {s.mode === 'intern' && (
+        <Button variant="ghost" onClick={() => s.beginConfigurationModeEdit()}>
+          {t('configurator.mode.edit')}
+        </Button>
+      )}
+    </section>
+  )
+}
+
+const TOTAL_SCOPE = '__TOTAL__'
+
+export function configurationScopeControlFor(
+  optionCount: number,
+): 'segmented' | 'select' {
+  return optionCount <= 3 ? 'segmented' : 'select'
+}
+
+function ConfigurationScopeNavigation({
+  chapter,
+  onAnnounce,
+}: {
+  chapter: number
+  onAnnounce: (message: string) => void
+}) {
+  const s = useStore()
+  const t = useT()
+  const selectedIds = includedBuildingIds(s)
+  const buildingScoped = BUILDING_SCOPED_CHAPTERS.includes(
+    chapter as typeof BUILDING_SCOPED_CHAPTERS[number],
+  )
+  const names = buildingNames(s, selectedIds)
+
+  if (!buildingScoped) {
+    return <p className="mt-4 text-small font-medium text-text-secondary">
+      {t('configurator.scope.project')}
+    </p>
+  }
+  if (s.configurationMode === 'SHARED') {
+    return <p className="mt-4 text-small font-medium text-text-secondary">
+      {t('configurator.scope.shared', { buildings: names })}
+    </p>
+  }
+
+  const statuses = Object.fromEntries(selectedIds.map((id) => [
+    id,
+    configurationDisplayStatusFor(s, id),
+  ])) as Record<string, ConfigurationDisplayStatus>
+  if (selectedIds.length === 1) {
+    const id = selectedIds[0]!
+    return <p className="mt-4 text-small font-medium text-text-secondary">
+      {t('configurator.scope.single', {
+        building: buildingName(s, id),
+        status: statusLabel(statuses[id]!, t),
+      })}
+    </p>
+  }
+
+  const confirmed = selectedIds.filter((id) => statuses[id] === 'confirmed').length
+  const options = [
+    {
+      value: TOTAL_SCOPE,
+      label: t('configurator.scope.total', { confirmed, total: selectedIds.length }),
+      status: `${confirmed} / ${selectedIds.length}`,
+    },
+    ...selectedIds.map((id) => ({
+      value: id,
+      label: t('configurator.scope.building', {
+        building: buildingName(s, id),
+        status: statusLabel(statuses[id]!, t),
+      }),
+      status: statusLabel(statuses[id]!, t),
+    })),
+  ]
+  const value = s.scopeBuildingId ?? TOTAL_SCOPE
+  const choose = (next: string) => {
+    const buildingId = next === TOTAL_SCOPE ? null : next
+    s.setConfigurationScope(buildingId)
+    const option = options.find((item) => item.value === next)!
+    onAnnounce(t('configurator.scope.announcement', {
+      scope: option.label,
+      status: option.status,
+    }))
+  }
+
+  return (
+    <div className="mt-4 min-w-0">
+      {configurationScopeControlFor(options.length) === 'segmented' ? (
+        <SegmentedControl
+          legend={t('configurator.scope.legend')}
+          value={value}
+          onChange={choose}
+          options={options.map(({ value: optionValue, label }) => ({
+            value: optionValue,
+            label,
+          }))}
+        />
+      ) : (
+        <SelectField
+          label={t('configurator.scope.selectLabel')}
+          value={value}
+          onChange={(event) => choose(event.currentTarget.value)}
+        >
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </SelectField>
+      )}
+    </div>
+  )
+}
+
+function visibleConfigurationStatus(
+  state: ReturnType<typeof useStore.getState>,
+  ids: string[],
+): ConfigurationDisplayStatus {
+  if (state.configurationMode === 'PER_BUILDING') {
+    return configurationDisplayStatusFor(state, state.activeBuildingId)
+  }
+  const statuses = ids.map((id) => configurationDisplayStatusFor(state, id))
+  if (statuses.includes('recheck')) return 'recheck'
+  if (statuses.includes('open')) return 'open'
+  if (statuses.every((status) => status === 'confirmed')) return 'confirmed'
+  return 'ready'
+}
+
+function ConfigurationStatusStrip() {
+  const s = useStore()
+  const t = useT()
+  const ids = includedBuildingIds(s)
+  const status = visibleConfigurationStatus(s, ids)
+  const building = buildingName(s, s.activeBuildingId)
+  const detail = t(`configurator.status.${status}Detail`)
+  const action = s.configurationMode === 'SHARED'
+    ? t('configurator.status.confirmShared')
+    : t('configurator.status.confirmBuilding', { building })
+
+  return (
+    <section className="a3-nextstep mt-5" aria-label={statusLabel(status, t)}>
+      <p className="a3-mtag">{statusLabel(status, t)}</p>
+      <p>{detail}</p>
+      {s.mode === 'intern' && (status === 'ready' || status === 'recheck') && (
+        <div className="mt-3">
+          <Button variant="primary" onClick={() => s.confirmVisibleConfiguration()}>
+            {action}
+          </Button>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function ConfigurationOverview() {
+  const s = useStore()
+  const t = useT()
+  const ids = includedBuildingIds(s)
+  return (
+    <SectionSheet title={t('configurator.overview.title')}>
+      <ReadinessChecklist
+        label={t('configurator.overview.label')}
+        items={ids.map((id) => {
+          const status = configurationDisplayStatusFor(s, id)
+          return {
+            id,
+            label: buildingName(s, id),
+            ready: status === 'confirmed',
+            detail: statusLabel(status, t),
+          }
+        })}
+      />
+    </SectionSheet>
+  )
+}
+
+export function ConfigurationModeReadiness() {
+  const t = useT()
+  return (
+    <aside
+      aria-label={t('configurator.sidebar.title')}
+      className="flex h-full w-panel-right min-w-0 max-w-panel-right shrink-0 flex-col overflow-y-auto border-l border-border-strong bg-surface-default"
+    >
+      <div className="p-6">
+        <h2 className="text-heading-2 font-bold text-text-primary">
+          {t('buildingScope.readiness.pricingNotStarted')}
+        </h2>
+        <p className="mt-2 text-small text-text-secondary">
+          {t('configurator.sidebar.body')}
+        </p>
+      </div>
+    </aside>
   )
 }
 

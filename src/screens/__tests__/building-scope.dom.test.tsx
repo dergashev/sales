@@ -114,6 +114,10 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     const user = userEvent.setup()
     await openBuildingScope(user)
     await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
+    await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
+    await user.click(screen.getByRole('radio', { name: 'Je Gebäude konfigurieren' }))
+    await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
+    await user.click(screen.getByRole('button', { name: /^1Gebäude & Umfang$/ }))
 
     const profile = screen.getByRole('radiogroup', { name: 'Ansicht' })
     await user.click(within(profile).getByRole('radio', { name: 'Kundenansicht' }))

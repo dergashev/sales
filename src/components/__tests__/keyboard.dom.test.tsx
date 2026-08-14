@@ -38,6 +38,8 @@ async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
   await enterOption(user)
   await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
   await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
+  await user.click(screen.getByRole('radio', { name: 'Je Gebäude konfigurieren' }))
+  await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
 }
 
 describe('Табы S2 — ручная активация (TABS-001, KEY-003)', () => {
@@ -248,6 +250,10 @@ describe('DC-33 · единственная модалка системы — в
     // диалог: блокировка объясняет себя (правило 12).
     expect(screen.getAllByText(/mindestens ein Gebäude auswählen/).length).toBeGreaterThan(0)
     await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
+    await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
+    await user.click(screen.getByRole('radio', { name: 'Je Gebäude konfigurieren' }))
+    await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
+    await user.click(screen.getByRole('button', { name: /^1Gebäude & Umfang$/ }))
 
     const trigger = screen.getByRole('button', { name: 'Kundenansicht prüfen' })
     await user.click(trigger)

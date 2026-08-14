@@ -41,6 +41,8 @@ async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
   await enterOption(user)
   await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
   await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
+  await user.click(screen.getByRole('radio', { name: /Je Gebäude konfigurieren/ }))
+  await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
 }
 
 describe('Сквозной сценарий продажи', () => {
@@ -56,12 +58,12 @@ describe('Сквозной сценарий продажи', () => {
     await user.click(within(es).getAllByRole('radio')[2]!)
     // Путь до конвейера сам оставляет след: решённый конфликт,
     // подтверждённые параметры, созданный Option и подтверждённое здание.
-    expect(useStore.getState().journal).toHaveLength(5)
+    expect(useStore.getState().journal).toHaveLength(6)
 
     // Уход на другой экран и возврат: состояние переживает переход.
     await user.click(nav(/Variantenvergleich/))
     await user.click(nav(/Konfigurator/))
-    expect(useStore.getState().journal).toHaveLength(5)
+    expect(useStore.getState().journal).toHaveLength(6)
     expect(activeBuilding(useStore.getState()).energiestandard).toBe('EH_40')
 
     // Гейт открывается на top-level шаге здания, а не обходится.
@@ -71,7 +73,7 @@ describe('Сквозной сценарий продажи', () => {
     await user.click(nav(/Variantenvergleich/))
     await user.click(nav(/^S5|Export/))
     expect(screen.getByRole('button', { name: /Preflight/ })).toBeInTheDocument()
-    expect(useStore.getState().journal).toHaveLength(5)
+    expect(useStore.getState().journal).toHaveLength(6)
   })
 
   it('глава 9 показывает Bauzeit обеими формами: полосой и таблицей', async () => {
