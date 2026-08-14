@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 44** · перевод есть, мост не подключён: 37
-· перевода нет (в поставку копирайта): 7
+**Всего 44** · перевод есть, мост не подключён: 36
+· перевода нет (в поставку копирайта): 8
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -36,7 +36,6 @@ Mit freundlichen Grüßen
 - Total WFL nach WoFlV
 - Werte aus
 - Werte extrahiert · Regelsatz RS 2026.2
-- Wohnfläche WFL nach WoFlV
 - aktuelle Auswahl
 - andere Dokumente sind vollständig analysiert.
 - bauseits; im indikativen Angebot ohne Preisansatz ⚙
@@ -57,6 +56,7 @@ Mit freundlichen Grüßen
 - Anteil am Bauwerk (KG 300 + 400 + UG) nach calculation-spec §1 ⚙
 - Druckansicht öffnen
 - Eigenes Ausgabeprofil clientPrint mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.
+- Geprüfte Gebäudewerte tragen ihre Herkunft; Änderungen heben die Bestätigung auf und werden in Gebäude & Umfang erneut geprüft.
 - Konfiguration je Gebäude bestätigt
 - Tiefgarage · Lüftung, OS-Beschichtung, Tore
 - Untergeschoss · Rohbau und Ausbau
