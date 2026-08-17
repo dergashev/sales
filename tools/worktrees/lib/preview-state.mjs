@@ -32,6 +32,12 @@ export function readPreviewState(statePath) {
  * Lock, read, let `mutateFn` compute the next full record from the current
  * one (or `null`), write atomically, unlock. Returns the new record.
  *
+ * Only for a single, self-contained read-mutate-write. NEVER call this (or
+ * anything else that takes the same lock) from inside a `withPreviewStateLock`
+ * callback for the SAME statePath — the lock is not re-entrant, and a nested
+ * acquisition attempt by the same process will spin until it times out
+ * (indistinguishable from a real deadlock from the caller's point of view).
+ *
  * @param {string} statePath
  * @param {(current: object|null) => object} mutateFn
  */
@@ -42,4 +48,33 @@ export function updatePreviewState(statePath, mutateFn) {
     writeManifestAtomic(statePath, next)
     return next
   })
+}
+
+/**
+ * Holds the SAME lock `updatePreviewState` uses, for a multi-step critical
+ * section (e.g. dev:main's "check for a live owner, then mutate the git
+ * checkout, then record the new state" sequence) that must not be split
+ * across separate lock acquisitions — a second `dev:main` could otherwise
+ * interleave between separate small locked steps and observe/mutate the
+ * same preview worktree concurrently.
+ *
+ * Inside `fn`, use `readPreviewState` (lock-free) to read and
+ * `writePreviewStateRaw` (lock-free) to write — never `updatePreviewState`.
+ *
+ * @param {string} statePath
+ * @param {() => any} fn
+ */
+export function withPreviewStateLock(statePath, fn) {
+  return withManifestLock(statePath, fn)
+}
+
+/**
+ * Writes the full state record without acquiring any lock. Only safe to call
+ * from inside a `withPreviewStateLock` callback, which already holds it.
+ *
+ * @param {string} statePath
+ * @param {object} record
+ */
+export function writePreviewStateRaw(statePath, record) {
+  writeManifestAtomic(statePath, record)
 }

@@ -132,6 +132,26 @@ function main() {
       process.exit(EXIT.LIFECYCLE)
       return
     }
+    // Tech Review P2-2: "git worktree prune" exits 0 even when it prunes
+    // NOTHING (verified directly, including the locked-and-missing shape) —
+    // an exit-0 check alone would report "done" while the exact stale
+    // registration this ticket exists to fix survives untouched. Re-list
+    // and require it to actually be gone, same as the "remove" branch below.
+    const after = listWorktrees(repoRoot)
+    if (after === null) {
+      console.error('[release-cleanup] LIFECYCLE FAILURE: "git worktree list --porcelain" failed after prune.')
+      process.exit(EXIT.LIFECYCLE)
+      return
+    }
+    const stillThere = after.some((w) => samePath(w.path, targetPath))
+    if (stillThere) {
+      console.error(
+        '[release-cleanup] LIFECYCLE FAILURE: "git worktree prune" exited 0 but the registration is still present ' +
+          '(commonly: it became locked between listing and pruning). Re-run "npm run git:worktrees:check" for the exact state.',
+      )
+      process.exit(EXIT.LIFECYCLE)
+      return
+    }
     console.log('[release-cleanup] done: stale registration pruned.')
     process.exit(EXIT.OK)
     return

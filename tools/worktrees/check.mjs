@@ -94,15 +94,26 @@ function main() {
   console.log('')
   console.log('LOCAL MAIN PREVIEW')
   console.log(`  EXPECTED PATH : ${previewPath}`)
-  if (!previewState) {
+  // Tech Review P2-3: "Git is authoritative" (ticket §7) — the preview SHA
+  // reported here MUST come from the registered worktree entry itself
+  // (git's own `git worktree list`), never from the advisory
+  // preview-state.json side-record alone. A previewState-only read
+  // reported a real, correctly-detached-at-main preview as "never
+  // created" whenever the state file was absent (e.g. hand-created,
+  // pre-existing before this tool's first run) — reproduced directly.
+  const registeredPreview = worktrees.find((w) => samePath(w.path, previewPath))
+  if (!registeredPreview) {
     console.log('  STATUS        : never created (run "npm run dev:main" to create it)')
   } else {
-    const stillRegistered = worktrees.some((w) => samePath(w.path, previewPath))
-    const staleLabel = previewState.sha !== mainSha ? '  <-- STALE (main has advanced since last preview refresh)' : ''
-    console.log(`  LAST PREVIEW SHA : ${previewState.sha}${staleLabel}`)
-    console.log(`  REGISTERED       : ${stillRegistered}`)
-    console.log(`  LAST REFRESHED AT: ${previewState.updatedAt ?? 'UNKNOWN'}`)
-    if (previewState.sha !== mainSha) issues++
+    const staleLabel = registeredPreview.sha !== mainSha ? '  <-- STALE (main has advanced since last preview refresh)' : ''
+    console.log(`  PREVIEW SHA      : ${registeredPreview.sha ?? 'UNRESOLVED'}${staleLabel}`)
+    console.log(`  DETACHED         : ${registeredPreview.detached}`)
+    if (registeredPreview.locked) console.log(`  LOCKED           : true (${registeredPreview.lockReason || 'no reason given'})`)
+    if (registeredPreview.prunable) console.log(`  PRUNABLE         : true (${registeredPreview.prunableReason || 'missing/broken worktree'})`)
+    console.log(`  LIVE OWNER (pid) : ${previewState?.pid ?? 'none recorded'}${previewState?.port ? ` — port ${previewState.port}` : ''}`)
+    console.log(`  LAST REFRESHED AT: ${previewState?.updatedAt ?? 'UNKNOWN (no preview-state.json record)'}`)
+    if (registeredPreview.sha !== mainSha) issues++
+    if (registeredPreview.locked || registeredPreview.prunable) issues++
   }
 
   console.log('')

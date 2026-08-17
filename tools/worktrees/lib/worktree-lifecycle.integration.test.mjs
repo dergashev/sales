@@ -19,20 +19,33 @@
 //   - `git worktree add --detach` succeeds at the SAME sha `main` is
 //     already checked out at elsewhere, which is why the local-main
 //     preview is detached rather than a branch checkout.
+//   - `git worktree prune` exits 0 even when it prunes NOTHING — including
+//     a target that WAS reported `prunable` a moment earlier but has since
+//     been locked (verified: locking an already-prunable, missing-directory
+//     worktree is accepted by git and flips it to `locked`). Tech Review
+//     P2-2: an exit-code-only check on the CLI's own prune call would
+//     report false success on exactly this TOCTOU; release-cleanup.mjs and
+//     dev-main.mjs's own prune calls now re-list and fail closed instead.
 //
-// Then exercises the real CLIs (release-cleanup.mjs, check.mjs) end-to-end
-// against these hermetic repos, mirroring tools/gate/gate.test.mjs's style.
+// Then exercises the real CLIs (release-cleanup.mjs, check.mjs, dev-main.mjs)
+// end-to-end against these hermetic repos, mirroring
+// tools/gate/gate.test.mjs's style. dev-main.mjs's own tests stop it before
+// it would ever spawn the long-running `npm run dev` server — every
+// scenario here is refused (non-mutating paths, or a blocked mutation)
+// before that point, so nothing is left running afterward.
 
-import { existsSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { defaultPreviewStatePath } from './preview-state.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const RELEASE_CLEANUP_MJS = path.resolve(HERE, '..', 'release-cleanup.mjs')
 const CHECK_MJS = path.resolve(HERE, '..', 'check.mjs')
+const DEV_MAIN_MJS = path.resolve(HERE, '..', 'dev-main.mjs')
 
 function git(cwd, args) {
   const result = spawnSync('git', args, { cwd, encoding: 'utf8' })
@@ -107,6 +120,27 @@ describe('root cause: a lock — not a broken .git link — is what survives cle
     git(repoDir, ['worktree', 'unlock', wtPath])
     git(repoDir, ['worktree', 'prune'])
     expect(git(repoDir, ['worktree', 'list', '--porcelain'])).not.toContain(registeredPath)
+  })
+
+  it('Tech Review P2-2: a target reported prunable can be locked before prune runs, and then survives prune with exit 0 (the TOCTOU release-cleanup.mjs/dev-main.mjs now re-verify against)', () => {
+    const wtPath = path.join(repoDir, '.worktrees', 'release-integration')
+    git(repoDir, ['worktree', 'add', '-q', wtPath, 'main'])
+    const registeredPath = realpathSync(wtPath)
+    rmSync(wtPath, { recursive: true, force: true })
+
+    const listedAsPrunable = git(repoDir, ['worktree', 'list', '--porcelain'])
+    expect(listedAsPrunable).toContain('prunable')
+
+    // Simulates the race window between a caller's own `git worktree list`
+    // and its `git worktree prune`: locking an ALREADY-missing, prunable
+    // worktree is accepted by git — it does not require the directory to
+    // exist.
+    const lock = spawnSync('git', ['worktree', 'lock', wtPath, '--reason', 'grabbed after going stale'], { cwd: repoDir, encoding: 'utf8' })
+    expect(lock.status).toBe(0)
+
+    const prune = spawnSync('git', ['worktree', 'prune'], { cwd: repoDir, encoding: 'utf8' })
+    expect(prune.status).toBe(0) // exits 0 — misleadingly, per the finding
+    expect(git(repoDir, ['worktree', 'list', '--porcelain'])).toContain(registeredPath) // survives anyway
   })
 
   it('"git worktree add --detach" succeeds even while another worktree owns the same branch', () => {
@@ -226,5 +260,89 @@ describe('check.mjs end-to-end', () => {
     expect(result.status).toBe(0)
     expect(result.stdout).toContain('locked')
     expect(result.stdout).toContain('release in progress')
+  })
+
+  it('Tech Review P2-3: a registered, detached preview with NO preview-state.json is reported by its real git HEAD, never "never created"', () => {
+    const previewPath = path.join(repoDir, '.preview', 'main')
+    git(repoDir, ['worktree', 'add', '--detach', '-q', previewPath, 'main'])
+    const mainSha = git(repoDir, ['rev-parse', 'main'])
+
+    // Deliberately no a3/preview-state.json — this worktree was registered
+    // by something other than dev:main (or predates this tool entirely).
+    const result = spawnSync('node', [CHECK_MJS], { cwd: repoDir, encoding: 'utf8' })
+    expect(result.status).toBe(0)
+    expect(result.stdout).not.toContain('never created')
+    expect(result.stdout).toContain(`PREVIEW SHA      : ${mainSha}`)
+  })
+})
+
+describe('dev-main.mjs end-to-end (stopped before it would ever spawn a real dev server)', () => {
+  function writePreviewState(repoRootDir, record) {
+    const commonDir = git(repoRootDir, ['rev-parse', '--git-common-dir'])
+    const statePath = defaultPreviewStatePath(path.resolve(repoRootDir, commonDir))
+    mkdirSync(path.dirname(statePath), { recursive: true })
+    writeFileSync(statePath, JSON.stringify(record))
+    return statePath
+  }
+
+  /** Advances the `main` REF itself (the root checkout in these tests sits
+   *  on `some-feature-branch`, exactly like production — committing there
+   *  would not move `main` at all). Uses a throwaway worktree, mirroring
+   *  how a real Release Integration worktree is the one that owns `main`. */
+  function advanceMain(repoRootDir) {
+    const tmpOwner = path.join(repoRootDir, '.worktrees', 'main-advance-tmp')
+    git(repoRootDir, ['worktree', 'add', '-q', tmpOwner, 'main'])
+    writeFileSync(path.join(tmpOwner, 'f2'), 'advance main\n')
+    git(tmpOwner, ['add', '-A'])
+    git(tmpOwner, ['-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'advance main', '--no-verify'])
+    const newSha = git(repoRootDir, ['rev-parse', 'main'])
+    git(repoRootDir, ['worktree', 'remove', tmpOwner])
+    return newSha
+  }
+
+  it('Tech Review P2-1: refuses (exit 2) to check out a newer main into a preview a LIVE pid still owns, and performs NO mutation', () => {
+    const previewPath = path.join(repoDir, '.preview', 'main')
+    const oldSha = git(repoDir, ['rev-parse', 'main'])
+    git(repoDir, ['worktree', 'add', '--detach', '-q', previewPath, oldSha])
+
+    // This test process is, by construction, alive for the entire
+    // synchronous spawnSync call below — a real, non-flaky liveness signal,
+    // not a guessed/mocked one.
+    writePreviewState(repoDir, { sha: oldSha, dir: previewPath, pid: process.pid, port: 65000, startedAt: new Date().toISOString() })
+
+    const newSha = advanceMain(repoDir)
+    expect(newSha).not.toBe(oldSha)
+
+    const result = spawnSync('node', [DEV_MAIN_MJS], { cwd: repoDir, encoding: 'utf8', env: { ...process.env, A3_PREVIEW_DIR: previewPath } })
+    expect(result.status).toBe(2)
+    expect(result.stderr).toContain('another dev:main process')
+    expect(result.stderr).toContain(String(process.pid))
+    expect(git(repoDir, ['rev-parse', '--abbrev-ref', 'HEAD'])).toBe('some-feature-branch') // caller checkout untouched
+    expect(git(previewPath, ['rev-parse', 'HEAD'])).toBe(oldSha) // preview itself: no checkout happened
+  })
+
+  it('negative control: a DEAD pid recorded as owner does NOT block the checkout', () => {
+    const previewPath = path.join(repoDir, '.preview', 'main')
+    const oldSha = git(repoDir, ['rev-parse', 'main'])
+    git(repoDir, ['worktree', 'add', '--detach', '-q', previewPath, oldSha])
+
+    const shortLived = spawnSync('node', ['-e', '0'], { encoding: 'utf8' })
+    const deadPid = shortLived.pid
+    // shortLived has already exited (spawnSync only returns after the child
+    // exits), so `deadPid` is guaranteed dead by the time the state below
+    // is read.
+
+    writePreviewState(repoDir, { sha: oldSha, dir: previewPath, pid: deadPid, port: 65000, startedAt: new Date().toISOString() })
+
+    const newSha = advanceMain(repoDir)
+
+    const result = spawnSync('node', [DEV_MAIN_MJS], { cwd: repoDir, encoding: 'utf8', env: { ...process.env, A3_PREVIEW_DIR: previewPath } })
+    // Not blocked by the (dead) prior owner: the checkout DID happen, and
+    // execution proceeded far enough to hit this fixture repo's own
+    // limitation (no package.json to `npm ci`) rather than the liveness
+    // refusal — exit 4, not exit 2, proves which check actually fired.
+    expect(result.status).toBe(4)
+    expect(result.stderr).not.toContain('another dev:main process')
+    expect(git(previewPath, ['rev-parse', 'HEAD'])).toBe(newSha)
   })
 })
