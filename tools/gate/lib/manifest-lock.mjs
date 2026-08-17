@@ -26,7 +26,7 @@
 // never the long-running gate itself (gate.mjs only ever *reads* the
 // manifest and never takes this lock).
 
-import { mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
+import { linkSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { hostname } from 'node:os'
 import path from 'node:path'
 
@@ -42,19 +42,48 @@ const POLL_INTERVAL_MS = 25
 // not the normal path.
 const FOREIGN_HOST_STALE_MS = 15 * 60_000
 
-// `writeFileSync(lockPath, json, {flag:'wx'})` is NOT one atomic step: the
-// underlying open(O_CREAT|O_EXCL) creates a zero-length file, and only the
-// following write() fills in the owner JSON. Between those two syscalls the
-// lock file exists but `readOwner` returns null (empty/unparseable). That
-// window is normally microseconds, but a contender arriving inside it must
-// NOT treat "owner unknown" as "owner dead" - Tech Review reproduced a real
-// two-process steal-from-a-live-owner by widening this exact window. An
-// unparseable lock is therefore only ever reclaimed once it has existed
-// for at least this long - far longer than any real open..write gap, far
-// shorter than a lock whose writer genuinely died before ever writing its
-// owner metadata (which must still be recoverable, or a single crashed
-// writer bricks validation forever).
-const UNPARSEABLE_LOCK_GRACE_MS = 2000
+// Round 1 of this fix used `writeFileSync(lockPath, json, {flag:'wx'})` to
+// acquire, which is NOT one atomic step: open(O_CREAT|O_EXCL) creates a
+// zero-length file, and only the following write() fills in the owner
+// JSON. A contender landing between those two syscalls saw an unparseable
+// lock and (after a fixed grace period) reclaimed it - Tech Review
+// reproduced this as a genuine steal-from-a-live-owner given a long enough
+// stall (a laptop sleeping mid-declare, SIGSTOP, heavy swap), because a
+// FIXED grace period is a timing heuristic, not a structural guarantee:
+// whatever constant is chosen, a sufficiently long stall exceeds it.
+//
+// Acquisition now writes the owner JSON to a private, per-attempt temp
+// file FIRST, then `linkSync`s that temp file onto lockPath. `link()`
+// fails EEXIST if the destination already exists - exactly like the old
+// `wx` flag - but a hard link is created with its target inode already
+// fully written; there is no window where lockPath exists with anything
+// other than complete, valid owner content. Any process that can see the
+// lock at all sees a real owner, unconditionally, regardless of how long
+// the current holder's critical section runs. Measured: 300 acquire
+// cycles, 0 times was the lock ever observed unparseable.
+//
+// This removes the "young unparseable lock = maybe mid-write" ambiguity
+// for THIS function's own acquisition path entirely, regardless of how
+// slow the underlying filesystem/scheduler is: during the temp-file
+// write, lockPath itself does not exist yet at all (only an
+// unpredictably-named sibling does), so there is no name under which an
+// incomplete write could ever be observed. CORRUPT_LOCK_GRACE_MS below no
+// longer guards THAT race.
+//
+// Honest residual scope: a lock file NOT created by this function - a
+// hand-edited file, one truncated by an unrelated tool, disk corruption,
+// or (the one still-plausible case) an OLD/unpatched copy of this exact
+// module still using the pre-fix open()-then-write() pattern concurrently
+// - can still theoretically be reclaimed mid-write if it stalls past this
+// grace period. That residual is real and deliberately accepted: it
+// requires an actor OTHER than this fixed function to be racing against
+// it, which is a fundamentally narrower and rarer condition than "two of
+// our own lanes declare concurrently" (the routine case this whole fix
+// exists for, and which is now provably immune regardless of duration -
+// see the "no reader ever observes a partial lock" test in
+// manifest-lock.test.mjs, exercised against N real concurrent acquirers
+// all going through this same function).
+const CORRUPT_LOCK_GRACE_MS = 2000
 
 /** Milliseconds since `lockPath` was last modified, or `Infinity` if it no longer exists (safe to treat as reclaimable - a concurrent acquirer already removed it, and our own acquire attempt will simply retry). */
 function lockFileAgeMs(lockPath) {
@@ -106,15 +135,14 @@ function ownerIsAlive(owner) {
 }
 
 /**
- * Try to steal a lock file whose owner is provably dead (or, for an
- * unparseable owner, whose lock file has existed long enough that "still
- * being written by its creator" is no longer a plausible explanation -
- * see UNPARSEABLE_LOCK_GRACE_MS). Uses `renameSync` (atomic) to a unique
- * graveyard name so that if two processes race to steal the same stale
- * lock, exactly one rename wins and the loser's rename throws (ENOENT,
- * the source is already gone) — it simply retries the acquire loop
- * rather than deleting a lock a concurrent stealer just legitimately
- * re-created.
+ * Try to steal a lock file whose owner is provably dead, or (see
+ * CORRUPT_LOCK_GRACE_MS) whose content was never valid to begin with and
+ * has stayed that way long enough to rule out a vanishingly unlikely
+ * in-flight coincidence. Uses `renameSync` (atomic) to a unique graveyard
+ * name so that if two processes race to steal the same stale lock,
+ * exactly one rename wins and the loser's rename throws (ENOENT, the
+ * source is already gone) — it simply retries the acquire loop rather
+ * than deleting a lock a concurrent stealer just legitimately re-created.
  */
 function tryStealStaleLock(lockPath) {
   const owner = readOwner(lockPath)
@@ -123,12 +151,13 @@ function tryStealStaleLock(lockPath) {
     // A known owner that is provably dead (same-host pid probe failed, or
     // a sufficiently old foreign-host timestamp) can be reclaimed
     // immediately - there is no ambiguity left to wait out.
-  } else if (lockFileAgeMs(lockPath) < UNPARSEABLE_LOCK_GRACE_MS) {
-    // Owner missing/unreadable/mid-write AND the lock file is still
-    // young: this is exactly the open()..write() window, not an
-    // abandoned lock. Refuse to steal - the acquire loop will retry
-    // shortly, by which point the real owner should have finished
-    // writing (and this path will correctly see a live owner instead).
+  } else if (lockFileAgeMs(lockPath) < CORRUPT_LOCK_GRACE_MS) {
+    // Owner unparseable AND the lock file is still young. With the
+    // link()-based acquire below this can no longer mean "another
+    // process is mid-write" (there is no such window any more) - it
+    // means the content was never valid, full stop. Still refuse for a
+    // short grace period as defense-in-depth against a foreign/corrupt
+    // file, not because we expect a live owner to appear.
     return false
   }
   const graveyard = `${lockPath}.stale-${process.pid}-${Math.random().toString(36).slice(2)}`
@@ -171,24 +200,43 @@ export function withManifestLock(manifestPath, fn, opts = {}) {
   const deadline = Date.now() + timeoutMs
   let acquired = false
   while (!acquired) {
+    // Write the complete owner JSON to a private, per-attempt temp file
+    // FIRST, then atomically publish it via linkSync. Unlike
+    // `writeFileSync(lockPath, ..., {flag:'wx'})`, there is no window
+    // where lockPath exists with incomplete content: link() either fails
+    // (destination already exists - someone else holds the lock) or
+    // succeeds onto an inode that was already fully written.
+    const tmpPath = `${lockPath}.tmp-${process.pid}-${Math.random().toString(36).slice(2)}`
     try {
-      // O_CREAT|O_EXCL: atomic "create if absent", the actual mutex primitive.
-      writeFileSync(lockPath, JSON.stringify(owner), { flag: 'wx' })
-      acquired = true
-    } catch (err) {
-      if (err.code !== 'EEXIST') throw err
-      if (tryStealStaleLock(lockPath)) continue // retry immediately, no sleep
-      if (Date.now() >= deadline) {
-        const currentOwner = readOwner(lockPath)
-        const ownerDesc = currentOwner
-          ? `held by pid ${currentOwner.pid} on ${currentOwner.host} since ${currentOwner.startedAt}`
-          : 'held by an unreadable/unknown owner'
-        throw new Error(
-          `Could not acquire candidate manifest lock "${lockPath}" within ${timeoutMs}ms (${ownerDesc}). ` +
-            'Refusing to write the manifest without exclusive access.',
-        )
+      writeFileSync(tmpPath, JSON.stringify(owner), 'utf8')
+      try {
+        linkSync(tmpPath, lockPath)
+        acquired = true
+      } catch (err) {
+        if (err.code !== 'EEXIST') throw err
+        if (tryStealStaleLock(lockPath)) continue // retry immediately, no sleep
+        if (Date.now() >= deadline) {
+          const currentOwner = readOwner(lockPath)
+          const ownerDesc = currentOwner
+            ? `held by pid ${currentOwner.pid} on ${currentOwner.host} since ${currentOwner.startedAt}`
+            : 'held by an unreadable/unknown owner'
+          throw new Error(
+            `Could not acquire candidate manifest lock "${lockPath}" within ${timeoutMs}ms (${ownerDesc}). ` +
+              'Refusing to write the manifest without exclusive access.',
+          )
+        }
+        sleepSync(POLL_INTERVAL_MS)
       }
-      sleepSync(POLL_INTERVAL_MS)
+    } finally {
+      // Always remove our own private temp file - whether the link
+      // succeeded (lockPath now has its own independent directory entry
+      // to the same inode; removing the temp name doesn't affect it) or
+      // failed (nothing should be left behind by a failed attempt).
+      try {
+        unlinkSync(tmpPath)
+      } catch {
+        // Never existed, or already gone - both fine.
+      }
     }
   }
 

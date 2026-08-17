@@ -23,6 +23,7 @@ import { withManifestLock } from './manifest-lock.mjs'
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const RACE_VICTIM = path.join(HERE, 'test-fixtures', 'lock-race-victim.mjs')
 const RACE_INTRUDER = path.join(HERE, 'test-fixtures', 'lock-race-intruder.mjs')
+const HOLD_VICTIM = path.join(HERE, 'test-fixtures', 'lock-hold-victim.mjs')
 
 /** Spawn a real, separate node process and resolve when it exits 0 (reject otherwise). */
 function runChild(scriptPath, args) {
@@ -158,20 +159,30 @@ describe('withManifestLock', () => {
   })
 
   // -------------------------------------------------------------------------
-  // Tech Review P1: writeFileSync(lockPath, json, {flag:'wx'}) is two
-  // syscalls (open(O_CREAT|O_EXCL), then write()). Between them the lock
-  // file exists but is empty/unparseable. The OLD code treated that as
-  // "owner unknown -> steal now", which let a contender rename away a
-  // LIVE owner's lock mid-write - reproduced with two real processes.
-  // These tests pin the fix: a FRESH unparseable lock must be refused,
-  // an AGED one (writer that died before ever writing its owner data)
-  // must still be recoverable, and the real two-process race must no
-  // longer let the intruder in.
+  // Tech Review P1, round 1: writeFileSync(lockPath, json, {flag:'wx'}) was
+  // two syscalls (open(O_CREAT|O_EXCL), then write()). Between them the
+  // lock file existed but was empty/unparseable, and the round-1 fix
+  // reclaimed an unparseable lock after a FIXED grace period - which Tech
+  // Review then reproduced as a genuine steal-from-a-live-owner given a
+  // long enough stall (see the round-2 test below): a fixed timeout is a
+  // heuristic, not a structural guarantee.
+  //
+  // Round 2 replaced the acquire mechanism itself: the owner JSON is now
+  // written to a private temp file first, then published via linkSync,
+  // so a live owner's lock ALWAYS has complete, valid content from the
+  // instant it exists - there is no more "maybe mid-write" ambiguity for
+  // OUR OWN acquire path to reason about. The tests below now describe:
+  // (a) a lock file that is unparseable for a reason OTHER than our own
+  //     acquire path (hand-planted, or a foreign/legacy raw-open lock) is
+  //     still handled sanely - refused while young, reclaimed once aged;
+  // (b) the actual promise this round-2 fix makes: an arbitrarily long
+  //     REAL critical section, held through the shipped withManifestLock
+  //     itself, is NEVER preempted - no fixed constant to exceed.
   // -------------------------------------------------------------------------
 
-  it('P1 regression: a FRESH zero-length lock file (open()..write() window) is NOT stolen', () => {
+  it('a FRESH zero-length/corrupt lock file (not one we created) is NOT stolen', () => {
     mkdirSync(path.dirname(manifestPath), { recursive: true })
-    writeFileSync(lockPath, '') // exactly what open(O_CREAT|O_EXCL) alone produces
+    writeFileSync(lockPath, '') // e.g. hand-planted, or a leftover from an unrelated tool
     let ran = false
     expect(() =>
       withManifestLock(manifestPath, () => { ran = true }, { timeoutMs: 300 }),
@@ -180,9 +191,9 @@ describe('withManifestLock', () => {
     expect(existsSync(lockPath)).toBe(true) // untouched, not stolen
   })
 
-  it('P1 regression: a FRESH truncated-JSON lock file is NOT stolen', () => {
+  it('a FRESH truncated-JSON lock file (not one we created) is NOT stolen', () => {
     mkdirSync(path.dirname(manifestPath), { recursive: true })
-    writeFileSync(lockPath, '{"pid":123,"host":"' + hostname()) // partial write, invalid JSON
+    writeFileSync(lockPath, '{"pid":123,"host":"' + hostname()) // partial/corrupt content, invalid JSON
     let ran = false
     expect(() =>
       withManifestLock(manifestPath, () => { ran = true }, { timeoutMs: 300 }),
@@ -190,9 +201,9 @@ describe('withManifestLock', () => {
     expect(ran).toBe(false)
   })
 
-  it('an AGED unparseable lock (writer died before ever writing owner data) IS still reclaimed', () => {
+  it('an AGED unparseable lock (corrupt/abandoned, never a live owner) IS still reclaimed', () => {
     mkdirSync(path.dirname(manifestPath), { recursive: true })
-    writeFileSync(lockPath, '') // same as a fresh one, but...
+    writeFileSync(lockPath, '') // same content as fresh, but...
     const longAgo = new Date(Date.now() - 60_000) // ...backdated well past the grace period
     utimesSync(lockPath, longAgo, longAgo)
     const result = withManifestLock(manifestPath, () => 'ran-after-aged-steal', { timeoutMs: 3000 })
@@ -212,16 +223,13 @@ describe('withManifestLock', () => {
     expect(JSON.parse(readFileSync(lockPath, 'utf8')).nonce).toBe('foreign-malformed')
   })
 
-  it('P1 regression, real two-process race: intruder never enters while the victim holds the lock, even mid-write', async () => {
+  it('a foreign/legacy raw two-step lock (open-then-later-write, not our own acquire path) is NOT stolen while young', async () => {
     mkdirSync(path.dirname(manifestPath), { recursive: true }) // openSync(lockPath,'wx') needs a3/ to exist
     const logPath = path.join(tmpRoot, 'race.log')
-    // Victim: opens the lock (wx), then sleeps 300ms BEFORE writing its
-    // owner JSON - deliberately widening the real open()..write() window
-    // from microseconds to something an intruder can land inside.
+    // Victim: opens the lock with the OLD raw two-step shape (open, sleep,
+    // THEN write owner JSON) - not how our own code acquires any more, but
+    // exactly what a legacy/foreign lock-holder could still look like.
     const victim = runChild(RACE_VICTIM, [lockPath, logPath, '300', '150'])
-    // Intruder: starts 100ms in, squarely inside the victim's open..write
-    // window, and tries to acquire for up to 5s (long enough to observe
-    // the victim's full lifecycle: open -> write-owner -> release).
     const intruder = runChild(RACE_INTRUDER, [manifestPath, logPath, '100', '5000'])
     await Promise.all([victim, intruder])
 
@@ -233,5 +241,64 @@ describe('withManifestLock', () => {
     expect(releasedIdx).toBeGreaterThan(openedIdx)
     expect(enteredIdx).toBeGreaterThan(-1) // it must eventually get in...
     expect(enteredIdx).toBeGreaterThan(releasedIdx) // ...but only AFTER the victim released, never during
+  })
+
+  it('an arbitrarily long REAL critical section (via the shipped withManifestLock itself) is correctly waited out, never stolen', async () => {
+    mkdirSync(path.dirname(manifestPath), { recursive: true })
+    const logPath = path.join(tmpRoot, 'hold.log')
+    // Note on scope: this proves a concurrent acquirer correctly WAITS for
+    // release no matter how long the holder's fn() runs - which was never
+    // actually the vulnerable window in round 1 either (writeFileSync's
+    // internal open+write execute back-to-back with no observable gap in
+    // real, non-artificially-delayed usage; ownerIsAlive already handled
+    // "the pid is alive, so wait" correctly regardless of duration). It is
+    // a real guarantee worth pinning, but it is NOT the P1 regression -
+    // see the two tests below for that.
+    const HOLD_MS = 3000
+    const victim = runChild(HOLD_VICTIM, [manifestPath, logPath, String(HOLD_MS)])
+    const intruder = runChild(RACE_INTRUDER, [manifestPath, logPath, '200', '8000'])
+    await Promise.all([victim, intruder])
+
+    const events = readFileSync(logPath, 'utf8').trim().split('\n')
+    const enteredIdx = events.indexOf('victim:entered')
+    const releasedIdx = events.indexOf('victim:released')
+    const intruderIdx = events.indexOf('intruder:entered')
+    expect(enteredIdx).toBeGreaterThanOrEqual(0)
+    expect(releasedIdx).toBeGreaterThan(enteredIdx)
+    expect(intruderIdx).toBeGreaterThan(-1)
+    expect(intruderIdx).toBeGreaterThan(releasedIdx)
+  })
+
+  it('P1, round 2: no reader/acquirer EVER observes a partial lock file across many real concurrent acquisitions (the actual guarantee this fix makes)', async () => {
+    mkdirSync(path.dirname(manifestPath), { recursive: true })
+    const ACQUIRERS = 8
+    const pollErrors = []
+    let observations = 0
+    let stop = false
+    const pollLoop = (async () => {
+      while (!stop) {
+        try {
+          JSON.parse(readFileSync(lockPath, 'utf8')) // ENOENT (missing) is fine; a parse failure means we saw a NAME with incomplete/invalid content, which must never happen
+          observations += 1
+        } catch (err) {
+          if (err.code !== 'ENOENT') pollErrors.push(err.message)
+        }
+        await new Promise((r) => setTimeout(r, 1))
+      }
+    })()
+
+    // Real separate processes, each acquiring/releasing repeatedly, all
+    // through the exact shipped withManifestLock - the mechanism whose
+    // structural guarantee (content-complete-before-visible) this test
+    // exists to pin down.
+    const runAcquirer = (idx) =>
+      runChild(HOLD_VICTIM, [manifestPath, path.join(tmpRoot, `acquirer-${idx}.log`), '20'])
+    await Promise.all(Array.from({ length: ACQUIRERS }, (_, i) => runAcquirer(i)))
+
+    stop = true
+    await pollLoop
+
+    expect(pollErrors).toEqual([]) // <-- the actual P1 guarantee: never an unparseable read while a live acquirer holds it
+    expect(observations).toBeGreaterThan(0) // the poll loop actually raced against real acquisitions
   })
 })
