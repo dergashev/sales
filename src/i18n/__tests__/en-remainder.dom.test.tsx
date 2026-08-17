@@ -67,8 +67,18 @@ import { GENERATED_DE } from '../generated'
  * («Leistungsabgrenzung bestätigen», «Erst nach Bestätigung...»).
  * Немецкий — язык-источник, поэтому новая копия появляется на нём первой;
  * все пять стоят в следующей поставке копирайта.
+ * 48 → 52 (17.08, KG300/400/700 + Construction Period): KG 300 zeigt jetzt
+ * einen Energie-/Zertifikat-Kontext-Banner und eine schreibgeschützte
+ * Untergeschoss-Zusammenfassung (Details bleiben in Leistungsabgrenzung —
+ * kein zweiter Eigentümer derselben Entscheidung, siehe Kommentar bei
+ * `UndergroundFloorRecap`); Construction Period bekam ein Baubeginn-Feld.
+ * Vier neue unübersetzte Fragmente: der Banner-Disclaimer, die
+ * Untergeschoss-Einleitung, die Tiefgarage-Zeile und der Baubeginn-
+ * Hilfetext. Deutsch ist Quellsprache, daher erscheint der neue Text zuerst
+ * darin; alle vier stehen in der nächsten Copy-Lieferung
+ * (`docs/audit/i18n-en-worklist.md`).
  */
-const BUDGET = 48
+const BUDGET = 52
 
 /**
  * Немецкая лексика: умляуты и частотные служебные слова. Нормативные имена

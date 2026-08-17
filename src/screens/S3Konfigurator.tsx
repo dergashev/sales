@@ -5,9 +5,12 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { useSemanticMotion } from '../design-system/motion'
 import {
   activeBuilding,
   BUILDING_SCOPED_CHAPTERS,
+  choicesFor,
   configurationDisplayStatusFor,
   includedBuildingIds,
   useStore,
@@ -31,6 +34,7 @@ import {
 } from '../components/primitives'
 import {
   Badge,
+  FormField,
   NextStep,
   PageHeader,
   ReadinessChecklist,
@@ -46,6 +50,7 @@ import {
   KG300_GROUPS, KG400_GROUPS, ZERT_GROUPS, COVERAGE_RATES,
 } from '../engine/options'
 import { RISK_ITEMS, riskDriver } from '../engine/risk'
+import { shiftScheduleMetrics } from '../engine/schedule'
 import demo from '../fixtures/demo-0001.json'
 import { present, label as moneyLabel } from '../engine/money'
 import {
@@ -175,13 +180,25 @@ export function S3Konfigurator() {
             главу целиком. */}
         <div className="py-5">
           {totalOverview && <ConfigurationOverview />}
-          {!totalOverview && n === 1 && <OptionChapter groups={KG300_GROUPS}
-            intro={'Von oben nach unten: erst der Umfang, dann die Konstruktion, '
-              + 'zuletzt die Oberfläche. Jede Antwort zeigt ihre Folge am Preis, '
-              + 'bevor sie gewählt wird.'} />}
+          {!totalOverview && n === 1 && (
+            <div className="grid gap-5">
+              <EnergyCertBanner />
+              <UndergroundFloorRecap />
+              <OptionChapter groups={KG300_GROUPS}
+                intro={'Von oben nach unten: erst der Umfang, dann die Konstruktion, '
+                  + 'zuletzt die Oberfläche. Jede Antwort zeigt ihre Folge am Preis, '
+                  + 'bevor sie gewählt wird.'} />
+              <GroundRiskSection />
+            </div>
+          )}
           {!totalOverview && n === 2 && <ChapterUmfang />}
-          {!totalOverview && n === 3 && <OptionChapter groups={KG400_GROUPS}
-            intro={'Technische Anlagen nach DIN 276. Die Wahl der Erzeugung und der Lüftung entscheidet mit, welcher Energiestandard überhaupt erreichbar bleibt.'} />}
+          {!totalOverview && n === 3 && (
+            <div className="grid gap-5">
+              <EnergyCertBanner />
+              <OptionChapter groups={KG400_GROUPS}
+                intro={'Technische Anlagen nach DIN 276. Die Wahl der Erzeugung und der Lüftung entscheidet mit, welcher Energiestandard überhaupt erreichbar bleibt.'} />
+            </div>
+          )}
           {!totalOverview && n === 4 && (
             <div className="grid gap-5">
               <ChapterEnergie />
@@ -880,12 +897,20 @@ const MANDATORY_SCOPE_GROUPS = new Set<CostGroup>(
  * bestehende Kunden-Bestätigung (`esConfirmed`) zu duplizieren — die bleibt
  * ausschließlich in "Energie & Zertifikate" (Kapitel 4).
  */
+/**
+ * Modulweite Beschriftung, damit `EnergiestandardPicker` UND der neue
+ * `EnergyCertBanner` (KG 300/400) dieselbe Quelle zeigen — zwei Kopien
+ * derselben Zuordnung hätten genau die Klasse von Fehler zugelassen, die
+ * dieser Datei-Kopfkommentar an anderer Stelle beschreibt (ein Fakt, zwei
+ * Namen).
+ */
+const LABEL_ES: Record<BuildingInput['energiestandard'], string> = {
+  GEG: 'GEG-Standard', EH_55: `Effizienzhaus${NNBSP}55`, EH_40: `Effizienzhaus${NNBSP}40`,
+  EH_40_NH: `Effizienzhaus${NNBSP}40${NNBSP}NH (QNG)`,
+}
+
 function EnergiestandardPicker() {
   const s = useStore()
-  const LABEL_ES: Record<BuildingInput['energiestandard'], string> = {
-    GEG: 'GEG-Standard', EH_55: `Effizienzhaus${NNBSP}55`, EH_40: `Effizienzhaus${NNBSP}40`,
-    EH_40_NH: `Effizienzhaus${NNBSP}40${NNBSP}NH (QNG)`,
-  }
   return (
     <RadioCardGroup
       legend="Energiestandard"
@@ -902,6 +927,118 @@ function EnergiestandardPicker() {
           : consequenceLabel(s.optionDelta({ kind: 'energiestandard', value: v })),
       }))}
     />
+  )
+}
+
+function certLabel(groupId: 'qng' | 'dgnb', value: string): string {
+  const group = ZERT_GROUPS.find((g) => g.id === groupId)
+  return group?.choices.find((c) => c.value === value)?.label ?? value
+}
+
+/**
+ * KG 300/400 (тикет): контекстная шапка глав — уже выбранный
+ * Energiestandard и Zertifikat плюс явное предупреждение о фильтрации.
+ * Тот же композиционный приём, что у `ConfigurationModeContext` (полоса
+ * border-y выше содержимого главы, жирная строка + пояснение вторым
+ * рядом) — второго варианта «полосы контекста» в системе не заводится.
+ *
+ * Значение читается из текущего состояния здания напрямую, а не из факта
+ * посещения главы 4: Energiestandard уже имеет T0-умолчание и уже
+ * редактируется в главе 2 (`EnergiestandardPicker`, см. комментарий выше),
+ * поэтому баннер корректен независимо от порядка обхода глав (D-08 —
+ * данные не бывают «ещё не существующими», только неподтверждёнными).
+ */
+function EnergyCertBanner() {
+  const s = useStore()
+  const tx = useTx()
+  const b = activeBuilding(s)
+  const chosen = choicesFor(s, b.id)
+  const qng = chosen['qng'] ?? 'keins'
+  const dgnb = chosen['dgnb'] ?? 'keins'
+  const certParts = [
+    qng !== 'keins' ? `QNG ${certLabel('qng', qng)}` : null,
+    dgnb !== 'keins' ? `DGNB ${certLabel('dgnb', dgnb)}` : null,
+  ].filter((v): v is string => v !== null)
+  return (
+    <section
+      aria-label={tx('Energie- und Zertifizierungskontext')}
+      className="flex flex-wrap items-start justify-between gap-3 border-y border-border-subtle py-3"
+    >
+      <p className="text-body text-text-primary">
+        <strong>
+          {tx('Energiestandard')}: {LABEL_ES[b.energiestandard]}
+          {certParts.length > 0 && <> · {tx('Zertifikat')}: {certParts.join(' · ')}</>}
+        </strong>
+        <span className="mt-1 block text-small font-normal text-text-secondary">
+          {tx('Die folgenden Auswahlmöglichkeiten sind bereits auf diesen Standard abgestimmt.')}
+        </span>
+      </p>
+      {s.mode === 'intern' && (
+        <Button variant="ghost" onClick={() => s.openChapterAt(4)}>
+          {tx('Zu Kapitel 4 · Energie & Zertifikate')}
+        </Button>
+      )}
+    </section>
+  )
+}
+
+/**
+ * KG 300 (тикет), Punkte 3–4 «Underground floor» / «Underground-floor use»:
+ * bewusst KEINE zweite interaktive Kontrolle. Der Kommentar bei der
+ * `Untergeschoss`-Kachel in `ChapterUmfang` (Leistungsabgrenzung) nennt den
+ * Grund konkret: dieselbe Wahl existierte einst ein zweites Mal als
+ * `ugVariante` in KG 300 und führte zu einer echten Doppelabrechnung des
+ * Untergeschosses — Zahlen wichen 36 €/m² von der Spezifikation ab (Review
+ * 26, Befunde 5 und 19), behoben, indem „ein Entschluss — ein Eigentümer"
+ * wurde. Diese Karte ZEIGT den bereits in Leistungsabgrenzung bestätigten
+ * Zustand und verlinkt dorthin, statt ihn hier zweiten Mal editierbar zu
+ * machen — funktional erfüllt das die Anforderung „sichtbar in KG 300",
+ * ohne den bekannten Fehler erneut einzuführen.
+ *
+ * `hasParking` (Tiefgarage) hat im Store noch keinen eigenen Setter — der
+ * Wert kommt ausschließlich aus der Gebäudeprüfung (Building & Scope).
+ * Auch hier reine Anzeige statt einer erfundenen Mutation (siehe
+ * Implementierungsbericht, bekannte Einschränkung dieses Kandidaten).
+ */
+function UndergroundFloorRecap() {
+  const s = useStore()
+  const tx = useTx()
+  const { fadeRise } = useSemanticMotion()
+  const b = activeBuilding(s)
+  const included = b.untergeschoss !== 'kein_ug'
+  return (
+    <Card
+      title="Untergeschoss"
+      intro={'Entschieden in Leistungsabgrenzung — hier nur zur Einordnung sichtbar.'}
+    >
+      <p className="text-body text-text-primary">
+        <span aria-hidden="true">{included ? '● ' : '▲ '}</span>
+        {included ? tx('Enthalten') : tx('Nicht enthalten')}
+      </p>
+      <AnimatePresence initial={false} mode="wait">
+        {included && (
+          <motion.div
+            key="ug-included-detail"
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            variants={fadeRise}
+          >
+            <p className="a3-cap mt-1">{LABEL_UG[b.untergeschoss]}</p>
+            <p className="a3-cap mt-2">
+              {b.hasParking
+                ? tx('Tiefgarage im Untergeschoss enthalten.')
+                : tx('Keine Tiefgarage im Untergeschoss.')}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <div className="mt-3">
+        <Button onClick={() => s.openChapterAt(2)}>
+          {tx('Zu Kapitel 2 · Leistungsabgrenzung')}
+        </Button>
+      </div>
+    </Card>
   )
 }
 
@@ -1110,14 +1247,52 @@ function ChapterEnergie() {
  * значение, что показывает герой срока в правой панели: два представления
  * одной даты обязаны приходить из одного места.
  */
+/**
+ * Construction Period (тикет): Baubeginn wählen. Verschiebt NUR den Anker
+ * des `ScheduleModel` (`shiftScheduleMetrics`, `engine/schedule.ts`) — keine
+ * neue Dauerformel, `dur`/`durationLabel` bleiben unverändert, weil die
+ * Modell-Dauer nur von `BGF oberirdisch`/`Form`/`GK` abhängt (§4), nicht vom
+ * Kalenderdatum. Erste Produktion des kontraktierten `FormField`-Varianten
+ * `date` (components-core.md §FormField) — bislang ungenutzt im Produkt.
+ */
+function ConstructionStartDateField() {
+  const s = useStore()
+  const tx = useTx()
+  const id = 'construction-start-date'
+  return (
+    <FormField
+      label={tx('Baubeginn')}
+      htmlFor={id}
+      helperText={tx('Verschiebt die Termine unten; die Bauzeit selbst bleibt gleich.')}
+    >
+      <span className="a3-input">
+        <input
+          type="date"
+          className="outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+          value={s.constructionStartDate ?? ''}
+          onChange={(e) => s.setConstructionStartDate(e.target.value || null)}
+        />
+      </span>
+    </FormField>
+  )
+}
+
 function ChapterTermine() {
   const s = useStore()
   const tx9 = useTx()
   const metrics = demo.schedule.metrics
-  const planning = metrics.find((m) => m.metricKey === 'project.planning')!
-  const haus = metrics.find((m) => m.metricKey === 'building:DEMO-B-A.execution')!
+  const planningFixture = metrics.find((m) => m.metricKey === 'project.planning')!
+  const hausFixture = metrics.find((m) => m.metricKey === 'building:DEMO-B-A.execution')!
+  const shifted = s.constructionStartDate
+    ? shiftScheduleMetrics(
+      [planningFixture, hausFixture], planningFixture.startDate, s.constructionStartDate,
+    )
+    : [planningFixture, hausFixture]
+  const planning = shifted.find((m) => m.metricKey === planningFixture.metricKey)!
+  const haus = shifted.find((m) => m.metricKey === hausFixture.metricKey)!
   // Подпись длительности исполнения — из ТОЙ ЖЕ проекции, что герой срока
-  // в панели: два представления одной величины из одного места.
+  // в панели: два представления одной величины из одного места. Дата
+  // Baubeginn сдвигает Kalenderdaten, nicht diese modellierte Dauer.
   const dur = s.projection().duration
 
   return (
@@ -1128,6 +1303,8 @@ function ChapterTermine() {
           'zwei Zeilen und nicht eine. Die Fertigstellung ist dieselbe Zahl, die ' +
           'oben rechts als Kennzahl steht.'}
       >
+        <ConstructionStartDateField />
+        <div className="mt-4">
         <ScheduleGantt
           caption="Bauzeit nach Phasen mit Beginn, Ende, Dauer und Abhängigkeit"
           finishISO={haus.endDate}
@@ -1157,6 +1334,7 @@ function ChapterTermine() {
             },
           ]}
         />
+        </div>
       </Card>
 
       {/* Последняя глава конвейера обязана называть следующий шаг (DC-27):
@@ -1240,110 +1418,118 @@ function ChapterKg700() {
 }
 
 /**
- * Честное состояние непроработанной главы (правило 30): прототип объявляет
- * границу своего объёма, вместо того чтобы показать пустоту или выдумку.
+ * KG 300 (тикет), Punkt 9 «Ground Conditions & Access»: дословно тот же
+ * приём accept/ignore, что уже жил в главе «Baugrund & Erschließung» —
+ * `s.risikoAktiv`/`s.toggleRisiko`/`s.outcomeOf({kind:'risiko',...})`
+ * без изменений, риск остаётся НАЗВАННЫМ независимо от состояния (кнопка
+ * не выключает риск из реальности, только из сметы). Секция переехала в
+ * KG 300 по требованию тикета; сама механика — уже согласованная,
+ * production-проверенная, коммерческая логика не меняется.
  */
+function GroundRiskSection() {
+  const s = useStore()
+  const tx = useTx()
+  const kg300Exact = s.projection().kgSplit.KG_300
+
+  return (
+    <Card
+      title="Baugrund & Zufahrt"
+      intro={'Der Baugrund entscheidet über Gründung und KG 320. Ohne '
+        + 'Gutachten bleibt er ein benanntes Risiko — kein Preisbestandteil '
+        + 'und keine stillschweigende Annahme.'}
+    >
+      {/* Типизированные риски фикстуры: категория · вероятность ·
+          ставка · НАЗВАННАЯ база. Надбавка — реальные деньги (D-02),
+          и её сумма считается от своей группы затрат, а не «примерно
+          от KG 300»: для этого и появился третий уровень KG. */}
+      {RISK_ITEMS.map((r) => {
+        const d = riskDriver(r, kg300Exact)
+        const on = s.risikoAktiv[r.id] === true
+        return (
+          <div key={r.id} className="a3-konflikt mt-3">
+            <p className="text-body text-text-primary">
+              <span aria-hidden="true">{on ? '● ' : '▲ '}</span>
+              {tx(r.label)}
+            </p>
+            <div className="a3-kv">
+              <span>
+                <span className="a3-cap block">{tx('Kategorie')}</span>
+                {tx(r.kategorie)}
+              </span>
+              <span>
+                <span className="a3-cap block">{tx('Wahrscheinlichkeit')}</span>
+                {tx(r.wahrscheinlichkeit)}
+              </span>
+              <span>
+                <span className="a3-cap block">
+                  {tx('Zuschlag')} · {(Number(r.rate) * 100).toFixed(0)}{NNBSP}%
+                  {' '}{tx('auf')} {r.base.replace('_', NNBSP)}
+                </span>
+                <span className="numeric">
+                  {d ? moneyLabel(present(d.exact)) : '—'}
+                </span>
+              </span>
+            </div>
+            <p className="a3-cap mt-2">
+              {on
+                ? tx('Im Angebot enthalten. Der Zuschlag ist die Rechnung für ein fehlendes Dokument und entfällt, sobald es vorliegt.')
+                : tx('Noch nicht im Angebot. Die Schätzunsicherheit bleibt davon unberührt: sie ist Statistik und wird nicht addiert.')}
+            </p>
+            <p className="a3-cap mt-1">
+              <span aria-hidden="true">→ </span>{tx(r.remedy)}
+            </p>
+            {/* Последствие видно ДО клика и приходит из той же проекции
+                (R-05, предложение № 1 исследования рычага). Прежде у
+                надбавки будущего итога не было вовсе: сумма самой
+                надбавки есть, а «сколько станет» продавец складывал
+                в голове. */}
+            <p className="a3-cap mt-1 numeric">
+              {consequenceLabel(
+                s.outcomeOf({ kind: 'risiko', id: r.id, active: !on }).delta,
+              )}
+            </p>
+            <div className="a3-row mt-3">
+              <Button
+                variant={on ? 'secondary' : 'primary'}
+                onClick={() => s.toggleRisiko(r.id)}
+                onMouseEnter={() =>
+                  s.previewOption({ kind: 'risiko', id: r.id, active: !on })}
+                onMouseLeave={() => s.previewOption(null)}
+                onFocus={() =>
+                  s.previewOption({ kind: 'risiko', id: r.id, active: !on })}
+                onBlur={() => s.previewOption(null)}
+              >
+                {on ? tx('Zuschlag entfernen') : tx('Zuschlag anwenden')}
+              </Button>
+              {isVisibleInOutputProfile(s.mode, 'internalOnly') && (
+                <Button onClick={() => s.opportunityId && s.openOpportunity(s.opportunityId)}>
+                  {tx('Frage an den Kunden · in der Vorbereitung')}
+                </Button>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </Card>
+  )
+}
+
 /**
- * Глава 7 · Baugrund & Erschließung — глава ДАННЫХ, не выбора (дефект 4
- * ревью № 13: раньше здесь стояло «не проработано» посреди золотого пути).
- *
- * Содержание строго из источников: риск Baugrund — типизированная запись
- * фикстуры (категория · вероятность · Kostenwirkung +4 % auf KG 320,
- * calculation-spec §«Baugrundgutachten liegt nicht vor»); риск НЕ входит
- * в цену — он ось риска, не неопределённости, и до появления Gutachten
- * остаётся названным риском (CALC-001: оси не смешиваются). По
- * Erschließung документация фикстуры фактов не содержит — пустота названа
- * с источником, решение о KG 200 живёт в главе 3 и здесь только
- * показывается со ссылкой.
+ * Глава «Baugrund & Erschließung»: nach der Verlagerung der Risiko-Karten
+ * nach KG 300 (Punkt 9 des Tickets) bleibt hier nur der Erschließungs-
+ * Hinweis — KG 200 gehört zu diesem Ticket nicht (Non-Goal), daher
+ * unverändert außer einer Korrektur: der Link zeigte auf Kapitel 3
+ * („Technik KG 400"), obwohl er „Leistungsabgrenzung" nennt — das ist
+ * Kapitel 2 (`CHAPTERS[1]`). Vorgefundener Fehler, in derselben Zeile
+ * behoben, keine Verhaltensänderung sonst.
  */
 function ChapterBaugrund() {
   const s = useStore()
   const tx = useTx()
   const kg200 = s.coverage.KG_200
-  const kg300Exact = s.projection().kgSplit.KG_300
 
   return (
     <div className="grid gap-5">
-      <Card
-        title="Baugrund"
-        intro={'Der Baugrund entscheidet über Gründung und KG 320. Ohne '
-          + 'Gutachten bleibt er ein benanntes Risiko — kein Preisbestandteil '
-          + 'und keine stillschweigende Annahme.'}
-      >
-        {/* Типизированные риски фикстуры: категория · вероятность ·
-            ставка · НАЗВАННАЯ база. Надбавка — реальные деньги (D-02),
-            и её сумма считается от своей группы затрат, а не «примерно
-            от KG 300»: для этого и появился третий уровень KG. */}
-        {RISK_ITEMS.map((r) => {
-          const d = riskDriver(r, kg300Exact)
-          const on = s.risikoAktiv[r.id] === true
-          return (
-            <div key={r.id} className="a3-konflikt mt-3">
-              <p className="text-body text-text-primary">
-                <span aria-hidden="true">{on ? '● ' : '▲ '}</span>
-                {tx(r.label)}
-              </p>
-              <div className="a3-kv">
-                <span>
-                  <span className="a3-cap block">{tx('Kategorie')}</span>
-                  {tx(r.kategorie)}
-                </span>
-                <span>
-                  <span className="a3-cap block">{tx('Wahrscheinlichkeit')}</span>
-                  {tx(r.wahrscheinlichkeit)}
-                </span>
-                <span>
-                  <span className="a3-cap block">
-                    {tx('Zuschlag')} · {(Number(r.rate) * 100).toFixed(0)}{NNBSP}%
-                    {' '}{tx('auf')} {r.base.replace('_', NNBSP)}
-                  </span>
-                  <span className="numeric">
-                    {d ? moneyLabel(present(d.exact)) : '—'}
-                  </span>
-                </span>
-              </div>
-              <p className="a3-cap mt-2">
-                {on
-                  ? tx('Im Angebot enthalten. Der Zuschlag ist die Rechnung für ein fehlendes Dokument und entfällt, sobald es vorliegt.')
-                  : tx('Noch nicht im Angebot. Die Schätzunsicherheit bleibt davon unberührt: sie ist Statistik und wird nicht addiert.')}
-              </p>
-              <p className="a3-cap mt-1">
-                <span aria-hidden="true">→ </span>{tx(r.remedy)}
-              </p>
-              {/* Последствие видно ДО клика и приходит из той же проекции
-                  (R-05, предложение № 1 исследования рычага). Прежде у
-                  надбавки будущего итога не было вовсе: сумма самой
-                  надбавки есть, а «сколько станет» продавец складывал
-                  в голове. */}
-              <p className="a3-cap mt-1 numeric">
-                {consequenceLabel(
-                  s.outcomeOf({ kind: 'risiko', id: r.id, active: !on }).delta,
-                )}
-              </p>
-              <div className="a3-row mt-3">
-                <Button
-                  variant={on ? 'secondary' : 'primary'}
-                  onClick={() => s.toggleRisiko(r.id)}
-                  onMouseEnter={() =>
-                    s.previewOption({ kind: 'risiko', id: r.id, active: !on })}
-                  onMouseLeave={() => s.previewOption(null)}
-                  onFocus={() =>
-                    s.previewOption({ kind: 'risiko', id: r.id, active: !on })}
-                  onBlur={() => s.previewOption(null)}
-                >
-                  {on ? tx('Zuschlag entfernen') : tx('Zuschlag anwenden')}
-                </Button>
-                {isVisibleInOutputProfile(s.mode, 'internalOnly') && (
-                  <Button onClick={() => s.opportunityId && s.openOpportunity(s.opportunityId)}>
-                    {tx('Frage an den Kunden · in der Vorbereitung')}
-                  </Button>
-                )}
-              </div>
-            </div>
-          )
-        })}
-      </Card>
-
       <Card
         title="Erschließung"
         intro={'Erschließung gehört zu KG 200 — die Entscheidung über den '
@@ -1357,7 +1543,7 @@ function ChapterBaugrund() {
           KG{NNBSP}200 im Angebot: {COVERAGE_LABEL[kg200]}
         </p>
         <div className="mt-2">
-          <Button onClick={() => s.openChapterAt(3)}>{tx('Zu Kapitel 3 · Leistungsabgrenzung')}</Button>
+          <Button onClick={() => s.openChapterAt(2)}>{tx('Zu Kapitel 2 · Leistungsabgrenzung')}</Button>
         </div>
       </Card>
     </div>

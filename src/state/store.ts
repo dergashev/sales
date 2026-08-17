@@ -984,6 +984,14 @@ type Store = {
    */
   density: 'komfortabel' | 'kompakt'
   openChapter: number
+  /**
+   * Construction Period (тикет KG300/400/700 + Bauzeit-Reise): vom Vertrieb
+   * gewählter Baubeginn. `null` — noch keine Wahl, das ScheduleModel zeigt
+   * die Fixture-Epoche unverändert. Bewusst NICHT Teil von `OptionConfig`:
+   * dieses Feld folgt noch nicht Snapshot/Undo/Persistenz einer Option
+   * (bekannte Vereinfachung dieses Kandidaten, siehe Implementierungsbericht).
+   */
+  constructionStartDate: string | null
 
   projection: () => Projection
   editField: (key: 'wfl' | 'bgfOber' | 'we', value: Decimal, confirmed: boolean) => void
@@ -1013,6 +1021,12 @@ type Store = {
   sendOffer: (kind: 'email' | 'print') => OfferSnapshot
   /** Скидка как решение: событие журнала с дельтой (D-25, CALC-007). */
   setDiscount: (percent: Decimal | null) => void
+  /**
+   * Construction Period: Baubeginn wählen. Verschiebt nur den Anker des
+   * ScheduleModel (`engine/schedule.ts: shiftScheduleMetrics`) — keine neue
+   * Dauerformel, keine Preiswirkung, daher `deltaExact: null` im Journal.
+   */
+  setConstructionStartDate: (iso: string | null) => void
   /**
    * Правка черновика письма. События журнала НЕ создаёт: текст письма — не
    * данные варианта и цену не меняет, а M-4 говорит о данных. Но и терять
@@ -1990,6 +2004,7 @@ const store = createStore<Store>((set, get) => {
     preview: null,
     undoToast: null,
     mode: 'intern',
+    constructionStartDate: null,
     level: 'liste',
     opportunityId: null,
     projectParamsConfirmed: false,
@@ -2377,6 +2392,32 @@ const store = createStore<Store>((set, get) => {
         deltaExact: delta.isZero() ? null : delta,
         inverse: () => set({ discountPercent: prev }),
         forward: () => set({ discountPercent: percent }),
+      })
+    },
+
+    /**
+     * Construction Period: Baubeginn wählen oder zurücksetzen. Verschiebt
+     * nur den Anker des ScheduleModel (`shiftScheduleMetrics`) — keine
+     * Preiswirkung, daher `deltaExact: null`. M-4: keine Änderung ohne
+     * Ereignis, auch wenn kein Betrag betroffen ist.
+     */
+    setConstructionStartDate: (iso) => {
+      const s = get()
+      const prev = s.constructionStartDate
+      if (prev === iso) return
+      set({ constructionStartDate: iso })
+      const label = (d: string) => {
+        const [y, m, dd] = d.split('-')
+        return `${dd}.${m}.${y}`
+      }
+      apply({
+        kind: 'value.edited',
+        label: iso
+          ? `Baubeginn auf ${label(iso)} gesetzt`
+          : 'Baubeginn zurückgesetzt',
+        deltaExact: null,
+        inverse: () => set({ constructionStartDate: prev }),
+        forward: () => set({ constructionStartDate: iso }),
       })
     },
 

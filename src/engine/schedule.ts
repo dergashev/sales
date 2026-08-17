@@ -143,3 +143,38 @@ export function projectTotalEnd(metrics: ScheduleMetric[]): string {
   if (!ends.length) throw new Error('нет метрик исполнения зданий')
   return ends.reduce((a, b) => (Date.parse(b) > Date.parse(a) ? b : a))
 }
+
+function addDaysISO(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+/**
+ * Construction Period (тикет): выбранная дата начала строительства сдвигает
+ * ScheduleModel как единое целое — якорь эпохи меняется, длительности и
+ * зависимости между фазами НЕТ. Это не новая формула срока (§4 остаётся
+ * тем же источником длительности): к каждой дате каждой метрики прибавляется
+ * одна и та же целочисленная дельта в днях между исходным и выбранным
+ * началом эпохи.
+ *
+ * `anchorStartISO` — исходное начало эпохи фикстуры (обычно начало фазы
+ * `project.planning`); `chosenStartISO` — то, что выбрал продавец.
+ */
+export function shiftScheduleMetrics<
+  M extends { startDate: string; endDate: string },
+>(
+  metrics: M[],
+  anchorStartISO: string,
+  chosenStartISO: string,
+): M[] {
+  const deltaDays = Math.round(
+    (Date.parse(chosenStartISO) - Date.parse(anchorStartISO)) / 86_400_000,
+  )
+  if (deltaDays === 0) return metrics
+  return metrics.map((m) => ({
+    ...m,
+    startDate: addDaysISO(m.startDate, deltaDays),
+    endDate: addDaysISO(m.endDate, deltaDays),
+  }))
+}

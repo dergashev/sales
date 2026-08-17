@@ -400,11 +400,17 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-g-row{display:grid;grid-template-columns:var(--size-timeline-label) 1fr;gap:var(--space-3);align-items:center;margin-bottom:var(--space-3)}
 .a3-g-row .a3-lbl{font-size:var(--type-small-size)}
 .a3-g-track{position:relative;height:var(--space-5);background:var(--color-surface-canvas);border-bottom:var(--border-hairline)}
-.a3-g-seg{position:absolute;top:0;bottom:0;transform:scaleX(0);transform-origin:left;transition:transform .48s var(--motion-easing-emphasized);display:flex;align-items:center;justify-content:center;overflow:visible}
+.a3-g-seg{position:absolute;top:0;bottom:0;transform:scaleX(0);transform-origin:left;transition:transform .48s var(--motion-easing-emphasized),left var(--motion-emphasis) var(--motion-easing-emphasized),width var(--motion-emphasis) var(--motion-easing-emphasized);display:flex;align-items:center;justify-content:center;overflow:visible}
 .a3-g-seg-label{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-bold);color:var(--color-text-inverse);white-space:nowrap}
 .a3-g-seg.a3-phase-ausbau .a3-g-seg-label{color:var(--color-text-primary)}
 .a3-gantt.a3-in .a3-g-seg{transform:scaleX(1)}
-.a3-g-fin{position:absolute;top:calc(-1 * var(--space-1));bottom:calc(-1 * var(--space-1));width:var(--border-width-strong);background:var(--color-text-primary)}
+/* Construction Period (тикет): Baubeginn kann den Anker der Metriken
+   verschieben (`shiftScheduleMetrics`). Bei einem gleichmäßigen Versatz
+   ändern sich die Prozentanteile meist nicht — sollte eine ganzzahlige
+   Kalendermonat-Rundung dennoch eine kleine Verschiebung erzeugen, gleitet
+   der Balken/Meilenstein statt zu springen. Gleicher Token wie oben
+   (`--motion-emphasis`), damit die Komponente in sich konsistent bleibt. */
+.a3-g-fin{position:absolute;top:calc(-1 * var(--space-1));bottom:calc(-1 * var(--space-1));width:var(--border-width-strong);background:var(--color-text-primary);transition:left var(--motion-emphasis) var(--motion-easing-emphasized)}
 .a3-g-axis{display:grid;grid-template-columns:var(--size-timeline-label) 1fr;gap:var(--space-3)}
 .a3-g-axis .a3-scale{position:relative;height:var(--space-4);font-size:var(--type-caption-size);color:var(--color-text-muted)}
 .a3-g-axis .a3-scale span{position:absolute;transform:translateX(-50%)}

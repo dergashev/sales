@@ -103,18 +103,20 @@ describe('Сквозной сценарий продажи', () => {
     expect(within(table).getByText('19.11.2027')).toBeInTheDocument()
   })
 
-  it('глава 7 — глава данных: риск Baugrund типизирован, пустота Erschließung названа', async () => {
+  it('KG 300 — Ground Conditions & Access: риск Baugrund типизирован; Baugrund & Erschließung — пустота Erschließung названа', async () => {
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
     await user.click(nav(/Konfigurator/))
-    await user.click(nav(/Baugrund & Erschließung/))
+    // Тикет KG300/400/700 + Construction Period, пункт 9: Ground
+    // Conditions & Access переехал в KG 300 из «Baugrund & Erschließung» —
+    // тот же самый уже согласованный accept/ignore-механизм, другое место.
+    await user.click(nav(/Leistungen KG 300/))
     // Риск — категория · вероятность · следствие, и он НЕ в цене (CALC-001).
     expect(screen.getByText('Baugrundgutachten liegt nicht vor')).toBeInTheDocument()
     // Надбавка — реальные деньги (D-02) с НАЗВАННОЙ базой: подгруппа
     // KG 320, а не «примерно от KG 300». Решение PO 07.08 о третьем
     // уровне KG сделало сумму вычислимой.
-    expect(screen.getByText(/Baugrundgutachten liegt nicht vor/)).toBeInTheDocument()
     expect(screen.getByText(/Zuschlag · 4 % auf KG 320/)).toBeInTheDocument()
     expect(screen.getAllByText(/Noch nicht im Angebot/).length).toBe(2)
 
@@ -127,9 +129,15 @@ describe('Сквозной сценарий продажи', () => {
     const kg320 = useStore.getState().projection().kgSplit.KG_300.mul('0.11')
     expect(after.minus(before).toFixed(2)).toBe(kg320.mul('0.04').toFixed(2))
     expect(screen.getAllByText(/Im Angebot enthalten/).length).toBe(1)
-    // Пустота по Erschließung названа с источником, решение — в главе 3.
+
+    // Erschließung bleibt eine reine Datenkarte in «Baugrund & Erschließung»
+    // (Non-Goal: KG 200 wird von diesem Ticket nicht angefasst). Der Link
+    // zeigte fälschlich auf Kapitel 3 («Technik KG 400») statt auf Kapitel 2
+    // («Leistungsabgrenzung») — vorgefundener Fehler, in derselben Zeile
+    // behoben.
+    await user.click(nav(/Baugrund & Erschließung/))
     expect(screen.getByText(/keine Angaben zur Erschließung/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Zu Kapitel 3/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Zu Kapitel 2/ })).toBeInTheDocument()
   })
 
   it('дельта-чип и призрак ВИДИМЫ: состояние несёт .a3-show, не кадр анимации', async () => {
