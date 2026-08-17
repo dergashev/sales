@@ -50,7 +50,7 @@ import {
   KG300_GROUPS, KG400_GROUPS, ZERT_GROUPS, COVERAGE_RATES,
 } from '../engine/options'
 import { RISK_ITEMS, riskDriver } from '../engine/risk'
-import { shiftScheduleMetrics } from '../engine/schedule'
+import { presentDuration, shiftScheduleMetrics } from '../engine/schedule'
 import demo from '../fixtures/demo-0001.json'
 import { present, label as moneyLabel } from '../engine/money'
 import {
@@ -1265,14 +1265,19 @@ function ConstructionStartDateField() {
       htmlFor={id}
       helperText={tx('Verschiebt die Termine unten; die Bauzeit selbst bleibt gleich.')}
     >
-      <span className="a3-input">
-        <input
-          type="date"
-          className="outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-          value={s.constructionStartDate ?? ''}
-          onChange={(e) => s.setConstructionStartDate(e.target.value || null)}
-        />
-      </span>
+      {/* `.a3-form-field input` (components.css) trägt bereits Rahmen,
+          Hit-Target-Höhe und Fokusring über den globalen `:focus-visible`-
+          Token — kein eigener Wrapper, keine eigene Fokus-Klasse (Tech
+          Review P1: eine `<span>`-Hülle als FormField-Kind bricht das
+          `cloneElement`-Contract: `id`/`aria-describedby` landeten auf der
+          Hülle statt auf dem Eingabefeld, das Feld hatte keinen
+          barrierefreien Namen). Direktes `<input>`, wie jeder andere
+          FormField-Aufrufer im Produkt. */}
+      <input
+        type="date"
+        value={s.constructionStartDate ?? ''}
+        onChange={(e) => s.setConstructionStartDate(e.target.value || null)}
+      />
     </FormField>
   )
 }
@@ -1294,6 +1299,23 @@ function ChapterTermine() {
   // в панели: два представления одной величины из одного места. Дата
   // Baubeginn сдвигает Kalenderdaten, nicht diese modellierte Dauer.
   const dur = s.projection().duration
+  // Planung: 3 Monate ist eine feste Katalogkonstante (calculation-spec §4),
+  // unabhängig vom Anker. Aber ein verschobener Baubeginn kann die
+  // Kalendergrenze aus einem GANZEN Kalendermonat herausschieben (Tech
+  // Review P2, D-17): dann ist die Anzeige nicht mehr exakt und braucht das
+  // `≈`-Präfix — genau das, was `presentDuration` bereits für die
+  // Ausführung leistet, hier auf die feste Planungsdauer angewendet statt
+  // eine zweite Rundungsregel zu erfinden.
+  const planningDuration = presentDuration(
+    {
+      metricKey: planning.metricKey,
+      kind: 'planning',
+      startDate: planning.startDate,
+      endDate: planning.endDate,
+      durationBasis: 'calendarDay',
+    },
+    new Decimal(3),
+  )
 
   return (
     <div className="grid gap-5">
@@ -1319,7 +1341,7 @@ function ChapterTermine() {
               dependency: 'Planungsbeginn',
               startISO: planning.startDate,
               endISO: planning.endDate,
-              durationLabel: `3${NNBSP}Monate`,
+              durationLabel: `${planningDuration.prefix}${planningDuration.prefix ? NNBSP : ''}${planningDuration.display}`,
               colorVar: '--color-dataviz-category-1',
             },
             {

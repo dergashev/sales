@@ -24,7 +24,9 @@ import {
   defaultOptionChoices, optionDrivers, coverageDrivers, ALL_OPTION_GROUPS, ZERT_GROUPS,
 } from '../engine/options'
 import derivedFx from '../fixtures/derived-prototype.json'
-import { modelDuration, presentDuration, type DurationDisplay } from '../engine/schedule'
+import {
+  modelDuration, presentDuration, shiftScheduleMetrics, type DurationDisplay,
+} from '../engine/schedule'
 import { RISK_ITEMS, riskDriver } from '../engine/risk'
 import {
   appendConflictResolution,
@@ -1531,7 +1533,8 @@ function computeProjection(
   s: Pick<Store, 'buildings' | 'activeBuildingId' | 'included' | 'coverage'
     | 'fields' | 'esConfirmed' | 'regionalfaktorActive' | 'kg300' | 'kg700Mode'
     | 'risikoAktiv' | 'scopeBuildingId' | 'discountPercent'
-    | 'configurationMode' | 'sharedConfiguration' | 'buildingReviews'>,
+    | 'configurationMode' | 'sharedConfiguration' | 'buildingReviews'
+    | 'constructionStartDate'>,
 ): Projection {
   const CATALOG = withRegionalFactor(s.regionalfaktorActive)
   const list = scopedBuildings(s)
@@ -1654,11 +1657,27 @@ function computeProjection(
   ), new Decimal(0))
   const ug = total.minus(noUg)
 
+  // Construction Period (тикет): Baubeginn сдвигает ScheduleModel как единое
+  // целое — этот герой срока и ScheduleGantt в главе 8 обязаны показывать
+  // ОДНУ и ту же Fertigstellung (Tech Review P1: до этой правки герой читал
+  // фиксированный литерал и не двигался вместе с диаграммой). Якорь —
+  // ТА ЖЕ дата начала `project.planning`, что использует ChapterTermine.
+  const executionAnchor = demo.schedule.metrics
+    .find((m) => m.metricKey === 'project.planning')!.startDate
+  const shiftedExecution = (s.constructionStartDate
+    ? shiftScheduleMetrics(
+      [{ startDate: '2027-04-04', endDate: '2027-11-19' }],
+      executionAnchor,
+      s.constructionStartDate,
+    )
+    : [{ startDate: '2027-04-04', endDate: '2027-11-19' }])[0]!
   const duration = presentDuration(
     {
       metricKey: `building:${list[0]!.id}.execution`,
       kind: 'buildingExecution',
-      startDate: '2027-04-04', endDate: '2027-11-19', durationBasis: 'calendarDay',
+      startDate: shiftedExecution.startDate,
+      endDate: shiftedExecution.endDate,
+      durationBasis: 'calendarDay',
     },
     modelDuration(
       list.reduce((a, b) => a.plus(bgfAboveGround(b)), new Decimal(0)),
@@ -1716,7 +1735,12 @@ function computeProjection(
 export function projectProjection(
   s: Pick<Store, keyof OptionConfig>,
 ): Projection {
-  return computeProjection({ ...s, scopeBuildingId: null })
+  // `constructionStartDate` is a global, un-scoped setting, not part of any
+  // Option's own config (see its declaration comment) — `s` here may be an
+  // arbitrary persisted/other Option's config, so the live global date must
+  // not be applied to it. `null` keeps this projection reading the
+  // fixture's unshifted schedule, exactly as before this field existed.
+  return computeProjection({ ...s, scopeBuildingId: null, constructionStartDate: null })
 }
 
 /**

@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { act, render, screen, within } from '@testing-library/react'
+import {
+  act, fireEvent, render, screen, within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
 import { activeBuilding, __resetStoreForTests, useStore } from '../../state/store'
@@ -101,6 +103,53 @@ describe('Сквозной сценарий продажи', () => {
     // (halfOpen-конвенция фикстуры), и это правильно, а не дубль.
     expect(within(table).getAllByText('04.04.2027')).toHaveLength(2)
     expect(within(table).getByText('19.11.2027')).toBeInTheDocument()
+  })
+
+  it('Baubeginn hat einen barrierefreien Namen und verschiebt Gantt UND Angebots-Hero auf DASSELBE Datum (Tech Review P1/P2)', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await enterPipeline(user)
+    await user.click(nav(/Konfigurator/))
+    await user.click(nav(/Termine & Kommerzielles/))
+
+    // P1 (Barrierefreiheit): `<label htmlFor>` muss auf das ECHTE Feld
+    // zeigen, nicht auf eine Wrapper-`<span>` — genau das war der Fehler.
+    const startDate = screen.getByLabelText('Baubeginn') as HTMLInputElement
+    expect(startDate).toHaveAttribute('type', 'date')
+    // Der Hilfetext muss vom Feld selbst referenziert werden, nicht von
+    // einer Hülle — `aria-describedby` ist nur korrekt gesetzt, wenn
+    // `cloneElement` das Feld direkt getroffen hat.
+    expect(startDate).toHaveAccessibleDescription(
+      /Verschiebt die Termine unten; die Bauzeit selbst bleibt gleich/,
+    )
+
+    // 2027-03-01 ist genau der im Tech Review durchgerechnete Fall: 56 Tage
+    // nach dem Fixture-Anker (`project.planning` beginnt am 2027-01-04),
+    // und bricht die Ganzmonat-Eigenschaft der Planung (D-17).
+    fireEvent.change(startDate, { target: { value: '2027-03-01' } })
+
+    const table = screen.getByRole('table', { name: /Bauzeit nach Phasen/ })
+    // P1 (Terminkonsistenz): Gantt-Tabelle UND Angebots-Hero zeigen dieselbe
+    // verschobene Fertigstellung — vorher wich der Hero (fixer Literal) ab.
+    expect(within(table).getByText('14.01.2028')).toBeInTheDocument()
+    expect(screen.queryByText('19.11.2027')).not.toBeInTheDocument()
+    expect(screen.getByText(/Fertigstellung 14\.01\.2028/)).toBeInTheDocument()
+
+    // P2 (D-17): vorher stand hier UNABHÄNGIG vom Anker immer der Literal
+    // "3 Monate" — eine ganze Zahl, die einen exakten Kalendermonat-Ganzzahl-
+    // Ursprung behauptet. Nach dem Sprung ist 01.03. → 30.05. KEIN ganzer
+    // Kalendermonat mehr (Tag-des-Monats weicht ab: `wholeCalendarMonths`
+    // liefert null), also muss `presentDuration` in den Rundungs-Zweig
+    // wechseln — erkennbar an der Dezimalstelle ("3,0" statt "3"), exakt wie
+    // bei der bereits bestehenden Ausführungs-Dauer.
+    expect(within(table).getByText('3,0 Monate')).toBeInTheDocument()
+    expect(within(table).queryByText('3 Monate')).not.toBeInTheDocument()
+
+    // Zurücksetzen stellt beide Ansichten wieder auf den Fixture-Wert —
+    // kein Restzustand aus dem verschobenen Anker.
+    fireEvent.change(startDate, { target: { value: '' } })
+    expect(within(table).getByText('19.11.2027')).toBeInTheDocument()
+    expect(screen.getByText(/Fertigstellung 19\.11\.2027/)).toBeInTheDocument()
   })
 
   it('KG 300 — Ground Conditions & Access: риск Baugrund типизирован; Baugrund & Erschließung — пустота Erschließung названа', async () => {

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Decimal } from 'decimal.js'
 import {
-  activeBuilding, chapterDone, projectionForOption,
+  activeBuilding, chapterDone, projectionForOption, projectProjection,
   __resetStoreForTests, useStore, wflConflict, scopeBoundariesStatus,
 } from '../store'
 import { KG400_GROUPS, choiceBlocked } from '../../engine/options'
@@ -1144,5 +1144,70 @@ describe('Охват показа DC-46: сужает показ, но не со
 
     st().createOption('B')
     expect(projectionForOption(st(), 'OPT-01')!.result.total.exact.eq(complex)).toBe(true)
+  })
+})
+
+/**
+ * Construction Period (тикет KG300/400/700 + Bauzeit-Reise, Tech Review
+ * P1/P2, находка «два противоречащих друг другу срока сдачи на одном
+ * клиентском экране»): герой срока в оффер-панели (`projection().duration`)
+ * обязан двигаться вместе с той же датой Baubeginn, что двигает
+ * `ScheduleGantt` в главе 8 — обе стороны читают один и тот же якорь
+ * (`project.planning`.startDate фикстуры) и один и тот же движок
+ * (`shiftScheduleMetrics`).
+ */
+describe('Construction Period: Baubeginn (Tech Review Nachbesserung)', () => {
+  it('setConstructionStartDate пишет событие журнала без ценового эффекта и откатывается', () => {
+    const before = useStore.getState().journal.length
+    useStore.getState().setConstructionStartDate('2027-03-01')
+    const s = useStore.getState()
+    expect(s.constructionStartDate).toBe('2027-03-01')
+    expect(s.journal).toHaveLength(before + 1)
+    const event = s.journal.at(-1)!
+    expect(event.kind).toBe('value.edited')
+    expect(event.deltaExact).toBeNull()
+    expect(event.label).toContain('01.03.2027')
+
+    useStore.getState().undo()
+    expect(useStore.getState().constructionStartDate).toBeNull()
+    expect(useStore.getState().journal.at(-1)!.undoOf).toBe(event.seq)
+  })
+
+  it('повторная установка того же Datum ist ein No-op (kein doppeltes Journal-Ereignis)', () => {
+    useStore.getState().setConstructionStartDate('2027-03-01')
+    const len = useStore.getState().journal.length
+    useStore.getState().setConstructionStartDate('2027-03-01')
+    expect(useStore.getState().journal).toHaveLength(len)
+  })
+
+  it('Fertigstellung im Angebotspanel folgt demselben Anker/Delta wie ScheduleGantt', () => {
+    // Unverschoben: Fertigstellung bleibt der Fixture-Wert der Ausführung
+    // (`building:DEMO-B-A.execution`, `demo-0001.json`).
+    expect(useStore.getState().projection().duration.completionDate).toBe('2027-11-19')
+
+    // Baubeginn 56 Tage nach dem Fixture-Anker (`project.planning` beginnt
+    // am 2027-01-04) — exakt das Szenario aus dem Tech-Review-Befund.
+    useStore.getState().setConstructionStartDate('2027-03-01')
+    expect(useStore.getState().projection().duration.completionDate).toBe('2028-01-14')
+
+    // Zurücksetzen stellt den Fixture-Wert wieder her — kein Restzustand.
+    useStore.getState().setConstructionStartDate(null)
+    expect(useStore.getState().projection().duration.completionDate).toBe('2027-11-19')
+  })
+
+  it('projectProjection (Snapshot-Lesart einer Option) wird vom globalen Baubeginn NICHT beeinflusst', () => {
+    // `constructionStartDate` ist bewusst kein Teil von `OptionConfig`
+    // (siehe Deklaration in store.ts) — `projectProjection` liest eine
+    // BELIEBIGE Option-Konfiguration (aktiv oder gespeichert) und darf das
+    // gerade aktive globale Datum nicht darauf anwenden. Die flache Store-
+    // Form erfüllt strukturell `Pick<Store, keyof OptionConfig>`.
+    const unshifted = projectProjection(useStore.getState())
+    expect(unshifted.duration.completionDate).toBe('2027-11-19')
+    useStore.getState().setConstructionStartDate('2027-03-01')
+    const stillUnshifted = projectProjection(useStore.getState())
+    expect(stillUnshifted.duration.completionDate).toBe('2027-11-19')
+    // Die LIVE-Projektion (Konfigurator-Lesegerät) verschiebt sich dagegen
+    // weiterhin korrekt — beide Lesearten dürfen sich unterscheiden.
+    expect(useStore.getState().projection().duration.completionDate).toBe('2028-01-14')
   })
 })
