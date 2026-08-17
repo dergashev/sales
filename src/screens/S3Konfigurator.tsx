@@ -1314,7 +1314,10 @@ function ChapterTermine() {
       endDate: planning.endDate,
       durationBasis: 'calendarDay',
     },
-    new Decimal(3),
+    // Tech Review P3: die Katalogkonstante steht schon in der Fixture
+    // (`project.planning.wholeCalendarMonths`) — hier nochmal `3` zu
+    // schreiben hieße, denselben Fakt an zwei Stellen zu pflegen.
+    new Decimal(planningFixture.wholeCalendarMonths!),
   )
 
   return (

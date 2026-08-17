@@ -257,6 +257,16 @@ export type OptionConfig = {
    * отправки могли бы противоречить друг другу.
    */
   offerDraft: { body: string; attachments: string[] }
+  /**
+   * Construction Period (тикет KG300/400/700 + Bauzeit-Reise): Baubeginn
+   * гehört zur Option, wie jede andere Preis-/Terminentscheidung — NICHT
+   * ein globales, ungebundenes Feld (Tech Review Zyklus 2: als globales
+   * Feld gelesen von `projection()` einerseits und `projectProjection()`
+   * andererseits, zeigte dieselbe Option zwei widersprüchliche
+   * Fertigstellungstermine gleichzeitig auf dem client-sichtbaren
+   * Vergleichsbildschirm). Ein Eigentümer, eine Option, ein Termin überall.
+   */
+  constructionStartDate: string | null
 }
 
 const OPTION_CONFIG_KEYS = [
@@ -268,7 +278,7 @@ const OPTION_CONFIG_KEYS = [
   'scopeBoundariesConfirmedFingerprint', 'fields',
   'esConfirmed', 'regionalfaktorActive', 'risikoAktiv',
   'openChapter', 'besuchteKapitel', 'scopeBuildingId', 'discountPercent',
-  'offerDraft',
+  'offerDraft', 'constructionStartDate',
 ] as const satisfies ReadonlyArray<keyof OptionConfig>
 
 /** Снять конфигурацию активной Option с плоского состояния. */
@@ -285,9 +295,10 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
   | 'sharedConfiguration' | 'buildingConfigState'
   | 'kg300' | 'kg300Provenance' | 'kg700Mode' | 'coverage'
   | 'scopeBoundariesConfirmedFingerprint'
-  | 'esConfirmed' | 'regionalfaktorActive' | 'risikoAktiv' | 'discountPercent'>,
+  | 'esConfirmed' | 'regionalfaktorActive' | 'risikoAktiv' | 'discountPercent'
+  | 'constructionStartDate'>,
   'configurationModeChosen' | 'pricingStarted' | 'configurationVisitedChapters'
-    | 'scopeBoundariesConfirmedFingerprint'> & {
+    | 'scopeBoundariesConfirmedFingerprint' | 'constructionStartDate'> & {
     /** Optional only while reading v1 payloads saved before explicit entry. */
     configurationModeChosen?: boolean
     /** Optional while reading candidates saved before the pricing boundary. */
@@ -295,6 +306,8 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
     configurationVisitedChapters?: Record<string, number[]>
     /** Optional while reading payloads saved before Scope Boundaries confirmation existed. */
     scopeBoundariesConfirmedFingerprint?: string | null
+    /** Optional while reading payloads saved before Construction Period existed. */
+    constructionStartDate?: string | null
   }
 
 const PERSISTED_CONFIG_KEYS = [
@@ -305,13 +318,15 @@ const PERSISTED_CONFIG_KEYS = [
   'kg300', 'kg300Provenance', 'kg700Mode', 'coverage',
   'scopeBoundariesConfirmedFingerprint', 'esConfirmed',
   'regionalfaktorActive', 'risikoAktiv', 'discountPercent',
+  'constructionStartDate',
 ] as const satisfies ReadonlyArray<keyof PersistedProposalConfig>
 
 const LEGACY_PERSISTED_CONFIG_KEYS = PERSISTED_CONFIG_KEYS.filter(
   (key) => key !== 'configurationModeChosen'
     && key !== 'pricingStarted'
     && key !== 'configurationVisitedChapters'
-    && key !== 'scopeBoundariesConfirmedFingerprint',
+    && key !== 'scopeBoundariesConfirmedFingerprint'
+    && key !== 'constructionStartDate',
 )
 
 function capturePersistedConfig(
@@ -557,6 +572,7 @@ function defaultOptionConfig(): OptionConfig {
 
     besuchteKapitel: [],
     scopeBuildingId: null,
+    constructionStartDate: null,
   }
 }
 
@@ -686,6 +702,9 @@ function isPersistedProposalConfig(value: unknown): value is PersistedProposalCo
   if (!record(value.risikoAktiv)
     || !Object.entries(value.risikoAktiv).every(([id, active]) =>
       RISK_IDS.has(id) && typeof active === 'boolean')) return false
+  if (value.constructionStartDate !== undefined
+    && value.constructionStartDate !== null
+    && typeof value.constructionStartDate !== 'string') return false
   return value.discountPercent === null || Decimal.isDecimal(value.discountPercent)
 }
 
@@ -989,9 +1008,10 @@ type Store = {
   /**
    * Construction Period (тикет KG300/400/700 + Bauzeit-Reise): vom Vertrieb
    * gewählter Baubeginn. `null` — noch keine Wahl, das ScheduleModel zeigt
-   * die Fixture-Epoche unverändert. Bewusst NICHT Teil von `OptionConfig`:
-   * dieses Feld folgt noch nicht Snapshot/Undo/Persistenz einer Option
-   * (bekannte Vereinfachung dieses Kandidaten, siehe Implementierungsbericht).
+   * die Fixture-Epoche unverändert. Teil von `OptionConfig` (Tech Review
+   * Zyklus 2): jede Option trägt ihren eigenen Anker, damit die live
+   * Projektion und die gespeicherte/verglichene Projektion derselben
+   * Option immer denselben Fertigstellungstermin zeigen.
    */
   constructionStartDate: string | null
 
@@ -1735,12 +1755,12 @@ function computeProjection(
 export function projectProjection(
   s: Pick<Store, keyof OptionConfig>,
 ): Projection {
-  // `constructionStartDate` is a global, un-scoped setting, not part of any
-  // Option's own config (see its declaration comment) — `s` here may be an
-  // arbitrary persisted/other Option's config, so the live global date must
-  // not be applied to it. `null` keeps this projection reading the
-  // fixture's unshifted schedule, exactly as before this field existed.
-  return computeProjection({ ...s, scopeBuildingId: null, constructionStartDate: null })
+  // `constructionStartDate` is now part of `OptionConfig` (Tech Review
+  // cycle 2: a global un-scoped field made the live projection and a
+  // stored/compared Option's projection disagree on the SAME Option's
+  // completion date on the client-visible comparison screen). No override
+  // needed here anymore — `s` already carries whichever Option's own date.
+  return computeProjection({ ...s, scopeBuildingId: null })
 }
 
 /**

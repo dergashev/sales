@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Decimal } from 'decimal.js'
 import {
-  activeBuilding, chapterDone, projectionForOption, projectProjection,
+  activeBuilding, chapterDone, projectionForOption,
   __resetStoreForTests, useStore, wflConflict, scopeBoundariesStatus,
 } from '../store'
 import { KG400_GROUPS, choiceBlocked } from '../../engine/options'
@@ -1195,19 +1195,44 @@ describe('Construction Period: Baubeginn (Tech Review Nachbesserung)', () => {
     expect(useStore.getState().projection().duration.completionDate).toBe('2027-11-19')
   })
 
-  it('projectProjection (Snapshot-Lesart einer Option) wird vom globalen Baubeginn NICHT beeinflusst', () => {
-    // `constructionStartDate` ist bewusst kein Teil von `OptionConfig`
-    // (siehe Deklaration in store.ts) — `projectProjection` liest eine
-    // BELIEBIGE Option-Konfiguration (aktiv oder gespeichert) und darf das
-    // gerade aktive globale Datum nicht darauf anwenden. Die flache Store-
-    // Form erfüllt strukturell `Pick<Store, keyof OptionConfig>`.
-    const unshifted = projectProjection(useStore.getState())
-    expect(unshifted.duration.completionDate).toBe('2027-11-19')
+  /**
+   * Tech Review Zyklus 2, P1: als globales Feld gelesen von `projection()`
+   * einerseits und `projectProjection()`/`projectionForOption()`
+   * andererseits, zeigte DIESELBE aktive Option zwei widersprüchliche
+   * Fertigstellungstermine gleichzeitig — sichtbar, weil `S4Vergleich` den
+   * zweiten Lesepfad nutzt und neben `OfferPanel` (erster Lesepfad) auf
+   * demselben client-sichtbaren Bildschirm steht. Die Korrektur macht
+   * `constructionStartDate` zu einem `OptionConfig`-Feld: jede Option
+   * trägt ihren eigenen Anker, keine Option beeinflusst eine andere, und
+   * beide Lesepfade derselben Option stimmen immer überein.
+   */
+  it('jede Option trägt ihren eigenen Baubeginn — beide Lesepfade derselben Option stimmen überein', () => {
+    useStore.getState().openOpportunity('DEMO-0001')
+    useStore.getState().resolveWflConflict('customer')
+    useStore.getState().confirmProjectParams()
+    useStore.getState().createOption('A')
+    useStore.getState().openOption('OPT-01')
+
     useStore.getState().setConstructionStartDate('2027-03-01')
-    const stillUnshifted = projectProjection(useStore.getState())
-    expect(stillUnshifted.duration.completionDate).toBe('2027-11-19')
-    // Die LIVE-Projektion (Konfigurator-Lesegerät) verschiebt sich dagegen
-    // weiterhin korrekt — beide Lesearten dürfen sich unterscheiden.
     expect(useStore.getState().projection().duration.completionDate).toBe('2028-01-14')
+    // Der zweite Lesepfad (genau der, den S4Vergleich für JEDE Spalte
+    // benutzt) muss für dieselbe Option dasselbe Datum liefern.
+    expect(projectionForOption(useStore.getState(), 'OPT-01')!.duration.completionDate)
+      .toBe('2028-01-14')
+
+    // Eine zweite, frisch erstellte Option erbt NICHTS von der ersten.
+    useStore.getState().createOption('B')
+    expect(useStore.getState().constructionStartDate).toBeNull()
+    expect(useStore.getState().projection().duration.completionDate).toBe('2027-11-19')
+    expect(projectionForOption(useStore.getState(), 'OPT-02')!.duration.completionDate)
+      .toBe('2027-11-19')
+
+    // Zurück zu OPT-01: ihr eigener Baubeginn ist erhalten geblieben, auf
+    // beiden Lesepfaden identisch — keine Divergenz beim Umschalten.
+    useStore.getState().openOption('OPT-01')
+    expect(useStore.getState().constructionStartDate).toBe('2027-03-01')
+    expect(useStore.getState().projection().duration.completionDate).toBe('2028-01-14')
+    expect(projectionForOption(useStore.getState(), 'OPT-01')!.duration.completionDate)
+      .toBe('2028-01-14')
   })
 })
