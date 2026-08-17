@@ -244,6 +244,7 @@ const de = {
   'journal.empty': 'Journal: noch keine übernommenen Änderungen',
   'shell.en.draftActive': 'EN: Entwurf — Übersetzung noch nicht vollständig',
   'shell.en.draftHint': 'EN ist noch ein Entwurf: die Übersetzung wird gerade vervollständigt',
+  'shell.en.draftTag': 'Entwurf',
 } as const
 
 export type MessageKey = keyof typeof de
@@ -475,6 +476,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'journal.empty': 'Journal: no adopted changes yet',
   'shell.en.draftActive': 'EN: draft — translation not yet complete',
   'shell.en.draftHint': 'EN is still a draft: the translation is being completed',
+  'shell.en.draftTag': 'Draft',
 }
 
 /**

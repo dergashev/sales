@@ -712,12 +712,12 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .mode-praesentation .a3-mode-indicator{color:var(--color-text-primary)}
 .a3-global-header{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-5);border-bottom:var(--border-contrast-1px);background:var(--color-surface-default)}
 .a3-header-controls{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:flex-end;gap:var(--space-4)}
-/* Ticket REBUILD PROJECT CARD SHELL, item 5: the readiness note stays
-   inline next to the control instead of stacked in its own full-width
-   row, so it reads as a compact status caption rather than a permanent
-   paragraph dominating the global header. Content/logic unchanged. */
+/* Ticket REBUILD PROJECT CARD SHELL, item 5: the permanent readiness
+   paragraph was replaced by a compact DC-16 status tag (.a3-tag, App.tsx)
+   shown only while EN is active; the full sentence stays available to
+   assistive technology via a visually-hidden node (Tailwind .sr-only),
+   not rendered as a permanent paragraph in the header. */
 .a3-language-control{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-3)}
-.a3-language-status{margin:0;max-inline-size:32ch;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
 
 /* The product shell has a supported three-pane minimum. Below it the layout
    remains geometrically stable while a persistent explanation covers the

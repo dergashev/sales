@@ -1,6 +1,6 @@
-import { useEffect, useId, useRef, useState, type RefObject } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { pipelineViewForBuildingGate, useStore } from './state/store'
-import { useT, useTx } from './i18n'
+import { useT } from './i18n'
 import { checkFonts, checkCascade, type FontCheck } from './lib/font-check'
 import { SegmentedControl } from './components/controls'
 import { OutputProfileSwitch } from './components/designSystem'
@@ -176,7 +176,6 @@ function AppHeader({
   modeRef: RefObject<HTMLButtonElement>
 }) {
   const s = useStore()
-  const tx = useTx()
   const praesentation = isClientProjection(s.mode)
   const buildingGateBlocked = s.level !== 'option' || !s.canBeginConfiguration()
   const configurationGateBlocked = s.level === 'option'
@@ -187,7 +186,6 @@ function AppHeader({
     : configurationGateBlocked
       ? t('configurator.mode.clientBlocked')
       : undefined
-  const languageStatusId = useId()
 
   return (
     <header className="a3-global-header z-header shrink-0">
@@ -267,10 +265,10 @@ function AppHeader({
           {s.uiLanguage === 'en' && (
             <span className="a3-tag">
               <span aria-hidden="true" className="a3-dot" />
-              {tx('Entwurf')}
+              {t('shell.en.draftTag')}
             </span>
           )}
-          <p id={languageStatusId} className="sr-only">
+          <p className="sr-only">
             {s.uiLanguage === 'en' ? t('shell.en.draftActive') : t('shell.en.draftHint')}
           </p>
         </div>

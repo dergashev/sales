@@ -45,7 +45,12 @@ describe('Globale Sprachkontrolle — kompakte Bereitschaftsinformation', () => 
     const control = document.querySelector('.a3-language-control') as HTMLElement
     const tag = control.querySelector('.a3-tag')
     expect(tag).toBeInTheDocument()
-    expect(tag).toHaveTextContent('Entwurf')
+    // Die UI-Sprache ist jetzt Englisch: der sichtbare Tag muss selbst
+    // englisch sein (t('shell.en.draftTag')), nicht das deutsche Wort
+    // aus einem rohen tx()-Literal ohne Wörterbucheintrag - genau der
+    // Regressionsfall, den Tech Review im vorigen Durchlauf gefunden hat.
+    expect(tag).toHaveTextContent('Draft')
+    expect(tag).not.toHaveTextContent('Entwurf')
     expect(tag).not.toHaveAttribute('aria-hidden')
 
     expect(within(control).getByText(/translation not yet complete/)).toHaveClass('sr-only')
