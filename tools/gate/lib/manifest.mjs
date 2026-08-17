@@ -24,8 +24,9 @@
 //   ...
 // }
 
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
+import { withManifestLock } from './manifest-lock.mjs'
 
 export function defaultManifestPath(gitCommonDir) {
   return path.join(gitCommonDir, 'a3', 'validation-candidates.json')
@@ -42,15 +43,45 @@ export function readManifest(manifestPath) {
 /** Atomic write: write to a sibling temp file, then rename over the target. */
 export function writeManifestAtomic(manifestPath, data) {
   mkdirSync(path.dirname(manifestPath), { recursive: true })
-  const tmpPath = `${manifestPath}.tmp-${process.pid}-${Date.now()}`
-  writeFileSync(tmpPath, `${JSON.stringify(data, null, 2)}\n`, 'utf8')
-  renameSync(tmpPath, manifestPath)
+  const tmpPath = `${manifestPath}.tmp-${process.pid}-${Math.random().toString(36).slice(2)}`
+  try {
+    writeFileSync(tmpPath, `${JSON.stringify(data, null, 2)}\n`, 'utf8')
+    renameSync(tmpPath, manifestPath)
+  } catch (err) {
+    // Never leave our own half-written temp file behind on failure (a
+    // failed write must not leak an owned artifact); never touch any
+    // OTHER path, known or unknown.
+    try {
+      unlinkSync(tmpPath)
+    } catch {
+      // Nothing was written yet, or it's already gone - both fine.
+    }
+    throw err
+  }
 }
 
-/** Merge-updates a single lane's entry and persists the whole manifest atomically. */
+/**
+ * Merge-updates a single lane's entry and persists the whole manifest
+ * atomically. Concurrency-safe: the read, mutate and write happen inside
+ * `withManifestLock`, so two lanes (or two rapid re-declarations of the
+ * same lane) declaring at the same time can never lose one of their
+ * updates to the other — see manifest-lock.mjs for the mechanism and
+ * lib/manifest.test.mjs / gate.test.mjs for the regression coverage.
+ *
+ * Same-lane contention is resolved deterministically by serialization:
+ * the last writer to acquire the lock produces the stored value for that
+ * lane, as a complete, non-merged entry — never a field-level mix of two
+ * concurrent declarations. Other lanes' entries are always preserved.
+ *
+ * Throws (writing nothing) if the lock cannot be acquired — a
+ * concurrency failure must surface as a hard error, never as a silently
+ * skipped declaration (fail-closed, ticket §8).
+ */
 export function declareCandidate(manifestPath, lane, entry) {
-  const manifest = readManifest(manifestPath)
-  manifest[lane] = entry
-  writeManifestAtomic(manifestPath, manifest)
-  return manifest
+  return withManifestLock(manifestPath, () => {
+    const manifest = readManifest(manifestPath)
+    manifest[lane] = entry
+    writeManifestAtomic(manifestPath, manifest)
+    return manifest
+  })
 }

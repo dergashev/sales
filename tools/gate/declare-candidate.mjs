@@ -90,7 +90,17 @@ function main() {
     declaredAt: new Date().toISOString(),
   }
 
-  declareCandidate(manifestPath, args.lane, entry)
+  try {
+    declareCandidate(manifestPath, args.lane, entry)
+  } catch (err) {
+    // A lock-acquisition failure (or any other concurrency-safety error)
+    // must fail closed and be visibly distinct from a normal usage error:
+    // it means the declaration was NOT recorded, not that it silently
+    // succeeded. Exit 3 matches gate.mjs's own LIFECYCLE code for
+    // validation-infrastructure failures, not a real gate-step failure.
+    console.error(`\n[gate:declare] VALIDATION INFRASTRUCTURE BLOCKER (exit 3): ${err.message}`)
+    process.exit(3)
+  }
 
   console.log(`Declared lane "${args.lane}" -> ${sha} at ${worktree} (${manifestPath})`)
 }
