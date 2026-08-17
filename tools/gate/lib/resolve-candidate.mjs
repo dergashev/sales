@@ -16,7 +16,7 @@ import { dirtyEntries, headSha, samePath } from './git-worktrees.mjs'
  *  memory: tsconfig.tsbuildinfo regenerates on every tsc invocation and is
  *  git-tracked rather than gitignored). Present alone, it is advisory, not
  *  a blocking dirty-tree finding. Anything else dirty still blocks. */
-const ADVISORY_ONLY_DIRTY_FILES = new Set(['tsconfig.tsbuildinfo'])
+export const ADVISORY_ONLY_DIRTY_FILES = new Set(['tsconfig.tsbuildinfo'])
 
 function fail(code, reason) {
   return { ok: false, code, reason }

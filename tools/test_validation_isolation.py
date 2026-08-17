@@ -25,6 +25,10 @@ class ValidationIsolationTests(unittest.TestCase):
         nested.mkdir(parents=True)
         (nested / 'ignored.md').write_text(
             '999 классов проверок\n', encoding='utf-8')
+        preview = self.root / '.preview' / 'main'
+        preview.mkdir(parents=True)
+        (preview / 'ignored.md').write_text(
+            '999 классов проверок\n', encoding='utf-8')
 
     def tearDown(self):
         self._tmp.cleanup()
@@ -61,6 +65,7 @@ class ValidationIsolationTests(unittest.TestCase):
         paths = [rel for rel, _, _ in findings]
         self.assertIn('normal.md', paths)
         self.assertFalse(any(rel.startswith('.worktrees/') for rel in paths))
+        self.assertFalse(any(rel.startswith('.preview/') for rel in paths))
 
     @unittest.skipUnless(GIT, 'git is required for candidate-scope tests')
     def test_ignored_untracked_agentsroom_transcript_is_out_of_scope(self):

@@ -120,4 +120,47 @@ describe('git-worktrees helpers — real git ground truth', () => {
     expect(dirtyEntries(notARepo)).toBeNull()
     expect(gitCommonDir(notARepo)).toBeNull()
   })
+
+  it('a healthy worktree reports locked:false, prunable:false with null reasons', () => {
+    git(repoDir, ['worktree', 'add', '-b', 'feature/x', worktreeDir])
+    const entry = listWorktrees(repoDir).find((w) => samePath(w.path, worktreeDir))
+    expect(entry).toMatchObject({ locked: false, lockReason: null, prunable: false, prunableReason: null })
+  })
+
+  it('a "git worktree lock"ed entry reports locked:true with its reason, and survives its directory being deleted', () => {
+    git(repoDir, ['worktree', 'add', '-b', 'feature/x', worktreeDir])
+    // Capture git's own (realpath'd) registration BEFORE deleting the
+    // directory: samePath()/canonicalize() resolve symlinks via
+    // fs.realpathSync when a path still exists, but fall back to
+    // path.resolve (no symlink resolution) once it doesn't — so a raw,
+    // not-yet-realpath'd `worktreeDir` would silently stop matching
+    // git's already-realpath'd registration after deletion, on any
+    // platform where the temp dir is itself behind a symlink (macOS:
+    // /var -> /private/var).
+    const registeredPath = listWorktrees(repoDir).find((w) => samePath(w.path, worktreeDir)).path
+    git(repoDir, ['worktree', 'lock', worktreeDir, '--reason', 'release in progress'])
+    rmSync(worktreeDir, { recursive: true, force: true })
+
+    const entry = listWorktrees(repoDir).find((w) => w.path === registeredPath)
+    expect(entry).toBeDefined()
+    expect(entry.locked).toBe(true)
+    expect(entry.lockReason).toBe('release in progress')
+
+    // The actual mechanism behind "prune did not resolve the stale
+    // registration": a lock survives a bare prune indefinitely, however
+    // long the directory has been gone.
+    git(repoDir, ['worktree', 'prune'])
+    const stillThere = listWorktrees(repoDir).find((w) => w.path === registeredPath)
+    expect(stillThere).toBeDefined()
+  })
+
+  it('a worktree whose directory or .git link has disappeared reports prunable:true with git\'s own reason', () => {
+    git(repoDir, ['worktree', 'add', '-b', 'feature/x', worktreeDir])
+    const registeredPath = listWorktrees(repoDir).find((w) => samePath(w.path, worktreeDir)).path
+    rmSync(worktreeDir, { recursive: true, force: true })
+
+    const entry = listWorktrees(repoDir).find((w) => w.path === registeredPath)
+    expect(entry.prunable).toBe(true)
+    expect(entry.prunableReason).toBeTruthy()
+  })
 })

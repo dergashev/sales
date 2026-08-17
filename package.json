@@ -13,7 +13,10 @@
     "test:browser:desktop": "node tests/browser/run-desktop-smoke.mjs",
     "typecheck": "tsc -b --noEmit",
     "verify": "python3 -m unittest tools.test_validation_isolation && python3 tools/verify.py && python3 tools/check_indices.py && python3 tools/build_fixtures.py --check && python3 tools/selftest_governance.py && python3 tools/selftest_warnings.py && python3 tools/check_scenario2.py && python3 tools/check_scenario2.py --selftest",
-    "gate:declare": "node tools/gate/declare-candidate.mjs"
+    "gate:declare": "node tools/gate/declare-candidate.mjs",
+    "dev:main": "node tools/worktrees/dev-main.mjs",
+    "git:worktrees:check": "node tools/worktrees/check.mjs",
+    "release:worktree:cleanup": "node tools/worktrees/release-cleanup.mjs"
   },
   "dependencies": {
     "decimal.js": "^10.4.3",

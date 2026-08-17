@@ -65,9 +65,25 @@ export function gitCommonDir(cwd) {
 
 /**
  * Parse `git worktree list --porcelain` into an array of
- * `{ path, sha, branch, detached }`. Returns `null` if git itself is
- * unavailable or the command fails (a lifecycle failure, distinct from
- * "zero worktrees").
+ * `{ path, sha, branch, detached, locked, lockReason, prunable, prunableReason }`.
+ * Returns `null` if git itself is unavailable or the command fails (a
+ * lifecycle failure, distinct from "zero worktrees").
+ *
+ * `locked`/`prunable` are git's OWN authoritative judgment of a
+ * registered worktree's health — added for tools/worktrees (worktree
+ * lifecycle/cleanup): a worktree whose directory has disappeared reports
+ * `prunable` here (safe for a bare `git worktree prune`); one that is
+ * `git worktree lock`ed reports `locked` and survives prune/remove
+ * indefinitely regardless of how long it has been missing, however
+ * expired — confirmed by direct experiment, this is the actual
+ * mechanism behind "prune did not resolve the stale registration", not a
+ * defect in prune itself. Prefer these fields over re-deriving worktree
+ * health via `existsSync`/`headSha` on the path: `git -C <dir> rev-parse
+ * HEAD` silently walks UP to an ancestor repository once a nested
+ * worktree's own `.git` link is gone (verified — it returns the PARENT
+ * checkout's HEAD, not an error), so that approach is unreliable for
+ * exactly the paths this tool cares about (`.worktrees/*`, `.preview/*`
+ * nested under the repository root).
  */
 export function listWorktrees(cwd) {
   const result = spawnSync('git', ['worktree', 'list', '--porcelain'], { cwd, encoding: 'utf8' })
@@ -81,6 +97,10 @@ export function listWorktrees(cwd) {
     let sha = null
     let branch = null
     let detached = false
+    let locked = false
+    let lockReason = null
+    let prunable = false
+    let prunableReason = null
     for (const line of lines) {
       if (line.startsWith('worktree ')) wtPath = line.slice('worktree '.length).trim()
       else if (line.startsWith('HEAD ')) sha = line.slice('HEAD '.length).trim()
@@ -88,8 +108,15 @@ export function listWorktrees(cwd) {
         const ref = line.slice('branch '.length).trim()
         branch = ref.startsWith('refs/heads/') ? ref.slice('refs/heads/'.length) : ref
       } else if (line.trim() === 'detached') detached = true
+      else if (line === 'locked' || line.startsWith('locked ')) {
+        locked = true
+        lockReason = line === 'locked' ? null : line.slice('locked '.length).trim()
+      } else if (line === 'prunable' || line.startsWith('prunable ')) {
+        prunable = true
+        prunableReason = line === 'prunable' ? null : line.slice('prunable '.length).trim()
+      }
     }
-    if (wtPath) worktrees.push({ path: wtPath, sha, branch: detached ? null : branch, detached })
+    if (wtPath) worktrees.push({ path: wtPath, sha, branch: detached ? null : branch, detached, locked, lockReason, prunable, prunableReason })
   }
   return worktrees
 }

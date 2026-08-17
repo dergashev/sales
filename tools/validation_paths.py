@@ -10,8 +10,12 @@ import warnings
 # These directories are external to the checked product tree wherever they
 # occur below the validation root. A worktree whose own root lives under a
 # parent ``.worktrees`` directory remains fully scanned because paths are
-# evaluated relative to that root.
-EXTERNAL_REPOSITORY_DIRS = frozenset({'.git', '.worktrees', 'node_modules'})
+# evaluated relative to that root. ``.preview`` is the canonical local-main
+# preview checkout (tools/worktrees/dev-main.mjs): a full copy of the
+# product tree pinned at whatever ``main`` SHA it was last refreshed to, so
+# it must be excluded for exactly the same reason ``.worktrees`` is — it is
+# not source belonging to the worktree being validated.
+EXTERNAL_REPOSITORY_DIRS = frozenset({'.git', '.worktrees', '.preview', 'node_modules'})
 
 GIT_SCOPE_TIMEOUT_SECONDS = 5
 
