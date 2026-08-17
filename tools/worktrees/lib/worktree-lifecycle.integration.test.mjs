@@ -34,7 +34,8 @@
 // scenario here is refused (non-mutating paths, or a blocked mutation)
 // before that point, so nothing is left running afterward.
 
-import { existsSync, mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -344,5 +345,69 @@ describe('dev-main.mjs end-to-end (stopped before it would ever spawn a real dev
     expect(result.status).toBe(4)
     expect(result.stderr).not.toContain('another dev:main process')
     expect(git(previewPath, ['rev-parse', 'HEAD'])).toBe(newSha)
+  })
+
+  /** Commits a minimal, real lockfile + package.json (with a `dev` script
+   *  that exits immediately) + a .gitignore for node_modules onto `main`
+   *  itself, via a throwaway worktree (same technique as `advanceMain`) —
+   *  so a preview checked out at the resulting sha, with node_modules
+   *  created inside it, is genuinely CLEAN (not "dirty" from untracked
+   *  files), letting ensureDependenciesLocked's `needsInstall` check come
+   *  back false (no `npm ci` spawn) and the run complete normally through
+   *  to `npm run dev`, which the "reuse" test below needs in order to
+   *  observe the ownership decision made right before that. */
+  function commitInstallablePackageOntoMain(repoRootDir, devScript) {
+    const tmpOwner = path.join(repoRootDir, '.worktrees', 'add-package-tmp')
+    git(repoRootDir, ['worktree', 'add', '-q', tmpOwner, 'main'])
+    writeFileSync(path.join(tmpOwner, '.gitignore'), 'node_modules/\n')
+    const lockContent = '{"name":"fixture","lockfileVersion":3}\n'
+    writeFileSync(path.join(tmpOwner, 'package-lock.json'), lockContent)
+    writeFileSync(path.join(tmpOwner, 'package.json'), JSON.stringify({ name: 'fixture', private: true, scripts: { dev: devScript } }))
+    git(tmpOwner, ['add', '-A'])
+    git(tmpOwner, ['-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'add installable package files', '--no-verify'])
+    const newSha = git(repoRootDir, ['rev-parse', 'main'])
+    git(repoRootDir, ['worktree', 'remove', tmpOwner])
+    return { sha: newSha, installedLockHash: createHash('sha256').update(lockContent).digest('hex') }
+  }
+
+  it('Tech Review P2-1 round 2: a same-SHA "reuse" run must NOT overwrite a LIVE owner\'s pid/port, so a LATER mutating run still refuses against the original owner', () => {
+    const { sha, installedLockHash } = commitInstallablePackageOntoMain(repoDir, 'node -e "process.exit(0)" --')
+    const previewPath = path.join(repoDir, '.preview', 'main')
+    git(repoDir, ['worktree', 'add', '--detach', '-q', previewPath, sha])
+    mkdirSync(path.join(previewPath, 'node_modules'), { recursive: true })
+    expect(git(previewPath, ['status', '--porcelain'])).toBe('') // genuinely clean, not merely un-checked
+
+    const originalOwnerPid = process.pid // this test process: alive for its whole synchronous run
+    const originalOwnerPort = 61234
+    const statePath = writePreviewState(repoDir, {
+      sha,
+      dir: previewPath,
+      pid: originalOwnerPid,
+      port: originalOwnerPort,
+      startedAt: '2026-01-01T00:00:00.000Z',
+      installedLockHash,
+    })
+
+    // A same-SHA reuse invocation while the recorded owner is genuinely
+    // alive. It must complete normally (its own harmless "second server"
+    // exits 0 immediately per the fixture's dev script)...
+    const reuse = spawnSync('node', [DEV_MAIN_MJS], { cwd: repoDir, encoding: 'utf8', env: { ...process.env, A3_PREVIEW_DIR: previewPath } })
+    expect(reuse.status).toBe(0)
+    expect(reuse.stdout).toContain('serving alongside it without claiming ownership')
+
+    // ...and it must NOT have clobbered the original live owner's identity.
+    const stateAfterReuse = JSON.parse(readFileSync(statePath, 'utf8'))
+    expect(stateAfterReuse.pid).toBe(originalOwnerPid)
+    expect(stateAfterReuse.port).toBe(originalOwnerPort)
+
+    // Now advance main and try a genuinely mutating run: it must STILL
+    // refuse, against the ORIGINAL owner (this test process), proving the
+    // guard was never disarmed by the harmless reuse above.
+    const newSha = advanceMain(repoDir)
+    const laterMutatingRun = spawnSync('node', [DEV_MAIN_MJS], { cwd: repoDir, encoding: 'utf8', env: { ...process.env, A3_PREVIEW_DIR: previewPath } })
+    expect(laterMutatingRun.status).toBe(2)
+    expect(laterMutatingRun.stderr).toContain('another dev:main process')
+    expect(laterMutatingRun.stderr).toContain(String(originalOwnerPid))
+    expect(git(previewPath, ['rev-parse', 'HEAD'])).toBe(sha) // still untouched, not newSha
   })
 })

@@ -10,20 +10,27 @@
  * Lifecycle (ticket §4/§5/§7):
  *   1. resolve MAIN SHA directly from git (`git rev-parse main`), never from
  *      the invoking cwd's branch/worktree.
- *   2. under one lock (`withPreviewStateLock`, Tech Review P2-1): refuse if a
- *      still-alive prior dev:main process owns the preview directory (it may
- *      be serving it right now — mutating the checkout under a live server
- *      would silently invalidate what it is showing); otherwise resolve/
- *      create a DETACHED preview worktree at `.preview/main` (or
- *      $A3_PREVIEW_DIR) — detached so it never competes for ownership of the
- *      `main` branch the way a branch checkout would.
+ *   2. under one lock (`withPreviewStateLock`, Tech Review P2-1): read any
+ *      recorded prior owner ONCE and reuse that read for two separate
+ *      decisions — (a) refuse a MUTATING action (create/recreate/checkout)
+ *      outright if that owner is still alive (it may be serving the
+ *      directory right now; changing the checkout under it would silently
+ *      invalidate what it is showing), and (b) even for a non-mutating
+ *      "reuse", never overwrite that owner's pid/port with our own — a
+ *      round-1 version of this fix wrote it unconditionally, which let a
+ *      harmless repeat invocation silently disarm the guard for the NEXT,
+ *      genuinely mutating run. Otherwise resolve/create a DETACHED preview
+ *      worktree at `.preview/main` (or $A3_PREVIEW_DIR) — detached so it
+ *      never competes for ownership of the `main` branch the way a branch
+ *      checkout would.
  *   3. if the preview is dirty and main has moved: refuse (exit 2), never
  *      discard uncommitted work.
  *   4. install dependencies only when needed (missing node_modules, or the
  *      committed lockfile changed since the last refresh).
  *   5. re-verify PREVIEW HEAD == MAIN SHA one last time, print the
  *      provenance block, then serve `npm run dev` from that exact worktree,
- *      recording this process as the preview's live owner (pid/port).
+ *      recording this process as the preview's live owner (pid/port) only
+ *      if it did not just serve alongside an already-live owner.
  *
  * The caller's own working directory/branch is never read for git state
  * beyond resolving the repository's common .git dir, and is never written
@@ -114,7 +121,7 @@ async function main() {
   // still watching, silently invalidating the first run's printed
   // provenance. readPreviewState (lock-free) / writePreviewStateRaw
   // (lock-free) are the only state accessors allowed inside this callback.
-  const finalHead = withPreviewStateLock(statePath, () => {
+  const { head: finalHead, claimedOwnership } = withPreviewStateLock(statePath, () => {
     const worktrees = listWorktrees(repoRoot)
     if (worktrees === null) return fail(EXIT.LIFECYCLE, '"git worktree list --porcelain" failed.')
 
@@ -130,16 +137,24 @@ async function main() {
     if (plan.action === 'blocked') return fail(EXIT.LIFECYCLE, plan.reason)
     if (plan.action === 'refuse-dirty') return fail(EXIT.PROVENANCE, `${plan.reason} ${plan.unblockingRequirement}`)
 
+    // Read ONCE, before any mutation, and reuse for both the mutating-path
+    // refusal below AND the ownership-claim decision at the end (Tech
+    // Review P2-1 round 2): a non-mutating "reuse" run must not overwrite a
+    // still-alive prior owner's pid/port either — doing so unconditionally
+    // (the round-1 fix's bug) let the recorded owner go stale the moment a
+    // harmless repeat `dev:main` ran, so a LATER mutating run's liveness
+    // check then passed against a soon-to-be-dead pid instead of the
+    // genuinely live server, and silently swapped the checkout under it.
+    const priorState = readPreviewState(statePath)
+    const liveOwnerExists = Boolean(priorState && pidIsAlive(priorState.pid))
+
     const mutating = plan.action === 'create' || plan.action === 'recreate' || plan.action === 'checkout'
-    if (mutating) {
-      const priorState = readPreviewState(statePath)
-      if (priorState && pidIsAlive(priorState.pid)) {
-        return fail(
-          EXIT.PROVENANCE,
-          `another dev:main process (pid ${priorState.pid}, port ${priorState.port ?? 'unknown'}) is currently serving "${previewPath}" ` +
-            `(recorded sha ${priorState.sha}). Refusing to change the checkout under a live server — stop it first, or run with a different A3_PREVIEW_DIR.`,
-        )
-      }
+    if (mutating && liveOwnerExists) {
+      return fail(
+        EXIT.PROVENANCE,
+        `another dev:main process (pid ${priorState.pid}, port ${priorState.port ?? 'unknown'}) is currently serving "${previewPath}" ` +
+          `(recorded sha ${priorState.sha}). Refusing to change the checkout under a live server — stop it first, or run with a different A3_PREVIEW_DIR.`,
+      )
     }
 
     if (plan.action === 'recreate') {
@@ -188,6 +203,15 @@ async function main() {
 
     ensureDependenciesLocked(previewPath, statePath)
 
+    if (liveOwnerExists) {
+      // Only reachable via "reuse" — a mutating action already refused
+      // above when a live owner exists. That owner's record already
+      // correctly identifies the exact worktree/sha being served; serve
+      // alongside it for this invocation without touching its pid/port.
+      console.log(`[dev:main] a live dev:main process (pid ${priorState.pid}, port ${priorState.port ?? 'unknown'}) already owns this preview; serving alongside it without claiming ownership.`)
+      return { head, claimedOwnership: false }
+    }
+
     // Record pid now (this process is about to become the live owner);
     // port is filled in once resolved, just below, outside this lock.
     writePreviewStateRaw(statePath, {
@@ -199,14 +223,19 @@ async function main() {
       startedAt: new Date().toISOString(),
     })
 
-    return head
+    return { head, claimedOwnership: true }
   })
 
   const dirtyNow = dirtyEntries(previewPath)
   const dirty = dirtyNow === null ? 'UNKNOWN' : dirtyNow.length > 0
 
   const port = await findFreePort('127.0.0.1')
-  updatePreviewState(statePath, (current) => ({ ...(current || {}), port }))
+  // Only stamp OUR port if we actually claimed ownership above — never
+  // overwrite a still-live prior owner's record with a port we picked for
+  // a second, unregistered server instance.
+  if (claimedOwnership) {
+    updatePreviewState(statePath, (current) => ({ ...(current || {}), port }))
+  }
 
   console.log('\nLOCAL MAIN PREVIEW')
   console.log(`\nMAIN SHA:\n${mainSha}`)
