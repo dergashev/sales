@@ -104,7 +104,10 @@ function ReadinessOverview({ label, stages }: { label: string; stages: ReadonlyA
                 + (stage.state === 'done' ? ' a3-done' : '')
                 + (stage.current ? ' a3-cur' : '')}
             >
-              <span className="a3-n numeric shrink-0" aria-hidden="true">{stage.number}</span>
+              {/* Позиция — текстом, не только визуально (DC-13 Screen
+                  reader clause): номер НЕ aria-hidden, как и в эталонном
+                  экземпляре DC-13 в Sidebar.tsx. */}
+              <span className="a3-n numeric shrink-0">{stage.number}</span>
               <span aria-hidden="true" className="w-4 shrink-0">
                 {stage.state === 'done' ? '✓' : stage.state === 'blocked' ? '○' : '▲'}
               </span>

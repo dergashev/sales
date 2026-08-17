@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useId, useRef, useState, type RefObject } from 'react'
 import { pipelineViewForBuildingGate, useStore } from './state/store'
-import { useT } from './i18n'
+import { useT, useTx } from './i18n'
 import { checkFonts, checkCascade, type FontCheck } from './lib/font-check'
 import { SegmentedControl } from './components/controls'
 import { OutputProfileSwitch } from './components/designSystem'
@@ -176,6 +176,7 @@ function AppHeader({
   modeRef: RefObject<HTMLButtonElement>
 }) {
   const s = useStore()
+  const tx = useTx()
   const praesentation = isClientProjection(s.mode)
   const buildingGateBlocked = s.level !== 'option' || !s.canBeginConfiguration()
   const configurationGateBlocked = s.level === 'option'
@@ -186,6 +187,7 @@ function AppHeader({
     : configurationGateBlocked
       ? t('configurator.mode.clientBlocked')
       : undefined
+  const languageStatusId = useId()
 
   return (
     <header className="a3-global-header z-header shrink-0">
@@ -238,7 +240,19 @@ function AppHeader({
             дефект 2). Причина теперь ОДНА и временная: перевод ещё не
             доставлен целиком. Решение PO D-24 отменило D-20 — английская
             версия обязана быть английской, включая guidance; пометка
-            снимается поставкой № 4, а не остаётся навсегда. */}
+            снимается поставкой № 4, а не остаётся навсегда.
+            Тикет REBUILD PROJECT CARD SHELL, пункт 5: полное предложение
+            выше делало общий заголовок шире базовой ширины на каждом
+            экране (замер Tech Review на 1280 px). Полный текст никуда не
+            делся — он доступен ассистивным технологиям через `sr-only`
+            рядом в потоке документа (не через `aria-describedby` на
+            `SegmentedControl`: канонический компонент не принимает этот
+            проп, и расширять его API ради одного места использования не
+            требуется); видимый след ограничен коротким статус-тегом DC-16
+            (нейтральный namespace `environment`, цвет не назначен
+            намеренно — README §DC-16), который показывается только пока
+            EN действительно активен: до переключения кнопка сегмента сама
+            уже называет «EN · Entwurf». */}
         <div className="a3-language-control">
           <SegmentedControl
             layout="inline"
@@ -250,7 +264,13 @@ function AppHeader({
               { value: 'en', label: 'EN · Entwurf' },
             ]}
           />
-          <p className="a3-language-status">
+          {s.uiLanguage === 'en' && (
+            <span className="a3-tag">
+              <span aria-hidden="true" className="a3-dot" />
+              {tx('Entwurf')}
+            </span>
+          )}
+          <p id={languageStatusId} className="sr-only">
             {s.uiLanguage === 'en' ? t('shell.en.draftActive') : t('shell.en.draftHint')}
           </p>
         </div>
