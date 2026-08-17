@@ -229,7 +229,23 @@ export function OpportunityCard() {
   // ── Обзор готовности: abgeleitet von den bereits existierenden Feldern,
   //    keine neue Fachlogik (D-13-Vertrag, siehe `ReadinessOverview` oben). ──
   const docsNeedAttention = demo.documents.some((d) => d.parseStatus === 'failed')
-  const firstOpen = konfliktOffen ? 'conflict' : !s.projectParamsConfirmed ? 'parameters' : null
+  /**
+   * Ровно ОДНА стадия является текущей в каждом достижимом состоянии — это
+   * инвариант, а не «не больше одной». Пока предпосылка открыта, текущая —
+   * она; когда выполнены все, текущей становится ПОСЛЕДНЯЯ стадия
+   * (Opportunity Options), потому что именно там пользователь и работает
+   * дальше: рабочий процесс карточки не «заканчивается».
+   *
+   * Прежняя редакция выводила текущую стадию из двух независимых величин
+   * (`firstOpen` и `optionsState`), и в терминальном состоянии обе давали
+   * «не текущая»: список готовности терял текущий шаг совсем. Теперь
+   * источник один, и «ни одной текущей» недостижимо по построению.
+   */
+  const currentStage: 'conflict' | 'parameters' | 'options' = konfliktOffen
+    ? 'conflict'
+    : !s.projectParamsConfirmed
+      ? 'parameters'
+      : 'options'
   const optionsState: StageState = s.options.length > 0 ? 'done' : canCreateOptions ? 'attention' : 'blocked'
   const stages: Stage[] = [
     {
@@ -249,7 +265,7 @@ export function OpportunityCard() {
       title: tx('Strittige Angaben'),
       state: konfliktOffen ? 'attention' : 'done',
       stateText: konfliktOffen ? tx('Entscheidung erforderlich') : tx('Entschieden'),
-      current: firstOpen === 'conflict',
+      current: currentStage === 'conflict',
       onOpen: () => focusSection(conflictSectionRef),
     },
     {
@@ -258,7 +274,7 @@ export function OpportunityCard() {
       title: tx('Projektparameter'),
       state: s.projectParamsConfirmed ? 'done' : 'attention',
       stateText: s.projectParamsConfirmed ? tx('Bestätigt') : tx('Bestätigung erforderlich'),
-      current: firstOpen === 'parameters',
+      current: currentStage === 'parameters',
       onOpen: () => focusSection(parameterSectionRef),
     },
     {
@@ -274,7 +290,7 @@ export function OpportunityCard() {
         : optionsState === 'attention'
           ? tx('Bereit zum Anlegen')
           : tx('Wartet auf die Voraussetzungen oben'),
-      current: optionsState === 'attention',
+      current: currentStage === 'options',
       onOpen: () => focusSection(optionsSectionRef),
     },
   ]
@@ -284,8 +300,18 @@ export function OpportunityCard() {
       <PageHeader
         title={meta.name}
         meta={
-          <>
-            <span>{meta.city} · {meta.country} · {meta.owner} · {meta.id}</span>
+          /* Правило 37: идентичность проекта и его статус — два ОТДЕЛЬНЫХ
+             блочных прогона текста, а не два инлайновых узла подряд. Раньше
+             между ними не было ни пробела, ни границы блока, и извлечение
+             текста (равно как и скринридер) склеивало их в «DEMO-0001in
+             Vorbereitung». Разделяет их структура, а не пробел разметки:
+             в flex-контейнере оба потомка блокируются, и текст не зависит
+             от пробелов в JSX. Вид не меняется — расстояние по-прежнему
+             задаёт тот же `ml-3` (12 px), выравнивание по правому краю
+             сохраняет `justify-end` вместо `text-align` родителя, а общая
+             базовая линия — `items-baseline`. */
+          <span className="flex flex-wrap items-baseline justify-end">
+            <span className="block">{meta.city} · {meta.country} · {meta.owner} · {meta.id}</span>
             {/* Статус не цветом одним (правило 8): носитель — подпись самого
                 тега. Точки здесь нет: `.a3-dot` определён только внутри
                 `.a3-badge` и `.a3-chip-src`, в `.a3-tag` он рисовал пустой
@@ -293,7 +319,7 @@ export function OpportunityCard() {
             <span className={'a3-tag ml-3 ' + (STAGE_TAG[meta.stage] ?? '')}>
               {tx(meta.stage)}
             </span>
-          </>
+          </span>
         }
       />
 
@@ -355,6 +381,11 @@ export function OpportunityCard() {
             </div>
             <p className="a3-cap mt-2">{tx('Folge der Wahl: nur der Nenner der Leitkennzahl ändert sich, die Zwischensumme der kalkulierten Positionen bleibt gleich. Der nicht gewählte Kandidat bleibt als Alternative nachvollziehbar.')}</p>
             <div className="a3-row mt-3">
+              {/* Эта ветка рендерится только при `konfliktOffen`, а тогда
+                  `currentStage === 'conflict'` по построению: условие здесь
+                  было бы ветвью, которая не может быть ложной. Правило то же,
+                  что у параметров ниже — первичное действие принадлежит
+                  текущей стадии. */}
               <Button variant="primary" onClick={() => s.resolveWflConflict('customer')}>{tx('Kundenwert übernehmen')}</Button>
               <Button onClick={() => s.resolveWflConflict('document')}>{tx('Dokumentwert beibehalten')}</Button>
             </div>
@@ -390,7 +421,18 @@ export function OpportunityCard() {
         </div>
         {!s.projectParamsConfirmed && (
           <div className="mt-4">
-            <Button variant="primary" onClick={() => s.confirmProjectParams()}>{tx('Projektparameter bestätigen')}</Button>
+            {/* Первичным на экране может быть только действие ТЕКУЩЕЙ стадии
+                (`currentStage`). Пока открыт конфликт, подтверждение
+                параметров — законное, но не следующее действие: оно остаётся
+                полностью работоспособным и полномочия не меняет, но перестаёт
+                соперничать за внимание с единственным «следующим шагом»
+                (правило 12 запрещает блокировать, не оформление). */}
+            <Button
+              variant={currentStage === 'parameters' ? 'primary' : 'secondary'}
+              onClick={() => s.confirmProjectParams()}
+            >
+              {tx('Projektparameter bestätigen')}
+            </Button>
           </div>
         )}
         {s.projectParamsConfirmed && (

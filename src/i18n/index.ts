@@ -248,7 +248,11 @@ const de = {
   'journal.empty': 'Journal: noch keine übernommenen Änderungen',
   'shell.en.draftActive': 'EN: Entwurf — Übersetzung noch nicht vollständig',
   'shell.en.draftHint': 'EN ist noch ein Entwurf: die Übersetzung wird gerade vervollständigt',
-  'shell.en.draftTag': 'Entwurf',
+  // Подпись сегмента языка — такой же текст интерфейса, как и рядом стоявший
+  // (и Design Review UX-PC-01 снятый) тег. Целым ключом, а не «EN · » +
+  // перевод: правило 36 запрещает собирать перевод конкатенацией, а сырой
+  // литерал оставлял немецкое «Entwurf» на английском пути.
+  'shell.en.draftOption': 'EN · Entwurf',
 } as const
 
 export type MessageKey = keyof typeof de
@@ -481,7 +485,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'journal.empty': 'Journal: no adopted changes yet',
   'shell.en.draftActive': 'EN: draft — translation not yet complete',
   'shell.en.draftHint': 'EN is still a draft: the translation is being completed',
-  'shell.en.draftTag': 'Draft',
+  'shell.en.draftOption': 'EN · Draft',
 }
 
 /**

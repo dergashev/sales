@@ -45,7 +45,6 @@ describe('Project Card — шапка и обзор готовности', () =>
     expect(tag).toBeInTheDocument()
     expect(tag!.querySelector('.a3-dot')).not.toBeInTheDocument()
     expect(tag).toHaveTextContent('in Vorbereitung')
-    expect(tag!.textContent!.trim().length).toBeGreaterThan(0)
     // Тот же класс варианта, что несёт статус на карточке списка Opportunities
     // (общий STAGE_TAG, src/lib/opportunityStage.ts) — иначе экраны разойдутся.
     expect(tag!.className).toContain('a3-orange')
@@ -70,8 +69,16 @@ describe('Project Card — шапка и обзор готовности', () =>
     // цифра, и она aria-hidden, чтобы позиция не читалась дважды.
     steps.forEach((step, i) => {
       const marker = step.querySelector('.a3-n')!
-      expect(marker).not.toHaveAttribute('aria-hidden')
-      expect(marker).toHaveTextContent(String(i + 1))
+      // Проверяется ВИДИМАЯ цифра — отдельный узел внутри маркера, а не сам
+      // маркер: прежняя редакция утверждала `not.toHaveAttribute('aria-hidden')`
+      // на обёртке `.a3-n`, которая этого атрибута никогда и не несла, и
+      // `toHaveTextContent(String(i + 1))` на ней же — а его удовлетворяла уже
+      // sr-only-фраза («4Schritt 4 von 4» содержит «4»). Обе проверки не могли
+      // упасть: снятие `aria-hidden` (двойное озвучивание позиции) и удаление
+      // самой цифры оставляли набор зелёным.
+      const digit = marker.querySelector(':scope > span:not(.sr-only)')
+      expect(digit).toHaveAttribute('aria-hidden', 'true')
+      expect(digit!.textContent).toBe(String(i + 1))
       const position = within(step).getByText(`Schritt ${i + 1} von 4`)
       expect(position).toHaveClass('sr-only')
     })
@@ -107,8 +114,12 @@ describe('Project Card — шапка и обзор готовности', () =>
 
     await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
     expect(stepAt(3)).toHaveTextContent('Angelegt')
-    // Alles erledigt: kein Schritt bleibt "aktuell".
-    expect(within(overview).getAllByRole('button').some((s) => s.hasAttribute('aria-current'))).toBe(false)
+    // Terminalzustand: die Vorbereitung "endet" nicht — genau EIN Schritt
+    // bleibt aktuell (das akzeptierte Product-Ruling), und zwar der letzte,
+    // weil dort ab jetzt weitergearbeitet wird (Opportunity Options).
+    const current = within(overview).getAllByRole('button').filter((s) => s.getAttribute('aria-current') === 'step')
+    expect(current).toHaveLength(1)
+    expect(current[0]).toHaveTextContent('Opportunity Options')
   })
 
   it('ein Klick auf einen Schritt springt zum jeweiligen Abschnitt, ohne dessen Aktion auszuführen', async () => {
