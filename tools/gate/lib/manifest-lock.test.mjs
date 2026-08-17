@@ -1,12 +1,37 @@
 // tools/gate/lib/manifest-lock.test.mjs
 
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { spawn } from 'node:child_process'
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs'
 import { hostname } from 'node:os'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { withManifestLock } from './manifest-lock.mjs'
+
+const HERE = path.dirname(fileURLToPath(import.meta.url))
+const RACE_VICTIM = path.join(HERE, 'test-fixtures', 'lock-race-victim.mjs')
+const RACE_INTRUDER = path.join(HERE, 'test-fixtures', 'lock-race-intruder.mjs')
+
+/** Spawn a real, separate node process and resolve when it exits 0 (reject otherwise). */
+function runChild(scriptPath, args) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [scriptPath, ...args], { stdio: 'inherit' })
+    child.on('error', reject)
+    child.on('exit', (code) => (code === 0 ? resolve() : reject(new Error(`${scriptPath} ${args.join(' ')} exited ${code}`))))
+  })
+}
 
 let tmpRoot
 let manifestPath
@@ -130,5 +155,83 @@ describe('withManifestLock', () => {
     // Our release logic saw a mismatched nonce and correctly left the file.
     expect(existsSync(lockPath)).toBe(true)
     expect(JSON.parse(readFileSync(lockPath, 'utf8')).nonce).toBe('intruder')
+  })
+
+  // -------------------------------------------------------------------------
+  // Tech Review P1: writeFileSync(lockPath, json, {flag:'wx'}) is two
+  // syscalls (open(O_CREAT|O_EXCL), then write()). Between them the lock
+  // file exists but is empty/unparseable. The OLD code treated that as
+  // "owner unknown -> steal now", which let a contender rename away a
+  // LIVE owner's lock mid-write - reproduced with two real processes.
+  // These tests pin the fix: a FRESH unparseable lock must be refused,
+  // an AGED one (writer that died before ever writing its owner data)
+  // must still be recoverable, and the real two-process race must no
+  // longer let the intruder in.
+  // -------------------------------------------------------------------------
+
+  it('P1 regression: a FRESH zero-length lock file (open()..write() window) is NOT stolen', () => {
+    mkdirSync(path.dirname(manifestPath), { recursive: true })
+    writeFileSync(lockPath, '') // exactly what open(O_CREAT|O_EXCL) alone produces
+    let ran = false
+    expect(() =>
+      withManifestLock(manifestPath, () => { ran = true }, { timeoutMs: 300 }),
+    ).toThrow(/Could not acquire candidate manifest lock/)
+    expect(ran).toBe(false)
+    expect(existsSync(lockPath)).toBe(true) // untouched, not stolen
+  })
+
+  it('P1 regression: a FRESH truncated-JSON lock file is NOT stolen', () => {
+    mkdirSync(path.dirname(manifestPath), { recursive: true })
+    writeFileSync(lockPath, '{"pid":123,"host":"' + hostname()) // partial write, invalid JSON
+    let ran = false
+    expect(() =>
+      withManifestLock(manifestPath, () => { ran = true }, { timeoutMs: 300 }),
+    ).toThrow(/Could not acquire candidate manifest lock/)
+    expect(ran).toBe(false)
+  })
+
+  it('an AGED unparseable lock (writer died before ever writing owner data) IS still reclaimed', () => {
+    mkdirSync(path.dirname(manifestPath), { recursive: true })
+    writeFileSync(lockPath, '') // same as a fresh one, but...
+    const longAgo = new Date(Date.now() - 60_000) // ...backdated well past the grace period
+    utimesSync(lockPath, longAgo, longAgo)
+    const result = withManifestLock(manifestPath, () => 'ran-after-aged-steal', { timeoutMs: 3000 })
+    expect(result).toBe('ran-after-aged-steal')
+    expect(existsSync(lockPath)).toBe(false) // released by us after the run
+  })
+
+  it('P2 regression: a foreign-host lock with an unparseable startedAt is NOT stolen immediately', () => {
+    mkdirSync(path.dirname(manifestPath), { recursive: true })
+    writeFileSync(
+      lockPath,
+      JSON.stringify({ pid: 42, host: 'some-other-machine', startedAt: 'not-a-date', nonce: 'foreign-malformed' }),
+    )
+    expect(() => withManifestLock(manifestPath, () => 'should not run', { timeoutMs: 300 })).toThrow(
+      /Could not acquire candidate manifest lock/,
+    )
+    expect(JSON.parse(readFileSync(lockPath, 'utf8')).nonce).toBe('foreign-malformed')
+  })
+
+  it('P1 regression, real two-process race: intruder never enters while the victim holds the lock, even mid-write', async () => {
+    mkdirSync(path.dirname(manifestPath), { recursive: true }) // openSync(lockPath,'wx') needs a3/ to exist
+    const logPath = path.join(tmpRoot, 'race.log')
+    // Victim: opens the lock (wx), then sleeps 300ms BEFORE writing its
+    // owner JSON - deliberately widening the real open()..write() window
+    // from microseconds to something an intruder can land inside.
+    const victim = runChild(RACE_VICTIM, [lockPath, logPath, '300', '150'])
+    // Intruder: starts 100ms in, squarely inside the victim's open..write
+    // window, and tries to acquire for up to 5s (long enough to observe
+    // the victim's full lifecycle: open -> write-owner -> release).
+    const intruder = runChild(RACE_INTRUDER, [manifestPath, logPath, '100', '5000'])
+    await Promise.all([victim, intruder])
+
+    const events = readFileSync(logPath, 'utf8').trim().split('\n')
+    const openedIdx = events.indexOf('victim:opened')
+    const releasedIdx = events.indexOf('victim:released')
+    const enteredIdx = events.indexOf('intruder:entered')
+    expect(openedIdx).toBeGreaterThanOrEqual(0)
+    expect(releasedIdx).toBeGreaterThan(openedIdx)
+    expect(enteredIdx).toBeGreaterThan(-1) // it must eventually get in...
+    expect(enteredIdx).toBeGreaterThan(releasedIdx) // ...but only AFTER the victim released, never during
   })
 })

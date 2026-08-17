@@ -26,7 +26,7 @@
 // never the long-running gate itself (gate.mjs only ever *reads* the
 // manifest and never takes this lock).
 
-import { mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { hostname } from 'node:os'
 import path from 'node:path'
 
@@ -41,6 +41,29 @@ const POLL_INTERVAL_MS = 25
 // genuinely overlapping; this is a backstop against an abandoned lock,
 // not the normal path.
 const FOREIGN_HOST_STALE_MS = 15 * 60_000
+
+// `writeFileSync(lockPath, json, {flag:'wx'})` is NOT one atomic step: the
+// underlying open(O_CREAT|O_EXCL) creates a zero-length file, and only the
+// following write() fills in the owner JSON. Between those two syscalls the
+// lock file exists but `readOwner` returns null (empty/unparseable). That
+// window is normally microseconds, but a contender arriving inside it must
+// NOT treat "owner unknown" as "owner dead" - Tech Review reproduced a real
+// two-process steal-from-a-live-owner by widening this exact window. An
+// unparseable lock is therefore only ever reclaimed once it has existed
+// for at least this long - far longer than any real open..write gap, far
+// shorter than a lock whose writer genuinely died before ever writing its
+// owner metadata (which must still be recoverable, or a single crashed
+// writer bricks validation forever).
+const UNPARSEABLE_LOCK_GRACE_MS = 2000
+
+/** Milliseconds since `lockPath` was last modified, or `Infinity` if it no longer exists (safe to treat as reclaimable - a concurrent acquirer already removed it, and our own acquire attempt will simply retry). */
+function lockFileAgeMs(lockPath) {
+  try {
+    return Date.now() - statSync(lockPath).mtimeMs
+  } catch {
+    return Infinity
+  }
+}
 
 function sleepSync(ms) {
   // A fresh, never-shared SharedArrayBuffer: Atomics.wait blocks this
@@ -62,7 +85,14 @@ function readOwner(lockPath) {
 /** True if the recorded owner is still alive (or unreachable but recent enough to assume alive). */
 function ownerIsAlive(owner) {
   if (owner.host !== hostname()) {
-    return Date.now() - Date.parse(owner.startedAt) < FOREIGN_HOST_STALE_MS
+    const startedAtMs = Date.parse(owner.startedAt)
+    // A malformed/unparseable startedAt must NOT be treated as "infinitely
+    // old" (Date.now() - NaN is NaN, and NaN < anything is false) - that
+    // would silently steal a live foreign-host lock on its very first
+    // check. Unable to determine age -> assume alive, same as an
+    // unreachable-but-plausibly-alive pid below.
+    if (Number.isNaN(startedAtMs)) return true
+    return Date.now() - startedAtMs < FOREIGN_HOST_STALE_MS
   }
   try {
     // Signal 0: no-op existence probe, never actually delivered.
@@ -76,16 +106,31 @@ function ownerIsAlive(owner) {
 }
 
 /**
- * Try to steal a lock file whose owner is provably dead. Uses
- * `renameSync` (atomic) to a unique graveyard name so that if two
- * processes race to steal the same stale lock, exactly one rename wins
- * and the loser's rename throws (ENOENT, the source is already gone) —
- * it simply retries the acquire loop rather than deleting a lock a
- * concurrent stealer just legitimately re-created.
+ * Try to steal a lock file whose owner is provably dead (or, for an
+ * unparseable owner, whose lock file has existed long enough that "still
+ * being written by its creator" is no longer a plausible explanation -
+ * see UNPARSEABLE_LOCK_GRACE_MS). Uses `renameSync` (atomic) to a unique
+ * graveyard name so that if two processes race to steal the same stale
+ * lock, exactly one rename wins and the loser's rename throws (ENOENT,
+ * the source is already gone) — it simply retries the acquire loop
+ * rather than deleting a lock a concurrent stealer just legitimately
+ * re-created.
  */
 function tryStealStaleLock(lockPath) {
   const owner = readOwner(lockPath)
-  if (owner !== null && ownerIsAlive(owner)) return false
+  if (owner !== null) {
+    if (ownerIsAlive(owner)) return false
+    // A known owner that is provably dead (same-host pid probe failed, or
+    // a sufficiently old foreign-host timestamp) can be reclaimed
+    // immediately - there is no ambiguity left to wait out.
+  } else if (lockFileAgeMs(lockPath) < UNPARSEABLE_LOCK_GRACE_MS) {
+    // Owner missing/unreadable/mid-write AND the lock file is still
+    // young: this is exactly the open()..write() window, not an
+    // abandoned lock. Refuse to steal - the acquire loop will retry
+    // shortly, by which point the real owner should have finished
+    // writing (and this path will correctly see a live owner instead).
+    return false
+  }
   const graveyard = `${lockPath}.stale-${process.pid}-${Math.random().toString(36).slice(2)}`
   try {
     renameSync(lockPath, graveyard)
