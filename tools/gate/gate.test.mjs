@@ -9,7 +9,7 @@
 // separately in gate.sh.test.mjs, since node/npm are already on PATH
 // inside the test runner itself — these tests exercise gate.mjs directly.
 
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -41,7 +41,7 @@ const FIXTURE_PACKAGE_JSON = JSON.stringify(
       typecheck: 'node -e "require(\'fs\').writeFileSync(\'RAN_TYPECHECK\',\'1\')"',
       test: 'node -e "require(\'fs\').writeFileSync(\'RAN_TEST\',\'1\')"',
       verify:
-        'node -e "if (require(\'fs\').existsSync(\'FAIL_VERIFY\')) { process.exit(1) } else { require(\'fs\').writeFileSync(\'RAN_VERIFY\',\'1\') }"',
+        'node -e "if (require(\'fs\').existsSync(\'FAIL_VERIFY\')) { console.error(\'VERIFY FIXTURE ERROR: 3 new violations found\'); process.exit(1) } else { require(\'fs\').writeFileSync(\'RAN_VERIFY\',\'1\') }"',
       build: 'node -e "require(\'fs\').writeFileSync(\'RAN_BUILD\',\'1\')"',
       // The trailing `--` is required: without it, node parses the extra
       // `--expect-sha <sha>` argv (passed through by `npm run ... -- ...`)
@@ -178,6 +178,44 @@ describe('gate.mjs end-to-end — exact-candidate machine validation gate', () =
     expect(existsSync(path.join(candidateDir, 'RAN_TEST'))).toBe(true)
     expect(existsSync(path.join(candidateDir, 'RAN_VERIFY'))).toBe(false) // it failed, so it never wrote its marker
     expect(existsSync(path.join(candidateDir, 'RAN_BUILD'))).toBe(false) // fail-fast: build never ran
+  })
+
+  it('Tech Review P1/P2 regression: a failing step\'s own output reaches the gate\'s stdout AND is durably logged, not just an exit code', () => {
+    git(repoDir, ['worktree', 'add', '-b', 'feature/x', candidateDir])
+    writeFileSync(path.join(candidateDir, 'feature.txt'), 'candidate change\n')
+    writeFileSync(path.join(candidateDir, 'FAIL_VERIFY'), '1\n')
+    const candidateSha = commit(candidateDir, 'candidate: implementation commit that fails verify')
+    declareCandidate(manifestPath, 'engineering', { sha: candidateSha, worktree: candidateDir })
+
+    const result = runGate(['--lane', 'engineering', '--manifest', manifestPath])
+    expect(result.status).toBe(1)
+
+    // The defect Tech Review demonstrated on 9017225a: the entire gate
+    // output was "[gate] FAIL (exit 1): step "typecheck" exited 2." with
+    // the actual compiler/verify error nowhere to be found. Assert the
+    // fixture's own diagnostic message is now actually present.
+    expect(result.stdout).toContain('VERIFY FIXTURE ERROR: 3 new violations found')
+
+    // And durably logged to disk, not just streamed transiently.
+    const logsRoot = path.join(candidateDir, '.artifacts', 'validation')
+    const runDirs = readdirSync(logsRoot).filter((name) => name.startsWith(candidateSha))
+    const logDir = runDirs.find((name) => !name.endsWith('.json'))
+    expect(logDir).toBeTruthy()
+    const verifyLog = readFileSync(path.join(logsRoot, logDir, 'verify.log'), 'utf8')
+    expect(verifyLog).toContain('VERIFY FIXTURE ERROR: 3 new violations found')
+
+    // The evidence JSON references the log and carries a tail for the
+    // failing step, so a reviewer reading ONLY the JSON still sees why it
+    // failed, without needing to separately locate the log file.
+    const evidenceFile = runDirs.find((name) => name.endsWith('.json'))
+    const evidence = JSON.parse(readFileSync(path.join(logsRoot, evidenceFile), 'utf8'))
+    const verifyResult = evidence.steps.find((s) => s.name === 'verify')
+    expect(verifyResult.status).toBe(1)
+    expect(verifyResult.logPath).toContain('verify.log')
+    expect(verifyResult.outputTail).toContain('VERIFY FIXTURE ERROR: 3 new violations found')
+    // Passing steps stay lean: no outputTail clutter on the common path.
+    const typecheckResult = evidence.steps.find((s) => s.name === 'typecheck')
+    expect(typecheckResult.outputTail).toBeUndefined()
   })
 
   it('a dirty candidate worktree is refused without --allow-dirty, and accepted (with dirty:true) when passed', () => {

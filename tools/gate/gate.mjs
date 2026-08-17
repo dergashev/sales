@@ -25,7 +25,9 @@
  *   2. resolve/report node, npm, python3, PATH source
  *   3. print VALIDATION PROVENANCE — always, on every exit path
  *   4. run the canonical gates as discrete steps with an EXPLICIT
- *      cwd = candidate worktree and EXPLICIT env — never inherited
+ *      cwd = candidate worktree and EXPLICIT env — never inherited —
+ *      streaming each step's stdout/stderr live to this process AND to a
+ *      per-step log file, never buffering the full output in memory
  *   5. write an evidence sidecar into the candidate worktree's
  *      .artifacts/validation/ (gitignored)
  *
@@ -199,23 +201,41 @@ async function main() {
   const steps = [...CANONICAL_STEPS]
   if (args.browser) steps.push(browserStep(resolution.sha))
 
+  // Generated once, shared by the log directory and the evidence filename,
+  // so a reviewer can go straight from one to the other.
+  const nonce = randomUUID()
+  const logDir = path.join(resolution.worktree, '.artifacts', 'validation', `${resolution.sha}-${nonce}`)
+
   const env = { ...process.env }
-  const outcome = runSteps(steps, resolution.worktree, env)
+  const outcome = await runSteps(steps, resolution.worktree, env, logDir)
 
   const evidence = {
     ...provenance,
     lane: args.lane,
     ok: outcome.ok,
-    steps: outcome.results.map((r) => ({ name: r.name, status: r.status, spawnError: r.spawnError })),
-    nonce: randomUUID(),
+    // outputTail is included only for a step that did not succeed: the
+    // console already streamed every step's output live, and each step's
+    // FULL output is durably on disk at logPath regardless of outcome —
+    // this keeps the evidence JSON small on the common all-green path
+    // while still answering "what did the failing step actually say"
+    // without needing to open a second file.
+    steps: outcome.results.map((r) => ({
+      name: r.name,
+      status: r.status,
+      spawnError: r.spawnError,
+      logPath: r.logPath,
+      ...(r.spawnError || r.status !== 0 ? { outputTail: r.outputTail } : {}),
+    })),
+    nonce,
     ranAt: new Date().toISOString(),
   }
   try {
     const evidenceDir = path.join(resolution.worktree, '.artifacts', 'validation')
     mkdirSync(evidenceDir, { recursive: true })
-    const evidencePath = path.join(evidenceDir, `${resolution.sha}-${evidence.nonce}.json`)
+    const evidencePath = path.join(evidenceDir, `${resolution.sha}-${nonce}.json`)
     writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8')
     console.log(`\nevidence written: ${evidencePath}`)
+    console.log(`step logs written under: ${logDir}`)
   } catch (err) {
     // Evidence persistence is best-effort; it must never mask a real
     // pass/fail result or turn a passing gate into a lifecycle failure.
@@ -237,4 +257,10 @@ async function main() {
   process.exit(EXIT.PASS)
 }
 
-main()
+main().catch((err) => {
+  // A defensive net around the now-async step execution: an unexpected
+  // failure here must still fail closed as an infrastructure blocker,
+  // never a silent crash with an ambiguous exit code.
+  console.error(`\n[gate] VALIDATION INFRASTRUCTURE BLOCKER (exit ${EXIT.LIFECYCLE}): unexpected error: ${err && err.stack ? err.stack : err}`)
+  process.exit(EXIT.LIFECYCLE)
+})
