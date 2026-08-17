@@ -5,7 +5,7 @@ import { NNBSP } from '../engine/money'
 import { Button } from '../components/primitives'
 import { FormField, SelectField } from '../components/designSystem'
 import { STAGE_TAG } from '../lib/opportunityStage'
-import { useTx } from '../i18n'
+import { useT, useTx } from '../i18n'
 
 /**
  * Корень продукта — список Opportunities (DC-34 · Suche & Filter,
@@ -22,6 +22,21 @@ import { useTx } from '../i18n'
  * контрол), число совпадений — `.a3-search-result-count`, карточка —
  * `.a3-pcard` с анатомией top/mid/cta: карточка открывает Opportunity,
  * кнопка — следующая лучшая работа (правило 26).
+ *
+ * Иерархия шапки (TASK 02, решение Design Review): `.a3-masthead` несёт
+ * только `h1` — контракт PageHeader прямо запрещает breadcrumbs внутри
+ * title, а прежняя строка `.a3-cap` («Wurzel · alle Opportunities») была
+ * ровно этим: она стояла ПЕРЕД h1 в том же flex-ряду с
+ * `justify-content: space-between`, из-за чего заголовок улетал к правому
+ * краю экрана, а «Wurzel» — необъяснённый термин уровня кода, нигде не
+ * принятый как продуктовый. Место «локации» уже занято постоянной
+ * глобальной шапкой (`AppHeader`) — она есть на каждом экране и уже
+ * сознательно не показывает `Pfad`-крошку на этом, корневом уровне.
+ * Число результатов теперь строка между title и `.a3-project-search`
+ * (требуемый порядок: локация → title → результат → поиск/фильтры →
+ * список), без выдуманного утверждения о сортировке (ушедшее
+ * «sortiert nach Reihenfolge der Übergabe aus HubSpot» не имело
+ * никакой сортировки за собой — решение 161c0b7b).
  */
 
 const ALL = 'alle'
@@ -45,6 +60,7 @@ const STAGE_CTA: Record<string, string> = {
 
 export function OpportunityList() {
   const s = useStore()
+  const t = useT()
   const tx = useTx()
   const [q, setQ] = useState('')
   const [country, setCountry] = useState(ALL)
@@ -78,6 +94,13 @@ export function OpportunityList() {
 
   const resetAll = () => { setQ(''); setCountry(ALL); setCity(ALL); setOwner(ALL) }
 
+  // Kompaktes Ergebnis-Resümee (Anforderung „RESULT SUMMARY", TASK 02):
+  // ungefiltert nennt es nur die Gesamtzahl, gefiltert macht es die
+  // Einschränkung sichtbar — nie eine Ranking-/Sortier-Behauptung.
+  const resultSummary = active.length > 0
+    ? t('opplist.resultSummary.filtered', { shown: shown.length, total: items.length })
+    : t('opplist.resultSummary.total', { count: items.length })
+
   const select = (id: string, label: string) => (
     <SelectField
       id={`opp-${id}`}
@@ -95,13 +118,20 @@ export function OpportunityList() {
   return (
     <div className="px-7 py-6">
       <header className="a3-masthead">
-        <p className="a3-cap">{tx('Wurzel · alle Opportunities')}</p>
-        <h1 className="a3-hero-title">Opportunities</h1>
+        <h1 className="a3-hero-title">{t('opplist.title')}</h1>
       </header>
 
-      {/* DC-34: видимый контрол поиска, фильтры и число результатов —
+      {/* Число совпадений объявляется один раз после сужения, а не на
+          каждый символ (DC-34): иначе скринридер читает набор вслух.
+          Steht zwischen Titel und Suche/Filter (geforderte Reihenfolge:
+          Standort → Titel → Ergebniskontext → Suche/Filter → Ergebnisse). */}
+      <div className="a3-search-result-count mt-1" role="status" aria-live="polite">
+        {resultSummary}
+      </div>
+
+      {/* DC-34: видимый контрол поиска, фильтры и активные фильтр-чипы —
           одна рамка, один контракт. */}
-      <div role="search" className="a3-project-search mt-5">
+      <div role="search" className="a3-project-search mt-4">
         <div className="a3-search-line">
           <FormField
             htmlFor="opp-suche"
@@ -112,7 +142,7 @@ export function OpportunityList() {
               type="search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Name, Stadt, Owner, ID"
+              placeholder={tx('Name, Stadt, Owner, ID')}
             />
           </FormField>
           {select('land', tx('Land'))}
@@ -139,13 +169,6 @@ export function OpportunityList() {
             </button>
           </div>
         )}
-
-        {/* Число совпадений объявляется один раз после сужения, а не на
-            каждый символ (DC-34): иначе скринридер читает набор вслух. */}
-        <div className="a3-search-result-count" role="status" aria-live="polite">
-          {shown.length} von {items.length} Opportunities · sortiert nach Reihenfolge
-          der Übergabe aus HubSpot
-        </div>
       </div>
 
       {shown.length === 0 && (

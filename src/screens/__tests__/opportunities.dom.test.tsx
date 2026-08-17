@@ -17,7 +17,15 @@ describe('Уровень Opportunities', () => {
     expect(screen.getByRole('heading', { name: 'Opportunities' })).toBeInTheDocument()
     // Цена принадлежит Option, а Option ещё не выбран.
     expect(screen.queryByRole('complementary', { name: 'Angebot' })).not.toBeInTheDocument()
-    expect(screen.getByText(/8 von 8 Opportunities/)).toBeInTheDocument()
+    // Ungefiltert nennt das Resümee nur die Gesamtzahl — kein "X von X".
+    expect(screen.getByText('8 Opportunities')).toBeInTheDocument()
+    // Kein Root-Breadcrumb mehr im PageHeader (TASK 02): der Term ist
+    // Code-Jargon und die globale Shell-Kopfzeile übernimmt die Verortung.
+    expect(screen.queryByText(/Wurzel/)).not.toBeInTheDocument()
+    // Keine erfundene Ranking-/Sortier-Behauptung mehr im Ergebnis-Resümee
+    // (der Stage-Tag "neu aus HubSpot" bleibt als Fixture-Text erlaubt —
+    // "sortiert" kam ausschließlich aus der jetzt entfernten Behauptung).
+    expect(screen.queryByText(/sortiert/)).not.toBeInTheDocument()
   })
 
   it('фильтр сужает множество и сообщает, сколько спрятал', async () => {
@@ -27,7 +35,7 @@ describe('Уровень Opportunities', () => {
     expect(screen.getByText(/2 von 8 Opportunities/)).toBeInTheDocument()
     // Активный фильтр виден и снимается по одному.
     await user.click(screen.getByRole('button', { name: /Filter entfernen: Land/ }))
-    expect(screen.getByText(/8 von 8 Opportunities/)).toBeInTheDocument()
+    expect(screen.getByText('8 Opportunities')).toBeInTheDocument()
   })
 
   it('поиск ищет по имени, городу и владельцу', async () => {
@@ -136,13 +144,14 @@ describe('Уровень Opportunities', () => {
     // дополнение для строк, созданных после поставки.
     // Подпись переключателя называет частичность ДО клика: «EN · Entwurf».
     expect(screen.getByText(/EN ist noch ein Entwurf/)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Name, Stadt, Owner, ID')).toBeInTheDocument()
     await user.click(screen.getByRole('radio', { name: /EN/ }))
-    expect(screen.getByText('Root · all opportunities')).toBeInTheDocument()
     // Немецкая строка поискового лейбла исчезла — заменена переводом.
     expect(screen.queryByText('Opportunities durchsuchen')).toBeNull()
+    expect(screen.getByPlaceholderText('Name, city, owner, ID')).toBeInTheDocument()
     // Немецкий остаётся источником: переключение обратно восстанавливает.
     await user.click(screen.getByRole('radio', { name: /^DE$/ }))
-    expect(screen.getByText('Wurzel · alle Opportunities')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Name, Stadt, Owner, ID')).toBeInTheDocument()
   })
 
   it('непроработанная Opportunity говорит это до расчёта, а не показывает выдумку', async () => {

@@ -5,7 +5,7 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 57** · перевод есть, мост не подключён: 35
+**Всего 56** · перевод есть, мост не подключён: 34
 · перевода нет (в поставку копирайта): 22
 
 ## Перевод есть — строка не проходит через мост (правится в src)
@@ -22,7 +22,6 @@
 - Marge Eigenleistung nach Rabatt:
 - Musterhöfe Westpark
 - Musterquartier Südhang
-- Opportunities · sortiert nach Reihenfolge der Übergabe aus HubSpot
 - Projektparameter bestätigt (Gebäude, Flächen, Einheiten)
 - Residential area · WFL nach WoFlV: two candidates.
 - Schätzunsicherheit

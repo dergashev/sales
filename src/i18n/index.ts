@@ -253,6 +253,15 @@ const de = {
   // перевод: правило 36 запрещает собирать перевод конкатенацией, а сырой
   // литерал оставлял немецкое «Entwurf» на английском пути.
   'shell.en.draftOption': 'EN · Entwurf',
+  // Opportunities-Root-Shell (TASK 02): Titel geht jetzt durch einen echten
+  // Schlüssel statt eines literalen JSX-Strings (Rule 36/DC-45), und das
+  // Ergebnis-Resümee ersetzt die frühere, sachlich falsche Behauptung
+  // „sortiert nach Reihenfolge der Übergabe aus HubSpot" — kein Ranking ist
+  // hinterlegt, also wird keins behauptet (genehmigter Decision Brief,
+  // Backlog 161c0b7b).
+  'opplist.title': 'Opportunities',
+  'opplist.resultSummary.total': '{count} Opportunities',
+  'opplist.resultSummary.filtered': '{shown} von {total} Opportunities',
 } as const
 
 export type MessageKey = keyof typeof de
@@ -486,6 +495,9 @@ const en: Partial<Record<MessageKey, string>> = {
   'shell.en.draftActive': 'EN: draft — translation not yet complete',
   'shell.en.draftHint': 'EN is still a draft: the translation is being completed',
   'shell.en.draftOption': 'EN · Draft',
+  'opplist.title': 'Opportunities',
+  'opplist.resultSummary.total': '{count} Opportunities',
+  'opplist.resultSummary.filtered': '{shown} of {total} Opportunities',
 }
 
 /**
