@@ -201,6 +201,72 @@ register and the mechanical checks atomically.
 - **Review trigger:** release of canonical CheckboxCard/Textarea sources or a
   material change to S5 delivery/preflight.
 
+### DS-GOV-EX-07 — Opportunity readiness overview (second DC-13 instance)
+
+- **Affected component / paths:** `ReadinessOverview` in
+  `src/screens/OpportunityCard.tsx`; it reuses the canonical DC-13 CSS anatomy
+  (`.a3-chapters` / `.a3-ch` / `.a3-n` / `.a3-done` / `.a3-cur`,
+  `design-system/components.css`). The reference instance of the same anatomy is
+  the inline chapter list in `src/components/Sidebar.tsx`.
+- **Reason:** the Project Card needs the DC-13 stepper anatomy for the four
+  readiness stages of an Opportunity. DC-13 has no canonical React source at
+  all, so consuming one was not possible; only the CSS contract could be reused.
+- **Why canonical is insufficient / absent:** no `WorkflowStepper` React module
+  exists (`docs/audit/design-system-ledger.md`, DC-13 row: the prototype
+  implementation is inline markup in `Sidebar.tsx`). Extracting the canonical
+  source now would rewrite the freshly released Configurator sidebar, which is
+  outside this ticket's boundary. The nearby `Sidebar.tsx` implementation is
+  explicitly **not** the justification for this exception — the absence of a
+  canonical source and the deliberate deferral of its extraction are.
+- **Production reachability:** yes — internal preparation, Opportunity Card of
+  every worked Opportunity, in both `mode-intern` and `mode-praesentation`.
+- **Owner:** All3 Design System for the future canonical `WorkflowStepper`;
+  Sales Platform Opportunities for the current product composition.
+- **Risk:** two hand-written implementations of one anatomy can diverge. Two
+  known gaps already differ from the DC-13 contract and are carried by this
+  record rather than fixed in one copy only: roving tabindex / arrow keys
+  (`KEY-003`, missing in **both** instances) and `LAYOUT-012` main-panel
+  adjacency (this overview navigates within one page instead of owning a main
+  panel). Fixing keyboard behaviour in one copy would deepen the divergence, so
+  it belongs to the extraction.
+- **Follow-up:** extract a canonical `WorkflowStepper` React source covering
+  `STEP-001…007` and `KEY-003`, add its specimen, and migrate **both**
+  consumers (`Sidebar.tsx` and `ReadinessOverview`) to it.
+- **Removal condition:** the canonical `WorkflowStepper` is released and both
+  consumers render it; no hand-written copy of the anatomy remains.
+- **Review trigger:** release of a canonical `WorkflowStepper`, any change to
+  DC-13 / `STEP-001…007`, or any further consumer of the `.a3-chapters` anatomy.
+
+**Data states of this instance (CLAUDE.md rule 30, seven declarations).** The
+DC-13 contract enumerates all seven; this instance declares each one either as
+reached or as not reachable, with the reason:
+
+- `loading` — **not reachable.** Stage composition and stage states are derived
+  synchronously from data already in the store and the fixture (`wflConflict`,
+  `projectParamsConfirmed`, `options`, `demo.documents`). There is no async read
+  behind the overview that could be pending.
+- `empty` — **not reachable** (`notApplicableReason`, same as DC-13): the set of
+  stages is defined statically by the workflow — four stages, always — so an
+  Opportunity without stages does not exist.
+- `partial` — **not reachable.** No stage state is computed asynchronously or
+  estimated, so no stage can be marked `wird geprüft`; every stage resolves in
+  the same render as the card.
+- `ready` — **the only reachable state.** Each of the four stages carries a
+  determined state with its own text (`STEP-002`), and exactly one stage is
+  `aria-current="step"` while any stage remains open.
+- `error` — **not reachable.** The overview reads validated store fields, not a
+  fallible source. The failure that does exist upstream — an unworked
+  Opportunity or an unknown id — is handled before the overview renders: that
+  branch returns the "not elaborated in the prototype" card and never mounts
+  `ReadinessOverview`.
+- `stale` — **deliberately not implemented.** `STALE-001` is unimplemented
+  across this product; inventing a stale marker in one screen would create a
+  freshness claim the product cannot back. Not implemented here either.
+- `permission` — **not reachable.** The prototype models no per-step rights: all
+  four stages are internal preparation, and the profile distinction acts at
+  screen level, not at stage level. No stage is ever hidden or closed by rights,
+  so R-16's "show with a reason, do not delete" has no trigger here.
+
 ## Known enforcement limits
 
 - `GOV-TOKEN` deliberately does not extend the existing generic

@@ -62,13 +62,13 @@
 | Projekt-Karten `.pcard` | DC-15 | `S1Projektliste` | 🟡 |
 | Dokument-Zeilen `.doc .okc .errc` | DC-17 | `S2Vorbereitung` P1 | 🟡 |
 | Lernender Loader `.loader .plog .phase` | DC-10 | `DocumentAnalysis` | ✅ построен по контракту 05.08, сверить визуально |
-| Kapitel-Navigation `.chapters .ch` | DC-13 | `Sidebar` | 🟡 |
+| Kapitel-Navigation `.chapters .ch` | DC-13 | `Sidebar` · `OpportunityCard` (`ReadinessOverview`) | 🟡 с 17.08 у анатомии ДВА потребителя, канонического React-источника по-прежнему нет — обе реализации рукописные; отклонение зарегистрировано `DS-GOV-EX-07`, снимается извлечением `WorkflowStepper` |
 | Konflikt-Karte `.konflikt .kv` | DC-32 | `S2Vorbereitung` P2 | 🟡 |
 | Annahme-Karte `.ann .ann-t` | DC-8 | `S2Vorbereitung` P4 | 🟡 |
 | Variantenvergleich `.cmp` | DC-11 | `S4Vergleich` | 🟡 |
 | Herkunft-Popover `.hk-pop .hk-wrap` | DC-21 | `OriginPopover` | 🟡 |
 | Skeleton `.skel` | DC-35 | `Skeleton` | 🟡 |
-| Status-Tags `.badge` | DC-16 | нет отдельного примитива | ❌ статусы рисуются inline на экранах |
+| Status-Tags `.badge` | DC-16 | нет отдельного примитива | ❌ статусы рисуются inline на экранах: `OpportunityList` (карточка списка) и с 17.08 ещё два адреса — шапка `OpportunityCard` (стадия Opportunity, класс варианта из общего `STAGE_TAG`) и `App` (пометка EN-черновика). Носитель — подпись тега; `.a3-dot` в контексте `.a3-tag` не определён и на этих двух адресах не рендерится |
 | E-Mail-Versand `.mailcard .mailrow` | DC-41 | `S5Export` | 🟡 |
 | Dichte-Demo `.compact-zone .kg .kg-child` | D-16 | `density-compact` | 🟡 класс есть, зона демонстрации не собрана |
 

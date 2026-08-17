@@ -9,10 +9,12 @@ import { __resetStoreForTests, useStore } from '../../state/store'
  * готовности (новый экземпляр DC-13 WorkflowStepper). Найдено ревью
  * Tech Review: ни то, ни другое не было защищено тестом. Здесь проверяются
  * ровно те инварианты, которые ревью требовало явно:
- * - статус в шапке несёт иконку И текст, тем же тегом, что список Opportunities;
+ * - статус в шапке несёт ПОДПИСЬ, а не один цвет, тем же тегом, что список
+ *   Opportunities (носителем была бы точка `.a3-dot`, но в контексте `.a3-tag`
+ *   она не определена ни одним правилом и рисовала пустой узел);
  * - у обзора готовности всегда ровно один текущий шаг (aria-current="step");
  * - состояние шага читается ТЕКСТОМ, а не только маркером/цветом;
- * - позиция шага не спрятана от скринридера (номер не aria-hidden);
+ * - позиция шага доступна скринридеру целой фразой «Schritt n von 4»;
  * - обзор реагирует на реальные переходы состояния (конфликт → параметры → Option).
  */
 beforeEach(() => __resetStoreForTests())
@@ -34,12 +36,16 @@ describe('Project Card — шапка и обзор готовности', () =>
     // Проектный ID теперь виден в шапке (его не было в прежней вёрстке).
     expect(within(masthead as HTMLElement).getByText(/DEMO-0001/)).toBeInTheDocument()
 
-    // Статус — DC-16 StatusTag (.a3-tag: иконка-точка + текст), не подпись
-    // caption'ом внутри строки метаданных (R-24).
+    // Статус — DC-16 StatusTag (.a3-tag), не подпись caption'ом внутри строки
+    // метаданных (R-24). Носитель статуса, независимый от цвета (правило 8), —
+    // ПОДПИСЬ самого тега: `.a3-dot` в контексте `.a3-tag` не определён ни
+    // одним правилом `design-system/components.css` (он живёт только в
+    // `.a3-badge` и `.a3-chip-src`) и рисовал бы пустой узел нулевого размера.
     const tag = masthead.querySelector('.a3-tag')
     expect(tag).toBeInTheDocument()
-    expect(tag!.querySelector('.a3-dot')).toBeInTheDocument()
+    expect(tag!.querySelector('.a3-dot')).not.toBeInTheDocument()
     expect(tag).toHaveTextContent('in Vorbereitung')
+    expect(tag!.textContent!.trim().length).toBeGreaterThan(0)
     // Тот же класс варианта, что несёт статус на карточке списка Opportunities
     // (общий STAGE_TAG, src/lib/opportunityStage.ts) — иначе экраны разойдутся.
     expect(tag!.className).toContain('a3-orange')
@@ -59,11 +65,15 @@ describe('Project Card — шапка и обзор готовности', () =>
       expect.stringContaining('Opportunity Options'),
     ])
 
-    // Позиция — текстом и доступна скринридеру: номер не спрятан aria-hidden,
-    // как и в эталонном экземпляре DC-13 (Sidebar.tsx).
+    // Позиция — ЦЕЛОЙ ФРАЗОЙ для скринридера (DC-13, Screen-reader-Klausel
+    // «Schritt 3 von 5»), а не одной цифрой; видимой остаётся компактная
+    // цифра, и она aria-hidden, чтобы позиция не читалась дважды.
     steps.forEach((step, i) => {
-      expect(step).toHaveTextContent(String(i + 1))
-      expect(step.querySelector('.a3-n')).not.toHaveAttribute('aria-hidden')
+      const marker = step.querySelector('.a3-n')!
+      expect(marker).not.toHaveAttribute('aria-hidden')
+      expect(marker).toHaveTextContent(String(i + 1))
+      const position = within(step).getByText(`Schritt ${i + 1} von 4`)
+      expect(position).toHaveClass('sr-only')
     })
 
     // Состояние читается текстом, не только маркером/цветом (STEP-002, правило 8).

@@ -63,6 +63,10 @@ const de = {
   'common.open': 'Offen',
   'designSystem.readinessSummary': '{done} von {total} Punkten bereit',
   'oppcard.prerequisitesSummary': '{done} von {total} Voraussetzungen erfüllt',
+  // DC-13, Screen-reader-Klausel: позиция шага — целой фразой, а не одной
+  // цифрой. Ключ с параметрами, потому что правило 36 запрещает собирать
+  // перевод конкатенацией.
+  'oppcard.stepPosition': 'Schritt {n} von {total}',
   'buildingScope.gate.navigationReason':
     'Zuerst mindestens ein Gebäude auswählen und jedes gewählte Gebäude bestätigen.',
   'buildingScope.title': 'Gebäude & Umfang',
@@ -295,6 +299,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'common.open': 'Open',
   'designSystem.readinessSummary': '{done} of {total} points ready',
   'oppcard.prerequisitesSummary': '{done} of {total} prerequisites complete',
+  'oppcard.stepPosition': 'Step {n} of {total}',
   'buildingScope.gate.navigationReason':
     'Select at least one building and confirm every selected building first.',
   'buildingScope.title': 'Building & scope',

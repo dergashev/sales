@@ -89,11 +89,18 @@ type Stage = {
  * Прыжок к разделу разрешён всегда, независимо от состояния (STEP-003,
  * правило 12): обзор — навигация, не действие. Действие — там же, где
  * было: у своей секции.
+ *
+ * Governance: это ВТОРАЯ рукописная реализация анатомии DC-13 — канонического
+ * React-источника у DC-13 пока нет (ledger, строка 65). Отклонение
+ * зарегистрировано как **DS-GOV-EX-07** в `docs/audit/design-system-governance.md`;
+ * там же — обязательное по правилу 30 объявление семи состояний данных этого
+ * экземпляра и условие снятия (извлечение канонического `WorkflowStepper`).
  */
 function ReadinessOverview({ label, stages }: { label: string; stages: ReadonlyArray<Stage> }) {
+  const t = useT()
   return (
     <nav aria-label={label} className="mt-5">
-      <ol className="a3-chapters max-w-none">
+      <ol className="a3-chapters">
         {stages.map((stage) => (
           <li key={stage.id}>
             <button
@@ -104,10 +111,17 @@ function ReadinessOverview({ label, stages }: { label: string; stages: ReadonlyA
                 + (stage.state === 'done' ? ' a3-done' : '')
                 + (stage.current ? ' a3-cur' : '')}
             >
-              {/* Позиция — текстом, не только визуально (DC-13 Screen
-                  reader clause): номер НЕ aria-hidden, как и в эталонном
-                  экземпляре DC-13 в Sidebar.tsx. */}
-              <span className="a3-n numeric shrink-0">{stage.number}</span>
+              {/* Позиция — ТЕКСТОМ, а не только визуально (DC-13, Screen-
+                  reader-Klausel «Schritt 3 von 5»). Видимой остаётся компактная
+                  цифра, скринридер получает целую фразу из словаря (правило 36,
+                  ключ с параметрами — без конкатенации). Сама цифра при этом
+                  aria-hidden, иначе позиция читается дважды. */}
+              <span className="a3-n numeric shrink-0">
+                <span aria-hidden="true">{stage.number}</span>
+                <span className="sr-only">
+                  {t('oppcard.stepPosition', { n: stage.number, total: stages.length })}
+                </span>
+              </span>
               <span aria-hidden="true" className="w-4 shrink-0">
                 {stage.state === 'done' ? '✓' : stage.state === 'blocked' ? '○' : '▲'}
               </span>
@@ -272,8 +286,11 @@ export function OpportunityCard() {
         meta={
           <>
             <span>{meta.city} · {meta.country} · {meta.owner} · {meta.id}</span>
+            {/* Статус не цветом одним (правило 8): носитель — подпись самого
+                тега. Точки здесь нет: `.a3-dot` определён только внутри
+                `.a3-badge` и `.a3-chip-src`, в `.a3-tag` он рисовал пустой
+                узел нулевого размера. */}
             <span className={'a3-tag ml-3 ' + (STAGE_TAG[meta.stage] ?? '')}>
-              <span aria-hidden="true" className="a3-dot" />
               {tx(meta.stage)}
             </span>
           </>

@@ -262,11 +262,11 @@ function AppHeader({
               { value: 'en', label: 'EN · Entwurf' },
             ]}
           />
+          {/* Носитель статуса — подпись тега (правило 8), не цвет и не точка:
+              `.a3-dot` определён только внутри `.a3-badge` и `.a3-chip-src`,
+              в `.a3-tag` он оставался пустым узлом нулевого размера. */}
           {s.uiLanguage === 'en' && (
-            <span className="a3-tag">
-              <span aria-hidden="true" className="a3-dot" />
-              {t('shell.en.draftTag')}
-            </span>
+            <span className="a3-tag">{t('shell.en.draftTag')}</span>
           )}
           <p className="sr-only">
             {s.uiLanguage === 'en' ? t('shell.en.draftActive') : t('shell.en.draftHint')}

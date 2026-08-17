@@ -56,21 +56,30 @@ describe('Globale Sprachkontrolle — kompakte Bereitschaftsinformation', () => 
     expect(within(control).getByText(/translation not yet complete/)).toHaveClass('sr-only')
   })
 
-  it('lässt die globale Kopfzeile bei 1280 px so hoch wie vor dieser Änderung, in beiden Sprachen', async () => {
+  it('fügt beim Sprachwechsel keine zusätzliche Block-Node in die Kopfzeile ein', async () => {
+    // Höhe wird hier NICHT gemessen: jsdom kennt kein Layout und liefert für
+    // jede Box 0, ein Höhenvergleich könnte also niemals fehlschlagen und wäre
+    // als Beweis wertlos. Die echte Messung bei 1280 px gehört in den Browser
+    // (QA). Was jsdom belastbar prüfen kann, ist die STRUKTUR, auf der die
+    // Korrektur beruht: die Kopfzeile bekommt durch den Wechsel keinen
+    // zusätzlichen sichtbaren Block, sondern nur den kompakten Inline-Tag.
     const user = userEvent.setup()
     render(<App />)
     const header = document.querySelector('.a3-global-header') as HTMLElement
-    const beforeHeight = header.getBoundingClientRect().height
+    const control = header.querySelector('.a3-language-control') as HTMLElement
+    expect(control).toBeInTheDocument()
+
+    const visibleBlocks = (root: HTMLElement) =>
+      [...root.querySelectorAll('p, div')].filter((el) => !el.classList.contains('sr-only')).length
+    const before = visibleBlocks(control)
 
     await user.click(screen.getAllByRole('radio', { name: /EN/ })[0]!)
-    const afterHeight = header.getBoundingClientRect().height
 
-    // jsdom liefert keine echte Layout-Höhe (immer 0) - das Auflösen der
-    // Regression selbst ist live im Browser gemessen (Tech Review: 131 px
-    // in beiden Zuständen). Dieser Test schützt zumindest, dass keine
-    // Sprachumschaltung eine neue Layout-Node zwischen Kopfzeile und
-    // Sprachkontrolle einfügt, die künftig Höhe kosten könnte.
-    expect(afterHeight).toBe(beforeHeight)
-    expect(header.contains(document.querySelector('.a3-language-control'))).toBe(true)
+    expect(visibleBlocks(control)).toBe(before)
+    // Der einzige Zuwachs ist der Inline-Tag - er ist kein Block und steht
+    // in derselben Zeile wie die Segmentkontrolle.
+    const tag = control.querySelector('.a3-tag')!
+    expect(tag.tagName).toBe('SPAN')
+    expect(tag.closest('p, div')).toBe(control)
   })
 })
