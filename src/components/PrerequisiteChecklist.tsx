@@ -11,13 +11,20 @@ export type Prerequisite = {
   resolved: boolean
   sourceLabel: string
   onOpenSource: () => void
-  nextActionLabel: string
 }
 
 /**
  * Local Opportunity prerequisite composition. This is intentionally not
  * DC-26 output-profile readiness: it names the two project prerequisites,
  * their source, and one next action without a ring or percentage.
+ *
+ * The only action button here is `onCreate` — the one real primary CTA.
+ * `onOpenSource` per row is navigation (jump back to the section that
+ * owns the decision), never a second button pretending to perform it:
+ * an earlier "next action" shortcut used to duplicate this with a
+ * primary-styled button whose label promised the real action while its
+ * click only scrolled the page — removed, since a section's own button
+ * is the sole place that transition actually happens.
  */
 export function PrerequisiteChecklist({
   label,
@@ -74,7 +81,6 @@ export function PrerequisiteChecklist({
   }, [])
 
   const done = requirements.filter((requirement) => requirement.resolved).length
-  const next = requirements.find((requirement) => !requirement.resolved)
   return (
     <div ref={rootRef} className="a3-prerequisites" role="group" aria-label={label}>
       <ChecklistPresentation
@@ -113,11 +119,6 @@ export function PrerequisiteChecklist({
         animate={wave ? { opacity: [0, 1] } : { opacity: 1 }}
         transition={transition('feedback', wave ? 2 : 0)}
       >
-        {next && !canCreate && (
-          <Button variant="primary" onClick={next.onOpenSource}>
-            {next.nextActionLabel}
-          </Button>
-        )}
         <Button
           variant={canCreate ? 'primary' : 'secondary'}
           disabled={!canCreate}

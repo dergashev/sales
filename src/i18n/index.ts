@@ -63,8 +63,6 @@ const de = {
   'common.open': 'Offen',
   'designSystem.readinessSummary': '{done} von {total} Punkten bereit',
   'oppcard.prerequisitesSummary': '{done} von {total} Voraussetzungen erfüllt',
-  'oppcard.resolveConflictingInformation': 'Strittige Angaben jetzt entscheiden',
-  'oppcard.confirmProjectParametersNow': 'Projektparameter jetzt bestätigen',
   'buildingScope.gate.navigationReason':
     'Zuerst mindestens ein Gebäude auswählen und jedes gewählte Gebäude bestätigen.',
   'buildingScope.title': 'Gebäude & Umfang',
@@ -296,8 +294,6 @@ const en: Partial<Record<MessageKey, string>> = {
   'common.open': 'Open',
   'designSystem.readinessSummary': '{done} of {total} points ready',
   'oppcard.prerequisitesSummary': '{done} of {total} prerequisites complete',
-  'oppcard.resolveConflictingInformation': 'Resolve conflicting information now',
-  'oppcard.confirmProjectParametersNow': 'Confirm project parameters now',
   'buildingScope.gate.navigationReason':
     'Select at least one building and confirm every selected building first.',
   'buildingScope.title': 'Building & scope',

@@ -28,11 +28,11 @@ describe('Canonical design-system copy · DC-45', () => {
           requirements={[
             {
               id: 'conflict', label: 'Conflicting information', resolved: true,
-              sourceLabel: 'Open source', nextActionLabel: 'Resolve now', onOpenSource: () => {},
+              sourceLabel: 'Open source', onOpenSource: () => {},
             },
             {
               id: 'parameters', label: 'Project parameters', resolved: false,
-              sourceLabel: 'Open source', nextActionLabel: 'Confirm now', onOpenSource: () => {},
+              sourceLabel: 'Open source', onOpenSource: () => {},
             },
           ]}
           createLabel="Create option"

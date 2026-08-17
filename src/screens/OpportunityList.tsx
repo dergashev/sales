@@ -4,6 +4,7 @@ import { useStore } from '../state/store'
 import { NNBSP } from '../engine/money'
 import { Button } from '../components/primitives'
 import { FormField, SelectField } from '../components/designSystem'
+import { STAGE_TAG } from '../lib/opportunityStage'
 import { useTx } from '../i18n'
 
 /**
@@ -24,13 +25,6 @@ import { useTx } from '../i18n'
  */
 
 const ALL = 'alle'
-
-/** Цвет стадии — вариант тега системы; текст остаётся носителем. */
-const STAGE_TAG: Record<string, string> = {
-  'neu aus HubSpot': 'a3-blue',
-  'in Vorbereitung': 'a3-orange',
-  'versendet': 'a3-green',
-}
 
 /** CTA карточки — следующая лучшая работа стадии, не общее «öffnen». */
 /**

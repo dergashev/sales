@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 52** · перевод есть, мост не подключён: 35
-· перевода нет (в поставку копирайта): 17
+**Всего 57** · перевод есть, мост не подключён: 35
+· перевода нет (в поставку копирайта): 22
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -53,9 +53,13 @@ Mit freundlichen Grüßen
 ## Перевода нет — в следующую поставку копирайта
 
 - Anteil am Bauwerk (KG 300 + 400 + UG) nach calculation-spec §1 ⚙
+- Bereit zum Anlegen
+- Bestätigt
+- Bestätigung erforderlich
 - Die folgenden Auswahlmöglichkeiten sind bereits auf diesen Standard abgestimmt.
 - Druckansicht öffnen
 - Eigenes Ausgabeprofil clientPrint mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.
+- Ein Dokument ist nicht lesbar
 - Energiestandard und Zertifizierung
 - Entschieden in Leistungsabgrenzung — hier nur zur Einordnung sichtbar.
 - Erst nach Bestätigung gilt die nachfolgende Konfiguration als abschließbar.
@@ -68,4 +72,5 @@ Mit freundlichen Grüßen
 - Tiefgarage · Lüftung, OS-Beschichtung, Tore
 - Untergeschoss · Rohbau und Ausbau
 - Verschiebt die Termine unten; die Bauzeit selbst bleibt gleich.
+- Wartet auf die Voraussetzungen oben
 - ≈ 2.447 €/m² WFL nach WoFlV

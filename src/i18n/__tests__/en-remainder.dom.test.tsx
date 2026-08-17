@@ -77,8 +77,15 @@ import { GENERATED_DE } from '../generated'
  * Hilfetext. Deutsch ist Quellsprache, daher erscheint der neue Text zuerst
  * darin; alle vier stehen in der nächsten Copy-Lieferung
  * (`docs/audit/i18n-en-worklist.md`).
+ * 52 → 57 (17.08, REBUILD PROJECT CARD SHELL): новый обзор готовности
+ * Opportunity (DC-13-контракт, четыре стадии) добавил текстовые состояния
+ * стадий. Пять новых непереведённых фрагментов: «Bereit zum Anlegen»,
+ * «Bestätigt», «Bestätigung erforderlich», «Ein Dokument ist nicht
+ * lesbar», «Wartet auf die Voraussetzungen oben». Немецкий — язык-
+ * источник, поэтому новая копия появляется на нём первой; все пять стоят
+ * в следующей поставке копирайта.
  */
-const BUDGET = 52
+const BUDGET = 57
 
 /**
  * Немецкая лексика: умляуты и частотные служебные слова. Нормативные имена
