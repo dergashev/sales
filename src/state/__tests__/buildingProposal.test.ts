@@ -232,6 +232,10 @@ describe('selection and configuration modes', () => {
     st().resolveWflConflict('customer')
     st().confirmBuilding('DEMO-B-A')
     st().confirmConfigurationMode('PER_BUILDING')
+    // Leistungsabgrenzung (chapter 1, entered above) is project-level, not
+    // building-scoped — all four building-scoped chapters must be visited
+    // explicitly, including Leistungen KG 300 (chapter 2 post-reorder).
+    st().openChapterAt(2)
     st().openChapterAt(3)
     st().openChapterAt(4)
     st().openChapterAt(5)

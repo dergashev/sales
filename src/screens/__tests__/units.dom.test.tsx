@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
-import { CHAPTERS } from '../S3Konfigurator'
+import { CHAPTERS, SCOPE_BOUNDARIES_CHAPTER } from '../../state/chapters'
 import { __resetStoreForTests, useStore } from '../../state/store'
 
 /**
@@ -53,7 +53,9 @@ describe('единицы: знак валюты не удваивается', ()
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
-    act(() => useStore.getState().openChapterAt(2))
+    // Scope Boundaries by IDENTITY, not a literal chapter number — this is
+    // the chapter whose coverage tiles show `Mehrpreis`/`Minderpreis`.
+    act(() => useStore.getState().openChapterAt(SCOPE_BOUNDARIES_CHAPTER))
 
     const text = document.body.textContent ?? ''
     // Последствие на плитке обязано существовать — иначе тест доказывал бы

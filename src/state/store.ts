@@ -10,6 +10,7 @@ import {
   type PipelineView,
   type ProductLevel,
 } from './clientProjection'
+import { SCOPE_BOUNDARIES_CHAPTER } from './chapters'
 import { withRegionalFactor } from './catalog'
 import {
   bgfAboveGround, calculateBuilding, kgSplit, sumOfBlock,
@@ -171,7 +172,14 @@ export type BuildingConfigurationState = {
 
 export type ConfigurationDisplayStatus = 'open' | 'ready' | 'confirmed' | 'recheck'
 
-export const BUILDING_SCOPED_CHAPTERS = [1, 3, 4, 5] as const
+/**
+ * Building-scoped Configurator chapters: `Leistungen KG 300`, `Technik
+ * KG 400`, `Energie & Zertifikate`, `Flächen im Detail` (`chapters.ts`).
+ * `Leistungsabgrenzung` (`SCOPE_BOUNDARIES_CHAPTER`) is deliberately absent
+ * — it is a project-level chapter ("gilt für den gesamten Komplex") both
+ * before and after the 2026-08-18 reorder that moved it to chapter 1.
+ */
+export const BUILDING_SCOPED_CHAPTERS = [2, 3, 4, 5] as const
 
 const SHARED_CONFIGURATION_SCOPE = 'SHARED'
 
@@ -1439,7 +1447,7 @@ export function chapterDone(
   }
   const besucht = s.besuchteKapitel.includes(n)
   switch (n) {
-    case 2:
+    case SCOPE_BOUNDARIES_CHAPTER:
       // Leistungsabgrenzung решена, когда ни одна решаемая группа не
       // осталась `unknown`: непринятое решение — не пройденный шаг.
       return besucht
@@ -2501,7 +2509,11 @@ const store = createStore<Store>((set, get) => {
         pricingStarted: s.pricingStarted || (
           s.configurationModeChosen
             && !s.configurationModeEditing
-            && visibleChapter === 2
+            // Identity, not position (ticket "MAKE SCOPE BOUNDARIES THE
+            // AUTHORITATIVE CONFIGURATOR ENTRY STEP"): pricing starts on
+            // ENTERING Leistungsabgrenzung, never on a literal chapter
+            // number that would silently go stale on the next reorder.
+            && visibleChapter === SCOPE_BOUNDARIES_CHAPTER
         ),
         scopeBuildingId: buildingScoped && s.configurationMode === 'PER_BUILDING'
           ? activeBuildingId
@@ -3090,31 +3102,39 @@ const store = createStore<Store>((set, get) => {
       const activeBuildingId = includedIds.includes(s.activeBuildingId)
         ? s.activeBuildingId
         : includedIds[0]!
-      const scopeKey = configurationScopeKey({ configurationMode: mode }, activeBuildingId)
-      const scopedVisited = s.configurationVisitedChapters[scopeKey] ?? []
       const previous = {
         configurationMode: s.configurationMode,
         configurationModeChosen: s.configurationModeChosen,
         configurationModeEditing: s.configurationModeEditing,
-        configurationVisitedChapters: s.configurationVisitedChapters,
         activeBuildingId: s.activeBuildingId,
         scopeBuildingId: s.scopeBuildingId,
         openChapter: s.openChapter,
+        pricingStarted: s.pricingStarted,
         besuchteKapitel: s.besuchteKapitel,
       }
       const next = {
         configurationMode: mode,
         configurationModeChosen: true,
         configurationModeEditing: false,
-        configurationVisitedChapters: scopedVisited.includes(1)
-          ? s.configurationVisitedChapters
-          : { ...s.configurationVisitedChapters, [scopeKey]: [...scopedVisited, 1] },
         activeBuildingId,
-        scopeBuildingId: mode === 'PER_BUILDING' ? activeBuildingId : null,
-        openChapter: 1,
-        besuchteKapitel: s.besuchteKapitel.includes(1)
+        // Leistungsabgrenzung (SCOPE_BOUNDARIES_CHAPTER) is a project-level
+        // chapter, never in BUILDING_SCOPED_CHAPTERS — landing there must
+        // not narrow the live projection to one building in either mode
+        // (that coupling used to be harmless only because the OLD chapter 1
+        // happened to be the building-scoped KG 300).
+        scopeBuildingId: null,
+        // "Konfiguration starten" enters the authoritative first
+        // Configurator step (Product contract, 2026-08-18: Scope Boundaries
+        // first, detailed technical configuration downstream) in the SAME
+        // transition that confirms the mode. Entering Leistungsabgrenzung
+        // is exactly the accepted pricingStarted trigger (mirrored in
+        // `openChapterAt` above) — so this transition starts pricing too;
+        // the mode radio choice that preceded this call never did.
+        openChapter: SCOPE_BOUNDARIES_CHAPTER,
+        pricingStarted: true,
+        besuchteKapitel: s.besuchteKapitel.includes(SCOPE_BOUNDARIES_CHAPTER)
           ? s.besuchteKapitel
-          : [...s.besuchteKapitel, 1],
+          : [...s.besuchteKapitel, SCOPE_BOUNDARIES_CHAPTER],
       }
       const before = projectTotal(s)
       const write = (value: typeof previous | typeof next) => set({

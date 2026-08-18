@@ -476,7 +476,7 @@ function P4Annahmen({ setTab }: { setTab: (t: Tab) => void }) {
             <div className="mt-3">
               {a.resolve
                 ? <Button onClick={a.resolve}>{a.resolveLabel}</Button>
-                : <Button onClick={() => setTab('Projektdaten')}>{tx('Entscheidung im Konfigurator · Kapitel 2')}</Button>}
+                : <Button onClick={() => setTab('Projektdaten')}>{tx('Entscheidung im Konfigurator · Kapitel 1')}</Button>}
             </div>
           </li>
         ))}

@@ -1,7 +1,7 @@
 import { chapterDone, pipelineViewForBuildingGate, useStore } from '../state/store'
 import type { PipelineView } from '../state/store'
 import { NNBSP } from '../engine/money'
-import { CHAPTERS } from '../screens/S3Konfigurator'
+import { CHAPTERS } from '../state/chapters'
 import { useT, useTx, type MessageKey } from '../i18n'
 import {
   isClientProjection,

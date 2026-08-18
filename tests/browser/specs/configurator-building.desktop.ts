@@ -2,6 +2,7 @@ import { test, expect } from '../fixtures'
 import {
   BUILDING_SCOPE,
   BUILDINGS,
+  CONFIGURATOR_CHAPTERS,
   CONFIGURATOR_MODE,
   CONFIGURATOR_SCOPE,
   NAV,
@@ -97,10 +98,20 @@ test.describe('building-aware Configurator gate chain', () => {
     // ── Configurator entered: nav reflects the current pipeline view ─
     await expect(konfiguratorItem).toHaveAttribute('aria-current', 'page')
 
+    // ── Scope Boundaries is the authoritative first Configurator step ─
+    // (Product contract, 2026-08-18): "Konfiguration starten" lands here
+    // directly, and it is project-level — no per-building scope tabs yet.
+    await expect(page.getByRole('heading', {
+      level: 1, name: CONFIGURATOR_CHAPTERS.scopeBoundaries,
+    })).toBeVisible()
+    await expect(page.getByRole('tablist', { name: CONFIGURATOR_SCOPE.legend })).toHaveCount(0)
+
     // ── Building-aware client-facing interaction: per-building scope ─
-    // With two included buildings and PER_BUILDING mode, chapter 1 (KG 300,
-    // a building-scoped chapter) exposes a scope tablist with a "Gesamt"
-    // (total) tab plus one tab per included building.
+    // Leistungen KG 300 is the first building-scoped chapter reached from
+    // Scope Boundaries. With two included buildings and PER_BUILDING mode
+    // it exposes a scope tablist with a "Gesamt" (total) tab plus one tab
+    // per included building.
+    await nav.getByRole('button', { name: CONFIGURATOR_CHAPTERS.kg300 }).click()
     const scopeTabs = page.getByRole('tablist', { name: CONFIGURATOR_SCOPE.legend })
     await expect(scopeTabs).toBeVisible()
     await expect(scopeTabs.getByRole('tab')).toHaveCount(3)

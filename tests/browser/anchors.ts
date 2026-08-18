@@ -57,6 +57,18 @@ export const CONFIGURATOR_SCOPE = {
 }
 
 /**
+ * Configurator chapter names (`src/state/chapters.ts`), by identity rather
+ * than position — "Konfiguration starten" lands on `scopeBoundaries` first
+ * (Product contract, 2026-08-18: Scope Boundaries is the authoritative
+ * first Configurator step), which is project-level, not building-scoped;
+ * `kg300` is the first building-scoped chapter reached from there.
+ */
+export const CONFIGURATOR_CHAPTERS = {
+  scopeBoundaries: 'Leistungsabgrenzung',
+  kg300: 'Leistungen KG 300',
+}
+
+/**
  * From src/fixtures/demo-0001.json's `stableName` field (rendered as
  * `documentationName` — the display name used on checkboxes/tabs).
  * `gebaeudeform` in that same fixture file ("Freistehendes

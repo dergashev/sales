@@ -62,6 +62,7 @@ import {
   isClientProjection,
   isVisibleInOutputProfile,
 } from '../state/clientProjection'
+import { CHAPTERS, SCOPE_BOUNDARIES_CHAPTER } from '../state/chapters'
 import {
   deriveConflictState,
   effectiveDerivedArea,
@@ -99,12 +100,6 @@ const UG_IMAGE_VALUE: Record<'vollausbau' | 'ab_decke' | 'kein_ug', string> = {
   ab_decke: 'nurAusbau',
   kein_ug: 'keins',
 }
-
-export const CHAPTERS = [
-  'Leistungen KG 300', 'Leistungsabgrenzung', 'Technik KG 400',
-  'Energie & Zertifikate', 'Flächen im Detail', 'Baugrund & Erschließung',
-  'Baunebenkosten KG 700', 'Termine & Kommerzielles',
-] as const
 
 const KG_LABELS: Record<CostGroup, string> = {
   KG_100: 'Grundstück', KG_200: 'Vorbereitende Maßnahmen',
@@ -183,7 +178,12 @@ export function S3Konfigurator() {
             главу целиком. */}
         <div className="py-5">
           {totalOverview && <ConfigurationOverview />}
-          {!totalOverview && n === 1 && (
+          {/* Reorder (2026-08-18): Leistungsabgrenzung is now chapter 1
+              (the authoritative commercial-scope entry), Leistungen KG 300
+              chapter 2 — content stays bundled with its own chapter
+              identity, only the position swapped. */}
+          {!totalOverview && n === 1 && <ChapterUmfang />}
+          {!totalOverview && n === 2 && (
             <div className="grid gap-5">
               <EnergyCertBanner />
               <UndergroundFloorRecap />
@@ -194,7 +194,6 @@ export function S3Konfigurator() {
               <GroundRiskSection />
             </div>
           )}
-          {!totalOverview && n === 2 && <ChapterUmfang />}
           {!totalOverview && n === 3 && (
             <div className="grid gap-5">
               <EnergyCertBanner />
@@ -1037,8 +1036,8 @@ function UndergroundFloorRecap() {
         )}
       </AnimatePresence>
       <div className="mt-3">
-        <Button onClick={() => s.openChapterAt(2)}>
-          {tx('Zu Kapitel 2 · Leistungsabgrenzung')}
+        <Button onClick={() => s.openChapterAt(SCOPE_BOUNDARIES_CHAPTER)}>
+          {tx(`Zu Kapitel ${SCOPE_BOUNDARIES_CHAPTER} · Leistungsabgrenzung`)}
         </Button>
       </div>
     </Card>
@@ -1545,11 +1544,12 @@ function GroundRiskSection() {
 /**
  * Глава «Baugrund & Erschließung»: nach der Verlagerung der Risiko-Karten
  * nach KG 300 (Punkt 9 des Tickets) bleibt hier nur der Erschließungs-
- * Hinweis — KG 200 gehört zu diesem Ticket nicht (Non-Goal), daher
- * unverändert außer einer Korrektur: der Link zeigte auf Kapitel 3
- * („Technik KG 400"), obwohl er „Leistungsabgrenzung" nennt — das ist
- * Kapitel 2 (`CHAPTERS[1]`). Vorgefundener Fehler, in derselben Zeile
- * behoben, keine Verhaltensänderung sonst.
+ * Hinweis — KG 200 gehört zu diesem Ticket nicht (Non-Goal). Der Link (und
+ * der Hinweistext, der denselben Sprung ankündigt) zeigt jetzt auf
+ * `SCOPE_BOUNDARIES_CHAPTER` statt auf eine wortwörtliche Zahl — Kapitel-
+ * Reorder 2026-08-18 hätte sonst denselben „nennt Leistungsabgrenzung,
+ * verlinkt woanders hin"-Fehler wiederholt, den ein früherer Fund hier schon
+ * einmal an der Schaltfläche fand.
  */
 function ChapterBaugrund() {
   const s = useStore()
@@ -1561,7 +1561,7 @@ function ChapterBaugrund() {
       <Card
         title="Erschließung"
         intro={'Erschließung gehört zu KG 200 — die Entscheidung über den '
-          + 'Umfang fällt in Kapitel 3, hier steht ihr Stand.'}
+          + `Umfang fällt in Kapitel ${SCOPE_BOUNDARIES_CHAPTER}, hier steht ihr Stand.`}
       >
         {/* Пустота названа с источником (правило 30): факта нет в
             документации, и это не то же самое, что «его нет». */}
@@ -1571,7 +1571,9 @@ function ChapterBaugrund() {
           KG{NNBSP}200 im Angebot: {COVERAGE_LABEL[kg200]}
         </p>
         <div className="mt-2">
-          <Button onClick={() => s.openChapterAt(2)}>{tx('Zu Kapitel 2 · Leistungsabgrenzung')}</Button>
+          <Button onClick={() => s.openChapterAt(SCOPE_BOUNDARIES_CHAPTER)}>
+            {tx(`Zu Kapitel ${SCOPE_BOUNDARIES_CHAPTER} · Leistungsabgrenzung`)}
+          </Button>
         </div>
       </Card>
     </div>

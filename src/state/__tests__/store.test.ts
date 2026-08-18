@@ -6,6 +6,7 @@ import {
 } from '../store'
 import { KG400_GROUPS, choiceBlocked } from '../../engine/options'
 import type { JournalEvent, OfferSnapshot } from '../store'
+import { SCOPE_BOUNDARIES_CHAPTER } from '../chapters'
 
 /**
  * Проекция обязана воспроизводить мокап S3 из `screen-map.md` до цента.
@@ -64,7 +65,7 @@ describe('Scope Boundaries: покрытие по умолчанию (ticket 627
 
   it('прогресс главы не требует действия по обязательным KG 300/400/700', () => {
     const st = () => useStore.getState()
-    st().openChapterAt(2)
+    st().openChapterAt(SCOPE_BOUNDARIES_CHAPTER)
     st().setCoverage('KG_200', 'excluded')
     st().setCoverage('KG_500', 'excluded')
     st().setCoverage('KG_600', 'excluded')
@@ -72,7 +73,7 @@ describe('Scope Boundaries: покрытие по умолчанию (ticket 627
     expect(st().coverage.KG_300).toBe('unknown')
     expect(st().coverage.KG_400).toBe('unknown')
     expect(st().coverage.KG_700).toBe('unknown')
-    expect(chapterDone(st(), 2)).toBe(true)
+    expect(chapterDone(st(), SCOPE_BOUNDARIES_CHAPTER)).toBe(true)
   })
 })
 
@@ -1016,7 +1017,19 @@ describe('Настоящая модель Option (ревью № 13, дефек�
     expect(st().configurationModeChosen).toBe(false)
     expect(chapterDone(st(), 1)).toBe(false)
     st().confirmConfigurationMode('PER_BUILDING')
+    // Kapitel 1 ist jetzt Leistungsabgrenzung (Reorder 2026-08-18): besucht
+    // allein reicht nicht mehr — done erst, wenn KG 200/500/600 keine
+    // offene Entscheidung mehr sind (kein falsches done nur durch Eintritt).
+    expect(chapterDone(st(), 1)).toBe(false)
+    st().setCoverage('KG_200', 'excluded')
+    st().setCoverage('KG_500', 'excluded')
+    st().setCoverage('KG_600', 'excluded')
     expect(chapterDone(st(), 1)).toBe(true)
+    // Kapitel 2 (Leistungen KG 300, gebäudebezogen) ist erst nach Besuch
+    // done — kein Auto-Visit mehr durch confirmConfigurationMode.
+    expect(chapterDone(st(), 2)).toBe(false)
+    st().openChapterAt(2)
+    expect(chapterDone(st(), 2)).toBe(true)
     // Глава 7 — глава данных (партия 3): посещение проходит её,
     // непосещённая — не пройдена.
     expect(chapterDone(st(), 7)).toBe(false)

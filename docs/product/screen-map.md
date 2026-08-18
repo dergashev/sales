@@ -105,6 +105,21 @@ S1 Projektliste ──► S2 Vorbereitung ──► S3 Konfigurator ──► S5
 
 ## 4. S3 — Konfigurator: главный экран презентации
 
+> *Порядок глав ниже устарел (найдено UX Research 18.08 при работе над
+> тикетом «Make Scope Boundaries the authoritative Configurator entry
+> step»).* Мокап и таблица охвата в этом разделе описывают более старую,
+> девятиглавую модель (`Projektverständnis`, `Umfang`, `Gebäude & Flächen` …),
+> не совпадающую по числу и именам глав с текущим runtime, — она предшествует
+> перестройке Leistungsabgrenzung на базе KG. Действующие восемь глав
+> Konfigurator, в порядке входа (`src/state/chapters.ts`):
+> **1 Leistungsabgrenzung · 2 Leistungen KG 300 · 3 Technik KG 400 ·
+> 4 Energie & Zertifikate · 5 Flächen im Detail · 6 Baugrund & Erschließung ·
+> 7 Baunebenkosten KG 700 · 8 Termine & Kommerzielles.** Leistungsabgrenzung
+> открывается первой — это коммерческая граница, и расчёт (`pricingStarted`)
+> начинается именно с её входа, а не с открытия детальной технической главы.
+> Полное согласование мокапа ниже с этим порядком — отдельный документационный
+> долг за пределами этого тикета (исправлен только порядок входа).
+
 Двухпанельный. Слева главы, справа живой оффер. **Цена видна всегда.**
 
 ```
@@ -185,7 +200,7 @@ S1 Projektliste ──► S2 Vorbereitung ──► S3 Konfigurator ──► S5
 
 | Главы уровня `gebäude` — переключатель активен | Главы уровня `projekt` — переключатель скрыт |
 |---|---|
-| 3 Gebäude & Flächen · 4 Energie & Qualität · 5 Konstruktion & Fassade · 6 Ausbau & Technik | 2 Umfang · 7 Baugrund & Erschließung · 8 Leistungsabgrenzung · 9 Termine & Kommerzielles |
+| Leistungen KG 300 · Technik KG 400 · Energie & Zertifikate · Flächen im Detail | Leistungsabgrenzung · Baugrund & Erschließung · Baunebenkosten KG 700 · Termine & Kommerzielles |
 | у каждого здания свой тип (D-11), свои площади, свой Leitkennzahl | помечены «gilt für den gesamten Komplex» |
 
 При охвате `Gesamt` вместо параметров главы 3 показывается **Komplex-Übersicht** (DC-47): строка на здание + итог, ниже — сегментные подытоги Wohnen/Büro. Отдельного обзорного экрана нет.

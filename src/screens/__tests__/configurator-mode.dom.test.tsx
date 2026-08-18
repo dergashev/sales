@@ -53,6 +53,10 @@ async function startMode(
 }
 
 async function visitRequiredBuildingChapters(user: ReturnType<typeof userEvent.setup>) {
+  // Leistungsabgrenzung (chapter 1) is project-level, not building-scoped —
+  // confirmConfigurationMode no longer visits a building-scoped chapter for
+  // free, so Leistungen KG 300 must be visited explicitly here too.
+  await user.click(nav(/Leistungen KG 300/))
   await user.click(nav(/Technik KG 400/))
   await user.click(nav(/Energie & Zertifikate/))
   await user.click(nav(/Flächen im Detail/))
@@ -70,7 +74,7 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
       .forEach((radio) => expect(radio).not.toBeChecked())
     expect(screen.queryByRole('complementary', { name: 'Angebot' })).toBeNull()
     expect(screen.getByText('Kalkulation noch nicht gestartet')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Leistungen KG 300/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Leistungsabgrenzung/ })).toBeNull()
 
     const beforeJournal = useStore.getState().journal.length
     await user.click(screen.getByRole('radio', { name: 'Gemeinsam konfigurieren' }))
@@ -81,32 +85,44 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
 
     await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
     expect(useStore.getState().configurationModeChosen).toBe(true)
-    expect(useStore.getState().pricingStarted).toBe(false)
-    expect(screen.getByRole('heading', { level: 1, name: 'Leistungen KG 300' }))
+    // Scope Boundaries is the authoritative first Configurator step
+    // (Product contract, 2026-08-18): this single click both confirms the
+    // mode and enters Leistungsabgrenzung, so pricing begins right here —
+    // the earlier mode radio choice on its own never started it.
+    expect(useStore.getState().pricingStarted).toBe(true)
+    expect(screen.getByRole('heading', { level: 1, name: 'Leistungsabgrenzung' }))
       .toHaveFocus()
-    expect(screen.getByText(/Leistungen KG 300, Technik KG 400/)).toBeInTheDocument()
+    // Leistungsabgrenzung is project-level, not building-scoped: no per-
+    // building tabs, no per-building readiness detail on this chapter.
+    expect(screen.getByText('Gilt für den gesamten Komplex')).toBeInTheDocument()
     expect(screen.queryByText(/Gebäudeschritte 1, 3, 4 und 5/)).toBeNull()
-    expect(screen.queryByRole('complementary', { name: 'Angebot' })).toBeNull()
-    expect(screen.getByText('Kalkulation noch nicht gestartet')).toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: 'Angebot' })).toBeInTheDocument()
+    expect(screen.queryByText('Kalkulation noch nicht gestartet')).toBeNull()
 
     await user.click(nav(/Variantenvergleich/))
-    expect(screen.queryByRole('complementary', { name: 'Angebot' })).toBeNull()
-    await user.click(nav(/Konfigurator/))
-    await user.click(nav(/Leistungsabgrenzung/))
-    expect(useStore.getState().pricingStarted).toBe(true)
     expect(screen.getByRole('complementary', { name: 'Angebot' })).toBeInTheDocument()
+    await user.click(nav(/Konfigurator/))
     await user.click(nav(/Leistungen KG 300/))
+    expect(screen.getByText(/Leistungen KG 300, Technik KG 400/)).toBeInTheDocument()
     expect(screen.getByRole('complementary', { name: 'Angebot' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Modus ändern' }))
     expect(screen.getByRole('heading', { level: 1, name: 'Konfigurationsmodus wählen' }))
       .toHaveFocus()
     expect(screen.getByRole('radio', { name: 'Gemeinsam konfigurieren' })).toBeChecked()
-    expect(screen.getByText('Kalkulation noch nicht gestartet')).toBeInTheDocument()
+    // Editing an already-chosen mode hides the Angebot panel again (pre-
+    // existing behavior, unrelated to this reorder) — but the underlying
+    // `pricingStarted` flag itself is not rolled back.
+    expect(screen.queryByRole('complementary', { name: 'Angebot' })).toBeNull()
+    expect(useStore.getState().pricingStarted).toBe(true)
     await user.click(screen.getByRole('radio', { name: 'Je Gebäude konfigurieren' }))
     await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
     expect(useStore.getState().configurationMode).toBe('PER_BUILDING')
     expect(useStore.getState().configurationModeChosen).toBe(true)
+    expect(screen.getByRole('heading', { level: 1, name: 'Leistungsabgrenzung' }))
+      .toHaveFocus()
+
+    await user.click(nav(/Leistungen KG 300/))
     const oneBuildingTabs = screen.getByRole('tablist', {
       name: 'Konfigurationsumfang',
     })
@@ -119,6 +135,10 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     const user = userEvent.setup()
     await openModeStep(user, 2)
     await startMode(user, 'SHARED')
+    // "Konfiguration starten" lands on Leistungsabgrenzung (project-level);
+    // the building-scoped SHARED text below only renders on a
+    // building-scoped chapter.
+    await user.click(nav(/Leistungen KG 300/))
 
     expect(screen.queryByRole('tablist', { name: 'Konfigurationsumfang' })).toBeNull()
     expect(screen.getAllByText(/Gemeinsame Konfiguration · gilt für Haus A und Haus B/))
@@ -164,6 +184,10 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
       deltaExact: null,
     })
 
+    // "Konfiguration starten" lands on Leistungsabgrenzung (project-level,
+    // no building tabs); the per-building switcher below lives on a
+    // building-scoped chapter.
+    await user.click(nav(/Leistungen KG 300/))
     const switcher = screen.getByRole('tablist', { name: 'Konfigurationsumfang' })
     expect(within(switcher).getByRole('tab', { name: /Haus B · Unvollständig/ }))
       .toHaveAttribute('aria-selected', 'true')

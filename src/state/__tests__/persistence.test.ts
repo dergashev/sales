@@ -131,10 +131,14 @@ describe('proposal store recovery', () => {
     st().confirmProjectParams()
     st().createOption('Mode persistence')
     st().confirmBuilding('DEMO-B-A')
-    st().confirmConfigurationMode('PER_BUILDING')
-    st().openChapterAt(3)
     expect(st().pricingStarted).toBe(false)
-    st().openChapterAt(2)
+    st().confirmConfigurationMode('PER_BUILDING')
+    // "Konfiguration starten" enters Scope Boundaries (chapter 1) in the
+    // very same transition that confirms the mode — pricing begins right
+    // here, not from the earlier mode radio choice on its own.
+    expect(st().pricingStarted).toBe(true)
+    st().openChapterAt(3)
+    expect(st().pricingStarted).toBe(true)
 
     const raw = storage.getItem(proposalStorageKey('DEMO-0001'))!
     expect(raw).toContain('"configurationModeChosen":true')
@@ -147,7 +151,10 @@ describe('proposal store recovery', () => {
     expect(st().configurationModeChosen).toBe(true)
     expect(st().configurationMode).toBe('PER_BUILDING')
     expect(st().pricingStarted).toBe(true)
-    expect(st().configurationVisitedChapters['DEMO-B-A']).toEqual([1, 3])
+    // Leistungsabgrenzung (chapter 1) is project-level, not building-scoped
+    // — confirmConfigurationMode no longer records it into this per-building
+    // list; only the explicit chapter-3 visit does.
+    expect(st().configurationVisitedChapters['DEMO-B-A']).toEqual([3])
   })
 
   it('restores mandatory raw `unknown` coverage without blocking completeness', () => {

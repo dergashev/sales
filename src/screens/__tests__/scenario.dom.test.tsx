@@ -181,12 +181,11 @@ describe('Сквозной сценарий продажи', () => {
 
     // Erschließung bleibt eine reine Datenkarte in «Baugrund & Erschließung»
     // (Non-Goal: KG 200 wird von diesem Ticket nicht angefasst). Der Link
-    // zeigte fälschlich auf Kapitel 3 («Technik KG 400») statt auf Kapitel 2
-    // («Leistungsabgrenzung») — vorgefundener Fehler, in derselben Zeile
-    // behoben.
+    // zeigt auf Leistungsabgrenzung, die seit dem Reorder vom 2026-08-18
+    // Kapitel 1 ist (zuvor Kapitel 2).
     await user.click(nav(/Baugrund & Erschließung/))
     expect(screen.getByText(/keine Angaben zur Erschließung/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Zu Kapitel 2/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Zu Kapitel 1/ })).toBeInTheDocument()
   })
 
   it('дельта-чип и призрак ВИДИМЫ: состояние несёт .a3-show, не кадр анимации', async () => {
