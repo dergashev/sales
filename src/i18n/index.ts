@@ -219,6 +219,12 @@ const de = {
   'configurator.scope.building': '{building} · {status}',
   'configurator.scope.project': 'Gilt für den gesamten Komplex',
   'configurator.scope.shared': 'Gemeinsame Konfiguration · gilt für {buildings}',
+  'configurator.scopeBoundaries.goTo':
+    'Zu Kapitel {chapter} · Leistungsabgrenzung',
+  'configurator.scopeBoundaries.servicingIntro':
+    'Erschließung gehört zu KG 200 — die Entscheidung über den Umfang fällt in Kapitel {chapter}, hier steht ihr Stand.',
+  'configurator.scopeBoundaries.assumptionAction':
+    'Entscheidung im Konfigurator · Kapitel {chapter}',
   'configurator.scope.single': 'Konfiguration für {building} · {status}',
   'configurator.scope.announcement': '{scope} ausgewählt. Status: {status}.',
   'configurator.status.open': 'Unvollständig',
@@ -465,6 +471,12 @@ const en: Partial<Record<MessageKey, string>> = {
   'configurator.scope.building': '{building} · {status}',
   'configurator.scope.project': 'Applies to the entire complex',
   'configurator.scope.shared': 'Shared configuration · applies to {buildings}',
+  'configurator.scopeBoundaries.goTo':
+    'Go to chapter {chapter} · Scope boundaries',
+  'configurator.scopeBoundaries.servicingIntro':
+    'Site servicing belongs to KG 200 — its scope is decided in chapter {chapter}; its current status is shown here.',
+  'configurator.scopeBoundaries.assumptionAction':
+    'Decide in the configurator · Chapter {chapter}',
   'configurator.scope.single': 'Configuration for {building} · {status}',
   'configurator.scope.announcement': '{scope} selected. Status: {status}.',
   'configurator.status.open': 'Incomplete',

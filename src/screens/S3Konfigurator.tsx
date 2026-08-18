@@ -1005,6 +1005,7 @@ function EnergyCertBanner() {
 function UndergroundFloorRecap() {
   const s = useStore()
   const tx = useTx()
+  const t = useT()
   const { fadeRise } = useSemanticMotion()
   const b = activeBuilding(s)
   const included = b.untergeschoss !== 'kein_ug'
@@ -1037,7 +1038,9 @@ function UndergroundFloorRecap() {
       </AnimatePresence>
       <div className="mt-3">
         <Button onClick={() => s.openChapterAt(SCOPE_BOUNDARIES_CHAPTER)}>
-          {tx(`Zu Kapitel ${SCOPE_BOUNDARIES_CHAPTER} · Leistungsabgrenzung`)}
+          {t('configurator.scopeBoundaries.goTo', {
+            chapter: SCOPE_BOUNDARIES_CHAPTER,
+          })}
         </Button>
       </div>
     </Card>
@@ -1554,14 +1557,16 @@ function GroundRiskSection() {
 function ChapterBaugrund() {
   const s = useStore()
   const tx = useTx()
+  const t = useT()
   const kg200 = s.coverage.KG_200
 
   return (
     <div className="grid gap-5">
       <Card
         title="Erschließung"
-        intro={'Erschließung gehört zu KG 200 — die Entscheidung über den '
-          + `Umfang fällt in Kapitel ${SCOPE_BOUNDARIES_CHAPTER}, hier steht ihr Stand.`}
+        intro={t('configurator.scopeBoundaries.servicingIntro', {
+          chapter: SCOPE_BOUNDARIES_CHAPTER,
+        })}
       >
         {/* Пустота названа с источником (правило 30): факта нет в
             документации, и это не то же самое, что «его нет». */}
@@ -1572,7 +1577,9 @@ function ChapterBaugrund() {
         </p>
         <div className="mt-2">
           <Button onClick={() => s.openChapterAt(SCOPE_BOUNDARIES_CHAPTER)}>
-            {tx(`Zu Kapitel ${SCOPE_BOUNDARIES_CHAPTER} · Leistungsabgrenzung`)}
+            {t('configurator.scopeBoundaries.goTo', {
+              chapter: SCOPE_BOUNDARIES_CHAPTER,
+            })}
           </Button>
         </div>
       </Card>

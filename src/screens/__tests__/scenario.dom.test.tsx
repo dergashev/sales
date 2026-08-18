@@ -161,6 +161,11 @@ describe('Сквозной сценарий продажи', () => {
     // Conditions & Access переехал в KG 300 из «Baugrund & Erschließung» —
     // тот же самый уже согласованный accept/ignore-механизм, другое место.
     await user.click(nav(/Leistungen KG 300/))
+    act(() => useStore.getState().setUiLanguage('en'))
+    expect(screen.getByRole('button', {
+      name: 'Go to chapter 1 · Scope boundaries',
+    })).toBeInTheDocument()
+    act(() => useStore.getState().setUiLanguage('de'))
     // Риск — категория · вероятность · следствие, и он НЕ в цене (CALC-001).
     expect(screen.getByText('Baugrundgutachten liegt nicht vor')).toBeInTheDocument()
     // Надбавка — реальные деньги (D-02) с НАЗВАННОЙ базой: подгруппа
@@ -186,6 +191,29 @@ describe('Сквозной сценарий продажи', () => {
     await user.click(nav(/Baugrund & Erschließung/))
     expect(screen.getByText(/keine Angaben zur Erschließung/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Zu Kapitel 1/ })).toBeInTheDocument()
+    act(() => useStore.getState().setUiLanguage('en'))
+    expect(screen.getByText(
+      'Site servicing belongs to KG 200 — its scope is decided in chapter 1; its current status is shown here.',
+    )).toBeInTheDocument()
+    expect(screen.getByRole('button', {
+      name: 'Go to chapter 1 · Scope boundaries',
+    })).toBeInTheDocument()
+  })
+
+  it('переводит параметризованную ссылку допущения на актуальную главу', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole('button', {
+      name: /Musterprojekt Nordfeld öffnen/,
+    }))
+    await user.click(screen.getByRole('button', { name: 'Vorbereitung öffnen' }))
+    await user.click(screen.getByRole('tab', { name: /Annahmen/ }))
+
+    act(() => useStore.getState().setUiLanguage('en'))
+
+    expect(screen.getByRole('button', {
+      name: 'Decide in the configurator · Chapter 1',
+    })).toBeInTheDocument()
   })
 
   it('дельта-чип и призрак ВИДИМЫ: состояние несёт .a3-show, не кадр анимации', async () => {

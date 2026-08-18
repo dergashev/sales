@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 57** · перевод есть, мост не подключён: 34
-· перевода нет (в поставку копирайта): 23
+**Всего 56** · перевод есть, мост не подключён: 34
+· перевода нет (в поставку копирайта): 22
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -61,7 +61,6 @@ Mit freundlichen Grüßen
 - Ein Dokument ist nicht lesbar
 - Energiestandard und Zertifizierung
 - Entschieden in Leistungsabgrenzung — hier nur zur Einordnung sichtbar.
-- Erschließung gehört zu KG 200 — die Entscheidung über den Umfang fällt in Kapitel 1, hier steht ihr Stand.
 - Erst nach Bestätigung gilt die nachfolgende Konfiguration als abschließbar.
 - Geprüfte Gebäudewerte tragen ihre Herkunft; Änderungen heben die Bestätigung auf und werden in Gebäude & Umfang erneut geprüft.
 - Immer Bestandteil des Angebots · kein Einfluss auf die Bauzeit — keine Auswahl.

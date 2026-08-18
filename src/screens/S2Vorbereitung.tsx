@@ -3,7 +3,8 @@ import { Decimal } from 'decimal.js'
 import demo from '../fixtures/demo-0001.json'
 import catalog from '../fixtures/catalog.json'
 import { activeBuilding, useStore, wflConflict } from '../state/store'
-import { useTx } from '../i18n'
+import { SCOPE_BOUNDARIES_CHAPTER } from '../state/chapters'
+import { useT, useTx } from '../i18n'
 import { copyFor } from '../i18n/internal-refs'
 import { NNBSP, formatDE, rateLabel } from '../engine/money'
 import {
@@ -421,6 +422,7 @@ function P3OffeneFragen() {
 
 function P4Annahmen({ setTab }: { setTab: (t: Tab) => void }) {
   const tx = useTx()
+  const t = useT()
   const s = useStore()
 
   // Активное допущение = каскад дошёл до подстановки (M-4). Список выводится
@@ -476,7 +478,13 @@ function P4Annahmen({ setTab }: { setTab: (t: Tab) => void }) {
             <div className="mt-3">
               {a.resolve
                 ? <Button onClick={a.resolve}>{a.resolveLabel}</Button>
-                : <Button onClick={() => setTab('Projektdaten')}>{tx('Entscheidung im Konfigurator · Kapitel 1')}</Button>}
+                : (
+                    <Button onClick={() => setTab('Projektdaten')}>
+                      {t('configurator.scopeBoundaries.assumptionAction', {
+                        chapter: SCOPE_BOUNDARIES_CHAPTER,
+                      })}
+                    </Button>
+                  )}
             </div>
           </li>
         ))}
