@@ -13,6 +13,7 @@ import {
 import { withRegionalFactor } from './catalog'
 import {
   bgfAboveGround, calculateBuilding, kgSplit, sumOfBlock,
+  SCOPE_BOUNDARIES_DECIDABLE_GROUPS,
   totalLabel as calculationTotalLabel,
   type BuildingInput, type Coverage, type CoverageState,
   type CostGroup, type BuildingResult,
@@ -353,30 +354,18 @@ type PersistedProposalPayload = {
  * 627d3191, одобрено CPO, дословно проверено против бэклога): «no KG is
  * pre-selected as included, including 300/400/700. This supersedes
  * decisions.md D-07's "default 300/400/700 = included" clause.» Ни одна из
- * шести решаемых групп Scope Boundaries — KG 200, 300, 400, 500, 600, 700 —
+ * шести показанных групп Scope Boundaries — KG 200, 300, 400, 500, 600, 700 —
  * не предрешена: «выключено по умолчанию» означает «решение ещё не принято»
  * (`unknown` / «noch offen»), а не «продавец уже решил исключить» (SCOPE-001,
  * `data-model.md` §5.4, D-18).
  *
- * **Известное ограничение интерфейса — задокументировано, а не причина сузить
- * умолчание.** Глава `ChapterUmfang` (`S3Konfigurator.tsx`) сегодня даёт
- * решить лишь четыре группы — KG 200/500/600/800 (`decidable`) — и
- * показывает KG 300, 400 и 700 статичной плиткой «Kern des Angebots · immer
- * enthalten» без единого интерактивного элемента; `calculateBuilding` считает
- * их базовую стоимость безусловно, независимо от `coverage`. Из-за этого до
- * тикета d21f8d48 («REBUILD CONFIGURATOR STEP 1 AS KG-BASED SCOPE
- * BOUNDARIES», который даст им настоящую карточку активации) через
- * сегодняшний интерфейс покрытие этих трёх групп можно перевести из `unknown`
- * только прямым действием стора — и предложение надолго остаётся на подписи
- * `Zwischensumme der kalkulierten Positionen`. Это ровно то поведение, которое
- * одобренный бриф ожидает и явно допускает в своих Acceptance Criteria («…
- * offer total reads Zwischensumme… until all touched groups are resolved»);
- * его же NON-GOALS прямо откладывают интерфейс до d21f8d48. Умолчание поэтому
- * не сужается ради сегодняшнего интерфейса — интерфейс донагоняет позже.
- * Настоящее ценовое исключение (не только подпись) для KG 300/400/700 —
- * отдельная, более крупная задача движка (база сплита KG 700, область
- * множителей GK/Energiestandard, граница UG) вне этого прохода — см.
- * `UNRESOLVED ISSUES` в Implementation Handoff.
+ * Сырое значение KG 300/400/700 также остаётся `unknown`: оно не фабрикует
+ * пользовательское решение и сохраняет совместимость с уже записанными
+ * конфигурациями. Эти группы при этом обязательны по политике и показаны в
+ * `ChapterUmfang` как `mandatory`; поэтому только канонические
+ * `SCOPE_BOUNDARIES_DECIDABLE_GROUPS` (KG 200/500/600) создают открытое
+ * решение и блокируют полноту. `calculateBuilding` по-прежнему считает
+ * базовую стоимость KG 300/400/700 безусловно, независимо от `coverage`.
  *
  * KG 100 (Grundstück) и KG 800 (Finanzierung) в перечень Scope Boundaries
  * этой задачи не входят (тикет называет ровно шесть групп) и сохраняют
@@ -1273,16 +1262,6 @@ export function configurationDisplayStatusFor(
  * только для сравнения «изменилось ли что-то с момента подтверждения», не
  * для хранения самого решения.
  */
-/**
- * Die drei entscheidbaren KG-Gruppen der Leistungsabgrenzung (KG 300/400/700
- * sind Pflicht, keine Entscheidung — Product Decision Brief, ticket
- * d21f8d48). Kanonische, EINE Quelle: `ChapterUmfang` (S3Konfigurator.tsx)
- * leitet daraus ihre `MANDATORY_SCOPE_GROUPS` ab, statt die Liste ein
- * zweites Mal zu benennen (Tech Review P2: zwei benannte Listen konnten
- * auseinanderlaufen).
- */
-export const SCOPE_BOUNDARIES_DECIDABLE_GROUPS = ['KG_200', 'KG_500', 'KG_600'] as const
-
 function scopeBoundariesFingerprint(
   s: Pick<Store, 'coverage' | 'buildings' | 'included' | 'configurationMode'
     | 'sharedConfiguration' | 'kg300'>,
@@ -1464,7 +1443,8 @@ export function chapterDone(
       // Leistungsabgrenzung решена, когда ни одна решаемая группа не
       // осталась `unknown`: непринятое решение — не пройденный шаг.
       return besucht
-        && !Object.values(s.coverage).some((v) => v === 'unknown')
+        && !SCOPE_BOUNDARIES_DECIDABLE_GROUPS
+          .some((group) => s.coverage[group] === 'unknown')
     default:
       return besucht
   }

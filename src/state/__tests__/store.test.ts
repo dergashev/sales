@@ -20,8 +20,9 @@ beforeEach(() => __resetStoreForTests())
 /**
  * Scope Boundaries: умолчание покрытия (Product Decision Brief, тикет
  * 627d3191, одобрено CPO, дословно): «no KG is pre-selected as included,
- * including 300/400/700» — все шесть решаемых групп (KG 200/300/400/500/
- * 600/700) начинаются `unknown` («noch offen»), ни одна не предрешена.
+ * including 300/400/700» — все шесть показанных групп (KG 200/300/400/500/
+ * 600/700) хранятся как `unknown`, ни одна не получает сфабрикованного
+ * пользовательского решения.
  * KG 100/800 вне перечня Scope Boundaries и остаются `notApplicable`.
  *
  * `ChapterUmfang` (`S3Konfigurator.tsx`, тикет d21f8d48) делает `decidable`
@@ -34,7 +35,7 @@ beforeEach(() => __resetStoreForTests())
  * экрана вовсе и остаются `notApplicable`.
  */
 describe('Scope Boundaries: покрытие по умолчанию (ticket 627d3191)', () => {
-  it('все шесть решаемых групп начинаются `unknown`, ни одна не предрешена', () => {
+  it('все шесть групп начинаются сырым `unknown`, ни одна не предрешена', () => {
     const coverage = useStore.getState().coverage
     expect(coverage.KG_200).toBe('unknown')
     expect(coverage.KG_300).toBe('unknown')
@@ -50,12 +51,28 @@ describe('Scope Boundaries: покрытие по умолчанию (ticket 627
     expect(coverage.KG_800).toBe('notApplicable')
   })
 
-  it('свежий проект держит промежуточный итог, пока не решена ни одна группа', () => {
+  it('свежий проект ждёт только решений по KG 200/500/600', () => {
     const p = useStore.getState().projection()
     expect(p.result.completeness).toBe('incomplete')
     expect(p.result.totalLabel).toBe('Zwischensumme der kalkulierten Positionen')
-    const codes = p.result.incompleteReasons.map((r) => r.code)
-    expect(codes).toContain('coverageUnknown')
+    const reason = p.result.incompleteReasons
+      .find((candidate) => candidate.code === 'coverageUnknown')
+    expect(reason).toEqual({
+      code: 'coverageUnknown', groups: ['KG_200', 'KG_500', 'KG_600'],
+    })
+  })
+
+  it('прогресс главы не требует действия по обязательным KG 300/400/700', () => {
+    const st = () => useStore.getState()
+    st().openChapterAt(2)
+    st().setCoverage('KG_200', 'excluded')
+    st().setCoverage('KG_500', 'excluded')
+    st().setCoverage('KG_600', 'excluded')
+
+    expect(st().coverage.KG_300).toBe('unknown')
+    expect(st().coverage.KG_400).toBe('unknown')
+    expect(st().coverage.KG_700).toBe('unknown')
+    expect(chapterDone(st(), 2)).toBe(true)
   })
 })
 
@@ -587,18 +604,11 @@ describe('S3: ворота клиентского вида', () => {
   it('решённые покрытия делают итог полным и названным', () => {
     const st = useStore.getState()
     st.confirmGebaeudeklasse()
-    // Scope Boundaries: все шесть решаемых групп начинаются `unknown`
-    // (ticket 627d3191, Product Decision Brief) — полнота требует решения по
-    // каждой из них, не только по KG 500. `ChapterUmfang` не делает KG
-    // 300/400/700 `decidable` сегодня (известное ограничение интерфейса, см.
-    // `INITIAL_COVERAGE`), поэтому здесь они решаются напрямую через стор —
-    // тем же способом, каким тест уже решает KG 200/500/600.
+    // Только KG 200/500/600 требуют решения. Обязательные KG 300/400/700
+    // остаются сырым `unknown`, но семантически разрешены политикой.
     st.setCoverage('KG_200', 'excluded')
-    st.setCoverage('KG_300', 'included')
-    st.setCoverage('KG_400', 'included')
     st.setCoverage('KG_500', 'excluded')
     st.setCoverage('KG_600', 'excluded')
-    st.setCoverage('KG_700', 'included')
     const p = useStore.getState().projection()
     expect(p.result.completeness).toBe('complete')
     expect(p.result.totalLabel).toBe('Gesamt netto · Grundleistung All3')
@@ -890,21 +900,16 @@ describe('Покрытие групп затрат (сценарий п. 11)', (
 
   it('подпись итога становится полной, когда решены ВСЕ пробелы', () => {
     const st = () => useStore.getState()
-    // Пока хотя бы одна из шести групп Scope Boundaries «ещё открыта», итог
-    // промежуточный — это пробел, не решение (SCOPE-001). KG 300/400/700 не
-    // decidable через `ChapterUmfang` сегодня (известное ограничение
-    // интерфейса), поэтому решаются напрямую через стор, как и KG 200/500/600.
+    // Пока хотя бы одна из KG 200/500/600 «ещё открыта», итог промежуточный —
+    // это пробел, не решение (SCOPE-001). KG 300/400/700 разрешены политикой.
     expect(st().projection().result.totalLabel)
       .toBe('Zwischensumme der kalkulierten Positionen')
     st().setCoverage('KG_200', 'excluded')
-    st().setCoverage('KG_300', 'included')
-    st().setCoverage('KG_400', 'included')
     st().setCoverage('KG_500', 'excluded')
-    // KG 600 и KG 700 остаются «ещё открыто» — итог всё ещё промежуточный.
+    // KG 600 остаётся «ещё открыто» — итог всё ещё промежуточный.
     expect(st().projection().result.totalLabel)
       .toBe('Zwischensumme der kalkulierten Positionen')
     st().setCoverage('KG_600', 'excluded')
-    st().setCoverage('KG_700', 'included')
     // Класс здания всё ещё не подтверждён — вторая причина неполноты.
     expect(st().projection().result.totalLabel)
       .toBe('Zwischensumme der kalkulierten Positionen')

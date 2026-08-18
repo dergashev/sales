@@ -150,6 +150,35 @@ describe('proposal store recovery', () => {
     expect(st().configurationVisitedChapters['DEMO-B-A']).toEqual([1, 3])
   })
 
+  it('restores mandatory raw `unknown` coverage without blocking completeness', () => {
+    const storage = new MemoryStorage()
+    initializeProposalPersistence(storage)
+    const st = () => useStore.getState()
+
+    st().setCoverage('KG_200', 'excluded')
+    st().setCoverage('KG_500', 'excluded')
+    st().setCoverage('KG_600', 'excluded')
+    st().confirmGebaeudeklasse()
+
+    const raw = storage.getItem(proposalStorageKey('DEMO-0001'))!
+    expect(raw).toContain('"KG_300":"unknown"')
+    expect(raw).toContain('"KG_400":"unknown"')
+    expect(raw).toContain('"KG_700":"unknown"')
+
+    __resetStoreForTests()
+    const restoredStorage = new MemoryStorage()
+    restoredStorage.setItem(proposalStorageKey('DEMO-0001'), raw)
+    expect(hydrateProposalState(restoredStorage)).toBe(true)
+
+    expect(st().coverage.KG_300).toBe('unknown')
+    expect(st().coverage.KG_400).toBe('unknown')
+    expect(st().coverage.KG_700).toBe('unknown')
+    expect(st().projection().result.incompleteReasons
+      .some((reason) => reason.code === 'coverageUnknown')).toBe(false)
+    expect(st().projection().result.completeness).toBe('complete')
+    expect(st().projection().result.totalLabel).toBe('Gesamt netto · Grundleistung All3')
+  })
+
   it('defaults pre-boundary candidate payloads to pricing not started', () => {
     const storage = new MemoryStorage()
     initializeProposalPersistence(storage)

@@ -17,15 +17,18 @@ import {
   COVERAGE_LABEL,
   LABEL_UG,
   scopeBoundariesStatus,
-  SCOPE_BOUNDARIES_DECIDABLE_GROUPS,
   type ConfigurationDisplayStatus,
   type ConfigurationMode,
 } from '../state/store'
 import { NNBSP } from '../engine/money'
 import { useT, useTx } from '../i18n'
 import { incompleteReasonText } from '../i18n/reasons'
-import type { BuildingInput } from '../engine/calculate'
-import type { CostGroup, CoverageState } from '../engine/calculate'
+import {
+  SCOPE_BOUNDARIES_DECIDABLE_GROUPS,
+  type BuildingInput,
+  type CostGroup,
+  type CoverageState,
+} from '../engine/calculate'
 import { Decimal } from 'decimal.js'
 import {
   Button,
@@ -884,7 +887,7 @@ function ChapterUmfang() {
 
 const SCOPE_ORDER: CostGroup[] =
   ['KG_200', 'KG_300', 'KG_400', 'KG_500', 'KG_600', 'KG_700']
-// Tech Review P2 (ticket d21f8d48): derived from the store's single
+// Tech Review P2 (ticket d21f8d48): derived from the engine's single
 // canonical decidable-groups list, not a second independently named set —
 // the two could otherwise drift apart silently.
 const MANDATORY_SCOPE_GROUPS = new Set<CostGroup>(

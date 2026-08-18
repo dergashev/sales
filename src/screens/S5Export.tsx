@@ -65,8 +65,8 @@ export function S5Export() {
 
   // Открытые решения по покрытию — то же множество, что делает итог
   // промежуточным: список Recap не может разойтись с подписью итога.
-  const offen = (Object.keys(s.coverage) as Array<keyof typeof s.coverage>)
-    .filter((g) => s.coverage[g] === 'unknown')
+  const offen = p.result.incompleteReasons
+    .find((reason) => reason.code === 'coverageUnknown')?.groups ?? []
   const total = p.result.total.exact
 
   // Preflight — вывод, не заявление: блокер, интервал, допущения.

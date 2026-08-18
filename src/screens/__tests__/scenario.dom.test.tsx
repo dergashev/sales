@@ -340,6 +340,11 @@ describe('Сквозной сценарий продажи', () => {
     // Открытое покрытие KG 500 попадает в «что осталось» из того же
     // множества, которое делает итог промежуточным.
     expect(within(box).getByText(/KG.500 — Deckungsentscheidung offen/)).toBeInTheDocument()
+    for (const mandatory of ['300', '400', '700']) {
+      expect(within(box).queryByText(
+        new RegExp(`KG.${mandatory} — Deckungsentscheidung offen`),
+      )).not.toBeInTheDocument()
+    }
   })
 
 

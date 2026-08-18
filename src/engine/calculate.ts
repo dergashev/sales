@@ -25,6 +25,15 @@ export type CostGroup = 'KG_100' | 'KG_200' | 'KG_300' | 'KG_400'
 
 export type Coverage = Record<CostGroup, CoverageState>
 
+/**
+ * Leistungsabgrenzung groups that require a user coverage decision.
+ * KG 300/400/700 are mandatory by policy; their persisted `unknown` value is
+ * a neutral representation, not an unresolved decision.
+ */
+export const SCOPE_BOUNDARIES_DECIDABLE_GROUPS = [
+  'KG_200', 'KG_500', 'KG_600',
+] as const satisfies readonly CostGroup[]
+
 export type BuildingInput = {
   id: string
   /** Ось Gebäudeform — уровень Building (D-11 v2). */
@@ -256,9 +265,8 @@ export function deriveCompleteness(
   openMaterialIssues: number,
 ): { completeness: 'complete' | 'incomplete'; reasons: IncompleteReason[] } {
   const reasons: IncompleteReason[] = []
-  const unknown = (Object.entries(coverage) as [CostGroup, CoverageState][])
-    .filter(([, s]) => s === 'unknown')
-    .map(([g]) => g)
+  const unknown = SCOPE_BOUNDARIES_DECIDABLE_GROUPS
+    .filter((group) => coverage[group] === 'unknown')
   if (unknown.length) reasons.push({ code: 'coverageUnknown', groups: unknown })
   if (unpricedIncluded.length) {
     reasons.push({ code: 'includedUnpriced', groups: unpricedIncluded })

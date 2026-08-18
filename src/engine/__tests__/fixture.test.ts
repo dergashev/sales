@@ -360,6 +360,30 @@ describe('R-18 и CALC-006: подпись итога выводится, не �
     expect(completeness).toBe('complete')
   })
 
+  it('обязательные KG 300/400/700 не блокируют полноту в сыром `unknown`', () => {
+    const resolved: Coverage = { ...COVERAGE_FIXTURE, KG_500: 'excluded' }
+    const mandatoryUnknown: Coverage = {
+      ...resolved,
+      KG_300: 'unknown', KG_400: 'unknown', KG_700: 'unknown',
+    }
+    const confirmedHausA: BuildingInput = {
+      ...hausA,
+      gebaeudeklasse: { ...hausA.gebaeudeklasse, confirmed: true },
+    }
+
+    const includedResult = calculateBuilding(confirmedHausA, cat, resolved)
+    const unknownResult = calculateBuilding(confirmedHausA, cat, mandatoryUnknown)
+
+    expect(unknownResult.completeness).toBe('complete')
+    expect(unknownResult.incompleteReasons)
+      .not.toContainEqual(expect.objectContaining({ code: 'coverageUnknown' }))
+    // Покрытие обязательных групп меняет только интерпретацию полноты:
+    // арифметика и состав ценовых вкладов остаются идентичными.
+    expect(unknownResult.total.exact.toFixed()).toBe(includedResult.total.exact.toFixed())
+    expect(unknownResult.drivers.map((driver) => [driver.key, driver.exact.toFixed()]))
+      .toEqual(includedResult.drivers.map((driver) => [driver.key, driver.exact.toFixed()]))
+  })
+
   it('полный итог без названного объёма невозможен', () => {
     expect(() => totalLabel('complete', '   ')).toThrow(/Unqualified Total/)
     expect(totalLabel('complete', 'Grundleistung All3'))
