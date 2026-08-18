@@ -273,6 +273,41 @@ const de = {
   'opplist.title': 'Opportunities',
   'opplist.resultSummary.total': '{count} Opportunities',
   'opplist.resultSummary.filtered': '{shown} von {total} Opportunities',
+  // TASK 04 (backlog `e2337966`): echte Wörterbucheinträge statt der
+  // tx()-Brücke, die nur gegen den generierten Codex-Korpus rückwärts
+  // sucht und bei neuen, nirgends sonst vorkommenden Wörtern schweigend
+  // unübersetzt bleibt (live reproduziert: „versendet" blieb im EN-Modus
+  // deutsch, siehe Docstring von OpportunityList).
+  'opplist.sort.legend': 'Sortierung',
+  'opplist.sort.recommended': 'Empfohlen',
+  'opplist.sort.name': 'Name',
+  'opplist.sort.status': 'Status',
+  'opplist.filter.status.label': 'Lifecycle-Status',
+  'opplist.filter.actionableOnly.label': 'Nur aktionsfähige zeigen',
+  'opplist.filter.includeExcluded.label': 'Pausiert, signiert, verloren einschließen',
+  'opplist.filter.country.chip': 'Land: {value}',
+  'opplist.filter.city.chip': 'Stadt: {value}',
+  'opplist.filter.owner.chip': 'Owner: {value}',
+  'opplist.filter.status.chip': 'Status: {value}',
+  'opplist.filter.actionableOnly.chip': 'Nur aktionsfähige',
+  'opplist.filter.includeExcluded.chip': 'Inkl. pausiert/signiert/verloren',
+  'opplist.filter.search.chip': 'Suche: {value}',
+  'opplist.emptyAccount.sentence': 'Es sind noch keine Opportunities vorhanden.',
+  'opplist.emptyAccount.detail':
+    'Neue Opportunities erscheinen hier automatisch, sobald sie aus HubSpot übernommen werden.',
+  'opplist.card.buildingsLabel': 'Gebäude',
+  'opplist.card.documentsLabel': 'Dokumente',
+  // Kanonisches Label je HubSpot-Lifecycle-Stadium (STAGE_LABEL_KEY in
+  // OpportunityList) — ersetzt `tx(o.stage)` für den Status-Tag, das
+  // Status-Select und den Status-Filter-Chip. `ruhend`/`gewonnen`/
+  // `verloren` haben noch keine Fixture-Zeile (Data-Model-Lücke,
+  // Decision Brief `161c0b7b` §13), sind aber vorwärtskompatibel benannt.
+  'opplist.stage.neuAusHubspot': 'neu aus HubSpot',
+  'opplist.stage.inVorbereitung': 'in Vorbereitung',
+  'opplist.stage.versendet': 'versendet',
+  'opplist.stage.ruhend': 'ruhend',
+  'opplist.stage.gewonnen': 'gewonnen',
+  'opplist.stage.verloren': 'verloren',
 } as const
 
 export type MessageKey = keyof typeof de
@@ -520,6 +555,31 @@ const en: Partial<Record<MessageKey, string>> = {
   'opplist.title': 'Opportunities',
   'opplist.resultSummary.total': '{count} Opportunities',
   'opplist.resultSummary.filtered': '{shown} of {total} Opportunities',
+  'opplist.sort.legend': 'Sort',
+  'opplist.sort.recommended': 'Recommended',
+  'opplist.sort.name': 'Name',
+  'opplist.sort.status': 'Status',
+  'opplist.filter.status.label': 'Lifecycle status',
+  'opplist.filter.actionableOnly.label': 'Show actionable only',
+  'opplist.filter.includeExcluded.label': 'Include on hold, signed, lost',
+  'opplist.filter.country.chip': 'Country: {value}',
+  'opplist.filter.city.chip': 'City: {value}',
+  'opplist.filter.owner.chip': 'Owner: {value}',
+  'opplist.filter.status.chip': 'Status: {value}',
+  'opplist.filter.actionableOnly.chip': 'Actionable only',
+  'opplist.filter.includeExcluded.chip': 'Incl. on hold/signed/lost',
+  'opplist.filter.search.chip': 'Search: {value}',
+  'opplist.emptyAccount.sentence': 'There are no Opportunities yet.',
+  'opplist.emptyAccount.detail':
+    'New Opportunities appear here automatically once they arrive from HubSpot.',
+  'opplist.card.buildingsLabel': 'buildings',
+  'opplist.card.documentsLabel': 'documents',
+  'opplist.stage.neuAusHubspot': 'new from HubSpot',
+  'opplist.stage.inVorbereitung': 'in preparation',
+  'opplist.stage.versendet': 'sent',
+  'opplist.stage.ruhend': 'on hold',
+  'opplist.stage.gewonnen': 'contract signed',
+  'opplist.stage.verloren': 'lost',
 }
 
 /**

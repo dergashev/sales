@@ -4,6 +4,7 @@ import { useStore } from '../state/store'
 import { NNBSP } from '../engine/money'
 import { Button } from '../components/primitives'
 import { Card, FormField, SelectField } from '../components/designSystem'
+import { SegmentedControl, Switch } from '../components/controls'
 import { STAGE_TAG } from '../lib/opportunityStage'
 import { useT, useTx } from '../i18n'
 
@@ -49,6 +50,48 @@ import { useT, useTx } from '../i18n'
  * список), без выдуманного утверждения о сортировке (ушедшее
  * «sortiert nach Reihenfolge der Übergabe aus HubSpot» не имело
  * никакой сортировки за собой — решение 161c0b7b).
+ *
+ * TASK 04 (backlog `e2337966`, Design-Handoff в Projektgedächtnis
+ * `opportunities-landing-workflow-contract`) — operative Triage:
+ *
+ * - **Default-Reihenfolge** ist jetzt real (§2 des Decision Brief):
+ *   aktionsfähig-jetzt zuerst, dann Lifecycle-Gewicht, dann Name — vorher
+ *   war die Liste unsortiert (rohe Fixture-Reihenfolge).
+ * - **Sortierung** ist ein `SegmentedControl` (nicht `Select`): genau drei
+ *   genehmigte Dimensionen (Empfohlen/Name/Status, §9/§10). Dieselbe
+ *   Primitive trägt bereits den DE/EN-Sprachschalter in `App.tsx` — die
+ *   ausgewählte Option TRÄGT den „welche Sortierung ist aktiv"-Zustand
+ *   selbst (kein zusätzlicher Caption nötig).
+ * - **Zwei neue Filter-Switches** (nicht Checkbox/SegmentedControl —
+ *   OPTION-008 verbietet Switch-Semantik nur für Angebots-Optionen, nicht
+ *   für Interface-Zustand): „nur aktionsfähige" und „pausiert/signiert/
+ *   verloren einschließen" (Recovery). Recovery bleibt strikt ein
+ *   Filter-Toggle — niemals ein HubSpot-Schreibzugriff (Sales Platform
+ *   hat nur Lesezugriff auf die CRM-Lifecycle, bestätigt in `161c0b7b`).
+ * - **Status-Filter**-Optionen sind datengetrieben (`Array.from(new
+ *   Set(...))`), genau wie Stadt von Land abhängt — nicht hartkodiert auf
+ *   alle acht kanonischen Stadien, weil fünf davon noch keine Fixture-Zeile
+ *   haben (dokumentierte Data-Model-Lücke, kein Erfinden von Daten).
+ * - **Zwei getrennte Leerzustände** (AC 4/6): „keine Treffer" (Filter
+ *   greifen) bleibt wie zuvor mit Reset-Aktion; „noch keine Opportunities"
+ *   (Fixture selbst leer) ist neu, hat eigenen Text und KEINE Aktion — es
+ *   gibt nichts zurückzusetzen und keinen „neu anlegen"-Weg (CRM read-only).
+ * - **Loading/Error/Stale bleiben bewusst nicht implementiert**: die Liste
+ *   ist ein synchroner Fixture-Import ohne Backend — `data-states.ts`
+ *   deklariert das seit TASK 03 korrekt als `notApplicable`. Ein
+ *   simulierter Netzwerkfehler wäre eine Simulation, die als Implementierung
+ *   ausgegeben wird (derselbe Grundsatz wie bei `export`/`internalNote`).
+ * - **i18n-Fix**: der Status-Tag ging vorher durch `tx(o.stage)` — die
+ *   Rückwärtssuche gegen den generierten Codex-Korpus (`GENERATED_DE`)
+ *   findet „versendet" dort nirgends als Einzelwort, weil es im
+ *   restlichen Corpus nie allein vorkommt. Live im Browser reproduziert:
+ *   im EN-Modus blieb der Tag „versendet" statt „sent". Ersetzt durch
+ *   einen echten `t()`-Schlüssel pro Stadium (`STAGE_LABEL_KEY`), nicht
+ *   durch einen globalen Patch der `tx()`-Brücke. Dieselbe Lücke betraf
+ *   „Land:"/„Stadt:"/„Owner:"/„Suche:" in den Filter-Chips und die
+ *   hartkodierten Wörter „Gebäude"/„Dokumente" — beide waren nie durch
+ *   `tx()`/`t()` geführt und blieben im EN-Modus deutsch; jetzt echte
+ *   Wörterbucheinträge.
  */
 
 const ALL = 'alle'
@@ -72,6 +115,66 @@ const STAGE_CTA: Record<string, string> = {
  */
 const ACTIONABLE_NOW = new Set(['neu aus HubSpot', 'in Vorbereitung'])
 
+/**
+ * Default-excluded laut §8 FILTERING des genehmigten Contracts: On hold /
+ * Contract signed / Lost sind standardmäßig ausgeblendet, aber über den
+ * Recovery-Switch abrufbar. Die drei Rohwerte existieren noch in keiner
+ * Fixture-Zeile (Data-Model-Lücke) — die Menge wird trotzdem generisch
+ * geführt, damit sie sich automatisch aktiviert, sobald Zeilen dazukommen.
+ */
+const DEFAULT_EXCLUDED_STAGES = new Set(['ruhend', 'gewonnen', 'verloren'])
+
+/**
+ * Deterministisches Lifecycle-Gewicht §2 des Decision Brief. Nur die drei
+ * heute vorhandenen Fixture-Stadien werden geprüft; die drei restlichen
+ * Rohwerte sind für Vorwärtskompatibilität eingetragen. „Ready for
+ * Indicative Offer" / „Planning contract" haben noch keine Fixture-
+ * Schreibweise und fehlen deshalb bewusst in dieser Tabelle.
+ */
+const LIFECYCLE_WEIGHT: Record<string, number> = {
+  'in Vorbereitung': 1, // Prioritised and in progress
+  'neu aus HubSpot': 4, // Project received
+  versendet: 5, // Awaiting customer feedback
+  ruhend: 6, // On hold
+  gewonnen: 7, // Contract signed
+  verloren: 8, // Lost
+}
+
+/** Sichtbarer Schlüssel je Stadium (STATUS-TAG-i18n-Fix, siehe Docstring). */
+const STAGE_LABEL_KEY: Record<string, string> = {
+  'neu aus HubSpot': 'opplist.stage.neuAusHubspot',
+  'in Vorbereitung': 'opplist.stage.inVorbereitung',
+  versendet: 'opplist.stage.versendet',
+  ruhend: 'opplist.stage.ruhend',
+  gewonnen: 'opplist.stage.gewonnen',
+  verloren: 'opplist.stage.verloren',
+}
+
+type OpportunityItem = (typeof opportunities.items)[number]
+
+const byName = (a: OpportunityItem, b: OpportunityItem) => a.name.localeCompare(b.name, 'de')
+
+const byStatus = (a: OpportunityItem, b: OpportunityItem) => {
+  const diff = (LIFECYCLE_WEIGHT[a.stage] ?? 99) - (LIFECYCLE_WEIGHT[b.stage] ?? 99)
+  return diff !== 0 ? diff : byName(a, b)
+}
+
+/** „Empfohlen" — aktionsfähig-jetzt zuerst, dann Lifecycle-Gewicht, dann Name (§2). */
+const byRecommended = (a: OpportunityItem, b: OpportunityItem) => {
+  const aActionable = ACTIONABLE_NOW.has(a.stage)
+  const bActionable = ACTIONABLE_NOW.has(b.stage)
+  if (aActionable !== bActionable) return aActionable ? -1 : 1
+  return byStatus(a, b)
+}
+
+type SortMode = 'recommended' | 'name' | 'status'
+
+const SORTERS: Record<SortMode, (a: OpportunityItem, b: OpportunityItem) => number> = {
+  recommended: byRecommended,
+  name: byName,
+  status: byStatus,
+}
+
 export function OpportunityList() {
   const s = useStore()
   const t = useT()
@@ -80,33 +183,66 @@ export function OpportunityList() {
   const [country, setCountry] = useState(ALL)
   const [city, setCity] = useState(ALL)
   const [owner, setOwner] = useState(ALL)
+  const [status, setStatus] = useState(ALL)
+  const [actionableOnly, setActionableOnly] = useState(false)
+  const [includeExcluded, setIncludeExcluded] = useState(false)
+  const [sort, setSort] = useState<SortMode>('recommended')
 
   const items = opportunities.items
+  const stageLabel = (stage: string) => t(STAGE_LABEL_KEY[stage] ?? stage)
+
+  // Zwei Toggles bilden das Sichtbarkeits-Universum VOR den übrigen
+  // Filtern — dieselbe „abhängige Optionsliste"-Logik wie Stadt/Land, nur
+  // auf Ebene der ganzen Liste statt eines einzelnen Selects.
+  const recoverable = useMemo(() => items.filter((i) =>
+    includeExcluded || !DEFAULT_EXCLUDED_STAGES.has(i.stage)), [items, includeExcluded])
+  const universe = useMemo(() => actionableOnly
+    ? recoverable.filter((i) => ACTIONABLE_NOW.has(i.stage))
+    : recoverable, [recoverable, actionableOnly])
+
   const countries = useMemo(
-    () => [ALL, ...Array.from(new Set(items.map((i) => i.country))).sort()], [items])
+    () => [ALL, ...Array.from(new Set(universe.map((i) => i.country))).sort()], [universe])
   // Города зависят от выбранной страны: список, предлагающий город из
   // другой страны, обещает результат, которого не будет.
   const cities = useMemo(() => [ALL, ...Array.from(new Set(
-    items.filter((i) => country === ALL || i.country === country).map((i) => i.city),
-  )).sort()], [items, country])
+    universe.filter((i) => country === ALL || i.country === country).map((i) => i.city),
+  )).sort()], [universe, country])
   const owners = useMemo(
-    () => [ALL, ...Array.from(new Set(items.map((i) => i.owner))).sort()], [items])
+    () => [ALL, ...Array.from(new Set(universe.map((i) => i.owner))).sort()], [universe])
+  // Status-Optionen sind datengetrieben (Design-Handoff #2): nur Stadien,
+  // die im aktuellen Universum tatsächlich vorkommen, nie ein hartkodiertes
+  // Acht-Status-Vokabular mit garantiert leeren Einträgen.
+  const statuses = useMemo(
+    () => [ALL, ...Array.from(new Set(universe.map((i) => i.stage)))], [universe])
 
-  const shown = items.filter((i) =>
+  const shown = useMemo(() => universe.filter((i) =>
     (country === ALL || i.country === country) &&
     (city === ALL || i.city === city) &&
     (owner === ALL || i.owner === owner) &&
+    (status === ALL || i.stage === status) &&
     (q.trim() === '' ||
       `${i.name} ${i.city} ${i.owner} ${i.id}`.toLowerCase().includes(q.trim().toLowerCase())))
+    .slice()
+    .sort(SORTERS[sort]),
+  [universe, country, city, owner, status, q, sort])
 
   const active = [
-    country !== ALL && { label: `Land: ${country}`, clear: () => setCountry(ALL) },
-    city !== ALL && { label: `Stadt: ${city}`, clear: () => setCity(ALL) },
-    owner !== ALL && { label: `Owner: ${owner}`, clear: () => setOwner(ALL) },
-    q.trim() !== '' && { label: `Suche: ${q.trim()}`, clear: () => setQ('') },
+    country !== ALL && { label: t('opplist.filter.country.chip', { value: country }), clear: () => setCountry(ALL) },
+    city !== ALL && { label: t('opplist.filter.city.chip', { value: city }), clear: () => setCity(ALL) },
+    owner !== ALL && { label: t('opplist.filter.owner.chip', { value: owner }), clear: () => setOwner(ALL) },
+    status !== ALL && { label: t('opplist.filter.status.chip', { value: stageLabel(status) }), clear: () => setStatus(ALL) },
+    actionableOnly && { label: t('opplist.filter.actionableOnly.chip'), clear: () => setActionableOnly(false) },
+    includeExcluded && { label: t('opplist.filter.includeExcluded.chip'), clear: () => setIncludeExcluded(false) },
+    q.trim() !== '' && { label: t('opplist.filter.search.chip', { value: q.trim() }), clear: () => setQ('') },
   ].filter(Boolean) as Array<{ label: string; clear: () => void }>
 
-  const resetAll = () => { setQ(''); setCountry(ALL); setCity(ALL); setOwner(ALL) }
+  // Sortierung ist eine eigene Achse (§10: „Separate sorting from
+  // filtering") — „Alle Filter zurücksetzen" fasst sie deshalb bewusst
+  // nicht an.
+  const resetAll = () => {
+    setQ(''); setCountry(ALL); setCity(ALL); setOwner(ALL); setStatus(ALL)
+    setActionableOnly(false); setIncludeExcluded(false)
+  }
 
   // Kompaktes Ergebnis-Resümee (Anforderung „RESULT SUMMARY", TASK 02):
   // ungefiltert nennt es nur die Gesamtzahl, gefiltert macht es die
@@ -115,17 +251,19 @@ export function OpportunityList() {
     ? t('opplist.resultSummary.filtered', { shown: shown.length, total: items.length })
     : t('opplist.resultSummary.total', { count: items.length })
 
-  const select = (id: string, label: string) => (
+  const select = (id: 'land' | 'stadt' | 'owner' | 'status', label: string) => (
     <SelectField
       id={`opp-${id}`}
       label={label}
-      value={id === 'land' ? country : id === 'stadt' ? city : owner}
+      value={id === 'land' ? country : id === 'stadt' ? city : id === 'owner' ? owner : status}
       onChange={(e) => (id === 'land' ? setCountry(e.target.value)
-        : id === 'stadt' ? setCity(e.target.value) : setOwner(e.target.value))}
+        : id === 'stadt' ? setCity(e.target.value)
+          : id === 'owner' ? setOwner(e.target.value) : setStatus(e.target.value))}
     >
-      {(id === 'land' ? countries : id === 'stadt' ? cities : owners).map((v) => (
-        <option key={v} value={v}>{v === ALL ? tx('alle') : v}</option>
-      ))}
+      {(id === 'land' ? countries : id === 'stadt' ? cities : id === 'owner' ? owners : statuses)
+        .map((v) => (
+          <option key={v} value={v}>{v === ALL ? tx('alle') : id === 'status' ? stageLabel(v) : v}</option>
+        ))}
     </SelectField>
   )
 
@@ -138,9 +276,27 @@ export function OpportunityList() {
       {/* Число совпадений объявляется один раз после сужения, а не на
           каждый символ (DC-34): иначе скринридер читает набор вслух.
           Steht zwischen Titel und Suche/Filter (geforderte Reihenfolge:
-          Standort → Titel → Ergebniskontext → Suche/Filter → Ergebnisse). */}
-      <div className="a3-search-result-count mt-1" role="status" aria-live="polite">
-        {resultSummary}
+          Standort → Titel → Ergebniskontext → Suche/Filter → Ergebnisse).
+          Sortierung sitzt auf derselben Zeile (rechts), bewusst AUSSERHALB
+          des Filter-Fieldsets: §10 verlangt, Sortierung von Filterung
+          sichtbar zu trennen. Das ausgewählte Segment TRÄGT den
+          „welche Sortierung ist aktiv"-Zustand (SegmentedControl-Kontrakt),
+          kein zusätzlicher Caption nötig (Design-Handoff #1). */}
+      <div className="flex flex-wrap items-center justify-between gap-4 mt-1">
+        <div className="a3-search-result-count" role="status" aria-live="polite">
+          {resultSummary}
+        </div>
+        <SegmentedControl
+          legend={t('opplist.sort.legend')}
+          layout="inline"
+          value={sort}
+          onChange={setSort}
+          options={[
+            { value: 'recommended', label: t('opplist.sort.recommended') },
+            { value: 'name', label: t('opplist.sort.name') },
+            { value: 'status', label: t('opplist.sort.status') },
+          ]}
+        />
       </div>
 
       {/* DC-34: видимый контрол поиска, фильтры и активные фильтр-чипы —
@@ -162,6 +318,23 @@ export function OpportunityList() {
           {select('land', tx('Land'))}
           {select('stadt', tx('Stadt'))}
           {select('owner', tx('Opportunity Owner'))}
+          {select('status', t('opplist.filter.status.label'))}
+        </div>
+
+        {/* Zwei unabhängige Interface-Zustände (nicht gegenseitig
+            ausschließend) — Switch, kein SegmentedControl/CheckboxCard:
+            beide sind Filter-Toggles, keine Angebots-Option (OPTION-008). */}
+        <div className="flex flex-wrap gap-4">
+          <Switch
+            label={t('opplist.filter.actionableOnly.label')}
+            checked={actionableOnly}
+            onChange={setActionableOnly}
+          />
+          <Switch
+            label={t('opplist.filter.includeExcluded.label')}
+            checked={includeExcluded}
+            onChange={setIncludeExcluded}
+          />
         </div>
 
         {active.length > 0 && (
@@ -185,7 +358,25 @@ export function OpportunityList() {
         )}
       </div>
 
-      {shown.length === 0 && (
+      {/* Zwei unterscheidbare Leerzustände (AC 4/6): „nichts existiert"
+          (Fixture selbst leer) vs. „nichts trifft zu" (Filter greifen) —
+          niemals derselbe Text, sonst kann der Nutzer beides nicht
+          auseinanderhalten. Der Konten-Leerzustand hat KEINE Aktion: es
+          gibt nichts zurückzusetzen und keinen „neu anlegen"-Weg (CRM
+          read-only, Design-Handoff #5). */}
+      {items.length === 0 ? (
+        <div className="a3-empty-spec mt-5">
+          <span className="a3-empty-icon" aria-hidden="true">○</span>
+          <div>
+            <p className="text-body text-text-primary">
+              {t('opplist.emptyAccount.sentence')}
+            </p>
+            <p className="a3-cap mt-1">
+              {t('opplist.emptyAccount.detail')}
+            </p>
+          </div>
+        </div>
+      ) : shown.length === 0 && (
         <div className="a3-empty-spec mt-5">
           <span className="a3-empty-icon" aria-hidden="true">○</span>
           <div>
@@ -217,7 +408,7 @@ export function OpportunityList() {
               meta={<>{o.city} · {o.country} · {o.owner}</>}
               status={
                 <span className={'a3-tag ' + STAGE_TAG[o.stage]}>
-                  {tx(o.stage)}
+                  {stageLabel(o.stage)}
                 </span>
               }
               actions={
@@ -237,7 +428,8 @@ export function OpportunityList() {
                 </span>
               )}
               <span className="block">
-                {o.buildings}{NNBSP}Gebäude · {o.documents}{NNBSP}Dokumente
+                {o.buildings}{NNBSP}{t('opplist.card.buildingsLabel')} ·{' '}
+                {o.documents}{NNBSP}{t('opplist.card.documentsLabel')}
               </span>
             </Card>
           </li>

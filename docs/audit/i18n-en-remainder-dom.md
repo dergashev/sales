@@ -5,7 +5,7 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 54** · перевод есть, мост не подключён: 32
+**Всего 53** · перевод есть, мост не подключён: 31
 · перевода нет (в поставку копирайта): 22
 
 ## Перевод есть — строка не проходит через мост (правится в src)
@@ -15,7 +15,6 @@
 - Der Gesamtbetrag bleibt unverändert — 70/22/8 verteilt, was bereits gerechnet ist.
 - Einbaukueche und Erstausstattung je m² BGF R ⚙
 - Gebäude im Projekt
-- Gebäude ·
 - Gerundet auf 1.000 €; exakter Rechenwert 3.817.835,00 €
 - Leistungsbeginn ab OK Decke über UG
 - Marge Eigenleistung nach Rabatt:
