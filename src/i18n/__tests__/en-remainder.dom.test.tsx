@@ -130,7 +130,11 @@ describe('Остаток немецкого на английском пути (
     germanFragments().forEach((f) => seen.add(f))
 
     // Золотой путь: корень → карточка → конвейер → главы → сравнение.
-    await user.click(screen.getByRole('button', { name: /Musterprojekt Nordfeld/ }))
+    // Anchor auf «öffnen» (wie im Rest der Suite, z. B. opportunities.dom.
+    // test.tsx): seit TASK 03 ist der Kartentitel selbst ebenfalls ein
+    // fokussierbarer primaryDestination-Button mit demselben Namensanteil
+    // "Musterprojekt Nordfeld" (CARD-001) — ohne Anker matchen beide.
+    await user.click(screen.getByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
     germanFragments().forEach((f) => seen.add(f))
 
     act(() => {

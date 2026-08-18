@@ -31,7 +31,7 @@ export const DATA_STATE_DECLARATIONS: Record<
   opportunityList: {
     loading: { status: 'notApplicable', reason: SYNC_FIXTURE },
     empty: { status: 'implemented', where: 'a3-empty-spec при пустом результате фильтров' },
-    partial: { status: 'implemented', where: 'карточка worked:false — «im Prototyp nicht ausgearbeitet» до клика' },
+    partial: { status: 'notApplicable', reason: 'фикстура одинаково полна для всех восьми записей списка (имя/статус/локация/owner/Termin-или-null/счётчики); флаг `worked` — служебная пометка объёма прототипа, не пользовательское состояние (решение 161c0b7b, TASK 03) и с картой не связан — полнота подготовки самой Opportunity показывается на уровне Project Card, не на уровне списка' },
     ready: { status: 'implemented', where: 'список карточек' },
     error: { status: 'notApplicable', reason: SYNC_FIXTURE },
     stale: { status: 'notApplicable', reason: 'список — константа модуля: источника, который мог бы измениться после чтения, не существует; устаревать нечему относительно чего' },

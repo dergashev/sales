@@ -347,17 +347,15 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-ann.a3-gone{opacity:0}
 .a3-ann .a3-ann-t{margin-bottom:var(--space-3)}
 
-/* DC-15 · ProjectCard. Structure: .a3-pcard > .a3-top + .a3-mid; CTA gets
-   .a3-cta, deadline .a3-term.
-   Classes: .a3-pcard · .a3-urgent · .a3-top · .a3-term · .a3-mid · .a3-cta. */
-.a3-pcard{border:var(--border-default);background:var(--color-surface-default);padding:var(--space-4) var(--space-5);display:flex;flex-direction:column;gap:var(--space-2)}
-.a3-pcard.a3-urgent{border-left:var(--space-1) solid var(--color-status-error)}
-.a3-pcard .a3-top{display:flex;justify-content:space-between;gap:var(--space-4);align-items:baseline;flex-wrap:wrap}
-.a3-pcard .a3-top b{font-size:var(--type-body-size)}
-.a3-pcard .a3-term{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
-.a3-pcard.a3-urgent .a3-term{color:var(--color-status-error);font-weight:700}
-.a3-pcard .a3-mid{display:flex;gap:var(--space-4);align-items:center;flex-wrap:wrap;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
-.a3-pcard .a3-cta{margin-left:auto}
+/* Termin-Zeile innerhalb einer Card-nonInteractiveArea (Opportunity-Karte,
+   TASK 03). Bewusst NICHT mehr an `.a3-pcard` gebunden — dieser Selektor und
+   sein `.a3-urgent`-Modifikator (rein regex-basierte, nicht chronologische
+   Dringlichkeit) sind mit der Migration auf den kanonischen `Card`
+   (CARD-001) entfallen; `.a3-pcard`/`.a3-top`/`.a3-mid`/`.a3-cta` haben
+   keinen Verbraucher mehr im Repository. Termin wird neutral dargestellt
+   (Data-Model-Gap, genehmigter Contract `161c0b7b` §5) — keine Dringlich-
+   keitsfarbe, kein Marker. */
+.a3-term{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
 
 /* DC-17 · DocumentRow. Structure: .a3-doc > .a3-ic + .a3-nm + .a3-pg +
    .a3-right; status icon is .a3-okc|.a3-errc.

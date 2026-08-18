@@ -3,13 +3,13 @@ import opportunities from '../fixtures/opportunities.json'
 import { useStore } from '../state/store'
 import { NNBSP } from '../engine/money'
 import { Button } from '../components/primitives'
-import { FormField, SelectField } from '../components/designSystem'
+import { Card, FormField, SelectField } from '../components/designSystem'
 import { STAGE_TAG } from '../lib/opportunityStage'
 import { useT, useTx } from '../i18n'
 
 /**
  * Корень продукта — список Opportunities (DC-34 · Suche & Filter,
- * DC-15 · Projekt-Karten).
+ * CARD-001 · Card).
  *
  * Уровень выше рабочего конвейера: здесь ещё нет ни панелей, ни цены.
  * Цена не может быть показана до того, как выбран Option, — а Option
@@ -19,9 +19,21 @@ import { useT, useTx } from '../i18n'
  * Структура — контрактная (ревью № 13, дефект 14): поиск и фильтры живут
  * в `.a3-project-search`, активные фильтры — `.a3-chip-control` с зоной
  * нажатия 44 (дефект 19: прежний `.a3-tag` — статусный знак, а не
- * контрол), число совпадений — `.a3-search-result-count`, карточка —
- * `.a3-pcard` с анатомией top/mid/cta: карточка открывает Opportunity,
- * кнопка — следующая лучшая работа (правило 26).
+ * контрол), число совпадений — `.a3-search-result-count`.
+ *
+ * Карточка (TASK 03, backlog `ff3a8ad9`) — канонический примитив `Card`
+ * (`components-core.md` CARD-001), а не рукописный `<div onClick>`: тот
+ * был явным нарушением gate 3 («onclick на div/article вместо настоящего
+ * контрола») и не давал ни одного клавиатурного пути ко всей карточке —
+ * только к CTA-кнопке. `Card.onOpen` делает название проекта настоящим
+ * растянутым `primaryDestination` (тот же клик-контейнер, что и раньше,
+ * но теперь фокусируемый), CTA остаётся отдельным `secondaryAction`
+ * (правило 26 продолжает выполняться — раньше через ручной
+ * `stopPropagation`, теперь через `z-index`-порядок самого примитива).
+ * Статус-тег (DC-16 `.a3-tag`, общий с `OpportunityCard`-шапкой через
+ * `STAGE_TAG`) остаётся как есть — миграция на общий `Badge` здесь не
+ * делается, иначе один и тот же lifecycle-статус выглядел бы по-разному
+ * на списке и на детальном экране (см. design-system-ledger DC-16).
  *
  * Иерархия шапки (TASK 02, решение Design Review): `.a3-masthead` несёт
  * только `h1` — контракт PageHeader прямо запрещает breadcrumbs внутри
@@ -42,21 +54,23 @@ import { useT, useTx } from '../i18n'
 const ALL = 'alle'
 
 /** CTA карточки — следующая лучшая работа стадии, не общее «öffnen». */
-/**
- * Срочность выводится из подписи встречи фикстуры, а не из отдельного
- * флага: два источника «когда встреча» разошлись бы при первой правке.
- * Слова «heute/morgen» — то, чем фикстура называет ближайшие сроки.
- */
-function isUrgent(meetingAt: string | null | undefined): boolean {
-  if (!meetingAt) return false
-  return /\b(heute|morgen)\b/i.test(meetingAt)
-}
-
 const STAGE_CTA: Record<string, string> = {
   'neu aus HubSpot': 'Analyse starten',
   'in Vorbereitung': 'Vorbereiten',
   'versendet': 'Ansehen',
 }
+
+/**
+ * Aktionabilität laut genehmigtem Opportunities Product Authority Contract
+ * (backlog `161c0b7b`, §5/§12 «ACTIONABILITY»): YES für Project received
+ * (`neu aus HubSpot`) und Prioritised and in progress (`in Vorbereitung`),
+ * NO by default für Awaiting customer feedback (`versendet`). Nur die drei
+ * heute in der Fixture vorhandenen Stadien — die restigen fünf HubSpot-
+ * Status existieren noch nicht als Fixture-Zeile (separate, bereits
+ * vermerkte Downstream-Aufgabe). Steuert ausschließlich die CTA-Betonung
+ * (primary/secondary), keine neue Fachlogik.
+ */
+const ACTIONABLE_NOW = new Set(['neu aus HubSpot', 'in Vorbereitung'])
 
 export function OpportunityList() {
   const s = useStore()
@@ -191,64 +205,41 @@ export function OpportunityList() {
       <ul className="a3-opportunity-grid mt-4">
         {shown.map((o) => (
           <li key={o.id}>
-            {/* Карточка = один клик-контейнер без собственного tabindex;
-                клавиатурный путь — CTA-кнопка внутри (правило 26). */}
-            {/* `.a3-urgent` — срочность встречи, не украшение: карточка со
-                встречей «сегодня/завтра» получает красную кромку контракта
-                DC-15 плюс подпись (правило 8: цвет не единственный
-                носитель). Добор DC-COVERAGE приёмки № 17. */}
-            <div
-              className={'a3-pcard h-full cursor-pointer'
-                + (isUrgent(o.meetingAt) ? ' a3-urgent' : '')}
-              onClick={() => s.openOpportunity(o.id)}
-            >
-              <div className="a3-top">
-                <b>{o.name}</b>
-                {o.meetingAt && (
-                  <span className="a3-term">
-                    {isUrgent(o.meetingAt) && (
-                      <span aria-hidden="true">▲{NNBSP}</span>
-                    )}
-                    {tx('Termin')}{NNBSP}{tx(o.meetingAt)}
-                    {isUrgent(o.meetingAt) && ` · ${tx('dringend')}`}
-                  </span>
-                )}
-              </div>
-              <div className="a3-mid">
-                {/* Стадия — цветной статус-тег системы; цвет поддерживает,
-                    носителем остаётся текст (правило 8). */}
+            {/* Card (CARD-001): title = primaryDestination (Name, mit
+                onOpen), status/meta/Termin/Zähler = nonInteractiveArea,
+                actions = die eine sekundäre CTA-Aktion. Termin (falls
+                vorhanden) wird NEUTRAL angezeigt — kein Dringlichkeits-
+                Ranking: `meetingAt` ist Freitext, kein echtes Datum (Data-
+                Model-Gap, genehmigter Contract `161c0b7b` §5). */}
+            <Card
+              className="h-full"
+              title={o.name}
+              meta={<>{o.city} · {o.country} · {o.owner}</>}
+              status={
                 <span className={'a3-tag ' + STAGE_TAG[o.stage]}>
-                  <span aria-hidden="true" className="a3-dot" />
                   {tx(o.stage)}
                 </span>
-                <span>
-                  {o.city} · {o.country} · {o.owner}
+              }
+              actions={
+                <Button
+                  variant={ACTIONABLE_NOW.has(o.stage) ? 'primary' : 'secondary'}
+                  onClick={() => s.openOpportunity(o.id)}
+                  aria-label={`${o.name} öffnen`}
+                >
+                  {tx(STAGE_CTA[o.stage] ?? 'Öffnen')}
+                </Button>
+              }
+              onOpen={() => s.openOpportunity(o.id)}
+            >
+              {o.meetingAt && (
+                <span className="a3-term block">
+                  {tx('Termin')}{NNBSP}{tx(o.meetingAt)}
                 </span>
-                {/* stopPropagation на обёртке: клик по CTA не должен
-                    второй раз дёргать клик-контейнер карточки (правило 26). */}
-                <span className="a3-cta" onClick={(e) => e.stopPropagation()}>
-                  <Button
-                    onClick={() => s.openOpportunity(o.id)}
-                    aria-label={`${o.name} öffnen`}
-                  >
-                    {tx(STAGE_CTA[o.stage] ?? 'Öffnen')}
-                  </Button>
-                </span>
-              </div>
-              <div className="a3-mid">
-                <span>
-                  {o.buildings}{NNBSP}Gebäude · {o.documents}{NNBSP}Dokumente
-                </span>
-                {/* Честность объёма прототипа прямо на карточке: проработан
-                    один кейс, и продукт говорит это до клика, а не после. */}
-                {!o.worked && (
-                  <span className="a3-cap">
-                    <span aria-hidden="true">○ </span>
-                    {tx('im Prototyp nicht ausgearbeitet')}
-                  </span>
-                )}
-              </div>
-            </div>
+              )}
+              <span className="block">
+                {o.buildings}{NNBSP}Gebäude · {o.documents}{NNBSP}Dokumente
+              </span>
+            </Card>
           </li>
         ))}
       </ul>

@@ -270,6 +270,13 @@ export function Card({
   actions,
   onOpen,
   children,
+  /**
+   * Rein additiver Layout-Hook (z. B. `h-full` für gleich hohe Karten in
+   * einem CSS-Grid mit variabler Kartenhöhe) — verändert nie `a3-card-core`
+   * selbst, nur zusätzliche Utility-Klassen daneben. Optional, ohne
+   * Default: bestehende Aufrufer bleiben unverändert.
+   */
+  className,
 }: {
   title: ReactNode
   meta?: ReactNode
@@ -277,9 +284,13 @@ export function Card({
   actions?: ReactNode
   onOpen?: () => void
   children?: ReactNode
+  className?: string
 }) {
   return (
-    <article className="a3-card-core" data-interactive={onOpen ? 'true' : undefined}>
+    <article
+      className={'a3-card-core' + (className ? ` ${className}` : '')}
+      data-interactive={onOpen ? 'true' : undefined}
+    >
       <div className="a3-card-title">
         {onOpen ? (
           <button type="button" className="a3-linkbtn a3-card-destination" onClick={onOpen}>
