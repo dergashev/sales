@@ -1,45 +1,94 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { CHAPTERS, SCOPE_BOUNDARIES_CHAPTER } from '../chapters'
-import { BUILDING_SCOPED_CHAPTERS, __resetStoreForTests, useStore } from '../store'
-import { CLIENT_VISIBLE_CHAPTERS } from '../clientProjection'
-
-/**
- * MAKE SCOPE BOUNDARIES THE AUTHORITATIVE CONFIGURATOR ENTRY STEP
- * (2026-08-18): Leistungsabgrenzung ↔ Leistungen KG 300 swap.
- *
- * These are the exact invariants Design's handoff called out as things a
- * future reorder could silently break again: assert them directly, rather
- * than only exercising them incidentally through DOM tests.
- */
+import {
+  activeBuildingConfiguratorSteps,
+  activeConfiguratorWorkflow,
+  CONFIGURATOR_STEP,
+  CONFIGURATOR_STEPS,
+  nearestActiveConfiguratorStep,
+  stepIdFromLegacyChapter,
+} from '../chapters'
+import { __resetStoreForTests, useStore } from '../store'
 
 beforeEach(() => __resetStoreForTests())
 
-describe('Configurator chapter order (reorder ticket, 2026-08-18)', () => {
-  it('Leistungsabgrenzung is chapter 1, Leistungen KG 300 is chapter 2 — chapters 3-8 unchanged', () => {
-    expect(CHAPTERS).toEqual([
-      'Leistungsabgrenzung', 'Leistungen KG 300', 'Technik KG 400',
-      'Energie & Zertifikate', 'Flächen im Detail', 'Baugrund & Erschließung',
-      'Baunebenkosten KG 700', 'Termine & Kommerzielles',
+describe('semantic Configurator workflow', () => {
+  it('derives the approved seven-step internal workflow without Ground', () => {
+    const s = useStore.getState()
+    expect(activeConfiguratorWorkflow({ coverage: s.coverage, mode: 'intern' })
+      .map((step) => step.label)).toEqual([
+      'Leistungsabgrenzung',
+      'Leistungen KG 300',
+      'Technik KG 400',
+      'Energie & Zertifikate',
+      'Flächen im Detail',
+      'Baunebenkosten KG 700',
+      'Termine & Kommerzielles',
+    ])
+    expect(CONFIGURATOR_STEPS.some((step) => step.label === 'Baugrund & Erschließung'))
+      .toBe(false)
+  })
+
+  it('keeps mandatory KG steps active without treating raw unknown as a decision', () => {
+    const s = useStore.getState()
+    expect([s.coverage.KG_300, s.coverage.KG_400, s.coverage.KG_700])
+      .toEqual(['unknown', 'unknown', 'unknown'])
+    expect(activeConfiguratorWorkflow({ coverage: s.coverage, mode: 'intern' })
+      .map((step) => step.id)).toEqual(expect.arrayContaining([
+      CONFIGURATOR_STEP.KG_300_DETAILS,
+      CONFIGURATOR_STEP.KG_400_DETAILS,
+      CONFIGURATOR_STEP.KG_700_DETAILS,
+    ]))
+  })
+
+  it('does not fabricate downstream chapters for decidable KGs with no detail experience', () => {
+    const s = useStore.getState()
+    const before = activeConfiguratorWorkflow({ coverage: s.coverage, mode: 'intern' })
+      .map((step) => step.id)
+    const included = {
+      ...s.coverage,
+      KG_200: 'included' as const,
+      KG_500: 'included' as const,
+      KG_600: 'included' as const,
+    }
+    expect(activeConfiguratorWorkflow({ coverage: included, mode: 'intern' })
+      .map((step) => step.id)).toEqual(before)
+  })
+
+  it('derives building progress and client visibility from the same registry', () => {
+    const s = useStore.getState()
+    expect(activeBuildingConfiguratorSteps({ coverage: s.coverage, mode: 'intern' })
+      .map((step) => step.id)).toEqual([
+      CONFIGURATOR_STEP.KG_300_DETAILS,
+      CONFIGURATOR_STEP.KG_400_DETAILS,
+      CONFIGURATOR_STEP.ENERGY_CERTIFICATION,
+      CONFIGURATOR_STEP.AREAS,
+    ])
+    expect(activeConfiguratorWorkflow({ coverage: s.coverage, mode: 'praesentation' })
+      .map((step) => step.id)).toEqual([
+      CONFIGURATOR_STEP.SCOPE_BOUNDARIES,
+      CONFIGURATOR_STEP.KG_300_DETAILS,
+      CONFIGURATOR_STEP.KG_400_DETAILS,
+      CONFIGURATOR_STEP.ENERGY_CERTIFICATION,
+      CONFIGURATOR_STEP.AREAS,
+      CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE,
     ])
   })
 
-  it('SCOPE_BOUNDARIES_CHAPTER is derived from CHAPTERS, not a hand-copied literal', () => {
-    expect(SCOPE_BOUNDARIES_CHAPTER).toBe(CHAPTERS.indexOf('Leistungsabgrenzung') + 1)
-    expect(SCOPE_BOUNDARIES_CHAPTER).toBe(1)
+  it('normalizes a removed/hidden current step to the next active semantic step', () => {
+    const s = useStore.getState()
+    expect(nearestActiveConfiguratorStep({
+      coverage: s.coverage,
+      mode: 'praesentation',
+    }, CONFIGURATOR_STEP.KG_700_DETAILS)).toBe(CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE)
   })
 
-  it('CLIENT_VISIBLE_CHAPTERS stays [1,2,3,4,5,6,8] — symmetric under the 1↔2 swap', () => {
-    // Explicit regression, not an assumption: both old positions 1 and 2
-    // were already client-visible, so the swap must not change this set.
-    expect(CLIENT_VISIBLE_CHAPTERS).toEqual([1, 2, 3, 4, 5, 6, 8])
+  it('migrates only meaningful v1 progress numbers, not the retired Ground step', () => {
+    expect(stepIdFromLegacyChapter(2)).toBe(CONFIGURATOR_STEP.KG_300_DETAILS)
+    expect(stepIdFromLegacyChapter(5)).toBe(CONFIGURATOR_STEP.AREAS)
+    expect(stepIdFromLegacyChapter(6)).toBeNull()
   })
 
-  it('BUILDING_SCOPED_CHAPTERS becomes [2,3,4,5] — Leistungsabgrenzung is project-level', () => {
-    expect(BUILDING_SCOPED_CHAPTERS).toEqual([2, 3, 4, 5])
-    expect(BUILDING_SCOPED_CHAPTERS).not.toContain(SCOPE_BOUNDARIES_CHAPTER)
-  })
-
-  it('the Configurator opens on Scope Boundaries, not on KG 300 (AC-A/AC-D)', () => {
+  it('enters Scope Boundaries and starts pricing when mode is confirmed', () => {
     const st = () => useStore.getState()
     st().openOpportunity('DEMO-0001')
     st().resolveWflConflict('customer')
@@ -49,13 +98,8 @@ describe('Configurator chapter order (reorder ticket, 2026-08-18)', () => {
     expect(st().pricingStarted).toBe(false)
 
     st().confirmConfigurationMode('SHARED')
-    // The very transition that confirms the mode enters chapter 1 — and
-    // chapter 1 is Leistungsabgrenzung, so pricing begins right here.
-    expect(st().openChapter).toBe(SCOPE_BOUNDARIES_CHAPTER)
-    expect(CHAPTERS[st().openChapter - 1]).toBe('Leistungsabgrenzung')
+    expect(st().openConfiguratorStep).toBe(CONFIGURATOR_STEP.SCOPE_BOUNDARIES)
     expect(st().pricingStarted).toBe(true)
-    // Landing on a project-level chapter must never narrow the live
-    // projection to a single building.
     expect(st().scopeBuildingId).toBeNull()
   })
 })

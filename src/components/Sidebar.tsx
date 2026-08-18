@@ -1,11 +1,14 @@
-import { chapterDone, pipelineViewForBuildingGate, useStore } from '../state/store'
+import {
+  configuratorStepDone,
+  pipelineViewForBuildingGate,
+  useStore,
+} from '../state/store'
 import type { PipelineView } from '../state/store'
 import { NNBSP } from '../engine/money'
-import { CHAPTERS } from '../state/chapters'
+import { activeConfiguratorWorkflow } from '../state/chapters'
 import { useT, useTx, type MessageKey } from '../i18n'
 import {
   isClientProjection,
-  isClientVisibleChapter,
   isClientVisiblePipelineView,
 } from '../state/clientProjection'
 
@@ -58,10 +61,7 @@ export function Sidebar() {
   const screens = client
     ? SCREENS.filter(({ id }) => isClientVisiblePipelineView(id))
     : SCREENS
-  const chapters = client
-    ? CHAPTERS.map((label, index) => ({ label, number: index + 1 }))
-      .filter(({ number }) => isClientVisibleChapter(number))
-    : CHAPTERS.map((label, index) => ({ label, number: index + 1 }))
+  const workflow = activeConfiguratorWorkflow({ coverage: s.coverage, mode: s.mode })
 
   return (
     <nav
@@ -117,16 +117,17 @@ export function Sidebar() {
               {item.id === 'konfigurator' && active
                 && s.configurationModeChosen && !s.configurationModeEditing && (
                 <ol className="a3-chapters">
-                  {chapters.map(({ label: c, number: n }) => {
-                    const open = s.openChapter === n
+                  {workflow.map((step, index) => {
+                    const number = index + 1
+                    const open = s.openConfiguratorStep === step.id
                     // Прогресс — из состояния активной Option (данные и след
                     // посещения), не из номера главы (ревью № 13, дефект 7).
-                    const done = !open && chapterDone(s, n)
+                    const done = !open && configuratorStepDone(s, step.id)
                     return (
-                      <li key={c}>
+                      <li key={step.id}>
                         <button
                           type="button"
-                          onClick={() => s.openChapterAt(n)}
+                          onClick={() => s.openConfiguratorStepAt(step.id)}
                           aria-current={open ? 'true' : undefined}
                           className={'a3-ch relative flex min-h-hit-target w-full items-center ' +
                             `gap-2 py-1 pl-8 pr-5 text-left ${FOCUS} ` +
@@ -135,11 +136,11 @@ export function Sidebar() {
                           {/* Номер главы несёт состояние классом системы
                               (`.a3-ch.a3-done .a3-n`), а не подменой символа:
                               статус остаётся и знаком, и подписью (правило 8). */}
-                          <span className="a3-n numeric shrink-0">{n}</span>
+                          <span className="a3-n numeric shrink-0">{number}</span>
                           <span aria-hidden="true" className="w-3 shrink-0">
                             {done ? '✓' : open ? '▸' : ''}
                           </span>
-                          <span>{tx(c)}</span>
+                          <span>{tx(step.label)}</span>
                         </button>
                       </li>
                     )

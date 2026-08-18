@@ -3,7 +3,7 @@ import { Decimal } from 'decimal.js'
 import demo from '../fixtures/demo-0001.json'
 import catalog from '../fixtures/catalog.json'
 import { activeBuilding, useStore, wflConflict } from '../state/store'
-import { SCOPE_BOUNDARIES_CHAPTER } from '../state/chapters'
+import { activeConfiguratorWorkflow, CONFIGURATOR_STEP } from '../state/chapters'
 import { useT, useTx } from '../i18n'
 import { copyFor } from '../i18n/internal-refs'
 import { NNBSP, formatDE, rateLabel } from '../engine/money'
@@ -424,6 +424,10 @@ function P4Annahmen({ setTab }: { setTab: (t: Tab) => void }) {
   const tx = useTx()
   const t = useT()
   const s = useStore()
+  const scopeBoundariesPosition = activeConfiguratorWorkflow({
+    coverage: s.coverage,
+    mode: s.mode,
+  }).findIndex((step) => step.id === CONFIGURATOR_STEP.SCOPE_BOUNDARIES) + 1
 
   // Активное допущение = каскад дошёл до подстановки (M-4). Список выводится
   // из состояния, а не поддерживается руками — поэтому он всегда точен.
@@ -481,7 +485,7 @@ function P4Annahmen({ setTab }: { setTab: (t: Tab) => void }) {
                 : (
                     <Button onClick={() => setTab('Projektdaten')}>
                       {t('configurator.scopeBoundaries.assumptionAction', {
-                        chapter: SCOPE_BOUNDARIES_CHAPTER,
+                        chapter: scopeBoundariesPosition,
                       })}
                     </Button>
                   )}

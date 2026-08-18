@@ -5,13 +5,12 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 56** · перевод есть, мост не подключён: 34
+**Всего 54** · перевод есть, мост не подключён: 32
 · перевода нет (в поставку копирайта): 22
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
 - . Die Preiswirkung erscheint sofort in der Angebotsspalte rechts und im Kostentreiber.
-- 200 im Angebot:
 - Beiträge · Summe =
 - Der Gesamtbetrag bleibt unverändert — 70/22/8 verteilt, was bereits gerechnet ist.
 - Einbaukueche und Erstausstattung je m² BGF R ⚙
@@ -43,7 +42,6 @@ Mit freundlichen Grüßen
 - nach HOAI und AHO
 - nach Planung
 - nicht Bestandteil
-- noch offen
 - nur Unterschiede
 - vollständig inkl. Gründung
 - Österreich

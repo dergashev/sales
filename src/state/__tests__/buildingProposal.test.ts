@@ -12,6 +12,7 @@ import {
   __resetStoreForTests,
 } from '../store'
 import { toBuildingInput } from '../buildingReview'
+import { CONFIGURATOR_STEP } from '../chapters'
 
 beforeEach(() => __resetStoreForTests())
 
@@ -235,10 +236,10 @@ describe('selection and configuration modes', () => {
     // Leistungsabgrenzung (chapter 1, entered above) is project-level, not
     // building-scoped — all four building-scoped chapters must be visited
     // explicitly, including Leistungen KG 300 (chapter 2 post-reorder).
-    st().openChapterAt(2)
-    st().openChapterAt(3)
-    st().openChapterAt(4)
-    st().openChapterAt(5)
+    st().openConfiguratorStepAt(CONFIGURATOR_STEP.KG_300_DETAILS)
+    st().openConfiguratorStepAt(CONFIGURATOR_STEP.KG_400_DETAILS)
+    st().openConfiguratorStepAt(CONFIGURATOR_STEP.ENERGY_CERTIFICATION)
+    st().openConfiguratorStepAt(CONFIGURATOR_STEP.AREAS)
     st().confirmVisibleConfiguration()
     // Scope Boundaries confirmation (ticket d21f8d48) is its own prerequisite
     // for configurationComplete, independent of per-building confirmation.

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
-import { CHAPTERS, SCOPE_BOUNDARIES_CHAPTER } from '../../state/chapters'
+import { CONFIGURATOR_STEP, CONFIGURATOR_STEPS } from '../../state/chapters'
 import { __resetStoreForTests, useStore } from '../../state/store'
 
 /**
@@ -42,10 +42,10 @@ describe('единицы: знак валюты не удваивается', ()
     render(<App />)
     await enterPipeline(user)
 
-    for (let n = 1; n <= CHAPTERS.length; n++) {
-      act(() => useStore.getState().openChapterAt(n))
+    for (const step of CONFIGURATOR_STEPS) {
+      act(() => useStore.getState().openConfiguratorStepAt(step.id))
       const text = document.body.textContent ?? ''
-      expect(DOUBLED.test(text), `глава ${n}: ${CHAPTERS[n - 1]}`).toBe(false)
+      expect(DOUBLED.test(text), `глава ${step.label}`).toBe(false)
     }
   })
 
@@ -55,7 +55,8 @@ describe('единицы: знак валюты не удваивается', ()
     await enterPipeline(user)
     // Scope Boundaries by IDENTITY, not a literal chapter number — this is
     // the chapter whose coverage tiles show `Mehrpreis`/`Minderpreis`.
-    act(() => useStore.getState().openChapterAt(SCOPE_BOUNDARIES_CHAPTER))
+    act(() => useStore.getState()
+      .openConfiguratorStepAt(CONFIGURATOR_STEP.SCOPE_BOUNDARIES))
 
     const text = document.body.textContent ?? ''
     // Последствие на плитке обязано существовать — иначе тест доказывал бы

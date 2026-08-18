@@ -92,6 +92,19 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     expect(useStore.getState().pricingStarted).toBe(true)
     expect(screen.getByRole('heading', { level: 1, name: 'Leistungsabgrenzung' }))
       .toHaveFocus()
+    const workflowNav = document.querySelector<HTMLElement>('.a3-chapters')!
+    expect(within(workflowNav).getAllByRole('button').map((button) =>
+      button.querySelector('span:last-child')?.textContent)).toEqual([
+      'Leistungsabgrenzung',
+      'Leistungen KG 300',
+      'Technik KG 400',
+      'Energie & Zertifikate',
+      'Flächen im Detail',
+      'Baunebenkosten KG 700',
+      'Termine & Kommerzielles',
+    ])
+    expect(screen.queryByRole('button', { name: /Baugrund & Erschließung/ })).toBeNull()
+    expect(screen.getByText('Kapitel 1 von 7 · Konfigurator')).toBeInTheDocument()
     // Leistungsabgrenzung is project-level, not building-scoped: no per-
     // building tabs, no per-building readiness detail on this chapter.
     expect(screen.getByText('Gilt für den gesamten Komplex')).toBeInTheDocument()
@@ -159,7 +172,7 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
       name: 'Gemeinsame Konfiguration bestätigen',
     })
     expect(confirm).not.toHaveClass('a3-sec')
-    expect(nav(/Weiter · Kapitel 6: Baugrund & Erschließung/)).toHaveClass('a3-sec')
+    expect(nav(/Weiter · Kapitel 6: Baunebenkosten KG 700/)).toHaveClass('a3-sec')
     await user.click(screen.getByRole('button', {
       name: 'Gemeinsame Konfiguration bestätigen',
     }))

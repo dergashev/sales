@@ -24,9 +24,6 @@ const CLIENT_VISIBLE_PIPELINE_VIEWS = new Set<PipelineView>([
   'export',
 ])
 
-export const CLIENT_VISIBLE_CHAPTERS = [1, 2, 3, 4, 5, 6, 8] as const
-const CLIENT_VISIBLE_CHAPTER_SET = new Set<number>(CLIENT_VISIBLE_CHAPTERS)
-
 export function isClientProjection(mode: OutputMode): boolean {
   return mode === 'praesentation'
 }
@@ -49,14 +46,6 @@ export function pipelineViewForOutputProfile(
   return isClientProjection(mode) && !isClientVisiblePipelineView(view)
     ? 'konfigurator'
     : view
-}
-
-export function isClientVisibleChapter(chapter: number): boolean {
-  return CLIENT_VISIBLE_CHAPTER_SET.has(chapter)
-}
-
-export function chapterForOutputProfile(mode: OutputMode, chapter: number): number {
-  return isClientProjection(mode) && !isClientVisibleChapter(chapter) ? 8 : chapter
 }
 
 export function isClientVisibleLevel(level: ProductLevel): boolean {

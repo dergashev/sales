@@ -15,6 +15,7 @@ import {
   wflConflict,
   __resetStoreForTests,
 } from '../store'
+import { CONFIGURATOR_STEP } from '../chapters'
 
 class MemoryStorage implements StorageLike {
   readonly values = new Map<string, string>()
@@ -137,12 +138,13 @@ describe('proposal store recovery', () => {
     // very same transition that confirms the mode — pricing begins right
     // here, not from the earlier mode radio choice on its own.
     expect(st().pricingStarted).toBe(true)
-    st().openChapterAt(3)
+    st().openConfiguratorStepAt(CONFIGURATOR_STEP.KG_400_DETAILS)
     expect(st().pricingStarted).toBe(true)
 
     const raw = storage.getItem(proposalStorageKey('DEMO-0001'))!
     expect(raw).toContain('"configurationModeChosen":true')
     expect(raw).toContain('"pricingStarted":true')
+    expect(raw).toContain(`"${CONFIGURATOR_STEP.KG_400_DETAILS}"`)
 
     __resetStoreForTests()
     const restoredStorage = new MemoryStorage()
@@ -154,7 +156,19 @@ describe('proposal store recovery', () => {
     // Leistungsabgrenzung (chapter 1) is project-level, not building-scoped
     // — confirmConfigurationMode no longer records it into this per-building
     // list; only the explicit chapter-3 visit does.
-    expect(st().configurationVisitedChapters['DEMO-B-A']).toEqual([3])
+    expect(st().configurationVisitedChapters['DEMO-B-A'])
+      .toEqual([CONFIGURATOR_STEP.KG_400_DETAILS])
+
+    // Payloads written before semantic step identities stored chapter 3 for
+    // the same KG-400 progress. Restore migrates it without keeping numeric
+    // authority in live state.
+    const legacyRaw = raw.replace(`"${CONFIGURATOR_STEP.KG_400_DETAILS}"`, '3')
+    __resetStoreForTests()
+    const legacyStorage = new MemoryStorage()
+    legacyStorage.setItem(proposalStorageKey('DEMO-0001'), legacyRaw)
+    expect(hydrateProposalState(legacyStorage)).toBe(true)
+    expect(st().configurationVisitedChapters['DEMO-B-A'])
+      .toEqual([CONFIGURATOR_STEP.KG_400_DETAILS])
   })
 
   it('restores mandatory raw `unknown` coverage without blocking completeness', () => {

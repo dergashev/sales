@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Decimal } from 'decimal.js'
 import {
-  activeBuilding, chapterDone, projectionForOption,
+  activeBuilding, configuratorStepDone, projectionForOption,
   __resetStoreForTests, useStore, wflConflict, scopeBoundariesStatus,
 } from '../store'
 import { KG400_GROUPS, choiceBlocked } from '../../engine/options'
 import type { JournalEvent, OfferSnapshot } from '../store'
-import { SCOPE_BOUNDARIES_CHAPTER } from '../chapters'
+import { CONFIGURATOR_STEP } from '../chapters'
 
 /**
  * Проекция обязана воспроизводить мокап S3 из `screen-map.md` до цента.
@@ -65,7 +65,7 @@ describe('Scope Boundaries: покрытие по умолчанию (ticket 627
 
   it('прогресс главы не требует действия по обязательным KG 300/400/700', () => {
     const st = () => useStore.getState()
-    st().openChapterAt(SCOPE_BOUNDARIES_CHAPTER)
+    st().openConfiguratorStepAt(CONFIGURATOR_STEP.SCOPE_BOUNDARIES)
     st().setCoverage('KG_200', 'excluded')
     st().setCoverage('KG_500', 'excluded')
     st().setCoverage('KG_600', 'excluded')
@@ -73,7 +73,7 @@ describe('Scope Boundaries: покрытие по умолчанию (ticket 627
     expect(st().coverage.KG_300).toBe('unknown')
     expect(st().coverage.KG_400).toBe('unknown')
     expect(st().coverage.KG_700).toBe('unknown')
-    expect(chapterDone(st(), SCOPE_BOUNDARIES_CHAPTER)).toBe(true)
+    expect(configuratorStepDone(st(), CONFIGURATOR_STEP.SCOPE_BOUNDARIES)).toBe(true)
   })
 })
 
@@ -1004,37 +1004,35 @@ describe('Настоящая модель Option (ревью № 13, дефек�
     prepare()
     st().createOption('Basis')
     st().openOption('OPT-01')
-    expect(st().openChapter).toBe(1)
-    expect(st().besuchteKapitel).toEqual([])
+    expect(st().openConfiguratorStep).toBe(CONFIGURATOR_STEP.SCOPE_BOUNDARIES)
+    expect(st().visitedConfiguratorSteps).toEqual([])
     expect(st().pipelineView).toBe('buildingScope')
     // Der Konfigurator wurde noch nicht geöffnet.
-    expect(chapterDone(st(), 1)).toBe(false)
-    expect(chapterDone(st(), 2)).toBe(false)
+    expect(configuratorStepDone(st(), CONFIGURATOR_STEP.SCOPE_BOUNDARIES)).toBe(false)
+    expect(configuratorStepDone(st(), CONFIGURATOR_STEP.KG_300_DETAILS)).toBe(false)
     st().confirmBuilding(st().activeBuildingId)
     expect(st().canBeginConfiguration()).toBe(true)
-    expect(chapterDone(st(), 1)).toBe(false)
+    expect(configuratorStepDone(st(), CONFIGURATOR_STEP.SCOPE_BOUNDARIES)).toBe(false)
     st().setPipelineView('konfigurator')
     expect(st().configurationModeChosen).toBe(false)
-    expect(chapterDone(st(), 1)).toBe(false)
+    expect(configuratorStepDone(st(), CONFIGURATOR_STEP.SCOPE_BOUNDARIES)).toBe(false)
     st().confirmConfigurationMode('PER_BUILDING')
     // Kapitel 1 ist jetzt Leistungsabgrenzung (Reorder 2026-08-18): besucht
     // allein reicht nicht mehr — done erst, wenn KG 200/500/600 keine
     // offene Entscheidung mehr sind (kein falsches done nur durch Eintritt).
-    expect(chapterDone(st(), 1)).toBe(false)
+    expect(configuratorStepDone(st(), CONFIGURATOR_STEP.SCOPE_BOUNDARIES)).toBe(false)
     st().setCoverage('KG_200', 'excluded')
     st().setCoverage('KG_500', 'excluded')
     st().setCoverage('KG_600', 'excluded')
-    expect(chapterDone(st(), 1)).toBe(true)
+    expect(configuratorStepDone(st(), CONFIGURATOR_STEP.SCOPE_BOUNDARIES)).toBe(true)
     // Kapitel 2 (Leistungen KG 300, gebäudebezogen) ist erst nach Besuch
     // done — kein Auto-Visit mehr durch confirmConfigurationMode.
-    expect(chapterDone(st(), 2)).toBe(false)
-    st().openChapterAt(2)
-    expect(chapterDone(st(), 2)).toBe(true)
-    // Глава 7 — глава данных (партия 3): посещение проходит её,
-    // непосещённая — не пройдена.
-    expect(chapterDone(st(), 7)).toBe(false)
-    st().openChapterAt(7)
-    expect(chapterDone(st(), 7)).toBe(true)
+    expect(configuratorStepDone(st(), CONFIGURATOR_STEP.KG_300_DETAILS)).toBe(false)
+    st().openConfiguratorStepAt(CONFIGURATOR_STEP.KG_300_DETAILS)
+    expect(configuratorStepDone(st(), CONFIGURATOR_STEP.KG_300_DETAILS)).toBe(true)
+    expect(configuratorStepDone(st(), CONFIGURATOR_STEP.KG_700_DETAILS)).toBe(false)
+    st().openConfiguratorStepAt(CONFIGURATOR_STEP.KG_700_DETAILS)
+    expect(configuratorStepDone(st(), CONFIGURATOR_STEP.KG_700_DETAILS)).toBe(true)
   })
 
   it('снапшот называет отправленную Option (M-3)', () => {

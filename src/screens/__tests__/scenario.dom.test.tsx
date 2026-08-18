@@ -152,7 +152,7 @@ describe('Сквозной сценарий продажи', () => {
     expect(screen.getByText(/Fertigstellung 19\.11\.2027/)).toBeInTheDocument()
   })
 
-  it('KG 300 — Ground Conditions & Access: риск Baugrund типизирован; Baugrund & Erschließung — пустота Erschließung названа', async () => {
+  it('keeps ground risk in KG 300 and relocates KG 200 status into Scope Boundaries', async () => {
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
@@ -184,20 +184,18 @@ describe('Сквозной сценарий продажи', () => {
     expect(after.minus(before).toFixed(2)).toBe(kg320.mul('0.04').toFixed(2))
     expect(screen.getAllByText(/Im Angebot enthalten/).length).toBe(1)
 
-    // Erschließung bleibt eine reine Datenkarte in «Baugrund & Erschließung»
-    // (Non-Goal: KG 200 wird von diesem Ticket nicht angefasst). Der Link
-    // zeigt auf Leistungsabgrenzung, die seit dem Reorder vom 2026-08-18
-    // Kapitel 1 ist (zuvor Kapitel 2).
-    await user.click(nav(/Baugrund & Erschließung/))
-    expect(screen.getByText(/keine Angaben zur Erschließung/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Zu Kapitel 1/ })).toBeInTheDocument()
+    // The content-free legacy Ground chapter is retired. Its authoritative
+    // KG-200 status remains next to the decision that owns it.
+    expect(screen.queryByRole('button', { name: /Baugrund & Erschließung/ })).toBeNull()
+    await user.click(nav(/Leistungsabgrenzung/))
+    const status = screen.getByTestId('kg-200-servicing-status')
+    expect(status).toHaveTextContent('Erschließung · KG 200 im Angebot: noch offen')
+    act(() => useStore.getState().setCoverage('KG_200', 'included'))
+    expect(status).toHaveTextContent('Erschließung · KG 200 im Angebot: enthalten')
+    act(() => useStore.getState().setCoverage('KG_200', 'excluded'))
+    expect(status).toHaveTextContent('Erschließung · KG 200 im Angebot: nicht enthalten')
     act(() => useStore.getState().setUiLanguage('en'))
-    expect(screen.getByText(
-      'Site servicing belongs to KG 200 — its scope is decided in chapter 1; its current status is shown here.',
-    )).toBeInTheDocument()
-    expect(screen.getByRole('button', {
-      name: 'Go to chapter 1 · Scope boundaries',
-    })).toBeInTheDocument()
+    expect(status).toHaveTextContent('Site servicing · KG 200 in the offer: excluded')
   })
 
   it('переводит параметризованную ссылку допущения на актуальную главу', async () => {
@@ -447,7 +445,7 @@ describe('Сквозной сценарий продажи', () => {
     expect((document.body.textContent ?? '').match(REGISTRY)?.[0] ?? null).toBeNull()
     await user.click(nav(/Konfigurator/))
     for (const chapter of [/Leistungen KG 300/, /Leistungsabgrenzung/,
-                           /Baugrund & Erschließung/, /Termine & Kommerzielles/]) {
+                           /Termine & Kommerzielles/]) {
       await user.click(nav(chapter))
       const text = document.body.textContent ?? ''
       const hit = text.match(REGISTRY)
@@ -468,6 +466,12 @@ describe('Сквозной сценарий продажи', () => {
 
     expect(screen.getByText('Kundenansicht — der Kunde sieht diesen Bildschirm'))
       .toBeInTheDocument()
+    // KG 700 is internal-only. Removing the currently viewed step when the
+    // output profile changes lands on the next active step and moves focus to
+    // its h1 instead of leaving focus in removed content.
+    expect(screen.getByRole('heading', { level: 1, name: 'Termine & Kommerzielles' }))
+      .toHaveFocus()
+    expect(screen.getByText('Kapitel 6 von 6 · Konfigurator')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Beenden' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Einstellungen/ })).toBeNull()
     expect(screen.queryByRole('button', { name: /Grundlagen/ })).toBeNull()
@@ -489,7 +493,6 @@ describe('Сквозной сценарий продажи', () => {
       /Technik KG 400/,
       /Energie & Zertifikate/,
       /Flächen im Detail/,
-      /Baugrund & Erschließung/,
       /Termine & Kommerzielles/,
     ]
     for (const chapter of clientChapters) {

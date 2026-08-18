@@ -11,7 +11,7 @@ import {
 } from '../components/controls'
 import { useState } from 'react'
 import { Button } from '../components/primitives'
-import { useTx } from '../i18n'
+import { useT, useTx } from '../i18n'
 import { optionImage } from '../assets/option-images'
 
 /**
@@ -148,6 +148,7 @@ export function OptionChapter({ groups, intro }: {
   intro: string
 }) {
   const s = useStore()
+  const t = useT()
   const tx = useTx()
   const b = activeBuilding(s)
   const chosen = choicesFor(s, b.id)
@@ -166,8 +167,8 @@ export function OptionChapter({ groups, intro }: {
           {tx('Leistungen für ein Gebäude auszuwählen, dessen Flächen und Einstufung noch offen sind, hiesse die Auswahl später vollständig zu wiederholen.')}
         </p>
         <div className="mt-3">
-          <Button variant="primary" onClick={() => s.openChapterAt(1)}>
-            {tx('Zu Kapitel 1 · Gebäude & Umfang')}
+          <Button variant="primary" onClick={() => s.setPipelineView('buildingScope')}>
+            {t('configurator.returnBuildingScope')}
           </Button>
         </div>
       </div>

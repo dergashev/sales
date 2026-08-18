@@ -223,8 +223,13 @@ const de = {
     'Zu Kapitel {chapter} · Leistungsabgrenzung',
   'configurator.scopeBoundaries.servicingIntro':
     'Erschließung gehört zu KG 200 — die Entscheidung über den Umfang fällt in Kapitel {chapter}, hier steht ihr Stand.',
+  'configurator.scopeBoundaries.servicingStatus':
+    'Erschließung · KG 200 im Angebot: {status}',
   'configurator.scopeBoundaries.assumptionAction':
     'Entscheidung im Konfigurator · Kapitel {chapter}',
+  'configurator.energy.goTo':
+    'Zu Kapitel {chapter} · Energie & Zertifikate',
+  'configurator.returnBuildingScope': 'Zu Gebäude & Umfang',
   'configurator.scope.single': 'Konfiguration für {building} · {status}',
   'configurator.scope.announcement': '{scope} ausgewählt. Status: {status}.',
   'configurator.status.open': 'Unvollständig',
@@ -232,7 +237,7 @@ const de = {
   'configurator.status.confirmed': 'Bestätigt',
   'configurator.status.recheck': 'Erneut prüfen',
   'configurator.status.openDetail':
-    'Leistungen KG 300, Technik KG 400, Energie & Zertifikate sowie Flächen im Detail vollständig durchgehen.',
+    'Diese Gebäudeschritte vollständig durchgehen: {steps}.',
   'configurator.status.readyDetail':
     'Alle erforderlichen Gebäudeschritte wurden durchgegangen. Die Konfiguration kann bestätigt werden.',
   'configurator.status.confirmedDetail': 'Die sichtbare Konfiguration ist bestätigt.',
@@ -475,8 +480,13 @@ const en: Partial<Record<MessageKey, string>> = {
     'Go to chapter {chapter} · Scope boundaries',
   'configurator.scopeBoundaries.servicingIntro':
     'Site servicing belongs to KG 200 — its scope is decided in chapter {chapter}; its current status is shown here.',
+  'configurator.scopeBoundaries.servicingStatus':
+    'Site servicing · KG 200 in the offer: {status}',
   'configurator.scopeBoundaries.assumptionAction':
     'Decide in the configurator · Chapter {chapter}',
+  'configurator.energy.goTo':
+    'Go to chapter {chapter} · Energy & certifications',
+  'configurator.returnBuildingScope': 'Go to Building & Scope',
   'configurator.scope.single': 'Configuration for {building} · {status}',
   'configurator.scope.announcement': '{scope} selected. Status: {status}.',
   'configurator.status.open': 'Incomplete',
@@ -484,7 +494,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'configurator.status.confirmed': 'Confirmed',
   'configurator.status.recheck': 'Review again',
   'configurator.status.openDetail':
-    'Complete KG 300 services, KG 400 systems, Energy & certifications, and Area details.',
+    'Complete these building steps: {steps}.',
   'configurator.status.readyDetail':
     'All required building steps have been reviewed. The configuration can be confirmed.',
   'configurator.status.confirmedDetail': 'The visible configuration is confirmed.',

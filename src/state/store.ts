@@ -3,14 +3,21 @@ import { useStore as useZustandStore } from 'zustand'
 import { Decimal } from 'decimal.js'
 import demo from '../fixtures/demo-0001.json'
 import {
-  chapterForOutputProfile,
   modeForLevelTransition,
   pipelineViewForOutputProfile,
   type OutputMode,
   type PipelineView,
   type ProductLevel,
 } from './clientProjection'
-import { SCOPE_BOUNDARIES_CHAPTER } from './chapters'
+import {
+  activeBuildingConfiguratorSteps,
+  CONFIGURATOR_STEP,
+  isBuildingScopedConfiguratorStep,
+  isConfiguratorStepId,
+  nearestActiveConfiguratorStep,
+  stepIdFromLegacyChapter,
+  type ConfiguratorStepId,
+} from './chapters'
 import { withRegionalFactor } from './catalog'
 import {
   bgfAboveGround, calculateBuilding, kgSplit, sumOfBlock,
@@ -172,15 +179,6 @@ export type BuildingConfigurationState = {
 
 export type ConfigurationDisplayStatus = 'open' | 'ready' | 'confirmed' | 'recheck'
 
-/**
- * Building-scoped Configurator chapters: `Leistungen KG 300`, `Technik
- * KG 400`, `Energie & Zertifikate`, `Flächen im Detail` (`chapters.ts`).
- * `Leistungsabgrenzung` (`SCOPE_BOUNDARIES_CHAPTER`) is deliberately absent
- * — it is a project-level chapter ("gilt für den gesamten Komplex") both
- * before and after the 2026-08-18 reorder that moved it to chapter 1.
- */
-export const BUILDING_SCOPED_CHAPTERS = [2, 3, 4, 5] as const
-
 const SHARED_CONFIGURATION_SCOPE = 'SHARED'
 
 /**
@@ -223,7 +221,7 @@ export type OptionConfig = {
   /** Pricing stays dormant until Scope Boundaries has actually been entered. */
   pricingStarted: boolean
   /** Building-chapter progress is isolated by building or shared scope. */
-  configurationVisitedChapters: Record<string, number[]>
+  configurationVisitedChapters: Record<string, ConfiguratorStepId[]>
   sharedConfiguration: SharedConfiguration
   buildingConfigState: Record<string, BuildingConfigurationState>
   kg300: Record<string, Record<string, string>>
@@ -243,8 +241,8 @@ export type OptionConfig = {
    * (правило 32). Тот же приём, что у Regionalfaktor (D-15).
    */
   risikoAktiv: Record<string, boolean>
-  openChapter: number
-  besuchteKapitel: number[]
+  openConfiguratorStep: ConfiguratorStepId
+  visitedConfiguratorSteps: ConfiguratorStepId[]
   /**
    * Охват показа (DC-46, правило 38): `null` — весь комплекс, иначе id
    * здания. Это ПРЕДПОЧТЕНИЕ ПОКАЗА, а не состав предложения: `included`
@@ -286,7 +284,7 @@ const OPTION_CONFIG_KEYS = [
   'kg300', 'kg300Provenance', 'kg700Mode', 'coverage',
   'scopeBoundariesConfirmedFingerprint', 'fields',
   'esConfirmed', 'regionalfaktorActive', 'risikoAktiv',
-  'openChapter', 'besuchteKapitel', 'scopeBuildingId', 'discountPercent',
+  'openConfiguratorStep', 'visitedConfiguratorSteps', 'scopeBuildingId', 'discountPercent',
   'offerDraft', 'constructionStartDate',
 ] as const satisfies ReadonlyArray<keyof OptionConfig>
 
@@ -312,7 +310,7 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
     configurationModeChosen?: boolean
     /** Optional while reading candidates saved before the pricing boundary. */
     pricingStarted?: boolean
-    configurationVisitedChapters?: Record<string, number[]>
+    configurationVisitedChapters?: Record<string, Array<ConfiguratorStepId | number>>
     /** Optional while reading payloads saved before Scope Boundaries confirmation existed. */
     scopeBoundariesConfirmedFingerprint?: string | null
     /** Optional while reading payloads saved before Construction Period existed. */
@@ -556,9 +554,9 @@ function defaultOptionConfig(): OptionConfig {
     esConfirmed: false,
     regionalfaktorActive: false,
     risikoAktiv: {},
-    // Конфигуратор открывается только после отдельного шага «Gebäude &
-    // Umfang». Его первая оставшаяся глава — KG 300.
-    openChapter: 1,
+    // Configurator opens only after the separate Building & Scope step.
+    // Scope Boundaries is the first semantic Configurator step.
+    openConfiguratorStep: CONFIGURATOR_STEP.SCOPE_BOUNDARIES,
     discountPercent: null,
     offerDraft: {
       body: 'Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unser '
@@ -567,7 +565,7 @@ function defaultOptionConfig(): OptionConfig {
       attachments: ['angebot', 'kostentreiber', 'annahmen'],
     },
 
-    besuchteKapitel: [],
+    visitedConfiguratorSteps: [],
     scopeBuildingId: null,
     constructionStartDate: null,
   }
@@ -657,8 +655,10 @@ function isPersistedProposalConfig(value: unknown): value is PersistedProposalCo
     if (!Object.entries(value.configurationVisitedChapters).every(([scope, chapters]) =>
       allowedScopes.has(scope)
       && Array.isArray(chapters)
-      && chapters.every((chapter) => Number.isInteger(chapter)
-        && chapter >= 1 && chapter <= 8))) return false
+      && chapters.every((chapter) => isConfiguratorStepId(chapter)
+        || (typeof chapter === 'number'
+          && Number.isInteger(chapter)
+          && stepIdFromLegacyChapter(chapter) !== null)))) return false
   }
   if (!record(value.sharedConfiguration)
     || !isChoiceSet(value.sharedConfiguration.choices)
@@ -756,12 +756,22 @@ function restoredOptionConfig(
     if (!building) throw new Error(`persisted building ${id} is incomplete`)
     return [id, building]
   })) as Record<string, ProjectBuilding>
+  const configurationVisitedChapters = Object.fromEntries(
+    Object.entries(persisted.configurationVisitedChapters ?? {}).map(([scope, steps]) => [
+      scope,
+      [...new Set(steps.flatMap((step) => {
+        if (isConfiguratorStepId(step)) return [step]
+        const migrated = stepIdFromLegacyChapter(step)
+        return migrated ? [migrated] : []
+      }))],
+    ]),
+  )
   return {
     ...base,
     ...persisted,
     configurationModeChosen: persisted.configurationModeChosen === true,
     pricingStarted: persisted.pricingStarted === true,
-    configurationVisitedChapters: persisted.configurationVisitedChapters ?? {},
+    configurationVisitedChapters,
     scopeBoundariesConfirmedFingerprint:
       persisted.scopeBoundariesConfirmedFingerprint ?? null,
     buildings,
@@ -822,7 +832,7 @@ type Store = {
   configurationModeChosen: boolean
   configurationModeEditing: boolean
   pricingStarted: boolean
-  configurationVisitedChapters: Record<string, number[]>
+  configurationVisitedChapters: Record<string, ConfiguratorStepId[]>
   sharedConfiguration: SharedConfiguration
   buildingConfigState: Record<string, BuildingConfigurationState>
   /**
@@ -875,7 +885,7 @@ type Store = {
   activeDelta: { label: string; deltaExact: Decimal; percent: Decimal } | null
   /**
    * Geist-Vorschau (DC-28): последствие опции у цены ДО клика. Эфемерное
-   * UI-состояние вроде `openChapter` — данные не меняются, события нет.
+   * UI-состояние вроде `openConfiguratorStep` — данные не меняются, события нет.
    * Клик фиксирует выбор обычным событием, превью гаснет.
    */
   preview: {
@@ -898,7 +908,7 @@ type Store = {
   undoToast: { seq: number; statusText: string; deltaText: string | null } | null
   /**
    * Режим показа (правило 11). Предпочтение UI, не данные варианта — как
-   * openChapter, без события. Вход в `praesentation` гейтуется открытым
+   * openConfiguratorStep, без события. Вход в `praesentation` гейтуется открытым
    * существенным блокером (R-07/DC-7): профиль с material-проблемой не
    * формируется, поэтому переключение — no-op, пока класс не подтверждён.
    * Плотность режимом НЕ управляется (D-16).
@@ -972,10 +982,10 @@ type Store = {
   optionConfigs: Record<string, OptionConfig>
   /**
    * Главы, которые пользователь открывал в АКТИВНОЙ Option. Навигационное
-   * состояние (как `openChapter`) — события не создаёт; прогресс в
+   * состояние (как `openConfiguratorStep`) — события не создаёт; прогресс в
    * сайдбаре выводится из него и из данных, а не из номера главы.
    */
-  besuchteKapitel: number[]
+  visitedConfiguratorSteps: ConfiguratorStepId[]
   scopeBuildingId: string | null
   /** Экран конвейера. UI-состояние: CTA глав ведут к сравнению и экспорту. */
   pipelineView: PipelineView
@@ -1001,7 +1011,7 @@ type Store = {
    * пункт чек-листа G6-gate, не переопределение.
    */
   density: 'komfortabel' | 'kompakt'
-  openChapter: number
+  openConfiguratorStep: ConfiguratorStepId
   /**
    * Construction Period (тикет KG300/400/700 + Bauzeit-Reise): vom Vertrieb
    * gewählter Baubeginn. `null` — noch keine Wahl, das ScheduleModel zeigt
@@ -1053,7 +1063,7 @@ type Store = {
    */
   setOfferDraft: (patch: Partial<Store['offerDraft']>) => void
   clearDelta: () => void
-  openChapterAt: (n: number) => void
+  openConfiguratorStepAt: (stepId: ConfiguratorStepId) => void
   /** DC-28: показать последствие решения до клика; null — погасить. */
   previewOption: (change: PriceChange | null) => void
   /**
@@ -1244,7 +1254,7 @@ export function configurationDisplayStatusFor(
   s: Pick<Store, 'configurationMode' | 'configurationModeChosen'
     | 'configurationVisitedChapters' | 'sharedConfiguration' | 'kg300'
     | 'included' | 'buildingConfigState' | 'buildingReviews'
-    | 'buildingConfirmation' | 'buildingConflicts'>,
+    | 'buildingConfirmation' | 'buildingConflicts' | 'coverage'>,
   buildingId: string,
 ): ConfigurationDisplayStatus {
   if (!s.configurationModeChosen) return 'open'
@@ -1256,8 +1266,12 @@ export function configurationDisplayStatusFor(
   if (stored?.status === 'confirmed' && status !== 'confirmed') return 'recheck'
   if (status === 'confirmed') return 'confirmed'
   const visited = s.configurationVisitedChapters[configurationScopeKey(s, buildingId)] ?? []
+  const requiredSteps = activeBuildingConfiguratorSteps({
+    coverage: s.coverage,
+    mode: 'intern',
+  })
   return status === 'completed'
-    || BUILDING_SCOPED_CHAPTERS.every((chapter) => visited.includes(chapter))
+    || requiredSteps.every((step) => visited.includes(step.id))
     ? 'ready'
     : 'open'
 }
@@ -1276,7 +1290,7 @@ function scopeBoundariesFingerprint(
 ): string {
   // Tech Review P1 (ticket d21f8d48): must NOT key off `activeBuildingId`.
   // Leistungsabgrenzung has no building tabs (it is not in
-  // BUILDING_SCOPED_CHAPTERS) and Energiestandard/Zertifikate can differ
+  // semantic building steps) and Energiestandard/Zertifikate can differ
   // per building in PER_BUILDING mode — confirming while looking at Haus A
   // must still invalidate if Haus B's requirement changes, or switching
   // back to Haus A would silently read "confirmed" again (evadable by
@@ -1425,36 +1439,35 @@ export function configForOption(
 }
 
 /**
- * Пройдена ли глава — из СОСТОЯНИЯ активной Option, не из номера главы.
+ * Whether a semantic workflow step is done, derived from active Option state.
  * У глав с обязательным подтверждением или решением done наступает от
- * данных; у каталожных глав, где умолчание — валидный выбор, done — это
- * след посещения. Глава 7 не проработана и завершиться не может.
+ * данных; у каталожных шагов, где умолчание — валидный выбор, done — это
+ * след посещения.
  */
-export function chapterDone(
+export function configuratorStepDone(
   s: Pick<Store, 'buildings' | 'included' | 'buildingReviews'
-    | 'buildingConfirmation' | 'buildingConflicts' | 'coverage' | 'besuchteKapitel'
+    | 'buildingConfirmation' | 'buildingConflicts' | 'coverage'
+    | 'visitedConfiguratorSteps'
     | 'configurationMode' | 'configurationModeChosen'
     | 'configurationVisitedChapters' | 'activeBuildingId'>,
-  n: number,
+  stepId: ConfiguratorStepId,
 ): boolean {
-  if (BUILDING_SCOPED_CHAPTERS.includes(
-    n as typeof BUILDING_SCOPED_CHAPTERS[number],
-  )) {
+  if (isBuildingScopedConfiguratorStep(stepId)) {
     if (!s.configurationModeChosen) return false
     return (s.configurationVisitedChapters[
       configurationScopeKey(s, s.activeBuildingId)
-    ] ?? []).includes(n)
+    ] ?? []).includes(stepId)
   }
-  const besucht = s.besuchteKapitel.includes(n)
-  switch (n) {
-    case SCOPE_BOUNDARIES_CHAPTER:
+  const visited = s.visitedConfiguratorSteps.includes(stepId)
+  switch (stepId) {
+    case CONFIGURATOR_STEP.SCOPE_BOUNDARIES:
       // Leistungsabgrenzung решена, когда ни одна решаемая группа не
       // осталась `unknown`: непринятое решение — не пройденный шаг.
-      return besucht
+      return visited
         && !SCOPE_BOUNDARIES_DECIDABLE_GROUPS
           .some((group) => s.coverage[group] === 'unknown')
     default:
-      return besucht
+      return visited
   }
 }
 
@@ -2220,13 +2233,26 @@ const store = createStore<Store>((set, get) => {
       const s = get()
       const prev = s.coverage[g]
       if (prev === st) return
-      set({ coverage: { ...s.coverage, [g]: st } })
+      const write = (value: CoverageState) => set((current) => {
+        const coverage = { ...current.coverage, [g]: value }
+        return {
+          coverage,
+          // A future conditional KG step can disappear immediately after a
+          // Scope Boundaries decision. Keep the page on the nearest active
+          // semantic step; App.tsx then moves focus to that step's h1.
+          openConfiguratorStep: nearestActiveConfiguratorStep({
+            coverage,
+            mode: current.mode,
+          }, current.openConfiguratorStep),
+        }
+      })
+      write(st)
       apply({
         kind: 'coverage.changed',
         label: `${g} ${COVERAGE_LABEL[prev]} → ${COVERAGE_LABEL[st]}`,
         deltaExact: null,
-        inverse: () => set((x) => ({ coverage: { ...x.coverage, [g]: prev } })),
-        forward: () => set((x) => ({ coverage: { ...x.coverage, [g]: st } })),
+        inverse: () => write(prev),
+        forward: () => write(st),
       })
     },
 
@@ -2492,11 +2518,12 @@ const store = createStore<Store>((set, get) => {
     },
 
     clearDelta: () => set({ activeDelta: null }),
-    openChapterAt: (n) => set((s) => {
-      const visibleChapter = chapterForOutputProfile(s.mode, n)
-      const buildingScoped = BUILDING_SCOPED_CHAPTERS.includes(
-        visibleChapter as typeof BUILDING_SCOPED_CHAPTERS[number],
-      )
+    openConfiguratorStepAt: (requestedStep) => set((s) => {
+      const stepId = nearestActiveConfiguratorStep({
+        coverage: s.coverage,
+        mode: s.mode,
+      }, requestedStep)
+      const buildingScoped = isBuildingScopedConfiguratorStep(stepId)
       const includedIds = includedBuildingIds(s)
       const activeBuildingId = includedIds.includes(s.activeBuildingId)
         ? s.activeBuildingId
@@ -2504,7 +2531,7 @@ const store = createStore<Store>((set, get) => {
       const scopeKey = configurationScopeKey(s, activeBuildingId)
       const scopedVisited = s.configurationVisitedChapters[scopeKey] ?? []
       return {
-        openChapter: visibleChapter,
+        openConfiguratorStep: stepId,
         activeBuildingId,
         pricingStarted: s.pricingStarted || (
           s.configurationModeChosen
@@ -2513,26 +2540,26 @@ const store = createStore<Store>((set, get) => {
             // AUTHORITATIVE CONFIGURATOR ENTRY STEP"): pricing starts on
             // ENTERING Leistungsabgrenzung, never on a literal chapter
             // number that would silently go stale on the next reorder.
-            && visibleChapter === SCOPE_BOUNDARIES_CHAPTER
+            && stepId === CONFIGURATOR_STEP.SCOPE_BOUNDARIES
         ),
         scopeBuildingId: buildingScoped && s.configurationMode === 'PER_BUILDING'
           ? activeBuildingId
           : null,
         ...(buildingScoped && s.configurationModeChosen && !s.configurationModeEditing
-          && !scopedVisited.includes(visibleChapter)
+          && !scopedVisited.includes(stepId)
           ? {
               configurationVisitedChapters: {
                 ...s.configurationVisitedChapters,
-                [scopeKey]: [...scopedVisited, visibleChapter],
+                [scopeKey]: [...scopedVisited, stepId],
               },
             }
           : {}),
         // След посещения — источник честного прогресса в сайдбаре: глава
         // «пройдена», если её открывали, а не потому что её номер меньше
         // текущего (ревью № 13, дефект 7).
-        besuchteKapitel: s.besuchteKapitel.includes(visibleChapter)
-          ? s.besuchteKapitel
-          : [...s.besuchteKapitel, visibleChapter],
+        visitedConfiguratorSteps: s.visitedConfiguratorSteps.includes(stepId)
+          ? s.visitedConfiguratorSteps
+          : [...s.visitedConfiguratorSteps, stepId],
       }
     }),
 
@@ -2638,7 +2665,10 @@ const store = createStore<Store>((set, get) => {
       set({
         mode: m,
         pipelineView: pipelineViewForBuildingGate(s, outputView),
-        openChapter: chapterForOutputProfile(m, s.openChapter),
+        openConfiguratorStep: nearestActiveConfiguratorStep({
+          coverage: s.coverage,
+          mode: m,
+        }, s.openConfiguratorStep),
       })
     },
 
@@ -2823,8 +2853,13 @@ const store = createStore<Store>((set, get) => {
           configurationModeEditing: false,
           ...(canBeginConfiguration(s) && s.configurationModeChosen
             && !s.configurationModeEditing
-            && !s.besuchteKapitel.includes(s.openChapter)
-            ? { besuchteKapitel: [...s.besuchteKapitel, s.openChapter] }
+            && !s.visitedConfiguratorSteps.includes(s.openConfiguratorStep)
+            ? {
+                visitedConfiguratorSteps: [
+                  ...s.visitedConfiguratorSteps,
+                  s.openConfiguratorStep,
+                ],
+              }
             : {}),
         })
         return
@@ -2856,6 +2891,10 @@ const store = createStore<Store>((set, get) => {
           ? { ...rest, [s.activeOptionId]: captureConfig(s) }
           : rest,
         ...next,
+        openConfiguratorStep: nearestActiveConfiguratorStep({
+          coverage: next.coverage,
+          mode: s.mode,
+        }, next.openConfiguratorStep),
         configurationModeEditing: false,
       })
     },
@@ -2863,16 +2902,18 @@ const store = createStore<Store>((set, get) => {
     setPipelineView: (v) => set((s) => {
       const requested = pipelineViewForOutputProfile(s.mode, v)
       const pipelineView = pipelineViewForBuildingGate(s, requested)
-      const visibleChapter = chapterForOutputProfile(s.mode, s.openChapter)
+      const visibleStep = nearestActiveConfiguratorStep({
+        coverage: s.coverage,
+        mode: s.mode,
+      }, s.openConfiguratorStep)
       const includedIds = includedBuildingIds(s)
       const activeBuildingId = includedIds.includes(s.activeBuildingId)
         ? s.activeBuildingId
         : includedIds[0] ?? s.activeBuildingId
-      const buildingScoped = BUILDING_SCOPED_CHAPTERS.includes(
-        visibleChapter as typeof BUILDING_SCOPED_CHAPTERS[number],
-      )
+      const buildingScoped = isBuildingScopedConfiguratorStep(visibleStep)
       return {
         pipelineView,
+        openConfiguratorStep: visibleStep,
         // The narrow lens exists only inside a building-scoped Configurator
         // chapter. Vergleich, Export and snapshots always cover the option.
         scopeBuildingId: pipelineView === 'konfigurator'
@@ -2885,8 +2926,13 @@ const store = createStore<Store>((set, get) => {
         ...(pipelineView === 'konfigurator'
           && s.configurationModeChosen
           && !s.configurationModeEditing
-          && !s.besuchteKapitel.includes(s.openChapter)
-          ? { besuchteKapitel: [...s.besuchteKapitel, s.openChapter] }
+          && !s.visitedConfiguratorSteps.includes(visibleStep)
+          ? {
+              visitedConfiguratorSteps: [
+                ...s.visitedConfiguratorSteps,
+                visibleStep,
+              ],
+            }
           : {}),
       }
     }),
@@ -3108,33 +3154,34 @@ const store = createStore<Store>((set, get) => {
         configurationModeEditing: s.configurationModeEditing,
         activeBuildingId: s.activeBuildingId,
         scopeBuildingId: s.scopeBuildingId,
-        openChapter: s.openChapter,
+        openConfiguratorStep: s.openConfiguratorStep,
         pricingStarted: s.pricingStarted,
-        besuchteKapitel: s.besuchteKapitel,
+        visitedConfiguratorSteps: s.visitedConfiguratorSteps,
       }
       const next = {
         configurationMode: mode,
         configurationModeChosen: true,
         configurationModeEditing: false,
         activeBuildingId,
-        // Leistungsabgrenzung (SCOPE_BOUNDARIES_CHAPTER) is a project-level
-        // chapter, never in BUILDING_SCOPED_CHAPTERS — landing there must
+        // Leistungsabgrenzung is a project-level semantic step — landing there must
         // not narrow the live projection to one building in either mode
-        // (that coupling used to be harmless only because the OLD chapter 1
-        // happened to be the building-scoped KG 300).
+        // (that coupling used to be harmless only because the former entry
+        // happened to be the building-scoped KG 300 step).
         scopeBuildingId: null,
         // "Konfiguration starten" enters the authoritative first
         // Configurator step (Product contract, 2026-08-18: Scope Boundaries
         // first, detailed technical configuration downstream) in the SAME
         // transition that confirms the mode. Entering Leistungsabgrenzung
         // is exactly the accepted pricingStarted trigger (mirrored in
-        // `openChapterAt` above) — so this transition starts pricing too;
+        // `openConfiguratorStepAt` above) — so this transition starts pricing too;
         // the mode radio choice that preceded this call never did.
-        openChapter: SCOPE_BOUNDARIES_CHAPTER,
+        openConfiguratorStep: CONFIGURATOR_STEP.SCOPE_BOUNDARIES,
         pricingStarted: true,
-        besuchteKapitel: s.besuchteKapitel.includes(SCOPE_BOUNDARIES_CHAPTER)
-          ? s.besuchteKapitel
-          : [...s.besuchteKapitel, SCOPE_BOUNDARIES_CHAPTER],
+        visitedConfiguratorSteps: s.visitedConfiguratorSteps.includes(
+          CONFIGURATOR_STEP.SCOPE_BOUNDARIES,
+        )
+          ? s.visitedConfiguratorSteps
+          : [...s.visitedConfiguratorSteps, CONFIGURATOR_STEP.SCOPE_BOUNDARIES],
       }
       const before = projectTotal(s)
       const write = (value: typeof previous | typeof next) => set({

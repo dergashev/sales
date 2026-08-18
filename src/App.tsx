@@ -94,7 +94,7 @@ export function App() {
       if (!heading.hasAttribute('tabindex')) heading.tabIndex = -1
       heading.focus({ preventScroll: true })
     }
-  }, [renderedView, s.openChapter, s.activeOptionId, s.level, s.mode,
+  }, [renderedView, s.openConfiguratorStep, s.activeOptionId, s.level, s.mode,
     s.configurationModeChosen, s.configurationModeEditing])
 
   // Defensive fail-closed projection: normal store transitions leave client

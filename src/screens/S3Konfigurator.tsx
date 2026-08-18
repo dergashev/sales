@@ -9,7 +9,6 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useSemanticMotion } from '../design-system/motion'
 import {
   activeBuilding,
-  BUILDING_SCOPED_CHAPTERS,
   choicesFor,
   configurationDisplayStatusFor,
   includedBuildingIds,
@@ -56,13 +55,15 @@ import { RISK_ITEMS, riskDriver } from '../engine/risk'
 import { presentDuration, shiftScheduleMetrics } from '../engine/schedule'
 import demo from '../fixtures/demo-0001.json'
 import { present, label as moneyLabel } from '../engine/money'
+import { isVisibleInOutputProfile } from '../state/clientProjection'
 import {
-  CLIENT_VISIBLE_CHAPTERS,
-  chapterForOutputProfile,
-  isClientProjection,
-  isVisibleInOutputProfile,
-} from '../state/clientProjection'
-import { CHAPTERS, SCOPE_BOUNDARIES_CHAPTER } from '../state/chapters'
+  activeBuildingConfiguratorSteps,
+  activeConfiguratorWorkflow,
+  CONFIGURATOR_STEP,
+  configuratorStep,
+  nearestActiveConfiguratorStep,
+  type ConfiguratorStepId,
+} from '../state/chapters'
 import {
   deriveConflictState,
   effectiveDerivedArea,
@@ -122,24 +123,23 @@ function consequenceLabel(delta: Decimal, zero?: string): string {
 
 export function S3Konfigurator() {
   const s = useStore()
+  const t = useT()
   const tx = useTx()
-  const client = isClientProjection(s.mode)
   if (!s.configurationModeChosen || s.configurationModeEditing) {
     return <ConfigurationModeEntry />
   }
-  const n = chapterForOutputProfile(s.mode, s.openChapter)
-  const title = CHAPTERS[n - 1] ?? CHAPTERS[0]
-  const chapterRoute: readonly number[] = client
-    ? CLIENT_VISIBLE_CHAPTERS
-    : [1, 2, 3, 4, 5, 6, 7, 8]
-  const routeIndex = chapterRoute.indexOf(n)
-  const previous = routeIndex > 0 ? chapterRoute[routeIndex - 1] : null
-  const next = routeIndex >= 0 && routeIndex < chapterRoute.length - 1
-    ? chapterRoute[routeIndex + 1]
+  const workflow = activeConfiguratorWorkflow({ coverage: s.coverage, mode: s.mode })
+  const currentId = nearestActiveConfiguratorStep({
+    coverage: s.coverage,
+    mode: s.mode,
+  }, s.openConfiguratorStep)
+  const currentStep = configuratorStep(currentId)
+  const routeIndex = workflow.findIndex((step) => step.id === currentId)
+  const previous = routeIndex > 0 ? workflow[routeIndex - 1] : null
+  const next = routeIndex >= 0 && routeIndex < workflow.length - 1
+    ? workflow[routeIndex + 1]
     : null
-  const buildingScoped = BUILDING_SCOPED_CHAPTERS.includes(
-    n as typeof BUILDING_SCOPED_CHAPTERS[number],
-  )
+  const buildingScoped = currentStep.scope === 'building'
   const selectedIds = includedBuildingIds(s)
   const totalOverview = buildingScoped
     && s.configurationMode === 'PER_BUILDING'
@@ -158,12 +158,15 @@ export function S3Konfigurator() {
       {/* Заголовок экрана — masthead витрины: крупный титул и мета на
           одной базовой линии, как в образце. */}
       <PageHeader
-        title={tx(title)}
-        meta={<>Kapitel {routeIndex + 1}{NNBSP}von{NNBSP}{chapterRoute.length} · Konfigurator</>}
+        title={tx(currentStep.label)}
+        meta={t('s3.header.progress', {
+          current: routeIndex + 1,
+          total: workflow.length,
+        })}
       />
 
       <ConfigurationModeContext />
-      <ConfigurationScopeNavigation chapter={n} />
+      <ConfigurationScopeNavigation stepId={currentId} />
 
       <div
         role={buildingTabPanel ? 'tabpanel' : undefined}
@@ -178,12 +181,11 @@ export function S3Konfigurator() {
             главу целиком. */}
         <div className="py-5">
           {totalOverview && <ConfigurationOverview />}
-          {/* Reorder (2026-08-18): Leistungsabgrenzung is now chapter 1
-              (the authoritative commercial-scope entry), Leistungen KG 300
-              chapter 2 — content stays bundled with its own chapter
-              identity, only the position swapped. */}
-          {!totalOverview && n === 1 && <ChapterUmfang />}
-          {!totalOverview && n === 2 && (
+          {/* Rendering follows semantic step identity. Display numbers come
+              only from the active workflow above. */}
+          {!totalOverview && currentId === CONFIGURATOR_STEP.SCOPE_BOUNDARIES
+            && <ChapterUmfang />}
+          {!totalOverview && currentId === CONFIGURATOR_STEP.KG_300_DETAILS && (
             <div className="grid gap-5">
               <EnergyCertBanner />
               <UndergroundFloorRecap />
@@ -194,14 +196,14 @@ export function S3Konfigurator() {
               <GroundRiskSection />
             </div>
           )}
-          {!totalOverview && n === 3 && (
+          {!totalOverview && currentId === CONFIGURATOR_STEP.KG_400_DETAILS && (
             <div className="grid gap-5">
               <EnergyCertBanner />
               <OptionChapter groups={KG400_GROUPS}
                 intro={'Technische Anlagen nach DIN 276. Die Wahl der Erzeugung und der Lüftung entscheidet mit, welcher Energiestandard überhaupt erreichbar bleibt.'} />
             </div>
           )}
-          {!totalOverview && n === 4 && (
+          {!totalOverview && currentId === CONFIGURATOR_STEP.ENERGY_CERTIFICATION && (
             <div className="grid gap-5">
               <ChapterEnergie />
               {/* Сертификаты — отдельная ось: EH описывает качество здания,
@@ -212,27 +214,33 @@ export function S3Konfigurator() {
                   + 'mit dem es nachgewiesen wird.'} />
             </div>
           )}
-          {!totalOverview && n === 5 && <ChapterFlaechen />}
-          {!totalOverview && n === 6 && <ChapterBaugrund />}
-          {!totalOverview && n === 7 && <ChapterKg700 />}
-          {!totalOverview && n === 8 && <ChapterTermine />}
-          {!totalOverview && ![1, 2, 3, 4, 5, 6, 7, 8].includes(n)
-            && <ChapterParked title={title} />}
+          {!totalOverview && currentId === CONFIGURATOR_STEP.AREAS
+            && <ChapterFlaechen />}
+          {!totalOverview && currentId === CONFIGURATOR_STEP.KG_700_DETAILS
+            && <ChapterKg700 />}
+          {!totalOverview && currentId === CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE
+            && <ChapterTermine />}
         </div>
 
         {/* Один следующий шаг всегда на экране (DC-27): маршрут, не принуждение. */}
         {!totalOverview && <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-4">
           {previous ? (
-            <Button onClick={() => s.openChapterAt(previous)}>
-              ← Kapitel {routeIndex}: {tx(CHAPTERS[previous - 1]!)}
+            <Button onClick={() => s.openConfiguratorStepAt(previous.id)}>
+              {t('s3.previousChapter', {
+                number: routeIndex,
+                title: tx(previous.label),
+              })}
             </Button>
           ) : <span />}
           {next && (
             <Button
               variant={confirmationAvailable ? 'secondary' : 'primary'}
-              onClick={() => s.openChapterAt(next)}
+              onClick={() => s.openConfiguratorStepAt(next.id)}
             >
-              Weiter · Kapitel {routeIndex + 2}: {tx(CHAPTERS[next - 1]!)}
+              {t('s3.nextChapter', {
+                number: routeIndex + 2,
+                title: tx(next.label),
+              })}
             </Button>
           )}
         </footer>}
@@ -249,6 +257,14 @@ function buildingName(
   return review
     ? effectiveFactValue(review.facts.documentationName) ?? buildingId
     : buildingId
+}
+
+function configuratorStepPosition(
+  state: ReturnType<typeof useStore.getState>,
+  stepId: ConfiguratorStepId,
+): number {
+  return activeConfiguratorWorkflow({ coverage: state.coverage, mode: state.mode })
+    .findIndex((step) => step.id === stepId) + 1
 }
 
 function buildingNames(
@@ -527,16 +543,14 @@ export function ConfigurationScopeTabs({
 }
 
 function ConfigurationScopeNavigation({
-  chapter,
+  stepId,
 }: {
-  chapter: number
+  stepId: ConfiguratorStepId
 }) {
   const s = useStore()
   const t = useT()
   const selectedIds = includedBuildingIds(s)
-  const buildingScoped = BUILDING_SCOPED_CHAPTERS.includes(
-    chapter as typeof BUILDING_SCOPED_CHAPTERS[number],
-  )
+  const buildingScoped = configuratorStep(stepId).scope === 'building'
   const names = buildingNames(s, selectedIds)
 
   if (!buildingScoped) {
@@ -604,10 +618,21 @@ function visibleConfigurationStatus(
 function ConfigurationStatusStrip() {
   const s = useStore()
   const t = useT()
+  const tx = useTx()
   const ids = includedBuildingIds(s)
   const status = visibleConfigurationStatus(s, ids)
   const building = buildingName(s, s.activeBuildingId)
-  const detail = t(`configurator.status.${status}Detail`)
+  const requiredSteps = activeBuildingConfiguratorSteps({
+    coverage: s.coverage,
+    mode: 'intern',
+  })
+  const requiredStepNames = new Intl.ListFormat(
+    s.uiLanguage === 'de' ? 'de-DE' : 'en-GB',
+    { style: 'long', type: 'conjunction' },
+  ).format(requiredSteps.map((step) => tx(step.label)))
+  const detail = status === 'open'
+    ? t('configurator.status.openDetail', { steps: requiredStepNames })
+    : t(`configurator.status.${status}Detail`)
   const action = s.configurationMode === 'SHARED'
     ? t('configurator.status.confirmShared')
     : t('configurator.status.confirmBuilding', { building })
@@ -700,7 +725,7 @@ function Card({ title, intro, children }: {
 }
 
 /**
- * Глава 2 · Leistungsabgrenzung («Scope Boundaries», ticket d21f8d48) —
+ * Semantic step SCOPE_BOUNDARIES (Leistungsabgrenzung, ticket d21f8d48) —
  * welche Kostengruppen Teil des Angebots sind, plus die projektweiten
  * Anforderungen an Energiestandard und Zertifizierung. Hier beginnt die
  * Kalkulation (`pricingStarted`, building-aware-configurator-navigation).
@@ -732,6 +757,7 @@ function Card({ title, intro, children }: {
  */
 function ChapterUmfang() {
   const s = useStore()
+  const t = useT()
   const tx = useTx()
   const p = s.projection()
   // A complex projection can carry the same project-level gap once per
@@ -798,29 +824,38 @@ function ChapterUmfang() {
                 : consequenceLabel(outcome(v)!.delta, zero),
             })
             return (
-              <RadioCardGroup
-                key={g}
-                legend={`${g.replace('_', NNBSP)} ${KG_LABELS[g]}`}
-                value={s.coverage[g]}
-                onChange={(v) => s.setCoverage(g, v as CoverageState)}
-                onPreview={(v) => s.previewOption(
-                  v ? { kind: 'coverage', group: g, value: v as CoverageState } : null,
+              <div key={g}>
+                <RadioCardGroup
+                  legend={`${g.replace('_', NNBSP)} ${KG_LABELS[g]}`}
+                  value={s.coverage[g]}
+                  onChange={(v) => s.setCoverage(g, v as CoverageState)}
+                  onPreview={(v) => s.previewOption(
+                    v ? { kind: 'coverage', group: g, value: v as CoverageState } : null,
+                  )}
+                  options={[
+                    tile('included', tx(COVERAGE_LABEL.included),
+                         tx('ohne Preisansatz im indikativen Angebot')),
+                    tile('excluded', tx(COVERAGE_LABEL.excluded),
+                         tx('Entscheidung, keine Lücke: die Summe bleibt vollständig')),
+                    {
+                      value: 'unknown' as const,
+                      title: tx(COVERAGE_LABEL.unknown),
+                      description: tx('Lücke, keine Entscheidung: das Angebot weist keinen Gesamtpreis aus'),
+                      consequence: s.coverage[g] === 'unknown'
+                        ? tx('aktuelle Auswahl')
+                        : tx('Zwischensumme statt Gesamtpreis'),
+                    },
+                  ]}
+                />
+                {g === 'KG_200' && (
+                  <p data-testid="kg-200-servicing-status"
+                     className="a3-cap mt-2">
+                    {t('configurator.scopeBoundaries.servicingStatus', {
+                      status: tx(COVERAGE_LABEL[s.coverage.KG_200]),
+                    })}
+                  </p>
                 )}
-                options={[
-                  tile('included', tx(COVERAGE_LABEL.included),
-                       tx('ohne Preisansatz im indikativen Angebot')),
-                  tile('excluded', tx(COVERAGE_LABEL.excluded),
-                       tx('Entscheidung, keine Lücke: die Summe bleibt vollständig')),
-                  {
-                    value: 'unknown' as const,
-                    title: tx(COVERAGE_LABEL.unknown),
-                    description: tx('Lücke, keine Entscheidung: das Angebot weist keinen Gesamtpreis aus'),
-                    consequence: s.coverage[g] === 'unknown'
-                      ? tx('aktuelle Auswahl')
-                      : tx('Zwischensumme statt Gesamtpreis'),
-                  },
-                ]}
-              />
+              </div>
             )
           })}
         </div>
@@ -897,7 +932,7 @@ const MANDATORY_SCOPE_GROUPS = new Set<CostGroup>(
  * Energiestandard-Auswahl, extrahiert aus `ChapterEnergie` (unten), damit
  * Leistungsabgrenzung dieselbe Kachel-Auswahl zeigen kann, OHNE die
  * bestehende Kunden-Bestätigung (`esConfirmed`) zu duplizieren — die bleibt
- * ausschließlich in "Energie & Zertifikate" (Kapitel 4).
+ * ausschließlich im Schritt "Energie & Zertifikate".
  */
 /**
  * Modulweite Beschriftung, damit `EnergiestandardPicker` UND der neue
@@ -952,6 +987,7 @@ function certLabel(groupId: 'qng' | 'dgnb', value: string): string {
  */
 function EnergyCertBanner() {
   const s = useStore()
+  const t = useT()
   const tx = useTx()
   const b = activeBuilding(s)
   const chosen = choicesFor(s, b.id)
@@ -976,8 +1012,11 @@ function EnergyCertBanner() {
         </span>
       </p>
       {s.mode === 'intern' && (
-        <Button variant="ghost" onClick={() => s.openChapterAt(4)}>
-          {tx('Zu Kapitel 4 · Energie & Zertifikate')}
+        <Button variant="ghost" onClick={() =>
+          s.openConfiguratorStepAt(CONFIGURATOR_STEP.ENERGY_CERTIFICATION)}>
+          {t('configurator.energy.goTo', {
+            chapter: configuratorStepPosition(s, CONFIGURATOR_STEP.ENERGY_CERTIFICATION),
+          })}
         </Button>
       )}
     </section>
@@ -1037,9 +1076,10 @@ function UndergroundFloorRecap() {
         )}
       </AnimatePresence>
       <div className="mt-3">
-        <Button onClick={() => s.openChapterAt(SCOPE_BOUNDARIES_CHAPTER)}>
+        <Button onClick={() =>
+          s.openConfiguratorStepAt(CONFIGURATOR_STEP.SCOPE_BOUNDARIES)}>
           {t('configurator.scopeBoundaries.goTo', {
-            chapter: SCOPE_BOUNDARIES_CHAPTER,
+            chapter: configuratorStepPosition(s, CONFIGURATOR_STEP.SCOPE_BOUNDARIES),
           })}
         </Button>
       </div>
@@ -1244,7 +1284,7 @@ function ChapterEnergie() {
 }
 
 /**
- * Глава 9 · Termine — Bauzeit-Leiste (DC-19).
+ * Semantic step COMMERCIAL_SCHEDULE — Bauzeit-Leiste (DC-19).
  *
  * Фазы берутся из метрик фикстуры, а не назначаются здесь: планирование —
  * величина уровня проекта, исполнение — уровня здания, и это разные строки
@@ -1385,7 +1425,7 @@ function ChapterTermine() {
 }
 
 /**
- * Глава 8 · KG 700 — настройка ПОДГОТОВКИ, не переговоров (пункт 12).
+ * Semantic step KG_700_DETAILS — preparation, not negotiation (Punkt 12).
  *
  * Клиент видит, что KG 700 включена, и её долю в смете. Каким способом
  * она посчитана — HOAI и AHO собственной ставкой или распределением
@@ -1541,61 +1581,5 @@ function GroundRiskSection() {
         )
       })}
     </Card>
-  )
-}
-
-/**
- * Глава «Baugrund & Erschließung»: nach der Verlagerung der Risiko-Karten
- * nach KG 300 (Punkt 9 des Tickets) bleibt hier nur der Erschließungs-
- * Hinweis — KG 200 gehört zu diesem Ticket nicht (Non-Goal). Der Link (und
- * der Hinweistext, der denselben Sprung ankündigt) zeigt jetzt auf
- * `SCOPE_BOUNDARIES_CHAPTER` statt auf eine wortwörtliche Zahl — Kapitel-
- * Reorder 2026-08-18 hätte sonst denselben „nennt Leistungsabgrenzung,
- * verlinkt woanders hin"-Fehler wiederholt, den ein früherer Fund hier schon
- * einmal an der Schaltfläche fand.
- */
-function ChapterBaugrund() {
-  const s = useStore()
-  const tx = useTx()
-  const t = useT()
-  const kg200 = s.coverage.KG_200
-
-  return (
-    <div className="grid gap-5">
-      <Card
-        title="Erschließung"
-        intro={t('configurator.scopeBoundaries.servicingIntro', {
-          chapter: SCOPE_BOUNDARIES_CHAPTER,
-        })}
-      >
-        {/* Пустота названа с источником (правило 30): факта нет в
-            документации, и это не то же самое, что «его нет». */}
-        <p className="a3-cap">
-          <span aria-hidden="true">○ </span>{tx('Die Dokumentation der Opportunity enthält keine Angaben zur Erschließung — kein Wert wird angenommen.')}</p>
-        <p className="mt-3 text-body text-text-primary">
-          KG{NNBSP}200 im Angebot: {COVERAGE_LABEL[kg200]}
-        </p>
-        <div className="mt-2">
-          <Button onClick={() => s.openChapterAt(SCOPE_BOUNDARIES_CHAPTER)}>
-            {t('configurator.scopeBoundaries.goTo', {
-              chapter: SCOPE_BOUNDARIES_CHAPTER,
-            })}
-          </Button>
-        </div>
-      </Card>
-    </div>
-  )
-}
-
-function ChapterParked({ title }: { title: string }) {
-  const tx = useTx()
-  return (
-    <div className="a3-sheet">
-      <p className="text-body text-text-primary">
-        <span aria-hidden="true">○ </span>
-        Kapitel «{title}» ist im Prototyp nicht ausgearbeitet.
-      </p>
-      <p className="mt-2 max-w-content text-small text-text-secondary">{tx('Die Kalkulation der Fixture hängt an den Kapiteln 2–4; dieses Kapitel zeigt im Prototyp bewusst keinen erfundenen Inhalt. Der volle Kapitelumfang ist in der Screen-Map spezifiziert.')}</p>
-    </div>
   )
 }

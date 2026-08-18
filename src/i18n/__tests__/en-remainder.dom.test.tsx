@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
 import { writeFileSync } from 'node:fs'
 import { __resetStoreForTests, useStore } from '../../state/store'
+import { CONFIGURATOR_STEPS } from '../../state/chapters'
 import { GENERATED_DE } from '../generated'
 
 /**
@@ -149,8 +150,8 @@ describe('Остаток немецкого на английском пути (
       s.setPipelineView('konfigurator')
       s.confirmConfigurationMode('PER_BUILDING')
     })
-    for (let chapter = 1; chapter <= 8; chapter++) {
-      act(() => useStore.getState().openChapterAt(chapter))
+    for (const step of CONFIGURATOR_STEPS) {
+      act(() => useStore.getState().openConfiguratorStepAt(step.id))
       germanFragments().forEach((f) => seen.add(f))
     }
     for (const view of ['vergleich', 'export'] as const) {
