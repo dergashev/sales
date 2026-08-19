@@ -122,8 +122,12 @@ task. After bumping: re-run `npm install` and `npm run browser:agent:setup`
 — the CLI itself checks the installed skill against its own bundled version
 on every invocation (except `install`) and prints a warning if they drift,
 so a forgotten re-setup after a version bump is not silent; `npm run
-browser:agent:status`'s ENVIRONMENT block surfaces the same drift check on
-demand, without needing to trigger a real CLI invocation first. Every spawn
+browser:agent:status`'s ENVIRONMENT block performs the equivalent comparison
+on demand (an independent byte-comparison against the pinned CLI's own
+bundled `SKILL.md`, resolved from inside `@playwright/cli`'s own tree —
+never a same-named hoisted sibling package — see
+`lib/skill-status.mjs`), without needing to trigger a real CLI invocation
+first. Every spawn
 of the real CLI from this layer also sets `NO_UPDATE_NOTIFIER=1` — this only
 suppresses the CLI's own "a newer version exists on npm" network check
 (irrelevant to a pinned, repository-controlled dependency); it has no effect

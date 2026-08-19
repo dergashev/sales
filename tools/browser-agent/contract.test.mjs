@@ -12,7 +12,7 @@
 // lib/decide.test.mjs and open-close.integration.test.mjs and are not
 // duplicated here.
 
-import { readFileSync } from 'node:fs'
+import { readFileSync, realpathSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
@@ -38,12 +38,30 @@ describe('dependency pin — never an unpinned/mutable production path', () => {
     expect(pinned).toMatch(/^\d+\.\d+\.\d+$/)
   })
 
-  it('every browser:agent:* script resolves the pinned local CLI (npm-injected PATH / repository wrapper), never a bare global assumption', () => {
+  it('every browser:agent:* script invokes either the repository wrapper or the bare npm-injected "playwright-cli" — nothing else', () => {
+    // Ticket regression list: "official Playwright CLI is silently replaced by
+    // another package/wrapper" / "unpinned CLI dependency becomes the
+    // production path". Positive assertion on what each script IS, not merely
+    // the absence of a -g flag: every command segment (split on && ) must be
+    // either `node tools/browser-agent/<entrypoint>.mjs` (the repository
+    // wrapper) or a bare `playwright-cli …` invocation (npm resolves that to
+    // this repo's own node_modules/.bin, never a developer-global install).
     for (const key of ['browser:agent:open', 'browser:agent:status', 'browser:agent:close', 'browser:agent:show', 'browser:agent:setup']) {
-      expect(pkg.scripts[key]).toBeTruthy()
-      // None of these scripts may pin a version suffix or point at a path outside this repo's own node_modules/tooling.
-      expect(pkg.scripts[key]).not.toMatch(/-g\b|--global/)
+      const script = pkg.scripts[key]
+      expect(script, `script ${key} must exist`).toBeTruthy()
+      for (const segment of script.split('&&').map((s) => s.trim())) {
+        expect(segment, `script ${key} segment "${segment}" must be the repo wrapper or the bare local playwright-cli`).toMatch(
+          /^(node tools\/browser-agent\/[a-z-]+\.mjs|playwright-cli( .*)?)$/,
+        )
+      }
     }
+  })
+
+  it('the npm-injected "playwright-cli" binary really is @playwright/cli\'s own entrypoint (not a same-named impostor)', () => {
+    const binPath = path.join(REPO_ROOT, 'node_modules', '.bin', 'playwright-cli')
+    const realPath = realpathSync(binPath)
+    const cliDir = path.dirname(realpathSync(path.join(REPO_ROOT, 'node_modules', '@playwright', 'cli', 'package.json')))
+    expect(realPath.startsWith(cliDir + path.sep), `${realPath} must live inside ${cliDir}`).toBe(true)
   })
 })
 
@@ -60,22 +78,23 @@ describe('official binary only — the wrapper never spawns a third-party/forked
 })
 
 describe('no hard-coded dev-server ports under tools/browser-agent/', () => {
-  // decide.mjs is deliberately excluded from the raw scan: its own docblock
-  // NAMES "5173" in prose to explain the anti-pattern parseRuntimeUrl exists
-  // to avoid (and decide.test.mjs's own parseRuntimeUrl tests exercise
-  // arbitrary ports, 5173/5174 included, precisely to prove none is
-  // special-cased) — a textual match there would be flagging the
-  // documentation of the invariant, not a violation of it.
-  it('never assumes localhost:5173 or :5174 as a literal — the URL always comes from the Runtime Provenance resolver', () => {
-    for (const file of ['open.mjs', 'close.mjs', 'status.mjs', 'lib/orchestrate.mjs', 'lib/runtime-bridge.mjs', 'lib/playwright-cli-bridge.mjs', 'lib/session-name.mjs']) {
-      const source = readFileSync(path.join(BROWSER_AGENT_DIR, file), 'utf8')
+  // Comments are stripped before matching so a docblock may NAME "5173" in
+  // prose (decide.mjs's does, to explain the anti-pattern parseRuntimeUrl
+  // exists to avoid) without either creating a false positive or forcing the
+  // one module that actually holds the port logic out of the scan — the
+  // coverage hole Tech Review flagged in the previous candidate. Crude
+  // stripping (regex, not a JS parser) is sufficient here: a port literal
+  // smuggled inside a string still survives stripping and fails the test.
+  function stripComments(source) {
+    return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+  }
+
+  it('never assumes localhost:5173 or :5174 as a code literal — the URL always comes from the Runtime Provenance resolver', () => {
+    for (const file of ['open.mjs', 'close.mjs', 'status.mjs', 'lib/orchestrate.mjs', 'lib/runtime-bridge.mjs', 'lib/playwright-cli-bridge.mjs', 'lib/session-name.mjs', 'lib/decide.mjs', 'lib/artifacts-dir.mjs', 'lib/skill-status.mjs', 'lib/sidecar-store.mjs', 'lib/exit-codes.mjs']) {
+      const source = stripComments(readFileSync(path.join(BROWSER_AGENT_DIR, file), 'utf8'))
       expect(source, `${file} must not hard-code port 5173`).not.toMatch(/5173/)
       expect(source, `${file} must not hard-code port 5174`).not.toMatch(/5174/)
     }
-    // decide.mjs's OWN behavior (never special-casing either port as a
-    // default) is asserted directly against parseRuntimeUrl's real return
-    // values in "parseRuntimeUrl — no-hardcoded-port" (lib/decide.test.mjs)
-    // rather than re-checked textually here.
   })
 })
 

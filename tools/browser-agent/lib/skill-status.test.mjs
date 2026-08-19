@@ -10,11 +10,14 @@
 // worktree-local skill as NOT INSTALLED, exactly the class of bug this
 // module exists to catch, not commit.
 
+import { createRequire } from 'node:module'
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { installedSkillTargets, checkSkillReadiness } from './skill-status.mjs'
+import { installedSkillTargets, checkSkillReadiness, resolveBundledSkillFile } from './skill-status.mjs'
+
+const require = createRequire(import.meta.url)
 
 let cwd
 
@@ -35,6 +38,50 @@ describe('installedSkillTargets — cwd-relative, matching the real CLI\'s own i
     }
     expect(targets.find((t) => t.name === 'claude').dir).toBe(path.join(cwd, '.claude', 'skills', 'playwright-cli'))
     expect(targets.find((t) => t.name === 'agents').dir).toBe(path.join(cwd, '.agents', 'skills', 'playwright-cli'))
+  })
+})
+
+describe('resolveBundledSkillFile — Tech Review P2 regression: the baseline is the PINNED CLI\'s own bundle, never a hoisted sibling', () => {
+  // The defect this pins down: resolving `playwright-core` from THIS layer's
+  // own module location finds the repo-root-hoisted copy — a transitive,
+  // caret-ranged dependency of `@playwright/test`, an entirely different and
+  // independently-versioned package — not the pinned `@playwright/cli`'s own
+  // nested copy that its internal skillCheck.js compares against. Both
+  // bundles' SKILL.md files happened to be byte-identical when this was
+  // caught, so any content-based assertion passes either way; only the
+  // resolved PATH distinguishes the right source of truth from the wrong one.
+
+  it('resolves SKILL.md from INSIDE @playwright/cli\'s own tree — the same resolution its internal skillCheck.js performs', () => {
+    const resolved = resolveBundledSkillFile()
+    const cliDir = path.dirname(require.resolve('@playwright/cli/package.json'))
+    expect(resolved.path.startsWith(cliDir + path.sep)).toBe(true)
+
+    // Byte-for-byte the same resolution the pinned CLI's own skillCheck.js
+    // performs from its own location — one source of truth, not a reimplementation drifting from it.
+    const cliRequire = createRequire(require.resolve('@playwright/cli/package.json'))
+    const authoritative = path.join(path.dirname(cliRequire.resolve('playwright-core/package.json')), 'lib', 'tools', 'skills', 'playwright-cli', 'SKILL.md')
+    expect(resolved.path).toBe(authoritative)
+  })
+
+  it('does NOT resolve the repo-root-hoisted playwright-core (the caret-ranged @playwright/test dependency) when the two differ', () => {
+    const resolved = resolveBundledSkillFile()
+    // The hoisted copy resolves from THIS test file's location — exactly the wrong resolution the defect used.
+    const hoistedCorePkg = require.resolve('playwright-core/package.json')
+    const cliDir = path.dirname(require.resolve('@playwright/cli/package.json'))
+    if (hoistedCorePkg.startsWith(cliDir + path.sep)) {
+      // Degenerate layout: no separate hoisted copy exists at all (npm chose not to hoist).
+      // Then there is only one candidate and the structural assertion above already covers it.
+      return
+    }
+    const hoistedPath = path.join(path.dirname(hoistedCorePkg), 'lib', 'tools', 'skills', 'playwright-cli', 'SKILL.md')
+    expect(resolved.path).not.toBe(hoistedPath)
+  })
+
+  it('reports the exact pinned CLI version alongside the bundle it actually compared against — one package, one source', () => {
+    const resolved = resolveBundledSkillFile()
+    expect(resolved.version).toBe(require('@playwright/cli/package.json').version)
+    // The bundle genuinely exists in the pinned package (content read, not just a constructed path).
+    expect(resolved.content).toBeTruthy()
   })
 })
 
