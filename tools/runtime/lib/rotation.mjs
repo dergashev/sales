@@ -17,8 +17,23 @@
 // prove this", so rotation refuses outright rather than guessing — this is
 // what keeps an old worktree's still-live, unmanaged (no runtime-identity
 // plugin) `dev:main` process from ever being killed by this module.
+//
+// IDENTITY ownership (nonce/purpose match) is NOT the same thing as
+// TERMINATION capability. A claim's recorded `pid` may be an intermediate
+// `npm` wrapper around a further child (`sh` -> the actual dev server) —
+// true for every `dev:main`-registered claim (`detached: false`, spawned
+// in the foreground, no dedicated process group). Signaling just that one
+// pid does not reliably stop the tree underneath it (verified directly:
+// SIGTERM then SIGKILL to the wrapper left the actual server alive,
+// serving the OLD sha, port still bound — Tech Review P1). Only a claim
+// this tooling itself started detached (`claim.detached === true`, its
+// own dedicated process group) can be FULLY and verifiably stopped. A
+// STALE/DRIFTED claim that is not `detached` is therefore treated the
+// same as an unprovable one for the purposes of stopping it: rotation
+// must never report a stop it cannot make good on, and must never mutate
+// the checkout underneath a server it did not actually stop.
 
-export function planCurrentMainRotation({ classification }) {
+export function planCurrentMainRotation({ classification, claim }) {
   switch (classification.status) {
     case 'SERVING_VERIFIED':
       // Idempotent: already correct, nothing to do. Ticket scenario A/C
@@ -38,9 +53,22 @@ export function planCurrentMainRotation({ classification }) {
 
     case 'STALE':
     case 'DRIFTED':
-      // Ownership IS proven here (nonce + purpose already matched in
-      // classify.mjs) — only the served sha disagrees with what is
-      // currently required. Stop gracefully, THEN mutate the checkout.
+      // Identity ownership IS proven here (nonce + purpose already matched
+      // in classify.mjs) — only the served sha disagrees with what is
+      // currently required. But that is not enough: only stop-and-mutate
+      // when this claim is also known to be fully, verifiably stoppable.
+      if (claim?.detached !== true) {
+        return {
+          action: 'blocked',
+          code: 2,
+          reason:
+            `${classification.reason} This runtime's identity is verified, but it was not started detached by this tooling ` +
+            '(e.g. it is a dev:main-served process) and its underlying server process cannot be reliably, fully stopped from ' +
+            'its recorded pid alone. Refusing to report a stop that cannot be made good on, and refusing to mutate the ' +
+            'checkout underneath a server that would remain live. Stop it manually (Ctrl-C the owning dev:main, or kill its ' +
+            'actual server process) and re-run.',
+        }
+      }
       return { action: 'stop-then-start', reason: classification.reason }
 
     case 'UNVERIFIED':

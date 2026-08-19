@@ -28,16 +28,73 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { defaultRegistryPath, readRegistry } from './registry.mjs'
-import { defaultPreviewStatePath } from '../../worktrees/lib/preview-state.mjs'
+import { defaultRegistryPath, putRuntimeClaim, readRegistry, runtimeId } from './registry.mjs'
+import { defaultPreviewStatePath, updatePreviewState } from '../../worktrees/lib/preview-state.mjs'
 import { findFreePort } from '../../worktrees/lib/free-port.mjs'
 import { pidIsAlive } from './pid.mjs'
+import { waitForRuntimeReady } from './probe.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const MAIN_MJS = path.resolve(HERE, '..', 'main.mjs')
 const DECLARE_CANDIDATE_MJS = path.resolve(HERE, '..', '..', 'gate', 'declare-candidate.mjs')
 const FAKE_SERVER_SRC = readFileSync(path.join(HERE, 'test-fixtures', 'fake-vite-dev.mjs'), 'utf8')
 const PROJECT_ROOT = path.resolve(HERE, '..', '..', '..')
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * Registers a CURRENT_MAIN claim shaped exactly like a `dev:main`-produced
+ * one — `detached: false` in the CLAIM `runtime:main`/`runtime:stop` read —
+ * against a REAL running server, without going through dev-main.mjs's own
+ * CLI (spawning the full `dev-main.mjs` process tree from inside this test
+ * runner's own worker was empirically unreliable in this environment: it
+ * reproducibly crashed the vitest worker, root-caused below).
+ *
+ * The fixture process ITSELF is spawned `detached: true` here purely so
+ * THIS TEST'S OWN afterEach can tear it down deterministically
+ * (`process.kill(-pid)`, a real process-group kill this test owns and
+ * created) — that is a test-cleanup concern, orthogonal to what is under
+ * test. The candidate code under test (`runtime:main`/`runtime:stop`) never
+ * inspects the real OS process tree at all; it only ever trusts the claim's
+ * OWN declared `detached` field (exactly the field this task's whole fix is
+ * about), which is set to `false` below regardless of how the fixture
+ * itself happens to be spawned. This is what actually exercises Tech
+ * Review's finding.
+ *
+ * ROOT CAUSE of the crash from the rejected first draft (recorded for any
+ * future maintainer): that draft left the fixture non-detached and instead
+ * killed it in `afterEach` by looking up its pid via `lsof -ti :<port>`
+ * ("kill whatever is bound to this port now"). On this machine, under the
+ * sheer number of ports/processes churned across this task's own repeated
+ * test runs, `lsof` occasionally returned a STALE/reused pid no longer
+ * belonging to the fixture at all — killing an arbitrary, unrelated,
+ * sometimes-critical process, which occasionally crashed the vitest worker
+ * itself ("Worker exited unexpectedly"). Reproduced directly, bisected line
+ * by line: the crash tracked exactly to the `process.kill(pid, 'SIGKILL')`
+ * call fed by `lsof`'s output, not to any git/spawn/fetch step before it.
+ * Never key cleanup off "whatever process currently holds this port" —
+ * only ever off a pid this test itself just received directly from `spawn`.
+ */
+async function registerNonDetachedClaim({ registryPath, previewPath, sha, purpose = 'CURRENT_MAIN' }) {
+  const port = await findFreePort('127.0.0.1')
+  const nonce = `non-detached-${Math.random().toString(36).slice(2)}`
+  const child = spawn('npm', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', String(port), '--strictPort'], {
+    cwd: previewPath,
+    detached: true, // test-cleanup-only; the CLAIM below still declares `detached: false`
+    stdio: 'ignore',
+    env: { ...process.env, A3_RUNTIME_NONCE: nonce, A3_RUNTIME_PURPOSE: purpose, A3_RUNTIME_SHA: sha },
+  })
+  fixturePidsToKill.push(child.pid) // afterEach group-kills this exact pid — never rediscovered via lsof/port lookup
+
+  const url = `http://127.0.0.1:${port}`
+  const ready = await waitForRuntimeReady(url, nonce)
+  if (!ready.ok) throw new Error(`fixture server at ${url} never answered /__runtime.json with its own nonce within the deadline`)
+
+  const startedAt = new Date().toISOString()
+  const claim = { purpose, sha, worktree: previewPath, pid: child.pid, port, url, nonce, startedAt, updatedAt: startedAt, detached: false }
+  putRuntimeClaim(registryPath, runtimeId(purpose, previewPath), claim)
+  return { child, claim }
+}
 
 function git(cwd, args) {
   const result = spawnSync('git', args, { cwd, encoding: 'utf8' })
@@ -85,10 +142,12 @@ function commitInstallableProjectOntoMain(repoRootDir) {
 
 let tmpRoot
 let repoDir
+let fixturePidsToKill
 
 beforeEach(() => {
   tmpRoot = mkdtempSync(path.join(tmpdir(), 'a3-runtime-lifecycle-'))
   repoDir = path.join(tmpRoot, 'repo')
+  fixturePidsToKill = []
   git(tmpRoot, ['init', '-q', '-b', 'main', 'repo'])
   git(repoDir, ['config', 'user.email', 'test@example.invalid'])
   git(repoDir, ['config', 'user.name', 'Test'])
@@ -99,24 +158,44 @@ beforeEach(() => {
 
 afterEach(() => {
   // Kill any registered runtime this run's tests actually started —
-  // detached, unref'd processes outlive the CLI that spawned them. Every
-  // claim this file's tests produce comes from `startRuntime` (`detached:
-  // true`, its own process-group leader — see main.mjs's stopProcessSync),
-  // so the group form (-pid) is safe and necessary here: a plain SIGKILL
-  // to just the recorded (npm) pid measurably orphaned the actual
-  // `node fake-server.mjs` process during this file's own development.
+  // detached, unref'd processes outlive the CLI that spawned them.
+  //
+  // CRITICAL: only claims with `detached === true` (every `runtime:main`/
+  // `runtime:candidate`-started claim: its own process-group leader — see
+  // main.mjs's stopProcessSync) may be group-killed (`-pid`). A claim's
+  // pid for a NON-detached process may share a process group with an
+  // unrelated caller — `-pid` there would be unsafe.
   try {
     const commonDir = git(repoDir, ['rev-parse', '--git-common-dir'])
     const registryPath = defaultRegistryPath(path.resolve(repoDir, commonDir))
     for (const claim of Object.values(readRegistry(registryPath))) {
       try {
-        process.kill(-claim.pid, 'SIGKILL')
+        process.kill(claim.detached === true ? -claim.pid : claim.pid, 'SIGKILL')
       } catch {
         // already gone
       }
     }
   } catch {
     // repo already torn down / never had a registry — nothing to clean up
+  }
+  // This file's P1-regression fixtures (registerNonDetachedClaim) spawn
+  // their REAL process with `detached: true` purely so THIS cleanup can
+  // group-kill a pid it directly received from `spawn` itself — never
+  // rediscovered via a port/lsof lookup. An earlier draft killed "whatever
+  // process currently holds this port" instead; on this machine, under the
+  // sheer number of ports/processes this task's own repeated test runs
+  // churned through, `lsof -ti :<port>` occasionally returned a STALE,
+  // already-reassigned pid, and killing it occasionally took down something
+  // unrelated and critical enough to crash the whole vitest worker
+  // ("Worker exited unexpectedly", bisected line by line to that exact
+  // call). Never key cleanup off "whatever currently holds this port" —
+  // only ever off a pid this test itself actually received from `spawn`.
+  for (const pid of fixturePidsToKill) {
+    try {
+      process.kill(-pid, 'SIGKILL')
+    } catch {
+      // already gone
+    }
   }
   rmSync(tmpRoot, { recursive: true, force: true })
 })
@@ -188,6 +267,57 @@ describe('runtime:main — scenario D (live checkout safety)', () => {
   })
 })
 
+describe('Tech Review P1 regression — a non-detached CURRENT_MAIN claim (e.g. dev:main-registered) cannot be falsely reported as stopped/rotated', () => {
+  it('runtime:main refuses (exit 2) to stop-and-mutate a STALE non-detached runtime, and performs NO mutation while the real server keeps serving the old sha', async () => {
+    const { sha: sha1 } = commitInstallableProjectOntoMain(repoDir)
+    const previewPath = path.join(repoDir, '.preview', 'main')
+    git(repoDir, ['worktree', 'add', '--detach', '-q', previewPath, sha1])
+    const commonDir = git(repoDir, ['rev-parse', '--git-common-dir'])
+    const registryPath = defaultRegistryPath(path.resolve(repoDir, commonDir))
+
+    const { claim } = await registerNonDetachedClaim({ registryPath, previewPath, sha: sha1 })
+    // Sanity: genuinely reachable before rotation is attempted.
+    expect((await fetch(new URL('/__runtime.json', claim.url))).status).toBe(200)
+
+    const sha2 = advanceMain(repoDir)
+
+    const rotate = spawnSync('node', [MAIN_MJS, 'main'], { cwd: repoDir, encoding: 'utf8', env: { ...process.env, A3_PREVIEW_DIR: previewPath } })
+    expect(rotate.status).toBe(2)
+    expect(rotate.stdout).toContain('STATUS               : STALE')
+    expect(rotate.stdout).toContain('PROVENANCE VERIFIED  : false')
+    expect(rotate.stderr).toMatch(/BLOCKED.*not started detached/)
+
+    // No mutation happened: preview still at sha1, the real server (still
+    // alive — we never touched it) still answers with sha1, not sha2.
+    expect(git(previewPath, ['rev-parse', 'HEAD'])).toBe(sha1)
+    const echo = await fetch(new URL('/__runtime.json', claim.url)).then((r) => r.json())
+    expect(echo.sha).toBe(sha1)
+    expect(echo.sha).not.toBe(sha2)
+  }, 15_000)
+
+  it('runtime:stop refuses (exit 2) to report a stop it cannot make good on, and does NOT remove the registry claim while the server is still live', async () => {
+    const { sha } = commitInstallableProjectOntoMain(repoDir)
+    const previewPath = path.join(repoDir, '.preview', 'main')
+    git(repoDir, ['worktree', 'add', '--detach', '-q', previewPath, sha])
+    const commonDir = git(repoDir, ['rev-parse', '--git-common-dir'])
+    const registryPath = defaultRegistryPath(path.resolve(repoDir, commonDir))
+
+    const { claim } = await registerNonDetachedClaim({ registryPath, previewPath, sha })
+
+    const stop = spawnSync('node', [MAIN_MJS, 'stop', '--purpose', 'CURRENT_MAIN', '--worktree', previewPath], { cwd: repoDir, encoding: 'utf8', env: { ...process.env, A3_PREVIEW_DIR: previewPath } })
+    expect(stop.status).toBe(2)
+    expect(stop.stderr).toMatch(/BLOCKED.*not started detached/)
+
+    // The claim must still be there (removing it would make a live,
+    // unrecorded orphan invisible to runtime:status), and the server must
+    // still genuinely be serving.
+    const claimsAfter = Object.values(readRegistry(registryPath))
+    expect(claimsAfter).toHaveLength(1)
+    expect(claimsAfter[0].pid).toBe(claim.pid)
+    expect((await fetch(new URL('/__runtime.json', claim.url))).status).toBe(200)
+  }, 15_000)
+})
+
 describe('runtime:stop — process-group termination (regression: a single-pid SIGKILL orphaned the actual dev server)', () => {
   it('stopping a runtime actually frees its port — not just the recorded (npm) pid', async () => {
     const { sha } = commitInstallableProjectOntoMain(repoDir)
@@ -251,6 +381,88 @@ describe('runtime:main — scenarios B/C (main advances -> stale -> rotation)', 
 
     const res = await fetch(new URL('/__runtime.json', entries[0].url))
     expect((await res.json()).sha).toBe(sha2)
+  })
+})
+
+describe('runtime:main — scenario H (multiple concurrent starters, CLI-level)', () => {
+  it('two concurrent `runtime:main` invocations against a clean state produce exactly one live server and one registry claim; the loser fails closed', async () => {
+    const { sha } = commitInstallableProjectOntoMain(repoDir)
+    const previewPath = path.join(repoDir, '.preview', 'main')
+    const commonDir = git(repoDir, ['rev-parse', '--git-common-dir'])
+    const registryPath = defaultRegistryPath(path.resolve(repoDir, commonDir))
+
+    // Async spawn (not spawnSync) so both children run genuinely
+    // concurrently and are reaped promptly — a blocked/zombie-producing
+    // harness here would mask real races (see this file's dev:main tests).
+    function runAsync() {
+      return new Promise((resolve) => {
+        let out = ''
+        let err = ''
+        const child = spawn('node', [MAIN_MJS, 'main'], { cwd: repoDir, env: { ...process.env, A3_PREVIEW_DIR: previewPath } })
+        child.stdout.on('data', (d) => { out += d })
+        child.stderr.on('data', (d) => { err += d })
+        child.on('exit', (code) => resolve({ code, out, err }))
+      })
+    }
+
+    const [a, b] = await Promise.all([runAsync(), runAsync()])
+    const results = [a, b]
+    const winners = results.filter((r) => r.code === 0)
+    const losers = results.filter((r) => r.code !== 0)
+    expect(winners).toHaveLength(1)
+    expect(losers).toHaveLength(1)
+    expect(losers[0].code).toBe(2) // fails closed, never a partial/ambiguous state
+
+    const claims = Object.values(readRegistry(registryPath))
+    expect(claims).toHaveLength(1) // no dual authority
+    expect(claims[0].sha).toBe(sha)
+    expect((await fetch(new URL('/__runtime.json', claims[0].url))).status).toBe(200)
+  })
+})
+
+describe('Tech Review P2 regression — the post-spawn legacy preview-state.json write is lock-safe', () => {
+  it('a concurrent locked writer never loses an update to runtime:main\'s own writes on the shared legacy preview-state.json (no unlocked read-modify-write remains)', async () => {
+    commitInstallableProjectOntoMain(repoDir)
+    const previewPath = path.join(repoDir, '.preview', 'main')
+    const commonDir = git(repoDir, ['rev-parse', '--git-common-dir'])
+    const legacyStatePath = defaultPreviewStatePath(path.resolve(repoDir, commonDir))
+
+    // A "hammer": many small LOCKED increments (via the same production
+    // `updatePreviewState` dev-main.mjs already uses correctly), spread
+    // across the ENTIRE real `runtime:main` run below via async spawn (NOT
+    // spawnSync, which would block this process's event loop and starve
+    // the hammer entirely). If ANY of runtime:main's own read-modify-write
+    // touches on this exact file are not lock-protected, an interleaved
+    // increment is silently overwritten — a real, count-verifiable lost
+    // update, not a timing guess about hitting one narrow window.
+    let stopHammer = false
+    let increments = 0
+    const hammer = (async () => {
+      while (!stopHammer) {
+        updatePreviewState(legacyStatePath, (current) => ({ ...(current || {}), concurrentCounter: (current?.concurrentCounter || 0) + 1 }))
+        increments++
+        await sleep(10)
+      }
+    })()
+
+    const runtimeMain = new Promise((resolve) => {
+      let out = ''
+      const child = spawn('node', [MAIN_MJS, 'main'], { cwd: repoDir, stdio: ['ignore', 'pipe', 'ignore'], env: { ...process.env, A3_PREVIEW_DIR: previewPath } })
+      child.stdout.on('data', (d) => { out += d })
+      child.on('exit', (code) => resolve({ code, out }))
+    })
+
+    const run = await runtimeMain
+    stopHammer = true
+    await hammer
+    expect(run.code).toBe(0)
+    expect(increments).toBeGreaterThan(3) // sanity: genuine overlap happened, this isn't a no-op race
+
+    const final = JSON.parse(readFileSync(legacyStatePath, 'utf8'))
+    // Every hammer increment survived runtime:main's own concurrent writes
+    // to this same file — the lost-update class Tech Review P2 flagged.
+    expect(final.concurrentCounter).toBe(increments)
+    expect(final.pid).toBeTypeOf('number') // runtime:main's own final fields are still merged in, not clobbered either
   })
 })
 

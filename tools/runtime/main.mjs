@@ -32,7 +32,7 @@ import path from 'node:path'
 import { dirtyEntries, git, gitCommonDir, headSha, listWorktrees, samePath } from '../gate/lib/git-worktrees.mjs'
 import { defaultManifestPath, readManifest } from '../gate/lib/manifest.mjs'
 import { planPreviewRefresh } from '../worktrees/lib/worktree-lifecycle.mjs'
-import { defaultPreviewStatePath, withPreviewStateLock, writePreviewStateRaw, readPreviewState } from '../worktrees/lib/preview-state.mjs'
+import { defaultPreviewStatePath, withPreviewStateLock, writePreviewStateRaw, readPreviewState, updatePreviewState } from '../worktrees/lib/preview-state.mjs'
 import { findFreePort } from '../worktrees/lib/free-port.mjs'
 
 import { pidIsAlive } from './lib/pid.mjs'
@@ -210,7 +210,7 @@ async function cmdMain() {
 
   const resolved = resolveCurrentMainClaim({ registryPath, legacyPreviewStatePath: legacyStatePath, previewWorktreePath: previewPath })
   const classification = await classifyClaim(resolved.claim, { gitMainSha: mainSha })
-  const plan = planCurrentMainRotation({ classification })
+  const plan = planCurrentMainRotation({ classification, claim: resolved.claim })
 
   if (plan.action === 'reuse') {
     printRuntimeReport({ purpose: 'CURRENT_MAIN', expectedSha: mainSha, claim: resolved.claim, classification })
@@ -288,8 +288,12 @@ async function cmdMain() {
 
   // Legacy preview-state.json is updated too (never deleted, always kept
   // current) so the 16 other worktrees' older tooling — which only reads
-  // THIS file — still sees an accurate live owner.
-  writePreviewStateRaw(legacyStatePath, { ...(readPreviewState(legacyStatePath) || {}), sha: transaction.head, dir: previewPath, pid: started.claim.pid, port: started.claim.port, startedAt: started.claim.startedAt })
+  // THIS file — still sees an accurate live owner. Uses the LOCKED
+  // merge-write (`updatePreviewState`), not the raw unlocked one: this
+  // runs OUTSIDE the transaction's own lock (Tech Review P2 — a concurrent
+  // writer's field, e.g. `installedLockHash`, must never be lost to this
+  // read-modify-write racing it unguarded).
+  updatePreviewState(legacyStatePath, (current) => ({ ...(current || {}), sha: transaction.head, dir: previewPath, pid: started.claim.pid, port: started.claim.port, startedAt: started.claim.startedAt }))
 
   printRuntimeReport({ purpose: 'CURRENT_MAIN', expectedSha: mainSha, claim: started.claim, classification: { status: 'SERVING_VERIFIED', reason: 'Just started and verified.' } })
   process.exit(EXIT.OK)
@@ -316,7 +320,7 @@ async function cmdCandidate(args) {
   const id = runtimeId(purpose, worktree)
   const existing = listClaims(registryPath).find((c) => c.id === id) ?? null
   const classification = await classifyClaim(existing, { expectedSha: sha })
-  const plan = planCurrentMainRotation({ classification })
+  const plan = planCurrentMainRotation({ classification, claim: existing })
 
   if (plan.action === 'reuse') {
     printRuntimeReport({ purpose, expectedSha: sha, claim: existing, classification })
@@ -371,7 +375,27 @@ async function cmdStop(args) {
     return
   }
 
-  const stopped = stopProcessSync(claim.pid, { group: claim.detached === true })
+  // Identity ownership (the check above) is not the same as being able to
+  // fully, verifiably terminate the underlying server. A claim's recorded
+  // pid may be an intermediate `npm` wrapper around a further child (true
+  // for every dev:main-registered claim: foreground, no dedicated process
+  // group) — signaling just that pid does not reliably stop the tree
+  // underneath it (Tech Review P1: reproduced directly, the real server
+  // survived and kept serving its old sha after "stopping" such a pid).
+  // Only report a stop — and only ever remove the registry claim — for a
+  // claim this tooling itself started detached.
+  if (claim.detached !== true) {
+    console.error(
+      `\n[runtime:stop] BLOCKED (exit ${EXIT.PROVENANCE}): "${id}" (pid ${claim.pid}) was not started detached by this tooling ` +
+        '(e.g. it is a dev:main-served process) and its underlying server process cannot be reliably, fully stopped from its ' +
+        'recorded pid alone. Refusing to report a stop that cannot be made good on, and refusing to remove its registry claim ' +
+        'while the real server may still be live. Stop it manually (Ctrl-C the owning dev:main, or kill its actual server process).',
+    )
+    process.exit(EXIT.PROVENANCE)
+    return
+  }
+
+  const stopped = stopProcessSync(claim.pid, { group: true })
   if (!stopped.ok) return fail(EXIT.TOOLING, `Could not stop pid ${claim.pid} gracefully (still alive after SIGTERM and SIGKILL).`)
 
   removeRuntimeClaim(registryPath, id)
