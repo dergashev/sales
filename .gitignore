@@ -9,6 +9,19 @@ coverage/
 .artifacts/
 .preview/
 
+# Playwright CLI agent-browser layer (tools/browser-agent/): native skills
+# are installed per-checkout by `npm run browser:agent:setup` and are
+# regenerable from the pinned @playwright/cli version — never committed,
+# same convention as .claude/ above. `.agents/skills/` is that install's
+# second official target (alongside .claude/skills/); this repo's own
+# `.agents/mcp_config.json` (AgentsRoom's own runtime config, locally
+# excluded via .git/info/exclude) is untouched by this narrower rule.
+.agents/skills/
+# Default snapshot/output location when a Playwright CLI invocation is not
+# routed through .playwright/cli.config.json's outputDir — defensive only;
+# normal usage writes under .artifacts/browser-agent (already ignored above).
+.playwright-cli/
+
 # Рабочие файлы второго инструмента в его зоне: Codex ведёт браузерную
 # приёмку скриптами вида `.task17-cdp.mjs`. Они появляются и исчезают по
 # ходу его прохода — попадая в коммит Claude через `git add -A`, они
