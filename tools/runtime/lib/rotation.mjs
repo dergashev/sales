@@ -43,12 +43,16 @@ export function planCurrentMainRotation({ classification, claim }) {
 
     case 'MISSING':
     case 'DEAD':
-      // No live, verifiable owner of the CURRENT_MAIN identity exists.
-      // Proceed straight to checkout + spawn — planPreviewRefresh still
-      // separately checks the checkout's own dirty/lock state, and the
-      // legacy preview-state.json pid check (main.mjs) still separately
-      // guards against an UNREGISTERED live process serving the same
-      // directory (see main.mjs's dual liveness check before mutating).
+      // No live, verifiable OWNER of the CURRENT_MAIN identity exists —
+      // but that is a claim about the recorded pid only, not about whether
+      // the checkout is actually silent. A DEAD wrapper pid's own `npm run
+      // dev` grandchild can survive and keep serving the claim's recorded
+      // url (Tech Review round 2: reproduced directly — the checkout was
+      // mutated underneath exactly such a survivor). planPreviewRefresh
+      // still separately checks the checkout's own dirty/lock state, and
+      // main.mjs additionally probes the claim's own url before ever
+      // mutating on this path — this decision alone does not prove nothing
+      // is serving.
       return { action: 'start', reason: classification.reason }
 
     case 'STALE':

@@ -224,6 +224,32 @@ async function cmdMain() {
     return
   }
 
+  // Tech Review round 2: `plan.action === 'start'` means classification is
+  // MISSING or DEAD — i.e. the CLAIMED owner pid is not verifiably alive.
+  // That is NOT the same thing as "nothing is serving this checkout" — a
+  // dev:main wrapper can die (crash, OOM, a plain `kill <wrapper pid>`)
+  // while its `npm run dev` grandchild survives and keeps answering at the
+  // claim's own recorded url (reproduced directly: the checkout was
+  // mutated underneath that still-live orphan, and this command reported
+  // exit 0 / SERVING_VERIFIED). Positively verify the claim's own endpoint
+  // is actually silent before ever proceeding to mutate — independent of,
+  // and in addition to, the pid-based classification above. (No such check
+  // is needed for 'stop-then-start': STALE/DRIFTED are EXPECTED to still
+  // be serving at this point, that is exactly what is about to be stopped.)
+  if (plan.action === 'start' && resolved.claim?.url) {
+    const stillServing = await probeRuntimeEcho(resolved.claim.url)
+    if (stillServing.ok) {
+      printRuntimeReport({ purpose: 'CURRENT_MAIN', expectedSha: mainSha, claim: resolved.claim, classification })
+      console.error(
+        `\n[runtime:main] BLOCKED (exit ${EXIT.PROVENANCE}): "${resolved.claim.url}" still answers a request even though this ` +
+          `runtime classified ${classification.status} (its claimed owner pid is not verifiably alive). Refusing to mutate the ` +
+          'checkout underneath a server that may still be live. Stop whatever is bound to that port manually and re-run.',
+      )
+      process.exit(EXIT.PROVENANCE)
+      return
+    }
+  }
+
   // 'start' or 'stop-then-start': one locked transaction (same lock
   // dev-main.mjs uses for this exact canonical preview directory, so the
   // two commands can never interleave on it) — prove ownership (already

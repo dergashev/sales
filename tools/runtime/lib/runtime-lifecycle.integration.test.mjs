@@ -318,6 +318,44 @@ describe('Tech Review P1 regression — a non-detached CURRENT_MAIN claim (e.g. 
   }, 15_000)
 })
 
+describe('Tech Review P1 round-2 regression — a DEAD claim (its recorded pid is not alive) must not be trusted as "nothing is serving" before mutating the checkout', () => {
+  it('runtime:main refuses (exit 2) to mutate the checkout when the claim classifies DEAD but its own recorded url still answers', async () => {
+    const { sha: sha1 } = commitInstallableProjectOntoMain(repoDir)
+    const previewPath = path.join(repoDir, '.preview', 'main')
+    git(repoDir, ['worktree', 'add', '--detach', '-q', previewPath, sha1])
+    const commonDir = git(repoDir, ['rev-parse', '--git-common-dir'])
+    const registryPath = defaultRegistryPath(path.resolve(repoDir, commonDir))
+
+    const { claim } = await registerNonDetachedClaim({ registryPath, previewPath, sha: sha1 })
+
+    // Simulate exactly what a crashed/OOM-killed/individually-`kill`ed
+    // dev:main wrapper does: kill ONLY the recorded (single) pid, never the
+    // group — its own further child (the real dev server) is not spawned
+    // detached and does not die with it (verified below), which is why the
+    // classification below comes back DEAD while the endpoint is still live.
+    process.kill(claim.pid, 'SIGKILL')
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    expect(pidIsAlive(claim.pid)).toBe(false)
+    const stillServingBefore = await fetch(new URL('/__runtime.json', claim.url), { signal: AbortSignal.timeout(2000) })
+    expect(stillServingBefore.status).toBe(200) // precondition: the orphan is genuinely still live
+
+    const sha2 = advanceMain(repoDir)
+
+    const rotate = spawnSync('node', [MAIN_MJS, 'main'], { cwd: repoDir, encoding: 'utf8', env: { ...process.env, A3_PREVIEW_DIR: previewPath } })
+    expect(rotate.status).toBe(2)
+    expect(rotate.stdout).toContain('STATUS               : DEAD')
+    expect(rotate.stderr).toMatch(/BLOCKED.*still answers/)
+
+    // The exact assertion round 1's version of this test omitted: not just
+    // that the CLI refused, but that the checkout genuinely was not
+    // touched, and the orphan is still exactly what it was before.
+    expect(git(previewPath, ['rev-parse', 'HEAD'])).toBe(sha1)
+    const echo = await fetch(new URL('/__runtime.json', claim.url)).then((r) => r.json())
+    expect(echo.sha).toBe(sha1)
+    expect(echo.sha).not.toBe(sha2)
+  }, 15_000)
+})
+
 describe('runtime:stop — process-group termination (regression: a single-pid SIGKILL orphaned the actual dev server)', () => {
   it('stopping a runtime actually frees its port — not just the recorded (npm) pid', async () => {
     const { sha } = commitInstallableProjectOntoMain(repoDir)
