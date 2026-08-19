@@ -200,7 +200,11 @@ describe('browser-agent open -> sidecar -> close lifecycle (hermetic)', () => {
       },
     )
 
-    const closed = runClose({ sessionName: opened.sessionName, sidecarDir }, { playwrightClose: () => playwrightCliClose({ sessionName: opened.sessionName, cwd: process.cwd() }) })
+    // Closing from the SAME worktree that opened it must still work exactly as before.
+    const closed = runClose(
+      { sessionName: opened.sessionName, sidecarDir, worktree: '/repo/task-worktree' },
+      { playwrightClose: () => playwrightCliClose({ sessionName: opened.sessionName, cwd: process.cwd() }) },
+    )
 
     expect(closed.ok).toBe(true)
     expect(closed.sidecarFound).toBe(true)
@@ -215,8 +219,43 @@ describe('browser-agent open -> sidecar -> close lifecycle (hermetic)', () => {
   })
 
   it('closing a session with no tracked sidecar still only touches that one name, best-effort', () => {
-    const result = runClose({ sessionName: 'ghost-session', sidecarDir }, { playwrightClose: () => playwrightCliClose({ sessionName: 'ghost-session', cwd: process.cwd() }) })
+    const result = runClose({ sessionName: 'ghost-session', sidecarDir, worktree: '/repo/task-worktree' }, { playwrightClose: () => playwrightCliClose({ sessionName: 'ghost-session', cwd: process.cwd() }) })
     expect(result.ok).toBe(true)
     expect(result.sidecarFound).toBe(false)
+  })
+
+  it('Engineering QA P1 regression: closing from a DIFFERENT worktree than the one that opened the session refuses closed, keeps the sidecar, and never invokes the real CLI at all', () => {
+    const url = 'http://127.0.0.1:43221'
+    const opened = runOpen(
+      { purpose: 'TASK_CANDIDATE', lane: 'engineering', expectedSha: SHA, sidecarDir, worktree: '/repo/task-worktree' },
+      {
+        ...verifiedRuntimeDeps(url),
+        playwrightOpen: (args) => playwrightCliOpen({ ...args, cwd: process.cwd() }),
+        playwrightVersion: () => playwrightCliVersion({ cwd: process.cwd() }),
+        now: () => '2026-08-19T00:00:00.000Z',
+      },
+    )
+    expect(opened.ok).toBe(true)
+
+    // The real @playwright/cli's own session registry is scoped per-workspace, so a close
+    // attempted from a different worktree than the one that opened the session would get a
+    // generic "not open" exit 0 from the real CLI — indistinguishable from "already closed".
+    // This must be refused BEFORE ever asking the real CLI, purely from the sidecar's own
+    // recorded worktree vs. the caller's actual one.
+    const closed = runClose(
+      { sessionName: opened.sessionName, sidecarDir, worktree: '/repo/OTHER-worktree' },
+      { playwrightClose: () => playwrightCliClose({ sessionName: opened.sessionName, cwd: process.cwd() }) },
+    )
+
+    expect(closed.ok).toBe(false)
+    expect(closed.code).toBe(2)
+    expect(closed.message).toMatch(/task-worktree/)
+    expect(closed.message).toMatch(/OTHER-worktree/)
+
+    // The sidecar — the only record this layer keeps — must survive untouched, and the real
+    // CLI must never have been asked to close this session (only `open` + the descriptive
+    // `--version` lookup from opening it above may appear in the log).
+    expect(readSidecar(sidecarDir, opened.sessionName)).not.toBeNull()
+    expect(loggedInvocations().some((argv) => argv.includes('close'))).toBe(false)
   })
 })

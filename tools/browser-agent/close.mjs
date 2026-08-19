@@ -2,12 +2,19 @@
 /**
  * tools/browser-agent/close.mjs — `npm run browser:agent:close`.
  *
- * Closes exactly ONE named session and removes exactly its own sidecar.
- * Never `close-all`/`kill-all` (ticket "SESSION CLEANUP"): this script has
- * no code path that can even express a broad close.
+ * Closes exactly ONE named session and removes exactly its own sidecar —
+ * only when ownership can actually be proven from here (Engineering QA P1:
+ * the real CLI's session registry is scoped per-workspace, so a close
+ * attempted from a different worktree than the one that opened the session
+ * would get a generic "not open" exit 0, indistinguishable from "already
+ * closed"; see verifyCloseOwnership in lib/decide.mjs). Never
+ * `close-all`/`kill-all` (ticket "SESSION CLEANUP"): this script has no code
+ * path that can even express a broad close.
  *
  * Usage: npm run browser:agent:close -- --session <name>
- * Exit codes: 0 OK (closed, or nothing to do) · 3 LIFECYCLE (bad usage) · 4 TOOLING (CLI could not be run at all).
+ * Exit codes: 0 OK (closed, or nothing to do) · 2 PROVENANCE (session belongs to a different
+ * worktree — ownership cannot be proven from here, refused before touching the real CLI or the
+ * sidecar) · 3 LIFECYCLE (bad usage) · 4 TOOLING (CLI could not be run at all).
  */
 
 import { resolveRepoContext } from './lib/runtime-bridge.mjs'
@@ -33,7 +40,7 @@ function main() {
   }
 
   const sidecarDir = defaultSidecarDir(ctx.repoRoot)
-  const result = runClose({ sessionName, sidecarDir }, { playwrightClose: () => playwrightCliClose({ sessionName, cwd: ctx.cwd }) })
+  const result = runClose({ sessionName, sidecarDir, worktree: ctx.worktree }, { playwrightClose: () => playwrightCliClose({ sessionName, cwd: ctx.cwd }) })
 
   if (!result.ok) {
     console.error(`\n[browser-agent:close] FAIL (exit ${result.code}): ${result.message}`)

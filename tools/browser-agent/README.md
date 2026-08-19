@@ -43,7 +43,7 @@ as the fallback for any runtime that does not.
 |---|---|
 | `npm run browser:agent:open -- --purpose <P> [--lane <lane>] [--expected-sha <sha>] [--persistent]` | Resolve/start the runtime for `<P>`, require the browser-consumer preflight to pass, then open a named Playwright CLI session bound to it. |
 | `npm run browser:agent:status` | Non-mutating: an ENVIRONMENT block (pinned CLI version, per-target skill installed/up-to-date), then every tracked session — purpose/lane/sha/url/artifact dir, and whether it is still CURRENT or SUPERSEDED. |
-| `npm run browser:agent:close -- --session <name>` | Closes exactly that one session and removes exactly its own sidecar. Never `close-all`/`kill-all`. |
+| `npm run browser:agent:close -- --session <name>` | Closes exactly that one session and removes exactly its own sidecar — only from the worktree that opened it. A close attempted from a different worktree refuses (exit 2) without touching the sidecar and names the owning worktree, because the official CLI's session registry is per-workspace and would otherwise report a generic "not open" success while the session keeps running there. Never `close-all`/`kill-all`. |
 | `npm run browser:agent:show` | Official `playwright-cli show` dashboard (session grid + live remote control). Observability only — it does not establish provenance. |
 
 `--purpose` is one of `CURRENT_MAIN`, `TASK_CANDIDATE`, `REVIEW_CANDIDATE`

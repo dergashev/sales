@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { classifyRuntimeStep, classifySidecarFreshness, decideSessionAction, isPreflightVerified, parseRuntimeUrl, planClose, verifyExpectedShaAgainstWorktree } from './decide.mjs'
+import { classifyRuntimeStep, classifySidecarFreshness, decideSessionAction, isPreflightVerified, parseRuntimeUrl, planClose, verifyCloseOwnership, verifyExpectedShaAgainstWorktree } from './decide.mjs'
 
 describe('isPreflightVerified — refuse-on-nonzero-preflight', () => {
   it('exit 0 is the ONLY verified outcome', () => {
@@ -72,6 +72,32 @@ describe('classifySidecarFreshness — sha-keyed supersession', () => {
 
   it('UNKNOWN, never silently CURRENT, when the current expectation cannot be determined', () => {
     expect(classifySidecarFreshness({ sidecar: { actualSha: 'A' }, currentExpectedSha: null })).toBe('UNKNOWN')
+  })
+})
+
+describe('verifyCloseOwnership — Engineering QA P1: never report a wrong-worktree close as success', () => {
+  it('no tracked sidecar -> ok (the pre-existing best-effort path: opened outside this tooling, or already closed)', () => {
+    expect(verifyCloseOwnership(null, '/repo/wt-a')).toEqual({ ok: true })
+  })
+
+  it('sidecar with no recorded worktree -> ok (cannot compare, never refuse on an unmakeable comparison)', () => {
+    expect(verifyCloseOwnership({ worktree: undefined }, '/repo/wt-a')).toEqual({ ok: true })
+  })
+
+  it('caller worktree unknown -> ok (cannot compare, never refuse on an unmakeable comparison)', () => {
+    expect(verifyCloseOwnership({ worktree: '/repo/wt-a' }, undefined)).toEqual({ ok: true })
+  })
+
+  it('sidecar worktree matches the caller\'s -> ok, proceed with the real close', () => {
+    expect(verifyCloseOwnership({ worktree: '/repo/wt-a' }, '/repo/wt-a')).toEqual({ ok: true })
+  })
+
+  it('QA repro: sidecar recorded a DIFFERENT worktree than the caller -> refuse (PROVENANCE, 2), never silently proceed', () => {
+    const result = verifyCloseOwnership({ worktree: '/repo/wt-a' }, '/repo/wt-b')
+    expect(result.ok).toBe(false)
+    expect(result.code).toBe(2)
+    expect(result.reason).toMatch(/wt-a/)
+    expect(result.reason).toMatch(/wt-b/)
   })
 })
 

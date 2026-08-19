@@ -135,6 +135,47 @@ export function planClose({ sessionName, allSidecarNames }) {
 }
 
 /**
+ * Engineering QA P1: the real `@playwright/cli`'s own session/daemon registry
+ * is scoped per-workspace (the nearest ancestor directory containing
+ * `.playwright/`, hashed) — a session opened from worktree A is genuinely
+ * unreachable from worktree B, even at the identical sha. When asked to close
+ * a session it cannot reach, the real CLI exits 0 with "Browser 'X' is not
+ * open" — text-identical to "already closed". Naively trusting that exit code
+ * would delete the sidecar (this layer's ONLY record of the session) while
+ * the actual browser/dev-server process keeps running in its real worktree,
+ * silently invisible to `browser:agent:status` from then on: a resource leak
+ * that erases its own evidence. Ticket "SESSION CLEANUP": "Only clean
+ * resources whose ownership can be proven" — this is verified BEFORE ever
+ * invoking the real CLI, purely from the sidecar's own recorded `worktree`
+ * versus the caller's actual one, no network/process call needed to refuse.
+ *
+ * A missing sidecar (`sidecar === null`) is NOT a mismatch: that is the
+ * pre-existing, still-legitimate "opened outside this tooling, or already
+ * closed" best-effort path (ticket allows closing a session this layer never
+ * tracked). Likewise a sidecar with no recorded `worktree`, or a caller that
+ * cannot supply its own `worktree` — never refuse on a comparison this
+ * function cannot actually make; only a POSITIVELY CONFIRMED mismatch
+ * refuses.
+ *
+ * @param {object|null} sidecar - the sidecar record for this session name, or null if untracked here.
+ * @param {string|undefined} worktree - the caller's actual worktree (ctx.worktree), if known.
+ */
+export function verifyCloseOwnership(sidecar, worktree) {
+  if (!sidecar || !sidecar.worktree || !worktree) return { ok: true }
+  if (sidecar.worktree !== worktree) {
+    return {
+      ok: false,
+      code: 2,
+      reason:
+        `Session was opened from worktree ${sidecar.worktree}, not this worktree (${worktree}). The real CLI cannot reach it from ` +
+        'here, and its "not open" response is indistinguishable from "already closed" — refusing to report success or remove the ' +
+        `sidecar. Run this close from ${sidecar.worktree} instead.`,
+    }
+  }
+  return { ok: true }
+}
+
+/**
  * Ticket "NO PORT AUTHORITY": nothing in this layer may assume a fixed
  * port. This parses whatever URL the Runtime Provenance registry actually
  * handed back — any host, any port — and never falls back to a hardcoded

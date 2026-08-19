@@ -17,7 +17,7 @@
 
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { deriveSessionName } from './session-name.mjs'
-import { decideSessionAction } from './decide.mjs'
+import { decideSessionAction, verifyCloseOwnership } from './decide.mjs'
 import { readSidecar, removeSidecar, writeSidecar } from './sidecar-store.mjs'
 import { sessionArtifactsDir, provenanceFilePath } from './artifacts-dir.mjs'
 import { EXIT } from './exit-codes.mjs'
@@ -102,13 +102,25 @@ export function runOpen(opts, deps) {
 }
 
 /**
- * @param {object} opts - { sessionName, sidecarDir, cwd }
+ * @param {object} opts - { sessionName, sidecarDir, cwd, worktree }
+ *   worktree is optional: when omitted, the ownership check below cannot run and this behaves
+ *   exactly as before (existing callers/tests that do not pass it are unaffected).
  * @param {object} deps - { playwrightClose }
  *   playwrightClose({ sessionName }) -> { ok, code?, reason?, spawnFailed? }
  */
 export function runClose(opts, deps) {
-  const { sessionName, sidecarDir } = opts
+  const { sessionName, sidecarDir, worktree } = opts
   const sidecar = readSidecar(sidecarDir, sessionName)
+
+  // Engineering QA P1: verify ownership from the sidecar's OWN recorded
+  // worktree before ever invoking the real CLI — a wrong-worktree close
+  // attempt must never be allowed to masquerade as success (see
+  // verifyCloseOwnership's docblock for why the CLI's own exit code cannot
+  // be trusted to distinguish the two cases).
+  const ownership = verifyCloseOwnership(sidecar, worktree)
+  if (!ownership.ok) {
+    return { ok: false, code: ownership.code, message: ownership.reason, sidecarFound: true }
+  }
 
   const closed = deps.playwrightClose({ sessionName })
   if (closed.spawnFailed) {
