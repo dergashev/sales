@@ -13,8 +13,8 @@ and *reads back from*, never reimplements.
 
 ```bash
 npm install               # resolves the pinned @playwright/cli (see package.json)
-npx playwright-cli install chromium   # downloads the chromium binary this CLI's own
-                                       # playwright-core@1.63.0-alpha line needs — a
+npx playwright-cli install-browser chromium   # downloads the chromium binary this CLI's
+                                       # own playwright-core@1.63.0-alpha line needs — a
                                        # SEPARATE cache from @playwright/test's stable
                                        # ^1.62.1 line, run once per machine
 npm run browser:agent:setup           # installs the OFFICIAL native skill into
@@ -65,9 +65,11 @@ a structural singleton).
    (`tools/runtime/lib/registry.mjs`) — never by parsing the command's
    stdout.
 3. `npm run runtime:preflight` against that claim's URL. **Only its exit
-   code is read** — the official Playwright CLI and the Runtime Provenance
-   CLI both have no `--json` output anywhere; this layer never parses
-   either one's human-readable text for a provenance-critical decision.
+   code is read.** The official Playwright CLI does document a global
+   `--json` flag, and this layer does not use it here; the Runtime
+   Provenance CLI has no `--json` output at all. Either way, this layer
+   never parses either command's stdout — human-readable or JSON — for a
+   provenance-critical decision; the exit code is the only signal trusted.
    Non-zero → refuse closed, no browser is opened.
 4. Only once preflight passes: `playwright-cli -s=<session> open <url>`,
    then a sidecar record is written to
