@@ -9,12 +9,15 @@
 
 /**
  * Fail-closed gate on `npm run runtime:preflight`'s EXIT CODE alone.
- * The CLI has no `--json` output anywhere (verified against the official
- * package) — this function's ENTIRE contract is "trust the exit code, never
- * the stdout text", so a caller can never accidentally regress into
- * regex-parsing preflight's human-readable report for a provenance-critical
- * decision. `exitCode` must be the literal process exit code; this function
- * never receives or looks at captured stdout/stderr.
+ * The Runtime Provenance CLI (`tools/runtime/`) — the thing `preflight`
+ * actually is — has no `--json` output at all; this function's ENTIRE
+ * contract is "trust the exit code, never the stdout text", so a caller
+ * can never accidentally regress into regex-parsing preflight's
+ * human-readable report for a provenance-critical decision. (The official
+ * upstream `@playwright/cli` is a separate binary that does document a
+ * global `--json` flag — irrelevant here, since this function never reads
+ * any CLI's stdout at all.) `exitCode` must be the literal process exit
+ * code; this function never receives or looks at captured stdout/stderr.
  */
 export function isPreflightVerified(exitCode) {
   return exitCode === 0
