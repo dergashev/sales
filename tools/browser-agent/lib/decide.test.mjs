@@ -75,29 +75,42 @@ describe('classifySidecarFreshness — sha-keyed supersession', () => {
   })
 })
 
-describe('verifyCloseOwnership — Engineering QA P1: never report a wrong-worktree close as success', () => {
+describe('verifyCloseOwnership — QA P1 + Tech Review cycle-3 P1: ownership is the OPENING workspace, never the runtime worktree', () => {
   it('no tracked sidecar -> ok (the pre-existing best-effort path: opened outside this tooling, or already closed)', () => {
     expect(verifyCloseOwnership(null, '/repo/wt-a')).toEqual({ ok: true })
   })
 
-  it('sidecar with no recorded worktree -> ok (cannot compare, never refuse on an unmakeable comparison)', () => {
-    expect(verifyCloseOwnership({ worktree: undefined }, '/repo/wt-a')).toEqual({ ok: true })
+  it('sidecar with no recorded ownerWorkspace (written before the field existed) -> ok, degrades to best-effort', () => {
+    expect(verifyCloseOwnership({ worktree: '/repo/.preview/main' }, '/repo/wt-a')).toEqual({ ok: true })
   })
 
-  it('caller worktree unknown -> ok (cannot compare, never refuse on an unmakeable comparison)', () => {
-    expect(verifyCloseOwnership({ worktree: '/repo/wt-a' }, undefined)).toEqual({ ok: true })
+  it('caller workspace unknown -> ok (cannot compare, never refuse on an unmakeable comparison)', () => {
+    expect(verifyCloseOwnership({ ownerWorkspace: '/repo/wt-a' }, undefined)).toEqual({ ok: true })
   })
 
-  it('sidecar worktree matches the caller\'s -> ok, proceed with the real close', () => {
-    expect(verifyCloseOwnership({ worktree: '/repo/wt-a' }, '/repo/wt-a')).toEqual({ ok: true })
+  it('ownerWorkspace matches the caller -> ok, proceed with the real close', () => {
+    expect(verifyCloseOwnership({ ownerWorkspace: '/repo/wt-a' }, '/repo/wt-a')).toEqual({ ok: true })
   })
 
-  it('QA repro: sidecar recorded a DIFFERENT worktree than the caller -> refuse (PROVENANCE, 2), never silently proceed', () => {
-    const result = verifyCloseOwnership({ worktree: '/repo/wt-a' }, '/repo/wt-b')
+  it('Tech Review cycle-3 repro: a CURRENT_MAIN sidecar (runtime worktree .preview/main, opened from wt-a) IS closeable from wt-a — the runtime worktree must play no part in the decision', () => {
+    const currentMainSidecar = { purpose: 'CURRENT_MAIN', worktree: '/repo/.preview/main', ownerWorkspace: '/repo/wt-a' }
+    expect(verifyCloseOwnership(currentMainSidecar, '/repo/wt-a')).toEqual({ ok: true })
+  })
+
+  it('QA repro: session owned by a DIFFERENT workspace than the caller -> refuse (PROVENANCE, 2), never silently proceed', () => {
+    const result = verifyCloseOwnership({ ownerWorkspace: '/repo/wt-a', worktree: '/repo/wt-a' }, '/repo/wt-b')
     expect(result.ok).toBe(false)
     expect(result.code).toBe(2)
     expect(result.reason).toMatch(/wt-a/)
     expect(result.reason).toMatch(/wt-b/)
+  })
+
+  it('the runtime worktree matching the caller does NOT grant ownership when the owner workspace differs (e.g. a foreign workspace standing at the runtime path)', () => {
+    // Contrived but load-bearing: proves the decision reads ownerWorkspace, not worktree,
+    // in the refusing direction too — worktree agreement must not mask foreign ownership.
+    const result = verifyCloseOwnership({ ownerWorkspace: '/repo/wt-a', worktree: '/repo/wt-b' }, '/repo/wt-b')
+    expect(result.ok).toBe(false)
+    expect(result.code).toBe(2)
   })
 })
 

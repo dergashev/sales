@@ -135,41 +135,49 @@ export function planClose({ sessionName, allSidecarNames }) {
 }
 
 /**
- * Engineering QA P1: the real `@playwright/cli`'s own session/daemon registry
- * is scoped per-workspace (the nearest ancestor directory containing
- * `.playwright/`, hashed) — a session opened from worktree A is genuinely
- * unreachable from worktree B, even at the identical sha. When asked to close
- * a session it cannot reach, the real CLI exits 0 with "Browser 'X' is not
- * open" — text-identical to "already closed". Naively trusting that exit code
- * would delete the sidecar (this layer's ONLY record of the session) while
- * the actual browser/dev-server process keeps running in its real worktree,
- * silently invisible to `browser:agent:status` from then on: a resource leak
- * that erases its own evidence. Ticket "SESSION CLEANUP": "Only clean
- * resources whose ownership can be proven" — this is verified BEFORE ever
- * invoking the real CLI, purely from the sidecar's own recorded `worktree`
- * versus the caller's actual one, no network/process call needed to refuse.
+ * Engineering QA P1 + Tech Review cycle-3 P1: the real `@playwright/cli`'s
+ * own session/daemon registry is scoped per-WORKSPACE — the nearest ancestor
+ * directory containing `.playwright/` of the cwd AT `open` TIME, hashed
+ * (`createClientInfo()`/`findWorkspaceDir()` in the CLI's registry.js). A
+ * session opened from workspace A is genuinely unreachable from workspace B,
+ * even at the identical sha; asked to close a session it cannot reach, the
+ * real CLI exits 0 with "Browser 'X' is not open" — text-identical to
+ * "already closed". Naively trusting that exit would delete the sidecar
+ * (this layer's ONLY record) while the browser keeps running, invisible to
+ * `browser:agent:status` from then on: a leak that erases its own evidence.
+ * Ticket "SESSION CLEANUP": "Only clean resources whose ownership can be
+ * proven" — verified BEFORE ever invoking the real CLI.
+ *
+ * The comparison MUST use the sidecar's `ownerWorkspace` — the workspace the
+ * `open` was actually invoked from — NEVER its `worktree` field, which is
+ * RUNTIME provenance (the worktree the dev server serves). The two are the
+ * same for TASK_CANDIDATE/REVIEW_CANDIDATE but structurally DIFFERENT for
+ * CURRENT_MAIN, whose runtime always lives in `.preview/main` while the
+ * session belongs to whichever workspace ran `open` (Tech Review cycle 3
+ * proved live that comparing against `worktree` made every CURRENT_MAIN
+ * session uncloseable, with a factually false diagnostic).
  *
  * A missing sidecar (`sidecar === null`) is NOT a mismatch: that is the
  * pre-existing, still-legitimate "opened outside this tooling, or already
- * closed" best-effort path (ticket allows closing a session this layer never
- * tracked). Likewise a sidecar with no recorded `worktree`, or a caller that
- * cannot supply its own `worktree` — never refuse on a comparison this
+ * closed" best-effort path. Likewise a sidecar with no recorded
+ * `ownerWorkspace` (written before this field existed), or a caller that
+ * cannot supply its own workspace — never refuse on a comparison this
  * function cannot actually make; only a POSITIVELY CONFIRMED mismatch
  * refuses.
  *
  * @param {object|null} sidecar - the sidecar record for this session name, or null if untracked here.
- * @param {string|undefined} worktree - the caller's actual worktree (ctx.worktree), if known.
+ * @param {string|undefined} callerWorkspace - the workspace the close is being invoked from (ctx.worktree), if known.
  */
-export function verifyCloseOwnership(sidecar, worktree) {
-  if (!sidecar || !sidecar.worktree || !worktree) return { ok: true }
-  if (sidecar.worktree !== worktree) {
+export function verifyCloseOwnership(sidecar, callerWorkspace) {
+  if (!sidecar || !sidecar.ownerWorkspace || !callerWorkspace) return { ok: true }
+  if (sidecar.ownerWorkspace !== callerWorkspace) {
     return {
       ok: false,
       code: 2,
       reason:
-        `Session was opened from worktree ${sidecar.worktree}, not this worktree (${worktree}). The real CLI cannot reach it from ` +
-        'here, and its "not open" response is indistinguishable from "already closed" — refusing to report success or remove the ' +
-        `sidecar. Run this close from ${sidecar.worktree} instead.`,
+        `Session is owned by workspace ${sidecar.ownerWorkspace} (where its "open" ran), not this one (${callerWorkspace}). The ` +
+        'real CLI cannot reach it from here, and its "not open" response is indistinguishable from "already closed" — refusing to ' +
+        `report success or remove the sidecar. Run this close from ${sidecar.ownerWorkspace} instead.`,
     }
   }
   return { ok: true }

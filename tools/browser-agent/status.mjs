@@ -64,6 +64,7 @@ function main() {
     console.log(`      purpose   : ${sidecar.purpose ?? 'UNKNOWN'}`)
     console.log(`      lane      : ${sidecar.lane ?? '(none)'}`)
     console.log(`      sha       : ${sidecar.actualSha ?? 'UNKNOWN'}`)
+    console.log(`      owner     : ${sidecar.ownerWorkspace ?? 'UNKNOWN (pre-ownership sidecar)'} — close it from there`)
     console.log(`      url       : ${sidecar.url ?? 'UNKNOWN'}`)
     console.log(`      artifacts : ${sidecar.outputDir ?? '(default)'}`)
     console.log(`      cli       : ${sidecar.playwrightCliVersion ?? 'UNKNOWN'}`)

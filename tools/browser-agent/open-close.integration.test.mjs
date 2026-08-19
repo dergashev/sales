@@ -23,6 +23,7 @@ import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { runClose, runOpen } from './lib/orchestrate.mjs'
 import { playwrightCliClose, playwrightCliOpen, playwrightCliVersion } from './lib/playwright-cli-bridge.mjs'
+import * as sidecarStore from './lib/sidecar-store.mjs'
 import { readSidecar, listSidecars } from './lib/sidecar-store.mjs'
 import { sessionArtifactsDir, provenanceFilePath } from './lib/artifacts-dir.mjs'
 
@@ -101,6 +102,7 @@ describe('browser-agent open -> sidecar -> close lifecycle (hermetic)', () => {
       expectedSha: SHA,
       actualSha: SHA,
       worktree: '/repo/task-worktree',
+      ownerWorkspace: '/repo/task-worktree', // for candidate purposes owner == runtime worktree
       url,
       status: 'OPEN',
       provenanceVerified: true,
@@ -189,8 +191,12 @@ describe('browser-agent open -> sidecar -> close lifecycle (hermetic)', () => {
     expect(opened.ok).toBe(true)
 
     // An unrelated session's sidecar must survive the close below untouched.
+    // Tech Review cycle 3: the CURRENT_MAIN fixture MUST model production's
+    // real asymmetry — the caller opens from its own worktree while the
+    // runtime claim always names .preview/main. Setting them equal here
+    // previously hid a live defect behind a state that cannot occur.
     runOpen(
-      { purpose: 'CURRENT_MAIN', expectedSha: 'd'.repeat(40), sidecarDir, worktree: '/repo/.preview/main' },
+      { purpose: 'CURRENT_MAIN', expectedSha: 'd'.repeat(40), sidecarDir, worktree: '/repo/task-worktree' },
       {
         resolveRuntime: () => ({ ok: true, claim: { sha: '0'.repeat(40), url: 'http://127.0.0.1:43220', worktree: '/repo/.preview/main' } }),
         preflight: () => ({ ok: true, code: 0 }),
@@ -257,5 +263,60 @@ describe('browser-agent open -> sidecar -> close lifecycle (hermetic)', () => {
     // `--version` lookup from opening it above may appear in the log).
     expect(readSidecar(sidecarDir, opened.sessionName)).not.toBeNull()
     expect(loggedInvocations().some((argv) => argv.includes('close'))).toBe(false)
+  })
+
+  it('Tech Review cycle-3 regression: a CURRENT_MAIN session (runtime worktree .preview/main) IS closeable from the workspace that opened it, and NOT from a foreign one', () => {
+    // Production's real shape: the caller opens from its own worktree; the
+    // CURRENT_MAIN runtime claim always names .preview/main. Ownership
+    // belongs to the OPENER, not to the runtime's checkout.
+    const opened = runOpen(
+      { purpose: 'CURRENT_MAIN', expectedSha: 'e'.repeat(40), sidecarDir, worktree: '/repo/task-worktree', repoRoot },
+      {
+        resolveRuntime: () => ({ ok: true, claim: { sha: 'e'.repeat(40), url: 'http://127.0.0.1:43222', worktree: '/repo/.preview/main' } }),
+        preflight: () => ({ ok: true, code: 0 }),
+        playwrightOpen: (args) => playwrightCliOpen({ ...args, cwd: process.cwd() }),
+        playwrightVersion: () => playwrightCliVersion({ cwd: process.cwd() }),
+        now: () => '2026-08-19T00:00:00.000Z',
+      },
+    )
+    expect(opened.ok).toBe(true)
+
+    // The two facts are recorded distinctly and must not be conflated:
+    const sidecar = readSidecar(sidecarDir, opened.sessionName)
+    expect(sidecar.worktree).toBe('/repo/.preview/main') // runtime provenance — unchanged meaning
+    expect(sidecar.ownerWorkspace).toBe('/repo/task-worktree') // session ownership — the opener
+
+    // A foreign workspace must refuse (and .preview/main itself IS foreign here:
+    // nothing ever opened a session from inside the preview checkout).
+    const foreign = runClose(
+      { sessionName: opened.sessionName, sidecarDir, worktree: '/repo/.preview/main' },
+      { playwrightClose: () => playwrightCliClose({ sessionName: opened.sessionName, cwd: process.cwd() }) },
+    )
+    expect(foreign.ok).toBe(false)
+    expect(foreign.code).toBe(2)
+    expect(readSidecar(sidecarDir, opened.sessionName)).not.toBeNull()
+
+    // The workspace that actually opened it closes it fine — the exact
+    // operation Tech Review proved impossible in the previous candidate.
+    const owner = runClose(
+      { sessionName: opened.sessionName, sidecarDir, worktree: '/repo/task-worktree' },
+      { playwrightClose: () => playwrightCliClose({ sessionName: opened.sessionName, cwd: process.cwd() }) },
+    )
+    expect(owner.ok).toBe(true)
+    expect(owner.sidecarFound).toBe(true)
+    expect(readSidecar(sidecarDir, opened.sessionName)).toBeNull()
+  })
+
+  it('a pre-ownerWorkspace sidecar (written before the field existed) still closes best-effort — backward compatible by construction', () => {
+    const { writeSidecar } = sidecarStore
+    writeSidecar(sidecarDir, 'legacy-session', { sessionName: 'legacy-session', purpose: 'TASK_CANDIDATE', worktree: '/repo/somewhere-else', url: 'http://127.0.0.1:43223' })
+
+    const closed = runClose(
+      { sessionName: 'legacy-session', sidecarDir, worktree: '/repo/task-worktree' },
+      { playwrightClose: () => playwrightCliClose({ sessionName: 'legacy-session', cwd: process.cwd() }) },
+    )
+    expect(closed.ok).toBe(true)
+    expect(closed.sidecarFound).toBe(true)
+    expect(readSidecar(sidecarDir, 'legacy-session')).toBeNull()
   })
 })

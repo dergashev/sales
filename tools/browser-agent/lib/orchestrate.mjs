@@ -74,7 +74,17 @@ export function runOpen(opts, deps) {
     lane: lane ?? null,
     expectedSha,
     actualSha: claim.sha,
+    // RUNTIME provenance: the worktree the dev server actually serves
+    // (.preview/main for CURRENT_MAIN; the caller's own worktree for
+    // candidate purposes). Read by browser:agent:status and Review/QA/
+    // Release as runtime identity — its meaning must not change.
     worktree: claim.worktree ?? worktree,
+    // SESSION ownership: the workspace this `open` was invoked from — the
+    // root the real CLI hashed into its per-workspace session registry.
+    // This, never `worktree` above, is what authorizes a later close
+    // (verifyCloseOwnership): the two coincide for candidate purposes but
+    // structurally differ for CURRENT_MAIN.
+    ownerWorkspace: worktree ?? null,
     url: claim.url,
     playwrightCliVersion: deps.playwrightVersion(),
     status: 'OPEN',
@@ -112,9 +122,11 @@ export function runClose(opts, deps) {
   const { sessionName, sidecarDir, worktree } = opts
   const sidecar = readSidecar(sidecarDir, sessionName)
 
-  // Engineering QA P1: verify ownership from the sidecar's OWN recorded
-  // worktree before ever invoking the real CLI — a wrong-worktree close
-  // attempt must never be allowed to masquerade as success (see
+  // Engineering QA P1: verify ownership from the sidecar's recorded
+  // ownerWorkspace (the workspace its `open` actually ran from — NOT its
+  // `worktree` field, which is runtime provenance and differs for
+  // CURRENT_MAIN) before ever invoking the real CLI — a wrong-workspace
+  // close attempt must never be allowed to masquerade as success (see
   // verifyCloseOwnership's docblock for why the CLI's own exit code cannot
   // be trusted to distinguish the two cases).
   const ownership = verifyCloseOwnership(sidecar, worktree)
