@@ -34,6 +34,44 @@ export function classifyRuntimeStep({ step, exitCode }) {
 }
 
 /**
+ * Engineering Architecture D1: `npm run runtime:candidate -- --sha <sha>`
+ * (the already-released Runtime Provenance layer this task must not
+ * duplicate or silently patch) trusts a caller-supplied `--sha` verbatim —
+ * it never checks it against the worktree's actual `git rev-parse HEAD`.
+ * Forwarding an agent's `--expected-sha` straight through as `--sha` would
+ * therefore let a REVIEW_CANDIDATE/TASK_CANDIDATE session assert (and get
+ * `provenanceVerified: true` for) a sha the worktree is not actually
+ * running. This layer closes that hole on its own side of the boundary,
+ * BEFORE `runtime:candidate` is ever spawned: an explicit `--expected-sha`
+ * is treated purely as an assertion to verify against the real worktree
+ * HEAD, never as a value handed to the runtime layer. CURRENT_MAIN is not
+ * in scope here — `runtime:main` accepts no sha override at all, so it
+ * cannot be tricked the same way.
+ *
+ * @param {object} opts
+ * @param {string} opts.purpose - one of session-name.mjs's PURPOSES.
+ * @param {string} [opts.expectedSha] - the caller's asserted sha, if any (absent for an unpinned candidate call).
+ * @param {string|null} opts.actualHeadSha - `git rev-parse HEAD` for the worktree this call runs in, or null if it could not be resolved.
+ */
+export function verifyExpectedShaAgainstWorktree({ purpose, expectedSha, actualHeadSha }) {
+  if (purpose === 'CURRENT_MAIN' || !expectedSha) return { ok: true }
+  if (!actualHeadSha) {
+    return { ok: false, code: 3, reason: '"git rev-parse HEAD" failed for this worktree. Cannot verify the asserted --expected-sha.' }
+  }
+  if (expectedSha !== actualHeadSha) {
+    return {
+      ok: false,
+      code: 2,
+      reason:
+        `--expected-sha ${expectedSha} does not match this worktree's actual HEAD ${actualHeadSha}. Refusing to open a ${purpose} ` +
+        'browser session — the code actually checked out here is not the runtime the caller expects, and this layer never trusts a ' +
+        'caller-supplied sha over the worktree\'s own git state.',
+    }
+  }
+  return { ok: true }
+}
+
+/**
  * Session-name collision handling (ticket "SESSION REUSE" / "NO PORT
  * AUTHORITY"). Because session names are sha-keyed (session-name.mjs), the
  * only way an EXISTING sidecar can share a name with the session about to

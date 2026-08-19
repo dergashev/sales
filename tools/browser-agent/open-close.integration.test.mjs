@@ -24,17 +24,20 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { runClose, runOpen } from './lib/orchestrate.mjs'
 import { playwrightCliClose, playwrightCliOpen, playwrightCliVersion } from './lib/playwright-cli-bridge.mjs'
 import { readSidecar, listSidecars } from './lib/sidecar-store.mjs'
+import { sessionArtifactsDir, provenanceFilePath } from './lib/artifacts-dir.mjs'
 
 const FIXTURE = fileURLToPath(new URL('./lib/test-fixtures/fake-playwright-cli.mjs', import.meta.url))
 const SHA = 'c'.repeat(40)
 
 let sidecarDir
+let repoRoot
 let logPath
 let originalBin
 let originalLog
 
 beforeEach(() => {
   sidecarDir = mkdtempSync(path.join(tmpdir(), 'browser-agent-sidecars-'))
+  repoRoot = mkdtempSync(path.join(tmpdir(), 'browser-agent-repo-root-'))
   logPath = path.join(mkdtempSync(path.join(tmpdir(), 'browser-agent-fake-cli-log-')), 'invocations.log')
   originalBin = process.env.A3_PLAYWRIGHT_CLI_BIN
   originalLog = process.env.A3_FAKE_PLAYWRIGHT_LOG
@@ -44,6 +47,7 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(sidecarDir, { recursive: true, force: true })
+  rmSync(repoRoot, { recursive: true, force: true })
   rmSync(path.dirname(logPath), { recursive: true, force: true })
   if (originalBin === undefined) delete process.env.A3_PLAYWRIGHT_CLI_BIN
   else process.env.A3_PLAYWRIGHT_CLI_BIN = originalBin
@@ -69,7 +73,7 @@ describe('browser-agent open -> sidecar -> close lifecycle (hermetic)', () => {
   it('open: really spawns the pinned CLI with the right argv, and writes a correct sidecar', () => {
     const url = 'http://127.0.0.1:43217'
     const result = runOpen(
-      { purpose: 'TASK_CANDIDATE', lane: 'engineering', expectedSha: SHA, persistent: false, sidecarDir, worktree: '/repo/task-worktree' },
+      { purpose: 'TASK_CANDIDATE', lane: 'engineering', expectedSha: SHA, persistent: false, sidecarDir, worktree: '/repo/task-worktree', repoRoot },
       {
         ...verifiedRuntimeDeps(url),
         playwrightOpen: (args) => playwrightCliOpen({ ...args, cwd: process.cwd() }),
@@ -86,6 +90,8 @@ describe('browser-agent open -> sidecar -> close lifecycle (hermetic)', () => {
     const invocations = loggedInvocations()
     expect(invocations).toEqual([[`-s=${result.sessionName}`, 'open', url], ['--version']])
 
+    const expectedOutputDir = sessionArtifactsDir(repoRoot, result.sessionName)
+
     // Real sidecar, really on disk.
     const sidecar = readSidecar(sidecarDir, result.sessionName)
     expect(sidecar).toMatchObject({
@@ -99,7 +105,56 @@ describe('browser-agent open -> sidecar -> close lifecycle (hermetic)', () => {
       status: 'OPEN',
       provenanceVerified: true,
       playwrightCliVersion: 'Version 0.0.0-fake',
+      outputDir: expectedOutputDir,
     })
+
+    // D2: a candidate-identifiable per-session artifact dir + provenance
+    // sidecar, so a screenshot/snapshot/trace dropped in this exact
+    // directory by the (real) CLI can never be confused with another
+    // session's evidence.
+    const provenance = JSON.parse(readFileSync(provenanceFilePath(expectedOutputDir), 'utf8'))
+    expect(provenance).toMatchObject({
+      sessionName: result.sessionName,
+      purpose: 'TASK_CANDIDATE',
+      expectedSha: SHA,
+      actualSha: SHA,
+      worktree: '/repo/task-worktree',
+      url,
+    })
+  })
+
+  it('two concurrent sessions at different shas get distinct, non-colliding artifact directories', () => {
+    const shaA = 'a'.repeat(40)
+    const shaB = 'b'.repeat(40)
+    const openedA = runOpen(
+      { purpose: 'REVIEW_CANDIDATE', lane: 'engineering-qa', expectedSha: shaA, sidecarDir, worktree: '/repo/wt-a', repoRoot },
+      {
+        resolveRuntime: () => ({ ok: true, claim: { sha: shaA, url: 'http://127.0.0.1:44001', worktree: '/repo/wt-a' } }),
+        preflight: () => ({ ok: true, code: 0 }),
+        playwrightOpen: (args) => playwrightCliOpen({ ...args, cwd: process.cwd() }),
+        playwrightVersion: () => playwrightCliVersion({ cwd: process.cwd() }),
+        now: () => '2026-08-19T00:00:00.000Z',
+      },
+    )
+    const openedB = runOpen(
+      { purpose: 'REVIEW_CANDIDATE', lane: 'engineering-qa', expectedSha: shaB, sidecarDir, worktree: '/repo/wt-b', repoRoot },
+      {
+        resolveRuntime: () => ({ ok: true, claim: { sha: shaB, url: 'http://127.0.0.1:44002', worktree: '/repo/wt-b' } }),
+        preflight: () => ({ ok: true, code: 0 }),
+        playwrightOpen: (args) => playwrightCliOpen({ ...args, cwd: process.cwd() }),
+        playwrightVersion: () => playwrightCliVersion({ cwd: process.cwd() }),
+        now: () => '2026-08-19T00:00:01.000Z',
+      },
+    )
+
+    expect(openedA.ok).toBe(true)
+    expect(openedB.ok).toBe(true)
+    expect(openedA.record.outputDir).not.toBe(openedB.record.outputDir)
+
+    const provenanceA = JSON.parse(readFileSync(provenanceFilePath(openedA.record.outputDir), 'utf8'))
+    const provenanceB = JSON.parse(readFileSync(provenanceFilePath(openedB.record.outputDir), 'utf8'))
+    expect(provenanceA.actualSha).toBe(shaA)
+    expect(provenanceB.actualSha).toBe(shaB)
   })
 
   it('a failed preflight refuses closed and never invokes the pinned CLI at all', () => {

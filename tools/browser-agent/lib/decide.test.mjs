@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { classifyRuntimeStep, classifySidecarFreshness, decideSessionAction, isPreflightVerified, parseRuntimeUrl, planClose } from './decide.mjs'
+import { classifyRuntimeStep, classifySidecarFreshness, decideSessionAction, isPreflightVerified, parseRuntimeUrl, planClose, verifyExpectedShaAgainstWorktree } from './decide.mjs'
 
 describe('isPreflightVerified — refuse-on-nonzero-preflight', () => {
   it('exit 0 is the ONLY verified outcome', () => {
@@ -87,6 +87,43 @@ describe('planClose — close-only-own-sidecar', () => {
     const plan = planClose({ sessionName: 'ghost-session', allSidecarNames: ['review-qa-def987654321'] })
     expect(plan.toRemove).toEqual(['ghost-session'])
     expect(plan.untouched).toEqual(['review-qa-def987654321'])
+  })
+})
+
+describe('verifyExpectedShaAgainstWorktree — D1: never trust a caller-asserted candidate sha over the worktree\'s own HEAD', () => {
+  const A = 'a'.repeat(40)
+  const B = 'b'.repeat(40)
+
+  it('CURRENT_MAIN is never verified here — runtime:main accepts no sha override at all, so it cannot be tricked the same way', () => {
+    expect(verifyExpectedShaAgainstWorktree({ purpose: 'CURRENT_MAIN', expectedSha: B, actualHeadSha: A })).toEqual({ ok: true })
+  })
+
+  it('no --expected-sha asserted -> nothing to verify, ok (runtime:candidate will derive the worktree HEAD itself)', () => {
+    expect(verifyExpectedShaAgainstWorktree({ purpose: 'TASK_CANDIDATE', expectedSha: undefined, actualHeadSha: A })).toEqual({ ok: true })
+  })
+
+  it('asserted sha matches the worktree HEAD -> ok', () => {
+    expect(verifyExpectedShaAgainstWorktree({ purpose: 'REVIEW_CANDIDATE', expectedSha: A, actualHeadSha: A })).toEqual({ ok: true })
+  })
+
+  it('ticket case G/I: expected sha A, worktree actually at B -> refuse closed with PROVENANCE (2), never silently proceeds', () => {
+    const result = verifyExpectedShaAgainstWorktree({ purpose: 'REVIEW_CANDIDATE', expectedSha: A, actualHeadSha: B })
+    expect(result.ok).toBe(false)
+    expect(result.code).toBe(2)
+    expect(result.reason).toMatch(new RegExp(A))
+    expect(result.reason).toMatch(new RegExp(B))
+  })
+
+  it('TASK_CANDIDATE gets the same protection as REVIEW_CANDIDATE', () => {
+    const result = verifyExpectedShaAgainstWorktree({ purpose: 'TASK_CANDIDATE', expectedSha: A, actualHeadSha: B })
+    expect(result.ok).toBe(false)
+    expect(result.code).toBe(2)
+  })
+
+  it('worktree HEAD itself unresolvable -> LIFECYCLE (3), not a silent pass', () => {
+    const result = verifyExpectedShaAgainstWorktree({ purpose: 'TASK_CANDIDATE', expectedSha: A, actualHeadSha: null })
+    expect(result.ok).toBe(false)
+    expect(result.code).toBe(3)
   })
 })
 

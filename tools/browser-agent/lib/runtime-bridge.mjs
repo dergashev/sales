@@ -26,7 +26,7 @@ import path from 'node:path'
 import { git, gitCommonDir, headSha } from '../../gate/lib/git-worktrees.mjs'
 import { defaultPreviewStatePath } from '../../worktrees/lib/preview-state.mjs'
 import { defaultRegistryPath, listClaims, resolveCurrentMainClaim, runtimeId } from '../../runtime/lib/registry.mjs'
-import { classifyRuntimeStep } from './decide.mjs'
+import { classifyRuntimeStep, verifyExpectedShaAgainstWorktree } from './decide.mjs'
 
 /** Repo paths this bridge needs, resolved once from `cwd`. */
 export function resolveRepoContext(cwd) {
@@ -56,10 +56,26 @@ function runNpmScript(args, { cwd }) {
  */
 export function startOrResolveRuntime({ purpose, ctx, expectedSha }) {
   const step = purpose === 'CURRENT_MAIN' ? 'npm run runtime:main' : 'npm run runtime:candidate'
+
+  // D1 (Engineering Architecture handoff): verify BEFORE ever spawning
+  // "runtime:candidate" — an asserted --expected-sha that does not match
+  // this worktree's real HEAD must fail closed here, without starting any
+  // process and without ever opening a browser.
+  const actualHeadSha = purpose === 'CURRENT_MAIN' ? null : headSha(ctx.cwd)
+  const verified = verifyExpectedShaAgainstWorktree({ purpose, expectedSha, actualHeadSha })
+  if (!verified.ok) return { ok: false, code: verified.code, reason: verified.reason }
+
   const result =
     purpose === 'CURRENT_MAIN'
       ? runNpmScript(['runtime:main'], { cwd: ctx.cwd })
-      : runNpmScript(['runtime:candidate', '--', '--purpose', purpose, '--sha', expectedSha], { cwd: ctx.cwd })
+      // Never forward the caller's --expected-sha as runtime:candidate's
+      // --sha: that CLI trusts --sha verbatim without checking it against
+      // the worktree (a standing gap in the released Runtime Provenance
+      // layer, out of scope here). Omitting it lets runtime:candidate
+      // derive the sha itself from this exact worktree's real HEAD — the
+      // same value `verified` above just confirmed the caller's assertion
+      // (if any) actually matches.
+      : runNpmScript(['runtime:candidate', '--', '--purpose', purpose], { cwd: ctx.cwd })
 
   if (result.error) return { ok: false, code: 4, reason: `Could not spawn "${step}": ${result.error.message}` }
   const classified = classifyRuntimeStep({ step, exitCode: result.status })

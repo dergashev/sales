@@ -15,22 +15,27 @@
 // Any failure at step 1 or 2 means step 3 never runs — no fallback URL, no
 // browser opened against unverified evidence.
 
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { deriveSessionName } from './session-name.mjs'
 import { decideSessionAction } from './decide.mjs'
 import { readSidecar, removeSidecar, writeSidecar } from './sidecar-store.mjs'
+import { sessionArtifactsDir, provenanceFilePath } from './artifacts-dir.mjs'
 import { EXIT } from './exit-codes.mjs'
 
 /**
- * @param {object} opts - { purpose, lane, expectedSha, persistent, cwd, sidecarDir, worktree }
+ * @param {object} opts - { purpose, lane, expectedSha, persistent, cwd, sidecarDir, worktree, repoRoot }
+ *   repoRoot is optional: when omitted (e.g. a caller that does not need candidate-identifiable
+ *   artifacts), no per-session outputDir/provenance.json is set up — `playwrightOpen` simply
+ *   receives no `outputDir` and the CLI falls back to its own tracked-config default.
  * @param {object} deps - { resolveRuntime, preflight, playwrightOpen, playwrightVersion, now }
  *   resolveRuntime({ purpose, expectedSha }) -> { ok, claim?, code?, reason? }
  *   preflight({ expectedPurpose, expectedSha, url }) -> { ok, code? }
- *   playwrightOpen({ sessionName, url, persistent }) -> { ok, code?, reason? }
+ *   playwrightOpen({ sessionName, url, persistent, outputDir }) -> { ok, code?, reason? }
  *   playwrightVersion() -> string|null
  *   now() -> ISO timestamp string
  */
 export function runOpen(opts, deps) {
-  const { purpose, lane, expectedSha, persistent, sidecarDir, worktree } = opts
+  const { purpose, lane, expectedSha, persistent, sidecarDir, worktree, repoRoot } = opts
 
   const runtime = deps.resolveRuntime({ purpose, expectedSha })
   if (!runtime.ok) return { ok: false, code: runtime.code ?? EXIT.PROVENANCE, message: runtime.reason }
@@ -52,7 +57,12 @@ export function runOpen(opts, deps) {
     return { ok: false, code: EXIT.PROVENANCE, message: decision.reason }
   }
 
-  const opened = deps.playwrightOpen({ sessionName, url: claim.url, persistent: Boolean(persistent) })
+  // D2: bind this session to its own candidate-identifiable artifact
+  // directory BEFORE opening — the daemon `open` spawns only ever reads
+  // PLAYWRIGHT_MCP_OUTPUT_DIR once, at creation (see playwright-cli-bridge.mjs).
+  const outputDir = repoRoot ? sessionArtifactsDir(repoRoot, sessionName) : null
+
+  const opened = deps.playwrightOpen({ sessionName, url: claim.url, persistent: Boolean(persistent), outputDir })
   if (!opened.ok) {
     return { ok: false, code: opened.code ?? EXIT.TOOLING, message: opened.reason ?? `playwright-cli exited ${opened.code} opening session "${sessionName}".` }
   }
@@ -70,10 +80,23 @@ export function runOpen(opts, deps) {
     status: 'OPEN',
     provenanceVerified: true,
     persistent: Boolean(persistent),
+    outputDir,
     createdAt: existingSidecar?.createdAt ?? now,
     updatedAt: now,
   }
   writeSidecar(sidecarDir, sessionName, record)
+
+  if (outputDir) {
+    // Best-effort, same spirit as the sidecar above: candidate-identifiable
+    // evidence living NEXT TO whatever snapshots/screenshots/traces the CLI
+    // itself writes into this exact directory, naming the same fields as
+    // the sidecar so a human/agent never has to cross-reference two stores.
+    mkdirSync(outputDir, { recursive: true })
+    writeFileSync(
+      provenanceFilePath(outputDir),
+      `${JSON.stringify({ sessionName, purpose, expectedSha, actualSha: claim.sha, worktree: claim.worktree ?? worktree, url: claim.url, createdAt: now }, null, 2)}\n`,
+    )
+  }
 
   return { ok: true, code: EXIT.OK, sessionName, record, reused: decision.action === 'reuse' }
 }

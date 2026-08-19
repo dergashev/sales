@@ -42,7 +42,7 @@ as the fallback for any runtime that does not.
 | Command | Does |
 |---|---|
 | `npm run browser:agent:open -- --purpose <P> [--lane <lane>] [--expected-sha <sha>] [--persistent]` | Resolve/start the runtime for `<P>`, require the browser-consumer preflight to pass, then open a named Playwright CLI session bound to it. |
-| `npm run browser:agent:status` | Non-mutating: lists every tracked session, its purpose/lane/sha/url, and whether it is still CURRENT or SUPERSEDED. |
+| `npm run browser:agent:status` | Non-mutating: an ENVIRONMENT block (pinned CLI version, per-target skill installed/up-to-date), then every tracked session — purpose/lane/sha/url/artifact dir, and whether it is still CURRENT or SUPERSEDED. |
 | `npm run browser:agent:close -- --session <name>` | Closes exactly that one session and removes exactly its own sidecar. Never `close-all`/`kill-all`. |
 | `npm run browser:agent:show` | Official `playwright-cli show` dashboard (session grid + live remote control). Observability only — it does not establish provenance. |
 
@@ -57,22 +57,35 @@ a structural singleton).
 
 ## Handshake (every `open`)
 
-1. `npm run runtime:main` (CURRENT_MAIN) or `npm run runtime:candidate`
+1. If the caller passed `--expected-sha` for a TASK_CANDIDATE/REVIEW_CANDIDATE
+   `open`, it is verified against THIS worktree's own `git rev-parse HEAD`
+   first — before anything else runs. A mismatch refuses closed (exit 2,
+   `PROVENANCE`) without starting any process and without ever opening a
+   browser. This exists because `npm run runtime:candidate -- --sha <sha>`
+   (the already-released Runtime Provenance layer) trusts a caller-supplied
+   `--sha` verbatim and does not itself check it against the worktree — a
+   standing gap in that layer, tracked separately, not fixed here. This
+   layer never forwards the caller's asserted sha to `runtime:candidate`;
+   once verified (or when unset), `runtime:candidate` always derives the sha
+   itself from this exact worktree's HEAD.
+2. `npm run runtime:main` (CURRENT_MAIN) or `npm run runtime:candidate`
    (TASK_CANDIDATE/REVIEW_CANDIDATE) — the existing Runtime Provenance CLI,
    invoked exactly as documented there.
-2. Read the claim that command itself just wrote, via the Runtime
+3. Read the claim that command itself just wrote, via the Runtime
    Provenance registry's own exported functions
    (`tools/runtime/lib/registry.mjs`) — never by parsing the command's
    stdout.
-3. `npm run runtime:preflight` against that claim's URL. **Only its exit
+4. `npm run runtime:preflight` against that claim's URL. **Only its exit
    code is read.** The official Playwright CLI does document a global
    `--json` flag, and this layer does not use it here; the Runtime
    Provenance CLI has no `--json` output at all. Either way, this layer
    never parses either command's stdout — human-readable or JSON — for a
    provenance-critical decision; the exit code is the only signal trusted.
    Non-zero → refuse closed, no browser is opened.
-4. Only once preflight passes: `playwright-cli -s=<session> open <url>`,
-   then a sidecar record is written to
+5. Only once preflight passes: `playwright-cli -s=<session> open <url>`
+   (with `NO_UPDATE_NOTIFIER=1` and, for this exact session,
+   `PLAYWRIGHT_MCP_OUTPUT_DIR` pointed at that session's own artifact
+   directory — see below), then a sidecar record is written to
    `.artifacts/browser-agent-sessions/<session>.json` (already
    git-ignored via `.artifacts/`).
 
@@ -85,9 +98,21 @@ a structural singleton).
   `tests/browser/playwright.config.ts` (the repository's existing
   authoritative desktop contract) — this layer does not bypass or
   reinterpret that contract, it reuses the same numbers.
-- Snapshots/screenshots/traces/videos land under `.artifacts/browser-agent/`
-  (`outputDir` in the tracked config) — already git-ignored, never
-  committed unless a repository policy explicitly requires it.
+- Every session's snapshots/screenshots/traces/videos land under their OWN
+  `.artifacts/browser-agent/<session-name>/` (a per-session subdirectory of
+  the tracked config's flat `outputDir`, bound via `PLAYWRIGHT_MCP_OUTPUT_DIR`
+  at `open` time — confirmed against the installed `@playwright/cli` 0.1.18 /
+  `playwright-core` source that this env var is read once, at daemon
+  creation, and the daemon then inherits it for the rest of that named
+  session's life; later `-s=<name> screenshot|tracing-start|...` calls talk
+  to the same already-running daemon and never re-read it), next to a
+  `provenance.json` this layer writes at `open` naming `sessionName`,
+  `purpose`, `expectedSha`, `actualSha`, `worktree`, and `url`. Already
+  git-ignored via `.artifacts/`, never committed unless a repository policy
+  explicitly requires it. Two sessions — even at different shas, even
+  concurrently — never share a directory.
+- `npm run browser:agent:status` shows each session's artifact directory
+  alongside its purpose/sha/url.
 
 ## Update policy
 
@@ -96,7 +121,13 @@ tooling change (Review/QA), never an incidental side effect of a product
 task. After bumping: re-run `npm install` and `npm run browser:agent:setup`
 — the CLI itself checks the installed skill against its own bundled version
 on every invocation (except `install`) and prints a warning if they drift,
-so a forgotten re-setup after a version bump is not silent.
+so a forgotten re-setup after a version bump is not silent; `npm run
+browser:agent:status`'s ENVIRONMENT block surfaces the same drift check on
+demand, without needing to trigger a real CLI invocation first. Every spawn
+of the real CLI from this layer also sets `NO_UPDATE_NOTIFIER=1` — this only
+suppresses the CLI's own "a newer version exists on npm" network check
+(irrelevant to a pinned, repository-controlled dependency); it has no effect
+on the local skill-drift check above, which stays active.
 
 ## Non-goals (see the ticket for the full list)
 

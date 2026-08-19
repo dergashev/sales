@@ -71,11 +71,11 @@ function main() {
   const sidecarDir = defaultSidecarDir(ctx.repoRoot)
 
   const result = runOpen(
-    { purpose, lane: typeof args.lane === 'string' ? args.lane : undefined, expectedSha, persistent: Boolean(args.persistent), sidecarDir, worktree: ctx.worktree },
+    { purpose, lane: typeof args.lane === 'string' ? args.lane : undefined, expectedSha, persistent: Boolean(args.persistent), sidecarDir, worktree: ctx.worktree, repoRoot: ctx.repoRoot },
     {
       resolveRuntime: ({ purpose: p, expectedSha: sha }) => startOrResolveRuntime({ purpose: p, ctx, expectedSha: sha }),
       preflight: ({ expectedPurpose, expectedSha: sha, url }) => runPreflight({ expectedPurpose, expectedSha: sha, url, cwd: ctx.cwd }),
-      playwrightOpen: ({ sessionName, url, persistent }) => playwrightCliOpen({ sessionName, url, persistent, cwd: ctx.cwd }),
+      playwrightOpen: ({ sessionName, url, persistent, outputDir }) => playwrightCliOpen({ sessionName, url, persistent, outputDir, cwd: ctx.cwd }),
       playwrightVersion: () => playwrightCliVersion({ cwd: ctx.cwd }),
       now: () => new Date().toISOString(),
     },
@@ -95,6 +95,7 @@ function main() {
   console.log(`  URL                  : ${result.record.url}`)
   console.log(`  PLAYWRIGHT CLI       : ${result.record.playwrightCliVersion ?? 'UNKNOWN'}`)
   console.log(`  PROVENANCE VERIFIED  : ${result.record.provenanceVerified}`)
+  console.log(`  ARTIFACT DIRECTORY   : ${result.record.outputDir ?? '(default — see .playwright/cli.config.json)'}`)
   process.exit(EXIT.OK)
 }
 

@@ -18,6 +18,7 @@ import { git, gitCommonDir } from '../gate/lib/git-worktrees.mjs'
 import { defaultManifestPath, readManifest } from '../gate/lib/manifest.mjs'
 import { listSidecars, defaultSidecarDir } from './lib/sidecar-store.mjs'
 import { classifySidecarFreshness } from './lib/decide.mjs'
+import { checkSkillReadiness } from './lib/skill-status.mjs'
 import { EXIT } from './lib/exit-codes.mjs'
 
 function currentExpectedSha({ sidecar, cwd, commonDir }) {
@@ -41,6 +42,15 @@ function main() {
   console.log('BROWSER-AGENT SESSION STATUS')
   console.log(`  SIDECAR DIRECTORY : ${sidecarDir}`)
 
+  const readiness = checkSkillReadiness(cwd)
+  console.log('\nENVIRONMENT')
+  console.log(`  PINNED @playwright/cli : ${readiness.version ?? 'UNRESOLVED (could not require it from this checkout)'}`)
+  for (const target of readiness.targets) {
+    const label = !target.installed ? 'NOT INSTALLED' : target.upToDate === false ? 'DRIFTED (stale vs. pinned CLI)' : target.upToDate === true ? 'up to date' : 'UNKNOWN (bundled skill unresolvable)'
+    console.log(`  skill (${target.name})   : ${label} — ${target.dir}`)
+    if (target.installed && target.upToDate === false) console.log(`      -> run \`npm run browser:agent:setup\` (${target.command}) to refresh it.`)
+  }
+
   if (sidecars.length === 0) {
     console.log('  (no tracked sessions)')
     process.exit(EXIT.OK)
@@ -55,6 +65,7 @@ function main() {
     console.log(`      lane      : ${sidecar.lane ?? '(none)'}`)
     console.log(`      sha       : ${sidecar.actualSha ?? 'UNKNOWN'}`)
     console.log(`      url       : ${sidecar.url ?? 'UNKNOWN'}`)
+    console.log(`      artifacts : ${sidecar.outputDir ?? '(default)'}`)
     console.log(`      cli       : ${sidecar.playwrightCliVersion ?? 'UNKNOWN'}`)
     console.log(`      freshness : ${freshness}${freshness === 'SUPERSEDED' ? ` (current expected sha is ${expectedNow})` : ''}`)
     console.log(`      updated   : ${sidecar.updatedAt ?? 'UNKNOWN'}`)
