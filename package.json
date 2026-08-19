@@ -16,7 +16,13 @@
     "gate:declare": "node tools/gate/declare-candidate.mjs",
     "dev:main": "node tools/worktrees/dev-main.mjs",
     "git:worktrees:check": "node tools/worktrees/check.mjs",
-    "release:worktree:cleanup": "node tools/worktrees/release-cleanup.mjs"
+    "release:worktree:cleanup": "node tools/worktrees/release-cleanup.mjs",
+    "runtime:main": "node tools/runtime/main.mjs main",
+    "runtime:candidate": "node tools/runtime/main.mjs candidate",
+    "runtime:stop": "node tools/runtime/main.mjs stop",
+    "runtime:status": "node tools/runtime/main.mjs status",
+    "runtime:preflight": "node tools/runtime/main.mjs preflight",
+    "task:base": "node tools/runtime/main.mjs task-base"
   },
   "dependencies": {
     "decimal.js": "^10.4.3",

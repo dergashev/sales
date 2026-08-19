@@ -41,64 +41,25 @@
  * git lifecycle failure · 4 npm/install failure.
  */
 
-import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync } from 'node:fs'
-import { spawn, spawnSync } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
+import { existsSync } from 'node:fs'
+import { spawn } from 'node:child_process'
 import path from 'node:path'
 
-import { dirtyEntries, git, gitCommonDir, headSha, listWorktrees, samePath } from '../gate/lib/git-worktrees.mjs'
+import { dirtyEntries, git, gitCommonDir, listWorktrees, samePath } from '../gate/lib/git-worktrees.mjs'
 import { planPreviewRefresh } from './lib/worktree-lifecycle.mjs'
 import { defaultPreviewStatePath, readPreviewState, updatePreviewState, withPreviewStateLock, writePreviewStateRaw } from './lib/preview-state.mjs'
 import { findFreePort } from './lib/free-port.mjs'
+import { pidIsAlive } from '../runtime/lib/pid.mjs'
+import { ensureDependenciesLocked } from '../runtime/lib/dependencies.mjs'
+import { applyPreviewRefreshPlan } from '../runtime/lib/checkout-mutation.mjs'
+import { defaultRegistryPath, putRuntimeClaim, runtimeId } from '../runtime/lib/registry.mjs'
 
 const EXIT = { OK: 0, PROVENANCE: 2, LIFECYCLE: 3, TOOLING: 4 }
 
 function fail(code, message) {
   console.error(`\n[dev:main] ${code === EXIT.PROVENANCE ? 'PROVENANCE REFUSAL' : code === EXIT.TOOLING ? 'TOOLING FAILURE' : 'LIFECYCLE FAILURE'} (exit ${code}): ${message}`)
   process.exit(code)
-}
-
-/** True if `pid` (recorded by a prior dev:main run) is still alive. Mirrors
- *  tools/gate/lib/manifest-lock.mjs's own same-host liveness probe: signal 0
- *  never delivers, it only asks the kernel whether the pid still exists;
- *  EPERM means it exists but is owned by another user (still alive). */
-function pidIsAlive(pid) {
-  if (!pid) return false
-  try {
-    process.kill(pid, 0)
-    return true
-  } catch (err) {
-    return err.code === 'EPERM'
-  }
-}
-
-function lockfileHash(dir) {
-  const lockPath = path.join(dir, 'package-lock.json')
-  if (!existsSync(lockPath)) return null
-  return createHash('sha256').update(readFileSync(lockPath)).digest('hex')
-}
-
-/**
- * Installs dependencies only when needed. Deliberately synchronous
- * (spawnSync throughout) so it can run INSIDE the withPreviewStateLock
- * critical section below — reads/writes state directly via the lock-free
- * primitives, never via `updatePreviewState` (which would try to re-acquire
- * the same lock this function is already called under).
- */
-function ensureDependenciesLocked(previewDir, statePath) {
-  const currentHash = lockfileHash(previewDir)
-  const state = readPreviewState(statePath) || {}
-  const needsInstall = !existsSync(path.join(previewDir, 'node_modules')) || state.installedLockHash !== currentHash
-
-  if (!needsInstall) return
-
-  console.log(`[dev:main] installing dependencies in ${previewDir} (npm ci)...`)
-  const result = spawnSync('npm', ['ci'], { cwd: previewDir, stdio: 'inherit', env: process.env })
-  if (result.error || result.status !== 0) {
-    fail(EXIT.TOOLING, `"npm ci" failed in ${previewDir}. If npm is not on PATH, export PATH="$HOME/.local/bin:$PATH" (see project memory: global/conventions/validation-and-release-gates.md).`)
-    return
-  }
-  writePreviewStateRaw(statePath, { ...(readPreviewState(statePath) || {}), installedLockHash: currentHash })
 }
 
 async function main() {
@@ -157,51 +118,17 @@ async function main() {
       )
     }
 
-    if (plan.action === 'recreate') {
-      // Git itself reports this registration prunable (directory/gitdir
-      // gone) — never seen in dev:main's own normal lifecycle, but if the
-      // preview was hand-deleted outside this tool, prune first (git-native)
-      // then fall through to the same creation path as a brand-new preview.
-      console.log(`[dev:main] ${plan.reason}`)
-      const prune = spawnSync('git', ['worktree', 'prune'], { cwd: repoRoot, stdio: 'inherit' })
-      if (prune.status !== 0) return fail(EXIT.LIFECYCLE, `"git worktree prune" failed for ${previewPath}.`)
-      // Tech Review P2-2: prune exits 0 even when it prunes nothing (e.g. a
-      // locked entry) — verify the registration is actually gone before
-      // treating "recreate" as safe to proceed with "add".
-      const afterPrune = listWorktrees(repoRoot)
-      if (afterPrune === null) return fail(EXIT.LIFECYCLE, '"git worktree list --porcelain" failed after prune.')
-      const stillThere = afterPrune.some((w) => samePath(w.path, previewPath))
-      if (stillThere) {
-        return fail(
-          EXIT.LIFECYCLE,
-          `"git worktree prune" reported success but "${previewPath}" is still registered (commonly: it is locked). ` +
-            'Run "npm run git:worktrees:check" for the lock reason; this cannot be resolved automatically.',
-        )
-      }
-    }
+    // The actual git plumbing for "make the checkout equal `plan`" is
+    // shared with `runtime:main` (tools/runtime/lib/checkout-mutation.mjs)
+    // — the Engineering Architecture handoff's "dev:main delegates to the
+    // one shared lifecycle" requirement. Same re-verification-after-
+    // mutation discipline as before: never trust the action just taken.
+    const applied = applyPreviewRefreshPlan({ plan, previewPath, repoRoot, mainSha, log: (msg) => console.log(msg.replace('[runtime]', '[dev:main]')) })
+    if (!applied.ok) return fail(applied.code, applied.message)
+    const head = applied.head
 
-    if (plan.action === 'create' || plan.action === 'recreate') {
-      console.log(`[dev:main] creating detached preview worktree at ${previewPath} (main @ ${mainSha})...`)
-      mkdirSync(path.dirname(previewPath), { recursive: true })
-      const add = spawnSync('git', ['worktree', 'add', '--detach', previewPath, mainSha], { cwd: repoRoot, stdio: 'inherit' })
-      if (add.status !== 0) return fail(EXIT.LIFECYCLE, `"git worktree add --detach" failed for ${previewPath}.`)
-    } else if (plan.action === 'checkout') {
-      console.log(`[dev:main] preview is clean at ${plan.from}; main has advanced to ${plan.sha} — refreshing.`)
-      const checkout = spawnSync('git', ['checkout', '--detach', plan.sha], { cwd: previewPath, stdio: 'inherit' })
-      if (checkout.status !== 0) return fail(EXIT.LIFECYCLE, `"git checkout --detach ${plan.sha}" failed in ${previewPath}.`)
-    } else if (plan.action === 'reuse') {
-      console.log(`[dev:main] preview already at current main (${plan.sha}); reusing.`)
-    }
-
-    // Re-verify after any mutation above — paranoia check, ticket §7: never
-    // trust the action we just took, re-derive from git one more time.
-    const head = headSha(previewPath)
-    if (head !== mainSha) {
-      fail(EXIT.PROVENANCE, `PREVIEW HEAD (${head}) does not equal CURRENT LOCAL MAIN (${mainSha}) after refresh. Refusing to serve a mismatched candidate.`)
-      return
-    }
-
-    ensureDependenciesLocked(previewPath, statePath)
+    const depsResult = ensureDependenciesLocked(previewPath, statePath)
+    if (!depsResult.ok) return fail(EXIT.TOOLING, depsResult.message)
 
     if (liveOwnerExists) {
       // Only reachable via "reuse" — a mutating action already refused
@@ -237,6 +164,37 @@ async function main() {
     updatePreviewState(statePath, (current) => ({ ...(current || {}), port }))
   }
 
+  // A single nonce, shared by the runtime-identity plugin's live echo and
+  // (when this run claims ownership) the new CURRENT_MAIN registry claim —
+  // so `runtime:status`/`runtime:main` can machine-verify a dev:main-started
+  // preview exactly the same way they verify one they started themselves,
+  // instead of leaving every dev:main-started runtime permanently
+  // UNVERIFIED. This is the "dev:main delegates to the one shared lifecycle"
+  // consolidation from the Engineering Architecture handoff: one registry,
+  // one identity plugin, regardless of which command started the server.
+  const nonce = randomUUID()
+  const startedAt = new Date().toISOString()
+  if (claimedOwnership) {
+    const registryPath = defaultRegistryPath(commonDir)
+    const id = runtimeId('CURRENT_MAIN', previewPath)
+    putRuntimeClaim(registryPath, id, {
+      purpose: 'CURRENT_MAIN',
+      sha: finalHead,
+      worktree: previewPath,
+      pid: process.pid,
+      port,
+      url: `http://127.0.0.1:${port}`,
+      nonce,
+      startedAt,
+      updatedAt: startedAt,
+      // NOT spawned with `detached: true` (this server runs in the
+      // foreground, `stdio: 'inherit'`) — a future `runtime:stop`/rotation
+      // of this claim must signal this exact pid only, never its process
+      // GROUP, which may be shared with an unrelated caller/terminal job.
+      detached: false,
+    })
+  }
+
   console.log('\nLOCAL MAIN PREVIEW')
   console.log(`\nMAIN SHA:\n${mainSha}`)
   console.log(`\nPREVIEW SHA:\n${finalHead}`)
@@ -248,7 +206,14 @@ async function main() {
   const server = spawn('npm', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', String(port), '--strictPort'], {
     cwd: previewPath,
     stdio: 'inherit',
-    env: process.env,
+    env: {
+      ...process.env,
+      A3_RUNTIME_NONCE: nonce,
+      A3_RUNTIME_PURPOSE: 'CURRENT_MAIN',
+      A3_RUNTIME_SHA: finalHead,
+      A3_RUNTIME_WORKTREE: previewPath,
+      A3_RUNTIME_STARTED_AT: startedAt,
+    },
   })
 
   server.on('error', (err) => {
