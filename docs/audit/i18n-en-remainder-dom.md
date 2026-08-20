@@ -5,7 +5,7 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 46** · перевод есть, мост не подключён: 26
+**Всего 45** · перевод есть, мост не подключён: 25
 · перевода нет (в поставку копирайта): 20
 
 ## Перевод есть — строка не проходит через мост (правится в src)
@@ -21,7 +21,6 @@
 - Projektparameter bestätigt (Gebäude, Flächen, Einheiten)
 - Residential area · WFL nach WoFlV: two candidates.
 - Schätzunsicherheit
-- Schätzunsicherheit ±
 - Sehr geehrte Damen und Herren,
 
 anbei erhalten Sie unser indikatives Angebot für das Musterprojekt Nordfeld.
