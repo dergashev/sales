@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { Decimal } from 'decimal.js'
 import { App } from '../../App'
 import { confirmBuildingReviewSections } from '../../test/offer-option'
 import { __resetStoreForTests, activeBuilding, useStore } from '../../state/store'
@@ -40,18 +41,29 @@ describe('Leistungsabgrenzung / Scope Boundaries (ticket d21f8d48)', () => {
       expect(within(screen.getByRole('radiogroup', { name: kg })).getAllByRole('radio'))
         .toHaveLength(2)
     }
+    const before = useStore.getState().projection().result.total.exact
     const kg300 = screen.getByRole('radiogroup', { name: /KG.300/ })
     await user.click(within(kg300).getAllByRole('radio')[1]!)
     expect(useStore.getState().coverage.KG_300).toBe('excluded')
     expect(useStore.getState().kg700Mode).toBe('hoaiAho')
     expect(useStore.getState().journal.at(-1)?.label).toContain('automatisch')
-    // D-07 authorises the method fallback, but no approved source defines
-    // a Bauwerk total with only one of KG 300 / 400 active. The frontend
-    // must therefore not manufacture an exclusion price from the display
-    // split; commercial completion remains blocked on that missing rule.
+    // Product Decision (ticket e2dac9b5, approved 2026-08-20, recorded on
+    // the ticket): excluding one core group prices the remaining one at
+    // its real, Referenzprojekt-R-02-audited echt share (76,2/23,8 —
+    // decisions.md D-07); the deduction is derived from the amount BEFORE
+    // this click, never by re-splitting an already-reduced figure.
     const projection = useStore.getState().projection()
-    expect(projection.kgSplit.KG_300.isZero()).toBe(false)
-    expect(projection.kgSplit.KG_400.isZero()).toBe(false)
+    expect(projection.kgSplit.KG_300.isZero()).toBe(true)
+    expect(projection.kgSplit.KG_400.toFixed(2))
+      .toBe(before.mul('23.8').div(100).toFixed(2))
+    // KG 700 automatically falls back to its own HOAI+AHO rate on the now
+    // smaller block (D-07 rule 6, already covered above); the driver sum
+    // still reconciles to the total (rule 32), and the total itself drops
+    // well below the pre-exclusion amount.
+    const driverSum = projection.result.drivers
+      .reduce((a, d) => a.plus(d.exact), new Decimal(0))
+    expect(driverSum.toFixed(2)).toBe(projection.result.total.exact.toFixed(2))
+    expect(projection.result.total.exact.lt(before)).toBe(true)
   })
 
   it('lets optional groups choose included or excluded without an unknown tile', async () => {

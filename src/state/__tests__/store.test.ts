@@ -919,6 +919,105 @@ describe('Покрытие групп затрат (сценарий п. 11)', (
     expect(st().projection().result.completeness).toBe('complete')
   })
 })
+
+/**
+ * KG 300/400 ausgeschlossen — reale Preisfolge (Product Decision, Ticket
+ * e2dac9b5, genehmigt 20.08.2026, auf dem Ticket dokumentiert).
+ *
+ * `calculation-spec.md` §1/§2 kennt Bauwerk_g nur als EIN kombiniertes
+ * Feld; es gibt keine autoritative Formel, um KG 300 allein oder KG 400
+ * allein zu bepreisen. Der genehmigte Entscheid schließt diese Lücke,
+ * indem die bereits geprüfte, invariant-gesicherte `kgSplit`-Funktion
+ * (echt-Anteile 76,2/23,8, Referenzprojekt R-02, decisions.md D-07)
+ * wiederverwendet wird — IMMER angewandt auf den vollen, unkorrigierten
+ * Block, NIE auf einen bereits reduzierten Wert (das hätte den exakt
+ * abgelehnten Fehler F1 wiederholt: eine erfundene, ungleich null
+ * gesetzte KG-300-Zeile trotz Ausschluss).
+ */
+describe('KG 300/400 ausgeschlossen — reale Preisfolge (Product Decision e2dac9b5)', () => {
+  it('KG 300 ausgeschlossen: Bauwerk-Beitrag wird zum realen KG-400-Anteil; sichtbare Korrektur; Summe der Treiber stimmt weiter', () => {
+    const st = () => useStore.getState()
+    const before = st().projection().result.total.exact
+    st().setCoverage('KG_300', 'excluded')
+    // D-07 Regel 6 (unverändert): vereinfacht braucht 300 UND 400 aktiv.
+    expect(st().kg700Mode).toBe('hoaiAho')
+    const p = st().projection()
+    expect(p.kgSplit.KG_300.isZero()).toBe(true)
+    const expectedBauwerk = before.mul('23.8').div(100)
+    expect(p.kgSplit.KG_400.toFixed(2)).toBe(expectedBauwerk.toFixed(2))
+    const adjustment = p.result.drivers
+      .find((x) => x.key === 'kg300_excluded_adjustment')!
+    expect(adjustment.exact.toFixed(2))
+      .toBe(before.mul('76.2').div(100).negated().toFixed(2))
+    // Sichtbarer, benannter Treiber — keine stille Neuberechnung (Regel
+    // 13/18/35): der Abzug muss im Kostentreiber erklärbar sein.
+    expect(adjustment.block).toBe('bauwerk')
+    expect(adjustment.origin).toBe('decision')
+    const kg700Driver = p.result.drivers.find((x) => x.key === 'kg700_hoai_aho')!
+    // KG 700 · 12 % — von der bereits reduzierten, tatsächlich bepreisten
+    // Bauwerk-Summe, nicht vom ursprünglichen vollen Block.
+    expect(kg700Driver.exact.toFixed(2)).toBe(expectedBauwerk.mul('0.12').toFixed(2))
+    const driverSum = p.result.drivers
+      .reduce((a, x) => a.plus(x.exact), new Decimal(0))
+    expect(driverSum.toFixed(2)).toBe(p.result.total.exact.toFixed(2))
+    expect(p.result.total.exact.toFixed(2)).toBe(expectedBauwerk.mul('1.12').toFixed(2))
+    expect(p.result.total.exact.lt(before)).toBe(true)
+  })
+
+  it('KG 400 ausgeschlossen: KG-300-Anteil bleibt real; Risikozuschlag auf KG 300 bleibt wirksam auf der reduzierten Basis', () => {
+    const st = () => useStore.getState()
+    const before = st().projection().result.total.exact
+    st().setCoverage('KG_400', 'excluded')
+    expect(st().kg700Mode).toBe('hoaiAho')
+    const p1 = st().projection()
+    expect(p1.kgSplit.KG_400.isZero()).toBe(true)
+    const expectedBauwerk = before.mul('76.2').div(100)
+    expect(p1.kgSplit.KG_300.toFixed(2)).toBe(expectedBauwerk.toFixed(2))
+
+    // RISK-STATIK: Basis KG_300, Satz 2 % (fixtures/derived-prototype.json).
+    // Muss auf der REALEN, reduzierten KG-300-Basis wirken — nicht auf dem
+    // ursprünglichen vollen Block und nicht auf einem erneut gesplitteten
+    // (schon reduzierten) Wert.
+    st().toggleRisiko('RISK-STATIK')
+    const risk = st().projection().result.drivers
+      .find((x) => x.key === 'risk_RISK-STATIK')!
+    expect(risk.exact.toFixed(2)).toBe(expectedBauwerk.mul('0.02').toFixed(2))
+  })
+
+  it('beide Kerngruppen ausgeschlossen: Bauwerk-Beitrag ist EUR 0; KG 700 (falls aktiv) ebenfalls 0', () => {
+    const st = () => useStore.getState()
+    st().setCoverage('KG_300', 'excluded')
+    st().setCoverage('KG_400', 'excluded')
+    const p = st().projection()
+    expect(p.kgSplit.KG_300.isZero()).toBe(true)
+    expect(p.kgSplit.KG_400.isZero()).toBe(true)
+    expect(p.result.drivers.some((x) => x.key === 'kg700_hoai_aho')).toBe(false)
+    const bauwerkSum = p.result.drivers
+      .filter((x) => x.block === 'bauwerk')
+      .reduce((a, x) => a.plus(x.exact), new Decimal(0))
+    expect(bauwerkSum.isZero()).toBe(true)
+  })
+
+  it('KG 300 unentschieden (`unknown`): preist wie ausgeschlossen und hält die Summe unvollständig (SCOPE-001)', () => {
+    const st = () => useStore.getState()
+    const before = st().projection().result.total.exact
+    st().setCoverage('KG_300', 'unknown')
+    const p = st().projection()
+    // `unknown` preist wie `excluded` — ein unentschiedener Kern darf nie
+    // still als eingeschlossen gerechnet werden (AC22).
+    expect(p.kgSplit.KG_300.isZero()).toBe(true)
+    expect(p.kgSplit.KG_400.toFixed(2)).toBe(before.mul('23.8').div(100).toFixed(2))
+    // Aber `unknown` bleibt eine Datenlücke, keine Entscheidung: die Summe
+    // fällt auf den Zwischenstand zurück (Regel 16, SCOPE-001), anders als
+    // eine echte `excluded`-Entscheidung mit sonst vollständiger Deckung.
+    expect(p.result.completeness).toBe('incomplete')
+    expect(p.result.totalLabel).toBe('Zwischensumme der kalkulierten Positionen')
+    const reason = p.result.incompleteReasons
+      .find((r) => r.code === 'coverageUnknown')
+    expect(reason?.groups).toContain('KG_300')
+  })
+})
+
 describe('Настоящая модель Option (ревью № 13, дефект 1)', () => {
   const st = () => useStore.getState()
 

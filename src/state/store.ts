@@ -1712,18 +1712,66 @@ function computeProjection(
   // находки 9 и 20). Место вклада объявляется его создателем полем `block`,
   // а не выводится здесь из позиции: у надбавки за риск база названа
   // `KG 320`, и по позиции она от вклада внутри блока неотличима.
+  // Только `'included'` активирует группу — тот же критерий, что уже
+  // применяют `coverageDrivers` для KG 500/600 (`options.ts`). Строгое
+  // равенство, а не `!== 'excluded'`: иначе неопределённое `'unknown'`
+  // (обязательный дефолт AC22 — решение продавца ещё не принято) молча
+  // считалось бы включённым, ровно тот дефект, который правило и должно
+  // было исключить.
   const coreActive = (group: 'KG_300' | 'KG_400' | 'KG_700') =>
-    s.coverage[group] !== 'excluded'
+    s.coverage[group] === 'included'
   const simplifiedScope = s.kg700Mode === 'vereinfacht'
     && coreActive('KG_300') && coreActive('KG_400') && coreActive('KG_700')
-  // There is no authoritative decomposition of the generic Bauwerk formula
-  // into optional KG 300 and KG 400 contributions. In particular, the
-  // 76.2/23.8 presentation split is not a pricing multiplier and UG is not
-  // assigned wholly to KG 300. Keep the established calculation intact;
-  // the current ticket must remain blocked on that commercial gap instead
-  // of manufacturing a lower total in frontend state.
   const baseDrivers = rawBaseDrivers
   const optDrivers = rawOptDrivers
+  // Полный, ещё не скорректированный блок Bauwerk — база для решения о
+  // включении KG 300/400 (Product Decision, тикет e2dac9b5, 20.08.2026):
+  // при исключении одной из групп оставшаяся получает свою реальную,
+  // выверенную по Referenzprojekt R-02 долю (`echt`, 76,2/23,8 — decisions.md
+  // D-07), а не переизобретённое число. Доля берётся ВСЕГДА от `rawBauwerk`,
+  // никогда от уже скорректированного `bauwerkBlock` — иначе повторное
+  // применение сплита к уже уменьшенной сумме тихо родило бы ненулевую
+  // «KG 300», хотя группа исключена (тот же класс дефекта, что отклонённая
+  // находка F1).
+  const rawBauwerk = sumOfBlock([...baseDrivers, ...optDrivers], 'bauwerk')
+  const kg300Active = coreActive('KG_300')
+  const kg400Active = coreActive('KG_400')
+  if (!kg300Active || !kg400Active) {
+    const rawSplit = kgSplit(rawBauwerk, CATALOG.kgShares, 'echt')
+    if (!kg300Active && !rawSplit.KG_300.isZero()) {
+      optDrivers.push({
+        key: 'kg300_excluded_adjustment',
+        origin: 'decision' as const,
+        block: 'bauwerk' as const,
+        exact: rawSplit.KG_300.negated(),
+        label: 'KG 300 · Baukonstruktionen (ausgeschlossen)',
+        scopeRefs: ['KG 300'],
+        basis: {
+          kind: 'factor',
+          appliedTo: rawBauwerk,
+          factor: CATALOG.kgShares.echt.KG_300.div(100).negated(),
+        },
+      })
+    }
+    if (!kg400Active && !rawSplit.KG_400.isZero()) {
+      optDrivers.push({
+        key: 'kg400_excluded_adjustment',
+        origin: 'decision' as const,
+        block: 'bauwerk' as const,
+        exact: rawSplit.KG_400.negated(),
+        label: 'KG 400 · Technische Anlagen (ausgeschlossen)',
+        scopeRefs: ['KG 400'],
+        basis: {
+          kind: 'factor',
+          appliedTo: rawBauwerk,
+          factor: CATALOG.kgShares.echt.KG_400.div(100).negated(),
+        },
+      })
+    }
+  }
+  // `bauwerkBlock` пересчитан ПОСЛЕ добавления корректировок — драйверы
+  // сами объявляют своё место (`block`), поэтому сумма реконструируется
+  // заново, а не патчится точечно (сплошное ревью 26, находки 9/20).
   const bauwerkBlock = sumOfBlock([...baseDrivers, ...optDrivers], 'bauwerk')
   // KG 700 в режиме HOAI+AHO — СОБСТВЕННАЯ позиция 12 % от блока
   // (`calculation-spec` §1, решение D-27). В режиме `vereinfacht` тотал не
@@ -1754,11 +1802,22 @@ function computeProjection(
   // считается от разбиения блока, а не от итога: включив надбавку в базу
   // распределения, мы растворили бы её в KG 300 — она перестала бы быть
   // отдельной строкой и вдобавок увеличила бы собственную базу.
-  const effectiveKgSplit = kgSplit(
-    bauwerkBlock,
-    CATALOG.kgShares,
-    simplifiedScope ? 'vereinfacht' : 'echt',
-  )
+  // Когда одна из групп исключена, `bauwerkBlock` уже равен доле
+  // ОСТАВШЕЙСЯ группы (см. корректировку выше) — второй вызов `kgSplit`
+  // на этой уже уменьшенной сумме заново применил бы 76,2/23,8 к чужому
+  // основанию и вернул бы фантомную ненулевую долю для исключённой группы.
+  // Прямое присвоение — единственный корректный путь: у оставшейся группы
+  // весь блок, у исключённой — ноль.
+  const effectiveKgSplit = (!kg300Active || !kg400Active)
+    ? {
+        KG_300: kg300Active ? bauwerkBlock : new Decimal(0),
+        KG_400: kg400Active ? bauwerkBlock : new Decimal(0),
+      }
+    : kgSplit(
+        bauwerkBlock,
+        CATALOG.kgShares,
+        simplifiedScope ? 'vereinfacht' : 'echt',
+      )
   const kg300Exact = effectiveKgSplit.KG_300
   for (const risk of RISK_ITEMS) {
     if (!s.risikoAktiv[risk.id]) continue
