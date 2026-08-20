@@ -1,0 +1,6 @@
+# inari onboarding (ebf/vibe-apps/sales-configurator)
+# Статический SPA: сборка Vite -> nginx:8080 (см. Dockerfile, EXPOSE 8080).
+# Бэкенд-зависимостей нет, секретов приложения нет — контейнер не читает ни
+# одной переменной окружения.
+ready: true
+dependencies: {}
