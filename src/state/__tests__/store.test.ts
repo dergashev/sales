@@ -1002,6 +1002,11 @@ describe('KG 300/400 ausgeschlossen — reale Preisfolge (Product Decision e2dac
     const reason = p.result.incompleteReasons
       .find((r) => r.code === 'coverageUnknown')
     expect(reason?.groups).toContain('KG_300')
+    const unresolvedAdjustment = p.result.drivers
+      .find((x) => x.key === 'kg300_excluded_adjustment')!
+    expect(unresolvedAdjustment.origin).toBe('scope')
+    expect(unresolvedAdjustment.label).toContain('(noch offen)')
+    expect(unresolvedAdjustment.label).not.toContain('(ausgeschlossen)')
   })
 
   it('behält den Auto-Fallback, solange erst eine von zwei Kerngruppen wieder enthalten ist', () => {
@@ -1276,7 +1281,7 @@ describe('Происхождение вкладов: корзина показы
   it('каждый вклад объявляет происхождение — новый драйвер не проскочит', () => {
     st().toggleRegionalfaktor()
     for (const d of st().projection().result.drivers) {
-      expect(['base', 'fact', 'decision'], d.key).toContain(d.origin)
+      expect(['base', 'fact', 'decision', 'scope'], d.key).toContain(d.origin)
     }
   })
 })

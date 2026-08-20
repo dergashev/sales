@@ -48,6 +48,19 @@ describe('Leistungsabgrenzung / Scope Boundaries (ticket d21f8d48)', () => {
     expect(useStore.getState().kg700Mode).toBe('hoaiAho')
     expect(useStore.getState().kg700ModeAutoFallback).toBe(true)
 
+    const offer = screen.getByRole('complementary', { name: 'Angebot' })
+    expect(offer).toHaveTextContent('Preis nicht ermittelt')
+    expect(offer).not.toHaveTextContent(/(^|\D)0\s*€\/m²/)
+    expect(offer).not.toHaveTextContent(/(^|\D)0\s*€/)
+    expect(offer).not.toHaveTextContent('Summe = 0 €')
+    const unresolvedCoreAdjustments = useStore.getState().projection().result.drivers
+      .filter((driver) => ['kg300_excluded_adjustment', 'kg400_excluded_adjustment']
+        .includes(driver.key))
+    expect(unresolvedCoreAdjustments).toHaveLength(2)
+    expect(unresolvedCoreAdjustments.every((driver) => driver.origin === 'scope')).toBe(true)
+    expect(unresolvedCoreAdjustments.every((driver) => !driver.label.includes('(ausgeschlossen)')))
+      .toBe(true)
+
     await user.click(within(screen.getByRole('radiogroup', { name: /KG.300/ }))
       .getAllByRole('radio')[0]!)
     await user.click(within(screen.getByRole('radiogroup', { name: /KG.400/ }))

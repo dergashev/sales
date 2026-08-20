@@ -11,6 +11,7 @@ import type { CostGroup, CoverageState, DriverBasis } from '../engine/calculate'
 import { Button, useCountUp } from './primitives'
 import { OriginPopover } from './OriginPopover'
 import { ClientNotice } from './ClientNotice'
+import { PartialState } from './DataStates'
 import { EstimateUncertaintyBadge } from './EstimateUncertaintyBadge'
 import { useT, useTx } from '../i18n'
 import { useSemanticMotion } from '../design-system/motion'
@@ -107,6 +108,13 @@ export function OfferPanel() {
   const totalCount = useCountUp(
     new Decimal(p.result.total.display.replace(/\./g, '')), 0,
   )
+  // An exact zero can be a legitimate explicit exclusion outcome. It becomes
+  // unavailable presentation only when the run is incomplete because scope
+  // decisions are still unknown. The calculation remains unchanged; this is
+  // the rule-16 presentation boundary that prevents a fabricated zero hero.
+  const priceUnavailable = p.result.total.exact.isZero()
+    && p.result.completeness === 'incomplete'
+    && Object.values(s.coverage).includes('unknown')
   const shownDelta = useLastValue(s.activeDelta)
   const shownPreview = useLastValue(s.preview)
   const blocked = !activeBuilding(s).gebaeudeklasse.confirmed
@@ -148,24 +156,31 @@ export function OfferPanel() {
         <div className="a3-heroband">
         <div className="a3-hb a3-hb-total">
           <span className="a3-hb-cap">{tx(p.result.totalLabel)}</span>
-          <p className="a3-hb-num numeric">
-            {p.result.total.prefix && (
-              <span aria-hidden="true">{p.result.total.prefix}{NNBSP}</span>
-            )}
-            {totalCount}
-            <span className="a3-hb-unit">{NNBSP}€</span>
-          </p>
+          {priceUnavailable ? (
+            <PartialState
+              label={t('money.priceNotDetermined')}
+              consequence={p.result.totalLabel}
+            />
+          ) : (
+            <p className="a3-hb-num numeric">
+              {p.result.total.prefix && (
+                <span aria-hidden="true">{p.result.total.prefix}{NNBSP}</span>
+              )}
+              {totalCount}
+              <span className="a3-hb-unit">{NNBSP}€</span>
+            </p>
+          )}
         {/* Интервал — полосой с денежными краями (DC-3): «± 22 %» отвечает
             «насколько точно», края отвечают «сколько это в деньгах», и на
             переговорах спрашивают второе. */}
-        <div className="mt-2">
+        {!priceUnavailable && <div className="mt-2">
           <EstimateUncertaintyBadge
             presentation="range"
             totalExact={p.result.total.exact}
             pp={p.uncertaintyPp}
           />
-        </div>
-        <p className="a3-cap mt-1">
+        </div>}
+        {!priceUnavailable && <p className="a3-cap mt-1">
           netto
           {' · '}
           {/* DC-21 moneyOrigin: цепочка драйверов + округление + runRef.
@@ -190,7 +205,7 @@ export function OfferPanel() {
               ? 'Regelsatz RS-2026.2 · DEMO-SC-01 · DEMO-RUN-0007 · authoritative · 04.08.2026'
               : null}
           />
-        </p>
+        </p>}
         </div>
 
         {/* ── Герои №2 и №3: ведущая ставка и срок, чёрные (DC-38) ─────── */}
@@ -201,7 +216,7 @@ export function OfferPanel() {
             элемента равна min-content. Панель раздувалась далеко за свои
             400 px и съедала рабочую область. Дефект структурный: класс
             применён не к тому, для чего объявлен. */}
-        <div className="a3-hb">
+        {!priceUnavailable && <div className="a3-hb">
           <p className="a3-hb-num numeric">
             {p.leadRate.prefix && (
               <span aria-hidden="true">{p.leadRate.prefix}{NNBSP}</span>
@@ -237,7 +252,7 @@ export function OfferPanel() {
               : null}
           />
         </p>
-        </div>
+        </div>}
 
         <div className="a3-hb">
           <p className="a3-hb-num numeric">
@@ -390,7 +405,7 @@ export function OfferPanel() {
           {!treiberOpen && (
             <p className="a3-cap numeric mt-1">
               {p.result.drivers.length}{NNBSP}Beiträge · Summe ={NNBSP}
-              {moneyLabel(p.result.total)}
+              {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(p.result.total)}
             </p>
           )}
           {treiberOpen && (<div className="a3-drivers mt-2">
@@ -399,7 +414,9 @@ export function OfferPanel() {
               вывод «x % zur Mediane» честно заменён названной причиной.
               Бенчмарк — выносной блок контракта (.a3-bmark). */}
           <p className="a3-bmark numeric">
-            {s.mode === 'intern'
+            {priceUnavailable
+              ? t('money.priceNotDetermined')
+              : s.mode === 'intern'
               ? <>{rateLabel(p.secondaryRateBgf)} gegen Snapshot BM-BKI-2026Q1-SYNTH
                   {' '}(Bundesdurchschnitt, Regionalfaktor inaktiv{NNBSP}·{NNBSP}D-15)
                   {' '}— nicht vergleichbar: Median im Snapshot nicht deklariert.</>
@@ -504,7 +521,7 @@ export function OfferPanel() {
                   </th>
                   <td aria-hidden="true" />
                   <td className="a3-val">
-                    {moneyLabel(p.result.total)}
+                    {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(p.result.total)}
                   </td>
                 </tr>
               </tbody>
@@ -579,15 +596,21 @@ export function OfferPanel() {
                     тоже дефект. */}
                 <tr className="a3-lvl2 a3-muted">
                   <td>oberirdisch</td>
-                  <td className="a3-num" colSpan={2}>{moneyLabel(p.aboveGround)}</td>
+                  <td className="a3-num" colSpan={2}>
+                    {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(p.aboveGround)}
+                  </td>
                 </tr>
                 <tr className="a3-lvl2 a3-muted">
                   <td>unterirdisch</td>
-                  <td className="a3-num" colSpan={2}>{moneyLabel(p.belowGround)}</td>
+                  <td className="a3-num" colSpan={2}>
+                    {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(p.belowGround)}
+                  </td>
                 </tr>
                 <tr className="a3-total">
                   <td>{tx(p.result.totalLabel)}</td>
-                  <td className="a3-num" colSpan={2}>{moneyLabel(p.result.total)}</td>
+                  <td className="a3-num" colSpan={2}>
+                    {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(p.result.total)}
+                  </td>
                 </tr>
               </tbody>
             </table>

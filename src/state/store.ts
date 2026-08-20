@@ -1774,12 +1774,15 @@ function computeProjection(
   if (!kg300Active || !kg400Active) {
     const rawSplit = kgSplit(rawBauwerk, CATALOG.kgShares, 'echt')
     if (!kg300Active && !rawSplit.KG_300.isZero()) {
+      const unresolved = s.coverage.KG_300 === 'unknown'
       optDrivers.push({
         key: 'kg300_excluded_adjustment',
-        origin: 'decision' as const,
+        origin: unresolved ? 'scope' as const : 'decision' as const,
         block: 'bauwerk' as const,
         exact: rawSplit.KG_300.negated(),
-        label: 'KG 300 · Baukonstruktionen (ausgeschlossen)',
+        label: unresolved
+          ? 'KG 300 · Baukonstruktionen (noch offen)'
+          : 'KG 300 · Baukonstruktionen (ausgeschlossen)',
         scopeRefs: ['KG 300'],
         basis: {
           kind: 'factor',
@@ -1789,12 +1792,15 @@ function computeProjection(
       })
     }
     if (!kg400Active && !rawSplit.KG_400.isZero()) {
+      const unresolved = s.coverage.KG_400 === 'unknown'
       optDrivers.push({
         key: 'kg400_excluded_adjustment',
-        origin: 'decision' as const,
+        origin: unresolved ? 'scope' as const : 'decision' as const,
         block: 'bauwerk' as const,
         exact: rawSplit.KG_400.negated(),
-        label: 'KG 400 · Technische Anlagen (ausgeschlossen)',
+        label: unresolved
+          ? 'KG 400 · Technische Anlagen (noch offen)'
+          : 'KG 400 · Technische Anlagen (ausgeschlossen)',
         scopeRefs: ['KG 400'],
         basis: {
           kind: 'factor',
