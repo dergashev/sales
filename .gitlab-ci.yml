@@ -1,0 +1,61 @@
+# Managed by inari. Bootstrap pipeline following the sample-project convention.
+include:
+  - project: "devops/gitlab-ci-cd-shared/shared"
+    file: "versioning.yaml"
+    ref: "master"
+
+default:
+  image: docker.core.funkflow.com/alpine-git-executioner:0.0.39
+
+stages:
+  - get_version
+  - build_docker
+  - argo_tagging
+
+mr:
+  stage: get_version
+  extends:
+    - .mr
+
+release:
+  stage: get_version
+  extends:
+    - .release
+
+build_docker:
+  stage: build_docker
+  script:
+    - echo $VERSION
+    - docker login -u $DOCKER_REGISTRY_USERNAME -p $DOCKER_REGISTRY_PASSWORD ${DOCKER_REGISTRY}
+    # Image name is rendered by inari from the project PATH — the same literal
+    # it seeds into the argo values. Never derived from CI_PROJECT_TITLE: the
+    # human title drifts from the path (spaces → underscores) and breaks both
+    # the pushed image name and the update_argo_tag lookup.
+    - IMAGE="docker.core.funkflow.com/vibe-apps_sales-configurator:${VERSION}"
+    - docker build -t "$IMAGE" -f ./Dockerfile .
+    - docker push "$IMAGE"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+update_argo_tag:
+  stage: argo_tagging
+  variables:
+    ARGO_REPO: ebf/vibe-apps/sales-configurator-argo.git
+  script:
+    - IMAGE_BACKEND="docker.core.funkflow.com/vibe-apps_sales-configurator"
+    - git clone https://${RELEASE_BOT_USER}:${RELEASE_BOT_TOKEN}@${CI_SERVER_HOST}/${ARGO_REPO} argo-deploy
+    - cd argo-deploy
+    - git config user.name "$RELEASE_BOT_USER"
+    - git config user.email "${RELEASE_BOT_USER}@funkflow.com"
+    - git config http.sslverify "false"
+    - 'VALUES_FILE=$(grep -rl "image: ${IMAGE_BACKEND}$" apps/ 2>/dev/null | head -1)'
+    - '[ -n "$VALUES_FILE" ] || { echo "ERROR: values file not found for ${IMAGE_BACKEND}"; exit 1; }'
+    - echo "Updating $VALUES_FILE to $VERSION"
+    - 'grep -n "image: ${IMAGE_BACKEND}$" "$VALUES_FILE" | cut -d: -f1 | while read l; do sed -i "$((l+1))s/imageTag:.*/imageTag: ${VERSION}/" "$VALUES_FILE"; done'
+    - git diff
+    - git add "$VALUES_FILE"
+    - git commit -m "ci(argo-tag) sales-configurator ${VERSION}"
+    - git push origin master
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
