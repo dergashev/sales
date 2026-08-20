@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
+import derived from '../../fixtures/derived-prototype.json'
 import { __resetStoreForTests, useStore } from '../../state/store'
 
 /**
@@ -132,10 +133,11 @@ describe('Уровень Opportunities', () => {
     render(<App />)
     await user.click(screen.getByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
     const params = screen.getByLabelText('Projektparameter')
-    // Canonical provenance carries both the derived authority and each
-    // field-specific derivation rule; the retired fixture glyph is not the
-    // accessible contract anymore.
+    // D-22's warning comes from the derived-value fixture, not hand-authored
+    // presentation copy, so removing it requires an explicit data change.
     expect(within(params).getAllByLabelText(/^Herkunft: abgeleitet/)).toHaveLength(3)
+    expect(within(params).getAllByText(new RegExp(derived.provenanceLabel))).toHaveLength(3)
+    expect(within(params).getAllByText(new RegExp(derived.marker, 'u'))).toHaveLength(3)
     expect(within(params).getByText(/Balkonanteil abgeleitet/)).toBeInTheDocument()
     expect(within(params).getByText(/85\s*% der BGF R\+S/)).toBeInTheDocument()
     expect(within(params).getByText(/Total BGF \(S\)/)).toBeInTheDocument()

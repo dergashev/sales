@@ -5,7 +5,7 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 56** · перевод есть, мост не подключён: 31
+**Всего 54** · перевод есть, мост не подключён: 29
 · перевода нет (в поставку копирайта): 25
 
 ## Перевод есть — строка не проходит через мост (правится в src)
@@ -36,7 +36,6 @@ Mit freundlichen Grüßen
 - aktuelle Auswahl
 - andere Dokumente sind vollständig analysiert.
 - dieser Datei
-- enthält die abgeleitete S-Fläche
 - für den Prototyp abgeleitet, nicht kalibriert
 - nach HOAI und AHO
 - nach Planung
@@ -44,7 +43,6 @@ Mit freundlichen Grüßen
 - nur Unterschiede
 - vollständig inkl. Gründung
 - Österreich
-- ≈ 85 % der BGF R+S
 
 ## Перевода нет — в следующую поставку копирайта
 

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Decimal } from 'decimal.js'
 import { App } from '../../App'
 import { DELTA_CHIP_MS } from '../../config/ui-policy'
+import derived from '../../fixtures/derived-prototype.json'
 import {
   __resetStoreForTests,
   PROJECT_PARAMS_CONFIRMATION_LABEL,
@@ -52,8 +53,9 @@ describe('Project Card — project baseline', () => {
     expect(baseline.querySelectorAll('dd')).toHaveLength(8)
     expect(within(baseline).getAllByLabelText(/^Herkunft:/)).toHaveLength(7)
     expect(within(baseline).getAllByLabelText(/^Herkunft: abgeleitet/)).toHaveLength(3)
+    expect(within(baseline).getAllByText(new RegExp(derived.provenanceLabel))).toHaveLength(3)
+    expect(within(baseline).getAllByText(new RegExp(derived.marker, 'u'))).toHaveLength(3)
     expect(baseline).toHaveTextContent(/≈\s*85\s*%\s*der BGF R\+S/)
-    expect(baseline).not.toHaveTextContent('⚙')
 
     expect(screen.getByText(
       'Vorbereitung · Offene Fragen: 2 · Aktive Annahmen: 2',
@@ -69,6 +71,8 @@ describe('Project Card — project baseline', () => {
     expect(document.activeElement).toBe(confirmed)
 
     fireEvent.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
+    expect(screen.queryByText('Bestätigt · Projektgrundlage aktuell')).not.toBeInTheDocument()
+    expect(screen.getByText('Bestätigt · nicht mehr aktuell')).toBeInTheDocument()
     const staleSentence = screen.getByText(/Geändert seit der Bestätigung/)
     const stale = staleSentence.closest('[role="status"]')!
     expect(stale).toHaveTextContent('Geändert seit der Bestätigung: WFL nach WoFlV')
@@ -102,6 +106,9 @@ describe('Project Card — project baseline', () => {
     expect(within(baseline).getByLabelText('Herkunft: manuell erfasst')).toBeInTheDocument()
     expect(within(baseline).getByText(/Geändert seit der Bestätigung: WFL nach WoFlV/))
       .toBeInTheDocument()
+    expect(within(baseline).queryByText('Bestätigt · Projektgrundlage aktuell'))
+      .not.toBeInTheDocument()
+    expect(within(baseline).getByText('Bestätigt · nicht mehr aktuell')).toBeInTheDocument()
     expect(useStore.getState().projectParamsConfirmed).toBe(true)
   })
 })

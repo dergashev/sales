@@ -314,7 +314,9 @@ export function OpportunityCard() {
     kind: 'document', label: t('provenance.document'),
   }
   const derivedProvenance = (detail: string): ProvenancePresentation => ({
-    kind: 'derived', label: t('provenance.derived'), detail,
+    kind: 'derived',
+    label: t('provenance.derived'),
+    detail: `${derived.marker} ${tx(derived.provenanceLabel)} · ${detail}`,
   })
   const wflProvenance: ProvenancePresentation = {
     kind: s.fields.wfl.provenance === 'vom Kunden bestätigt'
@@ -621,7 +623,9 @@ export function OpportunityCard() {
               className="a3-project-baseline-confirmed"
             >
               <span aria-hidden="true">✓ </span>
-              {t('oppcard.baseline.confirmed')}
+              {t(baselineStale
+                ? 'oppcard.baseline.confirmedStale'
+                : 'oppcard.baseline.confirmed')}
             </div>
             {baselineStale && (
               <div className="mt-3" role="status" aria-live="polite" aria-atomic="true">

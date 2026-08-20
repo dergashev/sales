@@ -76,6 +76,7 @@ const de = {
   'oppcard.baseline.confirmConsequence':
     'Mit der Bestätigung wird diese Grundlage für Opportunity Options freigegeben.',
   'oppcard.baseline.confirmed': 'Bestätigt · Projektgrundlage aktuell',
+  'oppcard.baseline.confirmedStale': 'Bestätigt · nicht mehr aktuell',
   'oppcard.baseline.stale':
     'Geändert seit der Bestätigung: {changes}. Die bestätigte Grundlage bleibt erhalten und muss erneut geprüft werden.',
   'oppcard.baseline.reconfirm': 'Erneut bestätigen',
@@ -385,6 +386,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'oppcard.baseline.confirmConsequence':
     'Confirming releases this baseline for Opportunity Options.',
   'oppcard.baseline.confirmed': 'Confirmed · project baseline current',
+  'oppcard.baseline.confirmedStale': 'Confirmed · no longer current',
   'oppcard.baseline.stale':
     'Changed since confirmation: {changes}. The confirmed baseline is retained and must be reviewed again.',
   'oppcard.baseline.reconfirm': 'Confirm again',
