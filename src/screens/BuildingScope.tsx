@@ -13,6 +13,7 @@ import {
   buildingConfirmed,
   includedBuildingIds,
   useStore,
+  type BuildingReviewSection,
 } from '../state/store'
 import {
   BUILDING_FACT_KEYS,
@@ -154,7 +155,7 @@ function StatusBadge({ status }: { status: ReturnType<typeof statusFor> }) {
   return <Badge sign="○">{t('buildingScope.status.open')}</Badge>
 }
 
-type ReviewSectionKey = 'identity' | 'areas' | 'storeys'
+type ReviewSectionKey = BuildingReviewSection
 type ReviewSectionStatus = 'notReviewed' | 'needsAttention' | 'ready' | 'confirmed' | 'changed'
 
 const REVIEW_SECTIONS: ReadonlyArray<ReviewSectionKey> = ['identity', 'areas', 'storeys']
@@ -165,6 +166,11 @@ const AREA_FACTS: ReadonlyArray<BuildingFactKey> = [
   'bgfRAbove', 'bgfSAbove', 'bgfRSAbove', 'bgfRBelow', 'bgfSBelow',
   'bgfRSBelow', 'bgfRSTotal', 'wfl', 'nuf',
 ]
+const BLOCKING_FACTS: Record<ReviewSectionKey, ReadonlyArray<BuildingFactKey>> = {
+  identity: ['documentationName', 'buildingForm', 'buildingClass'],
+  areas: ['bgfRAbove', 'bgfSAbove', 'bgfRSBelow'],
+  storeys: [],
+}
 
 function reviewValueFingerprint(value: unknown): string {
   if (value === null || value === undefined) return 'unknown'
@@ -192,6 +198,25 @@ function reviewSectionFingerprint(
 function sectionForFact(key: BuildingFactKey | DerivedAreaKey): ReviewSectionKey {
   if (key === 'storeyStructure') return 'storeys'
   return IDENTITY_FACTS.includes(key as BuildingFactKey) ? 'identity' : 'areas'
+}
+
+function sectionHasBlockingMissingValue(
+  review: ReturnType<typeof useStore.getState>['buildingReviews'][string],
+  section: ReviewSectionKey,
+): boolean {
+  return BLOCKING_FACTS[section].some((key) =>
+    effectiveFactValue(review.facts[key] as BuildingFact<unknown>) === null)
+}
+
+function sectionHasAnyValue(
+  review: ReturnType<typeof useStore.getState>['buildingReviews'][string],
+  section: ReviewSectionKey,
+): boolean {
+  const keys = section === 'identity' ? IDENTITY_FACTS
+    : section === 'areas' ? AREA_FACTS
+      : ['storeyStructure'] as const
+  return keys.some((key) =>
+    effectiveFactValue(review.facts[key] as BuildingFact<unknown>) !== null)
 }
 
 export function BuildingScope() {
@@ -355,7 +380,9 @@ export function BuildingScope() {
                   const nuf = effectiveFactValue(review.facts.nuf)
                   const units = effectiveFactValue(review.facts.units)
                   const area = wfl ?? nuf
-                  const areaLabel = wfl ? 'WFL' : 'NUF'
+                  const areaLabel = t(wfl
+                    ? 'buildingScope.fact.wfl'
+                    : 'buildingScope.fact.nuf')
                   return (
                     <li key={id} className="border-b border-border-subtle py-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -372,7 +399,7 @@ export function BuildingScope() {
                       </div>
                       <dl className="mt-3 grid grid-cols-3 gap-3 pl-7 text-small text-text-secondary">
                         <FactSummary
-                          label="BGF gesamt"
+                          label={t('buildingScope.fact.bgfRSTotal')}
                           value={gfa ? `${formatDE(gfa, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}
                         />
                         <FactSummary
@@ -526,12 +553,6 @@ function BuildingReviewPanel({
     areas: reviewSectionFingerprint(review, s.buildingConflicts, 'areas'),
     storeys: reviewSectionFingerprint(review, s.buildingConflicts, 'storeys'),
   }
-  const [sectionConfirmations, setSectionConfirmations] = useState<Record<ReviewSectionKey, string | null>>(
-    () => Object.fromEntries(REVIEW_SECTIONS.map((section) => [
-      section,
-      confirmed ? sectionFingerprints[section] : null,
-    ])) as Record<ReviewSectionKey, string | null>,
-  )
   const [openSections, setOpenSections] = useState<Record<ReviewSectionKey, boolean>>({
     identity: true,
     areas: false,
@@ -542,22 +563,21 @@ function BuildingReviewPanel({
     (conflict) => sectionForFact(conflict.factKey) === section,
   )
   const sectionStatus = (section: ReviewSectionKey): ReviewSectionStatus => {
-    if (sectionHasConflict(section)) return 'needsAttention'
-    const saved = sectionConfirmations[section]
-    if (saved !== null) {
-      return saved === sectionFingerprints[section] ? 'confirmed' : 'changed'
+    if (sectionHasConflict(section) || sectionHasBlockingMissingValue(review, section)) {
+      return 'needsAttention'
     }
-    return openSections[section] ? 'ready' : 'notReviewed'
+    const saved = s.buildingSectionConfirmations[buildingId]?.[section]
+    if (saved) {
+      return saved.fingerprint === sectionFingerprints[section] ? 'confirmed' : 'changed'
+    }
+    return sectionHasAnyValue(review, section) ? 'ready' : 'notReviewed'
   }
   const sectionsConfirmed = REVIEW_SECTIONS.every(
     (section) => sectionStatus(section) === 'confirmed',
   )
   const confirmSection = (section: ReviewSectionKey) => {
-    if (sectionHasConflict(section)) return
-    setSectionConfirmations((current) => ({
-      ...current,
-      [section]: sectionFingerprints[section],
-    }))
+    if (sectionHasConflict(section) || sectionHasBlockingMissingValue(review, section)) return
+    s.confirmBuildingSection(buildingId, section, sectionFingerprints[section])
     setOpenSections((current) => ({ ...current, [section]: false }))
     const next = REVIEW_SECTIONS.find((candidate) =>
       candidate !== section && sectionStatus(candidate) !== 'confirmed')
@@ -609,7 +629,8 @@ function BuildingReviewPanel({
               open={openSections.identity}
               onOpenChange={(open) => setOpenSections((current) => ({ ...current, identity: open }))}
               onConfirm={() => confirmSection('identity')}
-              confirmDisabled={sectionHasConflict('identity')}
+              confirmDisabled={sectionHasConflict('identity')
+                || sectionHasBlockingMissingValue(review, 'identity')}
             >
               <div className="grid gap-4 p-4">
                 <TextFactField buildingId={buildingId} factKey="documentationName" />
@@ -630,7 +651,8 @@ function BuildingReviewPanel({
               open={openSections.areas}
               onOpenChange={(open) => setOpenSections((current) => ({ ...current, areas: open }))}
               onConfirm={() => confirmSection('areas')}
-              confirmDisabled={sectionHasConflict('areas')}
+              confirmDisabled={sectionHasConflict('areas')
+                || sectionHasBlockingMissingValue(review, 'areas')}
             >
               <div className="grid gap-4 p-4">
                 <section aria-labelledby={`areas-above-${buildingId}`} className="grid gap-4">
@@ -800,8 +822,8 @@ function areaSectionSummary(
   const nuf = effectiveFactValue(review.facts.nuf)
   const usable = wfl ?? nuf
   return [
-    `BGF: ${total ? `${formatDE(total, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}`,
-    `${wfl ? 'WFL' : 'NUF'}: ${usable ? `${formatDE(usable, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}`,
+    `${t('buildingScope.fact.bgfRSTotal')}: ${total ? `${formatDE(total, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}`,
+    `${t(wfl ? 'buildingScope.fact.wfl' : 'buildingScope.fact.nuf')}: ${usable ? `${formatDE(usable, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}`,
   ].join(' · ')
 }
 

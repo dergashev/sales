@@ -40,17 +40,18 @@ describe('Leistungsabgrenzung / Scope Boundaries (ticket d21f8d48)', () => {
       expect(within(screen.getByRole('radiogroup', { name: kg })).getAllByRole('radio'))
         .toHaveLength(2)
     }
-    const totalBefore = useStore.getState().projection().result.total.exact
     const kg300 = screen.getByRole('radiogroup', { name: /KG.300/ })
     await user.click(within(kg300).getAllByRole('radio')[1]!)
     expect(useStore.getState().coverage.KG_300).toBe('excluded')
     expect(useStore.getState().kg700Mode).toBe('hoaiAho')
     expect(useStore.getState().journal.at(-1)?.label).toContain('automatisch')
+    // D-07 authorises the method fallback, but no approved source defines
+    // a Bauwerk total with only one of KG 300 / 400 active. The frontend
+    // must therefore not manufacture an exclusion price from the display
+    // split; commercial completion remains blocked on that missing rule.
     const projection = useStore.getState().projection()
-    expect(projection.result.total.exact.lt(totalBefore)).toBe(true)
-    expect(projection.kgSplit.KG_300.isZero()).toBe(true)
-    expect(projection.kgSplit.KG_300.plus(projection.kgSplit.KG_400)
-      .equals(projection.result.bauwerk)).toBe(true)
+    expect(projection.kgSplit.KG_300.isZero()).toBe(false)
+    expect(projection.kgSplit.KG_400.isZero()).toBe(false)
   })
 
   it('lets optional groups choose included or excluded without an unknown tile', async () => {

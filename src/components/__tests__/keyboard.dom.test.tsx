@@ -129,6 +129,24 @@ describe('Herkunft-Popover — Esc закрывает и ВОЗВРАЩАЕТ ф
   })
 })
 
+describe('Account menu — controlled dismissal', () => {
+  it('closes on Escape and outside click, returning focus after Escape', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    const trigger = screen.getByRole('button', { name: 'Account' })
+
+    await user.click(trigger)
+    expect(screen.getByRole('dialog', { name: 'Account' })).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog', { name: 'Account' })).toBeNull()
+    expect(trigger).toHaveFocus()
+
+    await user.click(trigger)
+    await user.click(document.body)
+    expect(screen.queryByRole('dialog', { name: 'Account' })).toBeNull()
+  })
+})
+
 describe('Опции — нативная radio-группа (RADIO-001)', () => {
   it('стрелка в группе опций двигает И выбирает, событие попадает в журнал', async () => {
     const user = userEvent.setup()
@@ -190,12 +208,14 @@ describe('Маршрут экрана возвращает начало доку
     const main = screen.getByRole('main')
     main.scrollTop = 420
 
-    await user.click(screen.getByRole('button', { name: /^3Variantenvergleich$/ }))
+    const comparisonEntries = screen.getAllByRole('button', { name: 'Variantenvergleich' })
+    expect(comparisonEntries).toHaveLength(1)
+    await user.click(comparisonEntries[0]!)
     expect(main.scrollTop).toBe(0)
     expect(screen.getByRole('heading', { level: 1, name: 'Variantenvergleich' })).toHaveFocus()
 
     main.scrollTop = 320
-    await user.click(screen.getByRole('button', { name: /^4Export/ }))
+    await user.click(screen.getByRole('button', { name: 'Export' }))
     expect(main.scrollTop).toBe(0)
     expect(screen.getByRole('heading', { level: 1, name: /Export/ })).toHaveFocus()
   })

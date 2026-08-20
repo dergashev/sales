@@ -58,6 +58,24 @@ describe('proposal persistence codec', () => {
 describe('proposal store recovery', () => {
   beforeEach(() => __resetStoreForTests())
 
+  it('persists journalled building-section confirmations across reload', () => {
+    const storage = new MemoryStorage()
+    initializeProposalPersistence(storage)
+    const st = () => useStore.getState()
+
+    st().confirmBuildingSection('DEMO-B-A', 'identity', 'identity:fingerprint')
+    expect(st().journal.at(-1)?.kind).toBe('value.confirmed')
+    const raw = storage.getItem(proposalStorageKey('DEMO-0001'))!
+    expect(raw).toContain('identity:fingerprint')
+
+    __resetStoreForTests()
+    const restoredStorage = new MemoryStorage()
+    restoredStorage.setItem(proposalStorageKey('DEMO-0001'), raw)
+    expect(hydrateProposalState(restoredStorage)).toBe(true)
+    expect(st().buildingSectionConfirmations['DEMO-B-A']?.identity?.fingerprint)
+      .toBe('identity:fingerprint')
+  })
+
   it('restores the complete proposal slice with one event and no private/session data', () => {
     const storage = new MemoryStorage()
     initializeProposalPersistence(storage)

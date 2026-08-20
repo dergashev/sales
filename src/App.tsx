@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { pipelineViewForBuildingGate, useStore } from './state/store'
 import { useT } from './i18n'
 import all3Logo from '../design-system/All3Logo.png'
@@ -20,6 +20,7 @@ import {
   isClientVisibleLevel,
   pipelineViewForOutputProfile,
 } from './state/clientProjection'
+import { checkCascade, checkFonts } from './lib/font-check'
 
 /**
  * Оболочка на всю ширину экрана, три зоны (решение PO):
@@ -42,7 +43,6 @@ export function App() {
   const praesentation = isClientProjection(s.mode)
   const outputProfileView = pipelineViewForOutputProfile(s.mode, view)
   const renderedView = pipelineViewForBuildingGate(s, outputProfileView)
-  const t = useT()
 
   // Класс режима на корне — токены и стили дизайн-системы адресуют его.
   useEffect(() => {
@@ -85,7 +85,8 @@ export function App() {
     return (
       <div className="a3-app-shell flex h-screen flex-col">
         <ViewportWarning />
-        <AppHeader t={t} />
+        <FontRuntimeWarning />
+        <AppHeader />
         <main ref={mainRef} tabIndex={-1}
               className="min-h-0 flex-1 bg-surface-default outline-none" />
       </div>
@@ -101,7 +102,8 @@ export function App() {
     return (
       <div className="a3-app-shell flex h-screen flex-col">
         <ViewportWarning />
-        <AppHeader t={t} />
+        <FontRuntimeWarning />
+        <AppHeader />
         {!praesentation && <ClientOutputGateDialog returnFocusTo={modeRef} />}
         <main ref={mainRef} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto bg-surface-default outline-none">
           {s.level === 'liste' ? <OpportunityList /> : <OpportunityCard />}
@@ -114,7 +116,8 @@ export function App() {
   return (
     <div className="a3-app-shell flex h-screen flex-col">
       <ViewportWarning />
-      <AppHeader t={t} />
+      <FontRuntimeWarning />
+      <AppHeader />
       {!praesentation && <ClientOutputGateDialog returnFocusTo={modeRef} />}
 
       <div className="flex min-h-0 flex-1">
@@ -147,11 +150,7 @@ export function App() {
  * обратно. Дублировать шапку было бы вторым источником правды о том, как
  * выглядит верх продукта.
  */
-function AppHeader({
-  t,
-}: {
-  t: (k: Parameters<ReturnType<typeof useT>>[0]) => string
-}) {
+function AppHeader() {
   const s = useStore()
   const praesentation = isClientProjection(s.mode)
 
@@ -217,22 +216,84 @@ function AppHeader({
           />
         </div>
         {!praesentation && (
-          <details className="relative">
-            <summary className="flex min-h-hit-target cursor-pointer list-none items-center gap-2 rounded-control px-2 text-small font-medium text-text-primary outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">
-              <span aria-hidden="true" className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-subtle">A3</span>
-              <span>{t('shell.account')}</span>
-            </summary>
-            <div className="absolute right-0 z-popover mt-2 w-56 rounded-card border border-border-strong bg-surface-default p-3 shadow-elevated">
-              <p className="text-small font-medium text-text-primary">{t('shell.account')}</p>
-              <p className="mt-1 text-small text-text-secondary">{t('shell.accountUnavailable')}</p>
-              <Button className="mt-3 w-full" disabled disabledReason={t('shell.accountUnavailable')}>
-                {t('shell.signOut')}
-              </Button>
-            </div>
-          </details>
+          <AccountMenu />
         )}
       </div>
     </header>
+  )
+}
+
+function AccountMenu() {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onPointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      setOpen(false)
+      triggerRef.current?.focus()
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className="flex min-h-hit-target items-center gap-2 rounded-control px-2 text-small font-medium text-text-primary outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+      >
+        <span aria-hidden="true" className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-subtle">A3</span>
+        <span>{t('shell.account')}</span>
+      </button>
+      {open && (
+        <div role="dialog" aria-label={t('shell.account')} className="absolute right-0 z-popover mt-2 w-56 rounded-card border border-border-strong bg-surface-default p-3 shadow-elevated">
+          <p className="text-small font-medium text-text-primary">{t('shell.account')}</p>
+          <p className="mt-1 text-small text-text-secondary">{t('shell.accountUnavailable')}</p>
+          <Button className="mt-3 w-full" disabled disabledReason={t('shell.accountUnavailable')}>
+            {t('shell.signOut')}
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FontRuntimeWarning() {
+  const t = useT()
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    const ready = 'fonts' in document ? document.fonts.ready : Promise.resolve()
+    void ready.then(() => {
+      if (!active) return
+      const fonts = checkFonts()
+      setFailed(!fonts.ok || checkCascade().length > 0)
+    })
+    return () => { active = false }
+  }, [])
+
+  if (!failed) return null
+  return (
+    <div role="alert" className="shrink-0 border-b border-border-error bg-surface-default px-5 py-2 text-small font-medium text-text-primary">
+      <span aria-hidden="true">▲ </span>{t('shell.fontWarning')}
+    </div>
   )
 }
 

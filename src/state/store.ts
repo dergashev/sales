@@ -23,7 +23,7 @@ import {
   bgfAboveGround, calculateBuilding, kgSplit, sumOfBlock,
   SCOPE_BOUNDARIES_DECIDABLE_GROUPS,
   totalLabel as calculationTotalLabel,
-  type BuildingInput, type Coverage, type CoverageState, type Driver,
+  type BuildingInput, type Coverage, type CoverageState,
   type CostGroup, type BuildingResult,
 } from '../engine/calculate'
 import {
@@ -73,6 +73,13 @@ export type { PipelineView } from './clientProjection'
 
 /** Calculation input enriched with proposal-review metadata. */
 export type ProjectBuilding = ReviewedBuildingInput
+
+export type BuildingReviewSection = 'identity' | 'areas' | 'storeys'
+export type BuildingSectionConfirmation = { fingerprint: string; at: string }
+
+const BUILDING_REVIEW_SECTIONS: ReadonlyArray<BuildingReviewSection> = [
+  'identity', 'areas', 'storeys',
+]
 
 /**
  * Состояние = журнал событий + проекция (M-4).
@@ -218,6 +225,11 @@ export type OptionConfig = {
   included: Record<string, boolean>
   buildingReviews: Record<string, BuildingReview>
   buildingConfirmation: Record<string, BuildingConfirmation>
+  /** Explicit section review is durable Option state, not disclosure UI state. */
+  buildingSectionConfirmations: Record<
+    string,
+    Partial<Record<BuildingReviewSection, BuildingSectionConfirmation>>
+  >
   configurationMode: ConfigurationMode
   /** The default mode is an engine fallback, never proof of user consent. */
   configurationModeChosen: boolean
@@ -281,7 +293,8 @@ export type OptionConfig = {
 
 const OPTION_CONFIG_KEYS = [
   'buildings', 'activeBuildingId', 'included', 'buildingReviews',
-  'buildingConfirmation', 'configurationMode', 'configurationModeChosen',
+  'buildingConfirmation', 'buildingSectionConfirmations',
+  'configurationMode', 'configurationModeChosen',
   'pricingStarted', 'configurationVisitedChapters', 'sharedConfiguration',
   'buildingConfigState',
   'kg300', 'kg300Provenance', 'kg700Mode', 'coverage',
@@ -300,6 +313,7 @@ function captureConfig(s: Pick<Store, keyof OptionConfig>): OptionConfig {
 
 type PersistedProposalConfig = Omit<Pick<OptionConfig,
   | 'activeBuildingId' | 'included' | 'buildingReviews' | 'buildingConfirmation'
+  | 'buildingSectionConfirmations'
   | 'configurationMode' | 'configurationModeChosen' | 'pricingStarted'
   | 'configurationVisitedChapters'
   | 'sharedConfiguration' | 'buildingConfigState'
@@ -307,8 +321,14 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
   | 'scopeBoundariesConfirmedFingerprint'
   | 'esConfirmed' | 'regionalfaktorActive' | 'risikoAktiv' | 'discountPercent'
   | 'constructionStartDate'>,
-  'configurationModeChosen' | 'pricingStarted' | 'configurationVisitedChapters'
-    | 'scopeBoundariesConfirmedFingerprint' | 'constructionStartDate'> & {
+  'buildingSectionConfirmations' | 'configurationModeChosen' | 'pricingStarted'
+    | 'configurationVisitedChapters' | 'scopeBoundariesConfirmedFingerprint'
+    | 'constructionStartDate'> & {
+    /** Optional while reading candidates saved before section review was durable. */
+    buildingSectionConfirmations?: Record<
+      string,
+      Partial<Record<BuildingReviewSection, BuildingSectionConfirmation>>
+    >
     /** Optional only while reading v1 payloads saved before explicit entry. */
     configurationModeChosen?: boolean
     /** Optional while reading candidates saved before the pricing boundary. */
@@ -322,6 +342,7 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
 
 const PERSISTED_CONFIG_KEYS = [
   'activeBuildingId', 'included', 'buildingReviews', 'buildingConfirmation',
+  'buildingSectionConfirmations',
   'configurationMode', 'configurationModeChosen', 'pricingStarted',
   'configurationVisitedChapters',
   'sharedConfiguration', 'buildingConfigState',
@@ -333,6 +354,7 @@ const PERSISTED_CONFIG_KEYS = [
 
 const LEGACY_PERSISTED_CONFIG_KEYS = PERSISTED_CONFIG_KEYS.filter(
   (key) => key !== 'configurationModeChosen'
+    && key !== 'buildingSectionConfirmations'
     && key !== 'pricingStarted'
     && key !== 'configurationVisitedChapters'
     && key !== 'scopeBoundariesConfirmedFingerprint'
@@ -517,6 +539,7 @@ function defaultOptionConfig(): OptionConfig {
       [INITIAL_REVIEW_B.id]: INITIAL_REVIEW_B,
     },
     buildingConfirmation: {},
+    buildingSectionConfirmations: {},
     configurationMode: 'PER_BUILDING',
     configurationModeChosen: false,
     pricingStarted: false,
@@ -639,6 +662,18 @@ function isPersistedProposalConfig(value: unknown): value is PersistedProposalCo
       && record(confirmation)
       && typeof confirmation.fingerprint === 'string'
       && typeof confirmation.at === 'string')) return false
+
+  if (value.buildingSectionConfirmations !== undefined) {
+    if (!record(value.buildingSectionConfirmations)) return false
+    if (!Object.entries(value.buildingSectionConfirmations).every(([id, sections]) =>
+      FIXTURE_BUILDING_IDS.includes(id as typeof FIXTURE_BUILDING_IDS[number])
+      && record(sections)
+      && Object.entries(sections).every(([section, confirmation]) =>
+        BUILDING_REVIEW_SECTIONS.includes(section as BuildingReviewSection)
+        && record(confirmation)
+        && typeof confirmation.fingerprint === 'string'
+        && typeof confirmation.at === 'string'))) return false
+  }
 
   if (value.configurationMode !== 'SHARED' && value.configurationMode !== 'PER_BUILDING') {
     return false
@@ -773,6 +808,7 @@ function restoredOptionConfig(
     configurationVisitedChapters,
     scopeBoundariesConfirmedFingerprint:
       persisted.scopeBoundariesConfirmedFingerprint ?? null,
+    buildingSectionConfirmations: persisted.buildingSectionConfirmations ?? {},
     buildings,
     fields: legacyFieldsFromReview(
       persisted.buildingReviews[LEGACY_FIELDS_BUILDING_ID]!,
@@ -826,6 +862,11 @@ type Store = {
   buildingReviews: Record<string, BuildingReview>
   /** Confirmation is a fingerprint of the exact reviewed value set. */
   buildingConfirmation: Record<string, BuildingConfirmation>
+  /** Section confirmations are journalled and persisted per building/Option. */
+  buildingSectionConfirmations: Record<
+    string,
+    Partial<Record<BuildingReviewSection, BuildingSectionConfirmation>>
+  >
   /** Shared and per-building choice sets coexist; mode selects the reader. */
   configurationMode: ConfigurationMode
   configurationModeChosen: boolean
@@ -1102,6 +1143,11 @@ type Store = {
   /** Включить/исключить здание из предложения — событие журнала. */
   toggleBuildingIncluded: (id: string) => void
   confirmBuilding: (id: string) => void
+  confirmBuildingSection: (
+    id: string,
+    section: BuildingReviewSection,
+    fingerprint: string,
+  ) => void
   setConfigurationMode: (mode: ConfigurationMode) => void
   confirmConfigurationMode: (mode: ConfigurationMode) => void
   beginConfigurationModeEdit: () => void
@@ -1670,35 +1716,14 @@ function computeProjection(
     s.coverage[group] !== 'excluded'
   const simplifiedScope = s.kg700Mode === 'vereinfacht'
     && coreActive('KG_300') && coreActive('KG_400') && coreActive('KG_700')
-  const activeCoreShare = simplifiedScope
-    ? new Decimal(1)
-    : (coreActive('KG_300')
-        ? CATALOG.kgShares.echt.KG_300.div(100) : new Decimal(0))
-      .plus(coreActive('KG_400')
-        ? CATALOG.kgShares.echt.KG_400.div(100) : new Decimal(0))
-  const scopeBauwerkDriver = (driver: Driver): Driver => {
-    if (driver.block !== 'bauwerk' || simplifiedScope) return driver
-    const kg300Only = driver.scopeRefs.includes('KG 300')
-      && !driver.scopeRefs.includes('KG 400')
-    const kg400Only = driver.scopeRefs.includes('KG 400')
-      && !driver.scopeRefs.includes('KG 300')
-    const underground = driver.scopeRefs.includes('UG')
-    const active = underground || kg300Only
-      ? coreActive('KG_300')
-      : kg400Only
-        ? coreActive('KG_400')
-        : true
-    return {
-      ...driver,
-      exact: active
-        ? underground || kg300Only || kg400Only
-          ? driver.exact
-          : driver.exact.mul(activeCoreShare)
-        : new Decimal(0),
-    }
-  }
-  const baseDrivers = rawBaseDrivers.map(scopeBauwerkDriver)
-  const optDrivers = rawOptDrivers.map(scopeBauwerkDriver)
+  // There is no authoritative decomposition of the generic Bauwerk formula
+  // into optional KG 300 and KG 400 contributions. In particular, the
+  // 76.2/23.8 presentation split is not a pricing multiplier and UG is not
+  // assigned wholly to KG 300. Keep the established calculation intact;
+  // the current ticket must remain blocked on that commercial gap instead
+  // of manufacturing a lower total in frontend state.
+  const baseDrivers = rawBaseDrivers
+  const optDrivers = rawOptDrivers
   const bauwerkBlock = sumOfBlock([...baseDrivers, ...optDrivers], 'bauwerk')
   // KG 700 в режиме HOAI+AHO — СОБСТВЕННАЯ позиция 12 % от блока
   // (`calculation-spec` §1, решение D-27). В режиме `vereinfacht` тотал не
@@ -1729,17 +1754,12 @@ function computeProjection(
   // считается от разбиения блока, а не от итога: включив надбавку в базу
   // распределения, мы растворили бы её в KG 300 — она перестала бы быть
   // отдельной строкой и вдобавок увеличила бы собственную базу.
-  const effectiveKgSplit = simplifiedScope
-    ? kgSplit(bauwerkBlock, CATALOG.kgShares, 'vereinfacht')
-    : coreActive('KG_300') && coreActive('KG_400')
-      ? kgSplit(bauwerkBlock, CATALOG.kgShares, 'echt')
-      : {
-          KG_300: coreActive('KG_300') ? bauwerkBlock : new Decimal(0),
-          KG_400: coreActive('KG_400') ? bauwerkBlock : new Decimal(0),
-        }
-  const kg300Exact = simplifiedScope
-    ? effectiveKgSplit.KG_300
-    : coreActive('KG_300') ? effectiveKgSplit.KG_300 : new Decimal(0)
+  const effectiveKgSplit = kgSplit(
+    bauwerkBlock,
+    CATALOG.kgShares,
+    simplifiedScope ? 'vereinfacht' : 'echt',
+  )
+  const kg300Exact = effectiveKgSplit.KG_300
   for (const risk of RISK_ITEMS) {
     if (!s.risikoAktiv[risk.id]) continue
     const d = riskDriver(risk, kg300Exact)
@@ -3227,6 +3247,42 @@ const store = createStore<Store>((set, get) => {
           },
         })
       }
+    },
+
+    confirmBuildingSection: (id, section, fingerprint) => {
+      const s = get()
+      if (!s.buildingReviews[id] || !BUILDING_REVIEW_SECTIONS.includes(section)
+        || fingerprint.length === 0) return
+      const previous = s.buildingSectionConfirmations[id]?.[section]
+      if (previous?.fingerprint === fingerprint) return
+      const confirmed: BuildingSectionConfirmation = {
+        fingerprint,
+        at: new Date().toISOString(),
+      }
+      const write = (value: BuildingSectionConfirmation | undefined) => set((state) => {
+        const sections = { ...state.buildingSectionConfirmations[id] }
+        if (value) sections[section] = value
+        else delete sections[section]
+        return {
+          buildingSectionConfirmations: {
+            ...state.buildingSectionConfirmations,
+            [id]: sections,
+          },
+        }
+      })
+      write(confirmed)
+      const sectionLabel: Record<BuildingReviewSection, string> = {
+        identity: 'Identität',
+        areas: 'Flächen',
+        storeys: 'Geschossstruktur',
+      }
+      apply({
+        kind: 'value.confirmed',
+        label: `Gebäude ${id} · Abschnitt ${sectionLabel[section]} bestätigt`,
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(confirmed),
+      })
     },
 
     confirmBuilding: (id) => {

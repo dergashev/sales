@@ -12,12 +12,13 @@ import {
 beforeEach(() => __resetStoreForTests())
 
 async function openBuildingScope(user: ReturnType<typeof userEvent.setup>) {
-  render(<App />)
+  const view = render(<App />)
   await user.click(await screen.findByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
   await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
   await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
   await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
   await user.click(screen.getByRole('button', { name: 'Öffnen' }))
+  return view
 }
 
 describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
@@ -69,6 +70,46 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
 
     expect(buildingConfirmed(useStore.getState(), 'DEMO-B-A')).toBe(true)
     expect(screen.getByText('Gebäude bestätigt')).toBeInTheDocument()
+  })
+
+  it('bewahrt Abschnittsbestätigungen über Remounts und invalidiert sie nach Änderungen', async () => {
+    const user = userEvent.setup()
+    const view = await openBuildingScope(user)
+
+    await user.click(screen.getByRole('button', { name: 'Abschnitt bestätigen' }))
+    expect(useStore.getState().buildingSectionConfirmations['DEMO-B-A']?.identity)
+      .toBeDefined()
+    expect(useStore.getState().journal.at(-1)?.label)
+      .toContain('Abschnitt Identität bestätigt')
+
+    view.unmount()
+    render(<App />)
+    const identity = screen.getByRole('button', { name: 'Identität' }).closest('tr')!
+    expect(within(identity).getByText('Bestätigt')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Identität' }))
+    const name = screen.getByRole('textbox', { name: 'Bezeichnung aus der Dokumentation' })
+    await user.clear(name)
+    await user.type(name, 'Haus A Nord')
+    await user.click(screen.getByRole('button', {
+      name: 'Angabe übernehmen: Bezeichnung aus der Dokumentation',
+    }))
+    expect(within(identity).getByText('Geändert · erneut bestätigen')).toBeInTheDocument()
+  })
+
+  it('übersetzt Kennzahlen und Sidebar-Gruppen ohne Profilbegriffe als Überschriften', async () => {
+    const user = userEvent.setup()
+    await openBuildingScope(user)
+
+    const header = document.querySelector('.a3-global-header') as HTMLElement
+    await user.click(within(header).getByRole('radio', { name: 'EN' }))
+
+    expect(screen.queryByText('BGF gesamt')).toBeNull()
+    expect(screen.getAllByText('GFA R+S · total').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Living area under WoFlV').length).toBeGreaterThan(0)
+    const navigation = screen.getByRole('navigation', { name: 'Navigation' })
+    expect(within(navigation).getByText('Current option')).toBeInTheDocument()
+    expect(within(navigation).queryByText('Client view', { selector: 'p' })).toBeNull()
   })
 
   it('verwendet manuell aktivierte Tabs mit roving tabindex', async () => {

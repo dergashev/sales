@@ -43,8 +43,6 @@ const SCREENS: Array<{
 }> = [
   { id: 'buildingScope', labelKey: 'nav.buildingScope', hint: '1' },
   { id: 'konfigurator', labelKey: 'nav.konfigurator', hint: '2' },
-  { id: 'vergleich', labelKey: 'nav.vergleich', hint: '3' },
-  { id: 'export', labelKey: 'nav.export', hint: '4' },
 ]
 
 const FOCUS = 'outline-none focus-visible:outline focus-visible:outline-2 ' +
@@ -114,19 +112,17 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
       </div>
 
       <ul className="flex-1 py-2">
+        <li>
+          <p className="a3-cap px-5 pb-1 pt-3">
+            {t('shell.sidebar.workflow')}
+          </p>
+        </li>
         {screens.map((item) => {
           const active = view === item.id
           const blocked = item.id !== 'buildingScope' && !gateOpen
           const reasonId = `building-gate-${item.id}`
           return (
             <li key={item.id}>
-              {(item.id === 'buildingScope' || item.id === 'vergleich') && (
-                <p className="a3-cap px-5 pb-1 pt-3">
-                  {t(item.id === 'buildingScope'
-                    ? 'shell.profile.internal'
-                    : 'shell.profile.client')}
-                </p>
-              )}
               <button
                 type="button"
                 onClick={() => { if (!blocked) s.setPipelineView(item.id) }}
@@ -192,6 +188,32 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
             </li>
           )
         })}
+        {(!client || isClientVisiblePipelineView('export')) && (
+          <li className="mt-2 border-t border-border-subtle pt-2">
+            <p className="a3-cap px-5 pb-1 pt-3">
+              {t('shell.sidebar.outputs')}
+            </p>
+            <button
+              type="button"
+              onClick={() => { if (gateOpen) s.setPipelineView('export') }}
+              aria-current={view === 'export' ? 'page' : undefined}
+              aria-disabled={!gateOpen || undefined}
+              aria-describedby={!gateOpen ? 'building-gate-export' : undefined}
+              className={`relative flex min-h-hit-target w-full items-center px-5 py-2 text-left text-body ${FOCUS} ` +
+                (view === 'export'
+                  ? 'border-l-selected border-selection-border bg-surface-subtle font-medium text-text-primary'
+                  : 'border-l-selected border-transparent text-text-secondary hover:bg-surface-subtle') +
+                (!gateOpen ? ' cursor-default text-text-disabled' : '')}
+            >
+              {t('nav.export')}
+            </button>
+            {!gateOpen && (
+              <span id="building-gate-export" className="sr-only">
+                {t('buildingScope.gate.navigationReason')}
+              </span>
+            )}
+          </li>
+        )}
       </ul>
 
       {!client && (
