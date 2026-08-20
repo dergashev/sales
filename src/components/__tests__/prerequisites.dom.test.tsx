@@ -89,4 +89,29 @@ describe('Opportunity prerequisites', () => {
     expect(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
       .toHaveAttribute('aria-disabled', 'true')
   })
+
+  it('can present attention on a resolved row without changing readiness authority', () => {
+    render(
+      <PrerequisiteChecklist
+        label="Bereitschaft für Optionen"
+        requirements={[
+          {
+            id: 'parameters', label: 'Projektparameter bestätigen', resolved: true,
+            detail: 'Erfüllt · nicht mehr aktuell',
+            sourceLabel: 'Zu den Projektparametern',
+            onOpenSource: () => {},
+          },
+        ]}
+        createLabel="Opportunity Option anlegen"
+        canCreate
+        onCreate={() => {}}
+      />,
+    )
+
+    const gate = screen.getByRole('group', { name: 'Bereitschaft für Optionen' })
+    expect(within(gate).getByText('1 von 1 Voraussetzungen erfüllt')).toBeInTheDocument()
+    expect(within(gate).getByText('Erfüllt · nicht mehr aktuell')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
+      .not.toHaveAttribute('aria-disabled')
+  })
 })

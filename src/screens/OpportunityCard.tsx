@@ -673,6 +673,9 @@ export function OpportunityCard() {
                 id: 'parameters',
                 label: tx('Projektparameter bestätigen'),
                 resolved: s.projectParamsConfirmed,
+                detail: baselineStale
+                  ? t('oppcard.prerequisites.fulfilledStale')
+                  : undefined,
                 sourceLabel: tx('Projektparameter'),
                 onOpenSource: () => focusSection(parameterSectionRef),
               },

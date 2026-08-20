@@ -9,6 +9,7 @@ export type Prerequisite = {
   id: string
   label: string
   resolved: boolean
+  detail?: string
   sourceLabel: string
   onOpenSource: () => void
 }
@@ -98,7 +99,8 @@ export function PrerequisiteChecklist({
             id: requirement.id,
             label: requirement.label,
             resolved: requirement.resolved,
-            detail: requirement.resolved ? t('common.fulfilled') : t('common.open'),
+            detail: requirement.detail
+              ?? (requirement.resolved ? t('common.fulfilled') : t('common.open')),
             trailing: (
               <LinkButton onClick={requirement.onOpenSource}>
                 {requirement.sourceLabel}

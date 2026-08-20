@@ -80,6 +80,11 @@ describe('Project Card — project baseline', () => {
     expect(screen.getByText(
       'Vorbereitung · Offene Fragen: 1 · Aktive Annahmen: 2',
     )).toBeInTheDocument()
+    const readiness = screen.getByRole('group', { name: 'Bereitschaft für Optionen' })
+    expect(within(readiness).getByText('Erfüllt · nicht mehr aktuell'))
+      .toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
+      .not.toHaveAttribute('aria-disabled')
 
     act(() => vi.advanceTimersByTime(DELTA_CHIP_MS + 100))
     expect(screen.getByText(/Geändert seit der Bestätigung/)).toBeVisible()
@@ -92,6 +97,9 @@ describe('Project Card — project baseline', () => {
     expect(screen.queryByText(/Geändert seit der Bestätigung/)).not.toBeInTheDocument()
     const current = screen.getByText('Bestätigt · Projektgrundlage aktuell')
     expect(document.activeElement).toBe(current)
+    expect(within(readiness).queryByText('Erfüllt · nicht mehr aktuell'))
+      .not.toBeInTheDocument()
+    expect(within(readiness).getAllByText('Erfüllt')).toHaveLength(2)
     expect(useStore.getState().journal.filter((event) =>
       event.label === PROJECT_PARAMS_CONFIRMATION_LABEL)).toHaveLength(confirmationsBefore + 1)
   })

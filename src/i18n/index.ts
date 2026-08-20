@@ -63,6 +63,7 @@ const de = {
   'common.open': 'Offen',
   'designSystem.readinessSummary': '{done} von {total} Punkten bereit',
   'oppcard.prerequisitesSummary': '{done} von {total} Voraussetzungen erfüllt',
+  'oppcard.prerequisites.fulfilledStale': 'Erfüllt · nicht mehr aktuell',
   // DC-13, Screen-reader-Klausel: позиция шага — целой фразой, а не одной
   // цифрой. Ключ с параметрами, потому что правило 36 запрещает собирать
   // перевод конкатенацией.
@@ -376,6 +377,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'common.open': 'Open',
   'designSystem.readinessSummary': '{done} of {total} points ready',
   'oppcard.prerequisitesSummary': '{done} of {total} prerequisites complete',
+  'oppcard.prerequisites.fulfilledStale': 'Complete · no longer current',
   'oppcard.stepPosition': 'Step {n} of {total}',
   'oppcard.customerEvidence': 'confirmed by customer on {date}',
   'oppcard.baseline.title': 'Project baseline',
