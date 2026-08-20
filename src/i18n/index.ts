@@ -67,6 +67,7 @@ const de = {
   // цифрой. Ключ с параметрами, потому что правило 36 запрещает собирать
   // перевод конкатенацией.
   'oppcard.stepPosition': 'Schritt {n} von {total}',
+  'oppcard.customerEvidence': 'vom Kunden bestätigt am {date}',
   'buildingScope.gate.navigationReason':
     'Zuerst mindestens ein Gebäude auswählen und jedes gewählte Gebäude bestätigen.',
   'buildingScope.title': 'Gebäude & Umfang',
@@ -359,6 +360,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'designSystem.readinessSummary': '{done} of {total} points ready',
   'oppcard.prerequisitesSummary': '{done} of {total} prerequisites complete',
   'oppcard.stepPosition': 'Step {n} of {total}',
+  'oppcard.customerEvidence': 'confirmed by customer on {date}',
   'buildingScope.gate.navigationReason':
     'Select at least one building and confirm every selected building first.',
   'buildingScope.title': 'Building & scope',

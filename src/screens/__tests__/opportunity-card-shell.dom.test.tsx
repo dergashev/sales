@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
 import { __resetStoreForTests, useStore } from '../../state/store'
@@ -18,6 +18,7 @@ import { __resetStoreForTests, useStore } from '../../state/store'
  * - обзор реагирует на реальные переходы состояния (конфликт → параметры → Option).
  */
 beforeEach(() => __resetStoreForTests())
+afterEach(() => vi.unstubAllGlobals())
 
 async function openProjectCard(user: ReturnType<typeof userEvent.setup>) {
   render(<App />)
@@ -155,6 +156,11 @@ describe('Project Card — шапка и обзор готовности', () =>
     expect(screen.getByRole('button', { name: 'Kundenwert übernehmen' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Dokumentwert beibehalten' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Später entscheiden' })).toBeInTheDocument()
+    expect(useStore.getState().journal.at(-1)?.label).toBe(
+      'Konflikt „WFL nach WoFlV“ zurückgestellt',
+    )
+    expect(useStore.getState().undoToast).toBeNull()
+    expect(document.body).not.toHaveTextContent('DEMO-CONF-0001')
   })
 
   it('zeigt Kundenevidenz als datierten Satz statt als interne Event-ID', async () => {
@@ -165,6 +171,13 @@ describe('Project Card — шапка и обзор готовности', () =>
     expect(within(conflict).getByText('vom Kunden bestätigt am 05.08.2026'))
       .toBeInTheDocument()
     expect(within(conflict).queryByText('DEMO-VE-0002')).not.toBeInTheDocument()
+
+    act(() => useStore.getState().setUiLanguage('en'))
+    expect(within(conflict).getByText('confirmed by customer on 05/08/2026'))
+      .toBeInTheDocument()
+    expect(useStore.getState().buildingConflicts['DEMO-CONF-0001']!.candidates
+      .find((candidate) => candidate.origin === 'customer')?.source.reference)
+      .toBe('DEMO-VE-0002')
   })
 
   it('zählt die bestätigte WFL hoch, zeigt ihr Delta und journalisiert die Ursache', async () => {
@@ -173,6 +186,13 @@ describe('Project Card — шапка и обзор готовности', () =>
     const params = screen.getByRole('region', { name: 'Projektparameter' })
     const wflMetric = within(params).getByText('Total WFL nach WoFlV').parentElement!
     expect(wflMetric).toHaveTextContent(/1\.500,00\s*m²/)
+
+    // useCountUp has dedicated timing coverage. The integrated workflow gets
+    // one explicit completion frame so whole-suite load cannot race the
+    // canonical 400 ms animation against waitFor's wall-clock timeout.
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) =>
+      window.setTimeout(() => callback(performance.now() + 500), 0))
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => window.clearTimeout(id))
 
     await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
     await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))

@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 57** · перевод есть, мост не подключён: 31
-· перевода нет (в поставку копирайта): 26
+**Всего 56** · перевод есть, мост не подключён: 31
+· перевода нет (в поставку копирайта): 25
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -72,5 +72,4 @@ Mit freundlichen Grüßen
 - Untergeschoss · Rohbau und Ausbau
 - Verschiebt die Termine unten; die Bauzeit selbst bleibt gleich.
 - Wartet auf die Voraussetzungen oben
-- vom Kunden bestätigt am 05.08.2026
 - ≈ 2.447 €/m² WFL nach WoFlV

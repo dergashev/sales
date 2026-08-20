@@ -199,6 +199,12 @@ function focusSection(ref: RefObject<HTMLElement | null>) {
   ref.current?.focus()
 }
 
+function customerEvidenceDate(capturedAt: string, language: 'de' | 'en'): string {
+  return new Intl.DateTimeFormat(language === 'de' ? 'de-DE' : 'en-GB', {
+    day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC',
+  }).format(new Date(`${capturedAt}T00:00:00Z`))
+}
+
 export function OpportunityCard() {
   const s = useStore()
   const t = useT()
@@ -439,7 +445,13 @@ export function OpportunityCard() {
                     {tx(c.origin === 'customer' ? 'Kunde' : 'Dokument')}
                   </span>
                   <span className="numeric">{formatDE(D(c.value), 2)}{NNBSP}m²</span>
-                  <span className="a3-cap block">{c.source}</span>
+                  <span className="a3-cap block">
+                    {c.origin === 'customer' && c.capturedAt
+                      ? t('oppcard.customerEvidence', {
+                          date: customerEvidenceDate(c.capturedAt, s.uiLanguage),
+                        })
+                      : c.source}
+                  </span>
                 </span>
               ))}
             </div>

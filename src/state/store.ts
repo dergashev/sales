@@ -155,7 +155,10 @@ export type ConflictCandidate = {
   origin: 'document' | 'customer'
   value: string
   selectionStatus: 'authoritative' | 'alternative'
+  /** Raw audit reference; presentation copy must never replace it in state. */
   source: string
+  /** Optional evidence date exposed separately for locale-aware presentation. */
+  capturedAt: string | null
 }
 
 export type WflConflict = {
@@ -483,15 +486,9 @@ const INITIAL_BUILDING_CONFLICTS: Record<string, BuildingConflict> = {
           }
         : {
             kind: 'customer',
-            // A verification-event id is audit plumbing, not sales-facing
-            // evidence. Keep the fixture date as the visible authority cue
-            // and leave the immutable event itself in the conflict record.
-            reference: 'capturedAt' in candidate
-              && typeof candidate.capturedAt === 'string'
-              ? `vom Kunden bestätigt am ${new Intl.DateTimeFormat('de-DE', {
-                  day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC',
-                }).format(new Date(`${candidate.capturedAt}T00:00:00Z`))}`
-              : 'vom Kunden bestätigt',
+            reference: 'verificationEventId' in candidate
+              && typeof candidate.verificationEventId === 'string'
+              ? candidate.verificationEventId : 'DEMO-VE-0002',
           },
     })),
     resolutions: [],
@@ -1399,6 +1396,14 @@ export function wflConflict(
       value: candidate.value,
       selectionStatus: candidate.id === selectedId ? 'authoritative' : 'alternative',
       source: candidate.source.reference ?? 'unknown source',
+      capturedAt: (() => {
+        const fixtureCandidate = fxConflict.candidates.find(
+          (item) => item.origin === candidate.origin,
+        )
+        return fixtureCandidate && 'capturedAt' in fixtureCandidate
+          && typeof fixtureCandidate.capturedAt === 'string'
+          ? fixtureCandidate.capturedAt : null
+      })(),
     })),
   }
 }
@@ -2336,14 +2341,20 @@ const store = createStore<Store>((set, get) => {
         ),
       }))
       write(resolution.decision, selectedId, 'Prüfung der Gebäudedaten')
+      const deferred = resolution.decision === 'defer'
       apply({
         kind: 'conflict.resolved',
-        label: resolution.decision === 'defer'
-          ? `Gebäudekonflikt ${conflictId} zurückgestellt`
+        label: deferred
+          ? `Konflikt „${BUILDING_FACT_LABELS[conflict.factKey]}“ zurückgestellt`
           : `Gebäudekonflikt ${conflictId} gelöst`,
         deltaExact: null,
-        inverse: () => write('defer', null, 'Rückgängig'),
-        forward: () => write(resolution.decision, selectedId, 'Wiederholt'),
+        // Deferring an already-open conflict does not change its effective
+        // state. Offering Undo would therefore be a false action; the audit
+        // event remains in the append-only conflict and journal histories.
+        ...(deferred ? {} : {
+          inverse: () => write('defer', null, 'Rückgängig'),
+          forward: () => write(resolution.decision, selectedId, 'Wiederholt'),
+        }),
       })
     },
 
