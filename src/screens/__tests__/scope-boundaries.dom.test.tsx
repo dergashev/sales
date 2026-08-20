@@ -7,12 +7,8 @@ import { __resetStoreForTests, activeBuilding, useStore } from '../../state/stor
 /**
  * Leistungsabgrenzung / Scope Boundaries (тикет d21f8d48).
  *
- * Проверяет ровно то, что разрешил Product Decision Brief этого тикета:
- * KG 200/500/600 — настоящий трёхпозиционный выбор; KG 300/400/700 —
- * зафиксированные CheckboxCard-плитки (`mandatory`), которые нельзя снять
- * кликом, но которые остаются в Tab-порядке и называют причину текстом
- * («Pflicht»), а не выглядят `disabled`. Плюс: четвёртый Energiestandard
- * (EH 40 NH/QNG) и подтверждение с инвалидацией при изменении.
+ * Every offered cost group uses the same binary scope decision. Core-group
+ * exclusion also exercises the approved D-07 calculation fallback.
  */
 
 beforeEach(() => __resetStoreForTests())
@@ -34,35 +30,35 @@ async function openScopeBoundaries(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('Leistungsabgrenzung / Scope Boundaries (ticket d21f8d48)', () => {
-  it('zeigt KG 300/400/700 als gesperrte, aber fokussierbare Pflicht-Kacheln', async () => {
+  it('renders all six groups as binary decisions and applies the D-07 fallback', async () => {
     const user = userEvent.setup()
     await openScopeBoundaries(user)
 
-    const journalBefore = useStore.getState().journal.length
-    for (const kg of [/KG.300/, /KG.400/, /KG.700/]) {
-      const tile = screen.getByRole('checkbox', { name: kg })
-      expect(tile).toBeChecked()
-      expect(tile).toHaveAttribute('aria-disabled', 'true')
-      expect(tile).not.toBeDisabled() // bleibt im Tab-Vordergrund (OPTION-005)
-      await user.click(tile)
-      // Der eigentliche Vertrag ist Geschäftszustand, nicht die native
-      // Checkbox-Eigenschaft (die manche Testumgebungen trotz
-      // `preventDefault` mutieren): ein Klick auf eine Pflicht-Kachel darf
-      // keine Coverage-Entscheidung auslösen — es gibt für sie gar keine.
-      expect(useStore.getState().journal).toHaveLength(journalBefore)
+    for (const kg of [/KG.200/, /KG.300/, /KG.400/, /KG.500/, /KG.600/, /KG.700/]) {
+      expect(within(screen.getByRole('radiogroup', { name: kg })).getAllByRole('radio'))
+        .toHaveLength(2)
     }
-    expect(screen.getAllByText((_, el) => (el?.textContent ?? '').includes('Pflicht'))
-      .length).toBeGreaterThanOrEqual(3)
+    const totalBefore = useStore.getState().projection().result.total.exact
+    const kg300 = screen.getByRole('radiogroup', { name: /KG.300/ })
+    await user.click(within(kg300).getAllByRole('radio')[1]!)
+    expect(useStore.getState().coverage.KG_300).toBe('excluded')
+    expect(useStore.getState().kg700Mode).toBe('hoaiAho')
+    expect(useStore.getState().journal.at(-1)?.label).toContain('automatisch')
+    const projection = useStore.getState().projection()
+    expect(projection.result.total.exact.lt(totalBefore)).toBe(true)
+    expect(projection.kgSplit.KG_300.isZero()).toBe(true)
+    expect(projection.kgSplit.KG_300.plus(projection.kgSplit.KG_400)
+      .equals(projection.result.bauwerk)).toBe(true)
   })
 
-  it('lässt KG 200/500/600 als echten Dreifach-Zustand wählen (D-18)', async () => {
+  it('lets optional groups choose included or excluded without an unknown tile', async () => {
     const user = userEvent.setup()
     await openScopeBoundaries(user)
 
     const kg500 = screen.getByRole('radiogroup', { name: /KG.500/ })
     expect(useStore.getState().coverage.KG_500).toBe('unknown')
     const options = within(kg500).getAllByRole('radio')
-    expect(options).toHaveLength(3)
+    expect(options).toHaveLength(2)
     await user.click(options[0]!) // "enthalten"
     expect(useStore.getState().coverage.KG_500).toBe('included')
   })
@@ -82,12 +78,13 @@ describe('Leistungsabgrenzung / Scope Boundaries (ticket d21f8d48)', () => {
     const user = userEvent.setup()
     await openScopeBoundaries(user)
 
-    await user.click(screen.getByRole('button', { name: 'Bestätigen' }))
-    expect(screen.getByText('Leistungsabgrenzung bestätigt.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Umfang bestätigen/ }))
+    expect(useStore.getState().scopeBoundariesConfirmedFingerprint).not.toBeNull()
+    await user.click(nav(/Leistungsabgrenzung/))
 
     const kg600 = screen.getByRole('radiogroup', { name: /KG.600/ })
     await user.click(within(kg600).getAllByRole('radio')[1]!) // "nicht enthalten"
-    expect(screen.getByRole('button', { name: 'Bestätigen' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Umfang bestätigen/ })).toBeInTheDocument()
     expect(screen.getByText(/erneut geprüft|geändert/))
       .toBeInTheDocument()
   })
@@ -127,7 +124,7 @@ describe('Leistungsabgrenzung / Scope Boundaries (ticket d21f8d48)', () => {
     expect(useStore.getState().buildings['DEMO-B-B']!.energiestandard).toBe('EH_40')
 
     // Confirmation covers both buildings' requirements, not just the active one.
-    await user.click(screen.getByRole('button', { name: 'Bestätigen' }))
-    expect(screen.getByText('Leistungsabgrenzung bestätigt.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Umfang bestätigen/ }))
+    expect(useStore.getState().scopeBoundariesConfirmedFingerprint).not.toBeNull()
   })
 })

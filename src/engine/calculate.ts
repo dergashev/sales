@@ -27,11 +27,10 @@ export type Coverage = Record<CostGroup, CoverageState>
 
 /**
  * Leistungsabgrenzung groups that require a user coverage decision.
- * KG 300/400/700 are mandatory by policy; their persisted `unknown` value is
- * a neutral representation, not an unresolved decision.
+ * Every offered cost group requires an explicit scope decision.
  */
 export const SCOPE_BOUNDARIES_DECIDABLE_GROUPS = [
-  'KG_200', 'KG_500', 'KG_600',
+  'KG_200', 'KG_300', 'KG_400', 'KG_500', 'KG_600', 'KG_700',
 ] as const satisfies readonly CostGroup[]
 
 export type BuildingInput = {

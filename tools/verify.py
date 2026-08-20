@@ -6080,7 +6080,7 @@ class Verifier:
         except Exception:
             return
         values = set()
-        for sec in ('kg300', 'kg400', 'zertifikate'):
+        for sec in ('kg300', 'kg400', 'zertifikate', 'configurationMode', 'scopeBoundaries'):
             for g in data.get(sec, {}).get('groups', []):
                 for c in g.get('choices', []):
                     values.add((g['id'], c['value']))

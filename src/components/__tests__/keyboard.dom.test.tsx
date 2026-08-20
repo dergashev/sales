@@ -188,7 +188,7 @@ describe('Маршрут экрана возвращает начало доку
     const main = screen.getByRole('main')
     main.scrollTop = 420
 
-    await user.click(screen.getByRole('button', { name: /Variantenvergleich/ }))
+    await user.click(screen.getByRole('button', { name: /^3Variantenvergleich$/ }))
     expect(main.scrollTop).toBe(0)
     expect(screen.getByRole('heading', { level: 1, name: 'Variantenvergleich' })).toHaveFocus()
 
@@ -280,35 +280,14 @@ describe('DC-33 · единственная модалка системы — в
   })
 })
 
-describe('DC-14 · тур: шаг без цели пропускается, а не ломает тур', () => {
-  it('собирается из целей, которые ЕСТЬ на экране, и считает шаги от них', async () => {
+describe('Preparation navigation cleanup', () => {
+  it('does not expose the retired guided tour or its modal', async () => {
     const user = userEvent.setup()
     await enterPipeline(user)
-    const appHost = document.body.firstElementChild as HTMLElement
-    await user.click(screen.getByRole('button', { name: /Rundgang durch das Werkzeug/ }))
-
-    const card = await screen.findByRole('dialog', { name: /Der Preis ist immer sichtbar/ })
-    expect(card).toHaveAttribute('aria-modal', 'true')
-    expect(within(card).getByRole('heading', { name: /Der Preis ist immer sichtbar/ })).toHaveFocus()
-    expect(appHost.inert).toBe(true)
-    // Счётчик считает ЖИВЫЕ шаги: заметки на этом экране нет, и её шаг в
-    // знаменатель не попадает — иначе тур обещал бы шаг, которого не будет.
-    const weiter = within(card).getByRole('button', { name: /Weiter/ })
-    const total = Number(weiter.textContent!.match(/\/(\d+)/)![1])
-    expect(total).toBeGreaterThan(1)
-    expect(total).toBeLessThan(6)
-
-    // Проходится до конца и закрывается сам.
-    for (let k = 0; k < total; k++) {
-      const btn = within(card).queryByRole('button', { name: /Weiter|Rundgang beenden/ })
-      if (!btn) break
-      await user.click(btn)
-    }
-    expect(useStore.getState().tourOpen).toBe(false)
-    await waitFor(() => {
-      expect(document.querySelector('[role="dialog"]')).toBeNull()
-      expect(appHost.inert).toBe(false)
-    })
+    expect(screen.queryByRole('button', { name: /Rundgang durch das Werkzeug/ }))
+      .not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: /Der Preis ist immer sichtbar/ }))
+      .not.toBeInTheDocument()
   })
 
   it('в презентации тура не существует — ни кнопки, ни карточки', async () => {

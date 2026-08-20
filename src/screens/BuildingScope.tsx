@@ -4,7 +4,6 @@ import {
   useRef,
   useState,
   type KeyboardEvent,
-  type ReactNode,
 } from 'react'
 import { Decimal } from 'decimal.js'
 import type { BuildingInput } from '../engine/calculate'
@@ -30,6 +29,7 @@ import {
 } from '../state/buildingReview'
 import {
   Badge,
+  DisclosureRow,
   FormField,
   PageHeader,
   ReadinessChecklist,
@@ -307,6 +307,14 @@ export function BuildingScope() {
                   const address = effectiveFactValue(review.facts.address)
                   const form = effectiveFactValue(review.facts.buildingForm)
                   const buildingClass = effectiveFactValue(review.facts.buildingClass)
+                  const gfa = effectiveDerivedArea(
+                    review, s.buildingConflicts, 'bgfRSTotal',
+                  ).value
+                  const wfl = effectiveFactValue(review.facts.wfl)
+                  const nuf = effectiveFactValue(review.facts.nuf)
+                  const units = effectiveFactValue(review.facts.units)
+                  const area = wfl ?? nuf
+                  const areaLabel = wfl ? 'WFL' : 'NUF'
                   return (
                     <li key={id} className="border-b border-border-subtle py-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -321,22 +329,25 @@ export function BuildingScope() {
                         </label>
                         <StatusBadge status={statusFor(s, id)} />
                       </div>
-                      <dl className="mt-2 grid gap-1 pl-7 text-small text-text-secondary">
+                      <dl className="mt-3 grid grid-cols-3 gap-3 pl-7 text-small text-text-secondary">
                         <FactSummary
-                          label={t('buildingScope.fact.address')}
-                          value={address ?? t('buildingScope.value.addressMissing')}
+                          label="BGF gesamt"
+                          value={gfa ? `${formatDE(gfa, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}
                         />
                         <FactSummary
-                          label={t('buildingScope.fact.form')}
-                          value={form ? t(FORM_MESSAGE[form]) : t('buildingScope.value.formMissing')}
+                          label={areaLabel}
+                          value={area ? `${formatDE(area, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}
                         />
                         <FactSummary
-                          label={t('buildingScope.fact.class')}
-                          value={buildingClass
-                            ? t(CLASS_MESSAGE[buildingClass])
-                            : t('buildingScope.value.classMissing')}
+                          label={t('buildingScope.fact.units')}
+                          value={units ? formatDE(units, 0) : t('buildingScope.value.notCaptured')}
                         />
                       </dl>
+                      <p className="mt-2 pl-7 text-small text-text-muted">
+                        {[address, form ? t(FORM_MESSAGE[form]) : null,
+                          buildingClass ? t(CLASS_MESSAGE[buildingClass]) : null]
+                          .filter(Boolean).join(' · ')}
+                      </p>
                     </li>
                   )
                 })}
@@ -487,57 +498,61 @@ function BuildingReviewPanel({
 
   return (
     <div className="grid gap-6">
-      <FactGroup title={t('buildingScope.group.identity')}>
-        <TextFactField buildingId={buildingId} factKey="documentationName" />
-        <TextFactField buildingId={buildingId} factKey="address" />
-        <SelectFactField
-          buildingId={buildingId}
-          factKey="buildingForm"
-          values={FORM_VALUES}
-          messageFor={(value) => FORM_MESSAGE[value]}
-        />
-        <SelectFactField
-          buildingId={buildingId}
-          factKey="buildingClass"
-          values={CLASS_VALUES}
-          messageFor={(value) => CLASS_MESSAGE[value]}
-          helper={t('buildingScope.class.helper')}
-        />
-      </FactGroup>
+      {openConflicts.length > 0 && (
+        <div className="grid gap-3">
+          <DataStateBlock
+            state="error"
+            sentence={t('buildingScope.confirm.conflictReason', { count: openConflicts.length })}
+            detail={t('buildingScope.recovery.detail')}
+            impact={t('buildingScope.recovery.title', { buildings: stableName(review, buildingId) })}
+            remedy={t('buildingScope.recovery.remedy')}
+            retryPolicy={t('buildingScope.confirm.includesClass')}
+          />
+          {openConflicts.map((conflict) => (
+            <ConflictDecision key={conflict.id} conflict={conflict} />
+          ))}
+        </div>
+      )}
 
-      <FactGroup title={t('buildingScope.group.above')}>
-        <DecimalFactField buildingId={buildingId} factKey="bgfRAbove" unit="m²" />
-        <DecimalFactField buildingId={buildingId} factKey="bgfSAbove" unit="m²" />
-        <DecimalFactField buildingId={buildingId} factKey="bgfRSAbove" unit="m²" derived />
-      </FactGroup>
-
-      <FactGroup title={t('buildingScope.group.below')}>
-        <DecimalFactField buildingId={buildingId} factKey="bgfRBelow" unit="m²" />
-        <DecimalFactField buildingId={buildingId} factKey="bgfSBelow" unit="m²" />
-        <DecimalFactField buildingId={buildingId} factKey="bgfRSBelow" unit="m²" derived />
-      </FactGroup>
-
-      <FactGroup title={t('buildingScope.group.total')}>
-        <DecimalFactField buildingId={buildingId} factKey="bgfRSTotal" unit="m²" derived />
-        <DecimalFactField buildingId={buildingId} factKey="wfl" unit="m²" />
-        <DecimalFactField buildingId={buildingId} factKey="nuf" unit="m²" />
-        <DecimalFactField buildingId={buildingId} factKey="units" integer />
-      </FactGroup>
-
-      <FactGroup title={t('buildingScope.group.storeys')}>
-        <StoreyEditor buildingId={buildingId} />
-      </FactGroup>
-
-      <FactGroup title={t('buildingScope.group.decisions')}>
-        {conflicts.length === 0 ? (
-          <p className="text-small text-text-secondary">
-            <span aria-hidden="true">✓ </span>
-            {t('buildingScope.conflicts.none')}
-          </p>
-        ) : conflicts.map((conflict) => (
-          <ConflictDecision key={conflict.id} conflict={conflict} />
-        ))}
-      </FactGroup>
+      <div className="a3-tbl-scroll">
+        <table className="w-full border-collapse">
+          <caption className="sr-only">{t('buildingScope.review.title')}</caption>
+          <tbody>
+            <DisclosureRow label={t('buildingScope.group.identity')} cells={[t('buildingScope.status.open')]} defaultOpen>
+              <div className="grid gap-4 p-4">
+                <TextFactField buildingId={buildingId} factKey="documentationName" />
+                <TextFactField buildingId={buildingId} factKey="address" />
+                <SelectFactField buildingId={buildingId} factKey="buildingForm"
+                  values={FORM_VALUES} messageFor={(value) => FORM_MESSAGE[value]} />
+                <SelectFactField buildingId={buildingId} factKey="buildingClass"
+                  values={CLASS_VALUES} messageFor={(value) => CLASS_MESSAGE[value]}
+                  helper={t('buildingScope.class.helper')} />
+                <DecimalFactField buildingId={buildingId} factKey="units" integer />
+              </div>
+            </DisclosureRow>
+            <DisclosureRow label={t('buildingScope.group.total')} cells={[t('buildingScope.status.open')]}>
+              <div className="grid gap-4 p-4">
+                <DecimalFactField buildingId={buildingId} factKey="bgfRAbove" unit="m²" />
+                <DecimalFactField buildingId={buildingId} factKey="bgfSAbove" unit="m²" />
+                <DecimalFactField buildingId={buildingId} factKey="bgfRSAbove" unit="m²" derived />
+                <DecimalFactField buildingId={buildingId} factKey="bgfRBelow" unit="m²" />
+                <DecimalFactField buildingId={buildingId} factKey="bgfSBelow" unit="m²" />
+                <DecimalFactField buildingId={buildingId} factKey="bgfRSBelow" unit="m²" derived />
+                <DecimalFactField buildingId={buildingId} factKey="bgfRSTotal" unit="m²" derived />
+                <DecimalFactField buildingId={buildingId} factKey="wfl" unit="m²" />
+                <DecimalFactField buildingId={buildingId} factKey="nuf" unit="m²" />
+              </div>
+            </DisclosureRow>
+            <DisclosureRow label={t('buildingScope.group.storeys')} cells={[
+              effectiveFactValue(review.facts.storeyStructure)
+                ? storeySummary(effectiveFactValue(review.facts.storeyStructure))
+                : t('buildingScope.value.storeysMissing'),
+            ]}>
+              <div className="p-4"><StoreyEditor buildingId={buildingId} /></div>
+            </DisclosureRow>
+          </tbody>
+        </table>
+      </div>
 
       <section className="border-t border-border-strong pt-5" aria-label={t('buildingScope.confirm.section')}>
         {missingCount > 0 && (
@@ -576,15 +591,6 @@ function BuildingReviewPanel({
         )}
       </section>
     </div>
-  )
-}
-
-function FactGroup({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="border-t border-border-subtle pt-5">
-      <h3 className="text-heading-3 font-bold text-text-primary">{title}</h3>
-      <div className="mt-3 grid grid-cols-1 gap-4">{children}</div>
-    </section>
   )
 }
 
@@ -920,7 +926,7 @@ function StoreyEditor({ buildingId }: { buildingId: string }) {
               step="1"
               inputMode="numeric"
               className="numeric"
-              value={counts[kind]}
+              value={current === null && counts[kind] === 0 ? '' : counts[kind]}
               onChange={(event) => {
                 const value = Number.parseInt(event.target.value, 10)
                 setCounts((previous) => ({

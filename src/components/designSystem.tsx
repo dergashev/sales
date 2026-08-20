@@ -447,12 +447,14 @@ export function DisclosureRow({
   label,
   cells,
   children,
+  defaultOpen = false,
 }: {
   label: ReactNode
   cells: ReadonlyArray<ReactNode>
   children: ReactNode
+  defaultOpen?: boolean
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(defaultOpen)
   const contentId = useId()
   const { fadeRise } = useSemanticMotion()
   return (

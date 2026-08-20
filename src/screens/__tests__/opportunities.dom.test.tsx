@@ -148,8 +148,8 @@ describe('Уровень Opportunities', () => {
     render(<App />)
     // Переключатель языка — в шапке; словарь = поставка Codex + локальное
     // дополнение для строк, созданных после поставки.
-    // Подпись переключателя называет частичность ДО клика: «EN · Entwurf».
-    expect(screen.getByText(/EN ist noch ein Entwurf/)).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'EN' })).toBeInTheDocument()
+    expect(screen.queryByText(/Entwurf|Draft/)).not.toBeInTheDocument()
     expect(screen.getByPlaceholderText('Name, Stadt, Owner, ID')).toBeInTheDocument()
     await user.click(screen.getByRole('radio', { name: /EN/ }))
     // Немецкая строка поискового лейбла исчезла — заменена переводом.

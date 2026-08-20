@@ -36,14 +36,14 @@ beforeEach(() => __resetStoreForTests())
  * экрана вовсе и остаются `notApplicable`.
  */
 describe('Scope Boundaries: покрытие по умолчанию (ticket 627d3191)', () => {
-  it('все шесть групп начинаются сырым `unknown`, ни одна не предрешена', () => {
+  it('optional groups begin open while the established core begins included', () => {
     const coverage = useStore.getState().coverage
     expect(coverage.KG_200).toBe('unknown')
-    expect(coverage.KG_300).toBe('unknown')
-    expect(coverage.KG_400).toBe('unknown')
+    expect(coverage.KG_300).toBe('included')
+    expect(coverage.KG_400).toBe('included')
     expect(coverage.KG_500).toBe('unknown')
     expect(coverage.KG_600).toBe('unknown')
-    expect(coverage.KG_700).toBe('unknown')
+    expect(coverage.KG_700).toBe('included')
   })
 
   it('KG 100/800 вне перечня Scope Boundaries остаются `notApplicable`', () => {
@@ -63,16 +63,16 @@ describe('Scope Boundaries: покрытие по умолчанию (ticket 627
     })
   })
 
-  it('прогресс главы не требует действия по обязательным KG 300/400/700', () => {
+  it('scope progress accepts the preselected core plus explicit optional decisions', () => {
     const st = () => useStore.getState()
     st().openConfiguratorStepAt(CONFIGURATOR_STEP.SCOPE_BOUNDARIES)
     st().setCoverage('KG_200', 'excluded')
     st().setCoverage('KG_500', 'excluded')
     st().setCoverage('KG_600', 'excluded')
 
-    expect(st().coverage.KG_300).toBe('unknown')
-    expect(st().coverage.KG_400).toBe('unknown')
-    expect(st().coverage.KG_700).toBe('unknown')
+    expect(st().coverage.KG_300).toBe('included')
+    expect(st().coverage.KG_400).toBe('included')
+    expect(st().coverage.KG_700).toBe('included')
     expect(configuratorStepDone(st(), CONFIGURATOR_STEP.SCOPE_BOUNDARIES)).toBe(true)
   })
 })

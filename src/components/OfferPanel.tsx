@@ -523,7 +523,7 @@ export function OfferPanel() {
               className="a3-journal-disclose outline-none before:absolute before:left-1/2 before:top-1/2 before:min-h-hit-target before:w-full before:-translate-x-1/2 before:-translate-y-1/2 before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
             >
               <span aria-hidden="true">{kgOpen ? '▾ ' : '▸ '}</span>
-              {tx('Kostengruppen nach DIN 276 · vereinfacht')}
+              {tx('Kostengruppen nach DIN 276')}
             </button>
           </h2>
           {kgOpen && (<>
@@ -540,7 +540,8 @@ export function OfferPanel() {
                     Печатать её здесь нулём или долей значило бы провести
                     одну позицию дважды. */}
                 {(Object.entries(p.kgSplit)
-                  .filter((e): e is [string, Decimal] => e[1] !== undefined))
+                  .filter((e): e is [string, Decimal] => e[1] !== undefined
+                    && s.coverage[e[0] as CostGroup] === 'included'))
                   .map(([g, v]) => (
                   <Fragment key={g}>
                     {/* KG 300 раскрывается до третьего уровня: подгруппы —

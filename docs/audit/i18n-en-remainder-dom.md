@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 54** · перевод есть, мост не подключён: 29
-· перевода нет (в поставку копирайта): 25
+**Всего 52** · перевод есть, мост не подключён: 29
+· перевода нет (в поставку копирайта): 23
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -57,12 +57,10 @@ Mit freundlichen Grüßen
 - Energiestandard und Zertifizierung
 - Entscheidung erforderlich · blockiert das Anlegen einer Opportunity Option
 - Entschieden in Leistungsabgrenzung — hier nur zur Einordnung sichtbar.
-- Erst nach Bestätigung gilt die nachfolgende Konfiguration als abschließbar.
 - Geprüfte Gebäudewerte tragen ihre Herkunft; Änderungen heben die Bestätigung auf und werden in Gebäude & Umfang erneut geprüft.
-- Immer Bestandteil des Angebots · kein Einfluss auf die Bauzeit — keine Auswahl.
 - Konfiguration je Gebäude bestätigt
+- Kostengruppen nach DIN 276
 - Leistungsabgrenzung bestätigen
-- Sechs Kostengruppen bestimmen den Angebotsumfang. KG 300, 400 und 700 sind Kern des Angebots und nicht abwählbar — ohne sie gibt es kein Angebot; bei KG 700 ist nur die Berechnungsart verhandelbar, und die ist intern. KG 200, 500 und 600 sind echte Entscheidungen: «noch offen» ist eine Lücke, keine Entscheidung, und verhindert den Gesamtpreis, solange sie offen bleibt.
 - Später entscheiden
 - Tiefgarage im Untergeschoss enthalten.
 - Tiefgarage · Lüftung, OS-Beschichtung, Tore

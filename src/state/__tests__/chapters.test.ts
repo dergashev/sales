@@ -28,16 +28,20 @@ describe('semantic Configurator workflow', () => {
       .toBe(false)
   })
 
-  it('keeps mandatory KG steps active without treating raw unknown as a decision', () => {
+  it('keeps included KG steps active and removes them when excluded', () => {
     const s = useStore.getState()
     expect([s.coverage.KG_300, s.coverage.KG_400, s.coverage.KG_700])
-      .toEqual(['unknown', 'unknown', 'unknown'])
+      .toEqual(['included', 'included', 'included'])
     expect(activeConfiguratorWorkflow({ coverage: s.coverage, mode: 'intern' })
       .map((step) => step.id)).toEqual(expect.arrayContaining([
       CONFIGURATOR_STEP.KG_300_DETAILS,
       CONFIGURATOR_STEP.KG_400_DETAILS,
       CONFIGURATOR_STEP.KG_700_DETAILS,
     ]))
+    expect(activeConfiguratorWorkflow({
+      coverage: { ...s.coverage, KG_400: 'excluded' },
+      mode: 'intern',
+    }).some((step) => step.id === CONFIGURATOR_STEP.KG_400_DETAILS)).toBe(false)
   })
 
   it('does not fabricate downstream chapters for decidable KGs with no detail experience', () => {

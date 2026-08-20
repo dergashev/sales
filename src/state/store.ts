@@ -23,7 +23,7 @@ import {
   bgfAboveGround, calculateBuilding, kgSplit, sumOfBlock,
   SCOPE_BOUNDARIES_DECIDABLE_GROUPS,
   totalLabel as calculationTotalLabel,
-  type BuildingInput, type Coverage, type CoverageState,
+  type BuildingInput, type Coverage, type CoverageState, type Driver,
   type CostGroup, type BuildingResult,
 } from '../engine/calculate'
 import {
@@ -368,13 +368,9 @@ type PersistedProposalPayload = {
  * (`unknown` / «noch offen»), а не «продавец уже решил исключить» (SCOPE-001,
  * `data-model.md` §5.4, D-18).
  *
- * Сырое значение KG 300/400/700 также остаётся `unknown`: оно не фабрикует
- * пользовательское решение и сохраняет совместимость с уже записанными
- * конфигурациями. Эти группы при этом обязательны по политике и показаны в
- * `ChapterUmfang` как `mandatory`; поэтому только канонические
- * `SCOPE_BOUNDARIES_DECIDABLE_GROUPS` (KG 200/500/600) создают открытое
- * решение и блокируют полноту. `calculateBuilding` по-прежнему считает
- * базовую стоимость KG 300/400/700 безусловно, независимо от `coverage`.
+ * The established core scope starts included, but every one of these values
+ * is now a user-editable binary decision in Scope Boundaries. Persisted
+ * legacy `unknown` core values remain price-compatible until answered.
  *
  * KG 100 (Grundstück) и KG 800 (Finanzierung) в перечень Scope Boundaries
  * этой задачи не входят (тикет называет ровно шесть групп) и сохраняют
@@ -382,8 +378,8 @@ type PersistedProposalPayload = {
  */
 const INITIAL_COVERAGE: Coverage = {
   KG_100: 'notApplicable', KG_200: 'unknown',
-  KG_300: 'unknown', KG_400: 'unknown', KG_500: 'unknown',
-  KG_600: 'unknown', KG_700: 'unknown', KG_800: 'notApplicable',
+  KG_300: 'included', KG_400: 'included', KG_500: 'unknown',
+  KG_600: 'unknown', KG_700: 'included', KG_800: 'notApplicable',
 }
 const COVERAGE_KEYS = Object.keys(INITIAL_COVERAGE) as Array<keyof Coverage>
 const COVERAGE_STATES: CoverageState[] = [
@@ -1648,7 +1644,7 @@ function computeProjection(
   // домножаются: фактор применяется к Bauwerk по объявленному перечню
   // §2.3, а опции в нём не названы. Приписать их туда значило бы
   // расширить базу фактора собственным решением.
-  const optDrivers = list.flatMap((b, i) => [
+  const rawOptDrivers = list.flatMap((b, i) => [
     ...optionDrivers(b, choicesFor(s, b.id), bgfSOf(b.id)),
     // Группы затрат, включённые решением пользователя: они не входят в
     // базовую ставку, поэтому включение ДОБАВЛЯЕТ, а не перераспределяет.
@@ -1658,6 +1654,11 @@ function computeProjection(
       perBuilding[i]!.bauwerk, CATALOG.kgShares,
     ),
   ].map((d) => ({ ...d, key: list.length > 1 ? `${list[i]!.id}:${d.key}` : d.key })))
+  const rawBaseDrivers = perBuilding.flatMap((r, i) =>
+    r.drivers.map((d) => ({
+      ...d,
+      key: list.length > 1 ? `${list[i]!.id}:${d.key}` : d.key,
+    })))
   // Блок Bauwerk — это KG 300 + 400 + UG и ТОЛЬКО они. Прежде всё
   // складывалось в один `bauwerkSum`, и включение KG 500 увеличивало базу
   // KG 700, базу сплита и базу надбавок за риск: группа затрат вне блока
@@ -1665,15 +1666,46 @@ function computeProjection(
   // находки 9 и 20). Место вклада объявляется его создателем полем `block`,
   // а не выводится здесь из позиции: у надбавки за риск база названа
   // `KG 320`, и по позиции она от вклада внутри блока неотличима.
-  const bauwerkBlock = sumOfBlock(
-    [...perBuilding.flatMap((r) => r.drivers), ...optDrivers], 'bauwerk',
-  )
+  const coreActive = (group: 'KG_300' | 'KG_400' | 'KG_700') =>
+    s.coverage[group] !== 'excluded'
+  const simplifiedScope = s.kg700Mode === 'vereinfacht'
+    && coreActive('KG_300') && coreActive('KG_400') && coreActive('KG_700')
+  const activeCoreShare = simplifiedScope
+    ? new Decimal(1)
+    : (coreActive('KG_300')
+        ? CATALOG.kgShares.echt.KG_300.div(100) : new Decimal(0))
+      .plus(coreActive('KG_400')
+        ? CATALOG.kgShares.echt.KG_400.div(100) : new Decimal(0))
+  const scopeBauwerkDriver = (driver: Driver): Driver => {
+    if (driver.block !== 'bauwerk' || simplifiedScope) return driver
+    const kg300Only = driver.scopeRefs.includes('KG 300')
+      && !driver.scopeRefs.includes('KG 400')
+    const kg400Only = driver.scopeRefs.includes('KG 400')
+      && !driver.scopeRefs.includes('KG 300')
+    const underground = driver.scopeRefs.includes('UG')
+    const active = underground || kg300Only
+      ? coreActive('KG_300')
+      : kg400Only
+        ? coreActive('KG_400')
+        : true
+    return {
+      ...driver,
+      exact: active
+        ? underground || kg300Only || kg400Only
+          ? driver.exact
+          : driver.exact.mul(activeCoreShare)
+        : new Decimal(0),
+    }
+  }
+  const baseDrivers = rawBaseDrivers.map(scopeBauwerkDriver)
+  const optDrivers = rawOptDrivers.map(scopeBauwerkDriver)
+  const bauwerkBlock = sumOfBlock([...baseDrivers, ...optDrivers], 'bauwerk')
   // KG 700 в режиме HOAI+AHO — СОБСТВЕННАЯ позиция 12 % от блока
   // (`calculation-spec` §1, решение D-27). В режиме `vereinfacht` тотал не
   // меняется: доли 70/22/8 перераспределяют уже посчитанное. Прежде ставка
   // была 8,7 % и сама попадала в базу сплита — та же позиция проводилась
   // дважды.
-  const kg700 = s.kg700Mode === 'hoaiAho'
+  const kg700 = !simplifiedScope && coreActive('KG_700')
     ? bauwerkBlock.mul(CATALOG.kgShares.kg700EchtPercentOfBauwerk).div(100)
     : new Decimal(0)
   if (!kg700.isZero()) {
@@ -1697,17 +1729,24 @@ function computeProjection(
   // считается от разбиения блока, а не от итога: включив надбавку в базу
   // распределения, мы растворили бы её в KG 300 — она перестала бы быть
   // отдельной строкой и вдобавок увеличила бы собственную базу.
-  const splitMode = s.kg700Mode === 'hoaiAho' ? 'echt' : 'vereinfacht'
-  const kg300Exact = kgSplit(bauwerkBlock, CATALOG.kgShares, splitMode).KG_300
+  const effectiveKgSplit = simplifiedScope
+    ? kgSplit(bauwerkBlock, CATALOG.kgShares, 'vereinfacht')
+    : coreActive('KG_300') && coreActive('KG_400')
+      ? kgSplit(bauwerkBlock, CATALOG.kgShares, 'echt')
+      : {
+          KG_300: coreActive('KG_300') ? bauwerkBlock : new Decimal(0),
+          KG_400: coreActive('KG_400') ? bauwerkBlock : new Decimal(0),
+        }
+  const kg300Exact = simplifiedScope
+    ? effectiveKgSplit.KG_300
+    : coreActive('KG_300') ? effectiveKgSplit.KG_300 : new Decimal(0)
   for (const risk of RISK_ITEMS) {
     if (!s.risikoAktiv[risk.id]) continue
     const d = riskDriver(risk, kg300Exact)
     if (d) optDrivers.push(d)
   }
-  const separateSum = sumOfBlock(
-    [...perBuilding.flatMap((r) => r.drivers), ...optDrivers], 'separatePosition')
-  const surchargeSum = sumOfBlock(
-    [...perBuilding.flatMap((r) => r.drivers), ...optDrivers], 'surcharge')
+  const separateSum = sumOfBlock([...baseDrivers, ...optDrivers], 'separatePosition')
+  const surchargeSum = sumOfBlock([...baseDrivers, ...optDrivers], 'surcharge')
   // Скидка — «после всего» (`calculation-spec` §2) и от ТОЧНОГО итога, не от
   // показанного (CALC-007). Она вклад, а не постобработка: иначе итог и
   // Kostentreiber расходятся, и снапшот хранит цену, которой не было на
@@ -1725,7 +1764,7 @@ function computeProjection(
       basis: { kind: 'factor', appliedTo: beforeDiscount, factor },
     })
   }
-  const allDrivers = [...perBuilding.flatMap((r) => r.drivers), ...optDrivers]
+  const allDrivers = [...baseDrivers, ...optDrivers]
   const total = beforeDiscount.plus(sumOfBlock(allDrivers, 'discount'))
   const completeness = perBuilding.every((r) => r.completeness === 'complete')
     ? 'complete' : 'incomplete'
@@ -1740,12 +1779,8 @@ function computeProjection(
     : 'Grundleistung All3'
   const result: BuildingResult = {
     buildingId: list.map((b) => b.id).join('+'),
-    drivers: [
-      ...perBuilding.flatMap((r, i) =>
-        r.drivers.map((d) => ({ ...d, key: list.length > 1 ? `${list[i]!.id}:${d.key}` : d.key }))),
-      ...optDrivers,
-    ],
-    bauwerk: perBuilding.reduce((a, r) => a.plus(r.bauwerk), new Decimal(0)),
+    drivers: allDrivers,
+    bauwerk: bauwerkBlock,
     total: present(total),
     totalLabel: calculationTotalLabel(completeness, declaredPricingScope),
     completeness,
@@ -1819,7 +1854,7 @@ function computeProjection(
 
   return {
     result,
-    kgSplit: kgSplit(bauwerkBlock, CATALOG.kgShares, splitMode),
+    kgSplit: effectiveKgSplit,
     leadRate,
     secondaryRateBgf: rate(total, bgf, 'BGF_ABOVE_GROUND'),
     perUnit: units === null ? null : rate(total, units, 'WOHNEINHEITEN'),
@@ -2311,10 +2346,20 @@ const store = createStore<Store>((set, get) => {
       const s = get()
       const prev = s.coverage[g]
       if (prev === st) return
-      const write = (value: CoverageState) => set((current) => {
+      const before = projectTotal(s)
+      const prevKg700Mode = s.kg700Mode
+      const nextKg700Mode = st === 'excluded'
+        && (g === 'KG_300' || g === 'KG_400')
+        && s.kg700Mode === 'vereinfacht'
+        ? 'hoaiAho' : s.kg700Mode
+      const write = (
+        value: CoverageState,
+        kg700Mode: Store['kg700Mode'],
+      ) => set((current) => {
         const coverage = { ...current.coverage, [g]: value }
         return {
           coverage,
+          kg700Mode,
           // A future conditional KG step can disappear immediately after a
           // Scope Boundaries decision. Keep the page on the nearest active
           // semantic step; App.tsx then moves focus to that step's h1.
@@ -2324,13 +2369,27 @@ const store = createStore<Store>((set, get) => {
           }, current.openConfiguratorStep),
         }
       })
-      write(st)
+      write(st, nextKg700Mode)
+      const after = projectTotal(get())
+      const delta = after.minus(before)
+      const fallback = nextKg700Mode !== prevKg700Mode
       apply({
         kind: 'coverage.changed',
-        label: `${g} ${COVERAGE_LABEL[prev]} → ${COVERAGE_LABEL[st]}`,
-        deltaExact: null,
-        inverse: () => write(prev),
-        forward: () => write(st),
+        label: `${g} ${COVERAGE_LABEL[prev]} → ${COVERAGE_LABEL[st]}`
+          + (fallback ? ' · Berechnung automatisch auf HOAI/AHO umgestellt' : ''),
+        deltaExact: delta.isZero() ? null : delta,
+        inverse: () => write(prev, prevKg700Mode),
+        forward: () => write(st, nextKg700Mode),
+      })
+      set({
+        preview: null,
+        activeDelta: {
+          label: fallback
+            ? `${g} ausgeschlossen · Berechnung auf HOAI/AHO umgestellt`
+            : `${g} ${COVERAGE_LABEL[st]}`,
+          deltaExact: delta,
+          percent: before.isZero() ? new Decimal(0) : delta.div(before).mul(100),
+        },
       })
     },
 

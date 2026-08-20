@@ -567,6 +567,32 @@
    }
   }
  },
+ "configurationMode": {
+  "groups": [
+   {
+    "id": "configurationMode",
+    "choices": [
+     { "value": "SHARED", "label": "Gemeinsam konfigurieren" },
+     { "value": "PER_BUILDING", "label": "Je Gebäude konfigurieren" }
+    ]
+   }
+  ]
+ },
+ "scopeBoundaries": {
+  "groups": [
+   {
+    "id": "scopeBoundaries",
+    "choices": [
+     { "value": "KG_200", "label": "KG 200" },
+     { "value": "KG_300", "label": "KG 300" },
+     { "value": "KG_400", "label": "KG 400" },
+     { "value": "KG_500", "label": "KG 500" },
+     { "value": "KG_600", "label": "KG 600" },
+     { "value": "KG_700", "label": "KG 700" }
+    ]
+   }
+  ]
+ },
  "risiken": {
   "$comment": "Risikozuschlag по D-02 и calculation-spec §1.4: «счёт за отсутствующий документ». Ставки и базы — из спецификации, не выведены. Применение НЕ по умолчанию: контрольный пример calculation-spec §6.1 надбавки не содержит, и молчаливое включение изменило бы нормативный спесимен (правило 32). Включается решением с событием, как Regionalfaktor (D-15).",
   "items": [

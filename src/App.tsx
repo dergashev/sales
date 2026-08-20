@@ -1,19 +1,18 @@
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useRef, type RefObject } from 'react'
 import { pipelineViewForBuildingGate, useStore } from './state/store'
 import { useT } from './i18n'
-import { checkFonts, checkCascade, type FontCheck } from './lib/font-check'
+import all3Logo from '../design-system/All3Logo.png'
 import { SegmentedControl } from './components/controls'
+import { Button } from './components/primitives'
 import { OutputProfileSwitch } from './components/designSystem'
 import { Sidebar } from './components/Sidebar'
 import { ClientOutputGateDialog } from './components/ClientOutputGateDialog'
-import { GuidedTour } from './components/GuidedTour'
 import { OfferPanel } from './components/OfferPanel'
 import { UndoToast } from './components/UndoToast'
 import { ConfigurationModeReadiness, S3Konfigurator } from './screens/S3Konfigurator'
 import { S4Vergleich } from './screens/S4Vergleich'
 import { S5Export } from './screens/S5Export'
 import { S6Einstellungen } from './screens/S6Einstellungen'
-import { Grundlagen } from './screens/Grundlagen'
 import { OpportunityList } from './screens/OpportunityList'
 import { OpportunityCard } from './screens/OpportunityCard'
 import { BuildingScope, BuildingScopeReadiness } from './screens/BuildingScope'
@@ -41,27 +40,10 @@ export function App() {
   // «Angebot prüfen») обязаны уметь вести к сравнению и экспорту — из
   // локального состояния App они бы этого не могли (DC-27, ревью № 13).
   const view = s.pipelineView
-  const [fonts, setFonts] = useState<FontCheck | null>(null)
-  const [cascade, setCascade] = useState<string[] | null>(null)
   const praesentation = isClientProjection(s.mode)
   const outputProfileView = pipelineViewForOutputProfile(s.mode, view)
   const renderedView = pipelineViewForBuildingGate(s, outputProfileView)
   const t = useT()
-
-  useEffect(() => {
-    // Диагностика шрифта не имеет права ронять приложение: `document.fonts`
-    // существует не везде (jsdom, старые движки), а само приложение от неё
-    // не зависит — она только сообщает о провале загрузки. Прежняя редакция
-    // падала целиком там, где FontFaceSet отсутствует.
-    if (!document.fonts?.ready) {
-      setCascade(checkCascade())
-      return
-    }
-    document.fonts.ready.then(() => {
-      setFonts(checkFonts())
-      setCascade(checkCascade())
-    })
-  }, [])
 
   // Класс режима на корне — токены и стили дизайн-системы адресуют его.
   useEffect(() => {
@@ -145,7 +127,6 @@ export function App() {
           {renderedView === 'vergleich' && <S4Vergleich />}
           {renderedView === 'export' && <S5Export />}
           {renderedView === 'einstellungen' && <S6Einstellungen />}
-          {renderedView === 'grundlagen' && <Grundlagen fonts={fonts} cascade={cascade} />}
         </main>
 
         {renderedView === 'buildingScope' ? <BuildingScopeReadiness />
@@ -156,7 +137,6 @@ export function App() {
             : <OfferPanel />}
       </div>
 
-      <GuidedTour />
       <UndoToast />
     </div>
   )
@@ -189,11 +169,8 @@ function AppHeader({
 
   return (
     <header className="a3-global-header z-header shrink-0">
-      <div className="flex flex-wrap items-center gap-3">
-        <p className="text-body text-text-primary">
-          <span className="font-bold">All3</span>
-          <span className="text-text-secondary"> · Indicative Offer Engine</span>
-        </p>
+      <div className="flex min-w-0 flex-wrap items-center gap-3">
+        <img src={all3Logo} alt="All3" className="h-7 w-auto shrink-0" />
         {s.level !== 'liste' && !praesentation && (
           <nav aria-label="Pfad" className="flex flex-wrap items-center gap-2">
             <span aria-hidden="true" className="text-text-muted">/</span>
@@ -265,13 +242,25 @@ function AppHeader({
             onChange={(l) => s.setUiLanguage(l)}
             options={[
               { value: 'de', label: 'DE' },
-              { value: 'en', label: t('shell.en.draftOption') },
+              { value: 'en', label: 'EN' },
             ]}
           />
-          <p className="sr-only">
-            {s.uiLanguage === 'en' ? t('shell.en.draftActive') : t('shell.en.draftHint')}
-          </p>
         </div>
+        {!praesentation && (
+          <details className="relative">
+            <summary className="flex min-h-hit-target cursor-pointer list-none items-center gap-2 rounded-control px-2 text-small font-medium text-text-primary outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">
+              <span aria-hidden="true" className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-subtle">A3</span>
+              <span>{t('shell.account')}</span>
+            </summary>
+            <div className="absolute right-0 z-popover mt-2 w-56 rounded-card border border-border-strong bg-surface-default p-3 shadow-elevated">
+              <p className="text-small font-medium text-text-primary">{t('shell.account')}</p>
+              <p className="mt-1 text-small text-text-secondary">{t('shell.accountUnavailable')}</p>
+              <Button className="mt-3 w-full" disabled disabledReason={t('shell.accountUnavailable')}>
+                {t('shell.signOut')}
+              </Button>
+            </div>
+          </details>
+        )}
       </div>
     </header>
   )

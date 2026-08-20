@@ -11,6 +11,7 @@ import {
   isClientProjection,
   isClientVisiblePipelineView,
 } from '../state/clientProjection'
+import { SelectField } from './designSystem'
 
 /**
  * Левый сайдбар — навигация оболочки.
@@ -43,8 +44,6 @@ const SCREENS: Array<{
   { id: 'konfigurator', labelKey: 'nav.konfigurator', hint: '2' },
   { id: 'vergleich', labelKey: 'nav.vergleich', hint: '3' },
   { id: 'export', labelKey: 'nav.export', hint: '4' },
-  { id: 'einstellungen', labelKey: 'nav.einstellungen', hint: '⚙' },
-  { id: 'grundlagen', labelKey: 'nav.grundlagen', hint: 'QA' },
 ]
 
 const FOCUS = 'outline-none focus-visible:outline focus-visible:outline-2 ' +
@@ -69,13 +68,29 @@ export function Sidebar() {
       className="flex h-full w-panel-left shrink-0 flex-col overflow-y-auto border-r border-border-strong bg-surface-default"
     >
       <div className="border-b border-border-strong px-5 py-4">
-        <p className="text-body font-medium text-text-primary">
-          {option ? option.name : `Musterprojekt Nordfeld · Haus${NNBSP}A`}
-        </p>
-        <p className="a3-cap mt-1">
-          {!client && <>{option ? option.id : t('shell.variant')} · </>}
-          {t(client ? 'shell.profile.client' : 'shell.profile.internal')}
-        </p>
+        {option && s.activeOptionId ? (
+          <SelectField
+            label={t('shell.optionSwitcher')}
+            value={s.activeOptionId}
+            onChange={(event) => s.openOption(event.target.value)}
+          >
+            {s.options.map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>
+                {candidate.name}
+              </option>
+            ))}
+          </SelectField>
+        ) : (
+          <p className="text-body font-medium text-text-primary">
+            {`Musterprojekt Nordfeld · Haus${NNBSP}A`}
+          </p>
+        )}
+        {!client && option && (
+          <button type="button" className="a3-linkbtn mt-3"
+                  onClick={() => s.setPipelineView('vergleich')}>
+            {t('nav.vergleich')}
+          </button>
+        )}
       </div>
 
       <ul className="flex-1 py-2">
@@ -85,6 +100,13 @@ export function Sidebar() {
           const reasonId = `building-gate-${item.id}`
           return (
             <li key={item.id}>
+              {(item.id === 'buildingScope' || item.id === 'vergleich') && (
+                <p className="a3-cap px-5 pb-1 pt-3">
+                  {t(item.id === 'buildingScope'
+                    ? 'shell.profile.internal'
+                    : 'shell.profile.client')}
+                </p>
+              )}
               <button
                 type="button"
                 onClick={() => { if (!blocked) s.setPipelineView(item.id) }}
@@ -152,22 +174,12 @@ export function Sidebar() {
         })}
       </ul>
 
-      {/* Тур — только во внутреннем пространстве (DC-14): в презентации
-          кнопки не существует, а не «она недоступна». */}
-      {s.mode === 'intern' && (
-        <div className="border-t border-border-subtle px-5 py-3">
-          <button type="button" className="a3-linkbtn"
-                  onClick={() => s.setTourOpen(true)}>
-            {t('nav.tour')}
-          </button>
-        </div>
-      )}
-
       {!client && (
         <div className="border-t border-border-subtle px-5 py-3">
-          <p className="text-small text-text-muted">
-            {t('shell.prototypeNote')} · v0.5
-          </p>
+          <button type="button" className="flex min-h-hit-target w-full items-center gap-3 text-left text-body text-text-secondary outline-none hover:text-text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                  onClick={() => s.setPipelineView('einstellungen')}>
+            <span aria-hidden="true">⚙</span>{t('nav.einstellungen')}
+          </button>
         </div>
       )}
     </nav>

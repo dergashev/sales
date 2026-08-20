@@ -29,7 +29,6 @@ export type ConfiguratorStepScope = 'project' | 'building'
 
 type StepApplicability =
   | { kind: 'required' }
-  | { kind: 'mandatoryKg'; group: Extract<CostGroup, 'KG_300' | 'KG_400' | 'KG_700'> }
   | { kind: 'includedKg'; group: CostGroup }
 
 export type ConfiguratorStep = Readonly<{
@@ -66,14 +65,14 @@ export const CONFIGURATOR_STEPS: readonly ConfiguratorStep[] = [
     label: 'Leistungen KG 300',
     scope: 'building',
     visibility: 'clientSafe',
-    applicability: { kind: 'mandatoryKg', group: 'KG_300' },
+    applicability: { kind: 'includedKg', group: 'KG_300' },
   },
   {
     id: CONFIGURATOR_STEP.KG_400_DETAILS,
     label: 'Technik KG 400',
     scope: 'building',
     visibility: 'clientSafe',
-    applicability: { kind: 'mandatoryKg', group: 'KG_400' },
+    applicability: { kind: 'includedKg', group: 'KG_400' },
   },
   {
     id: CONFIGURATOR_STEP.ENERGY_CERTIFICATION,
@@ -94,7 +93,7 @@ export const CONFIGURATOR_STEPS: readonly ConfiguratorStep[] = [
     label: 'Baunebenkosten KG 700',
     scope: 'project',
     visibility: 'internalOnly',
-    applicability: { kind: 'mandatoryKg', group: 'KG_700' },
+    applicability: { kind: 'includedKg', group: 'KG_700' },
   },
   {
     id: CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE,
@@ -123,7 +122,6 @@ export function isConfiguratorStepApplicable(
 ): boolean {
   switch (step.applicability.kind) {
     case 'required':
-    case 'mandatoryKg':
       return true
     case 'includedKg':
       return coverage[step.applicability.group] === 'included'

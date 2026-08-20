@@ -24,47 +24,30 @@ import { __resetStoreForTests } from '../../state/store'
  */
 beforeEach(() => __resetStoreForTests())
 
-describe('Globale Sprachkontrolle — kompakte Bereitschaftsinformation', () => {
-  it('zeigt nie einen dauerhaften Absatz oder ein Status-Tag, aber der Hinweistext bleibt für Screenreader erhalten', () => {
+describe('Globale Sprachkontrolle — compact DE/EN selector', () => {
+  it('renders only the two compact language labels without draft chrome', () => {
     render(<App />)
     const control = document.querySelector('.a3-language-control') as HTMLElement
     expect(control).toBeInTheDocument()
 
-    // Kein Status-Tag: die Segment-Option "EN · Entwurf" trägt die
-    // Vorwarnung bereits sichtbar und dauerhaft, ein zweiter Träger für
-    // dasselbe Wort wäre Redundanz (Design Review UX-PC-01, Regel 9).
     expect(control.querySelector('.a3-tag')).not.toBeInTheDocument()
-
-    // Der volle Wortlaut existiert weiterhin im Dokument, aber nur für
-    // Screenreader (sr-only visuell verklemmt jsdom prüft die Klasse,
-    // die tatsächliche visuelle Klemmung ist Browser-CSS und wurde live
-    // verifiziert) - nicht gelöscht, nicht als Dauer-Absatz gerendert.
-    const fullText = within(control).getByText(/Übersetzung wird gerade vervollständigt/)
-    expect(fullText).toHaveClass('sr-only')
-    expect(fullText.tagName).toBe('P')
+    expect(within(control).getByRole('radio', { name: 'DE' })).toBeInTheDocument()
+    expect(within(control).getByRole('radio', { name: 'EN' })).toBeInTheDocument()
+    expect(control).not.toHaveTextContent(/Entwurf|Draft/)
   })
 
-  it('nach dem Wechsel zu EN bleibt kein Status-Tag, die Segment-Option selbst zeigt "Draft" und der volle Text bleibt verfügbar', async () => {
+  it('keeps EN compact after switching', async () => {
     const user = userEvent.setup()
     render(<App />)
     await user.click(screen.getAllByRole('radio', { name: /EN/ })[0]!)
 
     const control = document.querySelector('.a3-language-control') as HTMLElement
-    // UX-PC-01: kein separater Tag mehr, weder vor noch nach dem Wechsel.
     expect(control.querySelector('.a3-tag')).not.toBeInTheDocument()
-
-    // Die UI-Sprache ist jetzt Englisch: die sichtbare Segment-Option muss
-    // selbst englisch sein (t('shell.en.draftOption')), nicht das deutsche
-    // Wort aus einem rohen Literal ohne Wörterbucheintrag - genau der
-    // Regressionsfall, den Tech Review im vorigen Durchlauf gefunden hat.
-    // Das <input> selbst trägt (sr-only, ohne Kinder) keinen Text - die
-    // sichtbare Beschriftung steht im umschließenden <label>.
     const enInput = screen.getAllByRole('radio', { name: /EN/ })[0]!
     const enLabel = enInput.closest('label')!
-    expect(enLabel).toHaveTextContent('Draft')
+    expect(enLabel).toHaveTextContent('EN')
+    expect(enLabel).not.toHaveTextContent('Draft')
     expect(enLabel).not.toHaveTextContent('Entwurf')
-
-    expect(within(control).getByText(/translation not yet complete/)).toHaveClass('sr-only')
   })
 
   it('fügt beim Sprachwechsel keine zusätzliche sichtbare Node in die Kopfzeile ein', async () => {
