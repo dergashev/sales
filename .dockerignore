@@ -1,0 +1,16 @@
+node_modules
+dist
+.git
+.vite
+coverage
+.claude
+.artifacts
+.preview
+.playwright
+.playwright-cli
+.agents/skills
+.agentsroom
+tsconfig.tsbuildinfo
+**/__pycache__
+**/*.pyc
+.DS_Store
