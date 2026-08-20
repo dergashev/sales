@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 53** · перевод есть, мост не подключён: 31
-· перевода нет (в поставку копирайта): 22
+**Всего 57** · перевод есть, мост не подключён: 31
+· перевода нет (в поставку копирайта): 26
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -51,12 +51,13 @@ Mit freundlichen Grüßen
 - Anteil am Bauwerk (KG 300 + 400 + UG) nach calculation-spec §1 ⚙
 - Bereit zum Anlegen
 - Bestätigt
-- Bestätigung erforderlich
+- Bestätigung erforderlich · blockiert das Anlegen einer Opportunity Option
 - Die folgenden Auswahlmöglichkeiten sind bereits auf diesen Standard abgestimmt.
 - Druckansicht öffnen
 - Eigenes Ausgabeprofil clientPrint mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.
-- Ein Dokument ist nicht lesbar
+- Ein Dokument ist nicht lesbar · blockiert das Anlegen einer Opportunity Option nicht
 - Energiestandard und Zertifizierung
+- Entscheidung erforderlich · blockiert das Anlegen einer Opportunity Option
 - Entschieden in Leistungsabgrenzung — hier nur zur Einordnung sichtbar.
 - Erst nach Bestätigung gilt die nachfolgende Konfiguration als abschließbar.
 - Geprüfte Gebäudewerte tragen ihre Herkunft; Änderungen heben die Bestätigung auf und werden in Gebäude & Umfang erneut geprüft.
@@ -64,9 +65,12 @@ Mit freundlichen Grüßen
 - Konfiguration je Gebäude bestätigt
 - Leistungsabgrenzung bestätigen
 - Sechs Kostengruppen bestimmen den Angebotsumfang. KG 300, 400 und 700 sind Kern des Angebots und nicht abwählbar — ohne sie gibt es kein Angebot; bei KG 700 ist nur die Berechnungsart verhandelbar, und die ist intern. KG 200, 500 und 600 sind echte Entscheidungen: «noch offen» ist eine Lücke, keine Entscheidung, und verhindert den Gesamtpreis, solange sie offen bleibt.
+- Später entscheiden
 - Tiefgarage im Untergeschoss enthalten.
 - Tiefgarage · Lüftung, OS-Beschichtung, Tore
+- Total WFL nach WoFlV geändert
 - Untergeschoss · Rohbau und Ausbau
 - Verschiebt die Termine unten; die Bauzeit selbst bleibt gleich.
 - Wartet auf die Voraussetzungen oben
+- vom Kunden bestätigt am 05.08.2026
 - ≈ 2.447 €/m² WFL nach WoFlV

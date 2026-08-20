@@ -4,7 +4,7 @@ import opportunities from '../fixtures/opportunities.json'
 import derived from '../fixtures/derived-prototype.json'
 import { useStore, wflConflict } from '../state/store'
 import { NNBSP, formatDE } from '../engine/money'
-import { Button } from '../components/primitives'
+import { Button, useCountUp } from '../components/primitives'
 import { useT, useTx } from '../i18n'
 import { DocumentAnalysis } from '../components/DocumentAnalysis'
 import { InternalNote } from '../components/InternalNote'
@@ -12,7 +12,9 @@ import { PrerequisiteChecklist } from '../components/PrerequisiteChecklist'
 import { LinkButton, PageHeader } from '../components/designSystem'
 import { STAGE_TAG } from '../lib/opportunityStage'
 import { S2Vorbereitung } from './S2Vorbereitung'
-import { useRef, useState, type RefObject } from 'react'
+import { effectiveFactValue } from '../state/buildingReview'
+import { DELTA_CHIP_MS } from '../config/ui-policy'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 
 /**
  * Карточка Opportunity — уровень между списком и рабочим конвейером.
@@ -59,6 +61,60 @@ function Metric({ label, value, unit, note }: {
           : <>{value}{unit ? `${NNBSP}${unit}` : ''}{note ? `${NNBSP}${MARK}` : ''}</>}
       </span>
       {note && <span className="a3-cap block">{DERIVED} · {note}</span>}
+    </div>
+  )
+}
+
+/**
+ * WFL is the reviewed value that can change while this card is open. The
+ * number therefore uses the canonical 400 ms count-up and the existing
+ * reserved Delta-Chip anatomy; static fixture-backed metrics stay on the
+ * simpler `Metric` path above.
+ */
+function ReviewedWflMetric({ value }: { value: Decimal }) {
+  const tx = useTx()
+  const counted = useCountUp(value, 2)
+  const previous = useRef(value)
+  const shownDelta = useRef<Decimal | null>(null)
+  const [delta, setDelta] = useState<Decimal | null>(null)
+
+  useEffect(() => {
+    const change = value.minus(previous.current)
+    previous.current = value
+    if (change.isZero()) return
+    shownDelta.current = change
+    setDelta(change)
+    const timer = window.setTimeout(() => setDelta(null), DELTA_CHIP_MS)
+    return () => window.clearTimeout(timer)
+  }, [value.toString()])
+
+  const visibleDelta = shownDelta.current
+  const deltaText = visibleDelta
+    ? `${visibleDelta.isNegative() ? '−' : '+'}${NNBSP}${formatDE(visibleDelta.abs(), 2)}${NNBSP}m²`
+    : ''
+
+  return (
+    <div className="border-b border-border-subtle py-2">
+      <span className="a3-cap block">Total WFL nach WoFlV</span>
+      <span className="numeric block text-body text-text-primary">
+        {counted}{NNBSP}m²
+      </span>
+      <div className="a3-delta-slot mt-2">
+        <p
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          aria-hidden={delta ? undefined : true}
+          className={'a3-delta numeric' +
+            (delta ? ' a3-show' : '') +
+            (visibleDelta?.isNegative() ? ' a3-saving' : ' a3-cost')}
+        >
+          {visibleDelta && (<>
+            <span>{tx('Total WFL nach WoFlV geändert')}</span>
+            <span className="font-medium">{deltaText}</span>
+          </>)}
+        </p>
+      </div>
     </div>
   )
 }
@@ -192,7 +248,11 @@ export function OpportunityCard() {
     const v = d?.bgfSAboveGround?.value
     return v ? a.plus(D(v)) : a
   }, new Decimal(0))
-  const totalWfl = sum((b) => b.areas.wflWoFlV)
+  const totalWfl = bs.reduce((total, building) => {
+    const review = s.buildingReviews[building.id]
+    const value = review ? effectiveFactValue(review.facts.wfl) : null
+    return value ? total.plus(value) : total
+  }, new Decimal(0))
   const totalNuf = sum((b) => b.areas.nufDin277)
   const totalUnits = sum((b) => b.areas.wohneinheiten)
   const totalNrf = bs.reduce((a, b) => {
@@ -254,7 +314,7 @@ export function OpportunityCard() {
       title: tx('Dokumentgrundlage'),
       state: docsNeedAttention ? 'attention' : 'done',
       stateText: docsNeedAttention
-        ? tx('Ein Dokument ist nicht lesbar')
+        ? tx('Ein Dokument ist nicht lesbar · blockiert das Anlegen einer Opportunity Option nicht')
         : tx('Analyse abgeschlossen'),
       current: false,
       onOpen: () => focusSection(documentSectionRef),
@@ -264,7 +324,9 @@ export function OpportunityCard() {
       number: 2,
       title: tx('Strittige Angaben'),
       state: konfliktOffen ? 'attention' : 'done',
-      stateText: konfliktOffen ? tx('Entscheidung erforderlich') : tx('Entschieden'),
+      stateText: konfliktOffen
+        ? tx('Entscheidung erforderlich · blockiert das Anlegen einer Opportunity Option')
+        : tx('Entschieden'),
       current: currentStage === 'conflict',
       onOpen: () => focusSection(conflictSectionRef),
     },
@@ -273,7 +335,9 @@ export function OpportunityCard() {
       number: 3,
       title: tx('Projektparameter'),
       state: s.projectParamsConfirmed ? 'done' : 'attention',
-      stateText: s.projectParamsConfirmed ? tx('Bestätigt') : tx('Bestätigung erforderlich'),
+      stateText: s.projectParamsConfirmed
+        ? tx('Bestätigt')
+        : tx('Bestätigung erforderlich · blockiert das Anlegen einer Opportunity Option'),
       current: currentStage === 'parameters',
       onOpen: () => focusSection(parameterSectionRef),
     },
@@ -388,6 +452,12 @@ export function OpportunityCard() {
                   текущей стадии. */}
               <Button variant="primary" onClick={() => s.resolveWflConflict('customer')}>{tx('Kundenwert übernehmen')}</Button>
               <Button onClick={() => s.resolveWflConflict('document')}>{tx('Dokumentwert beibehalten')}</Button>
+              <Button
+                variant="ghost"
+                onClick={() => s.resolveBuildingConflict(conflict.id, { decision: 'defer' })}
+              >
+                {tx('Später entscheiden')}
+              </Button>
             </div>
           </div>
         ) : (
@@ -415,7 +485,7 @@ export function OpportunityCard() {
                   unit="m²" note="enthält die abgeleitete S-Fläche" />
           <Metric label="Total NRF" value={formatDE(totalNrf, 2)} unit="m²"
                   note="≈ 85 % der BGF R+S" />
-          <Metric label="Total WFL nach WoFlV" value={formatDE(totalWfl, 2)} unit="m²" />
+          <ReviewedWflMetric value={totalWfl} />
           <Metric label="Total NUF nach DIN 277" value={formatDE(totalNuf, 2)} unit="m²" />
           <Metric label="Wohneinheiten" value={formatDE(totalUnits)} />
         </div>

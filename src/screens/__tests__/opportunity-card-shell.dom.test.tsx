@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
 import { __resetStoreForTests, useStore } from '../../state/store'
@@ -84,9 +84,15 @@ describe('Project Card — шапка и обзор готовности', () =>
     })
 
     // Состояние читается текстом, не только маркером/цветом (STEP-002, правило 8).
-    expect(within(overview).getByText('Ein Dokument ist nicht lesbar')).toBeInTheDocument()
-    expect(within(overview).getByText('Entscheidung erforderlich')).toBeInTheDocument()
-    expect(within(overview).getByText('Bestätigung erforderlich')).toBeInTheDocument()
+    expect(within(overview).getByText(
+      'Ein Dokument ist nicht lesbar · blockiert das Anlegen einer Opportunity Option nicht',
+    )).toBeInTheDocument()
+    expect(within(overview).getByText(
+      'Entscheidung erforderlich · blockiert das Anlegen einer Opportunity Option',
+    )).toBeInTheDocument()
+    expect(within(overview).getByText(
+      'Bestätigung erforderlich · blockiert das Anlegen einer Opportunity Option',
+    )).toBeInTheDocument()
     expect(within(overview).getByText('Wartet auf die Voraussetzungen oben')).toBeInTheDocument()
 
     // Ровно один шаг — «текущий» (следующий нерешённый по порядку), не два и не ноль.
@@ -132,5 +138,53 @@ describe('Project Card — шапка и обзор готовности', () =>
     expect(document.activeElement).toBe(section)
     // Der Sprung darf projectParamsConfirmed NICHT selbst setzen.
     expect(useStore.getState().projectParamsConfirmed).toBe(false)
+  })
+
+  it('stellt den WFL-Konflikt ruhig zurück, ohne Kandidaten oder den offenen Zustand zu verlieren', async () => {
+    const user = userEvent.setup()
+    await openProjectCard(user)
+
+    // Unrelated progress remains available while the conflict is open.
+    await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
+    await user.click(screen.getByRole('button', { name: 'Später entscheiden' }))
+
+    expect(useStore.getState().buildingConflicts['DEMO-CONF-0001']!.resolutions.at(-1))
+      .toMatchObject({ decision: 'defer', selectedCandidateId: null })
+    expect(useStore.getState().projectParamsConfirmed).toBe(true)
+    expect(useStore.getState().canCreateOptions()).toBe(false)
+    expect(screen.getByRole('button', { name: 'Kundenwert übernehmen' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Dokumentwert beibehalten' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Später entscheiden' })).toBeInTheDocument()
+  })
+
+  it('zeigt Kundenevidenz als datierten Satz statt als interne Event-ID', async () => {
+    const user = userEvent.setup()
+    await openProjectCard(user)
+    const conflict = screen.getByRole('region', { name: 'Strittige Angaben' })
+
+    expect(within(conflict).getByText('vom Kunden bestätigt am 05.08.2026'))
+      .toBeInTheDocument()
+    expect(within(conflict).queryByText('DEMO-VE-0002')).not.toBeInTheDocument()
+  })
+
+  it('zählt die bestätigte WFL hoch, zeigt ihr Delta und journalisiert die Ursache', async () => {
+    const user = userEvent.setup()
+    await openProjectCard(user)
+    const params = screen.getByRole('region', { name: 'Projektparameter' })
+    const wflMetric = within(params).getByText('Total WFL nach WoFlV').parentElement!
+    expect(wflMetric).toHaveTextContent(/1\.500,00\s*m²/)
+
+    await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
+    await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
+
+    await waitFor(() => expect(wflMetric).toHaveTextContent(/1\.560,00\s*m²/))
+    const delta = wflMetric.querySelector('.a3-delta')!
+    expect(delta).toHaveClass('a3-show', 'a3-cost')
+    expect(delta).toHaveTextContent('Total WFL nach WoFlV geändert')
+    expect(delta).toHaveTextContent(/\+\s*60,00\s*m²/)
+    expect(useStore.getState().journal.at(-2)).toMatchObject({
+      kind: 'conflict.resolved',
+      label: expect.stringContaining('Kundenwert'),
+    })
   })
 })

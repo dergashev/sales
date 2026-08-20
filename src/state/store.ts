@@ -483,9 +483,15 @@ const INITIAL_BUILDING_CONFLICTS: Record<string, BuildingConflict> = {
           }
         : {
             kind: 'customer',
-            reference: 'verificationEventId' in candidate
-              && typeof candidate.verificationEventId === 'string'
-              ? candidate.verificationEventId : 'DEMO-VE-0002',
+            // A verification-event id is audit plumbing, not sales-facing
+            // evidence. Keep the fixture date as the visible authority cue
+            // and leave the immutable event itself in the conflict record.
+            reference: 'capturedAt' in candidate
+              && typeof candidate.capturedAt === 'string'
+              ? `vom Kunden bestätigt am ${new Intl.DateTimeFormat('de-DE', {
+                  day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC',
+                }).format(new Date(`${candidate.capturedAt}T00:00:00Z`))}`
+              : 'vom Kunden bestätigt',
           },
     })),
     resolutions: [],
