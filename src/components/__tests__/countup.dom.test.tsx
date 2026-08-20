@@ -71,6 +71,18 @@ describe('useCountUp: кадр не выходит за пределы пере�
     expect(read()).toBe('4.123.261')
   })
 
+  it('достигает цели по времени, даже если кадры в фоновой вкладке остановились', async () => {
+    vi.useFakeTimers()
+    const view = render(<Probe value="3817835" />)
+    const read = () => view.container.querySelector('output')!.textContent ?? ''
+
+    view.rerender(<Probe value="4123261" />)
+    expect(queue).toHaveLength(1)
+    await act(async () => { vi.advanceTimersByTime(400) })
+
+    expect(read()).toBe('4.123.261')
+  })
+
   it('смена цели на лету продолжает счёт с показанного, а не с прежней цели', async () => {
     const view = render(<Probe value="3817835" />)
     const read = () => view.container.querySelector('output')!.textContent ?? ''

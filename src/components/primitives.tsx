@@ -52,6 +52,15 @@ export function useCountUp(target: Decimal, decimals = 0): string {
     const a = current.current
     const delta = target.minus(a)
     if (delta.isZero()) return
+    // Hidden/background tabs may throttle requestAnimationFrame indefinitely.
+    // The visual interpolation is optional; reaching the authoritative value
+    // is not. A wall-clock fallback settles the same target after the canonical
+    // 400 ms duration and cancels any stale frame still waiting to run.
+    const settle = window.setTimeout(() => {
+      if (raf.current) cancelAnimationFrame(raf.current)
+      current.current = target
+      setShown(target)
+    }, 400)
     const tick = (now: number) => {
       const t = Math.min(Math.max((now - start) / 400, 0), 1)
       const eased = 1 - Math.pow(1 - t, 3)
@@ -59,10 +68,16 @@ export function useCountUp(target: Decimal, decimals = 0): string {
       current.current = value
       setShown(value)
       if (t < 1) raf.current = requestAnimationFrame(tick)
-      else current.current = target
+      else {
+        window.clearTimeout(settle)
+        current.current = target
+      }
     }
     raf.current = requestAnimationFrame(tick)
-    return () => { if (raf.current) cancelAnimationFrame(raf.current) }
+    return () => {
+      window.clearTimeout(settle)
+      if (raf.current) cancelAnimationFrame(raf.current)
+    }
   }, [target.toString(), reduced])
 
   return formatDE(shown, decimals)
