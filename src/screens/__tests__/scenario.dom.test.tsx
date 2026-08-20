@@ -64,12 +64,12 @@ describe('Сквозной сценарий продажи', () => {
     await user.click(within(es).getAllByRole('radio')[2]!)
     // Путь до конвейера сам оставляет след: решённый конфликт,
     // подтверждённые параметры, созданный Option и подтверждённое здание.
-    expect(useStore.getState().journal).toHaveLength(6)
+    expect(useStore.getState().journal).toHaveLength(9)
 
     // Уход на другой экран и возврат: состояние переживает переход.
     await user.click(nav(/Variantenvergleich/))
     await user.click(nav(/Konfigurator/))
-    expect(useStore.getState().journal).toHaveLength(6)
+    expect(useStore.getState().journal).toHaveLength(9)
     expect(activeBuilding(useStore.getState()).energiestandard).toBe('EH_40')
 
     // Гейт открывается на top-level шаге здания, а не обходится.
@@ -79,7 +79,7 @@ describe('Сквозной сценарий продажи', () => {
     await user.click(nav(/Variantenvergleich/))
     await user.click(nav(/^S5|Export/))
     expect(screen.getByRole('button', { name: /Preflight/ })).toBeInTheDocument()
-    expect(useStore.getState().journal).toHaveLength(6)
+    expect(useStore.getState().journal).toHaveLength(9)
   })
 
   it('глава 9 показывает Bauzeit обеими формами: полосой и таблицей', async () => {
@@ -507,12 +507,12 @@ describe('Сквозной сценарий продажи', () => {
       expect(document.body.textContent).not.toMatch(/\b(?:DEMO|OPT|SNAP|BM)-[A-Z0-9-]+\b/)
     }
 
-    await user.click(nav(/Variantenvergleich/))
+    await user.click(screen.getByRole('button', { name: /Varianten vergleichen/ }))
     expect(screen.queryByRole('button', { name: 'Zur Opportunity-Karte' })).toBeNull()
     expect(document.body).not.toHaveTextContent(/(?:D-19|VARIANT-001|XSC-08|HOAI und AHO|70\/22\/8)/)
     expect(document.body.textContent).not.toMatch(/\b(?:DEMO|OPT|SNAP|BM)-[A-Z0-9-]+\b/)
 
-    await user.click(nav(/^4Export/))
+    await user.click(nav(/^Export$/))
     expect(document.body).not.toHaveTextContent(/(?:clientPrint|clientSafe|R-07|EMAIL-007)/)
     expect(document.body.textContent).not.toMatch(/\b(?:DEMO|OPT|SNAP|BM)-[A-Z0-9-]+\b/)
 

@@ -89,8 +89,9 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
 
     await user.click(screen.getByRole('button', { name: 'Identität' }))
     const name = screen.getByRole('textbox', { name: 'Bezeichnung aus der Dokumentation' })
+    const changedName = `${(name as HTMLInputElement).value} Nord`
     await user.clear(name)
-    await user.type(name, 'Haus A Nord')
+    await user.type(name, changedName)
     await user.click(screen.getByRole('button', {
       name: 'Angabe übernehmen: Bezeichnung aus der Dokumentation',
     }))
