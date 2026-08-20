@@ -25,6 +25,9 @@ async function toPipeline() {
   st().resolveWflConflict('customer')
   st().confirmProjectParams()
   st().createOption('Option 1')
+  st().setCoverage('KG_300', 'included')
+  st().setCoverage('KG_400', 'included')
+  st().setCoverage('KG_700', 'included')
 }
 
 describe('цель события фиксируется в момент события (находка 12)', () => {
@@ -135,6 +138,9 @@ describe('эфемерное состояние принадлежит конт�
   it('переключение Option гасит дельту, призрак и тост предыдущей', async () => {
     await toPipeline()
     st().createOption('Option 2')
+    st().setCoverage('KG_300', 'included')
+    st().setCoverage('KG_400', 'included')
+    st().setCoverage('KG_700', 'included')
     st().setKg300('fassade', 'klinker')
     st().previewOption({ kind: 'coverage', group: 'KG_500', value: 'included' })
     expect(st().activeDelta).not.toBeNull()

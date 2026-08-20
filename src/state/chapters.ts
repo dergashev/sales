@@ -47,10 +47,11 @@ export type ConfiguratorWorkflowContext = Readonly<{
 /**
  * The only ordered Configurator registry.
  *
- * KG 300/400/700 remain active because the released domain contract makes
- * them mandatory. Energy/certification, areas and commercial/schedule are
- * required non-KG configuration areas. The former Ground step is absent: its
- * KG-200 status is a Scope Boundaries fact, not a second configuration task.
+ * KG 300/400/700 chapters are conditional on the active Option's explicit
+ * Scope Boundaries decisions. Energy/certification, areas and
+ * commercial/schedule are required non-KG configuration areas. The former
+ * Ground step is absent: its KG-200 status is a Scope Boundaries fact, not a
+ * second configuration task.
  */
 export const CONFIGURATOR_STEPS: readonly ConfiguratorStep[] = [
   {

@@ -45,6 +45,8 @@ const de = {
   'configurator.scope.confirmAndContinueHelp': 'Bestätigen Sie den Umfang und fahren Sie mit der ersten enthaltenen Kostengruppe fort.',
   'configurator.scope.continue': 'Weiter zur Konfiguration',
   'configurator.scope.confirmAndContinue': 'Umfang bestätigen und weiter',
+  'kg700.all3UnavailableReason':
+    'All3-Verfahren ist erst verfügbar, wenn KG 300 und KG 400 beide enthalten sind.',
   'shell.mode.intern': 'Intern',
   'shell.mode.praesentation': 'Präsentation',
   'shell.mode.blockedReason':
@@ -387,6 +389,8 @@ const en: Partial<Record<MessageKey, string>> = {
   'configurator.scope.confirmAndContinueHelp': 'Confirm the scope and continue to the first included cost group.',
   'configurator.scope.continue': 'Continue to configuration',
   'configurator.scope.confirmAndContinue': 'Confirm scope and continue',
+  'kg700.all3UnavailableReason':
+    'The All3 method is available only when both KG 300 and KG 400 are included.',
   'shell.mode.intern': 'Internal',
   'shell.mode.praesentation': 'Presentation',
   'shell.mode.blockedReason':

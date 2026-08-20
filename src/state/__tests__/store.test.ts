@@ -19,23 +19,12 @@ import { CONFIGURATOR_STEP } from '../chapters'
 beforeEach(() => __resetStoreForTests())
 
 /**
- * Scope Boundaries: умолчание покрытия (Product Decision Brief, тикет
- * 627d3191, одобрено CPO, дословно): «no KG is pre-selected as included,
- * including 300/400/700» — все шесть показанных групп (KG 200/300/400/500/
- * 600/700) хранятся как `unknown`, ни одна не получает сфабрикованного
- * пользовательского решения.
- * KG 100/800 вне перечня Scope Boundaries и остаются `notApplicable`.
- *
- * `ChapterUmfang` (`S3Konfigurator.tsx`, тикет d21f8d48) делает `decidable`
- * три из шести — KG 200/500/600 — через тот же трёхпозиционный
- * RadioCardGroup (D-18). KG 300/400/700 показаны канонической плиткой
- * CheckboxCard в состоянии `mandatory` (components-core.md §CheckboxCard,
- * OPTION-002/OPTION-005): зафиксированы, не `disabled`, снятие выбора
- * невозможно — Product Decision Brief этого тикета одобрил именно это
- * решение, а не разрешил их деактивацию. KG 100/800 вне шести карт этого
- * экрана вовсе и остаются `notApplicable`.
+ * The top-level demo projection predates Option creation and deliberately
+ * preserves the released reference calculation used throughout this file.
+ * Fresh Options have their own AC22 default-to-unknown contract, pinned in
+ * the Option-model tests below and in the integrated Scope Boundaries test.
  */
-describe('Scope Boundaries: покрытие по умолчанию (ticket 627d3191)', () => {
+describe('Scope Boundaries: pre-Option reference coverage', () => {
   it('optional groups begin open while the established core begins included', () => {
     const coverage = useStore.getState().coverage
     expect(coverage.KG_200).toBe('unknown')
@@ -115,15 +104,11 @@ describe('Leistungsabgrenzung: подтверждение и инвалидац�
     expect(scopeBoundariesStatus(st())).toBe('confirmed')
   })
 
-  it('KG 300/400/700 sind nicht Teil des Fingerprints — sie sind nicht entscheidbar', () => {
-    // Diese drei haben in ChapterUmfang keine interaktive Kontrolle
-    // (CheckboxCard `mandatory`); ein Store-seitiger `setCoverage` auf sie
-    // darf die Bestätigung trotzdem nicht unbemerkt entwerten, sonst würde
-    // ein Pfad existieren, den die UI gar nicht anbietet.
+  it('KG 300/400/700 invalidieren den bestätigten Umfang wie jede andere Entscheidung', () => {
     const st = () => useStore.getState()
     st().confirmScopeBoundaries()
-    st().setCoverage('KG_300', 'included')
-    expect(scopeBoundariesStatus(st())).toBe('confirmed')
+    st().setCoverage('KG_300', 'excluded')
+    expect(scopeBoundariesStatus(st())).toBe('recheck')
   })
 
   /**
@@ -1002,6 +987,8 @@ describe('KG 300/400 ausgeschlossen — reale Preisfolge (Product Decision e2dac
     const st = () => useStore.getState()
     const before = st().projection().result.total.exact
     st().setCoverage('KG_300', 'unknown')
+    expect(st().kg700Mode).toBe('hoaiAho')
+    expect(st().kg700ModeAutoFallback).toBe(true)
     const p = st().projection()
     // `unknown` preist wie `excluded` — ein unentschiedener Kern darf nie
     // still als eingeschlossen gerechnet werden (AC22).
@@ -1015,6 +1002,29 @@ describe('KG 300/400 ausgeschlossen — reale Preisfolge (Product Decision e2dac
     const reason = p.result.incompleteReasons
       .find((r) => r.code === 'coverageUnknown')
     expect(reason?.groups).toContain('KG_300')
+  })
+
+  it('behält den Auto-Fallback, solange erst eine von zwei Kerngruppen wieder enthalten ist', () => {
+    const st = () => useStore.getState()
+    st().setCoverage('KG_300', 'excluded')
+    st().setCoverage('KG_400', 'excluded')
+    st().setCoverage('KG_300', 'included')
+
+    expect(st().coverage.KG_400).toBe('excluded')
+    expect(st().kg700Mode).toBe('hoaiAho')
+    expect(st().kg700ModeAutoFallback).toBe(true)
+  })
+
+  it('eine bewusste HOAI/AHO-Wahl bleibt nach einem vollständigen Scope-Roundtrip erhalten', () => {
+    const st = () => useStore.getState()
+    st().setCoverage('KG_300', 'excluded')
+    st().setKg700Mode('vereinfacht')
+    st().setKg700Mode('hoaiAho')
+    expect(st().kg700ModeAutoFallback).toBe(false)
+
+    st().setCoverage('KG_300', 'included')
+    expect(st().kg700Mode).toBe('hoaiAho')
+    expect(st().kg700ModeAutoFallback).toBe(false)
   })
 
   /**
@@ -1070,6 +1080,12 @@ describe('KG 300/400 ausgeschlossen — reale Preisfolge (Product Decision e2dac
 describe('Настоящая модель Option (ревью № 13, дефект 1)', () => {
   const st = () => useStore.getState()
 
+  function includeCoreScope() {
+    st().setCoverage('KG_300', 'included')
+    st().setCoverage('KG_400', 'included')
+    st().setCoverage('KG_700', 'included')
+  }
+
   /** Путь подготовки: конфликт решён, параметры подтверждены. */
   function prepare() {
     st().openOpportunity('DEMO-0001')
@@ -1077,10 +1093,34 @@ describe('Настоящая модель Option (ревью № 13, дефек�
     st().confirmProjectParams()
   }
 
+  it('AC22: jede neue Option startet für KG 200/300/400/500/600/700 ohne Vorentscheidung', () => {
+    prepare()
+    st().createOption('Offener Umfang')
+    st().openOption('OPT-01')
+
+    expect([
+      st().coverage.KG_200,
+      st().coverage.KG_300,
+      st().coverage.KG_400,
+      st().coverage.KG_500,
+      st().coverage.KG_600,
+      st().coverage.KG_700,
+    ]).toEqual(Array(6).fill('unknown'))
+    expect(st().kg700Mode).toBe('hoaiAho')
+    expect(st().kg700ModeAutoFallback).toBe(true)
+    expect(st().projection().result.incompleteReasons
+      .find((reason) => reason.code === 'coverageUnknown'))
+      .toEqual({
+        code: 'coverageUnknown',
+        groups: ['KG_200', 'KG_300', 'KG_400', 'KG_500', 'KG_600', 'KG_700'],
+      })
+  })
+
   it('конфигурации Options независимы и переживают переключение', () => {
     prepare()
     st().createOption('Basis')
     st().openOption('OPT-01')
+    includeCoreScope()
     const totalDefault = st().projection().result.total.exact
     st().setKg300('balkone', 'nein')
     const totalA = st().projection().result.total.exact
@@ -1090,6 +1130,7 @@ describe('Настоящая модель Option (ревью № 13, дефек�
     st().openOpportunity('DEMO-0001')
     st().createOption('Ohne Balkone… nein, mit')
     st().openOption('OPT-02')
+    includeCoreScope()
     // Свежая конфигурация: выбор по умолчанию, не выбор OPT-01.
     expect(st().kg300[st().activeBuildingId]!['balkone']).not.toBe('nein')
     expect(st().projection().result.total.exact.equals(totalDefault)).toBe(true)
@@ -1104,6 +1145,7 @@ describe('Настоящая модель Option (ревью № 13, дефек�
     prepare()
     st().createOption('Basis')
     st().openOption('OPT-01')
+    includeCoreScope()
     st().setKg300('balkone', 'nein')
     const totalA = st().projection().result.total.exact
     st().openOpportunity('DEMO-0001')
@@ -1166,12 +1208,15 @@ describe('Настоящая модель Option (ревью № 13, дефек�
     expect(configuratorStepDone(st(), CONFIGURATOR_STEP.SCOPE_BOUNDARIES)).toBe(false)
     st().confirmConfigurationMode('PER_BUILDING')
     // Kapitel 1 ist jetzt Leistungsabgrenzung (Reorder 2026-08-18): besucht
-    // allein reicht nicht mehr — done erst, wenn KG 200/500/600 keine
-    // offene Entscheidung mehr sind (kein falsches done nur durch Eintritt).
+    // allein reicht nicht mehr — done erst, wenn alle sechs angezeigten KG
+    // keine offene Entscheidung mehr sind (kein falsches done nur durch Eintritt).
     expect(configuratorStepDone(st(), CONFIGURATOR_STEP.SCOPE_BOUNDARIES)).toBe(false)
     st().setCoverage('KG_200', 'excluded')
+    st().setCoverage('KG_300', 'included')
+    st().setCoverage('KG_400', 'included')
     st().setCoverage('KG_500', 'excluded')
     st().setCoverage('KG_600', 'excluded')
+    st().setCoverage('KG_700', 'included')
     expect(configuratorStepDone(st(), CONFIGURATOR_STEP.SCOPE_BOUNDARIES)).toBe(true)
     // Kapitel 2 (Leistungen KG 300, gebäudebezogen) ist erst nach Besuch
     // done — kein Auto-Visit mehr durch confirmConfigurationMode.
@@ -1301,6 +1346,9 @@ describe('Охват показа DC-46: сужает показ, но не со
     st().confirmProjectParams()
     st().createOption('A')
     st().openOption('OPT-01')
+    st().setCoverage('KG_300', 'included')
+    st().setCoverage('KG_400', 'included')
+    st().setCoverage('KG_700', 'included')
     st().toggleBuildingIncluded('DEMO-B-B')
     const complex = st().projection().result.total.exact
     st().setConfigurationScope('DEMO-B-A')

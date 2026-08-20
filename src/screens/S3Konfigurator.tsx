@@ -1395,8 +1395,11 @@ function ChapterTermine() {
  */
 function ChapterKg700() {
   const tx = useTx()
+  const t = useT()
   const s = useStore()
   const p = s.projection()
+  const all3Available = s.coverage.KG_300 === 'included'
+    && s.coverage.KG_400 === 'included'
 
   if (s.mode === 'praesentation') {
     return (
@@ -1414,26 +1417,27 @@ function ChapterKg700() {
   return (
     <div className="grid gap-5">
       <Card
-        title={`Baunebenkosten KG${NNBSP}700`}
-        intro={'Zwei Verfahren mit unterschiedlichem Ergebnis. Das All3-Verfahren '
-          + 'verteilt die bereits berechnete Summe und ändert den Gesamtbetrag '
-          + 'nicht; HOAI und AHO rechnen die Nebenkosten als eigene Position '
-          + 'hinzu. Der Kunde sieht in beiden Fällen dieselbe Aussage: '
-          + 'KG 700 ist enthalten.'}
+        title={t('chrome3.chapter.kg700')}
+        intro={t('remainder5.ancillary.twoMethods')}
       >
         <SegmentedControl
-          legend="Berechnungsart KG 700"
+          legend={t('kg700.calculationMethod')}
           value={s.kg700Mode}
           onChange={(m) => s.setKg700Mode(m)}
           options={[
-            { value: 'vereinfacht', label: 'All3-Verfahren 70/22/8' },
-            { value: 'hoaiAho', label: 'nach HOAI und AHO' },
+            {
+              value: 'vereinfacht',
+              label: t('kg700.all3Method'),
+              disabled: !all3Available,
+              disabledReason: t('kg700.all3UnavailableReason'),
+            },
+            { value: 'hoaiAho', label: t('kg700.hoaiAhoMethod') },
           ]}
         />
         <p className="a3-cap mt-3">
           {s.kg700Mode === 'vereinfacht'
-            ? 'Der Gesamtbetrag bleibt unverändert — 70/22/8 verteilt, was bereits gerechnet ist.'
-            : 'Die Nebenkosten kommen als eigene Zeile im Kostentreiber hinzu.'}
+            ? t('kg700.distributionUnchanged')
+            : t('kg700.separateDriverRow')}
         </p>
         {/* В режиме echt доли KG 700 внутри блока нет: она стоит своей
             позицией и живёт в водопаде, а не в разбивке блока. */}

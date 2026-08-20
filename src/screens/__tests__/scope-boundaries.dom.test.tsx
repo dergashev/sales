@@ -38,9 +38,23 @@ describe('Leistungsabgrenzung / Scope Boundaries (ticket d21f8d48)', () => {
     await openScopeBoundaries(user)
 
     for (const kg of [/KG.200/, /KG.300/, /KG.400/, /KG.500/, /KG.600/, /KG.700/]) {
-      expect(within(screen.getByRole('radiogroup', { name: kg })).getAllByRole('radio'))
-        .toHaveLength(2)
+      const radios = within(screen.getByRole('radiogroup', { name: kg })).getAllByRole('radio')
+      expect(radios).toHaveLength(2)
+      expect(radios.filter((radio) => (radio as HTMLInputElement).checked)).toHaveLength(0)
     }
+    expect(useStore.getState().coverage.KG_300).toBe('unknown')
+    expect(useStore.getState().coverage.KG_400).toBe('unknown')
+    expect(useStore.getState().coverage.KG_700).toBe('unknown')
+    expect(useStore.getState().kg700Mode).toBe('hoaiAho')
+    expect(useStore.getState().kg700ModeAutoFallback).toBe(true)
+
+    await user.click(within(screen.getByRole('radiogroup', { name: /KG.300/ }))
+      .getAllByRole('radio')[0]!)
+    await user.click(within(screen.getByRole('radiogroup', { name: /KG.400/ }))
+      .getAllByRole('radio')[0]!)
+    await user.click(within(screen.getByRole('radiogroup', { name: /KG.700/ }))
+      .getAllByRole('radio')[0]!)
+    expect(useStore.getState().kg700Mode).toBe('vereinfacht')
     const before = useStore.getState().projection().result.total.exact
     const kg300 = screen.getByRole('radiogroup', { name: /KG.300/ })
     await user.click(within(kg300).getAllByRole('radio')[1]!)
@@ -64,6 +78,38 @@ describe('Leistungsabgrenzung / Scope Boundaries (ticket d21f8d48)', () => {
       .reduce((a, d) => a.plus(d.exact), new Decimal(0))
     expect(driverSum.toFixed(2)).toBe(projection.result.total.exact.toFixed(2))
     expect(projection.result.total.exact.lt(before)).toBe(true)
+  })
+
+  it('disables All3 with a visible reason until KG 300 and KG 400 are included', async () => {
+    const user = userEvent.setup()
+    await openScopeBoundaries(user)
+
+    const kg700 = screen.getByRole('radiogroup', { name: /KG.700/ })
+    await user.click(within(kg700).getAllByRole('radio')[0]!)
+    await user.click(nav(/Baunebenkosten KG 700/))
+
+    const method = screen.getByRole('radiogroup', { name: 'Berechnungsart KG 700' })
+    const all3 = within(method).getByRole('radio', { name: 'All3-Verfahren 70/22/8' })
+    expect(all3).toBeDisabled()
+    expect(within(method).getByRole('radio', { name: 'nach HOAI und AHO' })).toBeChecked()
+    expect(screen.getByText(/erst verfügbar, wenn KG 300 und KG 400 beide enthalten/))
+      .toBeInTheDocument()
+    expect(screen.queryByText(/Der Gesamtbetrag bleibt unverändert/)).not.toBeInTheDocument()
+    expect(screen.getByText(/eigene Zeile im Kostentreiber/)).toBeInTheDocument()
+
+    await user.click(nav(/Leistungsabgrenzung/))
+    await user.click(within(screen.getByRole('radiogroup', { name: /KG.300/ }))
+      .getAllByRole('radio')[0]!)
+    await user.click(within(screen.getByRole('radiogroup', { name: /KG.400/ }))
+      .getAllByRole('radio')[0]!)
+    await user.click(nav(/Baunebenkosten KG 700/))
+
+    const restored = screen.getByRole('radiogroup', { name: 'Berechnungsart KG 700' })
+    expect(within(restored).getByRole('radio', { name: 'All3-Verfahren 70/22/8' }))
+      .toBeEnabled()
+    expect(within(restored).getByRole('radio', { name: 'All3-Verfahren 70/22/8' }))
+      .toBeChecked()
+    expect(screen.getByText(/Der Gesamtbetrag bleibt unverändert/)).toBeInTheDocument()
   })
 
   it('lets optional groups choose included or excluded without an unknown tile', async () => {

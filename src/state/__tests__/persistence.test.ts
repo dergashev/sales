@@ -156,6 +156,7 @@ describe('proposal store recovery', () => {
     // very same transition that confirms the mode — pricing begins right
     // here, not from the earlier mode radio choice on its own.
     expect(st().pricingStarted).toBe(true)
+    st().setCoverage('KG_400', 'included')
     st().openConfiguratorStepAt(CONFIGURATOR_STEP.KG_400_DETAILS)
     expect(st().pricingStarted).toBe(true)
 

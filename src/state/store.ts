@@ -243,9 +243,9 @@ export type OptionConfig = {
   kg300Provenance: Record<string, Record<string, string>>
   kg700Mode: 'vereinfacht' | 'hoaiAho'
   /**
-   * True exactly when the CURRENT `kg700Mode` value was set by the D-07
-   * rule-6 automatic fallback (`setCoverage`), not by a deliberate seller
-   * choice (`setKg700Mode`). Only an auto-set mode may be auto-reverted
+   * True exactly when the CURRENT `kg700Mode` value comes from D-07 rule-6
+   * automatic enforcement (fresh-Option default or `setCoverage`), not from
+   * a deliberate seller choice (`setKg700Mode`). Only an auto-set mode may be auto-reverted
    * when its triggering precondition (KG 300 and KG 400 both included)
    * is restored — a deliberate choice must never be silently overridden
    * (QA-01, ticket e2dac9b5).
@@ -404,9 +404,8 @@ type PersistedProposalPayload = {
  * (`unknown` / «noch offen»), а не «продавец уже решил исключить» (SCOPE-001,
  * `data-model.md` §5.4, D-18).
  *
- * The established core scope starts included, but every one of these values
- * is now a user-editable binary decision in Scope Boundaries. Persisted
- * legacy `unknown` core values remain price-compatible until answered.
+ * Every displayed group therefore starts `unknown`. Persisted decisions are
+ * restored unchanged; this default applies only to a fresh Option.
  *
  * KG 100 (Grundstück) и KG 800 (Finanzierung) в перечень Scope Boundaries
  * этой задачи не входят (тикет называет ровно шесть групп) и сохраняют
@@ -414,8 +413,17 @@ type PersistedProposalPayload = {
  */
 const INITIAL_COVERAGE: Coverage = {
   KG_100: 'notApplicable', KG_200: 'unknown',
-  KG_300: 'included', KG_400: 'included', KG_500: 'unknown',
-  KG_600: 'unknown', KG_700: 'included', KG_800: 'notApplicable',
+  KG_300: 'unknown', KG_400: 'unknown', KG_500: 'unknown',
+  KG_600: 'unknown', KG_700: 'unknown', KG_800: 'notApplicable',
+}
+// The top-level demo projection exists before an Opportunity Option does and
+// keeps the released reference calculation available to diagnostics/tests.
+// It is never used as the default for a newly created Option.
+const ESTABLISHED_FIXTURE_COVERAGE: Coverage = {
+  ...INITIAL_COVERAGE,
+  KG_300: 'included',
+  KG_400: 'included',
+  KG_700: 'included',
 }
 const COVERAGE_KEYS = Object.keys(INITIAL_COVERAGE) as Array<keyof Coverage>
 const COVERAGE_STATES: CoverageState[] = [
@@ -537,7 +545,9 @@ const INITIAL_BUILDING_CONFLICTS: Record<string, BuildingConflict> = {
  * это безопасно, потому что стор меняет их только заменой ссылки, а после
  * каждого set всё замораживается deepFreeze.
  */
-function defaultOptionConfig(): OptionConfig {
+function defaultOptionConfig(coverage: Coverage = INITIAL_COVERAGE): OptionConfig {
+  const simplifiedAvailable = coverage.KG_300 === 'included'
+    && coverage.KG_400 === 'included'
   return {
     buildings: {
       [INITIAL_BUILDING.id]: INITIAL_BUILDING,
@@ -583,9 +593,13 @@ function defaultOptionConfig(): OptionConfig {
       [INITIAL_BUILDING_B.id]: Object.fromEntries(
         ALL_OPTION_GROUPS.map((g) => [g.id, g.documented ? 'aus Dokument' : 'Standard'])),
     },
-    kg700Mode: 'vereinfacht',
-    kg700ModeAutoFallback: false,
-    coverage: INITIAL_COVERAGE,
+    // D-07 rule 6: the simplified 70/22/8 split is unavailable until both
+    // core groups are explicitly included. A fresh Option therefore begins
+    // in the reversible automatic fallback; including both groups restores
+    // the canonical simplified default without manufacturing consent.
+    kg700Mode: simplifiedAvailable ? 'vereinfacht' : 'hoaiAho',
+    kg700ModeAutoFallback: !simplifiedAvailable,
+    coverage,
     scopeBoundariesConfirmedFingerprint: null,
     fields: legacyFieldsFromReview(INITIAL_REVIEW),
     esConfirmed: false,
@@ -1411,8 +1425,8 @@ export function configurationDisplayStatusFor(
 
 /**
  * Отпечаток решений Leistungsabgrenzung, относящихся к её собственному
- * контракту: решаемые группы затрат (KG 200/500/600 — KG 300/400/700
- * обязательны и решением не являются, SCOPE-BOUNDARIES-001), Energiestandard
+ * контракту: все шесть решаемых групп затрат (KG 200/300/400/500/600/700),
+ * Energiestandard
  * и Zertifikate (`qng`/`dgnb`, engine/options.ts `ZERT_GROUPS`). Используется
  * только для сравнения «изменилось ли что-то с момента подтверждения», не
  * для хранения самого решения.
@@ -1447,7 +1461,7 @@ function scopeBoundariesFingerprint(
 /**
  * `open` — noch nicht bestätigt; `confirmed` — Bestätigung deckt den
  * aktuellen Stand; `recheck` — eine gespeicherte Bestätigung existiert, aber
- * KG 200/500/600, Energiestandard oder Zertifikate haben sich seither
+ * KG 200/300/400/500/600/700, Energiestandard oder Zertifikate haben sich seither
  * geändert (Ticket-Anforderung #6: Änderung invalidiert, statt still zu
  * bestehen).
  */
@@ -2245,7 +2259,7 @@ const store = createStore<Store>((set, get) => {
     // Конфигурация активной Option — плоские поля из единой фабрики.
     // До создания первой Option эти же поля обслуживают уровень
     // Opportunity (анализ, параметры): рабочая копия существует всегда.
-    ...defaultOptionConfig(),
+    ...defaultOptionConfig(ESTABLISHED_FIXTURE_COVERAGE),
     // Preparation-only UI state is deliberately outside OptionConfig.
     configurationModeEditing: false,
     optionConfigs: {},
@@ -2462,7 +2476,7 @@ const store = createStore<Store>((set, get) => {
       // `setKg700Mode` (which clears `kg700ModeAutoFallback`).
       let nextKg700Mode = s.kg700Mode
       let nextAutoFallback = prevAutoFallback
-      if (st === 'excluded' && (g === 'KG_300' || g === 'KG_400')
+      if (st !== 'included' && (g === 'KG_300' || g === 'KG_400')
         && s.kg700Mode === 'vereinfacht') {
         nextKg700Mode = 'hoaiAho'
         nextAutoFallback = true
