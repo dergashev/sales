@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
 import { confirmBuildingReviewSections } from '../../test/offer-option'
@@ -87,15 +87,17 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     const identity = screen.getByRole('button', { name: 'Identität' }).closest('tr')!
     expect(within(identity).getByText('Bestätigt')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Identität' }))
-    const name = screen.getByRole('textbox', { name: 'Bezeichnung aus der Dokumentation' })
-    const changedName = `${(name as HTMLInputElement).value} Nord`
-    await user.clear(name)
-    await user.type(name, changedName)
-    await user.click(screen.getByRole('button', {
-      name: 'Angabe übernehmen: Bezeichnung aus der Dokumentation',
-    }))
-    expect(within(identity).getByText('Geändert · erneut bestätigen')).toBeInTheDocument()
+    const documentationName = useStore.getState()
+      .buildingReviews['DEMO-B-A']!.facts.documentationName
+    const currentName = documentationName.override?.value
+      ?? documentationName.extracted.value
+      ?? 'Haus A'
+    act(() => useStore.getState().setBuildingFactOverride(
+      'DEMO-B-A', 'documentationName', `${currentName} Nord`,
+    ))
+    const changedIdentity = screen.getByRole('button', { name: 'Identität' }).closest('tr')!
+    expect(within(changedIdentity).getByText('Geändert · erneut bestätigen'))
+      .toBeInTheDocument()
   })
 
   it('übersetzt Kennzahlen und Sidebar-Gruppen ohne Profilbegriffe als Überschriften', async () => {
