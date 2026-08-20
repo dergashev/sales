@@ -242,6 +242,15 @@ export type OptionConfig = {
   kg300: Record<string, Record<string, string>>
   kg300Provenance: Record<string, Record<string, string>>
   kg700Mode: 'vereinfacht' | 'hoaiAho'
+  /**
+   * True exactly when the CURRENT `kg700Mode` value was set by the D-07
+   * rule-6 automatic fallback (`setCoverage`), not by a deliberate seller
+   * choice (`setKg700Mode`). Only an auto-set mode may be auto-reverted
+   * when its triggering precondition (KG 300 and KG 400 both included)
+   * is restored — a deliberate choice must never be silently overridden
+   * (QA-01, ticket e2dac9b5).
+   */
+  kg700ModeAutoFallback: boolean
   coverage: Coverage
   scopeBoundariesConfirmedFingerprint: string | null
   fields: { wfl: FieldState; bgfOber: FieldState; we: FieldState }
@@ -297,7 +306,7 @@ const OPTION_CONFIG_KEYS = [
   'configurationMode', 'configurationModeChosen',
   'pricingStarted', 'configurationVisitedChapters', 'sharedConfiguration',
   'buildingConfigState',
-  'kg300', 'kg300Provenance', 'kg700Mode', 'coverage',
+  'kg300', 'kg300Provenance', 'kg700Mode', 'kg700ModeAutoFallback', 'coverage',
   'scopeBoundariesConfirmedFingerprint', 'fields',
   'esConfirmed', 'regionalfaktorActive', 'risikoAktiv',
   'openConfiguratorStep', 'visitedConfiguratorSteps', 'scopeBuildingId', 'discountPercent',
@@ -317,13 +326,13 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
   | 'configurationMode' | 'configurationModeChosen' | 'pricingStarted'
   | 'configurationVisitedChapters'
   | 'sharedConfiguration' | 'buildingConfigState'
-  | 'kg300' | 'kg300Provenance' | 'kg700Mode' | 'coverage'
+  | 'kg300' | 'kg300Provenance' | 'kg700Mode' | 'kg700ModeAutoFallback' | 'coverage'
   | 'scopeBoundariesConfirmedFingerprint'
   | 'esConfirmed' | 'regionalfaktorActive' | 'risikoAktiv' | 'discountPercent'
   | 'constructionStartDate'>,
   'buildingSectionConfirmations' | 'configurationModeChosen' | 'pricingStarted'
     | 'configurationVisitedChapters' | 'scopeBoundariesConfirmedFingerprint'
-    | 'constructionStartDate'> & {
+    | 'constructionStartDate' | 'kg700ModeAutoFallback'> & {
     /** Optional while reading candidates saved before section review was durable. */
     buildingSectionConfirmations?: Record<
       string,
@@ -331,6 +340,10 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
     >
     /** Optional only while reading v1 payloads saved before explicit entry. */
     configurationModeChosen?: boolean
+    /** Optional while reading candidates saved before the QA-01 fix (ticket
+     * e2dac9b5); such payloads carry no fallback provenance, so they must
+     * never be auto-reverted retroactively. */
+    kg700ModeAutoFallback?: boolean
     /** Optional while reading candidates saved before the pricing boundary. */
     pricingStarted?: boolean
     configurationVisitedChapters?: Record<string, Array<ConfiguratorStepId | number>>
@@ -346,7 +359,7 @@ const PERSISTED_CONFIG_KEYS = [
   'configurationMode', 'configurationModeChosen', 'pricingStarted',
   'configurationVisitedChapters',
   'sharedConfiguration', 'buildingConfigState',
-  'kg300', 'kg300Provenance', 'kg700Mode', 'coverage',
+  'kg300', 'kg300Provenance', 'kg700Mode', 'kg700ModeAutoFallback', 'coverage',
   'scopeBoundariesConfirmedFingerprint', 'esConfirmed',
   'regionalfaktorActive', 'risikoAktiv', 'discountPercent',
   'constructionStartDate',
@@ -358,7 +371,8 @@ const LEGACY_PERSISTED_CONFIG_KEYS = PERSISTED_CONFIG_KEYS.filter(
     && key !== 'pricingStarted'
     && key !== 'configurationVisitedChapters'
     && key !== 'scopeBoundariesConfirmedFingerprint'
-    && key !== 'constructionStartDate',
+    && key !== 'constructionStartDate'
+    && key !== 'kg700ModeAutoFallback',
 )
 
 function capturePersistedConfig(
@@ -570,6 +584,7 @@ function defaultOptionConfig(): OptionConfig {
         ALL_OPTION_GROUPS.map((g) => [g.id, g.documented ? 'aus Dokument' : 'Standard'])),
     },
     kg700Mode: 'vereinfacht',
+    kg700ModeAutoFallback: false,
     coverage: INITIAL_COVERAGE,
     scopeBoundariesConfirmedFingerprint: null,
     fields: legacyFieldsFromReview(INITIAL_REVIEW),
@@ -721,6 +736,8 @@ function isPersistedProposalConfig(value: unknown): value is PersistedProposalCo
   if (value.kg700Mode !== 'vereinfacht' && value.kg700Mode !== 'hoaiAho') {
     return false
   }
+  if (value.kg700ModeAutoFallback !== undefined
+    && typeof value.kg700ModeAutoFallback !== 'boolean') return false
   if (!record(value.coverage)
     || !hasOnlyKeys(value.coverage, COVERAGE_KEYS)
     || !Object.values(value.coverage).every((item) =>
@@ -804,6 +821,9 @@ function restoredOptionConfig(
     ...base,
     ...persisted,
     configurationModeChosen: persisted.configurationModeChosen === true,
+    // Absent in payloads saved before this fix: treat as "not an auto
+    // fallback" so an old candidate is never retroactively auto-reverted.
+    kg700ModeAutoFallback: persisted.kg700ModeAutoFallback === true,
     pricingStarted: persisted.pricingStarted === true,
     configurationVisitedChapters,
     scopeBoundariesConfirmedFingerprint:
@@ -900,6 +920,7 @@ type Store = {
    *   ДОБАВЛЯЕТСЯ к итогу.
    */
   kg700Mode: 'vereinfacht' | 'hoaiAho'
+  kg700ModeAutoFallback: boolean
   coverage: Coverage
   /**
    * Отпечаток решений Leistungsabgrenzung (KG 200/500/600 + Energiestandard
@@ -2427,18 +2448,39 @@ const store = createStore<Store>((set, get) => {
       if (prev === st) return
       const before = projectTotal(s)
       const prevKg700Mode = s.kg700Mode
-      const nextKg700Mode = st === 'excluded'
-        && (g === 'KG_300' || g === 'KG_400')
-        && s.kg700Mode === 'vereinfacht'
-        ? 'hoaiAho' : s.kg700Mode
+      const prevAutoFallback = s.kg700ModeAutoFallback
+      const nextCoverage = { ...s.coverage, [g]: st }
+      const bothCoreIncluded = nextCoverage.KG_300 === 'included'
+        && nextCoverage.KG_400 === 'included'
+      // D-07 rule 6 is symmetric by its own wording ("vereinfacht requires
+      // 300 AND 400 both included"), but the ORIGINAL implementation only
+      // ever flipped forward (QA-01, ticket e2dac9b5): once a core group's
+      // exclusion auto-switched the project to `hoaiAho`, re-including it
+      // left the total silently inflated by KG 700's +12 % forever. The
+      // revert below undoes exactly what the forward branch did, and ONLY
+      // that — it never touches a mode the seller chose deliberately via
+      // `setKg700Mode` (which clears `kg700ModeAutoFallback`).
+      let nextKg700Mode = s.kg700Mode
+      let nextAutoFallback = prevAutoFallback
+      if (st === 'excluded' && (g === 'KG_300' || g === 'KG_400')
+        && s.kg700Mode === 'vereinfacht') {
+        nextKg700Mode = 'hoaiAho'
+        nextAutoFallback = true
+      } else if ((g === 'KG_300' || g === 'KG_400') && bothCoreIncluded
+        && s.kg700Mode === 'hoaiAho' && prevAutoFallback) {
+        nextKg700Mode = 'vereinfacht'
+        nextAutoFallback = false
+      }
       const write = (
         value: CoverageState,
         kg700Mode: Store['kg700Mode'],
+        autoFallback: boolean,
       ) => set((current) => {
         const coverage = { ...current.coverage, [g]: value }
         return {
           coverage,
           kg700Mode,
+          kg700ModeAutoFallback: autoFallback,
           // A future conditional KG step can disappear immediately after a
           // Scope Boundaries decision. Keep the page on the nearest active
           // semantic step; App.tsx then moves focus to that step's h1.
@@ -2448,24 +2490,28 @@ const store = createStore<Store>((set, get) => {
           }, current.openConfiguratorStep),
         }
       })
-      write(st, nextKg700Mode)
+      write(st, nextKg700Mode, nextAutoFallback)
       const after = projectTotal(get())
       const delta = after.minus(before)
-      const fallback = nextKg700Mode !== prevKg700Mode
+      const fallbackApplied = nextKg700Mode === 'hoaiAho' && nextKg700Mode !== prevKg700Mode
+      const fallbackReverted = nextKg700Mode === 'vereinfacht' && nextKg700Mode !== prevKg700Mode
       apply({
         kind: 'coverage.changed',
         label: `${g} ${COVERAGE_LABEL[prev]} → ${COVERAGE_LABEL[st]}`
-          + (fallback ? ' · Berechnung automatisch auf HOAI/AHO umgestellt' : ''),
+          + (fallbackApplied ? ' · Berechnung automatisch auf HOAI/AHO umgestellt' : '')
+          + (fallbackReverted ? ' · Berechnung automatisch zurück auf All3-Verfahren umgestellt' : ''),
         deltaExact: delta.isZero() ? null : delta,
-        inverse: () => write(prev, prevKg700Mode),
-        forward: () => write(st, nextKg700Mode),
+        inverse: () => write(prev, prevKg700Mode, prevAutoFallback),
+        forward: () => write(st, nextKg700Mode, nextAutoFallback),
       })
       set({
         preview: null,
         activeDelta: {
-          label: fallback
+          label: fallbackApplied
             ? `${g} ausgeschlossen · Berechnung auf HOAI/AHO umgestellt`
-            : `${g} ${COVERAGE_LABEL[st]}`,
+            : fallbackReverted
+              ? `${g} ${COVERAGE_LABEL[st]} · Berechnung zurück auf All3-Verfahren`
+              : `${g} ${COVERAGE_LABEL[st]}`,
           deltaExact: delta,
           percent: before.isZero() ? new Decimal(0) : delta.div(before).mul(100),
         },
@@ -3233,8 +3279,14 @@ const store = createStore<Store>((set, get) => {
       const s = get()
       if (s.kg700Mode === m) return
       const prev = s.kg700Mode
+      const prevAutoFallback = s.kg700ModeAutoFallback
       const before = s.projection().result.total.exact
-      set({ kg700Mode: m })
+      // A deliberate seller choice always claims the mode from here on
+      // (QA-01, ticket e2dac9b5): `setCoverage`'s automatic D-07 rule-6
+      // revert must never override it, so the fallback provenance flag is
+      // cleared on every explicit selection, not only when it moves away
+      // from `hoaiAho`.
+      set({ kg700Mode: m, kg700ModeAutoFallback: false })
       const after = get().projection().result.total.exact
       const delta = after.minus(before)
       apply({
@@ -3243,8 +3295,8 @@ const store = createStore<Store>((set, get) => {
           ? 'KG 700 nach HOAI und AHO als eigene Position'
           : 'KG 700 im All3-Verfahren 70/22/8 verteilt',
         deltaExact: delta.isZero() ? null : delta,
-        inverse: () => set({ kg700Mode: prev }),
-        forward: () => set({ kg700Mode: m }),
+        inverse: () => set({ kg700Mode: prev, kg700ModeAutoFallback: prevAutoFallback }),
+        forward: () => set({ kg700Mode: m, kg700ModeAutoFallback: false }),
       })
     },
 

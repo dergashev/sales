@@ -1016,6 +1016,55 @@ describe('KG 300/400 ausgeschlossen — reale Preisfolge (Product Decision e2dac
       .find((r) => r.code === 'coverageUnknown')
     expect(reason?.groups).toContain('KG_300')
   })
+
+  /**
+   * QA-01 (Calculation QA, ticket e2dac9b5): excluding a core group
+   * correctly falls back to `hoaiAho` (D-07 rule 6), but the fallback was
+   * only ever applied forward. Re-including both core groups afterwards
+   * left `kg700Mode` stuck on `hoaiAho`, silently inflating the total by
+   * KG 700's +12 % indefinitely — an entirely ordinary "excluded, then
+   * changed my mind" interaction produced a wrong, unexplained total.
+   */
+  it('QA-01: re-including both core groups after an auto-fallback restores the original total (kg700Mode auto-reverts)', () => {
+    const st = () => useStore.getState()
+    const before = st().projection().result.total.exact
+    expect(st().kg700Mode).toBe('vereinfacht')
+    st().setCoverage('KG_300', 'excluded')
+    expect(st().kg700Mode).toBe('hoaiAho')
+    expect(st().kg700ModeAutoFallback).toBe(true)
+    st().setCoverage('KG_300', 'included')
+    expect(st().kg700Mode).toBe('vereinfacht')
+    expect(st().kg700ModeAutoFallback).toBe(false)
+    expect(st().projection().result.total.exact.equals(before)).toBe(true)
+    expect(st().projection().result.drivers
+      .some((d) => d.key === 'kg300_excluded_adjustment')).toBe(false)
+  })
+
+  it('QA-01: a deliberate hoaiAho choice is never auto-reverted by re-including a core group', () => {
+    const st = () => useStore.getState()
+    st().setKg700Mode('hoaiAho')
+    expect(st().kg700ModeAutoFallback).toBe(false)
+    st().setCoverage('KG_300', 'excluded')
+    // Already hoaiAho, and NOT because of this exclusion — the flag must
+    // stay false; the fallback path never fires when already in hoaiAho.
+    expect(st().kg700ModeAutoFallback).toBe(false)
+    st().setCoverage('KG_300', 'included')
+    // Both core groups included again, but the mode was the seller's own
+    // deliberate choice — it must remain exactly as they left it.
+    expect(st().kg700Mode).toBe('hoaiAho')
+  })
+
+  it('QA-01: undo after an auto-fallback restores kg700Mode, the flag, and the total exactly', () => {
+    const st = () => useStore.getState()
+    const before = st().projection().result.total.exact
+    st().setCoverage('KG_300', 'excluded')
+    expect(st().canUndo()).toBe(true)
+    st().undo()
+    expect(st().kg700Mode).toBe('vereinfacht')
+    expect(st().kg700ModeAutoFallback).toBe(false)
+    expect(st().coverage.KG_300).toBe('included')
+    expect(st().projection().result.total.exact.equals(before)).toBe(true)
+  })
 })
 
 describe('Настоящая модель Option (ревью № 13, дефект 1)', () => {
