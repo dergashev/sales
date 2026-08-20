@@ -777,6 +777,29 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-opportunity-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--measure-component)),1fr));gap:var(--space-3)}
 .a3-opportunity-metrics{grid-template-columns:repeat(auto-fit,minmax(min(100%,26ch),1fr));column-gap:var(--space-6)}
 
+/* Project Card baseline composition. Canonical primitives remain the owners
+   of provenance, data-state and action behavior; these classes express only
+   the product-specific total/breakdown relationship and host-width reflow. */
+.a3-preparation-summary{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);flex-wrap:wrap;border-bottom:var(--border-hairline);padding-bottom:var(--space-3)}
+.a3-preparation-summary>p{margin:0;color:var(--color-text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight)}
+.a3-project-baseline{container-type:inline-size;container-name:a3-project-baseline}
+.a3-project-baseline-primary-grid,.a3-project-baseline-equation{display:grid;grid-template-columns:minmax(0,1fr);gap:0;margin:0;min-width:0}
+.a3-project-baseline-metric{min-width:0;border-bottom:var(--border-hairline);padding:var(--space-3) 0}
+.a3-project-baseline-metric dt,.a3-project-baseline-metric dd{margin:0;min-width:0}
+.a3-project-baseline-metric dd>.numeric{overflow-wrap:anywhere}
+.a3-project-baseline-supporting dd>.numeric,.a3-project-baseline-total dd>.numeric{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-body-weight)}
+.a3-project-baseline-primary dd>.numeric{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold)}
+.a3-project-baseline-total dd>.numeric{font-weight:var(--font-weight-bold)}
+.a3-project-baseline-breakdown{border:var(--border-default);padding:var(--space-4);min-width:0}
+.a3-project-baseline-breakdown>h3{margin:0;font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);color:var(--color-text-primary)}
+.a3-project-baseline-derived-result{margin:var(--space-3) 0 0;min-width:0}
+.a3-project-baseline-operator{display:inline-block;margin-right:var(--space-2);font-weight:var(--font-weight-bold)}
+.a3-project-baseline-confirmed{display:flex;align-items:center;min-height:var(--size-hit-target-default);padding:var(--space-3);border:var(--border-default);background:var(--color-surface-subtle);color:var(--color-text-primary);font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-label-weight)}
+@container a3-project-baseline (min-width:63rem){
+  .a3-project-baseline-primary-grid{grid-template-columns:repeat(4,minmax(0,1fr));column-gap:var(--space-6)}
+  .a3-project-baseline-equation{grid-template-columns:repeat(3,minmax(0,1fr));column-gap:var(--space-5)}
+}
+
 /* Opportunity prerequisite gate: named rows, one next action, no aggregate
    ring/percentage. Motion wrappers animate only opacity and use shared tokens. */
 .a3-prerequisites{min-width:0}

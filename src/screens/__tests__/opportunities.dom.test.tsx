@@ -132,8 +132,12 @@ describe('Уровень Opportunities', () => {
     render(<App />)
     await user.click(screen.getByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
     const params = screen.getByLabelText('Projektparameter')
-    // Пометка приходит из данных, а не дописана в разметке.
-    expect(within(params).getAllByText(/nicht kalibriert/).length).toBeGreaterThanOrEqual(3)
+    // Canonical provenance carries both the derived authority and each
+    // field-specific derivation rule; the retired fixture glyph is not the
+    // accessible contract anymore.
+    expect(within(params).getAllByLabelText(/^Herkunft: abgeleitet/)).toHaveLength(3)
+    expect(within(params).getByText(/Balkonanteil abgeleitet/)).toBeInTheDocument()
+    expect(within(params).getByText(/85\s*% der BGF R\+S/)).toBeInTheDocument()
     expect(within(params).getByText(/Total BGF \(S\)/)).toBeInTheDocument()
   })
 

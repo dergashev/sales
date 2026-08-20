@@ -1179,6 +1179,73 @@ export function activeBuilding(s: Pick<Store, 'buildings' | 'activeBuildingId'>)
   return b
 }
 
+/**
+ * The Preparation screen and the Project Card summary must describe the same
+ * underlying questions/assumptions. Keep the two boolean axes here so neither
+ * surface invents or manually maintains a second count.
+ */
+export function preparationStatuses(s: Pick<Store,
+  'fields' | 'esConfirmed' | 'buildings' | 'activeBuildingId' | 'coverage'
+>) {
+  return {
+    questions: {
+      wfl: s.fields.wfl.provenance !== 'vom Kunden bestätigt',
+      energyStandard: !s.esConfirmed,
+    },
+    assumptions: {
+      buildingClass: !activeBuilding(s).gebaeudeklasse.confirmed,
+      kg500Coverage: s.coverage.KG_500 === 'unknown',
+    },
+  }
+}
+
+export const PROJECT_PARAMS_CONFIRMATION_LABEL =
+  'Projektparameter bestätigt (Gebäude, Flächen, Einheiten)'
+
+/**
+ * Project-parameter freshness is derived from the existing append-only
+ * journal. It is deliberately not another persisted authority flag: the
+ * confirmation boolean keeps its established gate meaning while this
+ * selector adds the independent stale presentation axis required by
+ * STATE-003.
+ */
+function projectBaselineChangeLabel(event: JournalEvent): string | null {
+  if (event.kind === 'document.activated') return 'Dokumentgrundlage'
+  if (event.kind === 'conflict.resolved') {
+    // Deferring an open conflict is an audit event but changes no baseline
+    // value, so it cannot invalidate the confirmation.
+    if (event.label.includes('zurückgestellt')) return null
+    return event.label.includes('WFL')
+      ? 'WFL nach WoFlV'
+      : 'Strittige Angaben'
+  }
+  if (event.kind !== 'value.edited' && event.kind !== 'value.confirmed') return null
+  if (event.label === PROJECT_PARAMS_CONFIRMATION_LABEL) return null
+  if (event.label.includes('WFL') || event.label.includes('Wohnfläche')) {
+    return 'WFL nach WoFlV'
+  }
+  if (event.label.includes('NUF')) return 'NUF nach DIN 277'
+  if (event.label.includes('BGF')) return 'BGF'
+  if (event.label.includes('Wohneinheiten')) return 'Wohneinheiten'
+  return null
+}
+
+export function projectBaselineChangesSinceConfirmation(s: Pick<Store,
+  'projectParamsConfirmed' | 'journal' | 'undone'
+>): string[] {
+  if (!s.projectParamsConfirmed) return []
+  const lastConfirmation = [...s.journal].reverse().find((event) =>
+    event.kind === 'value.confirmed'
+    && event.label === PROJECT_PARAMS_CONFIRMATION_LABEL
+    && !s.undone.includes(event.seq))
+  if (!lastConfirmation) return []
+
+  return [...new Set(s.journal
+    .filter((event) => event.seq > lastConfirmation.seq && !s.undone.includes(event.seq))
+    .map(projectBaselineChangeLabel)
+    .filter((label): label is string => label !== null))]
+}
+
 /** Здания, входящие в предложение, в порядке фикстуры. */
 function includedBuildings(
   s: Pick<Store, 'buildings' | 'included'>,
@@ -2717,13 +2784,18 @@ const store = createStore<Store>((set, get) => {
      * по построению (M-4), и это относится к правам так же, как к числам.
      */
     confirmProjectParams: () => {
-      if (get().projectParamsConfirmed) return
+      const previousConfirmed = get().projectParamsConfirmed
+      if (previousConfirmed
+        && projectBaselineChangesSinceConfirmation(get()).length === 0) return
       set({ projectParamsConfirmed: true })
       apply({
         kind: 'value.confirmed',
-        label: 'Projektparameter bestätigt (Gebäude, Flächen, Einheiten)',
+        label: PROJECT_PARAMS_CONFIRMATION_LABEL,
         deltaExact: null,
-        inverse: () => set({ projectParamsConfirmed: false }),
+        // Initial confirmation returns to unconfirmed. Reconfirmation returns
+        // to the prior confirmed-but-stale presentation; the undone journal
+        // sequence makes the earlier confirmation current again.
+        inverse: () => set({ projectParamsConfirmed: previousConfirmed }),
         forward: () => set({ projectParamsConfirmed: true }),
       })
     },

@@ -206,8 +206,11 @@ export function ErrorState({ cause, impact, remedy, retryPolicy, action }: {
   )
 }
 
-export function StaleState({ children }: { children: string }) {
-  return <DataStateBlock state="stale" sentence={children} />
+export function StaleState({ children, action }: {
+  children: string
+  action?: ReactNode
+}) {
+  return <DataStateBlock state="stale" sentence={children} action={action} />
 }
 
 export function PermissionState({ children }: { children: string }) {

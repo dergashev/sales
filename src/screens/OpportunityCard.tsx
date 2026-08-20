@@ -2,9 +2,20 @@ import { Decimal } from 'decimal.js'
 import demo from '../fixtures/demo-0001.json'
 import opportunities from '../fixtures/opportunities.json'
 import derived from '../fixtures/derived-prototype.json'
-import { useStore, wflConflict } from '../state/store'
+import {
+  preparationStatuses,
+  projectBaselineChangesSinceConfirmation,
+  useStore,
+  wflConflict,
+} from '../state/store'
 import { NNBSP, formatDE } from '../engine/money'
-import { Button, useCountUp } from '../components/primitives'
+import {
+  Button,
+  ProvenanceChip,
+  useCountUp,
+  type ProvenancePresentation,
+} from '../components/primitives'
+import { StaleState } from '../components/DataStates'
 import { useT, useTx } from '../i18n'
 import { DocumentAnalysis } from '../components/DocumentAnalysis'
 import { InternalNote } from '../components/InternalNote'
@@ -14,7 +25,7 @@ import { STAGE_TAG } from '../lib/opportunityStage'
 import { S2Vorbereitung } from './S2Vorbereitung'
 import { effectiveFactValue } from '../state/buildingReview'
 import { DELTA_CHIP_MS } from '../config/ui-policy'
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 
 /**
  * Карточка Opportunity — уровень между списком и рабочим конвейером.
@@ -40,27 +51,38 @@ import { useEffect, useRef, useState, type RefObject } from 'react'
  */
 
 const D = (s: string) => new Decimal(s)
-const MARK = derived.marker
-const DERIVED = derived.provenanceLabel
+const METRIC_EMPHASIS_CLASS = {
+  primary: 'a3-project-baseline-primary',
+  supporting: 'a3-project-baseline-supporting',
+  total: 'a3-project-baseline-total',
+} as const
 
-/** Значение с обязательной пометкой происхождения (D-22). */
-function Metric({ label, value, unit, note }: {
+/** A label/value/unit/provenance group inside a semantic definition list. */
+function Metric({ label, value, unit, provenance, emphasis = 'supporting', operator }: {
   label: string
   value: string | null
   unit?: string
-  /** Заполнено только у выведенных значений: пометка приходит из данных. */
-  note?: string
+  provenance?: ProvenancePresentation
+  emphasis?: 'primary' | 'supporting' | 'total'
+  operator?: '+' | '=' | '→'
 }) {
   const tx = useTx()
   return (
-    <div className="border-b border-border-subtle py-2">
-      <span className="a3-cap block">{label}</span>
-      <span className="numeric block text-body text-text-primary">
+    <div className={`a3-project-baseline-metric ${METRIC_EMPHASIS_CLASS[emphasis]}`}>
+      <dt className="a3-cap">{label}</dt>
+      <dd>
+        <span className="numeric block text-text-primary">
+          {operator && <span aria-hidden="true" className="a3-project-baseline-operator">{operator}</span>}
         {value === null
           ? <span className="text-text-secondary">{tx('nicht erfasst')}</span>
-          : <>{value}{unit ? `${NNBSP}${unit}` : ''}{note ? `${NNBSP}${MARK}` : ''}</>}
-      </span>
-      {note && <span className="a3-cap block">{DERIVED} · {note}</span>}
+          : <>{value}{unit ? `${NNBSP}${unit}` : ''}</>}
+        </span>
+        {provenance && (
+          <span className="mt-2 block">
+            <ProvenanceChip provenance={provenance} />
+          </span>
+        )}
+      </dd>
     </div>
   )
 }
@@ -71,7 +93,10 @@ function Metric({ label, value, unit, note }: {
  * reserved Delta-Chip anatomy; static fixture-backed metrics stay on the
  * simpler `Metric` path above.
  */
-function ReviewedWflMetric({ value }: { value: Decimal }) {
+function ReviewedWflMetric({ value, provenance }: {
+  value: Decimal
+  provenance: ProvenancePresentation
+}) {
   const tx = useTx()
   const counted = useCountUp(value, 2)
   const previous = useRef(value)
@@ -94,27 +119,32 @@ function ReviewedWflMetric({ value }: { value: Decimal }) {
     : ''
 
   return (
-    <div className="border-b border-border-subtle py-2">
-      <span className="a3-cap block">Total WFL nach WoFlV</span>
-      <span className="numeric block text-body text-text-primary">
-        {counted}{NNBSP}m²
-      </span>
-      <div className="a3-delta-slot mt-2">
-        <p
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-          aria-hidden={delta ? undefined : true}
-          className={'a3-delta numeric' +
-            (delta ? ' a3-show' : '') +
-            (visibleDelta?.isNegative() ? ' a3-saving' : ' a3-cost')}
-        >
-          {visibleDelta && (<>
-            <span>{tx('Total WFL nach WoFlV geändert')}</span>
-            <span className="font-medium">{deltaText}</span>
-          </>)}
-        </p>
-      </div>
+    <div className="a3-project-baseline-metric a3-project-baseline-primary">
+      <dt className="a3-cap">Total WFL nach WoFlV</dt>
+      <dd>
+        <span className="numeric block text-text-primary">
+          {counted}{NNBSP}m²
+        </span>
+        <span className="mt-2 block">
+          <ProvenanceChip provenance={provenance} />
+        </span>
+        <div className="a3-delta-slot mt-2">
+          <p
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            aria-hidden={delta ? undefined : true}
+            className={'a3-delta numeric' +
+              (delta ? ' a3-show' : '') +
+              (visibleDelta?.isNegative() ? ' a3-saving' : ' a3-cost')}
+          >
+            {visibleDelta && (<>
+              <span>{tx('Total WFL nach WoFlV geändert')}</span>
+              <span className="font-medium">{deltaText}</span>
+            </>)}
+          </p>
+        </div>
+      </dd>
     </div>
   )
 }
@@ -217,6 +247,16 @@ export function OpportunityCard() {
   const conflictSectionRef = useRef<HTMLElement>(null)
   const parameterSectionRef = useRef<HTMLElement>(null)
   const optionsSectionRef = useRef<HTMLElement>(null)
+  const confirmationStatusRef = useRef<HTMLDivElement>(null)
+  const focusConfirmationAfterAction = useRef(false)
+  const baselineChanges = projectBaselineChangesSinceConfirmation(s)
+  const baselineStale = baselineChanges.length > 0
+
+  useLayoutEffect(() => {
+    if (!focusConfirmationAfterAction.current) return
+    focusConfirmationAfterAction.current = false
+    confirmationStatusRef.current?.focus()
+  }, [s.projectParamsConfirmed, baselineStale, s.journal.length])
 
   if (!meta) return null
 
@@ -267,6 +307,31 @@ export function OpportunityCard() {
     return v ? a.plus(D(v)) : a
   }, new Decimal(0))
   const conflict = wflConflict(s)
+  const preparation = preparationStatuses(s)
+  const openQuestionCount = Object.values(preparation.questions).filter(Boolean).length
+  const activeAssumptionCount = Object.values(preparation.assumptions).filter(Boolean).length
+  const documentProvenance: ProvenancePresentation = {
+    kind: 'document', label: t('provenance.document'),
+  }
+  const derivedProvenance = (detail: string): ProvenancePresentation => ({
+    kind: 'derived', label: t('provenance.derived'), detail,
+  })
+  const wflProvenance: ProvenancePresentation = {
+    kind: s.fields.wfl.provenance === 'vom Kunden bestätigt'
+      ? 'customerConfirmed'
+      : s.fields.wfl.provenance === 'manuell erfasst'
+        ? 'manual'
+        : s.fields.wfl.provenance === 'abgeleitet'
+          ? 'derived'
+          : 'document',
+    label: s.fields.wfl.provenance === 'vom Kunden bestätigt'
+      ? t('provenance.customerConfirmed')
+      : s.fields.wfl.provenance === 'manuell erfasst'
+        ? t('provenance.manual')
+        : s.fields.wfl.provenance === 'abgeleitet'
+          ? t('provenance.derived')
+          : t('provenance.document'),
+  }
 
   if (showVorbereitung) {
     return (
@@ -298,9 +363,10 @@ export function OpportunityCard() {
   /**
    * Ровно ОДНА стадия является текущей в каждом достижимом состоянии — это
    * инвариант, а не «не больше одной». Пока предпосылка открыта, текущая —
-   * она; когда выполнены все, текущей становится ПОСЛЕДНЯЯ стадия
-   * (Opportunity Options), потому что именно там пользователь и работает
-   * дальше: рабочий процесс карточки не «заканчивается».
+   * она; confirmed parameters that have since changed return Parameters to
+   * attention without changing the existing option-creation gate. Otherwise
+   * the final stage (Opportunity Options) stays current because that is where
+   * the user continues working.
    *
    * Прежняя редакция выводила текущую стадию из двух независимых величин
    * (`firstOpen` и `optionsState`), и в терминальном состоянии обе давали
@@ -309,7 +375,7 @@ export function OpportunityCard() {
    */
   const currentStage: 'conflict' | 'parameters' | 'options' = konfliktOffen
     ? 'conflict'
-    : !s.projectParamsConfirmed
+    : !s.projectParamsConfirmed || baselineStale
       ? 'parameters'
       : 'options'
   const optionsState: StageState = s.options.length > 0 ? 'done' : canCreateOptions ? 'attention' : 'blocked'
@@ -340,9 +406,11 @@ export function OpportunityCard() {
       id: 'parameters',
       number: 3,
       title: tx('Projektparameter'),
-      state: s.projectParamsConfirmed ? 'done' : 'attention',
-      stateText: s.projectParamsConfirmed
-        ? tx('Bestätigt')
+      state: s.projectParamsConfirmed && !baselineStale ? 'done' : 'attention',
+      stateText: baselineStale
+        ? t('oppcard.baseline.stepStale')
+        : s.projectParamsConfirmed
+          ? tx('Bestätigt')
         : tx('Bestätigung erforderlich · blockiert das Anlegen einer Opportunity Option'),
       current: currentStage === 'parameters',
       onOpen: () => focusSection(parameterSectionRef),
@@ -395,7 +463,11 @@ export function OpportunityCard() {
 
       <ReadinessOverview label={tx('Projektstatus')} stages={stages} />
 
-      <div className="mt-3">
+      <div className="a3-preparation-summary mt-3">
+        <p>{t('oppcard.baseline.preparationSummary', {
+          questions: openQuestionCount,
+          assumptions: activeAssumptionCount,
+        })}</p>
         <LinkButton onClick={() => setShowVorbereitung(true)}>
           {tx('Vorbereitung öffnen')}
         </LinkButton>
@@ -482,27 +554,48 @@ export function OpportunityCard() {
       <section
         ref={parameterSectionRef}
         tabIndex={-1}
-        className="a3-sheet mt-6 outline-none"
+        className="a3-sheet a3-project-baseline mt-6 outline-none"
         aria-label="Projektparameter"
       >
         <h2 className="text-heading-3 font-bold text-text-primary">
-          {tx('Parameter des gesamten Projekts')}
+          {t('oppcard.baseline.title')}
         </h2>
-        <div className="a3-opportunity-metrics mt-3">
-          <Metric label="Gebäude im Projekt" value={String(bs.length)} />
-          <Metric label={`Total BGF (R, oberirdisch)`} value={formatDE(totalBgfR, 2)} unit="m²" />
-          <Metric label="Total BGF (S)" value={formatDE(totalBgfS, 2)} unit="m²"
-                  note="Balkonanteil abgeleitet" />
-          <Metric label="Total BGF (R+S)" value={formatDE(totalBgfR.plus(totalBgfS), 2)}
-                  unit="m²" note="enthält die abgeleitete S-Fläche" />
-          <Metric label="Total NRF" value={formatDE(totalNrf, 2)} unit="m²"
-                  note="≈ 85 % der BGF R+S" />
-          <ReviewedWflMetric value={totalWfl} />
-          <Metric label="Total NUF nach DIN 277" value={formatDE(totalNuf, 2)} unit="m²" />
-          <Metric label="Wohneinheiten" value={formatDE(totalUnits)} />
+        <p className="a3-sub">{t('oppcard.baseline.intro')}</p>
+
+        <dl className="a3-project-baseline-primary-grid" aria-label={t('oppcard.baseline.primaryFacts')}>
+          <Metric emphasis="primary" label="Gebäude im Projekt" value={String(bs.length)} />
+          <ReviewedWflMetric value={totalWfl} provenance={wflProvenance} />
+          <Metric emphasis="primary" label="Total NUF nach DIN 277"
+            value={formatDE(totalNuf, 2)} unit="m²" provenance={documentProvenance} />
+          <Metric emphasis="primary" label="Wohneinheiten"
+            value={formatDE(totalUnits)} provenance={documentProvenance} />
+        </dl>
+
+        <div className="a3-project-baseline-breakdown mt-5">
+          <h3>{t('oppcard.baseline.bgfBreakdown')}</h3>
+          <p id="project-baseline-bgf-equation" className="sr-only">
+            {t('oppcard.baseline.bgfEquation')}
+          </p>
+          <dl className="a3-project-baseline-equation" aria-describedby="project-baseline-bgf-equation">
+            <Metric label="Total BGF (R, oberirdisch)" value={formatDE(totalBgfR, 2)}
+              unit="m²" provenance={documentProvenance} />
+            <Metric operator="+" label="Total BGF (S)" value={formatDE(totalBgfS, 2)}
+              unit="m²" provenance={derivedProvenance(t('oppcard.balconyShareDerived'))} />
+            <Metric emphasis="total" operator="=" label="Total BGF (R+S)"
+              value={formatDE(totalBgfR.plus(totalBgfS), 2)} unit="m²"
+              provenance={derivedProvenance(t('bldg.includesDerivedSArea'))} />
+          </dl>
+          <dl className="a3-project-baseline-derived-result">
+            <Metric operator="→" label="Total NRF" value={formatDE(totalNrf, 2)} unit="m²"
+              provenance={derivedProvenance(t('oppcard.bgfDerivedRatio'))} />
+          </dl>
         </div>
+
         {!s.projectParamsConfirmed && (
-          <div className="mt-4">
+          <div className="mt-5">
+            <p className="mb-3 text-small text-text-secondary">
+              {t('oppcard.baseline.confirmConsequence')}
+            </p>
             {/* Первичным на экране может быть только действие ТЕКУЩЕЙ стадии
                 (`currentStage`). Пока открыт конфликт, подтверждение
                 параметров — законное, но не следующее действие: оно остаётся
@@ -511,15 +604,45 @@ export function OpportunityCard() {
                 (правило 12 запрещает блокировать, не оформление). */}
             <Button
               variant={currentStage === 'parameters' ? 'primary' : 'secondary'}
-              onClick={() => s.confirmProjectParams()}
+              onClick={() => {
+                focusConfirmationAfterAction.current = true
+                s.confirmProjectParams()
+              }}
             >
               {tx('Projektparameter bestätigen')}
             </Button>
           </div>
         )}
         {s.projectParamsConfirmed && (
-          <p className="a3-cap mt-3">
-            <span aria-hidden="true">✓ </span>{tx('Projektparameter bestätigt.')}</p>
+          <div className="mt-5">
+            <div
+              ref={confirmationStatusRef}
+              tabIndex={-1}
+              className="a3-project-baseline-confirmed"
+            >
+              <span aria-hidden="true">✓ </span>
+              {t('oppcard.baseline.confirmed')}
+            </div>
+            {baselineStale && (
+              <div className="mt-3" role="status" aria-live="polite" aria-atomic="true">
+                <StaleState action={
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      focusConfirmationAfterAction.current = true
+                      s.confirmProjectParams()
+                    }}
+                  >
+                    {t('oppcard.baseline.reconfirm')}
+                  </Button>
+                }>
+                  {t('oppcard.baseline.stale', {
+                    changes: baselineChanges.map((change) => tx(change)).join(', '),
+                  })}
+                </StaleState>
+              </div>
+            )}
+          </div>
         )}
       </section>
 

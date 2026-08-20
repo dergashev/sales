@@ -68,6 +68,22 @@ const de = {
   // перевод конкатенацией.
   'oppcard.stepPosition': 'Schritt {n} von {total}',
   'oppcard.customerEvidence': 'vom Kunden bestätigt am {date}',
+  'oppcard.baseline.title': 'Projektgrundlage',
+  'oppcard.baseline.intro':
+    'Gemeinsame Basis für alle Opportunity Options dieses Projekts.',
+  'oppcard.baseline.primaryFacts': 'Zentrale Projektdaten',
+  'oppcard.baseline.bgfBreakdown': 'Bruttogeschossfläche (BGF)',
+  'oppcard.baseline.confirmConsequence':
+    'Mit der Bestätigung wird diese Grundlage für Opportunity Options freigegeben.',
+  'oppcard.baseline.confirmed': 'Bestätigt · Projektgrundlage aktuell',
+  'oppcard.baseline.stale':
+    'Geändert seit der Bestätigung: {changes}. Die bestätigte Grundlage bleibt erhalten und muss erneut geprüft werden.',
+  'oppcard.baseline.reconfirm': 'Erneut bestätigen',
+  'oppcard.baseline.stepStale': 'Geändert · erneut bestätigen',
+  'oppcard.baseline.preparationSummary':
+    'Vorbereitung · Offene Fragen: {questions} · Aktive Annahmen: {assumptions}',
+  'oppcard.baseline.bgfEquation':
+    'BGF R plus BGF S ergibt BGF R+S; die NRF wird daraus abgeleitet.',
   'buildingScope.gate.navigationReason':
     'Zuerst mindestens ein Gebäude auswählen und jedes gewählte Gebäude bestätigen.',
   'buildingScope.title': 'Gebäude & Umfang',
@@ -361,6 +377,22 @@ const en: Partial<Record<MessageKey, string>> = {
   'oppcard.prerequisitesSummary': '{done} of {total} prerequisites complete',
   'oppcard.stepPosition': 'Step {n} of {total}',
   'oppcard.customerEvidence': 'confirmed by customer on {date}',
+  'oppcard.baseline.title': 'Project baseline',
+  'oppcard.baseline.intro':
+    'Shared basis for all Opportunity Options in this project.',
+  'oppcard.baseline.primaryFacts': 'Core project facts',
+  'oppcard.baseline.bgfBreakdown': 'Gross floor area (GFA)',
+  'oppcard.baseline.confirmConsequence':
+    'Confirming releases this baseline for Opportunity Options.',
+  'oppcard.baseline.confirmed': 'Confirmed · project baseline current',
+  'oppcard.baseline.stale':
+    'Changed since confirmation: {changes}. The confirmed baseline is retained and must be reviewed again.',
+  'oppcard.baseline.reconfirm': 'Confirm again',
+  'oppcard.baseline.stepStale': 'Changed · confirm again',
+  'oppcard.baseline.preparationSummary':
+    'Preparation · Open questions: {questions} · Active assumptions: {assumptions}',
+  'oppcard.baseline.bgfEquation':
+    'GFA R plus GFA S equals GFA R+S; NFA is derived from that total.',
   'buildingScope.gate.navigationReason':
     'Select at least one building and confirm every selected building first.',
   'buildingScope.title': 'Building & scope',

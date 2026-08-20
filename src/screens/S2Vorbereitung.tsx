@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { Decimal } from 'decimal.js'
 import demo from '../fixtures/demo-0001.json'
 import catalog from '../fixtures/catalog.json'
-import { activeBuilding, useStore, wflConflict } from '../state/store'
+import { activeBuilding, preparationStatuses, useStore, wflConflict } from '../state/store'
 import { activeConfiguratorWorkflow, CONFIGURATOR_STEP } from '../state/chapters'
 import { useT, useTx } from '../i18n'
 import { copyFor } from '../i18n/internal-refs'
@@ -341,18 +341,18 @@ function P3OffeneFragen() {
   const [copyState, setCopyState] = useState<'idle' | 'ok' | 'error'>('idle')
   const s = useStore()
   const p = s.projection()
+  const preparation = preparationStatuses(s)
 
   // Сортировка по величине сужения; Δ — в процентных пунктах (CALC-001).
-  const wflDone = s.fields.wfl.provenance === 'vom Kunden bestätigt'
   const questions = [
     {
       text: 'Liegt eine Wohnflächenberechnung nach WoFlV vor?',
-      deltaPp: 5, blocking: false, done: wflDone,
+      deltaPp: 5, blocking: false, done: !preparation.questions.wfl,
       action: null, // закрывается вводом значения в P2 либо решением конфликта
     },
     {
       text: 'Welcher Effizienzhaus-Standard ist vorgesehen?',
-      deltaPp: 4, blocking: false, done: s.esConfirmed,
+      deltaPp: 4, blocking: false, done: !preparation.questions.energyStandard,
       action: () => s.confirmEnergiestandardAnswer(),
     },
   ]
@@ -424,6 +424,7 @@ function P4Annahmen({ setTab }: { setTab: (t: Tab) => void }) {
   const tx = useTx()
   const t = useT()
   const s = useStore()
+  const preparation = preparationStatuses(s)
   const scopeBoundariesPosition = activeConfiguratorWorkflow({
     coverage: s.coverage,
     mode: s.mode,
@@ -433,7 +434,7 @@ function P4Annahmen({ setTab }: { setTab: (t: Tab) => void }) {
   // из состояния, а не поддерживается руками — поэтому он всегда точен.
   const items: Array<{ id: string; text: string; resolve?: () => void; resolveLabel?: string }> = []
 
-  if (!activeBuilding(s).gebaeudeklasse.confirmed) {
+  if (preparation.assumptions.buildingClass) {
     items.push({
       id: 'gk',
       // Дословно t0-fallback-rules.md:106; в слот значения подставлен
@@ -449,7 +450,7 @@ function P4Annahmen({ setTab }: { setTab: (t: Tab) => void }) {
       resolveLabel: 'Klassifikation bestätigen',
     })
   }
-  if (s.coverage.KG_500 === 'unknown') {
+  if (preparation.assumptions.kg500Coverage) {
     items.push({
       id: 'kg500',
       // Дословно t0-fallback-rules.md:245, включая вводную о KG 300/400.
