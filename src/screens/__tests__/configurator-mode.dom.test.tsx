@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
+import { confirmBuildingReviewSections } from '../../test/offer-option'
 import { ConfigurationScopeTabs } from '../S3Konfigurator'
 import {
   __resetStoreForTests,
@@ -33,10 +34,12 @@ async function openModeStep(
   if (buildingCount === 2) {
     await user.click(screen.getByRole('checkbox', { name: 'Haus B' }))
   }
+  await confirmBuildingReviewSections(user)
   await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
   if (buildingCount === 2) {
     const tabs = screen.getByRole('tablist', { name: 'Gewählte Gebäude' })
     await user.click(within(tabs).getByRole('tab', { name: /Haus B/ }))
+    await confirmBuildingReviewSections(user)
     await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
   }
   await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
@@ -362,6 +365,7 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     expect(screen.getByText(/Andere gültige Konfigurationsarbeit bleibt gespeichert/))
       .toBeInTheDocument()
 
+    await confirmBuildingReviewSections(user)
     await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
     expect(screen.queryByText(/Konfigurationsbestätigung aufgehoben/)).toBeNull()
     await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))

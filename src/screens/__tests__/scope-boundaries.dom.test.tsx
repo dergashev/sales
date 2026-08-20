@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
+import { confirmBuildingReviewSections } from '../../test/offer-option'
 import { __resetStoreForTests, activeBuilding, useStore } from '../../state/store'
 
 /**
@@ -22,6 +23,7 @@ async function openScopeBoundaries(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
   await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
   await user.click(screen.getByRole('button', { name: 'Öffnen' }))
+  await confirmBuildingReviewSections(user)
   await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
   await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
   await user.click(screen.getByRole('radio', { name: /Gemeinsam konfigurieren/ }))
@@ -106,6 +108,7 @@ describe('Leistungsabgrenzung / Scope Boundaries (ticket d21f8d48)', () => {
     await user.click(screen.getByRole('button', { name: 'Öffnen' }))
     act(() => useStore.getState().toggleBuildingIncluded('DEMO-B-B'))
     act(() => useStore.getState().confirmBuilding('DEMO-B-B'))
+    await confirmBuildingReviewSections(user)
     await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
     await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
     await user.click(screen.getByRole('radio', { name: /Gemeinsam konfigurieren/ }))

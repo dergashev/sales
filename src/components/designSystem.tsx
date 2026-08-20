@@ -67,6 +67,7 @@ export function PageHeader({ title, meta, lede, ...rest }: {
  */
 export function OutputProfileSwitch({
   mode,
+  compact = false,
   blocked = false,
   blockedReason,
   onCheck,
@@ -74,6 +75,7 @@ export function OutputProfileSwitch({
   checkButtonRef,
 }: {
   mode: 'intern' | 'praesentation'
+  compact?: boolean
   blocked?: boolean
   blockedReason?: string
   onCheck: () => void
@@ -85,7 +87,7 @@ export function OutputProfileSwitch({
   const blockedReasonId = useId()
 
   return (
-    <div className="a3-output-profile">
+    <div className={`a3-output-profile${compact ? ' a3-output-profile-compact' : ''}`}>
       <SegmentedControl
         layout="inline"
         legend={t('shell.profile.legend')}
@@ -448,15 +450,25 @@ export function DisclosureRow({
   cells,
   children,
   defaultOpen = false,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   label: ReactNode
   cells: ReadonlyArray<ReactNode>
   children: ReactNode
   defaultOpen?: boolean
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
-  const [open, setOpen] = useState(defaultOpen)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen)
+  const open = controlledOpen ?? uncontrolledOpen
   const contentId = useId()
   const { fadeRise } = useSemanticMotion()
+  const toggle = () => {
+    const next = !open
+    if (controlledOpen === undefined) setUncontrolledOpen(next)
+    onOpenChange?.(next)
+  }
   return (
     <Fragment>
       <tr className="a3-disclosure-row">
@@ -466,7 +478,7 @@ export function DisclosureRow({
             className="a3-disclosure-button"
             aria-expanded={open}
             aria-controls={contentId}
-            onClick={() => setOpen((current) => !current)}
+            onClick={toggle}
           >
             <span aria-hidden="true">{open ? '▾' : '▸'} </span>{label}
           </button>

@@ -1,3 +1,4 @@
+import type { RefObject } from 'react'
 import {
   configuratorStepDone,
   pipelineViewForBuildingGate,
@@ -11,7 +12,7 @@ import {
   isClientProjection,
   isClientVisiblePipelineView,
 } from '../state/clientProjection'
-import { SelectField } from './designSystem'
+import { OutputProfileSwitch, SelectField } from './designSystem'
 
 /**
  * Левый сайдбар — навигация оболочки.
@@ -49,13 +50,21 @@ const SCREENS: Array<{
 const FOCUS = 'outline-none focus-visible:outline focus-visible:outline-2 ' +
   'focus-visible:outline-offset-2 focus-visible:outline-focus-ring'
 
-export function Sidebar() {
+export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) {
   const s = useStore()
   const view = pipelineViewForBuildingGate(s, s.pipelineView)
   const option = s.options.find((o) => o.id === s.activeOptionId)
   const t = useT()
   const tx = useTx()
   const client = isClientProjection(s.mode)
+  const buildingGateBlocked = !s.canBeginConfiguration()
+  const configurationGateBlocked = !s.configurationModeChosen || s.configurationModeEditing
+  const modeBlocked = buildingGateBlocked || configurationGateBlocked
+  const modeBlockedReason = buildingGateBlocked
+    ? t('shell.mode.blockedReason')
+    : configurationGateBlocked
+      ? t('configurator.mode.clientBlocked')
+      : undefined
   const gateOpen = s.canBeginConfiguration()
   const screens = client
     ? SCREENS.filter(({ id }) => isClientVisiblePipelineView(id))
@@ -91,6 +100,17 @@ export function Sidebar() {
             {t('nav.vergleich')}
           </button>
         )}
+        <div className="mt-4 border-t border-border-subtle pt-4">
+          <OutputProfileSwitch
+            compact
+            mode={s.mode}
+            blocked={modeBlocked}
+            blockedReason={modeBlockedReason}
+            checkButtonRef={modeRef}
+            onCheck={() => s.setGateOpen(true)}
+            onExit={() => s.setMode('intern')}
+          />
+        </div>
       </div>
 
       <ul className="flex-1 py-2">

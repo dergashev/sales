@@ -4,6 +4,7 @@ import {
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
+import { confirmBuildingReviewSections } from '../../test/offer-option'
 import { activeBuilding, __resetStoreForTests, useStore } from '../../state/store'
 
 /**
@@ -41,6 +42,7 @@ async function enterOption(user: ReturnType<typeof userEvent.setup>) {
 
 async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
   await enterOption(user)
+  await confirmBuildingReviewSections(user)
   await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
   await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
   await user.click(screen.getByRole('radio', { name: /Je Gebäude konfigurieren/ }))
@@ -380,6 +382,7 @@ describe('Сквозной сценарий продажи', () => {
     const blockedExport = nav(/Export/)
     expect(blockedExport).toHaveAttribute('aria-disabled', 'true')
     expect(screen.getAllByText(/mindestens ein Gebäude auswählen/).length).toBeGreaterThan(0)
+    await confirmBuildingReviewSections(user)
     await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
     await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
     await user.click(nav(/Export/))

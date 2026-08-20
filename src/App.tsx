@@ -1,10 +1,9 @@
-import { useEffect, useRef, type RefObject } from 'react'
+import { useEffect, useRef } from 'react'
 import { pipelineViewForBuildingGate, useStore } from './state/store'
 import { useT } from './i18n'
 import all3Logo from '../design-system/All3Logo.png'
 import { SegmentedControl } from './components/controls'
 import { Button } from './components/primitives'
-import { OutputProfileSwitch } from './components/designSystem'
 import { Sidebar } from './components/Sidebar'
 import { ClientOutputGateDialog } from './components/ClientOutputGateDialog'
 import { OfferPanel } from './components/OfferPanel'
@@ -86,7 +85,7 @@ export function App() {
     return (
       <div className="a3-app-shell flex h-screen flex-col">
         <ViewportWarning />
-        <AppHeader t={t} modeRef={modeRef} />
+        <AppHeader t={t} />
         <main ref={mainRef} tabIndex={-1}
               className="min-h-0 flex-1 bg-surface-default outline-none" />
       </div>
@@ -102,7 +101,7 @@ export function App() {
     return (
       <div className="a3-app-shell flex h-screen flex-col">
         <ViewportWarning />
-        <AppHeader t={t} modeRef={modeRef} />
+        <AppHeader t={t} />
         {!praesentation && <ClientOutputGateDialog returnFocusTo={modeRef} />}
         <main ref={mainRef} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto bg-surface-default outline-none">
           {s.level === 'liste' ? <OpportunityList /> : <OpportunityCard />}
@@ -115,11 +114,11 @@ export function App() {
   return (
     <div className="a3-app-shell flex h-screen flex-col">
       <ViewportWarning />
-      <AppHeader t={t} modeRef={modeRef} />
+      <AppHeader t={t} />
       {!praesentation && <ClientOutputGateDialog returnFocusTo={modeRef} />}
 
       <div className="flex min-h-0 flex-1">
-        <Sidebar />
+        <Sidebar modeRef={modeRef} />
 
         <main ref={mainRef} tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto bg-surface-default outline-none">
           {renderedView === 'buildingScope' && <BuildingScope />}
@@ -150,22 +149,11 @@ export function App() {
  */
 function AppHeader({
   t,
-  modeRef,
 }: {
   t: (k: Parameters<ReturnType<typeof useT>>[0]) => string
-  modeRef: RefObject<HTMLButtonElement>
 }) {
   const s = useStore()
   const praesentation = isClientProjection(s.mode)
-  const buildingGateBlocked = s.level !== 'option' || !s.canBeginConfiguration()
-  const configurationGateBlocked = s.level === 'option'
-    && (!s.configurationModeChosen || s.configurationModeEditing)
-  const modeBlocked = buildingGateBlocked || configurationGateBlocked
-  const modeBlockedReason = buildingGateBlocked
-    ? t('shell.mode.blockedReason')
-    : configurationGateBlocked
-      ? t('configurator.mode.clientBlocked')
-      : undefined
 
   return (
     <header className="a3-global-header z-header shrink-0">
@@ -193,24 +181,6 @@ function AppHeader({
         )}
       </div>
       <div className="a3-header-controls">
-        {/* Режим показа (правило 11). Вход в презентацию гейтуется
-            открытым material-блокером (R-07) — заблокированный контрол
-            объясняет почему (правило 12). */}
-        {/* Вход в клиентский вид идёт ЧЕРЕЗ ворота (DC-33), а не мимо:
-            прямой `setMode` в шапке обходил единственную модалку системы —
-            продавец попадал к клиенту, не увидев, что перестанет быть
-            видимым (приёмка волны C). Выход обратно прямой: возвращаться
-            во внутреннее пространство нечем гейтовать. */}
-        {(s.level === 'option' || praesentation) && (
-          <OutputProfileSwitch
-            mode={s.mode}
-            blocked={modeBlocked}
-            blockedReason={modeBlockedReason}
-            checkButtonRef={modeRef}
-            onCheck={() => s.setGateOpen(true)}
-            onExit={() => s.setMode('intern')}
-          />
-        )}
         {/* EN честно назван ЧАСТИЧНЫМ до переключения (приёмка № 17,
             дефект 2). Причина теперь ОДНА и временная: перевод ещё не
             доставлен целиком. Решение PO D-24 отменило D-20 — английская

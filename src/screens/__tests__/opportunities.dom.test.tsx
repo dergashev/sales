@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
+import { confirmBuildingReviewSections } from '../../test/offer-option'
 import derived from '../../fixtures/derived-prototype.json'
 import { __resetStoreForTests, useStore } from '../../state/store'
 
@@ -202,6 +203,7 @@ describe('Уровень Opportunities', () => {
     await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
     await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
     await user.click(screen.getByRole('button', { name: 'Öffnen' }))
+    await confirmBuildingReviewSections(user)
     await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
     await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
     await user.click(screen.getByRole('radio', { name: 'Je Gebäude konfigurieren' }))
