@@ -110,7 +110,7 @@ export function S5Export() {
                       e.target.checked ? next.add(a.id) : next.delete(a.id)
                       setSelected(next)
                     }}
-                    className="h-4 w-4 accent-[color:var(--color-selection-border)]"
+                    className="h-4 w-4 accent-selection-border"
                   />
                   {tx(a.label)}
                   <span className="ml-auto text-small text-text-muted">{tx('Muster')}</span>

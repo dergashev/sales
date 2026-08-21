@@ -104,8 +104,15 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Leistungsabgrenzung' }))
       .toHaveFocus()
     const workflowNav = document.querySelector<HTMLElement>('.a3-chapters')!
+    // `:scope > span:last-child` (not the unscoped `span:last-child`, which
+    // matches the FIRST last-child span anywhere in the subtree): the F02/F03
+    // a11y fix (Sidebar.tsx) nests an aria-hidden numeral + sr-only "Schritt N
+    // von M" span inside the marker span that precedes this one, and the
+    // sr-only span is itself a last-child of ITS OWN parent — an unscoped
+    // selector would match that instead of the button's own last direct
+    // child (the visible chapter label this assertion means to check).
     expect(within(workflowNav).getAllByRole('button').map((button) =>
-      button.querySelector('span:last-child')?.textContent)).toEqual([
+      button.querySelector(':scope > span:last-child')?.textContent)).toEqual([
       'Leistungsabgrenzung',
       'Energie & Zertifikate',
       'Flächen im Detail',

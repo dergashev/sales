@@ -221,6 +221,19 @@ const PROVENANCE_MARK: Record<ProvenanceKind, string> = {
 }
 
 /**
+ * F25 · the canonical glyph for a warning / attention / needs-decision state
+ * — the minimum reusable icon/semantic-marker capability the audit found
+ * missing. `▲` above is reserved exclusively for derived provenance; before
+ * this constant existed, the readiness stepper and prerequisite checklist
+ * (OpportunityCard.tsx, designSystem.tsx) reused `▲` for "pending / needs
+ * attention" instead, colliding with that vocabulary. Monochrome and
+ * text-scale like every other status mark in the product (no colour emoji —
+ * see the `■ Pflicht` rationale in controls.tsx) and distinct from every
+ * glyph already assigned a meaning elsewhere (▲ ◆ ○ ✓ ☑ ⚙ Ø → = + ★ ■ ▸).
+ */
+export const ATTENTION_MARK = '!'
+
+/**
  * Чип происхождения значения (DC-1).
  *
  * Знак выбирается по типизированному источнику, а не по строке, которую

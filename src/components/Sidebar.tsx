@@ -173,8 +173,19 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
                         >
                           {/* Номер главы несёт состояние классом системы
                               (`.a3-ch.a3-done .a3-n`), а не подменой символа:
-                              статус остаётся и знаком, и подписью (правило 8). */}
-                          <span className="a3-n numeric shrink-0">{number}</span>
+                              статус остаётся и знаком, и подписью (правило 8).
+                              Цифра aria-hidden, как в ReadinessOverview
+                              (OpportunityCard.tsx): скринридер получает целую
+                              фразу «Schritt N von M» (тот же ключ словаря), а
+                              не голую цифру дважды (F02/F03 — маркер трактуется
+                              как графический объект с порогом 3:1, а не текст
+                              с порогом 4.5:1). */}
+                          <span className="a3-n numeric shrink-0">
+                            <span aria-hidden="true">{number}</span>
+                            <span className="sr-only">
+                              {t('oppcard.stepPosition', { n: number, total: workflow.length })}
+                            </span>
+                          </span>
                           <span aria-hidden="true" className="w-3 shrink-0">
                             {done ? '✓' : open ? '▸' : ''}
                           </span>

@@ -51,6 +51,13 @@
 .a3-showcase .a3-masthead img{height:var(--size-hit-target-default);display:block}
 .a3-masthead .a3-meta{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);text-align:right}
 .a3-hero-title{font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:700;margin:var(--space-5) 0 var(--space-2);overflow-wrap:anywhere}
+/* F01: PageHeader's h1 is `tabIndex={-1}`, non-interactive, and only ever
+   receives focus programmatically (route-change a11y announcement) — it is
+   never reachable via Tab. Without this rule Chromium paints its UA-default
+   blue focus ring on every navigation. This suppresses only THIS
+   non-interactive selector; interactive controls keep their canonical
+   `:focus-visible` outline (`--color-focus-ring`) untouched everywhere else. */
+.a3-hero-title:focus{outline:none}
 .a3-masthead>.a3-hero-title{margin:0}
 .a3-masthead>.a3-lede{flex-basis:100%;margin:0}
 .a3-hero-title span{color:var(--color-text-primary)}
@@ -201,8 +208,21 @@ table.a3-kg,table.a3-cmp,table.a3-kx,table.a3-data-table,table.a3-driver-table,t
 
 /* DC-16 · StatusTag. Structure: span.a3-tag plus one variant class.
    Classes: .a3-tag · .a3-blue · .a3-green · .a3-orange · .a3-red · .a3-mutedt. */
-.a3-tag{display:inline-flex;align-items:center;font-size:var(--type-badge-status-size);line-height:var(--type-badge-status-line);font-weight:var(--type-badge-status-weight);border-left:var(--border-width-strong) solid var(--color-text-primary);padding:var(--border-width-default) var(--space-2);background:var(--color-surface-subtle)}
-.a3-tag.a3-blue{border-color:var(--color-dataviz-category-1)}.a3-tag.a3-green{border-color:var(--color-dataviz-category-2)}
+/* F40: padding-block was `--border-width-default` (1px) — a border-width
+   token reused for spacing, off the 4/8/12/16/24/32/48/64 scale (README
+   §1.1). `--space-1` is the nearest scale step. */
+.a3-tag{display:inline-flex;align-items:center;font-size:var(--type-badge-status-size);line-height:var(--type-badge-status-line);font-weight:var(--type-badge-status-weight);border-left:var(--border-width-strong) solid var(--color-text-primary);padding:var(--space-1) var(--space-2);background:var(--color-surface-subtle)}
+/* F22: `.a3-blue`/`.a3-green` sourced their accent from
+   `--color-dataviz-category-1/2` — the chart palette — so the same colour
+   pair simultaneously meant lifecycle status here, the completed-step marker
+   fill (`.a3-ch.a3-done .a3-n`), and Gantt phase fills (COLOR-004). Status
+   and data-viz tokens must communicate different things (rule 8). Both
+   already resolve to the identical primitive as the correctly-named
+   `--color-status-info`/`--color-status-success` tokens, so sourcing from
+   those instead is a zero-visual-change fix: the rendered colour is
+   unchanged everywhere `.a3-tag` is used (including the unrelated "Muster"
+   export tags), only the semantic *source* is corrected. */
+.a3-tag.a3-blue{border-color:var(--color-status-info)}.a3-tag.a3-green{border-color:var(--color-status-success)}
 .a3-tag.a3-orange{border-color:var(--color-status-warning)}.a3-tag.a3-red{border-color:var(--color-status-error)}
 .a3-tag.a3-mutedt{border-color:var(--color-border-default);color:var(--color-text-primary);background:transparent}
 
@@ -253,7 +273,10 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    остальные — чёрные герои var(--space-7). КЛЮЧЕВАЯ метрика никогда не бывает сноской.
    Classes: .a3-heroband · .a3-hb · .a3-hb-num · .a3-hb-unit · .a3-hb-total · .a3-hb-cap · .a3-hb-sub · .a3-ghost · .a3-ghost-line · .a3-show · .a3-ghost-slot · .a3-delta-slot · .a3-iv-sub · .a3-iv-bandbox · .a3-iv-band · .a3-fill · .a3-iv-edges. */
 .a3-heroband{display:flex;gap:var(--space-7);row-gap:var(--space-5);flex-wrap:wrap;align-items:baseline}
-.a3-hb{display:flex;flex-direction:column;gap:var(--border-width-strong);min-width:var(--measure-showcase-narrow);max-width:100%}
+/* F40: row/column gap was `--border-width-strong` (2px) — a border-width
+   token reused for spacing, off the 4/8/12/16/24/32/48/64 scale. `--space-1`
+   is the nearest scale step. */
+.a3-hb{display:flex;flex-direction:column;gap:var(--space-1);min-width:var(--measure-showcase-narrow);max-width:100%}
 .a3-hb-num{font-weight:var(--type-display-numeric-weight);font-size:var(--type-display-numeric-narrow-size);line-height:var(--type-display-numeric-narrow-line);font-variant-numeric:tabular-nums;white-space:nowrap}
 .a3-hb-unit{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line)}
 .a3-hb-total .a3-hb-num{font-size:var(--type-display-numeric-desktop-size);line-height:var(--type-display-numeric-desktop-line);color:var(--color-brand-accent)}
@@ -330,10 +353,26 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-journal.a3-flashJ{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-chapters{display:flex;flex-direction:column;max-width:var(--measure-card-compact);border:var(--border-hairline);background:var(--color-surface-default)}
 .a3-ch{display:flex;gap:var(--space-3);align-items:center;padding:var(--space-3) var(--space-4);border-left:var(--border-width-strong) solid transparent}
+/* F02/F03: the marker circle's own text/fill pairing must clear WCAG at every
+   reachable state combination (pending / done / current / done+current), and
+   the composite must not be left to whichever rule the cascade applies last.
+   The step numeral inside `.a3-n` is `aria-hidden` at both call sites (its
+   accessible replacement is a full "Schritt N von M" sentence), so the
+   applicable threshold is the 3:1 non-text/graphical-object ratio, not 4.5:1
+   body-text — every state below already clears 3:1 comfortably. */
 .a3-ch .a3-n{width:var(--size-chapter-marker);height:var(--size-chapter-marker);border-radius:50%;border:var(--border-default);display:inline-flex;align-items:center;justify-content:center;font-size:var(--type-caption-size);flex:none}
 .a3-ch.a3-done .a3-n{background:var(--color-dataviz-category-2);border-color:var(--color-dataviz-category-2);color:var(--color-surface-default)}
 .a3-ch.a3-cur{border-left-color:var(--color-selection-border);background:var(--color-surface-selected);font-weight:var(--type-label-weight)}
-.a3-ch.a3-cur .a3-n{border-color:var(--color-selection-border);color:var(--color-selection-border)}
+/* Current (not done): a solid filled circle, mirroring the done treatment's
+   fill+white-glyph pattern instead of the previous orange-text-on-transparent
+   pairing (was 3.36:1 and colour-only against the row's own selected fill). */
+.a3-ch.a3-cur .a3-n{background:var(--color-selection-border);border-color:var(--color-selection-border);color:var(--color-surface-default)}
+/* Done + current: keep the done fill/glyph pairing verbatim (do not let `cur`
+   recolour the foreground — that was the illegible 1.15:1 orange-on-green
+   collision) and add current's signal as a separate outer ring layer, so the
+   two states compose instead of fighting over one foreground colour. Matched
+   on all three classes so it always wins regardless of rule order. */
+.a3-ch.a3-cur.a3-done .a3-n{background:var(--color-dataviz-category-2);border-color:var(--color-dataviz-category-2);color:var(--color-surface-default);box-shadow:0 0 0 var(--border-width-strong) var(--color-selection-border)}
 
 /* DC-6 · OptionImpactPreview. Structure: .a3-folgen > title + ul + action row.
    Classes: .a3-folgen. */
@@ -390,7 +429,15 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-tabs{display:flex;border-bottom:var(--border-default);gap:var(--space-1)}
 .a3-tabs [role="tab"]{font:inherit;font-weight:500;background:transparent;border:none;border-bottom:var(--border-width-strong) solid transparent;padding:var(--space-2) var(--space-4);cursor:pointer;margin-bottom:calc(-1 * var(--border-width-default))} /* отрицательный hairline: перекрытие бордера контейнера, структурное */
 .a3-tabs [role="tab"]:hover{background:var(--color-surface-canvas)}
-.a3-tabs [role="tab"][aria-selected="true"]{border-bottom-color:var(--color-selection-border);font-weight:var(--type-label-weight)}
+/* F24: the selected tab differed from an unselected one ONLY by a 2px
+   coloured border — `font-weight: var(--type-label-weight)` here resolved to
+   the same 500 as the unselected tab's own base `font-weight:500`
+   (components.css above), so the "non-colour channel" was a same-value no-op
+   and selection rode on colour alone (rule 8). Bold is genuinely distinct
+   from the unselected weight and survives greyscale/print. Applies
+   identically to the P1–P5 Vorbereitung tabs and the DC-46 building tab
+   strip — both consume this one canonical rule. */
+.a3-tabs [role="tab"][aria-selected="true"]{border-bottom-color:var(--color-selection-border);font-weight:var(--font-weight-bold)}
 .a3-tabs .a3-sum{margin-left:auto;font-weight:700}
 .a3-tabpane{padding:var(--space-4) 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
 
@@ -487,7 +534,14 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-rb::-moz-range-thumb{width:var(--size-icon-md);height:var(--size-icon-md);background:var(--color-action-primary-bg);border:none}
 .a3-rb-number{box-sizing:border-box;width:var(--size-numeric-control);min-height:var(--size-hit-target-default);border:var(--border-default);padding:0 var(--space-2);font:inherit;font-variant-numeric:tabular-nums;text-align:right;color:var(--color-text-primary);background:var(--color-surface-default)}
 .a3-guard{width:var(--size-status-dot);height:var(--size-status-dot);border-radius:50%;display:inline-block;vertical-align:middle}
-.a3-konflikt{border:var(--border-default);border-left:var(--size-status-accent-width) solid var(--color-status-error);background:var(--color-surface-default);padding:var(--space-4);max-width:var(--measure-wide)}
+/* F26: both consumers of `.a3-konflikt` (Strittige Angaben's open WFL
+   candidate conflict; the named Baugrund risk cards) are a pending decision
+   named by the readiness stepper itself as such — not a system error — so the
+   accent must not borrow `--color-status-error`. `--color-border-warning`
+   is the neutral tone tokens.css already reserves for warning-class states
+   (COLOR-006: warning is deliberately colourless, conveyed by text/icon
+   instead of colour); the card's own prose already carries that text. */
+.a3-konflikt{border:var(--border-default);border-left:var(--size-status-accent-width) solid var(--color-border-warning);background:var(--color-surface-default);padding:var(--space-4);max-width:var(--measure-wide)}
 .a3-konflikt .a3-kv{display:flex;gap:var(--space-5);flex-wrap:wrap;margin-top:var(--space-3)}
 .a3-konflikt .a3-kv>div{flex:1;min-width:var(--measure-conflict-column);border:var(--border-hairline);padding:var(--space-3)}
 .a3-konflikt .a3-kv b{display:block;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-variant-numeric:tabular-nums;margin:var(--space-1) 0 var(--space-2)}
@@ -540,9 +594,19 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-okc-tile .a3-option-media{display:none;width:calc(100% + var(--space-4) + var(--space-4));aspect-ratio:4/3;object-fit:cover;margin:calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) var(--space-3);background:var(--color-surface-canvas)}
 .a3-okc-tile .a3-option-media[hidden]{display:none}
 .a3-okc-tile:hover{border-color:var(--color-text-primary)}
-.a3-okc-tile[aria-pressed="true"]{border-color:var(--color-selection-border)}
+/* F10/F19: `.a3-okc-tile` is a `<label>` wrapping a native `<input
+   type="radio"|"checkbox">` (RadioCardGroup/CheckboxCard) — it never receives
+   `aria-pressed` (that ARIA state belongs to `role="button"` elements such as
+   `.a3-tk`/`.a3-fk`, which keep their own `[aria-pressed]` rules above/below
+   unchanged). The `[aria-pressed="true"]` selector below therefore never
+   matched real markup, and the ✓/■ mark was CSS-locked at `opacity:0`
+   regardless of state. `:has(:checked)` targets the actual DOM the two
+   consumers produce. `:not([data-mandatory])` keeps a CheckboxCard tile whose
+   `mandatory` prop forces it permanently checked from visually impersonating
+   a real user selection — its only state signal stays the `■ Pflicht` label. */
+.a3-okc-tile:has(:checked):not([data-mandatory]){border-color:var(--color-selection-border)}
 .a3-okc-tile .a3-ok{position:absolute;top:var(--space-2);right:var(--space-2);width:var(--size-icon-md);height:var(--size-icon-md);border-radius:50%;background:var(--color-selection-border);color:var(--color-text-inverse);font-size:var(--type-caption-size);font-weight:700;display:inline-flex;align-items:center;justify-content:center;opacity:0;transition:opacity var(--motion-reveal) var(--motion-easing-standard)}
-.a3-okc-tile[aria-pressed="true"] .a3-ok{opacity:1}
+.a3-okc-tile:has(:checked):not([data-mandatory]) .a3-ok{opacity:1}
 .a3-okc-tile[disabled]{cursor:default;opacity:1;outline-color:var(--color-control-disabled-outline)}
 .a3-okc-tile[disabled] .a3-ok{opacity:1;background:var(--color-dataviz-category-2)}
 .a3-okc-tile svg{display:block;margin-bottom:var(--space-2)}

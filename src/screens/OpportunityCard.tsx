@@ -10,6 +10,7 @@ import {
 } from '../state/store'
 import { NNBSP, formatDE } from '../engine/money'
 import {
+  ATTENTION_MARK,
   Button,
   ProvenanceChip,
   useCountUp,
@@ -208,8 +209,12 @@ function ReadinessOverview({ label, stages }: { label: string; stages: ReadonlyA
                   {t('oppcard.stepPosition', { n: stage.number, total: stages.length })}
                 </span>
               </span>
+              {/* F25: the 'attention' branch (StageState) previously reused
+                  `▲`, the canonical derived-provenance glyph, for a materially
+                  different meaning. `ATTENTION_MARK` is the dedicated
+                  canonical warning/attention glyph instead. */}
               <span aria-hidden="true" className="w-4 shrink-0">
-                {stage.state === 'done' ? '✓' : stage.state === 'blocked' ? '○' : '▲'}
+                {stage.state === 'done' ? '✓' : stage.state === 'blocked' ? '○' : ATTENTION_MARK}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-body text-text-primary">{stage.title}</span>

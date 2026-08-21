@@ -17,7 +17,7 @@ import type { MotionProps } from 'framer-motion'
 import { useSemanticMotion } from '../design-system/motion'
 import { useT } from '../i18n'
 import { Skeleton } from './primitives'
-import { Button } from './primitives'
+import { ATTENTION_MARK, Button } from './primitives'
 import { SegmentedControl } from './controls'
 
 export function SectionSheet({
@@ -382,8 +382,11 @@ export function ChecklistPresentation({
             animate={item.motion?.animate}
             transition={item.motion?.transition}
           >
+            {/* F25: an unresolved prerequisite previously reused `▲`, the
+                canonical derived-provenance glyph, for "needs attention"
+                instead. */}
             <span className="a3-prerequisite-sign" aria-hidden="true">
-              {item.resolved ? '✓' : '▲'}
+              {item.resolved ? '✓' : ATTENTION_MARK}
             </span>
             <span>
               <strong>{item.label}</strong>

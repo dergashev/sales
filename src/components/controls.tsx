@@ -252,7 +252,6 @@ export function RadioCardGroup<T extends string>({
               onMouseLeave={previewStop}
               onTouchStart={() => !o.disabled && previewTap(o.value)}
               className={'a3-okc-tile block' +
-                (active ? ' border-selection-border' : '') +
                 (o.disabled ? ' cursor-default' : '')}
             >
               <input
@@ -281,9 +280,15 @@ export function RadioCardGroup<T extends string>({
                   onError={(e) => { e.currentTarget.hidden = true }}
                 />
               )}
-              {/* checkIndicator контракта — `.a3-ok` (✓-круг системы). */}
-              <span aria-hidden="true"
-                    className={'a3-ok' + (active ? ' opacity-100' : '')}>
+              {/* checkIndicator контракта — `.a3-ok` (✓-круг системы). Видимость
+                  и бордер выделения теперь читает CSS напрямую из реального
+                  состояния (`.a3-okc-tile:has(:checked)`, components.css),
+                  а не из параллельного Tailwind-класса: `.a3-okc-tile .a3-ok`
+                  — двух-классовый селектор компонента (специфичность 0,2,0) —
+                  всегда побеждал одноклассовый `.opacity-100` (0,1,0)
+                  независимо от порядка объявления, поэтому отметка выбора
+                  никогда не была видна (F10). */}
+              <span aria-hidden="true" className="a3-ok">
                 ✓
               </span>
               <span className={`absolute inset-0 ${FOCUS_RING}`} aria-hidden="true" />
@@ -375,8 +380,14 @@ export function CheckboxCard({ legend, legendHidden, options }: {
             return (
               <label
                 key={o.value}
+                /* `data-mandatory` excludes mandatory tiles from the
+                   `:has(:checked)` selected-state CSS (components.css):
+                   a mandatory tile is always `checked`, but it is an
+                   informational fact, not a user decision, and must never
+                   visually impersonate a real selection (F19). Its only
+                   state signal remains the `■ Pflicht` label below. */
+                data-mandatory={o.mandatory || undefined}
                 className={'a3-okc-tile block' +
-                  (o.checked ? ' border-selection-border' : '') +
                   (o.disabled && !o.mandatory ? ' cursor-default' : '')}
               >
                 <input
@@ -408,8 +419,7 @@ export function CheckboxCard({ legend, legendHidden, options }: {
                     onError={(e) => { e.currentTarget.hidden = true }}
                   />
                 )}
-                <span aria-hidden="true"
-                      className={'a3-ok a3-ok-square' + (o.checked ? ' opacity-100' : '')}>
+                <span aria-hidden="true" className="a3-ok a3-ok-square">
                   ✓
                 </span>
                 <span className={`absolute inset-0 ${FOCUS_RING}`} aria-hidden="true" />

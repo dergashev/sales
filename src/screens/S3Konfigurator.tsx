@@ -385,7 +385,12 @@ function ConfigurationModeEntry() {
           >
             {t('configurator.mode.start')}
           </Button>
-          <Button onClick={() => s.setPipelineView('buildingScope')}>
+          {/* F11: the default `secondary` variant's solid 1px black border
+              visually outweighed the forward action while it sits disabled
+              (before a mode is chosen) — back/cancel must never outweigh the
+              workflow-forward action beside it (ACTION-001,
+              components-core.md). */}
+          <Button variant="ghost" onClick={() => s.setPipelineView('buildingScope')}>
             {t('configurator.mode.back')}
           </Button>
         </div>

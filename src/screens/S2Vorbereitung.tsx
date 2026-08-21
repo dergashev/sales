@@ -540,7 +540,15 @@ function P5Varianten({ openKonfigurator }: { openKonfigurator: () => void }) {
                   {roleFor(r.variant!).join(' · ') || '—'}
                 </td>
                 <td className="py-2">
-                  <Button variant="ghost" onClick={() => {
+                  {/* F11: `ghost` (transparent, borderless, no underline)
+                      read as plain table text, not as an actionable control.
+                      Each row's own action is independent — this table has no
+                      single "the" forward action, so promoting all rows to
+                      `primary` would violate ACTION-001's one-primary-per-
+                      decision rule (components-core.md). `secondary` gives it
+                      a visible border/affordance without competing as if it
+                      were the page's single primary action. */}
+                  <Button variant="secondary" onClick={() => {
                     if (r.variant === 'EH 40') s.setEnergiestandard('EH_40')
                     if (r.variant === 'Ohne UG') s.setUntergeschoss('kein_ug')
                     openKonfigurator()
