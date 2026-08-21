@@ -255,7 +255,6 @@ export function S5Export() {
                 {tx(p.result.totalLabel)}<br />
                 <b>{p.result.total.prefix ? `${p.result.total.prefix}${NNBSP}` : ''}{p.result.total.display}{NNBSP}€</b><br /><br />{tx('Preisstand 08/2026')}<br />
                 Angebotsgültigkeit: Musterangabe
-                {s.mode === 'intern' && <><br />DEMO-RUN-0007</>}
               </div>
               <p className="text-body text-text-primary">
                 {selected.size} Anhänge · Empfänger geprüft · Text geprüft ·

@@ -658,7 +658,10 @@ export function OfferPanel() {
             <span aria-hidden="true">{journalOpen ? '▾ ' : '▸ '}</span>
             {priceChangeCount === 0
               ? t('journal.empty')
-              : <>Preisänderung gegenüber Vergleichsbasis DEMO-VV-0003:{' '}
+              // F05: früher `... Vergleichsbasis DEMO-VV-0003:` — der Fixture-
+              // Bezeichner der Vergleichsbasis stand in der Journal-
+              // Aufklapp-Zeile selbst, nicht nur hinter einer Ablage.
+              : <>Preisänderung gegenüber Vergleichsbasis:{' '}
                   <span className="numeric font-medium text-text-primary">
                     {signed(sessionDelta)}
                   </span>{' '}netto · {priceChangeCount}{NNBSP}

@@ -2009,14 +2009,19 @@ function projectTotal(
 }
 
 /**
- * Дельта тоста DC-29 по фикстурному образцу контракта:
- * `− 476.000 € gegenüber DEMO-VV-0003` (префикс ≈ — до знака, как в DC-12).
+ * Дельта тоста DC-29: `− 476.000 €` (префикс ≈ — до знака, как в DC-12).
+ *
+ * F05: die Fixtur-Vorlage nannte hier zusätzlich `gegenüber DEMO-VV-0003` —
+ * ein fixer Fixture-Bezeichner ohne echten Bezug zur Aktion, dazu in einem
+ * UndoToast, der ungated in JEDEM Modus gemountet ist (App.tsx), also auch
+ * in der Kundenansicht sichtbar werden könnte. Die Differenz bezieht sich
+ * ohnehin auf den unmittelbar vorherigen Stand, nicht auf eine benannte
+ * Vergleichs-Variante — der Zusatz war nie eine echte Referenz.
  */
 function dc29Delta(d: Decimal): string {
   const pr = present(d.abs())
   const sign = d.isNegative() ? '−' : '+'
-  return `${pr.prefix ? pr.prefix + NNBSP : ''}${sign}${NNBSP}${pr.display}${NNBSP}€` +
-    `${NNBSP}gegenüber DEMO-VV-0003`
+  return `${pr.prefix ? pr.prefix + NNBSP : ''}${sign}${NNBSP}${pr.display}${NNBSP}€`
 }
 
 function nextConflictSequence(conflicts: Record<string, BuildingConflict>): number {

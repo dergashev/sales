@@ -423,7 +423,10 @@ describe('DC-29: Undo-тост — производная журнала', () =>
     expect(toast.seq).toBe(1)
     expect(toast.statusText).toContain('Untergeschoss')
     expect(toast.deltaText).toContain('476.000')
-    expect(toast.deltaText).toContain('gegenüber DEMO-VV-0003')
+    // F05: der UndoToast ist ungated in jedem Modus gemountet (App.tsx) —
+    // kein Fixture-Bezeichner darin, auch keiner, der wie eine benannte
+    // Vergleichs-Variante aussieht.
+    expect(toast.deltaText).not.toMatch(/DEMO-[A-Z]+-\d+/)
   })
 
   it('отправка (без inverse) гасит тост: новая голова — stale (CHANGE-006)', () => {
