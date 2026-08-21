@@ -30,7 +30,16 @@
    SmallText: .a3-cap. InlineLink/LinkButton: a|button.a3-linkbtn.
    Classes: .a3-sheet · .a3-sheet-title · .a3-sub · .a3-masthead · .a3-meta ·
    .a3-hero-title · .a3-lede · .a3-cap · .a3-linkbtn. */
-.a3-sheet{background:var(--color-surface-default);padding:var(--space-7);margin-bottom:var(--space-5);scroll-margin-top:var(--space-8)}
+/* F06/F33 · every chapter body is laid out through a `grid gap-*` column
+   (S3Konfigurator's per-chapter wrapper), making each `.a3-sheet` a CSS
+   grid item. Grid items default to `min-width:auto` (content-based
+   automatic minimum size), so an unconstrained-width descendant such as
+   ScheduleTimeline's 36rem-min-width visual or its table alternative can
+   force the WHOLE sheet — and the grid track, and the pane above it —
+   wider than the pane instead of scrolling inside its own already-correct
+   overflow-x:auto wrapper (rule 3a, AC-02). `.a3-card-core` got the same
+   fix above for the same reason where it is itself a grid container. */
+.a3-sheet{background:var(--color-surface-default);padding:var(--space-7);margin-bottom:var(--space-5);scroll-margin-top:var(--space-8);min-width:0}
 .a3-reveal .a3-sheet{opacity:0;transform:translateY(var(--space-3));transition:opacity var(--motion-reveal) var(--motion-easing-standard),transform var(--motion-reveal) var(--motion-easing-standard)}
 .a3-reveal .a3-sheet.a3-in{opacity:1;transform:none}
 .a3-sheet>.a3-sheet-title,.a3-sheet>h2{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:var(--type-heading-weight);margin:0 0 var(--space-1)}
