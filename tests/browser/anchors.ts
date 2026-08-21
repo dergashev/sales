@@ -42,6 +42,15 @@ export const OPPORTUNITY = {
 
 export const BUILDING_SCOPE = {
   confirmBuilding: 'Gebäude bestätigen',
+  /**
+   * `buildingScope.section.confirm` (src/i18n/index.ts) — confirms whichever
+   * building-data section (Identität / Flächen / Geschossstruktur) is
+   * currently expanded. Each confirm auto-collapses that section and
+   * auto-expands the next incomplete one, so the SAME button label is
+   * reused for all three; `confirmBuilding` above only becomes enabled
+   * once every section has been confirmed this way.
+   */
+  confirmSection: 'Abschnitt bestätigen',
 }
 
 export const CONFIGURATOR_MODE = {
@@ -54,6 +63,22 @@ export const CONFIGURATOR_MODE = {
 export const CONFIGURATOR_SCOPE = {
   /** `role="tablist"` legend when per-building scope switching is shown. */
   legend: 'Konfigurationsumfang',
+}
+
+/**
+ * Scope Boundaries (Leistungsabgrenzung, ticket d21f8d48): each applicable
+ * KG group is its own `role="radiogroup"` named "KG <n> <costGroup.<n>>"
+ * (`src/i18n/generated.ts`'s `costGroup.*` keys), containing exactly two
+ * radios — "enthalten" first, "nicht enthalten" second (never a third
+ * "unresolved" option). `enthalten`/`nicht enthalten` cannot be matched by
+ * accessible name alone: "nicht enthalten" contains "enthalten" as a
+ * substring, so callers must pick by position within the group, exactly as
+ * `scope-boundaries.dom.test.tsx` already does. The narrow no-break space
+ * between "KG" and the number (design-system rule 7) is why group-name
+ * matches use a regex with `.` rather than a literal ASCII space.
+ */
+export const SCOPE_BOUNDARIES = {
+  kg300Group: /KG.300/,
 }
 
 /**
