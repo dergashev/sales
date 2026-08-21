@@ -49,6 +49,8 @@ describe('Leistungsabgrenzung / Scope Boundaries (ticket d21f8d48)', () => {
     expect(useStore.getState().kg700ModeAutoFallback).toBe(true)
 
     const offer = screen.getByRole('complementary', { name: 'Angebot' })
+    await user.click(within(offer).getByRole('button', { name: 'Kostentreiber' }))
+    await user.click(within(offer).getByRole('button', { name: 'Kostengruppen nach DIN 276' }))
     expect(offer).toHaveTextContent('Preis nicht ermittelt')
     expect(offer).not.toHaveTextContent(/(^|\D)0\s*€\/m²/)
     expect(offer).not.toHaveTextContent(/(^|\D)0\s*€/)

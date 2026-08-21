@@ -507,9 +507,11 @@ export function OfferPanel() {
                     <td colSpan={3}>
                       Regionalfaktor Musterland · nicht berücksichtigt — würde{' '}
                       <span className="numeric">
-                        {moneyLabel(present(
-                          p.result.bauwerk.mul(CATALOG.regionalFactor.value.minus(1)),
-                        ))}
+                        {priceUnavailable
+                          ? t('money.priceNotDetermined')
+                          : moneyLabel(present(
+                            p.result.bauwerk.mul(CATALOG.regionalFactor.value.minus(1)),
+                          ))}
                       </span>{' '}
                       auf den Bauwerksblock bedeuten
                     </td>
