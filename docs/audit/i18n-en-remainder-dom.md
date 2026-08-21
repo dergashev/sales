@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 45** · перевод есть, мост не подключён: 25
-· перевода нет (в поставку копирайта): 20
+**Всего 42** · перевод есть, мост не подключён: 23
+· перевода нет (в поставку копирайта): 19
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -20,7 +20,6 @@
 - Musterquartier Südhang
 - Projektparameter bestätigt (Gebäude, Flächen, Einheiten)
 - Residential area · WFL nach WoFlV: two candidates.
-- Schätzunsicherheit
 - Sehr geehrte Damen und Herren,
 
 anbei erhalten Sie unser indikatives Angebot für das Musterprojekt Nordfeld.
@@ -36,13 +35,11 @@ Mit freundlichen Grüßen
 - für den Prototyp abgeleitet, nicht kalibriert
 - nach Planung
 - nicht Bestandteil
-- nur Unterschiede
 - vollständig inkl. Gründung
 - Österreich
 
 ## Перевода нет — в следующую поставку копирайта
 
-- 0 €/m² WFL nach WoFlV
 - Anteil am Bauwerk (KG 300 + 400 + UG) nach calculation-spec §1 ⚙
 - Bereit zum Anlegen
 - Bestätigt

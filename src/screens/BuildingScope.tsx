@@ -300,6 +300,20 @@ export function BuildingScope() {
     ))
   }
 
+  // F07-class defect: the active building tab could be off-screen at rest
+  // (only the scroll arrows hinting more exists) — reachable, but not
+  // identifiable at a glance (AC-03). Bring it into view whenever the
+  // selection changes, not only when reached via arrow/keyboard focus.
+  const activeTabId = selectedIds.includes(s.activeBuildingId) ? s.activeBuildingId : ''
+  const selectedSignature = selectedIds.join('|')
+  useEffect(() => {
+    if (!activeTabId) return
+    const index = selectedIds.indexOf(activeTabId)
+    if (index < 0) return
+    const tabs = tablistRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]')
+    tabs?.[index]?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+  }, [activeTabId, selectedSignature])
+
   const moveTabFocus = (index: number) => {
     const id = selectedIds[index]
     if (!id) return

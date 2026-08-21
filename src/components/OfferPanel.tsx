@@ -288,13 +288,13 @@ export function OfferPanel() {
         </div>
         </div>
 
-        {/* Внутренние идентификаторы прогона — не для клиентской поверхности
-            (MODE-001): в презентации отсутствуют, а не скрыты стилем. */}
-        {s.mode === 'intern' && (
-          <p className="mt-3 text-small text-text-muted">
-            DEMO-SC-01 · DEMO-RUN-0007
-          </p>
-        )}
+        {/* Раньше здесь стояла отдельная строка `DEMO-SC-01 · DEMO-RUN-0007`
+            (F05): фикстурный run-id в самой коммерчески заметной зоне
+            экрана, дублирующий то, что уже доступно через `Herkunft
+            anzeigen` (DC-21 `OriginPopover` выше). Убрано целиком —
+            стоящий слой не место для внутренней трассировки прогона, даже
+            в режиме Vorbereitung; кто ищет происхождение числа, находит
+            его в поповере. */}
 
         {/* ── Слот призрака (DC-28) — СОБСТВЕННЫЙ, не общий с дельта-чипом.
             Анатомия контракта: префикс «Vorschau ·», будущее значение,
@@ -319,9 +319,14 @@ export function OfferPanel() {
                   <span aria-hidden="true">{shownPreview.futureTotal.prefix}{NNBSP}</span>
                 )}
                 {shownPreview.futureTotal.display}{NNBSP}€
+                {/* Δ bleibt intern-only (Regel 11: Δ-Werte im
+                    Präsentationsmodus ausgeblendet). F05: früher
+                    `gegenüber DEMO-VV-0003` — ein fixer Fixture-Bezeichner
+                    ohne echten Bezug zur angezeigten Option; die Differenz
+                    zum aktuellen Stand ist ohne ihn genauso verständlich. */}
                 {s.mode === 'intern' && <>
                   {' · '}
-                  {signed(shownPreview.deltaExact)}{NNBSP}gegenüber DEMO-VV-0003
+                  {signed(shownPreview.deltaExact)}{NNBSP}gegenüber aktuellem Stand
                 </>}
               </span>
               {/* Неполнота будущего прогона называется, а не подразумевается. */}
@@ -329,9 +334,6 @@ export function OfferPanel() {
                 <span className="a3-ghost-line">
                   {tx('Vorschau')} · {shownPreview.futureLabel}
                 </span>
-              )}
-              {s.mode === 'intern' && (
-                <span className="a3-ghost-line">{shownPreview.contextRef}</span>
               )}
             </>)}
           </p>

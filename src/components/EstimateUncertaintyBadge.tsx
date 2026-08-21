@@ -27,11 +27,16 @@ export function EstimateUncertaintyBadge(props: EstimateUncertaintyBadgeProps) {
   const money = (value: ReturnType<typeof present>) =>
     `${value.prefix ? value.prefix + NNBSP : ''}${value.display}${NNBSP}€`
 
+  // F18 · the band is the low→high interval, never a filled/success meter
+  // (DC-3 forbids interval-as-green, AREA-004); the marker is the current/
+  // indicative point. This presentation is always symmetric (±pp%), so the
+  // point sits exactly at the midpoint (STATE-010: a symmetric ± label is
+  // only valid when the model actually is symmetric, and here it is).
   return (
     <div className="a3-iv-sub">
       <div className="a3-iv-bandbox">
         <div className="a3-iv-band" aria-hidden="true">
-          <div className="a3-fill" style={{ left: '0%', width: '100%' }} />
+          <div className="a3-iv-marker" style={{ left: '50%' }} />
         </div>
         <div className="a3-iv-edges">
           <span className="numeric">{money(low)}</span>

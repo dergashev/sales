@@ -86,4 +86,20 @@ describe('Canonical uncertainty contract', () => {
       .toEqual(['90.000 €', '110.000 €'])
     expect(view.container.querySelector('.a3-iv-sub')).toBeInTheDocument()
   })
+
+  it('F18: renders the interval as a track + current-value marker, never a filled meter', () => {
+    const view = render(
+      <EstimateUncertaintyBadge presentation="range" pp={17} totalExact={new Decimal('6641000')} />,
+    )
+
+    // The old defect: an unconditional `.a3-fill` spanning 0%-100%, painted
+    // in the dataviz-success-green token — DC-3 explicitly forbids an
+    // interval reading as a filled/success meter (AREA-004).
+    expect(view.container.querySelector('.a3-fill')).toBeNull()
+    const marker = view.container.querySelector('.a3-iv-marker') as HTMLElement | null
+    expect(marker).not.toBeNull()
+    // Symmetric ±pp% model (STATE-010): the current/indicative point sits
+    // exactly at the interval's midpoint.
+    expect(marker!.style.left).toBe('50%')
+  })
 })

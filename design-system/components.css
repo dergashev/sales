@@ -131,8 +131,17 @@
 
 /* Card + Badge + Chip. Card owns one primary destination; secondary actions
    remain separate focus stops above the stretched destination. */
-.a3-card-core{position:relative;border:var(--border-default);background:var(--color-surface-default);padding:var(--space-4);display:grid;gap:var(--space-3)}
+.a3-card-core{position:relative;border:var(--border-default);background:var(--color-surface-default);padding:var(--space-4);display:grid;gap:var(--space-3);min-width:0}
 .a3-card-core[data-interactive="true"]:hover{background:var(--color-surface-subtle)}
+/* Grid items default to min-width:auto (content-based automatic minimum
+   size), which lets an unconstrained-width descendant such as
+   .a3-gantt-visual (36rem) or .a3-tbl-scroll's table blow the whole card,
+   and every ancestor up to the pane, wider than the pane itself instead of
+   scrolling inside its own overflow-x:auto wrapper (rule 3a, AC-02). Force
+   every direct grid-item child back to the card's own available width;
+   the card's own overflow-x:auto descendants remain free to scroll inside
+   themselves. */
+.a3-card-core>*{min-width:0}
 .a3-card-title{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--type-heading-weight)}
 .a3-card-destination::after{content:'';position:absolute;inset:0}
 .a3-card-meta,.a3-card-noninteractive{position:relative;z-index:1;font-size:var(--type-small-size);line-height:var(--type-small-line)}
@@ -273,7 +282,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    additionally has .a3-hb-total and contains .a3-hb-num + .a3-hb-unit +
    .a3-hb-cap/.a3-hb-sub. Один оранжевый герой,
    остальные — чёрные герои var(--space-7). КЛЮЧЕВАЯ метрика никогда не бывает сноской.
-   Classes: .a3-heroband · .a3-hb · .a3-hb-num · .a3-hb-unit · .a3-hb-total · .a3-hb-cap · .a3-hb-sub · .a3-ghost · .a3-ghost-line · .a3-show · .a3-ghost-slot · .a3-delta-slot · .a3-iv-sub · .a3-iv-bandbox · .a3-iv-band · .a3-fill · .a3-iv-edges. */
+   Classes: .a3-heroband · .a3-hb · .a3-hb-num · .a3-hb-unit · .a3-hb-total · .a3-hb-cap · .a3-hb-sub · .a3-ghost · .a3-ghost-line · .a3-show · .a3-ghost-slot · .a3-delta-slot · .a3-iv-sub · .a3-iv-bandbox · .a3-iv-band · .a3-iv-marker · .a3-iv-edges. */
 .a3-heroband{display:flex;gap:var(--space-7);row-gap:var(--space-5);flex-wrap:wrap;align-items:baseline}
 /* F40: row/column gap was `--border-width-strong` (2px) — a border-width
    token reused for spacing, off the 4/8/12/16/24/32/48/64 scale. `--space-1`
@@ -293,7 +302,13 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-iv-sub{display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap}
 .a3-iv-bandbox{flex:1;max-width:var(--measure-band)}
 .a3-iv-band{height:var(--space-2);background:var(--color-surface-canvas);position:relative}
-.a3-iv-band .a3-fill{position:absolute;top:0;bottom:0;left:18%;right:18%;background:var(--color-dataviz-category-2);transition:left .48s var(--motion-easing-emphasized),right .48s var(--motion-easing-emphasized)}
+/* F18 · the band is the low→high interval itself (0%..100%, matching the
+   two edge labels below it); it must never read as a filled/success
+   meter (DC-3 explicitly forbids interval-as-green-success, AREA-004).
+   The marker below is the only foreground mark: the current/indicative
+   point, centred because this presentation's model is symmetric (±pp%,
+   STATE-010) — a neutral tick, not a status colour. */
+.a3-iv-band .a3-iv-marker{position:absolute;top:calc(-1 * var(--space-1));bottom:calc(-1 * var(--space-1));left:50%;width:var(--border-width-strong);transform:translateX(-50%);background:var(--color-data-uncertain);transition:left .48s var(--motion-easing-emphasized)}
 .a3-iv-edges{display:flex;justify-content:space-between;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);margin-top:var(--space-1)}
 /* DC-45 · LanguageSelector (2–3 locales). Structure: .a3-seg[role=group]
    > buttons; completeness and scope rows follow the control.

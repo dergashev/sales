@@ -156,19 +156,21 @@ export function S4Vergleich() {
     <div className="px-7 py-6">
       <PageHeader
         title={tx('Variantenvergleich')}
-        meta={<>{cols.length}{NNBSP}{cols.length === 1 ? 'Option' : 'Optionen'}
-          {!client && <> · DEMO-SC-01</>}</>}
+        meta={<>{cols.length}{NNBSP}{cols.length === 1 ? 'Option' : 'Optionen'}</>}
       />
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* The row-filter toggle only means something once a table exists
+          (F20/AC-08): with fewer than two options it would be a live
+          control over nothing. */}
+      {cols.length > 1 && <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-small text-text-secondary">
           {t(showAll ? 'comparison.allHint' : 'comparison.differencesHint')}
         </p>
         <Button onClick={() => setShowAll((v) => !v)} aria-pressed={showAll}>
           {tx(showAll ? 'nur Unterschiede' : 'alle Zeilen anzeigen')}
         </Button>
-      </div>
+      </div>}
 
-      {cols.length === 1 && isVisibleInOutputProfile(s.mode, 'internalOnly') && (
+      {cols.length < 2 && isVisibleInOutputProfile(s.mode, 'internalOnly') && (
         <div className="mt-4"><NextStep
           description={tx('Zum Vergleichen braucht es eine zweite Option. Sie entsteht auf der Opportunity-Karte — mit eigener Konfiguration, unabhängig von dieser.')}
           action={tx('Zur Opportunity-Karte')}
@@ -176,14 +178,19 @@ export function S4Vergleich() {
         /></div>
       )}
 
-      {cols.length > 1 && <div className="a3-comparison-controls mt-4" aria-label={tx('Vergleich horizontal steuern')}>
+      {/* F20: with fewer than two options the guidance card above is the
+          whole state — no comparison table renders alongside it (AC-08
+          forbids a table coexisting with the "need a second option"
+          guidance, not just an empty one). */}
+      {cols.length > 1 && <>
+      <div className="a3-comparison-controls mt-4" aria-label={tx('Vergleich horizontal steuern')}>
         <Button onClick={() => scrollRef.current?.scrollTo({ left: 0, behavior: reducedMotion ? 'auto' : 'smooth' })}>
           {tx('Zum Zeilenanfang')}
         </Button>
         <Button onClick={() => scrollRef.current?.scrollTo({ left: scrollRef.current.scrollWidth, behavior: reducedMotion ? 'auto' : 'smooth' })}>
           {tx('Zum Zeilenende')}
         </Button>
-      </div>}
+      </div>
 
       <div ref={scrollRef} className="a3-comparison-scroll mt-3" role="region"
            aria-label={tx('Horizontal scrollbarer Variantenvergleich')} tabIndex={0}>
@@ -221,6 +228,7 @@ export function S4Vergleich() {
       <p className="mt-2 text-small text-text-muted">
         {copyFor(tx('Rollen sind unabhängige Text-Badges: Deltas rechnen zur benannten Vergleichsbasis (VARIANT-001, XSC-08).'), s.mode)}
       </p>
+      </>}
 
       {cols.length > 1 && (
         <div className="mt-5"><NextStep

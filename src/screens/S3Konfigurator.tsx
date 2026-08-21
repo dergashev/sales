@@ -462,6 +462,19 @@ export function ConfigurationScopeTabs({
     if (valueAvailable) setFocusedValue(value)
   }, [optionSignature, value, valueAvailable])
 
+  // F07-class defect: the selected tab could be off-screen at rest (e.g.
+  // right after entering the chapter) with only the scroll arrows hinting
+  // that more exists — reachable, but not identifiable at a glance (AC-03).
+  // Bring the actually-selected tab into view whenever it changes, not only
+  // when the user reaches it via the arrow/keyboard path.
+  useEffect(() => {
+    if (!valueAvailable) return
+    const index = options.findIndex((option) => option.value === value)
+    if (index < 0) return
+    const tabs = tablistRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]')
+    tabs?.[index]?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+  }, [optionSignature, value, valueAvailable])
+
   const moveFocus = (index: number) => {
     const option = options[index]
     if (!option) return
@@ -1344,7 +1357,7 @@ function ChapterTermine() {
           caption="Bauzeit nach Phasen mit Beginn, Ende, Dauer und Abhängigkeit"
           finishISO={haus.endDate}
           provenance={s.mode === 'intern'
-            ? tx9('Kalender: Kalendermonate · Staffelstart aus ScheduleModel · DEMO-SC-01')
+            ? tx9('Kalender: Kalendermonate · Staffelstart aus ScheduleModel')
             : undefined}
           phases={[
             {

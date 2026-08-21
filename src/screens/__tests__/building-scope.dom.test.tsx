@@ -79,8 +79,12 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     await user.click(screen.getByRole('button', { name: 'Abschnitt bestätigen' }))
     expect(useStore.getState().buildingSectionConfirmations['DEMO-B-A']?.identity)
       .toBeDefined()
+    // F05: der Toast/Journal-Eintrag nennt den Anzeigenamen des Gebäudes,
+    // nie die interne ID (gleiche Regel wie confirmBuilding()'s eigener
+    // Toast weiter unten in diesem Test).
     expect(useStore.getState().journal.at(-1)?.label)
-      .toContain('Abschnitt Identität bestätigt')
+      .toBe('Gebäude Haus A · Abschnitt Identität bestätigt')
+    expect(useStore.getState().journal.at(-1)?.label).not.toContain('DEMO-B-A')
 
     view.unmount()
     render(<App />)

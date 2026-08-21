@@ -3389,7 +3389,8 @@ const store = createStore<Store>((set, get) => {
 
     confirmBuildingSection: (id, section, fingerprint) => {
       const s = get()
-      if (!s.buildingReviews[id] || !BUILDING_REVIEW_SECTIONS.includes(section)
+      const review = s.buildingReviews[id]
+      if (!review || !BUILDING_REVIEW_SECTIONS.includes(section)
         || fingerprint.length === 0) return
       const previous = s.buildingSectionConfirmations[id]?.[section]
       if (previous?.fingerprint === fingerprint) return
@@ -3416,7 +3417,10 @@ const store = createStore<Store>((set, get) => {
       }
       apply({
         kind: 'value.confirmed',
-        label: `Gebäude ${id} · Abschnitt ${sectionLabel[section]} bestätigt`,
+        // Display name, never the raw building id (F05): same fallback
+        // pattern as confirmBuilding()'s own toast label below.
+        label: `Gebäude ${effectiveFactValue(review.facts.documentationName) ?? id}` +
+          ` · Abschnitt ${sectionLabel[section]} bestätigt`,
         deltaExact: null,
         inverse: () => write(previous),
         forward: () => write(confirmed),
