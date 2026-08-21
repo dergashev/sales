@@ -2515,11 +2515,18 @@ const store = createStore<Store>((set, get) => {
       const delta = after.minus(before)
       const fallbackApplied = nextKg700Mode === 'hoaiAho' && nextKg700Mode !== prevKg700Mode
       const fallbackReverted = nextKg700Mode === 'vereinfacht' && nextKg700Mode !== prevKg700Mode
+      // Label text below names the KG group with a space ('KG 300', not the
+      // internal 'KG_300' coverage key) and, on an actual kg700Mode
+      // transition, names the group whose CALCULATION METHOD is switching
+      // (KG 700 — never the KG 300/400 group just toggled, which is a
+      // different group entirely; scope-boundaries.dom.test.tsx pins
+      // 'automatisch' in this journal label, so that word is kept verbatim).
+      const groupLabel = g.replace('_', ' ')
       apply({
         kind: 'coverage.changed',
-        label: `${g} ${COVERAGE_LABEL[prev]} → ${COVERAGE_LABEL[st]}`
-          + (fallbackApplied ? ' · Berechnung automatisch auf HOAI/AHO umgestellt' : '')
-          + (fallbackReverted ? ' · Berechnung automatisch zurück auf All3-Verfahren umgestellt' : ''),
+        label: `${groupLabel} ${COVERAGE_LABEL[prev]} → ${COVERAGE_LABEL[st]}`
+          + (fallbackApplied ? ' · KG 700: Berechnung automatisch auf HOAI/AHO umgestellt' : '')
+          + (fallbackReverted ? ' · KG 700: Berechnung automatisch zurück auf All3-Verfahren umgestellt' : ''),
         deltaExact: delta.isZero() ? null : delta,
         inverse: () => write(prev, prevKg700Mode, prevAutoFallback),
         forward: () => write(st, nextKg700Mode, nextAutoFallback),
@@ -2528,10 +2535,10 @@ const store = createStore<Store>((set, get) => {
         preview: null,
         activeDelta: {
           label: fallbackApplied
-            ? `${g} ausgeschlossen · Berechnung auf HOAI/AHO umgestellt`
+            ? `${groupLabel} ausgeschlossen · KG 700 · Baunebenkosten nach HOAI und AHO`
             : fallbackReverted
-              ? `${g} ${COVERAGE_LABEL[st]} · Berechnung zurück auf All3-Verfahren`
-              : `${g} ${COVERAGE_LABEL[st]}`,
+              ? `${groupLabel} ${COVERAGE_LABEL[st]} · KG 700 im All3-Verfahren 70/22/8 verteilt`
+              : `${groupLabel} ${COVERAGE_LABEL[st]}`,
           deltaExact: delta,
           percent: before.isZero() ? new Decimal(0) : delta.div(before).mul(100),
         },
