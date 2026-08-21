@@ -292,15 +292,25 @@
   --type-tooltip-size: 14px; --type-tooltip-line: 20px;
   --type-kbd-size:     12px; --type-kbd-line:     16px;
   --paragraph-gap: 0.5em;
-  /* F04: `lnum` (lining figures) was combined with `tnum` (tabular figures).
-     In Visuelt Pro, `lnum` also advances `.`/`,` to full digit width, so
-     every German-formatted value rendered with visible gaps around its
-     thousands separators and decimal comma (`1 . 500 , 00 m²`) — invisible to
-     any DOM-level check since the markup string itself is correct, only the
-     rendered glyph advance width was wrong. `tnum` alone is what rule 3a
-     actually needs (equal digit width so numeric table columns stay
-     aligned); `lnum` was not required by any rule and is dropped. */
-  --font-numeric: 'tnum' 1;
+  /* F04: activating `tnum` (tabular figures) in the installed Visuelt Pro
+     file advances `.`/`,` to full digit width, rendering every German-
+     formatted value with visible gaps around its thousands separators and
+     decimal comma (`1 . 500 , 00 m²`) — invisible to any DOM-level check
+     since the markup string itself is correct, only the rendered glyph
+     advance width is wrong. Verified live in-browser: this is not specific
+     to the raw `font-feature-settings` syntax or to combining `tnum` with
+     `lnum` (originally suspected) — the standard `font-variant-numeric:
+     tabular-nums` property reproduces the identical artifact, and dropping
+     `lnum` alone changes nothing. `tnum` itself is unusable in this font
+     file until it is corrected; every other canonical rule that set
+     `font-variant-numeric: tabular-nums` directly (component.css, ~23
+     declarations — hero totals, delta chips, KG/comparison/driver tables,
+     the discount control, etc.) carried the same defect and was fixed the
+     same way. `--font-numeric` is kept defined (`normal`, i.e. no-op) rather
+     than deleted, since components-core.md/README.md still reference the
+     token by name across many contracts; re-enable `tnum` only after an ADR
+     replaces or patches the font file — out of this ticket's scope. */
+  --font-numeric: normal;
 
   /* TYPE-001: каждой роли собственный вес, а не только глобальные три. */
   --type-display-numeric-weight: var(--font-weight-bold);

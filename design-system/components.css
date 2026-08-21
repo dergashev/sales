@@ -42,7 +42,9 @@
 
 .a3-showcase h3{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:700;margin:var(--space-6) 0 var(--space-4)}
 .a3-showcase h3:first-of-type{margin-top:0}
-.a3-mono{font-variant-numeric:tabular-nums}
+/* F04: `.a3-mono` had no content left after removing the broken
+   `font-variant-numeric:tabular-nums` below, and was never consumed by any
+   product/showcase source — removed rather than left as an empty rule. */
 
 .a3-pnav{position:sticky;top:0;z-index:var(--layer-header);background:var(--color-surface-default);border-bottom:var(--border-hairline);margin:0 calc(-1*var(--space-5));padding:var(--space-3) var(--space-5);display:flex;gap:var(--space-5);flex-wrap:wrap;font-size:var(--type-small-size);line-height:var(--type-small-line);align-items:center}
 .a3-pnav a{color:var(--color-text-primary);text-decoration:underline;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset);border-bottom:var(--border-width-strong) solid transparent;padding-bottom:var(--border-width-strong)}
@@ -74,7 +76,7 @@
 
 .a3-spec{display:grid;grid-template-columns:var(--measure-spec-label) 1fr;gap:var(--space-4) var(--space-5);align-items:baseline;border-top:var(--border-hairline);padding-top:var(--space-4)}
 .a3-spec+.a3-spec{margin-top:var(--space-4)}
-.a3-t-hero{font-size:var(--type-display-numeric-desktop-size);line-height:var(--type-display-numeric-desktop-line);font-weight:700;color:var(--color-brand-accent);font-variant-numeric:tabular-nums}
+.a3-t-hero{font-size:var(--type-display-numeric-desktop-size);line-height:var(--type-display-numeric-desktop-line);font-weight:700;color:var(--color-brand-accent)}
 .a3-t-h1{font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:700}
 .a3-t-h2{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:700}
 .a3-t-h3{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:700}
@@ -121,7 +123,7 @@
 .a3-data-table caption{text-align:left;font-weight:var(--font-weight-bold);padding-bottom:var(--space-3)}
 .a3-data-table th{font-size:var(--type-table-header-size);line-height:var(--type-table-header-line);font-weight:var(--type-table-header-weight);text-align:left;border-bottom:var(--border-default);padding:var(--space-2) var(--space-3)}
 .a3-data-table td{font-size:var(--type-table-body-size);line-height:var(--type-table-body-line);font-weight:var(--type-table-body-weight);border-bottom:var(--border-hairline);padding:var(--cell-pad-y) var(--space-3)}
-.a3-data-table .a3-table-number{text-align:right;font-variant-numeric:tabular-nums}
+.a3-data-table .a3-table-number{text-align:right}
 .a3-disclosure-row{cursor:pointer}
 .a3-disclosure-row:hover>*{background:var(--color-surface-subtle)}
 .a3-disclosure-button{min-height:var(--size-hit-target-default);border:0;background:transparent;font:inherit;font-weight:var(--type-label-weight);cursor:pointer;text-align:left;padding:0}
@@ -185,7 +187,7 @@ table.a3-kg,table.a3-cmp,table.a3-kx,table.a3-data-table,table.a3-driver-table,t
 .a3-btn-spinner svg{display:block;width:100%;height:100%}
 @keyframes a3-btn-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 .a3-input{display:inline-flex;align-items:center;border:var(--border-default);height:var(--size-hit-target-default);background:var(--color-surface-default)}
-.a3-input input{border:none;font:inherit;font-variant-numeric:tabular-nums;width:10ch;padding:0 var(--space-3);text-align:right;outline:none}
+.a3-input input{border:none;font:inherit;width:10ch;padding:0 var(--space-3);text-align:right;outline:none}
 .a3-input .a3-unit{padding:0 var(--space-3) 0 0;color:var(--color-text-secondary);font-size:var(--type-small-size)}
 .a3-toggle{width:var(--size-hit-target-default);height:var(--size-hit-target-default);background:transparent;position:relative;display:inline-block;vertical-align:middle;cursor:pointer;flex:none;border:none;padding:0}
 .a3-toggle::before{content:'';position:absolute;left:var(--space-1);top:var(--space-3);width:var(--size-switch-track);height:var(--size-icon-md);background:var(--color-surface-subtle);border:var(--border-contrast-1px);transition:background var(--motion-feedback) var(--motion-easing-standard)}
@@ -199,7 +201,7 @@ table.a3-kg,table.a3-cmp,table.a3-kx,table.a3-data-table,table.a3-driver-table,t
 .a3-badge{display:inline-flex;align-items:center;gap:var(--space-2);border:var(--border-hairline);padding:var(--space-1) var(--space-3);font-size:var(--type-badge-status-size);line-height:var(--type-badge-status-line);font-weight:var(--type-badge-status-weight)}
 .a3-badge .a3-dot{width:var(--space-2);height:var(--space-2);border-radius:50%;flex:none}
 .a3-zone{display:inline-flex;align-items:baseline;gap:var(--space-2);padding:var(--space-2) var(--space-4);border:var(--border-default);transition:border-color .2s var(--motion-easing-standard)}
-.a3-zone b{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-variant-numeric:tabular-nums}
+.a3-zone b{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line)}
 .a3-zone .a3-lbl{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
 .a3-zone.a3-green{border-left:var(--space-1) solid var(--color-dataviz-category-2)}
 .a3-zone.a3-yellow{border-left:var(--space-1) solid var(--color-status-warning)}
@@ -240,7 +242,7 @@ table.a3-kg,table.a3-cmp,table.a3-kx,table.a3-data-table,table.a3-driver-table,t
 .a3-kg th.a3-num{text-align:right}
 .a3-kg tr{height:var(--row-height)}
 .a3-kg td{border-bottom:var(--border-hairline);padding:var(--a3-cell-pad-y-compact,var(--cell-pad-y)) var(--space-4);transition:padding var(--motion-reveal) var(--motion-easing-standard)}
-.a3-kg .a3-num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.a3-kg .a3-num{text-align:right;white-space:nowrap}
 .a3-kg .a3-lvl2 td:first-child{padding-left:var(--space-7)}
 .a3-kg .a3-total td{border-top:var(--border-contrast-1px);border-bottom:none;font-weight:700}
 .a3-kg .a3-muted td{color:var(--color-text-secondary)}
@@ -260,7 +262,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    .a3-show and exactly one direction class .a3-saving|.a3-cost. The slot
    reserves the two-line maximum before content appears (TASK-22 option 2).
    Classes: .a3-delta · .a3-show · .a3-saving · .a3-cost. */
-.a3-delta{display:inline-flex;gap:var(--space-2);align-items:center;flex-wrap:wrap;max-width:100%;border:var(--border-default);padding:var(--space-1) var(--space-3);font-size:var(--type-small-size);line-height:var(--type-small-line);font-variant-numeric:tabular-nums;background:var(--color-surface-default);opacity:0;transform:translateY(var(--space-2));transition:opacity .2s var(--motion-easing-standard),transform .2s var(--motion-easing-standard)}
+.a3-delta{display:inline-flex;gap:var(--space-2);align-items:center;flex-wrap:wrap;max-width:100%;border:var(--border-default);padding:var(--space-1) var(--space-3);font-size:var(--type-small-size);line-height:var(--type-small-line);background:var(--color-surface-default);opacity:0;transform:translateY(var(--space-2));transition:opacity .2s var(--motion-easing-standard),transform .2s var(--motion-easing-standard)}
 .a3-delta.a3-show{opacity:1;transform:none}
 .a3-delta.a3-saving{border-left:var(--size-status-accent-width) solid var(--color-dataviz-category-2)}
 .a3-delta.a3-cost{border-left:var(--size-status-accent-width) solid var(--color-text-primary)}
@@ -277,13 +279,13 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    token reused for spacing, off the 4/8/12/16/24/32/48/64 scale. `--space-1`
    is the nearest scale step. */
 .a3-hb{display:flex;flex-direction:column;gap:var(--space-1);min-width:var(--measure-showcase-narrow);max-width:100%}
-.a3-hb-num{font-weight:var(--type-display-numeric-weight);font-size:var(--type-display-numeric-narrow-size);line-height:var(--type-display-numeric-narrow-line);font-variant-numeric:tabular-nums;white-space:nowrap}
+.a3-hb-num{font-weight:var(--type-display-numeric-weight);font-size:var(--type-display-numeric-narrow-size);line-height:var(--type-display-numeric-narrow-line);white-space:nowrap}
 .a3-hb-unit{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line)}
 .a3-hb-total .a3-hb-num{font-size:var(--type-display-numeric-desktop-size);line-height:var(--type-display-numeric-desktop-line);color:var(--color-brand-accent)}
 .a3-hb-total .a3-hb-unit{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line)}
 .a3-hb-cap{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight);color:var(--color-text-secondary)}
-.a3-hb-sub{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);font-variant-numeric:tabular-nums}
-.a3-ghost-slot>.a3-ghost{display:block;max-width:100%;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-body-weight);color:var(--color-text-secondary);font-variant-numeric:tabular-nums;opacity:0;transition:opacity var(--motion-reveal) var(--motion-easing-standard) var(--motion-delay-hover-preview)}
+.a3-hb-sub{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-ghost-slot>.a3-ghost{display:block;max-width:100%;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-body-weight);color:var(--color-text-secondary);opacity:0;transition:opacity var(--motion-reveal) var(--motion-easing-standard) var(--motion-delay-hover-preview)}
 .a3-ghost-line{display:block}
 .a3-ghost-slot>.a3-ghost.a3-show{opacity:1;transition-delay:.2s}
 .a3-ghost-slot{min-height:var(--size-ghost-row);max-width:100%}
@@ -292,7 +294,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-iv-bandbox{flex:1;max-width:var(--measure-band)}
 .a3-iv-band{height:var(--space-2);background:var(--color-surface-canvas);position:relative}
 .a3-iv-band .a3-fill{position:absolute;top:0;bottom:0;left:18%;right:18%;background:var(--color-dataviz-category-2);transition:left .48s var(--motion-easing-emphasized),right .48s var(--motion-easing-emphasized)}
-.a3-iv-edges{display:flex;justify-content:space-between;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);margin-top:var(--space-1);font-variant-numeric:tabular-nums}
+.a3-iv-edges{display:flex;justify-content:space-between;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);margin-top:var(--space-1)}
 /* DC-45 · LanguageSelector (2–3 locales). Structure: .a3-seg[role=group]
    > buttons; completeness and scope rows follow the control.
    Classes: .a3-seg. */
@@ -306,7 +308,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-cmp td,.a3-cmp th{padding:var(--space-3) var(--space-4);border-bottom:var(--border-hairline)}
 .a3-cmp th{font-size:var(--type-table-header-size);line-height:var(--type-table-header-line);font-weight:var(--type-table-header-weight);color:var(--color-text-secondary);text-align:left;border-bottom:var(--border-default)}
 .a3-cmp th.a3-target{border-top:var(--border-selected);color:var(--color-text-primary);font-weight:var(--type-table-header-weight)}
-.a3-cmp .a3-num{font-variant-numeric:tabular-nums;text-align:right}
+.a3-cmp .a3-num{text-align:right}
 .a3-cmp .a3-d{display:block;font-size:var(--type-delta-size);line-height:var(--type-delta-line);font-weight:var(--type-delta-weight);color:var(--color-text-primary)}
 .a3-cmp .a3-d.a3-save{color:var(--color-dataviz-category-2)}
 .a3-comparison-controls{display:flex;justify-content:flex-end;gap:var(--space-2);flex-wrap:wrap}
@@ -331,7 +333,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 /* DC-9 · UncertaintyQuestion. Structure: .a3-q > question + .a3-fx.
    Classes: .a3-q · .a3-fx. */
 .a3-q{display:flex;gap:var(--space-4);align-items:baseline;border-bottom:var(--border-hairline);padding:var(--space-3) 0}
-.a3-q .a3-fx{margin-left:auto;color:var(--color-dataviz-category-2);font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:700}
+.a3-q .a3-fx{margin-left:auto;color:var(--color-dataviz-category-2);white-space:nowrap;font-weight:700}
 
 /* DC-10 · DocumentAnalysisProgress (legacy compact form).
    Structure: .a3-loader > .a3-track > .a3-run, then .a3-plog + .a3-phase.
@@ -511,7 +513,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-hk-pop.a3-show{display:block;opacity:1;transform:none;pointer-events:auto}
 .a3-hk-pop .a3-r{display:flex;justify-content:space-between;gap:var(--space-4);padding:var(--space-1) 0;border-bottom:var(--border-hairline)}
 .a3-hk-pop .a3-r:last-child{border-bottom:none;font-weight:700}
-.a3-hk-pop .a3-fnum{font-variant-numeric:tabular-nums;white-space:nowrap}
+.a3-hk-pop .a3-fnum{white-space:nowrap}
 
 /* DC-25 / DC-26 / DC-27 / DC-32 / DC-35 · discount, next-step, conflict, recap,
    skeleton and keyboard specimens. Required structures are respectively:
@@ -523,16 +525,16 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-ring .a3-bgc{fill:none;stroke:var(--color-surface-canvas);stroke-width:4}
 .a3-ring .a3-fgc{fill:none;stroke:var(--color-text-primary);stroke-width:4;stroke-dasharray:150.8;stroke-dashoffset:150.8;transition:stroke-dashoffset var(--motion-emphasis) var(--motion-easing-emphasized) var(--motion-reveal)}
 .a3-mech.a3-in .a3-ring .a3-fgc{stroke-dashoffset:27.1}
-.a3-ringnum{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:var(--type-small-size);font-weight:700;font-variant-numeric:tabular-nums}
+.a3-ringnum{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:var(--type-small-size);font-weight:700}
 .a3-nextstep{border:var(--border-default);border-left:var(--size-status-accent-width) solid var(--color-text-primary);background:var(--color-surface-default);padding:var(--space-4);max-width:var(--measure-panel)}
 .a3-nextstep .a3-mtag{font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:700;letter-spacing:.04em;margin-bottom:var(--space-2)}
-.a3-nextstep .a3-fx{color:var(--color-dataviz-category-2);font-weight:700;font-variant-numeric:tabular-nums}
+.a3-nextstep .a3-fx{color:var(--color-dataviz-category-2);font-weight:700}
 .a3-rb{-webkit-appearance:none;appearance:none;width:var(--measure-slider);height:var(--size-hit-target-default);background:transparent;vertical-align:middle}
 .a3-rb::-webkit-slider-runnable-track{height:var(--space-1);background:var(--color-surface-canvas)}
 .a3-rb::-webkit-slider-thumb{-webkit-appearance:none;width:var(--size-icon-md);height:var(--size-icon-md);background:var(--color-action-primary-bg);margin-top:calc(-1 * var(--space-2))} /* 20 px — [provisional], ADR по геометрии Slider открыт */
 .a3-rb::-moz-range-track{height:var(--space-1);background:var(--color-surface-canvas)}
 .a3-rb::-moz-range-thumb{width:var(--size-icon-md);height:var(--size-icon-md);background:var(--color-action-primary-bg);border:none}
-.a3-rb-number{box-sizing:border-box;width:var(--size-numeric-control);min-height:var(--size-hit-target-default);border:var(--border-default);padding:0 var(--space-2);font:inherit;font-variant-numeric:tabular-nums;text-align:right;color:var(--color-text-primary);background:var(--color-surface-default)}
+.a3-rb-number{box-sizing:border-box;width:var(--size-numeric-control);min-height:var(--size-hit-target-default);border:var(--border-default);padding:0 var(--space-2);font:inherit;text-align:right;color:var(--color-text-primary);background:var(--color-surface-default)}
 .a3-guard{width:var(--size-status-dot);height:var(--size-status-dot);border-radius:50%;display:inline-block;vertical-align:middle}
 /* F26: both consumers of `.a3-konflikt` (Strittige Angaben's open WFL
    candidate conflict; the named Baugrund risk cards) are a pending decision
@@ -544,7 +546,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-konflikt{border:var(--border-default);border-left:var(--size-status-accent-width) solid var(--color-border-warning);background:var(--color-surface-default);padding:var(--space-4);max-width:var(--measure-wide)}
 .a3-konflikt .a3-kv{display:flex;gap:var(--space-5);flex-wrap:wrap;margin-top:var(--space-3)}
 .a3-konflikt .a3-kv>div{flex:1;min-width:var(--measure-conflict-column);border:var(--border-hairline);padding:var(--space-3)}
-.a3-konflikt .a3-kv b{display:block;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-variant-numeric:tabular-nums;margin:var(--space-1) 0 var(--space-2)}
+.a3-konflikt .a3-kv b{display:block;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);margin:var(--space-1) 0 var(--space-2)}
 .a3-recap{border:var(--border-default);background:var(--color-surface-default);padding:var(--space-5);max-width:var(--measure-panel)}
 .a3-recap ul{margin:var(--space-3) 0 var(--space-4);padding:0;list-style:none}
 .a3-recap li{display:flex;gap:var(--space-2);align-items:baseline;padding:var(--space-1) 0;border-bottom:var(--border-hairline)}
@@ -611,7 +613,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-okc-tile[disabled] .a3-ok{opacity:1;background:var(--color-dataviz-category-2)}
 .a3-okc-tile svg{display:block;margin-bottom:var(--space-2)}
 .a3-okc-tile b{display:block;font-size:var(--type-label-size);line-height:var(--type-label-line);overflow-wrap:break-word;hyphens:auto;padding-right:var(--space-5)}
-.a3-okc-tile .a3-pd{display:block;font-size:var(--type-small-size);line-height:var(--type-small-line);font-variant-numeric:tabular-nums;color:var(--color-text-primary)}
+.a3-okc-tile .a3-pd{display:block;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
 .a3-okc-tile .a3-st{display:block;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight);color:var(--color-text-secondary)}
 
 /* components-core.md §CheckboxCard (OPTION-002/OPTION-005): same tile anatomy
@@ -649,14 +651,14 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-scope svg{flex:none}
 .a3-kx th{font-size:var(--type-table-header-size);line-height:var(--type-table-header-line);font-weight:var(--type-table-header-weight);text-align:left;color:var(--color-text-secondary);border-bottom:var(--border-default);padding:0 var(--space-3) var(--space-2) 0}
 .a3-kx td{border-bottom:var(--border-hairline);padding:var(--cell-pad-y) var(--space-3) var(--cell-pad-y) 0;font-size:var(--type-table-body-size);line-height:var(--type-table-body-line);vertical-align:middle}
-.a3-kx .a3-num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.a3-kx .a3-num{text-align:right;white-space:nowrap}
 .a3-kx tr.a3-krow{cursor:pointer}
 .a3-kx tr.a3-krow:hover td{background:var(--color-surface-canvas)}
 .a3-kx .a3-gname{display:flex;align-items:center;gap:var(--space-2)}
 .a3-kx tr.a3-ktotal td{border-top:var(--border-contrast-1px);border-bottom:none;font-weight:700;padding-top:var(--space-3)}
 .a3-kx .a3-dash{color:var(--color-text-secondary);font-weight:var(--type-small-weight);font-size:var(--type-small-size);line-height:var(--type-small-line)}
 .a3-segs{display:flex;gap:var(--space-6);flex-wrap:wrap;margin-top:var(--space-4);padding-top:var(--space-4);border-top:var(--border-hairline)}
-.a3-segs .a3-sg b{display:block;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-variant-numeric:tabular-nums}
+.a3-segs .a3-sg b{display:block;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line)}
 .a3-segs .a3-sg span{display:block;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
 
 /* DC-44 · CostDriverContribution. Structure: .a3-drivers > .a3-bmark +
@@ -669,7 +671,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-driver-table th,.a3-driver-table td{padding:var(--space-2) var(--space-3);border-bottom:var(--border-hairline);font-size:var(--type-small-size);line-height:var(--type-small-line);vertical-align:middle;text-align:left}
 .a3-driver-table thead th{font-size:var(--type-table-header-size);line-height:var(--type-table-header-line);font-weight:var(--type-table-header-weight);border-bottom:var(--border-default)}
 .a3-drv>th{font-weight:var(--type-small-weight)}
-.a3-drv .a3-val{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.a3-drv .a3-val{text-align:right;white-space:nowrap}
 .a3-driver-direction{display:block;font-weight:var(--font-weight-bold);margin-top:var(--space-1)}
 .a3-bar-cell{width:28%;min-width:10rem}
 .a3-drv .a3-bar{display:block;height:var(--space-3);background:var(--color-dataviz-category-1)}
@@ -898,7 +900,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    number/title + coverage/responsibility badges + provenance + details.
    Classes: .a3-scope-line-item · .a3-scope-line-number · .a3-scope-line-body · .a3-scope-line-status. */
 .a3-scope-line-item{border:var(--border-hairline);background:var(--color-surface-default);padding:var(--space-4);display:grid;grid-template-columns:auto 1fr auto;gap:var(--space-3);align-items:start;max-width:var(--measure-wide)}
-.a3-scope-line-number{font-variant-numeric:tabular-nums;font-weight:var(--font-weight-bold)}
+.a3-scope-line-number{font-weight:var(--font-weight-bold)}
 .a3-scope-line-body{display:grid;gap:var(--space-2)}
 .a3-scope-line-status{display:flex;gap:var(--space-2);flex-wrap:wrap}
 
