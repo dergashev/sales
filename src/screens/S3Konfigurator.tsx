@@ -1434,8 +1434,13 @@ function ChapterKg700() {
 
   return (
     <div className="grid gap-5">
+      {/* F27: die Card trug bislang denselben Titel wie das Kapitel selbst
+          (chrome3.chapter.kg700 = das H1 der Seite) — Duplikat, nicht
+          Struktur. Jede andere Card in diesem Screen (Untergeschoss,
+          Energiestandard, Bauzeit, Baugrund & Zufahrt …) nennt ihren
+          eigenen Abschnitt statt das Kapitel zu wiederholen. */}
       <Card
-        title={t('chrome3.chapter.kg700')}
+        title="Berechnungsart"
         intro={t('remainder5.ancillary.twoMethods')}
       >
         <SegmentedControl
