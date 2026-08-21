@@ -4,6 +4,7 @@ import {
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
+import { confirmBuildingReviewSections } from '../../test/offer-option'
 import { activeBuilding, __resetStoreForTests, useStore } from '../../state/store'
 
 /**
@@ -41,10 +42,21 @@ async function enterOption(user: ReturnType<typeof userEvent.setup>) {
 
 async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
   await enterOption(user)
+  await confirmBuildingReviewSections(user)
   await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
   await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
   await user.click(screen.getByRole('radio', { name: /Je Gebäude konfigurieren/ }))
   await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
+  act(() => {
+    useStore.getState().setCoverage('KG_300', 'included')
+    useStore.getState().setCoverage('KG_400', 'included')
+    useStore.getState().setCoverage('KG_700', 'included')
+    // These explicit fixture decisions belong to setup, not to the transient
+    // UI state that the scenario under test is about.
+    useStore.getState().clearDelta()
+    useStore.getState().previewOption(null)
+    useStore.getState().dismissUndoToast()
+  })
   await user.click(nav(/Leistungsabgrenzung/))
   await user.click(nav(/Leistungen KG 300/))
 }
@@ -62,12 +74,12 @@ describe('Сквозной сценарий продажи', () => {
     await user.click(within(es).getAllByRole('radio')[2]!)
     // Путь до конвейера сам оставляет след: решённый конфликт,
     // подтверждённые параметры, созданный Option и подтверждённое здание.
-    expect(useStore.getState().journal).toHaveLength(6)
+    expect(useStore.getState().journal).toHaveLength(12)
 
     // Уход на другой экран и возврат: состояние переживает переход.
     await user.click(nav(/Variantenvergleich/))
     await user.click(nav(/Konfigurator/))
-    expect(useStore.getState().journal).toHaveLength(6)
+    expect(useStore.getState().journal).toHaveLength(12)
     expect(activeBuilding(useStore.getState()).energiestandard).toBe('EH_40')
 
     // Гейт открывается на top-level шаге здания, а не обходится.
@@ -77,7 +89,7 @@ describe('Сквозной сценарий продажи', () => {
     await user.click(nav(/Variantenvergleich/))
     await user.click(nav(/^S5|Export/))
     expect(screen.getByRole('button', { name: /Preflight/ })).toBeInTheDocument()
-    expect(useStore.getState().journal).toHaveLength(6)
+    expect(useStore.getState().journal).toHaveLength(12)
   })
 
   it('глава 9 показывает Bauzeit обеими формами: полосой и таблицей', async () => {
@@ -380,6 +392,7 @@ describe('Сквозной сценарий продажи', () => {
     const blockedExport = nav(/Export/)
     expect(blockedExport).toHaveAttribute('aria-disabled', 'true')
     expect(screen.getAllByText(/mindestens ein Gebäude auswählen/).length).toBeGreaterThan(0)
+    await confirmBuildingReviewSections(user)
     await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
     await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
     await user.click(nav(/Export/))
@@ -504,12 +517,12 @@ describe('Сквозной сценарий продажи', () => {
       expect(document.body.textContent).not.toMatch(/\b(?:DEMO|OPT|SNAP|BM)-[A-Z0-9-]+\b/)
     }
 
-    await user.click(nav(/Variantenvergleich/))
+    await user.click(screen.getByRole('button', { name: /Varianten vergleichen/ }))
     expect(screen.queryByRole('button', { name: 'Zur Opportunity-Karte' })).toBeNull()
     expect(document.body).not.toHaveTextContent(/(?:D-19|VARIANT-001|XSC-08|HOAI und AHO|70\/22\/8)/)
     expect(document.body.textContent).not.toMatch(/\b(?:DEMO|OPT|SNAP|BM)-[A-Z0-9-]+\b/)
 
-    await user.click(nav(/^4Export/))
+    await user.click(nav(/^Export$/))
     expect(document.body).not.toHaveTextContent(/(?:clientPrint|clientSafe|R-07|EMAIL-007)/)
     expect(document.body.textContent).not.toMatch(/\b(?:DEMO|OPT|SNAP|BM)-[A-Z0-9-]+\b/)
 

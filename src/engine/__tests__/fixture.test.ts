@@ -360,7 +360,7 @@ describe('R-18 и CALC-006: подпись итога выводится, не �
     expect(completeness).toBe('complete')
   })
 
-  it('обязательные KG 300/400/700 не блокируют полноту в сыром `unknown`', () => {
+  it('unanswered core scope is incomplete while retaining legacy arithmetic', () => {
     const resolved: Coverage = { ...COVERAGE_FIXTURE, KG_500: 'excluded' }
     const mandatoryUnknown: Coverage = {
       ...resolved,
@@ -374,9 +374,9 @@ describe('R-18 и CALC-006: подпись итога выводится, не �
     const includedResult = calculateBuilding(confirmedHausA, cat, resolved)
     const unknownResult = calculateBuilding(confirmedHausA, cat, mandatoryUnknown)
 
-    expect(unknownResult.completeness).toBe('complete')
+    expect(unknownResult.completeness).toBe('incomplete')
     expect(unknownResult.incompleteReasons)
-      .not.toContainEqual(expect.objectContaining({ code: 'coverageUnknown' }))
+      .toContainEqual(expect.objectContaining({ code: 'coverageUnknown' }))
     // Покрытие обязательных групп меняет только интерпретацию полноты:
     // арифметика и состав ценовых вкладов остаются идентичными.
     expect(unknownResult.total.exact.toFixed()).toBe(includedResult.total.exact.toFixed())

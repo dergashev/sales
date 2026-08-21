@@ -299,5 +299,61 @@
     "file": "opt-dgnb-platin.webp",
     "motifDe": "Umfassendes Inbetriebnahme- und Prüfset mit offiziellem DGNB-Logo",
     "source": "Basisbild: OpenAI ImageGen, generiert am 2026-08-07; offizielles Vereinslogo: © DGNB, https://www.dgnb.de/typo3conf/ext/mq_layout_custom/Resources/Public/Images/sites/dgnb_241_ev/DGNB_Verein.svg"
+  },
+  {
+    "group": "configurationMode",
+    "value": "SHARED",
+    "file": "opt-configurationMode-SHARED.png",
+    "motifDe": "Eine gemeinsame Konfiguration verzweigt zu zwei Gebäuden",
+    "source": "OpenAI ImageGen, generiert am 2026-08-20"
+  },
+  {
+    "group": "configurationMode",
+    "value": "PER_BUILDING",
+    "file": "opt-configurationMode-PER_BUILDING.png",
+    "motifDe": "Zwei eigenständige Gebäudekonfigurationen",
+    "source": "OpenAI ImageGen, generiert am 2026-08-20"
+  },
+  {
+    "group": "scopeBoundaries",
+    "value": "KG_200",
+    "file": "opt-scopeBoundaries-KG_200.png",
+    "motifDe": "Vorbereitete Baustelle und Erschließung",
+    "source": "OpenAI ImageGen, generiert am 2026-08-20"
+  },
+  {
+    "group": "scopeBoundaries",
+    "value": "KG_300",
+    "file": "opt-scopeBoundaries-KG_300.png",
+    "motifDe": "Tragwerk und Baukonstruktion",
+    "source": "OpenAI ImageGen, generiert am 2026-08-20"
+  },
+  {
+    "group": "scopeBoundaries",
+    "value": "KG_400",
+    "file": "opt-scopeBoundaries-KG_400.png",
+    "motifDe": "Technische Gebäudeanlagen",
+    "source": "OpenAI ImageGen, generiert am 2026-08-20"
+  },
+  {
+    "group": "scopeBoundaries",
+    "value": "KG_500",
+    "file": "opt-scopeBoundaries-KG_500.png",
+    "motifDe": "Außenanlagen und Landschaft",
+    "source": "OpenAI ImageGen, generiert am 2026-08-20"
+  },
+  {
+    "group": "scopeBoundaries",
+    "value": "KG_600",
+    "file": "opt-scopeBoundaries-KG_600.png",
+    "motifDe": "Ausstattung und Einbauten",
+    "source": "OpenAI ImageGen, generiert am 2026-08-20"
+  },
+  {
+    "group": "scopeBoundaries",
+    "value": "KG_700",
+    "file": "opt-scopeBoundaries-KG_700.png",
+    "motifDe": "Planung und Baunebenkosten",
+    "source": "OpenAI ImageGen, generiert am 2026-08-20"
   }
 ]

@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
+import { confirmBuildingReviewSections } from '../../test/offer-option'
 import {
   buildingConfirmed,
   __resetStoreForTests,
@@ -11,12 +12,13 @@ import {
 beforeEach(() => __resetStoreForTests())
 
 async function openBuildingScope(user: ReturnType<typeof userEvent.setup>) {
-  render(<App />)
+  const view = render(<App />)
   await user.click(await screen.findByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
   await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
   await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
   await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
   await user.click(screen.getByRole('button', { name: 'Öffnen' }))
+  return view
 }
 
 describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
@@ -26,10 +28,21 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Gebäude & Umfang' }))
       .toBeInTheDocument()
+    const header = document.querySelector('.a3-global-header') as HTMLElement
+    expect(within(header).queryByRole('group', { name: 'Ansicht' })).toBeNull()
+    expect(within(screen.getByRole('navigation', { name: 'Navigation' }))
+      .getByRole('group', { name: 'Ansicht' })).toBeInTheDocument()
     expect(screen.queryByRole('complementary', { name: 'Angebot' })).toBeNull()
     expect(screen.getByText('Kalkulation noch nicht gestartet')).toBeInTheDocument()
     expect(screen.queryByText(/Gesamtpreis|Schätzunsicherheit|Bauzeit|Kostentreiber/))
       .toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Geschossstruktur' }))
+    const storeySummary = document.querySelector(
+      'dl[aria-label="Kompakte Geschossübersicht"]',
+    ) as HTMLElement
+    expect(within(storeySummary).getAllByText('Nicht erfasst')).toHaveLength(3)
+    expect(within(storeySummary).queryByText('0', { exact: true })).toBeNull()
 
     const hausA = screen.getByRole('checkbox', { name: 'Haus A' })
     expect(hausA).toBeChecked()
@@ -47,6 +60,7 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     const user = userEvent.setup()
     await openBuildingScope(user)
 
+    await confirmBuildingReviewSections(user)
     await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
     expect(buildingConfirmed(useStore.getState(), 'DEMO-B-A')).toBe(true)
 
@@ -56,6 +70,49 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
 
     expect(buildingConfirmed(useStore.getState(), 'DEMO-B-A')).toBe(true)
     expect(screen.getByText('Gebäude bestätigt')).toBeInTheDocument()
+  })
+
+  it('bewahrt Abschnittsbestätigungen über Remounts und invalidiert sie nach Änderungen', async () => {
+    const user = userEvent.setup()
+    const view = await openBuildingScope(user)
+
+    await user.click(screen.getByRole('button', { name: 'Abschnitt bestätigen' }))
+    expect(useStore.getState().buildingSectionConfirmations['DEMO-B-A']?.identity)
+      .toBeDefined()
+    expect(useStore.getState().journal.at(-1)?.label)
+      .toContain('Abschnitt Identität bestätigt')
+
+    view.unmount()
+    render(<App />)
+    const identity = screen.getByRole('button', { name: 'Identität' }).closest('tr')!
+    expect(within(identity).getByText('Bestätigt')).toBeInTheDocument()
+
+    const documentationName = useStore.getState()
+      .buildingReviews['DEMO-B-A']!.facts.documentationName
+    const currentName = documentationName.override?.value
+      ?? documentationName.extracted.value
+      ?? 'Haus A'
+    act(() => useStore.getState().setBuildingFactOverride(
+      'DEMO-B-A', 'documentationName', `${currentName} Nord`,
+    ))
+    const changedIdentity = screen.getByRole('button', { name: 'Identität' }).closest('tr')!
+    expect(within(changedIdentity).getByText('Geändert · erneut bestätigen'))
+      .toBeInTheDocument()
+  })
+
+  it('übersetzt Kennzahlen und Sidebar-Gruppen ohne Profilbegriffe als Überschriften', async () => {
+    const user = userEvent.setup()
+    await openBuildingScope(user)
+
+    const header = document.querySelector('.a3-global-header') as HTMLElement
+    await user.click(within(header).getByRole('radio', { name: 'EN' }))
+
+    expect(screen.queryByText('BGF gesamt')).toBeNull()
+    expect(screen.getAllByText('GFA R+S · total').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Living area under WoFlV').length).toBeGreaterThan(0)
+    const navigation = screen.getByRole('navigation', { name: 'Navigation' })
+    expect(within(navigation).getByText('Current option')).toBeInTheDocument()
+    expect(within(navigation).queryByText('Client view', { selector: 'p' })).toBeNull()
   })
 
   it('verwendet manuell aktivierte Tabs mit roving tabindex', async () => {
@@ -88,15 +145,18 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
   it('ungültigt bei einer Korrektur nur das bearbeitete Gebäude', async () => {
     const user = userEvent.setup()
     await openBuildingScope(user)
+    await confirmBuildingReviewSections(user)
     await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
     await user.click(screen.getByRole('checkbox', { name: 'Haus B' }))
 
     const tablist = screen.getByRole('tablist', { name: 'Gewählte Gebäude' })
     const hausBTab = within(tablist).getByRole('tab', { name: /Haus B/ })
     await user.click(hausBTab)
+    await confirmBuildingReviewSections(user)
     await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
     expect(buildingConfirmed(useStore.getState(), 'DEMO-B-B')).toBe(true)
 
+    await user.click(screen.getByRole('button', { name: 'Identität' }))
     const name = screen.getByRole('textbox', { name: 'Bezeichnung aus der Dokumentation' })
     await user.clear(name)
     await user.type(name, 'Haus B West')
@@ -106,6 +166,7 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
 
     expect(buildingConfirmed(useStore.getState(), 'DEMO-B-A')).toBe(true)
     expect(buildingConfirmed(useStore.getState(), 'DEMO-B-B')).toBe(false)
+    expect(screen.getByText('Geändert · erneut bestätigen')).toBeInTheDocument()
     expect(screen.getByText(/Bestätigung aufgehoben.*Haus B West/))
       .toBeInTheDocument()
   })
@@ -113,6 +174,7 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
   it('bleibt auch in der Kundenansicht eine reine Vor-Kalkulationsfläche', async () => {
     const user = userEvent.setup()
     await openBuildingScope(user)
+    await confirmBuildingReviewSections(user)
     await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
     await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
     await user.click(screen.getByRole('radio', { name: 'Je Gebäude konfigurieren' }))

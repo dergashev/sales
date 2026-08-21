@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
+import { confirmBuildingReviewSections } from '../../test/offer-option'
 import { __resetStoreForTests, useStore } from '../../state/store'
 
 /**
@@ -36,10 +37,16 @@ async function enterOption(user: ReturnType<typeof userEvent.setup>) {
 
 async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
   await enterOption(user)
+  await confirmBuildingReviewSections(user)
   await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
   await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
   await user.click(screen.getByRole('radio', { name: 'Je Gebäude konfigurieren' }))
   await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
+  act(() => {
+    useStore.getState().setCoverage('KG_300', 'included')
+    useStore.getState().setCoverage('KG_400', 'included')
+    useStore.getState().setCoverage('KG_700', 'included')
+  })
   await user.click(screen.getAllByRole('button', { name: /Leistungsabgrenzung/ })[0]!)
   await user.click(screen.getAllByRole('button', { name: /Leistungen KG 300/ })[0]!)
 }
@@ -127,6 +134,24 @@ describe('Herkunft-Popover — Esc закрывает и ВОЗВРАЩАЕТ ф
   })
 })
 
+describe('Account menu — controlled dismissal', () => {
+  it('closes on Escape and outside click, returning focus after Escape', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    const trigger = screen.getByRole('button', { name: 'Account' })
+
+    await user.click(trigger)
+    expect(screen.getByRole('dialog', { name: 'Account' })).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog', { name: 'Account' })).toBeNull()
+    expect(trigger).toHaveFocus()
+
+    await user.click(trigger)
+    await user.click(document.body)
+    expect(screen.queryByRole('dialog', { name: 'Account' })).toBeNull()
+  })
+})
+
 describe('Опции — нативная radio-группа (RADIO-001)', () => {
   it('стрелка в группе опций двигает И выбирает, событие попадает в журнал', async () => {
     const user = userEvent.setup()
@@ -188,12 +213,14 @@ describe('Маршрут экрана возвращает начало доку
     const main = screen.getByRole('main')
     main.scrollTop = 420
 
-    await user.click(screen.getByRole('button', { name: /Variantenvergleich/ }))
+    const comparisonEntries = screen.getAllByRole('button', { name: 'Variantenvergleich' })
+    expect(comparisonEntries).toHaveLength(1)
+    await user.click(comparisonEntries[0]!)
     expect(main.scrollTop).toBe(0)
     expect(screen.getByRole('heading', { level: 1, name: 'Variantenvergleich' })).toHaveFocus()
 
     main.scrollTop = 320
-    await user.click(screen.getByRole('button', { name: /^4Export/ }))
+    await user.click(screen.getByRole('button', { name: 'Export' }))
     expect(main.scrollTop).toBe(0)
     expect(screen.getByRole('heading', { level: 1, name: /Export/ })).toHaveFocus()
   })
@@ -251,6 +278,7 @@ describe('DC-33 · единственная модалка системы — в
     // Пока здание не подтверждено, ворота показывают причину, а не
     // диалог: блокировка объясняет себя (правило 12).
     expect(screen.getAllByText(/mindestens ein Gebäude auswählen/).length).toBeGreaterThan(0)
+    await confirmBuildingReviewSections(user)
     await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
     await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
     await user.click(screen.getByRole('radio', { name: 'Je Gebäude konfigurieren' }))
@@ -280,35 +308,14 @@ describe('DC-33 · единственная модалка системы — в
   })
 })
 
-describe('DC-14 · тур: шаг без цели пропускается, а не ломает тур', () => {
-  it('собирается из целей, которые ЕСТЬ на экране, и считает шаги от них', async () => {
+describe('Preparation navigation cleanup', () => {
+  it('does not expose the retired guided tour or its modal', async () => {
     const user = userEvent.setup()
     await enterPipeline(user)
-    const appHost = document.body.firstElementChild as HTMLElement
-    await user.click(screen.getByRole('button', { name: /Rundgang durch das Werkzeug/ }))
-
-    const card = await screen.findByRole('dialog', { name: /Der Preis ist immer sichtbar/ })
-    expect(card).toHaveAttribute('aria-modal', 'true')
-    expect(within(card).getByRole('heading', { name: /Der Preis ist immer sichtbar/ })).toHaveFocus()
-    expect(appHost.inert).toBe(true)
-    // Счётчик считает ЖИВЫЕ шаги: заметки на этом экране нет, и её шаг в
-    // знаменатель не попадает — иначе тур обещал бы шаг, которого не будет.
-    const weiter = within(card).getByRole('button', { name: /Weiter/ })
-    const total = Number(weiter.textContent!.match(/\/(\d+)/)![1])
-    expect(total).toBeGreaterThan(1)
-    expect(total).toBeLessThan(6)
-
-    // Проходится до конца и закрывается сам.
-    for (let k = 0; k < total; k++) {
-      const btn = within(card).queryByRole('button', { name: /Weiter|Rundgang beenden/ })
-      if (!btn) break
-      await user.click(btn)
-    }
-    expect(useStore.getState().tourOpen).toBe(false)
-    await waitFor(() => {
-      expect(document.querySelector('[role="dialog"]')).toBeNull()
-      expect(appHost.inert).toBe(false)
-    })
+    expect(screen.queryByRole('button', { name: /Rundgang durch das Werkzeug/ }))
+      .not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: /Der Preis ist immer sichtbar/ }))
+      .not.toBeInTheDocument()
   })
 
   it('в презентации тура не существует — ни кнопки, ни карточки', async () => {

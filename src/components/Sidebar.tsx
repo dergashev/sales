@@ -1,3 +1,4 @@
+import type { RefObject } from 'react'
 import {
   configuratorStepDone,
   pipelineViewForBuildingGate,
@@ -11,6 +12,7 @@ import {
   isClientProjection,
   isClientVisiblePipelineView,
 } from '../state/clientProjection'
+import { OutputProfileSwitch, SelectField } from './designSystem'
 
 /**
  * Левый сайдбар — навигация оболочки.
@@ -41,22 +43,26 @@ const SCREENS: Array<{
 }> = [
   { id: 'buildingScope', labelKey: 'nav.buildingScope', hint: '1' },
   { id: 'konfigurator', labelKey: 'nav.konfigurator', hint: '2' },
-  { id: 'vergleich', labelKey: 'nav.vergleich', hint: '3' },
-  { id: 'export', labelKey: 'nav.export', hint: '4' },
-  { id: 'einstellungen', labelKey: 'nav.einstellungen', hint: '⚙' },
-  { id: 'grundlagen', labelKey: 'nav.grundlagen', hint: 'QA' },
 ]
 
 const FOCUS = 'outline-none focus-visible:outline focus-visible:outline-2 ' +
   'focus-visible:outline-offset-2 focus-visible:outline-focus-ring'
 
-export function Sidebar() {
+export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) {
   const s = useStore()
   const view = pipelineViewForBuildingGate(s, s.pipelineView)
   const option = s.options.find((o) => o.id === s.activeOptionId)
   const t = useT()
   const tx = useTx()
   const client = isClientProjection(s.mode)
+  const buildingGateBlocked = !s.canBeginConfiguration()
+  const configurationGateBlocked = !s.configurationModeChosen || s.configurationModeEditing
+  const modeBlocked = buildingGateBlocked || configurationGateBlocked
+  const modeBlockedReason = buildingGateBlocked
+    ? t('shell.mode.blockedReason')
+    : configurationGateBlocked
+      ? t('configurator.mode.clientBlocked')
+      : undefined
   const gateOpen = s.canBeginConfiguration()
   const screens = client
     ? SCREENS.filter(({ id }) => isClientVisiblePipelineView(id))
@@ -69,16 +75,48 @@ export function Sidebar() {
       className="flex h-full w-panel-left shrink-0 flex-col overflow-y-auto border-r border-border-strong bg-surface-default"
     >
       <div className="border-b border-border-strong px-5 py-4">
-        <p className="text-body font-medium text-text-primary">
-          {option ? option.name : `Musterprojekt Nordfeld · Haus${NNBSP}A`}
-        </p>
-        <p className="a3-cap mt-1">
-          {!client && <>{option ? option.id : t('shell.variant')} · </>}
-          {t(client ? 'shell.profile.client' : 'shell.profile.internal')}
-        </p>
+        {option && s.activeOptionId ? (
+          <SelectField
+            label={t('shell.optionSwitcher')}
+            value={s.activeOptionId}
+            onChange={(event) => s.openOption(event.target.value)}
+          >
+            {s.options.map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>
+                {candidate.name}
+              </option>
+            ))}
+          </SelectField>
+        ) : (
+          <p className="text-body font-medium text-text-primary">
+            {`Musterprojekt Nordfeld · Haus${NNBSP}A`}
+          </p>
+        )}
+        {!client && option && (
+          <button type="button" className="a3-linkbtn mt-3"
+                  onClick={() => s.setPipelineView('vergleich')}>
+            {t('nav.vergleich')}
+          </button>
+        )}
+        <div className="mt-4 border-t border-border-subtle pt-4">
+          <OutputProfileSwitch
+            compact
+            mode={s.mode}
+            blocked={modeBlocked}
+            blockedReason={modeBlockedReason}
+            checkButtonRef={modeRef}
+            onCheck={() => s.setGateOpen(true)}
+            onExit={() => s.setMode('intern')}
+          />
+        </div>
       </div>
 
       <ul className="flex-1 py-2">
+        <li>
+          <p className="a3-cap px-5 pb-1 pt-3">
+            {t('shell.sidebar.workflow')}
+          </p>
+        </li>
         {screens.map((item) => {
           const active = view === item.id
           const blocked = item.id !== 'buildingScope' && !gateOpen
@@ -150,24 +188,40 @@ export function Sidebar() {
             </li>
           )
         })}
+        {(!client || isClientVisiblePipelineView('export')) && (
+          <li className="mt-2 border-t border-border-subtle pt-2">
+            <p className="a3-cap px-5 pb-1 pt-3">
+              {t('shell.sidebar.outputs')}
+            </p>
+            <button
+              type="button"
+              onClick={() => { if (gateOpen) s.setPipelineView('export') }}
+              aria-current={view === 'export' ? 'page' : undefined}
+              aria-disabled={!gateOpen || undefined}
+              aria-describedby={!gateOpen ? 'building-gate-export' : undefined}
+              className={`relative flex min-h-hit-target w-full items-center px-5 py-2 text-left text-body ${FOCUS} ` +
+                (view === 'export'
+                  ? 'border-l-selected border-selection-border bg-surface-subtle font-medium text-text-primary'
+                  : 'border-l-selected border-transparent text-text-secondary hover:bg-surface-subtle') +
+                (!gateOpen ? ' cursor-default text-text-disabled' : '')}
+            >
+              {t('nav.export')}
+            </button>
+            {!gateOpen && (
+              <span id="building-gate-export" className="sr-only">
+                {t('buildingScope.gate.navigationReason')}
+              </span>
+            )}
+          </li>
+        )}
       </ul>
-
-      {/* Тур — только во внутреннем пространстве (DC-14): в презентации
-          кнопки не существует, а не «она недоступна». */}
-      {s.mode === 'intern' && (
-        <div className="border-t border-border-subtle px-5 py-3">
-          <button type="button" className="a3-linkbtn"
-                  onClick={() => s.setTourOpen(true)}>
-            {t('nav.tour')}
-          </button>
-        </div>
-      )}
 
       {!client && (
         <div className="border-t border-border-subtle px-5 py-3">
-          <p className="text-small text-text-muted">
-            {t('shell.prototypeNote')} · v0.5
-          </p>
+          <button type="button" className="flex min-h-hit-target w-full items-center gap-3 text-left text-body text-text-secondary outline-none hover:text-text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                  onClick={() => s.setPipelineView('einstellungen')}>
+            <span aria-hidden="true">⚙</span>{t('nav.einstellungen')}
+          </button>
         </div>
       )}
     </nav>

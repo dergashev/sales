@@ -74,6 +74,13 @@ export type { PipelineView } from './clientProjection'
 /** Calculation input enriched with proposal-review metadata. */
 export type ProjectBuilding = ReviewedBuildingInput
 
+export type BuildingReviewSection = 'identity' | 'areas' | 'storeys'
+export type BuildingSectionConfirmation = { fingerprint: string; at: string }
+
+const BUILDING_REVIEW_SECTIONS: ReadonlyArray<BuildingReviewSection> = [
+  'identity', 'areas', 'storeys',
+]
+
 /**
  * Состояние = журнал событий + проекция (M-4).
  *
@@ -218,6 +225,11 @@ export type OptionConfig = {
   included: Record<string, boolean>
   buildingReviews: Record<string, BuildingReview>
   buildingConfirmation: Record<string, BuildingConfirmation>
+  /** Explicit section review is durable Option state, not disclosure UI state. */
+  buildingSectionConfirmations: Record<
+    string,
+    Partial<Record<BuildingReviewSection, BuildingSectionConfirmation>>
+  >
   configurationMode: ConfigurationMode
   /** The default mode is an engine fallback, never proof of user consent. */
   configurationModeChosen: boolean
@@ -230,6 +242,15 @@ export type OptionConfig = {
   kg300: Record<string, Record<string, string>>
   kg300Provenance: Record<string, Record<string, string>>
   kg700Mode: 'vereinfacht' | 'hoaiAho'
+  /**
+   * True exactly when the CURRENT `kg700Mode` value comes from D-07 rule-6
+   * automatic enforcement (fresh-Option default or `setCoverage`), not from
+   * a deliberate seller choice (`setKg700Mode`). Only an auto-set mode may be auto-reverted
+   * when its triggering precondition (KG 300 and KG 400 both included)
+   * is restored — a deliberate choice must never be silently overridden
+   * (QA-01, ticket e2dac9b5).
+   */
+  kg700ModeAutoFallback: boolean
   coverage: Coverage
   scopeBoundariesConfirmedFingerprint: string | null
   fields: { wfl: FieldState; bgfOber: FieldState; we: FieldState }
@@ -281,10 +302,11 @@ export type OptionConfig = {
 
 const OPTION_CONFIG_KEYS = [
   'buildings', 'activeBuildingId', 'included', 'buildingReviews',
-  'buildingConfirmation', 'configurationMode', 'configurationModeChosen',
+  'buildingConfirmation', 'buildingSectionConfirmations',
+  'configurationMode', 'configurationModeChosen',
   'pricingStarted', 'configurationVisitedChapters', 'sharedConfiguration',
   'buildingConfigState',
-  'kg300', 'kg300Provenance', 'kg700Mode', 'coverage',
+  'kg300', 'kg300Provenance', 'kg700Mode', 'kg700ModeAutoFallback', 'coverage',
   'scopeBoundariesConfirmedFingerprint', 'fields',
   'esConfirmed', 'regionalfaktorActive', 'risikoAktiv',
   'openConfiguratorStep', 'visitedConfiguratorSteps', 'scopeBuildingId', 'discountPercent',
@@ -300,17 +322,28 @@ function captureConfig(s: Pick<Store, keyof OptionConfig>): OptionConfig {
 
 type PersistedProposalConfig = Omit<Pick<OptionConfig,
   | 'activeBuildingId' | 'included' | 'buildingReviews' | 'buildingConfirmation'
+  | 'buildingSectionConfirmations'
   | 'configurationMode' | 'configurationModeChosen' | 'pricingStarted'
   | 'configurationVisitedChapters'
   | 'sharedConfiguration' | 'buildingConfigState'
-  | 'kg300' | 'kg300Provenance' | 'kg700Mode' | 'coverage'
+  | 'kg300' | 'kg300Provenance' | 'kg700Mode' | 'kg700ModeAutoFallback' | 'coverage'
   | 'scopeBoundariesConfirmedFingerprint'
   | 'esConfirmed' | 'regionalfaktorActive' | 'risikoAktiv' | 'discountPercent'
   | 'constructionStartDate'>,
-  'configurationModeChosen' | 'pricingStarted' | 'configurationVisitedChapters'
-    | 'scopeBoundariesConfirmedFingerprint' | 'constructionStartDate'> & {
+  'buildingSectionConfirmations' | 'configurationModeChosen' | 'pricingStarted'
+    | 'configurationVisitedChapters' | 'scopeBoundariesConfirmedFingerprint'
+    | 'constructionStartDate' | 'kg700ModeAutoFallback'> & {
+    /** Optional while reading candidates saved before section review was durable. */
+    buildingSectionConfirmations?: Record<
+      string,
+      Partial<Record<BuildingReviewSection, BuildingSectionConfirmation>>
+    >
     /** Optional only while reading v1 payloads saved before explicit entry. */
     configurationModeChosen?: boolean
+    /** Optional while reading candidates saved before the QA-01 fix (ticket
+     * e2dac9b5); such payloads carry no fallback provenance, so they must
+     * never be auto-reverted retroactively. */
+    kg700ModeAutoFallback?: boolean
     /** Optional while reading candidates saved before the pricing boundary. */
     pricingStarted?: boolean
     configurationVisitedChapters?: Record<string, Array<ConfiguratorStepId | number>>
@@ -322,10 +355,11 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
 
 const PERSISTED_CONFIG_KEYS = [
   'activeBuildingId', 'included', 'buildingReviews', 'buildingConfirmation',
+  'buildingSectionConfirmations',
   'configurationMode', 'configurationModeChosen', 'pricingStarted',
   'configurationVisitedChapters',
   'sharedConfiguration', 'buildingConfigState',
-  'kg300', 'kg300Provenance', 'kg700Mode', 'coverage',
+  'kg300', 'kg300Provenance', 'kg700Mode', 'kg700ModeAutoFallback', 'coverage',
   'scopeBoundariesConfirmedFingerprint', 'esConfirmed',
   'regionalfaktorActive', 'risikoAktiv', 'discountPercent',
   'constructionStartDate',
@@ -333,10 +367,12 @@ const PERSISTED_CONFIG_KEYS = [
 
 const LEGACY_PERSISTED_CONFIG_KEYS = PERSISTED_CONFIG_KEYS.filter(
   (key) => key !== 'configurationModeChosen'
+    && key !== 'buildingSectionConfirmations'
     && key !== 'pricingStarted'
     && key !== 'configurationVisitedChapters'
     && key !== 'scopeBoundariesConfirmedFingerprint'
-    && key !== 'constructionStartDate',
+    && key !== 'constructionStartDate'
+    && key !== 'kg700ModeAutoFallback',
 )
 
 function capturePersistedConfig(
@@ -368,13 +404,8 @@ type PersistedProposalPayload = {
  * (`unknown` / «noch offen»), а не «продавец уже решил исключить» (SCOPE-001,
  * `data-model.md` §5.4, D-18).
  *
- * Сырое значение KG 300/400/700 также остаётся `unknown`: оно не фабрикует
- * пользовательское решение и сохраняет совместимость с уже записанными
- * конфигурациями. Эти группы при этом обязательны по политике и показаны в
- * `ChapterUmfang` как `mandatory`; поэтому только канонические
- * `SCOPE_BOUNDARIES_DECIDABLE_GROUPS` (KG 200/500/600) создают открытое
- * решение и блокируют полноту. `calculateBuilding` по-прежнему считает
- * базовую стоимость KG 300/400/700 безусловно, независимо от `coverage`.
+ * Every displayed group therefore starts `unknown`. Persisted decisions are
+ * restored unchanged; this default applies only to a fresh Option.
  *
  * KG 100 (Grundstück) и KG 800 (Finanzierung) в перечень Scope Boundaries
  * этой задачи не входят (тикет называет ровно шесть групп) и сохраняют
@@ -384,6 +415,15 @@ const INITIAL_COVERAGE: Coverage = {
   KG_100: 'notApplicable', KG_200: 'unknown',
   KG_300: 'unknown', KG_400: 'unknown', KG_500: 'unknown',
   KG_600: 'unknown', KG_700: 'unknown', KG_800: 'notApplicable',
+}
+// The top-level demo projection exists before an Opportunity Option does and
+// keeps the released reference calculation available to diagnostics/tests.
+// It is never used as the default for a newly created Option.
+const ESTABLISHED_FIXTURE_COVERAGE: Coverage = {
+  ...INITIAL_COVERAGE,
+  KG_300: 'included',
+  KG_400: 'included',
+  KG_700: 'included',
 }
 const COVERAGE_KEYS = Object.keys(INITIAL_COVERAGE) as Array<keyof Coverage>
 const COVERAGE_STATES: CoverageState[] = [
@@ -505,7 +545,9 @@ const INITIAL_BUILDING_CONFLICTS: Record<string, BuildingConflict> = {
  * это безопасно, потому что стор меняет их только заменой ссылки, а после
  * каждого set всё замораживается deepFreeze.
  */
-function defaultOptionConfig(): OptionConfig {
+function defaultOptionConfig(coverage: Coverage = INITIAL_COVERAGE): OptionConfig {
+  const simplifiedAvailable = coverage.KG_300 === 'included'
+    && coverage.KG_400 === 'included'
   return {
     buildings: {
       [INITIAL_BUILDING.id]: INITIAL_BUILDING,
@@ -521,6 +563,7 @@ function defaultOptionConfig(): OptionConfig {
       [INITIAL_REVIEW_B.id]: INITIAL_REVIEW_B,
     },
     buildingConfirmation: {},
+    buildingSectionConfirmations: {},
     configurationMode: 'PER_BUILDING',
     configurationModeChosen: false,
     pricingStarted: false,
@@ -550,8 +593,13 @@ function defaultOptionConfig(): OptionConfig {
       [INITIAL_BUILDING_B.id]: Object.fromEntries(
         ALL_OPTION_GROUPS.map((g) => [g.id, g.documented ? 'aus Dokument' : 'Standard'])),
     },
-    kg700Mode: 'vereinfacht',
-    coverage: INITIAL_COVERAGE,
+    // D-07 rule 6: the simplified 70/22/8 split is unavailable until both
+    // core groups are explicitly included. A fresh Option therefore begins
+    // in the reversible automatic fallback; including both groups restores
+    // the canonical simplified default without manufacturing consent.
+    kg700Mode: simplifiedAvailable ? 'vereinfacht' : 'hoaiAho',
+    kg700ModeAutoFallback: !simplifiedAvailable,
+    coverage,
     scopeBoundariesConfirmedFingerprint: null,
     fields: legacyFieldsFromReview(INITIAL_REVIEW),
     esConfirmed: false,
@@ -644,6 +692,18 @@ function isPersistedProposalConfig(value: unknown): value is PersistedProposalCo
       && typeof confirmation.fingerprint === 'string'
       && typeof confirmation.at === 'string')) return false
 
+  if (value.buildingSectionConfirmations !== undefined) {
+    if (!record(value.buildingSectionConfirmations)) return false
+    if (!Object.entries(value.buildingSectionConfirmations).every(([id, sections]) =>
+      FIXTURE_BUILDING_IDS.includes(id as typeof FIXTURE_BUILDING_IDS[number])
+      && record(sections)
+      && Object.entries(sections).every(([section, confirmation]) =>
+        BUILDING_REVIEW_SECTIONS.includes(section as BuildingReviewSection)
+        && record(confirmation)
+        && typeof confirmation.fingerprint === 'string'
+        && typeof confirmation.at === 'string'))) return false
+  }
+
   if (value.configurationMode !== 'SHARED' && value.configurationMode !== 'PER_BUILDING') {
     return false
   }
@@ -690,6 +750,8 @@ function isPersistedProposalConfig(value: unknown): value is PersistedProposalCo
   if (value.kg700Mode !== 'vereinfacht' && value.kg700Mode !== 'hoaiAho') {
     return false
   }
+  if (value.kg700ModeAutoFallback !== undefined
+    && typeof value.kg700ModeAutoFallback !== 'boolean') return false
   if (!record(value.coverage)
     || !hasOnlyKeys(value.coverage, COVERAGE_KEYS)
     || !Object.values(value.coverage).every((item) =>
@@ -773,10 +835,14 @@ function restoredOptionConfig(
     ...base,
     ...persisted,
     configurationModeChosen: persisted.configurationModeChosen === true,
+    // Absent in payloads saved before this fix: treat as "not an auto
+    // fallback" so an old candidate is never retroactively auto-reverted.
+    kg700ModeAutoFallback: persisted.kg700ModeAutoFallback === true,
     pricingStarted: persisted.pricingStarted === true,
     configurationVisitedChapters,
     scopeBoundariesConfirmedFingerprint:
       persisted.scopeBoundariesConfirmedFingerprint ?? null,
+    buildingSectionConfirmations: persisted.buildingSectionConfirmations ?? {},
     buildings,
     fields: legacyFieldsFromReview(
       persisted.buildingReviews[LEGACY_FIELDS_BUILDING_ID]!,
@@ -830,6 +896,11 @@ type Store = {
   buildingReviews: Record<string, BuildingReview>
   /** Confirmation is a fingerprint of the exact reviewed value set. */
   buildingConfirmation: Record<string, BuildingConfirmation>
+  /** Section confirmations are journalled and persisted per building/Option. */
+  buildingSectionConfirmations: Record<
+    string,
+    Partial<Record<BuildingReviewSection, BuildingSectionConfirmation>>
+  >
   /** Shared and per-building choice sets coexist; mode selects the reader. */
   configurationMode: ConfigurationMode
   configurationModeChosen: boolean
@@ -863,6 +934,7 @@ type Store = {
    *   ДОБАВЛЯЕТСЯ к итогу.
    */
   kg700Mode: 'vereinfacht' | 'hoaiAho'
+  kg700ModeAutoFallback: boolean
   coverage: Coverage
   /**
    * Отпечаток решений Leistungsabgrenzung (KG 200/500/600 + Energiestandard
@@ -1106,6 +1178,11 @@ type Store = {
   /** Включить/исключить здание из предложения — событие журнала. */
   toggleBuildingIncluded: (id: string) => void
   confirmBuilding: (id: string) => void
+  confirmBuildingSection: (
+    id: string,
+    section: BuildingReviewSection,
+    fingerprint: string,
+  ) => void
   setConfigurationMode: (mode: ConfigurationMode) => void
   confirmConfigurationMode: (mode: ConfigurationMode) => void
   beginConfigurationModeEdit: () => void
@@ -1348,8 +1425,8 @@ export function configurationDisplayStatusFor(
 
 /**
  * Отпечаток решений Leistungsabgrenzung, относящихся к её собственному
- * контракту: решаемые группы затрат (KG 200/500/600 — KG 300/400/700
- * обязательны и решением не являются, SCOPE-BOUNDARIES-001), Energiestandard
+ * контракту: все шесть решаемых групп затрат (KG 200/300/400/500/600/700),
+ * Energiestandard
  * и Zertifikate (`qng`/`dgnb`, engine/options.ts `ZERT_GROUPS`). Используется
  * только для сравнения «изменилось ли что-то с момента подтверждения», не
  * для хранения самого решения.
@@ -1384,7 +1461,7 @@ function scopeBoundariesFingerprint(
 /**
  * `open` — noch nicht bestätigt; `confirmed` — Bestätigung deckt den
  * aktuellen Stand; `recheck` — eine gespeicherte Bestätigung existiert, aber
- * KG 200/500/600, Energiestandard oder Zertifikate haben sich seither
+ * KG 200/300/400/500/600/700, Energiestandard oder Zertifikate haben sich seither
  * geändert (Ticket-Anforderung #6: Änderung invalidiert, statt still zu
  * bestehen).
  */
@@ -1648,7 +1725,7 @@ function computeProjection(
   // домножаются: фактор применяется к Bauwerk по объявленному перечню
   // §2.3, а опции в нём не названы. Приписать их туда значило бы
   // расширить базу фактора собственным решением.
-  const optDrivers = list.flatMap((b, i) => [
+  const rawOptDrivers = list.flatMap((b, i) => [
     ...optionDrivers(b, choicesFor(s, b.id), bgfSOf(b.id)),
     // Группы затрат, включённые решением пользователя: они не входят в
     // базовую ставку, поэтому включение ДОБАВЛЯЕТ, а не перераспределяет.
@@ -1658,6 +1735,11 @@ function computeProjection(
       perBuilding[i]!.bauwerk, CATALOG.kgShares,
     ),
   ].map((d) => ({ ...d, key: list.length > 1 ? `${list[i]!.id}:${d.key}` : d.key })))
+  const rawBaseDrivers = perBuilding.flatMap((r, i) =>
+    r.drivers.map((d) => ({
+      ...d,
+      key: list.length > 1 ? `${list[i]!.id}:${d.key}` : d.key,
+    })))
   // Блок Bauwerk — это KG 300 + 400 + UG и ТОЛЬКО они. Прежде всё
   // складывалось в один `bauwerkSum`, и включение KG 500 увеличивало базу
   // KG 700, базу сплита и базу надбавок за риск: группа затрат вне блока
@@ -1665,15 +1747,79 @@ function computeProjection(
   // находки 9 и 20). Место вклада объявляется его создателем полем `block`,
   // а не выводится здесь из позиции: у надбавки за риск база названа
   // `KG 320`, и по позиции она от вклада внутри блока неотличима.
-  const bauwerkBlock = sumOfBlock(
-    [...perBuilding.flatMap((r) => r.drivers), ...optDrivers], 'bauwerk',
-  )
+  // Только `'included'` активирует группу — тот же критерий, что уже
+  // применяют `coverageDrivers` для KG 500/600 (`options.ts`). Строгое
+  // равенство, а не `!== 'excluded'`: иначе неопределённое `'unknown'`
+  // (обязательный дефолт AC22 — решение продавца ещё не принято) молча
+  // считалось бы включённым, ровно тот дефект, который правило и должно
+  // было исключить.
+  const coreActive = (group: 'KG_300' | 'KG_400' | 'KG_700') =>
+    s.coverage[group] === 'included'
+  const simplifiedScope = s.kg700Mode === 'vereinfacht'
+    && coreActive('KG_300') && coreActive('KG_400') && coreActive('KG_700')
+  const baseDrivers = rawBaseDrivers
+  const optDrivers = rawOptDrivers
+  // Полный, ещё не скорректированный блок Bauwerk — база для решения о
+  // включении KG 300/400 (Product Decision, тикет e2dac9b5, 20.08.2026):
+  // при исключении одной из групп оставшаяся получает свою реальную,
+  // выверенную по Referenzprojekt R-02 долю (`echt`, 76,2/23,8 — decisions.md
+  // D-07), а не переизобретённое число. Доля берётся ВСЕГДА от `rawBauwerk`,
+  // никогда от уже скорректированного `bauwerkBlock` — иначе повторное
+  // применение сплита к уже уменьшенной сумме тихо родило бы ненулевую
+  // «KG 300», хотя группа исключена (тот же класс дефекта, что отклонённая
+  // находка F1).
+  const rawBauwerk = sumOfBlock([...baseDrivers, ...optDrivers], 'bauwerk')
+  const kg300Active = coreActive('KG_300')
+  const kg400Active = coreActive('KG_400')
+  if (!kg300Active || !kg400Active) {
+    const rawSplit = kgSplit(rawBauwerk, CATALOG.kgShares, 'echt')
+    if (!kg300Active && !rawSplit.KG_300.isZero()) {
+      const unresolved = s.coverage.KG_300 === 'unknown'
+      optDrivers.push({
+        key: 'kg300_excluded_adjustment',
+        origin: unresolved ? 'scope' as const : 'decision' as const,
+        block: 'bauwerk' as const,
+        exact: rawSplit.KG_300.negated(),
+        label: unresolved
+          ? 'KG 300 · Baukonstruktionen (noch offen)'
+          : 'KG 300 · Baukonstruktionen (ausgeschlossen)',
+        scopeRefs: ['KG 300'],
+        basis: {
+          kind: 'factor',
+          appliedTo: rawBauwerk,
+          factor: CATALOG.kgShares.echt.KG_300.div(100).negated(),
+        },
+      })
+    }
+    if (!kg400Active && !rawSplit.KG_400.isZero()) {
+      const unresolved = s.coverage.KG_400 === 'unknown'
+      optDrivers.push({
+        key: 'kg400_excluded_adjustment',
+        origin: unresolved ? 'scope' as const : 'decision' as const,
+        block: 'bauwerk' as const,
+        exact: rawSplit.KG_400.negated(),
+        label: unresolved
+          ? 'KG 400 · Technische Anlagen (noch offen)'
+          : 'KG 400 · Technische Anlagen (ausgeschlossen)',
+        scopeRefs: ['KG 400'],
+        basis: {
+          kind: 'factor',
+          appliedTo: rawBauwerk,
+          factor: CATALOG.kgShares.echt.KG_400.div(100).negated(),
+        },
+      })
+    }
+  }
+  // `bauwerkBlock` пересчитан ПОСЛЕ добавления корректировок — драйверы
+  // сами объявляют своё место (`block`), поэтому сумма реконструируется
+  // заново, а не патчится точечно (сплошное ревью 26, находки 9/20).
+  const bauwerkBlock = sumOfBlock([...baseDrivers, ...optDrivers], 'bauwerk')
   // KG 700 в режиме HOAI+AHO — СОБСТВЕННАЯ позиция 12 % от блока
   // (`calculation-spec` §1, решение D-27). В режиме `vereinfacht` тотал не
   // меняется: доли 70/22/8 перераспределяют уже посчитанное. Прежде ставка
   // была 8,7 % и сама попадала в базу сплита — та же позиция проводилась
   // дважды.
-  const kg700 = s.kg700Mode === 'hoaiAho'
+  const kg700 = !simplifiedScope && coreActive('KG_700')
     ? bauwerkBlock.mul(CATALOG.kgShares.kg700EchtPercentOfBauwerk).div(100)
     : new Decimal(0)
   if (!kg700.isZero()) {
@@ -1697,17 +1843,30 @@ function computeProjection(
   // считается от разбиения блока, а не от итога: включив надбавку в базу
   // распределения, мы растворили бы её в KG 300 — она перестала бы быть
   // отдельной строкой и вдобавок увеличила бы собственную базу.
-  const splitMode = s.kg700Mode === 'hoaiAho' ? 'echt' : 'vereinfacht'
-  const kg300Exact = kgSplit(bauwerkBlock, CATALOG.kgShares, splitMode).KG_300
+  // Когда одна из групп исключена, `bauwerkBlock` уже равен доле
+  // ОСТАВШЕЙСЯ группы (см. корректировку выше) — второй вызов `kgSplit`
+  // на этой уже уменьшенной сумме заново применил бы 76,2/23,8 к чужому
+  // основанию и вернул бы фантомную ненулевую долю для исключённой группы.
+  // Прямое присвоение — единственный корректный путь: у оставшейся группы
+  // весь блок, у исключённой — ноль.
+  const effectiveKgSplit = (!kg300Active || !kg400Active)
+    ? {
+        KG_300: kg300Active ? bauwerkBlock : new Decimal(0),
+        KG_400: kg400Active ? bauwerkBlock : new Decimal(0),
+      }
+    : kgSplit(
+        bauwerkBlock,
+        CATALOG.kgShares,
+        simplifiedScope ? 'vereinfacht' : 'echt',
+      )
+  const kg300Exact = effectiveKgSplit.KG_300
   for (const risk of RISK_ITEMS) {
     if (!s.risikoAktiv[risk.id]) continue
     const d = riskDriver(risk, kg300Exact)
     if (d) optDrivers.push(d)
   }
-  const separateSum = sumOfBlock(
-    [...perBuilding.flatMap((r) => r.drivers), ...optDrivers], 'separatePosition')
-  const surchargeSum = sumOfBlock(
-    [...perBuilding.flatMap((r) => r.drivers), ...optDrivers], 'surcharge')
+  const separateSum = sumOfBlock([...baseDrivers, ...optDrivers], 'separatePosition')
+  const surchargeSum = sumOfBlock([...baseDrivers, ...optDrivers], 'surcharge')
   // Скидка — «после всего» (`calculation-spec` §2) и от ТОЧНОГО итога, не от
   // показанного (CALC-007). Она вклад, а не постобработка: иначе итог и
   // Kostentreiber расходятся, и снапшот хранит цену, которой не было на
@@ -1725,7 +1884,7 @@ function computeProjection(
       basis: { kind: 'factor', appliedTo: beforeDiscount, factor },
     })
   }
-  const allDrivers = [...perBuilding.flatMap((r) => r.drivers), ...optDrivers]
+  const allDrivers = [...baseDrivers, ...optDrivers]
   const total = beforeDiscount.plus(sumOfBlock(allDrivers, 'discount'))
   const completeness = perBuilding.every((r) => r.completeness === 'complete')
     ? 'complete' : 'incomplete'
@@ -1740,12 +1899,8 @@ function computeProjection(
     : 'Grundleistung All3'
   const result: BuildingResult = {
     buildingId: list.map((b) => b.id).join('+'),
-    drivers: [
-      ...perBuilding.flatMap((r, i) =>
-        r.drivers.map((d) => ({ ...d, key: list.length > 1 ? `${list[i]!.id}:${d.key}` : d.key }))),
-      ...optDrivers,
-    ],
-    bauwerk: perBuilding.reduce((a, r) => a.plus(r.bauwerk), new Decimal(0)),
+    drivers: allDrivers,
+    bauwerk: bauwerkBlock,
     total: present(total),
     totalLabel: calculationTotalLabel(completeness, declaredPricingScope),
     completeness,
@@ -1819,7 +1974,7 @@ function computeProjection(
 
   return {
     result,
-    kgSplit: kgSplit(bauwerkBlock, CATALOG.kgShares, splitMode),
+    kgSplit: effectiveKgSplit,
     leadRate,
     secondaryRateBgf: rate(total, bgf, 'BGF_ABOVE_GROUND'),
     perUnit: units === null ? null : rate(total, units, 'WOHNEINHEITEN'),
@@ -2110,7 +2265,7 @@ const store = createStore<Store>((set, get) => {
     // Конфигурация активной Option — плоские поля из единой фабрики.
     // До создания первой Option эти же поля обслуживают уровень
     // Opportunity (анализ, параметры): рабочая копия существует всегда.
-    ...defaultOptionConfig(),
+    ...defaultOptionConfig(ESTABLISHED_FIXTURE_COVERAGE),
     // Preparation-only UI state is deliberately outside OptionConfig.
     configurationModeEditing: false,
     optionConfigs: {},
@@ -2311,10 +2466,41 @@ const store = createStore<Store>((set, get) => {
       const s = get()
       const prev = s.coverage[g]
       if (prev === st) return
-      const write = (value: CoverageState) => set((current) => {
+      const before = projectTotal(s)
+      const prevKg700Mode = s.kg700Mode
+      const prevAutoFallback = s.kg700ModeAutoFallback
+      const nextCoverage = { ...s.coverage, [g]: st }
+      const bothCoreIncluded = nextCoverage.KG_300 === 'included'
+        && nextCoverage.KG_400 === 'included'
+      // D-07 rule 6 is symmetric by its own wording ("vereinfacht requires
+      // 300 AND 400 both included"), but the ORIGINAL implementation only
+      // ever flipped forward (QA-01, ticket e2dac9b5): once a core group's
+      // exclusion auto-switched the project to `hoaiAho`, re-including it
+      // left the total silently inflated by KG 700's +12 % forever. The
+      // revert below undoes exactly what the forward branch did, and ONLY
+      // that — it never touches a mode the seller chose deliberately via
+      // `setKg700Mode` (which clears `kg700ModeAutoFallback`).
+      let nextKg700Mode = s.kg700Mode
+      let nextAutoFallback = prevAutoFallback
+      if (st !== 'included' && (g === 'KG_300' || g === 'KG_400')
+        && s.kg700Mode === 'vereinfacht') {
+        nextKg700Mode = 'hoaiAho'
+        nextAutoFallback = true
+      } else if ((g === 'KG_300' || g === 'KG_400') && bothCoreIncluded
+        && s.kg700Mode === 'hoaiAho' && prevAutoFallback) {
+        nextKg700Mode = 'vereinfacht'
+        nextAutoFallback = false
+      }
+      const write = (
+        value: CoverageState,
+        kg700Mode: Store['kg700Mode'],
+        autoFallback: boolean,
+      ) => set((current) => {
         const coverage = { ...current.coverage, [g]: value }
         return {
           coverage,
+          kg700Mode,
+          kg700ModeAutoFallback: autoFallback,
           // A future conditional KG step can disappear immediately after a
           // Scope Boundaries decision. Keep the page on the nearest active
           // semantic step; App.tsx then moves focus to that step's h1.
@@ -2324,13 +2510,38 @@ const store = createStore<Store>((set, get) => {
           }, current.openConfiguratorStep),
         }
       })
-      write(st)
+      write(st, nextKg700Mode, nextAutoFallback)
+      const after = projectTotal(get())
+      const delta = after.minus(before)
+      const fallbackApplied = nextKg700Mode === 'hoaiAho' && nextKg700Mode !== prevKg700Mode
+      const fallbackReverted = nextKg700Mode === 'vereinfacht' && nextKg700Mode !== prevKg700Mode
+      // Label text below names the KG group with a space ('KG 300', not the
+      // internal 'KG_300' coverage key) and, on an actual kg700Mode
+      // transition, names the group whose CALCULATION METHOD is switching
+      // (KG 700 — never the KG 300/400 group just toggled, which is a
+      // different group entirely; scope-boundaries.dom.test.tsx pins
+      // 'automatisch' in this journal label, so that word is kept verbatim).
+      const groupLabel = g.replace('_', ' ')
       apply({
         kind: 'coverage.changed',
-        label: `${g} ${COVERAGE_LABEL[prev]} → ${COVERAGE_LABEL[st]}`,
-        deltaExact: null,
-        inverse: () => write(prev),
-        forward: () => write(st),
+        label: `${groupLabel} ${COVERAGE_LABEL[prev]} → ${COVERAGE_LABEL[st]}`
+          + (fallbackApplied ? ' · KG 700: Berechnung automatisch auf HOAI/AHO umgestellt' : '')
+          + (fallbackReverted ? ' · KG 700: Berechnung automatisch zurück auf All3-Verfahren umgestellt' : ''),
+        deltaExact: delta.isZero() ? null : delta,
+        inverse: () => write(prev, prevKg700Mode, prevAutoFallback),
+        forward: () => write(st, nextKg700Mode, nextAutoFallback),
+      })
+      set({
+        preview: null,
+        activeDelta: {
+          label: fallbackApplied
+            ? `${groupLabel} ausgeschlossen · KG 700 · Baunebenkosten nach HOAI und AHO`
+            : fallbackReverted
+              ? `${groupLabel} ${COVERAGE_LABEL[st]} · KG 700 im All3-Verfahren 70/22/8 verteilt`
+              : `${groupLabel} ${COVERAGE_LABEL[st]}`,
+          deltaExact: delta,
+          percent: before.isZero() ? new Decimal(0) : delta.div(before).mul(100),
+        },
       })
     },
 
@@ -3095,8 +3306,14 @@ const store = createStore<Store>((set, get) => {
       const s = get()
       if (s.kg700Mode === m) return
       const prev = s.kg700Mode
+      const prevAutoFallback = s.kg700ModeAutoFallback
       const before = s.projection().result.total.exact
-      set({ kg700Mode: m })
+      // A deliberate seller choice always claims the mode from here on
+      // (QA-01, ticket e2dac9b5): `setCoverage`'s automatic D-07 rule-6
+      // revert must never override it, so the fallback provenance flag is
+      // cleared on every explicit selection, not only when it moves away
+      // from `hoaiAho`.
+      set({ kg700Mode: m, kg700ModeAutoFallback: false })
       const after = get().projection().result.total.exact
       const delta = after.minus(before)
       apply({
@@ -3105,8 +3322,8 @@ const store = createStore<Store>((set, get) => {
           ? 'KG 700 nach HOAI und AHO als eigene Position'
           : 'KG 700 im All3-Verfahren 70/22/8 verteilt',
         deltaExact: delta.isZero() ? null : delta,
-        inverse: () => set({ kg700Mode: prev }),
-        forward: () => set({ kg700Mode: m }),
+        inverse: () => set({ kg700Mode: prev, kg700ModeAutoFallback: prevAutoFallback }),
+        forward: () => set({ kg700Mode: m, kg700ModeAutoFallback: false }),
       })
     },
 
@@ -3168,6 +3385,42 @@ const store = createStore<Store>((set, get) => {
           },
         })
       }
+    },
+
+    confirmBuildingSection: (id, section, fingerprint) => {
+      const s = get()
+      if (!s.buildingReviews[id] || !BUILDING_REVIEW_SECTIONS.includes(section)
+        || fingerprint.length === 0) return
+      const previous = s.buildingSectionConfirmations[id]?.[section]
+      if (previous?.fingerprint === fingerprint) return
+      const confirmed: BuildingSectionConfirmation = {
+        fingerprint,
+        at: new Date().toISOString(),
+      }
+      const write = (value: BuildingSectionConfirmation | undefined) => set((state) => {
+        const sections = { ...state.buildingSectionConfirmations[id] }
+        if (value) sections[section] = value
+        else delete sections[section]
+        return {
+          buildingSectionConfirmations: {
+            ...state.buildingSectionConfirmations,
+            [id]: sections,
+          },
+        }
+      })
+      write(confirmed)
+      const sectionLabel: Record<BuildingReviewSection, string> = {
+        identity: 'Identität',
+        areas: 'Flächen',
+        storeys: 'Geschossstruktur',
+      }
+      apply({
+        kind: 'value.confirmed',
+        label: `Gebäude ${id} · Abschnitt ${sectionLabel[section]} bestätigt`,
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(confirmed),
+      })
     },
 
     confirmBuilding: (id) => {

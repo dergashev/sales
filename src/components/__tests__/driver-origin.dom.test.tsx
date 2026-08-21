@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
+import { confirmBuildingReviewSections } from '../../test/offer-option'
 import { __resetStoreForTests, useStore } from '../../state/store'
 
 /**
@@ -27,10 +28,16 @@ async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
   await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
   await user.click(screen.getByRole('button', { name: 'Öffnen' }))
+  await confirmBuildingReviewSections(user)
   await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
   await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
   await user.click(screen.getByRole('radio', { name: 'Je Gebäude konfigurieren' }))
   await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
+  act(() => {
+    useStore.getState().setCoverage('KG_300', 'included')
+    useStore.getState().setCoverage('KG_400', 'included')
+    useStore.getState().setCoverage('KG_700', 'included')
+  })
   await user.click(screen.getAllByRole('button', { name: /Leistungsabgrenzung/ })[0]!)
   await user.click(screen.getAllByRole('button', { name: /Leistungen KG 300/ })[0]!)
 }

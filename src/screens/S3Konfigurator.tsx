@@ -23,7 +23,6 @@ import { NNBSP } from '../engine/money'
 import { useT, useTx } from '../i18n'
 import { incompleteReasonText } from '../i18n/reasons'
 import {
-  SCOPE_BOUNDARIES_DECIDABLE_GROUPS,
   type BuildingInput,
   type CostGroup,
   type CoverageState,
@@ -44,7 +43,7 @@ import {
 } from '../components/designSystem'
 import { DataStateBlock } from '../components/DataStates'
 import { ClientNotice } from '../components/ClientNotice'
-import { CheckboxCard, RadioCardGroup, SegmentedControl } from '../components/controls'
+import { RadioCardGroup, SegmentedControl } from '../components/controls'
 import { optionImage } from '../assets/option-images'
 import { ScheduleGantt } from '../components/ScheduleGantt'
 import { OptionChapter } from './OptionChapter'
@@ -223,7 +222,7 @@ export function S3Konfigurator() {
         </div>
 
         {/* Один следующий шаг всегда на экране (DC-27): маршрут, не принуждение. */}
-        {!totalOverview && <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-4">
+        {!totalOverview && currentId !== CONFIGURATOR_STEP.SCOPE_BOUNDARIES && <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-4">
           {previous ? (
             <Button onClick={() => s.openConfiguratorStepAt(previous.id)}>
               {t('s3.previousChapter', {
@@ -351,6 +350,7 @@ function ConfigurationModeEntry() {
             {
               value: 'SHARED',
               title: t('configurator.mode.shared.title'),
+              image: optionImage('configurationMode', 'SHARED'),
               description: t('configurator.mode.shared.description'),
               consequence: t('configurator.mode.shared.consequence', {
                 buildings: names,
@@ -359,6 +359,7 @@ function ConfigurationModeEntry() {
             {
               value: 'PER_BUILDING',
               title: t('configurator.mode.perBuilding.title'),
+              image: optionImage('configurationMode', 'PER_BUILDING'),
               description: t('configurator.mode.perBuilding.description'),
               consequence: selectedIds.length === 1
                 ? t('configurator.mode.perBuilding.consequenceOne')
@@ -768,44 +769,16 @@ function ChapterUmfang() {
     reason,
   ])).values()]
   const scopeStatus = scopeBoundariesStatus(s)
+  const nextStep = activeConfiguratorWorkflow({ coverage: s.coverage, mode: s.mode })[1]
 
   return (
     <div className="grid gap-5">
       <Card
         title="Leistungsumfang nach DIN 276"
-        intro={'Sechs Kostengruppen bestimmen den Angebotsumfang. KG 300, 400 '
-          + 'und 700 sind Kern des Angebots und nicht abwählbar — ohne sie '
-          + 'gibt es kein Angebot; bei KG 700 ist nur die Berechnungsart '
-          + 'verhandelbar, und die ist intern. KG 200, 500 und 600 sind '
-          + 'echte Entscheidungen: «noch offen» ist eine Lücke, keine '
-          + 'Entscheidung, und verhindert den Gesamtpreis, solange sie offen bleibt.'}
+        intro={t('configurator.scope.introBinary')}
       >
         <div className="grid gap-5">
           {SCOPE_ORDER.map((g) => {
-            if (MANDATORY_SCOPE_GROUPS.has(g)) {
-              const share = p.kgSplit[g as 'KG_300' | 'KG_400' | 'KG_700']
-              return (
-                <CheckboxCard
-                  key={g}
-                  legend={`${g.replace('_', NNBSP)} ${KG_LABELS[g]}`}
-                  options={[{
-                    value: g,
-                    title: tx(`${g.replace('_', NNBSP)} ${KG_LABELS[g]}`),
-                    image: optionImage('scopeBoundaries', g),
-                    // Geldwert und Übersetzung bleiben getrennte Textknoten
-                    // (nicht verkettet, Regel 36/CALC-007): eine Verkettung
-                    // von Zahl und Wort würde pro Kostengruppe einen eigenen,
-                    // nie wiederverwendbaren „Rest" erzeugen.
-                    description: tx('Immer Bestandteil des Angebots · kein Einfluss auf die Bauzeit — keine Auswahl.'),
-                    consequence: share ? moneyLabel(present(share)) : tx('im Kostenwasserfall ausgewiesen'),
-                    checked: true,
-                    onChange: () => {},
-                    mandatory: true,
-                    mandatoryReason: 'Kern des Angebots',
-                  }]}
-                />
-              )
-            }
             const spec = COVERAGE_RATES[g]
             // Последствие приходит из ТОЙ ЖЕ проекции, что и клик: и охват
             // считается по ВСЕМ включённым зданиям, а не по активному.
@@ -815,9 +788,10 @@ function ChapterUmfang() {
             // рычага). Второй калькулятор последствия расходится молча.
             const outcome = (v: CoverageState) =>
               s.coverage[g] === v ? null : s.outcomeOf({ kind: 'coverage', group: g, value: v })
-            const tile = (v: CoverageState, title: string, zero: string) => ({
+            const tile = (v: Extract<CoverageState, 'included' | 'excluded'>, title: string, zero: string) => ({
               value: v,
               title,
+              image: optionImage('scopeBoundaries', g),
               description: v === 'included' && spec ? `${tx(spec.basis)} ⚙` : undefined,
               consequence: s.coverage[g] === v
                 ? tx('aktuelle Auswahl')
@@ -837,14 +811,6 @@ function ChapterUmfang() {
                          tx('ohne Preisansatz im indikativen Angebot')),
                     tile('excluded', tx(COVERAGE_LABEL.excluded),
                          tx('Entscheidung, keine Lücke: die Summe bleibt vollständig')),
-                    {
-                      value: 'unknown' as const,
-                      title: tx(COVERAGE_LABEL.unknown),
-                      description: tx('Lücke, keine Entscheidung: das Angebot weist keinen Gesamtpreis aus'),
-                      consequence: s.coverage[g] === 'unknown'
-                        ? tx('aktuelle Auswahl')
-                        : tx('Zwischensumme statt Gesamtpreis'),
-                    },
                   ]}
                 />
                 {g === 'KG_200' && (
@@ -897,23 +863,23 @@ function ChapterUmfang() {
       </Card>
 
       <Card title="Leistungsabgrenzung bestätigen">
-        {scopeStatus === 'confirmed' ? (
-          <p className="a3-cap">
-            <span aria-hidden="true">✓ </span>
-            {tx('Leistungsabgrenzung bestätigt.')}
-          </p>
-        ) : (
-          <NextStep
-            label={scopeStatus === 'recheck'
-              ? tx('Leistungsabgrenzung erneut prüfen')
+        <NextStep
+          label={scopeStatus === 'recheck'
+            ? tx('Leistungsabgrenzung erneut prüfen')
+            : scopeStatus === 'confirmed'
+              ? tx('Leistungsabgrenzung bestätigt.')
               : tx('Leistungsabgrenzung bestätigen')}
-            description={scopeStatus === 'recheck'
-              ? tx('KG 200/500/600, Energiestandard oder Zertifizierung haben sich seit der letzten Bestätigung geändert.')
-              : tx('Erst nach Bestätigung gilt die nachfolgende Konfiguration als abschließbar.')}
-            action={tx('Bestätigen')}
-            onAction={() => s.confirmScopeBoundaries()}
-          />
-        )}
+          description={scopeStatus === 'recheck'
+            ? t('configurator.scope.changed')
+            : t('configurator.scope.confirmAndContinueHelp')}
+          action={scopeStatus === 'confirmed'
+            ? t('configurator.scope.continue')
+            : t('configurator.scope.confirmAndContinue')}
+          onAction={() => {
+            if (scopeStatus !== 'confirmed') s.confirmScopeBoundaries()
+            if (nextStep) s.openConfiguratorStepAt(nextStep.id)
+          }}
+        />
       </Card>
     </div>
   )
@@ -921,12 +887,6 @@ function ChapterUmfang() {
 
 const SCOPE_ORDER: CostGroup[] =
   ['KG_200', 'KG_300', 'KG_400', 'KG_500', 'KG_600', 'KG_700']
-// Tech Review P2 (ticket d21f8d48): derived from the engine's single
-// canonical decidable-groups list, not a second independently named set —
-// the two could otherwise drift apart silently.
-const MANDATORY_SCOPE_GROUPS = new Set<CostGroup>(
-  SCOPE_ORDER.filter((g) => !(SCOPE_BOUNDARIES_DECIDABLE_GROUPS as readonly CostGroup[]).includes(g)),
-)
 
 /**
  * Energiestandard-Auswahl, extrahiert aus `ChapterEnergie` (unten), damit
@@ -1435,8 +1395,11 @@ function ChapterTermine() {
  */
 function ChapterKg700() {
   const tx = useTx()
+  const t = useT()
   const s = useStore()
   const p = s.projection()
+  const all3Available = s.coverage.KG_300 === 'included'
+    && s.coverage.KG_400 === 'included'
 
   if (s.mode === 'praesentation') {
     return (
@@ -1454,26 +1417,27 @@ function ChapterKg700() {
   return (
     <div className="grid gap-5">
       <Card
-        title={`Baunebenkosten KG${NNBSP}700`}
-        intro={'Zwei Verfahren mit unterschiedlichem Ergebnis. Das All3-Verfahren '
-          + 'verteilt die bereits berechnete Summe und ändert den Gesamtbetrag '
-          + 'nicht; HOAI und AHO rechnen die Nebenkosten als eigene Position '
-          + 'hinzu. Der Kunde sieht in beiden Fällen dieselbe Aussage: '
-          + 'KG 700 ist enthalten.'}
+        title={t('chrome3.chapter.kg700')}
+        intro={t('remainder5.ancillary.twoMethods')}
       >
         <SegmentedControl
-          legend="Berechnungsart KG 700"
+          legend={t('kg700.calculationMethod')}
           value={s.kg700Mode}
           onChange={(m) => s.setKg700Mode(m)}
           options={[
-            { value: 'vereinfacht', label: 'All3-Verfahren 70/22/8' },
-            { value: 'hoaiAho', label: 'nach HOAI und AHO' },
+            {
+              value: 'vereinfacht',
+              label: t('kg700.all3Method'),
+              disabled: !all3Available,
+              disabledReason: t('kg700.all3UnavailableReason'),
+            },
+            { value: 'hoaiAho', label: t('kg700.hoaiAhoMethod') },
           ]}
         />
         <p className="a3-cap mt-3">
           {s.kg700Mode === 'vereinfacht'
-            ? 'Der Gesamtbetrag bleibt unverändert — 70/22/8 verteilt, was bereits gerechnet ist.'
-            : 'Die Nebenkosten kommen als eigene Zeile im Kostentreiber hinzu.'}
+            ? t('kg700.distributionUnchanged')
+            : t('kg700.separateDriverRow')}
         </p>
         {/* В режиме echt доли KG 700 внутри блока нет: она стоит своей
             позицией и живёт в водопаде, а не в разбивке блока. */}

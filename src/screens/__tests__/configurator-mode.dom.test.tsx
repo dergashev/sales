@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
+import { confirmBuildingReviewSections } from '../../test/offer-option'
 import { ConfigurationScopeTabs } from '../S3Konfigurator'
 import {
   __resetStoreForTests,
@@ -33,10 +34,12 @@ async function openModeStep(
   if (buildingCount === 2) {
     await user.click(screen.getByRole('checkbox', { name: 'Haus B' }))
   }
+  await confirmBuildingReviewSections(user)
   await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
   if (buildingCount === 2) {
     const tabs = screen.getByRole('tablist', { name: 'Gewählte Gebäude' })
     await user.click(within(tabs).getByRole('tab', { name: /Haus B/ }))
+    await confirmBuildingReviewSections(user)
     await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
   }
   await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
@@ -50,6 +53,14 @@ async function startMode(
     name: mode === 'SHARED' ? 'Gemeinsam konfigurieren' : 'Je Gebäude konfigurieren',
   }))
   await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
+}
+
+function includeCoreScope() {
+  act(() => {
+    useStore.getState().setCoverage('KG_300', 'included')
+    useStore.getState().setCoverage('KG_400', 'included')
+    useStore.getState().setCoverage('KG_700', 'included')
+  })
 }
 
 async function visitRequiredBuildingChapters(user: ReturnType<typeof userEvent.setup>) {
@@ -96,21 +107,20 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     expect(within(workflowNav).getAllByRole('button').map((button) =>
       button.querySelector('span:last-child')?.textContent)).toEqual([
       'Leistungsabgrenzung',
-      'Leistungen KG 300',
-      'Technik KG 400',
       'Energie & Zertifikate',
       'Flächen im Detail',
-      'Baunebenkosten KG 700',
       'Termine & Kommerzielles',
     ])
     expect(screen.queryByRole('button', { name: /Baugrund & Erschließung/ })).toBeNull()
-    expect(screen.getByText('Kapitel 1 von 7 · Konfigurator')).toBeInTheDocument()
+    expect(screen.getByText('Kapitel 1 von 4 · Konfigurator')).toBeInTheDocument()
     // Leistungsabgrenzung is project-level, not building-scoped: no per-
     // building tabs, no per-building readiness detail on this chapter.
     expect(screen.getByText('Gilt für den gesamten Komplex')).toBeInTheDocument()
     expect(screen.queryByText(/Gebäudeschritte 1, 3, 4 und 5/)).toBeNull()
     expect(screen.getByRole('complementary', { name: 'Angebot' })).toBeInTheDocument()
     expect(screen.queryByText('Kalkulation noch nicht gestartet')).toBeNull()
+
+    includeCoreScope()
 
     await user.click(nav(/Variantenvergleich/))
     expect(screen.getByRole('complementary', { name: 'Angebot' })).toBeInTheDocument()
@@ -148,6 +158,7 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     const user = userEvent.setup()
     await openModeStep(user, 2)
     await startMode(user, 'SHARED')
+    includeCoreScope()
     // "Konfiguration starten" lands on Leistungsabgrenzung (project-level);
     // the building-scoped SHARED text below only renders on a
     // building-scoped chapter.
@@ -196,6 +207,7 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
       label: 'Konfiguration je Gebäude bestätigt',
       deltaExact: null,
     })
+    includeCoreScope()
 
     // "Konfiguration starten" lands on Leistungsabgrenzung (project-level,
     // no building tabs); the per-building switcher below lives on a
@@ -281,13 +293,9 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     await openModeStep(user, 2)
     await startMode(user, 'PER_BUILDING')
     await user.click(nav(/Leistungsabgrenzung/))
-    // Scope Boundaries (ticket 627d3191): all six KG groups now start
-    // `unknown` instead of pre-decided, per the approved Product Decision
-    // Brief ("no KG is pre-selected as included, including 300/400/700").
-    // ChapterUmfang only exposes KG 200/500/600 as decidable tiles today —
-    // KG 300/400/700 have no interactive control yet (known interface
-    // limitation, see the INITIAL_COVERAGE comment in store.ts), so they are
-    // resolved directly via the store action here, same as the others.
+    // Scope Boundaries (AC22/D-18): all six KG groups start `unknown`.
+    // This test resolves them through the same store actions used by the six
+    // RadioCardGroups because its subject is narrowed pricing, not tile input.
     act(() => useStore.getState().setCoverage('KG_200', 'excluded'))
     act(() => useStore.getState().setCoverage('KG_300', 'included'))
     act(() => useStore.getState().setCoverage('KG_400', 'included'))
@@ -341,6 +349,7 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     const user = userEvent.setup()
     await openModeStep(user, 1)
     await startMode(user, 'PER_BUILDING')
+    includeCoreScope()
     await visitRequiredBuildingChapters(user)
     await user.click(screen.getByRole('button', {
       name: 'Konfiguration für Haus A bestätigen',
@@ -362,6 +371,7 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     expect(screen.getByText(/Andere gültige Konfigurationsarbeit bleibt gespeichert/))
       .toBeInTheDocument()
 
+    await confirmBuildingReviewSections(user)
     await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
     expect(screen.queryByText(/Konfigurationsbestätigung aufgehoben/)).toBeNull()
     await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))

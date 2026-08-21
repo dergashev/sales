@@ -27,11 +27,10 @@ export type Coverage = Record<CostGroup, CoverageState>
 
 /**
  * Leistungsabgrenzung groups that require a user coverage decision.
- * KG 300/400/700 are mandatory by policy; their persisted `unknown` value is
- * a neutral representation, not an unresolved decision.
+ * Every offered cost group requires an explicit scope decision.
  */
 export const SCOPE_BOUNDARIES_DECIDABLE_GROUPS = [
-  'KG_200', 'KG_500', 'KG_600',
+  'KG_200', 'KG_300', 'KG_400', 'KG_500', 'KG_600', 'KG_700',
 ] as const satisfies readonly CostGroup[]
 
 export type BuildingInput = {
@@ -149,9 +148,12 @@ export type Driver = {
    * `base` — базовая ставка объёма, не решение и не факт;
    * `fact` — свойство здания, которое ПОДТВЕРЖДАЮТ, а не выбирают
    *   (класс здания следует из этажности и пожарной концепции);
-   * `decision` — то, что продавец выбрал и может отменить.
+   * `decision` — то, что продавец выбрал и может отменить;
+   * `scope` — ценовая корректировка из ещё не принятого решения о покрытии.
+   *   Она сохраняет честный промежуточный расчёт, но не попадает в список
+   *   выбранного и не выдаёт пробел данных за коммерческое решение.
    */
-  origin: 'base' | 'fact' | 'decision'
+  origin: 'base' | 'fact' | 'decision' | 'scope'
   /**
    * Место вклада в структуре сметы. Поле, а не вывод из `scopeRefs`: у
    * надбавки за риск база названа как `KG 320`, и по позиции она неотличима

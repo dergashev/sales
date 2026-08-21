@@ -20,10 +20,16 @@ import manifest from '../../design-system/assets/options/manifest.json'
 
 type Entry = { group: string; value: string; file: string; motifDe: string }
 
-const FILES = import.meta.glob(
-  '../../design-system/assets/options/*.webp',
-  { eager: true, query: '?url', import: 'default' },
-) as Record<string, string>
+const FILES = {
+  ...(import.meta.glob(
+    '../../design-system/assets/options/*.webp',
+    { eager: true, query: '?url', import: 'default' },
+  ) as Record<string, string>),
+  ...(import.meta.glob(
+    '../../design-system/assets/options/*.png',
+    { eager: true, query: '?url', import: 'default' },
+  ) as Record<string, string>),
+}
 
 const BY_NAME = new Map(
   Object.entries(FILES).map(([path, url]) => [path.split('/').pop()!, url]),

@@ -13,6 +13,7 @@ import {
   buildingConfirmed,
   includedBuildingIds,
   useStore,
+  type BuildingReviewSection,
 } from '../state/store'
 import {
   BUILDING_FACT_KEYS,
@@ -30,6 +31,7 @@ import {
 } from '../state/buildingReview'
 import {
   Badge,
+  DisclosureRow,
   FormField,
   PageHeader,
   ReadinessChecklist,
@@ -151,6 +153,70 @@ function StatusBadge({ status }: { status: ReturnType<typeof statusFor> }) {
     return <Badge sign="▲">{t('buildingScope.status.conflict')}</Badge>
   }
   return <Badge sign="○">{t('buildingScope.status.open')}</Badge>
+}
+
+type ReviewSectionKey = BuildingReviewSection
+type ReviewSectionStatus = 'notReviewed' | 'needsAttention' | 'ready' | 'confirmed' | 'changed'
+
+const REVIEW_SECTIONS: ReadonlyArray<ReviewSectionKey> = ['identity', 'areas', 'storeys']
+const IDENTITY_FACTS: ReadonlyArray<BuildingFactKey> = [
+  'documentationName', 'address', 'buildingForm', 'buildingClass', 'units',
+]
+const AREA_FACTS: ReadonlyArray<BuildingFactKey> = [
+  'bgfRAbove', 'bgfSAbove', 'bgfRSAbove', 'bgfRBelow', 'bgfSBelow',
+  'bgfRSBelow', 'bgfRSTotal', 'wfl', 'nuf',
+]
+const BLOCKING_FACTS: Record<ReviewSectionKey, ReadonlyArray<BuildingFactKey>> = {
+  identity: ['documentationName', 'buildingForm', 'buildingClass'],
+  areas: ['bgfRAbove', 'bgfSAbove', 'bgfRSBelow'],
+  storeys: [],
+}
+
+function reviewValueFingerprint(value: unknown): string {
+  if (value === null || value === undefined) return 'unknown'
+  if (value instanceof Decimal) return value.toFixed()
+  return JSON.stringify(value)
+}
+
+function reviewSectionFingerprint(
+  review: ReturnType<typeof useStore.getState>['buildingReviews'][string],
+  conflicts: ReturnType<typeof useStore.getState>['buildingConflicts'],
+  section: ReviewSectionKey,
+): string {
+  const keys = section === 'identity' ? IDENTITY_FACTS
+    : section === 'areas' ? AREA_FACTS
+      : ['storeyStructure'] as const
+  return keys.map((key) => {
+    const fact = review.facts[key] as BuildingFact<unknown>
+    const value = DERIVED_KEYS.has(key)
+      ? effectiveDerivedArea(review, conflicts, key as DerivedAreaKey).value
+      : fact.override?.value ?? fact.extracted.value
+    return `${key}:${reviewValueFingerprint(value)}`
+  }).join('|')
+}
+
+function sectionForFact(key: BuildingFactKey | DerivedAreaKey): ReviewSectionKey {
+  if (key === 'storeyStructure') return 'storeys'
+  return IDENTITY_FACTS.includes(key as BuildingFactKey) ? 'identity' : 'areas'
+}
+
+function sectionHasBlockingMissingValue(
+  review: ReturnType<typeof useStore.getState>['buildingReviews'][string],
+  section: ReviewSectionKey,
+): boolean {
+  return BLOCKING_FACTS[section].some((key) =>
+    effectiveFactValue(review.facts[key] as BuildingFact<unknown>) === null)
+}
+
+function sectionHasAnyValue(
+  review: ReturnType<typeof useStore.getState>['buildingReviews'][string],
+  section: ReviewSectionKey,
+): boolean {
+  const keys = section === 'identity' ? IDENTITY_FACTS
+    : section === 'areas' ? AREA_FACTS
+      : ['storeyStructure'] as const
+  return keys.some((key) =>
+    effectiveFactValue(review.facts[key] as BuildingFact<unknown>) !== null)
 }
 
 export function BuildingScope() {
@@ -307,6 +373,16 @@ export function BuildingScope() {
                   const address = effectiveFactValue(review.facts.address)
                   const form = effectiveFactValue(review.facts.buildingForm)
                   const buildingClass = effectiveFactValue(review.facts.buildingClass)
+                  const gfa = effectiveDerivedArea(
+                    review, s.buildingConflicts, 'bgfRSTotal',
+                  ).value
+                  const wfl = effectiveFactValue(review.facts.wfl)
+                  const nuf = effectiveFactValue(review.facts.nuf)
+                  const units = effectiveFactValue(review.facts.units)
+                  const area = wfl ?? nuf
+                  const areaLabel = t(wfl
+                    ? 'buildingScope.fact.wfl'
+                    : 'buildingScope.fact.nuf')
                   return (
                     <li key={id} className="border-b border-border-subtle py-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -321,22 +397,25 @@ export function BuildingScope() {
                         </label>
                         <StatusBadge status={statusFor(s, id)} />
                       </div>
-                      <dl className="mt-2 grid gap-1 pl-7 text-small text-text-secondary">
+                      <dl className="mt-3 grid grid-cols-3 gap-3 pl-7 text-small text-text-secondary">
                         <FactSummary
-                          label={t('buildingScope.fact.address')}
-                          value={address ?? t('buildingScope.value.addressMissing')}
+                          label={t('buildingScope.fact.bgfRSTotal')}
+                          value={gfa ? `${formatDE(gfa, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}
                         />
                         <FactSummary
-                          label={t('buildingScope.fact.form')}
-                          value={form ? t(FORM_MESSAGE[form]) : t('buildingScope.value.formMissing')}
+                          label={areaLabel}
+                          value={area ? `${formatDE(area, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}
                         />
                         <FactSummary
-                          label={t('buildingScope.fact.class')}
-                          value={buildingClass
-                            ? t(CLASS_MESSAGE[buildingClass])
-                            : t('buildingScope.value.classMissing')}
+                          label={t('buildingScope.fact.units')}
+                          value={units ? formatDE(units, 0) : t('buildingScope.value.notCaptured')}
                         />
                       </dl>
+                      <p className="mt-2 pl-7 text-small text-text-muted">
+                        {[address, form ? t(FORM_MESSAGE[form]) : null,
+                          buildingClass ? t(CLASS_MESSAGE[buildingClass]) : null]
+                          .filter(Boolean).join(' · ')}
+                      </p>
                     </li>
                   )
                 })}
@@ -469,6 +548,41 @@ function BuildingReviewPanel({
   }).length
   const confirmationRef = useRef<HTMLParagraphElement>(null)
   const [focusConfirmation, setFocusConfirmation] = useState(false)
+  const sectionFingerprints: Record<ReviewSectionKey, string> = {
+    identity: reviewSectionFingerprint(review, s.buildingConflicts, 'identity'),
+    areas: reviewSectionFingerprint(review, s.buildingConflicts, 'areas'),
+    storeys: reviewSectionFingerprint(review, s.buildingConflicts, 'storeys'),
+  }
+  const [openSections, setOpenSections] = useState<Record<ReviewSectionKey, boolean>>({
+    identity: true,
+    areas: false,
+    storeys: false,
+  })
+
+  const sectionHasConflict = (section: ReviewSectionKey) => openConflicts.some(
+    (conflict) => sectionForFact(conflict.factKey) === section,
+  )
+  const sectionStatus = (section: ReviewSectionKey): ReviewSectionStatus => {
+    if (sectionHasConflict(section) || sectionHasBlockingMissingValue(review, section)) {
+      return 'needsAttention'
+    }
+    const saved = s.buildingSectionConfirmations[buildingId]?.[section]
+    if (saved) {
+      return saved.fingerprint === sectionFingerprints[section] ? 'confirmed' : 'changed'
+    }
+    return sectionHasAnyValue(review, section) ? 'ready' : 'notReviewed'
+  }
+  const sectionsConfirmed = REVIEW_SECTIONS.every(
+    (section) => sectionStatus(section) === 'confirmed',
+  )
+  const confirmSection = (section: ReviewSectionKey) => {
+    if (sectionHasConflict(section) || sectionHasBlockingMissingValue(review, section)) return
+    s.confirmBuildingSection(buildingId, section, sectionFingerprints[section])
+    setOpenSections((current) => ({ ...current, [section]: false }))
+    const next = REVIEW_SECTIONS.find((candidate) =>
+      candidate !== section && sectionStatus(candidate) !== 'confirmed')
+    if (next) setOpenSections((current) => ({ ...current, [next]: true }))
+  }
 
   useEffect(() => {
     if (focusConfirmation && confirmed) {
@@ -487,57 +601,103 @@ function BuildingReviewPanel({
 
   return (
     <div className="grid gap-6">
-      <FactGroup title={t('buildingScope.group.identity')}>
-        <TextFactField buildingId={buildingId} factKey="documentationName" />
-        <TextFactField buildingId={buildingId} factKey="address" />
-        <SelectFactField
-          buildingId={buildingId}
-          factKey="buildingForm"
-          values={FORM_VALUES}
-          messageFor={(value) => FORM_MESSAGE[value]}
-        />
-        <SelectFactField
-          buildingId={buildingId}
-          factKey="buildingClass"
-          values={CLASS_VALUES}
-          messageFor={(value) => CLASS_MESSAGE[value]}
-          helper={t('buildingScope.class.helper')}
-        />
-      </FactGroup>
+      {openConflicts.length > 0 && (
+        <div className="grid gap-3">
+          <DataStateBlock
+            state="error"
+            sentence={t('buildingScope.confirm.conflictReason', { count: openConflicts.length })}
+            detail={t('buildingScope.recovery.detail')}
+            impact={t('buildingScope.recovery.title', { buildings: stableName(review, buildingId) })}
+            remedy={t('buildingScope.recovery.remedy')}
+            retryPolicy={t('buildingScope.confirm.includesClass')}
+          />
+          {openConflicts.map((conflict) => (
+            <ConflictDecision key={conflict.id} conflict={conflict} />
+          ))}
+        </div>
+      )}
 
-      <FactGroup title={t('buildingScope.group.above')}>
-        <DecimalFactField buildingId={buildingId} factKey="bgfRAbove" unit="m²" />
-        <DecimalFactField buildingId={buildingId} factKey="bgfSAbove" unit="m²" />
-        <DecimalFactField buildingId={buildingId} factKey="bgfRSAbove" unit="m²" derived />
-      </FactGroup>
-
-      <FactGroup title={t('buildingScope.group.below')}>
-        <DecimalFactField buildingId={buildingId} factKey="bgfRBelow" unit="m²" />
-        <DecimalFactField buildingId={buildingId} factKey="bgfSBelow" unit="m²" />
-        <DecimalFactField buildingId={buildingId} factKey="bgfRSBelow" unit="m²" derived />
-      </FactGroup>
-
-      <FactGroup title={t('buildingScope.group.total')}>
-        <DecimalFactField buildingId={buildingId} factKey="bgfRSTotal" unit="m²" derived />
-        <DecimalFactField buildingId={buildingId} factKey="wfl" unit="m²" />
-        <DecimalFactField buildingId={buildingId} factKey="nuf" unit="m²" />
-        <DecimalFactField buildingId={buildingId} factKey="units" integer />
-      </FactGroup>
-
-      <FactGroup title={t('buildingScope.group.storeys')}>
-        <StoreyEditor buildingId={buildingId} />
-      </FactGroup>
-
-      <FactGroup title={t('buildingScope.group.decisions')}>
-        {conflicts.length === 0 ? (
-          <p className="text-small text-text-secondary">
-            <span aria-hidden="true">✓ </span>
-            {t('buildingScope.conflicts.none')}
-          </p>
-        ) : conflicts.map((conflict) => (
-          <ConflictDecision key={conflict.id} conflict={conflict} />
-        ))}
-      </FactGroup>
+      <div className="a3-tbl-scroll">
+        <table className="w-full border-collapse">
+          <caption className="sr-only">{t('buildingScope.review.title')}</caption>
+          <tbody>
+            <ReviewDisclosure
+              section="identity"
+              label={t('buildingScope.group.identity')}
+              summary={identitySectionSummary(review, t)}
+              status={sectionStatus('identity')}
+              open={openSections.identity}
+              onOpenChange={(open) => setOpenSections((current) => ({ ...current, identity: open }))}
+              onConfirm={() => confirmSection('identity')}
+              confirmDisabled={sectionHasConflict('identity')
+                || sectionHasBlockingMissingValue(review, 'identity')}
+            >
+              <div className="grid gap-4 p-4">
+                <TextFactField buildingId={buildingId} factKey="documentationName" />
+                <TextFactField buildingId={buildingId} factKey="address" />
+                <SelectFactField buildingId={buildingId} factKey="buildingForm"
+                  values={FORM_VALUES} messageFor={(value) => FORM_MESSAGE[value]} />
+                <SelectFactField buildingId={buildingId} factKey="buildingClass"
+                  values={CLASS_VALUES} messageFor={(value) => CLASS_MESSAGE[value]}
+                  helper={t('buildingScope.class.helper')} />
+                <DecimalFactField buildingId={buildingId} factKey="units" integer />
+              </div>
+            </ReviewDisclosure>
+            <ReviewDisclosure
+              section="areas"
+              label={t('buildingScope.group.total')}
+              summary={areaSectionSummary(review, s.buildingConflicts, t)}
+              status={sectionStatus('areas')}
+              open={openSections.areas}
+              onOpenChange={(open) => setOpenSections((current) => ({ ...current, areas: open }))}
+              onConfirm={() => confirmSection('areas')}
+              confirmDisabled={sectionHasConflict('areas')
+                || sectionHasBlockingMissingValue(review, 'areas')}
+            >
+              <div className="grid gap-4 p-4">
+                <section aria-labelledby={`areas-above-${buildingId}`} className="grid gap-4">
+                  <h4 id={`areas-above-${buildingId}`} className="text-heading-3 font-bold text-text-primary">
+                    {t('buildingScope.areas.above')}
+                  </h4>
+                  <DecimalFactField buildingId={buildingId} factKey="bgfRAbove" unit="m²" />
+                  <DecimalFactField buildingId={buildingId} factKey="bgfSAbove" unit="m²" />
+                  <DecimalFactField buildingId={buildingId} factKey="bgfRSAbove" unit="m²" derived />
+                </section>
+                <section aria-labelledby={`areas-below-${buildingId}`} className="grid gap-4">
+                  <h4 id={`areas-below-${buildingId}`} className="text-heading-3 font-bold text-text-primary">
+                    {t('buildingScope.areas.below')}
+                  </h4>
+                  <DecimalFactField buildingId={buildingId} factKey="bgfRBelow" unit="m²" />
+                  <DecimalFactField buildingId={buildingId} factKey="bgfSBelow" unit="m²" />
+                  <DecimalFactField buildingId={buildingId} factKey="bgfRSBelow" unit="m²" derived />
+                </section>
+                <section aria-labelledby={`areas-total-${buildingId}`} className="grid gap-4">
+                  <h4 id={`areas-total-${buildingId}`} className="text-heading-3 font-bold text-text-primary">
+                    {t('buildingScope.areas.totals')}
+                  </h4>
+                  <DecimalFactField buildingId={buildingId} factKey="bgfRSTotal" unit="m²" derived />
+                  <DecimalFactField buildingId={buildingId} factKey="wfl" unit="m²" />
+                  <DecimalFactField buildingId={buildingId} factKey="nuf" unit="m²" />
+                </section>
+              </div>
+            </ReviewDisclosure>
+            <ReviewDisclosure
+              section="storeys"
+              label={t('buildingScope.group.storeys')}
+              summary={effectiveFactValue(review.facts.storeyStructure)
+                ? storeySummary(effectiveFactValue(review.facts.storeyStructure))
+                : t('buildingScope.value.storeysMissing')}
+              status={sectionStatus('storeys')}
+              open={openSections.storeys}
+              onOpenChange={(open) => setOpenSections((current) => ({ ...current, storeys: open }))}
+              onConfirm={() => confirmSection('storeys')}
+              confirmDisabled={sectionHasConflict('storeys')}
+            >
+              <div className="p-4"><StoreyEditor buildingId={buildingId} /></div>
+            </ReviewDisclosure>
+          </tbody>
+        </table>
+      </div>
 
       <section className="border-t border-border-strong pt-5" aria-label={t('buildingScope.confirm.section')}>
         {missingCount > 0 && (
@@ -563,12 +723,14 @@ function BuildingReviewPanel({
             <Button
               variant="primary"
               onClick={confirm}
-              disabled={openConflicts.length > 0}
+              disabled={openConflicts.length > 0 || !sectionsConfirmed}
               disabledReason={openConflicts.length > 0
                 ? t('buildingScope.confirm.conflictReason', {
                   count: openConflicts.length,
                 })
-                : undefined}
+                : !sectionsConfirmed
+                  ? t('buildingScope.confirm.sectionsReason')
+                  : undefined}
             >
               {t('buildingScope.confirm.action')}
             </Button>
@@ -579,13 +741,90 @@ function BuildingReviewPanel({
   )
 }
 
-function FactGroup({ title, children }: { title: string; children: ReactNode }) {
+function ReviewDisclosure({
+  section,
+  label,
+  summary,
+  status,
+  open,
+  onOpenChange,
+  onConfirm,
+  confirmDisabled,
+  children,
+}: {
+  section: ReviewSectionKey
+  label: string
+  summary: string
+  status: ReviewSectionStatus
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onConfirm: () => void
+  confirmDisabled: boolean
+  children: ReactNode
+}) {
+  const t = useT()
+  const statusKey = {
+    notReviewed: 'buildingScope.sectionStatus.notReviewed',
+    needsAttention: 'buildingScope.sectionStatus.needsAttention',
+    ready: 'buildingScope.sectionStatus.ready',
+    confirmed: 'buildingScope.sectionStatus.confirmed',
+    changed: 'buildingScope.sectionStatus.changed',
+  } as const
+  const sign = status === 'confirmed' ? '✓'
+    : status === 'needsAttention' || status === 'changed' ? '▲'
+      : status === 'ready' ? '→' : '○'
   return (
-    <section className="border-t border-border-subtle pt-5">
-      <h3 className="text-heading-3 font-bold text-text-primary">{title}</h3>
-      <div className="mt-3 grid grid-cols-1 gap-4">{children}</div>
-    </section>
+    <DisclosureRow
+      label={label}
+      cells={[
+        <span key={`${section}-summary`} className="text-small text-text-secondary">{summary}</span>,
+        <Badge key={`${section}-status`} sign={sign}>
+          {t(statusKey[status])}
+        </Badge>,
+      ]}
+      open={open}
+      onOpenChange={onOpenChange}
+    >
+      {children}
+      <div className="flex justify-end border-t border-border-subtle p-4">
+        <Button
+          variant="primary"
+          onClick={onConfirm}
+          disabled={confirmDisabled}
+          disabledReason={confirmDisabled ? t('buildingScope.sectionStatus.needsAttention') : undefined}
+        >
+          {t('buildingScope.section.confirm')}
+        </Button>
+      </div>
+    </DisclosureRow>
   )
+}
+
+function identitySectionSummary(
+  review: ReturnType<typeof useStore.getState>['buildingReviews'][string],
+  t: ReturnType<typeof useT>,
+): string {
+  const form = effectiveFactValue(review.facts.buildingForm)
+  const units = effectiveFactValue(review.facts.units)
+  return [
+    form ? t(FORM_MESSAGE[form]) : t('buildingScope.value.notCaptured'),
+    `${t('buildingScope.fact.units')}: ${units ? formatDE(units, 0) : t('buildingScope.value.notCaptured')}`,
+  ].join(' · ')
+}
+
+function areaSectionSummary(
+  review: ReturnType<typeof useStore.getState>['buildingReviews'][string],
+  conflicts: ReturnType<typeof useStore.getState>['buildingConflicts'],
+  t: ReturnType<typeof useT>,
+): string {
+  const total = effectiveDerivedArea(review, conflicts, 'bgfRSTotal').value
+  const wfl = effectiveFactValue(review.facts.wfl)
+  const nuf = effectiveFactValue(review.facts.nuf)
+  const usable = wfl ?? nuf
+  return [
+    `${t('buildingScope.fact.bgfRSTotal')}: ${total ? `${formatDE(total, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}`,
+    `${t(wfl ? 'buildingScope.fact.wfl' : 'buildingScope.fact.nuf')}: ${usable ? `${formatDE(usable, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}`,
+  ].join(' · ')
 }
 
 function TextFactField({
@@ -874,6 +1113,13 @@ function StoreyEditor({ buildingId }: { buildingId: string }) {
   const fact = s.buildingReviews[buildingId]!.facts.storeyStructure
   const current = effectiveFactValue(fact)
   const currentCounts = countsFromStoreys(current)
+  const underground = current ? currentCounts.UG : null
+  const aboveGround = current
+    ? currentCounts.EG + currentCounts.OG + currentCounts.SG
+    : null
+  const total = underground === null || aboveGround === null
+    ? null
+    : underground + aboveGround
   const [counts, setCounts] = useState(currentCounts)
   const [error, setError] = useState(false)
 
@@ -899,40 +1145,54 @@ function StoreyEditor({ buildingId }: { buildingId: string }) {
 
   return (
     <div className="grid gap-3 border-b border-border-subtle pb-4">
-      <p className="text-body text-text-primary">
-        {current
-          ? storeySummary(current)
-          : t('buildingScope.value.storeysMissing')}
-      </p>
+      <dl className="grid grid-cols-3 gap-3" aria-label={t('buildingScope.storeys.summary')}>
+        <FactSummary
+          label={t('buildingScope.storeys.underground')}
+          value={underground === null ? t('buildingScope.value.notCaptured') : String(underground)}
+        />
+        <FactSummary
+          label={t('buildingScope.storeys.aboveGround')}
+          value={aboveGround === null ? t('buildingScope.value.notCaptured') : String(aboveGround)}
+        />
+        <FactSummary
+          label={t('buildingScope.storeys.total')}
+          value={total === null ? t('buildingScope.value.notCaptured') : String(total)}
+        />
+      </dl>
       {factPresentation(fact, t) && (
         <ProvenanceChip provenance={factPresentation(fact, t)!} />
       )}
-      <div className="grid grid-cols-1 gap-3">
-        {(['UG', 'EG', 'OG', 'SG'] as const).map((kind) => (
-          <FormField
-            key={kind}
-            label={t(`buildingScope.storeys.${kind.toLowerCase()}`)}
-            htmlFor={`storeys-${buildingId}-${kind}`}
-          >
-            <input
-              type="number"
-              min="0"
-              step="1"
-              inputMode="numeric"
-              className="numeric"
-              value={counts[kind]}
-              onChange={(event) => {
-                const value = Number.parseInt(event.target.value, 10)
-                setCounts((previous) => ({
-                  ...previous,
-                  [kind]: Number.isFinite(value) && value >= 0 ? value : 0,
-                }))
-                setError(false)
-              }}
-            />
-          </FormField>
-        ))}
-      </div>
+      <details>
+        <summary className="min-h-hit-target cursor-pointer text-small font-medium text-text-primary outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">
+          {t('buildingScope.storeys.details')}
+        </summary>
+        <div className="mt-3 grid grid-cols-1 gap-3">
+          {(['UG', 'EG', 'OG', 'SG'] as const).map((kind) => (
+            <FormField
+              key={kind}
+              label={t(`buildingScope.storeys.${kind.toLowerCase()}`)}
+              htmlFor={`storeys-${buildingId}-${kind}`}
+            >
+              <input
+                type="number"
+                min="0"
+                step="1"
+                inputMode="numeric"
+                className="numeric"
+                value={current === null && counts[kind] === 0 ? '' : counts[kind]}
+                onChange={(event) => {
+                  const value = Number.parseInt(event.target.value, 10)
+                  setCounts((previous) => ({
+                    ...previous,
+                    [kind]: Number.isFinite(value) && value >= 0 ? value : 0,
+                  }))
+                  setError(false)
+                }}
+              />
+            </FormField>
+          ))}
+        </div>
+      </details>
       {error && <p role="alert" className="text-small text-text-secondary">
         {t('buildingScope.validation.storeys')}
       </p>}

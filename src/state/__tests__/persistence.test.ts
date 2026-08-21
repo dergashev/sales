@@ -58,6 +58,24 @@ describe('proposal persistence codec', () => {
 describe('proposal store recovery', () => {
   beforeEach(() => __resetStoreForTests())
 
+  it('persists journalled building-section confirmations across reload', () => {
+    const storage = new MemoryStorage()
+    initializeProposalPersistence(storage)
+    const st = () => useStore.getState()
+
+    st().confirmBuildingSection('DEMO-B-A', 'identity', 'identity:fingerprint')
+    expect(st().journal.at(-1)?.kind).toBe('value.confirmed')
+    const raw = storage.getItem(proposalStorageKey('DEMO-0001'))!
+    expect(raw).toContain('identity:fingerprint')
+
+    __resetStoreForTests()
+    const restoredStorage = new MemoryStorage()
+    restoredStorage.setItem(proposalStorageKey('DEMO-0001'), raw)
+    expect(hydrateProposalState(restoredStorage)).toBe(true)
+    expect(st().buildingSectionConfirmations['DEMO-B-A']?.identity?.fingerprint)
+      .toBe('identity:fingerprint')
+  })
+
   it('restores the complete proposal slice with one event and no private/session data', () => {
     const storage = new MemoryStorage()
     initializeProposalPersistence(storage)
@@ -138,6 +156,7 @@ describe('proposal store recovery', () => {
     // very same transition that confirms the mode — pricing begins right
     // here, not from the earlier mode radio choice on its own.
     expect(st().pricingStarted).toBe(true)
+    st().setCoverage('KG_400', 'included')
     st().openConfiguratorStepAt(CONFIGURATOR_STEP.KG_400_DETAILS)
     expect(st().pricingStarted).toBe(true)
 
@@ -171,7 +190,7 @@ describe('proposal store recovery', () => {
       .toEqual([CONFIGURATOR_STEP.KG_400_DETAILS])
   })
 
-  it('restores mandatory raw `unknown` coverage without blocking completeness', () => {
+  it('persists and restores the included core scope decisions', () => {
     const storage = new MemoryStorage()
     initializeProposalPersistence(storage)
     const st = () => useStore.getState()
@@ -182,18 +201,18 @@ describe('proposal store recovery', () => {
     st().confirmGebaeudeklasse()
 
     const raw = storage.getItem(proposalStorageKey('DEMO-0001'))!
-    expect(raw).toContain('"KG_300":"unknown"')
-    expect(raw).toContain('"KG_400":"unknown"')
-    expect(raw).toContain('"KG_700":"unknown"')
+    expect(raw).toContain('"KG_300":"included"')
+    expect(raw).toContain('"KG_400":"included"')
+    expect(raw).toContain('"KG_700":"included"')
 
     __resetStoreForTests()
     const restoredStorage = new MemoryStorage()
     restoredStorage.setItem(proposalStorageKey('DEMO-0001'), raw)
     expect(hydrateProposalState(restoredStorage)).toBe(true)
 
-    expect(st().coverage.KG_300).toBe('unknown')
-    expect(st().coverage.KG_400).toBe('unknown')
-    expect(st().coverage.KG_700).toBe('unknown')
+    expect(st().coverage.KG_300).toBe('included')
+    expect(st().coverage.KG_400).toBe('included')
+    expect(st().coverage.KG_700).toBe('included')
     expect(st().projection().result.incompleteReasons
       .some((reason) => reason.code === 'coverageUnknown')).toBe(false)
     expect(st().projection().result.completeness).toBe('complete')

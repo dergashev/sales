@@ -7,6 +7,7 @@ import {
   CONFIGURATOR_SCOPE,
   NAV,
   OPPORTUNITY,
+  SCOPE_BOUNDARIES,
 } from '../anchors'
 
 /**
@@ -66,7 +67,29 @@ test.describe('building-aware Configurator gate chain', () => {
     await expect(konfiguratorItem).toHaveAttribute('aria-describedby', 'building-gate-konfigurator')
 
     // ── Confirm the only included building (Haus A) — the gate opens ─
+    // The building review is a section-by-section accordion (Identität /
+    // Flächen / Geschossstruktur, in that order): each confirm auto-collapses
+    // the just-confirmed section and auto-expands the next incomplete one,
+    // so the same "Abschnitt bestätigen" control is clicked three times —
+    // never the section's own row-header (that toggles it closed, since
+    // Identität starts expanded by default). Only once all three sections
+    // are confirmed does "Gebäude bestätigen" itself become enabled.
+    //
+    // That collapse/expand is itself an animated `fadeRise` transition
+    // (CLAUDE.md rule 20): for a brief overlap BOTH the exiting row (still
+    // opacity:1, mid fade-out) and the entering row (opacity:0, mid
+    // fade-in) carry an accessibly-named "Abschnitt bestätigen" button.
+    // `getByRole().click()` resolves strictly and does not wait out that
+    // overlap, so each iteration first waits for exactly one such button to
+    // remain (an `expect(...).toHaveCount(1)` DOES auto-retry) before
+    // clicking — landing on the settled section rather than racing the
+    // transition.
     const activePanel = page.getByRole('tabpanel')
+    const confirmSection = () => activePanel.getByRole('button', { name: BUILDING_SCOPE.confirmSection })
+    for (let i = 0; i < 3; i++) {
+      await expect(confirmSection()).toHaveCount(1)
+      await confirmSection().click()
+    }
     await activePanel.getByRole('button', { name: BUILDING_SCOPE.confirmBuilding }).click()
     await expect(konfiguratorItem).not.toHaveAttribute('aria-disabled', 'true')
 
@@ -79,7 +102,13 @@ test.describe('building-aware Configurator gate chain', () => {
 
     // ── Confirm the second building too — the gate opens again ───────
     await page.getByRole('tab', { name: new RegExp(BUILDINGS.b) }).click()
-    await page.getByRole('tabpanel').getByRole('button', { name: BUILDING_SCOPE.confirmBuilding }).click()
+    const buildingBPanel = page.getByRole('tabpanel')
+    const confirmSectionB = () => buildingBPanel.getByRole('button', { name: BUILDING_SCOPE.confirmSection })
+    for (let i = 0; i < 3; i++) {
+      await expect(confirmSectionB()).toHaveCount(1)
+      await confirmSectionB().click()
+    }
+    await buildingBPanel.getByRole('button', { name: BUILDING_SCOPE.confirmBuilding }).click()
     await expect(konfiguratorItem).not.toHaveAttribute('aria-disabled', 'true')
     await expect(konfiguratorItem).not.toHaveAttribute('aria-describedby', 'building-gate-konfigurator')
 
@@ -106,11 +135,21 @@ test.describe('building-aware Configurator gate chain', () => {
     })).toBeVisible()
     await expect(page.getByRole('tablist', { name: CONFIGURATOR_SCOPE.legend })).toHaveCount(0)
 
+    // ── KG 300 has no default scope decision (ticket d21f8d48/this rebuild:
+    // AC21/AC22 — every KG group, including 300/400/700, is an explicit
+    // Included/Excluded choice with no default-selected/mandatory state) —
+    // its chapter therefore does not exist in the nav until explicitly
+    // included here. "enthalten" is the first radio in the group (never
+    // matched by accessible name alone: "nicht enthalten" contains
+    // "enthalten" as a substring — see SCOPE_BOUNDARIES's own docstring).
+    const kg300Group = page.getByRole('radiogroup', { name: SCOPE_BOUNDARIES.kg300Group })
+    await kg300Group.getByRole('radio').first().check({ force: true })
+
     // ── Building-aware client-facing interaction: per-building scope ─
     // Leistungen KG 300 is the first building-scoped chapter reached from
-    // Scope Boundaries. With two included buildings and PER_BUILDING mode
-    // it exposes a scope tablist with a "Gesamt" (total) tab plus one tab
-    // per included building.
+    // Scope Boundaries once KG 300 is included. With two included buildings
+    // and PER_BUILDING mode it exposes a scope tablist with a "Gesamt"
+    // (total) tab plus one tab per included building.
     await nav.getByRole('button', { name: CONFIGURATOR_CHAPTERS.kg300 }).click()
     const scopeTabs = page.getByRole('tablist', { name: CONFIGURATOR_SCOPE.legend })
     await expect(scopeTabs).toBeVisible()
