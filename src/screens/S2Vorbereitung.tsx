@@ -207,6 +207,7 @@ function P2Projektdaten() {
             detail: 'S. 15',
           }}
           onCommit={(v, c) => s.editField('bgfOber', v, c)}
+          chipClassName="a3-chip-col"
         />
         <StaticRow label="BGF unterirdisch" value={`${formatDE(new Decimal(fxA.areas.bgfBelowGround!), 2)}${NNBSP}m²`} provenance={{ kind: 'document', label: 'aus Dokument', detail: 'S. 7' }} />
         <StaticRow label="BGF S (nicht umschlossen)" value={`0,00${NNBSP}m²`} provenance={{ kind: 'document', label: 'aus Dokument' }} />
@@ -221,6 +222,7 @@ function P2Projektdaten() {
             detail: 'S. 12',
           }}
           onCommit={(v, c) => s.editField('wfl', v, c)}
+          chipClassName="a3-chip-col"
         />
 
         {/* Открытый конфликт значения: последствие названо ДО выбора. */}
@@ -268,6 +270,7 @@ function P2Projektdaten() {
             label: tx(s.fields.we.provenance),
           }}
           onCommit={(v, c) => s.editField('we', v, c)}
+          chipClassName="a3-chip-col"
         />
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle py-4">
@@ -314,14 +317,21 @@ function provenanceKind(
 }
 
 /**
- * F12: the value and the provenance chip used to be two SEPARATE flex
- * children of a `justify-between` row, so their shared right edge floated at
- * whatever position the middle child's own content width happened to land on
- * — measured right edges scattered 137 px apart across three read-only rows.
- * Grouping them into one right-anchored span gives the row exactly two
- * children (label · group), so the group's right edge always lands on the
- * row's own right edge — the same edge `NumericField`'s input+chip group now
- * anchors to (justify-end) — regardless of either child's own content width.
+ * F12 (original fix): the value and the provenance chip used to be two
+ * SEPARATE flex children of a `justify-between` row, so their shared right
+ * edge floated at whatever position the middle child's own content width
+ * happened to land on — measured right edges scattered 137 px apart across
+ * three read-only rows. Grouping them into one right-anchored span gives the
+ * row exactly two children (label · group), so the GROUP's right edge always
+ * lands on the row's own right edge.
+ *
+ * F12 (rework, QA-caught regression): the group's own right edge landing on
+ * the row's right edge does not mean the VALUE's right edge does — the chip
+ * sits after it, so a longer/shorter provenance label still shifts where the
+ * value ends (same root cause `NumericField` had, ~48 px measured drift).
+ * `a3-chip-col` gives the chip a fixed allocated width shared with
+ * `NumericField`'s own rows below, so the value's own right edge stops
+ * moving with the chip's text length.
  */
 function StaticRow({ label, value, provenance }: {
   label: string
@@ -334,7 +344,7 @@ function StaticRow({ label, value, provenance }: {
       <span className="text-small font-medium text-text-primary">{label}</span>
       <span className="flex flex-wrap items-center justify-end gap-3">
         <span className="numeric text-body text-text-primary">{value}</span>
-        <ProvenanceChip provenance={{
+        <ProvenanceChip className="a3-chip-col" provenance={{
           ...provenance,
           label: tx(provenance.label),
           detail: provenance.detail ? tx(provenance.detail) : undefined,
@@ -372,10 +382,20 @@ function P3OffeneFragen() {
   return (
     <section aria-label="Offene Fragen">
       <h2 className="text-heading-3 font-bold text-text-primary">
-        {open.length > 0
-          ? <>Diese {open.length} Fragen reduzieren die Schätzunsicherheit von
+        {/* F43: hardcoded "Diese 1 Fragen reduzieren…" was grammatically
+            wrong for a count of 1 (German needs singular noun AND verb:
+            "Diese 1 Frage reduziert…"). Only two count states are possible
+            here — `open.length` is 0, 1, or 2 (see the two-item `questions`
+            list above) — so a direct singular/plural branch covers every
+            reachable case without introducing a general pluralization
+            mechanism this codebase does not otherwise have. */}
+        {open.length === 1
+          ? <>Diese 1 Frage reduziert die Schätzunsicherheit von
               ±{NNBSP}{p.uncertaintyPp}{NNBSP}% auf ±{NNBSP}{target}{NNBSP}%</>
-          : <>{tx('Alle Fragen beantwortet ·')}<EstimateUncertaintyBadge presentation="compact" pp={p.uncertaintyPp} /></>}
+          : open.length > 1
+            ? <>Diese {open.length} Fragen reduzieren die Schätzunsicherheit von
+                ±{NNBSP}{p.uncertaintyPp}{NNBSP}% auf ±{NNBSP}{target}{NNBSP}%</>
+            : <>{tx('Alle Fragen beantwortet ·')}<EstimateUncertaintyBadge presentation="compact" pp={p.uncertaintyPp} /></>}
       </h2>
       <p className="a3-cap mt-1">{tx('Nach Wirkung sortiert; Verengung in Prozentpunkten. Eine Option zu wählen verengt nichts — nur die Bestätigung des Kunden (D-19).')}</p>
 
@@ -546,32 +566,37 @@ function P5Varianten({ openKonfigurator }: { openKonfigurator: () => void }) {
             </tr>
           </thead>
           <tbody>
-            {runs.map((r) => (
-              <tr key={r.calculationRunId} className="border-b border-border-subtle">
-                <td className="py-2 pr-4 text-text-primary">{r.variant}</td>
-                <td className="numeric py-2 pr-4 text-right text-text-primary">
-                  {r.total.prefix}{r.total.prefix ? NNBSP : ''}{r.total.display}{NNBSP}€
-                </td>
-                <td className="py-2 pr-4 text-small text-text-secondary">
-                  {roleFor(r.variant!).join(' · ') || '—'}
-                </td>
-                <td className="py-2">
-                  {/* F11: `ghost` (transparent, borderless, no underline)
-                      read as plain table text, not as an actionable control.
-                      Each row's own action is independent — this table has no
-                      single "the" forward action, so promoting all rows to
-                      `primary` would violate ACTION-001's one-primary-per-
-                      decision rule (components-core.md). `secondary` gives it
-                      a visible border/affordance without competing as if it
-                      were the page's single primary action. */}
-                  <Button variant="secondary" onClick={() => {
-                    if (r.variant === 'EH 40') s.setEnergiestandard('EH_40')
-                    if (r.variant === 'Ohne UG') s.setUntergeschoss('kein_ug')
-                    openKonfigurator()
-                  }}>{tx('Im Konfigurator öffnen')}</Button>
-                </td>
-              </tr>
-            ))}
+            {runs.map((r) => {
+              const roles = roleFor(r.variant!)
+              // F11 (rework, QA-caught regression): the row-independence
+              // reasoning below was correct about not promoting EVERY row —
+              // but wrong to conclude that means NO row can be primary. The
+              // "Aktuell bearbeitet" role names the ONE row currently being
+              // worked on, i.e. this section's actual single next action
+              // (rule 10/AC-09). Exactly one row can ever carry that role
+              // (`roleFor` only assigns it to `'Basis'`), so making that row
+              // primary still satisfies ACTION-001's one-primary-per-decision
+              // rule rather than violating it.
+              const isCurrent = roles.includes('Aktuell bearbeitet')
+              return (
+                <tr key={r.calculationRunId} className="border-b border-border-subtle">
+                  <td className="py-2 pr-4 text-text-primary">{r.variant}</td>
+                  <td className="numeric py-2 pr-4 text-right text-text-primary">
+                    {r.total.prefix}{r.total.prefix ? NNBSP : ''}{r.total.display}{NNBSP}€
+                  </td>
+                  <td className="py-2 pr-4 text-small text-text-secondary">
+                    {roles.join(' · ') || '—'}
+                  </td>
+                  <td className="py-2">
+                    <Button variant={isCurrent ? 'primary' : 'secondary'} onClick={() => {
+                      if (r.variant === 'EH 40') s.setEnergiestandard('EH_40')
+                      if (r.variant === 'Ohne UG') s.setUntergeschoss('kein_ug')
+                      openKonfigurator()
+                    }}>{tx('Im Konfigurator öffnen')}</Button>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

@@ -240,8 +240,11 @@ export const ATTENTION_MARK = '!'
  * видит пользователь. Поэтому деталь вроде «S. 15» или перевод подписи не
  * может случайно превратить документ в ручной ввод.
  */
-export function ProvenanceChip({ provenance }: {
+export function ProvenanceChip({ provenance, className }: {
   provenance: ProvenancePresentation
+  /** Opt-in layout extension (e.g. `a3-chip-col`, F12) — omitted everywhere
+   * else, so every other caller keeps its current, unaffected layout. */
+  className?: string
 }) {
   const t = useT()
   const mark = PROVENANCE_MARK[provenance.kind]
@@ -252,7 +255,7 @@ export function ProvenanceChip({ provenance }: {
     })
     : t('provenance.accessibleLabel', { label: provenance.label })
   return (
-    <span className="a3-chip-src" aria-label={accessibleLabel}>
+    <span className={'a3-chip-src' + (className ? ` ${className}` : '')} aria-label={accessibleLabel}>
       {/* `.a3-chip-src .a3-dot` — точка индикатора из системы; знак остаётся
           рядом с ней, потому что цвет не является носителем (правило 8). */}
       <span aria-hidden="true" className="a3-dot" />
@@ -319,6 +322,7 @@ const REJECTION_TEXT: Record<
  */
 export function NumericField({
   label, value, unit, provenance, decimals = 2, integer = false, onCommit,
+  chipClassName,
 }: {
   label: string
   value: Decimal
@@ -328,6 +332,9 @@ export function NumericField({
   /** Счётная величина: дробное значение не существует (Wohneinheiten). */
   integer?: boolean
   onCommit: (v: Decimal, confirmed: boolean) => void
+  /** Forwarded to the internal ProvenanceChip (F12) — omitted by default, so
+   * every existing caller keeps its current layout untouched. */
+  chipClassName?: string
 }) {
   const tx = useTx()
   const [draft, setDraft] = useState<string | null>(null)
@@ -350,11 +357,17 @@ export function NumericField({
       <label className="block text-small font-medium text-text-primary">{label}</label>
       {/* Оболочка и единица — из системы (`.a3-input > input + .a3-unit`);
           высота 44 px, бордер и типографика приходят оттуда же.
-          F12: `justify-end` anchors the input+chip group to this row's own
-          right edge — the same edge a read-only value row (rule 7's
-          right-aligned `.numeric`) lands on when it shares this row's full
-          width, instead of the group hugging the row's left edge below a
-          label that sits on its own line above it. */}
+          `justify-end` anchors the input+chip GROUP to this row's own right
+          edge, instead of the group hugging the row's left edge below a
+          label that sits on its own line above it. That alone does not
+          anchor the INPUT's own right edge across several such rows in one
+          section: the chip sits after it, so a longer/shorter provenance
+          label shifts where the input ends (F12, ~48px measured drift
+          between two rows with different-length labels). `chipClassName`
+          lets a caller that renders several of these together (e.g.
+          Vorbereitung P2) opt the chip into a fixed allocated width
+          (`a3-chip-col`), which fixes the input's own right edge without
+          changing anything for callers that don't pass it. */}
       <div className="mt-2 flex flex-wrap items-center justify-end gap-3">
         <span className="a3-input">
           <input
@@ -372,7 +385,7 @@ export function NumericField({
           />
           {unit && <span className="a3-unit">{unit}</span>}
         </span>
-        <ProvenanceChip provenance={draft !== null
+        <ProvenanceChip className={chipClassName} provenance={draft !== null
           ? { kind: 'editing', label: 'wird bearbeitet' }
           : provenance} />
       </div>

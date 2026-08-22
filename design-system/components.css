@@ -287,6 +287,17 @@ table.a3-kg,table.a3-cmp,table.a3-kx,table.a3-data-table,table.a3-driver-table,t
 .a3-chip-src{display:inline-flex;align-items:center;gap:var(--space-2);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight);color:var(--color-text-primary);transition:opacity var(--motion-reveal) var(--motion-easing-standard)}
 .a3-chip-src.a3-fade{opacity:0}
 .a3-chip-src .a3-dot{width:var(--space-2);height:var(--space-2);border-radius:50%;flex:none}
+/* F12 fix · .a3-chip-col: when several value rows sit in one section (e.g.
+   Vorbereitung P2), a `justify-end` row that packs [value, chip] as one group
+   anchors only the GROUP's right edge to the row — the value's own right edge
+   still drifts with the chip's own text length (measured ~48px between two
+   NumericField rows whose provenance labels differ in length). Giving the
+   chip a fixed flex-basis makes its allocated width constant regardless of
+   its text, so the value box — the group's other, preceding child — always
+   ends at the same distance from the row's right edge across every row that
+   opts in. `flex-wrap:wrap` lets an exceptionally long label/detail combo
+   wrap onto a second line inside that fixed box instead of overflowing. */
+.a3-chip-col{flex:0 0 var(--measure-provenance-chip);flex-wrap:wrap}
 
 /* DC-5 · CostStructureTable.
    Structure: .a3-tbl-scroll > table.a3-kg; .a3-num is applied per numeric cell;

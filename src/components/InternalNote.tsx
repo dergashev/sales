@@ -123,7 +123,10 @@ export function InternalNote() {
         aria-describedby={helpId}
         value={text}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={tx('Nur intern — synchronisiert in die HubSpot-Projektkarte')}
+        // F42: this used to near-duplicate the caption above (both said
+        // "Nur intern … HubSpot-Projektkarte") — the caption already covers
+        // visibility/sync, so the placeholder now hints at CONTENT instead.
+        placeholder={tx('z. B. besprochene Sonderwünsche, offene Rückfragen')}
       />
       {/* Мета-строка: кто, когда, кому видно (NOTE-002). */}
       <span className="a3-cap">

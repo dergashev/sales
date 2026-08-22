@@ -373,6 +373,13 @@
   --measure-showcase-swatch: 96px;
   --measure-showcase-narrow: 150px;
   --measure-showcase-tile: 160px;
+  /* [provisional] F12 rework · fixed allocation for a right-anchored
+     ProvenanceChip sharing a row with a value (e.g. Vorbereitung P2), so the
+     value's own right edge stops drifting with the chip's text length. Sized
+     to the longest known label + short detail combination ("vom Kunden
+     bestätigt · S. 15" ≈ 29 chars); an outlier combination wraps via
+     `.a3-chip-col`'s `flex-wrap:wrap` instead of forcing this wider. */
+  --measure-provenance-chip: 24ch;
   /* [provisional] TASK-22 measured media threshold. Below 15rem the card
      remains complete and selectable, but its decorative 4:3 media is absent. */
   --measure-option-media-min: 15rem;
