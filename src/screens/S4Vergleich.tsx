@@ -70,9 +70,13 @@ export function S4Vergleich() {
   }
   const perBuilding = (cfg: OptionConfig, f: (id: string) => string) =>
     Object.keys(cfg.buildings).filter((id) => cfg.included[id]).map(f).join(' · ')
-  const buildingLabel = (id: string, config: OptionConfig) => client
-    ? config.buildings[id]?.stableName ?? tx('Gebäude')
-    : id
+  // QA (Rebuild Configurator Workspace, AC-11): falling back to the raw `id`
+  // whenever `client` was false leaked fixture ids (e.g. "DEMO-B-A") into
+  // Vorbereitung, which is still human-facing, just not the final client
+  // artifact. `stableName` is fixture-level data (present in every mode),
+  // so resolve it unconditionally — never the raw id.
+  const buildingLabel = (id: string, config: OptionConfig) =>
+    config.buildings[id]?.stableName ?? tx('Gebäude')
 
   type Sub = { text: string; save: boolean } | null
   type Row = { label: string; group: string; cells: string[]; subCells?: Sub[] }

@@ -41,8 +41,10 @@ describe('building-aware reviewed proposal state', () => {
     expect(st().fields.wfl.value.toFixed()).toBe('1234')
     expect(st().fields.wfl.provenance).toBe('manuell erfasst')
     expect(st().buildings['DEMO-B-A']!.wfl!.toFixed()).toBe('1234')
+    // QA (Rebuild Configurator Workspace, AC-11): the journal label must
+    // resolve the building's display name, never the raw fixture id.
     expect(st().journal.at(-1)!.label)
-      .toBe('Gebäudedaten DEMO-B-A · WFL nach WoFlV manuell bearbeitet')
+      .toBe('Gebäudedaten Haus A · WFL nach WoFlV manuell bearbeitet')
 
     st().undo()
     expect(st().fields.wfl.value.toFixed()).toBe('1500')
@@ -190,7 +192,10 @@ describe('selection and configuration modes', () => {
 
     expect(choicesFor(st(), 'DEMO-B-A').fassade).toBe('klinker')
     expect(choicesFor(st(), 'DEMO-B-B').fassade).toBe('klinker')
-    expect(st().journal.at(-1)!.label).toContain('DEMO-B-A, DEMO-B-B')
+    // QA (Rebuild Configurator Workspace, AC-11): the journal/toast label
+    // must resolve display names, never the raw fixture id.
+    expect(st().journal.at(-1)!.label).toContain('Haus A, Haus B')
+    expect(st().journal.at(-1)!.label).not.toMatch(/DEMO-[A-Z]+-\d+/)
     expect(st().kg300['DEMO-B-A']!.fassade).not.toBe('klinker')
     expect(st().kg300['DEMO-B-B']!.fassade).not.toBe('klinker')
   })

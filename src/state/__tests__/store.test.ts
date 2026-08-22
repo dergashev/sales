@@ -260,7 +260,10 @@ describe('S3: журнал событий как хребет (M-4)', () => {
     // P0 (ticket d21f8d48): the label must name which building(s) it
     // applies to, since it may now be more than one.
     expect(after.journal[0]!.label).toContain('EH 40')
-    expect(after.journal[0]!.label).toContain(s.activeBuildingId)
+    // QA (Rebuild Configurator Workspace, AC-11): the journal/toast label
+    // must resolve the building's display name, never the raw fixture id.
+    expect(after.journal[0]!.label).toContain(activeBuilding(s).stableName)
+    expect(after.journal[0]!.label).not.toMatch(/DEMO-[A-Z]+-\d+/)
     expect(after.journal[0]!.deltaExact!.toFixed(2)).toBe('97335.00')
   })
 
@@ -711,7 +714,10 @@ describe('Уровень зданий: охват предложения (сце
     expect(s.projection().result.total.exact.toFixed(2))
       .toBe(new Decimal('3817835').plus(expected).toFixed(2))
     const ev = s.journal.at(-1)!
-    expect(ev.label).toContain('DEMO-B-B')
+    // QA (Rebuild Configurator Workspace, AC-11): the journal label must
+    // resolve the building's display name, never the raw fixture id.
+    expect(ev.label).toContain('Haus B')
+    expect(ev.label).not.toMatch(/DEMO-[A-Z]+-\d+/)
     expect(ev.deltaExact).toBeNull()
   })
 

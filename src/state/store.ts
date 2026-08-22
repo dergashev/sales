@@ -2328,7 +2328,9 @@ const store = createStore<Store>((set, get) => {
         previousReview,
         nextReview,
         kind: 'value.edited',
-        label: `Gebäudedaten ${id} · ${BUILDING_FACT_LABELS[key]} manuell bearbeitet`,
+        // QA (Rebuild Configurator Workspace, AC-11): resolve the building's
+        // display name, never the raw fixture id, in this journal label.
+        label: `Gebäudedaten ${effectiveFactValue(previousReview.facts.documentationName) ?? id} · ${BUILDING_FACT_LABELS[key]} manuell bearbeitet`,
       })
     },
 
@@ -2345,7 +2347,9 @@ const store = createStore<Store>((set, get) => {
         previousReview,
         nextReview,
         kind: 'value.edited',
-        label: `Gebäudedaten ${id} · ${BUILDING_FACT_LABELS[key]} auf Quellenwert zurückgesetzt`,
+        // QA (Rebuild Configurator Workspace, AC-11): resolve the building's
+        // display name, never the raw fixture id, in this journal label.
+        label: `Gebäudedaten ${effectiveFactValue(previousReview.facts.documentationName) ?? id} · ${BUILDING_FACT_LABELS[key]} auf Quellenwert zurückgesetzt`,
       })
     },
 
@@ -2418,7 +2422,16 @@ const store = createStore<Store>((set, get) => {
       write(new Map(appliesTo.map((bid) => [bid, v])))
       const after = get().projection().result.total.exact
       const delta = after.minus(before)
-      const label = `Energiestandard → ${v.replace('_', ' ')} (${appliesTo.join(', ')})`
+      // QA (Rebuild Configurator Workspace, AC-11): this label used to join
+      // raw building ids directly, leaking e.g. "DEMO-B-B" into the Undo
+      // toast in every mode, including true Kundenansicht. Resolve display
+      // names the same way every other building-facing label in this file
+      // already does (e.g. line ~3548) — never a raw id, in any mode.
+      const buildingNames = appliesTo.map((bid) => {
+        const review = s.buildingReviews[bid]
+        return review ? effectiveFactValue(review.facts.documentationName) ?? bid : bid
+      }).join(', ')
+      const label = `Energiestandard → ${v.replace('_', ' ')} (${buildingNames})`
       apply({
         kind: 'option.selected',
         label,
@@ -3267,9 +3280,13 @@ const store = createStore<Store>((set, get) => {
       if (!s.buildings[id]) return
       const next = !s.included[id]
       set({ included: { ...s.included, [id]: next } })
+      // QA (Rebuild Configurator Workspace, AC-11): resolve the building's
+      // display name, never the raw fixture id, in this journal label.
+      const review = s.buildingReviews[id]
+      const buildingName = review ? effectiveFactValue(review.facts.documentationName) ?? id : id
       apply({
         kind: 'option.selected',
-        label: `${id} ${next ? 'in das Angebot aufgenommen' : 'aus dem Angebot genommen'}`,
+        label: `${buildingName} ${next ? 'in das Angebot aufgenommen' : 'aus dem Angebot genommen'}`,
         deltaExact: null,
         inverse: () => set((x) => ({ included: { ...x.included, [id]: !next } })),
         forward: () => set((x) => ({ included: { ...x.included, [id]: next } })),
@@ -3374,9 +3391,15 @@ const store = createStore<Store>((set, get) => {
       const after = get().projection().result.total.exact
       const delta = after.minus(before)
       const choice = group.choices.find((c) => c.value === value)
+      // Same class as the Energiestandard toast above (QA, AC-11): resolve
+      // display names, never raw building ids, in this journal/toast label.
+      const buildingNames = appliesTo.map((bid) => {
+        const review = s.buildingReviews[bid]
+        return review ? effectiveFactValue(review.facts.documentationName) ?? bid : bid
+      }).join(', ')
       apply({
         kind: 'option.selected',
-        label: `${group.label}: ${choice?.label ?? value} (${appliesTo.join(', ')})`,
+        label: `${group.label}: ${choice?.label ?? value} (${buildingNames})`,
         deltaExact: delta.isZero() ? null : delta,
         inverse: () => write(prev ?? group.default, prevProv),
         forward: () => write(value, 'manuell erfasst'),
@@ -3477,7 +3500,12 @@ const store = createStore<Store>((set, get) => {
       write(mode)
       const after = get().projection().result.total.exact
       const delta = after.minus(before)
-      const appliesTo = includedBuildingIds(s).join(', ')
+      // Same class as the Energiestandard toast above (QA, AC-11): resolve
+      // display names, never raw building ids, in this journal/toast label.
+      const appliesTo = includedBuildingIds(s).map((bid) => {
+        const review = s.buildingReviews[bid]
+        return review ? effectiveFactValue(review.facts.documentationName) ?? bid : bid
+      }).join(', ')
       apply({
         kind: 'option.selected',
         label: mode === 'SHARED'
@@ -3578,9 +3606,15 @@ const store = createStore<Store>((set, get) => {
         buildingConfigState: updateOptionalRecord(state.buildingConfigState, id, value),
       }))
       write(completed)
+      // QA (Rebuild Configurator Workspace, AC-11): resolve the building's
+      // display name, never the raw fixture id, in this journal label.
+      const completedReview = s.buildingReviews[id]
+      const completedName = completedReview
+        ? effectiveFactValue(completedReview.facts.documentationName) ?? id
+        : id
       apply({
         kind: 'value.edited',
-        label: `Gebäudekonfiguration ${id} abgeschlossen`,
+        label: `Gebäudekonfiguration ${completedName} abgeschlossen`,
         deltaExact: null,
         inverse: () => write(previous),
         forward: () => write(completed),
@@ -3600,9 +3634,15 @@ const store = createStore<Store>((set, get) => {
         buildingConfigState: updateOptionalRecord(state.buildingConfigState, id, value),
       }))
       write(confirmed)
+      // QA (Rebuild Configurator Workspace, AC-11): resolve the building's
+      // display name, never the raw fixture id, in this journal label.
+      const confirmedReview = s.buildingReviews[id]
+      const confirmedName = confirmedReview
+        ? effectiveFactValue(confirmedReview.facts.documentationName) ?? id
+        : id
       apply({
         kind: 'value.confirmed',
-        label: `Gebäudekonfiguration ${id} bestätigt`,
+        label: `Gebäudekonfiguration ${confirmedName} bestätigt`,
         deltaExact: null,
         inverse: () => write(previous),
         forward: () => write(confirmed),
