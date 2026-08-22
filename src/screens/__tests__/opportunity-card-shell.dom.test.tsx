@@ -73,36 +73,35 @@ describe('Project Card — шапка и обзор готовности', () =>
     expect(within(breadcrumbInOption).queryByText(/OPT-01/)).not.toBeInTheDocument()
   })
 
-  it('обзор готовности называет все четыре стадии и держит ровно один текущий шаг', async () => {
+  it('обзор готовности называет все шесть стадий (Task 01: konsolidierte Vorbereitung) и держит ровно один текущий шаг', async () => {
     const user = userEvent.setup()
     await openProjectCard(user)
 
+    // Task 01 (deep-coherence audit): the four-stage overview grows to the
+    // accepted canonical six-stage preparation sequence, absorbing what used
+    // to be the separate "· Vorbereitung" workspace — this IS the one
+    // progress model (AC2), there is no second stepper any more.
     const overview = screen.getByRole('navigation', { name: 'Projektstatus' })
     const steps = within(overview).getAllByRole('button')
-    expect(steps).toHaveLength(4)
+    expect(steps).toHaveLength(6)
     expect(steps.map((s) => s.textContent)).toEqual([
-      expect.stringContaining('Dokumentgrundlage'),
+      expect.stringContaining('Dokumentanalyse'),
       expect.stringContaining('Strittige Angaben'),
-      expect.stringContaining('Projektparameter'),
+      expect.stringContaining('Offene Fragen & Annahmen'),
+      expect.stringContaining('Projektübersicht'),
+      expect.stringContaining('Projekt bestätigen'),
       expect.stringContaining('Opportunity Options'),
     ])
 
     // Позиция — ЦЕЛОЙ ФРАЗОЙ для скринридера (DC-13, Screen-reader-Klausel
-    // «Schritt 3 von 5»), а не одной цифрой; видимой остаётся компактная
+    // «Schritt 3 von 6»), а не одной цифрой; видимой остаётся компактная
     // цифра, и она aria-hidden, чтобы позиция не читалась дважды.
     steps.forEach((step, i) => {
       const marker = step.querySelector('.a3-n')!
-      // Проверяется ВИДИМАЯ цифра — отдельный узел внутри маркера, а не сам
-      // маркер: прежняя редакция утверждала `not.toHaveAttribute('aria-hidden')`
-      // на обёртке `.a3-n`, которая этого атрибута никогда и не несла, и
-      // `toHaveTextContent(String(i + 1))` на ней же — а его удовлетворяла уже
-      // sr-only-фраза («4Schritt 4 von 4» содержит «4»). Обе проверки не могли
-      // упасть: снятие `aria-hidden` (двойное озвучивание позиции) и удаление
-      // самой цифры оставляли набор зелёным.
       const digit = marker.querySelector(':scope > span:not(.sr-only)')
       expect(digit).toHaveAttribute('aria-hidden', 'true')
       expect(digit!.textContent).toBe(String(i + 1))
-      const position = within(step).getByText(`Schritt ${i + 1} von 4`)
+      const position = within(step).getByText(`Schritt ${i + 1} von 6`)
       expect(position).toHaveClass('sr-only')
     })
 
@@ -113,6 +112,10 @@ describe('Project Card — шапка и обзор готовности', () =>
     expect(within(overview).getByText(
       'Entscheidung erforderlich · blockiert das Anlegen einer Opportunity Option',
     )).toBeInTheDocument()
+    // Stufen 3 (Offene Fragen & Annahmen) und 4 (Projektübersicht) sind rein
+    // informativ (D-19, Regel 12) — nie blockierend, nie "aktuell".
+    expect(within(overview).getByText('Blockiert das Anlegen einer Opportunity Option nicht')).toBeInTheDocument()
+    expect(within(overview).getByText('Vorläufig · Strittige Angaben noch offen')).toBeInTheDocument()
     expect(within(overview).getByText(
       'Bestätigung erforderlich · blockiert das Anlegen einer Opportunity Option',
     )).toBeInTheDocument()
@@ -124,7 +127,7 @@ describe('Project Card — шапка и обзор готовности', () =>
     expect(current[0]).toHaveTextContent('Strittige Angaben')
   })
 
-  it('обзор готовности отражает реальные переходы: конфликт → параметры → Option', async () => {
+  it('обзор готовности отражает реальные переходы: конфликт → Projekt bestätigen → Option', async () => {
     const user = userEvent.setup()
     await openProjectCard(user)
     const overview = screen.getByRole('navigation', { name: 'Projektstatus' })
@@ -133,16 +136,20 @@ describe('Project Card — шапка и обзор готовности', () =>
     await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
     expect(stepAt(1)).toHaveTextContent('Entschieden')
     expect(stepAt(1)).not.toHaveAttribute('aria-current')
-    expect(stepAt(2)).toHaveAttribute('aria-current', 'step')
+    // Stage 4 (Projektübersicht) leaves its provisional caveat once the
+    // conflict it depended on is resolved — still never "current" (D-19).
+    expect(stepAt(3)).toHaveTextContent('Aktuell')
+    expect(stepAt(3)).not.toHaveAttribute('aria-current')
+    expect(stepAt(4)).toHaveAttribute('aria-current', 'step')
 
     await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
-    expect(stepAt(2)).toHaveTextContent('Bestätigt')
-    expect(stepAt(2)).not.toHaveAttribute('aria-current')
-    expect(stepAt(3)).toHaveTextContent('Bereit zum Anlegen')
-    expect(stepAt(3)).toHaveAttribute('aria-current', 'step')
+    expect(stepAt(4)).toHaveTextContent('Bestätigt')
+    expect(stepAt(4)).not.toHaveAttribute('aria-current')
+    expect(stepAt(5)).toHaveTextContent('Bereit zum Anlegen')
+    expect(stepAt(5)).toHaveAttribute('aria-current', 'step')
 
     await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
-    expect(stepAt(3)).toHaveTextContent('Angelegt')
+    expect(stepAt(5)).toHaveTextContent('Angelegt')
     // Terminalzustand: die Vorbereitung "endet" nicht — genau EIN Schritt
     // bleibt aktuell (das akzeptierte Product-Ruling), und zwar der letzte,
     // weil dort ab jetzt weitergearbeitet wird (Opportunity Options).
@@ -156,7 +163,10 @@ describe('Project Card — шапка и обзор готовности', () =>
     await openProjectCard(user)
     const overview = screen.getByRole('navigation', { name: 'Projektstatus' })
 
-    await user.click(within(overview).getAllByRole('button')[2]!) // Projektparameter
+    // Stufen 4 (Projektübersicht) UND 5 (Projekt bestätigen) zeigen auf
+    // denselben physischen Abschnitt (`aria-label="Projektparameter"`) —
+    // siehe dessen eigenen Kommentar in OpportunityCard.tsx.
+    await user.click(within(overview).getAllByRole('button')[4]!) // Projekt bestätigen
     const section = screen.getByRole('region', { name: 'Projektparameter' })
     expect(document.activeElement).toBe(section)
     // Der Sprung darf projectParamsConfirmed NICHT selbst setzen.

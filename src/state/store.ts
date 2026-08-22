@@ -2243,6 +2243,24 @@ export function projectProjection(
 }
 
 /**
+ * Project Card / preparation-level projection (Task 01, deep-coherence
+ * audit F-05): a project's building count for the rule-39 lead-metric
+ * branch is how many buildings the PROJECT has, not how many happen to be
+ * `included` — inclusion is a later Building & Scope / Option-level scope
+ * decision (Task 02) that does not exist yet while the salesperson is still
+ * in preparation. Forcing every known building "included" for this read-only
+ * projection keeps the two-building Nordfeld complex on its complex-level
+ * `€/m² BGF oberirdisch` denominator instead of silently degrading to a
+ * single active building's segment metric before Building & Scope has run.
+ */
+export function preparationProjection(
+  s: Pick<Store, keyof OptionConfig>,
+): Projection {
+  const included = Object.fromEntries(Object.keys(s.buildings).map((id) => [id, true]))
+  return computeProjection({ ...s, included, scopeBuildingId: null })
+}
+
+/**
  * Mode changes may activate a retained choice set, but changing the visible
  * OfferPanel scope is navigation. Compare like-for-like project projections
  * so a building-scoped panel never becomes a journalled price delta.

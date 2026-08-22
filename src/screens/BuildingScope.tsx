@@ -88,7 +88,13 @@ const FACT_MESSAGE: Record<BuildingFactKey, string> = {
   storeyStructure: 'buildingScope.fact.storeys',
 }
 
-function stableName(
+/**
+ * Exported for the Project Card / preparation surface (Task 01,
+ * deep-coherence audit): the read-only project summary shows the same
+ * per-building facts this screen reviews, and must render their provenance
+ * the same way — one presentation function, not a second hand-written copy.
+ */
+export function stableName(
   review: ReturnType<typeof useStore.getState>['buildingReviews'][string],
   fallback: string,
 ): string {
@@ -114,7 +120,7 @@ function sourcePresentation(
   }
 }
 
-function factPresentation<T>(
+export function factPresentation<T>(
   fact: BuildingFact<T>,
   t: ReturnType<typeof useT>,
 ): ProvenancePresentation | null {

@@ -51,53 +51,57 @@ async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getAllByRole('button', { name: /Leistungen KG 300/ })[0]!)
 }
 
-describe('Табы S2 — ручная активация (TABS-001, KEY-003)', () => {
-  async function openVorbereitung(user: ReturnType<typeof userEvent.setup>) {
-    // Подготовка живёт на уровне Opportunity, не в конвейере: пункт
-    // навигации, ведущий на другой уровень, был телепортом, и его больше нет.
+describe('Projektstatus-Überblick (Task 01) — roving tabindex (TABS-001/KEY-003 keyboard contract)', () => {
+  // Task 01 (deep-coherence audit) dissolves the separate "· Vorbereitung"
+  // tab workspace this describe block used to exercise: its six former
+  // preparation capabilities now live as stacked sections on the Project
+  // Card, reachable through the one progress model above them (AC2). That
+  // overview did not previously carry roving tabindex/arrow-key movement at
+  // all (a known, deliberately-deferred DS-GOV-EX-07 gap) — Task 01 closes
+  // it for this instance, so the TABS-001/KEY-003 keyboard contract this
+  // block protected now applies here instead.
+  async function openOverview(user: ReturnType<typeof userEvent.setup>) {
     render(<App />)
     await user.click(await screen.findByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
-    await user.click(screen.getByRole('button', { name: 'Vorbereitung öffnen' }))
-    return screen.getByRole('tablist', { name: 'Vorbereitung' })
+    return screen.getByRole('navigation', { name: 'Projektstatus' })
   }
 
-  it('стрелка двигает фокус, но НЕ выбирает — выбор только Enter/Space', async () => {
+  it('стрелка двигает фокус, но НЕ открывает раздел — открытие только по клику/Enter/Space (STEP-003)', async () => {
     const user = userEvent.setup()
-    const tablist = await openVorbereitung(user)
-    const tabs = within(tablist).getAllByRole('tab')
+    const overview = await openOverview(user)
+    const steps = within(overview).getAllByRole('button')
 
-    const selectedBefore = tabs.find((t) => t.getAttribute('aria-selected') === 'true')!
-    await user.click(selectedBefore)
+    steps[0]!.focus()
     await user.keyboard('{ArrowRight}')
 
-    // Фокус уехал…
-    expect(document.activeElement).not.toBe(selectedBefore)
-    // …а выбор остался прежним: автоактивация запускала бы пересчёт панели.
-    expect(selectedBefore).toHaveAttribute('aria-selected', 'true')
+    // Фокус ушёл на следующую стадию…
+    expect(document.activeElement).toBe(steps[1])
+    // …а сам раздел ещё не получил фокус: автоактивация стрелкой прыгала бы
+    // по всей странице при каждом нажатии.
+    expect(document.activeElement).not.toBe(screen.getByRole('region', { name: 'Strittige Angaben' }))
 
     await user.keyboard('{Enter}')
-    expect(document.activeElement).toHaveAttribute('aria-selected', 'true')
-    expect(selectedBefore).toHaveAttribute('aria-selected', 'false')
+    expect(document.activeElement).toBe(screen.getByRole('region', { name: 'Strittige Angaben' }))
   })
 
-  it('roving tabindex: ровно один таб в цикле Tab', async () => {
+  it('roving tabindex: ровно одна кнопка обзора в цикле Tab', async () => {
     const user = userEvent.setup()
-    const tablist = await openVorbereitung(user)
-    const tabs = within(tablist).getAllByRole('tab')
-    const inCycle = tabs.filter((t) => t.getAttribute('tabindex') === '0')
+    const overview = await openOverview(user)
+    const steps = within(overview).getAllByRole('button')
+    const inCycle = steps.filter((s) => s.getAttribute('tabindex') === '0')
     expect(inCycle).toHaveLength(1)
   })
 
   it('Home и End уводят фокус на края списка', async () => {
     const user = userEvent.setup()
-    const tablist = await openVorbereitung(user)
-    const tabs = within(tablist).getAllByRole('tab')
+    const overview = await openOverview(user)
+    const steps = within(overview).getAllByRole('button')
 
-    await user.click(tabs[0]!)
+    steps[0]!.focus()
     await user.keyboard('{End}')
-    expect(document.activeElement).toBe(tabs[tabs.length - 1])
+    expect(document.activeElement).toBe(steps[steps.length - 1])
     await user.keyboard('{Home}')
-    expect(document.activeElement).toBe(tabs[0])
+    expect(document.activeElement).toBe(steps[0])
   })
 })
 

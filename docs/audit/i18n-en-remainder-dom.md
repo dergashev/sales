@@ -5,15 +5,18 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 41** · перевод есть, мост не подключён: 23
-· перевода нет (в поставку копирайта): 18
+**Всего 56** · перевод есть, мост не подключён: 27
+· перевода нет (в поставку копирайта): 29
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
 - . Die Preiswirkung erscheint sofort in der Angebotsspalte rechts und im Kostentreiber.
 - Beiträge · Summe =
+- Die Gebäudeklasse ist noch nicht bestätigt. Die Geschossanzahl ist lediglich Prüfauslöser und kein Nachweis; die Einstufung nach MBO §2 erfolgt über das Brandschutzkonzept und die zugehörigen Nachweise. Für die Kalkulation ist vorläufig GK 5 hinterlegt, Stand «Prüfung erforderlich». Die endgültige Einstufung kann die Anforderungen an Tragwerk und Kapselung und damit den Preis verändern; mit Vorlage des Brandschutzkonzepts bestätigen wir sie.
 - Gebäude im Projekt
+- Klassifikation bestätigen
 - Leistungsbeginn ab OK Decke über UG
+- Liegt eine Wohnflächenberechnung nach WoFlV vor?
 - Marge Eigenleistung nach Rabatt:
 - Musterhöfe Westpark
 - Musterquartier Südhang
@@ -27,6 +30,7 @@ anbei erhalten Sie unser indikatives Angebot für das Musterprojekt Nordfeld.
 Mit freundlichen Grüßen
 - Total NUF nach DIN 277
 - Total WFL nach WoFlV
+- Welcher Effizienzhaus-Standard ist vorgesehen?
 - Werte aus
 - Werte extrahiert · Regelsatz RS 2026.2
 - aktuelle Auswahl
@@ -40,21 +44,32 @@ Mit freundlichen Grüßen
 
 ## Перевода нет — в следующую поставку копирайта
 
+- % auf KG
+- % auf ±
 - Bereit zum Anlegen
 - Bestätigt
 - Bestätigung erforderlich · blockiert das Anlegen einer Opportunity Option
+- Blockiert das Anlegen einer Opportunity Option nicht
+- Diese 1 Frage reduziert die Schätzunsicherheit von ±
 - Druckansicht öffnen
 - Eigenes Ausgabeprofil clientPrint mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.
 - Ein Dokument ist nicht lesbar · blockiert das Anlegen einer Opportunity Option nicht
 - Energiestandard und Zertifizierung
 - Entscheidung erforderlich · blockiert das Anlegen einer Opportunity Option
+- Fragen reduzieren die Schätzunsicherheit von ±
 - Geprüfte Gebäudewerte tragen ihre Herkunft; Änderungen heben die Bestätigung auf und werden in Gebäude & Umfang erneut geprüft.
 - Konfiguration je Gebäude bestätigt
 - Kostengruppen nach DIN 276
 - Leistungsabgrenzung bestätigen
+- Projekt bestätigen
+- Projektübersicht
 - Später entscheiden
+- Texte stammen aus den Fallback-Regeln; das Wertfeld (z. B. die Gebäudeklasse) wird mit dem Projektwert belegt — der Regeltext nennt einen Beispielwert. Eine Empfehlung verschwindet, sobald der Wert erfasst ist — die Liste wird abgeleitet, nicht gepflegt.
 - Tiefgarage · Lüftung, OS-Beschichtung, Tore
+- Total BGF (S, nicht umschlossen)
 - Total WFL nach WoFlV geändert
 - Untergeschoss · Rohbau und Ausbau
 - Verschiebt die Termine unten; die Bauzeit selbst bleibt gleich.
+- Vorläufig · Strittige Angaben noch offen
 - Wartet auf die Voraussetzungen oben
+- Δ-Werte erscheinen nur hier und nie in der Kundenansicht (Regel 11)

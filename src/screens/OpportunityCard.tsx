@@ -1,14 +1,17 @@
 import { Decimal } from 'decimal.js'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import demo from '../fixtures/demo-0001.json'
 import opportunities from '../fixtures/opportunities.json'
-import derived from '../fixtures/derived-prototype.json'
 import {
+  preparationProjection,
   preparationStatuses,
   projectBaselineChangesSinceConfirmation,
   useStore,
   wflConflict,
 } from '../state/store'
-import { NNBSP, formatDE } from '../engine/money'
+import { activeConfiguratorWorkflow, CONFIGURATOR_STEP } from '../state/chapters'
+import { effectiveFactValue } from '../state/buildingReview'
+import { NNBSP, formatDE, rateLabel } from '../engine/money'
 import {
   ATTENTION_MARK,
   Button,
@@ -17,38 +20,45 @@ import {
   type ProvenancePresentation,
 } from '../components/primitives'
 import { StaleState } from '../components/DataStates'
+import { EstimateUncertaintyBadge } from '../components/EstimateUncertaintyBadge'
 import { useT, useTx } from '../i18n'
+import { copyFor } from '../i18n/internal-refs'
 import { DocumentAnalysis } from '../components/DocumentAnalysis'
 import { InternalNote } from '../components/InternalNote'
-import { PrerequisiteChecklist } from '../components/PrerequisiteChecklist'
 import { PageHeader } from '../components/designSystem'
 import { STAGE_TAG } from '../lib/opportunityStage'
-import { S2Vorbereitung } from './S2Vorbereitung'
-import { effectiveFactValue } from '../state/buildingReview'
+import { factPresentation, stableName } from './BuildingScope'
 import { DELTA_CHIP_MS } from '../config/ui-policy'
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 
 /**
  * Карточка Opportunity — уровень между списком и рабочим конвейером.
  *
- * Порядок на экране повторяет порядок работы, а не структуру данных:
- * сначала анализ документов, затем его результат, затем спорное, затем
- * то, что относится ко всему проекту, и только потом — гейт создания
- * Options. Пользователь не может создать Option раньше, чем разрешит
- * конфликты и подтвердит параметры: Option, построенный на спорных
- * данных, придётся переделывать целиком.
+ * TASK 01 (deep-coherence audit, backlog dcb10e29) consolidates the former
+ * 4-stage Project Card readiness overview and the separate "· Vorbereitung"
+ * workspace (P1–P5 tabs) into ONE surface expressing the accepted canonical
+ * six-stage preparation sequence: 1 Dokumentanalyse → 2 Strittige Angaben →
+ * 3 Offene Fragen & Annahmen → 4 Projektübersicht → 5 Projekt bestätigen →
+ * 6 Opportunity Options. Every section stays on this one page — the
+ * six-stage `ReadinessOverview` below is the ONE progress model; there is no
+ * second stepper, no second document list, no second conflict-resolution
+ * surface, and no separate workspace to open.
  *
- * Цены здесь нет и быть не может: цена принадлежит Option, а Option ещё
- * не существует. Показать сумму на этом уровне значило бы пообещать
- * число, у которого нет конфигурации.
+ * "· Vorbereitung" (`S2Vorbereitung.tsx`) is retired: P1's document table and
+ * Grundrisse version resolution move into stage 1; P2's own conflict copy
+ * and its Haus-A-only editable fields are dropped (building-fact editing
+ * belongs to Building & Scope, Task 02 — out of scope here; the retired
+ * fields were the Haus-A singleton legacy compatibility layer, exactly the
+ * projection this task retires, F-05); P3 (open questions) and P4
+ * (Annahmen) merge into stage 3; P5 (Varianten) is hidden per PD-1's
+ * ticket-supplied default (retire is recommended, not yet decided by the
+ * CPO) — its fixture data is untouched, only the entry point is gone, so
+ * the "Im Konfigurator öffnen" class of silently-failing control (F-21,
+ * reachable only once an Option already exists) cannot be reached at all.
  *
- * Шапка и обзор готовности (readiness overview, ниже) — это единственный
- * слой этой карточки, добавленный тикетом REBUILD PROJECT CARD SHELL:
- * они читают уже существующие поля состояния (`wflConflict`,
- * `projectParamsConfirmed`, `options`), а не заводят новые. Обзор — это
- * навигация (переход к разделу разрешён всегда, DC-13 STEP-003), а не
- * повторение действия: единственная кнопка, которая реально что-то
- * подтверждает или решает, живёт внутри самого раздела.
+ * Цены здесь нет и быть не может как ГЛАВНОГО числа: Gesamt-total принадлежит
+ * Option, а Option ещё не существует. Show и Leitkennzahl (stage 4) —
+ * ВТОРИЧНАЯ, явно T0-indicative метрика существующего движка
+ * (`preparationProjection`), а не обещание готовой цены.
  */
 
 const D = (s: string) => new Decimal(s)
@@ -164,42 +174,67 @@ type Stage = {
 }
 
 /**
- * Обзор готовности проекта — новый экземпляр визуального контракта
- * DC-13 `WorkflowStepper` (README «Kapitel-Navigation», канон STEP-001),
- * до сих пор существовавшего только внутри `Sidebar.tsx` для глав
- * конфигуратора. Здесь переиспользуются ровно те же классы/токены
- * (`.a3-chapters` / `.a3-ch` / `.a3-n` / `.a3-done` / `.a3-cur`) и та же
- * анатомия «маркер → заголовок → состояние текстом», но не логика
- * открытия глав: переход здесь — прокрутка и фокус уже существующего
- * раздела карточки, а не другой экран.
+ * Обзор готовности проекта — визуальный контракт DC-13 `WorkflowStepper`
+ * (README «Kapitel-Navigation», канон STEP-001). Governance: канонического
+ * React-источника у DC-13 по-прежнему нет (ledger, строка 65); отклонение
+ * зарегистрировано **DS-GOV-EX-07**.
+ *
+ * TASK 01 расширяет этот единственный экземпляр с четырёх до шести стадий —
+ * это ОДИН прогресс-модель на всю карточку, включая то, что прежде жило в
+ * отдельной "· Vorbereitung": второго степпера, второй читалки готовности и
+ * отдельной вкладочной навигации больше нет (AC2).
  *
  * Прыжок к разделу разрешён всегда, независимо от состояния (STEP-003,
- * правило 12): обзор — навигация, не действие. Действие — там же, где
- * было: у своей секции.
- *
- * Governance: это ВТОРАЯ рукописная реализация анатомии DC-13 — канонического
- * React-источника у DC-13 пока нет (ledger, строка 65). Отклонение
- * зарегистрировано как **DS-GOV-EX-07** в `docs/audit/design-system-governance.md`;
- * там же — обязательное по правилу 30 объявление семи состояний данных этого
- * экземпляра и условие снятия (извлечение канонического `WorkflowStepper`).
+ * правило 12): обзор — навигация, не действие. Роль каждого раздела всегда
+ * видна на одной странице (все шесть секций смонтированы и видимы) — переход
+ * прокручивает и фокусирует уже существующий раздел, а не скрывает соседние:
+ * при шести стадиях и множестве уже существующих сквозных тестов,
+ * опирающихся на одновременную видимость разделов 2/5/6, настоящая
+ * ARIA-tablist-панель с скрытием неактивных панелей расширила бы область
+ * регрессии далеко за пределы этой задачи. Клавиатурный контракт TABS-001 /
+ * KEY-003 (roving tabindex, стрелки двигают фокус, Home/End — края)
+ * применяется здесь к самим кнопкам обзора — это ЗАКРЫВАЕТ, а не сохраняет,
+ * один из двух известных пробелов DS-GOV-EX-07 (недостающий KEY-003) для
+ * этого экземпляра.
  */
 function ReadinessOverview({ label, stages }: { label: string; stages: ReadonlyArray<Stage> }) {
   const t = useT()
+  const listRef = useRef<HTMLOListElement>(null)
+  const [focusIdx, setFocusIdx] = useState(0)
+
+  const moveFocus = (next: number) => {
+    setFocusIdx(next)
+    listRef.current?.querySelectorAll<HTMLButtonElement>('button')[next]?.focus()
+  }
+  const onKey = (e: React.KeyboardEvent) => {
+    const len = stages.length
+    const next = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? (focusIdx + 1) % len
+      : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? (focusIdx - 1 + len) % len
+        : e.key === 'Home' ? 0
+          : e.key === 'End' ? len - 1
+            : null
+    if (next === null) return
+    e.preventDefault()
+    moveFocus(next)
+  }
+
   return (
     <nav aria-label={label} className="mt-5">
-      <ol className="a3-chapters">
-        {stages.map((stage) => (
+      <ol ref={listRef} className="a3-chapters" onKeyDown={onKey}>
+        {stages.map((stage, i) => (
           <li key={stage.id}>
             <button
               type="button"
-              onClick={stage.onOpen}
+              onClick={() => { setFocusIdx(i); stage.onOpen() }}
+              onFocus={() => setFocusIdx(i)}
               aria-current={stage.current ? 'step' : undefined}
+              tabIndex={focusIdx === i ? 0 : -1}
               className={'a3-ch relative flex min-h-hit-target w-full items-center gap-3 text-left outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring'
                 + (stage.state === 'done' ? ' a3-done' : '')
                 + (stage.current ? ' a3-cur' : '')}
             >
               {/* Позиция — ТЕКСТОМ, а не только визуально (DC-13, Screen-
-                  reader-Klausel «Schritt 3 von 5»). Видимой остаётся компактная
+                  reader-Klausel «Schritt 3 von 6»). Видимой остаётся компактная
                   цифра, скринридер получает целую фразу из словаря (правило 36,
                   ключ с параметрами — без конкатенации). Сама цифра при этом
                   aria-hidden, иначе позиция читается дважды. */}
@@ -209,10 +244,6 @@ function ReadinessOverview({ label, stages }: { label: string; stages: ReadonlyA
                   {t('oppcard.stepPosition', { n: stage.number, total: stages.length })}
                 </span>
               </span>
-              {/* F25: the 'attention' branch (StageState) previously reused
-                  `▲`, the canonical derived-provenance glyph, for a materially
-                  different meaning. `ATTENTION_MARK` is the dedicated
-                  canonical warning/attention glyph instead. */}
               <span aria-hidden="true" className="w-4 shrink-0">
                 {stage.state === 'done' ? '✓' : stage.state === 'blocked' ? '○' : ATTENTION_MARK}
               </span>
@@ -245,11 +276,12 @@ export function OpportunityCard() {
   const t = useT()
   const tx = useTx()
   const meta = opportunities.items.find((o) => o.id === s.opportunityId)
-  // Подготовка (вопросы, Annahmen, варианты) — уровень Opportunity, не
-  // Option: она общая для всех Options этого проекта. В конвейере её нет.
-  const [showVorbereitung, setShowVorbereitung] = useState(false)
   const documentSectionRef = useRef<HTMLElement>(null)
   const conflictSectionRef = useRef<HTMLElement>(null)
+  const questionsSectionRef = useRef<HTMLElement>(null)
+  // Stufen 4 (Projektübersicht) und 5 (Projekt bestätigen) zeigen im
+  // Stufen-Überblick auf denselben physischen Abschnitt — siehe dessen
+  // eigener Kommentar weiter unten.
   const parameterSectionRef = useRef<HTMLElement>(null)
   const optionsSectionRef = useRef<HTMLElement>(null)
   const confirmationStatusRef = useRef<HTMLDivElement>(null)
@@ -257,7 +289,7 @@ export function OpportunityCard() {
   const baselineChanges = projectBaselineChangesSinceConfirmation(s)
   const baselineStale = baselineChanges.length > 0
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (!focusConfirmationAfterAction.current) return
     focusConfirmationAfterAction.current = false
     confirmationStatusRef.current?.focus()
@@ -288,29 +320,27 @@ export function OpportunityCard() {
     )
   }
 
-  // ── Параметры уровня проекта: суммы от сумм, никогда среднее из средних. ──
+  // ── Параметры уровня проекта: суммы от сумм, никогда среднее из средних
+  //    (правило 39), и из ОДНОГО источника истины — buildingReviews, никогда
+  //    из фикстуры/derived напрямую (F-09: прежняя "Total BGF (S)" читала
+  //    derived-Balkonanteil, тогда как принятый факт buildingReviews (D-26)
+  //    держит BGF S = 0 — «производная площадь балкона намеренно не
+  //    переиспользуется как DIN 277 BGF S»). ──
   const bs = demo.buildings
-  const sum = (pick: (b: typeof bs[number]) => string | null | undefined) =>
-    bs.reduce((a, b) => { const v = pick(b); return v ? a.plus(D(v)) : a }, new Decimal(0))
-
-  const totalBgfR = sum((b) => b.areas.bgfAboveGround)
-  const totalBgfS = bs.reduce((a, b) => {
-    const d = (derived.buildings as Record<string, { bgfSAboveGround?: { value: string | null } }>)[b.id]
-    const v = d?.bgfSAboveGround?.value
-    return v ? a.plus(D(v)) : a
-  }, new Decimal(0))
-  const totalWfl = bs.reduce((total, building) => {
-    const review = s.buildingReviews[building.id]
-    const value = review ? effectiveFactValue(review.facts.wfl) : null
-    return value ? total.plus(value) : total
-  }, new Decimal(0))
-  const totalNuf = sum((b) => b.areas.nufDin277)
-  const totalUnits = sum((b) => b.areas.wohneinheiten)
-  const totalNrf = bs.reduce((a, b) => {
-    const d = (derived.buildings as Record<string, { nrf?: { value: string | null } }>)[b.id]
-    const v = d?.nrf?.value
-    return v ? a.plus(D(v)) : a
-  }, new Decimal(0))
+  const buildingFactSum = (key: 'bgfRAbove' | 'bgfSAbove' | 'bgfRSAbove' | 'wfl' | 'nuf' | 'units') =>
+    bs.reduce((total, b) => {
+      const review = s.buildingReviews[b.id]
+      const value = review ? effectiveFactValue(review.facts[key]) : null
+      return value ? total.plus(value) : total
+    }, new Decimal(0))
+  const totalBgfR = buildingFactSum('bgfRAbove')
+  const totalBgfS = buildingFactSum('bgfSAbove')
+  // Independently extracted aggregate, cross-checked against R + S — not a
+  // client-side recomputation of the two rows above (buildingReview.ts).
+  const totalBgfRS = buildingFactSum('bgfRSAbove')
+  const totalWfl = buildingFactSum('wfl')
+  const totalNuf = buildingFactSum('nuf')
+  const totalUnits = buildingFactSum('units')
   const conflict = wflConflict(s)
   const preparation = preparationStatuses(s)
   const openQuestionCount = Object.values(preparation.questions).filter(Boolean).length
@@ -318,11 +348,6 @@ export function OpportunityCard() {
   const documentProvenance: ProvenancePresentation = {
     kind: 'document', label: t('provenance.document'),
   }
-  const derivedProvenance = (detail: string): ProvenancePresentation => ({
-    kind: 'derived',
-    label: t('provenance.derived'),
-    detail: `${derived.marker} ${tx(derived.provenanceLabel)} · ${detail}`,
-  })
   const wflProvenance: ProvenancePresentation = {
     kind: s.fields.wfl.provenance === 'vom Kunden bestätigt'
       ? 'customerConfirmed'
@@ -339,20 +364,11 @@ export function OpportunityCard() {
           ? t('provenance.derived')
           : t('provenance.document'),
   }
-
-  if (showVorbereitung) {
-    return (
-      <div>
-        <div className="px-7 pt-5">
-          <Button onClick={() => setShowVorbereitung(false)}>{tx('← Zur Opportunity-Übersicht')}</Button>
-        </div>
-        <S2Vorbereitung openKonfigurator={() => {
-          setShowVorbereitung(false)
-          if (s.options.length > 0) s.openOption(s.options[0]!.id)
-        }} />
-      </div>
-    )
-  }
+  // Rule 39 / F-05: a project's building count for the complex lead-metric
+  // branch is how many buildings the PROJECT has, not how many happen to be
+  // `included` in an Option's pricing scope that does not exist yet at this
+  // level (Building & Scope, Task 02, runs later and may narrow that set).
+  const prep = preparationProjection(s)
 
   const konfliktOffen = conflict.state === 'open'
   const canCreateOptions = s.canCreateOptions()
@@ -365,32 +381,23 @@ export function OpportunityCard() {
         : undefined
 
   // ── Обзор готовности: abgeleitet von den bereits existierenden Feldern,
-  //    keine neue Fachlogik (D-13-Vertrag, siehe `ReadinessOverview` oben). ──
+  //    keine neue Fachlogik (D-13-Vertrag, siehe `ReadinessOverview` oben).
+  //    Stufen 1/3/4 sind rein informativ und blockieren nichts (D-19, Regel
+  //    12) — sie werden nie zur aktuellen Stufe; genau EINE der drei
+  //    gate-tragenden Stufen (2/5/6) ist es immer. ──
   const docsNeedAttention = demo.documents.some((d) => d.parseStatus === 'failed')
-  /**
-   * Ровно ОДНА стадия является текущей в каждом достижимом состоянии — это
-   * инвариант, а не «не больше одной». Пока предпосылка открыта, текущая —
-   * она; confirmed parameters that have since changed return Parameters to
-   * attention without changing the existing option-creation gate. Otherwise
-   * the final stage (Opportunity Options) stays current because that is where
-   * the user continues working.
-   *
-   * Прежняя редакция выводила текущую стадию из двух независимых величин
-   * (`firstOpen` и `optionsState`), и в терминальном состоянии обе давали
-   * «не текущая»: список готовности терял текущий шаг совсем. Теперь
-   * источник один, и «ни одной текущей» недостижимо по построению.
-   */
-  const currentStage: 'conflict' | 'parameters' | 'options' = konfliktOffen
+  const openItemsRemain = openQuestionCount + activeAssumptionCount > 0
+  const currentStage: 'conflict' | 'confirm' | 'options' = konfliktOffen
     ? 'conflict'
     : !s.projectParamsConfirmed || baselineStale
-      ? 'parameters'
+      ? 'confirm'
       : 'options'
   const optionsState: StageState = s.options.length > 0 ? 'done' : canCreateOptions ? 'attention' : 'blocked'
   const stages: Stage[] = [
     {
       id: 'documents',
       number: 1,
-      title: tx('Dokumentgrundlage'),
+      title: tx('Dokumentanalyse'),
       state: docsNeedAttention ? 'attention' : 'done',
       stateText: docsNeedAttention
         ? tx('Ein Dokument ist nicht lesbar · blockiert das Anlegen einer Opportunity Option nicht')
@@ -410,21 +417,43 @@ export function OpportunityCard() {
       onOpen: () => focusSection(conflictSectionRef),
     },
     {
-      id: 'parameters',
+      id: 'questions',
       number: 3,
-      title: tx('Projektparameter'),
+      title: tx('Offene Fragen & Annahmen'),
+      state: openItemsRemain ? 'attention' : 'done',
+      stateText: openItemsRemain
+        ? tx('Blockiert das Anlegen einer Opportunity Option nicht')
+        : tx('Keine offenen Punkte'),
+      current: false,
+      onOpen: () => focusSection(questionsSectionRef),
+    },
+    {
+      id: 'summary',
+      number: 4,
+      title: tx('Projektübersicht'),
+      state: konfliktOffen ? 'attention' : 'done',
+      stateText: konfliktOffen
+        ? tx('Vorläufig · Strittige Angaben noch offen')
+        : tx('Aktuell'),
+      current: false,
+      onOpen: () => focusSection(parameterSectionRef),
+    },
+    {
+      id: 'confirm',
+      number: 5,
+      title: tx('Projekt bestätigen'),
       state: s.projectParamsConfirmed && !baselineStale ? 'done' : 'attention',
       stateText: baselineStale
         ? t('oppcard.baseline.stepStale')
         : s.projectParamsConfirmed
           ? tx('Bestätigt')
         : tx('Bestätigung erforderlich · blockiert das Anlegen einer Opportunity Option'),
-      current: currentStage === 'parameters',
+      current: currentStage === 'confirm',
       onOpen: () => focusSection(parameterSectionRef),
     },
     {
       id: 'options',
-      number: 4,
+      number: 6,
       title: tx('Opportunity Options'),
       state: optionsState,
       // Der genaue Grund steht bereits an der echten Aktion (aria-describedby
@@ -440,30 +469,58 @@ export function OpportunityCard() {
     },
   ]
 
+  // ── Stage 3 content: merged former P3 (Offene Fragen) + P4 (Annahmen),
+  //    explicitly distinguishing OPEN QUESTION / SALES RECOMMENDATION / RISK
+  //    (AC7). Resolution of the WFL conflict itself stays exclusively in
+  //    stage 2 (AC3) — this stage only ever links back to it. ──
+  const p = prep
+  const openQuestions = [
+    {
+      text: 'Liegt eine Wohnflächenberechnung nach WoFlV vor?',
+      deltaPp: 5, done: !preparation.questions.wfl,
+      action: null as (() => void) | null,
+    },
+    {
+      text: 'Welcher Effizienzhaus-Standard ist vorgesehen?',
+      deltaPp: 4, done: !preparation.questions.energyStandard,
+      action: () => s.confirmEnergiestandardAnswer(),
+    },
+  ]
+  const openOfThose = openQuestions.filter((q) => !q.done)
+  const uncertaintyTarget = p.uncertaintyPp - openOfThose.reduce((a, q) => a + q.deltaPp, 0)
+  const [copyState, setCopyState] = useState<'idle' | 'ok' | 'error'>('idle')
+
+  const scopeBoundariesPosition = activeConfiguratorWorkflow({
+    coverage: s.coverage,
+    mode: s.mode,
+  }).findIndex((step) => step.id === CONFIGURATOR_STEP.SCOPE_BOUNDARIES) + 1
+  // Активное допущение = каскад дошёл до подстановки (M-4). Список выводится
+  // из состояния, а не поддерживается руками — поэтому он всегда точен.
+  const recommendations: Array<{ id: string; text: string; resolve?: () => void; resolveLabel?: string }> = []
+  if (preparation.assumptions.buildingClass) {
+    recommendations.push({
+      id: 'gk',
+      // Дословно t0-fallback-rules.md:106; в слот значения подставлен
+      // проектный GK 5 (в тексте правила стоит пример GK 4).
+      text: 'Die Gebäudeklasse ist noch nicht bestätigt. Die Geschossanzahl ist ' +
+        'lediglich Prüfauslöser und kein Nachweis; die Einstufung nach MBO §2 ' +
+        'erfolgt über das Brandschutzkonzept und die zugehörigen Nachweise. ' +
+        'Für die Kalkulation ist vorläufig GK 5 hinterlegt, Stand ' +
+        '«Prüfung erforderlich». Die endgültige Einstufung kann die ' +
+        'Anforderungen an Tragwerk und Kapselung und damit den Preis ' +
+        'verändern; mit Vorlage des Brandschutzkonzepts bestätigen wir sie.',
+      resolve: () => s.confirmGebaeudeklasse(),
+      resolveLabel: 'Klassifikation bestätigen',
+    })
+  }
+
   return (
     <div className="a3-page px-7 py-6">
       <PageHeader
         title={meta.name}
         meta={
-          /* Правило 37: идентичность проекта и его статус — два ОТДЕЛЬНЫХ
-             блочных прогона текста, а не два инлайновых узла подряд. Раньше
-             между ними не было ни пробела, ни границы блока, и извлечение
-             текста (равно как и скринридер) склеивало их в «DEMO-0001in
-             Vorbereitung». Разделяет их структура, а не пробел разметки:
-             в flex-контейнере оба потомка блокируются, и текст не зависит
-             от пробелов в JSX. Вид не меняется — расстояние по-прежнему
-             задаёт тот же `ml-3` (12 px), выравнивание по правому краю
-             сохраняет `justify-end` вместо `text-align` родителя, а общая
-             базовая линия — `items-baseline`. */
           <span className="flex flex-wrap items-baseline justify-end">
-            {/* F05: `meta.id` (the raw fixture id, e.g. "DEMO-0001") used to
-                trail this line — an internal identifier with no client-facing
-                purpose here; city/country/owner already identify the project. */}
             <span className="block">{meta.city} · {meta.country} · {meta.owner}</span>
-            {/* Статус не цветом одним (правило 8): носитель — подпись самого
-                тега. Точки здесь нет: `.a3-dot` определён только внутри
-                `.a3-badge` и `.a3-chip-src`, в `.a3-tag` он рисовал пустой
-                узел нулевого размера. */}
             <span className={'a3-tag ml-3 ' + (STAGE_TAG[meta.stage] ?? '')}>
               {tx(meta.stage)}
             </span>
@@ -473,24 +530,8 @@ export function OpportunityCard() {
 
       <ReadinessOverview label={tx('Projektstatus')} stages={stages} />
 
-      <div className="a3-preparation-summary mt-3">
-        <p>{t('oppcard.baseline.preparationSummary', {
-          questions: openQuestionCount,
-          assumptions: activeAssumptionCount,
-        })}</p>
-        {/* F11: was an `.a3-linkbtn` (no visible border/fill) at the far
-            right of a metadata row — read as plain text, not as the one
-            control that opens the private preparation workspace. It does
-            not gate anything and is always available (STEP-003), so it is
-            not THE current-stage forward action either — `secondary` makes
-            it a real, discoverable control without competing with whichever
-            confirmation gate below is this screen's current primary action. */}
-        <Button variant="secondary" onClick={() => setShowVorbereitung(true)}>
-          {tx('Vorbereitung öffnen')}
-        </Button>
-      </div>
-
-      {/* 1 · Анализ документации — верхний уровень карточки. */}
+      {/* 1 · Анализ документации + разрешение версий планов (перенесено из
+          "· Vorbereitung" P1 — единственный рендер списка документов, AC8). */}
       <section
         ref={documentSectionRef}
         tabIndex={-1}
@@ -503,14 +544,34 @@ export function OpportunityCard() {
             pages: typeof d.pages === 'number' ? d.pages : null,
             parseStatus: d.parseStatus,
           }))}
-          // Живое действие (дефект 10): ручной ввод живёт в подготовке —
-          // её вопросы и Annahmen и есть форма ручного восполнения.
-          onManualCapture={() => setShowVorbereitung(true)}
+          // Ручной ввод отсутствующего значения — это ровно то, что решает
+          // Stage 3 (Offene Fragen & Annahmen): переход туда, а не открытие
+          // отдельного экрана, которого больше нет.
+          onManualCapture={() => focusSection(questionsSectionRef)}
         />
+
+        <div className="mt-5 border border-border-default p-4">
+          <h3 className="text-heading-3 font-bold text-text-primary">{tx('Versionsauflösung · Grundrisse')}</h3>
+          <p className="a3-cap mt-2">{tx('Zwei Versionen gefunden. Vorschlag des Systems: V2 — Datum im Plankopf ist neuer. Das Datum ist ein Beleg, keine Entscheidung (VERSION-002): die Auswahl trifft der Vertrieb, der Wechsel wird protokolliert, die ausgeschlossene Version bleibt nachvollziehbar.')}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(['V2', 'V1'] as const).map((v) => (
+              <Button
+                key={v}
+                variant={s.activeGrundrisse === v ? 'primary' : 'secondary'}
+                onClick={() => s.activateGrundrisse(v)}
+                aria-pressed={s.activeGrundrisse === v}
+              >
+                {s.activeGrundrisse === v && <span aria-hidden="true">✓ </span>}
+                Grundrisse_Muster_{v}.pdf
+              </Button>
+            ))}
+          </div>
+          <p className="mt-3 text-small text-text-muted">{tx('Wiederholte Analyse überschreibt niemals Werte mit «manuell erfasst» oder «vom Kunden bestätigt» — bei Konflikt entscheidet der Vertrieb über den Diff (D-08).')}</p>
+        </div>
       </section>
 
-      {/* 2 · Спорное из документации — до параметров: параметр, выведенный
-          из спорного значения, тоже спорен. */}
+      {/* 2 · Спорное из документации — ЕДИНСТВЕННОЕ место разрешения (AC3):
+          прежний дубликат в "· Vorbereitung" P2 удалён вместе с ним. */}
       <section
         ref={conflictSectionRef}
         tabIndex={-1}
@@ -524,9 +585,6 @@ export function OpportunityCard() {
           <div className="a3-konflikt mt-3">
             <p className="text-body text-text-primary">
               <span aria-hidden="true">▲ </span>{tx('Wohnfläche WFL nach WoFlV: zwei Kandidaten.')}</p>
-            {/* Кандидаты — `.a3-kv` контракта DC-32: пара «источник →
-                значение» в ряд, а не список абзацев. Значения стоят рядом
-                именно потому, что решение принимается их сравнением. */}
             <div className="a3-kv">
               {conflict.candidates.map((c) => (
                 <span key={c.origin}>
@@ -546,11 +604,6 @@ export function OpportunityCard() {
             </div>
             <p className="a3-cap mt-2">{tx('Folge der Wahl: nur der Nenner der Leitkennzahl ändert sich, die Zwischensumme der kalkulierten Positionen bleibt gleich. Der nicht gewählte Kandidat bleibt als Alternative nachvollziehbar.')}</p>
             <div className="a3-row mt-3">
-              {/* Эта ветка рендерится только при `konfliktOffen`, а тогда
-                  `currentStage === 'conflict'` по построению: условие здесь
-                  было бы ветвью, которая не может быть ложной. Правило то же,
-                  что у параметров ниже — первичное действие принадлежит
-                  текущей стадии. */}
               <Button variant="primary" onClick={() => s.resolveWflConflict('customer')}>{tx('Kundenwert übernehmen')}</Button>
               <Button onClick={() => s.resolveWflConflict('document')}>{tx('Dokumentwert beibehalten')}</Button>
               <Button
@@ -567,7 +620,113 @@ export function OpportunityCard() {
         )}
       </section>
 
-      {/* 3 · Параметры всего проекта. Суммы считаются от сумм (правило 39). */}
+      {/* 3 · Offene Fragen & Annahmen — Zusammenführung der früheren
+          "· Vorbereitung" P3/P4 (AC7): OPEN QUESTION / SALES RECOMMENDATION /
+          RISK explizit unterschieden. Nicht blockierend (D-19, Regel 12) —
+          eine Option zu wählen verengt nichts, nur die Bestätigung des
+          Kunden. */}
+      <section
+        ref={questionsSectionRef}
+        tabIndex={-1}
+        className="a3-sheet mt-6 outline-none"
+        aria-label="Offene Fragen & Annahmen"
+      >
+        <h2 className="text-heading-3 font-bold text-text-primary">
+          {openOfThose.length === 1
+            ? <>Diese 1 Frage reduziert die Schätzunsicherheit von
+                ±{NNBSP}{p.uncertaintyPp}{NNBSP}% auf ±{NNBSP}{uncertaintyTarget}{NNBSP}%</>
+            : openOfThose.length > 1
+              ? <>Diese {openOfThose.length} Fragen reduzieren die Schätzunsicherheit von
+                  ±{NNBSP}{p.uncertaintyPp}{NNBSP}% auf ±{NNBSP}{uncertaintyTarget}{NNBSP}%</>
+              : <>{tx('Alle Fragen beantwortet ·')}<EstimateUncertaintyBadge presentation="compact" pp={p.uncertaintyPp} /></>}
+        </h2>
+        <p className="a3-cap mt-1">{tx('Nach Wirkung sortiert; Verengung in Prozentpunkten. Eine Option zu wählen verengt nichts — nur die Bestätigung des Kunden (D-19).')}</p>
+
+        <h3 className="mt-4 text-small font-medium text-text-primary">{tx('Offene Fragen')}</h3>
+        <ol className="mt-2">
+          {openQuestions.map((q, i) => (
+            <li key={q.text} className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle py-3">
+              <span className={'text-body ' + (q.done ? 'text-text-muted' : 'text-text-primary')}>
+                {q.done && <span aria-hidden="true">✓ </span>}
+                {i + 1}. {q.text}
+              </span>
+              <span className="numeric text-body text-text-secondary">
+                −{NNBSP}{q.deltaPp}{NNBSP}Prozentpunkte
+              </span>
+              {!q.done && q.action && (
+                <Button onClick={q.action}>{tx('Antwort erfassen')}</Button>
+              )}
+              {!q.done && !q.action && (
+                <Button variant="ghost" onClick={() => focusSection(conflictSectionRef)}>
+                  {tx('→ Strittige Angaben')}
+                </Button>
+              )}
+            </li>
+          ))}
+        </ol>
+
+        <h3 className="mt-4 text-small font-medium text-text-primary">{tx('Risiko')}</h3>
+        <p className="flex flex-wrap items-center justify-between gap-3 py-3 text-body text-text-primary">
+          <span>{tx('Ist ein Baugrundgutachten vorhanden?')}</span>
+          <span className="text-body text-text-secondary">
+            → Risiko: Baugrund · Wahrscheinlichkeit mittel ·
+            Kostenwirkung +{NNBSP}4{NNBSP}% auf KG{NNBSP}320
+          </span>
+        </p>
+
+        <div className="mt-4">
+          <Button onClick={() => {
+            const text = openQuestions.filter((q) => !q.done).map((q, i) => `${i + 1}. ${q.text}`).join('\n')
+            if (!navigator.clipboard) {
+              setCopyState('error')
+              return
+            }
+            navigator.clipboard.writeText(text || 'Alle Fragen beantwortet.')
+              .then(() => setCopyState('ok'), () => setCopyState('error'))
+          }}>{tx('Fragenliste kopieren')}</Button>
+          <p role="status" aria-live="polite" className="a3-cap mt-2">
+            {copyState === 'ok' && <>{tx('✓ Fragenliste in die Zwischenablage kopiert')}</>}
+            {copyState === 'error' && <>{tx('✗ Kopieren nicht möglich — Zwischenablage in dieser Umgebung nicht verfügbar; Fragen unten manuell markieren')}</>}
+          </p>
+        </div>
+
+        <h3 className="mt-5 text-small font-medium text-text-primary">
+          {tx('Empfehlungen')} · {recommendations.length}
+        </h3>
+        <p className="a3-cap mt-1">{tx('Texte stammen aus den Fallback-Regeln; das Wertfeld (z. B. die Gebäudeklasse) wird mit dem Projektwert belegt — der Regeltext nennt einen Beispielwert. Eine Empfehlung verschwindet, sobald der Wert erfasst ist — die Liste wird abgeleitet, nicht gepflegt.')}</p>
+        {recommendations.length === 0 && (
+          <p className="mt-3 border border-border-default p-4 text-body text-text-secondary">{tx('Keine aktiven Empfehlungen. Alle T0-Werte sind erfasst oder bestätigt.')}</p>
+        )}
+        <ul className="mt-3">
+          {recommendations.map((a) => (
+            <li key={a.id} className="mt-3 border border-border-default p-4">
+              <p className="text-body text-text-primary">
+                <span className="font-medium">{tx('Empfehlung:')}</span> {copyFor(a.text, s.mode)}
+              </p>
+              <div className="mt-3">
+                {a.resolve
+                  ? <Button onClick={a.resolve}>{a.resolveLabel}</Button>
+                  : (
+                      <Button onClick={() => focusSection(parameterSectionRef)}>
+                        {t('configurator.scopeBoundaries.assumptionAction', {
+                          chapter: scopeBoundariesPosition,
+                        })}
+                      </Button>
+                    )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* 4 Projektübersicht + 5 Projekt bestätigen — EIN physischer Abschnitt
+          (zwei Einträge im Stufen-Überblick oben zeigen auf denselben
+          Anker): konsolidierte Projektwahrheit für BEIDE Gebäude, aus den
+          Building Reviews summiert (AC4), niemals aus der rohen
+          Fixture/derived-JSON (F-09), plus die eine Stelle, an der die
+          Projekt-Baseline bestätigt wird (M-4). Nur Lesen bei den
+          Gebäudefakten — Bearbeitung einzelner Fakten gehört zu Building &
+          Scope (Task 02). */}
       <section
         ref={parameterSectionRef}
         tabIndex={-1}
@@ -590,37 +749,83 @@ export function OpportunityCard() {
 
         <div className="a3-project-baseline-breakdown mt-5">
           <h3>{t('oppcard.baseline.bgfBreakdown')}</h3>
-          <p id="project-baseline-bgf-equation" className="sr-only">
-            {t('oppcard.baseline.bgfEquation')}
-          </p>
-          <dl className="a3-project-baseline-equation" aria-describedby="project-baseline-bgf-equation">
+          {/* F-09 fix: every row now sums an independently reviewed
+              buildingReviews fact (D-26: BGF S is documented `Decimal(0)` —
+              the derived balcony-share proxy is deliberately not reused as
+              DIN 277 BGF S; BGF R+S is its OWN independently extracted
+              aggregate, cross-checked against R + S, not a client-side sum
+              of the two). The old "+160 m² abgeleitet" row read a fixture
+              proxy that contradicted the building reviews (documented S = 0,
+              R+S sum 3.600) instead of this single source of truth. */}
+          <dl className="a3-project-baseline-equation">
             <Metric label="Total BGF (R, oberirdisch)" value={formatDE(totalBgfR, 2)}
               unit="m²" provenance={documentProvenance} />
-            <Metric operator="+" label="Total BGF (S)" value={formatDE(totalBgfS, 2)}
-              unit="m²" provenance={derivedProvenance(t('oppcard.balconyShareDerived'))} />
-            <Metric emphasis="total" operator="=" label="Total BGF (R+S)"
-              value={formatDE(totalBgfR.plus(totalBgfS), 2)} unit="m²"
-              provenance={derivedProvenance(t('bldg.includesDerivedSArea'))} />
-          </dl>
-          <dl className="a3-project-baseline-derived-result">
-            <Metric operator="→" label="Total NRF" value={formatDE(totalNrf, 2)} unit="m²"
-              provenance={derivedProvenance(t('oppcard.bgfDerivedRatio'))} />
+            <Metric operator="+" label="Total BGF (S, nicht umschlossen)" value={formatDE(totalBgfS, 2)}
+              unit="m²" provenance={documentProvenance} />
+            <Metric emphasis="total" operator="=" label="Total BGF (R+S)" value={formatDE(totalBgfRS, 2)}
+              unit="m²" provenance={documentProvenance} />
           </dl>
         </div>
 
+        <div className="mt-5">
+          {/* Rule 39: complex lead metric = €/m² BGF oberirdisch for 2+
+              buildings, using ALL buildings the project has (F-05) — not
+              only whichever happen to be `included` in an Option's pricing
+              scope that does not exist yet at this level. */}
+          <p className="text-small text-text-muted">
+            {tx('Aktuelle Leitkennzahl')}: {rateLabel(p.leadRate)} · {tx('Δ-Werte erscheinen nur hier und nie in der Kundenansicht (Regel 11)')}.
+          </p>
+        </div>
+
+        {/* Gebäude einzeln (AC4: BEIDE Gebäude sichtbar, nicht nur die
+            Summe) — reine Anzeige, dieselbe Herkunftsdarstellung wie
+            Building & Scope (`factPresentation`), keine zweite Kopie davon. */}
+        <div className="mt-5 overflow-x-auto">
+          <table className="a3-data-table">
+            <caption className="sr-only">{tx('Gebäude im Projekt')}</caption>
+            <thead>
+              <tr className="border-b border-border-strong text-left">
+                <th className="py-2 pr-4 font-medium">{tx('Gebäude')}</th>
+                <th className="numeric py-2 pr-4 text-right font-medium">Total BGF (R)</th>
+                <th className="numeric py-2 pr-4 text-right font-medium">WFL nach WoFlV</th>
+                <th className="numeric py-2 pr-4 text-right font-medium">NUF nach DIN 277</th>
+                <th className="numeric py-2 text-right font-medium">{tx('Wohneinheiten')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bs.map((b) => {
+                const review = s.buildingReviews[b.id]
+                const name = review ? stableName(review, b.stableName) : b.stableName
+                const cell = (key: 'bgfRAbove' | 'wfl' | 'nuf' | 'units') => {
+                  const value = review ? effectiveFactValue(review.facts[key]) : null
+                  const provenance = review ? factPresentation(review.facts[key], t) : null
+                  return (
+                    <td key={key} className="numeric py-2 pr-4 text-right text-text-primary">
+                      {value === null
+                        ? <span className="text-text-secondary">{tx('nicht erfasst')}</span>
+                        : <>{formatDE(value, key === 'units' ? 0 : 2)}{key !== 'units' ? `${NNBSP}m²` : ''}</>}
+                      {provenance && <span className="mt-1 block"><ProvenanceChip provenance={provenance} /></span>}
+                    </td>
+                  )
+                }
+                return (
+                  <tr key={b.id} className="border-b border-border-subtle align-top">
+                    <td className="py-2 pr-4 text-text-primary">{name}</td>
+                    {cell('bgfRAbove')}
+                    {cell('wfl')}
+                    {cell('nuf')}
+                    {cell('units')}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+
         {!s.projectParamsConfirmed && (
-          <div className="mt-5">
-            <p className="mb-3 text-small text-text-secondary">
-              {t('oppcard.baseline.confirmConsequence')}
-            </p>
-            {/* Первичным на экране может быть только действие ТЕКУЩЕЙ стадии
-                (`currentStage`). Пока открыт конфликт, подтверждение
-                параметров — законное, но не следующее действие: оно остаётся
-                полностью работоспособным и полномочия не меняет, но перестаёт
-                соперничать за внимание с единственным «следующим шагом»
-                (правило 12 запрещает блокировать, не оформление). */}
+          <div className="mt-3">
             <Button
-              variant={currentStage === 'parameters' ? 'primary' : 'secondary'}
+              variant={currentStage === 'confirm' ? 'primary' : 'secondary'}
               onClick={() => {
                 focusConfirmationAfterAction.current = true
                 s.confirmProjectParams()
@@ -631,7 +836,7 @@ export function OpportunityCard() {
           </div>
         )}
         {s.projectParamsConfirmed && (
-          <div className="mt-5">
+          <div className="mt-3">
             <div
               ref={confirmationStatusRef}
               tabIndex={-1}
@@ -665,7 +870,9 @@ export function OpportunityCard() {
         )}
       </section>
 
-      {/* 4 · Гейт и Options. */}
+      {/* 6 · Гейт и Options — единственная модель готовности (обзор выше);
+          дублирующий двухстрочный чек-лист удалён, остаётся только кнопка +
+          её объяснение (AC2). */}
       <section
         ref={optionsSectionRef}
         tabIndex={-1}
@@ -674,47 +881,26 @@ export function OpportunityCard() {
       >
         <h2 className="text-heading-3 font-bold text-text-primary">{tx('Opportunity Options')}</h2>
         <div className="mt-3">
-          <PrerequisiteChecklist
-            label={t('oppcard.optionsReadiness')}
-            requirements={[
-              {
-                id: 'conflict',
-                label: tx('Strittige Angaben'),
-                resolved: !konfliktOffen,
-                sourceLabel: tx('Strittige Angaben'),
-                onOpenSource: () => focusSection(conflictSectionRef),
-              },
-              {
-                id: 'parameters',
-                label: tx('Projektparameter bestätigen'),
-                resolved: s.projectParamsConfirmed,
-                detail: baselineStale
-                  ? t('oppcard.prerequisites.fulfilledStale')
-                  : undefined,
-                sourceLabel: tx('Projektparameter'),
-                onOpenSource: () => focusSection(parameterSectionRef),
-              },
-            ]}
-            createLabel={tx('Opportunity Option anlegen')}
-            canCreate={canCreateOptions}
-            createDisabledReason={createOptionDisabledReason}
-            onCreate={() => s.createOption(`Option ${s.options.length + 1}`)}
-          />
+          <Button
+            variant="primary"
+            disabled={!canCreateOptions}
+            disabledReason={createOptionDisabledReason}
+            onClick={() => s.createOption(`Option ${s.options.length + 1}`)}
+          >
+            {tx('Opportunity Option anlegen')}
+          </Button>
         </div>
 
         {s.options.length > 0 && (
           <ul className="mt-3">
             {s.options.map((o) => (
               <li key={o.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle py-2">
-                {/* F05: `o.id` (the raw option id) used to trail the option's
-                    own display name here — the name alone already identifies it. */}
                 <span className="text-body text-text-primary">{o.name}</span>
                 <Button onClick={() => s.openOption(o.id)}>{tx('Öffnen')}</Button>
               </li>
             ))}
           </ul>
         )}
-
       </section>
 
       {/* Заметка — уровень проекта, не варианта: продавец записывает

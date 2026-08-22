@@ -39,27 +39,45 @@ describe('Project Card — project baseline', () => {
     expect(primary).toHaveTextContent('Total NUF nach DIN 277')
     expect(primary).toHaveTextContent('Wohneinheiten')
 
+    // F-09 fix (deep-coherence audit, Task 01): every row now sums an
+    // independently reviewed `buildingReviews` fact, never the fixture's
+    // derived-balcony proxy that produced the old "+160 m² abgeleitet"
+    // contradiction against the building reviews (documented BGF S = 0,
+    // per D-26 — the derived balcony share is deliberately not reused as
+    // DIN 277 BGF S). "Total BGF (R+S)" is its OWN independently extracted
+    // fact (cross-checked against R + S in the fixture), not a client-side
+    // recomputation — it legitimately equals R here because S is 0.
     const breakdown = within(baseline).getByRole('heading', {
       name: 'Bruttogeschossfläche (BGF)',
     }).parentElement!
     expect(breakdown).toHaveTextContent(/3\.200,00\s*m²/)
-    expect(breakdown).toHaveTextContent(/\+\s*160,00\s*m²/)
-    expect(breakdown).toHaveTextContent(/=\s*3\.360,00\s*m²/)
-    expect(breakdown).toHaveTextContent(/→\s*2\.720,00\s*m²/)
+    expect(breakdown).toHaveTextContent(/\+\s*0,00\s*m²/)
+    expect(breakdown).toHaveTextContent(/=\s*3\.200,00\s*m²/)
 
-    // Eight values remain, now with seven truthful origins. The structural
-    // building count intentionally has no fabricated provenance.
-    expect(baseline.querySelectorAll('dt')).toHaveLength(8)
-    expect(baseline.querySelectorAll('dd')).toHaveLength(8)
-    expect(within(baseline).getAllByLabelText(/^Herkunft:/)).toHaveLength(7)
-    expect(within(baseline).getAllByLabelText(/^Herkunft: abgeleitet/)).toHaveLength(3)
-    expect(within(baseline).getAllByText(new RegExp(derived.provenanceLabel))).toHaveLength(3)
-    expect(within(baseline).getAllByText(new RegExp(derived.marker, 'u'))).toHaveLength(3)
-    expect(baseline).toHaveTextContent(/≈\s*85\s*%\s*der BGF R\+S/)
+    // Seven values remain (the fabricated NRF≈85%-of-R+S row is gone along
+    // with it — it had no backing buildingReviews fact at all), all with
+    // truthful origins. The structural building count intentionally has no
+    // fabricated provenance, and none of the remaining values are "derived"
+    // any more — every one is a real, document-sourced reviewed fact.
+    expect(baseline.querySelectorAll('dt')).toHaveLength(7)
+    expect(baseline.querySelectorAll('dd')).toHaveLength(7)
+    // Scoped to the primary-facts grid + BGF equation specifically: the
+    // per-building facts table further down this same section carries its
+    // own provenance chips too (AC4), which is additional, not duplicate,
+    // information (per-building vs. project-total), so it is intentionally
+    // excluded from this dt/dd-scoped count.
+    expect(within(primary as HTMLElement).getAllByLabelText(/^Herkunft:/).length
+      + within(breakdown as HTMLElement).getAllByLabelText(/^Herkunft:/).length).toBe(6)
+    expect(within(baseline).queryAllByLabelText(/^Herkunft: abgeleitet/)).toHaveLength(0)
+    expect(within(baseline).queryByText(new RegExp(derived.provenanceLabel))).not.toBeInTheDocument()
+    expect(baseline).not.toHaveTextContent(/≈\s*85\s*%\s*der BGF R\+S/)
 
-    expect(screen.getByText(
-      'Vorbereitung · Offene Fragen: 2 · Aktive Annahmen: 1',
-    )).toBeInTheDocument()
+    // The former teaser line duplicated exactly what stage 3 (Offene Fragen
+    // & Annahmen) already shows in full on this same page — dissolved along
+    // with the separate "· Vorbereitung" workspace it used to open (AC1/AC2).
+    expect(screen.queryByText(/^Vorbereitung ·/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Vorbereitung öffnen' })).not.toBeInTheDocument()
+    expect(screen.getByText(/Diese 2 Fragen reduzieren die Schätzunsicherheit/)).toBeInTheDocument()
   })
 
   it('keeps changed-since-confirmation visible after the Delta-Chip timeout and reconfirms with focus and journal evidence', () => {
@@ -77,12 +95,11 @@ describe('Project Card — project baseline', () => {
     const stale = staleSentence.closest('[role="status"]')!
     expect(stale).toHaveTextContent('Geändert seit der Bestätigung: WFL nach WoFlV')
     expect(screen.getByRole('button', { name: 'Erneut bestätigen' })).toBeInTheDocument()
-    expect(screen.getByText(
-      'Vorbereitung · Offene Fragen: 1 · Aktive Annahmen: 1',
-    )).toBeInTheDocument()
-    const readiness = screen.getByRole('group', { name: 'Bereitschaft für Optionen' })
-    expect(within(readiness).getByText('Erfüllt · nicht mehr aktuell'))
-      .toBeInTheDocument()
+    // The former duplicated "Bereitschaft für Optionen" checklist is gone
+    // (AC2) — the one progress model (the stage overview) already names
+    // this, and the create-option gate itself carries the actionable state:
+    // AC6, staleness must not silently re-block option creation.
+    expect(screen.queryByRole('group', { name: 'Bereitschaft für Optionen' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
       .not.toHaveAttribute('aria-disabled')
 
@@ -97,9 +114,8 @@ describe('Project Card — project baseline', () => {
     expect(screen.queryByText(/Geändert seit der Bestätigung/)).not.toBeInTheDocument()
     const current = screen.getByText('Bestätigt · Projektgrundlage aktuell')
     expect(document.activeElement).toBe(current)
-    expect(within(readiness).queryByText('Erfüllt · nicht mehr aktuell'))
-      .not.toBeInTheDocument()
-    expect(within(readiness).getAllByText('Erfüllt')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
+      .not.toHaveAttribute('aria-disabled')
     expect(useStore.getState().journal.filter((event) =>
       event.label === PROJECT_PARAMS_CONFIRMATION_LABEL)).toHaveLength(confirmationsBefore + 1)
   })

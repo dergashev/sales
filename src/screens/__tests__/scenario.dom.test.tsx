@@ -212,24 +212,30 @@ describe('Сквозной сценарий продажи', () => {
     expect(status).toHaveTextContent('Site servicing · KG 200 in the offer: excluded')
   })
 
-  it('Vorbereitung P2/P5 zitiert keine Requirement-IDs mehr (F05, UI-Audit 2026-08-21)', async () => {
+  it('Projekt-Vorbereitung zitiert keine Requirement-IDs mehr (F05, UI-Audit 2026-08-21)', async () => {
     const user = userEvent.setup()
     render(<App />)
     await user.click(await screen.findByRole('button', {
       name: /Musterprojekt Nordfeld öffnen/,
     }))
-    await user.click(screen.getByRole('button', { name: 'Vorbereitung öffnen' }))
 
-    // P2 · offener Konflikt — die frühere Kopie zitierte "DEMO-VE-0002" und
-    // "(SOURCE-001)" als Requirement-/Fixture-IDs neben dem eigentlichen Satz.
+    // Strittige Angaben · offener Konflikt — die frühere "· Vorbereitung"-
+    // Kopie dieses Konflikts zitierte "DEMO-VE-0002" und "(SOURCE-001)" als
+    // Requirement-/Fixture-IDs neben dem eigentlichen Satz. Task 01 löscht
+    // diese Kopie zusammen mit der ganzen separaten Vorbereitung-Oberfläche
+    // (AC3): das verbleibende Original war stets sauber.
     expect(document.body.textContent ?? '').not.toMatch(/DEMO-VE-\d|SOURCE-\d{2,3}/)
 
     await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
-    // P2 · gelöster Konflikt — dieselbe Requirement-ID stand ein zweites Mal
-    // in der "gelöst"-Meldung.
+    // Strittige Angaben · gelöster Konflikt — dieselbe Requirement-ID stand
+    // ein zweites Mal in der "gelöst"-Meldung der gelöschten Kopie.
     expect(document.body.textContent ?? '').not.toMatch(/SOURCE-\d{2,3}/)
 
-    await user.click(screen.getByRole('tab', { name: /Varianten/ }))
+    // PD-1 (ticket-supplied default): P5 "Varianten" is hidden behind the
+    // consolidation, not deleted — no tab, no entry point, and consequently
+    // no VARIANT- citation reachable at all.
+    expect(screen.queryByRole('tab', { name: /Varianten/ })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Varianten · Haus/)).not.toBeInTheDocument()
     expect(document.body.textContent ?? '').not.toMatch(/VARIANT-\d{2,3}/)
   })
 
@@ -356,11 +362,20 @@ describe('Сквозной сценарий продажи', () => {
     render(<App />)
     // Гейт живёт в карточке Opportunity, а не в списке проектов.
     await user.click(await screen.findByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
-    const gate = screen.getByRole('group', { name: /Bereitschaft/ })
-    expect(within(gate).getByText(/von 2 Voraussetzungen erfüllt/)).toBeInTheDocument()
-    expect(within(gate).getAllByText('Strittige Angaben')).not.toHaveLength(0)
-    expect(within(gate).getByText('Projektparameter bestätigen')).toBeInTheDocument()
-    expect(gate.querySelector('svg, .a3-ring')).toBeNull()
+    // Task 01 removes the duplicated "Bereitschaft für Optionen" checklist
+    // group in favor of the one progress model (AC2): DC-26's actual
+    // requirement — name what's missing, never a ring/percentage — is now
+    // carried by the stage overview together with the create-option gate's
+    // own named reason (rule 12), not a second, separate checklist.
+    expect(screen.queryByRole('group', { name: /Bereitschaft/ })).not.toBeInTheDocument()
+    const overview = screen.getByRole('navigation', { name: 'Projektstatus' })
+    expect(within(overview).getAllByText('Strittige Angaben')).not.toHaveLength(0)
+    expect(within(overview).getByText('Projekt bestätigen')).toBeInTheDocument()
+    const create = screen.getByRole('button', { name: 'Opportunity Option anlegen' })
+    expect(create).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByText('Erst Konflikte entscheiden und Projektparameter bestätigen'))
+      .toBeInTheDocument()
+    expect(document.querySelector('svg, .a3-ring')).toBeNull()
   })
 
   it('Recap после доставки выводится из журнала, а не пишется руками (DC-31)', async () => {

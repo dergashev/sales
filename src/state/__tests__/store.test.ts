@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Decimal } from 'decimal.js'
 import {
-  activeBuilding, configuratorStepDone, projectionForOption,
+  activeBuilding, configuratorStepDone, preparationProjection, projectionForOption,
   __resetStoreForTests, useStore, wflConflict, scopeBoundariesStatus,
 } from '../store'
 import { KG400_GROUPS, choiceBlocked } from '../../engine/options'
@@ -223,6 +223,23 @@ describe('S3: проекция воспроизводит мокап', () => {
     expect(p.duration.prefix + p.duration.display).toBe('≈7,5 Monate')
     expect(p.duration.completionDate).toBe('2027-11-19')
     expect(p.uncertaintyPp).toBe(22)
+  })
+
+  it('preparationProjection uses the complex €/m² BGF oberirdisch denominator before Building & Scope ever runs (F-05, rule 39)', () => {
+    // The default fixture state has Haus B `included: false` — inclusion is
+    // a later Option-level scope decision this Nordfeld project has not
+    // reached yet. The default `projection()` therefore still degrades to a
+    // single active building's WFL denominator (see the S3 mockup test
+    // above); `preparationProjection` is the one used by the Project Card /
+    // preparation surface and must not.
+    const p = useStore.getState().projection()
+    expect(p.leadRate.denominatorLabel).toBe('WFL nach WoFlV')
+
+    const prep = preparationProjection(useStore.getState())
+    expect(prep.leadRate.denominatorLabel).toBe('BGF oberirdisch')
+    // Same accepted rule-39 sum-of-sums arithmetic, just over both buildings
+    // instead of one — not a different formula.
+    expect(prep.secondaryRateBgf.denominatorLabel).toBe('BGF oberirdisch')
   })
 
   it('je Wohneinheit — точное 238.614,6875, показ ≈ 238.615', () => {

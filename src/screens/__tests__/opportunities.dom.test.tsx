@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { act, render, screen, within } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
 import { confirmBuildingReviewSections } from '../../test/offer-option'
-import derived from '../../fixtures/derived-prototype.json'
 import { __resetStoreForTests, useStore } from '../../state/store'
 
 /**
@@ -129,20 +128,19 @@ describe('Уровень Opportunities', () => {
     expect(create).toHaveFocus()
   })
 
-  it('выведенные значения несут пометку происхождения (D-22)', async () => {
-    const user = userEvent.setup()
-    render(<App />)
-    await user.click(screen.getByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
-    const params = screen.getByLabelText('Projektparameter')
-    // D-22's warning comes from the derived-value fixture, not hand-authored
-    // presentation copy, so removing it requires an explicit data change.
-    expect(within(params).getAllByLabelText(/^Herkunft: abgeleitet/)).toHaveLength(3)
-    expect(within(params).getAllByText(new RegExp(derived.provenanceLabel))).toHaveLength(3)
-    expect(within(params).getAllByText(new RegExp(derived.marker, 'u'))).toHaveLength(3)
-    expect(within(params).getByText(/Balkonanteil abgeleitet/)).toBeInTheDocument()
-    expect(within(params).getByText(/85\s*% der BGF R\+S/)).toBeInTheDocument()
-    expect(within(params).getByText(/Total BGF \(S\)/)).toBeInTheDocument()
-  })
+  // The former "выведенные значения несут пометку происхождения (D-22)" test
+  // exercised the Project Card's own "Total BGF (S)"/"Total BGF (R+S)"/
+  // "Total NRF" rows — the exact F-09 defect (deep-coherence audit, Task 01):
+  // those rows read a fixture's derived-balcony proxy that CONTRADICTED the
+  // accepted buildingReviews fact (documented BGF S = 0, per D-26 — the
+  // derived balcony share is deliberately not reused as DIN 277 BGF S). The
+  // "3 derived values" this test asserted were the bug, not a legitimate D-22
+  // example: fixing F-09 makes every remaining Project Card value a genuine
+  // document-sourced building-review fact, so no "abgeleitet" row is left at
+  // this level any more (D-22 itself — that derived values carry a mark — is
+  // still covered elsewhere, e.g. the DC-21 driver-origin suite, wherever a
+  // real derived contribution still exists). See
+  // `project-baseline.dom.test.tsx` for the corrected BGF equation assertions.
 
   it('EN переключает содержимое экранов, не только хром (ревью № 13, дефект 2)', async () => {
     const user = userEvent.setup()
