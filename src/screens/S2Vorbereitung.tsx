@@ -228,8 +228,7 @@ function P2Projektdaten() {
           <div className="mt-2 border-contrast border-border-warning p-3">
             <p className="text-body text-text-primary">
               <span aria-hidden="true">▲ </span>
-              Konflikt: Kunde nennt 1.560,00{NNBSP}m² (VerificationEvent
-              {s.mode === 'intern' ? ' DEMO-VE-0002' : ''}), Dokument zeigt
+              Konflikt: Kunde nennt 1.560,00{NNBSP}m², Dokument zeigt
               1.500,00{NNBSP}m².
             </p>
             <p className="a3-cap mt-1">
@@ -237,7 +236,7 @@ function P2Projektdaten() {
               {NNBSP}≈{NNBSP}2.545 → ≈{NNBSP}2.447{NNBSP}€/m² WFL nach WoFlV,
               die «Zwischensumme der kalkulierten Positionen» bleibt
               unverändert. Der nicht gewählte
-              Kandidat bleibt als Alternative nachvollziehbar (SOURCE-001).
+              Kandidat bleibt als Alternative nachvollziehbar.
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               <Button onClick={() => s.resolveWflConflict('customer')}>{tx('Kundenwert übernehmen')}</Button>
@@ -253,8 +252,7 @@ function P2Projektdaten() {
             {conflict.candidates
               .filter((c) => c.selectionStatus === 'alternative')
               .map((c) => `${formatDE(new Decimal(c.value), 2)}${NNBSP}m² (${c.origin === 'document' ? 'Dokument' : 'Kunde'})`)
-              .join(' · ')}{' '}
-            — selectionStatus «alternative», nicht «superseded» (SOURCE-001).
+              .join(' · ')}.
           </p>
         )}
 
@@ -315,6 +313,16 @@ function provenanceKind(
       : provenance === 'abgeleitet' ? 'derived' : 'manual'
 }
 
+/**
+ * F12: the value and the provenance chip used to be two SEPARATE flex
+ * children of a `justify-between` row, so their shared right edge floated at
+ * whatever position the middle child's own content width happened to land on
+ * — measured right edges scattered 137 px apart across three read-only rows.
+ * Grouping them into one right-anchored span gives the row exactly two
+ * children (label · group), so the group's right edge always lands on the
+ * row's own right edge — the same edge `NumericField`'s input+chip group now
+ * anchors to (justify-end) — regardless of either child's own content width.
+ */
 function StaticRow({ label, value, provenance }: {
   label: string
   value: string
@@ -322,14 +330,16 @@ function StaticRow({ label, value, provenance }: {
 }) {
   const tx = useTx()
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle py-3">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle py-4">
       <span className="text-small font-medium text-text-primary">{label}</span>
-      <span className="numeric text-body text-text-primary">{value}</span>
-      <ProvenanceChip provenance={{
-        ...provenance,
-        label: tx(provenance.label),
-        detail: provenance.detail ? tx(provenance.detail) : undefined,
-      }} />
+      <span className="flex flex-wrap items-center justify-end gap-3">
+        <span className="numeric text-body text-text-primary">{value}</span>
+        <ProvenanceChip provenance={{
+          ...provenance,
+          label: tx(provenance.label),
+          detail: provenance.detail ? tx(provenance.detail) : undefined,
+        }} />
+      </span>
     </div>
   )
 }
@@ -523,8 +533,14 @@ function P5Varianten({ openKonfigurator }: { openKonfigurator: () => void }) {
             <tr className="border-b border-border-strong text-left">
               <th className="py-2 pr-4 font-medium">{tx('Variante')}</th>
               {/* Метрика называется полностью и в шапке колонки: усечённое
-                  «Zwischensumme» — Unqualified Total (R-18/COPY-008). */}
-              <th className="py-2 pr-4 text-right font-medium">{tx('Zwischensumme der kalkulierten Positionen')}</th>
+                  «Zwischensumme» — Unqualified Total (R-18/COPY-008).
+                  F38: the header lacked `.numeric` while the column's own
+                  cells carry it — `font-feature-settings: tnum` shifts a
+                  right-aligned box's own glyph advance slightly, so the
+                  proportional-figure header and the tabular-figure values
+                  landed on two different right edges (measured 17 px apart)
+                  despite sharing `text-align:right`. */}
+              <th className="numeric py-2 pr-4 text-right font-medium">{tx('Zwischensumme der kalkulierten Positionen')}</th>
               <th className="py-2 pr-4 font-medium">{tx('Rollen')}</th>
               <th className="py-2 font-medium"><span className="sr-only">{tx('Aktion')}</span></th>
             </tr>
@@ -559,7 +575,7 @@ function P5Varianten({ openKonfigurator }: { openKonfigurator: () => void }) {
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-small text-text-muted">{tx('Zielangebot ist noch nicht gesetzt. Rollen sind unabhängige Text-Badges: ★ ist für «Zielangebot» reserviert und trägt nie zwei Bedeutungen (VARIANT-001).')}</p>
+      <p className="mt-3 text-small text-text-muted">{tx('Zielangebot ist noch nicht gesetzt. Rollen sind unabhängige Text-Badges: ★ ist für «Zielangebot» reserviert und trägt nie zwei Bedeutungen.')}</p>
     </section>
   )
 }

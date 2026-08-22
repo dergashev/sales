@@ -349,8 +349,13 @@ export function NumericField({
     <div className="border-b border-border-subtle py-4">
       <label className="block text-small font-medium text-text-primary">{label}</label>
       {/* Оболочка и единица — из системы (`.a3-input > input + .a3-unit`);
-          высота 44 px, бордер и типографика приходят оттуда же. */}
-      <div className="mt-2 flex flex-wrap items-center gap-3">
+          высота 44 px, бордер и типографика приходят оттуда же.
+          F12: `justify-end` anchors the input+chip group to this row's own
+          right edge — the same edge a read-only value row (rule 7's
+          right-aligned `.numeric`) lands on when it shares this row's full
+          width, instead of the group hugging the row's left edge below a
+          label that sits on its own line above it. */}
+      <div className="mt-2 flex flex-wrap items-center justify-end gap-3">
         <span className="a3-input">
           <input
             className={FOCUS}

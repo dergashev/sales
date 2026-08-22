@@ -77,17 +77,26 @@ export function DocumentAnalysis({ docs, onManualCapture }: {
   const cancelled = !running && phase < phases.length
 
   return (
-    <div
-      role="region"
-      aria-busy={running || undefined}
-      aria-labelledby={phaseId}
-      className="a3-analysis-spec"
-    >
+    <div>
+      {/* F15: this title used to sit INSIDE `.a3-analysis-spec`'s own
+          bordered/padded box, one nesting level deeper than every other
+          section heading on the Project Card — a fixed 16 px box padding on
+          top of the page's own left inset, an offset off the page's shared
+          left edge (measured 17 px beyond the other section headings, itself
+          off the 4/8/12/16/24/32/48/64 scale once combined with the page's
+          own inset). The heading is the section's own title, not the
+          contract box's; it now sits at the same level as every other
+          `.a3-sheet > h2`, with the box as its content below. */}
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h2 id={phaseId} className="text-heading-3 font-bold text-text-primary">{tx('Dokumentanalyse')}</h2>
         <span className="text-small text-text-muted">{tx('Simulation · Parsing im Prototyp nachgestellt')}</span>
       </div>
-
+      <div
+        role="region"
+        aria-busy={running || undefined}
+        aria-labelledby={phaseId}
+        className="a3-analysis-spec mt-3"
+      >
       {/* Полоса: indeterminate, потому что общее количество шагов внутри
           фазы неизвестно (PROGRESS-001). Развёртка — ::before системы. */}
       {running
@@ -175,6 +184,7 @@ export function DocumentAnalysis({ docs, onManualCapture }: {
           {cancelled && <Button variant="primary" onClick={resume}>{tx('Fortsetzen')}</Button>}
           {ready && <Button onClick={start}>{tx('Analyse erneut ausführen')}</Button>}
         </div>
+      </div>
       </div>
     </div>
   )

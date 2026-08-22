@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { pipelineViewForBuildingGate, useStore } from './state/store'
+import opportunities from './fixtures/opportunities.json'
 import { useT } from './i18n'
 import all3Logo from '../design-system/All3Logo.png'
 import { SegmentedControl } from './components/controls'
@@ -153,6 +154,14 @@ export function App() {
 function AppHeader() {
   const s = useStore()
   const praesentation = isClientProjection(s.mode)
+  // F05: the breadcrumb printed the raw fixture/option id (e.g. "DEMO-0001")
+  // on every pipeline screen — an internal identifier, not the project's own
+  // display label. Objects are always named by that label; when it cannot be
+  // resolved (defensive: state pointing at an id the fixture no longer has),
+  // fall back to the id rather than rendering nothing, but that path is not
+  // reachable in the shipped fixtures.
+  const currentOpportunity = opportunities.items.find((o) => o.id === s.opportunityId)
+  const currentOption = s.options.find((o) => o.id === s.activeOptionId)
 
   return (
     <header className="a3-global-header z-header shrink-0">
@@ -169,11 +178,11 @@ function AppHeader() {
               Opportunities
             </button>
             <span aria-hidden="true" className="text-text-muted">/</span>
-            <span className="a3-cap">{s.opportunityId}</span>
+            <span className="a3-cap">{currentOpportunity?.name ?? s.opportunityId}</span>
             {s.level === 'option' && s.activeOptionId && (
               <>
                 <span aria-hidden="true" className="text-text-muted">/</span>
-                <span className="a3-cap">{s.activeOptionId}</span>
+                <span className="a3-cap">{currentOption?.name ?? s.activeOptionId}</span>
               </>
             )}
           </nav>

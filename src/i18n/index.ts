@@ -131,7 +131,11 @@ const de = {
   'buildingScope.fact.nuf': 'NUF nach DIN 277',
   'buildingScope.fact.units': 'Einheiten',
   'buildingScope.fact.storeys': 'Geschossstruktur',
-  'buildingScope.value.notCaptured': 'Nicht erfasst',
+  // F21: "○ " marks a missing value as visually distinct from a populated
+  // one (rule 8 — not by colour alone); it reuses the same hollow-circle
+  // glyph the product already uses for "blocked/not-selectable" elsewhere
+  // (ReadinessOverview, the empty-account state).
+  'buildingScope.value.notCaptured': '○ Nicht erfasst',
   'buildingScope.value.addressMissing': 'Adresse nicht erfasst',
   'buildingScope.value.formMissing': 'Gebäudeform nicht erfasst',
   'buildingScope.value.classMissing': 'Gebäudeklasse nicht erfasst',
@@ -472,7 +476,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'buildingScope.fact.nuf': 'Usable area under DIN 277',
   'buildingScope.fact.units': 'Units',
   'buildingScope.fact.storeys': 'Storey structure',
-  'buildingScope.value.notCaptured': 'Not captured',
+  'buildingScope.value.notCaptured': '○ Not captured',
   'buildingScope.value.addressMissing': 'Address not captured',
   'buildingScope.value.formMissing': 'Building form not captured',
   'buildingScope.value.classMissing': 'Building class not captured',

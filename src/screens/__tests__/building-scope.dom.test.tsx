@@ -41,7 +41,9 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     const storeySummary = document.querySelector(
       'dl[aria-label="Kompakte Geschossübersicht"]',
     ) as HTMLElement
-    expect(within(storeySummary).getAllByText('Nicht erfasst')).toHaveLength(3)
+    // F21: the empty-value marker now leads with "○ " so it reads as
+    // visually distinct from a populated value (rule 8), not by colour alone.
+    expect(within(storeySummary).getAllByText('○ Nicht erfasst')).toHaveLength(3)
     expect(within(storeySummary).queryByText('0', { exact: true })).toBeNull()
 
     const hausA = screen.getByRole('checkbox', { name: 'Haus A' })

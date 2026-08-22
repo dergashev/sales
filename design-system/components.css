@@ -28,8 +28,29 @@
    SectionSheet: .a3-sheet > .a3-sheet-title|h2 + [.a3-sub] + content.
    PageHeader: .a3-masthead > .a3-hero-title + [.a3-meta|.a3-cap] + [.a3-lede].
    SmallText: .a3-cap. InlineLink/LinkButton: a|button.a3-linkbtn.
+   PageContainer: .a3-page — the bounded, centred content column for a
+   top-level screen that lives OUTSIDE the three-pane Configurator shell
+   (Opportunities landing, Project Card). LAYOUT-003 caps content at
+   `--content-max-width` (1200 px); this is the one place that value is
+   applied as a page-level container, so a second, competing max-width
+   pattern is never introduced beside it (F09). `.a3-wrap` above is the
+   showcase shell's own wrapper and is explicitly not product API — reusing
+   it here would tie two unrelated surfaces to one selector for no reason.
+   `.a3-page` carries no padding of its own: at the narrowest supported
+   viewport (1280 px) centring alone already yields a 40 px gutter, and a
+   page's own vertical/horizontal rhythm remains the page's choice.
    Classes: .a3-sheet · .a3-sheet-title · .a3-sub · .a3-masthead · .a3-meta ·
-   .a3-hero-title · .a3-lede · .a3-cap · .a3-linkbtn. */
+   .a3-hero-title · .a3-lede · .a3-cap · .a3-linkbtn · .a3-page. */
+.a3-page{max-width:var(--content-max-width);margin:0 auto;width:100%;min-width:0}
+/* F15 · inside `.a3-page`, `.a3-sheet`'s own horizontal padding double-indents
+   section headings relative to the page's own `h1` (48 px page inset + 48 px
+   sheet padding = 96 px), and the page's own horizontal rhythm already comes
+   from the screen's own padding, not from the sheet. Vertical padding is left
+   untouched: it is the sheet's internal top/bottom breathing room, unrelated
+   to left-edge alignment. `.a3-notecard` keeps its own narrower geometry
+   (intentionally preserved, different content role — README/CLAUDE.md rule
+   on Interne Notiz) so it is excluded here. */
+.a3-page .a3-sheet:not(.a3-notecard){padding-left:0;padding-right:0}
 /* F06/F33 · every chapter body is laid out through a `grid gap-*` column
    (S3Konfigurator's per-chapter wrapper), making each `.a3-sheet` a CSS
    grid item. Grid items default to `min-width:auto` (content-based
@@ -125,6 +146,15 @@
 .a3-form-error{border-left:var(--border-error);padding-left:var(--space-2);font-size:var(--type-error-size);line-height:var(--type-error-line);font-weight:var(--type-error-weight)}
 .a3-form-disabled-reason{border-left:var(--border-contrast-1px);padding-left:var(--space-2);font-size:var(--type-helper-size);line-height:var(--type-helper-line);font-weight:var(--type-helper-weight);color:var(--color-text-primary)}
 .a3-textarea-meta{display:flex;justify-content:space-between;gap:var(--space-3)}
+/* F21 · a field's provenance chip and its accept/reset action(s) previously
+   sat in one `flex` row with no distributed spacing, so the action button's
+   x-position drifted with the provenance label's own text length (measured
+   x=487 for a field with a short provenance label, x=376 for one with none)
+   — thirteen "Angabe übernehmen" buttons in one form, each at its own x.
+   `space-between` pins the action group to the row's own right edge
+   regardless of what (if anything) sits on the left, so every field's
+   action shares one column when every field spans the same row width. */
+.a3-field-actions{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);flex-wrap:wrap}
 
 /* DataTable + DisclosureRow. Structure: .a3-data-table > caption + thead +
    tbody; tr.a3-disclosure-row > th > button[aria-expanded] + cells. */
@@ -152,6 +182,12 @@
    themselves. */
 .a3-card-core>*{min-width:0}
 .a3-card-title{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--type-heading-weight)}
+/* F36 · the title's `.a3-linkbtn` stays the real, focusable, stretched-click
+   `primaryDestination` (TASK 03) — removing that would regress keyboard
+   access to the card. Only the inherited underline is dropped: with a
+   separate `actions` CTA already present, the underline made the title read
+   as a SECOND link to the same destination (rule 26: one target per card). */
+.a3-card-title .a3-linkbtn{text-decoration:none}
 .a3-card-destination::after{content:'';position:absolute;inset:0}
 .a3-card-meta,.a3-card-noninteractive{position:relative;z-index:1;font-size:var(--type-small-size);line-height:var(--type-small-line)}
 .a3-card-actions{position:relative;z-index:2;display:flex;gap:var(--space-2);flex-wrap:wrap}
@@ -859,10 +895,31 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 /* DC-34 · ProjectSearchFilter. Structure: .a3-project-search[role=search] >
    .a3-form-field + .a3-filter-row + .a3-search-result-count + reset button.
    Classes: .a3-project-search · .a3-search-line · .a3-form-field · .a3-filter-row · .a3-search-result-count. */
-.a3-project-search{border:var(--border-hairline);padding:var(--space-4);display:grid;gap:var(--space-3);max-width:var(--measure-wide)}
-.a3-search-line{display:flex;gap:var(--space-3);align-items:end;flex-wrap:wrap}
-.a3-search-line .a3-form-field{flex:1 1 var(--measure-form-control);min-width:min(100%,var(--measure-form-control))}
+/* F14 · `--measure-wide` (640 px) is a reading-line-length cap for running
+   text; a search/filter CONTROL BAR is not long-form text and has no reason
+   to be narrower than the page it filters. At 640 px, search + 4 selects
+   (5 fields) could never share one row, forcing the panel to two-plus rows
+   before a single opportunity card was visible. The page's own `.a3-page`
+   cap (1200 px, F09) is this bar's only width constraint now. */
+.a3-project-search{border:var(--border-hairline);padding:var(--space-4);display:grid;gap:var(--space-3)}
+/* F14 · a flex row with per-field flex-basis lets a field orphaned onto its
+   own wrapped row grow to fill that whole row (measured 520 px for
+   Lifecycle-Status versus 297 px for its siblings) and pushes the panel to
+   two-plus rows. A grid whose track count is derived from the same
+   `--measure-form-control` token gives every field an identical width
+   whenever the row reflows, and keeps the whole control region to one
+   compact band. */
+.a3-search-line{display:grid;grid-template-columns:repeat(auto-fit,minmax(var(--measure-form-control),1fr));gap:var(--space-3);align-items:end}
 .a3-filter-row{display:flex;gap:var(--space-2);flex-wrap:wrap;align-items:center}
+/* F14 · two independent Switches (`nur aktionsfähige` / Recovery) each start
+   their own flex row at the label's own width, so the two toggle controls
+   land at two different x-positions and read as unrelated rather than "one
+   control group". `display:contents` on each `.a3-switch-row` unwraps its
+   three children (label · button · state text) directly into this grid, so
+   every Switch's label/control/state share one column each — a column-
+   aligned group with zero change to the canonical Switch component. */
+.a3-switch-group{display:grid;grid-template-columns:max-content auto auto;column-gap:var(--space-3);row-gap:var(--space-2)}
+.a3-switch-group>.a3-switch-row{display:contents}
 .a3-search-result-count{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
 
 /* D-28 generated/live gallery and narrow-host product grids. */
@@ -877,7 +934,12 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-preparation-summary{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);flex-wrap:wrap;border-bottom:var(--border-hairline);padding-bottom:var(--space-3)}
 .a3-preparation-summary>p{margin:0;color:var(--color-text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight)}
 .a3-project-baseline{container-type:inline-size;container-name:a3-project-baseline}
-.a3-project-baseline-primary-grid,.a3-project-baseline-equation{display:grid;grid-template-columns:minmax(0,1fr);gap:0;margin:0;min-width:0}
+/* F28 · grid items default to align-items:stretch, so every metric in a row
+   was forced to the height of the tallest sibling — the WFL metric alone
+   reserves a Delta-Chip slot (rule 24), and that reserved height stretched
+   the other three, plain, shorter metrics into ~105 px of trailing empty
+   space each. Tile height must follow its own content instead. */
+.a3-project-baseline-primary-grid,.a3-project-baseline-equation{display:grid;grid-template-columns:minmax(0,1fr);gap:0;margin:0;min-width:0;align-items:start}
 .a3-project-baseline-metric{min-width:0;border-bottom:var(--border-hairline);padding:var(--space-3) 0}
 .a3-project-baseline-metric dt,.a3-project-baseline-metric dd{margin:0;min-width:0}
 .a3-project-baseline-metric dd>.numeric{overflow-wrap:anywhere}

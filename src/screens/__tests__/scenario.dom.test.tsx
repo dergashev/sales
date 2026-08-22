@@ -210,6 +210,27 @@ describe('Сквозной сценарий продажи', () => {
     expect(status).toHaveTextContent('Site servicing · KG 200 in the offer: excluded')
   })
 
+  it('Vorbereitung P2/P5 zitiert keine Requirement-IDs mehr (F05, UI-Audit 2026-08-21)', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole('button', {
+      name: /Musterprojekt Nordfeld öffnen/,
+    }))
+    await user.click(screen.getByRole('button', { name: 'Vorbereitung öffnen' }))
+
+    // P2 · offener Konflikt — die frühere Kopie zitierte "DEMO-VE-0002" und
+    // "(SOURCE-001)" als Requirement-/Fixture-IDs neben dem eigentlichen Satz.
+    expect(document.body.textContent ?? '').not.toMatch(/DEMO-VE-\d|SOURCE-\d{2,3}/)
+
+    await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
+    // P2 · gelöster Konflikt — dieselbe Requirement-ID stand ein zweites Mal
+    // in der "gelöst"-Meldung.
+    expect(document.body.textContent ?? '').not.toMatch(/SOURCE-\d{2,3}/)
+
+    await user.click(screen.getByRole('tab', { name: /Varianten/ }))
+    expect(document.body.textContent ?? '').not.toMatch(/VARIANT-\d{2,3}/)
+  })
+
   it('переводит параметризованную ссылку допущения на актуальную главу', async () => {
     const user = userEvent.setup()
     render(<App />)

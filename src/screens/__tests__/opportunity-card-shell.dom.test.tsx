@@ -34,8 +34,12 @@ describe('Project Card — шапка и обзор готовности', () =>
     const masthead = heading.closest('.a3-masthead')!
     expect(masthead).toBeInTheDocument()
 
-    // Проектный ID теперь виден в шапке (его не было в прежней вёрстке).
-    expect(within(masthead as HTMLElement).getByText(/DEMO-0001/)).toBeInTheDocument()
+    // F05 (UI audit 2026-08-21): the masthead used to also print the raw
+    // fixture id ("DEMO-0001") — an internal identifier with no client-facing
+    // purpose once city/country/owner already identify the project. It must
+    // not be reachable in the sales workflow at all (AC-04).
+    expect(within(masthead as HTMLElement).queryByText(/DEMO-0001/)).not.toBeInTheDocument()
+    expect(within(masthead as HTMLElement).getByText(/Musterstadt/)).toBeInTheDocument()
 
     // Статус — DC-16 StatusTag (.a3-tag), не подпись caption'ом внутри строки
     // метаданных (R-24). Носитель статуса, независимый от цвета (правило 8), —
@@ -49,6 +53,24 @@ describe('Project Card — шапка и обзор готовности', () =>
     // Тот же класс варианта, что несёт статус на карточке списка Opportunities
     // (общий STAGE_TAG, src/lib/opportunityStage.ts) — иначе экраны разойдутся.
     expect(tag!.className).toContain('a3-orange')
+  })
+
+  it('F05: die globale Pfad-Krümel-Navigation zitiert keine rohe Fixture-/Option-ID', async () => {
+    const user = userEvent.setup()
+    await openProjectCard(user)
+
+    const breadcrumb = screen.getByRole('navigation', { name: 'Pfad' })
+    expect(within(breadcrumb).getByText('Musterprojekt Nordfeld')).toBeInTheDocument()
+    expect(within(breadcrumb).queryByText(/DEMO-0001/)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
+    await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
+    await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
+    await user.click(screen.getByRole('button', { name: 'Öffnen' }))
+
+    const breadcrumbInOption = screen.getByRole('navigation', { name: 'Pfad' })
+    expect(within(breadcrumbInOption).getByText('Option 1')).toBeInTheDocument()
+    expect(within(breadcrumbInOption).queryByText(/OPT-01/)).not.toBeInTheDocument()
   })
 
   it('обзор готовности называет все четыре стадии и держит ровно один текущий шаг', async () => {

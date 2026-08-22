@@ -268,7 +268,7 @@ export function OpportunityList() {
   )
 
   return (
-    <div className="px-7 py-6">
+    <div className="a3-page px-7 py-6">
       <header className="a3-masthead">
         <h1 className="a3-hero-title">{t('opplist.title')}</h1>
       </header>
@@ -323,8 +323,11 @@ export function OpportunityList() {
 
         {/* Zwei unabhängige Interface-Zustände (nicht gegenseitig
             ausschließend) — Switch, kein SegmentedControl/CheckboxCard:
-            beide sind Filter-Toggles, keine Angebots-Option (OPTION-008). */}
-        <div className="flex flex-wrap gap-4">
+            beide sind Filter-Toggles, keine Angebots-Option (OPTION-008).
+            F14: `.a3-switch-group` column-aligns both toggles (each Switch's
+            own label previously set its own row's width, so the two toggle
+            controls landed at two different x-positions). */}
+        <div className="a3-switch-group">
           <Switch
             label={t('opplist.filter.actionableOnly.label')}
             checked={actionableOnly}
@@ -422,11 +425,16 @@ export function OpportunityList() {
               }
               onOpen={() => s.openOpportunity(o.id)}
             >
-              {o.meetingAt && (
-                <span className="a3-term block">
-                  {tx('Termin')}{NNBSP}{tx(o.meetingAt)}
-                </span>
-              )}
+              {/* F14: cards without a Termin used to omit this line entirely,
+                  so the status chip and CTA below sat 8 px higher than a
+                  neighbouring card that has one — comparable cards did not
+                  share a baseline. Always reserving the line (empty and
+                  hidden from assistive tech when there is no Termin) keeps
+                  every card's internal rows at the same height regardless of
+                  content. */}
+              <span className="a3-term block" aria-hidden={o.meetingAt ? undefined : 'true'}>
+                {o.meetingAt ? <>{tx('Termin')}{NNBSP}{tx(o.meetingAt)}</> : NNBSP}
+              </span>
               <span className="block">
                 {o.buildings}{NNBSP}{t('opplist.card.buildingsLabel')} ·{' '}
                 {o.documents}{NNBSP}{t('opplist.card.documentsLabel')}

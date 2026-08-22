@@ -1073,12 +1073,19 @@ function MissingDecimalField({
           }}
         />
       </FormField>
-      <Button
-        aria-label={`${t('buildingScope.action.apply')}: ${label}`}
-        onClick={commit}
-      >
-        {t('buildingScope.action.apply')}
-      </Button>
+      {/* F21: the apply button now shares `.a3-field-actions`'
+          right-anchored column with every populated field's own action
+          (`FieldActions` above), instead of sitting at whatever x its own
+          isolated row happened to render at. */}
+      <div className="a3-field-actions">
+        <span />
+        <Button
+          aria-label={`${t('buildingScope.action.apply')}: ${label}`}
+          onClick={commit}
+        >
+          {t('buildingScope.action.apply')}
+        </Button>
+      </div>
     </div>
   )
 }
@@ -1098,25 +1105,32 @@ function FieldActions({
 }) {
   const t = useT()
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      {provenance && <ProvenanceChip provenance={provenance} />}
-      {onCommit && (
-        <Button
-          aria-label={`${t('buildingScope.action.apply')}: ${fieldLabel}`}
-          onClick={onCommit}
-        >
-          {t('buildingScope.action.apply')}
-        </Button>
-      )}
-      {canReset && (
-        <Button
-          variant="ghost"
-          aria-label={`${t('buildingScope.action.reset')}: ${fieldLabel}`}
-          onClick={onReset}
-        >
-          {t('buildingScope.action.reset')}
-        </Button>
-      )}
+    // F21: `space-between` pins the action group to this row's own right
+    // edge regardless of the provenance label's own width — every field in
+    // the form spans the same row width, so every field's action now lands
+    // on the same right-hand column instead of drifting with its own
+    // provenance text (measured x=487 vs x=376 for two adjacent fields).
+    <div className="a3-field-actions">
+      <span>{provenance && <ProvenanceChip provenance={provenance} />}</span>
+      <span className="flex flex-wrap items-center gap-3">
+        {onCommit && (
+          <Button
+            aria-label={`${t('buildingScope.action.apply')}: ${fieldLabel}`}
+            onClick={onCommit}
+          >
+            {t('buildingScope.action.apply')}
+          </Button>
+        )}
+        {canReset && (
+          <Button
+            variant="ghost"
+            aria-label={`${t('buildingScope.action.reset')}: ${fieldLabel}`}
+            onClick={onReset}
+          >
+            {t('buildingScope.action.reset')}
+          </Button>
+        )}
+      </span>
     </div>
   )
 }

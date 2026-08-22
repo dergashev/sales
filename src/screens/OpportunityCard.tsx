@@ -21,7 +21,7 @@ import { useT, useTx } from '../i18n'
 import { DocumentAnalysis } from '../components/DocumentAnalysis'
 import { InternalNote } from '../components/InternalNote'
 import { PrerequisiteChecklist } from '../components/PrerequisiteChecklist'
-import { LinkButton, PageHeader } from '../components/designSystem'
+import { PageHeader } from '../components/designSystem'
 import { STAGE_TAG } from '../lib/opportunityStage'
 import { S2Vorbereitung } from './S2Vorbereitung'
 import { effectiveFactValue } from '../state/buildingReview'
@@ -269,7 +269,7 @@ export function OpportunityCard() {
   // а не изображают анализ, которого в прототипе нет.
   if (!meta.worked) {
     return (
-      <div className="px-7 py-6">
+      <div className="a3-page px-7 py-6">
         <header className="border-b border-border-strong pb-4">
           <p className="a3-cap">{meta.city} · {meta.country} · {meta.owner}</p>
           <h1 className="mt-1 text-heading-2 font-bold text-text-primary">{meta.name}</h1>
@@ -441,7 +441,7 @@ export function OpportunityCard() {
   ]
 
   return (
-    <div className="px-7 py-6">
+    <div className="a3-page px-7 py-6">
       <PageHeader
         title={meta.name}
         meta={
@@ -456,7 +456,10 @@ export function OpportunityCard() {
              сохраняет `justify-end` вместо `text-align` родителя, а общая
              базовая линия — `items-baseline`. */
           <span className="flex flex-wrap items-baseline justify-end">
-            <span className="block">{meta.city} · {meta.country} · {meta.owner} · {meta.id}</span>
+            {/* F05: `meta.id` (the raw fixture id, e.g. "DEMO-0001") used to
+                trail this line — an internal identifier with no client-facing
+                purpose here; city/country/owner already identify the project. */}
+            <span className="block">{meta.city} · {meta.country} · {meta.owner}</span>
             {/* Статус не цветом одним (правило 8): носитель — подпись самого
                 тега. Точки здесь нет: `.a3-dot` определён только внутри
                 `.a3-badge` и `.a3-chip-src`, в `.a3-tag` он рисовал пустой
@@ -475,9 +478,16 @@ export function OpportunityCard() {
           questions: openQuestionCount,
           assumptions: activeAssumptionCount,
         })}</p>
-        <LinkButton onClick={() => setShowVorbereitung(true)}>
+        {/* F11: was an `.a3-linkbtn` (no visible border/fill) at the far
+            right of a metadata row — read as plain text, not as the one
+            control that opens the private preparation workspace. It does
+            not gate anything and is always available (STEP-003), so it is
+            not THE current-stage forward action either — `secondary` makes
+            it a real, discoverable control without competing with whichever
+            confirmation gate below is this screen's current primary action. */}
+        <Button variant="secondary" onClick={() => setShowVorbereitung(true)}>
           {tx('Vorbereitung öffnen')}
-        </LinkButton>
+        </Button>
       </div>
 
       {/* 1 · Анализ документации — верхний уровень карточки. */}
@@ -696,7 +706,9 @@ export function OpportunityCard() {
           <ul className="mt-3">
             {s.options.map((o) => (
               <li key={o.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle py-2">
-                <span className="text-body text-text-primary">{o.name} · {o.id}</span>
+                {/* F05: `o.id` (the raw option id) used to trail the option's
+                    own display name here — the name alone already identifies it. */}
+                <span className="text-body text-text-primary">{o.name}</span>
                 <Button onClick={() => s.openOption(o.id)}>{tx('Öffnen')}</Button>
               </li>
             ))}
