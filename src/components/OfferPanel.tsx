@@ -8,6 +8,7 @@ import {
   NNBSP, present, rateLabel, formatDE, DENOMINATOR_LABEL, label as moneyLabel,
 } from '../engine/money'
 import type { CostGroup, CoverageState, DriverBasis } from '../engine/calculate'
+import { projectDriversForClient } from '../state/clientProjection'
 import { Button, useCountUp } from './primitives'
 import { OriginPopover } from './OriginPopover'
 import { ClientNotice } from './ClientNotice'
@@ -132,11 +133,20 @@ export function OfferPanel() {
   // изменения цены, ничего не изменив: подпись утверждала неправду о деньгах.
   const priceChangeCount = ctxJournal.filter((e) => e.deltaExact !== null).length
 
+  // KG 800's itemized financing breakdown is private-by-default (QA
+  // finding on ae2eb8f): every surface below that lists individual
+  // `Driver[]` rows must read through this projection, not the raw engine
+  // drivers, or the three `kg800_*` lines leak into Kundenansicht even
+  // though the KG 800 chapter itself is correctly absent from client nav.
+  const clientSafeDrivers = projectDriversForClient(
+    p.result.drivers, s.mode, s.kg800ClientRevealed,
+  )
+
   // «Корзина»: вклады, рождённые РЕШЕНИЯМИ, — по признаку самого вклада,
   // а не по префиксу ключа. Приёмка № 17 показала цену догадки: фильтр по
   // `opt_/cov_/kg700_` пропускал выбор подвала, и панель говорила
   // «Standardumfang» при изменившейся сумме.
-  const cart = p.result.drivers.filter((d) => d.origin === 'decision')
+  const cart = clientSafeDrivers.filter((d) => d.origin === 'decision')
   const notIncluded = (Object.keys(s.coverage) as CostGroup[]).filter(
     (g) => ['unknown', 'onRequest', 'excluded'].includes(s.coverage[g]),
   )
@@ -187,7 +197,7 @@ export function OfferPanel() {
               Regionalfaktor в Herkunft — «deaktiviert» (правило 40). */}
           <OriginPopover
             rows={[
-              ...p.result.drivers.map((d) => ({
+              ...clientSafeDrivers.map((d) => ({
                 label: d.label,
                 value: moneyLabel(present(d.exact)),
               })),
@@ -406,7 +416,7 @@ export function OfferPanel() {
           </h2>
           {!treiberOpen && (
             <p className="a3-cap numeric mt-1">
-              {p.result.drivers.length}{NNBSP}Beiträge · Summe ={NNBSP}
+              {clientSafeDrivers.length}{NNBSP}Beiträge · Summe ={NNBSP}
               {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(p.result.total)}
             </p>
           )}
@@ -432,11 +442,11 @@ export function OfferPanel() {
                 {(() => {
                   // Бар относителен наибольшему вкладу ПО МОДУЛЮ: экономящий
                   // драйвер такой же полноправный, как удорожающий (DRIVER-004).
-                  const max = p.result.drivers.reduce(
+                  const max = clientSafeDrivers.reduce(
                     (m, d) => (d.exact.abs().gt(m) ? d.exact.abs() : m),
-                    p.result.drivers[0]!.exact.abs(),
+                    clientSafeDrivers[0]!.exact.abs(),
                   )
-                  return p.result.drivers.map((d) => {
+                  return clientSafeDrivers.map((d) => {
                     const senkt = d.exact.isNegative()
                     const richtung = senkt ? 'senkt' : 'erhöht'
                     const shown = present(d.exact.abs())
