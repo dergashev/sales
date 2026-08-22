@@ -32,35 +32,38 @@ async function openScopeBoundaries(user: ReturnType<typeof userEvent.setup>) {
   await user.click(nav(/Leistungsabgrenzung/))
 }
 
-describe('Leistungsabgrenzung / Scope Boundaries (ticket d21f8d48)', () => {
-  it('renders all six groups as binary decisions and applies the D-07 fallback', async () => {
+describe('Leistungsabgrenzung / Scope Boundaries (binary contract, CPO decision 22.08.2026)', () => {
+  it('renders all seven KG 200-800 groups as binary decisions, `nicht enthalten` checked by default, and applies the D-07 fallback', async () => {
     const user = userEvent.setup()
     await openScopeBoundaries(user)
 
-    for (const kg of [/KG.200/, /KG.300/, /KG.400/, /KG.500/, /KG.600/, /KG.700/]) {
+    for (const kg of [/KG.200/, /KG.300/, /KG.400/, /KG.500/, /KG.600/, /KG.700/, /KG.800/]) {
       const radios = within(screen.getByRole('radiogroup', { name: kg })).getAllByRole('radio')
       expect(radios).toHaveLength(2)
-      expect(radios.filter((radio) => (radio as HTMLInputElement).checked)).toHaveLength(0)
+      // Binary default: `nicht enthalten` (index 1) starts checked — no
+      // third "unknown" tile/state exists any more.
+      expect((radios[0] as HTMLInputElement).checked).toBe(false)
+      expect((radios[1] as HTMLInputElement).checked).toBe(true)
     }
-    expect(useStore.getState().coverage.KG_300).toBe('unknown')
-    expect(useStore.getState().coverage.KG_400).toBe('unknown')
-    expect(useStore.getState().coverage.KG_700).toBe('unknown')
+    expect(useStore.getState().coverage.KG_200).toBe('excluded')
+    expect(useStore.getState().coverage.KG_300).toBe('excluded')
+    expect(useStore.getState().coverage.KG_400).toBe('excluded')
+    expect(useStore.getState().coverage.KG_500).toBe('excluded')
+    expect(useStore.getState().coverage.KG_600).toBe('excluded')
+    expect(useStore.getState().coverage.KG_700).toBe('excluded')
+    expect(useStore.getState().coverage.KG_800).toBe('excluded')
     expect(useStore.getState().kg700Mode).toBe('hoaiAho')
     expect(useStore.getState().kg700ModeAutoFallback).toBe(true)
 
-    const offer = screen.getByRole('complementary', { name: 'Angebot' })
-    await user.click(within(offer).getByRole('button', { name: 'Kostentreiber' }))
-    await user.click(within(offer).getByRole('button', { name: 'Kostengruppen nach DIN 276' }))
-    expect(offer).toHaveTextContent('Preis nicht ermittelt')
-    expect(offer).not.toHaveTextContent(/(^|\D)0\s*€\/m²/)
-    expect(offer).not.toHaveTextContent(/(^|\D)0\s*€/)
-    expect(offer).not.toHaveTextContent('Summe = 0 €')
-    const unresolvedCoreAdjustments = useStore.getState().projection().result.drivers
+    // Excluding KG 300/400 from the very start (the binary default) already
+    // prices the real echt-share adjustment as a deliberate decision, never
+    // as an unresolved gap.
+    const excludedCoreAdjustments = useStore.getState().projection().result.drivers
       .filter((driver) => ['kg300_excluded_adjustment', 'kg400_excluded_adjustment']
         .includes(driver.key))
-    expect(unresolvedCoreAdjustments).toHaveLength(2)
-    expect(unresolvedCoreAdjustments.every((driver) => driver.origin === 'scope')).toBe(true)
-    expect(unresolvedCoreAdjustments.every((driver) => !driver.label.includes('(ausgeschlossen)')))
+    expect(excludedCoreAdjustments).toHaveLength(2)
+    expect(excludedCoreAdjustments.every((driver) => driver.origin === 'decision')).toBe(true)
+    expect(excludedCoreAdjustments.every((driver) => driver.label.includes('(ausgeschlossen)')))
       .toBe(true)
 
     await user.click(within(screen.getByRole('radiogroup', { name: /KG.300/ }))
@@ -132,7 +135,7 @@ describe('Leistungsabgrenzung / Scope Boundaries (ticket d21f8d48)', () => {
     await openScopeBoundaries(user)
 
     const kg500 = screen.getByRole('radiogroup', { name: /KG.500/ })
-    expect(useStore.getState().coverage.KG_500).toBe('unknown')
+    expect(useStore.getState().coverage.KG_500).toBe('excluded')
     const options = within(kg500).getAllByRole('radio')
     expect(options).toHaveLength(2)
     await user.click(options[0]!) // "enthalten"
@@ -159,7 +162,9 @@ describe('Leistungsabgrenzung / Scope Boundaries (ticket d21f8d48)', () => {
     await user.click(nav(/Leistungsabgrenzung/))
 
     const kg600 = screen.getByRole('radiogroup', { name: /KG.600/ })
-    await user.click(within(kg600).getAllByRole('radio')[1]!) // "nicht enthalten"
+    // KG 600 already starts `nicht enthalten` (binary default) — flip it to
+    // `enthalten` to exercise a real post-confirmation change.
+    await user.click(within(kg600).getAllByRole('radio')[0]!)
     expect(screen.getByRole('button', { name: /Umfang bestätigen/ })).toBeInTheDocument()
     expect(screen.getByText(/erneut geprüft|geändert/))
       .toBeInTheDocument()

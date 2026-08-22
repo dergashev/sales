@@ -58,7 +58,7 @@ describe('Project Card — project baseline', () => {
     expect(baseline).toHaveTextContent(/≈\s*85\s*%\s*der BGF R\+S/)
 
     expect(screen.getByText(
-      'Vorbereitung · Offene Fragen: 2 · Aktive Annahmen: 2',
+      'Vorbereitung · Offene Fragen: 2 · Aktive Annahmen: 1',
     )).toBeInTheDocument()
   })
 
@@ -78,7 +78,7 @@ describe('Project Card — project baseline', () => {
     expect(stale).toHaveTextContent('Geändert seit der Bestätigung: WFL nach WoFlV')
     expect(screen.getByRole('button', { name: 'Erneut bestätigen' })).toBeInTheDocument()
     expect(screen.getByText(
-      'Vorbereitung · Offene Fragen: 1 · Aktive Annahmen: 2',
+      'Vorbereitung · Offene Fragen: 1 · Aktive Annahmen: 1',
     )).toBeInTheDocument()
     const readiness = screen.getByRole('group', { name: 'Bereitschaft für Optionen' })
     expect(within(readiness).getByText('Erfüllt · nicht mehr aktuell'))

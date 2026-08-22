@@ -201,7 +201,9 @@ describe('Сквозной сценарий продажи', () => {
     expect(screen.queryByRole('button', { name: /Baugrund & Erschließung/ })).toBeNull()
     await user.click(nav(/Leistungsabgrenzung/))
     const status = screen.getByTestId('kg-200-servicing-status')
-    expect(status).toHaveTextContent('Erschließung · KG 200 im Angebot: noch offen')
+    // Binary contract (CPO decision, 22.08.2026): KG 200 starts `excluded`
+    // by default — there is no "noch offen" state to observe any more.
+    expect(status).toHaveTextContent('Erschließung · KG 200 im Angebot: nicht enthalten')
     act(() => useStore.getState().setCoverage('KG_200', 'included'))
     expect(status).toHaveTextContent('Erschließung · KG 200 im Angebot: enthalten')
     act(() => useStore.getState().setCoverage('KG_200', 'excluded'))
@@ -231,21 +233,13 @@ describe('Сквозной сценарий продажи', () => {
     expect(document.body.textContent ?? '').not.toMatch(/VARIANT-\d{2,3}/)
   })
 
-  it('переводит параметризованную ссылку допущения на актуальную главу', async () => {
-    const user = userEvent.setup()
-    render(<App />)
-    await user.click(await screen.findByRole('button', {
-      name: /Musterprojekt Nordfeld öffnen/,
-    }))
-    await user.click(screen.getByRole('button', { name: 'Vorbereitung öffnen' }))
-    await user.click(screen.getByRole('tab', { name: /Annahmen/ }))
-
-    act(() => useStore.getState().setUiLanguage('en'))
-
-    expect(screen.getByRole('button', {
-      name: 'Decide in the configurator · Chapter 1',
-    })).toBeInTheDocument()
-  })
+  // The former "переводит параметризованную ссылку допущения на актуальную
+  // главу" test exercised the KG 500 coverage assumption item's "go to
+  // configurator chapter" link — that item is retired (CPO decision,
+  // 22.08.2026: no KG 200-800 coverage decision is ever left `unknown`, so
+  // the assumption it described can no longer occur). No remaining
+  // assumption item takes the parametrized-chapter-link branch; the only
+  // active one (Gebäudeklasse) always has its own direct `resolve` action.
 
   it('дельта-чип и призрак ВИДИМЫ: состояние несёт .a3-show, не кадр анимации', async () => {
     const user = userEvent.setup()
@@ -395,12 +389,12 @@ describe('Сквозной сценарий продажи', () => {
     // `appliesTo`, not a single "from → to" pair — a SHARED-mode change can
     // apply to more than one building, which may not share one prior value.
     expect(within(box).getByText(/Energiestandard.*EH 40/)).toBeInTheDocument()
-    // Открытое покрытие KG 500 попадает в «что осталось» из того же
-    // множества, которое делает итог промежуточным.
-    expect(within(box).getByText(/KG.500 — Deckungsentscheidung offen/)).toBeInTheDocument()
-    for (const mandatory of ['300', '400', '700']) {
+    // Binary contract (CPO decision, 22.08.2026): KG 200/500/600/800 start
+    // determinate `excluded` — no KG coverage gap can appear in the recap
+    // any more (`coverageUnknown` is unreachable), for any group.
+    for (const kg of ['200', '300', '400', '500', '600', '700', '800']) {
       expect(within(box).queryByText(
-        new RegExp(`KG.${mandatory} — Deckungsentscheidung offen`),
+        new RegExp(`KG.${kg} — Deckungsentscheidung offen`),
       )).not.toBeInTheDocument()
     }
   })
@@ -425,12 +419,15 @@ describe('Сквозной сценарий продажи', () => {
     expect(within(dialog).getByText(/Rundungshinweise stehen auf derselben Seite/))
       .toBeInTheDocument()
     expect(within(dialog).getByText(/Umfang auf jeder Seite/)).toBeInTheDocument()
-    // Der eigene Druckpfad übernimmt nicht stillschweigend den E-Mail-
-    // Preflight: die offene Deckungsentscheidung bleibt sein eigener Blocker.
+    // Binary contract (CPO decision, 22.08.2026): with KG 300/400/700
+    // included and KG 200/500/600/800 at their determinate `excluded`
+    // default, and Gebäudeklasse confirmed via `Gebäude bestätigen` above,
+    // the offer is genuinely complete — the print path's own preflight (its
+    // own gate, independent of the email preflight) correctly allows it.
     const start = within(dialog).getByRole('button', { name: /Druckauftrag starten/ })
-    expect(start).toHaveAttribute('aria-disabled', 'true')
+    expect(start).not.toHaveAttribute('aria-disabled')
     expect(within(dialog).getByText(/Alle Deckungsentscheidungen getroffen/))
-      .toHaveTextContent(/^! /)
+      .toHaveTextContent(/^✓ /)
     expect(within(dialog).getByText(/Klassifikation bestätigt/))
       .toHaveTextContent(/^✓ /)
     // Внутренний экспорт остаётся доступным: он маркирован и не клиентский.
@@ -444,20 +441,21 @@ describe('Сквозной сценарий продажи', () => {
     await enterPipeline(user)
     await user.click(nav(/Leistungsabgrenzung/))
 
-    // Внутри: список причин, с которым можно работать.
-    expect(screen.getByText(/Deckungsentscheidung noch offen/)).toBeInTheDocument()
+    // Binary contract (CPO decision, 22.08.2026): with KG 300/400/700
+    // included and KG 200/500/600/800 at their determinate `excluded`
+    // default, the offer is complete from the start — there is no coverage
+    // gap left to collapse into a client-facing notice dot at all. The
+    // seller sees the same "fully decided" confirmation the client would.
+    expect(screen.queryByText(/Deckungsentscheidung noch offen/)).toBeNull()
+    expect(screen.getByText(/Alle Deckungsentscheidungen getroffen/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Hinweis' })).toBeNull()
 
-    // У клиента: та же правда, свёрнутая в нейтральную точку.
+    // У клиента: то же полное состояние — тоже без предупреждения.
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
 
     expect(screen.queryByText(/Deckungsentscheidung noch offen/)).toBeNull()
-    const dot = screen.getAllByRole('button', { name: 'Hinweis' })[0]!
-    expect(dot).toHaveAttribute('aria-expanded', 'false')
-    await user.click(dot)
-    // Клиентская формулировка упрощает детали, но не меняет правду.
-    expect(screen.getByText(/noch nicht entschieden/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Hinweis' })).toBeNull()
   })
 
   it('клиентская поверхность не цитирует реестр требований (MODE-001, дефект 13)', async () => {

@@ -355,5 +355,12 @@
     "file": "opt-scopeBoundaries-KG_700.png",
     "motifDe": "Planung und Baunebenkosten",
     "source": "OpenAI ImageGen, generiert am 2026-08-20"
+  },
+  {
+    "group": "scopeBoundaries",
+    "value": "KG_800",
+    "file": "opt-scopeBoundaries-KG_700.png",
+    "motifDe": "Platzhalter (geteilt mit KG 700) — Finanzierung hat noch kein eigenes Motiv",
+    "source": "Wiederverwendung bestehender Datei, Team-Entscheidung 2026-08-22 (kein neues Asset im Prototyp-Budget)"
   }
 ]

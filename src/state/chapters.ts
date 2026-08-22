@@ -14,11 +14,15 @@ import {
  */
 export const CONFIGURATOR_STEP = {
   SCOPE_BOUNDARIES: 'scopeBoundaries',
+  KG_200_DETAILS: 'kg200Details',
   KG_300_DETAILS: 'kg300Details',
   KG_400_DETAILS: 'kg400Details',
+  KG_500_DETAILS: 'kg500Details',
+  KG_600_DETAILS: 'kg600Details',
   ENERGY_CERTIFICATION: 'energyCertification',
   AREAS: 'areas',
   KG_700_DETAILS: 'kg700Details',
+  KG_800_DETAILS: 'kg800Details',
   COMMERCIAL_SCHEDULE: 'commercialSchedule',
 } as const
 
@@ -47,11 +51,23 @@ export type ConfiguratorWorkflowContext = Readonly<{
 /**
  * The only ordered Configurator registry.
  *
- * KG 300/400/700 chapters are conditional on the active Option's explicit
- * Scope Boundaries decisions. Energy/certification, areas and
- * commercial/schedule are required non-KG configuration areas. The former
- * Ground step is absent: its KG-200 status is a Scope Boundaries fact, not a
- * second configuration task.
+ * KG 200/300/400/500/600/700/800 chapters are conditional on the active
+ * Option's explicit Scope Boundaries decisions and follow DIN 276 order
+ * among themselves. Energy/certification, areas and commercial/schedule are
+ * required non-KG configuration areas and keep their established position
+ * between the building-construction and building-nebenkosten KG chapters.
+ *
+ * KG 200/500/600/800 (ticket "MAKE ALL KG 200–800 SELECTABLE & ADD
+ * COST-BEARING CONTENT…") reuse this exact mechanism instead of a parallel
+ * navigation model. `scope: 'project'` for all four (matching KG 700's own
+ * precedent): none of their quantity drivers has a genuine per-building home
+ * in the existing data model — site preparation, external works, equipment
+ * and financing are configured once for the whole complex, not duplicated
+ * per building tab. The former note "the Ground step is absent: KG-200
+ * status is a Scope Boundaries fact, not a second configuration task" no
+ * longer applies now that KG 200 carries a real multi-option catalog
+ * (6 options) rather than a single flat rate — the same reasoning that
+ * already gave KG 300/400/700 their own detail chapter now applies to it.
  */
 export const CONFIGURATOR_STEPS: readonly ConfiguratorStep[] = [
   {
@@ -60,6 +76,13 @@ export const CONFIGURATOR_STEPS: readonly ConfiguratorStep[] = [
     scope: 'project',
     visibility: 'clientSafe',
     applicability: { kind: 'required' },
+  },
+  {
+    id: CONFIGURATOR_STEP.KG_200_DETAILS,
+    label: 'Vorbereitende Maßnahmen KG 200',
+    scope: 'project',
+    visibility: 'clientSafe',
+    applicability: { kind: 'includedKg', group: 'KG_200' },
   },
   {
     id: CONFIGURATOR_STEP.KG_300_DETAILS,
@@ -74,6 +97,20 @@ export const CONFIGURATOR_STEPS: readonly ConfiguratorStep[] = [
     scope: 'building',
     visibility: 'clientSafe',
     applicability: { kind: 'includedKg', group: 'KG_400' },
+  },
+  {
+    id: CONFIGURATOR_STEP.KG_500_DETAILS,
+    label: 'Außenanlagen KG 500',
+    scope: 'project',
+    visibility: 'clientSafe',
+    applicability: { kind: 'includedKg', group: 'KG_500' },
+  },
+  {
+    id: CONFIGURATOR_STEP.KG_600_DETAILS,
+    label: 'Ausstattung KG 600',
+    scope: 'project',
+    visibility: 'clientSafe',
+    applicability: { kind: 'includedKg', group: 'KG_600' },
   },
   {
     id: CONFIGURATOR_STEP.ENERGY_CERTIFICATION,
@@ -95,6 +132,13 @@ export const CONFIGURATOR_STEPS: readonly ConfiguratorStep[] = [
     scope: 'project',
     visibility: 'internalOnly',
     applicability: { kind: 'includedKg', group: 'KG_700' },
+  },
+  {
+    id: CONFIGURATOR_STEP.KG_800_DETAILS,
+    label: 'Finanzierung KG 800',
+    scope: 'project',
+    visibility: 'internalOnly',
+    applicability: { kind: 'includedKg', group: 'KG_800' },
   },
   {
     id: CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE,

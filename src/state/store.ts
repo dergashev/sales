@@ -20,11 +20,11 @@ import {
 } from './chapters'
 import { withRegionalFactor } from './catalog'
 import {
-  bgfAboveGround, calculateBuilding, kgSplit, sumOfBlock,
+  bgfAboveGround, calculateBuilding, calculateKg800, kgSplit, sumOfBlock,
   SCOPE_BOUNDARIES_DECIDABLE_GROUPS,
   totalLabel as calculationTotalLabel,
   type BuildingInput, type Coverage, type CoverageState,
-  type CostGroup, type BuildingResult,
+  type CostGroup, type BuildingResult, type Kg800Params,
 } from '../engine/calculate'
 import {
   present, rate, NNBSP, formatDE, type Displayed, type Rate,
@@ -32,7 +32,41 @@ import {
 import {
   defaultOptionChoices, optionDrivers, coverageDrivers, ALL_OPTION_GROUPS, ZERT_GROUPS,
 } from '../engine/options'
+import {
+  scopeCatalogDrivers, defaultScopeCatalogSelections, SCOPE_QUANTITY_UNIT,
+  ALL_SCOPE_CATALOG_OPTIONS, KG200_CATALOG_OPTIONS, KG500_CATALOG_OPTIONS,
+  KG600_CATALOG_OPTIONS, KG800_CATALOG_OPTIONS,
+  type ScopeQuantityKey,
+} from '../engine/scopeCatalog'
 import derivedFx from '../fixtures/derived-prototype.json'
+
+/**
+ * Читает 8 параметров KG 800 из выбора каталога (`kg800-01`…`kg800-08`).
+ * `guaranteeAmount` — единственный параметр, чья база не вариант каталога,
+ * а количество (`guarantee_amount_eur`, внешний ввод по контракту).
+ */
+function readKg800Params(
+  choices: Record<string, string>,
+  quantityOf: (key: ScopeQuantityKey) => Decimal | null,
+): Kg800Params {
+  const selected = (optionId: string) => {
+    const option = KG800_CATALOG_OPTIONS.find((o) => o.id === optionId)!
+    const value = choices[optionId] ?? option.default
+    return option.variants.find((v) => v.value === value) ?? option.variants[0]!
+  }
+  return {
+    debtRatio: new Decimal(selected('kg800-01').rate),
+    debtRate: new Decimal(selected('kg800-02').rate),
+    financingMonths: new Decimal(selected('kg800-03').rate),
+    drawdownFactor: new Decimal(selected('kg800-04').rate),
+    financingFeeRate: new Decimal(selected('kg800-05').rate),
+    commitmentFreeMonths: new Decimal(selected('kg800-06').rate),
+    commitmentMonthlyRate: new Decimal(selected('kg800-06').rate2 ?? '0'),
+    guaranteeAmount: quantityOf('guarantee_amount_eur') ?? new Decimal(0),
+    guaranteeRate: new Decimal(selected('kg800-07').rate),
+    equityRate: new Decimal(selected('kg800-08').rate),
+  }
+}
 import {
   modelDuration, presentDuration, shiftScheduleMetrics, type DurationDisplay,
 } from '../engine/schedule'
@@ -252,6 +286,11 @@ export type OptionConfig = {
    */
   kg700ModeAutoFallback: boolean
   coverage: Coverage
+  /** See the matching field on `Store` for the full rationale. */
+  scopeCatalogChoices: Record<string, string>
+  scopeCatalogProvenance: Record<string, string>
+  scopeCatalogQuantities: Record<string, string>
+  kg800ClientRevealed: boolean
   scopeBoundariesConfirmedFingerprint: string | null
   fields: { wfl: FieldState; bgfOber: FieldState; we: FieldState }
   esConfirmed: boolean
@@ -307,6 +346,8 @@ const OPTION_CONFIG_KEYS = [
   'pricingStarted', 'configurationVisitedChapters', 'sharedConfiguration',
   'buildingConfigState',
   'kg300', 'kg300Provenance', 'kg700Mode', 'kg700ModeAutoFallback', 'coverage',
+  'scopeCatalogChoices', 'scopeCatalogProvenance', 'scopeCatalogQuantities',
+  'kg800ClientRevealed',
   'scopeBoundariesConfirmedFingerprint', 'fields',
   'esConfirmed', 'regionalfaktorActive', 'risikoAktiv',
   'openConfiguratorStep', 'visitedConfiguratorSteps', 'scopeBuildingId', 'discountPercent',
@@ -327,12 +368,16 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
   | 'configurationVisitedChapters'
   | 'sharedConfiguration' | 'buildingConfigState'
   | 'kg300' | 'kg300Provenance' | 'kg700Mode' | 'kg700ModeAutoFallback' | 'coverage'
+  | 'scopeCatalogChoices' | 'scopeCatalogProvenance' | 'scopeCatalogQuantities'
+  | 'kg800ClientRevealed'
   | 'scopeBoundariesConfirmedFingerprint'
   | 'esConfirmed' | 'regionalfaktorActive' | 'risikoAktiv' | 'discountPercent'
   | 'constructionStartDate'>,
   'buildingSectionConfirmations' | 'configurationModeChosen' | 'pricingStarted'
     | 'configurationVisitedChapters' | 'scopeBoundariesConfirmedFingerprint'
-    | 'constructionStartDate' | 'kg700ModeAutoFallback'> & {
+    | 'constructionStartDate' | 'kg700ModeAutoFallback'
+    | 'scopeCatalogChoices' | 'scopeCatalogProvenance' | 'scopeCatalogQuantities'
+    | 'kg800ClientRevealed'> & {
     /** Optional while reading candidates saved before section review was durable. */
     buildingSectionConfirmations?: Record<
       string,
@@ -351,6 +396,11 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
     scopeBoundariesConfirmedFingerprint?: string | null
     /** Optional while reading payloads saved before Construction Period existed. */
     constructionStartDate?: string | null
+    /** Optional while reading payloads saved before KG 200/500/600/800 catalogs existed. */
+    scopeCatalogChoices?: Record<string, string>
+    scopeCatalogProvenance?: Record<string, string>
+    scopeCatalogQuantities?: Record<string, string>
+    kg800ClientRevealed?: boolean
   }
 
 const PERSISTED_CONFIG_KEYS = [
@@ -360,6 +410,8 @@ const PERSISTED_CONFIG_KEYS = [
   'configurationVisitedChapters',
   'sharedConfiguration', 'buildingConfigState',
   'kg300', 'kg300Provenance', 'kg700Mode', 'kg700ModeAutoFallback', 'coverage',
+  'scopeCatalogChoices', 'scopeCatalogProvenance', 'scopeCatalogQuantities',
+  'kg800ClientRevealed',
   'scopeBoundariesConfirmedFingerprint', 'esConfirmed',
   'regionalfaktorActive', 'risikoAktiv', 'discountPercent',
   'constructionStartDate',
@@ -372,7 +424,11 @@ const LEGACY_PERSISTED_CONFIG_KEYS = PERSISTED_CONFIG_KEYS.filter(
     && key !== 'configurationVisitedChapters'
     && key !== 'scopeBoundariesConfirmedFingerprint'
     && key !== 'constructionStartDate'
-    && key !== 'kg700ModeAutoFallback',
+    && key !== 'kg700ModeAutoFallback'
+    && key !== 'scopeCatalogChoices'
+    && key !== 'scopeCatalogProvenance'
+    && key !== 'scopeCatalogQuantities'
+    && key !== 'kg800ClientRevealed',
 )
 
 function capturePersistedConfig(
@@ -393,28 +449,53 @@ type PersistedProposalPayload = {
 }
 
 /**
- * Покрытие групп затрат Scope Boundaries — умолчание `unknown`, а не решение.
+ * Покрытие групп затрат Scope Boundaries — умолчание `excluded`, а не
+ * `unknown`.
  *
- * Продуктовое решение по текущей задаче (Product Decision Brief, тикет
- * 627d3191, одобрено CPO, дословно проверено против бэклога): «no KG is
- * pre-selected as included, including 300/400/700. This supersedes
- * decisions.md D-07's "default 300/400/700 = included" clause.» Ни одна из
- * шести показанных групп Scope Boundaries — KG 200, 300, 400, 500, 600, 700 —
- * не предрешена: «выключено по умолчанию» означает «решение ещё не принято»
- * (`unknown` / «noch offen»), а не «продавец уже решил исключить» (SCOPE-001,
- * `data-model.md` §5.4, D-18).
+ * Актуальное продуктовое решение (CPO, тикет "MAKE ALL KG 200-800
+ * SELECTABLE & ADD COST-BEARING CONTENT...", 22.08.2026) ЯВНО ОТМЕНЯЕТ
+ * прежний контракт "пробел покрытия" (D-18/D-29/SCOPE-001): у каждой KG
+ * 200-800 нормально ровно ДВА состояния - included/Enthalten или
+ * excluded/Nicht enthalten, третьего "noch offen"/unknown в обычной
+ * работе не существует. Умолчание для КАЖДОЙ decidable группы (KG 200, 300,
+ * 400, 500, 600, 700, 800) - excluded, пока сохранённый проект не несёт
+ * собственного явного значения (`restoredOptionConfig`/`migrateCoverage`
+ * поднимают легаси-unknown до excluded при загрузке - отсутствие решения
+ * никогда не воскрешает третье состояние).
  *
- * Every displayed group therefore starts `unknown`. Persisted decisions are
- * restored unchanged; this default applies only to a fresh Option.
+ * KG 100 (Grundstück) в эту задачу не входит и остаётся `notApplicable`.
  *
- * KG 100 (Grundstück) и KG 800 (Finanzierung) в перечень Scope Boundaries
- * этой задачи не входят (тикет называет ровно шесть групп) и сохраняют
- * прежнее `notApplicable`.
+ * Прежняя редакция этого комментария (Product Decision Brief, тикет
+ * 627d3191) вводила умолчание `unknown` для шести групп и явно оставляла
+ * KG 800 вне перечня Scope Boundaries ("тикет называет ровно шесть групп",
+ * `notApplicable`). Оба пункта отменены настоящим решением: KG 800 -
+ * седьмая равноправная decidable-группа, и "решение ещё не принято" само
+ * по себе больше не является нормальным отображаемым состоянием.
  */
 const INITIAL_COVERAGE: Coverage = {
-  KG_100: 'notApplicable', KG_200: 'unknown',
-  KG_300: 'unknown', KG_400: 'unknown', KG_500: 'unknown',
-  KG_600: 'unknown', KG_700: 'unknown', KG_800: 'notApplicable',
+  KG_100: 'notApplicable', KG_200: 'excluded',
+  KG_300: 'excluded', KG_400: 'excluded', KG_500: 'excluded',
+  KG_600: 'excluded', KG_700: 'excluded', KG_800: 'excluded',
+}
+
+/**
+ * Поднимает легаси-покрытие (сохранённое до текущего решения) до нового
+ * бинарного контракта: любой `unknown` - это молчаливо непринятое решение,
+ * которое обязано читаться как `excluded` (D-08: отсутствие решения не
+ * становится тихим включением), никогда не как воскрешённое третье
+ * состояние. `KG_800` отдельно: старые проекты несут для неё
+ * `notApplicable` (группа не была decidable) - она тоже поднимается до
+ * `excluded`, а не остаётся вне перечня.
+ */
+function migrateCoverage(coverage: Coverage): Coverage {
+  const migrated = { ...coverage }
+  for (const group of SCOPE_BOUNDARIES_DECIDABLE_GROUPS) {
+    if (migrated[group] === 'unknown'
+      || (group === 'KG_800' && migrated[group] === 'notApplicable')) {
+      migrated[group] = 'excluded'
+    }
+  }
+  return migrated
 }
 // The top-level demo projection exists before an Opportunity Option does and
 // keeps the released reference calculation available to diagnostics/tests.
@@ -600,6 +681,11 @@ function defaultOptionConfig(coverage: Coverage = INITIAL_COVERAGE): OptionConfi
     kg700Mode: simplifiedAvailable ? 'vereinfacht' : 'hoaiAho',
     kg700ModeAutoFallback: !simplifiedAvailable,
     coverage,
+    scopeCatalogChoices: defaultScopeCatalogSelections(ALL_SCOPE_CATALOG_OPTIONS),
+    scopeCatalogProvenance: Object.fromEntries(
+      ALL_SCOPE_CATALOG_OPTIONS.map((o) => [o.id, 'Standard'])),
+    scopeCatalogQuantities: {},
+    kg800ClientRevealed: false,
     scopeBoundariesConfirmedFingerprint: null,
     fields: legacyFieldsFromReview(INITIAL_REVIEW),
     esConfirmed: false,
@@ -756,6 +842,28 @@ function isPersistedProposalConfig(value: unknown): value is PersistedProposalCo
     || !hasOnlyKeys(value.coverage, COVERAGE_KEYS)
     || !Object.values(value.coverage).every((item) =>
       COVERAGE_STATES.includes(item as CoverageState))) return false
+  // Absent in payloads saved before KG 200/500/600/800 catalogs existed.
+  const scopeCatalogOptionIds = ALL_SCOPE_CATALOG_OPTIONS.map((o) => o.id)
+  if (value.scopeCatalogChoices !== undefined) {
+    if (!isStringRecord(value.scopeCatalogChoices)) return false
+    const choices = value.scopeCatalogChoices as Record<string, string>
+    if (!Object.entries(choices).every(([id, v]) => {
+      const option = ALL_SCOPE_CATALOG_OPTIONS.find((o) => o.id === id)
+      return option !== undefined && option.variants.some((variant) => variant.value === v)
+    })) return false
+  }
+  if (value.scopeCatalogProvenance !== undefined) {
+    if (!isStringRecord(value.scopeCatalogProvenance)) return false
+    const provenance = value.scopeCatalogProvenance as Record<string, string>
+    if (!Object.keys(provenance).every((id) => scopeCatalogOptionIds.includes(id))) return false
+  }
+  if (value.scopeCatalogQuantities !== undefined) {
+    if (!isStringRecord(value.scopeCatalogQuantities)) return false
+    const quantities = value.scopeCatalogQuantities as Record<string, string>
+    if (!Object.values(quantities).every((v) => !Number.isNaN(Number(v)))) return false
+  }
+  if (value.kg800ClientRevealed !== undefined
+    && typeof value.kg800ClientRevealed !== 'boolean') return false
   if (value.scopeBoundariesConfirmedFingerprint !== undefined
     && value.scopeBoundariesConfirmedFingerprint !== null
     && typeof value.scopeBoundariesConfirmedFingerprint !== 'string') return false
@@ -834,6 +942,17 @@ function restoredOptionConfig(
   return {
     ...base,
     ...persisted,
+    // Legacy `unknown`/`notApplicable` coverage never resurfaces as a normal
+    // state after load — every decidable KG lands on the current binary
+    // contract (`migrateCoverage`).
+    coverage: migrateCoverage(persisted.coverage),
+    // Absent in payloads saved before KG 200/500/600/800 catalogs existed.
+    scopeCatalogChoices: persisted.scopeCatalogChoices ?? base.scopeCatalogChoices,
+    scopeCatalogProvenance:
+      persisted.scopeCatalogProvenance ?? base.scopeCatalogProvenance,
+    scopeCatalogQuantities:
+      persisted.scopeCatalogQuantities ?? base.scopeCatalogQuantities,
+    kg800ClientRevealed: persisted.kg800ClientRevealed === true,
     configurationModeChosen: persisted.configurationModeChosen === true,
     // Absent in payloads saved before this fix: treat as "not an auto
     // fallback" so an old candidate is never retroactively auto-reverted.
@@ -936,6 +1055,32 @@ type Store = {
   kg700Mode: 'vereinfacht' | 'hoaiAho'
   kg700ModeAutoFallback: boolean
   coverage: Coverage
+  /**
+   * Выбор опций каталога KG 200/500/600/800 (тикет "MAKE ALL KG 200–800
+   * SELECTABLE…"). ОДИН плоский project-level bucket — эти четыре главы
+   * `scope: 'project'` (как уже KG 700), поэтому SHARED/PER_BUILDING их не
+   * касается: ни один из их количественных драйверов не имеет собственного
+   * per-building дома в существующей модели данных (площадь участка, тонны
+   * грунта, штуки стояночных мест и т. д. — величины всего комплекса).
+   */
+  scopeCatalogChoices: Record<string, string>
+  /** Провенанс выбора каталога: `Standard` (умолчание/Annahme) или `manuell erfasst`. */
+  scopeCatalogProvenance: Record<string, string>
+  /**
+   * Компактный ручной ввод количественных драйверов, для которых
+   * авторитетное состояние проекта ещё не существует (§7 приложения:
+   * не запрашивать вручную то, что можно вывести — `building_count` и
+   * `dwelling_count` выводятся, остальные — явный ввод). Десятичные строки.
+   */
+  scopeCatalogQuantities: Record<string, string>
+  /**
+   * KG 800 (Finanzierung) — приватная по умолчанию (`internalOnly`, как
+   * KG 700): подробная разбивка появляется в Kundenansicht только после
+   * явного включения этого флага на текущей встрече. Субтотал KG 800 в
+   * общей сумме показывается независимо от флага — приватна детализация,
+   * не факт включения группы (см. `docs/product/output-model.md`).
+   */
+  kg800ClientRevealed: boolean
   /**
    * Отпечаток решений Leistungsabgrenzung (KG 200/500/600 + Energiestandard
    * + Zertifikate) на момент подтверждения, `null` — ещё не подтверждено.
@@ -1192,6 +1337,12 @@ type Store = {
   buildingConfigurationStatus: (id: string) => BuildingConfigurationState['status']
   /** Выбрать опцию KG 300 у активного здания — событие журнала с дельтой. */
   setKg300: (groupId: string, value: string) => void
+  /** Выбрать вариант опции каталога KG 200/500/600/800 — событие с дельтой. */
+  setScopeCatalogChoice: (optionId: string, value: string) => void
+  /** Ручной ввод количественного драйвера (§7 приложения) — десятичная строка. */
+  setScopeCatalogQuantity: (key: ScopeQuantityKey, value: string) => void
+  /** KG 800 · «Für dieses Meeting freigeben» — приватно по умолчанию. */
+  setKg800ClientRevealed: (revealed: boolean) => void
   setKg700Mode: (m: 'vereinfacht' | 'hoaiAho') => void
   /** Применить или снять надбавку за риск (D-02) — событие с дельтой. */
   toggleRisiko: (id: string) => void
@@ -1271,7 +1422,9 @@ export function preparationStatuses(s: Pick<Store,
     },
     assumptions: {
       buildingClass: !activeBuilding(s).gebaeudeklasse.confirmed,
-      kg500Coverage: s.coverage.KG_500 === 'unknown',
+      // `kg500Coverage` (KG 500 coverage decision still open) is retired:
+      // the binary Scope Boundaries contract (CPO decision, 22.08.2026)
+      // means no KG 200-800 coverage is ever left `unknown` any more.
     },
   }
 }
@@ -1613,17 +1766,11 @@ export function configuratorStepDone(
       configurationScopeKey(s, s.activeBuildingId)
     ] ?? []).includes(stepId)
   }
-  const visited = s.visitedConfiguratorSteps.includes(stepId)
-  switch (stepId) {
-    case CONFIGURATOR_STEP.SCOPE_BOUNDARIES:
-      // Leistungsabgrenzung решена, когда ни одна решаемая группа не
-      // осталась `unknown`: непринятое решение — не пройденный шаг.
-      return visited
-        && !SCOPE_BOUNDARIES_DECIDABLE_GROUPS
-          .some((group) => s.coverage[group] === 'unknown')
-    default:
-      return visited
-  }
+  // Binary contract (CPO decision, 22.08.2026): no decidable KG coverage is
+  // ever `unknown`, so Leistungsabgrenzung no longer needs its own extra
+  // "no open coverage decision" gate on top of `visited` — visiting it is
+  // the whole contract, same as every other project-scoped step.
+  return s.visitedConfiguratorSteps.includes(stepId)
 }
 
 /** Площадь S здания — выведенная величина (D-22), помечена на экране. */
@@ -1650,6 +1797,7 @@ export type PriceChange =
   | { kind: 'risiko'; id: string; active: boolean }
   | { kind: 'kg700'; value: 'vereinfacht' | 'hoaiAho' }
   | { kind: 'kg300'; buildingId: string; groupId: string; value: string }
+  | { kind: 'scopeCatalog'; optionId: string; value: string }
 
 /**
  * Состояние, каким оно СТАНЕТ, если решение принять. Гипотеза, а не запись:
@@ -1702,6 +1850,13 @@ function withChange<S extends Parameters<typeof computeProjection>[0] & {
           },
         },
       }
+    case 'scopeCatalog':
+      return {
+        ...s,
+        scopeCatalogChoices: {
+          ...s.scopeCatalogChoices, [change.optionId]: change.value,
+        },
+      }
   }
 }
 
@@ -1710,7 +1865,7 @@ function computeProjection(
     | 'fields' | 'esConfirmed' | 'regionalfaktorActive' | 'kg300' | 'kg700Mode'
     | 'risikoAktiv' | 'scopeBuildingId' | 'discountPercent'
     | 'configurationMode' | 'sharedConfiguration' | 'buildingReviews'
-    | 'constructionStartDate'>,
+    | 'constructionStartDate' | 'scopeCatalogChoices' | 'scopeCatalogQuantities'>,
 ): Projection {
   const CATALOG = withRegionalFactor(s.regionalfaktorActive)
   const list = scopedBuildings(s)
@@ -1860,18 +2015,91 @@ function computeProjection(
         simplifiedScope ? 'vereinfacht' : 'echt',
       )
   const kg300Exact = effectiveKgSplit.KG_300
+  const kg400Exact = effectiveKgSplit.KG_400
   for (const risk of RISK_ITEMS) {
     if (!s.risikoAktiv[risk.id]) continue
     const d = riskDriver(risk, kg300Exact)
     if (d) optDrivers.push(d)
   }
+
+  // KG 200 / 500 / 600 / 800 (тикет "MAKE ALL KG 200–800 SELECTABLE…").
+  // Количественные драйверы: выведенные (здания/квартиры — из уже
+  // авторитетного состояния проекта) либо явный компактный ввод (§7
+  // приложения). KG600-07 (Kunst am Bau) — единственный, чья база не
+  // количество, а уже посчитанная доля KG 300+400.
+  const derivedDwellingCount = list.every((building) =>
+    effectiveFactValue(s.buildingReviews[building.id]!.facts.units) !== null)
+    ? list.reduce((sum, building) =>
+      sum.plus(effectiveFactValue(s.buildingReviews[building.id]!.facts.units)!),
+      new Decimal(0))
+    : null
+  const scopeQuantityOf = (key: ScopeQuantityKey): Decimal | null => {
+    if (key === 'building_count') return new Decimal(list.length)
+    if (key === 'dwelling_count') return derivedDwellingCount
+    const raw = s.scopeCatalogQuantities[key]
+    if (raw === undefined || raw === '') return null
+    try {
+      const parsed = new Decimal(raw)
+      return parsed.isFinite() ? parsed : null
+    } catch {
+      return null
+    }
+  }
+  const kg300Plus400 = kg300Exact.plus(kg400Exact)
+  // Строгое равенство `=== 'included'`, тот же критерий, что `coreActive`
+  // выше: `excluded`/дефолт никогда не считаются включёнными молча.
+  const scopeCatalogActive = (group: 'KG_200' | 'KG_500' | 'KG_600' | 'KG_800') =>
+    s.coverage[group] === 'included'
+  if (scopeCatalogActive('KG_200')) {
+    optDrivers.push(...scopeCatalogDrivers(
+      KG200_CATALOG_OPTIONS, s.scopeCatalogChoices, scopeQuantityOf, kg300Plus400,
+    ))
+  }
+  if (scopeCatalogActive('KG_500')) {
+    optDrivers.push(...scopeCatalogDrivers(
+      KG500_CATALOG_OPTIONS, s.scopeCatalogChoices, scopeQuantityOf, kg300Plus400,
+    ))
+  }
+  if (scopeCatalogActive('KG_600')) {
+    optDrivers.push(...scopeCatalogDrivers(
+      KG600_CATALOG_OPTIONS, s.scopeCatalogChoices, scopeQuantityOf, kg300Plus400,
+    ))
+  }
+
   const separateSum = sumOfBlock([...baseDrivers, ...optDrivers], 'separatePosition')
   const surchargeSum = sumOfBlock([...baseDrivers, ...optDrivers], 'surcharge')
+  // KG 800 (Finanzierung) — PRE_FINANCING_COST — это ИМЕННО сумма ДО этой
+  // строки (KG 100–700, без самой KG 800): нерекурсивность обеспечена
+  // порядком вычислений, а не проверкой постфактум (calculate.ts, docblock
+  // `calculateKg800`).
+  const preFinancingCost = bauwerkBlock.plus(separateSum).plus(surchargeSum)
+  if (scopeCatalogActive('KG_800') && preFinancingCost.gt(0)) {
+    const kg800Params = readKg800Params(s.scopeCatalogChoices, scopeQuantityOf)
+    const kg800 = calculateKg800(preFinancingCost, kg800Params)
+    const kg800Driver = (key: string, exact: Decimal, labelDe: string) => {
+      if (exact.isZero()) return
+      optDrivers.push({
+        key: `kg800_${key}`, origin: 'decision' as const,
+        block: 'separatePosition' as const, exact, label: labelDe,
+        scopeRefs: ['KG 800'], basis: null,
+      })
+    }
+    kg800Driver('debtInterest', kg800.debtInterest, 'KG 800 · Fremdkapitalzinsen')
+    kg800Driver('financingFee', kg800.financingFee, 'KG 800 · Finanzierungsnebenkosten')
+    kg800Driver('commitmentInterest', kg800.commitmentInterest, 'KG 800 · Bereitstellungszinsen')
+    kg800Driver('guaranteeCost', kg800.guaranteeCost, 'KG 800 · Bürgschaftskosten')
+    kg800Driver('equityInterest', kg800.equityInterest, 'KG 800 · Kalkulatorischer Eigenkapitalzins')
+  }
+
+  // Пересчитано ПОСЛЕ KG 800 — те же имена, теперь уже с её вкладом (если
+  // включена), для итога и скидки ниже.
+  const separateSumFinal = sumOfBlock([...baseDrivers, ...optDrivers], 'separatePosition')
+  const surchargeSumFinal = sumOfBlock([...baseDrivers, ...optDrivers], 'surcharge')
   // Скидка — «после всего» (`calculation-spec` §2) и от ТОЧНОГО итога, не от
   // показанного (CALC-007). Она вклад, а не постобработка: иначе итог и
-  // Kostentreiber расходятся, и снапшот хранит цену, которой не было на
+  // Kostentreiber расходятся, и снапшот хранит цену, которой не была на
   // экране (сплошное ревью 26, находка 14).
-  const beforeDiscount = bauwerkBlock.plus(separateSum).plus(surchargeSum)
+  const beforeDiscount = bauwerkBlock.plus(separateSumFinal).plus(surchargeSumFinal)
   if (s.discountPercent && !s.discountPercent.isZero()) {
     const factor = s.discountPercent.div(100)
     optDrivers.push({
@@ -3415,6 +3643,80 @@ const store = createStore<Store>((set, get) => {
       }
     },
 
+    // KG 200/500/600/800 (тикет "MAKE ALL KG 200–800 SELECTABLE…"). Один
+    // плоский project-level bucket — нет ветвления SHARED/PER_BUILDING, как
+    // у `setKg300`, потому что `scope: 'project'` (см. `state/chapters.ts`).
+    setScopeCatalogChoice: (optionId, value) => {
+      const s = get()
+      const prev = s.scopeCatalogChoices[optionId]
+      if (prev === value) return
+      const option = ALL_SCOPE_CATALOG_OPTIONS.find((o) => o.id === optionId)
+      if (!option) return
+      const prevProv = s.scopeCatalogProvenance[optionId] ?? 'Standard'
+      const before = s.projection().result.total.exact
+      const write = (v: string, prov: string) => set((state) => ({
+        scopeCatalogChoices: { ...state.scopeCatalogChoices, [optionId]: v },
+        scopeCatalogProvenance: {
+          ...state.scopeCatalogProvenance, [optionId]: prov,
+        },
+      }))
+      write(value, 'manuell erfasst')
+      const after = get().projection().result.total.exact
+      const delta = after.minus(before)
+      const variant = option.variants.find((v) => v.value === value)
+      apply({
+        kind: 'option.selected',
+        label: `${option.labelDe}: ${variant?.labelDe ?? value}`,
+        deltaExact: delta.isZero() ? null : delta,
+        inverse: () => write(prev ?? option.default, prevProv),
+        forward: () => write(value, 'manuell erfasst'),
+      })
+      if (!delta.isZero()) {
+        set({
+          activeDelta: {
+            label: `${option.labelDe}: ${variant?.labelDe ?? value}`,
+            deltaExact: delta,
+            percent: before.isZero() ? new Decimal(0) : delta.div(before).mul(100),
+          },
+        })
+      }
+    },
+
+    setScopeCatalogQuantity: (key, value) => {
+      const s = get()
+      const prev = s.scopeCatalogQuantities[key] ?? ''
+      if (prev === value) return
+      const before = s.projection().result.total.exact
+      const write = (v: string) => set((state) => ({
+        scopeCatalogQuantities: { ...state.scopeCatalogQuantities, [key]: v },
+      }))
+      write(value)
+      const after = get().projection().result.total.exact
+      const delta = after.minus(before)
+      apply({
+        kind: 'option.selected',
+        label: `${key}: ${value || '—'} ${SCOPE_QUANTITY_UNIT[key] ?? ''}`.trim(),
+        deltaExact: delta.isZero() ? null : delta,
+        inverse: () => write(prev),
+        forward: () => write(value),
+      })
+    },
+
+    setKg800ClientRevealed: (revealed) => {
+      const s = get()
+      if (s.kg800ClientRevealed === revealed) return
+      set({ kg800ClientRevealed: revealed })
+      apply({
+        kind: 'option.selected',
+        label: revealed
+          ? 'KG 800 · Finanzierungsdetails für dieses Meeting freigegeben'
+          : 'KG 800 · Finanzierungsdetails wieder privat',
+        deltaExact: null,
+        inverse: () => set({ kg800ClientRevealed: !revealed }),
+        forward: () => set({ kg800ClientRevealed: revealed }),
+      })
+    },
+
     confirmBuildingSection: (id, section, fingerprint) => {
       const s = get()
       const review = s.buildingReviews[id]
@@ -3843,7 +4145,7 @@ const LABELS: Record<'wfl' | 'bgfOber' | 'we', string> = {
 function isCurrent(
   s: Pick<Store, 'buildings' | 'activeBuildingId' | 'coverage' | 'risikoAktiv'
     | 'kg700Mode' | 'kg300' | 'configurationMode' | 'sharedConfiguration'
-    | 'included'>,
+    | 'included' | 'scopeCatalogChoices'>,
   change: PriceChange,
 ): boolean {
   switch (change.kind) {
@@ -3858,6 +4160,8 @@ function isCurrent(
       return s.kg700Mode === change.value
     case 'kg300':
       return choicesFor(s, change.buildingId)[change.groupId] === change.value
+    case 'scopeCatalog':
+      return s.scopeCatalogChoices[change.optionId] === change.value
   }
 }
 
@@ -3878,6 +4182,11 @@ function changeLabel(change: PriceChange): string {
         ? 'KG 700 nach HOAI und AHO' : 'KG 700 vereinfacht'
     case 'kg300':
       return `${change.groupId} · ${change.value}`
+    case 'scopeCatalog': {
+      const option = ALL_SCOPE_CATALOG_OPTIONS.find((o) => o.id === change.optionId)
+      const variant = option?.variants.find((v) => v.value === change.value)
+      return `${option?.labelDe ?? change.optionId} · ${variant?.labelDe ?? change.value}`
+    }
   }
 }
 

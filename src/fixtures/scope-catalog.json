@@ -1,0 +1,506 @@
+{
+  "$comment": "KG 200/500/600/800 option/variant catalog, transcribed verbatim (rates, defaults, evidence class) from KG_200_500_600_800_CONFIGURATOR_RESEARCH.md (research date 2026-08-20). Shape matches src/engine/scopeCatalog.ts's ScopeOption/ScopeVariant. Prototype rates (evidenceClass D/P) are indicative assumptions, not confirmed All3 production prices.",
+  "kg200": [
+    {
+      "id": "kg200-01",
+      "kg": "KG_200",
+      "labelDe": "Bestands- & Rückbauumfang",
+      "labelEn": "Existing Site & Demolition Scope",
+      "questionDe": "Wie ist der Bestand vor Baubeginn?",
+      "questionEn": "What is the existing site condition before construction starts?",
+      "basis": { "kind": "perQuantity", "quantityKey": "affected_site_area_m2" },
+      "default": "01",
+      "variants": [
+        { "value": "01", "labelDe": "Baufreies Grundstück", "labelEn": "Ready-to-build site", "summaryDe": "Keine Rückbau-Pauschale", "summaryEn": "No demolition allowance", "characteristicsDe": ["Normaler Übergabezustand"], "characteristicsEn": ["Normal handover condition"], "rate": "0", "evidenceClass": "D" },
+        { "value": "02", "labelDe": "Leichte Grundstücksräumung", "labelEn": "Light site clearing", "summaryDe": "Vegetation, geringfügige Rückbauten", "summaryEn": "Vegetation, minor removals, basic clearing", "characteristicsDe": ["Einfache Räumung"], "characteristicsEn": ["Basic clearing"], "rate": "10", "evidenceClass": "D" },
+        { "value": "03", "labelDe": "Teilrückbau Bestand", "labelEn": "Partial demolition", "summaryDe": "Selektiver Rückbau, normaler Zugang", "summaryEn": "Selective demolition, normal access", "characteristicsDe": ["Selektiver Rückbau"], "characteristicsEn": ["Selective demolition"], "rate": "90", "evidenceClass": "D", "quantityKeyOverride": "existing_building_bgf_m2" },
+        { "value": "04", "labelDe": "Vollrückbau Standard", "labelEn": "Full standard demolition", "summaryDe": "Kompletter Rückbau, Standard-Mineralabfall", "summaryEn": "Complete demolition, standard mineral waste", "characteristicsDe": ["Vollständiger Rückbau"], "characteristicsEn": ["Complete demolition"], "rate": "150", "evidenceClass": "R", "quantityKeyOverride": "existing_building_bgf_m2" },
+        { "value": "05", "labelDe": "Komplexer urbaner Rückbau", "labelEn": "Complex urban demolition", "summaryDe": "Beengte Logistik, Schutz Nachbarbebauung", "summaryEn": "Constrained logistics, adjacent-building protection", "characteristicsDe": ["Beengte Logistik"], "characteristicsEn": ["Constrained logistics"], "rate": "220", "evidenceClass": "D", "quantityKeyOverride": "existing_building_bgf_m2" },
+        { "value": "06", "labelDe": "Schadstoffintensiver Rückbau", "labelEn": "Contamination-heavy demolition", "summaryDe": "Hoher Trenn-/Schadstoffaufwand", "summaryEn": "High separation / hazardous-material allowance", "characteristicsDe": ["Schadstoffaufwand"], "characteristicsEn": ["Hazardous-material allowance"], "rate": "300", "evidenceClass": "P", "quantityKeyOverride": "existing_building_bgf_m2" }
+      ]
+    },
+    {
+      "id": "kg200-02",
+      "kg": "KG_200",
+      "labelDe": "Bodenbelastung & Entsorgung",
+      "labelEn": "Soil Contamination & Disposal",
+      "questionDe": "Wie ist der Boden belastet?",
+      "questionEn": "What is the soil contamination level?",
+      "basis": { "kind": "perQuantity", "quantityKey": "soil_disposal_t" },
+      "default": "02",
+      "variants": [
+        { "value": "01", "labelDe": "Wiedereinbau auf Grundstück", "labelEn": "Re-use on site", "summaryDe": "Keine externe Entsorgung", "summaryEn": "No external disposal", "characteristicsDe": ["Verbleibt in Erdarbeiten"], "characteristicsEn": ["Stays in earthworks"], "rate": "0", "evidenceClass": "D" },
+        { "value": "02", "labelDe": "Unbelastet / Z0-Niveau", "labelEn": "Clean soil / Z0 level", "summaryDe": "Günstige Recycling-/Entsorgungsroute", "summaryEn": "Low-cost recycling/disposal route", "characteristicsDe": ["Z0-Niveau"], "characteristicsEn": ["Z0 classification"], "rate": "12", "evidenceClass": "R" },
+        { "value": "03", "labelDe": "Gering belastet", "labelEn": "Low contamination", "summaryDe": "Eingeschränkte Wiederverwendung", "summaryEn": "Restricted reuse / controlled disposal", "characteristicsDe": ["Kontrollierte Entsorgung"], "characteristicsEn": ["Controlled disposal"], "rate": "30", "evidenceClass": "R" },
+        { "value": "04", "labelDe": "Mittel belastet", "labelEn": "Moderate contamination", "summaryDe": "Kontrollierte Annahmestelle", "summaryEn": "Controlled receiving facility", "characteristicsDe": ["Annahmestelle erforderlich"], "characteristicsEn": ["Receiving facility required"], "rate": "70", "evidenceClass": "D" },
+        { "value": "05", "labelDe": "Stark belastet", "labelEn": "High contamination", "summaryDe": "Hoher Entsorgungs-/Dokumentationsaufwand", "summaryEn": "High disposal and documentation burden", "characteristicsDe": ["Dokumentationspflicht"], "characteristicsEn": ["Documentation burden"], "rate": "140", "evidenceClass": "D" },
+        { "value": "06", "labelDe": "Sonderfall / gefährlicher Boden", "labelEn": "Special / hazardous soil", "summaryDe": "Fachentsorgung erforderlich", "summaryEn": "Specialist disposal allowance", "characteristicsDe": ["Fachentsorgung"], "characteristicsEn": ["Specialist disposal"], "rate": "220", "evidenceClass": "R" }
+      ]
+    },
+    {
+      "id": "kg200-03",
+      "kg": "KG_200",
+      "labelDe": "Öffentliche Erschließung",
+      "labelEn": "Public Utility Connections",
+      "questionDe": "Wie ist der Anschlussstand?",
+      "questionEn": "What is the public connection status?",
+      "basis": { "kind": "perQuantity", "quantityKey": "building_count" },
+      "default": "03",
+      "variants": [
+        { "value": "01", "labelDe": "Anschlüsse vorhanden", "labelEn": "Connections already available", "summaryDe": "Allowance für finale Schnittstellen", "summaryEn": "Allowance for final interfaces / checks", "characteristicsDe": ["Nur Prüfung/Anschluss"], "characteristicsEn": ["Final checks only"], "rate": "5000", "evidenceClass": "P" },
+        { "value": "02", "labelDe": "Teilerschließung", "labelEn": "Partial connections", "summaryDe": "Meist 1–2 fehlende Medien", "summaryEn": "Typically 1–2 missing media", "characteristicsDe": ["1–2 fehlende Medien"], "characteristicsEn": ["1–2 missing utilities"], "rate": "12000", "evidenceClass": "D" },
+        { "value": "03", "labelDe": "Standarderschließung", "labelEn": "Standard connections", "summaryDe": "Strom, Wasser, Abwasser, Telekom", "summaryEn": "Power, water, sewer, telecom; normal distance", "characteristicsDe": ["Alle Standardmedien"], "characteristicsEn": ["All standard utilities"], "rate": "20000", "evidenceClass": "R" },
+        { "value": "04", "labelDe": "Erweiterte Erschließung", "labelEn": "Extended connections", "summaryDe": "Längere Trassen, größere Dimensionierung", "summaryEn": "Longer routing / larger dimensioning", "characteristicsDe": ["Längere Trassen"], "characteristicsEn": ["Longer routing"], "rate": "35000", "evidenceClass": "D" },
+        { "value": "05", "labelDe": "Mehrfamilienhaus hohe Anschlussleistung", "labelEn": "High-capacity multi-family connection", "summaryDe": "Höhere Strom-/Wasserkapazität", "summaryEn": "Higher electrical/water capacity, more civil works", "characteristicsDe": ["Höhere Kapazität"], "characteristicsEn": ["Higher capacity"], "rate": "55000", "evidenceClass": "P" },
+        { "value": "06", "labelDe": "Komplexe urbane Netzanpassung", "labelEn": "Complex urban network adaptation", "summaryDe": "Umtrassierung, beengte Grabung", "summaryEn": "Rerouting, constrained excavation, coordination", "characteristicsDe": ["Umtrassierung nötig"], "characteristicsEn": ["Rerouting required"], "rate": "90000", "evidenceClass": "P" }
+      ]
+    },
+    {
+      "id": "kg200-04",
+      "kg": "KG_200",
+      "labelDe": "Nichtöffentliche Erschließung",
+      "labelEn": "Private Site Infrastructure",
+      "questionDe": "Wie umfangreich ist die private Erschließung?",
+      "questionEn": "How extensive is the private site infrastructure?",
+      "basis": { "kind": "perQuantity", "quantityKey": "private_infrastructure_area_m2" },
+      "default": "03",
+      "variants": [
+        { "value": "01", "labelDe": "Bestand nutzbar", "labelEn": "Existing infrastructure usable", "summaryDe": "Keine neue private Erschließung", "summaryEn": "No new private enabling infrastructure", "characteristicsDe": ["Bestand genügt"], "characteristicsEn": ["Existing sufficient"], "rate": "0", "evidenceClass": "P" },
+        { "value": "02", "labelDe": "Leicht", "labelEn": "Light", "summaryDe": "Kurze interne Trassen, einfacher Zugang", "summaryEn": "Short internal routes / sleeves / basic access", "characteristicsDe": ["Kurze Trassen"], "characteristicsEn": ["Short routes"], "rate": "15", "evidenceClass": "P" },
+        { "value": "03", "labelDe": "Standard", "labelEn": "Standard", "summaryDe": "Interne Leitungen + Basiszugang", "summaryEn": "Internal utility routes + basic access construction", "characteristicsDe": ["Interne Leitungen"], "characteristicsEn": ["Internal utility routes"], "rate": "30", "evidenceClass": "P" },
+        { "value": "04", "labelDe": "Erweitert", "labelEn": "Extended", "summaryDe": "Längere Läufe, mehr Schnittstellen", "summaryEn": "Longer runs / more interfaces / heavier sub-base", "characteristicsDe": ["Längere Läufe"], "characteristicsEn": ["Longer runs"], "rate": "55", "evidenceClass": "P" },
+        { "value": "05", "labelDe": "Komplex urban", "labelEn": "Complex urban", "summaryDe": "Beengter Zugang, dichter Bestand", "summaryEn": "Restricted access, dense existing utilities", "characteristicsDe": ["Beengter Zugang"], "characteristicsEn": ["Restricted access"], "rate": "85", "evidenceClass": "P" }
+      ]
+    },
+    {
+      "id": "kg200-05",
+      "kg": "KG_200",
+      "labelDe": "Ausgleichsmaßnahmen",
+      "labelEn": "Compensation Measures",
+      "questionDe": "Welcher ökologische Ausgleich ist nötig?",
+      "questionEn": "What ecological compensation is required?",
+      "basis": { "kind": "perQuantity", "quantityKey": "compensation_area_m2" },
+      "default": "01",
+      "variants": [
+        { "value": "01", "labelDe": "Keine zusätzliche Maßnahme", "labelEn": "No additional measure", "summaryDe": "Kein Aufwand über Projektumfang hinaus", "summaryEn": "No allowance beyond normal project scope", "characteristicsDe": ["Kein Zusatzaufwand"], "characteristicsEn": ["No additional allowance"], "rate": "0", "evidenceClass": "P" },
+        { "value": "02", "labelDe": "Einfache Wiederherstellung", "labelEn": "Basic reinstatement", "summaryDe": "Mutterboden, Ansaat, einfache Wiederherstellung", "summaryEn": "Topsoil, seed, simple reinstatement", "characteristicsDe": ["Ansaat/Mutterboden"], "characteristicsEn": ["Seeding/topsoil"], "rate": "20", "evidenceClass": "D" },
+        { "value": "03", "labelDe": "Gehölz-/Heckenkompensation", "labelEn": "Shrub / hedge compensation", "summaryDe": "Heimische Sträucher/Heckenpflanzung", "summaryEn": "Native shrubs / hedge planting", "characteristicsDe": ["Heckenpflanzung"], "characteristicsEn": ["Hedge planting"], "rate": "45", "evidenceClass": "D" },
+        { "value": "04", "labelDe": "Biodiversitätsmaßnahme", "labelEn": "Biodiversity measure", "summaryDe": "Reichere Artenmischung, Habitatelemente", "summaryEn": "Richer species mix, habitat features", "characteristicsDe": ["Habitatelemente"], "characteristicsEn": ["Habitat features"], "rate": "75", "evidenceClass": "P" },
+        { "value": "05", "labelDe": "Intensive ökologische Kompensation", "labelEn": "Intensive ecological compensation", "summaryDe": "Komplexe Pflanzung, Etablierungsaufwand", "summaryEn": "Complex planting / establishment allowance", "characteristicsDe": ["Etablierungsaufwand"], "characteristicsEn": ["Establishment allowance"], "rate": "120", "evidenceClass": "P" }
+      ]
+    },
+    {
+      "id": "kg200-06",
+      "kg": "KG_200",
+      "labelDe": "Übergangs- & Interimsmaßnahmen",
+      "labelEn": "Temporary & Transition Measures",
+      "questionDe": "Sind temporäre Baustellenmaßnahmen nötig?",
+      "questionEn": "Are temporary site measures required?",
+      "basis": { "kind": "flat" },
+      "default": "02",
+      "variants": [
+        { "value": "01", "labelDe": "Keine", "labelEn": "None", "summaryDe": "Keine besondere Interimslösung", "summaryEn": "No special interim arrangement", "characteristicsDe": ["Keine Sonderlösung"], "characteristicsEn": ["No special arrangement"], "rate": "0", "evidenceClass": "P" },
+        { "value": "02", "labelDe": "Basis", "labelEn": "Basic", "summaryDe": "Einfacher temporärer Zugang/Schutz", "summaryEn": "Simple temporary access / utilities / protection", "characteristicsDe": ["Einfacher Zugang"], "characteristicsEn": ["Simple access"], "rate": "15000", "evidenceClass": "P" },
+        { "value": "03", "labelDe": "Standard", "labelEn": "Standard", "summaryDe": "Temporäre Trassen + moderate Logistik", "summaryEn": "Temporary routing + moderate logistics", "characteristicsDe": ["Temporäre Trassen"], "characteristicsEn": ["Temporary routing"], "rate": "30000", "evidenceClass": "P" },
+        { "value": "04", "labelDe": "Enge urbane Baustelle", "labelEn": "Constrained urban site", "summaryDe": "Geschützter Zugang, temporäre Umleitungen", "summaryEn": "Protected access, temporary diversions, coordination", "characteristicsDe": ["Geschützter Zugang"], "characteristicsEn": ["Protected access"], "rate": "60000", "evidenceClass": "P" },
+        { "value": "05", "labelDe": "Betrieb im Bestand / Phasenbau", "labelEn": "Occupied site / phased construction", "summaryDe": "Interimswege, wiederholte Änderungen", "summaryEn": "Interim routes, separation, repeated changes", "characteristicsDe": ["Phasenbau"], "characteristicsEn": ["Phased construction"], "rate": "120000", "evidenceClass": "P" },
+        { "value": "06", "labelDe": "Hochkomplexe Interimslösung", "labelEn": "High-complexity interim solution", "summaryDe": "Große temporäre Infrastruktur, Mehrphasen", "summaryEn": "Major temporary infrastructure / multi-phase allowance", "characteristicsDe": ["Mehrphasige Infrastruktur"], "characteristicsEn": ["Multi-phase infrastructure"], "rate": "200000", "evidenceClass": "P" }
+      ]
+    }
+  ],
+  "kg500": [
+    {
+      "id": "kg500-01",
+      "kg": "KG_500",
+      "labelDe": "Befestigte Flächen",
+      "labelEn": "Hardscape & Paved Surfaces",
+      "questionDe": "Welcher Belag für befestigte Flächen?",
+      "questionEn": "What surface finish for hardscape areas?",
+      "basis": { "kind": "perQuantity", "quantityKey": "hardscape_area_m2" },
+      "default": "03",
+      "variants": [
+        { "value": "01", "labelDe": "Schotter / wassergebundene Decke", "labelEn": "Gravel / bound aggregate", "summaryDe": "Wirtschaftlich, wasserdurchlässig", "summaryEn": "Economical, permeable, lower finish", "characteristicsDe": ["Wasserdurchlässig"], "characteristicsEn": ["Permeable"], "rate": "35", "evidenceClass": "D" },
+        { "value": "02", "labelDe": "Asphalt", "labelEn": "Asphalt", "summaryDe": "Robuste Fahr-/Servicefläche", "summaryEn": "Robust service / drive surface", "characteristicsDe": ["Robuste Nutzung"], "characteristicsEn": ["Robust use"], "rate": "60", "evidenceClass": "D" },
+        { "value": "03", "labelDe": "Betonpflaster Standard", "labelEn": "Standard concrete pavers", "summaryDe": "Dauerhafter Wohnungsbau-Standard", "summaryEn": "Durable residential standard", "characteristicsDe": ["Wohnungsbau-Standard"], "characteristicsEn": ["Residential standard"], "rate": "110", "evidenceClass": "R" },
+        { "value": "04", "labelDe": "Versickerungsfähiges Pflaster", "labelEn": "Permeable pavers", "summaryDe": "Durchlässige Fugen, Entwässerungsvorteil", "summaryEn": "Permeable joints / drainage benefit", "characteristicsDe": ["Drainagevorteil"], "characteristicsEn": ["Drainage benefit"], "rate": "130", "evidenceClass": "D" },
+        { "value": "05", "labelDe": "Hochwertiges Pflaster", "labelEn": "Premium pavers", "summaryDe": "Gehobene Oberfläche/Detaillierung", "summaryEn": "Enhanced finish / detailing", "characteristicsDe": ["Gehobene Oberfläche"], "characteristicsEn": ["Enhanced finish"], "rate": "170", "evidenceClass": "R" },
+        { "value": "06", "labelDe": "Naturstein", "labelEn": "Natural stone", "summaryDe": "Hoher Material-/Verlegeaufwand", "summaryEn": "High material and installation intensity", "characteristicsDe": ["Hoher Materialaufwand"], "characteristicsEn": ["High material intensity"], "rate": "240", "evidenceClass": "R" }
+      ]
+    },
+    {
+      "id": "kg500-02",
+      "kg": "KG_500",
+      "labelDe": "Vegetationsstandard",
+      "labelEn": "Landscape & Planting Level",
+      "questionDe": "Welcher Begrünungsstandard?",
+      "questionEn": "What landscaping level?",
+      "basis": { "kind": "perQuantity", "quantityKey": "vegetated_area_m2" },
+      "default": "03",
+      "variants": [
+        { "value": "01", "labelDe": "Rasen / Ansaat", "labelEn": "Lawn / seeding", "summaryDe": "Einfache Grünfläche", "summaryEn": "Simple green cover", "characteristicsDe": ["Einfache Ansaat"], "characteristicsEn": ["Simple seeding"], "rate": "15", "evidenceClass": "R" },
+        { "value": "02", "labelDe": "Rasen + Sträucher", "labelEn": "Lawn + shrubs", "summaryDe": "Geringe Komplexität", "summaryEn": "Low-complexity residential landscape", "characteristicsDe": ["Sträucher ergänzt"], "characteristicsEn": ["Shrubs added"], "rate": "35", "evidenceClass": "R" },
+        { "value": "03", "labelDe": "Standard Freianlage", "labelEn": "Standard landscape", "summaryDe": "Sträucher, Bodendecker, Bäume", "summaryEn": "Mixed shrubs, groundcover, selected trees", "characteristicsDe": ["Mischpflanzung"], "characteristicsEn": ["Mixed planting"], "rate": "55", "evidenceClass": "R" },
+        { "value": "04", "labelDe": "Biodiversitätsorientiert", "labelEn": "Biodiversity-focused", "summaryDe": "Heimische Arten, ökologischer Wert", "summaryEn": "Native mix, perennials, ecological value", "characteristicsDe": ["Heimische Arten"], "characteristicsEn": ["Native species"], "rate": "75", "evidenceClass": "D" },
+        { "value": "05", "labelDe": "Intensiv begrünt", "labelEn": "Intensively landscaped", "summaryDe": "Größere Bäume, dichte Pflanzung", "summaryEn": "Larger trees, dense planting, richer detailing", "characteristicsDe": ["Dichte Pflanzung"], "characteristicsEn": ["Dense planting"], "rate": "110", "evidenceClass": "D" },
+        { "value": "06", "labelDe": "Premium Innenhof / Garten", "labelEn": "Premium courtyard / garden", "summaryDe": "Hohe Pflanzdichte und Detaillierung", "summaryEn": "High planting density and finish", "characteristicsDe": ["Hohe Detaillierung"], "characteristicsEn": ["High detailing"], "rate": "150", "evidenceClass": "P" }
+      ]
+    },
+    {
+      "id": "kg500-03",
+      "kg": "KG_500",
+      "labelDe": "Regenwassermanagement",
+      "labelEn": "Stormwater Management",
+      "questionDe": "Welches Regenwasserkonzept?",
+      "questionEn": "What stormwater strategy?",
+      "basis": { "kind": "perQuantity", "quantityKey": "sealed_connected_area_m2" },
+      "default": "03",
+      "variants": [
+        { "value": "01", "labelDe": "Konventionelle Entwässerung", "labelEn": "Conventional drainage", "summaryDe": "Gullys/Rohranschluss", "summaryEn": "Gullies / pipe connection allowance", "characteristicsDe": ["Gully-Anschluss"], "characteristicsEn": ["Gully connection"], "rate": "18", "evidenceClass": "D" },
+        { "value": "02", "labelDe": "Versickerungsmulde", "labelEn": "Infiltration swale", "summaryDe": "Sichtbare grüne Versickerung", "summaryEn": "Visible green infiltration", "characteristicsDe": ["Grüne Versickerung"], "characteristicsEn": ["Green infiltration"], "rate": "12", "evidenceClass": "R" },
+        { "value": "03", "labelDe": "Mulden-Rigolen-System", "labelEn": "Swale-trench system", "summaryDe": "Speicherung + Versickerung kombiniert", "summaryEn": "Combined storage + infiltration", "characteristicsDe": ["Speicher + Versickerung"], "characteristicsEn": ["Storage + infiltration"], "rate": "28", "evidenceClass": "D" },
+        { "value": "04", "labelDe": "Unterirdische Rigole", "labelEn": "Underground infiltration trench", "summaryDe": "Unterirdische Speicherung/Versickerung", "summaryEn": "Subsurface storage / infiltration", "characteristicsDe": ["Unterirdisch"], "characteristicsEn": ["Subsurface"], "rate": "35", "evidenceClass": "R" },
+        { "value": "05", "labelDe": "Retentionsspeicher", "labelEn": "Underground retention storage", "summaryDe": "Gedrosselte Ableitung, beengte Grundstücke", "summaryEn": "Controlled discharge / constrained sites", "characteristicsDe": ["Gedrosselte Ableitung"], "characteristicsEn": ["Controlled discharge"], "rate": "60", "evidenceClass": "P" },
+        { "value": "06", "labelDe": "Integrierte blau-grüne Lösung", "labelEn": "Integrated blue-green system", "summaryDe": "Retention + Landschaft + Klimaanpassung", "summaryEn": "Retention + landscape + climate adaptation", "characteristicsDe": ["Klimaanpassung"], "characteristicsEn": ["Climate adaptation"], "rate": "85", "evidenceClass": "P" }
+      ]
+    },
+    {
+      "id": "kg500-04",
+      "kg": "KG_500",
+      "labelDe": "PKW-Stellplätze",
+      "labelEn": "Car Parking",
+      "questionDe": "Welcher Standard für PKW-Stellplätze?",
+      "questionEn": "What car-parking standard?",
+      "basis": { "kind": "perQuantity", "quantityKey": "surface_parking_spaces" },
+      "default": "03",
+      "variants": [
+        { "value": "01", "labelDe": "Schotterstellplatz", "labelEn": "Gravel space", "summaryDe": "Einfache durchlässige Fläche", "summaryEn": "Simple permeable surface", "characteristicsDe": ["Durchlässig"], "characteristicsEn": ["Permeable"], "rate": "4500", "evidenceClass": "D" },
+        { "value": "02", "labelDe": "Asphaltstellplatz", "labelEn": "Asphalt space", "summaryDe": "Robuster Standard", "summaryEn": "Durable standard", "characteristicsDe": ["Robuster Standard"], "characteristicsEn": ["Durable standard"], "rate": "6000", "evidenceClass": "D" },
+        { "value": "03", "labelDe": "Pflasterstellplatz", "labelEn": "Paved space", "summaryDe": "Wohnungsbau-Standard inkl. Rangieranteil", "summaryEn": "Residential standard incl. proportional manoeuvring", "characteristicsDe": ["Wohnungsbau-Standard"], "characteristicsEn": ["Residential standard"], "rate": "7500", "evidenceClass": "R" },
+        { "value": "04", "labelDe": "Versickerungsfähiger Stellplatz", "labelEn": "Permeable parking space", "summaryDe": "Durchlässige Fläche, Entwässerungsvorteil", "summaryEn": "Permeable surface / drainage benefit", "characteristicsDe": ["Entwässerungsvorteil"], "characteristicsEn": ["Drainage benefit"], "rate": "8500", "evidenceClass": "D" },
+        { "value": "05", "labelDe": "E-Mobility-ready", "labelEn": "EV-ready surface space", "summaryDe": "Elektro-Anschlussvorbereitung", "summaryEn": "Surface works + external electrical readiness allowance", "characteristicsDe": ["Elektro-Vorbereitung"], "characteristicsEn": ["Electrical readiness"], "rate": "10500", "evidenceClass": "P" },
+        { "value": "06", "labelDe": "Premium / Car-Sharing-ready", "labelEn": "Premium / car-sharing-ready", "summaryDe": "Erweiterte Markierung/Beschilderung", "summaryEn": "Enhanced markings, signage, utility allowance", "characteristicsDe": ["Erweiterte Markierung"], "characteristicsEn": ["Enhanced markings"], "rate": "11500", "evidenceClass": "P" }
+      ]
+    },
+    {
+      "id": "kg500-05",
+      "kg": "KG_500",
+      "labelDe": "Fahrradparken",
+      "labelEn": "Bicycle Parking",
+      "questionDe": "Welcher Standard für Fahrradstellplätze?",
+      "questionEn": "What bicycle-parking standard?",
+      "basis": { "kind": "perQuantity", "quantityKey": "bicycle_spaces" },
+      "default": "02",
+      "variants": [
+        { "value": "01", "labelDe": "Einfacher Anlehnbügel", "labelEn": "Simple bicycle stand", "summaryDe": "Einfacher Außenbügel", "summaryEn": "Basic outdoor stand", "characteristicsDe": ["Basisbügel"], "characteristicsEn": ["Basic stand"], "rate": "250", "evidenceClass": "R" },
+        { "value": "02", "labelDe": "Robuster Bügel inkl. Fundament", "labelEn": "Robust stand incl. foundation", "summaryDe": "Dauerhafte Festinstallation", "summaryEn": "Durable fixed installation", "characteristicsDe": ["Festinstallation"], "characteristicsEn": ["Fixed installation"], "rate": "350", "evidenceClass": "R" },
+        { "value": "03", "labelDe": "Überdacht", "labelEn": "Covered bicycle parking", "summaryDe": "Wetterschutz + Fundament", "summaryEn": "Weather protection + foundation", "characteristicsDe": ["Wetterschutz"], "characteristicsEn": ["Weather protection"], "rate": "1250", "evidenceClass": "R" },
+        { "value": "04", "labelDe": "Überdacht / Doppelstock", "labelEn": "Covered double-stack", "summaryDe": "Platzsparendes größeres System", "summaryEn": "Space-efficient, larger system", "characteristicsDe": ["Platzsparend"], "characteristicsEn": ["Space-efficient"], "rate": "1100", "evidenceClass": "D" },
+        { "value": "05", "labelDe": "Sammelschließanlage", "labelEn": "Secure collective enclosure", "summaryDe": "Umschlossen, kontrollierter Zugang", "summaryEn": "Enclosed / controlled access", "characteristicsDe": ["Kontrollierter Zugang"], "characteristicsEn": ["Controlled access"], "rate": "3000", "evidenceClass": "D" },
+        { "value": "06", "labelDe": "Fahrradbox", "labelEn": "Individual bicycle box", "summaryDe": "Hoher Diebstahl-/Wetterschutz", "summaryEn": "High theft/weather protection", "characteristicsDe": ["Individueller Schutz"], "characteristicsEn": ["Individual protection"], "rate": "3400", "evidenceClass": "D" }
+      ]
+    },
+    {
+      "id": "kg500-06",
+      "kg": "KG_500",
+      "labelDe": "Spiel- & Gemeinschaftsfläche",
+      "labelEn": "Play & Outdoor Amenity Area",
+      "questionDe": "Welcher Standard für Spiel-/Aufenthaltsflächen?",
+      "questionEn": "What play/amenity standard?",
+      "basis": { "kind": "perQuantity", "quantityKey": "amenity_area_m2" },
+      "default": "02",
+      "variants": [
+        { "value": "01", "labelDe": "Basis", "labelEn": "Basic", "summaryDe": "Einfache Sitzgelegenheiten/Spielelemente", "summaryEn": "Simple seating / small play elements", "characteristicsDe": ["Einfache Ausstattung"], "characteristicsEn": ["Basic equipment"], "rate": "100", "evidenceClass": "D" },
+        { "value": "02", "labelDe": "Wohnungsbau Standard", "labelEn": "Residential standard", "summaryDe": "Standardausstattung + Fläche + Pflanzung", "summaryEn": "Standard equipment + surface + planting", "characteristicsDe": ["Standardausstattung"], "characteristicsEn": ["Standard equipment"], "rate": "180", "evidenceClass": "R" },
+        { "value": "03", "labelDe": "Erweitert / inklusiv", "labelEn": "Enhanced / inclusive", "summaryDe": "Mehr Ausstattung, barrierefreie Flächen", "summaryEn": "More equipment / accessible surfaces", "characteristicsDe": ["Barrierefrei"], "characteristicsEn": ["Accessible"], "rate": "240", "evidenceClass": "R" },
+        { "value": "04", "labelDe": "Hochwertig", "labelEn": "High-quality", "summaryDe": "Reichere Ausstattung, individuelle Landschaft", "summaryEn": "Richer equipment / custom landscape", "characteristicsDe": ["Individuelle Landschaft"], "characteristicsEn": ["Custom landscape"], "rate": "320", "evidenceClass": "R" },
+        { "value": "05", "labelDe": "Premium / Sonderanfertigung", "labelEn": "Premium / custom", "summaryDe": "Maßanfertigung, anspruchsvolles Design", "summaryEn": "Bespoke equipment / demanding urban design", "characteristicsDe": ["Maßanfertigung"], "characteristicsEn": ["Bespoke equipment"], "rate": "450", "evidenceClass": "P" }
+      ]
+    },
+    {
+      "id": "kg500-07",
+      "kg": "KG_500",
+      "labelDe": "Außenbeleuchtung",
+      "labelEn": "External Lighting",
+      "questionDe": "Welcher Standard für Außenbeleuchtung?",
+      "questionEn": "What external-lighting standard?",
+      "basis": { "kind": "perQuantity", "quantityKey": "external_light_count" },
+      "default": "02",
+      "variants": [
+        { "value": "01", "labelDe": "Basis Wegebeleuchtung", "labelEn": "Basic path lighting", "summaryDe": "Einfache Poller-/Wegeleuchte", "summaryEn": "Simple bollard / path fixture installed", "characteristicsDe": ["Wegebeleuchtung"], "characteristicsEn": ["Path lighting"], "rate": "700", "evidenceClass": "P" },
+        { "value": "02", "labelDe": "Standard LED", "labelEn": "Standard LED", "summaryDe": "Dauerhafte Leuchte inkl. Kabel/Fundament", "summaryEn": "Durable fixture + cabling/foundation allowance", "characteristicsDe": ["LED, dauerhaft"], "characteristicsEn": ["Durable LED"], "rate": "1200", "evidenceClass": "D" },
+        { "value": "03", "labelDe": "Mastleuchte", "labelEn": "Pole light", "summaryDe": "Größere Reichweite, Straßen-/Platzbeleuchtung", "summaryEn": "Larger coverage / road or court lighting", "characteristicsDe": ["Größere Reichweite"], "characteristicsEn": ["Larger coverage"], "rate": "2500", "evidenceClass": "D" },
+        { "value": "04", "labelDe": "Smart / dimmbar", "labelEn": "Smart / dimmable", "summaryDe": "Steuerung, Sensorik, Inbetriebnahme", "summaryEn": "Controls, sensors, commissioning allowance", "characteristicsDe": ["Steuerbar"], "characteristicsEn": ["Controllable"], "rate": "3500", "evidenceClass": "P" },
+        { "value": "05", "labelDe": "Premium Design", "labelEn": "Premium design fixture", "summaryDe": "Architektonische Leuchte, Detaillierung", "summaryEn": "Architectural fixture / enhanced detailing", "characteristicsDe": ["Architektonische Leuchte"], "characteristicsEn": ["Architectural fixture"], "rate": "5000", "evidenceClass": "P" }
+      ]
+    }
+  ],
+  "kg600": [
+    {
+      "id": "kg600-01",
+      "kg": "KG_600",
+      "labelDe": "Einbauküchen",
+      "labelEn": "Fitted Kitchen Package",
+      "questionDe": "Welcher Küchenstandard?",
+      "questionEn": "What kitchen package?",
+      "basis": { "kind": "perQuantity", "quantityKey": "dwelling_count" },
+      "default": "03",
+      "variants": [
+        { "value": "01", "labelDe": "Nicht enthalten", "labelEn": "Not included", "summaryDe": "Küche durch Mieter/Kunde gestellt", "summaryEn": "Tenant/client-provided kitchen", "characteristicsDe": ["Küche nicht enthalten"], "characteristicsEn": ["Kitchen not included"], "rate": "0", "evidenceClass": "D" },
+        { "value": "02", "labelDe": "Kompakt / Mietstandard", "labelEn": "Compact / rental basic", "summaryDe": "Einfache Fronten, Basisgeräte", "summaryEn": "Simple fronts, basic appliance set", "characteristicsDe": ["Basisgeräte"], "characteristicsEn": ["Basic appliances"], "rate": "4500", "evidenceClass": "R" },
+        { "value": "03", "labelDe": "Standard", "labelEn": "Standard", "summaryDe": "Mietstandard, vollständige Geräte", "summaryEn": "Durable rental quality, complete appliances", "characteristicsDe": ["Vollständige Geräte"], "characteristicsEn": ["Complete appliances"], "rate": "7000", "evidenceClass": "R" },
+        { "value": "04", "labelDe": "Standard Plus / Markengeräte", "labelEn": "Standard Plus / branded appliances", "summaryDe": "Verbesserte Fronten, Markengeräte", "summaryEn": "Improved fronts, branded appliances", "characteristicsDe": ["Markengeräte"], "characteristicsEn": ["Branded appliances"], "rate": "10000", "evidenceClass": "R" },
+        { "value": "05", "labelDe": "Hochwertig", "labelEn": "Enhanced", "summaryDe": "Höherer Ausbau, Arbeitsplatte, Geräte", "summaryEn": "Higher finish, worktop, appliances", "characteristicsDe": ["Höherer Ausbau"], "characteristicsEn": ["Higher finish"], "rate": "14000", "evidenceClass": "R" },
+        { "value": "06", "labelDe": "Premium", "labelEn": "Premium", "summaryDe": "Hochwertige Materialien/Geräte", "summaryEn": "Premium materials/appliances", "characteristicsDe": ["Premium-Materialien"], "characteristicsEn": ["Premium materials"], "rate": "20000", "evidenceClass": "D" }
+      ]
+    },
+    {
+      "id": "kg600-02",
+      "kg": "KG_600",
+      "labelDe": "Wohnungsmöblierung",
+      "labelEn": "Dwelling Furniture Package",
+      "questionDe": "Sind Wohnungen möbliert?",
+      "questionEn": "Are dwellings furnished?",
+      "basis": { "kind": "perQuantity", "quantityKey": "furnished_dwelling_count" },
+      "default": "01",
+      "variants": [
+        { "value": "01", "labelDe": "Nicht enthalten", "labelEn": "Not included", "summaryDe": "Normale unmöblierte Übergabe", "summaryEn": "Normal unfurnished residential handover", "characteristicsDe": ["Unmöbliert"], "characteristicsEn": ["Unfurnished"], "rate": "0", "evidenceClass": "P" },
+        { "value": "02", "labelDe": "Essentials", "labelEn": "Essentials", "summaryDe": "Bett, Schrank, Tisch/Stühle, Basis-Stauraum", "summaryEn": "Bed, wardrobe, table/chairs, basic storage", "characteristicsDe": ["Basisausstattung"], "characteristicsEn": ["Basic set"], "rate": "3000", "evidenceClass": "P" },
+        { "value": "03", "labelDe": "Basis", "labelEn": "Basic", "summaryDe": "Vollständigeres Möbelset, Mietqualität", "summaryEn": "Fuller furniture set, durable rental quality", "characteristicsDe": ["Vollständigeres Set"], "characteristicsEn": ["Fuller set"], "rate": "5500", "evidenceClass": "P" },
+        { "value": "04", "labelDe": "Standard", "labelEn": "Standard", "summaryDe": "Vollständiges Einzugspaket", "summaryEn": "Complete move-in furniture package", "characteristicsDe": ["Einzugsfertig"], "characteristicsEn": ["Move-in ready"], "rate": "8500", "evidenceClass": "P" },
+        { "value": "05", "labelDe": "Vollmöbliert", "labelEn": "Fully furnished", "summaryDe": "Wohnen/Schlafen/Essen komplett", "summaryEn": "Living/sleeping/dining complete", "characteristicsDe": ["Komplett möbliert"], "characteristicsEn": ["Fully furnished"], "rate": "12000", "evidenceClass": "P" },
+        { "value": "06", "labelDe": "Premium", "labelEn": "Premium", "summaryDe": "Hochwertige Materialien/Design", "summaryEn": "Upgraded materials/design", "characteristicsDe": ["Hochwertiges Design"], "characteristicsEn": ["Upgraded design"], "rate": "18000", "evidenceClass": "P" }
+      ]
+    },
+    {
+      "id": "kg600-03",
+      "kg": "KG_600",
+      "labelDe": "Gemeinschaftsbereiche",
+      "labelEn": "Common-Area Furniture",
+      "questionDe": "Wie sind Gemeinschaftsbereiche möbliert?",
+      "questionEn": "How are common areas furnished?",
+      "basis": { "kind": "perQuantity", "quantityKey": "furnished_common_area_m2" },
+      "default": "01",
+      "variants": [
+        { "value": "01", "labelDe": "Keine Möblierung", "labelEn": "No furniture", "summaryDe": "Nur Rohbau/Ausbau", "summaryEn": "Shell/finish only", "characteristicsDe": ["Nur Ausbau"], "characteristicsEn": ["Finish only"], "rate": "0", "evidenceClass": "P" },
+        { "value": "02", "labelDe": "Basis", "labelEn": "Basic", "summaryDe": "Einfache Tische, Sitzgelegenheiten, Stauraum", "summaryEn": "Simple tables, seating, storage", "characteristicsDe": ["Einfache Möblierung"], "characteristicsEn": ["Basic furnishing"], "rate": "250", "evidenceClass": "P" },
+        { "value": "03", "labelDe": "Standard", "labelEn": "Standard", "summaryDe": "Dauerhafter Lounge-/Gemeinschaftsbereich", "summaryEn": "Durable residential lounge/common space", "characteristicsDe": ["Lounge-Bereich"], "characteristicsEn": ["Lounge area"], "rate": "450", "evidenceClass": "P" },
+        { "value": "04", "labelDe": "Erweitert", "labelEn": "Enhanced", "summaryDe": "Vielfältige Sitzmöglichkeiten, Arbeits-/Meeting-Funktion", "summaryEn": "Varied seating, work/meeting functions", "characteristicsDe": ["Arbeits-/Meeting-Funktion"], "characteristicsEn": ["Work/meeting function"], "rate": "700", "evidenceClass": "P" },
+        { "value": "05", "labelDe": "Premium", "labelEn": "Premium", "summaryDe": "Hochwertiges Lounge-/Co-Working-Paket", "summaryEn": "High-quality lounge/co-working package", "characteristicsDe": ["Co-Working-Paket"], "characteristicsEn": ["Co-working package"], "rate": "1000", "evidenceClass": "P" }
+      ]
+    },
+    {
+      "id": "kg600-04",
+      "kg": "KG_600",
+      "labelDe": "Gemeinschaftswäscherei",
+      "labelEn": "Shared Laundry Equipment",
+      "questionDe": "Ist eine Gemeinschaftswäscherei vorgesehen?",
+      "questionEn": "Is shared laundry equipment planned?",
+      "basis": { "kind": "perQuantity", "quantityKey": "laundry_room_count" },
+      "default": "01",
+      "variants": [
+        { "value": "01", "labelDe": "Nicht enthalten", "labelEn": "Not included", "summaryDe": "Keine Gemeinschaftswaschgeräte", "summaryEn": "No shared laundry equipment", "characteristicsDe": ["Keine Geräte"], "characteristicsEn": ["No equipment"], "rate": "0", "evidenceClass": "P" },
+        { "value": "02", "labelDe": "Basis", "labelEn": "Basic", "summaryDe": "Ca. 2 Waschmaschinen + 2 Trockner", "summaryEn": "Approx. 2 washers + 2 dryers", "characteristicsDe": ["2 Waschmaschinen + 2 Trockner"], "characteristicsEn": ["2 washers + 2 dryers"], "rate": "6000", "evidenceClass": "P" },
+        { "value": "03", "labelDe": "Standard", "labelEn": "Standard", "summaryDe": "Ca. 4 Waschmaschinen + 4 Trockner", "summaryEn": "Approx. 4 washers + 4 dryers", "characteristicsDe": ["4 Waschmaschinen + 4 Trockner"], "characteristicsEn": ["4 washers + 4 dryers"], "rate": "12000", "evidenceClass": "P" },
+        { "value": "04", "labelDe": "Gewerblich / Smart", "labelEn": "Commercial / smart", "summaryDe": "Bezahlsystem/Steuerung + robuste Maschinen", "summaryEn": "Payment/control + robust machines", "characteristicsDe": ["Bezahlsystem"], "characteristicsEn": ["Payment system"], "rate": "25000", "evidenceClass": "P" },
+        { "value": "05", "labelDe": "Großanlage", "labelEn": "Large facility", "summaryDe": "Maßstab Co-Living/Studentisches Wohnen", "summaryEn": "Co-living/student housing scale", "characteristicsDe": ["Großer Maßstab"], "characteristicsEn": ["Large scale"], "rate": "45000", "evidenceClass": "P" }
+      ]
+    },
+    {
+      "id": "kg600-05",
+      "kg": "KG_600",
+      "labelDe": "IT-Ausstattung",
+      "labelEn": "IT Equipment",
+      "questionDe": "Welche IT-Ausstattung ist enthalten?",
+      "questionEn": "What IT equipment is included?",
+      "basis": { "kind": "perQuantity", "quantityKey": "building_count" },
+      "default": "02",
+      "variants": [
+        { "value": "01", "labelDe": "Keine", "labelEn": "None", "summaryDe": "Keine Kunden-IT-Ausstattung in KG 600", "summaryEn": "No client IT equipment in KG 600", "characteristicsDe": ["Keine IT-Ausstattung"], "characteristicsEn": ["No IT equipment"], "rate": "0", "evidenceClass": "P" },
+        { "value": "02", "labelDe": "Basis", "labelEn": "Basic", "summaryDe": "Basis-Netzwerk-/Endgeräte-Allowance", "summaryEn": "Basic network/terminal equipment allowance", "characteristicsDe": ["Basis-Netzwerk"], "characteristicsEn": ["Basic network"], "rate": "8000", "evidenceClass": "P" },
+        { "value": "03", "labelDe": "Standard", "labelEn": "Standard", "summaryDe": "Mehr Geräte / Management-Hardware", "summaryEn": "More devices / management hardware", "characteristicsDe": ["Management-Hardware"], "characteristicsEn": ["Management hardware"], "rate": "20000", "evidenceClass": "P" },
+        { "value": "04", "labelDe": "Erweitert", "labelEn": "Enhanced", "summaryDe": "Digitale Ausstattung Gemeinschaftsflächen", "summaryEn": "Common-space digital equipment", "characteristicsDe": ["Gemeinschafts-IT"], "characteristicsEn": ["Common-space IT"], "rate": "40000", "evidenceClass": "P" },
+        { "value": "05", "labelDe": "Managed Living", "labelEn": "Managed living", "summaryDe": "Betriebliche IT für Co-Living/Studentisches Wohnen", "summaryEn": "Co-living/student housing operational IT equipment", "characteristicsDe": ["Betriebliche IT"], "characteristicsEn": ["Operational IT"], "rate": "70000", "evidenceClass": "P" }
+      ]
+    },
+    {
+      "id": "kg600-06",
+      "kg": "KG_600",
+      "labelDe": "Beschilderung & Orientierung",
+      "labelEn": "Signage & Wayfinding",
+      "questionDe": "Welcher Beschilderungsstandard?",
+      "questionEn": "What signage standard?",
+      "basis": { "kind": "perQuantity", "quantityKey": "building_count" },
+      "default": "02",
+      "variants": [
+        { "value": "01", "labelDe": "Minimal", "labelEn": "Minimal", "summaryDe": "Nur Pflicht-/Basisschilder", "summaryEn": "Mandatory/basic signs only", "characteristicsDe": ["Nur Pflichtschilder"], "characteristicsEn": ["Mandatory signs only"], "rate": "3000", "evidenceClass": "P" },
+        { "value": "02", "labelDe": "Standard", "labelEn": "Standard", "summaryDe": "Kohärente Wohnungs-/Gemeinschaftsorientierung", "summaryEn": "Coherent apartment/common-area wayfinding", "characteristicsDe": ["Kohärente Orientierung"], "characteristicsEn": ["Coherent wayfinding"], "rate": "7500", "evidenceClass": "P" },
+        { "value": "03", "labelDe": "Erweitert", "labelEn": "Enhanced", "summaryDe": "Markenfamilie + mehr Standorte", "summaryEn": "Branded family + more locations", "characteristicsDe": ["Markenfamilie"], "characteristicsEn": ["Branded family"], "rate": "15000", "evidenceClass": "P" },
+        { "value": "04", "labelDe": "Premium", "labelEn": "Premium", "summaryDe": "Architektonische Beschilderung, Sonderanfertigung", "summaryEn": "Architectural signage / custom fabrication", "characteristicsDe": ["Sonderanfertigung"], "characteristicsEn": ["Custom fabrication"], "rate": "30000", "evidenceClass": "P" },
+        { "value": "05", "labelDe": "Hybrid / Digital", "labelEn": "Hybrid / digital", "summaryDe": "Physisches System + digitale Displays", "summaryEn": "Physical system + selected digital displays", "characteristicsDe": ["Digitale Displays"], "characteristicsEn": ["Digital displays"], "rate": "50000", "evidenceClass": "P" }
+      ]
+    },
+    {
+      "id": "kg600-07",
+      "kg": "KG_600",
+      "labelDe": "Kunst am Bau",
+      "labelEn": "Art Allocation",
+      "questionDe": "Welcher Kunst-am-Bau-Anteil?",
+      "questionEn": "What art-allocation share?",
+      "basis": { "kind": "percentOfKg300Kg400" },
+      "default": "01",
+      "variants": [
+        { "value": "01", "labelDe": "Nicht enthalten", "labelEn": "Not included", "summaryDe": "Keine Kunstzuweisung", "summaryEn": "No art allocation", "characteristicsDe": ["Keine Kunst"], "characteristicsEn": ["No art"], "rate": "0", "evidenceClass": "D" },
+        { "value": "02", "labelDe": "Klein", "labelEn": "Small", "summaryDe": "Bescheidene künstlerische Allowance", "summaryEn": "Modest artistic allowance", "characteristicsDe": ["Bescheidene Allowance"], "characteristicsEn": ["Modest allowance"], "rate": "0.25", "evidenceClass": "P" },
+        { "value": "03", "labelDe": "Standard", "labelEn": "Standard", "summaryDe": "Üblicher unterer Benchmark öffentlicher Projekte", "summaryEn": "Common public-project lower benchmark", "characteristicsDe": ["Üblicher Benchmark"], "characteristicsEn": ["Common benchmark"], "rate": "0.50", "evidenceClass": "R" },
+        { "value": "04", "labelDe": "Erweitert", "labelEn": "Enhanced", "summaryDe": "Sichtbarerer Kunstanteil", "summaryEn": "Stronger visible art component", "characteristicsDe": ["Sichtbarer Kunstanteil"], "characteristicsEn": ["Visible art component"], "rate": "0.75", "evidenceClass": "D" },
+        { "value": "05", "labelDe": "Hoch", "labelEn": "High", "summaryDe": "Üblicher oberer Planungs-Benchmark", "summaryEn": "Common upper planning benchmark in public examples", "characteristicsDe": ["Oberer Benchmark"], "characteristicsEn": ["Upper benchmark"], "rate": "1.00", "evidenceClass": "R" },
+        { "value": "06", "labelDe": "Signature", "labelEn": "Signature", "summaryDe": "Bewusst hoher Design-/Kunstanteil", "summaryEn": "Deliberate high-design/art scope", "characteristicsDe": ["Hoher Design-Anteil"], "characteristicsEn": ["High-design scope"], "rate": "1.50", "evidenceClass": "P" }
+      ]
+    }
+  ],
+  "kg800": [
+    {
+      "id": "kg800-01",
+      "kg": "KG_800",
+      "labelDe": "Fremdkapitalquote",
+      "labelEn": "Debt Ratio",
+      "questionDe": "Welcher Fremdkapitalanteil?",
+      "questionEn": "What debt ratio?",
+      "basis": { "kind": "flat" },
+      "default": "04",
+      "variants": [
+        { "value": "01", "labelDe": "Ohne Fremdkapital", "labelEn": "No debt", "summaryDe": "0 % Fremdkapital", "summaryEn": "0% debt", "characteristicsDe": ["Vollständig eigenkapitalfinanziert"], "characteristicsEn": ["Fully equity-financed"], "rate": "0", "evidenceClass": "P" },
+        { "value": "02", "labelDe": "Niedrige Fremdfinanzierung", "labelEn": "Low leverage", "summaryDe": "40 % Fremdkapital", "summaryEn": "40% debt", "characteristicsDe": ["Niedrige Verschuldung"], "characteristicsEn": ["Low leverage"], "rate": "0.40", "evidenceClass": "P" },
+        { "value": "03", "labelDe": "Konservativ", "labelEn": "Conservative", "summaryDe": "50 % Fremdkapital", "summaryEn": "50% debt", "characteristicsDe": ["Konservative Struktur"], "characteristicsEn": ["Conservative structure"], "rate": "0.50", "evidenceClass": "P" },
+        { "value": "04", "labelDe": "Standard", "labelEn": "Standard", "summaryDe": "60 % Fremdkapital", "summaryEn": "60% debt", "characteristicsDe": ["Standardstruktur"], "characteristicsEn": ["Standard structure"], "rate": "0.60", "evidenceClass": "P" },
+        { "value": "05", "labelDe": "Erhöht", "labelEn": "Higher leverage", "summaryDe": "70 % Fremdkapital", "summaryEn": "70% debt", "characteristicsDe": ["Erhöhte Verschuldung"], "characteristicsEn": ["Higher leverage"], "rate": "0.70", "evidenceClass": "P" },
+        { "value": "06", "labelDe": "Hoch", "labelEn": "High leverage", "summaryDe": "80 % Fremdkapital", "summaryEn": "80% debt", "characteristicsDe": ["Hohe Verschuldung"], "characteristicsEn": ["High leverage"], "rate": "0.80", "evidenceClass": "P" },
+        { "value": "07", "labelDe": "Sehr hoch", "labelEn": "Very high leverage", "summaryDe": "90 % Fremdkapital", "summaryEn": "90% debt", "characteristicsDe": ["Sehr hohe Verschuldung"], "characteristicsEn": ["Very high leverage"], "rate": "0.90", "evidenceClass": "P" }
+      ]
+    },
+    {
+      "id": "kg800-02",
+      "kg": "KG_800",
+      "labelDe": "Fremdkapitalzins",
+      "labelEn": "Debt Interest Rate",
+      "questionDe": "Welcher Fremdkapitalzins p. a.?",
+      "questionEn": "What annual debt interest rate?",
+      "basis": { "kind": "flat" },
+      "default": "03",
+      "variants": [
+        { "value": "01", "labelDe": "Sehr günstig", "labelEn": "Very favorable", "summaryDe": "3,5 % p. a.", "summaryEn": "3.5% p.a.", "characteristicsDe": ["3,5 % p. a."], "characteristicsEn": ["3.5% p.a."], "rate": "0.035", "evidenceClass": "R" },
+        { "value": "02", "labelDe": "Günstig", "labelEn": "Favorable", "summaryDe": "4,0 % p. a.", "summaryEn": "4.0% p.a.", "characteristicsDe": ["4,0 % p. a."], "characteristicsEn": ["4.0% p.a."], "rate": "0.040", "evidenceClass": "R" },
+        { "value": "03", "labelDe": "Basis 2026", "labelEn": "2026 base", "summaryDe": "4,5 % p. a.", "summaryEn": "4.5% p.a.", "characteristicsDe": ["4,5 % p. a."], "characteristicsEn": ["4.5% p.a."], "rate": "0.045", "evidenceClass": "R" },
+        { "value": "04", "labelDe": "Vorsichtig", "labelEn": "Cautious", "summaryDe": "5,0 % p. a.", "summaryEn": "5.0% p.a.", "characteristicsDe": ["5,0 % p. a."], "characteristicsEn": ["5.0% p.a."], "rate": "0.050", "evidenceClass": "D" },
+        { "value": "05", "labelDe": "Erhöhtes Risiko", "labelEn": "Higher risk", "summaryDe": "5,5 % p. a.", "summaryEn": "5.5% p.a.", "characteristicsDe": ["5,5 % p. a."], "characteristicsEn": ["5.5% p.a."], "rate": "0.055", "evidenceClass": "D" },
+        { "value": "06", "labelDe": "Hoch", "labelEn": "High", "summaryDe": "6,0 % p. a.", "summaryEn": "6.0% p.a.", "characteristicsDe": ["6,0 % p. a."], "characteristicsEn": ["6.0% p.a."], "rate": "0.060", "evidenceClass": "P" },
+        { "value": "07", "labelDe": "Stressfall", "labelEn": "Stress case", "summaryDe": "6,5 % p. a.", "summaryEn": "6.5% p.a.", "characteristicsDe": ["6,5 % p. a."], "characteristicsEn": ["6.5% p.a."], "rate": "0.065", "evidenceClass": "P" }
+      ]
+    },
+    {
+      "id": "kg800-03",
+      "kg": "KG_800",
+      "labelDe": "Finanzierungsdauer bis Nutzung",
+      "labelEn": "Financing Duration to Start of Use",
+      "questionDe": "Wie lang ist die Finanzierungsdauer?",
+      "questionEn": "What financing duration?",
+      "basis": { "kind": "flat" },
+      "default": "02",
+      "variants": [
+        { "value": "01", "labelDe": "12 Monate", "labelEn": "12 months", "summaryDe": "12 Monate", "summaryEn": "12 months", "characteristicsDe": ["12 Monate"], "characteristicsEn": ["12 months"], "rate": "12", "evidenceClass": "D" },
+        { "value": "02", "labelDe": "18 Monate", "labelEn": "18 months", "summaryDe": "18 Monate", "summaryEn": "18 months", "characteristicsDe": ["18 Monate"], "characteristicsEn": ["18 months"], "rate": "18", "evidenceClass": "D" },
+        { "value": "03", "labelDe": "24 Monate", "labelEn": "24 months", "summaryDe": "24 Monate", "summaryEn": "24 months", "characteristicsDe": ["24 Monate"], "characteristicsEn": ["24 months"], "rate": "24", "evidenceClass": "D" },
+        { "value": "04", "labelDe": "30 Monate", "labelEn": "30 months", "summaryDe": "30 Monate", "summaryEn": "30 months", "characteristicsDe": ["30 Monate"], "characteristicsEn": ["30 months"], "rate": "30", "evidenceClass": "D" },
+        { "value": "05", "labelDe": "36 Monate", "labelEn": "36 months", "summaryDe": "36 Monate", "summaryEn": "36 months", "characteristicsDe": ["36 Monate"], "characteristicsEn": ["36 months"], "rate": "36", "evidenceClass": "D" },
+        { "value": "06", "labelDe": "42 Monate", "labelEn": "42 months", "summaryDe": "42 Monate", "summaryEn": "42 months", "characteristicsDe": ["42 Monate"], "characteristicsEn": ["42 months"], "rate": "42", "evidenceClass": "P" }
+      ]
+    },
+    {
+      "id": "kg800-04",
+      "kg": "KG_800",
+      "labelDe": "Mittelabrufprofil",
+      "labelEn": "Drawdown Profile",
+      "questionDe": "Wie wird das Kapital abgerufen?",
+      "questionEn": "What drawdown profile?",
+      "basis": { "kind": "flat" },
+      "default": "02",
+      "variants": [
+        { "value": "01", "labelDe": "Später Abruf", "labelEn": "Back-loaded drawdown", "summaryDe": "35 % durchschnittliche Inanspruchnahme", "summaryEn": "35% average-use factor", "characteristicsDe": ["Mehr Kosten spät"], "characteristicsEn": ["More cost occurs late"], "rate": "0.35", "evidenceClass": "P" },
+        { "value": "02", "labelDe": "Linear", "labelEn": "Linear drawdown", "summaryDe": "50 % durchschnittliche Inanspruchnahme", "summaryEn": "50% average-use factor", "characteristicsDe": ["Neutrales Umlagen"], "characteristicsEn": ["Neutral default"], "rate": "0.50", "evidenceClass": "D" },
+        { "value": "03", "labelDe": "Früher Abruf", "labelEn": "Front-loaded drawdown", "summaryDe": "65 % durchschnittliche Inanspruchnahme", "summaryEn": "65% average-use factor", "characteristicsDe": ["Mehr Kapital früh"], "characteristicsEn": ["More capital employed early"], "rate": "0.65", "evidenceClass": "P" },
+        { "value": "04", "labelDe": "Sehr früher Abruf", "labelEn": "Strongly front-loaded", "summaryDe": "75 % durchschnittliche Inanspruchnahme", "summaryEn": "75% average-use factor", "characteristicsDe": ["Grundstücks-/Vorlauflastig"], "characteristicsEn": ["Land/enabling-heavy"], "rate": "0.75", "evidenceClass": "P" }
+      ]
+    },
+    {
+      "id": "kg800-05",
+      "kg": "KG_800",
+      "labelDe": "Finanzierungsnebenkosten",
+      "labelEn": "Financing Ancillary Fee",
+      "questionDe": "Wie hoch sind die Finanzierungsnebenkosten?",
+      "questionEn": "What financing ancillary fee?",
+      "basis": { "kind": "flat" },
+      "default": "02",
+      "variants": [
+        { "value": "01", "labelDe": "Niedrig", "labelEn": "Low", "summaryDe": "0,50 % des Fremdkapitals", "summaryEn": "0.50% of debt", "characteristicsDe": ["0,50 % vom Fremdkapital"], "characteristicsEn": ["0.50% of debt"], "rate": "0.0050", "evidenceClass": "P" },
+        { "value": "02", "labelDe": "Günstig", "labelEn": "Favorable", "summaryDe": "0,75 % des Fremdkapitals", "summaryEn": "0.75% of debt", "characteristicsDe": ["0,75 % vom Fremdkapital"], "characteristicsEn": ["0.75% of debt"], "rate": "0.0075", "evidenceClass": "P" },
+        { "value": "03", "labelDe": "Standard", "labelEn": "Standard", "summaryDe": "1,00 % des Fremdkapitals", "summaryEn": "1.00% of debt", "characteristicsDe": ["1,00 % vom Fremdkapital"], "characteristicsEn": ["1.00% of debt"], "rate": "0.0100", "evidenceClass": "P" },
+        { "value": "04", "labelDe": "Erhöht", "labelEn": "Elevated", "summaryDe": "1,25 % des Fremdkapitals", "summaryEn": "1.25% of debt", "characteristicsDe": ["1,25 % vom Fremdkapital"], "characteristicsEn": ["1.25% of debt"], "rate": "0.0125", "evidenceClass": "P" },
+        { "value": "05", "labelDe": "Hoch", "labelEn": "High", "summaryDe": "1,50 % des Fremdkapitals", "summaryEn": "1.50% of debt", "characteristicsDe": ["1,50 % vom Fremdkapital"], "characteristicsEn": ["1.50% of debt"], "rate": "0.0150", "evidenceClass": "P" },
+        { "value": "06", "labelDe": "Komplex", "labelEn": "Complex", "summaryDe": "2,00 % des Fremdkapitals", "summaryEn": "2.00% of debt", "characteristicsDe": ["2,00 % vom Fremdkapital"], "characteristicsEn": ["2.00% of debt"], "rate": "0.0200", "evidenceClass": "P" }
+      ]
+    },
+    {
+      "id": "kg800-06",
+      "kg": "KG_800",
+      "labelDe": "Bereitstellungszins",
+      "labelEn": "Commitment Interest",
+      "questionDe": "Ab wann und in welcher Höhe fällt Bereitstellungszins an?",
+      "questionEn": "When and at what rate does commitment interest apply?",
+      "basis": { "kind": "flat" },
+      "default": "03",
+      "variants": [
+        { "value": "01", "labelDe": "Kein Bereitstellungszins", "labelEn": "No commitment interest", "summaryDe": "0 %", "summaryEn": "0%", "characteristicsDe": ["Kein Bereitstellungszins"], "characteristicsEn": ["No commitment interest"], "rate": "0", "rate2": "0", "evidenceClass": "P" },
+        { "value": "02", "labelDe": "12 Monate frei / reduziert", "labelEn": "12 months free / reduced", "summaryDe": "0,15 % pro Monat ab Monat 12", "summaryEn": "0.15% per month after month 12", "characteristicsDe": ["0,15 % ab Monat 12"], "characteristicsEn": ["0.15% after month 12"], "rate": "12", "rate2": "0.0015", "evidenceClass": "D" },
+        { "value": "03", "labelDe": "12 Monate frei / Standard", "labelEn": "12 months free / standard", "summaryDe": "0,25 % pro Monat ab Monat 12", "summaryEn": "0.25% per month after month 12", "characteristicsDe": ["0,25 % ab Monat 12"], "characteristicsEn": ["0.25% after month 12"], "rate": "12", "rate2": "0.0025", "evidenceClass": "R" },
+        { "value": "04", "labelDe": "6 Monate frei / Standard", "labelEn": "6 months free / standard", "summaryDe": "0,25 % pro Monat ab Monat 6", "summaryEn": "0.25% per month after month 6", "characteristicsDe": ["0,25 % ab Monat 6"], "characteristicsEn": ["0.25% after month 6"], "rate": "6", "rate2": "0.0025", "evidenceClass": "R" },
+        { "value": "05", "labelDe": "3 Monate frei / Standard", "labelEn": "3 months free / standard", "summaryDe": "0,25 % pro Monat ab Monat 3", "summaryEn": "0.25% per month after month 3", "characteristicsDe": ["0,25 % ab Monat 3"], "characteristicsEn": ["0.25% after month 3"], "rate": "3", "rate2": "0.0025", "evidenceClass": "R" }
+      ]
+    },
+    {
+      "id": "kg800-07",
+      "kg": "KG_800",
+      "labelDe": "Bürgschaftskosten",
+      "labelEn": "Guarantee Cost",
+      "questionDe": "Fällt eine Avalprovision an?",
+      "questionEn": "Is a guarantee/aval commission applicable?",
+      "basis": { "kind": "flat" },
+      "default": "01",
+      "variants": [
+        { "value": "01", "labelDe": "Keine Bürgschaft", "labelEn": "No guarantee", "summaryDe": "0 % p. a.", "summaryEn": "0% p.a.", "characteristicsDe": ["Keine Bürgschaft"], "characteristicsEn": ["No guarantee"], "rate": "0", "evidenceClass": "R" },
+        { "value": "02", "labelDe": "Sehr günstig", "labelEn": "Very favorable", "summaryDe": "0,50 % p. a.", "summaryEn": "0.50% p.a.", "characteristicsDe": ["0,50 % p. a."], "characteristicsEn": ["0.50% p.a."], "rate": "0.0050", "evidenceClass": "R" },
+        { "value": "03", "labelDe": "Standard", "labelEn": "Standard", "summaryDe": "1,00 % p. a.", "summaryEn": "1.00% p.a.", "characteristicsDe": ["1,00 % p. a."], "characteristicsEn": ["1.00% p.a."], "rate": "0.0100", "evidenceClass": "R" },
+        { "value": "04", "labelDe": "Erhöht", "labelEn": "Elevated", "summaryDe": "1,50 % p. a.", "summaryEn": "1.50% p.a.", "characteristicsDe": ["1,50 % p. a."], "characteristicsEn": ["1.50% p.a."], "rate": "0.0150", "evidenceClass": "R" },
+        { "value": "05", "labelDe": "Hoch", "labelEn": "High", "summaryDe": "2,00 % p. a.", "summaryEn": "2.00% p.a.", "characteristicsDe": ["2,00 % p. a."], "characteristicsEn": ["2.00% p.a."], "rate": "0.0200", "evidenceClass": "R" },
+        { "value": "06", "labelDe": "Sehr hoch", "labelEn": "Very high", "summaryDe": "2,50 % p. a.", "summaryEn": "2.50% p.a.", "characteristicsDe": ["2,50 % p. a."], "characteristicsEn": ["2.50% p.a."], "rate": "0.0250", "evidenceClass": "R" }
+      ]
+    },
+    {
+      "id": "kg800-08",
+      "kg": "KG_800",
+      "labelDe": "Kalkulatorischer Eigenkapitalzins",
+      "labelEn": "Imputed Equity Interest",
+      "questionDe": "Wird kalkulatorischer Eigenkapitalzins angesetzt?",
+      "questionEn": "Is imputed equity interest applied?",
+      "basis": { "kind": "flat" },
+      "default": "01",
+      "variants": [
+        { "value": "01", "labelDe": "Nicht angesetzt", "labelEn": "Not applied", "summaryDe": "0 % p. a.", "summaryEn": "0% p.a.", "characteristicsDe": ["Nicht angesetzt"], "characteristicsEn": ["Not applied"], "rate": "0", "evidenceClass": "D" },
+        { "value": "02", "labelDe": "Niedrig", "labelEn": "Low", "summaryDe": "4 % p. a.", "summaryEn": "4% p.a.", "characteristicsDe": ["4 % p. a."], "characteristicsEn": ["4% p.a."], "rate": "0.04", "evidenceClass": "P" },
+        { "value": "03", "labelDe": "Konservativ", "labelEn": "Conservative", "summaryDe": "6 % p. a.", "summaryEn": "6% p.a.", "characteristicsDe": ["6 % p. a."], "characteristicsEn": ["6% p.a."], "rate": "0.06", "evidenceClass": "P" },
+        { "value": "04", "labelDe": "Standard intern", "labelEn": "Internal standard", "summaryDe": "8 % p. a.", "summaryEn": "8% p.a.", "characteristicsDe": ["8 % p. a."], "characteristicsEn": ["8% p.a."], "rate": "0.08", "evidenceClass": "P" },
+        { "value": "05", "labelDe": "Erhöht", "labelEn": "Elevated", "summaryDe": "10 % p. a.", "summaryEn": "10% p.a.", "characteristicsDe": ["10 % p. a."], "characteristicsEn": ["10% p.a."], "rate": "0.10", "evidenceClass": "P" },
+        { "value": "06", "labelDe": "Hohe Zielrendite", "labelEn": "High hurdle rate", "summaryDe": "12 % p. a.", "summaryEn": "12% p.a.", "characteristicsDe": ["12 % p. a."], "characteristicsEn": ["12% p.a."], "rate": "0.12", "evidenceClass": "P" }
+      ]
+    }
+  ]
+}

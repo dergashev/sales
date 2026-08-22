@@ -219,6 +219,39 @@ describe('proposal store recovery', () => {
     expect(st().projection().result.totalLabel).toBe('Gesamt netto · Grundleistung All3')
   })
 
+  it('migrates legacy `unknown`/`notApplicable` coverage to the binary contract on load (CPO decision, 22.08.2026 — AC-21)', () => {
+    const storage = new MemoryStorage()
+    initializeProposalPersistence(storage)
+    const st = () => useStore.getState()
+    st().confirmGebaeudeklasse()
+
+    const raw = storage.getItem(proposalStorageKey('DEMO-0001'))!
+    // Simulate a payload saved before this ticket: KG 200/500/600 still
+    // `unknown` (the retired D-18/D-29 default), KG 800 still `notApplicable`
+    // (it was not yet a decidable group).
+    const legacyRaw = raw
+      .replace('"KG_200":"excluded"', '"KG_200":"unknown"')
+      .replace('"KG_500":"excluded"', '"KG_500":"unknown"')
+      .replace('"KG_600":"excluded"', '"KG_600":"unknown"')
+      .replace('"KG_800":"excluded"', '"KG_800":"notApplicable"')
+    expect(legacyRaw).not.toBe(raw)
+
+    __resetStoreForTests()
+    const legacyStorage = new MemoryStorage()
+    legacyStorage.setItem(proposalStorageKey('DEMO-0001'), legacyRaw)
+    expect(hydrateProposalState(legacyStorage)).toBe(true)
+
+    // No third state is ever resurrected — every legacy gap lands on the
+    // current binary default (`excluded`), never silently on `included`.
+    expect(st().coverage.KG_200).toBe('excluded')
+    expect(st().coverage.KG_500).toBe('excluded')
+    expect(st().coverage.KG_600).toBe('excluded')
+    expect(st().coverage.KG_800).toBe('excluded')
+    expect(st().projection().result.incompleteReasons
+      .some((reason) => reason.code === 'coverageUnknown')).toBe(false)
+    expect(st().projection().result.completeness).toBe('complete')
+  })
+
   it('defaults pre-boundary candidate payloads to pricing not started', () => {
     const storage = new MemoryStorage()
     initializeProposalPersistence(storage)

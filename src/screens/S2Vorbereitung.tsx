@@ -480,20 +480,11 @@ function P4Annahmen({ setTab }: { setTab: (t: Tab) => void }) {
       resolveLabel: 'Klassifikation bestätigen',
     })
   }
-  if (preparation.assumptions.kg500Coverage) {
-    items.push({
-      id: 'kg500',
-      // Дословно t0-fallback-rules.md:245, включая вводную о KG 300/400.
-      text: 'Das Angebot umfasst die Kostengruppen 300 und 400 nach DIN 276. ' +
-        'Die Kostengruppen 100, 200, 600 und 800 sind nicht enthalten. Für die ' +
-        'Kostengruppe 500 (Außenanlagen und Freiflächen) liegt noch keine ' +
-        'Deckungsentscheidung vor: sie ist weder eingeschlossen noch ' +
-        'ausgeschlossen und bislang unbewertet. Solange dieser Zustand besteht, ' +
-        'weist das Angebot eine «Zwischensumme der kalkulierten Positionen» ' +
-        'und keinen Gesamtpreis aus (R-18, CALC-006). Die vollständige ' +
-        'Abgrenzung ist der Leistungsübersicht zu entnehmen.',
-    })
-  }
+  // The former "KG 500 coverage still open" assumption item is retired: the
+  // binary Scope Boundaries contract (CPO decision, 22.08.2026) means no KG
+  // 200-800 coverage decision is ever left unresolved (`unknown`) any more —
+  // every KG starts a determinate `excluded` — so this assumption can never
+  // apply again. See `preparationStatuses` in `state/store.ts`.
 
   return (
     <section aria-label="Annahmen">

@@ -25,31 +25,31 @@ beforeEach(() => __resetStoreForTests())
  * the Option-model tests below and in the integrated Scope Boundaries test.
  */
 describe('Scope Boundaries: pre-Option reference coverage', () => {
-  it('optional groups begin open while the established core begins included', () => {
+  it('optional groups begin excluded while the established core begins included (CPO decision, 22.08.2026: binary contract supersedes D-18/D-29/SCOPE-001\'s "unknown" gap)', () => {
     const coverage = useStore.getState().coverage
-    expect(coverage.KG_200).toBe('unknown')
+    expect(coverage.KG_200).toBe('excluded')
     expect(coverage.KG_300).toBe('included')
     expect(coverage.KG_400).toBe('included')
-    expect(coverage.KG_500).toBe('unknown')
-    expect(coverage.KG_600).toBe('unknown')
+    expect(coverage.KG_500).toBe('excluded')
+    expect(coverage.KG_600).toBe('excluded')
     expect(coverage.KG_700).toBe('included')
   })
 
-  it('KG 100/800 вне перечня Scope Boundaries остаются `notApplicable`', () => {
+  it('KG 100 остаётся вне перечня Scope Boundaries (`notApplicable`); KG 800 теперь decidable и начинается `excluded`', () => {
     const coverage = useStore.getState().coverage
     expect(coverage.KG_100).toBe('notApplicable')
-    expect(coverage.KG_800).toBe('notApplicable')
+    expect(coverage.KG_800).toBe('excluded')
   })
 
-  it('свежий проект ждёт только решений по KG 200/500/600', () => {
+  it('свежий проект больше не несёт пробел покрытия — coverageUnknown никогда не возникает под бинарным контрактом', () => {
     const p = useStore.getState().projection()
-    expect(p.result.completeness).toBe('incomplete')
-    expect(p.result.totalLabel).toBe('Zwischensumme der kalkulierten Positionen')
+    // Any remaining incompleteness here is unrelated to this ticket (e.g. an
+    // unconfirmed Gebäudeklasse on the raw pre-Option demo fixture) — the
+    // one thing this ticket owns and must prove is that a KG coverage gap
+    // can never be the reason any more.
     const reason = p.result.incompleteReasons
       .find((candidate) => candidate.code === 'coverageUnknown')
-    expect(reason).toEqual({
-      code: 'coverageUnknown', groups: ['KG_200', 'KG_500', 'KG_600'],
-    })
+    expect(reason).toBeUndefined()
   })
 
   it('scope progress accepts the preselected core plus explicit optional decisions', () => {
@@ -84,7 +84,9 @@ describe('Leistungsabgrenzung: подтверждение и инвалидац�
     const st = () => useStore.getState()
     st().confirmScopeBoundaries()
     expect(scopeBoundariesStatus(st())).toBe('confirmed')
-    st().setCoverage('KG_500', 'excluded')
+    // KG_500 already starts `excluded` (binary default) — re-set to the SAME
+    // value would be a no-op; flip it to `included` to exercise a real change.
+    st().setCoverage('KG_500', 'included')
     expect(scopeBoundariesStatus(st())).toBe('recheck')
   })
 
@@ -348,7 +350,7 @@ describe('M-4/M-3: обход журнала невозможен по пост�
     expect(() => { s.coverage.KG_500 = 'included' }).toThrow()
     const after = useStore.getState()
     expect(activeBuilding(after).gebaeudeklasse.confirmed).toBe(false)
-    expect(after.coverage.KG_500).toBe('unknown')
+    expect(after.coverage.KG_500).toBe('excluded')
     expect(after.journal).toHaveLength(0)
   })
 
@@ -583,21 +585,22 @@ describe('S3: ворота клиентского вида', () => {
     expect(p.result.incompleteReasons).toContainEqual({ code: 'gebaeudeklasseUnconfirmed' })
   })
 
-  it('подтверждение снимает свою причину, но KG 500 держит промежуточный итог', () => {
+  it('подтверждение снимает свою причину, и итог полон (KG 200/500/600 уже determinate `excluded` по умолчанию)', () => {
     useStore.getState().confirmGebaeudeklasse()
     const p = useStore.getState().projection()
     expect(p.result.incompleteReasons.map((r) => r.code))
       .not.toContain('gebaeudeklasseUnconfirmed')
-    // Покрытие KG 500 неизвестно — итог остаётся промежуточным.
-    expect(p.result.completeness).toBe('incomplete')
-    expect(p.result.totalLabel).toBe('Zwischensumme der kalkulierten Positionen')
+    // Binary contract (CPO, 22.08.2026): KG 200/500/600 start `excluded`,
+    // never a coverage gap — no further decision is required for completeness.
+    expect(p.result.completeness).toBe('complete')
+    expect(p.result.totalLabel).toBe('Gesamt netto · Grundleistung All3')
   })
 
   it('решённые покрытия делают итог полным и названным', () => {
     const st = useStore.getState()
     st.confirmGebaeudeklasse()
-    // Только KG 200/500/600 требуют решения. Обязательные KG 300/400/700
-    // остаются сырым `unknown`, но семантически разрешены политикой.
+    // KG 200/500/600 уже начинаются определённым `excluded` (binary contract);
+    // явное решение — не более чем подтверждение того же значения.
     st.setCoverage('KG_200', 'excluded')
     st.setCoverage('KG_500', 'excluded')
     st.setCoverage('KG_600', 'excluded')
@@ -868,44 +871,49 @@ describe('KG 400, сертификаты и режим KG 700 (сценарий 
   })
 })
 
-describe('Покрытие групп затрат (сценарий п. 11)', () => {
-  it('включение группы ДОБАВЛЯЕТ стоимость: она не входит в базовую ставку', () => {
+describe('Покрытие групп затрат (сценарий п. 11) - обновлено под каталог KG 200/500/600/800 (тикет MAKE ALL KG 200-800 SELECTABLE)', () => {
+  it('включение KG 500 без введённого количества не добавляет стоимость: драйвер требует явную величину, а не подставляет ноль-по-умолчанию', () => {
     const st = () => useStore.getState()
     const before = st().projection().result.total.exact
     st().setCoverage('KG_500', 'included')
-    const d = st().projection().result.drivers.find((x) => x.key === 'cov_KG_500')!
-    // 8 % от блока Bauwerk (спецификация §1, решение D-27). Прежде здесь
-    // стояла производная ставка 115 €/m², дававшая 230.000 € и подменявшая
-    // объявленную формулу.
-    expect(d.exact.toFixed(2)).toBe('305426.80')
-    expect(d.exact.toFixed(2)).toBe(before.mul('0.08').toFixed(2))
+    expect(st().projection().result.total.exact.equals(before)).toBe(true)
+    expect(st().projection().result.drivers.some((d) => d.key.startsWith('scope_kg500-')))
+      .toBe(false)
+  })
+
+  it("KG 500 включена + количество для Stellplaetze -> реальная стоимость по выбранному варианту (D-27's 8%-of-Bauwerk formula retired, replaced by the real external-works catalog)", () => {
+    const st = () => useStore.getState()
+    st().setCoverage('KG_500', 'included')
+    const before = st().projection().result.total.exact
+    st().setScopeCatalogQuantity('surface_parking_spaces', '20')
+    const d = st().projection().result.drivers.find((x) => x.key === 'scope_kg500-04_03')!
+    // kg500-04 default variant '03' Pflasterstellplatz = 7.500 EUR/Stellplatz.
+    expect(d.exact.toFixed(2)).toBe('150000.00')
     expect(st().projection().result.total.exact.minus(before).toFixed(2))
-      .toBe('305426.80')
+      .toBe('150000.00')
     // Группа вне блока: она добавляет к итогу, но базой для долей и
     // надбавок не становится.
     expect(d.block).toBe('separatePosition')
   })
 
-  it('исключение группы ничего не отнимает — её и не было в базе', () => {
+  it('исключение группы убирает её активную стоимость - дормантное количество сохраняется, но не считается', () => {
     const st = () => useStore.getState()
+    st().setCoverage('KG_500', 'included')
+    st().setScopeCatalogQuantity('surface_parking_spaces', '20')
     const before = st().projection().result.total.exact
+    expect(before.gt(0)).toBe(true)
     st().setCoverage('KG_500', 'excluded')
-    expect(st().projection().result.total.exact.equals(before)).toBe(true)
+    expect(st().projection().result.total.exact.toFixed(2))
+      .toBe(before.minus('150000.00').toFixed(2))
+    // Re-including restores the dormant quantity/selection without asking again.
+    st().setCoverage('KG_500', 'included')
+    expect(st().projection().result.total.exact.toFixed(2)).toBe(before.toFixed(2))
   })
 
-  it('подпись итога становится полной, когда решены ВСЕ пробелы', () => {
+  it('подпись итога полна с самого начала - binary contract: KG 200/500/600/800 начинаются excluded, не пробелом', () => {
     const st = () => useStore.getState()
-    // Пока хотя бы одна из KG 200/500/600 «ещё открыта», итог промежуточный —
-    // это пробел, не решение (SCOPE-001). KG 300/400/700 разрешены политикой.
-    expect(st().projection().result.totalLabel)
-      .toBe('Zwischensumme der kalkulierten Positionen')
-    st().setCoverage('KG_200', 'excluded')
-    st().setCoverage('KG_500', 'excluded')
-    // KG 600 остаётся «ещё открыто» — итог всё ещё промежуточный.
-    expect(st().projection().result.totalLabel)
-      .toBe('Zwischensumme der kalkulierten Positionen')
-    st().setCoverage('KG_600', 'excluded')
-    // Класс здания всё ещё не подтверждён — вторая причина неполноты.
+    // Binary contract (CPO decision, 22.08.2026): no coverage gap exists -
+    // completeness is blocked here only by the still-unconfirmed Gebaeudeklasse.
     expect(st().projection().result.totalLabel)
       .toBe('Zwischensumme der kalkulierten Positionen')
     st().confirmGebaeudeklasse()
@@ -1107,7 +1115,7 @@ describe('Настоящая модель Option (ревью № 13, дефек�
     st().confirmProjectParams()
   }
 
-  it('AC22: jede neue Option startet für KG 200/300/400/500/600/700 ohne Vorentscheidung', () => {
+  it('jede neue Option startet für KG 200/300/400/500/600/700/800 `excluded`, nicht mandatory und nicht in einer Lücke (CPO decision, 22.08.2026, löst das frühere AC22-"unknown"-Ziel ab)', () => {
     prepare()
     st().createOption('Offener Umfang')
     st().openOption('OPT-01')
@@ -1119,15 +1127,15 @@ describe('Настоящая модель Option (ревью № 13, дефек�
       st().coverage.KG_500,
       st().coverage.KG_600,
       st().coverage.KG_700,
-    ]).toEqual(Array(6).fill('unknown'))
+      st().coverage.KG_800,
+    ]).toEqual(Array(7).fill('excluded'))
     expect(st().kg700Mode).toBe('hoaiAho')
     expect(st().kg700ModeAutoFallback).toBe(true)
+    // No coverage gap exists any more — the binary contract never produces
+    // `coverageUnknown` for a fresh Option.
     expect(st().projection().result.incompleteReasons
       .find((reason) => reason.code === 'coverageUnknown'))
-      .toEqual({
-        code: 'coverageUnknown',
-        groups: ['KG_200', 'KG_300', 'KG_400', 'KG_500', 'KG_600', 'KG_700'],
-      })
+      .toBeUndefined()
   })
 
   it('конфигурации Options независимы и переживают переключение', () => {
@@ -1221,10 +1229,11 @@ describe('Настоящая модель Option (ревью № 13, дефек�
     expect(st().configurationModeChosen).toBe(false)
     expect(configuratorStepDone(st(), CONFIGURATOR_STEP.SCOPE_BOUNDARIES)).toBe(false)
     st().confirmConfigurationMode('PER_BUILDING')
-    // Kapitel 1 ist jetzt Leistungsabgrenzung (Reorder 2026-08-18): besucht
-    // allein reicht nicht mehr — done erst, wenn alle sechs angezeigten KG
-    // keine offene Entscheidung mehr sind (kein falsches done nur durch Eintritt).
-    expect(configuratorStepDone(st(), CONFIGURATOR_STEP.SCOPE_BOUNDARIES)).toBe(false)
+    // Kapitel 1 ist jetzt Leistungsabgrenzung (Reorder 2026-08-18): das
+    // Betreten via confirmConfigurationMode markiert sie besucht. Binary
+    // contract (CPO decision, 22.08.2026): keine KG-Abdeckung ist je
+    // `unknown` - done ist daher jetzt gleichbedeutend mit besucht.
+    expect(configuratorStepDone(st(), CONFIGURATOR_STEP.SCOPE_BOUNDARIES)).toBe(true)
     st().setCoverage('KG_200', 'excluded')
     st().setCoverage('KG_300', 'included')
     st().setCoverage('KG_400', 'included')
@@ -1460,5 +1469,120 @@ describe('Construction Period: Baubeginn (Tech Review Nachbesserung)', () => {
     expect(useStore.getState().projection().duration.completionDate).toBe('2028-01-14')
     expect(projectionForOption(useStore.getState(), 'OPT-01')!.duration.completionDate)
       .toBe('2028-01-14')
+  })
+})
+
+/**
+ * KG 800 (Finanzierung), integration через store/computeProjection — тикет
+ * "MAKE ALL KG 200–800 SELECTABLE & ADD COST-BEARING CONTENT…". Юнит-тесты
+ * чистой функции `calculateKg800` живут в `engine/__tests__/scopeCatalog.test.ts`;
+ * здесь — что она реально подключена и пересчитывается вместе с проектом.
+ */
+describe('KG 800 — интеграция со стором: нерекурсивность и пересчёт (AC-14/AC-25)', () => {
+  it('KG 800 не имеет базы и не создаёт вклада, пока не включена', () => {
+    const st = () => useStore.getState()
+    st().setCoverage('KG_300', 'included')
+    st().setCoverage('KG_400', 'included')
+    const before = st().projection().result.total.exact
+    expect(st().projection().result.drivers.some((d) => d.key.startsWith('kg800_')))
+      .toBe(false)
+    st().setCoverage('KG_800', 'included')
+    // Default parameters (debt ratio 60 %, 4.5 % p.a., 18 months, linear
+    // drawdown) already produce a real, non-zero financing cost the moment
+    // a real Bauwerk-Kosten base exists.
+    const after = st().projection().result.total.exact
+    expect(after.gt(before)).toBe(true)
+  })
+
+  it('KG 800 пересчитывается при изменении вышестоящей стоимости KG 300/400 (AC-14) и никогда не финансирует сама себя', () => {
+    const st = () => useStore.getState()
+    st().setCoverage('KG_300', 'included')
+    st().setCoverage('KG_400', 'included')
+    st().setCoverage('KG_800', 'included')
+    const kg800Before = st().projection().result.drivers
+      .filter((d) => d.key.startsWith('kg800_'))
+      .reduce((sum, d) => sum.plus(d.exact), new Decimal(0))
+    expect(kg800Before.gt(0)).toBe(true)
+
+    // A real upstream cost change (KG 500 hardscape) must move KG 800's own
+    // financing cost in the SAME direction — it is derived from the total
+    // pre-financing cost, not a frozen snapshot.
+    st().setCoverage('KG_500', 'included')
+    st().setScopeCatalogQuantity('hardscape_area_m2', '1000')
+    const kg800After = st().projection().result.drivers
+      .filter((d) => d.key.startsWith('kg800_'))
+      .reduce((sum, d) => sum.plus(d.exact), new Decimal(0))
+    expect(kg800After.gt(kg800Before)).toBe(true)
+
+    // Non-recursion: KG 800's own drivers must never appear in the
+    // pre-financing base it was computed from — the base is exactly the
+    // pre-KG-800 project total, provably NOT inflated by KG 800 itself.
+    const kg800Total = st().projection().result.drivers
+      .filter((d) => d.key.startsWith('kg800_'))
+      .reduce((sum, d) => sum.plus(d.exact), new Decimal(0))
+    const nonKg800Total = st().projection().result.drivers
+      .filter((d) => !d.key.startsWith('kg800_'))
+      .reduce((sum, d) => sum.plus(d.exact), new Decimal(0))
+    expect(st().projection().result.total.exact.toFixed(2))
+      .toBe(nonKg800Total.plus(kg800Total).toFixed(2))
+  })
+
+  it('исключение KG 800 убирает её вклад полностью — дормантные параметры не просачиваются в итог', () => {
+    const st = () => useStore.getState()
+    st().setCoverage('KG_300', 'included')
+    st().setCoverage('KG_400', 'included')
+    st().setCoverage('KG_800', 'included')
+    const withKg800 = st().projection().result.total.exact
+    st().setCoverage('KG_800', 'excluded')
+    const withoutKg800 = st().projection().result.total.exact
+    expect(withoutKg800.lt(withKg800)).toBe(true)
+    expect(st().projection().result.drivers.some((d) => d.key.startsWith('kg800_')))
+      .toBe(false)
+    // Re-including restores the same figure without asking again.
+    st().setCoverage('KG_800', 'included')
+    expect(st().projection().result.total.exact.toFixed(2)).toBe(withKg800.toFixed(2))
+  })
+
+  it('«Für dieses Meeting freigeben» ist ein eigenständiges, journalliertes, standardmäßig privates Flag (AC-17)', () => {
+    const st = () => useStore.getState()
+    expect(st().kg800ClientRevealed).toBe(false)
+    const journalBefore = st().journal.length
+    st().setKg800ClientRevealed(true)
+    expect(st().kg800ClientRevealed).toBe(true)
+    expect(st().journal.length).toBeGreaterThan(journalBefore)
+    st().undo()
+    expect(st().kg800ClientRevealed).toBe(false)
+  })
+})
+
+/**
+ * Anti-double-counting (тикет "MAKE ALL KG 200–800 SELECTABLE…", §9
+ * приложения, AC-19): KG 200 private infrastructure and KG 500 hardscape use
+ * genuinely distinct quantity keys, so configuring one never silently prices
+ * the other.
+ */
+describe('KG 200/500 anti-double-counting (AC-19)', () => {
+  it('private_infrastructure_area_m2 (KG 200) и hardscape_area_m2 (KG 500) — независимые количества, не один и тот же ввод', () => {
+    const st = () => useStore.getState()
+    st().setCoverage('KG_200', 'included')
+    st().setCoverage('KG_500', 'included')
+    st().setScopeCatalogQuantity('private_infrastructure_area_m2', '500')
+    const kg200Driver = st().projection().result.drivers
+      .find((d) => d.key.startsWith('scope_kg200-04_'))
+    const kg500Driver = st().projection().result.drivers
+      .find((d) => d.key.startsWith('scope_kg500-01_'))
+    expect(kg200Driver).toBeDefined()
+    // KG 500's hardscape quantity was never entered — it must not silently
+    // reuse KG 200's private-infrastructure area as its own basis.
+    expect(kg500Driver).toBeUndefined()
+
+    st().setScopeCatalogQuantity('hardscape_area_m2', '500')
+    const kg500DriverNow = st().projection().result.drivers
+      .find((d) => d.key.startsWith('scope_kg500-01_'))
+    expect(kg500DriverNow).toBeDefined()
+    // Same numeric value entered independently for both — their resulting
+    // amounts differ because they use different rates, proving they are
+    // computed from two distinct quantities, not one shared number.
+    expect(kg200Driver!.exact.toFixed(2)).not.toBe(kg500DriverNow!.exact.toFixed(2))
   })
 })

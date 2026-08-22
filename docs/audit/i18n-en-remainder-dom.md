@@ -5,14 +5,13 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 42** · перевод есть, мост не подключён: 23
-· перевода нет (в поставку копирайта): 19
+**Всего 41** · перевод есть, мост не подключён: 23
+· перевода нет (в поставку копирайта): 18
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
 - . Die Preiswirkung erscheint sofort in der Angebotsspalte rechts und im Kostentreiber.
 - Beiträge · Summe =
-- Einbaukueche und Erstausstattung je m² BGF R ⚙
 - Gebäude im Projekt
 - Leistungsbeginn ab OK Decke über UG
 - Marge Eigenleistung nach Rabatt:
@@ -20,6 +19,7 @@
 - Musterquartier Südhang
 - Projektparameter bestätigt (Gebäude, Flächen, Einheiten)
 - Residential area · WFL nach WoFlV: two candidates.
+- Schätzunsicherheit ±
 - Sehr geehrte Damen und Herren,
 
 anbei erhalten Sie unser indikatives Angebot für das Musterprojekt Nordfeld.
@@ -40,7 +40,6 @@ Mit freundlichen Grüßen
 
 ## Перевода нет — в следующую поставку копирайта
 
-- Anteil am Bauwerk (KG 300 + 400 + UG) nach calculation-spec §1 ⚙
 - Bereit zum Anlegen
 - Bestätigt
 - Bestätigung erforderlich · blockiert das Anlegen einer Opportunity Option

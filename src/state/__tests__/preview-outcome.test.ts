@@ -63,26 +63,25 @@ describe('обещание до клика равно результату по�
     })
   }
 
-  it('охват считается по ВСЕМ включённым зданиям, а не по активному', () => {
-    // Ровно та конфигурация из находки 13: два здания в предложении,
-    // активно первое. Обещание одного здания было бы меньше результата.
+  it('KG 200/500/600/800 каталог считается ОДИН раз на проект, а не по зданию (тикет "MAKE ALL KG 200-800 SELECTABLE"; former per-building coverage-rate bug, находка 13, теперь структурно невозможен — эта модель project-scoped, не building-scoped)', () => {
+    // Два здания в предложении — то же условие, что вскрыло находку 13 для
+    // старого building-scoped `coverageDrivers`. Новая каталожная модель
+    // (`scopeCatalog.ts`) не параметризована зданием вовсе, поэтому
+    // добавление второго здания не может задвоить её вклад.
     st().toggleBuildingIncluded('DEMO-B-B')
     expect(Object.values(st().included).filter(Boolean).length).toBe(2)
-    const promised = st().outcomeOf({
-      kind: 'coverage', group: 'KG_500', value: 'included',
-    })
-    const before = st().projection().result.total.exact
     st().setCoverage('KG_500', 'included')
-    const actual = st().projection().result.total.exact.minus(before)
-    expect(actual.toFixed(2)).toBe(promised.delta.toFixed(2))
-    // И это НЕ вклад одного здания: иначе тест проходил бы и на дефекте.
+    st().setScopeCatalogQuantity('surface_parking_spaces', '20')
     const single = st().projection().result.drivers
-      .filter((d) => d.key.includes('cov_KG_500'))
-    expect(single.length).toBe(2)
+      .filter((d) => d.key === 'scope_kg500-04_03')
+    expect(single.length).toBe(1)
+    expect(single[0]!.exact.toFixed(2)).toBe('150000.00')
   })
 
   it('превью текущего выбора гасит призрак, а не обещает нулевое событие', () => {
-    st().previewOption({ kind: 'coverage', group: 'KG_500', value: 'unknown' })
+    // KG_500 starts `excluded` (binary contract) — previewing the current
+    // value must gate the ghost, not `unknown` (no longer a reachable state).
+    st().previewOption({ kind: 'coverage', group: 'KG_500', value: 'excluded' })
     expect(st().preview).toBeNull()
     st().previewOption({ kind: 'coverage', group: 'KG_500', value: 'included' })
     expect(st().preview).not.toBeNull()

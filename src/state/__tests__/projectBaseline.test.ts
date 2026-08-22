@@ -46,7 +46,9 @@ describe('Project baseline freshness', () => {
     st().openOpportunity('DEMO-0001')
     expect(preparationStatuses(st())).toEqual({
       questions: { wfl: true, energyStandard: true },
-      assumptions: { buildingClass: true, kg500Coverage: true },
+      // `kg500Coverage` retired (CPO decision, 22.08.2026): no KG coverage
+      // decision is ever left `unknown`, so it never contributes an assumption.
+      assumptions: { buildingClass: true },
     })
 
     st().confirmProjectParams()

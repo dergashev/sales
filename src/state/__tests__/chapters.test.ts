@@ -44,18 +44,47 @@ describe('semantic Configurator workflow', () => {
     }).some((step) => step.id === CONFIGURATOR_STEP.KG_400_DETAILS)).toBe(false)
   })
 
-  it('does not fabricate downstream chapters for decidable KGs with no detail experience', () => {
+  it('includes the KG 200/500/600/800 detail chapters, in DIN order, once each carries a real catalog (тикет "MAKE ALL KG 200-800 SELECTABLE" - supersedes the former "no detail experience" contract)', () => {
     const s = useStore.getState()
-    const before = activeConfiguratorWorkflow({ coverage: s.coverage, mode: 'intern' })
-      .map((step) => step.id)
     const included = {
       ...s.coverage,
       KG_200: 'included' as const,
       KG_500: 'included' as const,
       KG_600: 'included' as const,
+      KG_800: 'included' as const,
     }
     expect(activeConfiguratorWorkflow({ coverage: included, mode: 'intern' })
-      .map((step) => step.id)).toEqual(before)
+      .map((step) => step.id)).toEqual([
+      CONFIGURATOR_STEP.SCOPE_BOUNDARIES,
+      CONFIGURATOR_STEP.KG_200_DETAILS,
+      CONFIGURATOR_STEP.KG_300_DETAILS,
+      CONFIGURATOR_STEP.KG_400_DETAILS,
+      CONFIGURATOR_STEP.KG_500_DETAILS,
+      CONFIGURATOR_STEP.KG_600_DETAILS,
+      CONFIGURATOR_STEP.ENERGY_CERTIFICATION,
+      CONFIGURATOR_STEP.AREAS,
+      CONFIGURATOR_STEP.KG_700_DETAILS,
+      CONFIGURATOR_STEP.KG_800_DETAILS,
+      CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE,
+    ])
+  })
+
+  it('excluding all KG 200-800 leaves only the required non-KG steps (AC-04 intentional empty scope)', () => {
+    const s = useStore.getState()
+    const allExcluded = {
+      ...s.coverage,
+      KG_200: 'excluded' as const, KG_300: 'excluded' as const,
+      KG_400: 'excluded' as const, KG_500: 'excluded' as const,
+      KG_600: 'excluded' as const, KG_700: 'excluded' as const,
+      KG_800: 'excluded' as const,
+    }
+    expect(activeConfiguratorWorkflow({ coverage: allExcluded, mode: 'intern' })
+      .map((step) => step.id)).toEqual([
+      CONFIGURATOR_STEP.SCOPE_BOUNDARIES,
+      CONFIGURATOR_STEP.ENERGY_CERTIFICATION,
+      CONFIGURATOR_STEP.AREAS,
+      CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE,
+    ])
   })
 
   it('derives building progress and client visibility from the same registry', () => {

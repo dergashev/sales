@@ -43,13 +43,18 @@ import {
 } from '../components/designSystem'
 import { DataStateBlock } from '../components/DataStates'
 import { ClientNotice } from '../components/ClientNotice'
-import { RadioCardGroup, SegmentedControl } from '../components/controls'
+import { RadioCardGroup, SegmentedControl, Switch } from '../components/controls'
 import { optionImage } from '../assets/option-images'
 import { ScheduleGantt } from '../components/ScheduleGantt'
 import { OptionChapter } from './OptionChapter'
 import {
   KG300_GROUPS, KG400_GROUPS, ZERT_GROUPS, COVERAGE_RATES,
 } from '../engine/options'
+import { ScopeCatalogChapter } from './ScopeCatalogChapter'
+import {
+  KG200_CATALOG_OPTIONS, KG500_CATALOG_OPTIONS, KG600_CATALOG_OPTIONS,
+  KG800_CATALOG_OPTIONS,
+} from '../engine/scopeCatalog'
 import { RISK_ITEMS, riskDriver } from '../engine/risk'
 import { presentDuration, shiftScheduleMetrics } from '../engine/schedule'
 import demo from '../fixtures/demo-0001.json'
@@ -184,6 +189,13 @@ export function S3Konfigurator() {
               only from the active workflow above. */}
           {!totalOverview && currentId === CONFIGURATOR_STEP.SCOPE_BOUNDARIES
             && <ChapterUmfang />}
+          {!totalOverview && currentId === CONFIGURATOR_STEP.KG_200_DETAILS && (
+            <ScopeCatalogChapter
+              options={KG200_CATALOG_OPTIONS}
+              introDe="Vorbereitende Maßnahmen definieren Rückbau, Bodenrisiken, Erschließung und temporäre Maßnahmen, die nötig sind, bevor das Gebäude regulär umgesetzt werden kann."
+              introEn="Preparatory measures cover demolition, soil risk, utility connections and temporary works required before normal building delivery can proceed."
+            />
+          )}
           {!totalOverview && currentId === CONFIGURATOR_STEP.KG_300_DETAILS && (
             <div className="grid gap-5">
               <EnergyCertBanner />
@@ -202,6 +214,20 @@ export function S3Konfigurator() {
                 intro={'Technische Anlagen nach DIN 276. Die Wahl der Erzeugung und der Lüftung entscheidet mit, welcher Energiestandard überhaupt erreichbar bleibt.'} />
             </div>
           )}
+          {!totalOverview && currentId === CONFIGURATOR_STEP.KG_500_DETAILS && (
+            <ScopeCatalogChapter
+              options={KG500_CATALOG_OPTIONS}
+              introDe="Außenanlagen bestimmen Beläge, Begrünung, Regenwassermanagement, Mobilität und Aufenthaltsqualität rund um das Gebäude."
+              introEn="External works define surfaces, landscape, stormwater strategy, mobility and outdoor amenity around the building."
+            />
+          )}
+          {!totalOverview && currentId === CONFIGURATOR_STEP.KG_600_DETAILS && (
+            <ScopeCatalogChapter
+              options={KG600_CATALOG_OPTIONS}
+              introDe="Ausstattung ergänzt das fertige Gebäude um Küchen, Möblierung, Geräte, IT-Ausstattung, Orientierung und optional Kunst."
+              introEn="Equipment adds kitchens, furniture, devices, IT equipment, wayfinding and optional art to the completed building."
+            />
+          )}
           {!totalOverview && currentId === CONFIGURATOR_STEP.ENERGY_CERTIFICATION && (
             <div className="grid gap-5">
               <ChapterEnergie />
@@ -217,6 +243,8 @@ export function S3Konfigurator() {
             && <ChapterFlaechen />}
           {!totalOverview && currentId === CONFIGURATOR_STEP.KG_700_DETAILS
             && <ChapterKg700 />}
+          {!totalOverview && currentId === CONFIGURATOR_STEP.KG_800_DETAILS
+            && <ChapterKg800 />}
           {!totalOverview && currentId === CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE
             && <ChapterTermine />}
         </div>
@@ -744,30 +772,33 @@ function Card({ title, intro, children }: {
 }
 
 /**
- * Semantic step SCOPE_BOUNDARIES (Leistungsabgrenzung, ticket d21f8d48) —
- * welche Kostengruppen Teil des Angebots sind, plus die projektweiten
+ * Semantic step SCOPE_BOUNDARIES (Leistungsabgrenzung) — welche
+ * Kostengruppen Teil des Angebots sind, plus die projektweiten
  * Anforderungen an Energiestandard und Zertifizierung. Hier beginnt die
  * Kalkulation (`pricingStarted`, building-aware-configurator-navigation).
  *
- * Reihenfolge nach DIN 276 (KG 200 · 300 · 400 · 500 · 600 · 700), nicht
- * nach Entscheidungsart getrennt:
- * · KG 300, 400, 700 — Kern des Angebots, unveränderlich: ohne sie gibt es
- *   kein Angebot; bei KG 700 ist nur die Berechnungsart verhandelbar, und
- *   die ist intern (KG-700-Modus). Gezeigt als gesperrte CheckboxCard-
- *   Kachel (`mandatory`, components-core.md §CheckboxCard, OPTION-002/
- *   OPTION-005) — **nicht** `disabled`: eine wie abgeschaltet wirkende
- *   Pflichtposition wäre in einer Live-Präsentation ein Vertrauensproblem
- *   (Product Decision Brief auf diesem Ticket, RESOLVED DECISION #3;
- *   CPO-Vorgabe). Echte Ab-/Anwahl für diese drei würde eine neue,
- *   nicht autorisierte Kalkulations-Änderung voraussetzen (NON-GOAL "New
- *   pricing rules") und ist bewusst nicht Teil dieses Tickets.
- * · KG 200, 500, 600 — echte Entscheidung, ändert den Preis. Drei Zustände
- *   statt einer Checkbox, weil «nicht enthalten» eine Entscheidung ist und
- *   «noch offen» eine Lücke (D-18, SCOPE-001); solange eine Lücke bleibt,
- *   weist das Angebot eine Zwischensumme statt eines Gesamtpreises aus
- *   (R-18/CALC-006).
- * · KG 100 (Grundstück) und KG 800 (Finanzierung) liegen außerhalb dieses
- *   sechsteiligen Kartensatzes (Ticket-Vorgabe) und bleiben `notApplicable`.
+ * Reihenfolge nach DIN 276 (KG 200 · 300 · 400 · 500 · 600 · 700 · 800).
+ *
+ * Aktueller Vertrag (CPO, Ticket "MAKE ALL KG 200–800 SELECTABLE & ADD
+ * COST-BEARING CONTENT…", 22.08.2026) — ERSETZT den früheren Vertrag
+ * dieses Docblocks vollständig:
+ * · ALLE SIEBEN Gruppen sind gleichrangige, echte binäre Entscheidungen:
+ *   `enthalten` oder `nicht enthalten`, sonst nichts. Keine ist mandatory,
+ *   keine ist gesperrt — auch KG 300/400/700 nicht mehr (das war ein
+ *   älterer, inzwischen abgelöster Vertrag: "unveränderlich", gesperrte
+ *   CheckboxCard-Kachel). Ausschließen behält die bisherige Konfiguration
+ *   dormant (Konfiguration bleibt erhalten, siehe `configurator.scope.
+ *   introBinary`).
+ * · Kein drittes "noch offen"-Normalzustand mehr (D-18/D-29/SCOPE-001
+ *   dadurch ausdrücklich abgelöst): Umfang startet `nicht enthalten`
+ *   (Default), nicht in einer Lücke. `Gesamt netto` ist daher ein echter
+ *   Gesamtpreis, sobald jede Gruppe einen bestimmten Wert trägt — nicht
+ *   mehr grundsätzlich `Zwischensumme`, nur weil eine Gruppe unbesucht war.
+ * · KG 200/500/600/800 tragen jetzt vollständige mehrstufige Kataloge
+ *   (`ScopeCatalogChapter`, eigene `_DETAILS`-Kapitel) statt einer flachen
+ *   Einzelrate — dieselbe dynamische DIN-Reihenfolge-Navigation, die
+ *   KG 300/400/700 bereits nutzten (`state/chapters.ts`).
+ * · KG 100 (Grundstück) bleibt außerhalb dieses Tickets und `notApplicable`.
  *
  * "Zeitwirkung" wird nicht erfunden: engine/schedule.ts hängt ausschließlich
  * von BGF, Gebäudeform und Gebäudeklasse ab, nicht von der Abdeckung
@@ -904,7 +935,7 @@ function ChapterUmfang() {
 }
 
 const SCOPE_ORDER: CostGroup[] =
-  ['KG_200', 'KG_300', 'KG_400', 'KG_500', 'KG_600', 'KG_700']
+  ['KG_200', 'KG_300', 'KG_400', 'KG_500', 'KG_600', 'KG_700', 'KG_800']
 
 /**
  * Energiestandard-Auswahl, extrahiert aus `ChapterEnergie` (unten), damit
@@ -1469,6 +1500,70 @@ function ChapterKg700() {
             Anteil KG{NNBSP}700: {moneyLabel(present(p.kgSplit.KG_700))}
           </p>
         )}
+      </Card>
+    </div>
+  )
+}
+
+/**
+ * KG 800 (Finanzierung) — тикет "MAKE ALL KG 200–800 SELECTABLE…". Как
+ * KG 700, приватная (`visibility: internalOnly`, `state/chapters.ts`) —
+ * die Kundenansicht erreicht dieses Kapitel nie. Subtotal fließt trotzdem
+ * immer in Gesamt netto (Anhang §11 "Client/private financing boundary").
+ *
+ * "Für dieses Meeting freigeben" schaltet das Recht frei, die Aufschlüsselung
+ * (nicht die rohen %-Parameter) auch in der Kundenansicht zu zeigen —
+ * Standard: aus (M-3: der Zustand gehört zum versendeten Snapshot). Die
+ * client-seitige Recap-Oberfläche, die diesen Zustand konsumiert, ist
+ * separat zu verdrahten (siehe Frontend-Handoff, bekannte Einschränkung) —
+ * dieses Kapitel liefert den autoritativen Speicherort und Schalter dafür.
+ */
+function ChapterKg800() {
+  const s = useStore()
+  const t = useT()
+  const p = s.projection()
+  const breakdown = p.result.drivers.filter((d) => d.key.startsWith('kg800_'))
+  const subtotal = breakdown.reduce((sum, d) => sum.plus(d.exact), new Decimal(0))
+
+  return (
+    <div className="grid gap-5">
+      <ScopeCatalogChapter
+        options={KG800_CATALOG_OPTIONS}
+        introDe="Finanzierung bildet Kosten bis zum Nutzungsbeginn aus Fremdkapital, Finanzierungsnebenkosten, Bereitstellung, Bürgschaften und optional kalkulatorischem Eigenkapital ab."
+        introEn="Financing estimates cost up to start of use from debt interest, financing fees, commitment charges, guarantees and optional imputed equity interest."
+      />
+      <Card title="Aufschlüsselung KG 800">
+        {breakdown.length === 0 ? (
+          <p className="a3-cap">
+            {t('configurator.scopeCatalog.kg800NoBasis')}
+          </p>
+        ) : (
+          <>
+            <ul className="grid gap-1">
+              {breakdown.map((d) => (
+                <li key={d.key} className="flex items-center justify-between gap-3">
+                  <span className="text-body text-text-primary">{d.label}</span>
+                  <span className="numeric text-body text-text-primary">
+                    {moneyLabel(present(d.exact))}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="numeric mt-3 text-heading-3 font-bold text-text-primary">
+              KG{NNBSP}800{NNBSP}Subtotal: {moneyLabel(present(subtotal))}
+            </p>
+          </>
+        )}
+        <div className="mt-4 border-t border-border-subtle pt-3">
+          <Switch
+            label={t('configurator.scopeCatalog.kg800RevealSwitch')}
+            checked={s.kg800ClientRevealed}
+            onChange={(v) => s.setKg800ClientRevealed(v)}
+          />
+          <p className="a3-cap mt-1">
+            {t('configurator.scopeCatalog.kg800RevealHelp')}
+          </p>
+        </div>
       </Card>
     </div>
   )

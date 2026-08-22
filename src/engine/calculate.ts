@@ -28,9 +28,14 @@ export type Coverage = Record<CostGroup, CoverageState>
 /**
  * Leistungsabgrenzung groups that require a user coverage decision.
  * Every offered cost group requires an explicit scope decision.
+ *
+ * KG 800 (Finanzierung) joined this list by explicit CPO/backlog decision
+ * (ticket "MAKE ALL KG 200–800 SELECTABLE…"): every KG 200–800 is a peer
+ * binary Included/Excluded choice, none pinned outside Scope Boundaries.
+ * KG 100 (Grundstück) stays out of this task's scope and remains absent.
  */
 export const SCOPE_BOUNDARIES_DECIDABLE_GROUPS = [
-  'KG_200', 'KG_300', 'KG_400', 'KG_500', 'KG_600', 'KG_700',
+  'KG_200', 'KG_300', 'KG_400', 'KG_500', 'KG_600', 'KG_700', 'KG_800',
 ] as const satisfies readonly CostGroup[]
 
 export type BuildingInput = {
@@ -547,4 +552,110 @@ export function aggregateComplex(
 /** Скидка от **точного** итога. База — не показанное значение (CALC-007). */
 export function applyDiscount(exactTotal: Decimal, percent: Decimal): Displayed {
   return present(exactTotal.mul(new Decimal(1).minus(percent.div(100))))
+}
+
+/**
+ * KG 800 — Finanzierung (тикет "MAKE ALL KG 200–800 SELECTABLE…", §5 KG800 /
+ * §8.2 приложенного исследования).
+ *
+ * Формулы дословно из приложения:
+ *
+ *   PRE_FINANCING_COST = KG100..KG700 (без самой KG 800 — не рекурсивно)
+ *   DEBT_PRINCIPAL      = PRE_FINANCING_COST × DEBT_RATIO
+ *   EQUITY_PRINCIPAL    = PRE_FINANCING_COST − DEBT_PRINCIPAL
+ *   AVG_DRAWN_DEBT      = DEBT_PRINCIPAL × DRAWDOWN_FACTOR
+ *   AVG_INVESTED_EQUITY = EQUITY_PRINCIPAL × DRAWDOWN_FACTOR
+ *   YEARS               = FINANCING_MONTHS / 12
+ *   KG820 (Fremdkapitalzinsen)   = AVG_DRAWN_DEBT × DEBT_RATE × YEARS
+ *   KG830 (Eigenkapitalzinsen)   = AVG_INVESTED_EQUITY × EQUITY_RATE × YEARS
+ *   KG810a (Finanzierungsnebenkosten) = DEBT_PRINCIPAL × FEE_RATE
+ *   KG810b (Bereitstellungszinsen)    = «примерный неиспользованный остаток
+ *     долга × месячная ставка × число оплачиваемых месяцев», НИКОГДА не
+ *     от уже выбранного долга (явное указание приложения); остаток
+ *     приближён как DEBT_PRINCIPAL − AVG_DRAWN_DEBT, оплачиваемые месяцы —
+ *     `max(0, FINANCING_MONTHS − FREE_MONTHS)`.
+ *   KG840 (Bürgschaftskosten)   = GUARANTEE_AMOUNT × GUARANTEE_RATE × GUARANTEE_YEARS
+ *     (guaranteeYears по умолчанию равна YEARS — приложение не называет
+ *     отдельный срок поручительства, домысливать новый параметр нельзя, D-22
+ *     разрешает вывести значение и обязывает нести пометку ⚙).
+ *
+ * KG 800 никогда не финансирует сама себя: `preFinancingCost` передаётся
+ * ВЫЗЫВАЮЩИМ кодом и обязан быть суммой блоков KG100–700, посчитанной ДО
+ * вызова этой функции — здесь не существует пути прочитать собственный же
+ * результат обратно во вход (нерекурсивность обеспечена структурой, а не
+ * проверкой постфактум).
+ */
+export type Kg800Params = {
+  /** KG800-01, доля заёмного капитала, 0..1 (0%..90%). */
+  debtRatio: Decimal
+  /** KG800-02, ставка по кредиту, доля годовых (например 0.045 = 4,5 %). */
+  debtRate: Decimal
+  /** KG800-03, срок финансирования в месяцах. */
+  financingMonths: Decimal
+  /** KG800-04, доля среднего использования капитала за срок (Mittelabrufprofil). */
+  drawdownFactor: Decimal
+  /** KG800-05, комиссия за организацию финансирования, доля от DEBT_PRINCIPAL. */
+  financingFeeRate: Decimal
+  /** KG800-06, свободный от платы период, месяцы. */
+  commitmentFreeMonths: Decimal
+  /** KG800-06, ставка платы за резервирование, доля В МЕСЯЦ. */
+  commitmentMonthlyRate: Decimal
+  /** KG800-07, обеспечиваемая сумма (внешний ввод — контракт/договор). */
+  guaranteeAmount: Decimal
+  /** KG800-07, ставка поручительства, доля годовых. */
+  guaranteeRate: Decimal
+  /** KG800-08, ставка калькуляционных процентов на собственный капитал, доля годовых. */
+  equityRate: Decimal
+}
+
+export type Kg800Result = {
+  preFinancingCost: Decimal
+  debtPrincipal: Decimal
+  equityPrincipal: Decimal
+  avgDrawnDebt: Decimal
+  avgInvestedEquity: Decimal
+  years: Decimal
+  debtInterest: Decimal
+  equityInterest: Decimal
+  financingFee: Decimal
+  commitmentInterest: Decimal
+  guaranteeCost: Decimal
+  total: Decimal
+}
+
+export function calculateKg800(
+  preFinancingCost: Decimal,
+  p: Kg800Params,
+): Kg800Result {
+  const debtPrincipal = preFinancingCost.mul(p.debtRatio)
+  const equityPrincipal = preFinancingCost.minus(debtPrincipal)
+  const avgDrawnDebt = debtPrincipal.mul(p.drawdownFactor)
+  const avgInvestedEquity = equityPrincipal.mul(p.drawdownFactor)
+  const years = p.financingMonths.div(12)
+
+  const debtInterest = avgDrawnDebt.mul(p.debtRate).mul(years)
+  const equityInterest = avgInvestedEquity.mul(p.equityRate).mul(years)
+  const financingFee = debtPrincipal.mul(p.financingFeeRate)
+
+  const undrawnBalance = Decimal.max(debtPrincipal.minus(avgDrawnDebt), 0)
+  const chargeableMonths = Decimal.max(
+    p.financingMonths.minus(p.commitmentFreeMonths), 0,
+  )
+  const commitmentInterest = undrawnBalance
+    .mul(p.commitmentMonthlyRate)
+    .mul(chargeableMonths)
+
+  // Срок поручительства не назван приложением отдельным параметром — берём
+  // срок финансирования (D-22: вывод разрешён, пометка ⚙ обязательна на
+  // экране, не здесь).
+  const guaranteeCost = p.guaranteeAmount.mul(p.guaranteeRate).mul(years)
+
+  const total = debtInterest.plus(equityInterest).plus(financingFee)
+    .plus(commitmentInterest).plus(guaranteeCost)
+
+  return {
+    preFinancingCost, debtPrincipal, equityPrincipal, avgDrawnDebt,
+    avgInvestedEquity, years, debtInterest, equityInterest, financingFee,
+    commitmentInterest, guaranteeCost, total,
+  }
 }
