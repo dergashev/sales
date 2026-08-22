@@ -109,6 +109,11 @@ describe('proposal store recovery', () => {
     expect(raw).not.toContain('"noteText"')
     expect(raw).not.toContain('"fields"')
     expect(raw).not.toContain('must never leave the private session')
+    // F-07 (deep-coherence audit 2026-08-22): the Opportunity-level gate flag
+    // must persist with the same rigor as the conflict decision below —
+    // previously absent from this payload entirely, it reverted silently on
+    // reload while `buildingConflicts` survived.
+    expect(raw).toContain('"projectParamsConfirmed":true')
 
     __resetStoreForTests()
     const restoredStorage = new MemoryStorage()
@@ -123,6 +128,7 @@ describe('proposal store recovery', () => {
     expect(st().options.map((option) => option.name)).toEqual(['Hausweise', 'Geteilt'])
     expect(st().activeOptionId).toBe('OPT-02')
     expect(wflConflict(st()).state).toBe('resolved')
+    expect(st().projectParamsConfirmed).toBe(true)
     expect(st().projection().result.total.exact.toFixed()).toBe(activeTotal)
     expect(st().projection().uncertaintyPp).toBe(activeUncertainty)
     expect(st().coverage.KG_500).toBe('included')
@@ -276,6 +282,33 @@ describe('proposal store recovery', () => {
     expect(hydrateProposalState(restoredStorage)).toBe(true)
     expect(st().configurationModeChosen).toBe(true)
     expect(st().pricingStarted).toBe(false)
+  })
+
+  it('defaults a payload saved before F-07 (no projectParamsConfirmed key) to unconfirmed, not a rejected payload', () => {
+    const storage = new MemoryStorage()
+    initializeProposalPersistence(storage)
+    const st = () => useStore.getState()
+
+    st().openOpportunity('DEMO-0001')
+    st().resolveWflConflict('customer')
+    st().confirmProjectParams()
+    st().createOption('Pre-F-07 payload')
+
+    const key = proposalStorageKey('DEMO-0001')
+    const envelope = JSON.parse(storage.getItem(key)!) as {
+      payload: { projectParamsConfirmed?: boolean }
+    }
+    expect(envelope.payload.projectParamsConfirmed).toBe(true)
+    delete envelope.payload.projectParamsConfirmed
+
+    __resetStoreForTests()
+    const restoredStorage = new MemoryStorage()
+    restoredStorage.setItem(key, JSON.stringify(envelope))
+    // An older payload predating this field must still restore — never be
+    // discarded whole — and the gate reverts to the same conservative
+    // default as a first-ever visit, not a crash or a silently-invented true.
+    expect(hydrateProposalState(restoredStorage)).toBe(true)
+    expect(st().projectParamsConfirmed).toBe(false)
   })
 
   it('does not persist a derived conflict after its source disagreement is removed', () => {

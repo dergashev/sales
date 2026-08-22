@@ -446,6 +446,15 @@ type PersistedProposalPayload = {
   optionSeq: number
   optionConfigs: Record<string, PersistedProposalConfig>
   buildingConflicts: Record<string, BuildingConflict>
+  /**
+   * Absent in payloads saved before this fix (F-07, deep-coherence audit
+   * 2026-08-22): the conflict decision survived reload via `buildingConflicts`
+   * while this Opportunity-level gate flag reverted silently to unconfirmed
+   * with no explanation, because it was never part of this payload at all.
+   * Optional so an older stored payload is not rejected outright — treated as
+   * `false` on restore, the same conservative default as the initial state.
+   */
+  projectParamsConfirmed?: boolean
 }
 
 /**
@@ -878,17 +887,24 @@ function isPersistedProposalConfig(value: unknown): value is PersistedProposalCo
   return value.discountPercent === null || Decimal.isDecimal(value.discountPercent)
 }
 
+const PERSISTED_PROPOSAL_PAYLOAD_KEYS = [
+  'active', 'options', 'activeOptionId', 'optionSeq', 'optionConfigs',
+  'buildingConflicts', 'projectParamsConfirmed',
+] as const
+
 function isPersistedProposalPayload(value: unknown): value is PersistedProposalPayload {
   if (!record(value)
-    || !hasOnlyKeys(value, [
-      'active', 'options', 'activeOptionId', 'optionSeq', 'optionConfigs',
-      'buildingConflicts',
-    ])
+    // Allowlist, not exact match (mirrors `isPersistedProposalConfig`):
+    // `projectParamsConfirmed` is optional so a payload saved before this
+    // fix still restores instead of being discarded whole.
+    || !Object.keys(value).every((key) => (PERSISTED_PROPOSAL_PAYLOAD_KEYS as readonly string[]).includes(key))
     || !isPersistedProposalConfig(value.active)
     || !Array.isArray(value.options)
     || !Number.isInteger(value.optionSeq) || (value.optionSeq as number) < 0
     || !record(value.optionConfigs)
-    || !record(value.buildingConflicts)) return false
+    || !record(value.buildingConflicts)
+    || (value.projectParamsConfirmed !== undefined
+      && typeof value.projectParamsConfirmed !== 'boolean')) return false
 
   const options = value.options
   if (!options.every((option) => record(option)
@@ -979,6 +995,7 @@ function capturePersistedProposal(state: Store): PersistedProposalPayload {
     optionConfigs: Object.fromEntries(Object.entries(state.optionConfigs)
       .map(([id, config]) => [id, capturePersistedConfig(config)])),
     buildingConflicts: state.buildingConflicts,
+    projectParamsConfirmed: state.projectParamsConfirmed,
   }
 }
 
@@ -4050,6 +4067,10 @@ export function hydrateProposalState(storage = browserProposalStorage()): boolea
       optionSeq: payload.optionSeq,
       optionConfigs,
       buildingConflicts: payload.buildingConflicts,
+      // F-07 (deep-coherence audit): this gate flag now survives reload with
+      // the same rigor as the conflict decision above, instead of silently
+      // reverting to unconfirmed. Absent in payloads saved before this fix.
+      projectParamsConfirmed: payload.projectParamsConfirmed === true,
       level: payload.activeOptionId ? 'option' : 'liste',
       opportunityId: payload.activeOptionId ? PROPOSAL_PROJECT_ID : null,
       mode: 'intern',
