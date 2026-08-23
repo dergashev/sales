@@ -494,6 +494,26 @@
                                  словами без токена, худший вид пробела) */
 }
 
+/* Task 04 (F-18) — DELIBERATE 1280-shell ADR revision, not a silent
+   redefinition of README §1.2's 280/x/520 split.
+   At the supported 1280px floor the workspace pane (viewport − left −
+   right) measured 480px against a 520px rail — narrower than the panel
+   it was supposed to host content beside, and the building tab strip
+   (DC-46) lost almost every tab to it. `--panel-right-width` (520px) is
+   the CLOSED TASK-15 ADR (measured against the longest total All3 must
+   ever print, not provisional) and is not renegotiated here. The
+   provisional `--panel-left-width` (280px, never ratified) narrows
+   instead, at the narrow end of the supported band only:
+   1280 − 232 − 520 = 528px ≥ 520px (8px margin for border/rounding).
+   1440px and above keep 280px — already measured fine there
+   (1440 − 280 − 520 = 640px). This is the ONLY breakpoint in the shell;
+   within each band the workspace only grows as the viewport widens, so
+   "workspace ≥ rail" holds at every width from 1280 to 1440, not only at
+   the two endpoints tested explicitly. */
+@media (max-width: 1439px) {
+  :root { --panel-left-width: 232px; }
+}
+
 /* Kompakt — независимое предпочтение пользователя (D-16, LAYOUT-007).
    Прежде здесь существовало правило `.mode-praesentation .density-compact`,
    принудительно возвращавшее comfortable в клиентском режиме. Оно удалено:
@@ -518,7 +538,19 @@
 }
 
 /* ---------- Базовые правила применения ---------- */
-html, body { font-family: var(--font-family); color: var(--color-text-primary); }
+/* Task 04 (F-13, rule 27 "ONE deliberate scroll surface"): `html`/`body`
+   прежде не ограничивали высоту — `.a3-app-shell` был `h-screen` (100vh)
+   в собственном боксе, но без `overflow` на shell и без `height`/`overflow`
+   на `html`/`body` содержимое, не влезающее в 100vh (переполнение вложенного
+   flex-потока), утекало в прокрутку ДОКУМЕНТА поверх трёх уже существующих
+   независимых прокруток зон (`main`, `Sidebar`, `OfferPanel`, у каждой свой
+   `overflow-y-auto`) — застройка нашла ровно это: `window.scrollTo(0,400)`
+   двигал всю оболочку целиком, включая обе панели, которые именно поэтому
+   были объявлены «постоянными» и не оставались ими. Канонический паттерн
+   «приложение владеет вьюпортом»: `html`/`body` фиксированы на 100 % высоты
+   viewport и не прокручиваются сами — единственная прокрутка документа,
+   которая раньше существовала, устранена, а не спрятана. */
+html, body { font-family: var(--font-family); color: var(--color-text-primary); height: 100%; overflow: hidden; }
 input, select, textarea, button, kbd { font-family: var(--font-family); }
 /* Фон страницы — БЕЛЫЙ (правило проекта 6). Канва All3 Grey #E8ECE9 — это
    поверхность отдельных зон, а не подложка документа.

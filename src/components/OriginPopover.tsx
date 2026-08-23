@@ -36,13 +36,24 @@ export type OriginRow = {
   strong?: boolean
 }
 
-export function OriginPopover({ rows, rounding, runRef, triggerLabel }: {
+export function OriginPopover({
+  rows, rounding, runRef, triggerLabel, accessibleName,
+}: {
   rows: OriginRow[]
   /** Раскрытие округления из `present().disclosure`; null — показ равен точному. */
   rounding: string | null
   /** Внутренняя ссылка на правило и прогон; null в презентации (permission). */
   runRef: string | null
   triggerLabel?: string
+  /**
+   * Task 04 (F-35, rail a11y): доступное имя, отличное от ВИДИМОГО
+   * `triggerLabel`/дефолта — для случаев, когда несколько триггеров на
+   * одном экране показывают ОДИНАКОВЫЙ видимый текст («Details» ×12 в
+   * Kostentreiber, «Herkunft anzeigen» ×3 у трёх героев), но ведут в
+   * РАЗНЫЕ диалоги. Не задан → доступное имя остаётся видимым текстом
+   * (прежнее поведение, для одиночных употреблений без коллизии).
+   */
+  accessibleName?: string
 }) {
   const tx = useTx()
   const t = useT()
@@ -131,6 +142,7 @@ export function OriginPopover({ rows, rounding, runRef, triggerLabel }: {
         ref={triggerRef}
         type="button"
         aria-expanded={open}
+        aria-label={accessibleName}
         onClick={() => setOpen((v) => !v)}
         className={'a3-hk-val outline-none focus-visible:outline ' +
           'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring'}

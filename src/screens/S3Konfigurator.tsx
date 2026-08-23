@@ -1938,7 +1938,12 @@ function GroundRiskSection() {
             <div className="a3-row mt-3">
               <Button
                 variant={on ? 'secondary' : 'primary'}
-                onClick={() => s.toggleRisiko(r.id)}
+                // Task 04 (F-03, P0): Klick war bisher nur Commit — ein
+                // schon ausgelöstes Preview blieb stehen, bis ein separates
+                // mouseleave/blur folgte (der Button behält den Fokus nach
+                // dem Klick nativ). Commit löscht die Vorschau jetzt selbst,
+                // wie in RadioCardGroup (controls.tsx).
+                onClick={() => { s.toggleRisiko(r.id); s.previewOption(null) }}
                 onMouseEnter={() =>
                   s.previewOption({ kind: 'risiko', id: r.id, active: !on })}
                 onMouseLeave={() => s.previewOption(null)}

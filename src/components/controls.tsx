@@ -254,16 +254,30 @@ export function RadioCardGroup<T extends string>({
               className={'a3-okc-tile block' +
                 (o.disabled ? ' cursor-default' : '')}
             >
+              {/* Task 04 (F-03, P0): Klick war bisher nur Commit — der
+                  Timer wurde gelöscht, aber ein bereits AUSGELÖSTES
+                  `onPreview(v)` (Hover/Fokus vor dem Klick) blieb im Store
+                  stehen, bis ein separates mouseleave/blur folgte. Fokus
+                  bleibt nach einem Radio-Klick nativ auf dem Element — ohne
+                  folgendes blur zeigte der Geist die bereits übernommene
+                  Änderung unbegrenzt weiter (DC-28 verlangt „Klick —
+                  Fixierung, Vorschau erlischt"). Commit löscht die Vorschau
+                  jetzt selbst, unabhängig von einem späteren
+                  Maus-/Fokusereignis. */}
               <input
                 type="radio"
-                className="peer sr-only"
+                className="peer a3-input-cover"
                 name={name}
                 value={o.value}
                 checked={active}
                 disabled={o.disabled}
                 aria-label={tx(o.title)}
                 aria-describedby={describedBy}
-                onChange={() => { clearTimeout(previewTimer.current); onChange(o.value) }}
+                onChange={() => {
+                  clearTimeout(previewTimer.current)
+                  onChange(o.value)
+                  onPreview?.(null)
+                }}
                 onFocus={() => !o.disabled && previewStart(o.value)}
                 onBlur={previewStop}
               />

@@ -106,10 +106,14 @@ describe('Projektstatus-Überblick (Task 01) — roving tabindex (TABS-001/KEY-0
 })
 
 describe('Herkunft-Popover — Esc закрывает и ВОЗВРАЩАЕТ фокус (KEY-002)', () => {
+  // Task 04 (F-35, rail a11y): the rail's three hero triggers no longer
+  // share the exact accessible name "Herkunft anzeigen" — each carries its
+  // own metric suffix so a screen-reader buttons list can tell them apart.
+  // `/^Herkunft anzeigen/` still grabs the first one (the total's), unaffected.
   it('открытие, закрытие по Esc, фокус на триггере', async () => {
     const user = userEvent.setup()
     await enterPipeline(user)
-    const trigger = screen.getAllByRole('button', { name: 'Herkunft anzeigen' })[0]!
+    const trigger = screen.getAllByRole('button', { name: /^Herkunft anzeigen/ })[0]!
 
     await user.click(trigger)
     expect(trigger).toHaveAttribute('aria-expanded', 'true')
@@ -128,7 +132,7 @@ describe('Herkunft-Popover — Esc закрывает и ВОЗВРАЩАЕТ ф
   it('Tab внутри поповера циклится, наружу не уходит', async () => {
     const user = userEvent.setup()
     await enterPipeline(user)
-    await user.click(screen.getAllByRole('button', { name: 'Herkunft anzeigen' })[0]!)
+    await user.click(screen.getAllByRole('button', { name: /^Herkunft anzeigen/ })[0]!)
     const dialog = screen.getByRole('dialog', { name: 'Herkunft des Werts' })
 
     await user.tab()

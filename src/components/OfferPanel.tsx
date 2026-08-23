@@ -180,17 +180,49 @@ export function OfferPanel() {
   // а не по префиксу ключа. Приёмка № 17 показала цену догадки: фильтр по
   // `opt_/cov_/kg700_` пропускал выбор подвала, и панель говорила
   // «Standardumfang» при изменившейся сумме.
-  const cart = clientSafeDrivers.filter((d) => d.origin === 'decision')
+  const decisions = clientSafeDrivers.filter((d) => d.origin === 'decision')
+  // Task 04 (F-11, rule 32): `kg300_excluded_adjustment`/`kg400_excluded_
+  // adjustment` (store.ts, Product Decision e2dac9b5) are a NEGATIVE
+  // correction representing a group the seller REMOVED from scope — the
+  // audit found this exact contribution listed under "Im Angebot gewählt"
+  // ("KG 300 … ausgeschlossen ≈ −4.437.000 €"), reading as a charge for
+  // something explicitly excluded. Split by these two known, explicit
+  // adjustment keys (the only ones this shape exists for) rather than by
+  // sign — an ordinary money-saving CHOICE (e.g. a cheaper facade) is also
+  // negative and belongs in "gewählt", not "Ausgeschlossen".
+  const chosen = decisions.filter((d) =>
+    d.key !== 'kg300_excluded_adjustment' && d.key !== 'kg400_excluded_adjustment')
+  const excludedAdjustments = decisions.filter((d) =>
+    d.key === 'kg300_excluded_adjustment' || d.key === 'kg400_excluded_adjustment')
   const notIncluded = (Object.keys(s.coverage) as CostGroup[]).filter(
     (g) => ['unknown', 'onRequest', 'excluded'].includes(s.coverage[g]),
   )
+
+  // Task 04 (F-12, rule 32): Risikozuschläge (`block: 'surcharge'`) sind
+  // additiv NACH dem Bauwerk-Block (calculation-spec §2) — real im
+  // gedruckten Total enthalten, aber keiner DIN-276-Gruppe zugeordnet.
+  // Eigene Summenzeile statt Einfaltung in KG 300: `splitKg300()` liest
+  // dieselbe KG-300-Zahl für die Untergruppen-Aufklappung, und eine
+  // eingefaltete Zulage würde dort strukturell auf alle Untergruppen
+  // verteilt, statt auf die eine, für die sie tatsächlich gilt.
+  const riskSurchargeSum = p.result.drivers
+    .filter((d) => d.block === 'surcharge')
+    .reduce((sum, d) => sum.plus(d.exact), new Decimal(0))
 
   return (
     <aside
       aria-label="Angebot"
       className="flex h-full w-panel-right min-w-0 max-w-panel-right shrink-0 flex-col overflow-y-auto border-l border-border-strong bg-surface-default"
     >
-      <div className="flex-1 px-5 py-5" aria-live="polite">
+      {/* Task 04 (F-13, STEP-005): «Липкий контекст цены реализуется, а не
+          декларируется рядом» — герой DC-38 + Geist-Vorschau + Delta-Chip
+          остаются видимыми, пока остальная рельса (Recap, Kostentreiber,
+          KG-Tabelle, Journal) под ними прокручивается. `<aside>` — уже
+          собственный независимый скролл-контейнер (не документ — F-13's
+          page-level-scroll устранён в tokens.css/`.a3-app-shell`); этот
+          блок — прямой flex-потомок `<aside>`, `position:sticky` поэтому
+          закрепляется относительно ЕГО скролла, не документа. */}
+      <div className="a3-rail-sticky-top" aria-live="polite">
         {/* ── Герой №1: тотал — единственный оранжевый (DC-38) ───────────
             Кегли, цвет и выравнивание по базовой линии приходят из системы
             (`.a3-hb-total .a3-hb-num` = 64 px accent, `.a3-hb-unit` = 24 px):
@@ -270,6 +302,11 @@ export function OfferPanel() {
             runRef={s.mode === 'intern'
               ? 'Regelsatz RS-2026.2 · DEMO-SC-01 · DEMO-RUN-0007 · authoritative · 04.08.2026'
               : null}
+            // Task 04 (F-35, rail a11y): 3 Hero-Trigger tragen alle den
+            // sichtbaren Text „Herkunft anzeigen" — eigenes Accessible Name
+            // pro Metrik, damit sie in einer Screenreader-Buttonliste
+            // unterscheidbar bleiben.
+            accessibleName={`${t('common.showOrigin')} · ${tx(p.result.totalLabel)}`}
           />
         </p>}
         </div>
@@ -316,6 +353,7 @@ export function OfferPanel() {
             runRef={s.mode === 'intern'
               ? 'Regelsatz RS-2026.2 · DEMO-SC-01 · DEMO-RUN-0007 · authoritative · 04.08.2026'
               : null}
+            accessibleName={`${t('common.showOrigin')} · ${tx(p.leadRate.denominatorLabel)}`}
           />
         </p>
         </div>}
@@ -349,6 +387,7 @@ export function OfferPanel() {
               runRef={s.mode === 'intern'
                 ? 'Bauzeit-Methodik · DEMO-SC-01 · Staffelstart aus ScheduleModel'
                 : null}
+              accessibleName={`${t('common.showOrigin')} · Bauzeit`}
             />
           </span>
         </div>
@@ -366,11 +405,20 @@ export function OfferPanel() {
         {/* ── Слот призрака (DC-28) — СОБСТВЕННЫЙ, не общий с дельта-чипом.
             Анатомия контракта: префикс «Vorschau ·», будущее значение,
             дельта к названной базе, ссылка на прогон превью. Высота
-            зарезервирована: появление призрака не двигает вёрстку. */}
+            зарезервирована: появление призрака не двигает вёрстку.
+            Task 04 (F-03, P0): весь слот — intern-only, не только
+            Δ-подстрока. Прежде гейтилась лишь строка Δ (строка 394 ниже);
+            заголовок и будущее значение призрака рендерились и в
+            `mode-praesentation`, поэтому гипотетическая цена оказывалась
+            рядом с настоящей в начатом Kundenansicht. `s.preview` может
+            остаться установленным после переключения режима (само
+            состояние не сбрасывается сменой режима) — гейт на рендере,
+            а не только на сеттере, поэтому клиентский вид не зависит от
+            того, что произошло до переключения. */}
         {/* Призрак — тот же приём, что у чипа: элемент постоянен, появление
             и уход несёт `.a3-show` контракта, а не framer-motion. Утилита
             паддинга снята: вид принадлежит системе (NO-VISUAL-UTILITY). */}
-        <div className="a3-ghost-slot mt-3">
+        {s.mode === 'intern' && <div className="a3-ghost-slot mt-3">
           <p className={'a3-ghost numeric' + (s.preview ? ' a3-show' : '')}
              aria-hidden={s.preview ? undefined : true}>
             {shownPreview && (<>
@@ -404,7 +452,7 @@ export function OfferPanel() {
               )}
             </>)}
           </p>
-        </div>
+        </div>}
 
         {/* ── Слот дельта-чипа: зарезервирован, появление не двигает ────── */}
         {/* Чип живёт в слоте постоянно и ОДНОЙ строкой (`.a3-delta` —
@@ -423,26 +471,36 @@ export function OfferPanel() {
               <span>{shownDelta.label}</span>
               <span className="font-medium">
                 {signed(shownDelta.deltaExact)}
-                {/* Δ-проценты — только внутренние (правило 11). */}
-                {s.mode === 'intern' && <> ({signedPercent(shownDelta.percent)})</>}
+                {/* Δ-проценты — только внутренние (правило 11). Task 04
+                    (F-30): процент от нулевой базы не определён — вместо
+                    ложного «(+ 0,00 %)» рядом с реальной ненулевой дельтой
+                    строка процента просто отсутствует (rule 30). */}
+                {s.mode === 'intern' && shownDelta.percent !== null
+                  && <> ({signedPercent(shownDelta.percent)})</>}
               </span>
             </>)}
           </p>
         </div>}
+      </div>
 
+      {/* Task 04 (F-13): der Rest der Rail — Recap/Kostentreiber/KG-Tabelle
+          — bleibt der normal scrollende Bereich UNTER dem sticky Block
+          oben; eigenes horizontales Padding, da es nicht mehr im selben
+          Container wie der Header steckt. */}
+      <div className="flex-1 px-5 pb-5">
         {/* ── Сводка выбранного — «корзина» (ревью № 13, дефект 21):
             продавец видит СПИСОК своих решений, а не только их сумму.
             Строки — те же вклады движка (opt_/cov_/kg700), что и в
             Kostentreiber: второго источника выбранного не существует. */}
         <section aria-label="Im Angebot gewählt" className="a3-recap mt-4">
           <p className="a3-mtag">{tx('Im Angebot gewählt')}</p>
-          {cart.length === 0 ? (
+          {chosen.length === 0 ? (
             <p className="a3-cap">
               {tx('Standardumfang — keine Abweichungen gewählt. Jede Option in den Kapiteln links zeigt ihren Preis vor dem Klick.')}
             </p>
           ) : (
             <ul>
-              {cart.map((d) => {
+              {chosen.map((d) => {
                 const buildingLabel = driverBuildingLabel(s, d.key)
                 return (
                   <li key={d.key}
@@ -461,6 +519,25 @@ export function OfferPanel() {
                 )
               })}
             </ul>
+          )}
+          {/* Task 04 (F-11, rule 32): eine explizit ausgeschlossene KG 300/
+              400 ist keine Wahl im Angebot, sondern deren Gegenteil — eigene
+              Überschrift statt einer weiteren Zeile unter „gewählt". */}
+          {excludedAdjustments.length > 0 && (
+            <div className="mt-3 border-t border-border-subtle pt-2">
+              <p className="a3-mtag">{tx('Ausgeschlossen')}</p>
+              <ul>
+                {excludedAdjustments.map((d) => (
+                  <li key={d.key}
+                      className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
+                    <span className="text-text-secondary">{tx(d.label)}</span>
+                    <span className="numeric shrink-0 text-text-primary">
+                      {signed(d.exact)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </section>
 
@@ -577,6 +654,15 @@ export function OfferPanel() {
                               ]}
                               rounding={shown.disclosure}
                               runRef={s.mode === 'intern' ? `Beitrags-ID ${d.key}` : null}
+                              // Task 04 (F-35, rail a11y): 12+ Zeilen teilten
+                              // sich vorher den sichtbaren Text „Details" als
+                              // einziges Accessible Name — nicht
+                              // unterscheidbar in einer Screenreader-
+                              // Buttonliste. Derselbe Text, der schon die
+                              // sr-only-Zeile der Zeile selbst benennt
+                              // (oben), macht auch diesen Trigger eindeutig.
+                              accessibleName={`Details · ${tx(driverLabel(d.label, d.basis))}`
+                                + (buildingLabel ? `, ${buildingLabel}` : '')}
                             />
                           </span>
                         </td>
@@ -639,10 +725,16 @@ export function OfferPanel() {
             <table className="a3-kg w-full border-collapse">
               <caption className="a3-visually-hidden">{tx('Kostengruppen nach DIN 276, vereinfachte Verteilung')}</caption>
               <tbody>
-                {/* В режиме `echt` KG 700 внутри блока не существует: она
-                    стоит собственной позицией 12 % и показана в водопаде.
-                    Печатать её здесь нулём или долей значило бы провести
-                    одну позицию дважды. */}
+                {/* Task 04 (F-12, rule 32): прежде здесь печатались только
+                    KG_300/400(/700) — KG 200/500/600/800 и, в режиме `echt`,
+                    сама KG 700 (собственная позиция 12 %, не доля блока)
+                    оставались строками без места в таблице, хотя их суммы
+                    уже входят в напечатанный тотал. `p.kgSplit`
+                    (`fullKgSplit` в `computeProjection`) теперь несёт
+                    амаунт КАЖДОЙ включённой группы DIN 276 — здесь просто
+                    печатается одна строка на ключ, без дублирования (сумма
+                    построена так, что ни один вклад не считается дважды —
+                    см. комментарий у `fullKgSplit`). */}
                 {(Object.entries(p.kgSplit)
                   .filter((e): e is [string, Decimal] => e[1] !== undefined
                     && s.coverage[e[0] as CostGroup] === 'included'))
@@ -693,6 +785,39 @@ export function OfferPanel() {
                     {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(p.belowGround)}
                   </td>
                 </tr>
+                {/* Task 04 (F-12 companion, rule 32): siehe Kommentar bei
+                    `riskSurchargeSum` oben — eigene Zeile statt Einfaltung
+                    in KG 300. */}
+                {!riskSurchargeSum.isZero() && (
+                  <tr>
+                    <td>{tx('Risikozuschläge')}</td>
+                    <td className="a3-num">{moneyLabel(present(riskSurchargeSum))}</td>
+                    <td className="a3-num">
+                      {riskSurchargeSum.div(p.result.total.exact).mul(100).toFixed(0)}{NNBSP}%
+                    </td>
+                  </tr>
+                )}
+                {/* Task 04 (F-12 companion, rule 32): Rabatt ist keine
+                    DIN-276-Gruppe, aber ein realer, im Total bereits
+                    enthaltener Abzug — ohne eigene Zeile summierten die
+                    KG-Zeilen auf `beforeDiscount`, nicht auf den
+                    gedruckten `total`. Eigene Prozentspalte (kein
+                    `colSpan`, anders als oberirdisch/unterirdisch oben,
+                    die dieselbe Summe nur re-gliedern): nur so bleibt die
+                    100-%-Summe der Spalte exakt. */}
+                {p.discountDriver && (
+                  <tr>
+                    <td>{tx(p.discountDriver.label)}</td>
+                    <td className="a3-num">
+                      −{NNBSP}{moneyLabel(present(p.discountDriver.exact.abs()))}
+                    </td>
+                    <td className="a3-num">
+                      −{NNBSP}
+                      {p.discountDriver.exact.abs().div(p.result.total.exact).mul(100).toFixed(0)}
+                      {NNBSP}%
+                    </td>
+                  </tr>
+                )}
                 <tr className="a3-total">
                   <td>{tx(p.result.totalLabel)}</td>
                   <td className="a3-num" colSpan={2}>
@@ -744,7 +869,14 @@ export function OfferPanel() {
               // F05: früher `... Vergleichsbasis DEMO-VV-0003:` — der Fixture-
               // Bezeichner der Vergleichsbasis stand in der Journal-
               // Aufklapp-Zeile selbst, nicht nur hinter einer Ablage.
-              : <>Preisänderung gegenüber Vergleichsbasis:{' '}
+              // Task 04 (F-30): das unbenannte Wort „Vergleichsbasis" allein
+              // liest sich wie ein Vergleich gegen einen externen Zielwert;
+              // `sessionDelta` ist tatsächlich die Summe der Preis-Journal-
+              // einträge SEIT ERSTELLUNG DIESER OPTION — bei einer frisch
+              // erstellten Option (Startzustand: alle KG ausgeschlossen)
+              // rechnerisch identisch zum leeren Angebot, aber das ist ein
+              // benannter, definierter Bezug, keine unbenannte Lücke.
+              : <>Preisänderung seit Erstellung der Option:{' '}
                   <span className="numeric font-medium text-text-primary">
                     {signed(sessionDelta)}
                   </span>{' '}netto · {priceChangeCount}{NNBSP}

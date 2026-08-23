@@ -53,6 +53,20 @@ export const SCOPE_QUANTITY_DERIVED: ReadonlySet<ScopeQuantityKey> = new Set([
   'building_count', 'dwelling_count',
 ])
 
+/**
+ * Task 04 (F-11 companion, rule 36): discrete counts (Gebäude, Stellplätze,
+ * Wohneinheiten …) formatted with `formatDE(qty, 2)` printed "2,00 Gebäude"
+ * — a count is never fractional, and the two decimal places read as false
+ * precision (audit finding: recap label "2,00 Gebäude × 20.000 €/Gebäude").
+ * Measured quantities (m², t, €) keep 2 decimals; this set names exactly
+ * the keys whose unit is a discrete item, not a measurement.
+ */
+export const SCOPE_QUANTITY_IS_COUNT: ReadonlySet<ScopeQuantityKey> = new Set([
+  'building_count', 'dwelling_count', 'furnished_dwelling_count',
+  'surface_parking_spaces', 'bicycle_spaces', 'external_light_count',
+  'laundry_room_count',
+])
+
 export type ScopeOptionBasis =
   | { kind: 'perQuantity'; quantityKey: ScopeQuantityKey }
   /** KG600-07 Kunst am Bau: доля от уже посчитанного блока KG 300 + 400. */
@@ -145,13 +159,16 @@ export function scopeCatalogDriver(
   const qty = quantityOf(quantityKey)
   if (qty === null || qty.lte(0)) return null
   const unit = SCOPE_QUANTITY_UNIT[quantityKey]
+  // Task 04 (F-11 companion, rule 36): a count (Gebäude, Stellplätze, …)
+  // prints as a whole number — see `SCOPE_QUANTITY_IS_COUNT` docblock.
+  const qtyDecimals = SCOPE_QUANTITY_IS_COUNT.has(quantityKey) ? 0 : 2
   return {
     key: `scope_${option.id}_${variant.value}`,
     origin: 'decision',
     block: 'separatePosition',
     exact: qty.mul(rate),
     label: `${option.labelDe} · ${variant.labelDe} · `
-      + `${formatDE(qty, 2)}${NNBSP}${unit} × ${euroPerUnit(rate, unit)}${evidenceMark}`,
+      + `${formatDE(qty, qtyDecimals)}${NNBSP}${unit} × ${euroPerUnit(rate, unit)}${evidenceMark}`,
     scopeRefs: [scopeRef],
     basis: null,
   }

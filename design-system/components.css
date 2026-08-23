@@ -339,6 +339,14 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    .a3-hb-cap/.a3-hb-sub. Один оранжевый герой,
    остальные — чёрные герои var(--space-7). КЛЮЧЕВАЯ метрика никогда не бывает сноской.
    Classes: .a3-heroband · .a3-hb · .a3-hb-num · .a3-hb-unit · .a3-hb-total · .a3-hb-cap · .a3-hb-sub · .a3-ghost · .a3-ghost-line · .a3-show · .a3-ghost-slot · .a3-delta-slot · .a3-iv-sub · .a3-iv-bandbox · .a3-iv-band · .a3-iv-marker · .a3-iv-edges. */
+/* Task 04 (F-13, STEP-005): sticky Preiskontext im Rail — die Zone, die
+   Heroband + Geist-Vorschau + Delta-Chip trägt, bleibt beim Scrollen der
+   restlichen Rail (Recap/Kostentreiber/KG-Tabelle/Journal) sichtbar.
+   Fixiert relativ zum Scroll-Container des Rails selbst
+   (`<aside overflow-y-auto>`), nicht zum Dokument — die Seiten-Scroll-
+   Ebene, die das vorher unterlaufen hätte, ist in `.a3-app-shell`/
+   `html,body` geschlossen (siehe tokens.css). */
+.a3-rail-sticky-top{position:sticky;top:0;z-index:1;background:var(--color-surface-default);border-bottom:var(--border-hairline);padding:var(--space-5) var(--space-5) var(--space-3)}
 .a3-heroband{display:flex;gap:var(--space-7);row-gap:var(--space-5);flex-wrap:wrap;align-items:baseline}
 /* F40: row/column gap was `--border-width-strong` (2px) — a border-width
    token reused for spacing, off the 4/8/12/16/24/32/48/64 scale. `--space-1`
@@ -357,7 +365,18 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-delta-slot{min-height:var(--size-delta-row);max-width:100%}
 .a3-iv-sub{display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap}
 .a3-iv-bandbox{flex:1;max-width:var(--measure-band)}
-.a3-iv-band{height:var(--space-2);background:var(--color-surface-canvas);position:relative}
+/* Task 04 (F-35, rail a11y/visual): F18 already ruled out a coloured
+   fill (below), but a SOLID full-width bar — any colour — sitting
+   directly under the biggest number on the page still reads by SHAPE
+   ALONE as a completion/progress track (that convention is drawn solid;
+   it is never conditioned on colour). Hollow bracket instead of a solid
+   fill: end-caps + a thin top/bottom rule, transparent middle — the
+   universal "measured span" shape, structurally incompatible with the
+   "fill = percent done" reading a solid bar invites regardless of hue. */
+.a3-iv-band{height:var(--space-2);background:transparent;border-top:var(--border-hairline);border-bottom:var(--border-hairline);position:relative}
+.a3-iv-band::before,.a3-iv-band::after{content:'';position:absolute;top:0;bottom:0;width:var(--border-width-strong);background:var(--color-border-strong)}
+.a3-iv-band::before{left:0}
+.a3-iv-band::after{right:0}
 /* F18 · the band is the low→high interval itself (0%..100%, matching the
    two edge labels below it); it must never read as a filled/success
    meter (DC-3 explicitly forbids interval-as-green-success, AREA-004).
@@ -619,6 +638,13 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-konflikt .a3-kv>div{flex:1;min-width:var(--measure-conflict-column);border:var(--border-hairline);padding:var(--space-3)}
 .a3-konflikt .a3-kv b{display:block;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);margin:var(--space-1) 0 var(--space-2)}
 .a3-recap{border:var(--border-default);background:var(--color-surface-default);padding:var(--space-5);max-width:var(--measure-panel)}
+/* Task 04 (F-11 companion): `.a3-mtag` had rules scoped only to
+   `.a3-mode-card`/`.a3-nextstep` — inside `.a3-recap` (its documented
+   Classes: list above already names it, but no selector ever matched) it
+   rendered as an unstyled paragraph. Same treatment as the other two
+   contexts, extended to the new "Ausgeschlossen" sub-heading this task
+   adds alongside the pre-existing "Im Angebot gewählt" one. */
+.a3-recap .a3-mtag{font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:700;letter-spacing:.04em}
 .a3-recap ul{margin:var(--space-3) 0 var(--space-4);padding:0;list-style:none}
 .a3-recap li{display:flex;gap:var(--space-2);align-items:baseline;padding:var(--space-1) 0;border-bottom:var(--border-hairline)}
 .a3-recap li:last-child{border-bottom:none}
@@ -664,6 +690,32 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-typline{border-left:var(--border-width-strong) solid var(--color-text-primary);background:var(--color-surface-subtle);padding:var(--space-3) var(--space-4);margin-top:var(--space-4);font-size:var(--type-small-size);line-height:var(--type-small-line);max-width:var(--measure-gallery)}
 .a3-ogrid{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-4);inline-size:100%;min-inline-size:0;max-inline-size:100%}
 .a3-okc-tile{container:a3-option-tile / inline-size;min-inline-size:0;border:var(--border-width-strong) solid transparent;outline:var(--border-hairline);background:var(--color-surface-default);cursor:pointer;padding:var(--space-4);text-align:left;font:inherit;position:relative;transition:border-color .12s var(--motion-easing-standard)}
+/* Task 04 (F-35, canonical selection defect): the native `<input>` this
+   `<label>` wraps used Tailwind `.sr-only` (clip to 1px×1px). A REAL
+   pointer click anywhere on the tile still works through native
+   label-for semantics, and keyboard operation is unaffected either way —
+   but a click/tap AIMED AT THE INPUT ELEMENT ITSELF (how switch-access
+   and voice-control assistive software activate the focused control, and
+   how DOM-level automation drives a control by role/name) lands on a
+   1px×1px box with no reliable position and fails. `.a3-input-cover`
+   keeps the input invisible (`opacity:0`, never clipped-to-nothing)
+   while covering the whole positioned tile, so a direct hit on the
+   input's own rendered box always lands on the visible card. Do not
+   reuse `.sr-only` for an INTERACTIVE control — reserve `.sr-only` for
+   non-interactive assistive text, where 1×1 clipping is correct. */
+.a3-input-cover{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;opacity:0;cursor:pointer}
+/* Companion to `.a3-input-cover` above: the tile's own decorative overlays
+   (`.a3-ok` check mark, the `peer-focus-visible` ring span) are also
+   `absolute inset:0` and painted AFTER the input in DOM order, so without
+   this they would sit on top and intercept a direct hit-test at the
+   input's own coordinates — reintroducing the exact "not directly
+   clickable" failure `.a3-input-cover` exists to close. Real clicks
+   already worked regardless (native `<label>` click-forwarding reacts to
+   ANY bubbled click, not only one that lands on the wrapped input), but a
+   direct coordinate hit on the input specifically — the case this fixes
+   — needs the path to it left open. Same pattern already used for
+   `.a3-radio-segments label>input+.peer` below. */
+.a3-okc-tile>[aria-hidden="true"]{pointer-events:none}
 .a3-okc-tile .a3-option-media{display:none;width:calc(100% + var(--space-4) + var(--space-4));aspect-ratio:4/3;object-fit:cover;margin:calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) var(--space-3);background:var(--color-surface-canvas)}
 .a3-okc-tile .a3-option-media[hidden]{display:none}
 .a3-okc-tile:hover{border-color:var(--color-text-primary)}
@@ -738,13 +790,31 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    and a details button. Total gets .a3-sum; inactive gets .a3-inactive.
    Classes: .a3-drivers · .a3-driver-table · .a3-drv · .a3-val · .a3-driver-direction · .a3-bar-cell · .a3-bar · .a3-base · .a3-minus · .a3-inactive · .a3-sum · .a3-bmark. */
 .a3-drivers{border:var(--border-default);background:var(--color-surface-default);padding:var(--space-5);max-width:var(--measure-wide)}
-.a3-driver-table{min-width:48rem}
+/* Task 04 (F-18/F-28, canonical defect): `min-width:48rem` (768px) forced
+   this table to overflow its 421px `.a3-drivers` host at BOTH supported
+   widths — no scroll position showed a driver's name and its amount
+   together, while the sibling `table.a3-kg` (three columns, no forced
+   min-width) fit the same host at 471px. Rule 3a already requires numeric
+   columns to size via `minmax(…, max-content)`, never a fixed floor wider
+   than the host — this rule contradicted the contract it sits under. Fixed
+   at the canonical source (this file), not patched per-consumer: `width:
+   100%` (already the shared rule at the top of this file for every
+   `.a3-*-table`) plus the narrowed `.a3-bar-cell` below is enough — the
+   decorative bar column no longer claims a fixed 10rem floor, and
+   `table-layout:auto` (the default, unchanged here) lets the label and the
+   `white-space:nowrap` amount column claim the space the bar gives up. */
 .a3-driver-table th,.a3-driver-table td{padding:var(--space-2) var(--space-3);border-bottom:var(--border-hairline);font-size:var(--type-small-size);line-height:var(--type-small-line);vertical-align:middle;text-align:left}
 .a3-driver-table thead th{font-size:var(--type-table-header-size);line-height:var(--type-table-header-line);font-weight:var(--type-table-header-weight);border-bottom:var(--border-default)}
 .a3-drv>th{font-weight:var(--type-small-weight)}
 .a3-drv .a3-val{text-align:right;white-space:nowrap}
 .a3-driver-direction{display:block;font-weight:var(--font-weight-bold);margin-top:var(--space-1)}
-.a3-bar-cell{width:28%;min-width:10rem}
+/* Task 04 (F-18/F-28): 10rem (160px) alone exceeded a third of the 421px
+   host; combined with the label/value columns it is what forced the
+   768px floor above. The bar is decorative (`aria-hidden`, the same
+   magnitude is always also printed as a number in `.a3-val`) — 2.5rem is
+   enough to read as a proportional indicator without crowding out the
+   name+amount that must stay simultaneously legible. */
+.a3-bar-cell{width:2.5rem;min-width:2rem}
 .a3-drv .a3-bar{display:block;height:var(--space-3);background:var(--color-dataviz-category-1)}
 .a3-drv.a3-base .a3-bar{background:var(--color-dataviz-neutral-bar)}
 .a3-drv.a3-minus .a3-bar{background:var(--color-dataviz-category-2)}
@@ -868,7 +938,11 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 /* The product shell has a supported three-pane minimum. Below it the layout
    remains geometrically stable while a persistent explanation covers the
    unsupported workspace instead of silently crushing the offer panel. */
-.a3-app-shell{min-inline-size:var(--size-app-min-width);background:var(--color-surface-canvas)}
+/* Task 04 (F-13): zweite Schicht derselben Grenze wie `html, body` in
+   tokens.css — der Shell-Block selbst darf sein eigenes 100vh-Höhenbudget
+   nicht mehr an das Dokument durchreichen, auch nicht als Sicherheitsnetz,
+   falls ein künftiger Nachfahre wieder ohne `min-h-0` überläuft. */
+.a3-app-shell{min-inline-size:var(--size-app-min-width);background:var(--color-surface-canvas);overflow:hidden}
 .a3-viewport-warning{display:none}
 
 /* Center-host responsive composition. At the supported 1280 shell the center

@@ -224,6 +224,44 @@ describe('Сквозной сценарий продажи', () => {
     expect(status).toHaveTextContent('Site servicing · KG 200 in the offer: excluded')
   })
 
+  // Task 04 (F-11, rule 32): the audit found an EXCLUSION's negative
+  // adjustment ("KG 300 … ausgeschlossen ≈ −4.437.000 €") listed under the
+  // "Im Angebot gewählt" (chosen) heading — reads as a charge for
+  // something explicitly removed. It must now render under its own
+  // "Ausgeschlossen" heading instead.
+  it('excluding KG 300 lists its adjustment under "Ausgeschlossen", never under "Im Angebot gewählt" (F-11)', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await enterPipeline(user)
+    await user.click(nav(/Konfigurator/))
+    await user.click(nav(/Leistungsabgrenzung/))
+    act(() => useStore.getState().setCoverage('KG_300', 'excluded'))
+
+    const recap = screen.getByRole('region', { name: 'Im Angebot gewählt' })
+    const excludedHeading = within(recap).getByText('Ausgeschlossen')
+    const excludedList = excludedHeading.closest('div')!
+    expect(within(excludedList).getByText(/KG 300/)).toBeInTheDocument()
+
+    // The chosen list (everything ABOVE the "Ausgeschlossen" heading) must
+    // not repeat the same exclusion adjustment.
+    const chosenRows = recap.querySelectorAll('ul')[0]!
+    expect(within(chosenRows).queryByText(/KG 300.*ausgeschlossen/)).toBeNull()
+  })
+
+  // Task 04 (F-11 companion, rule 36): audit example "2,00 Gebäude ×
+  // 20.000 €/Gebäude" — a discrete count must print as a whole number.
+  // `kg200-03` (Öffentliche Erschließung) is quantified by `building_count`
+  // (derived automatically from the included buildings, no manual input
+  // needed), default variant 20.000 €/Gebäude — the exact audited example.
+  it('a KG 200 driver quantified by building count prints a whole number, not "2,00 Gebäude" (F-11)', () => {
+    act(() => { useStore.getState().setCoverage('KG_200', 'included') })
+    const driver = useStore.getState().projection().result.drivers
+      .find((d) => d.key === 'scope_kg200-03_03')
+    expect(driver).toBeDefined()
+    expect(driver!.label).toMatch(/\d+\s*Geb.ude/)
+    expect(driver!.label).not.toMatch(/\d,\d\d\s*Geb.ude/)
+  })
+
   it('Projekt-Vorbereitung zitiert keine Requirement-IDs mehr (F05, UI-Audit 2026-08-21)', async () => {
     const user = userEvent.setup()
     render(<App />)

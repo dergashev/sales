@@ -64,7 +64,11 @@ describe('DC-21: происхождение раскрывается у кажд
     // отсутствующий вид значило бы держать тест на условии, которое сняли.
 
     await user.click(screen.getByRole('button', { name: /Kostentreiber/ }))
-    const details = screen.getAllByRole('button', { name: 'Details' })
+    // Task 04 (F-35, rail a11y): each row's trigger now carries its own
+    // driver-specific accessible name ("Details · <label>") so a
+    // screen-reader buttons list can tell 12+ rows apart — the visible
+    // text stays "Details", matched here by prefix.
+    const details = screen.getAllByRole('button', { name: /^Details/ })
     expect(details.length).toBe(drivers.length)
 
     for (const btn of details) {
@@ -128,7 +132,7 @@ describe('DC-21: происхождение раскрывается у кажд
     expect(row).toHaveTextContent(/erhöht\s*·\s*UG/)
     expect(row).not.toHaveTextContent('Haus A')
 
-    await user.click(within(row!).getByRole('button', { name: 'Details' }))
+    await user.click(within(row!).getByRole('button', { name: /^Details/ }))
     const popover = screen.getByRole('dialog', { name: 'Herkunft des Werts' })
     expect(within(popover).getByText('Scope · UG')).toBeInTheDocument()
     expect(popover).not.toHaveTextContent('Haus A')

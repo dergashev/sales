@@ -1001,7 +1001,15 @@ function capturePersistedProposal(state: Store): PersistedProposalPayload {
 
 export type Projection = {
   result: BuildingResult
-  kgSplit: ReturnType<typeof kgSplit>
+  /** Task 04 (F-12): расширено с {KG_300; KG_400; KG_700?} до всех
+   *  ВКЛЮЧЁННЫХ групп DIN 276 (см. `fullKgSplit` в `computeProjection`) —
+   *  тип шире, чем `ReturnType<typeof kgSplit>`, потому что остальные
+   *  группы — не результат движковой формулы `kgSplit()`, а сумма уже
+   *  посчитанных отдельных вкладов. */
+  kgSplit: { KG_300: Decimal; KG_400: Decimal }
+    & Partial<Record<Exclude<CostGroup, 'KG_300' | 'KG_400'>, Decimal>>
+  /** Task 04 (F-12 companion): скидка — не группа DIN 276, отдельное поле. */
+  discountDriver: BuildingResult['drivers'][number] | null
   /** Ведущая ставка сегмента (D-11 v2): у Haus A единственный сегмент Wohnen. */
   leadRate: Rate
   secondaryRateBgf: Rate
@@ -1118,8 +1126,12 @@ type Store = {
   /** Применённые надбавки за риск — часть конфигурации Option (D-02). */
   risikoAktiv: Record<string, boolean>
   snapshots: OfferSnapshot[]
-  /** Дельта-чип живёт 4 секунды, потом уезжает в журнал (DC-2). */
-  activeDelta: { label: string; deltaExact: Decimal; percent: Decimal } | null
+  /** Дельта-чип живёт 4 секунды, потом уезжает в журнал (DC-2).
+   *  `percent: null` — процент от нулевой базы математически не определён
+   *  (деление на ноль); Task 04 (F-30) заменяет прежнее «(+ 0,00 %)» рядом
+   *  с реальной ненулевой дельтой честным отсутствием строки, а не ложным
+   *  нулём (rule 30 — запрет ложной точности). */
+  activeDelta: { label: string; deltaExact: Decimal; percent: Decimal | null } | null
   /**
    * Geist-Vorschau (DC-28): последствие опции у цены ДО клика. Эфемерное
    * UI-состояние вроде `openConfiguratorStep` — данные не меняются, события нет.
@@ -2155,6 +2167,45 @@ function computeProjection(
     })
   }
   const allDrivers = [...baseDrivers, ...optDrivers]
+  // Task 04 (F-12, rule 32): the DIN 276 rail table only ever printed
+  // KG_300/400/700 — KG 200/500/600/800 amounts already exist as separate
+  // `Driver` contributions (each tagged `scopeRefs: ['KG 200']` etc. by
+  // `scopeCatalogDrivers`/the KG 700+800 pushes above), only never summed
+  // for display. No new formula: this reads the SAME drivers already
+  // rendered in Kostentreiber, grouped by their own existing scope tag.
+  // KG_300/KG_400 stay exactly `effectiveKgSplit`'s PURE structural split —
+  // deliberately NOT inflated by risk surcharges here: `splitKg300()`
+  // (the KG 300 subgroup drilldown, both in this file's `riskDriver` calls
+  // above and in OfferPanel's expand-row) reads this same value and
+  // re-derives subgroup shares from it by FIXED percentage; folding a
+  // surcharge in first would silently re-distribute that surcharge across
+  // every subgroup by structural weight instead of leaving it on the one
+  // subgroup it actually applies to (regression caught by
+  // scenario.dom.test.tsx's ground-risk assertion during this task).
+  // Active risk surcharges instead get their own reconciliation row,
+  // exactly like the discount driver below (`discountDriver`).
+  const kgGroupSum = (label: string) => allDrivers
+    .filter((d) => d.scopeRefs.includes(label))
+    .reduce((sum, d) => sum.plus(d.exact), new Decimal(0))
+  const scopeCatalogGroupSplit: Partial<Record<CostGroup, Decimal>> = {
+    ...(scopeCatalogActive('KG_200') ? { KG_200: kgGroupSum('KG 200') } : {}),
+    ...(scopeCatalogActive('KG_500') ? { KG_500: kgGroupSum('KG 500') } : {}),
+    ...(scopeCatalogActive('KG_600') ? { KG_600: kgGroupSum('KG 600') } : {}),
+    ...(scopeCatalogActive('KG_800') ? { KG_800: kgGroupSum('KG 800') } : {}),
+  }
+  const fullKgSplit: { KG_300: Decimal; KG_400: Decimal }
+    & Partial<Record<Exclude<CostGroup, 'KG_300' | 'KG_400'>, Decimal>> = {
+    ...effectiveKgSplit,
+    // `echt`-Modus: KG 700 ist bei `kgSplit()` (Engine) gar nicht Teil des
+    // Bauwerk-Blocks mehr, sondern eine eigene `separatePosition` (Zeile
+    // 2018 ff. oben, `scopeRefs: ['KG 700']`) — vorher fehlte sie im
+    // Tisch aus demselben Grund wie KG 200/500/600/800. `vereinfacht`-
+    // Modus liefert KG_700 bereits über `effectiveKgSplit`; die beiden
+    // Quellen schließen sich gegenseitig aus (nie beide gleichzeitig
+    // ungleich null), daher ist die Addition kollisionsfrei.
+    KG_700: (effectiveKgSplit.KG_700 ?? new Decimal(0)).plus(kgGroupSum('KG 700')),
+    ...scopeCatalogGroupSplit,
+  }
   const total = beforeDiscount.plus(sumOfBlock(allDrivers, 'discount'))
   const completeness = perBuilding.every((r) => r.completeness === 'complete')
     ? 'complete' : 'incomplete'
@@ -2262,7 +2313,14 @@ function computeProjection(
 
   return {
     result,
-    kgSplit: effectiveKgSplit,
+    kgSplit: fullKgSplit,
+    // Task 04 (F-30 companion): the discount driver already exists
+    // (`key: 'rabatt'`, `block: 'discount'`) but had no row anywhere in
+    // the rail's KG breakdown — without it, an active discount would make
+    // the KG rows sum to `beforeDiscount`, not the printed `total` (rule
+    // 32). Exposed as its own field rather than folded into a KG group:
+    // a discount is not a DIN 276 cost group.
+    discountDriver: allDrivers.find((d) => d.key === 'rabatt') ?? null,
     leadRate,
     secondaryRateBgf: rate(total, bgf, 'BGF_ABOVE_GROUND'),
     perUnit: units === null ? null : rate(total, units, 'WOHNEINHEITEN'),
@@ -2566,7 +2624,7 @@ const store = createStore<Store>((set, get) => {
         activeDelta: {
           label: change.label,
           deltaExact: delta,
-          percent: delta.div(before).mul(100),
+          percent: before.isZero() ? null : delta.div(before).mul(100),
         },
       })
     }
@@ -2748,7 +2806,7 @@ const store = createStore<Store>((set, get) => {
       // Клик — фиксация: превью гаснет, начинается волна дельты (DC-28).
       set({
         preview: null,
-        activeDelta: { label, deltaExact: delta, percent: delta.div(before).mul(100) },
+        activeDelta: { label, deltaExact: delta, percent: before.isZero() ? null : delta.div(before).mul(100) },
       })
     },
 
@@ -2787,7 +2845,7 @@ const store = createStore<Store>((set, get) => {
         activeDelta: {
           label: `Untergeschoss ${LABEL_UG[v]}`,
           deltaExact: delta,
-          percent: delta.div(before).mul(100),
+          percent: before.isZero() ? null : delta.div(before).mul(100),
         },
       })
     },
@@ -2870,7 +2928,7 @@ const store = createStore<Store>((set, get) => {
               ? `${groupLabel} ${COVERAGE_LABEL[st]} · KG 700 im All3-Verfahren 70/22/8 verteilt`
               : `${groupLabel} ${COVERAGE_LABEL[st]}`,
           deltaExact: delta,
-          percent: before.isZero() ? new Decimal(0) : delta.div(before).mul(100),
+          percent: before.isZero() ? null : delta.div(before).mul(100),
         },
       })
     },
@@ -3047,7 +3105,7 @@ const store = createStore<Store>((set, get) => {
         activeDelta: {
           label: `Regionalfaktor ${next ? 'aktiviert' : 'deaktiviert'}`,
           deltaExact: delta,
-          percent: delta.div(before).mul(100),
+          percent: before.isZero() ? null : delta.div(before).mul(100),
         },
       })
     },
@@ -3630,7 +3688,7 @@ const store = createStore<Store>((set, get) => {
           activeDelta: {
             label: next ? 'Risikozuschlag angewendet' : 'Risikozuschlag entfernt',
             deltaExact: delta,
-            percent: delta.div(before).mul(100),
+            percent: before.isZero() ? null : delta.div(before).mul(100),
           },
         })
       }
@@ -3721,7 +3779,7 @@ const store = createStore<Store>((set, get) => {
           activeDelta: {
             label: `${group.label}: ${choice?.label ?? value}`,
             deltaExact: delta,
-            percent: delta.div(before).mul(100),
+            percent: before.isZero() ? null : delta.div(before).mul(100),
           },
         })
       }
@@ -3760,7 +3818,7 @@ const store = createStore<Store>((set, get) => {
           activeDelta: {
             label: `${option.labelDe}: ${variant?.labelDe ?? value}`,
             deltaExact: delta,
-            percent: before.isZero() ? new Decimal(0) : delta.div(before).mul(100),
+            percent: before.isZero() ? null : delta.div(before).mul(100),
           },
         })
       }

@@ -5,6 +5,7 @@ import {
   __resetStoreForTests, useStore, wflConflict, scopeBoundariesStatus,
 } from '../store'
 import { KG400_GROUPS, choiceBlocked } from '../../engine/options'
+import type { CostGroup } from '../../engine/calculate'
 import type { JournalEvent, OfferSnapshot } from '../store'
 import { CONFIGURATOR_STEP } from '../chapters'
 
@@ -882,11 +883,27 @@ describe('KG 400, сертификаты и режим KG 700 (сценарий 
     expect(d.scopeRefs).toEqual(['KG 700'])
     // Своя позиция — значит НЕ доля блока: иначе она проведена дважды.
     expect(d.block).toBe('separatePosition')
-    expect(st().projection().kgSplit.KG_700).toBeUndefined()
+    // Task 04 (F-12, rule 32): прежде `kgSplit.KG_700` в режиме `echt`
+    // отсутствовал вовсе — сумма позиции была НЕ НУЛЕВОЙ (проверено выше:
+    // `after.gt(base)`), но в объекте, из которого рисуется рельса-таблица
+    // DIN 276, для неё не было ключа. `fullKgSplit` (store.ts) теперь
+    // читает эту же `separatePosition`-позицию по её собственному
+    // `scopeRefs: ['KG 700']` — без двойного счёта (та же сумма, что и
+    // сам драйвер `d` выше, не пересчитанная заново).
+    expect(st().projection().kgSplit.KG_700).toBeDefined()
+    expect(st().projection().kgSplit.KG_700!.equals(d.exact)).toBe(true)
     // Сумма драйверов по-прежнему равна итогу.
     const sum = st().projection().result.drivers
       .reduce((a, x) => a.plus(x.exact), new Decimal(0))
     expect(sum.equals(after)).toBe(true)
+    // Rule 32 (extended, Task 04 F-12): the rail's KG DIN 276 table prints
+    // one row per included KG group; those rows must themselves sum to
+    // the printed total. KG_300+KG_400+KG_700 covers the whole scope in
+    // this fixture (no KG 200/500/600/800 selection, no discount, no
+    // risk surcharge active), so the invariant is exact here.
+    const kg = st().projection().kgSplit
+    const rowSum = kg.KG_300.plus(kg.KG_400).plus(kg.KG_700!)
+    expect(rowSum.equals(after)).toBe(true)
   })
 })
 
@@ -938,6 +955,38 @@ describe('Покрытие групп затрат (сценарий п. 11) - �
     st().confirmGebaeudeklasse()
     expect(st().projection().result.totalLabel).toBe('Gesamt netto · Grundleistung All3')
     expect(st().projection().result.completeness).toBe('complete')
+  })
+
+  // Task 04 (F-12, rule 32): the deep-coherence audit measured the rail's
+  // KG DIN 276 table omitting included KG 200/600 — rows summed 12.3 %
+  // short of the printed total, percentages summed to 98 %. This exercises
+  // the general invariant with the SAME row set + filter the rail table
+  // itself uses (`Object.entries(p.kgSplit).filter(coverage === 'included')`
+  // in OfferPanel.tsx), across five simultaneously-included groups.
+  it('Task 04 (F-12): KG-Zeilen (300/400/700 + 500/600/800) summieren exakt zum gedruckten Total, Prozentspalte summiert zu 100 %', () => {
+    const st = () => useStore.getState()
+    st().setCoverage('KG_500', 'included')
+    st().setScopeCatalogQuantity('surface_parking_spaces', '20')
+    st().setCoverage('KG_600', 'included')
+    st().setCoverage('KG_800', 'included')
+    st().confirmGebaeudeklasse()
+    const p = st().projection()
+    expect(p.result.completeness).toBe('complete')
+    const includedGroups = (Object.keys(p.kgSplit) as CostGroup[])
+      .filter((g) => p.kgSplit[g] !== undefined && st().coverage[g] === 'included')
+    // KG 300, KG 400, KG 700 (vereinfacht default) + KG 500/600/800 above.
+    expect(includedGroups.length).toBe(6)
+    const rowSum = includedGroups.reduce(
+      (sum, g) => sum.plus(p.kgSplit[g]!), new Decimal(0),
+    )
+    // No discount, no risk surcharge active in this scenario — the KG rows
+    // alone must reconcile to the printed total with no residual.
+    expect(rowSum.toFixed(2)).toBe(p.result.total.exact.toFixed(2))
+    const percentSum = includedGroups.reduce(
+      (sum, g) => sum.plus(p.kgSplit[g]!.div(p.result.total.exact).mul(100)),
+      new Decimal(0),
+    )
+    expect(percentSum.toFixed(2)).toBe('100.00')
   })
 })
 
