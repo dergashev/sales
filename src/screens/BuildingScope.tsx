@@ -867,8 +867,17 @@ function TextFactField({
   const current = effectiveFactValue(fact)
   const [draft, setDraft] = useState(current ?? '')
   const [attempted, setAttempted] = useState(false)
+  // Tracks an uncommitted, in-progress edit so a `current` change triggered
+  // for an unrelated reason (e.g. a live re-analysis update elsewhere) can
+  // never silently discard it (M-1/D-08). Only an explicit commit or Escape
+  // clears it; building/field identity changes always resync regardless,
+  // since each building panel is a permanently mounted instance and never
+  // actually changes buildingId/factKey mid-life — this branch only fires
+  // on a genuine fresh mount.
+  const editingRef = useRef(false)
 
   useEffect(() => {
+    if (editingRef.current) return
     setDraft(current ?? '')
     setAttempted(false)
   }, [buildingId, current, factKey])
@@ -881,6 +890,7 @@ function TextFactField({
     if (draft.trim() !== current) {
       s.setBuildingFactOverride(buildingId, factKey, draft.trim())
     }
+    editingRef.current = false
     setAttempted(false)
   }
   const provenance = factPresentation(fact, t)
@@ -896,12 +906,14 @@ function TextFactField({
         <input
           value={draft}
           onChange={(event) => {
+            editingRef.current = true
             setDraft(event.target.value)
             setAttempted(false)
           }}
           onKeyDown={(event) => {
             if (event.key === 'Enter') commit()
             if (event.key === 'Escape') {
+              editingRef.current = false
               setDraft(current ?? '')
               setAttempted(false)
             }
