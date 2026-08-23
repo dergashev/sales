@@ -400,7 +400,7 @@ describe('Курсор отмены: композиции, которых не �
   it('undo → новое событие → undo → undo отменяет три разных события', () => {
     const st = () => useStore.getState()
     st().setEnergiestandard('EH_40')      // seq 1
-    st().setUntergeschoss('kein_ug')      // seq 2
+    st().setUntergeschoss(st().activeBuildingId, 'kein_ug')      // seq 2
     st().undo()                            // seq 3 отменяет 2
     st().toggleRegionalfaktor()            // seq 4
     st().undo()                            // seq 5 отменяет 4
@@ -440,7 +440,7 @@ describe('Курсор отмены: композиции, которых не �
 
 describe('DC-29: Undo-тост — производная журнала', () => {
   it('рискованное действие создаёт тост с дельтой и базой', () => {
-    useStore.getState().setUntergeschoss('kein_ug')
+    useStore.getState().setUntergeschoss(useStore.getState().activeBuildingId, 'kein_ug')
     const toast = useStore.getState().undoToast!
     expect(toast.seq).toBe(1)
     expect(toast.statusText).toContain('Untergeschoss')
@@ -496,7 +496,9 @@ describe('S3: Geist-Vorschau — последствие до клика (DC-28)'
   })
 
   it('уход с опции гасит превью; текущая опция превью не даёт', () => {
-    useStore.getState().previewOption({ kind: 'untergeschoss', value: 'kein_ug' })
+    useStore.getState().previewOption({
+      kind: 'untergeschoss', buildingId: useStore.getState().activeBuildingId, value: 'kein_ug',
+    })
     expect(useStore.getState().preview!.deltaExact.toFixed(2)).toBe('-476000.00')
     useStore.getState().previewOption(null)
     expect(useStore.getState().preview).toBeNull()
@@ -551,7 +553,7 @@ describe('DC-44: направление, отнесение и ID вклада',
   })
 
   it('экономящий драйвер поддержан симметрично: знак отрицателен, сумма сходится', () => {
-    useStore.getState().setUntergeschoss('kein_ug')
+    useStore.getState().setUntergeschoss(useStore.getState().activeBuildingId, 'kein_ug')
     const r = useStore.getState().projection().result
     expect(r.drivers.some((d) => d.key.startsWith('untergeschoss_'))).toBe(false)
     expect(r.drivers.some((d) => d.key === 'tiefgarage_zuschlag')).toBe(false)
@@ -676,7 +678,7 @@ describe('S2: конфликт значения и версии документ
 describe('M-4: недостаточно happy-path — курсор отмены и снапшот', () => {
   it('двойной undo отменяет ДВА разных события, третий — no-op', () => {
     useStore.getState().setEnergiestandard('EH_40')
-    useStore.getState().setUntergeschoss('kein_ug')
+    useStore.getState().setUntergeschoss(useStore.getState().activeBuildingId, 'kein_ug')
     useStore.getState().undo() // отменяет UG
     useStore.getState().undo() // отменяет EH — не UG второй раз
     const s = useStore.getState()
@@ -1308,7 +1310,7 @@ describe('Происхождение вкладов: корзина показы
     const decisions = () => st().projection().result.drivers
       .filter((d) => d.origin === 'decision').map((d) => d.key)
     expect(decisions()).toContain('untergeschoss_vollausbau')
-    st().setUntergeschoss('kein_ug')
+    st().setUntergeschoss(st().activeBuildingId, 'kein_ug')
     // Решение снято — вклад исчез вместе с ним, сумма изменилась.
     expect(decisions()).not.toContain('untergeschoss_vollausbau')
   })

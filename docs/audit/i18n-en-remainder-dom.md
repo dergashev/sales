@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 56** · перевод есть, мост не подключён: 27
-· перевода нет (в поставку копирайта): 29
+**Всего 57** · перевод есть, мост не подключён: 27
+· перевода нет (в поставку копирайта): 30
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -57,10 +57,11 @@ Mit freundlichen Grüßen
 - Energiestandard und Zertifizierung
 - Entscheidung erforderlich · blockiert das Anlegen einer Opportunity Option
 - Fragen reduzieren die Schätzunsicherheit von ±
-- Geprüfte Gebäudewerte tragen ihre Herkunft; Änderungen heben die Bestätigung auf und werden in Gebäude & Umfang erneut geprüft.
+- Geprüfte Gebäudewerte tragen ihre Herkunft; Änderungen erfolgen ausschließlich in Gebäude & Umfang.
 - Konfiguration je Gebäude bestätigt
 - Kostengruppen nach DIN 276
 - Leistungsabgrenzung bestätigen
+- Planung ist Projektgröße, Ausführung gehört zum Gebäude — deshalb mehrere Zeilen und nicht eine. Die Fertigstellung ist dieselbe Zahl, die oben rechts als Kennzahl steht.
 - Projekt bestätigen
 - Projektübersicht
 - Später entscheiden

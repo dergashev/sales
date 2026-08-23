@@ -1266,7 +1266,18 @@ type Store = {
   ) => void
   clearBuildingFactOverride: (id: string, key: BuildingFactKey) => void
   setEnergiestandard: (v: BuildingInput['energiestandard']) => void
-  setUntergeschoss: (v: BuildingInput['untergeschoss']) => void
+  /**
+   * Task 02 (deep-coherence audit, F-01/F-15): Untergeschoss is a
+   * per-building fact (`b.untergeschoss`), never part of
+   * `sharedConfiguration.choices` — unlike KG 300/400 catalog choices,
+   * which genuinely resolve to the same value for every included building
+   * in SHARED mode (`choicesFor`). An explicit `buildingId` is therefore
+   * required here, the same way `kind: 'kg300'` already carries one in
+   * `PriceChange` — so SHARED mode can render one independently editable
+   * decision block per included building instead of silently mutating
+   * whichever building happens to be `activeBuildingId`.
+   */
+  setUntergeschoss: (buildingId: string, v: BuildingInput['untergeschoss']) => void
   setCoverage: (g: CostGroup, s: CoverageState) => void
   confirmGebaeudeklasse: () => void
   confirmEnergiestandardAnswer: () => void
@@ -1809,7 +1820,9 @@ function bgfSOf(id: string): Decimal {
  */
 export type PriceChange =
   | { kind: 'energiestandard'; value: BuildingInput['energiestandard'] }
-  | { kind: 'untergeschoss'; value: BuildingInput['untergeschoss'] }
+  // Task 02: carries an explicit `buildingId`, same reason `kind: 'kg300'`
+  // already does — Untergeschoss is always per-building, never shared.
+  | { kind: 'untergeschoss'; buildingId: string; value: BuildingInput['untergeschoss'] }
   | { kind: 'coverage'; group: CostGroup; value: CoverageState }
   | { kind: 'risiko'; id: string; active: boolean }
   | { kind: 'kg700'; value: 'vereinfacht' | 'hoaiAho' }
@@ -1826,13 +1839,22 @@ function withChange<S extends Parameters<typeof computeProjection>[0] & {
 }>(s: S, change: PriceChange): S {
   switch (change.kind) {
     case 'energiestandard':
-    case 'untergeschoss':
       return {
         ...s,
         buildings: {
           ...s.buildings,
           [s.activeBuildingId]: {
-            ...s.buildings[s.activeBuildingId]!, [change.kind]: change.value,
+            ...s.buildings[s.activeBuildingId]!, energiestandard: change.value,
+          },
+        },
+      }
+    case 'untergeschoss':
+      return {
+        ...s,
+        buildings: {
+          ...s.buildings,
+          [change.buildingId]: {
+            ...s.buildings[change.buildingId]!, untergeschoss: change.value,
           },
         },
       }
@@ -2161,18 +2183,36 @@ function computeProjection(
   // ОДНУ и ту же Fertigstellung (Tech Review P1: до этой правки герой читал
   // фиксированный литерал и не двигался вместе с диаграммой). Якорь —
   // ТА ЖЕ дата начала `project.planning`, что использует ChapterTermine.
+  //
+  // Task 02 (deep-coherence audit, F-17): тот литерал был окном ИМЕННО
+  // Haus A (`2027-04-04`–`2027-11-19`) — совпадение, не расчёт: герой
+  // никогда не читал фикстуру нескольких зданий, только `list[0]`. Фикстура
+  // уже содержит настоящее окно Haus B (`building:DEMO-B-B.execution`,
+  // до 2028-01-04 — позже Haus A), поэтому у комплекса из двух зданий
+  // прежний герой называл не позднейшее завершение, а завершение первого
+  // здания в списке. Rule 39 (Bauzeit = max(start+dauer), никогда сумма
+  // и никогда одно случайно выбранное здание): взять реальное окно КАЖДОГО
+  // включённого здания из фикстуры и выбрать здание с самым поздним концом.
   const executionAnchor = demo.schedule.metrics
     .find((m) => m.metricKey === 'project.planning')!.startDate
+  const buildingExecutionWindows = list.map((b) => {
+    const fixture = demo.schedule.metrics
+      .find((m) => m.metricKey === `building:${b.id}.execution`)!
+    return { buildingId: b.id, startDate: fixture.startDate, endDate: fixture.endDate }
+  })
+  const latestExecution = buildingExecutionWindows.reduce((latest, current) => (
+    current.endDate > latest.endDate ? current : latest
+  ))
   const shiftedExecution = (s.constructionStartDate
     ? shiftScheduleMetrics(
-      [{ startDate: '2027-04-04', endDate: '2027-11-19' }],
+      [latestExecution],
       executionAnchor,
       s.constructionStartDate,
     )
-    : [{ startDate: '2027-04-04', endDate: '2027-11-19' }])[0]!
+    : [latestExecution])[0]!
   const duration = presentDuration(
     {
-      metricKey: `building:${list[0]!.id}.execution`,
+      metricKey: `building:${latestExecution.buildingId}.execution`,
       kind: 'buildingExecution',
       startDate: shiftedExecution.startDate,
       endDate: shiftedExecution.endDate,
@@ -2709,13 +2749,13 @@ const store = createStore<Store>((set, get) => {
       })
     },
 
-    setUntergeschoss: (v) => {
+    setUntergeschoss: (buildingId, v) => {
       const s = get()
-      const b = activeBuilding(s)
-      if (b.untergeschoss === v) return
+      const b = s.buildings[buildingId]
+      if (!b || b.untergeschoss === v) return
       const before = s.projection().result.total.exact
       const prev = b.untergeschoss
-      const id = s.activeBuildingId
+      const id = buildingId
       const write = (value: BuildingInput['untergeschoss']) => set((state) => {
         const review = state.buildingReviews[id]
         if (!review) return {}
@@ -2726,9 +2766,15 @@ const store = createStore<Store>((set, get) => {
       write(v)
       const after = get().projection().result.total.exact
       const delta = after.minus(before)
+      // Task 02: name the building in the journal label whenever more than
+      // one is included — the same reason the driver `key` prefix below
+      // already carries a buildingId once `list.length > 1` (rule 25/F-01).
+      const review = s.buildingReviews[id]
+      const docName = review ? effectiveFactValue(review.facts.documentationName) ?? id : id
+      const buildingLabel = includedBuildingIds(s).length > 1 ? ` (${docName})` : ''
       apply({
         kind: 'option.selected',
-        label: `Untergeschoss ${LABEL_UG[prev]} → ${LABEL_UG[v]}`,
+        label: `Untergeschoss ${LABEL_UG[prev]} → ${LABEL_UG[v]}${buildingLabel}`,
         deltaExact: delta,
         inverse: () => write(prev),
         forward: () => write(v),

@@ -25,7 +25,7 @@ const COMMIT: Record<PriceChange['kind'], (c: never) => void> = {
   energiestandard: (c: Extract<PriceChange, { kind: 'energiestandard' }>) =>
     st().setEnergiestandard(c.value),
   untergeschoss: (c: Extract<PriceChange, { kind: 'untergeschoss' }>) =>
-    st().setUntergeschoss(c.value),
+    st().setUntergeschoss(c.buildingId, c.value),
   coverage: (c: Extract<PriceChange, { kind: 'coverage' }>) =>
     st().setCoverage(c.group, c.value),
   risiko: (c: Extract<PriceChange, { kind: 'risiko' }>) => st().toggleRisiko(c.id),
@@ -36,7 +36,7 @@ const COMMIT: Record<PriceChange['kind'], (c: never) => void> = {
 
 const CASES: PriceChange[] = [
   { kind: 'energiestandard', value: 'EH_40' },
-  { kind: 'untergeschoss', value: 'ab_decke' },
+  { kind: 'untergeschoss', buildingId: 'DEMO-B-A', value: 'ab_decke' },
   { kind: 'coverage', group: 'KG_500', value: 'included' },
   { kind: 'risiko', id: 'RISK-STATIK', active: true },
   { kind: 'kg700', value: 'hoaiAho' },

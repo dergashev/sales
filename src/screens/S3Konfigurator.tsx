@@ -19,10 +19,11 @@ import {
   type ConfigurationDisplayStatus,
   type ConfigurationMode,
 } from '../state/store'
-import { NNBSP } from '../engine/money'
+import { formatDE, NNBSP } from '../engine/money'
 import { useT, useTx } from '../i18n'
 import { incompleteReasonText } from '../i18n/reasons'
 import {
+  bgfAboveGround,
   type BuildingInput,
   type CostGroup,
   type CoverageState,
@@ -30,7 +31,7 @@ import {
 import { Decimal } from 'decimal.js'
 import {
   Button,
-  NumericField,
+  ProvenanceChip,
   type ProvenancePresentation,
 } from '../components/primitives'
 import {
@@ -56,7 +57,7 @@ import {
   KG800_CATALOG_OPTIONS,
 } from '../engine/scopeCatalog'
 import { RISK_ITEMS, riskDriver } from '../engine/risk'
-import { presentDuration, shiftScheduleMetrics } from '../engine/schedule'
+import { modelDuration, presentDuration, shiftScheduleMetrics } from '../engine/schedule'
 import demo from '../fixtures/demo-0001.json'
 import { present, label as moneyLabel } from '../engine/money'
 import { isVisibleInOutputProfile } from '../state/clientProjection'
@@ -1040,55 +1041,86 @@ function EnergyCertBanner() {
  * `ugVariante` in KG 300 und führte zu einer echten Doppelabrechnung des
  * Untergeschosses — Zahlen wichen 36 €/m² von der Spezifikation ab (Review
  * 26, Befunde 5 und 19), behoben, indem „ein Entschluss — ein Eigentümer"
- * wurde. Diese Karte ZEIGT den bereits in Leistungsabgrenzung bestätigten
+ * wurde. Diese Karte ZEIGT den bereits in Flächen im Detail getroffenen
  * Zustand und verlinkt dorthin, statt ihn hier zweiten Mal editierbar zu
  * machen — funktional erfüllt das die Anforderung „sichtbar in KG 300",
  * ohne den bekannten Fehler erneut einzuführen.
+ *
+ * Task 02 (deep-coherence audit, F-02): der Verweis zeigte vorher auf
+ * Kapitel 1 „Leistungsabgrenzung" — dort existiert gar keine
+ * Untergeschoss-Kontrolle. Der tatsächliche Eigentümer der Entscheidung ist
+ * `ChapterFlaechen` („Flächen im Detail"); der Text und das Sprungziel
+ * folgen jetzt dem echten Owner, nicht der Kapitelreihenfolge von vor der
+ * Ablösung von `ugVariante`.
  *
  * `hasParking` (Tiefgarage) hat im Store noch keinen eigenen Setter — der
  * Wert kommt ausschließlich aus der Gebäudeprüfung (Building & Scope).
  * Auch hier reine Anzeige statt einer erfundenen Mutation (siehe
  * Implementierungsbericht, bekannte Einschränkung dieses Kandidaten).
+ *
+ * Task 02 (F-01/F-15): in SHARED mode this recap now renders one line per
+ * INCLUDED building instead of only `activeBuildingId`'s — Untergeschoss is
+ * always a per-building fact, never part of `sharedConfiguration`, so an
+ * unnamed single line silently misrepresented whichever other building
+ * wasn't currently active. PER_BUILDING mode is unchanged: its own tab
+ * already names the building unambiguously.
  */
 function UndergroundFloorRecap() {
   const s = useStore()
   const tx = useTx()
   const t = useT()
   const { fadeRise } = useSemanticMotion()
-  const b = activeBuilding(s)
-  const included = b.untergeschoss !== 'kein_ug'
+  const ids = s.configurationMode === 'SHARED'
+    ? includedBuildingIds(s)
+    : [s.activeBuildingId]
+  const multi = ids.length > 1
   return (
     <Card
       title="Untergeschoss"
-      intro={'Entschieden in Leistungsabgrenzung — hier nur zur Einordnung sichtbar.'}
+      intro={t('configurator.underground.decidedIn')}
     >
-      <p className="text-body text-text-primary">
-        <span aria-hidden="true">{included ? '● ' : '▲ '}</span>
-        {included ? tx('Enthalten') : tx('Nicht enthalten')}
-      </p>
-      <AnimatePresence initial={false} mode="wait">
-        {included && (
-          <motion.div
-            key="ug-included-detail"
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            variants={fadeRise}
-          >
-            <p className="a3-cap mt-1">{LABEL_UG[b.untergeschoss]}</p>
-            <p className="a3-cap mt-2">
-              {b.hasParking
-                ? tx('Tiefgarage im Untergeschoss enthalten.')
-                : tx('Keine Tiefgarage im Untergeschoss.')}
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div className="grid gap-4">
+        {ids.map((id) => {
+          const b = s.buildings[id]!
+          const included = b.untergeschoss !== 'kein_ug'
+          return (
+            <div key={id} className={multi ? 'border-b border-border-subtle pb-4 last:border-0 last:pb-0' : undefined}>
+              {multi && (
+                <p className="text-small font-medium text-text-primary">
+                  {t('configurator.underground.title', { building: buildingName(s, id) })}
+                </p>
+              )}
+              <p className={'text-body text-text-primary' + (multi ? ' mt-1' : '')}>
+                <span aria-hidden="true">{included ? '● ' : '▲ '}</span>
+                {included ? tx('Enthalten') : tx('Nicht enthalten')}
+              </p>
+              <AnimatePresence initial={false} mode="wait">
+                {included && (
+                  <motion.div
+                    key={`ug-included-detail-${id}`}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    variants={fadeRise}
+                  >
+                    <p className="a3-cap mt-1">{LABEL_UG[b.untergeschoss]}</p>
+                    <p className="a3-cap mt-2">
+                      {b.hasParking
+                        ? tx('Tiefgarage im Untergeschoss enthalten.')
+                        : tx('Keine Tiefgarage im Untergeschoss.')}
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )
+        })}
+      </div>
       <div className="mt-3">
         <Button onClick={() =>
-          s.openConfiguratorStepAt(CONFIGURATOR_STEP.SCOPE_BOUNDARIES)}>
-          {t('configurator.scopeBoundaries.goTo', {
-            chapter: configuratorStepPosition(s, CONFIGURATOR_STEP.SCOPE_BOUNDARIES),
+          s.openConfiguratorStepAt(CONFIGURATOR_STEP.AREAS)}>
+          {t('configurator.areas.goTo', {
+            chapter: configuratorStepPosition(s, CONFIGURATOR_STEP.AREAS),
           })}
         </Button>
       </div>
@@ -1143,123 +1175,186 @@ function UnavailableConfiguratorFact({
   )
 }
 
+/**
+ * Task 02 (deep-coherence audit, F-15): read-only counterpart of
+ * `NumericField` for building-scoped area facts inside the Configurator.
+ * `ChapterFlaechen` used to render these EDITABLE, with `onCommit ->
+ * setBuildingFactOverride` — a third editing surface for facts Building &
+ * Scope already owns (Task 01's `buildingReviews`/`BuildingFact<T>` model
+ * is the single fact owner). Same visual weight as `NumericField` (label,
+ * value+unit, provenance chip, border-b separator) so removing the input
+ * doesn't change the section's rhythm — only its editability, plus the
+ * same "In Gebäude & Umfang prüfen" review link `UnavailableConfiguratorFact`
+ * already uses for the missing-data case.
+ */
+function ReadOnlyAreaFact({
+  label, value, unit, decimals = 2, integer = false, provenance, onReview,
+}: {
+  label: string
+  value: Decimal
+  unit?: string
+  decimals?: number
+  integer?: boolean
+  provenance: ProvenancePresentation
+  onReview: () => void
+}) {
+  const t = useT()
+  return (
+    <div className="border-b border-border-subtle py-4">
+      <span className="block text-small font-medium text-text-primary">{label}</span>
+      {/* Same `.numeric` + `ProvenanceChip` pattern BuildingScope.tsx already
+          uses for a read fact value (rule 7: tabular-nums, right-aligned) —
+          not `.a3-input`, which is the EDITABLE-field wrapper and expects a
+          real `<input>` for its child selectors to apply to. */}
+      <p className="numeric mt-2 text-body text-text-primary" aria-label={`${label}${unit ? ` · ${unit}` : ''}`}>
+        {formatDE(value, integer ? 0 : decimals)}{unit ? `${NNBSP}${unit}` : ''}
+      </p>
+      <div className="mt-2 flex flex-wrap items-center gap-3">
+        <ProvenanceChip provenance={provenance} />
+        <Button variant="ghost" onClick={onReview}>
+          {t('configurator.areas.review')}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Task 02 (F-01/F-15/F-02): SHARED mode used to read only
+ * `s.activeBuildingId`, so a project's other included building had no area
+ * card and no Untergeschoss decision reachable from this chapter at all —
+ * the exact mechanism behind the audit's headline contradiction (KG 300
+ * shows one building's "nicht enthalten" while the recap simultaneously
+ * prices another building's Untergeschoss, neither named). In SHARED mode
+ * this chapter now renders one area card AND one Untergeschoss decision
+ * block per INCLUDED building; PER_BUILDING mode is unchanged — its own
+ * tab already names the single active building unambiguously.
+ */
 function ChapterFlaechen() {
   const t = useT()
   const s = useStore()
-  const buildingId = s.activeBuildingId
-  const review = s.buildingReviews[buildingId]
-  const building = buildingName(s, buildingId)
-  const aboveGround = review
-    ? effectiveDerivedArea(review, s.buildingConflicts, 'bgfRSAbove')
-    : null
-  const aboveGroundProvenance = derivedAboveGroundPresentation(s, buildingId, t)
-  const wfl = review ? effectiveFactValue(review.facts.wfl) : null
-  const wflProvenance = review ? factPresentation(review.facts.wfl, t) : null
-  const units = review ? effectiveFactValue(review.facts.units) : null
-  const unitsProvenance = review ? factPresentation(review.facts.units, t) : null
-  const reviewBuilding = () => s.setPipelineView('buildingScope')
+  const ids = s.configurationMode === 'SHARED'
+    ? includedBuildingIds(s)
+    : [s.activeBuildingId]
+  const multi = ids.length > 1
 
   return (
     <div className="grid gap-5">
-      <Card
-        title={t('configurator.areas.title', { building })}
-        intro={'Geprüfte Gebäudewerte tragen ihre Herkunft; Änderungen heben ' +
-          'die Bestätigung auf und werden in Gebäude & Umfang erneut geprüft.'}
-      >
-        {aboveGround?.value && aboveGroundProvenance ? (
-          <NumericField
-            label={t('buildingScope.fact.bgfRSAbove')}
-            value={aboveGround.value}
-            unit="m²"
-            provenance={aboveGroundProvenance}
-            onCommit={(value, confirmed) => s.setBuildingFactOverride(
-              buildingId,
-              'bgfRSAbove',
-              value,
-              confirmed ? 'customer confirmation' : 'sales-user',
-            )}
-          />
-        ) : (
-          <UnavailableConfiguratorFact
-            building={building}
-            field={t('buildingScope.fact.bgfRSAbove')}
-            onReview={reviewBuilding}
-          />
-        )}
-        {wfl && wflProvenance ? (
-          <NumericField
-            label={t('buildingScope.fact.wfl')}
-            value={wfl}
-            unit="m²"
-            provenance={wflProvenance}
-            onCommit={(value, confirmed) => s.setBuildingFactOverride(
-              buildingId,
-              'wfl',
-              value,
-              confirmed ? 'customer confirmation' : 'sales-user',
-            )}
-          />
-        ) : (
-          <UnavailableConfiguratorFact
-            building={building}
-            field={t('buildingScope.fact.wfl')}
-            onReview={reviewBuilding}
-          />
-        )}
-        {units && unitsProvenance ? (
-          <NumericField
-            label={t('buildingScope.fact.units')}
-            value={units}
-            decimals={0}
-            integer
-            provenance={unitsProvenance}
-            onCommit={(value, confirmed) => s.setBuildingFactOverride(
-              buildingId,
-              'units',
-              value,
-              confirmed ? 'customer confirmation' : 'sales-user',
-            )}
-          />
-        ) : (
-          <UnavailableConfiguratorFact
-            building={building}
-            field={t('buildingScope.fact.units')}
-            onReview={reviewBuilding}
-          />
-        )}
-      </Card>
+      {ids.map((buildingId) => {
+        const review = s.buildingReviews[buildingId]
+        const building = buildingName(s, buildingId)
+        const aboveGround = review
+          ? effectiveDerivedArea(review, s.buildingConflicts, 'bgfRSAbove')
+          : null
+        const aboveGroundProvenance = derivedAboveGroundPresentation(s, buildingId, t)
+        const wfl = review ? effectiveFactValue(review.facts.wfl) : null
+        const wflProvenance = review ? factPresentation(review.facts.wfl, t) : null
+        const units = review ? effectiveFactValue(review.facts.units) : null
+        const unitsProvenance = review ? factPresentation(review.facts.units, t) : null
+        const reviewBuilding = () => s.setPipelineView('buildingScope')
 
-      <Card
-        title="Untergeschoss"
-        intro={'Die Vorschau am Preis erscheint beim Zeigen auf eine Option — ' +
-          'entschieden ist erst der Klick.'}
-      >
-        {/* Одно решение — один владелец. Прежде тот же выбор существовал
-            ВТОРОЙ раз опцией `ugVariante` в главе KG 300, со своими
-            дельтами −714 / −1190 от слитой ставки 1.190: числа расходились
-            со спецификацией на 36 €/m², а два контрола над одной физической
-            областью позволяли вычесть подвал дважды (ревью 26, находки 5 и
-            19). Ось принадлежит уровню Building (D-11 v2), цену считает
-            движок по трём ставкам каталога — а карточки с изображениями
-            переехали сюда, потому что выбор объёма подвала и должен
-            выглядеть выбором, а не полем формы. */}
-        <RadioCardGroup
-          legend="Untergeschoss"
-          legendHidden
-          value={activeBuilding(s).untergeschoss}
-          onChange={(v) => s.setUntergeschoss(v)}
-          onPreview={(v) =>
-            s.previewOption(v ? { kind: 'untergeschoss', value: v } : null)}
-          options={(['vollausbau', 'ab_decke', 'kein_ug'] as const).map((v) => ({
-            value: v,
-            title: LABEL_UG[v],
-            image: optionImage('ugVariante', UG_IMAGE_VALUE[v]),
-            consequence: activeBuilding(s).untergeschoss === v
-              ? 'aktuelle Auswahl'
-              : consequenceLabel(s.optionDelta({ kind: 'untergeschoss', value: v })),
-          }))}
-        />
-      </Card>
+        return (
+          <Card
+            key={buildingId}
+            title={t('configurator.areas.title', { building })}
+            intro={'Geprüfte Gebäudewerte tragen ihre Herkunft; Änderungen erfolgen '
+              + 'ausschließlich in Gebäude & Umfang.'}
+          >
+            {aboveGround?.value && aboveGroundProvenance ? (
+              <ReadOnlyAreaFact
+                label={t('buildingScope.fact.bgfRSAbove')}
+                value={aboveGround.value}
+                unit="m²"
+                provenance={aboveGroundProvenance}
+                onReview={reviewBuilding}
+              />
+            ) : (
+              <UnavailableConfiguratorFact
+                building={building}
+                field={t('buildingScope.fact.bgfRSAbove')}
+                onReview={reviewBuilding}
+              />
+            )}
+            {wfl && wflProvenance ? (
+              <ReadOnlyAreaFact
+                label={t('buildingScope.fact.wfl')}
+                value={wfl}
+                unit="m²"
+                provenance={wflProvenance}
+                onReview={reviewBuilding}
+              />
+            ) : (
+              <UnavailableConfiguratorFact
+                building={building}
+                field={t('buildingScope.fact.wfl')}
+                onReview={reviewBuilding}
+              />
+            )}
+            {units && unitsProvenance ? (
+              <ReadOnlyAreaFact
+                label={t('buildingScope.fact.units')}
+                value={units}
+                decimals={0}
+                integer
+                provenance={unitsProvenance}
+                onReview={reviewBuilding}
+              />
+            ) : (
+              <UnavailableConfiguratorFact
+                building={building}
+                field={t('buildingScope.fact.units')}
+                onReview={reviewBuilding}
+              />
+            )}
+          </Card>
+        )
+      })}
+
+      {ids.map((buildingId) => {
+        const b = s.buildings[buildingId]!
+        return (
+          <Card
+            key={`ug-${buildingId}`}
+            title={multi
+              ? t('configurator.underground.title', { building: buildingName(s, buildingId) })
+              : 'Untergeschoss'}
+            intro={'Die Vorschau am Preis erscheint beim Zeigen auf eine Option — ' +
+              'entschieden ist erst der Klick.'}
+          >
+            {/* Одно решение — один владелец. Прежде тот же выбор существовал
+                ВТОРОЙ раз опцией `ugVariante` в главе KG 300, со своими
+                дельтами −714 / −1190 от слитой ставки 1.190: числа расходились
+                со спецификацией на 36 €/m², а два контрола над одной физической
+                областью позволяли вычесть подвал дважды (ревью 26, находки 5 и
+                19). Ось принадлежит уровню Building (D-11 v2), цену считает
+                движок по трём ставкам каталога — а карточки с изображениями
+                переехали сюда, потому что выбор объёма подвала и должен
+                выглядеть выбором, а не полем формы.
+
+                Task 02: `setUntergeschoss`/`kind: 'untergeschoss'` now carry
+                an explicit `buildingId` (this loop's `buildingId`, not
+                `activeBuildingId`) so each of the N blocks rendered in
+                SHARED mode stays independently correct — the same reason
+                `kind: 'kg300'` already carries one. */}
+            <RadioCardGroup
+              legend="Untergeschoss"
+              legendHidden
+              value={b.untergeschoss}
+              onChange={(v) => s.setUntergeschoss(buildingId, v)}
+              onPreview={(v) =>
+                s.previewOption(v ? { kind: 'untergeschoss', buildingId, value: v } : null)}
+              options={(['vollausbau', 'ab_decke', 'kein_ug'] as const).map((v) => ({
+                value: v,
+                title: LABEL_UG[v],
+                image: optionImage('ugVariante', UG_IMAGE_VALUE[v]),
+                consequence: b.untergeschoss === v
+                  ? 'aktuelle Auswahl'
+                  : consequenceLabel(s.optionDelta({ kind: 'untergeschoss', buildingId, value: v })),
+              }))}
+            />
+          </Card>
+        )
+      })}
     </div>
   )
 }
@@ -1297,9 +1392,17 @@ function ChapterEnergie() {
  *
  * Фазы берутся из метрик фикстуры, а не назначаются здесь: планирование —
  * величина уровня проекта, исполнение — уровня здания, и это разные строки
- * в `schedule.metrics`. Веха завершения — конец исполнения Haus A, то же
- * значение, что показывает герой срока в правой панели: два представления
- * одной даты обязаны приходить из одного места.
+ * в `schedule.metrics`. Веха завершения — самый поздний конец исполнения
+ * СРЕДИ ВСЕХ включённых зданий (rule 39: max, не одно случайно выбранное
+ * здание), то же значение, что показывает герой срока в правой панели: два
+ * представления одной даты обязаны приходить из одного места.
+ *
+ * Task 02 (deep-coherence audit, F-17): прежде здесь была ровно одна строка
+ * исполнения, жёстко привязанная к `building:DEMO-B-A.execution` —
+ * фикстура уже содержала `building:DEMO-B-B.execution`
+ * (до 2028-01-04, позже Haus A), но эта глава её не читала, и Haus B не
+ * существовал в расписании вовсе. Теперь одна строка исполнения на КАЖДОЕ
+ * включённое здание, с его собственным именем.
  */
 /**
  * Construction Period (тикет): Baubeginn wählen. Verschiebt NUR den Anker
@@ -1336,23 +1439,42 @@ function ConstructionStartDateField() {
   )
 }
 
+// Task 02: one execution color per included building, cycling the same
+// dataviz category scale planning already uses category-1 from.
+const EXECUTION_COLOR_VARS = [
+  '--color-dataviz-category-2', '--color-dataviz-category-3',
+]
+
 function ChapterTermine() {
   const s = useStore()
   const tx9 = useTx()
+  const t = useT()
   const metrics = demo.schedule.metrics
   const planningFixture = metrics.find((m) => m.metricKey === 'project.planning')!
-  const hausFixture = metrics.find((m) => m.metricKey === 'building:DEMO-B-A.execution')!
+  const includedIds = includedBuildingIds(s)
+  const executionFixtures = includedIds.map((id) => ({
+    id,
+    fixture: metrics.find((m) => m.metricKey === `building:${id}.execution`)!,
+  }))
   const shifted = s.constructionStartDate
     ? shiftScheduleMetrics(
-      [planningFixture, hausFixture], planningFixture.startDate, s.constructionStartDate,
+      [planningFixture, ...executionFixtures.map((e) => e.fixture)],
+      planningFixture.startDate,
+      s.constructionStartDate,
     )
-    : [planningFixture, hausFixture]
+    : [planningFixture, ...executionFixtures.map((e) => e.fixture)]
   const planning = shifted.find((m) => m.metricKey === planningFixture.metricKey)!
-  const haus = shifted.find((m) => m.metricKey === hausFixture.metricKey)!
-  // Подпись длительности исполнения — из ТОЙ ЖЕ проекции, что герой срока
-  // в панели: два представления одной величины из одного места. Дата
-  // Baubeginn сдвигает Kalenderdaten, nicht diese modellierte Dauer.
-  const dur = s.projection().duration
+  const executions = executionFixtures.map(({ id, fixture }) => ({
+    id,
+    metric: shifted.find((m) => m.metricKey === fixture.metricKey)!,
+  }))
+  // Rule 39: die Fertigstellung des Komplexes ist das SPÄTESTE Bauende
+  // unter allen einbezogenen Gebäuden — nie ein einzelnes, zufällig
+  // zuerst in der Liste stehendes Gebäude (F-17). Dieselbe Auswahl trifft
+  // `computeProjection`'s Held-Dauer; beide lesen dieselbe Fixture.
+  const latestExecution = executions.reduce((latest, current) => (
+    current.metric.endDate > latest.metric.endDate ? current : latest
+  ))
   // Planung: 3 Monate ist eine feste Katalogkonstante (calculation-spec §4),
   // unabhängig vom Anker. Aber ein verschobener Baubeginn kann die
   // Kalendergrenze aus einem GANZEN Kalendermonat herausschieben (Tech
@@ -1373,20 +1495,31 @@ function ChapterTermine() {
     // schreiben hieße, denselben Fakt an zwei Stellen zu pflegen.
     new Decimal(planningFixture.wholeCalendarMonths!),
   )
+  // Task 02: die Modell-Dauer je Zeile kommt aus dem BGF oberirdisch DIESES
+  // Gebäudes — nie aus der Projekt-Summe (die bleibt für den Held reserviert,
+  // s. computeProjection). Sonst trüge Haus B die Dauer-Schätzung, die auf
+  // der BGF-Summe beider Gebäude beruht, statt auf seiner eigenen.
+  const executionDurations = Object.fromEntries(executions.map(({ id, metric }) => [
+    id,
+    presentDuration(
+      { ...metric, kind: 'buildingExecution', durationBasis: 'calendarDay' },
+      modelDuration(bgfAboveGround(s.buildings[id]!), new Decimal('1.00'), new Decimal('1.15')),
+    ),
+  ]))
 
   return (
     <div className="grid gap-5">
       <Card
         title="Bauzeit"
         intro={'Planung ist Projektgröße, Ausführung gehört zum Gebäude — deshalb ' +
-          'zwei Zeilen und nicht eine. Die Fertigstellung ist dieselbe Zahl, die ' +
+          'mehrere Zeilen und nicht eine. Die Fertigstellung ist dieselbe Zahl, die ' +
           'oben rechts als Kennzahl steht.'}
       >
         <ConstructionStartDateField />
         <div className="mt-4">
         <ScheduleGantt
           caption="Bauzeit nach Phasen mit Beginn, Ende, Dauer und Abhängigkeit"
-          finishISO={haus.endDate}
+          finishISO={latestExecution.metric.endDate}
           provenance={s.mode === 'intern'
             ? tx9('Kalender: Kalendermonate · Staffelstart aus ScheduleModel')
             : undefined}
@@ -1401,19 +1534,29 @@ function ChapterTermine() {
               durationLabel: `${planningDuration.prefix}${planningDuration.prefix ? NNBSP : ''}${planningDuration.display}`,
               colorVar: '--color-dataviz-category-1',
             },
-            {
-              key: haus.metricKey,
-              label: 'Rohbau + Ausbau',
-              unit: `Haus${NNBSP}A`,
-              dependency: 'nach Planung',
-              startISO: haus.startDate,
-              endISO: haus.endDate,
-              durationLabel: `${dur.prefix}${dur.prefix ? NNBSP : ''}${dur.display} ab${NNBSP}OKBP`,
-              colorVar: '--color-dataviz-category-2',
-            },
+            ...executions.map(({ id, metric }, index) => {
+              const dur = executionDurations[id]!
+              return {
+                key: metric.metricKey,
+                label: 'Rohbau + Ausbau',
+                unit: buildingName(s, id),
+                dependency: 'nach Planung',
+                startISO: metric.startDate,
+                endISO: metric.endDate,
+                durationLabel: `${dur.prefix}${dur.prefix ? NNBSP : ''}${dur.display} ab${NNBSP}OKBP`,
+                colorVar: EXECUTION_COLOR_VARS[index % EXECUTION_COLOR_VARS.length]!,
+              }
+            }),
           ]}
         />
         </div>
+        {s.mode === 'intern' && executions.length > 1 && (
+          <p className="a3-cap mt-3">
+            {t('configurator.schedule.completionOwner', {
+              building: buildingName(s, latestExecution.id),
+            })}
+          </p>
+        )}
       </Card>
 
       {/* Последняя глава конвейера обязана называть следующий шаг (DC-27):

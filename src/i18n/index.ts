@@ -194,7 +194,6 @@ const de = {
   'buildingScope.sectionStatus.ready': 'Bereit zur Bestätigung',
   'buildingScope.sectionStatus.confirmed': 'Bestätigt',
   'buildingScope.sectionStatus.changed': 'Geändert · erneut bestätigen',
-  'buildingScope.section.confirm': 'Abschnitt bestätigen',
   'buildingScope.group.decisions': 'Entscheidungen',
   'buildingScope.conflicts.none': 'Keine Konflikte für die angezeigten Angaben.',
   'buildingScope.conflicts.open':
@@ -212,7 +211,7 @@ const de = {
   'buildingScope.confirm.conflictReason':
     'Zuerst {count} offene Konflikte für dieses Gebäude entscheiden.',
   'buildingScope.confirm.sectionsReason':
-    'Zuerst Identität, Flächen und Geschossstruktur einzeln bestätigen.',
+    'Erst die markierten Abschnitte prüfen — sie benötigen noch eine Angabe oder eine Entscheidung.',
   'buildingScope.confirm.action': 'Gebäude bestätigen',
   'buildingScope.action.apply': 'Angabe übernehmen',
   'buildingScope.action.reset': 'Auf Quellenwert zurücksetzen',
@@ -312,6 +311,12 @@ const de = {
   'configurator.areas.remedy':
     'Die Angabe für {building} in Gebäude & Umfang prüfen oder ergänzen.',
   'configurator.areas.review': 'In Gebäude & Umfang prüfen',
+  'configurator.areas.goTo': 'Zu Kapitel {chapter} · Flächen im Detail',
+  'configurator.underground.title': 'Untergeschoss · {building}',
+  'configurator.underground.decidedIn':
+    'Entschieden in Flächen im Detail — hier nur zur Einordnung sichtbar.',
+  'configurator.schedule.completionOwner':
+    'Fertigstellung bestimmt durch {building}.',
   'configurator.overview.title': 'Konfigurationsstand',
   'configurator.overview.label': 'Konfigurationsstand aller Gebäude',
   'configurator.sidebar.title': 'Vor der Kalkulation',
@@ -543,7 +548,6 @@ const en: Partial<Record<MessageKey, string>> = {
   'buildingScope.sectionStatus.ready': 'Ready to confirm',
   'buildingScope.sectionStatus.confirmed': 'Confirmed',
   'buildingScope.sectionStatus.changed': 'Changed · reconfirm',
-  'buildingScope.section.confirm': 'Confirm section',
   'buildingScope.group.decisions': 'Decisions',
   'buildingScope.conflicts.none': 'No conflicts for the displayed data.',
   'buildingScope.conflicts.open':
@@ -561,7 +565,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'buildingScope.confirm.conflictReason':
     'Resolve {count} open conflicts for this building first.',
   'buildingScope.confirm.sectionsReason':
-    'Confirm Identity, Areas and Storey structure individually first.',
+    'Review the flagged sections first — they still need a value or a decision.',
   'buildingScope.confirm.action': 'Confirm building',
   'buildingScope.action.apply': 'Apply value',
   'buildingScope.action.reset': 'Reset to source value',
@@ -661,6 +665,12 @@ const en: Partial<Record<MessageKey, string>> = {
   'configurator.areas.remedy':
     'Review or add the value for {building} in Building & scope.',
   'configurator.areas.review': 'Review in Building & scope',
+  'configurator.areas.goTo': 'Go to chapter {chapter} · Areas in detail',
+  'configurator.underground.title': 'Underground floor · {building}',
+  'configurator.underground.decidedIn':
+    'Decided in Areas in detail — shown here for context only.',
+  'configurator.schedule.completionOwner':
+    'Completion date is determined by {building}.',
   'configurator.overview.title': 'Configuration status',
   'configurator.overview.label': 'Configuration status for all buildings',
   'configurator.sidebar.title': 'Before pricing',

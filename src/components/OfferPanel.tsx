@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { Decimal } from 'decimal.js'
-import { activeBuilding, useStore } from '../state/store'
+import { activeBuilding, includedBuildingIds, useStore } from '../state/store'
+import { effectiveFactValue } from '../state/buildingReview'
 import { CATALOG } from '../state/catalog'
 import { splitKg300 } from '../engine/risk'
 import derivedFx from '../fixtures/derived-prototype.json'
@@ -69,6 +70,29 @@ const KG_LABELS: Record<CostGroup, string> = {
 const COVERAGE_SHORT: Record<CoverageState, string> = {
   included: 'enthalten', excluded: 'nicht enthalten',
   onRequest: 'auf Anfrage', unknown: 'noch offen', notApplicable: 'n. a.',
+}
+
+/**
+ * Task 02 (deep-coherence audit, F-01): a per-building driver's `exact`
+ * contribution is already correctly computed per building — only its
+ * ATTRIBUTION was invisible. `store.ts`'s `computeProjection` already
+ * prefixes every driver's `key` with its building id
+ * (`${list[i].id}:${d.key}`) whenever more than one building is included;
+ * this reads that same prefix back to resolve a display name, intern-mode
+ * only. Client-facing `scopeRefs` (R-25) are unrelated and unchanged — this
+ * never runs when `s.mode !== 'intern'`.
+ */
+function driverBuildingLabel(
+  s: ReturnType<typeof useStore.getState>,
+  key: string,
+): string | null {
+  if (s.mode !== 'intern') return null
+  const ids = includedBuildingIds(s)
+  if (ids.length <= 1) return null
+  const id = ids.find((candidate) => key.startsWith(`${candidate}:`))
+  if (!id) return null
+  const review = s.buildingReviews[id]
+  return review ? effectiveFactValue(review.facts.documentationName) ?? id : id
 }
 
 export function OfferPanel() {
@@ -385,15 +409,24 @@ export function OfferPanel() {
             </p>
           ) : (
             <ul>
-              {cart.map((d) => (
-                <li key={d.key}
-                    className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
-                  <span className="text-text-secondary">{tx(d.label)}</span>
-                  <span className="numeric shrink-0 text-text-primary">
-                    {signed(d.exact)}
-                  </span>
-                </li>
-              ))}
+              {cart.map((d) => {
+                const buildingLabel = driverBuildingLabel(s, d.key)
+                return (
+                  <li key={d.key}
+                      className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
+                    <span className="text-text-secondary">
+                      {tx(d.label)}
+                      {/* Task 02 (F-01): names the building a per-building
+                          row belongs to — intern only, never in
+                          Kundenansicht. */}
+                      {buildingLabel && <span className="block text-text-secondary">· {buildingLabel}</span>}
+                    </span>
+                    <span className="numeric shrink-0 text-text-primary">
+                      {signed(d.exact)}
+                    </span>
+                  </li>
+                )
+              })}
             </ul>
           )}
         </section>
@@ -453,6 +486,11 @@ export function OfferPanel() {
                     const scopeLabel = d.scopeRefs.length > 0
                       ? d.scopeRefs.join(`${NNBSP}· `)
                       : 'Zuordnung offen'
+                    // Task 02 (F-01): same building-attribution rule as the
+                    // "Im Angebot gewählt" recap above — intern-mode only,
+                    // never part of `scopeLabel`/`d.scopeRefs` (R-25 stays
+                    // exactly as-is for Kundenansicht).
+                    const buildingLabel = driverBuildingLabel(s, d.key)
                     return (
                       <tr key={d.key} {...(s.mode === 'intern' ? { 'data-driver-id': d.key } : {})}
                           className={'a3-drv'
@@ -462,7 +500,8 @@ export function OfferPanel() {
                           {/* Доступное имя строки называет направление словом,
                               округление и точное значение (DRIVER-004). */}
                           <span className="sr-only">
-                            {driverLabel(d.label, d.basis)}, {richtung},
+                            {driverLabel(d.label, d.basis)}
+                            {buildingLabel ? `, ${buildingLabel}` : ''}, {richtung},
                             rund {shown.display} Euro, exakt {formatDE(d.exact.abs(), 2)} Euro
                           </span>
                           <span aria-hidden="true">{tx(driverLabel(d.label, d.basis))}</span>
@@ -470,6 +509,7 @@ export function OfferPanel() {
                             {richtung}
                             {' · '}
                             {scopeLabel}
+                            {buildingLabel && <>{' · '}{buildingLabel}</>}
                           </span>
                         </th>
                         <td className="a3-bar-cell" aria-hidden="true">

@@ -174,8 +174,13 @@ describe('Сквозной сценарий продажи', () => {
     // тот же самый уже согласованный accept/ignore-механизм, другое место.
     await user.click(nav(/Leistungen KG 300/))
     act(() => useStore.getState().setUiLanguage('en'))
+    // Task 02 (F-02): this recap's cross-reference used to point at
+    // "Scope boundaries" (chapter 1), which owns no Untergeschoss control
+    // at all — the actual owner is "Areas in detail" (`ChapterFlaechen`).
+    // Chapter numbering is dynamic (F-26, unrelated to this task), so the
+    // number itself is not asserted here — only the corrected target.
     expect(screen.getByRole('button', {
-      name: 'Go to chapter 1 · Scope boundaries',
+      name: /Go to chapter \d+ · Areas in detail/,
     })).toBeInTheDocument()
     act(() => useStore.getState().setUiLanguage('de'))
     // Риск — категория · вероятность · следствие, и он НЕ в цене (CALC-001).

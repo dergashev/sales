@@ -78,15 +78,22 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     const user = userEvent.setup()
     const view = await openBuildingScope(user)
 
-    await user.click(screen.getByRole('button', { name: 'Abschnitt bestätigen' }))
+    // Task 02 (F-22): sections no longer have an independent confirm
+    // action — the single "Gebäude bestätigen" click now confirms every
+    // ready section (each still gets its own fingerprint/journal event)
+    // AND finalizes the building in one action.
+    await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
     expect(useStore.getState().buildingSectionConfirmations['DEMO-B-A']?.identity)
       .toBeDefined()
     // F05: der Toast/Journal-Eintrag nennt den Anzeigenamen des Gebäudes,
     // nie die interne ID (gleiche Regel wie confirmBuilding()'s eigener
-    // Toast weiter unten in diesem Test).
-    expect(useStore.getState().journal.at(-1)?.label)
-      .toBe('Gebäude Haus A · Abschnitt Identität bestätigt')
-    expect(useStore.getState().journal.at(-1)?.label).not.toContain('DEMO-B-A')
+    // Toast). The section confirmation is no longer necessarily the LAST
+    // journal entry (the building-level confirmation follows it in the
+    // same click) — assert its presence anywhere in the journal instead.
+    expect(useStore.getState().journal.some((e) =>
+      e.label === 'Gebäude Haus A · Abschnitt Identität bestätigt')).toBe(true)
+    expect(useStore.getState().journal.every((e) => !e.label.includes('DEMO-B-A')))
+      .toBe(true)
 
     view.unmount()
     render(<App />)
@@ -200,5 +207,82 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     expect(screen.getByText('Kalkulation noch nicht gestartet')).toBeInTheDocument()
     expect(screen.queryByText(/Gesamtpreis|Schätzunsicherheit|Bauzeit|Kostentreiber|KG 300/))
       .toBeNull()
+  })
+
+  // Task 02 (deep-coherence audit, F-22): the review-section ladder is
+  // status-only now; "Gebäude bestätigen" alone confirms every ready
+  // section and finalizes the building. AC5: exactly one confirmation
+  // action per building — total for Nordfeld's two buildings must be ≤ 3
+  // (today before this fix: 8).
+  it('confirms a fully-documented building in exactly one action, and both of Nordfeld\'s buildings in two total', async () => {
+    const user = userEvent.setup()
+    await openBuildingScope(user)
+
+    expect(screen.queryByRole('button', { name: 'Abschnitt bestätigen' })).toBeNull()
+    let confirmClicks = 0
+
+    await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
+    confirmClicks += 1
+    expect(buildingConfirmed(useStore.getState(), 'DEMO-B-A')).toBe(true)
+
+    await user.click(screen.getByRole('checkbox', { name: 'Haus B' }))
+    const tablist = screen.getByRole('tablist', { name: 'Gewählte Gebäude' })
+    await user.click(within(tablist).getByRole('tab', { name: /Haus B/ }))
+    await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
+    confirmClicks += 1
+    expect(buildingConfirmed(useStore.getState(), 'DEMO-B-B')).toBe(true)
+
+    expect(confirmClicks).toBe(2)
+    expect(confirmClicks).toBeLessThanOrEqual(3)
+    // Every section still got its own fingerprint/journal event — the
+    // change is which user action triggers them, not whether they happen.
+    expect(useStore.getState().buildingSectionConfirmations['DEMO-B-A']).toMatchObject({
+      identity: expect.anything(),
+      areas: expect.anything(),
+      storeys: expect.anything(),
+    })
+    expect(useStore.getState().buildingSectionConfirmations['DEMO-B-B']).toMatchObject({
+      identity: expect.anything(),
+      areas: expect.anything(),
+      storeys: expect.anything(),
+    })
+  })
+
+  // Task 02 (deep-coherence audit, F-23): "Angabe übernehmen" used to be
+  // always-enabled and only discover a no-op AFTER the click, rendering
+  // the captured error "Mindestens eine Geschossart muss eine Anzahl
+  // größer als null haben." for a click that changed nothing.
+  it('disables "Angabe übernehmen" for Geschossstruktur with a visible reason instead of erroring after a no-op click', async () => {
+    const user = userEvent.setup()
+    await openBuildingScope(user)
+
+    await user.click(screen.getByRole('button', { name: 'Geschossstruktur' }))
+    await user.click(screen.getByText('Detaillierte Aufteilung bearbeiten'))
+    for (const label of [
+      'Untergeschosse (UG)', 'Erdgeschosse (EG)', 'Obergeschosse (OG)', 'Staffelgeschosse (SG)',
+    ]) {
+      const input = screen.queryByRole('spinbutton', { name: label })
+      if (input) await user.clear(input)
+    }
+
+    const apply = screen.getByRole('button', {
+      name: 'Angabe übernehmen: Geschossstruktur',
+    })
+    expect(apply).toHaveAttribute('aria-disabled', 'true')
+    expect(apply).toHaveAttribute('aria-describedby')
+    const reasonId = apply.getAttribute('aria-describedby')!
+    expect(document.getElementById(reasonId)?.textContent)
+      .toMatch(/Geschossart.*größer als null/)
+
+    const before = useStore.getState().buildingReviews['DEMO-B-A']!.facts.storeyStructure.override
+    await user.click(apply)
+    // The no-op click produced neither an override write nor an alert —
+    // disabled means disabled, not "click and then explain what happened".
+    expect(useStore.getState().buildingReviews['DEMO-B-A']!.facts.storeyStructure.override)
+      .toBe(before)
+    // No NEW alert appeared from the click itself (a pre-existing, unrelated
+    // font-loading banner is always present in this test environment).
+    expect(screen.queryAllByRole('alert').some((el) =>
+      /Geschossart.*größer als null/.test(el.textContent ?? ''))).toBe(false)
   })
 })

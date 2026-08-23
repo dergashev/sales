@@ -592,16 +592,17 @@ function BuildingReviewPanel({
     }
     return sectionHasAnyValue(review, section) ? 'ready' : 'notReviewed'
   }
-  const sectionsConfirmed = REVIEW_SECTIONS.every(
-    (section) => sectionStatus(section) === 'confirmed',
+  // Task 02 (F-22): a building is blocked from confirming only by a
+  // section that genuinely `needsAttention` (open conflict or a blocking
+  // required value still missing) — never by a section that is merely
+  // `notReviewed`/`ready`. Those get confirmed as part of the single
+  // building-level action below, not by a separate manual click each.
+  const anySectionBlocked = REVIEW_SECTIONS.some(
+    (section) => sectionStatus(section) === 'needsAttention',
   )
   const confirmSection = (section: ReviewSectionKey) => {
     if (sectionHasConflict(section) || sectionHasBlockingMissingValue(review, section)) return
     s.confirmBuildingSection(buildingId, section, sectionFingerprints[section])
-    setOpenSections((current) => ({ ...current, [section]: false }))
-    const next = REVIEW_SECTIONS.find((candidate) =>
-      candidate !== section && sectionStatus(candidate) !== 'confirmed')
-    if (next) setOpenSections((current) => ({ ...current, [next]: true }))
   }
 
   useEffect(() => {
@@ -611,7 +612,17 @@ function BuildingReviewPanel({
     }
   }, [confirmed, focusConfirmation])
 
+  // Task 02 (F-22): one action confirms every section still `ready`/
+  // `changed`/`notReviewed`-but-non-blocking, THEN finalizes the building —
+  // each section keeps its own fingerprint/journal event (M-4, un-confirm-
+  // on-edit), only the number of clicks to reach them changed. A section
+  // already `'confirmed'` is skipped (`confirmBuildingSection` itself is
+  // also a no-op on an unchanged fingerprint) so re-clicking never
+  // re-writes an already-current section.
   const confirm = () => {
+    REVIEW_SECTIONS.forEach((section) => {
+      if (sectionStatus(section) !== 'confirmed') confirmSection(section)
+    })
     s.confirmBuilding(buildingId)
     setFocusConfirmation(true)
     announce(t('buildingScope.announcement.confirmed', {
@@ -648,9 +659,6 @@ function BuildingReviewPanel({
               status={sectionStatus('identity')}
               open={openSections.identity}
               onOpenChange={(open) => setOpenSections((current) => ({ ...current, identity: open }))}
-              onConfirm={() => confirmSection('identity')}
-              confirmDisabled={sectionHasConflict('identity')
-                || sectionHasBlockingMissingValue(review, 'identity')}
             >
               <div className="grid gap-4 p-4">
                 <TextFactField buildingId={buildingId} factKey="documentationName" />
@@ -670,9 +678,6 @@ function BuildingReviewPanel({
               status={sectionStatus('areas')}
               open={openSections.areas}
               onOpenChange={(open) => setOpenSections((current) => ({ ...current, areas: open }))}
-              onConfirm={() => confirmSection('areas')}
-              confirmDisabled={sectionHasConflict('areas')
-                || sectionHasBlockingMissingValue(review, 'areas')}
             >
               <div className="grid gap-4 p-4">
                 <section aria-labelledby={`areas-above-${buildingId}`} className="grid gap-4">
@@ -710,8 +715,6 @@ function BuildingReviewPanel({
               status={sectionStatus('storeys')}
               open={openSections.storeys}
               onOpenChange={(open) => setOpenSections((current) => ({ ...current, storeys: open }))}
-              onConfirm={() => confirmSection('storeys')}
-              confirmDisabled={sectionHasConflict('storeys')}
             >
               <div className="p-4"><StoreyEditor buildingId={buildingId} /></div>
             </ReviewDisclosure>
@@ -743,12 +746,12 @@ function BuildingReviewPanel({
             <Button
               variant="primary"
               onClick={confirm}
-              disabled={openConflicts.length > 0 || !sectionsConfirmed}
+              disabled={openConflicts.length > 0 || anySectionBlocked}
               disabledReason={openConflicts.length > 0
                 ? t('buildingScope.confirm.conflictReason', {
                   count: openConflicts.length,
                 })
-                : !sectionsConfirmed
+                : anySectionBlocked
                   ? t('buildingScope.confirm.sectionsReason')
                   : undefined}
             >
@@ -761,6 +764,18 @@ function BuildingReviewPanel({
   )
 }
 
+/**
+ * Task 02 (deep-coherence audit, F-22): a section used to carry its own
+ * independent "confirm" action — 3 per building, plus the final "Gebäude
+ * bestätigen" gate on top, required all 3 pre-confirmed = 4 clicks per
+ * building (8 for Nordfeld's two). A section is status-only display now;
+ * the single building-level confirm button (`BuildingReviewPanel`) reviews
+ * and finalizes every ready section in one action (AC5: exactly one
+ * confirmation action per building; an all-unknown optional section
+ * demands none). `sectionStatus` and its underlying per-section fingerprint
+ * (`buildingSectionConfirmations`, un-confirm-on-edit) are unchanged — only
+ * the number of independent user actions to reach `'confirmed'` changed.
+ */
 function ReviewDisclosure({
   section,
   label,
@@ -768,8 +783,6 @@ function ReviewDisclosure({
   status,
   open,
   onOpenChange,
-  onConfirm,
-  confirmDisabled,
   children,
 }: {
   section: ReviewSectionKey
@@ -778,8 +791,6 @@ function ReviewDisclosure({
   status: ReviewSectionStatus
   open: boolean
   onOpenChange: (open: boolean) => void
-  onConfirm: () => void
-  confirmDisabled: boolean
   children: ReactNode
 }) {
   const t = useT()
@@ -806,16 +817,6 @@ function ReviewDisclosure({
       onOpenChange={onOpenChange}
     >
       {children}
-      <div className="flex justify-end border-t border-border-subtle p-4">
-        <Button
-          variant="primary"
-          onClick={onConfirm}
-          disabled={confirmDisabled}
-          disabledReason={confirmDisabled ? t('buildingScope.sectionStatus.needsAttention') : undefined}
-        >
-          {t('buildingScope.section.confirm')}
-        </Button>
-      </div>
     </DisclosureRow>
   )
 }
@@ -1155,26 +1156,30 @@ function StoreyEditor({ buildingId }: { buildingId: string }) {
     ? null
     : underground + aboveGround
   const [counts, setCounts] = useState(currentCounts)
-  const [error, setError] = useState(false)
 
   useEffect(() => {
     setCounts(currentCounts)
-    setError(false)
   }, [buildingId, storeySummary(current)])
 
+  // Task 02 (deep-coherence audit, F-23): `commit` used to be bound to an
+  // always-enabled Button and only discover "nothing to apply" AFTER the
+  // click, via a `setError(true)` state that rendered the exact captured
+  // error — "Mindestens eine Geschossart muss eine Anzahl größer als null
+  // haben." — for a no-op click. `hasLevels` lets the button disable
+  // itself with a visible reason instead (rule 12: a blocked control
+  // always explains why), the same `disabledReason` pattern already used
+  // on the building-level confirm button below; the former error state is
+  // now unreachable and removed with it.
+  const hasLevels = (['UG', 'EG', 'OG', 'SG'] as const).some((kind) => counts[kind] > 0)
   const commit = () => {
+    if (!hasLevels) return
     const levels = (['UG', 'EG', 'OG', 'SG'] as const)
       .filter((kind) => counts[kind] > 0)
       .map((kind) => ({ kind, count: counts[kind] }))
-    if (levels.length === 0) {
-      setError(true)
-      return
-    }
     s.setBuildingFactOverride(buildingId, 'storeyStructure', {
       levels,
       context: t('buildingScope.storeys.manualContext'),
     })
-    setError(false)
   }
 
   return (
@@ -1220,20 +1225,18 @@ function StoreyEditor({ buildingId }: { buildingId: string }) {
                     ...previous,
                     [kind]: Number.isFinite(value) && value >= 0 ? value : 0,
                   }))
-                  setError(false)
                 }}
               />
             </FormField>
           ))}
         </div>
       </details>
-      {error && <p role="alert" className="text-small text-text-secondary">
-        {t('buildingScope.validation.storeys')}
-      </p>}
       <div className="flex flex-wrap gap-3">
         <Button
           aria-label={`${t('buildingScope.action.apply')}: ${t('buildingScope.fact.storeys')}`}
           onClick={commit}
+          disabled={!hasLevels}
+          disabledReason={!hasLevels ? t('buildingScope.validation.storeys') : undefined}
         >
           {t('buildingScope.action.apply')}
         </Button>

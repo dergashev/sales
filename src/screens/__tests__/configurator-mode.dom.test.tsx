@@ -397,14 +397,21 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
 
     expect(screen.getByRole('heading', { level: 2, name: 'Flächen · Haus B' }))
       .toBeInTheDocument()
-    expect(screen.getByRole('textbox', {
-      name: 'BGF R+S · oberirdisch in m²',
-    })).toHaveValue('1.200,00')
-    expect(screen.queryByDisplayValue('2.000,00')).toBeNull()
+    // Task 02 (deep-coherence audit, F-15): this chapter no longer re-edits
+    // building facts (a third editing surface duplicating Building &
+    // Scope, AC2) — area values are now a read-only `.numeric` display,
+    // not an editable textbox.
+    expect(screen.queryByRole('textbox', { name: /BGF R\+S/ })).toBeNull()
+    expect(screen.getByText(/1\.200,00\s*m²/)).toBeInTheDocument()
+    expect(screen.queryByText(/2\.000,00\s*m²/)).toBeNull()
     expect(screen.getByText(/WFL nach WoFlV ist für Haus B noch nicht belastbar verfügbar/))
       .toBeInTheDocument()
     expect(screen.getByText(/Einheiten ist für Haus B noch nicht belastbar verfügbar/))
       .toBeInTheDocument()
+    // Every present fact still links back to the one place it is actually
+    // editable.
+    expect(screen.getAllByRole('button', { name: 'In Gebäude & Umfang prüfen' }).length)
+      .toBeGreaterThan(0)
 
     const tabs = screen.getByRole('tablist', { name: 'Konfigurationsumfang' })
     await user.click(within(tabs).getByRole('tab', {
@@ -413,28 +420,16 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
 
     expect(screen.getByRole('heading', { level: 2, name: 'Flächen · Haus A' }))
       .toBeInTheDocument()
-    expect(screen.getByRole('textbox', {
-      name: 'BGF R+S · oberirdisch in m²',
-    })).toHaveValue('2.000,00')
-    expect(screen.getByRole('textbox', {
-      name: 'WFL nach WoFlV in m²',
-    })).toHaveValue('1.560,00')
-    expect(screen.getByRole('textbox', { name: 'Einheiten' })).toHaveValue('16')
+    expect(screen.getByText(/2\.000,00\s*m²/)).toBeInTheDocument()
+    expect(screen.getByText(/1\.560,00\s*m²/)).toBeInTheDocument()
+    expect(screen.getByText('16')).toBeInTheDocument()
 
-    await user.click(within(tabs).getByRole('tab', {
-      name: /Haus B · Unvollständig/,
-    }))
-    const hausBBgf = screen.getByRole('textbox', {
-      name: 'BGF R+S · oberirdisch in m²',
-    })
-    await user.clear(hausBBgf)
-    await user.type(hausBBgf, '1250')
-    await user.keyboard('{Enter}')
-
+    // Editing a fact happens exclusively in Building & Scope now; the
+    // "In Gebäude & Umfang prüfen" link is the only route there from here.
     const state = useStore.getState()
-    expect(state.buildingReviews['DEMO-B-B']!.facts.bgfRSAbove.override?.value.eq(1250))
-      .toBe(true)
     expect(state.buildingReviews['DEMO-B-A']!.facts.bgfRSAbove.override).toBeNull()
+    expect(state.buildingReviews['DEMO-B-B']!.facts.bgfRSAbove.override).toBeNull()
+    await user.click(screen.getAllByRole('button', { name: 'In Gebäude & Umfang prüfen' })[0]!)
     expect(screen.getByRole('heading', { level: 1, name: 'Gebäude & Umfang' }))
       .toBeInTheDocument()
   })
@@ -494,5 +489,81 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
       .toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Zum letzten Konfigurationsumfang' }))
       .toBeInTheDocument()
+  })
+})
+
+/**
+ * Task 02 (deep-coherence audit, F-01/F-02/F-15/F-17): reproduces the
+ * audit's exact SHARED-mode scenario — Haus A keeps Untergeschoss
+ * `vollausbau` (its fixture default), Haus B is set to `kein_ug` — and
+ * asserts the contradiction (one building's state rendered as if it were
+ * the option's own, unnamed) does NOT reproduce.
+ */
+describe('Task 02 — building-scope attribution in SHARED mode', () => {
+  it('names every building in the Untergeschoss recap and decision, never one unnamed building standing in for the option', async () => {
+    const user = userEvent.setup()
+    await openModeStep(user, 2)
+    await startMode(user, 'SHARED')
+    includeCoreScope()
+    act(() => useStore.getState().setUntergeschoss('DEMO-B-B', 'kein_ug'))
+    await user.click(nav(/Leistungen KG 300/))
+
+    // F-01: both buildings' Untergeschoss state is visible, each naming its
+    // own building — never a bare "Nicht enthalten"/"Enthalten" with no
+    // building attribution standing in for the whole option.
+    expect(screen.getByText('Untergeschoss · Haus A')).toBeInTheDocument()
+    expect(screen.getByText('Untergeschoss · Haus B')).toBeInTheDocument()
+    const recap = screen.getByRole('heading', { name: 'Untergeschoss', level: 2 }).closest('section')!
+    expect(within(recap).getByText('Enthalten')).toBeInTheDocument()
+    expect(within(recap).getByText('Nicht enthalten')).toBeInTheDocument()
+
+    // F-02: the recap's cross-reference names the actual decision owner
+    // ("Flächen im Detail"), not "Leistungsabgrenzung" (chapter 1), which
+    // owns no Untergeschoss control at all.
+    const goTo = within(recap).getByRole('button', { name: /Zu Kapitel \d+ · Flächen im Detail/ })
+    expect(goTo).toBeInTheDocument()
+
+    // F-15: "Flächen im Detail" itself shows both buildings' Untergeschoss
+    // decision, each with its own explicit heading and independently
+    // interactive control — not just the invisible active building.
+    await user.click(goTo)
+    expect(screen.getByRole('heading', { level: 2, name: 'Untergeschoss · Haus A' }))
+      .toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Untergeschoss · Haus B' }))
+      .toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /vollständig inkl\. Gründung/, checked: true }))
+      .toBeInTheDocument()
+
+    // F-01 (recap/drivers): the priced Untergeschoss contribution names its
+    // building in intern mode's "Im Angebot gewählt" recap.
+    const buildingAware = screen.getByText('Untergeschoss · Rohbau und Ausbau')
+      .closest('li')!
+    expect(within(buildingAware).getByText(/· Haus A/)).toBeInTheDocument()
+  })
+
+  it('lists a schedule phase for every included building and the hero date matches the latest one (rule 39)', async () => {
+    const user = userEvent.setup()
+    await openModeStep(user, 2)
+    await startMode(user, 'SHARED')
+    includeCoreScope()
+    await visitRequiredBuildingChapters(user)
+    await user.click(nav(/Termine & Kommerzielles/))
+
+    // F-17: the fixture's real per-building execution windows are both
+    // read — Haus B's already ends later (2028-01-04) than Haus A's
+    // (2027-11-19) — no building is silently dropped from the schedule.
+    const table = screen.getByRole('table', {
+      name: 'Bauzeit nach Phasen mit Beginn, Ende, Dauer und Abhängigkeit',
+    })
+    const executionRows = within(table).getAllByRole('row')
+      .filter((row) => within(row).queryByRole('rowheader', { name: 'Rohbau + Ausbau' }))
+    expect(executionRows).toHaveLength(2)
+    expect(executionRows.map((row) => within(row).getAllByRole('cell')[0]!.textContent))
+      .toEqual(expect.arrayContaining(['Haus A', 'Haus B']))
+    // Rule 39: Fertigstellung is the LATEST building end, not Haus A's
+    // (first in the buildings list) or a sum of the two.
+    expect(screen.getByText(/Fertigstellung 04\.01\.2028/)).toBeInTheDocument()
+    expect(screen.queryByText(/Fertigstellung 19\.11\.2027/)).toBeNull()
+    expect(screen.getByText(/Fertigstellung bestimmt durch Haus B/)).toBeInTheDocument()
   })
 })
