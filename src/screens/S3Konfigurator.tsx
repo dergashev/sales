@@ -1638,7 +1638,7 @@ function ChapterTermine() {
           caption="Bauzeit nach Phasen mit Beginn, Ende, Dauer und Abhängigkeit"
           finishISO={latestExecution.metric.endDate}
           provenance={s.mode === 'intern'
-            ? tx9('Kalender: Kalendermonate · Staffelstart aus ScheduleModel')
+            ? tx9('Kalender: Kalendermonate · Baubeginn aus dem Bauzeitplan')
             : undefined}
           phases={[
             {

@@ -93,13 +93,13 @@
       "value": "ja",
       "label": "aufnehmen",
       "rate": "0",
-      "basis": "Preis folgt aus dem gewaehlten Typ"
+      "basis": "Preis folgt aus dem gewählten Typ"
      },
      {
       "value": "nein",
       "label": "nicht aufnehmen",
       "rate": "-820",
-      "basis": "die im Standard enthaltene Balkonkonstruktion entfaellt"
+      "basis": "die im Standard enthaltene Balkonkonstruktion entfällt"
      }
     ]
    },
@@ -119,21 +119,21 @@
     "choices": [
      {
       "value": "diagonal",
-      "label": "Balkone mit Diagonalabstuetzung",
+      "label": "Balkone mit Diagonalabstützung",
       "rate": "0",
       "basis": "Standardkonstruktion, in der Basisrate enthalten"
      },
      {
       "value": "stuetzen",
-      "label": "Balkone auf Stuetzen",
+      "label": "Balkone auf Stützen",
       "rate": "140",
-      "basis": "Mehrpreis gegenueber Diagonalabstuetzung, Gruendung je Stuetze"
+      "basis": "Mehrpreis gegenüber Diagonalabstützung, Gründung je Stütze"
      },
      {
       "value": "konsole",
       "label": "Betonkonsolen",
       "rate": "330",
-      "basis": "Mehrpreis gegenueber Diagonalabstuetzung, thermische Trennung"
+      "basis": "Mehrpreis gegenüber Diagonalabstützung, thermische Trennung"
      }
     ],
     "$comment": "Ставки ОТНОСИТЕЛЬНЫ стандартной конструкции. Базовая ставка описывает стандартный объём, а балконы документированы как существующие — значит стандарт их уже содержит, и умолчание обязано стоить ноль. Абсолютная ставка у умолчания меняла бы фикстурный итог самим фактом открытия экрана."
@@ -145,7 +145,7 @@
     "denominator": "BGF_ABOVE_GROUND",
     "default": "holz",
     "documented": true,
-    "documentRef": "Bauantrag_Mappe_Muster.pdf · Holzbauweise im Erlaeuterungsbericht",
+    "documentRef": "Bauantrag_Mappe_Muster.pdf · Holzbauweise im Erläuterungsbericht",
     "choices": [
      {
       "value": "holz",
@@ -164,11 +164,11 @@
    {
     "id": "garage",
     "label": "Garage im Erdgeschoss",
-    "question": "Garage bzw. Stellplaetze im EG aufnehmen?",
+    "question": "Garage bzw. Stellplätze im EG aufnehmen?",
     "denominator": "BGF_ABOVE_GROUND",
     "default": "ja",
     "documented": true,
-    "documentRef": "Grundrisse_Muster_V2.pdf · Stellplaetze im Erdgeschoss",
+    "documentRef": "Grundrisse_Muster_V2.pdf · Stellplätze im Erdgeschoss",
     "choices": [
      {
       "value": "ja",
@@ -196,13 +196,13 @@
       "value": "plaster",
       "label": "Putz",
       "rate": "-45",
-      "basis": "guenstiger als Holzfassade je m² BGF R"
+      "basis": "günstiger als Holzfassade je m² BGF R"
      },
      {
       "value": "timber",
       "label": "Holz",
       "rate": "0",
-      "basis": "Basisrate enthaelt die Holzfassade"
+      "basis": "Basisrate enthält die Holzfassade"
      },
      {
       "value": "mixedTimber",
@@ -253,9 +253,9 @@
      },
      {
       "value": "weissgrau",
-      "label": "weissgrau",
+      "label": "weißgrau",
       "rate": "14",
-      "basis": "Sondersortiment mit Verguetung"
+      "basis": "Sondersortiment mit Vergütung"
      }
     ]
    }
@@ -287,13 +287,13 @@
       "value": "nurAusbau",
       "label": "nur Ausbau",
       "rate": "-714",
-      "basis": "Rohbauanteil der UG-Rate entfaellt"
+      "basis": "Rohbauanteil der UG-Rate entfällt"
      },
      {
       "value": "keins",
       "label": "kein Untergeschoss im Angebot",
       "rate": "-1190",
-      "basis": "die volle UG-Rate entfaellt"
+      "basis": "die volle UG-Rate entfällt"
      }
     ]
    }
@@ -304,59 +304,59 @@
   "groups": [
    {
     "id": "kg420",
-    "label": "KG 420 · Waermeversorgung",
-    "question": "Waermeerzeugung im Angebot?",
+    "label": "KG 420 · Wärmeversorgung",
+    "question": "Wärmeerzeugung im Angebot?",
     "denominator": "BGF_ABOVE_GROUND",
     "default": "waermepumpe",
     "documented": true,
-    "documentRef": "Bauantrag_Mappe_Muster.pdf · Waermepumpe im Energiekonzept",
+    "documentRef": "Bauantrag_Mappe_Muster.pdf · Wärmepumpe im Energiekonzept",
     "choices": [
      {
       "value": "waermepumpe",
-      "label": "Luft-Wasser-Waermepumpe",
+      "label": "Luft-Wasser-Wärmepumpe",
       "rate": "0",
-      "basis": "Standardloesung der Basisrate"
+      "basis": "Standardlösung der Basisrate"
      },
      {
       "value": "fernwaerme",
-      "label": "Fernwaermeanschluss",
+      "label": "Fernwärmeanschluss",
       "rate": "-28",
-      "basis": "ohne Erzeuger, dafuer Uebergabestation"
+      "basis": "ohne Erzeuger, dafür Übergabestation"
      },
      {
       "value": "gas",
       "label": "Gas-Brennwert",
       "rate": "-42",
-      "basis": "guenstiger in der Anschaffung, EH-Ziel gefaehrdet"
+      "basis": "günstiger in der Anschaffung, EH-Ziel gefährdet"
      }
     ]
    },
    {
     "id": "kg430",
     "label": "KG 430 · Raumlufttechnik",
-    "question": "Lueftung im Angebot?",
+    "question": "Lüftung im Angebot?",
     "denominator": "BGF_ABOVE_GROUND",
     "default": "zentralWrg",
     "documented": true,
-    "documentRef": "Bauantrag_Mappe_Muster.pdf · Lueftungskonzept mit Waermerueckgewinnung",
+    "documentRef": "Bauantrag_Mappe_Muster.pdf · Lüftungskonzept mit Wärmerückgewinnung",
     "choices": [
      {
       "value": "zentralWrg",
-      "label": "Zentrale Lueftung mit Waermerueckgewinnung",
+      "label": "Zentrale Lüftung mit Wärmerückgewinnung",
       "rate": "0",
-      "basis": "im Standard enthalten, Voraussetzung fuer EH 55"
+      "basis": "im Standard enthalten, Voraussetzung für EH 55"
      },
      {
       "value": "dezentral",
-      "label": "Dezentrale Lueftungsgeraete",
+      "label": "Dezentrale Lüftungsgeräte",
       "rate": "-18",
       "basis": "geringerer Kanalaufwand"
      },
      {
       "value": "keine",
-      "label": "keine Lueftungsanlage",
+      "label": "keine Lüftungsanlage",
       "rate": "-46",
-      "basis": "Fensterlueftung; Nachweis fuer EH-Standard entfaellt"
+      "basis": "Fensterlüftung; Nachweis für EH-Standard entfällt"
      }
     ]
    },
@@ -376,15 +376,15 @@
      },
      {
       "value": "erhoeht",
-      "label": "Erhoehte Ausstattung mit Ladeinfrastruktur",
+      "label": "Erhöhte Ausstattung mit Ladeinfrastruktur",
       "rate": "34",
-      "basis": "Ladepunkte je Stellplatz und verstaerkte Zuleitung"
+      "basis": "Ladepunkte je Stellplatz und verstärkte Zuleitung"
      }
     ]
    },
    {
     "id": "kg460",
-    "label": "KG 460 · Foerderanlagen",
+    "label": "KG 460 · Förderanlagen",
     "question": "Personenaufzug im Angebot?",
     "denominator": "BGF_ABOVE_GROUND",
     "default": "ja",
@@ -401,18 +401,18 @@
       "value": "nein",
       "label": "kein Aufzug",
       "rate": "-22",
-      "basis": "entfaellt nur bei Gebaeudeklassen ohne Aufzugspflicht",
+      "basis": "entfällt nur bei Gebäudeklassen ohne Aufzugspflicht",
       "blockedWhenGk": [
        "GK_5"
       ],
-      "blockedReason": "Ab GK 5 ist ein Personenaufzug erforderlich — die Wahl ist keine kaufmaennische Entscheidung"
+      "blockedReason": "Ab GK 5 ist ein Personenaufzug erforderlich — die Wahl ist keine kaufmännische Entscheidung"
      }
     ]
    },
    {
     "id": "kg480",
-    "label": "KG 480 · Gebaeudeautomation",
-    "question": "Gebaeudeautomation im Angebot?",
+    "label": "KG 480 · Gebäudeautomation",
+    "question": "Gebäudeautomation im Angebot?",
     "denominator": "BGF_ABOVE_GROUND",
     "default": "keine",
     "documented": false,
@@ -439,7 +439,7 @@
    {
     "id": "qng",
     "label": "QNG-Siegel",
-    "question": "Qualitaetssiegel Nachhaltiges Gebaeude?",
+    "question": "Qualitätssiegel Nachhaltiges Gebäude?",
     "denominator": "BGF_ABOVE_GROUND",
     "default": "keins",
     "documented": false,
@@ -454,13 +454,13 @@
       "value": "plus",
       "label": "QNG-PLUS",
       "rate": "46",
-      "basis": "Nachweisfuehrung und Oekobilanz, ca. 3 % der Basisrate"
+      "basis": "Nachweisführung und Ökobilanz, ca. 3 % der Basisrate"
      },
      {
       "value": "premium",
       "label": "QNG-PREMIUM",
       "rate": "78",
-      "basis": "verschaerfte Grenzwerte und erweiterte Nachweise"
+      "basis": "verschärfte Grenzwerte und erweiterte Nachweise"
      }
     ]
    },
@@ -488,13 +488,13 @@
       "value": "gold",
       "label": "DGNB GOLD",
       "rate": "62",
-      "basis": "zusaetzliche Massnahmen in mehreren Kriteriengruppen"
+      "basis": "zusätzliche Maßnahmen in mehreren Kriteriengruppen"
      },
      {
       "value": "platin",
       "label": "DGNB PLATIN",
       "rate": "104",
-      "basis": "hoechste Erfuellungsgrade, planungsseitig fruehe Festlegung noetig"
+      "basis": "höchste Erfüllungsgrade, planungsseitig frühe Festlegung nötig"
      }
     ]
    }
@@ -546,8 +546,14 @@
    {
     "id": "configurationMode",
     "choices": [
-     { "value": "SHARED", "label": "Gemeinsam konfigurieren" },
-     { "value": "PER_BUILDING", "label": "Je Gebäude konfigurieren" }
+     {
+      "value": "SHARED",
+      "label": "Gemeinsam konfigurieren"
+     },
+     {
+      "value": "PER_BUILDING",
+      "label": "Je Gebäude konfigurieren"
+     }
     ]
    }
   ]
@@ -557,13 +563,34 @@
    {
     "id": "scopeBoundaries",
     "choices": [
-     { "value": "KG_200", "label": "KG 200" },
-     { "value": "KG_300", "label": "KG 300" },
-     { "value": "KG_400", "label": "KG 400" },
-     { "value": "KG_500", "label": "KG 500" },
-     { "value": "KG_600", "label": "KG 600" },
-     { "value": "KG_700", "label": "KG 700" },
-     { "value": "KG_800", "label": "KG 800" }
+     {
+      "value": "KG_200",
+      "label": "KG 200"
+     },
+     {
+      "value": "KG_300",
+      "label": "KG 300"
+     },
+     {
+      "value": "KG_400",
+      "label": "KG 400"
+     },
+     {
+      "value": "KG_500",
+      "label": "KG 500"
+     },
+     {
+      "value": "KG_600",
+      "label": "KG 600"
+     },
+     {
+      "value": "KG_700",
+      "label": "KG 700"
+     },
+     {
+      "value": "KG_800",
+      "label": "KG 800"
+     }
     ]
    }
   ]

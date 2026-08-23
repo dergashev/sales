@@ -96,7 +96,9 @@ export function PrintFlow({ returnFocusTo }: {
             {tx('Drucken')} · {option?.name ?? '—'}
           </h4>
           <p className="a3-cap">
-            A4 · clientPrint · {tx('Gesamt')}
+            {/* F-29: `clientPrint` is the output-profile enum name, not a
+                German word — named its actual destination instead. */}
+            A4 · Druckausgabe · {tx('Gesamt')}
             {s.mode === 'intern' && s.activeOptionId ? ` · ${s.activeOptionId}` : ''}
           </p>
 
@@ -112,7 +114,7 @@ export function PrintFlow({ returnFocusTo }: {
               variant="primary"
               disabled={blocked}
               disabledReason={blocked
-                ? 'clientPrint blockiert; interner Export bleibt mit Kennzeichnung «Nur intern» verfügbar'
+                ? 'Druckausgabe blockiert; interner Export bleibt mit Kennzeichnung «Nur intern» verfügbar'
                 : undefined}
               onClick={() => { s.sendOffer('print'); dialogRef.current?.close() }}
             >

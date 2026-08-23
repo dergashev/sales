@@ -136,7 +136,11 @@ export function DiscountControl({ totalExact, percent, onChange, mode }: {
         </span>
       </p>
       <p className="a3-cap mt-1">
-        {copyFor(tx('Basis ist der exakte Rechenwert, nie der angezeigte (CALC-007).'), mode)}
+        {/* F-29: the bracketed requirement code read as internal-registry
+            jargon even on the operator surface (`copyFor` only ever
+            stripped it for the client profile) — dropped from the sentence
+            itself instead of relying on mode-gating to hide it. */}
+        {copyFor(tx('Basis ist der exakte Rechenwert, nie der angezeigte.'), mode)}
         {discounted.disclosure ? ` ${discounted.disclosure}` : ''}
       </p>
 

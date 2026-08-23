@@ -12,7 +12,7 @@
     "test:watch": "vitest",
     "test:browser:desktop": "node tests/browser/run-desktop-smoke.mjs",
     "typecheck": "tsc -b --noEmit",
-    "verify": "python3 -m unittest tools.test_validation_isolation && python3 tools/verify.py && python3 tools/check_indices.py && python3 tools/build_fixtures.py --check && python3 tools/selftest_governance.py && python3 tools/selftest_warnings.py && python3 tools/check_scenario2.py && python3 tools/check_scenario2.py --selftest",
+    "verify": "python3 -m unittest tools.test_validation_isolation && python3 tools/verify.py && python3 tools/check_indices.py && python3 tools/check_i18n_ascii.py && python3 tools/build_fixtures.py --check && python3 tools/selftest_governance.py && python3 tools/selftest_warnings.py && python3 tools/check_scenario2.py && python3 tools/check_scenario2.py --selftest",
     "gate:declare": "node tools/gate/declare-candidate.mjs",
     "dev:main": "node tools/worktrees/dev-main.mjs",
     "git:worktrees:check": "node tools/worktrees/check.mjs",

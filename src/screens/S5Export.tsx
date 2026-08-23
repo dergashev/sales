@@ -5,7 +5,7 @@ import { DiscountControl } from '../components/DiscountControl'
 import { Button } from '../components/primitives'
 import { EstimateUncertaintyBadge } from '../components/EstimateUncertaintyBadge'
 import { PageHeader } from '../components/designSystem'
-import { useTx } from '../i18n'
+import { useT, useTx } from '../i18n'
 import { PrintFlow } from '../components/PrintFlow'
 import { DELIVERY_SIMULATION_MS } from '../config/ui-policy'
 
@@ -35,6 +35,7 @@ type Stage = 'compose' | 'preflight' | 'confirm' | 'gesendet' | 'zugestellt'
 
 export function S5Export() {
   const s = useStore()
+  const t = useT()
   const tx = useTx()
   const printBtnRef = useRef<HTMLButtonElement>(null)
   // Сколько ЦЕНОВЫХ событий этой Option произошло после отправки. Считается
@@ -137,7 +138,7 @@ export function S5Export() {
           <h2 className="mt-6 text-heading-3 font-bold text-text-primary">{tx('Drucken')}</h2>
           <p className="a3-cap mt-1">
             {s.mode === 'intern'
-              ? tx('Eigenes Ausgabeprofil clientPrint mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.')
+              ? tx('Eigenes Ausgabeprofil für die Druckausgabe mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.')
               : tx('Die Druckansicht wird vor dem Öffnen eigenständig geprüft.')}
           </p>
           <div className="mt-2">
@@ -222,7 +223,13 @@ export function S5Export() {
               <div className="mt-3">
                 <p className="text-small font-medium text-text-primary">{tx('Finale Prüfung')}</p>
                 <ul className="a3-preflight-list">
-                  <li>✓ Anhänge: {selected.size}{s.mode === 'intern' && ' · Muster-Dateien des Prototyps, als clientSafe klassifiziert'}</li>
+                  {/* F-29: named the classifier (`clientSafe`) instead of the
+                      outcome; routed through the existing `s5.preflight.
+                      attachments` key (already carrying `{count}`) instead of
+                      a parallel hardcoded literal. */}
+                  <li>✓ {s.mode === 'intern'
+                    ? t('s5.preflight.attachments', { count: selected.size })
+                    : `Anhänge: ${selected.size}`}</li>
                   <li>✓ Aktive Annahmen: {activeBuilding(s).gebaeudeklasse.confirmed ? 1 : 2}</li>
                   <li>
                     <EstimateUncertaintyBadge presentation="compact" pp={p.uncertaintyPp} />
@@ -374,10 +381,17 @@ export function S5Export() {
   )
 }
 
+// F-29: this printed the internal pipeline stage names verbatim (Compose /
+// Preflight / Confirm & Send / Delivery status) — English implementation
+// vocabulary in a German-first screen that is visible outside intern mode
+// (the client can be in the room during `mode-praesentation`). Named as
+// German stage labels instead; "Preflight" itself stays, since it is already
+// the accepted, naturalized term used elsewhere in this screen's own copy
+// ("Weiter zum Preflight", "Preflight bestanden").
 function stageLabel(s: Stage): string {
-  return s === 'compose' ? 'Compose'
-    : s === 'preflight' ? 'Preflight'
-      : s === 'confirm' ? 'Confirm & Send'
-        : s === 'gesendet' ? 'Delivery status · Gesendet'
-          : 'Delivery status · Zugestellt'
+  return s === 'compose' ? 'Entwurf'
+    : s === 'preflight' ? 'Preflight-Prüfung'
+      : s === 'confirm' ? 'Bestätigung & Versand'
+        : s === 'gesendet' ? 'Sendestatus · Gesendet'
+          : 'Sendestatus · Zugestellt'
 }

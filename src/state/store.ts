@@ -1350,6 +1350,14 @@ type Store = {
   setMode: (m: OutputMode) => void
   openOpportunity: (id: string) => void
   backToList: () => void
+  /**
+   * Крошка внутри Option называет проект по имени и является настоящей
+   * ссылкой (F-31): выход на уровень проекта (карточка Opportunity),
+   * а не в общий список. Аналог `backToList`, но остаётся на этом же
+   * Opportunity — те же побочные эффекты (снятие рабочей копии Option,
+   * переход режима), другой целевой уровень.
+   */
+  backToOpportunity: () => void
   confirmProjectParams: () => void
   /** Гейт: можно ли создавать Options (конфликты решены, параметры приняты). */
   canCreateOptions: () => boolean
@@ -3370,6 +3378,19 @@ const store = createStore<Store>((set, get) => {
         configurationModeEditing: false,
         // Рабочая копия покидаемой Option убирается в хранилище — иначе
         // следующее открытие вернуло бы её к чужому состоянию.
+        ...(s.activeOptionId
+          ? { optionConfigs: { ...s.optionConfigs, [s.activeOptionId]: captureConfig(s) } }
+          : {}),
+      })
+    },
+    backToOpportunity: () => {
+      const s = get()
+      set({
+        ...NO_TRANSIENT,
+        mode: modeForLevelTransition(s.mode, 'opportunity'),
+        level: 'opportunity',
+        activeOptionId: null,
+        configurationModeEditing: false,
         ...(s.activeOptionId
           ? { optionConfigs: { ...s.optionConfigs, [s.activeOptionId]: captureConfig(s) } }
           : {}),

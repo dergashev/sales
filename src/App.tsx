@@ -178,7 +178,17 @@ function AppHeader() {
               Opportunities
             </button>
             <span aria-hidden="true" className="text-text-muted">/</span>
-            <span className="a3-cap">{currentOpportunity?.name ?? s.opportunityId}</span>
+            {s.level === 'option' ? (
+              <button
+                type="button"
+                onClick={() => s.backToOpportunity()}
+                className="a3-linkbtn"
+              >
+                {currentOpportunity?.name ?? s.opportunityId}
+              </button>
+            ) : (
+              <span className="a3-cap">{currentOpportunity?.name ?? s.opportunityId}</span>
+            )}
             {s.level === 'option' && s.activeOptionId && (
               <>
                 <span aria-hidden="true" className="text-text-muted">/</span>

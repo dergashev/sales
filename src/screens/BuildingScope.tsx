@@ -48,6 +48,7 @@ import {
 } from '../components/primitives'
 import { DataStateBlock, DataStateBoundary, EmptyState } from '../components/DataStates'
 import { useT } from '../i18n'
+import { signed } from '../components/OfferPanel'
 
 const FORM_VALUES: ReadonlyArray<BuildingInput['gebaeudeform']> = [
   'MFH', 'EFH_ZFH', 'DH_REH', 'BUERO',
@@ -636,7 +637,9 @@ function BuildingReviewPanel({
         <div className="grid gap-3">
           <DataStateBlock
             state="error"
-            sentence={t('buildingScope.confirm.conflictReason', { count: openConflicts.length })}
+            sentence={openConflicts.length === 1
+              ? t('buildingScope.confirm.conflictReasonOne')
+              : t('buildingScope.confirm.conflictReason', { count: openConflicts.length })}
             detail={t('buildingScope.recovery.detail')}
             impact={t('buildingScope.recovery.title', { buildings: stableName(review, buildingId) })}
             remedy={t('buildingScope.recovery.remedy')}
@@ -748,9 +751,11 @@ function BuildingReviewPanel({
               onClick={confirm}
               disabled={openConflicts.length > 0 || anySectionBlocked}
               disabledReason={openConflicts.length > 0
-                ? t('buildingScope.confirm.conflictReason', {
-                  count: openConflicts.length,
-                })
+                ? (openConflicts.length === 1
+                  ? t('buildingScope.confirm.conflictReasonOne')
+                  : t('buildingScope.confirm.conflictReason', {
+                    count: openConflicts.length,
+                  }))
                 : anySectionBlocked
                   ? t('buildingScope.confirm.sectionsReason')
                   : undefined}
@@ -1357,6 +1362,15 @@ function formatConflictValue(key: BuildingFactKey, value: string): string {
 export function BuildingScopeReadiness() {
   const s = useStore()
   const t = useT()
+  const [journalOpen, setJournalOpen] = useState(false)
+  // F-38: `UndoToast`'s own docstring promises "revert always available from
+  // the journal" (DC-12/FEEDBACK-001), but this aside had no journal access
+  // at all — once the undo toast (8 s, rule 29) expired, an edit made here
+  // could not be reverted from this screen. Reuses OfferPanel's proven
+  // composition (`.a3-journal-spec` disclosure + undo), filtered to
+  // Opportunity-level events (`optionId === null`): no Option exists yet at
+  // this stage, so there is no `activeOptionId` to filter by instead.
+  const buildingScopeJournal = s.journal.filter((e) => e.optionId === null)
   const selectedIds = includedBuildingIds(s)
   const ready = s.canBeginConfiguration()
   const nextOpen = selectedIds.find((id) => !buildingConfirmed(s, id))
@@ -1423,6 +1437,48 @@ export function BuildingScopeReadiness() {
             {t('buildingScope.readiness.pricingExplanation')}
           </p>
         </section>
+        {/* F-38: session journal (DC-12) — internal only, same gate as
+            OfferPanel's own instance; not part of the client projection. */}
+        {s.mode === 'intern' && (
+          <div className="a3-journal-spec mt-5 border-t border-border-strong pt-5">
+            <button
+              type="button"
+              onClick={() => setJournalOpen((v) => !v)}
+              aria-expanded={journalOpen}
+              className="a3-journal-disclose outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+            >
+              <span aria-hidden="true">{journalOpen ? '▾ ' : '▸ '}</span>
+              {buildingScopeJournal.length === 0
+                ? t('journal.empty')
+                : buildingScopeJournal.length === 1
+                  ? t('journal.buildingScope.summaryOne')
+                  : t('journal.buildingScope.summary', { count: buildingScopeJournal.length })}
+            </button>
+
+            {journalOpen && buildingScopeJournal.length > 0 && (
+              <ol className="a3-journal-items overflow-y-auto"
+                  style={{ maxHeight: 'calc(var(--space-8) * 3)' }}>
+                {[...buildingScopeJournal].reverse().map((e) => (
+                  <li key={e.seq}>
+                    <span className="numeric">{e.seq}</span>
+                    <span>{e.label}</span>
+                    <span className="numeric">
+                      {e.deltaExact ? signed(e.deltaExact) : '—'}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+
+            <div className="mt-2">
+              <Button onClick={() => s.undo()}
+                      disabled={!s.canUndo()}
+                      disabledReason={t('journal.undoUnavailable')}>
+                {t('common.undo')}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </aside>
   )

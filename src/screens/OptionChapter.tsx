@@ -61,11 +61,16 @@ const FACADE_PRESENTATION: Record<string, { material: FacadeMaterial; axes: stri
   },
 }
 
-function euro(d: Decimal): string {
+// F-20: `word` was hardcoded German regardless of `uiLanguage` — every tile
+// consequence and comparison-row delta on this screen stayed German after
+// switching to EN. `driver.surcharge`/`driver.saving` already carry both
+// languages (used by the Kostentreiber rail); this reuses them instead of a
+// second, EN-only literal pair.
+function euro(d: Decimal, t: (key: string) => string): string {
   if (d.isZero()) return `±${NNBSP}0${NNBSP}€`
   const pr = present(d.abs())
   const sign = d.isNegative() ? '−' : '+'
-  const word = d.isNegative() ? 'Minderpreis' : 'Mehrpreis'
+  const word = t(d.isNegative() ? 'driver.saving' : 'driver.surcharge')
   return `${pr.prefix ? pr.prefix + NNBSP : ''}${sign}${NNBSP}${pr.display}${NNBSP}€${NNBSP}${word}`
 }
 
@@ -164,7 +169,7 @@ export function OptionChapter({ groups, intro }: {
           {tx('Zuerst die Gebäudedaten bestätigen.')}
         </p>
         <p className="a3-cap mt-1">
-          {tx('Leistungen für ein Gebäude auszuwählen, dessen Flächen und Einstufung noch offen sind, hiesse die Auswahl später vollständig zu wiederholen.')}
+          {tx('Leistungen für ein Gebäude auszuwählen, dessen Flächen und Einstufung noch offen sind, hieße die Auswahl später vollständig zu wiederholen.')}
         </p>
         <div className="mt-3">
           <Button variant="primary" onClick={() => s.setPipelineView('buildingScope')}>
@@ -236,7 +241,7 @@ export function OptionChapter({ groups, intro }: {
                     description: `${tx(c.basis)} ${MARK}`,
                     consequence: c.value === value
                       ? tx('aktuelle Auswahl')
-                      : euro(outcome(c.value).delta),
+                      : euro(outcome(c.value).delta, t),
                     disabled: norm.blocked || noBase,
                     disabledReason: norm.blocked ? norm.reason
                       : noBase
@@ -260,7 +265,7 @@ export function OptionChapter({ groups, intro }: {
                     // ноль, а не подпись «aktuelle Auswahl» — та живёт
                     // отдельной пометкой строки и не занимает числовую
                     // ячейку (иначе в столбце цен стоит не цена).
-                    consequence: euro(out.delta),
+                    consequence: euro(out.delta, t),
                     // «Станет» — не сложение в уме, а сам будущий итог из
                     // проекции: прежде здесь складывали текущий с дельтой,
                     // и при двух зданиях сумма расходилась с фактом.

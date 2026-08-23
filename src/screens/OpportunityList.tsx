@@ -435,9 +435,15 @@ export function OpportunityList() {
               <span className="a3-term block" aria-hidden={o.meetingAt ? undefined : 'true'}>
                 {o.meetingAt ? <>{tx('Termin')}{NNBSP}{tx(o.meetingAt)}</> : NNBSP}
               </span>
+              {/* F-39: both labels always used the plural form — DE
+                  "1 Dokumente" and EN "1 building"/"1 document" both read as
+                  a grammar mistake. 0/1/n selection, matching the pattern
+                  used elsewhere for count grammar. */}
               <span className="block">
-                {o.buildings}{NNBSP}{t('opplist.card.buildingsLabel')} ·{' '}
-                {o.documents}{NNBSP}{t('opplist.card.documentsLabel')}
+                {o.buildings}{NNBSP}{t(o.buildings === 1
+                  ? 'opplist.card.buildingLabel' : 'opplist.card.buildingsLabel')} ·{' '}
+                {o.documents}{NNBSP}{t(o.documents === 1
+                  ? 'opplist.card.documentLabel' : 'opplist.card.documentsLabel')}
               </span>
             </Card>
           </li>

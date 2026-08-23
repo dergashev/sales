@@ -52,7 +52,7 @@ Mit freundlichen Grüßen
 - Die folgenden Auswahlmöglichkeiten sind bereits auf diesen Standard abgestimmt.
 - Diese 1 Frage reduziert die Schätzunsicherheit von ±
 - Druckansicht öffnen
-- Eigenes Ausgabeprofil clientPrint mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.
+- Eigenes Ausgabeprofil für die Druckausgabe mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.
 - Ein Dokument ist nicht lesbar · blockiert das Anlegen einer Opportunity Option nicht
 - Entscheidung erforderlich · blockiert das Anlegen einer Opportunity Option
 - Fragen reduzieren die Schätzunsicherheit von ±

@@ -1,5 +1,6 @@
 import { Decimal } from 'decimal.js'
 import { NNBSP, formatDE, present } from '../engine/money'
+import { useTx } from '../i18n'
 
 type EstimateUncertaintyBadgeProps =
   | { presentation: 'compact'; pp: number }
@@ -11,10 +12,15 @@ type EstimateUncertaintyBadgeProps =
  * interval; the range presentation also exposes its monetary edges.
  */
 export function EstimateUncertaintyBadge(props: EstimateUncertaintyBadgeProps) {
+  // F-20: this label rendered German prose unconditionally regardless of
+  // `uiLanguage` — the offer hero stayed German even after switching to EN.
+  // `tx()` resolves the DE prose against the dictionary (rule 36) instead of
+  // concatenating a translated fragment onto a hardcoded string.
+  const tx = useTx()
   if (props.presentation === 'compact') {
     return (
       <span className="text-body text-text-secondary">
-        Schätzunsicherheit ±{NNBSP}{props.pp}{NNBSP}%
+        {tx('Schätzunsicherheit')} ±{NNBSP}{props.pp}{NNBSP}%
       </span>
     )
   }
@@ -44,7 +50,7 @@ export function EstimateUncertaintyBadge(props: EstimateUncertaintyBadgeProps) {
         </div>
       </div>
       <span className="a3-cap">
-        Schätzunsicherheit ±{NNBSP}{formatDE(new Decimal(props.pp))}{NNBSP}%
+        {tx('Schätzunsicherheit')} ±{NNBSP}{formatDE(new Decimal(props.pp))}{NNBSP}%
       </span>
     </div>
   )

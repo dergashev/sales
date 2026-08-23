@@ -279,7 +279,7 @@ export function OfferPanel() {
           />
         </div>}
         {!priceUnavailable && <p className="a3-cap mt-1">
-          netto
+          {t('money.net')}
           {' · '}
           {/* DC-21 moneyOrigin: цепочка драйверов + округление + runRef.
               Regionalfaktor в Herkunft — «deaktiviert» (правило 40). */}
@@ -385,7 +385,7 @@ export function OfferPanel() {
                     p.duration.exactMonths ? formatDE(p.duration.exactMonths, 4) : '—'}${NNBSP}Monate`
                 : null}
               runRef={s.mode === 'intern'
-                ? 'Bauzeit-Methodik · DEMO-SC-01 · Staffelstart aus ScheduleModel'
+                ? 'Bauzeit-Methodik · DEMO-SC-01 · Baubeginn aus dem Bauzeitplan'
                 : null}
               accessibleName={`${t('common.showOrigin')} · Bauzeit`}
             />
@@ -967,7 +967,9 @@ function driverLabel(
  * показывали порядок, которого норматив не знает. Два форматтера одной
  * величины расходятся всегда, вопрос только в том, когда это заметят.
  */
-function signed(d: Decimal): string {
+// F-38: exported so BuildingScope's readiness journal disclosure can format
+// event deltas identically instead of a second, divergence-prone formatter.
+export function signed(d: Decimal): string {
   if (d.isZero()) return `±${NNBSP}0${NNBSP}€`
   const pr = present(d.abs())
   const sign = d.isNegative() ? '−' : '+'

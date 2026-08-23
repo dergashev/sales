@@ -208,6 +208,11 @@ const de = {
   'buildingScope.confirm.confirmed': 'Gebäude bestätigt',
   'buildingScope.confirm.includesClass':
     'Die Bestätigung gilt für alle angezeigten Angaben einschließlich der Gebäudeklasse nach MBO §2.',
+  // F-36: "1 offene Konflikte" was a grammar mistake (adjective/noun agree
+  // in the singular too) — a dedicated singular phrase, not a `{count}` word
+  // swap, since German declension changes more than the noun's ending.
+  'buildingScope.confirm.conflictReasonOne':
+    'Zuerst 1 offenen Konflikt für dieses Gebäude entscheiden.',
   'buildingScope.confirm.conflictReason':
     'Zuerst {count} offene Konflikte für dieses Gebäude entscheiden.',
   'buildingScope.confirm.sectionsReason':
@@ -340,6 +345,10 @@ const de = {
   'configurator.sidebar.body':
     'Die Kalkulation beginnt erst in der Leistungsabgrenzung. Die Moduswahl allein erzeugt noch keinen Preis.',
   'journal.empty': 'Journal: noch keine übernommenen Änderungen',
+  // F-38: Building & Scope has no Option yet, so there is no "seit
+  // Erstellung der Option" reference point — a plain event count instead.
+  'journal.buildingScope.summaryOne': 'Journal: 1 Ereignis in der Vorbereitung',
+  'journal.buildingScope.summary': 'Journal: {count} Ereignisse in der Vorbereitung',
   'shell.en.draftActive': 'EN: Entwurf — Übersetzung noch nicht vollständig',
   'shell.en.draftHint': 'EN ist noch ein Entwurf: die Übersetzung wird gerade vervollständigt',
   // Подпись сегмента языка — такой же текст интерфейса, как и рядом стоявший
@@ -378,7 +387,12 @@ const de = {
   'opplist.emptyAccount.sentence': 'Es sind noch keine Opportunities vorhanden.',
   'opplist.emptyAccount.detail':
     'Neue Opportunities erscheinen hier automatisch, sobald sie aus HubSpot übernommen werden.',
+  // F-39: `documentsLabel` is genuinely plural in German too ("1 Dokumente"
+  // was wrong) — DE needs the same singular/plural split as EN, even though
+  // "Gebäude" itself happens to be invariant.
+  'opplist.card.buildingLabel': 'Gebäude',
   'opplist.card.buildingsLabel': 'Gebäude',
+  'opplist.card.documentLabel': 'Dokument',
   'opplist.card.documentsLabel': 'Dokumente',
   // Kanonisches Label je HubSpot-Lifecycle-Stadium (STAGE_LABEL_KEY in
   // OpportunityList) — ersetzt `tx(o.stage)` für den Status-Tag, das
@@ -579,6 +593,8 @@ const en: Partial<Record<MessageKey, string>> = {
   'buildingScope.confirm.confirmed': 'Building confirmed',
   'buildingScope.confirm.includesClass':
     'Confirmation covers all displayed data, including the building class under MBO §2.',
+  'buildingScope.confirm.conflictReasonOne':
+    'Resolve 1 open conflict for this building first.',
   'buildingScope.confirm.conflictReason':
     'Resolve {count} open conflicts for this building first.',
   'buildingScope.confirm.sectionsReason':
@@ -711,6 +727,8 @@ const en: Partial<Record<MessageKey, string>> = {
   'configurator.sidebar.body':
     'Pricing starts only in Scope boundaries. The mode choice alone does not create a price.',
   'journal.empty': 'Journal: no adopted changes yet',
+  'journal.buildingScope.summaryOne': 'Journal: 1 event during preparation',
+  'journal.buildingScope.summary': 'Journal: {count} events during preparation',
   'shell.en.draftActive': 'EN: draft — translation not yet complete',
   'shell.en.draftHint': 'EN is still a draft: the translation is being completed',
   'shell.en.draftOption': 'EN · Draft',
@@ -734,7 +752,9 @@ const en: Partial<Record<MessageKey, string>> = {
   'opplist.emptyAccount.sentence': 'There are no Opportunities yet.',
   'opplist.emptyAccount.detail':
     'New Opportunities appear here automatically once they arrive from HubSpot.',
+  'opplist.card.buildingLabel': 'building',
   'opplist.card.buildingsLabel': 'buildings',
+  'opplist.card.documentLabel': 'document',
   'opplist.card.documentsLabel': 'documents',
   'opplist.stage.neuAusHubspot': 'new from HubSpot',
   'opplist.stage.inVorbereitung': 'in preparation',

@@ -645,8 +645,14 @@ export function OpportunityCard() {
         <p className="a3-cap mt-1">{tx('Nach Wirkung sortiert; Verengung in Prozentpunkten. Eine Option zu wählen verengt nichts — nur die Bestätigung des Kunden (D-19).')}</p>
 
         <h3 className="mt-4 text-small font-medium text-text-primary">{tx('Offene Fragen')}</h3>
+        {/* F-36: this list previously mapped over the UNFILTERED `openQuestions`
+            (done + open together), while the heading above counted only
+            `openOfThose` (undone) — an audited screenshot showed the heading
+            naming 2 while 3 rows rendered. The heading, the "Offene Fragen"
+            (open questions) label, and the copy-to-clipboard text below all
+            already agree on the filtered set; only this render diverged. */}
         <ol className="mt-2">
-          {openQuestions.map((q, i) => (
+          {openOfThose.map((q, i) => (
             <li key={q.text} className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle py-3">
               <span className={'text-body ' + (q.done ? 'text-text-muted' : 'text-text-primary')}>
                 {q.done && <span aria-hidden="true">✓ </span>}
@@ -678,7 +684,7 @@ export function OpportunityCard() {
 
         <div className="mt-4">
           <Button onClick={() => {
-            const text = openQuestions.filter((q) => !q.done).map((q, i) => `${i + 1}. ${q.text}`).join('\n')
+            const text = openOfThose.map((q, i) => `${i + 1}. ${q.text}`).join('\n')
             if (!navigator.clipboard) {
               setCopyState('error')
               return
