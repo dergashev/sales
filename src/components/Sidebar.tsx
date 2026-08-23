@@ -225,12 +225,17 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
             >
               {t('nav.export')}
             </button>
+            {/* Task 03 (AC3, rule 12): the reason must be visibly adjacent to
+                the disabled control, not only announced to screen readers —
+                the same treatment the "Konfigurator" item already gets
+                below, now extended to Export since this ticket names it
+                explicitly. */}
             {!exportGateOpen && (
-              <span id="building-gate-export" className="sr-only">
+              <p id="building-gate-export" className="px-5 pb-2 pl-8 text-small text-text-secondary">
                 {!gateOpen
                   ? t('buildingScope.gate.navigationReason')
                   : t('configurator.finalGate.exportBlockedReason')}
-              </span>
+              </p>
             )}
           </li>
         )}
