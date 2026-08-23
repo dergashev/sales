@@ -41,16 +41,12 @@ export const OPPORTUNITY = {
 }
 
 export const BUILDING_SCOPE = {
+  // Task 02 (deep-coherence audit, F-22): this single action now reviews
+  // and confirms every ready section (Identität / Flächen /
+  // Geschossstruktur) itself and finalizes the building in one click —
+  // there is no longer a separate per-section "Abschnitt bestätigen"
+  // control to click first.
   confirmBuilding: 'Gebäude bestätigen',
-  /**
-   * `buildingScope.section.confirm` (src/i18n/index.ts) — confirms whichever
-   * building-data section (Identität / Flächen / Geschossstruktur) is
-   * currently expanded. Each confirm auto-collapses that section and
-   * auto-expands the next incomplete one, so the SAME button label is
-   * reused for all three; `confirmBuilding` above only becomes enabled
-   * once every section has been confirmed this way.
-   */
-  confirmSection: 'Abschnitt bestätigen',
 }
 
 export const CONFIGURATOR_MODE = {

@@ -67,29 +67,14 @@ test.describe('building-aware Configurator gate chain', () => {
     await expect(konfiguratorItem).toHaveAttribute('aria-describedby', 'building-gate-konfigurator')
 
     // ── Confirm the only included building (Haus A) — the gate opens ─
-    // The building review is a section-by-section accordion (Identität /
-    // Flächen / Geschossstruktur, in that order): each confirm auto-collapses
-    // the just-confirmed section and auto-expands the next incomplete one,
-    // so the same "Abschnitt bestätigen" control is clicked three times —
-    // never the section's own row-header (that toggles it closed, since
-    // Identität starts expanded by default). Only once all three sections
-    // are confirmed does "Gebäude bestätigen" itself become enabled.
-    //
-    // That collapse/expand is itself an animated `fadeRise` transition
-    // (CLAUDE.md rule 20): for a brief overlap BOTH the exiting row (still
-    // opacity:1, mid fade-out) and the entering row (opacity:0, mid
-    // fade-in) carry an accessibly-named "Abschnitt bestätigen" button.
-    // `getByRole().click()` resolves strictly and does not wait out that
-    // overlap, so each iteration first waits for exactly one such button to
-    // remain (an `expect(...).toHaveCount(1)` DOES auto-retry) before
-    // clicking — landing on the settled section rather than racing the
-    // transition.
+    // Task 02 (deep-coherence audit, F-22): the building review's three
+    // sections (Identität / Flächen / Geschossstruktur) used to each need
+    // their own independent "Abschnitt bestätigen" click before "Gebäude
+    // bestätigen" itself unlocked. The single building-level confirm
+    // action now reviews and confirms every ready section itself as part
+    // of one click (AC5: exactly one confirmation action per building) —
+    // there is no longer a separate section-level control to click first.
     const activePanel = page.getByRole('tabpanel')
-    const confirmSection = () => activePanel.getByRole('button', { name: BUILDING_SCOPE.confirmSection })
-    for (let i = 0; i < 3; i++) {
-      await expect(confirmSection()).toHaveCount(1)
-      await confirmSection().click()
-    }
     await activePanel.getByRole('button', { name: BUILDING_SCOPE.confirmBuilding }).click()
     await expect(konfiguratorItem).not.toHaveAttribute('aria-disabled', 'true')
 
@@ -103,11 +88,6 @@ test.describe('building-aware Configurator gate chain', () => {
     // ── Confirm the second building too — the gate opens again ───────
     await page.getByRole('tab', { name: new RegExp(BUILDINGS.b) }).click()
     const buildingBPanel = page.getByRole('tabpanel')
-    const confirmSectionB = () => buildingBPanel.getByRole('button', { name: BUILDING_SCOPE.confirmSection })
-    for (let i = 0; i < 3; i++) {
-      await expect(confirmSectionB()).toHaveCount(1)
-      await confirmSectionB().click()
-    }
     await buildingBPanel.getByRole('button', { name: BUILDING_SCOPE.confirmBuilding }).click()
     await expect(konfiguratorItem).not.toHaveAttribute('aria-disabled', 'true')
     await expect(konfiguratorItem).not.toHaveAttribute('aria-describedby', 'building-gate-konfigurator')
