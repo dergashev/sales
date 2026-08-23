@@ -71,6 +71,18 @@ export function S5Export() {
 
   // Preflight — вывод, не заявление: блокер, интервал, допущения.
   const blockers: string[] = []
+  // Task 03 (deep-coherence audit, F-16/PD-3, CPO-confirmed): the Sidebar
+  // nav gate is the primary defense, but preflight is the ticket's own
+  // stated second layer ("Export disabled ...; preflight blocks
+  // otherwise") — this view must not silently allow sending an option
+  // whose configuration was never confirmed, however it was reached.
+  if (!s.configurationComplete()) {
+    blockers.push(
+      s.mode === 'intern'
+        ? 'Konfiguration nicht bestätigt — Leistungsabgrenzung und jedes einbezogene Gebäude müssen im gewählten Modus bestätigt sein'
+        : 'Die Konfiguration ist noch nicht vollständig bestätigt — das Angebot kann noch nicht freigegeben werden',
+    )
+  }
   if (!activeBuilding(s).gebaeudeklasse.confirmed) {
     blockers.push(
       s.mode === 'intern'

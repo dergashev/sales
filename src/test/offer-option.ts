@@ -1,4 +1,6 @@
 import type userEvent from '@testing-library/user-event'
+import { act } from '@testing-library/react'
+import { includedBuildingIds, useStore } from '../state/store'
 
 /**
  * Task 02 (deep-coherence audit, F-22): a building review used to require
@@ -16,4 +18,25 @@ export async function confirmBuildingReviewSections(
   _user: ReturnType<typeof userEvent.setup>,
 ) {
   // Intentionally empty — see docblock above.
+}
+
+/**
+ * Task 03 (deep-coherence audit, F-16/PD-3): Export is now gated on
+ * `configurationComplete()` — Scope Boundaries confirmed AND every included
+ * building's visible configuration confirmed. The derivation itself is
+ * exercised directly by `configurator-mode.dom.test.tsx` and
+ * `buildingProposal.test.ts`; tests whose actual subject is further down
+ * the pipeline (Vergleich/Export/sending) only need the gate's precondition
+ * satisfied, not a full click-through of every "bestätigen" affordance.
+ * Call this right before reaching Export so the confirmed fingerprint
+ * reflects whatever state the test has already set up — confirming earlier
+ * and then still editing coverage/energiestandard/etc. would invalidate it
+ * again (fingerprint-based invalidation is exactly the point, not a bug).
+ */
+export function confirmWholeConfiguration() {
+  act(() => {
+    const s = useStore.getState()
+    s.confirmScopeBoundaries()
+    includedBuildingIds(s).forEach((id) => s.confirmBuildingConfiguration(id))
+  })
 }

@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
-import { confirmBuildingReviewSections } from '../../test/offer-option'
+import { confirmBuildingReviewSections, confirmWholeConfiguration } from '../../test/offer-option'
 import { ConfigurationScopeTabs } from '../S3Konfigurator'
 import {
   __resetStoreForTests,
@@ -116,7 +116,7 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
       'Leistungsabgrenzung',
       'Energie & Zertifikate',
       'Flächen im Detail',
-      'Termine & Kommerzielles',
+      'Termine',
     ])
     expect(screen.queryByRole('button', { name: /Baugrund & Erschließung/ })).toBeNull()
     expect(screen.getByText('Kapitel 1 von 4 · Konfigurator')).toBeInTheDocument()
@@ -145,6 +145,11 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     // `pricingStarted` flag itself is not rolled back.
     expect(screen.queryByRole('complementary', { name: 'Angebot' })).toBeNull()
     expect(useStore.getState().pricingStarted).toBe(true)
+    // Task 03 (deep-coherence audit, F-24): re-entering mode choice/edit
+    // with an existing calculation must say so truthfully, not claim the
+    // calculation never started.
+    expect(screen.getByText('Kalkulation vorhanden')).toBeInTheDocument()
+    expect(screen.queryByText('Kalkulation noch nicht gestartet')).toBeNull()
     await user.click(screen.getByRole('radio', { name: 'Je Gebäude konfigurieren' }))
     await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
     expect(useStore.getState().configurationMode).toBe('PER_BUILDING')
@@ -172,8 +177,10 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     await user.click(nav(/Leistungen KG 300/))
 
     expect(screen.queryByRole('tablist', { name: 'Konfigurationsumfang' })).toBeNull()
+    // Task 03 (F-25): exactly one mode banner per chapter now, not two
+    // back-to-back copies of the same sentence.
     expect(screen.getAllByText(/Gemeinsame Konfiguration · gilt für Haus A und Haus B/))
-      .not.toHaveLength(0)
+      .toHaveLength(1)
 
     const facade = screen.getByRole('heading', { level: 2, name: 'Fassade' })
       .closest('section')!
@@ -334,6 +341,10 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     expect(useStore.getState().projection().result.total.exact.eq(complex.total.exact))
       .toBe(true)
 
+    // Task 03 (F-16/PD-3): Export now requires Scope Boundaries confirmed
+    // and every included building's configuration confirmed — this test's
+    // subject is sending/snapshotting, not that gate itself.
+    confirmWholeConfiguration()
     await user.click(nav(/Export/))
     await user.click(screen.getByRole('button', { name: 'Weiter zum Preflight' }))
     await user.click(screen.getByRole('button', { name: /Preflight bestanden/ }))
@@ -520,7 +531,7 @@ describe('Task 02 — building-scope attribution in SHARED mode', () => {
     // F-02: the recap's cross-reference names the actual decision owner
     // ("Flächen im Detail"), not "Leistungsabgrenzung" (chapter 1), which
     // owns no Untergeschoss control at all.
-    const goTo = within(recap).getByRole('button', { name: /Zu Kapitel \d+ · Flächen im Detail/ })
+    const goTo = within(recap).getByRole('button', { name: /Zu «Flächen im Detail»/ })
     expect(goTo).toBeInTheDocument()
 
     // F-15: "Flächen im Detail" itself shows both buildings' Untergeschoss
@@ -547,7 +558,7 @@ describe('Task 02 — building-scope attribution in SHARED mode', () => {
     await startMode(user, 'SHARED')
     includeCoreScope()
     await visitRequiredBuildingChapters(user)
-    await user.click(nav(/Termine & Kommerzielles/))
+    await user.click(nav(/Termine/))
 
     // F-17: the fixture's real per-building execution windows are both
     // read — Haus B's already ends later (2028-01-04) than Haus A's

@@ -286,9 +286,9 @@ const de = {
   'configurator.scopeBoundaries.servicingStatus':
     'Erschließung · KG 200 im Angebot: {status}',
   'configurator.scopeBoundaries.assumptionAction':
-    'Entscheidung im Konfigurator · Kapitel {chapter}',
+    'Entscheidung im Konfigurator · «{chapterName}»',
   'configurator.energy.goTo':
-    'Zu Kapitel {chapter} · Energie & Zertifikate',
+    'Zu «{chapterName}»',
   'configurator.returnBuildingScope': 'Zu Gebäude & Umfang',
   'configurator.scope.single': 'Konfiguration für {building} · {status}',
   'configurator.scope.announcement': '{scope} ausgewählt. Status: {status}.',
@@ -311,12 +311,29 @@ const de = {
   'configurator.areas.remedy':
     'Die Angabe für {building} in Gebäude & Umfang prüfen oder ergänzen.',
   'configurator.areas.review': 'In Gebäude & Umfang prüfen',
-  'configurator.areas.goTo': 'Zu Kapitel {chapter} · Flächen im Detail',
+  'configurator.areas.goTo': 'Zu «{chapterName}»',
   'configurator.underground.title': 'Untergeschoss · {building}',
   'configurator.underground.decidedIn':
     'Entschieden in Flächen im Detail — hier nur zur Einordnung sichtbar.',
   'configurator.schedule.completionOwner':
     'Fertigstellung bestimmt durch {building}.',
+  'configurator.hint.dismiss': 'Verstanden',
+  'configurator.mode.readiness.preserved': 'Kalkulation vorhanden',
+  'configurator.mode.readiness.preservedBody':
+    'Die bestehende Konfiguration bleibt erhalten und wird nach der Bestätigung des Modus fortgesetzt.',
+  'configurator.finalGate.label': 'Konfiguration noch nicht vollständig bestätigt',
+  'configurator.finalGate.scopeBoundariesOutstanding':
+    'Die Leistungsabgrenzung ist noch nicht bestätigt.',
+  'configurator.finalGate.buildingsOutstanding': 'Noch zu bestätigen: {buildings}.',
+  'configurator.finalGate.action': 'Jetzt bestätigen',
+  'configurator.finalGate.exportBlockedReason':
+    'Export ist gesperrt, bis die Konfiguration vollständig bestätigt ist.',
+  'offerPanel.empty.sentence': 'Noch keine Kostengruppe im Angebot enthalten.',
+  'offerPanel.empty.detail':
+    'Legen Sie in der Leistungsabgrenzung mindestens eine Kostengruppe fest, um eine Kalkulation zu erhalten.',
+  'offerPanel.empty.action': 'Leistungsabgrenzung öffnen',
+  'configurator.scope.emptyDetail':
+    'Wählen Sie oben mindestens eine Kostengruppe, um eine Kalkulation zu erhalten.',
   'configurator.overview.title': 'Konfigurationsstand',
   'configurator.overview.label': 'Konfigurationsstand aller Gebäude',
   'configurator.sidebar.title': 'Vor der Kalkulation',
@@ -640,9 +657,9 @@ const en: Partial<Record<MessageKey, string>> = {
   'configurator.scopeBoundaries.servicingStatus':
     'Site servicing · KG 200 in the offer: {status}',
   'configurator.scopeBoundaries.assumptionAction':
-    'Decide in the configurator · Chapter {chapter}',
+    'Decide in the configurator · «{chapterName}»',
   'configurator.energy.goTo':
-    'Go to chapter {chapter} · Energy & certifications',
+    'Go to «{chapterName}»',
   'configurator.returnBuildingScope': 'Go to Building & Scope',
   'configurator.scope.single': 'Configuration for {building} · {status}',
   'configurator.scope.announcement': '{scope} selected. Status: {status}.',
@@ -665,12 +682,29 @@ const en: Partial<Record<MessageKey, string>> = {
   'configurator.areas.remedy':
     'Review or add the value for {building} in Building & scope.',
   'configurator.areas.review': 'Review in Building & scope',
-  'configurator.areas.goTo': 'Go to chapter {chapter} · Areas in detail',
+  'configurator.areas.goTo': 'Go to «{chapterName}»',
   'configurator.underground.title': 'Underground floor · {building}',
   'configurator.underground.decidedIn':
     'Decided in Areas in detail — shown here for context only.',
   'configurator.schedule.completionOwner':
     'Completion date is determined by {building}.',
+  'configurator.hint.dismiss': 'Got it',
+  'configurator.mode.readiness.preserved': 'Calculation available',
+  'configurator.mode.readiness.preservedBody':
+    'The existing configuration is preserved and resumes once the mode is confirmed.',
+  'configurator.finalGate.label': 'Configuration not fully confirmed yet',
+  'configurator.finalGate.scopeBoundariesOutstanding':
+    'Scope Boundaries has not been confirmed yet.',
+  'configurator.finalGate.buildingsOutstanding': 'Still to confirm: {buildings}.',
+  'configurator.finalGate.action': 'Confirm now',
+  'configurator.finalGate.exportBlockedReason':
+    'Export is locked until the configuration is fully confirmed.',
+  'offerPanel.empty.sentence': 'No cost group is included in the offer yet.',
+  'offerPanel.empty.detail':
+    'Select at least one cost group in Scope Boundaries to get a calculation.',
+  'offerPanel.empty.action': 'Open Scope Boundaries',
+  'configurator.scope.emptyDetail':
+    'Select at least one cost group above to get a calculation.',
   'configurator.overview.title': 'Configuration status',
   'configurator.overview.label': 'Configuration status for all buildings',
   'configurator.sidebar.title': 'Before pricing',

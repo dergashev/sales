@@ -38,6 +38,21 @@ export const SCOPE_BOUNDARIES_DECIDABLE_GROUPS = [
   'KG_200', 'KG_300', 'KG_400', 'KG_500', 'KG_600', 'KG_700', 'KG_800',
 ] as const satisfies readonly CostGroup[]
 
+/**
+ * Task 03 (deep-coherence audit, F-10): true when no decidable cost group is
+ * included — a genuinely empty Declared Pricing Scope. `completeness` alone
+ * cannot express this: the 22.08.2026 binary-scope contract makes an
+ * all-excluded scope a fully DECIDED (`complete`) one, with a real total of
+ * exactly zero. Rule 16 forbids presenting a zero total as an ordinary
+ * result regardless of how the completeness label reads, so callers use
+ * this to switch to an empty-state presentation instead of the numeric
+ * hero — never to reclassify `completeness` itself, which stays exactly as
+ * the binary-scope contract defines it.
+ */
+export function isScopeUniverseEmpty(coverage: Coverage): boolean {
+  return !SCOPE_BOUNDARIES_DECIDABLE_GROUPS.some((group) => coverage[group] === 'included')
+}
+
 export type BuildingInput = {
   id: string
   /** Ось Gebäudeform — уровень Building (D-11 v2). */

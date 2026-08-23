@@ -141,8 +141,12 @@ export const CONFIGURATOR_STEPS: readonly ConfiguratorStep[] = [
     applicability: { kind: 'includedKg', group: 'KG_800' },
   },
   {
+    // Task 03 (deep-coherence audit, F-27): the chapter's only content is
+    // the Bauzeit schedule — Rabatt/Kommerzielles lives in Export (S5),
+    // never here. "Termine & Kommerzielles" asserted content this chapter
+    // does not own; the title now names exactly what it shows.
     id: CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE,
-    label: 'Termine & Kommerzielles',
+    label: 'Termine',
     scope: 'project',
     visibility: 'clientSafe',
     applicability: { kind: 'required' },

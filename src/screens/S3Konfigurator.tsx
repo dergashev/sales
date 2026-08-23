@@ -24,6 +24,7 @@ import { useT, useTx } from '../i18n'
 import { incompleteReasonText } from '../i18n/reasons'
 import {
   bgfAboveGround,
+  isScopeUniverseEmpty,
   type BuildingInput,
   type CostGroup,
   type CoverageState,
@@ -170,7 +171,7 @@ export function S3Konfigurator() {
         })}
       />
 
-      <ConfigurationModeContext />
+      <ConfigurationModeContext buildingScoped={buildingScoped} />
       <ConfigurationScopeNavigation stepId={currentId} />
 
       <div
@@ -285,14 +286,6 @@ function buildingName(
   return review
     ? effectiveFactValue(review.facts.documentationName) ?? buildingId
     : buildingId
-}
-
-function configuratorStepPosition(
-  state: ReturnType<typeof useStore.getState>,
-  stepId: ConfiguratorStepId,
-): number {
-  return activeConfiguratorWorkflow({ coverage: state.coverage, mode: state.mode })
-    .findIndex((step) => step.id === stepId) + 1
 }
 
 function buildingNames(
@@ -428,13 +421,26 @@ function ConfigurationModeEntry() {
   )
 }
 
-function ConfigurationModeContext() {
+/**
+ * Task 03 (deep-coherence audit, F-25): the SINGLE mode-banner renderer.
+ * `ConfigurationScopeNavigation` used to restate this exact sentence on
+ * every SHARED building-scoped chapter (`configurator.mode.currentShared`
+ * and `configurator.scope.shared` are byte-identical strings) and every
+ * project-scoped chapter got its own separate "gilt für den gesamten
+ * Komplex" banner beneath this one — two banners, back to back, on every
+ * chapter. This component now owns the scope statement outright; its
+ * wording already varies by the current chapter's level so the other
+ * component never needs to repeat it.
+ */
+function ConfigurationModeContext({ buildingScoped }: { buildingScoped: boolean }) {
   const s = useStore()
   const t = useT()
   const names = buildingNames(s, includedBuildingIds(s))
-  const summary = s.configurationMode === 'SHARED'
-    ? t('configurator.mode.currentShared', { buildings: names })
-    : t('configurator.mode.currentPerBuilding')
+  const summary = !buildingScoped
+    ? t('configurator.scope.project')
+    : s.configurationMode === 'SHARED'
+      ? t('configurator.mode.currentShared', { buildings: names })
+      : t('configurator.mode.currentPerBuilding')
   return (
     <section
       aria-label={t('configurator.mode.legend')}
@@ -590,6 +596,13 @@ export function ConfigurationScopeTabs({
   )
 }
 
+/**
+ * Task 03 (F-25): pure scope NAVIGATION now — the mode/scope statement
+ * itself belongs solely to `ConfigurationModeContext`. Only PER_BUILDING
+ * building-scoped chapters have an actual functional widget here (the
+ * building tabs); every other combination has nothing left to add beside
+ * the singular mode banner above.
+ */
 function ConfigurationScopeNavigation({
   stepId,
 }: {
@@ -599,18 +612,8 @@ function ConfigurationScopeNavigation({
   const t = useT()
   const selectedIds = includedBuildingIds(s)
   const buildingScoped = configuratorStep(stepId).scope === 'building'
-  const names = buildingNames(s, selectedIds)
 
-  if (!buildingScoped) {
-    return <p className="mt-4 text-small font-medium text-text-secondary">
-      {t('configurator.scope.project')}
-    </p>
-  }
-  if (s.configurationMode === 'SHARED') {
-    return <p className="mt-4 text-small font-medium text-text-secondary">
-      {t('configurator.scope.shared', { buildings: names })}
-    </p>
-  }
+  if (!buildingScoped || s.configurationMode === 'SHARED') return null
 
   const statuses = Object.fromEntries(selectedIds.map((id) => [
     id,
@@ -734,29 +737,95 @@ function ConfigurationOverview() {
   )
 }
 
+/**
+ * Task 03 (deep-coherence audit, F-24): this panel used to state "Kalkulation
+ * noch nicht gestartet" unconditionally, including on re-entering mode
+ * choice/edit with an option that already has a full existing calculation
+ * (`pricingStarted === true`) — false. The heading now reads the actual
+ * state and names that the existing configuration is preserved instead.
+ */
 export function ConfigurationModeReadiness() {
   const t = useT()
+  const started = useStore().pricingStarted
+  const headingKey = started
+    ? 'configurator.mode.readiness.preserved'
+    : 'buildingScope.readiness.pricingNotStarted'
+  const bodyKey = started
+    ? 'configurator.mode.readiness.preservedBody'
+    : 'configurator.sidebar.body'
   return (
     <aside
-      aria-label={t('buildingScope.readiness.pricingNotStarted')}
+      aria-label={t(headingKey)}
       className="flex h-full w-panel-right min-w-0 max-w-panel-right shrink-0 flex-col overflow-y-auto border-l border-border-strong bg-surface-default"
     >
       <div className="p-6">
         <h2 className="text-heading-2 font-bold text-text-primary">
-          {t('buildingScope.readiness.pricingNotStarted')}
+          {t(headingKey)}
         </h2>
         <p className="mt-2 text-small text-text-secondary">
-          {t('configurator.sidebar.body')}
+          {t(bodyKey)}
         </p>
       </div>
     </aside>
   )
 }
 
+const HINT_STORAGE_PREFIX = 'all3.hints.v1.'
+const HINT_MAX_SHOWS = 3
+
+/**
+ * Task 03 (deep-coherence audit, F-40): guidance-system.md §2 L3 layer —
+ * a contextual hint shows on first visit, closes, and fades after three
+ * shows (a per-user counter), never as permanent furniture. This is a
+ * small product-local composition, not a new canonical primitive: no
+ * dismissable/fading contextual-hint contract exists yet in the Design
+ * System (CANONICAL DESIGN SYSTEM GAP, non-blocking — flagged, not
+ * invented here). The counter lives in its own localStorage namespace,
+ * deliberately separate from `all3.proposal.v1.*` (`persistence.ts`): it
+ * is a per-viewer UI preference, never proposal/commercial state.
+ *
+ * Known limitation: guidance-system.md also expects a hint to stay
+ * reachable again via "?" after it fades. No such help affordance exists
+ * anywhere in the product yet (not just for chapter intros) — building one
+ * is a larger, cross-cutting feature outside this task's owned findings.
+ */
+function useFadingHint(id: string): { visible: boolean; dismiss: () => void } {
+  const [count, setCount] = useState<number>(() => {
+    try {
+      const raw = window.localStorage.getItem(HINT_STORAGE_PREFIX + id)
+      return raw === null ? 0 : Number(raw)
+    } catch {
+      return 0
+    }
+  })
+  useEffect(() => {
+    if (count >= HINT_MAX_SHOWS) return
+    try {
+      window.localStorage.setItem(HINT_STORAGE_PREFIX + id, String(count + 1))
+    } catch {
+      // Storage unavailable (private mode, quota) — the hint simply shows
+      // every visit instead of fading; never block the chapter on this.
+    }
+    // Runs once per mount (per `id`): this records "this hint was shown",
+    // it does not react to `count` changing again within the same mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
+  const dismiss = () => {
+    setCount(HINT_MAX_SHOWS)
+    try {
+      window.localStorage.setItem(HINT_STORAGE_PREFIX + id, String(HINT_MAX_SHOWS))
+    } catch {
+      // See above — dismiss still hides it for this render either way.
+    }
+  }
+  return { visible: count < HINT_MAX_SHOWS, dismiss }
+}
+
 /**
  * Карточка раздела внутри главы: заголовок H3 из шкалы, воздух, бордер.
  * `intro` — коучинг-подсказка для sales: в презентации не существует
- * (правило 11), данные карточки остаются.
+ * (правило 11); данные карточки остаются. Больше не постоянная мебель
+ * (F-40): затухает после трёх показов или закрывается вручную.
  */
 function Card({ title, intro, children }: {
   title: string
@@ -764,9 +833,23 @@ function Card({ title, intro, children }: {
   children: ReactNode
 }) {
   const mode = useStore().mode
+  const t = useT()
   const tx = useTx()
+  const hint = useFadingHint(title)
+  const showIntro = Boolean(intro) && mode === 'intern' && hint.visible
   return (
-    <SectionSheet title={tx(title)} intro={intro && mode === 'intern' ? tx(intro) : undefined}>
+    <SectionSheet
+      title={tx(title)}
+      intro={showIntro ? (
+        <>
+          {tx(intro!)}
+          {' '}
+          <Button variant="ghost" onClick={hint.dismiss}>
+            {t('configurator.hint.dismiss')}
+          </Button>
+        </>
+      ) : undefined}
+    >
       <div className="mt-3">{children}</div>
     </SectionSheet>
   )
@@ -820,6 +903,7 @@ function ChapterUmfang() {
   ])).values()]
   const scopeStatus = scopeBoundariesStatus(s)
   const nextStep = activeConfiguratorWorkflow({ coverage: s.coverage, mode: s.mode })[1]
+  const scopeEmpty = isScopeUniverseEmpty(s.coverage)
 
   return (
     <div className="grid gap-5">
@@ -877,39 +961,52 @@ function ChapterUmfang() {
         </div>
       </Card>
 
-      <Card title="Energiestandard und Zertifizierung">
-        <div className="grid gap-5">
-          <EnergiestandardPicker />
-          <OptionChapter groups={ZERT_GROUPS}
-            intro={'Zertifikate sind eine eigene Achse: der Energiestandard '
-              + 'beschreibt das Gebäude, das Siegel beschreibt das Verfahren, '
-              + 'mit dem es nachgewiesen wird.'} />
-        </div>
-      </Card>
+      {/* Task 03 (deep-coherence audit, F-14): Energiestandard/QNG/DGNB were
+          editable here AND in "Energie & Zertifikate" — the same state,
+          two controls. Energie & Zertifikate is now the single editable
+          owner (plus the customer-confirmation control, which never
+          existed here); this chapter shows the same read-only banner
+          pattern KG 300/400 already use, with a link to the owning
+          chapter. */}
+      <EnergyCertBanner />
 
       <Card title="Folge für die Angebotssumme">
-        <p className="text-body text-text-primary">{tx(p.result.totalLabel)}</p>
-        {p.result.completeness === 'incomplete' && (
-          /* Правило 11: у клиента предупреждение свёрнуто в нейтральную
-             точку, у продавца остаётся списком причин, с которым можно
-             работать. Существенная проблема сюда не попадает по
-             построению: с ней клиентский вид не открывается вовсе. */
-          <ClientNotice clientText="Einzelne Kostengruppen sind noch nicht entschieden — das Angebot weist deshalb eine Zwischensumme aus.">
-            <ul className="mt-2">
-              {incompleteReasons.map((r) => (
-                <li key={r.code + ('groups' in r ? r.groups.join() : '')}
-                    className="a3-cap">
-                  <span aria-hidden="true">○ </span>
-                  {tx(incompleteReasonText(r, s.mode))}
-                </li>
-              ))}
-            </ul>
-          </ClientNotice>
-        )}
-        {p.result.completeness === 'complete' && (
-          <p className="a3-cap mt-2">
-            <span aria-hidden="true">✓ </span>{tx('Alle Deckungsentscheidungen getroffen und keine offenen wesentlichen Punkte — das Angebot weist einen Gesamtpreis aus.')}</p>
-        )}
+        {scopeEmpty ? (
+          // Task 03 (F-10): every KG group is at its determinate `excluded`
+          // default — a genuinely empty scope, not an open decision. Never
+          // assert a Gesamtpreis (or a Zwischensumme, which still implies
+          // at least one calculated position) over nothing.
+          <p className="text-body text-text-primary">
+            <span aria-hidden="true">○ </span>
+            {t('offerPanel.empty.sentence')}
+            <span className="mt-1 block text-small font-normal text-text-secondary">
+              {t('configurator.scope.emptyDetail')}
+            </span>
+          </p>
+        ) : (<>
+          <p className="text-body text-text-primary">{tx(p.result.totalLabel)}</p>
+          {p.result.completeness === 'incomplete' && (
+            /* Правило 11: у клиента предупреждение свёрнуто в нейтральную
+               точку, у продавца остаётся списком причин, с которым можно
+               работать. Существенная проблема сюда не попадает по
+               построению: с ней клиентский вид не открывается вовсе. */
+            <ClientNotice clientText="Einzelne Kostengruppen sind noch nicht entschieden — das Angebot weist deshalb eine Zwischensumme aus.">
+              <ul className="mt-2">
+                {incompleteReasons.map((r) => (
+                  <li key={r.code + ('groups' in r ? r.groups.join() : '')}
+                      className="a3-cap">
+                    <span aria-hidden="true">○ </span>
+                    {tx(incompleteReasonText(r, s.mode))}
+                  </li>
+                ))}
+              </ul>
+            </ClientNotice>
+          )}
+          {p.result.completeness === 'complete' && (
+            <p className="a3-cap mt-2">
+              <span aria-hidden="true">✓ </span>{tx('Alle Deckungsentscheidungen getroffen und keine offenen wesentlichen Punkte — das Angebot weist einen Gesamtpreis aus.')}</p>
+          )}
+        </>)}
       </Card>
 
       <Card title="Leistungsabgrenzung bestätigen">
@@ -1025,7 +1122,7 @@ function EnergyCertBanner() {
         <Button variant="ghost" onClick={() =>
           s.openConfiguratorStepAt(CONFIGURATOR_STEP.ENERGY_CERTIFICATION)}>
           {t('configurator.energy.goTo', {
-            chapter: configuratorStepPosition(s, CONFIGURATOR_STEP.ENERGY_CERTIFICATION),
+            chapterName: tx(configuratorStep(CONFIGURATOR_STEP.ENERGY_CERTIFICATION).label),
           })}
         </Button>
       )}
@@ -1120,7 +1217,7 @@ function UndergroundFloorRecap() {
         <Button onClick={() =>
           s.openConfiguratorStepAt(CONFIGURATOR_STEP.AREAS)}>
           {t('configurator.areas.goTo', {
-            chapter: configuratorStepPosition(s, CONFIGURATOR_STEP.AREAS),
+            chapterName: tx(configuratorStep(CONFIGURATOR_STEP.AREAS).label),
           })}
         </Button>
       </div>
@@ -1559,8 +1656,19 @@ function ChapterTermine() {
         )}
       </Card>
 
+      {/* Task 03 (deep-coherence audit, F-16/AC4): the confirm CTA is the
+          last step of the chapter sequence — this project-scoped chapter
+          previously said nothing about it, so "Nächster Schritt" below
+          looked like the genuine end of the road even with 0 of N
+          buildings confirmed. Silent while everything is already
+          confirmed (rule 30: `ready` needs no separate status surface). */}
+      <ConfigurationCompleteNotice />
+
       {/* Последняя глава конвейера обязана называть следующий шаг (DC-27):
-          продолжение в левой навигации — это поиск, а не маршрут. */}
+          продолжение в левой навигации — это поиск, а не маршрут. Task 03
+          (PD-3=yes): confirmation gates EXPORT, not this comparison step —
+          comparing variants before confirming remains a legitimate, lower-
+          stakes exploratory action. */}
       <div className="a3-nextstep">
         <p className="a3-mtag">{tx9('Nächster Schritt')}</p>
         <p className="text-body text-text-primary">
@@ -1573,6 +1681,50 @@ function ChapterTermine() {
         </div>
       </div>
     </div>
+  )
+}
+
+/**
+ * Task 03 (deep-coherence audit, F-16/AC4): the aggregate confirm CTA at
+ * the end of the chapter sequence. `configurationComplete()` already
+ * combines Scope Boundaries confirmation with every included building's
+ * own confirmation (`ConfigurationStatusStrip`, rendered earlier per
+ * building) — this does not duplicate that derivation or its confirm
+ * action, it names whichever prerequisite is still outstanding and routes
+ * there. Renders nothing once everything is already confirmed.
+ */
+function ConfigurationCompleteNotice() {
+  const s = useStore()
+  const t = useT()
+  const scopeStatus = scopeBoundariesStatus(s)
+  const scopeMissing = scopeStatus !== 'confirmed'
+  const outstandingBuildings = includedBuildingIds(s)
+    .filter((id) => configurationDisplayStatusFor(s, id) !== 'confirmed')
+
+  if (!scopeMissing && outstandingBuildings.length === 0) return null
+
+  return (
+    <Card title="Konfiguration bestätigen">
+      <NextStep
+        label={t('configurator.finalGate.label')}
+        description={scopeMissing
+          ? t('configurator.finalGate.scopeBoundariesOutstanding')
+          : t('configurator.finalGate.buildingsOutstanding', {
+              buildings: buildingNames(s, outstandingBuildings),
+            })}
+        action={t('configurator.finalGate.action')}
+        onAction={() => {
+          if (scopeMissing) {
+            s.openConfiguratorStepAt(CONFIGURATOR_STEP.SCOPE_BOUNDARIES)
+            return
+          }
+          if (s.configurationMode === 'PER_BUILDING') {
+            s.setConfigurationScope(outstandingBuildings[0]!)
+          }
+          s.openConfiguratorStepAt(CONFIGURATOR_STEP.ENERGY_CERTIFICATION)
+        }}
+      />
+    </Card>
   )
 }
 

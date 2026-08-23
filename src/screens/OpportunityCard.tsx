@@ -9,7 +9,7 @@ import {
   useStore,
   wflConflict,
 } from '../state/store'
-import { activeConfiguratorWorkflow, CONFIGURATOR_STEP } from '../state/chapters'
+import { configuratorStep, CONFIGURATOR_STEP } from '../state/chapters'
 import { effectiveFactValue } from '../state/buildingReview'
 import { NNBSP, formatDE, rateLabel } from '../engine/money'
 import {
@@ -490,10 +490,12 @@ export function OpportunityCard() {
   const uncertaintyTarget = p.uncertaintyPp - openOfThose.reduce((a, q) => a + q.deltaPp, 0)
   const [copyState, setCopyState] = useState<'idle' | 'ok' | 'error'>('idle')
 
-  const scopeBoundariesPosition = activeConfiguratorWorkflow({
-    coverage: s.coverage,
-    mode: s.mode,
-  }).findIndex((step) => step.id === CONFIGURATOR_STEP.SCOPE_BOUNDARIES) + 1
+  // Task 03 (deep-coherence audit, F-26): names the chapter, not a derived
+  // position — a cross-reference that survives KG toggling everywhere else
+  // in the product should not have made an exception here.
+  const scopeBoundariesChapterName = tx(
+    configuratorStep(CONFIGURATOR_STEP.SCOPE_BOUNDARIES).label,
+  )
   // Активное допущение = каскад дошёл до подстановки (M-4). Список выводится
   // из состояния, а не поддерживается руками — поэтому он всегда точен.
   const recommendations: Array<{ id: string; text: string; resolve?: () => void; resolveLabel?: string }> = []
@@ -709,7 +711,7 @@ export function OpportunityCard() {
                   : (
                       <Button onClick={() => focusSection(parameterSectionRef)}>
                         {t('configurator.scopeBoundaries.assumptionAction', {
-                          chapter: scopeBoundariesPosition,
+                          chapterName: scopeBoundariesChapterName,
                         })}
                       </Button>
                     )}

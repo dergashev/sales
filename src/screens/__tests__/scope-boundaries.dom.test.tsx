@@ -145,6 +145,10 @@ describe('Leistungsabgrenzung / Scope Boundaries (binary contract, CPO decision 
   it('bietet den vierten Energiestandard EH 40 NH (QNG) als Kachel an', async () => {
     const user = userEvent.setup()
     await openScopeBoundaries(user)
+    // Task 03 (deep-coherence audit, F-14): Energiestandard is edited only
+    // in "Energie & Zertifikate" now — Leistungsabgrenzung shows the same
+    // read-only context banner KG 300/400 already use, with a link there.
+    await user.click(screen.getByRole('button', { name: /Zu «Energie & Zertifikate»/ }))
 
     const es = screen.getByRole('radiogroup', { name: 'Energiestandard' })
     const tiles = within(es).getAllByRole('radio')
@@ -174,8 +178,14 @@ describe('Leistungsabgrenzung / Scope Boundaries (binary contract, CPO decision 
    * Tech Review P0/P2 (ticket d21f8d48, commit 2871a63): every prior test in
    * this file ran with a single building, where SHARED and PER_BUILDING are
    * indistinguishable — exactly the gap that let `setEnergiestandard` ship
-   * writing only the active building while this screen shows "gilt für den
-   * gesamten Komplex" with no building tabs to reach the other one.
+   * writing only the active building while the screen showing the picker
+   * shows "gilt für den gesamten Komplex" with no building tabs to reach
+   * the other one. Task 03 (F-14) later relocated the sole editable
+   * picker from Leistungsabgrenzung to "Energie & Zertifikate" — a
+   * building-scoped chapter that, exactly like Leistungsabgrenzung, shows
+   * no tabs in SHARED mode (`ConfigurationScopeNavigation` renders none
+   * for `buildingScoped && SHARED`) — so this regression coverage still
+   * applies unchanged, just from its new home.
    */
   it('SHARED-Modus mit zwei Gebäuden: Energiestandard gilt komplexweit', async () => {
     const user = userEvent.setup()
@@ -192,7 +202,7 @@ describe('Leistungsabgrenzung / Scope Boundaries (binary contract, CPO decision 
     await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
     await user.click(screen.getByRole('radio', { name: /Gemeinsam konfigurieren/ }))
     await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
-    await user.click(nav(/Leistungsabgrenzung/))
+    await user.click(nav(/Energie & Zertifikate/))
 
     expect(useStore.getState().buildings['DEMO-B-A']!.energiestandard).toBe('EH_55')
     expect(useStore.getState().buildings['DEMO-B-B']!.energiestandard).toBe('EH_55')
@@ -200,12 +210,15 @@ describe('Leistungsabgrenzung / Scope Boundaries (binary contract, CPO decision 
     const es = screen.getByRole('radiogroup', { name: 'Energiestandard' })
     await user.click(within(es).getAllByRole('radio')[2]!) // EH_40
 
-    // No building tabs exist on this project-scoped chapter — the change
-    // must reach BOTH buildings, not just whichever one was active.
+    // No building tabs exist on this building-scoped chapter in SHARED
+    // mode — the change must reach BOTH buildings, not just whichever one
+    // was active.
     expect(useStore.getState().buildings['DEMO-B-A']!.energiestandard).toBe('EH_40')
     expect(useStore.getState().buildings['DEMO-B-B']!.energiestandard).toBe('EH_40')
 
-    // Confirmation covers both buildings' requirements, not just the active one.
+    // Confirmation covers both buildings' requirements, not just the active
+    // one. Scope Boundaries confirmation lives back on Leistungsabgrenzung.
+    await user.click(nav(/Leistungsabgrenzung/))
     await user.click(screen.getByRole('button', { name: /Umfang bestätigen/ }))
     expect(useStore.getState().scopeBoundariesConfirmedFingerprint).not.toBeNull()
   })

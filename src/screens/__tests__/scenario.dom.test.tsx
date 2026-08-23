@@ -4,7 +4,7 @@ import {
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
-import { confirmBuildingReviewSections } from '../../test/offer-option'
+import { confirmBuildingReviewSections, confirmWholeConfiguration } from '../../test/offer-option'
 import { activeBuilding, __resetStoreForTests, useStore } from '../../state/store'
 
 /**
@@ -87,9 +87,15 @@ describe('Сквозной сценарий продажи', () => {
 
     // Сравнение и отправка достижимы; журнал накопил оба события.
     await user.click(nav(/Variantenvergleich/))
+    // Task 03 (F-16/PD-3): Export now requires the whole-option confirm
+    // CTA — this test's subject is state continuity across screens, not
+    // that gate itself.
+    confirmWholeConfiguration()
     await user.click(nav(/^S5|Export/))
     expect(screen.getByRole('button', { name: /Preflight/ })).toBeInTheDocument()
-    expect(useStore.getState().journal).toHaveLength(12)
+    // +2 over the earlier assertions: Scope Boundaries confirmation and the
+    // one building's configuration confirmation, both journal events.
+    expect(useStore.getState().journal).toHaveLength(14)
   })
 
   it('глава 9 показывает Bauzeit обеими формами: полосой и таблицей', async () => {
@@ -97,7 +103,7 @@ describe('Сквозной сценарий продажи', () => {
     render(<App />)
     await enterPipeline(user)
     await user.click(nav(/Konfigurator/))
-    await user.click(nav(/Termine & Kommerzielles/))
+    await user.click(nav(/Termine/))
 
     // Диаграмма скрыта от скринридера, содержание доступно таблицей
     // (GANTT-003): полоса иллюстрирует, но не является носителем.
@@ -122,7 +128,7 @@ describe('Сквозной сценарий продажи', () => {
     render(<App />)
     await enterPipeline(user)
     await user.click(nav(/Konfigurator/))
-    await user.click(nav(/Termine & Kommerzielles/))
+    await user.click(nav(/Termine/))
 
     // P1 (Barrierefreiheit): `<label htmlFor>` muss auf das ECHTE Feld
     // zeigen, nicht auf eine Wrapper-`<span>` — genau das war der Fehler.
@@ -177,10 +183,11 @@ describe('Сквозной сценарий продажи', () => {
     // Task 02 (F-02): this recap's cross-reference used to point at
     // "Scope boundaries" (chapter 1), which owns no Untergeschoss control
     // at all — the actual owner is "Areas in detail" (`ChapterFlaechen`).
-    // Chapter numbering is dynamic (F-26, unrelated to this task), so the
-    // number itself is not asserted here — only the corrected target.
+    // Task 03 (F-26): the cross-reference now names the chapter instead of
+    // a derived position number, which is exactly what makes it survive
+    // KG toggling — no number to assert here at all any more.
     expect(screen.getByRole('button', {
-      name: /Go to chapter \d+ · Areas in detail/,
+      name: /Go to «Areas in detail»/,
     })).toBeInTheDocument()
     act(() => useStore.getState().setUiLanguage('de'))
     // Риск — категория · вероятность · следствие, и он НЕ в цене (CALC-001).
@@ -341,6 +348,7 @@ describe('Сквозной сценарий продажи', () => {
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
+    confirmWholeConfiguration()
     await user.click(nav(/^S5|Export/))
 
     const slider = screen.getByRole('slider', { name: /Rabatt in Prozent/ })
@@ -356,6 +364,7 @@ describe('Сквозной сценарий продажи', () => {
     render(<App />)
     await enterPipeline(user)
     const modus = screen.getByRole('radiogroup', { name: 'Ansicht' })
+    confirmWholeConfiguration()
     await user.click(within(modus).getAllByRole('radio')[1]!)
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
     await user.click(nav(/^S5|Export/))
@@ -393,6 +402,7 @@ describe('Сквозной сценарий продажи', () => {
     await user.click(nav(/Energie & Zertifikate/))
     const es = await screen.findByRole('radiogroup', { name: 'Energiestandard' })
     await user.click(within(es).getAllByRole('radio')[2]!)
+    confirmWholeConfiguration()
     await user.click(nav(/^S5|Export/))
     await user.click(screen.getByRole('button', { name: /Preflight/ }))
     await user.click(screen.getByRole('button', { name: /Preflight bestanden/ }))
@@ -430,6 +440,12 @@ describe('Сквозной сценарий продажи', () => {
     await confirmBuildingReviewSections(user)
     await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
     await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
+    // Task 03 (F-16/PD-3): Export now requires a chosen mode plus a fully
+    // confirmed configuration — this test's actual subject is print's own
+    // independent gate, not the email/export gate itself.
+    await user.click(screen.getByRole('radio', { name: /Je Gebäude konfigurieren/ }))
+    await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
+    confirmWholeConfiguration()
     await user.click(nav(/Export/))
     await user.click(screen.getByRole('button', { name: /Druckansicht öffnen/ }))
 
@@ -497,7 +513,7 @@ describe('Сквозной сценарий продажи', () => {
     expect((document.body.textContent ?? '').match(REGISTRY)?.[0] ?? null).toBeNull()
     await user.click(nav(/Konfigurator/))
     for (const chapter of [/Leistungen KG 300/, /Leistungsabgrenzung/,
-                           /Termine & Kommerzielles/]) {
+                           /Termine/]) {
       await user.click(nav(chapter))
       const text = document.body.textContent ?? ''
       const hit = text.match(REGISTRY)
@@ -509,6 +525,9 @@ describe('Сквозной сценарий продажи', () => {
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
+    // Task 03 (F-16/PD-3): this test reaches Export further down — its own
+    // subject is client-profile DOM hygiene, not the confirmation gate.
+    confirmWholeConfiguration()
 
     // Проверяем переход с внутренней главы: клиентский маршрут обязан
     // нормализоваться до разрешённой главы без промежуточной утечки.
@@ -521,7 +540,7 @@ describe('Сквозной сценарий продажи', () => {
     // KG 700 is internal-only. Removing the currently viewed step when the
     // output profile changes lands on the next active step and moves focus to
     // its h1 instead of leaving focus in removed content.
-    expect(screen.getByRole('heading', { level: 1, name: 'Termine & Kommerzielles' }))
+    expect(screen.getByRole('heading', { level: 1, name: 'Termine' }))
       .toHaveFocus()
     expect(screen.getByText('Kapitel 6 von 6 · Konfigurator')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Beenden' })).toBeInTheDocument()
@@ -545,7 +564,7 @@ describe('Сквозной сценарий продажи', () => {
       /Technik KG 400/,
       /Energie & Zertifikate/,
       /Flächen im Detail/,
-      /Termine & Kommerzielles/,
+      /Termine/,
     ]
     for (const chapter of clientChapters) {
       await user.click(nav(chapter))

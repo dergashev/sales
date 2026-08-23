@@ -1377,6 +1377,9 @@ type Store = {
   /** Все включённые здания подтверждены — шаг вниз к сервисам открыт. */
   allBuildingsConfirmed: () => boolean
   canBeginConfiguration: () => boolean
+  /** Task 03 (F-16/PD-3): Scope Boundaries confirmed + every included
+   * building's visible configuration confirmed. Export/preflight gate. */
+  configurationComplete: () => boolean
   setUiLanguage: (l: 'de' | 'en') => void
   setDensity: (d: 'komfortabel' | 'kompakt') => void
   /** Экран конвейера — konfigurator/vergleich/export/… (UI-состояние). */
@@ -4084,6 +4087,8 @@ const store = createStore<Store>((set, get) => {
     },
 
     canBeginConfiguration: () => canBeginConfiguration(get()),
+
+    configurationComplete: () => configurationComplete(get()),
 
     setUiLanguage: (l) => set({ uiLanguage: l }),
 

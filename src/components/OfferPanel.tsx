@@ -9,11 +9,13 @@ import {
   NNBSP, present, rateLabel, formatDE, DENOMINATOR_LABEL, label as moneyLabel,
 } from '../engine/money'
 import type { CostGroup, CoverageState, DriverBasis } from '../engine/calculate'
+import { isScopeUniverseEmpty } from '../engine/calculate'
 import { projectDriversForClient } from '../state/clientProjection'
+import { CONFIGURATOR_STEP } from '../state/chapters'
 import { Button, useCountUp } from './primitives'
 import { OriginPopover } from './OriginPopover'
 import { ClientNotice } from './ClientNotice'
-import { PartialState } from './DataStates'
+import { DataStateBlock, PartialState } from './DataStates'
 import { EstimateUncertaintyBadge } from './EstimateUncertaintyBadge'
 import { useT, useTx } from '../i18n'
 import { useSemanticMotion } from '../design-system/motion'
@@ -140,6 +142,14 @@ export function OfferPanel() {
   const priceUnavailable = p.result.total.exact.isZero()
     && p.result.completeness === 'incomplete'
     && Object.values(s.coverage).includes('unknown')
+  // Task 03 (deep-coherence audit, F-10): a fresh option starts with every
+  // KG group at its determinate `excluded` default (22.08.2026 binary-scope
+  // contract) — a fully DECIDED, `complete` scope with a real total of
+  // exactly zero. `priceUnavailable` above only catches the older
+  // unknown-coverage case; this catches the newer one, and neither may be
+  // collapsed into the other (they name different facts: no decision yet,
+  // vs. every decision already made and none of them `included`).
+  const scopeEmpty = isScopeUniverseEmpty(s.coverage)
   const shownDelta = useLastValue(s.activeDelta)
   const shownPreview = useLastValue(s.preview)
   const blocked = !activeBuilding(s).gebaeudeklasse.confirmed
@@ -188,6 +198,28 @@ export function OfferPanel() {
         {/* Герои — в ленте контракта (.a3-heroband): базовая линия и
             переносы принадлежат системе, не этому файлу (дефект 17). */}
         <div className="a3-heroband">
+        {scopeEmpty ? (
+          /* Task 03 (F-10): a genuinely empty Declared Pricing Scope never
+             renders as a qualified 0-€ hero with a band, rate and
+             completion date — it names the actual state and its one next
+             step (rule 16, rule 30 `empty`). */
+          <DataStateBlock
+            state="empty"
+            sentence={t('offerPanel.empty.sentence')}
+            detail={t('offerPanel.empty.detail')}
+            action={
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  s.setPipelineView('konfigurator')
+                  s.openConfiguratorStepAt(CONFIGURATOR_STEP.SCOPE_BOUNDARIES)
+                }}
+              >
+                {t('offerPanel.empty.action')}
+              </Button>
+            }
+          />
+        ) : (<>
         <div className="a3-hb a3-hb-total">
           <span className="a3-hb-cap">{tx(p.result.totalLabel)}</span>
           {priceUnavailable ? (
@@ -320,6 +352,7 @@ export function OfferPanel() {
             />
           </span>
         </div>
+        </>)}
         </div>
 
         {/* Раньше здесь стояла отдельная строка `DEMO-SC-01 · DEMO-RUN-0007`

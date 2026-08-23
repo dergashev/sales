@@ -22,7 +22,7 @@ describe('semantic Configurator workflow', () => {
       'Energie & Zertifikate',
       'Flächen im Detail',
       'Baunebenkosten KG 700',
-      'Termine & Kommerzielles',
+      'Termine',
     ])
     expect(CONFIGURATOR_STEPS.some((step) => step.label === 'Baugrund & Erschließung'))
       .toBe(false)

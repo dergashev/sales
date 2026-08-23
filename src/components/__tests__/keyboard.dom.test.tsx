@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
-import { confirmBuildingReviewSections } from '../../test/offer-option'
+import { confirmBuildingReviewSections, confirmWholeConfiguration } from '../../test/offer-option'
 import { __resetStoreForTests, useStore } from '../../state/store'
 
 /**
@@ -224,6 +224,10 @@ describe('Маршрут экрана возвращает начало доку
     expect(screen.getByRole('heading', { level: 1, name: 'Variantenvergleich' })).toHaveFocus()
 
     main.scrollTop = 320
+    // Task 03 (F-16/PD-3): Export now requires the whole-option confirm
+    // CTA — this test's subject is scroll/focus reset on navigation, not
+    // that gate itself.
+    confirmWholeConfiguration()
     await user.click(screen.getByRole('button', { name: 'Export' }))
     expect(main.scrollTop).toBe(0)
     expect(screen.getByRole('heading', { level: 1, name: /Export/ })).toHaveFocus()

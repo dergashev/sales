@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 57** · перевод есть, мост не подключён: 27
-· перевода нет (в поставку копирайта): 30
+**Всего 57** · перевод есть, мост не подключён: 26
+· перевода нет (в поставку копирайта): 31
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -22,7 +22,6 @@
 - Musterquartier Südhang
 - Projektparameter bestätigt (Gebäude, Flächen, Einheiten)
 - Residential area · WFL nach WoFlV: two candidates.
-- Schätzunsicherheit ±
 - Sehr geehrte Damen und Herren,
 
 anbei erhalten Sie unser indikatives Angebot für das Musterprojekt Nordfeld.
@@ -50,14 +49,15 @@ Mit freundlichen Grüßen
 - Bestätigt
 - Bestätigung erforderlich · blockiert das Anlegen einer Opportunity Option
 - Blockiert das Anlegen einer Opportunity Option nicht
+- Die folgenden Auswahlmöglichkeiten sind bereits auf diesen Standard abgestimmt.
 - Diese 1 Frage reduziert die Schätzunsicherheit von ±
 - Druckansicht öffnen
 - Eigenes Ausgabeprofil clientPrint mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.
 - Ein Dokument ist nicht lesbar · blockiert das Anlegen einer Opportunity Option nicht
-- Energiestandard und Zertifizierung
 - Entscheidung erforderlich · blockiert das Anlegen einer Opportunity Option
 - Fragen reduzieren die Schätzunsicherheit von ±
 - Geprüfte Gebäudewerte tragen ihre Herkunft; Änderungen erfolgen ausschließlich in Gebäude & Umfang.
+- Konfiguration bestätigen
 - Konfiguration je Gebäude bestätigt
 - Kostengruppen nach DIN 276
 - Leistungsabgrenzung bestätigen

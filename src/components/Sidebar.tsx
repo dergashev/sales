@@ -64,6 +64,13 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
       ? t('configurator.mode.clientBlocked')
       : undefined
   const gateOpen = s.canBeginConfiguration()
+  // Task 03 (deep-coherence audit, F-16/PD-3, CPO-confirmed): the building
+  // gate alone used to leave Export reachable at mode choice, before any
+  // Configurator confirmation existed at all — a 0-€ or half-configured
+  // offer was exportable. Export additionally requires the whole-option
+  // confirm CTA (`configurationComplete`); the other pipeline items keep
+  // using the plain building gate, unaffected.
+  const exportGateOpen = gateOpen && s.configurationComplete()
   const screens = client
     ? SCREENS.filter(({ id }) => isClientVisiblePipelineView(id))
     : SCREENS
@@ -206,21 +213,23 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
             </p>
             <button
               type="button"
-              onClick={() => { if (gateOpen) s.setPipelineView('export') }}
+              onClick={() => { if (exportGateOpen) s.setPipelineView('export') }}
               aria-current={view === 'export' ? 'page' : undefined}
-              aria-disabled={!gateOpen || undefined}
-              aria-describedby={!gateOpen ? 'building-gate-export' : undefined}
+              aria-disabled={!exportGateOpen || undefined}
+              aria-describedby={!exportGateOpen ? 'building-gate-export' : undefined}
               className={`relative flex min-h-hit-target w-full items-center px-5 py-2 text-left text-body ${FOCUS} ` +
                 (view === 'export'
                   ? 'border-l-selected border-selection-border bg-surface-subtle font-medium text-text-primary'
                   : 'border-l-selected border-transparent text-text-secondary hover:bg-surface-subtle') +
-                (!gateOpen ? ' cursor-default text-text-disabled' : '')}
+                (!exportGateOpen ? ' cursor-default text-text-disabled' : '')}
             >
               {t('nav.export')}
             </button>
-            {!gateOpen && (
+            {!exportGateOpen && (
               <span id="building-gate-export" className="sr-only">
-                {t('buildingScope.gate.navigationReason')}
+                {!gateOpen
+                  ? t('buildingScope.gate.navigationReason')
+                  : t('configurator.finalGate.exportBlockedReason')}
               </span>
             )}
           </li>

@@ -80,6 +80,13 @@ describe('Variantenvergleich', () => {
     // Fertigstellungsdatum.
     st().createOption('Zweite')
     st().openOption('OPT-01')
+    // Task 03 (F-10): a fresh option now starts with every KG group at its
+    // binary-scope `excluded` default — a genuinely empty Declared Pricing
+    // Scope, whose OfferPanel hero (including the completion date this
+    // test asserts) is intentionally replaced by the empty state (rule 16).
+    // This test's actual subject is date consistency across two readers of
+    // the SAME priced option, so give it a real scope first.
+    st().setCoverage('KG_300', 'included')
     st().setConstructionStartDate('2027-03-01')
 
     const offerPanel = render(<OfferPanel />)
