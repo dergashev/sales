@@ -464,7 +464,9 @@ export function OfferPanel() {
               (shownDelta?.deltaExact.isNegative() ? ' a3-saving' : ' a3-cost')}
           >
             {shownDelta && (<>
-              <span>{shownDelta.label}</span>
+              <span>
+                {shownDelta.change ? translatedChangeLabel(shownDelta.change, t) : shownDelta.label}
+              </span>
               <span className="font-medium">
                 {signed(shownDelta.deltaExact)}
                 {/* Δ-проценты — только внутренние (правило 11). Task 04

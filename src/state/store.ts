@@ -1131,7 +1131,16 @@ type Store = {
    *  (деление на ноль); Task 04 (F-30) заменяет прежнее «(+ 0,00 %)» рядом
    *  с реальной ненулевой дельтой честным отсутствием строки, а не ложным
    *  нулём (rule 30 — запрет ложной точности). */
-  activeDelta: { label: string; deltaExact: Decimal; percent: Decimal | null } | null
+  activeDelta: {
+    label: string
+    /** Task 05 rework (QA AC-2): set only where a plain `PriceChange` fully
+     *  explains `label` (no extra German suffix composed in) — lets the
+     *  render site call `translatedChangeLabel` instead of showing the
+     *  German-only `label` untranslated in EN mode. */
+    change?: PriceChange
+    deltaExact: Decimal
+    percent: Decimal | null
+  } | null
   /**
    * Geist-Vorschau (DC-28): последствие опции у цены ДО клика. Эфемерное
    * UI-состояние вроде `openConfiguratorStep` — данные не меняются, события нет.
@@ -2939,6 +2948,15 @@ const store = createStore<Store>((set, get) => {
             : fallbackReverted
               ? `${groupLabel} ${COVERAGE_LABEL[st]} · KG 700 im All3-Verfahren 70/22/8 verteilt`
               : `${groupLabel} ${COVERAGE_LABEL[st]}`,
+          // Task 05 rework (QA AC-2): the fallback branches above compose an
+          // extra German KG 700 auto-fallback explanation that a plain
+          // `coverage` PriceChange cannot represent — only the common case
+          // (no fallback transition) gets a translatable `change`; the rare
+          // fallback-transition text is a known remaining gap (out of scope
+          // here — QA's evidenced scenario is a plain KG toggle, not one
+          // that triggers the KG 700 auto-fallback).
+          change: fallbackApplied || fallbackReverted
+            ? undefined : { kind: 'coverage', group: g, value: st },
           deltaExact: delta,
           percent: before.isZero() ? null : delta.div(before).mul(100),
         },
