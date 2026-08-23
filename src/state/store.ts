@@ -1139,6 +1139,10 @@ type Store = {
    */
   preview: {
     label: string
+    /** Task 05 rework (QA AC-2): `label` above is German-only (`changeLabel`
+     *  has no i18n hook access) — the render site needs the originating
+     *  change back to recover a translated form via `translatedChangeLabel`. */
+    change: PriceChange
     /** Будущее значение героя, а не только разница (анатомия DC-28). */
     futureTotal: Displayed
     deltaExact: Decimal
@@ -3287,6 +3291,7 @@ const store = createStore<Store>((set, get) => {
       set({
         preview: {
           label: changeLabel(change),
+          change,
           futureTotal: out.futureTotal,
           deltaExact: out.delta,
           contextRef: 'DEMO-SC-01 · Vorschau-Lauf DEMO-RUN-0009',
@@ -4371,6 +4376,35 @@ const COVERAGE_LABEL: Record<CoverageState, string> = {
   onRequest: 'auf Anfrage',
   unknown: 'noch offen',
   notApplicable: 'nicht anwendbar',
+}
+
+const COVERAGE_LABEL_KEY: Record<CoverageState, string> = {
+  included: 'coverage.included',
+  excluded: 'coverage.excluded',
+  onRequest: 'coverage.onRequest',
+  unknown: 'coverage.unknown',
+  notApplicable: 'coverage.notApplicable',
+}
+
+/**
+ * Task 05 rework (QA AC-2, live EN walkthrough): translated counterpart of
+ * `changeLabel` for the Geist-Vorschau render site (`preview.change`).
+ * `changeLabel` itself stays German-only — it is called from plain store
+ * logic with no i18n hook access. Only the `coverage` kind is what QA's
+ * walkthrough actually evidenced broken ("KG 200 enthalten" surviving into
+ * EN, e.g. hovering a Leistungsabgrenzung KG toggle); the other kinds keep
+ * falling back to the untranslated label, same as before this fix — fixing
+ * those needs the same `Driver.key`-style structural fix as
+ * `translatedDriverLabel` in `clientProjection.ts`, out of scope here.
+ */
+export function translatedChangeLabel(
+  change: PriceChange,
+  t: (key: string, values?: Record<string, string | number>) => string,
+): string {
+  if (change.kind === 'coverage') {
+    return `${change.group.replace('_', ' ')} ${t(COVERAGE_LABEL_KEY[change.value])}`
+  }
+  return changeLabel(change)
 }
 
 export { LABEL_UG, COVERAGE_LABEL, LABELS }

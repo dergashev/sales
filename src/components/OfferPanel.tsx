@@ -1,6 +1,8 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { Decimal } from 'decimal.js'
-import { activeBuilding, includedBuildingIds, useStore } from '../state/store'
+import {
+  activeBuilding, includedBuildingIds, translatedChangeLabel, useStore,
+} from '../state/store'
 import { effectiveFactValue } from '../state/buildingReview'
 import { CATALOG } from '../state/catalog'
 import { splitKg300 } from '../engine/risk'
@@ -10,7 +12,7 @@ import {
 } from '../engine/money'
 import type { CostGroup, CoverageState, DriverBasis } from '../engine/calculate'
 import { isScopeUniverseEmpty } from '../engine/calculate'
-import { projectDriversForClient } from '../state/clientProjection'
+import { projectDriversForClient, translatedDriverLabel } from '../state/clientProjection'
 import { CONFIGURATOR_STEP } from '../state/chapters'
 import { Button, useCountUp } from './primitives'
 import { OriginPopover } from './OriginPopover'
@@ -62,12 +64,6 @@ function useLastValue<T>(current: T | null): T | null {
 /** Пометка выведенной величины — из данных, не из разметки (D-22). */
 const MARK = derivedFx.marker
 
-const KG_LABELS: Record<CostGroup, string> = {
-  KG_100: 'Grundstück', KG_200: 'Vorbereitende Maßnahmen',
-  KG_300: 'Baukonstruktion', KG_400: 'Technische Anlagen',
-  KG_500: 'Außenanlagen', KG_600: 'Ausstattung',
-  KG_700: 'Baunebenkosten', KG_800: 'Finanzierung',
-}
 
 const COVERAGE_SHORT: Record<CoverageState, string> = {
   included: 'enthalten', excluded: 'nicht enthalten',
@@ -427,7 +423,7 @@ export function OfferPanel() {
                   состояния (решение TASK-22, вариант 2), и строки обязаны
                   быть объявлены, а не получаться из утилит. */}
               <span className="a3-ghost-line">
-                {tx('Vorschau')} · {shownPreview.label}
+                {tx('Vorschau')} · {translatedChangeLabel(shownPreview.change, t)}
               </span>
               <span className="a3-ghost-line">
                 {shownPreview.futureTotal.prefix && (
@@ -506,7 +502,7 @@ export function OfferPanel() {
                   <li key={d.key}
                       className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
                     <span className="text-text-secondary">
-                      {tx(d.label)}
+                      {translatedDriverLabel(d, t)}
                       {/* Task 02 (F-01): names the building a per-building
                           row belongs to — intern only, never in
                           Kundenansicht. */}
@@ -530,7 +526,7 @@ export function OfferPanel() {
                 {excludedAdjustments.map((d) => (
                   <li key={d.key}
                       className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
-                    <span className="text-text-secondary">{tx(d.label)}</span>
+                    <span className="text-text-secondary">{translatedDriverLabel(d, t)}</span>
                     <span className="numeric shrink-0 text-text-primary">
                       {signed(d.exact)}
                     </span>
@@ -751,9 +747,9 @@ export function OfferPanel() {
                                   aria-expanded={kg300Open}
                                   onClick={() => setKg300Open((v2) => !v2)}>
                             <span aria-hidden="true">{kg300Open ? '▾' : '▸'}</span>
-                            {' '}{g.replace('_', NNBSP)} {KG_LABELS[g as CostGroup]}
+                            {' '}{g.replace('_', NNBSP)} {t(`costGroup.${g as CostGroup}`)}
                           </button>
-                        ) : <>{g.replace('_', NNBSP)} {KG_LABELS[g as CostGroup]}</>}
+                        ) : <>{g.replace('_', NNBSP)} {t(`costGroup.${g as CostGroup}`)}</>}
                       </td>
                       <td className="a3-num">{moneyLabel(present(v))}</td>
                       <td className="a3-num">
@@ -807,7 +803,7 @@ export function OfferPanel() {
                     100-%-Summe der Spalte exakt. */}
                 {p.discountDriver && (
                   <tr>
-                    <td>{tx(p.discountDriver.label)}</td>
+                    <td>{translatedDriverLabel(p.discountDriver, t)}</td>
                     <td className="a3-num">
                       −{NNBSP}{moneyLabel(present(p.discountDriver.exact.abs()))}
                     </td>
@@ -876,11 +872,13 @@ export function OfferPanel() {
               // erstellten Option (Startzustand: alle KG ausgeschlossen)
               // rechnerisch identisch zum leeren Angebot, aber das ist ein
               // benannter, definierter Bezug, keine unbenannte Lücke.
-              : <>Preisänderung seit Erstellung der Option:{' '}
+              : <>{t('offerPanel.journal.priceChangePrefix')}{' '}
                   <span className="numeric font-medium text-text-primary">
                     {signed(sessionDelta)}
-                  </span>{' '}netto · {priceChangeCount}{NNBSP}
-                  {priceChangeCount === 1 ? 'übernommene Änderung' : 'übernommene Änderungen'}</>}
+                  </span>{' '}{t('money.net')} · {priceChangeCount}{NNBSP}
+                  {priceChangeCount === 1
+                    ? t('offerPanel.journal.changeSingular')
+                    : t('offerPanel.journal.changePlural')}</>}
           </button>
 
           {journalOpen && ctxJournal.length > 0 && (

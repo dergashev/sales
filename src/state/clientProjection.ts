@@ -109,3 +109,40 @@ export function projectDriversForClient(
     },
   ]
 }
+
+/**
+ * Task 05 rework (QA AC-2): the engine's `Driver.label` is a fixed German
+ * sentence (calculation-domain data, no i18n hook access there) — `tx()`'s
+ * reverse lookup only matches WHOLE strings against the Codex delivery, so
+ * every composed/interpolated driver label (energy standard code, building
+ * class number, basement variant) fell through untranslated in EN mode.
+ * `d.key` already carries the same semantic identity the label was built
+ * from, so it is used here to recover a translatable form instead of
+ * parsing the German text back apart. Reuses the Codex-delivered
+ * `driver.*` keys where an exact concept match exists; the remainder are
+ * hand-authored (see `src/i18n/index.ts`) because no delivery covers this
+ * exact composed text.
+ */
+export function translatedDriverLabel(
+  d: Pick<Driver, 'key' | 'label'>,
+  t: (key: string, values?: Readonly<Record<string, string | number>>) => string,
+): string {
+  if (d.key === 'basis') return t('driver.baseService')
+  if (d.key === 'basis_s') return t('driver.baseServiceSpecialAreas')
+  if (d.key.startsWith('gebaeudeform_')) return t('driver.buildingForm')
+  const gkMatch = /^gebaeudeklasse_GK_(.+)$/.exec(d.key)
+  if (gkMatch) {
+    return `${t('driver.buildingClass', { class: gkMatch[1]! })}`
+      + ` · ${t('driver.fireResistanceEnclosure')}`
+  }
+  const ehMatch = /^energiestandard_(.+)$/.exec(d.key)
+  if (ehMatch) {
+    return t('driver.energyStandard', { standard: ehMatch[1]!.replace(/_/g, ' ') })
+  }
+  if (d.key === 'untergeschoss_vollausbau') return t('driver.basementShellAndFitOut')
+  if (d.key.startsWith('untergeschoss_')) return t('driver.basementFitOutOnly')
+  if (d.key === 'tiefgarage_zuschlag') return t('driver.undergroundGarage')
+  if (d.key === 'regionalfaktor') return t('driver.regionalFactor')
+  if (d.key === 'kg800_aggregate') return `KG 800 · ${t('costGroup.KG_800')}`
+  return d.label
+}

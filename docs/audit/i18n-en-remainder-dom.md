@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 57** · перевод есть, мост не подключён: 26
-· перевода нет (в поставку копирайта): 31
+**Всего 53** · перевод есть, мост не подключён: 26
+· перевода нет (в поставку копирайта): 27
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -57,19 +57,15 @@ Mit freundlichen Grüßen
 - Entscheidung erforderlich · blockiert das Anlegen einer Opportunity Option
 - Fragen reduzieren die Schätzunsicherheit von ±
 - Geprüfte Gebäudewerte tragen ihre Herkunft; Änderungen erfolgen ausschließlich in Gebäude & Umfang.
-- Konfiguration bestätigen
 - Konfiguration je Gebäude bestätigt
 - Kostengruppen nach DIN 276
-- Leistungsabgrenzung bestätigen
 - Planung ist Projektgröße, Ausführung gehört zum Gebäude — deshalb mehrere Zeilen und nicht eine. Die Fertigstellung ist dieselbe Zahl, die oben rechts als Kennzahl steht.
 - Projekt bestätigen
 - Projektübersicht
 - Später entscheiden
 - Texte stammen aus den Fallback-Regeln; das Wertfeld (z. B. die Gebäudeklasse) wird mit dem Projektwert belegt — der Regeltext nennt einen Beispielwert. Eine Empfehlung verschwindet, sobald der Wert erfasst ist — die Liste wird abgeleitet, nicht gepflegt.
-- Tiefgarage · Lüftung, OS-Beschichtung, Tore
 - Total BGF (S, nicht umschlossen)
 - Total WFL nach WoFlV geändert
-- Untergeschoss · Rohbau und Ausbau
 - Verschiebt die Termine unten; die Bauzeit selbst bleibt gleich.
 - Vorläufig · Strittige Angaben noch offen
 - Wartet auf die Voraussetzungen oben

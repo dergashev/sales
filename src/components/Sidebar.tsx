@@ -7,7 +7,7 @@ import {
 import type { PipelineView } from '../state/store'
 import { NNBSP } from '../engine/money'
 import { activeConfiguratorWorkflow } from '../state/chapters'
-import { useT, useTx, type MessageKey } from '../i18n'
+import { useT, type MessageKey } from '../i18n'
 import {
   isClientProjection,
   isClientVisiblePipelineView,
@@ -53,7 +53,6 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
   const view = pipelineViewForBuildingGate(s, s.pipelineView)
   const option = s.options.find((o) => o.id === s.activeOptionId)
   const t = useT()
-  const tx = useTx()
   const client = isClientProjection(s.mode)
   const buildingGateBlocked = !s.canBeginConfiguration()
   const configurationGateBlocked = !s.configurationModeChosen || s.configurationModeEditing
@@ -196,7 +195,7 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
                           <span aria-hidden="true" className="w-3 shrink-0">
                             {done ? '✓' : open ? '▸' : ''}
                           </span>
-                          <span>{tx(step.label)}</span>
+                          <span>{t(`chapter.${step.id}`)}</span>
                         </button>
                       </li>
                     )

@@ -108,13 +108,6 @@ const UG_IMAGE_VALUE: Record<'vollausbau' | 'ab_decke' | 'kein_ug', string> = {
   kein_ug: 'keins',
 }
 
-const KG_LABELS: Record<CostGroup, string> = {
-  KG_100: 'Grundstück', KG_200: 'Vorbereitende Maßnahmen',
-  KG_300: 'Baukonstruktion', KG_400: 'Technische Anlagen',
-  KG_500: 'Außenanlagen', KG_600: 'Ausstattung',
-  KG_700: 'Baunebenkosten', KG_800: 'Finanzierung',
-}
-
 /**
  * Последствие опции для consequenceLine — видно всегда, не по hover
  * (R-05/OPTION-009). Образец контракта: `≈ +97.000 € Mehrpreis`.
@@ -130,7 +123,6 @@ function consequenceLabel(delta: Decimal, zero?: string): string {
 export function S3Konfigurator() {
   const s = useStore()
   const t = useT()
-  const tx = useTx()
   if (!s.configurationModeChosen || s.configurationModeEditing) {
     return <ConfigurationModeEntry />
   }
@@ -164,7 +156,7 @@ export function S3Konfigurator() {
       {/* Заголовок экрана — masthead витрины: крупный титул и мета на
           одной базовой линии, как в образце. */}
       <PageHeader
-        title={tx(currentStep.label)}
+        title={t(`chapter.${currentStep.id}`)}
         meta={t('s3.header.progress', {
           current: routeIndex + 1,
           total: workflow.length,
@@ -257,7 +249,7 @@ export function S3Konfigurator() {
             <Button onClick={() => s.openConfiguratorStepAt(previous.id)}>
               {t('s3.previousChapter', {
                 number: routeIndex,
-                title: tx(previous.label),
+                title: t(`chapter.${previous.id}`),
               })}
             </Button>
           ) : <span />}
@@ -268,7 +260,7 @@ export function S3Konfigurator() {
             >
               {t('s3.nextChapter', {
                 number: routeIndex + 2,
-                title: tx(next.label),
+                title: t(`chapter.${next.id}`),
               })}
             </Button>
           )}
@@ -689,7 +681,6 @@ function visibleConfigurationStatus(
 function ConfigurationStatusStrip() {
   const s = useStore()
   const t = useT()
-  const tx = useTx()
   const ids = includedBuildingIds(s)
   const status = visibleConfigurationStatus(s, ids)
   const building = buildingName(s, s.activeBuildingId)
@@ -700,7 +691,7 @@ function ConfigurationStatusStrip() {
   const requiredStepNames = new Intl.ListFormat(
     s.uiLanguage === 'de' ? 'de-DE' : 'en-GB',
     { style: 'long', type: 'conjunction' },
-  ).format(requiredSteps.map((step) => tx(step.label)))
+  ).format(requiredSteps.map((step) => t(`chapter.${step.id}`)))
   const detail = status === 'open'
     ? t('configurator.status.openDetail', { steps: requiredStepNames })
     : t(`configurator.status.${status}Detail`)
@@ -928,7 +919,7 @@ function ChapterUmfang() {
   return (
     <div className="grid gap-5">
       <Card
-        title="Leistungsumfang nach DIN 276"
+        title={t('configurator.scopeBoundaries.title')}
         intro={t('configurator.scope.introBinary')}
       >
         <div className="grid gap-5">
@@ -954,7 +945,7 @@ function ChapterUmfang() {
             return (
               <div key={g}>
                 <RadioCardGroup
-                  legend={`${g.replace('_', NNBSP)} ${KG_LABELS[g]}`}
+                  legend={`${g.replace('_', NNBSP)} ${t(`costGroup.${g}`)}`}
                   value={s.coverage[g]}
                   onChange={(v) => s.setCoverage(g, v as CoverageState)}
                   onPreview={(v) => s.previewOption(
@@ -990,7 +981,7 @@ function ChapterUmfang() {
           chapter. */}
       <EnergyCertBanner />
 
-      <Card title="Folge für die Angebotssumme">
+      <Card title={t('coverage.effectOnTotal')}>
         {scopeEmpty ? (
           // Task 03 (F-10): every KG group is at its determinate `excluded`
           // default — a genuinely empty scope, not an open decision. Never
@@ -1029,13 +1020,13 @@ function ChapterUmfang() {
         </>)}
       </Card>
 
-      <Card title="Leistungsabgrenzung bestätigen">
+      <Card title={t('configurator.scope.confirmHeading')}>
         <NextStep
           label={scopeStatus === 'recheck'
-            ? tx('Leistungsabgrenzung erneut prüfen')
+            ? t('configurator.scope.recheckTag')
             : scopeStatus === 'confirmed'
-              ? tx('Leistungsabgrenzung bestätigt.')
-              : tx('Leistungsabgrenzung bestätigen')}
+              ? t('configurator.scope.confirmedTag')
+              : t('configurator.scope.confirmHeading')}
           description={scopeStatus === 'recheck'
             ? t('configurator.scope.changed')
             : t('configurator.scope.confirmAndContinueHelp')}
@@ -1075,9 +1066,10 @@ const LABEL_ES: Record<BuildingInput['energiestandard'], string> = {
 
 function EnergiestandardPicker() {
   const s = useStore()
+  const tx = useTx()
   return (
     <RadioCardGroup
-      legend="Energiestandard"
+      legend={tx('Energiestandard')}
       legendHidden
       value={activeBuilding(s).energiestandard}
       onChange={(v) => s.setEnergiestandard(v)}
@@ -1142,7 +1134,7 @@ function EnergyCertBanner() {
         <Button variant="ghost" onClick={() =>
           s.openConfiguratorStepAt(CONFIGURATOR_STEP.ENERGY_CERTIFICATION)}>
           {t('configurator.energy.goTo', {
-            chapterName: tx(configuratorStep(CONFIGURATOR_STEP.ENERGY_CERTIFICATION).label),
+            chapterName: t('chapter.energyCertification'),
           })}
         </Button>
       )}
@@ -1193,7 +1185,7 @@ function UndergroundFloorRecap() {
   const multi = ids.length > 1
   return (
     <Card
-      title="Untergeschoss"
+      title={t('configurator.basement.title')}
       intro={t('configurator.underground.decidedIn')}
     >
       <div className="grid gap-4">
@@ -1237,7 +1229,7 @@ function UndergroundFloorRecap() {
         <Button onClick={() =>
           s.openConfiguratorStepAt(CONFIGURATOR_STEP.AREAS)}>
           {t('configurator.areas.goTo', {
-            chapterName: tx(configuratorStep(CONFIGURATOR_STEP.AREAS).label),
+            chapterName: t('chapter.areas'),
           })}
         </Button>
       </div>
@@ -1454,7 +1446,7 @@ function ChapterFlaechen() {
                 SHARED mode stays independently correct — the same reason
                 `kind: 'kg300'` already carries one. */}
             <RadioCardGroup
-              legend="Untergeschoss"
+              legend={t('configurator.basement.title')}
               legendHidden
               value={b.untergeschoss}
               onChange={(v) => s.setUntergeschoss(buildingId, v)}
@@ -1478,11 +1470,12 @@ function ChapterFlaechen() {
 
 function ChapterEnergie() {
   const tx = useTx()
+  const t = useT()
   const s = useStore()
   return (
     <div className="grid gap-5">
       <Card
-        title="Energiestandard"
+        title={t('configurator.energy.title')}
         intro={'Die Wahl einer Option ist keine Bestätigung: das Unsicherheitsband ' +
           'verengt sich erst, wenn der Kunde den Standard bestätigt.'}
       >
@@ -1627,7 +1620,7 @@ function ChapterTermine() {
   return (
     <div className="grid gap-5">
       <Card
-        title="Bauzeit"
+        title={t('configurator.schedule.title')}
         intro={'Planung ist Projektgröße, Ausführung gehört zum Gebäude — deshalb ' +
           'mehrere Zeilen und nicht eine. Die Fertigstellung ist dieselbe Zahl, die ' +
           'oben rechts als Kennzahl steht.'}
@@ -1724,7 +1717,7 @@ function ConfigurationCompleteNotice() {
   if (!scopeMissing && outstandingBuildings.length === 0) return null
 
   return (
-    <Card title="Konfiguration bestätigen">
+    <Card title={t('configurator.confirmConfig.title')}>
       <NextStep
         label={t('configurator.finalGate.label')}
         description={scopeMissing
@@ -1786,7 +1779,7 @@ function ChapterKg700() {
           Energiestandard, Bauzeit, Baugrund & Zufahrt …) nennt ihren
           eigenen Abschnitt statt das Kapitel zu wiederholen. */}
       <Card
-        title="Berechnungsart"
+        title={t('configurator.kg700.calcMethod.title')}
         intro={t('remainder5.ancillary.twoMethods')}
       >
         <SegmentedControl
@@ -1847,7 +1840,7 @@ function ChapterKg800() {
         introDe="Finanzierung bildet Kosten bis zum Nutzungsbeginn aus Fremdkapital, Finanzierungsnebenkosten, Bereitstellung, Bürgschaften und optional kalkulatorischem Eigenkapital ab."
         introEn="Financing estimates cost up to start of use from debt interest, financing fees, commitment charges, guarantees and optional imputed equity interest."
       />
-      <Card title="Aufschlüsselung KG 800">
+      <Card title={t('configurator.kg800.breakdown.title')}>
         {breakdown.length === 0 ? (
           <p className="a3-cap">
             {t('configurator.scopeCatalog.kg800NoBasis')}
@@ -1896,11 +1889,12 @@ function ChapterKg800() {
 function GroundRiskSection() {
   const s = useStore()
   const tx = useTx()
+  const t = useT()
   const kg300Exact = s.projection().kgSplit.KG_300
 
   return (
     <Card
-      title="Baugrund & Zufahrt"
+      title={t('configurator.groundAccess.title')}
       intro={'Der Baugrund entscheidet über Gründung und KG 320. Ohne '
         + 'Gutachten bleibt er ein benanntes Risiko — kein Preisbestandteil '
         + 'und keine stillschweigende Annahme.'}
