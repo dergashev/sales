@@ -523,7 +523,7 @@ export function OfferPanel() {
               Überschrift statt einer weiteren Zeile unter „gewählt". */}
           {excludedAdjustments.length > 0 && (
             <div className="mt-3 border-t border-border-subtle pt-2">
-              <p className="a3-mtag">{tx('Ausgeschlossen')}</p>
+              <p className="a3-mtag">{t('offer.drivers.excludedHeading')}</p>
               <ul>
                 {excludedAdjustments.map((d) => (
                   <li key={d.key}
@@ -557,7 +557,7 @@ export function OfferPanel() {
           </h2>
           {!treiberOpen && (
             <p className="a3-cap numeric mt-1">
-              {clientSafeDrivers.length}{NNBSP}Beiträge · Summe ={NNBSP}
+              {clientSafeDrivers.length}{NNBSP}{tx('Beiträge · Summe =')}{NNBSP}
               {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(p.result.total)}
             </p>
           )}
@@ -711,7 +711,7 @@ export function OfferPanel() {
               className="a3-journal-disclose outline-none before:absolute before:left-1/2 before:top-1/2 before:min-h-hit-target before:w-full before:-translate-x-1/2 before:-translate-y-1/2 before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
             >
               <span aria-hidden="true">{kgOpen ? '▾ ' : '▸ '}</span>
-              {tx('Kostengruppen nach DIN 276')}
+              {t('offer.costGroups.regionHeading')}
             </button>
           </h2>
           {kgOpen && (<>

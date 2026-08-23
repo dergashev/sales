@@ -5,13 +5,12 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 53** · перевод есть, мост не подключён: 26
-· перевода нет (в поставку копирайта): 27
+**Всего 51** · перевод есть, мост не подключён: 25
+· перевода нет (в поставку копирайта): 26
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
 - . Die Preiswirkung erscheint sofort in der Angebotsspalte rechts und im Kostentreiber.
-- Beiträge · Summe =
 - Die Gebäudeklasse ist noch nicht bestätigt. Die Geschossanzahl ist lediglich Prüfauslöser und kein Nachweis; die Einstufung nach MBO §2 erfolgt über das Brandschutzkonzept und die zugehörigen Nachweise. Für die Kalkulation ist vorläufig GK 5 hinterlegt, Stand «Prüfung erforderlich». Die endgültige Einstufung kann die Anforderungen an Tragwerk und Kapselung und damit den Preis verändern; mit Vorlage des Brandschutzkonzepts bestätigen wir sie.
 - Gebäude im Projekt
 - Klassifikation bestätigen
@@ -58,7 +57,6 @@ Mit freundlichen Grüßen
 - Fragen reduzieren die Schätzunsicherheit von ±
 - Geprüfte Gebäudewerte tragen ihre Herkunft; Änderungen erfolgen ausschließlich in Gebäude & Umfang.
 - Konfiguration je Gebäude bestätigt
-- Kostengruppen nach DIN 276
 - Planung ist Projektgröße, Ausführung gehört zum Gebäude — deshalb mehrere Zeilen und nicht eine. Die Fertigstellung ist dieselbe Zahl, die oben rechts als Kennzahl steht.
 - Projekt bestätigen
 - Projektübersicht

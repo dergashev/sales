@@ -144,5 +144,24 @@ export function translatedDriverLabel(
   if (d.key === 'tiefgarage_zuschlag') return t('driver.undergroundGarage')
   if (d.key === 'regionalfaktor') return t('driver.regionalFactor')
   if (d.key === 'kg800_aggregate') return `KG 800 · ${t('costGroup.KG_800')}`
+  // Task 05 rework cycle 3 (QA AC-2, offer rail): the KG 300/400
+  // excluded-adjustment rows (store.ts, `kgXXX_excluded_adjustment`) were
+  // missing from this key-pattern match entirely and fell through to raw
+  // German — the most material of the three cycle-3 findings, since KG
+  // 300/400 start excluded by default (every fresh option shows this row).
+  // Two states share one key, distinguished by the German label content
+  // (the only signal this function receives, by design — see JSDoc above):
+  // the resolved "ausgeschlossen" form has an exact Codex match, the rarer
+  // unresolved "noch offen" form does not and is hand-authored instead.
+  if (d.key === 'kg300_excluded_adjustment') {
+    return d.label.endsWith('(noch offen)')
+      ? t('driver.kg300Unresolved')
+      : t('domain5.driver.kg300Excluded')
+  }
+  if (d.key === 'kg400_excluded_adjustment') {
+    return d.label.endsWith('(noch offen)')
+      ? t('driver.kg400Unresolved')
+      : t('domain5.driver.kg400Excluded')
+  }
   return d.label
 }

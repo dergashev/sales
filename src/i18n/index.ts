@@ -448,6 +448,19 @@ const de = {
   'configurator.kg700.calcMethod.title': 'Berechnungsart',
   'configurator.kg800.breakdown.title': 'Aufschlüsselung KG 800',
   'configurator.groundAccess.title': 'Baugrund & Zufahrt',
+  // Task 05 rework cycle 3 (QA AC-2, offer rail): the "noch offen" variant
+  // of the KG 300/400 excluded-adjustment driver row has no Codex delivery
+  // covering its exact text (only the "ausgeschlossen" variant does, via
+  // domain5.driver.kg300Excluded/kg400Excluded) — hand-authored here rather
+  // than in generated.ts for the same reason as the block above. The
+  // "Kostengruppen nach DIN 276" region heading and the "Ausgeschlossen"
+  // driver-list heading also have no exact Codex match (only longer
+  // suffixed variants exist), so both move from tx()'s silent-miss reverse
+  // lookup to a real dictionary key.
+  'driver.kg300Unresolved': 'KG 300 · Baukonstruktionen (noch offen)',
+  'driver.kg400Unresolved': 'KG 400 · Technische Anlagen (noch offen)',
+  'offer.costGroups.regionHeading': 'Kostengruppen nach DIN 276',
+  'offer.drivers.excludedHeading': 'Ausgeschlossen',
 } as const
 
 export type MessageKey = keyof typeof de
@@ -843,6 +856,10 @@ const en: Partial<Record<MessageKey, string>> = {
   'configurator.kg700.calcMethod.title': 'Calculation method',
   'configurator.kg800.breakdown.title': 'KG 800 breakdown',
   'configurator.groundAccess.title': 'Ground conditions & access',
+  'driver.kg300Unresolved': 'KG 300 · building construction (unresolved)',
+  'driver.kg400Unresolved': 'KG 400 · technical systems (unresolved)',
+  'offer.costGroups.regionHeading': 'Cost groups under DIN 276',
+  'offer.drivers.excludedHeading': 'Excluded',
 }
 
 /**
