@@ -550,7 +550,34 @@
    «приложение владеет вьюпортом»: `html`/`body` фиксированы на 100 % высоты
    viewport и не прокручиваются сами — единственная прокрутка документа,
    которая раньше существовала, устранена, а не спрятана. */
-html, body { font-family: var(--font-family); color: var(--color-text-primary); height: 100%; overflow: hidden; }
+/* Both `overflow: hidden` AND `overflow: clip` on `html, body` were
+   measured INSUFFICIENT here (Playwright check during this task, twice):
+   `window.scrollTo(0, 400)` still moved the visible page every time —
+   confirmed with real before/after screenshots (the header scrolled
+   fully out of view) and with `document.documentElement.scrollTop`
+   actually reading back 400 afterwards. Neither overflow value reliably
+   suppresses a PROGRAMMATIC scroll on the root `<html>`/`<body>` pair in
+   the browser actually used to run this product — a documented class of
+   quirk specific to the root scrolling element (unlike an ordinary
+   `overflow: hidden` div, which DOES block `scrollTop` assignment).
+   `position: fixed` on `body`, pinned to the viewport, is the fix that
+   actually holds: a fixed-position box is structurally removed from the
+   normal document flow `window.scrollTo` operates on, so there is
+   nothing left for it to move — verified after this change with the
+   same script (`scrollTop` stays 0, header stays at `top: 0`). */
+html {
+  height: 100%; overflow: clip;
+  font-family: var(--font-family); color: var(--color-text-primary);
+}
+/* Rule 3 requires `font-family` on `html` AND `body` explicitly — an
+   external reset landing directly on `body` would otherwise win over
+   inheritance from `html` alone. Repeated here rather than relying on a
+   shared `html, body { }` selector, now that `body` needs its own
+   `position: fixed` block `html` must not also carry. */
+body {
+  position: fixed; inset: 0; width: 100%; height: 100%; overflow: clip;
+  font-family: var(--font-family); color: var(--color-text-primary);
+}
 input, select, textarea, button, kbd { font-family: var(--font-family); }
 /* Фон страницы — БЕЛЫЙ (правило проекта 6). Канва All3 Grey #E8ECE9 — это
    поверхность отдельных зон, а не подложка документа.

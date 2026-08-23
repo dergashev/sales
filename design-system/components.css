@@ -942,7 +942,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    tokens.css — der Shell-Block selbst darf sein eigenes 100vh-Höhenbudget
    nicht mehr an das Dokument durchreichen, auch nicht als Sicherheitsnetz,
    falls ein künftiger Nachfahre wieder ohne `min-h-0` überläuft. */
-.a3-app-shell{min-inline-size:var(--size-app-min-width);background:var(--color-surface-canvas);overflow:hidden}
+.a3-app-shell{min-inline-size:var(--size-app-min-width);background:var(--color-surface-canvas);overflow:clip}
 .a3-viewport-warning{display:none}
 
 /* Center-host responsive composition. At the supported 1280 shell the center
