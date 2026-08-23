@@ -520,6 +520,13 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    Classes: .a3-tabs · .a3-sum · .a3-tabpane. */
 .a3-tabs{display:flex;border-bottom:var(--border-default);gap:var(--space-1)}
 .a3-tabs [role="tab"]{font:inherit;font-weight:500;background:transparent;border:none;border-bottom:var(--border-width-strong) solid transparent;padding:var(--space-2) var(--space-4);cursor:pointer;margin-bottom:calc(-1 * var(--border-width-default))} /* отрицательный hairline: перекрытие бордера контейнера, структурное */
+/* Task 04 (F-18, 1280 shell): additive modifier, opt-in only — the default
+   `.a3-tabs [role="tab"]` padding above is unchanged for every other
+   consumer. `ConfigurationScopeTabs` (DC-46 Konfigurationsumfang switcher)
+   needs the extra ~24px this reclaims to fit a 2-building project's three
+   tabs inside the rail-adjacent host at 1280px without horizontal overflow. */
+.a3-tabs-compact [role="tab"]{padding:var(--space-2) var(--space-3)}
+.a3-tabs-compact{gap:0}
 .a3-tabs [role="tab"]:hover{background:var(--color-surface-canvas)}
 /* F24: the selected tab differed from an unselected one ONLY by a 2px
    coloured border — `font-weight: var(--type-label-weight)` here resolved to

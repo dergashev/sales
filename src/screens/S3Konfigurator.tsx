@@ -466,6 +466,17 @@ const TOTAL_SCOPE = '__TOTAL__'
 type ConfigurationScopeOption = {
   value: string
   label: string
+  /**
+   * Task 04 (F-18, 1280 shell): the DC-46 tab strip must show all tabs of
+   * a 2-building project untruncated at 1280 px — the full-sentence
+   * `label` ("Gesamt · 0 von 2 bestätigt" / "Haus A · Unvollständig")
+   * alone needed 624 px against a ≤400 px host even after the shell ADR
+   * revision widened the workspace. `label` stays the compact VISIBLE
+   * text; when set, `accessibleLabel` carries the full sentence as the
+   * tab's accessible name — no information is dropped, only its visible
+   * density changes.
+   */
+  accessibleLabel?: string
 }
 
 function configurationTabId(value: string): string {
@@ -558,7 +569,7 @@ export function ConfigurationScopeTabs({
         role="tablist"
         aria-label={legend}
         aria-orientation="horizontal"
-        className="a3-tabs min-w-0 flex-1 flex-nowrap overflow-x-auto whitespace-nowrap"
+        className="a3-tabs a3-tabs-compact min-w-0 flex-1 flex-nowrap overflow-x-auto whitespace-nowrap"
         onKeyDown={handleKeyDown}
       >
         {options.map((option, index) => (
@@ -571,6 +582,7 @@ export function ConfigurationScopeTabs({
             aria-controls={configurationPanelId(option.value)}
             aria-posinset={index + 1}
             aria-setsize={options.length}
+            aria-label={option.accessibleLabel}
             tabIndex={option.value === focusedValue ? 0 : -1}
             onFocus={() => setFocusedValue(option.value)}
             onClick={() => {
@@ -610,6 +622,7 @@ function ConfigurationScopeNavigation({
 }) {
   const s = useStore()
   const t = useT()
+  const tx = useTx()
   const selectedIds = includedBuildingIds(s)
   const buildingScoped = configuratorStep(stepId).scope === 'building'
 
@@ -620,14 +633,21 @@ function ConfigurationScopeNavigation({
     configurationDisplayStatusFor(s, id),
   ])) as Record<string, ConfigurationDisplayStatus>
   const confirmed = selectedIds.filter((id) => statuses[id] === 'confirmed').length
+  // Task 04 (F-18, 1280 shell): visible label stays compact (fraction /
+  // ✓·○ status glyph — the SAME glyph vocabulary the rest of the product
+  // already uses for this exact confirmed/not-confirmed distinction, not
+  // a new one); `accessibleLabel` keeps the original full sentence as the
+  // tab's accessible name, so no information is lost for assistive tech.
   const options = [
     ...(selectedIds.length > 1 ? [{
       value: TOTAL_SCOPE,
-      label: t('configurator.scope.total', { confirmed, total: selectedIds.length }),
+      label: `${tx('Gesamt')} · ${confirmed}/${selectedIds.length}`,
+      accessibleLabel: t('configurator.scope.total', { confirmed, total: selectedIds.length }),
     }] : []),
     ...selectedIds.map((id) => ({
       value: id,
-      label: t('configurator.scope.building', {
+      label: `${statuses[id] === 'confirmed' ? '✓' : '○'} ${buildingName(s, id)}`,
+      accessibleLabel: t('configurator.scope.building', {
         building: buildingName(s, id),
         status: statusLabel(statuses[id]!, t),
       }),
