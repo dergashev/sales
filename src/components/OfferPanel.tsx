@@ -180,14 +180,19 @@ export function OfferPanel(
   // `.a3-rail-header-budget{max-height;overflow:hidden}`). When content
   // would overflow that budget, degradable elements step down BEFORE the
   // amount/name/completeness ever clip: step 1 hides the three "Herkunft
-  // anzeigen" origin-popover triggers, step 2 additionally drops the
-  // uncertainty range's money edges (kept as the `compact` ±pp presentation,
-  // DC-3's other released variant). `degradeLevel` resets to 0 whenever the
+  // anzeigen" origin-popover triggers, step 2 drops the uncertainty range's
+  // money edges (kept as the `compact` ±pp presentation, DC-3's other
+  // released variant — the ticket's own KEEP-list requires ±pp to stay),
+  // step 3 drops the leadRate hero's secondary-rate/per-unit context line
+  // (both explicitly "MAKE CONTEXTUAL" in the ticket, not "KEEP ALWAYS
+  // VISIBLE"). Amount/name/completeness/Bauzeit+Fertigstellung never drop —
+  // three degrade steps are exactly the contextual content available before
+  // hitting KEEP-listed content. `degradeLevel` resets to 0 whenever the
   // underlying content changes (locale, mode, the numbers themselves) and
   // a layout effect with no dependency array re-measures after every commit
-  // it causes, converging in at most two extra renders.
+  // it causes, converging in at most three extra renders.
   const budgetRef = useRef<HTMLDivElement>(null)
-  const [degradeLevel, setDegradeLevel] = useState<0 | 1 | 2>(0)
+  const [degradeLevel, setDegradeLevel] = useState<0 | 1 | 2 | 3>(0)
   const degradeResetKey = [
     priceUnavailable, scopeEmpty, s.mode, p.leadRate.display, p.duration.display,
     p.result.total.display, t('common.showOrigin'),
@@ -196,8 +201,8 @@ export function OfferPanel(
   useLayoutEffect(() => {
     const el = budgetRef.current
     if (!el) return
-    if (degradeLevel < 2 && el.scrollHeight > el.clientHeight + 1) {
-      setDegradeLevel((d) => (d < 2 ? ((d + 1) as 0 | 1 | 2) : d))
+    if (degradeLevel < 3 && el.scrollHeight > el.clientHeight + 1) {
+      setDegradeLevel((d) => (d < 3 ? ((d + 1) as 0 | 1 | 2 | 3) : d))
     }
   })
 
@@ -365,20 +370,34 @@ export function OfferPanel(
             step 2 — over the header budget, the range drops its money
             edges and keeps only the named ±pp (DC-3's `compact`
             presentation, the same component's other released variant, not
-            a new one). Amount/name/completeness never degrade. */}
-        {!priceUnavailable && <div className="mt-2">
-          <EstimateUncertaintyBadge
-            {...(degradeLevel < 2
-              ? { presentation: 'range' as const, totalExact: p.result.total.exact, pp: p.uncertaintyPp }
-              : { presentation: 'compact' as const, pp: p.uncertaintyPp })}
-          />
-        </div>}
+            a new one). Amount/name/completeness never degrade. At this
+            step the range and the completeness ("netto") line also merge
+            onto one line: once the range is `compact` and the Herkunft
+            trigger (degrade step 1, already active whenever step 2 is) is
+            gone, both are short text fragments — sharing a line costs
+            nothing semantically and saves a full line's height inside the
+            hard budget. */}
+        {!priceUnavailable && (degradeLevel < 2 ? (
+          <div className="mt-2">
+            <EstimateUncertaintyBadge
+              presentation="range" totalExact={p.result.total.exact} pp={p.uncertaintyPp}
+            />
+          </div>
+        ) : (
+          <p className="a3-cap mt-1">
+            <EstimateUncertaintyBadge presentation="compact" pp={p.uncertaintyPp} />
+            {' · '}{t('money.net')}
+          </p>
+        ))}
         {/* SIDEBAR 01 degrade step 1: the three "Herkunft anzeigen" origin
             triggers (this one, the leadRate's below, and the duration's)
             are the first thing to give way over budget — the amount/rate/
             duration values themselves stay, only their origin-popover
-            entry point steps back. */}
-        {!priceUnavailable && <p className="a3-cap mt-1">
+            entry point steps back. Once step 2 is also active the
+            completeness line above already carries "netto" merged with
+            the range, so this whole line — text plus trigger — only
+            exists pre-step-2. */}
+        {!priceUnavailable && degradeLevel < 2 && <p className="a3-cap mt-1">
           {t('money.net')}
           {degradeLevel < 1 && (<>
           {' · '}
@@ -430,7 +449,11 @@ export function OfferPanel(
             <span className="a3-hb-unit">{NNBSP}€/m²</span>
           </p>
           <span className="a3-hb-cap">{tx(p.leadRate.denominatorLabel)}</span>
-        <p className="a3-cap numeric mt-1" style={{ overflowWrap: 'anywhere' }}>
+        {/* SIDEBAR 01 degrade step 3: the secondary-rate/per-unit context
+            line is "MAKE CONTEXTUAL" in the ticket's own KEEP/CONTEXTUAL
+            split (not "KEEP ALWAYS VISIBLE"), so it is the last thing to
+            give way before Bauzeit+Fertigstellung would otherwise clip. */}
+        {degradeLevel < 3 && <p className="a3-cap numeric mt-1" style={{ overflowWrap: 'anywhere' }}>
           {/* SIDEBAR 01 (backlog eda1e221, SB-04): the secondary BGF rate is
               the same quantity as the lead rate whenever the scope is a
               complex (leadRate falls back to `rate(total, bgf,
@@ -467,7 +490,7 @@ export function OfferPanel(
             accessibleName={`${t('common.showOrigin')} · ${tx(p.leadRate.denominatorLabel)}`}
           />
           )}
-        </p>
+        </p>}
         </div>}
 
         <div className="a3-hb">
@@ -647,7 +670,7 @@ export function OfferPanel(
             to style its own cells. */}
         <section aria-label="Kostenzusammensetzung" className="mt-4">
           <p className="a3-mtag">{t('offer.costGroups.regionHeading')}</p>
-          <div className="a3-tbl-scroll mt-2">
+          <div className="a3-tbl-scroll mt-1">
             <table className="a3-kg w-full border-collapse">
               <caption className="a3-visually-hidden">{tx('Kostengruppen nach DIN 276, vereinfachte Verteilung')}</caption>
               <tbody>

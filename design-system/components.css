@@ -303,6 +303,15 @@ table.a3-kg,table.a3-cmp,table.a3-kx,table.a3-data-table,table.a3-driver-table,t
    Structure: .a3-tbl-scroll > table.a3-kg; .a3-num is applied per numeric cell;
    expandable rows use .a3-expand > .a3-twistbtn and adjacent .a3-kg-child rows.
    Classes: .a3-kg · .a3-num · .a3-lvl2 · .a3-total · .a3-muted · .a3-anfrage · .a3-expand · .a3-twistbtn · .a3-open · .a3-kg-child · .a3-compact-zone · .a3-compact · .a3-flash. */
+/* SIDEBAR 01 (backlog eda1e221, AC-3): the rail's own KG list reuses the
+   EXISTING compact-density override hook (`--a3-cell-pad-y-compact`,
+   already the mechanism `.a3-compact-zone.a3-compact` uses below) rather
+   than the global density toggle — narrower at 440-520px than the table's
+   previous 520px-fixed host, its rows need this regardless of the user's
+   independent Komfortabel/Kompakt preference (D-16 stays about MODE, not
+   about this table's own space budget). Scoped to `.a3-rail` only: the
+   design-system showcase's own `.a3-kg` exhibits are unaffected. */
+.a3-rail .a3-kg{--a3-cell-pad-y-compact:var(--space-1)}
 .a3-kg th{font-size:var(--type-table-header-size);line-height:var(--type-table-header-line);font-weight:var(--type-table-header-weight);text-align:left;color:var(--color-text-secondary);border-bottom:var(--border-default);padding:0 var(--space-4) var(--space-2)}
 .a3-kg th.a3-num{text-align:right}
 .a3-kg tr{height:var(--row-height)}
@@ -366,9 +375,23 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    block (AC-8) - it reads the same budget token the header is capped to, so
    the two can never drift apart. */
 .a3-rail{scroll-padding-top:var(--size-rail-header-budget)}
-.a3-rail-sticky-top{position:sticky;top:0;z-index:1;background:var(--color-surface-default);border-bottom:var(--border-hairline)}
-.a3-rail-header-budget{max-height:var(--size-rail-header-budget);overflow:hidden;padding:var(--space-5) var(--space-5) var(--space-3)}
+.a3-rail-sticky-top{position:sticky;top:0;z-index:1;background:var(--color-surface-default)}
+/* The hairline separator lives on the budgeted child (border-box sizing,
+   Tailwind preflight) so it counts INSIDE the `max-height` cap rather than
+   adding on top of it — AC-1/AC-2 measure the whole pinned block, and a
+   border on the unconstrained sticky wrapper would put it 1px over budget
+   at every breakpoint (320→321, 360→361, 400→401) for no content reason. */
+.a3-rail-header-budget{max-height:var(--size-rail-header-budget);overflow:hidden;padding:var(--space-4) var(--space-5) var(--space-2);border-bottom:var(--border-hairline)}
 .a3-heroband{display:flex;gap:var(--space-7);row-gap:var(--space-5);flex-wrap:wrap;align-items:baseline}
+/* SIDEBAR 01 (backlog eda1e221, AC-1/AC-2): three DC-38 heroes at their
+   fixed 64/48/48 sizes plus their required captions do not fit
+   `--size-rail-header-budget` at the shared `.a3-heroband` row-gap
+   (24px × 2 gaps = 48px) — measured overflow at 1280px was 420px content
+   in a 320px box even with the JS degrade ladder fully engaged. Scoped
+   to the pinned budget only (not the base rule, which the design-system
+   showcase's own non-pinned exhibits still use unmodified) — the showcase
+   never renders `.a3-heroband` inside `.a3-rail-header-budget`. */
+.a3-rail-header-budget .a3-heroband{row-gap:var(--space-3)}
 /* F40: row/column gap was `--border-width-strong` (2px) — a border-width
    token reused for spacing, off the 4/8/12/16/24/32/48/64 scale. `--space-1`
    is the nearest scale step. */
