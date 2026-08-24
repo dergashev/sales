@@ -286,24 +286,36 @@ export function OfferPanel(
   // released variant — the ticket's own KEEP-list requires ±pp to stay),
   // step 3 drops the leadRate hero's secondary-rate/per-unit context line
   // (both explicitly "MAKE CONTEXTUAL" in the ticket, not "KEEP ALWAYS
-  // VISIBLE"). Amount/name/completeness/Bauzeit+Fertigstellung never drop —
-  // three degrade steps are exactly the contextual content available before
-  // hitting KEEP-listed content. `degradeLevel` resets to 0 whenever the
-  // underlying content changes (locale, mode, the numbers themselves) and
-  // a layout effect with no dependency array re-measures after every commit
-  // it causes, converging in at most three extra renders.
+  // VISIBLE"). Amount/name/completeness/Bauzeit+Fertigstellung never drop.
+  //
+  // SIDEBAR 02 (backlog 41b8ab39, SB-09/AC-1) added step 4, discovered by
+  // live Playwright measurement, not anticipated at design time: a real
+  // two-building fixture with a full DIN-276 scope at 1280×800 (the
+  // narrower required viewport — `--size-rail-header-budget` clamps to
+  // 320 px there vs 360 px at 1440) leaves steps 1–3 with less spare
+  // capacity than the new scope tag's own minimal footprint (16 px
+  // line-height + 4 px margin) costs — measured live: without step 4, the
+  // Bauzeit hero's "Fertigstellung" date (rule 31: never renders at
+  // footnote size, never disappears) was itself clipped by 16 of its own
+  // 20 px, not merely the new tag's context. The new tag is genuinely new
+  // content with no such protection; step 4 hides IT, never Bauzeit,
+  // resolving the conflict in favour of the older, established invariant.
+  // This is a real last resort, not the common case: single-building
+  // projects never render the tag at all, and every multi-building state
+  // this task could reach in its own required viewports/states short of
+  // this specific dense combination stops at step 3.
   const budgetRef = useRef<HTMLDivElement>(null)
-  const [degradeLevel, setDegradeLevel] = useState<0 | 1 | 2 | 3>(0)
+  const [degradeLevel, setDegradeLevel] = useState<0 | 1 | 2 | 3 | 4>(0)
   const degradeResetKey = [
     priceUnavailable, scopeEmpty, s.mode, p.leadRate.display, p.duration.display,
-    p.result.total.display, t('common.showOrigin'),
+    p.result.total.display, t('common.showOrigin'), scopeTagLabel, multiBuildingScope,
   ].join('|')
   useLayoutEffect(() => { setDegradeLevel(0) }, [degradeResetKey])
   useLayoutEffect(() => {
     const el = budgetRef.current
     if (!el) return
-    if (degradeLevel < 3 && el.scrollHeight > el.clientHeight + 1) {
-      setDegradeLevel((d) => (d < 3 ? ((d + 1) as 0 | 1 | 2 | 3) : d))
+    if (degradeLevel < 4 && el.scrollHeight > el.clientHeight + 1) {
+      setDegradeLevel((d) => (d < 4 ? ((d + 1) as 0 | 1 | 2 | 3 | 4) : d))
     }
   })
 
@@ -437,8 +449,12 @@ export function OfferPanel(
             (measured live: 12 px extra at 1280×800, on top of its own
             16 px line-height + 4 px margin, tipping an already
             fully-committed budget into a 37 px clip). As an independent
-            block sibling it costs only its own line-height + margin. */}
-        {multiBuildingScope && (
+            block sibling it costs only its own line-height + margin.
+            `degradeLevel < 4`: the true last resort (see the degrade
+            ladder docblock above) — sacrifices this tag, never Bauzeit's
+            "Fertigstellung" date, in the one dense combination measured
+            where the budget cannot hold both. */}
+        {multiBuildingScope && degradeLevel < 4 && (
           <p className="a3-mtag">{scopeTagLabel}</p>
         )}
         {/* Герои — в ленте контракта (.a3-heroband): базовая линия и
