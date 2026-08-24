@@ -411,16 +411,25 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    (96px + 58px = 154px) used to be subtracted from the rail's readable
    window permanently, even resting empty ~most of the time (audit finding).
    The no-layout-shift guarantee (rule 24) now comes from being taken out of
-   flow entirely: both slots anchor to `.a3-change-slot-anchor`, a zero-height
-   sibling of `.a3-rail-header-budget` placed after it inside the same sticky
-   wrapper. `max-height` replaces `min-height` as the same "longest DC-2/
-   DC-28 state" cap, now bounding an overlay instead of reserving flow space.
-   Ghost (hover preview) and delta (post-commit, 8s) are mutually exclusive
-   in time (DC-28 clears the preview at commit) so sharing one anchor is
-   safe; both keep their own distinct border/motion identity unchanged. */
+   flow entirely — but ONLY where a slot sits inside `.a3-change-slot-anchor`,
+   a zero-height sibling of `.a3-rail-header-budget` placed after it inside
+   the pinned rail header. `.a3-ghost-slot`/`.a3-delta-slot` are also used
+   unwrapped, in-flow, by OpportunityCard.tsx's ReviewedWflMetric and by the
+   design-system showcase's own DC-2/DC-28 specimens (Tech Lead finding,
+   this task's own SIDEBAR 01 cycle 3: an earlier revision changed the base
+   rule directly and detached both of those to {top:0,left:0} of the page).
+   The base rule below stays the original in-flow reservation for every
+   consumer; the overlay behavior is scoped to the anchor's direct children
+   only. `max-height` there is the same "longest DC-2/DC-28 state" cap,
+   now bounding an overlay instead of reserving flow space. Ghost (hover
+   preview) and delta (post-commit, 8s) are mutually exclusive in time
+   (DC-28 clears the preview at commit) so sharing one anchor is safe; both
+   keep their own distinct border/motion identity unchanged. */
+.a3-ghost-slot{min-height:var(--size-ghost-row);max-width:100%}
+.a3-delta-slot{min-height:var(--size-delta-row);max-width:100%}
 .a3-change-slot-anchor{position:relative;height:0}
-.a3-ghost-slot{position:absolute;top:var(--space-3);left:0;right:0;max-height:var(--size-ghost-row);overflow:hidden;background:var(--color-surface-default);max-width:100%}
-.a3-delta-slot{position:absolute;top:var(--space-3);left:0;right:0;max-height:var(--size-delta-row);overflow:hidden;max-width:100%}
+.a3-change-slot-anchor>.a3-ghost-slot{position:absolute;top:var(--space-3);left:0;right:0;min-height:0;max-height:var(--size-ghost-row);overflow:hidden;background:var(--color-surface-default);max-width:100%}
+.a3-change-slot-anchor>.a3-delta-slot{position:absolute;top:var(--space-3);left:0;right:0;min-height:0;max-height:var(--size-delta-row);overflow:hidden;max-width:100%}
 .a3-iv-sub{display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap}
 .a3-iv-bandbox{flex:1;max-width:var(--measure-band)}
 /* Task 04 (F-35, rail a11y/visual): F18 already ruled out a coloured
