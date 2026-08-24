@@ -547,33 +547,6 @@ export function OfferPanel(
         </p>}
         </div>
 
-        {/* SIDEBAR 02 (backlog 41b8ab39, SB-10, AC-1): while a building
-            subtotal is on screen, the offer total must stay visible too —
-            same degrade priority as the leadRate's own secondary-rate line
-            below (step 3, the last contextual content to give way before
-            the KEEP-listed amount/name/Bauzeit). */}
-        {!priceUnavailable && wholeOfferTotal && degradeLevel < 3 && (
-          <p className="a3-cap mt-1 numeric">
-            {t('offerPanel.scope.offerTotalLabel')}
-            {': '}
-            {wholeOfferTotal.prefix && (
-              <span aria-hidden="true">{wholeOfferTotal.prefix}{NNBSP}</span>
-            )}
-            {wholeOfferTotal.display}{NNBSP}€
-          </p>
-        )}
-        {/* AC-3: completeness line — same degrade priority as above. */}
-        {!priceUnavailable && degradeLevel < 3 && (
-          <p className="a3-cap mt-1">
-            {t('offerPanel.completeness.line', {
-              decided: decidedGroups,
-              total: SCOPE_BOUNDARIES_DECIDABLE_GROUPS.length,
-              priced: pricedGroups,
-              unpriced: unpricedGroups.size,
-            })}
-          </p>
-        )}
-
         {/* ── Герои №2 и №3: ведущая ставка и срок, чёрные (DC-38) ─────── */}
         {/* Структура системы: ЧИСЛО в `.a3-hb-num`, единица в `.a3-hb-unit`,
             знаменатель в `.a3-hb-cap`. Прежде сюда клалась вся строка
@@ -795,6 +768,40 @@ export function OfferPanel(
           oben; eigenes horizontales Padding, da es nicht mehr im selben
           Container wie der Header steckt. */}
       <div className="flex-1 px-5 pb-5">
+        {/* SIDEBAR 02 (backlog 41b8ab39, SB-10/AC-1, AC-3): the offer-total
+            secondary line and the completeness line live HERE, immediately
+            below the pinned header — not inside `.a3-rail-header-budget` —
+            deliberately. That budget is a hard, already fully-committed
+            ceiling (SIDEBAR 01, `--size-rail-header-budget`, "fit the
+            budget, never raise it"): measured live, a real two-building
+            fixture with a full DIN-276 scope leaves the pinned header's
+            three degrade steps with zero spare capacity even before this
+            task's own always-visible scope tag. Placing this content as
+            the FIRST thing in the rail's normal (non-clipped) scroll flow
+            keeps it genuinely "visible on screen" without scrolling (the
+            scrollable region starts immediately below the sticky header,
+            well inside the rail's own client height) without silently
+            reopening SIDEBAR 01's budget contract to make room for it. */}
+        {!scopeEmpty && !priceUnavailable && wholeOfferTotal && (
+          <p className="a3-cap numeric">
+            {t('offerPanel.scope.offerTotalLabel')}
+            {': '}
+            {wholeOfferTotal.prefix && (
+              <span aria-hidden="true">{wholeOfferTotal.prefix}{NNBSP}</span>
+            )}
+            {wholeOfferTotal.display}{NNBSP}€
+          </p>
+        )}
+        {!scopeEmpty && !priceUnavailable && (
+          <p className={'a3-cap' + (wholeOfferTotal ? ' mt-1' : '')}>
+            {t('offerPanel.completeness.line', {
+              decided: decidedGroups,
+              total: SCOPE_BOUNDARIES_DECIDABLE_GROUPS.length,
+              priced: pricedGroups,
+              unpriced: unpricedGroups.size,
+            })}
+          </p>
+        )}
         {/* ── Level 2 · Kostenzusammensetzung (SIDEBAR 01, backlog eda1e221,
             SB-03) — ONE merged DIN-276-keyed list, expanded by default (no
             outer toggle). It replaces the two lists that used to duplicate
