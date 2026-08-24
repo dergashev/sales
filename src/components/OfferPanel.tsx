@@ -423,23 +423,27 @@ export function OfferPanel(
             Кегли, цвет и выравнивание по базовой линии приходят из системы
             (`.a3-hb-total .a3-hb-num` = 64 px accent, `.a3-hb-unit` = 24 px):
             иерархия метрик принадлежит дизайну, а не этому файлу. */}
-        {/* Герои — в ленте контракта (.a3-heroband): базовая линия и
-            переносы принадлежат системе, не этому файлу (дефект 17). */}
-        <div className="a3-heroband">
         {/* SIDEBAR 02 (backlog 41b8ab39, SB-09/SB-10, AC-1): the scope
             expression — a NEW, separate element, always first, so the eye
             meets it before the amount. Reuses the canonical `.a3-mtag`
             small-bold-caps tag (already used for "Im Angebot gewählt" /
             "Kostenzusammensetzung") rather than a new local primitive.
             Renders identically in the empty and priced states below (one
-            story, rule 38: structure does not change with scope). */}
+            story, rule 38: structure does not change with scope).
+            Deliberately a SIBLING of `.a3-heroband`, not a child: that
+            container is `display:flex;flex-wrap:wrap` with its own
+            `row-gap` (SIDEBAR 01 contract above) — a child forced onto its
+            own row by `w-full` still pays that row-gap a second time
+            (measured live: 12 px extra at 1280×800, on top of its own
+            16 px line-height + 4 px margin, tipping an already
+            fully-committed budget into a 37 px clip). As an independent
+            block sibling it costs only its own line-height + margin. */}
         {multiBuildingScope && (
-          // `.a3-heroband` is a wrapping flex row (contract above) — `w-full`
-          // forces this tag onto its own line deterministically regardless
-          // of its own text width, rather than relying on the hero being
-          // wide enough to force a wrap by accident.
-          <p className="a3-mtag w-full">{scopeTagLabel}</p>
+          <p className="a3-mtag">{scopeTagLabel}</p>
         )}
+        {/* Герои — в ленте контракта (.a3-heroband): базовая линия и
+            переносы принадлежат системе, не этому файлу (дефект 17). */}
+        <div className="a3-heroband">
         {scopeEmpty ? (
           /* Task 03 (F-10): a genuinely empty Declared Pricing Scope never
              renders as a qualified 0-€ hero with a band, rate and

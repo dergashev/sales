@@ -405,7 +405,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    fully degraded), and this tag does not participate in that degrade
    ladder by design — it must earn back everything it costs from its own
    footprint, not the ladder's.  */
-.a3-heroband .a3-mtag{font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:700;letter-spacing:.04em;margin-bottom:var(--space-1)}
+.a3-rail-header-budget>.a3-mtag{font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:700;letter-spacing:.04em;margin-bottom:var(--space-1)}
 /* F40: row/column gap was `--border-width-strong` (2px) — a border-width
    token reused for spacing, off the 4/8/12/16/24/32/48/64 scale. `--space-1`
    is the nearest scale step. */
