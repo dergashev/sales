@@ -432,6 +432,21 @@ const de = {
   'costGroup.KG_600': 'Ausstattung',
   'costGroup.KG_700': 'Baunebenkosten',
   'costGroup.KG_800': 'Finanzierung',
+  // SIDEBAR 03 FOLLOW-UP (backlog 5ec7e9cf, AC-2): the KG 300 subgroup
+  // labels are engine-sourced strings (`src/engine/risk.ts` KG300_SUBGROUPS,
+  // fixture `derived-prototype.json` kg300Split.shares) rendered directly
+  // at OfferPanel.tsx with no translation lookup — 8 fixed, stable ids,
+  // never building-prefixed (`splitKg300()` is a static structural split,
+  // not a per-building Driver), so a direct key→label dictionary is enough;
+  // no `withoutBuildingPrefix()` needed, unlike `translatedDriverLabel`.
+  'kg300Subgroup.KG_310': 'Baugrube · Erdbau',
+  'kg300Subgroup.KG_320': 'Gründung · Unterbau',
+  'kg300Subgroup.KG_330': 'Außenwände · Vertikale Baukonstruktionen',
+  'kg300Subgroup.KG_340': 'Innenwände · Vertikale Baukonstruktionen',
+  'kg300Subgroup.KG_350': 'Decken · Horizontale Baukonstruktionen',
+  'kg300Subgroup.KG_360': 'Dächer',
+  'kg300Subgroup.KG_370': 'Infrastrukturanlagen · Einbauten',
+  'kg300Subgroup.KG_390': 'Sonstige Maßnahmen für Baukonstruktionen',
   'offerPanel.journal.priceChangePrefix': 'Preisänderung seit Erstellung der Option:',
   'offerPanel.journal.changeSingular': 'übernommene Änderung',
   'offerPanel.journal.changePlural': 'übernommene Änderungen',
@@ -936,6 +951,18 @@ const en: Partial<Record<MessageKey, string>> = {
   'costGroup.KG_600': 'Fit-out',
   'costGroup.KG_700': 'Ancillary construction costs',
   'costGroup.KG_800': 'Financing',
+  // SIDEBAR 03 FOLLOW-UP (backlog 5ec7e9cf, AC-2) — DIN 276-1:2018 elemental
+  // classification English terminology, kept accurate to the German source
+  // (not marketing paraphrase); the `KG 3xx`/`KG_3xx` identifier itself
+  // stays untranslated at the render site per LOCALE-009.
+  'kg300Subgroup.KG_310': 'Excavation · earthworks',
+  'kg300Subgroup.KG_320': 'Foundations · substructure',
+  'kg300Subgroup.KG_330': 'Exterior walls · vertical structural elements',
+  'kg300Subgroup.KG_340': 'Interior walls · vertical structural elements',
+  'kg300Subgroup.KG_350': 'Floor slabs · horizontal structural elements',
+  'kg300Subgroup.KG_360': 'Roofs',
+  'kg300Subgroup.KG_370': 'Infrastructure installations · fixtures',
+  'kg300Subgroup.KG_390': 'Other structural measures',
   'offerPanel.journal.priceChangePrefix': 'Price change since the option was created:',
   'offerPanel.journal.changeSingular': 'change applied',
   'offerPanel.journal.changePlural': 'changes applied',

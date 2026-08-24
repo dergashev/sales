@@ -80,6 +80,30 @@ const COVERAGE_SHORT_KEY: Record<CoverageState, string> = {
 }
 
 /**
+ * SIDEBAR 03 FOLLOW-UP (backlog 5ec7e9cf, AC-2): the 8 KG 300 subgroup
+ * labels (`splitKg300()`, `src/engine/risk.ts`, fixture-sourced German
+ * text) were rendered raw, with no translation lookup at all — the one
+ * residual gap the original SIDEBAR 03 ticket left engine-owned by
+ * mistake. `sub.id` is always exactly one of 8 fixed keys (`KG_310`…
+ * `KG_390`) and is NEVER building-prefixed — `splitKg300()` is a static
+ * structural split, not a per-building `Driver` — so this is a plain
+ * key→label dictionary lookup (`kg300Subgroup.KG_3xx` in
+ * `src/i18n/index.ts`), simpler than `translatedDriverLabel`'s
+ * key-pattern matching in `clientProjection.ts` (no
+ * `withoutBuildingPrefix()` needed). Falls back to the raw engine label
+ * — never to the bare i18n key — if a future engine change ever adds a
+ * subgroup id this dictionary does not yet cover.
+ */
+function translatedKg300SubgroupLabel(
+  sub: { id: string; label: string },
+  t: (key: string, values?: Readonly<Record<string, string | number>>) => string,
+): string {
+  const key = `kg300Subgroup.${sub.id}`
+  const translated = t(key)
+  return translated === key ? sub.label : translated
+}
+
+/**
  * SIDEBAR 03 (SB-14) locale-aware wrappers around `engine/money.ts`'s
  * exported formatters. `src/engine/**` stays untouched (out of scope) —
  * these re-typeset the ALREADY-DECIDED numeral each formatter produces via
@@ -1452,7 +1476,7 @@ export function OfferPanel(
                     <tbody>
                       {splitKg300(p.kgSplit.KG_300).map((sub) => (
                         <tr key={sub.id} className="a3-kg-child a3-muted">
-                          <td>{sub.id.replace('_', NNBSP)} {sub.label} {MARK}</td>
+                          <td>{sub.id.replace('_', NNBSP)} {translatedKg300SubgroupLabel(sub, t)} {MARK}</td>
                           <td className="a3-num">{moneyOut(present(sub.exact), lang)}</td>
                           <td className="a3-num" />
                         </tr>
