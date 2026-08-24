@@ -63,7 +63,7 @@ describe('DC-21: происхождение раскрывается у кажд
     // объёма тоже «количество × ставка» и теперь это объявляет. Проверять
     // отсутствующий вид значило бы держать тест на условии, которое сняли.
 
-    await user.click(screen.getByRole('button', { name: /Kostentreiber/ }))
+    await user.click(screen.getByRole('button', { name: /Nachweise & Verlauf/ }))
     // Task 04 (F-35, rail a11y): each row's trigger now carries its own
     // driver-specific accessible name ("Details · <label>") so a
     // screen-reader buttons list can tell 12+ rows apart — the visible
@@ -84,7 +84,7 @@ describe('DC-21: происхождение раскрывается у кажд
     // Вклад по ставке — подвал: количество в m², ставка в €/m². KG 500 для
     // этого больше не годится, она считается долей блока (решение D-27), и
     // это верно: вид основания следует за формулой, а не за экраном.
-    await user.click(screen.getByRole('button', { name: /Kostentreiber/ }))
+    await user.click(screen.getByRole('button', { name: /Nachweise & Verlauf/ }))
     const row = document.querySelector('[data-driver-id="untergeschoss_vollausbau"]')
     expect(row).not.toBeNull()
     const trigger = row!.querySelector('button')!
@@ -104,7 +104,7 @@ describe('DC-21: происхождение раскрывается у кажд
     render(<App />)
     await enterPipeline(user)
 
-    await user.click(screen.getByRole('button', { name: /Kostentreiber/ }))
+    await user.click(screen.getByRole('button', { name: /Nachweise & Verlauf/ }))
     const row = document.querySelector('[data-driver-id="gebaeudeklasse_GK_5"]')
     expect(row).not.toBeNull()
     await user.click(row!.querySelector('button')!)
@@ -121,9 +121,9 @@ describe('DC-21: происхождение раскрывается у кажд
 
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
-    await user.click(screen.getByRole('button', { name: /Kostentreiber/ }))
+    await user.click(screen.getByRole('button', { name: /Nachweise & Verlauf/ }))
 
-    const drivers = screen.getByRole('region', { name: 'Kostentreiber' })
+    const drivers = screen.getByRole('region', { name: 'Nachweise & Verlauf' })
     const label = within(drivers).getByText(/^Untergeschoss · Rohbau und Ausbau ·/, {
       selector: 'span[aria-hidden="true"]',
     })

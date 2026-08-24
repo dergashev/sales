@@ -140,10 +140,13 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Konfigurationsmodus wählen' }))
       .toHaveFocus()
     expect(screen.getByRole('radio', { name: 'Gemeinsam konfigurieren' })).toBeChecked()
-    // Editing an already-chosen mode hides the Angebot panel again (pre-
-    // existing behavior, unrelated to this reorder) — but the underlying
-    // `pricingStarted` flag itself is not rolled back.
-    expect(screen.queryByRole('complementary', { name: 'Angebot' })).toBeNull()
+    // SIDEBAR 01 (backlog eda1e221, SB-27, AC-11): editing an already-priced
+    // offer's mode used to hide the whole Angebot panel — a 6.082.000 €
+    // total disappearing from the rail on a screen whose purpose is a
+    // commercially consequential decision. The panel now stays (Level 1
+    // only, `variant="level1"`), and the mode-change notice is ADDED beside
+    // it, not substituted for it.
+    expect(screen.getByRole('complementary', { name: 'Angebot' })).toBeInTheDocument()
     expect(useStore.getState().pricingStarted).toBe(true)
     // Task 03 (deep-coherence audit, F-24): re-entering mode choice/edit
     // with an existing calculation must say so truthfully, not claim the
@@ -546,7 +549,10 @@ describe('Task 02 — building-scope attribution in SHARED mode', () => {
       .toBeInTheDocument()
 
     // F-01 (recap/drivers): the priced Untergeschoss contribution names its
-    // building in intern mode's "Im Angebot gewählt" recap.
+    // building — SIDEBAR 01 merged the former standalone "Im Angebot
+    // gewählt" recap into the KG 300 group's own expandable children
+    // (Level 2, SB-03), collapsed by default, so the group is opened first.
+    await user.click(screen.getByRole('button', { name: /Baukonstruktion/ }))
     const buildingAware = screen.getByText('Untergeschoss · Rohbau und Ausbau')
       .closest('li')!
     expect(within(buildingAware).getByText(/· Haus A/)).toBeInTheDocument()

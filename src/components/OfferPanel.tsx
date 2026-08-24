@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Decimal } from 'decimal.js'
 import {
   activeBuilding, includedBuildingIds, translatedChangeLabel, useStore,
@@ -93,19 +94,43 @@ function driverBuildingLabel(
   return review ? effectiveFactValue(review.facts.documentationName) ?? id : id
 }
 
-export function OfferPanel() {
+/**
+ * SIDEBAR 01 (backlog eda1e221) - `variant`:
+ * - `'full'` (default) - Level 1 + Level 2 + Level 3, the Configurator's own
+ *   rail.
+ * - `'level1'` - Level 1 only, a compact orientation strip. Used on
+ *   Variantenvergleich/Export/Einstellungen (SB-20, no full breakdown on a
+ *   read-only view) and from `ConfigurationModeReadiness` when a priced
+ *   offer opens "Modus ändern" (SB-27: the commercial context stays visible,
+ *   the mode-change notice is added beside it, not substituted for it).
+ *
+ * `footer`: SB-27 — rendered inside this same `<aside>`, after the rail
+ * content, so the mode-change notice (`ModeChangeNotice`, S3Konfigurator.tsx)
+ * sits beside the commercial context instead of replacing it — one rail
+ * column, not two stacked asides.
+ */
+export function OfferPanel(
+  { variant = 'full', footer }: { variant?: 'full' | 'level1'; footer?: ReactNode } = {},
+) {
   const s = useStore()
   const p = s.projection()
   const t = useT()
   const tx = useTx()
   const { reduced } = useSemanticMotion()
   const [journalOpen, setJournalOpen] = useState(false)
-  // Панель — сводка, центр — работа. Тяжёлые таблицы по умолчанию
-  // свёрнуты до одной итоговой строки: они разворачиваются, когда нужны
-  // как переговорный аргумент, а не занимают колонку постоянно.
-  const [treiberOpen, setTreiberOpen] = useState(false)
-  const [kgOpen, setKgOpen] = useState(false)
+  // SIDEBAR 01: Level 2 (die Kostenzusammensetzung) ist per Vertrag "expanded
+  // by default" - kein eigenes äußeres Toggle mehr (vormals `kgOpen`/
+  // `treiberOpen`, beide entfernt, siehe Level-2-Abschnitt unten). Nur
+  // Level 3 ("Nachweise & Verlauf") bleibt disclosure, gemeinsam mit dem
+  // KG-300-Untergruppen-Twist, der jetzt DORT lebt statt in der Level-2-
+  // Zeile selbst (Report §8: "KG 300 Untergruppen" ist Level-3-Inhalt).
+  const [level3Open, setLevel3Open] = useState(false)
   const [kg300Open, setKg300Open] = useState(false)
+  // SIDEBAR 01 (backlog eda1e221, SB-03): which Level 2 DIN-276 group rows
+  // currently have their merged contribution-decision children open —
+  // independent per group, all collapsed by default (test hint: "one KG
+  // group expanded" exercises exactly this).
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   // Правило 24: чип «долетает» до журнала — при уходе чипа журнал вспыхивает
   // один раз. Цветовой transition, не кейфрейм (правило 20); гаснет при
   // prefers-reduced-motion (правило 21).
@@ -149,6 +174,32 @@ export function OfferPanel() {
   const shownDelta = useLastValue(s.activeDelta)
   const shownPreview = useLastValue(s.preview)
   const blocked = !activeBuilding(s).gebaeudeklasse.confirmed
+
+  // SIDEBAR 01 (backlog eda1e221, SB-01/AC-1/AC-2) - the pinned Level 1
+  // header has a hard CSS budget (`--size-rail-header-budget`,
+  // `.a3-rail-header-budget{max-height;overflow:hidden}`). When content
+  // would overflow that budget, degradable elements step down BEFORE the
+  // amount/name/completeness ever clip: step 1 hides the three "Herkunft
+  // anzeigen" origin-popover triggers, step 2 additionally drops the
+  // uncertainty range's money edges (kept as the `compact` ±pp presentation,
+  // DC-3's other released variant). `degradeLevel` resets to 0 whenever the
+  // underlying content changes (locale, mode, the numbers themselves) and
+  // a layout effect with no dependency array re-measures after every commit
+  // it causes, converging in at most two extra renders.
+  const budgetRef = useRef<HTMLDivElement>(null)
+  const [degradeLevel, setDegradeLevel] = useState<0 | 1 | 2>(0)
+  const degradeResetKey = [
+    priceUnavailable, scopeEmpty, s.mode, p.leadRate.display, p.duration.display,
+    p.result.total.display, t('common.showOrigin'),
+  ].join('|')
+  useLayoutEffect(() => { setDegradeLevel(0) }, [degradeResetKey])
+  useLayoutEffect(() => {
+    const el = budgetRef.current
+    if (!el) return
+    if (degradeLevel < 2 && el.scrollHeight > el.clientHeight + 1) {
+      setDegradeLevel((d) => (d < 2 ? ((d + 1) as 0 | 1 | 2) : d))
+    }
+  })
 
   // Сессионная дельта (DC-12, CALC-014): сумма точных дельт журнала —
   // undo несёт отрицание, поэтому простая сумма и есть «к базе», без
@@ -205,10 +256,43 @@ export function OfferPanel() {
     .filter((d) => d.block === 'surcharge')
     .reduce((sum, d) => sum.plus(d.exact), new Decimal(0))
 
+  // SIDEBAR 01 (backlog eda1e221, SB-03): the Level 2 DIN-276 rows a
+  // decision/excluded-adjustment attaches to. `chosen`/`excludedAdjustments`
+  // must stay reachable even when their target group's row happens not to
+  // render (F-11's scenario: excluding KG 300 from coverage removes its row
+  // from the table entirely — unchanged, pre-existing behavior — but the
+  // exclusion's own negative money adjustment still needs a place to live,
+  // exactly as it did in the old standalone recap). `looseChosen`/
+  // `looseExcluded` below catch anything no rendered group's children list
+  // claimed, so nothing the former recap showed can silently disappear.
+  const kgRows = (Object.entries(p.kgSplit)
+    .filter((e): e is [string, Decimal] => e[1] !== undefined
+      && s.coverage[e[0] as CostGroup] === 'included'))
+  const groupChildrenFor = (group: CostGroup) => (
+    group === 'KG_300' ? chosen.filter((d) => d.scopeRefs.includes('KG 300'))
+      : group === 'KG_400' ? []
+      : chosen.filter((d) => d.scopeRefs.includes(group.replace('_', ' ')))
+  )
+  const groupExcludedFor = (group: CostGroup) => excludedAdjustments.filter((d) =>
+    (group === 'KG_300' && d.key === 'kg300_excluded_adjustment')
+    || (group === 'KG_400' && d.key === 'kg400_excluded_adjustment'))
+  const attributedKeys = new Set(kgRows.flatMap(([g]) => {
+    const group = g as CostGroup
+    return [...groupChildrenFor(group), ...groupExcludedFor(group)].map((d) => d.key)
+  }))
+  const looseChosen = chosen.filter((d) => !attributedKeys.has(d.key))
+  const looseExcluded = excludedAdjustments.filter((d) => !attributedKeys.has(d.key))
+
   return (
     <aside
       aria-label="Angebot"
-      className="flex h-full w-panel-right min-w-0 max-w-panel-right shrink-0 flex-col overflow-y-auto border-l border-border-strong bg-surface-default"
+      // SIDEBAR 01 (backlog eda1e221, SB-19/SB-28, AC-8): `a3-rail` carries
+      // `scroll-padding-top: var(--size-rail-header-budget)` so
+      // `scrollIntoView`/keyboard focus on a Level 2/3 row lands inside the
+      // readable window, never underneath the pinned header — the token
+      // matches the budget `.a3-rail-header-budget` is capped to, so the
+      // two can never drift apart.
+      className="a3-rail flex h-full w-panel-right min-w-0 max-w-panel-right shrink-0 flex-col overflow-y-auto border-l border-border-strong bg-surface-default"
     >
       {/* Task 04 (F-13, STEP-005): «Липкий контекст цены реализуется, а не
           декларируется рядом» — герой DC-38 + Geist-Vorschau + Delta-Chip
@@ -219,6 +303,16 @@ export function OfferPanel() {
           блок — прямой flex-потомок `<aside>`, `position:sticky` поэтому
           закрепляется относительно ЕГО скролла, не документа. */}
       <div className="a3-rail-sticky-top" aria-live="polite">
+        {/* SIDEBAR 01 (backlog eda1e221, SB-01/SB-02, AC-1/AC-2/AC-4) - the
+            sticky wrapper itself no longer carries the height budget: it
+            only establishes the sticky positioning/stacking context. The
+            budgeted content lives in `.a3-rail-header-budget` (hard
+            `max-height`+`overflow:hidden`, `ref={budgetRef}` feeds the
+            degrade-level measurement above), and the change-slot anchor
+            below it is a zero-height sibling so the ghost/delta slots
+            overlay Level 2 instead of permanently reserving pinned height
+            (SB-02) — see `.a3-change-slot-anchor` in components.css. */}
+        <div className="a3-rail-header-budget" ref={budgetRef}>
         {/* ── Герой №1: тотал — единственный оранжевый (DC-38) ───────────
             Кегли, цвет и выравнивание по базовой линии приходят из системы
             (`.a3-hb-total .a3-hb-num` = 64 px accent, `.a3-hb-unit` = 24 px):
@@ -267,15 +361,26 @@ export function OfferPanel() {
         {/* Интервал — полосой с денежными краями (DC-3): «± 22 %» отвечает
             «насколько точно», края отвечают «сколько это в деньгах», и на
             переговорах спрашивают второе. */}
+        {/* SIDEBAR 01 (backlog eda1e221, SB-01, AC-1/AC-2/AC-4): degrade
+            step 2 — over the header budget, the range drops its money
+            edges and keeps only the named ±pp (DC-3's `compact`
+            presentation, the same component's other released variant, not
+            a new one). Amount/name/completeness never degrade. */}
         {!priceUnavailable && <div className="mt-2">
           <EstimateUncertaintyBadge
-            presentation="range"
-            totalExact={p.result.total.exact}
-            pp={p.uncertaintyPp}
+            {...(degradeLevel < 2
+              ? { presentation: 'range' as const, totalExact: p.result.total.exact, pp: p.uncertaintyPp }
+              : { presentation: 'compact' as const, pp: p.uncertaintyPp })}
           />
         </div>}
+        {/* SIDEBAR 01 degrade step 1: the three "Herkunft anzeigen" origin
+            triggers (this one, the leadRate's below, and the duration's)
+            are the first thing to give way over budget — the amount/rate/
+            duration values themselves stay, only their origin-popover
+            entry point steps back. */}
         {!priceUnavailable && <p className="a3-cap mt-1">
           {t('money.net')}
+          {degradeLevel < 1 && (<>
           {' · '}
           {/* DC-21 moneyOrigin: цепочка драйверов + округление + runRef.
               Regionalfaktor в Herkunft — «deaktiviert» (правило 40). */}
@@ -304,6 +409,7 @@ export function OfferPanel() {
             // unterscheidbar bleiben.
             accessibleName={`${t('common.showOrigin')} · ${tx(p.result.totalLabel)}`}
           />
+          </>)}
         </p>}
         </div>
 
@@ -325,10 +431,19 @@ export function OfferPanel() {
           </p>
           <span className="a3-hb-cap">{tx(p.leadRate.denominatorLabel)}</span>
         <p className="a3-cap numeric mt-1" style={{ overflowWrap: 'anywhere' }}>
-          {rateLabel(p.secondaryRateBgf)}
-          {p.perUnit && <> · {rateLabel(p.perUnit)}</>}
-          {' · '}
-          {/* DC-21 rateOrigin: знаменатель называет норматив, деление показано. */}
+          {/* SIDEBAR 01 (backlog eda1e221, SB-04): the secondary BGF rate is
+              the same quantity as the lead rate whenever the scope is a
+              complex (leadRate falls back to `rate(total, bgf,
+              'BGF_ABOVE_GROUND')` — store.ts computeProjection — the exact
+              same call as `secondaryRateBgf`); rendering it a second time
+              here is the literal duplicate the audit found. It renders
+              only when it names a different denominator. */}
+          {p.secondaryRateBgf.denominatorType !== p.leadRate.denominatorType && (
+            <>{rateLabel(p.secondaryRateBgf)}{' · '}</>
+          )}
+          {p.perUnit && <>{rateLabel(p.perUnit)}{' · '}</>}
+          {degradeLevel < 1 && (
+          /* DC-21 rateOrigin: знаменатель называет норматив, деление показано. */
           <OriginPopover
             rows={[
               {
@@ -351,6 +466,7 @@ export function OfferPanel() {
               : null}
             accessibleName={`${t('common.showOrigin')} · ${tx(p.leadRate.denominatorLabel)}`}
           />
+          )}
         </p>
         </div>}
 
@@ -362,6 +478,7 @@ export function OfferPanel() {
           </p>
           <span className="a3-hb-cap">
             ab OKBP · Fertigstellung {formatDate(p.duration.completionDate)}
+            {degradeLevel < 1 && (<>
             {' · '}
             {/* DC-21 durationOrigin: срок — такая же расчётная величина, как
                 деньги, и обязан объяснять себя. Вариант поповера называет
@@ -385,9 +502,11 @@ export function OfferPanel() {
                 : null}
               accessibleName={`${t('common.showOrigin')} · Bauzeit`}
             />
+            </>)}
           </span>
         </div>
         </>)}
+        </div>
         </div>
 
         {/* Раньше здесь стояла отдельная строка `DEMO-SC-01 · DEMO-RUN-0007`
@@ -398,6 +517,17 @@ export function OfferPanel() {
             в режиме Vorbereitung; кто ищет происхождение числа, находит
             его в поповере. */}
 
+        {/* SIDEBAR 01 (backlog eda1e221, SB-02): the ghost and delta slots
+            below no longer live inside `.a3-rail-header-budget` — they
+            share this zero-height anchor, positioned after it inside the
+            same sticky wrapper, and overlay Level 2's top edge only while
+            showing (rule 24: appearance must not shift Level 1's own box
+            height — AC-4 verifies this via before/after
+            `getBoundingClientRect`). Ghost (pre-commit hover, intern-only)
+            and delta (post-commit, 8 s) are mutually exclusive in time
+            (DC-28 clears the preview at commit), so sharing one anchor is
+            safe; each keeps its own distinct border/motion identity. */}
+        <div className="a3-change-slot-anchor">
         {/* ── Слот призрака (DC-28) — СОБСТВЕННЫЙ, не общий с дельта-чипом.
             Анатомия контракта: префикс «Vorschau ·», будущее значение,
             дельта к названной базе, ссылка на прогон превью. Высота
@@ -414,7 +544,7 @@ export function OfferPanel() {
         {/* Призрак — тот же приём, что у чипа: элемент постоянен, появление
             и уход несёт `.a3-show` контракта, а не framer-motion. Утилита
             паддинга снята: вид принадлежит системе (NO-VISUAL-UTILITY). */}
-        {s.mode === 'intern' && <div className="a3-ghost-slot mt-3">
+        {s.mode === 'intern' && <div className="a3-ghost-slot">
           <p className={'a3-ghost numeric' + (s.preview ? ' a3-show' : '')}
              aria-hidden={s.preview ? undefined : true}>
             {shownPreview && (<>
@@ -455,7 +585,7 @@ export function OfferPanel() {
             inline-flex витрины): двухстрочный распирал зарезервированную
             высоту слота и сдвигал вёрстку на 27 px — ровно то, против чего
             слот и существует (правило 24, приёмка № 17). */}
-        {s.mode === 'intern' && <div className="a3-delta-slot mt-3">
+        {s.mode === 'intern' && <div className="a3-delta-slot">
           <p
             aria-hidden={s.activeDelta ? undefined : true}
             className={'a3-delta numeric' +
@@ -479,89 +609,237 @@ export function OfferPanel() {
             </>)}
           </p>
         </div>}
+        </div>
       </div>
 
+      {/* SIDEBAR 01 (backlog eda1e221, SB-20): Variantenvergleich, Export
+          and Einstellungen render Level 1 only — a compact orientation
+          strip, no cost-composition breakdown on a read-only view — inside
+          the same clamp()-bounded rail width as the Configurator. The
+          mode-change screen (SB-27) composes this same `variant="level1"`
+          alongside its own notice rather than substituting for it (see
+          `ConfigurationModeReadiness` in S3Konfigurator.tsx). */}
+      {variant === 'full' && (<>
       {/* Task 04 (F-13): der Rest der Rail — Recap/Kostentreiber/KG-Tabelle
           — bleibt der normal scrollende Bereich UNTER dem sticky Block
           oben; eigenes horizontales Padding, da es nicht mehr im selben
           Container wie der Header steckt. */}
       <div className="flex-1 px-5 pb-5">
-        {/* ── Сводка выбранного — «корзина» (ревью № 13, дефект 21):
-            продавец видит СПИСОК своих решений, а не только их сумму.
-            Строки — те же вклады движка (opt_/cov_/kg700), что и в
-            Kostentreiber: второго источника выбранного не существует. */}
-        <section aria-label="Im Angebot gewählt" className="a3-recap mt-4">
-          <p className="a3-mtag">{tx('Im Angebot gewählt')}</p>
-          {chosen.length === 0 ? (
-            <p className="a3-cap">
-              {tx('Standardumfang — keine Abweichungen gewählt. Jede Option in den Kapiteln links zeigt ihren Preis vor dem Klick.')}
-            </p>
-          ) : (
-            <ul>
-              {chosen.map((d) => {
-                const buildingLabel = driverBuildingLabel(s, d.key)
-                return (
-                  <li key={d.key}
-                      className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
-                    <span className="text-text-secondary">
-                      {translatedDriverLabel(d, t)}
-                      {/* Task 02 (F-01): names the building a per-building
-                          row belongs to — intern only, never in
-                          Kundenansicht. */}
-                      {buildingLabel && <span className="block text-text-secondary">· {buildingLabel}</span>}
-                    </span>
-                    <span className="numeric shrink-0 text-text-primary">
-                      {signed(d.exact)}
-                    </span>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-          {/* Task 04 (F-11, rule 32): eine explizit ausgeschlossene KG 300/
-              400 ist keine Wahl im Angebot, sondern deren Gegenteil — eigene
-              Überschrift statt einer weiteren Zeile unter „gewählt". */}
-          {excludedAdjustments.length > 0 && (
-            <div className="mt-3 border-t border-border-subtle pt-2">
-              <p className="a3-mtag">{t('offer.drivers.excludedHeading')}</p>
-              <ul>
-                {excludedAdjustments.map((d) => (
-                  <li key={d.key}
-                      className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
-                    <span className="text-text-secondary">{translatedDriverLabel(d, t)}</span>
-                    <span className="numeric shrink-0 text-text-primary">
-                      {signed(d.exact)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+        {/* ── Level 2 · Kostenzusammensetzung (SIDEBAR 01, backlog eda1e221,
+            SB-03) — ONE merged DIN-276-keyed list, expanded by default (no
+            outer toggle). It replaces the two lists that used to duplicate
+            each other 11/15 rows apart (the "Im Angebot gewählt" recap and
+            the Kostentreiber driver table, audit finding 4): each group row
+            now expands to its own contributing decisions as children —
+            that IS the former recap, merged into its group instead of
+            repeated separately. Group amounts/labels themselves are
+            unchanged (SIDEBAR 02 owns the KG-content defects SB-05/SB-06);
+            only the container merges.
+            Uses the table's OWN canonical disclosure primitives
+            (`.a3-expand`/`.a3-twistbtn`/`.a3-open`/`.a3-kg-child`, DC-5,
+            already the KG 300 subgroup's mechanism below) rather than the
+            design system's generic `DisclosureRow`: that component always
+            wraps `cells` in its own unstyled `<td>` and cannot carry this
+            table's `.a3-num` right-align/tabular-numeral class on the cell
+            itself — using it here would misalign every numeric column.
+            CANONICAL DESIGN SYSTEM GAP (not fixed by this task, SIDEBAR 03
+            owns the rail's canonical contract): `DisclosureRow` has no way
+            to style its own cells. */}
+        <section aria-label="Kostenzusammensetzung" className="mt-4">
+          <p className="a3-mtag">{t('offer.costGroups.regionHeading')}</p>
+          <div className="a3-tbl-scroll mt-2">
+            <table className="a3-kg w-full border-collapse">
+              <caption className="a3-visually-hidden">{tx('Kostengruppen nach DIN 276, vereinfachte Verteilung')}</caption>
+              <tbody>
+                {kgRows.map(([g, v]) => {
+                    const group = g as CostGroup
+                    const rowLabel = <>{g.replace('_', NNBSP)} {t(`costGroup.${group}`)}</>
+                    const children = [...groupChildrenFor(group), ...groupExcludedFor(group)]
+                    const isOpen = !!openGroups[g]
+                    const childrenId = `kg-children-${g}`
+                    return (
+                      <Fragment key={g}>
+                        <tr className={children.length > 0 ? 'a3-expand' + (isOpen ? ' a3-open' : '') : ''}>
+                          <td>
+                            {children.length > 0 ? (
+                              <button type="button" className="a3-twistbtn"
+                                      aria-expanded={isOpen}
+                                      aria-controls={childrenId}
+                                      onClick={() => setOpenGroups((prev) => ({ ...prev, [g]: !prev[g] }))}>
+                                {rowLabel}
+                              </button>
+                            ) : rowLabel}
+                          </td>
+                          <td className="a3-num">{moneyLabel(present(v))}</td>
+                          <td className="a3-num">
+                            {v.div(p.result.total.exact).mul(100).toFixed(0)}{NNBSP}%
+                          </td>
+                        </tr>
+                        {children.length > 0 && isOpen && (
+                          <tr className="a3-kg-child">
+                            <td id={childrenId} colSpan={3}>
+                              <ul>
+                                {children.map((d) => {
+                                  const buildingLabel = driverBuildingLabel(s, d.key)
+                                  const isExcluded = d.key === 'kg300_excluded_adjustment'
+                                    || d.key === 'kg400_excluded_adjustment'
+                                  return (
+                                    <li key={d.key}
+                                        className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
+                                      <span className="text-text-secondary">
+                                        {isExcluded && <>{t('offer.drivers.excludedHeading')}{' · '}</>}
+                                        {translatedDriverLabel(d, t)}
+                                        {/* Task 02 (F-01): names the building a
+                                            per-building row belongs to —
+                                            intern only, never in Kundenansicht. */}
+                                        {buildingLabel && <span className="block text-text-secondary">· {buildingLabel}</span>}
+                                      </span>
+                                      <span className="numeric shrink-0 text-text-primary">
+                                        {signed(d.exact)}
+                                      </span>
+                                    </li>
+                                  )
+                                })}
+                              </ul>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    )
+                  })}
+                {/* Надземная/подземная части — вложенный уровень той же
+                    структуры, а не отдельные строки-сироты. Показ равен
+                    точному у 476.000, поэтому без префикса: ложный `≈` —
+                    тоже дефект. */}
+                <tr className="a3-lvl2 a3-muted">
+                  <td>oberirdisch</td>
+                  <td className="a3-num" colSpan={2}>
+                    {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(p.aboveGround)}
+                  </td>
+                </tr>
+                <tr className="a3-lvl2 a3-muted">
+                  <td>unterirdisch</td>
+                  <td className="a3-num" colSpan={2}>
+                    {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(p.belowGround)}
+                  </td>
+                </tr>
+                {/* Task 04 (F-12 companion, rule 32): siehe Kommentar bei
+                    `riskSurchargeSum` oben — eigene Zeile statt Einfaltung
+                    in KG 300. */}
+                {!riskSurchargeSum.isZero() && (
+                  <tr>
+                    <td>{tx('Risikozuschläge')}</td>
+                    <td className="a3-num">{moneyLabel(present(riskSurchargeSum))}</td>
+                    <td className="a3-num">
+                      {riskSurchargeSum.div(p.result.total.exact).mul(100).toFixed(0)}{NNBSP}%
+                    </td>
+                  </tr>
+                )}
+                {/* Task 04 (F-12 companion, rule 32): Rabatt ist keine
+                    DIN-276-Gruppe, aber ein realer, im Total bereits
+                    enthaltener Abzug — ohne eigene Zeile summierten die
+                    KG-Zeilen auf `beforeDiscount`, nicht auf den
+                    gedruckten `total`. Eigene Prozentspalte (kein
+                    `colSpan`, anders als oberirdisch/unterirdisch oben,
+                    die dieselbe Summe nur re-gliedern): nur so bleibt die
+                    100-%-Summe der Spalte exakt. */}
+                {p.discountDriver && (
+                  <tr>
+                    <td>{translatedDriverLabel(p.discountDriver, t)}</td>
+                    <td className="a3-num">
+                      −{NNBSP}{moneyLabel(present(p.discountDriver.exact.abs()))}
+                    </td>
+                    <td className="a3-num">
+                      −{NNBSP}
+                      {p.discountDriver.exact.abs().div(p.result.total.exact).mul(100).toFixed(0)}
+                      {NNBSP}%
+                    </td>
+                  </tr>
+                )}
+                {/* TotalRow name = hero name (SIDEBAR 01 target IA §8):
+                    unchanged, both already read `p.result.totalLabel`. */}
+                <tr className="a3-total">
+                  <td>{tx(p.result.totalLabel)}</td>
+                  <td className="a3-num" colSpan={2}>
+                    {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(p.result.total)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-2 text-small text-text-muted">{tx('Zeilen werden unabhängig gerundet; die Prüfung läuft über exakte Werte.')}</p>
+          {/* SIDEBAR 01 (backlog eda1e221, SB-03/F-11): a decision or
+              excluded-adjustment whose target group's row does not
+              currently render (e.g. the group itself was excluded from
+              coverage) still needs a visible home — the former standalone
+              recap's exact fallback shape, kept reachable rather than
+              silently dropped when no group disclosure claims it. */}
+          {(looseChosen.length > 0 || looseExcluded.length > 0) && (
+            <section aria-label="Im Angebot gewählt" className="a3-recap mt-4">
+              {looseChosen.length > 0 && (
+                <>
+                  <p className="a3-mtag">{tx('Im Angebot gewählt')}</p>
+                  <ul>
+                    {looseChosen.map((d) => {
+                      const buildingLabel = driverBuildingLabel(s, d.key)
+                      return (
+                        <li key={d.key}
+                            className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
+                          <span className="text-text-secondary">
+                            {translatedDriverLabel(d, t)}
+                            {buildingLabel && <span className="block text-text-secondary">· {buildingLabel}</span>}
+                          </span>
+                          <span className="numeric shrink-0 text-text-primary">{signed(d.exact)}</span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </>
+              )}
+              {looseExcluded.length > 0 && (
+                <div className={looseChosen.length > 0 ? 'mt-3 border-t border-border-subtle pt-2' : ''}>
+                  <p className="a3-mtag">{t('offer.drivers.excludedHeading')}</p>
+                  <ul>
+                    {looseExcluded.map((d) => (
+                      <li key={d.key}
+                          className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
+                        <span className="text-text-secondary">{translatedDriverLabel(d, t)}</span>
+                        <span className="numeric shrink-0 text-text-primary">{signed(d.exact)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </section>
           )}
         </section>
 
-        {/* ── Kostentreiber (DC-44) — обязателен после каждой калькуляции ──
-            DC-21 отвечает машине, DC-44 — клиенту: переговорный аргумент,
-            входит в клиентский PDF. Бары относительно наибольшего вклада и
-            дублируются числом (DRIVER-005). */}
-        <section aria-label="Kostentreiber" className="mt-5 border-t border-border-subtle pt-4">
+        {/* ── Level 3 · Nachweise & Verlauf (SIDEBAR 01) — collapsed by
+            default, reached deliberately: Kostentreiber's driver-bar detail
+            + benchmark (DC-44), the KG 300 Untergruppen breakdown (moved out
+            of the Level-2 row itself — target IA report §8), and the
+            session journal (no inner scroll any more, AC-7). `<aside>` is
+            the rail's only scroll owner (SB-19); this content simply keeps
+            flowing in the rail's own scroll. */}
+        <section aria-label="Nachweise & Verlauf" className="mt-5 border-t border-border-subtle pt-4">
           <h2 className="text-small font-bold text-text-primary">
             <button
               type="button"
-              aria-expanded={treiberOpen}
-              onClick={() => setTreiberOpen((v) => !v)}
+              aria-expanded={level3Open}
+              onClick={() => setLevel3Open((v) => !v)}
               className="a3-journal-disclose outline-none before:absolute before:left-1/2 before:top-1/2 before:min-h-hit-target before:w-full before:-translate-x-1/2 before:-translate-y-1/2 before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
             >
-              <span aria-hidden="true">{treiberOpen ? '▾ ' : '▸ '}</span>
-              {tx('Kostentreiber')}
+              <span aria-hidden="true">{level3Open ? '▾ ' : '▸ '}</span>
+              {tx('Nachweise & Verlauf')}
             </button>
           </h2>
-          {!treiberOpen && (
+          {!level3Open && (
             <p className="a3-cap numeric mt-1">
               {clientSafeDrivers.length}{NNBSP}{tx('Beiträge · Summe =')}{NNBSP}
               {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(p.result.total)}
             </p>
           )}
-          {treiberOpen && (<div className="a3-drivers mt-2">
+          {level3Open && (<div className="a3-drivers mt-2">
           {/* Шапка бенчмарка (DRIVER-001, CALC-008): фикстура объявляет только
               ID снапшота — медианы нет, и выдумать её нельзя (R-25), поэтому
               вывод «x % zur Mediane» честно заменён названной причиной.
@@ -595,7 +873,7 @@ export function OfferPanel() {
                       ? d.scopeRefs.join(`${NNBSP}· `)
                       : 'Zuordnung offen'
                     // Task 02 (F-01): same building-attribution rule as the
-                    // "Im Angebot gewählt" recap above — intern-mode only,
+                    // Level 2 group children above — intern-mode only,
                     // never part of `scopeLabel`/`d.scopeRefs` (R-25 stays
                     // exactly as-is for Kundenansicht).
                     const buildingLabel = driverBuildingLabel(s, d.key)
@@ -698,136 +976,46 @@ export function OfferPanel() {
               </tbody>
             </table>
           </div>
-          </div>)}
-        </section>
-
-        {/* ── Разбивка KG ────────────────────────────────────────────────── */}
-        <section aria-label="Kostengruppen" className="mt-4 border-t border-border-subtle pt-4">
-          <h2 className="text-small font-bold text-text-primary">
-            <button
-              type="button"
-              aria-expanded={kgOpen}
-              onClick={() => setKgOpen((v) => !v)}
-              className="a3-journal-disclose outline-none before:absolute before:left-1/2 before:top-1/2 before:min-h-hit-target before:w-full before:-translate-x-1/2 before:-translate-y-1/2 before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-            >
-              <span aria-hidden="true">{kgOpen ? '▾ ' : '▸ '}</span>
-              {t('offer.costGroups.regionHeading')}
-            </button>
-          </h2>
-          {kgOpen && (<>
-          {/* Таблица структуры затрат — DC-5: корень `.a3-kg`, числовые
-              ячейки `.a3-num`, вложенный уровень `.a3-lvl2`, итоговая
-              строка `.a3-total`. Прежде это был utility-двойник рядом с
-              готовым контрактом (добор DC-COVERAGE приёмки № 17). */}
-          <div className="a3-tbl-scroll mt-2">
-            <table className="a3-kg w-full border-collapse">
-              <caption className="a3-visually-hidden">{tx('Kostengruppen nach DIN 276, vereinfachte Verteilung')}</caption>
-              <tbody>
-                {/* Task 04 (F-12, rule 32): прежде здесь печатались только
-                    KG_300/400(/700) — KG 200/500/600/800 и, в режиме `echt`,
-                    сама KG 700 (собственная позиция 12 %, не доля блока)
-                    оставались строками без места в таблице, хотя их суммы
-                    уже входят в напечатанный тотал. `p.kgSplit`
-                    (`fullKgSplit` в `computeProjection`) теперь несёт
-                    амаунт КАЖДОЙ включённой группы DIN 276 — здесь просто
-                    печатается одна строка на ключ, без дублирования (сумма
-                    построена так, что ни один вклад не считается дважды —
-                    см. комментарий у `fullKgSplit`). */}
-                {(Object.entries(p.kgSplit)
-                  .filter((e): e is [string, Decimal] => e[1] !== undefined
-                    && s.coverage[e[0] as CostGroup] === 'included'))
-                  .map(([g, v]) => (
-                  <Fragment key={g}>
-                    {/* KG 300 раскрывается до третьего уровня: подгруппы —
-                        база надбавок за риск, и продавец обязан видеть, от
-                        чего считается «4 % на KG 320». Раскрытие — DC-5
-                        (.a3-expand/.a3-twistbtn/.a3-open/.a3-kg-child). */}
-                    <tr className={g === 'KG_300' ? 'a3-expand' + (kg300Open ? ' a3-open' : '') : ''}>
-                      <td>
-                        {g === 'KG_300' ? (
-                          <button type="button" className="a3-twistbtn"
-                                  aria-expanded={kg300Open}
-                                  onClick={() => setKg300Open((v2) => !v2)}>
-                            <span aria-hidden="true">{kg300Open ? '▾' : '▸'}</span>
-                            {' '}{g.replace('_', NNBSP)} {t(`costGroup.${g as CostGroup}`)}
-                          </button>
-                        ) : <>{g.replace('_', NNBSP)} {t(`costGroup.${g as CostGroup}`)}</>}
-                      </td>
-                      <td className="a3-num">{moneyLabel(present(v))}</td>
-                      <td className="a3-num">
-                        {v.div(p.result.total.exact).mul(100).toFixed(0)}{NNBSP}%
-                      </td>
-                    </tr>
-                    {g === 'KG_300' && kg300Open && splitKg300(v).map((sub) => (
-                      <tr key={sub.id} className="a3-kg-child a3-muted">
-                        <td>{sub.id.replace('_', NNBSP)} {sub.label} {MARK}</td>
-                        <td className="a3-num">{moneyLabel(present(sub.exact))}</td>
-                        <td className="a3-num" />
-                      </tr>
-                    ))}
-                  </Fragment>
-                ))}
-                {/* Надземная/подземная части — вложенный уровень той же
-                    структуры, а не отдельные строки-сироты. Показ равен
-                    точному у 476.000, поэтому без префикса: ложный `≈` —
-                    тоже дефект. */}
-                <tr className="a3-lvl2 a3-muted">
-                  <td>oberirdisch</td>
-                  <td className="a3-num" colSpan={2}>
-                    {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(p.aboveGround)}
-                  </td>
-                </tr>
-                <tr className="a3-lvl2 a3-muted">
-                  <td>unterirdisch</td>
-                  <td className="a3-num" colSpan={2}>
-                    {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(p.belowGround)}
-                  </td>
-                </tr>
-                {/* Task 04 (F-12 companion, rule 32): siehe Kommentar bei
-                    `riskSurchargeSum` oben — eigene Zeile statt Einfaltung
-                    in KG 300. */}
-                {!riskSurchargeSum.isZero() && (
-                  <tr>
-                    <td>{tx('Risikozuschläge')}</td>
-                    <td className="a3-num">{moneyLabel(present(riskSurchargeSum))}</td>
-                    <td className="a3-num">
-                      {riskSurchargeSum.div(p.result.total.exact).mul(100).toFixed(0)}{NNBSP}%
-                    </td>
-                  </tr>
-                )}
-                {/* Task 04 (F-12 companion, rule 32): Rabatt ist keine
-                    DIN-276-Gruppe, aber ein realer, im Total bereits
-                    enthaltener Abzug — ohne eigene Zeile summierten die
-                    KG-Zeilen auf `beforeDiscount`, nicht auf den
-                    gedruckten `total`. Eigene Prozentspalte (kein
-                    `colSpan`, anders als oberirdisch/unterirdisch oben,
-                    die dieselbe Summe nur re-gliedern): nur so bleibt die
-                    100-%-Summe der Spalte exakt. */}
-                {p.discountDriver && (
-                  <tr>
-                    <td>{translatedDriverLabel(p.discountDriver, t)}</td>
-                    <td className="a3-num">
-                      −{NNBSP}{moneyLabel(present(p.discountDriver.exact.abs()))}
-                    </td>
-                    <td className="a3-num">
-                      −{NNBSP}
-                      {p.discountDriver.exact.abs().div(p.result.total.exact).mul(100).toFixed(0)}
-                      {NNBSP}%
-                    </td>
-                  </tr>
-                )}
-                <tr className="a3-total">
-                  <td>{tx(p.result.totalLabel)}</td>
-                  <td className="a3-num" colSpan={2}>
-                    {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(p.result.total)}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p className="mt-2 text-small text-text-muted">{tx('Zeilen werden unabhängig gerundet; die Prüfung läuft über exakte Werte.')}</p>
-          </>)}
-          {kgOpen && notIncluded.length > 0 && (
+          {/* KG 300 Untergruppen — moved here from the Level-2 row itself
+              (target IA report §8): the row's own disclosure now carries
+              its DIN-276 decisions (Level 2 merge, SB-03), so the
+              percentage-derived risk-basis subgroups get their own nested
+              twist in Level 3 instead of competing for the same toggle. */}
+          {p.kgSplit.KG_300 && (
+            <div className="mt-4">
+              <button type="button" className="a3-twistbtn"
+                      aria-expanded={kg300Open}
+                      onClick={() => setKg300Open((v2) => !v2)}>
+                <span aria-hidden="true">{kg300Open ? '▾' : '▸'}</span>
+                {' '}{tx('KG 300 Untergruppen')}
+              </button>
+              {kg300Open && (
+                <div className="a3-tbl-scroll mt-2">
+                  <table className="a3-kg w-full border-collapse">
+                    <caption className="a3-visually-hidden">{tx('KG 300 Untergruppen, Risikobasis')}</caption>
+                    <tbody>
+                      {splitKg300(p.kgSplit.KG_300).map((sub) => (
+                        <tr key={sub.id} className="a3-kg-child a3-muted">
+                          <td>{sub.id.replace('_', NNBSP)} {sub.label} {MARK}</td>
+                          <td className="a3-num">{moneyLabel(present(sub.exact))}</td>
+                          <td className="a3-num" />
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+          {/* "Nicht enthalten / noch offen" stays Level-3 (disclosure-
+              reached) content, not part of the always-expanded Level 2 list:
+              it used to sit behind the KG table's own collapsed-by-default
+              toggle, and moving it into the always-expanded Level 2 would
+              have surfaced this DC-7 client notice unconditionally even for
+              a fully decided binary scope (deliberately `excluded` groups,
+              not merely undecided ones) — a regression the existing test
+              suite (scenario.dom.test.tsx) already guards against. */}
+          {notIncluded.length > 0 && (
             <ClientNotice clientText="Nicht alle Kostengruppen sind Bestandteil dieses Angebots; die Abgrenzung steht in der Leistungsübersicht.">
               <p className="a3-cap mt-2">
                 ▸ {tx('Nicht enthalten / noch offen')}:{' '}
@@ -836,77 +1024,83 @@ export function OfferPanel() {
               </p>
             </ClientNotice>
           )}
+          {/* ── Журнал сессии (DC-12): внутренний след, не часть клиентской
+              проекции. DC-22 в шапке является единственной точкой входа.
+              SIDEBAR 01 (backlog eda1e221, SB-19): journal is Level 3
+              content (target IA report §8) reached through the same
+              `level3Open` disclosure as the driver detail above it — its
+              own `<ol>` no longer carries an inner `max-height`/scroll of
+              its own; `<aside>` is the rail's single scroll owner. ── */}
+          {s.mode === 'intern' && <div className="mt-4 border-t border-border-subtle pt-4">
+            {blocked && <div className="a3-warn-prep mb-3">
+              <p className="text-small text-text-primary">
+                <span aria-hidden="true">▲ </span>
+                Kundenansicht gesperrt: Klassifikation nach MBO{NNBSP}§2 nicht bestätigt.
+              </p>
+              <div className="mt-2">
+                <Button variant="primary" onClick={() => s.confirmGebaeudeklasse()}>
+                  {tx('Klassifikation bestätigen')}
+                </Button>
+              </div>
+            </div>}
+            <div className={'a3-journal-spec transition-colors duration-base ' +
+              (journalFlash ? 'bg-surface-subtle' : '')}>
+              <button
+                type="button"
+                onClick={() => setJournalOpen((v) => !v)}
+                aria-expanded={journalOpen}
+                className="a3-journal-disclose outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+              >
+                <span aria-hidden="true">{journalOpen ? '▾ ' : '▸ '}</span>
+                {priceChangeCount === 0
+                  ? t('journal.empty')
+                  // F05: früher `... Vergleichsbasis DEMO-VV-0003:` — der Fixture-
+                  // Bezeichner der Vergleichsbasis stand in der Journal-
+                  // Aufklapp-Zeile selbst, nicht nur hinter einer Ablage.
+                  // Task 04 (F-30): das unbenannte Wort „Vergleichsbasis" allein
+                  // liest sich wie ein Vergleich gegen einen externen Zielwert;
+                  // `sessionDelta` ist tatsächlich die Summe der Preis-Journal-
+                  // einträge SEIT ERSTELLUNG DIESER OPTION — bei einer frisch
+                  // erstellten Option (Startzustand: alle KG ausgeschlossen)
+                  // rechnerisch identisch zum leeren Angebot, aber das ist ein
+                  // benannter, definierter Bezug, keine unbenannte Lücke.
+                  : <>{t('offerPanel.journal.priceChangePrefix')}{' '}
+                      <span className="numeric font-medium text-text-primary">
+                        {signed(sessionDelta)}
+                      </span>{' '}{t('money.net')} · {priceChangeCount}{NNBSP}
+                      {priceChangeCount === 1
+                        ? t('offerPanel.journal.changeSingular')
+                        : t('offerPanel.journal.changePlural')}</>}
+              </button>
+
+              {journalOpen && ctxJournal.length > 0 && (
+                <ol className="a3-journal-items">
+                  {[...ctxJournal].reverse().map((e) => (
+                    <li key={e.seq}>
+                      <span className="numeric">{e.seq}</span>
+                      <span>{e.label}</span>
+                      <span className="numeric">
+                        {e.deltaExact ? signed(e.deltaExact) : '—'}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+
+              <div className="mt-2">
+                <Button onClick={() => s.undo()}
+                        disabled={!s.canUndo()}
+                        disabledReason="nichts mehr rückgängig zu machen">
+                  {t('common.undo')}
+                </Button>
+              </div>
+            </div>
+          </div>}
+          </div>)}
         </section>
       </div>
-
-      {/* ── Журнал сессии (DC-12): внутренний след, не часть клиентской
-          проекции. DC-22 в шапке является единственной точкой входа. ── */}
-      {s.mode === 'intern' && <div className="border-t border-border-strong px-5 py-3">
-        {blocked && <div className="a3-warn-prep mb-3">
-          <p className="text-small text-text-primary">
-            <span aria-hidden="true">▲ </span>
-            Kundenansicht gesperrt: Klassifikation nach MBO{NNBSP}§2 nicht bestätigt.
-          </p>
-          <div className="mt-2">
-            <Button variant="primary" onClick={() => s.confirmGebaeudeklasse()}>
-              {tx('Klassifikation bestätigen')}
-            </Button>
-          </div>
-        </div>}
-        <div className={'a3-journal-spec mt-3 transition-colors duration-base ' +
-          (journalFlash ? 'bg-surface-subtle' : '')}>
-          <button
-            type="button"
-            onClick={() => setJournalOpen((v) => !v)}
-            aria-expanded={journalOpen}
-            className="a3-journal-disclose outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-          >
-            <span aria-hidden="true">{journalOpen ? '▾ ' : '▸ '}</span>
-            {priceChangeCount === 0
-              ? t('journal.empty')
-              // F05: früher `... Vergleichsbasis DEMO-VV-0003:` — der Fixture-
-              // Bezeichner der Vergleichsbasis stand in der Journal-
-              // Aufklapp-Zeile selbst, nicht nur hinter einer Ablage.
-              // Task 04 (F-30): das unbenannte Wort „Vergleichsbasis" allein
-              // liest sich wie ein Vergleich gegen einen externen Zielwert;
-              // `sessionDelta` ist tatsächlich die Summe der Preis-Journal-
-              // einträge SEIT ERSTELLUNG DIESER OPTION — bei einer frisch
-              // erstellten Option (Startzustand: alle KG ausgeschlossen)
-              // rechnerisch identisch zum leeren Angebot, aber das ist ein
-              // benannter, definierter Bezug, keine unbenannte Lücke.
-              : <>{t('offerPanel.journal.priceChangePrefix')}{' '}
-                  <span className="numeric font-medium text-text-primary">
-                    {signed(sessionDelta)}
-                  </span>{' '}{t('money.net')} · {priceChangeCount}{NNBSP}
-                  {priceChangeCount === 1
-                    ? t('offerPanel.journal.changeSingular')
-                    : t('offerPanel.journal.changePlural')}</>}
-          </button>
-
-          {journalOpen && ctxJournal.length > 0 && (
-            <ol className="a3-journal-items overflow-y-auto"
-                style={{ maxHeight: 'calc(var(--space-8) * 3)' }}>
-              {[...ctxJournal].reverse().map((e) => (
-                <li key={e.seq}>
-                  <span className="numeric">{e.seq}</span>
-                  <span>{e.label}</span>
-                  <span className="numeric">
-                    {e.deltaExact ? signed(e.deltaExact) : '—'}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          )}
-
-          <div className="mt-2">
-            <Button onClick={() => s.undo()}
-                    disabled={!s.canUndo()}
-                    disabledReason="nichts mehr rückgängig zu machen">
-              {t('common.undo')}
-            </Button>
-          </div>
-        </div>
-      </div>}
+      </>)}
+      {footer}
     </aside>
   )
 }

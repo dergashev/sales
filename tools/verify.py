@@ -2299,14 +2299,24 @@ class Verifier:
                           'tokens.css', f'{tok} = {got or "не объявлен"}, требуется {exp}')
 
         # Кросс-сверка ширины правой панели: токен против прозы README §1.2.
+        # SIDEBAR 01 (backlog eda1e221) ADR revision: the token may now be a
+        # responsive `clamp(min, base + slope*vw, max)` instead of a bare
+        # px integer — README's "520 px" names the clamp's UPPER bound
+        # (unchanged since TASK-15), so a clamp() token is compared against
+        # its own third (max) argument rather than requiring string equality
+        # with the whole declaration.
         rp = re.search(r'правая панель S3 — (\d+) px', readme)
         if not rp:
             self.fail('GATE-DENSITY', 'README', '[вакуум] README §1.2 не называет ширину правой панели')
         else:
             got = (root_decls.get('--panel-right-width') or '').strip()
-            if got != rp.group(1) + 'px':
+            clamp_m = re.fullmatch(
+                r'clamp\(\s*[\d.]+px\s*,\s*[^,]+,\s*(\d+)px\s*\)', got)
+            upper = (clamp_m.group(1) + 'px') if clamp_m else got
+            if upper != rp.group(1) + 'px':
                 self.fail('GATE-DENSITY', 'tokens.css',
-                          f'--panel-right-width = {got}, README §1.2 называет {rp.group(1)} px')
+                          f'--panel-right-width = {got} (верхняя граница {upper}), '
+                          f'README §1.2 называет {rp.group(1)} px')
 
         # R-01: бренд-акцент существует ровно одним значением.
         if resolve('--color-brand-accent') != '#FD5E00':

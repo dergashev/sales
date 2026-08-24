@@ -9,7 +9,7 @@ import { Sidebar } from './components/Sidebar'
 import { ClientOutputGateDialog } from './components/ClientOutputGateDialog'
 import { OfferPanel } from './components/OfferPanel'
 import { UndoToast } from './components/UndoToast'
-import { ConfigurationModeReadiness, S3Konfigurator } from './screens/S3Konfigurator'
+import { ConfigurationModeReadiness, ModeChangeNotice, S3Konfigurator } from './screens/S3Konfigurator'
 import { S4Vergleich } from './screens/S4Vergleich'
 import { S5Export } from './screens/S5Export'
 import { S6Einstellungen } from './screens/S6Einstellungen'
@@ -132,11 +132,22 @@ export function App() {
           {renderedView === 'einstellungen' && <S6Einstellungen />}
         </main>
 
+        {/* SIDEBAR 01 (backlog eda1e221): the rail slot below is the single
+            place that resolves what `<aside>` fills the right column —
+            SB-20 renders Level 1 only on Variantenvergleich/Export/
+            Einstellungen (no cost-composition breakdown on a read-only
+            view), and SB-27 keeps a priced offer's commercial context
+            visible when "Modus ändern" is open, ADDING the notice as
+            `OfferPanel`'s `footer` instead of substituting the whole panel
+            for it. */}
         {renderedView === 'buildingScope' ? <BuildingScopeReadiness />
           : !s.pricingStarted
-            || renderedView === 'konfigurator'
-              && (!s.configurationModeChosen || s.configurationModeEditing)
+            || renderedView === 'konfigurator' && !s.configurationModeChosen
             ? <ConfigurationModeReadiness />
+            : renderedView === 'konfigurator' && s.configurationModeEditing
+            ? <OfferPanel variant="level1" footer={<ModeChangeNotice headingLevel={3} />} />
+            : renderedView === 'vergleich' || renderedView === 'export' || renderedView === 'einstellungen'
+            ? <OfferPanel variant="level1" />
             : <OfferPanel />}
       </div>
 

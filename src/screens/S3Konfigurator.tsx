@@ -755,7 +755,15 @@ function ConfigurationOverview() {
  * (`pricingStarted === true`) — false. The heading now reads the actual
  * state and names that the existing configuration is preserved instead.
  */
-export function ConfigurationModeReadiness() {
+/**
+ * SIDEBAR 01 (backlog eda1e221, SB-27): the notice content on its own, no
+ * `<aside>` wrapper — reused two ways: standalone inside
+ * `ConfigurationModeReadiness`'s own rail (when there is no existing
+ * calculation to preserve visibly) and as `OfferPanel`'s `footer` when a
+ * priced offer opens "Modus ändern" (App.tsx), so the commercial context
+ * stays visible and the notice is added beside it, not substituted for it.
+ */
+export function ModeChangeNotice({ headingLevel = 2 as 2 | 3 }: { headingLevel?: 2 | 3 } = {}) {
   const t = useT()
   const started = useStore().pricingStarted
   const headingKey = started
@@ -764,19 +772,31 @@ export function ConfigurationModeReadiness() {
   const bodyKey = started
     ? 'configurator.mode.readiness.preservedBody'
     : 'configurator.sidebar.body'
+  const Heading = headingLevel === 2 ? 'h2' : 'h3'
+  return (
+    <div className="p-6">
+      <Heading className="text-heading-2 font-bold text-text-primary">
+        {t(headingKey)}
+      </Heading>
+      <p className="mt-2 text-small text-text-secondary">
+        {t(bodyKey)}
+      </p>
+    </div>
+  )
+}
+
+export function ConfigurationModeReadiness() {
+  const t = useT()
+  const started = useStore().pricingStarted
+  const headingKey = started
+    ? 'configurator.mode.readiness.preserved'
+    : 'buildingScope.readiness.pricingNotStarted'
   return (
     <aside
       aria-label={t(headingKey)}
       className="flex h-full w-panel-right min-w-0 max-w-panel-right shrink-0 flex-col overflow-y-auto border-l border-border-strong bg-surface-default"
     >
-      <div className="p-6">
-        <h2 className="text-heading-2 font-bold text-text-primary">
-          {t(headingKey)}
-        </h2>
-        <p className="mt-2 text-small text-text-secondary">
-          {t(bodyKey)}
-        </p>
-      </div>
+      <ModeChangeNotice />
     </aside>
   )
 }

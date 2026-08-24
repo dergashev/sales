@@ -346,7 +346,28 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    (`<aside overflow-y-auto>`), nicht zum Dokument — die Seiten-Scroll-
    Ebene, die das vorher unterlaufen hätte, ist in `.a3-app-shell`/
    `html,body` geschlossen (siehe tokens.css). */
-.a3-rail-sticky-top{position:sticky;top:0;z-index:1;background:var(--color-surface-default);border-bottom:var(--border-hairline);padding:var(--space-5) var(--space-5) var(--space-3)}
+/* SIDEBAR 01 (backlog eda1e221, SB-01/SB-02) - the sticky wrapper itself no
+   longer carries padding or a height limit: it only establishes the sticky
+   positioning context and the stacking/backdrop for the change-slot overlay
+   below. The budgeted, clipped content (hero band, range, rates, duration)
+   moves into `.a3-rail-header-budget`, a plain in-flow child that DOES carry
+   the hard `max-height` + `overflow:hidden` safety net (report S7/S9,
+   AC-1/AC-2) and the padding this rule used to carry. Splitting the two
+   responsibilities is what lets the change-slot overlay
+   (`.a3-change-slot-anchor`) sit OUTSIDE the clipped box and extend over the
+   scrolling Level 2 content beneath it without being clipped by the same
+   `overflow:hidden` that budgets the hero content. */
+/* SIDEBAR 01 (backlog eda1e221, SB-19/SB-28) - `<aside class="a3-rail">` is
+   the rail's SINGLE scroll owner (report S10): the journal lost its own
+   inner `max-height` scroll container, so nothing below `.a3-rail-sticky-
+   top` scrolls independently any more. `scroll-padding-top` compensates the
+   pinned header's own height so `scrollIntoView`/keyboard focus on any Level
+   2 or 3 row lands inside the readable window, never underneath the sticky
+   block (AC-8) - it reads the same budget token the header is capped to, so
+   the two can never drift apart. */
+.a3-rail{scroll-padding-top:var(--size-rail-header-budget)}
+.a3-rail-sticky-top{position:sticky;top:0;z-index:1;background:var(--color-surface-default);border-bottom:var(--border-hairline)}
+.a3-rail-header-budget{max-height:var(--size-rail-header-budget);overflow:hidden;padding:var(--space-5) var(--space-5) var(--space-3)}
 .a3-heroband{display:flex;gap:var(--space-7);row-gap:var(--space-5);flex-wrap:wrap;align-items:baseline}
 /* F40: row/column gap was `--border-width-strong` (2px) — a border-width
    token reused for spacing, off the 4/8/12/16/24/32/48/64 scale. `--space-1`
@@ -361,8 +382,22 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-ghost-slot>.a3-ghost{display:block;max-width:100%;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-body-weight);color:var(--color-text-secondary);opacity:0;transition:opacity var(--motion-reveal) var(--motion-easing-standard) var(--motion-delay-hover-preview)}
 .a3-ghost-line{display:block}
 .a3-ghost-slot>.a3-ghost.a3-show{opacity:1;transition-delay:.2s}
-.a3-ghost-slot{min-height:var(--size-ghost-row);max-width:100%}
-.a3-delta-slot{min-height:var(--size-delta-row);max-width:100%}
+/* SIDEBAR 01 (backlog eda1e221, SB-02) - `min-height` reservation is correct
+   for a SCROLLING region (rule 24: appearance must not shift layout) and
+   wrong for a PINNED one: while sticky, the two slots' worst-case height
+   (96px + 58px = 154px) used to be subtracted from the rail's readable
+   window permanently, even resting empty ~most of the time (audit finding).
+   The no-layout-shift guarantee (rule 24) now comes from being taken out of
+   flow entirely: both slots anchor to `.a3-change-slot-anchor`, a zero-height
+   sibling of `.a3-rail-header-budget` placed after it inside the same sticky
+   wrapper. `max-height` replaces `min-height` as the same "longest DC-2/
+   DC-28 state" cap, now bounding an overlay instead of reserving flow space.
+   Ghost (hover preview) and delta (post-commit, 8s) are mutually exclusive
+   in time (DC-28 clears the preview at commit) so sharing one anchor is
+   safe; both keep their own distinct border/motion identity unchanged. */
+.a3-change-slot-anchor{position:relative;height:0}
+.a3-ghost-slot{position:absolute;top:var(--space-3);left:0;right:0;max-height:var(--size-ghost-row);overflow:hidden;background:var(--color-surface-default);max-width:100%}
+.a3-delta-slot{position:absolute;top:var(--space-3);left:0;right:0;max-height:var(--size-delta-row);overflow:hidden;max-width:100%}
 .a3-iv-sub{display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap}
 .a3-iv-bandbox{flex:1;max-width:var(--measure-band)}
 /* Task 04 (F-35, rail a11y/visual): F18 already ruled out a coloured

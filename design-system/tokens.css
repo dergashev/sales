@@ -472,7 +472,22 @@
      длиннейший тотал ≈ 10.489.000 € занимает 463,23 px при обязательных
      64/68. Хост добавляет 2 × --space-5 (48 px) и бордер 1 px; 512,23 px
      округлены вверх до следующего шага 8-px сетки. */
-  --panel-right-width: 520px;
+  /* SIDEBAR 01 (backlog eda1e221) - DELIBERATE TASK-15 ADR REVISION, not a
+     silent replacement. 520px stays the UPPER bound (same total-width
+     measurement above still holds), but a fixed width at the 1280px floor
+     made the rail 98.5% as wide as the workspace (audit SB-20; T04-AC6
+     "workspace >= rail" was met by only 8px). The report's three-band table
+     (440-480 / 480-520 / 520-cap, section 9) collapses to ONE continuous
+     formula with NO new breakpoint: slope (520-440)/(1600-1280)=0.25 lands
+     exactly on 440px at 1280px, 480px at 1440px (the shared boundary of both
+     reported bands) and reaches 520px at 1600px, where clamp() caps it. */
+  --panel-right-width: clamp(440px, 120px + 25vw, 520px);
+  /* SIDEBAR 01 - the rail's pinned Level 1 header gets a hard height budget
+     (report S7/S9, AC-1/AC-2): <=320px at 1280x800, <=360px at 1440x900,
+     <=400px at >=1600px. Same 0.25 slope, no constant term needed: 25vw
+     alone lands on exactly 320/360/400 at the three reference widths. See
+     `.a3-rail-sticky-top` in components.css. */
+  --size-rail-header-budget: clamp(320px, 25vw, 400px);
   --panel-left-width: 280px;  /* [provisional] навигационный сайдбар оболочки;
                                  введён при пересборке прототипа 05.08 — правой
                                  панели токен уже существовал, левой не было.
