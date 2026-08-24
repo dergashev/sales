@@ -125,6 +125,33 @@ function driverBuildingLabel(
 }
 
 /**
+ * SIDEBAR 03 (backlog 2be8e69c, SB-14 companion, live Playwright finding).
+ * `clientProjection.ts`'s `translatedDriverLabel` pattern-matches `d.key`
+ * against fixed prefixes/exact values (`gebaeudeform_`, `untergeschoss_`,
+ * …) — none of which ever match once `computeProjection` has prefixed the
+ * key with a building id (`${buildingId}:${d.key}`, whenever more than one
+ * building is included), so it silently falls through to the raw German
+ * `d.label` for EVERY driver in any multi-building project, in EVERY
+ * locale and EVERY mode. Measured live (Playwright, TASK_CANDIDATE,
+ * Nordfeld 2 buildings, EN): "Untergeschoss · Rohbau und Ausbau" and
+ * "Tiefgarage · Lüftung, OS-Beschichtung, Tore" stayed German in the
+ * English rail. Stripping the same prefix `driverBuildingLabel` already
+ * reads (read-only, no `clientProjection.ts` change) before calling
+ * `translatedDriverLabel` lets its existing key patterns match correctly;
+ * safe in the single-building case (`ids.length <= 1` returns the key
+ * unchanged).
+ */
+function withoutBuildingPrefix<T extends Pick<Driver, 'key'>>(
+  s: ReturnType<typeof useStore.getState>,
+  d: T,
+): T {
+  const ids = includedBuildingIds(s)
+  if (ids.length <= 1) return d
+  const id = ids.find((candidate) => d.key.startsWith(`${candidate}:`))
+  return id ? { ...d, key: d.key.slice(id.length + 1) } : d
+}
+
+/**
  * SIDEBAR 02 (backlog 41b8ab39, SB-09/SB-10, AC-1): the display name for a
  * single narrowed building — same resolution as `driverBuildingLabel` above
  * (documentation name, falling back to the raw id), but usable regardless
@@ -667,7 +694,7 @@ export function OfferPanel(
           <OriginPopover
             rows={[
               ...clientSafeDrivers.map((d) => ({
-                label: translatedDriverLabel(d, t),
+                label: translatedDriverLabel(withoutBuildingPrefix(s, d), t),
                 value: moneyOut(present(d.exact), lang),
               })),
               ...(!s.regionalfaktorActive
@@ -1079,7 +1106,7 @@ export function OfferPanel(
                                   const isExcluded = d.key === 'kg300_excluded_adjustment'
                                     || d.key === 'kg400_excluded_adjustment'
                                   return (isExcluded ? `${t('offer.drivers.excludedHeading')} · ` : '')
-                                    + translatedDriverLabel(d, t)
+                                    + translatedDriverLabel(withoutBuildingPrefix(s, d), t)
                                 }, s).map((row) => (
                                   <li key={row.key}
                                       className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
@@ -1135,7 +1162,7 @@ export function OfferPanel(
                     100-%-Summe der Spalte exakt. */}
                 {p.discountDriver && (
                   <tr>
-                    <td>{translatedDriverLabel(p.discountDriver, t)}</td>
+                    <td>{translatedDriverLabel(withoutBuildingPrefix(s, p.discountDriver), t)}</td>
                     {/* SB-23: one signed-money formatter everywhere — this
                         used to compose the sign BEFORE `moneyLabel()`'s own
                         `≈` prefix (`− ≈ 910.000 €`), the exact inverted
@@ -1187,7 +1214,7 @@ export function OfferPanel(
                   <p className="a3-mtag">{tx('Im Angebot gewählt')}</p>
                   <ul>
                     {/* SB-13: same aggregation as the Level 2 children list above. */}
-                    {clientSafeContributionRows(looseChosen, (d) => translatedDriverLabel(d, t), s).map((row) => (
+                    {clientSafeContributionRows(looseChosen, (d) => translatedDriverLabel(withoutBuildingPrefix(s, d), t), s).map((row) => (
                       <li key={row.key}
                           className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
                         <span className="text-text-secondary">
@@ -1204,7 +1231,7 @@ export function OfferPanel(
                 <div className={looseChosen.length > 0 ? 'mt-3 border-t border-border-subtle pt-2' : ''}>
                   <p className="a3-mtag">{t('offer.drivers.excludedHeading')}</p>
                   <ul>
-                    {clientSafeContributionRows(looseExcluded, (d) => translatedDriverLabel(d, t), s).map((row) => (
+                    {clientSafeContributionRows(looseExcluded, (d) => translatedDriverLabel(withoutBuildingPrefix(s, d), t), s).map((row) => (
                       <li key={row.key}
                           className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
                         <span className="text-text-secondary">{row.label}</span>
@@ -1307,11 +1334,11 @@ export function OfferPanel(
                           {/* Доступное имя строки называет направление словом,
                               округление и точное значение (DRIVER-004). */}
                           <span className="sr-only">
-                            {driverLabel(d, d.basis, t, lang)}
+                            {driverLabel(d, d.basis, t, lang, s)}
                             {buildingLabel ? `, ${buildingLabel}` : ''}, {richtung},
                             rund {localizeMoneyText(shown.display, lang)} Euro, exakt {localizeMoneyText(formatDE(d.exact.abs(), 2), lang)} Euro
                           </span>
-                          <span aria-hidden="true">{driverLabel(d, d.basis, t, lang)}</span>
+                          <span aria-hidden="true">{driverLabel(d, d.basis, t, lang, s)}</span>
                           <span aria-hidden="true" className="a3-driver-direction">
                             {richtung}
                             {' · '}
@@ -1365,7 +1392,7 @@ export function OfferPanel(
                               // Buttonliste. Derselbe Text, der schon die
                               // sr-only-Zeile der Zeile selbst benennt
                               // (oben), macht auch diesen Trigger eindeutig.
-                              accessibleName={`Details · ${driverLabel(d, d.basis, t, lang)}`
+                              accessibleName={`Details · ${driverLabel(d, d.basis, t, lang, s)}`
                                 + (buildingLabel ? `, ${buildingLabel}` : '')}
                             />
                           </span>
@@ -1416,12 +1443,12 @@ export function OfferPanel(
                       aria-expanded={kg300Open}
                       onClick={() => setKg300Open((v2) => !v2)}>
                 <span aria-hidden="true">{kg300Open ? '▾' : '▸'}</span>
-                {' '}{tx('KG 300 Untergruppen')}
+                {' '}{t('offerPanel.kg300Subgroups.toggle')}
               </button>
               {kg300Open && (
                 <div className="a3-tbl-scroll mt-2">
                   <table className="a3-kg w-full border-collapse">
-                    <caption className="a3-visually-hidden">{tx('KG 300 Untergruppen, Risikobasis')}</caption>
+                    <caption className="a3-visually-hidden">{t('offerPanel.kg300Subgroups.caption')}</caption>
                     <tbody>
                       {splitKg300(p.kgSplit.KG_300).map((sub) => (
                         <tr key={sub.id} className="a3-kg-child a3-muted">
@@ -1447,7 +1474,7 @@ export function OfferPanel(
               "die Angebotsspalte rechts", self-referential if repeated
               inside the rail itself. */}
           {hasDerivedMarker && (
-            <p className="a3-cap mt-2">{MARK} {t('offerPanel.derivedMarker.legend')}</p>
+            <p className="a3-cap mt-2">{t('offerPanel.derivedMarker.legend')}</p>
           )}
           </>)}
           {/* "Nicht enthalten / noch offen" stays Level-3 (disclosure-
@@ -1461,9 +1488,17 @@ export function OfferPanel(
           {notIncluded.length > 0 && (
             <ClientNotice clientText={t('offerPanel.notIncluded.clientNotice')}>
               <p className="a3-cap mt-2">
-                ▸ {tx('Nicht enthalten / noch offen')}:{' '}
-                {notIncluded.map((g) =>
-                  `${g.replace('_', NNBSP)}${NNBSP}${t(COVERAGE_SHORT_KEY[s.coverage[g]])}`).join(' · ')}
+                {/* SIDEBAR 03 (SB-14, live Playwright finding): the "▸
+                    Nicht enthalten / noch offen" lead-in stayed German in
+                    EN — `tx()`'s reverse lookup never matched once the
+                    list was concatenated onto it. A matching delivered key
+                    already exists (`offer.costGroups.unresolvedList`,
+                    template `{items}`) — reused instead of composing a new
+                    one. */}
+                {t('offer.costGroups.unresolvedList', {
+                  items: notIncluded.map((g) =>
+                    `${g.replace('_', NNBSP)}${NNBSP}${t(COVERAGE_SHORT_KEY[s.coverage[g]])}`).join(' · '),
+                })}
               </p>
             </ClientNotice>
           )}
@@ -1619,13 +1654,18 @@ function driverLabel(
   basis: DriverBasis | null,
   t: (key: string, values?: Record<string, string | number>) => string,
   lang: UiLanguage,
+  s: ReturnType<typeof useStore.getState>,
 ): string {
   // Base identity through the same structural, key-based lookup the Level 2
   // children list already uses (`translatedDriverLabel`, clientProjection.
   // ts) — replaces the old `tx(engineLabel)` whole-string reverse lookup,
   // which never matched once the quantity/rate suffix below was appended
-  // to it before translation was attempted.
-  const base = translatedDriverLabel(d, t)
+  // to it before translation was attempted. `withoutBuildingPrefix` strips
+  // the `${buildingId}:` prefix `computeProjection` adds whenever more than
+  // one building is included — without it, `translatedDriverLabel`'s own
+  // key patterns never match and it silently falls back to raw German
+  // (live Playwright finding, TASK_CANDIDATE, Nordfeld 2 buildings, EN).
+  const base = translatedDriverLabel(withoutBuildingPrefix(s, d), t)
   // Суффикс «количество × ставка» выводится ИЗ ОСНОВАНИЯ вклада, а не по
   // списку ключей. Прежняя редакция перечисляла два ключа поимённо и брала
   // ставку из каталога напрямую — второй источник той же величины, который

@@ -794,6 +794,28 @@ describe('SIDEBAR 03 (backlog 2be8e69c): client-safe rail, EN localization', () 
     }
   })
 
+  it('translates per-building driver labels in EN even with 2+ buildings included (SB-14, live Playwright finding)', async () => {
+    // Regression guard for a defect only the browser pass caught (not the
+    // jsdom SB-13 test above, which never checked EN): `computeProjection`
+    // prefixes every driver's `key` with its building id whenever more
+    // than one building is included, which used to defeat
+    // `translatedDriverLabel`'s key-pattern matching and silently fall
+    // back to raw German for EVERY driver in ANY multi-building project.
+    const user = userEvent.setup()
+    await openModeStep(user, 2)
+    await startMode(user, 'SHARED')
+    includeCoreScope()
+    act(() => { useStore.getState().confirmGebaeudeklasse() })
+    await user.click(screen.getAllByRole('radio', { name: /EN/ })[0]!)
+    const rail = screen.getByRole('complementary', { name: 'Angebot' })
+    await user.click(within(rail).getByRole('button', { name: /Nachweise & Verlauf/ }))
+    expect(within(rail).getAllByText(/Basement · shell and fit-out/).length).toBeGreaterThanOrEqual(1)
+    expect(within(rail).getAllByText(/Underground garage · ventilation, floor coating, doors/).length)
+      .toBeGreaterThanOrEqual(1)
+    expect(rail.textContent).not.toMatch(/Rohbau und Ausbau/)
+    expect(rail.textContent).not.toMatch(/Lüftung, OS-Beschichtung, Tore/)
+  })
+
   it('the Kostentreiber benchmark line and its internal snapshot id are gone (SB-12/AC-5)', async () => {
     const user = userEvent.setup()
     await openModeStep(user, 1)

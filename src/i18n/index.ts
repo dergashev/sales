@@ -546,6 +546,11 @@ const de = {
   // not the ~40-word hero band it used to sit on.
   'offerPanel.liveAnnouncement': '{change} · {delta} · neuer Betrag {total}',
   'panel.regionalFactorDeactivated': 'deaktiviert',
+  // SB-14 companion (live Playwright finding): no Codex-delivered key
+  // matches this exact composed heading; `tx()`'s reverse lookup never
+  // matched once combined with the toggle glyph.
+  'offerPanel.kg300Subgroups.toggle': 'KG 300 Untergruppen',
+  'offerPanel.kg300Subgroups.caption': 'KG 300 Untergruppen, Risikobasis',
 } as const
 
 export type MessageKey = keyof typeof de
@@ -974,6 +979,8 @@ const en: Partial<Record<MessageKey, string>> = {
     'Display differs from the model value; exact {value}',
   'offerPanel.liveAnnouncement': '{change} · {delta} · new amount {total}',
   'panel.regionalFactorDeactivated': 'deactivated',
+  'offerPanel.kg300Subgroups.toggle': 'KG 300 subgroups',
+  'offerPanel.kg300Subgroups.caption': 'KG 300 subgroups, risk basis',
 }
 
 /**
