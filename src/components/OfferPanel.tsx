@@ -434,7 +434,11 @@ export function OfferPanel(
             Renders identically in the empty and priced states below (one
             story, rule 38: structure does not change with scope). */}
         {multiBuildingScope && (
-          <p className="a3-mtag mb-2">{scopeTagLabel}</p>
+          // `.a3-heroband` is a wrapping flex row (contract above) — `w-full`
+          // forces this tag onto its own line deterministically regardless
+          // of its own text width, rather than relying on the hero being
+          // wide enough to force a wrap by accident.
+          <p className="a3-mtag w-full">{scopeTagLabel}</p>
         )}
         {scopeEmpty ? (
           /* Task 03 (F-10): a genuinely empty Declared Pricing Scope never

@@ -392,6 +392,20 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    showcase's own non-pinned exhibits still use unmodified) — the showcase
    never renders `.a3-heroband` inside `.a3-rail-header-budget`. */
 .a3-rail-header-budget .a3-heroband{row-gap:var(--space-3)}
+/* SIDEBAR 02 (backlog 41b8ab39, SB-09/SB-10, AC-1): the scope tag — an
+   always-first, never-degrading fact, separate from the amount's own
+   commercial name (`.a3-hb-cap`, unchanged). `.a3-mtag` alone carries no
+   base rule (it is only ever styled scoped to `.a3-mode-card`/
+   `.a3-nextstep`/`.a3-recap` elsewhere in this file) — this is the same
+   canonical recipe those three already use (caption size/weight/tracking),
+   scoped to `.a3-heroband` instead of duplicated as a local style. Margin
+   is the tightest step on the scale (`--space-1`, not `--space-2/3` the
+   other scopes use): `.a3-heroband` is a wrapping flex row already tightly
+   budgeted (AC-1/AC-2 above measured 420 px of content in a 320 px box even
+   fully degraded), and this tag does not participate in that degrade
+   ladder by design — it must earn back everything it costs from its own
+   footprint, not the ladder's.  */
+.a3-heroband .a3-mtag{font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:700;letter-spacing:.04em;margin-bottom:var(--space-1)}
 /* F40: row/column gap was `--border-width-strong` (2px) — a border-width
    token reused for spacing, off the 4/8/12/16/24/32/48/64 scale. `--space-1`
    is the nearest scale step. */
