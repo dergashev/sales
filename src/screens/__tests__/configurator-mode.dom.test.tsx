@@ -689,4 +689,58 @@ describe('SIDEBAR 02 (backlog 41b8ab39): rail scope, completeness and signed-mon
       '7 von 7 Kostengruppen entschieden · 1 kalkuliert · 0 ohne Preisansatz',
     )).toBeInTheDocument()
   })
+
+  it('excluding KG 400 marks every Level 2 row that actually changed — including the KG 700 cascade — and the chip narrates only the KG 400 decision (SB-25/SB-26/AC-10/AC-11)', async () => {
+    const user = userEvent.setup()
+    await openModeStep(user, 1)
+    await startMode(user, 'SHARED')
+    const rail = screen.getByRole('complementary', { name: 'Angebot' })
+    // Real single clicks (not a batched `act()` of several store calls) —
+    // one commit per decision, exactly the window the changed-row diff
+    // (`prevAmounts`, gated on `s.activeDelta`) is built to measure.
+    await user.click(within(screen.getByRole('radiogroup', { name: /KG.300/ }))
+      .getByRole('radio', { name: 'enthalten' }))
+    await user.click(within(screen.getByRole('radiogroup', { name: /KG.400/ }))
+      .getByRole('radio', { name: 'enthalten' }))
+    await user.click(within(screen.getByRole('radiogroup', { name: /KG.700/ }))
+      .getByRole('radio', { name: 'enthalten' }))
+    // The three setup clicks above each fire their own `s.activeDelta` —
+    // in production that chip auto-clears after `DELTA_CHIP_MS` (~8 s);
+    // simulate that clearing here so the changed-row diff's own snapshot
+    // (`prevAmounts`) resyncs to "post-setup" BEFORE the single decision
+    // under test, exactly like a real user pausing between actions.
+    act(() => { useStore.getState().clearDelta() })
+
+    // The single decision under test: exclude KG 400. This auto-switches
+    // kg700Mode to `hoaiAho` (D-07 rule 6), which turns KG 700 into its own
+    // 12%-of-Bauwerk position — a real, calculated cascade the seller did
+    // not directly ask for.
+    await user.click(within(screen.getByRole('radiogroup', { name: /KG.400/ }))
+      .getByRole('radio', { name: 'nicht enthalten' }))
+
+    // KG 400 itself leaves the always-included row set once excluded (its
+    // own row disappears from the Level 2 table by design, unchanged
+    // behaviour) — only the row(s) that changed VALUE while staying
+    // included can carry the marker. KG 700 is exactly that row.
+    // Live-measured: excluding KG 400 changes BOTH KG 300 (the reconciled
+    // split shifts) and KG 700 (the auto-fallback turns it into its own
+    // 12%-of-Bauwerk position) — a genuine cascade across two rows the
+    // seller did not directly touch, both marked. Every visible "geändert"
+    // marker is non-colour-only: it carries the word itself (rule 8), not
+    // merely a class name.
+    const kg700Row = within(rail)
+      .getByText((_, el) => el?.tagName === 'BUTTON' && !!el.textContent?.includes('Baunebenkosten'))
+      .closest('tr')!
+    expect(within(kg700Row).getByText('geändert')).toBeInTheDocument()
+    expect(within(rail).getAllByText('geändert')).toHaveLength(2)
+
+    // The chip names the KG 400 decision AND explicitly names the KG 700
+    // change as an AUTOMATIC side-effect of it (reusing the journal's own
+    // established phrasing) — it must not read as if excluding KG 400 and
+    // choosing KG 700's calculation method were two independent decisions.
+    const chip = rail.querySelector('.a3-delta')
+    expect(chip?.textContent).toMatch(/KG 400/)
+    expect(chip?.textContent).toMatch(/automatisch/)
+    expect(chip?.textContent).not.toMatch(/KG 700 ausgeschlossen/)
+  })
 })
