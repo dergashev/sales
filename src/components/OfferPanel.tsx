@@ -1336,7 +1336,7 @@ export function OfferPanel(
                           <span className="sr-only">
                             {driverLabel(d, d.basis, t, lang, s)}
                             {buildingLabel ? `, ${buildingLabel}` : ''}, {richtung},
-                            rund {localizeMoneyText(shown.display, lang)} Euro, exakt {localizeMoneyText(formatDE(d.exact.abs(), 2), lang)} Euro
+                            {' '}{t('panel.rounded')} {localizeMoneyText(shown.display, lang)} Euro, {t('panel.exact')} {localizeMoneyText(formatDE(d.exact.abs(), 2), lang)} Euro
                           </span>
                           <span aria-hidden="true">{driverLabel(d, d.basis, t, lang, s)}</span>
                           <span aria-hidden="true" className="a3-driver-direction">

@@ -816,6 +816,26 @@ describe('SIDEBAR 03 (backlog 2be8e69c): client-safe rail, EN localization', () 
     expect(rail.textContent).not.toMatch(/Lüftung, OS-Beschichtung, Tore/)
   })
 
+  it('the driver-row accessible name has no untranslated German connector words in EN (QA rework: rund/exakt regression)', async () => {
+    // QA finding on the first candidate: the sr-only accessible name
+    // (DRIVER-004) localized the rounded/exact VALUES via
+    // localizeMoneyText but left the surrounding words "rund"/"exakt"
+    // hardcoded German — audible to screen readers in EN even though the
+    // visible text was already correct. `.textContent` (unlike Playwright's
+    // visibility-aware innerText) reaches the sr-only span directly, so
+    // this is the right assertion surface for this exact regression.
+    const user = userEvent.setup()
+    await openModeStep(user, 2)
+    await startMode(user, 'SHARED')
+    includeCoreScope()
+    act(() => { useStore.getState().confirmGebaeudeklasse() })
+    await user.click(screen.getAllByRole('radio', { name: /EN/ })[0]!)
+    const rail = screen.getByRole('complementary', { name: 'Angebot' })
+    await user.click(within(rail).getByRole('button', { name: /Nachweise & Verlauf/ }))
+    expect(rail.textContent).not.toMatch(/\brund\b/)
+    expect(rail.textContent).not.toMatch(/\bexakt\b/)
+  })
+
   it('the Kostentreiber benchmark line and its internal snapshot id are gone (SB-12/AC-5)', async () => {
     const user = userEvent.setup()
     await openModeStep(user, 1)

@@ -511,6 +511,12 @@ const de = {
   'panel.quantity': 'Menge · {denominator}',
   'panel.decreased': 'senkt',
   'panel.scopeLabel': 'Scope · {scope}',
+  // SIDEBAR 03 rework (QA finding): the sr-only driver-row accessible name
+  // (DRIVER-004) spelled the rounded/exact-value connector words as bare
+  // German literals even in EN — the values themselves already went through
+  // `localizeMoneyText`, only these two words were missed.
+  'panel.rounded': 'rund',
+  'panel.exact': 'exakt',
   // SB-29: the rail's new heading root (`<h2>`, replacing the plain
   // `aria-label="Angebot"` that carried no heading semantics at all) and
   // the two Level 1 metric groups that must become independently
@@ -966,6 +972,8 @@ const en: Partial<Record<MessageKey, string>> = {
   'panel.quantity': 'Quantity · {denominator}',
   'panel.decreased': 'decreased',
   'panel.scopeLabel': 'Scope · {scope}',
+  'panel.rounded': 'approx.',
+  'panel.exact': 'exact',
   'offerPanel.heading': 'Offer',
   'offerPanel.heading.leadRate': 'Lead metric',
   'offerPanel.heading.duration': 'Construction period',
