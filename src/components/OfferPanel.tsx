@@ -1075,6 +1075,28 @@ export function OfferPanel(
                 className="a3-journal-disclose outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
               >
                 <span aria-hidden="true">{journalOpen ? '▾ ' : '▸ '}</span>
+                {/* SIDEBAR 01 rework (backlog eda1e221, AC-6 regression):
+                    `.a3-journal-disclose` is `display:flex;justify-content:
+                    space-between` — every OTHER call site (Level 3's own
+                    "Nachweise & Verlauf" toggle above, BuildingScope.tsx's
+                    journal toggle) passes exactly two flex children (the
+                    icon, then one content node), so the content is treated
+                    as a single block that wraps normally. This button
+                    instead passed the label as several SIBLING JSX
+                    expressions (prefix text, the delta span, suffix text) —
+                    each becomes its own anonymous flex item, and
+                    `space-between` spreads them across one unwrapped row
+                    instead of letting the sentence wrap as ordinary text.
+                    At the rail's previous fixed 520px width the combined
+                    items happened to still fit; at this task's own
+                    440-480px clamp() they no longer do (QA: aside.
+                    scrollWidth > clientWidth at both 1280 and 1440, journal
+                    text visibly clipped mid-word). Wrapping the whole label
+                    in one span restores the same two-child contract every
+                    other disclosure button already relies on — the
+                    sentence now wraps inside its own box like normal text,
+                    with no candidate-owned or canonical CSS change. */}
+                <span>
                 {priceChangeCount === 0
                   ? t('journal.empty')
                   // F05: früher `... Vergleichsbasis DEMO-VV-0003:` — der Fixture-
@@ -1094,6 +1116,7 @@ export function OfferPanel(
                       {priceChangeCount === 1
                         ? t('offerPanel.journal.changeSingular')
                         : t('offerPanel.journal.changePlural')}</>}
+                </span>
               </button>
 
               {journalOpen && ctxJournal.length > 0 && (
