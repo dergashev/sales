@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useState } from 'react'
+import { Decimal } from 'decimal.js'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
@@ -582,5 +583,110 @@ describe('Task 02 — building-scope attribution in SHARED mode', () => {
     expect(screen.getByText(/Fertigstellung 04\.01\.2028/)).toBeInTheDocument()
     expect(screen.queryByText(/Fertigstellung 19\.11\.2027/)).toBeNull()
     expect(screen.getByText(/Fertigstellung bestimmt durch Haus B/)).toBeInTheDocument()
+  })
+})
+
+/**
+ * SIDEBAR 02 (backlog 41b8ab39): the rail names its scope, its basis and
+ * its completeness. Reuses this file's own `openModeStep`/`startMode`/
+ * `includeCoreScope` harness rather than duplicating it — these tests are
+ * fundamentally about the rail's behaviour under SHARED/PER_BUILDING mode,
+ * this file's existing subject.
+ */
+describe('SIDEBAR 02 (backlog 41b8ab39): rail scope, completeness and signed-money consistency', () => {
+  it('empty scope: Level 1/2/3 tell one story — no priced content, no 0 € total, no oberirdisch/unterirdisch anywhere in the rail (SB-05/SB-07)', async () => {
+    const user = userEvent.setup()
+    await openModeStep(user, 1)
+    await startMode(user, 'SHARED')
+    const rail = screen.getByRole('complementary', { name: 'Angebot' })
+    expect(within(rail).getAllByText('Noch keine Kostengruppe im Angebot enthalten.').length)
+      .toBeGreaterThanOrEqual(1)
+    expect(within(rail).queryByText('oberirdisch')).toBeNull()
+    expect(within(rail).queryByText('unterirdisch')).toBeNull()
+    // No `0 €`/`0 %` total anywhere while the offer is genuinely empty.
+    expect(within(rail).queryByText(/^0[\s ]*€$/)).toBeNull()
+  })
+
+  it('KG 500 included without a quantity: the row states "Preis nicht ermittelt" and the label switches to Zwischensumme (SB-06/AC-4)', async () => {
+    const user = userEvent.setup()
+    await openModeStep(user, 1)
+    await startMode(user, 'SHARED')
+    includeCoreScope()
+    act(() => { useStore.getState().setCoverage('KG_500', 'included') })
+    const rail = screen.getByRole('complementary', { name: 'Angebot' })
+    expect(within(rail).getAllByText('Preis nicht ermittelt').length).toBeGreaterThanOrEqual(1)
+    expect(within(rail).getAllByText(/Zwischensumme der kalkulierten Positionen/).length)
+      .toBeGreaterThanOrEqual(1)
+    // AC-3: completeness line names the unpriced group.
+    expect(within(rail).getByText(/1 ohne Preisansatz/)).toBeInTheDocument()
+  })
+
+  it("the amount's commercial name is identical in the hero, the KG total row and the drivers-table caption (SB-08/AC-2)", async () => {
+    const user = userEvent.setup()
+    await openModeStep(user, 1)
+    await startMode(user, 'SHARED')
+    includeCoreScope()
+    act(() => { useStore.getState().confirmGebaeudeklasse() })
+    const rail = screen.getByRole('complementary', { name: 'Angebot' })
+    // Hero + KG total row both read the exact same string.
+    expect(within(rail).getAllByText('Gesamt netto · Grundleistung All3').length)
+      .toBeGreaterThanOrEqual(2)
+    // The screen-reader caption (Level 3, reached via disclosure) embeds
+    // that SAME string, never a second, hardcoded commercial claim.
+    await user.click(within(rail).getByRole('button', { name: /Nachweise & Verlauf/ }))
+    expect(within(rail).getByText(
+      /Beiträge summieren sich exakt zur Gesamt netto · Grundleistung All3\./,
+    )).toBeInTheDocument()
+  })
+
+  it('no ASCII hyphen sits next to a digit anywhere in the rail — one signed-money formatter everywhere (SB-23/AC-7)', async () => {
+    const user = userEvent.setup()
+    await openModeStep(user, 1)
+    await startMode(user, 'SHARED')
+    includeCoreScope()
+    act(() => {
+      useStore.getState().confirmGebaeudeklasse()
+      // Exercises the discount row's own signed cell — the exact call site
+      // SB-23 found composing the sign BEFORE `moneyLabel()`'s `≈` prefix.
+      useStore.getState().setDiscount(new Decimal('5'))
+    })
+    const rail = screen.getByRole('complementary', { name: 'Angebot' })
+    expect(/[-‐‑](?=\d)|\d[-‐‑]/.test(rail.textContent ?? '')).toBe(false)
+  })
+
+  it('PER_BUILDING: switching the DC-46 tab shows an always-first scope tag and keeps the offer total visible under a building subtotal (SB-09/SB-10/AC-1)', async () => {
+    const user = userEvent.setup()
+    await openModeStep(user, 2)
+    await startMode(user, 'PER_BUILDING')
+    includeCoreScope()
+    await user.click(nav(/Leistungen KG 300/))
+    await user.click(nav(/Energie & Zertifikate/))
+    const switcher = screen.getByRole('tablist', { name: 'Konfigurationsumfang' })
+    await user.click(within(switcher).getByRole('tab', { name: /Haus B/ }))
+    const rail = screen.getByRole('complementary', { name: 'Angebot' })
+    // The scope tag names the narrowed building — a NEW element, separate
+    // from the amount's own commercial name (still "Gesamt netto ·
+    // Grundleistung All3 · Haus B" underneath, unchanged, AC-2).
+    expect(within(rail).getByText('Haus B')).toBeInTheDocument()
+    // The offer total (both buildings, independent of the DC-46 reading
+    // lens) stays on screen while a building subtotal is shown.
+    expect(within(rail).getByText(/Angebot gesamt/)).toBeInTheDocument()
+  })
+
+  it('the completeness line states decided/calculated/unpriced counts (AC-3)', async () => {
+    const user = userEvent.setup()
+    await openModeStep(user, 1)
+    await startMode(user, 'SHARED')
+    act(() => {
+      useStore.getState().confirmGebaeudeklasse()
+      useStore.getState().setCoverage('KG_300', 'included')
+    })
+    const rail = screen.getByRole('complementary', { name: 'Angebot' })
+    // Binary-scope contract: a fresh option starts every group DECIDED
+    // (`excluded`), so "decided" reads 7/7 from the very first inclusion —
+    // that is the correct, honest read of `s.coverage`, not a bug.
+    expect(within(rail).getByText(
+      '7 von 7 Kostengruppen entschieden · 1 kalkuliert · 0 ohne Preisansatz',
+    )).toBeInTheDocument()
   })
 })

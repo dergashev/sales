@@ -917,6 +917,42 @@ describe('Покрытие групп затрат (сценарий п. 11) - �
       .toBe(false)
   })
 
+  // SIDEBAR 02 (backlog 41b8ab39, SB-06/AC-3/AC-4): the SAME scenario above
+  // (KG 500 included, no quantity provided anywhere → group sum is a
+  // genuine zero, not a decided one) must also flip `completeness` to
+  // `incomplete` and name the group in `incompleteReasons` — the rail's
+  // KG 500 row reads this to render "Preis nicht ermittelt" instead of a
+  // bare `0 €`, and its `totalLabel` must switch away from `Gesamt netto`
+  // (rule 16). Wired in `state/store.ts`'s `computeProjection`
+  // (`unpricedScopeCatalogGroups`), not `src/engine/**`.
+  it('SIDEBAR 02 (SB-06): KG 500 enthalten ohne Preisansatz macht completeness "incomplete" und benennt die Gruppe', () => {
+    const st = () => useStore.getState()
+    st().confirmGebaeudeklasse()
+    expect(st().projection().result.completeness).toBe('complete')
+    st().setCoverage('KG_500', 'included')
+    const p = st().projection()
+    expect(p.result.completeness).toBe('incomplete')
+    expect(p.result.totalLabel).toBe('Zwischensumme der kalkulierten Positionen')
+    expect(p.result.incompleteReasons).toContainEqual({
+      code: 'includedUnpriced', groups: ['KG_500'],
+    })
+    expect(p.kgSplit.KG_500!.isZero()).toBe(true)
+  })
+
+  // A group that DOES have a quantity (so it genuinely prices to a real,
+  // non-zero amount) must NOT be flagged unpriced merely because it is
+  // included — this is the negative case for the check above.
+  it('SIDEBAR 02 (SB-06): KG 500 mit echtem Preisansatz bleibt "complete"', () => {
+    const st = () => useStore.getState()
+    st().confirmGebaeudeklasse()
+    st().setCoverage('KG_500', 'included')
+    st().setScopeCatalogQuantity('surface_parking_spaces', '20')
+    const p = st().projection()
+    expect(p.result.completeness).toBe('complete')
+    expect(p.result.totalLabel).toBe('Gesamt netto · Grundleistung All3')
+    expect(p.result.incompleteReasons.some((r) => r.code === 'includedUnpriced')).toBe(false)
+  })
+
   it("KG 500 включена + количество для Stellplaetze -> реальная стоимость по выбранному варианту (D-27's 8%-of-Bauwerk formula retired, replaced by the real external-works catalog)", () => {
     const st = () => useStore.getState()
     st().setCoverage('KG_500', 'included')

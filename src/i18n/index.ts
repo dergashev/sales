@@ -461,6 +461,35 @@ const de = {
   'driver.kg400Unresolved': 'KG 400 · Technische Anlagen (noch offen)',
   'offer.costGroups.regionHeading': 'Kostengruppen nach DIN 276',
   'offer.drivers.excludedHeading': 'Ausgeschlossen',
+  // SIDEBAR 02 (backlog 41b8ab39): scope must be a first-class, always-first
+  // fact in the rail (SB-09/SB-10), separate from the amount's own
+  // commercial name (`p.result.totalLabel`, unchanged) — see OfferPanel.tsx.
+  'offerPanel.scope.wholeComplex': 'Gesamt · gesamter Komplex',
+  'offerPanel.scope.offerTotalLabel': 'Angebot gesamt',
+  // AC-3: completeness line, derived from `s.coverage` +
+  // `p.result.incompleteReasons` — no engine change, only a new read of
+  // already-existing data (see OfferPanel.tsx).
+  'offerPanel.completeness.line':
+    '{decided} von {total} Kostengruppen entschieden · {priced} kalkuliert · {unpriced} ohne Preisansatz',
+  // SB-25/AC-10: non-colour-only transient marker on a row whose amount
+  // changed after the last decision, including cascaded rows.
+  'offer.drivers.changedMarker': 'geändert',
+  // SB-26/AC-11: appended to the delta chip only when its total movement
+  // differs from a single row's own contribution (a cascade occurred).
+  'offer.delta.totalQualifier': 'insgesamt',
+  // SB-32/AC-12: extends the KG table's existing rounding note to also name
+  // the percentage column's independent rounding (replaces the literal
+  // `tx()` call on the shorter Codex-delivered sentence, same reason
+  // `driver.kg300Unresolved` etc. above moved to a real dictionary key).
+  'offer.kgTable.roundingNote':
+    'Zeilen und Prozentanteile werden unabhängig gerundet; die Prüfung läuft über exakte Werte.',
+  // SB-08/AC-2: `{label}` is always `tx(p.result.totalLabel)` — the exact
+  // same translated string as the hero and the KG total row, never a
+  // second hardcoded commercial claim (replaces a literal `tx()` call on a
+  // fixed "…Zwischensumme der kalkulierten Positionen" sentence that could
+  // never read "Gesamt netto" even when coverage was complete).
+  'offer.drivers.reconciliationCaption':
+    'Kostentreiber: Beiträge summieren sich exakt zur {label}.',
 } as const
 
 export type MessageKey = keyof typeof de
@@ -860,6 +889,16 @@ const en: Partial<Record<MessageKey, string>> = {
   'driver.kg400Unresolved': 'KG 400 · technical systems (unresolved)',
   'offer.costGroups.regionHeading': 'Cost groups under DIN 276',
   'offer.drivers.excludedHeading': 'Excluded',
+  'offerPanel.scope.wholeComplex': 'Total · whole complex',
+  'offerPanel.scope.offerTotalLabel': 'Whole offer total',
+  'offerPanel.completeness.line':
+    '{decided} of {total} cost groups decided · {priced} calculated · {unpriced} without a price basis',
+  'offer.drivers.changedMarker': 'changed',
+  'offer.delta.totalQualifier': 'total',
+  'offer.kgTable.roundingNote':
+    'Rows and percentage shares are rounded independently; the check runs on exact values.',
+  'offer.drivers.reconciliationCaption':
+    'Cost drivers: contributions sum exactly to the {label}.',
 }
 
 /**

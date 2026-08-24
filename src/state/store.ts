@@ -1935,6 +1935,46 @@ function withChange<S extends Parameters<typeof computeProjection>[0] & {
   }
 }
 
+/**
+ * SIDEBAR 02 (backlog 41b8ab39, SB-06): which of the option-level scope-
+ * catalog groups (KG 200/500/600) are `included` but genuinely have no
+ * price basis — as opposed to a genuinely DECIDED zero-rate variant (e.g.
+ * "Baufreies Grundstück"), which is a real, calculated €0 and not a gap
+ * (rule 16 forbids the latter, not the former). This reads only
+ * already-computed inputs (the selected variant's own catalog `rate`, the
+ * same `quantityOf` resolver `computeProjection` already uses to price
+ * these groups) and applies no formula/rate/rounding of its own — it is a
+ * completeness CLASSIFICATION of an existing decision, feeding the same
+ * `IncompleteReason` mechanism `deriveCompleteness` (engine) already
+ * produces per building. Deliberately NOT added to `src/engine/**`: the
+ * task's own DONE CONDITION requires zero changes there.
+ */
+function unpricedScopeCatalogGroups(
+  groups: readonly ('KG_200' | 'KG_500' | 'KG_600')[],
+  isActive: (g: 'KG_200' | 'KG_500' | 'KG_600') => boolean,
+  groupSum: (label: string) => Decimal,
+  quantityOf: (key: ScopeQuantityKey) => Decimal | null,
+  selections: Record<string, string>,
+): CostGroup[] {
+  const out: CostGroup[] = []
+  for (const g of groups) {
+    if (!isActive(g) || !groupSum(g.replace('_', ' ')).isZero()) continue
+    const wouldHavePriced = ALL_SCOPE_CATALOG_OPTIONS
+      .filter((o) => o.kg === g)
+      .some((o) => {
+        const value = selections[o.id] ?? o.default
+        const variant = o.variants.find((v) => v.value === value)
+        if (!variant || new Decimal(variant.rate).isZero()) return false
+        if (o.basis.kind !== 'perQuantity') return false
+        const key = variant.quantityKeyOverride ?? o.basis.quantityKey
+        const qty = quantityOf(key)
+        return qty === null || qty.lte(0)
+      })
+    if (wouldHavePriced) out.push(g)
+  }
+  return out
+}
+
 function computeProjection(
   s: Pick<Store, 'buildings' | 'activeBuildingId' | 'included' | 'coverage'
     | 'fields' | 'esConfirmed' | 'regionalfaktorActive' | 'kg300' | 'kg700Mode'
@@ -2228,7 +2268,19 @@ function computeProjection(
     ...scopeCatalogGroupSplit,
   }
   const total = beforeDiscount.plus(sumOfBlock(allDrivers, 'discount'))
+  // SIDEBAR 02 (backlog 41b8ab39, SB-06/AC-3/AC-4): an included scope-
+  // catalog group with no price basis (KG 500 typically) is an
+  // option-level completeness fact `calculateBuilding`/`deriveCompleteness`
+  // (engine, per-building) cannot see — it is computed once for the whole
+  // option here, not per building. Folded into the SAME `completeness`/
+  // `incompleteReasons` fields those already populate, not a second
+  // mechanism.
+  const unpricedScopeGroups = unpricedScopeCatalogGroups(
+    ['KG_200', 'KG_500', 'KG_600'], scopeCatalogActive, kgGroupSum,
+    scopeQuantityOf, s.scopeCatalogChoices,
+  )
   const completeness = perBuilding.every((r) => r.completeness === 'complete')
+    && unpricedScopeGroups.length === 0
     ? 'complete' : 'incomplete'
   const narrowedBuilding = s.scopeBuildingId && list.length === 1
     && list[0]!.id === s.scopeBuildingId
@@ -2246,7 +2298,12 @@ function computeProjection(
     total: present(total),
     totalLabel: calculationTotalLabel(completeness, declaredPricingScope),
     completeness,
-    incompleteReasons: perBuilding.flatMap((r) => r.incompleteReasons),
+    incompleteReasons: [
+      ...perBuilding.flatMap((r) => r.incompleteReasons),
+      ...(unpricedScopeGroups.length
+        ? [{ code: 'includedUnpriced' as const, groups: unpricedScopeGroups }]
+        : []),
+    ],
   }
   const noUg = perBuilding.reduce((a, _, i) => a.plus(
     calculateBuilding({ ...list[i]!, untergeschoss: 'kein_ug' }, CATALOG, s.coverage).total.exact,
@@ -2943,10 +3000,22 @@ const store = createStore<Store>((set, get) => {
       set({
         preview: null,
         activeDelta: {
+          // SIDEBAR 02 (backlog 41b8ab39, SB-25): the fallback-applied chip
+          // used to read `${groupLabel} ausgeschlossen · KG 700 · Baunebenkosten
+          // nach HOAI und AHO` — naming KG 700 as if it were a second,
+          // independent decision rather than an automatic side-effect of the
+          // one decision the seller actually made. The permanent journal
+          // event a few lines above already phrases the SAME fact correctly
+          // ("… · KG 700: Berechnung automatisch auf HOAI/AHO umgestellt");
+          // this now reuses that exact, already-correct phrasing instead of
+          // a second, ambiguous one for the same cascade. Per-row
+          // attribution of the resulting amounts (KG 400/KG 700/KG 800) is
+          // carried by OfferPanel's own changed-row marker, not by this
+          // label.
           label: fallbackApplied
-            ? `${groupLabel} ausgeschlossen · KG 700 · Baunebenkosten nach HOAI und AHO`
+            ? `${groupLabel} ${COVERAGE_LABEL[st]} · KG 700: Berechnung automatisch auf HOAI/AHO umgestellt`
             : fallbackReverted
-              ? `${groupLabel} ${COVERAGE_LABEL[st]} · KG 700 im All3-Verfahren 70/22/8 verteilt`
+              ? `${groupLabel} ${COVERAGE_LABEL[st]} · KG 700: Berechnung automatisch zurück auf All3-Verfahren umgestellt`
               : `${groupLabel} ${COVERAGE_LABEL[st]}`,
           // Task 05 rework (QA AC-2): the fallback branches above compose an
           // extra German KG 700 auto-fallback explanation that a plain

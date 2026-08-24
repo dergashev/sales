@@ -1,8 +1,8 @@
-import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Decimal } from 'decimal.js'
 import {
-  activeBuilding, includedBuildingIds, translatedChangeLabel, useStore,
+  activeBuilding, includedBuildingIds, projectProjection, translatedChangeLabel, useStore,
 } from '../state/store'
 import { effectiveFactValue } from '../state/buildingReview'
 import { CATALOG } from '../state/catalog'
@@ -11,8 +11,8 @@ import derivedFx from '../fixtures/derived-prototype.json'
 import {
   NNBSP, present, rateLabel, formatDE, DENOMINATOR_LABEL, label as moneyLabel,
 } from '../engine/money'
-import type { CostGroup, CoverageState, DriverBasis } from '../engine/calculate'
-import { isScopeUniverseEmpty } from '../engine/calculate'
+import type { CostGroup, CoverageState, DriverBasis, IncompleteReason } from '../engine/calculate'
+import { isScopeUniverseEmpty, SCOPE_BOUNDARIES_DECIDABLE_GROUPS } from '../engine/calculate'
 import { projectDriversForClient, translatedDriverLabel } from '../state/clientProjection'
 import { CONFIGURATOR_STEP } from '../state/chapters'
 import { Button, useCountUp } from './primitives'
@@ -95,6 +95,21 @@ function driverBuildingLabel(
 }
 
 /**
+ * SIDEBAR 02 (backlog 41b8ab39, SB-09/SB-10, AC-1): the display name for a
+ * single narrowed building — same resolution as `driverBuildingLabel` above
+ * (documentation name, falling back to the raw id), but usable regardless
+ * of `s.mode` since the scope tag itself is not intern-only (the salesperson
+ * must be able to state the scope out loud in every mode, rule 8/38).
+ */
+function buildingScopeLabel(
+  s: ReturnType<typeof useStore.getState>,
+  id: string,
+): string {
+  const review = s.buildingReviews[id]
+  return review ? effectiveFactValue(review.facts.documentationName) ?? id : id
+}
+
+/**
  * SIDEBAR 01 (backlog eda1e221) - `variant`:
  * - `'full'` (default) - Level 1 + Level 2 + Level 3, the Configurator's own
  *   rail.
@@ -171,7 +186,93 @@ export function OfferPanel(
   // collapsed into the other (they name different facts: no decision yet,
   // vs. every decision already made and none of them `included`).
   const scopeEmpty = isScopeUniverseEmpty(s.coverage)
+
+  // SIDEBAR 02 (backlog 41b8ab39, SB-09/SB-10, AC-1): the scope expression is
+  // a NEW, separate, always-first element — it must never be folded into
+  // `p.result.totalLabel`'s one string (that string stays identical in the
+  // hero, the drivers sum row, the KG total row and every caption, per
+  // AC-2/SB-08). It only renders when there is genuine scope ambiguity to
+  // resolve (more than one building included) — same guard
+  // `driverBuildingLabel` already uses, so a single-building project keeps
+  // its current, already-unambiguous structure (rule 38: structure does not
+  // change with scope).
+  const multiBuildingScope = includedBuildingIds(s).length > 1
+  const scopeTagLabel = s.scopeBuildingId
+    ? buildingScopeLabel(s, s.scopeBuildingId)
+    : t('offerPanel.scope.wholeComplex')
+  // The offer-wide total, independent of the DC-46 reading lens (same
+  // exported helper `projectTotal`'s toast/undo copy already relies on —
+  // "the complete sold option, independent of the Configurator reading
+  // lens"). Computed only when actually needed: a building subtotal is on
+  // screen (`s.scopeBuildingId` narrowed) and there is more than one
+  // building, otherwise the hero's own total already IS the offer total.
+  const wholeOfferTotal = (multiBuildingScope && s.scopeBuildingId)
+    ? projectProjection(s).result.total : null
+
+  // AC-3: completeness line. `SCOPE_BOUNDARIES_DECIDABLE_GROUPS` and
+  // `s.coverage` are the same authority `isScopeUniverseEmpty` above already
+  // reads; `includedUnpriced` reasons are the same typed signal
+  // `deriveCompleteness` (engine) already produces per building, now also
+  // fed by `computeProjection`'s option-level scope-catalog check
+  // (state/store.ts) — no new completeness mechanism, only a new read of
+  // the existing one.
+  const decidedGroups = SCOPE_BOUNDARIES_DECIDABLE_GROUPS
+    .filter((g) => s.coverage[g] !== 'unknown').length
+  const includedGroups = SCOPE_BOUNDARIES_DECIDABLE_GROUPS
+    .filter((g) => s.coverage[g] === 'included').length
+  const unpricedGroups = new Set(
+    p.result.incompleteReasons
+      .filter((r): r is Extract<IncompleteReason, { code: 'includedUnpriced' }> =>
+        r.code === 'includedUnpriced')
+      .flatMap((r) => r.groups),
+  )
+  const pricedGroups = includedGroups - unpricedGroups.size
+
+  // SB-25/SB-26/AC-10/AC-11: one shared before/after diff drives both the
+  // per-row changed marker AND whether the top-level chip needs to name
+  // itself "insgesamt" (total movement, not just the driver's own
+  // contribution) — a single decision that also moves other rows by
+  // cascade (e.g. excluding KG 400 moves KG 700) is exactly the case where
+  // more than one key changes here. `prevAmounts` only refreshes while NO
+  // delta is in flight, so the comparison always spans "before this
+  // decision" → "after it", the same window the delta chip itself is
+  // visible for (`s.activeDelta`, rule 24/29's existing 8 s slot) — no new
+  // timer.
+  const prevAmounts = useRef<Record<string, Decimal>>({})
+  const changedKeys = new Set<string>()
+  if (s.activeDelta) {
+    for (const [g, v] of Object.entries(p.kgSplit)) {
+      if (v !== undefined && !v.equals(prevAmounts.current[g] ?? v)) changedKeys.add(g)
+    }
+  }
+  useEffect(() => {
+    if (s.activeDelta) return
+    const next: Record<string, Decimal> = {}
+    for (const [g, v] of Object.entries(p.kgSplit)) {
+      if (v !== undefined) next[g] = v
+    }
+    prevAmounts.current = next
+  })
+  // More than one Level 2 row moved: the decision had a cascade
+  // (KG 400 excluded also moved KG 700/KG 800) — the top-level chip's total
+  // movement is no longer just "this row's own contribution" and must name
+  // itself accordingly (SB-26/AC-11). Wrapped in an object so the existing
+  // `useLastValue` idiom (falsy-gated) can correctly latch a `false` value
+  // for the chip's whole fade-out window, exactly like `shownDelta` itself.
+  const deltaHasCascade = changedKeys.size > 1
+
   const shownDelta = useLastValue(s.activeDelta)
+  // `useLastValue` latches via a `useEffect` keyed on referential identity
+  // — a fresh `{ cascade }` object literal constructed inline on every
+  // render would change identity every render even when `deltaHasCascade`
+  // itself does not, firing that effect (and therefore `setState`) on
+  // every render and looping. `useMemo` keyed on the primitive boolean
+  // keeps the same reference across renders where nothing changed.
+  const cascadeFlag = useMemo(
+    () => (s.activeDelta ? { cascade: deltaHasCascade } : null),
+    [s.activeDelta, deltaHasCascade],
+  )
+  const shownCascade = useLastValue(cascadeFlag)
   const shownPreview = useLastValue(s.preview)
   const blocked = !activeBuilding(s).gebaeudeklasse.confirmed
 
@@ -325,6 +426,16 @@ export function OfferPanel(
         {/* Герои — в ленте контракта (.a3-heroband): базовая линия и
             переносы принадлежат системе, не этому файлу (дефект 17). */}
         <div className="a3-heroband">
+        {/* SIDEBAR 02 (backlog 41b8ab39, SB-09/SB-10, AC-1): the scope
+            expression — a NEW, separate element, always first, so the eye
+            meets it before the amount. Reuses the canonical `.a3-mtag`
+            small-bold-caps tag (already used for "Im Angebot gewählt" /
+            "Kostenzusammensetzung") rather than a new local primitive.
+            Renders identically in the empty and priced states below (one
+            story, rule 38: structure does not change with scope). */}
+        {multiBuildingScope && (
+          <p className="a3-mtag mb-2">{scopeTagLabel}</p>
+        )}
         {scopeEmpty ? (
           /* Task 03 (F-10): a genuinely empty Declared Pricing Scope never
              renders as a qualified 0-€ hero with a band, rate and
@@ -431,6 +542,33 @@ export function OfferPanel(
           </>)}
         </p>}
         </div>
+
+        {/* SIDEBAR 02 (backlog 41b8ab39, SB-10, AC-1): while a building
+            subtotal is on screen, the offer total must stay visible too —
+            same degrade priority as the leadRate's own secondary-rate line
+            below (step 3, the last contextual content to give way before
+            the KEEP-listed amount/name/Bauzeit). */}
+        {!priceUnavailable && wholeOfferTotal && degradeLevel < 3 && (
+          <p className="a3-cap mt-1 numeric">
+            {t('offerPanel.scope.offerTotalLabel')}
+            {': '}
+            {wholeOfferTotal.prefix && (
+              <span aria-hidden="true">{wholeOfferTotal.prefix}{NNBSP}</span>
+            )}
+            {wholeOfferTotal.display}{NNBSP}€
+          </p>
+        )}
+        {/* AC-3: completeness line — same degrade priority as above. */}
+        {!priceUnavailable && degradeLevel < 3 && (
+          <p className="a3-cap mt-1">
+            {t('offerPanel.completeness.line', {
+              decided: decidedGroups,
+              total: SCOPE_BOUNDARIES_DECIDABLE_GROUPS.length,
+              priced: pricedGroups,
+              unpriced: unpricedGroups.size,
+            })}
+          </p>
+        )}
 
         {/* ── Герои №2 и №3: ведущая ставка и срок, чёрные (DC-38) ─────── */}
         {/* Структура системы: ЧИСЛО в `.a3-hb-num`, единица в `.a3-hb-unit`,
@@ -622,6 +760,11 @@ export function OfferPanel(
               </span>
               <span className="font-medium">
                 {signed(shownDelta.deltaExact)}
+                {/* SB-26/AC-11: named only when the total movement actually
+                    differs from a single row's own contribution (a cascade
+                    happened) — say nothing extra otherwise (progressive
+                    disclosure, rule 9: one way to emphasise a fragment). */}
+                {shownCascade?.cascade && <> {t('offer.delta.totalQualifier')}</>}
                 {/* Δ-проценты — только внутренние (правило 11). Task 04
                     (F-30): процент от нулевой базы не определён — вместо
                     ложного «(+ 0,00 %)» рядом с реальной ненулевой дельтой
@@ -670,6 +813,16 @@ export function OfferPanel(
             to style its own cells. */}
         <section aria-label="Kostenzusammensetzung" className="mt-4">
           <p className="a3-mtag">{t('offer.costGroups.regionHeading')}</p>
+          {/* SIDEBAR 02 (backlog 41b8ab39, SB-07): an empty Declared
+              Pricing Scope tells the SAME story here as Level 1's own
+              `DataStateBlock` above (rule 16/30 `empty`) — reusing the
+              identical sentence, not a second wording — instead of still
+              rendering a priced KG table, a `0 €` total row and a recap of
+              contributions that do not belong to any scope currently in
+              the offer. */}
+          {scopeEmpty ? (
+            <p className="a3-cap mt-1">{t('offerPanel.empty.sentence')}</p>
+          ) : (<>
           <div className="a3-tbl-scroll mt-1">
             <table className="a3-kg w-full border-collapse">
               <caption className="a3-visually-hidden">{tx('Kostengruppen nach DIN 276, vereinfachte Verteilung')}</caption>
@@ -680,6 +833,15 @@ export function OfferPanel(
                     const children = [...groupChildrenFor(group), ...groupExcludedFor(group)]
                     const isOpen = !!openGroups[g]
                     const childrenId = `kg-children-${g}`
+                    // SB-06/AC-4: an included group with no price basis
+                    // (typically KG 500) never prints a bare `0 €`/`0 %` —
+                    // same row-level swap the whole-panel `priceUnavailable`
+                    // guard already uses for oberirdisch/unterirdisch/total.
+                    const rowUnpriced = unpricedGroups.has(group)
+                    // SB-25/AC-10: non-colour-only transient marker on every
+                    // Level 2 row whose amount changed after the last
+                    // decision, including rows changed only by cascade.
+                    const rowChanged = changedKeys.has(g)
                     return (
                       <Fragment key={g}>
                         <tr className={children.length > 0 ? 'a3-expand' + (isOpen ? ' a3-open' : '') : ''}>
@@ -692,10 +854,17 @@ export function OfferPanel(
                                 {rowLabel}
                               </button>
                             ) : rowLabel}
+                            {rowChanged && (
+                              <span className="a3-tag a3-blue ml-2">
+                                {t('offer.drivers.changedMarker')}
+                              </span>
+                            )}
                           </td>
-                          <td className="a3-num">{moneyLabel(present(v))}</td>
                           <td className="a3-num">
-                            {v.div(p.result.total.exact).mul(100).toFixed(0)}{NNBSP}%
+                            {rowUnpriced ? t('money.priceNotDetermined') : moneyLabel(present(v))}
+                          </td>
+                          <td className="a3-num">
+                            {rowUnpriced ? '' : <>{v.div(p.result.total.exact).mul(100).toFixed(0)}{NNBSP}%</>}
                           </td>
                         </tr>
                         {children.length > 0 && isOpen && (
@@ -730,22 +899,20 @@ export function OfferPanel(
                       </Fragment>
                     )
                   })}
-                {/* Надземная/подземная части — вложенный уровень той же
-                    структуры, а не отдельные строки-сироты. Показ равен
-                    точному у 476.000, поэтому без префикса: ложный `≈` —
-                    тоже дефект. */}
-                <tr className="a3-lvl2 a3-muted">
-                  <td>oberirdisch</td>
-                  <td className="a3-num" colSpan={2}>
-                    {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(p.aboveGround)}
-                  </td>
-                </tr>
-                <tr className="a3-lvl2 a3-muted">
-                  <td>unterirdisch</td>
-                  <td className="a3-num" colSpan={2}>
-                    {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(p.belowGround)}
-                  </td>
-                </tr>
+                {/* SIDEBAR 02 (backlog 41b8ab39, SB-05): the former
+                    `oberirdisch`/`unterirdisch` pair is REMOVED here.
+                    `p.aboveGround` is scope-invariant while `p.belowGround
+                    = total − aboveGround` is a residual, not a decidable
+                    DIN 276 cost group — a residual computed this way goes
+                    negative under a physical label whenever `total <
+                    aboveGround` (any partial/empty/small scope), and it
+                    cannot be made non-negative for arbitrary scope without
+                    a calculation-semantics change (`src/engine/**`, out of
+                    scope for this task). Assumption to confirm with
+                    Product/QA (not verified either way here): that the
+                    rail does not need this above/below-ground split for
+                    sales conversations — flagged as a known non-blocking
+                    risk in the handoff, not silently decided. */}
                 {/* Task 04 (F-12 companion, rule 32): siehe Kommentar bei
                     `riskSurchargeSum` oben — eigene Zeile statt Einfaltung
                     in KG 300. */}
@@ -769,8 +936,14 @@ export function OfferPanel(
                 {p.discountDriver && (
                   <tr>
                     <td>{translatedDriverLabel(p.discountDriver, t)}</td>
+                    {/* SB-23: one signed-money formatter everywhere — this
+                        used to compose the sign BEFORE `moneyLabel()`'s own
+                        `≈` prefix (`− ≈ 910.000 €`), the exact inverted
+                        order the normative formatter below forbids.
+                        `signed()` is already correct and already used
+                        for the recap/KG-children rows a few lines above. */}
                     <td className="a3-num">
-                      −{NNBSP}{moneyLabel(present(p.discountDriver.exact.abs()))}
+                      {signed(p.discountDriver.exact)}
                     </td>
                     <td className="a3-num">
                       −{NNBSP}
@@ -790,7 +963,11 @@ export function OfferPanel(
               </tbody>
             </table>
           </div>
-          <p className="mt-2 text-small text-text-muted">{tx('Zeilen werden unabhängig gerundet; die Prüfung läuft über exakte Werte.')}</p>
+          {/* SB-32/AC-12: extended to also name the % column's own
+              independent rounding (real dictionary key, same reason
+              `driver.kg300Unresolved` etc. moved off `tx()`'s reverse
+              lookup — this exact longer sentence has no Codex delivery). */}
+          <p className="mt-2 text-small text-text-muted">{t('offer.kgTable.roundingNote')}</p>
           {/* SIDEBAR 01 (backlog eda1e221, SB-03/F-11): a decision or
               excluded-adjustment whose target group's row does not
               currently render (e.g. the group itself was excluded from
@@ -835,6 +1012,7 @@ export function OfferPanel(
               )}
             </section>
           )}
+          </>)}
         </section>
 
         {/* ── Level 3 · Nachweise & Verlauf (SIDEBAR 01) — collapsed by
@@ -856,13 +1034,27 @@ export function OfferPanel(
               {tx('Nachweise & Verlauf')}
             </button>
           </h2>
+          {/* SB-07: the driver list is the same "priced contributions
+              exist" story as the KG table above — empty scope replaces it
+              with the identical empty sentence rather than "10 Beiträge ·
+              Summe = 0 €" next to a real, non-zero list of contributions
+              that net out to zero only because every one of them is
+              excluded. Only the driver-detail content (benchmark, driver
+              table, KG 300 subgroups) is replaced — the "Nicht enthalten"
+              notice and the session journal further down stay reachable
+              regardless of scope, they are not part of this story. */}
           {!level3Open && (
             <p className="a3-cap numeric mt-1">
-              {clientSafeDrivers.length}{NNBSP}{tx('Beiträge · Summe =')}{NNBSP}
-              {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(p.result.total)}
+              {scopeEmpty ? t('offerPanel.empty.sentence') : (<>
+                {clientSafeDrivers.length}{NNBSP}{tx('Beiträge · Summe =')}{NNBSP}
+                {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(p.result.total)}
+              </>)}
             </p>
           )}
           {level3Open && (<div className="a3-drivers mt-2">
+          {scopeEmpty ? (
+            <p className="a3-cap">{t('offerPanel.empty.sentence')}</p>
+          ) : (<>
           {/* Шапка бенчмарка (DRIVER-001, CALC-008): фикстура объявляет только
               ID снапшота — медианы нет, и выдумать её нельзя (R-25), поэтому
               вывод «x % zur Mediane» честно заменён названной причиной.
@@ -879,7 +1071,9 @@ export function OfferPanel(
           </p>
           <div className="a3-tbl-scroll mt-2">
             <table className="a3-driver-table">
-              <caption className="sr-only">{tx('Kostentreiber: Beiträge summieren sich exakt zur Zwischensumme der kalkulierten Positionen')}</caption>
+              <caption className="sr-only">
+                {t('offer.drivers.reconciliationCaption', { label: tx(p.result.totalLabel) })}
+              </caption>
               <tbody>
                 {(() => {
                   // Бар относителен наибольшему вкладу ПО МОДУЛЮ: экономящий
@@ -928,8 +1122,15 @@ export function OfferPanel(
                           />
                         </td>
                         <td className="a3-val">
+                          {/* SB-23: same fix as the discount row above —
+                              this used to compose the sign BEFORE
+                              `moneyLabel()`'s own `≈` prefix
+                              (`−≈ 1.386.000 €`), reusing `signed()`
+                              (already the file's one normative formatter)
+                              instead of a second, inverted-order
+                              composition. */}
                           <span aria-hidden="true">
-                            {senkt ? '−' : ''}{moneyLabel(shown)}
+                            {signed(d.exact)}
                           </span>
                           {/* Раскрытие строки — переход к DC-21, а не своё
                               состояние. Настоящая кнопка: невидимый клик по
@@ -1030,6 +1231,7 @@ export function OfferPanel(
               )}
             </div>
           )}
+          </>)}
           {/* "Nicht enthalten / noch offen" stays Level-3 (disclosure-
               reached) content, not part of the always-expanded Level 2 list:
               it used to sit behind the KG table's own collapsed-by-default
