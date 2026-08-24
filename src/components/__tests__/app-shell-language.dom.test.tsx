@@ -73,4 +73,20 @@ describe('Globale Sprachkontrolle — compact DE/EN selector', () => {
     expect(visibleNodes(control)).toBe(before)
     expect(control.querySelector('.a3-tag')).not.toBeInTheDocument()
   })
+
+  // SIDEBAR 03 (backlog 2be8e69c, SB-14/AC-2): `document.documentElement.
+  // lang` stayed a static "de" from `index.html` regardless of the UI
+  // locale switch — confirmed by source search (no consumer anywhere in
+  // src/** ever wrote it) before this fix.
+  it('sets document.documentElement.lang to the UI locale and back (SB-14)', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    expect(document.documentElement.lang).toBe('de')
+
+    await user.click(screen.getAllByRole('radio', { name: /EN/ })[0]!)
+    expect(document.documentElement.lang).toBe('en')
+
+    await user.click(screen.getAllByRole('radio', { name: 'DE' })[0]!)
+    expect(document.documentElement.lang).toBe('de')
+  })
 })

@@ -62,7 +62,7 @@ IDENTIFIER_RX = re.compile(r'[a-zäöüß][A-ZÄÖÜ]')
 # фактически встречающиеся в `de`/`GENERATED_DE` сегодня, плюс их рутинные
 # словоформы того же корня — не новые, непроверенные слова.
 LOCALE_ASCII_ALLOWLIST = frozenset({
-    'aktuell', 'aktuelle', 'aktuellen', 'aktueller', 'aktuelles',
+    'aktuell', 'aktuelle', 'aktuellem', 'aktuellen', 'aktueller', 'aktuelles',
     'neu', 'neue', 'neuen', 'neuer', 'neues',
     'manuell',
     'dauer', 'dauerhaft', 'dauergrundlage',

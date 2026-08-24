@@ -744,3 +744,92 @@ describe('SIDEBAR 02 (backlog 41b8ab39): rail scope, completeness and signed-mon
     expect(chip?.textContent).not.toMatch(/KG 700 ausgeschlossen/)
   })
 })
+
+/**
+ * SIDEBAR 03 (backlog 2be8e69c): the rail's client/locale/a11y boundary.
+ * Reuses this file's own two-building SHARED-mode harness — the Nordfeld
+ * fixture already gives both buildings the same Energiestandard EH 55
+ * choice, which is exactly the audit's own reproduction of SB-13.
+ */
+describe('SIDEBAR 03 (backlog 2be8e69c): client-safe rail, EN localization', () => {
+  it('aggregates same-label per-building contributions into one row in Kundenansicht, with no building identifier (SB-13/AC-1)', async () => {
+    const user = userEvent.setup()
+    await openModeStep(user, 2)
+    await startMode(user, 'SHARED')
+    includeCoreScope()
+    const rail = screen.getByRole('complementary', { name: 'Angebot' })
+    await user.click(within(rail).getByRole('button', { name: /KG.300/ }))
+
+    // Vorbereitung: R-25 attribution names each building — two separate
+    // rows for the same option, exactly what the audit measured.
+    expect(within(rail).getAllByText(/Energiestandard EH 55/).length).toBeGreaterThanOrEqual(2)
+    expect(within(rail).getAllByText(/Haus A/).length).toBeGreaterThanOrEqual(1)
+    expect(within(rail).getAllByText(/Haus B/).length).toBeGreaterThanOrEqual(1)
+
+    act(() => {
+      useStore.getState().confirmGebaeudeklasse()
+      useStore.getState().setMode('praesentation')
+    })
+
+    // Kundenansicht: R-25 strips the building suffix — SB-13 requires the
+    // two contributions to aggregate into exactly one row rather than
+    // surviving as an unlabelled duplicate.
+    expect(within(rail).getAllByText(/Energiestandard EH 55/).length).toBe(1)
+    expect(within(rail).queryByText('Haus A')).toBeNull()
+    expect(within(rail).queryByText('Haus B')).toBeNull()
+  })
+
+  it('lang follows the UI locale inside the rail, and the ⚙ marker never appears without its legend (SB-14/SB-15)', async () => {
+    const user = userEvent.setup()
+    await openModeStep(user, 1)
+    await startMode(user, 'SHARED')
+    includeCoreScope()
+    act(() => { useStore.getState().confirmGebaeudeklasse() })
+    await user.click(screen.getAllByRole('radio', { name: /EN/ })[0]!)
+    expect(document.documentElement.lang).toBe('en')
+
+    const rail = screen.getByRole('complementary', { name: 'Angebot' })
+    if (rail.textContent?.includes('⚙')) {
+      expect(within(rail).getByText(/derived for the prototype, not calibrated/)).toBeInTheDocument()
+    }
+  })
+
+  it('the Kostentreiber benchmark line and its internal snapshot id are gone (SB-12/AC-5)', async () => {
+    const user = userEvent.setup()
+    await openModeStep(user, 1)
+    await startMode(user, 'SHARED')
+    includeCoreScope()
+    act(() => { useStore.getState().confirmGebaeudeklasse() })
+    const rail = screen.getByRole('complementary', { name: 'Angebot' })
+    await user.click(within(rail).getByRole('button', { name: /Nachweise & Verlauf/ }))
+    expect(rail.textContent).not.toMatch(/BM-BKI-2026Q1-SYNTH/)
+    expect(rail.textContent).not.toMatch(/nicht vergleichbar/)
+  })
+
+  it('.a3-ghost no longer resolves to the DC-28 preview — only the tertiary button variant (SB-30)', async () => {
+    const user = userEvent.setup()
+    await openModeStep(user, 1)
+    await startMode(user, 'SHARED')
+    includeCoreScope()
+    const matches = document.querySelectorAll('.a3-ghost')
+    for (const el of matches) {
+      expect(el.tagName).toBe('BUTTON')
+    }
+  })
+
+  it('the rail exposes a non-skipping heading hierarchy reaching the amount, Leitkennzahl, Bauzeit and composition (SB-29/AC-9)', async () => {
+    const user = userEvent.setup()
+    await openModeStep(user, 1)
+    await startMode(user, 'SHARED')
+    includeCoreScope()
+    act(() => { useStore.getState().confirmGebaeudeklasse() })
+    const rail = screen.getByRole('complementary', { name: 'Angebot' })
+    const headings = within(rail).getAllByRole('heading')
+    const levels = headings.map((h) => Number(h.tagName.slice(1)))
+    // Exactly one rail-root h2; every other rail heading sits one level
+    // under it (h3), never skipping straight to h4+.
+    expect(levels.filter((l) => l === 2)).toHaveLength(1)
+    expect(levels.every((l) => l === 2 || l === 3)).toBe(true)
+    expect(within(rail).getByRole('heading', { name: 'Angebot', level: 2 })).toBeInTheDocument()
+  })
+})

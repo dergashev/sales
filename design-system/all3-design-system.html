@@ -75,10 +75,15 @@
           <span class="a3-hb-cap">Bauzeit ab OKBP · fertig 19.11.2027</span>
         </div>
       </div>
-      <div class="a3-ghost-slot" data-dc="28"><span class="a3-ghost" id="ghost" aria-hidden="true">
-        <span class="a3-ghost-line" id="ghostFuture"></span>
-        <span class="a3-ghost-line" id="ghostDelta"></span>
-        <span class="a3-ghost-line" id="ghostRun"></span>
+      <!-- SIDEBAR 03 (backlog 2be8e69c, SB-30): renamed off `.a3-ghost` —
+           that bare class collided with the `.a3-btn.a3-ghost` tertiary
+           button variant rendered further down this same page. Element
+           ids (`ghost`, `ghostFuture`, …) are unchanged; the demo script
+           below addresses them by id, not by this class. -->
+      <div class="a3-preview-slot" data-dc="28"><span class="a3-preview" id="ghost" aria-hidden="true">
+        <span class="a3-preview-line" id="ghostFuture"></span>
+        <span class="a3-preview-line" id="ghostDelta"></span>
+        <span class="a3-preview-line" id="ghostRun"></span>
       </span></div>
       <div class="a3-delta-slot" data-dc="2"><span class="a3-delta a3-cost" id="waveDelta" aria-live="polite">EH 55 → EH 40 · ≈ +97.000 € (+2,55 %) gegenüber Variante Basis</span></div>
       <div class="a3-hb-sub"><span id="waveBgf" data-val="1591">≈ 1.591</span> €/m² BGF R+S  ·  <span id="waveWe" data-val="238615">≈ 238.615</span> € je Wohneinheit  ·  16 WE</div>

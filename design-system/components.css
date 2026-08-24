@@ -342,12 +342,20 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-delta.a3-cost{border-left:var(--size-status-accent-width) solid var(--color-text-primary)}
 
 /* DC-28 / DC-38 · ConsequencePreviewGhost + Kennzahlen-Leiste. Structure:
-   .a3-ghost-slot > .a3-ghost[.a3-show] > up to four visual rows
-   .a3-ghost-line; .a3-heroband > .a3-hb; total root
+   .a3-preview-slot > .a3-preview[.a3-show] > up to four visual rows
+   .a3-preview-line; .a3-heroband > .a3-hb; total root
    additionally has .a3-hb-total and contains .a3-hb-num + .a3-hb-unit +
    .a3-hb-cap/.a3-hb-sub. Один оранжевый герой,
    остальные — чёрные герои var(--space-7). КЛЮЧЕВАЯ метрика никогда не бывает сноской.
-   Classes: .a3-heroband · .a3-hb · .a3-hb-num · .a3-hb-unit · .a3-hb-total · .a3-hb-cap · .a3-hb-sub · .a3-ghost · .a3-ghost-line · .a3-show · .a3-ghost-slot · .a3-delta-slot · .a3-iv-sub · .a3-iv-bandbox · .a3-iv-band · .a3-iv-marker · .a3-iv-edges. */
+   Classes: .a3-heroband · .a3-hb · .a3-hb-num · .a3-hb-unit · .a3-hb-total · .a3-hb-cap · .a3-hb-sub · .a3-preview · .a3-preview-line · .a3-show · .a3-preview-slot · .a3-delta-slot · .a3-iv-sub · .a3-iv-bandbox · .a3-iv-band · .a3-iv-marker · .a3-iv-edges.
+   SIDEBAR 03 (backlog 2be8e69c, SB-30): renamed off `.a3-ghost`/`.a3-ghost-
+   slot`/`.a3-ghost-line` — that bare class also lands on every `.a3-btn
+   .a3-ghost` tertiary button (BUTTON-001..004, §2 below), so
+   `document.querySelectorAll('.a3-ghost')` returned 6 buttons + 1 preview
+   with no way to tell them apart. The button variant's OWN compound
+   `.a3-btn.a3-ghost` selector is untouched — only this DC-28 preview
+   cluster's bare class changed. Both consumers (this file's product
+   render site and the showcase specimen) migrated together. */
 /* Task 04 (F-13, STEP-005): sticky Preiskontext im Rail — die Zone, die
    Heroband + Geist-Vorschau + Delta-Chip trägt, bleibt beim Scrollen der
    restlichen Rail (Recap/Kostentreiber/KG-Tabelle/Journal) sichtbar.
@@ -416,9 +424,9 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-hb-total .a3-hb-unit{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line)}
 .a3-hb-cap{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight);color:var(--color-text-secondary)}
 .a3-hb-sub{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
-.a3-ghost-slot>.a3-ghost{display:block;max-width:100%;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-body-weight);color:var(--color-text-secondary);opacity:0;transition:opacity var(--motion-reveal) var(--motion-easing-standard) var(--motion-delay-hover-preview)}
-.a3-ghost-line{display:block}
-.a3-ghost-slot>.a3-ghost.a3-show{opacity:1;transition-delay:.2s}
+.a3-preview-slot>.a3-preview{display:block;max-width:100%;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-body-weight);color:var(--color-text-secondary);opacity:0;transition:opacity var(--motion-reveal) var(--motion-easing-standard) var(--motion-delay-hover-preview)}
+.a3-preview-line{display:block}
+.a3-preview-slot>.a3-preview.a3-show{opacity:1;transition-delay:.2s}
 /* SIDEBAR 01 (backlog eda1e221, SB-02) - `min-height` reservation is correct
    for a SCROLLING region (rule 24: appearance must not shift layout) and
    wrong for a PINNED one: while sticky, the two slots' worst-case height
@@ -427,9 +435,11 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    The no-layout-shift guarantee (rule 24) now comes from being taken out of
    flow entirely — but ONLY where a slot sits inside `.a3-change-slot-anchor`,
    a zero-height sibling of `.a3-rail-header-budget` placed after it inside
-   the pinned rail header. `.a3-ghost-slot`/`.a3-delta-slot` are also used
-   unwrapped, in-flow, by OpportunityCard.tsx's ReviewedWflMetric and by the
-   design-system showcase's own DC-2/DC-28 specimens (Tech Lead finding,
+   the pinned rail header. `.a3-delta-slot` is also used unwrapped, in-flow,
+   by OpportunityCard.tsx's ReviewedWflMetric (`.a3-preview-slot` is not —
+   that consumer never renders a DC-28 preview, only the delta chip), and
+   both slots are also used unwrapped by the design-system showcase's own
+   DC-2/DC-28 specimens (Tech Lead finding,
    this task's own SIDEBAR 01 cycle 3: an earlier revision changed the base
    rule directly and detached both of those to {top:0,left:0} of the page).
    The base rule below stays the original in-flow reservation for every
@@ -439,10 +449,10 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    preview) and delta (post-commit, 8s) are mutually exclusive in time
    (DC-28 clears the preview at commit) so sharing one anchor is safe; both
    keep their own distinct border/motion identity unchanged. */
-.a3-ghost-slot{min-height:var(--size-ghost-row);max-width:100%}
+.a3-preview-slot{min-height:var(--size-ghost-row);max-width:100%}
 .a3-delta-slot{min-height:var(--size-delta-row);max-width:100%}
 .a3-change-slot-anchor{position:relative;height:0}
-.a3-change-slot-anchor>.a3-ghost-slot{position:absolute;top:var(--space-3);left:0;right:0;min-height:0;max-height:var(--size-ghost-row);overflow:hidden;background:var(--color-surface-default);max-width:100%}
+.a3-change-slot-anchor>.a3-preview-slot{position:absolute;top:var(--space-3);left:0;right:0;min-height:0;max-height:var(--size-ghost-row);overflow:hidden;background:var(--color-surface-default);max-width:100%}
 .a3-change-slot-anchor>.a3-delta-slot{position:absolute;top:var(--space-3);left:0;right:0;min-height:0;max-height:var(--size-delta-row);overflow:hidden;max-width:100%}
 .a3-iv-sub{display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap}
 .a3-iv-bandbox{flex:1;max-width:var(--measure-band)}
@@ -687,6 +697,22 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    Classes: .a3-hk-wrap · .a3-hk-val · .a3-hk-pop · .a3-show · .a3-r · .a3-fnum. */
 .a3-hk-wrap{position:relative;display:inline-block}
 .a3-hk-val{cursor:pointer;text-decoration:underline;text-decoration-style:solid;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset);background:none;border:none;font:inherit;padding:0;color:inherit;min-height:var(--size-hit-target-default)}
+/* SIDEBAR 03 (backlog 2be8e69c, SB-31/R-04): `min-height` alone left the
+   trigger's WIDTH short (measured 42,8 px against the required 44 — the
+   text "Details" at this size is narrower than the target). Same canonical
+   recipe as `.a3-btn::before` above: a centered pseudo-element widens the
+   HIT/FOCUS area to the full 44×44 without touching the visible box —
+   positions relative to `.a3-hk-wrap` (already `position:relative`, and
+   its box exactly bounds the button: the popover itself is portalled to
+   `document.body`, so nothing else occupies the wrap). R-04's two
+   conditions: focus ring stays fully visible (`outline-offset` on the
+   button itself is untouched, unrelated box); no-overlap-with-neighbours
+   holds for every hero "Herkunft anzeigen" trigger (generously spaced) —
+   the dense driver-table "Details" column (rows narrower than 44 px,
+   LAYOUT-009's known, still-unresolved compact-table collision class)
+   needs its own empirical check before this expansion can be trusted
+   there without shrinking row spacing further; flagged for QA/Tech Lead. */
+.a3-hk-val::before{content:'';position:absolute;left:50%;top:50%;width:max(100%,var(--size-hit-target-default));height:var(--size-hit-target-default);transform:translate(-50%,-50%)}
 .a3-hk-pop{display:none;position:absolute;top:calc(100% + var(--space-1));right:0;z-index:var(--layer-popover);width:min(var(--size-popover-max-width),calc(100vw - 2 * var(--gutter-narrow)));border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-4);font-size:var(--type-small-size);line-height:var(--type-small-line);text-align:left;opacity:0;transform:translateY(var(--enter-shift));transition:opacity var(--motion-reveal) var(--motion-easing-standard),transform var(--motion-reveal) var(--motion-easing-standard);pointer-events:none;font-weight:var(--type-small-weight)}
 .a3-hk-pop.a3-show{display:block;opacity:1;transform:none;pointer-events:auto}
 .a3-hk-pop .a3-r{display:flex;justify-content:space-between;gap:var(--space-4);padding:var(--space-1) 0;border-bottom:var(--border-hairline)}

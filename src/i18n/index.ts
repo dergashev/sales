@@ -490,6 +490,62 @@ const de = {
   // never read "Gesamt netto" even when coverage was complete).
   'offer.drivers.reconciliationCaption':
     'Kostentreiber: Beiträge summieren sich exakt zur {label}.',
+  // SIDEBAR 03 (backlog 2be8e69c, SB-16): the ghost preview's "gegenüber
+  // aktuellem Stand" suffix was a hardcoded literal, invisible to `tx()`'s
+  // whole-string lookup once interpolated between other fragments.
+  'offerPanel.preview.vsCurrent': 'gegenüber aktuellem Stand',
+  // SB-15: one shared legend for every `⚙` occurrence in the rail (recap/
+  // composition rows, driver rows, KG 300 subgroups) — lives once in the
+  // Level 3 disclosure, not repeated per row. Core clause only, reused from
+  // `derived-prototype.json.provenanceLabel` / `configurator.scopeCatalog.
+  // footnote` — the rail drops that key's second sentence ("… erscheint …
+  // in der Angebotsspalte rechts"), written for the centre pane and
+  // self-referential if repeated inside the rail itself.
+  'offerPanel.derivedMarker.legend': '⚙ · für den Prototyp abgeleitet, nicht kalibriert.',
+  // SB-14: OriginPopover/basis-row labels the Codex delivery (`generated.ts`)
+  // does not cover — `panel.rate`/`panel.quantity` compose with a live
+  // denominator, `panel.decreased` is `driverLabel`'s own direction word,
+  // `panel.scopeLabel` names an assigned scope (the unresolved case already
+  // has its own delivered key, `panel.scopeAllocationUnresolved`).
+  'panel.rate': 'Satz',
+  'panel.quantity': 'Menge · {denominator}',
+  'panel.decreased': 'senkt',
+  'panel.scopeLabel': 'Scope · {scope}',
+  // SB-29: the rail's new heading root (`<h2>`, replacing the plain
+  // `aria-label="Angebot"` that carried no heading semantics at all) and
+  // the two Level 1 metric groups that must become independently
+  // heading-reachable.
+  'offerPanel.heading': 'Angebot',
+  'offerPanel.heading.leadRate': 'Leitkennzahl',
+  'offerPanel.heading.duration': 'Bauzeit',
+  // SB-33: OKBP itself is a protected glossary term (LOCALE-009,
+  // `output-model.md`) and stays literal in every locale — only its gloss
+  // is new, moved into the Bauzeit hero's existing Herkunft popover rather
+  // than inlined on the space-constrained Level 1 hero.
+  'offerPanel.duration.okbpGloss': 'Oberkante Bodenplatte',
+  // Local short form for the "Nicht enthalten / noch offen" caption
+  // (`COVERAGE_SHORT`) — every other coverage state's short form already
+  // equals the delivered `coverage.*` key verbatim; only `notApplicable`'s
+  // abbreviation ("n. a.") differs from the delivered full phrase ("nicht
+  // anwendbar") and needs its own key to keep the existing DE visual text
+  // unchanged while still being real EN, not a silent fallback.
+  'panel.coverage.notApplicableShort': 'n. a.',
+  // SB-06 companion follow-through: the excluded-groups summary line has no
+  // Codex match once the coverage short forms are interpolated into it.
+  'offerPanel.notIncluded.clientNotice':
+    'Nicht alle Kostengruppen sind Bestandteil dieses Angebots; die Abgrenzung steht in der Leistungsübersicht.',
+  'offerPanel.riskSurcharges.label': 'Risikozuschläge',
+  // SB-14 companion: the Bauzeit hero's own unit word and rounding
+  // disclosure sentence were hardcoded literals with no `t()`/`tx()` call
+  // at all (unlike the caption line, which already has a Codex-delivered
+  // key, `schedule.completionFromOkbp`).
+  'offerPanel.duration.unit': 'Monate',
+  'offerPanel.duration.roundingDisclosure':
+    'Anzeige weicht vom Modellwert ab; exakt {value}',
+  // SB-17: the scoped `aria-live` announcement — the amount and the change,
+  // not the ~40-word hero band it used to sit on.
+  'offerPanel.liveAnnouncement': '{change} · {delta} · neuer Betrag {total}',
+  'panel.regionalFactorDeactivated': 'deaktiviert',
 } as const
 
 export type MessageKey = keyof typeof de
@@ -899,6 +955,25 @@ const en: Partial<Record<MessageKey, string>> = {
     'Rows and percentage shares are rounded independently; the check runs on exact values.',
   'offer.drivers.reconciliationCaption':
     'Cost drivers: contributions sum exactly to the {label}.',
+  'offerPanel.preview.vsCurrent': 'vs. the current state',
+  'offerPanel.derivedMarker.legend': '⚙ · derived for the prototype, not calibrated.',
+  'panel.rate': 'Rate',
+  'panel.quantity': 'Quantity · {denominator}',
+  'panel.decreased': 'decreased',
+  'panel.scopeLabel': 'Scope · {scope}',
+  'offerPanel.heading': 'Offer',
+  'offerPanel.heading.leadRate': 'Lead metric',
+  'offerPanel.heading.duration': 'Construction period',
+  'offerPanel.duration.okbpGloss': 'top of the foundation slab',
+  'panel.coverage.notApplicableShort': 'n/a',
+  'offerPanel.notIncluded.clientNotice':
+    'Not every cost group is part of this offer; the boundary is stated in the scope overview.',
+  'offerPanel.riskSurcharges.label': 'Risk surcharges',
+  'offerPanel.duration.unit': 'months',
+  'offerPanel.duration.roundingDisclosure':
+    'Display differs from the model value; exact {value}',
+  'offerPanel.liveAnnouncement': '{change} · {delta} · new amount {total}',
+  'panel.regionalFactorDeactivated': 'deactivated',
 }
 
 /**
@@ -934,6 +1009,52 @@ export function translate(
   }
   message = de[key as MessageKey] ?? GENERATED_DE[key] ?? key
   return interpolate(message, lang, values)
+}
+
+/**
+ * SIDEBAR 03 (backlog 2be8e69c, SB-14). Money/rate numerals in the offer
+ * rail are decided once, in `engine/money.ts`'s `present()`/`rate()`
+ * (rounding step, whether the `≈` prefix applies) — `src/engine/**` is out
+ * of this task's scope, and re-deriving that rounding decision here would
+ * be exactly the duplicated-calculation-logic this project forbids copying
+ * into React. `formatDE()` (money.ts) already bakes the DECIDED, ROUNDED
+ * value into a German-punctuated numeral string (`.` thousands, `,`
+ * decimal); this function re-typesets THAT numeral for `en` through
+ * `Intl.NumberFormat` — inverse-parsing a string back to the number it
+ * already represents is not re-deciding a rounding rule. German-punctuated
+ * DENOMINATOR NAMES (`WFL nach WoFlV`, `BGF oberirdisch`, …) and the
+ * glossary term `OKBP` are untouched by design (LOCALE-009: normative
+ * denominators/glossary terms are never machine-translated) — this
+ * function only matches NUMERALS, never letters.
+ */
+const GERMAN_NUMERAL = /-?\d{1,3}(?:\.\d{3})*(?:,\d+)?/g
+
+export function localizeMoneyText(text: string, lang: UiLanguage): string {
+  if (lang !== 'en') return text
+  return text.replace(GERMAN_NUMERAL, (match) => {
+    const negative = match.startsWith('-')
+    const unsigned = negative ? match.slice(1) : match
+    const [intPart, fracPart] = unsigned.split(',')
+    const digits = intPart!.replace(/\./g, '')
+    const value = Number(fracPart ? `${digits}.${fracPart}` : digits)
+    if (!Number.isFinite(value)) return match
+    const out = new Intl.NumberFormat('en-GB', {
+      minimumFractionDigits: fracPart ? fracPart.length : 0,
+      maximumFractionDigits: fracPart ? fracPart.length : 0,
+    }).format(value)
+    return negative ? `-${out}` : out
+  })
+}
+
+/**
+ * Rule 7: DE `19 %` (narrow no-break space before the sign) vs EN `19%`
+ * (no separator at all). Applied on top of `localizeMoneyText` so a
+ * percent value's own digits (e.g. a rounded `17,5`) get the same
+ * numeral re-typesetting as money/rate values.
+ */
+export function localizePercentText(text: string, lang: UiLanguage): string {
+  if (lang !== 'en') return text
+  return localizeMoneyText(text, lang).replace(/ %/g, '%')
 }
 
 /**

@@ -474,6 +474,102 @@ export const COMPONENT_REGISTRY: Specimen[] = [
     blockedVariants: [], maturity: 'alpha', evidence: 'Live fixture simulation with phase protocol and no invented percentage.',
     render: () => <DocumentAnalysis docs={demo.documents.map((document) => ({ file: document.file, pages: typeof document.pages === 'number' ? document.pages : null, parseStatus: document.parseStatus }))} onManualCapture={() => {}} />,
   },
+  // SIDEBAR 03 (backlog 2be8e69c, SB-21): the four offer-rail contracts in
+  // components-core.md §13. None of the four is an extracted, standalone
+  // React component (they compose inline inside OfferPanel.tsx's own
+  // markup) — the specimen shows the SAME canonical CSS classes the
+  // product renders, matching the classes named by the contract's own
+  // "Анатомия" section, not a second implementation of the rail.
+  {
+    id: 'offer-rail-shell', groupId: 'domain', title: 'OfferRailShell (§13)', contractId: 'OfferRailShell',
+    requirements: ['SB-29', 'SB-19'], composedContracts: [], interactionStates: ['default'],
+    dataStates: declareDataStates(['empty', 'partial', 'ready', 'permission'],
+      'error/loading/stale belong to the calculation owner above the rail, not the shell'),
+    blockedVariants: [], maturity: 'beta',
+    evidence: 'One scroll owner; a real, visually hidden h2 root heading (SB-29) beneath the landmark aria-label.',
+    render: () => (
+      <aside aria-label="Angebot" className="a3-rail" style={{ width: '20rem', maxHeight: '12rem', overflowY: 'auto' }}>
+        <h2 className="a3-visually-hidden">Angebot</h2>
+        <div className="a3-rail-sticky-top">
+          <div className="a3-rail-header-budget">
+            <p className="a3-mtag">Gesamt · gesamter Komplex</p>
+          </div>
+        </div>
+      </aside>
+    ),
+  },
+  {
+    id: 'offer-rail-band', groupId: 'domain', title: 'StickyCommercialBand (§13)', contractId: 'StickyCommercialBand',
+    requirements: ['SB-01', 'SB-02', 'SB-17'], composedContracts: ['EstimateUncertaintyBadge', 'OriginPopover'],
+    interactionStates: ['default', 'preview', 'changed'], dataStates: ALL_DATA_STATES,
+    blockedVariants: [], maturity: 'beta',
+    evidence: 'Height-budgeted heroband with an unreserved, overlaid change slot and a scoped aria-live announcer (SB-17), not the whole band.',
+    render: () => (
+      <div className="a3-heroband">
+        <div className="a3-hb a3-hb-total">
+          <h3 className="a3-hb-cap">Gesamt netto · Grundleistung All3</h3>
+          <p className="a3-hb-num numeric">3.818.000<span className="a3-hb-unit">{NNBSP}€</span></p>
+        </div>
+        <div className="a3-hb">
+          <p className="a3-hb-num numeric">2.545<span className="a3-hb-unit">{NNBSP}€/m²</span></p>
+          <p className="a3-hb-cap">WFL nach WoFlV</p>
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'offer-rail-composition-row', groupId: 'domain', title: 'CompositionRow (§13)', contractId: 'CompositionRow',
+    requirements: ['SB-03', 'SB-13'], composedContracts: [], interactionStates: ['default', 'expanded'],
+    dataStates: declareDataStates(['empty', 'partial', 'ready', 'permission'], 'error/loading/stale belong to the calculation owner'),
+    blockedVariants: [], maturity: 'beta',
+    evidence: 'One merged DIN-276 list (no recap/drivers duplication, SB-03); same-label siblings aggregate in the client profile (SB-13).',
+    render: () => (
+      <table className="a3-kg w-full border-collapse">
+        <tbody>
+          <tr className="a3-expand a3-open">
+            <td><button type="button" className="a3-twistbtn" aria-expanded>KG 300 Baukonstruktionen</button></td>
+            <td className="a3-num">2.672.000{NNBSP}€</td>
+            <td className="a3-num">67{NNBSP}%</td>
+          </tr>
+          <tr className="a3-kg-child">
+            <td colSpan={3}>
+              <ul>
+                <li className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
+                  <span className="text-text-secondary">Energiestandard EH 55</span>
+                  <span className="numeric shrink-0 text-text-primary">≈{NNBSP}+{NNBSP}155.000{NNBSP}€</span>
+                </li>
+              </ul>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    ),
+  },
+  {
+    id: 'offer-rail-table', groupId: 'domain', title: 'RailTable (§13)', contractId: 'RailTable',
+    requirements: ['SB-18', 'SB-31', 'SB-32'], composedContracts: ['OriginPopover'],
+    interactionStates: ['default', 'focus'], dataStates: declareDataStates(['partial', 'ready'], 'the table itself does not own empty/loading/error/stale/permission — its owner does'),
+    blockedVariants: [], maturity: 'beta',
+    evidence: '--color-text-secondary rounding note (SB-18, not --color-text-muted below its minimum size) and a 44×44 Details trigger (SB-31).',
+    render: () => (
+      <div className="a3-tbl-scroll">
+        <table className="a3-driver-table">
+          <tbody>
+            <tr className="a3-drv">
+              <th scope="row" className="py-2 pr-3 text-left font-regular text-text-secondary">Energiestandard EH 55</th>
+              <td className="a3-val">
+                ≈{NNBSP}+{NNBSP}155.000{NNBSP}€
+                <span className="mt-1 block font-regular">
+                  <OriginPopover triggerLabel="Details" rows={[{ label: 'Beitrag exakt', value: `+${NNBSP}155.000,00${NNBSP}€` }]} rounding={null} runRef={null} accessibleName="Details · Energiestandard EH 55" />
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p className="mt-2 text-small text-text-secondary">Zeilen und Prozentanteile werden unabhängig gerundet.</p>
+      </div>
+    ),
+  },
 ]
 
 const GROUP_META: Array<Omit<SpecimenGroup, 'specimens'>> = [

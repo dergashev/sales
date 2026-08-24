@@ -55,6 +55,16 @@ export function App() {
     document.documentElement.classList.toggle('density-compact', s.density === 'kompakt')
   }, [s.density])
 
+  // SIDEBAR 03 (backlog 2be8e69c, SB-14): `index.html`'s static `lang="de"`
+  // never followed the UI locale switch — confirmed by source search, no
+  // consumer anywhere in `src/**` ever wrote `document.documentElement.
+  // lang`. This is the app-root, document-level counterpart to that
+  // attribute; every screen's own `t()`/`tx()` calls already key off the
+  // same `s.uiLanguage` field this effect reads.
+  useEffect(() => {
+    document.documentElement.lang = s.uiLanguage
+  }, [s.uiLanguage])
+
   // Смена экрана/главы/Option/уровня открывает НОВЫЙ документ — с его
   // начала, а не с высоты прошлого (ревью № 13, дефект 8): экран,
   // открывшийся серединой карточек без H1, не объясняет свой вопрос.

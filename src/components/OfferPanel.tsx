@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Decimal } from 'decimal.js'
 import {
@@ -11,7 +11,7 @@ import derivedFx from '../fixtures/derived-prototype.json'
 import {
   NNBSP, present, rateLabel, formatDE, DENOMINATOR_LABEL, label as moneyLabel,
 } from '../engine/money'
-import type { CostGroup, CoverageState, DriverBasis, IncompleteReason } from '../engine/calculate'
+import type { CostGroup, CoverageState, Driver, DriverBasis, IncompleteReason } from '../engine/calculate'
 import { isScopeUniverseEmpty, SCOPE_BOUNDARIES_DECIDABLE_GROUPS } from '../engine/calculate'
 import { projectDriversForClient, translatedDriverLabel } from '../state/clientProjection'
 import { CONFIGURATOR_STEP } from '../state/chapters'
@@ -20,7 +20,8 @@ import { OriginPopover } from './OriginPopover'
 import { ClientNotice } from './ClientNotice'
 import { DataStateBlock, PartialState } from './DataStates'
 import { EstimateUncertaintyBadge } from './EstimateUncertaintyBadge'
-import { useT, useTx } from '../i18n'
+import { useT, useTx, localizeMoneyText, localizePercentText } from '../i18n'
+import type { UiLanguage } from '../i18n'
 import { useSemanticMotion } from '../design-system/motion'
 import { DELTA_CHIP_MS } from '../config/ui-policy'
 
@@ -65,10 +66,39 @@ function useLastValue<T>(current: T | null): T | null {
 /** Пометка выведенной величины — из данных, не из разметки (D-22). */
 const MARK = derivedFx.marker
 
+/**
+ * SIDEBAR 03 (SB-14): every other coverage short-form already equals the
+ * Codex-delivered `coverage.*` key verbatim (`enthalten`/`nicht enthalten`/
+ * `auf Anfrage`/`noch offen`) — only `notApplicable`'s abbreviation ("n. a.")
+ * intentionally differs from the delivered full phrase ("nicht anwendbar"),
+ * so it keeps its own local key rather than losing the abbreviation.
+ */
+const COVERAGE_SHORT_KEY: Record<CoverageState, string> = {
+  included: 'coverage.included', excluded: 'coverage.excluded',
+  onRequest: 'coverage.onRequest', unknown: 'coverage.unknown',
+  notApplicable: 'panel.coverage.notApplicableShort',
+}
 
-const COVERAGE_SHORT: Record<CoverageState, string> = {
-  included: 'enthalten', excluded: 'nicht enthalten',
-  onRequest: 'auf Anfrage', unknown: 'noch offen', notApplicable: 'n. a.',
+/**
+ * SIDEBAR 03 (SB-14) locale-aware wrappers around `engine/money.ts`'s
+ * exported formatters. `src/engine/**` stays untouched (out of scope) —
+ * these re-typeset the ALREADY-DECIDED numeral each formatter produces via
+ * `localizeMoneyText`/`localizePercentText` (see `src/i18n/index.ts`); they
+ * never re-derive a rounding rule. `signed()`/`label()`/`rateLabel()`
+ * themselves stay untouched too — `signed()` is shared with
+ * BuildingScope.tsx and must not change for that consumer.
+ */
+function moneyOut(d: ReturnType<typeof present>, lang: UiLanguage, unit = '€'): string {
+  return localizeMoneyText(moneyLabel(d, unit), lang)
+}
+function rateOut(r: Parameters<typeof rateLabel>[0], lang: UiLanguage): string {
+  return localizeMoneyText(rateLabel(r), lang)
+}
+function signedOut(d: Decimal, lang: UiLanguage): string {
+  return localizeMoneyText(signed(d), lang)
+}
+function percentOut(value: Decimal, decimals: number, lang: UiLanguage): string {
+  return localizePercentText(`${value.toFixed(decimals)}${NNBSP}%`, lang)
 }
 
 /**
@@ -109,6 +139,47 @@ function buildingScopeLabel(
   return review ? effectiveFactValue(review.facts.documentationName) ?? id : id
 }
 
+type ContributionRow = {
+  key: string
+  label: string
+  exact: Decimal
+  buildingLabel: string | null
+}
+
+/**
+ * SIDEBAR 03 (backlog 2be8e69c, SB-13). Shared by the Level 2 group
+ * children list and the loose-contribution recap fallback — both render
+ * per-building `Driver[]` and both hit the same defect: `driverBuildingLabel`
+ * correctly returns `null` in Kundenansicht (R-25), which collapses two
+ * different buildings' identical-label contributions (e.g. two buildings
+ * both choosing "Energiestandard EH 55") into a byte-identical duplicate
+ * row with no way to tell them apart. In Kundenansicht only, same-label
+ * siblings are aggregated into ONE row summing their exact contributions
+ * (Decimal addition is associative — rule 32 reconciliation is unaffected)
+ * instead of exposing which building chose it. Vorbereitung is unchanged:
+ * per-building rows, unaggregated, exactly as before this task.
+ */
+function clientSafeContributionRows(
+  items: readonly Driver[],
+  labelFor: (d: Driver) => string,
+  s: ReturnType<typeof useStore.getState>,
+): ContributionRow[] {
+  const rows: ContributionRow[] = items.map((d) => ({
+    key: d.key,
+    label: labelFor(d),
+    exact: d.exact,
+    buildingLabel: driverBuildingLabel(s, d.key),
+  }))
+  if (s.mode === 'intern') return rows
+  const byLabel: Record<string, ContributionRow> = {}
+  for (const row of rows) {
+    const existing = byLabel[row.label]
+    if (existing) existing.exact = existing.exact.plus(row.exact)
+    else byLabel[row.label] = { ...row }
+  }
+  return Object.values(byLabel)
+}
+
 /**
  * SIDEBAR 01 (backlog eda1e221) - `variant`:
  * - `'full'` (default) - Level 1 + Level 2 + Level 3, the Configurator's own
@@ -131,6 +202,21 @@ export function OfferPanel(
   const p = s.projection()
   const t = useT()
   const tx = useTx()
+  // SIDEBAR 03 (backlog 2be8e69c, SB-14): the single locale read every
+  // numeral/date wrapper below keys off. `document.documentElement.lang`
+  // itself is kept in sync with this same field at the app root (App.tsx),
+  // not here — the rail only needs the value, not the side effect.
+  const lang: UiLanguage = s.uiLanguage
+  // SIDEBAR 03 (SB-29): heading ids for the Level 1 metric groups the rail
+  // had no heading for at all (the audit's own two-`h2` measurement no
+  // longer applies — SIDEBAR 01 already removed both of those in favour of
+  // `aria-label`s that carry no heading semantics; this restores exactly
+  // one non-skipping hierarchy under a new rail-root `h2`).
+  const railHeadingId = useId()
+  const amountHeadingId = useId()
+  const leadRateHeadingId = useId()
+  const durationHeadingId = useId()
+  const compositionHeadingId = useId()
   const { reduced } = useSemanticMotion()
   const [journalOpen, setJournalOpen] = useState(false)
   // SIDEBAR 01: Level 2 (die Kostenzusammensetzung) ist per Vertrag "expanded
@@ -340,6 +426,14 @@ export function OfferPanel(
   const clientSafeDrivers = projectDriversForClient(
     p.result.drivers, s.mode, s.kg800ClientRevealed,
   )
+  // SIDEBAR 03 (backlog 2be8e69c, SB-15): `⚙` is baked directly into a
+  // driver's `label` at the engine (`scopeCatalog.ts`'s `evidenceMark`,
+  // out of this task's scope) whenever `evidenceClass !== 'R'`, and every
+  // KG 300 risk-basis subgroup row carries it unconditionally (D-22). One
+  // shared legend covers every occurrence in the rail, gated on whether
+  // any currently-rendered surface actually carries the marker.
+  const hasDerivedMarker = clientSafeDrivers.some((d) => d.label.includes(MARK))
+    || !!p.kgSplit.KG_300
 
   // «Корзина»: вклады, рождённые РЕШЕНИЯМИ, — по признаку самого вклада,
   // а не по префиксу ключа. Приёмка № 17 показала цену догадки: фильтр по
@@ -412,6 +506,17 @@ export function OfferPanel(
       // two can never drift apart.
       className="a3-rail flex h-full w-panel-right min-w-0 max-w-panel-right shrink-0 flex-col overflow-y-auto border-l border-border-strong bg-surface-default"
     >
+      {/* SIDEBAR 03 (backlog 2be8e69c, SB-29): the rail's own heading root.
+          `aria-label="Angebot"` above already names the `<aside>` landmark
+          for assistive tech that reads landmarks — it is not a heading and
+          never appears in heading-list navigation, which is exactly what
+          SB-29 measured missing. Visually hidden (`.a3-visually-hidden`,
+          already this file's own convention for the KG tables' captions
+          just below) so it adds a real heading without adding visible
+          chrome or spending any of the pinned header's fully-committed
+          budget (SIDEBAR 01 authority, not reopened here) — it sits OUTSIDE
+          `.a3-rail-sticky-top`/`.a3-rail-header-budget` entirely. */}
+      <h2 id={railHeadingId} className="a3-visually-hidden">{t('offerPanel.heading')}</h2>
       {/* Task 04 (F-13, STEP-005): «Липкий контекст цены реализуется, а не
           декларируется рядом» — герой DC-38 + Geist-Vorschau + Delta-Chip
           остаются видимыми, пока остальная рельса (Recap, Kostentreiber,
@@ -420,7 +525,26 @@ export function OfferPanel(
           page-level-scroll устранён в tokens.css/`.a3-app-shell`); этот
           блок — прямой flex-потомок `<aside>`, `position:sticky` поэтому
           закрепляется относительно ЕГО скролла, не документа. */}
-      <div className="a3-rail-sticky-top" aria-live="polite">
+      <div className="a3-rail-sticky-top">
+        {/* SIDEBAR 03 (backlog 2be8e69c, SB-17): `aria-live="polite"` used to
+            sit on this whole wrapper — total, range, uncertainty, `netto`,
+            3 provenance triggers, lead rate + denominator + secondary rate,
+            Bauzeit + datum + completion date, the preview slot and the
+            change slot all re-announced together on every recalculation
+            (~40 words). Scoped down to exactly the amount and the change:
+            a dedicated, visually hidden region that only carries content
+            while a change is active (`s.activeDelta`), built from the same
+            already-localized strings the visible amount/chip render below
+            (never re-reads the DOM, never duplicates a value the visible
+            hero doesn't already have). */}
+        <div aria-live="polite" className="a3-visually-hidden">
+          {!priceUnavailable && s.activeDelta && t('offerPanel.liveAnnouncement', {
+            change: s.activeDelta.change
+              ? translatedChangeLabel(s.activeDelta.change, t) : s.activeDelta.label,
+            delta: signedOut(s.activeDelta.deltaExact, lang),
+            total: moneyOut(p.result.total, lang),
+          })}
+        </div>
         {/* SIDEBAR 01 (backlog eda1e221, SB-01/SB-02, AC-1/AC-2/AC-4) - the
             sticky wrapper itself no longer carries the height budget: it
             only establishes the sticky positioning/stacking context. The
@@ -483,18 +607,20 @@ export function OfferPanel(
           />
         ) : (<>
         <div className="a3-hb a3-hb-total">
-          <span className="a3-hb-cap">{tx(p.result.totalLabel)}</span>
+          {/* SB-29: the amount's own existing visible label promoted to a
+              real heading — no new copy, same class, same text. */}
+          <h3 id={amountHeadingId} className="a3-hb-cap">{tx(p.result.totalLabel)}</h3>
           {priceUnavailable ? (
             <PartialState
               label={t('money.priceNotDetermined')}
               consequence={p.result.totalLabel}
             />
           ) : (
-            <p className="a3-hb-num numeric">
+            <p className="a3-hb-num numeric" aria-labelledby={amountHeadingId}>
               {p.result.total.prefix && (
                 <span aria-hidden="true">{p.result.total.prefix}{NNBSP}</span>
               )}
-              {totalCount}
+              {localizeMoneyText(totalCount, lang)}
               <span className="a3-hb-unit">{NNBSP}€</span>
             </p>
           )}
@@ -541,15 +667,19 @@ export function OfferPanel(
           <OriginPopover
             rows={[
               ...clientSafeDrivers.map((d) => ({
-                label: d.label,
-                value: moneyLabel(present(d.exact)),
+                label: translatedDriverLabel(d, t),
+                value: moneyOut(present(d.exact), lang),
               })),
               ...(!s.regionalfaktorActive
-                ? [{ label: 'Regionalfaktor', value: 'deaktiviert', muted: true }]
+                ? [{
+                    label: t('driver.regionalFactor'),
+                    value: t('panel.regionalFactorDeactivated'),
+                    muted: true,
+                  }]
                 : []),
               {
-                label: 'Exakter Rechenwert',
-                value: `${formatDE(p.result.total.exact, 2)}${NNBSP}€`,
+                label: t('origin.exactValue'),
+                value: `${localizeMoneyText(formatDE(p.result.total.exact, 2), lang)}${NNBSP}€`,
                 strong: true,
               },
             ]}
@@ -576,11 +706,23 @@ export function OfferPanel(
             400 px и съедала рабочую область. Дефект структурный: класс
             применён не к тому, для чего объявлен. */}
         {!priceUnavailable && <div className="a3-hb">
-          <p className="a3-hb-num numeric">
+          {/* SB-29: Leitkennzahl becomes its own heading-reachable group —
+              visually hidden (`.a3-visually-hidden`, this file's own KG-
+              table-caption convention): the sighted hero is unchanged (it
+              never had a caption above the rate before), only heading-list
+              navigation gains a new anchor. Placed INSIDE the pinned
+              `.a3-rail-header-budget` (unlike the rail-root heading above,
+              which sits outside it) — a visible line here would compete
+              with the degrade ladder's already fully-committed budget
+              (SIDEBAR 01/02 authority, not reopened). */}
+          <h3 id={leadRateHeadingId} className="a3-visually-hidden">
+            {t('offerPanel.heading.leadRate')}
+          </h3>
+          <p className="a3-hb-num numeric" aria-labelledby={leadRateHeadingId}>
             {p.leadRate.prefix && (
               <span aria-hidden="true">{p.leadRate.prefix}{NNBSP}</span>
             )}
-            {p.leadRate.display}
+            {localizeMoneyText(p.leadRate.display, lang)}
             <span className="a3-hb-unit">{NNBSP}€/m²</span>
           </p>
           <span className="a3-hb-cap">{tx(p.leadRate.denominatorLabel)}</span>
@@ -597,24 +739,24 @@ export function OfferPanel(
               here is the literal duplicate the audit found. It renders
               only when it names a different denominator. */}
           {p.secondaryRateBgf.denominatorType !== p.leadRate.denominatorType && (
-            <>{rateLabel(p.secondaryRateBgf)}{' · '}</>
+            <>{rateOut(p.secondaryRateBgf, lang)}{' · '}</>
           )}
-          {p.perUnit && <>{rateLabel(p.perUnit)}{' · '}</>}
+          {p.perUnit && <>{rateOut(p.perUnit, lang)}{' · '}</>}
           {degradeLevel < 1 && (
           /* DC-21 rateOrigin: знаменатель называет норматив, деление показано. */
           <OriginPopover
             rows={[
               {
-                label: 'Zähler (Gesamt exakt)',
-                value: `${formatDE(p.leadRate.numerator, 0)}${NNBSP}€`,
+                label: t('panel.exactTotalNumerator'),
+                value: `${localizeMoneyText(formatDE(p.leadRate.numerator, 0), lang)}${NNBSP}€`,
               },
               {
-                label: `Nenner (${p.leadRate.denominatorLabel})`,
-                value: `${formatDE(p.leadRate.denominator, 2)}${NNBSP}m²`,
+                label: t('origin.denominator', { denominator: p.leadRate.denominatorLabel }),
+                value: `${localizeMoneyText(formatDE(p.leadRate.denominator, 2), lang)}${NNBSP}m²`,
               },
               {
-                label: 'Quotient exakt',
-                value: `${formatDE(p.leadRate.exact, 2)}${NNBSP}€/m²`,
+                label: t('origin.exactQuotient'),
+                value: `${localizeMoneyText(formatDE(p.leadRate.exact, 2), lang)}${NNBSP}€/m²`,
                 strong: true,
               },
             ]}
@@ -629,13 +771,29 @@ export function OfferPanel(
         </div>}
 
         <div className="a3-hb">
-          <p className="a3-hb-num numeric">
+          {/* SB-29: Bauzeit becomes its own heading-reachable group —
+              visually hidden, same reasoning as the Leitkennzahl heading
+              above: this hero never had a caption above the number before
+              ("ab OKBP · Fertigstellung …" already names it below), and
+              this line sits inside the pinned budget where a new visible
+              line would compete with the degrade ladder. */}
+          <h3 id={durationHeadingId} className="a3-visually-hidden">
+            {t('offerPanel.heading.duration')}
+          </h3>
+          <p className="a3-hb-num numeric" aria-labelledby={durationHeadingId}>
             {p.duration.prefix && <span aria-hidden="true">{p.duration.prefix}{NNBSP}</span>}
-            {p.duration.display.replace(`${NNBSP}Monate`, '')}
-            <span className="a3-hb-unit">{NNBSP}Monate</span>
+            {localizeMoneyText(p.duration.display.replace(`${NNBSP}Monate`, ''), lang)}
+            <span className="a3-hb-unit">{NNBSP}{t('offerPanel.duration.unit')}</span>
           </p>
           <span className="a3-hb-cap">
-            ab OKBP · Fertigstellung {formatDate(p.duration.completionDate)}
+            {/* SB-33: `OKBP` is a protected glossary term (LOCALE-009) and
+                stays literal in every locale — `schedule.completionFromOkbp`
+                (Codex delivery) already translates only the words around
+                it; its plain-language gloss ("Oberkante Bodenplatte") moves
+                into the popover right below rather than inlining on this
+                budget-constrained hero (SIDEBAR 01 authority, not reopened
+                here). */}
+            {t('schedule.completionFromOkbp', { date: formatDate(p.duration.completionDate, lang) })}
             {degradeLevel < 1 && (<>
             {' · '}
             {/* DC-21 durationOrigin: срок — такая же расчётная величина, как
@@ -644,21 +802,24 @@ export function OfferPanel(
                 «дни» и «рабочие дни» это разные числа. */}
             <OriginPopover
               rows={[
-                { label: 'Modellwert exakt', value: p.duration.exactMonths
-                    ? `${formatDE(p.duration.exactMonths, 4)}${NNBSP}Monate` : '—' },
-                { label: 'Anzeigepolitik', value: p.duration.policy === 'halfMonthRounded'
-                    ? 'auf halbe Monate gerundet' : 'ganze Kalendermonate' },
-                { label: 'Dauergrundlage', value: 'Kalendertage' },
-                { label: 'Fertigstellung', value: formatDate(p.duration.completionDate), strong: true },
+                { label: t('panel.exactModelValue'), value: p.duration.exactMonths
+                    ? `${localizeMoneyText(formatDE(p.duration.exactMonths, 4), lang)}${NNBSP}${t('offerPanel.duration.unit')}`
+                    : '—' },
+                { label: t('panel.displayPolicy'), value: p.duration.policy === 'halfMonthRounded'
+                    ? t('panel.roundedHalfMonths') : t('panel.wholeCalendarMonths') },
+                { label: t('panel.durationBasis'), value: t('panel.calendarDays') },
+                { label: 'OKBP', value: t('offerPanel.duration.okbpGloss') },
+                { label: t('s4.row.completion'), value: formatDate(p.duration.completionDate, lang), strong: true },
               ]}
               rounding={p.duration.prefix
-                ? `Anzeige weicht vom Modellwert ab; exakt ${
-                    p.duration.exactMonths ? formatDE(p.duration.exactMonths, 4) : '—'}${NNBSP}Monate`
+                ? t('offerPanel.duration.roundingDisclosure', {
+                    value: `${p.duration.exactMonths
+                      ? localizeMoneyText(formatDE(p.duration.exactMonths, 4), lang) : '—'}`
+                      + `${NNBSP}${t('offerPanel.duration.unit')}`,
+                  })
                 : null}
-              runRef={s.mode === 'intern'
-                ? 'Bauzeit-Methodik · DEMO-SC-01 · Baubeginn aus dem Bauzeitplan'
-                : null}
-              accessibleName={`${t('common.showOrigin')} · Bauzeit`}
+              runRef={s.mode === 'intern' ? t('panel.scheduleMethodRun') : null}
+              accessibleName={`${t('common.showOrigin')} · ${t('offerPanel.heading.duration')}`}
             />
             </>)}
           </span>
@@ -701,23 +862,29 @@ export function OfferPanel(
             того, что произошло до переключения. */}
         {/* Призрак — тот же приём, что у чипа: элемент постоянен, появление
             и уход несёт `.a3-show` контракта, а не framer-motion. Утилита
-            паддинга снята: вид принадлежит системе (NO-VISUAL-UTILITY). */}
-        {s.mode === 'intern' && <div className="a3-ghost-slot">
-          <p className={'a3-ghost numeric' + (s.preview ? ' a3-show' : '')}
+            паддинга снята: вид принадлежит системе (NO-VISUAL-UTILITY).
+            SIDEBAR 03 (SB-30): the DC-28 preview cluster's old class names
+            (bare "ghost", "ghost" + "-slot", "ghost" + "-line") are renamed
+            to `.a3-preview`/`.a3-preview-slot`/`.a3-preview-line` — the old
+            bare class collided with the `.a3-btn.a3-ghost` tertiary button
+            variant (`document.querySelectorAll('.a3-ghost')` returned
+            both). Canonical source: components.css. */}
+        {s.mode === 'intern' && <div className="a3-preview-slot">
+          <p className={'a3-preview numeric' + (s.preview ? ' a3-show' : '')}
              aria-hidden={s.preview ? undefined : true}>
             {shownPreview && (<>
-              {/* Три смысловые строки призрака — `.a3-ghost-line`
+              {/* Три смысловые строки призрака — `.a3-preview-line`
                   контракта: слот резервирует высоту самого высокого
                   состояния (решение TASK-22, вариант 2), и строки обязаны
                   быть объявлены, а не получаться из утилит. */}
-              <span className="a3-ghost-line">
+              <span className="a3-preview-line">
                 {tx('Vorschau')} · {translatedChangeLabel(shownPreview.change, t)}
               </span>
-              <span className="a3-ghost-line">
+              <span className="a3-preview-line">
                 {shownPreview.futureTotal.prefix && (
                   <span aria-hidden="true">{shownPreview.futureTotal.prefix}{NNBSP}</span>
                 )}
-                {shownPreview.futureTotal.display}{NNBSP}€
+                {localizeMoneyText(shownPreview.futureTotal.display, lang)}{NNBSP}€
                 {/* Δ bleibt intern-only (Regel 11: Δ-Werte im
                     Präsentationsmodus ausgeblendet). F05: früher
                     `gegenüber DEMO-VV-0003` — ein fixer Fixture-Bezeichner
@@ -725,13 +892,13 @@ export function OfferPanel(
                     zum aktuellen Stand ist ohne ihn genauso verständlich. */}
                 {s.mode === 'intern' && <>
                   {' · '}
-                  {signed(shownPreview.deltaExact)}{NNBSP}gegenüber aktuellem Stand
+                  {signedOut(shownPreview.deltaExact, lang)}{NNBSP}{t('offerPanel.preview.vsCurrent')}
                 </>}
               </span>
               {/* Неполнота будущего прогона называется, а не подразумевается. */}
               {shownPreview.futureLabel !== 'Gesamt netto · Grundleistung All3' && (
-                <span className="a3-ghost-line">
-                  {tx('Vorschau')} · {shownPreview.futureLabel}
+                <span className="a3-preview-line">
+                  {tx('Vorschau')} · {tx(shownPreview.futureLabel)}
                 </span>
               )}
             </>)}
@@ -756,7 +923,7 @@ export function OfferPanel(
                 {shownDelta.change ? translatedChangeLabel(shownDelta.change, t) : shownDelta.label}
               </span>
               <span className="font-medium">
-                {signed(shownDelta.deltaExact)}
+                {signedOut(shownDelta.deltaExact, lang)}
                 {/* SB-26/AC-11: named only when the total movement actually
                     differs from a single row's own contribution (a cascade
                     happened) — say nothing extra otherwise (progressive
@@ -767,7 +934,7 @@ export function OfferPanel(
                     ложного «(+ 0,00 %)» рядом с реальной ненулевой дельтой
                     строка процента просто отсутствует (rule 30). */}
                 {s.mode === 'intern' && shownDelta.percent !== null
-                  && <> ({signedPercent(shownDelta.percent)})</>}
+                  && <> ({signedPercent(shownDelta.percent, lang)})</>}
               </span>
             </>)}
           </p>
@@ -842,8 +1009,11 @@ export function OfferPanel(
             CANONICAL DESIGN SYSTEM GAP (not fixed by this task, SIDEBAR 03
             owns the rail's canonical contract): `DisclosureRow` has no way
             to style its own cells. */}
-        <section aria-label="Kostenzusammensetzung" className="mt-4">
-          <p className="a3-mtag">{t('offer.costGroups.regionHeading')}</p>
+        {/* SB-29: the section's own `aria-label` is replaced by a real
+            heading (`aria-labelledby`) — the visible caption already below
+            becomes that heading, no new copy, no visual change. */}
+        <section aria-labelledby={compositionHeadingId} className="mt-4">
+          <h3 id={compositionHeadingId} className="a3-mtag">{t('offer.costGroups.regionHeading')}</h3>
           {/* SIDEBAR 02 (backlog 41b8ab39, SB-07): an empty Declared
               Pricing Scope tells the SAME story here as Level 1's own
               `DataStateBlock` above (rule 16/30 `empty`) — reusing the
@@ -892,37 +1062,36 @@ export function OfferPanel(
                             )}
                           </td>
                           <td className="a3-num">
-                            {rowUnpriced ? t('money.priceNotDetermined') : moneyLabel(present(v))}
+                            {rowUnpriced ? t('money.priceNotDetermined') : moneyOut(present(v), lang)}
                           </td>
                           <td className="a3-num">
-                            {rowUnpriced ? '' : <>{v.div(p.result.total.exact).mul(100).toFixed(0)}{NNBSP}%</>}
+                            {rowUnpriced ? '' : percentOut(v.div(p.result.total.exact).mul(100), 0, lang)}
                           </td>
                         </tr>
                         {children.length > 0 && isOpen && (
                           <tr className="a3-kg-child">
                             <td id={childrenId} colSpan={3}>
-                              <ul>
-                                {children.map((d) => {
-                                  const buildingLabel = driverBuildingLabel(s, d.key)
+              <ul>
+                                {/* SB-13 (see `clientSafeContributionRows` above): aggregated in
+                                    Kundenansicht only, once R-25 has stripped the building suffix
+                                    that would otherwise disambiguate two same-label siblings. */}
+                                {clientSafeContributionRows(children, (d) => {
                                   const isExcluded = d.key === 'kg300_excluded_adjustment'
                                     || d.key === 'kg400_excluded_adjustment'
-                                  return (
-                                    <li key={d.key}
-                                        className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
-                                      <span className="text-text-secondary">
-                                        {isExcluded && <>{t('offer.drivers.excludedHeading')}{' · '}</>}
-                                        {translatedDriverLabel(d, t)}
-                                        {/* Task 02 (F-01): names the building a
-                                            per-building row belongs to —
-                                            intern only, never in Kundenansicht. */}
-                                        {buildingLabel && <span className="block text-text-secondary">· {buildingLabel}</span>}
-                                      </span>
-                                      <span className="numeric shrink-0 text-text-primary">
-                                        {signed(d.exact)}
-                                      </span>
-                                    </li>
-                                  )
-                                })}
+                                  return (isExcluded ? `${t('offer.drivers.excludedHeading')} · ` : '')
+                                    + translatedDriverLabel(d, t)
+                                }, s).map((row) => (
+                                  <li key={row.key}
+                                      className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
+                                    <span className="text-text-secondary">
+                                      {row.label}
+                                      {row.buildingLabel && <span className="block text-text-secondary">· {row.buildingLabel}</span>}
+                                    </span>
+                                    <span className="numeric shrink-0 text-text-primary">
+                                      {signedOut(row.exact, lang)}
+                                    </span>
+                                  </li>
+                                ))}
                               </ul>
                             </td>
                           </tr>
@@ -949,10 +1118,10 @@ export function OfferPanel(
                     in KG 300. */}
                 {!riskSurchargeSum.isZero() && (
                   <tr>
-                    <td>{tx('Risikozuschläge')}</td>
-                    <td className="a3-num">{moneyLabel(present(riskSurchargeSum))}</td>
+                    <td>{t('offerPanel.riskSurcharges.label')}</td>
+                    <td className="a3-num">{moneyOut(present(riskSurchargeSum), lang)}</td>
                     <td className="a3-num">
-                      {riskSurchargeSum.div(p.result.total.exact).mul(100).toFixed(0)}{NNBSP}%
+                      {percentOut(riskSurchargeSum.div(p.result.total.exact).mul(100), 0, lang)}
                     </td>
                   </tr>
                 )}
@@ -974,12 +1143,11 @@ export function OfferPanel(
                         `signed()` is already correct and already used
                         for the recap/KG-children rows a few lines above. */}
                     <td className="a3-num">
-                      {signed(p.discountDriver.exact)}
+                      {signedOut(p.discountDriver.exact, lang)}
                     </td>
                     <td className="a3-num">
                       −{NNBSP}
-                      {p.discountDriver.exact.abs().div(p.result.total.exact).mul(100).toFixed(0)}
-                      {NNBSP}%
+                      {percentOut(p.discountDriver.exact.abs().div(p.result.total.exact).mul(100), 0, lang)}
                     </td>
                   </tr>
                 )}
@@ -988,7 +1156,7 @@ export function OfferPanel(
                 <tr className="a3-total">
                   <td>{tx(p.result.totalLabel)}</td>
                   <td className="a3-num" colSpan={2}>
-                    {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(p.result.total)}
+                    {priceUnavailable ? t('money.priceNotDetermined') : moneyOut(p.result.total, lang)}
                   </td>
                 </tr>
               </tbody>
@@ -997,8 +1165,15 @@ export function OfferPanel(
           {/* SB-32/AC-12: extended to also name the % column's own
               independent rounding (real dictionary key, same reason
               `driver.kg300Unresolved` etc. moved off `tx()`'s reverse
-              lookup — this exact longer sentence has no Codex delivery). */}
-          <p className="mt-2 text-small text-text-muted">{t('offer.kgTable.roundingNote')}</p>
+              lookup — this exact longer sentence has no Codex delivery).
+              SB-18: `--color-text-muted` (#8C8C8C, 3,36:1 on white at this
+              14px size — the rail's only AA contrast failure, measured
+              across all 52 leaf nodes) swapped for `--color-text-secondary`
+              (#6B6B6B, 5,47:1 — already passes) at this one instance;
+              `components-core.md` now documents the token's minimum
+              compliant size canonically (SB-21) so the class of defect
+              doesn't recur silently elsewhere. */}
+          <p className="mt-2 text-small text-text-secondary">{t('offer.kgTable.roundingNote')}</p>
           {/* SIDEBAR 01 (backlog eda1e221, SB-03/F-11): a decision or
               excluded-adjustment whose target group's row does not
               currently render (e.g. the group itself was excluded from
@@ -1011,19 +1186,17 @@ export function OfferPanel(
                 <>
                   <p className="a3-mtag">{tx('Im Angebot gewählt')}</p>
                   <ul>
-                    {looseChosen.map((d) => {
-                      const buildingLabel = driverBuildingLabel(s, d.key)
-                      return (
-                        <li key={d.key}
-                            className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
-                          <span className="text-text-secondary">
-                            {translatedDriverLabel(d, t)}
-                            {buildingLabel && <span className="block text-text-secondary">· {buildingLabel}</span>}
-                          </span>
-                          <span className="numeric shrink-0 text-text-primary">{signed(d.exact)}</span>
-                        </li>
-                      )
-                    })}
+                    {/* SB-13: same aggregation as the Level 2 children list above. */}
+                    {clientSafeContributionRows(looseChosen, (d) => translatedDriverLabel(d, t), s).map((row) => (
+                      <li key={row.key}
+                          className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
+                        <span className="text-text-secondary">
+                          {row.label}
+                          {row.buildingLabel && <span className="block text-text-secondary">· {row.buildingLabel}</span>}
+                        </span>
+                        <span className="numeric shrink-0 text-text-primary">{signedOut(row.exact, lang)}</span>
+                      </li>
+                    ))}
                   </ul>
                 </>
               )}
@@ -1031,11 +1204,11 @@ export function OfferPanel(
                 <div className={looseChosen.length > 0 ? 'mt-3 border-t border-border-subtle pt-2' : ''}>
                   <p className="a3-mtag">{t('offer.drivers.excludedHeading')}</p>
                   <ul>
-                    {looseExcluded.map((d) => (
-                      <li key={d.key}
+                    {clientSafeContributionRows(looseExcluded, (d) => translatedDriverLabel(d, t), s).map((row) => (
+                      <li key={row.key}
                           className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
-                        <span className="text-text-secondary">{translatedDriverLabel(d, t)}</span>
-                        <span className="numeric shrink-0 text-text-primary">{signed(d.exact)}</span>
+                        <span className="text-text-secondary">{row.label}</span>
+                        <span className="numeric shrink-0 text-text-primary">{signedOut(row.exact, lang)}</span>
                       </li>
                     ))}
                   </ul>
@@ -1054,7 +1227,10 @@ export function OfferPanel(
             the rail's only scroll owner (SB-19); this content simply keeps
             flowing in the rail's own scroll. */}
         <section aria-label="Nachweise & Verlauf" className="mt-5 border-t border-border-subtle pt-4">
-          <h2 className="text-small font-bold text-text-primary">
+          {/* SB-29: demoted from `h2` to `h3` — it now sits one level under
+              the new rail-root `h2` ("Angebot") instead of being the rail's
+              only heading. No visual change (same classes). */}
+          <h3 className="text-small font-bold text-text-primary">
             <button
               type="button"
               aria-expanded={level3Open}
@@ -1064,7 +1240,7 @@ export function OfferPanel(
               <span aria-hidden="true">{level3Open ? '▾ ' : '▸ '}</span>
               {tx('Nachweise & Verlauf')}
             </button>
-          </h2>
+          </h3>
           {/* SB-07: the driver list is the same "priced contributions
               exist" story as the KG table above — empty scope replaces it
               with the identical empty sentence rather than "10 Beiträge ·
@@ -1077,8 +1253,8 @@ export function OfferPanel(
           {!level3Open && (
             <p className="a3-cap numeric mt-1">
               {scopeEmpty ? t('offerPanel.empty.sentence') : (<>
-                {clientSafeDrivers.length}{NNBSP}{tx('Beiträge · Summe =')}{NNBSP}
-                {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(p.result.total)}
+                {clientSafeDrivers.length}{NNBSP}{t('remainder5.offer.contributionsSum')}{NNBSP}
+                {priceUnavailable ? t('money.priceNotDetermined') : moneyOut(p.result.total, lang)}
               </>)}
             </p>
           )}
@@ -1086,20 +1262,17 @@ export function OfferPanel(
           {scopeEmpty ? (
             <p className="a3-cap">{t('offerPanel.empty.sentence')}</p>
           ) : (<>
-          {/* Шапка бенчмарка (DRIVER-001, CALC-008): фикстура объявляет только
-              ID снапшота — медианы нет, и выдумать её нельзя (R-25), поэтому
-              вывод «x % zur Mediane» честно заменён названной причиной.
-              Бенчмарк — выносной блок контракта (.a3-bmark). */}
-          <p className="a3-bmark numeric">
-            {priceUnavailable
-              ? t('money.priceNotDetermined')
-              : s.mode === 'intern'
-              ? <>{rateLabel(p.secondaryRateBgf)} gegen Snapshot BM-BKI-2026Q1-SYNTH
-                  {' '}(Bundesdurchschnitt, Regionalfaktor inaktiv{NNBSP}·{NNBSP}D-15)
-                  {' '}— nicht vergleichbar: Median im Snapshot nicht deklariert.</>
-              : <>{rateLabel(p.secondaryRateBgf)} · Bundesdurchschnitt;
-                  {' '}Regionalfaktor nicht angewendet. Ein Medianwert ist für diesen Vergleich nicht verfügbar.</>}
-          </p>
+          {/* SIDEBAR 03 (backlog 2be8e69c, SB-12): the mandatory Kostentreiber
+              benchmark (rule 35) used to print a permanent apology plus the
+              internal snapshot id `BM-BKI-2026Q1-SYNTH` in every mode — no
+              calibrated BKI median exists in any fixture/catalog source
+              (confirmed by source search across `src/fixtures/**` and
+              `src/state/catalog.ts`), so making the comparison "truthful"
+              would require inventing a number (forbidden: calculationSensitive
+              =false, rule 16). T04-AC4's own accepted resolution was
+              "truthful or gone" — with no real median to compare against,
+              "gone" is the only compliant choice; removed entirely, both
+              modes, closing the AC that `76f0bd46` left unmet on release. */}
           <div className="a3-tbl-scroll mt-2">
             <table className="a3-driver-table">
               <caption className="sr-only">
@@ -1115,11 +1288,11 @@ export function OfferPanel(
                   )
                   return clientSafeDrivers.map((d) => {
                     const senkt = d.exact.isNegative()
-                    const richtung = senkt ? 'senkt' : 'erhöht'
+                    const richtung = t(senkt ? 'panel.decreased' : 'panel.increased')
                     const shown = present(d.exact.abs())
                     const scopeLabel = d.scopeRefs.length > 0
                       ? d.scopeRefs.join(`${NNBSP}· `)
-                      : 'Zuordnung offen'
+                      : t('panel.allocationUnresolved')
                     // Task 02 (F-01): same building-attribution rule as the
                     // Level 2 group children above — intern-mode only,
                     // never part of `scopeLabel`/`d.scopeRefs` (R-25 stays
@@ -1134,11 +1307,11 @@ export function OfferPanel(
                           {/* Доступное имя строки называет направление словом,
                               округление и точное значение (DRIVER-004). */}
                           <span className="sr-only">
-                            {driverLabel(d.label, d.basis)}
+                            {driverLabel(d, d.basis, t, lang)}
                             {buildingLabel ? `, ${buildingLabel}` : ''}, {richtung},
-                            rund {shown.display} Euro, exakt {formatDE(d.exact.abs(), 2)} Euro
+                            rund {localizeMoneyText(shown.display, lang)} Euro, exakt {localizeMoneyText(formatDE(d.exact.abs(), 2), lang)} Euro
                           </span>
-                          <span aria-hidden="true">{tx(driverLabel(d.label, d.basis))}</span>
+                          <span aria-hidden="true">{driverLabel(d, d.basis, t, lang)}</span>
                           <span aria-hidden="true" className="a3-driver-direction">
                             {richtung}
                             {' · '}
@@ -1161,7 +1334,7 @@ export function OfferPanel(
                               instead of a second, inverted-order
                               composition. */}
                           <span aria-hidden="true">
-                            {signed(d.exact)}
+                            {signedOut(d.exact, lang)}
                           </span>
                           {/* Раскрытие строки — переход к DC-21, а не своё
                               состояние. Настоящая кнопка: невидимый клик по
@@ -1171,15 +1344,15 @@ export function OfferPanel(
                             <OriginPopover
                               triggerLabel="Details"
                               rows={[
-                                ...basisRows(d.basis),
+                                ...basisRows(d.basis, t, lang),
                                 {
-                                  label: `Scope · ${scopeLabel}`,
+                                  label: t('panel.scopeLabel', { scope: scopeLabel }),
                                   value: richtung,
                                   muted: d.scopeRefs.length === 0,
                                 },
                                 {
-                                  label: 'Beitrag exakt',
-                                  value: `${senkt ? '−' : '+'}${NNBSP}${formatDE(d.exact.abs(), 2)}${NNBSP}€`,
+                                  label: t('panel.exactContribution'),
+                                  value: `${senkt ? '−' : '+'}${NNBSP}${localizeMoneyText(formatDE(d.exact.abs(), 2), lang)}${NNBSP}€`,
                                   strong: true,
                                 },
                               ]}
@@ -1192,7 +1365,7 @@ export function OfferPanel(
                               // Buttonliste. Derselbe Text, der schon die
                               // sr-only-Zeile der Zeile selbst benennt
                               // (oben), macht auch diesen Trigger eindeutig.
-                              accessibleName={`Details · ${tx(driverLabel(d.label, d.basis))}`
+                              accessibleName={`Details · ${driverLabel(d, d.basis, t, lang)}`
                                 + (buildingLabel ? `, ${buildingLabel}` : '')}
                             />
                           </span>
@@ -1204,18 +1377,19 @@ export function OfferPanel(
                 {/* Неактивный фактор — строкой (DRIVER-002, CALC-009, D-15):
                     формулировка называет базу применения. 0 € без статуса
                     запрещён; величина из каталога, не из константы экрана. */}
+                {/* SB-14 (localization only — AC-4/PD-2 unchanged: this row's
+                    VISIBILITY in Kundenansicht is exactly as before, only its
+                    text now goes through `t()`). */}
                 {!s.regionalfaktorActive && (
                   <tr className="a3-drv a3-inactive">
                     <td colSpan={3}>
-                      Regionalfaktor Musterland · nicht berücksichtigt — würde{' '}
-                      <span className="numeric">
-                        {priceUnavailable
+                      {t('offer.drivers.regionalInactive', {
+                        amount: priceUnavailable
                           ? t('money.priceNotDetermined')
-                          : moneyLabel(present(
+                          : moneyOut(present(
                             p.result.bauwerk.mul(CATALOG.regionalFactor.value.minus(1)),
-                          ))}
-                      </span>{' '}
-                      auf den Bauwerksblock bedeuten
+                          ), lang),
+                      })}
                     </td>
                   </tr>
                 )}
@@ -1225,7 +1399,7 @@ export function OfferPanel(
                   </th>
                   <td aria-hidden="true" />
                   <td className="a3-val">
-                    {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(p.result.total)}
+                    {priceUnavailable ? t('money.priceNotDetermined') : moneyOut(p.result.total, lang)}
                   </td>
                 </tr>
               </tbody>
@@ -1252,7 +1426,7 @@ export function OfferPanel(
                       {splitKg300(p.kgSplit.KG_300).map((sub) => (
                         <tr key={sub.id} className="a3-kg-child a3-muted">
                           <td>{sub.id.replace('_', NNBSP)} {sub.label} {MARK}</td>
-                          <td className="a3-num">{moneyLabel(present(sub.exact))}</td>
+                          <td className="a3-num">{moneyOut(present(sub.exact), lang)}</td>
                           <td className="a3-num" />
                         </tr>
                       ))}
@@ -1261,6 +1435,19 @@ export function OfferPanel(
                 </div>
               )}
             </div>
+          )}
+          {/* SIDEBAR 03 (backlog 2be8e69c, SB-15): one shared legend for
+              EVERY `⚙` occurrence in the rail (this KG 300 subgroup column
+              above, the composition/driver rows wherever `derivedFx.marker`
+              appears) — D-22 requires the marker itself to travel WITH the
+              value, so it is not stripped from the client profile; it is
+              disclosed once here rather than repeated per row. Core clause
+              only (reused from `derived-prototype.json.provenanceLabel`),
+              not the centre pane's longer sentence — that sentence names
+              "die Angebotsspalte rechts", self-referential if repeated
+              inside the rail itself. */}
+          {hasDerivedMarker && (
+            <p className="a3-cap mt-2">{MARK} {t('offerPanel.derivedMarker.legend')}</p>
           )}
           </>)}
           {/* "Nicht enthalten / noch offen" stays Level-3 (disclosure-
@@ -1272,11 +1459,11 @@ export function OfferPanel(
               not merely undecided ones) — a regression the existing test
               suite (scenario.dom.test.tsx) already guards against. */}
           {notIncluded.length > 0 && (
-            <ClientNotice clientText="Nicht alle Kostengruppen sind Bestandteil dieses Angebots; die Abgrenzung steht in der Leistungsübersicht.">
+            <ClientNotice clientText={t('offerPanel.notIncluded.clientNotice')}>
               <p className="a3-cap mt-2">
                 ▸ {tx('Nicht enthalten / noch offen')}:{' '}
                 {notIncluded.map((g) =>
-                  `${g.replace('_', NNBSP)}${NNBSP}${COVERAGE_SHORT[s.coverage[g]]}`).join(' · ')}
+                  `${g.replace('_', NNBSP)}${NNBSP}${t(COVERAGE_SHORT_KEY[s.coverage[g]])}`).join(' · ')}
               </p>
             </ClientNotice>
           )}
@@ -1291,11 +1478,11 @@ export function OfferPanel(
             {blocked && <div className="a3-warn-prep mb-3">
               <p className="text-small text-text-primary">
                 <span aria-hidden="true">▲ </span>
-                Kundenansicht gesperrt: Klassifikation nach MBO{NNBSP}§2 nicht bestätigt.
+                {t('offer.gate.blocked')}
               </p>
               <div className="mt-2">
                 <Button variant="primary" onClick={() => s.confirmGebaeudeklasse()}>
-                  {tx('Klassifikation bestätigen')}
+                  {t('offer.gate.confirmClassification')}
                 </Button>
               </div>
             </div>}
@@ -1344,7 +1531,7 @@ export function OfferPanel(
                   // benannter, definierter Bezug, keine unbenannte Lücke.
                   : <>{t('offerPanel.journal.priceChangePrefix')}{' '}
                       <span className="numeric font-medium text-text-primary">
-                        {signed(sessionDelta)}
+                        {signedOut(sessionDelta, lang)}
                       </span>{' '}{t('money.net')} · {priceChangeCount}{NNBSP}
                       {priceChangeCount === 1
                         ? t('offerPanel.journal.changeSingular')
@@ -1359,7 +1546,7 @@ export function OfferPanel(
                       <span className="numeric">{e.seq}</span>
                       <span>{e.label}</span>
                       <span className="numeric">
-                        {e.deltaExact ? signed(e.deltaExact) : '—'}
+                        {e.deltaExact ? signedOut(e.deltaExact, lang) : '—'}
                       </span>
                     </li>
                   ))}
@@ -1369,7 +1556,7 @@ export function OfferPanel(
               <div className="mt-2">
                 <Button onClick={() => s.undo()}
                         disabled={!s.canUndo()}
-                        disabledReason="nichts mehr rückgängig zu machen">
+                        disabledReason={t('journal.undoUnavailable')}>
                   {t('common.undo')}
                 </Button>
               </div>
@@ -1399,35 +1586,56 @@ export function OfferPanel(
  * отсутствующем множителе. Единица берётся из основания, а не назначается
  * здесь.
  */
-function basisRows(basis: DriverBasis | null) {
+// SIDEBAR 03 (SB-14): every row label here used to be a hardcoded German
+// literal, invisible to `tx()`'s whole-string lookup once composed with a
+// live value — `basisRows`/`driverLabel` now take `t`/`lang` explicitly
+// (both are module-level, outside the component's hook scope) and route
+// every label through the dictionary (most already exist in the Codex
+// delivery: `panel.appliedTo`, `panel.factor`, `panel.rate`; `panel.
+// quantity` is a local addition for the one composition the delivery
+// doesn't cover). `denom` (`DENOMINATOR_LABEL`) stays a literal glossary
+// term in every locale (LOCALE-009) — only the label AROUND it translates.
+function basisRows(
+  basis: DriverBasis | null,
+  t: (key: string, values?: Record<string, string | number>) => string,
+  lang: UiLanguage,
+) {
   if (!basis) return []
   if (basis.kind === 'factor') {
     return [
-      { label: 'Angewendet auf', value: `${formatDE(basis.appliedTo, 2)}${NNBSP}€` },
-      { label: 'Faktor', value: formatDE(basis.factor, 2) },
+      { label: t('panel.appliedTo'), value: `${localizeMoneyText(formatDE(basis.appliedTo, 2), lang)}${NNBSP}€` },
+      { label: t('panel.factor'), value: localizeMoneyText(formatDE(basis.factor, 2), lang) },
     ]
   }
   const denom = DENOMINATOR_LABEL[basis.denominator]
   return [
-    { label: `Menge · ${denom}`, value: `${formatDE(basis.quantity, 2)}${NNBSP}m²` },
-    { label: 'Satz', value: `${formatDE(basis.rate, 2)}${NNBSP}€/m²` },
+    { label: t('panel.quantity', { denominator: denom }), value: `${localizeMoneyText(formatDE(basis.quantity, 2), lang)}${NNBSP}m²` },
+    { label: t('panel.rate'), value: `${localizeMoneyText(formatDE(basis.rate, 2), lang)}${NNBSP}€/m²` },
   ]
 }
 
 function driverLabel(
-  engineLabel: string,
+  d: Pick<Driver, 'key' | 'label'>,
   basis: DriverBasis | null,
+  t: (key: string, values?: Record<string, string | number>) => string,
+  lang: UiLanguage,
 ): string {
+  // Base identity through the same structural, key-based lookup the Level 2
+  // children list already uses (`translatedDriverLabel`, clientProjection.
+  // ts) — replaces the old `tx(engineLabel)` whole-string reverse lookup,
+  // which never matched once the quantity/rate suffix below was appended
+  // to it before translation was attempted.
+  const base = translatedDriverLabel(d, t)
   // Суффикс «количество × ставка» выводится ИЗ ОСНОВАНИЯ вклада, а не по
   // списку ключей. Прежняя редакция перечисляла два ключа поимённо и брала
   // ставку из каталога напрямую — второй источник той же величины, который
   // разошёлся бы при первой правке ставки и промолчал бы о третьем ключе.
   if (basis?.kind === 'rate') {
-    return `${engineLabel} · ${formatDE(basis.quantity, 2)}${NNBSP}m² × `
-      + `${formatDE(basis.rate, 0)}${NNBSP}€/m²${NNBSP}`
+    return `${base} · ${localizeMoneyText(formatDE(basis.quantity, 2), lang)}${NNBSP}m² × `
+      + `${localizeMoneyText(formatDE(basis.rate, 0), lang)}${NNBSP}€/m²${NNBSP}`
       + DENOMINATOR_LABEL[basis.denominator]
   }
-  return engineLabel
+  return base
 }
 
 /**
@@ -1449,14 +1657,26 @@ export function signed(d: Decimal): string {
   return `${pr.prefix ? pr.prefix + NNBSP : ''}${sign}${NNBSP}${pr.display}${NNBSP}€`
 }
 
-function signedPercent(d: Decimal): string {
+function signedPercent(d: Decimal, lang: UiLanguage): string {
   const rounded = d.toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
   const differs = !rounded.equals(d)
   const sign = d.isNegative() ? '−' : '+'
-  return `${sign}${NNBSP}${differs ? '≈' + NNBSP : ''}${formatDE(rounded.abs(), 2)}${NNBSP}%`
+  const suffix = lang === 'de' ? `${NNBSP}%` : '%'
+  return `${sign}${NNBSP}${differs ? '≈' + NNBSP : ''}`
+    + `${localizeMoneyText(formatDE(rounded.abs(), 2), lang)}${suffix}`
 }
 
-function formatDate(iso: string): string {
+/**
+ * SIDEBAR 03 (SB-14): `de` keeps the existing `DD.MM.YYYY` display exactly
+ * as before (zero regression risk to already-passing DE behaviour); `en`
+ * formats the same ISO date through `Intl.DateTimeFormat` instead of
+ * reusing the DE-ordered digits — no rounding/precision decision is
+ * involved in a calendar date, so this is not a `src/engine/**` concern.
+ */
+function formatDate(iso: string, lang: UiLanguage): string {
   const [y, m, d] = iso.split('-')
-  return `${d}.${m}.${y}`
+  if (lang !== 'en') return `${d}.${m}.${y}`
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  }).format(new Date(`${y}-${m}-${d}T00:00:00Z`))
 }
