@@ -512,7 +512,12 @@ export function OfferPanel(
     d.key !== 'kg300_excluded_adjustment' && d.key !== 'kg400_excluded_adjustment')
   const excludedAdjustments = decisions.filter((d) =>
     d.key === 'kg300_excluded_adjustment' || d.key === 'kg400_excluded_adjustment')
-  const notIncluded = (Object.keys(s.coverage) as CostGroup[]).filter(
+  // #16 Part 13: KG 800 is permanently `excluded` (dormant, never a real
+  // Scope Boundaries decision any more) and must have zero footprint in
+  // this sidebar, including this notice — `SCOPE_BOUNDARIES_DECIDABLE_GROUPS`
+  // is the same six-group authority `isScopeUniverseEmpty`/the completeness
+  // line above already use, and it already excludes KG 800 by construction.
+  const notIncluded = SCOPE_BOUNDARIES_DECIDABLE_GROUPS.filter(
     (g) => ['unknown', 'onRequest', 'excluded'].includes(s.coverage[g]),
   )
 

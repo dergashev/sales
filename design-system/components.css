@@ -878,7 +878,18 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    §RadioCardGroup: missing/too-narrow media falls back to the text
    contract, unchanged, out of this ticket's scope) or the aspect-ratio/
    object-fit/crop contract itself.*/
-.a3-okc-tile .a3-option-media{display:none;width:calc(100% + (var(--space-4) + var(--border-width-strong)) * 2);aspect-ratio:4/3;object-fit:cover;margin:calc(-1 * (var(--space-4) + var(--border-width-strong))) calc(-1 * (var(--space-4) + var(--border-width-strong))) var(--space-3);background:var(--color-surface-canvas)}
+/* #16 Part 18 (live Playwright finding, cycle-2): the border-width-corrected
+   bleed math above was still neutralized in the browser — a global
+   `img{max-width:100%}` reset (Tailwind preflight) caps ANY `width:calc(100%
+   + Npx)` back down to exactly 100% of the containing block regardless of
+   the formula, since `max-width` always wins when smaller than `width`. The
+   deliberately-oversized bleed width needs `max-width:none` to actually take
+   effect; without it every option-card image silently reverts to flush with
+   the tile's CONTENT edge (padding still visible) instead of its BORDER
+   edge — measured live: 452px rendered vs. the intended 488px on a 488px
+   tile, a 36px gap on the right/bottom exactly matching the uncancelled
+   padding+border. */
+.a3-okc-tile .a3-option-media{display:none;width:calc(100% + (var(--space-4) + var(--border-width-strong)) * 2);max-width:none;aspect-ratio:4/3;object-fit:cover;margin:calc(-1 * (var(--space-4) + var(--border-width-strong))) calc(-1 * (var(--space-4) + var(--border-width-strong))) var(--space-3);background:var(--color-surface-canvas)}
 .a3-okc-tile .a3-option-media[hidden]{display:none}
 .a3-okc-tile:hover{border-color:var(--color-text-primary)}
 /* F10/F19: `.a3-okc-tile` is a `<label>` wrapping a native `<input
