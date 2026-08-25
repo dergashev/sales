@@ -258,6 +258,61 @@ describe('proposal store recovery', () => {
     expect(st().projection().result.completeness).toBe('complete')
   })
 
+  it('reverts a legacy `kg700ModeAutoFallback:true` payload to `vereinfacht` on load, not stuck in `hoaiAho` (Tech Lead rework, ticket #16)', () => {
+    const storage = new MemoryStorage()
+    initializeProposalPersistence(storage)
+    const st = () => useStore.getState()
+    st().confirmGebaeudeklasse()
+
+    const key = proposalStorageKey('DEMO-0001')
+    const envelope = JSON.parse(storage.getItem(key)!) as {
+      payload: {
+        active: {
+          coverage: Record<string, string>
+          kg700Mode: string
+          kg700ModeAutoFallback?: boolean
+        }
+      }
+    }
+    // Simulate a payload saved before this ticket, when KG 300 could still
+    // be excluded through `setCoverage` and D-07 rule 6's now-deleted
+    // runtime branch had auto-switched the project to `hoaiAho`.
+    envelope.payload.active.coverage.KG_300 = 'excluded'
+    envelope.payload.active.kg700Mode = 'hoaiAho'
+    envelope.payload.active.kg700ModeAutoFallback = true
+
+    __resetStoreForTests()
+    const legacyStorage = new MemoryStorage()
+    legacyStorage.setItem(key, JSON.stringify(envelope))
+    expect(hydrateProposalState(legacyStorage)).toBe(true)
+
+    // KG 300 is mandatory now (migrateCoverage) — the very condition the
+    // deleted runtime revert branch required before switching back.
+    expect(st().coverage.KG_300).toBe('included')
+    // The stale auto-fallback flag must not leave the project stuck
+    // computing KG 700 via `hoaiAho` forever with no way to self-correct.
+    expect(st().kg700Mode).toBe('vereinfacht')
+    expect(st().kg700ModeAutoFallback).toBe(false)
+  })
+
+  it('leaves a deliberately chosen `hoaiAho` (no auto-fallback) untouched on load', () => {
+    const storage = new MemoryStorage()
+    initializeProposalPersistence(storage)
+    const st = () => useStore.getState()
+    st().confirmGebaeudeklasse()
+    st().setKg700Mode('hoaiAho')
+
+    const raw = storage.getItem(proposalStorageKey('DEMO-0001'))!
+    expect(raw).toContain('"kg700Mode":"hoaiAho"')
+
+    __resetStoreForTests()
+    const restoredStorage = new MemoryStorage()
+    restoredStorage.setItem(proposalStorageKey('DEMO-0001'), raw)
+    expect(hydrateProposalState(restoredStorage)).toBe(true)
+    expect(st().kg700Mode).toBe('hoaiAho')
+    expect(st().kg700ModeAutoFallback).toBe(false)
+  })
+
   it('defaults pre-boundary candidate payloads to pricing not started', () => {
     const storage = new MemoryStorage()
     initializeProposalPersistence(storage)

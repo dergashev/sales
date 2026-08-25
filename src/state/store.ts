@@ -527,6 +527,31 @@ function migrateCoverage(coverage: Coverage): Coverage {
 }
 
 /**
+ * Tech Lead rework (cycle 3, review of d6db7b5c): `setCoverage`'s D-07
+ * revert branch (`hoaiAho` -> `vereinfacht` once both core KGs are
+ * re-included) was correctly deleted above — KG_300/400 can never be
+ * excluded through `setCoverage` any more, so the branch is unreachable
+ * there. But a payload persisted BEFORE this ticket can still carry
+ * `kg700ModeAutoFallback: true` from having once excluded a core group
+ * pre-ticket. Coverage is now unconditionally migrated to include both
+ * core groups (`migrateCoverage` above) — exactly the condition the
+ * deleted runtime branch required before it would revert — so a legacy
+ * `true` flag is now, by construction, always stale: it must revert here,
+ * once, at load, or the project stays stuck computing KG 700 via
+ * `hoaiAho` forever with no way to self-correct, silently inflating the
+ * printed EUR total by KG 700's own AHO/HOAI-vs-vereinfacht delta.
+ */
+function migrateKg700Mode(persisted: {
+  kg700Mode: Store['kg700Mode']
+  kg700ModeAutoFallback?: boolean
+}): { kg700Mode: Store['kg700Mode']; kg700ModeAutoFallback: boolean } {
+  if (persisted.kg700ModeAutoFallback === true) {
+    return { kg700Mode: 'vereinfacht', kg700ModeAutoFallback: false }
+  }
+  return { kg700Mode: persisted.kg700Mode, kg700ModeAutoFallback: false }
+}
+
+/**
  * #16 Part 8: `storeyStructure` shrank from a per-kind UG/EG/OG/SG
  * breakdown to a single count. A payload persisted before this change
  * already passed `isBuildingReview` (the validator accepts either shape,
@@ -1033,9 +1058,11 @@ function restoredOptionConfig(
       persisted.scopeCatalogQuantities ?? base.scopeCatalogQuantities,
     kg800ClientRevealed: persisted.kg800ClientRevealed === true,
     configurationModeChosen: persisted.configurationModeChosen === true,
-    // Absent in payloads saved before this fix: treat as "not an auto
-    // fallback" so an old candidate is never retroactively auto-reverted.
-    kg700ModeAutoFallback: persisted.kg700ModeAutoFallback === true,
+    // Overrides the raw `kg700Mode`/`kg700ModeAutoFallback` pass-through
+    // above: a legacy `kg700ModeAutoFallback: true` must revert to
+    // `vereinfacht` here, once, since the runtime revert path that used to
+    // do this was removed (`migrateKg700Mode` above; Tech Lead rework).
+    ...migrateKg700Mode(persisted),
     pricingStarted: persisted.pricingStarted === true,
     configurationVisitedChapters,
     scopeBoundariesConfirmedFingerprint:
