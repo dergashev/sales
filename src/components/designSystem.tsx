@@ -3,10 +3,12 @@ import {
   Fragment,
   isValidElement,
   useId,
+  useRef,
   useState,
   type AnchorHTMLAttributes,
   type ButtonHTMLAttributes,
   type HTMLAttributes,
+  type KeyboardEvent,
   type ReactElement,
   type ReactNode,
   type Ref,
@@ -444,6 +446,112 @@ export function NextStep({ label, description, action, onAction }: {
         <Button variant="primary" onClick={onAction}>{action}</Button>
       </div>
     </div>
+  )
+}
+
+export type WorkflowStepState = 'done' | 'attention' | 'blocked'
+
+export type WorkflowStep = {
+  id: string
+  number: number
+  title: string
+  /** Visible state text (DC-13 STEP-002) — the marker only duplicates it. */
+  stateText: string
+  state: WorkflowStepState
+  current: boolean
+  onOpen: () => void
+}
+
+/**
+ * DC-13 canonical `WorkflowStepper` (`STEP-001…007`, `KEY-003`, `TABS-001`).
+ * Promoted out of `OpportunityCard.tsx`'s former hand-rolled
+ * `ReadinessOverview` per `docs/audit/design-system-governance.md`
+ * DS-GOV-EX-07's own follow-up: this closes the "no canonical React source"
+ * half of the exception for its first consumer. `Sidebar.tsx`'s vertical
+ * `.a3-chapters` anatomy is a separate, deliberately untouched consumer this
+ * cycle — migrating it is a materially larger, unrelated regression surface
+ * than this ticket owns — so the exception record stays open until both
+ * render this component; see the governance doc's removal condition.
+ *
+ * A `blocked` step is a REAL lock (STEP-003, CLAUDE.md rule 12): it stays
+ * keyboard-reachable via roving tabindex (never native `disabled`) and its
+ * own visible state text IS the exposed reason (`aria-describedby`), but
+ * activating it does not navigate — the same no-op-on-activation pattern
+ * `CheckboxCard`'s `mandatory` prop already uses for a toggle, applied here
+ * to navigation instead.
+ */
+export function WorkflowStepper({ label, steps, orientation = 'horizontal' }: {
+  label: string
+  steps: ReadonlyArray<WorkflowStep>
+  orientation?: 'horizontal' | 'vertical'
+}) {
+  const t = useT()
+  const listRef = useRef<HTMLOListElement>(null)
+  const [focusIdx, setFocusIdx] = useState(0)
+  const reasonId = useId()
+
+  const moveFocus = (next: number) => {
+    setFocusIdx(next)
+    listRef.current?.querySelectorAll<HTMLButtonElement>('button')[next]?.focus()
+  }
+  const onKey = (e: KeyboardEvent<HTMLOListElement>) => {
+    const len = steps.length
+    const forwardKey = orientation === 'vertical' ? 'ArrowDown' : 'ArrowRight'
+    const backwardKey = orientation === 'vertical' ? 'ArrowUp' : 'ArrowLeft'
+    const next = e.key === forwardKey ? (focusIdx + 1) % len
+      : e.key === backwardKey ? (focusIdx - 1 + len) % len
+        : e.key === 'Home' ? 0
+          : e.key === 'End' ? len - 1
+            : null
+    if (next === null) return
+    e.preventDefault()
+    moveFocus(next)
+  }
+
+  return (
+    <nav aria-label={label}>
+      <ol
+        ref={listRef}
+        className={'a3-workflow-stepper' + (orientation === 'vertical' ? ' a3-wf-vertical' : '')}
+        onKeyDown={onKey}
+      >
+        {steps.map((step, i) => {
+          const locked = step.state === 'blocked'
+          const textId = `${reasonId}-${step.id}`
+          return (
+            <li key={step.id} className="a3-wf-item">
+              <button
+                type="button"
+                onClick={() => { setFocusIdx(i); if (!locked) step.onOpen() }}
+                onFocus={() => setFocusIdx(i)}
+                aria-current={step.current ? 'step' : undefined}
+                aria-disabled={locked ? true : undefined}
+                aria-describedby={textId}
+                tabIndex={focusIdx === i ? 0 : -1}
+                className={'a3-wf-step relative flex min-h-hit-target w-full items-center gap-3 text-left outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring'
+                  + (step.state === 'done' ? ' a3-wf-done' : '')
+                  + (step.current ? ' a3-wf-cur' : '')
+                  + (locked ? ' a3-wf-locked' : '')}
+              >
+                <span className="a3-wf-n numeric shrink-0">
+                  <span aria-hidden="true">{step.number}</span>
+                  <span className="sr-only">
+                    {t('oppcard.stepPosition', { n: step.number, total: steps.length })}
+                  </span>
+                </span>
+                <span aria-hidden="true" className="w-4 shrink-0">
+                  {step.state === 'done' ? '✓' : locked ? '○' : ATTENTION_MARK}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-body text-text-primary">{step.title}</span>
+                  <span id={textId} className="a3-cap block">{step.stateText}</span>
+                </span>
+              </button>
+            </li>
+          )
+        })}
+      </ol>
+    </nav>
   )
 }
 

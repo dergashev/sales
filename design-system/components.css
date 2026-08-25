@@ -557,6 +557,39 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    on all three classes so it always wins regardless of rule order. */
 .a3-ch.a3-cur.a3-done .a3-n{background:var(--color-dataviz-category-2);border-color:var(--color-dataviz-category-2);color:var(--color-surface-default);box-shadow:0 0 0 var(--border-width-strong) var(--color-selection-border)}
 
+/* DC-13 · WorkflowStepper (canonical, `src/components/designSystem.tsx`).
+   "Rebuild Project Card Workflow" (#16) promotes the Opportunity Card's
+   readiness overview out of the hand-rolled `.a3-chapters` anatomy above —
+   that anatomy stays exactly as-is for `Sidebar.tsx`'s vertical Configurator
+   chapter nav (DS-GOV-EX-07 keeps both consumers open until Sidebar migrates
+   too; not this ticket's scope). Horizontal by default (row, wraps at
+   narrow widths); `.a3-wf-vertical` gives the same anatomy a column layout
+   for future canonical reuse.
+   Structure: .a3-workflow-stepper > .a3-wf-item > .a3-wf-step > .a3-wf-n.
+   Classes: .a3-workflow-stepper · .a3-wf-vertical · .a3-wf-item · .a3-wf-step ·
+   .a3-wf-n · .a3-wf-done · .a3-wf-cur · .a3-wf-locked. */
+.a3-workflow-stepper{display:flex;flex-wrap:wrap;gap:var(--space-2);list-style:none;margin:0;padding:0}
+.a3-workflow-stepper.a3-wf-vertical{flex-direction:column;flex-wrap:nowrap;max-width:var(--measure-card-compact)}
+.a3-wf-item{flex:1 1 12rem;min-width:0}
+.a3-workflow-stepper.a3-wf-vertical .a3-wf-item{flex:none}
+.a3-wf-step{display:flex;gap:var(--space-3);align-items:center;width:100%;padding:var(--space-3) var(--space-4);border:var(--border-hairline);border-top:var(--border-width-strong) solid transparent;background:var(--color-surface-default)}
+.a3-workflow-stepper.a3-wf-vertical .a3-wf-step{border-top:var(--border-hairline);border-left:var(--border-width-strong) solid transparent}
+/* Same 3:1 non-text/graphical-object reasoning as `.a3-ch .a3-n` above — the
+   numeral is `aria-hidden`, its accessible replacement is the full "Schritt
+   N von M" sentence. */
+.a3-wf-step .a3-wf-n{width:var(--size-chapter-marker);height:var(--size-chapter-marker);border-radius:50%;border:var(--border-default);display:inline-flex;align-items:center;justify-content:center;font-size:var(--type-caption-size);flex:none}
+.a3-wf-step.a3-wf-done .a3-wf-n{background:var(--color-dataviz-category-2);border-color:var(--color-dataviz-category-2);color:var(--color-surface-default)}
+.a3-wf-step.a3-wf-cur{border-top-color:var(--color-selection-border);background:var(--color-surface-selected);font-weight:var(--type-label-weight)}
+.a3-workflow-stepper.a3-wf-vertical .a3-wf-step.a3-wf-cur{border-left-color:var(--color-selection-border);border-top-color:var(--border-hairline)}
+.a3-wf-step.a3-wf-cur .a3-wf-n{background:var(--color-selection-border);border-color:var(--color-selection-border);color:var(--color-surface-default)}
+.a3-wf-step.a3-wf-cur.a3-wf-done .a3-wf-n{background:var(--color-dataviz-category-2);border-color:var(--color-dataviz-category-2);color:var(--color-surface-default);box-shadow:0 0 0 var(--border-width-strong) var(--color-selection-border)}
+/* Locked (real gate, STEP-003/rule 12): never colour-only — the hollow ring
+   marker pairs with the muted title/state text, and the state text itself is
+   the exposed reason (`aria-describedby`), not a colour cue. */
+.a3-wf-step.a3-wf-locked{cursor:default}
+.a3-wf-step.a3-wf-locked .a3-wf-n{color:var(--color-text-muted)}
+.a3-wf-step.a3-wf-locked .text-text-primary{color:var(--color-text-muted)}
+
 /* DC-6 · OptionImpactPreview. Structure: .a3-folgen > title + ul + action row.
    Classes: .a3-folgen. */
 .a3-folgen{border:var(--border-hairline);background:var(--color-surface-canvas);padding:var(--space-4);max-width:var(--measure-component)}

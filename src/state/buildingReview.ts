@@ -13,14 +13,16 @@ export type BuildingFact<T> = {
   override: { value: T; at: string; actor: string } | null
 }
 
-export type StoreyKind = 'UG' | 'EG' | 'OG' | 'SG'
-
 /**
- * Semantic floors are explicit, so `UG + EG + 3 OG + SG` can be preserved
- * without pretending that an undifferentiated floor count proves the split.
+ * Pre-#16 ("Rebuild Project Card Workflow" Part 8) per-kind UG/EG/OG/SG
+ * breakdown. No longer the user-facing shape — retained ONLY so persisted
+ * state saved before this change still validates and can be migrated
+ * (`migrateStoreyStructureFactValue` below) rather than rejected outright.
+ * Never construct one; never expose it in the UI again.
  */
-export type StoreyStructure = {
-  levels: Array<{ kind: StoreyKind; count: number }>
+type LegacyStoreyKind = 'UG' | 'EG' | 'OG' | 'SG'
+type LegacyStoreyStructure = {
+  levels: Array<{ kind: LegacyStoreyKind; count: number }>
   context: string | null
 }
 
@@ -42,7 +44,13 @@ export type BuildingFactValueMap = {
   wfl: Decimal
   nuf: Decimal
   units: Decimal
-  storeyStructure: StoreyStructure
+  /**
+   * Single user-facing storey count (#16 Part 8) — replaces the former
+   * per-kind UG/EG/OG/SG breakdown. `Untergeschoss` (basement construction
+   * scope, a pricing axis) is a separate, unrelated field
+   * (`BuildingReview.engine.undergroundScope`) and stays untouched.
+   */
+  storeyStructure: Decimal
 }
 
 export const BUILDING_FACT_KEYS = [
@@ -72,7 +80,7 @@ export type ReviewedBuildingInput = BuildingInput & {
   wfl: Decimal | null
   nuf: Decimal | null
   units: Decimal | null
-  storeyStructure: StoreyStructure | null
+  storeyStructure: Decimal | null
 }
 
 export type BuildingConflictCandidate = {
@@ -498,12 +506,32 @@ function isFactSource(value: unknown): value is FactSource {
     && typeof value.reference === 'string'
 }
 
-function isStoreyStructure(value: unknown): value is StoreyStructure {
+function isLegacyStoreyStructure(value: unknown): value is LegacyStoreyStructure {
   if (!isRecord(value) || !Array.isArray(value.levels)) return false
   if (value.context !== null && typeof value.context !== 'string') return false
   return value.levels.every((level) => isRecord(level)
     && (level.kind === 'UG' || level.kind === 'EG' || level.kind === 'OG' || level.kind === 'SG')
     && typeof level.count === 'number' && Number.isInteger(level.count) && level.count > 0)
+}
+
+/**
+ * One-time, lossless migration (#16 Part 8, Design cycle-2 delta note):
+ * sums a legacy per-kind UG/EG/OG/SG breakdown into the single storey count
+ * this fact now holds — aggregation of already-confirmed data, not a guess.
+ * The forbidden direction is the reverse (inventing a UG/EG/OG/SG split
+ * from one number), which this function never does.
+ *
+ * Returns the value unchanged when it is already the current shape (a
+ * `Decimal`), and `null` for `null`/unrecognised input — the same
+ * clear-and-fallback discipline `migrateCoverage` (`store.ts`) uses for a
+ * sibling persisted-state shape change.
+ */
+export function migrateStoreyStructureFactValue(value: unknown): Decimal | null {
+  if (value === null) return null
+  if (Decimal.isDecimal(value)) return value
+  if (!isLegacyStoreyStructure(value)) return null
+  const total = value.levels.reduce((sum, level) => sum + level.count, 0)
+  return new Decimal(total)
 }
 
 function isFactValue(key: BuildingFactKey, value: unknown): boolean {
@@ -517,7 +545,10 @@ function isFactValue(key: BuildingFactKey, value: unknown): boolean {
     case 'buildingClass':
       return value === 'GK_1_3' || value === 'GK_4' || value === 'GK_5'
     case 'storeyStructure':
-      return isStoreyStructure(value)
+      // Accept the legacy shape too so a payload saved before #16 is not
+      // rejected outright — `migrateStoreyStructureFactValue` normalizes it
+      // when the persisted state is actually restored (`store.ts`).
+      return Decimal.isDecimal(value) || isLegacyStoreyStructure(value)
     default:
       return Decimal.isDecimal(value)
   }

@@ -416,11 +416,14 @@ describe('Сквозной сценарий продажи', () => {
     expect(screen.queryByRole('group', { name: /Bereitschaft/ })).not.toBeInTheDocument()
     const overview = screen.getByRole('navigation', { name: 'Projektstatus' })
     expect(within(overview).getAllByText('Strittige Angaben')).not.toHaveLength(0)
-    expect(within(overview).getByText('Projekt bestätigen')).toBeInTheDocument()
+    expect(within(overview).getByText('Projektgrundlage')).toBeInTheDocument()
     const create = screen.getByRole('button', { name: 'Opportunity Option anlegen' })
     expect(create).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getByText('Erst Konflikte entscheiden und Projektparameter bestätigen'))
-      .toBeInTheDocument()
+    // #16's Projektstatus-Stepper now echoes the same reason text next to
+    // the create-button's own explanation — resolved via the button's own
+    // `aria-describedby` rather than an ambiguous text match.
+    const explanation = document.getElementById(create.getAttribute('aria-describedby')!)!
+    expect(explanation).toHaveTextContent('Erst Konflikte entscheiden und Projektparameter bestätigen')
     expect(document.querySelector('svg, .a3-ring')).toBeNull()
   })
 

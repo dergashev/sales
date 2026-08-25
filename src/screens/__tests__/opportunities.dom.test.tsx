@@ -110,9 +110,15 @@ describe('Уровень Opportunities', () => {
       return
     }
 
-    const explanation = screen.getByText(reason)
+    // #16's own Projektstatus-Stepper now echoes the very same reason text
+    // (Project Baseline/Opportunity Options stateText) — `getByText` would
+    // be ambiguous, so the explanation is resolved via the button's OWN
+    // `aria-describedby`, not by matching the reason string in the DOM.
     expect(create).toHaveAttribute('aria-disabled', 'true')
-    expect(create).toHaveAttribute('aria-describedby', explanation.id)
+    const explanationId = create.getAttribute('aria-describedby')
+    expect(explanationId).toBeTruthy()
+    const explanation = document.getElementById(explanationId!)!
+    expect(explanation).toHaveTextContent(reason)
     if (!conflictResolved) {
       expect(screen.getByRole('button', { name: 'Kundenwert übernehmen' })).toBeInTheDocument()
     }
@@ -172,6 +178,10 @@ describe('Уровень Opportunities', () => {
     render(<App />)
     await user.click(screen.getByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
 
+    // #16 Part 5/AC-07: Internal Note ist keine primäre Workflow-Stufe mehr —
+    // der EINZIGE Einstieg ist jetzt der Header-Utility-Button, der den
+    // kanonischen `Dialog` öffnet.
+    await user.click(screen.getByRole('button', { name: 'Interne Notiz' }))
     const field = screen.getByRole('textbox', { name: /Interne Notiz/ })
     // Нейтральный статус — ЯСНЫЙ ТЕКСТ, не необъяснённая точка (NOTE-007).
     expect(screen.getByText(/noch keine Änderungen/)).toBeInTheDocument()
@@ -209,7 +219,9 @@ describe('Уровень Opportunities', () => {
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
 
-    // In der Kundenansicht existiert die Notiz nicht im DOM.
+    // In der Kundenansicht existiert die Notiz nicht im DOM — nicht einmal
+    // ihr Einstiegspunkt (NOTE-006: nicht versteckt, sondern nicht vorhanden).
+    expect(screen.queryByRole('button', { name: 'Interne Notiz' })).toBeNull()
     expect(screen.queryByRole('textbox', { name: /Interne Notiz/ })).toBeNull()
     expect(document.body.textContent).not.toContain('HubSpot-Projektkarte')
   })

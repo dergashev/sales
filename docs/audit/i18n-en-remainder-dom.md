@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 50** · перевод есть, мост не подключён: 24
-· перевода нет (в поставку копирайта): 26
+**Всего 44** · перевод есть, мост не подключён: 24
+· перевода нет (в поставку копирайта): 20
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -45,25 +45,19 @@ Mit freundlichen Grüßen
 - % auf ±
 - Bereit zum Anlegen
 - Bestätigt
-- Bestätigung erforderlich · blockiert das Anlegen einer Opportunity Option
-- Blockiert das Anlegen einer Opportunity Option nicht
 - Die folgenden Auswahlmöglichkeiten sind bereits auf diesen Standard abgestimmt.
 - Diese 1 Frage reduziert die Schätzunsicherheit von ±
 - Druckansicht öffnen
 - Eigenes Ausgabeprofil für die Druckausgabe mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.
 - Ein Dokument ist nicht lesbar · blockiert das Anlegen einer Opportunity Option nicht
-- Entscheidung erforderlich · blockiert das Anlegen einer Opportunity Option
+- Entscheidung erforderlich · blockiert die Projektgrundlage
 - Fragen reduzieren die Schätzunsicherheit von ±
 - Konfiguration je Gebäude bestätigt
 - Planung ist Projektgröße, Ausführung gehört zum Gebäude — deshalb mehrere Zeilen und nicht eine. Die Fertigstellung ist dieselbe Zahl, die oben rechts als Kennzahl steht.
-- Projekt bestätigen
-- Projektübersicht
 - Später entscheiden
 - Texte stammen aus den Fallback-Regeln; das Wertfeld (z. B. die Gebäudeklasse) wird mit dem Projektwert belegt — der Regeltext nennt einen Beispielwert. Eine Empfehlung verschwindet, sobald der Wert erfasst ist — die Liste wird abgeleitet, nicht gepflegt.
 - Tiefgarage im Untergeschoss enthalten.
 - Total BGF (S, nicht umschlossen)
 - Total WFL nach WoFlV geändert
 - Verschiebt die Termine unten; die Bauzeit selbst bleibt gleich.
-- Vorläufig · Strittige Angaben noch offen
-- Wartet auf die Voraussetzungen oben
 - Δ-Werte erscheinen nur hier und nie in der Kundenansicht (Regel 11)

@@ -69,7 +69,7 @@ describe('KG 300 subgroup labels translate in EN + Kundenansicht (AC-1/AC-2)', (
     // the clicks above keep matching regardless of when the toggle fires.
     await user.click(screen.getAllByRole('radio', { name: 'EN' })[0]!)
 
-    await user.click(screen.getByRole('button', { name: /Nachweise & Verlauf/ }))
+    await user.click(screen.getByRole('button', { name: 'Show all details' }))
     await user.click(screen.getByRole('button', { name: 'KG 300 subgroups' }))
 
     const rendered = document.body.textContent ?? ''

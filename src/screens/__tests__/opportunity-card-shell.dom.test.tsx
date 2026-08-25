@@ -73,35 +73,35 @@ describe('Project Card — шапка и обзор готовности', () =>
     expect(within(breadcrumbInOption).queryByText(/OPT-01/)).not.toBeInTheDocument()
   })
 
-  it('обзор готовности называет все шесть стадий (Task 01: konsolidierte Vorbereitung) и держит ровно один текущий шаг', async () => {
+  it('обзор готовности называет ровно четыре канонические стадии (#16 Part 1) и держит ровно один текущий шаг', async () => {
     const user = userEvent.setup()
     await openProjectCard(user)
 
-    // Task 01 (deep-coherence audit): the four-stage overview grows to the
-    // accepted canonical six-stage preparation sequence, absorbing what used
-    // to be the separate "· Vorbereitung" workspace — this IS the one
-    // progress model (AC2), there is no second stepper any more.
+    // #16 "Rebuild Project Card Workflow" supersedes Task 01's six always-
+    // open informational stages with FOUR stages and a real per-stage lock
+    // (AC-03): Document Analysis → Conflicting Information → Project
+    // Baseline → Opportunity Options. All Task 01 section content stays on
+    // the one page (AC2 there) — only the stepper's own stage count and
+    // lock semantics change here.
     const overview = screen.getByRole('navigation', { name: 'Projektstatus' })
     const steps = within(overview).getAllByRole('button')
-    expect(steps).toHaveLength(6)
+    expect(steps).toHaveLength(4)
     expect(steps.map((s) => s.textContent)).toEqual([
       expect.stringContaining('Dokumentanalyse'),
       expect.stringContaining('Strittige Angaben'),
-      expect.stringContaining('Offene Fragen & Annahmen'),
-      expect.stringContaining('Projektübersicht'),
-      expect.stringContaining('Projekt bestätigen'),
+      expect.stringContaining('Projektgrundlage'),
       expect.stringContaining('Opportunity Options'),
     ])
 
     // Позиция — ЦЕЛОЙ ФРАЗОЙ для скринридера (DC-13, Screen-reader-Klausel
-    // «Schritt 3 von 6»), а не одной цифрой; видимой остаётся компактная
+    // «Schritt 3 von 4»), а не одной цифрой; видимой остаётся компактная
     // цифра, и она aria-hidden, чтобы позиция не читалась дважды.
     steps.forEach((step, i) => {
-      const marker = step.querySelector('.a3-n')!
+      const marker = step.querySelector('.a3-wf-n')!
       const digit = marker.querySelector(':scope > span:not(.sr-only)')
       expect(digit).toHaveAttribute('aria-hidden', 'true')
       expect(digit!.textContent).toBe(String(i + 1))
-      const position = within(step).getByText(`Schritt ${i + 1} von 6`)
+      const position = within(step).getByText(`Schritt ${i + 1} von 4`)
       expect(position).toHaveClass('sr-only')
     })
 
@@ -110,24 +110,33 @@ describe('Project Card — шапка и обзор готовности', () =>
       'Ein Dokument ist nicht lesbar · blockiert das Anlegen einer Opportunity Option nicht',
     )).toBeInTheDocument()
     expect(within(overview).getByText(
-      'Entscheidung erforderlich · blockiert das Anlegen einer Opportunity Option',
+      'Entscheidung erforderlich · blockiert die Projektgrundlage',
     )).toBeInTheDocument()
-    // Stufen 3 (Offene Fragen & Annahmen) und 4 (Projektübersicht) sind rein
-    // informativ (D-19, Regel 12) — nie blockierend, nie "aktuell".
-    expect(within(overview).getByText('Blockiert das Anlegen einer Opportunity Option nicht')).toBeInTheDocument()
-    expect(within(overview).getByText('Vorläufig · Strittige Angaben noch offen')).toBeInTheDocument()
+    // AC-05: solange ein Konflikt offen ist, ist die Projektgrundlage ein
+    // ECHTES Gate (aria-disabled), nicht nur "vorläufig".
+    expect(within(overview).getByText('Erst Konflikte entscheiden')).toBeInTheDocument()
     expect(within(overview).getByText(
-      'Bestätigung erforderlich · blockiert das Anlegen einer Opportunity Option',
+      'Erst Konflikte entscheiden und Projektparameter bestätigen',
     )).toBeInTheDocument()
-    expect(within(overview).getByText('Wartet auf die Voraussetzungen oben')).toBeInTheDocument()
 
     // Ровно один шаг — «текущий» (следующий нерешённый по порядку), не два и не ноль.
     const current = steps.filter((s) => s.getAttribute('aria-current') === 'step')
     expect(current).toHaveLength(1)
     expect(current[0]).toHaveTextContent('Strittige Angaben')
+
+    // Echte Sperre (STEP-003/Regel 12): gesperrt bleibt tastaturerreichbar
+    // (kein natives `disabled`) und nennt den Grund per `aria-describedby`,
+    // ist aber `aria-disabled`, nicht bloß abgedunkelt — genau die Stufen,
+    // die vom offenen Konflikt abhängen.
+    expect(steps[0]).not.toHaveAttribute('aria-disabled')
+    expect(steps[1]).not.toHaveAttribute('aria-disabled')
+    expect(steps[2]).toHaveAttribute('aria-disabled', 'true')
+    expect(steps[3]).toHaveAttribute('aria-disabled', 'true')
+    expect(steps[2]).not.toHaveAttribute('disabled')
+    expect(steps[2]).toHaveAttribute('aria-describedby')
   })
 
-  it('обзор готовности отражает реальные переходы: конфликт → Projekt bestätigen → Option', async () => {
+  it('обзор готовности отражает реальные переходы: конфликт → Projektgrundlage → Option', async () => {
     const user = userEvent.setup()
     await openProjectCard(user)
     const overview = screen.getByRole('navigation', { name: 'Projektstatus' })
@@ -136,20 +145,21 @@ describe('Project Card — шапка и обзор готовности', () =>
     await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
     expect(stepAt(1)).toHaveTextContent('Entschieden')
     expect(stepAt(1)).not.toHaveAttribute('aria-current')
-    // Stage 4 (Projektübersicht) leaves its provisional caveat once the
-    // conflict it depended on is resolved — still never "current" (D-19).
-    expect(stepAt(3)).toHaveTextContent('Aktuell')
-    expect(stepAt(3)).not.toHaveAttribute('aria-current')
-    expect(stepAt(4)).toHaveAttribute('aria-current', 'step')
+    // Die Projektgrundlage entsperrt sich, sobald der Konflikt, von dem ihr
+    // Gate abhing, entschieden ist (AC-05), und wird die aktuelle Stufe.
+    expect(stepAt(2)).not.toHaveAttribute('aria-disabled')
+    expect(stepAt(2)).toHaveTextContent('Bestätigung erforderlich · blockiert das Anlegen einer Opportunity Option')
+    expect(stepAt(2)).toHaveAttribute('aria-current', 'step')
 
     await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
-    expect(stepAt(4)).toHaveTextContent('Bestätigt')
-    expect(stepAt(4)).not.toHaveAttribute('aria-current')
-    expect(stepAt(5)).toHaveTextContent('Bereit zum Anlegen')
-    expect(stepAt(5)).toHaveAttribute('aria-current', 'step')
+    expect(stepAt(2)).toHaveTextContent('Bestätigt')
+    expect(stepAt(2)).not.toHaveAttribute('aria-current')
+    expect(stepAt(3)).not.toHaveAttribute('aria-disabled')
+    expect(stepAt(3)).toHaveTextContent('Bereit zum Anlegen')
+    expect(stepAt(3)).toHaveAttribute('aria-current', 'step')
 
     await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
-    expect(stepAt(5)).toHaveTextContent('Angelegt')
+    expect(stepAt(3)).toHaveTextContent('Angelegt')
     // Terminalzustand: die Vorbereitung "endet" nicht — genau EIN Schritt
     // bleibt aktuell (das akzeptierte Product-Ruling), und zwar der letzte,
     // weil dort ab jetzt weitergearbeitet wird (Opportunity Options).
@@ -158,16 +168,30 @@ describe('Project Card — шапка и обзор готовности', () =>
     expect(current[0]).toHaveTextContent('Opportunity Options')
   })
 
-  it('ein Klick auf einen Schritt springt zum jeweiligen Abschnitt, ohne dessen Aktion auszuführen', async () => {
+  it('ein Klick auf einen entsperrten Schritt springt zum jeweiligen Abschnitt, ohne dessen Aktion auszuführen; ein gesperrter Schritt navigiert nicht', async () => {
     const user = userEvent.setup()
     await openProjectCard(user)
     const overview = screen.getByRole('navigation', { name: 'Projektstatus' })
 
-    // Stufen 4 (Projektübersicht) UND 5 (Projekt bestätigen) zeigen auf
-    // denselben physischen Abschnitt (`aria-label="Projektparameter"`) —
-    // siehe dessen eigenen Kommentar in OpportunityCard.tsx.
-    await user.click(within(overview).getAllByRole('button')[4]!) // Projekt bestätigen
-    const section = screen.getByRole('region', { name: 'Projektparameter' })
+    // AC-05: solange der Konflikt offen ist, ist "Projektgrundlage" gesperrt
+    // — ein Klick fokussiert (wie jeden Button) nur den Button selbst, ohne
+    // den Zielabschnitt zu erreichen: `onOpen()` läuft nicht (STEP-003).
+    const baselineStep = within(overview).getAllByRole('button')[2]!
+    expect(baselineStep).toHaveAttribute('aria-disabled', 'true')
+    await user.click(baselineStep)
+    expect(document.activeElement).toBe(baselineStep)
+    expect(screen.queryByRole('region', { name: 'Projektparameter' })).not.toHaveFocus()
+
+    await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
+    const unlockedBaselineStep = within(overview).getAllByRole('button')[2]!
+    expect(unlockedBaselineStep).not.toHaveAttribute('aria-disabled')
+
+    // Stufe 3 ("Projektgrundlage") vereint die früheren Stufen 3+4+5 und
+    // springt zum ERSTEN der drei zusammengehörigen Abschnitte (Offene
+    // Fragen & Annahmen) — siehe dessen eigenen Kommentar in
+    // OpportunityCard.tsx.
+    await user.click(unlockedBaselineStep)
+    const section = screen.getByRole('region', { name: 'Offene Fragen & Annahmen' })
     expect(document.activeElement).toBe(section)
     // Der Sprung darf projectParamsConfirmed NICHT selbst setzen.
     expect(useStore.getState().projectParamsConfirmed).toBe(false)

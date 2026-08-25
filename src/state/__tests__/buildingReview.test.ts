@@ -11,12 +11,12 @@ import {
   isBuildingConfirmed,
   isBuildingConflict,
   isManualFact,
+  migrateStoreyStructureFactValue,
   toBuildingInput,
   withFactOverride,
   withoutFactOverride,
   type BuildingConflict,
   type BuildingReview,
-  type StoreyStructure,
 } from '../buildingReview'
 
 const documentSource = { kind: 'document', reference: 'fixture' } as const
@@ -40,7 +40,7 @@ function review(): BuildingReview {
       wfl: fact(new Decimal('80'), documentSource),
       nuf: fact<Decimal>(null, unknownSource),
       units: fact(new Decimal('4'), documentSource),
-      storeyStructure: fact<StoreyStructure>(null, unknownSource),
+      storeyStructure: fact<Decimal>(null, unknownSource),
     },
     engine: {
       energyStandard: 'EH_55',
@@ -73,20 +73,41 @@ describe('building review facts', () => {
     expect(effectiveFactValue(restored.facts.wfl)!.toFixed()).toBe('80')
   })
 
-  it('can represent semantic floors without inferring them from a count', () => {
-    const value = {
-      levels: [
-        { kind: 'UG' as const, count: 1 },
-        { kind: 'EG' as const, count: 1 },
-        { kind: 'OG' as const, count: 3 },
-        { kind: 'SG' as const, count: 1 },
-      ],
-      context: 'UG + EG + 3 OG + SG',
-    }
+  it('holds a single storey count (#16 Part 8) — no per-kind UG/EG/OG/SG breakdown any more', () => {
     const edited = withFactOverride(
-      review(), 'storeyStructure', value, 'sales-user', '2026-08-13T12:00:00Z',
+      review(), 'storeyStructure', new Decimal('6'), 'sales-user', '2026-08-13T12:00:00Z',
     )
-    expect(effectiveFactValue(edited.facts.storeyStructure)).toEqual(value)
+    expect(effectiveFactValue(edited.facts.storeyStructure)!.toFixed()).toBe('6')
+  })
+})
+
+describe('storeyStructure legacy migration (#16 Part 8)', () => {
+  it('passes null and an already-migrated Decimal through unchanged', () => {
+    expect(migrateStoreyStructureFactValue(null)).toBeNull()
+    const value = new Decimal('4')
+    expect(migrateStoreyStructureFactValue(value)).toBe(value)
+  })
+
+  it('sums a legacy per-kind UG/EG/OG/SG breakdown into one total, losslessly', () => {
+    // Design cycle-2's own reproduction example (UG=1, EG=4, OG=2, SG=1 -> 8).
+    const legacy = {
+      levels: [
+        { kind: 'UG', count: 1 },
+        { kind: 'EG', count: 4 },
+        { kind: 'OG', count: 2 },
+        { kind: 'SG', count: 1 },
+      ],
+      context: 'UG + 4 EG + 2 OG + SG',
+    }
+    const migrated = migrateStoreyStructureFactValue(legacy)
+    expect(migrated).not.toBeNull()
+    expect(migrated!.toFixed()).toBe('8')
+  })
+
+  it('does not throw and returns null for unrecognisable input', () => {
+    expect(migrateStoreyStructureFactValue('garbage')).toBeNull()
+    expect(migrateStoreyStructureFactValue({ nonsense: true })).toBeNull()
+    expect(migrateStoreyStructureFactValue(undefined)).toBeNull()
   })
 })
 

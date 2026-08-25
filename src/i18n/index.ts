@@ -138,7 +138,10 @@ const de = {
   'buildingScope.fact.wfl': 'WFL nach WoFlV',
   'buildingScope.fact.nuf': 'NUF nach DIN 277',
   'buildingScope.fact.units': 'Einheiten',
-  'buildingScope.fact.storeys': 'Geschossstruktur',
+  // #16 Part 8: single user-facing storey count, no more UG/EG/OG/SG
+  // breakdown — value updated in place, key kept stable (used as the
+  // `DecimalFactField` label + aria-label suffix + conflict heading).
+  'buildingScope.fact.storeys': 'Anzahl Geschosse',
   // F21: "○ " marks a missing value as visually distinct from a populated
   // one (rule 8 — not by colour alone); it reuses the same hollow-circle
   // glyph the product already uses for "blocked/not-selectable" elsewhere
@@ -226,18 +229,6 @@ const de = {
   'buildingScope.validation.positive':
     'Der Wert muss größer als null sein — nicht übernommen.',
   'buildingScope.validation.integer': 'Nur ganze Einheiten eingeben — nicht übernommen.',
-  'buildingScope.validation.storeys':
-    'Mindestens eine Geschossart muss eine Anzahl größer als null haben.',
-  'buildingScope.storeys.ug': 'Untergeschosse (UG)',
-  'buildingScope.storeys.eg': 'Erdgeschosse (EG)',
-  'buildingScope.storeys.og': 'Obergeschosse (OG)',
-  'buildingScope.storeys.sg': 'Staffelgeschosse (SG)',
-  'buildingScope.storeys.summary': 'Kompakte Geschossübersicht',
-  'buildingScope.storeys.underground': 'Unterirdisch',
-  'buildingScope.storeys.aboveGround': 'Oberirdisch',
-  'buildingScope.storeys.total': 'Geschosse gesamt',
-  'buildingScope.storeys.details': 'Detaillierte Aufteilung bearbeiten',
-  'buildingScope.storeys.manualContext': 'Manuell strukturierte Geschossangabe',
   'buildingScope.readiness.title': 'Bereit für den Konfigurator?',
   'buildingScope.readiness.selection': 'Mindestens ein Gebäude ausgewählt',
   'buildingScope.readiness.selectedCount': '{count} Gebäude ausgewählt',
@@ -572,6 +563,13 @@ const de = {
   // matched once combined with the toggle glyph.
   'offerPanel.kg300Subgroups.toggle': 'KG 300 Untergruppen',
   'offerPanel.kg300Subgroups.caption': 'KG 300 Untergruppen, Risikobasis',
+  // #16 Part 24/AC-24: trigger for the "Learn More / See Details" dialog.
+  // Deliberately does NOT start with "Details" (unlike every per-row
+  // OriginPopover trigger, `panel.details` = "Details") — the two triggers
+  // open materially different surfaces (one row's origin vs. the whole
+  // calculation) and must stay tellable apart, incl. by an accessible-name
+  // prefix match.
+  'offerPanel.details.trigger': 'Alle Details ansehen',
 } as const
 
 export type MessageKey = keyof typeof de
@@ -694,7 +692,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'buildingScope.fact.wfl': 'Living area under WoFlV',
   'buildingScope.fact.nuf': 'Usable area under DIN 277',
   'buildingScope.fact.units': 'Units',
-  'buildingScope.fact.storeys': 'Storey structure',
+  'buildingScope.fact.storeys': 'Number of storeys',
   'buildingScope.value.notCaptured': '○ Not captured',
   'buildingScope.value.addressMissing': 'Address not captured',
   'buildingScope.value.formMissing': 'Building form not captured',
@@ -775,18 +773,6 @@ const en: Partial<Record<MessageKey, string>> = {
   'buildingScope.validation.positive':
     'The value must be greater than zero — not applied.',
   'buildingScope.validation.integer': 'Enter whole units only — not applied.',
-  'buildingScope.validation.storeys':
-    'At least one storey type must have a count greater than zero.',
-  'buildingScope.storeys.ug': 'Basement storeys (UG)',
-  'buildingScope.storeys.eg': 'Ground storeys (EG)',
-  'buildingScope.storeys.og': 'Upper storeys (OG)',
-  'buildingScope.storeys.sg': 'Setback storeys (SG)',
-  'buildingScope.storeys.summary': 'Compact storey overview',
-  'buildingScope.storeys.underground': 'Below ground',
-  'buildingScope.storeys.aboveGround': 'Above ground',
-  'buildingScope.storeys.total': 'Total storeys',
-  'buildingScope.storeys.details': 'Edit detailed breakdown',
-  'buildingScope.storeys.manualContext': 'Manually structured storey data',
   'buildingScope.readiness.title': 'Ready for the Configurator?',
   'buildingScope.readiness.selection': 'At least one building selected',
   'buildingScope.readiness.selectedCount': '{count} buildings selected',
@@ -1016,6 +1002,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'panel.regionalFactorDeactivated': 'deactivated',
   'offerPanel.kg300Subgroups.toggle': 'KG 300 subgroups',
   'offerPanel.kg300Subgroups.caption': 'KG 300 subgroups, risk basis',
+  'offerPanel.details.trigger': 'Show all details',
 }
 
 /**

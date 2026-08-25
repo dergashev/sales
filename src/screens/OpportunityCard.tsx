@@ -1,5 +1,5 @@
 import { Decimal } from 'decimal.js'
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useId, useRef, useState, type RefObject } from 'react'
 import demo from '../fixtures/demo-0001.json'
 import opportunities from '../fixtures/opportunities.json'
 import {
@@ -12,7 +12,6 @@ import {
 import { effectiveFactValue } from '../state/buildingReview'
 import { NNBSP, formatDE, rateLabel } from '../engine/money'
 import {
-  ATTENTION_MARK,
   Button,
   ProvenanceChip,
   useCountUp,
@@ -24,7 +23,8 @@ import { useT, useTx } from '../i18n'
 import { copyFor } from '../i18n/internal-refs'
 import { DocumentAnalysis } from '../components/DocumentAnalysis'
 import { InternalNote } from '../components/InternalNote'
-import { PageHeader } from '../components/designSystem'
+import { PageHeader, WorkflowStepper, type WorkflowStep } from '../components/designSystem'
+import { Dialog, type DialogHandle } from '../components/Dialog'
 import { STAGE_TAG } from '../lib/opportunityStage'
 import { factPresentation, stableName } from './BuildingScope'
 import { DELTA_CHIP_MS } from '../config/ui-policy'
@@ -32,27 +32,33 @@ import { DELTA_CHIP_MS } from '../config/ui-policy'
 /**
  * Карточка Opportunity — уровень между списком и рабочим конвейером.
  *
- * TASK 01 (deep-coherence audit, backlog dcb10e29) consolidates the former
- * 4-stage Project Card readiness overview and the separate "· Vorbereitung"
- * workspace (P1–P5 tabs) into ONE surface expressing the accepted canonical
- * six-stage preparation sequence: 1 Dokumentanalyse → 2 Strittige Angaben →
- * 3 Offene Fragen & Annahmen → 4 Projektübersicht → 5 Projekt bestätigen →
- * 6 Opportunity Options. Every section stays on this one page — the
- * six-stage `ReadinessOverview` below is the ONE progress model; there is no
- * second stepper, no second document list, no second conflict-resolution
- * surface, and no separate workspace to open.
+ * TASK 01 (deep-coherence audit, backlog dcb10e29) had consolidated the
+ * former 4-stage Project Card readiness overview and the separate
+ * "· Vorbereitung" workspace (P1–P5 tabs) into one ALWAYS-open six-stage
+ * page with no real gating (STEP-003 read as "jumps never block"). "Rebuild
+ * Project Card Workflow" (#16, backlog 9addfb3b) explicitly supersedes that
+ * reading for this screen with its own newer, specific accepted authority:
+ * back to FOUR stages, with a REAL per-stage lock (see `WorkflowStepper`'s
+ * own doc comment) — 1 Document Analysis → 2 Conflicting Information →
+ * 3 Project Baseline → 4 Opportunity Options. All section content from
+ * Task 01 stays on this one page (no second document list, no second
+ * conflict-resolution surface, no separate workspace reappears) — only the
+ * STEPPER'S OWN stage count and lock semantics change; stages 3's three
+ * former sub-stages (Offene Fragen & Annahmen / Projektübersicht / Projekt
+ * bestätigen) keep their own separate `<section>`s, now reached through one
+ * merged stepper entry.
  *
- * "· Vorbereitung" (`S2Vorbereitung.tsx`) is retired: P1's document table and
- * Grundrisse version resolution move into stage 1; P2's own conflict copy
- * and its Haus-A-only editable fields are dropped (building-fact editing
- * belongs to Building & Scope, Task 02 — out of scope here; the retired
- * fields were the Haus-A singleton legacy compatibility layer, exactly the
- * projection this task retires, F-05); P3 (open questions) and P4
- * (Annahmen) merge into stage 3; P5 (Varianten) is hidden per PD-1's
- * ticket-supplied default (retire is recommended, not yet decided by the
- * CPO) — its fixture data is untouched, only the entry point is gone, so
- * the "Im Konfigurator öffnen" class of silently-failing control (F-21,
- * reachable only once an Option already exists) cannot be reached at all.
+ * "· Vorbereitung" (`S2Vorbereitung.tsx`) stays retired per Task 01: P1's
+ * document table and Grundrisse version resolution live in stage 1; P2's own
+ * conflict copy and its Haus-A-only editable fields stay dropped (building-
+ * fact editing belongs to Building & Scope); P3/P4 stay merged into stage 3;
+ * P5 (Varianten) stays hidden.
+ *
+ * Internal Note (DC-43) is no longer part of this primary page (#16 Part 9)
+ * — its data and component are untouched, but the entry point moves to a
+ * header utility affordance behind the canonical `Dialog` (see
+ * `InternalNoteDialog` below), so it never competes with the stepper/gate
+ * flow for attention and is not silently deleted.
  *
  * Цены здесь нет и быть не может как ГЛАВНОГО числа: Gesamt-total принадлежит
  * Option, а Option ещё не существует. Show и Leitkennzahl (stage 4) —
@@ -159,104 +165,26 @@ function ReviewedWflMetric({ value, provenance }: {
   )
 }
 
-type StageState = 'done' | 'attention' | 'blocked'
-
-type Stage = {
-  id: string
-  number: number
-  title: string
-  /** Видимое состояние ТЕКСТОМ (DC-13 STEP-002) — маркер его только дублирует. */
-  stateText: string
-  state: StageState
-  current: boolean
-  onOpen: () => void
-}
-
 /**
- * Обзор готовности проекта — визуальный контракт DC-13 `WorkflowStepper`
- * (README «Kapitel-Navigation», канон STEP-001). Governance: канонического
- * React-источника у DC-13 по-прежнему нет (ledger, строка 65); отклонение
- * зарегистрировано **DS-GOV-EX-07**.
+ * Обзор готовности проекта — теперь канонический DC-13 `WorkflowStepper`
+ * (`src/components/designSystem.tsx`), горизонтальный вариант; собственной
+ * рукописной копии анатомии здесь больше нет (governance `DS-GOV-EX-07`
+ * закрывает половину «нет канонического React-источника» для этого
+ * потребителя — `Sidebar.tsx`'s вертикальный `.a3-chapters` остаётся
+ * отдельным потребителем этой задачи, сознательно нетронутым).
  *
- * TASK 01 расширяет этот единственный экземпляр с четырёх до шести стадий —
- * это ОДИН прогресс-модель на всю карточку, включая то, что прежде жило в
- * отдельной "· Vorbereitung": второго степпера, второй читалки готовности и
- * отдельной вкладочной навигации больше нет (AC2).
- *
- * Прыжок к разделу разрешён всегда, независимо от состояния (STEP-003,
- * правило 12): обзор — навигация, не действие. Роль каждого раздела всегда
- * видна на одной странице (все шесть секций смонтированы и видимы) — переход
- * прокручивает и фокусирует уже существующий раздел, а не скрывает соседние:
- * при шести стадиях и множестве уже существующих сквозных тестов,
- * опирающихся на одновременную видимость разделов 2/5/6, настоящая
- * ARIA-tablist-панель с скрытием неактивных панелей расширила бы область
- * регрессии далеко за пределы этой задачи. Клавиатурный контракт TABS-001 /
- * KEY-003 (roving tabindex, стрелки двигают фокус, Home/End — края)
- * применяется здесь к самим кнопкам обзора — это ЗАКРЫВАЕТ, а не сохраняет,
- * один из двух известных пробелов DS-GOV-EX-07 (недостающий KEY-003) для
- * этого экземпляра.
+ * "Rebuild Project Card Workflow" (#16) заменяет прежние шесть
+ * ВСЕГДА-открытых информационных стадий (Task 01) на ЧЕТЫРЕ стадии с
+ * настоящим поэтапным гейтингом (STEP-003/правило 12: заблокированная
+ * стадия остаётся доступной клавиатурой и называет причину текстом, но
+ * активация её не переносит фокус — тот же паттерн, что `CheckboxCard`'s
+ * `mandatory` уже использует для тумблера, здесь применённый к навигации).
+ * Прежние стадии 3 (Offene Fragen & Annahmen) + 4 (Projektübersicht) + 5
+ * (Projekt bestätigen) объединены в ОДНУ стадию «Project Baseline» с одним
+ * подтверждающим действием — секции самой разметки остаются раздельными
+ * (минимальное изменение, без риска для их собственных тестов), стадия
+ * степпера прыгает на первую из них.
  */
-function ReadinessOverview({ label, stages }: { label: string; stages: ReadonlyArray<Stage> }) {
-  const t = useT()
-  const listRef = useRef<HTMLOListElement>(null)
-  const [focusIdx, setFocusIdx] = useState(0)
-
-  const moveFocus = (next: number) => {
-    setFocusIdx(next)
-    listRef.current?.querySelectorAll<HTMLButtonElement>('button')[next]?.focus()
-  }
-  const onKey = (e: React.KeyboardEvent) => {
-    const len = stages.length
-    const next = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? (focusIdx + 1) % len
-      : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? (focusIdx - 1 + len) % len
-        : e.key === 'Home' ? 0
-          : e.key === 'End' ? len - 1
-            : null
-    if (next === null) return
-    e.preventDefault()
-    moveFocus(next)
-  }
-
-  return (
-    <nav aria-label={label} className="mt-5">
-      <ol ref={listRef} className="a3-chapters" onKeyDown={onKey}>
-        {stages.map((stage, i) => (
-          <li key={stage.id}>
-            <button
-              type="button"
-              onClick={() => { setFocusIdx(i); stage.onOpen() }}
-              onFocus={() => setFocusIdx(i)}
-              aria-current={stage.current ? 'step' : undefined}
-              tabIndex={focusIdx === i ? 0 : -1}
-              className={'a3-ch relative flex min-h-hit-target w-full items-center gap-3 text-left outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring'
-                + (stage.state === 'done' ? ' a3-done' : '')
-                + (stage.current ? ' a3-cur' : '')}
-            >
-              {/* Позиция — ТЕКСТОМ, а не только визуально (DC-13, Screen-
-                  reader-Klausel «Schritt 3 von 6»). Видимой остаётся компактная
-                  цифра, скринридер получает целую фразу из словаря (правило 36,
-                  ключ с параметрами — без конкатенации). Сама цифра при этом
-                  aria-hidden, иначе позиция читается дважды. */}
-              <span className="a3-n numeric shrink-0">
-                <span aria-hidden="true">{stage.number}</span>
-                <span className="sr-only">
-                  {t('oppcard.stepPosition', { n: stage.number, total: stages.length })}
-                </span>
-              </span>
-              <span aria-hidden="true" className="w-4 shrink-0">
-                {stage.state === 'done' ? '✓' : stage.state === 'blocked' ? '○' : ATTENTION_MARK}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-body text-text-primary">{stage.title}</span>
-                <span className="a3-cap block">{stage.stateText}</span>
-              </span>
-            </button>
-          </li>
-        ))}
-      </ol>
-    </nav>
-  )
-}
 
 /** Фокус и прокрутка к уже существующему разделу (общая логика прыжка). */
 function focusSection(ref: RefObject<HTMLElement | null>) {
@@ -268,6 +196,52 @@ function customerEvidenceDate(capturedAt: string, language: 'de' | 'en'): string
   return new Intl.DateTimeFormat(language === 'de' ? 'de-DE' : 'en-GB', {
     day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC',
   }).format(new Date(`${capturedAt}T00:00:00Z`))
+}
+
+/**
+ * Internal Note (DC-43) behind the canonical `Dialog` (#16 Part 5/AC-07):
+ * the header utility button below is the ONLY entry point now — the note no
+ * longer sits inline at the bottom of the primary page, so it never
+ * occupies readiness navigation or competes with the stepper/gate flow for
+ * attention. `InternalNote` itself is untouched (data, autosave-on-idle,
+ * NOTE-006 presentation-mode hiding all unchanged) — only its mount point
+ * moves. The dialog title is `sr-only`: `InternalNote`'s own visible field
+ * label already says "Interne Notiz" and is the entire dialog content, so a
+ * second visible heading with the same words would be a duplicated label
+ * the reader doesn't need (removal test) — the `sr-only` heading still
+ * gives the dialog its required accessible name and initial-focus target.
+ */
+function InternalNoteDialog({ open, onOpenChange, returnFocusTo }: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  returnFocusTo: RefObject<HTMLElement>
+}) {
+  const t = useT()
+  const tx = useTx()
+  const titleId = useId()
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  const dialogRef = useRef<DialogHandle>(null)
+  if (!open) return null
+  return (
+    <Dialog
+      ref={dialogRef}
+      open={open}
+      onOpenChange={(nextOpen) => { if (!nextOpen) onOpenChange(false) }}
+      labelledBy={titleId}
+      initialFocusRef={titleRef}
+      returnFocusTo={returnFocusTo}
+    >
+      <h2 ref={titleRef} id={titleId} tabIndex={-1} className="sr-only outline-none">
+        {tx('Interne Notiz')}
+      </h2>
+      <InternalNote />
+      <div className="a3-row mt-4">
+        <Button variant="ghost" onClick={() => dialogRef.current?.close()}>
+          {t('common.close')}
+        </Button>
+      </div>
+    </Dialog>
+  )
 }
 
 export function OpportunityCard() {
@@ -285,6 +259,8 @@ export function OpportunityCard() {
   const optionsSectionRef = useRef<HTMLElement>(null)
   const confirmationStatusRef = useRef<HTMLDivElement>(null)
   const focusConfirmationAfterAction = useRef(false)
+  const noteButtonRef = useRef<HTMLButtonElement>(null)
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false)
   const baselineChanges = projectBaselineChangesSinceConfirmation(s)
   const baselineStale = baselineChanges.length > 0
 
@@ -342,8 +318,6 @@ export function OpportunityCard() {
   const totalUnits = buildingFactSum('units')
   const conflict = wflConflict(s)
   const preparation = preparationStatuses(s)
-  const openQuestionCount = Object.values(preparation.questions).filter(Boolean).length
-  const activeAssumptionCount = Object.values(preparation.assumptions).filter(Boolean).length
   const documentProvenance: ProvenancePresentation = {
     kind: 'document', label: t('provenance.document'),
   }
@@ -379,20 +353,22 @@ export function OpportunityCard() {
         ? tx('Erst Projektparameter bestätigen')
         : undefined
 
-  // ── Обзор готовности: abgeleitet von den bereits existierenden Feldern,
-  //    keine neue Fachlogik (D-13-Vertrag, siehe `ReadinessOverview` oben).
-  //    Stufen 1/3/4 sind rein informativ und blockieren nichts (D-19, Regel
-  //    12) — sie werden nie zur aktuellen Stufe; genau EINE der drei
-  //    gate-tragenden Stufen (2/5/6) ist es immer. ──
+  // ── Обзор готовности: 4 канонические стадии (#16 Part 1) вместо прежних
+  //    шести — abgeleitet von den bereits existierenden Feldern, keine neue
+  //    Fachlogik (D-13-Vertрак, siehe `WorkflowStepper` oben). Stufe 1 bleibt
+  //    rein informativ (D-19, Regel 12 gilt für клиентские валидации, nicht
+  //    für dieses Sequenz-Gate — #16's eigene, jüngere Autorität) und wird
+  //    nie zur aktuellen Stufe; genau EINE der drei gate-tragenden Stufen
+  //    (2 Konflikte / 3 Baseline / 4 Options) ist es immer — echte Sperren
+  //    (STEP-003/Regel 12: gesperrt ≠ unsichtbar, der Grund steht dabei). ──
   const docsNeedAttention = demo.documents.some((d) => d.parseStatus === 'failed')
-  const openItemsRemain = openQuestionCount + activeAssumptionCount > 0
   const currentStage: 'conflict' | 'confirm' | 'options' = konfliktOffen
     ? 'conflict'
     : !s.projectParamsConfirmed || baselineStale
       ? 'confirm'
       : 'options'
-  const optionsState: StageState = s.options.length > 0 ? 'done' : canCreateOptions ? 'attention' : 'blocked'
-  const stages: Stage[] = [
+  const optionsState: WorkflowStep['state'] = s.options.length > 0 ? 'done' : canCreateOptions ? 'attention' : 'blocked'
+  const stages: WorkflowStep[] = [
     {
       id: 'documents',
       number: 1,
@@ -410,49 +386,37 @@ export function OpportunityCard() {
       title: tx('Strittige Angaben'),
       state: konfliktOffen ? 'attention' : 'done',
       stateText: konfliktOffen
-        ? tx('Entscheidung erforderlich · blockiert das Anlegen einer Opportunity Option')
+        ? tx('Entscheidung erforderlich · blockiert die Projektgrundlage')
         : tx('Entschieden'),
       current: currentStage === 'conflict',
       onOpen: () => focusSection(conflictSectionRef),
     },
     {
-      id: 'questions',
+      // Vereint die früheren Stufen 3 (Offene Fragen & Annahmen) + 4
+      // (Projektübersicht) + 5 (Projekt bestätigen) zu EINER Stufe mit einer
+      // Bestätigungsaktion (#16 Part 4/6) — der Sprung führt zum ersten der
+      // drei zusammengehörigen Abschnitte, `questionsSectionRef`.
+      id: 'baseline',
       number: 3,
-      title: tx('Offene Fragen & Annahmen'),
-      state: openItemsRemain ? 'attention' : 'done',
-      stateText: openItemsRemain
-        ? tx('Blockiert das Anlegen einer Opportunity Option nicht')
-        : tx('Keine offenen Punkte'),
-      current: false,
+      title: t('oppcard.baseline.title'),
+      // Ein echtes Gate (#16 Part 3/AC-05): solange ein Konflikt offen ist,
+      // bleibt die Projektgrundlage gesperrt statt nur „vorläufig“.
+      state: konfliktOffen
+        ? 'blocked'
+        : s.projectParamsConfirmed && !baselineStale ? 'done' : 'attention',
+      stateText: konfliktOffen
+        ? tx('Erst Konflikte entscheiden')
+        : baselineStale
+          ? t('oppcard.baseline.stepStale')
+          : s.projectParamsConfirmed
+            ? tx('Bestätigt')
+            : tx('Bestätigung erforderlich · blockiert das Anlegen einer Opportunity Option'),
+      current: currentStage === 'confirm',
       onOpen: () => focusSection(questionsSectionRef),
     },
     {
-      id: 'summary',
-      number: 4,
-      title: tx('Projektübersicht'),
-      state: konfliktOffen ? 'attention' : 'done',
-      stateText: konfliktOffen
-        ? tx('Vorläufig · Strittige Angaben noch offen')
-        : tx('Aktuell'),
-      current: false,
-      onOpen: () => focusSection(parameterSectionRef),
-    },
-    {
-      id: 'confirm',
-      number: 5,
-      title: tx('Projekt bestätigen'),
-      state: s.projectParamsConfirmed && !baselineStale ? 'done' : 'attention',
-      stateText: baselineStale
-        ? t('oppcard.baseline.stepStale')
-        : s.projectParamsConfirmed
-          ? tx('Bestätigt')
-        : tx('Bestätigung erforderlich · blockiert das Anlegen einer Opportunity Option'),
-      current: currentStage === 'confirm',
-      onOpen: () => focusSection(parameterSectionRef),
-    },
-    {
       id: 'options',
-      number: 6,
+      number: 4,
       title: tx('Opportunity Options'),
       state: optionsState,
       // Der genaue Grund steht bereits an der echten Aktion (aria-describedby
@@ -462,7 +426,7 @@ export function OpportunityCard() {
         ? tx('Angelegt')
         : optionsState === 'attention'
           ? tx('Bereit zum Anlegen')
-          : tx('Wartet auf die Voraussetzungen oben'),
+          : (createOptionDisabledReason ?? tx('Wartet auf die Voraussetzungen oben')),
       current: currentStage === 'options',
       onOpen: () => focusSection(optionsSectionRef),
     },
@@ -523,11 +487,31 @@ export function OpportunityCard() {
             <span className={'a3-tag ml-3 ' + (STAGE_TAG[meta.stage] ?? '')}>
               {tx(meta.stage)}
             </span>
+            {/* Header utility affordance (#16 Part 5/AC-07): the ONLY entry
+                point to Internal Note now. Never rendered client-side — the
+                affordance itself must not exist in presentation mode, not
+                merely open an empty dialog (NOTE-006). */}
+            {s.mode !== 'praesentation' && (
+              <Button
+                ref={noteButtonRef}
+                variant="ghost"
+                className="ml-3"
+                onClick={() => setNoteDialogOpen(true)}
+              >
+                {tx('Interne Notiz')}
+              </Button>
+            )}
           </span>
         }
       />
 
-      <ReadinessOverview label={tx('Projektstatus')} stages={stages} />
+      <InternalNoteDialog
+        open={noteDialogOpen}
+        onOpenChange={setNoteDialogOpen}
+        returnFocusTo={noteButtonRef}
+      />
+
+      <WorkflowStepper label={tx('Projektstatus')} steps={stages} />
 
       {/* 1 · Анализ документации + разрешение версий планов (перенесено из
           "· Vorbereitung" P1 — единственный рендер списка документов, AC8). */}
@@ -908,12 +892,6 @@ export function OpportunityCard() {
         )}
       </section>
 
-      {/* Заметка — уровень проекта, не варианта: продавец записывает
-          услышанное о проекте (DC-43). Не рабочий шаг подготовки — стоит
-          последней, после гейта Options, а не соперничает с ним за
-          внимание. В презентации компонент не рендерится вовсе, а не
-          прячется (NOTE-006). */}
-      <InternalNote />
     </div>
   )
 }

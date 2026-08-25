@@ -606,10 +606,13 @@ describe('SIDEBAR 02 (backlog 41b8ab39): rail scope, completeness and signed-mon
     // Hero + KG total row both read the exact same string.
     expect(within(rail).getAllByText('Gesamt netto · Grundleistung All3').length)
       .toBeGreaterThanOrEqual(2)
-    // The screen-reader caption (Level 3, reached via disclosure) embeds
+    // The screen-reader caption (Level 3, now the canonical "Learn More /
+    // See Details" `Dialog` — portalled outside the rail's own subtree, so
+    // it is looked up on its own role rather than `within(rail)`) embeds
     // that SAME string, never a second, hardcoded commercial claim.
-    await user.click(within(rail).getByRole('button', { name: /Nachweise & Verlauf/ }))
-    expect(within(rail).getByText(
+    await user.click(within(rail).getByRole('button', { name: 'Alle Details ansehen' }))
+    const detailsDialog = screen.getByRole('dialog', { name: 'Nachweise & Verlauf' })
+    expect(within(detailsDialog).getByText(
       /Beiträge summieren sich exakt zur Gesamt netto · Grundleistung All3\./,
     )).toBeInTheDocument()
   })
@@ -739,12 +742,13 @@ describe('SIDEBAR 03 (backlog 2be8e69c): client-safe rail, EN localization', () 
     act(() => { useStore.getState().confirmGebaeudeklasse() })
     await user.click(screen.getAllByRole('radio', { name: /EN/ })[0]!)
     const rail = screen.getByRole('complementary', { name: 'Angebot' })
-    await user.click(within(rail).getByRole('button', { name: /Nachweise & Verlauf/ }))
-    expect(within(rail).getAllByText(/Basement · shell and fit-out/).length).toBeGreaterThanOrEqual(1)
-    expect(within(rail).getAllByText(/Underground garage · ventilation, floor coating, doors/).length)
+    await user.click(within(rail).getByRole('button', { name: 'Show all details' }))
+    const detailsDialog = screen.getByRole('dialog', { name: 'Nachweise & Verlauf' })
+    expect(within(detailsDialog).getAllByText(/Basement · shell and fit-out/).length).toBeGreaterThanOrEqual(1)
+    expect(within(detailsDialog).getAllByText(/Underground garage · ventilation, floor coating, doors/).length)
       .toBeGreaterThanOrEqual(1)
-    expect(rail.textContent).not.toMatch(/Rohbau und Ausbau/)
-    expect(rail.textContent).not.toMatch(/Lüftung, OS-Beschichtung, Tore/)
+    expect(detailsDialog.textContent).not.toMatch(/Rohbau und Ausbau/)
+    expect(detailsDialog.textContent).not.toMatch(/Lüftung, OS-Beschichtung, Tore/)
   })
 
   it('the driver-row accessible name has no untranslated German connector words in EN (QA rework: rund/exakt regression)', async () => {
@@ -762,9 +766,10 @@ describe('SIDEBAR 03 (backlog 2be8e69c): client-safe rail, EN localization', () 
     act(() => { useStore.getState().confirmGebaeudeklasse() })
     await user.click(screen.getAllByRole('radio', { name: /EN/ })[0]!)
     const rail = screen.getByRole('complementary', { name: 'Angebot' })
-    await user.click(within(rail).getByRole('button', { name: /Nachweise & Verlauf/ }))
-    expect(rail.textContent).not.toMatch(/\brund\b/)
-    expect(rail.textContent).not.toMatch(/\bexakt\b/)
+    await user.click(within(rail).getByRole('button', { name: 'Show all details' }))
+    const detailsDialog = screen.getByRole('dialog', { name: 'Nachweise & Verlauf' })
+    expect(detailsDialog.textContent).not.toMatch(/\brund\b/)
+    expect(detailsDialog.textContent).not.toMatch(/\bexakt\b/)
   })
 
   it('the Kostentreiber benchmark line and its internal snapshot id are gone (SB-12/AC-5)', async () => {
@@ -774,9 +779,10 @@ describe('SIDEBAR 03 (backlog 2be8e69c): client-safe rail, EN localization', () 
     includeCoreScope()
     act(() => { useStore.getState().confirmGebaeudeklasse() })
     const rail = screen.getByRole('complementary', { name: 'Angebot' })
-    await user.click(within(rail).getByRole('button', { name: /Nachweise & Verlauf/ }))
-    expect(rail.textContent).not.toMatch(/BM-BKI-2026Q1-SYNTH/)
-    expect(rail.textContent).not.toMatch(/nicht vergleichbar/)
+    await user.click(within(rail).getByRole('button', { name: 'Alle Details ansehen' }))
+    const detailsDialog = screen.getByRole('dialog', { name: 'Nachweise & Verlauf' })
+    expect(detailsDialog.textContent).not.toMatch(/BM-BKI-2026Q1-SYNTH/)
+    expect(detailsDialog.textContent).not.toMatch(/nicht vergleichbar/)
   })
 
   it('.a3-ghost no longer resolves to the DC-28 preview — only the tertiary button variant (SB-30)', async () => {

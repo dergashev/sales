@@ -29,8 +29,6 @@ import {
   type BuildingFactValueMap,
   type DerivedAreaKey,
   type FactSource,
-  type StoreyKind,
-  type StoreyStructure,
 } from '../state/buildingReview'
 import {
   Badge,
@@ -715,15 +713,26 @@ function BuildingReviewPanel({
             <ReviewDisclosure
               section="storeys"
               label={t('buildingScope.group.storeys')}
-              summary={effectiveFactValue(review.facts.storeyStructure)
-                ? storeySummary(effectiveFactValue(review.facts.storeyStructure))
-                : t('buildingScope.value.storeysMissing')}
+              summary={(() => {
+                const storeyCount = effectiveFactValue(review.facts.storeyStructure)
+                return storeyCount === null
+                  ? t('buildingScope.value.storeysMissing')
+                  : formatDE(storeyCount, 0)
+              })()}
               status={sectionStatus('storeys')}
               open={openSections.storeys}
               onOpenChange={(open) => setOpenSections((current) => ({ ...current, storeys: open }))}
             >
               <div className="p-4">
-                <StoreyEditor buildingId={buildingId} />
+                {/* #16 Part 8: one user-facing field (`storeyStructure` is now
+                    a plain Decimal count, no more per-kind UG/EG/OG/SG
+                    breakdown) — the canonical `DecimalFactField` used by
+                    every other numeric building fact applies unchanged, no
+                    bespoke editor needed any more. `UntergeschossEditor`
+                    below is a DIFFERENT, unrelated basement-construction
+                    pricing scope control and stays visually/functionally
+                    distinct from it. */}
+                <DecimalFactField buildingId={buildingId} factKey="storeyStructure" integer />
                 <UntergeschossEditor buildingId={buildingId} />
               </div>
             </ReviewDisclosure>
@@ -989,7 +998,7 @@ function DecimalFactField({
 }: {
   buildingId: string
   factKey: Exclude<BuildingFactKey,
-    'documentationName' | 'address' | 'buildingForm' | 'buildingClass' | 'storeyStructure'>
+    'documentationName' | 'address' | 'buildingForm' | 'buildingClass'>
   unit?: string
   integer?: boolean
   derived?: boolean
@@ -1165,118 +1174,6 @@ function FieldActions({
   )
 }
 
-function StoreyEditor({ buildingId }: { buildingId: string }) {
-  const s = useStore()
-  const t = useT()
-  const fact = s.buildingReviews[buildingId]!.facts.storeyStructure
-  const current = effectiveFactValue(fact)
-  const currentCounts = countsFromStoreys(current)
-  const underground = current ? currentCounts.UG : null
-  const aboveGround = current
-    ? currentCounts.EG + currentCounts.OG + currentCounts.SG
-    : null
-  const total = underground === null || aboveGround === null
-    ? null
-    : underground + aboveGround
-  const [counts, setCounts] = useState(currentCounts)
-
-  useEffect(() => {
-    setCounts(currentCounts)
-  }, [buildingId, storeySummary(current)])
-
-  // Task 02 (deep-coherence audit, F-23): `commit` used to be bound to an
-  // always-enabled Button and only discover "nothing to apply" AFTER the
-  // click, via a `setError(true)` state that rendered the exact captured
-  // error — "Mindestens eine Geschossart muss eine Anzahl größer als null
-  // haben." — for a no-op click. `hasLevels` lets the button disable
-  // itself with a visible reason instead (rule 12: a blocked control
-  // always explains why), the same `disabledReason` pattern already used
-  // on the building-level confirm button below; the former error state is
-  // now unreachable and removed with it.
-  const hasLevels = (['UG', 'EG', 'OG', 'SG'] as const).some((kind) => counts[kind] > 0)
-  const commit = () => {
-    if (!hasLevels) return
-    const levels = (['UG', 'EG', 'OG', 'SG'] as const)
-      .filter((kind) => counts[kind] > 0)
-      .map((kind) => ({ kind, count: counts[kind] }))
-    s.setBuildingFactOverride(buildingId, 'storeyStructure', {
-      levels,
-      context: t('buildingScope.storeys.manualContext'),
-    })
-  }
-
-  return (
-    <div className="grid gap-3 border-b border-border-subtle pb-4">
-      <dl className="grid grid-cols-3 gap-3" aria-label={t('buildingScope.storeys.summary')}>
-        <FactSummary
-          label={t('buildingScope.storeys.underground')}
-          value={underground === null ? t('buildingScope.value.notCaptured') : String(underground)}
-        />
-        <FactSummary
-          label={t('buildingScope.storeys.aboveGround')}
-          value={aboveGround === null ? t('buildingScope.value.notCaptured') : String(aboveGround)}
-        />
-        <FactSummary
-          label={t('buildingScope.storeys.total')}
-          value={total === null ? t('buildingScope.value.notCaptured') : String(total)}
-        />
-      </dl>
-      {factPresentation(fact, t) && (
-        <ProvenanceChip provenance={factPresentation(fact, t)!} />
-      )}
-      <details>
-        <summary className="min-h-hit-target cursor-pointer text-small font-medium text-text-primary outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">
-          {t('buildingScope.storeys.details')}
-        </summary>
-        <div className="mt-3 grid grid-cols-1 gap-3">
-          {(['UG', 'EG', 'OG', 'SG'] as const).map((kind) => (
-            <FormField
-              key={kind}
-              label={t(`buildingScope.storeys.${kind.toLowerCase()}`)}
-              htmlFor={`storeys-${buildingId}-${kind}`}
-            >
-              <input
-                type="number"
-                min="0"
-                step="1"
-                inputMode="numeric"
-                className="numeric"
-                value={current === null && counts[kind] === 0 ? '' : counts[kind]}
-                onChange={(event) => {
-                  const value = Number.parseInt(event.target.value, 10)
-                  setCounts((previous) => ({
-                    ...previous,
-                    [kind]: Number.isFinite(value) && value >= 0 ? value : 0,
-                  }))
-                }}
-              />
-            </FormField>
-          ))}
-        </div>
-      </details>
-      <div className="flex flex-wrap gap-3">
-        <Button
-          aria-label={`${t('buildingScope.action.apply')}: ${t('buildingScope.fact.storeys')}`}
-          onClick={commit}
-          disabled={!hasLevels}
-          disabledReason={!hasLevels ? t('buildingScope.validation.storeys') : undefined}
-        >
-          {t('buildingScope.action.apply')}
-        </Button>
-        {fact.override && (
-          <Button
-            variant="ghost"
-            aria-label={`${t('buildingScope.action.reset')}: ${t('buildingScope.fact.storeys')}`}
-            onClick={() => s.clearBuildingFactOverride(buildingId, 'storeyStructure')}
-          >
-            {t('buildingScope.action.reset')}
-          </Button>
-        )}
-      </div>
-    </div>
-  )
-}
-
 /**
  * "Rebuild Project Card Workflow" Part 16: `AREAS` ("Flächen im Detail",
  * the former sole owner of this decision) is removed as a standalone
@@ -1331,19 +1228,6 @@ function UntergeschossEditor({ buildingId }: { buildingId: string }) {
       </div>
     </div>
   )
-}
-
-function countsFromStoreys(value: StoreyStructure | null): Record<StoreyKind, number> {
-  const counts: Record<StoreyKind, number> = { UG: 0, EG: 0, OG: 0, SG: 0 }
-  value?.levels.forEach((level) => { counts[level.kind] = level.count })
-  return counts
-}
-
-function storeySummary(value: StoreyStructure | null): string {
-  if (!value) return ''
-  return value.levels.map((level) => level.count === 1
-    ? level.kind
-    : `${level.count}${NNBSP}${level.kind}`).join(` + `)
 }
 
 function ConflictDecision({ conflict }: { conflict: BuildingConflict }) {
@@ -1423,11 +1307,12 @@ function resolveCandidate(
 
 function formatConflictValue(key: BuildingFactKey, value: string): string {
   if (key === 'documentationName' || key === 'address'
-    || key === 'buildingForm' || key === 'buildingClass'
-    || key === 'storeyStructure') return value
+    || key === 'buildingForm' || key === 'buildingClass') return value
   try {
-    const formatted = formatDE(new Decimal(value), key === 'units' ? 0 : 2)
-    return key === 'units' ? formatted : `${formatted}${NNBSP}m²`
+    // Bare counts (Wohneinheiten, and now Geschosse — #16 Part 8) never
+    // carry the m² area unit.
+    const formatted = formatDE(new Decimal(value), key === 'units' || key === 'storeyStructure' ? 0 : 2)
+    return key === 'units' || key === 'storeyStructure' ? formatted : `${formatted}${NNBSP}m²`
   } catch {
     return value
   }

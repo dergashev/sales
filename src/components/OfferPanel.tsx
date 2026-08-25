@@ -24,6 +24,7 @@ import { useT, useTx, localizeMoneyText, localizePercentText } from '../i18n'
 import type { UiLanguage } from '../i18n'
 import { useSemanticMotion } from '../design-system/motion'
 import { DELTA_CHIP_MS } from '../config/ui-policy'
+import { Dialog, type DialogHandle } from './Dialog'
 
 /**
  * Правая панель оффера — постоянная зона всего приложения.
@@ -278,6 +279,13 @@ export function OfferPanel(
   // Zeile selbst (Report §8: "KG 300 Untergruppen" ist Level-3-Inhalt).
   const [level3Open, setLevel3Open] = useState(false)
   const [kg300Open, setKg300Open] = useState(false)
+  // #16 Part 24/AC-24: Level 3 is now the "Learn More / See Details" canonical
+  // `Dialog`, not an inline in-rail disclosure — `level3Open` now means "the
+  // dialog is open" (the same boolean, a strict superset of its old meaning).
+  const detailsButtonRef = useRef<HTMLButtonElement>(null)
+  const detailsDialogRef = useRef<DialogHandle>(null)
+  const detailsTitleRef = useRef<HTMLHeadingElement>(null)
+  const detailsTitleId = useId()
   // SIDEBAR 01 (backlog eda1e221, SB-03): which Level 2 DIN-276 group rows
   // currently have their merged contribution-decision children open —
   // independent per group, all collapsed by default (test hint: "one KG
@@ -1270,46 +1278,61 @@ export function OfferPanel(
           </>)}
         </section>
 
-        {/* ── Level 3 · Nachweise & Verlauf (SIDEBAR 01) — collapsed by
-            default, reached deliberately: Kostentreiber's driver-bar detail
-            + benchmark (DC-44), the KG 300 Untergruppen breakdown (moved out
-            of the Level-2 row itself — target IA report §8), and the
-            session journal (no inner scroll any more, AC-7). `<aside>` is
-            the rail's only scroll owner (SB-19); this content simply keeps
-            flowing in the rail's own scroll. */}
+        {/* ── Level 3 · Nachweise & Verlauf (#16 Part 24, AC-24): the
+            "Learn More / See Details" progressive-disclosure surface —
+            Kostentreiber's driver-bar detail + benchmark (DC-44), the KG 300
+            Untergruppen breakdown, and the session journal all live behind
+            one canonical `Dialog` now, instead of SIDEBAR 01's prior inline
+            in-rail disclosure. The dialog only ever READS existing store
+            state (it owns none of it) and closing it restores focus to the
+            trigger — Configurator/rail state is untouched either way
+            (AC-26). */}
         <section aria-label="Nachweise & Verlauf" className="mt-5 border-t border-border-subtle pt-4">
           {/* SB-29: demoted from `h2` to `h3` — it now sits one level under
               the new rail-root `h2` ("Angebot") instead of being the rail's
-              only heading. No visual change (same classes). */}
+              only heading. No visual change (same classes). Plain heading
+              now, not a disclosure button — the section's action is the
+              trigger button below (AC-24), the heading itself does nothing. */}
           <h3 className="text-small font-bold text-text-primary">
-            <button
-              type="button"
-              aria-expanded={level3Open}
-              onClick={() => setLevel3Open((v) => !v)}
-              className="a3-journal-disclose outline-none before:absolute before:left-1/2 before:top-1/2 before:min-h-hit-target before:w-full before:-translate-x-1/2 before:-translate-y-1/2 before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-            >
-              <span aria-hidden="true">{level3Open ? '▾ ' : '▸ '}</span>
-              {tx('Nachweise & Verlauf')}
-            </button>
+            {tx('Nachweise & Verlauf')}
           </h3>
           {/* SB-07: the driver list is the same "priced contributions
               exist" story as the KG table above — empty scope replaces it
               with the identical empty sentence rather than "10 Beiträge ·
               Summe = 0 €" next to a real, non-zero list of contributions
               that net out to zero only because every one of them is
-              excluded. Only the driver-detail content (benchmark, driver
-              table, KG 300 subgroups) is replaced — the "Nicht enthalten"
-              notice and the session journal further down stay reachable
-              regardless of scope, they are not part of this story. */}
-          {!level3Open && (
-            <p className="a3-cap numeric mt-1">
-              {scopeEmpty ? t('offerPanel.empty.sentence') : (<>
-                {clientSafeDrivers.length}{NNBSP}{t('remainder5.offer.contributionsSum')}{NNBSP}
-                {priceUnavailable ? t('money.priceNotDetermined') : moneyOut(p.result.total, lang)}
-              </>)}
-            </p>
-          )}
-          {level3Open && (<div className="a3-drivers mt-2">
+              excluded. Always visible now (PART 20/26): this compact
+              decision-level summary persists in the rail regardless of the
+              dialog's open state — only the spreadsheet-level detail below
+              it is progressively disclosed. */}
+          <p className="a3-cap numeric mt-1">
+            {scopeEmpty ? t('offerPanel.empty.sentence') : (<>
+              {clientSafeDrivers.length}{NNBSP}{t('remainder5.offer.contributionsSum')}{NNBSP}
+              {priceUnavailable ? t('money.priceNotDetermined') : moneyOut(p.result.total, lang)}
+            </>)}
+          </p>
+          <div className="mt-2">
+            <Button ref={detailsButtonRef} variant="ghost" onClick={() => setLevel3Open(true)}>
+              {t('offerPanel.details.trigger')}
+            </Button>
+          </div>
+          <Dialog
+            ref={detailsDialogRef}
+            open={level3Open}
+            onOpenChange={setLevel3Open}
+            labelledBy={detailsTitleId}
+            initialFocusRef={detailsTitleRef}
+            returnFocusTo={detailsButtonRef}
+          >
+            <h2
+              ref={detailsTitleRef}
+              id={detailsTitleId}
+              tabIndex={-1}
+              className="outline-none text-heading-3 font-bold text-text-primary"
+            >
+              {tx('Nachweise & Verlauf')}
+            </h2>
+            <div className="a3-drivers mt-2">
           {scopeEmpty ? (
             <p className="a3-cap">{t('offerPanel.empty.sentence')}</p>
           ) : (<>
@@ -1621,7 +1644,13 @@ export function OfferPanel(
               </div>
             </div>
           </div>}
-          </div>)}
+            </div>
+            <div className="a3-row mt-4">
+              <Button variant="ghost" onClick={() => detailsDialogRef.current?.close()}>
+                {t('common.close')}
+              </Button>
+            </div>
+          </Dialog>
         </section>
       </div>
       </>)}

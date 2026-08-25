@@ -80,6 +80,7 @@ import {
   isBuildingConflict,
   isBuildingConfirmed as reviewIsBuildingConfirmed,
   isBuildingReview,
+  migrateStoreyStructureFactValue,
   toBuildingInput,
   synchronizeDerivedConflicts,
   withEngineState,
@@ -92,7 +93,6 @@ import {
   type BuildingReview,
   type ConflictResolution,
   type ReviewedBuildingInput,
-  type StoreyStructure,
 } from './buildingReview'
 import {
   browserProposalStorage,
@@ -525,6 +525,39 @@ function migrateCoverage(coverage: Coverage): Coverage {
   migrated.KG_800 = 'excluded'
   return migrated
 }
+
+/**
+ * #16 Part 8: `storeyStructure` shrank from a per-kind UG/EG/OG/SG
+ * breakdown to a single count. A payload persisted before this change
+ * already passed `isBuildingReview` (the validator accepts either shape,
+ * `buildingReview.ts`) — this is where the accepted-but-legacy shape
+ * actually gets normalized into the one the rest of the app now expects,
+ * the same two-step "accept then normalize" split `migrateCoverage` above
+ * uses for its own legacy `unknown` value.
+ */
+function migrateBuildingReview(review: BuildingReview): BuildingReview {
+  const fact = review.facts.storeyStructure
+  return {
+    ...review,
+    facts: {
+      ...review.facts,
+      storeyStructure: {
+        extracted: {
+          ...fact.extracted,
+          value: migrateStoreyStructureFactValue(fact.extracted.value),
+        },
+        override: fact.override ? {
+          ...fact.override,
+          // Already validated as Decimal-or-legacy-shape, so this can only
+          // be null if construction is somehow bypassed — the same
+          // impossible-in-practice fallback pattern as elsewhere in this
+          // file (clear-and-fallback, never a thrown migration).
+          value: migrateStoreyStructureFactValue(fact.override.value) ?? new Decimal(0),
+        } : null,
+      },
+    },
+  }
+}
 // The top-level demo projection exists before an Opportunity Option does and
 // keeps the released reference calculation available to diagnostics/tests.
 // It is never used as the default for a newly created Option.
@@ -596,8 +629,9 @@ function fixtureReview(
       wfl: decimalFact(building.areas.wflWoFlV, id, 'areas.wflWoFlV'),
       nuf: decimalFact(building.areas.nufDin277, id, 'areas.nufDin277'),
       units: decimalFact(building.areas.wohneinheiten, id, 'areas.wohneinheiten'),
-      // `vollgeschosse` does not prove UG/EG/OG/SG semantics.
-      storeyStructure: fact<StoreyStructure>(null, UNKNOWN_SOURCE),
+      // `vollgeschosse` is never trusted as a proxy for the confirmed value
+      // — the fixture never seeds this fact, it is manual-entry-only.
+      storeyStructure: fact<Decimal>(null, UNKNOWN_SOURCE),
     },
     engine: {
       energyStandard: 'EH_55', undergroundScope, hasParking,
@@ -959,8 +993,15 @@ function restoredOptionConfig(
   conflicts: Record<string, BuildingConflict>,
 ): OptionConfig {
   const base = defaultOptionConfig()
+  // #16 Part 8: normalize each building's `storeyStructure` fact BEFORE it
+  // is used anywhere below — `persisted.buildingReviews` itself may still
+  // carry the accepted-but-legacy per-kind shape (`isBuildingReview` allows
+  // it; nothing downstream should ever see it).
+  const buildingReviews = Object.fromEntries(FIXTURE_BUILDING_IDS.map((id) =>
+    [id, migrateBuildingReview(persisted.buildingReviews[id]!)],
+  )) as Record<string, BuildingReview>
   const buildings = Object.fromEntries(FIXTURE_BUILDING_IDS.map((id) => {
-    const building = toBuildingInput(persisted.buildingReviews[id]!)
+    const building = toBuildingInput(buildingReviews[id]!)
     if (!building) throw new Error(`persisted building ${id} is incomplete`)
     return [id, building]
   })) as Record<string, ProjectBuilding>
@@ -977,6 +1018,9 @@ function restoredOptionConfig(
   return {
     ...base,
     ...persisted,
+    // Overrides the raw pass-through above with the migrated facts (#16
+    // Part 8) — must win over `...persisted`, not the other way round.
+    buildingReviews,
     // Legacy `unknown`/`notApplicable` coverage never resurfaces as a normal
     // state after load — every decidable KG lands on the current binary
     // contract (`migrateCoverage`).
@@ -999,7 +1043,7 @@ function restoredOptionConfig(
     buildingSectionConfirmations: persisted.buildingSectionConfirmations ?? {},
     buildings,
     fields: legacyFieldsFromReview(
-      persisted.buildingReviews[LEGACY_FIELDS_BUILDING_ID]!,
+      buildingReviews[LEGACY_FIELDS_BUILDING_ID]!,
       conflicts,
     ),
   }
@@ -2626,7 +2670,7 @@ const BUILDING_FACT_LABELS: Record<BuildingFactKey, string> = {
   wfl: 'WFL nach WoFlV',
   nuf: 'NUF nach DIN 277',
   units: 'Wohneinheiten',
-  storeyStructure: 'Geschossstruktur',
+  storeyStructure: 'Anzahl Geschosse',
 }
 
 function sameFactValue(left: unknown, right: unknown): boolean {

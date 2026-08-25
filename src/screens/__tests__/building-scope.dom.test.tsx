@@ -8,6 +8,7 @@ import {
   __resetStoreForTests,
   useStore,
 } from '../../state/store'
+import { effectiveFactValue } from '../../state/buildingReview'
 
 beforeEach(() => __resetStoreForTests())
 
@@ -37,14 +38,12 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     expect(screen.queryByText(/Gesamtpreis|Schätzunsicherheit|Bauzeit|Kostentreiber/))
       .toBeNull()
 
+    // #16 Part 8: a single storey-count field — no per-kind UG/EG/OG/SG
+    // breakdown any more.
     await user.click(screen.getByRole('button', { name: 'Geschossstruktur' }))
-    const storeySummary = document.querySelector(
-      'dl[aria-label="Kompakte Geschossübersicht"]',
-    ) as HTMLElement
-    // F21: the empty-value marker now leads with "○ " so it reads as
-    // visually distinct from a populated value (rule 8), not by colour alone.
-    expect(within(storeySummary).getAllByText('○ Nicht erfasst')).toHaveLength(3)
-    expect(within(storeySummary).queryByText('0', { exact: true })).toBeNull()
+    const storeyField = screen.getByRole('textbox', { name: 'Anzahl Geschosse' })
+    expect(storeyField).toBeInTheDocument()
+    expect(storeyField).toHaveValue('')
 
     const hausA = screen.getByRole('checkbox', { name: 'Haus A' })
     expect(hausA).toBeChecked()
@@ -248,41 +247,44 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     })
   })
 
-  // Task 02 (deep-coherence audit, F-23): "Angabe übernehmen" used to be
-  // always-enabled and only discover a no-op AFTER the click, rendering
-  // the captured error "Mindestens eine Geschossart muss eine Anzahl
-  // größer als null haben." for a click that changed nothing.
-  it('disables "Angabe übernehmen" for Geschossstruktur with a visible reason instead of erroring after a no-op click', async () => {
+  // #16 Part 8 replaces the former bespoke multi-field Geschossstruktur
+  // editor (Task 02/F-23's own proactive-disable exception for it) with
+  // the canonical `DecimalFactField`/`MissingDecimalField` every other
+  // numeric building fact already uses — an empty commit surfaces its
+  // validation error inline instead of silently writing anything, the same
+  // established contract `units`/`wfl`/`nuf`/etc. already rely on.
+  it('an empty "Angabe übernehmen" for Anzahl Geschosse never silently commits', async () => {
     const user = userEvent.setup()
     await openBuildingScope(user)
 
     await user.click(screen.getByRole('button', { name: 'Geschossstruktur' }))
-    await user.click(screen.getByText('Detaillierte Aufteilung bearbeiten'))
-    for (const label of [
-      'Untergeschosse (UG)', 'Erdgeschosse (EG)', 'Obergeschosse (OG)', 'Staffelgeschosse (SG)',
-    ]) {
-      const input = screen.queryByRole('spinbutton', { name: label })
-      if (input) await user.clear(input)
-    }
-
     const apply = screen.getByRole('button', {
-      name: 'Angabe übernehmen: Geschossstruktur',
+      name: 'Angabe übernehmen: Anzahl Geschosse',
     })
-    expect(apply).toHaveAttribute('aria-disabled', 'true')
-    expect(apply).toHaveAttribute('aria-describedby')
-    const reasonId = apply.getAttribute('aria-describedby')!
-    expect(document.getElementById(reasonId)?.textContent)
-      .toMatch(/Geschossart.*größer als null/)
 
     const before = useStore.getState().buildingReviews['DEMO-B-A']!.facts.storeyStructure.override
     await user.click(apply)
-    // The no-op click produced neither an override write nor an alert —
-    // disabled means disabled, not "click and then explain what happened".
     expect(useStore.getState().buildingReviews['DEMO-B-A']!.facts.storeyStructure.override)
       .toBe(before)
-    // No NEW alert appeared from the click itself (a pre-existing, unrelated
-    // font-loading banner is always present in this test environment).
-    expect(screen.queryAllByRole('alert').some((el) =>
-      /Geschossart.*größer als null/.test(el.textContent ?? ''))).toBe(false)
+    expect(screen.getByText('Nur Zahlen eingeben — nicht übernommen.')).toBeInTheDocument()
+  })
+
+  it('commits a positive integer storey count and lets it be reset back to "not captured"', async () => {
+    const user = userEvent.setup()
+    await openBuildingScope(user)
+
+    await user.click(screen.getByRole('button', { name: 'Geschossstruktur' }))
+    const field = screen.getByRole('textbox', { name: 'Anzahl Geschosse' })
+    await user.type(field, '6')
+    await user.click(screen.getByRole('button', { name: 'Angabe übernehmen: Anzahl Geschosse' }))
+
+    expect(effectiveFactValue(
+      useStore.getState().buildingReviews['DEMO-B-A']!.facts.storeyStructure,
+    )!.toFixed()).toBe('6')
+
+    await user.click(screen.getByRole('button', { name: 'Auf Quellenwert zurücksetzen: Anzahl Geschosse' }))
+    expect(effectiveFactValue(
+      useStore.getState().buildingReviews['DEMO-B-A']!.facts.storeyStructure,
+    )).toBeNull()
   })
 })
