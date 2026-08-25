@@ -1,0 +1,35 @@
+# ============================================================
+# Graphify production corpus policy
+# Keep product code, tests, current product/design-system docs,
+# domain assets and authoritative repository contracts.
+# Exclude generated, transient and historical-analysis noise.
+# ============================================================
+
+# Graphify must not analyse itself
+graphify-out/
+.agents/skills/graphify/
+
+# Nested worktrees / preview runtimes are duplicate repositories
+.worktrees/
+.preview/
+
+# Generated execution artifacts
+artifacts/
+coverage/
+dist/
+build/
+tmp/
+.cache/
+
+# Historical agent/audit verdict output — evidence archive,
+# not current repository architecture / product authority
+docs/audit/verdicts/
+
+# Agent-generated historical reports
+**/codex-*.md
+
+# Common runtime/log noise
+*.log
+*.tmp
+*.bak
+.DS_Store

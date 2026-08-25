@@ -16,7 +16,7 @@ coverage/
 # second official target (alongside .claude/skills/); this repo's own
 # `.agents/mcp_config.json` (AgentsRoom's own runtime config, locally
 # excluded via .git/info/exclude) is untouched by this narrower rule.
-.agents/skills/
+.agents/skills/*
 # Default snapshot/output location when a Playwright CLI invocation is not
 # routed through .playwright/cli.config.json's outputDir — defensive only;
 # normal usage writes under .artifacts/browser-agent (already ignored above).
@@ -35,3 +35,11 @@ docs/audit/verdicts/.*.mjs
 # Версия, приехавшая вместе с нашим push, вызывает лишний пайплайн и гонку
 # версий в sales-configurator-argo.
 .gitlab-ci.yml
+
+# Repository intelligence — Graphify skill
+!.agents/skills/graphify/
+!.agents/skills/graphify/**
+
+# Graphify generated repository graph
+# Local per-worktree snapshot; must correspond to the current candidate SHA.
+graphify-out/
