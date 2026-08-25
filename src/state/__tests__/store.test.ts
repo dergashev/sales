@@ -107,11 +107,21 @@ describe('Leistungsabgrenzung: подтверждение и инвалидац�
     expect(scopeBoundariesStatus(st())).toBe('confirmed')
   })
 
-  it('KG 300/400/700 invalidieren den bestätigten Umfang wie jede andere Entscheidung', () => {
+  // "Rebuild Project Card Workflow" #16 supersedes the 22.08.2026 "no KG
+  // mandatory" decision this suite used to exercise here: KG 300/400/700
+  // are mandatory core groups and `setCoverage` is a guarded no-op for
+  // them, so they can no longer invalidate a confirmed Scope Boundaries —
+  // there is nothing to invalidate because there is nothing to change.
+  it('KG 300/400/700 sind unveränderlich: setCoverage ist ein No-op und lässt einen bestätigten Umfang `confirmed`', () => {
     const st = () => useStore.getState()
     st().confirmScopeBoundaries()
     st().setCoverage('KG_300', 'excluded')
-    expect(scopeBoundariesStatus(st())).toBe('recheck')
+    st().setCoverage('KG_400', 'excluded')
+    st().setCoverage('KG_700', 'excluded')
+    expect(st().coverage.KG_300).toBe('included')
+    expect(st().coverage.KG_400).toBe('included')
+    expect(st().coverage.KG_700).toBe('included')
+    expect(scopeBoundariesStatus(st())).toBe('confirmed')
   })
 
   /**
@@ -998,8 +1008,12 @@ describe('Покрытие групп затрат (сценарий п. 11) - �
   // short of the printed total, percentages summed to 98 %. This exercises
   // the general invariant with the SAME row set + filter the rail table
   // itself uses (`Object.entries(p.kgSplit).filter(coverage === 'included')`
-  // in OfferPanel.tsx), across five simultaneously-included groups.
-  it('Task 04 (F-12): KG-Zeilen (300/400/700 + 500/600/800) summieren exakt zum gedruckten Total, Prozentspalte summiert zu 100 %', () => {
+  // in OfferPanel.tsx), across every simultaneously-included group.
+  //
+  // "Rebuild Project Card Workflow" Part 13: KG 800 is no longer a
+  // supported Scope Boundaries decision — `setCoverage('KG_800', ...)` is
+  // a guarded no-op — so it can never appear here regardless of intent.
+  it('Task 04 (F-12): KG-Zeilen (300/400/700 mandatory + 500/600) summieren exakt zum gedruckten Total, Prozentspalte summiert zu 100 %', () => {
     const st = () => useStore.getState()
     st().setCoverage('KG_500', 'included')
     st().setScopeCatalogQuantity('surface_parking_spaces', '20')
@@ -1008,10 +1022,11 @@ describe('Покрытие групп затрат (сценарий п. 11) - �
     st().confirmGebaeudeklasse()
     const p = st().projection()
     expect(p.result.completeness).toBe('complete')
+    expect(st().coverage.KG_800).toBe('excluded')
     const includedGroups = (Object.keys(p.kgSplit) as CostGroup[])
       .filter((g) => p.kgSplit[g] !== undefined && st().coverage[g] === 'included')
-    // KG 300, KG 400, KG 700 (vereinfacht default) + KG 500/600/800 above.
-    expect(includedGroups.length).toBe(6)
+    // KG 300, KG 400, KG 700 (mandatory) + KG 500/600 above; never KG 800.
+    expect(includedGroups.length).toBe(5)
     const rowSum = includedGroups.reduce(
       (sum, g) => sum.plus(p.kgSplit[g]!), new Decimal(0),
     )
@@ -1023,183 +1038,6 @@ describe('Покрытие групп затрат (сценарий п. 11) - �
       new Decimal(0),
     )
     expect(percentSum.toFixed(2)).toBe('100.00')
-  })
-})
-
-/**
- * KG 300/400 ausgeschlossen — reale Preisfolge (Product Decision, Ticket
- * e2dac9b5, genehmigt 20.08.2026, auf dem Ticket dokumentiert).
- *
- * `calculation-spec.md` §1/§2 kennt Bauwerk_g nur als EIN kombiniertes
- * Feld; es gibt keine autoritative Formel, um KG 300 allein oder KG 400
- * allein zu bepreisen. Der genehmigte Entscheid schließt diese Lücke,
- * indem die bereits geprüfte, invariant-gesicherte `kgSplit`-Funktion
- * (echt-Anteile 76,2/23,8, Referenzprojekt R-02, decisions.md D-07)
- * wiederverwendet wird — IMMER angewandt auf den vollen, unkorrigierten
- * Block, NIE auf einen bereits reduzierten Wert (das hätte den exakt
- * abgelehnten Fehler F1 wiederholt: eine erfundene, ungleich null
- * gesetzte KG-300-Zeile trotz Ausschluss).
- */
-describe('KG 300/400 ausgeschlossen — reale Preisfolge (Product Decision e2dac9b5)', () => {
-  it('KG 300 ausgeschlossen: Bauwerk-Beitrag wird zum realen KG-400-Anteil; sichtbare Korrektur; Summe der Treiber stimmt weiter', () => {
-    const st = () => useStore.getState()
-    const before = st().projection().result.total.exact
-    st().setCoverage('KG_300', 'excluded')
-    // D-07 Regel 6 (unverändert): vereinfacht braucht 300 UND 400 aktiv.
-    expect(st().kg700Mode).toBe('hoaiAho')
-    const p = st().projection()
-    expect(p.kgSplit.KG_300.isZero()).toBe(true)
-    const expectedBauwerk = before.mul('23.8').div(100)
-    expect(p.kgSplit.KG_400.toFixed(2)).toBe(expectedBauwerk.toFixed(2))
-    const adjustment = p.result.drivers
-      .find((x) => x.key === 'kg300_excluded_adjustment')!
-    expect(adjustment.exact.toFixed(2))
-      .toBe(before.mul('76.2').div(100).negated().toFixed(2))
-    // Sichtbarer, benannter Treiber — keine stille Neuberechnung (Regel
-    // 13/18/35): der Abzug muss im Kostentreiber erklärbar sein.
-    expect(adjustment.block).toBe('bauwerk')
-    expect(adjustment.origin).toBe('decision')
-    const kg700Driver = p.result.drivers.find((x) => x.key === 'kg700_hoai_aho')!
-    // KG 700 · 12 % — von der bereits reduzierten, tatsächlich bepreisten
-    // Bauwerk-Summe, nicht vom ursprünglichen vollen Block.
-    expect(kg700Driver.exact.toFixed(2)).toBe(expectedBauwerk.mul('0.12').toFixed(2))
-    const driverSum = p.result.drivers
-      .reduce((a, x) => a.plus(x.exact), new Decimal(0))
-    expect(driverSum.toFixed(2)).toBe(p.result.total.exact.toFixed(2))
-    expect(p.result.total.exact.toFixed(2)).toBe(expectedBauwerk.mul('1.12').toFixed(2))
-    expect(p.result.total.exact.lt(before)).toBe(true)
-  })
-
-  it('KG 400 ausgeschlossen: KG-300-Anteil bleibt real; Risikozuschlag auf KG 300 bleibt wirksam auf der reduzierten Basis', () => {
-    const st = () => useStore.getState()
-    const before = st().projection().result.total.exact
-    st().setCoverage('KG_400', 'excluded')
-    expect(st().kg700Mode).toBe('hoaiAho')
-    const p1 = st().projection()
-    expect(p1.kgSplit.KG_400.isZero()).toBe(true)
-    const expectedBauwerk = before.mul('76.2').div(100)
-    expect(p1.kgSplit.KG_300.toFixed(2)).toBe(expectedBauwerk.toFixed(2))
-
-    // RISK-STATIK: Basis KG_300, Satz 2 % (fixtures/derived-prototype.json).
-    // Muss auf der REALEN, reduzierten KG-300-Basis wirken — nicht auf dem
-    // ursprünglichen vollen Block und nicht auf einem erneut gesplitteten
-    // (schon reduzierten) Wert.
-    st().toggleRisiko('RISK-STATIK')
-    const risk = st().projection().result.drivers
-      .find((x) => x.key === 'risk_RISK-STATIK')!
-    expect(risk.exact.toFixed(2)).toBe(expectedBauwerk.mul('0.02').toFixed(2))
-  })
-
-  it('beide Kerngruppen ausgeschlossen: Bauwerk-Beitrag ist EUR 0; KG 700 (falls aktiv) ebenfalls 0', () => {
-    const st = () => useStore.getState()
-    st().setCoverage('KG_300', 'excluded')
-    st().setCoverage('KG_400', 'excluded')
-    const p = st().projection()
-    expect(p.kgSplit.KG_300.isZero()).toBe(true)
-    expect(p.kgSplit.KG_400.isZero()).toBe(true)
-    expect(p.result.drivers.some((x) => x.key === 'kg700_hoai_aho')).toBe(false)
-    const bauwerkSum = p.result.drivers
-      .filter((x) => x.block === 'bauwerk')
-      .reduce((a, x) => a.plus(x.exact), new Decimal(0))
-    expect(bauwerkSum.isZero()).toBe(true)
-  })
-
-  it('KG 300 unentschieden (`unknown`): preist wie ausgeschlossen und hält die Summe unvollständig (SCOPE-001)', () => {
-    const st = () => useStore.getState()
-    const before = st().projection().result.total.exact
-    st().setCoverage('KG_300', 'unknown')
-    expect(st().kg700Mode).toBe('hoaiAho')
-    expect(st().kg700ModeAutoFallback).toBe(true)
-    const p = st().projection()
-    // `unknown` preist wie `excluded` — ein unentschiedener Kern darf nie
-    // still als eingeschlossen gerechnet werden (AC22).
-    expect(p.kgSplit.KG_300.isZero()).toBe(true)
-    expect(p.kgSplit.KG_400.toFixed(2)).toBe(before.mul('23.8').div(100).toFixed(2))
-    // Aber `unknown` bleibt eine Datenlücke, keine Entscheidung: die Summe
-    // fällt auf den Zwischenstand zurück (Regel 16, SCOPE-001), anders als
-    // eine echte `excluded`-Entscheidung mit sonst vollständiger Deckung.
-    expect(p.result.completeness).toBe('incomplete')
-    expect(p.result.totalLabel).toBe('Zwischensumme der kalkulierten Positionen')
-    const reason = p.result.incompleteReasons
-      .find((r) => r.code === 'coverageUnknown')
-    expect(reason?.groups).toContain('KG_300')
-    const unresolvedAdjustment = p.result.drivers
-      .find((x) => x.key === 'kg300_excluded_adjustment')!
-    expect(unresolvedAdjustment.origin).toBe('scope')
-    expect(unresolvedAdjustment.label).toContain('(noch offen)')
-    expect(unresolvedAdjustment.label).not.toContain('(ausgeschlossen)')
-  })
-
-  it('behält den Auto-Fallback, solange erst eine von zwei Kerngruppen wieder enthalten ist', () => {
-    const st = () => useStore.getState()
-    st().setCoverage('KG_300', 'excluded')
-    st().setCoverage('KG_400', 'excluded')
-    st().setCoverage('KG_300', 'included')
-
-    expect(st().coverage.KG_400).toBe('excluded')
-    expect(st().kg700Mode).toBe('hoaiAho')
-    expect(st().kg700ModeAutoFallback).toBe(true)
-  })
-
-  it('eine bewusste HOAI/AHO-Wahl bleibt nach einem vollständigen Scope-Roundtrip erhalten', () => {
-    const st = () => useStore.getState()
-    st().setCoverage('KG_300', 'excluded')
-    st().setKg700Mode('vereinfacht')
-    st().setKg700Mode('hoaiAho')
-    expect(st().kg700ModeAutoFallback).toBe(false)
-
-    st().setCoverage('KG_300', 'included')
-    expect(st().kg700Mode).toBe('hoaiAho')
-    expect(st().kg700ModeAutoFallback).toBe(false)
-  })
-
-  /**
-   * QA-01 (Calculation QA, ticket e2dac9b5): excluding a core group
-   * correctly falls back to `hoaiAho` (D-07 rule 6), but the fallback was
-   * only ever applied forward. Re-including both core groups afterwards
-   * left `kg700Mode` stuck on `hoaiAho`, silently inflating the total by
-   * KG 700's +12 % indefinitely — an entirely ordinary "excluded, then
-   * changed my mind" interaction produced a wrong, unexplained total.
-   */
-  it('QA-01: re-including both core groups after an auto-fallback restores the original total (kg700Mode auto-reverts)', () => {
-    const st = () => useStore.getState()
-    const before = st().projection().result.total.exact
-    expect(st().kg700Mode).toBe('vereinfacht')
-    st().setCoverage('KG_300', 'excluded')
-    expect(st().kg700Mode).toBe('hoaiAho')
-    expect(st().kg700ModeAutoFallback).toBe(true)
-    st().setCoverage('KG_300', 'included')
-    expect(st().kg700Mode).toBe('vereinfacht')
-    expect(st().kg700ModeAutoFallback).toBe(false)
-    expect(st().projection().result.total.exact.equals(before)).toBe(true)
-    expect(st().projection().result.drivers
-      .some((d) => d.key === 'kg300_excluded_adjustment')).toBe(false)
-  })
-
-  it('QA-01: a deliberate hoaiAho choice is never auto-reverted by re-including a core group', () => {
-    const st = () => useStore.getState()
-    st().setKg700Mode('hoaiAho')
-    expect(st().kg700ModeAutoFallback).toBe(false)
-    st().setCoverage('KG_300', 'excluded')
-    // Already hoaiAho, and NOT because of this exclusion — the flag must
-    // stay false; the fallback path never fires when already in hoaiAho.
-    expect(st().kg700ModeAutoFallback).toBe(false)
-    st().setCoverage('KG_300', 'included')
-    // Both core groups included again, but the mode was the seller's own
-    // deliberate choice — it must remain exactly as they left it.
-    expect(st().kg700Mode).toBe('hoaiAho')
-  })
-
-  it('QA-01: undo after an auto-fallback restores kg700Mode, the flag, and the total exactly', () => {
-    const st = () => useStore.getState()
-    const before = st().projection().result.total.exact
-    st().setCoverage('KG_300', 'excluded')
-    expect(st().canUndo()).toBe(true)
-    st().undo()
-    expect(st().kg700Mode).toBe('vereinfacht')
-    expect(st().kg700ModeAutoFallback).toBe(false)
-    expect(st().coverage.KG_300).toBe('included')
-    expect(st().projection().result.total.exact.equals(before)).toBe(true)
   })
 })
 
@@ -1219,7 +1057,13 @@ describe('Настоящая модель Option (ревью № 13, дефек�
     st().confirmProjectParams()
   }
 
-  it('jede neue Option startet für KG 200/300/400/500/600/700/800 `excluded`, nicht mandatory und nicht in einer Lücke (CPO decision, 22.08.2026, löst das frühere AC22-"unknown"-Ziel ab)', () => {
+  // "Rebuild Project Card Workflow" #16 supersedes the 22.08.2026 "no KG
+  // mandatory" decision this test used to pin: KG 300/400/700 are
+  // mandatory core groups and start `included` for every fresh Option; KG
+  // 200/500/600 remain genuinely user-decidable and start `excluded`; KG
+  // 800 is no longer a supported decision and always starts (and stays)
+  // `excluded`.
+  it('jede neue Option startet mit KG 300/400/700 mandatory `included`, KG 200/500/600 `excluded`, KG 800 dauerhaft `excluded`, und nicht in einer Lücke', () => {
     prepare()
     st().createOption('Offener Umfang')
     st().openOption('OPT-01')
@@ -1232,9 +1076,12 @@ describe('Настоящая модель Option (ревью № 13, дефек�
       st().coverage.KG_600,
       st().coverage.KG_700,
       st().coverage.KG_800,
-    ]).toEqual(Array(7).fill('excluded'))
-    expect(st().kg700Mode).toBe('hoaiAho')
-    expect(st().kg700ModeAutoFallback).toBe(true)
+    ]).toEqual(['excluded', 'included', 'included', 'excluded', 'excluded', 'included', 'excluded'])
+    // Both mandatory core groups are included from the start, so the
+    // simplified All3 method is immediately available — no reversible
+    // automatic fallback is manufactured for a fresh Option any more.
+    expect(st().kg700Mode).toBe('vereinfacht')
+    expect(st().kg700ModeAutoFallback).toBe(false)
     // No coverage gap exists any more — the binary contract never produces
     // `coverageUnknown` for a fresh Option.
     expect(st().projection().result.incompleteReasons
@@ -1577,77 +1424,32 @@ describe('Construction Period: Baubeginn (Tech Review Nachbesserung)', () => {
 })
 
 /**
- * KG 800 (Finanzierung), integration через store/computeProjection — тикет
- * "MAKE ALL KG 200–800 SELECTABLE & ADD COST-BEARING CONTENT…". Юнит-тесты
- * чистой функции `calculateKg800` живут в `engine/__tests__/scopeCatalog.test.ts`;
- * здесь — что она реально подключена и пересчитывается вместе с проектом.
+ * KG 800 (Finanzierung), integration через store/computeProjection.
+ *
+ * "Rebuild Project Card Workflow" Part 13 supersedes the "MAKE ALL KG
+ * 200–800 SELECTABLE" ticket for this one group: KG 800 is no longer a
+ * supported Scope Boundaries decision at all. `calculateKg800`'s own unit
+ * tests (non-recursion, worked example) stay in
+ * `engine/__tests__/scopeCatalog.test.ts` and are untouched — that pure
+ * function is preserved exactly, just permanently unreachable through the
+ * store. These tests now prove the dormant contract: no UI path, no
+ * config, and no upstream cost change can ever make KG 800 contribute
+ * again.
  */
-describe('KG 800 — интеграция со стором: нерекурсивность и пересчёт (AC-14/AC-25)', () => {
-  it('KG 800 не имеет базы и не создаёт вклада, пока не включена', () => {
+describe('KG 800 — dauerhaft dormant (Part 13 der Rebuild Project Card Workflow-Aufgabe)', () => {
+  it('setCoverage("KG_800", "included") ist ein No-op — KG 800 bleibt excluded und trägt nie bei, auch mit einer echten Bauwerk-Kosten-Basis', () => {
     const st = () => useStore.getState()
-    st().setCoverage('KG_300', 'included')
-    st().setCoverage('KG_400', 'included')
-    const before = st().projection().result.total.exact
-    expect(st().projection().result.drivers.some((d) => d.key.startsWith('kg800_')))
-      .toBe(false)
-    st().setCoverage('KG_800', 'included')
-    // Default parameters (debt ratio 60 %, 4.5 % p.a., 18 months, linear
-    // drawdown) already produce a real, non-zero financing cost the moment
-    // a real Bauwerk-Kosten base exists.
-    const after = st().projection().result.total.exact
-    expect(after.gt(before)).toBe(true)
-  })
-
-  it('KG 800 пересчитывается при изменении вышестоящей стоимости KG 300/400 (AC-14) и никогда не финансирует сама себя', () => {
-    const st = () => useStore.getState()
-    st().setCoverage('KG_300', 'included')
-    st().setCoverage('KG_400', 'included')
-    st().setCoverage('KG_800', 'included')
-    const kg800Before = st().projection().result.drivers
-      .filter((d) => d.key.startsWith('kg800_'))
-      .reduce((sum, d) => sum.plus(d.exact), new Decimal(0))
-    expect(kg800Before.gt(0)).toBe(true)
-
-    // A real upstream cost change (KG 500 hardscape) must move KG 800's own
-    // financing cost in the SAME direction — it is derived from the total
-    // pre-financing cost, not a frozen snapshot.
     st().setCoverage('KG_500', 'included')
     st().setScopeCatalogQuantity('hardscape_area_m2', '1000')
-    const kg800After = st().projection().result.drivers
-      .filter((d) => d.key.startsWith('kg800_'))
-      .reduce((sum, d) => sum.plus(d.exact), new Decimal(0))
-    expect(kg800After.gt(kg800Before)).toBe(true)
-
-    // Non-recursion: KG 800's own drivers must never appear in the
-    // pre-financing base it was computed from — the base is exactly the
-    // pre-KG-800 project total, provably NOT inflated by KG 800 itself.
-    const kg800Total = st().projection().result.drivers
-      .filter((d) => d.key.startsWith('kg800_'))
-      .reduce((sum, d) => sum.plus(d.exact), new Decimal(0))
-    const nonKg800Total = st().projection().result.drivers
-      .filter((d) => !d.key.startsWith('kg800_'))
-      .reduce((sum, d) => sum.plus(d.exact), new Decimal(0))
-    expect(st().projection().result.total.exact.toFixed(2))
-      .toBe(nonKg800Total.plus(kg800Total).toFixed(2))
-  })
-
-  it('исключение KG 800 убирает её вклад полностью — дормантные параметры не просачиваются в итог', () => {
-    const st = () => useStore.getState()
-    st().setCoverage('KG_300', 'included')
-    st().setCoverage('KG_400', 'included')
+    const before = st().projection().result.total.exact
     st().setCoverage('KG_800', 'included')
-    const withKg800 = st().projection().result.total.exact
-    st().setCoverage('KG_800', 'excluded')
-    const withoutKg800 = st().projection().result.total.exact
-    expect(withoutKg800.lt(withKg800)).toBe(true)
+    expect(st().coverage.KG_800).toBe('excluded')
     expect(st().projection().result.drivers.some((d) => d.key.startsWith('kg800_')))
       .toBe(false)
-    // Re-including restores the same figure without asking again.
-    st().setCoverage('KG_800', 'included')
-    expect(st().projection().result.total.exact.toFixed(2)).toBe(withKg800.toFixed(2))
+    expect(st().projection().result.total.exact.toFixed(2)).toBe(before.toFixed(2))
   })
 
-  it('«Für dieses Meeting freigeben» ist ein eigenständiges, journalliertes, standardmäßig privates Flag (AC-17)', () => {
+  it('«Für dieses Meeting freigeben» ist ein eigenständiges, journalliertes, standardmäßig privates Flag (AC-17) — unabhängig vom Inclusion-Guard erreichbar', () => {
     const st = () => useStore.getState()
     expect(st().kg800ClientRevealed).toBe(false)
     const journalBefore = st().journal.length

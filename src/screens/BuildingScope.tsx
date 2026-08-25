@@ -12,9 +12,12 @@ import { NNBSP, formatDE } from '../engine/money'
 import {
   buildingConfirmed,
   includedBuildingIds,
+  LABEL_UG,
   useStore,
   type BuildingReviewSection,
 } from '../state/store'
+import { RadioCardGroup } from '../components/controls'
+import { optionImage } from '../assets/option-images'
 import {
   BUILDING_FACT_KEYS,
   deriveConflictState,
@@ -719,7 +722,10 @@ function BuildingReviewPanel({
               open={openSections.storeys}
               onOpenChange={(open) => setOpenSections((current) => ({ ...current, storeys: open }))}
             >
-              <div className="p-4"><StoreyEditor buildingId={buildingId} /></div>
+              <div className="p-4">
+                <StoreyEditor buildingId={buildingId} />
+                <UntergeschossEditor buildingId={buildingId} />
+              </div>
             </ReviewDisclosure>
           </tbody>
         </table>
@@ -1266,6 +1272,62 @@ function StoreyEditor({ buildingId }: { buildingId: string }) {
             {t('buildingScope.action.reset')}
           </Button>
         )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * "Rebuild Project Card Workflow" Part 16: `AREAS` ("Flächen im Detail",
+ * the former sole owner of this decision) is removed as a standalone
+ * Configurator chapter. Building Scope is the accepted authoritative
+ * editing location for building-level identity and area information (Part
+ * 7/Accepted Authority #7); this relocates the exact same control
+ * (`b.untergeschoss`/`setUntergeschoss`, unchanged commercial semantics,
+ * same three images) rather than inventing a replacement — KG 300's own
+ * read-only recap already links here (`UndergroundFloorRecap` in
+ * `S3Konfigurator.tsx`).
+ */
+const UG_IMAGE_VALUE: Record<'vollausbau' | 'ab_decke' | 'kein_ug', string> = {
+  vollausbau: 'rohbauAusbau',
+  ab_decke: 'nurAusbau',
+  kein_ug: 'keins',
+}
+
+function untergeschossDelta(delta: Decimal): string {
+  if (delta.isZero()) return `±${NNBSP}0${NNBSP}€`
+  const sign = delta.isNegative() ? '−' : '+'
+  const word = delta.isNegative() ? 'Minderpreis' : 'Mehrpreis'
+  return `${sign}${NNBSP}${formatDE(delta.abs(), 0)}${NNBSP}€${NNBSP}${word}`
+}
+
+function UntergeschossEditor({ buildingId }: { buildingId: string }) {
+  const s = useStore()
+  const t = useT()
+  const b = s.buildings[buildingId]
+  if (!b) return null
+  return (
+    <div className="mt-4 border-t border-border-subtle pt-4">
+      <p className="text-small font-medium text-text-primary">
+        {t('configurator.basement.title')}
+      </p>
+      <div className="mt-2">
+        <RadioCardGroup
+          legend={t('configurator.basement.title')}
+          legendHidden
+          value={b.untergeschoss}
+          onChange={(v) => s.setUntergeschoss(buildingId, v)}
+          onPreview={(v) =>
+            s.previewOption(v ? { kind: 'untergeschoss', buildingId, value: v } : null)}
+          options={(['vollausbau', 'ab_decke', 'kein_ug'] as const).map((v) => ({
+            value: v,
+            title: LABEL_UG[v],
+            image: optionImage('ugVariante', UG_IMAGE_VALUE[v]),
+            consequence: b.untergeschoss === v
+              ? 'aktuelle Auswahl'
+              : untergeschossDelta(s.optionDelta({ kind: 'untergeschoss', buildingId, value: v })),
+          }))}
+        />
       </div>
     </div>
   )

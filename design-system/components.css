@@ -830,7 +830,22 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    — needs the path to it left open. Same pattern already used for
    `.a3-radio-segments label>input+.peer` below. */
 .a3-okc-tile>[aria-hidden="true"]{pointer-events:none}
-.a3-okc-tile .a3-option-media{display:none;width:calc(100% + var(--space-4) + var(--space-4));aspect-ratio:4/3;object-fit:cover;margin:calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) var(--space-3);background:var(--color-surface-canvas)}
+/* "Rebuild Project Card Workflow" Part 18 (canonical option-card media
+   defect): the bleed-to-edge width/margin below only ever cancelled the
+   tile's own PADDING, never its BORDER (`.a3-okc-tile`'s
+   `border:var(--border-width-strong) solid transparent`, which turns
+   visibly orange the moment a tile is selected/mandatory-checked,
+   `:has(:checked)` above). The image therefore stopped one border-width
+   short of the tile's real visual edge — invisible while the border stays
+   transparent, but a `--border-width-strong`-wide gap becomes visible on
+   every selected/mandatory tile: exactly the "smaller floating rectangle,
+   not flush with the card" symptom. Extending the bleed by the border
+   width on every side closes that gap without touching the deliberate
+   sub-15rem hide-media threshold above (`components-core.md` §CheckboxCard/
+   §RadioCardGroup: missing/too-narrow media falls back to the text
+   contract, unchanged, out of this ticket's scope) or the aspect-ratio/
+   object-fit/crop contract itself.*/
+.a3-okc-tile .a3-option-media{display:none;width:calc(100% + (var(--space-4) + var(--border-width-strong)) * 2);aspect-ratio:4/3;object-fit:cover;margin:calc(-1 * (var(--space-4) + var(--border-width-strong))) calc(-1 * (var(--space-4) + var(--border-width-strong))) var(--space-3);background:var(--color-surface-canvas)}
 .a3-okc-tile .a3-option-media[hidden]{display:none}
 .a3-okc-tile:hover{border-color:var(--color-text-primary)}
 /* F10/F19: `.a3-okc-tile` is a `<label>` wrapping a native `<input

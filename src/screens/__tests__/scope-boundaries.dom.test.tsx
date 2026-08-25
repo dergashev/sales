@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Decimal } from 'decimal.js'
 import { App } from '../../App'
 import { confirmBuildingReviewSections } from '../../test/offer-option'
 import { __resetStoreForTests, activeBuilding, useStore } from '../../state/store'
@@ -32,12 +31,23 @@ async function openScopeBoundaries(user: ReturnType<typeof userEvent.setup>) {
   await user.click(nav(/Leistungsabgrenzung/))
 }
 
-describe('Leistungsabgrenzung / Scope Boundaries (binary contract, CPO decision 22.08.2026)', () => {
-  it('renders all seven KG 200-800 groups as binary decisions, `nicht enthalten` checked by default, and applies the D-07 fallback', async () => {
+describe('Leistungsabgrenzung / Scope Boundaries (mandatory-core contract, "Rebuild Project Card Workflow" #16)', () => {
+  it('renders KG 300/400/700 as a single locked mandatory tile and KG 200/500/600 as binary decisions, `nicht enthalten` checked by default; KG 800 does not appear at all', async () => {
     const user = userEvent.setup()
     await openScopeBoundaries(user)
 
-    for (const kg of [/KG.200/, /KG.300/, /KG.400/, /KG.500/, /KG.600/, /KG.700/, /KG.800/]) {
+    for (const kg of [/KG.300/, /KG.400/, /KG.700/]) {
+      // `CheckboxCard` renders a native `<fieldset>` (implicit ARIA
+      // `group`) around its own explicit `role="group"` div with the same
+      // accessible name — both match, so take the outer fieldset.
+      const group = screen.getAllByRole('group', { name: kg })[0]!
+      const tiles = within(group).getAllByRole('checkbox')
+      expect(tiles).toHaveLength(1)
+      expect(tiles[0]).toBeChecked()
+      expect(tiles[0]).toHaveAttribute('aria-disabled', 'true')
+      expect(within(group).getByText(/Pflicht/)).toBeInTheDocument()
+    }
+    for (const kg of [/KG.200/, /KG.500/, /KG.600/]) {
       const radios = within(screen.getByRole('radiogroup', { name: kg })).getAllByRole('radio')
       expect(radios).toHaveLength(2)
       // Binary default: `nicht enthalten` (index 1) starts checked — no
@@ -45,88 +55,39 @@ describe('Leistungsabgrenzung / Scope Boundaries (binary contract, CPO decision 
       expect((radios[0] as HTMLInputElement).checked).toBe(false)
       expect((radios[1] as HTMLInputElement).checked).toBe(true)
     }
+    expect(screen.queryByRole('radiogroup', { name: /KG.800/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: /KG.800/ })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Finanzierung/)).not.toBeInTheDocument()
+
     expect(useStore.getState().coverage.KG_200).toBe('excluded')
-    expect(useStore.getState().coverage.KG_300).toBe('excluded')
-    expect(useStore.getState().coverage.KG_400).toBe('excluded')
+    expect(useStore.getState().coverage.KG_300).toBe('included')
+    expect(useStore.getState().coverage.KG_400).toBe('included')
     expect(useStore.getState().coverage.KG_500).toBe('excluded')
     expect(useStore.getState().coverage.KG_600).toBe('excluded')
-    expect(useStore.getState().coverage.KG_700).toBe('excluded')
+    expect(useStore.getState().coverage.KG_700).toBe('included')
     expect(useStore.getState().coverage.KG_800).toBe('excluded')
-    expect(useStore.getState().kg700Mode).toBe('hoaiAho')
-    expect(useStore.getState().kg700ModeAutoFallback).toBe(true)
-
-    // Excluding KG 300/400 from the very start (the binary default) already
-    // prices the real echt-share adjustment as a deliberate decision, never
-    // as an unresolved gap.
-    const excludedCoreAdjustments = useStore.getState().projection().result.drivers
-      .filter((driver) => ['kg300_excluded_adjustment', 'kg400_excluded_adjustment']
-        .includes(driver.key))
-    expect(excludedCoreAdjustments).toHaveLength(2)
-    expect(excludedCoreAdjustments.every((driver) => driver.origin === 'decision')).toBe(true)
-    expect(excludedCoreAdjustments.every((driver) => driver.label.includes('(ausgeschlossen)')))
-      .toBe(true)
-
-    await user.click(within(screen.getByRole('radiogroup', { name: /KG.300/ }))
-      .getAllByRole('radio')[0]!)
-    await user.click(within(screen.getByRole('radiogroup', { name: /KG.400/ }))
-      .getAllByRole('radio')[0]!)
-    await user.click(within(screen.getByRole('radiogroup', { name: /KG.700/ }))
-      .getAllByRole('radio')[0]!)
+    // Both mandatory core groups are included from the start, so the
+    // simplified All3 method is immediately available — no reversible
+    // automatic fallback is manufactured for a fresh Option any more.
     expect(useStore.getState().kg700Mode).toBe('vereinfacht')
-    const before = useStore.getState().projection().result.total.exact
-    const kg300 = screen.getByRole('radiogroup', { name: /KG.300/ })
-    await user.click(within(kg300).getAllByRole('radio')[1]!)
-    expect(useStore.getState().coverage.KG_300).toBe('excluded')
-    expect(useStore.getState().kg700Mode).toBe('hoaiAho')
-    expect(useStore.getState().journal.at(-1)?.label).toContain('automatisch')
-    // Product Decision (ticket e2dac9b5, approved 2026-08-20, recorded on
-    // the ticket): excluding one core group prices the remaining one at
-    // its real, Referenzprojekt-R-02-audited echt share (76,2/23,8 —
-    // decisions.md D-07); the deduction is derived from the amount BEFORE
-    // this click, never by re-splitting an already-reduced figure.
-    const projection = useStore.getState().projection()
-    expect(projection.kgSplit.KG_300.isZero()).toBe(true)
-    expect(projection.kgSplit.KG_400.toFixed(2))
-      .toBe(before.mul('23.8').div(100).toFixed(2))
-    // KG 700 automatically falls back to its own HOAI+AHO rate on the now
-    // smaller block (D-07 rule 6, already covered above); the driver sum
-    // still reconciles to the total (rule 32), and the total itself drops
-    // well below the pre-exclusion amount.
-    const driverSum = projection.result.drivers
-      .reduce((a, d) => a.plus(d.exact), new Decimal(0))
-    expect(driverSum.toFixed(2)).toBe(projection.result.total.exact.toFixed(2))
-    expect(projection.result.total.exact.lt(before)).toBe(true)
+    expect(useStore.getState().kg700ModeAutoFallback).toBe(false)
+
+    // The mandatory tile is not a real decision: clicking it must not fire
+    // the native checkbox change handler and must leave coverage untouched.
+    const kg300Group = screen.getAllByRole('group', { name: /KG.300/ })[0]!
+    await user.click(within(kg300Group).getByRole('checkbox'))
+    expect(useStore.getState().coverage.KG_300).toBe('included')
   })
 
-  it('disables All3 with a visible reason until KG 300 and KG 400 are included', async () => {
+  it('All3-Verfahren is available immediately since KG 300/400 are mandatory and always included', async () => {
     const user = userEvent.setup()
     await openScopeBoundaries(user)
-
-    const kg700 = screen.getByRole('radiogroup', { name: /KG.700/ })
-    await user.click(within(kg700).getAllByRole('radio')[0]!)
     await user.click(nav(/Baunebenkosten KG 700/))
 
     const method = screen.getByRole('radiogroup', { name: 'Berechnungsart KG 700' })
     const all3 = within(method).getByRole('radio', { name: 'All3-Verfahren 70/22/8' })
-    expect(all3).toBeDisabled()
-    expect(within(method).getByRole('radio', { name: 'nach HOAI und AHO' })).toBeChecked()
-    expect(screen.getByText(/erst verfügbar, wenn KG 300 und KG 400 beide enthalten/))
-      .toBeInTheDocument()
-    expect(screen.queryByText(/Der Gesamtbetrag bleibt unverändert/)).not.toBeInTheDocument()
-    expect(screen.getByText(/eigene Zeile im Kostentreiber/)).toBeInTheDocument()
-
-    await user.click(nav(/Leistungsabgrenzung/))
-    await user.click(within(screen.getByRole('radiogroup', { name: /KG.300/ }))
-      .getAllByRole('radio')[0]!)
-    await user.click(within(screen.getByRole('radiogroup', { name: /KG.400/ }))
-      .getAllByRole('radio')[0]!)
-    await user.click(nav(/Baunebenkosten KG 700/))
-
-    const restored = screen.getByRole('radiogroup', { name: 'Berechnungsart KG 700' })
-    expect(within(restored).getByRole('radio', { name: 'All3-Verfahren 70/22/8' }))
-      .toBeEnabled()
-    expect(within(restored).getByRole('radio', { name: 'All3-Verfahren 70/22/8' }))
-      .toBeChecked()
+    expect(all3).toBeEnabled()
+    expect(all3).toBeChecked()
     expect(screen.getByText(/Der Gesamtbetrag bleibt unverändert/)).toBeInTheDocument()
   })
 
@@ -145,11 +106,9 @@ describe('Leistungsabgrenzung / Scope Boundaries (binary contract, CPO decision 
   it('bietet den vierten Energiestandard EH 40 NH (QNG) als Kachel an', async () => {
     const user = userEvent.setup()
     await openScopeBoundaries(user)
-    // Task 03 (deep-coherence audit, F-14): Energiestandard is edited only
-    // in "Energie & Zertifikate" now — Leistungsabgrenzung shows the same
-    // read-only context banner KG 300/400 already use, with a link there.
-    await user.click(screen.getByRole('button', { name: /Zu «Energie & Zertifikate»/ }))
-
+    // "Rebuild Project Card Workflow" Part 14/15: Energiestandard is
+    // edited directly on Leistungsabgrenzung now — no navigation to a
+    // separate chapter is needed any more.
     const es = screen.getByRole('radiogroup', { name: 'Energiestandard' })
     const tiles = within(es).getAllByRole('radio')
     expect(tiles).toHaveLength(4)
@@ -180,12 +139,11 @@ describe('Leistungsabgrenzung / Scope Boundaries (binary contract, CPO decision 
    * indistinguishable — exactly the gap that let `setEnergiestandard` ship
    * writing only the active building while the screen showing the picker
    * shows "gilt für den gesamten Komplex" with no building tabs to reach
-   * the other one. Task 03 (F-14) later relocated the sole editable
-   * picker from Leistungsabgrenzung to "Energie & Zertifikate" — a
-   * building-scoped chapter that, exactly like Leistungsabgrenzung, shows
-   * no tabs in SHARED mode (`ConfigurationScopeNavigation` renders none
-   * for `buildingScoped && SHARED`) — so this regression coverage still
-   * applies unchanged, just from its new home.
+   * the other one. "Rebuild Project Card Workflow" Part 14 relocated the
+   * sole editable picker back onto Leistungsabgrenzung, which — exactly
+   * like the former "Energie & Zertifikate" chapter — shows no building
+   * tabs in SHARED mode (it is `scope: 'project'`), so this regression
+   * coverage still applies unchanged, just from its (now permanent) home.
    */
   it('SHARED-Modus mit zwei Gebäuden: Energiestandard gilt komplexweit', async () => {
     const user = userEvent.setup()
@@ -202,7 +160,6 @@ describe('Leistungsabgrenzung / Scope Boundaries (binary contract, CPO decision 
     await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
     await user.click(screen.getByRole('radio', { name: /Gemeinsam konfigurieren/ }))
     await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
-    await user.click(nav(/Energie & Zertifikate/))
 
     expect(useStore.getState().buildings['DEMO-B-A']!.energiestandard).toBe('EH_55')
     expect(useStore.getState().buildings['DEMO-B-B']!.energiestandard).toBe('EH_55')

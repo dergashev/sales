@@ -68,10 +68,11 @@ async function visitRequiredBuildingChapters(user: ReturnType<typeof userEvent.s
   // Leistungsabgrenzung (chapter 1) is project-level, not building-scoped —
   // confirmConfigurationMode no longer visits a building-scoped chapter for
   // free, so Leistungen KG 300 must be visited explicitly here too.
+  // "Rebuild Project Card Workflow" Parts 15/16 remove Energie &
+  // Zertifikate and Flächen im Detail as Configurator steps entirely —
+  // only the two remaining building-scoped chapters need a visit now.
   await user.click(nav(/Leistungen KG 300/))
   await user.click(nav(/Technik KG 400/))
-  await user.click(nav(/Energie & Zertifikate/))
-  await user.click(nav(/Flächen im Detail/))
 }
 
 describe('Konfigurator mode entry and building-aware navigation', () => {
@@ -79,7 +80,7 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     const user = userEvent.setup()
     await openModeStep(user, 1)
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Konfigurationsmodus wählen' }))
+    expect(screen.getByRole('heading', { level: 1, name: 'Leistungsabgrenzung' }))
       .toBeInTheDocument()
     expect(screen.queryByRole('dialog')).toBeNull()
     screen.getAllByRole('radio', { name: /konfigurieren/ })
@@ -112,15 +113,22 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     // sr-only span is itself a last-child of ITS OWN parent — an unscoped
     // selector would match that instead of the button's own last direct
     // child (the visible chapter label this assertion means to check).
+    // KG 300/400/700 are mandatory ("Rebuild Project Card Workflow" #16) —
+    // included by default, so their chapters are always in the workflow;
+    // Energie & Zertifikate and Flächen im Detail no longer exist as
+    // Configurator steps at all (Parts 15/16).
     expect(within(workflowNav).getAllByRole('button').map((button) =>
       button.querySelector(':scope > span:last-child')?.textContent)).toEqual([
       'Leistungsabgrenzung',
-      'Energie & Zertifikate',
-      'Flächen im Detail',
+      'Leistungen KG 300',
+      'Technik KG 400',
+      'Baunebenkosten KG 700',
       'Termine',
     ])
     expect(screen.queryByRole('button', { name: /Baugrund & Erschließung/ })).toBeNull()
-    expect(screen.getByText('Kapitel 1 von 4 · Konfigurator')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Energie & Zertifikate/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Flächen im Detail/ })).toBeNull()
+    expect(screen.getByText('Kapitel 1 von 5 · Konfigurator')).toBeInTheDocument()
     // Leistungsabgrenzung is project-level, not building-scoped: no per-
     // building tabs, no per-building readiness detail on this chapter.
     expect(screen.getByText('Gilt für den gesamten Komplex')).toBeInTheDocument()
@@ -134,11 +142,14 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     expect(screen.getByRole('complementary', { name: 'Angebot' })).toBeInTheDocument()
     await user.click(nav(/Konfigurator/))
     await user.click(nav(/Leistungen KG 300/))
-    expect(screen.getByText(/Leistungen KG 300, Technik KG 400/)).toBeInTheDocument()
+    // Only two building-scoped chapters remain (Energie & Zertifikate and
+    // Flächen im Detail are gone) — `Intl.ListFormat` joins exactly two
+    // items with "und", not a comma.
+    expect(screen.getByText(/Leistungen KG 300 und Technik KG 400/)).toBeInTheDocument()
     expect(screen.getByRole('complementary', { name: 'Angebot' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Modus ändern' }))
-    expect(screen.getByRole('heading', { level: 1, name: 'Konfigurationsmodus wählen' }))
+    expect(screen.getByRole('heading', { level: 1, name: 'Leistungsabgrenzung' }))
       .toHaveFocus()
     expect(screen.getByRole('radio', { name: 'Gemeinsam konfigurieren' })).toBeChecked()
     // SIDEBAR 01 (backlog eda1e221, SB-27, AC-11): editing an already-priced
@@ -201,7 +212,10 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
       name: 'Gemeinsame Konfiguration bestätigen',
     })
     expect(confirm).not.toHaveClass('a3-sec')
-    expect(nav(/Weiter · Kapitel 6: Baunebenkosten KG 700/)).toHaveClass('a3-sec')
+    // Chapter numbering shifted once Energie & Zertifikate (former 4) and
+    // Flächen im Detail (former 5) were removed — Baunebenkosten KG 700 is
+    // now chapter 4, not 6.
+    expect(nav(/Weiter · Kapitel 4: Baunebenkosten KG 700/)).toHaveClass('a3-sec')
     await user.click(screen.getByRole('button', {
       name: 'Gemeinsame Konfiguration bestätigen',
     }))
@@ -404,50 +418,12 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     })).toBeInTheDocument()
   })
 
-  it('binds Chapter 5 facts to the active building and fails visibly for missing facts', async () => {
-    const user = userEvent.setup()
-    await openModeStep(user, 2)
-    await startMode(user, 'PER_BUILDING')
-    await user.click(nav(/Flächen im Detail/))
-
-    expect(screen.getByRole('heading', { level: 2, name: 'Flächen · Haus B' }))
-      .toBeInTheDocument()
-    // Task 02 (deep-coherence audit, F-15): this chapter no longer re-edits
-    // building facts (a third editing surface duplicating Building &
-    // Scope, AC2) — area values are now a read-only `.numeric` display,
-    // not an editable textbox.
-    expect(screen.queryByRole('textbox', { name: /BGF R\+S/ })).toBeNull()
-    expect(screen.getByText(/1\.200,00\s*m²/)).toBeInTheDocument()
-    expect(screen.queryByText(/2\.000,00\s*m²/)).toBeNull()
-    expect(screen.getByText(/WFL nach WoFlV ist für Haus B noch nicht belastbar verfügbar/))
-      .toBeInTheDocument()
-    expect(screen.getByText(/Einheiten ist für Haus B noch nicht belastbar verfügbar/))
-      .toBeInTheDocument()
-    // Every present fact still links back to the one place it is actually
-    // editable.
-    expect(screen.getAllByRole('button', { name: 'In Gebäude & Umfang prüfen' }).length)
-      .toBeGreaterThan(0)
-
-    const tabs = screen.getByRole('tablist', { name: 'Konfigurationsumfang' })
-    await user.click(within(tabs).getByRole('tab', {
-      name: /Haus A · Unvollständig/,
-    }))
-
-    expect(screen.getByRole('heading', { level: 2, name: 'Flächen · Haus A' }))
-      .toBeInTheDocument()
-    expect(screen.getByText(/2\.000,00\s*m²/)).toBeInTheDocument()
-    expect(screen.getByText(/1\.560,00\s*m²/)).toBeInTheDocument()
-    expect(screen.getByText('16')).toBeInTheDocument()
-
-    // Editing a fact happens exclusively in Building & Scope now; the
-    // "In Gebäude & Umfang prüfen" link is the only route there from here.
-    const state = useStore.getState()
-    expect(state.buildingReviews['DEMO-B-A']!.facts.bgfRSAbove.override).toBeNull()
-    expect(state.buildingReviews['DEMO-B-B']!.facts.bgfRSAbove.override).toBeNull()
-    await user.click(screen.getAllByRole('button', { name: 'In Gebäude & Umfang prüfen' })[0]!)
-    expect(screen.getByRole('heading', { level: 1, name: 'Gebäude & Umfang' }))
-      .toBeInTheDocument()
-  })
+  // "Rebuild Project Card Workflow" Part 16 removes the standalone
+  // "Flächen im Detail" Configurator chapter this test used to exercise
+  // entirely — Building Scope (`building-scope.dom.test.tsx`) already
+  // covers per-building read-only/editable area facts as the sole
+  // authoritative surface; there is no second Configurator-side location
+  // left to test facts binding against any more.
 
   it('does not treat unrelated building price geometry as configuration consent', async () => {
     const user = userEvent.setup()
@@ -532,22 +508,17 @@ describe('Task 02 — building-scope attribution in SHARED mode', () => {
     expect(within(recap).getByText('Enthalten')).toBeInTheDocument()
     expect(within(recap).getByText('Nicht enthalten')).toBeInTheDocument()
 
-    // F-02: the recap's cross-reference names the actual decision owner
-    // ("Flächen im Detail"), not "Leistungsabgrenzung" (chapter 1), which
-    // owns no Untergeschoss control at all.
-    const goTo = within(recap).getByRole('button', { name: /Zu «Flächen im Detail»/ })
+    // "Rebuild Project Card Workflow" Part 16: "Flächen im Detail" is
+    // removed; the recap's cross-reference now names its actual current
+    // owner, Building & Scope (same link text every other building-level
+    // fact in this product already uses).
+    const goTo = within(recap).getByRole('button', { name: 'In Gebäude & Umfang prüfen' })
     expect(goTo).toBeInTheDocument()
 
-    // F-15: "Flächen im Detail" itself shows both buildings' Untergeschoss
-    // decision, each with its own explicit heading and independently
-    // interactive control — not just the invisible active building.
-    await user.click(goTo)
-    expect(screen.getByRole('heading', { level: 2, name: 'Untergeschoss · Haus A' }))
-      .toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 2, name: 'Untergeschoss · Haus B' }))
-      .toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: /vollständig inkl\. Gründung/, checked: true }))
-      .toBeInTheDocument()
+    // Building & Scope shows both buildings' Untergeschoss decision, each
+    // independently interactive — not just the invisible active building.
+    // (Verified in a separate isolated flow below; navigating there here
+    // would leave the Configurator offer panel this test still needs.)
 
     // F-01 (recap/drivers): the priced Untergeschoss contribution names its
     // building — SIDEBAR 01 merged the former standalone "Im Angebot
@@ -594,17 +565,21 @@ describe('Task 02 — building-scope attribution in SHARED mode', () => {
  * this file's existing subject.
  */
 describe('SIDEBAR 02 (backlog 41b8ab39): rail scope, completeness and signed-money consistency', () => {
-  it('empty scope: Level 1/2/3 tell one story — no priced content, no 0 € total, no oberirdisch/unterirdisch anywhere in the rail (SB-05/SB-07)', async () => {
+  // "Rebuild Project Card Workflow" #16 supersedes the 22.08.2026 "no KG
+  // mandatory" decision this test used to exercise: KG 300/400/700 are
+  // mandatory and always included, so a genuinely empty scope (SB-05/SB-07's
+  // "Noch keine Kostengruppe im Angebot enthalten") is no longer a reachable
+  // state — the mandatory core always produces a real, non-zero offer the
+  // moment Scope Boundaries is confirmed. The truthful-empty-state
+  // presentation logic itself (rule 16, F-10) is unit-tested independently
+  // in `store.test.ts` and remains correct; it simply has no live trigger
+  // through this UI any more.
+  it('a fresh option immediately has a real, non-empty offer — the mandatory core alone already produces oberirdisch/unterirdisch content, never the empty-scope sentence', async () => {
     const user = userEvent.setup()
     await openModeStep(user, 1)
     await startMode(user, 'SHARED')
     const rail = screen.getByRole('complementary', { name: 'Angebot' })
-    expect(within(rail).getAllByText('Noch keine Kostengruppe im Angebot enthalten.').length)
-      .toBeGreaterThanOrEqual(1)
-    expect(within(rail).queryByText('oberirdisch')).toBeNull()
-    expect(within(rail).queryByText('unterirdisch')).toBeNull()
-    // No `0 €`/`0 %` total anywhere while the offer is genuinely empty.
-    expect(within(rail).queryByText(/^0[\s ]*€$/)).toBeNull()
+    expect(within(rail).queryByText('Noch keine Kostengruppe im Angebot enthalten.')).toBeNull()
   })
 
   it('KG 500 included without a quantity: the row states "Preis nicht ermittelt" and the label switches to Zwischensumme (SB-06/AC-4)', async () => {
@@ -660,7 +635,6 @@ describe('SIDEBAR 02 (backlog 41b8ab39): rail scope, completeness and signed-mon
     await startMode(user, 'PER_BUILDING')
     includeCoreScope()
     await user.click(nav(/Leistungen KG 300/))
-    await user.click(nav(/Energie & Zertifikate/))
     const switcher = screen.getByRole('tablist', { name: 'Konfigurationsumfang' })
     await user.click(within(switcher).getByRole('tab', { name: /Haus B/ }))
     const rail = screen.getByRole('complementary', { name: 'Angebot' })
@@ -679,70 +653,27 @@ describe('SIDEBAR 02 (backlog 41b8ab39): rail scope, completeness and signed-mon
     await startMode(user, 'SHARED')
     act(() => {
       useStore.getState().confirmGebaeudeklasse()
-      useStore.getState().setCoverage('KG_300', 'included')
     })
     const rail = screen.getByRole('complementary', { name: 'Angebot' })
-    // Binary-scope contract: a fresh option starts every group DECIDED
-    // (`excluded`), so "decided" reads 7/7 from the very first inclusion —
-    // that is the correct, honest read of `s.coverage`, not a bug.
+    // Binary-scope contract: every group is always DECIDED (`included` or
+    // `excluded`, never `unknown`), so "decided" reads 6/6 — one fewer
+    // group than before KG 800 was removed as a Scope Boundaries decision
+    // ("Rebuild Project Card Workflow" #13) — from the very first
+    // inclusion. KG 300/400/700 are mandatory and already `included` by
+    // default, so all three are already "kalkuliert" here.
     expect(within(rail).getByText(
-      '7 von 7 Kostengruppen entschieden · 1 kalkuliert · 0 ohne Preisansatz',
+      '6 von 6 Kostengruppen entschieden · 3 kalkuliert · 0 ohne Preisansatz',
     )).toBeInTheDocument()
   })
 
-  it('excluding KG 400 marks every Level 2 row that actually changed — including the KG 700 cascade — and the chip narrates only the KG 400 decision (SB-25/SB-26/AC-10/AC-11)', async () => {
-    const user = userEvent.setup()
-    await openModeStep(user, 1)
-    await startMode(user, 'SHARED')
-    const rail = screen.getByRole('complementary', { name: 'Angebot' })
-    // Real single clicks (not a batched `act()` of several store calls) —
-    // one commit per decision, exactly the window the changed-row diff
-    // (`prevAmounts`, gated on `s.activeDelta`) is built to measure.
-    await user.click(within(screen.getByRole('radiogroup', { name: /KG.300/ }))
-      .getByRole('radio', { name: 'enthalten' }))
-    await user.click(within(screen.getByRole('radiogroup', { name: /KG.400/ }))
-      .getByRole('radio', { name: 'enthalten' }))
-    await user.click(within(screen.getByRole('radiogroup', { name: /KG.700/ }))
-      .getByRole('radio', { name: 'enthalten' }))
-    // The three setup clicks above each fire their own `s.activeDelta` —
-    // in production that chip auto-clears after `DELTA_CHIP_MS` (~8 s);
-    // simulate that clearing here so the changed-row diff's own snapshot
-    // (`prevAmounts`) resyncs to "post-setup" BEFORE the single decision
-    // under test, exactly like a real user pausing between actions.
-    act(() => { useStore.getState().clearDelta() })
-
-    // The single decision under test: exclude KG 400. This auto-switches
-    // kg700Mode to `hoaiAho` (D-07 rule 6), which turns KG 700 into its own
-    // 12%-of-Bauwerk position — a real, calculated cascade the seller did
-    // not directly ask for.
-    await user.click(within(screen.getByRole('radiogroup', { name: /KG.400/ }))
-      .getByRole('radio', { name: 'nicht enthalten' }))
-
-    // KG 400 itself leaves the always-included row set once excluded (its
-    // own row disappears from the Level 2 table by design, unchanged
-    // behaviour) — only the row(s) that changed VALUE while staying
-    // included can carry the marker. KG 700 is exactly that row.
-    // Live-measured: excluding KG 400 changes BOTH KG 300 (the reconciled
-    // split shifts) and KG 700 (the auto-fallback turns it into its own
-    // 12%-of-Bauwerk position) — a genuine cascade across two rows the
-    // seller did not directly touch, both marked. Every visible "geändert"
-    // marker is non-colour-only: it carries the word itself (rule 8), not
-    // merely a class name.
-    const kg700Row = within(rail)
-      .getByText((_, el) => el?.tagName === 'BUTTON' && !!el.textContent?.includes('Baunebenkosten'))
-      .closest('tr')!
-    expect(within(kg700Row).getByText('geändert')).toBeInTheDocument()
-    expect(within(rail).getAllByText('geändert')).toHaveLength(2)
-
-    // The chip names the KG 400 decision AND explicitly names the KG 700
-    // change as an AUTOMATIC side-effect of it (reusing the journal's own
-    // established phrasing) — it must not read as if excluding KG 400 and
-    // choosing KG 700's calculation method were two independent decisions.
-    const chip = rail.querySelector('.a3-delta')
-    expect(chip?.textContent).toMatch(/KG 400/)
-    expect(chip?.textContent).toMatch(/automatisch/)
-    expect(chip?.textContent).not.toMatch(/KG 700 ausgeschlossen/)
-  })
+  // "Rebuild Project Card Workflow" #16 makes KG 400 mandatory — it can no
+  // longer be excluded, so the D-07 rule 6 auto-fallback cascade this test
+  // exercised (excluding a core group -> kg700Mode switches to `hoaiAho`)
+  // is now unreachable through the UI. The underlying reducer branch was
+  // removed as dead code in the same change (`store.ts`'s `setCoverage`);
+  // see `store.test.ts` for the guard regression coverage. The changed-row
+  // diff mechanism itself (Level 2 "geändert" marking) remains exercised
+  // by other tests in this file using genuinely excludable groups.
 })
 
 /**

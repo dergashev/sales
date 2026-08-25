@@ -26,16 +26,24 @@ export type CostGroup = 'KG_100' | 'KG_200' | 'KG_300' | 'KG_400'
 export type Coverage = Record<CostGroup, CoverageState>
 
 /**
- * Leistungsabgrenzung groups that require a user coverage decision.
- * Every offered cost group requires an explicit scope decision.
+ * Leistungsabgrenzung groups considered by the binary-scope contract.
  *
- * KG 800 (Finanzierung) joined this list by explicit CPO/backlog decision
- * (ticket "MAKE ALL KG 200–800 SELECTABLE…"): every KG 200–800 is a peer
- * binary Included/Excluded choice, none pinned outside Scope Boundaries.
+ * Ticket "Rebuild Project Card Workflow" supersedes the 22.08.2026 "MAKE
+ * ALL KG 200–800 SELECTABLE" decision for two groups:
+ * - KG 800 (Finanzierung) is no longer a supported Scope Boundaries
+ *   decision at all; it is never offered and its coverage is forced to
+ *   `excluded` (dormant — the same "no active cost" mechanism the binary
+ *   contract already gives every excluded group), so it is intentionally
+ *   absent from this list.
+ * - KG 300/400/700 remain in this list even though they are no longer a
+ *   real user decision (`migrateCoverage`/`setCoverage` force them to
+ *   `included`): keeping them here is what makes `isScopeUniverseEmpty`
+ *   correctly stay `false` once a mandatory core group is guaranteed
+ *   included, with no change to this function's own logic.
  * KG 100 (Grundstück) stays out of this task's scope and remains absent.
  */
 export const SCOPE_BOUNDARIES_DECIDABLE_GROUPS = [
-  'KG_200', 'KG_300', 'KG_400', 'KG_500', 'KG_600', 'KG_700', 'KG_800',
+  'KG_200', 'KG_300', 'KG_400', 'KG_500', 'KG_600', 'KG_700',
 ] as const satisfies readonly CostGroup[]
 
 /**

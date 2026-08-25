@@ -15,11 +15,12 @@ import {
   useStore,
   COVERAGE_LABEL,
   LABEL_UG,
+  MANDATORY_COST_GROUPS,
   scopeBoundariesStatus,
   type ConfigurationDisplayStatus,
   type ConfigurationMode,
 } from '../state/store'
-import { formatDE, NNBSP } from '../engine/money'
+import { NNBSP } from '../engine/money'
 import { useT, useTx } from '../i18n'
 import { incompleteReasonText } from '../i18n/reasons'
 import {
@@ -30,11 +31,7 @@ import {
   type CoverageState,
 } from '../engine/calculate'
 import { Decimal } from 'decimal.js'
-import {
-  Button,
-  ProvenanceChip,
-  type ProvenancePresentation,
-} from '../components/primitives'
+import { Button } from '../components/primitives'
 import {
   Badge,
   FormField,
@@ -43,9 +40,8 @@ import {
   ReadinessChecklist,
   SectionSheet,
 } from '../components/designSystem'
-import { DataStateBlock } from '../components/DataStates'
 import { ClientNotice } from '../components/ClientNotice'
-import { RadioCardGroup, SegmentedControl, Switch } from '../components/controls'
+import { CheckboxCard, RadioCardGroup, SegmentedControl } from '../components/controls'
 import { optionImage } from '../assets/option-images'
 import { ScheduleGantt } from '../components/ScheduleGantt'
 import { OptionChapter } from './OptionChapter'
@@ -55,7 +51,6 @@ import {
 import { ScopeCatalogChapter } from './ScopeCatalogChapter'
 import {
   KG200_CATALOG_OPTIONS, KG500_CATALOG_OPTIONS, KG600_CATALOG_OPTIONS,
-  KG800_CATALOG_OPTIONS,
 } from '../engine/scopeCatalog'
 import { RISK_ITEMS, riskDriver } from '../engine/risk'
 import { modelDuration, presentDuration, shiftScheduleMetrics } from '../engine/schedule'
@@ -70,13 +65,7 @@ import {
   nearestActiveConfiguratorStep,
   type ConfiguratorStepId,
 } from '../state/chapters'
-import {
-  deriveConflictState,
-  effectiveDerivedArea,
-  effectiveFactValue,
-  type BuildingFact,
-  type FactSource,
-} from '../state/buildingReview'
+import { effectiveFactValue } from '../state/buildingReview'
 
 /**
  * S3 Konfigurator — рабочая область главы. ТОЛЬКО она: навигация по главам
@@ -98,17 +87,6 @@ import {
  */
 
 /**
- * Имена изображений остались от снятой опции `ugVariante`: снимки сделаны
- * по TASK-18 и описывают ровно эти три состояния подвала. Соответствие
- * объявлено здесь, а не угадывается по совпадению строк.
- */
-const UG_IMAGE_VALUE: Record<'vollausbau' | 'ab_decke' | 'kein_ug', string> = {
-  vollausbau: 'rohbauAusbau',
-  ab_decke: 'nurAusbau',
-  kein_ug: 'keins',
-}
-
-/**
  * Последствие опции для consequenceLine — видно всегда, не по hover
  * (R-05/OPTION-009). Образец контракта: `≈ +97.000 € Mehrpreis`.
  */
@@ -123,14 +101,23 @@ function consequenceLabel(delta: Decimal, zero?: string): string {
 export function S3Konfigurator() {
   const s = useStore()
   const t = useT()
-  if (!s.configurationModeChosen || s.configurationModeEditing) {
-    return <ConfigurationModeEntry />
-  }
+  // Product Orchestration Contract "Rebuild Project Card Workflow" Part 11:
+  // Configuration Mode is chosen INSIDE Scope Boundaries, not on a separate
+  // full-page gate before it. While no mode is confirmed (or the seller is
+  // actively changing it via `beginConfigurationModeEdit`), the Configurator
+  // is forced onto the Scope Boundaries step — `ChapterUmfang` itself shows
+  // the mode choice first and reveals the rest of Scope Boundaries only once
+  // `modeConfirmed` is true. This preserves every existing invariant around
+  // `openConfiguratorStep`/`pricingStarted` unchanged: it is a display-time
+  // override, not a change to persisted navigation state.
+  const modeConfirmed = s.configurationModeChosen && !s.configurationModeEditing
   const workflow = activeConfiguratorWorkflow({ coverage: s.coverage, mode: s.mode })
-  const currentId = nearestActiveConfiguratorStep({
-    coverage: s.coverage,
-    mode: s.mode,
-  }, s.openConfiguratorStep)
+  const currentId = modeConfirmed
+    ? nearestActiveConfiguratorStep({
+        coverage: s.coverage,
+        mode: s.mode,
+      }, s.openConfiguratorStep)
+    : CONFIGURATOR_STEP.SCOPE_BOUNDARIES
   const currentStep = configuratorStep(currentId)
   const routeIndex = workflow.findIndex((step) => step.id === currentId)
   const previous = routeIndex > 0 ? workflow[routeIndex - 1] : null
@@ -163,8 +150,8 @@ export function S3Konfigurator() {
         })}
       />
 
-      <ConfigurationModeContext buildingScoped={buildingScoped} />
-      <ConfigurationScopeNavigation stepId={currentId} />
+      {modeConfirmed && <ConfigurationModeContext buildingScoped={buildingScoped} />}
+      {modeConfirmed && <ConfigurationScopeNavigation stepId={currentId} />}
 
       <div
         role={buildingTabPanel ? 'tabpanel' : undefined}
@@ -222,23 +209,8 @@ export function S3Konfigurator() {
               introEn="Equipment adds kitchens, furniture, devices, IT equipment, wayfinding and optional art to the completed building."
             />
           )}
-          {!totalOverview && currentId === CONFIGURATOR_STEP.ENERGY_CERTIFICATION && (
-            <div className="grid gap-5">
-              <ChapterEnergie />
-              {/* Сертификаты — отдельная ось: EH описывает качество здания,
-                  QNG и DGNB — процедуру его подтверждения (см. options.ts). */}
-              <OptionChapter groups={ZERT_GROUPS}
-                intro={'Zertifikate sind eine eigene Achse: der Energiestandard '
-                  + 'beschreibt das Gebäude, das Siegel beschreibt das Verfahren, '
-                  + 'mit dem es nachgewiesen wird.'} />
-            </div>
-          )}
-          {!totalOverview && currentId === CONFIGURATOR_STEP.AREAS
-            && <ChapterFlaechen />}
           {!totalOverview && currentId === CONFIGURATOR_STEP.KG_700_DETAILS
             && <ChapterKg700 />}
-          {!totalOverview && currentId === CONFIGURATOR_STEP.KG_800_DETAILS
-            && <ChapterKg800 />}
           {!totalOverview && currentId === CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE
             && <ChapterTermine />}
         </div>
@@ -290,37 +262,6 @@ function buildingNames(
   }).format(buildingIds.map((id) => buildingName(state, id)))
 }
 
-function sourcePresentation(
-  source: FactSource,
-  t: ReturnType<typeof useT>,
-): ProvenancePresentation | null {
-  switch (source.kind) {
-    case 'document':
-      return { kind: 'document', label: t('buildingScope.provenance.document') }
-    case 'customer':
-      return {
-        kind: 'customerConfirmed',
-        label: t('buildingScope.provenance.customer'),
-      }
-    case 'derived':
-      return { kind: 'derived', label: t('buildingScope.provenance.derived') }
-    case 'unknown':
-      return null
-  }
-}
-
-function factPresentation<T>(
-  fact: BuildingFact<T>,
-  t: ReturnType<typeof useT>,
-): ProvenancePresentation | null {
-  if (fact.override) {
-    return fact.override.actor === 'customer confirmation'
-      ? { kind: 'customerConfirmed', label: t('buildingScope.provenance.customer') }
-      : { kind: 'manual', label: t('buildingScope.provenance.manual') }
-  }
-  return sourcePresentation(fact.extracted.source, t)
-}
-
 function statusLabel(
   status: ConfigurationDisplayStatus,
   t: ReturnType<typeof useT>,
@@ -328,7 +269,18 @@ function statusLabel(
   return t(`configurator.status.${status}`)
 }
 
-function ConfigurationModeEntry() {
+/**
+ * Configuration Mode choice — Product Orchestration Contract "Rebuild
+ * Project Card Workflow" Part 11: this used to be `ConfigurationModeEntry`,
+ * a full-page gate rendered instead of the Configurator whenever no mode
+ * was chosen yet. It is now the first section of `ChapterUmfang` (Scope
+ * Boundaries) itself, so Configurator entry always lands on Scope
+ * Boundaries (Part 10) and the mode decision reads as part of it rather
+ * than a separate screen. Same store actions
+ * (`confirmConfigurationMode`/`beginConfigurationModeEdit`), same draft-mode
+ * local state, same content — only where it mounts changed.
+ */
+function ConfigurationModeSection() {
   const s = useStore()
   const t = useT()
   const selectedIds = includedBuildingIds(s)
@@ -339,23 +291,21 @@ function ConfigurationModeEntry() {
 
   if (s.mode !== 'intern') {
     return (
-      <div className="px-7 py-6">
-        <PageHeader
-          title={t('configurator.mode.title')}
-          lede={t('configurator.mode.clientBlocked')}
-        />
-      </div>
+      <SectionSheet title={t('configurator.mode.title')}>
+        <p className="text-body text-text-secondary">{t('configurator.mode.clientBlocked')}</p>
+      </SectionSheet>
     )
   }
 
   return (
-    <div className="px-7 py-6">
-      <PageHeader
-        title={t('configurator.mode.title')}
-        meta={t('configurator.mode.meta', { count: selectedIds.length })}
-        lede={t('configurator.mode.lede')}
-      />
-      <SectionSheet>
+    <SectionSheet
+      title={t('configurator.mode.title')}
+      intro={t('configurator.mode.lede')}
+    >
+      <p className="a3-cap">
+        {t('configurator.mode.meta', { count: selectedIds.length })}
+      </p>
+      <div className="mt-3">
         <RadioCardGroup
           legend={t('configurator.mode.legend')}
           value={draftMode}
@@ -408,8 +358,8 @@ function ConfigurationModeEntry() {
             {t('configurator.mode.back')}
           </Button>
         </div>
-      </SectionSheet>
-    </div>
+      </div>
+    </SectionSheet>
   )
 }
 
@@ -888,28 +838,37 @@ function Card({ title, intro, children }: {
 
 /**
  * Semantic step SCOPE_BOUNDARIES (Leistungsabgrenzung) — welche
- * Kostengruppen Teil des Angebots sind, plus die projektweiten
- * Anforderungen an Energiestandard und Zertifizierung. Hier beginnt die
- * Kalkulation (`pricingStarted`, building-aware-configurator-navigation).
+ * Kostengruppen Teil des Angebots sind, die Konfigurationsmodus-Wahl, plus
+ * die projektweiten Anforderungen an Energiestandard und Zertifizierung.
+ * Hier beginnt die Kalkulation (`pricingStarted`,
+ * building-aware-configurator-navigation).
  *
- * Reihenfolge nach DIN 276 (KG 200 · 300 · 400 · 500 · 600 · 700 · 800).
+ * Reihenfolge nach DIN 276 (KG 200 · 300 · 400 · 500 · 600 · 700).
  *
- * Aktueller Vertrag (CPO, Ticket "MAKE ALL KG 200–800 SELECTABLE & ADD
- * COST-BEARING CONTENT…", 22.08.2026) — ERSETZT den früheren Vertrag
- * dieses Docblocks vollständig:
- * · ALLE SIEBEN Gruppen sind gleichrangige, echte binäre Entscheidungen:
- *   `enthalten` oder `nicht enthalten`, sonst nichts. Keine ist mandatory,
- *   keine ist gesperrt — auch KG 300/400/700 nicht mehr (das war ein
- *   älterer, inzwischen abgelöster Vertrag: "unveränderlich", gesperrte
- *   CheckboxCard-Kachel). Ausschließen behält die bisherige Konfiguration
- *   dormant (Konfiguration bleibt erhalten, siehe `configurator.scope.
- *   introBinary`).
- * · Kein drittes "noch offen"-Normalzustand mehr (D-18/D-29/SCOPE-001
- *   dadurch ausdrücklich abgelöst): Umfang startet `nicht enthalten`
- *   (Default), nicht in einer Lücke. `Gesamt netto` ist daher ein echter
- *   Gesamtpreis, sobald jede Gruppe einen bestimmten Wert trägt — nicht
- *   mehr grundsätzlich `Zwischensumme`, nur weil eine Gruppe unbesucht war.
- * · KG 200/500/600/800 tragen jetzt vollständige mehrstufige Kataloge
+ * Aktueller Vertrag (CPO, Ticket "Rebuild Project Card Workflow") — ERSETZT
+ * den Vertrag der 22.08.2026-Ticket-Revision dieses Docblocks für drei
+ * Gruppen und ergänzt ihn um Modus/Energie:
+ * · KG 300/400/700 sind MANDATORY: immer `included`, keine Kachel zum
+ *   Ausschließen (`store.ts`'s `MANDATORY_COST_GROUPS`/`setCoverage`
+ *   verweigern jede andere Wertänderung). Sie erscheinen als eine einzelne,
+ *   gesperrte, angehakte `CheckboxCard`-Kachel mit `■ Pflicht` — genau der
+ *   Vertrag, den die 22.08.2026-Revision als "abgelöst" beschrieb, jetzt
+ *   wiederhergestellt, weil diese Aufgabe ihn explizit erneut fordert.
+ * · KG 200/500/600 bleiben echte binäre Enthalten/Nicht-enthalten-
+ *   Entscheidungen, Default `nicht enthalten`, keine Vorauswahl.
+ * · KG 800 ist keine Scope-Boundaries-Entscheidung mehr: keine Kachel, keine
+ *   Zeile, keine deaktivierte Karte. `coverage.KG_800` bleibt dauerhaft
+ *   `excluded` (dormant, siehe `migrateCoverage`) — bestehende Daten werden
+ *   nicht gelöscht, nur nie wieder aktiv.
+ * · Konfigurationsmodus (SHARED/PER_BUILDING) wird HIER gewählt
+ *   (`ConfigurationModeSection`), nicht mehr auf einem vorgeschalteten
+ *   Vollbild-Gate — bis er bestätigt ist, zeigt dieser Schritt nur die
+ *   Moduswahl.
+ * · Energiestandard/QNG/DGNB (früher "Energie & Zertifikate", eigenes
+ *   Kapitel) werden HIER editiert — die einzige verbleibende
+ *   Bearbeitungsstelle; KG 300/400 zeigen weiterhin nur den
+ *   schreibgeschützten Kontext (`EnergyCertBanner`).
+ * · KG 200/500/600 tragen vollständige mehrstufige Kataloge
  *   (`ScopeCatalogChapter`, eigene `_DETAILS`-Kapitel) statt einer flachen
  *   Einzelrate — dieselbe dynamische DIN-Reihenfolge-Navigation, die
  *   KG 300/400/700 bereits nutzten (`state/chapters.ts`).
@@ -924,6 +883,16 @@ function ChapterUmfang() {
   const s = useStore()
   const t = useT()
   const tx = useTx()
+
+  // Part 11: Configuration Mode is chosen as the first Scope Boundaries
+  // decision. Until it is confirmed, nothing else on this step is shown —
+  // KG inclusion, energy standard and certification all depend on a
+  // building-aware calculation that only starts once the mode is set
+  // (`confirmConfigurationMode` is what flips `pricingStarted`).
+  if (!(s.configurationModeChosen && !s.configurationModeEditing)) {
+    return <ConfigurationModeSection />
+  }
+
   const p = s.projection()
   // A complex projection can carry the same project-level gap once per
   // building. The scope card presents that decision once, so its notice must
@@ -945,6 +914,31 @@ function ChapterUmfang() {
         <div className="grid gap-5">
           {SCOPE_ORDER.map((g) => {
             const spec = COVERAGE_RATES[g]
+            if ((MANDATORY_COST_GROUPS as readonly CostGroup[]).includes(g)) {
+              // Part 12: mandatory groups appear "clearly as included, not
+              // unresolved" — the canonical locked/checked tile
+              // (`CheckboxCard.mandatory`) already built for exactly this
+              // presentation (OPTION-002/OPTION-005), just reconnected to
+              // Scope Boundaries KG inclusion instead of the product-local
+              // option it originally shipped for.
+              return (
+                <CheckboxCard
+                  key={g}
+                  legend={`${g.replace('_', NNBSP)} ${t(`costGroup.${g}`)}`}
+                  options={[{
+                    value: 'included',
+                    title: tx(COVERAGE_LABEL.included),
+                    image: optionImage('scopeBoundaries', g),
+                    description: spec ? `${tx(spec.basis)} ⚙` : undefined,
+                    consequence: tx('aktuelle Auswahl'),
+                    checked: true,
+                    onChange: () => {},
+                    mandatory: true,
+                    mandatoryReason: 'Kern des Angebots',
+                  }]}
+                />
+              )
+            }
             // Последствие приходит из ТОЙ ЖЕ проекции, что и клик: и охват
             // считается по ВСЕМ включённым зданиям, а не по активному.
             // Прежде плитка умножала ставку на площадь активного здания и
@@ -992,14 +986,39 @@ function ChapterUmfang() {
         </div>
       </Card>
 
-      {/* Task 03 (deep-coherence audit, F-14): Energiestandard/QNG/DGNB were
-          editable here AND in "Energie & Zertifikate" — the same state,
-          two controls. Energie & Zertifikate is now the single editable
-          owner (plus the customer-confirmation control, which never
-          existed here); this chapter shows the same read-only banner
-          pattern KG 300/400 already use, with a link to the owning
-          chapter. */}
-      <EnergyCertBanner />
+      {/* Part 11/14: Energiestandard/QNG/DGNB editing moves here from the
+          former standalone "Energie & Zertifikate" chapter (Task 03 had
+          made that chapter the single editable owner with this step
+          read-only; this ticket reverses that direction by explicit newer
+          authority). KG 300/400 keep showing the read-only
+          `EnergyCertBanner` context — unchanged, still correct once this is
+          the one editable source it links to. */}
+      <Card
+        title={t('configurator.energy.title')}
+        intro={'Die Wahl einer Option ist keine Bestätigung: das Unsicherheitsband ' +
+          'verengt sich erst, wenn der Kunde den Standard bestätigt.'}
+      >
+        <EnergiestandardPicker />
+        {!s.esConfirmed && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-3">
+            <p className="a3-cap">{tx('Standard gewählt, vom Kunden noch nicht bestätigt — Band unverändert.')}</p>
+            <Button onClick={() => s.confirmEnergiestandardAnswer()}>{tx('Vom Kunden bestätigt')}</Button>
+          </div>
+        )}
+        {s.esConfirmed && (
+          <p className="mt-4 border-t border-border-subtle pt-3 text-small text-text-secondary">
+            <span aria-hidden="true">✓ </span>
+            Vom Kunden bestätigt — Unsicherheitsband um 4{NNBSP}Prozentpunkte verengt.
+          </p>
+        )}
+      </Card>
+      {/* Zertifikate sind eine eigene Achse: der Energiestandard beschreibt
+          das Gebäude, das Siegel beschreibt das Verfahren, mit dem es
+          nachgewiesen wird (see options.ts). */}
+      <OptionChapter groups={ZERT_GROUPS}
+        intro={'Zertifikate sind eine eigene Achse: der Energiestandard '
+          + 'beschreibt das Gebäude, das Siegel beschreibt das Verfahren, '
+          + 'mit dem es nachgewiesen wird.'} />
 
       <Card title={t('coverage.effectOnTotal')}>
         {scopeEmpty ? (
@@ -1063,8 +1082,10 @@ function ChapterUmfang() {
   )
 }
 
+// KG 800 removed ("Rebuild Project Card Workflow" Part 13): no tile, no
+// disabled placeholder — see the `ChapterUmfang` docblock above.
 const SCOPE_ORDER: CostGroup[] =
-  ['KG_200', 'KG_300', 'KG_400', 'KG_500', 'KG_600', 'KG_700', 'KG_800']
+  ['KG_200', 'KG_300', 'KG_400', 'KG_500', 'KG_600', 'KG_700']
 
 /**
  * Energiestandard-Auswahl, extrahiert aus `ChapterEnergie` (unten), damit
@@ -1152,9 +1173,9 @@ function EnergyCertBanner() {
       </p>
       {s.mode === 'intern' && (
         <Button variant="ghost" onClick={() =>
-          s.openConfiguratorStepAt(CONFIGURATOR_STEP.ENERGY_CERTIFICATION)}>
+          s.openConfiguratorStepAt(CONFIGURATOR_STEP.SCOPE_BOUNDARIES)}>
           {t('configurator.energy.goTo', {
-            chapterName: t('chapter.energyCertification'),
+            chapterName: t('chapter.scopeBoundaries'),
           })}
         </Button>
       )}
@@ -1170,17 +1191,16 @@ function EnergyCertBanner() {
  * `ugVariante` in KG 300 und führte zu einer echten Doppelabrechnung des
  * Untergeschosses — Zahlen wichen 36 €/m² von der Spezifikation ab (Review
  * 26, Befunde 5 und 19), behoben, indem „ein Entschluss — ein Eigentümer"
- * wurde. Diese Karte ZEIGT den bereits in Flächen im Detail getroffenen
- * Zustand und verlinkt dorthin, statt ihn hier zweiten Mal editierbar zu
- * machen — funktional erfüllt das die Anforderung „sichtbar in KG 300",
- * ohne den bekannten Fehler erneut einzuführen.
+ * wurde. Diese Karte ZEIGT den bereits getroffenen Zustand und verlinkt zu
+ * seinem Eigentümer, statt ihn hier zweiten Mal editierbar zu machen —
+ * funktional erfüllt das die Anforderung „sichtbar in KG 300", ohne den
+ * bekannten Fehler erneut einzuführen.
  *
- * Task 02 (deep-coherence audit, F-02): der Verweis zeigte vorher auf
- * Kapitel 1 „Leistungsabgrenzung" — dort existiert gar keine
- * Untergeschoss-Kontrolle. Der tatsächliche Eigentümer der Entscheidung ist
- * `ChapterFlaechen` („Flächen im Detail"); der Text und das Sprungziel
- * folgen jetzt dem echten Owner, nicht der Kapitelreihenfolge von vor der
- * Ablösung von `ugVariante`.
+ * "Rebuild Project Card Workflow" Part 16: the former owner, the standalone
+ * "Flächen im Detail" Configurator chapter, is removed. `BuildingScope.tsx`
+ * is now the sole editable owner of the Untergeschoss decision (the same
+ * per-building surface that already owns every other building-level fact
+ * this recap could point to), and the link below routes there.
  *
  * `hasParking` (Tiefgarage) hat im Store noch keinen eigenen Setter — der
  * Wert kommt ausschließlich aus der Gebäudeprüfung (Building & Scope).
@@ -1246,274 +1266,15 @@ function UndergroundFloorRecap() {
         })}
       </div>
       <div className="mt-3">
-        <Button onClick={() =>
-          s.openConfiguratorStepAt(CONFIGURATOR_STEP.AREAS)}>
-          {t('configurator.areas.goTo', {
-            chapterName: t('chapter.areas'),
-          })}
+        {/* "Flächen im Detail" (the former sole owner of this decision) was
+            removed by "Rebuild Project Card Workflow" Part 16; Building
+            Scope is now the authoritative editing location, matching every
+            other building-level fact this product already routes there. */}
+        <Button onClick={() => s.setPipelineView('buildingScope')}>
+          {t('configurator.areas.review')}
         </Button>
       </div>
     </Card>
-  )
-}
-
-function derivedAboveGroundPresentation(
-  state: ReturnType<typeof useStore.getState>,
-  buildingId: string,
-  t: ReturnType<typeof useT>,
-): ProvenancePresentation | null {
-  const review = state.buildingReviews[buildingId]
-  if (!review) return null
-  const area = effectiveDerivedArea(review, state.buildingConflicts, 'bgfRSAbove')
-  if (area.basis === 'components') {
-    return { kind: 'derived', label: t('buildingScope.provenance.derived') }
-  }
-  if (area.basis === 'resolved' && area.conflict) {
-    const conflict = state.buildingConflicts[area.conflict.id]
-    const selectedId = conflict ? deriveConflictState(conflict).selectedCandidateId : null
-    const candidate = conflict?.candidates.find((item) => item.id === selectedId)
-    if (candidate?.origin === 'manual') {
-      return { kind: 'manual', label: t('buildingScope.provenance.manual') }
-    }
-    if (candidate) return sourcePresentation(candidate.source, t)
-  }
-  return factPresentation(review.facts.bgfRSAbove, t)
-}
-
-function UnavailableConfiguratorFact({
-  building,
-  field,
-  onReview,
-}: {
-  building: string
-  field: string
-  onReview: () => void
-}) {
-  const t = useT()
-  return (
-    <DataStateBlock
-      state="partial"
-      sentence={t('configurator.areas.unavailable', { building, field })}
-      remedy={t('configurator.areas.remedy', { building })}
-      action={(
-        <Button variant="secondary" onClick={onReview}>
-          {t('configurator.areas.review')}
-        </Button>
-      )}
-    />
-  )
-}
-
-/**
- * Task 02 (deep-coherence audit, F-15): read-only counterpart of
- * `NumericField` for building-scoped area facts inside the Configurator.
- * `ChapterFlaechen` used to render these EDITABLE, with `onCommit ->
- * setBuildingFactOverride` — a third editing surface for facts Building &
- * Scope already owns (Task 01's `buildingReviews`/`BuildingFact<T>` model
- * is the single fact owner). Same visual weight as `NumericField` (label,
- * value+unit, provenance chip, border-b separator) so removing the input
- * doesn't change the section's rhythm — only its editability, plus the
- * same "In Gebäude & Umfang prüfen" review link `UnavailableConfiguratorFact`
- * already uses for the missing-data case.
- */
-function ReadOnlyAreaFact({
-  label, value, unit, decimals = 2, integer = false, provenance, onReview,
-}: {
-  label: string
-  value: Decimal
-  unit?: string
-  decimals?: number
-  integer?: boolean
-  provenance: ProvenancePresentation
-  onReview: () => void
-}) {
-  const t = useT()
-  return (
-    <div className="border-b border-border-subtle py-4">
-      <span className="block text-small font-medium text-text-primary">{label}</span>
-      {/* Same `.numeric` + `ProvenanceChip` pattern BuildingScope.tsx already
-          uses for a read fact value (rule 7: tabular-nums, right-aligned) —
-          not `.a3-input`, which is the EDITABLE-field wrapper and expects a
-          real `<input>` for its child selectors to apply to. */}
-      <p className="numeric mt-2 text-body text-text-primary" aria-label={`${label}${unit ? ` · ${unit}` : ''}`}>
-        {formatDE(value, integer ? 0 : decimals)}{unit ? `${NNBSP}${unit}` : ''}
-      </p>
-      <div className="mt-2 flex flex-wrap items-center gap-3">
-        <ProvenanceChip provenance={provenance} />
-        <Button variant="ghost" onClick={onReview}>
-          {t('configurator.areas.review')}
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-/**
- * Task 02 (F-01/F-15/F-02): SHARED mode used to read only
- * `s.activeBuildingId`, so a project's other included building had no area
- * card and no Untergeschoss decision reachable from this chapter at all —
- * the exact mechanism behind the audit's headline contradiction (KG 300
- * shows one building's "nicht enthalten" while the recap simultaneously
- * prices another building's Untergeschoss, neither named). In SHARED mode
- * this chapter now renders one area card AND one Untergeschoss decision
- * block per INCLUDED building; PER_BUILDING mode is unchanged — its own
- * tab already names the single active building unambiguously.
- */
-function ChapterFlaechen() {
-  const t = useT()
-  const s = useStore()
-  const ids = s.configurationMode === 'SHARED'
-    ? includedBuildingIds(s)
-    : [s.activeBuildingId]
-  const multi = ids.length > 1
-
-  return (
-    <div className="grid gap-5">
-      {ids.map((buildingId) => {
-        const review = s.buildingReviews[buildingId]
-        const building = buildingName(s, buildingId)
-        const aboveGround = review
-          ? effectiveDerivedArea(review, s.buildingConflicts, 'bgfRSAbove')
-          : null
-        const aboveGroundProvenance = derivedAboveGroundPresentation(s, buildingId, t)
-        const wfl = review ? effectiveFactValue(review.facts.wfl) : null
-        const wflProvenance = review ? factPresentation(review.facts.wfl, t) : null
-        const units = review ? effectiveFactValue(review.facts.units) : null
-        const unitsProvenance = review ? factPresentation(review.facts.units, t) : null
-        const reviewBuilding = () => s.setPipelineView('buildingScope')
-
-        return (
-          <Card
-            key={buildingId}
-            title={t('configurator.areas.title', { building })}
-            intro={'Geprüfte Gebäudewerte tragen ihre Herkunft; Änderungen erfolgen '
-              + 'ausschließlich in Gebäude & Umfang.'}
-          >
-            {aboveGround?.value && aboveGroundProvenance ? (
-              <ReadOnlyAreaFact
-                label={t('buildingScope.fact.bgfRSAbove')}
-                value={aboveGround.value}
-                unit="m²"
-                provenance={aboveGroundProvenance}
-                onReview={reviewBuilding}
-              />
-            ) : (
-              <UnavailableConfiguratorFact
-                building={building}
-                field={t('buildingScope.fact.bgfRSAbove')}
-                onReview={reviewBuilding}
-              />
-            )}
-            {wfl && wflProvenance ? (
-              <ReadOnlyAreaFact
-                label={t('buildingScope.fact.wfl')}
-                value={wfl}
-                unit="m²"
-                provenance={wflProvenance}
-                onReview={reviewBuilding}
-              />
-            ) : (
-              <UnavailableConfiguratorFact
-                building={building}
-                field={t('buildingScope.fact.wfl')}
-                onReview={reviewBuilding}
-              />
-            )}
-            {units && unitsProvenance ? (
-              <ReadOnlyAreaFact
-                label={t('buildingScope.fact.units')}
-                value={units}
-                decimals={0}
-                integer
-                provenance={unitsProvenance}
-                onReview={reviewBuilding}
-              />
-            ) : (
-              <UnavailableConfiguratorFact
-                building={building}
-                field={t('buildingScope.fact.units')}
-                onReview={reviewBuilding}
-              />
-            )}
-          </Card>
-        )
-      })}
-
-      {ids.map((buildingId) => {
-        const b = s.buildings[buildingId]!
-        return (
-          <Card
-            key={`ug-${buildingId}`}
-            title={multi
-              ? t('configurator.underground.title', { building: buildingName(s, buildingId) })
-              : 'Untergeschoss'}
-            intro={'Die Vorschau am Preis erscheint beim Zeigen auf eine Option — ' +
-              'entschieden ist erst der Klick.'}
-          >
-            {/* Одно решение — один владелец. Прежде тот же выбор существовал
-                ВТОРОЙ раз опцией `ugVariante` в главе KG 300, со своими
-                дельтами −714 / −1190 от слитой ставки 1.190: числа расходились
-                со спецификацией на 36 €/m², а два контрола над одной физической
-                областью позволяли вычесть подвал дважды (ревью 26, находки 5 и
-                19). Ось принадлежит уровню Building (D-11 v2), цену считает
-                движок по трём ставкам каталога — а карточки с изображениями
-                переехали сюда, потому что выбор объёма подвала и должен
-                выглядеть выбором, а не полем формы.
-
-                Task 02: `setUntergeschoss`/`kind: 'untergeschoss'` now carry
-                an explicit `buildingId` (this loop's `buildingId`, not
-                `activeBuildingId`) so each of the N blocks rendered in
-                SHARED mode stays independently correct — the same reason
-                `kind: 'kg300'` already carries one. */}
-            <RadioCardGroup
-              legend={t('configurator.basement.title')}
-              legendHidden
-              value={b.untergeschoss}
-              onChange={(v) => s.setUntergeschoss(buildingId, v)}
-              onPreview={(v) =>
-                s.previewOption(v ? { kind: 'untergeschoss', buildingId, value: v } : null)}
-              options={(['vollausbau', 'ab_decke', 'kein_ug'] as const).map((v) => ({
-                value: v,
-                title: LABEL_UG[v],
-                image: optionImage('ugVariante', UG_IMAGE_VALUE[v]),
-                consequence: b.untergeschoss === v
-                  ? 'aktuelle Auswahl'
-                  : consequenceLabel(s.optionDelta({ kind: 'untergeschoss', buildingId, value: v })),
-              }))}
-            />
-          </Card>
-        )
-      })}
-    </div>
-  )
-}
-
-function ChapterEnergie() {
-  const tx = useTx()
-  const t = useT()
-  const s = useStore()
-  return (
-    <div className="grid gap-5">
-      <Card
-        title={t('configurator.energy.title')}
-        intro={'Die Wahl einer Option ist keine Bestätigung: das Unsicherheitsband ' +
-          'verengt sich erst, wenn der Kunde den Standard bestätigt.'}
-      >
-        <EnergiestandardPicker />
-        {!s.esConfirmed && (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-3">
-            <p className="a3-cap">{tx('Standard gewählt, vom Kunden noch nicht bestätigt — Band unverändert.')}</p>
-            <Button onClick={() => s.confirmEnergiestandardAnswer()}>{tx('Vom Kunden bestätigt')}</Button>
-          </div>
-        )}
-        {s.esConfirmed && (
-          <p className="mt-4 border-t border-border-subtle pt-3 text-small text-text-secondary">
-            <span aria-hidden="true">✓ </span>
-            Vom Kunden bestätigt — Unsicherheitsband um 4{NNBSP}Prozentpunkte verengt.
-          </p>
-        )}
-      </Card>
-    </div>
   )
 }
 
@@ -1754,7 +1515,12 @@ function ConfigurationCompleteNotice() {
           if (s.configurationMode === 'PER_BUILDING') {
             s.setConfigurationScope(outstandingBuildings[0]!)
           }
-          s.openConfiguratorStepAt(CONFIGURATOR_STEP.ENERGY_CERTIFICATION)
+          // Energie & Zertifikate (the former first building-scoped step)
+          // was removed by "Rebuild Project Card Workflow" Part 15; KG 300
+          // is now the first building-scoped chapter and, since it is
+          // mandatory, is always applicable — the same "land on a real
+          // building-scoped chapter" outcome this gate always intended.
+          s.openConfiguratorStepAt(CONFIGURATOR_STEP.KG_300_DETAILS)
         }}
       />
     </Card>
@@ -1828,70 +1594,6 @@ function ChapterKg700() {
             Anteil KG{NNBSP}700: {moneyLabel(present(p.kgSplit.KG_700))}
           </p>
         )}
-      </Card>
-    </div>
-  )
-}
-
-/**
- * KG 800 (Finanzierung) — тикет "MAKE ALL KG 200–800 SELECTABLE…". Как
- * KG 700, приватная (`visibility: internalOnly`, `state/chapters.ts`) —
- * die Kundenansicht erreicht dieses Kapitel nie. Subtotal fließt trotzdem
- * immer in Gesamt netto (Anhang §11 "Client/private financing boundary").
- *
- * "Für dieses Meeting freigeben" schaltet das Recht frei, die Aufschlüsselung
- * (nicht die rohen %-Parameter) auch in der Kundenansicht zu zeigen —
- * Standard: aus (M-3: der Zustand gehört zum versendeten Snapshot). Die
- * client-seitige Recap-Oberfläche, die diesen Zustand konsumiert, ist
- * separat zu verdrahten (siehe Frontend-Handoff, bekannte Einschränkung) —
- * dieses Kapitel liefert den autoritativen Speicherort und Schalter dafür.
- */
-function ChapterKg800() {
-  const s = useStore()
-  const t = useT()
-  const p = s.projection()
-  const breakdown = p.result.drivers.filter((d) => d.key.startsWith('kg800_'))
-  const subtotal = breakdown.reduce((sum, d) => sum.plus(d.exact), new Decimal(0))
-
-  return (
-    <div className="grid gap-5">
-      <ScopeCatalogChapter
-        options={KG800_CATALOG_OPTIONS}
-        introDe="Finanzierung bildet Kosten bis zum Nutzungsbeginn aus Fremdkapital, Finanzierungsnebenkosten, Bereitstellung, Bürgschaften und optional kalkulatorischem Eigenkapital ab."
-        introEn="Financing estimates cost up to start of use from debt interest, financing fees, commitment charges, guarantees and optional imputed equity interest."
-      />
-      <Card title={t('configurator.kg800.breakdown.title')}>
-        {breakdown.length === 0 ? (
-          <p className="a3-cap">
-            {t('configurator.scopeCatalog.kg800NoBasis')}
-          </p>
-        ) : (
-          <>
-            <ul className="grid gap-1">
-              {breakdown.map((d) => (
-                <li key={d.key} className="flex items-center justify-between gap-3">
-                  <span className="text-body text-text-primary">{d.label}</span>
-                  <span className="numeric text-body text-text-primary">
-                    {moneyLabel(present(d.exact))}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <p className="numeric mt-3 text-heading-3 font-bold text-text-primary">
-              KG{NNBSP}800{NNBSP}Subtotal: {moneyLabel(present(subtotal))}
-            </p>
-          </>
-        )}
-        <div className="mt-4 border-t border-border-subtle pt-3">
-          <Switch
-            label={t('configurator.scopeCatalog.kg800RevealSwitch')}
-            checked={s.kg800ClientRevealed}
-            onChange={(v) => s.setKg800ClientRevealed(v)}
-          />
-          <p className="a3-cap mt-1">
-            {t('configurator.scopeCatalog.kg800RevealHelp')}
-          </p>
-        </div>
       </Card>
     </div>
   )

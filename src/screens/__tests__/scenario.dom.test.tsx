@@ -68,18 +68,24 @@ describe('Сквозной сценарий продажи', () => {
     await enterPipeline(user)
 
     // Конфигуратор: смена энергостандарта — первое событие журнала.
+    // "Rebuild Project Card Workflow" Part 14: Energiestandard is edited
+    // directly on Leistungsabgrenzung now, not a separate chapter.
     await user.click(nav(/Konfigurator/))
-    await user.click(nav(/Energie & Zertifikate/))
+    await user.click(nav(/Leistungsabgrenzung/))
     const es = await screen.findByRole('radiogroup', { name: 'Energiestandard' })
     await user.click(within(es).getAllByRole('radio')[2]!)
     // Путь до конвейера сам оставляет след: решённый конфликт,
     // подтверждённые параметры, созданный Option и подтверждённое здание.
-    expect(useStore.getState().journal).toHaveLength(12)
+    // KG 300/400/700 are mandatory now ("Rebuild Project Card Workflow"
+    // #16) — the three `setCoverage` calls in `enterPipeline` above are
+    // guarded no-ops and no longer add journal entries (3 fewer than
+    // before).
+    expect(useStore.getState().journal).toHaveLength(9)
 
     // Уход на другой экран и возврат: состояние переживает переход.
     await user.click(nav(/Variantenvergleich/))
     await user.click(nav(/Konfigurator/))
-    expect(useStore.getState().journal).toHaveLength(12)
+    expect(useStore.getState().journal).toHaveLength(9)
     expect(activeBuilding(useStore.getState()).energiestandard).toBe('EH_40')
 
     // Гейт открывается на top-level шаге здания, а не обходится.
@@ -95,7 +101,7 @@ describe('Сквозной сценарий продажи', () => {
     expect(screen.getByRole('button', { name: /Preflight/ })).toBeInTheDocument()
     // +2 over the earlier assertions: Scope Boundaries confirmation and the
     // one building's configuration confirmation, both journal events.
-    expect(useStore.getState().journal).toHaveLength(14)
+    expect(useStore.getState().journal).toHaveLength(11)
   })
 
   it('глава 9 показывает Bauzeit обеими формами: полосой и таблицей', async () => {
@@ -180,14 +186,12 @@ describe('Сквозной сценарий продажи', () => {
     // тот же самый уже согласованный accept/ignore-механизм, другое место.
     await user.click(nav(/Leistungen KG 300/))
     act(() => useStore.getState().setUiLanguage('en'))
-    // Task 02 (F-02): this recap's cross-reference used to point at
-    // "Scope boundaries" (chapter 1), which owns no Untergeschoss control
-    // at all — the actual owner is "Areas in detail" (`ChapterFlaechen`).
-    // Task 03 (F-26): the cross-reference now names the chapter instead of
-    // a derived position number, which is exactly what makes it survive
-    // KG toggling — no number to assert here at all any more.
+    // "Rebuild Project Card Workflow" Part 16: "Areas in detail" is
+    // removed; the recap's cross-reference now names its actual current
+    // owner, Building & Scope (the same link every other building-level
+    // fact in this product already uses).
     expect(screen.getByRole('button', {
-      name: /Go to «Areas in detail»/,
+      name: 'Review in Building & scope',
     })).toBeInTheDocument()
     act(() => useStore.getState().setUiLanguage('de'))
     // Риск — категория · вероятность · следствие, и он НЕ в цене (CALC-001).
@@ -229,24 +233,14 @@ describe('Сквозной сценарий продажи', () => {
   // "Im Angebot gewählt" (chosen) heading — reads as a charge for
   // something explicitly removed. It must now render under its own
   // "Ausgeschlossen" heading instead.
-  it('excluding KG 300 lists its adjustment under "Ausgeschlossen", never under "Im Angebot gewählt" (F-11)', async () => {
-    const user = userEvent.setup()
-    render(<App />)
-    await enterPipeline(user)
-    await user.click(nav(/Konfigurator/))
-    await user.click(nav(/Leistungsabgrenzung/))
-    act(() => useStore.getState().setCoverage('KG_300', 'excluded'))
-
-    const recap = screen.getByRole('region', { name: 'Im Angebot gewählt' })
-    const excludedHeading = within(recap).getByText('Ausgeschlossen')
-    const excludedList = excludedHeading.closest('div')!
-    expect(within(excludedList).getByText(/KG 300/)).toBeInTheDocument()
-
-    // The chosen list (everything ABOVE the "Ausgeschlossen" heading) must
-    // not repeat the same exclusion adjustment.
-    const chosenRows = recap.querySelectorAll('ul')[0]!
-    expect(within(chosenRows).queryByText(/KG 300.*ausgeschlossen/)).toBeNull()
-  })
+  // "Rebuild Project Card Workflow" #16 makes KG 300 mandatory — it can no
+  // longer be excluded, so this F-11 regression case (excluding a core
+  // group must list its adjustment under "Ausgeschlossen", not "Im Angebot
+  // gewählt") is no longer reachable through the UI for KG 300 specifically.
+  // The general "Ausgeschlossen" heading mechanism itself is a presentation
+  // concern of `OfferPanel.tsx`, not something this ticket's mandatory-lock
+  // change touches, and remains covered by that component's own tests for
+  // the KGs that are still genuinely excludable (200/500/600).
 
   // Task 04 (F-11 companion, rule 36): audit example "2,00 Gebäude ×
   // 20.000 €/Gebäude" — a discrete count must print as a whole number.
@@ -302,7 +296,7 @@ describe('Сквозной сценарий продажи', () => {
     render(<App />)
     await enterPipeline(user)
     await user.click(nav(/Konfigurator/))
-    await user.click(nav(/Energie & Zertifikate/))
+    await user.click(nav(/Leistungsabgrenzung/))
 
     // До изменения слоты существуют (высота зарезервирована), но пусты.
     const chipBefore = document.querySelector('.a3-delta')!
@@ -437,7 +431,7 @@ describe('Сквозной сценарий продажи', () => {
 
     // Изменение, которое обязано попасть в итог встречи.
     await user.click(nav(/Konfigurator/))
-    await user.click(nav(/Energie & Zertifikate/))
+    await user.click(nav(/Leistungsabgrenzung/))
     const es = await screen.findByRole('radiogroup', { name: 'Energiestandard' })
     await user.click(within(es).getAllByRole('radio')[2]!)
     confirmWholeConfiguration()
@@ -580,7 +574,11 @@ describe('Сквозной сценарий продажи', () => {
     // its h1 instead of leaving focus in removed content.
     expect(screen.getByRole('heading', { level: 1, name: 'Termine' }))
       .toHaveFocus()
-    expect(screen.getByText('Kapitel 6 von 6 · Konfigurator')).toBeInTheDocument()
+    // Client-visible chapters are now Leistungsabgrenzung/KG 300/KG 400/
+    // Termine (4, not 6) — Energie & Zertifikate and Flächen im Detail no
+    // longer exist ("Rebuild Project Card Workflow" Parts 15/16); KG 700
+    // stays internal-only as before.
+    expect(screen.getByText('Kapitel 4 von 4 · Konfigurator')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Beenden' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Einstellungen/ })).toBeNull()
     expect(screen.queryByRole('button', { name: /Grundlagen/ })).toBeNull()
@@ -600,8 +598,6 @@ describe('Сквозной сценарий продажи', () => {
       /Leistungen KG 300/,
       /Leistungsabgrenzung/,
       /Technik KG 400/,
-      /Energie & Zertifikate/,
-      /Flächen im Detail/,
       /Termine/,
     ]
     for (const chapter of clientChapters) {

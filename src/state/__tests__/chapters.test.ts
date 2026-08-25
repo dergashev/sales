@@ -12,19 +12,23 @@ import { __resetStoreForTests, useStore } from '../store'
 beforeEach(() => __resetStoreForTests())
 
 describe('semantic Configurator workflow', () => {
-  it('derives the approved seven-step internal workflow without Ground', () => {
+  it('derives the approved five-step internal workflow for a fresh option (mandatory core, no Ground, no Energy/Areas chapters)', () => {
     const s = useStore.getState()
     expect(activeConfiguratorWorkflow({ coverage: s.coverage, mode: 'intern' })
       .map((step) => step.label)).toEqual([
       'Leistungsabgrenzung',
       'Leistungen KG 300',
       'Technik KG 400',
-      'Energie & Zertifikate',
-      'Flächen im Detail',
       'Baunebenkosten KG 700',
       'Termine',
     ])
     expect(CONFIGURATOR_STEPS.some((step) => step.label === 'Baugrund & Erschließung'))
+      .toBe(false)
+    expect(CONFIGURATOR_STEPS.some((step) => step.label === 'Energie & Zertifikate'))
+      .toBe(false)
+    expect(CONFIGURATOR_STEPS.some((step) => step.label === 'Flächen im Detail'))
+      .toBe(false)
+    expect(CONFIGURATOR_STEPS.some((step) => step.label === 'Finanzierung KG 800'))
       .toBe(false)
   })
 
@@ -44,13 +48,15 @@ describe('semantic Configurator workflow', () => {
     }).some((step) => step.id === CONFIGURATOR_STEP.KG_400_DETAILS)).toBe(false)
   })
 
-  it('includes the KG 200/500/600/800 detail chapters, in DIN order, once each carries a real catalog (тикет "MAKE ALL KG 200-800 SELECTABLE" - supersedes the former "no detail experience" contract)', () => {
+  it('includes the KG 200/500/600 detail chapters, in DIN order, once each carries a real catalog; KG 800 never appears even when its coverage is included (removed, not merely excluded)', () => {
     const s = useStore.getState()
     const included = {
       ...s.coverage,
       KG_200: 'included' as const,
       KG_500: 'included' as const,
       KG_600: 'included' as const,
+      // Deliberately still `included` here to prove KG 800 has no step at
+      // all any more — not just that it defaults to excluded.
       KG_800: 'included' as const,
     }
     expect(activeConfiguratorWorkflow({ coverage: included, mode: 'intern' })
@@ -61,28 +67,25 @@ describe('semantic Configurator workflow', () => {
       CONFIGURATOR_STEP.KG_400_DETAILS,
       CONFIGURATOR_STEP.KG_500_DETAILS,
       CONFIGURATOR_STEP.KG_600_DETAILS,
-      CONFIGURATOR_STEP.ENERGY_CERTIFICATION,
-      CONFIGURATOR_STEP.AREAS,
       CONFIGURATOR_STEP.KG_700_DETAILS,
-      CONFIGURATOR_STEP.KG_800_DETAILS,
       CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE,
     ])
   })
 
-  it('excluding all KG 200-800 leaves only the required non-KG steps (AC-04 intentional empty scope)', () => {
+  it('excluding every user-decidable KG (200/500/600) leaves the mandatory core plus the required non-KG steps — never truly empty', () => {
     const s = useStore.getState()
-    const allExcluded = {
+    const onlyMandatory = {
       ...s.coverage,
-      KG_200: 'excluded' as const, KG_300: 'excluded' as const,
-      KG_400: 'excluded' as const, KG_500: 'excluded' as const,
-      KG_600: 'excluded' as const, KG_700: 'excluded' as const,
-      KG_800: 'excluded' as const,
+      KG_200: 'excluded' as const,
+      KG_500: 'excluded' as const,
+      KG_600: 'excluded' as const,
     }
-    expect(activeConfiguratorWorkflow({ coverage: allExcluded, mode: 'intern' })
+    expect(activeConfiguratorWorkflow({ coverage: onlyMandatory, mode: 'intern' })
       .map((step) => step.id)).toEqual([
       CONFIGURATOR_STEP.SCOPE_BOUNDARIES,
-      CONFIGURATOR_STEP.ENERGY_CERTIFICATION,
-      CONFIGURATOR_STEP.AREAS,
+      CONFIGURATOR_STEP.KG_300_DETAILS,
+      CONFIGURATOR_STEP.KG_400_DETAILS,
+      CONFIGURATOR_STEP.KG_700_DETAILS,
       CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE,
     ])
   })
@@ -93,16 +96,12 @@ describe('semantic Configurator workflow', () => {
       .map((step) => step.id)).toEqual([
       CONFIGURATOR_STEP.KG_300_DETAILS,
       CONFIGURATOR_STEP.KG_400_DETAILS,
-      CONFIGURATOR_STEP.ENERGY_CERTIFICATION,
-      CONFIGURATOR_STEP.AREAS,
     ])
     expect(activeConfiguratorWorkflow({ coverage: s.coverage, mode: 'praesentation' })
       .map((step) => step.id)).toEqual([
       CONFIGURATOR_STEP.SCOPE_BOUNDARIES,
       CONFIGURATOR_STEP.KG_300_DETAILS,
       CONFIGURATOR_STEP.KG_400_DETAILS,
-      CONFIGURATOR_STEP.ENERGY_CERTIFICATION,
-      CONFIGURATOR_STEP.AREAS,
       CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE,
     ])
   })
@@ -115,9 +114,10 @@ describe('semantic Configurator workflow', () => {
     }, CONFIGURATOR_STEP.KG_700_DETAILS)).toBe(CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE)
   })
 
-  it('migrates only meaningful v1 progress numbers, not the retired Ground step', () => {
+  it('migrates only meaningful v1 progress numbers, not the retired Ground step; the retired Energy (4) and Areas (5) chapters land on Scope Boundaries', () => {
     expect(stepIdFromLegacyChapter(2)).toBe(CONFIGURATOR_STEP.KG_300_DETAILS)
-    expect(stepIdFromLegacyChapter(5)).toBe(CONFIGURATOR_STEP.AREAS)
+    expect(stepIdFromLegacyChapter(4)).toBe(CONFIGURATOR_STEP.SCOPE_BOUNDARIES)
+    expect(stepIdFromLegacyChapter(5)).toBe(CONFIGURATOR_STEP.SCOPE_BOUNDARIES)
     expect(stepIdFromLegacyChapter(6)).toBeNull()
   })
 

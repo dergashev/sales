@@ -481,29 +481,48 @@ type PersistedProposalPayload = {
  * седьмая равноправная decidable-группа, и "решение ещё не принято" само
  * по себе больше не является нормальным отображаемым состоянием.
  */
+/**
+ * KG 300/400/700 are mandatory core cost groups (ticket "Rebuild Project
+ * Card Workflow" #16): every offer includes them, and Scope Boundaries
+ * never offers a way to exclude them. This supersedes the 22.08.2026
+ * "MAKE ALL KG 200-800 SELECTABLE" decision for exactly these three
+ * groups; KG 200/500/600 remain genuinely user-decidable, excluded by
+ * default. KG 800 is no longer a supported Scope Boundaries group at all
+ * (see `migrateCoverage` below) and is never included by default.
+ */
+export const MANDATORY_COST_GROUPS = ['KG_300', 'KG_400', 'KG_700'] as const
 const INITIAL_COVERAGE: Coverage = {
   KG_100: 'notApplicable', KG_200: 'excluded',
-  KG_300: 'excluded', KG_400: 'excluded', KG_500: 'excluded',
-  KG_600: 'excluded', KG_700: 'excluded', KG_800: 'excluded',
+  KG_300: 'included', KG_400: 'included', KG_500: 'excluded',
+  KG_600: 'excluded', KG_700: 'included', KG_800: 'excluded',
 }
 
 /**
- * Поднимает легаси-покрытие (сохранённое до текущего решения) до нового
- * бинарного контракта: любой `unknown` - это молчаливо непринятое решение,
- * которое обязано читаться как `excluded` (D-08: отсутствие решения не
- * становится тихим включением), никогда не как воскрешённое третье
- * состояние. `KG_800` отдельно: старые проекты несут для неё
- * `notApplicable` (группа не была decidable) - она тоже поднимается до
- * `excluded`, а не остаётся вне перечня.
+ * Поднимает легаси-покрытие (сохранённое до текущего решения) до текущего
+ * бинарного контракта:
+ * - любой `unknown` для decidable-группы - это молчаливо непринятое
+ *   решение, которое обязано читаться как `excluded` (D-08: отсутствие
+ *   решения не становится тихим включением), никогда не как воскрешённое
+ *   третье состояние;
+ * - KG 300/400/700 - обязательные группы (`MANDATORY_COST_GROUPS`): любое
+ *   унаследованное значение, кроме `included`, поднимается до `included`,
+ *   потому что предложение без них больше не существует как нормальное
+ *   состояние;
+ * - KG 800 больше не является decidable-группой Scope Boundaries: любое
+ *   значение, кроме `excluded` (включая старое `notApplicable` или
+ *   унаследованное `included`), опускается до `excluded` - тот же приём
+ *   "dormant, без активной стоимости", которым уже пользуется любая
+ *   исключённая группа, а не удаление данных.
  */
 function migrateCoverage(coverage: Coverage): Coverage {
   const migrated = { ...coverage }
   for (const group of SCOPE_BOUNDARIES_DECIDABLE_GROUPS) {
-    if (migrated[group] === 'unknown'
-      || (group === 'KG_800' && migrated[group] === 'notApplicable')) {
-      migrated[group] = 'excluded'
-    }
+    if (migrated[group] === 'unknown') migrated[group] = 'excluded'
   }
+  for (const group of MANDATORY_COST_GROUPS) {
+    migrated[group] = 'included'
+  }
+  migrated.KG_800 = 'excluded'
   return migrated
 }
 // The top-level demo projection exists before an Opportunity Option does and
@@ -2929,34 +2948,29 @@ const store = createStore<Store>((set, get) => {
     },
 
     setCoverage: (g, st) => {
+      // KG 300/400/700 are mandatory (never excludable) and KG 800 is no
+      // longer a supported Scope Boundaries decision (always excluded) —
+      // see `MANDATORY_COST_GROUPS`/`migrateCoverage`. Scope Boundaries no
+      // longer renders an interactive control for any of the four, but
+      // this guards the single state-mutation entry point directly so no
+      // other caller (legacy path, test, future regression) can violate
+      // the invariant either.
+      if ((MANDATORY_COST_GROUPS as readonly CostGroup[]).includes(g) || g === 'KG_800') return
       const s = get()
       const prev = s.coverage[g]
       if (prev === st) return
       const before = projectTotal(s)
       const prevKg700Mode = s.kg700Mode
       const prevAutoFallback = s.kg700ModeAutoFallback
-      const nextCoverage = { ...s.coverage, [g]: st }
-      const bothCoreIncluded = nextCoverage.KG_300 === 'included'
-        && nextCoverage.KG_400 === 'included'
-      // D-07 rule 6 is symmetric by its own wording ("vereinfacht requires
-      // 300 AND 400 both included"), but the ORIGINAL implementation only
-      // ever flipped forward (QA-01, ticket e2dac9b5): once a core group's
-      // exclusion auto-switched the project to `hoaiAho`, re-including it
-      // left the total silently inflated by KG 700's +12 % forever. The
-      // revert below undoes exactly what the forward branch did, and ONLY
-      // that — it never touches a mode the seller chose deliberately via
-      // `setKg700Mode` (which clears `kg700ModeAutoFallback`).
-      let nextKg700Mode = s.kg700Mode
-      let nextAutoFallback = prevAutoFallback
-      if (st !== 'included' && (g === 'KG_300' || g === 'KG_400')
-        && s.kg700Mode === 'vereinfacht') {
-        nextKg700Mode = 'hoaiAho'
-        nextAutoFallback = true
-      } else if ((g === 'KG_300' || g === 'KG_400') && bothCoreIncluded
-        && s.kg700Mode === 'hoaiAho' && prevAutoFallback) {
-        nextKg700Mode = 'vereinfacht'
-        nextAutoFallback = false
-      }
+      // D-07 rule 6's auto-fallback (`vereinfacht` -> `hoaiAho` when a core
+      // group is excluded, and back) is now unreachable through this
+      // action: the guard above already excludes KG_300/400/700 from `g`,
+      // so this call can only ever be for KG_200/500/600, which never
+      // affects `kg700Mode`. `nextKg700Mode`/`nextAutoFallback` are kept as
+      // named passthroughs (not inlined) only so `write`/the journal
+      // entry below stay identical for every group.
+      const nextKg700Mode = s.kg700Mode
+      const nextAutoFallback = prevAutoFallback
       const write = (
         value: CoverageState,
         kg700Mode: Store['kg700Mode'],

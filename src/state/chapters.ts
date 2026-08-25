@@ -53,21 +53,38 @@ export type ConfiguratorWorkflowContext = Readonly<{
  *
  * KG 200/300/400/500/600/700/800 chapters are conditional on the active
  * Option's explicit Scope Boundaries decisions and follow DIN 276 order
- * among themselves. Energy/certification, areas and commercial/schedule are
- * required non-KG configuration areas and keep their established position
- * between the building-construction and building-nebenkosten KG chapters.
+ * among themselves. `commercial/schedule` is the only required non-KG
+ * configuration area and keeps its established position after the KG
+ * chapters.
  *
- * KG 200/500/600/800 (ticket "MAKE ALL KG 200–800 SELECTABLE & ADD
- * COST-BEARING CONTENT…") reuse this exact mechanism instead of a parallel
- * navigation model. `scope: 'project'` for all four (matching KG 700's own
- * precedent): none of their quantity drivers has a genuine per-building home
- * in the existing data model — site preparation, external works, equipment
- * and financing are configured once for the whole complex, not duplicated
- * per building tab. The former note "the Ground step is absent: KG-200
- * status is a Scope Boundaries fact, not a second configuration task" no
- * longer applies now that KG 200 carries a real multi-option catalog
- * (6 options) rather than a single flat rate — the same reasoning that
- * already gave KG 300/400/700 their own detail chapter now applies to it.
+ * KG 200/500/600 (ticket "MAKE ALL KG 200–800 SELECTABLE & ADD COST-BEARING
+ * CONTENT…") reuse this exact mechanism instead of a parallel navigation
+ * model. `scope: 'project'` (matching KG 700's own precedent): none of
+ * their quantity drivers has a genuine per-building home in the existing
+ * data model — site preparation, external works and equipment are
+ * configured once for the whole complex, not duplicated per building tab.
+ *
+ * Ticket "Rebuild Project Card Workflow" removes three former steps from
+ * this registry, superseding the sources named in each case:
+ * - `ENERGY_CERTIFICATION` ("Energie & Zertifikate", Task 03) — its
+ *   editable content (Energiestandard/QNG/DGNB + customer confirmation)
+ *   moved into `ChapterUmfang` (Scope Boundaries); there is now exactly
+ *   one editable location instead of two.
+ * - `AREAS` ("Flächen im Detail", Task 02) — Building Scope remains the
+ *   authoritative editing location for building area values; a mandatory
+ *   Configurator step duplicating that is no longer required.
+ * - `KG_800_DETAILS` ("Finanzierung KG 800", ticket "MAKE ALL KG 200–800
+ *   SELECTABLE…") — KG 800 is no longer a supported commercial group in
+ *   this workflow. `coverage.KG_800` is permanently forced to `excluded`
+ *   (`store.ts`'s `migrateCoverage`/`setCoverage`), so this step is
+ *   structurally unreachable even before its removal here; removing the
+ *   entry also stops it appearing in any all-steps enumeration.
+ *
+ * The `CONFIGURATOR_STEP` identities for the three removed steps are kept
+ * (a `ConfiguratorStepId` union member, not a removed export) purely so
+ * `stepIdFromLegacyChapter` below still type-checks against historical
+ * persisted numeric chapter references; they no longer appear in
+ * `CONFIGURATOR_STEPS` and must never be reintroduced there.
  */
 export const CONFIGURATOR_STEPS: readonly ConfiguratorStep[] = [
   {
@@ -113,32 +130,11 @@ export const CONFIGURATOR_STEPS: readonly ConfiguratorStep[] = [
     applicability: { kind: 'includedKg', group: 'KG_600' },
   },
   {
-    id: CONFIGURATOR_STEP.ENERGY_CERTIFICATION,
-    label: 'Energie & Zertifikate',
-    scope: 'building',
-    visibility: 'clientSafe',
-    applicability: { kind: 'required' },
-  },
-  {
-    id: CONFIGURATOR_STEP.AREAS,
-    label: 'Flächen im Detail',
-    scope: 'building',
-    visibility: 'clientSafe',
-    applicability: { kind: 'required' },
-  },
-  {
     id: CONFIGURATOR_STEP.KG_700_DETAILS,
     label: 'Baunebenkosten KG 700',
     scope: 'project',
     visibility: 'internalOnly',
     applicability: { kind: 'includedKg', group: 'KG_700' },
-  },
-  {
-    id: CONFIGURATOR_STEP.KG_800_DETAILS,
-    label: 'Finanzierung KG 800',
-    scope: 'project',
-    visibility: 'internalOnly',
-    applicability: { kind: 'includedKg', group: 'KG_800' },
   },
   {
     // Task 03 (deep-coherence audit, F-27): the chapter's only content is
@@ -215,14 +211,21 @@ export function nearestActiveConfiguratorStep(
  * Read-only migration for v1 proposal payloads. These numbers are never used
  * as current workflow authority; only previously persisted building progress
  * can contain them.
+ *
+ * Chapters 4 (`ENERGY_CERTIFICATION`) and 5 (`AREAS`) no longer exist as
+ * Configurator steps (see the `CONFIGURATOR_STEPS` docblock above); a v1
+ * payload naming either now lands on `SCOPE_BOUNDARIES`, the safe current
+ * home for both the energy/certification decisions and the Configurator
+ * entry point, rather than resolving to a step id `CONFIGURATOR_STEPS` no
+ * longer contains.
  */
 export function stepIdFromLegacyChapter(value: number): ConfiguratorStepId | null {
   return ({
     1: CONFIGURATOR_STEP.SCOPE_BOUNDARIES,
     2: CONFIGURATOR_STEP.KG_300_DETAILS,
     3: CONFIGURATOR_STEP.KG_400_DETAILS,
-    4: CONFIGURATOR_STEP.ENERGY_CERTIFICATION,
-    5: CONFIGURATOR_STEP.AREAS,
+    4: CONFIGURATOR_STEP.SCOPE_BOUNDARIES,
+    5: CONFIGURATOR_STEP.SCOPE_BOUNDARIES,
     7: CONFIGURATOR_STEP.KG_700_DETAILS,
     8: CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE,
   } as Partial<Record<number, ConfiguratorStepId>>)[value] ?? null

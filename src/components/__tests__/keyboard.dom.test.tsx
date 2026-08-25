@@ -166,9 +166,13 @@ describe('Опции — нативная radio-группа (RADIO-001)', () =>
     await enterPipeline(user)
     // Навигация настоящая, через интерфейс: дёргать store мимо React
     // значило бы проверять не тот путь, которым ходит пользователь.
-    // Пункт главы в сайдбаре — первый из совпадающих (второй появляется
-    // в подписи кнопки «Weiter» внизу рабочей области).
-    await user.click(screen.getAllByRole('button', { name: /Energie & Zertifikate/ })[0]!)
+    // "Rebuild Project Card Workflow" Part 14/15: Energiestandard editing
+    // moved into Leistungsabgrenzung (Scope Boundaries) itself — the
+    // standalone "Energie & Zertifikate" chapter this test used to
+    // navigate to no longer exists. Пункт главы в сайдбаре — первый из
+    // совпадающих (второй появляется в подписи кнопки «Weiter» внизу
+    // рабочей области).
+    await user.click(screen.getAllByRole('button', { name: /Leistungsabgrenzung/ })[0]!)
 
     const group = await screen.findByRole('radiogroup', { name: 'Energiestandard' })
     const radios = within(group).getAllByRole('radio')
