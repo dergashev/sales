@@ -3399,6 +3399,15 @@ const store = createStore<Store>((set, get) => {
       const scopedVisited = s.configurationVisitedChapters[scopeKey] ?? []
       return {
         openConfiguratorStep: stepId,
+        // AUD-01 (EXP-01): the DC-28 hover preview is scoped to the control
+        // the pointer/focus is currently over — navigating to a different
+        // chapter always leaves that control, so the preview must clear
+        // here too, not only on option switch/fixation (`NO_TRANSIENT`
+        // already covers those). `activeDelta` (the post-commit chip) is
+        // intentionally NOT cleared: it names a real, already-applied
+        // change and keeps its own independent lifetime regardless of
+        // which chapter is open.
+        preview: null,
         activeBuildingId,
         pricingStarted: s.pricingStarted || (
           s.configurationModeChosen
@@ -3682,6 +3691,16 @@ const store = createStore<Store>((set, get) => {
             level: prevLevel,
             ...prevFlat,
             configurationModeEditing: false,
+            // AUD-01 (EXP-01): this undo/redo pair changes `activeOptionId`
+            // like every other option-switch action — unlike those (which
+            // spread `NO_TRANSIENT`), this one didn't, so undoing/redoing
+            // option creation could leave a hover preview computed for the
+            // option that just left the screen. `activeDelta` is bounded
+            // (the AC-1/AC-2 commercial-integrity bug is about `preview`
+            // only) but clearing it here too matches every other
+            // option-identity-changing transition in this file.
+            preview: null,
+            activeDelta: null,
           }
         }),
         forward: () => set((x) => ({
@@ -3694,6 +3713,8 @@ const store = createStore<Store>((set, get) => {
             : {}),
           ...removed,
           configurationModeEditing: false,
+          preview: null,
+          activeDelta: null,
         })),
       })
     },
@@ -3800,6 +3821,11 @@ const store = createStore<Store>((set, get) => {
       return {
         pipelineView,
         openConfiguratorStep: visibleStep,
+        // AUD-01 (EXP-01): switching pipeline view (Konfigurator ↔
+        // Vergleich/Export/Termine/…) is a route change — the hover
+        // preview must not survive it, same reasoning as
+        // `openConfiguratorStepAt` above.
+        preview: null,
         // The narrow lens exists only inside a building-scoped Configurator
         // chapter. Vergleich, Export and snapshots always cover the option.
         scopeBuildingId: pipelineView === 'konfigurator'
@@ -4526,8 +4552,20 @@ function changeLabel(change: PriceChange): string {
     case 'kg700':
       return change.value === 'hoaiAho'
         ? 'KG 700 nach HOAI und AHO' : 'KG 700 vereinfacht'
-    case 'kg300':
-      return `${change.groupId} · ${change.value}`
+    case 'kg300': {
+      // AUD-01 (EXP-02): used to return the raw `groupId`/`value` pair
+      // unconditionally ("fassade · mixedTimber") — every KG300/KG400/
+      // Zertifikate choice leaked its internal id, not only fassade. The
+      // human label already exists: `ALL_OPTION_GROUPS` (options.ts) is the
+      // SAME catalog `OptionChapter.tsx` reads for the option card's own
+      // title (`g.label`/`c.label`), so this now shows exactly what the
+      // card shows instead of re-deriving a second label.
+      const group = ALL_OPTION_GROUPS.find((g) => g.id === change.groupId)
+      const choice = group?.choices.find((c) => c.value === change.value)
+      return group && choice
+        ? `${group.label} · ${choice.label}`
+        : `${change.groupId} · ${change.value}`
+    }
     case 'scopeCatalog': {
       const option = ALL_SCOPE_CATALOG_OPTIONS.find((o) => o.id === change.optionId)
       const variant = option?.variants.find((v) => v.value === change.value)
@@ -4562,19 +4600,32 @@ const COVERAGE_LABEL_KEY: Record<CoverageState, string> = {
  * Task 05 rework (QA AC-2, live EN walkthrough): translated counterpart of
  * `changeLabel` for the Geist-Vorschau render site (`preview.change`).
  * `changeLabel` itself stays German-only — it is called from plain store
- * logic with no i18n hook access. Only the `coverage` kind is what QA's
- * walkthrough actually evidenced broken ("KG 200 enthalten" surviving into
- * EN, e.g. hovering a Leistungsabgrenzung KG toggle); the other kinds keep
- * falling back to the untranslated label, same as before this fix — fixing
+ * logic with no i18n hook access. `coverage` (QA's live EN walkthrough) and
+ * `kg300` (AUD-01, EXP-02) are translated here; `energiestandard`/
+ * `untergeschoss`/`risiko`/`kg700`/`scopeCatalog` keep falling back to the
+ * untranslated (but human, non-raw) label from `changeLabel` — closing
  * those needs the same `Driver.key`-style structural fix as
- * `translatedDriverLabel` in `clientProjection.ts`, out of scope here.
+ * `translatedDriverLabel` in `clientProjection.ts` (AUD-07/AUD-12's tx()
+ * bridge programme), out of scope here. AUD-01's bar is "no raw
+ * id/enum/camelCase text in either language", not full EN parity — `kg300`
+ * clears that bar via `changeLabel`'s own catalog lookup even without `tx`.
  */
 export function translatedChangeLabel(
   change: PriceChange,
   t: (key: string, values?: Record<string, string | number>) => string,
+  tx: (deText: string) => string,
 ): string {
   if (change.kind === 'coverage') {
     return `${change.group.replace('_', ' ')} ${t(COVERAGE_LABEL_KEY[change.value])}`
+  }
+  if (change.kind === 'kg300') {
+    const group = ALL_OPTION_GROUPS.find((g) => g.id === change.groupId)
+    const choice = group?.choices.find((c) => c.value === change.value)
+    // Same reverse-lookup bridge `OptionChapter.tsx` already applies to
+    // `g.label`/`c.label` for the option card itself (`tx(c.label)`) — the
+    // catalog stores literal German text, not i18n keys, so this is the
+    // bridge, not `t()`.
+    if (group && choice) return `${tx(group.label)} · ${tx(choice.label)}`
   }
   return changeLabel(change)
 }

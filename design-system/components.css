@@ -424,9 +424,23 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-hb-total .a3-hb-unit{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line)}
 .a3-hb-cap{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight);color:var(--color-text-secondary)}
 .a3-hb-sub{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
-.a3-preview-slot>.a3-preview{display:block;max-width:100%;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-body-weight);color:var(--color-text-secondary);opacity:0;transition:opacity var(--motion-reveal) var(--motion-easing-standard) var(--motion-delay-hover-preview)}
+/* AUD-01 (EXP-01/AC-3): entry and exit used to share ONE `transition`
+   declaration (`var(--motion-reveal) … var(--motion-delay-hover-preview)`),
+   so removing `.a3-show` on fixation/blur/switch/navigation replayed the
+   same 200ms hover-intent DELAY plus the full reveal duration before the
+   stale preview even started to fade — up to ~400ms of a superseded
+   counterfactual sitting on screen, overlapping the hero's own count-up.
+   Decoupled per rule 20 ("выход = fade 120 мс"): the base (hidden) rule
+   below now owns EXIT — `--motion-duration-fast`, no delay — and is what
+   applies whenever `.a3-show` is REMOVED (transitioning FROM the `.a3-show`
+   rule's declared transition back TO this one). `.a3-show` keeps the
+   original entry timing (200ms hover-intent delay + `--motion-reveal`)
+   for when it is ADDED. Both durations already collapse to 0ms under
+   `prefers-reduced-motion` via the token, no separate reduced-motion rule
+   needed here. */
+.a3-preview-slot>.a3-preview{display:block;max-width:100%;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-body-weight);color:var(--color-text-secondary);opacity:0;transition:opacity var(--motion-duration-fast) var(--motion-easing-standard)}
 .a3-preview-line{display:block}
-.a3-preview-slot>.a3-preview.a3-show{opacity:1;transition-delay:.2s}
+.a3-preview-slot>.a3-preview.a3-show{opacity:1;transition:opacity var(--motion-reveal) var(--motion-easing-standard) var(--motion-delay-hover-preview)}
 /* SIDEBAR 01 (backlog eda1e221, SB-02) - `min-height` reservation is correct
    for a SCROLLING region (rule 24: appearance must not shift layout) and
    wrong for a PINNED one: while sticky, the two slots' worst-case height
@@ -453,7 +467,14 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-delta-slot{min-height:var(--size-delta-row);max-width:100%}
 .a3-change-slot-anchor{position:relative;height:0}
 .a3-change-slot-anchor>.a3-preview-slot{position:absolute;top:var(--space-3);left:0;right:0;min-height:0;max-height:var(--size-ghost-row);overflow:hidden;background:var(--color-surface-default);max-width:100%}
-.a3-change-slot-anchor>.a3-delta-slot{position:absolute;top:var(--space-3);left:0;right:0;min-height:0;max-height:var(--size-delta-row);overflow:hidden;max-width:100%}
+/* AUD-01 (EXP-02): missing `background` here (unlike the preview-slot rule
+   above, which already has it) was the actual mechanism behind "three text
+   layers overlap when the delta chip is present" — the chip rendered on a
+   transparent overlay, letting the KG completeness caption underneath show
+   through/behind it instead of being occluded like the preview already is.
+   Ghost/chip are mutually exclusive in time (comment above), so both can
+   safely claim the same opaque surface. */
+.a3-change-slot-anchor>.a3-delta-slot{position:absolute;top:var(--space-3);left:0;right:0;min-height:0;max-height:var(--size-delta-row);overflow:hidden;background:var(--color-surface-default);max-width:100%}
 .a3-iv-sub{display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap}
 .a3-iv-bandbox{flex:1;max-width:var(--measure-band)}
 /* Task 04 (F-35, rail a11y/visual): F18 already ruled out a coloured

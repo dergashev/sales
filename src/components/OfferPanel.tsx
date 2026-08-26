@@ -23,7 +23,7 @@ import { EstimateUncertaintyBadge } from './EstimateUncertaintyBadge'
 import { useT, useTx, localizeMoneyText, localizePercentText } from '../i18n'
 import type { UiLanguage } from '../i18n'
 import { useSemanticMotion } from '../design-system/motion'
-import { DELTA_CHIP_MS } from '../config/ui-policy'
+import { DELTA_CHIP_MS, TOAST_EXIT_MS } from '../config/ui-policy'
 import { Dialog, type DialogHandle } from './Dialog'
 
 /**
@@ -55,12 +55,34 @@ import { Dialog, type DialogHandle } from './Dialog'
  * `.a3-show` на нём. Стартовое состояние существует, потому что элемент
  * существовал раньше класса; кадр анимации ни при чём. Содержимое
  * сохраняется на время ухода — иначе чип гас бы пустым.
+ *
+ * AUD-01 (EXP-01): `last` used to latch FOREVER once `current` had ever
+ * been truthy — nothing ever reset it back to `null`. Visibility relied
+ * entirely on the caller's `.a3-show` CSS class tracking `current`; `last`
+ * itself never resolved. That is harmless as long as every consumer clears
+ * `current` synchronously and the CSS exit is instant, but it means ANY
+ * gap in the caller's own clearing (or any exit transition with a nonzero
+ * duration) turns into stale CONTENT sitting in the DOM for an
+ * unbounded time, not just an unbounded-but-invisible one. `clearAfterMs`
+ * (optional, defaults to "never" — existing callers are unaffected) makes
+ * `last` self-clear once its own exit window has genuinely elapsed, so
+ * content survives only for as long as its exit animation needs it to.
  */
-function useLastValue<T>(current: T | null): T | null {
+function useLastValue<T>(current: T | null, clearAfterMs = Infinity): T | null {
   const [last, setLast] = useState<T | null>(current)
   useEffect(() => {
-    if (current) setLast(current)
-  }, [current])
+    if (current) {
+      setLast(current)
+      return
+    }
+    if (!Number.isFinite(clearAfterMs)) return
+    if (clearAfterMs <= 0) {
+      setLast(null)
+      return
+    }
+    const id = window.setTimeout(() => setLast(null), clearAfterMs)
+    return () => window.clearTimeout(id)
+  }, [current, clearAfterMs])
   return current ?? last
 }
 
@@ -418,7 +440,12 @@ export function OfferPanel(
     [s.activeDelta, deltaHasCascade],
   )
   const shownCascade = useLastValue(cascadeFlag)
-  const shownPreview = useLastValue(s.preview)
+  // AUD-01 (EXP-01/AC-3): the preview's own exit is rule 20's 120 ms fade
+  // (not the DC-28 200 ms hover-intent delay — that governs entry only,
+  // see the decoupled `.a3-preview`/`.a3-preview.a3-show` transitions in
+  // components.css), and reduced motion makes it instant, same as
+  // `--motion-duration-fast` already does at the CSS layer.
+  const shownPreview = useLastValue(s.preview, reduced ? 0 : TOAST_EXIT_MS)
   const blocked = !activeBuilding(s).gebaeudeklasse.confirmed
 
   // SIDEBAR 01 (backlog eda1e221, SB-01/AC-1/AC-2) - the pinned Level 1
@@ -604,7 +631,7 @@ export function OfferPanel(
         <div aria-live="polite" className="a3-visually-hidden">
           {!priceUnavailable && s.activeDelta && t('offerPanel.liveAnnouncement', {
             change: s.activeDelta.change
-              ? translatedChangeLabel(s.activeDelta.change, t) : s.activeDelta.label,
+              ? translatedChangeLabel(s.activeDelta.change, t, tx) : s.activeDelta.label,
             delta: signedOut(s.activeDelta.deltaExact, lang),
             total: moneyOut(p.result.total, lang),
           })}
@@ -942,7 +969,7 @@ export function OfferPanel(
                   состояния (решение TASK-22, вариант 2), и строки обязаны
                   быть объявлены, а не получаться из утилит. */}
               <span className="a3-preview-line">
-                {tx('Vorschau')} · {translatedChangeLabel(shownPreview.change, t)}
+                {tx('Vorschau')} · {translatedChangeLabel(shownPreview.change, t, tx)}
               </span>
               <span className="a3-preview-line">
                 {shownPreview.futureTotal.prefix && (
@@ -984,7 +1011,7 @@ export function OfferPanel(
           >
             {shownDelta && (<>
               <span>
-                {shownDelta.change ? translatedChangeLabel(shownDelta.change, t) : shownDelta.label}
+                {shownDelta.change ? translatedChangeLabel(shownDelta.change, t, tx) : shownDelta.label}
               </span>
               <span className="font-medium">
                 {signedOut(shownDelta.deltaExact, lang)}
