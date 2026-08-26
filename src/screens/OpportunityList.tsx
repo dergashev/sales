@@ -7,6 +7,7 @@ import { Card, FormField, SelectField } from '../components/designSystem'
 import { SegmentedControl, Switch } from '../components/controls'
 import { STAGE_TAG } from '../lib/opportunityStage'
 import { useT, useTx } from '../i18n'
+import { MediaFrame } from '../design-system/MediaFrame'
 
 /**
  * Корень продукта — список Opportunities (DC-34 · Suche & Filter,
@@ -398,7 +399,23 @@ export function OpportunityList() {
 
       <ul className="a3-opportunity-grid mt-4">
         {shown.map((o) => (
-          <li key={o.id}>
+          <li key={o.id} className="flex h-full flex-col">
+            {/* REDESIGN R2 (DESIGN-01): project identity face. No sourced
+                photography exists yet for the fixture opportunities — the
+                canonical MediaFrame `fallback` state (typed material-palette
+                initials, never a grey box) is a first-class designed state,
+                not a placeholder awaiting an asset. Sourcing real photos
+                with asset-provenance.md entries is a follow-up, tracked
+                separately — it does not block giving every card a visual
+                identity today. Decorative: the card's own title already
+                names the project (rule: image earns its space by carrying
+                recognition, not by re-stating what text already says). */}
+            <MediaFrame
+              ratio="card"
+              state="fallback"
+              seed={o.name}
+              alt=""
+            />
             {/* Card (CARD-001): title = primaryDestination (Name, mit
                 onOpen), status/meta/Termin/Zähler = nonInteractiveArea,
                 actions = die eine sekundäre CTA-Aktion. Termin (falls
@@ -406,7 +423,7 @@ export function OpportunityList() {
                 Ranking: `meetingAt` ist Freitext, kein echtes Datum (Data-
                 Model-Gap, genehmigter Contract `161c0b7b` §5). */}
             <Card
-              className="h-full"
+              className="flex-1"
               title={o.name}
               meta={<>{o.city} · {o.country} · {o.owner}</>}
               status={

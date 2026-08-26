@@ -1199,7 +1199,11 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    (5 fields) could never share one row, forcing the panel to two-plus rows
    before a single opportunity card was visible. The page's own `.a3-page`
    cap (1200 px, F09) is this bar's only width constraint now. */
-.a3-project-search{border:var(--border-hairline);padding:var(--space-4);display:grid;gap:var(--space-3)}
+/* REDESIGN R2 (DESIGN-01/DESIGN-04): the bordered filter panel visually
+   competed with the project portfolio it exists to narrow — the frame is
+   dropped, separation now comes from space and the result-count/sort row
+   above it, matching the "container only at a real boundary" rule. */
+.a3-project-search{padding-top:var(--space-1);display:grid;gap:var(--space-3)}
 /* F14 · a flex row with per-field flex-basis lets a field orphaned onto its
    own wrapped row grow to fill that whole row (measured 520 px for
    Lifecycle-Status versus 297 px for its siblings) and pushes the panel to
