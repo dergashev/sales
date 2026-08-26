@@ -314,4 +314,19 @@ describe('AUD-03 — Option identity & creation continuity', () => {
     expect(row()).toHaveTextContent('Versendet')
     expect(screen.queryByRole('button', { name: 'Umbenennen' })).toBeNull()
   })
+
+  it('AC-4: eine geöffnete, aber noch nicht gesendete Option zeigt "In Arbeit"', async () => {
+    const user = userEvent.setup()
+    await reachCreateGate(user)
+    await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
+    await user.click(screen.getByRole('button', { name: 'Öffnen' }))
+    // Eine triviale In-Pipeline-Aktion (level: 'option') erzeugt ein
+    // optionId-getaggtes Journal-Ereignis (siehe `apply()` in store.ts) —
+    // das Erzeugen selbst zählt bewusst NICHT (siehe die Zeile darüber).
+    act(() => { useStore.getState().toggleBuildingIncluded('DEMO-B-B') })
+    act(() => { useStore.getState().backToOpportunity() })
+    const row = screen.getByText('Option 1').closest('li')!
+    expect(row).toHaveTextContent('In Arbeit')
+    expect(row).not.toHaveTextContent('Versendet')
+  })
 })
