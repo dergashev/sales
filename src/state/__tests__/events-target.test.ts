@@ -349,4 +349,32 @@ describe('AUD-03/EXP-10: renameOption ändert nur den Namen', () => {
     expect(st().options.find((o) => o.id === 'OPT-01')!.name).toBe('Option 1')
     expect(st().journal.length).toBe(before)
   })
+
+  // QA-Rework (AUD-03): live von QA Lead reproduziert — ohne diese Wache
+  // stellte Umbenennen genau die Namenskollision wieder her, die dieses
+  // Ticket beseitigen soll («Option 2» → «Option 1», während «Option 1»
+  // schon existiert, gab zwei gleich benannte Zeilen und einen Toast, der
+  // das still bestätigte).
+  it('QA-Rework: Umbenennen darf keine Kollision mit einer bestehenden Option erzeugen', async () => {
+    await toPipeline()
+    st().createOption('Option 2')
+    const before = st().journal.length
+    st().renameOption('OPT-02', 'Option 1')
+    expect(st().options.map((o) => o.name)).toEqual(['Option 1', 'Option 2'])
+    expect(st().journal.length).toBe(before)
+  })
+
+  it('QA-Rework: eine kollidierende Umbenennung bleibt auch nach Trimmen/Padding blockiert', async () => {
+    await toPipeline()
+    st().createOption('Option 2')
+    st().renameOption('OPT-02', '  Option 1  ')
+    expect(st().options.map((o) => o.name)).toEqual(['Option 1', 'Option 2'])
+  })
+
+  it('QA-Rework: eine Umbenennung auf einen wirklich neuen, eindeutigen Namen funktioniert weiterhin', async () => {
+    await toPipeline()
+    st().createOption('Option 2')
+    st().renameOption('OPT-02', 'Zielangebot')
+    expect(st().options.map((o) => o.name)).toEqual(['Option 1', 'Zielangebot'])
+  })
 })

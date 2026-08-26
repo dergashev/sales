@@ -292,6 +292,42 @@ describe('AUD-03 — Option identity & creation continuity', () => {
     expect(useStore.getState().options[0]!.name).toBe('Zielangebot')
   })
 
+  // QA-Rework (AUD-03): live von QA Lead in Playwright reproduziert — ein
+  // Umbenennen auf einen bereits vergebenen Namen wurde vorher still
+  // übernommen und gab zwei Zeilen mit demselben Namen. Rule 12 (kein
+  // Blockieren ohne Erklärung): die Kollision bleibt im Bearbeitungsmodus
+  // mit einer sichtbaren Ursache · Abhilfe-Zeile stehen, statt sie
+  // stillschweigend zu verwerfen oder zu übernehmen.
+  it('QA-Rework: Umbenennen auf einen bereits vergebenen Namen bleibt erklärt blockiert', async () => {
+    const user = userEvent.setup()
+    await reachCreateGate(user)
+    await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
+    // Über die 500ms-Klick-Guard (AUD-03) hinaus warten — sonst zählt der
+    // zweite Klick als derselbe Geste und es entsteht nur eine Option.
+    await act(() => new Promise((r) => setTimeout(r, 600)))
+    await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
+    expect(useStore.getState().options.map((o) => o.name)).toEqual(['Option 1', 'Option 2'])
+
+    const rows = screen.getAllByRole('button', { name: 'Umbenennen' })
+    await user.click(rows[1]!)
+    const field = screen.getByLabelText('Name der Option')
+    await user.clear(field)
+    await user.type(field, 'Option 1{Enter}')
+
+    // Store bleibt unverändert — keine Kollision durchgekommen.
+    expect(useStore.getState().options.map((o) => o.name)).toEqual(['Option 1', 'Option 2'])
+    // Der Bearbeitungsmodus bleibt offen (kein stilles Verwerfen) und
+    // erklärt den Grund — nicht nur ein rotes Feld ohne Text (gate 7).
+    expect(screen.getByLabelText('Name der Option')).toBeInTheDocument()
+    expect(screen.getByText(/wird bereits verwendet/)).toBeInTheDocument()
+    expect(screen.getByLabelText('Name der Option')).toHaveAttribute('aria-invalid', 'true')
+
+    // Escape verwirft den Versuch, ohne die bestehenden Namen anzutasten.
+    await user.keyboard('{Escape}')
+    expect(screen.queryByLabelText('Name der Option')).toBeNull()
+    expect(useStore.getState().options.map((o) => o.name)).toEqual(['Option 1', 'Option 2'])
+  })
+
   it('AC-4: frische Option zeigt Neu/Umfang/Summe aus der Engine, gesendete verliert Umbenennen', async () => {
     const user = userEvent.setup()
     await reachCreateGate(user)

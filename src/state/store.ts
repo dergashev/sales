@@ -3779,6 +3779,17 @@ const store = createStore<Store>((set, get) => {
      * nicht nur von der Anzeige abhängt: eine bereits versendete Option ist
      * ein unveränderliches Snapshot (M-3), auch wenn ein Aufruf das
      * UI-Verbot umgeht.
+     *
+     * QA-Rework (AUD-03, gefunden von QA Lead, live reproduziert): ohne
+     * Eindeutigkeitswache konnte Umbenennen genau die Kollision wieder
+     * herstellen, die dieses Ticket beseitigen soll — «Option 2» in «Option
+     * 1» umbenannt, während «Option 1» schon existiert, gab zwei Zeilen mit
+     * demselben Namen, still bestätigt per Toast. `createOption`s Garantie
+     * (Name folgt demselben monotonen `optionSeq` wie `id`) galt nur bei
+     * der Erstellung; sie muss auch beim Umbenennen gelten. Dieselbe Wache
+     * lebt zusätzlich in der UI (`OptionRow.commitRename`), die dem Nutzer
+     * den Grund nennen kann — hier bleibt sie als stiller Schutz, falls ein
+     * Aufruf das UI umgeht.
      */
     renameOption: (id, name) => {
       const trimmed = name.trim()
@@ -3786,6 +3797,7 @@ const store = createStore<Store>((set, get) => {
       const current = s.options.find((o) => o.id === id)
       if (!current || !trimmed || trimmed === current.name) return
       if (s.snapshots.some((sn) => sn.optionId === id)) return
+      if (s.options.some((o) => o.id !== id && o.name === trimmed)) return
       const previousName = current.name
       set({ options: s.options.map((o) => (o.id === id ? { ...o, name: trimmed } : o)) })
       apply({

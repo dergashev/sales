@@ -296,6 +296,7 @@ function OptionRow({ option, justCreated, rowRef }: {
   const { fadeRise } = useSemanticMotion()
   const [renaming, setRenaming] = useState(false)
   const [draftName, setDraftName] = useState(option.name)
+  const [renameError, setRenameError] = useState<string | null>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const nameFieldId = useId()
 
@@ -305,11 +306,31 @@ function OptionRow({ option, justCreated, rowRef }: {
     nameInputRef.current?.select()
   }, [renaming])
 
+  /**
+   * QA-Rework (AUD-03): ohne Prüfung erzeugte Umbenennen genau die
+   * Namenskollision, die dieses Ticket beseitigt — «Option 2» in «Option
+   * 1» umbenannt, während «Option 1» schon existiert, ergab zwei Zeilen
+   * mit demselben Namen und einen Toast, der das still bestätigte. Rule
+   * 12 (kein Blockieren ohne Erklärung): eine Kollision wird nicht
+   * stillschweigend verworfen — der Bearbeitungsmodus bleibt offen, mit
+   * einer Ursache · Abhilfe-Zeile (FORM-003-Muster), bis der Name
+   * eindeutig ist oder die Umbenennung abgebrochen wird (Escape).
+   */
   function commitRename() {
-    setRenaming(false)
     const next = draftName.trim()
-    if (next && next !== option.name) s.renameOption(option.id, next)
-    else setDraftName(option.name)
+    if (!next || next === option.name) {
+      setRenaming(false)
+      setRenameError(null)
+      setDraftName(option.name)
+      return
+    }
+    if (s.options.some((o) => o.id !== option.id && o.name === next)) {
+      setRenameError(tx(`Der Name «${next}» wird bereits verwendet · anderen Namen wählen`))
+      return
+    }
+    setRenaming(false)
+    setRenameError(null)
+    s.renameOption(option.id, next)
   }
 
   // M-3: eine bereits versendete Option ist ein unveränderliches Snapshot —
@@ -355,16 +376,17 @@ function OptionRow({ option, justCreated, rowRef }: {
       <Card
         className={justCreated ? 'a3-flash' : undefined}
         title={renaming ? (
-          <FormField label={tx('Name der Option')} htmlFor={nameFieldId}>
+          <FormField label={tx('Name der Option')} htmlFor={nameFieldId} error={renameError}>
             <input
               ref={nameInputRef}
               value={draftName}
-              onChange={(e) => setDraftName(e.target.value)}
+              onChange={(e) => { setDraftName(e.target.value); setRenameError(null) }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') { e.preventDefault(); commitRename() }
                 if (e.key === 'Escape') {
                   e.preventDefault()
                   setDraftName(option.name)
+                  setRenameError(null)
                   setRenaming(false)
                 }
               }}
