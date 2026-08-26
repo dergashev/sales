@@ -246,6 +246,16 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
                   onClick={() => s.setPipelineView('einstellungen')}>
             <span aria-hidden="true">⚙</span>{t('nav.einstellungen')}
           </button>
+          {/* REDESIGN R1 (efcbdaf3): reinstates a navigable route to the
+              already-internal-only 'grundlagen' PipelineView (excluded from
+              CLIENT_VISIBLE_PIPELINE_VIEWS since clientProjection.ts) — the
+              QA diagnostics + D-28 registry Gallery had no way to reach it
+              from the running product. Same `!client` gate as Einstellungen
+              above, so it stays absent in mode-praesentation. */}
+          <button type="button" className="mt-1 flex min-h-hit-target w-full items-center gap-3 text-left text-body text-text-secondary outline-none hover:text-text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                  onClick={() => s.setPipelineView('grundlagen')}>
+            <span aria-hidden="true">◇</span>{t('nav.grundlagen')}
+          </button>
         </div>
       )}
     </nav>

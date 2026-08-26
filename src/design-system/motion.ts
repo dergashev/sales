@@ -141,15 +141,20 @@ export function useSemanticMotion(): SemanticMotion {
         },
       },
       direction: {
+        // `reduced` zeroes duration here too (not only `shift`) — without
+        // this, prefers-reduced-motion still left a same-position opacity
+        // fade running at the full 240ms reorder duration, contradicting
+        // rule 21 ("prefers-reduced-motion гасит всё"). Caught while
+        // building the R1 Workflow specimen's reduced-motion equivalent.
         forward: {
           initial: { opacity: 0, x: shift },
-          animate: { opacity: 1, x: 0, transition: { duration: durations.reorder / 1000, ease: emphasized } },
-          exit: { opacity: 0, x: -shift, transition: { duration: durations.reorder / 1000, ease: emphasized } },
+          animate: { opacity: 1, x: 0, transition: { duration: reduced ? 0 : durations.reorder / 1000, ease: emphasized } },
+          exit: { opacity: 0, x: -shift, transition: { duration: reduced ? 0 : durations.reorder / 1000, ease: emphasized } },
         },
         backward: {
           initial: { opacity: 0, x: -shift },
-          animate: { opacity: 1, x: 0, transition: { duration: durations.reorder / 1000, ease: emphasized } },
-          exit: { opacity: 0, x: shift, transition: { duration: durations.reorder / 1000, ease: emphasized } },
+          animate: { opacity: 1, x: 0, transition: { duration: reduced ? 0 : durations.reorder / 1000, ease: emphasized } },
+          exit: { opacity: 0, x: shift, transition: { duration: reduced ? 0 : durations.reorder / 1000, ease: emphasized } },
         },
       },
       continuityTransition: {

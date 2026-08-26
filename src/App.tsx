@@ -16,12 +16,18 @@ import { S6Einstellungen } from './screens/S6Einstellungen'
 import { OpportunityList } from './screens/OpportunityList'
 import { OpportunityCard } from './screens/OpportunityCard'
 import { BuildingScope, BuildingScopeReadiness } from './screens/BuildingScope'
+// GOV-QA-BOUNDARY: App.tsx is the only file permitted to import Grundlagen —
+// it renders the registry Gallery, and the registry is the ONLY specimen
+// declaration (D-28). Reinstates the 'grundlagen' PipelineView, which
+// clientProjection.ts already excluded from CLIENT_VISIBLE_PIPELINE_VIEWS
+// (internal-only by construction), but which had no navigable route.
+import { Grundlagen } from './screens/Grundlagen'
 import {
   isClientProjection,
   isClientVisibleLevel,
   pipelineViewForOutputProfile,
 } from './state/clientProjection'
-import { checkCascade, checkFonts } from './lib/font-check'
+import { checkCascade, checkFonts, type FontCheck } from './lib/font-check'
 
 /**
  * Оболочка на всю ширину экрана, три зоны (решение PO):
@@ -154,6 +160,7 @@ export function App() {
           {renderedView === 'vergleich' && <S4Vergleich />}
           {renderedView === 'export' && <S5Export />}
           {renderedView === 'einstellungen' && <S6Einstellungen />}
+          {renderedView === 'grundlagen' && <GrundlagenRoute />}
         </main>
 
         {/* SIDEBAR 01 (backlog eda1e221): the rail slot below is the single
@@ -171,6 +178,7 @@ export function App() {
             : renderedView === 'konfigurator' && s.configurationModeEditing
             ? <OfferPanel variant="level1" footer={<ModeChangeNotice headingLevel={3} />} />
             : renderedView === 'vergleich' || renderedView === 'export' || renderedView === 'einstellungen'
+              || renderedView === 'grundlagen'
             ? <OfferPanel variant="level1" />
             : <OfferPanel />}
       </div>
@@ -326,6 +334,31 @@ function AccountMenu() {
       )}
     </div>
   )
+}
+
+/**
+ * Internal-only QA route (rule 3 diagnostics + the D-28 registry Gallery).
+ * Computes the full FontCheck/cascade evidence Grundlagen needs to display —
+ * FontRuntimeWarning above only tracks a boolean, so its effect is not
+ * reused here rather than duplicated into a shared boolean that would lose
+ * the detail this page exists to show.
+ */
+function GrundlagenRoute() {
+  const [fonts, setFonts] = useState<FontCheck | null>(null)
+  const [cascade, setCascade] = useState<string[] | null>(null)
+
+  useEffect(() => {
+    let active = true
+    const ready = 'fonts' in document ? document.fonts.ready : Promise.resolve()
+    void ready.then(() => {
+      if (!active) return
+      setFonts(checkFonts())
+      setCascade(checkCascade())
+    })
+    return () => { active = false }
+  }, [])
+
+  return <Grundlagen fonts={fonts} cascade={cascade} />
 }
 
 function FontRuntimeWarning() {

@@ -1,6 +1,7 @@
 import { useId, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Decimal } from 'decimal.js'
-import { NNBSP, formatDE, label as moneyLabel, present } from '../engine/money'
+import { NNBSP, formatDE, label as moneyLabel, present, rate } from '../engine/money'
 import demo from '../fixtures/demo-0001.json'
 import {
   Button,
@@ -41,6 +42,7 @@ import { optionImage } from '../assets/option-images'
 import { MediaFrame } from './MediaFrame'
 import { CompositionBar, type CompositionSegment } from './CompositionBar'
 import { WorkflowStepper, type WorkflowStep } from './WorkflowStepper'
+import { useSemanticMotion } from './motion'
 
 export type ContractStateDeclaration = Readonly<Record<DataStateKind, string>>
 
@@ -260,6 +262,90 @@ function DialogDemo() {
         </div>
       </Dialog>
     </>
+  )
+}
+
+/**
+ * R1 · Composed: Workflow specimen body — WorkflowStepper (both sizes) above
+ * chapter content that demonstrates the DIRECTION motion verb (motion.ts):
+ * an ordered forward/backward transition, not a lateral fade. Reduced motion
+ * is real, not asserted — `motionTokens.reduced` drives the visible caption
+ * and (per the motion.ts fix above) the transition genuinely has zero
+ * duration/offset when active, not just zero shift.
+ */
+const WORKFLOW_DEMO_CHAPTERS = [
+  { id: 'kg200', label: 'KG 200', title: 'KG 200 · Herrichten & Erschließen', body: 'Erdarbeiten, Bodenplatte und Erschließung — Umfang aus den Grundlagen übernommen.' },
+  { id: 'kg300', label: 'KG 300', title: 'KG 300 · Baukonstruktion', body: 'Rohbau, Fassade und Innenausbau — die größte Kostengruppe dieses Projekts.' },
+  { id: 'kg400', label: 'KG 400', title: 'KG 400 · Technische Anlagen', body: 'Heizung, Elektro und Sanitär — noch keine Auswahl getroffen.' },
+] as const
+
+function WorkflowDirectionDemo() {
+  const [index, setIndex] = useState(0)
+  const [dir, setDir] = useState<'forward' | 'backward'>('forward')
+  const motionTokens = useSemanticMotion()
+  const chapter = WORKFLOW_DEMO_CHAPTERS[index] ?? WORKFLOW_DEMO_CHAPTERS[0]
+  const lastIndex = WORKFLOW_DEMO_CHAPTERS.length - 1
+
+  const projectSteps: WorkflowStep[] = [
+    { id: 'doc', label: 'Dokumente', state: 'done', onSelect: () => {} },
+    { id: 'baseline', label: 'Grundlage', state: 'done', onSelect: () => {} },
+    { id: 'scope', label: 'Umfang', state: 'current', onSelect: () => {} },
+    { id: 'export', label: 'Export', state: 'blocked', blockedReason: 'Erst nach vollständiger Konfiguration verfügbar.' },
+  ]
+  const chapterSteps: WorkflowStep[] = WORKFLOW_DEMO_CHAPTERS.map((c, i) => ({
+    id: c.id,
+    label: c.label,
+    state: i < index ? 'done' : i === index ? 'current' : 'upcoming',
+    onSelect: () => { setDir(i > index ? 'forward' : 'backward'); setIndex(i) },
+  }))
+
+  const go = (delta: 1 | -1) => {
+    const next = Math.min(lastIndex, Math.max(0, index + delta))
+    if (next === index) return
+    setDir(delta > 0 ? 'forward' : 'backward')
+    setIndex(next)
+  }
+
+  return (
+    <div className="grid gap-6">
+      <WorkflowStepper ariaLabel="Projekt-Workflow" size="workflow" steps={projectSteps} />
+      <div style={{ maxWidth: '28rem' }}>
+        <WorkflowStepper ariaLabel="Konfigurator-Kapitel" size="chapter" steps={chapterSteps} />
+        <div className="relative mt-4 overflow-hidden" style={{ minHeight: '6rem' }}>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={chapter.id}
+              variants={motionTokens.direction[dir]}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              <p className="text-section-title font-bold text-text-primary">{chapter.title}</p>
+              <p className="mt-1 text-small text-text-secondary">{chapter.body}</p>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+        <div className="mt-3 flex gap-2">
+          <Button
+            variant="secondary" onClick={() => go(-1)}
+            disabled={index === 0} disabledReason="Erstes Kapitel — kein vorheriges Kapitel vorhanden."
+          >
+            Zurück
+          </Button>
+          <Button
+            variant="primary" onClick={() => go(1)}
+            disabled={index === lastIndex} disabledReason="Letztes Kapitel — kein weiteres Kapitel vorhanden."
+          >
+            Weiter
+          </Button>
+        </div>
+        <p className="a3-cap mt-2">
+          {motionTokens.reduced
+            ? 'prefers-reduced-motion aktiv — Übergang ist sofort sichtbar, kein Versatz und keine Dauer'
+            : 'Weiter = direction.forward · Zurück = direction.backward (motion.ts, ADR-R1-05)'}
+        </p>
+      </div>
+    </div>
   )
 }
 
@@ -683,6 +769,50 @@ export const COMPONENT_REGISTRY: Specimen[] = [
 
   /* ── Composed reference specimens (ticket-required, not decoration) ── */
   {
+    id: 'r1-composed-project-identity', groupId: 'r1', title: 'Composed: Project Identity', contractId: 'R1 · composed',
+    requirements: ['DESIGN-05', 'DESIGN-04'], composedContracts: ['MediaFrame'],
+    interactionStates: ['default', 'fallback'], dataStates: STATIC_LAYOUT_STATES, blockedVariants: [],
+    maturity: 'alpha',
+    evidence: 'Panoramic MediaFrame + a realistically long German project name (rule 37: overflow-wrap/hyphens under lang) + the DC-38 metric triple (rule 31: Zwischensumme hero on white via .text-display-accent, Leitkennzahl naming its norm via engine/money rate(), Bauzeit) — identity, hierarchy and metrics composed, not a product migration. Second row proves the designed fallback treatment for a project with no photo yet.',
+    render: () => {
+      const leitkennzahl = rate(new Decimal('7845000'), new Decimal('3082'), 'WFL_WOFLV')
+      return (
+        <div className="grid gap-6">
+          <div style={{ maxWidth: '32rem' }}>
+            <MediaFrame ratio="pano" state="loaded" src={optionImage('fassade', 'timber')?.url} alt="Fassade in Holzverkleidung" seed="Quartiersentwicklung Friedrichshafen-Nord" caption="Ansicht Süd · Baufeld 3" sourceId="fassade/timber" />
+            <p className="mt-3 text-section-title font-bold text-text-primary" lang="de" style={{ overflowWrap: 'break-word', hyphens: 'auto' }}>
+              Quartiersentwicklung Friedrichshafen-Nord, Baufeld 3
+            </p>
+            <div className="mt-4 flex flex-wrap items-end gap-8">
+              <div>
+                <p className="a3-cap">Zwischensumme der kalkulierten Positionen</p>
+                <p className="text-display-accent numeric">{moneyLabel(present(new Decimal('7845000')), '€')}</p>
+              </div>
+              <div>
+                <p className="a3-cap">Leitkennzahl</p>
+                <p className="font-bold text-text-primary numeric" style={{ fontSize: 'var(--type-display-numeric-narrow-size)', lineHeight: 'var(--type-display-numeric-narrow-line)' }}>
+                  {leitkennzahl.display}
+                  <span style={{ fontSize: 'var(--type-heading-3-size)' }}>{NNBSP}€/m²{NNBSP}WFL nach WoFlV</span>
+                </p>
+              </div>
+              <div>
+                <p className="a3-cap">Bauzeit</p>
+                <p className="font-bold text-text-primary numeric" style={{ fontSize: 'var(--type-display-numeric-narrow-size)', lineHeight: 'var(--type-display-numeric-narrow-line)' }}>
+                  14
+                  <span style={{ fontSize: 'var(--type-heading-3-size)' }}>{NNBSP}Monate</span>
+                </p>
+              </div>
+            </div>
+          </div>
+          <div style={{ maxWidth: '32rem' }}>
+            <p className="a3-cap mb-1">designed fallback — kein Projektfoto hinterlegt</p>
+            <MediaFrame ratio="pano" state="fallback" seed="Quartiersentwicklung Friedrichshafen-Nord" fallbackLabel="Noch kein Projektfoto hinterlegt" />
+          </div>
+        </div>
+      )
+    },
+  },
+  {
     id: 'r1-composed-option', groupId: 'r1', title: 'Composed: Option / Commercial Object', contractId: 'R1 · composed',
     requirements: ['DESIGN-09', 'DESIGN-12'], composedContracts: ['MediaFrame', 'CompositionBar', 'Badge'],
     interactionStates: ['default', 'selected'], dataStates: STATIC_LAYOUT_STATES, blockedVariants: [],
@@ -712,6 +842,14 @@ export const COMPONENT_REGISTRY: Specimen[] = [
         </div>
       )
     },
+  },
+  {
+    id: 'r1-composed-workflow', groupId: 'r1', title: 'Composed: Workflow', contractId: 'R1 · composed',
+    requirements: ['DESIGN-14'], composedContracts: ['WorkflowStepper'],
+    interactionStates: ['upcoming', 'current', 'done', 'blocked', 'direction-forward', 'direction-backward'],
+    dataStates: STATIC_LAYOUT_STATES, blockedVariants: [], maturity: 'alpha',
+    evidence: 'Project + chapter WorkflowStepper above chapter content that demonstrates the DIRECTION motion verb (motion.ts, ADR-R1-05) with a genuinely working reduced-motion equivalent (see the motion.ts fix in this same candidate) — stepper and directional transition as one family, not isolated widgets.',
+    render: () => <WorkflowDirectionDemo />,
   },
   {
     id: 'r1-composed-stage', groupId: 'r1', title: 'Composed: Commercial Stage Moment', contractId: 'R1 · composed',
