@@ -29,6 +29,7 @@ import { InternalNote } from '../components/InternalNote'
 import {
   Badge, Card, FormField, PageHeader, WorkflowStepper, type WorkflowStep,
 } from '../components/designSystem'
+import { MediaFrame } from '../design-system/MediaFrame'
 import { useSemanticMotion } from '../design-system/motion'
 import { Dialog, type DialogHandle } from '../components/Dialog'
 import { STAGE_TAG } from '../lib/opportunityStage'
@@ -692,7 +693,16 @@ export function OpportunityCard() {
 
   return (
     <div className="a3-page px-7 py-6">
+      {/* REDESIGN R2 (DESIGN-01): the project identity moment. No sourced
+          photography exists yet for the fixture projects (same deferred
+          follow-up as the landing's card faces, slice 1/9) — the `pano`
+          fallback state is the honest, designed identity face today; a real
+          panoramic photo for DEMO-0001 slots into the same `state="loaded"`
+          prop later without any layout change. No text is overlaid on the
+          frame (canonical MediaFrame rule). */}
+      <MediaFrame ratio="pano" state="fallback" seed={meta.name} alt="" />
       <PageHeader
+        className="mt-4"
         title={meta.name}
         meta={
           <span className="flex flex-wrap items-baseline justify-end">
@@ -717,6 +727,43 @@ export function OpportunityCard() {
           </span>
         }
       />
+      {/* REDESIGN R2 (DESIGN-01/DESIGN-12): identity metrics strip — key
+          project-scale numbers get metric-section rank (32px) instead of
+          living only inside the Projektgrundlage table below. `totalBgfRS`
+          is the SAME AUD-02 single-aggregation-truth value the
+          Projektgrundlage equation renders further down this page (not a
+          second sum); a value the product does not have is omitted, never
+          shown as an invented zero (rule 16). */}
+      <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-2">
+        <div>
+          <dt className="text-caption text-text-secondary">{tx('Gebäude')}</dt>
+          <dd className="numeric text-metric-section font-bold text-text-primary">{bs.length}</dd>
+        </div>
+        {totalBgfRS.greaterThan(0) && (
+          <div>
+            <dt className="text-caption text-text-secondary">{tx('BGF (R+S)')}</dt>
+            <dd className="numeric text-metric-section font-bold text-text-primary">
+              {formatDE(totalBgfRS, 0)}{NNBSP}m²
+            </dd>
+          </div>
+        )}
+        {totalUnits.greaterThan(0) && (
+          <div>
+            <dt className="text-caption text-text-secondary">{tx('Wohneinheiten')}</dt>
+            <dd className="numeric text-metric-section font-bold text-text-primary">
+              {formatDE(totalUnits, 0)}
+            </dd>
+          </div>
+        )}
+        {meta.meetingAt && (
+          <div>
+            <dt className="text-caption text-text-secondary">{tx('Termin')}</dt>
+            <dd className="numeric text-metric-section font-bold text-text-primary">
+              {tx(meta.meetingAt)}
+            </dd>
+          </div>
+        )}
+      </dl>
 
       <InternalNoteDialog
         open={noteDialogOpen}
