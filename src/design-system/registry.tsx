@@ -299,11 +299,15 @@ function WorkflowDirectionDemo() {
     onSelect: () => { setDir(i > index ? 'forward' : 'backward'); setIndex(i) },
   }))
 
+  // QA (66b4242 cycle): reading `index` from the render closure meant two
+  // rapid clicks queued in the same tick both computed the same stale
+  // `next`, so React collapsed them into a single step — "interaction state
+  // must remain correct under rapid repeated input" violated in the very
+  // specimen meant to demonstrate the pattern. The functional updater reads
+  // the pending value instead, so each click advances independently.
   const go = (delta: 1 | -1) => {
-    const next = Math.min(lastIndex, Math.max(0, index + delta))
-    if (next === index) return
     setDir(delta > 0 ? 'forward' : 'backward')
-    setIndex(next)
+    setIndex((current) => Math.min(lastIndex, Math.max(0, current + delta)))
   }
 
   return (
