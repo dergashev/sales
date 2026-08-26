@@ -2746,6 +2746,20 @@ const store = createStore<Store>((set, get) => {
    * Единственная дверь для изменения данных: событие + журнал.
    * Тост DC-29 — производная этой же двери: событие с inverse отменяемо и
    * получает тост, событие без inverse гасит предыдущий (новая голова).
+   *
+   * AUD-01 (EXP-01/AC-3, live Playwright finding on the exact candidate):
+   * `preview` used to be cleared by CONVENTION — each commit action set it
+   * itself, usually alongside `activeDelta` — not by CONTRACT. Only 3 of
+   * the ~9 commit actions actually did (`setEnergiestandard`,
+   * `setUntergeschoss`, `setCoverage`); `setKg300`, `setScopeCatalogChoice`,
+   * `toggleRisiko`, `toggleRegionalfaktor`, `setKg700Mode` and
+   * `commitReviewChange` never touched it — confirmed live: fixing a KG300
+   * facade choice left its own pre-fixation hover preview standing on top
+   * of the just-committed number, exactly AC-3's reported symptom. `apply`
+   * is the one place EVERY journaled commit already passes through (its
+   * own docstring above: "единственная дверь") — clearing `preview` here
+   * makes "fixation gates the ghost" a structural invariant instead of a
+   * per-action habit that new/existing actions can silently skip.
    */
   const apply = (e: Omit<JournalEvent, 'seq' | 'at' | 'optionId'>) => {
     const { journal, level, activeOptionId } = get()
@@ -2763,6 +2777,7 @@ const store = createStore<Store>((set, get) => {
             deltaText: e.deltaExact ? dc29Delta(e.deltaExact) : null,
           }
         : null,
+      preview: null,
     })
   }
 

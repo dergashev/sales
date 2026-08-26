@@ -57,6 +57,15 @@ describe('обещание до клика равно результату по�
       expect(st().projection().result.total.exact.equals(before)).toBe(true)
       const journalBefore = st().journal.length
 
+      // AUD-01 (EXP-01/AC-3): hover this exact change first — every
+      // COMMIT below is a real fixation and must gate the ghost, not only
+      // the `coverage` kind the previous "текущего выбора" test already
+      // covered. This is the assertion that would have caught `setKg300`/
+      // `toggleRisiko`/`setKg700Mode` never clearing `preview` before this
+      // ticket — the live browser did, this loop should have.
+      st().previewOption(change)
+      expect(st().preview).not.toBeNull()
+
       ;(COMMIT[change.kind] as (c: PriceChange) => void)(change)
 
       const after = st().projection().result
@@ -65,6 +74,7 @@ describe('обещание до клика равно результату по�
       expect(after.total.exact.minus(before).toFixed(2))
         .toBe(promised.delta.toFixed(2))
       expect(st().journal.length).toBeGreaterThan(journalBefore)
+      expect(st().preview).toBeNull()
     })
   }
 
