@@ -302,7 +302,9 @@ export function OpportunityCard() {
   //    держит BGF S = 0 — «производная площадь балкона намеренно не
   //    переиспользуется как DIN 277 BGF S»). ──
   const bs = demo.buildings
-  const buildingFactSum = (key: 'bgfRAbove' | 'bgfSAbove' | 'bgfRSAbove' | 'wfl' | 'nuf' | 'units') =>
+  const buildingFactSum = (
+    key: 'bgfRAbove' | 'bgfSAbove' | 'bgfRSBelow' | 'bgfRSTotal' | 'wfl' | 'nuf' | 'units',
+  ) =>
     bs.reduce((total, b) => {
       const review = s.buildingReviews[b.id]
       const value = review ? effectiveFactValue(review.facts[key]) : null
@@ -310,9 +312,22 @@ export function OpportunityCard() {
     }, new Decimal(0))
   const totalBgfR = buildingFactSum('bgfRAbove')
   const totalBgfS = buildingFactSum('bgfSAbove')
-  // Independently extracted aggregate, cross-checked against R + S — not a
-  // client-side recomputation of the two rows above (buildingReview.ts).
-  const totalBgfRS = buildingFactSum('bgfRSAbove')
+  // Underground BGF is its OWN independently extracted aggregate
+  // (`bgfRSBelow`, buildingReview.ts) — never folded into "S, nicht
+  // umschlossen" (D-26: that row is the genuine DIN 277 balcony/loggia
+  // area and stays 0,00 here; underground floor area is a different
+  // classification entirely).
+  const totalBgfUG = buildingFactSum('bgfRSBelow')
+  // AUD-02: this used to sum `bgfRSAbove` (above-ground only) while every
+  // OTHER surface that says "R+S" — the Option's building cards
+  // (BuildingScope.tsx), the fixture's own per-building `bgfRS`, and the
+  // fixture's `sumBgfRS` — means the grand total (above + below ground).
+  // That made this row silently disagree with its own label everywhere
+  // else the same words appear. `bgfRSTotal` is the already-existing,
+  // independently extracted, cross-checked grand-total aggregate
+  // (buildingReview.ts) — not a client-side recomputation of the rows
+  // above it, and now the same one every other surface already uses.
+  const totalBgfRS = buildingFactSum('bgfRSTotal')
   const totalWfl = buildingFactSum('wfl')
   const totalNuf = buildingFactSum('nuf')
   const totalUnits = buildingFactSum('units')
@@ -738,20 +753,26 @@ export function OpportunityCard() {
 
         <div className="a3-project-baseline-breakdown mt-5">
           <h3>{t('oppcard.baseline.bgfBreakdown')}</h3>
-          {/* F-09 fix: every row now sums an independently reviewed
+          {/* F-09 fix: every row sums an independently reviewed
               buildingReviews fact (D-26: BGF S is documented `Decimal(0)` —
               the derived balcony-share proxy is deliberately not reused as
-              DIN 277 BGF S; BGF R+S is its OWN independently extracted
-              aggregate, cross-checked against R + S, not a client-side sum
-              of the two). The old "+160 m² abgeleitet" row read a fixture
-              proxy that contradicted the building reviews (documented S = 0,
-              R+S sum 3.600) instead of this single source of truth. */}
+              DIN 277 BGF S). The old "+160 m² abgeleitet" row read a
+              fixture proxy that contradicted the building reviews
+              (documented S = 0) instead of this single source of truth.
+              AUD-02: the equation now has its underground term (previously
+              missing, so "R + S" never actually summed to the total shown
+              here) and the total is relabeled "gesamt" to match the same
+              wording BuildingScope.tsx already uses for the identical
+              cross-checked above+below aggregate — one number, one label,
+              on every surface that shows it. */}
           <dl className="a3-project-baseline-equation">
             <Metric label="Total BGF (R, oberirdisch)" value={formatDE(totalBgfR, 2)}
               unit="m²" provenance={documentProvenance} />
             <Metric operator="+" label="Total BGF (S, nicht umschlossen)" value={formatDE(totalBgfS, 2)}
               unit="m²" provenance={documentProvenance} />
-            <Metric emphasis="total" operator="=" label="Total BGF (R+S)" value={formatDE(totalBgfRS, 2)}
+            <Metric operator="+" label="Total BGF (unterirdisch)" value={formatDE(totalBgfUG, 2)}
+              unit="m²" provenance={documentProvenance} />
+            <Metric emphasis="total" operator="=" label="Total BGF (R+S, gesamt)" value={formatDE(totalBgfRS, 2)}
               unit="m²" provenance={documentProvenance} />
           </dl>
         </div>

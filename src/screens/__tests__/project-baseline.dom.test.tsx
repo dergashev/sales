@@ -4,6 +4,7 @@ import { Decimal } from 'decimal.js'
 import { App } from '../../App'
 import { DELTA_CHIP_MS } from '../../config/ui-policy'
 import derived from '../../fixtures/derived-prototype.json'
+import demo from '../../fixtures/demo-0001.json'
 import {
   __resetStoreForTests,
   PROJECT_PARAMS_CONFIRMATION_LABEL,
@@ -39,35 +40,43 @@ describe('Project Card — project baseline', () => {
     expect(primary).toHaveTextContent('Total NUF nach DIN 277')
     expect(primary).toHaveTextContent('Wohneinheiten')
 
-    // F-09 fix (deep-coherence audit, Task 01): every row now sums an
+    // F-09 fix (deep-coherence audit, Task 01): every row sums an
     // independently reviewed `buildingReviews` fact, never the fixture's
     // derived-balcony proxy that produced the old "+160 m² abgeleitet"
     // contradiction against the building reviews (documented BGF S = 0,
     // per D-26 — the derived balcony share is deliberately not reused as
-    // DIN 277 BGF S). "Total BGF (R+S)" is its OWN independently extracted
-    // fact (cross-checked against R + S in the fixture), not a client-side
-    // recomputation — it legitimately equals R here because S is 0.
+    // DIN 277 BGF S).
+    //
+    // AUD-02 fix: the equation used to stop at "R + S" and call that sum
+    // "Total BGF (R+S)" — silently above-ground-only, while the Option's
+    // building cards and the fixture's own `sumBgfRS` (3.600,00) both mean
+    // the grand total including underground. The equation now names and
+    // includes the underground term so "R + S + unterirdisch = R+S,
+    // gesamt" actually holds, and the total matches every other surface
+    // that shows the same concept (see the reconciliation test below).
     const breakdown = within(baseline).getByRole('heading', {
       name: 'Bruttogeschossfläche (BGF)',
     }).parentElement!
     expect(breakdown).toHaveTextContent(/3\.200,00\s*m²/)
     expect(breakdown).toHaveTextContent(/\+\s*0,00\s*m²/)
-    expect(breakdown).toHaveTextContent(/=\s*3\.200,00\s*m²/)
+    expect(breakdown).toHaveTextContent(/\+\s*400,00\s*m²/)
+    expect(breakdown).toHaveTextContent(/=\s*3\.600,00\s*m²/)
 
-    // Seven values remain (the fabricated NRF≈85%-of-R+S row is gone along
-    // with it — it had no backing buildingReviews fact at all), all with
+    // Eight values remain (the fabricated NRF≈85%-of-R+S row is gone along
+    // with it — it had no backing buildingReviews fact at all; AUD-02 adds
+    // back exactly one truthful row, the underground term), all with
     // truthful origins. The structural building count intentionally has no
     // fabricated provenance, and none of the remaining values are "derived"
     // any more — every one is a real, document-sourced reviewed fact.
-    expect(baseline.querySelectorAll('dt')).toHaveLength(7)
-    expect(baseline.querySelectorAll('dd')).toHaveLength(7)
+    expect(baseline.querySelectorAll('dt')).toHaveLength(8)
+    expect(baseline.querySelectorAll('dd')).toHaveLength(8)
     // Scoped to the primary-facts grid + BGF equation specifically: the
     // per-building facts table further down this same section carries its
     // own provenance chips too (AC4), which is additional, not duplicate,
     // information (per-building vs. project-total), so it is intentionally
     // excluded from this dt/dd-scoped count.
     expect(within(primary as HTMLElement).getAllByLabelText(/^Herkunft:/).length
-      + within(breakdown as HTMLElement).getAllByLabelText(/^Herkunft:/).length).toBe(6)
+      + within(breakdown as HTMLElement).getAllByLabelText(/^Herkunft:/).length).toBe(7)
     expect(within(baseline).queryAllByLabelText(/^Herkunft: abgeleitet/)).toHaveLength(0)
     expect(within(baseline).queryByText(new RegExp(derived.provenanceLabel))).not.toBeInTheDocument()
     expect(baseline).not.toHaveTextContent(/≈\s*85\s*%\s*der BGF R\+S/)
@@ -78,6 +87,43 @@ describe('Project Card — project baseline', () => {
     expect(screen.queryByText(/^Vorbereitung ·/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Vorbereitung öffnen' })).not.toBeInTheDocument()
     expect(screen.getByText(/Diese 2 Fragen reduzieren die Schätzunsicherheit/)).toBeInTheDocument()
+  })
+
+  // AUD-02 (AC-1/AC-3): one aggregation truth for BGF R+S. This asserts the
+  // Project Card's "Total BGF (R+S, gesamt)" against the fixture's OWN
+  // numbers directly (not a hardcoded literal), so it stays true for
+  // whatever `demo-0001.json` says rather than merely mirroring today's
+  // values — and it fails loudly if the aggregation ever drifts from the
+  // fixture again (rule 32: a number that doesn't reconcile with its own
+  // fixture is a release-blocker).
+  it('reconciles the Project Card BGF R+S total with the fixture\'s own bgfRS sums', () => {
+    const complexRun = demo.runs.find((run) => run.subject === 'complex')
+    if (!complexRun) throw new Error('demo-0001.json fixture is missing its "complex" run entry')
+    const fixtureSumBgfRS = new Decimal((complexRun as { sumBgfRS: string }).sumBgfRS)
+
+    // Self-check: the fixture's own per-building `bgfRS` values already sum
+    // to its `sumBgfRS` — if this ever stopped being true the fixture
+    // itself would be internally inconsistent, independent of any UI code.
+    const perBuildingSum = demo.buildings.reduce(
+      (total, b) => total.plus(new Decimal(b.areas.bgfRS)),
+      new Decimal(0),
+    )
+    expect(perBuildingSum.toFixed(2)).toBe(fixtureSumBgfRS.toFixed(2))
+
+    openProjectCard()
+    const baseline = screen.getByRole('region', { name: 'Projektparameter' })
+    const breakdown = within(baseline).getByRole('heading', {
+      name: 'Bruttogeschossfläche (BGF)',
+    }).parentElement!
+
+    // The building cards further down the same option surface print this
+    // exact per-building fact too ("BGF R+S · gesamt") — this only asserts
+    // the Project Card side of the reconciliation the fixture already
+    // proves is internally consistent above.
+    const match = breakdown.textContent!.match(/=\s*([\d.,]+)\s*m²/)
+    if (!match) throw new Error('Could not locate the "Total BGF (R+S, gesamt)" value in the breakdown')
+    const displayedValue = new Decimal(match[1]!.replace(/\.(?=\d{3})/g, '').replace(',', '.'))
+    expect(displayedValue.toFixed(2)).toBe(fixtureSumBgfRS.toFixed(2))
   })
 
   it('keeps changed-since-confirmation visible after the Delta-Chip timeout and reconfirms with focus and journal evidence', () => {
