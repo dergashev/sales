@@ -466,15 +466,27 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-preview-slot{min-height:var(--size-ghost-row);max-width:100%}
 .a3-delta-slot{min-height:var(--size-delta-row);max-width:100%}
 .a3-change-slot-anchor{position:relative;height:0}
-.a3-change-slot-anchor>.a3-preview-slot{position:absolute;top:var(--space-3);left:0;right:0;min-height:0;max-height:var(--size-ghost-row);overflow:hidden;background:var(--color-surface-default);max-width:100%}
+/* AUD-01 (EXP-01/EXP-02): `z-index:2` here — live Playwright finding.
+   `previewOption` now clears `activeDelta` the instant a genuine new
+   preview starts (see store.ts), but each still runs its OWN opacity
+   transition (chip exits over `--motion-duration-fast`, preview enters
+   after its own 200ms hover-intent delay) — during that brief handoff
+   window BOTH elements are simultaneously non-fully-transparent, and with
+   no z-index either one, later-DOM-order (the chip) painted on top
+   regardless of which was fading in vs out (`elementFromPoint` at the
+   preview's own first line returned the chip underneath). Contract
+   priority (below, and components-core.md §13) is preview > chip — this
+   makes that deterministic instead of a timing race. */
+.a3-change-slot-anchor>.a3-preview-slot{position:absolute;top:var(--space-3);left:0;right:0;min-height:0;max-height:var(--size-ghost-row);overflow:hidden;background:var(--color-surface-default);max-width:100%;z-index:2}
 /* AUD-01 (EXP-02): missing `background` here (unlike the preview-slot rule
    above, which already has it) was the actual mechanism behind "three text
    layers overlap when the delta chip is present" — the chip rendered on a
    transparent overlay, letting the KG completeness caption underneath show
    through/behind it instead of being occluded like the preview already is.
    Ghost/chip are mutually exclusive in time (comment above), so both can
-   safely claim the same opaque surface. */
-.a3-change-slot-anchor>.a3-delta-slot{position:absolute;top:var(--space-3);left:0;right:0;min-height:0;max-height:var(--size-delta-row);overflow:hidden;background:var(--color-surface-default);max-width:100%}
+   safely claim the same opaque surface. `z-index:1` (below the preview's
+   `2` above) makes their priority explicit rather than accidental. */
+.a3-change-slot-anchor>.a3-delta-slot{position:absolute;top:var(--space-3);left:0;right:0;min-height:0;max-height:var(--size-delta-row);overflow:hidden;background:var(--color-surface-default);max-width:100%;z-index:1}
 .a3-iv-sub{display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap}
 .a3-iv-bandbox{flex:1;max-width:var(--measure-band)}
 /* Task 04 (F-35, rail a11y/visual): F18 already ruled out a coloured
