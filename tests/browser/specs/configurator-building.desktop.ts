@@ -47,7 +47,13 @@ test.describe('building-aware Configurator gate chain', () => {
 
     // ── Resolve the one open conflict, confirm project params ────────
     await page.getByRole('button', { name: OPPORTUNITY.resolveWflDocument }).click()
-    await page.getByRole('button', { name: OPPORTUNITY.confirmProjectParams }).click()
+    // Pre-existing locator ambiguity fix (unrelated to AUD-02): the
+    // disabled Step-4 nav item's accessible name ("Schritt 4 von 4
+    // Opportunity Options Erst Konflikte entscheiden und Projektparameter
+    // bestätigen") contains this same substring — Playwright's role name
+    // match is substring by default, exactly the pitfall already called
+    // out for `openOption` a few lines below.
+    await page.getByRole('button', { name: OPPORTUNITY.confirmProjectParams, exact: true }).click()
 
     // ── Create and open an Option (gated on both of the above) ───────
     const createOption = page.getByRole('button', { name: OPPORTUNITY.createOption })
