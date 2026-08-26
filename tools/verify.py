@@ -1449,10 +1449,14 @@ class Verifier:
         self.eq('R-03', 'tokens --color-selection-border', resolve('--color-selection-border'), '#C94700')
         self.eq('R-03', 'tokens --color-focus-ring', resolve('--color-focus-ring'), '#005FCC')
         self.eq('R-03', 'tokens --color-focus-separator', resolve('--color-focus-separator'), '#FFFFFF')
-        # R-01: #FD5E00 разрешён только в двух семантических записях
+        # R-01: #FD5E00 разрешён только в трёх семантических записях.
+        # Третья добавлена ADR-R1-02 (REDESIGN R1, efcbdaf3): оранжевый
+        # display-numeral легален также на --color-surface-stage-deep —
+        # см. tokens.css §"R1 — CANVAS / PAPER / STAGE".
         for name in decls:
             if name.startswith('--color-') and name not in (
-                    '--color-brand-accent', '--color-text-display-accent'):
+                    '--color-brand-accent', '--color-text-display-accent',
+                    '--color-text-display-accent-on-stage-deep'):
                 if resolve(name) == '#FD5E00':
                     self.fail('R-01', 'tokens.css', f'{name} разрешается в #FD5E00 — бренд-оранжевый '
                               f'запрещён как семантика (R-01)')
@@ -5697,7 +5701,16 @@ class Verifier:
             self.fail('DS-CLASS-EXISTS', 'design-system/components.css',
                       'единый файл классов не найден — приложение ссылается в пустоту')
             return
+        # REDESIGN R1 (efcbdaf3): `components-r1.css` is a TEMPORARY second
+        # source, forced by components.css already carrying an unrelated
+        # uncommitted changeset when R1 ran (git-safety, not governance —
+        # see the file's own header). Loaded here, not merged into
+        # components.css's variable, so a missing components-r1.css never
+        # changes this check's existing single-file behaviour.
+        r1_css = self.read('design-system/components-r1.css')
         declared = set(re.findall(r'\.(a3-[\w-]+)', css))
+        if r1_css:
+            declared |= set(re.findall(r'\.(a3-[\w-]+)', r1_css))
         if not declared:
             self.fail('DS-CLASS-EXISTS', 'design-system/components.css',
                       'ни одного класса a3-* не объявлено — проверка потеряла предмет')
@@ -5996,6 +6009,11 @@ class Verifier:
                 '[вакуум] файл канонических component-стилей отсутствует')
         else:
             css_sources['design-system/components.css'] = components
+        # REDESIGN R1 (efcbdaf3): see check_ds_class_exists's comment — same
+        # temporary-second-source reason, same governance obligations.
+        r1_components = self.read('design-system/components-r1.css')
+        if r1_components is not None:
+            css_sources['design-system/components-r1.css'] = r1_components
         for rel, source in self.files('*.css'):
             if rel.startswith('src/'):
                 css_sources[rel] = source

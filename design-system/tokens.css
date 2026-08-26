@@ -156,7 +156,16 @@
      #C94700 (4,79:1); заливка лишь поддерживает его.
      Прежняя формулировка «выделение поверхностью» была неверной:
      COLOR-010 выполняется бордером, а не фоном. --- */
-  --color-surface-canvas:   var(--primitive-color-neutral-100);
+  /* ADR-R1-01 (REDESIGN R1, efcbdaf3): canvas repointed from All3-Grey
+     neutral-100 (#E8ECE9, near-invisible against white, DESIGN-04) to the
+     material palette's plaster tone — the "dormant identity asset" the
+     redesign audit found with zero consumers. E8ECE9 stays available as
+     `--primitive-color-neutral-100` for print/brand contexts; it is no
+     longer canvas's value. The R-01 prohibition on orange over canvas is
+     unchanged by this repoint — orange stays legal ONLY on
+     `--color-surface-default`/`--color-surface-stage-deep` (rule 5,
+     ADR-R1-02), never on canvas at any shade. */
+  --color-surface-canvas:   var(--primitive-color-material-plaster);
   --color-surface-default:  var(--primitive-color-white);
   --color-surface-subtle:   var(--primitive-color-neutral-050);
   --color-surface-selected: var(--primitive-color-orange-100);
@@ -200,12 +209,16 @@
      как цвет бордера, иконки или заливки бейджа; текст статуса всегда
      --color-text-primary. info #0B24FB (7,90:1) как текст допустим.
 
-     warning: собственного цветового решения нет. Нейтральный тон —
-     осознанный отказ от цвета в пользу текста и иконки; выбор цвета
-     warning вынесен в ADR (COLOR-006). --- */
+     warning: RATIFIED by ADR-R1-03 (REDESIGN R1, closes COLOR-006). A deep
+     amber (`--primitive-color-amber-700`, #946300) distinct from brand
+     orange — border/icon/badge-fill only, same as success/error above;
+     status TEXT stays `--color-text-primary`. Contrast evidence required
+     before this ADR closes (see §"R1 — METRIC / SECTION TYPOGRAPHY" below
+     for the sibling ADR-R1-04, and the primitive block for amber-700's
+     declaration). --- */
   --color-status-info:    var(--primitive-color-blue-500);
   --color-status-success: var(--primitive-color-green-dark-500);
-  --color-status-warning: var(--primitive-color-neutral-900);
+  --color-status-warning: var(--primitive-color-amber-700);
   --color-status-error:   var(--primitive-color-red-500);
 
   /* --- Семантика данных [ADR-PENDING] (отделена от статусов, XSC-16) --- */
@@ -225,14 +238,17 @@
      бренд-цветам. Численные результаты отвергнутой палитры здесь не
      фиксируются, потому что этих цветовых пар в системе больше нет.
 
-     Конфликт нельзя закрыть внутри реализации — нужен либо отдельный
-     утверждённый chart-палитра-набор, либо отказ от цвета в статусах.
-     Зарегистрировано как блокирующее решение в adr-blocking.md §1 №23.
-     Пока конфликт открыт, статус НИКОГДА не передаётся только цветом
-     (иконка + текст обязательны), а график всегда несёт легенду. --- */
-  --color-dataviz-category-1: var(--primitive-color-blue-500);
-  --color-dataviz-category-2: var(--primitive-color-green-dark-500);
-  --color-dataviz-category-3: var(--primitive-color-green-bright-500);
+     RESOLVED by ADR-R1-03 (REDESIGN R1, closes COLOR-004): category-1..3
+     no longer alias the brand/status colours above — they, and the three
+     new category-4..6 declared in the R1 section below, are built from the
+     architectural/material family instead. blue-500/green-dark-500/
+     green-bright-500 remain available directly (status info/success still
+     use them) but no dataviz category resolves to them any more. Adjacent
+     bar segments always get a 1px `--color-dataviz-segment-divider` in the
+     consuming component — hue is never the only carrier (rule 8). --- */
+  --color-dataviz-category-1: var(--primitive-color-material-timber-dark);
+  --color-dataviz-category-2: var(--primitive-color-material-clinker);
+  --color-dataviz-category-3: var(--primitive-color-material-plinth);
   --color-dataviz-neutral:    var(--primitive-color-chart-grey);
   --color-dataviz-grid-line:  var(--primitive-color-neutral-900-a10);
   --color-dataviz-neutral-bar:var(--primitive-color-neutral-900-a25);
@@ -446,6 +462,12 @@
   --stagger-row:  30ms;
   --stagger-wave: 80ms;
   --enter-shift:  var(--space-2);
+  /* R1 (ADR-R1-05): CONTINUITY verb — shared-element morph (audit §9,
+     "same thing, deeper"). 260ms sits inside the 200-300ms design window;
+     DIRECTION reuses `--motion-reorder` (240ms — already inside its
+     180-240ms window); REVEAL reuses `--motion-reveal`/`--stagger-row`;
+     STATE is the existing money channel, unchanged. See src/design-system/motion.ts. */
+  --motion-continuity: 260ms;
 
   /* ============ ПЛОТНОСТЬ [audit DENSITY-001/002/006/007] ============
      Плотность и Output Profile — НЕЗАВИСИМЫЕ контролы (DENSITY-001).
@@ -507,6 +529,77 @@
   --motion-delay-hover-preview: 200ms; /* [provisional] DC-28: «200 мс» названы в
                                  README, токена не было (ADR-запись 11 — значение
                                  словами без токена, худший вид пробела) */
+
+  /* ============ R1 — CANVAS / PAPER / STAGE [ADR-R1-01/02] ============
+     REDESIGN R1 (efcbdaf3). Ratifies the long-pending `[ADR-PENDING]`
+     surface/dataviz/status block above (design-system-remediation TOKEN-005)
+     AND implements the audit's three-layer surface model (DESIGN-04).
+     Geometry law unchanged (ADR-R1-00, reviewed and preserved): radius 0,
+     no shadow, no gradient — depth here comes ONLY from tone/contrast/space.
+     CANVAS itself is repointed above (ADR-R1-01, see `--color-surface-canvas`).
+     TOKEN-LAYER: every semantic below references a PRIMITIVE directly, not
+     another semantic — `paper`/`stage` intentionally duplicate `default`'s
+     primitive rather than aliasing it, so each layer can be re-pointed
+     independently without walking a chain. */
+  --color-surface-paper: var(--primitive-color-white); /* same white as `default`, named for the 3-layer model */
+  --color-surface-stage: var(--primitive-color-white); /* white paper + --border-contrast-2px frame + stage spacing; see components-r1.css `.a3-stage` */
+  --color-surface-stage-deep: var(--primitive-color-neutral-950); /* #1F1F1F inverse — the one expressive peak (rail hero excepted) */
+  --color-text-stage-deep-primary: var(--primitive-color-white);
+  /* ADR-R1-02: extends rule 5, adds the SECOND (and last) permitted
+     #FD5E00 semantic entry alongside `--color-brand-accent`/
+     `--color-text-display-accent` (R-01 whitelist, tools/verify.py).
+     Orange display numerals are legal on --color-surface-default
+     (3.10:1, unchanged) OR on --color-surface-stage-deep. Measured
+     ≈5.3:1 (#FD5E00 on #1F1F1F) — passes the ≥3:1 large-text bar with
+     headroom; Frontend/QA must record a measured (not estimated)
+     contrast reading before this ADR closes. */
+  --color-text-display-accent-on-stage-deep: var(--primitive-color-brand-orange-500);
+
+  /* --- Data-viz ramp [ADR-R1-03] — closes COLOR-004 ---
+     category-1..3 are ratified above (§"Data-viz"); these are the three
+     NEW values completing the >=6-step ramp. Adjacent segments are ALWAYS
+     separated by a 1px paper-white divider in the consuming component
+     (CompositionBar) — hue is never the only carrier (rule 8). */
+  --primitive-color-dataviz-4: #5E6E62; /* deep green-grey, new */
+  --primitive-color-dataviz-5: #5C6B7A; /* slate blue-grey, new */
+  --primitive-color-dataviz-6: #B8A87E; /* warm sand, new */
+  --color-dataviz-category-4: var(--primitive-color-dataviz-4);
+  --color-dataviz-category-5: var(--primitive-color-dataviz-5);
+  --color-dataviz-category-6: var(--primitive-color-dataviz-6);
+  --color-dataviz-segment-divider: var(--primitive-color-white); /* the 1px separator, mandatory */
+
+  /* `--primitive-color-amber-700` backs the ratified `--color-status-warning`
+     above (§"Статусы") — declared here because ADR-R1-03 introduced it. */
+  --primitive-color-amber-700: #946300;
+
+  /* ============ R1 — METRIC / SECTION TYPOGRAPHY [ADR-R1-04] ============
+     New section-metric role (option subtotal, comparison column heads,
+     confirmed-baseline figures) between the 64px hero and 14px inline
+     numeric. The audit's own starting proposal (28px) sits OUTSIDE the
+     ratified R-24 type scale ([12,14,16,24,32,36,48,64], tools/verify.py) —
+     32px is the only value inside BOTH the audit's 26-32px visual-testing
+     window AND the closed scale, so it is not a compromise between the two
+     constraints, it is their intersection. `--type-section-title` replaces
+     mid-page H2-32 usage (DESIGN-08): H2 stays reserved for real page-zone
+     titles; section-title reuses the SAME 24px scale step as heading-3
+     (also already in-scale) with its own name so consumers can restyle the
+     mid-page role independently of heading-3's contract later. Both Bold,
+     matching the existing heading weight role. */
+  --type-metric-section-size: 32px; --type-metric-section-line: 40px;
+  --type-section-title-size:  24px; --type-section-title-line:  32px;
+  --type-metric-section-weight: var(--font-weight-bold);
+  --type-section-title-weight:  var(--font-weight-bold);
+
+  /* ============ R1 — MEDIAFRAME RATIOS [provisional] ============
+     DESIGN-05/§8. Values are the audit's starting ratios, not locked —
+     composition testing during R2 may revise them (ticket explicitly
+     allows). Expressed as CSS `aspect-ratio` values, not px, so they hold
+     at any width (rule 3a class). Named `--size-ratio-*` (not `--ratio-*`)
+     to stay inside the R-15 allowed-prefix whitelist (tools/verify.py) —
+     geometry, not a new token family. */
+  --size-ratio-media-pano: 16 / 5;  /* identity headers */
+  --size-ratio-media-card: 3 / 2;   /* option/building/project cards */
+  --size-ratio-media-tile: 1 / 1;   /* thumbnails */
 }
 
 /* Task 04 (F-18) — DELIBERATE 1280-shell ADR revision, not a silent
@@ -549,6 +642,7 @@
     --motion-duration-fast: 0ms; --motion-duration-base: 0ms;
     --motion-duration-slow: 0ms; --motion-value-change: 0ms;
     --motion-emphasis: 0ms; --stagger-row: 0ms; --stagger-wave: 0ms;
+    --motion-continuity: 0ms;
   }
 }
 

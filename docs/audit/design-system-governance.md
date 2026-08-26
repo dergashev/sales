@@ -164,6 +164,18 @@ register and the mechanical checks atomically.
   composition passes calculation, interaction and browser regression gates.
 - **Review trigger:** release of a canonical Slider or any DiscountControl UI
   redesign.
+- **RESOLUTION REDIRECTED (REDESIGN R1, efcbdaf3):** the audit
+  (DESIGN-15) and R1's UI Design handoff concluded a discrete **`Stepper`**
+  — not a Slider — is the correct canonical replacement for Rabatt: a
+  discount is a whole-percentage-point value, and Stepper gives it an
+  accessible name/value pair plus a live-impact slot a slider's thumb
+  cannot express. Canonical `Stepper` is released
+  (`src/components/controls.tsx`); no canonical Slider was built (no other
+  consumer justifies one — do not build ahead of a real need). **This
+  exception's removal condition is now: `DiscountControl.tsx` migrates to
+  the canonical `Stepper`, not a future Slider.** Migration itself is
+  R2/R3/R4 scope (product-wide adoption is explicitly outside R1) — the
+  exception stays open until that migration lands.
 
 ### DS-GOV-EX-05 — InternalNote native textarea
 
@@ -236,6 +248,18 @@ register and the mechanical checks atomically.
   consumers render it; no hand-written copy of the anatomy remains.
 - **Review trigger:** release of a canonical `WorkflowStepper`, any change to
   DC-13 / `STEP-001…007`, or any further consumer of the `.a3-chapters` anatomy.
+- **PARTIALLY ADDRESSED (REDESIGN R1, efcbdaf3):** the canonical
+  `WorkflowStepper` this exception was waiting on is now released
+  (`src/design-system/WorkflowStepper.tsx` — glyph + label + position
+  anatomy, `upcoming/current/done/attention/blocked/skipped` states plus
+  the composite done+current pairing, `aria-current="step"` closing the
+  `"true"` drift, registry specimens for both `workflow` and `chapter`
+  sizes). **Neither consumer has migrated** — that is explicitly R2/R3/R4
+  scope (product-wide migration is outside R1's boundary) — so this
+  exception is NOT removed. Roving-tabindex `KEY-003` is implemented in the
+  new canonical source's interactive steps (real `<button>`s, 44px hit
+  targets); whether it closes the gap named above still depends on the
+  consumer migration actually landing.
 
 **Data states of this instance (CLAUDE.md rule 30, seven declarations).** The
 DC-13 contract enumerates all seven; this instance declares each one either as

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useTx } from '../i18n'
 
 /**
@@ -635,6 +635,167 @@ export function Switch({ label, checked, onChange, disabled, disabledReason, chi
         </span>
       )}
       {children}
+    </div>
+  )
+}
+
+/* ── DateField (R1 · DESIGN-15) ──────────────────────────────────────────
+ * Replaces the native `<input type="date">` exposed on client-visible
+ * commercial screens (Termine, also in Kundenansicht — the exact surface
+ * the audit named). A real text input with an explicit `TT.MM.JJJJ` format
+ * HINT (not a raw native placeholder) keeps keyboard-first precision entry
+ * — the expert path — without native browser chrome. No calendar popover:
+ * the audit's ticket explicitly scopes that out until there is evidence a
+ * picker is worth the added surface. */
+
+const INPUT_FOCUS = 'outline-none focus-visible:outline focus-visible:outline-2 ' +
+  'focus-visible:outline-offset-2 focus-visible:outline-focus-ring'
+
+const DATE_PATTERN = /^(\d{2})\.(\d{2})\.(\d{4})$/
+
+function parseDE(raw: string): Date | null {
+  const m = DATE_PATTERN.exec(raw.trim())
+  if (!m) return null
+  const [, dd, mm, yyyy] = m
+  const day = Number(dd), month = Number(mm), year = Number(yyyy)
+  const d = new Date(year, month - 1, day)
+  // Reject values `Date` silently rolled over (e.g. 31.02.2026).
+  if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) return null
+  return d
+}
+
+function formatDEDate(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`
+}
+
+export function DateField({
+  label, value, onCommit, min, max, helperText,
+}: {
+  label: string
+  /** `null` — no date set yet (empty state, never "0000-00-00"). */
+  value: Date | null
+  onCommit: (date: Date | null, confirmed: boolean) => void
+  min?: Date
+  max?: Date
+  helperText?: string
+}) {
+  const tx = useTx()
+  const id = useId()
+  const helperId = useId()
+  const errorId = useId()
+  const [draft, setDraft] = useState<string | null>(null)
+  const [invalid, setInvalid] = useState(false)
+  const shown = draft ?? (value ? formatDEDate(value) : '')
+
+  const commit = (confirmed: boolean) => {
+    if (draft === null) return
+    if (draft.trim() === '') { setDraft(null); setInvalid(false); onCommit(null, confirmed); return }
+    const parsed = parseDE(draft)
+    if (!parsed || (min && parsed < min) || (max && parsed > max)) { setInvalid(true); return }
+    setDraft(null)
+    setInvalid(false)
+    onCommit(parsed, confirmed)
+  }
+
+  return (
+    <div className="a3-form-field">
+      <label htmlFor={id} className="block text-small font-medium text-text-primary">
+        {label}
+      </label>
+      <input
+        id={id}
+        className={`a3-input mt-2 ${INPUT_FOCUS}`}
+        type="text"
+        inputMode="numeric"
+        placeholder="TT.MM.JJJJ"
+        value={shown}
+        onChange={(e) => { setDraft(e.target.value); setInvalid(false) }}
+        onBlur={() => commit(false)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit(true)
+          if (e.key === 'Escape') { setDraft(null); setInvalid(false) }
+        }}
+        aria-describedby={[helperText ? helperId : null, invalid ? errorId : null].filter(Boolean).join(' ') || undefined}
+        aria-invalid={invalid || undefined}
+      />
+      {helperText && !invalid && (
+        <p id={helperId} className="a3-cap mt-1">{helperText}</p>
+      )}
+      {invalid && (
+        <p id={errorId} role="alert" className="a3-cap mt-1">
+          {tx('Ungültiges Datum — Format TT.MM.JJJJ')}
+        </p>
+      )}
+    </div>
+  )
+}
+
+/* ── Stepper (R1 · DESIGN-15) ─────────────────────────────────────────────
+ * Replaces the native `<input type="range">` used for the Rabatt (discount)
+ * control on the Export screen. A numeric field with +/- buttons keeps the
+ * discrete step semantics a discount actually has (whole percentage
+ * points), gives it an accessible name/value pair a slider's thumb cannot,
+ * and — unlike the slider — has a slot for the live money consequence next
+ * to it (R3 wires the actual impact text when it recomposes Export). */
+
+export function Stepper({
+  label, value, min, max, step = 1, unit, onChange, impact,
+}: {
+  label: string
+  value: number
+  min: number
+  max: number
+  step?: number
+  unit?: string
+  onChange: (v: number) => void
+  /** Live consequence of the current value (e.g. "− 38.200 €"), rendered
+   * next to the control — not owned by this primitive's own semantics. */
+  impact?: ReactNode
+}) {
+  const tx = useTx()
+  const id = useId()
+  const clamp = (v: number) => Math.min(max, Math.max(min, v))
+  const dec = () => onChange(clamp(value - step))
+  const inc = () => onChange(clamp(value + step))
+  return (
+    <div className="a3-form-field">
+      <label htmlFor={id} className="block text-small font-medium text-text-primary">
+        {label}
+      </label>
+      <div className="mt-2 flex items-center gap-2">
+        <button
+          type="button"
+          className="a3-stepper-button hit-target"
+          onClick={dec}
+          disabled={value <= min}
+          aria-label={tx('Verringern')}
+        >
+          −
+        </button>
+        <span className="a3-input a3-stepper-value">
+          <input
+            id={id}
+            className={`numeric ${INPUT_FOCUS}`}
+            type="text"
+            inputMode="numeric"
+            readOnly
+            value={String(value)}
+            aria-label={`${label}${unit ? ` in ${unit}` : ''}`}
+          />
+          {unit && <span className="a3-unit">{unit}</span>}
+        </span>
+        <button
+          type="button"
+          className="a3-stepper-button hit-target"
+          onClick={inc}
+          disabled={value >= max}
+          aria-label={tx('Erhöhen')}
+        >
+          +
+        </button>
+        {impact && <span className="ml-2 numeric text-text-secondary">{impact}</span>}
+      </div>
     </div>
   )
 }

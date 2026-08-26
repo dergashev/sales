@@ -16,6 +16,10 @@
    и DS-CLASS-EXISTS в `npm run verify`. */
 @import '../../design-system/tokens.css';
 @import '../../design-system/components.css';
+/* REDESIGN R1 (efcbdaf3) — TEMPORARY second source, see the file's own
+   header comment for why. Merge into components.css and delete this line
+   the next time components.css is safely reconciled. */
+@import '../../design-system/components-r1.css';
 
 @tailwind base;
 @tailwind components;

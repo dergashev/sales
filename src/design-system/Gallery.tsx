@@ -50,6 +50,22 @@ export function Gallery() {
                       .map(([state, support]) => `${state}: ${support}`)
                       .join(' · ')}
                   </p>
+                  {/* REDESIGN R1 (efcbdaf3), merged DS-Task-1 defect: every
+                      specimen has always DECLARED interactionStates, but the
+                      Gallery never rendered them — inspectable nowhere,
+                      registry entries `blockedVariants:[]` looked identical
+                      to a specimen with no interaction states at all.
+                      Composed contracts get the same treatment: which
+                      canonical primitives a domain specimen reuses was also
+                      declared-but-invisible. */}
+                  <p>
+                    Interaktionszustände: {s.interactionStates.length > 0
+                      ? s.interactionStates.join(' · ')
+                      : 'keine (statisches Layout)'}
+                  </p>
+                  {s.composedContracts.length > 0 && (
+                    <p>Zusammengesetzt aus: {s.composedContracts.join(' · ')}</p>
+                  )}
                 </details>
                 <div className="mt-3">{s.render()}</div>
               </section>

@@ -50,10 +50,18 @@ const config: Config = {
         disabled: 'var(--color-text-disabled)',
         inverse: 'var(--color-text-inverse)',
         'display-accent': 'var(--color-text-display-accent)',
+        // R1 (ADR-R1-02): stage-deep is the one surface where inverse text
+        // AND the orange hero-numeral exception both apply.
+        'stage-deep': 'var(--color-text-stage-deep-primary)',
+        'display-accent-stage-deep': 'var(--color-text-display-accent-on-stage-deep)',
       },
       surface: {
         canvas: 'var(--color-surface-canvas)',
         default: 'var(--color-surface-default)',
+        // R1 (ADR-R1-01/02): paper/stage/stage-deep — the three-layer model.
+        paper: 'var(--color-surface-paper)',
+        stage: 'var(--color-surface-stage)',
+        'stage-deep': 'var(--color-surface-stage-deep)',
         subtle: 'var(--color-surface-subtle)',
         selected: 'var(--color-surface-selected)',
         overlay: 'var(--color-surface-overlay)',
@@ -64,6 +72,24 @@ const config: Config = {
         strong: 'var(--color-border-strong)',
         warning: 'var(--color-border-warning)',
         error: 'var(--color-border-error)',
+      },
+      // R1 (ADR-R1-03): status trio + dataviz ramp — first Tailwind mapping,
+      // both were raw-`var()`/components.css-only before this task.
+      status: {
+        info: 'var(--color-status-info)',
+        success: 'var(--color-status-success)',
+        warning: 'var(--color-status-warning)',
+        error: 'var(--color-status-error)',
+      },
+      dataviz: {
+        'category-1': 'var(--color-dataviz-category-1)',
+        'category-2': 'var(--color-dataviz-category-2)',
+        'category-3': 'var(--color-dataviz-category-3)',
+        'category-4': 'var(--color-dataviz-category-4)',
+        'category-5': 'var(--color-dataviz-category-5)',
+        'category-6': 'var(--color-dataviz-category-6)',
+        neutral: 'var(--color-dataviz-neutral)',
+        divider: 'var(--color-dataviz-segment-divider)',
       },
     },
     // Шкала отступов — ровно восемь шагов токенов. База 8, полушаг 4.
@@ -94,6 +120,12 @@ const config: Config = {
                     { lineHeight: 'var(--type-heading-1-desktop-line)' }],
       'heading-2': ['var(--type-heading-2-size)', { lineHeight: 'var(--type-heading-2-line)' }],
       'heading-3': ['var(--type-heading-3-size)', { lineHeight: 'var(--type-heading-3-line)' }],
+      // R1 (ADR-R1-04): metric ramp's middle tier + the mid-page heading
+      // recalibration (DESIGN-08/12) — see design-system/tokens.css.
+      'metric-section': ['var(--type-metric-section-size)',
+                         { lineHeight: 'var(--type-metric-section-line)' }],
+      'section-title': ['var(--type-section-title-size)',
+                        { lineHeight: 'var(--type-section-title-line)' }],
       body: ['var(--type-body-size)', { lineHeight: 'var(--type-body-line)' }],
       small: ['var(--type-small-size)', { lineHeight: 'var(--type-small-line)' }],
       caption: ['var(--type-caption-size)', { lineHeight: 'var(--type-caption-line)' }],
@@ -155,6 +187,12 @@ const config: Config = {
         field: '12ch',
         'panel-left': 'var(--panel-left-width)',
         'panel-right': 'var(--panel-right-width)',
+      },
+      // R1 (DESIGN-05/§8): MediaFrame's three starting ratios.
+      aspectRatio: {
+        'media-pano': 'var(--size-ratio-media-pano)',
+        'media-card': 'var(--size-ratio-media-card)',
+        'media-tile': 'var(--size-ratio-media-tile)',
       },
     },
   },

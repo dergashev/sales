@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from 'react'
 import { Decimal } from 'decimal.js'
-import { NNBSP } from '../engine/money'
+import { NNBSP, formatDE, label as moneyLabel, present } from '../engine/money'
 import demo from '../fixtures/demo-0001.json'
 import {
   Button,
@@ -36,12 +36,17 @@ import {
 import { Dialog, type DialogHandle } from '../components/Dialog'
 import { OriginPopover } from '../components/OriginPopover'
 import { DocumentAnalysis } from '../components/DocumentAnalysis'
+import { DateField, Stepper } from '../components/controls'
+import { optionImage } from '../assets/option-images'
+import { MediaFrame } from './MediaFrame'
+import { CompositionBar, type CompositionSegment } from './CompositionBar'
+import { WorkflowStepper, type WorkflowStep } from './WorkflowStepper'
 
 export type ContractStateDeclaration = Readonly<Record<DataStateKind, string>>
 
 export type Specimen = {
   id: string
-  groupId: 'states' | 'foundations' | 'selections' | 'feedback' | 'domain'
+  groupId: 'states' | 'foundations' | 'selections' | 'feedback' | 'domain' | 'r1'
   title: string
   note?: string
   contractId: string
@@ -570,6 +575,183 @@ export const COMPONENT_REGISTRY: Specimen[] = [
       </div>
     ),
   },
+
+  /* ============ REDESIGN R1 (efcbdaf3) — new canonical capabilities ====
+     Individual primitives first, then the required composed reference
+     specimens (ticket §"REQUIRED COMPOSED REFERENCE SPECIMENS") proving
+     the foundations work together, not just in isolation. Realistic
+     commercial data throughout (rule: "real content, not ideal content"). */
+  {
+    id: 'r1-mediaframe', groupId: 'r1', title: 'MediaFrame (R1)', contractId: 'R1 · MediaFrame',
+    requirements: ['DESIGN-05'], composedContracts: [],
+    interactionStates: ['loaded', 'loading', 'empty', 'unavailable', 'error', 'fallback'],
+    dataStates: declareDataStates(['ready', 'empty', 'error'], 'media states are the contract here, not the data-state axis'),
+    blockedVariants: [], maturity: 'alpha',
+    evidence: 'All six states render designed placeholder art, never a grey rectangle; error state offers retry.',
+    render: () => (
+      <div className="grid grid-cols-3 gap-4">
+        {/* Reuses an EXISTING provenanced asset (manifest: design-system/
+            assets/options/manifest.json, OPT-IMAGE-checked) rather than a
+            newly-sourced Unsplash/Pexels placeholder — no new external
+            asset was fetched to build this specimen. */}
+        <MediaFrame ratio="card" state="loaded" src={optionImage('fassade', 'timber')?.url} alt="Fassade in Holzverkleidung" seed="Musterprojekt Nordfeld" caption="Fassade · Holz" sourceId="fassade/timber" />
+        <MediaFrame ratio="card" state="loading" seed="Musterprojekt Nordfeld" />
+        <MediaFrame ratio="card" state="fallback" seed="Musterprojekt Nordfeld" fallbackLabel="Noch kein Projektfoto hinterlegt" />
+        <MediaFrame ratio="tile" state="empty" seed="Haus B" />
+        <MediaFrame ratio="tile" state="error" seed="Haus B" onRetry={() => {}} />
+        <MediaFrame ratio="pano" state="unavailable" seed="Nordfeld" />
+      </div>
+    ),
+  },
+  {
+    id: 'r1-compositionbar', groupId: 'r1', title: 'CompositionBar (R1)', contractId: 'R1 · CompositionBar',
+    requirements: ['DESIGN-12'], composedContracts: [],
+    interactionStates: ['compact', 'expanded', 'incomplete-remainder'],
+    dataStates: declareDataStates(['ready', 'partial'], 'the bar itself has no loading/error state — its data owner does'),
+    blockedVariants: [], maturity: 'alpha',
+    evidence: 'Fixture-exact reconciliation proven in src/design-system/__tests__/composition-bar.test.ts; a genuinely partial input renders an honest labelled remainder, never a silently-100%-filled bar (rule 16).',
+    render: () => {
+      const segments: CompositionSegment[] = [
+        { id: 'kg200', label: 'KG 200 · Herrichten & Erschließen', value: new Decimal('184300'), categorySlot: 1 },
+        { id: 'kg300', label: 'KG 300 · Baukonstruktion', value: new Decimal('2148900'), categorySlot: 2 },
+        { id: 'kg400', label: 'KG 400 · Technische Anlagen', value: new Decimal('612050'), categorySlot: 3 },
+        { id: 'kg500', label: 'KG 500 · Außenanlagen', value: new Decimal('96300'), categorySlot: 4 },
+      ]
+      const total = segments.reduce((acc, s) => acc.plus(s.value), new Decimal(0))
+      return (
+        <div className="grid gap-4">
+          <div>
+            <p className="a3-cap mb-1">compact</p>
+            <CompositionBar segments={segments} total={total} variant="compact" />
+          </div>
+          <div>
+            <p className="a3-cap mb-1">expanded</p>
+            <CompositionBar segments={segments} total={total} variant="expanded" />
+          </div>
+          <div>
+            <p className="a3-cap mb-1">partial — KG 600 not yet priced</p>
+            <CompositionBar segments={segments.slice(0, 2)} total={total} variant="expanded" />
+          </div>
+        </div>
+      )
+    },
+  },
+  {
+    id: 'r1-workflowstepper', groupId: 'r1', title: 'WorkflowStepper (R1)', contractId: 'R1 · WorkflowStepper',
+    requirements: ['DESIGN-14'], composedContracts: [],
+    interactionStates: ['upcoming', 'current', 'done', 'attention', 'blocked', 'skipped', 'done+current composite'],
+    dataStates: STATIC_LAYOUT_STATES, blockedVariants: [], maturity: 'alpha',
+    evidence: 'One family, two sizes; aria-current="step" (not "true"); the composite done+current class pairing carries the same guard that fixed the recorded orange-on-green collision elsewhere in this system.',
+    render: () => {
+      const projectSteps: WorkflowStep[] = [
+        { id: 'doc', label: 'Dokumente', state: 'done', onSelect: () => {} },
+        { id: 'baseline', label: 'Grundlage', state: 'done', previouslyDone: true, onSelect: () => {} },
+        { id: 'scope', label: 'Umfang', state: 'current', previouslyDone: true, rationale: 'Zurückgekehrt, um die Kellervariante zu prüfen.', onSelect: () => {} },
+        { id: 'config', label: 'Konfiguration', state: 'attention', rationale: 'KG 400 hat noch keine Auswahl.', onSelect: () => {} },
+        { id: 'export', label: 'Export', state: 'blocked', blockedReason: 'Erst nach vollständiger Konfiguration verfügbar.' },
+      ]
+      const chapterSteps: WorkflowStep[] = [
+        { id: 'kg200', label: 'KG 200', state: 'done', onSelect: () => {} },
+        { id: 'kg300', label: 'KG 300', state: 'current' },
+        { id: 'kg400', label: 'KG 400', state: 'upcoming' },
+        { id: 'kg500', label: 'KG 500', state: 'skipped' },
+      ]
+      return (
+        <div className="grid gap-6">
+          <WorkflowStepper ariaLabel="Projekt-Workflow" size="workflow" steps={projectSteps} />
+          <div style={{ maxWidth: '16rem' }}>
+            <WorkflowStepper ariaLabel="Konfigurator-Kapitel" size="chapter" steps={chapterSteps} />
+          </div>
+        </div>
+      )
+    },
+  },
+  {
+    id: 'r1-datefield', groupId: 'r1', title: 'DateField (R1)', contractId: 'R1 · DateField',
+    requirements: ['DESIGN-15'], composedContracts: [], interactionStates: ['empty', 'filled', 'invalid'],
+    dataStates: STATIC_LAYOUT_STATES, blockedVariants: [], maturity: 'alpha',
+    evidence: 'Replaces the native date input on Termine/Kundenansicht; keyboard-first TT.MM.JJJJ entry, no native calendar chrome.',
+    render: () => <DateField label="Baubeginn" value={new Date(2027, 2, 1)} onCommit={() => {}} helperText="Format TT.MM.JJJJ" />,
+  },
+  {
+    id: 'r1-stepper', groupId: 'r1', title: 'Stepper (R1)', contractId: 'R1 · Stepper',
+    requirements: ['DESIGN-15'], composedContracts: [], interactionStates: ['default', 'min-reached', 'max-reached'],
+    dataStates: STATIC_LAYOUT_STATES, blockedVariants: [], maturity: 'alpha',
+    evidence: 'Replaces the native range slider for Rabatt; discrete steps with an accessible name/value pair a slider cannot express, plus a live-impact slot.',
+    render: () => <Stepper label="Rabatt" value={3} min={0} max={15} unit="%" onChange={() => {}} impact={<span>− 114.500{NNBSP}€</span>} />,
+  },
+
+  /* ── Composed reference specimens (ticket-required, not decoration) ── */
+  {
+    id: 'r1-composed-option', groupId: 'r1', title: 'Composed: Option / Commercial Object', contractId: 'R1 · composed',
+    requirements: ['DESIGN-09', 'DESIGN-12'], composedContracts: ['MediaFrame', 'CompositionBar', 'Badge'],
+    interactionStates: ['default', 'selected'], dataStates: STATIC_LAYOUT_STATES, blockedVariants: [],
+    maturity: 'alpha',
+    evidence: 'Identity (MediaFrame) + hero section-metric + CompositionBar + status in one card — the new foundations composed, not a product migration.',
+    render: () => {
+      const segments: CompositionSegment[] = [
+        { id: 'kg200', label: 'KG 200', value: new Decimal('184300'), categorySlot: 1 },
+        { id: 'kg300', label: 'KG 300', value: new Decimal('2148900'), categorySlot: 2 },
+        { id: 'kg400', label: 'KG 400', value: new Decimal('612050'), categorySlot: 3 },
+      ]
+      const total = segments.reduce((acc, s) => acc.plus(s.value), new Decimal(0))
+      return (
+        <div className="border border-border-subtle" style={{ maxWidth: '22rem' }}>
+          <MediaFrame ratio="card" state="fallback" seed="Option A · Haus A+B" fallbackLabel="Kein Bild — Konzeptdarstellung" />
+          <div className="p-4">
+            <Badge sign="+" kind="metadata">Neu</Badge>
+            <p className="mt-2 text-section-title font-bold text-text-primary">Option A · Haus A+B</p>
+            <p className="mt-1 text-metric-section font-bold text-text-primary numeric">
+              {moneyLabel(present(total), '€')}
+            </p>
+            <p className="text-small text-text-secondary">Zwischensumme der kalkulierten Positionen</p>
+            <div className="mt-3">
+              <CompositionBar segments={segments} total={total} variant="compact" />
+            </div>
+          </div>
+        </div>
+      )
+    },
+  },
+  {
+    id: 'r1-composed-stage', groupId: 'r1', title: 'Composed: Commercial Stage Moment', contractId: 'R1 · composed',
+    requirements: ['DESIGN-04', 'DESIGN-12'], composedContracts: ['CompositionBar'],
+    interactionStates: ['default'], dataStates: STATIC_LAYOUT_STATES, blockedVariants: [], maturity: 'alpha',
+    evidence: 'The stage-deep surface + display hero + expanded composition — the one expressive peak (ADR-R1-02), flat geometry preserved (ADR-R1-00).',
+    render: () => {
+      const segments: CompositionSegment[] = [
+        { id: 'kg200', label: 'KG 200', value: new Decimal('184300'), categorySlot: 1 },
+        { id: 'kg300', label: 'KG 300', value: new Decimal('2148900'), categorySlot: 2 },
+        { id: 'kg400', label: 'KG 400', value: new Decimal('612050'), categorySlot: 3 },
+        { id: 'kg700', label: 'KG 700', value: new Decimal('312449'), categorySlot: 6 },
+      ]
+      const total = segments.reduce((acc, s) => acc.plus(s.value), new Decimal(0))
+      // minWidth: the stage-deep hero renders at display-numeric size
+      // (64px) — a real 7-digit total overflowed the narrow gallery grid
+      // column (scrollWidth 383 > clientWidth 336, caught visually via
+      // Playwright, not by any automated check); this specimen shows the
+      // component at a width closer to its real consuming surface (the
+      // offer rail, ~440-520px) rather than squeezed to fit.
+      return (
+        <div className="p-8" style={{ background: 'var(--color-surface-stage-deep)', minWidth: '26rem' }}>
+          <p className="text-small text-text-inverse">Gesamt netto · Grundleistung All3</p>
+          <p
+            className="mt-1 font-bold numeric"
+            style={{
+              fontSize: 'var(--type-display-numeric-desktop-size)',
+              lineHeight: 'var(--type-display-numeric-desktop-line)',
+              color: 'var(--color-text-display-accent-on-stage-deep)',
+            }}
+          >
+            {formatDE(total, 0)}<span style={{ fontSize: 'var(--type-heading-3-size)' }}>{NNBSP}€</span>
+          </p>
+          <div className="mt-6">
+            <CompositionBar segments={segments} total={total} variant="expanded" onDark />
+          </div>
+        </div>
+      )
+    },
+  },
 ]
 
 const GROUP_META: Array<Omit<SpecimenGroup, 'specimens'>> = [
@@ -581,6 +763,10 @@ const GROUP_META: Array<Omit<SpecimenGroup, 'specimens'>> = [
   { id: 'selections', title: 'Auswahlkontrollen' },
   { id: 'feedback', title: 'Feedback, Dialog und nächste Schritte' },
   { id: 'domain', title: 'Domänenkompositionen' },
+  {
+    id: 'r1', title: 'REDESIGN R1 · Visual language, expression & motion foundations',
+    intro: 'Neue kanonische Fähigkeiten (efcbdaf3): Surface-Modell, Media, Metrik-Hierarchie, Composition-Grafik, WorkflowStepper, DateField/Stepper — plus zusammengesetzte Referenzspezimen, die die Sprache als System zeigen, keine Produktmigration.',
+  },
 ]
 
 export const SPECIMEN_GROUPS: SpecimenGroup[] = GROUP_META.map((group) => ({

@@ -1,0 +1,167 @@
+/* ============================================================
+   All3 Design System — REDESIGN R1 additions
+   `design-system/components.css` already carries a large unrelated
+   uncommitted changeset at the time this ticket ran (47 files staged,
+   -2567 net lines, includes the removal of `tools/graphify/`). Re-staging
+   that file here to add R1's few genuinely new custom rules would fold
+   someone else's unreviewed work into this task's candidate commit —
+   exactly the "UNRELATED WORK INCLUDED" failure the Frontend contract
+   forbids. This file exists ONLY because of that git-safety constraint,
+   not as a second component library: same `a3-*` naming, same token
+   sources, registered the same way, imported from the same entry point.
+
+   MERGE THIS FILE INTO `components.css` AND DELETE IT the next time
+   components.css is safely reconciled (Tech Lead/Release note).
+
+   Everything that could be expressed as Tailwind utilities mapped onto
+   tokens.css/tailwind.config.ts (surfaces, spacing, typography, the
+   MediaFrame aspect ratios) was — see `src/design-system/MediaFrame.tsx`,
+   `CompositionBar.tsx`. Only compound/pseudo-selector rules that Tailwind's
+   token-only config cannot express live here: the composite
+   done+current WorkflowStepper state and the Stepper's button/value row.
+   ============================================================ */
+
+/* ── WorkflowStepper ─────────────────────────────────────────────────── */
+
+.a3-wfs { display: block; min-width: 0; }
+
+.a3-wfs-list {
+  display: flex;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.a3-wfs-workflow .a3-wfs-list { flex-direction: row; flex-wrap: wrap; }
+.a3-wfs-chapter .a3-wfs-list { flex-direction: column; gap: var(--space-2); }
+
+.a3-wfs-step { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.a3-wfs-workflow .a3-wfs-step { flex: 1 1 160px; }
+
+.a3-wfs-button, .a3-wfs-static {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--size-hit-target-default);
+  padding: var(--space-1) 0;
+  background: transparent;
+  border: none;
+  text-align: left;
+  color: var(--color-text-primary);
+  font: inherit;
+}
+.a3-wfs-button { cursor: pointer; }
+.a3-wfs-button:disabled { cursor: default; color: var(--color-text-disabled); }
+
+.a3-wfs-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--size-chapter-marker);
+  height: var(--size-chapter-marker);
+  border: var(--border-contrast-1px);
+  font-size: var(--type-small-size);
+  font-weight: var(--type-badge-status-weight);
+  color: var(--color-text-primary);
+  background: var(--color-surface-default);
+}
+.a3-wfs-text { display: flex; flex-direction: column; min-width: 0; }
+.a3-wfs-label {
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line);
+  font-weight: var(--type-label-weight);
+  overflow-wrap: break-word;
+}
+.a3-wfs-meta {
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+  color: var(--color-text-secondary);
+}
+
+/* States — never colour alone (rule 8): each pairs a distinct border
+   treatment with the glyph + meta TEXT already carrying the state name.
+   `upcoming` is the unstyled default (plain numbered marker) — declared
+   here with no rule body so it still passes DS-CLASS-EXISTS registration. */
+.a3-wfs-upcoming {}
+.a3-wfs-done .a3-wfs-marker {
+  background: var(--color-text-primary);
+  color: var(--color-text-inverse);
+  border-color: var(--color-text-primary);
+}
+.a3-wfs-current .a3-wfs-marker,
+.a3-wfs-step[aria-current='step'] .a3-wfs-marker {
+  border: var(--border-selected);
+}
+.a3-wfs-attention .a3-wfs-marker {
+  border-color: var(--color-status-warning);
+  color: var(--color-status-warning);
+}
+.a3-wfs-blocked .a3-wfs-marker {
+  border-color: var(--color-status-error);
+  color: var(--color-status-error);
+}
+.a3-wfs-skipped .a3-wfs-marker,
+.a3-wfs-skipped .a3-wfs-label {
+  color: var(--color-text-disabled);
+}
+/* Composite done+current (a revisited step you are currently on): done fill
+   KEPT, current adds an outer ring — the exact composite-rule shape that
+   fixed the recorded `.a3-ch.a3-done.a3-cur` 1.15:1 collision. A single
+   merged class here would reintroduce that class of defect. */
+.a3-wfs-done.a3-wfs-cur .a3-wfs-marker {
+  outline: var(--border-width-strong) solid var(--color-selection-border);
+  outline-offset: 2px;
+}
+
+.a3-wfs-blocked-reason {
+  margin: 0;
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+  color: var(--color-status-error);
+}
+
+.a3-wfs-rationale summary {
+  cursor: pointer;
+  font-size: var(--type-caption-size);
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+  width: fit-content;
+}
+.a3-wfs-rationale > div {
+  margin-top: var(--space-1);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+  color: var(--color-text-secondary);
+  max-width: var(--measure-panel);
+}
+
+/* ── Stepper (discount control) ──────────────────────────────────────── */
+
+.a3-stepper-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--size-hit-target-default);
+  min-height: var(--size-hit-target-default);
+  border: var(--border-default);
+  background: var(--color-surface-default);
+  font-size: var(--type-heading-3-size);
+  line-height: 1;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+.a3-stepper-button:disabled {
+  cursor: default;
+  color: var(--color-action-disabled-text);
+  background: var(--color-action-disabled-bg);
+  border-color: var(--color-action-disabled-border);
+}
+.a3-stepper-value input { width: 6ch; }
+
+/* ── CompositionBar ──────────────────────────────────────────────────── */
+/* Layout comes from Tailwind utilities in CompositionBar.tsx itself; this
+   class exists as the DS registration hook the DS-CLASS-EXISTS gate
+   requires for every `a3-*` class referenced in code (no visual rule of
+   its own today — intentional, not a placeholder for a forgotten one). */
+.a3-composition-bar { display: block; }
