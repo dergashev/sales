@@ -3493,6 +3493,23 @@ const store = createStore<Store>((set, get) => {
           contextRef: 'DEMO-SC-01 · Vorschau-Lauf DEMO-RUN-0009',
           futureLabel: out.futureLabel,
         },
+        // AUD-01 (EXP-01/EXP-02, live Playwright finding): `.a3-preview`
+        // and `.a3-delta` share one absolutely-positioned anchor on the
+        // documented assumption that they are "mutually exclusive in
+        // time" (components-core.md §13) — true for fixation clearing the
+        // preview (`apply()`, above), but nothing enforced the OTHER
+        // direction: hovering a genuinely new option WHILE a just-
+        // committed delta chip is still in its display window left BOTH
+        // visible at the identical coordinates, chip painting over the
+        // preview's own first line (later in DOM order wins with no
+        // z-index set on either). A fresh hover-preview is the more
+        // urgent, actionable claim ("what would THIS choice do" beats
+        // "what did I just do") — entering it dismisses the chip early,
+        // matching the priority this ticket's own contract addition
+        // documents (preview > chip > caption). The chip's underlying
+        // journal entry is already recorded via `apply()` at commit time;
+        // this only shortens its OWN visual display, never the record.
+        activeDelta: null,
       })
     },
 

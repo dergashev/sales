@@ -142,10 +142,20 @@ describe('эфемерное состояние принадлежит конт�
     st().setCoverage('KG_400', 'included')
     st().setCoverage('KG_700', 'included')
     st().setKg300('fassade', 'klinker')
-    st().previewOption({ kind: 'coverage', group: 'KG_500', value: 'included' })
     expect(st().activeDelta).not.toBeNull()
-    expect(st().preview).not.toBeNull()
     expect(st().undoToast).not.toBeNull()
+
+    // AUD-01 (EXP-01/EXP-02, live Playwright finding): hovering a genuine
+    // new option now dismisses the just-shown delta chip itself (preview
+    // > chip priority — the two used to be able to coexist, painting on
+    // top of each other in the same anchored slot; that WAS the bug).
+    // `activeDelta`/`preview` can no longer be simultaneously non-null,
+    // so this establishes `preview` fresh instead, and confirms it —
+    // like `activeDelta`/`undoToast` above — does not survive the option
+    // switch below either.
+    st().previewOption({ kind: 'coverage', group: 'KG_500', value: 'included' })
+    expect(st().preview).not.toBeNull()
+    expect(st().activeDelta).toBeNull()
 
     st().openOption('OPT-01')
 

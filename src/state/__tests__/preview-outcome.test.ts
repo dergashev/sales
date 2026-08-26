@@ -186,6 +186,21 @@ describe('AUD-01: превью гасится на КАЖДОМ заявленн
     st().previewOption({ kind: 'coverage', group: 'KG_500', value: 'excluded' })
     expect(st().preview).toBeNull()
   })
+
+  it('hover нового варианта гасит ещё не улетевший дельта-чип предыдущей фиксации (live Playwright finding: оба делят один якорь и рисовались друг на друге)', () => {
+    // Фиксация: чип показан.
+    st().setKg300('fassade', 'klinker')
+    expect(st().activeDelta).not.toBeNull()
+    expect(st().preview).toBeNull()
+    // Немедленный hover ДРУГОГО варианта, пока чип ещё виден — это ровно
+    // сценарий, который живой Playwright-прогон на точном кандидате нашёл
+    // сломанным: `.a3-preview` и `.a3-delta` — оба position:absolute в
+    // одном `.a3-change-slot-anchor`, без z-index — рисовались один на
+    // другом. Приоритет контракта (components-core.md §13): превью > чип.
+    st().previewOption({ kind: 'kg300', buildingId: 'DEMO-B-A', groupId: 'fassade', value: 'timber' })
+    expect(st().preview).not.toBeNull()
+    expect(st().activeDelta).toBeNull()
+  })
 })
 
 /**
