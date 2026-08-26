@@ -1,16 +1,19 @@
 import { Decimal } from 'decimal.js'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useId, useRef, useState, type RefObject } from 'react'
 import demo from '../fixtures/demo-0001.json'
 import opportunities from '../fixtures/opportunities.json'
 import {
+  configForOption,
   preparationProjection,
   preparationStatuses,
   projectBaselineChangesSinceConfirmation,
+  projectionForOption,
   useStore,
   wflConflict,
 } from '../state/store'
 import { effectiveFactValue } from '../state/buildingReview'
-import { NNBSP, formatDE, rateLabel } from '../engine/money'
+import { NNBSP, formatDE, label as moneyLabel, present, rateLabel } from '../engine/money'
 import {
   Button,
   ProvenanceChip,
@@ -19,11 +22,14 @@ import {
 } from '../components/primitives'
 import { StaleState } from '../components/DataStates'
 import { EstimateUncertaintyBadge } from '../components/EstimateUncertaintyBadge'
-import { useT, useTx } from '../i18n'
+import { useT, useTx, localizeMoneyText } from '../i18n'
 import { copyFor } from '../i18n/internal-refs'
 import { DocumentAnalysis } from '../components/DocumentAnalysis'
 import { InternalNote } from '../components/InternalNote'
-import { PageHeader, WorkflowStepper, type WorkflowStep } from '../components/designSystem'
+import {
+  Badge, Card, FormField, PageHeader, WorkflowStepper, type WorkflowStep,
+} from '../components/designSystem'
+import { useSemanticMotion } from '../design-system/motion'
 import { Dialog, type DialogHandle } from '../components/Dialog'
 import { STAGE_TAG } from '../lib/opportunityStage'
 import { factPresentation, stableName } from './BuildingScope'
@@ -192,6 +198,33 @@ function focusSection(ref: RefObject<HTMLElement | null>) {
   ref.current?.focus()
 }
 
+/**
+ * Защита «Opportunity Option anlegen» от срабатывания дважды на один жест
+ * (AUD-03/EXP-04): два быстрых клика раньше читали один и тот же устаревший
+ * снимок `options.length` и обе Option получали одинаковое «Option 2».
+ * Атомарное вычисление имени внутри `createOption` (store.ts) устраняет
+ * саму коллизию независимо от этой защиты — она дополнительно превращает
+ * повторный клик в ОДНО действие, а не два: клик уже открывает пользователя
+ * прямо в новой Option (`pipelineView: 'buildingScope'`), и второй быстрый
+ * клик почти всегда значит «первый как будто не сработал», а не «создай
+ * ещё одну». Это инженерное решение, а не процитированная продуктовая
+ * политика — в отличие от `config/ui-policy.ts`, где у каждой величины
+ * обязан быть назван документ-источник.
+ */
+const OPTION_CREATE_GUARD_MS = 500
+
+/** Тот же состав, что у `OfferPanel.tsx`'s локального `moneyOut` — не
+ *  переизобретается, просто недоступен оттуда как экспорт. */
+function optionRowMoney(exact: Decimal, language: 'de' | 'en'): string {
+  return localizeMoneyText(moneyLabel(present(exact)), language)
+}
+
+function optionEventTimestamp(iso: string, language: 'de' | 'en'): string {
+  return new Intl.DateTimeFormat(language === 'de' ? 'de-DE' : 'en-GB', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  }).format(new Date(iso))
+}
+
 function customerEvidenceDate(capturedAt: string, language: 'de' | 'en'): string {
   return new Intl.DateTimeFormat(language === 'de' ? 'de-DE' : 'en-GB', {
     day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC',
@@ -244,6 +277,129 @@ function InternalNoteDialog({ open, onOpenChange, returnFocusTo }: {
   )
 }
 
+/**
+ * Eine Zeile · Opportunity Option (AUD-03/EXP-04). Vorher ein blanker
+ * `<li>{name} <Button>Öffnen</Button></li>` ohne Zustand, Umfang, Summe oder
+ * Zeitpunkt — jetzt der kanonische `Card` (title/status/meta/actions,
+ * `components-core.md` CARD-001), exakt wie `OpportunityList.tsx` ihn schon
+ * für die Opportunity-Zeile selbst verwendet. Kein neues Primitiv, keine
+ * lokale Kopie.
+ */
+function OptionRow({ option, justCreated, rowRef }: {
+  option: { id: string; name: string }
+  justCreated: boolean
+  rowRef?: RefObject<HTMLLIElement>
+}) {
+  const s = useStore()
+  const t = useT()
+  const tx = useTx()
+  const { fadeRise } = useSemanticMotion()
+  const [renaming, setRenaming] = useState(false)
+  const [draftName, setDraftName] = useState(option.name)
+  const nameInputRef = useRef<HTMLInputElement>(null)
+  const nameFieldId = useId()
+
+  useEffect(() => {
+    if (!renaming) return
+    nameInputRef.current?.focus()
+    nameInputRef.current?.select()
+  }, [renaming])
+
+  function commitRename() {
+    setRenaming(false)
+    const next = draftName.trim()
+    if (next && next !== option.name) s.renameOption(option.id, next)
+    else setDraftName(option.name)
+  }
+
+  // M-3: eine bereits versendete Option ist ein unveränderliches Snapshot —
+  // dasselbe Feld (`snapshots[].optionId`), das den Snapshot selbst nennt,
+  // beantwortet hier "wurde diese Option je verschickt?".
+  const sent = s.snapshots.some((snap) => snap.optionId === option.id)
+  const cfg = configForOption(s, option.id)
+  const projection = projectionForOption(s, option.id)
+  // AUD-03: die Erstellung selbst ist bewusst ein Opportunity-Ereignis
+  // (`optionId: null`, siehe `JournalEvent` in store.ts — sie passiert VOR
+  // dem Eintritt in die Pipeline) und zählt hier deshalb nicht als
+  // "Aktivität dieser Option": eine frisch angelegte, nie geöffnete Option
+  // hat ehrlich keine.
+  const lastOwnEvent = s.journal.filter((e) => e.optionId === option.id).at(-1)
+  const configured = Boolean(lastOwnEvent)
+  const stateLabel = sent ? tx('Versendet') : configured ? tx('In Arbeit') : tx('Neu')
+  const stateSign = sent ? '●' : configured ? '◐' : '○'
+
+  const scope = cfg
+    ? Object.keys(cfg.buildings)
+      .filter((id) => cfg.included[id])
+      .map((id) => cfg.buildings[id]?.stableName ?? tx('Gebäude'))
+      .join(' · ')
+    : ''
+
+  const priceUnavailable = !projection || projection.result.total.exact.isZero()
+  const totalText = projection
+    ? `${t(projection.result.totalLabel)} · ${priceUnavailable
+      ? t('money.priceNotDetermined')
+      : optionRowMoney(projection.result.total.exact, s.uiLanguage)}`
+    : t('money.priceNotDetermined')
+
+  return (
+    <motion.li
+      ref={rowRef}
+      tabIndex={-1}
+      variants={fadeRise}
+      initial={justCreated ? 'hidden' : false}
+      animate="visible"
+      exit="exit"
+      className="outline-none"
+    >
+      <Card
+        className={justCreated ? 'a3-flash' : undefined}
+        title={renaming ? (
+          <FormField label={tx('Name der Option')} htmlFor={nameFieldId}>
+            <input
+              ref={nameInputRef}
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); commitRename() }
+                if (e.key === 'Escape') {
+                  e.preventDefault()
+                  setDraftName(option.name)
+                  setRenaming(false)
+                }
+              }}
+              onBlur={commitRename}
+            />
+          </FormField>
+        ) : option.name}
+        status={<Badge sign={stateSign}>{stateLabel}</Badge>}
+        meta={scope || undefined}
+        actions={
+          <>
+            {!sent && !renaming && (
+              <Button
+                variant="ghost"
+                onClick={() => { setDraftName(option.name); setRenaming(true) }}
+              >
+                {tx('Umbenennen')}
+              </Button>
+            )}
+            <Button onClick={() => s.openOption(option.id)}>{tx('Öffnen')}</Button>
+          </>
+        }
+        onOpen={renaming ? undefined : () => s.openOption(option.id)}
+      >
+        <span className="a3-cap block">{totalText}</span>
+        {lastOwnEvent && (
+          <span className="a3-cap block">
+            {tx('Zuletzt geändert')}{NNBSP}{optionEventTimestamp(lastOwnEvent.at, s.uiLanguage)}
+          </span>
+        )}
+      </Card>
+    </motion.li>
+  )
+}
+
 export function OpportunityCard() {
   const s = useStore()
   const t = useT()
@@ -263,6 +419,26 @@ export function OpportunityCard() {
   const [noteDialogOpen, setNoteDialogOpen] = useState(false)
   const baselineChanges = projectBaselineChangesSinceConfirmation(s)
   const baselineStale = baselineChanges.length > 0
+  // AUD-03/EXP-04: Kontinuität nach dem Anlegen — welche Option ist neu, und
+  // ihre Zeile, um Fokus/Scroll dorthin zu lenken (`focusSection`-Idiom,
+  // hier auf DIE eine Zeile statt den ganzen Abschnitt gerichtet).
+  const lastOptionCreateRequestAtRef = useRef(0)
+  const [justCreatedOptionId, setJustCreatedOptionId] = useState<string | null>(null)
+  const justCreatedRowRef = useRef<HTMLLIElement>(null)
+
+  function handleCreateOption() {
+    const now = Date.now()
+    if (now - lastOptionCreateRequestAtRef.current < OPTION_CREATE_GUARD_MS) return
+    lastOptionCreateRequestAtRef.current = now
+    const id = s.createOption()
+    if (id) setJustCreatedOptionId(id)
+  }
+
+  useEffect(() => {
+    if (!justCreatedOptionId) return
+    justCreatedRowRef.current?.scrollIntoView?.({ block: 'nearest' })
+    justCreatedRowRef.current?.focus()
+  }, [justCreatedOptionId])
 
   useEffect(() => {
     if (!focusConfirmationAfterAction.current) return
@@ -895,20 +1071,24 @@ export function OpportunityCard() {
             variant="primary"
             disabled={!canCreateOptions}
             disabledReason={createOptionDisabledReason}
-            onClick={() => s.createOption(`Option ${s.options.length + 1}`)}
+            onClick={handleCreateOption}
           >
             {tx('Opportunity Option anlegen')}
           </Button>
         </div>
 
         {s.options.length > 0 && (
-          <ul className="mt-3">
-            {s.options.map((o) => (
-              <li key={o.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle py-2">
-                <span className="text-body text-text-primary">{o.name}</span>
-                <Button onClick={() => s.openOption(o.id)}>{tx('Öffnen')}</Button>
-              </li>
-            ))}
+          <ul className="mt-3 flex flex-col gap-3">
+            <AnimatePresence initial={false}>
+              {s.options.map((o) => (
+                <OptionRow
+                  key={o.id}
+                  option={o}
+                  justCreated={o.id === justCreatedOptionId}
+                  rowRef={o.id === justCreatedOptionId ? justCreatedRowRef : undefined}
+                />
+              ))}
+            </AnimatePresence>
           </ul>
         )}
       </section>

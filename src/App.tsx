@@ -72,6 +72,20 @@ export function App() {
   // Куда вернуть фокус после ворот, открытых из шапки.
   const modeRef = useRef<HTMLButtonElement>(null)
   const firstRender = useRef(true)
+  // AUD-03/EXP-04: `activeOptionId` changes the instant an Option is
+  // CREATED from the Opportunity Card (`store.ts`'s `createOption`), before
+  // the user ever enters that Option's configurator — `level` stays
+  // whatever it already was. Reading the raw id below treated that in-place
+  // list append as "arrived at a new document" and reset scroll/focus while
+  // the visible screen never changed (verified scrollTop=0 on a screen that
+  // never navigated). The reset must still fire for every GENUINE option
+  // transition, including switching from one option's configurator
+  // straight to another's while `level` itself stays `'option'`
+  // (`openOption` always keeps `level: 'option'` for that case) — so this
+  // narrows the signal to "which option, if any, is the current DOCUMENT",
+  // which is `null` outside `level: 'option'` regardless of how many times
+  // the underlying id changes underneath.
+  const optionLevelId = s.level === 'option' ? s.activeOptionId : null
   useEffect(() => {
     // jsdom не реализует scrollTo на элементах — свойство надёжнее метода.
     if (mainRef.current) mainRef.current.scrollTop = 0
@@ -86,7 +100,7 @@ export function App() {
       if (!heading.hasAttribute('tabindex')) heading.tabIndex = -1
       heading.focus({ preventScroll: true })
     }
-  }, [renderedView, s.openConfiguratorStep, s.activeOptionId, s.level, s.mode,
+  }, [renderedView, s.openConfiguratorStep, optionLevelId, s.level, s.mode,
     s.configurationModeChosen, s.configurationModeEditing])
 
   // Defensive fail-closed projection: normal store transitions leave client

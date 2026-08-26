@@ -253,3 +253,100 @@ describe('черновик письма принадлежит Option (нахо�
     expect(own).toBeUndefined()
   })
 })
+
+describe('AUD-03/EXP-04: авто-имя Option уникально под любым темпом клика', () => {
+  it('без явного имени вычисляет его атомарно от optionSeq, не от длины списка', async () => {
+    st().openOpportunity('DEMO-0001')
+    st().resolveWflConflict('customer')
+    st().confirmProjectParams()
+    // Три вызова БЕЗ имени, один за другим — ровно то, что UI-компонент
+    // теперь делает при клике (`s.createOption()`); раньше вызывающая
+    // сторона сама вычисляла `Option ${s.options.length + 1}` от снимка
+    // рендера, и два быстрых клика читали одну и ту же длину.
+    st().createOption()
+    st().createOption()
+    st().createOption()
+    expect(st().options.map((o) => o.name)).toEqual(['Option 1', 'Option 2', 'Option 3'])
+    // Имена уникальны — самая суть AC-1.
+    expect(new Set(st().options.map((o) => o.name)).size).toBe(3)
+  })
+
+  it('имя остаётся уникальным даже через удаление (отмену) — как id, надгробие', async () => {
+    st().openOpportunity('DEMO-0001')
+    st().resolveWflConflict('customer')
+    st().confirmProjectParams()
+    st().createOption()
+    st().createOption()
+    expect(st().options.map((o) => o.name)).toEqual(['Option 1', 'Option 2'])
+    st().undo()
+    expect(st().options.map((o) => o.name)).toEqual(['Option 1'])
+    st().createOption()
+    // Прежде это снова дало бы «Option 2» (aus `options.length + 1`,
+    // wieder 2) — mit demselben Namen wie die soeben rückgängig gemachte,
+    // obwohl deren `id` (`OPT-02`) niemals wiederverwendet wird.
+    expect(st().options.map((o) => o.name)).toEqual(['Option 1', 'Option 3'])
+  })
+
+  it('createOption gibt die id der neuen Option zurück, oder null wenn das Gate zu ist', async () => {
+    st().openOpportunity('DEMO-0001')
+    expect(st().canCreateOptions()).toBe(false)
+    expect(st().createOption()).toBeNull()
+    st().resolveWflConflict('customer')
+    st().confirmProjectParams()
+    const id = st().createOption()
+    expect(id).toBe('OPT-01')
+    expect(st().options.find((o) => o.id === id)).toBeDefined()
+  })
+
+  it('ein explizit übergebener Name gewinnt weiterhin (bestehende Aufrufer bleiben gültig)', async () => {
+    await toPipeline()
+    st().createOption('Basis')
+    expect(st().options.map((o) => o.name)).toEqual(['Option 1', 'Basis'])
+  })
+
+  it('genau EIN Journal-Event und EIN Undo-Toast pro erzeugter Option', async () => {
+    st().openOpportunity('DEMO-0001')
+    st().resolveWflConflict('customer')
+    st().confirmProjectParams()
+    const before = st().journal.length
+    st().createOption()
+    expect(st().journal.length).toBe(before + 1)
+    expect(st().journal.at(-1)!.label).toContain('Option 1')
+    expect(st().undoToast?.statusText).toContain('Option 1')
+    st().createOption()
+    expect(st().journal.length).toBe(before + 2)
+    expect(st().journal.at(-1)!.label).toContain('Option 2')
+    expect(st().undoToast?.statusText).toContain('Option 2')
+  })
+})
+
+describe('AUD-03/EXP-10: renameOption ändert nur den Namen', () => {
+  it('journalisiert die Umbenennung, mit Undo', async () => {
+    await toPipeline()
+    const before = st().journal.length
+    st().renameOption('OPT-01', 'Zielangebot')
+    expect(st().options.find((o) => o.id === 'OPT-01')!.name).toBe('Zielangebot')
+    expect(st().journal.length).toBe(before + 1)
+    expect(st().undoToast).not.toBeNull()
+    st().undo()
+    expect(st().options.find((o) => o.id === 'OPT-01')!.name).toBe('Option 1')
+  })
+
+  it('no-op bei leerem oder unverändertem Namen — kein leeres Journal-Event', async () => {
+    await toPipeline()
+    const before = st().journal.length
+    st().renameOption('OPT-01', '   ')
+    st().renameOption('OPT-01', 'Option 1')
+    expect(st().journal.length).toBe(before)
+    expect(st().options.find((o) => o.id === 'OPT-01')!.name).toBe('Option 1')
+  })
+
+  it('M-3: eine bereits versendete Option lässt sich nicht umbenennen, auch nicht direkt am Store', async () => {
+    await toPipeline()
+    st().sendOffer('email')
+    const before = st().journal.length
+    st().renameOption('OPT-01', 'Nach dem Versand')
+    expect(st().options.find((o) => o.id === 'OPT-01')!.name).toBe('Option 1')
+    expect(st().journal.length).toBe(before)
+  })
+})

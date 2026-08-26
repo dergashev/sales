@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
 import { confirmBuildingReviewSections } from '../../test/offer-option'
@@ -224,5 +224,94 @@ describe('Уровень Opportunities', () => {
     expect(screen.queryByRole('button', { name: 'Interne Notiz' })).toBeNull()
     expect(screen.queryByRole('textbox', { name: /Interne Notiz/ })).toBeNull()
     expect(document.body.textContent).not.toContain('HubSpot-Projektkarte')
+  })
+})
+
+describe('AUD-03 — Option identity & creation continuity', () => {
+  async function reachCreateGate(user: ReturnType<typeof userEvent.setup>) {
+    render(<App />)
+    await user.click(screen.getByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
+    await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
+    await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
+  }
+
+  it('AC-1/AC-2: ein schneller Doppelklick erzeugt genau eine Option, ein Journal-Event', async () => {
+    const user = userEvent.setup()
+    await reachCreateGate(user)
+    const create = screen.getByRole('button', { name: 'Opportunity Option anlegen' })
+    const journalBefore = useStore.getState().journal.length
+    // `fireEvent`, nicht `userEvent`: zwei WIRKLICH unmittelbar
+    // aufeinanderfolgende Klick-Events, ohne die kleine reale Verzögerung,
+    // die `userEvent.click()` selbst schon einführt — genau der
+    // Doppelklick-Fall, den die Guard-Zeit abfangen soll (AC-1).
+    fireEvent.click(create)
+    fireEvent.click(create)
+    expect(useStore.getState().options).toHaveLength(1)
+    expect(useStore.getState().journal.length).toBe(journalBefore + 1)
+    expect(useStore.getState().undoToast?.statusText).toContain('Option 1')
+  })
+
+  it('AC-1: ein Klick nach Ablauf der Guard-Zeit erzeugt eine ZWEITE, eindeutig benannte Option', async () => {
+    const user = userEvent.setup()
+    await reachCreateGate(user)
+    const create = () => screen.getByRole('button', { name: 'Opportunity Option anlegen' })
+    await user.click(create())
+    expect(useStore.getState().options.map((o) => o.name)).toEqual(['Option 1'])
+    // Über die Guard-Zeit hinaus warten (echte Timer, wie der bestehende
+    // DELTA_CHIP_MS-Wait weiter oben in dieser Datei) — kein Doppelklick,
+    // ein zweiter, eigenständiger Klick.
+    await act(() => new Promise((r) => setTimeout(r, 600)))
+    await user.click(create())
+    expect(useStore.getState().options.map((o) => o.name)).toEqual(['Option 1', 'Option 2'])
+  })
+
+  it('AC-3: nach dem Anlegen liegt der Fokus auf der NEUEN Zeile, nicht auf der Seitenüberschrift', async () => {
+    const user = userEvent.setup()
+    await reachCreateGate(user)
+    // Regressionswache für den eigentlichen Fund: das Erzeugen einer Option
+    // hat früher `App.tsx`'s globalen "neues Dokument"-Effekt fälschlich
+    // ausgelöst (scrollTop=0 + Fokus auf das Seiten-`h1`), obwohl der
+    // Bildschirm dieselbe Opportunity Card blieb.
+    const heading = screen.getByRole('heading', { name: 'Musterprojekt Nordfeld' })
+    await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
+    const row = screen.getByText('Option 1').closest('li')!
+    expect(row.contains(document.activeElement)).toBe(true)
+    expect(document.activeElement).not.toBe(heading)
+  })
+
+  it('AC-3: Umbenennen funktioniert in einer Interaktion, inline', async () => {
+    const user = userEvent.setup()
+    await reachCreateGate(user)
+    await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
+    await user.click(screen.getByRole('button', { name: 'Umbenennen' }))
+    const field = screen.getByLabelText('Name der Option')
+    await user.clear(field)
+    await user.type(field, 'Zielangebot{Enter}')
+    expect(screen.queryByText('Option 1')).toBeNull()
+    expect(screen.getByText('Zielangebot')).toBeInTheDocument()
+    expect(useStore.getState().options[0]!.name).toBe('Zielangebot')
+  })
+
+  it('AC-4: frische Option zeigt Neu/Umfang/Summe aus der Engine, gesendete verliert Umbenennen', async () => {
+    const user = userEvent.setup()
+    await reachCreateGate(user)
+    await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
+    const row = () => screen.getByText('Option 1').closest('li')!
+    expect(row()).toHaveTextContent('Neu')
+    // Die Fixture bringt bereits reale Gebäudefakten mit (Dokumentanalyse
+    // lief vor Options überhaupt existieren) — eine frische Option zeigt
+    // deshalb sofort eine ehrliche, unvollständige Summe (rule 16), nicht
+    // "Preis nicht ermittelt": beides ist derselbe `priceUnavailable`-Pfad,
+    // hier trifft nur der andere Zweig zu. Der EXAKTE Wert kommt aus
+    // `projectionForOption`, nicht aus einer eigenen UI-Berechnung.
+    const total = useStore.getState().projection().result.total.exact
+    expect(total.isZero()).toBe(false)
+    expect(row()).toHaveTextContent('Zwischensumme der kalkulierten Positionen')
+    expect(row()).toHaveTextContent('€')
+    expect(screen.getByRole('button', { name: 'Umbenennen' })).toBeInTheDocument()
+
+    act(() => { useStore.getState().sendOffer('email') })
+    expect(row()).toHaveTextContent('Versendet')
+    expect(screen.queryByRole('button', { name: 'Umbenennen' })).toBeNull()
   })
 })

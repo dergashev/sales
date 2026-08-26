@@ -191,6 +191,13 @@
 .a3-card-destination::after{content:'';position:absolute;inset:0}
 .a3-card-meta,.a3-card-noninteractive{position:relative;z-index:1;font-size:var(--type-small-size);line-height:var(--type-small-line)}
 .a3-card-actions{position:relative;z-index:2;display:flex;gap:var(--space-2);flex-wrap:wrap}
+/* AUD-03/EXP-04: creation continuity — the same canonical `a3-flash`
+   animation already used for `tr.a3-flash>td` (row 332) and
+   `.a3-journal.a3-flashJ` (row 569), reused verbatim on the Card a freshly
+   created Opportunity Option renders as. Not a new animation; already
+   silenced by the blanket `[class^="a3-"]` prefers-reduced-motion rule
+   below. */
+.a3-card-core.a3-flash{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-badge.a3-badge-metadata{font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);font-weight:var(--type-badge-metadata-weight)}
 .a3-chip-control{min-height:var(--size-hit-target-default);display:inline-flex;align-items:center;gap:var(--space-2);border:var(--border-default);background:var(--color-surface-default);padding:0 var(--space-3);font:inherit;cursor:pointer}
 .a3-chip-control[aria-pressed="true"]{border:var(--border-selected);background:var(--color-surface-selected)}

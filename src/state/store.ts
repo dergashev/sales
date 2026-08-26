@@ -1464,7 +1464,18 @@ type Store = {
   confirmProjectParams: () => void
   /** Гейт: можно ли создавать Options (конфликты решены, параметры приняты). */
   canCreateOptions: () => boolean
-  createOption: (name: string) => void
+  /**
+   * `name` необязателен: без него авто-имя вычисляется атомарно внутри
+   * действия от монотонного `optionSeq` (AUD-03/EXP-04 — см. docstring
+   * реализации). Возвращает id созданной Option, либо `null`, если гейт
+   * закрыт и создание не произошло.
+   */
+  createOption: (name?: string) => string | null
+  /**
+   * Переименование — только `name`; никогда не тронет уже отправленную
+   * (снапшот, M-3) Option. См. docstring реализации.
+   */
+  renameOption: (id: string, name: string) => void
   /** Тихая запись заметки: событие журнала есть, тоста нет (правило 34). */
   saveNote: (text: string) => void
   /** Симуляция круга до CRM завершилась — отдельное событие (NOTE-003). */
@@ -3644,7 +3655,7 @@ const store = createStore<Store>((set, get) => {
     },
 
     createOption: (name) => {
-      if (!get().canCreateOptions()) return
+      if (!get().canCreateOptions()) return null
       const s = get()
       // Идентификатор МОНОТОНЕН, а не выведен из длины списка. Прежде
       // удаление OPT-02 и создание новой давало снова `OPT-02`, и события
@@ -3653,6 +3664,14 @@ const store = createStore<Store>((set, get) => {
       // не свободное место.
       const seq = s.optionSeq + 1
       const id = `OPT-${String(seq).padStart(2, '0')}`
+      // AUD-03/EXP-04: авто-имя раньше приходило от вызывающего компонента
+      // как `Option ${s.options.length + 1}`, читая снимок рендера ДО
+      // перерисовки. Два быстрых клика читали одну и ту же длину списка и
+      // обе Option получали одинаковое «Option 2» — притом что `id` выше
+      // уже был застрахован от этого тем же монотонным счётчиком. Имя теперь
+      // вычисляется ЗДЕСЬ, в момент самого атомарного перехода, от того же
+      // `seq` — тем же счётчиком, тем же надгробным правилом, что и `id`.
+      const resolvedName = name ?? `Option ${seq}`
       const fresh = defaultOptionConfig()
       // Состояние ДО создания — целиком, чтобы отмена вернула его, а не
       // приблизила: рабочая копия, хранилище конфигураций, активная Option
@@ -3689,7 +3708,7 @@ const store = createStore<Store>((set, get) => {
       }
       set({
         ...NO_TRANSIENT,
-        options: [...s.options, { id, name }],
+        options: [...s.options, { id, name: resolvedName }],
         activeOptionId: id,
         optionSeq: seq,
         pipelineView: 'buildingScope',
@@ -3709,7 +3728,7 @@ const store = createStore<Store>((set, get) => {
       let removed: OptionConfig = fresh
       apply({
         kind: 'value.edited',
-        label: `Opportunity Option «${name}» angelegt`,
+        label: `Opportunity Option «${resolvedName}» angelegt`,
         deltaExact: null,
         inverse: () => set((x) => {
           const { [id]: stored, ...rest } = x.optionConfigs
@@ -3736,7 +3755,7 @@ const store = createStore<Store>((set, get) => {
           }
         }),
         forward: () => set((x) => ({
-          options: [...x.options, { id, name }],
+          options: [...x.options, { id, name: resolvedName }],
           activeOptionId: id,
           level: 'option' as const,
           pipelineView: 'buildingScope' as const,
@@ -3747,6 +3766,37 @@ const store = createStore<Store>((set, get) => {
           configurationModeEditing: false,
           preview: null,
           activeDelta: null,
+        })),
+      })
+      return id
+    },
+
+    /**
+     * Nur `name` ändert sich — id, Konfiguration und alle Snapshots der
+     * Option bleiben unberührt. Journalisiert wie jede andere Änderung
+     * (M-4); dieselbe Wache wie im UI (kein Umbenennen-Control neben dem
+     * „Versendet"-Badge, AUD-03) lebt hier NOCH EINMAL, damit die Regel
+     * nicht nur von der Anzeige abhängt: eine bereits versendete Option ist
+     * ein unveränderliches Snapshot (M-3), auch wenn ein Aufruf das
+     * UI-Verbot umgeht.
+     */
+    renameOption: (id, name) => {
+      const trimmed = name.trim()
+      const s = get()
+      const current = s.options.find((o) => o.id === id)
+      if (!current || !trimmed || trimmed === current.name) return
+      if (s.snapshots.some((sn) => sn.optionId === id)) return
+      const previousName = current.name
+      set({ options: s.options.map((o) => (o.id === id ? { ...o, name: trimmed } : o)) })
+      apply({
+        kind: 'value.edited',
+        label: `Opportunity Option «${previousName}» in «${trimmed}» umbenannt`,
+        deltaExact: null,
+        inverse: () => set((x) => ({
+          options: x.options.map((o) => (o.id === id ? { ...o, name: previousName } : o)),
+        })),
+        forward: () => set((x) => ({
+          options: x.options.map((o) => (o.id === id ? { ...o, name: trimmed } : o)),
         })),
       })
     },
