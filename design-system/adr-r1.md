@@ -9,7 +9,20 @@ convention (`docs/audit/adr-blocking.md`).
 Status legend: **RATIFIED** (implemented, contrast/behaviour evidence
 attached or explicitly flagged as still required) · **PENDING EVIDENCE**
 (implemented, a specific measurement is still owed before the ADR can
-close per TOKEN-005's beta/stable gate).
+close per TOKEN-005's beta/stable gate) · **EVIDENCE VERIFIED (technical) —
+DESIGN ACCEPTANCE PENDING** (the owed measurement has been taken against a
+verified CURRENT_MAIN runtime and recorded below; this closes the
+TOKEN-005 technical-evidence obligation only — it is not RATIFIED, because
+RATIFIED additionally asserts final Design Director visual/aesthetic
+acceptance, which is the separate Post-R1 Design Director Release Audit's
+job) · **EVIDENCE FAILED – DESIGN REVIEW REQUIRED** (the measurement was
+taken and recorded, and it falls short of the bar that applies to it; the
+token is deliberately left unchanged here — the Design Director decides
+whether the value, the treatment, or the use case changes).
+
+*Added 2026-08-26 (R1 Evidence Closure, task base `967c36869a1572652ee8a900723f85f244f1b605`):
+ADR-R1-02 and ADR-R1-03 below were promoted from PENDING EVIDENCE using
+these two new terminal states. Neither promotion asserts RATIFIED.*
 
 ---
 
@@ -56,12 +69,24 @@ primitive for print/brand contexts; it is no longer the app's canvas.
 expressive peak. Orange display numerals are legal there, extending rule 5
 beyond `--color-surface-default`.
 
-**Status:** PENDING EVIDENCE. Estimated contrast (#FD5E00 on #1F1F1F)
-≈5.3:1, comfortably above the ≥3:1 large-text bar — but this ADR requires a
-**measured**, not estimated, reading before it closes (`tools/verify.py`'s
-R-01 whitelist already includes `--color-text-display-accent-on-stage-
-deep`, so the mechanism is live; the number itself needs verification with
-real rendering tools, not calculation).
+**Status:** EVIDENCE VERIFIED (technical) — DESIGN ACCEPTANCE PENDING.
+Measured 2026-08-26 against runtime SHA `967c36869a1572652ee8a900723f85f244f1b605`
+(CURRENT_MAIN, `.worktrees/r1-validation`, byte-identical to `origin/master`
+for every `src/**` and `*.css` path). `tools/verify.py`'s R-01 whitelist
+already includes `--color-text-display-accent-on-stage-deep`; the number
+below is the first measured (not estimated) reading.
+
+**Measured evidence:**
+
+| Pairing | Rendered value | Background | Measurement method | Measured result | Applicable bar | Status |
+|---|---|---|---|---|---|---|
+| Brand orange display numeral on stage-deep | `rgb(253,94,0)` = `#FD5E00` | `rgb(31,31,31)` = `#1F1F1F` | Playwright CLI, `getComputedStyle` on the rendered 64px/700 numeral in the Gallery `r1-composed-stage` specimen ("Composed: Commercial Stage Moment"), cross-checked by decoding the pixel colour from a full-resolution element screenshot (`PIL`, both channels sampled independently) | **5.32 : 1** (WCAG relative-luminance formula from the measured RGB pair) | WCAG 1.4.3 large text, ≥3∶1 (64px/700 is far above the 18.67px-bold large-text threshold; this specific use is the R-01 rule 5 display-numeral exception, not body text) | **PASS** |
+
+Both extraction methods agreed exactly on the rendered colours (no opacity,
+filter, `mix-blend-mode` or text-shadow present on either the text or its
+container — verified via `getComputedStyle` before trusting the pixel
+sample). The reading also clears the stricter 4.5∶1 normal-text bar, so no
+edge case remains open at any plausible reading of the numeral's role.
 
 **Consequence:** stage-deep is reserved for genuinely important commercial
 moments (composed specimen: "Commercial Stage Moment") — never a working
@@ -83,12 +108,72 @@ remediation audit (design-system-remediation TOKEN-005):
    deliberate absence that made `.a3-tag.a3-orange` a no-op) to a deep
    amber, `#946300` (closes COLOR-006).
 
-**Status:** PENDING EVIDENCE. Values are chosen inside the stated design
-constraints (architectural family for dataviz, "distinct from brand
-orange" for warning) but a full contrast-evidence table for every new
-pairing (each dataviz colour against white/plaster, warning against white)
-is a required follow-up before `beta`/`stable` per TOKEN-005 — not yet
-produced in this pass.
+**Status:** EVIDENCE VERIFIED (technical) for the dataviz ramp's ratified
+graphical role and for the warning colour — **EVIDENCE FAILED – DESIGN
+REVIEW REQUIRED** for one discovered pre-existing text-role use of
+category-2 (see finding below). DESIGN ACCEPTANCE PENDING on the passing
+parts. Measured 2026-08-26 against runtime SHA
+`967c36869a1572652ee8a900723f85f244f1b605` (CURRENT_MAIN,
+`.worktrees/r1-validation`).
+
+**Measured evidence — dataviz ramp (graphical role):** every category
+segment in `CompositionBar` is `aria-hidden`, separated by a mandatory 1px
+`--color-dataviz-segment-divider`, and has a full textual equivalent
+(container `aria-label` in compact mode: confirmed rendered, e.g.
+`"KG 200 · Herrichten & Erschließen ≈ 184.000 € · 6 % · …"` — using
+U+202F between each number and its unit, per rule 7); a visible
+legend `<li>` with the same label/value/percent in expanded mode: confirmed
+rendered). Per WCAG 1.4.11 with a documented redundant-text exemption, the
+applicable criterion for a hue this component only ever uses this way is
+**non-text graphical object, exempted by the co-rendered textual
+equivalent** — a sub-3∶1 ratio here is recorded, not failed, because the
+mandatory divider plus the textual equivalent already carry the meaning
+non-colour-only.
+
+| Pairing | Rendered value | Background | Method | Measured ratio | Semantic role / bar | Status |
+|---|---|---|---|---|---|---|
+| `--color-dataviz-category-1` | `rgb(206,194,169)` = `#CEC2A9` | `#FFFFFF` / `#EDEBE4` | `getComputedStyle` on live `CompositionBar` segment, Gallery `r1-compositionbar`; pixel-decoded cross-check | 1.76∶1 / 1.48∶1 | Graphical, text-redundant — no normative text bar | PASS (redundancy) |
+| `--color-dataviz-category-2` | `rgb(192,138,108)` = `#C08A6C` | `#FFFFFF` / `#EDEBE4` | same | 2.96∶1 / 2.48∶1 | Graphical, text-redundant — no normative text bar | PASS (redundancy) — **but see finding below: this same value also has a non-redundant text-role use elsewhere** |
+| `--color-dataviz-category-3` | `rgb(74,74,72)` = `#4A4A48` | `#FFFFFF` / `#EDEBE4` | same | 8.88∶1 / 7.45∶1 | Graphical, text-redundant | PASS (also clears the 4.5∶1 text bar with margin) |
+| `--color-dataviz-category-4` | `rgb(94,110,98)` = `#5E6E62` | `#FFFFFF` / `#EDEBE4` | same | 5.41∶1 / 4.53∶1 | Graphical, text-redundant | PASS (also clears the 4.5∶1 text bar) |
+| `--color-dataviz-category-5` | `#5C6B7A` (token-resolved; **not exercised by any rendered specimen in this pass** — the demo fixture's `CompositionBar` instances only cycle through categories 1–4 and 6) | `#FFFFFF` / `#EDEBE4` | Computed from the token declaration only, not live-rendered | 5.47∶1 / 4.59∶1 (computed from the declared hex, cross-checked against the WCAG formula used for every other row) | Graphical, text-redundant | PASS by computation — **runtime rendering not directly observed; re-verify if a specimen ever exercises it** |
+| `--color-dataviz-category-6` | `rgb(184,168,126)` = `#B8A87E` | `#FFFFFF` / `#EDEBE4` | `getComputedStyle` on live segment; pixel-decoded cross-check | 2.35∶1 / 1.97∶1 | Graphical, text-redundant — no normative text bar | PASS (redundancy) |
+
+**Measured evidence — warning colour:**
+
+| Pairing | Rendered value | Background | Method | Measured ratio | Role / bar | Status |
+|---|---|---|---|---|---|---|
+| `--color-status-warning`, glyph-as-text on white | `rgb(148,99,0)` = `#946300` | `#FFFFFF` | `getComputedStyle` on the live `.a3-wfs-marker` "!" glyph, Gallery `r1-workflowstepper` `attention` state | **5.19∶1** | Small text/glyph carrying state meaning → WCAG 1.4.3, ≥4.5∶1 | **PASS** |
+| `--color-status-warning`, white text/icon on warning fill (`.a3-modal .a3-warnc`) | same custom property, not independently re-rendered this pass | `#946300` | Same measured token value (identical `var(--color-status-warning)` reference, no overriding rule found in `components.css`/`components-r1.css`) | 5.19∶1 (same pairing, direction-independent) | Text/icon on colour → ≥4.5∶1 | **PASS** — carried from the same measured value; not independently re-rendered in a live `.a3-warnc` instance this pass |
+| `--color-status-warning`, border-only (`.a3-tag.a3-orange`, `.a3-zone.a3-yellow`, `.a3-warn-prep`) | same | `#FFFFFF` | Same measured token value | 5.19∶1 | Non-text graphical/border → WCAG 1.4.11, ≥3∶1 | **PASS** |
+
+**FINDING — pre-existing category-2 text-role use, discovered during this
+pass (not part of the original ADR-R1-03 handoff, but the same token and
+therefore in scope for this ADR's evidence):** `components.css` still
+consumes `--color-dataviz-category-2` as **text on white** and as
+**white-on-category-2 glyphs/backgrounds** in several selectors that
+predate this repoint (`.a3-d.a3-save`, `.a3-q .a3-fx`, `.a3-plog .a3-okc`,
+`.a3-doc .a3-okc`, `.a3-ch.a3-done .a3-n`, `.a3-wf-done .a3-n`), rendered by
+live product screens (`OfferPanel`, `OpportunityCard`, `S4Vergleich`,
+`OptionChapter`, `Sidebar`, `DocumentAnalysis`). These selectors were not
+found rendered by any reachable state in this pass's exploration (would
+need a specific fixture/interaction state), so the pairing below is
+computed from the same live-measured `#C08A6C` value rather than observed
+directly in each consuming selector — the colour itself is measured, only
+the exact consuming DOM instance is not:
+
+| Pairing | Rendered value (measured, `CompositionBar`) | Background | Method | Measured/computed ratio | Role / bar | Status |
+|---|---|---|---|---|---|---|
+| `--color-dataviz-category-2` as text-on-white (`.a3-d.a3-save`, `.a3-q .a3-fx`) | `#C08A6C` | `#FFFFFF` | WCAG formula computed from the `getComputedStyle`-measured value above (not independently re-rendered in the exact consuming selector) | 2.96∶1 | Text conveying a value (savings figure) → WCAG 1.4.3, ≥4.5∶1 | **FAIL** |
+| `--color-dataviz-category-2` as white-glyph-on-fill (`.a3-plog/.a3-doc .a3-okc`, `.a3-ch.a3-done .a3-n`, `.a3-wf-done .a3-n`) | `#C08A6C` | same | same | 2.96∶1 | Glyph carrying done/state meaning → ≥4.5∶1 as text, ≥3∶1 minimum as graphical | **FAIL** at both applicable bars |
+| `--color-dataviz-category-2` as border-only (`.a3-zone.a3-green`, `.a3-delta.a3-saving`) | `#C08A6C` | same | same | 2.96∶1 | Non-text graphical/border → ≥3∶1 | **FAIL** (marginally, 2.96 < 3.00) |
+
+Per this task's failure-handling contract: **the token is not changed
+here.** This finding, with its exact selectors and consuming screens, is
+carried into the Design Director input pack — the Director decides whether
+the value, the treatment, or these specific use cases change. The
+`CompositionBar` graphical use of the same token (table above) is unaffected
+and stays PASS.
 
 **Consequence:** every dataviz consumer (`CompositionBar`) separates
 adjacent segments with a mandatory 1px `--color-dataviz-segment-divider` —
