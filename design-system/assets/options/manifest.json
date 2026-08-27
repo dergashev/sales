@@ -238,55 +238,6 @@
     "source": "OpenAI ImageGen, generiert am 2026-08-07"
   },
   {
-    "group": "qng",
-    "value": "keins",
-    "file": "opt-qng-keins.webp",
-    "motifDe": "Materialmuster ohne Prüf- oder Zertifizierungsmotiv",
-    "source": "OpenAI ImageGen, generiert am 2026-08-07"
-  },
-  {
-    "group": "qng",
-    "value": "plus",
-    "file": "opt-qng-plus.webp",
-    "motifDe": "Qualitätsprüfung mit offiziellem QNG-Plus-Siegel",
-    "source": "Basisbild: OpenAI ImageGen, generiert am 2026-08-07; offizielles QNG-Plus-Siegel: https://www.qng.info/wp-content/uploads/2022/12/QNG-Siegel-Plus.svg"
-  },
-  {
-    "group": "qng",
-    "value": "premium",
-    "file": "opt-qng-premium.webp",
-    "motifDe": "Umfassende Qualitätsprüfung mit offiziellem QNG-Premium-Siegel",
-    "source": "Basisbild: OpenAI ImageGen, generiert am 2026-08-07; offizielles QNG-Premium-Siegel: https://www.qng.info/wp-content/uploads/2022/12/QNG-Siegel-Premium.svg"
-  },
-  {
-    "group": "dgnb",
-    "value": "keins",
-    "file": "opt-dgnb-keins.webp",
-    "motifDe": "Materialtisch ohne Prüf- oder Zertifizierungsmotiv",
-    "source": "OpenAI ImageGen, generiert am 2026-08-07"
-  },
-  {
-    "group": "dgnb",
-    "value": "silber",
-    "file": "opt-dgnb-silber.webp",
-    "motifDe": "Basisprüfung von Material und Raumluft mit offiziellem DGNB-Logo",
-    "source": "Basisbild: OpenAI ImageGen, generiert am 2026-08-07; offizielles Vereinslogo: © DGNB, https://www.dgnb.de/typo3conf/ext/mq_layout_custom/Resources/Public/Images/sites/dgnb_241_ev/DGNB_Verein.svg"
-  },
-  {
-    "group": "dgnb",
-    "value": "gold",
-    "file": "opt-dgnb-gold.webp",
-    "motifDe": "Erweiterte Nachhaltigkeitsprüfung mit offiziellem DGNB-Logo",
-    "source": "Basisbild: OpenAI ImageGen, generiert am 2026-08-07; offizielles Vereinslogo: © DGNB, https://www.dgnb.de/typo3conf/ext/mq_layout_custom/Resources/Public/Images/sites/dgnb_241_ev/DGNB_Verein.svg"
-  },
-  {
-    "group": "dgnb",
-    "value": "platin",
-    "file": "opt-dgnb-platin.webp",
-    "motifDe": "Umfassendes Inbetriebnahme- und Prüfset mit offiziellem DGNB-Logo",
-    "source": "Basisbild: OpenAI ImageGen, generiert am 2026-08-07; offizielles Vereinslogo: © DGNB, https://www.dgnb.de/typo3conf/ext/mq_layout_custom/Resources/Public/Images/sites/dgnb_241_ev/DGNB_Verein.svg"
-  },
-  {
     "group": "configurationMode",
     "value": "SHARED",
     "file": "opt-configurationMode-SHARED.png",
