@@ -44,6 +44,30 @@ const DERIVED_LABEL = derived.provenanceLabel
  * Материал и оси фасадных вариантов (DC-20). Плейсхолдер-образцы системы,
  * не рендеры (D-21). Оси — читаемая сводка выбранного под сеткой.
  */
+/**
+ * Redesign R4 (calm-density finding): a genuinely binary "aufnehmen / nicht
+ * aufnehmen" inclusion decision carries no differentiating image at all —
+ * `optionImage(g.id, value)` resolves the SAME group-level motif for both
+ * `ja` and `nein` (there is nothing else to depict for "leave this cost
+ * group out"), so the 4:3 media slot was pure vertical cost with zero
+ * information value: ~1.200 px / 2 image tiles per binary decision measured
+ * live on KG 300 (Erdarbeiten, Bodenplatte, Balkone, Garage). A genuine
+ * material choice (Bauweise Holz/Massiv, Fassade, Balkontyp …) keeps its
+ * image — there the image IS the decision.
+ *
+ * `RadioCardGroup`'s image slot is already optional
+ * (`image?: {...} | null`) and falls back to the canonical compact
+ * non-image tile with ZERO component change — the same fallback R2 already
+ * proved out removing the garage/qng/dgnb near-duplicate image pairs
+ * (`design-system-remediation-programme` memory). No new Design System
+ * primitive, no new local pattern — this reuses existing canonical
+ * behaviour on genuinely differentiated data.
+ */
+function isBinaryInclusionGroup(g: OptionGroup): boolean {
+  return g.choices.length === 2
+    && g.choices.every((c) => c.value === 'ja' || c.value === 'nein')
+}
+
 const FACADE_PRESENTATION: Record<string, { material: FacadeMaterial; axes: string[] }> = {
   plaster: { material: 'putz', axes: ['Material: Putz', 'Farbwelt: hell'] },
   timber: { material: 'holz', axes: ['Material: Holz vertikal', 'Farbwelt: natur'] },
@@ -224,6 +248,7 @@ export function OptionChapter({ groups, intro }: {
                 const outcome = (v: string) => s.outcomeOf({
                   kind: 'kg300', buildingId: b.id, groupId: g.id, value: v,
                 })
+                const binaryInclusion = isBinaryInclusionGroup(g)
                 const mapped = g.choices.map((c) => {
                   const rate = new Decimal(c.rate)
                   const qty = g.denominator === 'BGF_ABOVE_GROUND' ? bgfAboveGround(b)
@@ -237,7 +262,7 @@ export function OptionChapter({ groups, intro }: {
                   return {
                     value: c.value,
                     title: tx(c.label),
-                    image: optionImage(g.id, c.value),
+                    image: binaryInclusion ? null : optionImage(g.id, c.value),
                     description: `${tx(c.basis)} ${MARK}`,
                     consequence: c.value === value
                       ? tx('aktuelle Auswahl')
