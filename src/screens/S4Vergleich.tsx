@@ -3,13 +3,15 @@ import { Decimal } from 'decimal.js'
 import {
   configForOption, projectionForOption, useStore, type OptionConfig,
 } from '../state/store'
-import { NNBSP, present, formatDE, rateLabel } from '../engine/money'
+import { NNBSP, present, formatDE, rateLabel, label as moneyLabel } from '../engine/money'
 import { Button } from '../components/primitives'
 import { Badge, NextStep, PageHeader } from '../components/designSystem'
 import { useSemanticMotion } from '../design-system/motion'
 import { useT, useTx } from '../i18n'
 import { copyFor } from '../i18n/internal-refs'
 import { isClientProjection, isVisibleInOutputProfile } from '../state/clientProjection'
+import { CompositionBar } from '../design-system/CompositionBar'
+import { buildKgCompositionSegments } from '../components/costComposition'
 
 /**
  * S4 Variantenvergleich — созданные Opportunity Options рядом.
@@ -205,16 +207,53 @@ export function S4Vergleich() {
               <th>
                 {showAll ? 'alle Zeilen' : 'nur Unterschiede'}
               </th>
-              {cols.map((c, i) => (
-                <th key={c.option.id} className={`a3-num${c.option.id === s.activeOptionId ? ' a3-target' : ''}`}>
-                  {c.option.name}
-                  <span className="mt-1 flex flex-wrap justify-end gap-1 text-small font-regular text-text-secondary">
-                    {!client && <span>{c.option.id}</span>}
-                    {i === 0 && <Badge sign="B">{tx('Vergleichsbasis')}</Badge>}
-                    {c.option.id === s.activeOptionId && <Badge sign="●">{tx('in Arbeit')}</Badge>}
-                  </span>
-                </th>
-              ))}
+              {cols.map((c, i) => {
+                // REDESIGN R2 §5 "COLUMN IDENTITY": the same OptionCard DNA
+                // (building chips, headline subtotal, KG mini-composition)
+                // above the existing dense table — no second reading of any
+                // value, the SAME `kgSplit`/`buildKgCompositionSegments`
+                // OptionCard already uses (costComposition.ts).
+                const segments = buildKgCompositionSegments(
+                  c.p.kgSplit, (group) => t(`costGroup.${group}`),
+                )
+                return (
+                  <th key={c.option.id} className={`a3-num${c.option.id === s.activeOptionId ? ' a3-target' : ''}`}>
+                    {c.option.name}
+                    <span className="mt-1 flex flex-wrap justify-end gap-1 text-small font-regular text-text-secondary">
+                      {!client && <span>{c.option.id}</span>}
+                      {i === 0 && <Badge sign="B">{tx('Vergleichsbasis')}</Badge>}
+                      {c.option.id === s.activeOptionId && <Badge sign="●">{tx('in Arbeit')}</Badge>}
+                    </span>
+                    {perBuilding(c.cfg, (id) => buildingLabel(id, c.cfg)) && (
+                      <span className="mt-2 flex flex-wrap justify-end gap-1">
+                        {Object.keys(c.cfg.buildings)
+                          .filter((id) => c.cfg.included[id])
+                          .map((id) => (
+                            <span
+                              key={id}
+                              className="border border-border-default px-2 py-1 text-small font-regular text-text-secondary"
+                            >
+                              {buildingLabel(id, c.cfg)}
+                            </span>
+                          ))}
+                      </span>
+                    )}
+                    <span className="mt-2 block text-metric-section font-bold text-text-primary numeric">
+                      {moneyLabel(present(c.p.result.total.exact))}
+                    </span>
+                    {segments.length > 0 && (
+                      <div className="mt-2">
+                        <CompositionBar
+                          segments={segments}
+                          total={c.p.result.total.exact}
+                          variant="compact"
+                          incompleteLabel={t('money.priceNotDetermined')}
+                        />
+                      </div>
+                    )}
+                  </th>
+                )
+              })}
             </tr>
           </thead>
           <tbody>
