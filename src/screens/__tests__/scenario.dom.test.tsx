@@ -98,7 +98,9 @@ describe('Сквозной сценарий продажи', () => {
     // that gate itself.
     confirmWholeConfiguration()
     await user.click(nav(/^S5|Export/))
-    expect(screen.getByRole('button', { name: /Preflight/ })).toBeInTheDocument()
+    // REDESIGN R3 (877f2c2a): "Preflight" was renamed to the outcome-language
+    // "prüfen"/"Prüfung" across S5Export.tsx — same stage-advance CTA.
+    expect(screen.getByRole('button', { name: 'Angebot prüfen' })).toBeInTheDocument()
     // +2 over the earlier assertions: Scope Boundaries confirmation and the
     // one building's configuration confirmation, both journal events.
     expect(useStore.getState().journal).toHaveLength(11)
@@ -439,8 +441,8 @@ describe('Сквозной сценарий продажи', () => {
     await user.click(within(es).getAllByRole('radio')[2]!)
     confirmWholeConfiguration()
     await user.click(nav(/^S5|Export/))
-    await user.click(screen.getByRole('button', { name: /Preflight/ }))
-    await user.click(screen.getByRole('button', { name: /Preflight bestanden/ }))
+    await user.click(screen.getByRole('button', { name: 'Angebot prüfen' }))
+    await user.click(screen.getByRole('button', { name: /Prüfung bestanden/ }))
     await user.click(screen.getByRole('button', { name: /Bestätigen/ }))
 
     // Доставка симулируется 2,5 с. Ожидание обёрнуто в `act` намеренно:

@@ -3,11 +3,22 @@ import { Decimal } from 'decimal.js'
 import {
   activeBuilding, configuratorStepDone, preparationProjection, projectionForOption,
   __resetStoreForTests, useStore, wflConflict, scopeBoundariesStatus,
+  eligibleClientOptions, resolvedViewedOptionId,
+  initializeProposalPersistence, PROPOSAL_PROJECT_ID,
 } from '../store'
 import { KG400_GROUPS, choiceBlocked } from '../../engine/options'
 import type { CostGroup } from '../../engine/calculate'
 import type { JournalEvent, OfferSnapshot } from '../store'
 import { CONFIGURATOR_STEP } from '../chapters'
+import { confirmWholeConfiguration } from '../../test/offer-option'
+import { proposalStorageKey, type StorageLike } from '../persistence'
+
+class MemoryStorage implements StorageLike {
+  readonly values = new Map<string, string>()
+  getItem(key: string) { return this.values.get(key) ?? null }
+  setItem(key: string, value: string) { this.values.set(key, value) }
+  removeItem(key: string) { this.values.delete(key) }
+}
 
 /**
  * Проекция обязана воспроизводить мокап S3 из `screen-map.md` до цента.
@@ -1490,5 +1501,164 @@ describe('KG 200/500 anti-double-counting (AC-19)', () => {
     // amounts differ because they use different rates, proving they are
     // computed from two distinct quantities, not one shared number.
     expect(kg200Driver!.exact.toFixed(2)).not.toBe(kg500DriverNow!.exact.toFixed(2))
+  })
+})
+
+/**
+ * REDESIGN R3 (backlog 877f2c2a) — "Client Option Isolation Test": the
+ * ticket's own mandatory acceptance scenario, not an optional QA
+ * exploration. `viewedOptionId` is the presentation-only Option shown in
+ * Kundenansicht; it must never mutate `activeOptionId`, any `OptionConfig`
+ * field, or persisted state, regardless of how much the salesperson
+ * switches around during a meeting.
+ */
+describe('REDESIGN R3: viewedOptionId isolation (mandatory acceptance contract)', () => {
+  const st = () => useStore.getState()
+
+  /** Two independently confirmed, client-eligible Options: A (created and
+   * left active) and B. Mirrors the ticket's own precondition exactly. */
+  function twoEligibleOptions(): void {
+    st().openOpportunity('DEMO-0001')
+    st().resolveWflConflict('customer')
+    st().confirmProjectParams()
+
+    st().createOption('Option A')
+    st().openOption('OPT-01')
+    st().confirmBuilding(st().activeBuildingId)
+    st().confirmConfigurationMode('SHARED')
+    confirmWholeConfiguration()
+
+    st().openOpportunity('DEMO-0001')
+    st().createOption('Option B')
+    st().openOption('OPT-02')
+    st().confirmBuilding(st().activeBuildingId)
+    st().confirmConfigurationMode('SHARED')
+    confirmWholeConfiguration()
+
+    // Land back on A as the internally active/preparation Option — the
+    // ticket's own precondition ("Internal active/preparation Option = A").
+    st().openOption('OPT-01')
+  }
+
+  it('switching the presented Option never touches activeOptionId, and reverts on exit — the full mandatory scenario', () => {
+    twoEligibleOptions()
+    expect(st().activeOptionId).toBe('OPT-01')
+    expect(eligibleClientOptions(st()).map((o) => o.id).sort()).toEqual(['OPT-01', 'OPT-02'])
+
+    // STEP 1: enter Presentation Mode — A may initially be presented,
+    // internal active Option remains A.
+    st().setMode('praesentation')
+    expect(st().mode).toBe('praesentation')
+    expect(resolvedViewedOptionId(st())).toBe('OPT-01')
+    expect(st().activeOptionId).toBe('OPT-01')
+
+    const configBBefore = st().optionConfigs['OPT-02']
+    const configABefore = st().optionConfigs['OPT-01']
+
+    // STEP 2: switch client-presented Option to B.
+    st().setViewedOption('OPT-02')
+    expect(st().viewedOptionId).toBe('OPT-02')
+    expect(resolvedViewedOptionId(st())).toBe('OPT-02')
+    // Internal active Option remains A — no internal configuration mutated.
+    expect(st().activeOptionId).toBe('OPT-01')
+    // Neither stored config object was touched by the switch (referential
+    // equality — `setViewedOption` writes exactly one field and nothing
+    // else in the store).
+    expect(st().optionConfigs['OPT-02']).toBe(configBBefore)
+    expect(st().optionConfigs['OPT-01']).toBe(configABefore)
+
+    // STEP 3: navigate across client narrative sections — B remains the
+    // presentation-context Option throughout.
+    st().setPipelineView('vergleich')
+    expect(resolvedViewedOptionId(st())).toBe('OPT-02')
+    st().setPipelineView('konfigurator')
+    expect(resolvedViewedOptionId(st())).toBe('OPT-02')
+    st().setPipelineView('export')
+    expect(resolvedViewedOptionId(st())).toBe('OPT-02')
+
+    // STEP 4: exit Presentation Mode — internal working context returns
+    // with Option A still active; no B-derived presentation selection
+    // overwrote preparation state.
+    st().setMode('intern')
+    expect(st().mode).toBe('intern')
+    expect(st().viewedOptionId).toBeNull()
+    expect(st().activeOptionId).toBe('OPT-01')
+    expect(st().optionConfigs['OPT-02']).toBe(configBBefore)
+
+    // STEP 5: re-enter internal Option/configuration surfaces — the
+    // previous internal preparation context is unchanged.
+    st().openOption('OPT-01')
+    expect(st().activeOptionId).toBe('OPT-01')
+    expect(st().optionConfigs['OPT-02']).toBe(configBBefore)
+  })
+
+  it('re-entering Presentation Mode always starts fresh from whatever is active by then — no cross-session persistence', () => {
+    twoEligibleOptions()
+    st().setMode('praesentation')
+    st().setViewedOption('OPT-02')
+    expect(resolvedViewedOptionId(st())).toBe('OPT-02')
+    st().setMode('intern')
+
+    // Switching the internal active Option is an ordinary preparation
+    // action, unrelated to the discarded presentation-only choice.
+    st().openOption('OPT-02')
+    st().setMode('praesentation')
+    // Re-entry presents whatever is active NOW (B) — not a resurrected B
+    // from before, and not a stale A either. The initial-continuity rule,
+    // not cross-session memory.
+    expect(resolvedViewedOptionId(st())).toBe('OPT-02')
+    expect(st().viewedOptionId).toBe('OPT-02')
+  })
+
+  it('setViewedOption is a no-op outside Kundenansicht', () => {
+    twoEligibleOptions()
+    expect(st().mode).toBe('intern')
+    st().setViewedOption('OPT-02')
+    expect(st().viewedOptionId).toBeNull()
+    expect(st().activeOptionId).toBe('OPT-01')
+  })
+
+  it('setViewedOption refuses an ineligible or nonexistent Option id', () => {
+    st().openOpportunity('DEMO-0001')
+    st().resolveWflConflict('customer')
+    st().confirmProjectParams()
+    st().createOption('Unbereit')
+    st().openOption('OPT-01')
+    st().confirmBuilding(st().activeBuildingId)
+    // Building confirmed (canBeginConfiguration true) but configuration
+    // never confirmed (configurationComplete false) — not client-eligible.
+    st().setMode('praesentation')
+    expect(st().mode).toBe('praesentation')
+    expect(eligibleClientOptions(st())).toEqual([])
+
+    st().setViewedOption('OPT-01')
+    expect(st().viewedOptionId).toBe('OPT-01') // initial-continuity default, unchanged
+    st().setViewedOption('OPT-99')
+    expect(st().viewedOptionId).toBe('OPT-01')
+  })
+
+  it('viewedOptionId never enters the persisted proposal payload', () => {
+    // Subscribed from the start: persistence writes only on a change to a
+    // PERSISTED field (`serializeProposalPayload` diffing) — creating and
+    // confirming both Options legitimately writes several times; entering
+    // Kundenansicht and switching the viewed Option must not add a write
+    // (mode/viewedOptionId are not part of the persisted payload at all).
+    const storage = new MemoryStorage()
+    initializeProposalPersistence(storage)
+    twoEligibleOptions()
+    const rawAfterSetup = storage.values.get(proposalStorageKey(PROPOSAL_PROJECT_ID))
+    expect(rawAfterSetup).toBeDefined()
+
+    st().setMode('praesentation')
+    st().setViewedOption('OPT-02')
+
+    // The Option itself and its stored config legitimately persist — only
+    // the fact that it is currently VIEWED must not.
+    const raw = storage.values.get(proposalStorageKey(PROPOSAL_PROJECT_ID))
+    expect(raw).toBeDefined()
+    expect(raw).not.toContain('viewedOptionId')
+    // No new write happened for mode/viewedOptionId changes at all — the
+    // strongest form of "never persisted".
+    expect(raw).toBe(rawAfterSetup)
   })
 })

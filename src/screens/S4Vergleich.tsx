@@ -1,11 +1,14 @@
 import { useRef, useState } from 'react'
 import { Decimal } from 'decimal.js'
 import {
-  configForOption, projectionForOption, useStore, type OptionConfig,
+  configForOption, eligibleClientOptions, projectionForOption,
+  resolvedViewedOptionId, useStore, type OptionConfig,
 } from '../state/store'
 import { NNBSP, present, formatDE, rateLabel, label as moneyLabel } from '../engine/money'
 import { Button } from '../components/primitives'
-import { Badge, NextStep, PageHeader } from '../components/designSystem'
+import { Badge, NextStep, PageHeader, SelectField } from '../components/designSystem'
+import { SegmentedControl } from '../components/controls'
+import { PartialState } from '../components/DataStates'
 import { useSemanticMotion } from '../design-system/motion'
 import { useT, useTx } from '../i18n'
 import { copyFor } from '../i18n/internal-refs'
@@ -40,14 +43,38 @@ export function S4Vergleich() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const { reduced: reducedMotion } = useSemanticMotion()
   const client = isClientProjection(s.mode)
+  // REDESIGN R3: only client-eligible Options (the PD-3 export-readiness
+  // signal — `eligibleClientOptions`) may become a column/selectable Option
+  // in Kundenansicht. Vorbereitung keeps seeing every created Option,
+  // ready or not — that is exactly what preparation work is for.
+  const eligibleIds = client
+    ? new Set(eligibleClientOptions(s).map((o) => o.id))
+    : null
+  const viewedId = resolvedViewedOptionId(s)
 
   const cols = s.options.flatMap((o) => {
+    if (eligibleIds && !eligibleIds.has(o.id)) return []
     const cfg = configForOption(s, o.id)
     const p = projectionForOption(s, o.id)
     return cfg && p ? [{ option: o, cfg, p }] : []
   })
 
   if (cols.length === 0) {
+    if (client && s.options.length > 0) {
+      // Real Option(s) exist for this Opportunity — they are just not
+      // client-ready yet. A distinct, honest state from "none exist at
+      // all" below: the empty-state principle forbids collapsing "not yet
+      // relevant" and "cannot be presented" into the same sentence.
+      return (
+        <div className="px-7 py-6">
+          <PageHeader title={tx('Optionen')} />
+          <p className="mt-4 text-body text-text-secondary">
+            <span aria-hidden="true">○ </span>
+            {tx('Für dieses Projekt ist noch keine Option bereit für die Kundenansicht.')}
+          </p>
+        </div>
+      )
+    }
     // В конвейер без Option не попасть, но состояние обязано объяснить
     // себя, а не рендерить пустую таблицу (правило 30: empty — не пропуск).
     return (
@@ -161,9 +188,117 @@ export function S4Vergleich() {
   return (
     <div className="px-7 py-6">
       <PageHeader
-        title={tx('Variantenvergleich')}
-        meta={<>{cols.length}{NNBSP}{cols.length === 1 ? 'Option' : 'Optionen'}</>}
+        title={client && cols.length === 1 ? tx('Ihr Angebot') : tx('Variantenvergleich')}
+        meta={client && cols.length === 1
+          ? undefined
+          : <>{cols.length}{NNBSP}{cols.length === 1 ? 'Option' : 'Optionen'}</>}
       />
+
+      {/* REDESIGN R3: with >=2 client-eligible Options, the salesperson can
+          switch which one is PRESENTED without leaving this screen and
+          without touching the internally active/preparation Option
+          (`setViewedOption` only ever writes `viewedOptionId`). This is a
+          distinct capability from the comparison table below it — Option
+          selector vs comparison, per the ticket's own boundary — they just
+          currently share a screen; a Kundenansicht-wide selector reachable
+          from every narrative section is out of scope for this candidate. */}
+      {client && cols.length >= 2 && (() => {
+        const segments = cols.map((c) => ({
+          value: c.option.id,
+          label: `${c.option.name} · ${money(c.p.result.total.exact)}${NNBSP}€`,
+        }))
+        const currentId = cols.some((c) => c.option.id === viewedId)
+          ? viewedId!
+          : cols[0]!.option.id
+        const current = cols.find((c) => c.option.id === currentId)!
+        return (
+          <div className="mt-4">
+            {segments.length <= 3 ? (
+              <SegmentedControl
+                legend={tx('Wird präsentiert')}
+                value={currentId}
+                onChange={(id) => s.setViewedOption(id)}
+                options={segments}
+              />
+            ) : (
+              <SelectField
+                label={tx('Wird präsentiert')}
+                value={currentId}
+                onChange={(event) => s.setViewedOption(event.target.value)}
+              >
+                {cols.map((c) => (
+                  <option key={c.option.id} value={c.option.id}>
+                    {c.option.name} · {money(c.p.result.total.exact)}{NNBSP}€
+                  </option>
+                ))}
+              </SelectField>
+            )}
+            {/* One concise polite announcement per switch (a11y contract) —
+                not a per-value trickle. */}
+            <p className="sr-only" aria-live="polite">
+              {`${tx('Wird präsentiert')}: ${current.option.name} · ${money(current.p.result.total.exact)}${NNBSP}€`}
+            </p>
+          </div>
+        )
+      })()}
+
+      {/* REDESIGN R3 (AUD-audit F20 companion): one eligible Option used to
+          render this screen fully blank in Kundenansicht — the audit's
+          headline empty-state defect. A single client-eligible Option now
+          gets a real, deliberate summary instead of nothing. */}
+      {client && cols.length === 1 && (() => {
+        const c = cols[0]!
+        const priceUnavailable = c.p.result.total.exact.isZero()
+        return (
+          <div className="a3-heroband mt-4">
+            <div className="a3-hb a3-hb-total">
+              <h3 className="a3-hb-cap">{tx(c.p.result.totalLabel)}</h3>
+              {priceUnavailable ? (
+                <PartialState
+                  label={t('money.priceNotDetermined')}
+                  consequence={c.p.result.totalLabel}
+                />
+              ) : (
+                <p className="a3-hb-num numeric">
+                  {c.p.result.total.prefix && (
+                    <span aria-hidden="true">{c.p.result.total.prefix}{NNBSP}</span>
+                  )}
+                  {money(c.p.result.total.exact)}
+                  <span className="a3-hb-unit">{NNBSP}€</span>
+                </p>
+              )}
+            </div>
+            {!priceUnavailable && <>
+              <div className="a3-hb">
+                <p className="a3-hb-num numeric">
+                  {c.p.leadRate.prefix && (
+                    <span aria-hidden="true">{c.p.leadRate.prefix}{NNBSP}</span>
+                  )}
+                  {c.p.leadRate.display}
+                  <span className="a3-hb-unit">{NNBSP}€/m²</span>
+                </p>
+                <span className="a3-hb-cap">{tx(c.p.leadRate.denominatorLabel)}</span>
+              </div>
+              <div className="a3-hb">
+                <p className="a3-hb-num numeric">
+                  {c.p.duration.prefix && (
+                    <span aria-hidden="true">{c.p.duration.prefix}{NNBSP}</span>
+                  )}
+                  {c.p.duration.display.replace(`${NNBSP}Monate`, '')}
+                  <span className="a3-hb-unit">{NNBSP}Monate</span>
+                </p>
+                <span className="a3-hb-cap">
+                  {tx('ab OKBP')} · {tx('Fertigstellung')} {formatDate(c.p.duration.completionDate)}
+                </span>
+              </div>
+            </>}
+            <p className="a3-cap mt-2">
+              {perBuilding(c.cfg, (id) => buildingLabel(id, c.cfg))}
+            </p>
+          </div>
+        )
+      })()}
+
       {/* The row-filter toggle only means something once a table exists
           (F20/AC-08): with fewer than two options it would be a live
           control over nothing. */}

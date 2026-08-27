@@ -202,7 +202,7 @@ export function S5Export() {
               />
               <div className="mt-3">
                 <Button variant="primary" onClick={() => setStage('preflight')}>
-                  {tx('Weiter zum Preflight')}
+                  {tx('Angebot prüfen')}
                 </Button>
               </div>
             </div>
@@ -252,7 +252,7 @@ export function S5Export() {
                   disabledReason={blockers[0]}
                   onClick={() => setStage('confirm')}
                 >
-                  {blockers.length > 0 ? 'Blockiert — Klassifikation bestätigen' : 'Preflight bestanden — weiter'}
+                  {blockers.length > 0 ? 'Blockiert — Klassifikation bestätigen' : 'Prüfung bestanden — weiter'}
                 </Button>
               </div>
               {blockers.length > 0 && (
@@ -284,7 +284,7 @@ export function S5Export() {
                 <Button
                   variant="primary"
                   disabled={!sendEnabled}
-                  disabledReason="Preflight nicht vollständig"
+                  disabledReason="Prüfung nicht abgeschlossen"
                   onClick={() => {
                     // Отправка = снапшот + событие (M-3): состояние, от
                     // которого клиент получил числа, зафиксировано до письма.
@@ -385,12 +385,18 @@ export function S5Export() {
 // Preflight / Confirm & Send / Delivery status) — English implementation
 // vocabulary in a German-first screen that is visible outside intern mode
 // (the client can be in the room during `mode-praesentation`). Named as
-// German stage labels instead; "Preflight" itself stays, since it is already
-// the accepted, naturalized term used elsewhere in this screen's own copy
-// ("Weiter zum Preflight", "Preflight bestanden").
+// German stage labels instead.
+//
+// REDESIGN R3 (877f2c2a, Offer Moment §"UX WRITING IMPACT"): the earlier
+// revision of this comment kept "Preflight" as "the accepted, naturalized
+// term used elsewhere in this screen's own copy" — that copy is exactly
+// what R3 owns fixing. Every occurrence in this file (stage label, the
+// stage-advance CTA, the blocked-state reason) now reads "Prüfung", the
+// same outcome-language word already used two lines below in this screen
+// ("Finale Prüfung") — one vocabulary, not two words for one step.
 function stageLabel(s: Stage): string {
   return s === 'compose' ? 'Entwurf'
-    : s === 'preflight' ? 'Preflight-Prüfung'
+    : s === 'preflight' ? 'Prüfung'
       : s === 'confirm' ? 'Bestätigung & Versand'
         : s === 'gesendet' ? 'Sendestatus · Gesendet'
           : 'Sendestatus · Zugestellt'

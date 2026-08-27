@@ -3,6 +3,7 @@ import { useStore as useZustandStore } from 'zustand'
 import { Decimal } from 'decimal.js'
 import demo from '../fixtures/demo-0001.json'
 import {
+  isClientProjection,
   modeForLevelTransition,
   pipelineViewForOutputProfile,
   type OutputMode,
@@ -1316,6 +1317,23 @@ type Store = {
   options: Array<{ id: string; name: string }>
   activeOptionId: string | null
   /**
+   * REDESIGN R3: Option currently PRESENTED in Kundenansicht. Independent of
+   * `activeOptionId` — a salesperson may show the client a different
+   * (client-eligible) Option than the one open for internal preparation,
+   * without that choice touching preparation state at all (mandatory
+   * isolation contract, ticket 877f2c2a).
+   *
+   * `null` whenever no presentation-only choice has been made yet — every
+   * reader resolves the actually-viewed Option via
+   * `resolvedViewedOptionId(s)`, which falls back to `activeOptionId`.
+   * Always reset to `null` in the exact same `set()` calls that reset
+   * `mode` to `'intern'` (mode entry/exit, leaving the `option` level) —
+   * never persisted (absent from `capturePersistedProposal`/
+   * `PersistedProposalPayload`), so a page reload or a fresh session can
+   * never resurrect a stale presentation-only selection.
+   */
+  viewedOptionId: string | null
+  /**
    * Сколько Options было создано за жизнь Opportunity. Идентификатор берётся
    * отсюда, а не из длины списка: удалённый номер не переиспользуется, иначе
    * события журнала прежней Option начинают ссылаться на чужую (сплошное
@@ -1481,6 +1499,14 @@ type Store = {
   /** Симуляция круга до CRM завершилась — отдельное событие (NOTE-003). */
   markNoteSynced: () => void
   openOption: (id: string) => void
+  /**
+   * REDESIGN R3: switch which Option is PRESENTED in Kundenansicht.
+   * Presentation-only — never touches `activeOptionId`, `optionConfigs`,
+   * or any preparation/configuration/pricing state. No-op outside
+   * `mode === 'praesentation'` and for any Option that is not currently
+   * client-eligible (see `eligibleClientOptions`).
+   */
+  setViewedOption: (id: string) => void
   setActiveBuilding: (id: string) => void
   /** Включить/исключить здание из предложения — событие журнала. */
   toggleBuildingIncluded: (id: string) => void
@@ -1909,6 +1935,42 @@ export function configForOption(
   return optionId === s.activeOptionId
     ? captureConfig(s)
     : s.optionConfigs[optionId] ?? null
+}
+
+/**
+ * REDESIGN R3: Options eligible for client presentation — the SAME PD-3
+ * readiness signal that already gates Export for that Option
+ * (`canBeginConfiguration && configurationComplete`), evaluated per Option
+ * from its own stored/live config. Deliberately not a new eligibility
+ * model: "client-presentable" and "ready to export" are one question, not
+ * two. `buildingConflicts` is Opportunity-level (shared by every Option,
+ * not part of `OptionConfig`), so it always comes from the live store even
+ * when reading another Option's stored config — the exact pattern
+ * `openOption` already uses for the same reason.
+ */
+export function eligibleClientOptions(
+  s: Pick<Store, 'options' | 'activeOptionId' | 'optionConfigs' | 'buildingConflicts'
+    | keyof OptionConfig>,
+): Array<{ id: string; name: string }> {
+  return s.options.filter((o) => {
+    const cfg = configForOption(s, o.id)
+    if (!cfg) return false
+    const withConflicts = { ...cfg, buildingConflicts: s.buildingConflicts }
+    return canBeginConfiguration(withConflicts) && configurationComplete(withConflicts)
+  })
+}
+
+/**
+ * The Option actually shown to the client right now: the presentation-only
+ * choice if one has been made, otherwise the internally active Option (R3
+ * "initial presented Option" continuity rule). The one place every
+ * presentation-facing reader resolves which Option to render — never read
+ * `viewedOptionId` directly for display purposes.
+ */
+export function resolvedViewedOptionId(
+  s: Pick<Store, 'viewedOptionId' | 'activeOptionId'>,
+): string | null {
+  return s.viewedOptionId ?? s.activeOptionId
 }
 
 /**
@@ -2854,6 +2916,7 @@ const store = createStore<Store>((set, get) => {
     noteSyncedAt: null,
     options: [],
     activeOptionId: null,
+    viewedOptionId: null,
     optionSeq: 0,
     discountPercent: null,
     offerDraft: {
@@ -3582,8 +3645,17 @@ const store = createStore<Store>((set, get) => {
       if (m === 'praesentation'
         && (s.level !== 'option' || !canBeginConfiguration(s))) return
       const outputView = pipelineViewForOutputProfile(m, s.pipelineView)
+      // R3 isolation contract: entering Kundenansicht starts the
+      // presentation-only viewed Option at the internally active one, for
+      // continuity (ticket 877f2c2a §"Initial presented Option") — leaving
+      // it discards that presentation-only choice entirely, so the next
+      // entry always starts fresh from whatever is active by then.
+      const entering = m === 'praesentation' && s.mode !== 'praesentation'
+      const leaving = m !== 'praesentation' && s.mode === 'praesentation'
       set({
         mode: m,
+        ...(entering ? { viewedOptionId: s.activeOptionId } : {}),
+        ...(leaving ? { viewedOptionId: null } : {}),
         pipelineView: pipelineViewForBuildingGate(s, outputView),
         openConfiguratorStep: nearestActiveConfiguratorStep({
           coverage: s.coverage,
@@ -3604,6 +3676,10 @@ const store = createStore<Store>((set, get) => {
         mode: modeForLevelTransition(s.mode, 'liste'),
         level: 'liste',
         activeOptionId: null,
+        // R3 isolation contract: leaving the option level always leaves the
+        // client projection first (`modeForLevelTransition`) — the viewed
+        // Option resets in the same step, exactly like `mode` itself.
+        viewedOptionId: null,
         configurationModeEditing: false,
         // Рабочая копия покидаемой Option убирается в хранилище — иначе
         // следующее открытие вернуло бы её к чужому состоянию.
@@ -3619,6 +3695,7 @@ const store = createStore<Store>((set, get) => {
         mode: modeForLevelTransition(s.mode, 'opportunity'),
         level: 'opportunity',
         activeOptionId: null,
+        viewedOptionId: null,
         configurationModeEditing: false,
         ...(s.activeOptionId
           ? { optionConfigs: { ...s.optionConfigs, [s.activeOptionId]: captureConfig(s) } }
@@ -3898,6 +3975,20 @@ const store = createStore<Store>((set, get) => {
         }, next.openConfiguratorStep),
         configurationModeEditing: false,
       })
+    },
+
+    // R3: presentation-only Option switch. Deliberately does NOT reuse
+    // `openOption` — that action swaps the working-copy flat fields and is
+    // the internal preparation navigation primitive; this action changes
+    // nothing but its own field. No-op outside Kundenansicht and for any
+    // Option that isn't currently client-eligible, so a stale/expired
+    // selector click can never leave `viewedOptionId` pointing at
+    // something the client-safe UI would refuse to render.
+    setViewedOption: (id) => {
+      const s = get()
+      if (!isClientProjection(s.mode)) return
+      if (!eligibleClientOptions(s).some((o) => o.id === id)) return
+      set({ viewedOptionId: id })
     },
 
     setPipelineView: (v) => set((s) => {

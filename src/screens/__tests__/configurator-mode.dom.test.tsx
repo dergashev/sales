@@ -364,8 +364,8 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     // subject is sending/snapshotting, not that gate itself.
     confirmWholeConfiguration()
     await user.click(nav(/Export/))
-    await user.click(screen.getByRole('button', { name: 'Weiter zum Preflight' }))
-    await user.click(screen.getByRole('button', { name: /Preflight bestanden/ }))
+    await user.click(screen.getByRole('button', { name: 'Angebot prüfen' }))
+    await user.click(screen.getByRole('button', { name: /Prüfung bestanden/ }))
     await user.click(screen.getByRole('button', { name: 'Bestätigen & senden' }))
     const snapshot = useStore.getState().snapshots.at(-1)!
     expect(snapshot.totalExact).toBe(complex.total.exact.toFixed(2))

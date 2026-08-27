@@ -124,7 +124,7 @@ export function S6Einstellungen() {
       <section className="mt-6" aria-label="Dichte">
         <h2 className="text-heading-3 font-bold text-text-primary">{tx('Dichte')}</h2>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3 border border-border-default p-4">
-          <p className="max-w-content text-small text-text-secondary">{tx('Unabhängige Nutzereinstellung (D-16) — der Modus ändert sie nie. Vor dem Teilen des Bildschirms wird Komfortabel empfohlen (Checklisten-Punkt im Preflight, kein Zwang).')}</p>
+          <p className="max-w-content text-small text-text-secondary">{tx('Unabhängige Nutzereinstellung (D-16) — der Modus ändert sie nie. Vor dem Teilen des Bildschirms wird Komfortabel empfohlen (Checklisten-Punkt in der Prüfung, kein Zwang).')}</p>
           <SegmentedControl
             legend="Darstellungsdichte"
             value={s.density}
