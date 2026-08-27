@@ -263,7 +263,7 @@ export function S4Vergleich() {
                   {c.p.result.total.prefix && (
                     <span aria-hidden="true">{c.p.result.total.prefix}{NNBSP}</span>
                   )}
-                  {money(c.p.result.total.exact)}
+                  {present(c.p.result.total.exact).display}
                   <span className="a3-hb-unit">{NNBSP}€</span>
                 </p>
               )}
@@ -292,12 +292,14 @@ export function S4Vergleich() {
                 </span>
               </div>
             </>}
-            <p className="a3-cap mt-2">
-              {perBuilding(c.cfg, (id) => buildingLabel(id, c.cfg))}
-            </p>
           </div>
         )
       })()}
+      {client && cols.length === 1 && (
+        <p className="a3-cap mt-3">
+          {perBuilding(cols[0]!.cfg, (id) => buildingLabel(id, cols[0]!.cfg))}
+        </p>
+      )}
 
       {/* The row-filter toggle only means something once a table exists
           (F20/AC-08): with fewer than two options it would be a live
