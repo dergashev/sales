@@ -451,7 +451,11 @@ function OptionCard({ option, justCreated, rowRef }: {
             {buildingChips.map((b) => (
               <span
                 key={b.id}
-                className="inline-flex items-center gap-1 border border-border-default px-2 py-0.5 text-small text-text-secondary"
+                // `py-1` (`--space-1`, 4px) — the project's spacing scale
+                // stops at 8 with no fractional keys (full theme.spacing
+                // replacement, not `extend`); `py-0.5` silently resolves to
+                // nothing rather than a smaller value.
+                className="inline-flex items-center gap-1 border border-border-default px-2 py-1 text-small text-text-secondary"
               >
                 {b.name}
                 {b.confirmed && <span aria-hidden="true">✓</span>}

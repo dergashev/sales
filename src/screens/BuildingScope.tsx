@@ -417,7 +417,12 @@ export function BuildingScope() {
                   return (
                     <li key={id} className="border-b border-border-subtle py-4">
                       <div className="flex flex-wrap items-start gap-4">
-                        <div className="w-24 shrink-0">
+                        {/* `w-8` = `--space-8` (64px) — the project's spacing
+                            scale stops at 8 (theme.spacing is a full
+                            replacement, not `extend`, per tailwind.config.ts;
+                            `w-24` silently resolves to nothing and collapses
+                            the tile to 0×0, caught visually via Playwright). */}
+                        <div className="w-8 shrink-0">
                           <MediaFrame ratio="tile" state="fallback" seed={name} />
                         </div>
                         <div className="min-w-0 flex-1">
