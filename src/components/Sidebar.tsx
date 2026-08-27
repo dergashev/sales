@@ -82,17 +82,40 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
     >
       <div className="border-b border-border-strong px-5 py-4">
         {option && s.activeOptionId ? (
-          <SelectField
-            label={t('shell.optionSwitcher')}
-            value={s.activeOptionId}
-            onChange={(event) => s.openOption(event.target.value)}
-          >
-            {s.options.map((candidate) => (
-              <option key={candidate.id} value={candidate.id}>
-                {candidate.name}
-              </option>
-            ))}
-          </SelectField>
+          client ? (
+            // QA rework (R3, 877f2c2a): this SelectField used to render
+            // unconditionally and call `s.openOption(...)` regardless of
+            // mode — a fully interactive, undisclosed second path to
+            // silently change the internally active/preparation Option
+            // while Kundenansicht's own mode indicator reads "der Kunde
+            // sieht diesen Bildschirm", right next to the dedicated
+            // presentation-only "Wird präsentiert" selector that this
+            // same ticket built specifically so THAT could never happen.
+            // Reproduced live via Playwright CLI (QA finding): select a
+            // different Option here while presenting → `activeOptionId`
+            // silently flips, no warning, no Undo toast. Client mode gets
+            // an informational label instead — same value, same visual
+            // position, no longer an interactive Option-switching control.
+            // The client-safe way to change what is PRESENTED remains the
+            // Variantenvergleich screen's own selector (`setViewedOption`,
+            // which never touches `activeOptionId`).
+            <div>
+              <p className="a3-cap">{t('shell.optionSwitcher')}</p>
+              <p className="text-body font-medium text-text-primary">{option.name}</p>
+            </div>
+          ) : (
+            <SelectField
+              label={t('shell.optionSwitcher')}
+              value={s.activeOptionId}
+              onChange={(event) => s.openOption(event.target.value)}
+            >
+              {s.options.map((candidate) => (
+                <option key={candidate.id} value={candidate.id}>
+                  {candidate.name}
+                </option>
+              ))}
+            </SelectField>
+          )
         ) : (
           <p className="text-body font-medium text-text-primary">
             {`Musterprojekt Nordfeld · Haus${NNBSP}A`}

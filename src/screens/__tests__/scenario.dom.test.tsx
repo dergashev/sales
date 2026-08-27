@@ -628,6 +628,47 @@ describe('Сквозной сценарий продажи', () => {
     expect(screen.getByRole('button', { name: 'Kundenansicht prüfen' })).toBeInTheDocument()
   })
 
+  /**
+   * QA rework (REDESIGN R3, 877f2c2a): QA independently reproduced a live
+   * defect via Playwright CLI against the exact candidate — the Sidebar's
+   * "Opportunity Option" `<select>` rendered unconditionally regardless of
+   * mode and called `openOption()` on change, so a salesperson could
+   * silently overwrite the internally active/preparation Option while
+   * literally presenting to a client ("der Kunde sieht diesen Bildschirm"),
+   * with no warning and no Undo toast — directly falsifying AC 17/18/19
+   * ("client-side Option switching does not mutate the internally active
+   * Option"), the exact contract the ticket's own "Wird präsentiert"
+   * selector (S4Vergleich.tsx) exists to guarantee. This test proves the
+   * fix: the interactive switcher is gone from client DOM; only a static,
+   * non-interactive label remains.
+   */
+  it('the "Opportunity Option" switcher is not interactive inside Kundenansicht (QA rework, 877f2c2a)', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await enterPipeline(user)
+    confirmWholeConfiguration()
+    expect(useStore.getState().activeOptionId).toBe('OPT-01')
+
+    // Внутри Vorbereitung переключатель — живой <select>.
+    expect(screen.getByRole('combobox', { name: 'Opportunity Option' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
+    await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
+    expect(useStore.getState().mode).toBe('praesentation')
+
+    // Внутри Kundenansicht переключателя-<select> больше нет вовсе — только
+    // информационная подпись с тем же именем Option, не идентификатором
+    // (правило клиентского профиля: `OPT-xx` не выводится, см. соседний
+    // тест этого файла).
+    expect(screen.queryByRole('combobox', { name: 'Opportunity Option' })).toBeNull()
+    expect(screen.getByText('Option 1')).toBeInTheDocument()
+
+    // Раньше: выбор в этом контроле молча переключал `activeOptionId` даже
+    // в клиентском виде. Контрола для этого больше нет — состояние
+    // подготовки не может измениться из клиентского DOM этим путём.
+    expect(useStore.getState().activeOptionId).toBe('OPT-01')
+  })
+
   it('leaves the client projection before any workspace-level transition', async () => {
     const user = userEvent.setup()
     render(<App />)
