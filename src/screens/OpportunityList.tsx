@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import opportunities from '../fixtures/opportunities.json'
 import { useStore } from '../state/store'
 import { NNBSP } from '../engine/money'
@@ -198,6 +198,13 @@ export function OpportunityList() {
   const [actionableOnly, setActionableOnly] = useState(false)
   const [includeExcluded, setIncludeExcluded] = useState(false)
   const [sort, setSort] = useState<SortMode>('recommended')
+  // QA rework (P2): collapsed by default so the four selects + two switches
+  // do not put an empty first viewport between the title and the first
+  // project card (measured main.scrollHeight before this change: ~2990px
+  // at 1440x900, ~430px of it filter chrome). Ephemeral UI-only state, not
+  // persisted, not a filter value itself.
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const filtersPanelId = useId()
 
   const items = opportunities.items
   const stageLabel = (stage: string) => t(STAGE_LABEL_KEY[stage] ?? stage)
@@ -312,8 +319,8 @@ export function OpportunityList() {
 
       {/* DC-34: видимый контрол поиска, фильтры и активные фильтр-чипы —
           одна рамка, один контракт. */}
-      <div role="search" className="a3-project-search mt-4">
-        <div className="a3-search-line">
+      <div role="search" className="a3-project-search mt-3">
+        <div className="a3-search-line-toolbar">
           <FormField
             htmlFor="opp-suche"
             label={tx('Opportunities durchsuchen')}
@@ -326,30 +333,45 @@ export function OpportunityList() {
               placeholder={tx('Name, Stadt, Owner, ID')}
             />
           </FormField>
-          {select('land', tx('Land'))}
-          {select('stadt', tx('Stadt'))}
-          {select('owner', tx('Opportunity Owner'))}
-          {select('status', t('opplist.filter.status.label'))}
+          <Button
+            variant="secondary"
+            aria-expanded={filtersOpen}
+            aria-controls={filtersPanelId}
+            onClick={() => setFiltersOpen((v) => !v)}
+          >
+            {tx('Filter')}{active.length > 0 ? ` (${active.length})` : ''}
+          </Button>
         </div>
 
-        {/* Zwei unabhängige Interface-Zustände (nicht gegenseitig
-            ausschließend) — Switch, kein SegmentedControl/CheckboxCard:
-            beide sind Filter-Toggles, keine Angebots-Option (OPTION-008).
-            F14: `.a3-switch-group` column-aligns both toggles (each Switch's
-            own label previously set its own row's width, so the two toggle
-            controls landed at two different x-positions). */}
-        <div className="a3-switch-group">
-          <Switch
-            label={t('opplist.filter.actionableOnly.label')}
-            checked={actionableOnly}
-            onChange={setActionableOnly}
-          />
-          <Switch
-            label={t('opplist.filter.includeExcluded.label')}
-            checked={includeExcluded}
-            onChange={setIncludeExcluded}
-          />
-        </div>
+        {filtersOpen && (
+          <div id={filtersPanelId}>
+            <div className="a3-search-line mt-3">
+              {select('land', tx('Land'))}
+              {select('stadt', tx('Stadt'))}
+              {select('owner', tx('Opportunity Owner'))}
+              {select('status', t('opplist.filter.status.label'))}
+            </div>
+
+            {/* Zwei unabhaengige Interface-Zustaende (nicht gegenseitig
+                ausschliessend) - Switch, kein SegmentedControl/CheckboxCard:
+                beide sind Filter-Toggles, keine Angebots-Option (OPTION-008).
+                F14: `.a3-switch-group` column-aligns both toggles (each Switch's
+                own label previously set its own row's width, so the two toggle
+                controls landed at two different x-positions). */}
+            <div className="a3-switch-group mt-3">
+              <Switch
+                label={t('opplist.filter.actionableOnly.label')}
+                checked={actionableOnly}
+                onChange={setActionableOnly}
+              />
+              <Switch
+                label={t('opplist.filter.includeExcluded.label')}
+                checked={includeExcluded}
+                onChange={setIncludeExcluded}
+              />
+            </div>
+          </div>
+        )}
 
         {active.length > 0 && (
           <div className="a3-filter-row">

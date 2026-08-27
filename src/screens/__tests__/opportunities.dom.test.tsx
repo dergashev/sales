@@ -32,6 +32,11 @@ describe('Уровень Opportunities', () => {
   it('фильтр сужает множество и сообщает, сколько спрятал', async () => {
     const user = userEvent.setup()
     render(<App />)
+    // QA rework (P2, REDESIGN R2): the four selects + two switches now sit
+    // behind a "Filter" disclosure, collapsed by default, so the first
+    // 1440x900 viewport isn't pure filter chrome (measured before this
+    // change: ~430px of filter panel before the first project card).
+    await user.click(screen.getByRole('button', { name: 'Filter' }))
     await user.selectOptions(screen.getByLabelText('Land'), 'Schweiz')
     expect(screen.getByText(/2 von 8 Opportunities/)).toBeInTheDocument()
     // Активный фильтр виден и снимается по одному.

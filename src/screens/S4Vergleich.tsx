@@ -217,7 +217,38 @@ export function S4Vergleich() {
                   c.p.kgSplit, (group) => t(`costGroup.${group}`),
                 )
                 return (
-                  <th key={c.option.id} className={`a3-num${c.option.id === s.activeOptionId ? ' a3-target' : ''}`}>
+                  // QA rework (P1): `.a3-comparison-scroll>.a3-cmp` is
+                  // `inline-size:max-content` (components.css) so the table's
+                  // column widths come from intrinsic-size measurement, not a
+                  // normal auto-layout pass. `CompositionBar`'s segments are
+                  // percentage-widths of their own parent — percentages have
+                  // no intrinsic size by spec, so the browser must resolve
+                  // this `<th>`'s width from OTHER content first, then
+                  // recompute all percentage children against that width.
+                  // For a column not yet in the scrolled-into-view region at
+                  // paint time, that two-pass resolution intermittently
+                  // rendered the SECOND (post-recompute) pass incorrectly —
+                  // "0 €" / a collapsed composition bar — while the DOM/
+                  // accessibility text stayed correct throughout (QA
+                  // confirmed via `textContent`/`aria-label`, not a data bug).
+                  // An explicit `min-width` gives every `<th>` a concrete
+                  // sizing basis up front, removing the ambiguous
+                  // intrinsic-size round-trip — empirically, the minimum
+                  // has to be roomy enough for ALL of this `<th>`'s content
+                  // (name/badges/chips/subtotal/bar) to lay out without a
+                  // secondary wrap/reflow: `--measure-conflict-column`
+                  // (220px, this table's OWN sticky-column token) was
+                  // re-tested and the bug came straight back, so 220px is
+                  // not "any explicit width", it is specifically too
+                  // narrow. `--measure-band` (420px) leaves enough room and
+                  // was re-verified clean via Playwright at every scroll
+                  // position reachable through the real "Zum Zeilenende"/
+                  // "Zum Zeilenanfang" controls.
+                  <th
+                    key={c.option.id}
+                    className={`a3-num${c.option.id === s.activeOptionId ? ' a3-target' : ''}`}
+                    style={{ minWidth: 'var(--measure-band)' }}
+                  >
                     {c.option.name}
                     <span className="mt-1 flex flex-wrap justify-end gap-1 text-small font-regular text-text-secondary">
                       {!client && <span>{c.option.id}</span>}

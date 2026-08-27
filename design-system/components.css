@@ -1212,6 +1212,13 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    whenever the row reflows, and keeps the whole control region to one
    compact band. */
 .a3-search-line{display:grid;grid-template-columns:repeat(auto-fit,minmax(var(--measure-form-control),1fr));gap:var(--space-3);align-items:end}
+/* QA rework (P2, REDESIGN R2): search field + the "Filter" disclosure
+   button that reveals `.a3-search-line` below. The search field keeps its
+   canonical `.a3-form-field` width (`--measure-form-control` min via the
+   FormField contract itself); the button only needs to sit at the same
+   baseline, so this is a plain flex row, not another grid track scale. */
+.a3-search-line-toolbar{display:flex;flex-wrap:wrap;align-items:end;gap:var(--space-3)}
+.a3-search-line-toolbar>.a3-form-field{flex:0 1 var(--measure-form-control)}
 .a3-filter-row{display:flex;gap:var(--space-2);flex-wrap:wrap;align-items:center}
 /* F14 · two independent Switches (`nur aktionsfähige` / Recovery) each start
    their own flex row at the label's own width, so the two toggle controls
