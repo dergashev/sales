@@ -98,20 +98,6 @@
     "source": "OpenAI ImageGen, generiert am 2026-08-07"
   },
   {
-    "group": "garage",
-    "value": "ja",
-    "file": "opt-garage-ja.webp",
-    "motifDe": "Integrierte Garagentore im Erdgeschoss",
-    "source": "OpenAI ImageGen, generiert am 2026-08-07"
-  },
-  {
-    "group": "garage",
-    "value": "nein",
-    "file": "opt-garage-nein.webp",
-    "motifDe": "Wohnnutzung und Eingang statt Garagentoren",
-    "source": "OpenAI ImageGen, generiert am 2026-08-07"
-  },
-  {
     "group": "fassade",
     "value": "plaster",
     "file": "opt-fassade-plaster.webp",
