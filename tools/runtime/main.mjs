@@ -31,6 +31,7 @@ import path from 'node:path'
 
 import { dirtyEntries, git, gitCommonDir, headSha, listWorktrees, samePath } from '../gate/lib/git-worktrees.mjs'
 import { defaultManifestPath, readManifest } from '../gate/lib/manifest.mjs'
+import { resolveCurrentMainAuthority } from './lib/release-branch.mjs'
 import { planPreviewRefresh } from '../worktrees/lib/worktree-lifecycle.mjs'
 import { defaultPreviewStatePath, withPreviewStateLock, writePreviewStateRaw, readPreviewState, updatePreviewState } from '../worktrees/lib/preview-state.mjs'
 import { findFreePort } from '../worktrees/lib/free-port.mjs'
@@ -131,11 +132,12 @@ async function classifyClaim(claim, { gitMainSha = null, expectedSha = null } = 
   return classifyRuntime({ claim, pidAlive, echo, gitMainSha, expectedSha })
 }
 
-function printRuntimeReport({ purpose, expectedSha, claim, classification }) {
+function printRuntimeReport({ purpose, releaseBranch, expectedSha, claim, classification }) {
   console.log(`\n${purpose} RESOLUTION`)
   console.log(`  PURPOSE              : ${purpose}`)
+  if (purpose === 'CURRENT_MAIN') console.log(`  RELEASE BRANCH       : ${releaseBranch ?? 'UNRESOLVED'}`)
   console.log(`  EXPECTED SHA         : ${expectedSha ?? 'UNRESOLVED'}`)
-  console.log(`  RUNTIME SHA          : ${claim?.sha ?? 'NONE'}`)
+  console.log(`  ACTUAL RUNTIME SHA   : ${claim?.sha ?? 'NONE'}`)
   console.log(`  WORKTREE             : ${claim?.worktree ?? 'NONE'}`)
   console.log(`  URL                  : ${claim?.url ?? 'NONE'}`)
   console.log(`  STATUS               : ${classification.status}`)
@@ -201,8 +203,9 @@ async function cmdMain() {
   if (!commonDir) return fail(EXIT.LIFECYCLE, '"git rev-parse --git-common-dir" failed. Is this a git repository?')
   const repoRoot = path.dirname(commonDir)
 
-  const mainSha = git(cwd, ['rev-parse', 'main'])
-  if (!mainSha) return fail(EXIT.LIFECYCLE, '"git rev-parse main" failed. Does the local "main" branch exist?')
+  const authority = resolveCurrentMainAuthority(cwd)
+  if (!authority.ok) return fail(EXIT.PROVENANCE, authority.reason)
+  const mainSha = authority.sha
 
   const previewPath = path.resolve(repoRoot, process.env.A3_PREVIEW_DIR || '.preview/main')
   const registryPath = defaultRegistryPath(commonDir)
@@ -213,12 +216,12 @@ async function cmdMain() {
   const plan = planCurrentMainRotation({ classification, claim: resolved.claim })
 
   if (plan.action === 'reuse') {
-    printRuntimeReport({ purpose: 'CURRENT_MAIN', expectedSha: mainSha, claim: resolved.claim, classification })
+    printRuntimeReport({ purpose: 'CURRENT_MAIN', releaseBranch: authority.branch, expectedSha: mainSha, claim: resolved.claim, classification })
     process.exit(EXIT.OK)
     return
   }
   if (plan.action === 'blocked') {
-    printRuntimeReport({ purpose: 'CURRENT_MAIN', expectedSha: mainSha, claim: resolved.claim, classification })
+    printRuntimeReport({ purpose: 'CURRENT_MAIN', releaseBranch: authority.branch, expectedSha: mainSha, claim: resolved.claim, classification })
     console.error(`\n[runtime:main] BLOCKED (exit ${plan.code}): ${plan.reason}`)
     process.exit(plan.code)
     return
@@ -239,7 +242,7 @@ async function cmdMain() {
   if (plan.action === 'start' && resolved.claim?.url) {
     const stillServing = await probeRuntimeEcho(resolved.claim.url)
     if (stillServing.ok) {
-      printRuntimeReport({ purpose: 'CURRENT_MAIN', expectedSha: mainSha, claim: resolved.claim, classification })
+      printRuntimeReport({ purpose: 'CURRENT_MAIN', releaseBranch: authority.branch, expectedSha: mainSha, claim: resolved.claim, classification })
       console.error(
         `\n[runtime:main] BLOCKED (exit ${EXIT.PROVENANCE}): "${resolved.claim.url}" still answers a request even though this ` +
           `runtime classified ${classification.status} (its claimed owner pid is not verifiably alive). Refusing to mutate the ` +
@@ -321,7 +324,7 @@ async function cmdMain() {
   // read-modify-write racing it unguarded).
   updatePreviewState(legacyStatePath, (current) => ({ ...(current || {}), sha: transaction.head, dir: previewPath, pid: started.claim.pid, port: started.claim.port, startedAt: started.claim.startedAt }))
 
-  printRuntimeReport({ purpose: 'CURRENT_MAIN', expectedSha: mainSha, claim: started.claim, classification: { status: 'SERVING_VERIFIED', reason: 'Just started and verified.' } })
+  printRuntimeReport({ purpose: 'CURRENT_MAIN', releaseBranch: authority.branch, expectedSha: mainSha, claim: started.claim, classification: { status: 'SERVING_VERIFIED', reason: 'Just started and verified.' } })
   process.exit(EXIT.OK)
 }
 
@@ -438,11 +441,17 @@ async function cmdStatus() {
   const repoRoot = path.dirname(commonDir)
   const registryPath = defaultRegistryPath(commonDir)
   const legacyStatePath = defaultPreviewStatePath(commonDir)
-  const mainSha = git(cwd, ['rev-parse', 'main'])
+  const authority = resolveCurrentMainAuthority(cwd)
+  const mainSha = authority.ok ? authority.sha : null
   const previewPath = path.resolve(repoRoot, process.env.A3_PREVIEW_DIR || '.preview/main')
 
+  // `status` is a non-mutating diagnostic — it never exits non-zero merely
+  // because branch authority is ambiguous; it surfaces that ambiguity as
+  // part of the report instead, same as any other UNRESOLVED field here.
   console.log('RUNTIME STATUS')
-  console.log(`  CURRENT LOCAL MAIN SHA: ${mainSha ?? 'UNRESOLVED'}`)
+  console.log(`  RELEASE BRANCH        : ${authority.ok ? `${authority.branch} (via ${authority.branchSource})` : 'UNRESOLVED'}`)
+  console.log(`  CURRENT RELEASE SHA   : ${mainSha ?? 'UNRESOLVED'}`)
+  if (!authority.ok) console.log(`  RELEASE BRANCH REASON : ${authority.reason}`)
 
   const resolved = resolveCurrentMainClaim({ registryPath, legacyPreviewStatePath: legacyStatePath, previewWorktreePath: previewPath })
   const mainClassification = await classifyClaim(resolved.claim, { gitMainSha: mainSha })
@@ -503,8 +512,9 @@ function cmdTaskBase(args) {
   const manifest = readManifest(manifestPath)
   const entry = manifest[lane] ?? null
 
-  const mainSha = git(cwd, ['rev-parse', 'main'])
-  if (!mainSha) return fail(EXIT.LIFECYCLE, '"git rev-parse main" failed.')
+  const authority = resolveCurrentMainAuthority(cwd)
+  if (!authority.ok) return fail(EXIT.PROVENANCE, authority.reason)
+  const mainSha = authority.sha
 
   const worktree = args.worktree ? path.resolve(args.worktree) : entry?.worktree || cwd
   const head = headSha(worktree)
@@ -515,6 +525,7 @@ function cmdTaskBase(args) {
 
   console.log('TASK BASE PREFLIGHT')
   console.log(`  LANE                 : ${lane}`)
+  console.log(`  RELEASE BRANCH       : ${authority.branch} (via ${authority.branchSource})`)
   console.log(`  CURRENT MAIN SHA     : ${mainSha}`)
   console.log(`  TASK WORKSPACE HEAD  : ${head}`)
 

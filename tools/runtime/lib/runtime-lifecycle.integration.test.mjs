@@ -518,7 +518,8 @@ describe('runtime:status — scenario O (non-mutating)', () => {
 
     const status = spawnSync('node', [MAIN_MJS, 'status'], { cwd: repoDir, encoding: 'utf8', env: { ...process.env, A3_PREVIEW_DIR: previewPath } })
     expect(status.status).toBe(0)
-    expect(status.stdout).toContain('CURRENT LOCAL MAIN SHA')
+    expect(status.stdout).toContain('CURRENT RELEASE SHA')
+    expect(status.stdout).toContain('RELEASE BRANCH')
     expect(status.stdout).toContain('SERVING_VERIFIED')
 
     expect(readFileSync(registryPath, 'utf8')).toBe(before) // byte-identical
