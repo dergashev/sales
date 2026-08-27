@@ -98,7 +98,15 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
             {`Musterprojekt Nordfeld · Haus${NNBSP}A`}
           </p>
         )}
-        {!client && option && (
+        {/* REDESIGN R3 (877f2c2a): this was `!client && option` — the ONLY
+            entry point to Variantenvergleich was internal-only, so the new
+            client-safe Options/comparison surface it now also hosts
+            (`S4Vergleich.tsx`'s `client` branches) had no way to be
+            reached from Kundenansicht at all. `S4Vergleich.tsx` itself
+            already fully owns client-safe composition (eligible-only
+            columns, the "wird präsentiert" selector, the one-Option
+            summary) — this link only needed to stop being hidden. */}
+        {option && (
           <button type="button" className="a3-linkbtn mt-3"
                   onClick={() => s.setPipelineView('vergleich')}>
             {t('nav.vergleich')}
