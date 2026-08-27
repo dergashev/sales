@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState, type RefObject } from 'react'
 import demo from '../fixtures/demo-0001.json'
 import opportunities from '../fixtures/opportunities.json'
 import {
+  buildingConfirmed,
   configForOption,
   preparationProjection,
   preparationStatuses,
@@ -12,6 +13,8 @@ import {
   useStore,
   wflConflict,
 } from '../state/store'
+import { buildKgCompositionSegments } from '../components/costComposition'
+import { CompositionBar } from '../design-system/CompositionBar'
 import { effectiveFactValue } from '../state/buildingReview'
 import { NNBSP, formatDE, label as moneyLabel, present, rateLabel } from '../engine/money'
 import {
@@ -232,6 +235,15 @@ function customerEvidenceDate(capturedAt: string, language: 'de' | 'en'): string
   }).format(new Date(`${capturedAt}T00:00:00Z`))
 }
 
+/** Same signed-delta convention as `S4Vergleich.tsx`'s local `delta()` —
+ *  not exported from there, so restated here rather than imported across a
+ *  screen boundary for one six-line formatter. */
+function optionDeltaMoney(exact: Decimal, language: 'de' | 'en'): string {
+  if (exact.isZero()) return '—'
+  const sign = exact.isNegative() ? '−' : '+'
+  return localizeMoneyText(`${sign}${NNBSP}${moneyLabel(present(exact.abs()))}`, language)
+}
+
 /**
  * Internal Note (DC-43) behind the canonical `Dialog` (#16 Part 5/AC-07):
  * the header utility button below is the ONLY entry point now — the note no
@@ -279,14 +291,21 @@ function InternalNoteDialog({ open, onOpenChange, returnFocusTo }: {
 }
 
 /**
- * Eine Zeile · Opportunity Option (AUD-03/EXP-04). Vorher ein blanker
- * `<li>{name} <Button>Öffnen</Button></li>` ohne Zustand, Umfang, Summe oder
- * Zeitpunkt — jetzt der kanonische `Card` (title/status/meta/actions,
- * `components-core.md` CARD-001), exakt wie `OpportunityList.tsx` ihn schon
- * für die Opportunity-Zeile selbst verwendet. Kein neues Primitiv, keine
- * lokale Kopie.
+ * OptionCard · Opportunity Option as a commercial object (AUD-03/EXP-04,
+ * REDESIGN R2 §3 DESIGN-09). Built on the canonical `Card`
+ * (title/status/meta/actions, `components-core.md` CARD-001) — no second
+ * card primitive — with the option's building composition, subtotal,
+ * KG mini-composition (`CompositionBar`, R1) and, at ≥2 options, a delta
+ * against the same array-order baseline `S4Vergleich.tsx` already names
+ * "Vergleichsbasis" (VARIANT-001). No new commercial semantics: every value
+ * here already exists in `projectionForOption`/`configForOption`.
+ *
+ * Deliberately carries NO `MediaFrame` — options of one project have no
+ * truthful differentiating imagery yet, and near-identical placeholder art
+ * would violate the imagery-semantic rule (R2 §6). Identity comes from
+ * name + building composition + commercial structure instead.
  */
-function OptionRow({ option, justCreated, rowRef }: {
+function OptionCard({ option, justCreated, rowRef }: {
   option: { id: string; name: string }
   justCreated: boolean
   rowRef?: RefObject<HTMLLIElement>
@@ -350,19 +369,50 @@ function OptionRow({ option, justCreated, rowRef }: {
   const stateLabel = sent ? tx('Versendet') : configured ? tx('In Arbeit') : tx('Neu')
   const stateSign = sent ? '●' : configured ? '◐' : '○'
 
-  const scope = cfg
+  // REDESIGN R2 §3 "BUILDING COMPOSITION": chips, not a joined string —
+  // `buildingConfirmed` is the SAME function `canBeginConfiguration` gates
+  // pricing on, fed this option's own reviews/confirmation plus the
+  // opportunity-level `buildingConflicts` (conflicts predate Options —
+  // resolved once at document-analysis time, shared by every Option of
+  // this Opportunity, never per-Option state).
+  const buildingChips = cfg
     ? Object.keys(cfg.buildings)
       .filter((id) => cfg.included[id])
-      .map((id) => cfg.buildings[id]?.stableName ?? tx('Gebäude'))
-      .join(' · ')
-    : ''
+      .map((id) => ({
+        id,
+        name: cfg.buildings[id]?.stableName ?? tx('Gebäude'),
+        confirmed: buildingConfirmed(
+          {
+            buildingReviews: cfg.buildingReviews,
+            buildingConfirmation: cfg.buildingConfirmation,
+            buildingConflicts: s.buildingConflicts,
+          },
+          id,
+        ),
+      }))
+    : []
 
   const priceUnavailable = !projection || projection.result.total.exact.isZero()
-  const totalText = projection
-    ? `${t(projection.result.totalLabel)} · ${priceUnavailable
-      ? t('money.priceNotDetermined')
-      : optionRowMoney(projection.result.total.exact, s.uiLanguage)}`
+  const totalLabelText = projection ? t(projection.result.totalLabel) : t('money.priceNotDetermined')
+  const totalValueText = projection && !priceUnavailable
+    ? optionRowMoney(projection.result.total.exact, s.uiLanguage)
     : t('money.priceNotDetermined')
+
+  // REDESIGN R2 §8: the SAME `kgSplit` the KG tables elsewhere reconcile
+  // against — no second sum, no second rounding.
+  const segments = projection
+    ? buildKgCompositionSegments(projection.kgSplit, (group) => t(`costGroup.${group}`))
+    : []
+
+  // REDESIGN R2 §3 "COMPARISON SIGNAL": baseline = `s.options[0]`, the same
+  // array-order baseline `S4Vergleich.tsx` names "Vergleichsbasis"
+  // (VARIANT-001) — one comparison semantic, not a second one invented here.
+  const baselineOption = s.options[0]
+  const isBaseline = baselineOption?.id === option.id
+  const baselineProjection = !isBaseline && baselineOption
+    ? projectionForOption(s, baselineOption.id)
+    : null
+  const showDelta = s.options.length > 1 && !isBaseline && projection && baselineProjection
 
   return (
     <motion.li
@@ -396,7 +446,19 @@ function OptionRow({ option, justCreated, rowRef }: {
           </FormField>
         ) : option.name}
         status={<Badge sign={stateSign}>{stateLabel}</Badge>}
-        meta={scope || undefined}
+        meta={buildingChips.length > 0 ? (
+          <span className="flex flex-wrap gap-1">
+            {buildingChips.map((b) => (
+              <span
+                key={b.id}
+                className="inline-flex items-center gap-1 border border-border-default px-2 py-0.5 text-small text-text-secondary"
+              >
+                {b.name}
+                {b.confirmed && <span aria-hidden="true">✓</span>}
+              </span>
+            ))}
+          </span>
+        ) : undefined}
         actions={
           <>
             {!sent && !renaming && (
@@ -412,9 +474,36 @@ function OptionRow({ option, justCreated, rowRef }: {
         }
         onOpen={renaming ? undefined : () => s.openOption(option.id)}
       >
-        <span className="a3-cap block">{totalText}</span>
+        <div>
+          <span className="a3-cap block">{totalLabelText}</span>
+          <span className="text-metric-section font-bold text-text-primary numeric block">
+            {totalValueText}
+          </span>
+        </div>
+        {segments.length > 0 && projection && (
+          <div className="mt-3">
+            <CompositionBar
+              segments={segments}
+              total={projection.result.total.exact}
+              variant="compact"
+              incompleteLabel={t('money.priceNotDetermined')}
+            />
+          </div>
+        )}
+        {showDelta && (
+          <span className="a3-cap mt-2 block">
+            {tx(`Unterschied zu ${baselineOption!.name}`)}
+            {NNBSP}·{NNBSP}
+            <span className="numeric">
+              {optionDeltaMoney(
+                projection!.result.total.exact.minus(baselineProjection!.result.total.exact),
+                s.uiLanguage,
+              )}
+            </span>
+          </span>
+        )}
         {lastOwnEvent && (
-          <span className="a3-cap block">
+          <span className="a3-cap block mt-1">
             {tx('Zuletzt geändert')}{NNBSP}{optionEventTimestamp(lastOwnEvent.at, s.uiLanguage)}
           </span>
         )}
@@ -1147,10 +1236,23 @@ export function OpportunityCard() {
         </div>
 
         {s.options.length > 0 && (
-          <ul className="mt-3 flex flex-col gap-3">
+          // REDESIGN R2 §3 "OPTION GALLERY": at 1 option a single card at a
+          // constrained measure (identity + completeness, no pretend
+          // comparison); at ≥2, a comparison-ready 2-up grid so aligned
+          // OptionCard rows can be scanned side by side (wraps to a further
+          // row at 3+, never forced into horizontal scroll here).
+          <ul
+            className={s.options.length > 1
+              ? 'mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2'
+              // Single option: no grid needed, and a `max-w-content` cap
+              // (the same content-column token every other single-column
+              // section already uses) keeps one lonely card from stretching
+              // edge to edge — no new width token invented for this.
+              : 'mt-3 flex max-w-content flex-col gap-3'}
+          >
             <AnimatePresence initial={false}>
               {s.options.map((o) => (
-                <OptionRow
+                <OptionCard
                   key={o.id}
                   option={o}
                   justCreated={o.id === justCreatedOptionId}

@@ -3787,7 +3787,7 @@ const store = createStore<Store>((set, get) => {
      * demselben Namen, still bestätigt per Toast. `createOption`s Garantie
      * (Name folgt demselben monotonen `optionSeq` wie `id`) galt nur bei
      * der Erstellung; sie muss auch beim Umbenennen gelten. Dieselbe Wache
-     * lebt zusätzlich in der UI (`OptionRow.commitRename`), die dem Nutzer
+     * lebt zusätzlich in der UI (`OptionCard.commitRename`), die dem Nutzer
      * den Grund nennen kann — hier bleibt sie als stiller Schutz, falls ein
      * Aufruf das UI umgeht.
      */
