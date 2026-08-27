@@ -537,6 +537,41 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-comparison-scroll>.a3-cmp{inline-size:max-content;min-inline-size:100%}
 .a3-comparison-scroll .a3-cmp tr:not(.a3-comparison-group)>:first-child{position:sticky;inset-inline-start:0;z-index:1;min-inline-size:var(--measure-conflict-column);background:var(--color-surface-default);box-shadow:var(--border-width-default) 0 var(--color-border-subtle)}
 .a3-comparison-scroll .a3-cmp thead tr>:first-child{z-index:2}
+/* Frontend rework round 3 (P1, still failing after two prior "paint bug"
+   fixes): both prior fixes chased the wrong root cause. The actual
+   mechanism, confirmed by toggling `position:sticky` off live and watching
+   the "corrupted" numbers render correctly: the sticky first column keeps
+   painting an OPAQUE `--color-surface-default` box over whatever scrolled
+   content is currently underneath its own footprint (roughly its own
+   rendered width, ~272px — the `min-inline-size` token below plus its own
+   padding). At most scroll positions that isn't a problem, but at a
+   position where an option column's LEFT portion sits under that footprint,
+   the sticky column visually erases it — including, sometimes, the ENTIRE
+   right-aligned money text if its own width happens to fall inside the
+   covered span (this reads as "blank"/"0 €"/leading-digits-missing
+   depending on exactly how much of the text falls under the sticky column).
+   This was never a DOM bug — `textContent`/`aria-label` were correct in
+   every prior report — it is direct visual occlusion by a sibling element,
+   reproducible at essentially any scroll position that isn't the very start
+   or very end, via the real "Zum Zeilenende"/"Zum Zeilenanfang" buttons,
+   programmatic `scrollLeft`, or ordinary trackpad/wheel scrolling.
+   `<col>` gives every option column one definite, pre-established width
+   (kept from round 2 — harmless and useful for the scroll-snap math below),
+   but does not by itself address the occlusion. */
+.a3-comparison-scroll .a3-cmp col.a3-cmp-optioncol{width:var(--measure-band)}
+/* The real fix: never let the user's scroll position SETTLE anywhere the
+   sticky column's footprint would cover a column's money text. `scroll-snap`
+   forces every scroll gesture — the two buttons, wheel/trackpad, drag —  to
+   come to rest with an option column's RIGHT edge flush against the
+   scrollport's right edge (`scroll-snap-align:end`; no scroll-padding needed
+   on that side, nothing covers it). Since the sticky column only ever
+   occupies the LEFT edge of the scrollport, a column resting flush against
+   the RIGHT edge keeps its entire right-aligned money text (comfortably
+   under half the column's own width) outside the sticky column's reach —
+   only the column's own left-side badges/chips may sit under the sticky
+   footprint at a snapped position, never the commercial number. */
+.a3-comparison-scroll{scroll-snap-type:x mandatory}
+.a3-comparison-scroll .a3-cmp thead tr>:not(:first-child){scroll-snap-align:end}
 
 /* DC-7 / DC-31 · preparation/client mode cards and notice popover.
    Structure: .a3-mode-wrap > .a3-mode-card; trigger .a3-hinweis controls the
