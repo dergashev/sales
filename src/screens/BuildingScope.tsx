@@ -18,6 +18,7 @@ import {
 } from '../state/store'
 import { RadioCardGroup } from '../components/controls'
 import { optionImage } from '../assets/option-images'
+import { MediaFrame } from '../design-system/MediaFrame'
 import {
   BUILDING_FACT_KEYS,
   deriveConflictState,
@@ -405,39 +406,54 @@ export function BuildingScope() {
                   const areaLabel = t(wfl
                     ? 'buildingScope.fact.wfl'
                     : 'buildingScope.fact.nuf')
+                  // REDESIGN R2 §4 "BUILDINGCARD": the same data this row
+                  // already read (checkbox/StatusBadge/FactSummary triple/
+                  // form+class caption, all unchanged) composed as an
+                  // object with a face — never a real photograph (no
+                  // truthful per-building imagery exists; a random
+                  // architecture photo would falsely imply the building's
+                  // actual design), so the fallback art IS the canonical
+                  // identity treatment here, not a placeholder-for-later.
                   return (
                     <li key={id} className="border-b border-border-subtle py-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <label className="flex min-h-hit-target min-w-0 cursor-pointer items-center gap-3 text-body font-medium text-text-primary">
-                          <input
-                            type="checkbox"
-                            checked={s.included[id] === true}
-                            onChange={() => toggleBuilding(id)}
-                            className="h-4 w-4 shrink-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-                          />
-                          <span className="min-w-0 break-words">{name}</span>
-                        </label>
-                        <StatusBadge status={statusFor(s, id)} />
+                      <div className="flex flex-wrap items-start gap-4">
+                        <div className="w-24 shrink-0">
+                          <MediaFrame ratio="tile" state="fallback" seed={name} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <label className="flex min-h-hit-target min-w-0 cursor-pointer items-center gap-3 text-body font-medium text-text-primary">
+                              <input
+                                type="checkbox"
+                                checked={s.included[id] === true}
+                                onChange={() => toggleBuilding(id)}
+                                className="h-4 w-4 shrink-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                              />
+                              <span className="min-w-0 break-words">{name}</span>
+                            </label>
+                            <StatusBadge status={statusFor(s, id)} />
+                          </div>
+                          <p className="mt-1 text-small text-text-muted">
+                            {[form ? t(FORM_MESSAGE[form]) : null,
+                              buildingClass ? t(CLASS_MESSAGE[buildingClass]) : null, address]
+                              .filter(Boolean).join(' · ')}
+                          </p>
+                          <dl className="mt-3 grid grid-cols-3 gap-3 text-small text-text-secondary">
+                            <FactSummary
+                              label={t('buildingScope.fact.bgfRSTotal')}
+                              value={gfa ? `${formatDE(gfa, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}
+                            />
+                            <FactSummary
+                              label={areaLabel}
+                              value={area ? `${formatDE(area, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}
+                            />
+                            <FactSummary
+                              label={t('buildingScope.fact.units')}
+                              value={units ? formatDE(units, 0) : t('buildingScope.value.notCaptured')}
+                            />
+                          </dl>
+                        </div>
                       </div>
-                      <dl className="mt-3 grid grid-cols-3 gap-3 pl-7 text-small text-text-secondary">
-                        <FactSummary
-                          label={t('buildingScope.fact.bgfRSTotal')}
-                          value={gfa ? `${formatDE(gfa, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}
-                        />
-                        <FactSummary
-                          label={areaLabel}
-                          value={area ? `${formatDE(area, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}
-                        />
-                        <FactSummary
-                          label={t('buildingScope.fact.units')}
-                          value={units ? formatDE(units, 0) : t('buildingScope.value.notCaptured')}
-                        />
-                      </dl>
-                      <p className="mt-2 pl-7 text-small text-text-muted">
-                        {[address, form ? t(FORM_MESSAGE[form]) : null,
-                          buildingClass ? t(CLASS_MESSAGE[buildingClass]) : null]
-                          .filter(Boolean).join(' · ')}
-                      </p>
                     </li>
                   )
                 })}
