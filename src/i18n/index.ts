@@ -95,6 +95,10 @@ const de = {
   'oppcard.baseline.intro':
     'Gemeinsame Basis für alle Opportunity Options dieses Projekts.',
   'oppcard.baseline.primaryFacts': 'Zentrale Projektdaten',
+  // REDESIGN R2 §3 "COMPARISON SIGNAL": OptionCard's delta caption at ≥2
+  // options — `{baseline}` is the same array-order Option name
+  // S4Vergleich.tsx already calls "Vergleichsbasis" (VARIANT-001).
+  'option.deltaVsBaseline': 'Unterschied zu {baseline}',
   'oppcard.baseline.bgfBreakdown': 'Bruttogeschossfläche (BGF)',
   'oppcard.baseline.confirmConsequence':
     'Mit der Bestätigung wird diese Grundlage für Opportunity Options freigegeben.',
@@ -649,6 +653,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'oppcard.baseline.intro':
     'Shared basis for all Opportunity Options in this project.',
   'oppcard.baseline.primaryFacts': 'Core project facts',
+  'option.deltaVsBaseline': 'Difference to {baseline}',
   'oppcard.baseline.bgfBreakdown': 'Gross floor area (GFA)',
   'oppcard.baseline.confirmConsequence':
     'Confirming releases this baseline for Opportunity Options.',

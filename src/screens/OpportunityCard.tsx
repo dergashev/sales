@@ -492,7 +492,7 @@ function OptionCard({ option, justCreated, rowRef }: {
         )}
         {showDelta && (
           <span className="a3-cap mt-2 block">
-            {tx(`Unterschied zu ${baselineOption!.name}`)}
+            {t('option.deltaVsBaseline', { baseline: baselineOption!.name })}
             {NNBSP}·{NNBSP}
             <span className="numeric">
               {optionDeltaMoney(

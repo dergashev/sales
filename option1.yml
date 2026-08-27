@@ -1,0 +1,16 @@
+- list [ref=e577]:
+  - listitem [active] [ref=e578]:
+    - article [ref=e579]:
+      - button "Option 1" [ref=e581] [cursor=pointer]
+      - generic [ref=e582]: Haus A
+      - generic [ref=e585]:
+        - generic [ref=e586]:
+          - generic [ref=e587]: Zwischensumme der kalkulierten Positionen
+          - generic [ref=e588]: ≈ 3.818.000 €
+        - img "Baukonstruktion ≈ 2.672.000 € · 70 % · Technische Anlagen ≈ 840.000 € · 22 % · Baunebenkosten ≈ 305.000 € · 8 %" [ref=e591]
+      - generic [ref=e596]:
+        - generic [ref=e597]: ○
+        - text: Neu
+      - generic [ref=e598]:
+        - button "Umbenennen" [ref=e599] [cursor=pointer]
+        - button "Öffnen" [ref=e600] [cursor=pointer]

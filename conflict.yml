@@ -1,0 +1,301 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - img "All3" [ref=e6]
+      - navigation "Pfad" [ref=e241]:
+        - generic [ref=e242]: /
+        - button "Opportunities" [ref=e243] [cursor=pointer]
+        - generic [ref=e244]: /
+        - generic [ref=e245]: Musterprojekt Nordfeld
+    - generic [ref=e7]:
+      - group "Sprache" [ref=e9]:
+        - radiogroup "Sprache" [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]:
+            - radio "DE" [checked] [ref=e13]
+            - generic [ref=e14]: ✓
+            - generic [ref=e15]: DE
+          - generic [ref=e16] [cursor=pointer]:
+            - radio "EN" [ref=e17]
+            - generic [ref=e18]: EN
+      - button "Account" [ref=e20] [cursor=pointer]:
+        - generic [ref=e21]: A3
+  - main [ref=e23]:
+    - generic [ref=e246]:
+      - figure [ref=e247]:
+        - generic [ref=e248]: MN
+      - generic [ref=e256]:
+        - heading "Musterprojekt Nordfeld" [level=1] [ref=e257]
+        - generic [ref=e259]:
+          - generic [ref=e260]: Musterstadt · Deutschland · A. Muster
+          - generic [ref=e261]: in Vorbereitung
+          - button "Interne Notiz" [ref=e262] [cursor=pointer]
+      - generic [ref=e263]:
+        - generic [ref=e264]:
+          - term [ref=e265]: Gebäude
+          - definition [ref=e266]: "2"
+        - generic [ref=e267]:
+          - term [ref=e268]: BGF (R+S)
+          - definition [ref=e269]: 3.600 m²
+        - generic [ref=e270]:
+          - term [ref=e271]: Wohneinheiten
+          - definition [ref=e272]: "16"
+        - generic [ref=e273]:
+          - term [ref=e274]: Termin
+          - definition [ref=e275]: morgen 14:00
+      - navigation "Projektstatus" [ref=e276]:
+        - list [ref=e277]:
+          - listitem [ref=e278]:
+            - button "Schritt 1 von 4 Dokumentanalyse Ein Dokument ist nicht lesbar · blockiert das Anlegen einer Opportunity Option nicht" [ref=e279] [cursor=pointer]:
+              - generic [ref=e280]:
+                - generic [ref=e281]: "1"
+                - generic [ref=e282]: Schritt 1 von 4
+              - generic [ref=e283]: "!"
+              - generic [ref=e284]:
+                - generic [ref=e285]: Dokumentanalyse
+                - generic [ref=e286]: Ein Dokument ist nicht lesbar · blockiert das Anlegen einer Opportunity Option nicht
+          - listitem [ref=e287]:
+            - button "Schritt 2 von 4 Strittige Angaben Entscheidung erforderlich · blockiert die Projektgrundlage" [ref=e288] [cursor=pointer]:
+              - generic [ref=e289]:
+                - generic [ref=e290]: "2"
+                - generic [ref=e291]: Schritt 2 von 4
+              - generic [ref=e292]: "!"
+              - generic [ref=e293]:
+                - generic [ref=e294]: Strittige Angaben
+                - generic [ref=e295]: Entscheidung erforderlich · blockiert die Projektgrundlage
+          - listitem [ref=e296]:
+            - button "Schritt 3 von 4 Projektgrundlage Erst Konflikte entscheiden" [disabled] [ref=e297]:
+              - generic [ref=e298]:
+                - generic [ref=e299]: "3"
+                - generic [ref=e300]: Schritt 3 von 4
+              - generic [ref=e301]: ○
+              - generic [ref=e302]:
+                - generic [ref=e303]: Projektgrundlage
+                - generic [ref=e304]: Erst Konflikte entscheiden
+          - listitem [ref=e305]:
+            - button "Schritt 4 von 4 Opportunity Options Erst Konflikte entscheiden und Projektparameter bestätigen" [disabled] [ref=e306]:
+              - generic [ref=e307]:
+                - generic [ref=e308]: "4"
+                - generic [ref=e309]: Schritt 4 von 4
+              - generic [ref=e310]: ○
+              - generic [ref=e311]:
+                - generic [ref=e312]: Opportunity Options
+                - generic [ref=e313]: Erst Konflikte entscheiden und Projektparameter bestätigen
+      - region "Dokumentanalyse" [ref=e314]:
+        - generic [ref=e315]:
+          - generic [ref=e316]:
+            - heading "Dokumentanalyse" [level=2] [ref=e317]
+            - generic [ref=e318]: Simulation · Parsing im Prototyp nachgestellt
+          - region "Dokumentanalyse" [ref=e319]:
+            - list [ref=e321]:
+              - listitem [ref=e322]: ✓ 4 Dokumente gelesen
+              - listitem [ref=e323]: ✓ 2 Planversionen gefunden
+              - listitem [ref=e324]: ✓ Werte extrahiert · Regelsatz RS 2026.2
+            - list [ref=e325]:
+              - listitem [ref=e326]:
+                - generic [ref=e327]: PDF
+                - generic [ref=e328]: Bauantrag_Mappe_Muster.pdf
+                - generic [ref=e329]: 68 S.
+                - generic [ref=e331]:
+                  - generic [ref=e332]: ✓
+                  - text: analysiert
+              - listitem [ref=e333]:
+                - generic [ref=e334]: PDF
+                - generic [ref=e335]: Grundrisse_Muster_V2.pdf
+                - generic [ref=e336]: 24 S.
+                - generic [ref=e338]:
+                  - generic [ref=e339]: ✓
+                  - text: analysiert
+              - listitem [ref=e340]:
+                - generic [ref=e341]: PDF
+                - generic [ref=e342]: Grundrisse_Muster_V1.pdf
+                - generic [ref=e343]: 22 S.
+                - generic [ref=e345]:
+                  - generic [ref=e346]: ✓
+                  - text: analysiert
+              - listitem [ref=e347]:
+                - generic [ref=e348]: JPG
+                - generic [ref=e349]: Statik_Auszug_Muster.jpg
+                - generic [ref=e350]: 1 S.
+                - generic [ref=e351]:
+                  - generic [ref=e352]:
+                    - generic [ref=e353]: ✗
+                    - text: "nicht lesbar: Auflösung zu gering"
+                  - generic [ref=e354]:
+                    - button "Besseren Scan hochladen" [disabled] [ref=e355]
+                    - generic [ref=e356]: Datei-Upload existiert im Prototyp nicht — Parsing ist simuliert
+                  - button "Manuell erfassen" [ref=e357] [cursor=pointer]
+            - paragraph [ref=e358]: Werte aus dieser Datei fehlen — 3 andere Dokumente sind vollständig analysiert.
+            - generic [ref=e359]:
+              - paragraph [ref=e360]: Protokoll gespeichert · bestätigte und manuell erfasste Werte bleiben bei erneuter Analyse unverändert (D-08)
+              - button "Analyse erneut ausführen" [ref=e362] [cursor=pointer]
+        - generic [ref=e363]:
+          - heading "Versionsauflösung · Grundrisse" [level=3] [ref=e364]
+          - paragraph [ref=e365]: "Zwei Versionen gefunden. Vorschlag des Systems: V2 — Datum im Plankopf ist neuer. Das Datum ist ein Beleg, keine Entscheidung (VERSION-002): die Auswahl trifft der Vertrieb, der Wechsel wird protokolliert, die ausgeschlossene Version bleibt nachvollziehbar."
+          - generic [ref=e366]:
+            - button "Grundrisse_Muster_V2.pdf" [pressed] [ref=e367] [cursor=pointer]:
+              - generic [ref=e368]: ✓
+              - text: Grundrisse_Muster_V2.pdf
+            - button "Grundrisse_Muster_V1.pdf" [ref=e369] [cursor=pointer]
+          - paragraph [ref=e370]: Wiederholte Analyse überschreibt niemals Werte mit «manuell erfasst» oder «vom Kunden bestätigt» — bei Konflikt entscheidet der Vertrieb über den Diff (D-08).
+      - region "Strittige Angaben" [active] [ref=e371]:
+        - heading "Strittige Angaben aus der Dokumentation" [level=2] [ref=e372]
+        - generic [ref=e373]:
+          - paragraph [ref=e374]: "▲ Wohnfläche WFL nach WoFlV: zwei Kandidaten."
+          - generic [ref=e375]:
+            - generic [ref=e376]:
+              - generic [ref=e377]: Dokument
+              - generic [ref=e378]: 1.500,00 m²
+              - generic [ref=e379]: Grundrisse_Muster_V2.pdf, Seite 12
+            - generic [ref=e380]:
+              - generic [ref=e381]: Kunde
+              - generic [ref=e382]: 1.560,00 m²
+              - generic [ref=e383]: vom Kunden bestätigt am 05.08.2026
+          - paragraph [ref=e384]: "Folge der Wahl: nur der Nenner der Leitkennzahl ändert sich, die Zwischensumme der kalkulierten Positionen bleibt gleich. Der nicht gewählte Kandidat bleibt als Alternative nachvollziehbar."
+          - generic [ref=e385]:
+            - button "Kundenwert übernehmen" [ref=e386] [cursor=pointer]
+            - button "Dokumentwert beibehalten" [ref=e387] [cursor=pointer]
+            - button "Später entscheiden" [ref=e388] [cursor=pointer]
+      - region "Offene Fragen & Annahmen" [ref=e389]:
+        - heading "Diese 2 Fragen reduzieren die Schätzunsicherheit von ± 22 % auf ± 13 %" [level=2] [ref=e390]
+        - paragraph [ref=e391]: Nach Wirkung sortiert; Verengung in Prozentpunkten. Eine Option zu wählen verengt nichts — nur die Bestätigung des Kunden (D-19).
+        - heading "Offene Fragen" [level=3] [ref=e392]
+        - list [ref=e393]:
+          - listitem [ref=e394]:
+            - generic [ref=e395]: 1. Liegt eine Wohnflächenberechnung nach WoFlV vor?
+            - generic [ref=e396]: − 5 Prozentpunkte
+            - button "→ Strittige Angaben" [ref=e397] [cursor=pointer]
+          - listitem [ref=e398]:
+            - generic [ref=e399]: 2. Welcher Effizienzhaus-Standard ist vorgesehen?
+            - generic [ref=e400]: − 4 Prozentpunkte
+            - button "Antwort erfassen" [ref=e401] [cursor=pointer]
+        - heading "Risiko" [level=3] [ref=e402]
+        - paragraph [ref=e403]:
+          - generic [ref=e404]: Ist ein Baugrundgutachten vorhanden?
+          - generic [ref=e405]: "→ Risiko: Baugrund · Wahrscheinlichkeit mittel · Kostenwirkung + 4 % auf KG 320"
+        - generic [ref=e406]:
+          - button "Fragenliste kopieren" [ref=e407] [cursor=pointer]
+          - status
+        - heading "Empfehlungen · 1" [level=3] [ref=e408]
+        - paragraph [ref=e409]: Texte stammen aus den Fallback-Regeln; das Wertfeld (z. B. die Gebäudeklasse) wird mit dem Projektwert belegt — der Regeltext nennt einen Beispielwert. Eine Empfehlung verschwindet, sobald der Wert erfasst ist — die Liste wird abgeleitet, nicht gepflegt.
+        - list [ref=e410]:
+          - listitem [ref=e411]:
+            - paragraph [ref=e412]: "Empfehlung: Die Gebäudeklasse ist noch nicht bestätigt. Die Geschossanzahl ist lediglich Prüfauslöser und kein Nachweis; die Einstufung nach MBO §2 erfolgt über das Brandschutzkonzept und die zugehörigen Nachweise. Für die Kalkulation ist vorläufig GK 5 hinterlegt, Stand «Prüfung erforderlich». Die endgültige Einstufung kann die Anforderungen an Tragwerk und Kapselung und damit den Preis verändern; mit Vorlage des Brandschutzkonzepts bestätigen wir sie."
+            - button "Klassifikation bestätigen" [ref=e414] [cursor=pointer]
+      - region "Projektparameter" [ref=e415]:
+        - heading "Projektgrundlage" [level=2] [ref=e416]
+        - paragraph [ref=e417]: Gemeinsame Basis für alle Opportunity Options dieses Projekts.
+        - generic "Zentrale Projektdaten" [ref=e418]:
+          - generic [ref=e419]:
+            - term [ref=e420]: Gebäude im Projekt
+            - definition [ref=e421]:
+              - generic [ref=e422]: "2"
+          - generic [ref=e423]:
+            - term [ref=e424]: Total WFL nach WoFlV
+            - definition [ref=e425]:
+              - generic [ref=e426]: 1.500,00 m²
+              - 'generic "Herkunft: aus Dokument" [ref=e428]':
+                - generic [ref=e430]: ◆
+                - generic [ref=e431]: aus Dokument
+              - status [ref=e433]
+          - generic [ref=e434]:
+            - term [ref=e435]: Total NUF nach DIN 277
+            - definition [ref=e436]:
+              - generic [ref=e437]: 960,00 m²
+              - 'generic "Herkunft: aus Dokument" [ref=e439]':
+                - generic [ref=e441]: ◆
+                - generic [ref=e442]: aus Dokument
+          - generic [ref=e443]:
+            - term [ref=e444]: Wohneinheiten
+            - definition [ref=e445]:
+              - generic [ref=e446]: "16"
+              - 'generic "Herkunft: aus Dokument" [ref=e448]':
+                - generic [ref=e450]: ◆
+                - generic [ref=e451]: aus Dokument
+        - generic [ref=e452]:
+          - heading "Bruttogeschossfläche (BGF)" [level=3] [ref=e453]
+          - generic [ref=e454]:
+            - generic [ref=e455]:
+              - term [ref=e456]: Total BGF (R, oberirdisch)
+              - definition [ref=e457]:
+                - generic [ref=e458]: 3.200,00 m²
+                - 'generic "Herkunft: aus Dokument" [ref=e460]':
+                  - generic [ref=e462]: ◆
+                  - generic [ref=e463]: aus Dokument
+            - generic [ref=e464]:
+              - term [ref=e465]: Total BGF (S, nicht umschlossen)
+              - definition [ref=e466]:
+                - generic [ref=e467]:
+                  - generic [ref=e468]: +
+                  - text: 0,00 m²
+                - 'generic "Herkunft: aus Dokument" [ref=e470]':
+                  - generic [ref=e472]: ◆
+                  - generic [ref=e473]: aus Dokument
+            - generic [ref=e474]:
+              - term [ref=e475]: Total BGF (unterirdisch)
+              - definition [ref=e476]:
+                - generic [ref=e477]:
+                  - generic [ref=e478]: +
+                  - text: 400,00 m²
+                - 'generic "Herkunft: aus Dokument" [ref=e480]':
+                  - generic [ref=e482]: ◆
+                  - generic [ref=e483]: aus Dokument
+            - generic [ref=e484]:
+              - term [ref=e485]: Total BGF (R+S, gesamt)
+              - definition [ref=e486]:
+                - generic [ref=e487]:
+                  - generic [ref=e488]: =
+                  - text: 3.600,00 m²
+                - 'generic "Herkunft: aus Dokument" [ref=e490]':
+                  - generic [ref=e492]: ◆
+                  - generic [ref=e493]: aus Dokument
+        - paragraph [ref=e495]: "Aktuelle Leitkennzahl: ≈ 1.820 €/m² BGF oberirdisch · Δ-Werte erscheinen nur hier und nie in der Kundenansicht (Regel 11)."
+        - table [ref=e497]:
+          - caption [ref=e498]: Gebäude im Projekt
+          - rowgroup [ref=e499]:
+            - row [ref=e500]:
+              - columnheader "Gebäude" [ref=e501]
+              - columnheader "Total BGF (R)" [ref=e502]
+              - columnheader "WFL nach WoFlV" [ref=e503]
+              - columnheader "NUF nach DIN 277" [ref=e504]
+              - columnheader "Wohneinheiten" [ref=e505]
+          - rowgroup [ref=e506]:
+            - row [ref=e507]:
+              - cell "Haus A" [ref=e508]
+              - cell [ref=e509]:
+                - text: 2.000,00 m²
+                - 'generic "Herkunft: Dokument" [ref=e511]':
+                  - generic [ref=e513]: ◆
+                  - generic [ref=e514]: Dokument
+              - cell [ref=e515]:
+                - text: 1.500,00 m²
+                - 'generic "Herkunft: Dokument" [ref=e517]':
+                  - generic [ref=e519]: ◆
+                  - generic [ref=e520]: Dokument
+              - cell "nicht erfasst" [ref=e521]
+              - cell [ref=e522]:
+                - text: "16"
+                - 'generic "Herkunft: Dokument" [ref=e524]':
+                  - generic [ref=e526]: ◆
+                  - generic [ref=e527]: Dokument
+            - row [ref=e528]:
+              - cell "Haus B" [ref=e529]
+              - cell [ref=e530]:
+                - text: 1.200,00 m²
+                - 'generic "Herkunft: Dokument" [ref=e532]':
+                  - generic [ref=e534]: ◆
+                  - generic [ref=e535]: Dokument
+              - cell "nicht erfasst" [ref=e536]
+              - cell [ref=e537]:
+                - text: 960,00 m²
+                - 'generic "Herkunft: Dokument" [ref=e539]':
+                  - generic [ref=e541]: ◆
+                  - generic [ref=e542]: Dokument
+              - cell "nicht erfasst" [ref=e543]
+        - button "Projektparameter bestätigen" [ref=e545] [cursor=pointer]
+      - region "Opportunity Options" [ref=e546]:
+        - heading "Opportunity Options" [level=2] [ref=e547]
+        - generic [ref=e549]:
+          - button "Opportunity Option anlegen" [disabled] [ref=e550]
+          - generic [ref=e551]: Erst Konflikte entscheiden und Projektparameter bestätigen
+  - generic:
+    - status
