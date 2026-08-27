@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { flushSync } from 'react-dom'
 import {
   useReducedMotion as useFramerReducedMotion,
   type Transition,
@@ -163,4 +164,40 @@ export function useSemanticMotion(): SemanticMotion {
       },
     }
   }, [reduced])
+}
+
+/**
+ * CONTINUITY verb (ADR-R1-05) for a swap BETWEEN top-level screens
+ * (`s.level` in App.tsx: Opportunities list → Project entry, R2 "SALES
+ * MOMENT 1"), via the native View Transition API rather than
+ * `layoutId`/`continuityTransition` above.
+ *
+ * `layoutId` needs both the outgoing and incoming element mounted within
+ * one `AnimatePresence` — for a swap this central (App.tsx's top-level
+ * screen switch), that would mean wrapping every screen transition in
+ * `AnimatePresence`, which delays unmount until the exit animation
+ * completes. That is exactly the kind of change the existing test suite's
+ * synchronous post-navigation assertions (e.g. "scrolls to top and focuses
+ * the new H1 on every screen change") are not written to tolerate, and
+ * retrofitting all of them was judged out of proportion for this ticket.
+ * `document.startViewTransition` needs none of that: React's state update
+ * still commits synchronously (`flushSync`), the browser captures
+ * before/after snapshots of elements sharing the same CSS
+ * `view-transition-name`, and animates between them as a purely visual,
+ * non-blocking effect layered on top.
+ *
+ * Feature-detected: jsdom (the test environment) and browsers without
+ * support simply run `apply()` directly — no separate reduced-motion branch
+ * is needed there, since no transition exists to reduce. `reduced` is
+ * still checked explicitly first so reduced-motion users skip the browser
+ * API even where it IS supported.
+ */
+export function startContinuityTransition(reduced: boolean, apply: () => void): void {
+  const supported = !reduced && typeof document !== 'undefined'
+    && typeof document.startViewTransition === 'function'
+  if (!supported) {
+    apply()
+    return
+  }
+  document.startViewTransition(() => flushSync(apply))
 }

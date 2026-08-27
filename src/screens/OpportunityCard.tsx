@@ -793,7 +793,13 @@ export function OpportunityCard() {
           panoramic photo for DEMO-0001 slots into the same `state="loaded"`
           prop later without any layout change. No text is overlaid on the
           frame (canonical MediaFrame rule). */}
-      <MediaFrame ratio="pano" state="fallback" seed={meta.name} alt="" />
+      {/* REDESIGN R2 "SALES MOMENT 1": pairs with the landing card's face
+          via `startContinuityTransition` (motion.ts, View Transition API) —
+          the SAME `project-media-${id}` name OpportunityList.tsx sets on
+          its card, so the browser morphs one into the other on arrival. */}
+      <div style={{ viewTransitionName: `project-media-${meta.id}` }}>
+        <MediaFrame ratio="pano" state="fallback" seed={meta.name} alt="" />
+      </div>
       <PageHeader
         className="mt-4"
         title={meta.name}

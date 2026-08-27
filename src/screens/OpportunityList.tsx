@@ -8,6 +8,7 @@ import { SegmentedControl, Switch } from '../components/controls'
 import { STAGE_TAG } from '../lib/opportunityStage'
 import { useT, useTx } from '../i18n'
 import { MediaFrame } from '../design-system/MediaFrame'
+import { startContinuityTransition, useSemanticMotion } from '../design-system/motion'
 
 /**
  * Корень продукта — список Opportunities (DC-34 · Suche & Filter,
@@ -180,6 +181,15 @@ export function OpportunityList() {
   const s = useStore()
   const t = useT()
   const tx = useTx()
+  const { reduced } = useSemanticMotion()
+  // REDESIGN R2 "SALES MOMENT 1": opportunity → project is the SAME object
+  // going deeper, not a new page — `startContinuityTransition` (motion.ts)
+  // morphs the project identity face across the swap via the View
+  // Transition API. `viewTransitionName` below is what pairs this card's
+  // face with the project header's (OpportunityCard.tsx).
+  const openOpportunity = (id: string) => {
+    startContinuityTransition(reduced, () => s.openOpportunity(id))
+  }
   const [q, setQ] = useState('')
   const [country, setCountry] = useState(ALL)
   const [city, setCity] = useState(ALL)
@@ -410,12 +420,14 @@ export function OpportunityList() {
                 identity today. Decorative: the card's own title already
                 names the project (rule: image earns its space by carrying
                 recognition, not by re-stating what text already says). */}
-            <MediaFrame
-              ratio="card"
-              state="fallback"
-              seed={o.name}
-              alt=""
-            />
+            <div style={{ viewTransitionName: `project-media-${o.id}` }}>
+              <MediaFrame
+                ratio="card"
+                state="fallback"
+                seed={o.name}
+                alt=""
+              />
+            </div>
             {/* Card (CARD-001): title = primaryDestination (Name, mit
                 onOpen), status/meta/Termin/Zähler = nonInteractiveArea,
                 actions = die eine sekundäre CTA-Aktion. Termin (falls
@@ -434,13 +446,13 @@ export function OpportunityList() {
               actions={
                 <Button
                   variant={ACTIONABLE_NOW.has(o.stage) ? 'primary' : 'secondary'}
-                  onClick={() => s.openOpportunity(o.id)}
+                  onClick={() => openOpportunity(o.id)}
                   aria-label={`${o.name} öffnen`}
                 >
                   {tx(STAGE_CTA[o.stage] ?? 'Öffnen')}
                 </Button>
               }
-              onOpen={() => s.openOpportunity(o.id)}
+              onOpen={() => openOpportunity(o.id)}
             >
               {/* F14: cards without a Termin used to omit this line entirely,
                   so the status chip and CTA below sat 8 px higher than a
