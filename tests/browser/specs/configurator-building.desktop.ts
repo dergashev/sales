@@ -121,15 +121,6 @@ test.describe('building-aware Configurator gate chain', () => {
     })).toBeVisible()
     await expect(page.getByRole('tablist', { name: CONFIGURATOR_SCOPE.legend })).toHaveCount(0)
 
-    // ── KG 300 has no default scope decision (ticket d21f8d48/this rebuild:
-    // AC21/AC22 — every KG group, including 300/400/700, is an explicit
-    // Included/Excluded choice with no default-selected/mandatory state) —
-    // its chapter therefore does not exist in the nav until explicitly
-    // included here. "enthalten" is the first radio in the group (never
-    // matched by accessible name alone: "nicht enthalten" contains
-    // "enthalten" as a substring — see SCOPE_BOUNDARIES's own docstring).
-    const kg300Group = page.getByRole('radiogroup', { name: SCOPE_BOUNDARIES.kg300Group })
-    await kg300Group.getByRole('radio').first().check({ force: true })
 
     // ── Building-aware client-facing interaction: per-building scope ─
     // Leistungen KG 300 is the first building-scoped chapter reached from
