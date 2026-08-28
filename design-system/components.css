@@ -1287,7 +1287,12 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-opportunity-item{display:grid;grid-template-rows:var(--size-media-card-landing) minmax(0,1fr);min-width:0;border:var(--border-default);background:var(--color-surface-default)}
 .a3-opportunity-media{min-width:0;overflow:hidden;border-bottom:var(--border-hairline)}
 .a3-opportunity-media figure,.a3-opportunity-media [class*="aspect-media-"]{height:100%;aspect-ratio:auto}
-.a3-opportunity-card-body{border:0;background:transparent}
+.a3-opportunity-card-body{border:0;background:transparent;padding:var(--space-3) var(--space-4);gap:var(--space-2);grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'title title' 'meta meta' 'info info' 'status actions';align-content:start}
+.a3-opportunity-card-body>.a3-card-title{grid-area:title;font-size:var(--type-body-size);line-height:var(--type-body-line)}
+.a3-opportunity-card-body>.a3-card-meta{grid-area:meta}
+.a3-opportunity-card-body>.a3-card-noninteractive:nth-of-type(3){grid-area:info;display:flex;align-items:baseline;gap:var(--space-2);min-width:0}
+.a3-opportunity-card-body>.a3-card-noninteractive:nth-of-type(4){grid-area:status;align-self:center}
+.a3-opportunity-card-body>.a3-card-actions{grid-area:actions;align-self:center;justify-content:flex-end}
 .a3-opportunity-item:hover .a3-opportunity-card-body{background:var(--color-surface-subtle)}
 
 /* At the supported narrow-desktop floor the identity face moves beside the
