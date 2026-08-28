@@ -10,7 +10,7 @@ import { driversSum } from '../engine/calculate'
 import { NNBSP, present, formatDE, label as moneyLabel } from '../engine/money'
 import { CATALOG } from '../state/catalog'
 import { useT, useTx } from '../i18n'
-import { PageHeader, SectionSheet, SelectField, Badge, OutputProfileSwitch } from './designSystem'
+import { PageHeader, SectionSheet, SelectField, Badge } from './designSystem'
 import { SegmentedControl } from './controls'
 import { PartialState } from './DataStates'
 import { CompositionBar } from '../design-system/CompositionBar'
@@ -241,13 +241,10 @@ export function PresentationShell({ mainRef, modeRef }: {
 }
 
 /**
- * PresentationBar — persistent, calm chrome. `OutputProfileSwitch` (DC-22/
- * DC-33) liefert Indikator + expliziten Ausstieg unverändert wieder — sie
- * ist bereits heute in Kundenansicht sichtbar (Sidebar.tsx), also kein
- * neues client-facing Verhalten, nur ein neuer Ort. Neu ist die Erzähl-
- * Leiste in der Mitte und die Option-Auswahl davor — dieselbe Auswahl-
- * Semantik, die S4Vergleich (Wave 1) schon eingeführt hat, jetzt an einer
- * Stelle, die JEDEN narrativen Abschnitt erreicht, nicht nur einen.
+ * PresentationBar — persistent, calm client chrome. The internal profile
+ * switch is deliberately not mounted here: its "Vorbereitung" control is
+ * operational vocabulary and would leak into the client-facing narrative.
+ * The explicit exit remains available as a single, clearly named action.
  */
 function PresentationBar({
   projectName, projectCity, sections, activeSection, onNavigate,
@@ -298,13 +295,9 @@ function PresentationBar({
         {candidates.length >= 2 && current && (
           <OptionSwitcher candidates={candidates} currentId={current.id} onSwitch={onSwitch} />
         )}
-        <OutputProfileSwitch
-          compact
-          mode="praesentation"
-          onCheck={() => {}}
-          onExit={onExit}
-          checkButtonRef={modeRef}
-        />
+        <Button ref={modeRef} variant="secondary" onClick={onExit}>
+          {tx('shell.profile.exit')}
+        </Button>
       </div>
     </nav>
   )
