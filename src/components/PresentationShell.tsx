@@ -586,9 +586,16 @@ function SectionAngebot({ current }: { current: Candidate }) {
       <div>
         <Badge sign="●" kind="metadata">{current.name}</Badge>
       </div>
-      <p className="mt-3 numeric text-metric-section font-bold text-text-primary">
-        {priceUnavailable ? tx('Preis nicht ermittelt') : moneyLabel(present(p.result.total.exact))}
-      </p>
+      {/* `.numeric` right-aligns (tabular-nums context) — correct inside a
+          constrained cell, but this paragraph spans the section's full
+          width with nothing to align against, which pushed the value to
+          the far edge. `inline-block` shrinks the box to its own content
+          first, so the alignment has nothing left to do. */}
+      <div className="mt-3 inline-block">
+        <p className="numeric text-metric-section font-bold text-text-primary">
+          {priceUnavailable ? tx('Preis nicht ermittelt') : moneyLabel(present(p.result.total.exact))}
+        </p>
+      </div>
       <p className="mt-1 text-body text-text-secondary">{buildingNames(current.cfg)}</p>
     </SectionSheet>
   )
