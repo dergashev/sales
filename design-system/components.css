@@ -1278,6 +1278,10 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 /* D-28 generated/live gallery and narrow-host product grids. */
 .a3-specimen-grid,.a3-opportunity-grid,.a3-opportunity-metrics{display:grid;min-width:0}
 .a3-specimen-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,var(--measure-card-compact)),1fr));gap:var(--space-5)}
+/* VO-T4: the surface model is a composed, side-by-side governance reference,
+   not one small primitive specimen. It leads the R1 group at the full Gallery
+   width while the remaining contracts retain the normal catalogue grid. */
+.a3-specimen-grid--r1>[data-specimen="r1-surface-foundations"]{grid-column:1/-1}
 .a3-opportunity-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--measure-component)),1fr));gap:var(--space-3)}
 .a3-opportunity-metrics{grid-template-columns:repeat(auto-fit,minmax(min(100%,26ch),1fr));column-gap:var(--space-6)}
 

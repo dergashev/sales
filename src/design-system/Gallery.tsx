@@ -28,7 +28,7 @@ export function Gallery() {
               {tx(group.intro)}
             </p>
           )}
-          <div className="a3-grid-host a3-specimen-grid mt-4">
+          <div className={`a3-grid-host a3-specimen-grid mt-4${group.id === 'r1' ? ' a3-specimen-grid--r1' : ''}`}>
             {group.specimens.map((s) => (
               <section key={s.id} className="a3-sheet" data-specimen={s.id}>
                 <h3 className="text-heading-3 font-bold text-text-primary">
