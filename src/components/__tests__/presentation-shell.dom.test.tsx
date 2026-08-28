@@ -103,6 +103,44 @@ describe('PresentationShell — empty/edge states (AC 6/9/11/12)', () => {
     expect(screen.queryByRole('region', { name: 'Optionen' })).toBeNull()
     expect(screen.queryByRole('radiogroup', { name: 'Wird präsentiert' })).toBeNull()
   })
+
+  /**
+   * QA rework (rule 40, D-15): OfferPanel's rail always showed an inactive
+   * Regionalfaktor as a "nicht aktiviert" row inside Kostentreiber, and
+   * that row was reachable and tested in Kundenansicht before this wave
+   * (`configurator-mode.dom.test.tsx` et al. reached the rail's "Nachweise
+   * & Verlauf" dialog live). §3 Ergebnis's own simplified Kostentreiber-
+   * Auszug had silently dropped it — QA caught the regression live and
+   * traced the exact reuse path (same i18n key, same formula, no new
+   * calculation). This test guards against it regressing silently again.
+   */
+  it('always shows the Regionalfaktor "nicht aktiviert" disclosure in Kostentreiber when inactive, and hides it when active (rule 40)', () => {
+    st().resolveWflConflict('customer')
+    st().confirmProjectParams()
+    st().createOption('Solo')
+    st().openOption('OPT-01')
+    includedBuildingIds(st()).forEach((id) => st().confirmBuilding(id))
+    st().confirmConfigurationMode('SHARED')
+    st().setCoverage('KG_300', 'included')
+    st().confirmScopeBoundaries()
+    includedBuildingIds(st()).forEach((id) => st().confirmBuildingConfiguration(id))
+
+    // D-15: Regionalfaktor is inactive by default — the disclosure row
+    // must be present.
+    expect(st().regionalfaktorActive).toBe(false)
+    const { unmount } = render(<Harness />)
+    const ergebnis = screen.getByRole('region', { name: 'Ergebnis' })
+    expect(within(ergebnis).getByText(/Regionalfaktor.*nicht berücksichtigt/)).toBeInTheDocument()
+    unmount()
+
+    // Once explicitly activated, the row must disappear — it is not a
+    // permanent fixture, only a disclosure of the current inactive state.
+    st().toggleRegionalfaktor()
+    expect(st().regionalfaktorActive).toBe(true)
+    render(<Harness />)
+    const ergebnisActive = screen.getByRole('region', { name: 'Ergebnis' })
+    expect(within(ergebnisActive).queryByText(/Regionalfaktor.*nicht berücksichtigt/)).toBeNull()
+  })
 })
 
 describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/16/21)', () => {

@@ -7,6 +7,7 @@ import {
 } from '../state/store'
 import { driversSum } from '../engine/calculate'
 import { NNBSP, present, formatDE, label as moneyLabel } from '../engine/money'
+import { CATALOG } from '../state/catalog'
 import { useT, useTx } from '../i18n'
 import { PageHeader, SectionSheet, SelectField, Badge, OutputProfileSwitch } from './designSystem'
 import { SegmentedControl } from './controls'
@@ -429,6 +430,18 @@ function SectionErgebnis({ current }: { current: Candidate }) {
     .map(([label, row]) => ({ label, exact: row.exact }))
     .sort((a, b) => b.exact.abs().minus(a.exact.abs()).toNumber())
     .slice(0, 5)
+  // QA REWORK (rule 40, D-15): an inactive Regionalfaktor is a decided
+  // fact about THIS calculation, not merely a Vorbereitung-only detail —
+  // it must always appear as a "nicht aktiviert" row in Kostentreiber,
+  // naming the amount it would have added, exactly like OfferPanel.tsx's
+  // own row (same key, same formula — `p.result.bauwerk` × the catalog
+  // factor minus one — reused verbatim, no new calculation invented).
+  // This row was reachable and asserted in Kundenansicht before this
+  // wave (OfferPanel's rail rendered it there); the simplified §3 extract
+  // had silently dropped it — QA caught the regression live.
+  const regionalFactorAmount = priceUnavailable
+    ? t('money.priceNotDetermined')
+    : moneyLabel(present(p.result.bauwerk.mul(CATALOG.regionalFactor.value.minus(1))))
 
   return (
     <SectionSheet id="presentation-ergebnis" title={tx('Ergebnis')} className="mt-8">
@@ -489,6 +502,11 @@ function SectionErgebnis({ current }: { current: Candidate }) {
               </li>
             ))}
           </ul>
+          {!current.cfg.regionalfaktorActive && (
+            <p className="mt-2 text-small text-text-secondary">
+              {t('offer.drivers.regionalInactive', { amount: regionalFactorAmount })}
+            </p>
+          )}
           <p className="a3-cap mt-1">{tx('Summe der Treiber entspricht dem Gesamtergebnis:')} {money(driversTotal)}{NNBSP}€</p>
         </div>
       )}
