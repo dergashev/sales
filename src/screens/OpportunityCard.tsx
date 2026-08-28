@@ -36,10 +36,7 @@ import { copyFor } from "../i18n/internal-refs";
 import { DocumentAnalysis } from "../components/DocumentAnalysis";
 import { InternalNote } from "../components/InternalNote";
 import { Badge, Card, FormField, PageHeader } from "../components/designSystem";
-import {
-  WorkflowStepper,
-  type WorkflowStep,
-} from "../design-system/WorkflowStepper";
+import { WorkflowStepper, type WorkflowStep } from '../design-system/WorkflowStepper'
 import { MediaFrame } from "../design-system/MediaFrame";
 import { useSemanticMotion } from "../design-system/motion";
 import { Dialog, type DialogHandle } from "../components/Dialog";
@@ -930,7 +927,7 @@ export function OpportunityCard() {
 
   return (
     <div className="a3-page px-7 py-6 lg:grid lg:grid-cols-[1.55fr_0.85fr] lg:gap-8 lg:items-start">
-      <div className="a3-workspace min-w-0">
+      <div className="min-w-0">
         <InternalNoteDialog
           open={noteDialogOpen}
           onOpenChange={setNoteDialogOpen}
@@ -1539,7 +1536,7 @@ export function OpportunityCard() {
       </div>
 
       {/* Secondary identity/metadata column */}
-      <div className="a3-identity sticky top-6 flex flex-col gap-4 mt-8 lg:mt-0">
+      <div className="sticky top-6 flex flex-col gap-4 mt-8 lg:mt-0">
         {/* REDESIGN R2 (DESIGN-01): the project identity moment. No sourced
             photography exists yet for the fixture projects (same deferred
             follow-up as the landing's card faces, slice 1/9) — the `pano`

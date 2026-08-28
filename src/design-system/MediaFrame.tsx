@@ -17,8 +17,9 @@ import { useTx } from '../i18n'
  * `unavailable` · `error` (with retry when `onRetry` is given) ·
  * `fallback` (explicit: no photo asset is expected to ever exist here).
  * `empty`/`unavailable`/`error`/`fallback` all render the SAME typed
- * material-palette placeholder art (initial + horizontal material bands) —
- * intentional in a client meeting, never a placeholder icon — distinguished
+ * material-palette identity graphic (architectural massing + horizontal
+ * material bands) — intentional in a client meeting, never a placeholder
+ * icon or a repeated project monogram — distinguished
  * only by their accessible state text and whether retry is offered.
  *
  * Provenance: `sourceId` is the ONLY thing this component renders toward
@@ -42,39 +43,32 @@ const STATE_TEXT_DE: Record<Exclude<MediaFrameState, 'loaded' | 'loading'>, stri
   fallback: '', // caller-supplied via `fallbackLabel`, e.g. a project name
 }
 
-function initials(seed: string): string {
-  const parts = seed.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return '–'
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase()
-  return ((parts[0]![0] ?? '') + (parts[1]![0] ?? '')).toUpperCase()
-}
-
-/** The designed fallback: an initial in Display type over three horizontal
- * material bands (plaster/timber/clinker) — DESIGN-05's "typed material-
- * palette composition", not a grey box. */
+/** The designed fallback: an information-bearing architectural identity
+ * graphic over three material bands (plaster/timber/clinker) — DESIGN-05's
+ * "typed material-palette composition", not a grey box or repeated initials. */
 function FallbackArt({ seed }: { seed: string }) {
+  const facade = seed.length % 2 === 0
+    ? 'var(--primitive-color-material-timber-dark)'
+    : 'var(--primitive-color-material-clinker)'
   return (
     <div
-      className="absolute inset-0 flex flex-col"
+      className="a3-media-identity-art absolute inset-0 flex flex-col"
       style={{ background: 'var(--color-surface-canvas)' }}
       aria-hidden="true"
     >
       <div className="min-h-0 flex-1 flex items-center justify-center overflow-hidden">
-        {/* `clamp()` between the caption size and the display-numeric size
-         * (both existing tokens, not new literals) scaling on container
-         * width — MediaFrame renders from thumbnail tiles to full pano
-         * headers, and a fixed display-numeric size overlapped the state
-         * caption below at small/short ratios (caught visually: `card` and
-         * `pano` fallbacks at gallery-grid width, initials over caption). */}
-        <span
-          className="font-bold leading-none"
-          style={{
-            fontSize: 'clamp(var(--type-caption-size), 12cqw, var(--type-display-numeric-narrow-size))',
-            color: 'var(--primitive-color-material-plinth)',
-          }}
+        <div
+          className="a3-media-identity-building"
+          style={{ borderColor: facade }}
+          aria-hidden="true"
         >
-          {initials(seed)}
-        </span>
+          <span className="a3-media-identity-roof" />
+          <span className="a3-media-identity-window a3-media-identity-window-a" />
+          <span className="a3-media-identity-window a3-media-identity-window-b" />
+          <span className="a3-media-identity-window a3-media-identity-window-c" />
+          <span className="a3-media-identity-window a3-media-identity-window-d" />
+          <span className="a3-media-identity-ground" />
+        </div>
       </div>
       <div className="flex h-2">
         <span className="flex-1" style={{ background: 'var(--primitive-color-material-plaster)' }} />
@@ -94,7 +88,7 @@ export function MediaFrame({
   src?: string
   /** Accessible description of the image content (never the caption verbatim). */
   alt?: string
-  /** Text used to derive the fallback-art initials (project/option/building name). */
+  /** Stable identity seed retained for the canonical media API. */
   seed: string
   /** Optional caption bar under the frame (metadata disclosure, not on-image text). */
   caption?: string

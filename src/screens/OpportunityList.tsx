@@ -431,23 +431,24 @@ export function OpportunityList() {
 
       <ul className="a3-opportunity-grid mt-4">
         {shown.map((o) => (
-          <li key={o.id} className="flex h-full flex-col">
+          <li key={o.id} className="a3-opportunity-item">
             {/* REDESIGN R2 (DESIGN-01): project identity face. No sourced
                 photography exists yet for the fixture opportunities — the
-                canonical MediaFrame `fallback` state (typed material-palette
-                initials, never a grey box) is a first-class designed state,
+                canonical MediaFrame `fallback` state (typed architectural
+                identity graphic, never a grey box) is a first-class designed state,
                 not a placeholder awaiting an asset. Sourcing real photos
                 with asset-provenance.md entries is a follow-up, tracked
                 separately — it does not block giving every card a visual
                 identity today. Decorative: the card's own title already
                 names the project (rule: image earns its space by carrying
                 recognition, not by re-stating what text already says). */}
-            <div style={{ viewTransitionName: `project-media-${o.id}` }}>
+            <div className="a3-opportunity-media" style={{ viewTransitionName: `project-media-${o.id}` }}>
               <MediaFrame
                 ratio="card"
                 state="fallback"
                 seed={o.name}
                 alt=""
+                fallbackLabel={t('opplist.media.identityGraphic')}
               />
             </div>
             {/* Card (CARD-001): title = primaryDestination (Name, mit
@@ -457,7 +458,7 @@ export function OpportunityList() {
                 Ranking: `meetingAt` ist Freitext, kein echtes Datum (Data-
                 Model-Gap, genehmigter Contract `161c0b7b` §5). */}
             <Card
-              className="flex-1"
+              className="a3-opportunity-card-body flex-1"
               title={o.name}
               meta={<>{o.city} · {o.country} · {o.owner}</>}
               status={

@@ -398,6 +398,7 @@ const de = {
   'opplist.card.buildingsLabel': 'Gebäude',
   'opplist.card.documentLabel': 'Dokument',
   'opplist.card.documentsLabel': 'Dokumente',
+  'opplist.media.identityGraphic': 'Projektidentität · keine Aufnahme',
   // Kanonisches Label je HubSpot-Lifecycle-Stadium (STAGE_LABEL_KEY in
   // OpportunityList) — ersetzt `tx(o.stage)` für den Status-Tag, das
   // Status-Select und den Status-Filter-Chip. `ruhend`/`gewonnen`/
@@ -932,6 +933,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'opplist.card.buildingsLabel': 'buildings',
   'opplist.card.documentLabel': 'document',
   'opplist.card.documentsLabel': 'documents',
+  'opplist.media.identityGraphic': 'Project identity · no image',
   'opplist.stage.neuAusHubspot': 'new from HubSpot',
   'opplist.stage.inVorbereitung': 'in preparation',
   'opplist.stage.versendet': 'sent',

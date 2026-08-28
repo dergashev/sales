@@ -1282,7 +1282,38 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    not one small primitive specimen. It leads the R1 group at the full Gallery
    width while the remaining contracts retain the normal catalogue grid. */
 .a3-specimen-grid--r1>[data-specimen="r1-surface-foundations"]{grid-column:1/-1}
-.a3-opportunity-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--measure-component)),1fr));gap:var(--space-3)}
+.a3-opportunity-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-3)}
+.a3-opportunity-item{display:grid;grid-template-rows:var(--size-media-card-landing) minmax(0,1fr);min-width:0;border:var(--border-default);background:var(--color-surface-default)}
+.a3-opportunity-media{min-width:0;overflow:hidden;border-bottom:var(--border-hairline)}
+.a3-opportunity-media figure,.a3-opportunity-media [class*="aspect-media-"]{height:100%;aspect-ratio:auto}
+.a3-opportunity-card-body{border:0;background:transparent}
+.a3-opportunity-item:hover .a3-opportunity-card-body{background:var(--color-surface-subtle)}
+
+/* At the supported narrow-desktop floor the identity face moves beside the
+   decision copy, keeping four opportunities visible while preserving the
+   canonical Card content and 44px actions. */
+@media (max-width:89.9375rem){
+  .a3-opportunity-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .a3-opportunity-item{grid-template-columns:var(--measure-showcase-narrow) minmax(0,1fr);grid-template-rows:minmax(0,1fr);min-height:var(--size-opportunity-card-narrow)}
+  .a3-opportunity-media{border-bottom:0;border-right:var(--border-hairline)}
+}
+
+.a3-media-identity-art{position:relative}
+.a3-media-identity-building{position:relative;width:54%;height:62%;border:var(--border-contrast-2px);border-bottom:0;background:var(--color-surface-default)}
+.a3-media-identity-roof{position:absolute;inset-inline:-8%;top:-1px;border-top:var(--border-contrast-2px);transform:skewY(-8deg);transform-origin:left}
+.a3-media-identity-window{position:absolute;width:18%;height:23%;background:var(--primitive-color-material-timber-light);border:var(--border-default)}
+.a3-media-identity-window-a{inset-inline-start:14%;top:24%}.a3-media-identity-window-b{inset-inline-end:14%;top:24%}
+.a3-media-identity-window-c{inset-inline-start:14%;top:58%}.a3-media-identity-window-d{inset-inline-end:14%;top:58%}
+.a3-media-identity-ground{position:absolute;inset-inline:0;bottom:0;height:var(--space-2);background:var(--primitive-color-material-plinth)}
+
+/* Variant comparison: the first three options occupy the available shell;
+   additional options remain reachable through the existing scrollport. */
+.a3-comparison-scroll{container-type:inline-size}
+.a3-comparison-scroll .a3-cmp col:first-child{width:var(--measure-conflict-column)}
+.a3-comparison-scroll .a3-cmp col.a3-cmp-optioncol{width:calc((100cqw - var(--measure-conflict-column)) / 2)}
+@media (min-width:90rem){
+  .a3-comparison-scroll .a3-cmp col.a3-cmp-optioncol{width:calc((100cqw - var(--measure-conflict-column)) / 3)}
+}
 .a3-opportunity-metrics{grid-template-columns:repeat(auto-fit,minmax(min(100%,26ch),1fr));column-gap:var(--space-6)}
 
 /* Project Card baseline composition. Canonical primitives remain the owners

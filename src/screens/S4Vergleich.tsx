@@ -632,7 +632,7 @@ function GroupRows({
         <th
           colSpan={span}
           scope="colgroup"
-          className="text-small col-span-full max-[1439px]:col-span-3 min-[1440px]:col-span-4"
+          className="text-small"
           style={{ gridColumn: "1 / -1" }}
         >
           {group}
@@ -646,7 +646,7 @@ function GroupRows({
           {r.cells.map((c, i) => (
             <td
               key={i}
-              className={`a3-num${i === 2 ? " max-[1439px]:hidden" : ""}`}
+              className="a3-num"
             >
               {c}
               {r.subCells?.[i] && (
