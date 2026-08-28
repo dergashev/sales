@@ -1,9 +1,10 @@
-import { useState, type RefObject } from 'react'
+import { useEffect, useState, type RefObject } from 'react'
 import { Decimal } from 'decimal.js'
 import opportunities from '../fixtures/opportunities.json'
 import {
   configForOption, eligibleClientOptions, projectionForOption,
-  resolvedViewedOptionId, useStore, type OptionConfig, type Projection,
+  resolvedViewedOptionId, useStore, type OfferSnapshot, type OptionConfig,
+  type Projection,
 } from '../state/store'
 import { driversSum } from '../engine/calculate'
 import { NNBSP, present, formatDE, label as moneyLabel } from '../engine/money'
@@ -16,8 +17,9 @@ import { CompositionBar } from '../design-system/CompositionBar'
 import { buildKgCompositionSegments } from './costComposition'
 import { MediaFrame } from '../design-system/MediaFrame'
 import { useSemanticMotion } from '../design-system/motion'
-import { useCountUp } from './primitives'
+import { Button, useCountUp } from './primitives'
 import { projectDriversForClient, translatedDriverLabel } from '../state/clientProjection'
+import { startContinuityTransition } from '../design-system/motion'
 
 /**
  * PresentationShell — REDESIGN R3 WAVE 2a.
@@ -46,6 +48,7 @@ import { projectDriversForClient, translatedDriverLabel } from '../state/clientP
  */
 
 type Candidate = { id: string; name: string; cfg: OptionConfig; p: Projection }
+type PresentationFlow = 'narrative' | 'offer' | 'send' | 'sent' | 'delivered'
 
 function buildCandidate(
   s: Parameters<typeof configForOption>[0],
@@ -104,7 +107,23 @@ export function PresentationShell({ mainRef, modeRef }: {
   })
 
   const [activeSection, setActiveSection] = useState<string>('projekt')
+  const [flow, setFlow] = useState<PresentationFlow>('narrative')
+  const [delivery, setDelivery] = useState<'sent' | 'delivered'>('sent')
+  const [sentSnapshot, setSentSnapshot] = useState<OfferSnapshot | null>(null)
   const { reduced } = useSemanticMotion()
+
+  const latestViewedSnapshot = currentId
+    ? [...s.snapshots].reverse().find((snapshot) => snapshot.optionId === currentId)
+    : undefined
+
+  useEffect(() => {
+    if (flow !== 'sent') return
+    const timer = window.setTimeout(() => {
+      setDelivery('delivered')
+      setFlow('delivered')
+    }, 2500)
+    return () => window.clearTimeout(timer)
+  }, [flow])
 
   // Anker über `id` statt React-Refs: jede Sektion trägt ihre `id` selbst
   // (via `SectionSheet`'s `...rest`), das Scrollen geht über die einzige
@@ -148,12 +167,29 @@ export function PresentationShell({ mainRef, modeRef }: {
   const showOptionen = candidates.length >= 2
   const sections: Array<{ id: string; label: string }> = [
     { id: 'projekt', label: tx('Projekt') },
-    { id: 'umfang', label: tx('Umfang') },
+    { id: 'gebaeude', label: tx('Gebäude') },
     { id: 'ergebnis', label: tx('Ergebnis') },
     { id: 'zeitplan', label: tx('Zeitplan') },
     ...(showOptionen ? [{ id: 'optionen', label: tx('Optionen') }] : []),
-    { id: 'angebot', label: tx('Angebot') },
+    { id: 'naechster-schritt', label: tx('Nächster Schritt') },
   ]
+
+  const switchViewedOption = (id: string) => {
+    startContinuityTransition(reduced, () => s.setViewedOption(id))
+  }
+
+  const startOffer = () => {
+    setSentSnapshot(null)
+    setDelivery('sent')
+    setFlow('offer')
+    setActiveSection('naechster-schritt')
+  }
+
+  const backToNarrative = () => {
+    setSentSnapshot(null)
+    setFlow('narrative')
+    setActiveSection('naechster-schritt')
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -162,25 +198,43 @@ export function PresentationShell({ mainRef, modeRef }: {
         sections={sections}
         activeSection={activeSection} onNavigate={goTo}
         candidates={candidates} currentId={current.id}
-        onSwitch={(id) => s.setViewedOption(id)}
+        onSwitch={switchViewedOption}
         onExit={() => s.setMode('intern')} modeRef={modeRef}
       />
 
       <main ref={mainRef} tabIndex={-1}
             className="min-h-0 flex-1 overflow-y-auto bg-surface-default outline-none">
-        <div className="mx-auto max-w-content px-7 py-6">
-          <SectionProjekt opportunity={opportunity} current={current} />
-          <SectionUmfang current={current} />
-          <SectionErgebnis current={current} />
-          <SectionZeitplan current={current} />
-          {showOptionen && (
-            <SectionOptionen
-              candidates={candidates} currentId={current.id}
-              onSwitch={(id) => s.setViewedOption(id)}
-            />
-          )}
-          <SectionAngebot current={current} />
-        </div>
+        {flow === 'narrative' ? (
+          <div className="a3-presentation-content mx-auto max-w-content px-7 py-6">
+            <SectionProjekt opportunity={opportunity} current={current} />
+            <SectionGebaeude current={current} />
+            <SectionErgebnis current={current} />
+            <SectionZeitplan current={current} onNext={() => goTo(showOptionen ? 'optionen' : 'naechster-schritt')} />
+            {showOptionen && (
+              <SectionOptionen
+                candidates={candidates} currentId={current.id}
+                onSwitch={switchViewedOption}
+              />
+            )}
+            <SectionNaechsterSchritt current={current} onPrepare={startOffer} />
+          </div>
+        ) : (
+          <PresentationFlow
+            flow={flow}
+            delivery={delivery}
+            snapshot={sentSnapshot ?? latestViewedSnapshot}
+            current={current}
+            onBack={backToNarrative}
+            onPrepare={() => setFlow('send')}
+            onSend={() => {
+              const snapshot = s.sendOfferForOption('email', current.id)
+              setSentSnapshot(snapshot)
+              setDelivery('sent')
+              setFlow('sent')
+            }}
+            onNewVersion={backToNarrative}
+          />
+        )}
       </main>
     </div>
   )
@@ -343,8 +397,27 @@ function SectionProjekt({ opportunity, current }: {
   )
 }
 
-/** §2 UMFANG — Scope-Story: Gebäude, Leistungsumfang, ruhige Annahmen. */
-function SectionUmfang({ current }: { current: Candidate }) {
+function buildingFormLabel(
+  form: OptionConfig['buildings'][string]['gebaeudeform'],
+  t: (key: string, values?: Readonly<Record<string, string | number>>) => string,
+): string {
+  return form === 'MFH' ? t('buildingScope.form.mfh')
+    : form === 'BUERO' ? t('buildingScope.form.office')
+      : form === 'EFH_ZFH' ? t('buildingScope.form.efh')
+        : t('buildingScope.form.row')
+}
+
+function undergroundLabel(
+  scope: OptionConfig['buildings'][string]['untergeschoss'],
+  t: (key: string, values?: Readonly<Record<string, string | number>>) => string,
+): string {
+  return scope === 'vollausbau' ? t('presentation.building.fullBasement')
+    : scope === 'ab_decke' ? t('presentation.building.partialBasement')
+      : t('presentation.building.noBasement')
+}
+
+/** §2 GEBÄUDE — one building story at a time, with client-safe facts. */
+function SectionGebaeude({ current }: { current: Candidate }) {
   const t = useT()
   const tx = useTx()
   const includedIds = includedBuildingIdsOf(current.cfg)
@@ -356,28 +429,42 @@ function SectionUmfang({ current }: { current: Candidate }) {
   // trägt; präsent, aber nicht dominierend, in einem stillen Disclosure.
   const heroDisclosure = present(current.p.result.total.exact).disclosure
 
+  const [buildingIndex, setBuildingIndex] = useState(0)
+  const safeIndex = includedIds.length === 0 ? 0 : Math.min(buildingIndex, includedIds.length - 1)
+  const buildingId = includedIds[safeIndex]
+  const building = buildingId ? current.cfg.buildings[buildingId] : undefined
+  const buildingName = building?.stableName ?? t('buildingScope.title')
+
   return (
-    <SectionSheet id="presentation-umfang" title={tx('Umfang')} className="mt-8">
-      <div>
-        <p className="a3-cap">{tx('Gebäude im Angebot')}</p>
-        <p className="mt-1 flex flex-wrap gap-2">
-          {includedIds.map((id) => (
-            <span key={id} className="border border-border-default px-2 py-1 text-small text-text-secondary">
-              {current.cfg.buildings[id]?.stableName ?? id}
-            </span>
-          ))}
-        </p>
+    <SectionSheet id="presentation-gebaeude" title={tx('Gebäude')} className="mt-8">
+      <div className="a3-presentation-building">
+        <div className="a3-presentation-building-media">
+          <MediaFrame ratio="card" state="fallback" seed={buildingName} fallbackLabel={buildingName} />
+        </div>
+        <div className="a3-presentation-building-copy">
+          <p className="a3-cap">{t('chrome3.offer.buildings')} · {safeIndex + 1} / {includedIds.length}</p>
+          <h3 className="mt-2 text-heading-2 font-bold text-text-primary">{buildingName}</h3>
+          <p className="mt-2 text-body text-text-secondary">
+            {building ? buildingFormLabel(building.gebaeudeform, t) : t('buildingScope.title')} · {t('presentation.building.confirmed')}
+          </p>
+          <dl className="mt-4 grid grid-cols-2 gap-x-5 gap-y-3">
+            <div><dt className="a3-cap">{t('buildingScope.fact.bgfRAbove')}</dt><dd className="numeric text-body font-medium">{building ? formatDE(building.bgfRAbove, 0) : '—'}{NNBSP}m²</dd></div>
+            <div><dt className="a3-cap">{t('buildingScope.fact.units')}</dt><dd className="numeric text-body font-medium">{building?.units ? formatDE(building.units, 0) : t('presentation.building.notCaptured')}</dd></div>
+            <div><dt className="a3-cap">{t('presentation.building.underground')}</dt><dd className="text-body font-medium">{building ? undergroundLabel(building.untergeschoss, t) : t('presentation.building.notCaptured')}</dd></div>
+            <div><dt className="a3-cap">{t('buildingScope.fact.class')}</dt><dd className="text-body font-medium">{building ? building.gebaeudeklasse.value.replace('_', ' ') : t('presentation.building.notCaptured')}</dd></div>
+          </dl>
+        </div>
       </div>
-
-      {includedGroups.length > 0 && (
-        <p className="mt-3 text-body text-text-secondary">
-          {tx('Enthalten:')} {includedGroups.join(' · ')}
-        </p>
-      )}
-
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-2">
+          <Button disabled={safeIndex === 0} onClick={() => setBuildingIndex((index) => Math.max(0, index - 1))}>{tx('Zurück')}</Button>
+          <Button disabled={safeIndex >= includedIds.length - 1} onClick={() => setBuildingIndex((index) => Math.min(includedIds.length - 1, index + 1))}>{tx('Weiter')}</Button>
+        </div>
+        <p className="text-small text-text-secondary">{t('buildingScope.selection.title')}: {includedGroups.join(' · ')}</p>
+      </div>
       {heroDisclosure && (
-        <details className="mt-3">
-          <summary className="text-small text-text-secondary">{tx('Annahmen')}</summary>
+        <details className="mt-4">
+          <summary className="text-small text-text-secondary">{t('buildingScope.review.intro')}</summary>
           <p className="mt-1 text-small text-text-secondary">{heroDisclosure}</p>
         </details>
       )}
@@ -389,6 +476,7 @@ function SectionUmfang({ current }: { current: Candidate }) {
 function SectionErgebnis({ current }: { current: Candidate }) {
   const t = useT()
   const tx = useTx()
+  const language = useStore().uiLanguage
   const { p, cfg } = current
   // Dieselbe einfache, im Client-Modus bereits akzeptierte Bedingung wie
   // S4Vergleich (Wave 1) — keine zweite Interpretation von "unavailable"
@@ -475,7 +563,7 @@ function SectionErgebnis({ current }: { current: Candidate }) {
               <span className="a3-hb-unit">{NNBSP}Monate</span>
             </p>
             <span className="a3-hb-cap">
-              {tx('ab OKBP')} · {tx('Fertigstellung')} {formatDate(p.duration.completionDate)}
+              {tx('ab OKBP')} · {tx('Fertigstellung')} {formatDate(p.duration.completionDate, language)}
             </span>
           </div>
         </>}
@@ -518,8 +606,10 @@ function SectionErgebnis({ current }: { current: Candidate }) {
  *  facts pro AC: Fertigstellung + Bauzeit). Entfällt vollständig, wenn keine
  *  brauchbaren Termindaten existieren (Empty-State-Prinzip, rule 30) —
  *  Erzählkontinuität bleibt gewahrt, keine leere Sektion wird gerendert. */
-function SectionZeitplan({ current }: { current: Candidate }) {
+function SectionZeitplan({ current, onNext }: { current: Candidate; onNext: () => void }) {
+  const t = useT()
   const tx = useTx()
+  const language = useStore().uiLanguage
   const { p } = current
   if (!p.duration.completionDate) return null
 
@@ -535,9 +625,23 @@ function SectionZeitplan({ current }: { current: Candidate }) {
           <span className="a3-hb-cap">{tx('Bauzeit ab OKBP')}</span>
         </div>
         <div className="a3-hb">
-          <p className="a3-hb-num numeric">{formatDate(p.duration.completionDate)}</p>
+          <p className="a3-hb-num numeric">{formatDate(p.duration.completionDate, language)}</p>
           <span className="a3-hb-cap">{tx('Fertigstellung')}</span>
         </div>
+      </div>
+      <div className="a3-presentation-timeline mt-5" aria-label={tx('Zeitplan')}>
+        <div className="a3-presentation-timeline-line" />
+        <p><span className="a3-cap">{tx('Bauzeit ab OKBP')}</span><strong>{p.duration.display}</strong></p>
+        <p><span className="a3-cap">{tx('Fertigstellung')}</span><strong>{formatDate(p.duration.completionDate, language)}</strong></p>
+      </div>
+      <div className="a3-presentation-consequence mt-5">
+        <div>
+          <p className="a3-cap">{t('presentation.commercialConsequence')}</p>
+          <p className="mt-1 text-body font-medium text-text-primary">
+            {t('presentation.commercialConsequenceCopy')}
+          </p>
+        </div>
+        <Button variant="secondary" onClick={onNext}>{tx('Weiter zu Optionen')}</Button>
       </div>
     </SectionSheet>
   )
@@ -592,34 +696,194 @@ function SectionOptionen({ candidates, currentId, onSwitch }: {
   )
 }
 
-/** §6 ANGEBOT — Erzählung endet als kompakte Zusammenfassung, KEIN
- *  Versand-Formular (das bleibt Wave 2b/S5Export — AC-43-Trap). */
-function SectionAngebot({ current }: { current: Candidate }) {
+/** §6 NÄCHSTER SCHRITT — the narrative hands off to a separate, explicit
+ * offer flow. No internal preparation/export vocabulary is shown to clients. */
+function SectionNaechsterSchritt({ current, onPrepare }: {
+  current: Candidate
+  onPrepare: () => void
+}) {
+  const t = useT()
   const tx = useTx()
   const { p } = current
   const priceUnavailable = p.result.total.exact.isZero()
 
   return (
-    <SectionSheet id="presentation-angebot" title={tx('Angebot')} className="mt-8">
-      <div>
-        <Badge sign="●" kind="metadata">{current.name}</Badge>
+    <SectionSheet id="presentation-naechster-schritt" title={tx('Nächster Schritt')} className="mt-8">
+      <div className="a3-presentation-next">
+        <div>
+          <Badge sign="●" kind="metadata">{current.name}</Badge>
+          <h3 className="mt-3 text-heading-2 font-bold text-text-primary">{t('presentation.nextStep.title')}</h3>
+          <p className="mt-2 text-body text-text-secondary">
+            {t('presentation.nextStep.copy')}
+          </p>
+          <p className="mt-4 numeric text-metric-section font-bold text-text-primary">
+            {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(present(p.result.total.exact))}
+          </p>
+          <p className="mt-1 text-small text-text-secondary">{buildingNames(current.cfg)}</p>
+        </div>
+        <div>
+          <p className="a3-cap">{t('presentation.nextStep.artifacts')}</p>
+          <ul className="a3-presentation-artifacts mt-2">
+            <li>{t('presentation.artifact.offer')}</li>
+            <li>{t('presentation.artifact.cost')}</li>
+            <li>{t('presentation.artifact.scope')}</li>
+          </ul>
+          <Button className="mt-4" variant="primary" onClick={onPrepare}>
+            {t('presentation.nextStep.title')}
+          </Button>
+        </div>
       </div>
-      {/* `.numeric` right-aligns (tabular-nums context) — correct inside a
-          constrained cell, but this paragraph spans the section's full
-          width with nothing to align against, which pushed the value to
-          the far edge. `inline-block` shrinks the box to its own content
-          first, so the alignment has nothing left to do. */}
-      <div className="mt-3 inline-block">
-        <p className="numeric text-metric-section font-bold text-text-primary">
-          {priceUnavailable ? tx('Preis nicht ermittelt') : moneyLabel(present(p.result.total.exact))}
-        </p>
-      </div>
-      <p className="mt-1 text-body text-text-secondary">{buildingNames(current.cfg)}</p>
     </SectionSheet>
   )
 }
 
-function formatDate(iso: string): string {
-  const [y, m, d] = iso.split('-')
-  return `${d}.${m}.${y}`
+function PresentationFlow({ flow, delivery, snapshot, current, onBack, onPrepare, onSend, onNewVersion }: {
+  flow: Exclude<PresentationFlow, 'narrative'>
+  delivery: 'sent' | 'delivered'
+  snapshot?: OfferSnapshot
+  current: Candidate
+  onBack: () => void
+  onPrepare: () => void
+  onSend: () => void
+  onNewVersion: () => void
+}) {
+  const t = useT()
+  const tx = useTx()
+  const language = useStore().uiLanguage
+  const { p } = current
+  const priceUnavailable = p.result.total.exact.isZero()
+  const artifacts = [
+    t('presentation.artifact.offer'),
+    t('presentation.artifact.cost'),
+    t('presentation.artifact.scope'),
+  ]
+
+  if (flow === 'offer') {
+    return (
+      <section className="a3-presentation-flow a3-stage-deep" aria-labelledby="presentation-offer-title">
+        <button type="button" className="a3-presentation-back" onClick={onBack}>{t('presentation.flow.back')}</button>
+        <div className="a3-presentation-flow-grid mt-4">
+          <div>
+            <p className="a3-cap">{t('presentation.flow.offerEyebrow')}</p>
+            <Badge sign="●" kind="metadata">{current.name}</Badge>
+            <h1 id="presentation-offer-title" className="mt-2 text-heading-1 font-bold text-text-primary">
+              {t('presentation.flow.offerTitle')}
+            </h1>
+            <p className="mt-3 text-body text-text-secondary">{t('presentation.flow.offerIntro')}</p>
+            <div className="a3-presentation-flow-total mt-8">
+            <p className="a3-cap">{t('presentation.flow.total')}</p>
+              <p className="numeric text-display-numeric font-bold text-text-primary">
+                {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(present(p.result.total.exact))}
+              </p>
+              <p className="mt-2 text-small text-text-secondary">{tx('Schätzunsicherheit')} ±{NNBSP}{p.uncertaintyPp}{NNBSP}%</p>
+            </div>
+            {!priceUnavailable && (
+              <div className="mt-6">
+                <CompositionBar
+                  segments={buildKgCompositionSegments(p.kgSplit, (g) => t(`costGroup.${g}`))}
+                  total={p.result.total.exact}
+                  variant="compact"
+                  incompleteLabel={t('money.priceNotDetermined')}
+                />
+              </div>
+            )}
+          </div>
+          <aside className="a3-presentation-flow-aside" aria-label={t('presentation.nextStep.artifacts')}>
+            <p className="a3-cap">{t('presentation.nextStep.artifacts')}</p>
+            <ul className="a3-presentation-artifacts mt-2">
+              {artifacts.map((artifact) => <li key={artifact}>{artifact}</li>)}
+            </ul>
+            <dl className="mt-6 grid gap-3">
+              <div><dt className="a3-cap">{tx('Bauzeit ab OKBP')}</dt><dd className="text-body font-medium">{p.duration.display}</dd></div>
+              <div><dt className="a3-cap">{tx('Fertigstellung')}</dt><dd className="text-body font-medium">{formatDate(p.duration.completionDate, language)}</dd></div>
+              <div><dt className="a3-cap">{tx('Gebäude')}</dt><dd className="text-body font-medium">{buildingNames(current.cfg)}</dd></div>
+            </dl>
+            <Button className="mt-8" variant="primary" onClick={onPrepare}>{t('presentation.flow.prepare')}</Button>
+          </aside>
+        </div>
+      </section>
+    )
+  }
+
+  if (flow === 'send') {
+    return (
+      <section className="a3-presentation-flow a3-paper" aria-labelledby="presentation-send-title">
+        <button type="button" className="a3-presentation-back" onClick={onBack}>{t('presentation.flow.back')}</button>
+        <div className="a3-presentation-send mt-4">
+          <div>
+            <p className="a3-cap">{t('offer.label')}</p>
+            <h1 id="presentation-send-title" className="mt-2 text-heading-1 font-bold text-text-primary">{t('presentation.flow.send.title')}</h1>
+            <p className="mt-3 text-body text-text-secondary">{t('presentation.flow.send.copy')}</p>
+          </div>
+          <dl className="a3-presentation-send-details mt-8">
+            <div><dt>{t('presentation.flow.recipient')}</dt><dd>{t('presentation.flow.noRecipient')}</dd></div>
+            <div><dt>{t('presentation.flow.subject')}</dt><dd>{current.name} · {t('presentation.flow.offerEyebrow')}</dd></div>
+            <div><dt>{t('presentation.flow.language')}</dt><dd>{language === 'de' ? t('presentation.flow.german') : t('presentation.flow.english')}</dd></div>
+          </dl>
+          <div className="a3-presentation-send-summary mt-8">
+            <p className="a3-cap">{t('presentation.flow.summary')}</p>
+            <p className="mt-2 text-body font-medium text-text-primary">
+              {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(present(p.result.total.exact))}
+              <span className="text-text-secondary"> · {buildingNames(current.cfg)}</span>
+            </p>
+          </div>
+          <div className="mt-6">
+            <p className="a3-cap">{t('presentation.nextStep.artifacts')}</p>
+            <ul className="a3-presentation-artifacts mt-2">
+              {artifacts.map((artifact) => <li key={artifact}>{artifact}</li>)}
+            </ul>
+          </div>
+          <p className="a3-presentation-snapshot mt-6">{t('presentation.flow.immutable')}</p>
+          <div className="a3-presentation-flow-dock mt-8">
+            <Button variant="primary" onClick={onSend}>{t('presentation.flow.sendAction')}</Button>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  const delivered = flow === 'delivered' || delivery === 'delivered'
+  const displayName = snapshot?.optionName ?? current.name
+  const displayTotal = snapshot
+    ? moneyLabel(present(new Decimal(snapshot.totalExact)))
+    : priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(present(p.result.total.exact))
+  const eventAt = snapshot?.at ? formatDate(snapshot.at, language, true) : t('presentation.flow.justNow')
+
+  return (
+    <section className="a3-presentation-flow a3-stage" aria-labelledby="presentation-delivery-title">
+      <div className="a3-presentation-delivered">
+        <p className="a3-cap">{t('offer.label')}</p>
+        <h1 id="presentation-delivery-title" className="mt-2 text-heading-1 font-bold text-text-primary">
+          {delivered ? t('presentation.flow.deliveredTitle') : t('presentation.flow.sentTitle')}
+        </h1>
+        <p className="mt-3 text-body text-text-secondary">
+          {delivered ? t('presentation.flow.deliveredCopy') : t('presentation.flow.sentCopy')}
+        </p>
+        <dl className="a3-presentation-delivery-details mt-8">
+          <div><dt>{t(delivered ? 'presentation.flow.deliveredAt' : 'presentation.flow.sentAt')}</dt><dd>{eventAt}</dd></div>
+          <div><dt>{t('presentation.flow.version')}</dt><dd>{displayName} · {displayTotal}</dd></div>
+          <div><dt>{t('presentation.flow.deliveryState')}</dt><dd>{t(delivered ? 'presentation.flow.confirmed' : 'presentation.flow.pending')}</dd></div>
+        </dl>
+        <div className="mt-8">
+          <p className="a3-cap">{t('presentation.nextStep.artifacts')}</p>
+          <ul className="a3-presentation-artifacts mt-2">
+            {artifacts.map((artifact) => <li key={artifact}>{artifact}</li>)}
+          </ul>
+        </div>
+        <div className="a3-presentation-flow-dock mt-8">
+          <Button variant="secondary" onClick={onBack}>{t('presentation.flow.openSent')}</Button>
+          <Button variant="primary" onClick={onNewVersion}>{t('presentation.flow.newVersion')}</Button>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function formatDate(iso: string, language: 'de' | 'en' = 'de', includeTime = false): string {
+  const date = new Date(iso.includes('T') ? iso : `${iso}T12:00:00`)
+  if (Number.isNaN(date.getTime())) return '—'
+  return new Intl.DateTimeFormat(language === 'de' ? 'de-DE' : 'en-GB', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    ...(includeTime ? { hour: '2-digit', minute: '2-digit' } : {}),
+  }).format(date)
 }

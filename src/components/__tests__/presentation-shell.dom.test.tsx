@@ -203,6 +203,30 @@ describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/
     expect(st().viewedOptionId).toBe('OPT-02')
     expect(st().activeOptionId).toBe('OPT-01')
   })
+
+  it('keeps the viewed Option through offer review and sends an immutable snapshot for that Option', async () => {
+    const user = userEvent.setup()
+    buildTwoEligibleOptions()
+    render(<Harness />)
+
+    await user.click(screen.getByRole('button', { name: 'Nächster Schritt' }))
+    await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
+    expect(screen.getByRole('heading', { name: 'Das Angebot bekommt kommerzielle Kontur.' })).toBeInTheDocument()
+
+    const switcher = screen.getByRole('radiogroup', { name: 'Wird präsentiert' })
+    await user.click(within(switcher).getByRole('radio', { name: /Option B/ }))
+    expect(st().activeOptionId).toBe('OPT-01')
+    expect(st().viewedOptionId).toBe('OPT-02')
+
+    await user.click(screen.getByRole('button', { name: 'Angebot prüfen und senden' }))
+    expect(screen.getByRole('heading', { name: 'Bereit zum Senden' })).toBeInTheDocument()
+    expect(screen.getByText(/Option B · Ihr indikatives Angebot/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Angebot senden' }))
+    expect(st().activeOptionId).toBe('OPT-01')
+    expect(st().snapshots.at(-1)?.optionId).toBe('OPT-02')
+    expect(screen.getByRole('heading', { name: 'Angebot gesendet' })).toBeInTheDocument()
+  })
 })
 
 describe('PresentationShell — accessibility (AC 62–67)', () => {

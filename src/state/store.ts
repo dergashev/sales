@@ -1429,6 +1429,9 @@ type Store = {
    * отправить одно, а показать другое — и позволял печати передать `null`.
    */
   sendOffer: (kind: 'email' | 'print') => OfferSnapshot
+  /** Send the explicitly viewed/presented Option without changing the
+   * preparation cursor or active working Option. */
+  sendOfferForOption: (kind: 'email' | 'print', optionId: string | null) => OfferSnapshot
   /** Скидка как решение: событие журнала с дельтой (D-25, CALC-007). */
   setDiscount: (percent: Decimal | null) => void
   /**
@@ -2834,13 +2837,18 @@ const store = createStore<Store>((set, get) => {
    * makes "fixation gates the ghost" a structural invariant instead of a
    * per-action habit that new/existing actions can silently skip.
    */
-  const apply = (e: Omit<JournalEvent, 'seq' | 'at' | 'optionId'>) => {
+  const apply = (
+    e: Omit<JournalEvent, 'seq' | 'at' | 'optionId'>,
+    optionIdOverride?: string | null,
+  ) => {
     const { journal, level, activeOptionId } = get()
     const seq = journal.length + 1
     // Контекст события: внутри конвейера — активная Option, на уровнях
     // списка и карточки — `null`. Создание Option происходит ДО входа в
     // конвейер и потому остаётся событием уровня Opportunity.
-    const optionId = level === 'option' ? activeOptionId : null
+    const optionId = optionIdOverride !== undefined
+      ? optionIdOverride
+      : level === 'option' ? activeOptionId : null
     set({
       journal: [...journal, { ...e, seq, at: new Date().toISOString(), optionId }],
       undoToast: e.inverse
@@ -3441,21 +3449,30 @@ const store = createStore<Store>((set, get) => {
 
     sendOffer: (kind) => {
       const s = get()
+      return get().sendOfferForOption(kind, s.activeOptionId)
+    },
+
+    sendOfferForOption: (kind, optionId) => {
+      const s = get()
+      const config = optionId ? configForOption(s, optionId) : null
+      if (optionId && !config) throw new Error(`Option ${optionId} nicht gefunden`)
       // M-3 snapshots freeze the sold option, never a temporary building
       // lens used while editing the Configurator.
-      const p = projectProjection(s)
+      const p = config ? projectProjection(config) : projectProjection(s)
       const snap: OfferSnapshot = {
         id: `SNAP-${s.snapshots.length + 1}`,
         at: new Date().toISOString(),
         kind,
-        optionId: s.activeOptionId,
-        optionName: s.options.find((o) => o.id === s.activeOptionId)?.name ?? null,
+        optionId,
+        optionName: s.options.find((o) => o.id === optionId)?.name ?? null,
         totalExact: p.result.total.exact.toFixed(2),
         totalLabel: p.result.totalLabel,
         uncertaintyPp: p.uncertaintyPp,
-        regionalfaktorActive: s.regionalfaktorActive,
-        coverage: { ...s.coverage },
-        discountPercent: s.discountPercent ? s.discountPercent.toFixed(1) : null,
+        regionalfaktorActive: config?.regionalfaktorActive ?? s.regionalfaktorActive,
+        coverage: { ...(config?.coverage ?? s.coverage) },
+        discountPercent: (config?.discountPercent ?? s.discountPercent)
+          ? (config?.discountPercent ?? s.discountPercent)!.toFixed(1)
+          : null,
         journalSeqAt: s.journal.length,
       }
       // Снапшот неприкосновенен по построению (M-3): и сам объект, и список.
@@ -3469,7 +3486,7 @@ const store = createStore<Store>((set, get) => {
           ? `Angebot per E-Mail gesendet · Snapshot ${snap.id}`
           : `Angebot gedruckt · Snapshot ${snap.id}`,
         deltaExact: null,
-      })
+      }, optionId)
       return snap
     },
 
