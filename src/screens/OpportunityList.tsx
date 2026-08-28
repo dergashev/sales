@@ -300,21 +300,10 @@ export function OpportunityList() {
           sichtbar zu trennen. Das ausgewählte Segment TRÄGT den
           „welche Sortierung ist aktiv"-Zustand (SegmentedControl-Kontrakt),
           kein zusätzlicher Caption nötig (Design-Handoff #1). */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mt-1">
+      <div className="a3-opportunities-summary mt-1">
         <div className="a3-search-result-count" role="status" aria-live="polite">
           {resultSummary}
         </div>
-        <SegmentedControl
-          legend={t('opplist.sort.legend')}
-          layout="inline"
-          value={sort}
-          onChange={setSort}
-          options={[
-            { value: 'recommended', label: t('opplist.sort.recommended') },
-            { value: 'name', label: t('opplist.sort.name') },
-            { value: 'status', label: t('opplist.sort.status') },
-          ]}
-        />
       </div>
 
       {/* DC-34: видимый контрол поиска, фильтры и активные фильтр-чипы —
@@ -341,6 +330,17 @@ export function OpportunityList() {
           >
             {tx('Filter')}{active.length > 0 ? ` (${active.length})` : ''}
           </Button>
+          <SegmentedControl
+            legend={t('opplist.sort.legend')}
+            layout="inline"
+            value={sort}
+            onChange={setSort}
+            options={[
+              { value: 'recommended', label: t('opplist.sort.recommended') },
+              { value: 'name', label: t('opplist.sort.name') },
+              { value: 'status', label: t('opplist.sort.status') },
+            ]}
+          />
         </div>
 
         {filtersOpen && (
