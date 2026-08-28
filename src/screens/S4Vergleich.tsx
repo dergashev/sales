@@ -286,6 +286,22 @@ export function S4Vergleich() {
         }
       />
 
+      {!client && (
+        <nav className="mt-4 flex flex-wrap items-center gap-3"
+             aria-label={tx("Vergleichsnavigation")}>
+          <Button variant="ghost" onClick={() => s.setPipelineView("konfigurator")}>
+            {t("nav.konfigurator")}
+          </Button>
+          <Button
+            onClick={() => s.setPipelineView("export")}
+            disabled={!s.canBeginConfiguration() || !s.configurationComplete()}
+            disabledReason={t("configurator.finalGate.exportBlockedReason")}
+          >
+            {t("nav.export")}
+          </Button>
+        </nav>
+      )}
+
       {/* REDESIGN R3: with >=2 client-eligible Options, the salesperson can
           switch which one is PRESENTED without leaving this screen and
           without touching the internally active/preparation Option

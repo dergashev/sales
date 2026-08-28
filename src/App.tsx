@@ -189,6 +189,16 @@ export function App() {
           the acceptance contract. */}
       {praesentation ? (
         <PresentationShell mainRef={mainRef} modeRef={modeRef} />
+      ) : renderedView === 'vergleich' ? (
+        // VO-T5 / AC-17: comparison is a decision surface, not an
+        // operational editing step. Collapse both rails only for this route
+        // so its sticky labels and three visible Option columns receive the
+        // full supported desktop width. Other routes retain the persistent
+        // Sidebar + OfferPanel shell unchanged.
+        <main ref={mainRef} tabIndex={-1}
+              className="min-w-0 flex-1 overflow-y-auto bg-surface-default outline-none">
+          <S4Vergleich />
+        </main>
       ) : (
         <div className="flex min-h-0 flex-1">
           <Sidebar modeRef={modeRef} />
@@ -196,7 +206,6 @@ export function App() {
           <main ref={mainRef} tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto bg-surface-default outline-none">
             {renderedView === 'buildingScope' && <BuildingScope />}
             {renderedView === 'konfigurator' && <S3Konfigurator />}
-            {renderedView === 'vergleich' && <S4Vergleich />}
             {renderedView === 'export' && <S5Export />}
             {renderedView === 'einstellungen' && <S6Einstellungen />}
           </main>
@@ -215,7 +224,7 @@ export function App() {
               ? <ConfigurationModeReadiness />
               : renderedView === 'konfigurator' && s.configurationModeEditing
               ? <OfferPanel variant="level1" footer={<ModeChangeNotice headingLevel={3} />} />
-              : renderedView === 'vergleich' || renderedView === 'export' || renderedView === 'einstellungen'
+              : renderedView === 'export' || renderedView === 'einstellungen'
                 || renderedView === 'grundlagen'
               ? <OfferPanel variant="level1" />
               : <OfferPanel />}

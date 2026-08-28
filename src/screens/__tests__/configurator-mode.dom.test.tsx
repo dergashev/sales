@@ -132,7 +132,11 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     includeCoreScope()
 
     await user.click(nav(/Variantenvergleich/))
-    expect(screen.getByRole('complementary', { name: 'Angebot' })).toBeInTheDocument()
+    // VO-T5 / AC-17: the comparison is a full-width decision surface, so
+    // both operational rails are intentionally absent on this route.
+    expect(screen.queryByRole('complementary', { name: 'Angebot' })).toBeNull()
+    expect(screen.getByRole('navigation', { name: 'Vergleichsnavigation' }))
+      .toBeInTheDocument()
     await user.click(nav(/Konfigurator/))
     await user.click(nav(/Leistungen KG 300/))
     // Only two building-scoped chapters remain (Energie & Zertifikate and
