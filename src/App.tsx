@@ -145,6 +145,27 @@ export function App() {
     )
   }
 
+  // VO-T4: Foundations is an internal governance route, not a working
+  // product surface. Its four comparable Canvas/Paper/Stage/Stage-deep
+  // compositions need the complete desktop width to communicate their
+  // canonical roles; the operational rail shell would reduce them to
+  // unreadable narrow columns. The global header preserves the normal
+  // context and exit path without presenting the obsolete work layout as
+  // Design System authority.
+  if (!praesentation && renderedView === 'grundlagen') {
+    return (
+      <div className="a3-app-shell flex h-screen flex-col">
+        <ViewportWarning />
+        <FontRuntimeWarning />
+        <AppHeader />
+        <main ref={mainRef} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto bg-surface-canvas outline-none">
+          <GrundlagenRoute />
+        </main>
+        <UndoToast />
+      </div>
+    )
+  }
+
   return (
     <div className="a3-app-shell flex h-screen flex-col">
       <ViewportWarning />
@@ -178,7 +199,6 @@ export function App() {
             {renderedView === 'vergleich' && <S4Vergleich />}
             {renderedView === 'export' && <S5Export />}
             {renderedView === 'einstellungen' && <S6Einstellungen />}
-            {renderedView === 'grundlagen' && <GrundlagenRoute />}
           </main>
 
           {/* SIDEBAR 01 (backlog eda1e221): the rail slot below is the single
