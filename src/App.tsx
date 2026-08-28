@@ -189,21 +189,18 @@ export function App() {
           the acceptance contract. */}
       {praesentation ? (
         <PresentationShell mainRef={mainRef} modeRef={modeRef} />
-      ) : renderedView === 'vergleich' ? (
-        // VO-T5 / AC-17: comparison is a decision surface, not an
-        // operational editing step. Collapse both rails only for this route
-        // so its sticky labels and three visible Option columns receive the
-        // full supported desktop width. Other routes retain the persistent
-        // Sidebar + OfferPanel shell unchanged.
-        <main ref={mainRef} tabIndex={-1}
-              className="min-w-0 flex-1 overflow-y-auto bg-surface-default outline-none">
-          <S4Vergleich />
-        </main>
       ) : (
         <div className="flex min-h-0 flex-1">
-          <Sidebar modeRef={modeRef} />
+          {/* VO-T5 / AC-17: comparison is a decision surface, not an
+              operational editing step. Collapse both rails only for this
+              route so its sticky labels and three visible Option columns
+              receive the full supported desktop width. Keeping one main
+              element across routes also preserves the existing scroll-reset
+              and focus contract during navigation. */}
+          {renderedView !== 'vergleich' && <Sidebar modeRef={modeRef} />}
 
           <main ref={mainRef} tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto bg-surface-default outline-none">
+            {renderedView === 'vergleich' && <S4Vergleich />}
             {renderedView === 'buildingScope' && <BuildingScope />}
             {renderedView === 'konfigurator' && <S3Konfigurator />}
             {renderedView === 'export' && <S5Export />}
@@ -218,7 +215,7 @@ export function App() {
               visible when "Modus ändern" is open, ADDING the notice as
               `OfferPanel`'s `footer` instead of substituting the whole panel
               for it. */}
-          {renderedView === 'buildingScope' ? <BuildingScopeReadiness />
+          {renderedView !== 'vergleich' && (renderedView === 'buildingScope' ? <BuildingScopeReadiness />
             : !s.pricingStarted
               || renderedView === 'konfigurator' && !s.configurationModeChosen
               ? <ConfigurationModeReadiness />
@@ -227,7 +224,7 @@ export function App() {
               : renderedView === 'export' || renderedView === 'einstellungen'
                 || renderedView === 'grundlagen'
               ? <OfferPanel variant="level1" />
-              : <OfferPanel />}
+                : <OfferPanel />)}
         </div>
       )}
 
