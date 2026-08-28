@@ -262,6 +262,7 @@ function PresentationBar({
   modeRef: RefObject<HTMLButtonElement>
 }) {
   const tx = useTx()
+  const t = useT()
   const current = candidates.find((c) => c.id === currentId)
 
   return (
@@ -295,9 +296,15 @@ function PresentationBar({
         {candidates.length >= 2 && current && (
           <OptionSwitcher candidates={candidates} currentId={current.id} onSwitch={onSwitch} />
         )}
-        <Button ref={modeRef} variant="secondary" onClick={onExit}>
-          {tx('shell.profile.exit')}
-        </Button>
+        <div className="a3-output-profile a3-output-profile-compact">
+          <Button ref={modeRef} variant="secondary" onClick={onExit}>
+            {t('shell.profile.exit')}
+          </Button>
+          <p className="a3-mode-indicator" role="status" aria-live="polite" aria-atomic="true">
+            <span aria-hidden="true">◉</span>
+            <span>{t('shell.profile.clientIndicator')}</span>
+          </p>
+        </div>
       </div>
     </nav>
   )
