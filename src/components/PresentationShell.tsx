@@ -9,7 +9,8 @@ import {
 import { driversSum } from '../engine/calculate'
 import { NNBSP, present, formatDE, label as moneyLabel } from '../engine/money'
 import { CATALOG } from '../state/catalog'
-import { useT, useTx } from '../i18n'
+import { localizeMoneyText, useT, useTx } from '../i18n'
+import { recipientForOpportunity, type ValidatedRecipient } from '../state/emailRecipient'
 import { PageHeader, SectionSheet, SelectField, Badge } from './designSystem'
 import { SegmentedControl } from './controls'
 import { PartialState } from './DataStates'
@@ -65,6 +66,17 @@ function money(d: Decimal): string {
   return `${pr.prefix}${pr.prefix ? NNBSP : ''}${pr.display}`
 }
 
+function durationNumber(duration: Projection['duration'], language: 'de' | 'en'): string {
+  const number = duration.display.replace(`${NNBSP}Monate`, '')
+  return localizeMoneyText(number, language)
+}
+
+function durationText(duration: Projection['duration'], language: 'de' | 'en'): string {
+  const prefix = duration.prefix ? `${duration.prefix}${NNBSP}` : ''
+  const unit = language === 'en' ? 'months' : 'Monate'
+  return `${prefix}${durationNumber(duration, language)}${NNBSP}${unit}`
+}
+
 function includedBuildingIdsOf(cfg: OptionConfig): string[] {
   return Object.keys(cfg.buildings).filter((id) => cfg.included[id])
 }
@@ -89,6 +101,7 @@ export function PresentationShell({ mainRef, modeRef }: {
   modeRef: RefObject<HTMLButtonElement>
 }) {
   const s = useStore()
+  const t = useT()
   const tx = useTx()
   const opportunity = opportunities.items.find((o) => o.id === s.opportunityId)
   const projectName = opportunity?.name ?? s.opportunityId ?? ''
@@ -116,10 +129,11 @@ export function PresentationShell({ mainRef, modeRef }: {
     ? [...s.snapshots].reverse().find((snapshot) => snapshot.optionId === currentId)
     : undefined
 
-  // No validated recipient exists in the current client-facing flow: the
-  // send review intentionally exposes that absence and remains blocked until
-  // recipient capture is implemented by the owning product surface.
-  const canSend = false
+  // Reuse the validated CRM recipient contract already established for the
+  // synthetic DEMO-0001 opportunity. An unknown opportunity remains blocked;
+  // the client flow never invents or captures a recipient here.
+  const recipient = recipientForOpportunity(s.opportunityId)
+  const canSend = recipient !== null
 
   useEffect(() => {
     if (flow !== 'sent') return
@@ -171,12 +185,12 @@ export function PresentationShell({ mainRef, modeRef }: {
 
   const showOptionen = candidates.length >= 2
   const sections: Array<{ id: string; label: string }> = [
-    { id: 'projekt', label: tx('Projekt') },
-    { id: 'gebaeude', label: tx('Gebäude') },
-    { id: 'ergebnis', label: tx('Ergebnis') },
-    { id: 'zeitplan', label: tx('Zeitplan') },
-    ...(showOptionen ? [{ id: 'optionen', label: tx('Optionen') }] : []),
-    { id: 'naechster-schritt', label: tx('Nächster Schritt') },
+    { id: 'projekt', label: t('presentation.nav.project') },
+    { id: 'gebaeude', label: t('presentation.nav.building') },
+    { id: 'ergebnis', label: t('presentation.nav.result') },
+    { id: 'zeitplan', label: t('presentation.nav.schedule') },
+    ...(showOptionen ? [{ id: 'optionen', label: t('presentation.nav.options') }] : []),
+    { id: 'naechster-schritt', label: t('presentation.nav.nextStep') },
   ]
 
   const switchViewedOption = (id: string) => {
@@ -242,10 +256,9 @@ export function PresentationShell({ mainRef, modeRef }: {
             onBack={backToNarrative}
             onPrepare={() => setFlow('send')}
             canSend={canSend}
+            recipient={recipient}
             onSend={() => {
-              // The current client flow has no recipient-capture surface.
-              // Keep the action inert until a validated recipient exists;
-              // an absent recipient must never create an immutable snapshot.
+              // An absent recipient must never create an immutable snapshot.
               if (!canSend) return
               const snapshot = s.sendOfferForOption('email', current.id)
               setSentSnapshot(snapshot)
@@ -387,6 +400,7 @@ function SectionProjekt({ opportunity, current }: {
   opportunity: { name: string; city?: string } | undefined
   current: Candidate
 }) {
+  const t = useT()
   const tx = useTx()
   const buildingCount = includedBuildingIdsOf(current.cfg).length
   const projectName = opportunity?.name ?? current.name
@@ -399,7 +413,7 @@ function SectionProjekt({ opportunity, current }: {
       </div>
       <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
         <div>
-          <dt className="a3-cap">{tx('Gebäude')}</dt>
+          <dt className="a3-cap">{t('presentation.nav.building')}</dt>
           <dd className="numeric text-body font-medium text-text-primary">{buildingCount}</dd>
         </div>
         <div>
@@ -458,7 +472,7 @@ function SectionGebaeude({ current }: { current: Candidate }) {
   const buildingName = building?.stableName ?? t('buildingScope.title')
 
   return (
-    <SectionSheet id="presentation-gebaeude" title={tx('Gebäude')} className="mt-8">
+    <SectionSheet id="presentation-gebaeude" title={t('presentation.nav.building')} className="mt-8">
       <div className="a3-presentation-building">
         <div className="a3-presentation-building-media">
           <MediaFrame ratio="card" state="fallback" seed={buildingName} fallbackLabel={buildingName} />
@@ -554,7 +568,7 @@ function SectionErgebnis({ current }: { current: Candidate }) {
     : moneyLabel(present(p.result.bauwerk.mul(CATALOG.regionalFactor.value.minus(1))))
 
   return (
-    <SectionSheet id="presentation-ergebnis" title={tx('Ergebnis')} className="mt-8">
+    <SectionSheet id="presentation-ergebnis" title={t('presentation.nav.result')} className="mt-8">
       <div className="a3-heroband">
         <div className="a3-hb a3-hb-total">
           <h3 className="a3-hb-cap">{tx(p.result.totalLabel)}</h3>
@@ -581,8 +595,8 @@ function SectionErgebnis({ current }: { current: Candidate }) {
           <div className="a3-hb">
             <p className="a3-hb-num numeric">
               {p.duration.prefix && <span aria-hidden="true">{p.duration.prefix}{NNBSP}</span>}
-              {p.duration.display.replace(`${NNBSP}Monate`, '')}
-              <span className="a3-hb-unit">{NNBSP}Monate</span>
+              {durationNumber(p.duration, language)}
+              <span className="a3-hb-unit">{NNBSP}{language === 'en' ? 'months' : 'Monate'}</span>
             </p>
             <span className="a3-hb-cap">
               {tx('ab OKBP')} · {tx('Fertigstellung')} {formatDate(p.duration.completionDate, language)}
@@ -636,13 +650,13 @@ function SectionZeitplan({ current, onNext }: { current: Candidate; onNext: () =
   if (!p.duration.completionDate) return null
 
   return (
-    <SectionSheet id="presentation-zeitplan" title={tx('Zeitplan')} className="mt-8">
+    <SectionSheet id="presentation-zeitplan" title={t('presentation.nav.schedule')} className="mt-8">
       <div className="a3-heroband">
         <div className="a3-hb">
           <p className="a3-hb-num numeric">
             {p.duration.prefix && <span aria-hidden="true">{p.duration.prefix}{NNBSP}</span>}
-            {p.duration.display.replace(`${NNBSP}Monate`, '')}
-            <span className="a3-hb-unit">{NNBSP}Monate</span>
+            {durationNumber(p.duration, language)}
+            <span className="a3-hb-unit">{NNBSP}{language === 'en' ? 'months' : 'Monate'}</span>
           </p>
           <span className="a3-hb-cap">{t('presentation.schedule.durationFromOkbp')}</span>
         </div>
@@ -651,9 +665,9 @@ function SectionZeitplan({ current, onNext }: { current: Candidate; onNext: () =
           <span className="a3-hb-cap">{tx('Fertigstellung')}</span>
         </div>
       </div>
-      <div className="a3-presentation-timeline mt-5" aria-label={tx('Zeitplan')}>
+      <div className="a3-presentation-timeline mt-5" aria-label={t('presentation.nav.schedule')}>
         <div className="a3-presentation-timeline-line" />
-        <p><span className="a3-cap">{t('presentation.schedule.durationFromOkbp')}</span><strong>{p.duration.display}</strong></p>
+        <p><span className="a3-cap">{t('presentation.schedule.durationFromOkbp')}</span><strong>{durationText(p.duration, language)}</strong></p>
         <p><span className="a3-cap">{tx('Fertigstellung')}</span><strong>{formatDate(p.duration.completionDate, language)}</strong></p>
       </div>
       <div className="a3-presentation-consequence mt-5">
@@ -680,7 +694,7 @@ function SectionOptionen({ candidates, currentId, onSwitch }: {
   const tx = useTx()
 
   return (
-    <SectionSheet id="presentation-optionen" title={tx('Optionen')} className="mt-8">
+    <SectionSheet id="presentation-optionen" title={t('presentation.nav.options')} className="mt-8">
       <ul className="grid gap-3 sm:grid-cols-2" role="list">
         {candidates.map((c) => {
           const selected = c.id === currentId
@@ -725,12 +739,11 @@ function SectionNaechsterSchritt({ current, onPrepare }: {
   onPrepare: () => void
 }) {
   const t = useT()
-  const tx = useTx()
   const { p } = current
   const priceUnavailable = p.result.total.exact.isZero()
 
   return (
-    <SectionSheet id="presentation-naechster-schritt" title={tx('Nächster Schritt')} className="mt-8">
+    <SectionSheet id="presentation-naechster-schritt" title={t('presentation.nav.nextStep')} className="mt-8">
       <div className="a3-presentation-next">
         <div>
           <Badge sign="●" kind="metadata">{current.name}</Badge>
@@ -759,7 +772,7 @@ function SectionNaechsterSchritt({ current, onPrepare }: {
   )
 }
 
-function PresentationFlow({ flow, delivery, snapshot, current, onBack, onPrepare, canSend, onSend, onOpenSent, onCloseSnapshot, onNewVersion }: {
+function PresentationFlow({ flow, delivery, snapshot, current, onBack, onPrepare, canSend, recipient, onSend, onOpenSent, onCloseSnapshot, onNewVersion }: {
   flow: Exclude<PresentationFlow, 'narrative'>
   delivery: 'sent' | 'delivered'
   snapshot?: OfferSnapshot
@@ -767,6 +780,7 @@ function PresentationFlow({ flow, delivery, snapshot, current, onBack, onPrepare
   onBack: () => void
   onPrepare: () => void
   canSend: boolean
+  recipient: ValidatedRecipient | null
   onSend: () => void
   onOpenSent: () => void
   onCloseSnapshot: () => void
@@ -819,7 +833,7 @@ function PresentationFlow({ flow, delivery, snapshot, current, onBack, onPrepare
               {artifacts.map((artifact) => <li key={artifact}>{artifact}</li>)}
             </ul>
             <dl className="mt-6 grid gap-3">
-              <div><dt className="a3-cap">{t('presentation.schedule.durationFromOkbp')}</dt><dd className="text-body font-medium">{p.duration.display}</dd></div>
+              <div><dt className="a3-cap">{t('presentation.schedule.durationFromOkbp')}</dt><dd className="text-body font-medium">{durationText(p.duration, language)}</dd></div>
               <div><dt className="a3-cap">{tx('Fertigstellung')}</dt><dd className="text-body font-medium">{formatDate(p.duration.completionDate, language)}</dd></div>
               <div><dt className="a3-cap">{tx('Gebäude')}</dt><dd className="text-body font-medium">{buildingNames(current.cfg)}</dd></div>
             </dl>
@@ -841,7 +855,7 @@ function PresentationFlow({ flow, delivery, snapshot, current, onBack, onPrepare
             <p className="mt-3 text-body text-text-secondary">{t('presentation.flow.send.copy')}</p>
           </div>
           <dl className="a3-presentation-send-details mt-8">
-            <div><dt>{t('presentation.flow.recipient')}</dt><dd>{t('presentation.flow.noRecipient')}</dd></div>
+            <div><dt>{t('presentation.flow.recipient')}</dt><dd>{recipient ? t('presentation.flow.recipientValue', { email: recipient.address }) : t('presentation.flow.noRecipient')}</dd></div>
             <div><dt>{t('presentation.flow.subject')}</dt><dd>{current.name} · {t('presentation.flow.offerEyebrow')}</dd></div>
             <div><dt>{t('presentation.flow.language')}</dt><dd>{language === 'de' ? t('presentation.flow.german') : t('presentation.flow.english')}</dd></div>
           </dl>
@@ -863,7 +877,7 @@ function PresentationFlow({ flow, delivery, snapshot, current, onBack, onPrepare
             <Button
               variant="primary"
               disabled={!canSend}
-              disabledReason={t('presentation.flow.noRecipient')}
+              disabledReason={recipient ? undefined : t('presentation.flow.noRecipient')}
               onClick={onSend}
             >
               {t('presentation.flow.sendAction')}
@@ -897,6 +911,7 @@ function PresentationFlow({ flow, delivery, snapshot, current, onBack, onPrepare
           <dl className="a3-presentation-delivery-details mt-8">
             <div><dt>{t('presentation.flow.sentAt')}</dt><dd>{eventAt}</dd></div>
             <div><dt>{t('presentation.flow.version')}</dt><dd>{displayName} · {displayTotal}</dd></div>
+            <div><dt>{t('presentation.flow.recipient')}</dt><dd>{recipient ? t('presentation.flow.recipientValue', { email: recipient.address }) : t('presentation.flow.noRecipient')}</dd></div>
             <div><dt>{t('presentation.flow.deliveryState')}</dt><dd>{t('presentation.flow.pending')}</dd></div>
           </dl>
           <div className="mt-8">
@@ -926,6 +941,7 @@ function PresentationFlow({ flow, delivery, snapshot, current, onBack, onPrepare
         <dl className="a3-presentation-delivery-details mt-8">
           <div><dt>{t(delivered ? 'presentation.flow.deliveredAt' : 'presentation.flow.sentAt')}</dt><dd>{eventAt}</dd></div>
           <div><dt>{t('presentation.flow.version')}</dt><dd>{displayName} · {displayTotal}</dd></div>
+          <div><dt>{t('presentation.flow.recipient')}</dt><dd>{recipient ? t('presentation.flow.recipientValue', { email: recipient.address }) : t('presentation.flow.noRecipient')}</dd></div>
           <div><dt>{t('presentation.flow.deliveryState')}</dt><dd>{t(delivered ? 'presentation.flow.confirmed' : 'presentation.flow.pending')}</dd></div>
         </dl>
         <div className="mt-8">

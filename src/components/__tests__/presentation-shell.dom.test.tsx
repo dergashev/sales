@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PresentationShell } from '../PresentationShell'
 import { __resetStoreForTests, includedBuildingIds, useStore } from '../../state/store'
@@ -36,7 +36,8 @@ function Harness() {
  *  Energiestandard (unterschiedliche Kalkulation → unterschiedlicher
  *  Hero-Wert) — 'OPT-01' bleibt am Ende aktiv, 'OPT-02' existiert nur im
  *  Speicher (isolationsprobe). */
-function buildTwoEligibleOptions() {
+function buildTwoEligibleOptions(opportunityId?: string) {
+  if (opportunityId) st().openOpportunity(opportunityId)
   st().resolveWflConflict('customer')
   st().confirmProjectParams()
 
@@ -120,6 +121,12 @@ describe('PresentationShell — empty/edge states (AC 6/9/11/12)', () => {
 
     expect(screen.getAllByText('Construction period from OKBP')).not.toHaveLength(0)
     expect(screen.getByRole('button', { name: 'Continue to options' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Project' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Building' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Result' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Schedule' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Next step' })).toBeInTheDocument()
+    expect(screen.getAllByText(/\d+(?:\.\d+)? months/)).not.toHaveLength(0)
     expect(screen.queryByText('Bauzeit ab OKBP')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Weiter zu Optionen' })).toBeNull()
   })
@@ -249,6 +256,30 @@ describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/
     expect(st().activeOptionId).toBe('OPT-01')
     expect(st().snapshots).toHaveLength(0)
     expect(screen.getByRole('heading', { name: 'Bereit zum Senden' })).toBeInTheDocument()
+  })
+
+  it('enables the validated recipient flow and creates exactly one immutable snapshot', async () => {
+    const user = userEvent.setup()
+    buildTwoEligibleOptions('DEMO-0001')
+    render(<Harness />)
+
+    await user.click(screen.getByRole('button', { name: 'Nächster Schritt' }))
+    await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
+    await user.click(screen.getByRole('button', { name: 'Angebot prüfen und senden' }))
+
+    expect(screen.getByText('An: kontakt@beispiel-entwickler.example (aus HubSpot)')).toBeInTheDocument()
+    const sendButton = screen.getByRole('button', { name: 'Angebot senden' })
+    expect(sendButton).not.toHaveAttribute('aria-disabled')
+
+    await user.click(sendButton)
+    expect(st().snapshots).toHaveLength(1)
+    expect(screen.getByRole('heading', { name: 'Angebot gesendet' })).toBeInTheDocument()
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Angebot zugestellt (simuliert)' })).toBeInTheDocument()
+    }, { timeout: 3000 })
+    expect(st().snapshots).toHaveLength(1)
+    expect(screen.getByText('An: kontakt@beispiel-entwickler.example (aus HubSpot)')).toBeInTheDocument()
   })
 })
 
