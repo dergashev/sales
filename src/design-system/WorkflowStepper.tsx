@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode, type KeyboardEvent } from 'react'
+import { useId, useRef, useState, type ReactNode, type KeyboardEvent } from 'react'
 import { useT } from '../i18n'
 
 /**
@@ -123,6 +123,7 @@ export function WorkflowStepper({
   size?: 'workflow' | 'chapter'
 }) {
   const tx = useT()
+  const instanceId = useId()
   // Written as a static branch rather than a template interpolation — see
   // the STATE_CLASS comment above for why.
   const sizeClass = size === 'workflow' ? 'a3-wfs-workflow' : 'a3-wfs-chapter'
@@ -178,6 +179,7 @@ export function WorkflowStepper({
           // already been completed.
           const glyph = composite ? GLYPH.done : (GLYPH[step.state] || String(i + 1))
           const stateText = tx1(STATE_LABEL_KEY[step.state], tx)
+          const blockedReasonId = `${instanceId}-${step.id}-blocked-reason`
           const positionText = tx1(
             'designSystem.workflowStepper.position', tx,
             { n: i + 1, total: steps.length },
@@ -223,7 +225,7 @@ export function WorkflowStepper({
                   aria-current={isCurrent ? 'step' : undefined}
                   aria-describedby={
                     step.state === 'blocked' && step.blockedReason
-                      ? `${step.id}-blocked-reason` : undefined
+                      ? blockedReasonId : undefined
                   }
                 >
                   {body}
@@ -232,7 +234,7 @@ export function WorkflowStepper({
                 <div className="a3-wfs-static" aria-current={isCurrent ? 'step' : undefined}>{body}</div>
               )}
               {step.state === 'blocked' && step.blockedReason && (
-                <p id={`${step.id}-blocked-reason`} className="a3-wfs-blocked-reason">
+                <p id={blockedReasonId} className="a3-wfs-blocked-reason">
                   {step.blockedReason}
                 </p>
               )}

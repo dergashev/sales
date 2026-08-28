@@ -153,7 +153,7 @@ therefore in scope for this ADR's evidence):** `components.css` still
 consumes `--color-dataviz-category-2` as **text on white** and as
 **white-on-category-2 glyphs/backgrounds** in several selectors that
 predate this repoint (`.a3-d.a3-save`, `.a3-q .a3-fx`, `.a3-plog .a3-okc`,
-`.a3-doc .a3-okc`, `.a3-ch.a3-done .a3-n`, `.a3-wf-done .a3-n`), rendered by
+`.a3-doc .a3-okc`, `.a3-wfs-done .a3-wfs-marker`), rendered by
 live product screens (`OfferPanel`, `OpportunityCard`, `S4Vergleich`,
 `OptionChapter`, `Sidebar`, `DocumentAnalysis`). These selectors were not
 found rendered by any reachable state in this pass's exploration (would
@@ -165,7 +165,7 @@ the exact consuming DOM instance is not:
 | Pairing | Rendered value (measured, `CompositionBar`) | Background | Method | Measured/computed ratio | Role / bar | Status |
 |---|---|---|---|---|---|---|
 | `--color-dataviz-category-2` as text-on-white (`.a3-d.a3-save`, `.a3-q .a3-fx`) | `#C08A6C` | `#FFFFFF` | WCAG formula computed from the `getComputedStyle`-measured value above (not independently re-rendered in the exact consuming selector) | 2.96∶1 | Text conveying a value (savings figure) → WCAG 1.4.3, ≥4.5∶1 | **FAIL** |
-| `--color-dataviz-category-2` as white-glyph-on-fill (`.a3-plog/.a3-doc .a3-okc`, `.a3-ch.a3-done .a3-n`, `.a3-wf-done .a3-n`) | `#C08A6C` | same | same | 2.96∶1 | Glyph carrying done/state meaning → ≥4.5∶1 as text, ≥3∶1 minimum as graphical | **FAIL** at both applicable bars |
+| `--color-dataviz-category-2` as white-glyph-on-fill (`.a3-plog/.a3-doc .a3-okc`) | `#C08A6C` | same | same | 2.96∶1 | Glyph carrying done/state meaning → ≥4.5∶1 as text, ≥3∶1 minimum as graphical | **FAIL** at both applicable bars |
 | `--color-dataviz-category-2` as border-only (`.a3-zone.a3-green`, `.a3-delta.a3-saving`) | `#C08A6C` | same | same | 2.96∶1 | Non-text graphical/border → ≥3∶1 | **FAIL** (marginally, 2.96 < 3.00) |
 
 Per this task's failure-handling contract: **the token is not changed
@@ -246,7 +246,6 @@ import and verifier exception. `DS-CLASS-EXISTS` and `GOV-TOKEN` now inspect
 the single canonical source again.
 
 See also: `docs/audit/design-system-governance.md` (the eight-step process
-this ticket's canonical work follows), `design-system-ledger.md` (contract
-↔ showcase ↔ product reconciliation — not updated by this ticket for the
-same components.css-safety reason; a required follow-up once that file is
-reconciled).
+this ticket's canonical work follows) and
+`docs/audit/design-system-ledger.md` (the VO-T4 contract ↔ specimen ↔ real
+consumer lifecycle reconciliation).

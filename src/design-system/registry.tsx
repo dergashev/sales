@@ -266,36 +266,76 @@ function DialogDemo() {
 }
 
 function SurfaceFoundationsDemo() {
+  const stageSegments: CompositionSegment[] = [
+    { id: 'kg300', label: 'KG 300', value: new Decimal('2681920'), categorySlot: 1 },
+    { id: 'kg400', label: 'KG 400', value: new Decimal('906120'), categorySlot: 3 },
+    { id: 'kg700', label: 'KG 700', value: new Decimal('355960'), categorySlot: 6 },
+  ]
+  const stageTotal = stageSegments.reduce((sum, segment) => sum.plus(segment.value), new Decimal(0))
   return (
     <div className="a3-surface-foundations">
-      <article className="a3-surface-foundation a3-surface-foundation--canvas">
+      <article className="a3-surface-foundation a3-canvas">
+        <header className="a3-surface-foundation__head">
+          <p className="a3-surface-foundation__eyebrow">Canvas · Umgebung</p>
+          <h3 className="a3-surface-foundation__title">Portfolio &amp; Orientierung</h3>
+        </header>
         <div className="a3-surface-foundation__content">
-          <h3 className="a3-surface-foundation__title">Portfolio orientation</h3>
-          <p className="a3-surface-foundation__support">A calm environment for finding the next relevant project — never a data card.</p>
+          <div className="a3-surface-foundation__sheet">
+            <p className="a3-surface-foundation__eyebrow">Opportunities</p>
+            <p className="a3-surface-foundation__section-title">Arbeitsfläche liegt auf Canvas</p>
+            <div className="a3-surface-foundation__identity" aria-label="Abstrakte Projektidentität">
+              Musterprojekt Nordfeld
+            </div>
+          </div>
+          <p className="a3-surface-foundation__support">Nur Hintergrund und Orientierung. Nie eine Datenkarte.</p>
+          <p className="a3-surface-foundation__caption">Canvas · environmental layer</p>
         </div>
-        <p className="a3-surface-foundation__caption">Canvas · environmental layer</p>
       </article>
-      <article className="a3-surface-foundation a3-surface-foundation--paper">
+      <article className="a3-surface-foundation a3-paper">
+        <header className="a3-surface-foundation__head">
+          <p className="a3-surface-foundation__eyebrow">Paper · Lesen</p>
+          <h3 className="a3-surface-foundation__title">Lesen &amp; entscheiden</h3>
+        </header>
         <div className="a3-surface-foundation__content">
-          <h3 className="a3-surface-foundation__title">Decision reading plane</h3>
-          <p className="a3-surface-foundation__support">Readable evidence, values, and choices divide through type and rules rather than nested cards.</p>
+          <p className="a3-surface-foundation__eyebrow">Projektgrundlage</p>
+          <p className="a3-surface-foundation__section-title">Arbeitsinhalt ohne Kartenstapel</p>
+          <dl className="a3-surface-foundation__rules">
+            <div><dt>BGF oberirdisch</dt><dd>3.200{NNBSP}m²</dd></div>
+            <div><dt>WFL</dt><dd>1.560{NNBSP}m²</dd></div>
+            <div><dt>Haus B</dt><dd>nicht erfasst</dd></div>
+          </dl>
+          <Button variant="primary">Grundlage bestätigen</Button>
+          <p className="a3-surface-foundation__support">Typografie und Linien gliedern die Lesefläche — nicht verschachtelte Container.</p>
+          <p className="a3-surface-foundation__caption">Paper · primary reading plane</p>
         </div>
-        <p className="a3-surface-foundation__caption">Paper · primary reading plane</p>
       </article>
-      <article className="a3-surface-foundation a3-surface-foundation--stage">
+      <article className="a3-surface-foundation a3-stage">
+        <header className="a3-surface-foundation__head">
+          <p className="a3-surface-foundation__eyebrow">Stage · Fokus</p>
+          <h3 className="a3-surface-foundation__title">Fokus &amp; Sales-Moment</h3>
+        </header>
         <div className="a3-surface-foundation__content">
-          <h3 className="a3-surface-foundation__title">Recommended next step</h3>
-          <p className="a3-surface-foundation__support">A warm, deliberate focus for a selected or recommended decision — never generic status.</p>
+          <p className="a3-surface-foundation__eyebrow">Empfohlene Option</p>
+          <p className="a3-surface-foundation__section-title">Option 2 · Balance</p>
+          <p className="a3-surface-foundation__number">3.944.000{NNBSP}€</p>
+          <p className="a3-surface-foundation__support">Eine bewusste Bühne für die empfohlene Entscheidung — nie generischer Status.</p>
+          <CompositionBar segments={stageSegments} total={stageTotal} variant="compact" />
+          <Button variant="primary">Balance präsentieren</Button>
+          <p className="a3-surface-foundation__caption">Stage · selected decision</p>
         </div>
-        <p className="a3-surface-foundation__caption">Stage · selected decision</p>
       </article>
-      <article className="a3-surface-foundation a3-surface-foundation--stage-deep">
+      <article className="a3-surface-foundation a3-stage-deep">
+        <header className="a3-surface-foundation__head">
+          <p className="a3-surface-foundation__eyebrow">Stage-deep · Ergebnis</p>
+          <h3 className="a3-surface-foundation__title">Kommerzieller Höhepunkt</h3>
+        </header>
         <div className="a3-surface-foundation__content">
-          <h3 className="a3-surface-foundation__title">Commercial result</h3>
-          <p className="a3-surface-foundation__number" style={{ color: 'var(--color-text-display-accent-on-stage-deep)' }}>3.682.000{NNBSP}€</p>
-          <p className="a3-surface-foundation__support">Reserved for the commercial climax and offer result, with the value still readable as text.</p>
+          <p className="a3-surface-foundation__eyebrow">Gesamt netto</p>
+          <p className="a3-surface-foundation__number a3-display-accent">3.944.000{NNBSP}€</p>
+          <p className="a3-surface-foundation__support">Nur für Ergebnis, Angebot und kalkulatorische Aufmerksamkeit — nie als allgemeine Karte.</p>
+          <CompositionBar segments={stageSegments} total={stageTotal} variant="compact" onDark />
+          <p className="a3-surface-foundation__caption">Stage-deep · commercial climax</p>
         </div>
-        <p className="a3-surface-foundation__caption">Stage-deep · commercial climax</p>
       </article>
     </div>
   )
@@ -942,6 +982,10 @@ export const COMPONENT_REGISTRY: Specimen[] = [
 
 const GROUP_META: Array<Omit<SpecimenGroup, 'specimens'>> = [
   {
+    id: 'r1', title: 'REDESIGN R1 · Visual language, expression & motion foundations',
+    intro: 'Neue kanonische Fähigkeiten (efcbdaf3): Surface-Modell, Media, Metrik-Hierarchie, Composition-Grafik, WorkflowStepper, DateField/Stepper — plus zusammengesetzte Referenzspezimen, die die Sprache als System zeigen, keine Produktmigration.',
+  },
+  {
     id: 'states', title: 'Zustände der Datenkomponenten (Regel 30)',
     intro: 'Fünf Datenzustände plus stale und permission. Ready ist echter Owner-Inhalt, kein grüner Statusblock.',
   },
@@ -949,13 +993,27 @@ const GROUP_META: Array<Omit<SpecimenGroup, 'specimens'>> = [
   { id: 'selections', title: 'Auswahlkontrollen' },
   { id: 'feedback', title: 'Feedback, Dialog und nächste Schritte' },
   { id: 'domain', title: 'Domänenkompositionen' },
-  {
-    id: 'r1', title: 'REDESIGN R1 · Visual language, expression & motion foundations',
-    intro: 'Neue kanonische Fähigkeiten (efcbdaf3): Surface-Modell, Media, Metrik-Hierarchie, Composition-Grafik, WorkflowStepper, DateField/Stepper — plus zusammengesetzte Referenzspezimen, die die Sprache als System zeigen, keine Produktmigration.',
-  },
 ]
+
+const R1_LEAD_ORDER = [
+  'r1-surface-foundations',
+  'r1-composed-project-identity',
+  'r1-composed-option',
+  'r1-composed-workflow',
+  'r1-composed-stage',
+  'r1-workflowstepper',
+  'r1-datefield',
+  'r1-stepper',
+  'r1-compositionbar',
+  'r1-mediaframe',
+] as const
 
 export const SPECIMEN_GROUPS: SpecimenGroup[] = GROUP_META.map((group) => ({
   ...group,
-  specimens: COMPONENT_REGISTRY.filter((specimen) => specimen.groupId === group.id),
+  specimens: COMPONENT_REGISTRY
+    .filter((specimen) => specimen.groupId === group.id)
+    .sort((left, right) => group.id === 'r1'
+      ? R1_LEAD_ORDER.indexOf(left.id as typeof R1_LEAD_ORDER[number])
+        - R1_LEAD_ORDER.indexOf(right.id as typeof R1_LEAD_ORDER[number])
+      : 0),
 }))

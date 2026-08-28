@@ -736,12 +736,10 @@ export function DateField({
 }
 
 /* ── Stepper (R1 · DESIGN-15) ─────────────────────────────────────────────
- * Replaces the native `<input type="range">` used for the Rabatt (discount)
- * control on the Export screen. A numeric field with +/- buttons keeps the
- * discrete step semantics a discount actually has (whole percentage
- * points), gives it an accessible name/value pair a slider's thumb cannot,
- * and — unlike the slider — has a slot for the live money consequence next
- * to it (R3 wires the actual impact text when it recomposes Export). */
+ * Canonical internal preparation control, APPROVED_DOWNSTREAM for VO-T3.
+ * It is intentionally not adopted in Offer, Presentation, or another
+ * client-facing surface by VO-T4. The numeric field and +/- buttons preserve
+ * discrete steps and leave the commercial consequence to the owning screen. */
 
 export function Stepper({
   label, value, min, max, step = 1, unit, onChange, impact,

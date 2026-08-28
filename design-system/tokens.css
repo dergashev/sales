@@ -415,6 +415,7 @@
   --border-width-default: 1px;
   --border-width-strong:  2px;
   --border-width-focus:   2px;
+  --border-width-focus-emphasis: 3px;
   --radius: 0; /* [official] всегда */
 
   /* Составные бордеры.
