@@ -250,6 +250,16 @@ for (const { label: viewportLabel, viewport } of VIEWPORTS) {
         expect(endPos, '"Zum Zeilenende" must land on a genuinely different snap position than "Zum Zeilenanfang"').toBeGreaterThan(startPos)
         await assertExposedColumnsMatchBaseline('after "Zum Zeilenende" (end)')
 
+        // The full-width Compare Shell shows three complete option columns
+        // at 1440px, so its valid snap range has only start/end positions.
+        // At 1280px it shows two and exposes one real intermediate snap.
+        // Derive the count from the rendered option width instead of
+        // assuming one snap per option at every viewport.
+        const optionBox = await moneyCells.first().boundingBox()
+        expect(optionBox, 'option cells must have a bounding box for snap validation').not.toBeNull()
+        const snapPositionCount = Math.max(2, Math.round((endPos - startPos) / optionBox!.width) + 1)
+        const intermediateSnapCount = Math.max(0, snapPositionCount - 2)
+
         // ── Interaction path 3: real wheel/trackpad-equivalent gestures,
         //    walking back one column-snap at a time from the end so every
         //    intermediate snap position (not just start/end) gets a real,
@@ -258,9 +268,9 @@ for (const { label: viewportLabel, viewport } of VIEWPORTS) {
         //    regression guard silently incomplete for it. ────────────────
         const scrollBox = (await scrollRegion.boundingBox())!
         await page.mouse.move(scrollBox.x + scrollBox.width / 2, scrollBox.y + scrollBox.height / 2)
-        const stepPx = (endPos - startPos) / (OPTION_COUNT - 1)
+        const stepPx = (endPos - startPos) / (snapPositionCount - 1)
         let previousPos = endPos
-        for (let step = 1; step <= OPTION_COUNT - 2; step++) {
+        for (let step = 1; step <= intermediateSnapCount; step++) {
           // A single wheel tick close to the exact step distance can land
           // right on (or just short of) the snap midpoint and "rubber-band"
           // back to where it started — real trackpad/wheel scrolling is
