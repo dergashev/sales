@@ -48,7 +48,7 @@ import { startContinuityTransition } from '../design-system/motion'
  */
 
 type Candidate = { id: string; name: string; cfg: OptionConfig; p: Projection }
-type PresentationFlow = 'narrative' | 'offer' | 'send' | 'sent' | 'delivered'
+type PresentationFlow = 'narrative' | 'offer' | 'send' | 'sent' | 'delivered' | 'snapshot'
 
 function buildCandidate(
   s: Parameters<typeof configForOption>[0],
@@ -115,6 +115,11 @@ export function PresentationShell({ mainRef, modeRef }: {
   const latestViewedSnapshot = currentId
     ? [...s.snapshots].reverse().find((snapshot) => snapshot.optionId === currentId)
     : undefined
+
+  // No validated recipient exists in the current client-facing flow: the
+  // send review intentionally exposes that absence and remains blocked until
+  // recipient capture is implemented by the owning product surface.
+  const canSend = false
 
   useEffect(() => {
     if (flow !== 'sent') return
@@ -185,6 +190,16 @@ export function PresentationShell({ mainRef, modeRef }: {
     setActiveSection('naechster-schritt')
   }
 
+  // A sent offer is a read-only artifact. Opening it must never restart the
+  // narrative or create a new version; the snapshot remains the source of
+  // truth even when the live Option has since changed.
+  const openSentSnapshot = () => {
+    if (!sentSnapshot) return
+    setFlow('snapshot')
+  }
+
+  const closeSentSnapshot = () => setFlow('delivered')
+
   const backToNarrative = () => {
     setSentSnapshot(null)
     setFlow('narrative')
@@ -226,12 +241,19 @@ export function PresentationShell({ mainRef, modeRef }: {
             current={current}
             onBack={backToNarrative}
             onPrepare={() => setFlow('send')}
+            canSend={canSend}
             onSend={() => {
+              // The current client flow has no recipient-capture surface.
+              // Keep the action inert until a validated recipient exists;
+              // an absent recipient must never create an immutable snapshot.
+              if (!canSend) return
               const snapshot = s.sendOfferForOption('email', current.id)
               setSentSnapshot(snapshot)
               setDelivery('sent')
               setFlow('sent')
             }}
+            onOpenSent={openSentSnapshot}
+            onCloseSnapshot={closeSentSnapshot}
             onNewVersion={backToNarrative}
           />
         )}
@@ -622,7 +644,7 @@ function SectionZeitplan({ current, onNext }: { current: Candidate; onNext: () =
             {p.duration.display.replace(`${NNBSP}Monate`, '')}
             <span className="a3-hb-unit">{NNBSP}Monate</span>
           </p>
-          <span className="a3-hb-cap">{tx('Bauzeit ab OKBP')}</span>
+          <span className="a3-hb-cap">{t('presentation.schedule.durationFromOkbp')}</span>
         </div>
         <div className="a3-hb">
           <p className="a3-hb-num numeric">{formatDate(p.duration.completionDate, language)}</p>
@@ -631,7 +653,7 @@ function SectionZeitplan({ current, onNext }: { current: Candidate; onNext: () =
       </div>
       <div className="a3-presentation-timeline mt-5" aria-label={tx('Zeitplan')}>
         <div className="a3-presentation-timeline-line" />
-        <p><span className="a3-cap">{tx('Bauzeit ab OKBP')}</span><strong>{p.duration.display}</strong></p>
+        <p><span className="a3-cap">{t('presentation.schedule.durationFromOkbp')}</span><strong>{p.duration.display}</strong></p>
         <p><span className="a3-cap">{tx('Fertigstellung')}</span><strong>{formatDate(p.duration.completionDate, language)}</strong></p>
       </div>
       <div className="a3-presentation-consequence mt-5">
@@ -641,7 +663,7 @@ function SectionZeitplan({ current, onNext }: { current: Candidate; onNext: () =
             {t('presentation.commercialConsequenceCopy')}
           </p>
         </div>
-        <Button variant="secondary" onClick={onNext}>{tx('Weiter zu Optionen')}</Button>
+        <Button variant="secondary" onClick={onNext}>{t('presentation.nextStep.continue')}</Button>
       </div>
     </SectionSheet>
   )
@@ -737,14 +759,17 @@ function SectionNaechsterSchritt({ current, onPrepare }: {
   )
 }
 
-function PresentationFlow({ flow, delivery, snapshot, current, onBack, onPrepare, onSend, onNewVersion }: {
+function PresentationFlow({ flow, delivery, snapshot, current, onBack, onPrepare, canSend, onSend, onOpenSent, onCloseSnapshot, onNewVersion }: {
   flow: Exclude<PresentationFlow, 'narrative'>
   delivery: 'sent' | 'delivered'
   snapshot?: OfferSnapshot
   current: Candidate
   onBack: () => void
   onPrepare: () => void
+  canSend: boolean
   onSend: () => void
+  onOpenSent: () => void
+  onCloseSnapshot: () => void
   onNewVersion: () => void
 }) {
   const t = useT()
@@ -794,7 +819,7 @@ function PresentationFlow({ flow, delivery, snapshot, current, onBack, onPrepare
               {artifacts.map((artifact) => <li key={artifact}>{artifact}</li>)}
             </ul>
             <dl className="mt-6 grid gap-3">
-              <div><dt className="a3-cap">{tx('Bauzeit ab OKBP')}</dt><dd className="text-body font-medium">{p.duration.display}</dd></div>
+              <div><dt className="a3-cap">{t('presentation.schedule.durationFromOkbp')}</dt><dd className="text-body font-medium">{p.duration.display}</dd></div>
               <div><dt className="a3-cap">{tx('Fertigstellung')}</dt><dd className="text-body font-medium">{formatDate(p.duration.completionDate, language)}</dd></div>
               <div><dt className="a3-cap">{tx('Gebäude')}</dt><dd className="text-body font-medium">{buildingNames(current.cfg)}</dd></div>
             </dl>
@@ -835,19 +860,58 @@ function PresentationFlow({ flow, delivery, snapshot, current, onBack, onPrepare
           </div>
           <p className="a3-presentation-snapshot mt-6">{t('presentation.flow.immutable')}</p>
           <div className="a3-presentation-flow-dock mt-8">
-            <Button variant="primary" onClick={onSend}>{t('presentation.flow.sendAction')}</Button>
+            <Button
+              variant="primary"
+              disabled={!canSend}
+              disabledReason={t('presentation.flow.noRecipient')}
+              onClick={onSend}
+            >
+              {t('presentation.flow.sendAction')}
+            </Button>
           </div>
         </div>
       </section>
     )
   }
 
-  const delivered = flow === 'delivered' || delivery === 'delivered'
   const displayName = snapshot?.optionName ?? current.name
   const displayTotal = snapshot
     ? moneyLabel(present(new Decimal(snapshot.totalExact)))
     : priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(present(p.result.total.exact))
   const eventAt = snapshot?.at ? formatDate(snapshot.at, language, true) : t('presentation.flow.justNow')
+
+  if (flow === 'snapshot') {
+    return (
+      <section className="a3-presentation-flow a3-paper" aria-labelledby="presentation-snapshot-title">
+        <button type="button" className="a3-presentation-back" onClick={onCloseSnapshot}>
+          {t('presentation.flow.backToDelivery')}
+        </button>
+        <div className="a3-presentation-delivered mt-4">
+          <p className="a3-cap">{t('presentation.flow.version')}</p>
+          <h1 id="presentation-snapshot-title" className="mt-2 text-heading-1 font-bold text-text-primary">
+            {t('presentation.flow.snapshotTitle')}
+          </h1>
+          <p className="mt-3 text-body text-text-secondary">
+            {t('presentation.flow.snapshotCopy')}
+          </p>
+          <dl className="a3-presentation-delivery-details mt-8">
+            <div><dt>{t('presentation.flow.sentAt')}</dt><dd>{eventAt}</dd></div>
+            <div><dt>{t('presentation.flow.version')}</dt><dd>{displayName} · {displayTotal}</dd></div>
+            <div><dt>{t('presentation.flow.deliveryState')}</dt><dd>{t('presentation.flow.pending')}</dd></div>
+          </dl>
+          <div className="mt-8">
+            <p className="a3-cap">{t('presentation.nextStep.artifacts')}</p>
+            <ul className="a3-presentation-artifacts mt-2">
+              {artifacts.map((artifact) => <li key={artifact}>{artifact}</li>)}
+            </ul>
+          </div>
+          <p className="a3-presentation-snapshot mt-6">{t('presentation.flow.immutable')}</p>
+        </div>
+      </section>
+    )
+  }
+
+  const delivered = flow === 'delivered' || delivery === 'delivered'
 
   return (
     <section className="a3-presentation-flow a3-stage" aria-labelledby="presentation-delivery-title">
@@ -871,7 +935,7 @@ function PresentationFlow({ flow, delivery, snapshot, current, onBack, onPrepare
           </ul>
         </div>
         <div className="a3-presentation-flow-dock mt-8">
-          <Button variant="secondary" onClick={onBack}>{t('presentation.flow.openSent')}</Button>
+          <Button variant="secondary" onClick={onOpenSent}>{t('presentation.flow.openSent')}</Button>
           <Button variant="primary" onClick={onNewVersion}>{t('presentation.flow.newVersion')}</Button>
         </div>
       </div>

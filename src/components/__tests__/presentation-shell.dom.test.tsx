@@ -104,6 +104,26 @@ describe('PresentationShell — empty/edge states (AC 6/9/11/12)', () => {
     expect(screen.queryByRole('radiogroup', { name: 'Wird präsentiert' })).toBeNull()
   })
 
+  it('uses client-safe English keys for the timeline labels and continuation action', () => {
+    st().resolveWflConflict('customer')
+    st().confirmProjectParams()
+    st().createOption('Solo')
+    st().openOption('OPT-01')
+    includedBuildingIds(st()).forEach((id) => st().confirmBuilding(id))
+    st().confirmConfigurationMode('SHARED')
+    st().setCoverage('KG_300', 'included')
+    st().confirmScopeBoundaries()
+    includedBuildingIds(st()).forEach((id) => st().confirmBuildingConfiguration(id))
+    st().setUiLanguage('en')
+
+    render(<Harness />)
+
+    expect(screen.getAllByText('Construction period from OKBP')).not.toHaveLength(0)
+    expect(screen.getByRole('button', { name: 'Continue to options' })).toBeInTheDocument()
+    expect(screen.queryByText('Bauzeit ab OKBP')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Weiter zu Optionen' })).toBeNull()
+  })
+
   /**
    * QA rework (rule 40, D-15): OfferPanel's rail always showed an inactive
    * Regionalfaktor as a "nicht aktiviert" row inside Kostentreiber, and
@@ -204,7 +224,7 @@ describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/
     expect(st().activeOptionId).toBe('OPT-01')
   })
 
-  it('keeps the viewed Option through offer review and sends an immutable snapshot for that Option', async () => {
+  it('keeps the viewed Option through offer review and blocks sending without a recipient', async () => {
     const user = userEvent.setup()
     buildTwoEligibleOptions()
     render(<Harness />)
@@ -222,10 +242,13 @@ describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/
     expect(screen.getByRole('heading', { name: 'Bereit zum Senden' })).toBeInTheDocument()
     expect(screen.getByText(/Option B · Ihr indikatives Angebot/)).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Angebot senden' }))
+    const sendButton = screen.getByRole('button', { name: 'Angebot senden' })
+    expect(sendButton).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getAllByText('Noch kein Empfänger hinterlegt')).not.toHaveLength(0)
+    await user.click(sendButton)
     expect(st().activeOptionId).toBe('OPT-01')
-    expect(st().snapshots.at(-1)?.optionId).toBe('OPT-02')
-    expect(screen.getByRole('heading', { name: 'Angebot gesendet' })).toBeInTheDocument()
+    expect(st().snapshots).toHaveLength(0)
+    expect(screen.getByRole('heading', { name: 'Bereit zum Senden' })).toBeInTheDocument()
   })
 })
 
