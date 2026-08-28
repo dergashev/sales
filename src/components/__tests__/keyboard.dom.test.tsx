@@ -214,7 +214,13 @@ describe('Гейт режима презентации — блокировка 
     expect(useStore.getState().mode).toBe('praesentation')
     expect(useStore.getState().gateOpen).toBe(false)
     await waitFor(() => expect(screen.queryByRole('dialog', { name: /Bereit für die Präsentation/ })).toBeNull())
-    expect(screen.getByRole('heading', { level: 1, name: 'Leistungen KG 300' })).toHaveFocus()
+    // REDESIGN R3 WAVE 2a (ce17da51): Kundenansicht is now ONE
+    // PresentationShell document, not a per-chapter router that lands on
+    // whatever chapter was last open internally — its H1 is always the
+    // project's own name (§1 Projekt is always the opening section; here
+    // the Option isn't yet client-eligible either, so the shell's honest
+    // "not ready" fallback renders, whose H1 is the same project name).
+    expect(screen.getByRole('heading', { level: 1, name: 'Musterprojekt Nordfeld' })).toHaveFocus()
   })
 })
 

@@ -8,6 +8,7 @@ import { Button } from './components/primitives'
 import { Sidebar } from './components/Sidebar'
 import { ClientOutputGateDialog } from './components/ClientOutputGateDialog'
 import { OfferPanel } from './components/OfferPanel'
+import { PresentationShell } from './components/PresentationShell'
 import { UndoToast } from './components/UndoToast'
 import { ConfigurationModeReadiness, ModeChangeNotice, S3Konfigurator } from './screens/S3Konfigurator'
 import { S4Vergleich } from './screens/S4Vergleich'
@@ -151,37 +152,55 @@ export function App() {
       <AppHeader />
       {!praesentation && <ClientOutputGateDialog returnFocusTo={modeRef} />}
 
-      <div className="flex min-h-0 flex-1">
-        <Sidebar modeRef={modeRef} />
+      {/* REDESIGN R3 WAVE 2a (877f2c2a / ce17da51): Kundenansicht no longer
+          projects the working three-pane composition (Sidebar + chapter
+          router + OfferPanel rail) with controls filtered out — it gets its
+          own PresentationShell, a dedicated client narrative built from
+          canonical primitives, reached from `resolvedViewedOptionId`
+          instead of `activeOptionId`. The internal branch below is
+          UNTOUCHED: same Sidebar, same chapter router, same OfferPanel
+          rail, same `renderedView`/`s.pricingStarted` resolution — R4 still
+          owns any recomposition of it. `mainRef`/`modeRef` are shared with
+          the internal branch so App.tsx's existing scroll-reset/heading-
+          focus effect (deps include `s.mode`) and the gate dialog's
+          return-focus target keep working unmodified across mode entry and
+          exit — no new focus-management code was needed for that half of
+          the acceptance contract. */}
+      {praesentation ? (
+        <PresentationShell mainRef={mainRef} modeRef={modeRef} />
+      ) : (
+        <div className="flex min-h-0 flex-1">
+          <Sidebar modeRef={modeRef} />
 
-        <main ref={mainRef} tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto bg-surface-default outline-none">
-          {renderedView === 'buildingScope' && <BuildingScope />}
-          {renderedView === 'konfigurator' && <S3Konfigurator />}
-          {renderedView === 'vergleich' && <S4Vergleich />}
-          {renderedView === 'export' && <S5Export />}
-          {renderedView === 'einstellungen' && <S6Einstellungen />}
-          {renderedView === 'grundlagen' && <GrundlagenRoute />}
-        </main>
+          <main ref={mainRef} tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto bg-surface-default outline-none">
+            {renderedView === 'buildingScope' && <BuildingScope />}
+            {renderedView === 'konfigurator' && <S3Konfigurator />}
+            {renderedView === 'vergleich' && <S4Vergleich />}
+            {renderedView === 'export' && <S5Export />}
+            {renderedView === 'einstellungen' && <S6Einstellungen />}
+            {renderedView === 'grundlagen' && <GrundlagenRoute />}
+          </main>
 
-        {/* SIDEBAR 01 (backlog eda1e221): the rail slot below is the single
-            place that resolves what `<aside>` fills the right column —
-            SB-20 renders Level 1 only on Variantenvergleich/Export/
-            Einstellungen (no cost-composition breakdown on a read-only
-            view), and SB-27 keeps a priced offer's commercial context
-            visible when "Modus ändern" is open, ADDING the notice as
-            `OfferPanel`'s `footer` instead of substituting the whole panel
-            for it. */}
-        {renderedView === 'buildingScope' ? <BuildingScopeReadiness />
-          : !s.pricingStarted
-            || renderedView === 'konfigurator' && !s.configurationModeChosen
-            ? <ConfigurationModeReadiness />
-            : renderedView === 'konfigurator' && s.configurationModeEditing
-            ? <OfferPanel variant="level1" footer={<ModeChangeNotice headingLevel={3} />} />
-            : renderedView === 'vergleich' || renderedView === 'export' || renderedView === 'einstellungen'
-              || renderedView === 'grundlagen'
-            ? <OfferPanel variant="level1" />
-            : <OfferPanel />}
-      </div>
+          {/* SIDEBAR 01 (backlog eda1e221): the rail slot below is the single
+              place that resolves what `<aside>` fills the right column —
+              SB-20 renders Level 1 only on Variantenvergleich/Export/
+              Einstellungen (no cost-composition breakdown on a read-only
+              view), and SB-27 keeps a priced offer's commercial context
+              visible when "Modus ändern" is open, ADDING the notice as
+              `OfferPanel`'s `footer` instead of substituting the whole panel
+              for it. */}
+          {renderedView === 'buildingScope' ? <BuildingScopeReadiness />
+            : !s.pricingStarted
+              || renderedView === 'konfigurator' && !s.configurationModeChosen
+              ? <ConfigurationModeReadiness />
+              : renderedView === 'konfigurator' && s.configurationModeEditing
+              ? <OfferPanel variant="level1" footer={<ModeChangeNotice headingLevel={3} />} />
+              : renderedView === 'vergleich' || renderedView === 'export' || renderedView === 'einstellungen'
+                || renderedView === 'grundlagen'
+              ? <OfferPanel variant="level1" />
+              : <OfferPanel />}
+        </div>
+      )}
 
       <UndoToast />
     </div>

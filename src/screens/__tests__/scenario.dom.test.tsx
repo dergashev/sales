@@ -401,7 +401,12 @@ describe('Сквозной сценарий продажи', () => {
     confirmWholeConfiguration()
     await user.click(within(modus).getAllByRole('radio')[1]!)
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
-    await user.click(nav(/^S5|Export/))
+    // REDESIGN R3 WAVE 2a (ce17da51): Kundenansicht is now ONE continuous
+    // PresentationShell document, not a per-chapter router — every
+    // narrative section (incl. §3 Ergebnis, the only place a commercial
+    // total renders) is already in the DOM at once. No "Export" nav item
+    // exists to click through any more; a single body-wide check already
+    // covers the entire client surface.
     expect(screen.queryByText(/Marge Eigenleistung/)).not.toBeInTheDocument()
   })
 
@@ -535,6 +540,7 @@ describe('Сквозной сценарий продажи', () => {
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
+    confirmWholeConfiguration()
     // Вход в презентацию гейтуется подтверждением здания.
     const modes = screen.getByRole('radiogroup', { name: 'Ansicht' })
     await user.click(within(modes).getAllByRole('radio')[1]!)
@@ -546,44 +552,39 @@ describe('Сквозной сценарий продажи', () => {
     // `KG 300`/`DIN 276` кодами реестра не являются и остаются.
     const REGISTRY = /\b(?:CALC|XSC|VARIANT|MODE|OUT|GATE|LOCALE|EMAIL|SECURITY|DEMO|DC|RM|CORE|SCHED|DATA|OPTION|DRIVER|ANALYSIS|PROGRESS|STATE|LAYOUT|TOKEN|COLOR|TYPE|BORDER|MOTION|KEY|TABS|SOURCE|COMPLEX|METRIC|CHANGE|VERSION|SCOPE|PRINT|NOTE|ARCH|A11Y)-\d{2,3}\b|\bR-\d{2}\b|\bD-\d{2}\b/
 
-    await user.click(nav(/Gebäude & Umfang/))
+    // REDESIGN R3 WAVE 2a (ce17da51): the whole narrative — §1 Projekt
+    // through §6 Angebot — renders in ONE PresentationShell document at
+    // once (no per-chapter router to click through any more), so one
+    // whole-body check already covers every narrative section.
     expect((document.body.textContent ?? '').match(REGISTRY)?.[0] ?? null).toBeNull()
-    await user.click(nav(/Konfigurator/))
-    for (const chapter of [/Leistungen KG 300/, /Leistungsabgrenzung/,
-                           /Termine/]) {
-      await user.click(nav(chapter))
-      const text = document.body.textContent ?? ''
-      const hit = text.match(REGISTRY)
-      expect(hit?.[0] ?? null, `Kapitel ${chapter}: код реестра на клиентской поверхности`).toBeNull()
-    }
   })
 
   it('клиентский профиль исключает внутреннюю навигацию, действия и идентификаторы из DOM', async () => {
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
-    // Task 03 (F-16/PD-3): this test reaches Export further down — its own
-    // subject is client-profile DOM hygiene, not the confirmation gate.
-    confirmWholeConfiguration()
-
-    // Проверяем переход с внутренней главы: клиентский маршрут обязан
-    // нормализоваться до разрешённой главы без промежуточной утечки.
+    // Task 03 (F-16/PD-3) / REDESIGN R3 WAVE 2a: the Option must be
+    // client-eligible (PD-3 readiness) BEFORE entering Kundenansicht, or
+    // PresentationShell renders its own honest "noch keine Option bereit"
+    // state instead of the narrative — this test's subject is client-
+    // profile DOM hygiene of the real narrative, not that fallback.
     await user.click(nav(/Baunebenkosten KG 700/))
+    confirmWholeConfiguration()
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
 
+    // REDESIGN R3 WAVE 2a (ce17da51): Kundenansicht is now ONE continuous
+    // PresentationShell document — no per-chapter router, no Sidebar, no
+    // OfferPanel rail, no "Kapitel X von Y" step counter (explicitly
+    // forbidden by the shell's own contract: the narrative strip is story
+    // navigation, never a workflow stepper). §1 Projekt is always the
+    // shell's opening section, so its H1 (the project's own name, not a
+    // leftover internal chapter title) is the mode-entry focus target.
     expect(screen.getByText('Kundenansicht — der Kunde sieht diesen Bildschirm'))
       .toBeInTheDocument()
-    // KG 700 is internal-only. Removing the currently viewed step when the
-    // output profile changes lands on the next active step and moves focus to
-    // its h1 instead of leaving focus in removed content.
-    expect(screen.getByRole('heading', { level: 1, name: 'Termine' }))
+    expect(screen.getByRole('heading', { level: 1, name: 'Musterprojekt Nordfeld' }))
       .toHaveFocus()
-    // Client-visible chapters are now Leistungsabgrenzung/KG 300/KG 400/
-    // Termine (4, not 6) — Energie & Zertifikate and Flächen im Detail no
-    // longer exist ("Rebuild Project Card Workflow" Parts 15/16); KG 700
-    // stays internal-only as before.
-    expect(screen.getByText('Kapitel 4 von 4 · Konfigurator')).toBeInTheDocument()
+    expect(screen.queryByText(/Kapitel \d+ von \d+/)).toBeNull()
     expect(screen.getByRole('button', { name: 'Beenden' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Einstellungen/ })).toBeNull()
     expect(screen.queryByRole('button', { name: /Grundlagen/ })).toBeNull()
@@ -591,37 +592,18 @@ describe('Сквозной сценарий продажи', () => {
     expect(screen.queryByRole('button', { name: 'Rundgang durch das Werkzeug' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Kundenansicht prüfen' })).toBeNull()
     expect(screen.queryByText(/Journal|Marge|interne Notiz/i)).toBeNull()
-    expect(document.body.textContent).not.toMatch(/\b(?:DEMO|OPT|SNAP|BM)-[A-Z0-9-]+\b/)
-    expect(document.querySelector('[data-driver-id]')).toBeNull()
-
-    await user.click(nav(/Gebäude & Umfang/))
+    // The whole narrative (incl. §2 Umfang's building rows and §5
+    // Optionen, when it exists) is already in the DOM at once — a single
+    // whole-body pass already covers what used to need one nav click per
+    // chapter.
     expect(screen.queryAllByRole('button', {
       name: /Frage an den Kunden|Zur Opportunity-Karte/,
     })).toHaveLength(0)
-    await user.click(nav(/Konfigurator/))
-    const clientChapters = [
-      /Leistungen KG 300/,
-      /Leistungsabgrenzung/,
-      /Technik KG 400/,
-      /Termine/,
-    ]
-    for (const chapter of clientChapters) {
-      await user.click(nav(chapter))
-      expect(screen.queryAllByRole('button', {
-        name: /Frage an den Kunden|Zur Opportunity-Karte/,
-      }), `Interne Navigation in ${chapter}`).toHaveLength(0)
-      expect(screen.getByRole('button', { name: 'Beenden' })).toBeInTheDocument()
-      expect(document.body.textContent).not.toMatch(/\b(?:DEMO|OPT|SNAP|BM)-[A-Z0-9-]+\b/)
-    }
-
-    await user.click(screen.getByRole('button', { name: /Varianten vergleichen/ }))
-    expect(screen.queryByRole('button', { name: 'Zur Opportunity-Karte' })).toBeNull()
-    expect(document.body).not.toHaveTextContent(/(?:D-19|VARIANT-001|XSC-08|HOAI und AHO|70\/22\/8)/)
+    expect(document.body).not.toHaveTextContent(
+      /(?:D-19|VARIANT-001|XSC-08|HOAI und AHO|70\/22\/8|clientPrint|clientSafe|R-07|EMAIL-007)/,
+    )
     expect(document.body.textContent).not.toMatch(/\b(?:DEMO|OPT|SNAP|BM)-[A-Z0-9-]+\b/)
-
-    await user.click(nav(/^Export$/))
-    expect(document.body).not.toHaveTextContent(/(?:clientPrint|clientSafe|R-07|EMAIL-007)/)
-    expect(document.body.textContent).not.toMatch(/\b(?:DEMO|OPT|SNAP|BM)-[A-Z0-9-]+\b/)
+    expect(document.querySelector('[data-driver-id]')).toBeNull()
 
     await user.click(screen.getByRole('button', { name: 'Beenden' }))
     expect(useStore.getState().mode).toBe('intern')

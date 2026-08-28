@@ -1394,6 +1394,20 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
   .a3-t-hero,.a3-hb-total .a3-hb-num{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line)}
   .a3-hb-total .a3-hb-unit{font-size:var(--type-small-size);line-height:var(--type-small-line)}
 }
+/* REDESIGN R3 WAVE 2a (backlog ce17da51) — PresentationShell product-
+   specific composition (see `src/components/PresentationShell.tsx`'s own
+   doc comment). Built entirely from existing tokens — no new primitive, no
+   local Design System. `.a3-presentation-tab[-current]` is the narrative
+   strip's quiet text-tab (deliberately NOT `.a3-btn`/WorkflowStepper —
+   this is story navigation, not a workflow); `.a3-option-tile[-selected]`
+   reuses the canonical selection border token (`--border-selected`, the
+   same `--color-selection-border` Sidebar's active-item treatment already
+   uses) rather than the brand-orange accent (rule 5/8: selection is never
+   colour-only — the tile also prints a "Wird präsentiert" caption). */
+.a3-presentation-tab{appearance:none;background:none;border:none;border-bottom:var(--border-width-default) solid transparent;padding:var(--space-2);font:inherit;font-size:var(--type-small-size);color:var(--color-text-secondary);cursor:pointer}
+.a3-presentation-tab-current{border-bottom-color:var(--color-border-strong);color:var(--color-text-primary);font-weight:700}
+.a3-option-tile{display:block;width:100%;border:var(--border-default);cursor:pointer;background:var(--color-surface-default);text-align:left;padding:var(--space-4)}
+.a3-option-tile-selected{border:var(--border-selected)}
 @media (prefers-reduced-motion:reduce){
   :where([class^="a3-"],[class*=" a3-"]),:where([class^="a3-"],[class*=" a3-"])::before,:where([class^="a3-"],[class*=" a3-"])::after{transition:none!important;animation:none!important}
   .a3-reveal .a3-sheet{opacity:1;transform:none}

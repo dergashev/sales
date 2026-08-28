@@ -702,15 +702,27 @@ describe('SIDEBAR 03 (backlog 2be8e69c): client-safe rail, EN localization', () 
 
     act(() => {
       useStore.getState().confirmGebaeudeklasse()
+    })
+    // REDESIGN R3 WAVE 2a (ce17da51): entering Kundenansicht now requires
+    // the Option to be client-eligible (PD-3 readiness), or
+    // PresentationShell renders its own "noch keine Option bereit" state
+    // instead of the narrative this assertion needs.
+    confirmWholeConfiguration()
+    act(() => {
       useStore.getState().setMode('praesentation')
     })
 
     // Kundenansicht: R-25 strips the building suffix — SB-13 requires the
     // two contributions to aggregate into exactly one row rather than
-    // surviving as an unlabelled duplicate.
-    expect(within(rail).getAllByText(/Energiestandard EH 55/).length).toBe(1)
-    expect(within(rail).queryByText('Haus A')).toBeNull()
-    expect(within(rail).queryByText('Haus B')).toBeNull()
+    // surviving as an unlabelled duplicate. The Kostentreiber-Auszug that
+    // used to live in OfferPanel's rail now lives in PresentationShell's
+    // §3 Ergebnis (the rail itself unmounts in Kundenansicht — the stale
+    // `rail` reference above would only show the frozen pre-switch DOM,
+    // never prove anything about the new client surface).
+    const ergebnis = screen.getByRole('region', { name: 'Ergebnis' })
+    expect(within(ergebnis).getAllByText(/Energiestandard EH 55/).length).toBe(1)
+    expect(within(ergebnis).queryByText('Haus A')).toBeNull()
+    expect(within(ergebnis).queryByText('Haus B')).toBeNull()
   })
 
   it('lang follows the UI locale inside the rail, and the ⚙ marker never appears without its legend (SB-14/SB-15)', async () => {

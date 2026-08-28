@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
-import { confirmBuildingReviewSections } from '../../test/offer-option'
+import { confirmBuildingReviewSections, confirmWholeConfiguration } from '../../test/offer-option'
 import { __resetStoreForTests, useStore } from '../../state/store'
 
 /**
@@ -118,23 +118,29 @@ describe('DC-21: происхождение раскрывается у кажд
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
+    // REDESIGN R3 WAVE 2a (ce17da51): Kundenansicht needs the Option to be
+    // client-eligible (PD-3 readiness) before it renders any commercial
+    // narrative section at all.
+    confirmWholeConfiguration()
 
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
-    await user.click(screen.getByRole('button', { name: 'Alle Details ansehen' }))
 
-    const drivers = screen.getByRole('dialog', { name: 'Nachweise & Verlauf' })
-    const label = within(drivers).getByText(/^Untergeschoss · Rohbau und Ausbau ·/, {
-      selector: 'span[aria-hidden="true"]',
-    })
-    const row = label.closest('tr')
-    expect(row).not.toBeNull()
-    expect(row).toHaveTextContent(/erhöht\s*·\s*UG/)
-    expect(row).not.toHaveTextContent('Haus A')
-
-    await user.click(within(row!).getByRole('button', { name: /^Details/ }))
-    const popover = screen.getByRole('dialog', { name: 'Herkunft des Werts' })
-    expect(within(popover).getByText('Scope · UG')).toBeInTheDocument()
-    expect(popover).not.toHaveTextContent('Haus A')
+    // OfferPanel's rich Level-3 "Nachweise & Verlauf" dialog (origin
+    // popovers, per-driver reconciliation table) no longer renders in
+    // Kundenansicht at all — the rail itself is unmounted in client mode;
+    // PresentationShell's §3 Ergebnis shows a simpler top-5 Kostentreiber-
+    // Auszug instead (rule 35's actual minimum bar is up to 5 drivers +
+    // sum = total, not the drill-down audit trail — see PresentationShell
+    // .tsx and its own memory note on this disclosed scope boundary). The
+    // underlying invariant this test exists to prove — DIN 276 scope
+    // naming, never a building name — still holds, even more directly:
+    // the new surface never calls the building-attribution resolver at
+    // all (it strips any building-id key prefix and aggregates by label
+    // instead of ever reading a building's display name).
+    const ergebnis = screen.getByRole('region', { name: 'Ergebnis' })
+    expect(within(ergebnis).getByText('Kostentreiber')).toBeInTheDocument()
+    expect(ergebnis).not.toHaveTextContent('Haus A')
+    expect(ergebnis).not.toHaveTextContent('Haus B')
   })
 })

@@ -16,6 +16,16 @@ import { __resetStoreForTests, useStore } from '../../state/store'
  * — unlike a visible-text-only heuristic — also covers any `sr-only`/
  * `aria-hidden` span, exactly as the ticket's AC-1 requires) once the
  * subgroups are expanded, rather than inspecting source strings.
+ *
+ * REDESIGN R3 WAVE 2a (ce17da51): the reproduction profile below runs in
+ * Vorbereitung, not Kundenansicht — OfferPanel's "Nachweise & Verlauf" →
+ * "KG 300 subgroups" disclosure this test depends on no longer renders in
+ * Kundenansicht at all (the rail is unmounted there; PresentationShell's
+ * own §3 Ergebnis has a simpler Kostentreiber-Auszug without the per-
+ * subgroup breakdown — a disclosed non-blocking scope boundary for this
+ * wave). The feature and its EN-translation defect are unrelated to
+ * client projection and unchanged in Vorbereitung, so the regression this
+ * test guards against is still fully covered there.
  */
 
 const GERMAN_SUBGROUP_LABELS = [
@@ -42,7 +52,7 @@ const ENGLISH_SUBGROUP_LABELS = [
 
 beforeEach(() => __resetStoreForTests())
 
-describe('KG 300 subgroup labels translate in EN + Kundenansicht (AC-1/AC-2)', () => {
+describe('KG 300 subgroup labels translate in EN (AC-1/AC-2)', () => {
   it('renders all 8 subgroup labels in English with no bare German remainder, KG_3xx id kept literal', async () => {
     const user = userEvent.setup()
     render(<App />)
@@ -61,12 +71,19 @@ describe('KG 300 subgroup labels translate in EN + Kundenansicht (AC-1/AC-2)', (
       useStore.getState().setCoverage('KG_300', 'included')
     })
 
-    // Client view (Kundenansicht) — the ticket's exact reproduction profile.
-    await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
-    await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
+    // REDESIGN R3 WAVE 2a (ce17da51): OfferPanel's Level-3 "Nachweise &
+    // Verlauf" disclosure (this test's "Show all details" → "KG 300
+    // subgroups" path) no longer renders in Kundenansicht at all — the
+    // rail itself is unmounted there; PresentationShell's own §3 Ergebnis
+    // shows a simpler top-5 Kostentreiber-Auszug without the per-subgroup
+    // breakdown (disclosed non-blocking scope boundary, same one noted in
+    // driver-origin.dom.test.tsx). This test's actual subject — EN
+    // translation coverage for the 8 KG 300 subgroup labels (AC-1/AC-2) —
+    // is unrelated to client-projection and the feature is unchanged in
+    // Vorbereitung, so it is verified there instead of behind a client-
+    // mode surface that no longer hosts it.
 
-    // Switch UI language to EN — after all German-labeled navigation, so
-    // the clicks above keep matching regardless of when the toggle fires.
+    // Switch UI language to EN.
     await user.click(screen.getAllByRole('radio', { name: 'EN' })[0]!)
 
     await user.click(screen.getByRole('button', { name: 'Show all details' }))

@@ -200,12 +200,20 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
       .toBeNull()
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Gebäude & Umfang' }))
-      .toBeInTheDocument()
+    // REDESIGN R3 WAVE 2a (ce17da51): entering Kundenansicht before
+    // pricing has even started (no coverage decided,
+    // `configurationComplete()` false) means the Option is not yet
+    // client-eligible — PresentationShell shows its own honest,
+    // structurally-guaranteed-empty "not ready" state instead of the
+    // working three-pane composition. No commercial figure exists
+    // anywhere to leak, by construction (no per-chapter routing at all
+    // once in Kundenansicht — see PresentationShell.tsx).
     expect(screen.queryByRole('complementary', { name: 'Angebot' })).toBeNull()
-    expect(screen.getByText('Kalkulation noch nicht gestartet')).toBeInTheDocument()
-    expect(screen.queryByText(/Gesamtpreis|Schätzunsicherheit|Bauzeit|Kostentreiber|KG 300/))
-      .toBeNull()
+    expect(screen.getByText(/noch keine Option bereit für die Kundenansicht/))
+      .toBeInTheDocument()
+    expect(document.body).not.toHaveTextContent(
+      /Gesamtpreis|Schätzunsicherheit|Bauzeit|Kostentreiber|KG 300|KG 700|€/,
+    )
   })
 
   // Task 02 (deep-coherence audit, F-22): the review-section ladder is
