@@ -442,13 +442,16 @@ export function OpportunityList() {
                 identity today. Decorative: the card's own title already
                 names the project (rule: image earns its space by carrying
                 recognition, not by re-stating what text already says). */}
-            <div className="a3-opportunity-media" style={{ viewTransitionName: `project-media-${o.id}` }}>
+            <div
+              className="a3-opportunity-media"
+              aria-label={t('opplist.media.identityGraphic')}
+              style={{ viewTransitionName: `project-media-${o.id}` }}
+            >
               <MediaFrame
                 ratio="card"
                 state="fallback"
                 seed={o.name}
                 alt=""
-                fallbackLabel={t('opplist.media.identityGraphic')}
               />
             </div>
             {/* Card (CARD-001): title = primaryDestination (Name, mit
