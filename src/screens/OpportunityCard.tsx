@@ -30,8 +30,9 @@ import { copyFor } from '../i18n/internal-refs'
 import { DocumentAnalysis } from '../components/DocumentAnalysis'
 import { InternalNote } from '../components/InternalNote'
 import {
-  Badge, Card, FormField, PageHeader, WorkflowStepper, type WorkflowStep,
+  Badge, Card, FormField, PageHeader,
 } from '../components/designSystem'
+import { WorkflowStepper, type WorkflowStep } from '../design-system/WorkflowStepper'
 import { MediaFrame } from '../design-system/MediaFrame'
 import { useSemanticMotion } from '../design-system/motion'
 import { Dialog, type DialogHandle } from '../components/Dialog'
@@ -180,8 +181,8 @@ function ReviewedWflMetric({ value, provenance }: {
  * (`src/components/designSystem.tsx`), горизонтальный вариант; собственной
  * рукописной копии анатомии здесь больше нет (governance `DS-GOV-EX-07`
  * закрывает половину «нет канонического React-источника» для этого
- * потребителя — `Sidebar.tsx`'s вертикальный `.a3-chapters` остаётся
- * отдельным потребителем этой задачи, сознательно нетронутым).
+ * потребителя — `Sidebar.tsx` now consumes the same canonical chapter
+ * family, so this migration leaves no handwritten sibling anatomy).
  *
  * "Rebuild Project Card Workflow" (#16) заменяет прежние шесть
  * ВСЕГДА-открытых информационных стадий (Task 01) на ЧЕТЫРЕ стадии с
@@ -678,25 +679,21 @@ export function OpportunityCard() {
   const stages: WorkflowStep[] = [
     {
       id: 'documents',
-      number: 1,
-      title: tx('Dokumentanalyse'),
+      label: tx('Dokumentanalyse'),
       state: docsNeedAttention ? 'attention' : 'done',
-      stateText: docsNeedAttention
+      rationale: docsNeedAttention
         ? tx('Ein Dokument ist nicht lesbar · blockiert das Anlegen einer Opportunity Option nicht')
         : tx('Analyse abgeschlossen'),
-      current: false,
-      onOpen: () => focusSection(documentSectionRef),
+      onSelect: () => focusSection(documentSectionRef),
     },
     {
       id: 'conflict',
-      number: 2,
-      title: tx('Strittige Angaben'),
-      state: konfliktOffen ? 'attention' : 'done',
-      stateText: konfliktOffen
+      label: tx('Strittige Angaben'),
+      state: currentStage === 'conflict' ? 'current' : 'done',
+      rationale: konfliktOffen
         ? tx('Entscheidung erforderlich · blockiert die Projektgrundlage')
         : tx('Entschieden'),
-      current: currentStage === 'conflict',
-      onOpen: () => focusSection(conflictSectionRef),
+      onSelect: () => focusSection(conflictSectionRef),
     },
     {
       // Vereint die früheren Stufen 3 (Offene Fragen & Annahmen) + 4
@@ -704,38 +701,41 @@ export function OpportunityCard() {
       // Bestätigungsaktion (#16 Part 4/6) — der Sprung führt zum ersten der
       // drei zusammengehörigen Abschnitte, `questionsSectionRef`.
       id: 'baseline',
-      number: 3,
-      title: t('oppcard.baseline.title'),
+      label: t('oppcard.baseline.title'),
       // Ein echtes Gate (#16 Part 3/AC-05): solange ein Konflikt offen ist,
       // bleibt die Projektgrundlage gesperrt statt nur „vorläufig“.
-      state: konfliktOffen
+      state: currentStage === 'confirm'
+        ? 'current'
+        : konfliktOffen
         ? 'blocked'
         : s.projectParamsConfirmed && !baselineStale ? 'done' : 'attention',
-      stateText: konfliktOffen
-        ? tx('Erst Konflikte entscheiden')
+      previouslyDone: currentStage === 'confirm' && baselineStale,
+      rationale: konfliktOffen
+        ? undefined
         : baselineStale
           ? t('oppcard.baseline.stepStale')
           : s.projectParamsConfirmed
             ? tx('Bestätigt')
             : tx('Bestätigung erforderlich · blockiert das Anlegen einer Opportunity Option'),
-      current: currentStage === 'confirm',
-      onOpen: () => focusSection(questionsSectionRef),
+      blockedReason: konfliktOffen ? tx('Erst Konflikte entscheiden') : undefined,
+      onSelect: () => focusSection(questionsSectionRef),
     },
     {
       id: 'options',
-      number: 4,
-      title: tx('Opportunity Options'),
-      state: optionsState,
+      label: tx('Opportunity Options'),
+      state: currentStage === 'options' ? 'current' : optionsState,
       // Der genaue Grund steht bereits an der echten Aktion (aria-describedby
       // des Create-Buttons unten) — hier absichtlich ein anderer Wortlaut,
       // damit dieselbe Erklärung nicht doppelt und mehrdeutig im Baum steht.
-      stateText: optionsState === 'done'
-        ? tx('Angelegt')
-        : optionsState === 'attention'
-          ? tx('Bereit zum Anlegen')
-          : (createOptionDisabledReason ?? tx('Wartet auf die Voraussetzungen oben')),
-      current: currentStage === 'options',
-      onOpen: () => focusSection(optionsSectionRef),
+      rationale: optionsState === 'blocked'
+        ? undefined
+        : optionsState === 'done'
+          ? tx('Angelegt')
+          : tx('Bereit zum Anlegen'),
+      blockedReason: optionsState === 'blocked'
+        ? (createOptionDisabledReason ?? tx('Wartet auf die Voraussetzungen oben'))
+        : undefined,
+      onSelect: () => focusSection(optionsSectionRef),
     },
   ]
 
@@ -870,7 +870,7 @@ export function OpportunityCard() {
         returnFocusTo={noteButtonRef}
       />
 
-      <WorkflowStepper label={tx('Projektstatus')} steps={stages} />
+      <WorkflowStepper ariaLabel={tx('Projektstatus')} steps={stages} />
 
       {/* 1 · Анализ документации + разрешение версий планов (перенесено из
           "· Vorbereitung" P1 — единственный рендер списка документов, AC8). */}

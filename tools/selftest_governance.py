@@ -9,6 +9,7 @@ GOV-находки. Поэтому детектор, который всегда
 Запуск: `python3 tools/selftest_governance.py`.
 """
 import pathlib
+import json
 import shutil
 import sys
 import tempfile
@@ -89,7 +90,98 @@ def build(root: pathlib.Path, overrides: Dict[str, Optional[str]]) -> None:
 def governance_findings(root: pathlib.Path):
     verifier = Verifier(root)
     verifier.check_design_system_governance()
-    return [finding for finding in verifier.new if finding[0].startswith('GOV-')]
+    # The capability-manifest mutations below own GOV-CAPABILITY. Existing
+    # architecture-boundary probes intentionally use a smaller synthetic
+    # tree, so keep their signal focused on their own GOV classes.
+    return [finding for finding in verifier.new
+            if finding[0].startswith('GOV-') and finding[0] != 'GOV-CAPABILITY']
+
+
+VO_T4_IDS = [
+    'canvas', 'paper', 'stage', 'stage-deep', 'media-frame',
+    'workflow-stepper', 'legacy-workflow-stepper', 'date-field', 'stepper',
+    'composition-bar', 'metric-hierarchy', 'structure-type', 'warning',
+    'continuity', 'direction', 'reveal', 'state', 'stagger-list',
+]
+VO_T4_ACTIVE = {
+    'canvas', 'media-frame', 'workflow-stepper', 'date-field',
+    'composition-bar', 'metric-hierarchy', 'warning', 'continuity',
+}
+VO_T4_DOWNSTREAM = {
+    'paper', 'stage', 'stage-deep', 'stepper', 'structure-type',
+    'direction', 'reveal', 'state',
+}
+
+
+def vo_t4_manifest(*, active_consumer_path='src/Probe.tsx', expiry='2099-12-31', owners=True):
+    capabilities = []
+    for cap_id in VO_T4_IDS:
+        if cap_id in VO_T4_ACTIVE:
+            if cap_id == 'workflow-stepper':
+                consumers = [
+                    {'path': 'src/components/Sidebar.tsx', 'pattern': '<WorkflowStepper'},
+                    {'path': 'src/screens/OpportunityCard.tsx', 'pattern': '<WorkflowStepper'},
+                ]
+            else:
+                consumers = [{'path': active_consumer_path, 'pattern': 'ACTIVE'}]
+            capabilities.append({'id': cap_id, 'disposition': 'ACTIVE', 'productConsumers': consumers})
+        elif cap_id in VO_T4_DOWNSTREAM:
+            entry = {'id': cap_id, 'disposition': 'APPROVED_DOWNSTREAM', 'expiresAt': expiry}
+            if owners:
+                entry['owners'] = ['VO-T3']
+            capabilities.append(entry)
+        else:
+            capabilities.append({'id': cap_id, 'disposition': 'RETIRED'})
+    return json.dumps({'version': 1, 'capabilities': capabilities})
+
+
+def vo_t4_findings(root: pathlib.Path):
+    verifier = Verifier(root)
+    verifier._check_vo_t4_capabilities()
+    return [finding for finding in verifier.new if finding[0] == 'GOV-CAPABILITY']
+
+
+def run_vo_t4_capability_cases() -> list[str]:
+    cases = [
+        ('GOV-CAPABILITY: valid active and downstream lifecycle metadata', {}, None),
+        ('GOV-CAPABILITY: active registry-only claim is rejected',
+         {'manifest': vo_t4_manifest(active_consumer_path='src/design-system/registry.tsx')},
+         'Foundation'),
+        ('GOV-CAPABILITY: missing downstream owner is rejected',
+         {'manifest': vo_t4_manifest(owners=False)}, 'lacks named downstream owners'),
+        ('GOV-CAPABILITY: expired downstream approval is rejected',
+         {'manifest': vo_t4_manifest(expiry='2000-01-01')}, 'expired on 2000-01-01'),
+        ('GOV-CAPABILITY: duplicate WorkflowStepper ownership is rejected',
+         {'src/components/designSystem.tsx': 'export function WorkflowStepper() {}\n'},
+         'second WorkflowStepper owner'),
+    ]
+    failed = []
+    for description, overrides, message_fragment in cases:
+        root = pathlib.Path(tempfile.mkdtemp(prefix='a3-vo-t4-capability-'))
+        try:
+            base = {
+                'src/Probe.tsx': 'export const Probe = "ACTIVE"\n',
+                'src/design-system/WorkflowStepper.tsx': 'export function WorkflowStepper() {}\n',
+                'src/components/Sidebar.tsx': "import { WorkflowStepper } from '../design-system/WorkflowStepper'\nexport const Sidebar = <WorkflowStepper />\n",
+                'src/screens/OpportunityCard.tsx': "import { WorkflowStepper } from '../design-system/WorkflowStepper'\nexport const OpportunityCard = <WorkflowStepper />\n",
+                'src/components/designSystem.tsx': 'export const DesignSystem = {}\n',
+                'src/design-system/registry.tsx': 'export const Registry = "ACTIVE"\n',
+            }
+            manifest = overrides.pop('manifest', vo_t4_manifest())
+            base['design-system/capability-governance.json'] = manifest
+            base.update(overrides)
+            build(root, base)
+            findings = vo_t4_findings(root)
+            ok = not findings if message_fragment is None else any(
+                message_fragment in finding[2] for finding in findings)
+            mark = '✓' if ok else '✗'
+            print(f'  {mark} {description}')
+            if not ok:
+                print(f'      expected {message_fragment or "no findings"}; got: {findings[:3]}')
+                failed.append(description)
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+    return failed
 
 
 # Описание, изменённые файлы, ожидаемый класс (None = полное молчание),
@@ -306,6 +398,8 @@ def main() -> int:
                 failed.append(description)
         finally:
             shutil.rmtree(root, ignore_errors=True)
+
+    failed.extend(run_vo_t4_capability_cases())
 
     print(f'\nGOVERNANCE · {len(CASES)} разрешённых/запрещённых веток, '
           f'провалов: {len(failed)}')

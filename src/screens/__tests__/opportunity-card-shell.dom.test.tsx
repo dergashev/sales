@@ -94,15 +94,14 @@ describe('Project Card — шапка и обзор готовности', () =>
     ])
 
     // Позиция — ЦЕЛОЙ ФРАЗОЙ для скринридера (DC-13, Screen-reader-Klausel
-    // «Schritt 3 von 4»), а не одной цифрой; видимой остаётся компактная
-    // цифра, и она aria-hidden, чтобы позиция не читалась дважды.
+    // «Schritt 3 von 4»), а не только маркером; marker is aria-hidden so
+    // a done/current glyph cannot be announced as a second position.
     steps.forEach((step, i) => {
-      const marker = step.querySelector('.a3-wf-n')!
-      const digit = marker.querySelector(':scope > span:not(.sr-only)')
-      expect(digit).toHaveAttribute('aria-hidden', 'true')
-      expect(digit!.textContent).toBe(String(i + 1))
-      const position = within(step).getByText(`Schritt ${i + 1} von 4`)
-      expect(position).toHaveClass('sr-only')
+      const marker = step.querySelector('.a3-wfs-marker')!
+      expect(marker).toHaveAttribute('aria-hidden', 'true')
+      const position = step.querySelector('.a3-wfs-meta')!
+      expect(position).toHaveClass('a3-wfs-meta')
+      expect(position).toHaveTextContent(`Schritt ${i + 1} von 4`)
     })
 
     // Состояние читается текстом, не только маркером/цветом (STEP-002, правило 8).
@@ -114,7 +113,7 @@ describe('Project Card — шапка и обзор готовности', () =>
     )).toBeInTheDocument()
     // AC-05: solange ein Konflikt offen ist, ist die Projektgrundlage ein
     // ECHTES Gate (aria-disabled), nicht nur "vorläufig".
-    expect(within(overview).getByText('Erst Konflikte entscheiden')).toBeInTheDocument()
+    expect(within(overview).getAllByText('Erst Konflikte entscheiden')).toHaveLength(1)
     expect(within(overview).getByText(
       'Erst Konflikte entscheiden und Projektparameter bestätigen',
     )).toBeInTheDocument()
@@ -140,23 +139,23 @@ describe('Project Card — шапка и обзор готовности', () =>
     const user = userEvent.setup()
     await openProjectCard(user)
     const overview = screen.getByRole('navigation', { name: 'Projektstatus' })
-    const stepAt = (i: number) => within(overview).getAllByRole('button')[i]!
+    const stepAt = (i: number) => overview.querySelectorAll<HTMLElement>('.a3-wfs-step')[i]!
 
     await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
     expect(stepAt(1)).toHaveTextContent('Entschieden')
-    expect(stepAt(1)).not.toHaveAttribute('aria-current')
+    expect(within(stepAt(1)).getByRole('button')).not.toHaveAttribute('aria-current')
     // Die Projektgrundlage entsperrt sich, sobald der Konflikt, von dem ihr
     // Gate abhing, entschieden ist (AC-05), und wird die aktuelle Stufe.
-    expect(stepAt(2)).not.toHaveAttribute('aria-disabled')
+    expect(within(stepAt(2)).getByRole('button')).not.toHaveAttribute('aria-disabled')
     expect(stepAt(2)).toHaveTextContent('Bestätigung erforderlich · blockiert das Anlegen einer Opportunity Option')
-    expect(stepAt(2)).toHaveAttribute('aria-current', 'step')
+    expect(within(stepAt(2)).getByRole('button')).toHaveAttribute('aria-current', 'step')
 
     await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
     expect(stepAt(2)).toHaveTextContent('Bestätigt')
-    expect(stepAt(2)).not.toHaveAttribute('aria-current')
-    expect(stepAt(3)).not.toHaveAttribute('aria-disabled')
+    expect(within(stepAt(2)).getByRole('button')).not.toHaveAttribute('aria-current')
+    expect(within(stepAt(3)).getByRole('button')).not.toHaveAttribute('aria-disabled')
     expect(stepAt(3)).toHaveTextContent('Bereit zum Anlegen')
-    expect(stepAt(3)).toHaveAttribute('aria-current', 'step')
+    expect(within(stepAt(3)).getByRole('button')).toHaveAttribute('aria-current', 'step')
 
     await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
     expect(stepAt(3)).toHaveTextContent('Angelegt')

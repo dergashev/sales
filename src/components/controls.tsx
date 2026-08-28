@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import { useTx } from '../i18n'
+import { useT, useTx } from '../i18n'
 
 /**
  * Контролы выбора по контрактам `design-system/components-core.md` §3:
@@ -670,7 +670,7 @@ function formatDEDate(d: Date): string {
 }
 
 export function DateField({
-  label, value, onCommit, min, max, helperText,
+  label, value, onCommit, min, max, helperText, name = 'date',
 }: {
   label: string
   /** `null` — no date set yet (empty state, never "0000-00-00"). */
@@ -679,8 +679,9 @@ export function DateField({
   min?: Date
   max?: Date
   helperText?: string
+  name?: string
 }) {
-  const tx = useTx()
+  const t = useT()
   const id = useId()
   const helperId = useId()
   const errorId = useId()
@@ -705,9 +706,12 @@ export function DateField({
       </label>
       <input
         id={id}
+        name={name}
         className={`a3-input mt-2 ${INPUT_FOCUS}`}
         type="text"
         inputMode="numeric"
+        autoComplete="off"
+        spellCheck={false}
         placeholder="TT.MM.JJJJ"
         value={shown}
         onChange={(e) => { setDraft(e.target.value); setInvalid(false) }}
@@ -719,12 +723,12 @@ export function DateField({
         aria-describedby={[helperText ? helperId : null, invalid ? errorId : null].filter(Boolean).join(' ') || undefined}
         aria-invalid={invalid || undefined}
       />
-      {helperText && !invalid && (
+      {helperText && (
         <p id={helperId} className="a3-cap mt-1">{helperText}</p>
       )}
       {invalid && (
         <p id={errorId} role="alert" className="a3-cap mt-1">
-          {tx('Ungültiges Datum — Format TT.MM.JJJJ')}
+          {t('configurator.schedule.dateInvalid')}
         </p>
       )}
     </div>

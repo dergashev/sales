@@ -542,7 +542,7 @@
      primitive rather than aliasing it, so each layer can be re-pointed
      independently without walking a chain. */
   --color-surface-paper: var(--primitive-color-white); /* same white as `default`, named for the 3-layer model */
-  --color-surface-stage: var(--primitive-color-white); /* white paper + --border-contrast-2px frame + stage spacing; see components-r1.css `.a3-stage` */
+  --color-surface-stage: var(--primitive-color-white); /* white paper + --border-contrast-2px frame + stage spacing; see components.css `.a3-surface-foundation--stage` */
   --color-surface-stage-deep: var(--primitive-color-neutral-950); /* #1F1F1F inverse — the one expressive peak (rail hero excepted) */
   --color-text-stage-deep-primary: var(--primitive-color-white);
   /* ADR-R1-02: extends rule 5, adds the SECOND (and last) permitted

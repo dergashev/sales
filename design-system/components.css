@@ -604,66 +604,63 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-loader .a3-phase{font-size:var(--type-small-size);line-height:var(--type-small-line);min-height:var(--type-small-line);transition:opacity var(--motion-reveal) var(--motion-easing-standard)}
 .a3-loader .a3-phase.a3-fade{opacity:0}
 
-/* DC-12 / DC-13 · SessionJournalBar + ChapterStepper.
-   Structure: .a3-journal is one row; .a3-chapters > .a3-ch > .a3-n.
-   Classes: .a3-journal · .a3-flashJ · .a3-chapters · .a3-ch · .a3-n · .a3-done · .a3-cur. */
+/* DC-12 · SessionJournalBar. */
 .a3-journal{display:flex;justify-content:space-between;align-items:center;border-top:var(--border-hairline);border-bottom:var(--border-hairline);padding:var(--space-2) var(--space-4);font-size:var(--type-small-size);background:var(--color-surface-default)}
 .a3-journal.a3-flashJ{animation:a3-flash .6s var(--motion-easing-standard)}
-.a3-chapters{display:flex;flex-direction:column;max-width:var(--measure-card-compact);border:var(--border-hairline);background:var(--color-surface-default)}
-.a3-ch{display:flex;gap:var(--space-3);align-items:center;padding:var(--space-3) var(--space-4);border-left:var(--border-width-strong) solid transparent}
-/* F02/F03: the marker circle's own text/fill pairing must clear WCAG at every
-   reachable state combination (pending / done / current / done+current), and
-   the composite must not be left to whichever rule the cascade applies last.
-   The step numeral inside `.a3-n` is `aria-hidden` at both call sites (its
-   accessible replacement is a full "Schritt N von M" sentence), so the
-   applicable threshold is the 3:1 non-text/graphical-object ratio, not 4.5:1
-   body-text — every state below already clears 3:1 comfortably. */
-.a3-ch .a3-n{width:var(--size-chapter-marker);height:var(--size-chapter-marker);border-radius:50%;border:var(--border-default);display:inline-flex;align-items:center;justify-content:center;font-size:var(--type-caption-size);flex:none}
-.a3-ch.a3-done .a3-n{background:var(--color-dataviz-category-2);border-color:var(--color-dataviz-category-2);color:var(--color-surface-default)}
-.a3-ch.a3-cur{border-left-color:var(--color-selection-border);background:var(--color-surface-selected);font-weight:var(--type-label-weight)}
-/* Current (not done): a solid filled circle, mirroring the done treatment's
-   fill+white-glyph pattern instead of the previous orange-text-on-transparent
-   pairing (was 3.36:1 and colour-only against the row's own selected fill). */
-.a3-ch.a3-cur .a3-n{background:var(--color-selection-border);border-color:var(--color-selection-border);color:var(--color-surface-default)}
-/* Done + current: keep the done fill/glyph pairing verbatim (do not let `cur`
-   recolour the foreground — that was the illegible 1.15:1 orange-on-green
-   collision) and add current's signal as a separate outer ring layer, so the
-   two states compose instead of fighting over one foreground colour. Matched
-   on all three classes so it always wins regardless of rule order. */
-.a3-ch.a3-cur.a3-done .a3-n{background:var(--color-dataviz-category-2);border-color:var(--color-dataviz-category-2);color:var(--color-surface-default);box-shadow:0 0 0 var(--border-width-strong) var(--color-selection-border)}
+/* DC-13 · canonical WorkflowStepper. One horizontal project workflow and
+   one compact vertical chapter navigation share this anatomy and one
+   roving-focus model. */
+.a3-wfs{display:block;min-width:0}
+.a3-wfs-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(12rem,1fr));gap:var(--space-2);list-style:none;margin:0;padding:0}
+.a3-wfs-step{min-width:0;border:var(--border-hairline);border-top:var(--border-width-strong) solid transparent;background:var(--color-surface-default)}
+.a3-wfs-button,.a3-wfs-static{display:flex;gap:var(--space-3);align-items:center;width:100%;min-height:var(--size-hit-target-default);padding:var(--space-3) var(--space-4);text-align:left;background:transparent;color:var(--color-text-primary)}
+.a3-wfs-button{border:0;cursor:pointer}
+.a3-wfs-button:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:3px}
+.a3-wfs-marker{width:var(--size-chapter-marker);height:var(--size-chapter-marker);border:var(--border-default);display:inline-flex;align-items:center;justify-content:center;flex:none;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-bold)}
+.a3-wfs-text{display:grid;min-width:0;gap:var(--space-1)}
+.a3-wfs-label{overflow-wrap:anywhere;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-label-weight)}
+.a3-wfs-meta,.a3-wfs-blocked-reason,.a3-wfs-rationale{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-wfs-current,.a3-wfs-cur{border-top-color:var(--color-selection-border);background:var(--color-surface-selected)}
+.a3-wfs-upcoming{}
+.a3-wfs-current .a3-wfs-marker{background:var(--color-selection-border);border-color:var(--color-selection-border);color:var(--color-text-inverse)}
+.a3-wfs-done .a3-wfs-marker{background:var(--color-text-primary);border-color:var(--color-text-primary);color:var(--color-text-inverse)}
+.a3-wfs-done.a3-wfs-cur .a3-wfs-marker{box-shadow:0 0 0 var(--border-width-strong) var(--color-selection-border)}
+.a3-wfs-attention .a3-wfs-marker{border:var(--border-warning);color:var(--color-text-primary)}
+.a3-wfs-blocked .a3-wfs-button{cursor:not-allowed}
+.a3-wfs-blocked .a3-wfs-marker,.a3-wfs-skipped .a3-wfs-marker{color:var(--color-text-muted)}
+.a3-wfs-blocked-reason{margin:0 var(--space-4) var(--space-3);padding-left:calc(var(--size-chapter-marker) + var(--space-3))}
+.a3-wfs-rationale{margin:0 var(--space-4) var(--space-3);padding-left:calc(var(--size-chapter-marker) + var(--space-3))}
+.a3-wfs-rationale summary{min-height:var(--size-hit-target-default);display:inline-flex;align-items:center;cursor:pointer;text-decoration:underline;text-underline-offset:var(--size-text-underline-offset);font-weight:var(--type-label-weight)}
+.a3-wfs-rationale>div{padding-bottom:var(--space-2)}
+.a3-wfs-chapter .a3-wfs-list{grid-template-columns:1fr;gap:0;border-top:var(--border-hairline);border-bottom:var(--border-hairline)}
+.a3-wfs-chapter .a3-wfs-step{border:0;border-left:var(--border-width-strong) solid transparent;border-bottom:var(--border-hairline)}
+.a3-wfs-chapter .a3-wfs-step:last-child{border-bottom:0}
+.a3-wfs-chapter .a3-wfs-current,.a3-wfs-chapter .a3-wfs-cur{border-left-color:var(--color-selection-border);border-top-color:transparent}
+.a3-wfs-chapter .a3-wfs-button,.a3-wfs-chapter .a3-wfs-static{padding:var(--space-2) var(--space-4)}
+@media (max-width:81rem){.a3-wfs-workflow .a3-wfs-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
-/* DC-13 · WorkflowStepper (canonical, `src/components/designSystem.tsx`).
-   "Rebuild Project Card Workflow" (#16) promotes the Opportunity Card's
-   readiness overview out of the hand-rolled `.a3-chapters` anatomy above —
-   that anatomy stays exactly as-is for `Sidebar.tsx`'s vertical Configurator
-   chapter nav (DS-GOV-EX-07 keeps both consumers open until Sidebar migrates
-   too; not this ticket's scope). Horizontal by default (row, wraps at
-   narrow widths); `.a3-wf-vertical` gives the same anatomy a column layout
-   for future canonical reuse.
-   Structure: .a3-workflow-stepper > .a3-wf-item > .a3-wf-step > .a3-wf-n.
-   Classes: .a3-workflow-stepper · .a3-wf-vertical · .a3-wf-item · .a3-wf-step ·
-   .a3-wf-n · .a3-wf-done · .a3-wf-cur · .a3-wf-locked. */
-.a3-workflow-stepper{display:flex;flex-wrap:wrap;gap:var(--space-2);list-style:none;margin:0;padding:0}
-.a3-workflow-stepper.a3-wf-vertical{flex-direction:column;flex-wrap:nowrap;max-width:var(--measure-card-compact)}
-.a3-wf-item{flex:1 1 12rem;min-width:0}
-.a3-workflow-stepper.a3-wf-vertical .a3-wf-item{flex:none}
-.a3-wf-step{display:flex;gap:var(--space-3);align-items:center;width:100%;padding:var(--space-3) var(--space-4);border:var(--border-hairline);border-top:var(--border-width-strong) solid transparent;background:var(--color-surface-default)}
-.a3-workflow-stepper.a3-wf-vertical .a3-wf-step{border-top:var(--border-hairline);border-left:var(--border-width-strong) solid transparent}
-/* Same 3:1 non-text/graphical-object reasoning as `.a3-ch .a3-n` above — the
-   numeral is `aria-hidden`, its accessible replacement is the full "Schritt
-   N von M" sentence. */
-.a3-wf-step .a3-wf-n{width:var(--size-chapter-marker);height:var(--size-chapter-marker);border-radius:50%;border:var(--border-default);display:inline-flex;align-items:center;justify-content:center;font-size:var(--type-caption-size);flex:none}
-.a3-wf-step.a3-wf-done .a3-wf-n{background:var(--color-dataviz-category-2);border-color:var(--color-dataviz-category-2);color:var(--color-surface-default)}
-.a3-wf-step.a3-wf-cur{border-top-color:var(--color-selection-border);background:var(--color-surface-selected);font-weight:var(--type-label-weight)}
-.a3-workflow-stepper.a3-wf-vertical .a3-wf-step.a3-wf-cur{border-left-color:var(--color-selection-border);border-top-color:var(--border-hairline)}
-.a3-wf-step.a3-wf-cur .a3-wf-n{background:var(--color-selection-border);border-color:var(--color-selection-border);color:var(--color-surface-default)}
-.a3-wf-step.a3-wf-cur.a3-wf-done .a3-wf-n{background:var(--color-dataviz-category-2);border-color:var(--color-dataviz-category-2);color:var(--color-surface-default);box-shadow:0 0 0 var(--border-width-strong) var(--color-selection-border)}
-/* Locked (real gate, STEP-003/rule 12): never colour-only — the hollow ring
-   marker pairs with the muted title/state text, and the state text itself is
-   the exposed reason (`aria-describedby`), not a colour cue. */
-.a3-wf-step.a3-wf-locked{cursor:default}
-.a3-wf-step.a3-wf-locked .a3-wf-n{color:var(--color-text-muted)}
-.a3-wf-step.a3-wf-locked .text-text-primary{color:var(--color-text-muted)}
+/* Canonical discrete Stepper. This control remains APPROVED_DOWNSTREAM for
+   VO-T3; the system owns its complete focus and boundary anatomy here. */
+.a3-stepper-button{display:inline-flex;align-items:center;justify-content:center;min-width:var(--size-hit-target-default);min-height:var(--size-hit-target-default);border:var(--border-default);background:var(--color-surface-default);font-size:var(--type-heading-3-size);line-height:1;color:var(--color-text-primary);cursor:pointer}
+.a3-stepper-button:disabled{cursor:default;color:var(--color-action-disabled-text);background:var(--color-action-disabled-bg);border-color:var(--color-action-disabled-border)}
+.a3-stepper-value input{width:6ch}
+.a3-composition-bar{display:block}
+
+/* Surface foundations are comparable governance specimens, not product
+   adoption. Role content precedes the visible caption in every surface. */
+.a3-surface-foundations{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-4)}
+.a3-surface-foundation{display:flex;flex-direction:column;justify-content:space-between;min-height:610px;padding:var(--space-6);border:var(--border-hairline);color:var(--color-text-primary)}
+.a3-surface-foundation--canvas{background:var(--color-surface-canvas)}
+.a3-surface-foundation--paper{background:var(--color-surface-paper)}
+.a3-surface-foundation--stage{background:var(--color-surface-stage);border:var(--border-contrast-2px)}
+.a3-surface-foundation--stage-deep{background:var(--color-surface-stage-deep);border-color:var(--color-surface-stage-deep);color:var(--color-text-stage-deep-primary)}
+.a3-surface-foundation__content{display:grid;align-content:start;gap:var(--space-3)}
+.a3-surface-foundation__title{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--type-heading-3-weight)}
+.a3-surface-foundation__support{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-surface-foundation__number{margin:0;font-size:var(--type-display-numeric-desktop-size);line-height:var(--type-display-numeric-desktop-line);font-weight:var(--type-display-numeric-weight)}
+.a3-surface-foundation__caption{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-label-weight);text-transform:uppercase}
+.a3-surface-foundation--stage-deep .a3-surface-foundation__caption{color:var(--color-text-inverse)}
+@media (max-width:81rem){.a3-surface-foundation{min-height:540px;padding:var(--space-5)}}
 
 /* DC-6 · OptionImpactPreview. Structure: .a3-folgen > title + ul + action row.
    Classes: .a3-folgen. */

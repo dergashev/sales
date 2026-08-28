@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode, type KeyboardEvent } from 'react'
-import { useTx } from '../i18n'
+import { useT } from '../i18n'
 
 /**
  * WorkflowStepper — canonical progress-navigation family (REDESIGN R1,
@@ -122,7 +122,7 @@ export function WorkflowStepper({
   ariaLabel: string
   size?: 'workflow' | 'chapter'
 }) {
-  const tx = useTx()
+  const tx = useT()
   // Written as a static branch rather than a template interpolation — see
   // the STATE_CLASS comment above for why.
   const sizeClass = size === 'workflow' ? 'a3-wfs-workflow' : 'a3-wfs-chapter'
@@ -207,16 +207,20 @@ export function WorkflowStepper({
             <li
               key={step.id}
               className={className}
-              aria-current={isCurrent ? 'step' : undefined}
             >
               {step.onSelect ? (
                 <button
                   ref={(el) => { buttonRefs.current[i] = el }}
                   type="button"
                   className="a3-wfs-button hit-target"
-                  onClick={() => { setRovingIndex(i); step.onSelect!() }}
+                  onClick={() => {
+                    setRovingIndex(i)
+                    if (step.state !== 'blocked') step.onSelect!()
+                  }}
                   onKeyDown={handleKeyDown(i)}
                   tabIndex={i === rovingIndex ? 0 : -1}
+                  aria-disabled={step.state === 'blocked' || undefined}
+                  aria-current={isCurrent ? 'step' : undefined}
                   aria-describedby={
                     step.state === 'blocked' && step.blockedReason
                       ? `${step.id}-blocked-reason` : undefined
@@ -225,7 +229,7 @@ export function WorkflowStepper({
                   {body}
                 </button>
               ) : (
-                <div className="a3-wfs-static">{body}</div>
+                <div className="a3-wfs-static" aria-current={isCurrent ? 'step' : undefined}>{body}</div>
               )}
               {step.state === 'blocked' && step.blockedReason && (
                 <p id={`${step.id}-blocked-reason`} className="a3-wfs-blocked-reason">

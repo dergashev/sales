@@ -223,6 +223,7 @@ live-region, существование scroll-контейнера) НЕ зак
 """
 import argparse
 import ast
+import datetime
 import hashlib
 import json
 import posixpath
@@ -357,7 +358,7 @@ CHECK_CLASSES = (
     # управление и план
     'CLAUDE', 'DECISIONS', 'PLAN', 'INDEX', 'TOKEN-EXISTS', 'DS-CLASS-EXISTS',
     # архитектурная граница Design System / Sales Platform / QA Foundation
-    'GOV-DS-DEP', 'GOV-QA-BOUNDARY', 'GOV-RETIRED-PATH', 'GOV-TOKEN',
+    'GOV-DS-DEP', 'GOV-QA-BOUNDARY', 'GOV-RETIRED-PATH', 'GOV-TOKEN', 'GOV-CAPABILITY',
     # ПРЕДУПРЕЖДАЮЩИЕ классы: выводят адрес для решения, прогон не валят.
     # `--selftest` измеряет ПОЯВЛЕНИЕ НАРУШЕНИЯ и потому проходит мимо них.
     # Дыра не оставлена названной: живость каждой ветки доказывается
@@ -5701,16 +5702,7 @@ class Verifier:
             self.fail('DS-CLASS-EXISTS', 'design-system/components.css',
                       'единый файл классов не найден — приложение ссылается в пустоту')
             return
-        # REDESIGN R1 (efcbdaf3): `components-r1.css` is a TEMPORARY second
-        # source, forced by components.css already carrying an unrelated
-        # uncommitted changeset when R1 ran (git-safety, not governance —
-        # see the file's own header). Loaded here, not merged into
-        # components.css's variable, so a missing components-r1.css never
-        # changes this check's existing single-file behaviour.
-        r1_css = self.read('design-system/components-r1.css')
         declared = set(re.findall(r'\.(a3-[\w-]+)', css))
-        if r1_css:
-            declared |= set(re.findall(r'\.(a3-[\w-]+)', r1_css))
         if not declared:
             self.fail('DS-CLASS-EXISTS', 'design-system/components.css',
                       'ни одного класса a3-* не объявлено — проверка потеряла предмет')
@@ -5992,6 +5984,136 @@ class Verifier:
                         'className «circle» ссылается на снятый helper (70ba769); '
                         'использовать класс конкретного канонического компонента')
 
+    def _check_vo_t4_capabilities(self):
+        """GOV-CAPABILITY: VO-T4 lifecycle is explicit and source-proven.
+
+        A registry specimen proves a canonical shape, not a product adoption.
+        This small manifest therefore requires each ACTIVE capability to name
+        a real product use, while downstream-only capability approvals carry
+        named owners and an expiry date. The separate ownership scan prevents
+        a second WorkflowStepper family from returning under a new consumer.
+        """
+        rel = 'design-system/capability-governance.json'
+        raw = self.read(rel)
+        if raw is None:
+            self.fail('GOV-CAPABILITY', rel,
+                      'VO-T4 capability manifest is absent; ACTIVE adoption and downstream approval cannot be verified')
+            return
+        try:
+            manifest = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            self.fail('GOV-CAPABILITY', rel,
+                      f'VO-T4 capability manifest is invalid JSON: {exc.msg}')
+            return
+        capabilities = manifest.get('capabilities') if isinstance(manifest, dict) else None
+        if not isinstance(capabilities, list):
+            self.fail('GOV-CAPABILITY', rel,
+                      'manifest must contain a capabilities list')
+            return
+        expected = {
+            'canvas', 'paper', 'stage', 'stage-deep', 'media-frame',
+            'workflow-stepper', 'legacy-workflow-stepper', 'date-field',
+            'stepper', 'composition-bar', 'metric-hierarchy', 'structure-type',
+            'warning', 'continuity', 'direction', 'reveal', 'state', 'stagger-list',
+        }
+        by_id = {}
+        for entry in capabilities:
+            if not isinstance(entry, dict) or not isinstance(entry.get('id'), str):
+                self.fail('GOV-CAPABILITY', rel,
+                          'every capability needs a unique string id')
+                continue
+            cap_id = entry['id']
+            if cap_id in by_id:
+                self.fail('GOV-CAPABILITY', rel,
+                          f'capability «{cap_id}» is declared more than once')
+            by_id[cap_id] = entry
+        missing = expected - set(by_id)
+        unexpected = set(by_id) - expected
+        if missing:
+            self.fail('GOV-CAPABILITY', rel,
+                      f'manifest omits approved lifecycle entries: {", ".join(sorted(missing))}')
+        if unexpected:
+            self.fail('GOV-CAPABILITY', rel,
+                      f'manifest has unapproved lifecycle entries: {", ".join(sorted(unexpected))}')
+
+        today = datetime.date.today()
+        registry_only = ('src/design-system/registry.tsx', 'src/design-system/Gallery.tsx', 'src/screens/Grundlagen.tsx')
+        for cap_id, entry in by_id.items():
+            disposition = entry.get('disposition')
+            if disposition not in {'ACTIVE', 'APPROVED_DOWNSTREAM', 'RETIRED'}:
+                self.fail('GOV-CAPABILITY', rel,
+                          f'«{cap_id}» has invalid disposition «{disposition}»')
+                continue
+            if disposition == 'ACTIVE':
+                consumers = entry.get('productConsumers')
+                if not isinstance(consumers, list) or not consumers:
+                    self.fail('GOV-CAPABILITY', rel,
+                              f'ACTIVE «{cap_id}» has no real product consumer; a registry or Foundations specimen does not count')
+                    continue
+                for consumer in consumers:
+                    if not isinstance(consumer, dict):
+                        self.fail('GOV-CAPABILITY', rel,
+                                  f'ACTIVE «{cap_id}» has malformed product consumer metadata')
+                        continue
+                    path, pattern = consumer.get('path'), consumer.get('pattern')
+                    if not isinstance(path, str) or not isinstance(pattern, str):
+                        self.fail('GOV-CAPABILITY', rel,
+                                  f'ACTIVE «{cap_id}» consumer needs path and pattern')
+                        continue
+                    if path in registry_only or path.startswith('src/design-system/'):
+                        self.fail('GOV-CAPABILITY', rel,
+                                  f'ACTIVE «{cap_id}» claims Design System/Foundation «{path}» as product adoption')
+                        continue
+                    source = self.read(path)
+                    if source is None or pattern not in source:
+                        self.fail('GOV-CAPABILITY', rel,
+                                  f'ACTIVE «{cap_id}» consumer «{path}» no longer proves pattern «{pattern}»')
+            elif disposition == 'APPROVED_DOWNSTREAM':
+                owners, expiry = entry.get('owners'), entry.get('expiresAt')
+                if not isinstance(owners, list) or not all(isinstance(owner, str) and owner for owner in owners):
+                    self.fail('GOV-CAPABILITY', rel,
+                              f'APPROVED_DOWNSTREAM «{cap_id}» lacks named downstream owners')
+                if not isinstance(expiry, str):
+                    self.fail('GOV-CAPABILITY', rel,
+                              f'APPROVED_DOWNSTREAM «{cap_id}» lacks expiry metadata')
+                    continue
+                try:
+                    expiry_date = datetime.date.fromisoformat(expiry)
+                except ValueError:
+                    self.fail('GOV-CAPABILITY', rel,
+                              f'APPROVED_DOWNSTREAM «{cap_id}» has invalid expiry «{expiry}»')
+                else:
+                    if expiry_date < today:
+                        self.fail('GOV-CAPABILITY', rel,
+                                  f'APPROVED_DOWNSTREAM «{cap_id}» expired on {expiry}; renew or retire it explicitly')
+            elif entry.get('productConsumers'):
+                self.fail('GOV-CAPABILITY', rel,
+                          f'RETIRED «{cap_id}» must not retain product consumer claims')
+
+        canonical = self.read('src/design-system/WorkflowStepper.tsx') or ''
+        if 'export function WorkflowStepper' not in canonical:
+            self.fail('GOV-CAPABILITY', 'src/design-system/WorkflowStepper.tsx',
+                      'canonical WorkflowStepper owner is absent')
+        consumers = []
+        for source_rel in ('src/components/Sidebar.tsx', 'src/screens/OpportunityCard.tsx'):
+            source = self.read(source_rel) or ''
+            if "from '../design-system/WorkflowStepper'" in source and '<WorkflowStepper' in source:
+                consumers.append(source_rel)
+        if len(consumers) != 2:
+            self.fail('GOV-CAPABILITY', 'src/design-system/WorkflowStepper.tsx',
+                      'canonical WorkflowStepper must have the two real VO-T4 consumers (Sidebar and OpportunityCard), not registry-only adoption')
+        for source_rel, source in self.files('*.tsx'):
+            if source_rel == 'src/design-system/WorkflowStepper.tsx':
+                continue
+            clean = self._mask_comments(source)
+            if re.search(r'\b(?:export\s+)?(?:function|const)\s+WorkflowStepper\b', clean):
+                self.emit('GOV-CAPABILITY', source_rel, 1, source.split('\n')[0],
+                          'a second WorkflowStepper owner returned; consume src/design-system/WorkflowStepper.tsx instead')
+            if (source_rel.startswith('src/') and '__tests__' not in source_rel
+                    and re.search(r'(?<![\w-])a3-(?:wf|chapters)(?![\w-])', clean)):
+                self.emit('GOV-CAPABILITY', source_rel, 1, source.split('\n')[0],
+                          'retired workflow/chapters CSS ownership returned; use the canonical a3-wfs family')
+
     def _check_governance_tokens(self):
         """GOV-TOKEN: только узкие, измеримо надёжные случаи сырого вида."""
         color = re.compile(
@@ -6009,11 +6131,6 @@ class Verifier:
                 '[вакуум] файл канонических component-стилей отсутствует')
         else:
             css_sources['design-system/components.css'] = components
-        # REDESIGN R1 (efcbdaf3): see check_ds_class_exists's comment — same
-        # temporary-second-source reason, same governance obligations.
-        r1_components = self.read('design-system/components-r1.css')
-        if r1_components is not None:
-            css_sources['design-system/components-r1.css'] = r1_components
         for rel, source in self.files('*.css'):
             if rel.startswith('src/'):
                 css_sources[rel] = source
@@ -6085,6 +6202,7 @@ class Verifier:
         self._check_ds_dependencies()
         self._check_qa_boundary()
         self._check_retired_paths()
+        self._check_vo_t4_capabilities()
         self._check_governance_tokens()
 
     def check_option_images(self):

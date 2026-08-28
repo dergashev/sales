@@ -62,7 +62,7 @@
 | Projekt-Karten `.pcard` | DC-15 | `S1Projektliste` | 🟡 |
 | Dokument-Zeilen `.doc .okc .errc` | DC-17 | `S2Vorbereitung` P1 | 🟡 |
 | Lernender Loader `.loader .plog .phase` | DC-10 | `DocumentAnalysis` | ✅ построен по контракту 05.08, сверить визуально |
-| Kapitel-Navigation `.chapters .ch` | DC-13 | `Sidebar` · `OpportunityCard` (`ReadinessOverview`) | 🟡 с 17.08 у анатомии ДВА потребителя, канонического React-источника по-прежнему нет — обе реализации рукописные; отклонение зарегистрировано `DS-GOV-EX-07`, снимается извлечением `WorkflowStepper` |
+| Workflow navigation | DC-13 | `Sidebar` · `OpportunityCard` (`ReadinessOverview`) | ✅ VO-T4: both real consumers import `src/design-system/WorkflowStepper.tsx`; legacy handwritten owners are retired and GOV-CAPABILITY rejects their return |
 | Konflikt-Karte `.konflikt .kv` | DC-32 | `S2Vorbereitung` P2 | 🟡 |
 | Annahme-Karte `.ann .ann-t` | DC-8 | `S2Vorbereitung` P4 | 🟡 |
 | Variantenvergleich `.cmp` | DC-11 | `S4Vergleich` | 🟡 |

@@ -215,6 +215,13 @@ register and the mechanical checks atomically.
 
 ### DS-GOV-EX-07 — Opportunity readiness overview (second DC-13 instance)
 
+**RESOLVED — VO-T4.** This historical exception is closed: `Sidebar.tsx`
+and `OpportunityCard.tsx` now both consume
+`src/design-system/WorkflowStepper.tsx`; the inline chapter anatomy and the
+legacy `designSystem.tsx` owner were removed. The record below is retained as
+audit history only. `design-system/capability-governance.json` plus
+`GOV-CAPABILITY` now reject a duplicate owner or registry-only adoption.
+
 - **Affected component / paths:** `ReadinessOverview` in
   `src/screens/OpportunityCard.tsx`; it reuses the canonical DC-13 CSS anatomy
   (`.a3-chapters` / `.a3-ch` / `.a3-n` / `.a3-done` / `.a3-cur`,
@@ -248,18 +255,15 @@ register and the mechanical checks atomically.
   consumers render it; no hand-written copy of the anatomy remains.
 - **Review trigger:** release of a canonical `WorkflowStepper`, any change to
   DC-13 / `STEP-001…007`, or any further consumer of the `.a3-chapters` anatomy.
-- **PARTIALLY ADDRESSED (REDESIGN R1, efcbdaf3):** the canonical
+- **SUPERSEDED (REDESIGN R1, efcbdaf3):** the canonical
   `WorkflowStepper` this exception was waiting on is now released
   (`src/design-system/WorkflowStepper.tsx` — glyph + label + position
   anatomy, `upcoming/current/done/attention/blocked/skipped` states plus
   the composite done+current pairing, `aria-current="step"` closing the
   `"true"` drift, registry specimens for both `workflow` and `chapter`
-  sizes). **Neither consumer has migrated** — that is explicitly R2/R3/R4
-  scope (product-wide migration is outside R1's boundary) — so this
-  exception is NOT removed. Roving-tabindex `KEY-003` is implemented in the
-  new canonical source's interactive steps (real `<button>`s, 44px hit
-  targets); whether it closes the gap named above still depends on the
-  consumer migration actually landing.
+  sizes). VO-T4 subsequently migrated both legitimate consumers and closed
+  this exception. Roving-tabindex `KEY-003` is implemented in the canonical
+  source's interactive steps (real `<button>`s, 44px hit targets).
 
 **Data states of this instance (CLAUDE.md rule 30, seven declarations).** The
 DC-13 contract enumerates all seven; this instance declares each one either as

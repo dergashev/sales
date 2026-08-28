@@ -141,7 +141,9 @@ describe('Сквозной сценарий продажи', () => {
     // P1 (Barrierefreiheit): `<label htmlFor>` muss auf das ECHTE Feld
     // zeigen, nicht auf eine Wrapper-`<span>` — genau das war der Fehler.
     const startDate = screen.getByLabelText('Baubeginn') as HTMLInputElement
-    expect(startDate).toHaveAttribute('type', 'date')
+    expect(startDate).toHaveAttribute('type', 'text')
+    expect(startDate).toHaveAttribute('inputmode', 'numeric')
+    expect(startDate).toHaveAttribute('placeholder', 'TT.MM.JJJJ')
     // Der Hilfetext muss vom Feld selbst referenziert werden, nicht von
     // einer Hülle — `aria-describedby` ist nur korrekt gesetzt, wenn
     // `cloneElement` das Feld direkt getroffen hat.
@@ -152,7 +154,8 @@ describe('Сквозной сценарий продажи', () => {
     // 2027-03-01 ist genau der im Tech Review durchgerechnete Fall: 56 Tage
     // nach dem Fixture-Anker (`project.planning` beginnt am 2027-01-04),
     // und bricht die Ganzmonat-Eigenschaft der Planung (D-17).
-    fireEvent.change(startDate, { target: { value: '2027-03-01' } })
+    fireEvent.change(startDate, { target: { value: '01.03.2027' } })
+    fireEvent.keyDown(startDate, { key: 'Enter' })
 
     const table = screen.getByRole('table', { name: /Bauzeit nach Phasen/ })
     // P1 (Terminkonsistenz): Gantt-Tabelle UND Angebots-Hero zeigen dieselbe
@@ -174,6 +177,7 @@ describe('Сквозной сценарий продажи', () => {
     // Zurücksetzen stellt beide Ansichten wieder auf den Fixture-Wert —
     // kein Restzustand aus dem verschobenen Anker.
     fireEvent.change(startDate, { target: { value: '' } })
+    fireEvent.blur(startDate)
     expect(within(table).getByText('19.11.2027')).toBeInTheDocument()
     expect(screen.getByText(/Fertigstellung 19\.11\.2027/)).toBeInTheDocument()
   })

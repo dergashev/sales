@@ -13,6 +13,7 @@ import {
   isClientVisiblePipelineView,
 } from '../state/clientProjection'
 import { OutputProfileSwitch, SelectField } from './designSystem'
+import { WorkflowStepper, type WorkflowStep } from '../design-system/WorkflowStepper'
 
 /**
  * Левый сайдбар — навигация оболочки.
@@ -191,47 +192,20 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
               {/* Главы конфигуратора — второй уровень под активным пунктом. */}
               {item.id === 'konfigurator' && active
                 && s.configurationModeChosen && !s.configurationModeEditing && (
-                <ol className="a3-chapters">
-                  {workflow.map((step, index) => {
-                    const number = index + 1
+                <WorkflowStepper
+                  ariaLabel={t('shell.sidebar.workflow')}
+                  size="chapter"
+                  steps={workflow.map((step): WorkflowStep => {
                     const open = s.openConfiguratorStep === step.id
-                    // Прогресс — из состояния активной Option (данные и след
-                    // посещения), не из номера главы (ревью № 13, дефект 7).
                     const done = !open && configuratorStepDone(s, step.id)
-                    return (
-                      <li key={step.id}>
-                        <button
-                          type="button"
-                          onClick={() => s.openConfiguratorStepAt(step.id)}
-                          aria-current={open ? 'true' : undefined}
-                          className={'a3-ch relative flex min-h-hit-target w-full items-center ' +
-                            `gap-2 py-1 pl-8 pr-5 text-left ${FOCUS} ` +
-                            (open ? 'a3-cur ' : '') + (done ? 'a3-done' : '')}
-                        >
-                          {/* Номер главы несёт состояние классом системы
-                              (`.a3-ch.a3-done .a3-n`), а не подменой символа:
-                              статус остаётся и знаком, и подписью (правило 8).
-                              Цифра aria-hidden, как в ReadinessOverview
-                              (OpportunityCard.tsx): скринридер получает целую
-                              фразу «Schritt N von M» (тот же ключ словаря), а
-                              не голую цифру дважды (F02/F03 — маркер трактуется
-                              как графический объект с порогом 3:1, а не текст
-                              с порогом 4.5:1). */}
-                          <span className="a3-n numeric shrink-0">
-                            <span aria-hidden="true">{number}</span>
-                            <span className="sr-only">
-                              {t('oppcard.stepPosition', { n: number, total: workflow.length })}
-                            </span>
-                          </span>
-                          <span aria-hidden="true" className="w-3 shrink-0">
-                            {done ? '✓' : open ? '▸' : ''}
-                          </span>
-                          <span>{t(`chapter.${step.id}`)}</span>
-                        </button>
-                      </li>
-                    )
+                    return {
+                      id: step.id,
+                      label: t(`chapter.${step.id}`),
+                      state: open ? 'current' : done ? 'done' : 'upcoming',
+                      onSelect: () => s.openConfiguratorStepAt(step.id),
+                    }
                   })}
-                </ol>
+                />
               )}
             </li>
           )

@@ -59,11 +59,6 @@ export type SemanticMotion = {
   reduced: boolean
   fadeOnly: Variants
   fadeRise: Variants
-  /** Canonical staggered-list assembly (design-system/README.md §5's
-   * documented-but-unimplemented third variant, alongside fadeRise/fadeOnly).
-   * REVEAL verb: structural frame first, then rows in `--stagger-row` steps —
-   * "work produced this result" (analysis protocol, hero wave, offer summary). */
-  staggerList: { container: Variants; item: Variants }
   /** DIRECTION verb: `forward`/`backward` translate ±`--enter-shift`×3
    * horizontally + fade. Use ONLY for ordered sequences (chapters, steps). */
   direction: DirectionVariants
@@ -90,7 +85,6 @@ export function useSemanticMotion(): SemanticMotion {
       wave: tokenMilliseconds('--stagger-wave', FALLBACK_MS.wave),
       continuity: tokenMilliseconds('--motion-continuity', FALLBACK_MS.continuity),
     }
-    const rowStagger = tokenMilliseconds('--stagger-row', 30)
     const transition = (purpose: MotionPurpose, wave = 0): Transition => {
       const key = purpose === 'continuity' ? 'continuity' : purpose
       return {
@@ -126,19 +120,6 @@ export function useSemanticMotion(): SemanticMotion {
           opacity: 0,
           y: 0,
           transition: transition('feedback'),
-        },
-      },
-      staggerList: {
-        container: {
-          hidden: {},
-          visible: {
-            transition: reduced ? {} : { staggerChildren: rowStagger / 1000 },
-          },
-        },
-        item: {
-          hidden: { opacity: 0, y: reduced ? 0 : 'var(--enter-shift)' },
-          visible: { opacity: 1, y: 0, transition: transition('reveal') },
-          exit: { opacity: 0, transition: transition('feedback') },
         },
       },
       direction: {

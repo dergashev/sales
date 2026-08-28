@@ -34,14 +34,13 @@ import { Decimal } from 'decimal.js'
 import { Button } from '../components/primitives'
 import {
   Badge,
-  FormField,
   NextStep,
   PageHeader,
   ReadinessChecklist,
   SectionSheet,
 } from '../components/designSystem'
 import { ClientNotice } from '../components/ClientNotice'
-import { CheckboxCard, RadioCardGroup, SegmentedControl } from '../components/controls'
+import { CheckboxCard, DateField, RadioCardGroup, SegmentedControl } from '../components/controls'
 import { optionImage } from '../assets/option-images'
 import { ScheduleGantt } from '../components/ScheduleGantt'
 import { OptionChapter } from './OptionChapter'
@@ -1306,27 +1305,27 @@ function UndergroundFloorRecap() {
 function ConstructionStartDateField() {
   const s = useStore()
   const tx = useTx()
-  const id = 'construction-start-date'
+  const value = s.constructionStartDate
+    ? new Date(`${s.constructionStartDate}T00:00:00`)
+    : null
+
+  // The store owns an ISO date-only string. Never serialize through UTC:
+  // `toISOString()` can shift the selected calendar day for local timezones.
+  const toLocalIsoDate = (date: Date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
   return (
-    <FormField
-      label={tx('Baubeginn')}
-      htmlFor={id}
+      <DateField
+        label={tx('Baubeginn')}
+        name="construction-start-date"
       helperText={tx('Verschiebt die Termine unten; die Bauzeit selbst bleibt gleich.')}
-    >
-      {/* `.a3-form-field input` (components.css) trägt bereits Rahmen,
-          Hit-Target-Höhe und Fokusring über den globalen `:focus-visible`-
-          Token — kein eigener Wrapper, keine eigene Fokus-Klasse (Tech
-          Review P1: eine `<span>`-Hülle als FormField-Kind bricht das
-          `cloneElement`-Contract: `id`/`aria-describedby` landeten auf der
-          Hülle statt auf dem Eingabefeld, das Feld hatte keinen
-          barrierefreien Namen). Direktes `<input>`, wie jeder andere
-          FormField-Aufrufer im Produkt. */}
-      <input
-        type="date"
-        value={s.constructionStartDate ?? ''}
-        onChange={(e) => s.setConstructionStartDate(e.target.value || null)}
-      />
-    </FormField>
+      value={value}
+      onCommit={(date) => s.setConstructionStartDate(date ? toLocalIsoDate(date) : null)}
+    />
   )
 }
 

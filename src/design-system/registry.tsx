@@ -265,6 +265,42 @@ function DialogDemo() {
   )
 }
 
+function SurfaceFoundationsDemo() {
+  return (
+    <div className="a3-surface-foundations">
+      <article className="a3-surface-foundation a3-surface-foundation--canvas">
+        <div className="a3-surface-foundation__content">
+          <h3 className="a3-surface-foundation__title">Portfolio orientation</h3>
+          <p className="a3-surface-foundation__support">A calm environment for finding the next relevant project — never a data card.</p>
+        </div>
+        <p className="a3-surface-foundation__caption">Canvas · environmental layer</p>
+      </article>
+      <article className="a3-surface-foundation a3-surface-foundation--paper">
+        <div className="a3-surface-foundation__content">
+          <h3 className="a3-surface-foundation__title">Decision reading plane</h3>
+          <p className="a3-surface-foundation__support">Readable evidence, values, and choices divide through type and rules rather than nested cards.</p>
+        </div>
+        <p className="a3-surface-foundation__caption">Paper · primary reading plane</p>
+      </article>
+      <article className="a3-surface-foundation a3-surface-foundation--stage">
+        <div className="a3-surface-foundation__content">
+          <h3 className="a3-surface-foundation__title">Recommended next step</h3>
+          <p className="a3-surface-foundation__support">A warm, deliberate focus for a selected or recommended decision — never generic status.</p>
+        </div>
+        <p className="a3-surface-foundation__caption">Stage · selected decision</p>
+      </article>
+      <article className="a3-surface-foundation a3-surface-foundation--stage-deep">
+        <div className="a3-surface-foundation__content">
+          <h3 className="a3-surface-foundation__title">Commercial result</h3>
+          <p className="a3-surface-foundation__number" style={{ color: 'var(--color-text-display-accent-on-stage-deep)' }}>3.682.000{NNBSP}€</p>
+          <p className="a3-surface-foundation__support">Reserved for the commercial climax and offer result, with the value still readable as text.</p>
+        </div>
+        <p className="a3-surface-foundation__caption">Stage-deep · commercial climax</p>
+      </article>
+    </div>
+  )
+}
+
 /**
  * R1 · Composed: Workflow specimen body — WorkflowStepper (both sizes) above
  * chapter content that demonstrates the DIRECTION motion verb (motion.ts):
@@ -671,6 +707,14 @@ export const COMPONENT_REGISTRY: Specimen[] = [
      specimens (ticket §"REQUIRED COMPOSED REFERENCE SPECIMENS") proving
      the foundations work together, not just in isolation. Realistic
      commercial data throughout (rule: "real content, not ideal content"). */
+  {
+    id: 'r1-surface-foundations', groupId: 'r1', title: 'Surface foundations (R1)', contractId: 'R1 · surface model',
+    requirements: ['DESIGN-04'], composedContracts: [],
+    interactionStates: ['canvas', 'paper', 'stage', 'stage-deep'],
+    dataStates: STATIC_LAYOUT_STATES, blockedVariants: [], maturity: 'alpha',
+    evidence: 'Four comparable semantic compositions show their role before the caption. They are governance evidence only, not product adoption: Canvas remains active; Paper, Stage, and Stage-deep remain approved for their named downstream owners.',
+    render: () => <SurfaceFoundationsDemo />,
+  },
   {
     id: 'r1-mediaframe', groupId: 'r1', title: 'MediaFrame (R1)', contractId: 'R1 · MediaFrame',
     requirements: ['DESIGN-05'], composedContracts: [],

@@ -144,7 +144,7 @@ non-colour-only.
 | Pairing | Rendered value | Background | Method | Measured ratio | Role / bar | Status |
 |---|---|---|---|---|---|---|
 | `--color-status-warning`, glyph-as-text on white | `rgb(148,99,0)` = `#946300` | `#FFFFFF` | `getComputedStyle` on the live `.a3-wfs-marker` "!" glyph, Gallery `r1-workflowstepper` `attention` state | **5.19∶1** | Small text/glyph carrying state meaning → WCAG 1.4.3, ≥4.5∶1 | **PASS** |
-| `--color-status-warning`, white text/icon on warning fill (`.a3-modal .a3-warnc`) | same custom property, not independently re-rendered this pass | `#946300` | Same measured token value (identical `var(--color-status-warning)` reference, no overriding rule found in `components.css`/`components-r1.css`) | 5.19∶1 (same pairing, direction-independent) | Text/icon on colour → ≥4.5∶1 | **PASS** — carried from the same measured value; not independently re-rendered in a live `.a3-warnc` instance this pass |
+| `--color-status-warning`, white text/icon on warning fill (`.a3-modal .a3-warnc`) | same custom property, not independently re-rendered this pass | `#946300` | Same measured token value (identical `var(--color-status-warning)` reference, no overriding rule found in `components.css`) | 5.19∶1 (same pairing, direction-independent) | Text/icon on colour → ≥4.5∶1 | **PASS** — carried from the same measured value; not independently re-rendered in a live `.a3-warnc` instance this pass |
 | `--color-status-warning`, border-only (`.a3-tag.a3-orange`, `.a3-zone.a3-yellow`, `.a3-warn-prep`) | same | `#FFFFFF` | Same measured token value | 5.19∶1 | Non-text graphical/border → WCAG 1.4.11, ≥3∶1 | **PASS** |
 
 **FINDING — pre-existing category-2 text-role use, discovered during this
@@ -199,11 +199,8 @@ violations after this choice).
 ## ADR-R1-05 — Motion vocabulary
 
 **Decision:** four semantic verbs (continuity/direction/reveal/state)
-added to `src/design-system/motion.ts`, plus the previously-documented-but-
-unimplemented `staggerList` variant (`design-system/README.md` §5 has
-named `fadeRise`/`fadeOnly`/`staggerList` as the only three canonical
-variants for years; only the first two existed in code before this
-ticket).
+added to `src/design-system/motion.ts`. Limited sequential reveal belongs
+inside REVEAL; it is not an independent semantic verb or public API.
 
 **Status:** RATIFIED for the vocabulary/API; choreography timing sits
 inside the audit's stated ranges (`--motion-continuity: 260ms` inside
@@ -211,9 +208,9 @@ inside the audit's stated ranges (`--motion-continuity: 260ms` inside
 REVEAL reuses `--motion-reveal`/`--stagger-row`; STATE is the existing
 money channel, unchanged).
 
-**Consequence:** `useSemanticMotion()`'s existing return shape is
-untouched (backward compatible) — `direction`, `continuityTransition`,
-`staggerList` are additive fields.
+**Consequence:** `direction` and `continuityTransition` are the canonical
+additions. The earlier standalone `staggerList` proposal was retired by
+VO-T4; no product consumer depended on it.
 
 ---
 
@@ -243,16 +240,10 @@ canonical).
 
 ## Governance mechanics (not a design decision, but load-bearing)
 
-`design-system/components-r1.css` is a **temporary second source** for the
-few custom `a3-*` classes R1's new components need, forced by
-`design-system/components.css` already carrying a large, unrelated
-uncommitted changeset (47 files, -2567 net lines) at the time this ticket
-ran — adding to that file would have folded someone else's unreviewed work
-into this candidate. `tools/verify.py`'s `DS-CLASS-EXISTS` and `GOV-TOKEN`
-checks were extended (not relaxed) to also read this second file. **Merge
-`components-r1.css` into `components.css` and delete it** the next time
-`components.css` is safely reconciled — tracked in the R1 implementation
-notes, not silently left as a permanent split.
+VO-T4 reconciled the former temporary `components-r1.css` into the one
+canonical `design-system/components.css` source, then removed the temporary
+import and verifier exception. `DS-CLASS-EXISTS` and `GOV-TOKEN` now inspect
+the single canonical source again.
 
 See also: `docs/audit/design-system-governance.md` (the eight-step process
 this ticket's canonical work follows), `design-system-ledger.md` (contract
