@@ -4,7 +4,7 @@ import { useStore } from '../state/store'
 import { NNBSP } from '../engine/money'
 import { Button } from '../components/primitives'
 import { Card, FormField, SelectField } from '../components/designSystem'
-import { SegmentedControl, Switch } from '../components/controls'
+import { Switch } from '../components/controls'
 import { STAGE_TAG } from '../lib/opportunityStage'
 import { useT, useTx } from '../i18n'
 import { MediaFrame } from '../design-system/MediaFrame'
@@ -379,17 +379,25 @@ export function OpportunityList() {
           >
             {tx('Filter')}{active.length > 0 ? ` (${active.length})` : ''}
           </Button>
-          <SegmentedControl
-            legend={t('opplist.sort.legend')}
-            layout="inline"
+          {/* ACCEPT (cycle 5): the canonical SegmentedControl (three 44px hit-
+              target buttons + its own legend, ~295px) cannot share a single
+              header row with search+Status+Termin+Filter at either required
+              viewport without shrinking those below legibility — its width
+              is a deliberate accessibility property (rule 23), not slack to
+              cut. Reusing the same canonical SelectField already used for
+              Status/Termin keeps Sort visually a separate, always-visible
+              axis (§10) while fitting the target's one-row composition; no
+              new primitive, no functionality removed. */}
+          <SelectField
+            id="opp-sort"
+            label={t('opplist.sort.legend')}
             value={sort}
-            onChange={setSort}
-            options={[
-              { value: 'recommended', label: t('opplist.sort.recommended') },
-              { value: 'name', label: t('opplist.sort.name') },
-              { value: 'status', label: t('opplist.sort.status') },
-            ]}
-          />
+            onChange={(e) => setSort(e.target.value as SortMode)}
+          >
+            <option value="recommended">{t('opplist.sort.recommended')}</option>
+            <option value="name">{t('opplist.sort.name')}</option>
+            <option value="status">{t('opplist.sort.status')}</option>
+          </SelectField>
         </div>
 
         {filtersOpen && (

@@ -1307,8 +1307,14 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    ausgerichtet und optisch nach unten "verschoben". Beide Spalten bleiben
    oben verankert. */
 .a3-portfolio-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-3) var(--space-4);flex-wrap:wrap}
-.a3-portfolio-headline{min-width:16rem;flex:1 1 auto;margin:0}
-.a3-portfolio-toolbar{flex:0 1 auto}
+/* flex:0 1 auto (nicht 1 1 auto): mit grow:1 konkurrierte die Kopfspalte mit
+   der Werkzeugleiste um denselben freien Platz — jede Verengung der
+   Werkzeugleiste ließ die Kopfspalte weiter wachsen und die Werkzeugleiste
+   erneut umbrechen (Rückkopplungsschleife). Beide Spalten behalten jetzt
+   ihre Eigenbreite; justify-content:space-between auf .a3-portfolio-head
+   verteilt den Rest als Lücke dazwischen, wie im genehmigten Ziel. */
+.a3-portfolio-headline{min-width:16rem;flex:0 1 auto;margin:0}
+.a3-portfolio-toolbar{flex:0 0 auto;max-width:100%}
 /* Kompakte Werkzeugleiste auf der Kopfzeile (ACCEPT-02/03, wie im Ziel): die
    stapelnde Feld-Beschriftung von FormField/SelectField ist HIER sr-only —
    Suche/Status/Termin tragen ihren Zweck sichtbar über Platzhalter bzw.
@@ -1317,7 +1323,25 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    Row gibt Platz zurück, damit Suche + Status + Termin + Filter + Sortierung
    auf EINER Zeile bleiben. */
 .a3-portfolio-toolbar .a3-search-line-toolbar>.a3-form-field>label{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-.a3-portfolio-toolbar .a3-search-line-toolbar>.a3-form-field{flex-basis:11rem}
+/* ACCEPT (cycle 5): five controls must share one row at both required
+   viewports (target composition). Tuning individual flex-basis values
+   against `flex-wrap:wrap` was fighting the wrong lever — the row's
+   available width fluctuated with every change (a flex item's intrinsic
+   size feeds back into how much room its wrapping sibling gets), so no
+   fixed set of basis values was ever simultaneously stable AND legible.
+   `nowrap` + `flex-shrink` on each field is the correct tool: every field
+   shrinks together, proportionally, from its own flex-basis "preferred"
+   width down to `min-width` (never below legibility) instead of any one
+   control jumping to its own line. Suche needs more room than the three
+   short selects (values like "alle"/"alle Termine"/"Empfohlen" are short).
+   Filter-Button and the two Termin/Sort selects get flex-shrink:0 — they
+   are already at their compact minimum, so let Suche/Status absorb the
+   squeeze first. */
+.a3-portfolio-toolbar .a3-search-line-toolbar{flex-wrap:nowrap}
+.a3-portfolio-toolbar .a3-search-line-toolbar>.a3-form-field{flex:1 1 7rem;min-width:5.5rem}
+.a3-portfolio-toolbar .a3-search-line-toolbar>.a3-form-field:first-child{flex:2 1 9rem;min-width:6.5rem}
+.a3-portfolio-toolbar .a3-search-line-toolbar>.a3-btn{flex:0 0 auto;white-space:nowrap}
+.a3-portfolio-toolbar .a3-search-line-toolbar{gap:var(--space-2)}
 
 /* D-28 generated/live gallery and narrow-host product grids. */
 .a3-specimen-grid,.a3-opportunity-grid,.a3-opportunity-metrics{display:grid;min-width:0}
