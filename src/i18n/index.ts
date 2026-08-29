@@ -731,7 +731,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'diagnostics.detail.blocker.ok': '{id} · {state} · {materiality} · {count} profiles',
   'diagnostics.detail.blocker.fail': 'blocker did not load',
   'diagnostics.fixture':
-    'Fixture: {scenario} · run {run} · rules {rules} · Regionalfaktor {factor}',
+    'Fixture: {scenario} · run {run} · rules {rules} · Regional factor {factor}',
   'diagnostics.value.regionalFactor.active': 'active',
   'diagnostics.value.regionalFactor.inactive': 'inactive',
   'diagnostics.value.issueState.open': 'open',
