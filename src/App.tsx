@@ -241,6 +241,7 @@ export function App() {
  */
 function AppHeader() {
   const s = useStore()
+  const t = useT()
   const praesentation = isClientProjection(s.mode)
   // F05: the breadcrumb printed the raw fixture/option id (e.g. "DEMO-0001")
   // on every pipeline screen — an internal identifier, not the project's own
@@ -254,7 +255,17 @@ function AppHeader() {
   return (
     <header className="a3-global-header z-header shrink-0">
       <div className="flex min-w-0 flex-wrap items-center gap-3">
-        <img src={all3Logo} alt="All3" className="h-7 w-auto shrink-0" />
+        <img src={all3Logo} alt="All3" className="h-5 w-auto shrink-0" />
+        {/* VR2-01 (ACCEPT-01): auf der Liste trägt der Kopf jetzt denselben
+            Pfad wie im Ziel — Sektion „Opportunities" → aktuelle Seite. Im
+            Präsentationsmodus bleibt der interne Pfad ausgeblendet. */}
+        {s.level === 'liste' && !praesentation && (
+          <nav aria-label="Pfad" className="flex flex-wrap items-center gap-2">
+            <span className="a3-cap text-text-secondary">{t('opplist.title')}</span>
+            <span aria-hidden="true" className="text-text-muted">/</span>
+            <span className="a3-cap" aria-current="page">{t('opplist.title')}</span>
+          </nav>
+        )}
         {s.level !== 'liste' && !praesentation && (
           <nav aria-label="Pfad" className="flex flex-wrap items-center gap-2">
             <span aria-hidden="true" className="text-text-muted">/</span>
@@ -287,6 +298,12 @@ function AppHeader() {
         )}
       </div>
       <div className="a3-header-controls">
+        {/* VR2-01 (ACCEPT-01): Modus-Tag im Kopf wie im Ziel. Nicht-interaktiver
+            Zustandshinweis (WORK/Arbeitsmodus); im Präsentationsmodus existiert
+            der interne Modus-Hinweis nicht (Regel 11). */}
+        {!praesentation && (
+          <span className="a3-mode-tag">{t('shell.mode.work')}</span>
+        )}
         {/* EN честно назван ЧАСТИЧНЫМ до переключения (приёмка № 17,
             дефект 2). Причина теперь ОДНА и временная: перевод ещё не
             доставлен целиком. Решение PO D-24 отменило D-20 — английская

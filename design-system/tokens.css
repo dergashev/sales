@@ -166,6 +166,28 @@
      `--color-surface-default`/`--color-surface-stage-deep` (rule 5,
      ADR-R1-02), never on canvas at any shade. */
   --color-surface-canvas:   var(--primitive-color-material-plaster);
+  /* VO-T1 editorial ground [provisional]. The redesign's approved target
+     (VR2-01 Opportunities + the VO-T1 board) grounds the editorial portfolio
+     surfaces on the green-neutral screen canvas #E8ECE9. ADR-R1-01 moved the
+     MATERIAL canvas to plaster and kept #E8ECE9 available as neutral-100 for
+     screen/brand use — this token is exactly that documented use: the page
+     ground BEHIND the editorial portfolio, distinct from the plaster material
+     canvas used inside card media. R-01 is unaffected — no orange sits on this
+     ground (title/eyebrow are ink; the CTA is an orange-surface button on the
+     white card body). Provisional until VO-T1 canonicalises the editorial
+     ground as a named semantic role. */
+  --color-surface-editorial-ground: var(--primitive-color-neutral-100);
+  /* VO-T1 editorial portfolio width [provisional]. The approved target lands
+     the Opportunities portfolio near full-canvas, not in the standard 1200px
+     reading column: ~48px gutters at 1440 (space-7) and a ~1344px content
+     band. 88rem (1408px) reproduces that (x48..1392 @1440; ~x32 gutters
+     @1280) when applied as `.a3-page`'s max-width inside the portfolio
+     canvas. Scoped to the editorial portfolio; other routes keep
+     --content-max-width. Provisional until VO-T1 canonicalises the
+     editorial column width. Named in the --content- width family (like
+     --content-max-width, the 1200px reading column this route deliberately
+     does not use). */
+  --content-editorial-max-width: 88rem;
   --color-surface-default:  var(--primitive-color-white);
   --color-surface-subtle:   var(--primitive-color-neutral-050);
   --color-surface-selected: var(--primitive-color-orange-100);
@@ -406,7 +428,12 @@
   --measure-card-compact: 320px;
   --measure-band: 420px;
   --measure-component: 520px;
-  --size-media-card-landing: 80px;
+  /* VR2-01 (ACCEPT-01): approved target's 1440 portfolio card media band
+     measures ~130px (target-source.html .project-card grid-template-rows:
+     130px 1fr) — widened from 80px so the identity graphic reads as a real
+     media band rather than a thin strip. Sole consumer: .a3-opportunity-item
+     grid-template-rows (below). */
+  --size-media-card-landing: 130px;
   --size-opportunity-card-narrow: 205px;
   --measure-panel: 560px;
   --measure-wide: 640px;

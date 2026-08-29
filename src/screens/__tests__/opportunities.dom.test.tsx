@@ -18,8 +18,9 @@ describe('Уровень Opportunities', () => {
     expect(screen.getByRole('heading', { name: 'Opportunities' })).toBeInTheDocument()
     // Цена принадлежит Option, а Option ещё не выбран.
     expect(screen.queryByRole('complementary', { name: 'Angebot' })).not.toBeInTheDocument()
-    // Ungefiltert nennt das Resümee nur die Gesamtzahl — kein "X von X".
-    expect(screen.getByText('8 Opportunities')).toBeInTheDocument()
+    // VR2-01 · ungefiltert nennt das editoriale Resümee die Portfolio-Größe
+    // und die Zahl der Zeilen mit hinterlegtem Termin — kein "X von X".
+    expect(screen.getByText('8 Projekte · 3 mit Termin')).toBeInTheDocument()
     // Kein Root-Breadcrumb mehr im PageHeader (TASK 02): der Term ist
     // Code-Jargon und die globale Shell-Kopfzeile übernimmt die Verortung.
     expect(screen.queryByText(/Wurzel/)).not.toBeInTheDocument()
@@ -41,7 +42,7 @@ describe('Уровень Opportunities', () => {
     expect(screen.getByText(/2 von 8 Opportunities/)).toBeInTheDocument()
     // Активный фильтр виден и снимается по одному.
     await user.click(screen.getByRole('button', { name: /Filter entfernen: Land/ }))
-    expect(screen.getByText('8 Opportunities')).toBeInTheDocument()
+    expect(screen.getByText('8 Projekte · 3 mit Termin')).toBeInTheDocument()
   })
 
   it('поиск ищет по имени, городу и владельцу', async () => {

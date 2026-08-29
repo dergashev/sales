@@ -29,6 +29,6 @@ describe('Opportunities — Konto-Leerzustand', () => {
     expect(screen.queryByText(/Keine Opportunity entspricht den Filtern/)).not.toBeInTheDocument()
     // Kein Reset-Weg: es gibt nichts zurückzusetzen (Design-Handoff #5).
     expect(screen.queryByRole('button', { name: 'Alle Filter zurücksetzen' })).not.toBeInTheDocument()
-    expect(screen.getByText('0 Opportunities')).toBeInTheDocument()
+    expect(screen.getByText('0 Projekte · 0 mit Termin')).toBeInTheDocument()
   })
 })

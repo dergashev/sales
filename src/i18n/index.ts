@@ -60,6 +60,9 @@ const de = {
   'shell.mode.blockedReason':
     'Zuerst mindestens ein Gebäude auswählen und jedes gewählte Gebäude bestätigen.',
   'shell.mode.legend': 'Modus',
+  // VR2-01 (ACCEPT-01) · Modus-Tag im Kopf (Arbeitsmodus). Markenkurzform,
+  // in beiden Sprachen gleich (wie im genehmigten Ziel).
+  'shell.mode.work': 'WORK',
   'shell.profile.legend': 'Ansicht',
   'shell.profile.internal': 'Vorbereitung',
   'shell.profile.client': 'Kundenansicht',
@@ -367,6 +370,12 @@ const de = {
   // hinterlegt, also wird keins behauptet (genehmigter Decision Brief,
   // Backlog 161c0b7b).
   'opplist.title': 'Opportunities',
+  // VR2-01 · editorial portfolio header (VO-T1). „mit Termin" zählt nur
+  // Zeilen mit hinterlegtem `meetingAt` — kein Datumsfenster behauptet
+  // (`meetingAt` ist Freitext, kein echtes Datum, keine Dringlichkeit,
+  // genehmigter Decision Brief 161c0b7b).
+  'opplist.eyebrow': 'Portfolio',
+  'opplist.portfolioSummary': '{projects} Projekte · {termine} mit Termin',
   'opplist.resultSummary.total': '{count} Opportunities',
   'opplist.resultSummary.filtered': '{shown} von {total} Opportunities',
   // TASK 04 (backlog `e2337966`): echte Wörterbucheinträge statt der
@@ -385,6 +394,12 @@ const de = {
   'opplist.filter.city.chip': 'Stadt: {value}',
   'opplist.filter.owner.chip': 'Owner: {value}',
   'opplist.filter.status.chip': 'Status: {value}',
+  // VR2-01 · Termin-Präsenzfilter (kein Datums-Ranking, Contract 161c0b7b).
+  'opplist.filter.termin.label': 'Termin',
+  'opplist.filter.termin.all': 'alle Termine',
+  'opplist.filter.termin.mit': 'mit Termin',
+  'opplist.filter.termin.ohne': 'ohne Termin',
+  'opplist.filter.termin.chip': 'Termin: {value}',
   'opplist.filter.actionableOnly.chip': 'Nur aktionsfähige',
   'opplist.filter.includeExcluded.chip': 'Inkl. pausiert/signiert/verloren',
   'opplist.filter.search.chip': 'Suche: {value}',
@@ -775,6 +790,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'shell.mode.blockedReason':
     'Select at least one building and confirm every selected building first.',
   'shell.mode.legend': 'Mode',
+  'shell.mode.work': 'WORK',
   'shell.profile.legend': 'View',
   'shell.profile.internal': 'Preparation',
   'shell.profile.client': 'Client view',
@@ -1054,6 +1070,8 @@ const en: Partial<Record<MessageKey, string>> = {
   'shell.en.draftHint': 'EN is still a draft: the translation is being completed',
   'shell.en.draftOption': 'EN · Draft',
   'opplist.title': 'Opportunities',
+  'opplist.eyebrow': 'Portfolio',
+  'opplist.portfolioSummary': '{projects} projects · {termine} with appointment',
   'opplist.resultSummary.total': '{count} Opportunities',
   'opplist.resultSummary.filtered': '{shown} of {total} Opportunities',
   'opplist.sort.legend': 'Sort',
@@ -1067,6 +1085,11 @@ const en: Partial<Record<MessageKey, string>> = {
   'opplist.filter.city.chip': 'City: {value}',
   'opplist.filter.owner.chip': 'Owner: {value}',
   'opplist.filter.status.chip': 'Status: {value}',
+  'opplist.filter.termin.label': 'Appointment',
+  'opplist.filter.termin.all': 'All appointments',
+  'opplist.filter.termin.mit': 'With appointment',
+  'opplist.filter.termin.ohne': 'Without appointment',
+  'opplist.filter.termin.chip': 'Appointment: {value}',
   'opplist.filter.actionableOnly.chip': 'Actionable only',
   'opplist.filter.includeExcluded.chip': 'Incl. on hold/signed/lost',
   'opplist.filter.search.chip': 'Search: {value}',

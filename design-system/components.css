@@ -1183,8 +1183,14 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-output-blocked-reason+.a3-mode-indicator{grid-column:2}
 .a3-mode-indicator{display:flex;align-items:center;gap:var(--space-2);margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-label-weight);color:var(--color-text-secondary)}
 .mode-praesentation .a3-mode-indicator{color:var(--color-text-primary)}
-.a3-global-header{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-5);border-bottom:var(--border-contrast-1px);background:var(--color-surface-default)}
-.a3-header-controls{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:flex-end;gap:var(--space-4)}
+.a3-global-header{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--space-3);padding:var(--space-2) var(--space-5);border-bottom:var(--border-contrast-1px);background:var(--color-surface-default)}
+.a3-header-controls{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:var(--space-3)}
+/* VR2-01 (ACCEPT-01): schlanke Kopfzeile wie im Ziel. Der „Sprache"-Legend
+   stapelte die Sprachumschaltung zweizeilig (~91px) — visuell ausgeblendet
+   (bleibt für Screenreader der Fieldset-Name), damit der Kopf ~65px trägt. */
+.a3-language-control legend{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+/* Nicht-interaktiver Modus-Tag (WORK). Rechteck, kein Radius, flache Linie. */
+.a3-mode-tag{display:inline-flex;align-items:center;padding:var(--space-1) var(--space-2);border:var(--border-contrast-1px);font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-bold);letter-spacing:.06em;color:var(--color-text-primary)}
 /* Ticket REBUILD PROJECT CARD SHELL, item 5: the permanent readiness
    paragraph was replaced by a compact DC-16 status tag (.a3-tag, App.tsx)
    shown only while EN is active; the full sentence stays available to
@@ -1275,6 +1281,43 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-switch-group>.a3-switch-row{display:contents}
 .a3-search-result-count{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
 .a3-opportunities-summary{min-height:var(--type-small-line);display:flex;align-items:center}
+
+/* VR2-01 (ACCEPT-01/geometry) · approved VO-T1 target grounds the Opportunities
+   portfolio on the green-neutral screen canvas, near full-width rather than the
+   standard 1200px reading column. Two nested elements: the outer canvas paints
+   edge-to-edge behind the whole route (main's own bg-surface-default would
+   otherwise show through outside the centred column); `.a3-page` nested inside
+   keeps its existing padding/vertical-rhythm rules and only gets a wider
+   max-width, scoped to this route via the descendant selector below — no
+   change to `.a3-page` itself, which every other route still uses at
+   --content-max-width (1200px). Geometry law unchanged: radius 0, no shadows,
+   no gradients — depth only from tone/line/air. */
+.a3-opportunities-canvas{min-height:100%;background:var(--color-surface-editorial-ground)}
+.a3-opportunities-canvas .a3-page{max-width:var(--content-editorial-max-width)}
+/* Editorial Eyebrow über dem H1 (VO-T1 Portfolio-Kopf: Eyebrow · Datum). */
+.a3-portfolio-eyebrow{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-medium);letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-secondary)}
+/* VR2-01 (ACCEPT-02/03): Kopf und Werkzeugleiste auf DERSELBEN Zeile (wie im
+   genehmigten Ziel), damit das Kartenraster direkt darunter beginnt (Ziel
+   y≈208) statt hinter separaten, gestapelten Zeilen. `.a3-masthead` bleibt
+   unverändert (eigener PageHeader-Kontrakt, ein Kind); es wird hier nur als
+   ein Flex-Item neben der Werkzeugleiste positioniert. */
+/* align-items:flex-start (nicht flex-end): die Werkzeugleiste wächst
+   erheblich, wenn das „Weitere Filter"-Panel öffnet — flex-end hätte die
+   Kopfzeile (kurz) an die dann sehr hohe Werkzeugleiste bodenbündig
+   ausgerichtet und optisch nach unten "verschoben". Beide Spalten bleiben
+   oben verankert. */
+.a3-portfolio-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-3) var(--space-4);flex-wrap:wrap}
+.a3-portfolio-headline{min-width:16rem;flex:1 1 auto;margin:0}
+.a3-portfolio-toolbar{flex:0 1 auto}
+/* Kompakte Werkzeugleiste auf der Kopfzeile (ACCEPT-02/03, wie im Ziel): die
+   stapelnde Feld-Beschriftung von FormField/SelectField ist HIER sr-only —
+   Suche/Status/Termin tragen ihren Zweck sichtbar über Platzhalter bzw.
+   aktuellen Wert, nicht über eine zusätzliche Label-Zeile (im aufgeklappten
+   „Weitere Filter"-Panel bleiben Labels sichtbar). Das entfernte Label-Grid-
+   Row gibt Platz zurück, damit Suche + Status + Termin + Filter + Sortierung
+   auf EINER Zeile bleiben. */
+.a3-portfolio-toolbar .a3-search-line-toolbar>.a3-form-field>label{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.a3-portfolio-toolbar .a3-search-line-toolbar>.a3-form-field{flex-basis:11rem}
 
 /* D-28 generated/live gallery and narrow-host product grids. */
 .a3-specimen-grid,.a3-opportunity-grid,.a3-opportunity-metrics{display:grid;min-width:0}

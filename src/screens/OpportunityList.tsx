@@ -195,6 +195,11 @@ export function OpportunityList() {
   const [city, setCity] = useState(ALL)
   const [owner, setOwner] = useState(ALL)
   const [status, setStatus] = useState(ALL)
+  // VR2-01 (Auditor cycle-2) · sichtbarer Termin-Filter im Ziel-Kontrollslot.
+  // WICHTIG: PRÄSENZ-Filter (hat Termin / ohne Termin), KEIN Datums-Ranking.
+  // meetingAt ist Freitext ohne parsebares Datum — eine „Termin: Nächste"-
+  // Sortierung würde Dringlichkeit erfinden und Contract 161c0b7b verletzen.
+  const [termin, setTermin] = useState<'alle' | 'mit' | 'ohne'>('alle')
   const [actionableOnly, setActionableOnly] = useState(false)
   const [includeExcluded, setIncludeExcluded] = useState(false)
   const [sort, setSort] = useState<SortMode>('recommended')
@@ -238,17 +243,22 @@ export function OpportunityList() {
     (city === ALL || i.city === city) &&
     (owner === ALL || i.owner === owner) &&
     (status === ALL || i.stage === status) &&
+    // Präsenz, nicht Datum: „mit" = hat einen (Freitext-)Termin, „ohne" = keiner.
+    (termin === 'alle' || (termin === 'mit') === Boolean(i.meetingAt)) &&
     (q.trim() === '' ||
       `${i.name} ${i.city} ${i.owner} ${i.id}`.toLowerCase().includes(q.trim().toLowerCase())))
     .slice()
     .sort(SORTERS[sort]),
-  [universe, country, city, owner, status, q, sort])
+  [universe, country, city, owner, status, termin, q, sort])
+
+  const terminLabel = (v: 'mit' | 'ohne') => t(v === 'mit' ? 'opplist.filter.termin.mit' : 'opplist.filter.termin.ohne')
 
   const active = [
     country !== ALL && { label: t('opplist.filter.country.chip', { value: country }), clear: () => setCountry(ALL) },
     city !== ALL && { label: t('opplist.filter.city.chip', { value: city }), clear: () => setCity(ALL) },
     owner !== ALL && { label: t('opplist.filter.owner.chip', { value: owner }), clear: () => setOwner(ALL) },
     status !== ALL && { label: t('opplist.filter.status.chip', { value: stageLabel(status) }), clear: () => setStatus(ALL) },
+    termin !== 'alle' && { label: t('opplist.filter.termin.chip', { value: terminLabel(termin) }), clear: () => setTermin('alle') },
     actionableOnly && { label: t('opplist.filter.actionableOnly.chip'), clear: () => setActionableOnly(false) },
     includeExcluded && { label: t('opplist.filter.includeExcluded.chip'), clear: () => setIncludeExcluded(false) },
     q.trim() !== '' && { label: t('opplist.filter.search.chip', { value: q.trim() }), clear: () => setQ('') },
@@ -259,15 +269,21 @@ export function OpportunityList() {
   // nicht an.
   const resetAll = () => {
     setQ(''); setCountry(ALL); setCity(ALL); setOwner(ALL); setStatus(ALL)
-    setActionableOnly(false); setIncludeExcluded(false)
+    setTermin('alle'); setActionableOnly(false); setIncludeExcluded(false)
   }
 
-  // Kompaktes Ergebnis-Resümee (Anforderung „RESULT SUMMARY", TASK 02):
-  // ungefiltert nennt es nur die Gesamtzahl, gefiltert macht es die
-  // Einschränkung sichtbar — nie eine Ranking-/Sortier-Behauptung.
+  // VR2-01 · editorialer Portfolio-Untertitel. Ungefiltert nennt er die
+  // Portfolio-Größe und die Zahl der Zeilen MIT hinterlegtem Termin — kein
+  // Datumsfenster („nächste 7 Tage"), weil `meetingAt` Freitext ist und keine
+  // Dringlichkeit trägt (genehmigter Contract 161c0b7b). Gefiltert macht er
+  // die Einschränkung sichtbar, nie eine Ranking-/Sortier-Behauptung.
+  const withTermin = items.filter((i) => Boolean(i.meetingAt)).length
+  const portfolioDate = new Intl.DateTimeFormat(s.uiLanguage === 'de' ? 'de-DE' : 'en-GB', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  }).format(new Date())
   const resultSummary = active.length > 0
     ? t('opplist.resultSummary.filtered', { shown: shown.length, total: items.length })
-    : t('opplist.resultSummary.total', { count: items.length })
+    : t('opplist.portfolioSummary', { projects: items.length, termine: withTermin })
 
   const select = (id: 'land' | 'stadt' | 'owner' | 'status', label: string) => (
     <SelectField
@@ -286,31 +302,46 @@ export function OpportunityList() {
   )
 
   return (
+    // VR2-01 (ACCEPT-01/geometry): approved target grounds the portfolio on
+    // the green-neutral screen canvas, near full-width rather than the
+    // standard 1200px reading column — see the `.a3-opportunities-canvas`
+    // rule (components.css) for why this is two nested elements.
+    <div className="a3-opportunities-canvas">
     <div className="a3-page px-7 py-6">
-      <header className="a3-masthead">
-        <h1 className="a3-hero-title">{t('opplist.title')}</h1>
-      </header>
+      {/* VO-T1 · editorialer Portfolio-Kopf: links Eyebrow · Datum → Titel →
+          Untertitel; rechts eine KOMPAKTE Werkzeugleiste auf derselben Zeile,
+          damit das Kartenraster direkt unter dem Kopf beginnt (Ziel y≈208,
+          ACCEPT-02/03) statt hinter separaten, gestapelten Zeilen. */}
+      <div className="a3-portfolio-head">
+        <header className="a3-masthead a3-portfolio-headline">
+          <div>
+            {/* VO-T1 · editorialer Portfolio-Kopf: Eyebrow · Datum über dem
+                Titel, wie im genehmigten Ziel. Datum via Intl (Regel 36), nie
+                Konkatenation. */}
+            <p className="a3-portfolio-eyebrow">
+              {t('opplist.eyebrow')}{NNBSP}· {portfolioDate}
+            </p>
+            <h1 className="a3-hero-title">{t('opplist.title')}</h1>
+            {/* Число совпадений объявляется один раз после сужения, а не на
+                каждый символ (DC-34): иначе скринридер читает набор вслух.
+                Ein sichtbarer aria-live-Untertitel: ungefiltert die
+                Portfolio-Zusammenfassung, gefiltert die Ergebnis-
+                Einschränkung — nie eine Ranking-/Sortier-Behauptung. */}
+            <p className="a3-search-result-count mt-1" role="status" aria-live="polite">
+              {resultSummary}
+            </p>
+          </div>
+        </header>
 
-      {/* Число совпадений объявляется один раз после сужения, а не на
-          каждый символ (DC-34): иначе скринридер читает набор вслух.
-          Steht zwischen Titel und Suche/Filter (geforderte Reihenfolge:
-          Standort → Titel → Ergebniskontext → Suche/Filter → Ergebnisse).
-          Sortierung sitzt auf derselben Zeile (rechts), bewusst AUSSERHALB
-          des Filter-Fieldsets: §10 verlangt, Sortierung von Filterung
-          sichtbar zu trennen. Das ausgewählte Segment TRÄGT den
-          „welche Sortierung ist aktiv"-Zustand (SegmentedControl-Kontrakt),
-          kein zusätzlicher Caption nötig (Design-Handoff #1). */}
-      <div className="a3-opportunities-summary mt-1">
-        <div className="a3-search-result-count" role="status" aria-live="polite">
-          {resultSummary}
-        </div>
-      </div>
-
-      {/* DC-34: видимый контрол поиска, фильтры и активные фильтр-чипы —
-          одна рамка, один контракт. */}
-      <div role="search" className="a3-project-search mt-3">
-        <div className="a3-search-line-toolbar">
-          <FormField
+        {/* DC-34: видимый контрол поиска, фильтры — одна рамка, один
+            контракт. Sortierung sitzt auf derselben Zeile, bewusst AUSSERHALB
+            des Filter-Fieldsets: §10 verlangt, Sortierung von Filterung
+            sichtbar zu trennen. Das ausgewählte Segment TRÄGT den „welche
+            Sortierung ist aktiv"-Zustand (SegmentedControl-Kontrakt), kein
+            zusätzlicher Caption nötig (Design-Handoff #1). */}
+        <div role="search" className="a3-project-search a3-portfolio-toolbar">
+          <div className="a3-search-line-toolbar">
+            <FormField
             htmlFor="opp-suche"
             label={tx('Opportunities durchsuchen')}
           >
@@ -322,6 +353,24 @@ export function OpportunityList() {
               placeholder={tx('Name, Stadt, Owner, ID')}
             />
           </FormField>
+          {/* VR2-01 (ACCEPT-02/03): Status + Termin bleiben sichtbar auf der
+              Kopfzeile wie im Ziel; Land/Stadt/Owner + zwei Schalter wandern
+              ins „Weitere Filter"-Panel, damit das Kartenraster direkt unter
+              dem Kopf beginnt statt hinter einem rahmenschweren Filterblock.
+              KEINE Kontrolle entfernt (PRESERVE, DC-34, Contract 161c0b7b §8). */}
+          {select('status', t('opplist.filter.status.label'))}
+          {/* Termin-Filter im Ziel-Kontrollslot — PRÄSENZ (hat/ohne Termin),
+              kein Datums-Ranking (meetingAt Freitext, Contract 161c0b7b). */}
+          <SelectField
+            id="opp-termin"
+            label={t('opplist.filter.termin.label')}
+            value={termin}
+            onChange={(e) => setTermin(e.target.value as 'alle' | 'mit' | 'ohne')}
+          >
+            <option value="alle">{t('opplist.filter.termin.all')}</option>
+            <option value="mit">{t('opplist.filter.termin.mit')}</option>
+            <option value="ohne">{t('opplist.filter.termin.ohne')}</option>
+          </SelectField>
           <Button
             variant="secondary"
             aria-expanded={filtersOpen}
@@ -349,7 +398,6 @@ export function OpportunityList() {
               {select('land', tx('Land'))}
               {select('stadt', tx('Stadt'))}
               {select('owner', tx('Opportunity Owner'))}
-              {select('status', t('opplist.filter.status.label'))}
             </div>
 
             {/* Zwei unabhaengige Interface-Zustaende (nicht gegenseitig
@@ -392,6 +440,7 @@ export function OpportunityList() {
             </button>
           </div>
         )}
+      </div>
       </div>
 
       {/* Zwei unterscheidbare Leerzustände (AC 4/6): „nichts existiert"
@@ -504,6 +553,7 @@ export function OpportunityList() {
           </li>
         ))}
       </ul>
+    </div>
     </div>
   )
 }
