@@ -1,4 +1,4 @@
-import { useTx } from '../i18n'
+import { useT } from '../i18n'
 import { Diagnostics } from '../components/Diagnostics'
 import type { FontCheck } from '../lib/font-check'
 import { Gallery } from '../design-system/Gallery'
@@ -24,15 +24,24 @@ export function Grundlagen({ fonts, cascade }: {
   fonts: FontCheck | null
   cascade: string[] | null
 }) {
-  const tx = useTx()
+  const t = useT()
 
   return (
     <div className="px-7 py-6">
-      <header className="border-b border-border-strong pb-4">
-        <p className="a3-cap">{tx('QA · intern')}</p>
-        <h1 className="mt-1 text-heading-2 font-bold text-text-primary">
-          {tx('Grundlagen')}
-        </h1>
+      {/* VR2-00: erstes Viewport eindeutig als internes QA-Spezimen
+          kennzeichnen — keine produktähnliche Kundenoberfläche, kein Nachweis
+          für Produkt-Adoption. Flache Kennzeichnung: Kontur + Fläche + Text,
+          kein Radius/Schatten (Regel 4), nur semantische Tokens (Regel 2). */}
+      <header className="border-b border-border-strong pb-6">
+        <div className="border-contrast border-border-strong bg-surface-subtle px-5 py-4">
+          <p className="a3-cap">{t('grundlagen.specimen.badge')}</p>
+          <h1 className="mt-1 text-heading-2 font-bold text-text-primary">
+            {t('grundlagen.specimen.headline')}
+          </h1>
+          <p className="mt-2 max-w-content text-small text-text-secondary">
+            {t('grundlagen.specimen.body')}
+          </p>
+        </div>
       </header>
 
       <Diagnostics fonts={fonts} cascade={cascade} />

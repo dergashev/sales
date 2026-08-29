@@ -1,83 +1,105 @@
 import { useMemo } from 'react'
-import { useTx } from '../i18n'
+import { useT } from '../i18n'
 import type { FontCheck } from '../lib/font-check'
 import catalog from '../fixtures/catalog.json'
 import demo from '../fixtures/demo-0001.json'
 import { Decimal } from 'decimal.js'
 
 /**
- * Диагностика оснований. Пять проверок, каждая — дефект, который уже случался
- * и стоил цикла аудита. Показывается видимо: тихий провал повторил бы исходную
- * ошибку, где шрифт молча не подключился и это заметили только на макетах.
+ * Diagnostik der Grundlagen. Fünf Prüfungen, jede ein Defekt, der schon
+ * einmal passiert ist und einen Audit-Zyklus gekostet hat. Sichtbar
+ * angezeigt: ein stiller Fehlschlag würde den ursprünglichen Fehler
+ * wiederholen, bei dem der Font stumm nicht geladen wurde und es erst auf
+ * den Layouts auffiel.
  *
- * Статус никогда не передаётся одним цветом — рядом всегда знак и подпись
- * (правило проекта 8).
+ * Status wird nie allein über Farbe transportiert — daneben steht immer ein
+ * Zeichen und eine Beschriftung (Projektregel 8).
+ *
+ * VR2-00: Diese interne QA-Diagnose steht in den Produktsprachen
+ * (de Quelle, en Übersetzung) über den i18n-Wörterbuchschlüsseln (Regel 36)
+ * statt in interner Entwicklersprache — die Grundlagen-Oberfläche darf keine
+ * untranslatierte, sprachgemischte Diagnose zeigen.
  */
 
-type Row = { name: string; ok: boolean | null; detail: string }
+type Row = { key: string; name: string; ok: boolean | null; detail: string }
 
 function useChecks(fonts: FontCheck | null, cascade: string[] | null): Row[] {
+  const t = useT()
   return useMemo(() => {
     const rows: Row[] = []
 
     rows.push({
-      name: 'Visuelt Pro — три начертания',
+      key: 'fonts',
+      name: t('diagnostics.check.fonts'),
       ok: fonts ? fonts.ok : null,
       detail: fonts
         ? fonts.ok
-          ? 'Regular, Medium, Bold доступны браузеру'
-          : `недоступны: ${fonts.missing.join('; ')}`
-        : 'ожидание document.fonts.ready',
+          ? t('diagnostics.detail.fonts.ok')
+          : t('diagnostics.detail.fonts.missing', { missing: fonts.missing.join('; ') })
+        : t('diagnostics.detail.fonts.waiting'),
     })
 
     rows.push({
-      name: 'Каскад шрифта и белый фон',
+      key: 'cascade',
+      name: t('diagnostics.check.cascade'),
       ok: cascade ? cascade.length === 0 : null,
       detail: cascade
         ? cascade.length === 0
-          ? 'html, body и элементы форм несут font-family; подложка белая'
+          ? t('diagnostics.detail.cascade.ok')
           : cascade.join(' · ')
-        : 'ожидание',
+        : t('diagnostics.detail.cascade.waiting'),
     })
 
-    // Токены: если переменная не разрешилась, вернётся пустая строка.
+    // Tokens: löst die Variable nicht auf, kommt ein leerer String zurück.
     const probe = getComputedStyle(document.documentElement)
     const accent = probe.getPropertyValue('--color-text-display-accent').trim()
     const space4 = probe.getPropertyValue('--space-4').trim()
     rows.push({
-      name: 'Токены дизайн-системы читаются',
+      key: 'tokens',
+      name: t('diagnostics.check.tokens'),
       ok: Boolean(accent && space4),
       detail: accent && space4
-        ? `акцент ${accent} · шаг отступа ${space4}`
-        : 'переменные не разрешились — tokens.css не подключён',
+        ? t('diagnostics.detail.tokens.ok', { accent, space: space4 })
+        : t('diagnostics.detail.tokens.fail'),
     })
 
-    // Фикстура: не «файл есть», а «числа сходятся».
+    // Fixture: nicht «Datei vorhanden», sondern «Zahlen stimmen überein».
     const run = demo.runs.find((r) => r.calculationRunId === 'DEMO-RUN-0007')
     const drivers = run?.drivers ?? []
     const sum = drivers.reduce((acc, d) => acc.plus(new Decimal(d.exact)), new Decimal(0))
     const total = new Decimal(run?.total.exact ?? '0')
     rows.push({
-      name: 'Сходимость драйверов с итогом',
+      key: 'drivers',
+      name: t('diagnostics.check.drivers'),
       ok: sum.equals(total) && drivers.length > 0,
       detail: drivers.length
-        ? `${drivers.length} драйвера дают ${sum.toFixed(2)}, итог ${total.toFixed(2)}`
-        : 'драйверы не загрузились',
+        ? t('diagnostics.detail.drivers.ok', {
+            count: drivers.length,
+            sum: sum.toFixed(2),
+            total: total.toFixed(2),
+          })
+        : t('diagnostics.detail.drivers.fail'),
     })
 
-    // Открытый блокер обязан закрывать все пять клиентских профилей —
-    // фикстура специально воспроизводит блокирующий сценарий, а не удобный.
+    // Ein offener Blocker muss alle fünf Kundenprofile schließen — die
+    // Fixture reproduziert bewusst das blockierende Szenario, kein bequemes.
     const issue = demo.validationIssues[0]
     rows.push({
-      name: 'Блокер выдачи закрывает пять профилей',
+      key: 'blocker',
+      name: t('diagnostics.check.blocker'),
       ok: issue?.state === 'open' && issue.blockedOutputProfiles.length === 5,
       detail: issue
-        ? `${issue.id} · ${issue.state} · ${issue.materiality} · ${issue.blockedOutputProfiles.length} профилей`
-        : 'блокер не загрузился',
+        ? t('diagnostics.detail.blocker.ok', {
+            id: issue.id,
+            state: issue.state,
+            materiality: issue.materiality,
+            count: issue.blockedOutputProfiles.length,
+          })
+        : t('diagnostics.detail.blocker.fail'),
     })
 
     return rows
-  }, [fonts, cascade])
+  }, [fonts, cascade, t])
 }
 
 export function Diagnostics({
@@ -87,43 +109,42 @@ export function Diagnostics({
   fonts: FontCheck | null
   cascade: string[] | null
 }) {
-  const tx = useTx()
+  const t = useT()
   const rows = useChecks(fonts, cascade)
   const failed = rows.filter((r) => r.ok === false)
 
   return (
     <section className="mt-7">
-      <h2 className="text-body font-bold text-text-primary">{tx('Проверка оснований')}</h2>
+      <h2 className="text-body font-bold text-text-primary">{t('diagnostics.title')}</h2>
 
       {failed.length > 0 && (
         <p className="mt-3 border-contrast border-border-error p-4 text-body font-medium text-text-primary">
-          ✗ Не выполнено: {failed.length} из {rows.length}. Продукт на таком
-          основании собирать нельзя — сначала эти пункты.
+          {t('diagnostics.failed', { failed: failed.length, total: rows.length })}
         </p>
       )}
 
-      {/* Каждая таблица — в контейнере с горизонтальной прокруткой:
-          метрики шрифта не закладываются в пиксели (правило 3a). */}
+      {/* Jede Tabelle in einem Container mit horizontalem Scroll: Font-Metriken
+          werden nicht in Pixel gebacken (Regel 3a). */}
       <div className="mt-4 overflow-x-auto">
         <table className="w-full border-collapse text-body">
           <thead>
             <tr className="border-b border-border-strong text-left">
-              <th className="py-3 pr-5 font-medium">{tx('Основание')}</th>
-              <th className="py-3 pr-5 font-medium">{tx('Состояние')}</th>
-              <th className="py-3 font-medium">{tx('Подробность')}</th>
+              <th className="py-3 pr-5 font-medium">{t('diagnostics.col.check')}</th>
+              <th className="py-3 pr-5 font-medium">{t('diagnostics.col.state')}</th>
+              <th className="py-3 font-medium">{t('diagnostics.col.detail')}</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.name} className="border-b border-border-subtle align-top">
+              <tr key={r.key} className="border-b border-border-subtle align-top">
                 <td className="py-3 pr-5 font-medium text-text-primary">{r.name}</td>
                 <td className="py-3 pr-5 whitespace-nowrap">
                   {r.ok === null ? (
-                    <span className="text-text-muted">◌ проверяется</span>
+                    <span className="text-text-muted">{t('diagnostics.state.checking')}</span>
                   ) : r.ok ? (
-                    <span className="text-text-primary">✓ выполнено</span>
+                    <span className="text-text-primary">{t('diagnostics.state.ok')}</span>
                   ) : (
-                    <span className="font-medium text-text-primary">✗ не выполнено</span>
+                    <span className="font-medium text-text-primary">{t('diagnostics.state.fail')}</span>
                   )}
                 </td>
                 <td className="py-3 text-text-secondary">{r.detail}</td>
@@ -134,9 +155,12 @@ export function Diagnostics({
       </div>
 
       <p className="mt-5 text-small text-text-muted">
-        Фикстура: {demo.scenario.scenarioId} · прогон{' '}
-        {demo.scenario.calculationRunId} · правила {catalog.rulesetVersion} ·
-        Regionalfaktor {demo.scenario.regionalFactor}
+        {t('diagnostics.fixture', {
+          scenario: demo.scenario.scenarioId,
+          run: demo.scenario.calculationRunId,
+          rules: catalog.rulesetVersion,
+          factor: demo.scenario.regionalFactor,
+        })}
       </p>
     </section>
   )

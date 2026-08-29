@@ -1,0 +1,88 @@
+{
+  "$comment": "VR2-00 route/state fixture manifest. Every VR2 ticket names ONE ordinary product runtime route and its state(s). A design-system specimen (Grundlagen/Foundations, Gallery, registry), Storybook, a unit test surface, or a deep-only / hidden prototype route is NOT an accepted consumer and is listed under `specimenRoutes` so the evidence gate can reject it. Viewports and locales are the standing gate requirement; reducedMotion:true is additionally required where the ticket owns motion. Routes are logical names for the state-driven app (there is no path router); the `entry` field records the ordinary way a user reaches the state from a cold portfolio.",
+  "requiredViewports": ["1440x900", "1280x800"],
+  "requiredLocales": ["de", "en"],
+  "specimenRoutes": [
+    "grundlagen",
+    "foundations",
+    "gallery",
+    "registry",
+    "storybook",
+    "design-system",
+    "qa-foundation"
+  ],
+  "tickets": {
+    "VR2-01": {
+      "title": "Opportunities identity and portfolio composition",
+      "routes": ["opportunities"],
+      "states": ["portfolio-list", "portfolio-empty"],
+      "entry": "app root / cold portfolio",
+      "reducedMotionRequired": false,
+      "target": "artifacts/visual-outcome-audit-18e7d71/board/vo-t1-targets.html#opportunities"
+    },
+    "VR2-02": {
+      "title": "Project identity and decision-first workspace",
+      "routes": ["project-workspace"],
+      "states": ["opportunity-opened"],
+      "entry": "opportunities → open portfolio card",
+      "reducedMotionRequired": false,
+      "target": "artifacts/visual-outcome-audit-18e7d71/board/vo-t1-targets.html#project"
+    },
+    "VR2-03": {
+      "title": "Building & Scope dense workspace",
+      "routes": ["building-scope"],
+      "states": ["building-review", "building-review-incomplete"],
+      "entry": "project workspace → Gebäude & Umfang",
+      "reducedMotionRequired": false,
+      "target": "artifacts/visual-outcome-audit-18e7d71/board/vo-t1-targets.html#building-scope"
+    },
+    "VR2-04": {
+      "title": "Configurator Work shell and chapter density",
+      "routes": ["configurator"],
+      "states": ["configurator-entry", "configurator-scope", "configurator-kg300", "configurator-kg400", "configurator-long"],
+      "entry": "building & scope confirmed → Konfigurator",
+      "reducedMotionRequired": true,
+      "target": "artifacts/visual-outcome-audit-18e7d71/board/vo-t1-targets.html#configurator"
+    },
+    "VR2-05": {
+      "title": "Comparison recommendation stage and continuity",
+      "routes": ["comparison"],
+      "states": ["three-options", "four-options-overflow"],
+      "entry": "configurator → Variantenvergleich",
+      "reducedMotionRequired": true,
+      "target": "artifacts/visual-outcome-audit-18e7d71/board/vo-t1-targets.html#comparison"
+    },
+    "VR2-06": {
+      "title": "Presentation narrative",
+      "routes": ["presentation"],
+      "states": ["client-projection"],
+      "entry": "workspace → Kundenansicht (Präsentation)",
+      "reducedMotionRequired": true,
+      "target": "artifacts/visual-outcome-audit-18e7d71/board/vo-t1-targets.html#presentation"
+    },
+    "VR2-07": {
+      "title": "Offer commercial climax and artefact gallery",
+      "routes": ["offer"],
+      "states": ["offer-climax"],
+      "entry": "presentation → Angebot",
+      "reducedMotionRequired": false,
+      "target": "artifacts/visual-outcome-audit-18e7d71/board/vo-t1-targets.html#offer"
+    },
+    "VR2-08": {
+      "title": "Send, Delivered and real lifecycle fixtures",
+      "routes": ["send", "delivered"],
+      "states": ["send-review", "delivered"],
+      "entry": "offer → Senden; portfolio card marked sent → Delivered",
+      "reducedMotionRequired": false,
+      "target": "artifacts/visual-outcome-audit-18e7d71/board/vo-t1-targets.html#send"
+    },
+    "VR2-09": {
+      "title": "Cross-product responsive and motion cohesion",
+      "routes": ["opportunities", "project-workspace", "building-scope", "configurator", "comparison", "presentation", "offer", "send", "delivered"],
+      "states": ["long", "incomplete"],
+      "entry": "each major surface, DE and EN, long/incomplete and reduced motion",
+      "reducedMotionRequired": true,
+      "target": "artifacts/visual-outcome-audit-18e7d71/board/vo-t1-targets.html"
+    }
+  }
+}

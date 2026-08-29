@@ -641,6 +641,43 @@ const de = {
   'presentation.flow.snapshotTitle': 'Gesendetes Angebot',
   'presentation.flow.snapshotCopy': 'Diese unveränderliche Version bleibt auch nach späteren Änderungen am Projekt erhalten.',
   'presentation.flow.justNow': 'Gerade eben',
+  // VR2-00: Grundlagen ist eine interne QA-/Design-System-Oberfläche, kein
+  // Produkt. Kennzeichnung und Diagnose stehen in den Produktsprachen
+  // (de Quelle, en Übersetzung), nicht in interner Entwicklersprache — es
+  // gibt keine untranslatierte Diagnose im sichtbaren Shell (Regel 36).
+  'grundlagen.specimen.badge': 'Intern · QA-Spezimen',
+  'grundlagen.specimen.headline': 'Interne QA-Oberfläche — kein Produkt',
+  'grundlagen.specimen.body':
+    'Dieser Bildschirm ist ein internes Design-System-Spezimen für die Qualitätssicherung. Er ist keine Produkt- oder Kundenoberfläche und zählt nicht als Nachweis für Produkt-Adoption.',
+  'diagnostics.title': 'Prüfung der Grundlagen',
+  'diagnostics.failed':
+    'Nicht erfüllt: {failed} von {total}. Auf dieser Grundlage darf das Produkt nicht zusammengestellt werden — zuerst diese Punkte.',
+  'diagnostics.col.check': 'Grundlage',
+  'diagnostics.col.state': 'Zustand',
+  'diagnostics.col.detail': 'Detail',
+  'diagnostics.state.checking': '◌ wird geprüft',
+  'diagnostics.state.ok': '✓ erfüllt',
+  'diagnostics.state.fail': '✗ nicht erfüllt',
+  'diagnostics.check.fonts': 'Visuelt Pro — drei Schnitte',
+  'diagnostics.check.cascade': 'Font-Kaskade und weißer Hintergrund',
+  'diagnostics.check.tokens': 'Design-System-Tokens lesbar',
+  'diagnostics.check.drivers': 'Kostentreiber summieren zum Ergebnis',
+  'diagnostics.check.blocker': 'Ausgabe-Blocker sperrt fünf Profile',
+  'diagnostics.detail.fonts.ok': 'Regular, Medium, Bold im Browser verfügbar',
+  'diagnostics.detail.fonts.missing': 'nicht verfügbar: {missing}',
+  'diagnostics.detail.fonts.waiting': 'warten auf document.fonts.ready',
+  'diagnostics.detail.cascade.ok':
+    'html, body und Formularelemente tragen font-family; Hintergrund weiß',
+  'diagnostics.detail.cascade.waiting': 'warten',
+  'diagnostics.detail.tokens.ok': 'Akzent {accent} · Abstandsschritt {space}',
+  'diagnostics.detail.tokens.fail':
+    'Variablen nicht aufgelöst — tokens.css nicht eingebunden',
+  'diagnostics.detail.drivers.ok': '{count} Treiber ergeben {sum}, Ergebnis {total}',
+  'diagnostics.detail.drivers.fail': 'Treiber nicht geladen',
+  'diagnostics.detail.blocker.ok': '{id} · {state} · {materiality} · {count} Profile',
+  'diagnostics.detail.blocker.fail': 'Blocker nicht geladen',
+  'diagnostics.fixture':
+    'Fixture: {scenario} · Lauf {run} · Regeln {rules} · Regionalfaktor {factor}',
 } as const
 
 export type MessageKey = keyof typeof de
@@ -651,6 +688,41 @@ export type MessageKey = keyof typeof de
  * (`src/i18n/__tests__/en-remainder.dom.test.tsx`).
  */
 const en: Partial<Record<MessageKey, string>> = {
+  // VR2-00: internal Grundlagen QA surface — product-locale EN so nothing
+  // in the visible specimen shell reads as untranslated diagnostic content.
+  'grundlagen.specimen.badge': 'Internal · QA specimen',
+  'grundlagen.specimen.headline': 'Internal QA surface — not a product',
+  'grundlagen.specimen.body':
+    'This screen is an internal design-system specimen for quality assurance. It is not a product or client surface and does not count as evidence of product adoption.',
+  'diagnostics.title': 'Foundation checks',
+  'diagnostics.failed':
+    'Not met: {failed} of {total}. The product must not be assembled on this basis — resolve these first.',
+  'diagnostics.col.check': 'Check',
+  'diagnostics.col.state': 'State',
+  'diagnostics.col.detail': 'Detail',
+  'diagnostics.state.checking': '◌ checking',
+  'diagnostics.state.ok': '✓ met',
+  'diagnostics.state.fail': '✗ not met',
+  'diagnostics.check.fonts': 'Visuelt Pro — three weights',
+  'diagnostics.check.cascade': 'Font cascade and white background',
+  'diagnostics.check.tokens': 'Design-system tokens resolve',
+  'diagnostics.check.drivers': 'Cost drivers sum to the total',
+  'diagnostics.check.blocker': 'Output blocker closes five profiles',
+  'diagnostics.detail.fonts.ok': 'Regular, Medium, Bold available to the browser',
+  'diagnostics.detail.fonts.missing': 'unavailable: {missing}',
+  'diagnostics.detail.fonts.waiting': 'awaiting document.fonts.ready',
+  'diagnostics.detail.cascade.ok':
+    'html, body and form elements carry font-family; background white',
+  'diagnostics.detail.cascade.waiting': 'awaiting',
+  'diagnostics.detail.tokens.ok': 'Accent {accent} · spacing step {space}',
+  'diagnostics.detail.tokens.fail':
+    'variables did not resolve — tokens.css not loaded',
+  'diagnostics.detail.drivers.ok': '{count} drivers total {sum}, result {total}',
+  'diagnostics.detail.drivers.fail': 'drivers did not load',
+  'diagnostics.detail.blocker.ok': '{id} · {state} · {materiality} · {count} profiles',
+  'diagnostics.detail.blocker.fail': 'blocker did not load',
+  'diagnostics.fixture':
+    'Fixture: {scenario} · run {run} · rules {rules} · Regionalfaktor {factor}',
   'nav.projekte': 'Projects',
   'nav.vorbereitung': 'Preparation',
   'nav.buildingScope': 'Building & scope',

@@ -24,9 +24,9 @@ export type FontCheck = {
 }
 
 const REQUIRED: ReadonlyArray<readonly [string, string]> = [
-  ['400 16px "Visuelt Pro"', 'Regular — caption и плотные таблицы'],
-  ['500 16px "Visuelt Pro"', 'Medium — body'],
-  ['700 16px "Visuelt Pro"', 'Bold — заголовки и герой-числа'],
+  ['400 16px "Visuelt Pro"', 'Regular — Caption und dichte Tabellen'],
+  ['500 16px "Visuelt Pro"', 'Medium — Body'],
+  ['700 16px "Visuelt Pro"', 'Bold — Überschriften und Hero-Zahlen'],
 ]
 
 /**
@@ -36,7 +36,7 @@ const REQUIRED: ReadonlyArray<readonly [string, string]> = [
  */
 export function checkFonts(): FontCheck {
   if (typeof document === 'undefined' || !('fonts' in document)) {
-    return { ok: false, missing: ['document.fonts недоступен'], checked: [] }
+    return { ok: false, missing: ['document.fonts nicht verfügbar'], checked: [] }
   }
   const missing: string[] = []
   const checked: string[] = []
@@ -54,7 +54,7 @@ export function checkFonts(): FontCheck {
  * сбрасывает шрифт именно у форм.
  */
 export function checkCascade(): string[] {
-  if (typeof document === 'undefined') return ['document недоступен']
+  if (typeof document === 'undefined') return ['document nicht verfügbar']
   const problems: string[] = []
   const wanted = 'Visuelt Pro'
 
@@ -77,7 +77,7 @@ export function checkCascade(): string[] {
   const bg = getComputedStyle(document.body).backgroundColor
   const white = ['rgb(255, 255, 255)', 'rgba(0, 0, 0, 0)', 'transparent']
   if (!white.includes(bg)) {
-    problems.push(`body background = ${bg}; акцентный текст требует белой подложки (R-01)`)
+    problems.push(`body background = ${bg}; Akzenttext erfordert weißen Hintergrund (R-01)`)
   }
   return problems
 }

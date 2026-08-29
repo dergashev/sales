@@ -1,0 +1,43 @@
+{
+  "$comment": "VR2 release-evidence manifest TEMPLATE. Copy this per ticket to artifacts/visual-recovery-audit-v2/<ticket>/evidence-manifest.json, fill every field from the verified candidate runtime, then run: npm run vr2:gate -- artifacts/visual-recovery-audit-v2/<ticket>/evidence-manifest.json . `image` paths are relative to the repo root and MUST exist on disk. implementationCommit MUST equal candidateRuntimeCommit (the runtime you captured is the exact candidate). Every capture names route, state, viewport, locale, reducedMotion. Both viewports (1440x900, 1280x800) and both locales (de, en) are required; add a reducedMotion:true capture when the ticket owns motion.",
+  "ticket": "VR2-01",
+  "implementationCommit": "0000000000000000000000000000000000000000",
+  "candidateRuntimeCommit": "0000000000000000000000000000000000000000",
+  "runtimeSha": "0000000000000000000000000000000000000000",
+  "provenance": "SERVING_VERIFIED",
+  "target": "artifacts/visual-outcome-audit-18e7d71/board/vo-t1-targets.html#opportunities",
+  "captures": [
+    {
+      "route": "opportunities",
+      "state": "portfolio-list",
+      "viewport": "1440x900",
+      "locale": "de",
+      "reducedMotion": false,
+      "image": "artifacts/visual-recovery-audit-v2/VR2-01/candidate/opportunities-1440-de.png"
+    },
+    {
+      "route": "opportunities",
+      "state": "portfolio-list",
+      "viewport": "1280x800",
+      "locale": "de",
+      "reducedMotion": false,
+      "image": "artifacts/visual-recovery-audit-v2/VR2-01/candidate/opportunities-1280-de.png"
+    },
+    {
+      "route": "opportunities",
+      "state": "portfolio-list",
+      "viewport": "1440x900",
+      "locale": "en",
+      "reducedMotion": false,
+      "image": "artifacts/visual-recovery-audit-v2/VR2-01/candidate/opportunities-1440-en.png"
+    },
+    {
+      "route": "opportunities",
+      "state": "portfolio-list",
+      "viewport": "1280x800",
+      "locale": "en",
+      "reducedMotion": false,
+      "image": "artifacts/visual-recovery-audit-v2/VR2-01/candidate/opportunities-1280-en.png"
+    }
+  ]
+}
