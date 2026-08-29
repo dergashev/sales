@@ -23,6 +23,21 @@ import { Decimal } from 'decimal.js'
 
 type Row = { key: string; name: string; ok: boolean | null; detail: string }
 
+type T = ReturnType<typeof useT>
+
+/**
+ * Localise a raw fixture enum value (e.g. "inactive", "open", "material")
+ * through the i18n dictionary so the visible diagnostics carry no raw,
+ * mixed-language token. Falls back to the raw value for an unexpected enum
+ * rather than showing a bare message key. The fixture data itself is never
+ * mutated — this only affects the display label.
+ */
+function localizedValue(t: T, prefix: string, value: string): string {
+  const key = `${prefix}.${value}`
+  const label = t(key)
+  return label === key ? value : label
+}
+
 function useChecks(fonts: FontCheck | null, cascade: string[] | null): Row[] {
   const t = useT()
   return useMemo(() => {
@@ -91,8 +106,8 @@ function useChecks(fonts: FontCheck | null, cascade: string[] | null): Row[] {
       detail: issue
         ? t('diagnostics.detail.blocker.ok', {
             id: issue.id,
-            state: issue.state,
-            materiality: issue.materiality,
+            state: localizedValue(t, 'diagnostics.value.issueState', issue.state),
+            materiality: localizedValue(t, 'diagnostics.value.materiality', issue.materiality),
             count: issue.blockedOutputProfiles.length,
           })
         : t('diagnostics.detail.blocker.fail'),
@@ -159,7 +174,7 @@ export function Diagnostics({
           scenario: demo.scenario.scenarioId,
           run: demo.scenario.calculationRunId,
           rules: catalog.rulesetVersion,
-          factor: demo.scenario.regionalFactor,
+          factor: localizedValue(t, 'diagnostics.value.regionalFactor', demo.scenario.regionalFactor),
         })}
       </p>
     </section>

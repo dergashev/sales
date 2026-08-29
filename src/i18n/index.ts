@@ -678,6 +678,15 @@ const de = {
   'diagnostics.detail.blocker.fail': 'Blocker nicht geladen',
   'diagnostics.fixture':
     'Fixture: {scenario} · Lauf {run} · Regeln {rules} · Regionalfaktor {factor}',
+  // VR2-00 remediation: enum/status values are localised so the visible
+  // diagnostics carry no raw mixed-language tokens (state/materiality/factor).
+  // Display labels only — the underlying fixture data is unchanged.
+  'diagnostics.value.regionalFactor.active': 'aktiv',
+  'diagnostics.value.regionalFactor.inactive': 'inaktiv',
+  'diagnostics.value.issueState.open': 'offen',
+  'diagnostics.value.issueState.resolved': 'gelöst',
+  'diagnostics.value.materiality.material': 'wesentlich',
+  'diagnostics.value.materiality.warning': 'Warnung',
 } as const
 
 export type MessageKey = keyof typeof de
@@ -723,6 +732,12 @@ const en: Partial<Record<MessageKey, string>> = {
   'diagnostics.detail.blocker.fail': 'blocker did not load',
   'diagnostics.fixture':
     'Fixture: {scenario} · run {run} · rules {rules} · Regionalfaktor {factor}',
+  'diagnostics.value.regionalFactor.active': 'active',
+  'diagnostics.value.regionalFactor.inactive': 'inactive',
+  'diagnostics.value.issueState.open': 'open',
+  'diagnostics.value.issueState.resolved': 'resolved',
+  'diagnostics.value.materiality.material': 'material',
+  'diagnostics.value.materiality.warning': 'warning',
   'nav.projekte': 'Projects',
   'nav.vorbereitung': 'Preparation',
   'nav.buildingScope': 'Building & scope',

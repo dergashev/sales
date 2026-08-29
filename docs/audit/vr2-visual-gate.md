@@ -29,13 +29,21 @@ boundary and removes product-adoption ambiguity from the Grundlagen shell.
 
 > A VR2 ticket may not claim target adoption unless it attaches
 > **provenance-verified, exact-SHA PRODUCT screenshots** of the ticket's named
-> **ordinary runtime route/state** at **both** required viewports
-> (1440×900 and 1280×800), in **both** product locales (DE and EN), compared
-> side-by-side with the approved **VO-T1 target**.
+> **ordinary runtime route AND a declared state**, with a **per-locale matrix**
+> — each required locale (DE and EN) carrying **both** required viewports
+> (1440×900 and 1280×800) — compared side-by-side with an approved **VO-T1
+> board target** that actually **resolves**.
 
 A design-system **specimen** (Grundlagen/Foundations, the Gallery, the
 registry), Storybook, a unit/DOM test surface, or a deep-only / hidden
 prototype route is **not** an accepted consumer and does not satisfy the gate.
+
+The checker enforces this strictly and rejects, among others: a `state` not in
+the ticket's declared `states`; a locale that is missing a required viewport
+(the matrix is evaluated **per locale**, never aggregated); and a `target`
+that is not one the ticket owns or that does not resolve to a real board
+article (`id="target-<id>"`, rendered from the board's target data ids). The
+approved board file must exist on disk.
 
 The gate is enforced mechanically by `tools/vr2/check-evidence.mjs`
 (`npm run vr2:gate -- <evidence-manifest.json>`), which is intentionally *not*
