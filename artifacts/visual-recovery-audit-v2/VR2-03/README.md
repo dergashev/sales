@@ -1,5 +1,64 @@
 # VR2-03 — Building & Scope workspace recomposition — evidence
 
+## Acceptance remediation (cycle 4) — shell unification + target copy
+
+Acceptance rejected `4f446b88f0a89301298e321f704389d1ee3702b0` (`4f446b8`)
+a third time: legacy verbose Preparation rail (separate Option selector,
+Variantenvergleich link, Ausgabe group) instead of the target's ONE
+numbered workflow rail; generic "Gebäude & Umfang" heading instead of the
+target's dynamic sentence; section labels not matching target's literal
+copy ("Identität & Nutzung", "Geometrie & Geschosse").
+
+New final `implementationCommit`/`candidateRuntimeCommit` =
+`d5027bead63f8f1340b03fa509822a10caabcad6`. Re-verified: typecheck,
+750/750 tests, verify (0 findings), build, `npm run test:browser:desktop`
+8/8 (including the Vergleich comparison specs, which exercise the shared
+shell this cycle touched) — all PASS, clean tree.
+
+Fixes (full detail in the `d5027be` commit message):
+- **Sidebar unified into one workflow list**: Gebäude & Umfang /
+  Konfigurator / Vergleich / Angebot(Export) now render as ONE numbered
+  list under "Aktuelle Option" — same exact destinations and gating as
+  before (Vergleich was never blocked; Export needs the whole-option
+  confirm CTA), just unified where they render instead of split across a
+  numbered pair + a separate link + a separately-grouped item.
+- Position-number hint is now decorative (`aria-hidden`, shows "✓" once a
+  step is done) instead of being concatenated into the accessible name —
+  `aria-current="page"` already tells assistive tech which step is
+  current, so hiding a redundant digit is a net-neutral-to-positive a11y
+  change, not a regression.
+- **Dynamic target headline**: added "Zwei Gebäude. Eine klare
+  Grundlage." (DE/EN, 1/2/3/many building forms) as the visually biggest
+  text, matching the approved target. The actual `<h1>` keeps its exact
+  existing text/role ("Gebäude & Umfang" — needed for route-focus-reset
+  and two DOM tests) but is now visually demoted to a small context label.
+- **Section labels renamed to match target literally**: "Identität" →
+  "Identität & Nutzung", "Geschossstruktur" → "Geometrie & Geschosse" (DE
+  + EN). The internal journal-event audit label (`store.ts`) is a
+  deliberately separate, unchanged string — not the visible section
+  header.
+
+Screenshots in `acceptance-remediation-cycle4/`:
+- `candidate-1440-unified-shell.png` / `candidate-1280-unified-shell.png`
+  — the single 4-item workflow list at both viewports, dynamic headline,
+  renamed field-grid section.
+- `candidate-1440-confirmed-checkmark-state.png` — both buildings
+  confirmed: "✓ Gebäude & Umfang" checkmark replaces the position number,
+  Konfigurator/Vergleich reachable, Export's real blocked-reason text,
+  orange "Konfigurator öffnen" primary action on the readiness rail.
+- `candidate-1440-en-confirmed-state.png` — same state, EN locale, fully
+  translated, no layout breakage.
+
+**Known, disclosed limitation carried over, narrowed further:** the
+global breadcrumb (`App.tsx`) still shows only a single-line path
+("Opportunities / ProjectName / OptionName"), not a second "OPPORTUNITY
+OPTION" eyebrow line, and there is still no literal "Übersicht" step —
+in the current product a WFL conflict is resolved at the Opportunity
+level, before an Option/Building & Scope exists, so TARGET-workspace's
+Übersicht content cannot occur inside an Option (this reasoning was sent
+directly to Acceptance in cycle 1 and is preserved in the team notes).
+Everything else materially converges on the approved target now.
+
 ## Acceptance remediation (cycle 3) — content/composition rework
 
 Acceptance rejected `946b9f26db63af5ef14fa2f497c902ed9213335e`: review stage
