@@ -473,8 +473,14 @@ export function BuildingScope() {
             <EmptyState>{t('buildingScope.review.empty')}</EmptyState>
           ) : (
             <div className="mt-6 border-t border-border-strong pt-5">
-              <div className="flex min-w-0 items-stretch gap-1">
-                {selectedIds.length > 1 && (
+              {/* A one-tab tablist is a discouraged ARIA pattern (nothing to
+                  switch to) and, visually, repeated exactly the single
+                  identity card shown above it — the building-card grid
+                  already establishes identity for a single-building Option.
+                  The tab strip earns its place only once there is genuinely
+                  something to switch BETWEEN. */}
+              {selectedIds.length > 1 && (
+                <div className="flex min-w-0 items-stretch gap-1">
                   <Button
                     variant="ghost"
                     aria-label={t('buildingScope.tabs.first')}
@@ -482,55 +488,53 @@ export function BuildingScope() {
                   >
                     ←
                   </Button>
-                )}
-                <div
-                  ref={tablistRef}
-                  role="tablist"
-                  aria-label={t('buildingScope.tabs.label')}
-                  className="a3-tabs a3-tabs-tiles min-w-0 flex-1 flex-nowrap overflow-x-auto"
-                  onKeyDown={handleTabKey}
-                >
-                  {selectedIds.map((id, index) => {
-                    const name = stableName(s.buildingReviews[id]!, id)
-                    const selected = s.activeBuildingId === id
-                    const status = statusFor(s, id)
-                    return (
-                      <button
-                        key={id}
-                        type="button"
-                        role="tab"
-                        id={`building-tab-${id}`}
-                        aria-selected={selected}
-                        aria-controls={`building-panel-${id}`}
-                        aria-posinset={index + 1}
-                        aria-setsize={selectedIds.length}
-                        tabIndex={focusedTabId === id ? 0 : -1}
-                        onClick={() => {
-                          setFocusedTabId(id)
-                          s.setActiveBuilding(id)
-                        }}
-                        className="shrink-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-                      >
-                        <span className="a3-tab-media" aria-hidden="true">
-                          <MediaFrame ratio="tile" state="fallback" seed={name} />
-                        </span>
-                        <span className="a3-tab-text">
-                          <span className="a3-tab-name">{name}</span>
-                          <span className="a3-tab-meta">
-                            {selected
-                              ? t('buildingScope.tabs.current')
-                              : t(status === 'confirmed'
-                                ? 'buildingScope.status.confirmed'
-                                : status === 'conflict'
-                                  ? 'buildingScope.status.conflict'
-                                  : 'buildingScope.status.open')}
+                  <div
+                    ref={tablistRef}
+                    role="tablist"
+                    aria-label={t('buildingScope.tabs.label')}
+                    className="a3-tabs a3-tabs-tiles min-w-0 flex-1 flex-nowrap overflow-x-auto"
+                    onKeyDown={handleTabKey}
+                  >
+                    {selectedIds.map((id, index) => {
+                      const name = stableName(s.buildingReviews[id]!, id)
+                      const selected = s.activeBuildingId === id
+                      const status = statusFor(s, id)
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          role="tab"
+                          id={`building-tab-${id}`}
+                          aria-selected={selected}
+                          aria-controls={`building-panel-${id}`}
+                          aria-posinset={index + 1}
+                          aria-setsize={selectedIds.length}
+                          tabIndex={focusedTabId === id ? 0 : -1}
+                          onClick={() => {
+                            setFocusedTabId(id)
+                            s.setActiveBuilding(id)
+                          }}
+                          className="shrink-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                        >
+                          <span className="a3-tab-media" aria-hidden="true">
+                            <MediaFrame ratio="tile" state="fallback" seed={name} />
                           </span>
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-                {selectedIds.length > 1 && (
+                          <span className="a3-tab-text">
+                            <span className="a3-tab-name">{name}</span>
+                            <span className="a3-tab-meta">
+                              {selected
+                                ? t('buildingScope.tabs.current')
+                                : t(status === 'confirmed'
+                                  ? 'buildingScope.status.confirmed'
+                                  : status === 'conflict'
+                                    ? 'buildingScope.status.conflict'
+                                    : 'buildingScope.status.open')}
+                            </span>
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
                   <Button
                     variant="ghost"
                     aria-label={t('buildingScope.tabs.last')}
@@ -538,24 +542,35 @@ export function BuildingScope() {
                   >
                     →
                   </Button>
-                )}
-              </div>
-
-              {selectedIds.map((id) => (
-                <div
-                  key={id}
-                  role="tabpanel"
-                  id={`building-panel-${id}`}
-                  aria-labelledby={`building-tab-${id}`}
-                  hidden={s.activeBuildingId !== id}
-                  className="a3-tabpane"
-                >
-                  <BuildingReviewPanel
-                    buildingId={id}
-                    announce={setAnnouncement}
-                  />
                 </div>
-              ))}
+              )}
+
+              {selectedIds.map((id) => {
+                const name = stableName(s.buildingReviews[id]!, id)
+                const status = statusFor(s, id)
+                return (
+                  <div
+                    key={id}
+                    role="tabpanel"
+                    id={`building-panel-${id}`}
+                    aria-labelledby={selectedIds.length > 1 ? `building-tab-${id}` : undefined}
+                    aria-label={selectedIds.length > 1 ? undefined : `${name} · ${t(
+                      status === 'confirmed'
+                        ? 'buildingScope.status.confirmed'
+                        : status === 'conflict'
+                          ? 'buildingScope.status.conflict'
+                          : 'buildingScope.status.open',
+                    )}`}
+                    hidden={s.activeBuildingId !== id}
+                    className="a3-tabpane"
+                  >
+                    <BuildingReviewPanel
+                      buildingId={id}
+                      announce={setAnnouncement}
+                    />
+                  </div>
+                )
+              })}
             </div>
           )}
         </SectionSheet>

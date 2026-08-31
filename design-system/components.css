@@ -815,7 +815,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    review sections (identity/areas/storeys), replacing a single stacked
    column of full-width fields — same `FormField`/`SelectField`/
    `NumericField` primitives, only the surrounding layout changes. */
-.a3-field-grid{display:grid;gap:var(--space-5) var(--space-6);grid-template-columns:repeat(auto-fit,minmax(13rem,1fr))}
+.a3-field-grid{display:grid;gap:var(--space-4) var(--space-5);grid-template-columns:repeat(auto-fit,minmax(10rem,1fr))}
 
 /* VR2-03 · the building-level confirm action reads as one docked bar at
    the foot of the review stage instead of a plain paragraph + button. */
