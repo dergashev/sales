@@ -33,27 +33,32 @@ only in that same archived commit).
 ## CANDIDATE — exact implementation commit
 
 - `runtimePurpose=TASK_CANDIDATE`,
-  `runtimeCommit=ce489f86f4d466453d4a7270622877be58ea76fa`
+  `runtimeCommit=e47e2e9feba6abbe3d7f15eb60b176dbb372bb72`
   (branch `vr2-03-building-scope-workspace`, clean tree — confirmed by
   `npm run test:browser:desktop` provenance block, which also ran the full
   canonical desktop Playwright suite against this exact build, 8/8 PASS).
-- Same route as BEFORE unless noted.
-- `candidate-ce489f8/candidate-1440-de.png` — first viewport, single
-  building (Haus A), DE.
-- `candidate-ce489f8/candidate-1440-de-scroll-1.png` — building tile +
-  field-grid identity section.
-- `candidate-ce489f8/candidate-1440-de-scroll-2.png` — field-grid areas
-  section + docked confirm bar.
-- `candidate-ce489f8/candidate-1440-de-multi-building.png` — Haus B also
-  included: building-card grid (2 cards), building tab strip now visible
-  (2 media tiles, active tile marked "Wird gerade geprüft" — textual, not
-  colour-only), readiness rail "1 von 3 Punkten bereit".
-- `candidate-ce489f8/candidate-1440-en.png` — EN locale, multi-building
-  state, no layout breakage from longer strings.
-- `candidate-ce489f8/candidate-1280-de-top.png` /
-  `candidate-1280-de-scroll.png` — 1280×800, DE, single building: no
-  horizontal overflow, no clipped controls, current building/readiness
-  remain obvious.
+- Same route as BEFORE unless noted. Folder `candidate-e47e2e9/`.
+- Screenshots taken against two points in the same implementation arc — the
+  intermediate SHA `ce489f86` (identity cards / dense field grid / docked
+  confirm / prominent readiness numeral — the shared-rail width was not yet
+  narrowed) and the final `e47e2e9` (adds the Building & Scope rail's own
+  narrower width, `.a3-buildingscope-rail`, so the review stage gets the
+  extra ~180px). No source file differs between the two states in a way
+  that would change what an intermediate screenshot shows *except* rail/
+  content width — every compositional claim below holds at both SHAs:
+  - `candidate-1440-de.png`, `candidate-1440-de-scroll-1.png`,
+    `candidate-1440-de-scroll-2.png`, `candidate-1440-en.png`,
+    `candidate-1280-de-top.png`, `candidate-1280-de-scroll.png` — captured
+    at `ce489f86` (single-building state unless noted; `-en` and the 1280
+    pair are DE/EN and viewport coverage).
+  - `candidate-1440-de-multi-building-fields.png`,
+    `candidate-1280-de-multi-building.png` — captured at the final
+    `e47e2e9`, Haus A + Haus B both included: building-card grid (2 cards
+    side by side even at 1280, no overflow), building tab strip visible (2
+    media tiles, active tile marked "Wird gerade geprüft" — textual, not
+    colour-only), the identity field-grid now renders 3 columns at 1440
+    (Bezeichnung / Adresse / Gebäudeform) thanks to the narrower rail,
+    readiness rail "1 von 3 Punkten bereit" at heading-2 weight.
 
 ## Material delta (five-second read)
 
