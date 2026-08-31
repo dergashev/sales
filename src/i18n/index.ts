@@ -167,21 +167,32 @@ const de = {
   // strings are now ALWAYS visible (no longer behind a "Warum?" disclosure)
   // — none of these had EN coverage in the generated reverse-lookup
   // dictionary (they were never exercised in EN before, since a disclosure
-  // interaction was required to see them). Exact DE values below are
-  // byte-identical to the previous inline `tx()` literals so the existing
-  // opportunity-card-shell.dom.test.tsx assertions keep passing unchanged.
-  'oppcard.stage.documents.attention':
-    'Ein Dokument ist nicht lesbar · blockiert das Anlegen einer Opportunity Option nicht',
+  // interaction was required to see them).
+  // Acceptance remediation (cycle 5): the fifth Auditor pass isolated the
+  // remaining vertical gap to "long rationale paragraphs" wrapping to two
+  // lines inside each step chip — the approved target's own visible
+  // rationale is a single terse phrase ("1 Entscheidung erforderlich" is
+  // the target's LITERAL step-2 text). Shortened to that register. No
+  // information is lost from the strip as a whole: the dropped consequence
+  // clauses ("blockiert die Projektgrundlage" / "blockiert das Anlegen…")
+  // remain expressed by the blocked steps' own always-visible
+  // blockedReason texts ("Erst Konflikte entscheiden", "Erst Konflikte
+  // entscheiden und Projektparameter bestätigen") on the very same strip,
+  // and in full prose inside the corresponding sections below. The
+  // shell-test's exact-string assertions are updated with the same change
+  // — its real invariants (exactly one current step, position as a whole
+  // screen-reader phrase, state carried by text rather than colour) are
+  // untouched.
+  'oppcard.stage.documents.attention': '1 Dokument nicht lesbar',
   'oppcard.stage.documents.done': 'Analyse abgeschlossen',
-  'oppcard.stage.conflict.open':
-    'Entscheidung erforderlich · blockiert die Projektgrundlage',
+  'oppcard.stage.conflict.open': '1 Entscheidung erforderlich',
   'oppcard.stage.conflict.done': 'Entschieden',
   'oppcard.stage.baseline.confirmed': 'Bestätigt',
-  'oppcard.stage.baseline.attention':
-    'Bestätigung erforderlich · blockiert das Anlegen einer Opportunity Option',
+  'oppcard.stage.baseline.attention': 'Bestätigung erforderlich',
   'oppcard.stage.options.done': 'Angelegt',
   'oppcard.stage.options.ready': 'Bereit zum Anlegen',
   'oppcard.stage.options.waiting': 'Wartet auf die Voraussetzungen oben',
+  'oppcard.stage.options.blockedBoth': 'Erst Konflikte und Grundlage klären',
   // Acceptance remediation (cycle 4): NextDecisionCard's compact WFL value
   // labels — dedicated keys instead of reusing `tx("Dokument"/"Kunde")`,
   // which resolved to the WRONG (lowercase, different-context) EN string
@@ -189,6 +200,15 @@ const de = {
   // → "document"/"client", meant for an inline sentence elsewhere).
   'oppcard.nextDecision.conflict.document': 'Dokument',
   'oppcard.nextDecision.conflict.customer': 'Kunde',
+  // Acceptance remediation (cycle 5): the approved target's decision rail
+  // shows recommendation context directly below the WFL card ("Empfehlung"
+  // + the GK status line + a "Klassifikation prüfen" link) — summary text
+  // is the target's own literal wording, the full canonical fallback-rule
+  // prose stays untouched in "Offene Fragen & Annahmen" below.
+  'oppcard.rail.recommendation.title': 'Empfehlung',
+  'oppcard.rail.recommendation.gkSummary':
+    'Gebäudeklasse noch nicht bestätigt. Vorläufig GK 5 · Prüfung erforderlich.',
+  'oppcard.rail.recommendation.cta': 'Klassifikation prüfen',
   'buildingScope.gate.navigationReason':
     'Zuerst mindestens ein Gebäude auswählen und jedes gewählte Gebäude bestätigen.',
   'buildingScope.title': 'Gebäude & Umfang',
@@ -950,20 +970,22 @@ const en: Partial<Record<MessageKey, string>> = {
     'This opportunity is not worked out in the prototype. «{name}» is the fully calculated one — document analysis, conflict resolution and calculation run there with real arithmetic.',
   'oppcard.actionDock.conflict.summary': '1 decision before the project baseline',
   'oppcard.actionDock.conflict.cta': 'Decide the WFL conflict',
-  'oppcard.stage.documents.attention':
-    'One document cannot be read · does not block creating an Opportunity Option',
+  'oppcard.stage.documents.attention': '1 document not readable',
   'oppcard.stage.documents.done': 'Analysis complete',
-  'oppcard.stage.conflict.open':
-    'Decision required · blocks the project baseline',
+  'oppcard.stage.conflict.open': '1 decision required',
   'oppcard.stage.conflict.done': 'Decided',
   'oppcard.stage.baseline.confirmed': 'Confirmed',
-  'oppcard.stage.baseline.attention':
-    'Confirmation required · blocks creating an Opportunity Option',
+  'oppcard.stage.baseline.attention': 'Confirmation required',
   'oppcard.stage.options.done': 'Created',
   'oppcard.stage.options.ready': 'Ready to create',
   'oppcard.stage.options.waiting': 'Waiting on the prerequisites above',
+  'oppcard.stage.options.blockedBoth': 'Resolve conflicts and baseline first',
   'oppcard.nextDecision.conflict.document': 'Document',
   'oppcard.nextDecision.conflict.customer': 'Client',
+  'oppcard.rail.recommendation.title': 'Recommendation',
+  'oppcard.rail.recommendation.gkSummary':
+    'Building class not yet confirmed. Provisionally GK 5 · review required.',
+  'oppcard.rail.recommendation.cta': 'Review classification',
   'buildingScope.gate.navigationReason':
     'Select at least one building and confirm every selected building first.',
   'buildingScope.title': 'Building & scope',

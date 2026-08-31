@@ -1489,7 +1489,11 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    white ground instead of the portfolio's green-neutral canvas, since the
    approved project target's background is white. */
 .a3-project-canvas{min-height:100%;background:var(--color-surface-default)}
-.a3-project-canvas .a3-page{max-width:var(--content-editorial-max-width)}
+/* Acceptance remediation (cycle 5): the target's hero starts flush below
+   the app header (y=68 — the header's own height), i.e. this route has NO
+   page top padding above the hero; the identity TEXT column keeps its own
+   breathing room instead (below). */
+.a3-project-canvas .a3-page{max-width:var(--content-editorial-max-width);padding-top:0}
 /* Acceptance remediation (cycle 4): --space-6 top/bottom (32px+32px=64px)
    was more separation from the border than the target's own compact
    identity/stepper band affords — tightened to --space-4 (16px+16px).
@@ -1520,7 +1524,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    reaches the viewport edge while the identity TEXT column, the stepper
    and every section below keep the page's normal inset. */
 .a3-project-identity-media{flex:0 1 27%;min-width:var(--measure-option-media-min);max-width:26rem;margin-left:calc(-1 * var(--space-7))}
-.a3-project-identity-text{flex:1 1 20rem;min-width:0}
+.a3-project-identity-text{flex:1 1 20rem;min-width:0;padding-top:var(--space-5)}
 .a3-project-identity-text .a3-masthead{margin:var(--space-2) 0 0}
 /* Acceptance remediation (cycle 5): the target's KPI facts render as a
    bordered strip with a visible divider between each figure, not four

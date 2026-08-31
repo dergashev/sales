@@ -1098,10 +1098,22 @@ export function OpportunityCard() {
           : optionsState === "done"
             ? t("oppcard.stage.options.done")
             : t("oppcard.stage.options.ready"),
+      // Acceptance remediation (cycle 5): the "both gates open" wording
+      // ("Erst Konflikte entscheiden und Projektparameter bestätigen")
+      // wrapped to two lines inside the chip and was the single tallest
+      // element keeping the workflow strip above the target's compact
+      // height. The STEPPER chip gets a one-line summary of the same two
+      // gates; the Create button below keeps the full
+      // `createOptionDisabledReason` verbatim (its aria-describedby is the
+      // canonical complete explanation — the comment above already
+      // establishes that the stepper deliberately uses different wording
+      // from the button).
       blockedReason:
         optionsState === "blocked"
-          ? (createOptionDisabledReason ??
-            t("oppcard.stage.options.waiting"))
+          ? konfliktOffen && !s.projectParamsConfirmed
+            ? t("oppcard.stage.options.blockedBoth")
+            : (createOptionDisabledReason ??
+              t("oppcard.stage.options.waiting"))
           : undefined,
       onSelect: () => focusSection(optionsSectionRef),
     },
@@ -1919,6 +1931,34 @@ export function OpportunityCard() {
           onJumpToBaseline={() => focusSection(questionsSectionRef)}
           onJumpToOptions={() => focusSection(optionsSectionRef)}
         />
+        {/* Acceptance remediation (cycle 5): the approved target's rail
+            shows recommendation context directly below the WFL card —
+            "Empfehlung" + a one-line GK status + a "Klassifikation prüfen"
+            link. Same wayfinding-only contract as NextDecisionCard: the
+            link JUMPS to "Offene Fragen & Annahmen", where the full
+            canonical fallback-rule prose and the REAL "Klassifikation
+            bestätigen" commit action live untouched (rule 10 — guidance
+            text stays verbatim in its owning section; this is the target's
+            own literal one-line status summary, not new guidance). Driven
+            by the SAME `recommendations` array that section renders — the
+            teaser disappears exactly when the recommendation resolves. */}
+        {recommendations.length > 0 && (
+          <div>
+            <h2 className="text-heading-3 font-bold text-text-primary">
+              {t('oppcard.rail.recommendation.title')}
+            </h2>
+            <p className="a3-cap mt-1">
+              {t('oppcard.rail.recommendation.gkSummary')}
+            </p>
+            <button
+              type="button"
+              className="a3-linkbtn hit-target mt-2"
+              onClick={() => focusSection(questionsSectionRef)}
+            >
+              {t('oppcard.rail.recommendation.cta')}
+            </button>
+          </div>
+        )}
       </div>
       </div>
 

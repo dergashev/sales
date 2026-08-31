@@ -105,17 +105,29 @@ describe('Project Card — шапка и обзор готовности', () =>
     })
 
     // Состояние читается текстом, не только маркером/цветом (STEP-002, правило 8).
+    // VR2-02 (Acceptance remediation, cycle 5): rationale copy shortened to
+    // the approved target's own terse register ("1 Entscheidung
+    // erforderlich" is the target's literal step-2 text) — the invariant
+    // this block protects (state carried by TEXT, not colour) is unchanged;
+    // the gate consequences remain expressed by the blocked steps' own
+    // blockedReason texts asserted just below.
     expect(within(overview).getByText(
-      'Ein Dokument ist nicht lesbar · blockiert das Anlegen einer Opportunity Option nicht',
+      '1 Dokument nicht lesbar',
     )).toBeInTheDocument()
     expect(within(overview).getByText(
-      'Entscheidung erforderlich · blockiert die Projektgrundlage',
+      '1 Entscheidung erforderlich',
     )).toBeInTheDocument()
     // AC-05: solange ein Konflikt offen ist, ist die Projektgrundlage ein
     // ECHTES Gate (aria-disabled), nicht nur "vorläufig".
+    // VR2-02 (cycle 5): the options step's stepper-side blocked reason is
+    // now a one-line summary of the same two gates ("Erst Konflikte und
+    // Grundlage klären") — the FULL wording ("Erst Konflikte entscheiden
+    // und Projektparameter bestätigen") remains verbatim on the Create
+    // button's own aria-describedby in the Options section, per the
+    // stepper's established different-wording-than-the-action rule.
     expect(within(overview).getAllByText('Erst Konflikte entscheiden')).toHaveLength(1)
     expect(within(overview).getByText(
-      'Erst Konflikte entscheiden und Projektparameter bestätigen',
+      'Erst Konflikte und Grundlage klären',
     )).toBeInTheDocument()
 
     // Ровно один шаг — «текущий» (следующий нерешённый по порядку), не два и не ноль.
@@ -147,7 +159,7 @@ describe('Project Card — шапка и обзор готовности', () =>
     // Die Projektgrundlage entsperrt sich, sobald der Konflikt, von dem ihr
     // Gate abhing, entschieden ist (AC-05), und wird die aktuelle Stufe.
     expect(within(stepAt(2)).getByRole('button')).not.toHaveAttribute('aria-disabled')
-    expect(stepAt(2)).toHaveTextContent('Bestätigung erforderlich · blockiert das Anlegen einer Opportunity Option')
+    expect(stepAt(2)).toHaveTextContent('Bestätigung erforderlich')
     expect(within(stepAt(2)).getByRole('button')).toHaveAttribute('aria-current', 'step')
 
     await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
