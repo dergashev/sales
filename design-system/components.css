@@ -796,6 +796,42 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-tabs .a3-sum{margin-left:auto;font-weight:700}
 .a3-tabpane{padding:var(--space-4) 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
 
+/* VR2-03 · Building & Scope building-tab strip. Additive opt-in modifier on
+   the same `.a3-tabs[role=tablist] > [role=tab]` structure — every other
+   `.a3-tabs` consumer (P1–P5 Vorbereitung, DC-46 Konfigurationsumfang) is
+   unaffected, exactly the precedent set by `.a3-tabs-compact` above. Turns
+   the underline-tab primitive into a bordered identity tile (media +
+   name + status) so the currently-selected building reads as a distinct
+   object, not a coloured underline (rule 8 / R-04). */
+.a3-tabs-tiles{border-bottom:0;gap:var(--space-3);flex-wrap:wrap}
+.a3-tabs-tiles [role="tab"]{display:flex;align-items:center;gap:var(--space-3);border:var(--border-default);border-bottom:var(--border-default);margin-bottom:0;padding:var(--space-3) var(--space-4);text-align:left}
+.a3-tabs-tiles [role="tab"][aria-selected="true"]{border-color:var(--color-selection-border);border-bottom-color:var(--color-selection-border);background:var(--color-surface-subtle)}
+.a3-tabs-tiles .a3-tab-media{width:var(--space-8);flex-shrink:0}
+.a3-tabs-tiles .a3-tab-text{min-width:0;display:grid;gap:var(--space-1)}
+.a3-tabs-tiles .a3-tab-name{font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:anywhere}
+.a3-tabs-tiles .a3-tab-meta{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+
+/* VR2-03 · dense always-open field grid used inside the Building & Scope
+   review sections (identity/areas/storeys), replacing a single stacked
+   column of full-width fields — same `FormField`/`SelectField`/
+   `NumericField` primitives, only the surrounding layout changes. */
+.a3-field-grid{display:grid;gap:var(--space-5) var(--space-6);grid-template-columns:repeat(auto-fit,minmax(13rem,1fr))}
+
+/* VR2-03 · the building-level confirm action reads as one docked bar at
+   the foot of the review stage instead of a plain paragraph + button. */
+.a3-confirm-dock{background:var(--color-surface-subtle);margin:0 calc(-1 * var(--space-7));padding:var(--space-5) var(--space-7)}
+
+/* VR2-03 · "Gebäude im Angebot" management row: a grid of bordered building
+   identity cards (media + name + facts) replacing the previous full-width
+   stacked list rows — same canonical `MediaFrame` used by the Project-level
+   identity band (`.a3-project-identity-media`), sized for a card instead of
+   a full-bleed hero. */
+.a3-building-cards{display:grid;gap:var(--space-4);grid-template-columns:repeat(auto-fit,minmax(16rem,1fr))}
+.a3-building-card{display:flex;gap:var(--space-4);border:var(--border-default);padding:var(--space-4)}
+.a3-building-card[data-active="true"]{border-color:var(--color-selection-border)}
+.a3-building-card-media{flex:0 0 6rem}
+.a3-building-card-body{min-width:0;flex:1 1 auto;display:grid;gap:var(--space-2)}
+
 /* DC-19 · ScheduleGantt. Structure: .a3-gantt > .a3-gantt-scroll >
    .a3-gantt-visual > .a3-g-row + .a3-g-axis + .a3-g-legend;
    details.a3-gantt-details contains table.a3-gantt-table.

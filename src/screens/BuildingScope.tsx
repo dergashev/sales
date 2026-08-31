@@ -33,10 +33,10 @@ import {
 } from '../state/buildingReview'
 import {
   Badge,
+  ChecklistPresentation,
   DisclosureRow,
   FormField,
   PageHeader,
-  ReadinessChecklist,
   SectionSheet,
   SelectField,
 } from '../components/designSystem'
@@ -382,14 +382,18 @@ export function BuildingScope() {
 
       <div className="py-5">
         <SectionSheet
-          title={t('buildingScope.selection.title')}
-          intro={t('buildingScope.selection.intro')}
+          title={t('buildingScope.review.title')}
+          intro={t('buildingScope.review.intro')}
         >
+          <h3 className="text-heading-3 font-bold text-text-primary">
+            {t('buildingScope.selection.title')}
+          </h3>
+          <p className="a3-sub">{t('buildingScope.selection.intro')}</p>
           <DataStateBoundary
             label={t('buildingScope.selection.dataLabel')}
             state={{ status: 'ready', data: buildingIds }}
             renderReady={(ids) => (
-              <ul className="mt-3 border-t border-border-subtle">
+              <ul className="a3-building-cards mt-3">
                 {ids.map((id) => {
                   const review = s.buildingReviews[id]!
                   const name = stableName(review, id)
@@ -406,7 +410,9 @@ export function BuildingScope() {
                   const areaLabel = t(wfl
                     ? 'buildingScope.fact.wfl'
                     : 'buildingScope.fact.nuf')
-                  // REDESIGN R2 §4 "BUILDINGCARD": the same data this row
+                  // REDESIGN R2 §4 "BUILDINGCARD" (VR2-03: now a bordered
+                  // identity card in a responsive grid instead of a
+                  // full-width stacked row) — the same data this row
                   // already read (checkbox/StatusBadge/FactSummary triple/
                   // form+class caption, all unchanged) composed as an
                   // object with a face — never a real photograph (no
@@ -415,49 +421,46 @@ export function BuildingScope() {
                   // actual design), so the fallback art IS the canonical
                   // identity treatment here, not a placeholder-for-later.
                   return (
-                    <li key={id} className="border-b border-border-subtle py-4">
-                      <div className="flex flex-wrap items-start gap-4">
-                        {/* `w-8` = `--space-8` (64px) — the project's spacing
-                            scale stops at 8 (theme.spacing is a full
-                            replacement, not `extend`, per tailwind.config.ts;
-                            `w-24` silently resolves to nothing and collapses
-                            the tile to 0×0, caught visually via Playwright). */}
-                        <div className="w-8 shrink-0">
-                          <MediaFrame ratio="tile" state="fallback" seed={name} />
+                    <li
+                      key={id}
+                      className="a3-building-card"
+                      data-active={s.included[id] === true && s.activeBuildingId === id}
+                    >
+                      <div className="a3-building-card-media">
+                        <MediaFrame ratio="card" state="fallback" seed={name} />
+                      </div>
+                      <div className="a3-building-card-body">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <label className="flex min-h-hit-target min-w-0 cursor-pointer items-center gap-3 text-body font-medium text-text-primary">
+                            <input
+                              type="checkbox"
+                              checked={s.included[id] === true}
+                              onChange={() => toggleBuilding(id)}
+                              className="h-4 w-4 shrink-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                            />
+                            <span className="min-w-0 break-words">{name}</span>
+                          </label>
+                          <StatusBadge status={statusFor(s, id)} />
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <label className="flex min-h-hit-target min-w-0 cursor-pointer items-center gap-3 text-body font-medium text-text-primary">
-                              <input
-                                type="checkbox"
-                                checked={s.included[id] === true}
-                                onChange={() => toggleBuilding(id)}
-                                className="h-4 w-4 shrink-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-                              />
-                              <span className="min-w-0 break-words">{name}</span>
-                            </label>
-                            <StatusBadge status={statusFor(s, id)} />
-                          </div>
-                          <p className="mt-1 text-small text-text-muted">
-                            {[form ? t(FORM_MESSAGE[form]) : null,
-                              buildingClass ? t(CLASS_MESSAGE[buildingClass]) : null, address]
-                              .filter(Boolean).join(' · ')}
-                          </p>
-                          <dl className="mt-3 grid grid-cols-3 gap-3 text-small text-text-secondary">
-                            <FactSummary
-                              label={t('buildingScope.fact.bgfRSTotal')}
-                              value={gfa ? `${formatDE(gfa, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}
-                            />
-                            <FactSummary
-                              label={areaLabel}
-                              value={area ? `${formatDE(area, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}
-                            />
-                            <FactSummary
-                              label={t('buildingScope.fact.units')}
-                              value={units ? formatDE(units, 0) : t('buildingScope.value.notCaptured')}
-                            />
-                          </dl>
-                        </div>
+                        <p className="text-small text-text-muted">
+                          {[form ? t(FORM_MESSAGE[form]) : null,
+                            buildingClass ? t(CLASS_MESSAGE[buildingClass]) : null, address]
+                            .filter(Boolean).join(' · ')}
+                        </p>
+                        <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-small text-text-secondary">
+                          <FactSummary
+                            label={t('buildingScope.fact.bgfRSTotal')}
+                            value={gfa ? `${formatDE(gfa, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}
+                          />
+                          <FactSummary
+                            label={areaLabel}
+                            value={area ? `${formatDE(area, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}
+                          />
+                          <FactSummary
+                            label={t('buildingScope.fact.units')}
+                            value={units ? formatDE(units, 0) : t('buildingScope.value.notCaptured')}
+                          />
+                        </dl>
                       </div>
                     </li>
                   )
@@ -465,16 +468,11 @@ export function BuildingScope() {
               </ul>
             )}
           />
-        </SectionSheet>
 
-        <SectionSheet
-          title={t('buildingScope.review.title')}
-          intro={t('buildingScope.review.intro')}
-        >
           {selectedIds.length === 0 ? (
             <EmptyState>{t('buildingScope.review.empty')}</EmptyState>
           ) : (
-            <>
+            <div className="mt-6 border-t border-border-strong pt-5">
               <div className="flex min-w-0 items-stretch gap-1">
                 {selectedIds.length > 1 && (
                   <Button
@@ -489,7 +487,7 @@ export function BuildingScope() {
                   ref={tablistRef}
                   role="tablist"
                   aria-label={t('buildingScope.tabs.label')}
-                  className="a3-tabs min-w-0 flex-1 flex-nowrap overflow-x-auto whitespace-nowrap"
+                  className="a3-tabs a3-tabs-tiles min-w-0 flex-1 flex-nowrap overflow-x-auto"
                   onKeyDown={handleTabKey}
                 >
                   {selectedIds.map((id, index) => {
@@ -513,12 +511,21 @@ export function BuildingScope() {
                         }}
                         className="shrink-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                       >
-                        {name}{NNBSP}·{NNBSP}
-                        {t(status === 'confirmed'
-                          ? 'buildingScope.status.confirmed'
-                          : status === 'conflict'
-                            ? 'buildingScope.status.conflict'
-                            : 'buildingScope.status.open')}
+                        <span className="a3-tab-media" aria-hidden="true">
+                          <MediaFrame ratio="tile" state="fallback" seed={name} />
+                        </span>
+                        <span className="a3-tab-text">
+                          <span className="a3-tab-name">{name}</span>
+                          <span className="a3-tab-meta">
+                            {selected
+                              ? t('buildingScope.tabs.current')
+                              : t(status === 'confirmed'
+                                ? 'buildingScope.status.confirmed'
+                                : status === 'conflict'
+                                  ? 'buildingScope.status.conflict'
+                                  : 'buildingScope.status.open')}
+                          </span>
+                        </span>
                       </button>
                     )
                   })}
@@ -549,7 +556,7 @@ export function BuildingScope() {
                   />
                 </div>
               ))}
-            </>
+            </div>
           )}
         </SectionSheet>
       </div>
@@ -685,7 +692,7 @@ function BuildingReviewPanel({
               open={openSections.identity}
               onOpenChange={(open) => setOpenSections((current) => ({ ...current, identity: open }))}
             >
-              <div className="grid gap-4 p-4">
+              <div className="a3-field-grid p-4">
                 <TextFactField buildingId={buildingId} factKey="documentationName" />
                 <TextFactField buildingId={buildingId} factKey="address" />
                 <SelectFactField buildingId={buildingId} factKey="buildingForm"
@@ -704,30 +711,36 @@ function BuildingReviewPanel({
               open={openSections.areas}
               onOpenChange={(open) => setOpenSections((current) => ({ ...current, areas: open }))}
             >
-              <div className="grid gap-4 p-4">
+              <div className="grid gap-5 p-4">
                 <section aria-labelledby={`areas-above-${buildingId}`} className="grid gap-4">
                   <h4 id={`areas-above-${buildingId}`} className="text-heading-3 font-bold text-text-primary">
                     {t('buildingScope.areas.above')}
                   </h4>
-                  <DecimalFactField buildingId={buildingId} factKey="bgfRAbove" unit="m²" />
-                  <DecimalFactField buildingId={buildingId} factKey="bgfSAbove" unit="m²" />
-                  <DecimalFactField buildingId={buildingId} factKey="bgfRSAbove" unit="m²" derived />
+                  <div className="a3-field-grid">
+                    <DecimalFactField buildingId={buildingId} factKey="bgfRAbove" unit="m²" />
+                    <DecimalFactField buildingId={buildingId} factKey="bgfSAbove" unit="m²" />
+                    <DecimalFactField buildingId={buildingId} factKey="bgfRSAbove" unit="m²" derived />
+                  </div>
                 </section>
                 <section aria-labelledby={`areas-below-${buildingId}`} className="grid gap-4">
                   <h4 id={`areas-below-${buildingId}`} className="text-heading-3 font-bold text-text-primary">
                     {t('buildingScope.areas.below')}
                   </h4>
-                  <DecimalFactField buildingId={buildingId} factKey="bgfRBelow" unit="m²" />
-                  <DecimalFactField buildingId={buildingId} factKey="bgfSBelow" unit="m²" />
-                  <DecimalFactField buildingId={buildingId} factKey="bgfRSBelow" unit="m²" derived />
+                  <div className="a3-field-grid">
+                    <DecimalFactField buildingId={buildingId} factKey="bgfRBelow" unit="m²" />
+                    <DecimalFactField buildingId={buildingId} factKey="bgfSBelow" unit="m²" />
+                    <DecimalFactField buildingId={buildingId} factKey="bgfRSBelow" unit="m²" derived />
+                  </div>
                 </section>
                 <section aria-labelledby={`areas-total-${buildingId}`} className="grid gap-4">
                   <h4 id={`areas-total-${buildingId}`} className="text-heading-3 font-bold text-text-primary">
                     {t('buildingScope.areas.totals')}
                   </h4>
-                  <DecimalFactField buildingId={buildingId} factKey="bgfRSTotal" unit="m²" derived />
-                  <DecimalFactField buildingId={buildingId} factKey="wfl" unit="m²" />
-                  <DecimalFactField buildingId={buildingId} factKey="nuf" unit="m²" />
+                  <div className="a3-field-grid">
+                    <DecimalFactField buildingId={buildingId} factKey="bgfRSTotal" unit="m²" derived />
+                    <DecimalFactField buildingId={buildingId} factKey="wfl" unit="m²" />
+                    <DecimalFactField buildingId={buildingId} factKey="nuf" unit="m²" />
+                  </div>
                 </section>
               </div>
             </ReviewDisclosure>
@@ -761,7 +774,7 @@ function BuildingReviewPanel({
         </table>
       </div>
 
-      <section className="border-t border-border-strong pt-5" aria-label={t('buildingScope.confirm.section')}>
+      <section className="a3-confirm-dock border-t border-border-strong" aria-label={t('buildingScope.confirm.section')}>
         {missingCount > 0 && (
           <p className="mb-3 text-small text-text-secondary">
             <span aria-hidden="true">▲ </span>
@@ -1402,12 +1415,32 @@ export function BuildingScopeReadiness() {
         <h2 className="text-heading-2 font-bold text-text-primary">
           {t('buildingScope.readiness.title')}
         </h2>
+        {/* VR2-03: the "X of Y" summary is the co-primary metric of this
+            rail (readiness must be understandable without scanning the
+            whole workspace) — same `ChecklistPresentation` anatomy
+            `ReadinessChecklist` (DC-26) already wraps, called directly here
+            so this one consumer can give the summary line materially more
+            typographic weight than its small-caption default, without
+            changing the canonical component's default for every other
+            consumer (`ConfigurationOverview` keeps the unchanged wrapper). */}
         <div className="mt-4">
-          <ReadinessChecklist
-            label={t('buildingScope.readiness.title')}
-            items={items}
-            nextAction={nextAction}
+          <ChecklistPresentation
+            summary={t('designSystem.readinessSummary', {
+              done: items.filter((item) => item.ready).length,
+              total: items.length,
+            })}
+            summaryClassName="text-heading-2 font-bold text-text-primary"
+            items={items.map((item) => ({
+              id: item.id,
+              label: item.label,
+              resolved: item.ready,
+              detail: item.detail,
+            }))}
           />
+          <p className="a3-cap mt-4">{t('buildingScope.readiness.primaryAction')}</p>
+          <div className="a3-prerequisite-actions">
+            {nextAction}
+          </div>
         </div>
         <section className="mt-6 border-t border-border-strong pt-5">
           <p className="text-body font-bold text-text-primary">
