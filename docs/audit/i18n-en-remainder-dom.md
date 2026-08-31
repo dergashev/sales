@@ -5,7 +5,7 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 43** · перевод есть, мост не подключён: 24
+**Всего 42** · перевод есть, мост не подключён: 23
 · перевода нет (в поставку копирайта): 19
 
 ## Перевод есть — строка не проходит через мост (правится в src)
@@ -30,7 +30,6 @@ Mit freundlichen Grüßen
 - Total WFL nach WoFlV
 - Welcher Effizienzhaus-Standard ist vorgesehen?
 - Werte aus
-- Werte extrahiert · Regelsatz RS 2026.2
 - aktuelle Auswahl
 - andere Dokumente sind vollständig analysiert.
 - dieser Datei

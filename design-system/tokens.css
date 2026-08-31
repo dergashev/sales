@@ -72,6 +72,7 @@
   --primitive-color-neutral-400: #BDBDBD; /* 32 % neutral.900 */
   --primitive-color-neutral-300: #DEDEDE; /* 16 % neutral.900 */
   --primitive-color-neutral-050: #F4F6F4; /* 50 % neutral.100 */
+  --primitive-color-warm-100: #E7DFCE; /* PROVISIONAL (rule 2): VR2-02 Project WFL rail — between material.plaster and material.timber-light */
   --primitive-color-orange-100:  #F2D1BF; /* 25 % orange.700 */
   /* Альфа НАМЕРЕННАЯ (adr-blocking.md §1 №10: overlay = 48 % neutral.950):
      скрим обязан просвечивать, статического hex-эквивалента у него нет
@@ -195,6 +196,16 @@
   --color-surface-default:  var(--primitive-color-white);
   --color-surface-subtle:   var(--primitive-color-neutral-050);
   --color-surface-selected: var(--primitive-color-orange-100);
+  /* PROVISIONAL (rule 2): the approved VR2-02 Project target's WFL decision
+     rail uses a warm, materially-toned beige — visibly less saturated than
+     `--color-surface-selected` (orange-100, "peach" per Acceptance
+     feedback), reserving orange-tinted emphasis for surfaces that ARE the
+     orange-CTA hero. No existing semantic token matched; the value sits
+     between `--primitive-color-material-plaster` (#EDEBE4, the canvas
+     material) and `--primitive-color-material-timber-light` (#D9CFBB) —
+     both already-approved material-palette primitives, not an invented
+     colour. */
+  --color-surface-emphasis-warm: var(--primitive-color-warm-100);
   --color-surface-overlay:  var(--primitive-color-neutral-950-a48);
 
   /* --- Бордеры [ADR-PENDING] --- */

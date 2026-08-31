@@ -42,9 +42,23 @@ function ext(file: string): string {
   return dot < 0 ? '—' : file.slice(dot + 1).toUpperCase()
 }
 
-export function DocumentAnalysis({ docs, onManualCapture }: {
+export function DocumentAnalysis({ docs, onManualCapture, heading, subheading }: {
   docs: Doc[]
   onManualCapture: () => void
+  /**
+   * VR2-02 (Project remediation, cycle 8, explicit Product directive): the
+   * approved Project target's centre stage reads "Dokumente & Evidenz",
+   * not the component's own registered canonical name (`ANALYSIS-001`,
+   * `docs/audit/requirements-registry.md`). Overriding the RENDERED
+   * heading per consumer — rather than renaming the registered contract
+   * name itself — keeps `ANALYSIS-001` intact as this component's
+   * identity/specimen name while letting the one current Product
+   * consumer (OpportunityCard.tsx) present the target's literal copy.
+   * Defaults to the canonical strings, so omitting these props reproduces
+   * the exact previous behaviour.
+   */
+  heading?: string
+  subheading?: string
 }) {
   const phaseId = useId()
   const tx = useTx()
@@ -89,8 +103,8 @@ export function DocumentAnalysis({ docs, onManualCapture }: {
           `.a3-sheet > h2`, with the box as its content below. */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 id={phaseId} className="text-heading-3 font-bold text-text-primary">{tx('Dokumentanalyse')}</h2>
-          <p className="text-small text-text-muted">{tx('Simulation · Parsing im Prototyp nachgestellt')}</p>
+          <h2 id={phaseId} className="text-heading-3 font-bold text-text-primary">{heading ?? tx('Dokumentanalyse')}</h2>
+          <p className="text-small text-text-muted">{subheading ?? tx('Simulation · Parsing im Prototyp nachgestellt')}</p>
         </div>
         {/* VR2-02 (Project remediation, cycle 7): the approved target places
             the re-run action top-right, next to the section caption, not
@@ -106,15 +120,28 @@ export function DocumentAnalysis({ docs, onManualCapture }: {
         className="a3-analysis-spec mt-3"
       >
       {/* Полоса: indeterminate, потому что общее количество шагов внутри
-          фазы неизвестно (PROGRESS-001). Развёртка — ::before системы. */}
-      {running
-        ? <div className="a3-analysis-track mt-3" aria-hidden="true" />
-        : <div className="mt-3" style={{ height: 'var(--border-width-strong)' }}
-               aria-hidden="true" />}
+          фазы неизвестно (PROGRESS-001). Развёртка — ::before системы.
+          VR2-02 (Project remediation, cycle 8, explicit Product directive):
+          the approved target's resting "ready" state goes straight from
+          the caption to the file rows — no visible progress track or
+          completed-phase log, which is exactly the persistent state this
+          fixture always starts in (never actually mid-run). The track is
+          genuinely meaningless at rest (nothing is progressing), so it is
+          simply omitted rather than rendered empty; it still appears the
+          instant a real run starts (`running`). */}
+      {running && <div className="a3-analysis-track mt-3" aria-hidden="true" />}
 
-      {/* Протокол: завершённые фазы остаются с ✓ (контрактный лог),
-          активная — настоящим временем, жирным. */}
-      <ol className="a3-analysis-log mt-3">
+      {/* Протокол: завершённые фазы остаются с ✓ (контрактный лог,
+          ANALYSIS-002 — completed steps use completed tense), активная —
+          настоящим временем, жирным. VR2-02 (cycle 8): visible only WHILE
+          an analysis is actually running or paused — the moment the log is
+          functionally informative. In the persistent `ready` rest state it
+          is `sr-only` (DOM/AT text unchanged, same established pattern as
+          the workflow stepper's meta line in cycle 6): the ANALYSIS-002
+          record still exists for assistive tech, but no longer consumes
+          ~110px of sighted vertical space in the target's intended
+          evidence-first first composition. */}
+      <ol className={`a3-analysis-log mt-3${ready ? ' sr-only' : ''}`}>
         {phases.slice(0, phase).map((ph) => (
           <li key={ph.done}>
             <span aria-hidden="true" className="a3-okc">✓</span> {ph.done}

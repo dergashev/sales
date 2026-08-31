@@ -236,6 +236,16 @@ table.a3-kg,table.a3-cmp,table.a3-kx,table.a3-data-table,table.a3-driver-table,t
 .a3-btn.a3-sec{background:var(--color-action-secondary-bg);color:var(--color-action-secondary-text);border:var(--border-contrast-1px)}
 .a3-btn.a3-sec:hover:not([aria-disabled="true"]),.a3-btn.a3-ghost:hover:not([aria-disabled="true"]){background:var(--color-action-secondary-hover)}
 .a3-btn.a3-ghost{background:transparent;color:var(--color-text-primary);border:none}
+/* VR2-02 (Project remediation, cycle 8): dark-filled variant — reuses
+   already-declared tokens (`--color-text-primary` / `--color-surface-
+   stage-deep`'s own neutral-950 for hover, `--color-surface-default` for
+   text), no new colour invented. Distinct from `.a3-sec` (white fill +
+   border) and from the brand-orange `primary` reserved for the page's one
+   hero action. */
+.a3-btn.a3-dark{background:var(--color-text-primary);color:var(--color-surface-default);border:none}
+.a3-btn.a3-dark:hover:not([aria-disabled="true"]){background:var(--color-surface-stage-deep)}
+.a3-btn.a3-dark:active:not([aria-disabled="true"]){background:var(--color-surface-stage-deep);transition-duration:0ms}
+.a3-btn.a3-dark[data-loading="true"]{background:var(--color-text-primary);color:var(--color-surface-default);border:none}
 .a3-btn[disabled],.a3-btn[aria-disabled="true"]{opacity:1;cursor:default;background:var(--color-action-disabled-bg);color:var(--color-action-disabled-text);border:var(--border-width-default) solid var(--color-action-disabled-border)}
 .a3-btn[data-loading="true"]{background:var(--color-action-primary-bg);color:var(--color-action-primary-text);border:none}
 .a3-btn.a3-sec[data-loading="true"]{background:var(--color-action-secondary-bg);color:var(--color-action-secondary-text);border:var(--border-contrast-1px)}
@@ -1577,7 +1587,10 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    "NÄCHSTE ENTSCHEIDUNG" summary card is a filled, purposeful beige stage
    (`--color-surface-selected`, the SAME token already driving the active
    WorkflowStepper chip's highlight — not a new colour, rule 2). */
-.a3-next-decision{border:var(--border-default);border-left:var(--size-status-accent-width) solid var(--color-border-warning);background:var(--color-surface-selected);padding:var(--space-4);max-width:100%}
+/* VR2-02 (Project remediation, cycle 8, explicit Product directive):
+   warm neutral emphasis, not the peachier `--color-surface-selected` —
+   see `--color-surface-emphasis-warm` (tokens.css) for the reasoning. */
+.a3-next-decision{border:var(--border-default);border-left:var(--size-status-accent-width) solid var(--color-border-warning);background:var(--color-surface-emphasis-warm);padding:var(--space-4);max-width:100%}
 
 /* Acceptance remediation (cycle 1): approved target's persistent bottom
    action dock, absent from the previous candidate. Sticks to the bottom

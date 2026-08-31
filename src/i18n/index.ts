@@ -132,6 +132,13 @@ const de = {
   'oppcard.baseline.previewEyebrow': 'Projektgrundlage · Vorschau',
   'oppcard.baseline.previewSummary': '{count} Gebäude · {bgf} m² BGF oberirdisch',
   'oppcard.baseline.previewCta': 'Grundlage ansehen',
+  // VR2-02 (Project remediation, cycle 8, explicit Product directive):
+  // approved target's literal centre-stage heading/subheading — passed as
+  // `DocumentAnalysis`'s `heading`/`subheading` override, its registered
+  // canonical name (ANALYSIS-001) stays the component's own default.
+  'oppcard.evidence.heading': 'Dokumente & Evidenz',
+  'oppcard.evidence.subheading':
+    'Analyseergebnis, Planversion und fehlende Angaben in einer Arbeitsansicht.',
   // VR2-02 — Projekt-Identitätsband oben auf der Projekt-Workspace-Seite
   // (ersetzt die schmale Seitenspalte) und die Entscheidungs-zuerst-Karte,
   // die den aktuellen Schritt zusammenfasst, ohne die im Stepper verborgene
@@ -958,6 +965,9 @@ const en: Partial<Record<MessageKey, string>> = {
   'oppcard.baseline.previewEyebrow': 'Project baseline · preview',
   'oppcard.baseline.previewSummary': '{count} buildings · {bgf} m² GFA above ground',
   'oppcard.baseline.previewCta': 'View baseline',
+  'oppcard.evidence.heading': 'Documents & evidence',
+  'oppcard.evidence.subheading':
+    'Analysis result, drawing version and missing details in one working view.',
   'oppcard.identity.eyebrow': 'Opportunity',
   'oppcard.identity.factDocuments': 'Documents',
   'oppcard.nextDecision.eyebrow': 'Next decision',

@@ -723,7 +723,12 @@ function NextDecisionCard({
       )}
       <p className="a3-cap mt-2">{copy.body}</p>
       <div className="mt-3">
-        <Button variant="primary" onClick={copy.onSelect}>
+        {/* VR2-02 (Project remediation, cycle 8, explicit Product
+            directive): target's inline rail CTA is dark, not orange — the
+            brand-orange `primary` stays reserved for the ONE hero action
+            on this screen (the persistent bottom dock's CTA below,
+            unchanged), so the two don't compete for the same emphasis. */}
+        <Button variant="dark" onClick={copy.onSelect}>
           {copy.cta} <span aria-hidden="true">→</span>
         </Button>
       </div>
@@ -1327,6 +1332,8 @@ export function OpportunityCard() {
           aria-label="Dokumentanalyse"
         >
           <DocumentAnalysis
+            heading={t("oppcard.evidence.heading")}
+            subheading={t("oppcard.evidence.subheading")}
             docs={demo.documents.map((d) => ({
               file: d.file,
               pages: typeof d.pages === "number" ? d.pages : null,
