@@ -643,6 +643,22 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    rationale text (above). Scoped to `size="workflow"` only — the single
    confirmed consumer — `size="chapter"` keeps its own padding. */
 .a3-wfs-workflow .a3-wfs-button,.a3-wfs-workflow .a3-wfs-static{padding:var(--space-2) var(--space-4)}
+/* Acceptance remediation (cycle 6): the approved target's chip shows only
+   LABEL + rationale ("2 Strittige Angaben" / "1 Entscheidung erforderlich")
+   — no separate visible "Schritt N von 4 · <state>" line. That phrase is a
+   TESTED accessibility requirement (opportunity-card-shell.dom.test.tsx:
+   "позиция шага доступна скринридеру целой фразой «Schritt n von 4»" —
+   .a3-wfs-meta must carry the exact text, asserted via textContent), not a
+   visual one: the DOM node stays, screen readers still announce it, only
+   its SIGHTED rendering is removed here — the standard visually-hidden
+   pattern (Tailwind's own `.sr-only` shape), scoped to size="workflow"
+   only so size="chapter" (Sidebar.tsx) keeps its visible meta line
+   unchanged. This does NOT touch the FOUR canonical stages themselves
+   (#16 "Rebuild Project Card Workflow", AC-03) — all four remain
+   rendered, interactive, counted and tested; only this one redundant-for-
+   sighted-users line (state is already carried by the glyph shape plus
+   the always-visible rationale text, rule 8) is removed from view. */
+.a3-wfs-workflow .a3-wfs-meta{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .a3-wfs-chapter .a3-wfs-list{grid-template-columns:1fr;gap:0;border-top:var(--border-hairline);border-bottom:var(--border-hairline)}
 .a3-wfs-chapter .a3-wfs-step{border:0;border-left:var(--border-width-strong) solid transparent;border-bottom:var(--border-hairline)}
 .a3-wfs-chapter .a3-wfs-step:last-child{border-bottom:0}
