@@ -847,6 +847,15 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-buildingscope-header .a3-meta{order:2}
 .a3-buildingscope-headline{font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:700;color:var(--color-text-primary);margin:var(--space-2) 0 var(--space-2)}
 
+/* VR2-03 · Acceptance remediation cycle 6: the approved target's building
+   tabs sit immediately under the intro, with no card-padding gap in
+   between — `.a3-sheet`'s own top padding (`--space-7`, the correct value
+   for every other titled sheet in the product) is the single largest
+   remaining contributor to the tabs starting materially below the target's
+   measured position. Scoped to this one screen's un-titled review sheet
+   only; `.a3-sheet` itself, and every other consumer, keeps `--space-7`. */
+.a3-buildingscope-review{padding-top:var(--space-3)}
+
 /* DC-19 · ScheduleGantt. Structure: .a3-gantt > .a3-gantt-scroll >
    .a3-gantt-visual > .a3-g-row + .a3-g-axis + .a3-g-legend;
    details.a3-gantt-details contains table.a3-gantt-table.

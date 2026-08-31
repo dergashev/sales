@@ -416,7 +416,11 @@ export function BuildingScope() {
         </div>
       )}
 
-      <div className="py-4">
+      {/* Acceptance remediation (cycle 6): dropped this wrapper's own
+          top padding (kept the bottom one) — another small, real
+          contributor to the gap above the building tabs, on top of the
+          `.a3-buildingscope-review` sheet padding override below. */}
+      <div className="pb-4">
         {/* Acceptance remediation (cycle 3): dropped this sheet's own
             `intro` line — PageHeader's `lede` above already states the
             stage's purpose, and the review content needs to reach the
@@ -432,7 +436,13 @@ export function BuildingScope() {
             `aria-label` (same text, same landmark, no longer painted) and
             still exists verbatim in the table's `<caption className="sr-only">`
             below for the table's own accessible name. */}
-        <SectionSheet aria-label={t('buildingScope.review.title')}>
+        {/* Acceptance remediation (cycle 6): `.a3-sheet`'s own 48px top
+            padding (the same card padding every OTHER sheet in the product
+            legitimately wants) was, on this one screen, sitting between
+            the headline block and the building tabs with no counterpart in
+            the target's flush composition — scoped override below, not a
+            change to `.a3-sheet` itself. */}
+        <SectionSheet aria-label={t('buildingScope.review.title')} className="a3-buildingscope-review">
           {/* Acceptance remediation (cycle 3): a bordered media-card grid
               here duplicated the identity the tab strip below ALSO shows —
               two competing "which building" surfaces reading as the
@@ -493,7 +503,13 @@ export function BuildingScope() {
           {selectedIds.length === 0 ? (
             <EmptyState>{t('buildingScope.review.empty')}</EmptyState>
           ) : (
-            <div className="mt-4 border-t border-border-strong pt-4">
+            // Acceptance remediation (cycle 6): the approved target has no
+            // visible rule between the "Gebäude verwalten" row and the
+            // building tabs — dropped the border, kept only enough margin
+            // to separate the two rows (this was also a real, if smaller,
+            // contributor to the tabs sitting below the target's measured
+            // position).
+            <div className="mt-3">
               {selectedIds.length > 1 ? (
                 // Acceptance remediation (cycle 3): the previous first/last
                 // jump buttons existed to help navigate a horizontally
@@ -1067,9 +1083,14 @@ function ReadField({ label, value, provenance }: {
   provenance: ProvenancePresentation | null
 }) {
   return (
-    <div className="grid gap-1 border-b border-border-subtle pb-4">
-      <p className="text-small text-text-secondary">{label}</p>
-      <p className="text-heading-3 font-bold text-text-primary">{value}</p>
+    <div className="grid min-w-0 gap-1 border-b border-border-subtle pb-4">
+      <p className="break-words text-small text-text-secondary">{label}</p>
+      {/* Unlike the edit-mode `<select>` this replaces (which truncates
+          long values with an ellipsis via `.a3-select-field`), a plain
+          read value has no such safety net — `break-words` is this read
+          view's own, matching the same fix already applied to every other
+          long/unbreakable label in this product (rule 37). */}
+      <p className="min-w-0 break-words text-heading-3 font-bold text-text-primary">{value}</p>
       {provenance && <ProvenanceChip provenance={provenance} />}
     </div>
   )
@@ -1678,7 +1699,15 @@ export function BuildingScopeReadiness() {
       className="a3-buildingscope-rail flex h-full min-w-0 shrink-0 flex-col overflow-y-auto border-l border-border-strong bg-surface-default"
     >
       <div className="p-6">
-        <h2 className="text-heading-2 font-bold text-text-primary">
+        {/* Acceptance remediation (cycle 6): narrowing this rail to the
+            approved 264/226px target width (tokens.css) exposed a real,
+            pre-existing overflow — "Konfigurator?" is one unbreakable word
+            at `text-heading-2` size, wider than the available 226px column
+            minus padding, and `overflow-wrap`'s default (`normal`) lets an
+            unbreakable word overflow its box rather than wrap. `break-words`
+            matches the same fix already applied to every other long/German
+            compound label in this product (rule 37). */}
+        <h2 className="break-words text-heading-2 font-bold text-text-primary">
           {t('buildingScope.readiness.title')}
         </h2>
         {/* VR2-03: the "X of Y" summary is the co-primary metric of this
