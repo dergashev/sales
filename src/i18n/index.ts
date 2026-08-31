@@ -124,6 +124,25 @@ const de = {
     'Vorbereitung · Offene Fragen: {questions} · Aktive Annahmen: {assumptions}',
   'oppcard.baseline.bgfEquation':
     'BGF R plus BGF S ergibt BGF R+S; die NRF wird daraus abgeleitet.',
+  // VR2-02 — Projekt-Identitätsband oben auf der Projekt-Workspace-Seite
+  // (ersetzt die schmale Seitenspalte) und die Entscheidungs-zuerst-Karte,
+  // die den aktuellen Schritt zusammenfasst, ohne die im Stepper verborgene
+  // `<details>`-Begründung zu duplizieren.
+  'oppcard.identity.eyebrow': 'Opportunity',
+  'oppcard.identity.factDocuments': 'Dokumente',
+  'oppcard.nextDecision.eyebrow': 'Nächste Entscheidung',
+  'oppcard.nextDecision.conflict.headline': 'Strittige Angabe entscheiden',
+  'oppcard.nextDecision.conflict.body':
+    'Zwei Kandidaten für die Wohnfläche liegen vor. Die Entscheidung setzt die Projektgrundlage frei.',
+  'oppcard.nextDecision.conflict.cta': 'Konflikt entscheiden',
+  'oppcard.nextDecision.baseline.headline': 'Projektgrundlage bestätigen',
+  'oppcard.nextDecision.baseline.body':
+    'Alle Konflikte sind entschieden. Die Bestätigung setzt das Anlegen von Opportunity Options frei.',
+  'oppcard.nextDecision.baseline.cta': 'Projektgrundlage öffnen',
+  'oppcard.nextDecision.options.headline': 'Opportunity Option anlegen',
+  'oppcard.nextDecision.options.body':
+    'Die Projektgrundlage ist bestätigt. Als Nächstes entsteht die erste Opportunity Option.',
+  'oppcard.nextDecision.options.cta': 'Zu Opportunity Options',
   'buildingScope.gate.navigationReason':
     'Zuerst mindestens ein Gebäude auswählen und jedes gewählte Gebäude bestätigen.',
   'buildingScope.title': 'Gebäude & Umfang',
@@ -862,6 +881,21 @@ const en: Partial<Record<MessageKey, string>> = {
     'Preparation · Open questions: {questions} · Active assumptions: {assumptions}',
   'oppcard.baseline.bgfEquation':
     'GFA R plus GFA S equals GFA R+S; NFA is derived from that total.',
+  'oppcard.identity.eyebrow': 'Opportunity',
+  'oppcard.identity.factDocuments': 'Documents',
+  'oppcard.nextDecision.eyebrow': 'Next decision',
+  'oppcard.nextDecision.conflict.headline': 'Decide the disputed figure',
+  'oppcard.nextDecision.conflict.body':
+    'Two candidates exist for the living area. Deciding releases the project baseline.',
+  'oppcard.nextDecision.conflict.cta': 'Decide the conflict',
+  'oppcard.nextDecision.baseline.headline': 'Confirm the project baseline',
+  'oppcard.nextDecision.baseline.body':
+    'All conflicts are decided. Confirming releases Opportunity Options for creation.',
+  'oppcard.nextDecision.baseline.cta': 'Open the project baseline',
+  'oppcard.nextDecision.options.headline': 'Create an Opportunity Option',
+  'oppcard.nextDecision.options.body':
+    'The project baseline is confirmed. Next, the first Opportunity Option is created.',
+  'oppcard.nextDecision.options.cta': 'Go to Opportunity Options',
   'buildingScope.gate.navigationReason':
     'Select at least one building and confirm every selected building first.',
   'buildingScope.title': 'Building & scope',

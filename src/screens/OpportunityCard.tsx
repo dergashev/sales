@@ -38,6 +38,7 @@ import { InternalNote } from "../components/InternalNote";
 import { Badge, Card, FormField, PageHeader } from "../components/designSystem";
 import { WorkflowStepper, type WorkflowStep } from '../design-system/WorkflowStepper'
 import { MediaFrame } from "../design-system/MediaFrame";
+import { opportunityMedia } from "../assets/opportunity-media";
 import { useSemanticMotion } from "../design-system/motion";
 import { Dialog, type DialogHandle } from "../components/Dialog";
 import { STAGE_TAG } from "../lib/opportunityStage";
@@ -614,6 +615,72 @@ function OptionCard({
   );
 }
 
+/**
+ * VR2-02 — the decision-first summary this page was missing (WHY-THIS-
+ * EXISTS: professionals had to scan the whole stacked document to find the
+ * active decision). Pure presentation: it names the SAME `currentStage`
+ * already computed for `WorkflowStepper` above and jumps to the SAME
+ * section refs the stepper's own `onSelect` uses (`focusSection`) — no new
+ * business logic, no new gate, nothing that could diverge from the
+ * canonical readiness model. Its CTA is deliberately a WAYFINDING action
+ * ("open/jump to"), never a same-labelled duplicate of the real commit
+ * actions inside the section itself ("Kundenwert übernehmen",
+ * "Projektparameter bestätigen", "Opportunity Option anlegen") — the
+ * decision is still made exactly once, in exactly one place.
+ */
+function NextDecisionCard({
+  stage,
+  onJumpToConflict,
+  onJumpToBaseline,
+  onJumpToOptions,
+}: {
+  stage: "conflict" | "confirm" | "options";
+  onJumpToConflict: () => void;
+  onJumpToBaseline: () => void;
+  onJumpToOptions: () => void;
+}) {
+  const t = useT();
+  const copy =
+    stage === "conflict"
+      ? {
+          headline: t("oppcard.nextDecision.conflict.headline"),
+          body: t("oppcard.nextDecision.conflict.body"),
+          cta: t("oppcard.nextDecision.conflict.cta"),
+          onSelect: onJumpToConflict,
+        }
+      : stage === "confirm"
+        ? {
+            headline: t("oppcard.nextDecision.baseline.headline"),
+            body: t("oppcard.nextDecision.baseline.body"),
+            cta: t("oppcard.nextDecision.baseline.cta"),
+            onSelect: onJumpToBaseline,
+          }
+        : {
+            headline: t("oppcard.nextDecision.options.headline"),
+            body: t("oppcard.nextDecision.options.body"),
+            cta: t("oppcard.nextDecision.options.cta"),
+            onSelect: onJumpToOptions,
+          };
+  return (
+    // Reuses the canonical `.a3-konflikt` warning-accent card (components.css)
+    // already carrying the exact visual language ACCEPT'd for this screen's
+    // open-conflict surface — no new Design System primitive for what is,
+    // visually, the same "decision pending" card shape.
+    <div className="a3-konflikt">
+      <p className="a3-cap font-medium">{t("oppcard.nextDecision.eyebrow")}</p>
+      <h2 className="mt-1 text-heading-3 font-bold text-text-primary">
+        {copy.headline}
+      </h2>
+      <p className="a3-cap mt-2">{copy.body}</p>
+      <div className="mt-3">
+        <Button variant="primary" onClick={copy.onSelect}>
+          {copy.cta} <span aria-hidden="true">→</span>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function OpportunityCard() {
   const s = useStore();
   const t = useT();
@@ -668,15 +735,56 @@ export function OpportunityCard() {
   // Кейс проработан только один: остальные честно говорят об этом здесь,
   // а не изображают анализ, которого в прототипе нет.
   if (!meta.worked) {
+    // VR2-02: even the near-blank/incomplete baseline state keeps the
+    // released VR2-01 identity/media language (same MediaFrame + PageHeader
+    // pattern as the worked project below) so project recognition survives
+    // Opportunities → Project navigation for EVERY project, not only the
+    // one demo case with real workflow data — and explains what is missing,
+    // why, and how to leave, instead of a bare heading over an empty page.
+    const fallbackMedia = opportunityMedia(meta.id);
     return (
       <div className="a3-page px-7 py-6">
-        <header className="border-b border-border-strong pb-4">
-          <p className="a3-cap">
-            {meta.city} · {meta.country} · {meta.owner}
-          </p>
-          <h1 className="mt-1 text-heading-2 font-bold text-text-primary">
-            {meta.name}
-          </h1>
+        <header className="a3-project-identity">
+          <div
+            className="a3-project-identity-media"
+            style={{ viewTransitionName: `project-media-${meta.id}` }}
+          >
+            {fallbackMedia ? (
+              <MediaFrame
+                ratio="card"
+                state="loaded"
+                src={fallbackMedia.url}
+                alt={t(fallbackMedia.altKey)}
+                seed={meta.name}
+                focalPoint={fallbackMedia.focalPoint}
+                caption={t(fallbackMedia.creditKey)}
+              />
+            ) : (
+              <MediaFrame
+                ratio="card"
+                state="fallback"
+                seed={meta.name}
+                alt=""
+                fallbackLabel={t('opplist.media.fallbackCaption', { name: meta.name })}
+              />
+            )}
+          </div>
+          <div className="a3-project-identity-text min-w-0 flex-1">
+            <p className="a3-portfolio-eyebrow">{t('oppcard.identity.eyebrow')}</p>
+            <PageHeader
+              title={meta.name}
+              meta={
+                <span className="flex flex-col gap-2">
+                  <span className="block">
+                    {meta.city} · {meta.country} · {meta.owner}
+                  </span>
+                  <span className={"a3-tag " + (STAGE_TAG[meta.stage] ?? "")}>
+                    {tx(meta.stage)}
+                  </span>
+                </span>
+              }
+            />
+          </div>
         </header>
         <p className="mt-5 border border-border-default p-4 text-body text-text-secondary">
           <span aria-hidden="true">○ </span>
@@ -701,6 +809,13 @@ export function OpportunityCard() {
   //    держит BGF S = 0 — «производная площадь балкона намеренно не
   //    переиспользуется как DIN 277 BGF S»). ──
   const bs = demo.buildings;
+  // VR2-02: consume the released VR2-01 identity/media contract
+  // (`opportunityMedia()` + `MediaFrame`, `src/assets/opportunity-media.ts`)
+  // exactly as OpportunityList.tsx already does for the portfolio card —
+  // no second identity/media system. `meta.id` is DEMO-0001, one of the
+  // three opportunities the approved target names as photographed.
+  const media = opportunityMedia(meta.id);
+  const documentsCount = demo.documents.length;
   const buildingFactSum = (
     key:
       | "bgfRAbove"
@@ -926,16 +1041,138 @@ export function OpportunityCard() {
   }
 
   return (
-    <div className="a3-page px-7 py-6 lg:grid lg:grid-cols-[1.55fr_0.85fr] lg:gap-8 lg:items-start">
+    <div className="a3-page px-7 py-6">
+      <InternalNoteDialog
+        open={noteDialogOpen}
+        onOpenChange={setNoteDialogOpen}
+        returnFocusTo={noteButtonRef}
+      />
+
+      {/* VR2-02: project identity moved OUT of the narrow sticky sidebar
+          (REDESIGN R2's placement) into a full-width band at the very top
+          of the first viewport — the approved target's #1 requirement
+          ("a professional can recognise a project ... immediately") had
+          identity demoted behind the stacked document instead. Same
+          MediaFrame + PageHeader + STAGE_TAG contract as before (F05/
+          ACCEPT-01 invariants below are untouched), only repositioned; the
+          `project-media-${id}` view-transition name still pairs this frame
+          with the Opportunities list card (continuity requirement). */}
+      <header className="a3-project-identity">
+        <div
+          className="a3-project-identity-media"
+          style={{ viewTransitionName: `project-media-${meta.id}` }}
+        >
+          {media ? (
+            <MediaFrame
+              ratio="card"
+              state="loaded"
+              src={media.url}
+              alt={t(media.altKey)}
+              seed={meta.name}
+              focalPoint={media.focalPoint}
+              caption={t(media.creditKey)}
+            />
+          ) : (
+            <MediaFrame
+              ratio="card"
+              state="fallback"
+              seed={meta.name}
+              alt=""
+              fallbackLabel={t('opplist.media.fallbackCaption', { name: meta.name })}
+            />
+          )}
+        </div>
+        <div className="a3-project-identity-text min-w-0 flex-1">
+          <p className="a3-portfolio-eyebrow">{t('oppcard.identity.eyebrow')}</p>
+          <PageHeader
+            title={meta.name}
+            meta={
+              <span className="flex flex-col gap-2">
+                <span className="block">
+                  {meta.city} · {meta.country} · {meta.owner}
+                  {meta.meetingAt && <> · {tx(meta.meetingAt)}</>}
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className={"a3-tag " + (STAGE_TAG[meta.stage] ?? "")}>
+                    {tx(meta.stage)}
+                  </span>
+                  {/* Header utility affordance (#16 Part 5/AC-07): the ONLY entry
+                      point to Internal Note now. Never rendered client-side — the
+                      affordance itself must not exist in presentation mode, not
+                      merely open an empty dialog (NOTE-006). */}
+                  {s.mode !== "praesentation" && (
+                    <Button
+                      ref={noteButtonRef}
+                      variant="ghost"
+                      onClick={() => setNoteDialogOpen(true)}
+                    >
+                      {tx("Interne Notiz")}
+                    </Button>
+                  )}
+                </span>
+              </span>
+            }
+          />
+          {/* REDESIGN R2 (DESIGN-01/DESIGN-12) identity metrics, now a
+              horizontal facts row matching the approved target's KPI strip
+              instead of a vertical sidebar stack. `totalBgfRS` is the SAME
+              AUD-02 single-aggregation-truth value the Projektgrundlage
+              equation renders further down (not a second sum); a value the
+              product does not have is omitted, never an invented zero
+              (rule 16). `documentsCount` is the same array `Dokumentanalyse`
+              below already reads — not a new count. */}
+          <dl className="a3-project-identity-facts mt-4">
+            <div>
+              <dt className="text-caption text-text-secondary">
+                {tx("Gebäude")}
+              </dt>
+              <dd className="numeric text-metric-section font-bold text-text-primary">
+                {bs.length}
+              </dd>
+            </div>
+            {totalBgfRS.greaterThan(0) && (
+              <div>
+                <dt className="text-caption text-text-secondary">
+                  {tx("BGF (R+S)")}
+                </dt>
+                <dd className="numeric text-metric-section font-bold text-text-primary">
+                  {formatDE(totalBgfRS, 0)}
+                  {NNBSP}m²
+                </dd>
+              </div>
+            )}
+            {totalUnits.greaterThan(0) && (
+              <div>
+                <dt className="text-caption text-text-secondary">
+                  {tx("Wohneinheiten")}
+                </dt>
+                <dd className="numeric text-metric-section font-bold text-text-primary">
+                  {formatDE(totalUnits, 0)}
+                </dd>
+              </div>
+            )}
+            <div>
+              <dt className="text-caption text-text-secondary">
+                {t('oppcard.identity.factDocuments')}
+              </dt>
+              <dd className="numeric text-metric-section font-bold text-text-primary">
+                {documentsCount}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </header>
+
+      <WorkflowStepper ariaLabel={tx("Projektstatus")} steps={stages} />
+
+      {/* Decision-first main area: documents/evidence + full analysis depth
+          stay the dominant left column (PRESERVE — same four sections,
+          same refs, same aria-labels, same order the existing test suite
+          and stepper navigation rely on); the right rail promotes the
+          CURRENT stage's decision so it is discoverable without scanning
+          past the whole stacked document (five-second test requirement). */}
+      <div className="mt-6 lg:grid lg:grid-cols-[1.55fr_0.85fr] lg:gap-8 lg:items-start">
       <div className="min-w-0">
-        <InternalNoteDialog
-          open={noteDialogOpen}
-          onOpenChange={setNoteDialogOpen}
-          returnFocusTo={noteButtonRef}
-        />
-
-        <WorkflowStepper ariaLabel={tx("Projektstatus")} steps={stages} />
-
         {/* 1 · Анализ документации + разрешение версий планов (перенесено из
           "· Vorbereitung" P1 — единственный рендер списка документов, AC8). */}
         <section
@@ -1535,99 +1772,19 @@ export function OpportunityCard() {
         </section>
       </div>
 
-      {/* Secondary identity/metadata column */}
+      {/* Decision-first rail: the CURRENT stage's action, discoverable
+          without scanning past the whole stacked document on the left.
+          Sticky so it stays in view alongside whichever section the
+          professional is currently reading (same pattern the previous
+          identity sidebar used). */}
       <div className="sticky top-6 flex flex-col gap-4 mt-8 lg:mt-0">
-        {/* REDESIGN R2 (DESIGN-01): the project identity moment. No sourced
-            photography exists yet for the fixture projects (same deferred
-            follow-up as the landing's card faces, slice 1/9) — the `pano`
-            fallback state is the honest, designed identity face today; a real
-            panoramic photo for DEMO-0001 slots into the same `state="loaded"`
-            prop later without any layout change. No text is overlaid on the
-            frame (canonical MediaFrame rule). */}
-        {/* REDESIGN R2 "SALES MOMENT 1": pairs with the landing card's face
-            via `startContinuityTransition` (motion.ts, View Transition API) —
-            the SAME `project-media-${id}` name OpportunityList.tsx sets on
-            its card, so the browser morphs one into the other on arrival. */}
-        <div style={{ viewTransitionName: `project-media-${meta.id}` }}>
-          <MediaFrame ratio="pano" state="fallback" seed={meta.name} alt="" />
-        </div>
-        <PageHeader
-          className="mt-4"
-          title={meta.name}
-          meta={
-            <span className="flex flex-col gap-2">
-              <span className="block">
-                {meta.city} · {meta.country} · {meta.owner}
-              </span>
-              <span className="flex items-center gap-2">
-                <span className={"a3-tag " + (STAGE_TAG[meta.stage] ?? "")}>
-                  {tx(meta.stage)}
-                </span>
-                {/* Header utility affordance (#16 Part 5/AC-07): the ONLY entry
-                    point to Internal Note now. Never rendered client-side — the
-                    affordance itself must not exist in presentation mode, not
-                    merely open an empty dialog (NOTE-006). */}
-                {s.mode !== "praesentation" && (
-                  <Button
-                    ref={noteButtonRef}
-                    variant="ghost"
-                    onClick={() => setNoteDialogOpen(true)}
-                  >
-                    {tx("Interne Notiz")}
-                  </Button>
-                )}
-              </span>
-            </span>
-          }
+        <NextDecisionCard
+          stage={currentStage}
+          onJumpToConflict={() => focusSection(conflictSectionRef)}
+          onJumpToBaseline={() => focusSection(questionsSectionRef)}
+          onJumpToOptions={() => focusSection(optionsSectionRef)}
         />
-        {/* REDESIGN R2 (DESIGN-01/DESIGN-12): identity metrics strip — key
-            project-scale numbers get metric-section rank (32px) instead of
-            living only inside the Projektgrundlage table below. `totalBgfRS`
-            is the SAME AUD-02 single-aggregation-truth value the
-            Projektgrundlage equation renders further down this page (not a
-            second sum); a value the product does not have is omitted, never
-            shown as an invented zero (rule 16). */}
-        <dl className="mt-4 flex flex-col gap-y-4">
-          <div>
-            <dt className="text-caption text-text-secondary">
-              {tx("Gebäude")}
-            </dt>
-            <dd className="numeric text-metric-section font-bold text-text-primary">
-              {bs.length}
-            </dd>
-          </div>
-          {totalBgfRS.greaterThan(0) && (
-            <div>
-              <dt className="text-caption text-text-secondary">
-                {tx("BGF (R+S)")}
-              </dt>
-              <dd className="numeric text-metric-section font-bold text-text-primary">
-                {formatDE(totalBgfRS, 0)}
-                {NNBSP}m²
-              </dd>
-            </div>
-          )}
-          {totalUnits.greaterThan(0) && (
-            <div>
-              <dt className="text-caption text-text-secondary">
-                {tx("Wohneinheiten")}
-              </dt>
-              <dd className="numeric text-metric-section font-bold text-text-primary">
-                {formatDE(totalUnits, 0)}
-              </dd>
-            </div>
-          )}
-          {meta.meetingAt && (
-            <div>
-              <dt className="text-caption text-text-secondary">
-                {tx("Termin")}
-              </dt>
-              <dd className="numeric text-metric-section font-bold text-text-primary">
-                {tx(meta.meetingAt)}
-              </dd>
-            </div>
-          )}
-        </dl>
+      </div>
       </div>
     </div>
   );

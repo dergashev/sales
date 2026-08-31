@@ -439,6 +439,12 @@
      grid-template-rows (below). */
   --size-media-card-landing: 130px;
   --size-opportunity-card-narrow: 205px;
+  /* [provisional] VR2-02 — approved TARGET-project-1440/1280.png's project
+     identity header measures the media column at ~360px wide against a 3:2
+     (`aspect-media-card`) frame at both supported desktop viewports (the
+     image does not shrink between 1440 and 1280, only the text column
+     narrows). Sole consumer: .a3-project-identity-media. */
+  --size-media-identity-header: 360px;
   --measure-panel: 560px;
   --measure-wide: 640px;
   --measure-chart: 720px;

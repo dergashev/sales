@@ -1451,6 +1451,24 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
   .a3-opportunities-canvas .a3-opportunity-item{grid-template-columns:160px minmax(0,1fr)}
 }
 
+/* VR2-02 — project workspace identity band (TARGET-project-1440/1280.png).
+   Full-width media + identity text at the top of the first viewport,
+   replacing the previous narrow sticky sidebar placement (REDESIGN R2).
+   `.a3-project-identity-media` reuses the SAME `--size-media-identity-header`
+   width at both supported desktop viewports — the approved target does not
+   shrink the image between 1440 and 1280, only the text column narrows.
+   Below the narrow-desktop floor the media stacks above the text instead of
+   forcing the identity band into an unreadably thin column. */
+.a3-project-identity{display:flex;gap:var(--space-6);align-items:flex-start;flex-wrap:wrap;border-bottom:var(--border-hairline);padding-bottom:var(--space-6);margin-bottom:var(--space-6)}
+.a3-project-identity-media{flex:0 0 var(--size-media-identity-header);width:var(--size-media-identity-header);max-width:100%}
+.a3-project-identity-text{flex:1 1 20rem;min-width:0}
+.a3-project-identity-text .a3-masthead{margin:var(--space-2) 0 0}
+.a3-project-identity-facts{display:flex;flex-wrap:wrap;gap:var(--space-6)}
+@media (max-width:56rem){
+  .a3-project-identity{flex-direction:column}
+  .a3-project-identity-media{flex-basis:auto;width:100%}
+}
+
 .a3-media-identity-art{position:relative}
 .a3-media-identity-building{position:relative;width:54%;height:62%;border:var(--border-contrast-2px);border-bottom:0;background:var(--color-surface-default)}
 .a3-media-identity-roof{position:absolute;inset-inline:-8%;top:-1px;border-top:var(--border-contrast-2px);transform:skewY(-8deg);transform-origin:left}
