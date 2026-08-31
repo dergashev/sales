@@ -131,9 +131,14 @@ const de = {
   'oppcard.identity.eyebrow': 'Opportunity',
   'oppcard.identity.factDocuments': 'Dokumente',
   'oppcard.nextDecision.eyebrow': 'Nächste Entscheidung',
-  'oppcard.nextDecision.conflict.headline': 'Strittige Angabe entscheiden',
+  // Acceptance remediation (cycle 4): headline names the actual topic
+  // ("WFL nach WoFlV" — fixed regulatory denominator name, kept literal in
+  // EN too, see i18n/index.ts's own DENOMINATOR NAMES note) instead of a
+  // generic phrase; body shortened to the target's own "Folge" consequence
+  // line, now that the real candidate values render above it.
+  'oppcard.nextDecision.conflict.headline': 'WFL nach WoFlV',
   'oppcard.nextDecision.conflict.body':
-    'Zwei Kandidaten für die Wohnfläche liegen vor. Die Entscheidung setzt die Projektgrundlage frei.',
+    'Folge: Leitkennzahl ändert sich. Die Zwischensumme bleibt gleich.',
   'oppcard.nextDecision.conflict.cta': 'Konflikt entscheiden',
   'oppcard.nextDecision.baseline.headline': 'Projektgrundlage bestätigen',
   'oppcard.nextDecision.baseline.body':
@@ -158,6 +163,32 @@ const de = {
   // action dock — literal target copy for the conflict-open state.
   'oppcard.actionDock.conflict.summary': '1 Entscheidung bis zur Projektgrundlage',
   'oppcard.actionDock.conflict.cta': 'WFL-Konflikt entscheiden',
+  // Acceptance remediation (cycle 4): the WorkflowStepper's rationale/state
+  // strings are now ALWAYS visible (no longer behind a "Warum?" disclosure)
+  // — none of these had EN coverage in the generated reverse-lookup
+  // dictionary (they were never exercised in EN before, since a disclosure
+  // interaction was required to see them). Exact DE values below are
+  // byte-identical to the previous inline `tx()` literals so the existing
+  // opportunity-card-shell.dom.test.tsx assertions keep passing unchanged.
+  'oppcard.stage.documents.attention':
+    'Ein Dokument ist nicht lesbar · blockiert das Anlegen einer Opportunity Option nicht',
+  'oppcard.stage.documents.done': 'Analyse abgeschlossen',
+  'oppcard.stage.conflict.open':
+    'Entscheidung erforderlich · blockiert die Projektgrundlage',
+  'oppcard.stage.conflict.done': 'Entschieden',
+  'oppcard.stage.baseline.confirmed': 'Bestätigt',
+  'oppcard.stage.baseline.attention':
+    'Bestätigung erforderlich · blockiert das Anlegen einer Opportunity Option',
+  'oppcard.stage.options.done': 'Angelegt',
+  'oppcard.stage.options.ready': 'Bereit zum Anlegen',
+  'oppcard.stage.options.waiting': 'Wartet auf die Voraussetzungen oben',
+  // Acceptance remediation (cycle 4): NextDecisionCard's compact WFL value
+  // labels — dedicated keys instead of reusing `tx("Dokument"/"Kunde")`,
+  // which resolved to the WRONG (lowercase, different-context) EN string
+  // via the generated reverse lookup (`s2.data.origin.document/customer`
+  // → "document"/"client", meant for an inline sentence elsewhere).
+  'oppcard.nextDecision.conflict.document': 'Dokument',
+  'oppcard.nextDecision.conflict.customer': 'Kunde',
   'buildingScope.gate.navigationReason':
     'Zuerst mindestens ein Gebäude auswählen und jedes gewählte Gebäude bestätigen.',
   'buildingScope.title': 'Gebäude & Umfang',
@@ -899,9 +930,9 @@ const en: Partial<Record<MessageKey, string>> = {
   'oppcard.identity.eyebrow': 'Opportunity',
   'oppcard.identity.factDocuments': 'Documents',
   'oppcard.nextDecision.eyebrow': 'Next decision',
-  'oppcard.nextDecision.conflict.headline': 'Decide the disputed figure',
+  'oppcard.nextDecision.conflict.headline': 'WFL nach WoFlV',
   'oppcard.nextDecision.conflict.body':
-    'Two candidates exist for the living area. Deciding releases the project baseline.',
+    'Consequence: the lead metric denominator changes. The subtotal stays the same.',
   'oppcard.nextDecision.conflict.cta': 'Decide the conflict',
   'oppcard.nextDecision.baseline.headline': 'Confirm the project baseline',
   'oppcard.nextDecision.baseline.body':
@@ -919,6 +950,20 @@ const en: Partial<Record<MessageKey, string>> = {
     'This opportunity is not worked out in the prototype. «{name}» is the fully calculated one — document analysis, conflict resolution and calculation run there with real arithmetic.',
   'oppcard.actionDock.conflict.summary': '1 decision before the project baseline',
   'oppcard.actionDock.conflict.cta': 'Decide the WFL conflict',
+  'oppcard.stage.documents.attention':
+    'One document cannot be read · does not block creating an Opportunity Option',
+  'oppcard.stage.documents.done': 'Analysis complete',
+  'oppcard.stage.conflict.open':
+    'Decision required · blocks the project baseline',
+  'oppcard.stage.conflict.done': 'Decided',
+  'oppcard.stage.baseline.confirmed': 'Confirmed',
+  'oppcard.stage.baseline.attention':
+    'Confirmation required · blocks creating an Opportunity Option',
+  'oppcard.stage.options.done': 'Created',
+  'oppcard.stage.options.ready': 'Ready to create',
+  'oppcard.stage.options.waiting': 'Waiting on the prerequisites above',
+  'oppcard.nextDecision.conflict.document': 'Document',
+  'oppcard.nextDecision.conflict.customer': 'Client',
   'buildingScope.gate.navigationReason':
     'Select at least one building and confirm every selected building first.',
   'buildingScope.title': 'Building & scope',

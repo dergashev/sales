@@ -12,6 +12,7 @@ import {
   projectionForOption,
   useStore,
   wflConflict,
+  type ConflictCandidate,
 } from "../state/store";
 import { buildKgCompositionSegments } from "../components/costComposition";
 import { CompositionBar } from "../design-system/CompositionBar";
@@ -638,10 +639,18 @@ function OptionCard({
  * existed. Fix: pass the same `hasOptions` signal the stepper already
  * derives, and give the "at least one Option exists" case its own copy
  * instead of silently reusing the "create the first one" copy.
+ *
+ * Acceptance remediation (cycle 4): the conflict stage now names the actual
+ * topic ("WFL nach WoFlV" — the same fixed regulatory denominator name used
+ * everywhere else in this product, kept literal in EN too) and shows the
+ * real candidate values, reusing the EXACT `conflict.candidates` array the
+ * full "Strittige Angaben" resolution form below already renders — not a
+ * second computation, just a compact presentation of the same data.
  */
 function NextDecisionCard({
   stage,
   hasOptions,
+  conflictCandidates,
   onJumpToConflict,
   onJumpToBaseline,
   onJumpToOptions,
@@ -649,6 +658,9 @@ function NextDecisionCard({
   stage: "conflict" | "confirm" | "options";
   /** `s.options.length > 0` — same signal `optionsState` already uses. */
   hasOptions: boolean;
+  /** Same `conflict.candidates` the "Strittige Angaben" section reads;
+   *  only rendered when `stage === "conflict"`. */
+  conflictCandidates: ConflictCandidate[];
   onJumpToConflict: () => void;
   onJumpToBaseline: () => void;
   onJumpToOptions: () => void;
@@ -693,6 +705,22 @@ function NextDecisionCard({
       <h2 className="mt-1 text-heading-3 font-bold text-text-primary">
         {copy.headline}
       </h2>
+      {stage === "conflict" && conflictCandidates.length > 0 && (
+        <div className="mt-2 flex flex-col gap-1">
+          {conflictCandidates.map((c) => (
+            <p key={c.origin} className="text-small text-text-secondary">
+              {c.origin === "customer"
+                ? t("oppcard.nextDecision.conflict.customer")
+                : t("oppcard.nextDecision.conflict.document")}
+              :{" "}
+              <span className="numeric font-bold text-text-primary">
+                {formatDE(D(c.value), 2)}
+                {NNBSP}m²
+              </span>
+            </p>
+          ))}
+        </div>
+      )}
       <p className="a3-cap mt-2">{copy.body}</p>
       <div className="mt-3">
         <Button variant="primary" onClick={copy.onSelect}>
@@ -1001,11 +1029,21 @@ export function OpportunityCard() {
       id: "documents",
       label: tx("Dokumentanalyse"),
       state: docsNeedAttention ? "attention" : "done",
+      // Acceptance remediation (cycle 4): this rationale is now ALWAYS
+      // visible in the stepper (no longer behind a "Warum?" disclosure —
+      // see WorkflowStepper.tsx), which surfaced that `tx()`'s reverse
+      // lookup had no EN entry for ANY of this stepper's rationale/state
+      // strings below (they stayed German in EN even though the `tx()`
+      // mechanism itself works fine — confirmed by `blockedReason` strings
+      // on the same stepper translating correctly): apparently never
+      // included in whatever bulk delivery populated the generated
+      // reverse-lookup dictionary, because they were previously hidden
+      // behind a click. Moved every one to a proper dictionary key rather
+      // than patching the generated file (Codex-delivery-only per its own
+      // header comment).
       rationale: docsNeedAttention
-        ? tx(
-            "Ein Dokument ist nicht lesbar · blockiert das Anlegen einer Opportunity Option nicht",
-          )
-        : tx("Analyse abgeschlossen"),
+        ? t("oppcard.stage.documents.attention")
+        : t("oppcard.stage.documents.done"),
       onSelect: () => focusSection(documentSectionRef),
     },
     {
@@ -1013,8 +1051,8 @@ export function OpportunityCard() {
       label: tx("Strittige Angaben"),
       state: currentStage === "conflict" ? "current" : "done",
       rationale: konfliktOffen
-        ? tx("Entscheidung erforderlich · blockiert die Projektgrundlage")
-        : tx("Entschieden"),
+        ? t("oppcard.stage.conflict.open")
+        : t("oppcard.stage.conflict.done"),
       onSelect: () => focusSection(conflictSectionRef),
     },
     {
@@ -1040,10 +1078,8 @@ export function OpportunityCard() {
         : baselineStale
           ? t("oppcard.baseline.stepStale")
           : s.projectParamsConfirmed
-            ? tx("Bestätigt")
-            : tx(
-                "Bestätigung erforderlich · blockiert das Anlegen einer Opportunity Option",
-              ),
+            ? t("oppcard.stage.baseline.confirmed")
+            : t("oppcard.stage.baseline.attention"),
       blockedReason: konfliktOffen
         ? tx("Erst Konflikte entscheiden")
         : undefined,
@@ -1060,12 +1096,12 @@ export function OpportunityCard() {
         optionsState === "blocked"
           ? undefined
           : optionsState === "done"
-            ? tx("Angelegt")
-            : tx("Bereit zum Anlegen"),
+            ? t("oppcard.stage.options.done")
+            : t("oppcard.stage.options.ready"),
       blockedReason:
         optionsState === "blocked"
           ? (createOptionDisabledReason ??
-            tx("Wartet auf die Voraussetzungen oben"))
+            t("oppcard.stage.options.waiting"))
           : undefined,
       onSelect: () => focusSection(optionsSectionRef),
     },
@@ -1207,7 +1243,7 @@ export function OpportunityCard() {
               product does not have is omitted, never an invented zero
               (rule 16). `documentsCount` is the same array `Dokumentanalyse`
               below already reads — not a new count. */}
-          <dl className="a3-project-identity-facts mt-4">
+          <dl className="a3-project-identity-facts mt-3">
             <div>
               <dt className="text-caption text-text-secondary">
                 {tx("Gebäude")}
@@ -1257,7 +1293,11 @@ export function OpportunityCard() {
           and stepper navigation rely on); the right rail promotes the
           CURRENT stage's decision so it is discoverable without scanning
           past the whole stacked document (five-second test requirement). */}
-      <div className="mt-6 lg:grid lg:grid-cols-[1.55fr_0.85fr] lg:gap-8 lg:items-start">
+      {/* Acceptance remediation (cycle 4): NO top margin here — the first
+          section below already carries its own `mt-6`; stacking both was a
+          redundant double gap directly contributing to pushing the
+          decision-first content below the first viewport. */}
+      <div className="lg:grid lg:grid-cols-[1.55fr_0.85fr] lg:gap-8 lg:items-start">
       <div className="min-w-0">
         {/* 1 · Анализ документации + разрешение версий планов (перенесено из
           "· Vorbereitung" P1 — единственный рендер списка документов, AC8). */}
@@ -1867,6 +1907,7 @@ export function OpportunityCard() {
         <NextDecisionCard
           stage={currentStage}
           hasOptions={s.options.length > 0}
+          conflictCandidates={conflict.candidates}
           onJumpToConflict={() => focusSection(conflictSectionRef)}
           onJumpToBaseline={() => focusSection(questionsSectionRef)}
           onJumpToOptions={() => focusSection(optionsSectionRef)}

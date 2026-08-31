@@ -619,7 +619,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-wfs-marker{width:var(--size-chapter-marker);height:var(--size-chapter-marker);border:var(--border-default);display:inline-flex;align-items:center;justify-content:center;flex:none;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-bold)}
 .a3-wfs-text{display:grid;min-width:0;gap:var(--space-1)}
 .a3-wfs-label{overflow-wrap:anywhere;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-label-weight)}
-.a3-wfs-meta,.a3-wfs-blocked-reason,.a3-wfs-rationale{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-wfs-meta,.a3-wfs-blocked-reason,.a3-wfs-rationale,.a3-wfs-rationale-text{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
 .a3-wfs-current,.a3-wfs-cur{border-top-color:var(--color-selection-border);background:var(--color-surface-selected)}
 .a3-wfs-upcoming{}
 .a3-wfs-current .a3-wfs-marker{background:var(--color-selection-border);border-color:var(--color-selection-border);color:var(--color-text-inverse)}
@@ -632,6 +632,17 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-wfs-rationale{margin:0 var(--space-4) var(--space-3);padding-left:calc(var(--size-chapter-marker) + var(--space-3))}
 .a3-wfs-rationale summary{min-height:var(--size-hit-target-default);display:inline-flex;align-items:center;cursor:pointer;text-decoration:underline;text-underline-offset:var(--size-text-underline-offset);font-weight:var(--type-label-weight)}
 .a3-wfs-rationale>div{padding-bottom:var(--space-2)}
+/* VR2-02 Acceptance remediation (cycle 4): plain-text rationale for
+   `size="workflow"` (see WorkflowStepper.tsx) — no `summary` hit-target
+   box-model to carry, just the same left-aligned-under-the-marker
+   indent as `.a3-wfs-rationale`. */
+.a3-wfs-rationale-text{margin:0 var(--space-4) var(--space-2);padding-left:calc(var(--size-chapter-marker) + var(--space-3))}
+/* VR2-02 Acceptance remediation (cycle 4): the approved target's workflow
+   strip measures materially more compact than the default `--space-3
+   --space-4` button padding produces once every step also carries visible
+   rationale text (above). Scoped to `size="workflow"` only — the single
+   confirmed consumer — `size="chapter"` keeps its own padding. */
+.a3-wfs-workflow .a3-wfs-button,.a3-wfs-workflow .a3-wfs-static{padding:var(--space-2) var(--space-4)}
 .a3-wfs-chapter .a3-wfs-list{grid-template-columns:1fr;gap:0;border-top:var(--border-hairline);border-bottom:var(--border-hairline)}
 .a3-wfs-chapter .a3-wfs-step{border:0;border-left:var(--border-width-strong) solid transparent;border-bottom:var(--border-hairline)}
 .a3-wfs-chapter .a3-wfs-step:last-child{border-bottom:0}
@@ -1479,7 +1490,10 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    approved project target's background is white. */
 .a3-project-canvas{min-height:100%;background:var(--color-surface-default)}
 .a3-project-canvas .a3-page{max-width:var(--content-editorial-max-width)}
-.a3-project-identity{display:flex;gap:var(--space-6);align-items:flex-start;flex-wrap:wrap;border-bottom:var(--border-hairline);padding-bottom:var(--space-6);margin-bottom:var(--space-6)}
+/* Acceptance remediation (cycle 4): --space-6 top/bottom (32px+32px=64px)
+   was more separation from the border than the target's own compact
+   identity/stepper band affords — tightened to --space-4 (16px+16px). */
+.a3-project-identity{display:flex;gap:var(--space-6);align-items:flex-start;flex-wrap:wrap;border-bottom:var(--border-hairline);padding-bottom:var(--space-4);margin-bottom:var(--space-4)}
 /* Acceptance remediation (cycle 1): a FIXED media width (the previous
    `--size-media-identity-header` token) could not reproduce the target's
    own two different measured widths (~370px at 1440, ~320px at 1280 —

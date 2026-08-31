@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 47** · перевод есть, мост не подключён: 24
-· перевода нет (в поставку копирайта): 23
+**Всего 43** · перевод есть, мост не подключён: 24
+· перевода нет (в поставку копирайта): 19
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -44,15 +44,11 @@ Mit freundlichen Grüßen
 - % auf KG
 - % auf ±
 - Angebot prüfen
-- Bereit zum Anlegen
-- Bestätigt
 - Courtyard view · Musterhöfe
 - Die folgenden Auswahlmöglichkeiten sind bereits auf diesen Standard abgestimmt.
 - Diese 1 Frage reduziert die Schätzunsicherheit von ±
 - Druckansicht öffnen
 - Eigenes Ausgabeprofil für die Druckausgabe mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.
-- Ein Dokument ist nicht lesbar · blockiert das Anlegen einer Opportunity Option nicht
-- Entscheidung erforderlich · blockiert die Projektgrundlage
 - Fragen reduzieren die Schätzunsicherheit von ±
 - Konfiguration je Gebäude bestätigt
 - Planung ist Projektgröße, Ausführung gehört zum Gebäude — deshalb mehrere Zeilen und nicht eine. Die Fertigstellung ist dieselbe Zahl, die oben rechts als Kennzahl steht.

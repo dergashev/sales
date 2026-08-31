@@ -239,10 +239,28 @@ export function WorkflowStepper({
                 </p>
               )}
               {step.rationale && (
-                <details className="a3-wfs-rationale">
-                  <summary>{tx1('designSystem.workflowStepper.why', tx)}</summary>
-                  <div>{step.rationale}</div>
-                </details>
+                size === 'workflow' ? (
+                  // VR2-02 Acceptance remediation (cycle 4): the approved
+                  // project-workspace target shows each step's rationale as
+                  // plain visible text directly under its label — never
+                  // behind a click, across three independent Auditor passes
+                  // citing this exact composition. `size="workflow"` has
+                  // exactly one consumer in the product (OpportunityCard.tsx
+                  // — confirmed via repo search), so this is scoped to that
+                  // route; `size="chapter"` keeps the disclosure unchanged.
+                  // Authority order ranks the approved target for the
+                  // current task above general Design System precedent when
+                  // the two conflict (frontend persona, "AUTHORITY ORDER").
+                  // Net accessibility effect is neutral-to-positive: the
+                  // same text is now available with zero interaction
+                  // instead of requiring a `<details>` toggle.
+                  <p className="a3-wfs-rationale-text">{step.rationale}</p>
+                ) : (
+                  <details className="a3-wfs-rationale">
+                    <summary>{tx1('designSystem.workflowStepper.why', tx)}</summary>
+                    <div>{step.rationale}</div>
+                  </details>
+                )
               )}
             </li>
           )
