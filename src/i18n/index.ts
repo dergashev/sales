@@ -352,6 +352,8 @@ const de = {
   'buildingScope.confirm.action': 'Gebäude bestätigen',
   'buildingScope.action.apply': 'Angabe übernehmen',
   'buildingScope.action.reset': 'Auf Quellenwert zurücksetzen',
+  'buildingScope.action.editSection': 'Abschnitt bearbeiten',
+  'buildingScope.action.doneEditingSection': 'Fertig',
   'buildingScope.validation.textRequired':
     'Eine leere Angabe wird nicht übernommen. Der bisherige Wert bleibt erhalten.',
   'buildingScope.validation.number': 'Nur Zahlen eingeben — nicht übernommen.',
@@ -1134,6 +1136,8 @@ const en: Partial<Record<MessageKey, string>> = {
   'buildingScope.confirm.action': 'Confirm building',
   'buildingScope.action.apply': 'Apply value',
   'buildingScope.action.reset': 'Reset to source value',
+  'buildingScope.action.editSection': 'Edit section',
+  'buildingScope.action.doneEditingSection': 'Done',
   'buildingScope.validation.textRequired':
     'An empty value is not applied. The previous value remains unchanged.',
   'buildingScope.validation.number': 'Enter numbers only — not applied.',

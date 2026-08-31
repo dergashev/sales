@@ -423,7 +423,16 @@ export function BuildingScope() {
             first viewport (target requirement) more than it needs a
             second instructional sentence. The dictionary key/copy is
             unchanged and still exists; it's just not rendered twice. */}
-        <SectionSheet title={t('buildingScope.review.title')}>
+        {/* Acceptance remediation (cycle 6): the approved target's Building
+            & Scope content flows straight from the headline/intro to the
+            building tabs — there is no visible "Gebäudedaten prüfen" H2 +
+            sheet padding in between (measured as a material contributor to
+            the tabs starting materially below the target's ~264px). The
+            copy/heading itself is not deleted — it becomes the sheet's
+            `aria-label` (same text, same landmark, no longer painted) and
+            still exists verbatim in the table's `<caption className="sr-only">`
+            below for the table's own accessible name. */}
+        <SectionSheet aria-label={t('buildingScope.review.title')}>
           {/* Acceptance remediation (cycle 3): a bordered media-card grid
               here duplicated the identity the tab strip below ALSO shows —
               two competing "which building" surfaces reading as the
@@ -658,6 +667,24 @@ function BuildingReviewPanel({
     // here, and the target's own composition shows the field grid dense
     // and visible without an extra click.
     areas: true,
+    // Acceptance remediation (cycle 6): the approved target shows all
+    // three review sections' read summaries visible without any extra
+    // click, "Geometrie & Geschosse" included — the collapse affordance
+    // stays available (a user can still close a section they don't need),
+    // it simply no longer starts closed.
+    storeys: true,
+  })
+  // Acceptance remediation (cycle 6): the approved target renders each
+  // section as a READ-ONLY value summary by default, with its own
+  // "Abschnitt bearbeiten" entry point into the real editable fields —
+  // distinct from `openSections` above (open/closed), which only controls
+  // whether the section's content renders at all. Defaults to read (false)
+  // for every section; editing an already-open section never touches
+  // `openSections`, and closing/reopening a section does not reset whether
+  // it was mid-edit (state is keyed by section, not by open/closed).
+  const [editingSections, setEditingSections] = useState<Record<ReviewSectionKey, boolean>>({
+    identity: false,
+    areas: false,
     storeys: false,
   })
 
@@ -743,17 +770,27 @@ function BuildingReviewPanel({
               status={sectionStatus('identity')}
               open={openSections.identity}
               onOpenChange={(open) => setOpenSections((current) => ({ ...current, identity: open }))}
+              editing={editingSections.identity}
+              onEditToggle={(editing) => setEditingSections((current) => ({ ...current, identity: editing }))}
             >
-              <div className="a3-field-grid p-4">
-                <TextFactField buildingId={buildingId} factKey="documentationName" />
-                <TextFactField buildingId={buildingId} factKey="address" />
-                <SelectFactField buildingId={buildingId} factKey="buildingForm"
-                  values={FORM_VALUES} messageFor={(value) => FORM_MESSAGE[value]} />
-                <SelectFactField buildingId={buildingId} factKey="buildingClass"
-                  values={CLASS_VALUES} messageFor={(value) => CLASS_MESSAGE[value]}
-                  helper={t('buildingScope.class.helper')} />
-                <DecimalFactField buildingId={buildingId} factKey="units" integer />
-              </div>
+              {editingSections.identity ? (
+                <div className="a3-field-grid p-4">
+                  <TextFactField buildingId={buildingId} factKey="documentationName" />
+                  <TextFactField buildingId={buildingId} factKey="address" />
+                  <SelectFactField buildingId={buildingId} factKey="buildingForm"
+                    values={FORM_VALUES} messageFor={(value) => FORM_MESSAGE[value]} />
+                  <SelectFactField buildingId={buildingId} factKey="buildingClass"
+                    values={CLASS_VALUES} messageFor={(value) => CLASS_MESSAGE[value]}
+                    helper={t('buildingScope.class.helper')} />
+                  <DecimalFactField buildingId={buildingId} factKey="units" integer />
+                </div>
+              ) : (
+                <div className="a3-field-grid p-4">
+                  {identityReadFields(review, t).map((field) => (
+                    <ReadField key={field.key} label={field.label} value={field.value} provenance={field.provenance} />
+                  ))}
+                </div>
+              )}
             </ReviewDisclosure>
             <ReviewDisclosure
               section="areas"
@@ -762,39 +799,49 @@ function BuildingReviewPanel({
               status={sectionStatus('areas')}
               open={openSections.areas}
               onOpenChange={(open) => setOpenSections((current) => ({ ...current, areas: open }))}
+              editing={editingSections.areas}
+              onEditToggle={(editing) => setEditingSections((current) => ({ ...current, areas: editing }))}
             >
-              <div className="grid gap-5 p-4">
-                <section aria-labelledby={`areas-above-${buildingId}`} className="grid gap-4">
-                  <h4 id={`areas-above-${buildingId}`} className="text-heading-3 font-bold text-text-primary">
-                    {t('buildingScope.areas.above')}
-                  </h4>
-                  <div className="a3-field-grid">
-                    <DecimalFactField buildingId={buildingId} factKey="bgfRAbove" unit="m²" />
-                    <DecimalFactField buildingId={buildingId} factKey="bgfSAbove" unit="m²" />
-                    <DecimalFactField buildingId={buildingId} factKey="bgfRSAbove" unit="m²" derived />
-                  </div>
-                </section>
-                <section aria-labelledby={`areas-below-${buildingId}`} className="grid gap-4">
-                  <h4 id={`areas-below-${buildingId}`} className="text-heading-3 font-bold text-text-primary">
-                    {t('buildingScope.areas.below')}
-                  </h4>
-                  <div className="a3-field-grid">
-                    <DecimalFactField buildingId={buildingId} factKey="bgfRBelow" unit="m²" />
-                    <DecimalFactField buildingId={buildingId} factKey="bgfSBelow" unit="m²" />
-                    <DecimalFactField buildingId={buildingId} factKey="bgfRSBelow" unit="m²" derived />
-                  </div>
-                </section>
-                <section aria-labelledby={`areas-total-${buildingId}`} className="grid gap-4">
-                  <h4 id={`areas-total-${buildingId}`} className="text-heading-3 font-bold text-text-primary">
-                    {t('buildingScope.areas.totals')}
-                  </h4>
-                  <div className="a3-field-grid">
-                    <DecimalFactField buildingId={buildingId} factKey="bgfRSTotal" unit="m²" derived />
-                    <DecimalFactField buildingId={buildingId} factKey="wfl" unit="m²" />
-                    <DecimalFactField buildingId={buildingId} factKey="nuf" unit="m²" />
-                  </div>
-                </section>
-              </div>
+              {editingSections.areas ? (
+                <div className="grid gap-5 p-4">
+                  <section aria-labelledby={`areas-above-${buildingId}`} className="grid gap-4">
+                    <h4 id={`areas-above-${buildingId}`} className="text-heading-3 font-bold text-text-primary">
+                      {t('buildingScope.areas.above')}
+                    </h4>
+                    <div className="a3-field-grid">
+                      <DecimalFactField buildingId={buildingId} factKey="bgfRAbove" unit="m²" />
+                      <DecimalFactField buildingId={buildingId} factKey="bgfSAbove" unit="m²" />
+                      <DecimalFactField buildingId={buildingId} factKey="bgfRSAbove" unit="m²" derived />
+                    </div>
+                  </section>
+                  <section aria-labelledby={`areas-below-${buildingId}`} className="grid gap-4">
+                    <h4 id={`areas-below-${buildingId}`} className="text-heading-3 font-bold text-text-primary">
+                      {t('buildingScope.areas.below')}
+                    </h4>
+                    <div className="a3-field-grid">
+                      <DecimalFactField buildingId={buildingId} factKey="bgfRBelow" unit="m²" />
+                      <DecimalFactField buildingId={buildingId} factKey="bgfSBelow" unit="m²" />
+                      <DecimalFactField buildingId={buildingId} factKey="bgfRSBelow" unit="m²" derived />
+                    </div>
+                  </section>
+                  <section aria-labelledby={`areas-total-${buildingId}`} className="grid gap-4">
+                    <h4 id={`areas-total-${buildingId}`} className="text-heading-3 font-bold text-text-primary">
+                      {t('buildingScope.areas.totals')}
+                    </h4>
+                    <div className="a3-field-grid">
+                      <DecimalFactField buildingId={buildingId} factKey="bgfRSTotal" unit="m²" derived />
+                      <DecimalFactField buildingId={buildingId} factKey="wfl" unit="m²" />
+                      <DecimalFactField buildingId={buildingId} factKey="nuf" unit="m²" />
+                    </div>
+                  </section>
+                </div>
+              ) : (
+                <div className="a3-field-grid p-4">
+                  {areaReadFields(review, s.buildingConflicts, t).map((field) => (
+                    <ReadField key={field.key} label={field.label} value={field.value} provenance={field.provenance} />
+                  ))}
+                </div>
+              )}
             </ReviewDisclosure>
             <ReviewDisclosure
               section="storeys"
@@ -808,19 +855,44 @@ function BuildingReviewPanel({
               status={sectionStatus('storeys')}
               open={openSections.storeys}
               onOpenChange={(open) => setOpenSections((current) => ({ ...current, storeys: open }))}
+              editing={editingSections.storeys}
+              onEditToggle={(editing) => setEditingSections((current) => ({ ...current, storeys: editing }))}
             >
-              <div className="p-4">
-                {/* #16 Part 8: one user-facing field (`storeyStructure` is now
-                    a plain Decimal count, no more per-kind UG/EG/OG/SG
-                    breakdown) — the canonical `DecimalFactField` used by
-                    every other numeric building fact applies unchanged, no
-                    bespoke editor needed any more. `UntergeschossEditor`
-                    below is a DIFFERENT, unrelated basement-construction
-                    pricing scope control and stays visually/functionally
-                    distinct from it. */}
-                <DecimalFactField buildingId={buildingId} factKey="storeyStructure" integer />
-                <UntergeschossEditor buildingId={buildingId} />
-              </div>
+              {editingSections.storeys ? (
+                <div className="p-4">
+                  {/* #16 Part 8: one user-facing field (`storeyStructure` is now
+                      a plain Decimal count, no more per-kind UG/EG/OG/SG
+                      breakdown) — the canonical `DecimalFactField` used by
+                      every other numeric building fact applies unchanged, no
+                      bespoke editor needed any more. `UntergeschossEditor`
+                      below is a DIFFERENT, unrelated basement-construction
+                      pricing scope control and stays visually/functionally
+                      distinct from it. */}
+                  <DecimalFactField buildingId={buildingId} factKey="storeyStructure" integer />
+                  <UntergeschossEditor buildingId={buildingId} />
+                </div>
+              ) : (
+                <div className="a3-field-grid p-4">
+                  <ReadField
+                    label={t(FACT_MESSAGE.storeyStructure)}
+                    value={(() => {
+                      const storeyCount = effectiveFactValue(review.facts.storeyStructure)
+                      return storeyCount === null ? t('buildingScope.value.notCaptured') : formatDE(storeyCount, 0)
+                    })()}
+                    provenance={factPresentation(review.facts.storeyStructure, t)}
+                  />
+                  {/* `LABEL_UG` is the same hard-coded label the edit-mode
+                      `UntergeschossEditor` (`RadioCardGroup`) already shows
+                      for this value — reused verbatim, not a second copy. */}
+                  {s.buildings[buildingId] && (
+                    <ReadField
+                      label={t('configurator.basement.title')}
+                      value={LABEL_UG[s.buildings[buildingId]!.untergeschoss]}
+                      provenance={null}
+                    />
+                  )}
+                </div>
+              )}
             </ReviewDisclosure>
           </tbody>
         </table>
@@ -889,6 +961,8 @@ function ReviewDisclosure({
   status,
   open,
   onOpenChange,
+  editing,
+  onEditToggle,
   children,
 }: {
   section: ReviewSectionKey
@@ -897,6 +971,16 @@ function ReviewDisclosure({
   status: ReviewSectionStatus
   open: boolean
   onOpenChange: (open: boolean) => void
+  /**
+   * Acceptance remediation (cycle 6): the approved target shows each
+   * section as a READ-ONLY value summary with its own "Abschnitt
+   * bearbeiten" entry point — not the always-editable field grid this
+   * screen rendered before. `editing` gates which of the two `children`
+   * render (the caller decides read vs. edit content); this component only
+   * owns the toggle button and its accessible name/state.
+   */
+  editing: boolean
+  onEditToggle: (editing: boolean) => void
   children: ReactNode
 }) {
   const t = useT()
@@ -910,6 +994,9 @@ function ReviewDisclosure({
   const sign = status === 'confirmed' ? '✓'
     : status === 'needsAttention' || status === 'changed' ? '▲'
       : status === 'ready' ? '→' : '○'
+  const editToggleLabel = t(editing
+    ? 'buildingScope.action.doneEditingSection'
+    : 'buildingScope.action.editSection')
   return (
     <DisclosureRow
       label={label}
@@ -918,6 +1005,15 @@ function ReviewDisclosure({
         <Badge key={`${section}-status`} sign={sign}>
           {t(statusKey[status])}
         </Badge>,
+        <Button
+          key={`${section}-edit-toggle`}
+          variant="ghost"
+          aria-expanded={editing}
+          aria-label={`${editToggleLabel}: ${label}`}
+          onClick={() => onEditToggle(!editing)}
+        >
+          {editToggleLabel}
+        </Button>,
       ]}
       open={open}
       onOpenChange={onOpenChange}
@@ -952,6 +1048,124 @@ function areaSectionSummary(
     `${t('buildingScope.fact.bgfRSTotal')}: ${total ? `${formatDE(total, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}`,
     `${t(wfl ? 'buildingScope.fact.wfl' : 'buildingScope.fact.nuf')}: ${usable ? `${formatDE(usable, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}`,
   ].join(' · ')
+}
+
+/**
+ * Acceptance remediation (cycle 6): the approved target shows each review
+ * section as read-only value cards (label / bold value / provenance
+ * caption) with a single "Abschnitt bearbeiten" entry point into the real
+ * editable fields below — not always-visible inputs. This is the read-only
+ * counterpart to `TextFactField`/`SelectFactField`/`DecimalFactField`; it
+ * renders the exact same computed value and `ProvenanceChip` those fields
+ * already use, just without the input chrome. No new data, formula, or
+ * persistence semantics — purely a presentational read view of facts that
+ * remain fully editable one click away.
+ */
+function ReadField({ label, value, provenance }: {
+  label: string
+  value: ReactNode
+  provenance: ProvenancePresentation | null
+}) {
+  return (
+    <div className="grid gap-1 border-b border-border-subtle pb-4">
+      <p className="text-small text-text-secondary">{label}</p>
+      <p className="text-heading-3 font-bold text-text-primary">{value}</p>
+      {provenance && <ProvenanceChip provenance={provenance} />}
+    </div>
+  )
+}
+
+function identityReadFields(
+  review: ReturnType<typeof useStore.getState>['buildingReviews'][string],
+  t: ReturnType<typeof useT>,
+): Array<{ key: string; label: string; value: ReactNode; provenance: ProvenancePresentation | null }> {
+  const notCaptured = t('buildingScope.value.notCaptured')
+  const form = effectiveFactValue(review.facts.buildingForm)
+  const buildingClass = effectiveFactValue(review.facts.buildingClass)
+  const units = effectiveFactValue(review.facts.units)
+  return [
+    {
+      key: 'documentationName',
+      label: t(FACT_MESSAGE.documentationName),
+      value: effectiveFactValue(review.facts.documentationName) ?? notCaptured,
+      provenance: factPresentation(review.facts.documentationName, t),
+    },
+    {
+      key: 'address',
+      label: t(FACT_MESSAGE.address),
+      value: effectiveFactValue(review.facts.address) ?? notCaptured,
+      provenance: factPresentation(review.facts.address, t),
+    },
+    {
+      key: 'buildingForm',
+      label: t(FACT_MESSAGE.buildingForm),
+      value: form ? t(FORM_MESSAGE[form]) : notCaptured,
+      provenance: factPresentation(review.facts.buildingForm, t),
+    },
+    {
+      key: 'buildingClass',
+      label: t(FACT_MESSAGE.buildingClass),
+      value: buildingClass ? t(CLASS_MESSAGE[buildingClass]) : notCaptured,
+      provenance: factPresentation(review.facts.buildingClass, t),
+    },
+    {
+      key: 'units',
+      label: t(FACT_MESSAGE.units),
+      value: units ? formatDE(units, 0) : notCaptured,
+      provenance: factPresentation(review.facts.units, t),
+    },
+  ]
+}
+
+/**
+ * Acceptance remediation (cycle 6): the approved target's read summary
+ * shows 4 headline area figures (BGF above/below ground, WFL, NUF) — not
+ * the full 9-field R/S breakdown the edit grid exposes. This is a
+ * deliberate simplification of the READ view only; every underlying field
+ * (including the R/S split) stays fully present and editable one click
+ * away via "Abschnitt bearbeiten" — nothing is hidden from editing.
+ */
+function areaReadFields(
+  review: ReturnType<typeof useStore.getState>['buildingReviews'][string],
+  conflicts: ReturnType<typeof useStore.getState>['buildingConflicts'],
+  t: ReturnType<typeof useT>,
+): Array<{ key: string; label: string; value: ReactNode; provenance: ProvenancePresentation | null }> {
+  const notCaptured = t('buildingScope.value.notCaptured')
+  const conflictOpen = t('buildingScope.value.conflictOpen')
+  const above = effectiveDerivedArea(review, conflicts, 'bgfRSAbove')
+  const below = effectiveDerivedArea(review, conflicts, 'bgfRSBelow')
+  const wfl = effectiveFactValue(review.facts.wfl)
+  const nuf = effectiveFactValue(review.facts.nuf)
+  const derivedPresentation = (basis: string, factKey: 'bgfRSAbove' | 'bgfRSBelow') =>
+    basis === 'components'
+      ? { kind: 'derived', label: t('buildingScope.provenance.derived') } as const
+      : factPresentation(review.facts[factKey], t)
+  return [
+    {
+      key: 'bgfRSAbove',
+      label: t(FACT_MESSAGE.bgfRSAbove),
+      value: above.value ? `${formatDE(above.value, 0)}${NNBSP}m²` : (above.basis === 'conflict' ? conflictOpen : notCaptured),
+      provenance: derivedPresentation(above.basis, 'bgfRSAbove'),
+    },
+    {
+      key: 'bgfRSBelow',
+      label: t(FACT_MESSAGE.bgfRSBelow),
+      value: below.value ? `${formatDE(below.value, 0)}${NNBSP}m²` : (below.basis === 'conflict' ? conflictOpen : notCaptured),
+      provenance: derivedPresentation(below.basis, 'bgfRSBelow'),
+    },
+    {
+      key: 'wfl',
+      label: t(FACT_MESSAGE.wfl),
+      value: wfl ? `${formatDE(wfl, 0)}${NNBSP}m²` : notCaptured,
+      provenance: factPresentation(review.facts.wfl, t),
+    },
+    {
+      key: 'nuf',
+      label: t(FACT_MESSAGE.nuf),
+      value: nuf ? `${formatDE(nuf, 0)}${NNBSP}m²` : notCaptured,
+      provenance: factPresentation(review.facts.nuf, t),
+    },
+  ]
 }
 
 function TextFactField({

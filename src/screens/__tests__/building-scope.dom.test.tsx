@@ -51,7 +51,10 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
 
     // #16 Part 8: a single storey-count field — no per-kind UG/EG/OG/SG
     // breakdown any more.
-    await user.click(screen.getByRole('button', { name: 'Geometrie & Geschosse' }))
+    // Acceptance remediation (cycle 6): "Geometrie & Geschosse" is open by
+    // default now (read summary) — the edit fields need their own
+    // "Abschnitt bearbeiten" click, not the section's open/close toggle.
+    await user.click(screen.getByRole('button', { name: 'Abschnitt bearbeiten: Geometrie & Geschosse' }))
     const storeyField = screen.getByRole('textbox', { name: 'Anzahl Geschosse' })
     expect(storeyField).toBeInTheDocument()
     expect(storeyField).toHaveValue('')
@@ -135,6 +138,12 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     const header = document.querySelector('.a3-global-header') as HTMLElement
     await user.click(within(header).getByRole('radio', { name: 'EN' }))
 
+    // Acceptance remediation (cycle 6): the full 9-field area breakdown
+    // (including "GFA R+S · total") only renders in the section's edit
+    // view now — the read view shows a simplified 4-figure summary. Enter
+    // editing to check the full breakdown's EN labels, same as before.
+    await user.click(screen.getByRole('button', { name: 'Edit section: Areas' }))
+
     expect(screen.queryByText('BGF gesamt')).toBeNull()
     expect(screen.getAllByText('GFA R+S · total').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Living area under WoFlV').length).toBeGreaterThan(0)
@@ -186,7 +195,7 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
     expect(buildingConfirmed(useStore.getState(), 'DEMO-B-B')).toBe(true)
 
-    await user.click(screen.getByRole('button', { name: 'Identität & Nutzung' }))
+    await user.click(screen.getByRole('button', { name: 'Abschnitt bearbeiten: Identität & Nutzung' }))
     const name = screen.getByRole('textbox', { name: 'Bezeichnung aus der Dokumentation' })
     await user.clear(name)
     await user.type(name, 'Haus B West')
@@ -285,7 +294,7 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     const user = userEvent.setup()
     await openBuildingScope(user)
 
-    await user.click(screen.getByRole('button', { name: 'Geometrie & Geschosse' }))
+    await user.click(screen.getByRole('button', { name: 'Abschnitt bearbeiten: Geometrie & Geschosse' }))
     const apply = screen.getByRole('button', {
       name: 'Angabe übernehmen: Anzahl Geschosse',
     })
@@ -301,7 +310,7 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     const user = userEvent.setup()
     await openBuildingScope(user)
 
-    await user.click(screen.getByRole('button', { name: 'Geometrie & Geschosse' }))
+    await user.click(screen.getByRole('button', { name: 'Abschnitt bearbeiten: Geometrie & Geschosse' }))
     const field = screen.getByRole('textbox', { name: 'Anzahl Geschosse' })
     await user.type(field, '6')
     await user.click(screen.getByRole('button', { name: 'Angabe übernehmen: Anzahl Geschosse' }))

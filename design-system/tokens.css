@@ -554,10 +554,15 @@
      budget, SIDEBAR 01's own formula) and stays untouched. The Building &
      Scope readiness rail (`BuildingScopeReadiness`) carries no commercial
      content — a narrower, simpler rail matches the approved Workspace
-     target's own right-rail proportion (≈264px at 1440) far more closely
-     than the OfferPanel width, without touching the shared token every
-     other pipeline screen's rail still resolves through. */
-  --panel-right-width-compact: 300px;
+     target's own right-rail proportion far more closely than the
+     OfferPanel width, without touching the shared token every other
+     pipeline screen's rail still resolves through.
+     VR2-03 Acceptance remediation (cycle 6): the working 300px value was
+     never ratified against the target — Acceptance measured the approved
+     Workspace target's own right rail at ≈264px at 1440 and ≈226px at
+     1280 (narrower still, same 1439px breakpoint the left rail already
+     uses — see the `@media (max-width: 1439px)` block below). */
+  --panel-right-width-compact: 264px;
   /* SIDEBAR 01 - the rail's pinned Level 1 header gets a hard height budget
      (report S7/S9, AC-1/AC-2): <=320px at 1280x800, <=360px at 1440x900,
      <=400px at >=1600px. Same 0.25 slope, no constant term needed: 25vw
@@ -702,6 +707,10 @@
   /* VR2-03 Acceptance remediation (cycle 5): approved target measures
      ~189px at 1280 (narrowing from the prior 232px working value). */
   :root { --panel-left-width: 189px; }
+  /* VR2-03 Acceptance remediation (cycle 6): approved target's
+     Building & Scope readiness rail measures ~226px at 1280 (narrower
+     than the ~264px value at 1440 and above). */
+  :root { --panel-right-width-compact: 226px; }
 }
 
 /* Kompakt — независимое предпочтение пользователя (D-16, LAYOUT-007).

@@ -395,6 +395,10 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
       .toBe('confirmed')
 
     await user.click(nav(/Gebäude & Umfang/))
+    // Acceptance remediation (cycle 6): "Identität & Nutzung" now renders a
+    // read-only summary by default — the edit fields need their own
+    // "Abschnitt bearbeiten" click first.
+    await user.click(screen.getByRole('button', { name: 'Abschnitt bearbeiten: Identität & Nutzung' }))
     const name = screen.getByRole('textbox', { name: 'Bezeichnung aus der Dokumentation' })
     await user.clear(name)
     await user.type(name, 'Haus A Nord')
