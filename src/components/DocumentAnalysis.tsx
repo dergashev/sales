@@ -87,9 +87,17 @@ export function DocumentAnalysis({ docs, onManualCapture }: {
           own inset). The heading is the section's own title, not the
           contract box's; it now sits at the same level as every other
           `.a3-sheet > h2`, with the box as its content below. */}
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 id={phaseId} className="text-heading-3 font-bold text-text-primary">{tx('Dokumentanalyse')}</h2>
-        <span className="text-small text-text-muted">{tx('Simulation · Parsing im Prototyp nachgestellt')}</span>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 id={phaseId} className="text-heading-3 font-bold text-text-primary">{tx('Dokumentanalyse')}</h2>
+          <p className="text-small text-text-muted">{tx('Simulation · Parsing im Prototyp nachgestellt')}</p>
+        </div>
+        {/* VR2-02 (Project remediation, cycle 7): the approved target places
+            the re-run action top-right, next to the section caption, not
+            buried below the whole file list — same action, same handler
+            (`start`), moved from the bottom actions row so it is not
+            rendered twice. */}
+        {ready && <Button onClick={start}>{tx('Analyse erneut ausführen')}</Button>}
       </div>
       <div
         role="region"
@@ -182,7 +190,6 @@ export function DocumentAnalysis({ docs, onManualCapture }: {
         <div className="flex gap-2">
           {running && <Button onClick={cancel}>{tx('Abbrechen')}</Button>}
           {cancelled && <Button variant="primary" onClick={resume}>{tx('Fortsetzen')}</Button>}
-          {ready && <Button onClick={start}>{tx('Analyse erneut ausführen')}</Button>}
         </div>
       </div>
       </div>

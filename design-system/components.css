@@ -1275,7 +1275,19 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    .a3-analysis-spec[aria-busy] > .a3-analysis-track + .a3-analysis-log +
    phase + .a3-analysis-files + actions.
    Classes: .a3-analysis-spec · .a3-analysis-track · .a3-analysis-log · .a3-analysis-files · .a3-analysis-error. */
-.a3-analysis-spec{border:var(--border-default);padding:var(--space-4);min-height:20rem}
+/* VR2-02 (Project remediation, cycle 7): the approved TARGET-project's
+   centre stage reads as ONE continuous "Dokumente & Evidenz" surface — a
+   flat row list flowing directly under the section heading, no bordered
+   box around it. The previous `border + padding` made this component read
+   as a "panel inside the panel" (a second nested surface one level below
+   `.a3-sheet`, which itself already carries no border) — the exact
+   "generic nested Dokumentanalyse panel rhythm" the target replaces.
+   `min-height` is kept (reduced from 20rem) so the ready<->running phase
+   transition still does not visibly jump — DC-10's own stated contract —
+   without manufacturing an oversized empty box at rest. Single consumer
+   (OpportunityCard.tsx, confirmed via repo search) — no shared-contract
+   visual requirement in components-core.md names this border. */
+.a3-analysis-spec{border:0;padding:0;min-height:12rem}
 .a3-analysis-track{height:var(--border-width-strong);background:var(--color-border-subtle);overflow:hidden;margin-bottom:var(--space-4)}
 .a3-analysis-track::before{content:'';display:block;width:38%;height:100%;background:var(--color-text-primary);animation:a3-sweep 1.6s var(--motion-easing-standard) infinite}
 .a3-analysis-log,.a3-analysis-files{list-style:none;margin:0;padding:0}

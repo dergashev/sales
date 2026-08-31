@@ -124,6 +124,14 @@ const de = {
     'Vorbereitung · Offene Fragen: {questions} · Aktive Annahmen: {assumptions}',
   'oppcard.baseline.bgfEquation':
     'BGF R plus BGF S ergibt BGF R+S; die NRF wird daraus abgeleitet.',
+  // VR2-02 (Project remediation, cycle 7): approved target's centre-stage
+  // "Projektgrundlage · Vorschau" block — a compact preview of the SAME
+  // baseline data the full breakdown below already computes (`totalBgfR`,
+  // `bs.length`), with a wayfinding link into that section rather than a
+  // second calculation.
+  'oppcard.baseline.previewEyebrow': 'Projektgrundlage · Vorschau',
+  'oppcard.baseline.previewSummary': '{count} Gebäude · {bgf} m² BGF oberirdisch',
+  'oppcard.baseline.previewCta': 'Grundlage ansehen',
   // VR2-02 — Projekt-Identitätsband oben auf der Projekt-Workspace-Seite
   // (ersetzt die schmale Seitenspalte) und die Entscheidungs-zuerst-Karte,
   // die den aktuellen Schritt zusammenfasst, ohne die im Stepper verborgene
@@ -947,6 +955,9 @@ const en: Partial<Record<MessageKey, string>> = {
     'Preparation · Open questions: {questions} · Active assumptions: {assumptions}',
   'oppcard.baseline.bgfEquation':
     'GFA R plus GFA S equals GFA R+S; NFA is derived from that total.',
+  'oppcard.baseline.previewEyebrow': 'Project baseline · preview',
+  'oppcard.baseline.previewSummary': '{count} buildings · {bgf} m² GFA above ground',
+  'oppcard.baseline.previewCta': 'View baseline',
   'oppcard.identity.eyebrow': 'Opportunity',
   'oppcard.identity.factDocuments': 'Documents',
   'oppcard.nextDecision.eyebrow': 'Next decision',

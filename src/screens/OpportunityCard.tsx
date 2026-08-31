@@ -1338,7 +1338,13 @@ export function OpportunityCard() {
             onManualCapture={() => focusSection(questionsSectionRef)}
           />
 
-          <div className="mt-5 border border-border-default p-4">
+          {/* VR2-02 (Project remediation, cycle 7): de-nested to match the
+              approved target's flat, continuous "Dokumente & Evidenz"
+              rhythm — same control, same handler, no bordered box. A
+              hairline top rule (matching the row separators above it,
+              same `.a3-analysis-log li` border token) is enough to read
+              this as the next logical group, not a second stacked panel. */}
+          <div className="mt-5 border-t border-border-subtle pt-4">
             <h3 className="text-heading-3 font-bold text-text-primary">
               {tx("Versionsauflösung · Grundrisse")}
             </h3>
@@ -1367,6 +1373,28 @@ export function OpportunityCard() {
                 "Wiederholte Analyse überschreibt niemals Werte mit «manuell erfasst» oder «vom Kunden bestätigt» — bei Konflikt entscheidet der Vertrieb über den Diff (D-08).",
               )}
             </p>
+          </div>
+
+          {/* VR2-02 (Project remediation, cycle 7): approved target's
+              "Projektgrundlage · Vorschau" — a compact preview of the SAME
+              baseline totals the full breakdown below (Stage 3, "Offene
+              Fragen & Annahmen") already computes from `totalBgfR`/`bs`;
+              this is a wayfinding link into that section, not a second
+              calculation or a duplicate confirm action (the real
+              "Projektparameter bestätigen" control stays only there). */}
+          <div className="mt-5 border-t border-border-subtle pt-4 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="a3-cap font-medium">{t("oppcard.baseline.previewEyebrow")}</p>
+              <p className="mt-1 text-heading-3 font-bold text-text-primary">
+                {t("oppcard.baseline.previewSummary", {
+                  count: bs.length,
+                  bgf: formatDE(totalBgfR, 0),
+                })}
+              </p>
+            </div>
+            <Button onClick={() => focusSection(questionsSectionRef)}>
+              {t("oppcard.baseline.previewCta")}
+            </Button>
           </div>
         </section>
 
