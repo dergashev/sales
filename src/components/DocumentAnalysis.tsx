@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Button } from './primitives'
 import { NNBSP } from '../engine/money'
-import { useTx } from '../i18n'
+import { useT, useTx } from '../i18n'
 
 /**
  * DC-10 · DocumentAnalysisProgress — Dokumentanalyse.
@@ -62,6 +62,7 @@ export function DocumentAnalysis({ docs, onManualCapture, heading, subheading }:
 }) {
   const phaseId = useId()
   const tx = useTx()
+  const t = useT()
   const readable = docs.filter((d) => d.parseStatus !== 'failed')
   const failed = docs.filter((d) => d.parseStatus === 'failed')
 
@@ -117,7 +118,7 @@ export function DocumentAnalysis({ docs, onManualCapture, heading, subheading }:
         role="region"
         aria-busy={running || undefined}
         aria-labelledby={phaseId}
-        className="a3-analysis-spec mt-3"
+        className="a3-analysis-spec mt-2"
       >
       {/* Полоса: indeterminate, потому что общее количество шагов внутри
           фазы неизвестно (PROGRESS-001). Развёртка — ::before системы.
@@ -193,9 +194,25 @@ export function DocumentAnalysis({ docs, onManualCapture, heading, subheading }:
                   <span aria-hidden="true" className="a3-errc">✗</span>
                   {tx('nicht lesbar: Auflösung zu gering')}
                 </span>
-                <Button disabled
-                        disabledReason="Datei-Upload existiert im Prototyp nicht — Parsing ist simuliert">{tx('Besseren Scan hochladen')}</Button>
-                <Button onClick={onManualCapture}>{tx('Manuell erfassen')}</Button>
+                {/* VR2-02 (Project remediation, cycle 9, explicit Product
+                    directive): approved target's failed-row treatment is
+                    compact — status text only, no two full-width buttons
+                    consuming their own row. Cause + consequence (ANALYSIS-005)
+                    stay always visible above; the remedy CONTROLS move
+                    behind a native, keyboard-operable `<details>` disclosure
+                    (same disclosure primitive already used for
+                    `WorkflowStepper`'s `size="chapter"` rationale) —
+                    genuinely reachable and keyboard-accessible, not hidden
+                    from assistive tech, just not forced into the resting
+                    composition's vertical footprint. */}
+                <details className="a3-analysis-remedy">
+                  <summary>{t('oppcard.evidence.remedyDisclosure')}</summary>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button disabled
+                            disabledReason="Datei-Upload existiert im Prototyp nicht — Parsing ist simuliert">{tx('Besseren Scan hochladen')}</Button>
+                    <Button onClick={onManualCapture}>{tx('Manuell erfassen')}</Button>
+                  </div>
+                </details>
               </span>
             </li>
           ))}
@@ -209,7 +226,16 @@ export function DocumentAnalysis({ docs, onManualCapture, heading, subheading }:
         </p>
       )}
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+      {/* VR2-02 (Project remediation, cycle 9, explicit Product directive):
+          the D-08 persistence reassurance is genuinely secondary relative
+          to the directive's first-viewport priority list (identity →
+          workflow → evidence → incomplete/conflicting → baseline preview
+          → next decision — this note is none of those). `sr-only` while
+          `ready` keeps the record available to assistive tech without
+          consuming sighted vertical space at rest; fully visible again
+          while an analysis is actually running/cancelled, matching the
+          same established pattern as the phase log above. */}
+      <div className={`mt-3 flex flex-wrap items-center justify-between gap-3${ready ? ' sr-only' : ''}`}>
         <p className="text-small text-text-muted">
           {ready && <>{tx('Protokoll gespeichert · bestätigte und manuell erfasste Werte bleiben bei erneuter Analyse unverändert (D-08)')}</>}
           {running && <>{tx('Stufe abbrechbar — abgeschlossene Phasen bleiben erhalten')}</>}

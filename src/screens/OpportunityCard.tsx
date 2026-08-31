@@ -723,12 +723,16 @@ function NextDecisionCard({
       )}
       <p className="a3-cap mt-2">{copy.body}</p>
       <div className="mt-3">
-        {/* VR2-02 (Project remediation, cycle 8, explicit Product
-            directive): target's inline rail CTA is dark, not orange — the
-            brand-orange `primary` stays reserved for the ONE hero action
-            on this screen (the persistent bottom dock's CTA below,
-            unchanged), so the two don't compete for the same emphasis. */}
-        <Button variant="dark" onClick={copy.onSelect}>
+        {/* VR2-02 (Project remediation, cycle 8/9, explicit Product
+            directive + DESIGN SYSTEM MODE=PRESERVE check): target's inline
+            rail CTA is dark, not orange — the brand-orange `primary` stays
+            reserved for the ONE hero action on this screen (the persistent
+            bottom dock's CTA below, unchanged), so the two don't compete
+            for the same emphasis. `a3-rail-cta` overrides ONE Button
+            instance's look via `className` (components.css, scoped
+            `.a3-next-decision .a3-rail-cta`) rather than adding a new
+            canonical `Button` variant for a single current consumer. */}
+        <Button variant="secondary" className="a3-rail-cta" onClick={copy.onSelect}>
           {copy.cta} <span aria-hidden="true">→</span>
         </Button>
       </div>
@@ -1325,10 +1329,20 @@ export function OpportunityCard() {
       <div className="min-w-0">
         {/* 1 · Анализ документации + разрешение версий планов (перенесено из
           "· Vorbereitung" P1 — единственный рендер списка документов, AC8). */}
+        {/* VR2-02 (Project remediation, cycle 9, explicit Product
+            directive): `.a3-sheet`'s own default top padding (space-7,
+            48px) stacked with this section's `mt-6` (32px) put 80px of
+            dead air between the compact workflow strip and this section's
+            heading — the single largest remaining lever for getting the
+            baseline preview into the strict first viewport at 1280×800.
+            `a3-evidence-sheet` overrides ONLY padding-top, scoped to this
+            one section (single consumer, does not touch `.a3-sheet`
+            itself or any other of its many consumers); margin trimmed
+            from mt-6 to mt-3 for the same reason. */}
         <section
           ref={documentSectionRef}
           tabIndex={-1}
-          className="a3-sheet mt-6 outline-none"
+          className="a3-sheet a3-evidence-sheet mt-3 outline-none"
           aria-label="Dokumentanalyse"
         >
           <DocumentAnalysis
@@ -1351,6 +1365,35 @@ export function OpportunityCard() {
               hairline top rule (matching the row separators above it,
               same `.a3-analysis-log li` border token) is enough to read
               this as the next logical group, not a second stacked panel. */}
+          {/* VR2-02 (Project remediation, cycle 9, explicit Product
+              directive): re-ordered ahead of "Versionsauflösung" below.
+              The directive's own first-viewport content-priority list
+              ranks the baseline preview (item 5) above secondary evidence
+              controls like version resolution (not named in that list at
+              all) — approved TARGET-project's own row order matches: the
+              baseline preview follows the file list directly, with no
+              full version-resolution block between them (the target folds
+              that choice into each file row's own status label, e.g. "✓ V2
+              gewählt" / "Alternative" — noted as a further candidate
+              simplification, not implemented this cycle to avoid widening
+              scope beyond the required first-viewport fix). Still a
+              wayfinding link into Stage 3, not a second calculation or a
+              duplicate confirm action. */}
+          <div className="mt-2 border-t border-border-subtle pt-2 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="a3-cap font-medium">{t("oppcard.baseline.previewEyebrow")}</p>
+              <p className="mt-1 text-heading-3 font-bold text-text-primary">
+                {t("oppcard.baseline.previewSummary", {
+                  count: bs.length,
+                  bgf: formatDE(totalBgfR, 0),
+                })}
+              </p>
+            </div>
+            <Button onClick={() => focusSection(questionsSectionRef)}>
+              {t("oppcard.baseline.previewCta")}
+            </Button>
+          </div>
+
           <div className="mt-5 border-t border-border-subtle pt-4">
             <h3 className="text-heading-3 font-bold text-text-primary">
               {tx("Versionsauflösung · Grundrisse")}
@@ -1380,28 +1423,6 @@ export function OpportunityCard() {
                 "Wiederholte Analyse überschreibt niemals Werte mit «manuell erfasst» oder «vom Kunden bestätigt» — bei Konflikt entscheidet der Vertrieb über den Diff (D-08).",
               )}
             </p>
-          </div>
-
-          {/* VR2-02 (Project remediation, cycle 7): approved target's
-              "Projektgrundlage · Vorschau" — a compact preview of the SAME
-              baseline totals the full breakdown below (Stage 3, "Offene
-              Fragen & Annahmen") already computes from `totalBgfR`/`bs`;
-              this is a wayfinding link into that section, not a second
-              calculation or a duplicate confirm action (the real
-              "Projektparameter bestätigen" control stays only there). */}
-          <div className="mt-5 border-t border-border-subtle pt-4 flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="a3-cap font-medium">{t("oppcard.baseline.previewEyebrow")}</p>
-              <p className="mt-1 text-heading-3 font-bold text-text-primary">
-                {t("oppcard.baseline.previewSummary", {
-                  count: bs.length,
-                  bgf: formatDE(totalBgfR, 0),
-                })}
-              </p>
-            </div>
-            <Button onClick={() => focusSection(questionsSectionRef)}>
-              {t("oppcard.baseline.previewCta")}
-            </Button>
           </div>
         </section>
 

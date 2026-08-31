@@ -99,7 +99,7 @@ export function useCountUp(target: Decimal, decimals = 0): string {
 export const Button = forwardRef<HTMLButtonElement, {
   children: ReactNode
   onClick?: () => void
-  variant?: 'primary' | 'secondary' | 'ghost' | 'dark'
+  variant?: 'primary' | 'secondary' | 'ghost'
   disabled?: boolean
   /** Заблокированный элемент всегда объясняет причину (правило 12). */
   disabledReason?: string
@@ -118,18 +118,7 @@ export const Button = forwardRef<HTMLButtonElement, {
   'aria-label': ariaLabel,
   ...rest
 }, ref) {
-  // VR2-02 (Project remediation, cycle 8, explicit Product directive): the
-  // approved TARGET-project shows the WFL decision rail's inline CTA as a
-  // dark-filled button, distinct from the orange `primary` used for the
-  // page's ONE brand-orange action (the bottom action dock's commit
-  // button) — two orange CTAs on one screen would fight for the same
-  // "hero" attention `--color-action-primary-bg` is reserved for. No
-  // existing variant produces a dark fill; added as a fourth option
-  // (`.a3-dark`, reusing `--color-text-primary`/`--color-surface-default`
-  // — already-declared semantic tokens, no new colour invented) rather
-  // than a local one-off override, since the pattern is now required by
-  // an approved target and may recur.
-  const look = variant === 'primary' ? '' : variant === 'ghost' ? 'a3-ghost' : variant === 'dark' ? 'a3-dark' : 'a3-sec'
+  const look = variant === 'primary' ? '' : variant === 'ghost' ? 'a3-ghost' : 'a3-sec'
   const reasonId = useId()
   // Причина блокировки — такой же текст интерфейса, как подпись кнопки
   // (D-24): она проходит через мост здесь, а не в каждом из десятков

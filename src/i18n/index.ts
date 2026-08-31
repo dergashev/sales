@@ -139,6 +139,11 @@ const de = {
   'oppcard.evidence.heading': 'Dokumente & Evidenz',
   'oppcard.evidence.subheading':
     'Analyseergebnis, Planversion und fehlende Angaben in einer Arbeitsansicht.',
+  // VR2-02 (Project remediation, cycle 9, explicit Product directive):
+  // compact failed-row remedy disclosure — cause/consequence text stays
+  // always visible, the two remedy CONTROLS (ANALYSIS-005) move behind
+  // this trigger instead of consuming their own row in the resting state.
+  'oppcard.evidence.remedyDisclosure': 'Beheben',
   // VR2-02 — Projekt-Identitätsband oben auf der Projekt-Workspace-Seite
   // (ersetzt die schmale Seitenspalte) und die Entscheidungs-zuerst-Karte,
   // die den aktuellen Schritt zusammenfasst, ohne die im Stepper verborgene
@@ -968,6 +973,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'oppcard.evidence.heading': 'Documents & evidence',
   'oppcard.evidence.subheading':
     'Analysis result, drawing version and missing details in one working view.',
+  'oppcard.evidence.remedyDisclosure': 'Fix',
   'oppcard.identity.eyebrow': 'Opportunity',
   'oppcard.identity.factDocuments': 'Documents',
   'oppcard.nextDecision.eyebrow': 'Next decision',
