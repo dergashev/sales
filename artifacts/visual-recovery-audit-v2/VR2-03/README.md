@@ -1,5 +1,70 @@
 # VR2-03 — Building & Scope workspace recomposition — evidence
 
+## Acceptance remediation (cycle 3) — content/composition rework
+
+Acceptance rejected `946b9f26db63af5ef14fa2f497c902ed9213335e`: review stage
+below the first viewport, card/table-heavy rather than target tabs + dense
+field grid, 1280 showed narrow stacked cards instead of full-width tabs,
+fallback media under-prioritised, no BuildingScope-specific motion.
+
+New final `implementationCommit`/`candidateRuntimeCommit` =
+`e8974916cd9276a6aeb436a8a1c5564de73389e1` (supersedes `946b9f2` throughout
+this document unless a screenshot is explicitly labelled otherwise).
+Re-verified: typecheck, 750/750 tests, verify (0 findings), build,
+`npm run test:browser:desktop` 8/8 — all PASS against this exact SHA, clean
+tree.
+
+Fixes, see the commit message on `e897491` for full detail:
+- Removed the separate bordered building-identity-card grid (it duplicated
+  the tab strip); "Gebäude im Angebot" is now a slim inclusion-only list.
+- Tab strip is `display:grid`, full content width, richer tiles (card-ratio
+  media, name, type/class, status) — the ONE identity surface now, shared
+  between the interactive (>1 building) and static (1 building) cases.
+- Removed the first/last tab-jump buttons (obsolete once tabs wrap instead
+  of scrolling; their ~126px width was forcing 1280 to a single column —
+  directly the "narrow stacked cards" finding). Keyboard Home/End unaffected.
+- Dropped a redundant intro line + tightened spacing so the building tab and
+  first field-grid row now render inside the first 1440×900 viewport.
+- `areas` review section now defaults open (more of the dense grid visible
+  without an extra click).
+- Added a CSS state-transition on tab selection (border/background colour)
+  — respects the existing global `prefers-reduced-motion` blanket rule.
+
+Screenshots in `acceptance-remediation-cycle3/`:
+- `candidate-1440-single-building-first-viewport.png` — the field-grid's
+  actual input controls (not just section headers) now render inside the
+  first 1440×900 viewport.
+- `candidate-1440-multi-building.png` / `candidate-1280-multi-building-full-width-tabs.png`
+  — two buildings render as full-width tabs side by side at BOTH viewports
+  (previously 1280 stacked them as narrow vertical cards).
+- `candidate-1440-longname-regression-check.png` /
+  `candidate-1280-longname-regression-check.png` — QA-01's exact ~80-char
+  override still wraps cleanly in the list, tab and readiness rail after
+  this structural rework (regression-checked, not just assumed).
+- `candidate-1440-en.png` — EN locale, multi-building, no breakage.
+
+**Known, disclosed limitation carried over unchanged:** the outer workspace
+shell (`App.tsx` global breadcrumb, `Sidebar.tsx` left workflow rail) is
+still not reworked into the target's own chrome (no second "OPPORTUNITY
+OPTION" line, no "PROJEKTWORKFLOW"-style progress heading, no "Übersicht"
+step). Investigated a canonical `WorkflowStepper` migration for the
+top-level Sidebar nav (would visually match target's numbered/checkmarked
+steps) but found it changes two things the canonical desktop Playwright
+spec (`tests/browser/specs/configurator-building.desktop.ts`) asserts
+verbatim — `aria-current="page"` (route semantics) would become
+`aria-current="step"` (WorkflowStepper's hardcoded value, actually LESS
+correct for top-level route navigation) and `aria-describedby` would point
+at a differently-formatted id than the asserted `building-gate-konfigurator`
+— plus the shell is shared by Konfigurator/Vergleich/Export, widening the
+blast radius beyond this ticket. Judged this a separable, higher-risk piece
+of work rather than something to force through unilaterally a second time
+after the tab-strip rework already required real structural changes this
+cycle. A literal "Übersicht" step also has no corresponding real state (see
+the earlier direct message to Acceptance, preserved in the team notes): in
+the current product a WFL conflict is resolved at the Opportunity level,
+before an Option/Building & Scope exists, so TARGET-workspace's Übersicht
+content cannot occur inside an Option.
+
 ## QA-01 rework (cycle 2) — tab-strip long-name clipping
 
 QA (cycle 1, candidate `5c58fec`) found the multi-building tab strip hard-clipping
