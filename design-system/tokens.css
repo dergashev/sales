@@ -179,15 +179,19 @@
   --color-surface-editorial-ground: var(--primitive-color-neutral-100);
   /* VO-T1 editorial portfolio width [provisional]. The approved target lands
      the Opportunities portfolio near full-canvas, not in the standard 1200px
-     reading column: ~48px gutters at 1440 (space-7) and a ~1344px content
-     band. 88rem (1408px) reproduces that (x48..1392 @1440; ~x32 gutters
-     @1280) when applied as `.a3-page`'s max-width inside the portfolio
-     canvas. Scoped to the editorial portfolio; other routes keep
-     --content-max-width. Provisional until VO-T1 canonicalises the
+     reading column: ~48px gutters at 1440 and ~34px at 1280 (target-source.
+     html's own numbers), from padding alone — no centred reading column.
+     Raised past both supported viewports (1440/1280, ACCEPT cycle 6) so the
+     auto-margin from `.a3-page{margin:0 auto}` contributes 0 at either: the
+     gutter is then exactly `.a3-opportunities-canvas .a3-page`'s own
+     padding-inline (space-7/space-6, see components.css), matching the
+     target's numbers directly instead of fighting a centred max-width box's
+     auto-margin arithmetic. Scoped to the editorial portfolio; other routes
+     keep --content-max-width. Provisional until VO-T1 canonicalises the
      editorial column width. Named in the --content- width family (like
      --content-max-width, the 1200px reading column this route deliberately
      does not use). */
-  --content-editorial-max-width: 88rem;
+  --content-editorial-max-width: 100rem;
   --color-surface-default:  var(--primitive-color-white);
   --color-surface-subtle:   var(--primitive-color-neutral-050);
   --color-surface-selected: var(--primitive-color-orange-100);

@@ -1294,6 +1294,23 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    no gradients — depth only from tone/line/air. */
 .a3-opportunities-canvas{min-height:100%;background:var(--color-surface-editorial-ground)}
 .a3-opportunities-canvas .a3-page{max-width:var(--content-editorial-max-width)}
+/* ACCEPT (Auditor cycle 6): at 1440 the candidate's gutter measured x64, not
+   the target's x48 — the extra 16px was auto-margin centring a 1408px
+   (--content-editorial-max-width) box inside a 1440px viewport, ON TOP OF
+   `.a3-page`'s own px-7 (48px = --space-7) padding. --content-editorial-
+   max-width is raised past both supported viewports (1440/1280) below so
+   the auto-margin contributes 0 at either — the only inset left is the
+   48px page padding, matching the target's 1440 gutter exactly. At ≤1300px
+   the target's own gutter narrows (~34px, target-source.html's own
+   @media(max-width:1300px) --pad); --space-6 (32px) is the closest token
+   on the spacing scale (rule 2 forbids an off-scale value for a ~2px
+   difference) and overrides the same px-7 utility here, scoped to this
+   route only — every other consumer of `.a3-page` keeps space-7 at every
+   width. */
+.a3-opportunities-canvas .a3-page{padding-inline:var(--space-7)}
+@media (max-width:1300px){
+  .a3-opportunities-canvas .a3-page{padding-inline:var(--space-6)}
+}
 /* Editorial Eyebrow über dem H1 (VO-T1 Portfolio-Kopf: Eyebrow · Datum). */
 .a3-portfolio-eyebrow{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-medium);letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-secondary)}
 /* VR2-01 (ACCEPT-02/03): Kopf und Werkzeugleiste auf DERSELBEN Zeile (wie im
@@ -1306,14 +1323,38 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    Kopfzeile (kurz) an die dann sehr hohe Werkzeugleiste bodenbündig
    ausgerichtet und optisch nach unten "verschoben". Beide Spalten bleiben
    oben verankert. */
-.a3-portfolio-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-3) var(--space-4);flex-wrap:wrap}
+/* ACCEPT (Auditor cycle 6): align-items:flex-end (zurück von flex-start) —
+   im genehmigten Ziel sitzt die Werkzeugleiste bodenbündig zur Titelzeile
+   (auf Höhe des Untertitels), nicht kopfbündig zur Eyebrow. flex-start war
+   ein vorheriger Fix für ein anderes Problem (das Aufklapp-Panel wuchs
+   INNERHALB dieser Zeile und drückte die Kopfspalte optisch nach unten) —
+   dieses Problem ist jetzt an der Wurzel gelöst (Panel + Chips sitzen nicht
+   mehr in `.a3-portfolio-head`, siehe JSX-Kommentar), also kann flex-end
+   sicher zurückkommen. */
+.a3-portfolio-head{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-3) var(--space-4);flex-wrap:wrap}
 /* flex:0 1 auto (nicht 1 1 auto): mit grow:1 konkurrierte die Kopfspalte mit
    der Werkzeugleiste um denselben freien Platz — jede Verengung der
    Werkzeugleiste ließ die Kopfspalte weiter wachsen und die Werkzeugleiste
    erneut umbrechen (Rückkopplungsschleife). Beide Spalten behalten jetzt
    ihre Eigenbreite; justify-content:space-between auf .a3-portfolio-head
-   verteilt den Rest als Lücke dazwischen, wie im genehmigten Ziel. */
-.a3-portfolio-headline{min-width:16rem;flex:0 1 auto;margin:0}
+   verteilt den Rest als Lücke dazwischen, wie im genehmigten Ziel.
+   min-width auf 22rem angehoben (war 16rem): bei der genehmigten
+   Desktop-H1-Größe (48px, s.u.) braucht „Opportunities" mehr Breite, um
+   nicht umzubrechen, als bei der vorherigen (fälschlich verkleinerten)
+   36px-Variante nötig war. */
+.a3-portfolio-headline{min-width:22rem;flex:0 1 auto;margin:0}
+/* ACCEPT (Auditor cycle 6): `.a3-hero-title` trägt eine Container-Query
+   (`@container a3-page-header (max-width:30rem)`), die unterhalb von 480px
+   Container-Breite auf die kompakte 36px-Variante umschaltet — genau dafür
+   gedacht, wenn `.a3-masthead` selbst schmal ist (z. B. in einer schmalen
+   Rail). Hier ist `.a3-masthead` jetzt bewusst NUR die Kopfspalte (nicht
+   mehr die volle Seitenbreite wie im ursprünglichen One-Child-Layout), ihr
+   Container ist mit min-width:22rem (352px) knapp UNTER der 480px-Schwelle
+   — die Query griff also fälschlich und lieferte 36px statt der im Ziel
+   verlangten 48px. Explizite Rückkehr zur Desktop-Größe für diese Komposition
+   (höhere Selektor-Spezifität schlägt die Container-Query unabhängig von
+   deren tatsächlichem Breakpoint-Zustand). */
+.a3-portfolio-headline .a3-hero-title{font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line)}
 .a3-portfolio-toolbar{flex:0 0 auto;max-width:100%}
 /* Kompakte Werkzeugleiste auf der Kopfzeile (ACCEPT-02/03, wie im Ziel): die
    stapelnde Feld-Beschriftung von FormField/SelectField ist HIER sr-only —
@@ -1369,6 +1410,12 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
   .a3-opportunity-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .a3-opportunity-item{grid-template-columns:var(--measure-showcase-narrow) minmax(0,1fr);grid-template-rows:minmax(0,1fr);min-height:var(--size-opportunity-card-narrow)}
   .a3-opportunity-media{border-bottom:0;border-right:var(--border-hairline)}
+  /* ACCEPT (Auditor cycle 6): target's 1280 media column measures ~160px vs
+     the shared --measure-showcase-narrow (150px, also used by the unrelated
+     `.a3-hb` hero-number component elsewhere). Overridden here, scoped to
+     Opportunities only, rather than widening the shared token and risking
+     `.a3-hb`'s layout on other screens. */
+  .a3-opportunities-canvas .a3-opportunity-item{grid-template-columns:160px minmax(0,1fr)}
 }
 
 .a3-media-identity-art{position:relative}

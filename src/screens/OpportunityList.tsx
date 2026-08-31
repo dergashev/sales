@@ -309,9 +309,13 @@ export function OpportunityList() {
     <div className="a3-opportunities-canvas">
     <div className="a3-page px-7 py-6">
       {/* VO-T1 · editorialer Portfolio-Kopf: links Eyebrow · Datum → Titel →
-          Untertitel; rechts eine KOMPAKTE Werkzeugleiste auf derselben Zeile,
-          damit das Kartenraster direkt unter dem Kopf beginnt (Ziel y≈208,
-          ACCEPT-02/03) statt hinter separaten, gestapelten Zeilen. */}
+          Untertitel; rechts eine KOMPAKTE Werkzeugleiste, bodenbündig zur
+          Titelzeile (Ziel: Kontrollen sitzen tiefer, auf Höhe des Untertitels,
+          nicht am Kopf der Eyebrow). Das aufklappbare „Weitere Filter"-Panel
+          und die aktiven Filter-Chips sitzen ABSICHTLICH AUSSERHALB dieser
+          Zeile (siehe unten) — säßen sie hier drin, würde ihr Aufklappen die
+          Werkzeugleiste-Spalte höher machen und die (bodenbündig verankerte)
+          Titelspalte sichtbar nach unten schieben (ACCEPT, Auditor cycle 5). */}
       <div className="a3-portfolio-head">
         <header className="a3-masthead a3-portfolio-headline">
           <div>
@@ -333,76 +337,81 @@ export function OpportunityList() {
           </div>
         </header>
 
-        {/* DC-34: видимый контрол поиска, фильтры — одна рамка, один
-            контракт. Sortierung sitzt auf derselben Zeile, bewusst AUSSERHALB
-            des Filter-Fieldsets: §10 verlangt, Sortierung von Filterung
-            sichtbar zu trennen. Das ausgewählte Segment TRÄGT den „welche
-            Sortierung ist aktiv"-Zustand (SegmentedControl-Kontrakt), kein
-            zusätzlicher Caption nötig (Design-Handoff #1). */}
-        <div role="search" className="a3-project-search a3-portfolio-toolbar">
+        {/* DC-34: видимый контрол поиска — одна рамка, один контракт.
+            Sortierung sitzt auf derselben Zeile, bewusst AUSSERHALB des
+            Filter-Fieldsets: §10 verlangt, Sortierung von Filterung sichtbar
+            zu trennen. */}
+        <div role="search" className="a3-portfolio-toolbar">
           <div className="a3-search-line-toolbar">
             <FormField
-            htmlFor="opp-suche"
-            label={tx('Opportunities durchsuchen')}
-          >
-            <input
-              id="opp-suche"
-              type="search"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder={tx('Name, Stadt, Owner, ID')}
-            />
-          </FormField>
-          {/* VR2-01 (ACCEPT-02/03): Status + Termin bleiben sichtbar auf der
-              Kopfzeile wie im Ziel; Land/Stadt/Owner + zwei Schalter wandern
-              ins „Weitere Filter"-Panel, damit das Kartenraster direkt unter
-              dem Kopf beginnt statt hinter einem rahmenschweren Filterblock.
-              KEINE Kontrolle entfernt (PRESERVE, DC-34, Contract 161c0b7b §8). */}
-          {select('status', t('opplist.filter.status.label'))}
-          {/* Termin-Filter im Ziel-Kontrollslot — PRÄSENZ (hat/ohne Termin),
-              kein Datums-Ranking (meetingAt Freitext, Contract 161c0b7b). */}
-          <SelectField
-            id="opp-termin"
-            label={t('opplist.filter.termin.label')}
-            value={termin}
-            onChange={(e) => setTermin(e.target.value as 'alle' | 'mit' | 'ohne')}
-          >
-            <option value="alle">{t('opplist.filter.termin.all')}</option>
-            <option value="mit">{t('opplist.filter.termin.mit')}</option>
-            <option value="ohne">{t('opplist.filter.termin.ohne')}</option>
-          </SelectField>
-          <Button
-            variant="secondary"
-            aria-expanded={filtersOpen}
-            aria-controls={filtersPanelId}
-            onClick={() => setFiltersOpen((v) => !v)}
-          >
-            {tx('Filter')}{active.length > 0 ? ` (${active.length})` : ''}
-          </Button>
-          {/* ACCEPT (cycle 5): the canonical SegmentedControl (three 44px hit-
-              target buttons + its own legend, ~295px) cannot share a single
-              header row with search+Status+Termin+Filter at either required
-              viewport without shrinking those below legibility — its width
-              is a deliberate accessibility property (rule 23), not slack to
-              cut. Reusing the same canonical SelectField already used for
-              Status/Termin keeps Sort visually a separate, always-visible
-              axis (§10) while fitting the target's one-row composition; no
-              new primitive, no functionality removed. */}
-          <SelectField
-            id="opp-sort"
-            label={t('opplist.sort.legend')}
-            value={sort}
-            onChange={(e) => setSort(e.target.value as SortMode)}
-          >
-            <option value="recommended">{t('opplist.sort.recommended')}</option>
-            <option value="name">{t('opplist.sort.name')}</option>
-            <option value="status">{t('opplist.sort.status')}</option>
-          </SelectField>
+              htmlFor="opp-suche"
+              label={tx('Opportunities durchsuchen')}
+            >
+              <input
+                id="opp-suche"
+                type="search"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder={tx('Name, Stadt, Owner, ID')}
+              />
+            </FormField>
+            {/* VR2-01 (ACCEPT-02/03): Status + Termin bleiben sichtbar auf der
+                Kopfzeile wie im Ziel; Land/Stadt/Owner + zwei Schalter wandern
+                ins „Weitere Filter"-Panel, damit das Kartenraster direkt unter
+                dem Kopf beginnt statt hinter einem rahmenschweren Filterblock.
+                KEINE Kontrolle entfernt (PRESERVE, DC-34, Contract 161c0b7b §8). */}
+            {select('status', t('opplist.filter.status.label'))}
+            {/* Termin-Filter im Ziel-Kontrollslot — PRÄSENZ (hat/ohne Termin),
+                kein Datums-Ranking (meetingAt Freitext, Contract 161c0b7b). */}
+            <SelectField
+              id="opp-termin"
+              label={t('opplist.filter.termin.label')}
+              value={termin}
+              onChange={(e) => setTermin(e.target.value as 'alle' | 'mit' | 'ohne')}
+            >
+              <option value="alle">{t('opplist.filter.termin.all')}</option>
+              <option value="mit">{t('opplist.filter.termin.mit')}</option>
+              <option value="ohne">{t('opplist.filter.termin.ohne')}</option>
+            </SelectField>
+            <Button
+              variant="secondary"
+              aria-expanded={filtersOpen}
+              aria-controls={filtersPanelId}
+              onClick={() => setFiltersOpen((v) => !v)}
+            >
+              {tx('Filter')}{active.length > 0 ? ` (${active.length})` : ''}
+            </Button>
+            {/* ACCEPT (cycle 5): the canonical SegmentedControl (three 44px hit-
+                target buttons + its own legend, ~295px) cannot share a single
+                header row with search+Status+Termin+Filter at either required
+                viewport without shrinking those below legibility — its width
+                is a deliberate accessibility property (rule 23), not slack to
+                cut. Reusing the same canonical SelectField already used for
+                Status/Termin keeps Sort visually a separate, always-visible
+                axis (§10) while fitting the target's one-row composition; no
+                new primitive, no functionality removed. */}
+            <SelectField
+              id="opp-sort"
+              label={t('opplist.sort.legend')}
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortMode)}
+            >
+              <option value="recommended">{t('opplist.sort.recommended')}</option>
+              <option value="name">{t('opplist.sort.name')}</option>
+              <option value="status">{t('opplist.sort.status')}</option>
+            </SelectField>
+          </div>
         </div>
+      </div>
 
+      {/* ACCEPT (Auditor cycle 6): Disclosure-Panel und aktive Filter-Chips
+          sitzen bewusst AUSSERHALB von `.a3-portfolio-head` — ihr Öffnen darf
+          die bodenbündig verankerte Titel/Werkzeugleiste-Zeile nicht mehr
+          verschieben (vorher Teil derselben Flex-Zeile, siehe Kommentar oben). */}
+      <div role="search" className="a3-project-search">
         {filtersOpen && (
-          <div id={filtersPanelId}>
-            <div className="a3-search-line mt-3">
+          <div id={filtersPanelId} className="mt-3">
+            <div className="a3-search-line">
               {select('land', tx('Land'))}
               {select('stadt', tx('Stadt'))}
               {select('owner', tx('Opportunity Owner'))}
@@ -430,7 +439,7 @@ export function OpportunityList() {
         )}
 
         {active.length > 0 && (
-          <div className="a3-filter-row">
+          <div className="a3-filter-row mt-3">
             {active.map((f) => (
               <button
                 key={f.label}
@@ -448,7 +457,6 @@ export function OpportunityList() {
             </button>
           </div>
         )}
-      </div>
       </div>
 
       {/* Zwei unterscheidbare Leerzustände (AC 4/6): „nichts existiert"
