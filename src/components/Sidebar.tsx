@@ -200,7 +200,15 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
                 <span className="w-5 shrink-0 text-small text-text-muted" aria-hidden="true">
                   {done ? '✓' : item.hint}
                 </span>
-                {t(item.labelKey)}
+                {/* Acceptance remediation (cycle 5): the narrower 208/189px
+                    rail (measured against the approved target) leaves long
+                    unbreakable compound words like "Variantenvergleich" a
+                    few px too wide for the available column — `min-w-0` lets
+                    this flex child actually shrink instead of forcing the
+                    button wider than the rail, and `break-words` allows a
+                    hard mid-word break only in that rare case (no visible
+                    effect on every shorter label that already fits). */}
+                <span className="min-w-0 flex-1 break-words">{t(item.labelKey)}</span>
               </button>
 
               {blocked && reasonText && (
