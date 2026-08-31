@@ -1,5 +1,84 @@
 # VR2-03 — Building & Scope workspace recomposition — evidence
 
+## Acceptance remediation (cycle 5) — 208/189px rail, bottom Ansicht toggle, collapsed building management
+
+Acceptance rejected `4b6b6df5ff00471000946a8daccced8f18dbfe13` (`4b6b6df`) a
+4th time, with exact measurements against `TARGET-workspace-1440/1280.png`:
+rail ~280/232px vs target's measured ~208/189px; Sidebar identity block
+showed only the Option name (target names the parent project underneath it
+too) and put Arbeiten/Präsentieren directly under identity instead of at
+the rail's bottom; the building tab strip started at ~585px vertically vs
+target's ~264px, because the always-visible inclusion checklist pushed it
+down — the target keeps that behind a closed "Gebäude verwalten" toggle.
+
+New final `implementationCommit`/`candidateRuntimeCommit` =
+`d662ef482a7053df2f19bd0b2a1c8008ff279f79` (supersedes `4b6b6df` throughout
+this document unless a screenshot is explicitly labelled otherwise).
+Re-verified: typecheck, 750/750 tests, verify (0 findings), build,
+`npm run test:browser:desktop` 8/8 — all PASS against this exact SHA, clean
+tree.
+
+Fixes (full detail in the `73b6e5d` and `d662ef4` commit messages):
+- `--panel-left-width` 280px→208px, narrow-breakpoint value 232px→189px
+  (`design-system/tokens.css`) — matches Acceptance's measured values.
+  `--panel-right-width` (520px) untouched.
+- Sidebar identity block now shows the parent project name under the
+  Option (same `opportunities.json` lookup `AppHeader` already uses), and
+  `OutputProfileSwitch` (Arbeiten/Präsentieren) moved to the bottom of the
+  rail, after the workflow list — same component/props/behaviour.
+- BuildingScope headline building count now reflects the SELECTED/included
+  count, not every building ever discovered in the project (falls back to
+  the discovered total only in the unreachable zero-selected edge case).
+- Building inclusion checkboxes collapse behind a new "Gebäude verwalten"
+  toggle (`aria-expanded`/`aria-controls`), closed by default whenever a
+  building is already selected, auto-open when nothing is selected yet so
+  the empty state still explains itself without an extra click. Every test
+  call site that interacted with a checkbox directly — including the
+  canonical `tests/browser/specs/configurator-building.desktop.ts` E2E spec
+  — now opens the disclosure first.
+- Browser-verified regression: the narrower rail left the single unbreakable
+  compound word "Variantenvergleich" ~6px too wide for its column, bleeding
+  past the rail edge instead of wrapping. Fixed by giving the label its own
+  `min-w-0 flex-1 break-words` span; re-verified the Konfigurator chapter
+  sub-nav's longer labels (`Leistungsabgrenzung`, `Baunebenkosten KG 700`,
+  …) still wrap cleanly with no overlap at both viewports.
+
+Screenshots in `acceptance-remediation-cycle5/`:
+- `candidate-1440-narrow-rail-collapsed-management.png` — 208px rail,
+  project name under Option, building tab strip now starts right under the
+  intro (no checklist in the way), collapsed "Gebäude verwalten".
+- `candidate-1440-manage-buildings-open.png` — toggle opened, inclusion
+  checkboxes visible with correct checked/unchecked + status badges.
+- `candidate-1280-nav-wrap-fix.png` — 189px rail, "Variantenvergleich"
+  wraps cleanly to two lines instead of clipping.
+- `candidate-1440-konfigurator-chapter-nav-regression-check.png` /
+  `candidate-1280-konfigurator-chapter-nav-regression-check.png` — narrower
+  rail's Konfigurator chapter sub-nav (longer labels) still readable, no
+  clipping or overlap at either viewport.
+
+**Known, disclosed limitation carried over unchanged (4th time):** no
+literal "Übersicht" nav item — `TARGET-workspace-*` depicts the WFL-conflict
+decision screen, which in the current product resolves at the Opportunity
+level, before an Option/Building & Scope exists; building it as a
+Building-&-Scope-reachable nav destination would mean inventing a Product
+state and routing branch (`PipelineView`, `App.tsx`, `Sidebar.tsx`) with
+unknown store/test blast radius, which exceeds this cycle's bounded
+engineering judgment without Product authority. This reasoning was sent to
+Acceptance in cycle 1 and is preserved in the team notes; the rail
+chrome/measurements this image also carries (width, identity block, bottom
+Ansicht toggle) are addressed above independent of that nav item.
+
+Separately observed but **not** addressed this cycle (not part of
+Acceptance's cycle-5 rejection, flagged for visibility): `TARGET-building-*`
+shows the confirmed-building state as a read-only summary (plain values +
+one "Abschnitt bearbeiten" link per section, a sticky bottom confirm bar)
+rather than the always-editable field grid (inputs/selects/"Angabe
+übernehmen" per field) the product currently uses throughout the review
+flow. Converting the review UI from an edit-first to a read-first-then-edit
+model is a materially different interaction pattern touching confirmation,
+undo and persistence semantics well beyond a shell/composition change — an
+explicit Product decision, not a bounded implementation one.
+
 ## Acceptance remediation (cycle 4) — shell unification + target copy
 
 Acceptance rejected `4f446b88f0a89301298e321f704389d1ee3702b0` (`4f446b8`)
