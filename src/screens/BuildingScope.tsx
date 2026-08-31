@@ -492,7 +492,7 @@ export function BuildingScope() {
                     ref={tablistRef}
                     role="tablist"
                     aria-label={t('buildingScope.tabs.label')}
-                    className="a3-tabs a3-tabs-tiles min-w-0 flex-1 flex-nowrap overflow-x-auto"
+                    className="a3-tabs a3-tabs-tiles min-w-0 flex-1"
                     onKeyDown={handleTabKey}
                   >
                     {selectedIds.map((id, index) => {

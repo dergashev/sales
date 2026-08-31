@@ -804,7 +804,18 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    name + status) so the currently-selected building reads as a distinct
    object, not a coloured underline (rule 8 / R-04). */
 .a3-tabs-tiles{border-bottom:0;gap:var(--space-3);flex-wrap:wrap}
-.a3-tabs-tiles [role="tab"]{display:flex;align-items:center;gap:var(--space-3);border:var(--border-default);border-bottom:var(--border-default);margin-bottom:0;padding:var(--space-3) var(--space-4);text-align:left}
+/* QA-01 rework: the tab itself had no width cap. `shrink-0` (kept from the
+   plain-text single-line tab this replaced) stops the tab shrinking, but
+   nothing stopped it GROWING to an overridden name's full one-line content
+   width either (899px measured for an ~80-char override) — `.a3-tab-text`'s
+   own `min-width:0` only lets it shrink below content size, it does not by
+   itself cause a wrap. A long name then ran straight past the tablist's
+   `overflow-x-auto` viewport with no scrollbar affordance, reading as a
+   hard mid-word clip. `max-width` gives the text something finite to wrap
+   inside (`.a3-tab-name`'s existing `overflow-wrap:anywhere` then applies),
+   matching the building-card grid's own `minmax(16rem,...)` column basis
+   for visual consistency between the two building surfaces. */
+.a3-tabs-tiles [role="tab"]{display:flex;align-items:center;gap:var(--space-3);max-width:16rem;border:var(--border-default);border-bottom:var(--border-default);margin-bottom:0;padding:var(--space-3) var(--space-4);text-align:left}
 .a3-tabs-tiles [role="tab"][aria-selected="true"]{border-color:var(--color-selection-border);border-bottom-color:var(--color-selection-border);background:var(--color-surface-subtle)}
 .a3-tabs-tiles .a3-tab-media{width:var(--space-8);flex-shrink:0}
 .a3-tabs-tiles .a3-tab-text{min-width:0;display:grid;gap:var(--space-1)}
