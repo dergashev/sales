@@ -1,5 +1,32 @@
 # VR2-03 — Building & Scope workspace recomposition — evidence
 
+## QA-01 rework (cycle 2) — tab-strip long-name clipping
+
+QA (cycle 1, candidate `5c58fec`) found the multi-building tab strip hard-clipping
+an overridden long building name mid-word at both 1440×900 and 1280×800 — the
+identity card and readiness rail wrapped the same name correctly, only the tab
+strip did not. Root cause, confirmed live (`getComputedStyle`/`getBoundingClientRect`):
+(1) `[role="tab"]` had no width cap, so the tab grew to the name's full
+one-line content width instead of wrapping; (2) after capping the width,
+Tailwind's `flex-nowrap` utility on the tablist element was still cascading
+over `.a3-tabs-tiles{flex-wrap:wrap}`, so two capped tabs that didn't fit
+side-by-side at 1280 were silently horizontal-scroll-clipped instead of
+wrapping to their own row. Fixed both (`design-system/components.css` +
+`src/screens/BuildingScope.tsx`), re-verified with the exact QA repro
+(~80-char override on Haus B's Bezeichnung field) at both viewports —
+`qa-01-rework/`:
+- `before-fix-1440-clipped.png` — the reported defect, candidate `5c58fec`.
+- `after-fix-1440.png` — fixed, candidate `79056cf`, tabs fit side by side.
+- `after-fix-1280-wrapped-row.png` — fixed, candidate `79056cf`, the two
+  tabs no longer fit side by side at this width so the Haus B tab wraps to
+  its own row instead of clipping — fully visible, no horizontal scroll.
+
+New final `implementationCommit`/`candidateRuntimeCommit` = `79056cf61955a1bec8c2b01bd7a53070b9f4ead4`
+(supersedes `5c58fec` throughout this document unless a screenshot is
+explicitly labelled otherwise). Re-verified: typecheck, 750/750 tests,
+verify (0 findings), build, `npm run test:browser:desktop` 8/8 — all PASS
+against this exact SHA, clean tree.
+
 ## Target authority (restored from archive)
 
 `TARGET-workspace-1440/1280.png` and `TARGET-building-1440/1280.png` are the
