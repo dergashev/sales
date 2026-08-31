@@ -796,31 +796,28 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-tabs .a3-sum{margin-left:auto;font-weight:700}
 .a3-tabpane{padding:var(--space-4) 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
 
-/* VR2-03 · Building & Scope building-tab strip. Additive opt-in modifier on
+/* VR2-03 · Building & Scope building-tab strip — the ONE place building
+   identity is established (Acceptance remediation cycle 3: this used to
+   duplicate a separate card grid above it; that grid is now a slim
+   inclusion-only list, see BuildingScope.tsx). Additive opt-in modifier on
    the same `.a3-tabs[role=tablist] > [role=tab]` structure — every other
    `.a3-tabs` consumer (P1–P5 Vorbereitung, DC-46 Konfigurationsumfang) is
-   unaffected, exactly the precedent set by `.a3-tabs-compact` above. Turns
-   the underline-tab primitive into a bordered identity tile (media +
-   name + status) so the currently-selected building reads as a distinct
-   object, not a coloured underline (rule 8 / R-04). */
-.a3-tabs-tiles{border-bottom:0;gap:var(--space-3);flex-wrap:wrap}
-/* QA-01 rework: the tab itself had no width cap. `shrink-0` (kept from the
-   plain-text single-line tab this replaced) stops the tab shrinking, but
-   nothing stopped it GROWING to an overridden name's full one-line content
-   width either (899px measured for an ~80-char override) — `.a3-tab-text`'s
-   own `min-width:0` only lets it shrink below content size, it does not by
-   itself cause a wrap. A long name then ran straight past the tablist's
-   `overflow-x-auto` viewport with no scrollbar affordance, reading as a
-   hard mid-word clip. `max-width` gives the text something finite to wrap
-   inside (`.a3-tab-name`'s existing `overflow-wrap:anywhere` then applies),
-   matching the building-card grid's own `minmax(16rem,...)` column basis
-   for visual consistency between the two building surfaces. */
-.a3-tabs-tiles [role="tab"]{display:flex;align-items:center;gap:var(--space-3);max-width:16rem;border:var(--border-default);border-bottom:var(--border-default);margin-bottom:0;padding:var(--space-3) var(--space-4);text-align:left}
+   unaffected, exactly the precedent set by `.a3-tabs-compact` above.
+   `display:grid` (not flex) so a tab that doesn't fit reflows into the
+   grid instead of overflowing or being clipped by a scroll container —
+   the exact QA-01 defect class — and so the strip spans the FULL content
+   width the approved target shows, not a left-aligned cluster. */
+.a3-tabs-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(16rem,1fr));border-bottom:0;gap:var(--space-3)}
+.a3-tabs-tiles [role="tab"]{display:flex;align-items:flex-start;gap:var(--space-4);min-width:0;border:var(--border-default);border-bottom:var(--border-default);margin-bottom:0;padding:var(--space-4);text-align:left;transition:border-color var(--motion-duration-base) ease,background-color var(--motion-duration-base) ease}
 .a3-tabs-tiles [role="tab"][aria-selected="true"]{border-color:var(--color-selection-border);border-bottom-color:var(--color-selection-border);background:var(--color-surface-subtle)}
-.a3-tabs-tiles .a3-tab-media{width:var(--space-8);flex-shrink:0}
+.a3-tabs-tiles .a3-tab-media{flex:0 0 6rem}
 .a3-tabs-tiles .a3-tab-text{min-width:0;display:grid;gap:var(--space-1)}
 .a3-tabs-tiles .a3-tab-name{font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:anywhere}
 .a3-tabs-tiles .a3-tab-meta{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+/* Single-building state: same tile anatomy, not part of a grid/tablist (a
+   one-item tablist is a discouraged ARIA pattern) — capped to a reasonable
+   card width instead of stretching edge to edge. */
+.a3-tabs-tiles-static{display:flex;align-items:flex-start;gap:var(--space-4);max-width:24rem;border:var(--border-default);padding:var(--space-4)}
 
 /* VR2-03 · dense always-open field grid used inside the Building & Scope
    review sections (identity/areas/storeys), replacing a single stacked
@@ -837,17 +834,6 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    tokens.css) — it carries no cost-composition content, so the extra width
    only pushed the primary review stage narrower than necessary. */
 .a3-buildingscope-rail{width:var(--panel-right-width-compact);max-width:var(--panel-right-width-compact)}
-
-/* VR2-03 · "Gebäude im Angebot" management row: a grid of bordered building
-   identity cards (media + name + facts) replacing the previous full-width
-   stacked list rows — same canonical `MediaFrame` used by the Project-level
-   identity band (`.a3-project-identity-media`), sized for a card instead of
-   a full-bleed hero. */
-.a3-building-cards{display:grid;gap:var(--space-4);grid-template-columns:repeat(auto-fit,minmax(16rem,1fr))}
-.a3-building-card{display:flex;gap:var(--space-4);border:var(--border-default);padding:var(--space-4)}
-.a3-building-card[data-active="true"]{border-color:var(--color-selection-border)}
-.a3-building-card-media{flex:0 0 6rem}
-.a3-building-card-body{min-width:0;flex:1 1 auto;display:grid;gap:var(--space-2)}
 
 /* DC-19 · ScheduleGantt. Structure: .a3-gantt > .a3-gantt-scroll >
    .a3-gantt-visual > .a3-g-row + .a3-g-axis + .a3-g-legend;

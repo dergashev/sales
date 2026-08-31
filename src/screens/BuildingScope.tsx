@@ -380,88 +380,42 @@ export function BuildingScope() {
         </div>
       )}
 
-      <div className="py-5">
-        <SectionSheet
-          title={t('buildingScope.review.title')}
-          intro={t('buildingScope.review.intro')}
-        >
-          <h3 className="text-heading-3 font-bold text-text-primary">
-            {t('buildingScope.selection.title')}
-          </h3>
-          <p className="a3-sub">{t('buildingScope.selection.intro')}</p>
+      <div className="py-4">
+        {/* Acceptance remediation (cycle 3): dropped this sheet's own
+            `intro` line — PageHeader's `lede` above already states the
+            stage's purpose, and the review content needs to reach the
+            first viewport (target requirement) more than it needs a
+            second instructional sentence. The dictionary key/copy is
+            unchanged and still exists; it's just not rendered twice. */}
+        <SectionSheet title={t('buildingScope.review.title')}>
+          {/* Acceptance remediation (cycle 3): a bordered media-card grid
+              here duplicated the identity the tab strip below ALSO shows —
+              two competing "which building" surfaces reading as the
+              generic panel/card stack the target rejects. This stays a
+              slim, single-line utility list (inclusion only, no media, no
+              metrics) so the rich building-tab grid below is the ONE place
+              identity is established, full width, matching the approved
+              target's own composition. */}
+          <p className="a3-cap mt-1">{t('buildingScope.selection.title')}</p>
           <DataStateBoundary
             label={t('buildingScope.selection.dataLabel')}
             state={{ status: 'ready', data: buildingIds }}
             renderReady={(ids) => (
-              <ul className="a3-building-cards mt-3">
+              <ul className="mt-2 divide-y divide-border-subtle border-y border-border-subtle">
                 {ids.map((id) => {
-                  const review = s.buildingReviews[id]!
-                  const name = stableName(review, id)
-                  const address = effectiveFactValue(review.facts.address)
-                  const form = effectiveFactValue(review.facts.buildingForm)
-                  const buildingClass = effectiveFactValue(review.facts.buildingClass)
-                  const gfa = effectiveDerivedArea(
-                    review, s.buildingConflicts, 'bgfRSTotal',
-                  ).value
-                  const wfl = effectiveFactValue(review.facts.wfl)
-                  const nuf = effectiveFactValue(review.facts.nuf)
-                  const units = effectiveFactValue(review.facts.units)
-                  const area = wfl ?? nuf
-                  const areaLabel = t(wfl
-                    ? 'buildingScope.fact.wfl'
-                    : 'buildingScope.fact.nuf')
-                  // REDESIGN R2 §4 "BUILDINGCARD" (VR2-03: now a bordered
-                  // identity card in a responsive grid instead of a
-                  // full-width stacked row) — the same data this row
-                  // already read (checkbox/StatusBadge/FactSummary triple/
-                  // form+class caption, all unchanged) composed as an
-                  // object with a face — never a real photograph (no
-                  // truthful per-building imagery exists; a random
-                  // architecture photo would falsely imply the building's
-                  // actual design), so the fallback art IS the canonical
-                  // identity treatment here, not a placeholder-for-later.
+                  const name = stableName(s.buildingReviews[id]!, id)
                   return (
-                    <li
-                      key={id}
-                      className="a3-building-card"
-                      data-active={s.included[id] === true && s.activeBuildingId === id}
-                    >
-                      <div className="a3-building-card-media">
-                        <MediaFrame ratio="card" state="fallback" seed={name} />
-                      </div>
-                      <div className="a3-building-card-body">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <label className="flex min-h-hit-target min-w-0 cursor-pointer items-center gap-3 text-body font-medium text-text-primary">
-                            <input
-                              type="checkbox"
-                              checked={s.included[id] === true}
-                              onChange={() => toggleBuilding(id)}
-                              className="h-4 w-4 shrink-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-                            />
-                            <span className="min-w-0 break-words">{name}</span>
-                          </label>
-                          <StatusBadge status={statusFor(s, id)} />
-                        </div>
-                        <p className="text-small text-text-muted">
-                          {[form ? t(FORM_MESSAGE[form]) : null,
-                            buildingClass ? t(CLASS_MESSAGE[buildingClass]) : null, address]
-                            .filter(Boolean).join(' · ')}
-                        </p>
-                        <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-small text-text-secondary">
-                          <FactSummary
-                            label={t('buildingScope.fact.bgfRSTotal')}
-                            value={gfa ? `${formatDE(gfa, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}
-                          />
-                          <FactSummary
-                            label={areaLabel}
-                            value={area ? `${formatDE(area, 0)}${NNBSP}m²` : t('buildingScope.value.notCaptured')}
-                          />
-                          <FactSummary
-                            label={t('buildingScope.fact.units')}
-                            value={units ? formatDE(units, 0) : t('buildingScope.value.notCaptured')}
-                          />
-                        </dl>
-                      </div>
+                    <li key={id} className="flex flex-wrap items-center justify-between gap-3 py-1">
+                      <label className="flex min-h-hit-target min-w-0 cursor-pointer items-center gap-3 text-small font-medium text-text-primary">
+                        <input
+                          type="checkbox"
+                          checked={s.included[id] === true}
+                          onChange={() => toggleBuilding(id)}
+                          className="h-4 w-4 shrink-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                        />
+                        <span className="min-w-0 break-words">{name}</span>
+                      </label>
+                      <StatusBadge status={statusFor(s, id)} />
                     </li>
                   )
                 })}
@@ -472,76 +426,57 @@ export function BuildingScope() {
           {selectedIds.length === 0 ? (
             <EmptyState>{t('buildingScope.review.empty')}</EmptyState>
           ) : (
-            <div className="mt-6 border-t border-border-strong pt-5">
-              {/* A one-tab tablist is a discouraged ARIA pattern (nothing to
-                  switch to) and, visually, repeated exactly the single
-                  identity card shown above it — the building-card grid
-                  already establishes identity for a single-building Option.
-                  The tab strip earns its place only once there is genuinely
-                  something to switch BETWEEN. */}
-              {selectedIds.length > 1 && (
-                <div className="flex min-w-0 items-stretch gap-1">
-                  <Button
-                    variant="ghost"
-                    aria-label={t('buildingScope.tabs.first')}
-                    onClick={() => moveTabFocus(0)}
-                  >
-                    ←
-                  </Button>
-                  <div
-                    ref={tablistRef}
-                    role="tablist"
-                    aria-label={t('buildingScope.tabs.label')}
-                    className="a3-tabs a3-tabs-tiles min-w-0 flex-1"
-                    onKeyDown={handleTabKey}
-                  >
-                    {selectedIds.map((id, index) => {
-                      const name = stableName(s.buildingReviews[id]!, id)
-                      const selected = s.activeBuildingId === id
-                      const status = statusFor(s, id)
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          role="tab"
-                          id={`building-tab-${id}`}
-                          aria-selected={selected}
-                          aria-controls={`building-panel-${id}`}
-                          aria-posinset={index + 1}
-                          aria-setsize={selectedIds.length}
-                          tabIndex={focusedTabId === id ? 0 : -1}
-                          onClick={() => {
-                            setFocusedTabId(id)
-                            s.setActiveBuilding(id)
-                          }}
-                          className="shrink-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-                        >
-                          <span className="a3-tab-media" aria-hidden="true">
-                            <MediaFrame ratio="tile" state="fallback" seed={name} />
-                          </span>
-                          <span className="a3-tab-text">
-                            <span className="a3-tab-name">{name}</span>
-                            <span className="a3-tab-meta">
-                              {selected
-                                ? t('buildingScope.tabs.current')
-                                : t(status === 'confirmed'
-                                  ? 'buildingScope.status.confirmed'
-                                  : status === 'conflict'
-                                    ? 'buildingScope.status.conflict'
-                                    : 'buildingScope.status.open')}
-                            </span>
-                          </span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    aria-label={t('buildingScope.tabs.last')}
-                    onClick={() => moveTabFocus(selectedIds.length - 1)}
-                  >
-                    →
-                  </Button>
+            <div className="mt-4 border-t border-border-strong pt-4">
+              {selectedIds.length > 1 ? (
+                // Acceptance remediation (cycle 3): the previous first/last
+                // jump buttons existed to help navigate a horizontally
+                // SCROLLING tab strip (QA-01's `overflow-x-auto` regime) —
+                // that regime is gone (tabs now wrap in a grid instead of
+                // scrolling), and the two ~59px buttons were consuming
+                // enough of the row's width at 1280 to force the grid down
+                // to a single column, directly causing the "narrow stacked
+                // cards instead of full-width tabs" finding. Keyboard
+                // Home/End (`handleTabKey`) still jump to the first/last
+                // tab without a dedicated visible control.
+                <div
+                  ref={tablistRef}
+                  role="tablist"
+                  aria-label={t('buildingScope.tabs.label')}
+                  className="a3-tabs a3-tabs-tiles min-w-0"
+                  onKeyDown={handleTabKey}
+                >
+                  {selectedIds.map((id, index) => {
+                    const selected = s.activeBuildingId === id
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        role="tab"
+                        id={`building-tab-${id}`}
+                        aria-selected={selected}
+                        aria-controls={`building-panel-${id}`}
+                        aria-posinset={index + 1}
+                        aria-setsize={selectedIds.length}
+                        tabIndex={focusedTabId === id ? 0 : -1}
+                        onClick={() => {
+                          setFocusedTabId(id)
+                          s.setActiveBuilding(id)
+                        }}
+                        className="outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                      >
+                        <BuildingTileContent id={id} s={s} t={t} selected={selected} />
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : (
+                // Exactly one building selected: the identity tile is
+                // static, not a tab — a one-item tablist is a discouraged
+                // ARIA pattern (nothing to switch to). Same visual tile as
+                // the interactive case, so identity reads identically
+                // whether or not switching is currently possible.
+                <div className="a3-tabs-tiles a3-tabs-tiles-static">
+                  <BuildingTileContent id={selectedIds[0]!} s={s} t={t} selected />
                 </div>
               )}
 
@@ -579,12 +514,50 @@ export function BuildingScope() {
   )
 }
 
-function FactSummary({ label, value }: { label: string; value: string }) {
+/**
+ * Shared identity-tile content for the building tab strip — used inside a
+ * real `role="tab"` button when there is something to switch between, and
+ * inside a plain static wrapper for the single-building case, so identity
+ * (media role, name, type/class, status) reads identically either way.
+ * Card-ratio `MediaFrame` fallback art (VR2-03 Acceptance remediation,
+ * cycle 3): no truthful per-building photography exists in this product —
+ * a random architecture photo would falsely imply the building's actual
+ * design — so the canonical fallback treatment IS the identity media here,
+ * sized to the target's own building-media proportion rather than a small
+ * icon.
+ */
+function BuildingTileContent({ id, s, t, selected }: {
+  id: string
+  s: ReturnType<typeof useStore.getState>
+  t: ReturnType<typeof useT>
+  selected: boolean
+}) {
+  const name = stableName(s.buildingReviews[id]!, id)
+  const status = statusFor(s, id)
+  const form = effectiveFactValue(s.buildingReviews[id]!.facts.buildingForm)
+  const buildingClass = effectiveFactValue(s.buildingReviews[id]!.facts.buildingClass)
   return (
-    <div className="grid min-w-0 grid-cols-1">
-      <dt className="font-medium text-text-primary">{label}</dt>
-      <dd className="min-w-0 break-words">{value}</dd>
-    </div>
+    <>
+      <span className="a3-tab-media" aria-hidden="true">
+        <MediaFrame ratio="card" state="fallback" seed={name} />
+      </span>
+      <span className="a3-tab-text">
+        <span className="a3-tab-name">{name}</span>
+        <span className="a3-tab-meta">
+          {[form ? t(FORM_MESSAGE[form]) : null, buildingClass ? t(CLASS_MESSAGE[buildingClass]) : null]
+            .filter(Boolean).join(' · ')}
+        </span>
+        <span className="a3-tab-meta">
+          {selected
+            ? t('buildingScope.tabs.current')
+            : t(status === 'confirmed'
+              ? 'buildingScope.status.confirmed'
+              : status === 'conflict'
+                ? 'buildingScope.status.conflict'
+                : 'buildingScope.status.open')}
+        </span>
+      </span>
+    </>
   )
 }
 
@@ -620,7 +593,13 @@ function BuildingReviewPanel({
   }
   const [openSections, setOpenSections] = useState<Record<ReviewSectionKey, boolean>>({
     identity: true,
-    areas: false,
+    // Acceptance remediation (cycle 3): areas used to default closed
+    // because the removed "Gebäude im Angebot" card grid separately
+    // always showed the BGF/WFL/NUF totals — now that grid is a slim
+    // inclusion-only list (BuildingScope.tsx), those figures only exist
+    // here, and the target's own composition shows the field grid dense
+    // and visible without an extra click.
+    areas: true,
     storeys: false,
   })
 
