@@ -40,7 +40,7 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
 
     // #16 Part 8: a single storey-count field — no per-kind UG/EG/OG/SG
     // breakdown any more.
-    await user.click(screen.getByRole('button', { name: 'Geschossstruktur' }))
+    await user.click(screen.getByRole('button', { name: 'Geometrie & Geschosse' }))
     const storeyField = screen.getByRole('textbox', { name: 'Anzahl Geschosse' })
     expect(storeyField).toBeInTheDocument()
     expect(storeyField).toHaveValue('')
@@ -52,7 +52,10 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     expect(screen.getAllByRole('checkbox').every((item) => !(item as HTMLInputElement).checked))
       .toBe(true)
     expect(screen.getByText(/Noch kein Gebäude ausgewählt/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^2Konfigurator$/ }))
+    // Acceptance remediation (cycle 4): the sidebar's position hint ("2")
+    // is now `aria-hidden` (a sighted-only glyph, replaced by "✓" once the
+    // step is done) — the accessible name is the plain label again.
+    expect(screen.getByRole('button', { name: 'Konfigurator' }))
       .toHaveAttribute('aria-disabled', 'true')
     expect(screen.queryByText(/0\s*€/)).toBeNull()
   })
@@ -96,7 +99,7 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
 
     view.unmount()
     render(<App />)
-    const identity = screen.getByRole('button', { name: 'Identität' }).closest('tr')!
+    const identity = screen.getByRole('button', { name: 'Identität & Nutzung' }).closest('tr')!
     expect(within(identity).getByText('Bestätigt')).toBeInTheDocument()
 
     const documentationName = useStore.getState()
@@ -107,7 +110,7 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     act(() => useStore.getState().setBuildingFactOverride(
       'DEMO-B-A', 'documentationName', `${currentName} Nord`,
     ))
-    const changedIdentity = screen.getByRole('button', { name: 'Identität' }).closest('tr')!
+    const changedIdentity = screen.getByRole('button', { name: 'Identität & Nutzung' }).closest('tr')!
     expect(within(changedIdentity).getByText('Geändert · erneut bestätigen'))
       .toBeInTheDocument()
   })
@@ -168,7 +171,7 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
     expect(buildingConfirmed(useStore.getState(), 'DEMO-B-B')).toBe(true)
 
-    await user.click(screen.getByRole('button', { name: 'Identität' }))
+    await user.click(screen.getByRole('button', { name: 'Identität & Nutzung' }))
     const name = screen.getByRole('textbox', { name: 'Bezeichnung aus der Dokumentation' })
     await user.clear(name)
     await user.type(name, 'Haus B West')
@@ -191,7 +194,8 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
     await user.click(screen.getByRole('radio', { name: 'Je Gebäude konfigurieren' }))
     await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
-    await user.click(screen.getByRole('button', { name: /^1Gebäude & Umfang$/ }))
+    // Acceptance remediation (cycle 4): position hint is `aria-hidden` now.
+    await user.click(screen.getByRole('button', { name: 'Gebäude & Umfang' }))
 
     const profile = screen.getByRole('radiogroup', { name: 'Ansicht' })
     await user.click(within(profile).getByRole('radio', { name: 'Kundenansicht' }))
@@ -265,7 +269,7 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     const user = userEvent.setup()
     await openBuildingScope(user)
 
-    await user.click(screen.getByRole('button', { name: 'Geschossstruktur' }))
+    await user.click(screen.getByRole('button', { name: 'Geometrie & Geschosse' }))
     const apply = screen.getByRole('button', {
       name: 'Angabe übernehmen: Anzahl Geschosse',
     })
@@ -281,7 +285,7 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     const user = userEvent.setup()
     await openBuildingScope(user)
 
-    await user.click(screen.getByRole('button', { name: 'Geschossstruktur' }))
+    await user.click(screen.getByRole('button', { name: 'Geometrie & Geschosse' }))
     const field = screen.getByRole('textbox', { name: 'Anzahl Geschosse' })
     await user.type(field, '6')
     await user.click(screen.getByRole('button', { name: 'Angabe übernehmen: Anzahl Geschosse' }))

@@ -305,7 +305,8 @@ describe('DC-33 · единственная модалка системы — в
     await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
     await user.click(screen.getByRole('radio', { name: 'Je Gebäude konfigurieren' }))
     await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
-    await user.click(screen.getByRole('button', { name: /^1Gebäude & Umfang$/ }))
+    // Acceptance remediation (cycle 4): position hint is `aria-hidden` now.
+    await user.click(screen.getByRole('button', { name: 'Gebäude & Umfang' }))
 
     const trigger = screen.getByRole('button', { name: 'Kundenansicht prüfen' })
     await user.click(trigger)

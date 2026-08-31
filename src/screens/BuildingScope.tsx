@@ -352,16 +352,37 @@ export function BuildingScope() {
     }
   }
 
+  // Acceptance remediation (cycle 4): the approved target's biggest, boldest
+  // text is a dynamic sentence naming the project's building count ("Zwei
+  // Gebäude. Eine klare Grundlage."), with the route's stable name
+  // ("Gebäude & Umfang") demoted to a small context label above it. The H1
+  // itself keeps its exact existing text/role (App.tsx's route-change focus
+  // reset queries `[data-page-heading]`, and two DOM tests assert this exact
+  // heading string) — only its VISUAL size shrinks (scoped to this screen's
+  // own header wrapper, not the shared `.a3-hero-title` class other screens
+  // still use at full size). The dynamic sentence is a new, separate element
+  // carrying the large hero styling instead.
+  const totalBuildingCount = buildingIds.length
+  const headlineKey = totalBuildingCount === 1 ? 'buildingScope.headline.one'
+    : totalBuildingCount === 2 ? 'buildingScope.headline.two'
+      : totalBuildingCount === 3 ? 'buildingScope.headline.three'
+        : 'buildingScope.headline.many'
+
   return (
     <div className="px-7 py-6">
-      <PageHeader
-        title={t('buildingScope.title')}
-        meta={t('buildingScope.meta', {
-          confirmed: confirmedCount,
-          selected: selectedCount,
-        })}
-        lede={t('buildingScope.lede')}
-      />
+      <div className="a3-buildingscope-header">
+        <PageHeader
+          title={t('buildingScope.title')}
+          meta={t('buildingScope.meta', {
+            confirmed: confirmedCount,
+            selected: selectedCount,
+          })}
+        />
+        <p className="a3-buildingscope-headline">
+          {t(headlineKey, { count: totalBuildingCount })}
+        </p>
+        <p className="a3-lede">{t('buildingScope.lede')}</p>
+      </div>
 
       <p className="sr-only" aria-live="polite" aria-atomic="true">
         {announcement}

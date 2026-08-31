@@ -835,6 +835,18 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    only pushed the primary review stage narrower than necessary. */
 .a3-buildingscope-rail{width:var(--panel-right-width-compact);max-width:var(--panel-right-width-compact)}
 
+/* VR2-03 · Acceptance remediation cycle 4: the approved target's biggest
+   text is the dynamic building-count sentence, not the route's stable name
+   — demote THIS screen's own `.a3-hero-title` to a small context label
+   (scoped to `.a3-buildingscope-header`, every other `.a3-hero-title`
+   consumer is unaffected) and give the dynamic sentence the hero size
+   instead. The `<h1>` itself keeps its exact text/role — only paint size
+   changes, so route-focus and heading-text tests are unaffected. */
+.a3-buildingscope-header .a3-hero-title{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-medium);color:var(--color-text-secondary);margin:0}
+.a3-buildingscope-header .a3-masthead{margin:0;align-items:flex-start}
+.a3-buildingscope-header .a3-meta{order:2}
+.a3-buildingscope-headline{font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:700;color:var(--color-text-primary);margin:var(--space-2) 0 var(--space-2)}
+
 /* DC-19 · ScheduleGantt. Structure: .a3-gantt > .a3-gantt-scroll >
    .a3-gantt-visual > .a3-g-row + .a3-g-axis + .a3-g-legend;
    details.a3-gantt-details contains table.a3-gantt-table.

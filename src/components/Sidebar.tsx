@@ -37,13 +37,25 @@ import { WorkflowStepper, type WorkflowStep } from '../design-system/WorkflowSte
  * уровень иерархии, — не навигация, а телепорт: он ломает представление
  * пользователя о том, где он находится.
  */
+/**
+ * Acceptance remediation (cycle 4): the approved Workspace target shows ONE
+ * numbered workflow list (Gebäude & Umfang / Konfigurator / Vergleich /
+ * Angebot), not a numbered pair plus a separately-styled link plus a
+ * separately-grouped "Ausgabe" item. `vergleich` and `export` are REAL,
+ * already-released destinations (`Variantenvergleich` link, `Ausgabe`
+ * group below) — this only unifies where they render, not what they do:
+ * same `s.setPipelineView(id)` calls, same gating logic, same visible
+ * label text (`nav.vergleich`/`nav.export`, unchanged) as before.
+ */
 const SCREENS: Array<{
   id: PipelineView
   labelKey: MessageKey
-  hint?: string
+  hint: string
 }> = [
   { id: 'buildingScope', labelKey: 'nav.buildingScope', hint: '1' },
   { id: 'konfigurator', labelKey: 'nav.konfigurator', hint: '2' },
+  { id: 'vergleich', labelKey: 'nav.vergleich', hint: '3' },
+  { id: 'export', labelKey: 'nav.export', hint: '4' },
 ]
 
 const FOCUS = 'outline-none focus-visible:outline focus-visible:outline-2 ' +
@@ -122,20 +134,6 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
             {`Musterprojekt Nordfeld · Haus${NNBSP}A`}
           </p>
         )}
-        {/* REDESIGN R3 (877f2c2a): this was `!client && option` — the ONLY
-            entry point to Variantenvergleich was internal-only, so the new
-            client-safe Options/comparison surface it now also hosts
-            (`S4Vergleich.tsx`'s `client` branches) had no way to be
-            reached from Kundenansicht at all. `S4Vergleich.tsx` itself
-            already fully owns client-safe composition (eligible-only
-            columns, the "wird präsentiert" selector, the one-Option
-            summary) — this link only needed to stop being hidden. */}
-        {option && (
-          <button type="button" className="a3-linkbtn mt-3"
-                  onClick={() => s.setPipelineView('vergleich')}>
-            {t('nav.vergleich')}
-          </button>
-        )}
         <div className="mt-4 border-t border-border-subtle pt-4">
           <OutputProfileSwitch
             compact
@@ -157,8 +155,35 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
         </li>
         {screens.map((item) => {
           const active = view === item.id
-          const blocked = item.id !== 'buildingScope' && !gateOpen
+          // Acceptance remediation (cycle 4): per-item gating, unchanged
+          // from each item's own PREVIOUS independent block — vergleich
+          // was never blocked (the old standalone link had no gate at
+          // all); export's gate additionally requires the whole-option
+          // confirm CTA (`exportGateOpen`), not just the building gate.
+          const blocked = item.id === 'konfigurator' ? !gateOpen
+            : item.id === 'export' ? !exportGateOpen
+              : false
+          // Done state drives the checkmark glyph below — decorative
+          // (aria-hidden) because the accessible name stays exactly the
+          // plain label (`nav.buildingScope`/`nav.konfigurator`/
+          // `nav.vergleich`/`nav.export`, all unchanged), matching every
+          // existing exact-string test and the canonical desktop
+          // Playwright spec. `aria-current="page"` already tells
+          // assistive tech which step is current; "done" is a sighted
+          // progress cue on top of that, not the only place the state
+          // lives — the item's own visible label plus reachability
+          // (blocked vs not) still convey the same fact.
+          const done = item.id === 'buildingScope' ? gateOpen
+            : item.id === 'konfigurator' ? exportGateOpen
+              : false
           const reasonId = `building-gate-${item.id}`
+          const reasonText = item.id === 'konfigurator'
+            ? t('buildingScope.gate.navigationReason')
+            : item.id === 'export'
+              ? (!gateOpen
+                ? t('buildingScope.gate.navigationReason')
+                : t('configurator.finalGate.exportBlockedReason'))
+              : undefined
           return (
             <li key={item.id}>
               <button
@@ -173,20 +198,16 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
                     : 'border-l-selected border-transparent text-text-secondary hover:bg-surface-subtle') +
                   (blocked ? ' cursor-default text-text-disabled' : '')}
               >
-                <span className="w-5 shrink-0 text-small text-text-muted">{item.hint}</span>
+                <span className="w-5 shrink-0 text-small text-text-muted" aria-hidden="true">
+                  {done ? '✓' : item.hint}
+                </span>
                 {t(item.labelKey)}
               </button>
 
-              {blocked && item.id === 'konfigurator' && (
+              {blocked && reasonText && (
                 <p id={reasonId} className="px-5 pb-2 pl-8 text-small text-text-secondary">
-                  {t('buildingScope.gate.navigationReason')}
+                  {reasonText}
                 </p>
-              )}
-
-              {blocked && item.id !== 'konfigurator' && (
-                <span id={reasonId} className="sr-only">
-                  {t('buildingScope.gate.navigationReason')}
-                </span>
               )}
 
               {/* Главы конфигуратора — второй уровень под активным пунктом. */}
@@ -197,11 +218,11 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
                   size="chapter"
                   steps={workflow.map((step): WorkflowStep => {
                     const open = s.openConfiguratorStep === step.id
-                    const done = !open && configuratorStepDone(s, step.id)
+                    const stepDone = !open && configuratorStepDone(s, step.id)
                     return {
                       id: step.id,
                       label: t(`chapter.${step.id}`),
-                      state: open ? 'current' : done ? 'done' : 'upcoming',
+                      state: open ? 'current' : stepDone ? 'done' : 'upcoming',
                       onSelect: () => s.openConfiguratorStepAt(step.id),
                     }
                   })}
@@ -210,39 +231,6 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
             </li>
           )
         })}
-        {(!client || isClientVisiblePipelineView('export')) && (
-          <li className="mt-2 border-t border-border-subtle pt-2">
-            <p className="a3-cap px-5 pb-1 pt-3">
-              {t('shell.sidebar.outputs')}
-            </p>
-            <button
-              type="button"
-              onClick={() => { if (exportGateOpen) s.setPipelineView('export') }}
-              aria-current={view === 'export' ? 'page' : undefined}
-              aria-disabled={!exportGateOpen || undefined}
-              aria-describedby={!exportGateOpen ? 'building-gate-export' : undefined}
-              className={`relative flex min-h-hit-target w-full items-center px-5 py-2 text-left text-body ${FOCUS} ` +
-                (view === 'export'
-                  ? 'border-l-selected border-selection-border bg-surface-subtle font-medium text-text-primary'
-                  : 'border-l-selected border-transparent text-text-secondary hover:bg-surface-subtle') +
-                (!exportGateOpen ? ' cursor-default text-text-disabled' : '')}
-            >
-              {t('nav.export')}
-            </button>
-            {/* Task 03 (AC3, rule 12): the reason must be visibly adjacent to
-                the disabled control, not only announced to screen readers —
-                the same treatment the "Konfigurator" item already gets
-                below, now extended to Export since this ticket names it
-                explicitly. */}
-            {!exportGateOpen && (
-              <p id="building-gate-export" className="px-5 pb-2 pl-8 text-small text-text-secondary">
-                {!gateOpen
-                  ? t('buildingScope.gate.navigationReason')
-                  : t('configurator.finalGate.exportBlockedReason')}
-              </p>
-            )}
-          </li>
-        )}
       </ul>
 
       {!client && (
