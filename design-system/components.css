@@ -1556,6 +1556,13 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    scroll back up to the identity-band rail. */
 .a3-project-action-dock{position:sticky;bottom:0;z-index:1;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-4);border-top:var(--border-default);background:var(--color-surface-default);padding:var(--space-3) var(--space-4);margin-top:var(--space-6)}
 
+/* Acceptance remediation (cycle 4/6): fourth MediaFrame ratio, hand-written
+   here instead of through the `aspectRatio` Tailwind theme extension the
+   other three (`aspect-media-pano/card/tile`) use — see tokens.css's
+   `--size-ratio-media-hero` comment for why. Functionally identical rule
+   shape to what Tailwind would have generated. */
+.aspect-media-hero{aspect-ratio:var(--size-ratio-media-hero)}
+
 .a3-media-identity-art{position:relative}
 .a3-media-identity-building{position:relative;width:54%;height:62%;border:var(--border-contrast-2px);border-bottom:0;background:var(--color-surface-default)}
 .a3-media-identity-roof{position:absolute;inset-inline:-8%;top:-1px;border-top:var(--border-contrast-2px);transform:skewY(-8deg);transform-origin:left}

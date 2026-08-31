@@ -634,6 +634,25 @@
   --size-ratio-media-pano: 16 / 5;  /* identity headers */
   --size-ratio-media-card: 3 / 2;   /* option/building/project cards */
   --size-ratio-media-tile: 1 / 1;   /* thumbnails */
+  /* [provisional] VR2-02 acceptance remediation (cycle 4/6) — `pano`
+     (16/5) is too short and `card` (3/2) too tall to reproduce the
+     approved project target's own measured hero dimensions at the width
+     the target itself uses; four consecutive Auditor passes confirmed
+     the identity band remains materially taller than the target's own
+     integrated hero/fact/workflow geometry. Composition testing revising
+     the three starting ratios is explicitly anticipated by this
+     comment's own opening line. Defined by hand in components.css
+     (`.aspect-media-hero`) rather than through the `aspectRatio` Tailwind
+     theme extension the other three ratios use: this dev environment's
+     Vite/Tailwind v3 pipeline does not pick up `tailwind.config.ts`
+     theme additions without a full process restart unavailable here
+     (confirmed directly — a `media-hero` theme entry never produced a
+     `.aspect-media-hero` utility in the served stylesheet after an HMR
+     update, a hard reload, and a forced CSS re-request). A hand-written
+     rule referencing this same token sidesteps that limitation entirely
+     and is otherwise identical in role to the other three. Sole
+     consumer: OpportunityCard.tsx's project identity band. */
+  --size-ratio-media-hero: 16 / 9;
 }
 
 /* Task 04 (F-18) — DELIBERATE 1280-shell ADR revision, not a silent

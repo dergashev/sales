@@ -858,7 +858,7 @@ export function OpportunityCard() {
           >
             {fallbackMedia ? (
               <MediaFrame
-                ratio="card"
+                ratio="hero"
                 state="loaded"
                 src={fallbackMedia.url}
                 alt={t(fallbackMedia.altKey)}
@@ -868,7 +868,7 @@ export function OpportunityCard() {
               />
             ) : (
               <MediaFrame
-                ratio="card"
+                ratio="hero"
                 state="fallback"
                 seed={meta.name}
                 alt=""
@@ -881,8 +881,8 @@ export function OpportunityCard() {
             <PageHeader
               title={meta.name}
               meta={
-                <span className="flex flex-col gap-2">
-                  <span className="block">
+                <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span>
                     {meta.city} · {meta.country} · {meta.owner}
                   </span>
                   <span className={"a3-tag " + (STAGE_TAG[meta.stage] ?? "")}>
@@ -1186,7 +1186,7 @@ export function OpportunityCard() {
         >
           {media ? (
             <MediaFrame
-              ratio="card"
+              ratio="hero"
               state="loaded"
               src={media.url}
               alt={t(media.altKey)}
@@ -1196,7 +1196,7 @@ export function OpportunityCard() {
             />
           ) : (
             <MediaFrame
-              ratio="card"
+              ratio="hero"
               state="fallback"
               seed={meta.name}
               alt=""
@@ -1209,29 +1209,36 @@ export function OpportunityCard() {
           <PageHeader
             title={meta.name}
             meta={
-              <span className="flex flex-col gap-2">
-                <span className="block">
+              // Acceptance remediation (cycle 4/6): the meta line and the
+              // status/note row were two stacked lines — the approved
+              // target's own title/meta area is materially more compact.
+              // One wrapping row (still every element it was: city ·
+              // country · owner · meetingAt, the STAGE_TAG badge — F05/
+              // ACCEPT-01's non-colour-only status carrier stays exactly
+              // as tested — and the Internal Note affordance) instead of
+              // two, wrapping naturally rather than a fixed second line
+              // when a locale or narrower text needs the room (rule 36).
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span>
                   {meta.city} · {meta.country} · {meta.owner}
                   {meta.meetingAt && <> · {tx(meta.meetingAt)}</>}
                 </span>
-                <span className="flex items-center gap-2">
-                  <span className={"a3-tag " + (STAGE_TAG[meta.stage] ?? "")}>
-                    {tx(meta.stage)}
-                  </span>
-                  {/* Header utility affordance (#16 Part 5/AC-07): the ONLY entry
-                      point to Internal Note now. Never rendered client-side — the
-                      affordance itself must not exist in presentation mode, not
-                      merely open an empty dialog (NOTE-006). */}
-                  {s.mode !== "praesentation" && (
-                    <Button
-                      ref={noteButtonRef}
-                      variant="ghost"
-                      onClick={() => setNoteDialogOpen(true)}
-                    >
-                      {tx("Interne Notiz")}
-                    </Button>
-                  )}
+                <span className={"a3-tag " + (STAGE_TAG[meta.stage] ?? "")}>
+                  {tx(meta.stage)}
                 </span>
+                {/* Header utility affordance (#16 Part 5/AC-07): the ONLY entry
+                    point to Internal Note now. Never rendered client-side — the
+                    affordance itself must not exist in presentation mode, not
+                    merely open an empty dialog (NOTE-006). */}
+                {s.mode !== "praesentation" && (
+                  <Button
+                    ref={noteButtonRef}
+                    variant="ghost"
+                    onClick={() => setNoteDialogOpen(true)}
+                  >
+                    {tx("Interne Notiz")}
+                  </Button>
+                )}
               </span>
             }
           />

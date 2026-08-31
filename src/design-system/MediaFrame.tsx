@@ -8,9 +8,12 @@ import { useTx } from '../i18n'
  * system, no project-identity primitive. This closes that Design System
  * gap (audit: "a dormant identity asset — zero consumers").
  *
- * Ratios (provisional, `--ratio-media-*` in tokens.css): `pano` 16:5
- * (project identity headers), `card` 3:2 (option/building/project cards),
- * `tile` 1:1 (thumbnails).
+ * Ratios (provisional, `--size-ratio-media-*` in tokens.css): `pano` 16:5
+ * (very wide full-bleed identity bands), `card` 3:2 (option/building/
+ * project cards), `tile` 1:1 (thumbnails), `hero` 16:9 (project identity
+ * band — VR2-02 acceptance remediation: reproduces the approved project
+ * target's own measured hero dimensions more closely than `pano` or
+ * `card` do at the width the target itself uses).
  *
  * Six states, all DESIGNED (never a generic grey rectangle):
  * `loaded` · `loading` (flat skeleton, rule 30 — no shimmer) · `empty` ·
@@ -27,13 +30,14 @@ import { useTx } from '../i18n'
  * licence/attribution are caller-supplied copy, never invented here.
  */
 
-export type MediaFrameRatio = 'pano' | 'card' | 'tile'
+export type MediaFrameRatio = 'pano' | 'card' | 'tile' | 'hero'
 export type MediaFrameState = 'loaded' | 'loading' | 'empty' | 'unavailable' | 'error' | 'fallback'
 
 const RATIO_CLASS: Record<MediaFrameRatio, string> = {
   pano: 'aspect-media-pano',
   card: 'aspect-media-card',
   tile: 'aspect-media-tile',
+  hero: 'aspect-media-hero',
 }
 
 const STATE_TEXT_DE: Record<Exclude<MediaFrameState, 'loaded' | 'loading'>, string> = {
