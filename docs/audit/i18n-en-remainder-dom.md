@@ -46,6 +46,7 @@ Mit freundlichen Grüßen
 - Angebot prüfen
 - Bereit zum Anlegen
 - Bestätigt
+- Courtyard view · Musterhöfe
 - Die folgenden Auswahlmöglichkeiten sind bereits auf diesen Standard abgestimmt.
 - Diese 1 Frage reduziert die Schätzunsicherheit von ±
 - Druckansicht öffnen
@@ -55,7 +56,6 @@ Mit freundlichen Grüßen
 - Fragen reduzieren die Schätzunsicherheit von ±
 - Konfiguration je Gebäude bestätigt
 - Planung ist Projektgröße, Ausführung gehört zum Gebäude — deshalb mehrere Zeilen und nicht eine. Die Fertigstellung ist dieselbe Zahl, die oben rechts als Kennzahl steht.
-- Project identity · Musterhöfe Westpark
 - Project identity · Musterquartier Südhang
 - Später entscheiden
 - Texte stammen aus den Fallback-Regeln; das Wertfeld (z. B. die Gebäudeklasse) wird mit dem Projektwert belegt — der Regeltext nennt einen Beispielwert. Eine Empfehlung verschwindet, sobald der Wert erfasst ist — die Liste wird abgeleitet, nicht gepflegt.

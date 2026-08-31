@@ -143,7 +143,7 @@ function FallbackArt({ seed }: { seed: string }) {
 }
 
 export function MediaFrame({
-  ratio, state, src, alt, seed, caption, fallbackLabel, sourceId, onRetry,
+  ratio, state, src, alt, seed, caption, fallbackLabel, sourceId, onRetry, focalPoint,
 }: {
   ratio: MediaFrameRatio
   state: MediaFrameState
@@ -160,6 +160,14 @@ export function MediaFrame({
   /** Asset-manifest identifier — rendered only as a data attribute for QA/audit tooling, never shown to a client. */
   sourceId?: string
   onRetry?: () => void
+  /**
+   * VR2-01 (Acceptance remediation, cycle 3): `object-position` for a
+   * `loaded` image — lets the SAME wide source frame differently across
+   * several `loaded` consumers instead of every card centre-cropping the
+   * same region. Defaults to `center` (identical to the previous, implicit
+   * behaviour) so every existing consumer is unaffected.
+   */
+  focalPoint?: 'left' | 'center' | 'right'
 }) {
   const tx = useTx()
   const showFallback = state !== 'loaded' && state !== 'loading'
@@ -175,7 +183,12 @@ export function MediaFrame({
       >
         {state === 'loaded' && src && (
           // eslint-disable-next-line jsx-a11y/alt-text -- alt is required by the prop type below
-          <img src={src} alt={alt ?? ''} className="absolute inset-0 h-full w-full object-cover" />
+          <img
+            src={src}
+            alt={alt ?? ''}
+            className="absolute inset-0 h-full w-full object-cover"
+            style={{ objectPosition: focalPoint ?? 'center' }}
+          />
         )}
         {state === 'loading' && (
           <div className="absolute inset-0" style={{ background: 'var(--color-surface-subtle)' }}>

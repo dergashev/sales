@@ -8,6 +8,7 @@ import { Switch } from '../components/controls'
 import { STAGE_TAG } from '../lib/opportunityStage'
 import { useT, useTx } from '../i18n'
 import { MediaFrame } from '../design-system/MediaFrame'
+import { opportunityMedia } from '../assets/opportunity-media'
 import { startContinuityTransition, useSemanticMotion } from '../design-system/motion'
 
 /**
@@ -511,37 +512,48 @@ export function OpportunityList() {
       <ul className="a3-opportunity-grid mt-4">
         {shown.map((o) => (
           <li key={o.id} className="a3-opportunity-item">
-            {/* REDESIGN R2 (DESIGN-01): project identity face. No sourced
-                photography exists yet for the fixture opportunities — the
-                canonical MediaFrame `fallback` state (typed architectural
-                identity graphic, never a grey box) is a first-class designed state,
-                not a placeholder awaiting an asset. Sourcing real photos
-                with asset-provenance.md entries is a follow-up, tracked
-                separately — it does not block giving every card a visual
-                identity today.
-                VR2-01 (media/fallback rework): `fallbackLabel` was missing
-                here, so `MediaFrame` rendered its stateText as an empty
-                string and the caption never appeared — every card's
-                fallback art was visually identical with no way to tell one
-                project's "no photo" card from another's (approved target
-                names the project on every fallback card). Passing the
-                project name through the canonical prop restores per-card
-                recognition without inventing a new component or a fake
-                photo — MediaFrame already renders it as caption copy below
-                the frame, never overlaid on/impersonating the graphic. */}
-            <div
-              className="a3-opportunity-media"
-              aria-label={t('opplist.media.identityGraphic')}
-              style={{ viewTransitionName: `project-media-${o.id}` }}
-            >
-              <MediaFrame
-                ratio="card"
-                state="fallback"
-                seed={o.name}
-                alt=""
-                fallbackLabel={t('opplist.media.fallbackCaption', { name: o.name })}
-              />
-            </div>
+            {/* REDESIGN R2 (DESIGN-01) / VR2-01 (Acceptance remediation,
+                cycle 3): project identity face.
+                Three opportunities — the exact ones the approved VO-T1
+                target names as photographed (Nordfeld/Westpark/Seeblick) —
+                now render the `loaded` state via `opportunityMedia()`, a
+                presentation-only lookup that never touches the commercial
+                fixture (`src/fixtures/opportunities.json` still has no
+                image field). Every other opportunity keeps the canonical
+                `fallback` state (typed architectural identity graphic,
+                never a grey box, never impersonating a photo) with its own
+                per-project caption (`fallbackLabel`) — VR2-01 cycle 1 fixed
+                that caption from silently rendering empty. */}
+            {(() => {
+              const media = opportunityMedia(o.id)
+              return (
+                <div
+                  className="a3-opportunity-media"
+                  aria-label={media ? undefined : t('opplist.media.identityGraphic')}
+                  style={{ viewTransitionName: `project-media-${o.id}` }}
+                >
+                  {media ? (
+                    <MediaFrame
+                      ratio="card"
+                      state="loaded"
+                      src={media.url}
+                      alt={t(media.altKey)}
+                      seed={o.name}
+                      focalPoint={media.focalPoint}
+                      caption={t(media.creditKey)}
+                    />
+                  ) : (
+                    <MediaFrame
+                      ratio="card"
+                      state="fallback"
+                      seed={o.name}
+                      alt=""
+                      fallbackLabel={t('opplist.media.fallbackCaption', { name: o.name })}
+                    />
+                  )}
+                </div>
+              )
+            })()}
             {/* Card (CARD-001): title = primaryDestination (Name, mit
                 onOpen), status/meta/Termin/Zähler = nonInteractiveArea,
                 actions = die eine sekundäre CTA-Aktion. Termin (falls

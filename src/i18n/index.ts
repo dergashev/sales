@@ -422,6 +422,14 @@ const de = {
   // `fallbackLabel` prop already exists for exactly this; OpportunityList
   // was simply not passing it.
   'opplist.media.fallbackCaption': 'Projektidentität · {name}',
+  // VR2-01 (Acceptance remediation, cycle 3): credit lines for the three
+  // opportunities the approved VO-T1 target names as photographed —
+  // matches the target's own credit-chip wording (target-source.html),
+  // adapted to MediaFrame's canonical below-frame caption placement.
+  'opplist.media.credit.nordfeld': 'Projektbild · Nordfeld',
+  'opplist.media.credit.westpark': 'Ansicht Hof · Musterhöfe',
+  'opplist.media.credit.seeblick': 'Projektvisualisierung · Seeblick',
+  'opplist.media.photoAlt': 'Zwei Mehrfamilienhäuser mit Holz- und Klinkerfassade an einem gemeinsamen Hof',
   // Kanonisches Label je HubSpot-Lifecycle-Stadium (STAGE_LABEL_KEY in
   // OpportunityList) — ersetzt `tx(o.stage)` für den Status-Tag, das
   // Status-Select und den Status-Filter-Chip. `ruhend`/`gewonnen`/
@@ -1110,6 +1118,10 @@ const en: Partial<Record<MessageKey, string>> = {
   'opplist.card.documentsLabel': 'documents',
   'opplist.media.identityGraphic': 'Project identity · no image',
   'opplist.media.fallbackCaption': 'Project identity · {name}',
+  'opplist.media.credit.nordfeld': 'Project photo · Nordfeld',
+  'opplist.media.credit.westpark': 'Courtyard view · Musterhöfe',
+  'opplist.media.credit.seeblick': 'Project view · Seeblick',
+  'opplist.media.photoAlt': 'Two apartment buildings with timber and brick facades around a shared courtyard',
   'opplist.stage.neuAusHubspot': 'new from HubSpot',
   'opplist.stage.inVorbereitung': 'in preparation',
   'opplist.stage.versendet': 'sent',

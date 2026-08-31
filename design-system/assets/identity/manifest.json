@@ -1,0 +1,15 @@
+[
+  {
+    "id": "opp-nordfeld-hero",
+    "file": "opp-identity-nordfeld.webp",
+    "motifDe": "Zwei Mehrfamilienhäuser mit Holz- und Klinkerfassade an einem gemeinsamen Hof",
+    "source": "Carried over from the Design-Director-and-Product-Owner-approved VO-T1 target board (artifacts/visual-outcome-audit-18e7d71/vo-t1/target-source.html, commit 966c833), which used this single image as its 'photographed project' placeholder for three portfolio cards via CSS background-position (Nordfeld centred, Westpark left-cropped, Seeblick right-cropped). Recovered from git history for VR2-01 because the working tree at the time this asset-provenance contract's full field set (sourceUrl/sourceService/author/licence/retrievedAt) became mandatory did not carry it forward; the asset itself predates that enforcement and was never logged with those fields anywhere in the repository's history.",
+    "sourceUrl": "UNKNOWN — not recorded anywhere in repository history prior to this manifest entry",
+    "sourceService": "unknown — carried over from an approved target artefact without a logged sourcing record",
+    "author": "unknown — not recorded",
+    "licence": "UNCONFIRMED — do not treat as cleared for any use beyond this internal-prototype, non-client-facing context until a dedicated sourcing audit confirms usage rights",
+    "intendedUse": "project-identity",
+    "retrievedAt": "unknown (asset first appears in repository history at commit 966c833)",
+    "auditStatus": "PENDING — this entry intentionally leaves sourceUrl/author/licence unresolved rather than inventing them (design-system/asset-provenance.md forbids fabricated provenance); track a dedicated asset-sourcing task to either confirm this image's real licence/author or replace it with a properly sourced one before any client-facing/export use."
+  }
+]
