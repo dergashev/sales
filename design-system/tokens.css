@@ -564,10 +564,17 @@
      alone lands on exactly 320/360/400 at the three reference widths. See
      `.a3-rail-sticky-top` in components.css. */
   --size-rail-header-budget: clamp(320px, 25vw, 400px);
-  --panel-left-width: 280px;  /* [provisional] навигационный сайдбар оболочки;
+  --panel-left-width: 208px;  /* [provisional] навигационный сайдбар оболочки;
                                  введён при пересборке прототипа 05.08 — правой
                                  панели токен уже существовал, левой не было.
-                                 Значение рабочее, утверждает владелец дизайна */
+                                 VR2-03 Acceptance remediation (cycle 5):
+                                 approved Workspace/Building targets measure
+                                 ~208px at 1440 (narrowing from the prior
+                                 280px working value, never ratified). Only
+                                 INCREASES the documented "workspace ≥ rail"
+                                 margin below (--panel-right-width stays
+                                 520px, unchanged) — narrowing the left rail
+                                 never shrinks the workspace column. */
   --size-app-min-width: 1280px; /* [provisional] supported shell minimum;
                                    requires design-token ADR ratification */
   /* --duration-toast-undo здесь НЕ живёт: окно отмены — политика
@@ -692,7 +699,9 @@
    "workspace ≥ rail" holds at every width from 1280 to 1440, not only at
    the two endpoints tested explicitly. */
 @media (max-width: 1439px) {
-  :root { --panel-left-width: 232px; }
+  /* VR2-03 Acceptance remediation (cycle 5): approved target measures
+     ~189px at 1280 (narrowing from the prior 232px working value). */
+  :root { --panel-left-width: 189px; }
 }
 
 /* Kompakt — независимое предпочтение пользователя (D-16, LAYOUT-007).

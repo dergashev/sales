@@ -33,6 +33,10 @@ async function openModeStep(
 ) {
   await openBuildingScope(user)
   if (buildingCount === 2) {
+    // Acceptance remediation (cycle 5): building inclusion is now behind the
+    // "Gebäude verwalten" disclosure, closed by default once a building is
+    // already selected.
+    await user.click(screen.getByRole('button', { name: 'Gebäude verwalten' }))
     await user.click(screen.getByRole('checkbox', { name: 'Haus B' }))
   }
   await confirmBuildingReviewSections(user)

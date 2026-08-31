@@ -240,6 +240,8 @@ const de = {
   'buildingScope.selection.intro':
     'Wählen Sie alle Gebäude, die Bestandteil dieser Option sein sollen. Abgewählte Gebäude behalten ihre Angaben.',
   'buildingScope.selection.dataLabel': 'Gefundene Gebäude',
+  'buildingScope.selection.manageOpen': 'Gebäude verwalten',
+  'buildingScope.selection.manageClose': 'Verwaltung schließen',
   'buildingScope.review.title': 'Gebäudedaten prüfen',
   'buildingScope.review.intro':
     'Prüfen und bestätigen Sie jedes gewählte Gebäude einzeln. Unbekannte optionale Angaben bleiben ausdrücklich sichtbar.',
@@ -1030,6 +1032,8 @@ const en: Partial<Record<MessageKey, string>> = {
   'buildingScope.selection.intro':
     'Select every building that should be part of this option. Deselected buildings retain their data.',
   'buildingScope.selection.dataLabel': 'Discovered buildings',
+  'buildingScope.selection.manageOpen': 'Manage buildings',
+  'buildingScope.selection.manageClose': 'Close management',
   'buildingScope.review.title': 'Review building data',
   'buildingScope.review.intro':
     'Review and confirm each selected building separately. Unknown optional data remains explicit.',

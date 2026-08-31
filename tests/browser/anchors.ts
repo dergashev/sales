@@ -47,6 +47,10 @@ export const BUILDING_SCOPE = {
   // there is no longer a separate per-section "Abschnitt bestätigen"
   // control to click first.
   confirmBuilding: 'Gebäude bestätigen',
+  // Acceptance remediation (cycle 5): building inclusion checkboxes now sit
+  // behind this disclosure toggle, closed by default whenever a building is
+  // already selected (the shipped demo state always has one).
+  manageBuildings: 'Gebäude verwalten',
 }
 
 export const CONFIGURATOR_MODE = {

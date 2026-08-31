@@ -88,6 +88,7 @@ test.describe('building-aware Configurator gate chain', () => {
     // This is the reactive, building-aware behavior this scenario exists
     // to prove: the gate depends on EVERY included building, not on "at
     // least one".
+    await page.getByRole('button', { name: BUILDING_SCOPE.manageBuildings }).click()
     await page.getByRole('checkbox', { name: BUILDINGS.b }).check()
     await expect(konfiguratorItem).toHaveAttribute('aria-disabled', 'true')
 

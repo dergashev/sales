@@ -22,6 +22,17 @@ async function openBuildingScope(user: ReturnType<typeof userEvent.setup>) {
   return view
 }
 
+// Acceptance remediation (cycle 5): building inclusion checkboxes now sit
+// behind the "Gebäude verwalten" disclosure (closed by default whenever a
+// building is already selected — the shipped demo state always has one).
+// Idempotent: if the panel is already open the toggle's name has already
+// flipped to "Verwaltung schließen", so the query below finds nothing and
+// this is a no-op.
+async function openBuildingManagement(user: ReturnType<typeof userEvent.setup>) {
+  const toggle = screen.queryByRole('button', { name: 'Gebäude verwalten' })
+  if (toggle) await user.click(toggle)
+}
+
 describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
   it('startet ohne Preisoberfläche und lässt die Auswahl bis null reichen', async () => {
     const user = userEvent.setup()
@@ -45,6 +56,7 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     expect(storeyField).toBeInTheDocument()
     expect(storeyField).toHaveValue('')
 
+    await openBuildingManagement(user)
     const hausA = screen.getByRole('checkbox', { name: 'Haus A' })
     expect(hausA).toBeChecked()
     await user.click(hausA)
@@ -68,6 +80,7 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
     expect(buildingConfirmed(useStore.getState(), 'DEMO-B-A')).toBe(true)
 
+    await openBuildingManagement(user)
     const hausA = screen.getByRole('checkbox', { name: 'Haus A' })
     await user.click(hausA)
     await user.click(hausA)
@@ -133,6 +146,7 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
   it('verwendet manuell aktivierte Tabs mit roving tabindex', async () => {
     const user = userEvent.setup()
     await openBuildingScope(user)
+    await openBuildingManagement(user)
     await user.click(screen.getByRole('checkbox', { name: 'Haus B' }))
 
     const tablist = screen.getByRole('tablist', { name: 'Gewählte Gebäude' })
@@ -162,6 +176,7 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     await openBuildingScope(user)
     await confirmBuildingReviewSections(user)
     await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
+    await openBuildingManagement(user)
     await user.click(screen.getByRole('checkbox', { name: 'Haus B' }))
 
     const tablist = screen.getByRole('tablist', { name: 'Gewählte Gebäude' })
@@ -236,6 +251,7 @@ describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
     confirmClicks += 1
     expect(buildingConfirmed(useStore.getState(), 'DEMO-B-A')).toBe(true)
 
+    await openBuildingManagement(user)
     await user.click(screen.getByRole('checkbox', { name: 'Haus B' }))
     const tablist = screen.getByRole('tablist', { name: 'Gewählte Gebäude' })
     await user.click(within(tablist).getByRole('tab', { name: /Haus B/ }))

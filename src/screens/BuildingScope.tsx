@@ -246,6 +246,14 @@ export function BuildingScope() {
     selectedIds.includes(s.activeBuildingId) ? s.activeBuildingId : selectedIds[0] ?? '',
   )
   const [announcement, setAnnouncement] = useState('')
+  // Acceptance remediation (cycle 5): the approved target keeps building
+  // INCLUSION management behind a "Gebäude verwalten" affordance, closed
+  // by default — the primary view goes straight from the intro to the
+  // building tabs. Opens automatically whenever nothing is selected yet
+  // (there is nothing else useful to look at then) so the empty state
+  // still explains itself without an extra click.
+  const [manageOpen, setManageOpen] = useState(selectedIds.length === 0)
+  const manageListId = useId()
   const tablistRef = useRef<HTMLDivElement>(null)
   const previousConfirmed = useRef<Record<string, boolean> | null>(null)
 
@@ -362,10 +370,17 @@ export function BuildingScope() {
   // own header wrapper, not the shared `.a3-hero-title` class other screens
   // still use at full size). The dynamic sentence is a new, separate element
   // carrying the large hero styling instead.
-  const totalBuildingCount = buildingIds.length
-  const headlineKey = totalBuildingCount === 1 ? 'buildingScope.headline.one'
-    : totalBuildingCount === 2 ? 'buildingScope.headline.two'
-      : totalBuildingCount === 3 ? 'buildingScope.headline.three'
+  // Acceptance remediation (cycle 5): the sentence is about THIS OFFER's
+  // scope ("Angebotsumfang") — the count must be the SELECTED/included
+  // building count, not every building the analysis ever discovered in
+  // the project. A discovered-but-excluded building isn't part of "this
+  // offer". Falls back to the discovered total only in the (unreachable
+  // in the shipped fixtures) zero-selected edge case, so the sentence
+  // never reads "0 Gebäude".
+  const headlineBuildingCount = selectedCount || buildingIds.length
+  const headlineKey = headlineBuildingCount === 1 ? 'buildingScope.headline.one'
+    : headlineBuildingCount === 2 ? 'buildingScope.headline.two'
+      : headlineBuildingCount === 3 ? 'buildingScope.headline.three'
         : 'buildingScope.headline.many'
 
   return (
@@ -379,7 +394,7 @@ export function BuildingScope() {
           })}
         />
         <p className="a3-buildingscope-headline">
-          {t(headlineKey, { count: totalBuildingCount })}
+          {t(headlineKey, { count: headlineBuildingCount })}
         </p>
         <p className="a3-lede">{t('buildingScope.lede')}</p>
       </div>
@@ -417,32 +432,54 @@ export function BuildingScope() {
               metrics) so the rich building-tab grid below is the ONE place
               identity is established, full width, matching the approved
               target's own composition. */}
-          <p className="a3-cap mt-1">{t('buildingScope.selection.title')}</p>
-          <DataStateBoundary
-            label={t('buildingScope.selection.dataLabel')}
-            state={{ status: 'ready', data: buildingIds }}
-            renderReady={(ids) => (
-              <ul className="mt-2 divide-y divide-border-subtle border-y border-border-subtle">
-                {ids.map((id) => {
-                  const name = stableName(s.buildingReviews[id]!, id)
-                  return (
-                    <li key={id} className="flex flex-wrap items-center justify-between gap-3 py-1">
-                      <label className="flex min-h-hit-target min-w-0 cursor-pointer items-center gap-3 text-small font-medium text-text-primary">
-                        <input
-                          type="checkbox"
-                          checked={s.included[id] === true}
-                          onChange={() => toggleBuilding(id)}
-                          className="h-4 w-4 shrink-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-                        />
-                        <span className="min-w-0 break-words">{name}</span>
-                      </label>
-                      <StatusBadge status={statusFor(s, id)} />
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          />
+          {/* Acceptance remediation (cycle 5): the approved target keeps
+              building INCLUSION management collapsed behind a "Gebäude
+              verwalten" affordance — the primary view goes straight from
+              the caption to the building tabs below, closing the ~585px vs
+              ~264px vertical gap Acceptance measured. The list still opens
+              by itself whenever nothing is selected yet (`manageOpen`'s
+              initial value), so the empty state keeps explaining itself
+              without an extra click. */}
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+            <p className="a3-cap">{t('buildingScope.selection.title')}</p>
+            <Button
+              variant="ghost"
+              aria-expanded={manageOpen}
+              aria-controls={manageListId}
+              onClick={() => setManageOpen((open) => !open)}
+            >
+              {t(manageOpen ? 'buildingScope.selection.manageClose' : 'buildingScope.selection.manageOpen')}
+            </Button>
+          </div>
+          {manageOpen && (
+            <div id={manageListId}>
+              <DataStateBoundary
+                label={t('buildingScope.selection.dataLabel')}
+                state={{ status: 'ready', data: buildingIds }}
+                renderReady={(ids) => (
+                  <ul className="mt-2 divide-y divide-border-subtle border-y border-border-subtle">
+                    {ids.map((id) => {
+                      const name = stableName(s.buildingReviews[id]!, id)
+                      return (
+                        <li key={id} className="flex flex-wrap items-center justify-between gap-3 py-1">
+                          <label className="flex min-h-hit-target min-w-0 cursor-pointer items-center gap-3 text-small font-medium text-text-primary">
+                            <input
+                              type="checkbox"
+                              checked={s.included[id] === true}
+                              onChange={() => toggleBuilding(id)}
+                              className="h-4 w-4 shrink-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                            />
+                            <span className="min-w-0 break-words">{name}</span>
+                          </label>
+                          <StatusBadge status={statusFor(s, id)} />
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              />
+            </div>
+          )}
 
           {selectedIds.length === 0 ? (
             <EmptyState>{t('buildingScope.review.empty')}</EmptyState>

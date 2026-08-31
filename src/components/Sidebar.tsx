@@ -1,4 +1,5 @@
 import type { RefObject } from 'react'
+import opportunities from '../fixtures/opportunities.json'
 import {
   configuratorStepDone,
   pipelineViewForBuildingGate,
@@ -65,6 +66,12 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
   const s = useStore()
   const view = pipelineViewForBuildingGate(s, s.pipelineView)
   const option = s.options.find((o) => o.id === s.activeOptionId)
+  // Acceptance remediation (cycle 5): the approved target's identity block
+  // names the project underneath the Option, the same fact the global
+  // breadcrumb already carries (F05 precedent: objects are always named by
+  // their resolved display label, never a raw id) — reusing the SAME
+  // lookup `AppHeader` (App.tsx) already does, not a second source.
+  const currentOpportunity = opportunities.items.find((o) => o.id === s.opportunityId)
   const t = useT()
   const client = isClientProjection(s.mode)
   const buildingGateBlocked = !s.canBeginConfiguration()
@@ -134,17 +141,9 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
             {`Musterprojekt Nordfeld · Haus${NNBSP}A`}
           </p>
         )}
-        <div className="mt-4 border-t border-border-subtle pt-4">
-          <OutputProfileSwitch
-            compact
-            mode={s.mode}
-            blocked={modeBlocked}
-            blockedReason={modeBlockedReason}
-            checkButtonRef={modeRef}
-            onCheck={() => s.setGateOpen(true)}
-            onExit={() => s.setMode('intern')}
-          />
-        </div>
+        {currentOpportunity && (
+          <p className="mt-1 text-small text-text-secondary">{currentOpportunity.name}</p>
+        )}
       </div>
 
       <ul className="flex-1 py-2">
@@ -232,6 +231,23 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
           )
         })}
       </ul>
+
+      {/* Acceptance remediation (cycle 5): the approved target shows the
+          Arbeiten/Präsentieren toggle at the BOTTOM of the rail, not
+          directly under the Option identity block — moved down, same
+          component/props/behaviour (still renders in client mode too, so
+          presentation can always be exited from here). */}
+      <div className="border-t border-border-subtle px-5 py-4">
+        <OutputProfileSwitch
+          compact
+          mode={s.mode}
+          blocked={modeBlocked}
+          blockedReason={modeBlockedReason}
+          checkButtonRef={modeRef}
+          onCheck={() => s.setGateOpen(true)}
+          onExit={() => s.setMode('intern')}
+        />
+      </div>
 
       {!client && (
         <div className="border-t border-border-subtle px-5 py-3">
