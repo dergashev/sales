@@ -143,6 +143,13 @@ const de = {
   'oppcard.nextDecision.options.body':
     'Die Projektgrundlage ist bestätigt. Als Nächstes entsteht die erste Opportunity Option.',
   'oppcard.nextDecision.options.cta': 'Zu Opportunity Options',
+  // QA rework (VR2-02, QA-01): distinct copy for "at least one Opportunity
+  // Option already exists" — the previous single "options" copy above kept
+  // claiming the first Option was still pending after Option 1 was created.
+  'oppcard.nextDecision.optionsExist.headline': 'Projektentscheidungen abgeschlossen',
+  'oppcard.nextDecision.optionsExist.body':
+    'Alle Konflikte sind entschieden, die Projektgrundlage ist bestätigt und mindestens eine Opportunity Option ist angelegt. Weitere Arbeit findet in der jeweiligen Option statt.',
+  'oppcard.nextDecision.optionsExist.cta': 'Opportunity Options öffnen',
   'buildingScope.gate.navigationReason':
     'Zuerst mindestens ein Gebäude auswählen und jedes gewählte Gebäude bestätigen.',
   'buildingScope.title': 'Gebäude & Umfang',
@@ -896,6 +903,10 @@ const en: Partial<Record<MessageKey, string>> = {
   'oppcard.nextDecision.options.body':
     'The project baseline is confirmed. Next, the first Opportunity Option is created.',
   'oppcard.nextDecision.options.cta': 'Go to Opportunity Options',
+  'oppcard.nextDecision.optionsExist.headline': 'Project decisions complete',
+  'oppcard.nextDecision.optionsExist.body':
+    'All conflicts are decided, the project baseline is confirmed, and at least one Opportunity Option exists. Further work continues inside that Option.',
+  'oppcard.nextDecision.optionsExist.cta': 'Open Opportunity Options',
   'buildingScope.gate.navigationReason':
     'Select at least one building and confirm every selected building first.',
   'buildingScope.title': 'Building & scope',

@@ -627,14 +627,28 @@ function OptionCard({
  * actions inside the section itself ("Kundenwert übernehmen",
  * "Projektparameter bestätigen", "Opportunity Option anlegen") — the
  * decision is still made exactly once, in exactly one place.
+ *
+ * QA rework (cycle 1, QA-01): `currentStage` alone has only three values
+ * and stays `"options"` forever once the baseline is confirmed — it does
+ * NOT distinguish "no Option exists yet" from "one or more already do",
+ * unlike the `WorkflowStepper`'s own "Opportunity Options" step, which
+ * already branches on `s.options.length > 0` (`optionsState`, above) for
+ * exactly this reason. The card was copying `currentStage` only and kept
+ * claiming "the first Option is about to be created" even after Option 1
+ * existed. Fix: pass the same `hasOptions` signal the stepper already
+ * derives, and give the "at least one Option exists" case its own copy
+ * instead of silently reusing the "create the first one" copy.
  */
 function NextDecisionCard({
   stage,
+  hasOptions,
   onJumpToConflict,
   onJumpToBaseline,
   onJumpToOptions,
 }: {
   stage: "conflict" | "confirm" | "options";
+  /** `s.options.length > 0` — same signal `optionsState` already uses. */
+  hasOptions: boolean;
   onJumpToConflict: () => void;
   onJumpToBaseline: () => void;
   onJumpToOptions: () => void;
@@ -655,12 +669,19 @@ function NextDecisionCard({
             cta: t("oppcard.nextDecision.baseline.cta"),
             onSelect: onJumpToBaseline,
           }
-        : {
-            headline: t("oppcard.nextDecision.options.headline"),
-            body: t("oppcard.nextDecision.options.body"),
-            cta: t("oppcard.nextDecision.options.cta"),
-            onSelect: onJumpToOptions,
-          };
+        : stage === "options" && hasOptions
+          ? {
+              headline: t("oppcard.nextDecision.optionsExist.headline"),
+              body: t("oppcard.nextDecision.optionsExist.body"),
+              cta: t("oppcard.nextDecision.optionsExist.cta"),
+              onSelect: onJumpToOptions,
+            }
+          : {
+              headline: t("oppcard.nextDecision.options.headline"),
+              body: t("oppcard.nextDecision.options.body"),
+              cta: t("oppcard.nextDecision.options.cta"),
+              onSelect: onJumpToOptions,
+            };
   return (
     // Reuses the canonical `.a3-konflikt` warning-accent card (components.css)
     // already carrying the exact visual language ACCEPT'd for this screen's
@@ -1780,6 +1801,7 @@ export function OpportunityCard() {
       <div className="sticky top-6 flex flex-col gap-4 mt-8 lg:mt-0">
         <NextDecisionCard
           stage={currentStage}
+          hasOptions={s.options.length > 0}
           onJumpToConflict={() => focusSection(conflictSectionRef)}
           onJumpToBaseline={() => focusSection(questionsSectionRef)}
           onJumpToOptions={() => focusSection(optionsSectionRef)}
