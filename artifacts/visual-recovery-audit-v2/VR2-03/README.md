@@ -1,5 +1,89 @@
 # VR2-03 — Building & Scope workspace recomposition — evidence
 
+## Acceptance remediation (cycle 6) — narrower readiness rail, read-first review sections, tighter tab position
+
+Acceptance rejected `07d3c08bedae1b6e8ff34a69b7abb18c73dc3310` a 5th time,
+with three more measured deltas: the right (readiness) rail stayed ~300px
+at both viewports against the target's measured ~264px (1440) / ~226px
+(1280); the building tabs still started at y≈438/494 against the target's
+~264/270, because the visible "Gebäudedaten prüfen" `<h2>` + its sheet's
+own top padding sat above them; and each review section (Identität &
+Nutzung, Flächen, Geometrie & Geschosse) was still an always-editable
+field grid where the target shows a read-only value summary with its own
+"Abschnitt bearbeiten" entry point.
+
+New final `implementationCommit`/`candidateRuntimeCommit` =
+`d4da24dac1fa5b184054695a0e0fa405484919c3` (supersedes `07d3c08` throughout
+this document unless a screenshot is explicitly labelled otherwise).
+Re-verified: typecheck, 750/750 tests, verify (0 findings), build,
+`npm run test:browser:desktop` 8/8 — all PASS against this exact SHA, clean
+tree.
+
+Fixes (full detail in the `a426f3d` and `d4da24d` commit messages):
+- `--panel-right-width-compact` 300px→264px (1440+) / 226px (≤1439px, same
+  breakpoint the left rail already uses) — matches Acceptance's measured
+  values. The commercial `--panel-right-width` (OfferPanel) is untouched.
+- Dropped the visible "Gebäudedaten prüfen" `<h2>` — the text becomes the
+  review sheet's `aria-label` instead (same landmark/accessible name, no
+  longer painted); the table's own `sr-only` caption already carried it
+  independently.
+- Each of the three review sections now defaults to a READ-ONLY value
+  summary (new `ReadField`/`identityReadFields`/`areaReadFields`, reusing
+  the exact same computed values, canonical fact labels and
+  `ProvenanceChip` the edit fields already use — no invented copy or
+  data), with a new "Abschnitt bearbeiten"/"Fertig" toggle per section
+  that switches to the existing, unchanged edit fields. All three sections
+  default OPEN (visible without a click) — only which of the two
+  renderings each shows is new. The areas read view intentionally
+  simplifies to the target's 4 headline figures (BGF above/below ground,
+  WFL, NUF) rather than the full 9-field R/S breakdown; every field stays
+  fully editable one click away.
+- Tightened the residual gap above the tabs (438px → 325px at 1440, a
+  113px reduction) via a scoped `.a3-buildingscope-review` padding
+  override (this screen's own untitled sheet only, every other titled
+  sheet keeps the standard 48px), dropping a wrapper's redundant top
+  padding, and removing a border/gap the target doesn't show either. The
+  residual ~60px gap is real, legitimate content (the shared PageHeader
+  eyebrow/meta row + this screen's own "Gebäude verwalten" row), not
+  padding — disclosed below.
+- Fixed two real overflow regressions the narrower panels and the new
+  read-only grid exposed (confirmed via `scrollWidth`/`clientWidth`
+  measurement, not guessed): the readiness rail's own `<h2>` bled 47px
+  past its box once narrowed to 226px ("Konfigurator?" as one unbreakable
+  word), and `ReadField`'s value line (e.g. "Mehrfamilienhaus") had no
+  ellipsis/wrap safety net the edit-mode `<select>` it replaces has.
+  Both fixed with `break-words` (+ `min-w-0` on the grid child for the
+  second one), the same pattern already used product-wide for long
+  German compound words.
+
+Screenshots in `acceptance-remediation-cycle6/`:
+- `candidate-1440-narrow-rail-readonly-review.png` — 264px readiness rail,
+  no visible review heading, tabs materially closer to the top, Identität
+  & Nutzung rendered as a read-only value grid with "Abschnitt bearbeiten".
+- `candidate-1440-areas-storeys-readonly-scroll.png` — Flächen (4 headline
+  figures with provenance captions matching the target's field set almost
+  exactly) and Geometrie & Geschosse (including a read "Untergeschoss"
+  line reflecting the real `UntergeschossEditor` selection) sections.
+- `candidate-1280-narrow-rail-readonly-review.png` — same composition at
+  1280, 226px rail, verified overflow-free after the two fixes above.
+
+**Known, disclosed limitations (unchanged, reaffirmed):**
+1. No literal "Übersicht" nav item — `TARGET-workspace` depicts a
+   WFL-conflict decision screen that resolves at the Opportunity level
+   before an Option exists in the current architecture (see cycle 1's
+   direct message to Acceptance, preserved in team notes).
+2. The target's "Geometrie & Geschosse" mockup panel also shows "Dachform"
+   (no such fact exists anywhere in the `BuildingFactKey` data model) and
+   relocates "Adresse" there (the real data model scopes it to Identität,
+   per `sectionForFact`) — neither is invented; the read view shows only
+   real product data.
+3. The residual ~55-60px gap between the intro and the building tabs
+   (measured 325px vs the target's ~264px at 1440) is the shared
+   PageHeader's own eyebrow/meta row plus this screen's own "Gebäude
+   verwalten" disclosure row — both real, functioning UI, not empty
+   padding; the target's own equivalent composition does not carry an
+   identical row in the same form.
+
 ## Acceptance remediation (cycle 5) — 208/189px rail, bottom Ansicht toggle, collapsed building management
 
 Acceptance rejected `4b6b6df5ff00471000946a8daccced8f18dbfe13` (`4b6b6df`) a
