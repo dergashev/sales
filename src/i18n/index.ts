@@ -150,6 +150,14 @@ const de = {
   'oppcard.nextDecision.optionsExist.body':
     'Alle Konflikte sind entschieden, die Projektgrundlage ist bestätigt und mindestens eine Opportunity Option ist angelegt. Weitere Arbeit findet in der jeweiligen Option statt.',
   'oppcard.nextDecision.optionsExist.cta': 'Opportunity Options öffnen',
+  // Acceptance remediation (cycle 1): the near-blank "nicht ausgearbeitet"
+  // explainer stayed hardcoded German even in EN mode.
+  'oppcard.notWorked.explainer':
+    'Diese Opportunity ist im Prototyp nicht ausgearbeitet. Vollständig durchgerechnet ist «{name}» — dort läuft die Dokumentanalyse, die Konfliktlösung und die Kalkulation mit echter Arithmetik.',
+  // Acceptance remediation (cycle 1): approved target's persistent bottom
+  // action dock — literal target copy for the conflict-open state.
+  'oppcard.actionDock.conflict.summary': '1 Entscheidung bis zur Projektgrundlage',
+  'oppcard.actionDock.conflict.cta': 'WFL-Konflikt entscheiden',
   'buildingScope.gate.navigationReason':
     'Zuerst mindestens ein Gebäude auswählen und jedes gewählte Gebäude bestätigen.',
   'buildingScope.title': 'Gebäude & Umfang',
@@ -907,6 +915,10 @@ const en: Partial<Record<MessageKey, string>> = {
   'oppcard.nextDecision.optionsExist.body':
     'All conflicts are decided, the project baseline is confirmed, and at least one Opportunity Option exists. Further work continues inside that Option.',
   'oppcard.nextDecision.optionsExist.cta': 'Open Opportunity Options',
+  'oppcard.notWorked.explainer':
+    'This opportunity is not worked out in the prototype. «{name}» is the fully calculated one — document analysis, conflict resolution and calculation run there with real arithmetic.',
+  'oppcard.actionDock.conflict.summary': '1 decision before the project baseline',
+  'oppcard.actionDock.conflict.cta': 'Decide the WFL conflict',
   'buildingScope.gate.navigationReason':
     'Select at least one building and confirm every selected building first.',
   'buildingScope.title': 'Building & scope',

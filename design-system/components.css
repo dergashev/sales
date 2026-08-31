@@ -637,7 +637,23 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-wfs-chapter .a3-wfs-step:last-child{border-bottom:0}
 .a3-wfs-chapter .a3-wfs-current,.a3-wfs-chapter .a3-wfs-cur{border-left-color:var(--color-selection-border);border-top-color:transparent}
 .a3-wfs-chapter .a3-wfs-button,.a3-wfs-chapter .a3-wfs-static{padding:var(--space-2) var(--space-4)}
-@media (max-width:81rem){.a3-wfs-workflow .a3-wfs-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* VR2-02 Acceptance remediation (cycle 1): the forced 2-column wrap below
+   81rem (1296px) collapsed the 4-step "workflow" tracker to 2×2 at the
+   supported 1280×800 viewport, contradicting TARGET-project-1280.png's
+   one-row 4-chip strip and pushing the decision-first content below the
+   first viewport. `size="workflow"` has exactly one consumer in the
+   product (OpportunityCard.tsx — confirmed via repo search; Sidebar.tsx
+   uses `size="chapter"`, a different grid entirely), so removing this
+   override is scoped to that one route. The base `.a3-wfs-list`
+   `repeat(auto-fit,minmax(12rem,1fr))` rule already wraps gracefully on
+   its own once four 12rem columns (48rem/768px) no longer fit — well
+   below both supported desktop viewports — so nothing is lost, only the
+   premature manual override above that threshold. Kept as an explicit
+   (redundant-with-the-base-rule) declaration rather than removed outright:
+   `size="workflow"` still needs its own selector on record so a future
+   consumer/reviewer sees this is a deliberate "use the responsive default"
+   choice, not an accidentally-dropped rule. */
+.a3-wfs-workflow .a3-wfs-list{grid-template-columns:repeat(auto-fit,minmax(12rem,1fr))}
 
 /* Canonical discrete Stepper. This control remains APPROVED_DOWNSTREAM for
    VO-T3; the system owns its complete focus and boundary anatomy here. */
@@ -1454,20 +1470,54 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 /* VR2-02 — project workspace identity band (TARGET-project-1440/1280.png).
    Full-width media + identity text at the top of the first viewport,
    replacing the previous narrow sticky sidebar placement (REDESIGN R2).
-   `.a3-project-identity-media` reuses the SAME `--size-media-identity-header`
-   width at both supported desktop viewports — the approved target does not
-   shrink the image between 1440 and 1280, only the text column narrows.
-   Below the narrow-desktop floor the media stacks above the text instead of
-   forcing the identity band into an unreadably thin column. */
+   Acceptance remediation (cycle 1) widened this from the standard 1200px
+   `.a3-page` reading column: the approved target grounds the whole page
+   near-full-width (measured ~1104px content column at BOTH 1440 and 1280,
+   i.e. the shell itself, not `.a3-page`'s cap, was the constraint) — same
+   precedent as `.a3-opportunities-canvas` (VR2-01), reused here with a
+   white ground instead of the portfolio's green-neutral canvas, since the
+   approved project target's background is white. */
+.a3-project-canvas{min-height:100%;background:var(--color-surface-default)}
+.a3-project-canvas .a3-page{max-width:var(--content-editorial-max-width)}
 .a3-project-identity{display:flex;gap:var(--space-6);align-items:flex-start;flex-wrap:wrap;border-bottom:var(--border-hairline);padding-bottom:var(--space-6);margin-bottom:var(--space-6)}
-.a3-project-identity-media{flex:0 0 var(--size-media-identity-header);width:var(--size-media-identity-header);max-width:100%}
+/* Acceptance remediation (cycle 1): a FIXED media width (the previous
+   `--size-media-identity-header` token) could not reproduce the target's
+   own two different measured widths (~370px at 1440, ~320px at 1280 —
+   the approved target recomposes the image itself, not just the text
+   column). A `flex-basis` percentage of the (now near-full-width) row
+   reproduces both figures directly: 27% of the available content width
+   is ~363px at 1440 and ~320px at 1280 against this shell's own padding —
+   matching the target's own recomposition intent instead of one fixed
+   number. `--measure-option-media-min` (existing token, "the media stays
+   complete down to this width" per its own doc comment) is reused as the
+   floor instead of inventing a second identity-specific minimum. */
+.a3-project-identity-media{flex:0 1 27%;min-width:var(--measure-option-media-min);max-width:26rem}
 .a3-project-identity-text{flex:1 1 20rem;min-width:0}
 .a3-project-identity-text .a3-masthead{margin:var(--space-2) 0 0}
 .a3-project-identity-facts{display:flex;flex-wrap:wrap;gap:var(--space-6)}
 @media (max-width:56rem){
   .a3-project-identity{flex-direction:column}
-  .a3-project-identity-media{flex-basis:auto;width:100%}
+  .a3-project-identity-media{flex-basis:auto;width:100%;max-width:100%}
 }
+
+/* Acceptance remediation (cycle 1): the "next decision" summary previously
+   reused `.a3-konflikt` (white surface, thin warning-accent border) — the
+   SAME treatment the "Strittige Angaben" section below uses for the actual
+   conflict-resolution form. The approved target gives these two surfaces
+   DIFFERENT treatments: the resolution form stays plain/white, but the
+   "NÄCHSTE ENTSCHEIDUNG" summary card is a filled, purposeful beige stage
+   (`--color-surface-selected`, the SAME token already driving the active
+   WorkflowStepper chip's highlight — not a new colour, rule 2). */
+.a3-next-decision{border:var(--border-default);border-left:var(--size-status-accent-width) solid var(--color-border-warning);background:var(--color-surface-selected);padding:var(--space-4);max-width:100%}
+
+/* Acceptance remediation (cycle 1): approved target's persistent bottom
+   action dock, absent from the previous candidate. Sticks to the bottom
+   of the scrollable `<main>` viewport (same `position:sticky` mechanism
+   already used by `.a3-rail-sticky-top`/`.a3-pnav`, just anchored to the
+   opposite edge) so the primary next action stays reachable while reading
+   the long-analysis sections below the fold, without requiring a second
+   scroll back up to the identity-band rail. */
+.a3-project-action-dock{position:sticky;bottom:0;z-index:1;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-4);border-top:var(--border-default);background:var(--color-surface-default);padding:var(--space-3) var(--space-4);margin-top:var(--space-6)}
 
 .a3-media-identity-art{position:relative}
 .a3-media-identity-building{position:relative;width:54%;height:62%;border:var(--border-contrast-2px);border-bottom:0;background:var(--color-surface-default)}

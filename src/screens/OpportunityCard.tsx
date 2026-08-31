@@ -683,11 +683,12 @@ function NextDecisionCard({
               onSelect: onJumpToOptions,
             };
   return (
-    // Reuses the canonical `.a3-konflikt` warning-accent card (components.css)
-    // already carrying the exact visual language ACCEPT'd for this screen's
-    // open-conflict surface — no new Design System primitive for what is,
-    // visually, the same "decision pending" card shape.
-    <div className="a3-konflikt">
+    // Acceptance remediation (cycle 1): NO LONGER `.a3-konflikt` (that
+    // white/thin-border treatment stays reserved for the actual
+    // conflict-resolution FORM in "Strittige Angaben" below — the approved
+    // target gives its "NÄCHSTE ENTSCHEIDUNG" summary card a purposeful
+    // filled beige stage instead; see `.a3-next-decision` (components.css).
+    <div className="a3-next-decision">
       <p className="a3-cap font-medium">{t("oppcard.nextDecision.eyebrow")}</p>
       <h2 className="mt-1 text-heading-3 font-bold text-text-primary">
         {copy.headline}
@@ -698,6 +699,62 @@ function NextDecisionCard({
           {copy.cta} <span aria-hidden="true">→</span>
         </Button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Acceptance remediation (cycle 1) — approved TARGET-project-1440/1280.png's
+ * persistent bottom action dock, missing from the previous candidate. Same
+ * wayfinding-only contract as `NextDecisionCard` above (jumps via
+ * `focusSection`, never a duplicate of a real commit action) — some
+ * duplication of that card's own CTA label across the two surfaces is
+ * intentional and target-accurate (target's dock literally repeats the
+ * conflict CTA as a persistent affordance, not a second decision).
+ * Renders nothing once every project-level gate is clear (`hasOptions`):
+ * a bottom bar nagging about a next action that no longer exists would be
+ * noise, not fidelity — the target only ever depicts the dock in the open
+ * (conflict) state.
+ */
+function ProjectActionDock({
+  stage,
+  hasOptions,
+  onJumpToConflict,
+  onJumpToBaseline,
+  onJumpToOptions,
+}: {
+  stage: "conflict" | "confirm" | "options";
+  hasOptions: boolean;
+  onJumpToConflict: () => void;
+  onJumpToBaseline: () => void;
+  onJumpToOptions: () => void;
+}) {
+  const t = useT();
+  if (stage === "options" && hasOptions) return null;
+  const copy =
+    stage === "conflict"
+      ? {
+          summary: t("oppcard.actionDock.conflict.summary"),
+          cta: t("oppcard.actionDock.conflict.cta"),
+          onSelect: onJumpToConflict,
+        }
+      : stage === "confirm"
+        ? {
+            summary: t("oppcard.nextDecision.baseline.headline"),
+            cta: t("oppcard.nextDecision.baseline.cta"),
+            onSelect: onJumpToBaseline,
+          }
+        : {
+            summary: t("oppcard.nextDecision.options.headline"),
+            cta: t("oppcard.nextDecision.options.cta"),
+            onSelect: onJumpToOptions,
+          };
+  return (
+    <div className="a3-project-action-dock">
+      <p className="text-body font-medium text-text-primary">{copy.summary}</p>
+      <Button variant="primary" onClick={copy.onSelect}>
+        {copy.cta}
+      </Button>
     </div>
   );
 }
@@ -764,6 +821,7 @@ export function OpportunityCard() {
     // why, and how to leave, instead of a bare heading over an empty page.
     const fallbackMedia = opportunityMedia(meta.id);
     return (
+      <div className="a3-project-canvas">
       <div className="a3-page px-7 py-6">
         <header className="a3-project-identity">
           <div
@@ -809,16 +867,22 @@ export function OpportunityCard() {
         </header>
         <p className="mt-5 border border-border-default p-4 text-body text-text-secondary">
           <span aria-hidden="true">○ </span>
-          Diese Opportunity ist im Prototyp nicht ausgearbeitet. Vollständig
-          durchgerechnet ist «{opportunities.items[0]!.name}» — dort läuft die
-          Dokumentanalyse, die Konfliktlösung und die Kalkulation mit echter
-          Arithmetik.
+          {/* Acceptance remediation (cycle 1): this explainer stayed hardcoded
+              German even in EN mode — a genuine i18n gap the ticket's
+              LOCALISATION requirement covers even for a "known non-change"
+              (only the identity/decision content was originally out of
+              scope, not this paragraph's touched-in-this-task neighbours).
+              Moved to a dictionary key with the sole dynamic value (the
+              worked project's name) as a `{name}` param (rule 36 — never
+              concatenation). */}
+          {t('oppcard.notWorked.explainer', { name: opportunities.items[0]!.name })}
         </p>
         <div className="mt-4">
           <Button onClick={() => s.backToList()}>
             {tx("Zurück zu den Opportunities")}
           </Button>
         </div>
+      </div>
       </div>
     );
   }
@@ -1062,6 +1126,7 @@ export function OpportunityCard() {
   }
 
   return (
+    <div className="a3-project-canvas">
     <div className="a3-page px-7 py-6">
       <InternalNoteDialog
         open={noteDialogOpen}
@@ -1807,6 +1872,15 @@ export function OpportunityCard() {
           onJumpToOptions={() => focusSection(optionsSectionRef)}
         />
       </div>
+      </div>
+
+      <ProjectActionDock
+        stage={currentStage}
+        hasOptions={s.options.length > 0}
+        onJumpToConflict={() => focusSection(conflictSectionRef)}
+        onJumpToBaseline={() => focusSection(questionsSectionRef)}
+        onJumpToOptions={() => focusSection(optionsSectionRef)}
+      />
       </div>
     </div>
   );
