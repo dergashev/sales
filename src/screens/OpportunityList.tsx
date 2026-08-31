@@ -373,6 +373,20 @@ export function OpportunityList() {
               <option value="mit">{t('opplist.filter.termin.mit')}</option>
               <option value="ohne">{t('opplist.filter.termin.ohne')}</option>
             </SelectField>
+            {/* VR2-01 (Acceptance remediation, cycle 2): the approved target's
+                header shows exactly THREE visible controls (search, Status,
+                Termin) — the candidate exposed five (search, Status, Termin,
+                Filter, Sort), which Acceptance flagged as materially
+                weakening the target hierarchy. Sort moves into the same
+                "Weitere Filter" disclosure as Land/Stadt/Owner below —
+                nothing removed or made harder to reach, PRESERVE holds
+                (Contract 161c0b7b §8): sorting stays one click away instead
+                of a permanent fifth box on the header row. A prior cycle's
+                comment argued Sort must stay a separate always-visible axis;
+                that reasoning does not survive contact with the actual
+                approved target image, which the Acceptance Auditor compares
+                directly and which shows no fourth or fifth header control
+                at all. */}
             <Button
               variant="secondary"
               aria-expanded={filtersOpen}
@@ -381,25 +395,6 @@ export function OpportunityList() {
             >
               {tx('Filter')}{active.length > 0 ? ` (${active.length})` : ''}
             </Button>
-            {/* ACCEPT (cycle 5): the canonical SegmentedControl (three 44px hit-
-                target buttons + its own legend, ~295px) cannot share a single
-                header row with search+Status+Termin+Filter at either required
-                viewport without shrinking those below legibility — its width
-                is a deliberate accessibility property (rule 23), not slack to
-                cut. Reusing the same canonical SelectField already used for
-                Status/Termin keeps Sort visually a separate, always-visible
-                axis (§10) while fitting the target's one-row composition; no
-                new primitive, no functionality removed. */}
-            <SelectField
-              id="opp-sort"
-              label={t('opplist.sort.legend')}
-              value={sort}
-              onChange={(e) => setSort(e.target.value as SortMode)}
-            >
-              <option value="recommended">{t('opplist.sort.recommended')}</option>
-              <option value="name">{t('opplist.sort.name')}</option>
-              <option value="status">{t('opplist.sort.status')}</option>
-            </SelectField>
           </div>
         </div>
       </div>
@@ -411,7 +406,26 @@ export function OpportunityList() {
       <div role="search" className="a3-project-search">
         {filtersOpen && (
           <div id={filtersPanelId} className="mt-3">
+            {/* VR2-01 (Acceptance remediation, cycle 2): Sortierung bleibt eine
+                sichtbar EIGENE Achse gegenüber der Filterung (§10) — dafür
+                eine eigene Zeile VOR Land/Stadt/Owner, nicht dieselbe
+                `.a3-search-line`-Gruppe. Nur die Position wandert (aus der
+                permanenten Kopfzeile hierher, wie das Ziel es zeigt); die
+                Steuerung selbst, ihr Label und ihre drei Optionen bleiben
+                unverändert erreichbar. */}
             <div className="a3-search-line">
+              <SelectField
+                id="opp-sort"
+                label={t('opplist.sort.legend')}
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortMode)}
+              >
+                <option value="recommended">{t('opplist.sort.recommended')}</option>
+                <option value="name">{t('opplist.sort.name')}</option>
+                <option value="status">{t('opplist.sort.status')}</option>
+              </SelectField>
+            </div>
+            <div className="a3-search-line mt-3">
               {select('land', tx('Land'))}
               {select('stadt', tx('Stadt'))}
               {select('owner', tx('Opportunity Owner'))}

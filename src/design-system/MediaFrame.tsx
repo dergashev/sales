@@ -43,13 +43,76 @@ const STATE_TEXT_DE: Record<Exclude<MediaFrameState, 'loaded' | 'loading'>, stri
   fallback: '', // caller-supplied via `fallbackLabel`, e.g. a project name
 }
 
+/**
+ * VR2-01 (Acceptance remediation, cycle 2): four foreground materials —
+ * `timber-light` / `timber-dark` / `clinker` / `plinth` (`plaster` is
+ * reserved: it IS `--color-surface-canvas`, this graphic's own background,
+ * so using it in the building border or band strip would render an
+ * invisible segment, not a fourth colour). Each variant below is a cyclic
+ * rotation: one material takes the building border, the other three fill
+ * the band strip in rotated order — every variant still shows all four
+ * canonical materials, only the arrangement differs, so nothing here is an
+ * invented colour (rule 2).
+ */
+const FALLBACK_VARIANTS: { border: string; bands: [string, string, string] }[] = [
+  {
+    border: 'var(--primitive-color-material-plinth)',
+    bands: [
+      'var(--primitive-color-material-timber-light)',
+      'var(--primitive-color-material-timber-dark)',
+      'var(--primitive-color-material-clinker)',
+    ],
+  },
+  {
+    border: 'var(--primitive-color-material-clinker)',
+    bands: [
+      'var(--primitive-color-material-plinth)',
+      'var(--primitive-color-material-timber-light)',
+      'var(--primitive-color-material-timber-dark)',
+    ],
+  },
+  {
+    border: 'var(--primitive-color-material-timber-dark)',
+    bands: [
+      'var(--primitive-color-material-clinker)',
+      'var(--primitive-color-material-plinth)',
+      'var(--primitive-color-material-timber-light)',
+    ],
+  },
+  {
+    border: 'var(--primitive-color-material-timber-light)',
+    bands: [
+      'var(--primitive-color-material-timber-dark)',
+      'var(--primitive-color-material-clinker)',
+      'var(--primitive-color-material-plinth)',
+    ],
+  },
+]
+
+/** Stable small hash of the seed → one of N deterministic fallback variants
+ * (same project always renders the same variant; different projects spread
+ * across all variants instead of collapsing to a two-way coin flip). */
+function variantIndex(seed: string, count: number): number {
+  let hash = 0
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0
+  }
+  return hash % count
+}
+
 /** The designed fallback: an information-bearing architectural identity
- * graphic over three material bands (plaster/timber/clinker) — DESIGN-05's
- * "typed material-palette composition", not a grey box or repeated initials. */
+ * graphic over three material bands — DESIGN-05's "typed material-palette
+ * composition", not a grey box or repeated initials. Acceptance (VR2-01
+ * cycle 2) found every card rendering as "the same canonical fallback
+ * drawing": the previous version only ever swapped the building border
+ * between two colours by `seed.length % 2`, so at card thumbnail scale
+ * every one of the fixture's eight opportunities looked identical. Four
+ * deterministic variants (border colour AND band order both rotate)
+ * replace that two-way toggle — the building silhouette itself (roof,
+ * four windows, ground) stays the shared shape by design, only its
+ * material identity varies per project. */
 function FallbackArt({ seed }: { seed: string }) {
-  const facade = seed.length % 2 === 0
-    ? 'var(--primitive-color-material-timber-dark)'
-    : 'var(--primitive-color-material-clinker)'
+  const { border, bands } = FALLBACK_VARIANTS[variantIndex(seed, FALLBACK_VARIANTS.length)]!
   return (
     <div
       className="a3-media-identity-art absolute inset-0 flex flex-col"
@@ -59,7 +122,7 @@ function FallbackArt({ seed }: { seed: string }) {
       <div className="min-h-0 flex-1 flex items-center justify-center overflow-hidden">
         <div
           className="a3-media-identity-building"
-          style={{ borderColor: facade }}
+          style={{ borderColor: border }}
           aria-hidden="true"
         >
           <span className="a3-media-identity-roof" />
@@ -71,9 +134,9 @@ function FallbackArt({ seed }: { seed: string }) {
         </div>
       </div>
       <div className="flex h-2">
-        <span className="flex-1" style={{ background: 'var(--primitive-color-material-plaster)' }} />
-        <span className="flex-1" style={{ background: 'var(--primitive-color-material-timber-light)' }} />
-        <span className="flex-1" style={{ background: 'var(--primitive-color-material-clinker)' }} />
+        {bands.map((band, i) => (
+          <span key={i} className="flex-1" style={{ background: band }} />
+        ))}
       </div>
     </div>
   )
