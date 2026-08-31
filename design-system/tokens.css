@@ -549,6 +549,15 @@
      exactly on 440px at 1280px, 480px at 1440px (the shared boundary of both
      reported bands) and reaches 520px at 1600px, where clamp() caps it. */
   --panel-right-width: clamp(440px, 120px + 25vw, 520px);
+  /* VR2-03 [provisional]: `--panel-right-width` above is tuned specifically
+     for the commercial OfferPanel rail (composition bar + Level-1 header
+     budget, SIDEBAR 01's own formula) and stays untouched. The Building &
+     Scope readiness rail (`BuildingScopeReadiness`) carries no commercial
+     content — a narrower, simpler rail matches the approved Workspace
+     target's own right-rail proportion (≈264px at 1440) far more closely
+     than the OfferPanel width, without touching the shared token every
+     other pipeline screen's rail still resolves through. */
+  --panel-right-width-compact: 300px;
   /* SIDEBAR 01 - the rail's pinned Level 1 header gets a hard height budget
      (report S7/S9, AC-1/AC-2): <=320px at 1280x800, <=360px at 1440x900,
      <=400px at >=1600px. Same 0.25 slope, no constant term needed: 25vw

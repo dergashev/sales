@@ -821,6 +821,12 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    the foot of the review stage instead of a plain paragraph + button. */
 .a3-confirm-dock{background:var(--color-surface-subtle);margin:0 calc(-1 * var(--space-7));padding:var(--space-5) var(--space-7)}
 
+/* VR2-03 · the Building & Scope readiness rail is narrower than the shared
+   commercial `w-panel-right`/`OfferPanel` rail (see the token comment in
+   tokens.css) — it carries no cost-composition content, so the extra width
+   only pushed the primary review stage narrower than necessary. */
+.a3-buildingscope-rail{width:var(--panel-right-width-compact);max-width:var(--panel-right-width-compact)}
+
 /* VR2-03 · "Gebäude im Angebot" management row: a grid of bordered building
    identity cards (media + name + facts) replacing the previous full-width
    stacked list rows — same canonical `MediaFrame` used by the Project-level

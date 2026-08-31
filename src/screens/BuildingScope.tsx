@@ -1424,7 +1424,7 @@ export function BuildingScopeReadiness() {
   return (
     <aside
       aria-label={t('buildingScope.readiness.title')}
-      className="flex h-full w-panel-right min-w-0 max-w-panel-right shrink-0 flex-col overflow-y-auto border-l border-border-strong bg-surface-default"
+      className="a3-buildingscope-rail flex h-full min-w-0 shrink-0 flex-col overflow-y-auto border-l border-border-strong bg-surface-default"
     >
       <div className="p-6">
         <h2 className="text-heading-2 font-bold text-text-primary">
