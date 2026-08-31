@@ -1492,8 +1492,15 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-project-canvas .a3-page{max-width:var(--content-editorial-max-width)}
 /* Acceptance remediation (cycle 4): --space-6 top/bottom (32px+32px=64px)
    was more separation from the border than the target's own compact
-   identity/stepper band affords — tightened to --space-4 (16px+16px). */
-.a3-project-identity{display:flex;gap:var(--space-6);align-items:flex-start;flex-wrap:wrap;border-bottom:var(--border-hairline);padding-bottom:var(--space-4);margin-bottom:var(--space-4)}
+   identity/stepper band affords — tightened to --space-4 (16px+16px).
+   Acceptance remediation (cycle 5, ACCEPT-01 round 3): the Auditor's own
+   measured y-coordinates show the target has NO visible seam between the
+   fact row and the stepper below it at all — the border/gap here is the
+   stepper's OWN top edge, not a separate divider. Border-bottom and
+   bottom spacing removed entirely so `.a3-project-identity` and
+   `<WorkflowStepper>` read as one continuous band, exactly matching that
+   "workflow integrated" measurement. */
+.a3-project-identity{display:flex;gap:var(--space-6);align-items:flex-start;flex-wrap:wrap}
 /* Acceptance remediation (cycle 1): a FIXED media width (the previous
    `--size-media-identity-header` token) could not reproduce the target's
    own two different measured widths (~370px at 1440, ~320px at 1280 —
@@ -1504,14 +1511,30 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    matching the target's own recomposition intent instead of one fixed
    number. `--measure-option-media-min` (existing token, "the media stays
    complete down to this width" per its own doc comment) is reused as the
-   floor instead of inventing a second identity-specific minimum. */
-.a3-project-identity-media{flex:0 1 27%;min-width:var(--measure-option-media-min);max-width:26rem}
+   floor instead of inventing a second identity-specific minimum.
+   Acceptance remediation (cycle 5): the Auditor measured the target's
+   hero starting at x=0 — genuinely full-bleed, not inset inside
+   `.a3-page`'s own `px-7` padding like every other element on this page.
+   `margin-left` cancels exactly that padding (`--space-7`, the same
+   token `px-7` resolves to via tailwind.config.ts) so the photo alone
+   reaches the viewport edge while the identity TEXT column, the stepper
+   and every section below keep the page's normal inset. */
+.a3-project-identity-media{flex:0 1 27%;min-width:var(--measure-option-media-min);max-width:26rem;margin-left:calc(-1 * var(--space-7))}
 .a3-project-identity-text{flex:1 1 20rem;min-width:0}
 .a3-project-identity-text .a3-masthead{margin:var(--space-2) 0 0}
+/* Acceptance remediation (cycle 5): the target's KPI facts render as a
+   bordered strip with a visible divider between each figure, not four
+   unseparated columns — a left hairline + matching left padding on every
+   fact after the first. */
 .a3-project-identity-facts{display:flex;flex-wrap:wrap;gap:var(--space-6)}
+.a3-project-identity-facts>div+div{border-left:var(--border-hairline);padding-left:var(--space-6)}
+/* A little breathing room before the stepper without reintroducing a
+   visually separate block — scoped to this exact adjacency so it cannot
+   affect any other `.a3-wfs` consumer. */
+.a3-project-identity + .a3-wfs{margin-top:var(--space-2)}
 @media (max-width:56rem){
   .a3-project-identity{flex-direction:column}
-  .a3-project-identity-media{flex-basis:auto;width:100%;max-width:100%}
+  .a3-project-identity-media{flex-basis:auto;width:100%;max-width:100%;margin-left:0}
 }
 
 /* Acceptance remediation (cycle 1): the "next decision" summary previously
