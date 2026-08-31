@@ -504,9 +504,17 @@ export function OpportunityList() {
                 not a placeholder awaiting an asset. Sourcing real photos
                 with asset-provenance.md entries is a follow-up, tracked
                 separately — it does not block giving every card a visual
-                identity today. Decorative: the card's own title already
-                names the project (rule: image earns its space by carrying
-                recognition, not by re-stating what text already says). */}
+                identity today.
+                VR2-01 (media/fallback rework): `fallbackLabel` was missing
+                here, so `MediaFrame` rendered its stateText as an empty
+                string and the caption never appeared — every card's
+                fallback art was visually identical with no way to tell one
+                project's "no photo" card from another's (approved target
+                names the project on every fallback card). Passing the
+                project name through the canonical prop restores per-card
+                recognition without inventing a new component or a fake
+                photo — MediaFrame already renders it as caption copy below
+                the frame, never overlaid on/impersonating the graphic. */}
             <div
               className="a3-opportunity-media"
               aria-label={t('opplist.media.identityGraphic')}
@@ -517,6 +525,7 @@ export function OpportunityList() {
                 state="fallback"
                 seed={o.name}
                 alt=""
+                fallbackLabel={t('opplist.media.fallbackCaption', { name: o.name })}
               />
             </div>
             {/* Card (CARD-001): title = primaryDestination (Name, mit

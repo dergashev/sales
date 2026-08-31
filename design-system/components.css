@@ -1354,7 +1354,23 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    verlangten 48px. Explizite Rückkehr zur Desktop-Größe für diese Komposition
    (höhere Selektor-Spezifität schlägt die Container-Query unabhängig von
    deren tatsächlichem Breakpoint-Zustand). */
-.a3-portfolio-headline .a3-hero-title{font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line)}
+/* HEADER HIERARCHY REWORK (VR2-01, post-c0da315 rejection): the canonical
+   PageHeader contract zeroes `.a3-hero-title`'s margin only when the H1 is a
+   DIRECT child of `.a3-masthead` (`.a3-masthead>.a3-hero-title{margin:0}`,
+   see the contract comment above). Here the eyebrow/H1/subtitle group sits
+   one level deeper, inside its own wrapping `<div>` — required so
+   `.a3-masthead` can hold TWO flex columns (headline + toolbar) side by side
+   instead of the contract's single-column title block. That extra nesting
+   silently opted the H1 back INTO the generic `margin:var(--space-5) 0
+   var(--space-2)` (24px/8px) meant for a title that follows a breadcrumb by
+   itself — 24px of extra top margin the approved target does not have: it
+   sets the eyebrow and the "Opportunities" headline close together (Playwright
+   measurement against TARGET-opportunities-1440.png: card grid begins at
+   y=208; the previous candidate landed at y=241, 33px low, entirely
+   attributable to this stray margin). Zeroing it here restores the intended
+   masthead-owned rhythm without touching the shared `.a3-hero-title` contract
+   that every other page-header consumer still relies on. */
+.a3-portfolio-headline .a3-hero-title{font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);margin-top:0}
 .a3-portfolio-toolbar{flex:0 0 auto;max-width:100%}
 /* Kompakte Werkzeugleiste auf der Kopfzeile (ACCEPT-02/03, wie im Ziel): die
    stapelnde Feld-Beschriftung von FormField/SelectField ist HIER sr-only —
@@ -1394,7 +1410,24 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-opportunity-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-3)}
 .a3-opportunity-item{display:grid;grid-template-rows:var(--size-media-card-landing) minmax(0,1fr);min-width:0;border:var(--border-default);background:var(--color-surface-default)}
 .a3-opportunity-media{min-width:0;overflow:hidden;border-bottom:var(--border-hairline)}
-.a3-opportunity-media figure,.a3-opportunity-media [class*="aspect-media-"]{height:100%;aspect-ratio:auto}
+/* VR2-01 (media/fallback rework): `MediaFrame` renders its `fallbackLabel`
+   caption BELOW the frame, by canonical design (component doc: an overlay
+   competes with FallbackArt's centred figure at short ratios) — never
+   overlaid on top of the graphic. The previous rule forced BOTH the
+   `<figure>` and the image box to `height:100%` of this row, which left the
+   image consuming the entire row and silently clipped the caption `<p>`
+   underneath it via this wrapper's own `overflow:hidden` — every card's
+   fallback rendered with no visible project name at all (OpportunityList
+   was passing no `fallbackLabel`, so the clipping was invisible; passing
+   one now surfaces it). Turning `figure` into a column flex box keeps the
+   row's total height exactly at `--size-media-card-landing` (still the
+   target's approved calm-density ceiling — no growth to the grid row), lets
+   the image flex to fill whatever height the caption does not need, and
+   guarantees the caption's own line is always reserved and visible instead
+   of being an overflow casualty. */
+.a3-opportunity-media figure{height:100%;display:flex;flex-direction:column}
+.a3-opportunity-media [class*="aspect-media-"]{flex:1 1 auto;min-height:0;aspect-ratio:auto}
+.a3-opportunity-media .text-caption{flex:0 0 auto;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .a3-opportunity-card-body{border:0;background:transparent;padding:var(--space-3) var(--space-4);gap:var(--space-2);grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'title title' 'meta meta' 'info info' 'status actions';align-content:start}
 .a3-opportunity-card-body>.a3-card-title{grid-area:title;font-size:var(--type-body-size);line-height:var(--type-body-line)}
 .a3-opportunity-card-body>.a3-card-meta{grid-area:meta}

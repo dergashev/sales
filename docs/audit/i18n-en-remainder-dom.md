@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 45** · перевод есть, мост не подключён: 24
-· перевода нет (в поставку копирайта): 21
+**Всего 47** · перевод есть, мост не подключён: 24
+· перевода нет (в поставку копирайта): 23
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -55,6 +55,8 @@ Mit freundlichen Grüßen
 - Fragen reduzieren die Schätzunsicherheit von ±
 - Konfiguration je Gebäude bestätigt
 - Planung ist Projektgröße, Ausführung gehört zum Gebäude — deshalb mehrere Zeilen und nicht eine. Die Fertigstellung ist dieselbe Zahl, die oben rechts als Kennzahl steht.
+- Project identity · Musterhöfe Westpark
+- Project identity · Musterquartier Südhang
 - Später entscheiden
 - Texte stammen aus den Fallback-Regeln; das Wertfeld (z. B. die Gebäudeklasse) wird mit dem Projektwert belegt — der Regeltext nennt einen Beispielwert. Eine Empfehlung verschwindet, sobald der Wert erfasst ist — die Liste wird abgeleitet, nicht gepflegt.
 - Tiefgarage im Untergeschoss enthalten.

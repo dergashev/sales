@@ -414,6 +414,14 @@ const de = {
   'opplist.card.documentLabel': 'Dokument',
   'opplist.card.documentsLabel': 'Dokumente',
   'opplist.media.identityGraphic': 'Projektidentität · keine Aufnahme',
+  // VR2-01 (header/media hierarchy rework): the fallback identity graphic
+  // carried zero project-specific information — every card showed the same
+  // generic building icon with no caption, so nothing distinguished one
+  // project's "no photo" card from another's (approved target names the
+  // project directly on/under the fallback art). `MediaFrame`'s own
+  // `fallbackLabel` prop already exists for exactly this; OpportunityList
+  // was simply not passing it.
+  'opplist.media.fallbackCaption': 'Projektidentität · {name}',
   // Kanonisches Label je HubSpot-Lifecycle-Stadium (STAGE_LABEL_KEY in
   // OpportunityList) — ersetzt `tx(o.stage)` für den Status-Tag, das
   // Status-Select und den Status-Filter-Chip. `ruhend`/`gewonnen`/
@@ -1101,6 +1109,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'opplist.card.documentLabel': 'document',
   'opplist.card.documentsLabel': 'documents',
   'opplist.media.identityGraphic': 'Project identity · no image',
+  'opplist.media.fallbackCaption': 'Project identity · {name}',
   'opplist.stage.neuAusHubspot': 'new from HubSpot',
   'opplist.stage.inVorbereitung': 'in preparation',
   'opplist.stage.versendet': 'sent',
