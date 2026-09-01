@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures'
-import { BUILDING_SCOPE, NAV, OPPORTUNITY } from '../anchors'
+import { BUILDING_SCOPE, COMPARISON, NAV, OPPORTUNITY } from '../anchors'
 
 /**
  * Variantenvergleich sticky-column occlusion regression.
@@ -113,7 +113,9 @@ for (const { label: viewportLabel, viewport } of VIEWPORTS) {
         await expect(page.getByRole('button', { name: NAV.items.vergleich })).toBeVisible()
         await page.getByRole('button', { name: NAV.items.vergleich }).click()
 
-        await expect(page.getByRole('heading', { name: NAV.items.vergleich })).toBeVisible()
+        // ACCEPTANCE REMEDIATION (cycle 2, ACCEPT-01): the H1 is now the
+        // approved target's decision headline, not the nav label.
+        await expect(page.getByRole('heading', { name: COMPARISON.headline })).toBeVisible()
 
         const scrollRegion = page.getByRole('region', { name: 'Horizontal scrollbarer Variantenvergleich' })
         await expect(scrollRegion).toBeVisible()

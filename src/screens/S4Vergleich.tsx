@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Decimal } from "decimal.js";
+import opportunities from "../fixtures/opportunities.json";
 import {
   configForOption,
   eligibleClientOptions,
@@ -63,6 +64,12 @@ export function S4Vergleich() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { reduced: reducedMotion } = useSemanticMotion();
   const client = isClientProjection(s.mode);
+  // ACCEPTANCE REMEDIATION (cycle 2, ACCEPT-01): the approved target leads
+  // its first viewport with project context (name + Option count) above the
+  // decision headline — the same `opportunities.json` lookup Sidebar.tsx
+  // and PresentationShell.tsx already use for `s.opportunityId`, not a new
+  // data source.
+  const project = opportunities.items.find((o) => o.id === s.opportunityId);
   // REDESIGN R3: only client-eligible Options (the PD-3 export-readiness
   // signal — `eligibleClientOptions`) may become a column/selectable Option
   // in Kundenansicht. Vorbereitung keeps seeing every created Option,
@@ -112,12 +119,11 @@ export function S4Vergleich() {
   }
 
   const base = cols[0]!;
-  // VR2-05: real, independent DC-11 role — "Aktuell bearbeitet"/"in Arbeit"
-  // is whichever column carries `s.activeOptionId`, never necessarily the
-  // comparison baseline (`base`, i===0). Both stay independent badges
-  // (VARIANT-001/R-22); this binding only lets the header/context zone
-  // name the active column's Option once, without recomputing it per cell.
-  const activeCol = cols.find((c) => c.option.id === s.activeOptionId);
+  // VR2-05: "Aktuell bearbeitet"/"in Arbeit" is whichever column carries
+  // `s.activeOptionId`, never necessarily the comparison baseline (`base`,
+  // i===0) — both stay independent per-column badges (VARIANT-001/R-22),
+  // resolved directly on each `<th>` below (no header-level context line
+  // duplicates them since ACCEPTANCE REMEDIATION cycle 2 / ACCEPT-01).
 
   const money = (d: Decimal) => {
     const pr = present(d);
@@ -263,62 +269,63 @@ export function S4Vergleich() {
   );
   const groups = [...new Set(visible.map((r) => r.group))];
 
+  // ACCEPTANCE REMEDIATION (cycle 2, ACCEPT-02): the shell (components.css
+  // `--cmp-visible-cols`) always fits exactly three Option columns at the
+  // full container width, at any supported viewport — a fourth+ Option is
+  // the first one that ever needs the horizontal scrollport.
+  const mayOverflow = cols.length > 3;
+
   return (
     <div className="px-7 py-6">
+      {/* ACCEPTANCE REMEDIATION (cycle 2, ACCEPT-01): project/Option context
+          now leads the first viewport, above the headline — same
+          `.a3-portfolio-eyebrow` treatment OpportunityCard already uses for
+          this exact role (small-caps context line above a PageHeader), not
+          a new primitive. The client/`Kundenansicht` branches of this
+          screen are unreachable at runtime (PresentationShell.tsx owns
+          Present Mode — see the VR2-05 change manifest), so this is scoped
+          to the real `!client` path only. */}
+      {!client && (
+        <p className="a3-portfolio-eyebrow">
+          {project ? `${project.name} · ` : ""}
+          {t(
+            cols.length === 1
+              ? "comparison.optionCountSingular"
+              : "comparison.optionCountPlural",
+            { n: cols.length },
+          )}
+        </p>
+      )}
       <PageHeader
         title={
           client && cols.length === 1
             ? tx("Ihr Angebot")
-            : tx("Variantenvergleich")
-        }
-        meta={
-          client && cols.length === 1 ? undefined : (
-            <>
-              {cols.length}
-              {NNBSP}
-              {cols.length === 1 ? "Option" : "Optionen"}
-            </>
-          )
-        }
-        // VR2-05: the decision-framing line ("differences first") now sits
-        // directly under the H1 — the strongest position on the page —
-        // instead of beside a control below the fold. Same two existing
-        // i18n keys, same live toggle-state binding; only the position and
-        // typographic weight changed.
-        lede={
-          !client && cols.length > 1
-            ? t(showAll ? "comparison.allHint" : "comparison.differencesHint")
-            : undefined
+            : client
+              ? tx("Variantenvergleich")
+              : t("comparison.headline")
         }
       />
 
-      {/* VR2-05: ONE quiet head zone below the framing — comparison context
-          (which Option is the baseline / which is in Arbeit, real
-          `activeOptionId`/`base` truth, no invented role) on the left,
-          every control (Konfigurator/Export nav, row filter, horizontal
-          scroll) demoted into one compact toolbar on the right. Controls no
-          longer appear before Option identity/price — they sit below the
-          headline, beside a context line that answers "which one is the
-          base, which one is active" before any table cell is read. */}
+      {/* ACCEPTANCE REMEDIATION (cycle 2, ACCEPT-01): ONE quiet row below
+          the headline — the differences-first framing (same two existing
+          i18n keys/toggle-state binding as before) on the left, every
+          control (Konfigurator/Export nav, row filter, horizontal scroll)
+          demoted into a compact, visually quiet toolbar on the right.
+          "Which Option is baseline/active" is not lost by dropping the old
+          context-caption line here: both roles are already independent,
+          real badges on their own column header (`Vergleichsbasis`/
+          `in Arbeit`, VARIANT-001) — this row no longer restates them in
+          prose before the table is even reached. */}
       {!client && (
         <div className="a3-comparison-head mt-4">
           <div className="a3-comparison-context">
             {cols.length > 1 && (
-              <p className="a3-cap">
-                <span aria-hidden="true">■ </span>
-                {tx("Vergleichsbasis")}
-                {": "}
-                <span className="font-medium text-text-primary">
-                  {base.option.name}
-                </span>
-                {activeCol && activeCol.option.id !== base.option.id && (
+              <p className="text-body text-text-secondary">
+                {t(showAll ? "comparison.allHint" : "comparison.differencesHint")}
+                {mayOverflow && (
                   <>
                     {" · "}
-                    {tx("in Arbeit")}
-                    {": "}
-                    <span className="font-medium text-text-primary">
-                      {activeCol.option.name}
-                    </span>
+                    {t("comparison.overflowHint", { n: cols.length })}
                   </>
                 )}
               </p>
@@ -345,17 +352,23 @@ export function S4Vergleich() {
                 a live control over nothing. */}
             {cols.length > 1 && (
               <div className="a3-comparison-toolbar-group">
-                <Button onClick={() => setShowAll((v) => !v)} aria-pressed={showAll}>
+                <Button variant="ghost" onClick={() => setShowAll((v) => !v)} aria-pressed={showAll}>
                   {tx(showAll ? "nur Unterschiede" : "alle Zeilen anzeigen")}
                 </Button>
               </div>
             )}
-            {cols.length > 1 && (
+            {/* ACCEPTANCE REMEDIATION (cycle 2, ACCEPT-02): rendered only
+                once a fourth Option genuinely needs it — with ≤3 Options
+                the shell never overflows, so a live horizontal-scroll
+                control over nothing was exactly the control-first clutter
+                ACCEPT-01 flagged in the canonical 3-Option state. */}
+            {mayOverflow && (
               <div
                 className="a3-comparison-controls a3-comparison-toolbar-group"
                 aria-label={tx("Vergleich horizontal steuern")}
               >
                 <Button
+                  variant="ghost"
                   onClick={() =>
                     scrollRef.current?.scrollTo({
                       left: 0,
@@ -366,6 +379,7 @@ export function S4Vergleich() {
                   {tx("Zum Zeilenanfang")}
                 </Button>
                 <Button
+                  variant="ghost"
                   onClick={() =>
                     scrollRef.current?.scrollTo({
                       left: scrollRef.current.scrollWidth,
@@ -533,6 +547,19 @@ export function S4Vergleich() {
             role="region"
             aria-label={tx("Horizontal scrollbarer Variantenvergleich")}
             tabIndex={0}
+            // ACCEPTANCE REMEDIATION (cycle 2, ACCEPT-02): the actual
+            // visible-column count drives the container-query width split
+            // in components.css (`--cmp-visible-cols`) directly — the
+            // previous fixed viewport media query divided by 2 below 90rem
+            // regardless of how many Options actually existed, which is
+            // exactly why 3 real Options only showed 2 at 1280×800. Capped
+            // at 3: a 4th+ Option keeps the fixed 1/3 width so it overflows
+            // into the scrollport on purpose (see `mayOverflow` above).
+            style={
+              {
+                "--cmp-visible-cols": Math.min(cols.length, 3),
+              } as React.CSSProperties
+            }
           >
             <table className="a3-cmp border-collapse">
               <caption className="sr-only">

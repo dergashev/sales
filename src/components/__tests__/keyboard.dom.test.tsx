@@ -235,7 +235,13 @@ describe('Маршрут экрана возвращает начало доку
     expect(comparisonEntries).toHaveLength(1)
     await user.click(comparisonEntries[0]!)
     expect(main.scrollTop).toBe(0)
-    expect(screen.getByRole('heading', { level: 1, name: 'Variantenvergleich' })).toHaveFocus()
+    // ACCEPTANCE REMEDIATION (cycle 2, ACCEPT-01): the H1 on this route is
+    // now the approved target's decision headline (comparison.headline),
+    // not the generic screen name — this assertion's subject remains
+    // scroll/focus reset on navigation, unaffected by the wording change.
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Entscheiden, nicht nur vergleichen.' }),
+    ).toHaveFocus()
 
     main.scrollTop = 320
     // Task 03 (F-16/PD-3): Export now requires the whole-option confirm

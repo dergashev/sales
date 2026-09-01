@@ -110,3 +110,11 @@ export const VIEWPORT_GUARD = {
   selector: '.a3-viewport-warning',
   titleDe: 'Bildschirm zu klein',
 }
+
+// ACCEPTANCE REMEDIATION (cycle 2, ACCEPT-01): the comparison route's H1 is
+// now the approved target's decision headline (src/i18n/index.ts
+// `comparison.headline`), independent of the sidebar nav label
+// (`NAV.items.vergleich`, still "Variantenvergleich") they used to share.
+export const COMPARISON = {
+  headline: 'Entscheiden, nicht nur vergleichen.',
+}

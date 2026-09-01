@@ -75,6 +75,22 @@ const de = {
   'comparison.differencesHint': 'Zuerst erscheinen Unterschiede und Ergebniswerte.',
   'comparison.allHint': 'Alle Vergleichszeilen sind sichtbar.',
   'comparison.leadRate': 'Leitkennzahl',
+  // ACCEPTANCE REMEDIATION (cycle 2, ACCEPT-01): approved target's decision
+  // headline replaces the generic screen name as H1 — "Entscheiden, nicht
+  // nur vergleichen." is the literal approved copy (TARGET-comparison-1440/
+  // 1280.png), a UI framing string like any other H1, not a guidance/
+  // Annahmen text and not a commercial/recommendation semantic.
+  'comparison.headline': 'Entscheiden, nicht nur vergleichen.',
+  // Eyebrow line above the headline (project context + Option count) —
+  // moved out of PageHeader's baseline `meta` slot so it leads the first
+  // viewport per the approved target, instead of trailing the title.
+  'comparison.optionCountSingular': '{n} Option',
+  'comparison.optionCountPlural': '{n} Optionen',
+  // Explains the deliberate horizontal-overflow affordance (components.css
+  // `--cmp-visible-cols`: the first three Options always fit; a fourth+
+  // remains reachable by scrolling) — only shown once a fourth Option is
+  // actually one scroll away, so the number is never speculative.
+  'comparison.overflowHint': '{n}. Option horizontal ergänzbar',
   'shell.variant': 'Variante «Basis»',
   'shell.phase.vorbereitung': 'Vorbereitung',
   'common.undo': 'Rückgängig',
@@ -947,6 +963,10 @@ const en: Partial<Record<MessageKey, string>> = {
   'comparison.differencesHint': 'Differences and result values are shown first.',
   'comparison.allHint': 'All comparison rows are visible.',
   'comparison.leadRate': 'Lead rate',
+  'comparison.headline': "Decide, don't just compare.",
+  'comparison.optionCountSingular': '{n} Option',
+  'comparison.optionCountPlural': '{n} Options',
+  'comparison.overflowHint': 'Option {n} reachable by scrolling',
   'shell.variant': 'Variant “Basis”',
   'shell.phase.vorbereitung': 'Preparation',
   'common.undo': 'Undo',
