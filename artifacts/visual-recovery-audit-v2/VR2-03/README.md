@@ -1,5 +1,75 @@
 # VR2-03 — Building & Scope workspace recomposition — evidence
 
+## Acceptance remediation (cycle 7) — compact readiness hierarchy, 1280 two-column grid, ACCEPT-01 escalated
+
+Acceptance rejected `59f737c4bd5daee19e9eb35b32087a31560e283a` a 6th time
+with four findings (ACCEPT-01 through ACCEPT-04), explicitly inviting
+escalation on the first: *"if current state genuinely cannot support the
+target, escalate the minimum Product decision rather than silently
+accepting drift."*
+
+New final `implementationCommit`/`candidateRuntimeCommit` =
+`f3ab15019f6050f481878fb0f3f3677c167c3143` (supersedes `59f737c` throughout
+this document unless a screenshot is explicitly labelled otherwise).
+Re-verified: typecheck, 750/750 tests, verify (0 findings), build,
+`npm run test:browser:desktop` 8/8 — all PASS against this exact SHA, clean
+tree.
+
+**ACCEPT-03 (fixed)** — readiness rail hierarchy: the rail's own heading
+and the "X von Y" summary below it were BOTH `text-heading-2 font-bold`
+(identical size), producing the oversized/multi-line heading QA and
+Acceptance independently flagged. Changed the heading to `.a3-cap` (the
+same small-caption eyebrow style used everywhere else in the product,
+e.g. "Aktuelle Option") — the "X von Y" summary is now the rail's only
+large, bold element, matching the target's "BEREIT FÜR DEN KONFIGURATOR" /
+"1 von 2" hierarchy exactly. This also removed the cycle-6 `break-words`
+overflow patch for this heading: at caption size the full sentence fits
+the 226px column without a mid-word break.
+
+**ACCEPT-02 (fixed, part 1)** — 1280 field-grid recomposition: added a
+scoped `.a3-buildingscope-review .a3-field-grid` override forcing 2
+columns at ≤1439px (same breakpoint the rail widths already use) instead
+of the 3 that `auto-fit, minmax(10rem,1fr)` naturally fits at 624px
+content width — every other `.a3-field-grid` consumer product-wide is
+unaffected. Browser-measured: 2×284px columns at 1280 (was 3×181px).
+
+**ACCEPT-02 (not further reduced)** — the vertical tab position (cycle 6:
+325px/381px at 1440/1280 vs target's ~270/264) was not tightened further
+this cycle; the remaining gap is the shared PageHeader row plus this
+screen's own "Gebäude verwalten" toggle row, both real, functioning UI
+already disclosed in cycle 6.
+
+**ACCEPT-04 (reaffirmed, not actionable)** — no per-building photography
+exists anywhere in the fixture set (verified: no matching fixture files).
+`MediaFrame state="fallback"` is the correct, honest representation of
+genuinely missing media; fabricating stock imagery to imply real
+per-building documentation would violate the product's explicit
+data-safety invariants ("do not fabricate project-specific imagery").
+
+**ACCEPT-01 — ESCALATED AS A PRODUCT DECISION, not implemented this
+cycle.** This is the 6th consecutive rejection citing the missing
+"Übersicht" step / decision-first shell. Investigated one level deeper
+than prior cycles: `BuildingConflict`/`ConflictDecision` (the exact
+"Kundenwert übernehmen" / "Dokumentwert beibehalten" interaction the
+target's "Übersicht" screen shows) DOES already exist at the per-building
+level within an Option — `BuildingReviewPanel` renders it today whenever
+`openConflicts.length > 0` for the active building. However, no current
+fixture ever seeds or triggers a per-building conflict, so there is no
+demonstrated runtime path that reaches this state after an Option already
+exists — every observed WFL conflict resolves at the pre-Option
+Opportunity/project level instead. Building a new "Übersicht" nav
+destination requires Product authority to decide: should a per-Option
+conflict-resurfacing state be introduced (and under what trigger), or is
+the target's "Übersicht" frame not literal implementation authority for
+this route. See the delivery report / team handoff for the exact minimum
+decision requested.
+
+Screenshots in `acceptance-remediation-cycle7/`:
+- `candidate-1440-compact-readiness-heading.png` — "Bereit für den
+  Konfigurator?" as a small caption above the large "1 von 3" summary.
+- `candidate-1280-two-column-grid-compact-readiness.png` — 2-column field
+  grid + compact readiness heading together at 1280.
+
 ## Acceptance remediation (cycle 6) — narrower readiness rail, read-first review sections, tighter tab position
 
 Acceptance rejected `07d3c08bedae1b6e8ff34a69b7abb18c73dc3310` a 5th time,
