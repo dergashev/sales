@@ -172,12 +172,14 @@ function VariantsSideBySide({ rows, currentValue }: {
   )
 }
 
-export function OptionChapter({ groups, intro, variant = 'standard', footnote = 'show' }: {
+export function OptionChapter({ groups, intro, variant = 'standard', footnote = 'show', maxVisibleFacadeChoices }: {
   groups: OptionGroup[]
   intro: string
   /** Explicit visual composition for a live Configurator consumer. */
   variant?: 'standard' | 'workstage'
   footnote?: 'show' | 'hide'
+  /** Keeps a dense work stage readable while retaining every live choice on demand. */
+  maxVisibleFacadeChoices?: number
 }) {
   const s = useStore()
   const t = useT()
@@ -185,6 +187,7 @@ export function OptionChapter({ groups, intro, variant = 'standard', footnote = 
   const b = activeBuilding(s)
   const chosen = choicesFor(s, b.id)
   const prov = choiceProvenanceFor(s, b.id)
+  const [expandedFacadeGroups, setExpandedFacadeGroups] = useState<string[]>([])
 
   // Пока здание не подтверждено, спускаться рано: опции у здания, чьи
   // метрики ещё спорны, придётся пересматривать целиком.
@@ -222,8 +225,7 @@ export function OptionChapter({ groups, intro, variant = 'standard', footnote = 
         const value = chosen[g.id] ?? g.default
         const source = prov[g.id] ?? 'Standard'
         return (
-          <section key={g.id} className={'a3-config-option-decision a3-sheet' +
-            (variant === 'workstage' ? ` a3-config-workstage-${g.id}` : '')}>
+          <section key={g.id} className="a3-config-option-decision a3-sheet">
             <h2 className="text-heading-3 font-bold text-text-primary">{tx(g.label)}</h2>
             <p className="a3-cap mt-1">{tx(g.question)}</p>
 
@@ -302,9 +304,27 @@ export function OptionChapter({ groups, intro, variant = 'standard', footnote = 
                     after: m.disabled ? null : out.futureTotal.exact,
                   }
                 })
-                const comparison = (
-                  <VariantsSideBySide rows={compareRows} currentValue={value} />
-                )
+                // The compact façade work stage has its consequence in the
+                // adjacent impact panel. Keeping a second comparison
+                // disclosure underneath the tiles competes with the next
+                // decision without adding a new product action.
+                const comparison = variant === 'workstage'
+                  ? null
+                  : <VariantsSideBySide rows={compareRows} currentValue={value} />
+                const facadeExpanded = expandedFacadeGroups.includes(g.id)
+                const limitedFacadeChoices = facade && maxVisibleFacadeChoices && !facadeExpanded
+                  ? mapped.slice(0, maxVisibleFacadeChoices)
+                  : null
+                // Do not hide the live selection when a persisted choice is
+                // beyond the compact first-scan set. The stage remains dense,
+                // while the user can still see the state that drives pricing.
+                const visibleMapped = limitedFacadeChoices
+                  ? limitedFacadeChoices.some((choice) => choice.value === value)
+                    ? limitedFacadeChoices
+                    : [...limitedFacadeChoices.slice(0, -1), mapped.find((choice) => choice.value === value)!]
+                  : mapped
+                const revealFacadeChoices = () => setExpandedFacadeGroups((current) =>
+                  current.includes(g.id) ? current : [...current, g.id])
                 return facade ? (<>
                   <FacadeTileGroup
                     legend={g.question}
@@ -313,7 +333,7 @@ export function OptionChapter({ groups, intro, variant = 'standard', footnote = 
                     onPreview={(v: string | null) => s.previewOption(v
                       ? { kind: 'kg300', buildingId: b.id, groupId: g.id, value: v }
                       : null)}
-                    options={mapped.map((m) => ({
+                    options={visibleMapped.map((m) => ({
                       value: m.value,
                       label: m.title,
                       consequence: m.consequence,
@@ -324,6 +344,16 @@ export function OptionChapter({ groups, intro, variant = 'standard', footnote = 
                       disabledReason: m.disabledReason,
                     }))}
                   />
+                  {visibleMapped.length < mapped.length && (
+                    <Button
+                      variant="ghost"
+                      className="a3-config-show-all"
+                      aria-expanded={false}
+                      onClick={revealFacadeChoices}
+                    >
+                      {t('configurator.workstage.showAllDecisions', { count: mapped.length })}
+                    </Button>
+                  )}
                   {comparison}
                 </>) : (<>
                   <RadioCardGroup

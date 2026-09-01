@@ -61,6 +61,10 @@ describe('OptionChapter calm-density: binary inclusion groups render without ima
     const balkoneHeading = screen.getByRole('heading', { name: 'Balkone' })
     expect(balkoneHeading.closest('section')!.querySelectorAll('img')).toHaveLength(0)
 
+    const showAll = screen.getByRole('button', { name: 'Alle 7 anzeigen' })
+    expect(showAll).toHaveAttribute('aria-expanded', 'false')
+    await user.click(showAll)
+
     // Balkontyp is a real 3-way material choice (diagonal/Stützen/Konsole)
     // and must keep its differentiating images.
     const balkontypHeading = screen.getByRole('heading', { name: 'Balkontyp' })

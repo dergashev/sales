@@ -181,17 +181,7 @@ export function S3Konfigurator() {
             <div className="a3-config-kg300-stage">
               <div className="a3-config-kg300-decisions">
                 <Kg300PrimaryDecisions />
-                <section className="a3-config-kg300-secondary">
-                  <div className="a3-config-decision-heading">
-                    <h2>{t('configurator.workstage.secondaryDecisions')}</h2>
-                  </div>
-                  <OptionChapter
-                    groups={KG300_GROUPS.filter((group) =>
-                      group.id !== 'fassade')}
-                    intro=""
-                    variant="workstage"
-                  />
-                </section>
+                <Kg300SecondaryDecisions />
               </div>
               <aside className="a3-config-kg300-context" aria-label={t('configurator.workstage.buildingContext')}>
                 <Kg300WorkContext />
@@ -666,7 +656,7 @@ function ConfigurationStatusStrip() {
 
   if (actionable) {
     return (
-      <section className="mt-5" aria-label={statusLabel(status, t)}>
+      <section className="a3-config-status-strip" aria-label={statusLabel(status, t)}>
         <NextStep
           label={statusLabel(status, t)}
           description={detail}
@@ -679,7 +669,7 @@ function ConfigurationStatusStrip() {
 
   return (
     <section
-      className="mt-5 border-y border-border-subtle py-4"
+      className="a3-config-status-strip"
       aria-label={statusLabel(status, t)}
     >
       <Badge sign={status === 'confirmed' ? '✓' : '○'}>
@@ -1323,8 +1313,47 @@ function Kg300PrimaryDecisions() {
           intro=""
           variant="workstage"
           footnote="hide"
+          maxVisibleFacadeChoices={4}
         />
       </div>
+    </section>
+  )
+}
+
+/**
+ * The target presents the first three secondary decisions as compact rows and
+ * keeps the remaining, still-live controls available on demand. This changes
+ * no option state or calculation; it only makes the next decisions visible in
+ * the first scan path instead of extending the work stage as a long article.
+ */
+function Kg300SecondaryDecisions() {
+  const t = useT()
+  const [showAll, setShowAll] = useState(false)
+  const groups = KG300_GROUPS.filter((group) => group.id !== 'fassade')
+  const visibleGroups = showAll ? groups : groups.slice(0, 3)
+
+  return (
+    <section className="a3-config-kg300-secondary">
+      <div className="a3-config-decision-heading">
+        <h2>{t('configurator.workstage.secondaryDecisions')}</h2>
+        {groups.length > visibleGroups.length && (
+          <Button
+            variant="ghost"
+            className="a3-config-show-all"
+            aria-expanded={showAll}
+            onClick={() => setShowAll(true)}
+          >
+            {t('configurator.workstage.showAllDecisions', {
+              count: groups.length,
+            })}
+          </Button>
+        )}
+      </div>
+      <OptionChapter
+        groups={visibleGroups}
+        intro=""
+        variant="workstage"
+      />
     </section>
   )
 }
