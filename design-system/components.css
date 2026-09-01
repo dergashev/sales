@@ -2020,8 +2020,8 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-config-option-list-workstage .a3-config-option-decision{padding:var(--space-4)}
 .a3-config-option-list-workstage .a3-config-option-decision h2{font-size:var(--type-label-size);line-height:var(--type-label-line)}
 .a3-config-kg300-primary{display:grid;gap:var(--space-3)}
-.a3-config-kg300-primary-grid{display:grid;grid-template-columns:minmax(10rem,.5fr) minmax(0,1.5fr);gap:var(--space-3);align-items:stretch}
-.a3-config-kg300-basement{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:var(--space-3);min-height:100%;border:var(--border-default);background:var(--color-surface-stage);padding:var(--space-4)}
+.a3-config-kg300-primary-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-3);align-items:stretch}
+.a3-config-kg300-basement{display:grid;grid-template-columns:minmax(7rem,.8fr) minmax(10rem,1.4fr) minmax(0,1.3fr);align-items:start;gap:var(--space-3);min-height:0;border:var(--border-default);background:var(--color-surface-stage);padding:var(--space-4)}
 .a3-config-kg300-basement .a3-meta{margin:0;color:var(--color-text-secondary);font-size:var(--type-caption-size);font-weight:700;letter-spacing:.04em;text-transform:uppercase}
 .a3-config-kg300-basement h3{margin:0;font-size:var(--type-label-size);line-height:var(--type-label-line)}
 .a3-config-kg300-basement>p:not(.a3-meta){margin:0;color:var(--color-text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
@@ -2032,15 +2032,18 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-config-kg300-primary-grid .a3-config-option-decision>h2{margin:0;font-size:var(--type-label-size);line-height:var(--type-label-line)}
 .a3-config-kg300-primary-grid .a3-config-option-decision>p{margin:var(--space-1) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line)}
 .a3-config-kg300-primary-grid .a3-chip-src{display:none}
-.a3-config-kg300-primary-grid .a3-fgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-2);min-height:6.6rem}
+.a3-config-kg300-primary-grid .a3-fgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-2);min-height:0}
 .a3-config-kg300-primary-grid .a3-fk{display:flex!important;min-height:6.6rem;padding:var(--space-3)}
 .a3-config-kg300-primary-grid .a3-fk .a3-img{display:none}
+.a3-config-kg300-primary-grid .a3-fk .a3-nm,.a3-config-kg300-primary-grid .a3-fk>.numeric{min-inline-size:0;max-inline-size:100%;overflow-wrap:anywhere;hyphens:none}
+.a3-config-kg300-primary-grid .a3-fk>.numeric{text-align:left}
 .a3-config-kg300-secondary .a3-config-option-list-workstage{grid-template-columns:1fr}
 .a3-config-kg300-secondary .a3-config-option-decision{display:grid;grid-template-columns:minmax(8rem,1fr) minmax(0,1.6fr);column-gap:var(--space-4);align-items:start}
 .a3-config-kg300-secondary .a3-config-option-decision>h2{grid-column:1}.a3-config-kg300-secondary .a3-config-option-decision>p{grid-column:1}
 .a3-config-kg300-secondary .a3-config-option-decision>div{grid-column:2;grid-row:1/span 2;margin-top:0!important}
 .a3-config-kg300-secondary .a3-ogrid,.a3-config-kg300-secondary .a3-fgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-2)}
 .a3-config-kg300-secondary .a3-okc-tile,.a3-config-kg300-secondary .a3-fk{padding:var(--space-3)}
+.a3-config-kg300-secondary .a3-okc-tile b,.a3-config-kg300-secondary .a3-fk .a3-nm{hyphens:none;overflow-wrap:anywhere}
 .a3-config-kg300-secondary .a3-okc-tile .a3-option-media,.a3-config-kg300-secondary .a3-fk .a3-img{display:none}
 .a3-config-kg300-context{display:grid;gap:var(--space-4);min-width:0;border-left:var(--border-default);padding-left:var(--space-4)}
 .a3-config-selection-visual{position:relative;margin:0;background:var(--color-surface-canvas)}
@@ -2071,5 +2074,5 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-config-kg700-impact{background:var(--color-surface-stage-deep);color:var(--color-surface-default);padding:var(--space-4)}.a3-config-kg700-impact .a3-cap{color:var(--color-surface-subtle)}.a3-config-kg700-impact .text-text-primary{color:var(--color-surface-default)}
 .a3-config-action-dock{position:sticky;bottom:0;z-index:2;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-3);margin-top:var(--space-5);padding:var(--space-3) var(--space-4);background:var(--color-surface-default);border-top:var(--border-default)}
 .a3-config-sidebar .a3-wfs-chapter .a3-wfs-current,.a3-config-sidebar .a3-wfs-chapter .a3-wfs-cur{background:var(--color-surface-stage)}.a3-config-sidebar .a3-wfs-chapter .a3-wfs-button,.a3-config-sidebar .a3-wfs-chapter .a3-wfs-static{padding-top:var(--space-3);padding-bottom:var(--space-3)}
-@media (max-width:1439px){.a3-config-work-rail .a3-hb-total .a3-hb-num{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line)}.a3-config-work-rail .a3-hb-total .a3-hb-unit{font-size:var(--type-small-size);line-height:var(--type-small-line)}.a3-config-work{padding-left:var(--space-5);padding-right:var(--space-5)}.a3-config-kg300-stage{grid-template-columns:minmax(0,1fr) 17rem;gap:var(--space-4)}.a3-config-kg300-primary-grid{grid-template-columns:minmax(9.25rem,.45fr) minmax(0,1.55fr)}.a3-config-kg300-context{padding-left:var(--space-3)}.a3-config-option-list{gap:var(--space-3)}.a3-config-kg300-guidance{grid-template-columns:minmax(0,1fr) 17rem;gap:var(--space-4)}.a3-config-kg700-decision,.a3-config-kg700-result-grid{grid-template-columns:minmax(0,1fr) 14rem;gap:var(--space-3)}}
+@media (max-width:1439px){.a3-config-work-rail .a3-hb-total .a3-hb-num{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line)}.a3-config-work-rail .a3-hb-total .a3-hb-unit{font-size:var(--type-small-size);line-height:var(--type-small-line)}.a3-config-work{padding-left:var(--space-5);padding-right:var(--space-5)}.a3-config-kg300-stage{grid-template-columns:minmax(0,1fr) 17rem;gap:var(--space-4)}.a3-config-kg300-primary-grid{grid-template-columns:1fr}.a3-config-kg300-context{padding-left:var(--space-3)}.a3-config-option-list{gap:var(--space-3)}.a3-config-kg300-guidance{grid-template-columns:minmax(0,1fr) 17rem;gap:var(--space-4)}.a3-config-kg700-decision,.a3-config-kg700-result-grid{grid-template-columns:minmax(0,1fr) 14rem;gap:var(--space-3)}}
 @media (max-width:1100px){.a3-config-kg300-stage{grid-template-columns:1fr}.a3-config-kg300-primary-grid{grid-template-columns:1fr}.a3-config-kg300-context{grid-template-columns:repeat(2,minmax(0,1fr));border-left:0;border-top:var(--border-default);padding:var(--space-4) 0 0}}
