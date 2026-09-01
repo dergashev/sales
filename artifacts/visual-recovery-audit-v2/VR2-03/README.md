@@ -1,5 +1,69 @@
 # VR2-03 — Building & Scope workspace recomposition — evidence
 
+## Acceptance remediation (cycle 9) — close the remaining ACCEPT-02 vertical-density gap
+
+Continuation of ACCEPT-02 remediation on top of `125e420` (4-column grid
+already matched; ACCEPT-01 closed by Product Decision, confirmed
+unchanged). This cycle root-caused and fixed three real height
+contributors that prior cycles' composition-level trims did not reach.
+
+New final `implementationCommit`/`candidateRuntimeCommit` =
+`5ddbcf83245c4a87f11de674dbbc6af95313528b` (supersedes `125e420` throughout
+this document unless a screenshot is explicitly labelled otherwise).
+Re-verified: typecheck, 750/750 tests, verify (0 findings), build,
+`npm run test:browser:desktop` 8/8 — all PASS against this exact SHA, clean
+tree. `git fetch origin --prune` confirmed `origin/master` unchanged
+(`a4d9b99de5cc7b60fda4316198d1f059947126bb`) — no reconciliation required.
+
+**Fixes, in order of impact:**
+
+1. **`ReviewDisclosure` header row 58px → 46px.** Root-caused via
+   selective cell hiding + remeasuring (not guessed): the status Badge
+   ("Bereit zur Bestätigung") and the "Abschnitt bearbeiten" button both
+   wrap their short, fixed-vocabulary labels across two lines inside
+   their own narrow, auto-sized table columns, inflating the row above
+   its own 44px hit-target floor. Scoped `white-space:nowrap` to
+   `.a3-buildingscope-review .a3-disclosure-row .a3-badge`/`.a3-btn.a3-ghost`
+   only — the canonical Badge/Button components, and every other
+   disclosure table in the product, are unaffected.
+2. **Field-grid row height 129px → 109px.** `ReadField`'s value text used
+   `text-heading-3` (24px) — the product's established SECTION-HEADING
+   size, not sized for a dense 4-column value grid. At the narrower
+   per-column width the target's 4-column composition requires, this
+   forced values like "Mehrfamilienhaus" onto two lines. Reduced to
+   `text-body font-bold` (16px) — still clearly emphasised, fits the
+   target's own one-line density.
+3. **`.a3-tabpane`'s canonical 16px top padding removed for this screen
+   only** (`.a3-buildingscope-tabpane` marker class) — sat directly above
+   the review table with no counterpart in the target.
+4. Three small additional trims found while re-measuring the full chain:
+   wrapper bottom padding 16px→8px, margin before the tab strip 12px→8px,
+   review sheet's own top padding 12px→8px.
+
+**Measured result:** tabs 325px→317px (1440), 381px→373px (1280);
+Identity read grid top 506px→470px (1440), 562px→526px (1280); field-grid
+row height 129px→109px. The disclosure-row and value-text fixes (items 1–2)
+contributed the larger share — the margin trims alone would not have
+closed this gap.
+
+Screenshots in `acceptance-remediation-cycle9/`: `candidate-1440-tighter-
+density.png` and `candidate-1280-tighter-density.png` — both now show the
+Flächen section's full 4/2-column figure set inside the first viewport,
+materially matching the target's own achieved density; directly compare
+against `../../../visual-outcome-audit-18e7d71/vo-t1/targets/TARGET-
+building-1440.png`/`TARGET-building-1280.png`.
+
+**Known, disclosed residual gap:** tabs/identity position still sit
+~45–80px below the target's cited values. Re-investigated whether further
+reduction is safely available: the remaining chrome is the shared
+PageHeader eyebrow/meta row, the two-line intro paragraph (fixed product
+copy, not shortened), and the caption/"Gebäude verwalten" row (own 44px
+hit-target floor) — none reducible without either forking more canonical
+components or removing required information, both outside this cycle's
+bounded scope. Verified via direct target-vs-candidate visual comparison
+(not pixel arithmetic alone) that the achieved composition, hierarchy,
+and density now materially resemble the approved target.
+
 ## Acceptance remediation (cycle 8) — 4-column identity/Flächen read grid at 1440
 
 Product Decision closed ACCEPT-01: no fabricated Übersicht/conflict state
