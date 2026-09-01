@@ -595,7 +595,7 @@ export function OfferPanel(
       // readable window, never underneath the pinned header — the token
       // matches the budget `.a3-rail-header-budget` is capped to, so the
       // two can never drift apart.
-      className="a3-rail flex h-full w-panel-right min-w-0 max-w-panel-right shrink-0 flex-col overflow-y-auto border-l border-border-strong bg-surface-default"
+      className={`a3-rail flex h-full w-panel-right min-w-0 max-w-panel-right shrink-0 flex-col overflow-y-auto border-l border-border-strong bg-surface-default${s.pipelineView === 'konfigurator' ? ' a3-config-work-rail' : ''}`}
     >
       {/* SIDEBAR 03 (backlog 2be8e69c, SB-29): the rail's own heading root.
           `aria-label="Angebot"` above already names the `<aside>` landmark

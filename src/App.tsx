@@ -190,7 +190,7 @@ export function App() {
       {praesentation ? (
         <PresentationShell mainRef={mainRef} modeRef={modeRef} />
       ) : (
-        <div className="flex min-h-0 flex-1">
+        <div className={`flex min-h-0 flex-1${renderedView === 'konfigurator' ? ' a3-config-work-shell' : ''}`}>
           {/* VO-T5 / AC-17: comparison is a decision surface, not an
               operational editing step. Collapse both rails only for this
               route so its sticky labels and three visible Option columns

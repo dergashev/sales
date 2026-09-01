@@ -138,10 +138,11 @@ export function S3Konfigurator() {
     && (visibleStatus === 'ready' || visibleStatus === 'recheck')
 
   return (
-    <div className="px-7 py-6">
+    <div className="a3-config-work">
       {/* Заголовок экрана — masthead витрины: крупный титул и мета на
           одной базовой линии, как в образце. */}
       <PageHeader
+        className="a3-config-header"
         title={t(`chapter.${currentStep.id}`)}
         meta={t('s3.header.progress', {
           current: routeIndex + 1,
@@ -163,7 +164,7 @@ export function S3Konfigurator() {
             ДЛИННОГО ТЕКСТА (он стоит на абзацах внутри карточек), а не клеткой
             для рабочей области — аудит верно указал, что здесь он обнимал всю
             главу целиком. */}
-        <div className="py-5">
+        <div className="a3-config-work-body">
           {totalOverview && <ConfigurationOverview />}
           {/* Rendering follows semantic step identity. Display numbers come
               only from the active workflow above. */}
@@ -177,14 +178,20 @@ export function S3Konfigurator() {
             />
           )}
           {!totalOverview && currentId === CONFIGURATOR_STEP.KG_300_DETAILS && (
-            <div className="grid gap-5">
-              <EnergyCertBanner />
-              <UndergroundFloorRecap />
-              <OptionChapter groups={KG300_GROUPS}
-                intro={'Von oben nach unten: erst der Umfang, dann die Konstruktion, '
-                  + 'zuletzt die Oberfläche. Jede Antwort zeigt ihre Folge am Preis, '
-                  + 'bevor sie gewählt wird.'} />
-              <GroundRiskSection />
+            <div className="a3-config-kg300-stage">
+              <div className="a3-config-kg300-decisions">
+                <OptionChapter groups={KG300_GROUPS}
+                  intro={'Von oben nach unten: erst der Umfang, dann die Konstruktion, '
+                    + 'zuletzt die Oberfläche. Jede Antwort zeigt ihre Folge am Preis, '
+                    + 'bevor sie gewählt wird.'} />
+              </div>
+              <div className="a3-config-kg300-context">
+                <EnergyCertBanner />
+                <UndergroundFloorRecap />
+              </div>
+              <div className="a3-config-kg300-guidance">
+                <GroundRiskSection />
+              </div>
             </div>
           )}
           {!totalOverview && currentId === CONFIGURATOR_STEP.KG_400_DETAILS && (
@@ -215,7 +222,7 @@ export function S3Konfigurator() {
         </div>
 
         {/* Один следующий шаг всегда на экране (DC-27): маршрут, не принуждение. */}
-        {!totalOverview && currentId !== CONFIGURATOR_STEP.SCOPE_BOUNDARIES && <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-4">
+        {!totalOverview && currentId !== CONFIGURATOR_STEP.SCOPE_BOUNDARIES && <footer className="a3-config-action-dock">
           {previous ? (
             <Button onClick={() => s.openConfiguratorStepAt(previous.id)}>
               {t('s3.previousChapter', {
@@ -385,7 +392,7 @@ function ConfigurationModeContext({ buildingScoped }: { buildingScoped: boolean 
   return (
     <section
       aria-label={t('configurator.mode.legend')}
-      className="flex flex-wrap items-start justify-between gap-3 border-y border-border-subtle py-3"
+      className="a3-config-scope-band"
     >
       <p className="text-body text-text-primary">
         <strong>{summary}</strong>
@@ -1557,7 +1564,7 @@ function ChapterKg700() {
   }
 
   return (
-    <div className="grid gap-5">
+    <div className="a3-config-kg700-stage grid gap-5">
       {/* F27: die Card trug bislang denselben Titel wie das Kapitel selbst
           (chrome3.chapter.kg700 = das H1 der Seite) — Duplikat, nicht
           Struktur. Jede andere Card in diesem Screen (Untergeschoss,
@@ -1567,32 +1574,36 @@ function ChapterKg700() {
         title={t('configurator.kg700.calcMethod.title')}
         intro={t('remainder5.ancillary.twoMethods')}
       >
-        <SegmentedControl
-          legend={t('kg700.calculationMethod')}
-          value={s.kg700Mode}
-          onChange={(m) => s.setKg700Mode(m)}
-          options={[
-            {
-              value: 'vereinfacht',
-              label: t('kg700.all3Method'),
-              disabled: !all3Available,
-              disabledReason: t('kg700.all3UnavailableReason'),
-            },
-            { value: 'hoaiAho', label: t('kg700.hoaiAhoMethod') },
-          ]}
-        />
-        <p className="a3-cap mt-3">
-          {s.kg700Mode === 'vereinfacht'
-            ? t('kg700.distributionUnchanged')
-            : t('kg700.separateDriverRow')}
-        </p>
-        {/* В режиме echt доли KG 700 внутри блока нет: она стоит своей
-            позицией и живёт в водопаде, а не в разбивке блока. */}
-        {p.kgSplit.KG_700 && (
-          <p className="numeric mt-2 text-body text-text-primary">
-            Anteil KG{NNBSP}700: {moneyLabel(present(p.kgSplit.KG_700))}
-          </p>
-        )}
+        <div className="a3-config-kg700-decision">
+          <SegmentedControl
+            legend={t('kg700.calculationMethod')}
+            value={s.kg700Mode}
+            onChange={(m) => s.setKg700Mode(m)}
+            options={[
+              {
+                value: 'vereinfacht',
+                label: t('kg700.all3Method'),
+                disabled: !all3Available,
+                disabledReason: t('kg700.all3UnavailableReason'),
+              },
+              { value: 'hoaiAho', label: t('kg700.hoaiAhoMethod') },
+            ]}
+          />
+          <div className="a3-config-kg700-impact">
+            <p className="a3-cap">
+              {s.kg700Mode === 'vereinfacht'
+                ? t('kg700.distributionUnchanged')
+                : t('kg700.separateDriverRow')}
+            </p>
+            {/* В режиме echt доли KG 700 внутри блока нет: она стоит своей
+                позицией и живёт в водопаде, а не в разбивке блока. */}
+            {p.kgSplit.KG_700 && (
+              <p className="numeric mt-3 text-body text-text-primary">
+                Anteil KG{NNBSP}700: {moneyLabel(present(p.kgSplit.KG_700))}
+              </p>
+            )}
+          </div>
+        </div>
       </Card>
     </div>
   )

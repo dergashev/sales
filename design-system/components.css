@@ -1985,3 +1985,32 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
   .a3-ring .a3-fgc{stroke-dashoffset:27.1}
   .a3-loader .a3-run{transform:none;width:60%}
 }
+
+/* VR2-04 — a reusable Configurator work-stage composition consumed by the
+   live KG 300 and KG 700 chapters. It composes existing controls, sheets,
+   navigation and rail metrics; no parallel control API is introduced. */
+.a3-config-work-shell>.a3-config-work-rail{width:var(--panel-right-width-compact);max-width:var(--panel-right-width-compact)}
+.a3-config-work-rail .a3-rail-header-budget{padding:var(--space-3) var(--space-4) var(--space-2)}
+.a3-config-work-rail .a3-hb-total .a3-hb-num{font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line)}
+.a3-config-work-rail .a3-hb-total .a3-hb-unit{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line)}
+.a3-config-work-rail>div.flex-1{padding-left:var(--space-4);padding-right:var(--space-4)}
+.a3-config-work{min-width:0;padding:var(--space-5) var(--space-7)}
+.a3-config-header{margin:0 0 var(--space-4);align-items:flex-start}
+.a3-config-header .a3-meta{order:-1;flex-basis:100%;color:var(--color-text-secondary);font-size:var(--type-caption-size);font-weight:700;letter-spacing:.04em;line-height:var(--type-caption-line);text-align:left;text-transform:uppercase}
+.a3-config-header .a3-hero-title{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line)}
+.a3-config-scope-band{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-3);border:var(--border-default);border-left:var(--size-status-accent-width) solid var(--color-selection-border);background:var(--color-surface-stage);padding:var(--space-3) var(--space-4)}
+.a3-config-work-body{padding:var(--space-4) 0 var(--space-5)}
+.a3-config-kg300-stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(13rem,15rem);gap:var(--space-5);align-items:start}
+.a3-config-kg300-decisions,.a3-config-kg300-guidance{min-width:0}
+.a3-config-kg300-context{display:grid;gap:var(--space-4);min-width:0;border-left:var(--border-default);padding-left:var(--space-4)}
+.a3-config-kg300-guidance{grid-column:1/-1}
+.a3-config-option-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-4)}
+.a3-config-option-intro{grid-column:1/-1;margin:0;max-width:var(--measure-wide)}
+.a3-config-option-decision{height:100%;margin:0}.a3-config-option-decision:nth-of-type(n + 3){grid-column:1/-1}
+.a3-config-kg700-stage{display:grid;max-width:none;align-content:start;gap:var(--space-5)}.a3-config-kg700-stage .a3-sheet{max-width:none}
+.a3-config-kg700-decision{display:grid;grid-template-columns:minmax(0,1fr) minmax(13rem,16rem);gap:var(--space-4);align-items:stretch}.a3-config-kg700-decision>*{min-width:0}
+.a3-config-kg700-impact{background:var(--color-surface-stage-deep);color:var(--color-surface-default);padding:var(--space-4)}.a3-config-kg700-impact .a3-cap{color:var(--color-surface-subtle)}.a3-config-kg700-impact .text-text-primary{color:var(--color-surface-default)}
+.a3-config-action-dock{position:sticky;bottom:0;z-index:2;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-3);margin-top:var(--space-5);padding:var(--space-3) var(--space-4);background:var(--color-surface-default);border-top:var(--border-default)}
+.a3-config-sidebar .a3-wfs-chapter .a3-wfs-current,.a3-config-sidebar .a3-wfs-chapter .a3-wfs-cur{background:var(--color-surface-stage)}.a3-config-sidebar .a3-wfs-chapter .a3-wfs-button,.a3-config-sidebar .a3-wfs-chapter .a3-wfs-static{padding-top:var(--space-3);padding-bottom:var(--space-3)}
+@media (max-width:1439px){.a3-config-work-rail .a3-hb-total .a3-hb-num{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line)}.a3-config-work-rail .a3-hb-total .a3-hb-unit{font-size:var(--type-small-size);line-height:var(--type-small-line)}.a3-config-work{padding-left:var(--space-5);padding-right:var(--space-5)}.a3-config-kg300-stage{grid-template-columns:minmax(0,1fr) 12rem;gap:var(--space-4)}.a3-config-kg300-context{padding-left:var(--space-3)}.a3-config-option-list{gap:var(--space-3)}.a3-config-kg700-decision{grid-template-columns:minmax(0,1fr) 12rem;gap:var(--space-3)}}
+@media (max-width:1100px){.a3-config-kg300-stage{grid-template-columns:1fr}.a3-config-kg300-context{grid-template-columns:repeat(2,minmax(0,1fr));border-left:0;border-top:var(--border-default);padding:var(--space-4) 0 0}}

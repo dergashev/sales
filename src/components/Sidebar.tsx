@@ -98,7 +98,7 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
   return (
     <nav
       aria-label="Navigation"
-      className="flex h-full w-panel-left shrink-0 flex-col overflow-y-auto border-r border-border-strong bg-surface-default"
+      className={`flex h-full w-panel-left shrink-0 flex-col overflow-y-auto border-r border-border-strong bg-surface-default${view === 'konfigurator' ? ' a3-config-sidebar' : ''}`}
     >
       <div className="border-b border-border-strong px-5 py-4">
         {option && s.activeOptionId ? (

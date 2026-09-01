@@ -207,9 +207,9 @@ export function OptionChapter({ groups, intro }: {
   const visible = groups.filter((g) => isGroupActive(g, chosen))
 
   return (
-    <div className="grid gap-5">
+    <div className="a3-config-option-list grid gap-5">
       {s.mode === 'intern' && (
-        <p className="a3-cap a3-lede">
+        <p className="a3-config-option-intro a3-cap a3-lede">
           {tx(intro)}
         </p>
       )}
@@ -218,7 +218,7 @@ export function OptionChapter({ groups, intro }: {
         const value = chosen[g.id] ?? g.default
         const source = prov[g.id] ?? 'Standard'
         return (
-          <section key={g.id} className="a3-sheet">
+          <section key={g.id} className="a3-config-option-decision a3-sheet">
             <h2 className="text-heading-3 font-bold text-text-primary">{tx(g.label)}</h2>
             <p className="a3-cap mt-1">{tx(g.question)}</p>
 
