@@ -1,5 +1,46 @@
 # VR2-03 — Building & Scope workspace recomposition — evidence
 
+## Acceptance remediation (cycle 10) — 5-column identity grid, all three sections in the first viewport
+
+Acceptance's final re-audit of `bcad764` pinpointed the exact remaining
+cause: Identität & Nutzung has 5 real facts (documentationName/address/
+buildingForm/buildingClass/units) — one more than Flächen's 4 — but was
+forced onto the same 4-column grid as Flächen (cycle 8). The 5th field
+(Address, kept for data truth) stranded alone on its own second row,
+nearly doubling the section's height and pushing Flächen/geometry down
+by the same amount.
+
+New final `implementationCommit`/`candidateRuntimeCommit` =
+`78f32a29154f386d05c0eb50be81e6056db05841` (supersedes `bcad764` throughout
+this document unless a screenshot is explicitly labelled otherwise).
+Re-verified: typecheck, 750/750 tests, verify (0 findings), build,
+`npm run test:browser:desktop` 8/8 — all PASS against this exact SHA, clean
+tree.
+
+**Fix**: added `.a3-buildingscope-read-grid-5` — identity's own read-grid
+variant, 5 columns at 1440+ / 3 at ≤1439px — so all 5 fields render in the
+minimum rows their own count needs, while Flächen/storeys keep the
+existing 4/2-column variant (correct for their own field counts).
+
+**Measured result**: identity grid height 246px→145px (1440), 331px→266px
+(1280). Flächen moves up by the same amount (764px→663px at 1440, per
+Acceptance's own measurement baseline). **All three review sections
+(Identität & Nutzung, Flächen, Geometrie & Geschosse) plus the confirm
+dock now render inside the 900px first viewport at 1440** —
+`candidate-1440-all-sections-in-viewport.png` shows this directly.
+
+Screenshots in `acceptance-remediation-cycle10/`:
+- `candidate-1440-all-sections-in-viewport.png` — all three sections
+  visible without scrolling.
+- `candidate-1280-five-column-two-rows.png` — identity's 5 fields in 3
+  columns (2 rows) instead of 2 columns (3 rows).
+
+**Disclosed, minor**: at 1440 (5 narrow ~127px columns) "Mehrfamilienhaus"
+wraps to two lines; at 1280 (3 wider ~192px columns) it fits one line —
+an artifact of 1440 using more, narrower columns to fit all 5 fields on
+one row. Contained within its own `ReadField`, no overflow, no data loss;
+judged an acceptable trade-off against the alternative (a second row).
+
 ## Acceptance remediation (cycle 9) — close the remaining ACCEPT-02 vertical-density gap
 
 Continuation of ACCEPT-02 remediation on top of `125e420` (4-column grid
