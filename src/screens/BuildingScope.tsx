@@ -419,8 +419,12 @@ export function BuildingScope() {
       {/* Acceptance remediation (cycle 6): dropped this wrapper's own
           top padding (kept the bottom one) — another small, real
           contributor to the gap above the building tabs, on top of the
-          `.a3-buildingscope-review` sheet padding override below. */}
-      <div className="pb-4">
+          `.a3-buildingscope-review` sheet padding override below.
+          Acceptance remediation (cycle 9): reduced further, 16px→8px —
+          still real separation from the page's last element below this
+          sheet, just no longer the same size as a titled sheet's own
+          full section gap. */}
+      <div className="pb-2">
         {/* Acceptance remediation (cycle 3): dropped this sheet's own
             `intro` line — PageHeader's `lede` above already states the
             stage's purpose, and the review content needs to reach the
@@ -509,7 +513,8 @@ export function BuildingScope() {
             // to separate the two rows (this was also a real, if smaller,
             // contributor to the tabs sitting below the target's measured
             // position).
-            <div className="mt-3">
+            // Acceptance remediation (cycle 9): reduced further, 12px→8px.
+            <div className="mt-2">
               {selectedIds.length > 1 ? (
                 // Acceptance remediation (cycle 3): the previous first/last
                 // jump buttons existed to help navigate a horizontally
@@ -580,7 +585,7 @@ export function BuildingScope() {
                           : 'buildingScope.status.open',
                     )}`}
                     hidden={s.activeBuildingId !== id}
-                    className="a3-tabpane"
+                    className="a3-tabpane a3-buildingscope-tabpane"
                   >
                     <BuildingReviewPanel
                       buildingId={id}
@@ -1090,7 +1095,14 @@ function ReadField({ label, value, provenance }: {
           read value has no such safety net — `break-words` is this read
           view's own, matching the same fix already applied to every other
           long/unbreakable label in this product (rule 37). */}
-      <p className="min-w-0 break-words text-heading-3 font-bold text-text-primary">{value}</p>
+      {/* Acceptance remediation (cycle 9): `text-heading-3` (24px) — sized
+          for section headings, not a dense 4-column value grid — forced
+          values like "Mehrfamilienhaus" onto two lines at the narrower
+          per-column width the target's 4-column composition requires,
+          inflating every row in the grid to match. `text-body font-bold`
+          (16px) stays a clearly emphasised value while fitting the target's
+          own achieved density on one line. */}
+      <p className="min-w-0 break-words text-body font-bold text-text-primary">{value}</p>
       {provenance && <ProvenanceChip provenance={provenance} />}
     </div>
   )

@@ -854,7 +854,38 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    remaining contributor to the tabs starting materially below the target's
    measured position. Scoped to this one screen's un-titled review sheet
    only; `.a3-sheet` itself, and every other consumer, keeps `--space-7`. */
-.a3-buildingscope-review{padding-top:var(--space-3)}
+/* Acceptance remediation cycle 9: reduced further, --space-3 (12px) →
+   --space-2 (8px), alongside the two JSX-level margin trims in
+   `BuildingScope.tsx` (the wrapper's bottom padding, and the margin
+   before the tab strip) — each individually small, together a real
+   further reduction of the gap above the building tabs. */
+.a3-buildingscope-review{padding-top:var(--space-2)}
+
+/* VR2-03 · Acceptance remediation cycle 9 (ACCEPT-02 second re-audit):
+   `.a3-tabpane`'s shared 16px top padding (correct for every other
+   tabbed surface) sits directly above this screen's own review table —
+   scoped to this screen's tabpane only via the `.a3-buildingscope-
+   tabpane` marker class (`BuildingScope.tsx`), not the bare
+   `.a3-tabpane`. The bottom padding is untouched (still real breathing
+   room below the last section). */
+.a3-buildingscope-tabpane{padding-top:0}
+
+/* VR2-03 · Acceptance remediation cycle 9 (ACCEPT-02 second re-audit):
+   browser-measured why each `ReviewDisclosure` header row rendered at
+   58px instead of the 44px hit-target floor its own toggle button
+   already satisfies: BOTH the status `Badge` ("→ Bereit zur
+   Bestätigung") and the "Abschnitt bearbeiten" `Button` wrap their text
+   across two lines inside their own narrow, auto-sized table columns —
+   confirmed by selectively hiding each cell and re-measuring row height
+   (58px → 52px removing the button alone → 46px also removing the
+   badge, landing exactly on the label button's own 44px + ~2px cell
+   border). Neither's accessible name/behaviour changes; only whether
+   its own short, controlled-vocabulary label (never arbitrary/user
+   content) may wrap. Scoped to this screen's disclosure table only —
+   the canonical `Badge`/`Button` components, and every other disclosure
+   table in the product, keep their default wrapping behaviour. */
+.a3-buildingscope-review .a3-disclosure-row .a3-badge,
+.a3-buildingscope-review .a3-disclosure-row .a3-btn.a3-ghost{white-space:nowrap}
 
 /* VR2-03 · Acceptance remediation cycle 8 (ACCEPT-02 re-audit): the
    approved target's Identity/Flächen READ grids are 4 columns at 1440 and
