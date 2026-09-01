@@ -1,5 +1,61 @@
 # VR2-03 — Building & Scope workspace recomposition — evidence
 
+## Acceptance remediation (cycle 8) — 4-column identity/Flächen read grid at 1440
+
+Product Decision closed ACCEPT-01: no fabricated Übersicht/conflict state
+is required — the approved target's decision-first shell is not literal
+route authority for this ticket. Acceptance's re-audit of `16cf9be` found
+one remaining delta under ACCEPT-02: the approved target's Identity/
+Flächen READ grids are 4 columns at 1440 (candidate rendered 3).
+
+New final `implementationCommit`/`candidateRuntimeCommit` =
+`a6b01c82a20dd881347127beeec66bd84a218aa2` (supersedes `16cf9be` throughout
+this document unless a screenshot is explicitly labelled otherwise).
+Re-verified: typecheck, 750/750 tests, verify (0 findings), build,
+`npm run test:browser:desktop` 8/8 — all PASS against this exact SHA, clean
+tree.
+
+**Fix**: `.a3-field-grid`'s shared `auto-fit, minmax(10rem,1fr)` computes
+3 columns at both 1440 (727px) and 1280 (624px) content width inside this
+screen's review sheet — correct for every other consumer, but short of
+the target's 4/2 split here. Added a new `.a3-buildingscope-read-grid`
+marker class to ONLY the three READ-mode field-grid wrappers in
+`BuildingScope.tsx` (identity/areas/storeys), and scoped the explicit
+4-column (1440+) / 2-column (≤1439px) override to that marker —
+deliberately NOT the bare `.a3-field-grid`, which the EDIT-mode grids in
+this same sheet also use.
+
+**Regression caught and avoided**: browser-testing the fix against the
+EDIT view (not just the read view) found that forcing 4 columns there
+overflowed a real `<input>` field ("Adresse") by 38px at 1440 and 13px
+at 1280 — the edit fields' own real form controls (inputs/selects with
+minimum comfortable widths) don't fit that narrow, unlike plain read-only
+text. The marker-class scoping keeps edit mode on its natural 3-column
+auto-fit, unaffected.
+
+Screenshots in `acceptance-remediation-cycle8/`:
+- `candidate-1440-four-column-identity-grid.png` — Identität & Nutzung and
+  Flächen both render 4 columns at 1440, matching the target's density.
+- `candidate-1280-two-column-unchanged.png` — 1280 still 2 columns
+  (unaffected by this cycle's change, confirming the breakpoint logic).
+- `candidate-1440-edit-mode-still-three-columns.png` — "Abschnitt
+  bearbeiten" opened on Identität & Nutzung: edit mode keeps its natural
+  3-column layout with comfortable field widths, no overflow.
+
+**Known, disclosed non-change**: the vertical position of the building
+tabs/identity summary (measured ~325px/506px at 1440 vs target's cited
+~270px/390px) was not further reduced this cycle. Investigated the
+remaining ~75px gap between the tab strip and the Identity read grid
+precisely: 16px is `.a3-tabpane`'s own canonical top padding (shared by
+every tabbed surface in the product) and ~58px is the `DisclosureRow`
+section-header row's own canonical height (label + status badge + the
+"Abschnitt bearbeiten" action, shared by every disclosure table in the
+product). Both are real, functioning, canonical-component chrome — not
+slack specific to this screen — so narrowing them would mean forking a
+shared primitive for one route's cosmetic gain, which the project's
+Design System governance reserves for an explicit canonical-evolution
+decision, not a bounded per-screen fix.
+
 ## Acceptance remediation (cycle 7) — compact readiness hierarchy, 1280 two-column grid, ACCEPT-01 escalated
 
 Acceptance rejected `59f737c4bd5daee19e9eb35b32087a31560e283a` a 6th time
