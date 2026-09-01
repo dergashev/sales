@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useState } from 'react'
 import { Decimal } from 'decimal.js'
-import { act, render, screen, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
 import { confirmBuildingReviewSections, confirmWholeConfiguration } from '../../test/offer-option'
@@ -724,6 +724,17 @@ describe('SIDEBAR 03 (backlog 2be8e69c): client-safe rail, EN localization', () 
     // §3 Ergebnis (the rail itself unmounts in Kundenansicht — the stale
     // `rail` reference above would only show the frozen pre-switch DOM,
     // never prove anything about the new client surface).
+    //
+    // VR2-06: the narrative shell shows one full-bleed page at a time — §3
+    // Ergebnis only mounts once its tab is active, and the entry point
+    // after `setMode('praesentation')` is always §1 Projekt, so navigate
+    // there first (its cross-fade resolves on a real timer tick, not
+    // synchronously, per `src/test/setup.ts`'s `requestAnimationFrame`
+    // polyfill).
+    await user.click(screen.getByRole('button', { name: 'Ergebnis' }))
+    await waitFor(() => {
+      expect(screen.getByRole('region', { name: 'Ergebnis' })).toBeInTheDocument()
+    })
     const ergebnis = screen.getByRole('region', { name: 'Ergebnis' })
     expect(within(ergebnis).getAllByText(/Energiestandard EH 55/).length).toBe(1)
     expect(within(ergebnis).queryByText('Haus A')).toBeNull()

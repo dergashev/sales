@@ -1953,34 +1953,106 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
   .a3-t-hero,.a3-hb-total .a3-hb-num{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line)}
   .a3-hb-total .a3-hb-unit{font-size:var(--type-small-size);line-height:var(--type-small-line)}
 }
-/* REDESIGN R3 WAVE 2a (backlog ce17da51) — PresentationShell product-
-   specific composition (see `src/components/PresentationShell.tsx`'s own
-   doc comment). Built entirely from existing tokens — no new primitive, no
-   local Design System. `.a3-presentation-tab[-current]` is the narrative
-   strip's quiet text-tab (deliberately NOT `.a3-btn`/WorkflowStepper —
-   this is story navigation, not a workflow); `.a3-option-tile[-selected]`
-   reuses the canonical selection border token (`--border-selected`, the
-   same `--color-selection-border` Sidebar's active-item treatment already
-   uses) rather than the brand-orange accent (rule 5/8: selection is never
-   colour-only — the tile also prints a "Wird präsentiert" caption). */
-.a3-presentation-tab{appearance:none;background:none;border:none;border-bottom:var(--border-width-default) solid transparent;min-width:var(--size-hit-target-default);min-height:var(--size-hit-target-default);padding:var(--space-2);font:inherit;font-size:var(--type-small-size);color:var(--color-text-secondary);cursor:pointer}
-.a3-presentation-tab-current{border-bottom-color:var(--color-border-strong);color:var(--color-text-primary);font-weight:700}
-.a3-option-tile{display:block;width:100%;border:var(--border-default);cursor:pointer;background:var(--color-surface-default);text-align:left;padding:var(--space-4)}
-.a3-option-tile-selected{border:var(--border-selected)}
+/* VR2-06 — PresentationShell narrative shell (see
+   `src/components/PresentationShell.tsx`'s own doc comment). Built
+   entirely from existing tokens — no new primitive, no local Design
+   System. The shell owns ONE top bar (brand + narrative strip + compact
+   Ansicht/mode/exit/language cluster) instead of stacking the generic
+   AppHeader above a second Present-only bar, and renders exactly ONE
+   full-bleed narrative page at a time instead of a scrolled stack of
+   cards — the structural gap VR2-06 closes (`visual-recovery-audit-v2`).
+   `.a3-presentation-tab[-current]` is the narrative strip's quiet
+   text-tab (deliberately NOT `.a3-btn`/WorkflowStepper — this is story
+   navigation, not a workflow) using `--border-selected` (the same
+   `--color-selection-border` Sidebar's active-item treatment already
+   uses) for its underline, never colour alone (rule 8: the tab's own text
+   goes bold + `aria-current` at the same time). */
+.a3-presentation-topbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-4);border-bottom:var(--border-default);background:var(--color-surface-default);padding:var(--space-3) var(--space-5)}
+.a3-presentation-brand{display:flex;flex:0 0 auto;align-items:center;min-width:0}
+.a3-presentation-nav{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-1)}
+.a3-presentation-tab{appearance:none;background:none;border:none;border-bottom:var(--border-width-strong) solid transparent;min-width:var(--size-hit-target-default);min-height:var(--size-hit-target-default);padding:var(--space-2);font:inherit;font-size:var(--type-small-size);color:var(--color-text-secondary);cursor:pointer}
+.a3-presentation-tab-current{border-bottom:var(--border-selected);color:var(--color-text-primary);font-weight:700}
+.a3-presentation-topbar-actions{display:flex;flex:0 0 auto;flex-wrap:wrap;align-items:center;gap:var(--space-3)}
+.a3-presentation-ansicht{min-width:0}
+.a3-presentation-ansicht>.a3-cap{margin:0 0 var(--space-1)}
 .a3-presentation-content{min-width:0}
-.a3-presentation-building{display:grid;grid-template-columns:minmax(16rem,.9fr) minmax(0,1.1fr);gap:var(--space-6);align-items:stretch}
-.a3-presentation-building-media{min-width:0;display:flex;align-items:stretch;background:var(--color-surface-subtle)}
-.a3-presentation-building-media>figure{width:100%;height:100%;min-height:15rem}
-.a3-presentation-building-copy{min-width:0;padding-block:var(--space-2)}
-.a3-presentation-building-copy dd{overflow-wrap:anywhere}
-.a3-presentation-timeline{position:relative;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-6);padding-top:var(--space-5)}
-.a3-presentation-timeline-line{position:absolute;inset-inline:0;top:0;border-top:var(--border-default);border-color:var(--color-border-strong)}
-.a3-presentation-timeline p{display:grid;gap:var(--space-1);margin:0}
-.a3-presentation-timeline strong{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
-.a3-presentation-consequence{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-5);border-top:var(--border-hairline);padding-top:var(--space-4)}
-.a3-presentation-next{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(16rem,.85fr);gap:var(--space-7);align-items:start}
+/* One full-bleed "page" per narrative chapter — the section fills the
+   entire scrollable main area (no card, no max-width column) so identity/
+   scope/commercial read as an editorial document, not a stacked panel. */
+.a3-presentation-page{display:flex;flex:1 1 auto;min-height:0;flex-direction:column}
+.a3-presentation-page-pad{padding:var(--space-7) var(--space-6)}
+.a3-presentation-fact-row{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.a3-presentation-fact-chip{border:var(--border-default);background:var(--color-surface-default);padding:var(--space-1) var(--space-3);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-label-weight);color:var(--color-text-primary)}
+/* §1 identity — full-bleed media with the caption card overlapping its
+   lower edge (same "flex-fills-container" technique `.a3-opportunity-
+   media` established for MediaFrame, VR2-01). */
+.a3-presentation-identity{position:relative;display:flex;flex-direction:column;min-height:0;flex:1}
+.a3-presentation-identity-media{position:absolute;inset:0}
+.a3-presentation-identity-media figure{height:100%;display:flex;flex-direction:column}
+.a3-presentation-identity-media [class*="aspect-media-"]{flex:1 1 auto;min-height:0;aspect-ratio:auto}
+.a3-presentation-identity-card{position:relative;margin-top:auto;width:min(100%,var(--measure-body-max));border-top:var(--border-selected);background:var(--color-surface-default);padding:var(--space-6)}
+/* §2 scope — one building story at a time, media | facts, full height. */
+.a3-presentation-scope{display:grid;flex:1;min-height:0;grid-template-columns:minmax(16rem,1fr) minmax(20rem,1fr)}
+.a3-presentation-scope-media{position:relative;min-width:0;min-height:18rem}
+.a3-presentation-scope-media figure{height:100%;display:flex;flex-direction:column}
+.a3-presentation-scope-media [class*="aspect-media-"]{flex:1 1 auto;min-height:0;aspect-ratio:auto}
+/* `FallbackArt`'s building icon sizes itself as 54%/62% of its own box
+   (components.css `.a3-media-identity-building`) — tuned for the `card`/
+   `tile` ratios its other consumers use. At the full-bleed hero heights
+   these two pages stretch MediaFrame to (VR2-06), that percentage would
+   scale the icon into a distorted, oversized silhouette instead of the
+   calm identity mark the fallback state is meant to read as. Capped here
+   to the SAME comfortable absolute size regardless of container — no
+   other `MediaFrame` consumer is touched (scoped to these two wrappers). */
+.a3-presentation-identity-media .a3-media-identity-building,
+.a3-presentation-scope-media .a3-media-identity-building{width:min(54%,22rem);height:min(62%,16rem)}
+.a3-presentation-scope-copy{min-width:0;background:var(--color-surface-canvas);padding:var(--space-7) var(--space-6)}
+.a3-presentation-fact-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:var(--border-default)}
+.a3-presentation-fact-grid>div{border:var(--border-hairline);padding:var(--space-3) var(--space-4)}
+.a3-presentation-fact-grid dd{overflow-wrap:anywhere}
+/* §3 commercial — full-bleed dark Stage (ADR-R1-02 permits the brand
+   accent on `--color-surface-stage-deep` alongside `--color-surface-
+   default`, rule 5). */
+.a3-presentation-commercial{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(18rem,.9fr);gap:var(--space-8);padding:var(--space-8) var(--space-6);align-content:center}
+.a3-presentation-commercial-drivers{display:flex;flex-direction:column;gap:var(--space-5);min-width:0}
+.a3-presentation-commercial-driver-list{list-style:none;margin:0;padding:0;border-top:var(--border-hairline)}
+.a3-presentation-commercial-driver-list li{display:flex;justify-content:space-between;gap:var(--space-3);border-bottom:var(--border-hairline);padding-block:var(--space-2);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+/* No dark-stage "subtle surface" token exists (rule 2 forbids inventing
+   one) — the tile pair is separated by a border only, consistent with
+   rule 4's flat border-and-air hierarchy. */
+.a3-presentation-commercial-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:var(--border-hairline)}
+.a3-presentation-commercial-tiles>div{border-left:var(--border-hairline);padding:var(--space-4)}
+.a3-presentation-commercial-tiles>div:first-child{border-left:0}
+/* Caption/caption-sub colour on this dark page: same `text-text-inverse`
+   Tailwind utility CompositionBar's own `onDark` prop already swaps to
+   (ADR-R1-02) — applied inline per element rather than re-declared here,
+   so no `.a3-stage-deep` consumer outside this page is touched. */
+/* §4 timeline — editorial white page around the canonical ScheduleGantt. */
+.a3-presentation-consequence{display:flex;align-items:center;justify-content:space-between;gap:var(--space-5);flex-wrap:wrap;background:var(--color-surface-canvas);padding:var(--space-5) var(--space-6)}
+/* §5 options — three-up decision cards. */
+/* Column count is the real eligible-Option count (2..n) — set inline per
+   render, never hardcoded to the 3-Option fixture (rule: no invented
+   Option-count assumptions). */
+.a3-presentation-option-grid{display:grid;gap:0;align-items:stretch}
+.a3-presentation-option-card{display:flex;flex-direction:column;min-width:0;border-top:var(--border-width-strong) solid var(--color-border-strong);border-left:var(--border-hairline);background:var(--color-surface-default);padding:var(--space-5)}
+.a3-presentation-option-card:first-child{border-left:0}
+.a3-presentation-option-card-current{border-top-color:var(--color-selection-border);background:var(--color-surface-canvas)}
+.a3-presentation-option-fact{display:flex;justify-content:space-between;gap:var(--space-3);border-bottom:var(--border-hairline);padding-block:var(--space-2);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+/* §6 next step — split beige/white, same "was bestätigt wird" callout the
+   approved target reserves for the confirmation summary. */
+.a3-presentation-next{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);flex:1;min-height:0}
+.a3-presentation-next-primary{background:var(--color-surface-canvas);padding:var(--space-8) var(--space-6)}
+.a3-presentation-next-aside{padding:var(--space-8) var(--space-6)}
+.a3-presentation-next-callout{border-left:var(--border-selected);background:var(--color-surface-default);padding:var(--space-4)}
 .a3-presentation-artifacts{list-style:none;margin-inline:0;padding:0;border-top:var(--border-hairline)}
-.a3-presentation-artifacts li{border-bottom:var(--border-hairline);padding-block:var(--space-3);color:var(--color-text-primary);font-size:var(--type-body-size);line-height:var(--type-body-line)}
+.a3-presentation-artifacts li{border:var(--border-default);border-top:0;padding:var(--space-3) var(--space-4);color:var(--color-text-primary);font-size:var(--type-body-size);line-height:var(--type-body-line)}
+.a3-presentation-artifacts li:first-child{border-top:var(--border-default)}
+@media (max-width:89.9375rem){
+  .a3-presentation-page-pad{padding:var(--space-6) var(--space-5)}
+  .a3-presentation-scope-copy,.a3-presentation-next-primary,.a3-presentation-next-aside{padding:var(--space-6) var(--space-5)}
+  .a3-presentation-commercial{padding:var(--space-6) var(--space-5);gap:var(--space-6)}
+  .a3-presentation-identity-card{padding:var(--space-5)}
+}
 .a3-presentation-flow{width:min(100%,var(--measure-wide));margin-inline:auto;padding:var(--space-7) var(--space-6)}
 .a3-presentation-flow-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(18rem,.85fr);gap:var(--space-8);align-items:start}
 .a3-presentation-flow-total{border-top:var(--border-contrast-2px);padding-top:var(--space-4)}

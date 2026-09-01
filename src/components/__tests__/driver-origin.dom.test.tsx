@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { act, render, screen, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
 import { confirmBuildingReviewSections, confirmWholeConfiguration } from '../../test/offer-option'
@@ -138,6 +138,17 @@ describe('DC-21: происхождение раскрывается у кажд
     // the new surface never calls the building-attribution resolver at
     // all (it strips any building-id key prefix and aggregates by label
     // instead of ever reading a building's display name).
+    //
+    // VR2-06: the narrative shell now shows one full-bleed page at a time
+    // (switched by the top-bar strip) instead of a scrolled stack of every
+    // section — §3 Ergebnis only mounts once its tab is active, and the
+    // tab-switch cross-fade resolves on a real timer tick, not
+    // synchronously with the click (`src/test/setup.ts`'s `requestAnimation
+    // Frame` polyfill).
+    await user.click(screen.getByRole('button', { name: 'Ergebnis' }))
+    await waitFor(() => {
+      expect(screen.getByRole('region', { name: 'Ergebnis' })).toBeInTheDocument()
+    })
     const ergebnis = screen.getByRole('region', { name: 'Ergebnis' })
     expect(within(ergebnis).getByText('Kostentreiber')).toBeInTheDocument()
     expect(ergebnis).not.toHaveTextContent('Haus A')

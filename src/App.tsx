@@ -170,7 +170,14 @@ export function App() {
     <div className="a3-app-shell flex h-screen flex-col">
       <ViewportWarning />
       <FontRuntimeWarning />
-      <AppHeader />
+      {/* VR2-06: Present owns its complete shell (`PresentationTopBar`
+          inside `PresentationShell` — brand + narrative strip + a compact
+          Ansicht/mode/exit/language cluster) instead of stacking the
+          generic Work `AppHeader` above a second Present-only bar. This is
+          the ONLY branch that changes: `AppHeader` still renders in every
+          other route (list/card/Foundations/defensive-empty), and the
+          internal branch below is untouched. */}
+      {!praesentation && <AppHeader />}
       {!praesentation && <ClientOutputGateDialog returnFocusTo={modeRef} />}
 
       {/* REDESIGN R3 WAVE 2a (877f2c2a / ce17da51): Kundenansicht no longer
