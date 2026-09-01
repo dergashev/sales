@@ -1313,7 +1313,6 @@ function Kg300PrimaryDecisions() {
           intro=""
           variant="workstage"
           footnote="hide"
-          maxVisibleFacadeChoices={4}
         />
       </div>
     </section>
@@ -1321,7 +1320,7 @@ function Kg300PrimaryDecisions() {
 }
 
 /**
- * The target presents the first three secondary decisions as compact rows and
+ * The target presents the first secondary decisions as compact rows and
  * keeps the remaining, still-live controls available on demand. This changes
  * no option state or calculation; it only makes the next decisions visible in
  * the first scan path instead of extending the work stage as a long article.
@@ -1330,7 +1329,10 @@ function Kg300SecondaryDecisions() {
   const t = useT()
   const [showAll, setShowAll] = useState(false)
   const groups = KG300_GROUPS.filter((group) => group.id !== 'fassade')
-  const visibleGroups = showAll ? groups : groups.slice(0, 3)
+  // Keep the image-bearing balcony type in the first scan. The compact
+  // secondary layout still defers the remaining choices, but no longer
+  // suppresses the established option-media affordance on initial render.
+  const visibleGroups = showAll ? groups : groups.slice(0, 4)
 
   return (
     <section className="a3-config-kg300-secondary">
