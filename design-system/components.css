@@ -904,6 +904,19 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
   .a3-buildingscope-review .a3-buildingscope-read-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 
+/* VR2-03 · Acceptance remediation cycle 10 (ACCEPT-02 final re-audit):
+   Identität & Nutzung has 5 real facts — documentationName/address/
+   buildingForm/buildingClass/units — one more than Flächen's 4. Forcing
+   the same 4-column grid stranded the 5th field (Address, kept for data
+   truth per the remediation request) alone on its own second row,
+   nearly doubling the section's measured height for a single field.
+   `-5` is its own variant: 5 columns at 1440+ (all fields on one row),
+   3 at ≤1439px (two rows of 3+2 instead of three rows of 2+2+1). */
+.a3-buildingscope-review .a3-buildingscope-read-grid-5{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media (max-width:1439px) {
+  .a3-buildingscope-review .a3-buildingscope-read-grid-5{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+
 /* DC-19 · ScheduleGantt. Structure: .a3-gantt > .a3-gantt-scroll >
    .a3-gantt-visual > .a3-g-row + .a3-g-axis + .a3-g-legend;
    details.a3-gantt-details contains table.a3-gantt-table.

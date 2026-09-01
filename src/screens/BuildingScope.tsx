@@ -806,7 +806,15 @@ function BuildingReviewPanel({
                   <DecimalFactField buildingId={buildingId} factKey="units" integer />
                 </div>
               ) : (
-                <div className="a3-field-grid a3-buildingscope-read-grid p-4">
+                // Acceptance remediation (cycle 10): identity has 5 real
+                // facts (name/address/form/class/units) — Address stays
+                // (it is genuinely identity-scoped data, per
+                // `sectionForFact`, and preserving it was explicitly
+                // requested), but forcing exactly 4 columns onto 5 items
+                // stranded the 5th field alone on its own second row,
+                // nearly doubling the section's height for one field. The
+                // `-5` variant fits all 5 on one row instead.
+                <div className="a3-field-grid a3-buildingscope-read-grid-5 p-4">
                   {identityReadFields(review, t).map((field) => (
                     <ReadField key={field.key} label={field.label} value={field.value} provenance={field.provenance} />
                   ))}
