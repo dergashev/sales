@@ -2038,8 +2038,9 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-config-kg300-primary-grid .a3-config-option-decision>h2,.a3-config-kg300-primary-grid .a3-config-option-decision>p{display:none}
 .a3-config-kg300-primary-grid .a3-chip-src{display:none}
 .a3-config-kg300-primary-grid .a3-faxes{display:none}
-.a3-config-kg300-primary-grid .mt-3{margin-top:0}.a3-config-kg300-primary-grid .a3-fgrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-2);min-height:0}
+.a3-config-kg300-primary-grid .mt-3{margin-top:0}.a3-config-kg300-primary-grid .a3-fgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-2);min-height:0}
 .a3-config-kg300-primary-grid .a3-fk{display:flex!important;min-height:5rem;padding:var(--space-2)}
+.a3-config-kg300-primary-grid .a3-fk:last-child{grid-column:1/-1;min-height:3.5rem}
 .a3-config-kg300-primary-grid .a3-fk .a3-img{display:none}
 .a3-config-kg300-primary-grid .a3-fk .a3-nm,.a3-config-kg300-primary-grid .a3-fk>.numeric{min-inline-size:0;max-inline-size:100%;overflow-wrap:anywhere;hyphens:none}
 .a3-config-kg300-primary-grid .a3-fk>.numeric{text-align:left}
