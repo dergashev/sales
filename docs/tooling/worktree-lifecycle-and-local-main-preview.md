@@ -14,6 +14,10 @@ operational problems:
 This is delivery infrastructure only. It does not change Sales Platform
 product behavior.
 
+See `docs/tooling/delivery-lifecycle.md` for the full canonical delivery
+lifecycle this tooling is one part of (task preflight, isolated-worktree
+enforcement, candidate/QA/release provenance, `.agentsroom/**` protection).
+
 ## Root cause (read this before touching the cleanup logic)
 
 The reported symptom was: a Release Integration worktree's directory
@@ -53,12 +57,20 @@ post-unlock outcome from the pre-unlock snapshot.
 
 ### `npm run dev:main`
 
-Opens the current, exact local `main` in a browser-ready dev server,
-without ever touching the caller's own branch/worktree.
+Opens the current, exact AUTHORITATIVE RELEASE in a browser-ready dev
+server, without ever touching the caller's own branch/worktree. The
+command name is retained for backwards compatibility only — it does
+**not** imply the Git branch must be called `main` (DELIVERY-INFRA-01; see
+`docs/tooling/delivery-lifecycle.md` for the full canonical lifecycle).
 
-1. Resolves `MAIN SHA` via `git rev-parse main` — never derived from the
-   invoking directory's branch, from a worktree's name, or from "most
-   recently used".
+1. Resolves the authoritative release branch/SHA through the ONE canonical
+   resolver, `tools/runtime/lib/release-branch.mjs`
+   (`resolveCurrentMainAuthority`) — never a literal `git rev-parse main`,
+   and never derived from the invoking directory's own branch, from a
+   worktree's name, or from "most recently used". This repository's actual
+   authority is `origin/master` (there is no remote `main` at all); a
+   stale/divergent local `main` or `master` branch plays no role
+   whatsoever in the resolution.
 2. Creates or refreshes a **detached** worktree at `.preview/main` (override
    with `A3_PREVIEW_DIR`). Detached, so it never competes for ownership of
    the `main` branch — `git worktree add --detach` succeeds even while
@@ -97,9 +109,11 @@ If provenance cannot be established, the command fails visibly (exit 2 or
 ### `npm run git:worktrees:check`
 
 Read-only diagnostic. Reports every registered worktree (path, SHA,
-branch/detached, locked/prunable/dirty state), which one (if any) owns
-`main`, the current `main` SHA, and the local-main preview's last known SHA
-versus current `main`. Never mutates anything. `--strict` exits 1 if any
+branch/detached, locked/prunable/dirty state), which one (if any) owns the
+authoritative release branch (resolved the same way `dev:main` resolves
+it — never a literal `main`), the current authoritative release SHA, and
+the local preview's last known SHA versus that authoritative SHA. Never
+mutates anything. `--strict` exits 1 if any
 stale/locked/dirty/stale-preview condition was found; the default exit is
 always 0 — reporting a problem is this command's job, not a failure of it.
 

@@ -26,6 +26,7 @@ import path from 'node:path'
 import { git, gitCommonDir, headSha } from '../../gate/lib/git-worktrees.mjs'
 import { defaultPreviewStatePath } from '../../worktrees/lib/preview-state.mjs'
 import { defaultRegistryPath, listClaims, resolveCurrentMainClaim, runtimeId } from '../../runtime/lib/registry.mjs'
+import { resolveCurrentMainAuthority } from '../../runtime/lib/release-branch.mjs'
 import { classifyRuntimeStep, verifyExpectedShaAgainstWorktree } from './decide.mjs'
 
 /** Repo paths this bridge needs, resolved once from `cwd`. */
@@ -37,10 +38,18 @@ export function resolveRepoContext(cwd) {
   return { cwd, commonDir, repoRoot, worktree }
 }
 
-/** CURRENT_MAIN expects local `main`; candidates expect the caller's own HEAD (or an explicit pin). */
+/**
+ * CURRENT_MAIN expects the AUTHORITATIVE RELEASE BRANCH — resolved through
+ * the one canonical resolver (`resolveCurrentMainAuthority`), never a
+ * literal local `main` (DELIVERY-INFRA-01). Candidates expect the caller's
+ * own HEAD (or an explicit pin).
+ */
 export function resolveExpectedSha({ purpose, cwd, explicitSha }) {
   if (explicitSha) return explicitSha
-  if (purpose === 'CURRENT_MAIN') return git(cwd, ['rev-parse', 'main'])
+  if (purpose === 'CURRENT_MAIN') {
+    const authority = resolveCurrentMainAuthority(cwd)
+    return authority.ok ? authority.sha : null
+  }
   return headSha(cwd)
 }
 

@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Indicative Offer Engine — прототип-симулятор CPQ для All3. Локальный запуск; перенос в продакшн выполняют девопсы All3.",
   "scripts": {
+    "prepare": "node tools/git-hooks/install.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
@@ -13,6 +14,8 @@
     "test:browser:desktop": "node tests/browser/run-desktop-smoke.mjs",
     "typecheck": "tsc -b --noEmit",
     "verify": "python3 -m unittest tools.test_validation_isolation && python3 tools/verify.py && python3 tools/check_indices.py && python3 tools/check_i18n_ascii.py && python3 tools/build_fixtures.py --check && python3 tools/selftest_governance.py && python3 tools/selftest_warnings.py && python3 tools/check_scenario2.py && python3 tools/check_scenario2.py --selftest",
+    "delivery:preflight": "node tools/delivery/preflight.mjs",
+    "git-hooks:install": "node tools/git-hooks/install.mjs",
     "gate:declare": "node tools/gate/declare-candidate.mjs",
     "vr2:gate": "node tools/vr2/check-evidence.mjs",
     "dev:main": "node tools/worktrees/dev-main.mjs",

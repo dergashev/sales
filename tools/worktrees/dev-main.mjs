@@ -2,14 +2,25 @@
 /**
  * tools/worktrees/dev-main.mjs — `npm run dev:main`
  *
- * Canonical, provenance-proving way to open the latest accepted local
- * `main` — without guessing which worktree has it, without touching the
- * caller's own checkout, and without ever silently serving something
- * other than exactly what `git rev-parse main` currently resolves to.
+ * Canonical, provenance-proving way to open the latest accepted release —
+ * without guessing which worktree has it, without touching the caller's
+ * own checkout, and without ever silently serving something other than
+ * exactly what the AUTHORITATIVE RELEASE BRANCH currently resolves to.
  *
- * Lifecycle (ticket §4/§5/§7):
- *   1. resolve MAIN SHA directly from git (`git rev-parse main`), never from
- *      the invoking cwd's branch/worktree.
+ * The authoritative release branch is resolved through
+ * `tools/runtime/lib/release-branch.mjs` (`resolveCurrentMainAuthority`) —
+ * the SAME canonical resolver `runtime:main`/`runtime:status`/
+ * `runtime:task-base` use. It is NEVER assumed to be a local branch
+ * literally named `main`: this repository's actual authority is
+ * `origin/master` (there is no remote `main` at all), and a stale local
+ * `main`/`master` divergence must never be silently served (DELIVERY-
+ * INFRA-01 — the command name `dev:main` is retained for backwards
+ * compatibility only; it does not imply the Git branch must be `main`).
+ *
+ * Lifecycle (ticket §4/§5/§7; branch resolution updated by DELIVERY-INFRA-01):
+ *   1. resolve the authoritative release SHA via `resolveCurrentMainAuthority`
+ *      (never a literal `git rev-parse main`, never from the invoking cwd's
+ *      own branch/worktree).
  *   2. under one lock (`withPreviewStateLock`, Tech Review P2-1): read any
  *      recorded prior owner ONCE and reuse that read for two separate
  *      decisions — (a) refuse a MUTATING action (create/recreate/checkout)
@@ -46,7 +57,7 @@ import { existsSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import path from 'node:path'
 
-import { dirtyEntries, git, gitCommonDir, listWorktrees, samePath } from '../gate/lib/git-worktrees.mjs'
+import { dirtyEntries, gitCommonDir, listWorktrees, samePath } from '../gate/lib/git-worktrees.mjs'
 import { planPreviewRefresh } from './lib/worktree-lifecycle.mjs'
 import { defaultPreviewStatePath, readPreviewState, updatePreviewState, withPreviewStateLock, writePreviewStateRaw } from './lib/preview-state.mjs'
 import { findFreePort } from './lib/free-port.mjs'
@@ -54,6 +65,7 @@ import { pidIsAlive } from '../runtime/lib/pid.mjs'
 import { ensureDependenciesLocked } from '../runtime/lib/dependencies.mjs'
 import { applyPreviewRefreshPlan } from '../runtime/lib/checkout-mutation.mjs'
 import { defaultRegistryPath, putRuntimeClaim, runtimeId } from '../runtime/lib/registry.mjs'
+import { resolveCurrentMainAuthority } from '../runtime/lib/release-branch.mjs'
 
 const EXIT = { OK: 0, PROVENANCE: 2, LIFECYCLE: 3, TOOLING: 4 }
 
@@ -69,8 +81,15 @@ async function main() {
   if (!commonDir) return fail(EXIT.LIFECYCLE, '"git rev-parse --git-common-dir" failed. Is this a git repository?')
   const repoRoot = path.dirname(commonDir)
 
-  const mainSha = git(cwd, ['rev-parse', 'main'])
-  if (!mainSha) return fail(EXIT.LIFECYCLE, '"git rev-parse main" failed. Does the local "main" branch exist?')
+  // DELIVERY-INFRA-01: resolved through the ONE canonical authoritative-
+  // release resolver — never a literal `git rev-parse main`. Works
+  // whether the authoritative branch is `master` (this repository today),
+  // `main`, or anything else; a stale/divergent local `main` branch plays
+  // no role whatsoever (Case B of the delivery-lifecycle regression suite).
+  const authority = resolveCurrentMainAuthority(cwd)
+  if (!authority.ok) return fail(EXIT.PROVENANCE, authority.reason)
+  const mainSha = authority.sha
+  console.log(`[dev:main] authoritative release branch: ${authority.branch} (via ${authority.branchSource})`)
 
   const previewPath = path.resolve(repoRoot, process.env.A3_PREVIEW_DIR || '.preview/main')
   const statePath = defaultPreviewStatePath(commonDir)
@@ -196,6 +215,7 @@ async function main() {
   }
 
   console.log('\nLOCAL MAIN PREVIEW')
+  console.log(`\nAUTHORITATIVE RELEASE BRANCH:\n${authority.branch} (via ${authority.branchSource})`)
   console.log(`\nMAIN SHA:\n${mainSha}`)
   console.log(`\nPREVIEW SHA:\n${finalHead}`)
   console.log(`\nWORKTREE:\n${previewPath}`)

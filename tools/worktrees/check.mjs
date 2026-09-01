@@ -18,8 +18,9 @@
 
 import path from 'node:path'
 
-import { dirtyEntries, git, gitCommonDir, listWorktrees, samePath } from '../gate/lib/git-worktrees.mjs'
+import { dirtyEntries, gitCommonDir, listWorktrees, samePath } from '../gate/lib/git-worktrees.mjs'
 import { defaultPreviewStatePath, readPreviewState } from './lib/preview-state.mjs'
+import { resolveCurrentMainAuthority } from '../runtime/lib/release-branch.mjs'
 
 const EXIT = { OK: 0, ISSUES_STRICT: 1, LIFECYCLE: 3 }
 
@@ -56,20 +57,28 @@ function main() {
   }
   const repoRoot = path.dirname(commonDir)
 
-  const mainSha = git(cwd, ['rev-parse', 'main'])
+  // DELIVERY-INFRA-01: resolved through the ONE canonical authoritative-
+  // release resolver — never a literal `git rev-parse main`. This report
+  // reflects whichever branch is actually authoritative (`master` in this
+  // repository today; `origin/HEAD` in general), never a hard-coded "main".
+  const authority = resolveCurrentMainAuthority(cwd)
+  const mainSha = authority.ok ? authority.sha : null
+  const releaseBranch = authority.ok ? authority.branch : null
 
   const previewPath = path.resolve(repoRoot, args.previewPath || process.env.A3_PREVIEW_DIR || '.preview/main')
   const previewState = readPreviewState(defaultPreviewStatePath(commonDir))
 
   console.log('WORKTREE REPORT')
-  console.log(`  REPO ROOT   : ${repoRoot}`)
-  console.log(`  MAIN SHA    : ${mainSha ?? 'UNRESOLVED'}`)
+  console.log(`  REPO ROOT          : ${repoRoot}`)
+  console.log(`  RELEASE BRANCH     : ${releaseBranch ?? `UNRESOLVED (${authority.reason})`}`)
+  console.log(`  RELEASE BRANCH SHA : ${mainSha ?? 'UNRESOLVED'}`)
   console.log('')
   console.log('REGISTERED WORKTREES')
 
   let issues = 0
+  if (!authority.ok) issues++
   for (const w of worktrees) {
-    const ownsMain = w.branch === 'main'
+    const ownsMain = releaseBranch !== null && w.branch === releaseBranch
     let dirtyLabel = 'n/a'
     let stateLabel = 'present'
     if (w.locked) {
@@ -86,7 +95,7 @@ function main() {
 
     console.log(`  - ${w.path}`)
     console.log(`      sha      : ${w.sha ?? 'UNRESOLVED'}`)
-    console.log(`      branch   : ${w.detached ? 'DETACHED' : w.branch ?? 'UNRESOLVED'}${ownsMain ? '  <- owns "main"' : ''}`)
+    console.log(`      branch   : ${w.detached ? 'DETACHED' : w.branch ?? 'UNRESOLVED'}${ownsMain ? `  <- owns the release branch ("${releaseBranch}")` : ''}`)
     console.log(`      state    : ${stateLabel}`)
     console.log(`      dirty    : ${dirtyLabel}`)
   }
@@ -105,14 +114,18 @@ function main() {
   if (!registeredPreview) {
     console.log('  STATUS        : never created (run "npm run dev:main" to create it)')
   } else {
-    const staleLabel = registeredPreview.sha !== mainSha ? '  <-- STALE (main has advanced since last preview refresh)' : ''
+    // mainSha is only meaningful when authority itself resolved; an
+    // unresolved authority already counted one issue above and must not
+    // double-count every preview as "stale" on top of that ambiguity.
+    const staleness = mainSha === null ? null : registeredPreview.sha !== mainSha
+    const staleLabel = staleness ? '  <-- STALE (release branch has advanced since last preview refresh)' : ''
     console.log(`  PREVIEW SHA      : ${registeredPreview.sha ?? 'UNRESOLVED'}${staleLabel}`)
     console.log(`  DETACHED         : ${registeredPreview.detached}`)
     if (registeredPreview.locked) console.log(`  LOCKED           : true (${registeredPreview.lockReason || 'no reason given'})`)
     if (registeredPreview.prunable) console.log(`  PRUNABLE         : true (${registeredPreview.prunableReason || 'missing/broken worktree'})`)
     console.log(`  LIVE OWNER (pid) : ${previewState?.pid ?? 'none recorded'}${previewState?.port ? ` — port ${previewState.port}` : ''}`)
     console.log(`  LAST REFRESHED AT: ${previewState?.updatedAt ?? 'UNKNOWN (no preview-state.json record)'}`)
-    if (registeredPreview.sha !== mainSha) issues++
+    if (staleness) issues++
     if (registeredPreview.locked || registeredPreview.prunable) issues++
   }
 

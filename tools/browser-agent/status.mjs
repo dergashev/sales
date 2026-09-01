@@ -14,15 +14,23 @@
  */
 
 import path from 'node:path'
-import { git, gitCommonDir } from '../gate/lib/git-worktrees.mjs'
+import { gitCommonDir } from '../gate/lib/git-worktrees.mjs'
 import { defaultManifestPath, readManifest } from '../gate/lib/manifest.mjs'
+import { resolveCurrentMainAuthority } from '../runtime/lib/release-branch.mjs'
 import { listSidecars, defaultSidecarDir } from './lib/sidecar-store.mjs'
 import { classifySidecarFreshness } from './lib/decide.mjs'
 import { checkSkillReadiness } from './lib/skill-status.mjs'
 import { EXIT } from './lib/exit-codes.mjs'
 
+// DELIVERY-INFRA-01: CURRENT_MAIN's "current expected sha" is resolved
+// through the ONE canonical authoritative-release resolver — never a
+// literal `git rev-parse main` (this repository's actual authority is
+// `origin/master`; a stale local `main` must never be consulted).
 function currentExpectedSha({ sidecar, cwd, commonDir }) {
-  if (sidecar.purpose === 'CURRENT_MAIN') return git(cwd, ['rev-parse', 'main'])
+  if (sidecar.purpose === 'CURRENT_MAIN') {
+    const authority = resolveCurrentMainAuthority(cwd)
+    return authority.ok ? authority.sha : null
+  }
   if (!sidecar.lane) return null
   const manifest = readManifest(defaultManifestPath(commonDir))
   return manifest[sidecar.lane]?.sha ?? null
