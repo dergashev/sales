@@ -1989,11 +1989,18 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 /* VR2-04 — a reusable Configurator work-stage composition consumed by the
    live KG 300 and KG 700 chapters. It composes existing controls, sheets,
    navigation and rail metrics; no parallel control API is introduced. */
-.a3-config-work-shell>.a3-config-work-rail{width:var(--panel-right-width-compact);max-width:var(--panel-right-width-compact)}
-.a3-config-work-rail .a3-rail-header-budget{padding:var(--space-3) var(--space-4) var(--space-2)}
+.a3-config-work-shell>.a3-config-work-rail{width:clamp(18rem,22vw,21rem);max-width:clamp(18rem,22vw,21rem)}
+.a3-config-work-rail .a3-rail-header-budget{max-height:none;overflow:visible;padding:var(--space-3) var(--space-4) var(--space-2)}
 .a3-config-work-rail .a3-hb-total .a3-hb-num{font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line)}
 .a3-config-work-rail .a3-hb-total .a3-hb-unit{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line)}
 .a3-config-work-rail>div.flex-1{padding-left:var(--space-4);padding-right:var(--space-4)}
+.a3-config-work-rail .a3-tbl-scroll{overflow-x:visible}
+.a3-config-work-rail .a3-kg{table-layout:fixed}
+.a3-config-work-rail .a3-kg td{padding-left:var(--space-2);padding-right:var(--space-2)}
+.a3-config-work-rail .a3-kg td:first-child{width:42%;overflow-wrap:normal}
+.a3-config-work-rail .a3-kg td:nth-child(2){width:42%}
+.a3-config-work-rail .a3-kg td:nth-child(3){width:16%}
+.a3-config-work-rail .a3-kg .a3-num{font-size:var(--type-caption-size);line-height:var(--type-caption-line)}
 .a3-config-work{min-width:0;padding:var(--space-5) var(--space-7)}
 .a3-config-header{margin:0 0 var(--space-4);align-items:flex-start}
 .a3-config-header .a3-meta{order:-1;flex-basis:100%;color:var(--color-text-secondary);font-size:var(--type-caption-size);font-weight:700;letter-spacing:.04em;line-height:var(--type-caption-line);text-align:left;text-transform:uppercase}
@@ -2003,6 +2010,8 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-config-kg300-stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(13rem,15rem);gap:var(--space-5);align-items:start}
 .a3-config-kg300-decisions,.a3-config-kg300-guidance{min-width:0}
 .a3-config-kg300-context{display:grid;gap:var(--space-4);min-width:0;border-left:var(--border-default);padding-left:var(--space-4)}
+.a3-config-kg300-context .a3-sheet{padding:var(--space-4)}
+.a3-config-kg300-context .a3-sheet>.a3-sheet-title{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);overflow-wrap:normal}
 .a3-config-kg300-guidance{grid-column:1/-1}
 .a3-config-option-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-4)}
 .a3-config-option-intro{grid-column:1/-1;margin:0;max-width:var(--measure-wide)}
