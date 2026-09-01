@@ -1699,15 +1699,17 @@ export function BuildingScopeReadiness() {
       className="a3-buildingscope-rail flex h-full min-w-0 shrink-0 flex-col overflow-y-auto border-l border-border-strong bg-surface-default"
     >
       <div className="p-6">
-        {/* Acceptance remediation (cycle 6): narrowing this rail to the
-            approved 264/226px target width (tokens.css) exposed a real,
-            pre-existing overflow — "Konfigurator?" is one unbreakable word
-            at `text-heading-2` size, wider than the available 226px column
-            minus padding, and `overflow-wrap`'s default (`normal`) lets an
-            unbreakable word overflow its box rather than wrap. `break-words`
-            matches the same fix already applied to every other long/German
-            compound label in this product (rule 37). */}
-        <h2 className="break-words text-heading-2 font-bold text-text-primary">
+        {/* Acceptance remediation (cycle 7, ACCEPT-03): the target's
+            readiness rail hierarchy is ONE big number ("1 von 2") under a
+            small caption label — not two stacked heading-2 elements. This
+            heading is now that small caption (`.a3-cap`, the same eyebrow
+            style used everywhere else in the product, e.g. "Aktuelle
+            Option"); the "X von Y" summary below stays the rail's only
+            large, bold element. This also removes the narrow-rail overflow
+            `break-words` previously patched around — at caption size the
+            full sentence fits the 226px column on its own without needing
+            a mid-word break. */}
+        <h2 className="a3-cap">
           {t('buildingScope.readiness.title')}
         </h2>
         {/* VR2-03: the "X of Y" summary is the co-primary metric of this
@@ -1718,7 +1720,7 @@ export function BuildingScopeReadiness() {
             typographic weight than its small-caption default, without
             changing the canonical component's default for every other
             consumer (`ConfigurationOverview` keeps the unchanged wrapper). */}
-        <div className="mt-4">
+        <div className="mt-2">
           <ChecklistPresentation
             summary={t('designSystem.readinessSummary', {
               done: items.filter((item) => item.ready).length,

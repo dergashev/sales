@@ -856,6 +856,17 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    only; `.a3-sheet` itself, and every other consumer, keeps `--space-7`. */
 .a3-buildingscope-review{padding-top:var(--space-3)}
 
+/* VR2-03 · Acceptance remediation cycle 7 (ACCEPT-02): the approved
+   target recomposes its review field grid from 3 columns at 1440 to 2 at
+   1280 — `.a3-field-grid`'s shared `auto-fit, minmax(10rem,1fr)` still
+   fits 3 at 1280 (624px content width), which is correct for every other
+   consumer; scoped to this one screen's review grid only, same 1439px
+   breakpoint `--panel-left-width`/`--panel-right-width-compact` already
+   use. */
+@media (max-width:1439px) {
+  .a3-buildingscope-review .a3-field-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
 /* DC-19 · ScheduleGantt. Structure: .a3-gantt > .a3-gantt-scroll >
    .a3-gantt-visual > .a3-g-row + .a3-g-axis + .a3-g-legend;
    details.a3-gantt-details contains table.a3-gantt-table.
