@@ -13,7 +13,7 @@
  */
 
 import { gitCommonDir, headSha, currentBranch } from './lib/git-worktrees.mjs'
-import { defaultManifestPath, declareCandidate } from './lib/manifest.mjs'
+import { defaultManifestPath, declareCandidate, readManifest } from './lib/manifest.mjs'
 
 function parseArgs(argv) {
   const args = {
@@ -79,6 +79,25 @@ function main() {
   }
   const manifestPath = args.manifest || defaultManifestPath(commonDir)
 
+  // DELIVERY-INFRA-01 (found by the end-to-end delivery-lifecycle dry run):
+  // declareCandidate wholesale-REPLACES a lane's entry by design (see
+  // manifest.test.mjs "re-declaring the same lane... overwrites only that
+  // lane's entry with the new SHA" — a deliberate, tested contract this
+  // file must not weaken). But `taskBaseCommit`/`pinnedAt`
+  // (tools/runtime/lib/preflight.mjs's PINNED CANDIDATE RULE: "once
+  // genuinely established, never rebased") describe the TASK/WORKTREE's
+  // own lineage, not a property of one particular candidate SHA — a normal
+  // rework re-declaration (this CLI's own documented use: "after
+  // committing the implementation candidate") for the SAME lane must not
+  // silently erase a pin `delivery:preflight`/`runtime:task-base` already
+  // established for that lane, or the very next `runtime:task-base --lane
+  // <lane>` call would treat it as a brand-new, unpinned task and
+  // re-derive a taskBaseCommit from whatever main happens to be NOW —
+  // exactly the silent-rebase-on-rework failure mode that rule exists to
+  // prevent. Carried forward only for the SAME lane; declaring a different
+  // lane is unaffected (each lane's pin is independent).
+  const previous = readManifest(manifestPath)[args.lane]
+
   const entry = {
     sha,
     worktree,
@@ -88,6 +107,7 @@ function main() {
     nodeId: args.nodeId || null,
     declaredBy: args.declaredBy || null,
     declaredAt: new Date().toISOString(),
+    ...(previous?.taskBaseCommit ? { taskBaseCommit: previous.taskBaseCommit, pinnedAt: previous.pinnedAt ?? null } : {}),
   }
 
   try {
