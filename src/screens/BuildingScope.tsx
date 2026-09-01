@@ -801,7 +801,7 @@ function BuildingReviewPanel({
                   <DecimalFactField buildingId={buildingId} factKey="units" integer />
                 </div>
               ) : (
-                <div className="a3-field-grid p-4">
+                <div className="a3-field-grid a3-buildingscope-read-grid p-4">
                   {identityReadFields(review, t).map((field) => (
                     <ReadField key={field.key} label={field.label} value={field.value} provenance={field.provenance} />
                   ))}
@@ -852,7 +852,7 @@ function BuildingReviewPanel({
                   </section>
                 </div>
               ) : (
-                <div className="a3-field-grid p-4">
+                <div className="a3-field-grid a3-buildingscope-read-grid p-4">
                   {areaReadFields(review, s.buildingConflicts, t).map((field) => (
                     <ReadField key={field.key} label={field.label} value={field.value} provenance={field.provenance} />
                   ))}
@@ -888,7 +888,7 @@ function BuildingReviewPanel({
                   <UntergeschossEditor buildingId={buildingId} />
                 </div>
               ) : (
-                <div className="a3-field-grid p-4">
+                <div className="a3-field-grid a3-buildingscope-read-grid p-4">
                   <ReadField
                     label={t(FACT_MESSAGE.storeyStructure)}
                     value={(() => {
