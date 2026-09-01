@@ -1,5 +1,80 @@
 # VR2-03 — Building & Scope workspace recomposition — evidence
 
+## Acceptance remediation (cycle 11, VR2-03R) — identity's 5th field stops being an equal grid cell
+
+Continuation task VR2-03R: cycle 10's `-5` variant (below) reflowed all 5
+identity facts onto one row, but kept exactly the architecture the
+approved target rejects — five real facts (documentationName/address/
+buildingForm/buildingClass/units) treated as five equal primary grid
+cells, just fewer rows of them. The target's own Identität & Nutzung
+composition shows exactly 4 fields (Gebäudename/Gebäudeform/
+Gebäudeklasse/Wohneinheiten); Address is not one of its primary cells
+there at all.
+
+New final `implementationCommit`/`candidateRuntimeCommit` =
+`26cd65c63785a799a569a83d218d9fe1b938b59e` (supersedes `78f32a2`
+throughout this document unless a screenshot is explicitly labelled
+otherwise). Re-verified: typecheck, 750/750 tests, verify.py (no new
+violations), build — all PASS against this exact SHA, clean tree.
+`origin/master` unchanged at `a4d9b99de5cc7b60fda4316198d1f059947126bb`
+throughout this cycle (`git fetch` re-checked immediately before this
+commit) — no reconciliation required.
+
+**Fix**: `identityReadFields` (`BuildingScope.tsx`) now returns exactly 4
+entries (Address removed) — the read grid is back on the plain shared
+`.a3-buildingscope-read-grid` (4-col @1440+, 2-col @≤1439px), the same
+class Flächen/Storeys already use; the one-off cycle-10
+`.a3-buildingscope-read-grid-5` variant is removed entirely
+(`components.css`), there is no longer a 5th cell to accommodate. Address
+is preserved unchanged and stays fully editable one click away via
+"Abschnitt bearbeiten" (`TextFactField`, untouched) — it moves to the
+building identity tile above (`BuildingTileContent`) as its own compact
+metadata line next to name/type/class, with an explicit "Nicht erfasst"
+fallback (not silently omitted) so the fact stays visibly tracked (rule
+16). `.a3-tab-meta` gets `overflow-wrap:anywhere` so a long manually-
+entered address wraps cleanly inside the tile.
+
+**Measured result** (Haus A + Haus B both included, matching
+`TARGET-building-*`'s own two-building state):
+- 1440×900: identity grid 4 columns/1 row, height 141px (cycle 10: 5
+  cols/1 row, 145px — same order of magnitude, now the correct
+  architecture instead of a wider row). Flächen top 683px (cycle 10's own
+  claimed 663px was for the single-building state; this is the
+  two-building measurement). Identity + Flächen sections, and Geometrie &
+  Geschosse's own header row, all render inside the 900px first viewport.
+- 1280×800: identity grid is the intentional 2 columns/2 rows (4 fields),
+  height 226px (cycle 10: 3 cols/2 rows carrying 5 fields, 266px).
+  Flächen's header row (777px) starts inside the 800px viewport.
+- DE + EN verified (`candidate-1440-en.png`), no mixed-language strings,
+  no console errors.
+- Edit mode unaffected: all 5 fields including Address still directly
+  editable, no overflow (`candidate-1440-edit-mode.png`).
+- Long content: a long manually-entered address wraps to multiple lines
+  inside the building tile with no overflow/clipping/broken grid — the
+  primary 4-column read grid is unaffected since Address no longer lives
+  there (`candidate-1440-long-address.png`).
+
+Screenshots in `acceptance-remediation-cycle11/`:
+- `candidate-1440-four-column-identity.png` — Identity's 4-column single
+  row, Address on the building tile above.
+- `candidate-1280-two-column-identity.png` — Identity's intentional
+  2-column/2-row composition.
+- `candidate-1440-en.png` — EN locale, same composition.
+- `candidate-1440-edit-mode.png` — edit view, all 5 fields incl. Address.
+- `candidate-1440-long-address.png` — long manually-entered address
+  wrapping cleanly inside the tile, grid below unaffected.
+
+**Disclosed, out of this cycle's scope**: the building-tab strip's own
+vertical position (tabs top ≈317 @1440 / ≈373 @1280, unchanged from
+`bcad764`/`78f32a2`) is governed entirely by content ABOVE the tabs
+(headline/intro/manage-row) — this identity-grid fix cannot move it, and
+cycles 3/4/5/6/9 already spent significant effort compacting that region.
+Geometrie & Geschosse's own field values and the confirm dock sit just
+below the fold at both viewports as a consequence. Closing that residual
+gap would mean further blanket spacing cuts across components outside
+this task's named root cause (the identity grid architecture) — the kind
+of fix the task explicitly warns against substituting for the real one.
+
 ## Acceptance remediation (cycle 10) — 5-column identity grid, all three sections in the first viewport
 
 Acceptance's final re-audit of `bcad764` pinpointed the exact remaining
