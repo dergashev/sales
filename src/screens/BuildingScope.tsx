@@ -624,6 +624,25 @@ function BuildingTileContent({ id, s, t, selected }: {
   const status = statusFor(s, id)
   const form = effectiveFactValue(s.buildingReviews[id]!.facts.buildingForm)
   const buildingClass = effectiveFactValue(s.buildingReviews[id]!.facts.buildingClass)
+  // VR2-03R (ACCEPT-02 first-viewport density remediation, cycle 11):
+  // Address used to be a 5th cell in the "Identität & Nutzung" read grid
+  // below (`identityReadFields`) — forcing 5 real facts onto a 4-column
+  // grid stranded it alone, materially inflating the section's height and
+  // pushing Flächen/the rest of the review below the approved first
+  // viewport. The approved target's own Identity composition shows
+  // exactly 4 primary cells there and carries no address field at all in
+  // that grid. Per the task's "CURRENT BUILDING IDENTITY" hierarchy
+  // (name / type-context / compact address-location metadata), address
+  // moves here instead — this tile IS the screen's one "current building
+  // identity" block (name + type/class already render here) — as its own
+  // compact metadata line, not an equal grid cell. It is preserved
+  // unchanged and remains fully editable one click away via "Abschnitt
+  // bearbeiten" in the identity section below (`TextFactField`,
+  // untouched); the explicit `notCaptured` fallback (not silently
+  // omitted, unlike the form/class line above) keeps the fact visibly
+  // tracked even before any address is captured (rule 16 — no silent
+  // absence).
+  const address = effectiveFactValue(s.buildingReviews[id]!.facts.address)
   return (
     <>
       <span className="a3-tab-media" aria-hidden="true">
@@ -634,6 +653,9 @@ function BuildingTileContent({ id, s, t, selected }: {
         <span className="a3-tab-meta">
           {[form ? t(FORM_MESSAGE[form]) : null, buildingClass ? t(CLASS_MESSAGE[buildingClass]) : null]
             .filter(Boolean).join(' · ')}
+        </span>
+        <span className="a3-tab-meta">
+          {t(FACT_MESSAGE.address)}: {address ?? t('buildingScope.value.notCaptured')}
         </span>
         <span className="a3-tab-meta">
           {selected
@@ -806,15 +828,14 @@ function BuildingReviewPanel({
                   <DecimalFactField buildingId={buildingId} factKey="units" integer />
                 </div>
               ) : (
-                // Acceptance remediation (cycle 10): identity has 5 real
-                // facts (name/address/form/class/units) — Address stays
-                // (it is genuinely identity-scoped data, per
-                // `sectionForFact`, and preserving it was explicitly
-                // requested), but forcing exactly 4 columns onto 5 items
-                // stranded the 5th field alone on its own second row,
-                // nearly doubling the section's height for one field. The
-                // `-5` variant fits all 5 on one row instead.
-                <div className="a3-field-grid a3-buildingscope-read-grid-5 p-4">
+                // VR2-03R (cycle 11): 4 primary identity/metric cells only
+                // (documentationName/buildingForm/buildingClass/units) —
+                // Address is deliberately not a 5th equal cell here (see
+                // `identityReadFields`'s own comment). Back to the plain
+                // shared `.a3-buildingscope-read-grid` (4-col @1440+,
+                // 2-col @≤1439px), the same class Flächen/Storeys use —
+                // no bespoke 5-column grid needed any more.
+                <div className="a3-field-grid a3-buildingscope-read-grid p-4">
                   {identityReadFields(review, t).map((field) => (
                     <ReadField key={field.key} label={field.label} value={field.value} provenance={field.provenance} />
                   ))}
@@ -1124,18 +1145,28 @@ function identityReadFields(
   const form = effectiveFactValue(review.facts.buildingForm)
   const buildingClass = effectiveFactValue(review.facts.buildingClass)
   const units = effectiveFactValue(review.facts.units)
+  // VR2-03R (ACCEPT-02 first-viewport density remediation, cycle 11):
+  // Address is intentionally NOT one of this read grid's cells. Cycle 10
+  // kept all 5 identity facts as equal grid cells (a bespoke 5-column
+  // variant) — still the "five equal cells" architecture the target
+  // rejects, just reflowed into fewer rows. The approved target's own
+  // Identität & Nutzung composition shows exactly 4 fields (Gebäudename/
+  // Gebäudeform/Gebäudeklasse/Wohneinheiten); Address is not one of its
+  // primary cells there either. Address is preserved — genuinely
+  // identity-scoped data, unchanged, unhidden — as compact subordinate
+  // metadata on the building identity tile above this grid
+  // (`BuildingTileContent`, next to name/type — see its own comment) and
+  // remains fully editable in this section's edit view (`TextFactField`
+  // below, untouched). This keeps the read grid to exactly the 4 fields
+  // that ARE primary metrics, restoring the plain 4-column
+  // `.a3-buildingscope-read-grid` shared with Flächen/Storeys instead of
+  // a one-off 5-column variant.
   return [
     {
       key: 'documentationName',
       label: t(FACT_MESSAGE.documentationName),
       value: effectiveFactValue(review.facts.documentationName) ?? notCaptured,
       provenance: factPresentation(review.facts.documentationName, t),
-    },
-    {
-      key: 'address',
-      label: t(FACT_MESSAGE.address),
-      value: effectiveFactValue(review.facts.address) ?? notCaptured,
-      provenance: factPresentation(review.facts.address, t),
     },
     {
       key: 'buildingForm',

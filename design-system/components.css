@@ -813,7 +813,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-tabs-tiles .a3-tab-media{flex:0 0 6rem}
 .a3-tabs-tiles .a3-tab-text{min-width:0;display:grid;gap:var(--space-1)}
 .a3-tabs-tiles .a3-tab-name{font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:anywhere}
-.a3-tabs-tiles .a3-tab-meta{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-tabs-tiles .a3-tab-meta{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:anywhere}
 /* Single-building state: same tile anatomy, not part of a grid/tablist (a
    one-item tablist is a discouraged ARIA pattern) — capped to a reasonable
    card width instead of stretching edge to edge. */
@@ -904,18 +904,17 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
   .a3-buildingscope-review .a3-buildingscope-read-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 
-/* VR2-03 · Acceptance remediation cycle 10 (ACCEPT-02 final re-audit):
-   Identität & Nutzung has 5 real facts — documentationName/address/
-   buildingForm/buildingClass/units — one more than Flächen's 4. Forcing
-   the same 4-column grid stranded the 5th field (Address, kept for data
-   truth per the remediation request) alone on its own second row,
-   nearly doubling the section's measured height for a single field.
-   `-5` is its own variant: 5 columns at 1440+ (all fields on one row),
-   3 at ≤1439px (two rows of 3+2 instead of three rows of 2+2+1). */
-.a3-buildingscope-review .a3-buildingscope-read-grid-5{grid-template-columns:repeat(5,minmax(0,1fr))}
-@media (max-width:1439px) {
-  .a3-buildingscope-review .a3-buildingscope-read-grid-5{grid-template-columns:repeat(3,minmax(0,1fr))}
-}
+/* VR2-03R · ACCEPT-02 first-viewport density remediation (cycle 11): the
+   cycle-10 `-5` variant above (5 columns at 1440+, 3 at ≤1439px) reflowed
+   all 5 identity facts into fewer rows, but kept the same "five equal
+   grid cells" architecture the target rejects. Address is no longer one
+   of this grid's cells at all (see `identityReadFields`'s own comment,
+   `BuildingScope.tsx`) — it moved to the building identity tile above as
+   compact subordinate metadata instead. The read grid is back to exactly
+   4 real primary cells, so the plain `.a3-buildingscope-read-grid` above
+   (shared with Flächen/Storeys) is sufficient again; the removed variant
+   is not replaced by anything narrower — there is no longer a 5th cell to
+   accommodate. */
 
 /* DC-19 · ScheduleGantt. Structure: .a3-gantt > .a3-gantt-scroll >
    .a3-gantt-visual > .a3-g-row + .a3-g-axis + .a3-g-legend;
