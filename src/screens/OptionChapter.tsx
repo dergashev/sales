@@ -172,9 +172,12 @@ function VariantsSideBySide({ rows, currentValue }: {
   )
 }
 
-export function OptionChapter({ groups, intro }: {
+export function OptionChapter({ groups, intro, variant = 'standard', footnote = 'show' }: {
   groups: OptionGroup[]
   intro: string
+  /** Explicit visual composition for a live Configurator consumer. */
+  variant?: 'standard' | 'workstage'
+  footnote?: 'show' | 'hide'
 }) {
   const s = useStore()
   const t = useT()
@@ -207,7 +210,8 @@ export function OptionChapter({ groups, intro }: {
   const visible = groups.filter((g) => isGroupActive(g, chosen))
 
   return (
-    <div className="a3-config-option-list grid gap-5">
+    <div className={'a3-config-option-list grid gap-5' +
+      (variant === 'workstage' ? ' a3-config-option-list-workstage' : '')}>
       {s.mode === 'intern' && (
         <p className="a3-config-option-intro a3-cap a3-lede">
           {tx(intro)}
@@ -218,7 +222,8 @@ export function OptionChapter({ groups, intro }: {
         const value = chosen[g.id] ?? g.default
         const source = prov[g.id] ?? 'Standard'
         return (
-          <section key={g.id} className="a3-config-option-decision a3-sheet">
+          <section key={g.id} className={'a3-config-option-decision a3-sheet' +
+            (variant === 'workstage' ? ` a3-config-workstage-${g.id}` : '')}>
             <h2 className="text-heading-3 font-bold text-text-primary">{tx(g.label)}</h2>
             <p className="a3-cap mt-1">{tx(g.question)}</p>
 
@@ -339,10 +344,12 @@ export function OptionChapter({ groups, intro }: {
         )
       })}
 
-      <p className="a3-cap">
-        {MARK} · {DERIVED_LABEL}. Die Preiswirkung erscheint sofort in der
-        Angebotsspalte rechts und im Kostentreiber.
-      </p>
+      {footnote === 'show' && (
+        <p className="a3-cap">
+          {MARK} · {DERIVED_LABEL}. Die Preiswirkung erscheint sofort in der
+          Angebotsspalte rechts und im Kostentreiber.
+        </p>
+      )}
     </div>
   )
 }

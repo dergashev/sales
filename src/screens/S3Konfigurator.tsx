@@ -180,16 +180,24 @@ export function S3Konfigurator() {
           {!totalOverview && currentId === CONFIGURATOR_STEP.KG_300_DETAILS && (
             <div className="a3-config-kg300-stage">
               <div className="a3-config-kg300-decisions">
-                <OptionChapter groups={KG300_GROUPS}
-                  intro={'Von oben nach unten: erst der Umfang, dann die Konstruktion, '
-                    + 'zuletzt die Oberfläche. Jede Antwort zeigt ihre Folge am Preis, '
-                    + 'bevor sie gewählt wird.'} />
+                <Kg300PrimaryDecisions />
+                <section className="a3-config-kg300-secondary">
+                  <div className="a3-config-decision-heading">
+                    <h2>{t('configurator.workstage.secondaryDecisions')}</h2>
+                  </div>
+                  <OptionChapter
+                    groups={KG300_GROUPS.filter((group) =>
+                      group.id !== 'fassade')}
+                    intro=""
+                    variant="workstage"
+                  />
+                </section>
               </div>
-              <div className="a3-config-kg300-context">
-                <EnergyCertBanner />
-                <UndergroundFloorRecap />
-              </div>
+              <aside className="a3-config-kg300-context" aria-label={t('configurator.workstage.buildingContext')}>
+                <Kg300WorkContext />
+              </aside>
               <div className="a3-config-kg300-guidance">
+                <EnergyCertBanner />
                 <GroundRiskSection />
               </div>
             </div>
@@ -1285,6 +1293,104 @@ function UndergroundFloorRecap() {
 }
 
 /**
+ * The basement belongs to Building & Scope.  KG 300 makes that consequential
+ * decision prominent, but deliberately routes edits back to its sole owner so
+ * this chapter cannot recreate the historic double-calculation control.
+ */
+function Kg300PrimaryDecisions() {
+  const s = useStore()
+  const t = useT()
+  const tx = useTx()
+  const building = activeBuilding(s)
+  const hasBasement = building.untergeschoss !== 'kein_ug'
+
+  return (
+    <section className="a3-config-kg300-primary">
+      <div className="a3-config-decision-heading">
+        <h2>{t('configurator.workstage.primaryDecisions')}</h2>
+        <p>{t('configurator.workstage.selectionImpact')}</p>
+      </div>
+      <div className="a3-config-kg300-primary-grid">
+        <section className="a3-config-kg300-basement" aria-labelledby="kg300-basement-decision">
+          <p className="a3-meta">{t('configurator.basement.title')}</p>
+          <h3 id="kg300-basement-decision">
+            {hasBasement ? tx('Untergeschoss · Rohbau und Ausbau') : tx('Kein Untergeschoss')}
+          </h3>
+          <p>{hasBasement ? LABEL_UG[building.untergeschoss] : tx('ohne unterirdische Flächen')}</p>
+        </section>
+        <OptionChapter
+          groups={KG300_GROUPS.filter((group) => group.id === 'fassade')}
+          intro=""
+          variant="workstage"
+          footnote="hide"
+        />
+      </div>
+    </section>
+  )
+}
+
+/**
+ * KG 300's compact work-stage context. It reads the same selected option,
+ * building metrics and projection that own the live controls; it never adds
+ * a second calculation or a Configurator-side building mutation.
+ */
+function Kg300WorkContext() {
+  const s = useStore()
+  const t = useT()
+  const tx = useTx()
+  const building = activeBuilding(s)
+  const selected = choicesFor(s, building.id)
+  const facadeGroup = KG300_GROUPS.find((group) => group.id === 'fassade')
+  const facadeValue = selected.fassade ?? facadeGroup?.default ?? 'timber'
+  const facadeChoice = facadeGroup?.choices.find((choice) => choice.value === facadeValue)
+  const media = optionImage('fassade', facadeValue)
+  const projection = s.projection()
+
+  return (
+    <>
+      {media && (
+        <figure className="a3-config-selection-visual">
+          <img src={media.url} alt="" width={480} height={320} />
+          <figcaption>{facadeChoice ? tx(facadeChoice.label) : facadeValue}</figcaption>
+        </figure>
+      )}
+
+      <section className="a3-config-selection-impact" aria-labelledby="kg300-selection-impact">
+        <p id="kg300-selection-impact" className="a3-meta">
+          {t('configurator.workstage.selectionImpact')}
+        </p>
+        <p className="a3-config-selection-name">
+          {facadeChoice ? tx(facadeChoice.label) : facadeValue}
+        </p>
+        {projection.kgSplit.KG_300 && (
+          <p className="numeric a3-config-selection-value">
+            <span>{t('configurator.workstage.currentKg300')}</span>
+            {moneyLabel(present(projection.kgSplit.KG_300))}
+          </p>
+        )}
+      </section>
+
+      <section className="a3-config-building-context" aria-labelledby="kg300-building-context">
+        <h2 id="kg300-building-context">{t('configurator.workstage.buildingContext')}</h2>
+        <div className="a3-config-building-context-list">
+          {includedBuildingIds(s).map((id) => {
+            const item = s.buildings[id]!
+            const totalBgf = bgfAboveGround(item).plus(item.bgfBelowGround)
+            return (
+              <div key={id}>
+                <span>{buildingName(s, id)}</span>
+                <strong className="numeric">{present(totalBgf).display}{NNBSP}m² BGF R+S</strong>
+              </div>
+            )
+          })}
+        </div>
+        <UndergroundFloorRecap />
+      </section>
+    </>
+  )
+}
+
+/**
  * Semantic step COMMERCIAL_SCHEDULE — Bauzeit-Leiste (DC-19).
  *
  * Фазы берутся из метрик фикстуры, а не назначаются здесь: планирование —
@@ -1564,16 +1670,13 @@ function ChapterKg700() {
   }
 
   return (
-    <div className="a3-config-kg700-stage grid gap-5">
-      {/* F27: die Card trug bislang denselben Titel wie das Kapitel selbst
-          (chrome3.chapter.kg700 = das H1 der Seite) — Duplikat, nicht
-          Struktur. Jede andere Card in diesem Screen (Untergeschoss,
-          Energiestandard, Bauzeit, Baugrund & Zufahrt …) nennt ihren
-          eigenen Abschnitt statt das Kapitel zu wiederholen. */}
-      <Card
-        title={t('configurator.kg700.calcMethod.title')}
-        intro={t('remainder5.ancillary.twoMethods')}
-      >
+    <div className="a3-config-kg700-stage">
+      <section className="a3-config-kg700-method" aria-labelledby="kg700-method-question">
+        <div className="a3-config-kg700-method-heading">
+          <p className="a3-meta">{t('configurator.kg700.calcMethod.title')}</p>
+          <h2 id="kg700-method-question">{t('configurator.kg700.methodQuestion')}</h2>
+          <span>{t('configurator.kg700.wholeComplex')}</span>
+        </div>
         <div className="a3-config-kg700-decision">
           <SegmentedControl
             legend={t('kg700.calculationMethod')}
@@ -1604,7 +1707,33 @@ function ChapterKg700() {
             )}
           </div>
         </div>
-      </Card>
+      </section>
+
+      <div className="a3-config-kg700-result-grid">
+        <section className="a3-config-kg700-results" aria-labelledby="kg700-impact">
+          <h2 id="kg700-impact">{t('configurator.kg700.impact')}</h2>
+          <dl>
+            <div>
+              <dt>{tx(p.result.totalLabel)}</dt>
+              <dd className="numeric">{moneyLabel(present(p.result.total.exact))}</dd>
+            </div>
+            {p.kgSplit.KG_700 && (
+              <div>
+                <dt>KG{NNBSP}700</dt>
+                <dd className="numeric">{moneyLabel(present(p.kgSplit.KG_700))}</dd>
+              </div>
+            )}
+            <div>
+              <dt>{t('configurator.kg700.clientRepresentation')}</dt>
+              <dd>{t('configurator.kg700.included')}</dd>
+            </div>
+          </dl>
+        </section>
+        <section className="a3-config-kg700-readiness" aria-labelledby="kg700-readiness">
+          <h2 id="kg700-readiness">{t('configurator.kg700.decisionSet')}</h2>
+          <p>{t('configurator.kg700.decisionSetDetail')}</p>
+        </section>
+      </div>
     </div>
   )
 }
