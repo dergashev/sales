@@ -396,7 +396,37 @@ export function BuildingScope() {
         <p className="a3-buildingscope-headline">
           {t(headlineKey, { count: headlineBuildingCount })}
         </p>
-        <p className="a3-lede">{t('buildingScope.lede')}</p>
+        {/* VR2-03R QA rework (cycle 12, QA-01): the approved target
+            composes "Gebäude verwalten" INLINE with the intro paragraph
+            (bordered button, right-aligned at the intro's own height) —
+            there is no separate caption+button row between the intro and
+            the building tabs. The previous row (a3-cap "Gebäude im
+            Angebot" + ghost button inside the sheet) consumed ~60px of
+            the first viewport at both widths, a direct contributor to
+            the Flächen values landing below the 800px fold at 1280. The
+            button keeps its accessible name, aria-expanded and
+            aria-controls (id references work document-wide; the managed
+            list still lives inside the review sheet). The caption's
+            dictionary key is unchanged and still used as the manage
+            list's own DataStateBoundary label. */}
+        {/* `flex-1 min-w-0` on the lede (its own measure cap still
+            applies) + `shrink-0` on the button so the button genuinely
+            sits BESIDE the intro at both 1440 and 1280, as the target
+            composes it — without it the lede's full measure width left
+            no room and the button wrapped onto its own extra row. */}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <p className="a3-lede min-w-0 flex-1">{t('buildingScope.lede')}</p>
+          <div className="shrink-0">
+            <Button
+              variant="secondary"
+              aria-expanded={manageOpen}
+              aria-controls={manageListId}
+              onClick={() => setManageOpen((open) => !open)}
+            >
+              {t(manageOpen ? 'buildingScope.selection.manageClose' : 'buildingScope.selection.manageOpen')}
+            </Button>
+          </div>
+        </div>
       </div>
 
       <p className="sr-only" aria-live="polite" aria-atomic="true">
@@ -458,22 +488,16 @@ export function BuildingScope() {
           {/* Acceptance remediation (cycle 5): the approved target keeps
               building INCLUSION management collapsed behind a "Gebäude
               verwalten" affordance — the primary view goes straight from
-              the caption to the building tabs below, closing the ~585px vs
+              the intro to the building tabs below, closing the ~585px vs
               ~264px vertical gap Acceptance measured. The list still opens
               by itself whenever nothing is selected yet (`manageOpen`'s
               initial value), so the empty state keeps explaining itself
               without an extra click. */}
-          <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
-            <p className="a3-cap">{t('buildingScope.selection.title')}</p>
-            <Button
-              variant="ghost"
-              aria-expanded={manageOpen}
-              aria-controls={manageListId}
-              onClick={() => setManageOpen((open) => !open)}
-            >
-              {t(manageOpen ? 'buildingScope.selection.manageClose' : 'buildingScope.selection.manageOpen')}
-            </Button>
-          </div>
+          {/* VR2-03R QA rework (cycle 12, QA-01): the toggle button itself
+              moved up into the header, inline with the intro paragraph —
+              exactly where the approved target places it — removing this
+              sheet's separate caption+button row (~60px above the tabs).
+              Only the disclosed list remains here. */}
           {manageOpen && (
             <div id={manageListId}>
               <DataStateBoundary
@@ -835,7 +859,7 @@ function BuildingReviewPanel({
                 // shared `.a3-buildingscope-read-grid` (4-col @1440+,
                 // 2-col @≤1439px), the same class Flächen/Storeys use —
                 // no bespoke 5-column grid needed any more.
-                <div className="a3-field-grid a3-buildingscope-read-grid p-4">
+                <div className="a3-field-grid a3-buildingscope-read-grid px-4 py-2">
                   {identityReadFields(review, t).map((field) => (
                     <ReadField key={field.key} label={field.label} value={field.value} provenance={field.provenance} />
                   ))}
@@ -886,7 +910,7 @@ function BuildingReviewPanel({
                   </section>
                 </div>
               ) : (
-                <div className="a3-field-grid a3-buildingscope-read-grid p-4">
+                <div className="a3-field-grid a3-buildingscope-read-grid px-4 py-2">
                   {areaReadFields(review, s.buildingConflicts, t).map((field) => (
                     <ReadField key={field.key} label={field.label} value={field.value} provenance={field.provenance} />
                   ))}
@@ -922,7 +946,7 @@ function BuildingReviewPanel({
                   <UntergeschossEditor buildingId={buildingId} />
                 </div>
               ) : (
-                <div className="a3-field-grid a3-buildingscope-read-grid p-4">
+                <div className="a3-field-grid a3-buildingscope-read-grid px-4 py-2">
                   <ReadField
                     label={t(FACT_MESSAGE.storeyStructure)}
                     value={(() => {
@@ -948,43 +972,67 @@ function BuildingReviewPanel({
         </table>
       </div>
 
+      {/* VR2-03R QA rework (cycle 12): the approved target's confirm dock
+          is a compact horizontal bar PINNED to the viewport bottom — at
+          1280 the target shows it directly after Flächen's first row with
+          Geometrie nowhere in between, a layout only a sticky bottom dock
+          can produce (in flow it would sit below Flächen row 2 + the whole
+          Geometrie section). `.a3-confirm-dock` becomes position:sticky
+          (components.css) and the content becomes one row: status/helper
+          text left, the single confirm action right. All strings, gating,
+          disabled reasons, confirm semantics and the confirmed state are
+          unchanged — only composition. This also makes the next-action
+          progression permanently visible at both 1440×900 and 1280×800,
+          as the target composes it. */}
       <section className="a3-confirm-dock border-t border-border-strong" aria-label={t('buildingScope.confirm.section')}>
-        {missingCount > 0 && (
-          <p className="mb-3 text-small text-text-secondary">
-            <span aria-hidden="true">▲ </span>
-            {t('buildingScope.confirm.missingWarning', { count: missingCount })}
-          </p>
-        )}
         {confirmed ? (
-          <p
-            ref={confirmationRef}
-            tabIndex={-1}
-            className="outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-          >
-            <span aria-hidden="true">✓ </span>
-            <strong>{t('buildingScope.confirm.confirmed')}</strong>
-          </p>
-        ) : (
-          <div className="grid gap-3">
-            <p className="text-small text-text-secondary">
-              {t('buildingScope.confirm.includesClass')}
-            </p>
-            <Button
-              variant="primary"
-              onClick={confirm}
-              disabled={openConflicts.length > 0 || anySectionBlocked}
-              disabledReason={openConflicts.length > 0
-                ? (openConflicts.length === 1
-                  ? t('buildingScope.confirm.conflictReasonOne')
-                  : t('buildingScope.confirm.conflictReason', {
-                    count: openConflicts.length,
-                  }))
-                : anySectionBlocked
-                  ? t('buildingScope.confirm.sectionsReason')
-                  : undefined}
+          <div className="grid gap-1">
+            {missingCount > 0 && (
+              <p className="text-small text-text-secondary">
+                <span aria-hidden="true">▲ </span>
+                {t('buildingScope.confirm.missingWarning', { count: missingCount })}
+              </p>
+            )}
+            <p
+              ref={confirmationRef}
+              tabIndex={-1}
+              className="outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
             >
-              {t('buildingScope.confirm.action')}
-            </Button>
+              <span aria-hidden="true">✓ </span>
+              <strong>{t('buildingScope.confirm.confirmed')}</strong>
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="grid min-w-0 flex-1 gap-1">
+              {missingCount > 0 && (
+                <p className="text-small font-medium text-text-primary">
+                  <span aria-hidden="true">▲ </span>
+                  {t('buildingScope.confirm.missingWarning', { count: missingCount })}
+                </p>
+              )}
+              <p className="text-small text-text-secondary">
+                {t('buildingScope.confirm.includesClass')}
+              </p>
+            </div>
+            <div className="shrink-0">
+              <Button
+                variant="primary"
+                onClick={confirm}
+                disabled={openConflicts.length > 0 || anySectionBlocked}
+                disabledReason={openConflicts.length > 0
+                  ? (openConflicts.length === 1
+                    ? t('buildingScope.confirm.conflictReasonOne')
+                    : t('buildingScope.confirm.conflictReason', {
+                      count: openConflicts.length,
+                    }))
+                  : anySectionBlocked
+                    ? t('buildingScope.confirm.sectionsReason')
+                    : undefined}
+              >
+                {t('buildingScope.confirm.action')}
+              </Button>
+            </div>
           </div>
         )}
       </section>
@@ -1116,8 +1164,13 @@ function ReadField({ label, value, provenance }: {
   value: ReactNode
   provenance: ProvenancePresentation | null
 }) {
+  // VR2-03R QA rework (cycle 12, QA-01): pb-4 → pb-2. The 16px bottom
+  // padding under every read row (×2 rows ×3 sections at 1280) was real
+  // spacing overhead against the approved target's tighter read-grid
+  // rhythm, contributing to Flächen's values landing below the 800px
+  // fold at 1280. Read-only text rows — no hit-target implication.
   return (
-    <div className="grid min-w-0 gap-1 border-b border-border-subtle pb-4">
+    <div className="grid min-w-0 gap-1 border-b border-border-subtle pb-2">
       <p className="break-words text-small text-text-secondary">{label}</p>
       {/* Unlike the edit-mode `<select>` this replaces (which truncates
           long values with an ellipsis via `.a3-select-field`), a plain

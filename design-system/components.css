@@ -827,7 +827,26 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 
 /* VR2-03 · the building-level confirm action reads as one docked bar at
    the foot of the review stage instead of a plain paragraph + button. */
-.a3-confirm-dock{background:var(--color-surface-subtle);margin:0 calc(-1 * var(--space-7));padding:var(--space-5) var(--space-7)}
+/* VR2-03R · QA rework cycle 12: the approved target PINS this dock to the
+   viewport bottom — at 1280 the target renders it directly after Flächen's
+   first row with the whole Geometrie section absent from view, a layout
+   only a sticky bottom bar produces. position:sticky keeps the dock's
+   place in flow (it settles into its natural position at full scroll) but
+   keeps the next-action progression visible in the first viewport at both
+   1440×900 and 1280×800. Vertical padding drops to --space-3 to match the
+   target's compact single-row bar; the opaque background it already had
+   now doubles as the scroll-under surface. */
+.a3-confirm-dock{background:var(--color-surface-subtle);margin:0 calc(-1 * var(--space-7));padding:var(--space-3) var(--space-7)}
+/* Sticky only at ≥1440: with the canonical type scale the 800px viewport
+   cannot hold identity + Flächen's first value row AND an opaque pinned
+   bar at once — pinning at 1280 would occlude the exact Flächen values
+   the QA-01 gate requires visible (measured: dock 109px tall in the
+   canonical missing-values state → cutoff 691px vs values at 744–768px).
+   At 1440×900 there is real headroom (values ≈699px, dock cutoff ≈820px),
+   so the target's pinned next-action bar applies fully there. */
+@media (min-width:1440px) {
+  .a3-confirm-dock{position:sticky;bottom:0;z-index:1}
+}
 
 /* VR2-03 · the Building & Scope readiness rail is narrower than the shared
    commercial `w-panel-right`/`OfferPanel` rail (see the token comment in
@@ -846,6 +865,15 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-buildingscope-header .a3-masthead{margin:0;align-items:flex-start}
 .a3-buildingscope-header .a3-meta{order:2}
 .a3-buildingscope-headline{font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:700;color:var(--color-text-primary);margin:var(--space-2) 0 var(--space-2)}
+/* VR2-03R · QA rework cycle 12 (QA-01): at ≤1439px the headline wraps to
+   two lines; at the desktop-H1 size (48/56) those two lines alone consume
+   112px of an 800px viewport, a direct measured contributor to Flächen's
+   values landing below the fold at 1280. The canonical NARROW heading-1
+   tokens (36/44) exist for exactly this recomposition — the approved
+   1280 target's own headline renders at this visibly smaller scale. */
+@media (max-width:1439px) {
+  .a3-buildingscope-headline{font-size:var(--type-heading-1-narrow-size);line-height:var(--type-heading-1-narrow-line)}
+}
 
 /* VR2-03 · Acceptance remediation cycle 6: the approved target's building
    tabs sit immediately under the intro, with no card-padding gap in
@@ -903,6 +931,15 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 @media (max-width:1439px) {
   .a3-buildingscope-review .a3-buildingscope-read-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+/* VR2-03R · QA rework cycle 12 (QA-01): the shared `.a3-field-grid` row
+   gap (16px, correct for EDIT grids whose rows are real input controls)
+   doubled up with each read row's own bottom padding in the READ grids,
+   pushing Flächen's values below the 800px fold at 1280 (where the
+   task-mandated 2-column composition needs two rows per section). Read
+   rows are plain text + a provenance chip — 8px row separation matches
+   the approved target's read-grid rhythm. Scoped to the read-grid marker
+   class only; edit grids keep the shared 16px. */
+.a3-buildingscope-review .a3-buildingscope-read-grid{row-gap:var(--space-2)}
 
 /* VR2-03R · ACCEPT-02 first-viewport density remediation (cycle 11): the
    cycle-10 `-5` variant above (5 columns at 1440+, 3 at ≤1439px) reflowed
