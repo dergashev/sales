@@ -941,6 +941,22 @@ STALE_ARTIFACTS = {
     'design-system/all3-design-system.html':
         ('35abf264670b3c0c1a37a92fe83278cf635a083d783fb6131d5db5b76ab34445',
          'пересборка — Batch 8; PRIVACY-001/A11Y-001 открыты (README §0)'),
+    # Одобренные PO эталонные доски VO-T1, восстановлены побайтово в
+    # origin/master коммитом fe1ad68 (GIT-RECOVERY-01, «no board markup was
+    # altered … byte-identical to their historical blobs»). Несут `#fd5e00`
+    # как бренд-акцент на ТЁМНОЙ доске (case-number/arrow) и как action-фон
+    # (button.accent) — та же открытая A11Y-001, что у витрины: закрывается
+    # только авторизованной пересборкой досок, не правкой утверждённой
+    # визуальной авторитетности. Карантин по sha256 всего файла: любая правка
+    # доски снимает его и делает цвет новым нарушением (selftest ARTIFACT-A11Y).
+    'artifacts/visual-outcome-audit-18e7d71/board/vo-t1-targets.html':
+        ('304990c6b29749d9bd66000b760ecc0088df4f47a6fae5e93ae0823719c4e8d7',
+         'одобренная PO доска VO-T1 (fe1ad68 GIT-RECOVERY-01); A11Y-001 открыт '
+         '— закрытие только авторизованной пересборкой доски'),
+    'artifacts/visual-outcome-audit-18e7d71/vo-t1/target-source.html':
+        ('3c0b30d3f08d1747a7df70bbb80d4d04e6545658070a3c3bd605ef54ad3892b7',
+         'одобренная PO доска VO-T1 (fe1ad68 GIT-RECOVERY-01); A11Y-001 открыт '
+         '— закрытие только авторизованной пересборкой доски'),
 }
 # `design-system/preview.html` удалён 06.08: он был побайтовой копией витрины
 # до её переработки и с этого дня расходился с ней — устаревший дубль в
