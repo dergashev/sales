@@ -112,6 +112,12 @@ export function S4Vergleich() {
   }
 
   const base = cols[0]!;
+  // VR2-05: real, independent DC-11 role — "Aktuell bearbeitet"/"in Arbeit"
+  // is whichever column carries `s.activeOptionId`, never necessarily the
+  // comparison baseline (`base`, i===0). Both stay independent badges
+  // (VARIANT-001/R-22); this binding only lets the header/context zone
+  // name the active column's Option once, without recomputing it per cell.
+  const activeCol = cols.find((c) => c.option.id === s.activeOptionId);
 
   const money = (d: Decimal) => {
     const pr = present(d);
@@ -144,22 +150,12 @@ export function S4Vergleich() {
     subCells?: Sub[];
   };
 
+  // VR2-05: the total + its delta now live in the column header itself
+  // (DC-11 anatomy: `columnHeader → cell → value.numeric → delta`), directly
+  // under Option identity — one coherent price/consequence scan path
+  // instead of a duplicate body row. Values/semantics are unchanged; only
+  // the row this exact total/delta pair renders in.
   const rows: Row[] = [
-    {
-      group: "ERGEBNIS",
-      label: `${tx(base.p.result.totalLabel)} (€)`,
-      cells: cols.map((c) => money(c.p.result.total.exact)),
-      // Дельта к базе — подстрочник той же ячейки (.a3-d контракта DC-11),
-      // экономия получает .a3-save; отдельная строка дельты не существует.
-      subCells: cols.map((c, i) =>
-        i === 0
-          ? null
-          : {
-              text: `${delta(c.p.result.total.exact.minus(base.p.result.total.exact))} gegenüber ${base.option.name}`,
-              save: c.p.result.total.exact.lt(base.p.result.total.exact),
-            },
-      ),
-    },
     {
       // Each Option can carry a different building set and therefore a
       // different typed denominator. The denominator travels with its cell;
@@ -284,22 +280,105 @@ export function S4Vergleich() {
             </>
           )
         }
+        // VR2-05: the decision-framing line ("differences first") now sits
+        // directly under the H1 — the strongest position on the page —
+        // instead of beside a control below the fold. Same two existing
+        // i18n keys, same live toggle-state binding; only the position and
+        // typographic weight changed.
+        lede={
+          !client && cols.length > 1
+            ? t(showAll ? "comparison.allHint" : "comparison.differencesHint")
+            : undefined
+        }
       />
 
+      {/* VR2-05: ONE quiet head zone below the framing — comparison context
+          (which Option is the baseline / which is in Arbeit, real
+          `activeOptionId`/`base` truth, no invented role) on the left,
+          every control (Konfigurator/Export nav, row filter, horizontal
+          scroll) demoted into one compact toolbar on the right. Controls no
+          longer appear before Option identity/price — they sit below the
+          headline, beside a context line that answers "which one is the
+          base, which one is active" before any table cell is read. */}
       {!client && (
-        <nav className="mt-4 flex flex-wrap items-center gap-3"
-             aria-label={tx("Vergleichsnavigation")}>
-          <Button variant="ghost" onClick={() => s.setPipelineView("konfigurator")}>
-            {t("nav.konfigurator")}
-          </Button>
-          <Button
-            onClick={() => s.setPipelineView("export")}
-            disabled={!s.canBeginConfiguration() || !s.configurationComplete()}
-            disabledReason={t("configurator.finalGate.exportBlockedReason")}
-          >
-            {t("nav.export")}
-          </Button>
-        </nav>
+        <div className="a3-comparison-head mt-4">
+          <div className="a3-comparison-context">
+            {cols.length > 1 && (
+              <p className="a3-cap">
+                <span aria-hidden="true">■ </span>
+                {tx("Vergleichsbasis")}
+                {": "}
+                <span className="font-medium text-text-primary">
+                  {base.option.name}
+                </span>
+                {activeCol && activeCol.option.id !== base.option.id && (
+                  <>
+                    {" · "}
+                    {tx("in Arbeit")}
+                    {": "}
+                    <span className="font-medium text-text-primary">
+                      {activeCol.option.name}
+                    </span>
+                  </>
+                )}
+              </p>
+            )}
+          </div>
+          <div className="a3-comparison-toolbar">
+            <nav
+              className="a3-comparison-toolbar-group"
+              aria-label={tx("Vergleichsnavigation")}
+            >
+              <Button variant="ghost" onClick={() => s.setPipelineView("konfigurator")}>
+                {t("nav.konfigurator")}
+              </Button>
+              <Button
+                onClick={() => s.setPipelineView("export")}
+                disabled={!s.canBeginConfiguration() || !s.configurationComplete()}
+                disabledReason={t("configurator.finalGate.exportBlockedReason")}
+              >
+                {t("nav.export")}
+              </Button>
+            </nav>
+            {/* The row-filter toggle only means something once a table
+                exists (F20/AC-08): with fewer than two options it would be
+                a live control over nothing. */}
+            {cols.length > 1 && (
+              <div className="a3-comparison-toolbar-group">
+                <Button onClick={() => setShowAll((v) => !v)} aria-pressed={showAll}>
+                  {tx(showAll ? "nur Unterschiede" : "alle Zeilen anzeigen")}
+                </Button>
+              </div>
+            )}
+            {cols.length > 1 && (
+              <div
+                className="a3-comparison-controls a3-comparison-toolbar-group"
+                aria-label={tx("Vergleich horizontal steuern")}
+              >
+                <Button
+                  onClick={() =>
+                    scrollRef.current?.scrollTo({
+                      left: 0,
+                      behavior: reducedMotion ? "auto" : "smooth",
+                    })
+                  }
+                >
+                  {tx("Zum Zeilenanfang")}
+                </Button>
+                <Button
+                  onClick={() =>
+                    scrollRef.current?.scrollTo({
+                      left: scrollRef.current.scrollWidth,
+                      behavior: reducedMotion ? "auto" : "smooth",
+                    })
+                  }
+                >
+                  {tx("Zum Zeilenende")}
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* REDESIGN R3: with >=2 client-eligible Options, the salesperson can
@@ -428,20 +507,6 @@ export function S4Vergleich() {
         </p>
       )}
 
-      {/* The row-filter toggle only means something once a table exists
-          (F20/AC-08): with fewer than two options it would be a live
-          control over nothing. */}
-      {cols.length > 1 && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-small text-text-secondary">
-            {t(showAll ? "comparison.allHint" : "comparison.differencesHint")}
-          </p>
-          <Button onClick={() => setShowAll((v) => !v)} aria-pressed={showAll}>
-            {tx(showAll ? "nur Unterschiede" : "alle Zeilen anzeigen")}
-          </Button>
-        </div>
-      )}
-
       {cols.length < 2 && isVisibleInOutputProfile(s.mode, "internalOnly") && (
         <div className="mt-4">
           <NextStep
@@ -463,34 +528,8 @@ export function S4Vergleich() {
       {cols.length > 1 && (
         <>
           <div
-            className="a3-comparison-controls mt-4"
-            aria-label={tx("Vergleich horizontal steuern")}
-          >
-            <Button
-              onClick={() =>
-                scrollRef.current?.scrollTo({
-                  left: 0,
-                  behavior: reducedMotion ? "auto" : "smooth",
-                })
-              }
-            >
-              {tx("Zum Zeilenanfang")}
-            </Button>
-            <Button
-              onClick={() =>
-                scrollRef.current?.scrollTo({
-                  left: scrollRef.current.scrollWidth,
-                  behavior: reducedMotion ? "auto" : "smooth",
-                })
-              }
-            >
-              {tx("Zum Zeilenende")}
-            </Button>
-          </div>
-
-          <div
             ref={scrollRef}
-            className="a3-comparison-scroll mt-3"
+            className="a3-comparison-scroll mt-4"
             role="region"
             aria-label={tx("Horizontal scrollbarer Variantenvergleich")}
             tabIndex={0}
@@ -517,7 +556,7 @@ export function S4Vergleich() {
               </colgroup>
               <thead>
                 <tr>
-                  <th>{showAll ? "alle Zeilen" : "nur Unterschiede"}</th>
+                  <th>{tx(showAll ? "alle Zeilen" : "nur Unterschiede")}</th>
                   {cols.map((c, i) => {
                     // REDESIGN R2 §5 "COLUMN IDENTITY": the same OptionCard DNA
                     // (building chips, headline subtotal, KG mini-composition)
@@ -563,9 +602,45 @@ export function S4Vergleich() {
                               ))}
                           </span>
                         )}
-                        <span className="mt-2 block text-metric-section font-bold text-text-primary numeric">
+                        {/* `a3-cmp-price` carries its own weight/colour in
+                            components.css (governance NO-VISUAL-UTILITY —
+                            an `a3-`-prefixed element owns its visual
+                            identity in the system, not via loose Tailwind
+                            utilities) and doubles as the stable selector
+                            hook the sticky-column occlusion regression spec
+                            (variantenvergleich-comparison.desktop.ts) needs
+                            now that this value lives in the column header
+                            instead of a body row. */}
+                        <span className="a3-cmp-price mt-2 block text-metric-section numeric">
                           {moneyLabel(present(c.p.result.total.exact))}
                         </span>
+                        {/* VR2-05: price + its consequence read together —
+                            this is the same value/delta pair the body's
+                            ERGEBNIS row used to carry two scroll-positions
+                            away; DC-11 anatomy also places `delta` directly
+                            under `value.numeric` in the column header, not
+                            in a separate body row. */}
+                        {i !== 0 && (
+                          <span
+                            className={
+                              "a3-d" +
+                              (c.p.result.total.exact.lt(
+                                base.p.result.total.exact,
+                              )
+                                ? " a3-save"
+                                : "")
+                            }
+                          >
+                            {t("journal.deltaAgainstBaseline", {
+                              delta: delta(
+                                c.p.result.total.exact.minus(
+                                  base.p.result.total.exact,
+                                ),
+                              ),
+                              baseline: base.option.name,
+                            })}
+                          </span>
+                        )}
                         {segments.length > 0 && (
                           <div className="mt-2">
                             <CompositionBar
@@ -590,6 +665,41 @@ export function S4Vergleich() {
                     rows={visible.filter((r) => r.group === g)}
                   />
                 ))}
+                {/* VR2-05: a real, always-visible decision action per
+                    column — reuses the exact existing `openOption`
+                    capability (OpportunityCard's own "Öffnen" action/label,
+                    `oppcard.open`), never a fabricated "mark as favourite"
+                    semantic the Product data model does not carry (no
+                    recommendation/favourite field exists on Option — see
+                    change manifest). The Option already open/in Arbeit gets
+                    its real next step instead of a duplicate action:
+                    continue in the Konfigurator. */}
+                {!client && (
+                  <tr>
+                    <th scope="row" className="text-text-secondary">
+                      {t("s2.variants.action")}
+                    </th>
+                    {cols.map((c) => (
+                      <td key={c.option.id} className="a3-num">
+                        {c.option.id === s.activeOptionId ? (
+                          <Button
+                            variant="secondary"
+                            onClick={() => s.setPipelineView("konfigurator")}
+                          >
+                            {t("nav.konfigurator")}
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="secondary"
+                            onClick={() => s.openOption(c.option.id)}
+                          >
+                            {t("oppcard.open")}
+                          </Button>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

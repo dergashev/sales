@@ -118,14 +118,21 @@ for (const { label: viewportLabel, viewport } of VIEWPORTS) {
         const scrollRegion = page.getByRole('region', { name: 'Horizontal scrollbarer Variantenvergleich' })
         await expect(scrollRegion).toBeVisible()
         const table = scrollRegion.locator('table.a3-cmp')
-        // ERGEBNIS (the total row) is always rendered regardless of the
-        // "nur Unterschiede"/"alle Zeilen anzeigen" toggle (S4Vergleich.tsx:
-        // `new Set(r.cells).size > 1 || r.group === 'ERGEBNIS'`), and is
-        // always the first non-group-header row.
-        const totalRow = table.locator('tbody tr:not(.a3-comparison-group)').first()
-        const moneyCells = totalRow.locator('td.a3-num')
+        // VR2-05: the total (+ its delta) now lives in the column HEADER,
+        // directly under Option identity (DC-11 anatomy: `columnHeader →
+        // cell → value.numeric → delta`) — one coherent price/consequence
+        // scan path instead of a duplicate first body row. The sticky
+        // first-column occlusion mechanism this spec guards against is
+        // identical in `<thead>` (the SAME `.a3-comparison-scroll` sticky
+        // rule applies to every row, header included — see
+        // components.css:`.a3-comparison-scroll .a3-cmp tr:not(.a3-comparison-group)>:first-child`),
+        // so this remains the same regression guard, just re-targeted to
+        // where the money value actually renders now. `.a3-cmp-price` is a
+        // stable selector hook (S4Vergleich.tsx) for exactly this value.
+        const headerRow = table.locator('thead tr').first()
+        const moneyCells = headerRow.locator('th.a3-num .a3-cmp-price')
         await expect(moneyCells).toHaveCount(OPTION_COUNT)
-        const stickyCell = totalRow.locator(':scope > :first-child')
+        const stickyCell = headerRow.locator(':scope > :first-child')
 
         async function readScrollLeft() {
           return scrollRegion.evaluate((el) => el.scrollLeft)
@@ -165,36 +172,20 @@ for (const { label: viewportLabel, viewport } of VIEWPORTS) {
         // scrollport itself can be at some viewports once combined with the
         // sticky label column's own width (220px, `--measure-conflict-column`)
         // — by design (see the "scroll-snap-type:x mandatory" CSS comment on
-        // the comparison scroll container): only the RIGHT-ALIGNED
-        // MONEY TEXT is guaranteed clear, never necessarily the whole
-        // padded `<td>` box (its own left side, badges/id, may sit under
-        // the sticky footprint at a snapped position). Occlusion evidence
-        // therefore targets the actual rendered glyphs — a `Range` over the
-        // cell's text content — not the cell's own bounding box.
+        // the comparison scroll container): only the RIGHT-ALIGNED MONEY
+        // TEXT is guaranteed clear, never necessarily the whole padded
+        // `<th>` box (Option name/badges/chips above it may sit under the
+        // sticky footprint at a snapped position). `.a3-cmp-price` is its
+        // OWN dedicated `<span>` containing nothing but the money text
+        // (S4Vergleich.tsx — `moneyLabel(...)` is a plain string, no nested
+        // markup), so its element bounding box IS the money text's box —
+        // no text-node `Range` extraction needed (that was only required
+        // for the old body `<td>` cell, which mixed a leading text node
+        // with a trailing `.a3-d` delta sibling in the SAME node).
         async function textBoundingBox(cell: ReturnType<typeof moneyCells.nth>) {
-          return cell.evaluate((el) => {
-            // Only the cell's OWN leading text node(s) — the money value
-            // itself, rendered as a raw text node directly under the
-            // `<td>` (S4Vergleich.tsx: `<td className="a3-num">{c}{...}</td>`)
-            // — never a `.a3-d` delta child `<span>` ("zur Vergleichsbasis"),
-            // which is `display:block` and can span nearly the cell's full
-            // width, corrupting a whole-cell Range's bounding box into
-            // something meaningless for occlusion purposes.
-            const range = document.createRange()
-            let started = false
-            for (const node of Array.from(el.childNodes)) {
-              if (node.nodeType === Node.TEXT_NODE && (node.textContent ?? '').trim()) {
-                if (!started) { range.setStart(node, 0); started = true }
-                range.setEnd(node, node.textContent!.length)
-              } else if (started) {
-                break
-              }
-            }
-            if (!started) return null
-            const rect = range.getBoundingClientRect()
-            if (rect.width === 0 && rect.height === 0) return null
-            return { x: rect.left, y: rect.top, width: rect.width, height: rect.height }
-          })
+          const box = await cell.boundingBox()
+          if (!box || (box.width === 0 && box.height === 0)) return null
+          return box
         }
 
         async function assertExposedColumnsMatchBaseline(checkpoint: string) {

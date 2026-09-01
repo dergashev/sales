@@ -533,11 +533,35 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    Classes: .a3-cmp · .a3-target · .a3-num · .a3-d · .a3-save. */
 .a3-cmp td,.a3-cmp th{padding:var(--space-3) var(--space-4);border-bottom:var(--border-hairline)}
 .a3-cmp th{font-size:var(--type-table-header-size);line-height:var(--type-table-header-line);font-weight:var(--type-table-header-weight);color:var(--color-text-secondary);text-align:left;border-bottom:var(--border-default)}
-.a3-cmp th.a3-target{border-top:var(--border-selected);color:var(--color-text-primary);font-weight:var(--type-table-header-weight)}
+/* VR2-05: the "Aktuell bearbeitet"/"in Arbeit" column (`activeOptionId`)
+   already carried `--border-selected` on top; it now also gets the SAME
+   surface-tint pairing DC-13's WorkflowStepper already uses for its own
+   "current step" state (`.a3-wfs-current`, `--color-surface-selected`) —
+   one consistent "current/active" visual vocabulary across the product,
+   not a page-local invention. This is NOT the reserved `Zielangebot`
+   role (no such state exists in Product truth for this screen — see the
+   VR2-05 change manifest); it stays the honest "in Arbeit" role only. */
+.a3-cmp th.a3-target{border-top:var(--border-selected);background:var(--color-surface-selected);color:var(--color-text-primary);font-weight:var(--type-table-header-weight)}
 .a3-cmp .a3-num{text-align:right}
 .a3-cmp .a3-d{display:block;font-size:var(--type-delta-size);line-height:var(--type-delta-line);font-weight:var(--type-delta-weight);color:var(--color-text-primary)}
 .a3-cmp .a3-d.a3-save{color:var(--color-dataviz-category-2)}
+/* VR2-05 · the column-header total (`text-metric-section` sizing utility
+   stays on the element for its font-size/line-height; weight/colour — its
+   actual visual identity — belong here, not as loose Tailwind utilities on
+   an `a3-`-prefixed element, per governance NO-VISUAL-UTILITY). */
+.a3-cmp-price{font-weight:var(--type-metric-section-weight);color:var(--color-text-primary)}
 .a3-comparison-controls{display:flex;justify-content:flex-end;gap:var(--space-2);flex-wrap:wrap}
+/* VR2-05 · comparison head zone: real context (baseline/active Option
+   names) on the left, every control (Konfigurator/Export nav, row filter,
+   horizontal scroll) demoted into one compact toolbar on the right — the
+   controls no longer sit above Option identity as their own visual block.
+   Same two-column masthead-toolbar pattern already established for
+   `.a3-portfolio-head` (VR2-01), scoped locally since this screen's
+   content differs (a context caption, not a headline). */
+.a3-comparison-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-3) var(--space-4);flex-wrap:wrap}
+.a3-comparison-context{flex:1 1 16rem;min-width:0}
+.a3-comparison-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-2) var(--space-4);flex:0 0 auto}
+.a3-comparison-toolbar-group{display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap}
 .a3-comparison-scroll{max-inline-size:100%;overflow-x:auto;overscroll-behavior-inline:contain;outline-offset:var(--space-1)}
 .a3-comparison-scroll>.a3-cmp{inline-size:max-content;min-inline-size:100%}
 .a3-comparison-scroll .a3-cmp tr:not(.a3-comparison-group)>:first-child{position:sticky;inset-inline-start:0;z-index:1;min-inline-size:var(--measure-conflict-column);background:var(--color-surface-default);box-shadow:var(--border-width-default) 0 var(--color-border-subtle)}
