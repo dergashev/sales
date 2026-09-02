@@ -41,3 +41,14 @@ export const DELTA_CHIP_MS = 4000
  * механика прототипа: подпись у статуса называет её симуляцией.
  */
 export const DELIVERY_SIMULATION_MS = 2500
+
+/**
+ * VR2-08 — kurze, echte «wird gesendet»-Zwischenphase im Präsentations-
+ * Versandfluss (Regel 25: kein erfundener Prozentwert, nur ein
+ * indeterminate `Button`-Loading-Zustand), zwischen dem Klick auf "Angebot
+ * jetzt senden" und dem eigentlichen Commit (`sendOfferForOption`). Bewusst
+ * kürzer und von `DELIVERY_SIMULATION_MS` unterschieden: dort simuliert der
+ * Prototyp die Zustellzeit NACH einem bereits erfolgten Versand, hier die
+ * kurze Übermittlung selbst, bevor der unveränderliche Snapshot entsteht.
+ */
+export const SEND_COMMIT_SIMULATION_MS = 500

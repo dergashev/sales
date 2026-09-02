@@ -245,6 +245,15 @@ export type OfferSnapshot = {
   coverage: Coverage
   discountPercent: string | null
   journalSeqAt: number
+  /**
+   * VR2-08 (SNAPSHOT BINDING): welche Artefakte zum Versandzeitpunkt real
+   * gewählt waren (`offerDraft.attachments`-IDs) — ohne dieses Feld würde
+   * das Delivered-Rückblickfenster die AKTUELLE, mutable Auswahl anzeigen
+   * und damit genau das verletzen, was M-3 verbietet: eine spätere,
+   * legitime Änderung der Artefaktauswahl dürfte die historische
+   * Sendung nicht rückwirkend umschreiben.
+   */
+  attachmentIds: string[]
 }
 
 /**
@@ -456,6 +465,17 @@ type PersistedProposalPayload = {
    * `false` on restore, the same conservative default as the initial state.
    */
   projectParamsConfirmed?: boolean
+  /**
+   * VR2-08 (M-3, SNAPSHOT BINDING): absent in payloads saved before this
+   * fix — a sent Option's immutable snapshot previously lived ONLY in
+   * memory, so a genuinely ordinary action (a real browser reload, not a
+   * client-eligibility edge case) silently lost "this was already sent"
+   * and routed the ordinary portfolio re-entry straight back to the
+   * narrative, as if nothing had ever been sent. Optional/defaults to `[]`
+   * on restore so an older stored payload keeps loading rather than being
+   * discarded whole.
+   */
+  snapshots?: OfferSnapshot[]
 }
 
 /**
@@ -968,8 +988,36 @@ function isPersistedProposalConfig(value: unknown): value is PersistedProposalCo
 
 const PERSISTED_PROPOSAL_PAYLOAD_KEYS = [
   'active', 'options', 'activeOptionId', 'optionSeq', 'optionConfigs',
-  'buildingConflicts', 'projectParamsConfirmed',
+  'buildingConflicts', 'projectParamsConfirmed', 'snapshots',
 ] as const
+
+const OFFER_SNAPSHOT_KEYS = [
+  'id', 'at', 'kind', 'optionId', 'optionName', 'totalExact', 'totalLabel',
+  'uncertaintyPp', 'regionalfaktorActive', 'coverage', 'discountPercent',
+  'journalSeqAt', 'attachmentIds',
+] as const
+
+/** VR2-08 (M-3): a restored snapshot's SHAPE is validated (an incompatible
+ *  payload must not resurrect a malformed "sent" record) — its CONTENTS
+ *  are trusted as-is, the same way every other restored field here is;
+ *  the snapshot was already `deepFreeze`d before it was ever persisted. */
+function isOfferSnapshot(value: unknown): value is OfferSnapshot {
+  if (!record(value) || !hasOnlyKeys(value, OFFER_SNAPSHOT_KEYS)) return false
+  return typeof value.id === 'string'
+    && typeof value.at === 'string'
+    && (value.kind === 'email' || value.kind === 'print')
+    && (value.optionId === null || typeof value.optionId === 'string')
+    && (value.optionName === null || typeof value.optionName === 'string')
+    && typeof value.totalExact === 'string'
+    && typeof value.totalLabel === 'string'
+    && typeof value.uncertaintyPp === 'number'
+    && typeof value.regionalfaktorActive === 'boolean'
+    && record(value.coverage)
+    && (value.discountPercent === null || typeof value.discountPercent === 'string')
+    && Number.isInteger(value.journalSeqAt) && (value.journalSeqAt as number) >= 0
+    && Array.isArray(value.attachmentIds)
+    && value.attachmentIds.every((id) => typeof id === 'string')
+}
 
 function isPersistedProposalPayload(value: unknown): value is PersistedProposalPayload {
   if (!record(value)
@@ -983,7 +1031,9 @@ function isPersistedProposalPayload(value: unknown): value is PersistedProposalP
     || !record(value.optionConfigs)
     || !record(value.buildingConflicts)
     || (value.projectParamsConfirmed !== undefined
-      && typeof value.projectParamsConfirmed !== 'boolean')) return false
+      && typeof value.projectParamsConfirmed !== 'boolean')
+    || (value.snapshots !== undefined
+      && (!Array.isArray(value.snapshots) || !value.snapshots.every(isOfferSnapshot)))) return false
 
   const options = value.options
   if (!options.every((option) => record(option)
@@ -1087,6 +1137,9 @@ function capturePersistedProposal(state: Store): PersistedProposalPayload {
       .map(([id, config]) => [id, capturePersistedConfig(config)])),
     buildingConflicts: state.buildingConflicts,
     projectParamsConfirmed: state.projectParamsConfirmed,
+    // VR2-08 (M-3): already-frozen values — a plain reference is enough,
+    // JSON serialisation does the actual copying on the way to storage.
+    snapshots: state.snapshots,
   }
 }
 
@@ -3474,6 +3527,11 @@ const store = createStore<Store>((set, get) => {
           ? (config?.discountPercent ?? s.discountPercent)!.toFixed(1)
           : null,
         journalSeqAt: s.journal.length,
+        // VR2-08: copy, not reference — `offerDraft.attachments` stays live
+        // and mutable after this send; the snapshot's own array must not
+        // alias it (the same "object AND array both frozen" discipline the
+        // comment below already applies to `snap`/`s.snapshots`).
+        attachmentIds: [...s.offerDraft.attachments],
       }
       // Снапшот неприкосновенен по построению (M-3): и сам объект, и список.
       // Аудит показал, что возвращаемый объект был изменяем, а массив
@@ -4624,6 +4682,16 @@ export function hydrateProposalState(storage = browserProposalStorage()): boolea
       // the same rigor as the conflict decision above, instead of silently
       // reverting to unconfirmed. Absent in payloads saved before this fix.
       projectParamsConfirmed: payload.projectParamsConfirmed === true,
+      // VR2-08 (M-3): a sent Option's immutable snapshot now survives an
+      // ordinary reload the same way every other confirmed decision above
+      // already does — `Object.freeze` re-applied since JSON deserialisation
+      // produces a genuinely new, mutable array/objects (M-3's own
+      // "неприкосновенен по построению" invariant does not survive a
+      // structured-clone round trip for free). Absent in payloads saved
+      // before this fix, defaults to the same `[]` the initial state uses.
+      snapshots: Object.freeze(
+        (payload.snapshots ?? []).map((snap) => deepFreeze({ ...snap })),
+      ) as OfferSnapshot[],
       level: payload.activeOptionId ? 'option' : 'liste',
       opportunityId: payload.activeOptionId ? PROPOSAL_PROJECT_ID : null,
       mode: 'intern',

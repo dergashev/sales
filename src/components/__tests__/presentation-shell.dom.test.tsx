@@ -2,8 +2,10 @@ import { useRef } from 'react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { PresentationShell } from '../PresentationShell'
-import { __resetStoreForTests, includedBuildingIds, useStore } from '../../state/store'
+import { PresentationShell, PresentationFlowScreen, type Candidate } from '../PresentationShell'
+import {
+  __resetStoreForTests, configForOption, includedBuildingIds, projectionForOption, useStore,
+} from '../../state/store'
 
 /**
  * VR2-06 — PresentationShell narrative shell.
@@ -285,7 +287,9 @@ describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Bereit zum Senden' })).toBeInTheDocument()
     })
-    expect(screen.getByText(/Option B · Ihr indikatives Angebot/)).toBeInTheDocument()
+    // VR2-08: the subject line now names the PROJECT (what a real email
+    // subject would read), not the internal Option name.
+    expect(screen.getByText(/Indikatives Angebot · Ihr Projekt/)).toBeInTheDocument()
 
     const sendButton = screen.getByRole('button', { name: 'Angebot senden' })
     expect(sendButton).toHaveAttribute('aria-disabled', 'true')
@@ -312,21 +316,27 @@ describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/
       expect(screen.getByRole('heading', { name: 'Bereit zum Senden' })).toBeInTheDocument()
     })
 
-    expect(screen.getByText('An: kontakt@beispiel-entwickler.example (aus HubSpot)')).toBeInTheDocument()
+    expect(screen.getByText('kontakt@beispiel-entwickler.example')).toBeInTheDocument()
     const sendButton = screen.getByRole('button', { name: 'Angebot senden' })
     expect(sendButton).not.toHaveAttribute('aria-disabled')
 
+    // VR2-08: a real, visible "sending" commit step now sits between the
+    // click and the snapshot existing (SEND_COMMIT_SIMULATION_MS) — the
+    // button goes into its canonical loading state first.
     await user.click(sendButton)
-    expect(st().snapshots).toHaveLength(1)
+    expect(st().snapshots).toHaveLength(0)
+    await waitFor(() => {
+      expect(st().snapshots).toHaveLength(1)
+    })
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Angebot gesendet' })).toBeInTheDocument()
     })
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Angebot zugestellt (simuliert)' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Angebot wurde zugestellt.' })).toBeInTheDocument()
     }, { timeout: 3000 })
     expect(st().snapshots).toHaveLength(1)
-    expect(screen.getByText('An: kontakt@beispiel-entwickler.example (aus HubSpot)')).toBeInTheDocument()
+    expect(screen.getByText(/kontakt@beispiel-entwickler\.example/)).toBeInTheDocument()
   })
 })
 
@@ -499,5 +509,219 @@ describe('PresentationShell — accessibility (AC 62–67)', () => {
     const live = document.querySelector('p[aria-live="polite"]')
     expect(live).not.toBeNull()
     expect(live!.textContent).toMatch(/Option B/)
+  })
+})
+
+/** Walks a real fixture Option all the way through Send review to a
+ *  genuine immutable snapshot — the same sequence a seller would take, via
+ *  the ordinary narrative → Nächster Schritt → Angebot vorbereiten → Angebot
+ *  prüfen & senden → Angebot senden path. Used by every VR2-08 test below
+ *  that needs an actually-sent Option to reopen/inspect. */
+async function sendCurrentOption(user: ReturnType<typeof userEvent.setup>) {
+  await gotoSection(user, 'Nächster Schritt')
+  await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: 'Angebot prüfen & senden →' })).toBeInTheDocument()
+  })
+  await user.click(screen.getByRole('button', { name: 'Angebot prüfen & senden →' }))
+  await waitFor(() => {
+    expect(screen.getByRole('heading', { name: 'Bereit zum Senden' })).toBeInTheDocument()
+  })
+  await user.click(screen.getByRole('button', { name: 'Angebot senden' }))
+  await waitFor(() => {
+    expect(screen.getByRole('heading', { name: 'Angebot wurde zugestellt.' })).toBeInTheDocument()
+  }, { timeout: 4000 })
+}
+
+describe('PresentationShell — VR2-08 Send review / Delivered lifecycle', () => {
+  it('blocks sending on a genuinely undetermined price, with its own distinct reason from a missing recipient (rule 16, rule 12) — KG 300/400/700 are structurally mandatory (store.ts setCoverage) so a COMPLETE Option can never itself reach total.isZero() live; this Preis-nicht-ermittelt precondition is proportionate defence-in-depth for the same EMAIL-001 §9.3 condition #2, proven directly against PresentationFlowScreen with a real recipient present, so the distinctness from the recipient reason is genuinely exercised', async () => {
+    const user = userEvent.setup()
+    buildTwoEligibleOptions('DEMO-0001')
+    const cfg = configForOption(st(), 'OPT-01')!
+    const p = projectionForOption(st(), 'OPT-01')!
+    const current: Candidate = { id: 'OPT-01', name: 'Option A', cfg, p }
+
+    render(
+      <PresentationFlowScreen
+        flow="send"
+        delivery="sent"
+        current={current}
+        projectName="Musterprojekt Nordfeld"
+        priceUnavailable
+        galleryArtifacts={[]}
+        onPrepare={() => {}}
+        onOpenOffer={() => {}}
+        canSend={false}
+        recipient={{ address: 'kontakt@beispiel-entwickler.example', source: 'HubSpot' }}
+        onSend={() => {}}
+        sendStatus="idle"
+        onRetry={() => {}}
+        onOpenSent={() => {}}
+        onCloseSnapshot={() => {}}
+        onNewVersion={() => {}}
+        headingRef={{ current: null }}
+      />,
+    )
+
+    const sendButton = screen.getByRole('button', { name: 'Angebot senden' })
+    expect(sendButton).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getAllByText(/Gesamtpreis noch nicht ermittelt/).length).toBeGreaterThan(0)
+    // Distinct from the missing-recipient reason — never both messages for
+    // one block, and never the missing-recipient text when a real
+    // recipient IS present.
+    expect(screen.queryByText('Noch kein Empfänger hinterlegt')).not.toBeInTheDocument()
+
+    await user.click(sendButton)
+    expect(st().snapshots).toHaveLength(0)
+  })
+
+  it('the real Send click shows a genuine, visible "sending" commit state (Button loading, no fabricated percentage) before the snapshot exists', async () => {
+    const user = userEvent.setup()
+    buildTwoEligibleOptions('DEMO-0001')
+    render(<Harness />)
+
+    await gotoSection(user, 'Nächster Schritt')
+    await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Angebot prüfen & senden →' })).toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: 'Angebot prüfen & senden →' }))
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Bereit zum Senden' })).toBeInTheDocument()
+    })
+
+    const sendButton = screen.getByRole('button', { name: 'Angebot senden' })
+    await user.click(sendButton)
+    // Real SEND_COMMIT_SIMULATION_MS window: the click has committed but
+    // the snapshot does not exist yet — the button shows its own real
+    // aria-busy loading state (Button primitive), never a synchronous
+    // click-to-success jump.
+    expect(sendButton).toHaveAttribute('aria-busy', 'true')
+    expect(st().snapshots).toHaveLength(0)
+
+    await waitFor(() => {
+      expect(st().snapshots).toHaveLength(1)
+    }, { timeout: 2000 })
+  })
+
+  it('models the real, spec-defined send-FAILURE branch (EMAIL-007/008 "failed" outcome) at the component level: visible, actionable, no duplicate primary CTA, reviewed content preserved, and a working retry callback — this backend-less prototype has no reachable trigger for a real transport failure to click through live ("Do NOT invent delivery evidence"), so the branch is verified directly against the real, exported PresentationFlowScreen', async () => {
+    const user = userEvent.setup()
+    buildTwoEligibleOptions('DEMO-0001')
+    const cfg = configForOption(st(), 'OPT-01')!
+    const p = projectionForOption(st(), 'OPT-01')!
+    const current: Candidate = { id: 'OPT-01', name: 'Option A', cfg, p }
+    let retried = false
+
+    render(
+      <PresentationFlowScreen
+        flow="send"
+        delivery="sent"
+        current={current}
+        projectName="Musterprojekt Nordfeld"
+        priceUnavailable={false}
+        galleryArtifacts={[]}
+        onPrepare={() => {}}
+        onOpenOffer={() => {}}
+        canSend
+        recipient={{ address: 'kontakt@beispiel-entwickler.example', source: 'HubSpot' }}
+        onSend={() => {}}
+        sendStatus="failed"
+        onRetry={() => { retried = true }}
+        onOpenSent={() => {}}
+        onCloseSnapshot={() => {}}
+        onNewVersion={() => {}}
+        headingRef={{ current: null }}
+      />,
+    )
+
+    expect(screen.getByText('Senden fehlgeschlagen')).toBeInTheDocument()
+    expect(screen.getByText(/kein Snapshot gespeichert/)).toBeInTheDocument()
+    // The failure notice REPLACES the Send action (never a second
+    // visually-primary CTA alongside it) and the reviewed recipient
+    // section stays visible — failure does not destroy context.
+    expect(screen.queryByRole('button', { name: 'Angebot senden' })).not.toBeInTheDocument()
+    expect(screen.getByText('Empfänger')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Erneut versuchen' }))
+    expect(retried).toBe(true)
+  })
+
+  it('POST-SEND RE-ENTRY (M-3): reopening an already-sent Option lands directly on the truthful Delivered state, not the narrative — the ordinary portfolio route must not replay Compose for a project that was already sent', async () => {
+    const user = userEvent.setup()
+    buildTwoEligibleOptions('DEMO-0001')
+    const first = render(<Harness />)
+    await sendCurrentOption(user)
+    expect(st().snapshots).toHaveLength(1)
+
+    // Simulate leaving and re-entering (a fresh mount of the SAME shell
+    // against the SAME, now-sent, store state) — the honest equivalent of
+    // closing Präsentationsmodus and reopening the Option from the
+    // ordinary portfolio/Opportunity card.
+    first.unmount()
+    render(<Harness />)
+
+    // No click-through required: the Delivered truth is the very first
+    // thing rendered, derived from the real snapshot the store already
+    // holds — never a reset to 'narrative'.
+    expect(screen.getByRole('heading', { name: 'Angebot wurde zugestellt.' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Bereit zum Senden' })).not.toBeInTheDocument()
+    expect(st().snapshots).toHaveLength(1)
+  })
+
+  it('POST-SEND IMMUTABILITY (M-3, SNAPSHOT BINDING): a later, legitimate change to the live artefact selection does not rewrite what the Delivered screen shows was actually sent', async () => {
+    const user = userEvent.setup()
+    buildTwoEligibleOptions('DEMO-0001')
+    st().setOfferDraft({ attachments: ['praesentation', 'leistungen'] })
+    render(<Harness />)
+    await sendCurrentOption(user)
+
+    expect(screen.getByText('Angebotspräsentation (PDF)')).toBeInTheDocument()
+    expect(screen.getByText('Leistungen — enthalten / nicht enthalten')).toBeInTheDocument()
+    expect(screen.queryByText('Schnittstellenmatrix (SSL)')).not.toBeInTheDocument()
+
+    // A legally editable, later Product edit — the live selection is free
+    // to change; the ALREADY-SENT historical snapshot must not follow it.
+    st().setOfferDraft({ attachments: ['ssl'] })
+    expect(screen.getByText('Angebotspräsentation (PDF)')).toBeInTheDocument()
+    expect(screen.getByText('Leistungen — enthalten / nicht enthalten')).toBeInTheDocument()
+    expect(screen.queryByText('Schnittstellenmatrix (SSL)')).not.toBeInTheDocument()
+  })
+
+  it('Versandnachweis shows the real Gesendet/Zugestellt chronology (EMAIL-007/008: Gesendet ≠ Zugestellt) for the exact sent snapshot', async () => {
+    const user = userEvent.setup()
+    buildTwoEligibleOptions('DEMO-0001')
+    render(<Harness />)
+    await sendCurrentOption(user)
+
+    await user.click(screen.getByRole('button', { name: 'Versandnachweis' }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText('Gesendet')).toBeInTheDocument()
+    expect(within(dialog).getByText('Zugestellt')).toBeInTheDocument()
+    expect(within(dialog).getByText(new RegExp(`Snapshot #${st().snapshots[0]!.id}`))).toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('a normal portfolio re-entry never claims Delivered without a real recipient and a real snapshot — the immutable-snapshot invariant holds even on repeated mounts', async () => {
+    const user = userEvent.setup()
+    buildTwoEligibleOptions()
+    const first = render(<Harness />)
+
+    await gotoSection(user, 'Nächster Schritt')
+    await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Angebot prüfen & senden →' })).toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: 'Angebot prüfen & senden →' }))
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Bereit zum Senden' })).toBeInTheDocument()
+    })
+    expect(st().snapshots).toHaveLength(0)
+
+    first.unmount()
+    render(<Harness />)
+    expect(screen.queryByRole('heading', { name: 'Angebot wurde zugestellt.' })).not.toBeInTheDocument()
+    expect(st().snapshots).toHaveLength(0)
   })
 })

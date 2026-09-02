@@ -74,6 +74,7 @@
   --primitive-color-neutral-050: #F4F6F4; /* 50 % neutral.100 */
   --primitive-color-warm-100: #E7DFCE; /* PROVISIONAL (rule 2): VR2-02 Project WFL rail — between material.plaster and material.timber-light */
   --primitive-color-orange-100:  #F2D1BF; /* 25 % orange.700 */
+  --primitive-color-green-100:   #E3EEEC; /* PROVISIONAL (rule 2, VR2-08): ~12% tint of green-dark-500 (#3C887E), same derivation pattern as orange-100 (25% of orange.700) above. Success-surface fill for the immutable-snapshot confirmation box on Send review / Delivered. */
   /* Альфа НАМЕРЕННАЯ (adr-blocking.md §1 №10: overlay = 48 % neutral.950):
      скрим обязан просвечивать, статического hex-эквивалента у него нет
      по определению. Единственный разрешённый не-hex цвет primitive-слоя.
@@ -206,6 +207,15 @@
      both already-approved material-palette primitives, not an invented
      colour. */
   --color-surface-emphasis-warm: var(--primitive-color-warm-100);
+  /* PROVISIONAL (rule 2, VR2-08): light success-surface fill for the
+     immutable-snapshot confirmation box on Send review / Delivered — the
+     paired border/icon colour is the existing `--color-status-success`
+     (green-dark-500), never used as body text per the contrast note above.
+     Also completes `.a3-config-kg700-readiness` (components.css), which has
+     referenced this exact token name since REDESIGN R1 with no definition —
+     that pre-existing dangling reference resolves for free with no touch to
+     its consuming component. */
+  --color-surface-success: var(--primitive-color-green-100);
   --color-surface-overlay:  var(--primitive-color-neutral-950-a48);
 
   /* --- Бордеры [ADR-PENDING] --- */
@@ -406,6 +416,7 @@
      заменить геометрию отдельным ADR. */
   --size-text-underline-offset: 3px;
   --size-status-accent-width: 3px;
+  --size-status-accent-width-prominent: 6px; /* PROVISIONAL (rule 2, VR2-08): double the status-accent border weight, for the ONE full-card "completion moment" surface (Delivered) — same status colour as --size-status-accent-width, never used as a second competing accent elsewhere. */
   --size-control-inset: 6px;
   --size-material-pattern-step: 7px;
   --size-status-glyph: 9px;

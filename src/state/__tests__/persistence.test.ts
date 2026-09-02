@@ -76,7 +76,7 @@ describe('proposal store recovery', () => {
       .toBe('identity:fingerprint')
   })
 
-  it('restores the complete proposal slice with one event and no private/session data', () => {
+  it('restores the complete proposal slice with one event, a sent snapshot (VR2-08, M-3), and no private/session data otherwise', () => {
     const storage = new MemoryStorage()
     initializeProposalPersistence(storage)
     const st = () => useStore.getState()
@@ -101,14 +101,21 @@ describe('proposal store recovery', () => {
     const activeUncertainty = st().projection().uncertaintyPp
     const storedTotal = projectionForOption(st(), 'OPT-01')!.result.total.exact.toFixed()
     st().saveNote('must never leave the private session')
-    st().sendOffer('email')
+    const sentSnapshot = st().sendOffer('email')
 
     const raw = storage.getItem(proposalStorageKey('DEMO-0001'))!
     expect(raw).not.toContain('"journal"')
-    expect(raw).not.toContain('"snapshots"')
     expect(raw).not.toContain('"noteText"')
     expect(raw).not.toContain('"fields"')
     expect(raw).not.toContain('must never leave the private session')
+    // VR2-08 (M-3, SNAPSHOT BINDING): unlike `journal`/notes above, a sent
+    // snapshot is not private session scratch — it is the immutable record
+    // of what the client actually received, and the ordinary portfolio
+    // route must be able to re-show it after a genuine browser reload, not
+    // only within the same in-memory session. It DOES now appear in the
+    // persisted payload, deliberately.
+    expect(raw).toContain('"snapshots"')
+    expect(raw).toContain(sentSnapshot.id)
     // F-07 (deep-coherence audit 2026-08-22): the Opportunity-level gate flag
     // must persist with the same rigor as the conflict decision below —
     // previously absent from this payload entirely, it reverted silently on
@@ -123,7 +130,14 @@ describe('proposal store recovery', () => {
     expect(st().journal).toHaveLength(1)
     expect(st().journal[0]!.kind).toBe('state.restored')
     expect(st().journal[0]!.label).toBe('Angebotsstand wiederhergestellt')
-    expect(st().snapshots).toEqual([])
+    // VR2-08 (M-3): the sent snapshot itself survives, frozen, byte-for-byte
+    // (a real reload is a structured-clone round trip, not a memory alias —
+    // `Object.isFrozen` proves `hydrateProposalState` re-freezes rather than
+    // merely trusting the deserialised, inherently-mutable JSON objects).
+    expect(st().snapshots).toHaveLength(1)
+    expect(st().snapshots[0]).toEqual(sentSnapshot)
+    expect(Object.isFrozen(st().snapshots)).toBe(true)
+    expect(Object.isFrozen(st().snapshots[0])).toBe(true)
     expect(st().noteText).toBe('')
     expect(st().options.map((option) => option.name)).toEqual(['Hausweise', 'Geteilt'])
     expect(st().activeOptionId).toBe('OPT-02')

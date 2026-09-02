@@ -2059,21 +2059,71 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
   .a3-offer-climax-result,.a3-offer-climax-gallery{padding:var(--space-6) var(--space-5)}
   .a3-offer-gallery-list{gap:var(--space-1)}
 }
-.a3-presentation-flow{width:min(100%,var(--measure-wide));margin-inline:auto;padding:var(--space-7) var(--space-6)}
-.a3-presentation-flow-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(18rem,.85fr);gap:var(--space-8);align-items:start}
-.a3-presentation-flow-total{border-top:var(--border-contrast-2px);padding-top:var(--space-4)}
-.a3-presentation-flow-total .numeric{overflow-wrap:anywhere}
-.a3-presentation-flow-aside{min-width:0;border-left:var(--border-default);padding-left:var(--space-6)}
 .a3-presentation-back{display:inline-flex;align-items:center;min-height:var(--size-hit-target-default);padding:0;border:0;background:transparent;color:var(--color-text-secondary);font:inherit;font-size:var(--type-small-size);text-decoration:underline;text-underline-offset:var(--size-text-underline-offset);cursor:pointer}
-.a3-presentation-send{max-width:var(--measure-body-max)}
-.a3-presentation-send-details,.a3-presentation-delivery-details{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-5);border-block:var(--border-hairline);padding-block:var(--space-4)}
-.a3-presentation-send-details div,.a3-presentation-delivery-details div{min-width:0}
-.a3-presentation-send-details dt,.a3-presentation-delivery-details dt{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
-.a3-presentation-send-details dd,.a3-presentation-delivery-details dd{margin-top:var(--space-1);font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-label-weight);overflow-wrap:anywhere}
-.a3-presentation-send-summary{border-left:var(--border-contrast-2px);padding-left:var(--space-4)}
-.a3-presentation-snapshot{border:var(--border-default);background:var(--color-surface-subtle);padding:var(--space-4);color:var(--color-text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
-.a3-presentation-flow-dock{display:flex;justify-content:flex-end;gap:var(--space-3);flex-wrap:wrap;border-top:var(--border-hairline);padding-top:var(--space-4)}
-.a3-presentation-delivered{max-width:var(--measure-body-max);margin-inline:auto;padding-block:var(--space-5)}
+
+/* VR2-08 — Send review: two-column final-confirmation composition matching
+   the approved target's own layout (TARGET-send-review) — recipient +
+   commercial summary on the left, artefact gallery + immutable-snapshot
+   confirmation on the right, a sticky bottom action dock carrying the one
+   primary Send CTA. Reuses `.a3-offer-artifact` (VR2-07) for artefact tiles
+   and the exact border-left/success-surface pattern
+   `.a3-config-kg700-readiness` already established for the confirmation
+   box — no new visual language invented for either. */
+.a3-presentation-review{flex:1;min-height:0;overflow-y:auto;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:var(--space-8);padding:var(--space-7)}
+.a3-presentation-review-primary,.a3-presentation-review-aside{min-width:0}
+.a3-presentation-review-head{display:flex;justify-content:space-between;align-items:flex-end;gap:var(--space-6)}
+.a3-presentation-review-head>div:first-child{min-width:0}
+.a3-presentation-review-head .numeric{overflow-wrap:anywhere}
+.a3-presentation-field-head{display:flex;justify-content:space-between;align-items:baseline;gap:var(--space-3)}
+.a3-presentation-field-head+.a3-presentation-rule-list{margin-top:var(--space-2)}
+.a3-presentation-rule-list{list-style:none;margin:0;padding:0;border-top:var(--border-hairline)}
+.a3-presentation-rule-row{display:flex;justify-content:space-between;gap:var(--space-4);border-bottom:var(--border-hairline);padding:var(--space-3) 0}
+.a3-presentation-rule-row>span:first-child{color:var(--color-text-secondary)}
+.a3-presentation-rule-row b{font-weight:var(--type-label-weight);text-align:right;overflow-wrap:anywhere}
+.a3-presentation-artifact-grid{display:flex;flex-direction:column;gap:var(--space-2);list-style:none;margin:var(--space-2) 0 0;padding:0}
+.a3-presentation-success{border-left:var(--size-status-accent-width) solid var(--color-status-success);background:var(--color-surface-success);padding:var(--space-4);margin-top:var(--space-4)}
+.a3-presentation-success p{margin:var(--space-1) 0 0;color:var(--color-text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-presentation-review-dock{display:flex;justify-content:space-between;align-items:center;gap:var(--space-4);flex-wrap:wrap;border-top:var(--border-hairline);padding:var(--space-4) var(--space-7)}
+.a3-presentation-review-dock p{margin:0}
+.a3-presentation-review-dock-copy{display:block;margin-top:var(--space-1);color:var(--color-text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+
+/* VR2-08 — Delivered / Sent: a single centred confirmation card on the
+   canvas ground (matching TARGET-send-delivered), never full-bleed white —
+   the canvas ground is what makes the card itself read as "the one thing
+   on this page", the same distinction `.a3-presentation-consequence`
+   already draws elsewhere on canvas. PROVISIONAL (rule 2): the accent
+   border needs a heavier weight than the existing 3px
+   `--size-status-accent-width` reads on a full card (that token stays a
+   thin banner rule everywhere else) — `--size-status-accent-width-prominent`
+   is the same status colour at double the weight for this one "completion
+   moment" surface, not a new colour or pattern. */
+.a3-presentation-delivered-canvas{flex:1;min-height:0;overflow-y:auto;display:grid;place-items:center;background:var(--color-surface-canvas);padding:var(--space-7)}
+.a3-presentation-delivered-card{width:min(56rem,84vw);background:var(--color-surface-paper);border-top:var(--size-status-accent-width-prominent) solid var(--color-status-success);padding:var(--space-8)}
+.a3-presentation-delivered-head{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-6)}
+.a3-presentation-delivered-head .numeric{overflow-wrap:anywhere}
+.a3-presentation-status{display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--size-hit-target-default);font-size:var(--type-small-size);font-weight:var(--type-label-weight);color:var(--color-text-primary)}
+.a3-presentation-status::before{content:'';flex-shrink:0;width:.5rem;height:.5rem;border:var(--border-width-strong) solid currentColor;border-radius:50%}
+.a3-presentation-status-success::before{border-color:var(--color-status-success)}
+.a3-presentation-status-pending::before{border-color:var(--color-text-secondary)}
+.a3-presentation-status-error::before{border-color:var(--color-status-error)}
+.a3-presentation-delivered-divider{border-top:var(--border-hairline);margin:var(--space-7) 0}
+.a3-presentation-delivered-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--space-8)}
+.a3-presentation-delivered-actions{display:flex;justify-content:space-between;align-items:center;gap:var(--space-3);flex-wrap:wrap;margin-top:var(--space-7)}
+.a3-presentation-delivered-actions .a3-row{gap:var(--space-2)}
+.a3-presentation-snapshot-page{max-width:var(--measure-body-max);margin-inline:auto;padding:var(--space-7) var(--space-6)}
+/* 1280 recomposition (VR2-08): Send review deliberately drops to one
+   column (recipient/summary stack above the artefact gallery, not a
+   squeezed two-up) — the same "denser, not shrunk" intent as VR2-07's
+   Offer climax 1280 recomposition. Delivered's card narrows with the
+   viewport; its own two-column detail grid also stacks. Placed AFTER the
+   base rules above (source order — equal specificity, later wins) so the
+   override actually applies instead of being silently shadowed by them. */
+@media (max-width:89.9375rem){
+  .a3-presentation-review{grid-template-columns:1fr;gap:var(--space-6);padding:var(--space-6) var(--space-5)}
+  .a3-presentation-review-dock{padding:var(--space-4) var(--space-5)}
+  .a3-presentation-delivered-card{padding:var(--space-6)}
+  .a3-presentation-delivered-grid{grid-template-columns:1fr;gap:var(--space-5)}
+}
 /* §"Nächster Schritt" → OFFER — commercial climax (VR2-07). Two-tone split:
    the left column is the canonical `.a3-stage-deep` surface (ADR-R1-02,
    the same surface §3 ERGEBNIS already uses) carrying the dominant
@@ -2115,17 +2165,12 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-offer-artifact-open{display:inline;min-width:0;min-height:0;text-align:left;text-decoration:none}
 .a3-offer-artifact-open::after{content:'';position:absolute;inset:0}
 .a3-offer-climax-cta{display:flex;justify-content:flex-start}
-@media (max-width:63.99rem){
-  .a3-presentation-flow-grid{gap:var(--space-6)}
-}
 @media (max-width:47.5rem){
-  .a3-presentation-building,.a3-presentation-next,.a3-presentation-flow-grid,.a3-offer-climax{grid-template-columns:1fr}
+  .a3-presentation-building,.a3-presentation-next,.a3-offer-climax{grid-template-columns:1fr}
   .a3-presentation-building-media>figure{min-height:12rem}
-  .a3-presentation-aside,.a3-presentation-flow-aside{border-left:0;border-top:var(--border-hairline);padding:var(--space-4) 0 0}
+  .a3-presentation-aside{border-left:0;border-top:var(--border-hairline);padding:var(--space-4) 0 0}
   .a3-presentation-timeline{gap:var(--space-4)}
   .a3-presentation-consequence{align-items:flex-start;flex-direction:column}
-  .a3-presentation-send-details,.a3-presentation-delivery-details{grid-template-columns:1fr;gap:var(--space-3)}
-  .a3-presentation-flow{padding-inline:var(--space-4)}
 }
 @media (prefers-reduced-motion:reduce){
   :where([class^="a3-"],[class*=" a3-"]),:where([class^="a3-"],[class*=" a3-"])::before,:where([class^="a3-"],[class*=" a3-"])::after{transition:none!important;animation:none!important}

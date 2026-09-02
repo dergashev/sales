@@ -20,6 +20,7 @@ import { SegmentedControl } from './controls'
 import { PartialState, EmptyState } from './DataStates'
 import { Dialog } from './Dialog'
 import { OFFER_ARTIFACTS, type OfferArtifactId } from '../config/offer-artifacts'
+import { DELIVERY_SIMULATION_MS, SEND_COMMIT_SIMULATION_MS } from '../config/ui-policy'
 // F-38 (OfferPanel.tsx): `signed` is exported specifically for cross-
 // component reuse of the ONE signed-delta formatter — reused here for
 // "Größter Treiber" instead of a second, divergence-prone formatter.
@@ -59,7 +60,7 @@ import { startContinuityTransition } from '../design-system/motion'
  * `configForOption(viewedId)`/`projectionForOption(viewedId)`.
  */
 
-type Candidate = { id: string; name: string; cfg: OptionConfig; p: Projection }
+export type Candidate = { id: string; name: string; cfg: OptionConfig; p: Projection }
 type PresentationFlow = 'narrative' | 'offer' | 'send' | 'sent' | 'delivered' | 'snapshot'
 
 function buildCandidate(
@@ -134,6 +135,39 @@ function topCostDrivers(current: Candidate, t: ReturnType<typeof useT>): TopDriv
   return [...byLabel.values()].sort((a, b) => b.exact.abs().minus(a.exact.abs()).toNumber())
 }
 
+export type GalleryArtifact = {
+  id: OfferArtifactId
+  title: string
+  description: string
+  available: boolean
+  unavailableReason?: string
+}
+
+/** Shared artefact-review source (VR2-08): the SAME real selection
+ *  (`s.offerDraft.attachments` against `OFFER_ARTIFACTS`, VR2-07's shared
+ *  catalog) OfferClimax already reads, now also consumed by the Send
+ *  review and Delivered screens — one list, one truth, never a second
+ *  static stand-in list drifting from the seller's actual choice. */
+function buildGalleryArtifacts(
+  attachments: readonly string[],
+  priceUnavailable: boolean,
+  t: ReturnType<typeof useT>,
+): GalleryArtifact[] {
+  const selectedIds = new Set(attachments)
+  return OFFER_ARTIFACTS
+    .filter((a) => selectedIds.has(a.id))
+    .map((a) => {
+      const unavailable = a.id === 'kg' && priceUnavailable
+      return {
+        id: a.id,
+        title: t(`presentation.artifact.title.${a.id}`),
+        description: t(`presentation.artifact.description.${a.id}`),
+        available: !unavailable,
+        unavailableReason: unavailable ? t('presentation.artifact.costUnavailable') : undefined,
+      }
+    })
+}
+
 /** Считает деньги вверх до УЖЕ ОКРУГЛЁННОГО показа (rule 19) — тот же
  *  приём, что `OfferPanel.tsx`'s `totalCount` (не анимируем к точному
  *  Decimal, иначе на миг мелькнут лишние разряды сверх показанных). */
@@ -167,27 +201,71 @@ export function PresentationShell({ mainRef, modeRef }: {
   })
 
   const [activeSection, setActiveSection] = useState<string>('projekt')
-  const [flow, setFlow] = useState<PresentationFlow>('narrative')
-  const [delivery, setDelivery] = useState<'sent' | 'delivered'>('sent')
-  const [sentSnapshot, setSentSnapshot] = useState<OfferSnapshot | null>(null)
-  const { reduced } = useSemanticMotion()
 
   const latestViewedSnapshot = currentId
     ? [...s.snapshots].reverse().find((snapshot) => snapshot.optionId === currentId)
     : undefined
 
+  // VR2-08 — POST-SEND RE-ENTRY (M-3): `flow`/`delivery` are local React
+  // state, so without this they would always reset to 'narrative' on every
+  // mount — even reopening an Option the store already knows was sent,
+  // sending the ordinary portfolio route straight back to a prototype-style
+  // restart instead of the real, truthful Delivered state. The lazy
+  // initialisers below read the real snapshot truth ONCE, at first mount;
+  // `syncedOptionIdRef` + the effect further down re-derive the same truth
+  // whenever the VIEWED option actually changes (the "Ansicht" switcher),
+  // without ever fighting an in-session transition for the SAME option
+  // (offer → send → sent → delivered, or "Neue Version erstellen" back to
+  // narrative) — that effect only fires again once `currentId` itself
+  // changes.
+  const [flow, setFlow] = useState<PresentationFlow>(
+    () => (latestViewedSnapshot ? 'delivered' : 'narrative'),
+  )
+  const [delivery, setDelivery] = useState<'sent' | 'delivered'>(
+    () => (latestViewedSnapshot ? 'delivered' : 'sent'),
+  )
+  const [sentSnapshot, setSentSnapshot] = useState<OfferSnapshot | null>(null)
+  // VR2-08 — 'sending' is the real, visible commit step between the click
+  // and the snapshot existing (rule: "sending/committed state" between
+  // action and result); 'failed' models the one real, existing failure
+  // `sendOfferForOption` can produce (store.ts throws if the option cannot
+  // be resolved) — never a fabricated transport failure (the prototype has
+  // no transport to fail on its own; "Do NOT invent delivery evidence").
+  const [sendStatus, setSendStatus] = useState<'idle' | 'sending' | 'failed'>('idle')
+  const { reduced } = useSemanticMotion()
+
+  const syncedOptionIdRef = useRef<string | null>(currentId)
+  useEffect(() => {
+    if (syncedOptionIdRef.current === currentId) return
+    syncedOptionIdRef.current = currentId
+    setSentSnapshot(null)
+    setSendStatus('idle')
+    const existing = currentId
+      ? [...s.snapshots].reverse().find((snap) => snap.optionId === currentId)
+      : undefined
+    if (existing) {
+      setDelivery('delivered')
+      setFlow('delivered')
+    } else {
+      setFlow('narrative')
+    }
+    // Deliberately keyed on `currentId` alone: a send/delivery happening for
+    // the option already being viewed is handled explicitly by `commitSend`,
+    // not by this re-entry sync.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentId])
+
   // Reuse the validated CRM recipient contract already established for the
   // synthetic DEMO-0001 opportunity. An unknown opportunity remains blocked;
   // the client flow never invents or captures a recipient here.
   const recipient = recipientForOpportunity(s.opportunityId)
-  const canSend = recipient !== null
 
   useEffect(() => {
     if (flow !== 'sent') return
     const timer = window.setTimeout(() => {
       setDelivery('delivered')
       setFlow('delivered')
-    }, 2500)
+    }, DELIVERY_SIMULATION_MS)
     return () => window.clearTimeout(timer)
   }, [flow])
 
@@ -202,6 +280,14 @@ export function PresentationShell({ mainRef, modeRef }: {
     if (firstSectionRender.current) { firstSectionRender.current = false; return }
     pageHeadingRef.current?.focus()
   }, [activeSection, flow])
+
+  // VR2-08: the deliberate 'sending' commit delay (see `commitSend` below)
+  // needs its own timer handle so unmount mid-flight cannot call `setState`
+  // on a gone component.
+  const sendingTimerRef = useRef<number | null>(null)
+  useEffect(() => () => {
+    if (sendingTimerRef.current !== null) window.clearTimeout(sendingTimerRef.current)
+  }, [])
 
   // VR2-07: a nav tab click always lands in the narrative at that section —
   // including from inside the offer/send/sent flow, where the narrative
@@ -259,6 +345,7 @@ export function PresentationShell({ mainRef, modeRef }: {
 
   const startOffer = () => {
     setSentSnapshot(null)
+    setSendStatus('idle')
     setDelivery('sent')
     setFlow('offer')
     setActiveSection('naechster-schritt')
@@ -268,7 +355,7 @@ export function PresentationShell({ mainRef, modeRef }: {
   // narrative or create a new version; the snapshot remains the source of
   // truth even when the live Option has since changed.
   const openSentSnapshot = () => {
-    if (!sentSnapshot) return
+    if (!sentSnapshot && !latestViewedSnapshot) return
     setFlow('snapshot')
   }
 
@@ -276,8 +363,47 @@ export function PresentationShell({ mainRef, modeRef }: {
 
   const backToNarrative = () => {
     setSentSnapshot(null)
+    setSendStatus('idle')
     setFlow('narrative')
     setActiveSection('naechster-schritt')
+  }
+
+  // VR2-08 preflight (§9.3 EMAIL-001 condition #5, rule 16): a genuinely
+  // undetermined total is exactly the "not ready to send" case rule 16
+  // already names — sending it would freeze `Preis nicht ermittelt` into an
+  // immutable snapshot. Distinct blocking reason from a missing recipient,
+  // both intentional (rule 12: a blocked control always names why).
+  // KG 300/400/700 are structurally mandatory (store.ts `setCoverage`), so
+  // a fully CONFIGURED (`configurationComplete`) Option — the only kind
+  // `eligibleClientOptions` ever lets reach this screen — cannot itself
+  // drive `total.isZero()` today; this stays proportionate defence in
+  // depth against the underlying rule 16 condition rather than a currently
+  // click-reachable state (tested directly against `PresentationFlowScreen`
+  // — see presentation-shell.dom.test.tsx).
+  const priceUnavailable = current.p.result.total.exact.isZero()
+  const canSend = recipient !== null && !priceUnavailable
+  const galleryArtifacts = buildGalleryArtifacts(s.offerDraft.attachments, priceUnavailable, t)
+
+  const commitSend = () => {
+    if (!canSend) return
+    setSendStatus('sending')
+    sendingTimerRef.current = window.setTimeout(() => {
+      try {
+        const snapshot = s.sendOfferForOption('email', current.id)
+        setSentSnapshot(snapshot)
+        setSendStatus('idle')
+        setDelivery('sent')
+        setFlow('sent')
+      } catch {
+        // The one real, existing failure this call can produce (store.ts
+        // throws if the option cannot be resolved) — no snapshot is
+        // created, so the immutable-snapshot invariant holds on failure
+        // too. No fabricated provider/network failure exists to trigger
+        // here; the prototype has no transport layer capable of failing on
+        // its own ("Do NOT invent delivery evidence").
+        setSendStatus('failed')
+      }
+    }, SEND_COMMIT_SIMULATION_MS)
   }
 
   const motionKey = flow === 'narrative' ? activeSection : flow
@@ -328,19 +454,16 @@ export function PresentationShell({ mainRef, modeRef }: {
                 snapshot={sentSnapshot ?? latestViewedSnapshot}
                 current={current}
                 projectName={projectName}
-                onBack={backToNarrative}
+                priceUnavailable={priceUnavailable}
+                galleryArtifacts={galleryArtifacts}
                 onPrepare={() => setFlow('send')}
+                onOpenOffer={() => setFlow('offer')}
                 canSend={canSend}
                 recipient={recipient}
                 headingRef={pageHeadingRef}
-                onSend={() => {
-                  // An absent recipient must never create an immutable snapshot.
-                  if (!canSend) return
-                  const snapshot = s.sendOfferForOption('email', current.id)
-                  setSentSnapshot(snapshot)
-                  setDelivery('sent')
-                  setFlow('sent')
-                }}
+                sendStatus={sendStatus}
+                onSend={commitSend}
+                onRetry={commitSend}
                 onOpenSent={openSentSnapshot}
                 onCloseSnapshot={closeSentSnapshot}
                 onNewVersion={backToNarrative}
@@ -1025,11 +1148,21 @@ function PageNaechsterSchritt({ current, onPrepare, headingRef }: {
       </div>
       <div className="a3-presentation-next-aside">
         <p className="a3-cap">{t('presentation.nextStep.artifacts')}</p>
-        <ul className="a3-presentation-artifacts mt-2">
-          <li>{t('presentation.artifact.offer')}</li>
-          <li>{t('presentation.artifact.cost')}</li>
-          <li>{t('presentation.artifact.scope')}</li>
-        </ul>
+        {/* VR2-08: the real, seller-selected artefact list (`offerDraft.
+            attachments` against the shared `OFFER_ARTIFACTS` catalog) —
+            not a static three-item stand-in that would silently disagree
+            with the Send review immediately after it. */}
+        {(() => {
+          const artefacts = buildGalleryArtifacts(s.offerDraft.attachments, priceUnavailable, t)
+            .filter((a) => a.available)
+          return artefacts.length === 0 ? (
+            <div className="mt-2"><EmptyState>{t('presentation.flow.galleryEmpty')}</EmptyState></div>
+          ) : (
+            <ul className="a3-presentation-artifacts mt-2">
+              {artefacts.map((a) => <li key={a.id}>{a.title}</li>)}
+            </ul>
+          )
+        })()}
         <Button className="mt-4" variant="primary" onClick={onPrepare}>
           {t('presentation.nextStep.title')}
         </Button>
@@ -1039,14 +1172,6 @@ function PageNaechsterSchritt({ current, onPrepare, headingRef }: {
       </div>
     </section>
   )
-}
-
-type GalleryArtifact = {
-  id: OfferArtifactId
-  title: string
-  description: string
-  available: boolean
-  unavailableReason?: string
 }
 
 /** §"NÄCHSTER SCHRITT" → OFFER — the commercial climax (VR2-07, cycle 4).
@@ -1119,20 +1244,7 @@ function OfferClimax({ current, projectName, priceUnavailable, onPrepare, headin
   const biggestDriver = topDrivers[0]
   const segments = buildKgCompositionSegments(p.kgSplit, (g) => t(`costGroup.${g}`))
 
-  const selectedIds = new Set(s.offerDraft.attachments)
-  const galleryArtifacts: GalleryArtifact[] = OFFER_ARTIFACTS
-    .filter((a) => selectedIds.has(a.id))
-    .map((a) => {
-      const unavailable = a.id === 'kg' && priceUnavailable
-      return {
-        id: a.id,
-        title: t(`presentation.artifact.title.${a.id}`),
-        description: t(`presentation.artifact.description.${a.id}`),
-        available: !unavailable,
-        unavailableReason: unavailable ? t('presentation.artifact.costUnavailable') : undefined,
-      }
-    })
-
+  const galleryArtifacts = buildGalleryArtifacts(s.offerDraft.attachments, priceUnavailable, t)
   const anyAvailable = galleryArtifacts.some((a) => a.available)
 
   const [openId, setOpenId] = useState<OfferArtifactId | null>(null)
@@ -1338,8 +1450,70 @@ function OfferClimax({ current, projectName, priceUnavailable, onPrepare, headin
   )
 }
 
-function PresentationFlowScreen({
-  flow, delivery, snapshot, current, projectName, onBack, onPrepare, canSend, recipient, onSend,
+type SendStatus = 'idle' | 'sending' | 'failed'
+
+/** Read-only artefact rule-row for the Delivered/Send-review screens — the
+ *  same generic, non-fabricated `presentation.artifact.meta` label
+ *  OfferClimax already shows (never an invented page count/file size, see
+ *  the ticket's client-safety boundary). */
+function ArtifactRuleRow({ artifact, t }: { artifact: GalleryArtifact; t: ReturnType<typeof useT> }) {
+  return (
+    <div className="a3-presentation-rule-row">
+      <span>{artifact.title}</span>
+      <b>{t('presentation.artifact.meta')}</b>
+    </div>
+  )
+}
+
+function DeliveryProofDialog({ open, onClose, sentAt, deliveredAt, delivered, snapshotId, triggerRef }: {
+  open: boolean
+  onClose: () => void
+  sentAt: string
+  deliveredAt: string
+  delivered: boolean
+  snapshotId: string
+  triggerRef: RefObject<HTMLElement>
+}) {
+  const t = useT()
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  const titleId = useId()
+  return (
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose() }}
+            labelledBy={titleId} initialFocusRef={titleRef} returnFocusTo={triggerRef}>
+      <h2 ref={titleRef} id={titleId} tabIndex={-1} className="outline-none text-heading-3 font-bold text-text-primary">
+        {t('presentation.flow.deliveryProofTitle')}
+      </h2>
+      <p className="mt-2 text-body text-text-secondary">{t('presentation.flow.deliveryProofIntro')}</p>
+      <dl className="a3-presentation-rule-list mt-4">
+        <div className="a3-presentation-rule-row">
+          <span>{t('presentation.flow.deliveryProofSentRow')}</span>
+          <b>{sentAt}</b>
+        </div>
+        <div className="a3-presentation-rule-row">
+          <span>{t('presentation.flow.deliveryProofDeliveredRow')}</span>
+          <b>{delivered ? deliveredAt : t('presentation.flow.pending')}</b>
+        </div>
+      </dl>
+      <p className="mt-4 text-small text-text-secondary">
+        {t('presentation.flow.snapshotRef', { id: snapshotId })}
+      </p>
+      <div className="a3-row mt-4">
+        <Button variant="primary" onClick={onClose}>{t('common.close')}</Button>
+      </div>
+    </Dialog>
+  )
+}
+
+/** Exported for direct, isolated testing of the 'sending'/'failed' send-
+ *  status branches (VR2-08) — see presentation-shell.dom.test.tsx. The
+ *  ordinary route can only ever reach these through `PresentationShell`
+ *  itself; there is no reachable trigger for a real send FAILURE in this
+ *  backend-less prototype (no transport exists to fail on its own), so
+ *  that one branch is proven at the component level with an explicit
+ *  `sendStatus` prop instead of a live click-through. */
+export function PresentationFlowScreen({
+  flow, delivery, snapshot, current, projectName, priceUnavailable, galleryArtifacts,
+  onPrepare, onOpenOffer, canSend, recipient, onSend, sendStatus, onRetry,
   onOpenSent, onCloseSnapshot, onNewVersion, headingRef,
 }: {
   flow: Exclude<PresentationFlow, 'narrative'>
@@ -1347,25 +1521,29 @@ function PresentationFlowScreen({
   snapshot?: OfferSnapshot
   current: Candidate
   projectName: string
-  onBack: () => void
+  priceUnavailable: boolean
+  galleryArtifacts: GalleryArtifact[]
   onPrepare: () => void
+  onOpenOffer: () => void
   canSend: boolean
   recipient: ValidatedRecipient | null
   onSend: () => void
+  sendStatus: SendStatus
+  onRetry: () => void
   onOpenSent: () => void
   onCloseSnapshot: () => void
   onNewVersion: () => void
   headingRef: PageHeadingRef
 }) {
   const t = useT()
+  const tx = useTx()
   const language = useStore().uiLanguage
   const { p } = current
-  const priceUnavailable = p.result.total.exact.isZero()
-  const artifacts = [
-    t('presentation.artifact.offer'),
-    t('presentation.artifact.cost'),
-    t('presentation.artifact.scope'),
-  ]
+  // Declared unconditionally, before any of this function's several early
+  // returns (rules of hooks) — only actually rendered/opened from the
+  // 'sent'/'delivered' branch below.
+  const [proofOpen, setProofOpen] = useState(false)
+  const proofTriggerRef = useRef<HTMLButtonElement>(null)
 
   if (flow === 'offer') {
     return (
@@ -1380,62 +1558,168 @@ function PresentationFlowScreen({
   }
 
   if (flow === 'send') {
+    const availableArtifacts = galleryArtifacts.filter((a) => a.available)
+    const disabledReason = !recipient
+      ? t('presentation.flow.noRecipient')
+      : priceUnavailable
+        ? t('presentation.flow.priceUnavailableReason')
+        : undefined
     return (
-      <section className="a3-presentation-flow a3-paper" aria-labelledby="presentation-send-title">
-        <button type="button" className="a3-presentation-back" onClick={onBack}>{t('presentation.flow.back')}</button>
-        <div className="a3-presentation-send mt-4">
-          <div>
-            <p className="a3-cap">{t('offer.label')}</p>
-            <h1 ref={headingRef} tabIndex={-1} id="presentation-send-title" className="mt-2 text-heading-1 font-bold text-text-primary">{t('presentation.flow.send.title')}</h1>
-            <p className="mt-3 text-body text-text-secondary">{t('presentation.flow.send.copy')}</p>
+      <section className="flex min-h-0 flex-1 flex-col a3-paper" aria-labelledby="presentation-send-title">
+        <div className="a3-presentation-review">
+          <div className="a3-presentation-review-primary">
+            <div className="a3-presentation-review-head">
+              <div>
+                <p className="a3-cap">{t('presentation.flow.send.eyebrow')}</p>
+                <h1 ref={headingRef} tabIndex={-1} id="presentation-send-title" className="mt-2 text-heading-1 font-bold text-text-primary">
+                  {t('presentation.flow.send.title')}
+                </h1>
+                <p className="mt-2 text-body text-text-secondary">{t('presentation.flow.send.copy')}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="a3-cap">{current.name}</p>
+                <p className="numeric mt-1 text-heading-2 font-bold text-text-primary">
+                  {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(present(p.result.total.exact))}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-7">
+              <div className="a3-presentation-field-head">
+                <h2 className="text-heading-3 font-bold text-text-primary">{t('presentation.flow.recipient')}</h2>
+              </div>
+              <dl className="a3-presentation-rule-list">
+                <div className="a3-presentation-rule-row">
+                  <span>{t('presentation.flow.recipientLabel')}</span>
+                  <b>{recipient ? recipient.address : t('presentation.flow.noRecipient')}</b>
+                </div>
+                <div className="a3-presentation-rule-row">
+                  <span>{t('presentation.flow.subject')}</span>
+                  <b>{t('presentation.flow.subjectValue', {
+                    option: current.name,
+                    project: projectName || t('presentation.flow.offerTitleFallbackSubject'),
+                  })}</b>
+                </div>
+                <div className="a3-presentation-rule-row">
+                  <span>{t('presentation.flow.language')}</span>
+                  <b>{language === 'de' ? t('presentation.flow.german') : t('presentation.flow.english')}</b>
+                </div>
+              </dl>
+            </div>
+
+            <div className="mt-6">
+              <div className="a3-presentation-field-head">
+                <h2 className="text-heading-3 font-bold text-text-primary">{t('presentation.flow.summary')}</h2>
+                <button type="button" className="a3-linkbtn text-small" onClick={onOpenOffer}>
+                  {t('presentation.flow.openOffer')}
+                </button>
+              </div>
+              <dl className="a3-presentation-rule-list">
+                <div className="a3-presentation-rule-row">
+                  <span>{tx(p.result.totalLabel)}</span>
+                  <b className="numeric">{priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(present(p.result.total.exact))}</b>
+                </div>
+                <div className="a3-presentation-rule-row">
+                  <span>{tx('Schätzunsicherheit')}</span>
+                  <b>±{NNBSP}{p.uncertaintyPp}{NNBSP}%</b>
+                </div>
+                <div className="a3-presentation-rule-row">
+                  <span>{t('presentation.flow.completion')}</span>
+                  <b>{formatDate(p.duration.completionDate, language)}</b>
+                </div>
+              </dl>
+            </div>
           </div>
-          <dl className="a3-presentation-send-details mt-8">
-            <div><dt>{t('presentation.flow.recipient')}</dt><dd>{recipient ? t('presentation.flow.recipientValue', { email: recipient.address }) : t('presentation.flow.noRecipient')}</dd></div>
-            <div><dt>{t('presentation.flow.subject')}</dt><dd>{current.name} · {t('presentation.flow.offerEyebrow')}</dd></div>
-            <div><dt>{t('presentation.flow.language')}</dt><dd>{language === 'de' ? t('presentation.flow.german') : t('presentation.flow.english')}</dd></div>
-          </dl>
-          <div className="a3-presentation-send-summary mt-8">
-            <p className="a3-cap">{t('presentation.flow.summary')}</p>
-            <p className="mt-2 text-body font-medium text-text-primary">
-              {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(present(p.result.total.exact))}
-              <span className="text-text-secondary"> · {buildingNames(current.cfg)}</span>
-            </p>
+
+          <div className="a3-presentation-review-aside">
+            <h2 className="text-heading-3 font-bold text-text-primary">
+              {t('presentation.flow.artifactsHeading', { count: availableArtifacts.length })}
+            </h2>
+            {availableArtifacts.length === 0 ? (
+              <div className="mt-4">
+                <EmptyState>{t('presentation.flow.galleryEmpty')}</EmptyState>
+              </div>
+            ) : (
+              <ul className="a3-presentation-artifact-grid">
+                {availableArtifacts.map((a) => (
+                  <li key={a.id}>
+                    <article className="a3-offer-artifact a3-offer-artifact-selected">
+                      <p className="font-bold text-text-primary">{a.title}</p>
+                      <span className="text-small text-text-secondary">{t('presentation.artifact.meta')}</span>
+                    </article>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="a3-presentation-success">
+              <b className="text-body text-text-primary">{t('presentation.flow.immutable')}</b>
+              <p>{t('presentation.flow.immutableDetail')}</p>
+            </div>
           </div>
-          <div className="mt-6">
-            <p className="a3-cap">{t('presentation.nextStep.artifacts')}</p>
-            <ul className="a3-presentation-artifacts mt-2">
-              {artifacts.map((artifact) => <li key={artifact}>{artifact}</li>)}
-            </ul>
-          </div>
-          <p className="a3-presentation-snapshot mt-6">{t('presentation.flow.immutable')}</p>
-          <div className="a3-presentation-flow-dock mt-8">
-            <Button
-              variant="primary"
-              disabled={!canSend}
-              disabledReason={recipient ? undefined : t('presentation.flow.noRecipient')}
-              onClick={onSend}
-            >
-              {t('presentation.flow.sendAction')}
-            </Button>
-          </div>
+        </div>
+
+        <div className="a3-presentation-review-dock">
+          {sendStatus === 'failed' ? (
+            <>
+              <p role="alert">
+                <b className="text-body font-medium text-text-primary">{t('presentation.flow.sendFailedTitle')}</b>
+                <span className="a3-presentation-review-dock-copy">{t('presentation.flow.sendFailedCopy')}</span>
+              </p>
+              <Button variant="primary" onClick={onRetry}>{t('presentation.flow.retryAction')}</Button>
+            </>
+          ) : (
+            <>
+              <p>
+                <b className="text-body font-medium text-text-primary">
+                  {t('presentation.flow.reviewedSummary', { count: availableArtifacts.length })}
+                </b>
+                <span className="a3-presentation-review-dock-copy">{t('presentation.flow.reviewedSummaryDetail')}</span>
+              </p>
+              <Button
+                variant="primary"
+                disabled={!canSend}
+                disabledReason={disabledReason}
+                loading={sendStatus === 'sending'}
+                loadingLabel={t('presentation.flow.sendingLabel')}
+                onClick={onSend}
+              >
+                {t('presentation.flow.sendAction')}
+              </Button>
+            </>
+          )}
         </div>
       </section>
     )
   }
 
+  // From here on ('sent' | 'delivered' | 'snapshot') a real, already-sent
+  // snapshot is the only truthful source — its OWN frozen total/artefact
+  // selection, never the live current Candidate (M-3: a later, legitimate
+  // Product edit must not silently rewrite what was actually sent).
   const displayName = snapshot?.optionName ?? current.name
+  const snapshotPriceUnavailable = snapshot
+    ? new Decimal(snapshot.totalExact).isZero()
+    : priceUnavailable
   const displayTotal = snapshot
-    ? moneyLabel(present(new Decimal(snapshot.totalExact)))
-    : priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(present(p.result.total.exact))
-  const eventAt = snapshot?.at ? formatDate(snapshot.at, language, true) : t('presentation.flow.justNow')
+    ? (snapshotPriceUnavailable ? t('money.priceNotDetermined') : moneyLabel(present(new Decimal(snapshot.totalExact))))
+    : (priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(present(p.result.total.exact)))
+  const historicalArtifacts = snapshot
+    ? buildGalleryArtifacts(snapshot.attachmentIds, snapshotPriceUnavailable, t).filter((a) => a.available)
+    : galleryArtifacts.filter((a) => a.available)
+  const sentAtIso = snapshot?.at
+  const sentAtDisplay = sentAtIso ? formatDate(sentAtIso, language, true) : t('presentation.flow.justNow')
+  const deliveredAtIso = sentAtIso
+    ? new Date(new Date(sentAtIso).getTime() + DELIVERY_SIMULATION_MS).toISOString()
+    : undefined
+  const deliveredAtDisplay = deliveredAtIso ? formatDate(deliveredAtIso, language, true) : sentAtDisplay
 
   if (flow === 'snapshot') {
     return (
-      <section className="a3-presentation-flow a3-paper" aria-labelledby="presentation-snapshot-title">
+      <section className="a3-presentation-snapshot-page a3-paper" aria-labelledby="presentation-snapshot-title">
         <button type="button" className="a3-presentation-back" onClick={onCloseSnapshot}>
           {t('presentation.flow.backToDelivery')}
         </button>
-        <div className="a3-presentation-delivered mt-4">
+        <div className="mt-4">
           <p className="a3-cap">{t('presentation.flow.version')}</p>
           <h1 ref={headingRef} tabIndex={-1} id="presentation-snapshot-title" className="mt-2 text-heading-1 font-bold text-text-primary">
             {t('presentation.flow.snapshotTitle')}
@@ -1443,19 +1727,25 @@ function PresentationFlowScreen({
           <p className="mt-3 text-body text-text-secondary">
             {t('presentation.flow.snapshotCopy')}
           </p>
-          <dl className="a3-presentation-delivery-details mt-8">
-            <div><dt>{t('presentation.flow.sentAt')}</dt><dd>{eventAt}</dd></div>
-            <div><dt>{t('presentation.flow.version')}</dt><dd>{displayName} · {displayTotal}</dd></div>
-            <div><dt>{t('presentation.flow.recipient')}</dt><dd>{recipient ? t('presentation.flow.recipientValue', { email: recipient.address }) : t('presentation.flow.noRecipient')}</dd></div>
-            <div><dt>{t('presentation.flow.deliveryState')}</dt><dd>{t('presentation.flow.pending')}</dd></div>
+          <dl className="a3-presentation-rule-list mt-8">
+            <div className="a3-presentation-rule-row"><span>{t('presentation.flow.sentAt')}</span><b>{sentAtDisplay}</b></div>
+            <div className="a3-presentation-rule-row"><span>{t('presentation.flow.version')}</span><b>{displayName} · {displayTotal}</b></div>
+            <div className="a3-presentation-rule-row"><span>{t('presentation.flow.recipient')}</span><b>{recipient ? recipient.address : t('presentation.flow.noRecipient')}</b></div>
+            {snapshot && <div className="a3-presentation-rule-row"><span>{t('presentation.flow.snapshotId')}</span><b>{snapshot.id}</b></div>}
           </dl>
           <div className="mt-8">
             <p className="a3-cap">{t('presentation.nextStep.artifacts')}</p>
-            <ul className="a3-presentation-artifacts mt-2">
-              {artifacts.map((artifact) => <li key={artifact}>{artifact}</li>)}
-            </ul>
+            {historicalArtifacts.length === 0 ? (
+              <div className="mt-2"><EmptyState>{t('presentation.flow.galleryEmpty')}</EmptyState></div>
+            ) : (
+              <dl className="a3-presentation-rule-list mt-2">
+                {historicalArtifacts.map((a) => <ArtifactRuleRow key={a.id} artifact={a} t={t} />)}
+              </dl>
+            )}
           </div>
-          <p className="a3-presentation-snapshot mt-6">{t('presentation.flow.immutable')}</p>
+          <div className="a3-presentation-success mt-6">
+            <b className="text-body text-text-primary">{t('presentation.flow.immutable')}</b>
+          </div>
         </div>
       </section>
     )
@@ -1464,33 +1754,73 @@ function PresentationFlowScreen({
   const delivered = flow === 'delivered' || delivery === 'delivered'
 
   return (
-    <section className="a3-presentation-flow a3-stage" aria-labelledby="presentation-delivery-title">
-      <div className="a3-presentation-delivered">
-        <p className="a3-cap">{t('offer.label')}</p>
-        <h1 ref={headingRef} tabIndex={-1} id="presentation-delivery-title" className="mt-2 text-heading-1 font-bold text-text-primary">
-          {delivered ? t('presentation.flow.deliveredTitle') : t('presentation.flow.sentTitle')}
-        </h1>
-        <p className="mt-3 text-body text-text-secondary">
-          {delivered ? t('presentation.flow.deliveredCopy') : t('presentation.flow.sentCopy')}
-        </p>
-        <dl className="a3-presentation-delivery-details mt-8">
-          <div><dt>{t(delivered ? 'presentation.flow.deliveredAt' : 'presentation.flow.sentAt')}</dt><dd>{eventAt}</dd></div>
-          <div><dt>{t('presentation.flow.version')}</dt><dd>{displayName} · {displayTotal}</dd></div>
-          <div><dt>{t('presentation.flow.recipient')}</dt><dd>{recipient ? t('presentation.flow.recipientValue', { email: recipient.address }) : t('presentation.flow.noRecipient')}</dd></div>
-          <div><dt>{t('presentation.flow.deliveryState')}</dt><dd>{t(delivered ? 'presentation.flow.confirmed' : 'presentation.flow.pending')}</dd></div>
-        </dl>
-        <div className="mt-8">
-          <p className="a3-cap">{t('presentation.nextStep.artifacts')}</p>
-          <ul className="a3-presentation-artifacts mt-2">
-            {artifacts.map((artifact) => <li key={artifact}>{artifact}</li>)}
-          </ul>
+    <div className="a3-presentation-delivered-canvas">
+      <section className="a3-presentation-delivered-card" aria-labelledby="presentation-delivery-title">
+        <div className="a3-presentation-delivered-head">
+          <div>
+            <p className="a3-cap">{delivered ? t('presentation.flow.deliveredEyebrow') : t('presentation.flow.sentEyebrow')}</p>
+            <h1 ref={headingRef} tabIndex={-1} id="presentation-delivery-title" className="mt-2 text-heading-1 font-bold text-text-primary">
+              {delivered ? t('presentation.flow.deliveredTitle') : t('presentation.flow.sentTitle')}
+            </h1>
+            <p className="mt-3 text-body text-text-secondary">
+              {recipient ? recipient.address : t('presentation.flow.noRecipient')} · {delivered ? deliveredAtDisplay : sentAtDisplay}
+            </p>
+          </div>
+          <p
+            className={'a3-presentation-status ' + (delivered ? 'a3-presentation-status-success' : 'a3-presentation-status-pending')}
+            role="status" aria-live="polite"
+          >
+            {delivered ? t('presentation.flow.statusDelivered') : t('presentation.flow.statusSent')}
+          </p>
         </div>
-        <div className="a3-presentation-flow-dock mt-8">
+
+        <div className="a3-presentation-delivered-divider" />
+
+        <div className="a3-presentation-delivered-grid">
+          <div>
+            <p className="a3-cap">{t('presentation.flow.version')}</p>
+            <h2 className="mt-2 text-heading-3 font-bold text-text-primary">{displayName}</h2>
+            <p className="numeric mt-3 text-heading-1 font-bold text-text-primary">{displayTotal}</p>
+            <p className="mt-1 text-small text-text-secondary">
+              {snapshot ? tx(snapshot.totalLabel) : tx(p.result.totalLabel)}
+              {snapshot && <> · {t('presentation.flow.snapshotRef', { id: snapshot.id })}</>}
+            </p>
+          </div>
+          <div>
+            <p className="a3-cap">{t('presentation.nextStep.artifacts')}</p>
+            {historicalArtifacts.length === 0 ? (
+              <div className="mt-2"><EmptyState>{t('presentation.flow.galleryEmpty')}</EmptyState></div>
+            ) : (
+              <dl className="a3-presentation-rule-list mt-2">
+                {historicalArtifacts.map((a) => <ArtifactRuleRow key={a.id} artifact={a} t={t} />)}
+              </dl>
+            )}
+          </div>
+        </div>
+
+        <div className="a3-presentation-delivered-actions">
           <Button variant="secondary" onClick={onOpenSent}>{t('presentation.flow.openSent')}</Button>
-          <Button variant="primary" onClick={onNewVersion}>{t('presentation.flow.newVersion')}</Button>
+          <div className="a3-row">
+            <Button ref={proofTriggerRef} variant="secondary" onClick={() => setProofOpen(true)}>
+              {t('presentation.flow.deliveryProofAction')}
+            </Button>
+            <Button variant="primary" onClick={onNewVersion}>{t('presentation.flow.newVersion')}</Button>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+
+      {snapshot && (
+        <DeliveryProofDialog
+          open={proofOpen}
+          onClose={() => setProofOpen(false)}
+          sentAt={sentAtDisplay}
+          deliveredAt={deliveredAtDisplay}
+          delivered={delivered}
+          snapshotId={snapshot.id}
+          triggerRef={proofTriggerRef as RefObject<HTMLElement>}
+        />
+      )}
+    </div>
   )
 }
 
