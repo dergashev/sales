@@ -898,6 +898,26 @@ function UnderstandingOverview({
                     {' · '}
                     {t(`vr3.building.underground.${building.undergroundLevel}`)}
                   </p>
+                  {/* The leading area is the value the whole commercial
+                      scale rests on, so it carries its evidence with it
+                      rather than a bare authority badge. */}
+                  <div className="a3-building-authority">
+                    <p className="a3-building-authority-label">
+                      {t('vr3.understanding.metric.bgf')}
+                    </p>
+                    <AuthorityTrace
+                      authority={(building.authority.bgfRSTotal ?? 'derived') as InformationAuthority}
+                      evidence={{
+                        label: project.documents
+                          .find((d) => d.id === building.evidenceDocIds[0])?.file
+                          ?? building.evidenceDocIds[0] ?? building.id,
+                      }}
+                      layout="stacked"
+                    >
+                      <span className="numeric">{num(building.metrics.bgfRSTotal)}</span>
+                      <span className="a3-mro-unit">m²</span>
+                    </AuthorityTrace>
+                  </div>
                   <dl className="a3-building-metrics">
                     {building.metrics.wfl ? (
                       <MetricReadout
@@ -930,23 +950,6 @@ function UnderstandingOverview({
                       />
                     ) : null}
                   </dl>
-                  {/* The leading area is the value the whole commercial
-                      scale rests on, so it carries its evidence with it
-                      rather than a bare authority badge. */}
-                  <div className="a3-building-authority">
-                    <AuthorityTrace
-                      authority={(building.authority.bgfRSTotal ?? 'derived') as InformationAuthority}
-                      evidence={{
-                        label: project.documents
-                          .find((d) => d.id === building.evidenceDocIds[0])?.file
-                          ?? building.evidenceDocIds[0] ?? building.id,
-                      }}
-                      layout="stacked"
-                    >
-                      <span className="numeric">{num(building.metrics.bgfRSTotal)}</span>
-                      <span className="a3-mro-unit">m²</span>
-                    </AuthorityTrace>
-                  </div>
                   <p className="a3-building-evidence">
                     {t('vr3.understanding.buildingEvidence', {
                       files: building.evidenceDocIds

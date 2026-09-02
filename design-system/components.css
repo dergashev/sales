@@ -2728,7 +2728,8 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    away from the metrics it owns.
    Classes: .a3-building-list · .a3-building-item · .a3-building-media ·
    .a3-building-body · .a3-building-name · .a3-building-meta ·
-   .a3-building-metrics · .a3-building-authority · .a3-building-evidence. */
+   .a3-building-metrics · .a3-building-authority ·
+   .a3-building-authority-label · .a3-building-evidence. */
 .a3-building-list{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-4)}
 .a3-building-item{display:grid;grid-template-columns:minmax(0,var(--measure-card-compact)) minmax(0,1fr);gap:var(--space-4);border-top:var(--border-hairline);padding-top:var(--space-4)}
 .a3-building-item:first-child{border-top:0;padding-top:0}
@@ -2737,7 +2738,9 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-building-name{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
 .a3-building-meta{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
 .a3-building-metrics{margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(var(--measure-conflict-column),1fr));gap:var(--space-3)}
-.a3-building-authority{min-width:0}
+.a3-building-authority{display:grid;gap:var(--space-1);min-width:0}
+.a3-building-authority-label{margin:0;font-size:var(--type-label-size);line-height:var(--type-label-line);color:var(--color-text-secondary)}
+.a3-building-authority .a3-aut-value{font-size:var(--type-metric-section-size);line-height:var(--type-metric-section-line);font-weight:var(--font-weight-bold)}
 .a3-building-evidence{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-muted);overflow-wrap:break-word}
 
 /* Project List cards (target `T-001`). Structure: ul.a3-project-grid >
