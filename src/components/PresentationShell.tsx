@@ -15,9 +15,13 @@ import { NNBSP, present, formatDE, label as moneyLabel } from '../engine/money'
 import { CATALOG } from '../state/catalog'
 import { localizeMoneyText, useT, useTx } from '../i18n'
 import { recipientForOpportunity, type ValidatedRecipient } from '../state/emailRecipient'
-import { Badge, SelectField } from './designSystem'
+import { Badge, Card, SelectField } from './designSystem'
 import { SegmentedControl } from './controls'
-import { PartialState } from './DataStates'
+import { PartialState, EmptyState } from './DataStates'
+// F-38 (OfferPanel.tsx): `signed` is exported specifically for cross-
+// component reuse of the ONE signed-delta formatter — reused here for
+// "Größter Treiber" instead of a second, divergence-prone formatter.
+import { signed } from './OfferPanel'
 import { CompositionBar } from '../design-system/CompositionBar'
 import { buildKgCompositionSegments } from './costComposition'
 import { MediaFrame } from '../design-system/MediaFrame'
@@ -92,6 +96,42 @@ function buildingNames(cfg: OptionConfig): string {
     .join(' · ')
 }
 
+type TopDriver = { label: string; exact: Decimal }
+
+/** VR2-07 — Größter Treiber (Offer stage): the same client-safe Kostentreiber
+ *  projection/aggregation §3 ERGEBNIS already uses (`projectDriversForClient`,
+ *  building-prefix stripping, same-label aggregation), extracted so the
+ *  Offer climax can read off the single biggest driver without duplicating
+ *  §3's own tested computation inline. §3 itself is untouched — this is a
+ *  new pure function, not a refactor of already-released, already-tested
+ *  code. */
+function topCostDrivers(current: Candidate, t: ReturnType<typeof useT>): TopDriver[] {
+  const { p, cfg } = current
+  const clientDrivers = projectDriversForClient(p.result.drivers, 'praesentation', cfg.kg800ClientRevealed)
+  const includedIds = includedBuildingIdsOf(cfg)
+  const stripBuildingPrefix = (key: string): string => {
+    if (includedIds.length <= 1) return key
+    const owner = includedIds.find((id) => key.startsWith(`${id}:`))
+    return owner ? key.slice(owner.length + 1) : key
+  }
+  const byLabel = new Map<string, TopDriver>()
+  for (const d of clientDrivers) {
+    const strippedKey = stripBuildingPrefix(d.key)
+    // The base-service contribution ('basis'/'basis_s') is the Grundleistung
+    // itself, not a driver of the price beyond it — the same distinction
+    // OfferPanel's own "Im Angebot gewählt" recap already draws (its
+    // `looseChosen`/`looseExcluded` rows never include the base). Excluded
+    // here so "Größter Treiber" names an actual deviation (e.g.
+    // "Untergeschoss"), never the base package itself.
+    if (strippedKey === 'basis' || strippedKey === 'basis_s') continue
+    const label = translatedDriverLabel({ ...d, key: strippedKey }, t)
+    const existing = byLabel.get(label)
+    if (existing) existing.exact = existing.exact.plus(d.exact)
+    else byLabel.set(label, { label, exact: d.exact })
+  }
+  return [...byLabel.values()].sort((a, b) => b.exact.abs().minus(a.exact.abs()).toNumber())
+}
+
 /** Считает деньги вверх до УЖЕ ОКРУГЛЁННОГО показа (rule 19) — тот же
  *  приём, что `OfferPanel.tsx`'s `totalCount` (не анимируем к точному
  *  Decimal, иначе на миг мелькнут лишние разряды сверх показанных). */
@@ -161,7 +201,17 @@ export function PresentationShell({ mainRef, modeRef }: {
     pageHeadingRef.current?.focus()
   }, [activeSection, flow])
 
-  const goTo = (id: string) => setActiveSection(id)
+  // VR2-07: a nav tab click always lands in the narrative at that section —
+  // including from inside the offer/send/sent flow, where the narrative
+  // strip stays mounted (DC-22 anatomy) but previously did nothing while a
+  // flow was active. The approved Offer target relies on the strip itself
+  // as the only way back (no redundant "Zurück" chrome competing with the
+  // commercial result); this is what makes that true everywhere, not just
+  // for the one screen that needed it.
+  const goTo = (id: string) => {
+    setFlow('narrative')
+    setActiveSection(id)
+  }
 
   // Kein client-präsentierbares Option: eigener, ehrlicher Zustand statt
   // einer leeren Leinwand (AC 6/9/11/12) — dieselbe Unterscheidung, die
@@ -275,6 +325,7 @@ export function PresentationShell({ mainRef, modeRef }: {
                 delivery={delivery}
                 snapshot={sentSnapshot ?? latestViewedSnapshot}
                 current={current}
+                projectName={projectName}
                 onBack={backToNarrative}
                 onPrepare={() => setFlow('send')}
                 canSend={canSend}
@@ -988,14 +1039,183 @@ function PageNaechsterSchritt({ current, onPrepare, headingRef }: {
   )
 }
 
+/** §"NÄCHSTER SCHRITT" → OFFER — the commercial climax (VR2-07).
+ *
+ * Replaces the earlier weak stub (generic title, bullet-list artefacts, a
+ * `dl` of scheduling facts) with the approved target's composition: ONE
+ * dominant commercial result on the canonical stage-deep surface (ADR-R1-02,
+ * same surface §3 ERGEBNIS already uses — DESIGN SYSTEM MODE: PRESERVE, no
+ * new surface token), restrained supporting facts, and a client-safe
+ * artefact gallery built from the canonical `Card` primitive
+ * (`designSystem.tsx`) — no parallel gallery/card component invented.
+ *
+ * The gallery always lists the product's three structural deliverable
+ * types (rule: "Drei Artefakte, eine Aussage." is an editorial constant,
+ * not a live count) — an artefact's PREVIEW can be unavailable (Kostenüber-
+ * sicht needs a determined total, the same `priceUnavailable` condition
+ * rule 16/R-18 already governs), but the deliverable itself is never
+ * removed from the list on that account. A defensive all-unavailable
+ * EmptyState branch exists for DC-30 completeness; it is not reachable
+ * through any current fixture (see the Frontend change manifest).
+ *
+ * No in-panel "Zurück" link: the narrative strip (`goTo`, now flow-aware —
+ * see `PresentationShell`) is the one way back, matching the approved
+ * target's clean composition instead of duplicating that affordance.
+ */
+function OfferClimax({ current, projectName, priceUnavailable, onPrepare, headingRef }: {
+  current: Candidate
+  projectName: string
+  priceUnavailable: boolean
+  onPrepare: () => void
+  headingRef: PageHeadingRef
+}) {
+  const t = useT()
+  const tx = useTx()
+  const language = useStore().uiLanguage
+  const { p } = current
+  const hero = useMoneyCountUp(p.result.total.exact)
+  const topDrivers = topCostDrivers(current, t)
+  const biggestDriver = topDrivers[0]
+  const segments = buildKgCompositionSegments(p.kgSplit, (g) => t(`costGroup.${g}`))
+
+  const galleryArtifacts = [
+    {
+      id: 'offer',
+      title: t('presentation.artifact.offerCardTitle'),
+      description: t('presentation.artifact.offerDescription'),
+      meta: t('presentation.artifact.offerMeta'),
+      available: true,
+    },
+    {
+      id: 'cost',
+      title: t('presentation.artifact.costCardTitle'),
+      description: t('presentation.artifact.costDescription'),
+      meta: t('presentation.artifact.costMeta'),
+      available: !priceUnavailable,
+      unavailableReason: t('presentation.artifact.costUnavailable'),
+    },
+    {
+      id: 'scope',
+      title: t('presentation.artifact.scopeCardTitle'),
+      description: t('presentation.artifact.scopeDescription'),
+      meta: t('presentation.artifact.scopeMeta'),
+      available: true,
+    },
+  ] as const
+
+  return (
+    <section className="a3-offer-climax" aria-labelledby="presentation-offer-title">
+      <div className="a3-offer-climax-result a3-stage-deep">
+        <p className="a3-cap uppercase">{t('presentation.flow.offerEyebrow')} · {current.name}</p>
+        <h1 ref={headingRef} tabIndex={-1} id="presentation-offer-title" className="mt-2 text-heading-1 font-bold text-text-inverse">
+          {t('presentation.flow.offerTitle', {
+            project: projectName || t('presentation.flow.offerTitleFallbackSubject'),
+          })}
+        </h1>
+
+        <div className="a3-offer-climax-total mt-8">
+          {priceUnavailable ? (
+            <PartialState label={t('money.priceNotDetermined')} consequence={tx(p.result.totalLabel)} />
+          ) : (
+            <>
+              <p className="numeric text-display-numeric font-bold" style={{ color: 'var(--color-brand-accent)' }}>
+                {hero.prefix && <span aria-hidden="true">{hero.prefix}{NNBSP}</span>}
+                {hero.display}
+                <span className="text-heading-2 text-text-inverse">{NNBSP}€</span>
+              </p>
+              <p className="mt-2 text-body text-text-inverse">{tx(p.result.totalLabel)}</p>
+              <p className="mt-1 text-small text-text-inverse">{tx('Schätzunsicherheit')} ±{NNBSP}{p.uncertaintyPp}{NNBSP}%</p>
+            </>
+          )}
+        </div>
+
+        {!priceUnavailable && (
+          <div className="mt-6">
+            <CompositionBar
+              segments={segments}
+              total={p.result.total.exact}
+              variant="compact"
+              onDark
+              incompleteLabel={t('money.priceNotDetermined')}
+            />
+          </div>
+        )}
+
+        {!priceUnavailable && (
+          <ul className="a3-presentation-commercial-driver-list mt-6">
+            <li className="text-text-inverse">
+              <span>{tx(p.leadRate.denominatorLabel)}</span>
+              <span className="numeric shrink-0">
+                {p.leadRate.prefix && <span aria-hidden="true">{p.leadRate.prefix}{NNBSP}</span>}
+                {p.leadRate.display}{NNBSP}€/m²
+              </span>
+            </li>
+            <li className="text-text-inverse">
+              <span>{t('presentation.schedule.durationFromOkbp')}</span>
+              <span className="numeric shrink-0">
+                {p.duration.prefix && <span aria-hidden="true">{p.duration.prefix}{NNBSP}</span>}
+                {durationNumber(p.duration, language)}{NNBSP}{language === 'en' ? 'months' : 'Monate'}
+              </span>
+            </li>
+            {biggestDriver && (
+              <li className="text-text-inverse">
+                <span>{t('presentation.commercial.topDriver')}</span>
+                <span className="numeric shrink-0">{biggestDriver.label}{NNBSP}{localizeMoneyText(signed(biggestDriver.exact), language)}</span>
+              </li>
+            )}
+          </ul>
+        )}
+
+        <p className="a3-offer-climax-footnote mt-6 text-small">
+          {t('presentation.flow.discountNotice')}
+        </p>
+      </div>
+
+      <aside className="a3-offer-climax-gallery bg-surface-default" aria-labelledby="presentation-offer-gallery-title">
+        <p className="a3-cap uppercase">{t('presentation.flow.galleryEyebrow')}</p>
+        <h2 id="presentation-offer-gallery-title" className="mt-2 text-heading-2 font-bold text-text-primary">
+          {t('presentation.flow.galleryHeadline')}
+        </h2>
+
+        {galleryArtifacts.every((a) => !a.available) ? (
+          <div className="mt-6">
+            <EmptyState>{t('presentation.flow.galleryEmpty')}</EmptyState>
+          </div>
+        ) : (
+          <ul className="a3-offer-gallery-list mt-6">
+            {galleryArtifacts.map((a) => (
+              <li key={a.id}>
+                <Card
+                  title={a.title}
+                  meta={a.description}
+                  status={!a.available && (
+                    <span><span aria-hidden="true">○ </span>{a.unavailableReason}</span>
+                  )}
+                >
+                  {a.meta}
+                </Card>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="a3-offer-climax-cta mt-8">
+          <Button variant="primary" onClick={onPrepare}>{t('presentation.flow.prepare')}</Button>
+        </div>
+      </aside>
+    </section>
+  )
+}
+
 function PresentationFlowScreen({
-  flow, delivery, snapshot, current, onBack, onPrepare, canSend, recipient, onSend,
+  flow, delivery, snapshot, current, projectName, onBack, onPrepare, canSend, recipient, onSend,
   onOpenSent, onCloseSnapshot, onNewVersion, headingRef,
 }: {
   flow: Exclude<PresentationFlow, 'narrative'>
   delivery: 'sent' | 'delivered'
   snapshot?: OfferSnapshot
   current: Candidate
+  projectName: string
   onBack: () => void
   onPrepare: () => void
   canSend: boolean
@@ -1007,7 +1227,6 @@ function PresentationFlowScreen({
   headingRef: PageHeadingRef
 }) {
   const t = useT()
-  const tx = useTx()
   const language = useStore().uiLanguage
   const { p } = current
   const priceUnavailable = p.result.total.exact.isZero()
@@ -1019,48 +1238,13 @@ function PresentationFlowScreen({
 
   if (flow === 'offer') {
     return (
-      <section className="a3-presentation-flow a3-stage-deep" aria-labelledby="presentation-offer-title">
-        <button type="button" className="a3-presentation-back" onClick={onBack}>{t('presentation.flow.back')}</button>
-        <div className="a3-presentation-flow-grid mt-4">
-          <div>
-            <p className="a3-cap">{t('presentation.flow.offerEyebrow')}</p>
-            <Badge sign="●" kind="metadata">{current.name}</Badge>
-            <h1 ref={headingRef} tabIndex={-1} id="presentation-offer-title" className="mt-2 text-heading-1 font-bold text-text-primary">
-              {t('presentation.flow.offerTitle')}
-            </h1>
-            <p className="mt-3 text-body text-text-secondary">{t('presentation.flow.offerIntro')}</p>
-            <div className="a3-presentation-flow-total mt-8">
-            <p className="a3-cap">{t('presentation.flow.total')}</p>
-              <p className="numeric text-display-numeric font-bold text-text-primary">
-                {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(present(p.result.total.exact))}
-              </p>
-              <p className="mt-2 text-small text-text-secondary">{tx('Schätzunsicherheit')} ±{NNBSP}{p.uncertaintyPp}{NNBSP}%</p>
-            </div>
-            {!priceUnavailable && (
-              <div className="mt-6">
-                <CompositionBar
-                  segments={buildKgCompositionSegments(p.kgSplit, (g) => t(`costGroup.${g}`))}
-                  total={p.result.total.exact}
-                  variant="compact"
-                  incompleteLabel={t('money.priceNotDetermined')}
-                />
-              </div>
-            )}
-          </div>
-          <aside className="a3-presentation-flow-aside" aria-label={t('presentation.nextStep.artifacts')}>
-            <p className="a3-cap">{t('presentation.nextStep.artifacts')}</p>
-            <ul className="a3-presentation-artifacts mt-2">
-              {artifacts.map((artifact) => <li key={artifact}>{artifact}</li>)}
-            </ul>
-            <dl className="mt-6 grid gap-3">
-              <div><dt className="a3-cap">{t('presentation.schedule.durationFromOkbp')}</dt><dd className="text-body font-medium">{durationText(p.duration, language)}</dd></div>
-              <div><dt className="a3-cap">{tx('Fertigstellung')}</dt><dd className="text-body font-medium">{formatDate(p.duration.completionDate, language)}</dd></div>
-              <div><dt className="a3-cap">{tx('Gebäude')}</dt><dd className="text-body font-medium">{buildingNames(current.cfg)}</dd></div>
-            </dl>
-            <Button className="mt-8" variant="primary" onClick={onPrepare}>{t('presentation.flow.prepare')}</Button>
-          </aside>
-        </div>
-      </section>
+      <OfferClimax
+        current={current}
+        projectName={projectName}
+        priceUnavailable={priceUnavailable}
+        onPrepare={onPrepare}
+        headingRef={headingRef}
+      />
     )
   }
 

@@ -269,7 +269,11 @@ describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/
     await gotoSection(user, 'Nächster Schritt')
     await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Das Angebot bekommt kommerzielle Kontur.' })).toBeInTheDocument()
+      // VR2-07: the commercial-climax headline names the project — this
+      // harness never calls `openOpportunity`, so `s.opportunityId` stays
+      // null and the honest fallback subject applies (same `|| fallback`
+      // pattern `PageIdentity`'s own empty-state H1 already uses).
+      expect(screen.getByRole('heading', { name: 'Ihr Projekt bekommt kommerzielle Kontur.' })).toBeInTheDocument()
     })
 
     const switcher = screen.getByRole('radiogroup', { name: 'Ansicht' })
@@ -277,7 +281,7 @@ describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/
     expect(st().activeOptionId).toBe('OPT-01')
     expect(st().viewedOptionId).toBe('OPT-02')
 
-    await user.click(screen.getByRole('button', { name: 'Angebot prüfen und senden' }))
+    await user.click(screen.getByRole('button', { name: 'Angebot prüfen & senden →' }))
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Bereit zum Senden' })).toBeInTheDocument()
     })
@@ -300,9 +304,10 @@ describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/
     await gotoSection(user, 'Nächster Schritt')
     await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Das Angebot bekommt kommerzielle Kontur.' })).toBeInTheDocument()
+      // opportunityId='DEMO-0001' here, so the real project name applies.
+      expect(screen.getByRole('heading', { name: 'Musterprojekt Nordfeld bekommt kommerzielle Kontur.' })).toBeInTheDocument()
     })
-    await user.click(screen.getByRole('button', { name: 'Angebot prüfen und senden' }))
+    await user.click(screen.getByRole('button', { name: 'Angebot prüfen & senden →' }))
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Bereit zum Senden' })).toBeInTheDocument()
     })

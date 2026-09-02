@@ -2052,6 +2052,12 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
   .a3-presentation-scope-copy,.a3-presentation-next-primary,.a3-presentation-next-aside{padding:var(--space-6) var(--space-5)}
   .a3-presentation-commercial{padding:var(--space-6) var(--space-5);gap:var(--space-6)}
   .a3-presentation-identity-card{padding:var(--space-5)}
+  /* 1280 recomposition (VR2-07): a deliberately denser result column and
+     gallery, not the 1440 layout squeezed smaller — the co-hero facts list
+     and gallery cards keep their own hit targets, only the outer rhythm
+     tightens. */
+  .a3-offer-climax-result,.a3-offer-climax-gallery{padding:var(--space-6) var(--space-5)}
+  .a3-offer-gallery-list{gap:var(--space-3)}
 }
 .a3-presentation-flow{width:min(100%,var(--measure-wide));margin-inline:auto;padding:var(--space-7) var(--space-6)}
 .a3-presentation-flow-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(18rem,.85fr);gap:var(--space-8);align-items:start}
@@ -2068,11 +2074,23 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-presentation-snapshot{border:var(--border-default);background:var(--color-surface-subtle);padding:var(--space-4);color:var(--color-text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
 .a3-presentation-flow-dock{display:flex;justify-content:flex-end;gap:var(--space-3);flex-wrap:wrap;border-top:var(--border-hairline);padding-top:var(--space-4)}
 .a3-presentation-delivered{max-width:var(--measure-body-max);margin-inline:auto;padding-block:var(--space-5)}
+/* §"Nächster Schritt" → OFFER — commercial climax (VR2-07). Two-tone split:
+   the left column is the canonical `.a3-stage-deep` surface (ADR-R1-02,
+   the same surface §3 ERGEBNIS already uses) carrying the dominant
+   commercial result; the right column is the canonical white surface
+   (Tailwind `bg-surface-default`, same token every other page uses)
+   carrying the client-safe artefact gallery. No new surface token. */
+.a3-offer-climax{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(20rem,.85fr)}
+.a3-offer-climax-result,.a3-offer-climax-gallery{padding:var(--space-8) var(--space-7);overflow-y:auto;min-width:0;display:flex;flex-direction:column}
+.a3-offer-climax-total .numeric{overflow-wrap:anywhere}
+.a3-offer-climax-footnote{color:var(--color-text-stage-deep-secondary)}
+.a3-offer-gallery-list{display:flex;flex-direction:column;gap:var(--space-4);list-style:none;margin:0;padding:0}
+.a3-offer-climax-cta{display:flex;justify-content:flex-start}
 @media (max-width:63.99rem){
   .a3-presentation-flow-grid{gap:var(--space-6)}
 }
 @media (max-width:47.5rem){
-  .a3-presentation-building,.a3-presentation-next,.a3-presentation-flow-grid{grid-template-columns:1fr}
+  .a3-presentation-building,.a3-presentation-next,.a3-presentation-flow-grid,.a3-offer-climax{grid-template-columns:1fr}
   .a3-presentation-building-media>figure{min-height:12rem}
   .a3-presentation-aside,.a3-presentation-flow-aside{border-left:0;border-top:var(--border-hairline);padding:var(--space-4) 0 0}
   .a3-presentation-timeline{gap:var(--space-4)}
