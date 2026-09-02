@@ -187,11 +187,27 @@ export type EventKind =
   | 'state.restored'
   | 'undo'
 
+/** Interpolation values for a presentation key. Mirrors i18n's own shape. */
+export type JournalLabelValues = Readonly<Record<string, string | number>>
+
 export type JournalEvent = {
   seq: number
   kind: EventKind
   /** Человекочитаемая подпись — она же строка журнала сессии. */
   label: string
+  /**
+   * VR3-01: OPTIONAL dictionary key for showing this event to the user.
+   *
+   * `label` stays exactly as it was — it is the journal's canonical German
+   * line and the text `projectBaselineChangeLabel` pattern-matches on, so
+   * translating it in place would silently change staleness detection.
+   * `UndoToast` prefers this key when an action supplies one, which is how
+   * the DC-29 toast stops reading German on the EN path (QA-01's class:
+   * the toast rendered `label` raw). An action without a key behaves
+   * exactly as before.
+   */
+  labelKey?: string
+  labelValues?: JournalLabelValues
   /** Точная денежная дельта события. Null, если событие не меняет цену. */
   deltaExact: Decimal | null
   at: string
@@ -1346,7 +1362,14 @@ type Store = {
    * (отправка) гасит его — более новая голова делает старый тост stale
    * (CHANGE-006), а откат остаётся доступен из журнала DC-12.
    */
-  undoToast: { seq: number; statusText: string; deltaText: string | null } | null
+  undoToast: {
+    seq: number
+    statusText: string
+    /** Preferred over `statusText` when the action supplied one (VR3-01). */
+    statusKey?: string
+    statusValues?: JournalLabelValues
+    deltaText: string | null
+  } | null
   /**
    * Режим показа (правило 11). Предпочтение UI, не данные варианта — как
    * openConfiguratorStep, без события. Вход в `praesentation` гейтуется открытым
@@ -2992,6 +3015,8 @@ const store = createStore<Store>((set, get) => {
         ? {
             seq,
             statusText: e.label,
+            statusKey: e.labelKey,
+            statusValues: e.labelValues,
             deltaText: e.deltaExact ? dc29Delta(e.deltaExact) : null,
           }
         : null,
@@ -3978,6 +4003,8 @@ const store = createStore<Store>((set, get) => {
       apply({
         kind: 'document.activated',
         label: `Dokumentanalyse erneut ausgeführt · ${project.name}`,
+        labelKey: 'vr3.journal.rerunAnalysis',
+        labelValues: { project: project.name },
         deltaExact: null,
         inverse: () => write(previous),
         forward: () => write(next),
@@ -4013,6 +4040,8 @@ const store = createStore<Store>((set, get) => {
       apply({
         kind: 'document.activated',
         label: `Dokument ersetzt · ${docId} → ${replacementFile}`,
+        labelKey: 'vr3.journal.documentReplaced',
+        labelValues: { document: docId, file: replacementFile },
         deltaExact: null,
         inverse: () => write(previous),
         forward: () => write(next),
@@ -4037,6 +4066,8 @@ const store = createStore<Store>((set, get) => {
       apply({
         kind: 'document.activated',
         label: `Dokument entfernt · ${docId}`,
+        labelKey: 'vr3.journal.documentRemoved',
+        labelValues: { document: docId },
         deltaExact: null,
         inverse: () => write(previous),
         forward: () => write(next),
@@ -4061,6 +4092,8 @@ const store = createStore<Store>((set, get) => {
       apply({
         kind: 'conflict.resolved',
         label: `Strittige Angabe entschieden · ${conflictId}`,
+        labelKey: 'vr3.journal.conflictResolved',
+        labelValues: { conflict: conflictId },
         deltaExact: null,
         inverse: () => write(previous),
         forward: () => write(next),
@@ -4083,6 +4116,8 @@ const store = createStore<Store>((set, get) => {
       apply({
         kind: 'conflict.resolved',
         label: `Strittige Angabe zurückgestellt · ${conflictId}`,
+        labelKey: 'vr3.journal.conflictReopened',
+        labelValues: { conflict: conflictId },
         deltaExact: null,
         inverse: () => write(previous),
         forward: () => write(next),
@@ -4108,6 +4143,10 @@ const store = createStore<Store>((set, get) => {
         label: kind === 'assumption'
           ? `Offene Frage ${questionId} · Annahme dokumentiert`
           : `Offene Frage ${questionId} · Antwort erfasst`,
+        labelKey: kind === 'assumption'
+          ? 'vr3.journal.questionAssumed'
+          : 'vr3.journal.questionAnswered',
+        labelValues: { question: questionId },
         deltaExact: null,
         inverse: () => write(previous),
         forward: () => write(next),
@@ -4147,6 +4186,7 @@ const store = createStore<Store>((set, get) => {
       apply({
         kind: 'value.confirmed',
         label: PROJECT_PARAMS_CONFIRMATION_LABEL,
+        labelKey: 'vr3.journal.projectBaselineConfirmed',
         deltaExact: null,
         inverse: () => write(previousAnalysis, previousSnapshot, previousConfirmed),
         forward: () => write(committed, snapshot, true),
@@ -4326,6 +4366,8 @@ const store = createStore<Store>((set, get) => {
       apply({
         kind: 'value.edited',
         label: `Opportunity Option «${resolvedName}» angelegt`,
+        labelKey: 'vr3.journal.optionCreated',
+        labelValues: { option: resolvedName },
         deltaExact: null,
         inverse: () => set((x) => {
           const { [id]: stored, ...rest } = x.optionConfigs
@@ -4400,6 +4442,8 @@ const store = createStore<Store>((set, get) => {
       apply({
         kind: 'value.edited',
         label: `Opportunity Option «${previousName}» in «${trimmed}» umbenannt`,
+        labelKey: 'vr3.journal.optionRenamed',
+        labelValues: { previous: previousName, next: trimmed },
         deltaExact: null,
         inverse: () => set((x) => ({
           options: x.options.map((o) => (o.id === id ? { ...o, name: previousName } : o)),

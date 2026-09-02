@@ -151,6 +151,28 @@ describe('VR3-01 · nothing on the owned surfaces can reach EN untranslated', ()
     expect(missing).toEqual([])
   })
 
+  it('every journal event this ticket emits names a key with both rows', () => {
+    const de = dictionaryKeys('de')
+    const en = dictionaryKeys('en')
+    const store = withoutComments(source('src/state/store.ts'))
+    // Presentation keys the store hands to the DC-29 toast. The toast used
+    // to render the journal's German `label` raw, which is how "Opportunity
+    // Option «Option 1» angelegt" appeared under an otherwise English
+    // screen in this candidate's own evidence capture.
+    const keys = [...store.matchAll(/labelKey:\s*(?:\n\s*)?'([^']+)'/g)].map((m) => m[1]!)
+    const ternary = [...store.matchAll(/\?\s*'(vr3\.journal\.[^']+)'\s*\n?\s*:\s*'(vr3\.journal\.[^']+)'/g)]
+      .flatMap((m) => [m[1]!, m[2]!])
+    const all = [...new Set([...keys, ...ternary])]
+    // Every VR3-01 action that can raise a toast supplies one.
+    expect(all.length).toBeGreaterThanOrEqual(9)
+    const missing: string[] = []
+    for (const key of all) {
+      if (!de.has(key)) missing.push(`${key}: no DE row`)
+      if (!en.has(key)) missing.push(`${key}: no EN row`)
+    }
+    expect(missing).toEqual([])
+  })
+
   it('every vr3.* key the surfaces reference has both a DE and an EN row', () => {
     const de = dictionaryKeys('de')
     const en = dictionaryKeys('en')

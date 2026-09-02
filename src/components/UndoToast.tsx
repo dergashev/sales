@@ -90,7 +90,14 @@ export function UndoToast() {
       >
         {shown && (<>
           <span>
-            {shown.statusText}
+            {/* VR3-01: an action may supply a dictionary key for its own
+                message. The journal's stored `label` is German by contract
+                (it is also the text staleness detection matches on), so the
+                toast rendered German on the EN path until actions could
+                name a key. Actions without one are unchanged. */}
+            {shown.statusKey
+              ? t(shown.statusKey, shown.statusValues)
+              : shown.statusText}
             {shown.deltaText && (
               <span className="numeric block">{shown.deltaText}</span>
             )}
