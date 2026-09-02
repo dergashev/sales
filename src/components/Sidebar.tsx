@@ -15,6 +15,7 @@ import {
 } from '../state/clientProjection'
 import { OutputProfileSwitch, SelectField } from './designSystem'
 import { WorkflowStepper, type WorkflowStep } from '../design-system/WorkflowStepper'
+import { startContinuityTransition, useSemanticMotion } from '../design-system/motion'
 
 /**
  * Левый сайдбар — навигация оболочки.
@@ -64,6 +65,7 @@ const FOCUS = 'outline-none focus-visible:outline focus-visible:outline-2 ' +
 
 export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) {
   const s = useStore()
+  const { reduced } = useSemanticMotion()
   const view = pipelineViewForBuildingGate(s, s.pipelineView)
   const option = s.options.find((o) => o.id === s.activeOptionId)
   // Acceptance remediation (cycle 5): the approved target's identity block
@@ -208,7 +210,12 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
                     button wider than the rail, and `break-words` allows a
                     hard mid-word break only in that rare case (no visible
                     effect on every shorter label that already fits). */}
-                <span className="min-w-0 flex-1 break-words">{t(item.labelKey)}</span>
+                {/* VR2-09: `hyphens-auto` (document `lang` follows the UI
+                    locale, App.tsx) gives the browser a real hyphenation
+                    point BEFORE `break-words`' last-resort arbitrary break —
+                    at 1440/1280 the rail rendered "Variantenverglei|ch"
+                    and "Kundenansich|t prüfen" on every Work route. */}
+                <span className="min-w-0 flex-1 break-words hyphens-auto">{t(item.labelKey)}</span>
               </button>
 
               {blocked && reasonText && (
@@ -253,7 +260,7 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
           blockedReason={modeBlockedReason}
           checkButtonRef={modeRef}
           onCheck={() => s.setGateOpen(true)}
-          onExit={() => s.setMode('intern')}
+          onExit={() => startContinuityTransition(reduced, () => s.setMode('intern'))}
         />
       </div>
 

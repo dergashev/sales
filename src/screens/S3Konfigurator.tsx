@@ -137,6 +137,25 @@ export function S3Konfigurator() {
   const confirmationAvailable = s.mode === 'intern'
     && (visibleStatus === 'ready' || visibleStatus === 'recheck')
 
+  // VR2-09 — approved motion storyboard 3 "Chapter forward / back"
+  // (DIRECTION verb, ADR-R1-05): ordered progress through configuration is
+  // communicated by the entering chapter body arriving from the side it
+  // logically comes from (forward: from the right; back: from the left),
+  // then settling. The verb previously existed only in the Foundations
+  // specimen — no Product route consumed it, so chapter changes replaced
+  // content instantly. Enter-only by design: the previous chapter unmounts
+  // synchronously (no `AnimatePresence`), so the DOM keeps exactly the
+  // replacement semantics every existing chapter-navigation test asserts,
+  // header/rail/nav stay stable outside the animated region, and App.tsx's
+  // own H1-focus effect is untouched. The direction is derived from the
+  // route index the user is LEAVING (ref), never from a stale closure.
+  const { direction, reduced } = useSemanticMotion()
+  const previousRouteIndexRef = useRef(routeIndex)
+  const chapterDirection = routeIndex >= previousRouteIndexRef.current ? 'forward' : 'backward'
+  useEffect(() => {
+    previousRouteIndexRef.current = routeIndex
+  }, [routeIndex])
+
   return (
     <div className="a3-config-work">
       {/* Заголовок экрана — masthead витрины: крупный титул и мета на
@@ -164,7 +183,13 @@ export function S3Konfigurator() {
             ДЛИННОГО ТЕКСТА (он стоит на абзацах внутри карточек), а не клеткой
             для рабочей области — аудит верно указал, что здесь он обнимал всю
             главу целиком. */}
-        <div className="a3-config-work-body">
+        <motion.div
+          key={totalOverview ? `${currentId}:overview` : currentId}
+          className="a3-config-work-body"
+          variants={direction[chapterDirection]}
+          initial={reduced ? false : 'initial'}
+          animate="animate"
+        >
           {totalOverview && <ConfigurationOverview />}
           {/* Rendering follows semantic step identity. Display numbers come
               only from the active workflow above. */}
@@ -217,7 +242,7 @@ export function S3Konfigurator() {
             && <ChapterKg700 />}
           {!totalOverview && currentId === CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE
             && <ChapterTermine />}
-        </div>
+        </motion.div>
 
         {/* Один следующий шаг всегда на экране (DC-27): маршрут, не принуждение. */}
         {!totalOverview && currentId !== CONFIGURATOR_STEP.SCOPE_BOUNDARIES && <footer className="a3-config-action-dock">

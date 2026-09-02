@@ -647,7 +647,10 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-wfs-button:focus-visible{outline:var(--border-width-focus-emphasis) solid var(--color-focus-ring);outline-offset:var(--border-width-focus-emphasis)}
 .a3-wfs-marker{width:var(--size-chapter-marker);height:var(--size-chapter-marker);border:var(--border-default);display:inline-flex;align-items:center;justify-content:center;flex:none;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-bold)}
 .a3-wfs-text{display:grid;min-width:0;gap:var(--space-1)}
-.a3-wfs-label{overflow-wrap:anywhere;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-label-weight)}
+/* VR2-09: `hyphens:auto` (rule 37; document `lang` follows the UI locale)
+   before the last-resort `overflow-wrap:anywhere` — in the 189 px Sidebar
+   rail at 1280 the chapter label rendered "Leistungsabgrenz|ung". */
+.a3-wfs-label{overflow-wrap:anywhere;hyphens:auto;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-label-weight)}
 .a3-wfs-meta,.a3-wfs-blocked-reason,.a3-wfs-rationale,.a3-wfs-rationale-text{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
 .a3-wfs-current,.a3-wfs-cur{border-top-color:var(--color-selection-border);background:var(--color-surface-selected)}
 .a3-wfs-upcoming{}
@@ -1408,6 +1411,11 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-output-profile.a3-output-profile-compact>.a3-output-blocked-reason,
 .a3-output-profile.a3-output-profile-compact>.a3-mode-indicator,
 .a3-output-profile.a3-output-profile-compact>.a3-output-blocked-reason+.a3-mode-indicator{grid-column:1;justify-self:start}
+/* VR2-09: the compact rail button ("Kundenansicht prüfen") wrapped mid-word
+   ("Kundenansich|t") in the 189–208 px Sidebar rail via `.a3-btn`'s
+   last-resort `overflow-wrap:anywhere`; hyphenation (document `lang`
+   follows the UI locale) breaks at a real syllable first. */
+.a3-output-profile.a3-output-profile-compact .a3-btn{hyphens:auto}
 .a3-output-blocked-reason{grid-column:1;margin:0;max-inline-size:42ch;overflow-wrap:anywhere;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
 .a3-output-blocked-reason+.a3-mode-indicator{grid-column:2}
 .a3-mode-indicator{display:flex;align-items:center;gap:var(--space-2);margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-label-weight);color:var(--color-text-secondary)}
@@ -1967,7 +1975,16 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    `--color-selection-border` Sidebar's active-item treatment already
    uses) for its underline, never colour alone (rule 8: the tab's own text
    goes bold + `aria-current` at the same time). */
-.a3-presentation-topbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-4);border-bottom:var(--border-default);background:var(--color-surface-default);padding:var(--space-3) var(--space-5)}
+/* VR2-09 shell cohesion: the Present top bar shares the Work `AppHeader`'s
+   chrome (`.a3-global-header`: `--space-2 / --space-5` padding and the
+   contrast hairline) instead of its own `--space-3` + default hairline —
+   measured 93 px vs 65 px before, so every Work → Present entry visibly
+   re-chromed the shell. The mode indicator sits in ONE row beside "Beenden"
+   here (the compact stacked layout is the narrow Sidebar rail's), which is
+   what brings both bars to the same height without hiding anything. */
+.a3-presentation-topbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-4);border-bottom:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-2) var(--space-5)}
+.a3-presentation-topbar .a3-output-profile.a3-output-profile-compact{grid-template-columns:auto auto;align-items:center}
+.a3-presentation-topbar .a3-output-profile.a3-output-profile-compact>.a3-mode-indicator{grid-column:auto;order:-1;justify-self:end}
 .a3-presentation-brand{display:flex;flex:0 0 auto;align-items:center;min-width:0}
 .a3-presentation-nav{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-1)}
 .a3-presentation-tab{appearance:none;background:none;border:none;border-bottom:var(--border-width-strong) solid transparent;min-width:var(--size-hit-target-default);min-height:var(--size-hit-target-default);padding:var(--space-2);font:inherit;font-size:var(--type-small-size);color:var(--color-text-secondary);cursor:pointer}
@@ -2197,7 +2214,21 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
   .a3-presentation-timeline{gap:var(--space-4)}
   .a3-presentation-consequence{align-items:flex-start;flex-direction:column}
 }
+/* VR2-09 — CONTINUITY verb (ADR-R1-05) for top-level shell/route swaps via
+   the native View Transition API (`motion.ts` `startContinuityTransition`:
+   portfolio → Project, Option → Configurator, Work ⇄ Present, breadcrumb
+   up, Present Option switch). Without these rules the browser's own default
+   (250 ms linear-ish cross-fade) ran, i.e. the only Product motion that did
+   NOT read its timing from the tokens. `--motion-continuity` is 0 ms under
+   `prefers-reduced-motion` (tokens.css), and `startContinuityTransition`
+   skips the API entirely for reduced-motion users anyway. `.a3-brand-mark`
+   is the ONE element every shell shares (Work header, Present top bar), so
+   the swap keeps a fixed identity anchor while the rest cross-fades. */
+::view-transition-group(*){animation-duration:var(--motion-continuity);animation-timing-function:var(--motion-easing-emphasized)}
+::view-transition-old(root),::view-transition-new(root){animation-duration:var(--motion-continuity);animation-timing-function:var(--motion-easing-emphasized)}
+.a3-brand-mark{view-transition-name:a3-brand-mark}
 @media (prefers-reduced-motion:reduce){
+  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}
   :where([class^="a3-"],[class*=" a3-"]),:where([class^="a3-"],[class*=" a3-"])::before,:where([class^="a3-"],[class*=" a3-"])::after{transition:none!important;animation:none!important}
   .a3-reveal .a3-sheet{opacity:1;transform:none}
   .a3-g-seg{transform:scaleX(1)}
@@ -2210,15 +2241,26 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    navigation and rail metrics; no parallel control API is introduced. */
 .a3-config-work-shell>.a3-config-work-rail{width:clamp(16rem,18vw,17rem);max-width:clamp(16rem,18vw,17rem)}
 .a3-config-work-rail .a3-rail-header-budget{max-height:none;overflow:visible;padding:var(--space-3) var(--space-4) var(--space-2)}
-.a3-config-work-rail .a3-hb-total .a3-hb-num{font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line)}
+/* VR2-09 (final cohesion): ONE rail metric hierarchy at both supported
+   widths. Before: 48 px at 1440 — measured `≈ 3.818.000` alone at 226 px in a
+   226 px content box, the `€` unit painted off-viewport (hb scrollWidth 277 >
+   clientWidth 226) — while the ≤1439 px rule below dropped the same total to
+   24 px, so the Product's primary commercial value was CLIPPED at 1440 and
+   near-caption size at 1280. `heading-1-narrow` (36/44) fits the 256–259 px
+   rail with its unit at both widths and keeps the rail total visibly the
+   lead metric above the 32/24 px Leitkennzahl/Bauzeit tiers (DC-38 order). */
+.a3-config-work-rail .a3-hb-total .a3-hb-num{font-size:var(--type-heading-1-narrow-size);line-height:var(--type-heading-1-narrow-line)}
 .a3-config-work-rail .a3-hb-total .a3-hb-unit{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line)}
 .a3-config-work-rail>div.flex-1{padding-left:var(--space-4);padding-right:var(--space-4)}
 .a3-config-work-rail .a3-tbl-scroll{overflow-x:visible}
-.a3-config-work-rail .a3-kg{table-layout:fixed}
-.a3-config-work-rail .a3-kg td{padding-left:var(--space-2);padding-right:var(--space-2)}
-.a3-config-work-rail .a3-kg td:first-child{width:42%;overflow-wrap:normal}
-.a3-config-work-rail .a3-kg td:nth-child(2){width:42%}
-.a3-config-work-rail .a3-kg td:nth-child(3){width:16%}
+/* VR2-09: `table-layout:fixed` with 42/42/16 % columns gave every cell 74 px
+   in a ~224 px rail — the KG label (`scrollWidth` 124) and the nowrap amount
+   (82) painted over each other at 1440 AND 1280. Auto layout lets the nowrap
+   `.a3-num` columns take what the amount needs and the label column wrap at
+   its spaces ("KG 300" / "Baukonstruktion"), never mid-word. */
+.a3-config-work-rail .a3-kg{table-layout:auto}
+.a3-config-work-rail .a3-kg td{padding-left:var(--space-1);padding-right:var(--space-1)}
+.a3-config-work-rail .a3-kg td:first-child{overflow-wrap:normal;hyphens:auto}
 .a3-config-work-rail .a3-kg .a3-num{font-size:var(--type-caption-size);line-height:var(--type-caption-line)}
 .a3-config-work{min-width:0;padding:var(--space-5) var(--space-7)}
 .a3-config-header{margin:0 0 var(--space-4);align-items:flex-start}
@@ -2309,5 +2351,5 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-config-kg700-impact{background:var(--color-surface-stage-deep);color:var(--color-surface-default);padding:var(--space-4)}.a3-config-kg700-impact .a3-cap{color:var(--color-surface-subtle)}.a3-config-kg700-impact .text-text-primary{color:var(--color-surface-default)}
 .a3-config-action-dock{position:sticky;bottom:0;z-index:2;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-3);margin-top:var(--space-5);padding:var(--space-3) var(--space-4);background:var(--color-surface-default);border-top:var(--border-default)}
 .a3-config-sidebar .a3-wfs-chapter .a3-wfs-current,.a3-config-sidebar .a3-wfs-chapter .a3-wfs-cur{background:var(--color-surface-stage)}.a3-config-sidebar .a3-wfs-chapter .a3-wfs-button,.a3-config-sidebar .a3-wfs-chapter .a3-wfs-static{padding-top:var(--space-3);padding-bottom:var(--space-3)}
-@media (max-width:1439px){.a3-config-work-rail .a3-hb-total .a3-hb-num{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line)}.a3-config-work-rail .a3-hb-total .a3-hb-unit{font-size:var(--type-small-size);line-height:var(--type-small-line)}.a3-config-work{padding-left:var(--space-5);padding-right:var(--space-5)}.a3-config-kg300-stage{grid-template-columns:minmax(0,1fr) 17rem;gap:var(--space-4)}.a3-config-kg300-context{padding-left:var(--space-3)}.a3-config-option-list{gap:var(--space-3)}.a3-config-kg300-guidance{grid-template-columns:minmax(0,1fr) 17rem;gap:var(--space-4)}.a3-config-kg700-decision,.a3-config-kg700-result-grid{grid-template-columns:minmax(0,1fr) 14rem;gap:var(--space-3)}}
+@media (max-width:1439px){.a3-config-work{padding-left:var(--space-5);padding-right:var(--space-5)}.a3-config-kg300-stage{grid-template-columns:minmax(0,1fr) 17rem;gap:var(--space-4)}.a3-config-kg300-context{padding-left:var(--space-3)}.a3-config-option-list{gap:var(--space-3)}.a3-config-kg300-guidance{grid-template-columns:minmax(0,1fr) 17rem;gap:var(--space-4)}.a3-config-kg700-decision,.a3-config-kg700-result-grid{grid-template-columns:minmax(0,1fr) 14rem;gap:var(--space-3)}}
 @media (max-width:1100px){.a3-config-kg300-stage{grid-template-columns:1fr}.a3-config-kg300-primary-grid{grid-template-columns:1fr}.a3-config-kg300-context{grid-template-columns:repeat(2,minmax(0,1fr));border-left:0;border-top:var(--border-default);padding:var(--space-4) 0 0}}

@@ -29,6 +29,7 @@ import {
   pipelineViewForOutputProfile,
 } from './state/clientProjection'
 import { checkCascade, checkFonts, type FontCheck } from './lib/font-check'
+import { startContinuityTransition, useSemanticMotion } from './design-system/motion'
 
 /**
  * Оболочка на всю ширину экрана, три зоны (решение PO):
@@ -258,11 +259,20 @@ function AppHeader() {
   // reachable in the shipped fixtures.
   const currentOpportunity = opportunities.items.find((o) => o.id === s.opportunityId)
   const currentOption = s.options.find((o) => o.id === s.activeOptionId)
+  // VR2-09 cross-route continuity: the breadcrumb's upward steps (Option →
+  // Project, Project → portfolio) are the reverse of the CONTINUITY edges
+  // the forward journey already animates (`OpportunityList`,
+  // `OpportunityCard`), so they use the same view-transition cross-fade —
+  // the brand mark is the shared anchor (`a3-brand-mark`, also carried by
+  // the Present top bar). Store actions are unchanged; reduced motion or an
+  // unsupporting browser applies them immediately.
+  const { reduced } = useSemanticMotion()
+  const navigateUp = (apply: () => void) => startContinuityTransition(reduced, apply)
 
   return (
     <header className="a3-global-header z-header shrink-0">
       <div className="flex min-w-0 flex-wrap items-center gap-3">
-        <img src={all3Logo} alt="All3" className="h-5 w-auto shrink-0" />
+        <img src={all3Logo} alt="All3" className="h-5 w-auto shrink-0 a3-brand-mark" />
         {/* VR2-01 (ACCEPT-01): auf der Liste trägt der Kopf jetzt denselben
             Pfad wie im Ziel — Sektion „Opportunities" → aktuelle Seite. Im
             Präsentationsmodus bleibt der interne Pfad ausgeblendet. */}
@@ -278,7 +288,7 @@ function AppHeader() {
             <span aria-hidden="true" className="text-text-muted">/</span>
             <button
               type="button"
-              onClick={() => s.backToList()}
+              onClick={() => navigateUp(() => s.backToList())}
               className="a3-linkbtn"
             >
               Opportunities
@@ -287,7 +297,7 @@ function AppHeader() {
             {s.level === 'option' ? (
               <button
                 type="button"
-                onClick={() => s.backToOpportunity()}
+                onClick={() => navigateUp(() => s.backToOpportunity())}
                 className="a3-linkbtn"
               >
                 {currentOpportunity?.name ?? s.opportunityId}

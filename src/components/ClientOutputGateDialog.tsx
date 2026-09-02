@@ -4,6 +4,7 @@ import { Button } from './primitives'
 import { useTx } from '../i18n'
 import { NNBSP } from '../engine/money'
 import { Dialog, type DialogHandle } from './Dialog'
+import { startContinuityTransition, useSemanticMotion } from '../design-system/motion'
 
 /**
  * DC-33 · ClientOutputGateDialog — Freigabe-Dialog.
@@ -32,6 +33,7 @@ export function ClientOutputGateDialog({ returnFocusTo }: {
   const open = s.gateOpen
   const onClose = () => s.setGateOpen(false)
   const tx = useTx()
+  const { reduced } = useSemanticMotion()
   const titleId = useId()
   const titleRef = useRef<HTMLHeadingElement>(null)
   const dialogRef = useRef<DialogHandle>(null)
@@ -123,7 +125,14 @@ export function ClientOutputGateDialog({ returnFocusTo }: {
               ? tx('Zuerst mindestens ein Gebäude auswählen und jedes gewählte Gebäude bestätigen.')
               : undefined}
             onClick={() => {
-              s.setMode('praesentation')
+              // VR2-09 — approved motion storyboard 5 "Presentation entry"
+              // (MODE): the Work shell → Present shell swap is one
+              // CONTINUITY edge (view-transition cross-fade; the brand mark
+              // carries the same `view-transition-name` in both shells so
+              // identity holds while rails retract and the narrative strip
+              // appears). `setMode` still commits synchronously; reduced
+              // motion or an unsupporting browser simply applies it at once.
+              startContinuityTransition(reduced, () => s.setMode('praesentation'))
               dialogRef.current?.close(() => document.querySelector<HTMLElement>('[data-page-heading], h1'))
             }}
           >

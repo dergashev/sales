@@ -232,7 +232,15 @@ export function PresentationShell({ mainRef, modeRef }: {
   // be resolved) — never a fabricated transport failure (the prototype has
   // no transport to fail on its own; "Do NOT invent delivery evidence").
   const [sendStatus, setSendStatus] = useState<'idle' | 'sending' | 'failed'>('idle')
-  const { reduced } = useSemanticMotion()
+  const { reduced, fadeRise } = useSemanticMotion()
+
+  // VR2-09 — approved motion storyboard 5 "Presentation entry" (MODE), exit
+  // half: leaving Present back to Work is the same cross-shell swap as
+  // entering it (`ClientOutputGateDialog`), so it uses the same CONTINUITY
+  // edge (`startContinuityTransition`, view-transition cross-fade with the
+  // brand mark paired across both shells). Store semantics are untouched:
+  // `setMode('intern')` still runs synchronously inside the transition.
+  const exitToWork = () => startContinuityTransition(reduced, () => s.setMode('intern'))
 
   const syncedOptionIdRef = useRef<string | null>(currentId)
   useEffect(() => {
@@ -311,7 +319,7 @@ export function PresentationShell({ mainRef, modeRef }: {
         <PresentationTopBar
           sections={[]} activeSection={activeSection}
           candidates={[]} currentId={null}
-          onSwitch={() => {}} onExit={() => s.setMode('intern')} modeRef={modeRef}
+          onSwitch={() => {}} onExit={exitToWork} modeRef={modeRef}
         />
         <main ref={mainRef} tabIndex={-1}
               className="min-h-0 flex-1 overflow-y-auto bg-surface-default outline-none px-7 py-6">
@@ -415,18 +423,24 @@ export function PresentationShell({ mainRef, modeRef }: {
         activeSection={activeSection} onNavigate={goTo}
         candidates={candidates} currentId={current.id}
         onSwitch={switchViewedOption}
-        onExit={() => s.setMode('intern')} modeRef={modeRef}
+        onExit={exitToWork} modeRef={modeRef}
       />
 
       <main ref={mainRef} tabIndex={-1}
             className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surface-default outline-none">
+        {/* VR2-09 cohesion: the narrative page swap uses the canonical
+            `fadeRise` variants (`motion.ts`: fade + `--enter-shift` rise,
+            `--motion-reveal`/`--motion-feedback` durations, reduced-motion
+            collapse) — the same vocabulary every Work surface uses — instead
+            of a Present-local copy of that motion with literal `y: 8` /
+            `0.2` / `0.12` values (rule 20: "only the shared variants"). */}
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={motionKey}
-            initial={reduced ? undefined : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduced ? undefined : { opacity: 0, transition: { duration: 0.12 } }}
-            transition={{ duration: reduced ? 0 : 0.2 }}
+            variants={fadeRise}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
             className="flex min-h-0 flex-1 flex-col"
           >
             {flow === 'narrative' ? (
@@ -506,7 +520,9 @@ function PresentationTopBar({
   return (
     <div className="a3-presentation-topbar">
       <div className="a3-presentation-brand">
-        <img src={all3Logo} alt="All3" className="h-5 w-auto shrink-0" />
+        {/* `a3-brand-mark`: the one element both shells share, so the
+            Work ⇄ Present CONTINUITY edge (view transition) can pair it. */}
+        <img src={all3Logo} alt="All3" className="h-5 w-auto shrink-0 a3-brand-mark" />
       </div>
 
       {sections.length > 0 && (

@@ -40,7 +40,7 @@ import { Badge, Card, FormField, PageHeader } from "../components/designSystem";
 import { WorkflowStepper, type WorkflowStep } from '../design-system/WorkflowStepper'
 import { MediaFrame } from "../design-system/MediaFrame";
 import { opportunityMedia } from "../assets/opportunity-media";
-import { useSemanticMotion } from "../design-system/motion";
+import { startContinuityTransition, useSemanticMotion } from "../design-system/motion";
 import { Dialog, type DialogHandle } from "../components/Dialog";
 import { STAGE_TAG } from "../lib/opportunityStage";
 import { factPresentation, stableName } from "./BuildingScope";
@@ -374,7 +374,7 @@ function OptionCard({
   const s = useStore();
   const t = useT();
   const tx = useTx();
-  const { fadeRise } = useSemanticMotion();
+  const { fadeRise, reduced } = useSemanticMotion();
   const [renaming, setRenaming] = useState(false);
   const [draftName, setDraftName] = useState(option.name);
   const [renameError, setRenameError] = useState<string | null>(null);
@@ -489,6 +489,16 @@ function OptionCard({
   const showDelta =
     s.options.length > 1 && !isBaseline && projection && baselineProjection;
 
+  // VR2-09 — approved motion storyboard 2 "Option → Configurator"
+  // (CONTINUITY): entering the Work shell from this Option card is the same
+  // shared-identity edge the portfolio → Project step already uses
+  // (`OpportunityList`), so the brand mark / shell cross-fade anchors the
+  // entry to the commercial object instead of an instant page replacement.
+  // `openOption` itself is untouched (internal active Option stays
+  // authoritative); reduced motion applies the state change immediately.
+  const openThisOption = () =>
+    startContinuityTransition(reduced, () => s.openOption(option.id));
+
   return (
     <motion.li
       ref={rowRef}
@@ -567,12 +577,12 @@ function OptionCard({
                 {tx("Umbenennen")}
               </Button>
             )}
-            <Button onClick={() => s.openOption(option.id)}>
+            <Button onClick={openThisOption}>
               {tx("Öffnen")}
             </Button>
           </>
         }
-        onOpen={renaming ? undefined : () => s.openOption(option.id)}
+        onOpen={renaming ? undefined : openThisOption}
       >
         <div>
           <span className="a3-cap block">{totalLabelText}</span>

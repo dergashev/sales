@@ -143,13 +143,19 @@ export function useSemanticMotion(): SemanticMotion {
         // fade running at the full 240ms reorder duration, contradicting
         // rule 21 ("prefers-reduced-motion гасит всё"). Caught while
         // building the R1 Workflow specimen's reduced-motion equivalent.
+        // VR2-09: `initial.opacity` collapses to the visible value under
+        // reduced motion — the same fix class `fadeOnly`/`fadeRise` above
+        // already carry (a duration-0 animate from 0 → 1 still paints one
+        // invisible frame). Needed now that the Configurator chapter body is
+        // a real runtime consumer of this verb, not only the Foundations
+        // specimen.
         forward: {
-          initial: { opacity: 0, x: shift },
+          initial: { opacity: reduced ? 1 : 0, x: shift },
           animate: { opacity: 1, x: 0, transition: { duration: reduced ? 0 : durations.reorder / 1000, ease: emphasized } },
           exit: { opacity: 0, x: -shift, transition: { duration: reduced ? 0 : durations.reorder / 1000, ease: emphasized } },
         },
         backward: {
-          initial: { opacity: 0, x: -shift },
+          initial: { opacity: reduced ? 1 : 0, x: -shift },
           animate: { opacity: 1, x: 0, transition: { duration: reduced ? 0 : durations.reorder / 1000, ease: emphasized } },
           exit: { opacity: 0, x: shift, transition: { duration: reduced ? 0 : durations.reorder / 1000, ease: emphasized } },
         },
