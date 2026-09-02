@@ -2057,7 +2057,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
      and gallery cards keep their own hit targets, only the outer rhythm
      tightens. */
   .a3-offer-climax-result,.a3-offer-climax-gallery{padding:var(--space-6) var(--space-5)}
-  .a3-offer-gallery-list{gap:var(--space-3)}
+  .a3-offer-gallery-list{gap:var(--space-2)}
 }
 .a3-presentation-flow{width:min(100%,var(--measure-wide));margin-inline:auto;padding:var(--space-7) var(--space-6)}
 .a3-presentation-flow-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(18rem,.85fr);gap:var(--space-8);align-items:start}
@@ -2080,11 +2080,20 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    commercial result; the right column is the canonical white surface
    (Tailwind `bg-surface-default`, same token every other page uses)
    carrying the client-safe artefact gallery. No new surface token. */
-.a3-offer-climax{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(20rem,.85fr)}
+.a3-offer-climax{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(20rem,.92fr)}
 .a3-offer-climax-result,.a3-offer-climax-gallery{padding:var(--space-8) var(--space-7);overflow-y:auto;min-width:0;display:flex;flex-direction:column}
 .a3-offer-climax-total .numeric{overflow-wrap:anywhere}
 .a3-offer-climax-footnote{color:var(--color-text-stage-deep-secondary)}
-.a3-offer-gallery-list{display:flex;flex-direction:column;gap:var(--space-4);list-style:none;margin:0;padding:0}
+.a3-offer-gallery-list{display:flex;flex-direction:column;gap:var(--space-3);list-style:none;margin:0;padding:0}
+/* Denser gallery card (ACCEPTANCE REMEDIATION cycle 2, ACCEPT-01): additive
+   utility class per `Card`'s own `className` contract
+   (designSystem.tsx — "never changes `a3-card-core` itself, only additional
+   utility classes") — every other `Card` consumer keeps its current
+   padding/title size untouched. */
+.a3-offer-gallery-card{padding:var(--space-3);gap:var(--space-1)}
+.a3-offer-gallery-card .a3-card-title{font-size:var(--type-body-size);line-height:var(--type-body-line)}
+.a3-offer-gallery-generating{display:flex;align-items:center;gap:var(--space-2)}
+.a3-offer-gallery-generating .a3-analysis-track{flex:0 0 2.5rem;margin-bottom:0}
 .a3-offer-climax-cta{display:flex;justify-content:flex-start}
 @media (max-width:63.99rem){
   .a3-presentation-flow-grid{gap:var(--space-6)}

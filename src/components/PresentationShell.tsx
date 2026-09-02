@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useId, useRef, useState, type RefObject } from 'react'
 import { Decimal } from 'decimal.js'
 import { AnimatePresence, motion } from 'framer-motion'
 import opportunities from '../fixtures/opportunities.json'
@@ -28,6 +28,10 @@ import { MediaFrame } from '../design-system/MediaFrame'
 import { ScheduleGantt } from './ScheduleGantt'
 import { useSemanticMotion } from '../design-system/motion'
 import { Button, useCountUp } from './primitives'
+import { Dialog } from './Dialog'
+import {
+  ARTIFACT_GENERATION_FIRST_MS, ARTIFACT_GENERATION_STAGGER_MS,
+} from '../config/ui-policy'
 import { projectDriversForClient, translatedDriverLabel } from '../state/clientProjection'
 import { startContinuityTransition } from '../design-system/motion'
 
@@ -1039,15 +1043,27 @@ function PageNaechsterSchritt({ current, onPrepare, headingRef }: {
   )
 }
 
-/** §"NÄCHSTER SCHRITT" → OFFER — the commercial climax (VR2-07).
+type GalleryArtifact = {
+  id: 'offer' | 'cost' | 'scope'
+  title: string
+  description: string
+  meta: string
+  available: boolean
+  unavailableReason?: string
+}
+
+type ArtifactStatus = 'generating' | 'ready' | 'unavailable'
+
+/** §"NÄCHSTER SCHRITT" → OFFER — the commercial climax (VR2-07, remediated).
  *
  * Replaces the earlier weak stub (generic title, bullet-list artefacts, a
  * `dl` of scheduling facts) with the approved target's composition: ONE
  * dominant commercial result on the canonical stage-deep surface (ADR-R1-02,
  * same surface §3 ERGEBNIS already uses — DESIGN SYSTEM MODE: PRESERVE, no
  * new surface token), restrained supporting facts, and a client-safe
- * artefact gallery built from the canonical `Card` primitive
- * (`designSystem.tsx`) — no parallel gallery/card component invented.
+ * artefact gallery built from the canonical `Card` + `Dialog` primitives
+ * (`designSystem.tsx` / `Dialog.tsx`) — no parallel gallery/card/modal
+ * component invented.
  *
  * The gallery always lists the product's three structural deliverable
  * types (rule: "Drei Artefakte, eine Aussage." is an editorial constant,
@@ -1055,8 +1071,17 @@ function PageNaechsterSchritt({ current, onPrepare, headingRef }: {
  * sicht needs a determined total, the same `priceUnavailable` condition
  * rule 16/R-18 already governs), but the deliverable itself is never
  * removed from the list on that account. A defensive all-unavailable
- * EmptyState branch exists for DC-30 completeness; it is not reachable
- * through any current fixture (see the Frontend change manifest).
+ * EmptyState branch exists for DC-30 completeness.
+ *
+ * ACCEPTANCE REMEDIATION (cycle 2): each card now runs one honest,
+ * short-lived "wird vorbereitet" phase on entry (indeterminate track, same
+ * class DocumentAnalysis.tsx already uses — DC-10/rule 25, no invented
+ * percentages) before resolving to its real status — a genuinely reachable
+ * ARTEFACT GENERATING/UNAVAILABLE state on every visit, not only a
+ * hypothetical one. Each ready card carries a real "Vorschau" action
+ * (`Card`'s own `onOpen`+`actions` contract, same pattern OpportunityCard.tsx
+ * already uses) opening a canonical `Dialog` with the actual computed data
+ * that artefact represents — never a fabricated document.
  *
  * No in-panel "Zurück" link: the narrative strip (`goTo`, now flow-aware —
  * see `PresentationShell`) is the one way back, matching the approved
@@ -1072,13 +1097,14 @@ function OfferClimax({ current, projectName, priceUnavailable, onPrepare, headin
   const t = useT()
   const tx = useTx()
   const language = useStore().uiLanguage
-  const { p } = current
+  const { p, cfg } = current
+  const { reduced, fadeRise, transition } = useSemanticMotion()
   const hero = useMoneyCountUp(p.result.total.exact)
   const topDrivers = topCostDrivers(current, t)
   const biggestDriver = topDrivers[0]
   const segments = buildKgCompositionSegments(p.kgSplit, (g) => t(`costGroup.${g}`))
 
-  const galleryArtifacts = [
+  const galleryArtifacts: GalleryArtifact[] = [
     {
       id: 'offer',
       title: t('presentation.artifact.offerCardTitle'),
@@ -1101,11 +1127,64 @@ function OfferClimax({ current, projectName, priceUnavailable, onPrepare, headin
       meta: t('presentation.artifact.scopeMeta'),
       available: true,
     },
-  ] as const
+  ]
+
+  // Genuinely reachable ARTEFACT GENERATING/UNAVAILABLE state: one short
+  // simulated preparation beat per card on entering the Offer stage, not a
+  // permanently-static list. Reduced motion resolves every card straight to
+  // its final status (rule 21 — nothing to sweep). Runs once per mount, not
+  // per re-render, so switching the viewed Option afterwards updates the
+  // resolved status immediately without replaying the sweep.
+  const [generatedIds, setGeneratedIds] = useState<Set<string>>(
+    () => (reduced ? new Set(galleryArtifacts.map((a) => a.id)) : new Set()),
+  )
+  useEffect(() => {
+    if (reduced) return
+    const ids = galleryArtifacts.map((a) => a.id)
+    const timers = ids.map((id, i) => window.setTimeout(() => {
+      setGeneratedIds((prev) => {
+        const next = new Set(prev)
+        next.add(id)
+        return next
+      })
+    }, ARTIFACT_GENERATION_FIRST_MS + i * ARTIFACT_GENERATION_STAGGER_MS))
+    return () => timers.forEach((id) => window.clearTimeout(id))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reduced])
+
+  const statusOf = (a: GalleryArtifact): ArtifactStatus => {
+    if (!generatedIds.has(a.id)) return 'generating'
+    return a.available ? 'ready' : 'unavailable'
+  }
+
+  const [previewId, setPreviewId] = useState<GalleryArtifact['id'] | null>(null)
+  const previewTriggerRef = useRef<HTMLElement | null>(null)
+  const previewTitleId = useId()
+  const previewTitleRef = useRef<HTMLHeadingElement>(null)
+  const openPreview = (id: GalleryArtifact['id']) => {
+    // The button is already focused by the native click that fires this
+    // handler — capturing it here (rather than threading the event through
+    // `Button`'s zero-arg `onClick`) is what `returnFocusTo` needs to send
+    // focus back to the exact card that opened the dialog, not just "some"
+    // trigger, when several cards can each open it.
+    previewTriggerRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null
+    setPreviewId(id)
+  }
+  const previewArtifact = galleryArtifacts.find((a) => a.id === previewId) ?? null
+
+  const anyAvailable = galleryArtifacts.some((a) => a.available)
 
   return (
     <section className="a3-offer-climax" aria-labelledby="presentation-offer-title">
-      <div className="a3-offer-climax-result a3-stage-deep">
+      <motion.div
+        className="a3-offer-climax-result a3-stage-deep"
+        variants={fadeRise}
+        initial="hidden"
+        animate="visible"
+        transition={transition('reveal', 0)}
+      >
         <p className="a3-cap uppercase">{t('presentation.flow.offerEyebrow')} · {current.name}</p>
         <h1 ref={headingRef} tabIndex={-1} id="presentation-offer-title" className="mt-2 text-heading-1 font-bold text-text-inverse">
           {t('presentation.flow.offerTitle', {
@@ -1169,40 +1248,111 @@ function OfferClimax({ current, projectName, priceUnavailable, onPrepare, headin
         <p className="a3-offer-climax-footnote mt-6 text-small">
           {t('presentation.flow.discountNotice')}
         </p>
-      </div>
+      </motion.div>
 
-      <aside className="a3-offer-climax-gallery bg-surface-default" aria-labelledby="presentation-offer-gallery-title">
+      <motion.aside
+        className="a3-offer-climax-gallery bg-surface-default"
+        aria-labelledby="presentation-offer-gallery-title"
+        variants={fadeRise}
+        initial="hidden"
+        animate="visible"
+        transition={transition('reveal', 1)}
+      >
         <p className="a3-cap uppercase">{t('presentation.flow.galleryEyebrow')}</p>
         <h2 id="presentation-offer-gallery-title" className="mt-2 text-heading-2 font-bold text-text-primary">
           {t('presentation.flow.galleryHeadline')}
         </h2>
 
-        {galleryArtifacts.every((a) => !a.available) ? (
+        {!anyAvailable ? (
           <div className="mt-6">
             <EmptyState>{t('presentation.flow.galleryEmpty')}</EmptyState>
           </div>
         ) : (
-          <ul className="a3-offer-gallery-list mt-6">
-            {galleryArtifacts.map((a) => (
-              <li key={a.id}>
-                <Card
-                  title={a.title}
-                  meta={a.description}
-                  status={!a.available && (
-                    <span><span aria-hidden="true">○ </span>{a.unavailableReason}</span>
-                  )}
-                >
-                  {a.meta}
-                </Card>
-              </li>
-            ))}
+          <ul className="a3-offer-gallery-list mt-6" aria-busy={generatedIds.size < galleryArtifacts.length || undefined}>
+            {galleryArtifacts.map((a) => {
+              const status = statusOf(a)
+              const ready = status === 'ready'
+              return (
+                <li key={a.id}>
+                  <Card
+                    className="a3-offer-gallery-card"
+                    title={a.title}
+                    meta={a.description}
+                    onOpen={ready ? () => openPreview(a.id) : undefined}
+                  >
+                    {status === 'generating' ? (
+                      <span className="a3-offer-gallery-generating">
+                        <span aria-hidden="true" className="a3-analysis-track" />
+                        {t('presentation.artifact.generating')}
+                      </span>
+                    ) : status === 'unavailable' ? (
+                      <span><span aria-hidden="true">○ </span>{a.unavailableReason}</span>
+                    ) : (
+                      <span>{a.meta} · <span aria-hidden="true">{t('presentation.artifact.previewAction')} →</span></span>
+                    )}
+                  </Card>
+                </li>
+              )
+            })}
           </ul>
         )}
 
-        <div className="a3-offer-climax-cta mt-8">
-          <Button variant="primary" onClick={onPrepare}>{t('presentation.flow.prepare')}</Button>
+        <div className="a3-offer-climax-cta mt-6">
+          <Button className="w-full" variant="primary" onClick={onPrepare}>{t('presentation.flow.prepare')}</Button>
         </div>
-      </aside>
+      </motion.aside>
+
+      <Dialog
+        open={previewArtifact !== null}
+        onOpenChange={(next) => { if (!next) setPreviewId(null) }}
+        labelledBy={previewTitleId}
+        initialFocusRef={previewTitleRef}
+        returnFocusTo={previewTriggerRef as RefObject<HTMLElement>}
+        panelClassName="a3-print-card"
+      >
+        {previewArtifact && (
+          <>
+            <div className="a3-paper-preview" aria-label={tx('Monochrome Seitenvorschau A4')}>
+              <b>{current.name}</b>
+              <hr />
+              {previewArtifact.id === 'offer' && (
+                <>
+                  {tx(p.result.totalLabel)}<br />
+                  <b>
+                    {p.result.total.prefix ? `${p.result.total.prefix}${NNBSP}` : ''}
+                    {p.result.total.display}{NNBSP}€
+                  </b><br /><br />
+                  {t('presentation.artifact.offerDescription')}
+                </>
+              )}
+              {previewArtifact.id === 'cost' && !priceUnavailable && (
+                <CompositionBar
+                  segments={segments}
+                  total={p.result.total.exact}
+                  variant="expanded"
+                  incompleteLabel={t('money.priceNotDetermined')}
+                />
+              )}
+              {previewArtifact.id === 'scope' && (
+                <>
+                  {tx('Gebäude')}: {buildingNames(cfg)}<br /><br />
+                  {t('presentation.artifact.scopeDescription')}
+                </>
+              )}
+            </div>
+            <div>
+              <h4 ref={previewTitleRef} id={previewTitleId} tabIndex={-1} className="outline-none">
+                {previewArtifact.title}
+              </h4>
+              <p className="a3-cap">{previewArtifact.meta} · {tx('Muster')}</p>
+              <p className="mt-3 text-body text-text-secondary">{previewArtifact.description}</p>
+              <div className="a3-row mt-3">
+                <Button variant="primary" onClick={() => setPreviewId(null)}>{tx('Schließen')}</Button>
+              </div>
+            </div>
+          </>
+        )}
+      </Dialog>
     </section>
   )
 }

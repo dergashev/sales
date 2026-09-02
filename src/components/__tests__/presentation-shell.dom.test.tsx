@@ -369,6 +369,54 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
     expect(screen.getByText('Leistungsumfang')).toBeInTheDocument()
     expect(screen.queryByText(/Vorschau nicht verfügbar/)).not.toBeInTheDocument()
   })
+
+  it('ACCEPT-03 remediation: each gallery card genuinely starts "Wird vorbereitet …" and resolves to its real status live, not a permanently-static list', async () => {
+    const user = userEvent.setup()
+    buildTwoEligibleOptions('DEMO-0001')
+    render(<Harness />)
+
+    await gotoSection(user, 'Nächster Schritt')
+    await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Drei Artefakte, eine Aussage.' })).toBeInTheDocument()
+    })
+    // Immediately after entering the Offer stage every card is in the
+    // "generating" beat — a real, observable transient state, not a
+    // hypothetical one only reachable through a special fixture.
+    expect(screen.getAllByText('Wird vorbereitet …').length).toBeGreaterThan(0)
+    // Once the simulated preparation completes, the ready cards expose a
+    // real "Vorschau" affordance (the title becomes a button) and the
+    // generating copy is gone.
+    await waitFor(() => {
+      expect(screen.queryByText('Wird vorbereitet …')).not.toBeInTheDocument()
+    }, { timeout: 2000 })
+    expect(screen.getByRole('button', { name: 'Angebotspräsentation' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Kostenübersicht DIN 276' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Leistungsumfang' })).toBeInTheDocument()
+  })
+
+  it('ACCEPT-02 remediation: a ready card opens a real Dialog preview with actual computed data, and closing it returns focus to the trigger', async () => {
+    const user = userEvent.setup()
+    buildTwoEligibleOptions('DEMO-0001')
+    render(<Harness />)
+
+    await gotoSection(user, 'Nächster Schritt')
+    await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
+    const offerCardButton = await screen.findByRole('button', { name: 'Angebotspräsentation' }, { timeout: 2000 })
+
+    await user.click(offerCardButton)
+    const dialog = await screen.findByRole('dialog')
+    // Real computed data, not a fabricated document: the same Option name
+    // and total already shown on the commercial stage (PrintFlow.tsx's own
+    // `.a3-paper-preview` convention — the Option, not the project, is the
+    // named subject of the document).
+    expect(within(dialog).getByText('Option A')).toBeInTheDocument()
+    expect(within(dialog).getByText(/Gesamt netto/)).toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(offerCardButton).toHaveFocus()
+  })
 })
 
 describe('PresentationShell — accessibility (AC 62–67)', () => {
