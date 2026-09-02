@@ -53,6 +53,12 @@ export const OPPORTUNITY = {
   createOption: 'Option anlegen',
   openOption: 'Öffnen',
   readinessHeadingRegion: 'Opportunity Options',
+  /**
+   * Gebäude & Umfang's own conflict control. The proposal fixture's WFL
+   * conflict gates the BUILDING confirmation, so it is decided where it
+   * lives — inside the Option workspace — rather than on the project.
+   */
+  adoptCustomerValue: `Diese Angabe übernehmen: 1.560,00\u202fm²`,
 }
 
 export const BUILDING_SCOPE = {

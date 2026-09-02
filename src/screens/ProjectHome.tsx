@@ -80,8 +80,20 @@ import { InternalNoteDialog, ProjectOptionsSection } from './ProjectOptions'
  */
 const ANALYSIS_TICK_MS = 45
 
-/** The simulated commit of a project baseline into a new Option. */
-const OPTION_COMMIT_MS = 240
+/**
+ * Rapid-click guard on Option creation (the retired project card's
+ * AUD-03 protection, kept): a second activation inside this window is a
+ * deliberate no-op, so a double click cannot produce two Options.
+ *
+ * There is deliberately NO simulated commit delay. `creatingOption` is a
+ * real state in the model — the store sets it, clears it and a unit test
+ * proves it — but the commit itself is synchronous here, because this
+ * prototype has no persistence behind it. Holding the busy state open with
+ * an invented duration would be exactly the fabricated progress rule 25
+ * forbids; VR3-02, which owns actually persisting an Option, is where the
+ * state becomes observable.
+ */
+const OPTION_CREATE_GUARD_MS = 500
 
 /**
  * The label for one document state. A processing PHASE and a terminal
@@ -1244,10 +1256,14 @@ function CreateOptionGate({
   const t = useT()
   const state = readiness(project, analysis)
   const busy = analysis.creatingOption
+  const lastRequestAt = useRef(0)
 
   const create = () => {
+    const now = Date.now()
+    if (now - lastRequestAt.current < OPTION_CREATE_GUARD_MS) return
+    lastRequestAt.current = now
     s.beginOptionCreation()
-    window.setTimeout(() => { s.createOption() }, OPTION_COMMIT_MS)
+    s.createOption()
   }
 
   return (
@@ -1390,6 +1406,7 @@ function OptionCreatedStage({ project }: { project: FixtureProject }) {
   const tx = useTx()
   const asset = projectAsset(project.heroAssetId)
   const latest = s.options.at(-1) ?? null
+  const analysis = s.projectAnalyses[project.id]
 
   // VR3-01's boundary ends the moment Create Option is triggered; VR3-02
   // owns the full Option-created composition (`T-012`) and Gebäude & Umfang.
@@ -1437,6 +1454,15 @@ function OptionCreatedStage({ project }: { project: FixtureProject }) {
         )}
       />
       <ProjectOptionsSection justCreatedOptionId={latest?.id ?? null} />
+      {/* Creating a FURTHER Option is a real capability the comparison
+          feature depends on, and it belongs beside the gallery of Options
+          rather than in the hero — the hero's one continuation is opening
+          the Option that was just created (DC-27). */}
+      {analysis ? (
+        <div className="a3-project-stage-continue">
+          <CreateOptionGate project={project} analysis={analysis} />
+        </div>
+      ) : null}
     </>
   )
 }

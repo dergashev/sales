@@ -1,15 +1,15 @@
 import { test, expect } from '../fixtures'
 import {
-import { reachOptionWorkspace } from '../journey'
   BUILDING_SCOPE,
   BUILDINGS,
   CONFIGURATOR_CHAPTERS,
   CONFIGURATOR_MODE,
   CONFIGURATOR_SCOPE,
+  DEMO_PROJECT_NAME,
   NAV,
-  OPPORTUNITY,
   SCOPE_BOUNDARIES,
 } from '../anchors'
+import { reachOptionWorkspace } from '../journey'
 
 /**
  * Building-aware Configurator scenario (Engineering Architecture handoff,

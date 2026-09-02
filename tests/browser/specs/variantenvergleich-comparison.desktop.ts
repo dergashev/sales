@@ -86,7 +86,13 @@ for (const { label: viewportLabel, viewport } of VIEWPORTS) {
         //    on creation (store.ts createOption -> defaultOptionConfig) —
         //    this regression targets RENDERING, not calculation, so no
         //    Building/Configurator walkthrough is needed for any of them. ─
-        const createOption = page.getByRole('button', { name: OPPORTUNITY.createOption })
+        // `exact: true`: the workflow spine's own step 3 is also called
+        // "Option anlegen" (its full accessible name carries the position
+        // and state, "… Schritt 3 von 13 · aktueller Schritt"), and
+        // Playwright's role-name match is substring by default.
+        const createOption = page.getByRole('button', {
+          name: OPPORTUNITY.createOption, exact: true,
+        })
         const optionsRegion = page.getByRole('region', { name: 'Opportunity Options' })
         const openButtons = optionsRegion.getByRole('button', { name: OPPORTUNITY.openOption, exact: true })
         for (let i = 0; i < OPTION_COUNT; i++) {
@@ -110,6 +116,13 @@ for (const { label: viewportLabel, viewport } of VIEWPORTS) {
         //    regardless (comparison reads per-option stored config, not the
         //    active editing gate), so only this one needs confirming. ────
         await openButtons.last().click()
+        // The proposal fixture's WFL conflict gates the BUILDING
+        // confirmation and lives in Gebäude & Umfang. The retired project
+        // card decided it before the Option existed; it is decided where it
+        // actually lives now (see `tests/browser/journey.ts`).
+        const adopt = page.getByRole('button', { name: OPPORTUNITY.adoptCustomerValue }).first()
+        await expect(adopt).toBeVisible({ timeout: 15_000 })
+        await adopt.click()
         await page.getByRole('tabpanel').getByRole('button', { name: BUILDING_SCOPE.confirmBuilding }).click()
         // DC-29's undo toast (8s, bottom-anchored) can visually overlap the
         // comparison table at narrower viewports and silently swallow the

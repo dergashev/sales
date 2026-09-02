@@ -38,4 +38,14 @@ export async function reachOptionWorkspace(page: Page, projectName: string) {
   await page.getByRole('region', { name: OPPORTUNITY.readinessHeadingRegion })
     .getByRole('button', { name: OPPORTUNITY.openOption, exact: true })
     .click()
+
+  // The proposal fixture's own WFL conflict belongs to the OPTION workspace
+  // (Gebäude & Umfang), not to the project: VR3-01's project conflicts are
+  // the six coherent ones in the fixture register, and this one gates the
+  // building confirmation rather than Option creation. The retired project
+  // card resolved it before the Option existed; it is resolved where it
+  // actually lives now, so the building can be confirmed.
+  const resolve = page.getByRole('button', { name: OPPORTUNITY.adoptCustomerValue }).first()
+  await expect(resolve).toBeVisible({ timeout: 15_000 })
+  await resolve.click()
 }
