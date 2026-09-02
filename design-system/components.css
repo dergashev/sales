@@ -2353,3 +2353,433 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-config-sidebar .a3-wfs-chapter .a3-wfs-current,.a3-config-sidebar .a3-wfs-chapter .a3-wfs-cur{background:var(--color-surface-stage)}.a3-config-sidebar .a3-wfs-chapter .a3-wfs-button,.a3-config-sidebar .a3-wfs-chapter .a3-wfs-static{padding-top:var(--space-3);padding-bottom:var(--space-3)}
 @media (max-width:1439px){.a3-config-work{padding-left:var(--space-5);padding-right:var(--space-5)}.a3-config-kg300-stage{grid-template-columns:minmax(0,1fr) 17rem;gap:var(--space-4)}.a3-config-kg300-context{padding-left:var(--space-3)}.a3-config-option-list{gap:var(--space-3)}.a3-config-kg300-guidance{grid-template-columns:minmax(0,1fr) 17rem;gap:var(--space-4)}.a3-config-kg700-decision,.a3-config-kg700-result-grid{grid-template-columns:minmax(0,1fr) 14rem;gap:var(--space-3)}}
 @media (max-width:1100px){.a3-config-kg300-stage{grid-template-columns:1fr}.a3-config-kg300-primary-grid{grid-template-columns:1fr}.a3-config-kg300-context{grid-template-columns:repeat(2,minmax(0,1fr));border-left:0;border-top:var(--border-default);padding:var(--space-4) 0 0}}
+
+/* ══════════════════════════════════════════════════════════════════════
+   VR3-01 · PROJECT READINESS FAMILY
+   Canonical capabilities introduced by VR3-01 (backlog 1dedc823) for the
+   Project half of the journey: SemanticStatus, AuthorityTrace,
+   MetricReadout, ProcessingJob + DocumentRow, ActionGate +
+   PrerequisiteState + ProjectReadiness, ConflictResolver and
+   QuestionQueue. Every rule below is token-only; the colour of a state is
+   SUPPLEMENTARY — each state also renders a glyph and a word, so removing
+   this stylesheet leaves the meaning intact (rule 8).
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* SemanticStatus. Structure: .a3-sst > .a3-sst-glyph + .a3-sst-label
+   (+ .a3-sst-reason). One tone class per state.
+   Classes: .a3-sst · .a3-sst-default · .a3-sst-compact · .a3-sst-glyph ·
+   .a3-sst-label · .a3-sst-reason · .a3-sst-neutral · .a3-sst-progress ·
+   .a3-sst-ok · .a3-sst-attention · .a3-sst-error · .a3-sst-stale ·
+   .a3-sst-unknown. */
+.a3-sst{display:inline-flex;align-items:baseline;gap:var(--space-2);font-size:var(--type-badge-status-size);line-height:var(--type-badge-status-line);font-weight:var(--font-weight-bold);letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-primary)}
+.a3-sst-compact{font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);letter-spacing:.04em}
+.a3-sst-glyph{flex:none;width:var(--size-status-glyph);text-align:center;font-weight:var(--font-weight-bold)}
+.a3-sst-label{min-width:0}
+.a3-sst-reason{flex-basis:100%;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-regular);letter-spacing:normal;text-transform:none;color:var(--color-text-secondary)}
+.a3-sst-neutral{color:var(--color-text-secondary)}
+.a3-sst-progress{color:var(--color-status-info)}
+.a3-sst-ok{color:var(--color-status-success)}
+.a3-sst-attention{color:var(--color-status-warning)}
+.a3-sst-error{color:var(--color-status-error)}
+.a3-sst-stale{color:var(--color-status-warning)}
+.a3-sst-unknown{color:var(--color-text-muted)}
+
+/* AuthorityTrace. Structure: .a3-aut > .a3-aut-value + .a3-aut-meta, where
+   the meta carries a SemanticStatus plus the evidence, confirmation,
+   override and freshness lines. The value and its authority are one
+   element on purpose: nothing may render one without the other.
+   Classes: .a3-aut · .a3-aut-inline · .a3-aut-stacked · .a3-aut-value ·
+   .a3-aut-meta · .a3-aut-evidence · .a3-aut-confirmation ·
+   .a3-aut-override · .a3-aut-freshness · one class per authority. */
+.a3-aut{display:inline-grid;gap:var(--space-1);min-width:0}
+.a3-aut-inline{grid-template-columns:minmax(0,max-content)}
+.a3-aut-stacked{grid-template-columns:minmax(0,1fr)}
+.a3-aut-value{display:flex;align-items:baseline;gap:var(--space-2);font-variant-numeric:tabular-nums}
+.a3-aut-meta{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3);font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-aut-evidence,.a3-aut-confirmation,.a3-aut-override,.a3-aut-freshness{min-width:0;overflow-wrap:break-word}
+.a3-aut-freshness{color:var(--color-status-warning);font-weight:var(--font-weight-medium)}
+.a3-aut-override{color:var(--color-text-primary)}
+/* Left accent per authority: a second, non-colour-dependent marker channel
+   (the SemanticStatus word inside already carries the meaning). */
+.a3-aut-stacked.a3-aut-source{border-left:var(--size-status-accent-width) solid var(--color-status-success);padding-left:var(--space-3)}
+.a3-aut-stacked.a3-aut-inferred{border-left:var(--size-status-accent-width) solid var(--color-status-warning);padding-left:var(--space-3)}
+.a3-aut-stacked.a3-aut-assumed{border-left:var(--size-status-accent-width) solid var(--color-status-warning);padding-left:var(--space-3)}
+.a3-aut-stacked.a3-aut-derived{border-left:var(--size-status-accent-width) solid var(--color-border-default);padding-left:var(--space-3)}
+.a3-aut-stacked.a3-aut-user{border-left:var(--size-status-accent-width) solid var(--color-border-strong);padding-left:var(--space-3)}
+.a3-aut-stacked.a3-aut-confirmed{border-left:var(--size-status-accent-width) solid var(--color-status-success);padding-left:var(--space-3)}
+.a3-aut-stacked.a3-aut-overridden{border-left:var(--size-status-accent-width) solid var(--color-status-warning);padding-left:var(--space-3)}
+.a3-aut-stacked.a3-aut-historical{border-left:var(--size-status-accent-width) solid var(--color-border-subtle);padding-left:var(--space-3)}
+.a3-aut-stacked.a3-aut-stale{border-left:var(--size-status-accent-width) solid var(--color-status-warning);padding-left:var(--space-3)}
+.a3-aut-stacked.a3-aut-unknown{border-left:var(--size-status-accent-width) solid var(--color-border-subtle);padding-left:var(--space-3)}
+
+/* MetricReadout. Structure: .a3-mro (a dl child) > .a3-mro-label (dt) +
+   .a3-mro-value (dd) > value + .a3-mro-unit. The unit is a separate
+   element at a smaller size on the SAME baseline (rule 31); it is never
+   concatenated into the value string.
+   Classes: .a3-mro · .a3-mro-compact · .a3-mro-default · .a3-mro-emphasis ·
+   .a3-mro-operator · .a3-mro-label · .a3-mro-value · .a3-mro-unit ·
+   .a3-mro-authority · .a3-mro-note. */
+.a3-mro{display:grid;gap:var(--space-1);min-width:0}
+.a3-mro-operator{grid-row:2;color:var(--color-text-muted)}
+.a3-mro-label{font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--font-weight-regular);color:var(--color-text-secondary)}
+.a3-mro-value{margin:0;display:flex;align-items:baseline;flex-wrap:wrap;gap:var(--space-1) var(--space-2);font-size:var(--type-metric-section-size);line-height:var(--type-metric-section-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-mro-compact .a3-mro-value{font-size:var(--type-section-title-size);line-height:var(--type-section-title-line)}
+.a3-mro-emphasis .a3-mro-value{font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line)}
+.a3-mro-unit{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-medium);color:var(--color-text-secondary)}
+.a3-mro-emphasis .a3-mro-unit{font-size:var(--type-section-title-size);line-height:var(--type-section-title-line)}
+.a3-mro-authority{flex-basis:100%}
+.a3-mro-note{flex-basis:100%;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-regular);color:var(--color-text-secondary)}
+
+/* ProcessingJob. Structure: .a3-pjob > .a3-pjob-head + .a3-pjob-progress
+   (+ .a3-pjob-active) (+ .a3-pjob-filters) (+ .a3-pjob-notice) +
+   .a3-pjob-rows. The active panel is the ONLY place a repeating
+   indeterminate treatment is allowed, and it always names the file.
+   Classes: .a3-pjob · .a3-pjob-head · .a3-pjob-title · .a3-pjob-actions ·
+   .a3-pjob-progress · .a3-pjob-meter · .a3-pjob-meter-fill ·
+   .a3-pjob-progress-text · .a3-pjob-active · .a3-pjob-active-eyebrow ·
+   .a3-pjob-active-file · .a3-pjob-active-count · .a3-pjob-active-phase ·
+   .a3-pjob-active-next · .a3-pjob-filters · .a3-pjob-filter-legend ·
+   .a3-pjob-filter · .a3-pjob-filter-count · .a3-pjob-notice ·
+   .a3-pjob-rows. */
+.a3-pjob{display:grid;gap:var(--space-4);min-width:0}
+.a3-pjob-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-3) var(--space-4)}
+.a3-pjob-title{margin:0;font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-pjob-actions{margin-left:auto;display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.a3-pjob-progress{display:flex;align-items:center;gap:var(--space-4)}
+.a3-pjob-meter{flex:1 1 auto;min-width:0;height:var(--space-2);background:var(--color-surface-subtle);border:var(--border-hairline)}
+.a3-pjob-meter-fill{display:block;height:100%;background:var(--color-brand-accent);transition:inline-size var(--motion-reveal) var(--motion-easing-standard)}
+.a3-pjob-progress-text{flex:none;margin:0;display:flex;align-items:baseline;gap:var(--space-2);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-pjob-progress-text b{font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);color:var(--color-text-primary);font-variant-numeric:tabular-nums}
+.a3-pjob-active{background:var(--color-surface-stage-deep);color:var(--color-text-stage-deep-primary);padding:var(--space-5);display:grid;gap:var(--space-2);align-content:start}
+.a3-pjob-active-eyebrow{margin:0;font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);font-weight:var(--font-weight-bold);letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-stage-deep-secondary)}
+.a3-pjob-active-file{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);overflow-wrap:break-word}
+.a3-pjob-active-count{margin:0;font-size:var(--type-display-numeric-narrow-size);line-height:var(--type-display-numeric-narrow-size);font-weight:var(--font-weight-bold);font-variant-numeric:tabular-nums}
+.a3-pjob-active-phase,.a3-pjob-active-next{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-stage-deep-secondary)}
+.a3-pjob-active-next{border-top:var(--border-width-default) solid var(--color-text-stage-deep-secondary);padding-top:var(--space-3)}
+.a3-pjob-filters{border:0;margin:0;padding:0;display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2)}
+.a3-pjob-filter-legend{padding:0;font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--font-weight-medium);color:var(--color-text-secondary)}
+.a3-pjob-filter{display:inline-flex;align-items:center;gap:var(--space-2);background:var(--color-surface-default);border:var(--border-contrast-1px);padding:var(--space-2) var(--space-3);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary)}
+.a3-pjob-filter[aria-pressed="true"]{background:var(--color-surface-selected);border-color:var(--color-selection-border);font-weight:var(--font-weight-bold)}
+.a3-pjob-filter-count{font-variant-numeric:tabular-nums;color:var(--color-text-secondary)}
+.a3-pjob-filter[aria-pressed="true"] .a3-pjob-filter-count{color:var(--color-text-primary)}
+.a3-pjob-notice{min-width:0}
+.a3-pjob-rows{list-style:none;margin:0;padding:0;display:grid;min-width:0}
+
+/* DocumentRow. Structure: .a3-drow > .a3-drow-main (kind glyph · identity ·
+   progress · state) (+ .a3-drow-actions) (+ .a3-drow-detail). The row is a
+   workflow entity: filename and state are always both present, and the
+   filename column is the one that absorbs the remaining width.
+   Classes: .a3-drow · .a3-drow-current · .a3-drow-queued · .a3-drow-active ·
+   .a3-drow-processed · .a3-drow-warning · .a3-drow-lowconfidence ·
+   .a3-drow-failed · .a3-drow-removed · .a3-drow-main · .a3-drow-kind ·
+   .a3-drow-identity · .a3-drow-file · .a3-drow-meta · .a3-drow-note ·
+   .a3-drow-lineage · .a3-drow-progress · .a3-drow-meter ·
+   .a3-drow-meter-fill · .a3-drow-state · .a3-drow-actions ·
+   .a3-drow-action · .a3-drow-action-primary · .a3-drow-action-ghost ·
+   .a3-drow-detail. */
+.a3-drow{border-top:var(--border-hairline);padding:var(--space-3) 0;min-width:0}
+.a3-drow:last-child{border-bottom:var(--border-hairline)}
+.a3-drow-main{display:grid;grid-template-columns:5ch minmax(0,1fr) minmax(0,var(--measure-band)) minmax(0,max-content);align-items:start;gap:var(--space-3)}
+.a3-drow-kind{font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-bold);color:var(--color-text-secondary);border:var(--border-hairline);padding:var(--space-1);text-align:center}
+.a3-drow-identity{display:grid;gap:var(--space-1);min-width:0}
+.a3-drow-file{font-size:var(--type-table-body-size);line-height:var(--type-table-body-line);font-weight:var(--font-weight-bold);overflow-wrap:break-word;hyphens:auto}
+.a3-drow-meta,.a3-drow-note,.a3-drow-lineage{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
+.a3-drow-note{color:var(--color-text-primary)}
+.a3-drow-lineage{color:var(--color-text-muted)}
+.a3-drow-progress{align-self:center;min-width:0}
+.a3-drow-meter{display:block;height:var(--border-width-strong);background:var(--color-surface-subtle);border:0}
+.a3-drow-meter-fill{display:block;height:100%;background:var(--color-brand-accent);transition:inline-size var(--motion-feedback) var(--motion-easing-standard)}
+.a3-drow-state{justify-self:end;text-align:right;min-width:0}
+.a3-drow-current{background:var(--color-surface-subtle)}
+.a3-drow-failed .a3-drow-file{color:var(--color-status-error)}
+.a3-drow-removed .a3-drow-file{text-decoration:line-through;color:var(--color-text-muted)}
+.a3-drow-actions{display:flex;flex-wrap:wrap;gap:var(--space-2);padding-top:var(--space-2)}
+.a3-drow-action{background:var(--color-action-secondary-bg);color:var(--color-action-secondary-text);border:var(--border-contrast-1px);padding:var(--space-2) var(--space-3);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-medium)}
+.a3-drow-action-primary{background:var(--color-action-primary-bg);color:var(--color-action-primary-text);border-color:var(--color-action-primary-bg);font-weight:var(--font-weight-bold)}
+.a3-drow-action-ghost{background:transparent;border-color:transparent;text-decoration:underline;text-underline-offset:var(--size-text-underline-offset)}
+.a3-drow-action[disabled]{background:var(--color-action-disabled-bg);color:var(--color-action-disabled-text);border-color:var(--color-action-disabled-border)}
+.a3-drow-detail{padding:var(--space-3) 0 var(--space-2) calc(5ch + var(--space-3));display:grid;gap:var(--space-3);min-width:0}
+
+/* ActionGate. Structure: .a3-gate > .a3-gate-action + .a3-gate-explanation.
+   The action always renders; the explanation states the status, the unmet
+   prerequisites, the route to resolve them and any alternative — a
+   disabled control alone never stands for a workflow gate (rule 12).
+   Classes: .a3-gate · .a3-gate-open · .a3-gate-closed · .a3-gate-action ·
+   .a3-gate-explanation · .a3-gate-reason · .a3-gate-prereqs ·
+   .a3-gate-prereq · .a3-gate-prereq-label · .a3-gate-prereq-detail ·
+   .a3-gate-route · .a3-gate-alternative · .a3-gate-error ·
+   .a3-gate-error-message. */
+.a3-gate{display:grid;gap:var(--space-3);min-width:0}
+.a3-gate-action{display:flex;flex-wrap:wrap;gap:var(--space-3)}
+.a3-gate-explanation{display:grid;gap:var(--space-2);min-width:0}
+.a3-gate-closed .a3-gate-explanation{border-left:var(--size-status-accent-width) solid var(--color-border-warning);padding-left:var(--space-3)}
+.a3-gate-reason{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
+.a3-gate-prereqs{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-1)}
+.a3-gate-prereq{display:grid;gap:var(--space-1);font-size:var(--type-caption-size);line-height:var(--type-caption-line)}
+.a3-gate-prereq-label{font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-gate-prereq-detail{color:var(--color-text-secondary)}
+.a3-gate-route{justify-self:start;background:transparent;border:0;padding:0;font-size:var(--type-link-size);line-height:var(--type-link-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);text-decoration:underline;text-underline-offset:var(--size-text-underline-offset)}
+.a3-gate-alternative{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-gate-error{display:grid;gap:var(--space-2);border-left:var(--size-status-accent-width) solid var(--color-border-error);padding-left:var(--space-3)}
+.a3-gate-error-message{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
+
+/* PrerequisiteState. Structure: .a3-prereq > .a3-prereq-copy
+   (+ .a3-prereq-media) (+ .a3-prereq-inventory). Nothing downstream is
+   mounted here: the absence block NAMES the absence instead of rendering a
+   zero-filled result anatomy.
+   Classes: .a3-prereq · .a3-prereq-copy · .a3-prereq-eyebrow ·
+   .a3-prereq-heading · .a3-prereq-lead · .a3-prereq-absence ·
+   .a3-prereq-absence-glyph · .a3-prereq-absence-title ·
+   .a3-prereq-absence-detail · .a3-prereq-actions · .a3-prereq-media ·
+   .a3-prereq-inventory. */
+.a3-prereq{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,var(--measure-panel));gap:var(--space-6);align-items:start}
+.a3-prereq-copy{display:grid;gap:var(--space-4);min-width:0;max-width:var(--measure-body-max)}
+.a3-prereq-eyebrow{margin:0;font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);font-weight:var(--font-weight-bold);letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-secondary)}
+.a3-prereq-heading{margin:0;font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-prereq-lead{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-primary)}
+.a3-prereq-absence{display:grid;grid-template-columns:var(--size-status-glyph) minmax(0,1fr);gap:var(--space-3);border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-4)}
+.a3-prereq-absence-glyph{color:var(--color-text-secondary);text-align:center}
+.a3-prereq-absence-title{display:block;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-bold)}
+.a3-prereq-absence-detail{margin:var(--space-1) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-prereq-actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-4)}
+.a3-prereq-media{min-width:0}
+.a3-prereq-inventory{grid-column:1 / -1;min-width:0}
+
+/* ProjectReadiness. Structure: .a3-readiness > .a3-readiness-copy
+   (+ .a3-readiness-media). Readiness is the FIRST hierarchy on the page:
+   state heading, short explanation, the derived summary rows, the
+   attention count and exactly one primary action.
+   Classes: .a3-readiness · .a3-readiness-copy · .a3-readiness-eyebrow ·
+   .a3-readiness-heading · .a3-readiness-lead · .a3-readiness-rows ·
+   .a3-readiness-row · .a3-readiness-row-label · .a3-readiness-row-value ·
+   .a3-readiness-attention · .a3-readiness-action ·
+   .a3-readiness-secondary · .a3-readiness-media. */
+.a3-readiness{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,var(--measure-panel));gap:var(--space-6);align-items:start}
+.a3-readiness-copy{display:grid;gap:var(--space-4);min-width:0;max-width:var(--measure-body-max)}
+.a3-readiness-eyebrow{margin:0;font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);font-weight:var(--font-weight-bold);letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-primary)}
+.a3-readiness-heading{margin:0;font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-readiness-lead{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-primary)}
+.a3-readiness-rows{margin:0;border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-4)}
+.a3-readiness-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,max-content);gap:var(--space-4);align-items:baseline;border-bottom:var(--border-hairline);padding:var(--space-3) 0}
+.a3-readiness-row:last-child{border-bottom:0}
+.a3-readiness-row-label{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-readiness-row-value{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);font-variant-numeric:tabular-nums;text-align:right}
+.a3-readiness-attention,.a3-readiness-action,.a3-readiness-secondary{min-width:0}
+.a3-readiness-media{min-width:0}
+
+/* ConflictResolver. Structure: .a3-cfr > .a3-cfr-head + .a3-cfr-sources +
+   (.a3-cfr-decision | .a3-cfr-record). The competing sources are a
+   COMPARISON, not a warning card: each value stays inside the source that
+   produced it, so at 1280 the pair stacks without ever separating a value
+   from its document.
+   Classes: .a3-cfr · .a3-cfr-open · .a3-cfr-resolved · .a3-cfr-head ·
+   .a3-cfr-identity · .a3-cfr-concept · .a3-cfr-scope · .a3-cfr-impact ·
+   .a3-cfr-sources · .a3-cfr-source · .a3-cfr-source-newer ·
+   .a3-cfr-source-head · .a3-cfr-source-flag · .a3-cfr-source-value ·
+   .a3-cfr-source-unit · .a3-cfr-source-preview · .a3-cfr-decision ·
+   .a3-cfr-recommendation · .a3-cfr-recommendation-flag · .a3-cfr-choices ·
+   .a3-cfr-choices-legend · .a3-cfr-choice · .a3-cfr-choice-selected ·
+   .a3-cfr-choice-input · .a3-cfr-choice-label · .a3-cfr-choice-detail ·
+   .a3-cfr-manual · .a3-cfr-actions · .a3-cfr-record ·
+   .a3-cfr-record-title · .a3-cfr-record-value · .a3-cfr-record-meta ·
+   .a3-cfr-record-rejected · .a3-cfr-reopen. */
+.a3-cfr{display:grid;gap:var(--space-4);border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-5);min-width:0}
+.a3-cfr-open{border-left:var(--size-status-accent-width) solid var(--color-border-warning)}
+.a3-cfr-resolved{border-left:var(--size-status-accent-width) solid var(--color-status-success)}
+.a3-cfr-head{display:grid;gap:var(--space-2)}
+.a3-cfr-identity{display:grid;gap:var(--space-1)}
+.a3-cfr-concept{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-cfr-scope{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-cfr-impact{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
+.a3-cfr-sources{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(var(--measure-conflict-column),1fr));gap:var(--space-4)}
+.a3-cfr-source{display:grid;gap:var(--space-2);border:var(--border-contrast-1px);padding:var(--space-4);min-width:0}
+.a3-cfr-source-newer{border-top:var(--border-contrast-2px);border-top-color:var(--color-text-primary)}
+.a3-cfr-source-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2) var(--space-3)}
+.a3-cfr-source-flag{font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);font-weight:var(--font-weight-bold);letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-primary)}
+.a3-cfr-source-value{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);font-variant-numeric:tabular-nums}
+.a3-cfr-source-unit{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-medium);color:var(--color-text-secondary)}
+.a3-cfr-source-preview{min-width:0}
+.a3-cfr-decision{display:grid;gap:var(--space-3);border-top:var(--border-hairline);padding-top:var(--space-4)}
+.a3-cfr-recommendation{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
+.a3-cfr-recommendation-flag{font-size:var(--type-badge-metadata-size);font-weight:var(--font-weight-bold);letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-secondary)}
+.a3-cfr-choices{border:0;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(var(--measure-card-compact),1fr));gap:var(--space-3)}
+.a3-cfr-choices-legend{padding:0 0 var(--space-2);font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-cfr-choice{position:relative;display:grid;gap:var(--space-1);border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-3);min-height:var(--size-hit-target-default);min-width:0}
+.a3-cfr-choice-selected{border:var(--border-selected);background:var(--color-surface-selected)}
+.a3-cfr-choice-input{position:absolute;inset-inline-start:var(--space-3);inset-block-start:var(--space-3);inline-size:var(--size-status-dot);block-size:var(--size-status-dot);opacity:0}
+.a3-cfr-choice-input:focus-visible{opacity:1}
+.a3-cfr-choice-label{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-cfr-choice-detail{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-cfr-manual{min-width:0}
+.a3-cfr-actions{display:flex;flex-wrap:wrap;gap:var(--space-3)}
+.a3-cfr-record{display:grid;gap:var(--space-2);border-top:var(--border-hairline);padding-top:var(--space-4)}
+.a3-cfr-record-title{margin:0;font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--font-weight-bold);color:var(--color-text-secondary);letter-spacing:.06em;text-transform:uppercase}
+.a3-cfr-record-value{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);font-variant-numeric:tabular-nums}
+.a3-cfr-record-meta,.a3-cfr-record-rejected{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-cfr-reopen{justify-self:start;background:transparent;border:0;padding:0;font-size:var(--type-link-size);line-height:var(--type-link-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary);text-decoration:underline;text-underline-offset:var(--size-text-underline-offset)}
+
+/* QuestionQueue. Structure: .a3-qq > .a3-qq-head + .a3-qq-list
+   (+ .a3-qq-note); each child is a .a3-qq-item. A question is neither a
+   conflict nor an error, so the item has no error affordance at all — it
+   states whether it blocks, and which permitted assumption lets the user
+   proceed knowingly.
+   Classes: .a3-qq · .a3-qq-head · .a3-qq-title · .a3-qq-summary ·
+   .a3-qq-list · .a3-qq-note · .a3-qq-item · .a3-qq-item-head ·
+   .a3-qq-item-question · .a3-qq-item-marks · .a3-qq-item-kind ·
+   .a3-qq-item-gate · .a3-qq-item-scope · .a3-qq-item-matters ·
+   .a3-qq-item-evidence · .a3-qq-item-assumption ·
+   .a3-qq-item-assumption-flag · .a3-qq-item-response ·
+   .a3-qq-item-actions. */
+.a3-qq{display:grid;gap:var(--space-4);min-width:0}
+.a3-qq-head{display:grid;gap:var(--space-1)}
+.a3-qq-title{margin:0;font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-qq-summary{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-qq-list{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-3)}
+.a3-qq-note{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
+.a3-qq-item{display:grid;gap:var(--space-2);border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-4);min-width:0}
+.a3-qq-item-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,max-content);gap:var(--space-3);align-items:start}
+.a3-qq-item-question{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-qq-item-marks{display:grid;gap:var(--space-1);justify-items:end;text-align:right}
+.a3-qq-item-kind,.a3-qq-item-gate{font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);color:var(--color-text-secondary)}
+.a3-qq-item-gate{font-weight:var(--font-weight-bold);letter-spacing:.04em;text-transform:uppercase}
+.a3-qq-item-scope,.a3-qq-item-matters,.a3-qq-item-evidence,.a3-qq-item-response{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-qq-item-matters{color:var(--color-text-primary)}
+.a3-qq-item-assumption{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);border-left:var(--size-status-accent-width) solid var(--color-border-default);padding-left:var(--space-3)}
+.a3-qq-item-assumption-flag{font-size:var(--type-badge-metadata-size);font-weight:var(--font-weight-bold);letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-secondary)}
+.a3-qq-item-actions{display:flex;flex-wrap:wrap;gap:var(--space-3);padding-top:var(--space-1)}
+
+/* WorkflowStepper · `spine` size (VR3-01). The full-journey vertical rail.
+   Its rows are wider than `chapter`'s and its meta line carries the STATE
+   and, for a locked step, the reason — the compact 1280 presentation drops
+   the meta's second line, never the state itself.
+   Classes: .a3-wfs-spine. */
+.a3-wfs-spine .a3-wfs-list{display:grid;gap:0}
+.a3-wfs-spine .a3-wfs-step{border-top:var(--border-hairline);min-height:var(--size-hit-target-default)}
+.a3-wfs-spine .a3-wfs-step:last-child{border-bottom:var(--border-hairline)}
+.a3-wfs-spine .a3-wfs-button,.a3-wfs-spine .a3-wfs-static{display:grid;grid-template-columns:var(--size-chapter-marker) minmax(0,1fr);gap:var(--space-3);align-items:start;inline-size:100%;background:transparent;border:0;padding:var(--space-3) var(--space-2);text-align:left}
+.a3-wfs-spine .a3-wfs-text{display:grid;gap:var(--space-1);min-width:0}
+.a3-wfs-spine .a3-wfs-label{font-size:var(--type-table-body-size);line-height:var(--type-table-body-line);font-weight:var(--font-weight-medium);overflow-wrap:break-word;hyphens:auto}
+.a3-wfs-spine .a3-wfs-meta{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-wfs-spine .a3-wfs-current{background:var(--color-surface-default);border-left:var(--size-status-accent-width) solid var(--color-brand-accent)}
+.a3-wfs-spine .a3-wfs-current .a3-wfs-label{font-weight:var(--font-weight-bold)}
+.a3-wfs-spine .a3-wfs-marker{inline-size:var(--size-chapter-marker);block-size:var(--size-chapter-marker);display:grid;place-items:center;border:var(--border-hairline);font-size:var(--type-caption-size);font-weight:var(--font-weight-bold)}
+.a3-wfs-spine .a3-wfs-done .a3-wfs-marker{background:var(--color-text-primary);color:var(--color-text-inverse);border-color:var(--color-text-primary)}
+.a3-wfs-spine .a3-wfs-current .a3-wfs-marker{background:var(--color-brand-accent);color:var(--color-text-inverse);border-color:var(--color-brand-accent)}
+.a3-wfs-spine .a3-wfs-blocked .a3-wfs-label,.a3-wfs-spine .a3-wfs-upcoming .a3-wfs-label{color:var(--color-text-muted)}
+.a3-wfs-spine .a3-wfs-skipped .a3-wfs-label{color:var(--color-text-secondary)}
+
+/* ══════════════════════════════════════════════════════════════════════
+   VR3-01 · PROJECT SHELL AND SCREEN COMPOSITIONS
+   The Project level gains a workflow spine on the left and NO commercial
+   rail on the right: a total belongs to an Option, and no Option exists at
+   this level. Two zones, therefore, not three.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Project shell. Structure: .a3-project-shell > .a3-project-spine +
+   .a3-project-main. At 1280 the spine narrows (its state and reason stay,
+   only the meta loosens) and the centre keeps at least the reading measure.
+   Classes: .a3-project-shell · .a3-project-spine ·
+   .a3-project-spine-eyebrow · .a3-project-spine-name · .a3-project-main. */
+.a3-project-shell{display:grid;grid-template-columns:var(--panel-left-width) minmax(0,1fr);align-items:start;min-height:100%}
+.a3-project-spine{position:sticky;top:0;align-self:start;background:var(--color-surface-subtle);border-right:var(--border-default);padding:var(--space-5) var(--space-4);min-width:0}
+.a3-project-spine-eyebrow{margin:0 0 var(--space-2);font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);font-weight:var(--font-weight-bold);letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-secondary)}
+.a3-project-spine-name{margin:0 0 var(--space-5);border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-3);font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-medium);overflow-wrap:break-word;hyphens:auto}
+.a3-project-main{display:grid;gap:var(--space-6);align-content:start;padding:var(--space-6) var(--space-7);min-width:0;max-width:var(--content-max-width)}
+.a3-project-stage-head{outline:0;min-width:0}
+.a3-project-stage-continue{display:flex;flex-wrap:wrap;gap:var(--space-3)}
+.a3-project-utilities{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-4);min-width:0}
+.a3-project-utilities-meta{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+@media (max-width:1365px){
+  .a3-project-shell{grid-template-columns:var(--panel-right-width-compact) minmax(0,1fr)}
+  .a3-project-main{padding:var(--space-5) var(--space-5)}
+}
+
+/* Document register helpers on the pre-analysis and job surfaces.
+   Classes: .a3-doc-tally · .a3-doc-tally-item · .a3-doc-register ·
+   .a3-doc-filter-notice · .a3-doc-detail-meta. */
+.a3-doc-tally{list-style:none;margin:0 0 var(--space-4);padding:0;display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.a3-doc-tally-item{border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-2) var(--space-3);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-medium)}
+.a3-doc-register{min-width:0;overflow-x:auto}
+.a3-doc-filter-notice{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-doc-detail-meta{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+
+/* Project Understanding. Structure: status mark → tablist → panel. The
+   tabs exist only once the analysis has produced results, so a tab can
+   never advertise a section with nothing behind it.
+   Classes: .a3-understanding-status · .a3-understanding-tabs ·
+   .a3-understanding-tab · .a3-understanding-tab-current ·
+   .a3-understanding-panel · .a3-understanding-body ·
+   .a3-understanding-metrics · .a3-understanding-grid ·
+   .a3-understanding-copy. */
+.a3-understanding-status{min-width:0}
+.a3-understanding-tabs{display:flex;flex-wrap:wrap;gap:var(--space-5);border-bottom:var(--border-default)}
+.a3-understanding-tab{background:transparent;border:0;border-bottom:var(--border-width-strong) solid transparent;padding:var(--space-3) 0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-medium);color:var(--color-text-secondary)}
+.a3-understanding-tab-current{border-bottom-color:var(--color-text-primary);color:var(--color-text-primary);font-weight:var(--font-weight-bold)}
+.a3-understanding-panel{outline:0;min-width:0}
+.a3-understanding-body{display:grid;gap:var(--space-5);min-width:0}
+.a3-understanding-metrics{margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(var(--measure-conflict-column),1fr));gap:0;border:var(--border-contrast-1px);background:var(--color-surface-default)}
+.a3-understanding-metrics .a3-mro{border-right:var(--border-hairline);padding:var(--space-4)}
+.a3-understanding-metrics .a3-mro:last-child{border-right:0}
+.a3-understanding-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(var(--measure-panel),1fr));gap:var(--space-5);align-items:start}
+.a3-understanding-copy{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-primary);max-width:var(--measure-body-max)}
+
+/* Recognised buildings. Structure: .a3-building-list > .a3-building-item >
+   .a3-building-media + .a3-building-body. Building identity never floats
+   away from the metrics it owns.
+   Classes: .a3-building-list · .a3-building-item · .a3-building-media ·
+   .a3-building-body · .a3-building-name · .a3-building-meta ·
+   .a3-building-metrics · .a3-building-authority · .a3-building-evidence. */
+.a3-building-list{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-4)}
+.a3-building-item{display:grid;grid-template-columns:minmax(0,var(--measure-card-compact)) minmax(0,1fr);gap:var(--space-4);border-top:var(--border-hairline);padding-top:var(--space-4)}
+.a3-building-item:first-child{border-top:0;padding-top:0}
+.a3-building-media{min-width:0}
+.a3-building-body{display:grid;gap:var(--space-2);min-width:0}
+.a3-building-name{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-building-meta{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-building-metrics{margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(var(--measure-conflict-column),1fr));gap:var(--space-3)}
+.a3-building-authority{min-width:0}
+.a3-building-evidence{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-muted);overflow-wrap:break-word}
+
+/* Project List cards (target `T-001`). Structure: ul.a3-project-grid >
+   li.a3-project-card > .a3-project-card-media + .a3-card. Two deliberate
+   columns at 1440 AND at 1280 — the list's whole job is to present exactly
+   two purposeful cases side by side, so it never becomes a single stack of
+   two full-width banners.
+   Classes: .a3-project-grid · .a3-project-card · .a3-project-card-media ·
+   .a3-project-card-body · .a3-project-card-facts · .a3-project-card-rows ·
+   .a3-project-card-row · .a3-project-lede. */
+.a3-project-lede{margin:var(--space-3) 0 0;font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-primary);max-width:var(--measure-body-max)}
+.a3-project-grid{list-style:none;margin:var(--space-6) 0 0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-5)}
+.a3-project-card{display:grid;grid-template-columns:minmax(0,45fr) minmax(0,55fr);border:var(--border-contrast-1px);background:var(--color-surface-default);min-width:0}
+.a3-project-card-column{display:grid;grid-template-rows:max-content minmax(0,1fr);align-content:start;min-width:0}
+.a3-project-card-status{padding:var(--space-5) var(--space-5) 0}
+/* The media column fills the card's height instead of keeping its own
+   aspect ratio: an explicit block-size makes `aspect-ratio` yield, and
+   MediaFrame's own `object-cover` does the cropping. The target composition
+   is a full-height identity image beside the readiness body. */
+/* The media column fills the card's height instead of keeping its own
+   aspect ratio: an explicit block-size makes `aspect-ratio` yield, and
+   MediaFrame's own `object-cover` does the cropping. `minmax(0,1fr)` plus
+   `min-inline-size:0` on the figure is not decoration — without it the
+   figure takes the photograph's INTRINSIC width (measured live: 531 px in
+   a 296 px column) and paints straight over the card body. */
+.a3-project-card-media{min-width:0;display:grid;grid-template-columns:minmax(0,1fr);overflow:hidden}
+.a3-project-card-media figure{min-inline-size:0}
+.a3-project-card-media figure,.a3-project-card-media figure>div{block-size:100%}
+.a3-project-card-body{border:0;min-width:0}
+.a3-project-card-facts{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-project-card-rows{margin:var(--space-4) 0 0;min-width:0}
+.a3-project-card-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,max-content);gap:var(--space-3);align-items:baseline;border-bottom:var(--border-hairline);padding:var(--space-2) 0}
+.a3-project-card-row dt{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-project-card-row dd{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);text-align:right;font-variant-numeric:tabular-nums}
+/* At 1280 the list stays DELIBERATELY two-column (the ticket's responsive
+   requirement): the cards narrow, the media keeps its column, and neither
+   card becomes a full-width banner. */
+@media (max-width:1365px){
+  .a3-project-card{grid-template-columns:minmax(0,40fr) minmax(0,60fr)}
+}
+
+/* The stage eyebrow sits ABOVE the page title (target composition), not in
+   PageHeader's `meta` slot, which renders beside it.
+   Classes: .a3-project-stage-eyebrow. */
+.a3-project-stage-eyebrow{margin:0 0 var(--space-2);font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);font-weight:var(--font-weight-bold);letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-secondary)}

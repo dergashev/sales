@@ -13,8 +13,18 @@ import { useT } from '../i18n'
  *
  * Anatomy (audit §"STEPPER ANATOMY"): state glyph + short label + optional
  * position, rationale behind native `<details>` disclosure — never
- * permanent prose. Two size variants (`workflow` horizontal /  `chapter`
- * vertical, compact) share one anatomy and one token set.
+ * permanent prose. Three size variants (`workflow` horizontal / `chapter`
+ * vertical, compact / `spine` vertical, full-journey) share one anatomy and
+ * one token set.
+ *
+ * VR3-01 added `spine`: the canonical full-journey rail that has to survive
+ * across the Project and the Option context, so the user sees ONE journey
+ * rather than a project breadcrumb followed by an unrelated chapter list
+ * (VR3-00 design delta, MERGE decision). It is an evolution of this one
+ * capability on purpose — a second local rail would be exactly the parallel
+ * grammar the delta forbids. Its meta line carries the STATE (and, for a
+ * locked step, its reason) where `workflow`/`chapter` carry the position;
+ * the position stays available to screen readers either way.
  *
  * States: upcoming / current / done / attention / blocked / skipped, PLUS
  * the composite done+current (a revisited step you are currently on). The
@@ -120,13 +130,15 @@ export function WorkflowStepper({
    * doubles as one by default (the stepper is often the only orientation
    * cue on a busy workspace). */
   ariaLabel: string
-  size?: 'workflow' | 'chapter'
+  size?: 'workflow' | 'chapter' | 'spine'
 }) {
   const tx = useT()
   const instanceId = useId()
   // Written as a static branch rather than a template interpolation — see
   // the STATE_CLASS comment above for why.
-  const sizeClass = size === 'workflow' ? 'a3-wfs-workflow' : 'a3-wfs-chapter'
+  const sizeClass = size === 'workflow'
+    ? 'a3-wfs-workflow'
+    : size === 'spine' ? 'a3-wfs-spine' : 'a3-wfs-chapter'
 
   // Roving tabindex (KEY-003, DS-GOV-EX-07's removal condition): only ONE
   // interactive step is a Tab stop at a time; arrow keys move focus (and
@@ -177,7 +189,16 @@ export function WorkflowStepper({
           // computed the glyph from `step.state` alone, so a revisited
           // step showed its position number with no visible sign it had
           // already been completed.
-          const glyph = composite ? GLYPH.done : (GLYPH[step.state] || String(i + 1))
+          // The `spine` variant shows the POSITION for every step that has
+          // not completed — the full journey has to stay countable, and a
+          // rail of thirteen crosses reads as thirteen failures. The state
+          // itself is never lost: it is spelled out in the meta line below
+          // the label (rule 8, never colour or glyph alone).
+          const glyph = composite
+            ? GLYPH.done
+            : size === 'spine'
+              ? (step.state === 'done' ? GLYPH.done : String(i + 1))
+              : (GLYPH[step.state] || String(i + 1))
           const stateText = tx1(STATE_LABEL_KEY[step.state], tx)
           const blockedReasonId = `${instanceId}-${step.id}-blocked-reason`
           const positionText = tx1(
@@ -199,9 +220,19 @@ export function WorkflowStepper({
               {marker}
               <span className="a3-wfs-text">
                 <span className="a3-wfs-label">{step.label}</span>
-                <span className="a3-wfs-meta">
-                  {positionText} · {stateText}
-                </span>
+                {size === 'spine' ? (
+                  <span className="a3-wfs-meta">
+                    <span className="sr-only">{positionText} · </span>
+                    {stateText}
+                    {step.state === 'blocked' && step.blockedReason
+                      ? ` · ${step.blockedReason}`
+                      : ''}
+                  </span>
+                ) : (
+                  <span className="a3-wfs-meta">
+                    {positionText} · {stateText}
+                  </span>
+                )}
               </span>
             </>
           )
@@ -224,7 +255,7 @@ export function WorkflowStepper({
                   aria-disabled={step.state === 'blocked' || undefined}
                   aria-current={isCurrent ? 'step' : undefined}
                   aria-describedby={
-                    step.state === 'blocked' && step.blockedReason
+                    step.state === 'blocked' && step.blockedReason && size !== 'spine'
                       ? blockedReasonId : undefined
                   }
                 >
@@ -233,7 +264,7 @@ export function WorkflowStepper({
               ) : (
                 <div className="a3-wfs-static" aria-current={isCurrent ? 'step' : undefined}>{body}</div>
               )}
-              {step.state === 'blocked' && step.blockedReason && (
+              {step.state === 'blocked' && step.blockedReason && size !== 'spine' && (
                 <p id={blockedReasonId} className="a3-wfs-blocked-reason">
                   {step.blockedReason}
                 </p>

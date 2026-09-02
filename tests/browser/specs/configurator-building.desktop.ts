@@ -1,5 +1,6 @@
 import { test, expect } from '../fixtures'
 import {
+import { reachOptionWorkspace } from '../journey'
   BUILDING_SCOPE,
   BUILDINGS,
   CONFIGURATOR_CHAPTERS,
@@ -42,29 +43,10 @@ test.describe('building-aware Configurator gate chain', () => {
   test('confirming buildings unlocks the Konfigurator, per-building scope is reachable', async ({ page }) => {
     await page.goto('/')
 
-    // ── Opportunity list -> Opportunity card ──────────────────────────
-    await page.getByRole('button', { name: OPPORTUNITY.openCta('Musterprojekt Nordfeld') }).click()
-
-    // ── Resolve the one open conflict, confirm project params ────────
-    await page.getByRole('button', { name: OPPORTUNITY.resolveWflDocument }).click()
-    // Pre-existing locator ambiguity fix (unrelated to AUD-02): the
-    // disabled Step-4 nav item's accessible name ("Schritt 4 von 4
-    // Opportunity Options Erst Konflikte entscheiden und Projektparameter
-    // bestätigen") contains this same substring — Playwright's role name
-    // match is substring by default, exactly the pitfall already called
-    // out for `openOption` a few lines below.
-    await page.getByRole('button', { name: OPPORTUNITY.confirmProjectParams, exact: true }).click()
-
-    // ── Create and open an Option (gated on both of the above) ───────
-    const createOption = page.getByRole('button', { name: OPPORTUNITY.createOption })
-    await expect(createOption).toBeEnabled()
-    await createOption.click()
-    // Scoped to the Options list, and exact: 'Öffnen' alone is a
-    // case-insensitive SUBSTRING match in Playwright, and would otherwise
-    // also match the unrelated 'Vorbereitung öffnen' button above it.
-    await page.getByRole('region', { name: 'Opportunity Options' })
-      .getByRole('button', { name: OPPORTUNITY.openOption, exact: true })
-      .click()
+    // ── Project list -> analysis -> readiness gate -> Option ─────────
+    //    VR3-01 replaced the retired project card's five-control preamble
+    //    with the real journey; `reachOptionWorkspace` walks it as a user.
+    await reachOptionWorkspace(page, DEMO_PROJECT_NAME)
 
     // ── Landed on Building & Scope: the gate is closed by default ────
     const nav = page.getByRole('navigation', { name: NAV.landmark })

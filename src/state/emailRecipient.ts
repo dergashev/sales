@@ -14,6 +14,14 @@ export const DEMO_HUBSPOT_RECIPIENT: ValidatedRecipient = Object.freeze({
   source: 'HubSpot',
 })
 
+/**
+ * VR3-01: keyed to the two demonstration projects that exist now. The
+ * previous single `DEMO-0001` key belonged to the retired eight-row
+ * portfolio; leaving it would have made every client email flow report
+ * "no validated recipient" for both shipped projects.
+ */
 export function recipientForOpportunity(opportunityId: string | null): ValidatedRecipient | null {
-  return opportunityId === 'DEMO-0001' ? DEMO_HUBSPOT_RECIPIENT : null
+  return opportunityId === 'DEMO-HAPPY-01' || opportunityId === 'DEMO-COMPLEX-01'
+    ? DEMO_HUBSPOT_RECIPIENT
+    : null
 }

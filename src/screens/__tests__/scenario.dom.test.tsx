@@ -4,7 +4,12 @@ import {
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
-import { confirmBuildingReviewSections, confirmWholeConfiguration } from '../../test/offer-option'
+import {
+  confirmBuildingReviewSections,
+  confirmWholeConfiguration,
+  enterOptionWorkspace,
+  enterProjectUnderstanding,
+} from '../../test/offer-option'
 import { activeBuilding, __resetStoreForTests, useStore } from '../../state/store'
 
 /**
@@ -32,12 +37,11 @@ const nav = (name: RegExp) => screen.getAllByRole('button', { name })[0]!
  * которому нужны панели, обязан пройти этот путь целиком — иначе он
  * проверяет экран, до которого пользователь не дошёл.
  */
-async function enterOption(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
-  await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
-  await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
-  await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
-  await user.click(screen.getByRole('button', { name: 'Öffnen' }))
+// VR3-01: the retired five-click project preamble is gone, so this
+// entry point no longer drives the UI — the underscore keeps every
+// existing `await enterOption(user)` call site untouched.
+async function enterOption(_user: ReturnType<typeof userEvent.setup>) {
+  enterOptionWorkspace()
 }
 
 async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
@@ -265,20 +269,36 @@ describe('Сквозной сценарий продажи', () => {
   it('Projekt-Vorbereitung zitiert keine Requirement-IDs mehr (F05, UI-Audit 2026-08-21)', async () => {
     const user = userEvent.setup()
     render(<App />)
+    // VR3-01: das Projekt mit strittigen Angaben ist jetzt „Quartier Am
+    // Güterbogen"; das Projektverständnis (Übersicht · Strittige Angaben ·
+    // Offene Fragen) ist die Oberfläche, die die frühere „· Vorbereitung"
+    // ersetzt. Der Einstieg bleibt der echte Weg aus der Projektliste.
     await user.click(await screen.findByRole('button', {
-      name: /Musterprojekt Nordfeld öffnen/,
+      name: /Quartier Am Güterbogen öffnen/,
     }))
+    // Die 36-Datei-Analyse selbst ist NICHT das Thema dieses Tests (sie
+    // läuft eine Datei-Phase pro Tick) — der Fixture-Checkpoint stellt den
+    // Zustand her, in dem die strittigen Angaben noch offen sind.
+    enterProjectUnderstanding('DEMO-COMPLEX-01', { conflicts: 'open' })
+    act(() => { useStore.getState().setUnderstandingTab('conflicts') })
 
     // Strittige Angaben · offener Konflikt — die frühere "· Vorbereitung"-
     // Kopie dieses Konflikts zitierte "DEMO-VE-0002" und "(SOURCE-001)" als
     // Requirement-/Fixture-IDs neben dem eigentlichen Satz. Task 01 löscht
     // diese Kopie zusammen mit der ganzen separaten Vorbereitung-Oberfläche
     // (AC3): das verbleibende Original war stets sauber.
+    expect(screen.getAllByText(/Strittige Angaben/).length).toBeGreaterThan(0)
     expect(document.body.textContent ?? '').not.toMatch(/DEMO-VE-\d|SOURCE-\d{2,3}/)
 
-    await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
     // Strittige Angaben · gelöster Konflikt — dieselbe Requirement-ID stand
-    // ein zweites Mal in der "gelöst"-Meldung der gelöschten Kopie.
+    // ein zweites Mal in der "gelöst"-Meldung der gelöschten Kopie. Die
+    // Entscheidung fällt hier über die Store-Aktion, die der Resolver
+    // aufruft: Thema ist der Text der gelösten Meldung, nicht die Geste.
+    act(() => {
+      useStore.getState().resolveProjectConflict('B-CF-01', {
+        kind: 'candidate', candidateId: 'B-CF-01-b',
+      })
+    })
     expect(document.body.textContent ?? '').not.toMatch(/SOURCE-\d{2,3}/)
 
     // PD-1 (ticket-supplied default): P5 "Varianten" is hidden behind the
@@ -417,25 +437,46 @@ describe('Сквозной сценарий продажи', () => {
   it('гейт готовности называет пункты вместо кольца и процентов (DC-26)', async () => {
     const user = userEvent.setup()
     render(<App />)
-    // Гейт живёт в карточке Opportunity, а не в списке проектов.
-    await user.click(await screen.findByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
+    // Гейт живёт на уровне проекта, а не в списке проектов.
+    await user.click(await screen.findByRole('button', { name: /Quartier Am Güterbogen öffnen/ }))
+    // Ein GESCHLOSSENES Gate braucht einen echten offenen Grund: Analyse
+    // abgeschlossen, aber die sechs blockierenden strittigen Angaben noch
+    // nicht entschieden.
+    enterProjectUnderstanding('DEMO-COMPLEX-01', { conflicts: 'open' })
+
     // Task 01 removes the duplicated "Bereitschaft für Optionen" checklist
     // group in favor of the one progress model (AC2): DC-26's actual
     // requirement — name what's missing, never a ring/percentage — is now
-    // carried by the stage overview together with the create-option gate's
+    // carried by the workflow spine together with the create-option gate's
     // own named reason (rule 12), not a second, separate checklist.
     expect(screen.queryByRole('group', { name: /Bereitschaft/ })).not.toBeInTheDocument()
-    const overview = screen.getByRole('navigation', { name: 'Projektstatus' })
-    expect(within(overview).getAllByText('Strittige Angaben')).not.toHaveLength(0)
-    expect(within(overview).getByText('Projektgrundlage')).toBeInTheDocument()
-    const create = screen.getByRole('button', { name: 'Opportunity Option anlegen' })
+    // VR3-01: der eine Verlauf heißt jetzt „Projekt- und Optionsverlauf"
+    // und nennt die Stationen; die Bereitschaftszeilen nennen die Sache.
+    const spine = screen.getByRole('navigation', { name: 'Projekt- und Optionsverlauf' })
+    expect(within(spine).getByText('Projektverständnis')).toBeInTheDocument()
+    expect(within(spine).getByText('Option anlegen')).toBeInTheDocument()
+    expect(screen.getAllByText('Blockierende strittige Angaben').length).toBeGreaterThan(0)
+
+    const create = screen.getByRole('button', { name: 'Option anlegen' })
     expect(create).toHaveAttribute('aria-disabled', 'true')
-    // #16's Projektstatus-Stepper now echoes the same reason text next to
-    // the create-button's own explanation — resolved via the button's own
-    // `aria-describedby` rather than an ambiguous text match.
+    // Die Ursache hängt am Knopf selbst (`aria-describedby`), nicht an
+    // einem beliebigen Textfund auf der Seite.
     const explanation = document.getElementById(create.getAttribute('aria-describedby')!)!
-    expect(explanation).toHaveTextContent('Erst Konflikte entscheiden und Projektparameter bestätigen')
-    expect(document.querySelector('svg, .a3-ring')).toBeNull()
+    expect(explanation).toHaveTextContent(
+      'Gesperrt: 6 blockierende strittige Angaben entscheiden',
+    )
+    // Und das Gate NENNT die offenen Punkte statt sie zu zählen: die
+    // unerfüllte Voraussetzung steht mit ihrem Rückstand da.
+    const gate = create.closest('.a3-gate')!
+    expect(gate).toHaveTextContent('Keine blockierenden strittigen Angaben')
+    expect(gate).toHaveTextContent('Noch offen: 6')
+    // Kein Ring, kein erfundener Prozentsatz (DC-26, Regel 25). Der frühere
+    // `svg`-Selektor war ein Stellvertreter für „Ring": der kanonische
+    // `Button` rendert heute ein echtes Spinner-`<svg>` für seinen
+    // Ladezustand, deshalb prüft dies den Ring beim Namen — plus die
+    // Prozentangabe, die DC-26 eigentlich verbietet.
+    expect(document.querySelector('.a3-ring')).toBeNull()
+    expect(gate.textContent ?? '').not.toMatch(/\d+\s*%/)
   })
 
   it('Recap после доставки выводится из журнала, а не пишется руками (DC-31)', async () => {
@@ -586,7 +627,7 @@ describe('Сквозной сценарий продажи', () => {
     // leftover internal chapter title) is the mode-entry focus target.
     expect(screen.getByText('Kundenansicht — der Kunde sieht diesen Bildschirm'))
       .toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 1, name: 'Musterprojekt Nordfeld' }))
+    expect(screen.getByRole('heading', { level: 1, name: 'Wohnhof Lindenhain' }))
       .toHaveFocus()
     expect(screen.queryByText(/Kapitel \d+ von \d+/)).toBeNull()
     expect(screen.getByRole('button', { name: 'Beenden' })).toBeInTheDocument()

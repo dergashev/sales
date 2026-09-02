@@ -97,15 +97,28 @@ def governance_findings(root: pathlib.Path):
             if finding[0].startswith('GOV-') and finding[0] != 'GOV-CAPABILITY']
 
 
+# VR3-01 (backlog 1dedc823) added the ten project-readiness capabilities to
+# the gate's approved lifecycle set and moved the canonical WorkflowStepper's
+# second real consumer from the retired `OpportunityCard.tsx` to
+# `ProjectHome.tsx`. This harness proves the branch in BOTH directions on a
+# synthetic tree, so it has to carry the same manifest the gate expects —
+# governance requires the two to move atomically.
+VR3_CAPABILITY_IDS = [
+    'semantic-status', 'authority-trace', 'metric-readout', 'processing-job',
+    'document-row', 'prerequisite-state', 'action-gate', 'project-readiness',
+    'conflict-resolver', 'question-queue',
+]
 VO_T4_IDS = [
     'canvas', 'paper', 'stage', 'stage-deep', 'media-frame',
     'workflow-stepper', 'legacy-workflow-stepper', 'date-field', 'stepper',
     'composition-bar', 'metric-hierarchy', 'structure-type', 'warning',
     'continuity', 'direction', 'reveal', 'state', 'stagger-list',
+    *VR3_CAPABILITY_IDS,
 ]
 VO_T4_ACTIVE = {
     'canvas', 'media-frame', 'workflow-stepper', 'date-field',
     'composition-bar', 'metric-hierarchy', 'warning', 'continuity',
+    *VR3_CAPABILITY_IDS,
 }
 VO_T4_DOWNSTREAM = {
     'paper', 'stage', 'stage-deep', 'stepper', 'structure-type',
@@ -120,7 +133,7 @@ def vo_t4_manifest(*, active_consumer_path='src/Probe.tsx', expiry='2099-12-31',
             if cap_id == 'workflow-stepper':
                 consumers = [
                     {'path': 'src/components/Sidebar.tsx', 'pattern': '<WorkflowStepper'},
-                    {'path': 'src/screens/OpportunityCard.tsx', 'pattern': '<WorkflowStepper'},
+                    {'path': 'src/screens/ProjectHome.tsx', 'pattern': '<WorkflowStepper'},
                 ]
             else:
                 consumers = [{'path': active_consumer_path, 'pattern': 'ACTIVE'}]
@@ -163,7 +176,7 @@ def run_vo_t4_capability_cases() -> list[str]:
                 'src/Probe.tsx': 'export const Probe = "ACTIVE"\n',
                 'src/design-system/WorkflowStepper.tsx': 'export function WorkflowStepper() {}\n',
                 'src/components/Sidebar.tsx': "import { WorkflowStepper } from '../design-system/WorkflowStepper'\nexport const Sidebar = <WorkflowStepper />\n",
-                'src/screens/OpportunityCard.tsx': "import { WorkflowStepper } from '../design-system/WorkflowStepper'\nexport const OpportunityCard = <WorkflowStepper />\n",
+                'src/screens/ProjectHome.tsx': "import { WorkflowStepper } from '../design-system/WorkflowStepper'\nexport const ProjectHome = <WorkflowStepper />\n",
                 'src/components/designSystem.tsx': 'export const DesignSystem = {}\n',
                 'src/design-system/registry.tsx': 'export const Registry = "ACTIVE"\n',
             }

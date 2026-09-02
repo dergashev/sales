@@ -40,6 +40,12 @@ import { DocumentAnalysis } from '../components/DocumentAnalysis'
 import { DateField, Stepper } from '../components/controls'
 import { optionImage } from '../assets/option-images'
 import { MediaFrame } from './MediaFrame'
+import { SemanticStatus } from './SemanticStatus'
+import { AuthorityTrace, MetricReadout } from './AuthorityTrace'
+import { DocumentRow, ProcessingJob } from './ProcessingJob'
+import { ActionGate, PrerequisiteState, ProjectReadiness } from './ActionGate'
+import { ConflictResolver } from './ConflictResolver'
+import { QuestionItem, QuestionQueue } from './QuestionQueue'
 import { CompositionBar, type CompositionSegment } from './CompositionBar'
 import { WorkflowStepper, type WorkflowStep } from './WorkflowStepper'
 import { useSemanticMotion } from './motion'
@@ -977,6 +983,222 @@ export const COMPONENT_REGISTRY: Specimen[] = [
         </div>
       )
     },
+  },
+  // ── VR3-01 · project readiness family ─────────────────────────────────
+  // Ten canonical capabilities declared by VR3-01 (backlog 1dedc823) for the
+  // project half of the journey. Each is DECLARED here once and CONSUMED by
+  // `src/screens/ProjectHome.tsx`; the manifest at
+  // `design-system/capability-governance.json` records that adoption, and
+  // GOV-CAPABILITY refuses a registry-only declaration.
+  {
+    id: 'vr3-semantic-status', groupId: 'domain', title: 'SemanticStatus',
+    contractId: 'VR3 · SemanticStatus', requirements: ['STATE-003', 'R-08'],
+    composedContracts: [], interactionStates: ['default'], dataStates: STATIC_LAYOUT_STATES,
+    blockedVariants: [], maturity: 'alpha',
+    evidence: 'Every tone renders a non-colour glyph AND a word; error is reserved for something that actually failed, never for a question.',
+    render: () => (
+      <div className="grid gap-2">
+        <SemanticStatus tone="neutral" label="Nicht gestartet" />
+        <SemanticStatus tone="progress" label="Läuft" />
+        <SemanticStatus tone="ok" label="Verarbeitet" />
+        <SemanticStatus tone="attention" label="Geringe Erkennung" reason="Seite 3 schwer lesbar" />
+        <SemanticStatus tone="error" label="Fehlgeschlagen" />
+        <SemanticStatus tone="stale" label="Erneut prüfen" />
+        <SemanticStatus tone="unknown" label="Unbekannt" />
+      </div>
+    ),
+  },
+  {
+    id: 'vr3-authority-trace', groupId: 'domain', title: 'AuthorityTrace',
+    contractId: 'VR3 · AuthorityTrace', requirements: ['DC-1', 'M-1', 'STATE-003'],
+    composedContracts: ['SemanticStatus'], interactionStates: ['default'],
+    dataStates: STATIC_LAYOUT_STATES, blockedVariants: [], maturity: 'alpha',
+    evidence: 'The value and its authority are ONE element: nothing can render the number without its origin, and newer evidence marks a confirmed value stale instead of replacing it.',
+    render: () => (
+      <div className="grid gap-4">
+        <AuthorityTrace
+          authority="confirmed"
+          evidence={{ label: '22_B_Wohnflaechenberechnung_V2.pdf', version: 'V2', issuedAt: '2026-04-27' }}
+          confirmation={{ actor: 'sales-user', at: '2026-05-02' }}
+          layout="stacked"
+        >
+          <span className="numeric">3.410 m²</span>
+        </AuthorityTrace>
+        <AuthorityTrace
+          authority="confirmed"
+          freshness={{ staleReason: 'Neuere Planversion liegt vor — erneut prüfen.' }}
+          layout="stacked"
+        >
+          <span className="numeric">19.710 m²</span>
+        </AuthorityTrace>
+      </div>
+    ),
+  },
+  {
+    id: 'vr3-metric-readout', groupId: 'domain', title: 'MetricReadout',
+    contractId: 'VR3 · MetricReadout', requirements: ['DC-38', 'R-24', 'LOCALE-004'],
+    composedContracts: ['SemanticStatus'], interactionStates: ['default'],
+    dataStates: STATIC_LAYOUT_STATES, blockedVariants: [], maturity: 'alpha',
+    evidence: 'The unit is a separate element at a smaller size on the same baseline, never concatenated into the value string.',
+    render: () => (
+      <dl className="grid gap-4">
+        <MetricReadout label="BGF R+S" value="19.470" unit="m²" variant="emphasis" authority="derived" />
+        <MetricReadout label="Gebäude" value="3" variant="compact" />
+      </dl>
+    ),
+  },
+  {
+    id: 'vr3-processing-job', groupId: 'domain', title: 'ProcessingJob',
+    contractId: 'VR3 · ProcessingJob', requirements: ['DC-10', 'R-25'],
+    composedContracts: ['SemanticStatus', 'DocumentRow'], interactionStates: ['default', 'busy'],
+    dataStates: ALL_DATA_STATES, blockedVariants: [], maturity: 'alpha',
+    evidence: 'Per-file truth with the real denominator: no page spinner stands in for the job story and no percentage is estimated.',
+    render: () => (
+      <ProcessingJob
+        state="PARTIAL_FAILURE" processedCount={27} totalCount={36} progressPercent={75}
+        activeFileName="04_Flaechenliste_Gesamt_FINAL.xlsx.pdf" activePhaseLabel="Wird gegengeprüft"
+        filterLegend="Dateien filtern"
+      >
+        <DocumentRow
+          file="24_C_Grundriss_UG_V1_SCAN.pdf" typeLabel="Grundriss" versionLabel="V1"
+          associationLabel="Gebäude Stadthaus" state="FAILED" stateLabel="Fehlgeschlagen"
+          stateReason="sehr geringe Erkennung · beschnittener Scan" progress={1}
+        />
+      </ProcessingJob>
+    ),
+  },
+  {
+    id: 'vr3-document-row', groupId: 'domain', title: 'DocumentRow',
+    contractId: 'VR3 · DocumentRow', requirements: ['DC-10', 'R-04', 'KEY-003'],
+    composedContracts: ['SemanticStatus'], interactionStates: ['default', 'expanded'],
+    dataStates: ALL_DATA_STATES, blockedVariants: [], maturity: 'alpha',
+    evidence: 'A document is a workflow entity: filename and state are always both present, and the accessible name of the state names the file.',
+    render: () => (
+      <ul className="a3-pjob-rows">
+        <DocumentRow
+          file="06_A_Grundriss_EG_REV-B.pdf" typeLabel="Grundriss" versionLabel="REV-B"
+          associationLabel="Gebäude Kontorhaus" state="PROCESSED" stateLabel="Verarbeitet"
+          progress={1} lineage="ersetzt 05_A_Grundriss_EG_REV-A.pdf"
+        />
+        <DocumentRow
+          file="13_A_Grundriss_EG_REV-B_KOPIE.pdf" typeLabel="Grundriss · Doppel" versionLabel="REV-B"
+          associationLabel="Gebäude Kontorhaus" state="WARNING" stateLabel="Hinweis"
+          note="Inhaltsgleiches Doppel unter anderem Dateinamen" progress={1}
+        />
+      </ul>
+    ),
+  },
+  {
+    id: 'vr3-prerequisite-state', groupId: 'domain', title: 'PrerequisiteState',
+    contractId: 'VR3 · PrerequisiteState', requirements: ['STATE-004', 'DC-24', 'DC-27'],
+    composedContracts: ['Button'], interactionStates: ['default'],
+    dataStates: STATIC_LAYOUT_STATES, blockedVariants: [], maturity: 'alpha',
+    evidence: 'Before the prerequisite action has produced anything, the downstream result anatomy is NOT MOUNTED — the absence is named instead of being rendered as zeros.',
+    render: () => (
+      <PrerequisiteState
+        eyebrow="Dokumentation vorhanden · Analyse nicht gestartet"
+        heading="Wohnhof Lindenhain"
+        explanation="Die 8 Projektdokumente liegen bereit."
+        absenceTitle="Noch keine Analyseergebnisse"
+        absenceDetail="Werte, strittige Angaben und Fragen entstehen erst, wenn die Analyse Belege erzeugt hat."
+        action={<Button variant="primary" onClick={() => {}}>Dokumentanalyse starten</Button>}
+      />
+    ),
+  },
+  {
+    id: 'vr3-action-gate', groupId: 'domain', title: 'ActionGate',
+    contractId: 'VR3 · ActionGate', requirements: ['R-12', 'GATE-001'],
+    composedContracts: ['Button', 'SemanticStatus'], interactionStates: ['default', 'locked', 'busy', 'error'],
+    dataStates: ACTION_STATES, blockedVariants: [], maturity: 'alpha',
+    evidence: 'A workflow gate states its status, its unmet prerequisites, the route that resolves them and the available alternative. A disabled control alone never stands for a gate (rule 12).',
+    render: () => (
+      <ActionGate
+        status="locked"
+        reason="Gesperrt: 6 blockierende strittige Angaben entscheiden."
+        prerequisites={[
+          { id: 'analysis', label: 'Dokumentanalyse abgeschlossen', met: true },
+          { id: 'conflicts', label: 'Keine blockierenden strittigen Angaben', met: false, detail: 'Noch offen: 6' },
+        ]}
+        route={{ label: 'Zu den strittigen Angaben', onSelect: () => {} }}
+      >
+        <Button variant="primary" disabled disabledReason="Gesperrt: 6 blockierende strittige Angaben entscheiden." onClick={() => {}}>
+          Option anlegen
+        </Button>
+      </ActionGate>
+    ),
+  },
+  {
+    id: 'vr3-project-readiness', groupId: 'domain', title: 'ProjectReadiness',
+    contractId: 'VR3 · ProjectReadiness', requirements: ['DC-27', 'DC-38'],
+    composedContracts: ['ActionGate', 'Button'], interactionStates: ['default'],
+    dataStates: STATIC_LAYOUT_STATES, blockedVariants: [], maturity: 'alpha',
+    evidence: 'Readiness is derived from states, never from an empty array: "no conflicts recorded" and "conflicts not yet computed" stay different facts.',
+    render: () => (
+      <ProjectReadiness
+        eyebrow="Projekt bereit"
+        heading="Alle blockierenden strittigen Angaben sind entschieden."
+        rows={[
+          { id: 'blocking', label: 'Blockierende strittige Angaben', value: 0 },
+          { id: 'metrics', label: 'Erforderliche Angaben', value: 'Vollständig' },
+        ]}
+        action={<Button variant="primary" onClick={() => {}}>Option anlegen</Button>}
+      />
+    ),
+  },
+  {
+    id: 'vr3-conflict-resolver', groupId: 'domain', title: 'ConflictResolver',
+    contractId: 'VR3 · ConflictResolver', requirements: ['M-1', 'M-4', 'STATE-003'],
+    composedContracts: ['AuthorityTrace', 'SemanticStatus', 'Button'],
+    interactionStates: ['default', 'selected', 'resolved'], dataStates: ALL_DATA_STATES,
+    blockedVariants: [], maturity: 'alpha',
+    evidence: 'A comparison, not a red card: each competing value stays inside the source that produced it, the recommendation is labelled as a recommendation, and the rejected value stays visible historically.',
+    render: () => (
+      <ConflictResolver
+        conceptLabel="Wohnungsanzahl Gebäude B" scopeLabel="Gebäude Hofhaus" blocking
+        impact="Die Wohnungsanzahl bestimmt Mengen für Wohnungsausbau, Sanitär und Elektro."
+        sources={[
+          {
+            id: 'a', value: '48', authority: 'sourceEvidenced',
+            authorityLabel: 'aktuelle Beschreibung · widersprüchliches Feld',
+            documentLabel: '23_B_Baubeschreibung_FINAL.pdf', version: 'FINAL', issuedAt: '2026-04-29',
+          },
+          {
+            id: 'b', value: '46', authority: 'sourceEvidenced', recommended: true,
+            authorityLabel: 'aktuelle koordinierte Liste',
+            documentLabel: '22_B_Wohnflaechenberechnung_V2.pdf', version: 'V2', issuedAt: '2026-04-27',
+          },
+        ]}
+        recommendation="46 übernehmen"
+        choiceLegend="Welcher Wert gilt?"
+        choices={[
+          { id: 'a', label: '48 übernehmen', detail: 'Ältere Quelle', selected: false, onSelect: () => {} },
+          { id: 'b', label: '46 übernehmen', detail: 'Systemvorschlag', selected: true, onSelect: () => {} },
+        ]}
+        confirmAction={<Button variant="primary" onClick={() => {}}>Entscheidung bestätigen</Button>}
+      />
+    ),
+  },
+  {
+    id: 'vr3-question-queue', groupId: 'domain', title: 'QuestionQueue',
+    contractId: 'VR3 · QuestionQueue', requirements: ['DC-9', 'STATE-003'],
+    composedContracts: ['SemanticStatus', 'Button'], interactionStates: ['default', 'answered'],
+    dataStates: ALL_DATA_STATES, blockedVariants: [], maturity: 'alpha',
+    evidence: 'No universal blocking rule: each item states whether it blocks, and a permitted assumption says what will carry into Final Validation. `error` is never a question tone.',
+    render: () => (
+      <QuestionQueue
+        heading="Fragen, keine Fehler"
+        summary="7 offene Fragen · 0 davon blockieren · 5 mit zulässiger Annahme."
+      >
+        <QuestionItem
+          kind="question" status="open" blocking={false}
+          question="Umfasst Gebäude A den Mieterausbau oder nur Rohbau und Kern?"
+          scopeLabel="Gebäude Kontorhaus"
+          matters="Wesentlicher Umfangseffekt auf KG 300 und KG 400."
+          evidenceContext="Nachtrag zur Kundenvorgabe unvollständig."
+          assumption="Annahme: Rohbau und Kern · Kundenbestätigung angefordert."
+        />
+      </QuestionQueue>
+    ),
   },
 ]
 

@@ -6031,6 +6031,13 @@ class Verifier:
             'workflow-stepper', 'legacy-workflow-stepper', 'date-field',
             'stepper', 'composition-bar', 'metric-hierarchy', 'structure-type',
             'warning', 'continuity', 'direction', 'reveal', 'state', 'stagger-list',
+            # VR3-01 (backlog 1dedc823): the project-readiness family. Ten
+            # capabilities declared in src/design-system/registry.tsx and
+            # consumed by src/screens/ProjectHome.tsx.
+            'semantic-status', 'authority-trace', 'metric-readout',
+            'processing-job', 'document-row', 'prerequisite-state',
+            'action-gate', 'project-readiness', 'conflict-resolver',
+            'question-queue',
         }
         by_id = {}
         for entry in capabilities:
@@ -6111,13 +6118,17 @@ class Verifier:
             self.fail('GOV-CAPABILITY', 'src/design-system/WorkflowStepper.tsx',
                       'canonical WorkflowStepper owner is absent')
         consumers = []
-        for source_rel in ('src/components/Sidebar.tsx', 'src/screens/OpportunityCard.tsx'):
+        # VR3-01: `OpportunityCard.tsx` was retired with the four-stage
+        # project card; the second real consumer is now the project shell.
+        # This tuple is the explicit manifest the module docstring requires
+        # to move atomically with such a rename.
+        for source_rel in ('src/components/Sidebar.tsx', 'src/screens/ProjectHome.tsx'):
             source = self.read(source_rel) or ''
             if "from '../design-system/WorkflowStepper'" in source and '<WorkflowStepper' in source:
                 consumers.append(source_rel)
         if len(consumers) != 2:
             self.fail('GOV-CAPABILITY', 'src/design-system/WorkflowStepper.tsx',
-                      'canonical WorkflowStepper must have the two real VO-T4 consumers (Sidebar and OpportunityCard), not registry-only adoption')
+                      'canonical WorkflowStepper must have the two real consumers (Sidebar and ProjectHome), not registry-only adoption')
         for source_rel, source in self.files('*.tsx'):
             if source_rel == 'src/design-system/WorkflowStepper.tsx':
                 continue

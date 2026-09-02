@@ -64,11 +64,17 @@ IDENTIFIER_RX = re.compile(r'[a-zäöüß][A-ZÄÖÜ]')
 LOCALE_ASCII_ALLOWLIST = frozenset({
     'aktuell', 'aktuelle', 'aktuellem', 'aktuellen', 'aktueller', 'aktuelles',
     'neu', 'neue', 'neuen', 'neuer', 'neues',
+    # VR3-01: routine comparative forms of the already-verified 'neu'.
+    'neuere', 'neuerem', 'neueren', 'neuerer', 'neueres',
     'manuell',
+    # VR3-01: routine inflected forms of the already-verified 'manuell'.
+    'manuelle', 'manuellem', 'manuellen', 'manueller', 'manuelles',
     'dauer', 'dauerhaft', 'dauergrundlage',
     'feuer', 'feuerwiderstand',
     'mauer', 'mauerwerk', 'verblendmauerwerk',
     'quelle', 'quellen', 'quellenreferenzen', 'quellenwert',
+    # VR3-01: same compound family as 'quellenreferenzen'/'quellenwert'.
+    'quellenzuordnung',
     'visuelt',  # Schriftname (Eigenname), keine Transliteration
     'zuerst',
 })

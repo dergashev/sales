@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 import { Decimal } from "decimal.js";
-import opportunities from "../fixtures/opportunities.json";
 import {
   configForOption,
   eligibleClientOptions,
@@ -9,6 +8,7 @@ import {
   useStore,
   type OptionConfig,
 } from "../state/store";
+import { demoProject } from "../state/projectAnalysis";
 import {
   NNBSP,
   present,
@@ -69,7 +69,11 @@ export function S4Vergleich() {
   // decision headline — the same `opportunities.json` lookup Sidebar.tsx
   // and PresentationShell.tsx already use for `s.opportunityId`, not a new
   // data source.
-  const project = opportunities.items.find((o) => o.id === s.opportunityId);
+// VR3-01: the project's display name now comes from the two-fixture
+// project register (`state/projectAnalysis`). The eight-row
+// `fixtures/opportunities.json` this used to read is gone with the
+// portfolio it described.
+  const project = demoProject(s.opportunityId);
   // REDESIGN R3: only client-eligible Options (the PD-3 export-readiness
   // signal — `eligibleClientOptions`) may become a column/selectable Option
   // in Kundenansicht. Vorbereitung keeps seeing every created Option,

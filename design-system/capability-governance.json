@@ -1,24 +1,282 @@
 {
   "version": 1,
-  "reviewedAt": "2026-08-28",
+  "reviewedAt": "2026-09-03",
   "capabilities": [
-    { "id": "canvas", "disposition": "ACTIVE", "productConsumers": [{ "path": "src/App.tsx", "pattern": "a3-app-shell" }] },
-    { "id": "paper", "disposition": "APPROVED_DOWNSTREAM", "owners": ["VO-T3", "VO-T5"], "expiresAt": "2026-12-31" },
-    { "id": "stage", "disposition": "APPROVED_DOWNSTREAM", "owners": ["VO-T2", "VO-T3", "VO-T5"], "expiresAt": "2026-12-31" },
-    { "id": "stage-deep", "disposition": "APPROVED_DOWNSTREAM", "owners": ["VO-T2", "VO-T3"], "expiresAt": "2026-12-31" },
-    { "id": "media-frame", "disposition": "ACTIVE", "productConsumers": [{ "path": "src/screens/OpportunityCard.tsx", "pattern": "<MediaFrame" }] },
-    { "id": "workflow-stepper", "disposition": "ACTIVE", "productConsumers": [{ "path": "src/components/Sidebar.tsx", "pattern": "<WorkflowStepper" }, { "path": "src/screens/OpportunityCard.tsx", "pattern": "<WorkflowStepper" }] },
-    { "id": "legacy-workflow-stepper", "disposition": "RETIRED" },
-    { "id": "date-field", "disposition": "ACTIVE", "productConsumers": [{ "path": "src/screens/S3Konfigurator.tsx", "pattern": "<DateField" }] },
-    { "id": "stepper", "disposition": "APPROVED_DOWNSTREAM", "owners": ["VO-T3"], "expiresAt": "2026-12-31" },
-    { "id": "composition-bar", "disposition": "ACTIVE", "productConsumers": [{ "path": "src/screens/OpportunityCard.tsx", "pattern": "<CompositionBar" }, { "path": "src/screens/S4Vergleich.tsx", "pattern": "<CompositionBar" }] },
-    { "id": "metric-hierarchy", "disposition": "ACTIVE", "productConsumers": [{ "path": "src/screens/OpportunityCard.tsx", "pattern": "<Metric" }] },
-    { "id": "structure-type", "disposition": "APPROVED_DOWNSTREAM", "owners": ["VO-T2", "VO-T3", "VO-T5"], "expiresAt": "2026-12-31" },
-    { "id": "warning", "disposition": "ACTIVE", "productConsumers": [{ "path": "src/components/ClientOutputGateDialog.tsx", "pattern": "a3-warnc" }] },
-    { "id": "continuity", "disposition": "ACTIVE", "productConsumers": [{ "path": "src/screens/OpportunityList.tsx", "pattern": "startContinuityTransition" }] },
-    { "id": "direction", "disposition": "APPROVED_DOWNSTREAM", "owners": ["VO-T3"], "expiresAt": "2026-12-31" },
-    { "id": "reveal", "disposition": "APPROVED_DOWNSTREAM", "owners": ["VO-T2", "VO-T3"], "expiresAt": "2026-12-31" },
-    { "id": "state", "disposition": "APPROVED_DOWNSTREAM", "owners": ["VO-T2", "VO-T3"], "expiresAt": "2026-12-31" },
-    { "id": "stagger-list", "disposition": "RETIRED" }
+    {
+      "id": "canvas",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/App.tsx",
+          "pattern": "a3-app-shell"
+        }
+      ]
+    },
+    {
+      "id": "paper",
+      "disposition": "APPROVED_DOWNSTREAM",
+      "owners": [
+        "VO-T3",
+        "VO-T5"
+      ],
+      "expiresAt": "2026-12-31"
+    },
+    {
+      "id": "stage",
+      "disposition": "APPROVED_DOWNSTREAM",
+      "owners": [
+        "VO-T2",
+        "VO-T3",
+        "VO-T5"
+      ],
+      "expiresAt": "2026-12-31"
+    },
+    {
+      "id": "stage-deep",
+      "disposition": "APPROVED_DOWNSTREAM",
+      "owners": [
+        "VO-T2",
+        "VO-T3"
+      ],
+      "expiresAt": "2026-12-31"
+    },
+    {
+      "id": "media-frame",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/ProjectHome.tsx",
+          "pattern": "<MediaFrame"
+        },
+        {
+          "path": "src/screens/OpportunityList.tsx",
+          "pattern": "<MediaFrame"
+        }
+      ]
+    },
+    {
+      "id": "workflow-stepper",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/components/Sidebar.tsx",
+          "pattern": "<WorkflowStepper"
+        },
+        {
+          "path": "src/screens/ProjectHome.tsx",
+          "pattern": "<WorkflowStepper"
+        }
+      ]
+    },
+    {
+      "id": "legacy-workflow-stepper",
+      "disposition": "RETIRED"
+    },
+    {
+      "id": "date-field",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/S3Konfigurator.tsx",
+          "pattern": "<DateField"
+        }
+      ]
+    },
+    {
+      "id": "stepper",
+      "disposition": "APPROVED_DOWNSTREAM",
+      "owners": [
+        "VO-T3"
+      ],
+      "expiresAt": "2026-12-31"
+    },
+    {
+      "id": "composition-bar",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/ProjectOptions.tsx",
+          "pattern": "<CompositionBar"
+        },
+        {
+          "path": "src/screens/S4Vergleich.tsx",
+          "pattern": "<CompositionBar"
+        }
+      ]
+    },
+    {
+      "id": "metric-hierarchy",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/S4Vergleich.tsx",
+          "pattern": "text-metric-section"
+        },
+        {
+          "path": "src/screens/ProjectHome.tsx",
+          "pattern": "<MetricReadout"
+        }
+      ]
+    },
+    {
+      "id": "structure-type",
+      "disposition": "APPROVED_DOWNSTREAM",
+      "owners": [
+        "VO-T2",
+        "VO-T3",
+        "VO-T5"
+      ],
+      "expiresAt": "2026-12-31"
+    },
+    {
+      "id": "warning",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/components/ClientOutputGateDialog.tsx",
+          "pattern": "a3-warnc"
+        }
+      ]
+    },
+    {
+      "id": "continuity",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/OpportunityList.tsx",
+          "pattern": "startContinuityTransition"
+        }
+      ]
+    },
+    {
+      "id": "direction",
+      "disposition": "APPROVED_DOWNSTREAM",
+      "owners": [
+        "VO-T3"
+      ],
+      "expiresAt": "2026-12-31"
+    },
+    {
+      "id": "reveal",
+      "disposition": "APPROVED_DOWNSTREAM",
+      "owners": [
+        "VO-T2",
+        "VO-T3"
+      ],
+      "expiresAt": "2026-12-31"
+    },
+    {
+      "id": "state",
+      "disposition": "APPROVED_DOWNSTREAM",
+      "owners": [
+        "VO-T2",
+        "VO-T3"
+      ],
+      "expiresAt": "2026-12-31"
+    },
+    {
+      "id": "stagger-list",
+      "disposition": "RETIRED"
+    },
+    {
+      "id": "semantic-status",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/ProjectHome.tsx",
+          "pattern": "<SemanticStatus"
+        }
+      ]
+    },
+    {
+      "id": "authority-trace",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/ProjectHome.tsx",
+          "pattern": "<AuthorityTrace"
+        }
+      ]
+    },
+    {
+      "id": "metric-readout",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/ProjectHome.tsx",
+          "pattern": "<MetricReadout"
+        }
+      ]
+    },
+    {
+      "id": "processing-job",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/ProjectHome.tsx",
+          "pattern": "<ProcessingJob"
+        }
+      ]
+    },
+    {
+      "id": "document-row",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/ProjectHome.tsx",
+          "pattern": "<DocumentRow"
+        }
+      ]
+    },
+    {
+      "id": "prerequisite-state",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/ProjectHome.tsx",
+          "pattern": "<PrerequisiteState"
+        }
+      ]
+    },
+    {
+      "id": "action-gate",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/ProjectHome.tsx",
+          "pattern": "<ActionGate"
+        }
+      ]
+    },
+    {
+      "id": "project-readiness",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/ProjectHome.tsx",
+          "pattern": "<ProjectReadiness"
+        }
+      ]
+    },
+    {
+      "id": "conflict-resolver",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/ProjectHome.tsx",
+          "pattern": "<ConflictResolver"
+        }
+      ]
+    },
+    {
+      "id": "question-queue",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/ProjectHome.tsx",
+          "pattern": "<QuestionQueue"
+        }
+      ]
+    }
   ]
 }

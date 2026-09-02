@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { pipelineViewForBuildingGate, useStore } from './state/store'
-import opportunities from './fixtures/opportunities.json'
 import { useT } from './i18n'
 import all3Logo from '../design-system/All3Logo.png'
 import { SegmentedControl } from './components/controls'
@@ -15,8 +14,9 @@ import { S4Vergleich } from './screens/S4Vergleich'
 import { S5Export } from './screens/S5Export'
 import { S6Einstellungen } from './screens/S6Einstellungen'
 import { OpportunityList } from './screens/OpportunityList'
-import { OpportunityCard } from './screens/OpportunityCard'
+import { ProjectHome } from './screens/ProjectHome'
 import { BuildingScope, BuildingScopeReadiness } from './screens/BuildingScope'
+import { demoProject } from './state/projectAnalysis'
 // GOV-QA-BOUNDARY: App.tsx is the only file permitted to import Grundlagen —
 // it renders the registry Gallery, and the registry is the ONLY specimen
 // declaration (D-28). Reinstates the 'grundlagen' PipelineView, which
@@ -94,7 +94,23 @@ export function App() {
   // which is `null` outside `level: 'option'` regardless of how many times
   // the underlying id changes underneath.
   const optionLevelId = s.level === 'option' ? s.activeOptionId : null
+  // VR3-01: the same narrowing as `optionLevelId`, for the project stages.
+  const projectStageKey = s.level === 'opportunity' ? s.projectStage : null
   useEffect(() => {
+    // VR3-01: switching the Understanding SECTION is deliberately not in
+    // this effect's dependencies. A tab is a section of one document, not a
+    // new document: WAI-ARIA keeps focus on the tab so arrow-key roving
+    // works, and moving it to the page heading on every arrow press made
+    // the tablist unusable (the second arrow press never reached a tab).
+    //
+    // The Option-created stage owns its own focus destination — its
+    // component scrolls and focuses the newly created Option row (AUD-03
+    // AC-3). A reset here would take the focus straight back to the page
+    // heading; instrumenting `HTMLElement.focus` showed exactly that,
+    // ["LI.outline-none", "H1.a3-readiness-heading"], in that order. Every
+    // OTHER project-stage change is a genuine document transition and does
+    // reset both.
+    if (s.level === 'opportunity' && s.projectStage === 'createOption') return
     // jsdom не реализует scrollTo на элементах — свойство надёжнее метода.
     if (mainRef.current) mainRef.current.scrollTop = 0
     // Прокрутка возвращает НАЧАЛО документа глазам; клавиатуре и
@@ -108,8 +124,18 @@ export function App() {
       if (!heading.hasAttribute('tabindex')) heading.tabIndex = -1
       heading.focus({ preventScroll: true })
     }
+    // VR3-01: the PROJECT level has its own stages now (documents →
+    // understanding → Option created) and its own sections within
+    // Understanding. Each is a genuine document transition — the heading,
+    // the primary action and the whole result hierarchy change — so scroll
+    // and focus must return to the new heading exactly as they do for an
+    // Option-level chapter change. Without these two dependencies, a user
+    // who resolves the last blocking conflict lands on the readiness
+    // surface with `activeElement` still on the conflict they just closed
+    // and the viewport still deep inside the previous page.
   }, [renderedView, s.openConfiguratorStep, optionLevelId, s.level, s.mode,
-    s.configurationModeChosen, s.configurationModeEditing])
+    s.configurationModeChosen, s.configurationModeEditing,
+    projectStageKey])
 
   // Defensive fail-closed projection: normal store transitions leave client
   // mode before changing level, but corrupted/external state still must not
@@ -129,8 +155,15 @@ export function App() {
   // Корень продукта — список Opportunities: ни панелей, ни цены. Цена не
   // может быть показана до выбора Option, а Option появляется только после
   // карточки. Три зоны существуют внутри конвейера, а не поверх всего.
-  // Список и карточка живут БЕЗ панелей: три зоны существуют внутри
-  // конвейера, то есть внутри Option, а не поверх всего продукта.
+  //
+  // VR3-01: the PROJECT level (`ProjectHome`) now carries its own workflow
+  // spine on the left — the one journey has to survive across the Project
+  // and the Option context — but still NO commercial rail. The approved
+  // target frames render one because the prototype they came from mounted
+  // it unconditionally; a total belongs to an Option, no Option exists at
+  // this level, and the fixture invariant is explicit that no screen owns
+  // an independent illustrative total. Showing a price here would be the
+  // fabricated number this ticket exists to remove.
   if (s.level !== 'option') {
     return (
       <div className="a3-app-shell flex h-screen flex-col">
@@ -139,7 +172,7 @@ export function App() {
         <AppHeader />
         {!praesentation && <ClientOutputGateDialog returnFocusTo={modeRef} />}
         <main ref={mainRef} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto bg-surface-default outline-none">
-          {s.level === 'liste' ? <OpportunityList /> : <OpportunityCard />}
+          {s.level === 'liste' ? <OpportunityList /> : <ProjectHome />}
         </main>
         <UndoToast />
       </div>
@@ -257,7 +290,12 @@ function AppHeader() {
   // resolved (defensive: state pointing at an id the fixture no longer has),
   // fall back to the id rather than rendering nothing, but that path is not
   // reachable in the shipped fixtures.
-  const currentOpportunity = opportunities.items.find((o) => o.id === s.opportunityId)
+  // VR3-01: resolved from the two-fixture project register. The previous
+  // lookup pointed at `opportunities.json`, whose eight rows this ticket
+  // replaced — leaving it in place would have made the F05 fallback the
+  // NORMAL path and printed `DEMO-HAPPY-01` in the breadcrumb of every
+  // pipeline screen, which is exactly the defect F05 removed.
+  const currentOpportunity = demoProject(s.opportunityId)
   const currentOption = s.options.find((o) => o.id === s.activeOptionId)
   // VR2-09 cross-route continuity: the breadcrumb's upward steps (Option →
   // Project, Project → portfolio) are the reverse of the CONTINUITY edges

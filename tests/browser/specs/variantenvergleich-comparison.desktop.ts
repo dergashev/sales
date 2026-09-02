@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures'
-import { BUILDING_SCOPE, COMPARISON, NAV, OPPORTUNITY } from '../anchors'
+import { BUILDING_SCOPE, COMPARISON, DEMO_PROJECT_NAME, NAV, OPPORTUNITY } from '../anchors'
 
 /**
  * Variantenvergleich sticky-column occlusion regression.
@@ -69,10 +69,17 @@ for (const { label: viewportLabel, viewport } of VIEWPORTS) {
       test('every option total stays visible, unoccluded and value-correct across both nav controls and a wheel gesture', async ({ page }) => {
         await page.goto('/')
 
-        // ── Opportunity list -> resolve conflict -> confirm project params ─
-        await page.getByRole('button', { name: OPPORTUNITY.openCta('Musterprojekt Nordfeld') }).click()
-        await page.getByRole('button', { name: OPPORTUNITY.resolveWflDocument }).click()
-        await page.getByRole('button', { name: OPPORTUNITY.confirmProjectParams, exact: true }).click()
+        // ── Project list -> analysis -> readiness gate ───────────────
+        //    VR3-01: the way to an open readiness gate is the journey.
+        //    This spec creates several Options from that gate, so it walks
+        //    the project half once and then stays on the project level.
+        await page.getByRole('button', {
+          name: OPPORTUNITY.openCta(DEMO_PROJECT_NAME),
+        }).click()
+        await page.getByRole('button', { name: OPPORTUNITY.startAnalysis }).click()
+        await expect(
+          page.getByRole('button', { name: OPPORTUNITY.createOption, exact: true }),
+        ).toBeVisible({ timeout: 30_000 })
 
         // ── Create OPTION_COUNT real, independently-computed Options.
         //    Each gets a T0-fallback-derived config/projection immediately

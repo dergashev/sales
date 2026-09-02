@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
-import { confirmBuildingReviewSections } from '../../test/offer-option'
+import { confirmBuildingReviewSections, enterOptionWorkspace } from '../../test/offer-option'
 import { __resetStoreForTests, activeBuilding, useStore } from '../../state/store'
 
 /**
@@ -18,11 +18,7 @@ const nav = (name: RegExp) => screen.getAllByRole('button', { name })[0]!
 
 async function openScopeBoundaries(user: ReturnType<typeof userEvent.setup>) {
   render(<App />)
-  await user.click(await screen.findByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
-  await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
-  await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
-  await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
-  await user.click(screen.getByRole('button', { name: 'Öffnen' }))
+  enterOptionWorkspace()
   await confirmBuildingReviewSections(user)
   await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
   await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
@@ -148,11 +144,7 @@ describe('Leistungsabgrenzung / Scope Boundaries (mandatory-core contract, "Rebu
   it('SHARED-Modus mit zwei Gebäuden: Energiestandard gilt komplexweit', async () => {
     const user = userEvent.setup()
     render(<App />)
-    await user.click(await screen.findByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
-    await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
-    await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
-    await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
-    await user.click(screen.getByRole('button', { name: 'Öffnen' }))
+  enterOptionWorkspace()
     act(() => useStore.getState().toggleBuildingIncluded('DEMO-B-B'))
     act(() => useStore.getState().confirmBuilding('DEMO-B-B'))
     await confirmBuildingReviewSections(user)

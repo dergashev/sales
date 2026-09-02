@@ -4,7 +4,7 @@ import { Decimal } from 'decimal.js'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
-import { confirmBuildingReviewSections, confirmWholeConfiguration } from '../../test/offer-option'
+import { confirmBuildingReviewSections, confirmWholeConfiguration, enterOptionWorkspace } from '../../test/offer-option'
 import { ConfigurationScopeTabs } from '../S3Konfigurator'
 import {
   __resetStoreForTests,
@@ -18,13 +18,12 @@ beforeEach(() => __resetStoreForTests())
 
 const nav = (name: RegExp) => screen.getAllByRole('button', { name })[0]!
 
-async function openBuildingScope(user: ReturnType<typeof userEvent.setup>) {
+// VR3-01: the retired five-click project preamble is gone, so this
+// entry point no longer drives the UI — the underscore keeps every
+// existing `await openBuildingScope(user)` call site untouched.
+async function openBuildingScope(_user: ReturnType<typeof userEvent.setup>) {
   render(<App />)
-  await user.click(await screen.findByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
-  await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
-  await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
-  await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
-  await user.click(screen.getByRole('button', { name: 'Öffnen' }))
+  enterOptionWorkspace()
 }
 
 async function openModeStep(

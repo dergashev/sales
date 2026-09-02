@@ -9,6 +9,7 @@ import { useT, useTx } from '../i18n'
 import { PrintFlow } from '../components/PrintFlow'
 import { DELIVERY_SIMULATION_MS } from '../config/ui-policy'
 import { OFFER_ARTIFACTS as ARTIFACTS } from '../config/offer-artifacts'
+import { demoProject } from '../state/projectAnalysis'
 
 /**
  * S5 Export — артефакты, скидка и отправка.
@@ -27,6 +28,9 @@ type Stage = 'compose' | 'preflight' | 'confirm' | 'gesendet' | 'zugestellt'
 
 export function S5Export() {
   const s = useStore()
+  // VR3-01: the fallback names the OPEN PROJECT. It named a retired fixture
+  // row, so an Option without a name printed the wrong project.
+  const projectName = demoProject(s.opportunityId)?.name ?? ''
   const t = useT()
   const tx = useTx()
   const printBtnRef = useRef<HTMLButtonElement>(null)
@@ -97,7 +101,7 @@ export function S5Export() {
 
   return (
     <div className="px-7 py-6">
-      <PageHeader title={`Export · ${s.options.find((o) => o.id === s.activeOptionId)?.name ?? 'Musterprojekt Nordfeld'}`} />
+      <PageHeader title={`Export · ${s.options.find((o) => o.id === s.activeOptionId)?.name ?? projectName}`} />
 
       <div className="a3-grid-host">
       <div className="a3-export-grid">
@@ -171,7 +175,7 @@ export function S5Export() {
               <div className="a3-mailrow">
                 <span className="a3-lb">{tx('Betreff')}</span>
                 <input
-                  value={`Indikatives Angebot – ${s.options.find((o) => o.id === s.activeOptionId)?.name ?? 'Musterprojekt Nordfeld'}`}
+                  value={`Indikatives Angebot – ${s.options.find((o) => o.id === s.activeOptionId)?.name ?? projectName}`}
                   readOnly
                   aria-label="Betreff"
                 />
@@ -261,7 +265,7 @@ export function S5Export() {
                   первой страницы — «собранный товар», не абстрактный счётчик. */}
               <div className="a3-paper-preview mb-3" aria-label="Monochrome Seitenvorschau A4"
                    style={{ maxWidth: 'var(--measure-form-control)' }}>
-                <b>{s.options.find((o) => o.id === s.activeOptionId)?.name ?? 'Musterprojekt Nordfeld'}</b>
+                <b>{s.options.find((o) => o.id === s.activeOptionId)?.name ?? projectName}</b>
                 <hr />
                 {tx(p.result.totalLabel)}<br />
                 <b>{p.result.total.prefix ? `${p.result.total.prefix}${NNBSP}` : ''}{p.result.total.display}{NNBSP}€</b><br /><br />{tx('Preisstand 08/2026')}<br />

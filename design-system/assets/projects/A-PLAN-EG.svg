@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" role="img" aria-labelledby="t d">
+  <title id="t">Wohnhof Lindenhain · Grundriss Erdgeschoss</title><desc id="d">Synthetic demo floor plan for the audit fixture.</desc>
+  <rect width="960" height="640" fill="#f4f1ea"/><g fill="none" stroke="#232321" stroke-width="8">
+  <path d="M130 95h650v430H130zM335 95v430M570 95v430M130 315h650"/><path d="M335 238h235M335 398h235" stroke-width="4"/>
+  <path d="M195 95v-18m80 18V77m355 18V77m80 18V77M195 525v18m80-18v18m355-18v18m80-18v18" stroke="#f45b18"/>
+  </g><g font-family="Arial,sans-serif" fill="#3d3c38"><text x="130" y="65" font-size="24" font-weight="700">MFH · EG</text><text x="130" y="580" font-size="18">DEMO / NON-PRODUCTION FIXTURE · M 1:200</text>
+  <text x="185" y="215" font-size="18">Wohnung 01</text><text x="390" y="215" font-size="18">Eingang / Kern</text><text x="630" y="215" font-size="18">Wohnung 02</text><text x="185" y="440" font-size="18">Wohnung 03</text><text x="630" y="440" font-size="18">Wohnung 04</text></g></svg>

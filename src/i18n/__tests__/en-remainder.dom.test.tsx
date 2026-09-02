@@ -129,20 +129,33 @@ describe('Остаток немецкого на английском пути (
     const seen = new Set<string>()
     germanFragments().forEach((f) => seen.add(f))
 
-    // Золотой путь: корень → карточка → конвейер → главы → сравнение.
+    // Золотой путь: корень → проект → конвейер → главы → сравнение.
     // Anchor auf «öffnen» (wie im Rest der Suite, z. B. opportunities.dom.
-    // test.tsx): seit TASK 03 ist der Kartentitel selbst ebenfalls ein
-    // fokussierbarer primaryDestination-Button mit demselben Namensanteil
-    // "Musterprojekt Nordfeld" (CARD-001) — ohne Anker matchen beide.
-    await user.click(screen.getByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
+    // test.tsx): der Kartentitel selbst ist ebenfalls ein fokussierbarer
+    // primaryDestination-Button mit demselben Namensanteil (CARD-001) —
+    // ohne Anker matchen beide.
+    // VR3-01: das saubere Demonstrationsprojekt heißt jetzt «Wohnhof
+    // Lindenhain», und der Projekt-Bildschirm ist ein Zustandsautomat —
+    // deshalb werden BEIDE Projektzustände abgetastet: vor der
+    // Dokumentanalyse (`PrerequisiteState`) und nach ihr (Projektreife mit
+    // dem Option-Gate). Das ist derselbe Umfang wie früher, als die
+    // Opportunity Card vor und nach der Konfliktlösung gemessen wurde.
+    // The accessible name is a real key now, so it is English on the EN
+    // path ("Open Wohnhof Lindenhain") — which is the whole point of this
+    // walk. Matching the project name alone keeps the query locale-neutral.
+    // The card's stretched title and its CTA both name the project (the
+    // title IS the primary destination, CARD-001). Either opens it; the
+    // CTA is the one the accessible-name walk cares about.
+    await user.click(screen.getByRole('button', { name: 'Open Wohnhof Lindenhain' }))
     germanFragments().forEach((f) => seen.add(f))
 
     act(() => {
       const s = useStore.getState()
+      s.seedProjectCheckpoint('DEMO-HAPPY-01')
       s.resolveWflConflict('customer')
       s.confirmProjectParams()
     })
-    // Sample the same gate after resolution as well: the status labels and
+    // Sample the same gate after readiness as well: the status labels and
     // whole count sentence change only in this state.
     germanFragments().forEach((f) => seen.add(f))
 

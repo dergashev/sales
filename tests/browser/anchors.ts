@@ -15,8 +15,18 @@
 
 export const DOCUMENT_TITLE = 'All3 · Indikatives Angebot'
 
-export const DEMO_PROJECT_NAME = 'Musterprojekt Nordfeld'
-export const DEMO_PROJECT_ID = 'DEMO-0001'
+/**
+ * VR3-01: the normal Project List holds exactly two demonstration projects.
+ * The clean route is the one every downstream smoke walks, because it
+ * reaches an Option in eight files with no conflict to resolve.
+ */
+export const DEMO_PROJECT_NAME = 'Wohnhof Lindenhain'
+export const DEMO_PROJECT_ID = 'DEMO-HAPPY-01'
+export const DEMO_COMPLEX_PROJECT_NAME = 'Quartier Am Güterbogen'
+export const DEMO_COMPLEX_PROJECT_ID = 'DEMO-COMPLEX-01'
+export const PROJECT_LIST_HEADING = 'Projekte'
+/** The canonical full-journey rail on the project level. */
+export const PROJECT_SPINE_LANDMARK = 'Projekt- und Optionsverlauf'
 
 export const NAV = {
   landmark: 'Navigation',
@@ -34,10 +44,15 @@ export const BREADCRUMB_LANDMARK = 'Pfad'
 
 export const OPPORTUNITY = {
   openCta: (name: string) => `${name} öffnen`,
-  resolveWflDocument: 'Dokumentwert beibehalten',
-  confirmProjectParams: 'Projektparameter bestätigen',
-  createOption: 'Opportunity Option anlegen',
+  // VR3-01 replaced the retired project card's five-control preamble
+  // (`Kundenwert übernehmen` / `Dokumentwert beibehalten` /
+  // `Projektparameter bestätigen` / `Opportunity Option anlegen`) with the
+  // real journey: start the analysis, then create the Option once the
+  // readiness gate is open. The Option gallery's own `Öffnen` survives.
+  startAnalysis: 'Dokumentanalyse starten',
+  createOption: 'Option anlegen',
   openOption: 'Öffnen',
+  readinessHeadingRegion: 'Opportunity Options',
 }
 
 export const BUILDING_SCOPE = {

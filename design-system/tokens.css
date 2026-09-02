@@ -622,6 +622,16 @@
   --color-surface-stage: var(--primitive-color-white); /* white paper + --border-contrast-2px frame + stage spacing; see components.css `.a3-surface-foundation--stage` */
   --color-surface-stage-deep: var(--primitive-color-neutral-950); /* #1F1F1F inverse — the one expressive peak (rail hero excepted) */
   --color-text-stage-deep-primary: var(--primitive-color-white);
+  /* VR3-01: DECLARED, not invented. `--color-text-stage-deep-secondary`
+     was already consumed twice by `design-system/components.css`
+     (`.a3-surface-foundation__caption/__eyebrow`, `.a3-offer-climax-
+     footnote`) while never being declared here — TOKEN-EXISTS scans
+     TypeScript/TSX only, so the two existing consumers were failing
+     SILENTLY to the browser default. VR3-01's ProcessingJob needs the
+     same second text level on the same surface, so the token is declared
+     rather than a third silent consumer being added. #DEDEDE on #1F1F1F
+     measures 12,3:1. */
+  --color-text-stage-deep-secondary: var(--primitive-color-neutral-300);
   /* ADR-R1-02: extends rule 5, adds the SECOND (and last) permitted
      #FD5E00 semantic entry alongside `--color-brand-accent`/
      `--color-text-display-accent` (R-01 whitelist, tools/verify.py).

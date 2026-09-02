@@ -3,6 +3,26 @@ import { useStore as useZustandStore } from 'zustand'
 import { Decimal } from 'decimal.js'
 import demo from '../fixtures/demo-0001.json'
 import {
+  advanceJob,
+  cancelJob,
+  demoProject,
+  initialProjectAnalyses,
+  projectBaselineSnapshot,
+  readiness,
+  recordQuestionResponse,
+  removeDocument as removeAnalysisDocument,
+  reopenConflict,
+  replaceDocument as replaceAnalysisDocument,
+  rerunJob,
+  seededCheckpoint,
+  resolveConflict as resolveAnalysisConflict,
+  retryDocument as retryAnalysisDocument,
+  startJob,
+  type ConflictChoice,
+  type ProjectAnalysis,
+  type ProjectBaselineSnapshot,
+} from './projectAnalysis'
+import {
   isClientProjection,
   modeForLevelTransition,
   pipelineViewForOutputProfile,
@@ -146,6 +166,17 @@ const D = (s: string) => new Decimal(s)
  * ревью 26, находка 9). Теперь доля приходит из каталога, извлечённая
  * построителем из спецификации.
  */
+
+/**
+ * VR3-01 — the three project-level stages of the canonical journey. They
+ * are the first three entries of the workflow spine (Dokumente →
+ * Projektverständnis → Option anlegen); everything after them belongs to
+ * an Option and is addressed by `pipelineView`.
+ */
+export type ProjectStage = 'documents' | 'understanding' | 'createOption'
+
+/** Sections of Project Understanding. Questions are not conflicts. */
+export type UnderstandingTab = 'overview' | 'conflicts' | 'questions'
 
 export type EventKind =
   | 'value.edited' | 'value.confirmed'
@@ -804,8 +835,12 @@ function defaultOptionConfig(coverage: Coverage = INITIAL_COVERAGE): OptionConfi
     openConfiguratorStep: CONFIGURATOR_STEP.SCOPE_BOUNDARIES,
     discountPercent: null,
     offerDraft: {
+      // VR3-01: no project name is baked into the default draft. It named a
+      // retired fixture row, so every offer for either demonstration
+      // project opened with the wrong project in its first sentence. The
+      // sender fills the project in; the Product does not guess it.
       body: 'Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unser '
-        + 'indikatives Angebot für das Musterprojekt Nordfeld.\n\n'
+        + 'indikatives Angebot.\n\n'
         + 'Mit freundlichen Grüßen',
       attachments: ['angebot', 'kostentreiber', 'annahmen'],
     },
@@ -1338,6 +1373,23 @@ type Store = {
   level: ProductLevel
   /** Выбранная Opportunity; null на корневом уровне. */
   opportunityId: string | null
+  /**
+   * VR3-01 — per-project documentation analysis, conflict decisions,
+   * question responses and freshness. Keyed by project id so the two
+   * demonstration fixtures never share a job: opening the other project
+   * must not inherit the first one's progress.
+   */
+  projectAnalyses: Record<string, ProjectAnalysis>
+  /**
+   * The project baseline committed into Option creation (VR3-02's input).
+   * `null` until the user actually commits it — an uncommitted baseline is
+   * absent, not an empty snapshot.
+   */
+  projectBaseline: ProjectBaselineSnapshot | null
+  /** Which project-level stage the Project shell is showing. */
+  projectStage: ProjectStage
+  /** Which Understanding section is current once analysis has completed. */
+  understandingTab: UnderstandingTab
   /** Подтверждены ли верхнеуровневые параметры проекта (часть гейта). */
   projectParamsConfirmed: boolean
   /**
@@ -1536,6 +1588,38 @@ type Store = {
    */
   backToOpportunity: () => void
   confirmProjectParams: () => void
+  /** VR3-01 — project-level navigation and documentation analysis. */
+  setProjectStage: (stage: ProjectStage) => void
+  setUnderstandingTab: (tab: UnderstandingTab) => void
+  startDocumentAnalysis: () => void
+  /**
+   * Puts one demonstration project at its seeded checkpoint: analysis
+   * complete, every blocking conflict decided from the fixture's own
+   * recommendation, every already-answered question recorded. Sanctioned
+   * by the fixture specification for demos; it changes a state of an
+   * EXISTING project and never adds a list entry.
+   */
+  seedProjectCheckpoint: (projectId: string) => void
+  /**
+   * One deterministic step of the running job. The UI schedules ticks; a
+   * test drives them directly, so per-file progression is provable without
+   * a timer and without a fake overall percentage.
+   */
+  tickDocumentAnalysis: () => void
+  cancelDocumentAnalysis: () => void
+  rerunDocumentAnalysis: () => void
+  retryDocumentRow: (docId: string) => void
+  replaceDocumentRow: (docId: string, replacementFile: string) => void
+  removeDocumentRow: (docId: string) => void
+  resolveProjectConflict: (conflictId: string, choice: ConflictChoice) => void
+  reopenProjectConflict: (conflictId: string) => void
+  recordProjectQuestionResponse: (
+    questionId: string, kind: 'answer' | 'assumption',
+  ) => void
+  /** Commits the project baseline snapshot Option creation consumes. */
+  commitProjectBaseline: () => void
+  beginOptionCreation: () => void
+  clearOptionCreationError: () => void
   /** Гейт: можно ли создавать Options (конфликты решены, параметры приняты). */
   canCreateOptions: () => boolean
   /**
@@ -2971,6 +3055,10 @@ const store = createStore<Store>((set, get) => {
     constructionStartDate: null,
     level: 'liste',
     opportunityId: null,
+    projectAnalyses: initialProjectAnalyses(),
+    projectBaseline: null,
+    projectStage: 'documents',
+    understandingTab: 'overview',
     projectParamsConfirmed: false,
     noteText: '',
     noteSavedAt: null,
@@ -2981,8 +3069,12 @@ const store = createStore<Store>((set, get) => {
     optionSeq: 0,
     discountPercent: null,
     offerDraft: {
+      // VR3-01: no project name is baked into the default draft. It named a
+      // retired fixture row, so every offer for either demonstration
+      // project opened with the wrong project in its first sentence. The
+      // sender fills the project in; the Product does not guess it.
       body: 'Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unser '
-        + 'indikatives Angebot für das Musterprojekt Nordfeld.\n\n'
+        + 'indikatives Angebot.\n\n'
         + 'Mit freundlichen Grüßen',
       attachments: ['angebot', 'kostentreiber', 'annahmen'],
     },
@@ -3739,11 +3831,22 @@ const store = createStore<Store>((set, get) => {
       })
     },
 
-    openOpportunity: (id) => set((s) => ({
-      mode: modeForLevelTransition(s.mode, 'opportunity'),
-      level: 'opportunity',
-      opportunityId: id,
-    })),
+    openOpportunity: (id) => set((s) => {
+      // Entering a project always lands on its CURRENT stage, derived from
+      // its own job — not on whatever stage the previously opened project
+      // happened to be showing.
+      const analysis = s.projectAnalyses[id]
+      const stage: ProjectStage = !analysis || analysis.jobState !== 'COMPLETE'
+        ? 'documents'
+        : 'understanding'
+      return {
+        mode: modeForLevelTransition(s.mode, 'opportunity'),
+        level: 'opportunity',
+        opportunityId: id,
+        projectStage: stage,
+        understandingTab: 'overview',
+      }
+    }),
     backToList: () => {
       const s = get()
       set({
@@ -3801,13 +3904,338 @@ const store = createStore<Store>((set, get) => {
       })
     },
 
+    setProjectStage: (stage) => set({ projectStage: stage }),
+
+    setUnderstandingTab: (tab) => set({ understandingTab: tab }),
+
+    seedProjectCheckpoint: (projectId) => {
+      const project = demoProject(projectId)
+      if (!project) return
+      const s = get()
+      set({
+        projectAnalyses: {
+          ...s.projectAnalyses,
+          [projectId]: seededCheckpoint(project, new Date().toISOString()),
+        },
+        projectStage: s.opportunityId === projectId ? 'understanding' : s.projectStage,
+      })
+    },
+
+    startDocumentAnalysis: () => {
+      const s = get()
+      const project = demoProject(s.opportunityId)
+      if (!project) return
+      const analysis = s.projectAnalyses[project.id]
+      if (!analysis || analysis.jobState !== 'NOT_STARTED') return
+      set({
+        projectAnalyses: {
+          ...s.projectAnalyses,
+          [project.id]: startJob(project, analysis, new Date().toISOString()),
+        },
+        projectStage: 'documents',
+      })
+    },
+
+    tickDocumentAnalysis: () => {
+      const s = get()
+      const project = demoProject(s.opportunityId)
+      if (!project) return
+      const analysis = s.projectAnalyses[project.id]
+      if (!analysis) return
+      const next = advanceJob(project, analysis)
+      if (next === analysis) return
+      set({ projectAnalyses: { ...s.projectAnalyses, [project.id]: next } })
+    },
+
+    cancelDocumentAnalysis: () => {
+      const s = get()
+      const project = demoProject(s.opportunityId)
+      if (!project) return
+      const analysis = s.projectAnalyses[project.id]
+      if (!analysis) return
+      set({
+        projectAnalyses: { ...s.projectAnalyses, [project.id]: cancelJob(analysis) },
+      })
+    },
+
+    /**
+     * Re-analysis is a DOCUMENT-BASE event: it re-runs every file, and the
+     * confirmations that depend on changed evidence become reviewable
+     * rather than being silently replaced (M-1/D-08).
+     */
+    rerunDocumentAnalysis: () => {
+      const s = get()
+      const project = demoProject(s.opportunityId)
+      if (!project) return
+      const analysis = s.projectAnalyses[project.id]
+      if (!analysis) return
+      const previous = analysis
+      const next = rerunJob(project, analysis, new Date().toISOString())
+      const write = (value: ProjectAnalysis) => set({
+        projectAnalyses: { ...get().projectAnalyses, [project.id]: value },
+      })
+      write(next)
+      apply({
+        kind: 'document.activated',
+        label: `Dokumentanalyse erneut ausgeführt · ${project.name}`,
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(next),
+      }, null)
+    },
+
+    retryDocumentRow: (docId) => {
+      const s = get()
+      const project = demoProject(s.opportunityId)
+      if (!project) return
+      const analysis = s.projectAnalyses[project.id]
+      if (!analysis) return
+      set({
+        projectAnalyses: {
+          ...s.projectAnalyses,
+          [project.id]: retryAnalysisDocument(analysis, docId),
+        },
+      })
+    },
+
+    replaceDocumentRow: (docId, replacementFile) => {
+      const s = get()
+      const project = demoProject(s.opportunityId)
+      if (!project) return
+      const analysis = s.projectAnalyses[project.id]
+      if (!analysis) return
+      const previous = analysis
+      const next = replaceAnalysisDocument(project, analysis, docId, replacementFile)
+      const write = (value: ProjectAnalysis) => set({
+        projectAnalyses: { ...get().projectAnalyses, [project.id]: value },
+      })
+      write(next)
+      apply({
+        kind: 'document.activated',
+        label: `Dokument ersetzt · ${docId} → ${replacementFile}`,
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(next),
+      }, null)
+    },
+
+    /** Removal keeps an audit record: the row stays, dated and explained. */
+    removeDocumentRow: (docId) => {
+      const s = get()
+      const project = demoProject(s.opportunityId)
+      if (!project) return
+      const analysis = s.projectAnalyses[project.id]
+      if (!analysis) return
+      const previous = analysis
+      const next = removeAnalysisDocument(
+        project, analysis, docId, new Date().toISOString(),
+      )
+      const write = (value: ProjectAnalysis) => set({
+        projectAnalyses: { ...get().projectAnalyses, [project.id]: value },
+      })
+      write(next)
+      apply({
+        kind: 'document.activated',
+        label: `Dokument entfernt · ${docId}`,
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(next),
+      }, null)
+    },
+
+    resolveProjectConflict: (conflictId, choice) => {
+      const s = get()
+      const project = demoProject(s.opportunityId)
+      if (!project) return
+      const analysis = s.projectAnalyses[project.id]
+      if (!analysis) return
+      const previous = analysis
+      const next = resolveAnalysisConflict(
+        project, analysis, conflictId, choice, new Date().toISOString(),
+      )
+      if (next === analysis) return
+      const write = (value: ProjectAnalysis) => set({
+        projectAnalyses: { ...get().projectAnalyses, [project.id]: value },
+      })
+      write(next)
+      apply({
+        kind: 'conflict.resolved',
+        label: `Strittige Angabe entschieden · ${conflictId}`,
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(next),
+      }, null)
+    },
+
+    reopenProjectConflict: (conflictId) => {
+      const s = get()
+      const project = demoProject(s.opportunityId)
+      if (!project) return
+      const analysis = s.projectAnalyses[project.id]
+      if (!analysis) return
+      const previous = analysis
+      const next = reopenConflict(analysis, conflictId)
+      if (next === analysis) return
+      const write = (value: ProjectAnalysis) => set({
+        projectAnalyses: { ...get().projectAnalyses, [project.id]: value },
+      })
+      write(next)
+      apply({
+        kind: 'conflict.resolved',
+        label: `Strittige Angabe zurückgestellt · ${conflictId}`,
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(next),
+      }, null)
+    },
+
+    recordProjectQuestionResponse: (questionId, kind) => {
+      const s = get()
+      const project = demoProject(s.opportunityId)
+      if (!project) return
+      const analysis = s.projectAnalyses[project.id]
+      if (!analysis) return
+      const previous = analysis
+      const next = recordQuestionResponse(
+        analysis, questionId, kind, new Date().toISOString(),
+      )
+      const write = (value: ProjectAnalysis) => set({
+        projectAnalyses: { ...get().projectAnalyses, [project.id]: value },
+      })
+      write(next)
+      apply({
+        kind: 'value.edited',
+        label: kind === 'assumption'
+          ? `Offene Frage ${questionId} · Annahme dokumentiert`
+          : `Offene Frage ${questionId} · Antwort erfasst`,
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(next),
+      }, null)
+    },
+
+    /**
+     * Committing the project baseline is the transition Option creation
+     * consumes. It is one journalled event, so the permission it grants
+     * cannot change without an event (M-4), and it records the snapshot
+     * WITH the authority of every value — a snapshot without provenance
+     * would let a later stage present an assumption as a fact.
+     */
+    commitProjectBaseline: () => {
+      const s = get()
+      const project = demoProject(s.opportunityId)
+      if (!project) return
+      const analysis = s.projectAnalyses[project.id]
+      if (!analysis) return
+      if (!readiness(project, analysis).canCreateOption) return
+      const at = new Date().toISOString()
+      const snapshot = projectBaselineSnapshot(project, analysis, at)
+      const previousSnapshot = s.projectBaseline
+      const previousConfirmed = s.projectParamsConfirmed
+      const previousAnalysis = analysis
+      const committed: ProjectAnalysis = { ...analysis, baselineCommittedAt: at }
+      const write = (
+        value: ProjectAnalysis,
+        baseline: ProjectBaselineSnapshot | null,
+        confirmed: boolean,
+      ) => set({
+        projectAnalyses: { ...get().projectAnalyses, [project.id]: value },
+        projectBaseline: baseline,
+        projectParamsConfirmed: confirmed,
+      })
+      write(committed, snapshot, true)
+      apply({
+        kind: 'value.confirmed',
+        label: PROJECT_PARAMS_CONFIRMATION_LABEL,
+        deltaExact: null,
+        inverse: () => write(previousAnalysis, previousSnapshot, previousConfirmed),
+        forward: () => write(committed, snapshot, true),
+      }, null)
+    },
+
+    beginOptionCreation: () => {
+      const s = get()
+      const project = demoProject(s.opportunityId)
+      if (!project) return
+      const analysis = s.projectAnalyses[project.id]
+      if (!analysis) return
+      set({
+        projectAnalyses: {
+          ...s.projectAnalyses,
+          [project.id]: { ...analysis, creatingOption: true, optionCreationErrorKey: null },
+        },
+      })
+    },
+
+    clearOptionCreationError: () => {
+      const s = get()
+      const project = demoProject(s.opportunityId)
+      if (!project) return
+      const analysis = s.projectAnalyses[project.id]
+      if (!analysis) return
+      set({
+        projectAnalyses: {
+          ...s.projectAnalyses,
+          [project.id]: { ...analysis, optionCreationErrorKey: null },
+        },
+      })
+    },
+
+    /**
+     * ONE meaning, two layers.
+     *
+     * The gate has always been "the project baseline is confirmed", and
+     * `projectParamsConfirmed` has always carried that confirmation — so a
+     * baseline that is ALREADY committed keeps the gate open, which is what
+     * makes a restored session and a directly driven store behave as before.
+     *
+     * What VR3-01 changed is the PRECONDITION for committing it. The hard
+     * gate the target specification states is exactly: unresolved BLOCKING
+     * conflicts must be zero and the required project baseline must be
+     * complete. Questions do not gate unless a question declares itself
+     * blocking — a question is not a conflict. The previous predicate
+     * (`wflConflict` resolved) belonged to the proposal fixture, not to the
+     * project, and it could never express a six-conflict project at all.
+     */
     canCreateOptions: () => {
       const s = get()
-      return wflConflict(s).state === 'resolved' && s.projectParamsConfirmed
+      if (s.projectParamsConfirmed) return true
+      const project = demoProject(s.opportunityId)
+      if (!project) return false
+      const analysis = s.projectAnalyses[project.id]
+      if (!analysis) return false
+      return readiness(project, analysis).canCreateOption
     },
 
     createOption: (name) => {
-      if (!get().canCreateOptions()) return null
+      // VR3-01: the gate is re-read at the moment of the transition, not at
+      // the moment the button rendered. A conflict reopened in between is a
+      // genuine failure path, and it must leave readiness and resolution
+      // work exactly as it was rather than half-creating an Option.
+      if (!get().canCreateOptions()) {
+        const failing = get()
+        const failingProject = demoProject(failing.opportunityId)
+        const failingAnalysis = failingProject
+          ? failing.projectAnalyses[failingProject.id]
+          : undefined
+        if (failingProject && failingAnalysis) {
+          set({
+            projectAnalyses: {
+              ...failing.projectAnalyses,
+              [failingProject.id]: {
+                ...failingAnalysis,
+                creatingOption: false,
+                optionCreationErrorKey: 'vr3.option.error.gateClosed',
+              },
+            },
+          })
+        }
+        return null
+      }
+      // The project baseline is committed as its own journalled event
+      // BEFORE the Option exists: the Option inherits a baseline that was
+      // already authoritative, never one invented during creation.
+      if (!get().projectBaseline) get().commitProjectBaseline()
       const s = get()
       // Идентификатор МОНОТОНЕН, а не выведен из длины списка. Прежде
       // удаление OPT-02 и создание новой давало снова `OPT-02`, и события
@@ -3858,12 +4286,29 @@ const store = createStore<Store>((set, get) => {
         }
         fresh.fields = legacyFieldsFromReview(inheritedReview, s.buildingConflicts)
       }
+      const creatingProject = demoProject(s.opportunityId)
+      const creatingAnalysis = creatingProject
+        ? s.projectAnalyses[creatingProject.id]
+        : undefined
       set({
         ...NO_TRANSIENT,
         options: [...s.options, { id, name: resolvedName }],
         activeOptionId: id,
         optionSeq: seq,
         pipelineView: 'buildingScope',
+        projectStage: 'createOption',
+        ...(creatingProject && creatingAnalysis
+          ? {
+            projectAnalyses: {
+              ...s.projectAnalyses,
+              [creatingProject.id]: {
+                ...creatingAnalysis,
+                creatingOption: false,
+                optionCreationErrorKey: null,
+              },
+            },
+          }
+          : {}),
         // Новая Option — независимый вариант со свежей конфигурацией.
         // Рабочая копия предыдущей активной Option убирается в хранилище,
         // свежая раскладывается в плоские поля.

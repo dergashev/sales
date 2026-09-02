@@ -1,5 +1,5 @@
 import type { RefObject } from 'react'
-import opportunities from '../fixtures/opportunities.json'
+import { demoProject } from '../state/projectAnalysis'
 import {
   configuratorStepDone,
   pipelineViewForBuildingGate,
@@ -73,7 +73,19 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
   // breadcrumb already carries (F05 precedent: objects are always named by
   // their resolved display label, never a raw id) — reusing the SAME
   // lookup `AppHeader` (App.tsx) already does, not a second source.
-  const currentOpportunity = opportunities.items.find((o) => o.id === s.opportunityId)
+// VR3-01: the project's display name now comes from the two-fixture
+// project register (`state/projectAnalysis`). The eight-row
+// `fixtures/opportunities.json` this used to read is gone with the
+// portfolio it described.
+  const currentOpportunity = demoProject(s.opportunityId)
+  // VR3-01: the scope line below used to print a hardcoded retired fixture
+  // row ("Musterprojekt Nordfeld · Haus A") on EVERY project, regardless of
+  // which project or building was open. It now names the buildings actually
+  // in the proposal, and the project's own name is already the line under
+  // it — so this one carries the scope, not the identity.
+  const scopeBuildings = Object.values(s.buildings)
+    .map((building) => building.stableName)
+    .filter(Boolean)
   const t = useT()
   const client = isClientProjection(s.mode)
   const buildingGateBlocked = !s.canBeginConfiguration()
@@ -140,7 +152,9 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
           )
         ) : (
           <p className="text-body font-medium text-text-primary">
-            {`Musterprojekt Nordfeld · Haus${NNBSP}A`}
+            {scopeBuildings.length > 0
+              ? scopeBuildings.join(`${NNBSP}· `)
+              : t('shell.optionSwitcher')}
           </p>
         )}
         {currentOpportunity && (

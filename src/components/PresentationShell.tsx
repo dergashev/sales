@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type RefObject } from 'react'
 import { Decimal } from 'decimal.js'
 import { AnimatePresence, motion } from 'framer-motion'
-import opportunities from '../fixtures/opportunities.json'
+import { demoProject } from '../state/projectAnalysis'
 import demo from '../fixtures/demo-0001.json'
 import all3Logo from '../../design-system/All3Logo.png'
 import {
@@ -184,7 +184,11 @@ export function PresentationShell({ mainRef, modeRef }: {
   const s = useStore()
   const t = useT()
   const tx = useTx()
-  const opportunity = opportunities.items.find((o) => o.id === s.opportunityId)
+// VR3-01: the project's display name now comes from the two-fixture
+// project register (`state/projectAnalysis`). The eight-row
+// `fixtures/opportunities.json` this used to read is gone with the
+// portfolio it described.
+  const opportunity = demoProject(s.opportunityId) ?? undefined
   const projectName = opportunity?.name ?? s.opportunityId ?? ''
 
   const eligible = eligibleClientOptions(s)

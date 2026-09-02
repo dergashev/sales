@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
-import { confirmBuildingReviewSections } from '../../test/offer-option'
+import { confirmBuildingReviewSections, enterOptionWorkspace } from '../../test/offer-option'
 import { __resetStoreForTests } from '../../state/store'
 
 /**
@@ -27,11 +27,7 @@ beforeEach(() => __resetStoreForTests())
 
 async function openKg300(user: ReturnType<typeof userEvent.setup>) {
   render(<App />)
-  await user.click(await screen.findByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
-  await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
-  await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
-  await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
-  await user.click(screen.getByRole('button', { name: 'Öffnen' }))
+  enterOptionWorkspace()
   await confirmBuildingReviewSections(user)
   await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
   await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))

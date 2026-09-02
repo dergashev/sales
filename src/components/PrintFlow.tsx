@@ -4,6 +4,7 @@ import { Button } from './primitives'
 import { useTx } from '../i18n'
 import { NNBSP } from '../engine/money'
 import { Dialog, type DialogHandle } from './Dialog'
+import { demoProject } from '../state/projectAnalysis'
 
 /**
  * DC-42 · PrintFlow — Druckansicht.
@@ -30,6 +31,8 @@ export function PrintFlow({ returnFocusTo }: {
   returnFocusTo: React.RefObject<HTMLElement>
 }) {
   const s = useStore()
+  // VR3-01: see S5Export — the fallback names the open project.
+  const projectName = demoProject(s.opportunityId)?.name ?? ''
   const tx = useTx()
   const titleId = useId()
   const titleRef = useRef<HTMLHeadingElement>(null)
@@ -77,7 +80,7 @@ export function PrintFlow({ returnFocusTo }: {
     >
         {/* Монохромное превью листа: то, что действительно ляжет на бумагу. */}
         <div className="a3-paper-preview" aria-label={tx('Monochrome Seitenvorschau A4')}>
-          <b>{option?.name ?? 'Musterprojekt Nordfeld'}</b>
+          <b>{option?.name ?? projectName}</b>
           <hr />
           {tx(p.result.totalLabel)}<br />
           <b>

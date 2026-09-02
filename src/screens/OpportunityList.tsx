@@ -1,181 +1,73 @@
 import { useId, useMemo, useState } from 'react'
-import opportunities from '../fixtures/opportunities.json'
 import { useStore } from '../state/store'
-import { NNBSP } from '../engine/money'
+import {
+  DEMO_PROJECTS,
+  NORMAL_LIST_PROJECT_COUNT,
+  readiness,
+  type FixtureProject,
+} from '../state/projectAnalysis'
 import { Button } from '../components/primitives'
 import { Card, FormField, SelectField } from '../components/designSystem'
-import { Switch } from '../components/controls'
-import { STAGE_TAG } from '../lib/opportunityStage'
+import { EmptyState } from '../components/DataStates'
 import { useT, useTx } from '../i18n'
 import { MediaFrame } from '../design-system/MediaFrame'
-import { opportunityMedia } from '../assets/opportunity-media'
+import { SemanticStatus } from '../design-system/SemanticStatus'
+import { projectAsset } from '../assets/project-media'
 import { startContinuityTransition, useSemanticMotion } from '../design-system/motion'
 
 /**
- * Корень продукта — список Opportunities (DC-34 · Suche & Filter,
- * CARD-001 · Card).
+ * The normal Project List — the product's root (VR3-01, target `T-001`).
  *
- * Уровень выше рабочего конвейера: здесь ещё нет ни панелей, ни цены.
- * Цена не может быть показана до того, как выбран Option, — а Option
- * появляется только после карточки. Показать сумму здесь значило бы
- * пообещать число, у которого ещё нет конфигурации.
+ * VR3-01 replaced the eight uneven demonstration rows with EXACTLY TWO
+ * complete, purposeful cases: one clean route to an indicative offer and
+ * one deliberate real-world information challenge. That is a fixture
+ * invariant, not a presentation choice, and `NORMAL_LIST_PROJECT_COUNT`
+ * carries it from the fixture rather than from this file.
  *
- * Структура — контрактная (ревью № 13, дефект 14): поиск и фильтры живут
- * в `.a3-project-search`, активные фильтры — `.a3-chip-control` с зоной
- * нажатия 44 (дефект 19: прежний `.a3-tag` — статусный знак, а не
- * контрол), число совпадений — `.a3-search-result-count`.
+ * Three properties are deliberate and each replaces a recorded defect:
  *
- * Карточка (TASK 03, backlog `ff3a8ad9`) — канонический примитив `Card`
- * (`components-core.md` CARD-001), а не рукописный `<div onClick>`: тот
- * был явным нарушением gate 3 («onclick на div/article вместо настоящего
- * контрола») и не давал ни одного клавиатурного пути ко всей карточке —
- * только к CTA-кнопке. `Card.onOpen` делает название проекта настоящим
- * растянутым `primaryDestination` (тот же клик-контейнер, что и раньше,
- * но теперь фокусируемый), CTA остаётся отдельным `secondaryAction`
- * (правило 26 продолжает выполняться — раньше через ручной
- * `stopPropagation`, теперь через `z-index`-порядок самого примитива).
- * Статус-тег (DC-16 `.a3-tag`, общий с `OpportunityCard`-шапкой через
- * `STAGE_TAG`) остаётся как есть — миграция на общий `Badge` здесь не
- * делается, иначе один и тот же lifecycle-статус выглядел бы по-разному
- * на списке и на детальном экране (см. design-system-ledger DC-16).
+ * 1. **Every card is fully imaged.** Both projects have registered
+ *    photographic identity (`heroAssetId` → `design-system/assets/projects`),
+ *    so no card renders the fallback identity graphic any more. A missing
+ *    registration still renders `MediaFrame`'s information-bearing state —
+ *    the absence stays visible instead of being papered over.
+ * 2. **The readiness rows are DERIVED from the project's own analysis
+ *    state.** Before the analysis has run, the card says what is actually
+ *    known — the documentation is complete and the analysis has not started
+ *    — and only afterwards does it report blocking conflicts and
+ *    recognition attention. The approved target frame shows the
+ *    post-analysis rows because the prototype it was rendered from had no
+ *    state at all; showing those numbers on a fresh reset would state a
+ *    result the analysis has not produced, which is the exact defect this
+ *    ticket exists to remove.
+ * 3. **There is no price here and there cannot be.** A total belongs to an
+ *    Option, and no Option exists yet.
  *
- * Иерархия шапки (TASK 02, решение Design Review): `.a3-masthead` несёт
- * только `h1` — контракт PageHeader прямо запрещает breadcrumbs внутри
- * title, а прежняя строка `.a3-cap` («Wurzel · alle Opportunities») была
- * ровно этим: она стояла ПЕРЕД h1 в том же flex-ряду с
- * `justify-content: space-between`, из-за чего заголовок улетал к правому
- * краю экрана, а «Wurzel» — необъяснённый термин уровня кода, нигде не
- * принятый как продуктовый. Место «локации» уже занято постоянной
- * глобальной шапкой (`AppHeader`) — она есть на каждом экране и уже
- * сознательно не показывает `Pfad`-крошку на этом, корневом уровне.
- * Число результатов теперь строка между title и `.a3-project-search`
- * (требуемый порядок: локация → title → результат → поиск/фильтры →
- * список), без выдуманного утверждения о сортировке (ушедшее
- * «sortiert nach Reihenfolge der Übergabe aus HubSpot» не имело
- * никакой сортировки за собой — решение 161c0b7b).
- *
- * TASK 04 (backlog `e2337966`, Design-Handoff в Projektgedächtnis
- * `opportunities-landing-workflow-contract`) — operative Triage:
- *
- * - **Default-Reihenfolge** ist jetzt real (§2 des Decision Brief):
- *   aktionsfähig-jetzt zuerst, dann Lifecycle-Gewicht, dann Name — vorher
- *   war die Liste unsortiert (rohe Fixture-Reihenfolge).
- * - **Sortierung** ist ein `SegmentedControl` (nicht `Select`): genau drei
- *   genehmigte Dimensionen (Empfohlen/Name/Status, §9/§10). Dieselbe
- *   Primitive trägt bereits den DE/EN-Sprachschalter in `App.tsx` — die
- *   ausgewählte Option TRÄGT den „welche Sortierung ist aktiv"-Zustand
- *   selbst (kein zusätzlicher Caption nötig).
- * - **Zwei neue Filter-Switches** (nicht Checkbox/SegmentedControl —
- *   OPTION-008 verbietet Switch-Semantik nur für Angebots-Optionen, nicht
- *   für Interface-Zustand): „nur aktionsfähige" und „pausiert/signiert/
- *   verloren einschließen" (Recovery). Recovery bleibt strikt ein
- *   Filter-Toggle — niemals ein HubSpot-Schreibzugriff (Sales Platform
- *   hat nur Lesezugriff auf die CRM-Lifecycle, bestätigt in `161c0b7b`).
- * - **Status-Filter**-Optionen sind datengetrieben (`Array.from(new
- *   Set(...))`), genau wie Stadt von Land abhängt — nicht hartkodiert auf
- *   alle acht kanonischen Stadien, weil fünf davon noch keine Fixture-Zeile
- *   haben (dokumentierte Data-Model-Lücke, kein Erfinden von Daten).
- * - **Zwei getrennte Leerzustände** (AC 4/6): „keine Treffer" (Filter
- *   greifen) bleibt wie zuvor mit Reset-Aktion; „noch keine Opportunities"
- *   (Fixture selbst leer) ist neu, hat eigenen Text und KEINE Aktion — es
- *   gibt nichts zurückzusetzen und keinen „neu anlegen"-Weg (CRM read-only).
- * - **Loading/Error/Stale bleiben bewusst nicht implementiert**: die Liste
- *   ist ein synchroner Fixture-Import ohne Backend — `data-states.ts`
- *   deklariert das seit TASK 03 korrekt als `notApplicable`. Ein
- *   simulierter Netzwerkfehler wäre eine Simulation, die als Implementierung
- *   ausgegeben wird (derselbe Grundsatz wie bei `export`/`internalNote`).
- * - **i18n-Fix**: der Status-Tag ging vorher durch `tx(o.stage)` — die
- *   Rückwärtssuche gegen den generierten Codex-Korpus (`GENERATED_DE`)
- *   findet „versendet" dort nirgends als Einzelwort, weil es im
- *   restlichen Corpus nie allein vorkommt. Live im Browser reproduziert:
- *   im EN-Modus blieb der Tag „versendet" statt „sent". Ersetzt durch
- *   einen echten `t()`-Schlüssel pro Stadium (`STAGE_LABEL_KEY`), nicht
- *   durch einen globalen Patch der `tx()`-Brücke. Dieselbe Lücke betraf
- *   „Land:"/„Stadt:"/„Owner:"/„Suche:" in den Filter-Chips und die
- *   hartkodierten Wörter „Gebäude"/„Dokumente" — beide waren nie durch
- *   `tx()`/`t()` geführt und blieben im EN-Modus deutsch; jetzt echte
- *   Wörterbucheinträge.
+ * Search and sort survive behind ONE "filter and sort" disclosure, closed
+ * by default, exactly as the approved target's single control shows. The
+ * two former HubSpot lifecycle switches are gone with the data they filtered
+ * on: the VR3 fixtures carry no CRM lifecycle stage, and a control that
+ * filters a field which no longer exists is worse than no control.
  */
-
-const ALL = 'alle'
-
-/** CTA карточки — следующая лучшая работа стадии, не общее «öffnen». */
-const STAGE_CTA: Record<string, string> = {
-  'neu aus HubSpot': 'Analyse starten',
-  'in Vorbereitung': 'Vorbereiten',
-  'versendet': 'Ansehen',
-}
-
-/**
- * Aktionabilität laut genehmigtem Opportunities Product Authority Contract
- * (backlog `161c0b7b`, §5/§12 «ACTIONABILITY»): YES für Project received
- * (`neu aus HubSpot`) und Prioritised and in progress (`in Vorbereitung`),
- * NO by default für Awaiting customer feedback (`versendet`). Nur die drei
- * heute in der Fixture vorhandenen Stadien — die restigen fünf HubSpot-
- * Status existieren noch nicht als Fixture-Zeile (separate, bereits
- * vermerkte Downstream-Aufgabe). Steuert ausschließlich die CTA-Betonung
- * (primary/secondary), keine neue Fachlogik.
- */
-const ACTIONABLE_NOW = new Set(['neu aus HubSpot', 'in Vorbereitung'])
-
-/**
- * Default-excluded laut §8 FILTERING des genehmigten Contracts: On hold /
- * Contract signed / Lost sind standardmäßig ausgeblendet, aber über den
- * Recovery-Switch abrufbar. Die drei Rohwerte existieren noch in keiner
- * Fixture-Zeile (Data-Model-Lücke) — die Menge wird trotzdem generisch
- * geführt, damit sie sich automatisch aktiviert, sobald Zeilen dazukommen.
- */
-const DEFAULT_EXCLUDED_STAGES = new Set(['ruhend', 'gewonnen', 'verloren'])
-
-/**
- * Deterministisches Lifecycle-Gewicht §2 des Decision Brief. Nur die drei
- * heute vorhandenen Fixture-Stadien werden geprüft; die drei restlichen
- * Rohwerte sind für Vorwärtskompatibilität eingetragen. „Ready for
- * Indicative Offer" / „Planning contract" haben noch keine Fixture-
- * Schreibweise und fehlen deshalb bewusst in dieser Tabelle.
- */
-const LIFECYCLE_WEIGHT: Record<string, number> = {
-  'in Vorbereitung': 1, // Prioritised and in progress
-  'neu aus HubSpot': 4, // Project received
-  versendet: 5, // Awaiting customer feedback
-  ruhend: 6, // On hold
-  gewonnen: 7, // Contract signed
-  verloren: 8, // Lost
-}
-
-/** Sichtbarer Schlüssel je Stadium (STATUS-TAG-i18n-Fix, siehe Docstring). */
-const STAGE_LABEL_KEY: Record<string, string> = {
-  'neu aus HubSpot': 'opplist.stage.neuAusHubspot',
-  'in Vorbereitung': 'opplist.stage.inVorbereitung',
-  versendet: 'opplist.stage.versendet',
-  ruhend: 'opplist.stage.ruhend',
-  gewonnen: 'opplist.stage.gewonnen',
-  verloren: 'opplist.stage.verloren',
-}
-
-type OpportunityItem = (typeof opportunities.items)[number]
-
-const byName = (a: OpportunityItem, b: OpportunityItem) => a.name.localeCompare(b.name, 'de')
-
-const byStatus = (a: OpportunityItem, b: OpportunityItem) => {
-  const diff = (LIFECYCLE_WEIGHT[a.stage] ?? 99) - (LIFECYCLE_WEIGHT[b.stage] ?? 99)
-  return diff !== 0 ? diff : byName(a, b)
-}
-
-/** „Empfohlen" — aktionsfähig-jetzt zuerst, dann Lifecycle-Gewicht, dann Name (§2). */
-const byRecommended = (a: OpportunityItem, b: OpportunityItem) => {
-  const aActionable = ACTIONABLE_NOW.has(a.stage)
-  const bActionable = ACTIONABLE_NOW.has(b.stage)
-  if (aActionable !== bActionable) return aActionable ? -1 : 1
-  return byStatus(a, b)
-}
 
 type SortMode = 'recommended' | 'name' | 'status'
 
-const SORTERS: Record<SortMode, (a: OpportunityItem, b: OpportunityItem) => number> = {
-  recommended: byRecommended,
-  name: byName,
-  status: byStatus,
+const SORTERS: Record<SortMode, (a: FixtureProject, b: FixtureProject) => number> = {
+  // Recommended = the clean route first, then the case that needs review:
+  // the list's own purpose is to teach both journeys in that order.
+  recommended: (a, b) => (a.route === b.route ? a.name.localeCompare(b.name) : a.route === 'clean' ? -1 : 1),
+  name: (a, b) => a.name.localeCompare(b.name),
+  status: (a, b) => (a.route === b.route ? a.name.localeCompare(b.name) : a.route === 'complex' ? -1 : 1),
+}
+
+const ALL = 'alle'
+
+/**
+ * "1 Projekte" is not German. The eyebrow has a singular form, chosen by
+ * the count rather than assembled from a number and a plural noun.
+ */
+function eyebrowKey(count: number): string {
+  return count === 1 ? 'vr3.list.eyebrowOne' : 'vr3.list.eyebrow'
 }
 
 export function OpportunityList() {
@@ -183,428 +75,261 @@ export function OpportunityList() {
   const t = useT()
   const tx = useTx()
   const { reduced } = useSemanticMotion()
-  // REDESIGN R2 "SALES MOMENT 1": opportunity → project is the SAME object
-  // going deeper, not a new page — `startContinuityTransition` (motion.ts)
-  // morphs the project identity face across the swap via the View
-  // Transition API. `viewTransitionName` below is what pairs this card's
-  // face with the project header's (OpportunityCard.tsx).
-  const openOpportunity = (id: string) => {
+  const filtersPanelId = useId()
+  const [q, setQ] = useState('')
+  const [city, setCity] = useState<string>(ALL)
+  const [sort, setSort] = useState<SortMode>('recommended')
+  const [filtersOpen, setFiltersOpen] = useState(false)
+
+  const openProject = (id: string) => {
     startContinuityTransition(reduced, () => s.openOpportunity(id))
   }
-  const [q, setQ] = useState('')
-  const [country, setCountry] = useState(ALL)
-  const [city, setCity] = useState(ALL)
-  const [owner, setOwner] = useState(ALL)
-  const [status, setStatus] = useState(ALL)
-  // VR2-01 (Auditor cycle-2) · sichtbarer Termin-Filter im Ziel-Kontrollslot.
-  // WICHTIG: PRÄSENZ-Filter (hat Termin / ohne Termin), KEIN Datums-Ranking.
-  // meetingAt ist Freitext ohne parsebares Datum — eine „Termin: Nächste"-
-  // Sortierung würde Dringlichkeit erfinden und Contract 161c0b7b verletzen.
-  const [termin, setTermin] = useState<'alle' | 'mit' | 'ohne'>('alle')
-  const [actionableOnly, setActionableOnly] = useState(false)
-  const [includeExcluded, setIncludeExcluded] = useState(false)
-  const [sort, setSort] = useState<SortMode>('recommended')
-  // QA rework (P2): collapsed by default so the four selects + two switches
-  // do not put an empty first viewport between the title and the first
-  // project card (measured main.scrollHeight before this change: ~2990px
-  // at 1440x900, ~430px of it filter chrome). Ephemeral UI-only state, not
-  // persisted, not a filter value itself.
-  const [filtersOpen, setFiltersOpen] = useState(false)
-  const filtersPanelId = useId()
 
-  const items = opportunities.items
-  const stageLabel = (stage: string) => t(STAGE_LABEL_KEY[stage] ?? stage)
-
-  // Zwei Toggles bilden das Sichtbarkeits-Universum VOR den übrigen
-  // Filtern — dieselbe „abhängige Optionsliste"-Logik wie Stadt/Land, nur
-  // auf Ebene der ganzen Liste statt eines einzelnen Selects.
-  const recoverable = useMemo(() => items.filter((i) =>
-    includeExcluded || !DEFAULT_EXCLUDED_STAGES.has(i.stage)), [items, includeExcluded])
-  const universe = useMemo(() => actionableOnly
-    ? recoverable.filter((i) => ACTIONABLE_NOW.has(i.stage))
-    : recoverable, [recoverable, actionableOnly])
-
-  const countries = useMemo(
-    () => [ALL, ...Array.from(new Set(universe.map((i) => i.country))).sort()], [universe])
-  // Города зависят от выбранной страны: список, предлагающий город из
-  // другой страны, обещает результат, которого не будет.
-  const cities = useMemo(() => [ALL, ...Array.from(new Set(
-    universe.filter((i) => country === ALL || i.country === country).map((i) => i.city),
-  )).sort()], [universe, country])
-  const owners = useMemo(
-    () => [ALL, ...Array.from(new Set(universe.map((i) => i.owner))).sort()], [universe])
-  // Status-Optionen sind datengetrieben (Design-Handoff #2): nur Stadien,
-  // die im aktuellen Universum tatsächlich vorkommen, nie ein hartkodiertes
-  // Acht-Status-Vokabular mit garantiert leeren Einträgen.
-  const statuses = useMemo(
-    () => [ALL, ...Array.from(new Set(universe.map((i) => i.stage)))], [universe])
-
-  const shown = useMemo(() => universe.filter((i) =>
-    (country === ALL || i.country === country) &&
-    (city === ALL || i.city === city) &&
-    (owner === ALL || i.owner === owner) &&
-    (status === ALL || i.stage === status) &&
-    // Präsenz, nicht Datum: „mit" = hat einen (Freitext-)Termin, „ohne" = keiner.
-    (termin === 'alle' || (termin === 'mit') === Boolean(i.meetingAt)) &&
-    (q.trim() === '' ||
-      `${i.name} ${i.city} ${i.owner} ${i.id}`.toLowerCase().includes(q.trim().toLowerCase())))
-    .slice()
-    .sort(SORTERS[sort]),
-  [universe, country, city, owner, status, termin, q, sort])
-
-  const terminLabel = (v: 'mit' | 'ohne') => t(v === 'mit' ? 'opplist.filter.termin.mit' : 'opplist.filter.termin.ohne')
-
-  const active = [
-    country !== ALL && { label: t('opplist.filter.country.chip', { value: country }), clear: () => setCountry(ALL) },
-    city !== ALL && { label: t('opplist.filter.city.chip', { value: city }), clear: () => setCity(ALL) },
-    owner !== ALL && { label: t('opplist.filter.owner.chip', { value: owner }), clear: () => setOwner(ALL) },
-    status !== ALL && { label: t('opplist.filter.status.chip', { value: stageLabel(status) }), clear: () => setStatus(ALL) },
-    termin !== 'alle' && { label: t('opplist.filter.termin.chip', { value: terminLabel(termin) }), clear: () => setTermin('alle') },
-    actionableOnly && { label: t('opplist.filter.actionableOnly.chip'), clear: () => setActionableOnly(false) },
-    includeExcluded && { label: t('opplist.filter.includeExcluded.chip'), clear: () => setIncludeExcluded(false) },
-    q.trim() !== '' && { label: t('opplist.filter.search.chip', { value: q.trim() }), clear: () => setQ('') },
-  ].filter(Boolean) as Array<{ label: string; clear: () => void }>
-
-  // Sortierung ist eine eigene Achse (§10: „Separate sorting from
-  // filtering") — „Alle Filter zurücksetzen" fasst sie deshalb bewusst
-  // nicht an.
-  const resetAll = () => {
-    setQ(''); setCountry(ALL); setCity(ALL); setOwner(ALL); setStatus(ALL)
-    setTermin('alle'); setActionableOnly(false); setIncludeExcluded(false)
-  }
-
-  // VR2-01 · editorialer Portfolio-Untertitel. Ungefiltert nennt er die
-  // Portfolio-Größe und die Zahl der Zeilen MIT hinterlegtem Termin — kein
-  // Datumsfenster („nächste 7 Tage"), weil `meetingAt` Freitext ist und keine
-  // Dringlichkeit trägt (genehmigter Contract 161c0b7b). Gefiltert macht er
-  // die Einschränkung sichtbar, nie eine Ranking-/Sortier-Behauptung.
-  const withTermin = items.filter((i) => Boolean(i.meetingAt)).length
-  const portfolioDate = new Intl.DateTimeFormat(s.uiLanguage === 'de' ? 'de-DE' : 'en-GB', {
-    day: 'numeric', month: 'long', year: 'numeric',
-  }).format(new Date())
-  const resultSummary = active.length > 0
-    ? t('opplist.resultSummary.filtered', { shown: shown.length, total: items.length })
-    : t('opplist.portfolioSummary', { projects: items.length, termine: withTermin })
-
-  const select = (id: 'land' | 'stadt' | 'owner' | 'status', label: string) => (
-    <SelectField
-      id={`opp-${id}`}
-      label={label}
-      value={id === 'land' ? country : id === 'stadt' ? city : id === 'owner' ? owner : status}
-      onChange={(e) => (id === 'land' ? setCountry(e.target.value)
-        : id === 'stadt' ? setCity(e.target.value)
-          : id === 'owner' ? setOwner(e.target.value) : setStatus(e.target.value))}
-    >
-      {(id === 'land' ? countries : id === 'stadt' ? cities : id === 'owner' ? owners : statuses)
-        .map((v) => (
-          <option key={v} value={v}>{v === ALL ? tx('alle') : id === 'status' ? stageLabel(v) : v}</option>
-        ))}
-    </SelectField>
+  const cities = useMemo(
+    () => [ALL, ...new Set(DEMO_PROJECTS.map((p) => p.city))],
+    [],
   )
 
+  const shown = useMemo(() => {
+    const needle = q.trim().toLowerCase()
+    return DEMO_PROJECTS
+      .filter((p) => (city === ALL || p.city === city))
+      // The haystack matches what the placeholder promises: name, city,
+      // owner and id. It searched the client instead of the owner, so a
+      // search by owner silently found nothing.
+      .filter((p) => (needle === ''
+        || `${p.name} ${p.city} ${p.client} ${p.owner} ${p.id}`
+          .toLowerCase().includes(needle)))
+      .slice()
+      .sort(SORTERS[sort])
+  }, [q, city, sort])
+
+  const filtersActive = (q.trim() !== '' ? 1 : 0) + (city !== ALL ? 1 : 0)
+
   return (
-    // VR2-01 (ACCEPT-01/geometry): approved target grounds the portfolio on
-    // the green-neutral screen canvas, near full-width rather than the
-    // standard 1200px reading column — see the `.a3-opportunities-canvas`
-    // rule (components.css) for why this is two nested elements.
     <div className="a3-opportunities-canvas">
-    <div className="a3-page px-7 py-6">
-      {/* VO-T1 · editorialer Portfolio-Kopf: links Eyebrow · Datum → Titel →
-          Untertitel; rechts eine KOMPAKTE Werkzeugleiste, bodenbündig zur
-          Titelzeile (Ziel: Kontrollen sitzen tiefer, auf Höhe des Untertitels,
-          nicht am Kopf der Eyebrow). Das aufklappbare „Weitere Filter"-Panel
-          und die aktiven Filter-Chips sitzen ABSICHTLICH AUSSERHALB dieser
-          Zeile (siehe unten) — säßen sie hier drin, würde ihr Aufklappen die
-          Werkzeugleiste-Spalte höher machen und die (bodenbündig verankerte)
-          Titelspalte sichtbar nach unten schieben (ACCEPT, Auditor cycle 5). */}
-      <div className="a3-portfolio-head">
-        <header className="a3-masthead a3-portfolio-headline">
-          <div>
-            {/* VO-T1 · editorialer Portfolio-Kopf: Eyebrow · Datum über dem
-                Titel, wie im genehmigten Ziel. Datum via Intl (Regel 36), nie
-                Konkatenation. */}
-            <p className="a3-portfolio-eyebrow">
-              {t('opplist.eyebrow')}{NNBSP}· {portfolioDate}
-            </p>
-            <h1 className="a3-hero-title">{t('opplist.title')}</h1>
-            {/* Число совпадений объявляется один раз после сужения, а не на
-                каждый символ (DC-34): иначе скринридер читает набор вслух.
-                Ein sichtbarer aria-live-Untertitel: ungefiltert die
-                Portfolio-Zusammenfassung, gefiltert die Ergebnis-
-                Einschränkung — nie eine Ranking-/Sortier-Behauptung. */}
-            <p className="a3-search-result-count mt-1" role="status" aria-live="polite">
-              {resultSummary}
-            </p>
-          </div>
-        </header>
-
-        {/* DC-34: видимый контрол поиска — одна рамка, один контракт.
-            Sortierung sitzt auf derselben Zeile, bewusst AUSSERHALB des
-            Filter-Fieldsets: §10 verlangt, Sortierung von Filterung sichtbar
-            zu trennen. */}
-        <div role="search" className="a3-portfolio-toolbar">
-          <div className="a3-search-line-toolbar">
-            <FormField
-              htmlFor="opp-suche"
-              label={tx('Opportunities durchsuchen')}
-            >
-              <input
-                id="opp-suche"
-                type="search"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder={tx('Name, Stadt, Owner, ID')}
-              />
-            </FormField>
-            {/* VR2-01 (ACCEPT-02/03): Status + Termin bleiben sichtbar auf der
-                Kopfzeile wie im Ziel; Land/Stadt/Owner + zwei Schalter wandern
-                ins „Weitere Filter"-Panel, damit das Kartenraster direkt unter
-                dem Kopf beginnt statt hinter einem rahmenschweren Filterblock.
-                KEINE Kontrolle entfernt (PRESERVE, DC-34, Contract 161c0b7b §8). */}
-            {select('status', t('opplist.filter.status.label'))}
-            {/* Termin-Filter im Ziel-Kontrollslot — PRÄSENZ (hat/ohne Termin),
-                kein Datums-Ranking (meetingAt Freitext, Contract 161c0b7b). */}
-            <SelectField
-              id="opp-termin"
-              label={t('opplist.filter.termin.label')}
-              value={termin}
-              onChange={(e) => setTermin(e.target.value as 'alle' | 'mit' | 'ohne')}
-            >
-              <option value="alle">{t('opplist.filter.termin.all')}</option>
-              <option value="mit">{t('opplist.filter.termin.mit')}</option>
-              <option value="ohne">{t('opplist.filter.termin.ohne')}</option>
-            </SelectField>
-            {/* VR2-01 (Acceptance remediation, cycle 2): the approved target's
-                header shows exactly THREE visible controls (search, Status,
-                Termin) — the candidate exposed five (search, Status, Termin,
-                Filter, Sort), which Acceptance flagged as materially
-                weakening the target hierarchy. Sort moves into the same
-                "Weitere Filter" disclosure as Land/Stadt/Owner below —
-                nothing removed or made harder to reach, PRESERVE holds
-                (Contract 161c0b7b §8): sorting stays one click away instead
-                of a permanent fifth box on the header row. A prior cycle's
-                comment argued Sort must stay a separate always-visible axis;
-                that reasoning does not survive contact with the actual
-                approved target image, which the Acceptance Auditor compares
-                directly and which shows no fourth or fifth header control
-                at all. */}
-            <Button
-              variant="secondary"
-              aria-expanded={filtersOpen}
-              aria-controls={filtersPanelId}
-              onClick={() => setFiltersOpen((v) => !v)}
-            >
-              {tx('Filter')}{active.length > 0 ? ` (${active.length})` : ''}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* ACCEPT (Auditor cycle 6): Disclosure-Panel und aktive Filter-Chips
-          sitzen bewusst AUSSERHALB von `.a3-portfolio-head` — ihr Öffnen darf
-          die bodenbündig verankerte Titel/Werkzeugleiste-Zeile nicht mehr
-          verschieben (vorher Teil derselben Flex-Zeile, siehe Kommentar oben). */}
-      <div role="search" className="a3-project-search">
-        {filtersOpen && (
-          <div id={filtersPanelId} className="mt-3">
-            {/* VR2-01 (Acceptance remediation, cycle 2): Sortierung bleibt eine
-                sichtbar EIGENE Achse gegenüber der Filterung (§10) — dafür
-                eine eigene Zeile VOR Land/Stadt/Owner, nicht dieselbe
-                `.a3-search-line`-Gruppe. Nur die Position wandert (aus der
-                permanenten Kopfzeile hierher, wie das Ziel es zeigt); die
-                Steuerung selbst, ihr Label und ihre drei Optionen bleiben
-                unverändert erreichbar. */}
-            <div className="a3-search-line">
-              <SelectField
-                id="opp-sort"
-                label={t('opplist.sort.legend')}
-                value={sort}
-                onChange={(e) => setSort(e.target.value as SortMode)}
+      <div className="a3-page px-7 py-6">
+        <div className="a3-portfolio-head">
+          <header className="a3-masthead a3-portfolio-headline">
+            <div>
+              <p className="a3-portfolio-eyebrow">
+                {t(eyebrowKey(NORMAL_LIST_PROJECT_COUNT), { count: NORMAL_LIST_PROJECT_COUNT })}
+              </p>
+              <h1 className="a3-hero-title" tabIndex={-1} data-page-heading>
+                {t('vr3.list.title')}
+              </h1>
+              <p className="a3-project-lede">{t('vr3.list.lead')}</p>
+              {/* Announced once, after the set narrows — never per keystroke. */}
+              <p className="a3-search-result-count mt-1" role="status" aria-live="polite">
+                {shown.length === DEMO_PROJECTS.length
+                  ? ''
+                  : t(eyebrowKey(shown.length), { count: shown.length })}
+              </p>
+            </div>
+          </header>
+          <div role="search" className="a3-portfolio-toolbar">
+            <div className="a3-search-line-toolbar">
+              <Button
+                variant="secondary"
+                aria-expanded={filtersOpen}
+                aria-controls={filtersPanelId}
+                onClick={() => setFiltersOpen((v) => !v)}
               >
-                <option value="recommended">{t('opplist.sort.recommended')}</option>
-                <option value="name">{t('opplist.sort.name')}</option>
-                <option value="status">{t('opplist.sort.status')}</option>
-              </SelectField>
-            </div>
-            <div className="a3-search-line mt-3">
-              {select('land', tx('Land'))}
-              {select('stadt', tx('Stadt'))}
-              {select('owner', tx('Opportunity Owner'))}
-            </div>
-
-            {/* Zwei unabhaengige Interface-Zustaende (nicht gegenseitig
-                ausschliessend) - Switch, kein SegmentedControl/CheckboxCard:
-                beide sind Filter-Toggles, keine Angebots-Option (OPTION-008).
-                F14: `.a3-switch-group` column-aligns both toggles (each Switch's
-                own label previously set its own row's width, so the two toggle
-                controls landed at two different x-positions). */}
-            <div className="a3-switch-group mt-3">
-              <Switch
-                label={t('opplist.filter.actionableOnly.label')}
-                checked={actionableOnly}
-                onChange={setActionableOnly}
-              />
-              <Switch
-                label={t('opplist.filter.includeExcluded.label')}
-                checked={includeExcluded}
-                onChange={setIncludeExcluded}
-              />
-            </div>
-          </div>
-        )}
-
-        {active.length > 0 && (
-          <div className="a3-filter-row mt-3">
-            {active.map((f) => (
-              <button
-                key={f.label}
-                type="button"
-                className="a3-chip-control"
-                aria-pressed="true"
-                onClick={f.clear}
-              >
-                {f.label}{NNBSP}<span aria-hidden="true">✕</span>
-                <span className="a3-visually-hidden">Filter entfernen: {f.label}</span>
-              </button>
-            ))}
-            <button type="button" className="a3-linkbtn" onClick={resetAll}>
-              {tx('Alle Filter zurücksetzen')}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Zwei unterscheidbare Leerzustände (AC 4/6): „nichts existiert"
-          (Fixture selbst leer) vs. „nichts trifft zu" (Filter greifen) —
-          niemals derselbe Text, sonst kann der Nutzer beides nicht
-          auseinanderhalten. Der Konten-Leerzustand hat KEINE Aktion: es
-          gibt nichts zurückzusetzen und keinen „neu anlegen"-Weg (CRM
-          read-only, Design-Handoff #5). */}
-      {items.length === 0 ? (
-        <div className="a3-empty-spec mt-5">
-          <span className="a3-empty-icon" aria-hidden="true">○</span>
-          <div>
-            <p className="text-body text-text-primary">
-              {t('opplist.emptyAccount.sentence')}
-            </p>
-            <p className="a3-cap mt-1">
-              {t('opplist.emptyAccount.detail')}
-            </p>
-          </div>
-        </div>
-      ) : shown.length === 0 && (
-        <div className="a3-empty-spec mt-5">
-          <span className="a3-empty-icon" aria-hidden="true">○</span>
-          <div>
-            <p className="text-body text-text-primary">
-              {tx('Keine Opportunity entspricht den Filtern.')}
-            </p>
-            <p className="a3-cap mt-1">
-              {tx('Entfernen Sie einen Filter oben, um wieder Treffer zu sehen.')}
-            </p>
-            <div className="mt-2">
-              <Button onClick={resetAll}>{tx('Alle Filter zurücksetzen')}</Button>
+                {t('vr3.list.filterToggle')}
+                {filtersActive > 0 ? ` (${filtersActive})` : ''}
+              </Button>
             </div>
           </div>
         </div>
-      )}
 
-      <ul className="a3-opportunity-grid mt-4">
-        {shown.map((o) => (
-          <li key={o.id} className="a3-opportunity-item">
-            {/* REDESIGN R2 (DESIGN-01) / VR2-01 (Acceptance remediation,
-                cycle 3): project identity face.
-                Three opportunities — the exact ones the approved VO-T1
-                target names as photographed (Nordfeld/Westpark/Seeblick) —
-                now render the `loaded` state via `opportunityMedia()`, a
-                presentation-only lookup that never touches the commercial
-                fixture (`src/fixtures/opportunities.json` still has no
-                image field). Every other opportunity keeps the canonical
-                `fallback` state (typed architectural identity graphic,
-                never a grey box, never impersonating a photo) with its own
-                per-project caption (`fallbackLabel`) — VR2-01 cycle 1 fixed
-                that caption from silently rendering empty. */}
-            {(() => {
-              const media = opportunityMedia(o.id)
-              return (
-                <div
-                  className="a3-opportunity-media"
-                  aria-label={media ? undefined : t('opplist.media.identityGraphic')}
-                  style={{ viewTransitionName: `project-media-${o.id}` }}
+        <div role="search" className="a3-project-search">
+          {filtersOpen && (
+            <div id={filtersPanelId} className="mt-3">
+              <div className="a3-search-line">
+                <SelectField
+                  id="project-sort"
+                  label={t('opplist.sort.legend')}
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value as SortMode)}
                 >
-                  {media ? (
-                    <MediaFrame
-                      ratio="card"
-                      state="loaded"
-                      src={media.url}
-                      alt={t(media.altKey)}
-                      seed={o.name}
-                      focalPoint={media.focalPoint}
-                      caption={t(media.creditKey)}
-                    />
-                  ) : (
-                    <MediaFrame
-                      ratio="card"
-                      state="fallback"
-                      seed={o.name}
-                      alt=""
-                      fallbackLabel={t('opplist.media.fallbackCaption', { name: o.name })}
-                    />
-                  )}
-                </div>
-              )
-            })()}
-            {/* Card (CARD-001): title = primaryDestination (Name, mit
-                onOpen), status/meta/Termin/Zähler = nonInteractiveArea,
-                actions = die eine sekundäre CTA-Aktion. Termin (falls
-                vorhanden) wird NEUTRAL angezeigt — kein Dringlichkeits-
-                Ranking: `meetingAt` ist Freitext, kein echtes Datum (Data-
-                Model-Gap, genehmigter Contract `161c0b7b` §5). */}
-            <Card
-              className="a3-opportunity-card-body flex-1"
-              title={o.name}
-              meta={<>{o.city} · {o.country} · {o.owner}</>}
-              status={
-                <span className={'a3-tag ' + STAGE_TAG[o.stage]}>
-                  {stageLabel(o.stage)}
-                </span>
-              }
-              actions={
+                  <option value="recommended">{t('opplist.sort.recommended')}</option>
+                  <option value="name">{t('opplist.sort.name')}</option>
+                  <option value="status">{t('opplist.sort.status')}</option>
+                </SelectField>
+                <FormField htmlFor="project-search" label={tx('Opportunities durchsuchen')}>
+                  <input
+                    id="project-search"
+                    type="search"
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder={tx('Name, Stadt, Owner, ID')}
+                  />
+                </FormField>
+                <SelectField
+                  id="project-city"
+                  label={t('opplist.filter.city.label')}
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                >
+                  {cities.map((value) => (
+                    <option key={value} value={value}>
+                      {value === ALL ? tx('alle') : value}
+                    </option>
+                  ))}
+                </SelectField>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Two distinct empty states, kept distinct (approved landing
+            contract, AC 4/6). The account-empty branch is structurally
+            unreachable while the fixture invariant is "exactly two
+            projects" — it is retained rather than deleted because the
+            branch belongs to the capability, not to the fixture, and it
+            offers NO reset: there is nothing to reset. */}
+        {DEMO_PROJECTS.length === 0 ? (
+          <div className="a3-empty-spec">
+            <EmptyState>{t('opplist.emptyAccount.sentence')}</EmptyState>
+            <p className="a3-project-lede">{t('opplist.emptyAccount.detail')}</p>
+          </div>
+        ) : shown.length === 0 ? (
+          <div className="a3-empty-spec">
+            <EmptyState
+              action={(
                 <Button
-                  variant={ACTIONABLE_NOW.has(o.stage) ? 'primary' : 'secondary'}
-                  onClick={() => openOpportunity(o.id)}
-                  aria-label={`${o.name} öffnen`}
+                  variant="secondary"
+                  onClick={() => { setQ(''); setCity(ALL) }}
                 >
-                  {tx(STAGE_CTA[o.stage] ?? 'Öffnen')}
+                  {t('opplist.empty.filtered.reset')}
                 </Button>
-              }
-              onOpen={() => openOpportunity(o.id)}
+              )}
             >
-              {/* F14: cards without a Termin used to omit this line entirely,
-                  so the status chip and CTA below sat 8 px higher than a
-                  neighbouring card that has one — comparable cards did not
-                  share a baseline. Always reserving the line (empty and
-                  hidden from assistive tech when there is no Termin) keeps
-                  every card's internal rows at the same height regardless of
-                  content. */}
-              <span className="a3-term block" aria-hidden={o.meetingAt ? undefined : 'true'}>
-                {o.meetingAt ? <>{tx('Termin')}{NNBSP}{tx(o.meetingAt)}</> : NNBSP}
-              </span>
-              {/* F-39: both labels always used the plural form — DE
-                  "1 Dokumente" and EN "1 building"/"1 document" both read as
-                  a grammar mistake. 0/1/n selection, matching the pattern
-                  used elsewhere for count grammar. */}
-              <span className="block">
-                {o.buildings}{NNBSP}{t(o.buildings === 1
-                  ? 'opplist.card.buildingLabel' : 'opplist.card.buildingsLabel')} ·{' '}
-                {o.documents}{NNBSP}{t(o.documents === 1
-                  ? 'opplist.card.documentLabel' : 'opplist.card.documentsLabel')}
-              </span>
-            </Card>
-          </li>
-        ))}
-      </ul>
+              {tx('Keine Opportunity entspricht der Suche.')}
+            </EmptyState>
+          </div>
+        ) : (
+          <ul className="a3-project-grid">
+            {shown.map((project) => (
+              <ProjectListCard
+                key={project.id}
+                project={project}
+                onOpen={() => openProject(project.id)}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
-    </div>
+  )
+}
+
+function ProjectListCard({
+  project, onOpen,
+}: {
+  project: FixtureProject
+  onOpen: () => void
+}) {
+  const s = useStore()
+  const t = useT()
+  const tx = useTx()
+  const asset = projectAsset(project.heroAssetId)
+  const analysis = s.projectAnalyses[project.id]
+  const state = analysis ? readiness(project, analysis) : null
+  const clean = project.route === 'clean'
+
+  const buildings = project.buildings.length === 1
+    ? t('vr3.list.card.buildingsOne')
+    : t('vr3.list.card.buildingsMany', { count: project.buildings.length })
+  const documents = t('vr3.list.card.documentsMany', { count: project.documents.length })
+
+  // Two readiness rows, derived from the project's OWN state. Before the
+  // analysis has produced evidence the card reports what is actually known;
+  // it never reports a conflict count the analysis has not computed.
+  const notStarted = !state || state.state === 'DOCUMENT_ANALYSIS_NOT_STARTED'
+  const attentionCount = project.terminalDistribution.warning
+    + project.terminalDistribution.lowConfidence
+  const rows = notStarted
+    ? [
+      {
+        id: 'documentation',
+        label: t('vr3.list.card.documentation'),
+        value: t('vr3.list.card.documentationComplete'),
+      },
+      {
+        id: 'analysis',
+        label: t('vr3.list.card.analysis'),
+        value: t('ds.processingJob.state.notStarted'),
+      },
+    ]
+    : [
+      {
+        id: 'blocking',
+        label: t('vr3.list.card.blockingConflicts'),
+        value: String(state.unresolvedBlockingConflicts),
+      },
+      {
+        id: 'warnings',
+        label: t('vr3.list.card.recognitionWarnings'),
+        value: String(attentionCount),
+      },
+    ]
+
+  return (
+    <li className="a3-project-card">
+      <div className="a3-project-card-media" style={{ viewTransitionName: `project-media-${project.id}` }}>
+        <MediaFrame
+          ratio="card"
+          state={asset ? 'loaded' : 'fallback'}
+          src={asset?.url}
+          alt={asset ? tx(asset.motifDe) : undefined}
+          seed={project.id}
+          sourceId={asset?.assetId}
+        />
+      </div>
+      {/* The status mark sits ABOVE the project name, in the eyebrow
+          position the approved target uses. The canonical `Card`'s own
+          `status` slot renders after the body, so the two are stacked in
+          one column here instead of forking the primitive. */}
+      <div className="a3-project-card-column">
+      <div className="a3-project-card-status">
+        <SemanticStatus
+          tone={clean ? 'ok' : 'attention'}
+          label={t(project.listStatusKey)}
+        />
+      </div>
+      <Card
+        className="a3-project-card-body"
+        title={project.name}
+        meta={<>{project.client} · {project.city}</>}
+        actions={(
+          <Button
+            variant="primary"
+            onClick={onOpen}
+            // A real key, not a concatenation: `${name} öffnen` left the
+            // accessible name German in the EN locale while the visible
+            // label read "Open project" (rule 36).
+            aria-label={t('vr3.list.card.openAria', { name: project.name })}
+          >
+            {clean ? t('vr3.list.card.openProject') : t('vr3.list.card.reviewProject')}
+          </Button>
+        )}
+        onOpen={onOpen}
+      >
+        <p className="a3-project-card-facts">
+          <span className="block">{t(project.projectTypeKey)}</span>
+          <span className="block">{buildings} · {documents}</span>
+        </p>
+        <dl className="a3-project-card-rows">
+          {rows.map((row) => (
+            <div key={row.id} className="a3-project-card-row">
+              <dt>{row.label}</dt>
+              <dd className="numeric">{row.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </Card>
+      </div>
+    </li>
   )
 }

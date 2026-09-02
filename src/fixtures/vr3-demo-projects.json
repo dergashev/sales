@@ -1,0 +1,1483 @@
+{
+  "$comment": "DEMO / NON-PRODUCTION PRODUCT FIXTURE (VR3-01). Every name, value, cost, date and document here is synthetic and exists only to demonstrate Product behaviour. It is not calculation authority, a quotation or a real client record. Transcribed from the accepted VR3-00 fixture specification artifacts/VR3-00-global-design-audit/06-demo-fixtures/demo-project-fixtures.md; the counts, filenames, buildings, areas, source relations, questions, conflicts and media ids are invariants of that specification and are re-proved mechanically by src/fixtures/__tests__/vr3-demo-projects.test.ts. Prose is not stored here: every user-visible sentence is an i18n key (rule 36), resolved DE/EN from src/i18n. Numbers are decimal STRINGS, never JSON numbers, so no float ever enters the model.",
+  "normalListProjectCount": 2,
+  "projects": [
+    {
+      "id": "DEMO-HAPPY-01",
+      "route": "clean",
+      "name": "Wohnhof Lindenhain",
+      "client": "Lindenhain Wohnen GmbH",
+      "city": "Freiburg im Breisgau",
+      "region": "Baden-Württemberg",
+      "country": "Deutschland",
+      "owner": "A. Muster",
+      "projectTypeKey": "vr3.project.type.mfh",
+      "descriptionKey": "vr3.project.DEMO-HAPPY-01.description",
+      "listStatusKey": "vr3.project.DEMO-HAPPY-01.listStatus",
+      "heroAssetId": "A-PROJECT-HERO",
+      "sitePlanAssetId": null,
+      "buildings": [
+        {
+          "id": "A-BLDG-01",
+          "name": "Lindenhof",
+          "usageKey": "vr3.building.usage.residentialMfh",
+          "undergroundLevel": "none",
+          "storeysKey": "vr3.building.storeys.a1",
+          "identityAssetId": "A-PROJECT-HERO",
+          "planAssetId": "A-PLAN-EG",
+          "metrics": {
+            "bgfRAbove": "2740.00",
+            "bgfSAbove": "160.00",
+            "bgfRSAbove": "2900.00",
+            "bgfRBelow": "0.00",
+            "bgfSBelow": "0.00",
+            "bgfRSBelow": "0.00",
+            "bgfRSTotal": "2900.00",
+            "wfl": "2120.00",
+            "nuf": "2240.00",
+            "commercialNuf": null,
+            "units": 18,
+            "workplaces": null,
+            "parkingSpaces": null,
+            "siteArea": "3860.00"
+          },
+          "authority": {
+            "usage": "confirmed",
+            "undergroundLevel": "confirmed",
+            "storeys": "confirmed",
+            "bgfRAbove": "derived",
+            "bgfSAbove": "derived",
+            "bgfRSTotal": "derived",
+            "wfl": "confirmed",
+            "nuf": "confirmed",
+            "units": "confirmed",
+            "siteArea": "confirmed"
+          },
+          "evidenceDocIds": [
+            "A-DOC-02",
+            "A-DOC-03",
+            "A-DOC-04",
+            "A-DOC-07",
+            "A-DOC-08"
+          ],
+          "geometryComplete": true
+        }
+      ],
+      "documents": [
+        {
+          "id": "A-DOC-01",
+          "file": "01_Client_Beschreibung.pdf",
+          "documentType": "clientBrief",
+          "projectLevel": true,
+          "buildingIds": [],
+          "version": "FINAL",
+          "issuedAt": "2026-06-02",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "nativePdf",
+          "processingOutcome": "PROCESSED",
+          "issueKey": null,
+          "sourceAuthority": "confirmedClientInstruction",
+          "previewAssetId": "A-PLAN-EG"
+        },
+        {
+          "id": "A-DOC-02",
+          "file": "02_Grundriss_EG.pdf",
+          "documentType": "floorPlan",
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "version": "FINAL",
+          "issuedAt": "2026-06-05",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": null,
+          "sourceAuthority": "issuedArchitecturalDrawing",
+          "previewAssetId": "A-PLAN-EG"
+        },
+        {
+          "id": "A-DOC-03",
+          "file": "03_Grundriss_OG1.pdf",
+          "documentType": "floorPlanTypicalOg",
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "version": "FINAL",
+          "issuedAt": "2026-06-05",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": null,
+          "sourceAuthority": "issuedArchitecturalDrawing",
+          "previewAssetId": "A-PLAN-EG"
+        },
+        {
+          "id": "A-DOC-04",
+          "file": "04_Grundriss_DG.pdf",
+          "documentType": "floorPlan",
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "version": "FINAL",
+          "issuedAt": "2026-06-05",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": null,
+          "sourceAuthority": "issuedArchitecturalDrawing",
+          "previewAssetId": "A-PLAN-EG"
+        },
+        {
+          "id": "A-DOC-05",
+          "file": "05_Ansichten_Nord_Ost.pdf",
+          "documentType": "elevations",
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "version": "FINAL",
+          "issuedAt": "2026-06-06",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": null,
+          "sourceAuthority": "issuedArchitecturalDrawing",
+          "previewAssetId": "A-ELEVATIONS"
+        },
+        {
+          "id": "A-DOC-06",
+          "file": "06_Ansichten_Sued_West.pdf",
+          "documentType": "elevations",
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "version": "FINAL",
+          "issuedAt": "2026-06-06",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": null,
+          "sourceAuthority": "issuedArchitecturalDrawing",
+          "previewAssetId": "A-ELEVATIONS"
+        },
+        {
+          "id": "A-DOC-07",
+          "file": "07_Schnitt_AA.pdf",
+          "documentType": "section",
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "version": "FINAL",
+          "issuedAt": "2026-06-06",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": null,
+          "sourceAuthority": "issuedArchitecturalDrawing",
+          "previewAssetId": "A-SECTION-AA"
+        },
+        {
+          "id": "A-DOC-08",
+          "file": "08_Schnitt_BB.pdf",
+          "documentType": "section",
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "version": "FINAL",
+          "issuedAt": "2026-06-06",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": null,
+          "sourceAuthority": "issuedArchitecturalDrawing",
+          "previewAssetId": "A-SECTION-AA"
+        }
+      ],
+      "conflicts": [],
+      "questions": [],
+      "analysis": {
+        "requiredFields": 12,
+        "requiredFieldsComplete": 12,
+        "valuesExtracted": 42,
+        "sourceEvidencedValues": 42,
+        "aiInferredValues": 0,
+        "manualOrConfirmedValues": 42,
+        "valuesRequiringAttention": 0,
+        "understandingKey": "vr3.project.DEMO-HAPPY-01.understanding"
+      },
+      "terminalDistribution": {
+        "processed": 8,
+        "warning": 0,
+        "lowConfidence": 0,
+        "failed": 0
+      }
+    },
+    {
+      "id": "DEMO-COMPLEX-01",
+      "route": "complex",
+      "name": "Quartier Am Güterbogen",
+      "client": "Güterbogen Projektentwicklung GmbH",
+      "city": "Leipzig",
+      "region": "Sachsen",
+      "country": "Deutschland",
+      "owner": "B. Beispiel",
+      "projectTypeKey": "vr3.project.type.quarter",
+      "descriptionKey": "vr3.project.DEMO-COMPLEX-01.description",
+      "listStatusKey": "vr3.project.DEMO-COMPLEX-01.listStatus",
+      "heroAssetId": "B-PROJECT-HERO",
+      "sitePlanAssetId": "B-SITE-PLAN",
+      "buildings": [
+        {
+          "id": "B-BLDG-A",
+          "name": "Kontorhaus",
+          "usageKey": "vr3.building.usage.office",
+          "undergroundLevel": "none",
+          "storeysKey": "vr3.building.storeys.bA",
+          "identityAssetId": "B-BLDG-A-KONTORHAUS",
+          "planAssetId": "B-PLAN-A",
+          "metrics": {
+            "bgfRAbove": "5820.00",
+            "bgfSAbove": "210.00",
+            "bgfRSAbove": "6030.00",
+            "bgfRBelow": "0.00",
+            "bgfSBelow": "0.00",
+            "bgfRSBelow": "0.00",
+            "bgfRSTotal": "6030.00",
+            "wfl": null,
+            "nuf": "4360.00",
+            "commercialNuf": null,
+            "units": null,
+            "workplaces": 340,
+            "parkingSpaces": null,
+            "siteArea": null
+          },
+          "authority": {
+            "usage": "sourceEvidenced",
+            "undergroundLevel": "sourceEvidenced",
+            "storeys": "confirmed",
+            "bgfRAbove": "derived",
+            "bgfSAbove": "derived",
+            "bgfRSTotal": "confirmed",
+            "nuf": "confirmed",
+            "workplaces": "sourceEvidenced"
+          },
+          "evidenceDocIds": [
+            "B-DOC-06",
+            "B-DOC-07",
+            "B-DOC-09",
+            "B-DOC-11"
+          ],
+          "geometryComplete": true
+        },
+        {
+          "id": "B-BLDG-B",
+          "name": "Hofhaus",
+          "usageKey": "vr3.building.usage.residential",
+          "undergroundLevel": "full",
+          "storeysKey": "vr3.building.storeys.bB",
+          "identityAssetId": "B-BLDG-B-HOFHAUS",
+          "planAssetId": "B-PLAN-B",
+          "metrics": {
+            "bgfRAbove": "4620.00",
+            "bgfSAbove": "180.00",
+            "bgfRSAbove": "4800.00",
+            "bgfRBelow": "980.00",
+            "bgfSBelow": "0.00",
+            "bgfRSBelow": "980.00",
+            "bgfRSTotal": "5780.00",
+            "wfl": "3410.00",
+            "nuf": null,
+            "commercialNuf": null,
+            "units": 46,
+            "workplaces": null,
+            "parkingSpaces": 36,
+            "siteArea": null
+          },
+          "authority": {
+            "usage": "sourceEvidenced",
+            "undergroundLevel": "sourceEvidenced",
+            "storeys": "confirmed",
+            "bgfRAbove": "derived",
+            "bgfRBelow": "sourceEvidenced",
+            "bgfRSTotal": "confirmed",
+            "wfl": "confirmed",
+            "units": "confirmed",
+            "parkingSpaces": "sourceEvidenced"
+          },
+          "evidenceDocIds": [
+            "B-DOC-15",
+            "B-DOC-17",
+            "B-DOC-18",
+            "B-DOC-22"
+          ],
+          "geometryComplete": true
+        },
+        {
+          "id": "B-BLDG-C",
+          "name": "Stadthaus",
+          "usageKey": "vr3.building.usage.mixed",
+          "undergroundLevel": "partial",
+          "storeysKey": "vr3.building.storeys.bC",
+          "identityAssetId": "B-BLDG-C-STADTHAUS",
+          "planAssetId": "B-PLAN-C",
+          "metrics": {
+            "bgfRAbove": "6180.00",
+            "bgfSAbove": "240.00",
+            "bgfRSAbove": "6420.00",
+            "bgfRBelow": "1240.00",
+            "bgfSBelow": "0.00",
+            "bgfRSBelow": "1240.00",
+            "bgfRSTotal": "7660.00",
+            "wfl": "3620.00",
+            "nuf": null,
+            "commercialNuf": "920.00",
+            "units": 48,
+            "workplaces": null,
+            "parkingSpaces": 22,
+            "siteArea": null
+          },
+          "authority": {
+            "usage": "sourceEvidenced",
+            "undergroundLevel": "confirmed",
+            "storeys": "sourceEvidenced",
+            "bgfRAbove": "derived",
+            "bgfRBelow": "confirmed",
+            "bgfRSTotal": "confirmed",
+            "wfl": "confirmed",
+            "commercialNuf": "confirmed",
+            "units": "confirmed",
+            "parkingSpaces": "sourceEvidenced",
+            "height": "userEntered"
+          },
+          "evidenceDocIds": [
+            "B-DOC-26",
+            "B-DOC-28",
+            "B-DOC-29",
+            "B-DOC-30",
+            "B-DOC-33"
+          ],
+          "geometryComplete": true
+        }
+      ],
+      "documents": [
+        {
+          "id": "B-DOC-01",
+          "file": "01_Auftraggeberbrief_Quartier.pdf",
+          "documentType": "clientBrief",
+          "projectLevel": true,
+          "buildingIds": [],
+          "version": "V1",
+          "issuedAt": "2025-11-12",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "nativePdf",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b01",
+          "sourceAuthority": "historicalClientInstruction",
+          "previewAssetId": "B-SITE-PLAN"
+        },
+        {
+          "id": "B-DOC-02",
+          "file": "02_Auftraggeberbrief_Nachtrag.pdf",
+          "documentType": "clientBriefAddendum",
+          "projectLevel": true,
+          "buildingIds": [],
+          "version": "V2",
+          "issuedAt": "2026-03-18",
+          "supersedes": "B-DOC-01",
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "nativePdf",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b02",
+          "sourceAuthority": "currentClientInstruction",
+          "previewAssetId": "B-SITE-PLAN"
+        },
+        {
+          "id": "B-DOC-03",
+          "file": "03_Projektbeschreibung_Entwurf.docx.pdf",
+          "documentType": "projectDescription",
+          "projectLevel": true,
+          "buildingIds": [],
+          "version": "V3",
+          "issuedAt": "2026-04-02",
+          "supersedes": "B-DOC-02",
+          "duplicateOf": null,
+          "recognitionQuality": "medium",
+          "recognitionMedium": "converted",
+          "processingOutcome": "LOW_CONFIDENCE",
+          "issueKey": "vr3.doc.issue.b03",
+          "sourceAuthority": "currentDescriptionBelowDrawings",
+          "previewAssetId": "B-SITE-PLAN"
+        },
+        {
+          "id": "B-DOC-04",
+          "file": "04_Flaechenliste_Gesamt_FINAL.xlsx.pdf",
+          "documentType": "areaSchedule",
+          "projectLevel": true,
+          "buildingIds": [
+            "B-BLDG-A",
+            "B-BLDG-B",
+            "B-BLDG-C"
+          ],
+          "version": "FINAL",
+          "issuedAt": "2026-04-28",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "nativePdf",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b04",
+          "sourceAuthority": "coordinatedSchedulePending",
+          "previewAssetId": "B-SITE-PLAN"
+        },
+        {
+          "id": "B-DOC-05",
+          "file": "05_A_Grundriss_EG_REV-A.pdf",
+          "documentType": "floorPlan",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "version": "REV-A",
+          "issuedAt": "2026-01-22",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b05",
+          "sourceAuthority": "supersededArchitecturalDrawing",
+          "previewAssetId": "B-PLAN-A"
+        },
+        {
+          "id": "B-DOC-06",
+          "file": "06_A_Grundriss_EG_REV-B.pdf",
+          "documentType": "floorPlan",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "version": "REV-B",
+          "issuedAt": "2026-04-21",
+          "supersedes": "B-DOC-05",
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": null,
+          "sourceAuthority": "currentIssuedArchitecturalDrawing",
+          "previewAssetId": "B-PLAN-A"
+        },
+        {
+          "id": "B-DOC-07",
+          "file": "07_A_Grundriss_OG1-5_REV-B.pdf",
+          "documentType": "floorPlans",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "version": "REV-B",
+          "issuedAt": "2026-04-21",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b07",
+          "sourceAuthority": "currentIssuedArchitecturalDrawing",
+          "previewAssetId": "B-PLAN-A"
+        },
+        {
+          "id": "B-DOC-08",
+          "file": "08_A_Ansichten_FINAL.pdf",
+          "documentType": "elevations",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "version": "FINAL",
+          "issuedAt": "2026-04-22",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": null,
+          "sourceAuthority": "currentIssuedArchitecturalDrawing",
+          "previewAssetId": "B-ELEVATIONS"
+        },
+        {
+          "id": "B-DOC-09",
+          "file": "09_A_Schnitt_AA_FINAL.pdf",
+          "documentType": "section",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "version": "FINAL",
+          "issuedAt": "2026-04-22",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": null,
+          "sourceAuthority": "currentIssuedArchitecturalDrawing",
+          "previewAssetId": "B-SECTION"
+        },
+        {
+          "id": "B-DOC-10",
+          "file": "10_A_Bueroflaechen_V1.pdf",
+          "documentType": "areaSchedule",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "version": "V1",
+          "issuedAt": "2026-02-10",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "medium",
+          "recognitionMedium": "nativePdf",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b10",
+          "sourceAuthority": "supersededDisciplineSchedule",
+          "previewAssetId": "B-PLAN-A"
+        },
+        {
+          "id": "B-DOC-11",
+          "file": "11_A_Bueroflaechen_V2.pdf",
+          "documentType": "areaSchedule",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "version": "V2",
+          "issuedAt": "2026-04-26",
+          "supersedes": "B-DOC-10",
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "nativePdf",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b11",
+          "sourceAuthority": "currentCoordinatedSchedule",
+          "previewAssetId": "B-PLAN-A"
+        },
+        {
+          "id": "B-DOC-12",
+          "file": "12_A_Brandschutzkonzept_REV-A_SCAN.pdf",
+          "documentType": "fireStrategy",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "version": "REV-A",
+          "issuedAt": "2026-03-11",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "low",
+          "recognitionMedium": "skewedScan",
+          "processingOutcome": "LOW_CONFIDENCE",
+          "issueKey": "vr3.doc.issue.b12",
+          "sourceAuthority": "supportingTechnicalDocument",
+          "previewAssetId": "B-SECTION"
+        },
+        {
+          "id": "B-DOC-13",
+          "file": "13_A_Grundriss_EG_REV-B_KOPIE.pdf",
+          "documentType": "floorPlanDuplicate",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "version": "REV-B",
+          "issuedAt": "2026-04-21",
+          "supersedes": null,
+          "duplicateOf": "B-DOC-06",
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "WARNING",
+          "issueKey": "vr3.doc.issue.b13",
+          "sourceAuthority": "duplicateNoAdditionalAuthority",
+          "previewAssetId": "B-PLAN-A"
+        },
+        {
+          "id": "B-DOC-14",
+          "file": "14_B_Grundriss_UG_V1.pdf",
+          "documentType": "floorPlan",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "version": "V1",
+          "issuedAt": "2025-12-09",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b14",
+          "sourceAuthority": "supersededArchitecturalDrawing",
+          "previewAssetId": "B-PLAN-B"
+        },
+        {
+          "id": "B-DOC-15",
+          "file": "15_B_Grundriss_UG_FINAL-REV.pdf",
+          "documentType": "floorPlan",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "version": "FINAL-REV",
+          "issuedAt": "2026-05-03",
+          "supersedes": "B-DOC-14",
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b15",
+          "sourceAuthority": "currentIssuedArchitecturalDrawing",
+          "previewAssetId": "B-PLAN-B"
+        },
+        {
+          "id": "B-DOC-16",
+          "file": "16_B_Grundriss_EG_REV-A.pdf",
+          "documentType": "floorPlan",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "version": "REV-A",
+          "issuedAt": "2026-02-19",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b16",
+          "sourceAuthority": "supersededArchitecturalDrawing",
+          "previewAssetId": "B-PLAN-B"
+        },
+        {
+          "id": "B-DOC-17",
+          "file": "17_B_Grundriss_EG_REV-B.pdf",
+          "documentType": "floorPlan",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "version": "REV-B",
+          "issuedAt": "2026-04-24",
+          "supersedes": "B-DOC-16",
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b17",
+          "sourceAuthority": "currentIssuedArchitecturalDrawing",
+          "previewAssetId": "B-PLAN-B"
+        },
+        {
+          "id": "B-DOC-18",
+          "file": "18_B_Grundriss_OG1-4_FINAL.pdf",
+          "documentType": "floorPlans",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "version": "FINAL",
+          "issuedAt": "2026-04-24",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": null,
+          "sourceAuthority": "currentIssuedArchitecturalDrawing",
+          "previewAssetId": "B-PLAN-B"
+        },
+        {
+          "id": "B-DOC-19",
+          "file": "19_B_Ansichten_Nord_Ost_FINAL.pdf",
+          "documentType": "elevations",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "version": "FINAL",
+          "issuedAt": "2026-04-25",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": null,
+          "sourceAuthority": "currentIssuedArchitecturalDrawing",
+          "previewAssetId": "B-ELEVATIONS"
+        },
+        {
+          "id": "B-DOC-20",
+          "file": "20_B_Ansichten_Sued_West_FINAL.pdf",
+          "documentType": "elevations",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "version": "FINAL",
+          "issuedAt": "2026-04-25",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "medium",
+          "recognitionMedium": "raster",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b20",
+          "sourceAuthority": "currentIssuedGeometryCrossCheck",
+          "previewAssetId": "B-ELEVATIONS"
+        },
+        {
+          "id": "B-DOC-21",
+          "file": "21_B_Schnitt_BB_SCAN.pdf",
+          "documentType": "section",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "version": "V2",
+          "issuedAt": "2026-03-30",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "low",
+          "recognitionMedium": "faintScan",
+          "processingOutcome": "WARNING",
+          "issueKey": "vr3.doc.issue.b21",
+          "sourceAuthority": "supportingArchitecturalEvidence",
+          "previewAssetId": "B-SECTION"
+        },
+        {
+          "id": "B-DOC-22",
+          "file": "22_B_Wohnflaechenberechnung_V2.pdf",
+          "documentType": "areaSchedule",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "version": "V2",
+          "issuedAt": "2026-04-27",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "nativePdf",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b22",
+          "sourceAuthority": "currentCoordinatedSchedule",
+          "previewAssetId": "B-PLAN-B"
+        },
+        {
+          "id": "B-DOC-23",
+          "file": "23_B_Baubeschreibung_FINAL.pdf",
+          "documentType": "buildingDescription",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "version": "FINAL",
+          "issuedAt": "2026-04-29",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "nativePdf",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b23",
+          "sourceAuthority": "currentDescriptionConflicting",
+          "previewAssetId": "B-PLAN-B"
+        },
+        {
+          "id": "B-DOC-24",
+          "file": "24_C_Grundriss_UG_V1_SCAN.pdf",
+          "documentType": "floorPlan",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "version": "V1",
+          "issuedAt": "2025-12-15",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "veryLow",
+          "recognitionMedium": "croppedScan",
+          "processingOutcome": "FAILED",
+          "issueKey": "vr3.doc.issue.b24",
+          "sourceAuthority": "historicalEvidenceOnly",
+          "previewAssetId": "B-PLAN-C"
+        },
+        {
+          "id": "B-DOC-25",
+          "file": "25_C_Grundriss_UG_REV-A.pdf",
+          "documentType": "floorPlan",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "version": "REV-A",
+          "issuedAt": "2026-03-14",
+          "supersedes": "B-DOC-24",
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b25",
+          "sourceAuthority": "supersededArchitecturalDrawing",
+          "previewAssetId": "B-PLAN-C"
+        },
+        {
+          "id": "B-DOC-26",
+          "file": "26_C_Grundriss_UG_FINAL-REV.pdf",
+          "documentType": "floorPlan",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "version": "FINAL-REV",
+          "issuedAt": "2026-05-05",
+          "supersedes": "B-DOC-25",
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b26",
+          "sourceAuthority": "currentIssuedArchitecturalDrawing",
+          "previewAssetId": "B-PLAN-C"
+        },
+        {
+          "id": "B-DOC-27",
+          "file": "27_C_Grundriss_EG_V2.pdf",
+          "documentType": "floorPlan",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "version": "V2",
+          "issuedAt": "2026-03-26",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b27",
+          "sourceAuthority": "supersededArchitecturalDrawing",
+          "previewAssetId": "B-PLAN-C"
+        },
+        {
+          "id": "B-DOC-28",
+          "file": "28_C_Grundriss_EG_V3.pdf",
+          "documentType": "floorPlan",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "version": "V3",
+          "issuedAt": "2026-05-05",
+          "supersedes": "B-DOC-27",
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b28",
+          "sourceAuthority": "currentIssuedArchitecturalDrawing",
+          "previewAssetId": "B-PLAN-C"
+        },
+        {
+          "id": "B-DOC-29",
+          "file": "29_C_Grundriss_OG1-5_REV-B.pdf",
+          "documentType": "floorPlans",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "version": "REV-B",
+          "issuedAt": "2026-05-05",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b29",
+          "sourceAuthority": "currentIssuedArchitecturalDrawing",
+          "previewAssetId": "B-PLAN-C"
+        },
+        {
+          "id": "B-DOC-30",
+          "file": "30_C_Grundriss_OG6_FINAL.pdf",
+          "documentType": "floorPlan",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "version": "FINAL",
+          "issuedAt": "2026-05-05",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b30",
+          "sourceAuthority": "currentIssuedArchitecturalDrawing",
+          "previewAssetId": "B-PLAN-C"
+        },
+        {
+          "id": "B-DOC-31",
+          "file": "31_C_Ansichten_FINAL_SCAN.pdf",
+          "documentType": "elevations",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "version": "FINAL",
+          "issuedAt": "2026-05-06",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "low",
+          "recognitionMedium": "compressedRaster",
+          "processingOutcome": "LOW_CONFIDENCE",
+          "issueKey": "vr3.doc.issue.b31",
+          "sourceAuthority": "currentIssuedLowRecognition",
+          "previewAssetId": "B-ELEVATIONS"
+        },
+        {
+          "id": "B-DOC-32",
+          "file": "32_C_Schnitt_CC_REV-A.pdf",
+          "documentType": "section",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "version": "REV-A",
+          "issuedAt": "2026-03-28",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b32",
+          "sourceAuthority": "supersededArchitecturalDrawing",
+          "previewAssetId": "B-SECTION"
+        },
+        {
+          "id": "B-DOC-33",
+          "file": "33_C_Schnitt_CC_FINAL-REV.pdf",
+          "documentType": "section",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "version": "FINAL-REV",
+          "issuedAt": "2026-05-06",
+          "supersedes": "B-DOC-32",
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b33",
+          "sourceAuthority": "currentIssuedArchitecturalDrawing",
+          "previewAssetId": "B-SECTION"
+        },
+        {
+          "id": "B-DOC-34",
+          "file": "34_C_Nutzungskonzept_REV-B.pdf",
+          "documentType": "useConcept",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "version": "REV-B",
+          "issuedAt": "2026-04-30",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "medium",
+          "recognitionMedium": "nativePdf",
+          "processingOutcome": "WARNING",
+          "issueKey": "vr3.doc.issue.b34",
+          "sourceAuthority": "currentDisciplineConcept",
+          "previewAssetId": "B-PLAN-C"
+        },
+        {
+          "id": "B-DOC-35",
+          "file": "35_Freianlagenplan_REV-A.pdf",
+          "documentType": "sitePlan",
+          "projectLevel": true,
+          "buildingIds": [
+            "B-BLDG-A",
+            "B-BLDG-B",
+            "B-BLDG-C"
+          ],
+          "version": "REV-A",
+          "issuedAt": "2026-04-16",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "vector",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b35",
+          "sourceAuthority": "currentSiteEvidence",
+          "previewAssetId": "B-SITE-PLAN"
+        },
+        {
+          "id": "B-DOC-36",
+          "file": "36_TGA_Energiekonzept_FINAL.pdf",
+          "documentType": "technicalConcept",
+          "projectLevel": true,
+          "buildingIds": [
+            "B-BLDG-A",
+            "B-BLDG-B",
+            "B-BLDG-C"
+          ],
+          "version": "FINAL",
+          "issuedAt": "2026-05-07",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "medium",
+          "recognitionMedium": "nativePdf",
+          "processingOutcome": "WARNING",
+          "issueKey": "vr3.doc.issue.b36",
+          "sourceAuthority": "currentTechnicalConceptStale",
+          "previewAssetId": "B-SITE-PLAN"
+        }
+      ],
+      "conflicts": [
+        {
+          "id": "B-CF-01",
+          "conceptKey": "vr3.conflict.B-CF-01.concept",
+          "blocking": true,
+          "scope": "project",
+          "buildingId": null,
+          "mattersKey": "vr3.conflict.B-CF-01.matters",
+          "affectsKey": "vr3.conflict.B-CF-01.affects",
+          "unit": "m²",
+          "candidates": [
+            {
+              "id": "B-CF-01-a",
+              "value": "19710.00",
+              "displayValue": "19.710",
+              "docId": "B-DOC-04",
+              "authority": "coordinatedSchedulePending",
+              "superseded": false,
+              "recommended": false
+            },
+            {
+              "id": "B-CF-01-b",
+              "value": "19470.00",
+              "displayValue": "19.470",
+              "docId": "B-DOC-33",
+              "authority": "currentIssuedArchitecturalDrawing",
+              "superseded": false,
+              "recommended": true,
+              "derivedFromDrawingSum": true
+            }
+          ],
+          "recommendedCandidateId": "B-CF-01-b",
+          "resolutionAuthority": "confirmed",
+          "staleDocIds": [
+            "B-DOC-04"
+          ],
+          "factKeys": [
+            "bgfRSTotal"
+          ]
+        },
+        {
+          "id": "B-CF-02",
+          "conceptKey": "vr3.conflict.B-CF-02.concept",
+          "blocking": true,
+          "scope": "building",
+          "buildingId": "B-BLDG-B",
+          "mattersKey": "vr3.conflict.B-CF-02.matters",
+          "affectsKey": "vr3.conflict.B-CF-02.affects",
+          "unit": null,
+          "candidates": [
+            {
+              "id": "B-CF-02-a",
+              "value": "48",
+              "displayValue": "48",
+              "docId": "B-DOC-23",
+              "authority": "currentDescriptionConflicting",
+              "superseded": false,
+              "recommended": false
+            },
+            {
+              "id": "B-CF-02-b",
+              "value": "46",
+              "displayValue": "46",
+              "docId": "B-DOC-22",
+              "authority": "currentCoordinatedSchedule",
+              "superseded": false,
+              "recommended": true
+            }
+          ],
+          "recommendedCandidateId": "B-CF-02-b",
+          "resolutionAuthority": "sourceEvidenced",
+          "staleDocIds": [
+            "B-DOC-23"
+          ],
+          "factKeys": [
+            "units"
+          ]
+        },
+        {
+          "id": "B-CF-03",
+          "conceptKey": "vr3.conflict.B-CF-03.concept",
+          "blocking": true,
+          "scope": "building",
+          "buildingId": "B-BLDG-C",
+          "mattersKey": "vr3.conflict.B-CF-03.matters",
+          "affectsKey": "vr3.conflict.B-CF-03.affects",
+          "unit": null,
+          "candidates": [
+            {
+              "id": "B-CF-03-a",
+              "valueKey": "vr3.conflict.B-CF-03.candidate.full",
+              "docId": "B-DOC-25",
+              "authority": "supersededArchitecturalDrawing",
+              "superseded": true,
+              "recommended": false
+            },
+            {
+              "id": "B-CF-03-b",
+              "valueKey": "vr3.conflict.B-CF-03.candidate.partial",
+              "docId": "B-DOC-26",
+              "authority": "currentIssuedArchitecturalDrawing",
+              "superseded": false,
+              "recommended": true
+            }
+          ],
+          "recommendedCandidateId": "B-CF-03-b",
+          "resolutionAuthority": "confirmed",
+          "staleDocIds": [
+            "B-DOC-25",
+            "B-DOC-32"
+          ],
+          "factKeys": [
+            "undergroundLevel",
+            "bgfRBelow"
+          ]
+        },
+        {
+          "id": "B-CF-04",
+          "conceptKey": "vr3.conflict.B-CF-04.concept",
+          "blocking": true,
+          "scope": "building",
+          "buildingId": "B-BLDG-C",
+          "mattersKey": "vr3.conflict.B-CF-04.matters",
+          "affectsKey": "vr3.conflict.B-CF-04.affects",
+          "unit": "m²",
+          "candidates": [
+            {
+              "id": "B-CF-04-a",
+              "value": "1080.00",
+              "displayValue": "1.080",
+              "docId": "B-DOC-27",
+              "authority": "supersededArchitecturalDrawing",
+              "superseded": true,
+              "recommended": false
+            },
+            {
+              "id": "B-CF-04-b",
+              "value": "920.00",
+              "displayValue": "920",
+              "docId": "B-DOC-28",
+              "authority": "currentIssuedArchitecturalDrawing",
+              "superseded": false,
+              "recommended": true
+            }
+          ],
+          "recommendedCandidateId": "B-CF-04-b",
+          "resolutionAuthority": "sourceEvidenced",
+          "staleDocIds": [
+            "B-DOC-27"
+          ],
+          "factKeys": [
+            "commercialNuf"
+          ]
+        },
+        {
+          "id": "B-CF-05",
+          "conceptKey": "vr3.conflict.B-CF-05.concept",
+          "blocking": true,
+          "scope": "building",
+          "buildingId": "B-BLDG-A",
+          "mattersKey": "vr3.conflict.B-CF-05.matters",
+          "affectsKey": "vr3.conflict.B-CF-05.affects",
+          "unit": "m²",
+          "candidates": [
+            {
+              "id": "B-CF-05-a",
+              "value": "4520.00",
+              "displayValue": "4.520",
+              "docId": "B-DOC-10",
+              "authority": "supersededDisciplineSchedule",
+              "superseded": true,
+              "recommended": false
+            },
+            {
+              "id": "B-CF-05-b",
+              "value": "4360.00",
+              "displayValue": "4.360",
+              "docId": "B-DOC-11",
+              "authority": "currentCoordinatedSchedule",
+              "superseded": false,
+              "recommended": true
+            }
+          ],
+          "recommendedCandidateId": "B-CF-05-b",
+          "resolutionAuthority": "sourceEvidenced",
+          "staleDocIds": [
+            "B-DOC-10"
+          ],
+          "factKeys": [
+            "nuf"
+          ]
+        },
+        {
+          "id": "B-CF-06",
+          "conceptKey": "vr3.conflict.B-CF-06.concept",
+          "blocking": true,
+          "scope": "building",
+          "buildingId": "B-BLDG-A",
+          "mattersKey": "vr3.conflict.B-CF-06.matters",
+          "affectsKey": "vr3.conflict.B-CF-06.affects",
+          "unit": null,
+          "candidates": [
+            {
+              "id": "B-CF-06-a",
+              "valueKey": "vr3.conflict.B-CF-06.candidate.six",
+              "docId": "B-DOC-12",
+              "authority": "supportingTechnicalDocument",
+              "superseded": false,
+              "recommended": false,
+              "lowConfidence": true
+            },
+            {
+              "id": "B-CF-06-b",
+              "valueKey": "vr3.conflict.B-CF-06.candidate.five",
+              "docId": "B-DOC-07",
+              "authority": "currentIssuedArchitecturalDrawing",
+              "superseded": false,
+              "recommended": true
+            }
+          ],
+          "recommendedCandidateId": "B-CF-06-b",
+          "resolutionAuthority": "sourceEvidenced",
+          "staleDocIds": [
+            "B-DOC-12"
+          ],
+          "factKeys": [
+            "storeys"
+          ]
+        }
+      ],
+      "questions": [
+        {
+          "id": "B-Q-01",
+          "kind": "question",
+          "scope": "building",
+          "buildingId": "B-BLDG-C",
+          "questionKey": "vr3.question.B-Q-01.question",
+          "mattersKey": "vr3.question.B-Q-01.matters",
+          "evidenceKey": "vr3.question.B-Q-01.evidence",
+          "responseKey": "vr3.question.B-Q-01.response",
+          "status": "open",
+          "blocking": false,
+          "assumptionPermitted": true,
+          "evidenceDocIds": [
+            "B-DOC-34",
+            "B-DOC-02"
+          ]
+        },
+        {
+          "id": "B-Q-02",
+          "kind": "question",
+          "scope": "building",
+          "buildingId": "B-BLDG-A",
+          "questionKey": "vr3.question.B-Q-02.question",
+          "mattersKey": "vr3.question.B-Q-02.matters",
+          "evidenceKey": "vr3.question.B-Q-02.evidence",
+          "responseKey": "vr3.question.B-Q-02.response",
+          "status": "open",
+          "blocking": false,
+          "assumptionPermitted": true,
+          "evidenceDocIds": [
+            "B-DOC-02"
+          ]
+        },
+        {
+          "id": "B-Q-03",
+          "kind": "question",
+          "scope": "building",
+          "buildingId": "B-BLDG-B",
+          "questionKey": "vr3.question.B-Q-03.question",
+          "mattersKey": "vr3.question.B-Q-03.matters",
+          "evidenceKey": "vr3.question.B-Q-03.evidence",
+          "responseKey": "vr3.question.B-Q-03.response",
+          "status": "answered",
+          "blocking": false,
+          "assumptionPermitted": false,
+          "evidenceDocIds": [
+            "B-DOC-14",
+            "B-DOC-15"
+          ]
+        },
+        {
+          "id": "B-Q-04",
+          "kind": "question",
+          "scope": "building",
+          "buildingId": "B-BLDG-C",
+          "questionKey": "vr3.question.B-Q-04.question",
+          "mattersKey": "vr3.question.B-Q-04.matters",
+          "evidenceKey": "vr3.question.B-Q-04.evidence",
+          "responseKey": "vr3.question.B-Q-04.response",
+          "status": "open",
+          "blocking": false,
+          "assumptionPermitted": true,
+          "evidenceDocIds": [
+            "B-DOC-26",
+            "B-DOC-36"
+          ]
+        },
+        {
+          "id": "B-Q-05",
+          "kind": "question",
+          "scope": "project",
+          "buildingId": null,
+          "questionKey": "vr3.question.B-Q-05.question",
+          "mattersKey": "vr3.question.B-Q-05.matters",
+          "evidenceKey": "vr3.question.B-Q-05.evidence",
+          "responseKey": "vr3.question.B-Q-05.response",
+          "status": "open",
+          "blocking": false,
+          "assumptionPermitted": true,
+          "evidenceDocIds": [
+            "B-DOC-35",
+            "B-DOC-01"
+          ]
+        },
+        {
+          "id": "B-Q-06",
+          "kind": "question",
+          "scope": "building",
+          "buildingId": "B-BLDG-A",
+          "questionKey": "vr3.question.B-Q-06.question",
+          "mattersKey": "vr3.question.B-Q-06.matters",
+          "evidenceKey": "vr3.question.B-Q-06.evidence",
+          "responseKey": "vr3.question.B-Q-06.response",
+          "status": "open",
+          "blocking": false,
+          "assumptionPermitted": false,
+          "evidenceDocIds": [
+            "B-DOC-12"
+          ]
+        },
+        {
+          "id": "B-Q-07",
+          "kind": "question",
+          "scope": "project",
+          "buildingId": null,
+          "questionKey": "vr3.question.B-Q-07.question",
+          "mattersKey": "vr3.question.B-Q-07.matters",
+          "evidenceKey": "vr3.question.B-Q-07.evidence",
+          "responseKey": "vr3.question.B-Q-07.response",
+          "status": "answered",
+          "blocking": false,
+          "assumptionPermitted": false,
+          "evidenceDocIds": [
+            "B-DOC-35"
+          ]
+        },
+        {
+          "id": "B-Q-08",
+          "kind": "question",
+          "scope": "project",
+          "buildingId": null,
+          "questionKey": "vr3.question.B-Q-08.question",
+          "mattersKey": "vr3.question.B-Q-08.matters",
+          "evidenceKey": "vr3.question.B-Q-08.evidence",
+          "responseKey": "vr3.question.B-Q-08.response",
+          "status": "open",
+          "blocking": false,
+          "assumptionPermitted": true,
+          "evidenceDocIds": []
+        },
+        {
+          "id": "B-DS-01",
+          "kind": "lowConfidence",
+          "scope": "building",
+          "buildingId": "B-BLDG-C",
+          "questionKey": "vr3.question.B-DS-01.question",
+          "mattersKey": "vr3.question.B-DS-01.matters",
+          "evidenceKey": "vr3.question.B-DS-01.evidence",
+          "responseKey": "vr3.question.B-DS-01.response",
+          "status": "reviewRequired",
+          "blocking": false,
+          "assumptionPermitted": false,
+          "evidenceDocIds": [
+            "B-DOC-31",
+            "B-DOC-33"
+          ]
+        },
+        {
+          "id": "B-DS-02",
+          "kind": "staleDependency",
+          "scope": "project",
+          "buildingId": null,
+          "questionKey": "vr3.question.B-DS-02.question",
+          "mattersKey": "vr3.question.B-DS-02.matters",
+          "evidenceKey": "vr3.question.B-DS-02.evidence",
+          "responseKey": "vr3.question.B-DS-02.response",
+          "status": "warning",
+          "blocking": false,
+          "assumptionPermitted": false,
+          "evidenceDocIds": [
+            "B-DOC-36"
+          ]
+        }
+      ],
+      "analysis": {
+        "requiredFields": 34,
+        "requiredFieldsComplete": 34,
+        "valuesExtracted": 141,
+        "sourceEvidencedValues": 123,
+        "aiInferredValues": 12,
+        "manualOrConfirmedValues": 6,
+        "valuesRequiringAttention": 18,
+        "understandingKey": "vr3.project.DEMO-COMPLEX-01.understanding"
+      },
+      "terminalDistribution": {
+        "processed": 28,
+        "warning": 4,
+        "lowConfidence": 3,
+        "failed": 1
+      }
+    }
+  ]
+}

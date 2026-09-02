@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
-import { confirmBuildingReviewSections, confirmWholeConfiguration } from '../../test/offer-option'
+import { confirmBuildingReviewSections, confirmWholeConfiguration, enterOptionWorkspace } from '../../test/offer-option'
 import { __resetStoreForTests, useStore } from '../../state/store'
 
 /**
@@ -26,13 +26,12 @@ beforeEach(() => __resetStoreForTests())
  * Каждый тест панелей обязан пройти путь пользователя целиком: иначе он
  * проверяет экран, до которого в продукте не дойти.
  */
-async function enterOption(user: ReturnType<typeof userEvent.setup>) {
+// VR3-01: the retired five-click project preamble is gone, so this
+// entry point no longer drives the UI — the underscore keeps every
+// existing `await enterOption(user)` call site untouched.
+async function enterOption(_user: ReturnType<typeof userEvent.setup>) {
   render(<App />)
-  await user.click(await screen.findByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
-  await user.click(screen.getByRole('button', { name: 'Kundenwert übernehmen' }))
-  await user.click(screen.getByRole('button', { name: 'Projektparameter bestätigen' }))
-  await user.click(screen.getByRole('button', { name: 'Opportunity Option anlegen' }))
-  await user.click(screen.getByRole('button', { name: 'Öffnen' }))
+  enterOptionWorkspace()
 }
 
 async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
@@ -60,28 +59,43 @@ describe('Projektstatus-Überblick (Task 01) — roving tabindex (TABS-001/KEY-0
   // all (a known, deliberately-deferred DS-GOV-EX-07 gap) — Task 01 closes
   // it for this instance, so the TABS-001/KEY-003 keyboard contract this
   // block protected now applies here instead.
-  async function openOverview(user: ReturnType<typeof userEvent.setup>) {
+  // VR3-01: the project's ONE progress model is the canonical workflow
+  // SPINE (`WorkflowStepper size="spine"`, nav «Projekt- und
+  // Optionsverlauf»), which replaces the former «Projektstatus» stepper.
+  // The contract this block protects — roving tabindex, arrow movement,
+  // Home/End, and NO activation on arrow — is unchanged and now lives
+  // there. An Option is created first because only then are all three
+  // project stations navigable (`onSelect`) at once: a spine with a single
+  // interactive step could not prove movement between them at all.
+  async function openOverview(_user: ReturnType<typeof userEvent.setup>) {
     render(<App />)
-    await user.click(await screen.findByRole('button', { name: /Musterprojekt Nordfeld öffnen/ }))
-    return screen.getByRole('navigation', { name: 'Projektstatus' })
+    enterOptionWorkspace()
+    act(() => { useStore.getState().backToOpportunity() })
+    return screen.getByRole('navigation', { name: 'Projekt- und Optionsverlauf' })
   }
 
   it('стрелка двигает фокус, но НЕ открывает раздел — открытие только по клику/Enter/Space (STEP-003)', async () => {
     const user = userEvent.setup()
     const overview = await openOverview(user)
     const steps = within(overview).getAllByRole('button')
+    expect(steps.length).toBeGreaterThan(1)
+    expect(useStore.getState().projectStage).toBe('createOption')
 
     steps[0]!.focus()
     await user.keyboard('{ArrowRight}')
 
     // Фокус ушёл на следующую стадию…
     expect(document.activeElement).toBe(steps[1])
-    // …а сам раздел ещё не получил фокус: автоактивация стрелкой прыгала бы
-    // по всей странице при каждом нажатии.
-    expect(document.activeElement).not.toBe(screen.getByRole('region', { name: 'Strittige Angaben' }))
+    // …а сама стадия ещё НЕ открыта: автоактивация стрелкой меняла бы
+    // экран при каждом нажатии.
+    expect(useStore.getState().projectStage).toBe('createOption')
 
     await user.keyboard('{Enter}')
-    expect(document.activeElement).toBe(screen.getByRole('region', { name: 'Strittige Angaben' }))
+    // Enter открывает — и открывает ИМЕННО ту стадию, на которой фокус.
+    expect(useStore.getState().projectStage).toBe('understanding')
+    expect(screen.getByRole('heading', {
+      name: 'Alle blockierenden strittigen Angaben sind entschieden.',
+    })).toBeInTheDocument()
   })
 
   it('roving tabindex: ровно одна кнопка обзора в цикле Tab', async () => {
@@ -220,7 +234,7 @@ describe('Гейт режима презентации — блокировка 
     // project's own name (§1 Projekt is always the opening section; here
     // the Option isn't yet client-eligible either, so the shell's honest
     // "not ready" fallback renders, whose H1 is the same project name).
-    expect(screen.getByRole('heading', { level: 1, name: 'Musterprojekt Nordfeld' })).toHaveFocus()
+    expect(screen.getByRole('heading', { level: 1, name: 'Wohnhof Lindenhain' })).toHaveFocus()
   })
 })
 

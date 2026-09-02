@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures'
-import { DOCUMENT_TITLE, VIEWPORT_GUARD } from '../anchors'
+import { DEMO_PROJECT_NAME, DOCUMENT_TITLE, PROJECT_LIST_HEADING, VIEWPORT_GUARD } from '../anchors'
 
 /**
  * Smoke coverage items 1, 2, 4, 7 (Engineering Architecture handoff):
@@ -30,13 +30,13 @@ test.describe('desktop shell', () => {
     await expect(guard).toBeHidden()
 
     // The list-level shell (root of the product) shows the breadcrumb-free
-    // header and the Opportunity list — not the desktop-too-small notice.
-    await expect(page.getByRole('heading', { name: 'Opportunities' })).toBeVisible()
+    // header and the two-project list — not the desktop-too-small notice.
+    await expect(page.getByRole('heading', { name: PROJECT_LIST_HEADING })).toBeVisible()
   })
 
   test('primary navigation is available once inside an option', async ({ page }) => {
     await page.goto('/')
-    await page.getByRole('button', { name: `Musterprojekt Nordfeld öffnen` }).click()
+    await page.getByRole('button', { name: `${DEMO_PROJECT_NAME} öffnen` }).click()
 
     // At Opportunity-card level there is no left sidebar yet (DC-15/DC-34:
     // list and card levels are outside the three-zone pipeline shell) — the

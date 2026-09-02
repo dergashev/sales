@@ -5,58 +5,37 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 43** · перевод есть, мост не подключён: 23
-· перевода нет (в поставку копирайта): 20
+**Всего 22** · перевод есть, мост не подключён: 8
+· перевода нет (в поставку копирайта): 14
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
 - . Die Preiswirkung erscheint sofort in der Angebotsspalte rechts und im Kostentreiber.
-- Die Gebäudeklasse ist noch nicht bestätigt. Die Geschossanzahl ist lediglich Prüfauslöser und kein Nachweis; die Einstufung nach MBO §2 erfolgt über das Brandschutzkonzept und die zugehörigen Nachweise. Für die Kalkulation ist vorläufig GK 5 hinterlegt, Stand «Prüfung erforderlich». Die endgültige Einstufung kann die Anforderungen an Tragwerk und Kapselung und damit den Preis verändern; mit Vorlage des Brandschutzkonzepts bestätigen wir sie.
-- Gebäude im Projekt
 - Gerundet auf 1.000 €; exakter Rechenwert 3.817.835,00 €
-- Klassifikation bestätigen
-- Liegt eine Wohnflächenberechnung nach WoFlV vor?
 - Marge Eigenleistung nach Rabatt:
-- Musterhöfe Westpark
-- Musterquartier Südhang
 - Projektparameter bestätigt (Gebäude, Flächen, Einheiten)
-- Residential area · WFL nach WoFlV: two candidates.
-- Sehr geehrte Damen und Herren,
-
-anbei erhalten Sie unser indikatives Angebot für das Musterprojekt Nordfeld.
-
-Mit freundlichen Grüßen
-- Total NUF nach DIN 277
-- Total WFL nach WoFlV
-- Welcher Effizienzhaus-Standard ist vorgesehen?
-- Werte aus
 - aktuelle Auswahl
-- andere Dokumente sind vollständig analysiert.
-- dieser Datei
 - für den Prototyp abgeleitet, nicht kalibriert
 - nach Planung
 - vollständig inkl. Gründung
-- Österreich
 
 ## Перевода нет — в следующую поставку копирайта
 
-- % auf KG
-- % auf ±
 - Angebot prüfen
-- Courtyard view · Musterhöfe
 - Die folgenden Auswahlmöglichkeiten sind bereits auf diesen Standard abgestimmt.
-- Diese 1 Frage reduziert die Schätzunsicherheit von ±
 - Druckansicht öffnen
 - Eigenes Ausgabeprofil für die Druckausgabe mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.
-- Fragen reduzieren die Schätzunsicherheit von ±
+- Freiburg im Breisgau
+- Güterbogen Projektentwicklung GmbH
 - Konfiguration je Gebäude bestätigt
+- Lindenhain Wohnen GmbH · Freiburg im Breisgau
 - Planung ist Projektgröße, Ausführung gehört zum Gebäude — deshalb mehrere Zeilen und nicht eine. Die Fertigstellung ist dieselbe Zahl, die oben rechts als Kennzahl steht.
-- Project identity · Musterquartier Südhang
-- Später entscheiden
-- Texte stammen aus den Fallback-Regeln; das Wertfeld (z. B. die Gebäudeklasse) wird mit dem Projektwert belegt — der Regeltext nennt einen Beispielwert. Eine Empfehlung verschwindet, sobald der Wert erfasst ist — die Liste wird abgeleitet, nicht gepflegt.
+- Quartier Am Güterbogen
+- Sehr geehrte Damen und Herren,
+
+anbei erhalten Sie unser indikatives Angebot.
+
+Mit freundlichen Grüßen
 - Tiefgarage im Untergeschoss enthalten.
-- Total BGF (S, nicht umschlossen)
-- Total WFL nach WoFlV geändert
 - Untergeschoss · Rohbau und Ausbau
 - Verschiebt die Termine unten; die Bauzeit selbst bleibt gleich.
-- Δ-Werte erscheinen nur hier und nie in der Kundenansicht (Regel 11)

@@ -302,14 +302,14 @@ describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/
 
   it('enables the validated recipient flow and creates exactly one immutable snapshot', async () => {
     const user = userEvent.setup()
-    buildTwoEligibleOptions('DEMO-0001')
+    buildTwoEligibleOptions('DEMO-HAPPY-01')
     render(<Harness />)
 
     await gotoSection(user, 'Nächster Schritt')
     await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
     await waitFor(() => {
-      // opportunityId='DEMO-0001' here, so the real project name applies.
-      expect(screen.getByRole('heading', { name: 'Musterprojekt Nordfeld bekommt kommerzielle Kontur.' })).toBeInTheDocument()
+      // opportunityId='DEMO-HAPPY-01' here, so the real project name applies.
+      expect(screen.getByRole('heading', { name: 'Wohnhof Lindenhain bekommt kommerzielle Kontur.' })).toBeInTheDocument()
     })
     await user.click(screen.getByRole('button', { name: 'Angebot prüfen & senden →' }))
     await waitFor(() => {
@@ -343,7 +343,7 @@ describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/
 describe('PresentationShell — VR2-07 Offer climax', () => {
   it('renders the full headline and eyebrow for a long Option name without truncating or throwing (no fixed-width text container, rule 36/37)', async () => {
     const user = userEvent.setup()
-    buildTwoEligibleOptions('DEMO-0001')
+    buildTwoEligibleOptions('DEMO-HAPPY-01')
     const longName = 'Option 2 · Premium-Ausstattung mit vollständig unterkellertem Baukörper und Aufzugsanlage'
     st().renameOption('OPT-02', longName)
     st().setViewedOption('OPT-02')
@@ -352,7 +352,7 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
     await gotoSection(user, 'Nächster Schritt')
     await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: `Musterprojekt Nordfeld bekommt kommerzielle Kontur.` })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: `Wohnhof Lindenhain bekommt kommerzielle Kontur.` })).toBeInTheDocument()
     })
     // The eyebrow interpolates the full Option name verbatim — a fixed-width
     // container or an ellipsis/truncation rule would silently drop part of
@@ -364,7 +364,7 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
 
   it('ACCEPTANCE REMEDIATION cycle 5: preserves the existing, UNCHANGED persisted offerDraft.attachments default — a fresh Option genuinely shows the EmptyState, since that literal default matches no real catalog id (unrelated pre-existing behaviour, not something VR2-07 may fix)', async () => {
     const user = userEvent.setup()
-    buildTwoEligibleOptions('DEMO-0001')
+    buildTwoEligibleOptions('DEMO-HAPPY-01')
     expect(st().offerDraft.attachments).toEqual(['angebot', 'kostentreiber', 'annahmen'])
     render(<Harness />)
 
@@ -377,7 +377,7 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
 
   it('translates whatever the seller has genuinely selected in S5Export (offerDraft.attachments) into the client-safe gallery, in the approved target order, without S5Export/state/store.ts defaults ever changing', async () => {
     const user = userEvent.setup()
-    buildTwoEligibleOptions('DEMO-0001')
+    buildTwoEligibleOptions('DEMO-HAPPY-01')
     // A seller who has prepared this Option for presentation checks
     // S5Export's own (unchanged) default trio — real, editable state, the
     // same field S5Export's "Artefakte" checklist writes to.
@@ -401,7 +401,7 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
 
   it('the gallery is driven by real, editable state — a longer/mixed selection genuinely changes the list (generated/mixed-list and long-title states are reachable from real data)', async () => {
     const user = userEvent.setup()
-    buildTwoEligibleOptions('DEMO-0001')
+    buildTwoEligibleOptions('DEMO-HAPPY-01')
     render(<Harness />)
 
     // Selecting a longer, non-default set (including the catalog's longest
@@ -428,7 +428,7 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
 
   it('every available tile is a real, openable button showing genuinely computed data — never the fabricated "Muster" paper-preview or a generation timer', async () => {
     const user = userEvent.setup()
-    buildTwoEligibleOptions('DEMO-0001')
+    buildTwoEligibleOptions('DEMO-HAPPY-01')
     st().setOfferDraft({ attachments: ['praesentation', 'kg'] })
     render(<Harness />)
 
@@ -457,7 +457,7 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
 
   it('never renders the defensive all-unavailable EmptyState when a real, non-empty selection has a determined total (the EmptyState branch itself exists for DC-30 completeness, not only for the true fresh-Option default)', async () => {
     const user = userEvent.setup()
-    buildTwoEligibleOptions('DEMO-0001')
+    buildTwoEligibleOptions('DEMO-HAPPY-01')
     st().setOfferDraft({ attachments: ['praesentation', 'kg'] })
     render(<Harness />)
 
@@ -536,7 +536,7 @@ async function sendCurrentOption(user: ReturnType<typeof userEvent.setup>) {
 describe('PresentationShell — VR2-08 Send review / Delivered lifecycle', () => {
   it('blocks sending on a genuinely undetermined price, with its own distinct reason from a missing recipient (rule 16, rule 12) — KG 300/400/700 are structurally mandatory (store.ts setCoverage) so a COMPLETE Option can never itself reach total.isZero() live; this Preis-nicht-ermittelt precondition is proportionate defence-in-depth for the same EMAIL-001 §9.3 condition #2, proven directly against PresentationFlowScreen with a real recipient present, so the distinctness from the recipient reason is genuinely exercised', async () => {
     const user = userEvent.setup()
-    buildTwoEligibleOptions('DEMO-0001')
+    buildTwoEligibleOptions('DEMO-HAPPY-01')
     const cfg = configForOption(st(), 'OPT-01')!
     const p = projectionForOption(st(), 'OPT-01')!
     const current: Candidate = { id: 'OPT-01', name: 'Option A', cfg, p }
@@ -546,7 +546,7 @@ describe('PresentationShell — VR2-08 Send review / Delivered lifecycle', () =>
         flow="send"
         delivery="sent"
         current={current}
-        projectName="Musterprojekt Nordfeld"
+        projectName="Wohnhof Lindenhain"
         priceUnavailable
         galleryArtifacts={[]}
         onPrepare={() => {}}
@@ -577,7 +577,7 @@ describe('PresentationShell — VR2-08 Send review / Delivered lifecycle', () =>
 
   it('the real Send click shows a genuine, visible "sending" commit state (Button loading, no fabricated percentage) before the snapshot exists', async () => {
     const user = userEvent.setup()
-    buildTwoEligibleOptions('DEMO-0001')
+    buildTwoEligibleOptions('DEMO-HAPPY-01')
     render(<Harness />)
 
     await gotoSection(user, 'Nächster Schritt')
@@ -606,7 +606,7 @@ describe('PresentationShell — VR2-08 Send review / Delivered lifecycle', () =>
 
   it('models the real, spec-defined send-FAILURE branch (EMAIL-007/008 "failed" outcome) at the component level: visible, actionable, no duplicate primary CTA, reviewed content preserved, and a working retry callback — this backend-less prototype has no reachable trigger for a real transport failure to click through live ("Do NOT invent delivery evidence"), so the branch is verified directly against the real, exported PresentationFlowScreen', async () => {
     const user = userEvent.setup()
-    buildTwoEligibleOptions('DEMO-0001')
+    buildTwoEligibleOptions('DEMO-HAPPY-01')
     const cfg = configForOption(st(), 'OPT-01')!
     const p = projectionForOption(st(), 'OPT-01')!
     const current: Candidate = { id: 'OPT-01', name: 'Option A', cfg, p }
@@ -617,7 +617,7 @@ describe('PresentationShell — VR2-08 Send review / Delivered lifecycle', () =>
         flow="send"
         delivery="sent"
         current={current}
-        projectName="Musterprojekt Nordfeld"
+        projectName="Wohnhof Lindenhain"
         priceUnavailable={false}
         galleryArtifacts={[]}
         onPrepare={() => {}}
@@ -648,7 +648,7 @@ describe('PresentationShell — VR2-08 Send review / Delivered lifecycle', () =>
 
   it('POST-SEND RE-ENTRY (M-3): reopening an already-sent Option lands directly on the truthful Delivered state, not the narrative — the ordinary portfolio route must not replay Compose for a project that was already sent', async () => {
     const user = userEvent.setup()
-    buildTwoEligibleOptions('DEMO-0001')
+    buildTwoEligibleOptions('DEMO-HAPPY-01')
     const first = render(<Harness />)
     await sendCurrentOption(user)
     expect(st().snapshots).toHaveLength(1)
@@ -670,7 +670,7 @@ describe('PresentationShell — VR2-08 Send review / Delivered lifecycle', () =>
 
   it('POST-SEND IMMUTABILITY (M-3, SNAPSHOT BINDING): a later, legitimate change to the live artefact selection does not rewrite what the Delivered screen shows was actually sent', async () => {
     const user = userEvent.setup()
-    buildTwoEligibleOptions('DEMO-0001')
+    buildTwoEligibleOptions('DEMO-HAPPY-01')
     st().setOfferDraft({ attachments: ['praesentation', 'leistungen'] })
     render(<Harness />)
     await sendCurrentOption(user)
@@ -689,7 +689,7 @@ describe('PresentationShell — VR2-08 Send review / Delivered lifecycle', () =>
 
   it('Versandnachweis shows the real Gesendet/Zugestellt chronology (EMAIL-007/008: Gesendet ≠ Zugestellt) for the exact sent snapshot', async () => {
     const user = userEvent.setup()
-    buildTwoEligibleOptions('DEMO-0001')
+    buildTwoEligibleOptions('DEMO-HAPPY-01')
     render(<Harness />)
     await sendCurrentOption(user)
 
