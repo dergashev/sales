@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useId, useRef, useState, type RefObject } from 'react'
 import { Decimal } from 'decimal.js'
 import { AnimatePresence, motion } from 'framer-motion'
 import opportunities from '../fixtures/opportunities.json'
@@ -18,6 +18,8 @@ import { recipientForOpportunity, type ValidatedRecipient } from '../state/email
 import { Badge, SelectField } from './designSystem'
 import { SegmentedControl } from './controls'
 import { PartialState, EmptyState } from './DataStates'
+import { Dialog } from './Dialog'
+import { OFFER_ARTIFACTS, type OfferArtifactId } from '../config/offer-artifacts'
 // F-38 (OfferPanel.tsx): `signed` is exported specifically for cross-
 // component reuse of the ONE signed-delta formatter — reused here for
 // "Größter Treiber" instead of a second, divergence-prone formatter.
@@ -1040,47 +1042,60 @@ function PageNaechsterSchritt({ current, onPrepare, headingRef }: {
 }
 
 type GalleryArtifact = {
-  id: 'offer' | 'cost' | 'scope'
+  id: OfferArtifactId
   title: string
   description: string
-  meta: string
   available: boolean
   unavailableReason?: string
 }
 
-/** §"NÄCHSTER SCHRITT" → OFFER — the commercial climax (VR2-07, cycle 3).
+/** §"NÄCHSTER SCHRITT" → OFFER — the commercial climax (VR2-07, cycle 4).
  *
- * Replaces the earlier weak stub (generic title, bullet-list artefacts, a
- * `dl` of scheduling facts) with the approved target's composition — this
- * cycle rebuilt directly against the approved target's own SOURCE markup
- * (`artifacts/visual-outcome-audit-18e7d71/vo-t1/target-source.html`, the
- * `offer` template + its `<style>` block), not a re-derived interpretation
- * of the flat PNG:
- *   - `.deep-band` → `.a3-stage-deep` (ADR-R1-02, unchanged canonical
- *     surface, same one §3 ERGEBNIS already uses);
- *   - `.artifact{min-height:92px;border:1px;padding:12px;display:flex;
- *     flex-direction:column;justify-content:space-between}` /
- *     `.artifact.selected{border:2px solid ink;padding:11px}` → this file's
- *     own `.a3-offer-artifact`/`.a3-offer-artifact-selected` (bespoke
- *     product composition, not a `Card` primitive: `Card`'s grid+uniform-gap
- *     layout cannot express "title+description grouped at top, file-type
- *     badge pinned to the bottom of a fixed-height tile" without fighting
- *     its own CSS — this is Product-specific composition, explicitly
- *     allowed under DESIGN SYSTEM MODE: PRESERVE);
- *   - `button.accent{width:100%;margin-top:24px}` → the canonical `Button`
- *     with `className="w-full"`.
+ * Composition (grid split, `.a3-stage-deep`, `.a3-offer-artifact` tile
+ * geometry, full-width CTA) is unchanged from cycle 3, which rebuilt it
+ * directly against the approved target's own SOURCE markup
+ * (`artifacts/visual-outcome-audit-18e7d71/vo-t1/target-source.html`).
+ * Cycle 3's Acceptance PASS on that composition stands; cycle 4 does not
+ * touch it again.
  *
- * ACCEPTANCE REMEDIATION (cycle 3) — reverts cycle 2's per-card "wird
- * vorbereitet" timer and preview `Dialog`: the approved target's own source
- * markup for this exact screen renders every artefact as a plain,
- * non-interactive tile (no button, no dialog, no timer) — cycle 2's
- * simulated generation phase and fabricated "Muster" paper-preview were
- * exactly the invented generation/preview semantics rule 16/R-18 and the
- * task's own "do not invent new generation semantics" forbid. Kostenüber-
- * sicht's `available`/`unavailableReason` (driven by the real, pre-existing
- * `priceUnavailable` condition — unchanged) is preserved as the one
- * legitimate, non-fabricated availability signal; a defensive
- * all-unavailable `EmptyState` branch still exists for DC-30 completeness.
+ * ACCEPTANCE REMEDIATION (cycle 4) corrects three deltas the Auditor found
+ * the STATIC target markup does not waive, because the ticket's own
+ * functional contract (independent of the visual mockup) requires them:
+ *
+ * 1. REAL, REACHABLE STATES. The gallery used to be a literal three-item
+ *    array (`offer`/`cost`/`scope`), so no-artefact/mixed/long-title/longer
+ *    -list states were structurally unreachable. It now lists exactly the
+ *    real, seller-selected `s.offerDraft.attachments` against the shared
+ *    `OFFER_ARTIFACTS` catalog (`config/offer-artifacts.ts`, extracted from
+ *    `S5Export.tsx`'s own "Artefakte" checklist so both consumers read one
+ *    source instead of two literal, driftable lists). Deselecting every
+ *    attachment in S5Export now genuinely renders `EmptyState` here;
+ *    selecting more than three genuinely grows the list; the catalog's own
+ *    longer labels (e.g. "Vertragsvorlagen für die Rechtsabteilung")
+ *    genuinely exercise the long-title case. Fixing this exposed one
+ *    unavoidable dependency: `offerDraft.attachments`' DEFAULT value used a
+ *    different, unrelated id scheme (`angebot`/`kostentreiber`/`annahmen`)
+ *    that matched no real catalog id — S5Export's own `default: true`
+ *    markers were dead code, so its checklist opened with every box
+ *    unchecked. The default now reuses the catalog's own `default: true`
+ *    flags (`DEFAULT_OFFER_ATTACHMENTS`), restoring what those flags were
+ *    always supposed to mean.
+ * 2. REAL PREVIEW/OPEN. Every available tile's title is a real `<button>`
+ *    again (cycle 2 had this; cycle 3 removed it while also removing cycle
+ *    2's two actual defects — this remediation restores the interaction
+ *    without reintroducing either defect). Opening it shows the canonical,
+ *    PLAIN `.a3-modal` dialog (same primitive and undecorated pattern
+ *    `OfferPanel.tsx`'s own "Nachweise & Verlauf" detail dialog already
+ *    uses) — never cycle 2's `.a3-paper-preview` "Monochrome A4 Muster"
+ *    treatment, which staged the dialog to look like the generated document
+ *    itself. Content is only data this screen has already computed for
+ *    real: the KG split via the same `CompositionBar` (expanded) for
+ *    Kostenübersicht, or the Option's real total/building scope for every
+ *    other deliverable. No generation timer exists anywhere in this
+ *    component (cycle 2's other actual defect) — availability is either the
+ *    real selection above or the real `priceUnavailable` signal below,
+ *    with no simulated "wird vorbereitet" phase in between.
+ * 3. REDUCED MOTION = IMMEDIATE. See the `motion.aside` comment below.
  *
  * No in-panel "Zurück" link: the narrative strip (`goTo`, flow-aware — see
  * `PresentationShell`) is the one way back, matching the approved target's
@@ -1095,40 +1110,46 @@ function OfferClimax({ current, projectName, priceUnavailable, onPrepare, headin
 }) {
   const t = useT()
   const tx = useTx()
-  const language = useStore().uiLanguage
-  const { p } = current
+  const s = useStore()
+  const language = s.uiLanguage
+  const { p, cfg } = current
   const { fadeRise, transition } = useSemanticMotion()
   const hero = useMoneyCountUp(p.result.total.exact)
   const topDrivers = topCostDrivers(current, t)
   const biggestDriver = topDrivers[0]
   const segments = buildKgCompositionSegments(p.kgSplit, (g) => t(`costGroup.${g}`))
 
-  const galleryArtifacts: GalleryArtifact[] = [
-    {
-      id: 'offer',
-      title: t('presentation.artifact.offerCardTitle'),
-      description: t('presentation.artifact.offerDescription'),
-      meta: t('presentation.artifact.offerMeta'),
-      available: true,
-    },
-    {
-      id: 'cost',
-      title: t('presentation.artifact.costCardTitle'),
-      description: t('presentation.artifact.costDescription'),
-      meta: t('presentation.artifact.costMeta'),
-      available: !priceUnavailable,
-      unavailableReason: t('presentation.artifact.costUnavailable'),
-    },
-    {
-      id: 'scope',
-      title: t('presentation.artifact.scopeCardTitle'),
-      description: t('presentation.artifact.scopeDescription'),
-      meta: t('presentation.artifact.scopeMeta'),
-      available: true,
-    },
-  ]
+  const selectedIds = new Set(s.offerDraft.attachments)
+  const galleryArtifacts: GalleryArtifact[] = OFFER_ARTIFACTS
+    .filter((a) => selectedIds.has(a.id))
+    .map((a) => {
+      const unavailable = a.id === 'kg' && priceUnavailable
+      return {
+        id: a.id,
+        title: t(`presentation.artifact.title.${a.id}`),
+        description: t(`presentation.artifact.description.${a.id}`),
+        available: !unavailable,
+        unavailableReason: unavailable ? t('presentation.artifact.costUnavailable') : undefined,
+      }
+    })
 
   const anyAvailable = galleryArtifacts.some((a) => a.available)
+
+  const [openId, setOpenId] = useState<OfferArtifactId | null>(null)
+  const openTriggerRef = useRef<HTMLElement | null>(null)
+  const dialogTitleId = useId()
+  const dialogTitleRef = useRef<HTMLHeadingElement>(null)
+  const openArtifact = (id: OfferArtifactId) => {
+    // The title button is already focused by the click that fires this
+    // handler — capturing it here (rather than threading the event through)
+    // is what `returnFocusTo` needs to send focus back to the exact tile
+    // that opened the dialog when several tiles can each open it.
+    openTriggerRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null
+    setOpenId(id)
+  }
+  const openArtifactData = galleryArtifacts.find((a) => a.id === openId) ?? null
 
   return (
     <section className="a3-offer-climax" aria-labelledby="presentation-offer-title">
@@ -1231,11 +1252,21 @@ function OfferClimax({ current, projectName, priceUnavailable, onPrepare, headin
               <li key={a.id}>
                 <article className={'a3-offer-artifact' + (a.available ? ' a3-offer-artifact-selected' : '')}>
                   <div>
-                    <p className="font-bold text-text-primary">{a.title}</p>
+                    {a.available ? (
+                      <button
+                        type="button"
+                        className="a3-linkbtn a3-offer-artifact-open font-bold text-text-primary"
+                        onClick={() => openArtifact(a.id)}
+                      >
+                        {a.title}
+                      </button>
+                    ) : (
+                      <p className="font-bold text-text-primary">{a.title}</p>
+                    )}
                     <p className="mt-1 text-small text-text-secondary">{a.description}</p>
                   </div>
                   {a.available ? (
-                    <span className="text-small text-text-secondary">{a.meta}</span>
+                    <span className="text-small text-text-secondary">{t('presentation.artifact.meta')}</span>
                   ) : (
                     <span className="text-small text-text-secondary">
                       <span aria-hidden="true">○ </span>{a.unavailableReason}
@@ -1251,6 +1282,58 @@ function OfferClimax({ current, projectName, priceUnavailable, onPrepare, headin
           <Button className="w-full" variant="primary" onClick={onPrepare}>{t('presentation.flow.prepare')}</Button>
         </div>
       </motion.aside>
+
+      <Dialog
+        open={openArtifactData !== null}
+        onOpenChange={(next) => { if (!next) setOpenId(null) }}
+        labelledBy={dialogTitleId}
+        initialFocusRef={dialogTitleRef}
+        returnFocusTo={openTriggerRef as RefObject<HTMLElement>}
+      >
+        {openArtifactData && (
+          <>
+            <h2
+              ref={dialogTitleRef}
+              id={dialogTitleId}
+              tabIndex={-1}
+              className="outline-none text-heading-3 font-bold text-text-primary"
+            >
+              {openArtifactData.title}
+            </h2>
+            <p className="mt-2 text-body text-text-secondary">{openArtifactData.description}</p>
+
+            {openArtifactData.id === 'kg' ? (
+              <div className="mt-4">
+                <CompositionBar
+                  segments={segments}
+                  total={p.result.total.exact}
+                  variant="expanded"
+                  incompleteLabel={t('money.priceNotDetermined')}
+                />
+              </div>
+            ) : (
+              <>
+                <p className="mt-4 text-small text-text-secondary">
+                  {t('presentation.flow.offerEyebrow')} · {current.name}
+                </p>
+                <p className="mt-1 text-small text-text-secondary">
+                  {t('presentation.artifact.dialogScope')}: {buildingNames(cfg)}
+                </p>
+                {openArtifactData.id === 'praesentation' && !priceUnavailable && (
+                  <p className="mt-3 numeric text-heading-3 font-bold text-text-primary">
+                    {p.result.total.prefix ? `${p.result.total.prefix}${NNBSP}` : ''}
+                    {p.result.total.display}{NNBSP}€
+                  </p>
+                )}
+              </>
+            )}
+
+            <div className="a3-row mt-4">
+              <Button variant="primary" onClick={() => setOpenId(null)}>{tx('Schließen')}</Button>
+            </div>
+          </>
+        )}
+      </Dialog>
     </section>
   )
 }

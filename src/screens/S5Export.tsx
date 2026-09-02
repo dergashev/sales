@@ -8,6 +8,7 @@ import { PageHeader } from '../components/designSystem'
 import { useT, useTx } from '../i18n'
 import { PrintFlow } from '../components/PrintFlow'
 import { DELIVERY_SIMULATION_MS } from '../config/ui-policy'
+import { OFFER_ARTIFACTS as ARTIFACTS } from '../config/offer-artifacts'
 
 /**
  * S5 Export — артефакты, скидка и отправка.
@@ -21,15 +22,6 @@ import { DELIVERY_SIMULATION_MS } from '../config/ui-policy'
  * все пять клиентских профилей (R-07) — и кнопка отправки объясняет, что
  * именно открыто и какой следующий шаг, а не просто гаснет.
  */
-
-const ARTIFACTS = [
-  { id: 'praesentation', label: 'Angebotspräsentation (PDF)', default: true },
-  { id: 'leistungen', label: 'Leistungen — enthalten / nicht enthalten', default: true },
-  { id: 'ssl', label: 'Schnittstellenmatrix (SSL)', default: true },
-  { id: 'baubeschreibung', label: 'Baubeschreibung', default: false },
-  { id: 'kg', label: 'Kostenübersicht KG', default: false },
-  { id: 'vertrag', label: 'Vertragsvorlagen für die Rechtsabteilung', default: false },
-] as const
 
 type Stage = 'compose' | 'preflight' | 'confirm' | 'gesendet' | 'zugestellt'
 

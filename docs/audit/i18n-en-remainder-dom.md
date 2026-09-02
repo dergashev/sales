@@ -5,8 +5,8 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 42** · перевод есть, мост не подключён: 23
-· перевода нет (в поставку копирайта): 19
+**Всего 43** · перевод есть, мост не подключён: 23
+· перевода нет (в поставку копирайта): 20
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
@@ -57,5 +57,6 @@ Mit freundlichen Grüßen
 - Tiefgarage im Untergeschoss enthalten.
 - Total BGF (S, nicht umschlossen)
 - Total WFL nach WoFlV geändert
+- Untergeschoss · Rohbau und Ausbau
 - Verschiebt die Termine unten; die Bauzeit selbst bleibt gleich.
 - Δ-Werte erscheinen nur hier und nie in der Kundenansicht (Regel 11)

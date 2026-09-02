@@ -352,7 +352,7 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
     expect(matches.length).toBeGreaterThan(0)
   })
 
-  it('always lists all three structural deliverables, and marks Kostenübersicht (not the others) unavailable when the total is undetermined', async () => {
+  it('lists exactly the seller-selected default deliverables (praesentation/kg/leistungen), matching the approved target order, and marks Kostenübersicht unavailable only when the total is undetermined', async () => {
     const user = userEvent.setup()
     buildTwoEligibleOptions('DEMO-0001')
     render(<Harness />)
@@ -360,17 +360,48 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
     await gotoSection(user, 'Nächster Schritt')
     await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Drei Artefakte, eine Aussage.' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Diese Unterlagen gehen an Ihren Kunden.' })).toBeInTheDocument()
     })
-    // Ready path (this fixture has a determined total): all three cards
-    // present, none carrying an unavailable-preview status.
-    expect(screen.getByText('Angebotspräsentation')).toBeInTheDocument()
-    expect(screen.getByText('Kostenübersicht DIN 276')).toBeInTheDocument()
-    expect(screen.getByText('Leistungsumfang')).toBeInTheDocument()
+    // Ready path (this fixture has a determined total): the three real
+    // DEFAULT_OFFER_ATTACHMENTS render, in the approved target's own
+    // artefact order, none carrying an unavailable-preview status. SSL,
+    // Baubeschreibung and Vertrag are NOT selected by default, so they are
+    // genuinely absent — not merely hidden.
+    const titles = screen.getAllByRole('button').map((b) => b.textContent)
+      .filter((text) => text === 'Angebotspräsentation (PDF)' || text === 'Kostenübersicht DIN 276' || text === 'Leistungen — enthalten / nicht enthalten')
+    expect(titles).toEqual(['Angebotspräsentation (PDF)', 'Kostenübersicht DIN 276', 'Leistungen — enthalten / nicht enthalten'])
+    expect(screen.queryByText('Schnittstellenmatrix (SSL)')).not.toBeInTheDocument()
     expect(screen.queryByText(/Vorschau nicht verfügbar/)).not.toBeInTheDocument()
   })
 
-  it('ACCEPTANCE REMEDIATION cycle 3: renders every artefact tile as plain, non-interactive content matching the approved target source verbatim — no button, no dialog, no generation timer', async () => {
+  it('ACCEPTANCE REMEDIATION cycle 4: the gallery is driven by real, editable state — deselecting every attachment renders the genuine EmptyState, and a non-default selection genuinely changes the list (no-artefact + generated/mixed-list states are reachable)', async () => {
+    const user = userEvent.setup()
+    buildTwoEligibleOptions('DEMO-0001')
+    render(<Harness />)
+
+    // Deselect every default attachment — a real seller action, not a
+    // simulated one (S5Export's own "Artefakte" checklist edits the exact
+    // same `offerDraft.attachments` field the gallery reads).
+    st().setOfferDraft({ attachments: [] })
+    await gotoSection(user, 'Nächster Schritt')
+    await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
+    await waitFor(() => {
+      expect(screen.getByText('Für dieses Angebot sind aktuell keine Artefakte ausgewählt.')).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('button', { name: 'Angebotspräsentation (PDF)' })).not.toBeInTheDocument()
+
+    // Selecting a longer, non-default set (including the catalog's longest
+    // label) genuinely grows the list beyond the usual three.
+    st().setOfferDraft({ attachments: ['praesentation', 'ssl', 'baubeschreibung', 'vertrag'] })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Vertragsvorlagen für die Rechtsabteilung' })).toBeInTheDocument()
+    })
+    expect(screen.getByRole('button', { name: 'Schnittstellenmatrix (SSL)' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Baubeschreibung' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Kostenübersicht DIN 276' })).not.toBeInTheDocument()
+  })
+
+  it('ACCEPTANCE REMEDIATION cycle 4: every available tile is a real, openable button showing genuinely computed data — never the fabricated "Muster" paper-preview or a generation timer', async () => {
     const user = userEvent.setup()
     buildTwoEligibleOptions('DEMO-0001')
     render(<Harness />)
@@ -378,27 +409,27 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
     await gotoSection(user, 'Nächster Schritt')
     await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Drei Artefakte, eine Aussage.' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Kostenübersicht DIN 276' })).toBeInTheDocument()
     })
-    // The approved target's own source markup (vo-t1/target-source.html,
-    // the `offer` template) renders each artefact as a plain
-    // `<div class="artifact selected">` — no button, no role=dialog
-    // anywhere on this screen. Cycle 2's fabricated "Wird vorbereitet"
-    // timer and preview Dialog invented generation/preview semantics the
-    // target never had; asserting their absence keeps this regression from
-    // coming back.
+    // No simulated generation phase exists anywhere in this component.
     expect(screen.queryByText('Wird vorbereitet …')).not.toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Angebotspräsentation' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Kostenübersicht DIN 276' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Leistungsumfang' })).not.toBeInTheDocument()
-    // The titles are still plain text content, immediately present.
-    expect(screen.getByText('Angebotspräsentation')).toBeInTheDocument()
-    expect(screen.getByText('Kostenübersicht DIN 276')).toBeInTheDocument()
-    expect(screen.getByText('Leistungsumfang')).toBeInTheDocument()
+
+    const trigger = screen.getByRole('button', { name: 'Kostenübersicht DIN 276' })
+    await user.click(trigger)
+    const dialog = await screen.findByRole('dialog')
+    // Real, already-computed data (the same CompositionBar/KG split this
+    // page renders elsewhere) — never a "Monochrome A4 Muster" mockup.
+    expect(within(dialog).queryByText(/Muster/)).not.toBeInTheDocument()
+    expect(within(dialog).getByText('KG-Struktur und kommerzielle Treiber')).toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    // Focus returns to the exact tile that opened the dialog.
+    expect(trigger).toHaveFocus()
   })
 
-  it('never renders the defensive all-unavailable EmptyState for the ordinary determined-total fixture (the EmptyState branch itself exists for DC-30 completeness)', async () => {
+  it('never renders the defensive all-unavailable EmptyState for the ordinary determined-total, default-selection fixture (the EmptyState branch itself exists for DC-30 completeness)', async () => {
     const user = userEvent.setup()
     buildTwoEligibleOptions('DEMO-0001')
     render(<Harness />)
@@ -406,12 +437,13 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
     await gotoSection(user, 'Nächster Schritt')
     await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Drei Artefakte, eine Aussage.' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Kostenübersicht DIN 276' })).toBeInTheDocument()
     })
-    // Ordinary fixture: total is determined, so Angebotspräsentation and
-    // Leistungsumfang are always structurally present and Kostenübersicht
-    // is not marked unavailable — the EmptyState branch stays dormant.
+    // Ordinary fixture, default selection: total is determined, so none of
+    // the three default deliverables is marked unavailable and the
+    // EmptyState branch stays dormant.
     expect(screen.queryByText(/Vorschau nicht verfügbar/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Für dieses Angebot sind aktuell keine Artefakte ausgewählt.')).not.toBeInTheDocument()
   })
 })
 

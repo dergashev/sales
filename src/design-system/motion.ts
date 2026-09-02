@@ -101,14 +101,29 @@ export function useSemanticMotion(): SemanticMotion {
     return {
       reduced,
       transition,
+      // `hidden.opacity` collapses to the SAME value as `visible.opacity`
+      // when reduced (not only `transition.duration` — see VR2-07 cycle 4
+      // ACCEPT finding: "no complete Offer content at 0/50/100ms"). A
+      // duration:0 animate still transitions between two DIFFERENT values
+      // (0 → 1), and framer-motion applies the `initial` value for at
+      // least one paint before the zero-duration animate resolves — a
+      // real, measurable one-frame "content briefly invisible" flash, not
+      // a merely theoretical one (reproduced live: gallery opacity read 0
+      // at t=24ms, 1 at t=47ms, under `prefers-reduced-motion: reduce`).
+      // With no opacity delta left to animate, the first paint already
+      // shows the final state — genuinely immediate, matching the exact
+      // fix class `direction` below already applies to its own transform.
+      // `exit.opacity` is left unconditional: unmounting content
+      // disappearing at once is the correct reduced-motion behaviour, not
+      // a variant of the same defect (nothing is "incomplete" by leaving).
       fadeOnly: {
-        hidden: { opacity: 0 },
+        hidden: { opacity: reduced ? 1 : 0 },
         visible: { opacity: 1, transition: transition('reveal') },
         exit: { opacity: 0, transition: transition('feedback') },
       },
       fadeRise: {
         hidden: {
-          opacity: 0,
+          opacity: reduced ? 1 : 0,
           y: reduced ? 0 : 'var(--enter-shift)',
         },
         visible: {

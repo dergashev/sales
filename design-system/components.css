@@ -2099,8 +2099,21 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    fighting its own CSS; this is intentionally NOT routed through the
    canonical primitive (Product-specific composition, DESIGN SYSTEM MODE:
    PRESERVE still applies — every value below is a canonical token). */
-.a3-offer-artifact{min-height:5.75rem;border:var(--border-default);padding:var(--space-3);display:flex;flex-direction:column;justify-content:space-between}
+.a3-offer-artifact{position:relative;min-height:5.75rem;border:var(--border-default);padding:var(--space-3);display:flex;flex-direction:column;justify-content:space-between}
 .a3-offer-artifact-selected{border:var(--border-width-strong) solid var(--color-text-primary);padding:calc(var(--space-3) - var(--border-width-default))}
+/* VR2-07 cycle 4 (ACCEPT-02 remediation): the title becomes a real, open-
+   able `.a3-linkbtn` again — same override `.a3-card-title .a3-linkbtn`
+   already applies (drop the inherited underline; a stretched click target
+   supplies the affordance instead of relying on text decoration). The
+   `.a3-linkbtn` reset's own `inline-flex`/`min-width`/`min-height` box
+   would otherwise center a 44px pill inside the tile instead of plain
+   left-aligned bold text — neutralised here the same way `.a3-card-title`
+   neutralises the ONE property it needs to. `::after` stretches the real
+   hit/focus target across the WHOLE tile (rule 23: ≥44×44px without
+   changing the visible title size), safe here because it is the tile's
+   only interactive element — no sibling control for it to overlap. */
+.a3-offer-artifact-open{display:inline;min-width:0;min-height:0;text-align:left;text-decoration:none}
+.a3-offer-artifact-open::after{content:'';position:absolute;inset:0}
 .a3-offer-climax-cta{display:flex;justify-content:flex-start}
 @media (max-width:63.99rem){
   .a3-presentation-flow-grid{gap:var(--space-6)}
