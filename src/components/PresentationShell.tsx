@@ -1567,24 +1567,26 @@ export function PresentationFlowScreen({
     return (
       <section className="flex min-h-0 flex-1 flex-col a3-paper" aria-labelledby="presentation-send-title">
         <div className="a3-presentation-review">
-          <div className="a3-presentation-review-primary">
-            <div className="a3-presentation-review-head">
-              <div>
-                <p className="a3-cap">{t('presentation.flow.send.eyebrow')}</p>
-                <h1 ref={headingRef} tabIndex={-1} id="presentation-send-title" className="mt-2 text-heading-1 font-bold text-text-primary">
-                  {t('presentation.flow.send.title')}
-                </h1>
-                <p className="mt-2 text-body text-text-secondary">{t('presentation.flow.send.copy')}</p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="a3-cap">{current.name}</p>
-                <p className="numeric mt-1 text-heading-2 font-bold text-text-primary">
-                  {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(present(p.result.total.exact))}
-                </p>
-              </div>
+          {/* Page head spans both columns (target 1440 + 1280): the Option
+              total sits at the page's right edge above the artefact column. */}
+          <div className="a3-presentation-review-head">
+            <div>
+              <p className="a3-cap">{t('presentation.flow.send.eyebrow')}</p>
+              <h1 ref={headingRef} tabIndex={-1} id="presentation-send-title" className="mt-2 text-heading-1 font-bold text-text-primary">
+                {t('presentation.flow.send.title')}
+              </h1>
+              <p className="mt-2 text-body text-text-secondary">{t('presentation.flow.send.copy')}</p>
             </div>
+            <div className="text-right shrink-0">
+              <p className="a3-cap">{current.name}</p>
+              <p className="numeric mt-1 text-heading-2 font-bold text-text-primary">
+                {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(present(p.result.total.exact))}
+              </p>
+            </div>
+          </div>
 
-            <div className="mt-7">
+          <div className="a3-presentation-review-primary">
+            <div>
               <div className="a3-presentation-field-head">
                 <h2 className="text-heading-3 font-bold text-text-primary">{t('presentation.flow.recipient')}</h2>
               </div>

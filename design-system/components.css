@@ -2069,9 +2069,13 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    and the exact border-left/success-surface pattern
    `.a3-config-kg700-readiness` already established for the confirmation
    box — no new visual language invented for either. */
-.a3-presentation-review{flex:1;min-height:0;overflow-y:auto;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:var(--space-8);padding:var(--space-7)}
+.a3-presentation-review{flex:1;min-height:0;overflow-y:auto;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:var(--space-6) var(--space-8);align-content:start;padding:var(--space-7)}
 .a3-presentation-review-primary,.a3-presentation-review-aside{min-width:0}
-.a3-presentation-review-head{display:flex;justify-content:space-between;align-items:flex-end;gap:var(--space-6)}
+/* The page head (eyebrow + title + copy on the left, Option name + total on
+   the right) spans BOTH columns — exactly as in the target at 1440 and 1280,
+   where the total sits at the page's right edge above the artefact column
+   and "Empfänger" / "N Artefakte" then start on one shared baseline. */
+.a3-presentation-review-head{grid-column:1/-1;display:flex;justify-content:space-between;align-items:flex-end;gap:var(--space-6)}
 .a3-presentation-review-head>div:first-child{min-width:0}
 .a3-presentation-review-head .numeric{overflow-wrap:anywhere}
 .a3-presentation-field-head{display:flex;justify-content:space-between;align-items:baseline;gap:var(--space-3)}
@@ -2097,8 +2101,14 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    thin banner rule everywhere else) — `--size-status-accent-width-prominent`
    is the same status colour at double the weight for this one "completion
    moment" surface, not a new colour or pattern. */
-.a3-presentation-delivered-canvas{flex:1;min-height:0;overflow-y:auto;display:grid;place-items:center;background:var(--color-surface-canvas);padding:var(--space-7)}
-.a3-presentation-delivered-card{width:min(56rem,84vw);background:var(--color-surface-paper);border-top:var(--size-status-accent-width-prominent) solid var(--color-status-success);padding:var(--space-8)}
+/* Centring via flex + `margin:auto` on the card, NOT grid `place-items:
+   center`: when the card is taller than the canvas, grid centring overflows
+   it equally above and below the scroll box — the top half becomes
+   unreachable and the follow-up actions sit below the fold with no scroll
+   (the 1280×800 acceptance finding). Auto margins collapse to 0 when there
+   is no free space, so the card then starts at the top and scrolls. */
+.a3-presentation-delivered-canvas{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;background:var(--color-surface-canvas);padding:var(--space-7)}
+.a3-presentation-delivered-card{flex-shrink:0;margin:auto 0;width:min(56rem,84vw);background:var(--color-surface-paper);border-top:var(--size-status-accent-width-prominent) solid var(--color-status-success);padding:var(--space-8)}
 .a3-presentation-delivered-head{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-6)}
 .a3-presentation-delivered-head .numeric{overflow-wrap:anywhere}
 .a3-presentation-status{display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--size-hit-target-default);font-size:var(--type-small-size);font-weight:var(--type-label-weight);color:var(--color-text-primary)}
@@ -2108,20 +2118,35 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-presentation-status-error::before{border-color:var(--color-status-error)}
 .a3-presentation-delivered-divider{border-top:var(--border-hairline);margin:var(--space-7) 0}
 .a3-presentation-delivered-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--space-8)}
+/* The sent total is a left-anchored hero under the Option name (target), not a
+   right-aligned table figure — same left override `.a3-config-kg300-primary-grid
+   .a3-fk>.numeric` already uses for a hero number inside a column. */
+.a3-presentation-delivered-grid .numeric{text-align:left}
 .a3-presentation-delivered-actions{display:flex;justify-content:space-between;align-items:center;gap:var(--space-3);flex-wrap:wrap;margin-top:var(--space-7)}
 .a3-presentation-delivered-actions .a3-row{gap:var(--space-2)}
 .a3-presentation-snapshot-page{max-width:var(--measure-body-max);margin-inline:auto;padding:var(--space-7) var(--space-6)}
-/* 1280 recomposition (VR2-08): Send review deliberately drops to one
-   column (recipient/summary stack above the artefact gallery, not a
-   squeezed two-up) — the same "denser, not shrunk" intent as VR2-07's
-   Offer climax 1280 recomposition. Delivered's card narrows with the
-   viewport; its own two-column detail grid also stacks. Placed AFTER the
-   base rules above (source order — equal specificity, later wins) so the
-   override actually applies instead of being silently shadowed by them. */
+/* 1280 recomposition (VR2-08, acceptance cycle 2): BOTH surfaces keep the
+   target's two-column composition at 1280×800 — the approved 1280 targets
+   are two-up, and stacking hid the artefacts (Send review) and pushed the
+   follow-up actions below the fold (Delivered). What changes at 1280 is
+   density, not structure: tighter gutters/padding and shorter vertical
+   rhythm inside the Delivered card so the whole card, actions included,
+   fits the 800px viewport under the presentation top bar. Placed AFTER the
+   base rules above (source order — equal specificity, later wins). */
 @media (max-width:89.9375rem){
-  .a3-presentation-review{grid-template-columns:1fr;gap:var(--space-6);padding:var(--space-6) var(--space-5)}
+  .a3-presentation-review{gap:var(--space-5) var(--space-6);padding:var(--space-6) var(--space-5)}
+  .a3-presentation-review-head{gap:var(--space-5)}
   .a3-presentation-review-dock{padding:var(--space-4) var(--space-5)}
-  .a3-presentation-delivered-card{padding:var(--space-6)}
+  .a3-presentation-delivered-canvas{padding:var(--space-6) var(--space-5)}
+  .a3-presentation-delivered-card{width:min(56rem,calc(100vw - 2 * var(--space-8)));padding:var(--space-6) var(--space-7)}
+  .a3-presentation-delivered-divider{margin:var(--space-5) 0}
+  .a3-presentation-delivered-grid{gap:var(--space-6)}
+  .a3-presentation-delivered-actions{margin-top:var(--space-6)}
+}
+/* Below the supported desktop range (no evidence viewport) both grids may
+   stack — a graceful fallback, never the 1280 composition. */
+@media (max-width:64rem){
+  .a3-presentation-review{grid-template-columns:1fr}
   .a3-presentation-delivered-grid{grid-template-columns:1fr;gap:var(--space-5)}
 }
 /* §"Nächster Schritt" → OFFER — commercial climax (VR2-07). Two-tone split:
