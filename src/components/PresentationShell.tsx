@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type RefObject } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { Decimal } from 'decimal.js'
 import { AnimatePresence, motion } from 'framer-motion'
 import opportunities from '../fixtures/opportunities.json'
@@ -15,7 +15,7 @@ import { NNBSP, present, formatDE, label as moneyLabel } from '../engine/money'
 import { CATALOG } from '../state/catalog'
 import { localizeMoneyText, useT, useTx } from '../i18n'
 import { recipientForOpportunity, type ValidatedRecipient } from '../state/emailRecipient'
-import { Badge, Card, SelectField } from './designSystem'
+import { Badge, SelectField } from './designSystem'
 import { SegmentedControl } from './controls'
 import { PartialState, EmptyState } from './DataStates'
 // F-38 (OfferPanel.tsx): `signed` is exported specifically for cross-
@@ -28,10 +28,6 @@ import { MediaFrame } from '../design-system/MediaFrame'
 import { ScheduleGantt } from './ScheduleGantt'
 import { useSemanticMotion } from '../design-system/motion'
 import { Button, useCountUp } from './primitives'
-import { Dialog } from './Dialog'
-import {
-  ARTIFACT_GENERATION_FIRST_MS, ARTIFACT_GENERATION_STAGGER_MS,
-} from '../config/ui-policy'
 import { projectDriversForClient, translatedDriverLabel } from '../state/clientProjection'
 import { startContinuityTransition } from '../design-system/motion'
 
@@ -1052,40 +1048,43 @@ type GalleryArtifact = {
   unavailableReason?: string
 }
 
-type ArtifactStatus = 'generating' | 'ready' | 'unavailable'
-
-/** §"NÄCHSTER SCHRITT" → OFFER — the commercial climax (VR2-07, remediated).
+/** §"NÄCHSTER SCHRITT" → OFFER — the commercial climax (VR2-07, cycle 3).
  *
  * Replaces the earlier weak stub (generic title, bullet-list artefacts, a
- * `dl` of scheduling facts) with the approved target's composition: ONE
- * dominant commercial result on the canonical stage-deep surface (ADR-R1-02,
- * same surface §3 ERGEBNIS already uses — DESIGN SYSTEM MODE: PRESERVE, no
- * new surface token), restrained supporting facts, and a client-safe
- * artefact gallery built from the canonical `Card` + `Dialog` primitives
- * (`designSystem.tsx` / `Dialog.tsx`) — no parallel gallery/card/modal
- * component invented.
+ * `dl` of scheduling facts) with the approved target's composition — this
+ * cycle rebuilt directly against the approved target's own SOURCE markup
+ * (`artifacts/visual-outcome-audit-18e7d71/vo-t1/target-source.html`, the
+ * `offer` template + its `<style>` block), not a re-derived interpretation
+ * of the flat PNG:
+ *   - `.deep-band` → `.a3-stage-deep` (ADR-R1-02, unchanged canonical
+ *     surface, same one §3 ERGEBNIS already uses);
+ *   - `.artifact{min-height:92px;border:1px;padding:12px;display:flex;
+ *     flex-direction:column;justify-content:space-between}` /
+ *     `.artifact.selected{border:2px solid ink;padding:11px}` → this file's
+ *     own `.a3-offer-artifact`/`.a3-offer-artifact-selected` (bespoke
+ *     product composition, not a `Card` primitive: `Card`'s grid+uniform-gap
+ *     layout cannot express "title+description grouped at top, file-type
+ *     badge pinned to the bottom of a fixed-height tile" without fighting
+ *     its own CSS — this is Product-specific composition, explicitly
+ *     allowed under DESIGN SYSTEM MODE: PRESERVE);
+ *   - `button.accent{width:100%;margin-top:24px}` → the canonical `Button`
+ *     with `className="w-full"`.
  *
- * The gallery always lists the product's three structural deliverable
- * types (rule: "Drei Artefakte, eine Aussage." is an editorial constant,
- * not a live count) — an artefact's PREVIEW can be unavailable (Kostenüber-
- * sicht needs a determined total, the same `priceUnavailable` condition
- * rule 16/R-18 already governs), but the deliverable itself is never
- * removed from the list on that account. A defensive all-unavailable
- * EmptyState branch exists for DC-30 completeness.
+ * ACCEPTANCE REMEDIATION (cycle 3) — reverts cycle 2's per-card "wird
+ * vorbereitet" timer and preview `Dialog`: the approved target's own source
+ * markup for this exact screen renders every artefact as a plain,
+ * non-interactive tile (no button, no dialog, no timer) — cycle 2's
+ * simulated generation phase and fabricated "Muster" paper-preview were
+ * exactly the invented generation/preview semantics rule 16/R-18 and the
+ * task's own "do not invent new generation semantics" forbid. Kostenüber-
+ * sicht's `available`/`unavailableReason` (driven by the real, pre-existing
+ * `priceUnavailable` condition — unchanged) is preserved as the one
+ * legitimate, non-fabricated availability signal; a defensive
+ * all-unavailable `EmptyState` branch still exists for DC-30 completeness.
  *
- * ACCEPTANCE REMEDIATION (cycle 2): each card now runs one honest,
- * short-lived "wird vorbereitet" phase on entry (indeterminate track, same
- * class DocumentAnalysis.tsx already uses — DC-10/rule 25, no invented
- * percentages) before resolving to its real status — a genuinely reachable
- * ARTEFACT GENERATING/UNAVAILABLE state on every visit, not only a
- * hypothetical one. Each ready card carries a real "Vorschau" action
- * (`Card`'s own `onOpen`+`actions` contract, same pattern OpportunityCard.tsx
- * already uses) opening a canonical `Dialog` with the actual computed data
- * that artefact represents — never a fabricated document.
- *
- * No in-panel "Zurück" link: the narrative strip (`goTo`, now flow-aware —
- * see `PresentationShell`) is the one way back, matching the approved
- * target's clean composition instead of duplicating that affordance.
+ * No in-panel "Zurück" link: the narrative strip (`goTo`, flow-aware — see
+ * `PresentationShell`) is the one way back, matching the approved target's
+ * clean composition instead of duplicating that affordance.
  */
 function OfferClimax({ current, projectName, priceUnavailable, onPrepare, headingRef }: {
   current: Candidate
@@ -1097,8 +1096,8 @@ function OfferClimax({ current, projectName, priceUnavailable, onPrepare, headin
   const t = useT()
   const tx = useTx()
   const language = useStore().uiLanguage
-  const { p, cfg } = current
-  const { reduced, fadeRise, transition } = useSemanticMotion()
+  const { p } = current
+  const { fadeRise, transition } = useSemanticMotion()
   const hero = useMoneyCountUp(p.result.total.exact)
   const topDrivers = topCostDrivers(current, t)
   const biggestDriver = topDrivers[0]
@@ -1129,62 +1128,21 @@ function OfferClimax({ current, projectName, priceUnavailable, onPrepare, headin
     },
   ]
 
-  // Genuinely reachable ARTEFACT GENERATING/UNAVAILABLE state: one short
-  // simulated preparation beat per card on entering the Offer stage, not a
-  // permanently-static list. Reduced motion resolves every card straight to
-  // its final status (rule 21 — nothing to sweep). Runs once per mount, not
-  // per re-render, so switching the viewed Option afterwards updates the
-  // resolved status immediately without replaying the sweep.
-  const [generatedIds, setGeneratedIds] = useState<Set<string>>(
-    () => (reduced ? new Set(galleryArtifacts.map((a) => a.id)) : new Set()),
-  )
-  useEffect(() => {
-    if (reduced) return
-    const ids = galleryArtifacts.map((a) => a.id)
-    const timers = ids.map((id, i) => window.setTimeout(() => {
-      setGeneratedIds((prev) => {
-        const next = new Set(prev)
-        next.add(id)
-        return next
-      })
-    }, ARTIFACT_GENERATION_FIRST_MS + i * ARTIFACT_GENERATION_STAGGER_MS))
-    return () => timers.forEach((id) => window.clearTimeout(id))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reduced])
-
-  const statusOf = (a: GalleryArtifact): ArtifactStatus => {
-    if (!generatedIds.has(a.id)) return 'generating'
-    return a.available ? 'ready' : 'unavailable'
-  }
-
-  const [previewId, setPreviewId] = useState<GalleryArtifact['id'] | null>(null)
-  const previewTriggerRef = useRef<HTMLElement | null>(null)
-  const previewTitleId = useId()
-  const previewTitleRef = useRef<HTMLHeadingElement>(null)
-  const openPreview = (id: GalleryArtifact['id']) => {
-    // The button is already focused by the native click that fires this
-    // handler — capturing it here (rather than threading the event through
-    // `Button`'s zero-arg `onClick`) is what `returnFocusTo` needs to send
-    // focus back to the exact card that opened the dialog, not just "some"
-    // trigger, when several cards can each open it.
-    previewTriggerRef.current = document.activeElement instanceof HTMLElement
-      ? document.activeElement
-      : null
-    setPreviewId(id)
-  }
-  const previewArtifact = galleryArtifacts.find((a) => a.id === previewId) ?? null
-
   const anyAvailable = galleryArtifacts.some((a) => a.available)
 
   return (
     <section className="a3-offer-climax" aria-labelledby="presentation-offer-title">
-      <motion.div
-        className="a3-offer-climax-result a3-stage-deep"
-        variants={fadeRise}
-        initial="hidden"
-        animate="visible"
-        transition={transition('reveal', 0)}
-      >
+      {/* ACCEPT-04 (cycle 2): the result column now shares the shell's own
+          entrance fade (App-level `motion.div` in `PresentationShell`,
+          unchanged) with no SECOND nested fade competing on top of it — the
+          commercial result establishes hierarchy the instant the Offer
+          stage itself appears. Only the gallery gets an additional, clearly
+          separated delayed reveal below (wave 3 = 240ms, still the
+          canonical `--stagger-wave` step rule 19 defines — not a bespoke
+          duration), so "total first, then structure/artefacts assemble" is
+          an actually-measurable two-beat sequence instead of two fades
+          landing within a few ms of each other. */}
+      <div className="a3-offer-climax-result a3-stage-deep">
         <p className="a3-cap uppercase">{t('presentation.flow.offerEyebrow')} · {current.name}</p>
         <h1 ref={headingRef} tabIndex={-1} id="presentation-offer-title" className="mt-2 text-heading-1 font-bold text-text-inverse">
           {t('presentation.flow.offerTitle', {
@@ -1245,10 +1203,10 @@ function OfferClimax({ current, projectName, priceUnavailable, onPrepare, headin
           </ul>
         )}
 
-        <p className="a3-offer-climax-footnote mt-6 text-small">
+        <p className="a3-offer-climax-footnote mt-auto text-small">
           {t('presentation.flow.discountNotice')}
         </p>
-      </motion.div>
+      </div>
 
       <motion.aside
         className="a3-offer-climax-gallery bg-surface-default"
@@ -1256,7 +1214,7 @@ function OfferClimax({ current, projectName, priceUnavailable, onPrepare, headin
         variants={fadeRise}
         initial="hidden"
         animate="visible"
-        transition={transition('reveal', 1)}
+        transition={transition('reveal', 3)}
       >
         <p className="a3-cap uppercase">{t('presentation.flow.galleryEyebrow')}</p>
         <h2 id="presentation-offer-gallery-title" className="mt-2 text-heading-2 font-bold text-text-primary">
@@ -1268,32 +1226,24 @@ function OfferClimax({ current, projectName, priceUnavailable, onPrepare, headin
             <EmptyState>{t('presentation.flow.galleryEmpty')}</EmptyState>
           </div>
         ) : (
-          <ul className="a3-offer-gallery-list mt-6" aria-busy={generatedIds.size < galleryArtifacts.length || undefined}>
-            {galleryArtifacts.map((a) => {
-              const status = statusOf(a)
-              const ready = status === 'ready'
-              return (
-                <li key={a.id}>
-                  <Card
-                    className="a3-offer-gallery-card"
-                    title={a.title}
-                    meta={a.description}
-                    onOpen={ready ? () => openPreview(a.id) : undefined}
-                  >
-                    {status === 'generating' ? (
-                      <span className="a3-offer-gallery-generating">
-                        <span aria-hidden="true" className="a3-analysis-track" />
-                        {t('presentation.artifact.generating')}
-                      </span>
-                    ) : status === 'unavailable' ? (
-                      <span><span aria-hidden="true">○ </span>{a.unavailableReason}</span>
-                    ) : (
-                      <span>{a.meta} · <span aria-hidden="true">{t('presentation.artifact.previewAction')} →</span></span>
-                    )}
-                  </Card>
-                </li>
-              )
-            })}
+          <ul className="a3-offer-gallery-list mt-6">
+            {galleryArtifacts.map((a) => (
+              <li key={a.id}>
+                <article className={'a3-offer-artifact' + (a.available ? ' a3-offer-artifact-selected' : '')}>
+                  <div>
+                    <p className="font-bold text-text-primary">{a.title}</p>
+                    <p className="mt-1 text-small text-text-secondary">{a.description}</p>
+                  </div>
+                  {a.available ? (
+                    <span className="text-small text-text-secondary">{a.meta}</span>
+                  ) : (
+                    <span className="text-small text-text-secondary">
+                      <span aria-hidden="true">○ </span>{a.unavailableReason}
+                    </span>
+                  )}
+                </article>
+              </li>
+            ))}
           </ul>
         )}
 
@@ -1301,58 +1251,6 @@ function OfferClimax({ current, projectName, priceUnavailable, onPrepare, headin
           <Button className="w-full" variant="primary" onClick={onPrepare}>{t('presentation.flow.prepare')}</Button>
         </div>
       </motion.aside>
-
-      <Dialog
-        open={previewArtifact !== null}
-        onOpenChange={(next) => { if (!next) setPreviewId(null) }}
-        labelledBy={previewTitleId}
-        initialFocusRef={previewTitleRef}
-        returnFocusTo={previewTriggerRef as RefObject<HTMLElement>}
-        panelClassName="a3-print-card"
-      >
-        {previewArtifact && (
-          <>
-            <div className="a3-paper-preview" aria-label={tx('Monochrome Seitenvorschau A4')}>
-              <b>{current.name}</b>
-              <hr />
-              {previewArtifact.id === 'offer' && (
-                <>
-                  {tx(p.result.totalLabel)}<br />
-                  <b>
-                    {p.result.total.prefix ? `${p.result.total.prefix}${NNBSP}` : ''}
-                    {p.result.total.display}{NNBSP}€
-                  </b><br /><br />
-                  {t('presentation.artifact.offerDescription')}
-                </>
-              )}
-              {previewArtifact.id === 'cost' && !priceUnavailable && (
-                <CompositionBar
-                  segments={segments}
-                  total={p.result.total.exact}
-                  variant="expanded"
-                  incompleteLabel={t('money.priceNotDetermined')}
-                />
-              )}
-              {previewArtifact.id === 'scope' && (
-                <>
-                  {tx('Gebäude')}: {buildingNames(cfg)}<br /><br />
-                  {t('presentation.artifact.scopeDescription')}
-                </>
-              )}
-            </div>
-            <div>
-              <h4 ref={previewTitleRef} id={previewTitleId} tabIndex={-1} className="outline-none">
-                {previewArtifact.title}
-              </h4>
-              <p className="a3-cap">{previewArtifact.meta} · {tx('Muster')}</p>
-              <p className="mt-3 text-body text-text-secondary">{previewArtifact.description}</p>
-              <div className="a3-row mt-3">
-                <Button variant="primary" onClick={() => setPreviewId(null)}>{tx('Schließen')}</Button>
-              </div>
-            </div>
-          </>
-        )}
-      </Dialog>
     </section>
   )
 }

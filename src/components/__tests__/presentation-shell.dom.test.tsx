@@ -370,7 +370,7 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
     expect(screen.queryByText(/Vorschau nicht verfügbar/)).not.toBeInTheDocument()
   })
 
-  it('ACCEPT-03 remediation: each gallery card genuinely starts "Wird vorbereitet …" and resolves to its real status live, not a permanently-static list', async () => {
+  it('ACCEPTANCE REMEDIATION cycle 3: renders every artefact tile as plain, non-interactive content matching the approved target source verbatim — no button, no dialog, no generation timer', async () => {
     const user = userEvent.setup()
     buildTwoEligibleOptions('DEMO-0001')
     render(<Harness />)
@@ -380,42 +380,38 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Drei Artefakte, eine Aussage.' })).toBeInTheDocument()
     })
-    // Immediately after entering the Offer stage every card is in the
-    // "generating" beat — a real, observable transient state, not a
-    // hypothetical one only reachable through a special fixture.
-    expect(screen.getAllByText('Wird vorbereitet …').length).toBeGreaterThan(0)
-    // Once the simulated preparation completes, the ready cards expose a
-    // real "Vorschau" affordance (the title becomes a button) and the
-    // generating copy is gone.
-    await waitFor(() => {
-      expect(screen.queryByText('Wird vorbereitet …')).not.toBeInTheDocument()
-    }, { timeout: 2000 })
-    expect(screen.getByRole('button', { name: 'Angebotspräsentation' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Kostenübersicht DIN 276' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Leistungsumfang' })).toBeInTheDocument()
+    // The approved target's own source markup (vo-t1/target-source.html,
+    // the `offer` template) renders each artefact as a plain
+    // `<div class="artifact selected">` — no button, no role=dialog
+    // anywhere on this screen. Cycle 2's fabricated "Wird vorbereitet"
+    // timer and preview Dialog invented generation/preview semantics the
+    // target never had; asserting their absence keeps this regression from
+    // coming back.
+    expect(screen.queryByText('Wird vorbereitet …')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Angebotspräsentation' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Kostenübersicht DIN 276' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Leistungsumfang' })).not.toBeInTheDocument()
+    // The titles are still plain text content, immediately present.
+    expect(screen.getByText('Angebotspräsentation')).toBeInTheDocument()
+    expect(screen.getByText('Kostenübersicht DIN 276')).toBeInTheDocument()
+    expect(screen.getByText('Leistungsumfang')).toBeInTheDocument()
   })
 
-  it('ACCEPT-02 remediation: a ready card opens a real Dialog preview with actual computed data, and closing it returns focus to the trigger', async () => {
+  it('never renders the defensive all-unavailable EmptyState for the ordinary determined-total fixture (the EmptyState branch itself exists for DC-30 completeness)', async () => {
     const user = userEvent.setup()
     buildTwoEligibleOptions('DEMO-0001')
     render(<Harness />)
 
     await gotoSection(user, 'Nächster Schritt')
     await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
-    const offerCardButton = await screen.findByRole('button', { name: 'Angebotspräsentation' }, { timeout: 2000 })
-
-    await user.click(offerCardButton)
-    const dialog = await screen.findByRole('dialog')
-    // Real computed data, not a fabricated document: the same Option name
-    // and total already shown on the commercial stage (PrintFlow.tsx's own
-    // `.a3-paper-preview` convention — the Option, not the project, is the
-    // named subject of the document).
-    expect(within(dialog).getByText('Option A')).toBeInTheDocument()
-    expect(within(dialog).getByText(/Gesamt netto/)).toBeInTheDocument()
-
-    await user.keyboard('{Escape}')
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(offerCardButton).toHaveFocus()
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Drei Artefakte, eine Aussage.' })).toBeInTheDocument()
+    })
+    // Ordinary fixture: total is determined, so Angebotspräsentation and
+    // Leistungsumfang are always structurally present and Kostenübersicht
+    // is not marked unavailable — the EmptyState branch stays dormant.
+    expect(screen.queryByText(/Vorschau nicht verfügbar/)).not.toBeInTheDocument()
   })
 })
 

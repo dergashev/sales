@@ -41,15 +41,3 @@ export const DELTA_CHIP_MS = 4000
  * механика прототипа: подпись у статуса называет её симуляцией.
  */
 export const DELIVERY_SIMULATION_MS = 2500
-
-/**
- * Первый шаг симулированной подготовки артефактов на экране Angebot
- * (VR2-07) — тот же класс механики, что `DELIVERY_SIMULATION_MS` и
- * `DocumentAnalysis.tsx`'s indeterminate-полоса: прототип не запускает
- * настоящую генерацию PDF, но обязан честно показать переходное состояние
- * «Wird vorbereitet» вместо мгновенного статичного списка (rule 25:
- * indeterminate-полоса, без выдуманных процентов). `ARTIFACT_GENERATION_
- * STAGGER_MS` — интервал между карточками (см. `--stagger-wave`, rule 19).
- */
-export const ARTIFACT_GENERATION_FIRST_MS = 350
-export const ARTIFACT_GENERATION_STAGGER_MS = 200
