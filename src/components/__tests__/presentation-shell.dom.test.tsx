@@ -352,9 +352,26 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
     expect(matches.length).toBeGreaterThan(0)
   })
 
-  it('lists exactly the seller-selected default deliverables (praesentation/kg/leistungen), matching the approved target order, and marks Kostenübersicht unavailable only when the total is undetermined', async () => {
+  it('ACCEPTANCE REMEDIATION cycle 5: preserves the existing, UNCHANGED persisted offerDraft.attachments default — a fresh Option genuinely shows the EmptyState, since that literal default matches no real catalog id (unrelated pre-existing behaviour, not something VR2-07 may fix)', async () => {
     const user = userEvent.setup()
     buildTwoEligibleOptions('DEMO-0001')
+    expect(st().offerDraft.attachments).toEqual(['angebot', 'kostentreiber', 'annahmen'])
+    render(<Harness />)
+
+    await gotoSection(user, 'Nächster Schritt')
+    await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
+    await waitFor(() => {
+      expect(screen.getByText('Für dieses Angebot sind aktuell keine Artefakte ausgewählt.')).toBeInTheDocument()
+    })
+  })
+
+  it('translates whatever the seller has genuinely selected in S5Export (offerDraft.attachments) into the client-safe gallery, in the approved target order, without S5Export/state/store.ts defaults ever changing', async () => {
+    const user = userEvent.setup()
+    buildTwoEligibleOptions('DEMO-0001')
+    // A seller who has prepared this Option for presentation checks
+    // S5Export's own (unchanged) default trio — real, editable state, the
+    // same field S5Export's "Artefakte" checklist writes to.
+    st().setOfferDraft({ attachments: ['praesentation', 'leistungen', 'ssl'] })
     render(<Harness />)
 
     await gotoSection(user, 'Nächster Schritt')
@@ -362,48 +379,47 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Diese Unterlagen gehen an Ihren Kunden.' })).toBeInTheDocument()
     })
-    // Ready path (this fixture has a determined total): the three real
-    // DEFAULT_OFFER_ATTACHMENTS render, in the approved target's own
-    // artefact order, none carrying an unavailable-preview status. SSL,
-    // Baubeschreibung and Vertrag are NOT selected by default, so they are
-    // genuinely absent — not merely hidden.
+    // Renders in the catalog's own order (matches the approved target's
+    // artefact order for the items the target itself shows), none carrying
+    // an unavailable-preview status for this determined-total fixture.
     const titles = screen.getAllByRole('button').map((b) => b.textContent)
-      .filter((text) => text === 'Angebotspräsentation (PDF)' || text === 'Kostenübersicht DIN 276' || text === 'Leistungen — enthalten / nicht enthalten')
-    expect(titles).toEqual(['Angebotspräsentation (PDF)', 'Kostenübersicht DIN 276', 'Leistungen — enthalten / nicht enthalten'])
-    expect(screen.queryByText('Schnittstellenmatrix (SSL)')).not.toBeInTheDocument()
+      .filter((text) => text === 'Angebotspräsentation (PDF)' || text === 'Leistungen — enthalten / nicht enthalten' || text === 'Schnittstellenmatrix (SSL)')
+    expect(titles).toEqual(['Angebotspräsentation (PDF)', 'Leistungen — enthalten / nicht enthalten', 'Schnittstellenmatrix (SSL)'])
+    expect(screen.queryByText('Kostenübersicht DIN 276')).not.toBeInTheDocument()
     expect(screen.queryByText(/Vorschau nicht verfügbar/)).not.toBeInTheDocument()
   })
 
-  it('ACCEPTANCE REMEDIATION cycle 4: the gallery is driven by real, editable state — deselecting every attachment renders the genuine EmptyState, and a non-default selection genuinely changes the list (no-artefact + generated/mixed-list states are reachable)', async () => {
+  it('the gallery is driven by real, editable state — a longer/mixed selection genuinely changes the list (generated/mixed-list and long-title states are reachable from real data)', async () => {
     const user = userEvent.setup()
     buildTwoEligibleOptions('DEMO-0001')
     render(<Harness />)
 
-    // Deselect every default attachment — a real seller action, not a
-    // simulated one (S5Export's own "Artefakte" checklist edits the exact
-    // same `offerDraft.attachments` field the gallery reads).
-    st().setOfferDraft({ attachments: [] })
+    // Selecting a longer, non-default set (including the catalog's longest
+    // label) genuinely grows the list beyond the fresh-Option EmptyState —
+    // a real seller action, not a simulated one (S5Export's own
+    // "Artefakte" checklist edits this exact same `offerDraft.attachments`
+    // field the gallery reads).
+    st().setOfferDraft({ attachments: ['praesentation', 'ssl', 'baubeschreibung', 'vertrag'] })
     await gotoSection(user, 'Nächster Schritt')
     await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
-    await waitFor(() => {
-      expect(screen.getByText('Für dieses Angebot sind aktuell keine Artefakte ausgewählt.')).toBeInTheDocument()
-    })
-    expect(screen.queryByRole('button', { name: 'Angebotspräsentation (PDF)' })).not.toBeInTheDocument()
-
-    // Selecting a longer, non-default set (including the catalog's longest
-    // label) genuinely grows the list beyond the usual three.
-    st().setOfferDraft({ attachments: ['praesentation', 'ssl', 'baubeschreibung', 'vertrag'] })
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Vertragsvorlagen für die Rechtsabteilung' })).toBeInTheDocument()
     })
     expect(screen.getByRole('button', { name: 'Schnittstellenmatrix (SSL)' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Baubeschreibung' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Kostenübersicht DIN 276' })).not.toBeInTheDocument()
+
+    // Deselecting everything again returns to the genuine EmptyState.
+    st().setOfferDraft({ attachments: [] })
+    await waitFor(() => {
+      expect(screen.getByText('Für dieses Angebot sind aktuell keine Artefakte ausgewählt.')).toBeInTheDocument()
+    })
   })
 
-  it('ACCEPTANCE REMEDIATION cycle 4: every available tile is a real, openable button showing genuinely computed data — never the fabricated "Muster" paper-preview or a generation timer', async () => {
+  it('every available tile is a real, openable button showing genuinely computed data — never the fabricated "Muster" paper-preview or a generation timer', async () => {
     const user = userEvent.setup()
     buildTwoEligibleOptions('DEMO-0001')
+    st().setOfferDraft({ attachments: ['praesentation', 'kg'] })
     render(<Harness />)
 
     await gotoSection(user, 'Nächster Schritt')
@@ -429,9 +445,10 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
     expect(trigger).toHaveFocus()
   })
 
-  it('never renders the defensive all-unavailable EmptyState for the ordinary determined-total, default-selection fixture (the EmptyState branch itself exists for DC-30 completeness)', async () => {
+  it('never renders the defensive all-unavailable EmptyState when a real, non-empty selection has a determined total (the EmptyState branch itself exists for DC-30 completeness, not only for the true fresh-Option default)', async () => {
     const user = userEvent.setup()
     buildTwoEligibleOptions('DEMO-0001')
+    st().setOfferDraft({ attachments: ['praesentation', 'kg'] })
     render(<Harness />)
 
     await gotoSection(user, 'Nächster Schritt')
@@ -439,9 +456,8 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Kostenübersicht DIN 276' })).toBeInTheDocument()
     })
-    // Ordinary fixture, default selection: total is determined, so none of
-    // the three default deliverables is marked unavailable and the
-    // EmptyState branch stays dormant.
+    // Real, non-empty selection with a determined total: nothing is marked
+    // unavailable and the EmptyState branch stays dormant.
     expect(screen.queryByText(/Vorschau nicht verfügbar/)).not.toBeInTheDocument()
     expect(screen.queryByText('Für dieses Angebot sind aktuell keine Artefakte ausgewählt.')).not.toBeInTheDocument()
   })

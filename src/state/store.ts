@@ -20,7 +20,6 @@ import {
   type ConfiguratorStepId,
 } from './chapters'
 import { withRegionalFactor } from './catalog'
-import { DEFAULT_OFFER_ATTACHMENTS } from '../config/offer-artifacts'
 import {
   bgfAboveGround, calculateBuilding, calculateKg800, kgSplit, sumOfBlock,
   SCOPE_BOUNDARIES_DECIDABLE_GROUPS,
@@ -788,7 +787,7 @@ function defaultOptionConfig(coverage: Coverage = INITIAL_COVERAGE): OptionConfi
       body: 'Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unser '
         + 'indikatives Angebot für das Musterprojekt Nordfeld.\n\n'
         + 'Mit freundlichen Grüßen',
-      attachments: [...DEFAULT_OFFER_ATTACHMENTS],
+      attachments: ['angebot', 'kostentreiber', 'annahmen'],
     },
 
     visitedConfiguratorSteps: [],
@@ -2932,7 +2931,7 @@ const store = createStore<Store>((set, get) => {
       body: 'Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unser '
         + 'indikatives Angebot für das Musterprojekt Nordfeld.\n\n'
         + 'Mit freundlichen Grüßen',
-      attachments: [...DEFAULT_OFFER_ATTACHMENTS],
+      attachments: ['angebot', 'kostentreiber', 'annahmen'],
     },
 
     uiLanguage: 'de',

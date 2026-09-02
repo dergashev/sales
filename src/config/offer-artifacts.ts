@@ -14,34 +14,33 @@
  */
 export type OfferArtifactId = 'praesentation' | 'leistungen' | 'ssl' | 'baubeschreibung' | 'kg' | 'vertrag'
 
-// `default: true` marks the seller's starting selection — the same three
-// deliverables the approved VR2-07 target's own SOURCE markup
-// (`vo-t1/target-source.html`, `offer` template) shows out of the box:
-// the offer presentation, the cost overview, and the scope description.
-// SSL/Baubeschreibung/Vertrag start unselected — real, add-on deliverables
-// a seller opts into per project, not part of the default commercial climax.
-// Order matches the approved VR2-07 target's own artefact order
-// (`vo-t1/target-source.html`'s `offer` template: Angebotspräsentation →
-// Kostenübersicht → Leistungsumfang) — the gallery renders this catalog's
-// order directly, so this is the one place that order is decided.
+// ACCEPTANCE REMEDIATION (cycle 5): `default` here is UNCHANGED from the
+// literal values `S5Export.tsx`'s own `ARTIFACTS` array always had before
+// this catalog was extracted. Cycle 4 changed these flags (and made
+// `offerDraft.attachments`'s persisted default reference them) to make the
+// Offer gallery's default view match the approved target's exact three
+// items — Acceptance rejected that: VR2-07 explicitly preserves existing
+// persisted/default artefact-selection semantics and must not change what
+// S5Export preselects or would send. These flags are cosmetic/informational
+// only again (S5Export never actually reads `default` to seed a real
+// selection — see `state/store.ts`'s own, separately-defined, UNCHANGED
+// `offerDraft.attachments` initial value) — restored verbatim.
+//
+// Array ORDER (not `default`) matches the approved target's own artefact
+// order (`vo-t1/target-source.html`'s `offer` template: Angebotspräsentation
+// → Kostenübersicht → Leistungsumfang) purely for the Offer gallery's
+// display sequence WHEN those items happen to be selected — this affects
+// only rendering sequence, never what is selected/persisted/sent, so it is
+// not part of the preserved default-selection invariant.
 export const OFFER_ARTIFACTS: ReadonlyArray<{
   id: OfferArtifactId
   label: string
   default: boolean
 }> = [
   { id: 'praesentation', label: 'Angebotspräsentation (PDF)', default: true },
-  { id: 'kg', label: 'Kostenübersicht KG', default: true },
+  { id: 'kg', label: 'Kostenübersicht KG', default: false },
   { id: 'leistungen', label: 'Leistungen — enthalten / nicht enthalten', default: true },
-  { id: 'ssl', label: 'Schnittstellenmatrix (SSL)', default: false },
+  { id: 'ssl', label: 'Schnittstellenmatrix (SSL)', default: true },
   { id: 'baubeschreibung', label: 'Baubeschreibung', default: false },
   { id: 'vertrag', label: 'Vertragsvorlagen für die Rechtsabteilung', default: false },
 ]
-
-/** Die vom Verkäufer noch nicht angepasste Grundauswahl — dieselben drei
- * IDs, die `ARTIFACTS`' eigene `default: true`-Markierung schon immer
- * meinte (vorher liefen `offerDraft.attachments`-Default-IDs unter einem
- * anderen Namensschema und trafen keine reale Katalog-ID, wodurch S5Export's
- * eigene Checkboxen beim ersten Laden fälschlich alle leer waren). */
-export const DEFAULT_OFFER_ATTACHMENTS: OfferArtifactId[] = OFFER_ARTIFACTS
-  .filter((a) => a.default)
-  .map((a) => a.id)
