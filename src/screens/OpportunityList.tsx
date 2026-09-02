@@ -205,7 +205,7 @@ export function OpportunityList() {
                 </Button>
               )}
             >
-              {tx('Keine Opportunity entspricht der Suche.')}
+              {t('vr3.list.empty.filtered')}
             </EmptyState>
           </div>
         ) : (
@@ -232,7 +232,6 @@ function ProjectListCard({
 }) {
   const s = useStore()
   const t = useT()
-  const tx = useTx()
   const asset = projectAsset(project.heroAssetId)
   const analysis = s.projectAnalyses[project.id]
   const state = analysis ? readiness(project, analysis) : null
@@ -282,7 +281,7 @@ function ProjectListCard({
           ratio="card"
           state={asset ? 'loaded' : 'fallback'}
           src={asset?.url}
-          alt={asset ? tx(asset.motifDe) : undefined}
+          alt={asset ? t(asset.altKey) : undefined}
           seed={project.id}
           sourceId={asset?.assetId}
         />

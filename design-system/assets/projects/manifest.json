@@ -10,7 +10,8 @@
     "licence": "in-house — All3 owns the asset. Synthetic demonstration material. Approved use: internal Product design, implementation, test fixtures and clearly labelled client-demo environments. External campaign, tender or unlabelled client use requires legal/brand approval.",
     "intendedUse": "project-identity",
     "retrievedAt": "2026-09-02",
-    "demoFixture": true
+    "demoFixture": true,
+    "altKey": "vr3.asset.alt.A-PROJECT-HERO"
   },
   {
     "id": "A-PLAN-EG",
@@ -23,7 +24,8 @@
     "licence": "in-house — All3 owns the asset. Demo only.",
     "intendedUse": "evidence-preview",
     "retrievedAt": "2026-09-02",
-    "demoFixture": true
+    "demoFixture": true,
+    "altKey": "vr3.asset.alt.A-PLAN-EG"
   },
   {
     "id": "A-ELEVATIONS",
@@ -36,7 +38,8 @@
     "licence": "in-house — All3 owns the asset. Demo only.",
     "intendedUse": "evidence-preview",
     "retrievedAt": "2026-09-02",
-    "demoFixture": true
+    "demoFixture": true,
+    "altKey": "vr3.asset.alt.A-ELEVATIONS"
   },
   {
     "id": "A-SECTION-AA",
@@ -49,7 +52,8 @@
     "licence": "in-house — All3 owns the asset. Demo only.",
     "intendedUse": "evidence-preview",
     "retrievedAt": "2026-09-02",
-    "demoFixture": true
+    "demoFixture": true,
+    "altKey": "vr3.asset.alt.A-SECTION-AA"
   },
   {
     "id": "B-PROJECT-HERO",
@@ -62,7 +66,8 @@
     "licence": "in-house — All3 owns the asset. Synthetic demonstration material; internal/client-demo with DEMO labelling.",
     "intendedUse": "project-identity",
     "retrievedAt": "2026-09-02",
-    "demoFixture": true
+    "demoFixture": true,
+    "altKey": "vr3.asset.alt.B-PROJECT-HERO"
   },
   {
     "id": "B-BLDG-A-KONTORHAUS",
@@ -75,7 +80,8 @@
     "licence": "in-house — All3 owns the asset. Synthetic demonstration material; internal/client-demo with DEMO labelling.",
     "intendedUse": "project-identity",
     "retrievedAt": "2026-09-02",
-    "demoFixture": true
+    "demoFixture": true,
+    "altKey": "vr3.asset.alt.B-BLDG-A-KONTORHAUS"
   },
   {
     "id": "B-BLDG-B-HOFHAUS",
@@ -88,7 +94,8 @@
     "licence": "in-house — All3 owns the asset. Synthetic demonstration material; internal/client-demo with DEMO labelling.",
     "intendedUse": "project-identity",
     "retrievedAt": "2026-09-02",
-    "demoFixture": true
+    "demoFixture": true,
+    "altKey": "vr3.asset.alt.B-BLDG-B-HOFHAUS"
   },
   {
     "id": "B-BLDG-C-STADTHAUS",
@@ -101,7 +108,8 @@
     "licence": "in-house — All3 owns the asset. Synthetic demonstration material; internal/client-demo with DEMO labelling.",
     "intendedUse": "project-identity",
     "retrievedAt": "2026-09-02",
-    "demoFixture": true
+    "demoFixture": true,
+    "altKey": "vr3.asset.alt.B-BLDG-C-STADTHAUS"
   },
   {
     "id": "B-SITE-PLAN",
@@ -114,7 +122,8 @@
     "licence": "in-house — All3 owns the asset. Demo only.",
     "intendedUse": "evidence-preview",
     "retrievedAt": "2026-09-02",
-    "demoFixture": true
+    "demoFixture": true,
+    "altKey": "vr3.asset.alt.B-SITE-PLAN"
   },
   {
     "id": "B-PLAN-A",
@@ -127,7 +136,8 @@
     "licence": "in-house — All3 owns the asset. Demo only.",
     "intendedUse": "evidence-preview",
     "retrievedAt": "2026-09-02",
-    "demoFixture": true
+    "demoFixture": true,
+    "altKey": "vr3.asset.alt.B-PLAN-A"
   },
   {
     "id": "B-PLAN-B",
@@ -140,7 +150,8 @@
     "licence": "in-house — All3 owns the asset. Demo only.",
     "intendedUse": "evidence-preview",
     "retrievedAt": "2026-09-02",
-    "demoFixture": true
+    "demoFixture": true,
+    "altKey": "vr3.asset.alt.B-PLAN-B"
   },
   {
     "id": "B-PLAN-C",
@@ -153,7 +164,8 @@
     "licence": "in-house — All3 owns the asset. Demo only.",
     "intendedUse": "evidence-preview",
     "retrievedAt": "2026-09-02",
-    "demoFixture": true
+    "demoFixture": true,
+    "altKey": "vr3.asset.alt.B-PLAN-C"
   },
   {
     "id": "B-ELEVATIONS",
@@ -166,7 +178,8 @@
     "licence": "in-house — All3 owns the asset. Demo only.",
     "intendedUse": "evidence-preview",
     "retrievedAt": "2026-09-02",
-    "demoFixture": true
+    "demoFixture": true,
+    "altKey": "vr3.asset.alt.B-ELEVATIONS"
   },
   {
     "id": "B-SECTION",
@@ -179,6 +192,7 @@
     "licence": "in-house — All3 owns the asset. Demo only.",
     "intendedUse": "evidence-preview",
     "retrievedAt": "2026-09-02",
-    "demoFixture": true
+    "demoFixture": true,
+    "altKey": "vr3.asset.alt.B-SECTION"
   }
 ]

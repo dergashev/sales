@@ -28,6 +28,8 @@ type Entry = {
   id: string
   file: string
   motifDe: string
+  /** Dictionary key for this asset's accessible description (DE and EN). */
+  altKey: string
   intendedUse: string
   demoFixture: boolean
 }
@@ -53,8 +55,8 @@ export type ProjectAsset = {
   /** The registered asset id — also rendered as MediaFrame's `sourceId`. */
   assetId: string
   url: string
-  /** German motif description; the caller passes it through `useTx()`. */
-  motifDe: string
+  /** Dictionary key for the accessible description; resolve with `useT()`. */
+  altKey: string
 }
 
 /**
@@ -67,7 +69,7 @@ export function projectAsset(assetId: string): ProjectAsset | null {
   if (!entry) return null
   const url = BY_NAME.get(entry.file)
   if (!url) return null
-  return { assetId: entry.id, url, motifDe: entry.motifDe }
+  return { assetId: entry.id, url, altKey: entry.altKey }
 }
 
 /** Every registered project asset id, for fixture-integrity assertions. */

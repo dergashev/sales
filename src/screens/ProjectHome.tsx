@@ -259,7 +259,6 @@ function DocumentsStage({
 }) {
   const s = useStore()
   const t = useT()
-  const tx = useTx()
   const { reduced, fadeRise, transition } = useSemanticMotion()
   const [filter, setFilter] = useState<DocumentFilter>('all')
   const [openDetailId, setOpenDetailId] = useState<string | null>(null)
@@ -339,7 +338,7 @@ function DocumentsStage({
               ratio="pano"
               state={asset ? 'loaded' : 'fallback'}
               src={asset?.url}
-              alt={asset ? tx(asset.motifDe) : undefined}
+              alt={asset ? t(asset.altKey) : undefined}
               seed={project.id}
               sourceId={asset?.assetId}
             />
@@ -550,7 +549,6 @@ function DocumentRegisterRow({
 }) {
   const s = useStore()
   const t = useT()
-  const tx = useTx()
   const runtime = analysis.documents[doc.id]
   const rowState: DocumentRowState = runtime?.removedAt
     ? 'REMOVED'
@@ -637,7 +635,7 @@ function DocumentRegisterRow({
             ratio="tile"
             state={rowState === 'FAILED' ? 'error' : asset ? 'loaded' : 'unavailable'}
             src={asset?.url}
-            alt={asset ? tx(asset.motifDe) : undefined}
+            alt={asset ? t(asset.altKey) : undefined}
             seed={doc.id}
             sourceId={asset?.assetId}
             caption={t('vr3.evidence.assetCaption', { label: doc.file })}
@@ -787,7 +785,6 @@ function UnderstandingOverview({
   readinessPanel: ReactNode
 }) {
   const t = useT()
-  const tx = useTx()
   const num = useLocalNumber()
   const state = readiness(project, analysis)
   const dist = project.terminalDistribution
@@ -886,7 +883,7 @@ function UnderstandingOverview({
                     ratio="tile"
                     state={asset ? 'loaded' : 'fallback'}
                     src={asset?.url}
-                    alt={asset ? tx(asset.motifDe) : undefined}
+                    alt={asset ? t(asset.altKey) : undefined}
                     seed={building.id}
                     sourceId={asset?.assetId}
                   />
@@ -1005,7 +1002,6 @@ function ConflictCard({
 }) {
   const s = useStore()
   const t = useT()
-  const tx = useTx()
   const num = useLocalNumber()
   const decision = analysis.conflictDecisions[conflict.id]
   const resolved = conflictResolved(analysis, conflict.id)
@@ -1059,7 +1055,7 @@ function ConflictCard({
               ratio="tile"
               state="loaded"
               src={asset.url}
-              alt={tx(asset.motifDe)}
+              alt={t(asset.altKey)}
               seed={candidate.id}
               sourceId={asset.assetId}
             />
@@ -1343,7 +1339,6 @@ function ReadyStage({
   analysis: ProjectAnalysis
 }) {
   const t = useT()
-  const tx = useTx()
   const asset = projectAsset(project.heroAssetId)
   const state = readiness(project, analysis)
 
@@ -1384,7 +1379,7 @@ function ReadyStage({
             ratio="pano"
             state={asset ? 'loaded' : 'fallback'}
             src={asset?.url}
-            alt={asset ? tx(asset.motifDe) : undefined}
+            alt={asset ? t(asset.altKey) : undefined}
             seed={project.id}
             sourceId={asset?.assetId}
           />
@@ -1406,7 +1401,6 @@ function ReadyStage({
 function OptionCreatedStage({ project }: { project: FixtureProject }) {
   const s = useStore()
   const t = useT()
-  const tx = useTx()
   const asset = projectAsset(project.heroAssetId)
   const latest = s.options.at(-1) ?? null
   const analysis = s.projectAnalyses[project.id]
@@ -1450,7 +1444,7 @@ function OptionCreatedStage({ project }: { project: FixtureProject }) {
             ratio="pano"
             state={asset ? 'loaded' : 'fallback'}
             src={asset?.url}
-            alt={asset ? tx(asset.motifDe) : undefined}
+            alt={asset ? t(asset.altKey) : undefined}
             seed={project.id}
             sourceId={asset?.assetId}
           />

@@ -178,9 +178,7 @@ export function OptionCard({
       return;
     }
     if (s.options.some((o) => o.id !== option.id && o.name === next)) {
-      setRenameError(
-        tx(`Der Name «${next}» wird bereits verwendet · anderen Namen wählen`),
-      );
+      setRenameError(t('vr3.option.nameTaken', { name: next }));
       return;
     }
     setRenaming(false);
@@ -202,10 +200,10 @@ export function OptionCard({
   const lastOwnEvent = s.journal.filter((e) => e.optionId === option.id).at(-1);
   const configured = Boolean(lastOwnEvent);
   const stateLabel = sent
-    ? tx("Versendet")
+    ? t('vr3.option.state.sent')
     : configured
-      ? tx("In Arbeit")
-      : tx("Neu");
+      ? t('vr3.option.state.inProgress')
+      : t('vr3.option.state.new');
   const stateSign = sent ? "●" : configured ? "◐" : "○";
 
   // REDESIGN R2 §3 "BUILDING COMPOSITION": chips, not a joined string —
@@ -234,7 +232,7 @@ export function OptionCard({
   const priceUnavailable =
     !projection || projection.result.total.exact.isZero();
   const totalLabelText = projection
-    ? t(projection.result.totalLabel)
+    ? tx(projection.result.totalLabel)
     : t("money.priceNotDetermined");
   const totalValueText =
     projection && !priceUnavailable
@@ -286,7 +284,7 @@ export function OptionCard({
         title={
           renaming ? (
             <FormField
-              label={tx("Name der Option")}
+              label={t('vr3.option.nameLabel')}
               htmlFor={nameFieldId}
               error={renameError}
             >
@@ -346,7 +344,7 @@ export function OptionCard({
                   setRenaming(true);
                 }}
               >
-                {tx("Umbenennen")}
+                {t('vr3.option.rename')}
               </Button>
             )}
             <Button onClick={openThisOption}>
@@ -388,7 +386,7 @@ export function OptionCard({
         )}
         {lastOwnEvent && (
           <span className="a3-cap block mt-1">
-            {tx("Zuletzt geändert")}
+            {t('vr3.option.lastChanged')}
             {NNBSP}
             {optionEventTimestamp(lastOwnEvent.at, s.uiLanguage)}
           </span>
