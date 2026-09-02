@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Indicative Offer Engine — прототип-симулятор CPQ для All3. Локальный запуск; перенос в продакшн выполняют девопсы All3.",
   "scripts": {
-    "prepare": "node tools/git-hooks/install.mjs",
+    "prepare": "node -e \"const{existsSync}=require('fs');if(existsSync('tools/git-hooks/install.mjs'))require('child_process').execFileSync(process.execPath,['tools/git-hooks/install.mjs'],{stdio:'inherit'})\"",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
