@@ -81,6 +81,21 @@ function dictionaryKeys(which: 'de' | 'en'): Set<string> {
   return keys
 }
 
+/** One dictionary row's value, by the same literal shape. */
+function dictionaryRow(which: 'de' | 'en', key: string): string {
+  const text = source('src/i18n/index.ts')
+  const start = which === 'de'
+    ? text.indexOf('const de = {')
+    : text.indexOf('const en: Partial<Record<MessageKey, string>> = {')
+  expect(start, `the ${which} dictionary must keep its literal declaration shape`)
+    .toBeGreaterThan(-1)
+  const block = text.slice(start)
+  const row = new RegExp(`^\\s*'${key.replace(/\./g, '\\.')}':\\s*'([^']*)',`, 'm')
+  const match = block.match(row)
+  expect(match, `${which} must carry a row for ${key}`).not.toBeNull()
+  return match![1]!
+}
+
 /** Static single-quoted or double-quoted arguments to `tx(...)`. */
 function staticBridgeLiterals(text: string): string[] {
   const found: string[] = []
@@ -171,6 +186,47 @@ describe('VR3-01 · nothing on the owned surfaces can reach EN untranslated', ()
       if (!en.has(key)) missing.push(`${key}: no EN row`)
     }
     expect(missing).toEqual([])
+  })
+
+  it('no accessible name on the owned surfaces is a hardcoded literal', () => {
+    // An `aria-label="…"` string literal is the same silent-fallback class
+    // as QA-01 with the evidence removed: it renders in ONE language on
+    // BOTH locales, and no screenshot can ever show it. The Option section
+    // shipped `aria-label="Opportunity Options"` beside a heading that
+    // reads "Opportunity options" in EN.
+    //
+    // A region named by its own heading (`aria-labelledby`) is preferred
+    // over any label at all — one source cannot drift from itself.
+    const literals: string[] = []
+    for (const surface of OWNED_SURFACES) {
+      const text = withoutComments(source(surface))
+      for (const match of text.matchAll(/aria-label=(["'])([^"'{]+)\1/g)) {
+        literals.push(`${surface}: aria-label="${match[2]}"`)
+      }
+    }
+    expect(literals).toEqual([])
+  })
+
+  it('every list-card action embeds its visible label in its accessible name', () => {
+    // WCAG 2.5.3 Label in Name: the visible text must be CONTAINED in the
+    // accessible name, not paraphrased by it. `{name} öffnen` announced
+    // "… öffnen" on a card whose button reads "Projekt prüfen", so a
+    // speech-input user saying the words on screen could not activate it.
+    //
+    // Checked as data rather than as a rendered assertion: the template and
+    // both visible labels are dictionary rows, so the containment either
+    // holds for every locale or fails here naming the locale.
+    for (const locale of ['de', 'en'] as const) {
+      const template = dictionaryRow(locale, 'vr3.list.card.actionOn')
+      for (const labelKey of ['vr3.list.card.openProject', 'vr3.list.card.reviewProject']) {
+        const visible = dictionaryRow(locale, labelKey)
+        const rendered = template
+          .replace('{action}', visible)
+          .replace('{name}', 'Quartier Am Güterbogen')
+        expect(rendered, `${locale}/${labelKey} must be contained in the accessible name`)
+          .toContain(visible)
+      }
+    }
   })
 
   it('every vr3.* key the surfaces reference has both a DE and an EN row', () => {

@@ -274,7 +274,7 @@ describe('Сквозной сценарий продажи', () => {
     // Offene Fragen) ist die Oberfläche, die die frühere „· Vorbereitung"
     // ersetzt. Der Einstieg bleibt der echte Weg aus der Projektliste.
     await user.click(await screen.findByRole('button', {
-      name: /Quartier Am Güterbogen öffnen/,
+      name: /Projekt prüfen · Quartier Am Güterbogen/,
     }))
     // Die 36-Datei-Analyse selbst ist NICHT das Thema dieses Tests (sie
     // läuft eine Datei-Phase pro Tick) — der Fixture-Checkpoint stellt den
@@ -438,7 +438,7 @@ describe('Сквозной сценарий продажи', () => {
     const user = userEvent.setup()
     render(<App />)
     // Гейт живёт на уровне проекта, а не в списке проектов.
-    await user.click(await screen.findByRole('button', { name: /Quartier Am Güterbogen öffnen/ }))
+    await user.click(await screen.findByRole('button', { name: /Projekt prüfen · Quartier Am Güterbogen/ }))
     // Ein GESCHLOSSENES Gate braucht einen echten offenen Grund: Analyse
     // abgeschlossen, aber die sechs blockierenden strittigen Angaben noch
     // nicht entschieden.

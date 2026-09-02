@@ -38,7 +38,12 @@ function finishAnalysis() {
 
 async function openProject(user: ReturnType<typeof userEvent.setup>, name: string) {
   render(<App />)
-  await user.click(await screen.findByRole('button', { name: `${name} öffnen` }))
+  // The card CTA's accessible name is its visible label plus the project
+  // ("Projekt öffnen · X" on the clean route, "Projekt prüfen · X" on the
+  // one that needs a decision), so this matches the project half.
+  await user.click(await screen.findByRole('button', {
+    name: (accessible) => accessible.endsWith(`· ${name}`),
+  }))
 }
 
 describe('the normal Project List contains exactly two complete projects', () => {
@@ -46,8 +51,8 @@ describe('the normal Project List contains exactly two complete projects', () =>
     render(<App />)
     const cards = await screen.findAllByRole('listitem')
     expect(cards).toHaveLength(2)
-    expect(screen.getByRole('button', { name: 'Wohnhof Lindenhain öffnen' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Quartier Am Güterbogen öffnen' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Projekt öffnen · Wohnhof Lindenhain' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Projekt prüfen · Quartier Am Güterbogen' })).toBeInTheDocument()
     // No card falls back to the placeholder identity graphic: both projects
     // have registered photographic media.
     const images = screen.getAllByRole('img')
@@ -64,10 +69,10 @@ describe('the normal Project List contains exactly two complete projects', () =>
 
   it('states the counts the fixture declares, not a screen-local number', async () => {
     render(<App />)
-    const complex = (await screen.findByRole('button', { name: 'Quartier Am Güterbogen öffnen' }))
+    const complex = (await screen.findByRole('button', { name: 'Projekt prüfen · Quartier Am Güterbogen' }))
       .closest('li')!
     expect(within(complex).getByText(/3 Gebäude · 36 Dokumente/)).toBeInTheDocument()
-    const clean = screen.getByRole('button', { name: 'Wohnhof Lindenhain öffnen' }).closest('li')!
+    const clean = screen.getByRole('button', { name: 'Projekt öffnen · Wohnhof Lindenhain' }).closest('li')!
     expect(within(clean).getByText(/1 Gebäude · 8 Dokumente/)).toBeInTheDocument()
   })
 })

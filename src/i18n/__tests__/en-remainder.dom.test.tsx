@@ -141,12 +141,12 @@ describe('Остаток немецкого на английском пути (
     // dem Option-Gate). Das ist derselbe Umfang wie früher, als die
     // Opportunity Card vor und nach der Konfliktlösung gemessen wurde.
     // The accessible name is a real key now, so it is English on the EN
-    // path ("Open Wohnhof Lindenhain") — which is the whole point of this
+    // path ("Open project · Wohnhof Lindenhain") — which is the whole point of this
     // walk. Matching the project name alone keeps the query locale-neutral.
     // The card's stretched title and its CTA both name the project (the
     // title IS the primary destination, CARD-001). Either opens it; the
     // CTA is the one the accessible-name walk cares about.
-    await user.click(screen.getByRole('button', { name: 'Open Wohnhof Lindenhain' }))
+    await user.click(screen.getByRole('button', { name: 'Open project · Wohnhof Lindenhain' }))
     germanFragments().forEach((f) => seen.add(f))
 
     act(() => {

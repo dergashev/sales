@@ -43,7 +43,13 @@ export const NAV = {
 export const BREADCRUMB_LANDMARK = 'Pfad'
 
 export const OPPORTUNITY = {
-  openCta: (name: string) => `${name} öffnen`,
+  // The card action's accessible name is its VISIBLE label plus the
+  // project (WCAG 2.5.3), and the two fixtures carry different verbs:
+  // the clean route offers `Projekt öffnen`, the one that needs a
+  // decision offers `Projekt prüfen`. Two anchors, because a single
+  // one would have to guess the route.
+  openCta: (name: string) => `Projekt öffnen · ${name}`,
+  reviewCta: (name: string) => `Projekt prüfen · ${name}`,
   // VR3-01 replaced the retired project card's five-control preamble
   // (`Kundenwert übernehmen` / `Dokumentwert beibehalten` /
   // `Projektparameter bestätigen` / `Opportunity Option anlegen`) with the

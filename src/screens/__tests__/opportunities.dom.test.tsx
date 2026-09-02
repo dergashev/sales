@@ -31,8 +31,9 @@ beforeEach(() => __resetStoreForTests())
 
 /** Оба CTA карточек в порядке отображения — единственный надёжный способ
  *  прочитать ПОРЯДОК списка, не завязываясь на классы. */
+const CARD_CTA = /^Projekt (öffnen|prüfen) · /
 const cardOrder = () => screen
-  .getAllByRole('button', { name: /öffnen$/ })
+  .getAllByRole('button', { name: CARD_CTA })
   .map((b) => b.getAttribute('aria-label'))
 
 async function openFilters(user: ReturnType<typeof userEvent.setup>) {
@@ -62,8 +63,11 @@ describe('Уровень Projekte', () => {
     // Карточка целиком — это `<li>`: `Card` (article) живёт в ней рядом с
     // кадром изображения и меткой статуса, которая стоит в позиции
     // «бровки» НАД именем проекта, а не в слоте `status` примитива.
+    // Matched on the project half of the accessible name: the verb is the
+    // route's ("Projekt öffnen" vs "Projekt prüfen"), and this helper is
+    // about WHICH card, not which route.
     const card = (name: string) => screen
-      .getByRole('button', { name: `${name} öffnen` })
+      .getByRole('button', { name: (accessible) => accessible.endsWith(`· ${name}`) })
       .closest('li')!
     const clean = card('Wohnhof Lindenhain')
     const complex = card('Quartier Am Güterbogen')
@@ -83,9 +87,9 @@ describe('Уровень Projekte', () => {
     expect(within(clean!).getByText('Dokumentanalyse')).toBeInTheDocument()
     expect(within(clean!).getByText('Nicht gestartet')).toBeInTheDocument()
     // Ровно один основной CTA на карточку.
-    expect(within(clean!).getAllByRole('button', { name: 'Wohnhof Lindenhain öffnen' }))
+    expect(within(clean!).getAllByRole('button', { name: 'Projekt öffnen · Wohnhof Lindenhain' }))
       .toHaveLength(1)
-    expect(within(clean!).getByRole('button', { name: 'Wohnhof Lindenhain öffnen' }))
+    expect(within(clean!).getByRole('button', { name: 'Projekt öffnen · Wohnhof Lindenhain' }))
       .toHaveTextContent('Projekt öffnen')
 
     expect(within(complex!).getByText('Quartier Am Güterbogen')).toBeInTheDocument()
@@ -93,7 +97,7 @@ describe('Уровень Projekte', () => {
     expect(within(complex!).getByText(/Leipzig/)).toBeInTheDocument()
     expect(within(complex!).getByText('Prüfung erforderlich')).toBeInTheDocument()
     expect(within(complex!).getByText(/3 Gebäude · 36 Dokumente/)).toBeInTheDocument()
-    expect(within(complex!).getByRole('button', { name: 'Quartier Am Güterbogen öffnen' }))
+    expect(within(complex!).getByRole('button', { name: 'Projekt prüfen · Quartier Am Güterbogen' }))
       .toHaveTextContent('Projekt prüfen')
 
     // Ни одна карточка не показывает цены: тотал принадлежит Option.
@@ -139,18 +143,18 @@ describe('Уровень Projekte', () => {
     // в том, чтобы показать оба пути в этом порядке.
     expect(sort.value).toBe('recommended')
     expect(cardOrder()).toEqual([
-      'Wohnhof Lindenhain öffnen', 'Quartier Am Güterbogen öffnen',
+      'Projekt öffnen · Wohnhof Lindenhain', 'Projekt prüfen · Quartier Am Güterbogen',
     ])
 
     await user.selectOptions(sort, 'name')
     expect(cardOrder()).toEqual([
-      'Quartier Am Güterbogen öffnen', 'Wohnhof Lindenhain öffnen',
+      'Projekt prüfen · Quartier Am Güterbogen', 'Projekt öffnen · Wohnhof Lindenhain',
     ])
 
     // Status ставит вперёд случай, который требует решения.
     await user.selectOptions(sort, 'status')
     expect(cardOrder()).toEqual([
-      'Quartier Am Güterbogen öffnen', 'Wohnhof Lindenhain öffnen',
+      'Projekt prüfen · Quartier Am Güterbogen', 'Projekt öffnen · Wohnhof Lindenhain',
     ])
   })
 
@@ -168,7 +172,7 @@ describe('Уровень Projekte', () => {
 
     await user.selectOptions(city, 'Leipzig')
     expect(screen.getAllByRole('article')).toHaveLength(1)
-    expect(cardOrder()).toEqual(['Quartier Am Güterbogen öffnen'])
+    expect(cardOrder()).toEqual(['Projekt prüfen · Quartier Am Güterbogen'])
     // Сузившееся множество объявляется ОДИН раз, после сужения.
     // "1 Projekte" is not German: the eyebrow has a singular form.
     expect(screen.getByText('Demonstrationsportfolio · 1 Projekt')).toBeInTheDocument()
@@ -188,15 +192,15 @@ describe('Уровень Projekte', () => {
     const search = screen.getByRole('searchbox')
 
     await user.type(search, 'Lindenhain')
-    expect(cardOrder()).toEqual(['Wohnhof Lindenhain öffnen'])
+    expect(cardOrder()).toEqual(['Projekt öffnen · Wohnhof Lindenhain'])
 
     await user.clear(search)
     await user.type(search, 'Leipzig')
-    expect(cardOrder()).toEqual(['Quartier Am Güterbogen öffnen'])
+    expect(cardOrder()).toEqual(['Projekt prüfen · Quartier Am Güterbogen'])
 
     await user.clear(search)
     await user.type(search, 'Güterbogen Projektentwicklung')
-    expect(cardOrder()).toEqual(['Quartier Am Güterbogen öffnen'])
+    expect(cardOrder()).toEqual(['Projekt prüfen · Quartier Am Güterbogen'])
   })
 
   it('пустой результат объясняет себя и предлагает сброс', async () => {
@@ -215,7 +219,7 @@ describe('Уровень Projekte', () => {
   it('Option нельзя создать, пока блокирующие расхождения не решены; свежая Option — без цены', async () => {
     const user = userEvent.setup()
     render(<App />)
-    await user.click(screen.getByRole('button', { name: 'Quartier Am Güterbogen öffnen' }))
+    await user.click(screen.getByRole('button', { name: 'Projekt prüfen · Quartier Am Güterbogen' }))
     // Анализ прошёл, шесть блокирующих расхождений ещё не решены.
     enterProjectUnderstanding('DEMO-COMPLEX-01', { conflicts: 'open' })
 
@@ -327,7 +331,7 @@ describe('Уровень Projekte', () => {
   it('заметка: тихая запись, чип вместо тоста, в презентации не существует (DC-43, правило 34)', async () => {
     const user = userEvent.setup()
     render(<App />)
-    await user.click(screen.getByRole('button', { name: 'Wohnhof Lindenhain öffnen' }))
+    await user.click(screen.getByRole('button', { name: 'Projekt öffnen · Wohnhof Lindenhain' }))
 
     // #16 Part 5/AC-07: Internal Note ist keine primäre Workflow-Stufe mehr —
     // der EINZIGE Einstieg ist jetzt der Header-Utility-Button, der den

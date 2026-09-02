@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures'
-import { DEMO_PROJECT_NAME, DOCUMENT_TITLE, PROJECT_LIST_HEADING, VIEWPORT_GUARD } from '../anchors'
+import { DEMO_PROJECT_NAME, DOCUMENT_TITLE, OPPORTUNITY, PROJECT_LIST_HEADING, VIEWPORT_GUARD } from '../anchors'
 
 /**
  * Smoke coverage items 1, 2, 4, 7 (Engineering Architecture handoff):
@@ -36,7 +36,7 @@ test.describe('desktop shell', () => {
 
   test('primary navigation is available once inside an option', async ({ page }) => {
     await page.goto('/')
-    await page.getByRole('button', { name: `${DEMO_PROJECT_NAME} öffnen` }).click()
+    await page.getByRole('button', { name: OPPORTUNITY.openCta(DEMO_PROJECT_NAME) }).click()
 
     // At Opportunity-card level there is no left sidebar yet (DC-15/DC-34:
     // list and card levels are outside the three-zone pipeline shell) — the

@@ -416,6 +416,7 @@ export function ProjectOptionsSection({
 }) {
   const s = useStore();
   const tx = useTx();
+  const headingId = useId();
   const justCreatedRowRef = useRef<HTMLLIElement>(null);
 
   useEffect(() => {
@@ -429,9 +430,16 @@ export function ProjectOptionsSection({
       ref={sectionRef}
       tabIndex={-1}
       className="a3-sheet mt-6 outline-none"
-      aria-label="Opportunity Options"
+      // The region is named BY its own heading, not by a second copy of the
+      // words. A hardcoded `aria-label="Opportunity Options"` here announced
+      // the German casing in the EN locale while the heading beside it read
+      // "Opportunity options" — the same silent-fallback class as QA-01,
+      // moved into the accessible name where no screenshot can show it. One
+      // source cannot drift from itself, and it is the pattern
+      // ProcessingJob, ConflictResolver and QuestionQueue already use.
+      aria-labelledby={headingId}
     >
-      <h2 className="text-heading-3 font-bold text-text-primary">
+      <h2 id={headingId} className="text-heading-3 font-bold text-text-primary">
         {tx("Opportunity Options")}
       </h2>
 

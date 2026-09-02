@@ -236,6 +236,9 @@ function ProjectListCard({
   const analysis = s.projectAnalyses[project.id]
   const state = analysis ? readiness(project, analysis) : null
   const clean = project.route === 'clean'
+  const actionLabel = clean
+    ? t('vr3.list.card.openProject')
+    : t('vr3.list.card.reviewProject')
 
   const buildings = project.buildings.length === 1
     ? t('vr3.list.card.buildingsOne')
@@ -305,12 +308,26 @@ function ProjectListCard({
           <Button
             variant="primary"
             onClick={onOpen}
-            // A real key, not a concatenation: `${name} öffnen` left the
-            // accessible name German in the EN locale while the visible
-            // label read "Open project" (rule 36).
-            aria-label={t('vr3.list.card.openAria', { name: project.name })}
+            // The accessible name is the VISIBLE label plus the project it
+            // acts on — the shape `DocumentRow` already uses for its
+            // per-file actions.
+            //
+            // Two rules meet here and only this shape satisfies both. The
+            // name must disambiguate two identical-looking buttons in a
+            // list (so it carries the project), and WCAG 2.5.3 Label in
+            // Name requires the visible text to be CONTAINED in the
+            // accessible name (so it cannot merely paraphrase it). The
+            // previous `{name} öffnen` failed the second: the review card
+            // reads "Projekt prüfen" / "Review project" while announcing
+            // "… öffnen" / "Open …", so a speech-input user saying what
+            // they see could not activate it. Deriving the name from the
+            // rendered label instead of restating it makes the two
+            // incapable of disagreeing.
+            aria-label={t('vr3.list.card.actionOn', {
+              action: actionLabel, name: project.name,
+            })}
           >
-            {clean ? t('vr3.list.card.openProject') : t('vr3.list.card.reviewProject')}
+            {actionLabel}
           </Button>
         )}
         onOpen={onOpen}
