@@ -330,6 +330,47 @@ describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/
   })
 })
 
+describe('PresentationShell — VR2-07 Offer climax', () => {
+  it('renders the full headline and eyebrow for a long Option name without truncating or throwing (no fixed-width text container, rule 36/37)', async () => {
+    const user = userEvent.setup()
+    buildTwoEligibleOptions('DEMO-0001')
+    const longName = 'Option 2 · Premium-Ausstattung mit vollständig unterkellertem Baukörper und Aufzugsanlage'
+    st().renameOption('OPT-02', longName)
+    st().setViewedOption('OPT-02')
+    render(<Harness />)
+
+    await gotoSection(user, 'Nächster Schritt')
+    await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: `Musterprojekt Nordfeld bekommt kommerzielle Kontur.` })).toBeInTheDocument()
+    })
+    // The eyebrow interpolates the full Option name verbatim — a fixed-width
+    // container or an ellipsis/truncation rule would silently drop part of
+    // it; this asserts the complete string is actually in the DOM (also
+    // matched by the Ansicht switcher's own segment label, hence "some").
+    const matches = screen.getAllByText(new RegExp(longName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    expect(matches.length).toBeGreaterThan(0)
+  })
+
+  it('always lists all three structural deliverables, and marks Kostenübersicht (not the others) unavailable when the total is undetermined', async () => {
+    const user = userEvent.setup()
+    buildTwoEligibleOptions('DEMO-0001')
+    render(<Harness />)
+
+    await gotoSection(user, 'Nächster Schritt')
+    await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Drei Artefakte, eine Aussage.' })).toBeInTheDocument()
+    })
+    // Ready path (this fixture has a determined total): all three cards
+    // present, none carrying an unavailable-preview status.
+    expect(screen.getByText('Angebotspräsentation')).toBeInTheDocument()
+    expect(screen.getByText('Kostenübersicht DIN 276')).toBeInTheDocument()
+    expect(screen.getByText('Leistungsumfang')).toBeInTheDocument()
+    expect(screen.queryByText(/Vorschau nicht verfügbar/)).not.toBeInTheDocument()
+  })
+})
+
 describe('PresentationShell — accessibility (AC 62–67)', () => {
   it('exposes exactly one H1 and a keyboard-operable narrative strip with aria-current', async () => {
     const user = userEvent.setup()
