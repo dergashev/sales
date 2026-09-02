@@ -4,8 +4,18 @@
 FROM node:24-alpine AS build
 WORKDIR /app
 
-# Отдельный слой зависимостей: пересобирается только при смене lock-файла.
+# Отдельный слой зависимостей: пересобирается только при смене lock-файла
+# или инструментов, которые нужны npm-lifecycle при установке.
 COPY package.json package-lock.json ./
+# `npm ci` выполняет lifecycle-скрипт `prepare` (package.json →
+# `node tools/git-hooks/install.mjs`) ДО того, как `COPY . .` положит
+# репозиторий в образ. Без этого слоя сборка детерминированно падала:
+# «Cannot find module '/app/tools/git-hooks/install.mjs'» (CI-HOTFIX-01,
+# v1.0.41…v1.0.46). В образе нет `.git` (.dockerignore), поэтому
+# установщик хуков штатно завершается no-op с кодом 0 — локальное
+# поведение Git-хуков не меняется. Инвариант охраняет
+# tools/delivery/dockerfile-prepare-lifecycle.test.mjs.
+COPY tools/git-hooks/ ./tools/git-hooks/
 RUN npm ci
 
 COPY . .
