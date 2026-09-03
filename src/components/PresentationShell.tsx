@@ -2,20 +2,28 @@ import { useEffect, useId, useRef, useState, type RefObject } from 'react'
 import { Decimal } from 'decimal.js'
 import { AnimatePresence, motion } from 'framer-motion'
 import { demoProject } from '../state/projectAnalysis'
-import demo from '../fixtures/demo-0001.json'
 import all3Logo from '../../design-system/All3Logo.png'
 import {
-  configForOption, eligibleClientOptions, projectionForOption,
+  clientBaselineSnapshot, clientPresentedSnapshot, configForOption,
+  eligibleClientOptions, latestSavedOptionVersion, projectionForOption,
   resolvedViewedOptionId, useStore, type OfferSnapshot, type OptionConfig,
   type Projection,
 } from '../state/store'
-import { driversSum } from '../engine/calculate'
-import { modelDuration, presentDuration, shiftScheduleMetrics } from '../engine/schedule'
-import { NNBSP, present, formatDE, label as moneyLabel } from '../engine/money'
-import { CATALOG } from '../state/catalog'
+import {
+  NARRATIVE_SECTIONS, PageBuildings, PageInvestment, PageProjectIdentity,
+  PageScopeStory, PageScheduleStory, PresentationEntry, SECTION_LABEL_KEY,
+  type ClientView, type NarrativeSectionId,
+} from './ClientNarrative'
+import {
+  PageServices, ScenarioBar, ScenarioRevertDialog, ScenarioSaveDialog,
+  ScenarioSaveReceipt, ScheduleScenarioSlot,
+} from './ClientScenario'
+import { ClientPrintDocument, PageOutputs } from './ClientOutputs'
+import { signedMoneyText } from '../design-system/CommercialNumber'
+import { NNBSP, present, label as moneyLabel } from '../engine/money'
 import { localizeMoneyText, useT, useTx } from '../i18n'
 import { recipientForOpportunity, type ValidatedRecipient } from '../state/emailRecipient'
-import { Badge, SelectField } from './designSystem'
+import { SelectField } from './designSystem'
 import { SegmentedControl } from './controls'
 import { PartialState, EmptyState } from './DataStates'
 import { Dialog } from './Dialog'
@@ -27,8 +35,6 @@ import { DELIVERY_SIMULATION_MS, SEND_COMMIT_SIMULATION_MS } from '../config/ui-
 import { signed } from './OfferPanel'
 import { CompositionBar } from '../design-system/CompositionBar'
 import { buildKgCompositionSegments } from './costComposition'
-import { MediaFrame } from '../design-system/MediaFrame'
-import { ScheduleGantt } from './ScheduleGantt'
 import { useSemanticMotion } from '../design-system/motion'
 import { Button, useCountUp } from './primitives'
 import { projectDriversForClient, translatedDriverLabel } from '../state/clientProjection'
@@ -61,7 +67,23 @@ import { startContinuityTransition } from '../design-system/motion'
  */
 
 export type Candidate = { id: string; name: string; cfg: OptionConfig; p: Projection }
-type PresentationFlow = 'narrative' | 'offer' | 'send' | 'sent' | 'delivered' | 'snapshot'
+/**
+ * VR3-05 adds two phases at the two ends of the narrative.
+ *
+ * `entry` is the client-safety boundary made visible (T-034): Client Mode is
+ * entered deliberately, naming the saved Option, or it is not a boundary at
+ * all. `outputs` is the conclusion (T-045), where a state acquires an
+ * AUTHORITY before it leaves the room.
+ *
+ * The middle — offer/send/sent/delivered/snapshot — is VR2-08's released
+ * send lifecycle, reached from `outputs` by the one channel that requires a
+ * saved Option. It is preserved rather than rebuilt: the immutable snapshot,
+ * the validated recipient and the delivery proof are exactly what "email
+ * requires a saved Option" needs on the other side of the gate.
+ */
+type PresentationFlow =
+  | 'entry' | 'narrative' | 'outputs'
+  | 'offer' | 'send' | 'sent' | 'delivered' | 'snapshot'
 
 function buildCandidate(
   s: Parameters<typeof configForOption>[0],
@@ -83,11 +105,6 @@ function durationNumber(duration: Projection['duration'], language: 'de' | 'en')
   return localizeMoneyText(number, language)
 }
 
-function durationText(duration: Projection['duration'], language: 'de' | 'en'): string {
-  const prefix = duration.prefix ? `${duration.prefix}${NNBSP}` : ''
-  const unit = language === 'en' ? 'months' : 'Monate'
-  return `${prefix}${durationNumber(duration, language)}${NNBSP}${unit}`
-}
 
 function includedBuildingIdsOf(cfg: OptionConfig): string[] {
   return Object.keys(cfg.buildings).filter((id) => cfg.included[id])
@@ -204,7 +221,7 @@ export function PresentationShell({ mainRef, modeRef }: {
     return c ? [c] : []
   })
 
-  const [activeSection, setActiveSection] = useState<string>('projekt')
+  const [activeSection, setActiveSection] = useState<NarrativeSectionId>('project')
 
   const latestViewedSnapshot = currentId
     ? [...s.snapshots].reverse().find((snapshot) => snapshot.optionId === currentId)
@@ -223,7 +240,10 @@ export function PresentationShell({ mainRef, modeRef }: {
   // narrative) — that effect only fires again once `currentId` itself
   // changes.
   const [flow, setFlow] = useState<PresentationFlow>(
-    () => (latestViewedSnapshot ? 'delivered' : 'narrative'),
+    // VR3-05: a fresh presentation always begins at the entry boundary. An
+    // Option that was already sent reopens at its delivered artefact, which
+    // is VR2-08's own contract and not something the boundary re-asks.
+    () => (latestViewedSnapshot ? 'delivered' : 'entry'),
   )
   const [delivery, setDelivery] = useState<'sent' | 'delivered'>(
     () => (latestViewedSnapshot ? 'delivered' : 'sent'),
@@ -236,6 +256,11 @@ export function PresentationShell({ mainRef, modeRef }: {
   // be resolved) — never a fabricated transport failure (the prototype has
   // no transport to fail on its own; "Do NOT invent delivery evidence").
   const [sendStatus, setSendStatus] = useState<'idle' | 'sending' | 'failed'>('idle')
+  // VR3-05 — the two scenario commitments. Local, because a dialog being
+  // OPEN is screen state; everything the dialogs then commit is store state.
+  const [revertOpen, setRevertOpen] = useState(false)
+  const [saveOpen, setSaveOpen] = useState(false)
+  const scenarioBarRef = useRef<HTMLDivElement>(null)
   const { reduced, fadeRise } = useSemanticMotion()
 
   // VR2-09 — approved motion storyboard 5 "Presentation entry" (MODE), exit
@@ -259,7 +284,7 @@ export function PresentationShell({ mainRef, modeRef }: {
       setDelivery('delivered')
       setFlow('delivered')
     } else {
-      setFlow('narrative')
+      setFlow('entry')
     }
     // Deliberately keyed on `currentId` alone: a send/delivery happening for
     // the option already being viewed is handled explicitly by `commitSend`,
@@ -308,7 +333,7 @@ export function PresentationShell({ mainRef, modeRef }: {
   // as the only way back (no redundant "Zurück" chrome competing with the
   // commercial result); this is what makes that true everywhere, not just
   // for the one screen that needed it.
-  const goTo = (id: string) => {
+  const goTo = (id: NarrativeSectionId) => {
     setFlow('narrative')
     setActiveSection(id)
   }
@@ -341,15 +366,14 @@ export function PresentationShell({ mainRef, modeRef }: {
     )
   }
 
+  // VR3-05 — the SALES narrative, six sections, in comprehension order.
+  // Deliberately not the preparation order and deliberately not variable:
+  // the target's rail is the same six on every frame, so a presenter builds
+  // one muscle memory and a client sees one document.
+  const sections = NARRATIVE_SECTIONS.map((id) => ({
+    id, label: t(SECTION_LABEL_KEY[id]),
+  }))
   const showOptionen = candidates.length >= 2
-  const sections: Array<{ id: string; label: string }> = [
-    { id: 'projekt', label: t('presentation.nav.project') },
-    { id: 'gebaeude', label: t('presentation.nav.building') },
-    { id: 'ergebnis', label: t('presentation.nav.result') },
-    { id: 'zeitplan', label: t('presentation.nav.schedule') },
-    ...(showOptionen ? [{ id: 'optionen', label: t('presentation.nav.options') }] : []),
-    { id: 'naechster-schritt', label: t('presentation.nav.nextStep') },
-  ]
 
   const switchViewedOption = (id: string) => {
     startContinuityTransition(reduced, () => s.setViewedOption(id))
@@ -360,7 +384,7 @@ export function PresentationShell({ mainRef, modeRef }: {
     setSendStatus('idle')
     setDelivery('sent')
     setFlow('offer')
-    setActiveSection('naechster-schritt')
+    setActiveSection('investment')
   }
 
   // A sent offer is a read-only artifact. Opening it must never restart the
@@ -377,7 +401,7 @@ export function PresentationShell({ mainRef, modeRef }: {
     setSentSnapshot(null)
     setSendStatus('idle')
     setFlow('narrative')
-    setActiveSection('naechster-schritt')
+    setActiveSection('investment')
   }
 
   // VR2-08 preflight (§9.3 EMAIL-001 condition #5, rule 16): a genuinely
@@ -418,6 +442,55 @@ export function PresentationShell({ mainRef, modeRef }: {
     }, SEND_COMMIT_SIMULATION_MS)
   }
 
+  // VR3-05 — ONE resolved state for the whole narrative. Built here so the
+  // six pages cannot each reach for their own copy and disagree about which
+  // decisions are in force (the "one number, two meanings" class).
+  const presented = clientPresentedSnapshot(s)
+  const baselineSnapshot = clientBaselineSnapshot(s)
+  const view: ClientView | null = presented && baselineSnapshot
+    ? {
+      optionName: current.name,
+      savedVersion: latestSavedOptionVersion(s, current.id),
+      presented,
+      baseline: baselineSnapshot,
+      projectName,
+      projectHeroAssetId: opportunity?.heroAssetId ?? null,
+      language: s.uiLanguage,
+    }
+    : null
+
+  // VR3-05 required state: PROJECTION ERROR. A presentation whose canonical
+  // derivation cannot produce a state has nothing honest to show a client,
+  // so it fails CLOSED and offers the route back to preparation rather than
+  // rendering a shell around an absent number.
+  if (!view) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <PresentationTopBar
+          sections={[]} activeSection={activeSection}
+          candidates={[]} currentId={null}
+          onSwitch={() => {}} onExit={exitToWork} modeRef={modeRef}
+        />
+        <main ref={mainRef} tabIndex={-1}
+              className="min-h-0 flex-1 overflow-y-auto bg-surface-default outline-none px-7 py-6">
+          <h1 ref={pageHeadingRef} tabIndex={-1}
+              className="text-heading-1 font-bold text-text-primary">
+            {t('vr3.client.projectionError.title')}
+          </h1>
+          <p className="mt-4 text-body text-text-secondary">
+            <span aria-hidden="true">! </span>
+            {t('vr3.client.projectionError.body')}
+          </p>
+          <div className="mt-5">
+            <Button variant="primary" onClick={exitToWork}>
+              {t('vr3.client.projectionError.action')}
+            </Button>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
   const motionKey = flow === 'narrative' ? activeSection : flow
 
   return (
@@ -447,23 +520,46 @@ export function PresentationShell({ mainRef, modeRef }: {
             exit="exit"
             className="flex min-h-0 flex-1 flex-col"
           >
-            {flow === 'narrative' ? (
-              activeSection === 'projekt' ? (
-                <PageIdentity opportunity={opportunity} current={current} headingRef={pageHeadingRef} />
-              ) : activeSection === 'gebaeude' ? (
-                <PageScope current={current} onNext={() => goTo('ergebnis')} headingRef={pageHeadingRef} />
-              ) : activeSection === 'ergebnis' ? (
-                <PageErgebnis current={current} headingRef={pageHeadingRef} />
-              ) : activeSection === 'zeitplan' ? (
-                <PageZeitplan current={current}
-                              onNext={() => goTo(showOptionen ? 'optionen' : 'naechster-schritt')}
-                              headingRef={pageHeadingRef} />
-              ) : activeSection === 'optionen' ? (
-                <PageOptionen projectName={projectName} candidates={candidates} currentId={current.id}
-                              onSwitch={switchViewedOption} onNext={() => goTo('naechster-schritt')}
-                              headingRef={pageHeadingRef} />
+            {flow === 'entry' ? (
+              <PresentationEntry
+                view={view}
+                onStart={() => { setFlow('narrative'); setActiveSection('project') }}
+                onReturn={exitToWork}
+                headingRef={pageHeadingRef}
+              />
+            ) : flow === 'outputs' ? (
+              <PageOutputs
+                view={view}
+                headingRef={pageHeadingRef}
+                onSaveAsNew={() => setSaveOpen(true)}
+                onEmail={startOffer}
+              />
+            ) : flow === 'narrative' ? (
+              activeSection === 'project' ? (
+                <PageProjectIdentity view={view} headingRef={pageHeadingRef} />
+              ) : activeSection === 'buildings' ? (
+                <PageBuildings view={view} headingRef={pageHeadingRef} />
+              ) : activeSection === 'scope' ? (
+                <PageScopeStory view={view} headingRef={pageHeadingRef} />
+              ) : activeSection === 'services' ? (
+                <PageServices view={view} headingRef={pageHeadingRef} />
+              ) : activeSection === 'schedule' ? (
+                <PageScheduleStory
+                  view={view} headingRef={pageHeadingRef}
+                  warning={<ScheduleScenarioSlot />}
+                />
               ) : (
-                <PageNaechsterSchritt current={current} onPrepare={startOffer} headingRef={pageHeadingRef} />
+                <PageInvestment
+                  view={view}
+                  headingRef={pageHeadingRef}
+                  onConclude={() => setFlow('outputs')}
+                  comparison={showOptionen ? (
+                    <ClientOptionComparison
+                      candidates={candidates} currentId={current.id}
+                      onSwitch={switchViewedOption} language={s.uiLanguage}
+                    />
+                  ) : undefined}
+                />
               )
             ) : (
               <PresentationFlowScreen
@@ -489,8 +585,94 @@ export function PresentationShell({ mainRef, modeRef }: {
             )}
           </motion.div>
         </AnimatePresence>
+
+        {/* The bar is persistent across every section, which is the point:
+            a presenter must not be able to navigate away from the fact that
+            the number on screen is a temporary one. It is suppressed only
+            for the entry boundary and the released send lifecycle, where a
+            scenario is by definition not what is being looked at. */}
+        {view && (flow === 'narrative' || flow === 'outputs') ? (
+          <div ref={scenarioBarRef}>
+            <ScenarioBar
+              view={view}
+              onRevert={() => setRevertOpen(true)}
+              onSaveAsNew={() => { s.beginScenarioSaveAsNew(); setSaveOpen(true) }}
+            />
+          </div>
+        ) : null}
       </main>
+
+      {view ? (
+        <>
+          <ScenarioRevertDialog
+            open={revertOpen} onClose={() => setRevertOpen(false)}
+            view={view} returnFocusTo={scenarioBarRef}
+          />
+          <ScenarioSaveDialog
+            open={saveOpen && s.clientScenarioSave?.stage === 'NAMING'}
+            onClose={() => { s.cancelScenarioSaveAsNew(); setSaveOpen(false) }}
+            view={view} returnFocusTo={scenarioBarRef}
+          />
+          <ScenarioSaveReceipt view={view} />
+          <ClientPrintDocument view={view} />
+        </>
+      ) : null}
     </div>
+  )
+}
+
+/**
+ * Option comparison, as a panel of the investment section.
+ *
+ * VR2-06 gave this a section of its own. The approved VR3-05 narrative has
+ * exactly six sections and comparison is not one of them — but the CAPABILITY
+ * is real and a presenter with two saved Options needs it, so it moves to
+ * where the comparison is actually made: beside the number being compared.
+ * Only client-eligible Options appear, and switching is `setViewedOption`,
+ * which touches nothing but which Option is being shown.
+ */
+function ClientOptionComparison({ candidates, currentId, onSwitch, language }: {
+  candidates: Candidate[]
+  currentId: string
+  onSwitch: (id: string) => void
+  language: 'de' | 'en'
+}) {
+  const t = useT()
+  const current = candidates.find((c) => c.id === currentId)
+  return (
+    <section className="a3-client-comparison" aria-label={t('vr3.client.comparison.title')}>
+      <h3 className="a3-client-panel-subtitle">{t('vr3.client.comparison.title')}</h3>
+      <div className="a3-client-rows">
+        {candidates.map((candidate) => {
+          const delta = current
+            ? candidate.p.result.total.exact.minus(current.p.result.total.exact)
+            : null
+          const presented = candidate.id === currentId
+          return (
+            <div key={candidate.id} className="a3-client-row">
+              <span className="a3-client-row-label">{candidate.name}</span>
+              <span className="a3-client-row-value numeric">
+                {candidate.p.result.total.display}
+                {delta && !delta.isZero() ? (
+                  <span className="a3-client-comparison-delta">
+                    {signedMoneyText(delta, language)}
+                  </span>
+                ) : null}
+              </span>
+              {presented ? (
+                <span className="a3-client-comparison-state">
+                  {t('vr3.client.comparison.presented')}
+                </span>
+              ) : (
+                <Button variant="ghost" onClick={() => onSwitch(candidate.id)}>
+                  {t('vr3.client.comparison.show')}
+                </Button>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </section>
   )
 }
 
@@ -508,9 +690,9 @@ function PresentationTopBar({
   sections, activeSection, onNavigate,
   candidates, currentId, onSwitch, onExit, modeRef,
 }: {
-  sections: Array<{ id: string; label: string }>
-  activeSection: string
-  onNavigate?: (id: string) => void
+  sections: Array<{ id: NarrativeSectionId; label: string }>
+  activeSection: NarrativeSectionId
+  onNavigate?: (id: NarrativeSectionId) => void
   candidates: Candidate[]
   currentId: string | null
   onSwitch: (id: string) => void
@@ -522,7 +704,7 @@ function PresentationTopBar({
   const s = useStore()
 
   return (
-    <div className="a3-presentation-topbar">
+    <div className="a3-presentation-topbar a3-client-topbar">
       <div className="a3-presentation-brand">
         {/* `a3-brand-mark`: the one element both shells share, so the
             Work ⇄ Present CONTINUITY edge (view transition) can pair it. */}
@@ -644,555 +826,15 @@ function OptionSwitcher({ candidates, currentId, onSwitch }: {
 
 type PageHeadingRef = RefObject<HTMLHeadingElement>
 
-/** §1 PROJEKT — Identitäts-Auftakt: full-bleed identity media with the
- *  project's own caption card overlapping its lower edge, matching the
- *  approved target's composition instead of a boxed page header above a
- *  bounded media tile. */
-function PageIdentity({ opportunity, current, headingRef }: {
-  opportunity: { name: string; city?: string } | undefined
-  current: Candidate
-  headingRef: PageHeadingRef
-}) {
-  const t = useT()
-  const s = useStore()
-  const buildingCount = includedBuildingIdsOf(current.cfg).length
-  const projectName = opportunity?.name ?? current.name
-  const bgfSum = includedBuildingIdsOf(current.cfg)
-    .reduce((sum, id) => sum.plus(current.cfg.buildings[id]!.bgfRAbove), new Decimal(0))
-  const dateLabel = new Intl.DateTimeFormat(s.uiLanguage === 'de' ? 'de-DE' : 'en-GB', {
-    day: 'numeric', month: 'long', year: 'numeric',
-  }).format(new Date())
-
-  return (
-    <section id="presentation-projekt" aria-label={t('presentation.nav.project')} className="a3-presentation-page">
-      <div className="a3-presentation-identity">
-        <div className="a3-presentation-identity-media">
-          {/* No caption label: the identity card's own H1 (below/adjacent)
-              already names the project — MediaFrame's fallback graphic is
-              `aria-hidden`, so a caption here would only repeat the H1 at
-              the far end of a full-bleed box. */}
-          <MediaFrame ratio="hero" state="fallback" seed={projectName} />
-        </div>
-        <div className="a3-presentation-identity-card">
-          <p className="a3-cap">{t('presentation.identity.eyebrow', { date: dateLabel })}</p>
-          <h1 ref={headingRef} tabIndex={-1} className="mt-2 text-heading-1 font-bold text-text-primary">
-            {projectName}
-          </h1>
-          <div className="a3-presentation-fact-row mt-4">
-            {opportunity?.city && (
-              <span className="a3-presentation-fact-chip">{opportunity.city}</span>
-            )}
-            <span className="a3-presentation-fact-chip numeric">
-              {formatDE(new Decimal(buildingCount), 0)}{NNBSP}{t('presentation.identity.buildingCount')}
-            </span>
-            {bgfSum.greaterThan(0) && (
-              <span className="a3-presentation-fact-chip numeric">
-                {formatDE(bgfSum, 0)}{NNBSP}m² BGF
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function buildingFormLabel(
-  form: OptionConfig['buildings'][string]['gebaeudeform'],
-  t: (key: string, values?: Readonly<Record<string, string | number>>) => string,
-): string {
-  return form === 'MFH' ? t('buildingScope.form.mfh')
-    : form === 'BUERO' ? t('buildingScope.form.office')
-      : form === 'EFH_ZFH' ? t('buildingScope.form.efh')
-        : t('buildingScope.form.row')
-}
-
-function undergroundLabel(
-  scope: OptionConfig['buildings'][string]['untergeschoss'],
-  t: (key: string, values?: Readonly<Record<string, string | number>>) => string,
-): string {
-  return scope === 'vollausbau' ? t('presentation.building.fullBasement')
-    : scope === 'ab_decke' ? t('presentation.building.partialBasement')
-      : t('presentation.building.noBasement')
-}
-
-/** §2 GEBÄUDE — one building story at a time, full height media | facts,
- *  with an explicit page-advance CTA alongside true prev/next building
- *  cycling (named by the neighbouring building, never a bare arrow). */
-function PageScope({ current, onNext, headingRef }: {
-  current: Candidate
-  onNext: () => void
-  headingRef: PageHeadingRef
-}) {
-  const t = useT()
-  const includedIds = includedBuildingIdsOf(current.cfg)
-  const includedGroups = (Object.keys(current.p.kgSplit) as Array<keyof typeof current.p.kgSplit>)
-    .filter((g) => current.p.kgSplit[g]?.greaterThan(0))
-    .map((g) => t(`costGroup.${g}`))
-
-  const [buildingIndex, setBuildingIndex] = useState(0)
-  const safeIndex = includedIds.length === 0 ? 0 : Math.min(buildingIndex, includedIds.length - 1)
-  const buildingId = includedIds[safeIndex]
-  const building = buildingId ? current.cfg.buildings[buildingId] : undefined
-  const buildingName = building?.stableName ?? t('buildingScope.title')
-  const prevId = includedIds.length > 1 ? includedIds[(safeIndex - 1 + includedIds.length) % includedIds.length]! : null
-  const nextId = includedIds.length > 1 ? includedIds[(safeIndex + 1) % includedIds.length]! : null
-  const prevName = prevId ? current.cfg.buildings[prevId]?.stableName ?? prevId : null
-  const nextName = nextId ? current.cfg.buildings[nextId]?.stableName ?? nextId : null
-
-  return (
-    <section id="presentation-gebaeude" aria-label={t('presentation.nav.building')}
-             className="a3-presentation-page a3-presentation-scope">
-      <div className="a3-presentation-scope-media">
-        {/* Same reasoning as the identity page: the adjacent H1 already
-            names the building. */}
-        <MediaFrame ratio="hero" state="fallback" seed={buildingName} />
-      </div>
-      <div className="a3-presentation-scope-copy">
-        <p className="a3-cap">
-          {t('presentation.scope.eyebrow')} · {t('presentation.scope.position', { n: safeIndex + 1, total: includedIds.length })}
-        </p>
-        <h1 ref={headingRef} tabIndex={-1} className="mt-2 text-heading-2 font-bold text-text-primary">
-          {buildingName}
-        </h1>
-        <p className="mt-2 text-body text-text-secondary">
-          {building ? buildingFormLabel(building.gebaeudeform, t) : t('buildingScope.title')}
-        </p>
-        <div className="a3-presentation-fact-grid mt-5">
-          <div>
-            <dt className="a3-cap">{t('buildingScope.fact.bgfRAbove')}</dt>
-            <dd className="numeric text-body font-medium">{building ? formatDE(building.bgfRAbove, 0) : '—'}{NNBSP}m²</dd>
-          </div>
-          <div>
-            <dt className="a3-cap">{t('buildingScope.fact.units')}</dt>
-            <dd className="numeric text-body font-medium">{building?.units ? formatDE(building.units, 0) : t('presentation.building.notCaptured')}</dd>
-          </div>
-          <div>
-            <dt className="a3-cap">{t('presentation.building.underground')}</dt>
-            <dd className="text-body font-medium">{building ? undergroundLabel(building.untergeschoss, t) : t('presentation.building.notCaptured')}</dd>
-          </div>
-          <div>
-            <dt className="a3-cap">{t('buildingScope.fact.class')}</dt>
-            <dd className="text-body font-medium">{building ? building.gebaeudeklasse.value.replace('_', ' ') : t('presentation.building.notCaptured')}</dd>
-          </div>
-        </div>
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex gap-2">
-            {prevName && (
-              <Button variant="secondary" onClick={() => setBuildingIndex((i) => (i - 1 + includedIds.length) % includedIds.length)}>
-                {t('presentation.scope.previous', { building: prevName })}
-              </Button>
-            )}
-            {nextName && (
-              <Button variant="secondary" onClick={() => setBuildingIndex((i) => (i + 1) % includedIds.length)}>
-                {t('presentation.scope.next', { building: nextName })}
-              </Button>
-            )}
-          </div>
-          <p className="text-small text-text-secondary">{buildingName} · {t('presentation.scope.included')}</p>
-          <Button variant="primary" onClick={onNext}>
-            {t('presentation.scope.continueTo', { section: t('presentation.nav.result') })}
-          </Button>
-        </div>
-        {includedGroups.length > 0 && (
-          <p className="mt-4 text-small text-text-secondary">{t('buildingScope.selection.title')}: {includedGroups.join(' · ')}</p>
-        )}
-      </div>
-    </section>
-  )
-}
-
-/** §3 ERGEBNIS — die Bühne (rule 31 DC-38 Hierarchie) auf `--color-surface-
- *  stage-deep` (ADR-R1-02), Kostentreiber-Auszug. */
-function PageErgebnis({ current, headingRef }: {
-  current: Candidate
-  headingRef: PageHeadingRef
-}) {
-  const t = useT()
-  const tx = useTx()
-  const language = useStore().uiLanguage
-  const { p, cfg } = current
-  // Dieselbe einfache, im Client-Modus bereits akzeptierte Bedingung wie
-  // S4Vergleich (Wave 1) — keine zweite Interpretation von "unavailable"
-  // erfinden.
-  const priceUnavailable = p.result.total.exact.isZero()
-  const hero = useMoneyCountUp(p.result.total.exact)
-  const segments = buildKgCompositionSegments(p.kgSplit, (g) => t(`costGroup.${g}`))
-  // Kostentreiber-Auszug (DC-44/rule 35): dieselbe Privacy-Projektion, die
-  // OfferPanel schon für KG 800 nutzt — Summe der gezeigten Treiber bleibt
-  // exakt gleich dem Total (rule 32), auch wenn KG 800 aggregiert wird.
-  const clientDrivers = projectDriversForClient(p.result.drivers, 'praesentation', cfg.kg800ClientRevealed)
-  const driversTotal = driversSum(clientDrivers)
-  // SB-13 (backlog 2be8e69c, R-25): `computeProjection` prefixes a driver's
-  // `key` with its building id whenever more than one building is included
-  // — strip that prefix and aggregate same-label siblings into one summed
-  // row (see the original R3 Wave 2a rationale this file used to carry).
-  const includedIds = includedBuildingIdsOf(cfg)
-  const stripBuildingPrefix = (key: string): string => {
-    if (includedIds.length <= 1) return key
-    const owner = includedIds.find((id) => key.startsWith(`${id}:`))
-    return owner ? key.slice(owner.length + 1) : key
-  }
-  const byLabel = new Map<string, { key: string; exact: Decimal }>()
-  for (const d of clientDrivers) {
-    const label = translatedDriverLabel({ ...d, key: stripBuildingPrefix(d.key) }, t)
-    const existing = byLabel.get(label)
-    if (existing) existing.exact = existing.exact.plus(d.exact)
-    else byLabel.set(label, { key: label, exact: d.exact })
-  }
-  const topDrivers = [...byLabel.entries()]
-    .map(([label, row]) => ({ label, exact: row.exact }))
-    .sort((a, b) => b.exact.abs().minus(a.exact.abs()).toNumber())
-    .slice(0, 5)
-  const regionalFactorAmount = priceUnavailable
-    ? t('money.priceNotDetermined')
-    : moneyLabel(present(p.result.bauwerk.mul(CATALOG.regionalFactor.value.minus(1))))
-
-  return (
-    <section id="presentation-ergebnis" aria-label={t('presentation.nav.result')}
-             className="a3-presentation-page a3-presentation-commercial a3-stage-deep">
-      <div className="min-w-0">
-        <p className="a3-cap">{t('presentation.commercial.eyebrow', { option: current.name })}</p>
-        {priceUnavailable ? (
-          <div className="mt-3">
-            <PartialState label={t('money.priceNotDetermined')} consequence={p.result.totalLabel} />
-          </div>
-        ) : (
-          <p className="mt-3 numeric text-display-numeric font-bold" style={{ color: 'var(--color-brand-accent)' }}>
-            {hero.prefix && <span aria-hidden="true">{hero.prefix}{NNBSP}</span>}
-            {hero.display}
-            <span className="text-heading-2 text-text-inverse">{NNBSP}€</span>
-          </p>
-        )}
-        <p className="mt-2 text-body text-text-inverse">{tx('Schätzunsicherheit')} ±{NNBSP}{p.uncertaintyPp}{NNBSP}%</p>
-
-        {segments.length > 0 && (
-          <div className="mt-6 a3-tbl-scroll">
-            <CompositionBar segments={segments} total={p.result.total.exact} variant="compact" onDark
-                             incompleteLabel={t('money.priceNotDetermined')} />
-          </div>
-        )}
-
-        {!priceUnavailable && (
-          <div className="a3-presentation-commercial-tiles mt-6">
-            <div>
-              {/* `p.leadRate.denominatorLabel` is the normative denominator
-                  name (e.g. "WFL nach WoFlV") — a glossary term, never
-                  machine-translated (LOCALE-009), same as `p.duration`'s
-                  own OKBP references. Not a generic "Leitkennzahl" caption. */}
-              <p className="a3-cap">{tx(p.leadRate.denominatorLabel)}</p>
-              <p className="mt-1 numeric text-heading-2 font-bold text-text-inverse">
-                {p.leadRate.prefix && <span aria-hidden="true">{p.leadRate.prefix}{NNBSP}</span>}
-                {p.leadRate.display}<span className="text-small">{NNBSP}€/m²</span>
-              </p>
-            </div>
-            <div>
-              <p className="a3-cap">{t('presentation.nav.schedule')}</p>
-              <p className="mt-1 numeric text-heading-2 font-bold text-text-inverse">
-                {p.duration.prefix && <span aria-hidden="true">{p.duration.prefix}{NNBSP}</span>}
-                {durationNumber(p.duration, language)}<span className="text-small">{NNBSP}{language === 'en' ? 'months' : 'Monate'}</span>
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="a3-presentation-commercial-drivers">
-        <h1 ref={headingRef} tabIndex={-1} className="text-heading-2 font-bold text-text-inverse">
-          {t('presentation.commercial.driversTitle')}
-        </h1>
-        {topDrivers.length > 0 && !priceUnavailable && (
-          <>
-            <p className="a3-cap mt-1">{tx('Kostentreiber')}</p>
-            <ul className="a3-presentation-commercial-driver-list">
-              {topDrivers.map((d) => (
-                <li key={d.label} className="text-text-inverse">
-                  <span>{d.label}</span>
-                  <span className="numeric shrink-0">{money(d.exact)}{NNBSP}€</span>
-                </li>
-              ))}
-              {current.cfg.regionalfaktorActive && (
-                <li className="text-text-inverse">
-                  <span>{tx('Regionalfaktor')}</span>
-                  <span className="numeric shrink-0">{tx('aktiviert')}</span>
-                </li>
-              )}
-            </ul>
-            {!current.cfg.regionalfaktorActive && (
-              <p className="text-small text-text-inverse">
-                {t('offer.drivers.regionalInactive', { amount: regionalFactorAmount })}
-              </p>
-            )}
-            <p className="a3-cap">{t('presentation.commercial.driversSum')} {money(driversTotal)}{NNBSP}€</p>
-          </>
-        )}
-      </div>
-    </section>
-  )
-}
-
-const EXECUTION_COLOR_VARS = ['--color-dataviz-category-2', '--color-dataviz-category-3']
-
-/** §4 ZEITPLAN — editorial page around the canonical `ScheduleGantt`
- *  (DC-19), scoped to the VIEWED Option's own included buildings/anchor —
- *  never the internal active Option's (`s.buildings`/`s.constructionStart
- *  Date` stay untouched; `cfg.constructionStartDate` is per-Option, Tech
- *  Review cycle 2). Reuses the exact schedule fixture/shift/duration
- *  functions the internal `ChapterTermine` chapter already uses instead of
- *  re-deriving scheduling math for the client narrative. */
-function PageZeitplan({ current, onNext, headingRef }: {
-  current: Candidate
-  onNext: () => void
-  headingRef: PageHeadingRef
-}) {
-  const t = useT()
-  const language = useStore().uiLanguage
-  const { p } = current
-  const includedIds = includedBuildingIdsOf(current.cfg)
-
-  if (!p.duration.completionDate || includedIds.length === 0) {
-    return (
-      <section id="presentation-zeitplan" aria-label={t('presentation.nav.schedule')}
-               className="a3-presentation-page a3-presentation-page-pad">
-        <h1 ref={headingRef} tabIndex={-1} className="text-heading-2 font-bold text-text-primary">
-          {t('presentation.timeline.headline')}
-        </h1>
-        <p className="mt-4 text-body text-text-secondary">
-          <span aria-hidden="true">▲ </span>
-          {t('presentation.timeline.incomplete')}
-        </p>
-      </section>
-    )
-  }
-
-  const planningFixture = demo.schedule.metrics.find((m) => m.metricKey === 'project.planning')!
-  const executionFixtures = includedIds.map((id) => ({
-    id,
-    fixture: demo.schedule.metrics.find((m) => m.metricKey === `building:${id}.execution`),
-  })).filter((e): e is { id: string; fixture: NonNullable<typeof e.fixture> } => Boolean(e.fixture))
-
-  let phases: Array<{
-    key: string; label: string; unit: string; dependency: string
-    startISO: string; endISO: string; durationLabel: string; colorVar: string
-  }> = []
-  let finishISO = p.duration.completionDate
-
-  if (executionFixtures.length > 0) {
-    const anchor = current.cfg.constructionStartDate
-    const shifted = anchor
-      ? shiftScheduleMetrics([planningFixture, ...executionFixtures.map((e) => e.fixture)], planningFixture.startDate, anchor)
-      : [planningFixture, ...executionFixtures.map((e) => e.fixture)]
-    const planning = shifted.find((m) => m.metricKey === planningFixture.metricKey)!
-    const executions = executionFixtures.map(({ id, fixture }) => ({
-      id, metric: shifted.find((m) => m.metricKey === fixture.metricKey)!,
-    }))
-    const latestExecution = executions.reduce((latest, cur) => (cur.metric.endDate > latest.metric.endDate ? cur : latest))
-    finishISO = latestExecution.metric.endDate
-    const planningDuration = presentDuration(
-      { metricKey: planning.metricKey, kind: 'planning', startDate: planning.startDate, endDate: planning.endDate, durationBasis: 'calendarDay' },
-      planningFixture.wholeCalendarMonths != null ? new Decimal(planningFixture.wholeCalendarMonths) : null,
-    )
-    phases = [
-      {
-        key: planning.metricKey,
-        label: t('presentation.timeline.planningPhase'),
-        unit: t('presentation.timeline.wholeProject'),
-        dependency: '',
-        startISO: planning.startDate,
-        endISO: planning.endDate,
-        durationLabel: durationText(planningDuration, language),
-        colorVar: '--color-dataviz-category-1',
-      },
-      ...executions.map(({ id, metric }, index) => {
-        const buildingName = current.cfg.buildings[id]?.stableName ?? id
-        const dur = presentDuration(
-          { ...metric, kind: 'buildingExecution', durationBasis: 'calendarDay' },
-          modelDuration(current.cfg.buildings[id]!.bgfRAbove, new Decimal('1.00'), new Decimal('1.15')),
-        )
-        return {
-          key: metric.metricKey,
-          label: buildingName,
-          unit: buildingName,
-          dependency: t('presentation.timeline.afterPlanning'),
-          startISO: metric.startDate,
-          endISO: metric.endDate,
-          durationLabel: durationText(dur, language),
-          colorVar: EXECUTION_COLOR_VARS[index % EXECUTION_COLOR_VARS.length]!,
-        }
-      }),
-    ]
-  }
-
-  return (
-    <section id="presentation-zeitplan" aria-label={t('presentation.nav.schedule')} className="a3-presentation-page">
-      <div className="a3-presentation-page-pad">
-        <p className="a3-cap">{t('presentation.timeline.eyebrow', { option: current.name })}</p>
-        <h1 ref={headingRef} tabIndex={-1} className="mt-2 text-heading-2 font-bold text-text-primary">
-          {t('presentation.timeline.headline')}
-        </h1>
-        <p className="mt-2 text-body text-text-secondary">{t('presentation.timeline.intro')}</p>
-        {phases.length > 0 && (
-          <div className="mt-6">
-            <ScheduleGantt
-              caption={t('presentation.timeline.headline')}
-              finishISO={finishISO}
-              phases={phases}
-            />
-          </div>
-        )}
-      </div>
-      <div className="a3-presentation-consequence mt-auto">
-        <div>
-          <p className="a3-cap">{t('presentation.commercialConsequence')}</p>
-          <p className="mt-1 text-body font-medium text-text-primary">
-            {t('presentation.commercialConsequenceCopy')}
-          </p>
-        </div>
-        <Button variant="primary" onClick={onNext}>{t('presentation.nextStep.continue')}</Button>
-      </div>
-    </section>
-  )
-}
-
-/** §5 OPTIONEN — nur mit ≥2 client-eligible Optionen: three-up decision
- *  cards (price, delta vs. the VIEWED Option, composition bar, two
- *  established facts). No recommendation/favourite field exists on
- *  Option (VR2-05 decision, same constraint here) — the viewed card is
- *  distinguished only by an honest "now presenting" state, never a
- *  fabricated favourite. */
-function PageOptionen({ projectName, candidates, currentId, onSwitch, onNext, headingRef }: {
-  projectName: string
-  candidates: Candidate[]
-  currentId: string
-  onSwitch: (id: string) => void
-  onNext: () => void
-  headingRef: PageHeadingRef
-}) {
-  const t = useT()
-  const language = useStore().uiLanguage
-  const current = candidates.find((c) => c.id === currentId)!
-
-  return (
-    <section id="presentation-optionen" aria-label={t('presentation.nav.options')} className="a3-presentation-page a3-presentation-page-pad">
-      <p className="a3-cap">{t('presentation.options.eyebrow', { project: projectName })}</p>
-      <h1 ref={headingRef} tabIndex={-1} className="mt-2 text-heading-2 font-bold text-text-primary">
-        {t('presentation.options.headline')}
-      </h1>
-      <ul className="a3-presentation-option-grid mt-6" role="list"
-          style={{ gridTemplateColumns: `repeat(${candidates.length}, minmax(0,1fr))` }}>
-        {candidates.map((c) => {
-          const selected = c.id === currentId
-          const segments = buildKgCompositionSegments(c.p.kgSplit, (g) => t(`costGroup.${g}`))
-          const delta = c.p.result.total.exact.minus(current.p.result.total.exact)
-          return (
-            <li key={c.id} role="group" aria-label={c.name}
-                className={'a3-presentation-option-card' + (selected ? ' a3-presentation-option-card-current' : '')}>
-              {selected && (
-                <Badge sign="●" kind="status">{t('presentation.options.viewing')}</Badge>
-              )}
-              <p className={selected ? 'mt-3 text-body font-bold text-text-primary' : 'text-body font-bold text-text-primary'}>{c.name}</p>
-              <p className="mt-2 numeric text-metric-section font-bold text-text-primary">
-                {moneyLabel(present(c.p.result.total.exact))}
-              </p>
-              {!selected && !delta.isZero() && (
-                <p className="numeric text-small text-text-secondary">
-                  {delta.greaterThan(0) ? '+' : ''}{money(delta)}{NNBSP}€
-                </p>
-              )}
-              {segments.length > 0 && (
-                <div className="mt-3">
-                  <CompositionBar segments={segments} total={c.p.result.total.exact} variant="compact"
-                                   incompleteLabel={t('money.priceNotDetermined')} />
-                </div>
-              )}
-              <div className="mt-3">
-                <p className="a3-presentation-option-fact"><span className="text-text-secondary">{t('presentation.options.fact.building')}</span><span className="font-medium">{buildingNames(c.cfg)}</span></p>
-                <p className="a3-presentation-option-fact"><span className="text-text-secondary">{t('presentation.options.fact.duration')}</span><span className="font-medium">{durationText(c.p.duration, language)}</span></p>
-              </div>
-              <Button className="mt-4" variant={selected ? 'primary' : 'secondary'} onClick={() => onSwitch(c.id)}>
-                {selected ? t('presentation.options.present', { option: c.name }) : t('presentation.options.view')}
-              </Button>
-            </li>
-          )
-        })}
-      </ul>
-      <div className="mt-6 flex justify-end">
-        <Button variant="primary" onClick={onNext}>
-          {t('presentation.scope.continueTo', { section: t('presentation.nav.nextStep') })}
-        </Button>
-      </div>
-    </section>
-  )
-}
-
-/** §6 NÄCHSTER SCHRITT — the narrative hands off to a separate, explicit
- * offer flow. No internal preparation/export vocabulary is shown to
- * clients, and the invariant this whole ticket protects is stated in
- * plain client language: viewing another Option here never touches the
- * internal active/preparation Option. */
-function PageNaechsterSchritt({ current, onPrepare, headingRef }: {
-  current: Candidate
-  onPrepare: () => void
-  headingRef: PageHeadingRef
-}) {
-  const t = useT()
-  const s = useStore()
-  const { p } = current
-  const priceUnavailable = p.result.total.exact.isZero()
-  const activeOption = s.options.find((o) => o.id === s.activeOptionId)
-  const activeOptionName = activeOption?.name ?? current.name
-
-  return (
-    <section id="presentation-naechster-schritt" aria-label={t('presentation.nav.nextStep')}
-             className="a3-presentation-page a3-presentation-next">
-      <div className="a3-presentation-next-primary">
-        <p className="a3-cap">{t('presentation.nextStep.eyebrow')}</p>
-        <h1 ref={headingRef} tabIndex={-1} className="mt-2 text-heading-2 font-bold text-text-primary">
-          {t('presentation.nextStep.headline', { option: current.name })}
-        </h1>
-        <p className="mt-2 text-body text-text-secondary">
-          {t('presentation.nextStep.copy')}
-        </p>
-        <div className="a3-presentation-next-callout mt-6">
-          <p className="a3-cap">{t('presentation.nextStep.confirmationLabel')}</p>
-          <p className="mt-1 text-body font-medium text-text-primary">
-            {priceUnavailable
-              ? `${current.name} · ${t('money.priceNotDetermined')}`
-              : t('presentation.nextStep.confirmationValue', {
-                option: current.name,
-                total: moneyLabel(present(p.result.total.exact)),
-                pp: p.uncertaintyPp,
-              })}
-          </p>
-        </div>
-      </div>
-      <div className="a3-presentation-next-aside">
-        <p className="a3-cap">{t('presentation.nextStep.artifacts')}</p>
-        {/* VR2-08: the real, seller-selected artefact list (`offerDraft.
-            attachments` against the shared `OFFER_ARTIFACTS` catalog) —
-            not a static three-item stand-in that would silently disagree
-            with the Send review immediately after it. */}
-        {(() => {
-          const artefacts = buildGalleryArtifacts(s.offerDraft.attachments, priceUnavailable, t)
-            .filter((a) => a.available)
-          return artefacts.length === 0 ? (
-            <div className="mt-2"><EmptyState>{t('presentation.flow.galleryEmpty')}</EmptyState></div>
-          ) : (
-            <ul className="a3-presentation-artifacts mt-2">
-              {artefacts.map((a) => <li key={a.id}>{a.title}</li>)}
-            </ul>
-          )
-        })()}
-        <Button className="mt-4" variant="primary" onClick={onPrepare}>
-          {t('presentation.nextStep.title')}
-        </Button>
-        <p className="mt-3 text-small text-text-secondary">
-          {t('presentation.nextStep.workingOptionNotice', { option: activeOptionName })}
-        </p>
-      </div>
-    </section>
-  )
-}
+/* VR3-05 — §1…§6 of the client narrative moved to `ClientNarrative.tsx`,
+   `ClientScenario.tsx` and `ClientOutputs.tsx`. The six VR2-06 pages that
+   stood here (Identität · Umfang · Ergebnis · Zeitplan · Optionen ·
+   Nächster Schritt) are superseded rather than restyled: the approved
+   target replaces the narrative ITSELF, in a different order and with a
+   different subject, and keeping the old pages alongside the new ones
+   would have left the shell able to render two different client stories.
+   Option comparison survived the move — it is now a panel of §6, beside
+   the commercial result it compares, instead of a section of its own. */
 
 /** §"NÄCHSTER SCHRITT" → OFFER — the commercial climax (VR2-07, cycle 4).
  *

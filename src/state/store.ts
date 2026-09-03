@@ -198,6 +198,7 @@ import {
   scheduleReadyToConfirm,
   scheduleWarnings,
   type ScheduleConfirmation,
+  type ScheduleDerivation,
   type ScheduleIssue,
   type SchedulePhase,
   type SchedulePhaseEdit,
@@ -3885,6 +3886,33 @@ export function clientBaselineSnapshot(s: Store): ClientScenarioSnapshot | null 
   } catch {
     return null
   }
+}
+
+/**
+ * The schedule of the state the presentation is SHOWING.
+ *
+ * Derived from the presented configuration rather than from the store, so a
+ * handover what-if moves the programme on the schedule page the same way a
+ * service what-if moves the total on the investment page. `scheduleDerivationFor`
+ * would have answered for the internal working copy — the right answer to a
+ * different question, and the one that would have left the client looking at
+ * a sequence that contradicts the decision they just watched being taken.
+ */
+export function clientScheduleDerivation(
+  s: Store, snapshot: ClientScenarioSnapshot | null,
+): ScheduleDerivation | null {
+  if (!snapshot) return null
+  const overlay = { ...s, ...snapshot.config }
+  return scheduleDerivation(overlay, optionScheduleBuildingIds(overlay))
+}
+
+/** The presented state's schedule phases, in dependency order. */
+export function clientSchedulePhases(
+  s: Store, snapshot: ClientScenarioSnapshot | null,
+): readonly SchedulePhase[] {
+  if (!snapshot) return []
+  const overlay = { ...s, ...snapshot.config }
+  return activeSchedulePhases(overlay, optionScheduleBuildingIds(overlay))
 }
 
 /** The decisions this presentation may offer, in narrative order. */

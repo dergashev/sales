@@ -3348,3 +3348,197 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
   .a3-rvi-link{width:auto;grid-template-columns:2ch max-content max-content}
   .a3-svr{grid-template-columns:minmax(0,1fr)}
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   VR3-05 · CLIENT PRESENTATION — the meeting-scale narrative.
+
+   Two surfaces and no third. The CHROME and the two hero moments (entry,
+   project identity) sit on the canonical `--color-surface-stage-deep`, the
+   design system's declared "one expressive peak"; every narrative page is
+   the ordinary editorial ground with white panels on it. That contrast IS
+   the composition: the dark frames hold the room's attention at the two
+   moments that are about the project, and the light pages are where a
+   client reads. No new colour system was introduced for this — the peak
+   already existed and this is the surface it was declared for.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── chrome ─────────────────────────────────────────────────────────── */
+.a3-presentation-topbar.a3-client-topbar{background:var(--color-surface-stage-deep);border-bottom:none;color:var(--color-text-stage-deep-primary)}
+.a3-client-topbar .a3-presentation-brand img{filter:brightness(0) invert(1)}
+.a3-client-topbar .a3-presentation-tab{color:var(--color-text-stage-deep-secondary)}
+.a3-client-topbar .a3-presentation-tab-current{color:var(--color-text-stage-deep-primary);border-bottom-color:var(--color-brand-accent)}
+.a3-client-topbar .a3-cap,.a3-client-topbar .a3-mode-indicator{color:var(--color-text-stage-deep-secondary)}
+
+/* ── page skeleton ──────────────────────────────────────────────────── */
+.a3-client-page{display:flex;flex:1 1 auto;min-height:0;flex-direction:column;gap:var(--space-5);background:var(--color-surface-editorial-ground);padding:var(--space-7) var(--space-7) var(--space-8)}
+.a3-client-lede{display:grid;gap:var(--space-2);max-width:var(--measure-wide)}
+.a3-client-eyebrow{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-label-weight);letter-spacing:var(--type-tracking-caps);text-transform:uppercase;color:var(--color-text-secondary)}
+.a3-client-eyebrow-onpanel{color:var(--color-text-muted)}
+.a3-client-title{margin:0;font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:var(--type-heading-weight);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-client-title:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--space-1)}
+.a3-client-sub{margin:0;max-width:var(--measure-body-max);font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-secondary)}
+.a3-client-split{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-5);align-items:start}
+.a3-client-panel{display:flex;flex-direction:column;gap:var(--space-4);min-width:0;background:var(--color-surface-default);padding:var(--space-6)}
+.a3-client-panel-title{margin:0;font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--type-section-title-weight);color:var(--color-text-primary)}
+.a3-client-panel-subtitle{margin:var(--space-4) 0 0;font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);color:var(--color-text-secondary)}
+.a3-client-prose{margin:0;max-width:var(--measure-body-max);font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-secondary)}
+.a3-client-panel-media{margin-top:auto}
+.a3-client-panel-actions{margin-top:auto;padding-top:var(--space-4)}
+
+/* ── rows ───────────────────────────────────────────────────────────── */
+.a3-client-rows{display:grid}
+.a3-client-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,max-content) auto;align-items:baseline;gap:var(--space-3);padding:var(--space-3) 0;border-bottom:var(--border-hairline)}
+.a3-client-row-label{min-width:0;font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-primary)}
+.a3-client-row-value{text-align:right;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-label-weight);color:var(--color-text-primary)}
+.a3-client-rows-loose{display:flex;gap:var(--space-6);border-top:var(--border-hairline);padding-top:var(--space-4)}
+.a3-client-stack{display:grid;gap:var(--space-1)}
+.a3-client-stack-value{font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--type-label-weight);color:var(--color-text-primary)}
+.a3-client-stack-label{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+
+/* ── entry (T-034) ──────────────────────────────────────────────────── */
+.a3-client-entry{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);flex:1 1 auto;min-height:0}
+.a3-client-entry-media{position:relative;min-width:0;overflow:hidden}
+.a3-client-entry-media figure{height:100%;display:flex;flex-direction:column}
+.a3-client-entry-media [class*="aspect-media-"]{flex:1 1 auto;min-height:0;aspect-ratio:auto}
+.a3-client-entry-copy{display:flex;flex-direction:column;justify-content:center;gap:var(--space-4);min-width:0;padding:var(--space-8) var(--space-7)}
+.a3-client-entry-title{margin:0;max-width:18ch;font-size:var(--type-display-numeric-desktop-size);line-height:var(--type-display-numeric-desktop-line);font-weight:var(--type-heading-weight);color:var(--color-text-stage-deep-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-client-entry-title:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--space-1)}
+.a3-client-entry-lede{margin:0;max-width:var(--measure-body-max);font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-stage-deep-secondary)}
+.a3-client-entry-checks{display:grid;margin:var(--space-4) 0 0;padding:0;list-style:none}
+.a3-client-entry-checks li{display:flex;align-items:baseline;gap:var(--space-2);padding:var(--space-3) 0;border-bottom:var(--border-width-default) solid var(--color-text-stage-deep-secondary);font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-stage-deep-primary)}
+.a3-client-check{color:var(--color-brand-accent)}
+.a3-client-entry-actions{display:flex;gap:var(--space-2);margin-top:var(--space-5)}
+.a3-client-entry-actions .a3-sec{background:transparent;color:var(--color-text-stage-deep-primary);border-color:var(--color-text-stage-deep-primary)}
+
+/* ── identity hero (T-035) ──────────────────────────────────────────── */
+.a3-client-hero{position:relative;display:flex;flex:1 1 auto;min-height:0;flex-direction:column;overflow:hidden}
+.a3-client-hero-media{position:absolute;inset:0}
+.a3-client-hero-media figure{height:100%;display:flex;flex-direction:column}
+.a3-client-hero-media [class*="aspect-media-"]{flex:1 1 auto;min-height:0;aspect-ratio:auto}
+/* The scrim is a legibility device, not decoration: white display type over
+   a photograph needs a guaranteed contrast floor, and a flat tint would
+   dull the image everywhere instead of only where the words are. */
+.a3-client-hero::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,var(--color-surface-stage-deep) 0%,color-mix(in srgb,var(--color-surface-stage-deep) 72%,transparent) 38%,transparent 74%)}
+.a3-client-hero-copy{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:center;gap:var(--space-3);max-width:var(--measure-body-max);height:100%;padding:var(--space-8) var(--space-7)}
+.a3-client-hero-title{margin:0;font-size:var(--type-display-numeric-desktop-size);line-height:var(--type-display-numeric-desktop-line);font-weight:var(--type-heading-weight);color:var(--color-text-stage-deep-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-client-hero-title:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--space-1)}
+.a3-client-hero-lede{margin:0;font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);color:var(--color-text-stage-deep-secondary)}
+.a3-client-hero-metrics{display:flex;flex-wrap:wrap;gap:var(--space-7);margin:var(--space-5) 0 0}
+.a3-client-hero-metrics div{display:grid;gap:var(--space-1)}
+.a3-client-hero-metrics dt{font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-label-weight);letter-spacing:var(--type-tracking-caps);text-transform:uppercase;color:var(--color-text-stage-deep-secondary)}
+.a3-client-hero-metrics dd{margin:0;font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:var(--type-label-weight);color:var(--color-text-stage-deep-primary)}
+.a3-client-hero-number{margin:0}
+
+/* ── building stories (T-036) ───────────────────────────────────────── */
+.a3-client-building-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,var(--measure-card-compact)),1fr));gap:var(--space-4)}
+.a3-client-building-grid[data-count="1"]{grid-template-columns:minmax(0,var(--measure-panel))}
+.a3-client-building{display:flex;min-width:0;flex-direction:column;background:var(--color-surface-default)}
+.a3-client-building-media{min-width:0}
+.a3-client-building-copy{display:grid;gap:var(--space-2);padding:var(--space-5)}
+.a3-client-building-name{margin:0;font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--type-section-title-weight);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-client-building-use{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-secondary)}
+.a3-client-building-metric{margin:var(--space-2) 0 0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-label-weight);color:var(--color-text-primary)}
+.a3-client-building-metric-unit{font-size:var(--type-small-size);font-weight:var(--type-small-weight);color:var(--color-text-secondary)}
+
+/* ── schedule (T-039) ───────────────────────────────────────────────── */
+.a3-client-bignumber{margin:0;font-size:var(--type-display-numeric-desktop-size);line-height:var(--type-display-numeric-desktop-line);font-weight:var(--type-display-numeric-weight);color:var(--color-text-primary)}
+.a3-client-callout{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--space-3);margin-top:var(--space-4);border:var(--border-default);padding:var(--space-4)}
+.a3-client-callout-mark{color:var(--color-brand-accent);font-weight:var(--type-label-weight)}
+.a3-client-callout-title{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-label-weight);color:var(--color-text-primary)}
+.a3-client-callout-body{margin:var(--space-1) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-client-schedule-decision{display:grid;gap:var(--space-4)}
+
+/* ── investment (T-040) ─────────────────────────────────────────────── */
+.a3-client-metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,var(--measure-spec-label)),1fr));gap:0;margin:var(--space-4) 0 0;border:var(--border-hairline)}
+.a3-client-metric-grid>div{display:grid;gap:var(--space-1);padding:var(--space-3) var(--space-4);border-right:var(--border-hairline)}
+.a3-client-metric-grid>div:last-child{border-right:none}
+.a3-client-metric-grid dt{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-client-metric-grid dd{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-label-weight);color:var(--color-text-primary)}
+.a3-client-comparison{margin-top:var(--space-4)}
+.a3-client-comparison-delta{margin-left:var(--space-2);font-size:var(--type-small-size);color:var(--color-text-secondary)}
+.a3-client-comparison-state{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+
+/* ── scenario decisions (T-041) ─────────────────────────────────────── */
+.a3-client-decision{margin:0;border:none;padding:0}
+.a3-client-decision+.a3-client-decision{margin-top:var(--space-6)}
+.a3-client-decision-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,var(--measure-provenance-chip)),1fr));gap:var(--space-2);margin-top:var(--space-3)}
+.a3-client-decision-option{position:relative;display:grid;gap:var(--space-1);min-width:0;border:var(--border-default);padding:var(--space-3);cursor:pointer;background:var(--color-surface-default)}
+.a3-client-decision-option[data-selected="true"]{border:var(--border-selected)}
+.a3-client-decision-input{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.a3-client-decision-option:has(.a3-client-decision-input:focus-visible){outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--space-1)}
+.a3-client-decision-label{font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-primary)}
+.a3-client-decision-note{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-client-decision-consequence{margin-top:var(--space-3)}
+.a3-client-stale,.a3-client-warning{margin:0;border-left:var(--size-status-accent-width) solid var(--color-status-warning);background:var(--color-surface-emphasis-warm);padding:var(--space-3) var(--space-4);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
+
+/* ── the scenario bar (T-041) ───────────────────────────────────────── */
+.a3-client-scenario-bar{position:sticky;bottom:0;z-index:2;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,auto) auto;align-items:center;gap:var(--space-5);border-top:var(--border-contrast-2px);background:var(--color-surface-default);padding:var(--space-4) var(--space-7)}
+.a3-client-scenario-title{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-label-weight);color:var(--color-text-primary)}
+.a3-client-scenario-source{margin:var(--space-1) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-client-scenario-delta{display:flex;align-items:baseline;gap:var(--space-3);margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--type-display-numeric-weight);color:var(--color-text-display-accent)}
+.a3-client-scenario-count{font-size:var(--type-small-size);font-weight:var(--type-small-weight);color:var(--color-text-secondary)}
+.a3-client-scenario-actions{display:flex;gap:var(--space-2)}
+
+/* ── dialogs (T-043 / T-044) ────────────────────────────────────────── */
+.a3-client-overlay{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:var(--color-surface-overlay);padding:var(--space-5)}
+.a3-client-modal{display:grid;gap:var(--space-4);width:min(100%,var(--measure-panel));max-height:calc(100vh - 2 * var(--space-5));overflow-y:auto;background:var(--color-surface-default);padding:var(--space-6)}
+.a3-client-modal-title{margin:0;font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:var(--type-heading-weight);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-client-modal-actions{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.a3-client-field{display:grid;gap:var(--space-1)}
+.a3-client-field-label{font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-label-weight);letter-spacing:var(--type-tracking-caps);text-transform:uppercase;color:var(--color-text-secondary)}
+.a3-client-field-input{min-height:var(--size-hit-target-default);border:var(--border-default);background:var(--color-surface-default);padding:var(--space-2) var(--space-3);font:inherit;font-size:var(--type-input-size);color:var(--color-text-primary)}
+.a3-client-field-input:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--space-1)}
+.a3-client-field-error{margin:0;font-size:var(--type-error-size);line-height:var(--type-error-line);font-weight:var(--type-error-weight);color:var(--color-status-error)}
+.a3-client-receipt{position:fixed;right:var(--space-7);bottom:var(--space-8);z-index:19;display:grid;gap:var(--space-2);width:min(100%,var(--size-toast-max-width));border-left:var(--size-status-accent-width-prominent) solid var(--color-status-success);background:var(--color-surface-default);padding:var(--space-4)}
+.a3-client-receipt-title{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-label-weight);color:var(--color-text-primary)}
+.a3-client-receipt-body{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+
+/* ── outputs (T-045) ────────────────────────────────────────────────── */
+.a3-client-output-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,var(--measure-card-compact)),1fr));gap:var(--space-4)}
+.a3-client-output{gap:var(--space-3);border:var(--border-hairline);padding:var(--space-5)}
+.a3-client-output-title{margin:0;font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--type-section-title-weight);color:var(--color-text-primary)}
+.a3-client-warning-block{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--space-3);border-left:var(--size-status-accent-width-prominent) solid var(--color-status-warning);background:var(--color-surface-default);padding:var(--space-4) var(--space-5)}
+.a3-client-acknowledge{position:relative;display:inline-flex;align-items:center;gap:var(--space-2);margin-top:var(--space-3);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);cursor:pointer}
+.a3-client-authority{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-label-weight);letter-spacing:var(--type-tracking-caps);text-transform:uppercase;color:var(--color-text-secondary)}
+.a3-client-authority[data-state="unsaved"]{color:var(--color-status-warning)}
+.a3-client-preflight-list{display:grid;margin:0;padding:0;list-style:none}
+.a3-client-preflight-list li{display:flex;align-items:baseline;gap:var(--space-2);padding:var(--space-1) 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
+.a3-client-output-status{margin:0;min-height:var(--type-small-line);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
+
+/* ── the print document ─────────────────────────────────────────────── */
+.a3-client-print-doc{display:none}
+@media print{
+  .a3-presentation-topbar,.a3-client-scenario-bar,.a3-client-overlay,.a3-client-receipt{display:none !important}
+  .a3-client-page,.a3-client-hero,.a3-client-entry{display:none !important}
+  .a3-client-print-doc{display:block;padding:var(--space-7)}
+  .a3-client-print-banner{margin:0 0 var(--space-5);border:var(--border-contrast-2px);padding:var(--space-3) var(--space-4);font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);letter-spacing:var(--type-tracking-caps)}
+  .a3-client-print-authority{margin:0 0 var(--space-6);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+  .a3-client-print-title{margin:0 0 var(--space-5);font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line)}
+  .a3-client-print-total{margin:0;font-size:var(--type-display-numeric-desktop-size);line-height:var(--type-display-numeric-desktop-line);font-weight:var(--type-display-numeric-weight)}
+  .a3-client-print-total-label{margin:var(--space-2) 0 var(--space-6);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+  .a3-client-print-note{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line)}
+}
+
+/* ── 1280 · recomposed, not squeezed ────────────────────────────────── */
+@media (max-width:81rem){
+  .a3-client-page{gap:var(--space-4);padding:var(--space-6) var(--space-5) var(--space-7)}
+  .a3-client-title{font-size:var(--type-heading-1-narrow-size);line-height:var(--type-heading-1-narrow-line)}
+  .a3-client-split{gap:var(--space-4)}
+  .a3-client-panel{padding:var(--space-5)}
+  /* The identity and entry heroes drop one display step rather than
+     reflowing: at 1280 the photograph still has to carry the room, and a
+     wrapped display line would cost more legibility than the size does. */
+  .a3-client-entry-title,.a3-client-hero-title{font-size:var(--type-display-numeric-narrow-size);line-height:var(--type-display-numeric-narrow-line)}
+  .a3-client-entry-copy,.a3-client-hero-copy{padding:var(--space-7) var(--space-5)}
+  .a3-client-hero-metrics{gap:var(--space-5)}
+  .a3-client-hero-metrics dd{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line)}
+  .a3-client-bignumber{font-size:var(--type-display-numeric-narrow-size);line-height:var(--type-display-numeric-narrow-line)}
+  .a3-client-building-copy{padding:var(--space-4)}
+  .a3-client-scenario-bar{gap:var(--space-4);padding:var(--space-3) var(--space-5)}
+  .a3-client-receipt{right:var(--space-5)}
+}
+
+/* ── reduced motion ─────────────────────────────────────────────────── */
+@media (prefers-reduced-motion:reduce){
+  .a3-client-receipt{transition:none}
+}
