@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
-import { confirmBuildingReviewSections, confirmWholeConfiguration, enterOptionWorkspace, completeBuildingScope } from '../../test/offer-option'
+import {
+  completeKgConfiguration, confirmBuildingReviewSections, confirmWholeConfiguration,
+  decideAllKgScope, enterOptionWorkspace, completeBuildingScope,
+} from '../../test/offer-option'
 import { __resetStoreForTests, useStore } from '../../state/store'
 
 /**
@@ -26,13 +29,9 @@ async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
   enterOptionWorkspace()
   await confirmBuildingReviewSections(user)
   completeBuildingScope('PER_BUILDING')
-  act(() => {
-    useStore.getState().setCoverage('KG_300', 'included')
-    useStore.getState().setCoverage('KG_400', 'included')
-    useStore.getState().setCoverage('KG_700', 'included')
-  })
-  await user.click(screen.getAllByRole('button', { name: /Leistungsabgrenzung/ })[0]!)
-  await user.click(screen.getAllByRole('button', { name: /Leistungen KG 300/ })[0]!)
+  // VR3-03: the contributions are the Option's own KG service decisions, so
+  // the six scope decisions have to exist before there is a driver at all.
+  decideAllKgScope('included')
 }
 
 describe('DC-21: происхождение раскрывается у каждого вида вклада', () => {
@@ -50,11 +49,13 @@ describe('DC-21: происхождение раскрывается у кажд
     })
 
     const drivers = useStore.getState().projection().result.drivers
-    expect(drivers.some((d) => d.basis?.kind === 'rate')).toBe(true)
-    expect(drivers.some((d) => d.basis?.kind === 'factor')).toBe(true)
-    // Вклада без основания в этой конфигурации больше нет: базовая ставка
-    // объёма тоже «количество × ставка» и теперь это объявляет. Проверять
-    // отсутствующий вид значило бы держать тест на условии, которое сняли.
+    // VR3-03: every contribution is a DECLARED service amount from the KG
+    // catalogue, so none of them carries a derived rate or factor basis —
+    // and that is the honest shape. The defect this test exists for is the
+    // popover crashing on a kind it did not expect, which is exactly what a
+    // uniform `basis: null` set would have triggered before the fix.
+    expect(drivers.length).toBeGreaterThan(20)
+    expect(drivers.every((d) => d.basis === null)).toBe(true)
 
     await user.click(screen.getByRole('button', { name: 'Alle Details ansehen' }))
     // Task 04 (F-35, rail a11y): each row's trigger now carries its own
@@ -70,41 +71,24 @@ describe('DC-21: происхождение раскрывается у кажд
     }
   })
 
-  it('вклад по ставке показывает количество в m² и ставку в €/m², а не в €', async () => {
-    const user = userEvent.setup()
-    render(<App />)
-    await enterPipeline(user)
-    // Вклад по ставке — подвал: количество в m², ставка в €/m². KG 500 для
-    // этого больше не годится, она считается долей блока (решение D-27), и
-    // это верно: вид основания следует за формулой, а не за экраном.
-    await user.click(screen.getByRole('button', { name: 'Alle Details ansehen' }))
-    const row = document.querySelector('[data-driver-id="untergeschoss_vollausbau"]')
-    expect(row).not.toBeNull()
-    const trigger = row!.querySelector('button')!
-    await user.click(trigger)
-
-    // Величина и её единица обязаны совпадать. Прежняя версия печатала
-    // «Angewendet auf 2.000,00 €» для двух тысяч КВАДРАТНЫХ МЕТРОВ: формат
-    // верный, величина чужая, и на переговорах это неотличимо.
-    const popover = document.body.textContent ?? ''
-    expect(popover).toContain('Menge')
-    expect(popover).toContain('Satz')
-    expect(popover).not.toContain('Angewendet auf 400,00')
-  })
-
-  it('вклад по множителю показывает базу в € и сам множитель', async () => {
+  it('ein Beitrag ohne Rechenbasis nennt Kostengruppe und Betrag — und erfindet keine Menge', async () => {
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
 
     await user.click(screen.getByRole('button', { name: 'Alle Details ansehen' }))
-    const row = document.querySelector('[data-driver-id="gebaeudeklasse_GK_5"]')
+    const row = document.querySelector('[data-driver-id^="kg_"]')
     expect(row).not.toBeNull()
     await user.click(row!.querySelector('button')!)
 
     const text = document.body.textContent ?? ''
-    expect(text).toContain('Angewendet auf')
-    expect(text).toContain('Faktor')
+    // The popover states what IS known — the DIN 276 group the contribution
+    // belongs to — and prints neither a quantity nor a rate it does not
+    // have. A fabricated "Angewendet auf" line beside a declared amount is
+    // the same class of defect as a quantity in the wrong unit.
+    expect(text).toContain('KG')
+    expect(text).not.toContain('Angewendet auf')
+    expect(text).not.toContain('Satz')
   })
 
   it('в клиентском режиме сохраняет объявленный DIN 276 scope вместо имени здания', async () => {
@@ -114,6 +98,7 @@ describe('DC-21: происхождение раскрывается у кажд
     // REDESIGN R3 WAVE 2a (ce17da51): Kundenansicht needs the Option to be
     // client-eligible (PD-3 readiness) before it renders any commercial
     // narrative section at all.
+    completeKgConfiguration()
     confirmWholeConfiguration()
 
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))

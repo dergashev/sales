@@ -1,4 +1,14 @@
-import { useStore, canBeginConfiguration } from '../state/store'
+import {
+  KG_CHAPTER_STEP,
+  canBeginConfiguration,
+  hasKgConfiguration,
+  kgChapterProgressFor,
+  kgConfigurationCompleteFor,
+  kgDecidedScopeCount,
+  kgScopeDecisionsComplete,
+  useStore,
+} from '../state/store'
+import { KG_SCOPE_GROUPS, type KgScopeGroup } from '../engine/kgConfiguration'
 import { buildingScopeStage } from '../state/optionBuildingScope'
 import { readiness, type ProjectAnalysis, type FixtureProject } from '../state/projectAnalysis'
 import { useT } from '../i18n'
@@ -56,6 +66,73 @@ export function OptionWorkflowSpine() {
   const gateOpen = canBeginConfiguration(s)
   const stage = buildingScopeStage(s)
   const onScope = s.pipelineView === 'buildingScope'
+  const inConfigurator = s.pipelineView === 'konfigurator'
+  const configured = hasKgConfiguration(s)
+  const scopeComplete = kgScopeDecisionsComplete(s)
+  const decided = kgDecidedScopeCount(s)
+  const totalGroups = KG_SCOPE_GROUPS.length
+  const configurationComplete = kgConfigurationCompleteFor(s)
+  const openStep = s.openConfiguratorStep
+  const decisionsReason = t('vr3.kg.gate.decisionsDetail', {
+    decided, total: totalGroups,
+  })
+
+  /**
+   * VR3-03 — the six cost groups are now LIVE steps of this one journey.
+   *
+   * They used to be a four-item workspace list that replaced the spine the
+   * moment the Konfigurator opened, and the six KG entries in the spine
+   * itself were all rendered `blocked` with the same generic reason. So the
+   * one thing the target asks the rail to carry — "every KG remains visible
+   * as current / incomplete / complete / skipped / out of scope" — was the
+   * one thing it could not. An excluded group is SKIPPED here, never
+   * absent and never "incomplete": that distinction is the whole point of
+   * making the decision explicit.
+   */
+  const kgStep = (group: KgScopeGroup): WorkflowStep => {
+    const step = KG_CHAPTER_STEP[group]
+    const progress = kgChapterProgressFor(s, group)
+    const isOpen = inConfigurator && openStep === step
+    const decision = s.kgConfig?.scope[group] ?? 'undecided'
+    const state: WorkflowStep['state'] = !configured || !scopeComplete
+      ? 'blocked'
+      : decision === 'excluded'
+        ? 'skipped'
+        : isOpen
+          ? 'current'
+          : progress?.state === 'complete'
+            ? 'done'
+            : progress?.state === 'invalid'
+              ? 'attention'
+              : 'upcoming'
+    return {
+      id: group === 'KG_200' ? 'kg200'
+        : group === 'KG_300' ? 'kg300'
+          : group === 'KG_400' ? 'kg400'
+            : group === 'KG_500' ? 'kg500'
+              : group === 'KG_600' ? 'kg600' : 'kg700',
+      label: `KG ${group.slice(3)}`,
+      state,
+      previouslyDone: isOpen && progress?.state === 'complete',
+      blockedReason: state === 'blocked'
+        ? (gateOpen ? decisionsReason : t('vr3.spine.reason.needsBuildingScope'))
+        : undefined,
+      // An excluded group stays activatable: its own surface states the
+      // decision that skipped it and offers the route to reopen it.
+      onSelect: state === 'blocked'
+        ? undefined
+        : () => {
+          s.setPipelineView('konfigurator')
+          s.openConfiguratorStepAt(step)
+        },
+      blockedRoute: state === 'blocked' && gateOpen
+        ? () => {
+          s.setPipelineView('konfigurator')
+          s.openConfiguratorStepAt('scopeBoundaries')
+        }
+        : undefined,
+    }
+  }
 
   const steps: WorkflowStep[] = [
     {
@@ -89,35 +166,49 @@ export function OptionWorkflowSpine() {
       previouslyDone: gateOpen && onScope,
       onSelect: () => s.setPipelineView('buildingScope'),
     },
-    ...DOWNSTREAM.map(([id, key], index): WorkflowStep => {
-      const isFirst = index === 0
-      const current = gateOpen && isFirst && !onScope
-      return {
-        id,
-        // The rail names a cost group by its NUMBER, as the approved target
-        // does; the full DIN 276 title belongs on the KG page itself.
-        label: id.startsWith('kg') ? `KG ${id.slice(2)}` : t(key),
-        state: current ? 'current' : gateOpen && isFirst ? 'upcoming' : 'blocked',
-        // The IMMEDIATE next stage names its actual prerequisite; the ones
-        // behind it say only that a prerequisite is missing. Thirteen
-        // full sentences would turn the spine into a wall of prose and
-        // bury the one reason the user can act on — the exact prerequisite
-        // for every locked stage is named on the stage's own gate.
-        blockedReason: current || (gateOpen && isFirst)
-          ? undefined
-          : isFirst
-            ? t('vr3.spine.reason.needsBuildingScope')
-            : t('vr3.spine.reason.locked'),
-        // The FIRST downstream stage stays reachable even while it is
-        // locked: a direct navigation attempt is exactly how a user finds
-        // out what is missing, and it lands on that stage's own gate with
-        // the named prerequisite and the route that resolves it (T-016).
-        // A label they cannot even click is the "disabled navigation as
-        // the explanation" defect this ticket replaces.
-        onSelect: isFirst ? () => s.setPipelineView('konfigurator') : undefined,
-        blockedRoute: isFirst ? () => s.setPipelineView('konfigurator') : undefined,
-      }
-    }),
+    {
+      id: 'scopeBoundaries',
+      label: t('vr3.spine.step.scopeBoundaries'),
+      state: !gateOpen
+        ? 'blocked'
+        : inConfigurator && openStep === 'scopeBoundaries'
+          ? 'current'
+          : scopeComplete ? 'done' : 'upcoming',
+      previouslyDone: inConfigurator && openStep === 'scopeBoundaries' && scopeComplete,
+      blockedReason: gateOpen ? undefined : t('vr3.spine.reason.needsBuildingScope'),
+      onSelect: gateOpen
+        ? () => {
+          s.setPipelineView('konfigurator')
+          s.openConfiguratorStepAt('scopeBoundaries')
+        }
+        : undefined,
+      // T-016's principle: a locked stage is reachable so it can explain
+      // itself, and it lands on its own gate, never on its contents.
+      blockedRoute: gateOpen ? undefined : () => s.setPipelineView('konfigurator'),
+    },
+    ...KG_SCOPE_GROUPS.map(kgStep),
+    {
+      id: 'schedule',
+      label: t('vr3.spine.step.schedule'),
+      state: inConfigurator && openStep === 'commercialSchedule'
+        ? 'current'
+        : configurationComplete ? 'upcoming' : 'blocked',
+      blockedReason: configurationComplete
+        ? undefined
+        : !scopeComplete ? decisionsReason : t('vr3.kg.gate.scheduleReason'),
+      onSelect: configurationComplete
+        ? () => {
+          s.setPipelineView('konfigurator')
+          s.openConfiguratorStepAt('commercialSchedule')
+        }
+        : undefined,
+    },
+    {
+      id: 'finalValidation',
+      label: t('vr3.spine.step.finalValidation'),
+      state: 'blocked',
+      blockedReason: t('vr3.spine.reason.locked'),
+    },
   ]
 
   return <WorkflowStepper steps={steps} ariaLabel={t('vr3.spine.label')} size="spine" />

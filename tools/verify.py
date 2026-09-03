@@ -6044,6 +6044,18 @@ class Verifier:
             # the locked-and-available stage surface that replaces "disabled
             # navigation" as a stage's explanation.
             'building-scope-panel', 'workflow-gate',
+            # VR3-03 (backlog a0136b78): the unified configuration family.
+            # `choice-group` is the canonical RECORDED DECISION (a choice
+            # with a genuine undecided zero-state, inert decoration and
+            # pointer/keyboard parity); `scope-decision-ledger` is the six
+            # compact scope rows; `kg-configuration-page` is the one page
+            # anatomy KG 200–700 instantiate, together with its service
+            # group, decision row and detail panel; `commercial-rail` is the
+            # rail's causal half (what changed, what is included, whether it
+            # can be trusted); `commercial-number` is the single formatted
+            # output of the canonical commercial result.
+            'choice-group', 'scope-decision-ledger', 'kg-configuration-page',
+            'commercial-rail', 'commercial-number',
         }
         by_id = {}
         for entry in capabilities:
@@ -6123,23 +6135,37 @@ class Verifier:
         if 'export function WorkflowStepper' not in canonical:
             self.fail('GOV-CAPABILITY', 'src/design-system/WorkflowStepper.tsx',
                       'canonical WorkflowStepper owner is absent')
-        consumers = []
         # VR3-01: `OpportunityCard.tsx` was retired with the four-stage
-        # project card; the second real consumer is now the project shell.
+        # project card; the second real consumer became the project shell.
         # VR3-02: the thirteen-step journey renders in BOTH the project and
-        # the Option context, so the steps are computed once in
-        # `WorkflowSpine.tsx` and both shells consume that. The stepper's
-        # real consumers are therefore the spine and the Sidebar's own
-        # chapter list. This tuple is the explicit manifest the module
-        # docstring requires to move atomically with such a rename.
-        for source_rel in ('src/components/Sidebar.tsx', 'src/components/WorkflowSpine.tsx'):
-            source = self.read(source_rel) or ''
-            if "from '../design-system/WorkflowStepper'" in source and '<WorkflowStepper' in source:
-                consumers.append(source_rel)
-        if len(consumers) != 2:
+        # the Option context, so the steps were computed once in
+        # `WorkflowSpine.tsx` and both shells consumed that — while the
+        # Sidebar ALSO kept its own `<WorkflowStepper>` for the Configurator
+        # chapter list, which is why this manifest named two consumers.
+        #
+        # VR3-03 retired that chapter list: the six cost groups are stages of
+        # the one journey now, with their own current/complete/skipped
+        # states, so the spine carries them and the Sidebar renders the spine
+        # rather than a second stepper beside it. The canonical stepper
+        # therefore has exactly ONE direct consumer, and that is the
+        # stronger state — a single definition of the journey — not weaker
+        # adoption. The manifest moves with the change, as the module
+        # docstring requires.
+        consumer_rel = 'src/components/WorkflowSpine.tsx'
+        consumer = self.read(consumer_rel) or ''
+        if ("from '../design-system/WorkflowStepper'" not in consumer
+                or '<WorkflowStepper' not in consumer):
             self.fail('GOV-CAPABILITY', 'src/design-system/WorkflowStepper.tsx',
-                      'canonical WorkflowStepper must have the two real consumers '
-                      '(Sidebar and WorkflowSpine), not registry-only adoption')
+                      'canonical WorkflowStepper must have its real consumer '
+                      '(WorkflowSpine), not registry-only adoption')
+        # And the spine has to be REACHED: a journey definition no shell
+        # renders is the same registry-only adoption in one more hop.
+        shells = [rel for rel in ('src/components/Sidebar.tsx',
+                                  'src/screens/ProjectHome.tsx')
+                  if 'WorkflowSpine' in (self.read(rel) or '')]
+        if not shells:
+            self.fail('GOV-CAPABILITY', 'src/components/WorkflowSpine.tsx',
+                      'no product shell renders the canonical journey spine')
         for source_rel, source in self.files('*.tsx'):
             if source_rel == 'src/design-system/WorkflowStepper.tsx':
                 continue

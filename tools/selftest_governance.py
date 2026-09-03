@@ -109,6 +109,9 @@ VR3_CAPABILITY_IDS = [
     'conflict-resolver', 'question-queue',
     # VR3-02 — the Option building-scope family.
     'building-scope-panel', 'workflow-gate',
+    # VR3-03 — the unified configuration family.
+    'choice-group', 'scope-decision-ledger', 'kg-configuration-page',
+    'commercial-rail', 'commercial-number',
 ]
 VO_T4_IDS = [
     'canvas', 'paper', 'stage', 'stage-deep', 'media-frame',
@@ -128,13 +131,19 @@ VO_T4_DOWNSTREAM = {
 }
 
 
-def vo_t4_manifest(*, active_consumer_path='src/Probe.tsx', expiry='2099-12-31', owners=True):
+def vo_t4_manifest(*, active_consumer_path='src/Probe.tsx', expiry='2099-12-31',
+                   owners=True, spine_shell='src/components/Sidebar.tsx'):
     capabilities = []
     for cap_id in VO_T4_IDS:
         if cap_id in VO_T4_ACTIVE:
             if cap_id == 'workflow-stepper':
+                # VR3-03: the Sidebar renders the canonical journey SPINE,
+                # not a second stepper of its own — the chapter list that
+                # justified the old two-consumer manifest is retired.
                 consumers = [
-                    {'path': 'src/components/Sidebar.tsx', 'pattern': '<WorkflowStepper'},
+                    {'path': spine_shell,
+                     'pattern': '<OptionWorkflowSpine' if spine_shell.endswith('Sidebar.tsx')
+                     else '<ProjectWorkflowSpine'},
                     {'path': 'src/components/WorkflowSpine.tsx', 'pattern': '<WorkflowStepper'},
                 ]
             else:
@@ -169,6 +178,18 @@ def run_vo_t4_capability_cases() -> list[str]:
         ('GOV-CAPABILITY: duplicate WorkflowStepper ownership is rejected',
          {'src/components/designSystem.tsx': 'export function WorkflowStepper() {}\n'},
          'second WorkflowStepper owner'),
+        # VR3-03: one canonical journey definition is the stronger state, but
+        # only while a product shell actually renders it — otherwise it is
+        # registry-only adoption with one extra hop.
+        ('GOV-CAPABILITY: an unrendered journey spine is rejected',
+         {'src/components/Sidebar.tsx': 'export const Sidebar = null\n',
+          'src/screens/ProjectHome.tsx': 'export const ProjectHome = null\n'},
+         'no product shell renders the canonical journey spine'),
+        ('GOV-CAPABILITY: a spine rendered by the project shell alone is accepted',
+         {'manifest': vo_t4_manifest(spine_shell='src/screens/ProjectHome.tsx'),
+          'src/components/Sidebar.tsx': 'export const Sidebar = null\n',
+          'src/screens/ProjectHome.tsx': "import { ProjectWorkflowSpine } from '../components/WorkflowSpine'\nexport const ProjectHome = <ProjectWorkflowSpine />\n"},
+         None),
     ]
     failed = []
     for description, overrides, message_fragment in cases:
@@ -177,7 +198,7 @@ def run_vo_t4_capability_cases() -> list[str]:
             base = {
                 'src/Probe.tsx': 'export const Probe = "ACTIVE"\n',
                 'src/design-system/WorkflowStepper.tsx': 'export function WorkflowStepper() {}\n',
-                'src/components/Sidebar.tsx': "import { WorkflowStepper } from '../design-system/WorkflowStepper'\nexport const Sidebar = <WorkflowStepper />\n",
+                'src/components/Sidebar.tsx': "import { OptionWorkflowSpine } from './WorkflowSpine'\nexport const Sidebar = <OptionWorkflowSpine />\n",
                 'src/components/WorkflowSpine.tsx': "import { WorkflowStepper } from '../design-system/WorkflowStepper'\nexport const Spine = <WorkflowStepper />\n",
                 'src/components/designSystem.tsx': 'export const DesignSystem = {}\n',
                 'src/design-system/registry.tsx': 'export const Registry = "ACTIVE"\n',

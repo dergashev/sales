@@ -47,6 +47,16 @@ const OWNED_SURFACES = [
   'src/screens/KonfiguratorGate.tsx',
   'src/design-system/BuildingScopePanel.tsx',
   'src/components/WorkflowSpine.tsx',
+  // VR3-03 — the unified Konfigurator. Every product-owned string on these
+  // surfaces is a dictionary key with a DE and an EN row; the KG catalogue's
+  // own domain copy is bilingual in the fixture, following the released
+  // `scope-catalog.json` precedent for a large domain catalogue.
+  'src/screens/Leistungsabgrenzung.tsx',
+  'src/screens/KgChapter.tsx',
+  'src/design-system/ScopeDecisionLedger.tsx',
+  'src/design-system/KGConfiguration.tsx',
+  'src/design-system/CommercialRail.tsx',
+  'src/design-system/ChoiceGroup.tsx',
 ]
 
 function source(relative: string): string {

@@ -1,6 +1,11 @@
 import type userEvent from '@testing-library/user-event'
 import { act } from '@testing-library/react'
-import { canBeginConfiguration, includedBuildingIds, useStore } from '../state/store'
+import {
+  canBeginConfiguration, includedBuildingIds, kgCatalogueFor, useStore,
+} from '../state/store'
+import {
+  KG_SCOPE_GROUPS, allServices, type KgScopeDecision,
+} from '../engine/kgConfiguration'
 import { buildingScopeStage, scopeSelectedIds } from '../state/optionBuildingScope'
 import { demoProject } from '../state/projectAnalysis'
 
@@ -40,6 +45,49 @@ export function confirmWholeConfiguration() {
     const s = useStore.getState()
     s.confirmScopeBoundaries()
     includedBuildingIds(s).forEach((id) => s.confirmBuildingConfiguration(id))
+  })
+}
+
+/**
+ * VR3-03 — put the Option's six scope decisions on record.
+ *
+ * An Option now STARTS with six undecided cost groups, because that absence
+ * is the honest initial state and the whole subject of the ledger. Suites
+ * whose subject is further down the journey (comparison, export, client
+ * presentation, keyboard traversal) need a priced Option, not a re-test of
+ * the ledger — this records the decisions the way the ledger's own action
+ * does, through the store's one door.
+ */
+export function decideAllKgScope(
+  decision: KgScopeDecision = 'included',
+) {
+  act(() => {
+    const s = useStore.getState()
+    for (const group of KG_SCOPE_GROUPS) s.setKgScopeDecision(group, decision)
+  })
+}
+
+/**
+ * The FIXTURE BASELINE: six cost groups in scope and every explicit service
+ * decision recorded as "not included" — the Option example the VR3-00
+ * fixture specification describes, and the state in which the declared
+ * demonstration totals hold exactly.
+ *
+ * It records real decisions through real actions, so the journal, the
+ * commercial result and every gate downstream are exactly what a user who
+ * clicked through it would have.
+ */
+export function completeKgConfiguration() {
+  decideAllKgScope('included')
+  act(() => {
+    const s = useStore.getState()
+    const catalogue = kgCatalogueFor(s)
+    if (!catalogue) return
+    for (const service of allServices(catalogue)) {
+      if (!service.requiresDecision) continue
+      s.setKgServiceDecision(service.id, { state: 'notSelected' })
+    }
+    s.confirmKgScope()
   })
 }
 

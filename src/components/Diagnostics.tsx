@@ -3,7 +3,7 @@ import { useT } from '../i18n'
 import type { FontCheck } from '../lib/font-check'
 import catalog from '../fixtures/catalog.json'
 import demo from '../fixtures/demo-0001.json'
-import { Decimal } from 'decimal.js'
+import { commercialReconciliation, useStore } from '../state/store'
 
 /**
  * Diagnostik der Grundlagen. Fünf Prüfungen, jede ein Defekt, der schon
@@ -40,6 +40,10 @@ function localizedValue(t: T, prefix: string, value: string): string {
 
 function useChecks(fonts: FontCheck | null, cascade: string[] | null): Row[] {
   const t = useT()
+  // The LIVE commercial result, not an archived fixture run: the whole point
+  // of the reconciliation check is that it describes what the product is
+  // currently showing (VR3-03, F-001).
+  const s = useStore()
   return useMemo(() => {
     const rows: Row[] = []
 
@@ -78,20 +82,32 @@ function useChecks(fonts: FontCheck | null, cascade: string[] | null): Row[] {
         : t('diagnostics.detail.tokens.fail'),
     })
 
-    // Fixture: nicht «Datei vorhanden», sondern «Zahlen stimmen überein».
-    const run = demo.runs.find((r) => r.calculationRunId === 'DEMO-RUN-0007')
-    const drivers = run?.drivers ?? []
-    const sum = drivers.reduce((acc, d) => acc.plus(new Decimal(d.exact)), new Decimal(0))
-    const total = new Decimal(run?.total.exact ?? '0')
+    /**
+     * VR3-03 (audit F-001, P0): this check used to read the ARCHIVED fixture
+     * run `DEMO-RUN-0007` and compare its `drivers` array against that run's
+     * total. That array is a documented two-entry EXCERPT, not the run's
+     * full contribution set — so the check could only ever fail, and it did,
+     * on a surface a user can reach: "2 Treiber ergeben 3244500.00,
+     * Ergebnis 3817835.00", printed next to a number the product asks people
+     * to trust. It was never a defect in the arithmetic; it was a diagnostic
+     * comparing two things that were never meant to be equal.
+     *
+     * It now reconciles the LIVE canonical commercial result — the
+     * contributions the rail is actually showing, the DIN 276 composition
+     * they are grouped into, and the total printed above both
+     * (`commercialReconciliation`). That is the relation the ticket requires
+     * to pass, and the one whose failure would mean something.
+     */
+    const reconciliation = commercialReconciliation(s)
     rows.push({
       key: 'drivers',
       name: t('diagnostics.check.drivers'),
-      ok: sum.equals(total) && drivers.length > 0,
-      detail: drivers.length
+      ok: reconciliation.reconciles,
+      detail: reconciliation.contributionCount > 0
         ? t('diagnostics.detail.drivers.ok', {
-            count: drivers.length,
-            sum: sum.toFixed(2),
-            total: total.toFixed(2),
+            count: reconciliation.contributionCount,
+            sum: reconciliation.contributionsExact.toFixed(2),
+            total: reconciliation.totalExact.toFixed(2),
           })
         : t('diagnostics.detail.drivers.fail'),
     })
@@ -114,7 +130,7 @@ function useChecks(fonts: FontCheck | null, cascade: string[] | null): Row[] {
     })
 
     return rows
-  }, [fonts, cascade, t])
+  }, [fonts, cascade, t, s])
 }
 
 export function Diagnostics({

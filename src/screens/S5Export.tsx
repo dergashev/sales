@@ -228,7 +228,11 @@ export function S5Export() {
                     : `Anhänge: ${selected.size}`}</li>
                   <li>✓ Aktive Annahmen: {activeBuilding(s).gebaeudeklasse.confirmed ? 1 : 2}</li>
                   <li>
-                    <EstimateUncertaintyBadge presentation="compact" pp={p.uncertaintyPp} />
+                    <EstimateUncertaintyBadge
+                      language={s.uiLanguage}
+                      presentation="compact"
+                      pp={p.uncertaintyPp}
+                    />
                   </li>
                   <li>{tx('✓ Sprache: DE · vollständig')}</li>
                   {/* Рекомендация G6-gate (правило 11/D-16): пункт чек-листа,

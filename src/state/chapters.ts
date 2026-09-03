@@ -104,14 +104,19 @@ export const CONFIGURATOR_STEPS: readonly ConfiguratorStep[] = [
   {
     id: CONFIGURATOR_STEP.KG_300_DETAILS,
     label: 'Leistungen KG 300',
-    scope: 'building',
+    // VR3-03: project-scoped, like the other five. The approved target
+    // composes building ownership INTO the service row (each service names
+    // its building) and into the page's context panel; a per-building tab
+    // strip over six identical pages would be the second navigation grammar
+    // this ticket removes. Rule 38 is satisfied by the row, not by tabs.
+    scope: 'project',
     visibility: 'clientSafe',
     applicability: { kind: 'includedKg', group: 'KG_300' },
   },
   {
     id: CONFIGURATOR_STEP.KG_400_DETAILS,
     label: 'Technik KG 400',
-    scope: 'building',
+    scope: 'project',
     visibility: 'clientSafe',
     applicability: { kind: 'includedKg', group: 'KG_400' },
   },
@@ -161,16 +166,29 @@ export function isConfiguratorStepId(value: unknown): value is ConfiguratorStepI
   return typeof value === 'string' && STEP_BY_ID.has(value as ConfiguratorStepId)
 }
 
+/**
+ * VR3-03: EVERY cost-group step is applicable, always.
+ *
+ * Applicability used to mean "this cost group is `included`", so an excluded
+ * KG stopped existing: it left the navigation, `nearestActiveConfiguratorStep`
+ * snapped away from it, and a user could not reach the stage that would have
+ * explained why it was skipped. That is the defect the audit recorded as
+ * "Excluded KGs disappear and resemble missing work" (D-016), and the target
+ * answers it directly — an excluded KG stays visible as OUT OF SCOPE /
+ * SKIPPED throughout navigation and review.
+ *
+ * The scope decision is now a STATE of the step (undecided / in scope / out
+ * of scope), rendered as such by the journey spine and by the step's own
+ * surface. `coverage` is kept in the signature: the output-profile filter
+ * below is the only remaining reason a step may be absent, and callers pass
+ * one context object.
+ */
 export function isConfiguratorStepApplicable(
   step: ConfiguratorStep,
-  coverage: Coverage,
+  _coverage: Coverage,
 ): boolean {
-  switch (step.applicability.kind) {
-    case 'required':
-      return true
-    case 'includedKg':
-      return coverage[step.applicability.group] === 'included'
-  }
+  return step.applicability.kind === 'required'
+    || step.applicability.kind === 'includedKg'
 }
 
 export function activeConfiguratorWorkflow(

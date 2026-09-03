@@ -540,16 +540,15 @@ describe('AUD-03 — Option identity & creation continuity', () => {
     const section = reachOptionGallery()
     const row = () => within(section).getByText('Option 1').closest('li')!
     expect(row()).toHaveTextContent('Neu')
-    // Die Fixture bringt bereits reale Gebäudefakten mit (Dokumentanalyse
-    // lief vor Options überhaupt existieren) — eine frische Option zeigt
-    // deshalb sofort eine ehrliche, unvollständige Summe (rule 16), nicht
-    // "Preis nicht ermittelt": beides ist derselbe `priceUnavailable`-Pfad,
-    // hier trifft nur der andere Zweig zu. Der EXAKTE Wert kommt aus
-    // `projectionForOption`, nicht aus einer eigenen UI-Berechnung.
+    // VR3-03: eine frische Option hat SECHS unentschiedene Kostengruppen,
+    // also keine einzige kalkulierte Position — und damit keine Summe. Vorher
+    // trug sie eine unvollständige Summe, weil KG 300/400/700 per Default
+    // enthalten waren; genau diese stille Vorentscheidung ersetzt dieses
+    // Ticket. `Preis nicht ermittelt` ist hier die ehrliche Antwort, und
+    // eine Null wäre nach Regel 16 verboten.
     const total = useStore.getState().projection().result.total.exact
-    expect(total.isZero()).toBe(false)
-    expect(row()).toHaveTextContent('Zwischensumme der kalkulierten Positionen')
-    expect(row()).toHaveTextContent('€')
+    expect(total.isZero()).toBe(true)
+    expect(row()).toHaveTextContent('Preis nicht ermittelt')
     // Umfang: die Gebäudekomposition der Option, als Chips.
     expect(row()).toHaveTextContent('Haus A')
     expect(within(section).getByRole('button', { name: 'Umbenennen' })).toBeInTheDocument()

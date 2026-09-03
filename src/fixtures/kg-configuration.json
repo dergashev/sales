@@ -1,0 +1,1851 @@
+{
+  "$comment": "DEMO / NON-PRODUCTION PRODUCT FIXTURE (VR3-03). Every service, amount and variant below is a demonstration value: it exists to make Product behaviour legible, and it is not All3 production pricing, a quotation or calculation authority. Transcribed from the approved VR3-00 package (artifacts/VR3-00-global-design-audit/06-demo-fixtures/demo-project-fixtures.md and 03-target/1440x900/T-018.png at ba0263bfdf838cc30e4167da3b09e3f654fbf961) and PROVED by src/engine/__tests__/kgConfiguration.test.ts: every cost group’s baseline services sum to its declared subtotal, the six subtotals sum to the declared net total, and the service counts match the ticket. Bilingual copy is stored inline as labelDe/labelEn, following the released src/fixtures/scope-catalog.json precedent for a large domain catalogue; UI chrome remains i18n keys (rule 36). Amounts are decimal STRINGS, never JSON numbers. A singleChoice service carries the RELATIVE effect of each variant against its baseline variant, exactly as the released Mehrpreis/Minderpreis semantics do, so the baseline variant contributes nothing and the declared totals hold.",
+  "catalogues": [
+    {
+      "projectId": "DEMO-HAPPY-01",
+      "uncertaintyPercent": "5",
+      "declaredNetTotal": "6480000.00",
+      "declaredByCostGroup": {
+        "KG_200": "180000.00",
+        "KG_300": "4020000.00",
+        "KG_400": "1390000.00",
+        "KG_500": "300000.00",
+        "KG_600": "100000.00",
+        "KG_700": "490000.00"
+      },
+      "chapters": [
+        {
+          "group": "KG_200",
+          "titleDe": "Vorbereitende Maßnahmen",
+          "titleEn": "Preparatory works",
+          "scopeNoteDe": "Baustelle, Baufeldfreimachung und Hausanschlüsse für den Wohnhof.",
+          "scopeNoteEn": "Site set-up, site clearance and utility connections for the courtyard.",
+          "groups": [
+            {
+              "id": "a-kg200-site",
+              "labelDe": "Baustelle & Erschließung",
+              "labelEn": "Site & connections",
+              "services": [
+                {
+                  "id": "a-200-01",
+                  "labelDe": "Baustelleneinrichtung",
+                  "labelEn": "Site set-up",
+                  "summaryDe": "Einrichtung, Vorhaltung und Räumung der Baustelle.",
+                  "summaryEn": "Set-up, provision and clearance of the construction site.",
+                  "amount": "68000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-200-02",
+                  "labelDe": "Baufeldfreimachung & Rodung",
+                  "labelEn": "Site clearance",
+                  "summaryDe": "Oberboden abtragen, Bewuchs entfernen, Baufeld herstellen.",
+                  "summaryEn": "Topsoil removal, vegetation clearance, site preparation.",
+                  "amount": "44000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-200-03",
+                  "labelDe": "Hausanschlüsse Ver- und Entsorgung",
+                  "labelEn": "Utility connections",
+                  "summaryDe": "Strom, Wasser, Abwasser und Telekommunikation bis zur Gebäudekante.",
+                  "summaryEn": "Power, water, sewage and telecoms up to the building edge.",
+                  "amount": "68000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-200-90",
+                  "labelDe": "Rückbau Bestandsgebäude",
+                  "labelEn": "Demolition of existing structure",
+                  "summaryDe": "Auf dem Grundstück steht kein Bestand — die Position ist zu entscheiden, nicht anzunehmen.",
+                  "summaryEn": "No existing structure on the plot — a decision, not an assumption.",
+                  "amount": "145000.00",
+                  "baseline": "notSelected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": true
+                }
+              ]
+            }
+          ],
+          "boundaryDe": "Baustelle, Baufeld und Hausanschlüsse",
+          "boundaryEn": "Site, clearance and utility connections"
+        },
+        {
+          "group": "KG_300",
+          "titleDe": "Baukonstruktion",
+          "titleEn": "Building construction",
+          "scopeNoteDe": "Gründung, Tragwerk, Fassade und Dach des Wohnhofs.",
+          "scopeNoteEn": "Foundation, structure, facade and roof of the courtyard building.",
+          "groups": [
+            {
+              "id": "a-kg300-shell",
+              "labelDe": "Rohbau & Tragwerk",
+              "labelEn": "Shell & structure",
+              "services": [
+                {
+                  "id": "a-300-01",
+                  "labelDe": "Gründung & Bodenplatte",
+                  "labelEn": "Foundation & floor slab",
+                  "summaryDe": "Flachgründung ohne Untergeschoss, Sohlplatte mit Randverstärkung.",
+                  "summaryEn": "Shallow foundation without basement, slab with edge reinforcement.",
+                  "amount": "520000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-300-02",
+                  "labelDe": "Tragwerk Massivbau",
+                  "labelEn": "Solid structure",
+                  "summaryDe": "Stahlbeton-Decken und Mauerwerkswände, konventionell.",
+                  "summaryEn": "Reinforced-concrete slabs and masonry walls, conventional.",
+                  "amount": "1760000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                }
+              ]
+            },
+            {
+              "id": "a-kg300-envelope",
+              "labelDe": "Fassade & Dach",
+              "labelEn": "Facade & roof",
+              "services": [
+                {
+                  "id": "a-300-03",
+                  "labelDe": "Fassade Mineralputz",
+                  "labelEn": "Mineral-render facade",
+                  "summaryDe": "Wärmedämmverbundsystem mit mineralischem Oberputz.",
+                  "summaryEn": "External insulation system with a mineral top coat.",
+                  "amount": "1180000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-300-04",
+                  "labelDe": "Dach & Abdichtung",
+                  "labelEn": "Roof & waterproofing",
+                  "summaryDe": "Flachdach mit Abdichtung, Attika und Entwässerung.",
+                  "summaryEn": "Flat roof with waterproofing, parapet and drainage.",
+                  "amount": "560000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-300-90",
+                  "labelDe": "Balkone & Loggien",
+                  "labelEn": "Balconies & loggias",
+                  "summaryDe": "Die Ansichten zeigen Balkone; der Umfang ist nicht bestätigt.",
+                  "summaryEn": "The elevations show balconies; the extent is not confirmed.",
+                  "amount": "240000.00",
+                  "baseline": "notSelected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": true
+                }
+              ]
+            }
+          ],
+          "boundaryDe": "Gründung, Tragwerk, Fassade, Dach",
+          "boundaryEn": "Foundation, structure, facade, roof"
+        },
+        {
+          "group": "KG_400",
+          "titleDe": "Technische Anlagen",
+          "titleEn": "Technical installations",
+          "scopeNoteDe": "Wärme, Sanitär und Elektro für 18 Wohneinheiten.",
+          "scopeNoteEn": "Heating, plumbing and electrical for 18 dwellings.",
+          "groups": [
+            {
+              "id": "a-kg400-heat",
+              "labelDe": "Wärme & Energiestandard",
+              "labelEn": "Heat & energy standard",
+              "services": [
+                {
+                  "id": "a-400-01",
+                  "labelDe": "Wärmeerzeugung Wärmepumpe",
+                  "labelEn": "Heat pump plant",
+                  "summaryDe": "Zentrale Sole-Wasser-Wärmepumpe mit Pufferspeicher.",
+                  "summaryEn": "Central brine-water heat pump with buffer storage.",
+                  "amount": "430000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-400-es",
+                  "labelDe": "Energiestandard",
+                  "labelEn": "Energy standard",
+                  "summaryDe": "Der Standard beschreibt das Gebäude; das Band verengt sich erst mit der Kundenbestätigung.",
+                  "summaryEn": "The standard describes the building; the band narrows only on customer confirmation.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "eh55",
+                    "variants": [
+                      {
+                        "value": "geg",
+                        "labelDe": "GEG-Standard",
+                        "labelEn": "GEG standard",
+                        "delta": "-97000.00"
+                      },
+                      {
+                        "value": "eh55",
+                        "labelDe": "Effizienzhaus 55",
+                        "labelEn": "Efficiency house 55",
+                        "delta": "0.00"
+                      },
+                      {
+                        "value": "eh40",
+                        "labelDe": "Effizienzhaus 40",
+                        "labelEn": "Efficiency house 40",
+                        "delta": "97000.00"
+                      },
+                      {
+                        "value": "eh40nh",
+                        "labelDe": "Effizienzhaus 40 NH",
+                        "labelEn": "Efficiency house 40 NH",
+                        "delta": "195000.00"
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": false
+                }
+              ]
+            },
+            {
+              "id": "a-kg400-services",
+              "labelDe": "Sanitär & Elektro",
+              "labelEn": "Plumbing & electrical",
+              "services": [
+                {
+                  "id": "a-400-02",
+                  "labelDe": "Heizflächen, Verteilung & Sanitär",
+                  "labelEn": "Emitters, distribution & plumbing",
+                  "summaryDe": "Fußbodenheizung, Steigleitungen und Sanitärinstallation je Wohnung.",
+                  "summaryEn": "Underfloor heating, risers and per-dwelling plumbing.",
+                  "amount": "580000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-400-03",
+                  "labelDe": "Elektro & Datennetz",
+                  "labelEn": "Electrical & data",
+                  "summaryDe": "Wohnungsverteilungen, Beleuchtung, Klingel- und Datennetz.",
+                  "summaryEn": "Dwelling distribution boards, lighting, doorbell and data network.",
+                  "amount": "380000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-400-90",
+                  "labelDe": "Photovoltaik Dachfläche",
+                  "labelEn": "Rooftop photovoltaics",
+                  "summaryDe": "Die Dachfläche trägt eine Anlage; der Kunde hat sie nicht beauftragt.",
+                  "summaryEn": "The roof can carry an array; the client has not commissioned one.",
+                  "amount": "165000.00",
+                  "baseline": "notSelected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": true
+                }
+              ]
+            }
+          ],
+          "boundaryDe": "Wärme, Sanitär, Elektro, Energiestandard",
+          "boundaryEn": "Heat, plumbing, electrical, energy standard"
+        },
+        {
+          "group": "KG_500",
+          "titleDe": "Außenanlagen",
+          "titleEn": "External works",
+          "scopeNoteDe": "Wege, Bepflanzung und Spielfläche im Innenhof.",
+          "scopeNoteEn": "Paths, planting and play area in the courtyard.",
+          "groups": [
+            {
+              "id": "a-kg500-open",
+              "labelDe": "Freiflächen & Erschließung",
+              "labelEn": "Open space & access",
+              "services": [
+                {
+                  "id": "a-500-01",
+                  "labelDe": "Wege & Platzflächen",
+                  "labelEn": "Paths & paved areas",
+                  "summaryDe": "Betonsteinpflaster, Zufahrt und Hauseingangsbereiche.",
+                  "summaryEn": "Concrete-block paving, driveway and entrance areas.",
+                  "amount": "96000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "quantity",
+                    "unitAmount": "320.00",
+                    "baselineQuantity": "300",
+                    "unitDe": "m²",
+                    "unitEn": "m²",
+                    "minQuantity": "0",
+                    "maxQuantity": "100000"
+                  },
+                  "authority": "derived",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-500-02",
+                  "labelDe": "Bepflanzung & Rasen",
+                  "labelEn": "Planting & lawn",
+                  "summaryDe": "Rasenflächen, Sträucher und vier Hofbäume.",
+                  "summaryEn": "Lawn areas, shrubs and four courtyard trees.",
+                  "amount": "74000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-500-03",
+                  "labelDe": "Spielfläche",
+                  "labelEn": "Play area",
+                  "summaryDe": "Spielgeräte, Fallschutz und Einfassung nach DIN EN 1176.",
+                  "summaryEn": "Play equipment, impact protection and edging to DIN EN 1176.",
+                  "amount": "58000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-500-04",
+                  "labelDe": "Einfriedung & Müllstandplatz",
+                  "labelEn": "Enclosure & refuse area",
+                  "summaryDe": "Grundstückseinfriedung und überdachter Müllstandplatz.",
+                  "summaryEn": "Site enclosure and a roofed refuse area.",
+                  "amount": "72000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-500-90",
+                  "labelDe": "Tiefgaragenzufahrt",
+                  "labelEn": "Underground garage ramp",
+                  "summaryDe": "Der Wohnhof hat kein Untergeschoss — eine Zufahrt ist zu entscheiden.",
+                  "summaryEn": "The courtyard has no basement — a ramp is a decision.",
+                  "amount": "210000.00",
+                  "baseline": "notSelected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": true
+                }
+              ]
+            }
+          ],
+          "boundaryDe": "Wege, Bepflanzung, Spielfläche",
+          "boundaryEn": "Paths, planting, play area"
+        },
+        {
+          "group": "KG_600",
+          "titleDe": "Ausstattung",
+          "titleEn": "Fixtures & equipment",
+          "scopeNoteDe": "Feste Ausstattung der Gemeinschaftsflächen.",
+          "scopeNoteEn": "Fixed equipment for the shared areas.",
+          "groups": [
+            {
+              "id": "a-kg600-fixed",
+              "labelDe": "Feste Ausstattung",
+              "labelEn": "Fixed equipment",
+              "services": [
+                {
+                  "id": "a-600-01",
+                  "labelDe": "Briefkastenanlage",
+                  "labelEn": "Letterbox installation",
+                  "summaryDe": "Freistehende Anlage für 18 Wohneinheiten mit Paketfach.",
+                  "summaryEn": "Free-standing installation for 18 dwellings with a parcel box.",
+                  "amount": "26000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-600-02",
+                  "labelDe": "Fahrradabstellanlage",
+                  "labelEn": "Bicycle parking",
+                  "summaryDe": "Überdachte Anlehnbügel im Hofbereich.",
+                  "summaryEn": "Covered leaning racks in the courtyard.",
+                  "amount": "42000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "quantity",
+                    "unitAmount": "500.00",
+                    "baselineQuantity": "84",
+                    "unitDe": "Plätze",
+                    "unitEn": "spaces",
+                    "minQuantity": "0",
+                    "maxQuantity": "100000"
+                  },
+                  "authority": "derived",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-600-03",
+                  "labelDe": "Beschilderung & Hausnummern",
+                  "labelEn": "Signage & house numbers",
+                  "summaryDe": "Orientierung, Klingeltableau-Beschriftung und Hausnummern.",
+                  "summaryEn": "Wayfinding, doorbell labelling and house numbers.",
+                  "amount": "32000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-600-90",
+                  "labelDe": "Kunst am Bau",
+                  "labelEn": "Public art",
+                  "summaryDe": "Kein Programm verlangt sie; sie ist eine Entscheidung des Bauherrn.",
+                  "summaryEn": "No programme requires it; it is the client’s decision.",
+                  "amount": "48000.00",
+                  "baseline": "notSelected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": true
+                }
+              ]
+            }
+          ],
+          "boundaryDe": "Feste Ausstattung der Gemeinschaftsflächen",
+          "boundaryEn": "Fixed equipment for the shared areas"
+        },
+        {
+          "group": "KG_700",
+          "titleDe": "Baunebenkosten",
+          "titleEn": "Ancillary costs",
+          "scopeNoteDe": "Planung, Beratung und Nachweise.",
+          "scopeNoteEn": "Design, consultancy and certification.",
+          "groups": [
+            {
+              "id": "a-kg700-design",
+              "labelDe": "Planung & Beratung",
+              "labelEn": "Design & consultancy",
+              "services": [
+                {
+                  "id": "a-700-01",
+                  "labelDe": "Objektplanung",
+                  "labelEn": "Architectural design",
+                  "summaryDe": "Leistungsphasen 1 bis 8 nach HOAI, Honorarzone III.",
+                  "summaryEn": "HOAI work stages 1 to 8, fee zone III.",
+                  "amount": "268000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-700-02",
+                  "labelDe": "Tragwerksplanung",
+                  "labelEn": "Structural design",
+                  "summaryDe": "Standsicherheitsnachweis und Ausführungsplanung.",
+                  "summaryEn": "Structural verification and detailed design.",
+                  "amount": "84000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-700-03",
+                  "labelDe": "TGA-Planung",
+                  "labelEn": "Building services design",
+                  "summaryDe": "Heizung, Sanitär, Elektro und Lüftung, integriert geplant.",
+                  "summaryEn": "Heating, plumbing, electrical and ventilation, planned together.",
+                  "amount": "96000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-700-04",
+                  "labelDe": "Vermessung & Baugrundgutachten",
+                  "labelEn": "Survey & soil report",
+                  "summaryDe": "Lage- und Höhenaufnahme, Baugrunderkundung mit Bohrprofilen.",
+                  "summaryEn": "Site and level survey, soil investigation with borehole logs.",
+                  "amount": "42000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                }
+              ]
+            },
+            {
+              "id": "a-kg700-certificates",
+              "labelDe": "Nachweise & Zertifikate",
+              "labelEn": "Certification",
+              "services": [
+                {
+                  "id": "a-700-qng",
+                  "labelDe": "QNG-Siegel",
+                  "labelEn": "QNG label",
+                  "summaryDe": "Das Siegel beschreibt das Nachweisverfahren, nicht das Gebäude.",
+                  "summaryEn": "The label describes the verification procedure, not the building.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "none",
+                    "variants": [
+                      {
+                        "value": "none",
+                        "labelDe": "kein QNG",
+                        "labelEn": "no QNG",
+                        "delta": "0.00"
+                      },
+                      {
+                        "value": "plus",
+                        "labelDe": "QNG-PLUS",
+                        "labelEn": "QNG-PLUS",
+                        "delta": "92000.00"
+                      },
+                      {
+                        "value": "premium",
+                        "labelDe": "QNG-PREMIUM",
+                        "labelEn": "QNG-PREMIUM",
+                        "delta": "156000.00"
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-700-dgnb",
+                  "labelDe": "DGNB-Zertifikat",
+                  "labelEn": "DGNB certificate",
+                  "summaryDe": "Auditierung und Dokumentation eines dritten Prüfers.",
+                  "summaryEn": "Auditing and documentation by a third-party assessor.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "none",
+                    "variants": [
+                      {
+                        "value": "none",
+                        "labelDe": "keine Zertifizierung",
+                        "labelEn": "no certification",
+                        "delta": "0.00"
+                      },
+                      {
+                        "value": "silver",
+                        "labelDe": "DGNB SILBER",
+                        "labelEn": "DGNB SILVER",
+                        "delta": "68000.00"
+                      },
+                      {
+                        "value": "gold",
+                        "labelDe": "DGNB GOLD",
+                        "labelEn": "DGNB GOLD",
+                        "delta": "124000.00"
+                      },
+                      {
+                        "value": "platinum",
+                        "labelDe": "DGNB PLATIN",
+                        "labelEn": "DGNB PLATINUM",
+                        "delta": "208000.00"
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-700-90",
+                  "labelDe": "Baubegleitende Qualitätssicherung",
+                  "labelEn": "Construction-stage quality assurance",
+                  "summaryDe": "Zusätzliche Überwachung durch einen unabhängigen Sachverständigen.",
+                  "summaryEn": "Additional supervision by an independent expert.",
+                  "amount": "58000.00",
+                  "baseline": "notSelected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": true
+                }
+              ]
+            }
+          ],
+          "boundaryDe": "Planung, Beratung, Nachweise",
+          "boundaryEn": "Design, consultancy, certification"
+        }
+      ]
+    },
+    {
+      "projectId": "DEMO-COMPLEX-01",
+      "uncertaintyPercent": "6",
+      "declaredNetTotal": "38740000.00",
+      "declaredByCostGroup": {
+        "KG_200": "1120000.00",
+        "KG_300": "23980000.00",
+        "KG_400": "8420000.00",
+        "KG_500": "1760000.00",
+        "KG_600": "620000.00",
+        "KG_700": "2840000.00"
+      },
+      "chapters": [
+        {
+          "group": "KG_200",
+          "titleDe": "Vorbereitende Maßnahmen",
+          "titleEn": "Preparatory works",
+          "scopeNoteDe": "Baustelle, Rückbau und Erschließung für das gesamte Quartier.",
+          "scopeNoteEn": "Site set-up, demolition and connections for the whole quarter.",
+          "groups": [
+            {
+              "id": "b-kg200-site",
+              "labelDe": "Baustelle, Rückbau & Erschließung",
+              "labelEn": "Site, demolition & connections",
+              "services": [
+                {
+                  "id": "b-200-01",
+                  "labelDe": "Baustelleneinrichtung Quartier",
+                  "labelEn": "Quarter-wide site set-up",
+                  "summaryDe": "Gemeinsame Einrichtung für drei Baukörper, Kran- und Lagerflächen.",
+                  "summaryEn": "Shared set-up for three buildings, crane and storage areas.",
+                  "amount": "280000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-200-02",
+                  "labelDe": "Baufeldfreimachung & Rodung",
+                  "labelEn": "Site clearance",
+                  "summaryDe": "Oberboden, Bewuchs und Restfundamente der Logistikfläche.",
+                  "summaryEn": "Topsoil, vegetation and residual foundations of the logistics yard.",
+                  "amount": "190000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-200-03",
+                  "labelDe": "Rückbau Ladeplatte",
+                  "labelEn": "Loading-slab demolition",
+                  "summaryDe": "Provisorischer Ansatz: der Lageplan zeigt die Platte, der Auftrag schweigt (B-Q-05).",
+                  "summaryEn": "Provisional allowance: the site plan shows the slab, the brief is silent (B-Q-05).",
+                  "amount": "240000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-200-04",
+                  "labelDe": "Hausanschlüsse Ver- und Entsorgung",
+                  "labelEn": "Utility connections",
+                  "summaryDe": "Drei Hausanschlussräume, Fernwärmeübergabe und Löschwasser.",
+                  "summaryEn": "Three service entry rooms, district-heat transfer and firefighting water.",
+                  "amount": "310000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-200-05",
+                  "labelDe": "Baustraße & Zufahrt",
+                  "labelEn": "Site road & access",
+                  "summaryDe": "Tragschicht und Verkehrsflächen während der Bauzeit.",
+                  "summaryEn": "Base course and traffic areas during construction.",
+                  "amount": "100000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "quantity",
+                    "unitAmount": "400.00",
+                    "baselineQuantity": "250",
+                    "unitDe": "m²",
+                    "unitEn": "m²",
+                    "minQuantity": "0",
+                    "maxQuantity": "100000"
+                  },
+                  "authority": "derived",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-200-90",
+                  "labelDe": "Bodenaustausch & Entsorgung",
+                  "labelEn": "Soil replacement & disposal",
+                  "summaryDe": "Das Baugrundgutachten liegt noch nicht vor; der Umfang ist offen.",
+                  "summaryEn": "The soil report is outstanding; the extent is open.",
+                  "amount": "380000.00",
+                  "baseline": "notSelected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": true
+                },
+                {
+                  "id": "b-200-91",
+                  "labelDe": "Kampfmittelsondierung",
+                  "labelEn": "Ordnance survey",
+                  "summaryDe": "Für den Standort nicht angeordnet, in Leipzig aber üblich.",
+                  "summaryEn": "Not ordered for this site, but common in Leipzig.",
+                  "amount": "60000.00",
+                  "baseline": "notSelected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": true
+                }
+              ]
+            }
+          ],
+          "boundaryDe": "Baustelle, Rückbau, Erschließung",
+          "boundaryEn": "Site, demolition, connections"
+        },
+        {
+          "group": "KG_300",
+          "titleDe": "Baukonstruktion",
+          "titleEn": "Building construction",
+          "scopeNoteDe": "Gründung, Untergeschosse, Tragwerk und Fassaden von Haus A, B und C.",
+          "scopeNoteEn": "Foundation, basements, structure and facades of buildings A, B and C.",
+          "groups": [
+            {
+              "id": "b-kg300-foundation",
+              "labelDe": "Gründung & Untergeschoss",
+              "labelEn": "Foundation & basement",
+              "services": [
+                {
+                  "id": "b-300-01",
+                  "labelDe": "Gründung Kontorhaus",
+                  "labelEn": "Foundation Kontorhaus",
+                  "summaryDe": "Flachgründung ohne Untergeschoss, Haus A.",
+                  "summaryEn": "Shallow foundation without basement, building A.",
+                  "amount": "620000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "buildingId": "B-BLDG-A",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-300-02",
+                  "labelDe": "Gründung Hofhaus",
+                  "labelEn": "Foundation Hofhaus",
+                  "summaryDe": "Gründung unter dem Vollkeller, Haus B.",
+                  "summaryEn": "Foundation below the full basement, building B.",
+                  "amount": "540000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "buildingId": "B-BLDG-B",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-300-03",
+                  "labelDe": "Gründung Stadthaus",
+                  "labelEn": "Foundation Stadthaus",
+                  "summaryDe": "Gründung mit Teilunterkellerung, Haus C.",
+                  "summaryEn": "Foundation with partial basement, building C.",
+                  "amount": "660000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "buildingId": "B-BLDG-C",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-300-04",
+                  "labelDe": "Untergeschoss Hofhaus",
+                  "labelEn": "Basement Hofhaus",
+                  "summaryDe": "Vollkeller mit 36 Stellplätzen, weiße Wanne, Haus B.",
+                  "summaryEn": "Full basement with 36 parking spaces, watertight concrete, building B.",
+                  "amount": "1180000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "buildingId": "B-BLDG-B",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-300-05",
+                  "labelDe": "Untergeschoss Stadthaus",
+                  "labelEn": "Basement Stadthaus",
+                  "summaryDe": "Teilunterkellerung mit Technik und 22 Stellplätzen, Haus C (B-CF-03).",
+                  "summaryEn": "Partial basement with plant room and 22 parking spaces, building C (B-CF-03).",
+                  "amount": "860000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "buildingId": "B-BLDG-C",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-300-ug",
+                  "labelDe": "Untergeschoss-Umfang Haus C",
+                  "labelEn": "Basement extent building C",
+                  "summaryDe": "FINAL-REV zeigt eine Teilunterkellerung; die aufgehobene Fassung zeigte einen Vollkeller.",
+                  "summaryEn": "FINAL-REV shows a partial basement; the superseded issue showed a full one.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "partial",
+                    "variants": [
+                      {
+                        "value": "partial",
+                        "labelDe": "Teilunterkellerung",
+                        "labelEn": "Partial basement",
+                        "delta": "0.00"
+                      },
+                      {
+                        "value": "full",
+                        "labelDe": "Vollunterkellerung",
+                        "labelEn": "Full basement",
+                        "delta": "740000.00"
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": false
+                }
+              ]
+            },
+            {
+              "id": "b-kg300-structure",
+              "labelDe": "Tragwerk",
+              "labelEn": "Structure",
+              "services": [
+                {
+                  "id": "b-300-06",
+                  "labelDe": "Tragwerk Kontorhaus",
+                  "labelEn": "Structure Kontorhaus",
+                  "summaryDe": "Stahlbeton-Skelett mit Flachdecken, EG plus fünf Obergeschosse.",
+                  "summaryEn": "Reinforced-concrete frame with flat slabs, ground plus five upper floors.",
+                  "amount": "4980000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "buildingId": "B-BLDG-A",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-300-07",
+                  "labelDe": "Tragwerk Hofhaus",
+                  "labelEn": "Structure Hofhaus",
+                  "summaryDe": "Wandscheiben und Massivdecken, 46 Wohneinheiten (B-CF-02).",
+                  "summaryEn": "Shear walls and solid slabs, 46 dwellings (B-CF-02).",
+                  "amount": "4060000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "buildingId": "B-BLDG-B",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-300-08",
+                  "labelDe": "Tragwerk Stadthaus",
+                  "labelEn": "Structure Stadthaus",
+                  "summaryDe": "Gewerbe-EG mit größerer Stützweite, sechs Wohngeschosse darüber.",
+                  "summaryEn": "Commercial ground floor with a longer span, six residential floors above.",
+                  "amount": "5320000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "buildingId": "B-BLDG-C",
+                  "requiresDecision": false
+                }
+              ]
+            },
+            {
+              "id": "b-kg300-envelope",
+              "labelDe": "Fassade & Dach",
+              "labelEn": "Facade & roof",
+              "services": [
+                {
+                  "id": "b-300-09",
+                  "labelDe": "Fassade & Dach Kontorhaus",
+                  "labelEn": "Facade & roof Kontorhaus",
+                  "summaryDe": "Klinkervorsatzschale, Lochfassade, Retentionsdach.",
+                  "summaryEn": "Brick facing, punched openings, retention roof.",
+                  "amount": "2180000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "buildingId": "B-BLDG-A",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-300-10",
+                  "labelDe": "Fassade & Dach Hofhaus",
+                  "labelEn": "Facade & roof Hofhaus",
+                  "summaryDe": "Mineralputz mit Klinkersockel, begrüntes Flachdach.",
+                  "summaryEn": "Mineral render with a brick plinth, green flat roof.",
+                  "amount": "1540000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "buildingId": "B-BLDG-B",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-300-11",
+                  "labelDe": "Fassade & Dach Stadthaus",
+                  "labelEn": "Facade & roof Stadthaus",
+                  "summaryDe": "Klinker im EG, Putz darüber, Dachterrasse im Staffelgeschoss.",
+                  "summaryEn": "Brick at ground level, render above, roof terrace on the set-back floor.",
+                  "amount": "2040000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "buildingId": "B-BLDG-C",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-300-facade",
+                  "labelDe": "Fassadenmaterial Quartier",
+                  "labelEn": "Quarter facade material",
+                  "summaryDe": "Ein Material für das Ensemble; die Ansichten zeigen den koordinierten Stand.",
+                  "summaryEn": "One material for the ensemble; the elevations show the coordinated issue.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "clinker",
+                    "variants": [
+                      {
+                        "value": "clinker",
+                        "labelDe": "Klinker & Mineralputz",
+                        "labelEn": "Brick & mineral render",
+                        "delta": "0.00"
+                      },
+                      {
+                        "value": "render",
+                        "labelDe": "Mineralputz durchgehend",
+                        "labelEn": "Mineral render throughout",
+                        "delta": "-620000.00"
+                      },
+                      {
+                        "value": "timber",
+                        "labelDe": "Holzschalung Obergeschosse",
+                        "labelEn": "Timber cladding on upper floors",
+                        "delta": "480000.00"
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-300-90",
+                  "labelDe": "Dachbegrünung erweitert",
+                  "labelEn": "Extended green roof",
+                  "summaryDe": "Über die Retentionsanforderung hinaus, gestalterisch begründet.",
+                  "summaryEn": "Beyond the retention requirement, justified by design.",
+                  "amount": "260000.00",
+                  "baseline": "notSelected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": true
+                },
+                {
+                  "id": "b-300-91",
+                  "labelDe": "Mieterausbau Kontorhaus",
+                  "labelEn": "Tenant fit-out Kontorhaus",
+                  "summaryDe": "B-Q-02: der Auftraggeberbrief lässt Shell-and-core gegen Mieterausbau offen.",
+                  "summaryEn": "B-Q-02: the client brief leaves shell-and-core versus fit-out open.",
+                  "amount": "1240000.00",
+                  "baseline": "notSelected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "assumed",
+                  "buildingId": "B-BLDG-A",
+                  "requiresDecision": true
+                }
+              ]
+            }
+          ],
+          "boundaryDe": "Gründung, Untergeschosse, Tragwerk, Fassaden",
+          "boundaryEn": "Foundation, basements, structure, facades"
+        },
+        {
+          "group": "KG_400",
+          "titleDe": "Technische Anlagen",
+          "titleEn": "Technical installations",
+          "scopeNoteDe": "Wärme, Lüftung, Sanitär und Elektro für drei Baukörper mit unterschiedlicher Nutzung.",
+          "scopeNoteEn": "Heat, ventilation, plumbing and electrical for three buildings with different uses.",
+          "groups": [
+            {
+              "id": "b-kg400-heat",
+              "labelDe": "Wärme & Lüftung",
+              "labelEn": "Heat & ventilation",
+              "services": [
+                {
+                  "id": "b-400-01",
+                  "labelDe": "Wärmeerzeugung zentral",
+                  "labelEn": "Central heat generation",
+                  "summaryDe": "Gemeinsamer Ambient-Loop mit Wärmepumpen in der Energiezentrale.",
+                  "summaryEn": "Shared ambient loop with heat pumps in the energy centre.",
+                  "amount": "1240000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-400-heat",
+                  "labelDe": "Wärmekonzept",
+                  "labelEn": "Heat concept",
+                  "summaryDe": "Ein zentraler Kreis für das Quartier oder gebäudeweise Anlagen.",
+                  "summaryEn": "One central loop for the quarter or building-level plants.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "central",
+                    "variants": [
+                      {
+                        "value": "central",
+                        "labelDe": "Zentraler Ambient-Loop",
+                        "labelEn": "Central ambient loop",
+                        "delta": "0.00"
+                      },
+                      {
+                        "value": "perBuilding",
+                        "labelDe": "Gebäudeweise Anlagen",
+                        "labelEn": "Building-level plants",
+                        "delta": "-310000.00"
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-400-02",
+                  "labelDe": "Wärmeverteilung Kontorhaus",
+                  "labelEn": "Heat distribution Kontorhaus",
+                  "summaryDe": "Niedertemperatur-Verteilung mit Deckensegeln, Haus A.",
+                  "summaryEn": "Low-temperature distribution with ceiling sails, building A.",
+                  "amount": "520000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "buildingId": "B-BLDG-A",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-400-03",
+                  "labelDe": "Wärmeverteilung Hofhaus",
+                  "labelEn": "Heat distribution Hofhaus",
+                  "summaryDe": "Fußbodenheizung und Wohnungsstationen, Haus B.",
+                  "summaryEn": "Underfloor heating and dwelling stations, building B.",
+                  "amount": "460000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "buildingId": "B-BLDG-B",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-400-04",
+                  "labelDe": "Wärmeverteilung Stadthaus",
+                  "labelEn": "Heat distribution Stadthaus",
+                  "summaryDe": "Getrennte Zonen für Gewerbe-EG und Wohnen, Haus C.",
+                  "summaryEn": "Separate zones for the commercial ground floor and dwellings, building C.",
+                  "amount": "580000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "buildingId": "B-BLDG-C",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-400-05",
+                  "labelDe": "Lüftungsanlagen",
+                  "labelEn": "Ventilation plants",
+                  "summaryDe": "Zentrale RLT für das Kontorhaus, dezentrale Geräte im Wohnungsbau.",
+                  "summaryEn": "Central AHU for the Kontorhaus, decentralised units in the dwellings.",
+                  "amount": "1720000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-400-es",
+                  "labelDe": "Energiestandard",
+                  "labelEn": "Energy standard",
+                  "summaryDe": "Der Standard beschreibt das Gebäude; das Band verengt sich erst mit der Kundenbestätigung.",
+                  "summaryEn": "The standard describes the building; the band narrows only on customer confirmation.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "eh55",
+                    "variants": [
+                      {
+                        "value": "geg",
+                        "labelDe": "GEG-Standard",
+                        "labelEn": "GEG standard",
+                        "delta": "-540000.00"
+                      },
+                      {
+                        "value": "eh55",
+                        "labelDe": "Effizienzhaus 55",
+                        "labelEn": "Efficiency house 55",
+                        "delta": "0.00"
+                      },
+                      {
+                        "value": "eh40",
+                        "labelDe": "Effizienzhaus 40",
+                        "labelEn": "Efficiency house 40",
+                        "delta": "620000.00"
+                      },
+                      {
+                        "value": "eh40nh",
+                        "labelDe": "Effizienzhaus 40 NH",
+                        "labelEn": "Efficiency house 40 NH",
+                        "delta": "1180000.00"
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": false
+                }
+              ]
+            },
+            {
+              "id": "b-kg400-services",
+              "labelDe": "Sanitär & Elektro",
+              "labelEn": "Plumbing & electrical",
+              "services": [
+                {
+                  "id": "b-400-06",
+                  "labelDe": "Sanitärinstallation Kontorhaus",
+                  "labelEn": "Plumbing Kontorhaus",
+                  "summaryDe": "Sanitärkerne je Geschoss für 340 Arbeitsplätze.",
+                  "summaryEn": "Sanitary cores per floor for 340 workplaces.",
+                  "amount": "640000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "buildingId": "B-BLDG-A",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-400-07",
+                  "labelDe": "Sanitärinstallation Hofhaus",
+                  "labelEn": "Plumbing Hofhaus",
+                  "summaryDe": "Steigezonen und Wohnungsinstallation, 46 Einheiten.",
+                  "summaryEn": "Riser zones and dwelling installation, 46 units.",
+                  "amount": "720000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "buildingId": "B-BLDG-B",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-400-08",
+                  "labelDe": "Sanitärinstallation Stadthaus",
+                  "labelEn": "Plumbing Stadthaus",
+                  "summaryDe": "Wohnungsinstallation plus Gewerbeanschlüsse im EG.",
+                  "summaryEn": "Dwelling installation plus commercial connections at ground level.",
+                  "amount": "820000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "buildingId": "B-BLDG-C",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-400-09",
+                  "labelDe": "Elektro & Datennetz Kontorhaus",
+                  "labelEn": "Electrical & data Kontorhaus",
+                  "summaryDe": "Bodentanks, Beleuchtung und strukturierte Verkabelung.",
+                  "summaryEn": "Floor boxes, lighting and structured cabling.",
+                  "amount": "780000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "buildingId": "B-BLDG-A",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-400-10",
+                  "labelDe": "Elektro & Datennetz Hofhaus",
+                  "labelEn": "Electrical & data Hofhaus",
+                  "summaryDe": "Wohnungsverteilungen, Allgemeinstrom und Klingelanlage.",
+                  "summaryEn": "Dwelling boards, landlord supply and doorbell system.",
+                  "amount": "460000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "buildingId": "B-BLDG-B",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-400-11",
+                  "labelDe": "Elektro & Datennetz Stadthaus",
+                  "labelEn": "Electrical & data Stadthaus",
+                  "summaryDe": "Wohnungsverteilungen plus Gewerbeunterverteilung im EG.",
+                  "summaryEn": "Dwelling boards plus a commercial sub-distribution at ground level.",
+                  "amount": "480000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "buildingId": "B-BLDG-C",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-400-90",
+                  "labelDe": "Photovoltaik Dachflächen",
+                  "labelEn": "Rooftop photovoltaics",
+                  "summaryDe": "Alle drei Dächer sind geeignet; das Energiekonzept fordert sie nicht.",
+                  "summaryEn": "All three roofs are suitable; the energy concept does not require them.",
+                  "amount": "620000.00",
+                  "baseline": "notSelected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": true
+                },
+                {
+                  "id": "b-400-91",
+                  "labelDe": "E-Ladeinfrastruktur",
+                  "labelEn": "EV charging infrastructure",
+                  "summaryDe": "B-Q-04: Leerrohre sind im Ansatz, Ladepunkte sind zu entscheiden.",
+                  "summaryEn": "B-Q-04: conduits are allowed for, charge points are a decision.",
+                  "amount": "176000.00",
+                  "baseline": "notSelected",
+                  "kind": {
+                    "kind": "quantity",
+                    "unitAmount": "8000.00",
+                    "baselineQuantity": "22",
+                    "unitDe": "Ladepunkte",
+                    "unitEn": "charge points",
+                    "minQuantity": "0",
+                    "maxQuantity": "100000"
+                  },
+                  "authority": "derived",
+                  "buildingId": "B-BLDG-C",
+                  "requiresDecision": true
+                },
+                {
+                  "id": "b-400-92",
+                  "labelDe": "Gastronomie-Lüftung Gewerbe-EG",
+                  "labelEn": "Gastronomy ventilation, commercial ground floor",
+                  "summaryDe": "B-Q-01: das Nutzungskonzept nennt Gastronomie, der Auftraggeberbrief nur Gewerbe.",
+                  "summaryEn": "B-Q-01: the use concept names gastronomy, the client brief only commercial.",
+                  "amount": "420000.00",
+                  "baseline": "notSelected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "assumed",
+                  "buildingId": "B-BLDG-C",
+                  "requiresDecision": true
+                }
+              ]
+            }
+          ],
+          "boundaryDe": "Wärme, Lüftung, Sanitär, Elektro",
+          "boundaryEn": "Heat, ventilation, plumbing, electrical"
+        },
+        {
+          "group": "KG_500",
+          "titleDe": "Außenanlagen",
+          "titleEn": "External works",
+          "scopeNoteDe": "Innenhof, Erschließung und Regenwasser für das Quartier.",
+          "scopeNoteEn": "Courtyard, access and stormwater for the quarter.",
+          "groups": [
+            {
+              "id": "b-kg500-open",
+              "labelDe": "Freiflächen & Erschließung",
+              "labelEn": "Open space & access",
+              "services": [
+                {
+                  "id": "b-500-01",
+                  "labelDe": "Innenhof & Aufenthaltsflächen",
+                  "labelEn": "Courtyard & amenity areas",
+                  "summaryDe": "Gemeinschaftlicher Hof, B-Q-07: als Quartierspaket geführt.",
+                  "summaryEn": "Shared courtyard, B-Q-07: carried as a quarter-wide package.",
+                  "amount": "620000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-500-02",
+                  "labelDe": "Wege & Platzflächen",
+                  "labelEn": "Paths & paved areas",
+                  "summaryDe": "Erschließung der drei Hauseingänge und der Feuerwehrzufahrt.",
+                  "summaryEn": "Access to the three entrances and the fire-service route.",
+                  "amount": "380000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-500-03",
+                  "labelDe": "Bepflanzung & Baumpflanzung",
+                  "labelEn": "Planting & tree planting",
+                  "summaryDe": "Hofbäume, Strauchpflanzungen und Ausgleichsflächen.",
+                  "summaryEn": "Courtyard trees, shrub planting and compensation areas.",
+                  "amount": "290000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-500-04",
+                  "labelDe": "Regenwasserbewirtschaftung",
+                  "labelEn": "Stormwater management",
+                  "summaryDe": "Retention, Mulden-Rigolen und Notüberlauf.",
+                  "summaryEn": "Retention, swale-trench systems and emergency overflow.",
+                  "amount": "340000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-500-05",
+                  "labelDe": "Einfriedung & Müllstandplätze",
+                  "labelEn": "Enclosure & refuse areas",
+                  "summaryDe": "Drei überdachte Standplätze und die Quartierseinfriedung.",
+                  "summaryEn": "Three roofed refuse areas and the quarter enclosure.",
+                  "amount": "130000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-500-package",
+                  "labelDe": "Freianlagen-Paket",
+                  "labelEn": "External-works package",
+                  "summaryDe": "B-Q-07 ist beantwortet: ein Quartierspaket, die Zuordnung je Haus wird abgeleitet.",
+                  "summaryEn": "B-Q-07 is answered: one quarter package, the per-building share is derived.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "quarter",
+                    "variants": [
+                      {
+                        "value": "quarter",
+                        "labelDe": "Quartierspaket",
+                        "labelEn": "Quarter package",
+                        "delta": "0.00"
+                      },
+                      {
+                        "value": "perBuilding",
+                        "labelDe": "Gebäudeweise Vergabe",
+                        "labelEn": "Per-building award",
+                        "delta": "180000.00"
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-500-90",
+                  "labelDe": "Zusätzliche Tiefgaragenrampe",
+                  "labelEn": "Additional garage ramp",
+                  "summaryDe": "Eine zweite Rampe für Haus C wurde erwogen, nicht beauftragt.",
+                  "summaryEn": "A second ramp for building C was considered, not commissioned.",
+                  "amount": "210000.00",
+                  "baseline": "notSelected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": true
+                },
+                {
+                  "id": "b-500-91",
+                  "labelDe": "Spielfläche Quartier",
+                  "labelEn": "Quarter play area",
+                  "summaryDe": "Bei 94 Wohneinheiten üblich, im Auftrag nicht benannt.",
+                  "summaryEn": "Usual for 94 dwellings, not named in the brief.",
+                  "amount": "120000.00",
+                  "baseline": "notSelected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": true
+                }
+              ]
+            }
+          ],
+          "boundaryDe": "Innenhof, Erschließung, Regenwasser",
+          "boundaryEn": "Courtyard, access, stormwater"
+        },
+        {
+          "group": "KG_600",
+          "titleDe": "Ausstattung",
+          "titleEn": "Fixtures & equipment",
+          "scopeNoteDe": "Feste Ausstattung der Gemeinschafts- und Gewerbeflächen.",
+          "scopeNoteEn": "Fixed equipment for the shared and commercial areas.",
+          "groups": [
+            {
+              "id": "b-kg600-fixed",
+              "labelDe": "Feste Ausstattung",
+              "labelEn": "Fixed equipment",
+              "services": [
+                {
+                  "id": "b-600-01",
+                  "labelDe": "Briefkastenanlagen",
+                  "labelEn": "Letterbox installations",
+                  "summaryDe": "Drei Anlagen mit Paketfächern für 94 Wohneinheiten und Gewerbe.",
+                  "summaryEn": "Three installations with parcel boxes for 94 dwellings and commercial units.",
+                  "amount": "96000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-600-02",
+                  "labelDe": "Fahrradabstellanlagen",
+                  "labelEn": "Bicycle parking",
+                  "summaryDe": "Überdachte Anlagen im Hof und in den Untergeschossen.",
+                  "summaryEn": "Covered racks in the courtyard and the basements.",
+                  "amount": "184000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "quantity",
+                    "unitAmount": "500.00",
+                    "baselineQuantity": "368",
+                    "unitDe": "Plätze",
+                    "unitEn": "spaces",
+                    "minQuantity": "0",
+                    "maxQuantity": "100000"
+                  },
+                  "authority": "derived",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-600-03",
+                  "labelDe": "Beschilderung & Leitsystem",
+                  "labelEn": "Signage & wayfinding",
+                  "summaryDe": "Quartiersorientierung, Hausnummern und Klingeltableaus.",
+                  "summaryEn": "Quarter wayfinding, house numbers and doorbell panels.",
+                  "amount": "88000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-600-04",
+                  "labelDe": "Gemeinschaftsräume Ausstattung",
+                  "labelEn": "Shared-room equipment",
+                  "summaryDe": "Waschräume, Fahrradwerkstatt und Kinderwagenräume.",
+                  "summaryEn": "Laundry rooms, bicycle workshop and pram stores.",
+                  "amount": "152000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-600-05",
+                  "labelDe": "Küchenausstattung Gewerbe-EG",
+                  "labelEn": "Commercial ground-floor kitchen fit-out",
+                  "summaryDe": "Grundausstattung für die Gewerbeeinheit, retail-only Ansatz (B-Q-01).",
+                  "summaryEn": "Base equipment for the commercial unit, retail-only assumption (B-Q-01).",
+                  "amount": "100000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-600-90",
+                  "labelDe": "Kunst am Bau",
+                  "labelEn": "Public art",
+                  "summaryDe": "Für private Bauherren freiwillig; hier eine Entscheidung.",
+                  "summaryEn": "Voluntary for private clients; here a decision.",
+                  "amount": "190000.00",
+                  "baseline": "notSelected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": true
+                }
+              ]
+            }
+          ],
+          "boundaryDe": "Feste Ausstattung, Gewerbe-EG",
+          "boundaryEn": "Fixed equipment, commercial ground floor"
+        },
+        {
+          "group": "KG_700",
+          "titleDe": "Baunebenkosten",
+          "titleEn": "Ancillary costs",
+          "scopeNoteDe": "Planung, Gutachten und Nachweise für drei Baukörper.",
+          "scopeNoteEn": "Design, surveys and certification for three buildings.",
+          "groups": [
+            {
+              "id": "b-kg700-design",
+              "labelDe": "Planung & Beratung",
+              "labelEn": "Design & consultancy",
+              "services": [
+                {
+                  "id": "b-700-01",
+                  "labelDe": "Objektplanung",
+                  "labelEn": "Architectural design",
+                  "summaryDe": "Leistungsphasen 1 bis 8 nach HOAI für drei Baukörper, Honorarzone III.",
+                  "summaryEn": "HOAI work stages 1 to 8 for three buildings, fee zone III.",
+                  "amount": "1480000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-700-02",
+                  "labelDe": "Tragwerksplanung",
+                  "labelEn": "Structural design",
+                  "summaryDe": "Standsicherheit, Untergeschosse und Gewerbe-EG mit größerer Stützweite.",
+                  "summaryEn": "Structural verification, basements and the longer-span commercial floor.",
+                  "amount": "420000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-700-03",
+                  "labelDe": "TGA-Planung",
+                  "labelEn": "Building services design",
+                  "summaryDe": "Ambient-Loop, drei Verteilkonzepte und die Gewerbeanbindung.",
+                  "summaryEn": "Ambient loop, three distribution concepts and the commercial connection.",
+                  "amount": "480000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                }
+              ]
+            },
+            {
+              "id": "b-kg700-surveys",
+              "labelDe": "Gutachten & Nachweise",
+              "labelEn": "Surveys & certification",
+              "services": [
+                {
+                  "id": "b-700-04",
+                  "labelDe": "Vermessung",
+                  "labelEn": "Survey",
+                  "summaryDe": "Lage- und Höhenaufnahme des gesamten Grundstücks.",
+                  "summaryEn": "Site and level survey of the entire plot.",
+                  "amount": "120000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-700-05",
+                  "labelDe": "Baugrundgutachten",
+                  "labelEn": "Soil report",
+                  "summaryDe": "Erkundung für zwei Untergeschosse und die Gründung von Haus A.",
+                  "summaryEn": "Investigation for two basements and building A’s foundation.",
+                  "amount": "140000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-700-06",
+                  "labelDe": "Brandschutzkonzept",
+                  "labelEn": "Fire strategy",
+                  "summaryDe": "Neu zu erstellen: der vorliegende Scan ist gering erkannt (B-CF-06).",
+                  "summaryEn": "To be reissued: the available scan has low recognition (B-CF-06).",
+                  "amount": "200000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-700-qng",
+                  "labelDe": "QNG-Siegel",
+                  "labelEn": "QNG label",
+                  "summaryDe": "QNG-PLUS setzt den Energiestandard Effizienzhaus 40 NH voraus.",
+                  "summaryEn": "QNG-PLUS requires the Efficiency house 40 NH energy standard.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "none",
+                    "variants": [
+                      {
+                        "value": "none",
+                        "labelDe": "kein QNG",
+                        "labelEn": "no QNG",
+                        "delta": "0.00"
+                      },
+                      {
+                        "value": "plus",
+                        "labelDe": "QNG-PLUS",
+                        "labelEn": "QNG-PLUS",
+                        "delta": "340000.00"
+                      },
+                      {
+                        "value": "premium",
+                        "labelDe": "QNG-PREMIUM",
+                        "labelEn": "QNG-PREMIUM",
+                        "delta": "520000.00"
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "dependsOn": {
+                    "serviceId": "b-400-es",
+                    "requiresVariant": "eh40nh",
+                    "appliesToVariants": [
+                      "plus",
+                      "premium"
+                    ]
+                  },
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-700-dgnb",
+                  "labelDe": "DGNB-Zertifikat",
+                  "labelEn": "DGNB certificate",
+                  "summaryDe": "Auditierung und Dokumentation eines dritten Prüfers.",
+                  "summaryEn": "Auditing and documentation by a third-party assessor.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "none",
+                    "variants": [
+                      {
+                        "value": "none",
+                        "labelDe": "keine Zertifizierung",
+                        "labelEn": "no certification",
+                        "delta": "0.00"
+                      },
+                      {
+                        "value": "silver",
+                        "labelDe": "DGNB SILBER",
+                        "labelEn": "DGNB SILVER",
+                        "delta": "260000.00"
+                      },
+                      {
+                        "value": "gold",
+                        "labelDe": "DGNB GOLD",
+                        "labelEn": "DGNB GOLD",
+                        "delta": "460000.00"
+                      },
+                      {
+                        "value": "platinum",
+                        "labelDe": "DGNB PLATIN",
+                        "labelEn": "DGNB PLATINUM",
+                        "delta": "720000.00"
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-700-90",
+                  "labelDe": "Baubegleitende Qualitätssicherung",
+                  "labelEn": "Construction-stage quality assurance",
+                  "summaryDe": "Unabhängige Überwachung über die Objektüberwachung hinaus.",
+                  "summaryEn": "Independent supervision beyond the architect’s site supervision.",
+                  "amount": "160000.00",
+                  "baseline": "notSelected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": true
+                }
+              ]
+            }
+          ],
+          "boundaryDe": "Planung, Gutachten, Nachweise",
+          "boundaryEn": "Design, surveys, certification"
+        }
+      ]
+    }
+  ]
+}

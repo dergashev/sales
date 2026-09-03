@@ -258,7 +258,13 @@ export function WorkflowStepper({
               key={step.id}
               className={className}
             >
-              {step.onSelect ? (
+              {/* VR3-03: a step with a RECOVERY ROUTE is a button even while
+                  it is blocked — the docblock above promised exactly that
+                  ("stays ACTIVATABLE while blocked and opens its own gate"),
+                  but the branch only looked at `onSelect`, so a locked stage
+                  that declared `blockedRoute` alone rendered static and the
+                  gate it exists to explain became unreachable (T-016). */}
+              {step.onSelect || step.blockedRoute ? (
                 <button
                   ref={(el) => { buttonRefs.current[i] = el }}
                   type="button"

@@ -56,7 +56,12 @@ describe('единицы: знак валюты не удваивается', ()
     const text = document.body.textContent ?? ''
     // Последствие на плитке обязано существовать — иначе тест доказывал бы
     // отсутствие удвоения отсутствием текста.
-    expect(text).toMatch(/Mehrpreis|gegenüber Aufnahme/)
+    // VR3-03: the consequence is a SIGNED amount (the sign carries the
+    // direction, adjacent to the figure), and the direction word survives
+    // only where there is no number to carry it. What this case actually
+    // guards — that a consequence EXISTS, so the "no doubled €" assertion
+    // is not proved by an absence of text — holds either way.
+    expect(text).toMatch(/[+−]\u202f[\d.]+\u202f€/)
     expect(DOUBLED.test(text)).toBe(false)
   })
 })

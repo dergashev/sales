@@ -12,13 +12,21 @@ import { __resetStoreForTests, useStore } from '../store'
 beforeEach(() => __resetStoreForTests())
 
 describe('semantic Configurator workflow', () => {
-  it('derives the approved five-step internal workflow for a fresh option (mandatory core, no Ground, no Energy/Areas chapters)', () => {
+  it('derives the eight-stage internal workflow: the ledger, all six cost groups, the schedule', () => {
     const s = useStore.getState()
+    // VR3-03: every cost group is a stage of the journey ALWAYS, whatever its
+    // scope decision. Filtering the registry by `coverage === 'included'` is
+    // how an excluded KG stopped existing — it left the navigation and could
+    // no longer explain that it was skipped (audit D-016). The decision is a
+    // STATE of the stage now, carried by the spine and by the stage itself.
     expect(activeConfiguratorWorkflow({ coverage: s.coverage, mode: 'intern' })
       .map((step) => step.label)).toEqual([
       'Leistungsabgrenzung',
+      'Vorbereitende Maßnahmen KG 200',
       'Leistungen KG 300',
       'Technik KG 400',
+      'Außenanlagen KG 500',
+      'Ausstattung KG 600',
       'Baunebenkosten KG 700',
       'Termine',
     ])
@@ -32,23 +40,24 @@ describe('semantic Configurator workflow', () => {
       .toBe(false)
   })
 
-  it('keeps included KG steps active and removes them when excluded', () => {
+  it('keeps an EXCLUDED cost group in the workflow, so it can say it was skipped', () => {
     const s = useStore.getState()
-    expect([s.coverage.KG_300, s.coverage.KG_400, s.coverage.KG_700])
-      .toEqual(['included', 'included', 'included'])
     expect(activeConfiguratorWorkflow({ coverage: s.coverage, mode: 'intern' })
       .map((step) => step.id)).toEqual(expect.arrayContaining([
       CONFIGURATOR_STEP.KG_300_DETAILS,
       CONFIGURATOR_STEP.KG_400_DETAILS,
       CONFIGURATOR_STEP.KG_700_DETAILS,
     ]))
+    // The exclusion is intentional and stays visible (VR3-00 target: "An
+    // excluded KG stays in navigation as OUT OF SCOPE · SKIPPED, not
+    // 'incomplete' and not absent").
     expect(activeConfiguratorWorkflow({
       coverage: { ...s.coverage, KG_400: 'excluded' },
       mode: 'intern',
-    }).some((step) => step.id === CONFIGURATOR_STEP.KG_400_DETAILS)).toBe(false)
+    }).some((step) => step.id === CONFIGURATOR_STEP.KG_400_DETAILS)).toBe(true)
   })
 
-  it('includes the KG 200/500/600 detail chapters, in DIN order, once each carries a real catalog; KG 800 never appears even when its coverage is included (removed, not merely excluded)', () => {
+  it('lists the cost groups in DIN order; KG 800 never appears even when its coverage is included (removed, not merely excluded)', () => {
     const s = useStore.getState()
     const included = {
       ...s.coverage,
@@ -72,36 +81,43 @@ describe('semantic Configurator workflow', () => {
     ])
   })
 
-  it('excluding every user-decidable KG (200/500/600) leaves the mandatory core plus the required non-KG steps — never truly empty', () => {
+  it('excluding every cost group still leaves all eight stages — nothing disappears', () => {
     const s = useStore.getState()
-    const onlyMandatory = {
-      ...s.coverage,
-      KG_200: 'excluded' as const,
-      KG_500: 'excluded' as const,
-      KG_600: 'excluded' as const,
-    }
-    expect(activeConfiguratorWorkflow({ coverage: onlyMandatory, mode: 'intern' })
+    const allExcluded = Object.fromEntries(
+      Object.entries(s.coverage).map(([group]) => [group, 'excluded' as const]),
+    ) as typeof s.coverage
+    expect(activeConfiguratorWorkflow({ coverage: allExcluded, mode: 'intern' })
       .map((step) => step.id)).toEqual([
       CONFIGURATOR_STEP.SCOPE_BOUNDARIES,
+      CONFIGURATOR_STEP.KG_200_DETAILS,
       CONFIGURATOR_STEP.KG_300_DETAILS,
       CONFIGURATOR_STEP.KG_400_DETAILS,
+      CONFIGURATOR_STEP.KG_500_DETAILS,
+      CONFIGURATOR_STEP.KG_600_DETAILS,
       CONFIGURATOR_STEP.KG_700_DETAILS,
       CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE,
     ])
   })
 
-  it('derives building progress and client visibility from the same registry', () => {
+  it('has no building-scoped stage left, and keeps KG 700 internal-only', () => {
     const s = useStore.getState()
-    expect(activeBuildingConfiguratorSteps({ coverage: s.coverage, mode: 'intern' })
-      .map((step) => step.id)).toEqual([
-      CONFIGURATOR_STEP.KG_300_DETAILS,
-      CONFIGURATOR_STEP.KG_400_DETAILS,
-    ])
+    // VR3-03: all six cost groups are project-scoped. Building ownership is
+    // expressed by the service row (each service names its building) and by
+    // the page's context panel — not by a tab strip over six identical
+    // pages, which would be the second navigation grammar this ticket
+    // removes. Rule 38's "the screen's structure does not change" holds by
+    // construction when there is one structure.
+    expect(activeBuildingConfiguratorSteps({ coverage: s.coverage, mode: 'intern' }))
+      .toEqual([])
+    // KG 700 is `internalOnly` and still is: fees are not a client surface.
     expect(activeConfiguratorWorkflow({ coverage: s.coverage, mode: 'praesentation' })
       .map((step) => step.id)).toEqual([
       CONFIGURATOR_STEP.SCOPE_BOUNDARIES,
+      CONFIGURATOR_STEP.KG_200_DETAILS,
       CONFIGURATOR_STEP.KG_300_DETAILS,
       CONFIGURATOR_STEP.KG_400_DETAILS,
+      CONFIGURATOR_STEP.KG_500_DETAILS,
+      CONFIGURATOR_STEP.KG_600_DETAILS,
       CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE,
     ])
   })

@@ -452,6 +452,12 @@
   --measure-conflict-column: 220px;
   --measure-slider: 260px;
   --measure-card-compact: 320px;
+  /* provisional (VR3-03) · the KG page's building-context panel. It is the
+     secondary column of a two-column stage, so it takes a fixed share and
+     the service workspace takes the rest — a `minmax()` panel claimed half
+     the stage and collapsed the service rows. */
+  --measure-context-panel: 320px;
+  --measure-context-panel-compact: 248px;
   --measure-band: 420px;
   --measure-component: 520px;
   /* VR2-01 (ACCEPT-01): approved target's 1440 portfolio card media band

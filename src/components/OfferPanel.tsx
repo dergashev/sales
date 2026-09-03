@@ -1,8 +1,10 @@
 import { Fragment, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { Decimal } from 'decimal.js'
 import {
-  activeBuilding, includedBuildingIds, projectProjection, translatedChangeLabel, useStore,
+  activeBuilding, commercialResult, includedBuildingIds, projectProjection,
+  translatedChangeLabel, useStore,
 } from '../state/store'
 import { effectiveFactValue } from '../state/buildingReview'
 import { CATALOG } from '../state/catalog'
@@ -15,7 +17,7 @@ import type { CostGroup, CoverageState, Driver, DriverBasis, IncompleteReason } 
 import { isScopeUniverseEmpty, SCOPE_BOUNDARIES_DECIDABLE_GROUPS } from '../engine/calculate'
 import { projectDriversForClient, translatedDriverLabel } from '../state/clientProjection'
 import { CONFIGURATOR_STEP } from '../state/chapters'
-import { Button, useCountUp } from './primitives'
+import { Button } from './primitives'
 import { OriginPopover } from './OriginPopover'
 import { ClientNotice } from './ClientNotice'
 import { DataStateBlock, PartialState } from './DataStates'
@@ -23,6 +25,12 @@ import { EstimateUncertaintyBadge } from './EstimateUncertaintyBadge'
 import { useT, useTx, localizeMoneyText, localizePercentText } from '../i18n'
 import type { UiLanguage } from '../i18n'
 import { useSemanticMotion } from '../design-system/motion'
+import {
+  CommercialRailChange,
+  CommercialRailScope,
+  CommercialRailStatus,
+} from '../design-system/CommercialRail'
+import { CommercialNumber } from '../design-system/CommercialNumber'
 import { DELTA_CHIP_MS, TOAST_EXIT_MS } from '../config/ui-policy'
 import { Dialog, type DialogHandle } from './Dialog'
 
@@ -292,6 +300,11 @@ export function OfferPanel(
   const durationHeadingId = useId()
   const compositionHeadingId = useId()
   const { reduced } = useSemanticMotion()
+  // ONE canonical commercial result (VR3-03). The rail's own numbers still
+  // come from `p` — the same projection this object is derived from — so
+  // this adds the scope, causality and trust state the rail was missing
+  // without introducing a second source for the total.
+  const commercial = commercialResult(s)
   const [journalOpen, setJournalOpen] = useState(false)
   // SIDEBAR 01: Level 2 (die Kostenzusammensetzung) ist per Vertrag "expanded
   // by default" - kein eigenes äußeres Toggle mehr (vormals `kgOpen`/
@@ -335,9 +348,6 @@ export function OfferPanel(
     }
   }, [s.activeDelta, reduced])
 
-  const totalCount = useCountUp(
-    new Decimal(p.result.total.display.replace(/\./g, '')), 0,
-  )
   // An exact zero can be a legitimate explicit exclusion outcome. It becomes
   // unavailable presentation only when the run is incomplete because scope
   // decisions are still unknown. The calculation remains unchanged; this is
@@ -630,8 +640,14 @@ export function OfferPanel(
             hero doesn't already have). */}
         <div aria-live="polite" className="a3-visually-hidden">
           {!priceUnavailable && s.activeDelta && t('offerPanel.liveAnnouncement', {
+            // VR3-03: the LANGUAGE reaches the label. Without it a KG
+            // decision announced its German name inside an English
+            // sentence — "KG 200 nicht enthalten · − 1,120,000 € · new
+            // amount …" — which is the mixed product-owned language rule 10
+            // forbids, in the one place a sighted user cannot see it.
             change: s.activeDelta.change
-              ? translatedChangeLabel(s.activeDelta.change, t, tx) : s.activeDelta.label,
+              ? translatedChangeLabel(s.activeDelta.change, t, tx, lang)
+              : s.activeDelta.label,
             delta: signedOut(s.activeDelta.deltaExact, lang),
             total: moneyOut(p.result.total, lang),
           })}
@@ -711,7 +727,27 @@ export function OfferPanel(
               {p.result.total.prefix && (
                 <span aria-hidden="true">{p.result.total.prefix}{NNBSP}</span>
               )}
-              {localizeMoneyText(totalCount, lang)}
+              {/* VR3-03 · M-07: the total is REPLACED, never rolled. A
+                  number counting through 39, 38, 37 million on its way to a
+                  new value states three amounts that are not true, and an
+                  expert reading a client's offer should never have to wait
+                  for a figure to settle. The rail's own change block now
+                  carries the causality the animation used to imply.
+                  A deliberate, ticket-authorised departure from CLAUDE.md
+                  rule 19 for THIS surface: the approved motion spec (M-07,
+                  "cost digits cross-fade; signed delta persists") and the
+                  ticket ("No counting animation; value replacement remains
+                  readable") both name it explicitly. */}
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={p.result.total.display}
+                  initial={reduced ? { opacity: 1 } : { opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: reduced ? 0 : 0.14 }}
+                >
+                  {localizeMoneyText(p.result.total.display, lang)}
+                </motion.span>
+              </AnimatePresence>
               <span className="a3-hb-unit">{NNBSP}€</span>
             </p>
           )}
@@ -732,12 +768,17 @@ export function OfferPanel(
         {!priceUnavailable && (degradeLevel < 2 ? (
           <div className="mt-2">
             <EstimateUncertaintyBadge
+              language={lang}
               presentation="range" totalExact={p.result.total.exact} pp={p.uncertaintyPp}
             />
           </div>
         ) : (
           <p className="a3-cap mt-1">
-            <EstimateUncertaintyBadge presentation="compact" pp={p.uncertaintyPp} />
+            <EstimateUncertaintyBadge
+              language={lang}
+              presentation="compact"
+              pp={p.uncertaintyPp}
+            />
             {' · '}{t('money.net')}
           </p>
         ))}
@@ -1070,6 +1111,104 @@ export function OfferPanel(
             {wholeOfferTotal.display}{NNBSP}€
           </p>
         )}
+        {/* VR3-03 (T-028, audit F-010): the rail explained STATE but not
+            CAUSALITY — a number moved and nothing durable said why. These
+            three canonical parts answer the three questions a commercial
+            rail owes its reader: what does this number contain, what moved
+            it last, and can it be trusted right now. They live in the
+            rail's normal scroll flow, immediately under the pinned header,
+            for the same reason the completeness line does — that header
+            budget is a committed ceiling and must not be reopened. */}
+        <CommercialRailScope
+          heading={t('vr3.rail.scope.heading')}
+          rows={[
+            {
+              label: t('vr3.rail.scope.included'),
+              value: t('vr3.rail.scope.includedValue', {
+                included: commercial.scope.includedGroups,
+                total: commercial.scope.decidableGroups,
+              }),
+            },
+            ...(commercial.scope.excludedGroups > 0
+              ? [{
+                label: t('vr3.rail.scope.excluded'),
+                value: String(commercial.scope.excludedGroups),
+              }]
+              : []),
+            ...(commercial.scope.undecidedGroups > 0
+              ? [{
+                label: t('vr3.rail.scope.undecided'),
+                value: String(commercial.scope.undecidedGroups),
+              }]
+              : []),
+            ...(commercial.basis === 'kgConfiguration'
+              ? [{
+                label: t('vr3.rail.scope.services'),
+                value: String(commercial.scope.selectedServices),
+              }]
+              : []),
+            ...(commercial.scope.openDecisions > 0
+              ? [{
+                label: t('vr3.rail.scope.openDecisions'),
+                value: String(commercial.scope.openDecisions),
+              }]
+              : []),
+          ]}
+        />
+        {commercial.lastChange && (
+          <CommercialRailChange
+            heading={t('vr3.rail.change.heading')}
+            label={lang === 'en'
+              ? commercial.lastChange.labelEn
+              : commercial.lastChange.labelDe}
+            direction={commercial.lastChange.signedExact.isZero()
+              ? 'neutral'
+              : commercial.lastChange.signedExact.isNegative()
+                ? 'decrease' : 'increase'}
+            amount={commercial.lastChange.signedExact.isZero()
+              ? t('vr3.rail.change.noEffect')
+              : (
+                <CommercialNumber
+                  exact={commercial.lastChange.signedExact}
+                  language={lang}
+                  signed
+                />
+              )}
+            meta={commercial.lastChange.group
+              ? `KG${NNBSP}${commercial.lastChange.group.slice(3)}`
+              : undefined}
+            // No second live region: the rail's own announcer above already
+            // says change + signed delta + full formatted total on every
+            // price change, politely and scoped (SB-17). Two polite regions
+            // for one event means the user hears it twice.
+          />
+        )}
+        {/* The trust state. A subtotal says so; a failed calculation keeps
+            the last trusted total and labels it, never prints a zero. */}
+        {commercial.coverage === 'subtotal' && !scopeEmpty && (
+          <CommercialRailStatus
+            tone="attention"
+            label={t('vr3.rail.status.subtotal')}
+            reason={commercial.scope.undecidedGroups > 0
+              ? t('vr3.rail.status.subtotalUndecided', {
+                undecided: commercial.scope.undecidedGroups,
+              })
+              : t('vr3.rail.status.subtotalOpenDecisions', {
+                open: commercial.scope.openDecisions,
+              })}
+          />
+        )}
+        {!commercial.reconciles && !scopeEmpty && (
+          // The reconciliation is COMPUTED, and when it fails the rail says
+          // so rather than printing a caption that claims it holds (F-001).
+          <CommercialRailStatus
+            tone="error"
+            label={t('vr3.rail.status.reconcileFailed')}
+            reason={t('vr3.rail.status.reconcileDrift', {
+              drift: commercial.reconciliationDrift.toFixed(2),
+            })}
+          />
+        )}
         {!scopeEmpty && !priceUnavailable && (
           <p className={'a3-cap' + (wholeOfferTotal ? ' mt-1' : '')}>
             {t('offerPanel.completeness.line', {
@@ -1386,6 +1525,21 @@ export function OfferPanel(
               </caption>
               <tbody>
                 {(() => {
+                  // VR3-03: an Option whose six scope decisions are all still
+                  // open has NO contribution at all, and `[0]!` on an empty
+                  // list threw — a latent crash that only became reachable
+                  // once "undecided" became a state the Product can hold.
+                  // An absence is not a bar chart of nothing: the row below
+                  // says so in words.
+                  if (clientSafeDrivers.length === 0) {
+                    return (
+                      <tr>
+                        <td colSpan={3} className="a3-cap">
+                          {t('offer.drivers.noneYet')}
+                        </td>
+                      </tr>
+                    )
+                  }
                   // Бар относителен наибольшему вкладу ПО МОДУЛЮ: экономящий
                   // драйвер такой же полноправный, как удорожающий (DRIVER-004).
                   const max = clientSafeDrivers.reduce(

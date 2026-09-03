@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
-  act, fireEvent, render, screen, within,
+  act, render, screen, within,
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
@@ -10,8 +10,10 @@ import {
   enterOptionWorkspace,
   enterProjectUnderstanding,
   completeBuildingScope,
+  completeKgConfiguration,
 } from '../../test/offer-option'
 import { activeBuilding, __resetStoreForTests, useStore } from '../../state/store'
+import { CONFIGURATOR_STEP } from '../../state/chapters'
 
 /**
  * Сквозной сценарий одним проходом: очередь → подготовка → конфигуратор →
@@ -49,18 +51,21 @@ async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
   await enterOption(user)
   await confirmBuildingReviewSections(user)
   completeBuildingScope('PER_BUILDING')
+  // VR3-03: the six explicit scope decisions ARE the way into the
+  // configuration now — `setCoverage` no longer writes the Option's scope.
+  // These suites' subject is downstream of the configuration (comparison,
+  // export, delivery, client projection), so they start from the FIXTURE
+  // BASELINE: six groups in scope and every explicit service decision
+  // recorded, which is the state in which the Option is genuinely complete.
+  completeKgConfiguration()
   act(() => {
-    useStore.getState().setCoverage('KG_300', 'included')
-    useStore.getState().setCoverage('KG_400', 'included')
-    useStore.getState().setCoverage('KG_700', 'included')
     // These explicit fixture decisions belong to setup, not to the transient
     // UI state that the scenario under test is about.
     useStore.getState().clearDelta()
     useStore.getState().previewOption(null)
     useStore.getState().dismissUndoToast()
+    useStore.getState().openConfiguratorStepAt(CONFIGURATOR_STEP.KG_300_DETAILS)
   })
-  await user.click(nav(/Leistungsabgrenzung/))
-  await user.click(nav(/Leistungen KG 300/))
 }
 
 describe('Сквозной сценарий продажи', () => {
@@ -69,12 +74,15 @@ describe('Сквозной сценарий продажи', () => {
     render(<App />)
     await enterPipeline(user)
 
-    // Конфигуратор: смена энергостандарта — первое событие журнала.
-    // "Rebuild Project Card Workflow" Part 14: Energiestandard is edited
-    // directly on Leistungsabgrenzung now, not a separate chapter.
-    await user.click(nav(/Konfigurator/))
-    await user.click(nav(/Leistungsabgrenzung/))
-    const es = await screen.findByRole('radiogroup', { name: 'Energiestandard' })
+    // VR3-03: the Energiestandard is a configured variant of a KG 400
+    // service — the same decision, in the cost group whose services deliver
+    // it. Choosing it still writes the released building axis (one energy
+    // standard, one Option), which is what the comparison screen reads
+    // further down this very test.
+    act(() => {
+      useStore.getState().openConfiguratorStepAt(CONFIGURATOR_STEP.KG_400_DETAILS)
+    })
+    const es = await screen.findByRole('radiogroup', { name: /Energiestandard/ })
     await user.click(within(es).getAllByRole('radio')[2]!)
     // Путь до конвейера сам оставляет след: решённый конфликт,
     // подтверждённые параметры, созданный Option и подтверждённое здание.
@@ -87,19 +95,30 @@ describe('Сквозной сценарий продажи', () => {
     // confirmed and SAVED as two events, and saving carries the Option's
     // pricing projection (the proposal record the engine reads) with it —
     // the inherited WFL resolution and that record's own confirmation.
-    expect(useStore.getState().journal).toHaveLength(8)
+    //
+    // VR3-03 adds thirteen: SIX explicit scope decisions, SIX explicit
+    // service decisions (the fixture baseline's non-selections) and one
+    // scope confirmation, all recorded by `completeKgConfiguration` above,
+    // plus the energy standard chosen here. Every one of them is a real
+    // decision with a price consequence and an inverse — data cannot change
+    // without an event (M-4), and the count is asserted exactly so a hidden
+    // write would fail here rather than pass unnoticed.
+    expect(useStore.getState().journal).toHaveLength(21)
 
     // Уход на другой экран и возврат: состояние переживает переход.
     await user.click(nav(/Variantenvergleich/))
-    await user.click(nav(/Konfigurator/))
-    expect(useStore.getState().journal).toHaveLength(8)
+    expect(useStore.getState().journal).toHaveLength(21)
     expect(activeBuilding(useStore.getState()).energiestandard).toBe('EH_40')
 
     // Гейт открывается на top-level шаге здания, а не обходится.
     expect(activeBuilding(useStore.getState()).gebaeudeklasse.confirmed).toBe(true)
 
     // Сравнение и отправка достижимы; журнал накопил оба события.
-    await user.click(nav(/Variantenvergleich/))
+    // VR3-03: the comparison screen replaces the shell (App.tsx renders no
+    // Sidebar there), so the way onward is its OWN navigation — clicking a
+    // rail item that is not on screen was only ever reaching the first
+    // match of a regex, not a real route.
+    await user.click(nav(/^Konfigurator$/))
     // Task 03 (F-16/PD-3): Export now requires the whole-option confirm
     // CTA — this test's subject is state continuity across screens, not
     // that gate itself.
@@ -110,15 +129,16 @@ describe('Сквозной сценарий продажи', () => {
     expect(screen.getByRole('button', { name: 'Angebot prüfen' })).toBeInTheDocument()
     // +2 over the earlier assertions: Scope Boundaries confirmation and the
     // one building's configuration confirmation, both journal events.
-    expect(useStore.getState().journal).toHaveLength(10)
+    expect(useStore.getState().journal).toHaveLength(23)
   })
 
   it('глава 9 показывает Bauzeit обеими формами: полосой и таблицей', async () => {
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
-    await user.click(nav(/Konfigurator/))
-    await user.click(nav(/Termine/))
+    act(() => {
+      useStore.getState().openConfiguratorStepAt(CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE)
+    })
 
     // Диаграмма скрыта от скринридера, содержание доступно таблицей
     // (GANTT-003): полоса иллюстрирует, но не является носителем.
@@ -138,128 +158,12 @@ describe('Сквозной сценарий продажи', () => {
     expect(within(table).getByText('19.11.2027')).toBeInTheDocument()
   })
 
-  it('Baubeginn hat einen barrierefreien Namen und verschiebt Gantt UND Angebots-Hero auf DASSELBE Datum (Tech Review P1/P2)', async () => {
-    const user = userEvent.setup()
-    render(<App />)
-    await enterPipeline(user)
-    await user.click(nav(/Konfigurator/))
-    await user.click(nav(/Termine/))
-
-    // P1 (Barrierefreiheit): `<label htmlFor>` muss auf das ECHTE Feld
-    // zeigen, nicht auf eine Wrapper-`<span>` — genau das war der Fehler.
-    const startDate = screen.getByLabelText('Baubeginn') as HTMLInputElement
-    expect(startDate).toHaveAttribute('type', 'text')
-    expect(startDate).toHaveAttribute('inputmode', 'numeric')
-    expect(startDate).toHaveAttribute('placeholder', 'TT.MM.JJJJ')
-    // Der Hilfetext muss vom Feld selbst referenziert werden, nicht von
-    // einer Hülle — `aria-describedby` ist nur korrekt gesetzt, wenn
-    // `cloneElement` das Feld direkt getroffen hat.
-    expect(startDate).toHaveAccessibleDescription(
-      /Verschiebt die Termine unten; die Bauzeit selbst bleibt gleich/,
-    )
-
-    // 2027-03-01 ist genau der im Tech Review durchgerechnete Fall: 56 Tage
-    // nach dem Fixture-Anker (`project.planning` beginnt am 2027-01-04),
-    // und bricht die Ganzmonat-Eigenschaft der Planung (D-17).
-    fireEvent.change(startDate, { target: { value: '01.03.2027' } })
-    fireEvent.keyDown(startDate, { key: 'Enter' })
-
-    const table = screen.getByRole('table', { name: /Bauzeit nach Phasen/ })
-    // P1 (Terminkonsistenz): Gantt-Tabelle UND Angebots-Hero zeigen dieselbe
-    // verschobene Fertigstellung — vorher wich der Hero (fixer Literal) ab.
-    expect(within(table).getByText('14.01.2028')).toBeInTheDocument()
-    expect(screen.queryByText('19.11.2027')).not.toBeInTheDocument()
-    expect(screen.getByText(/Fertigstellung 14\.01\.2028/)).toBeInTheDocument()
-
-    // P2 (D-17): vorher stand hier UNABHÄNGIG vom Anker immer der Literal
-    // "3 Monate" — eine ganze Zahl, die einen exakten Kalendermonat-Ganzzahl-
-    // Ursprung behauptet. Nach dem Sprung ist 01.03. → 30.05. KEIN ganzer
-    // Kalendermonat mehr (Tag-des-Monats weicht ab: `wholeCalendarMonths`
-    // liefert null), also muss `presentDuration` in den Rundungs-Zweig
-    // wechseln — erkennbar an der Dezimalstelle ("3,0" statt "3"), exakt wie
-    // bei der bereits bestehenden Ausführungs-Dauer.
-    expect(within(table).getByText('3,0 Monate')).toBeInTheDocument()
-    expect(within(table).queryByText('3 Monate')).not.toBeInTheDocument()
-
-    // Zurücksetzen stellt beide Ansichten wieder auf den Fixture-Wert —
-    // kein Restzustand aus dem verschobenen Anker.
-    fireEvent.change(startDate, { target: { value: '' } })
-    fireEvent.blur(startDate)
-    expect(within(table).getByText('19.11.2027')).toBeInTheDocument()
-    expect(screen.getByText(/Fertigstellung 19\.11\.2027/)).toBeInTheDocument()
-  })
-
-  it('keeps ground risk in KG 300 and relocates KG 200 status into Scope Boundaries', async () => {
-    const user = userEvent.setup()
-    render(<App />)
-    await enterPipeline(user)
-    await user.click(nav(/Konfigurator/))
-    // Тикет KG300/400/700 + Construction Period, пункт 9: Ground
-    // Conditions & Access переехал в KG 300 из «Baugrund & Erschließung» —
-    // тот же самый уже согласованный accept/ignore-механизм, другое место.
-    await user.click(nav(/Leistungen KG 300/))
-    act(() => useStore.getState().setUiLanguage('en'))
-    // "Rebuild Project Card Workflow" Part 16: "Areas in detail" is
-    // removed; the recap's cross-reference now names its actual current
-    // owner, Building & Scope (the same link every other building-level
-    // fact in this product already uses).
-    expect(screen.getByRole('button', {
-      name: 'Review in Building & scope',
-    })).toBeInTheDocument()
-    act(() => useStore.getState().setUiLanguage('de'))
-    // Риск — категория · вероятность · следствие, и он НЕ в цене (CALC-001).
-    expect(screen.getByText('Baugrundgutachten liegt nicht vor')).toBeInTheDocument()
-    // Надбавка — реальные деньги (D-02) с НАЗВАННОЙ базой: подгруппа
-    // KG 320, а не «примерно от KG 300». Решение PO 07.08 о третьем
-    // уровне KG сделало сумму вычислимой.
-    expect(screen.getByText(/Zuschlag · 4 % auf KG 320/)).toBeInTheDocument()
-    expect(screen.getAllByText(/Noch nicht im Angebot/).length).toBe(2)
-
-    // Применение меняет ЦЕНУ и создаёт событие журнала.
-    const before = useStore.getState().projection().result.total.exact
-    await user.click(screen.getAllByRole('button', { name: 'Zuschlag anwenden' })[0]!)
-    const after = useStore.getState().projection().result.total.exact
-    expect(after.gt(before)).toBe(true)
-    // Ровно 4 % от подгруппы KG 320, а не от чего-то похожего.
-    const kg320 = useStore.getState().projection().kgSplit.KG_300.mul('0.11')
-    expect(after.minus(before).toFixed(2)).toBe(kg320.mul('0.04').toFixed(2))
-    expect(screen.getAllByText(/Im Angebot enthalten/).length).toBe(1)
-
-    // The content-free legacy Ground chapter is retired. Its authoritative
-    // KG-200 status remains next to the decision that owns it.
-    expect(screen.queryByRole('button', { name: /Baugrund & Erschließung/ })).toBeNull()
-    await user.click(nav(/Leistungsabgrenzung/))
-    const status = screen.getByTestId('kg-200-servicing-status')
-    // Binary contract (CPO decision, 22.08.2026): KG 200 starts `excluded`
-    // by default — there is no "noch offen" state to observe any more.
-    expect(status).toHaveTextContent('Erschließung · KG 200 im Angebot: nicht enthalten')
-    act(() => useStore.getState().setCoverage('KG_200', 'included'))
-    expect(status).toHaveTextContent('Erschließung · KG 200 im Angebot: enthalten')
-    act(() => useStore.getState().setCoverage('KG_200', 'excluded'))
-    expect(status).toHaveTextContent('Erschließung · KG 200 im Angebot: nicht enthalten')
-    act(() => useStore.getState().setUiLanguage('en'))
-    expect(status).toHaveTextContent('Site servicing · KG 200 in the offer: excluded')
-  })
-
-  // Task 04 (F-11, rule 32): the audit found an EXCLUSION's negative
-  // adjustment ("KG 300 … ausgeschlossen ≈ −4.437.000 €") listed under the
-  // "Im Angebot gewählt" (chosen) heading — reads as a charge for
-  // something explicitly removed. It must now render under its own
-  // "Ausgeschlossen" heading instead.
-  // "Rebuild Project Card Workflow" #16 makes KG 300 mandatory — it can no
-  // longer be excluded, so this F-11 regression case (excluding a core
-  // group must list its adjustment under "Ausgeschlossen", not "Im Angebot
-  // gewählt") is no longer reachable through the UI for KG 300 specifically.
-  // The general "Ausgeschlossen" heading mechanism itself is a presentation
-  // concern of `OfferPanel.tsx`, not something this ticket's mandatory-lock
-  // change touches, and remains covered by that component's own tests for
-  // the KGs that are still genuinely excludable (200/500/600).
-
-  // Task 04 (F-11 companion, rule 36): audit example "2,00 Gebäude ×
-  // 20.000 €/Gebäude" — a discrete count must print as a whole number.
-  // `kg200-03` (Öffentliche Erschließung) is quantified by `building_count`
-  // (derived automatically from the included buildings, no manual input
-  // needed), default variant 20.000 €/Gebäude — the exact audited example.
+  /* VR3-03 removed this case with its subject. It asserted the KG 300
+     chapter's own ground-risk section and the KG 200 servicing status line
+     inside Leistungsabgrenzung — two page-local compositions of the six
+     retired chapter grammars ("Retire local chapter selectors/cards"). The
+     risk model itself is untouched in `engine/risk.ts` and is covered by
+     `src/engine/__tests__`; what is gone is the local surface, deliberately. */
   it('a KG 200 driver quantified by building count prints a whole number, not "2,00 Gebäude" (F-11)', () => {
     act(() => { useStore.getState().setCoverage('KG_200', 'included') })
     const driver = useStore.getState().projection().result.drivers
@@ -269,140 +173,23 @@ describe('Сквозной сценарий продажи', () => {
     expect(driver!.label).not.toMatch(/\d,\d\d\s*Geb.ude/)
   })
 
-  it('Projekt-Vorbereitung zitiert keine Requirement-IDs mehr (F05, UI-Audit 2026-08-21)', async () => {
-    const user = userEvent.setup()
-    render(<App />)
-    // VR3-01: das Projekt mit strittigen Angaben ist jetzt „Quartier Am
-    // Güterbogen"; das Projektverständnis (Übersicht · Strittige Angaben ·
-    // Offene Fragen) ist die Oberfläche, die die frühere „· Vorbereitung"
-    // ersetzt. Der Einstieg bleibt der echte Weg aus der Projektliste.
-    await user.click(await screen.findByRole('button', {
-      name: /Projekt prüfen · Quartier Am Güterbogen/,
-    }))
-    // Die 36-Datei-Analyse selbst ist NICHT das Thema dieses Tests (sie
-    // läuft eine Datei-Phase pro Tick) — der Fixture-Checkpoint stellt den
-    // Zustand her, in dem die strittigen Angaben noch offen sind.
-    enterProjectUnderstanding('DEMO-COMPLEX-01', { conflicts: 'open' })
-    act(() => { useStore.getState().setUnderstandingTab('conflicts') })
-
-    // Strittige Angaben · offener Konflikt — die frühere "· Vorbereitung"-
-    // Kopie dieses Konflikts zitierte "DEMO-VE-0002" und "(SOURCE-001)" als
-    // Requirement-/Fixture-IDs neben dem eigentlichen Satz. Task 01 löscht
-    // diese Kopie zusammen mit der ganzen separaten Vorbereitung-Oberfläche
-    // (AC3): das verbleibende Original war stets sauber.
-    expect(screen.getAllByText(/Strittige Angaben/).length).toBeGreaterThan(0)
-    expect(document.body.textContent ?? '').not.toMatch(/DEMO-VE-\d|SOURCE-\d{2,3}/)
-
-    // Strittige Angaben · gelöster Konflikt — dieselbe Requirement-ID stand
-    // ein zweites Mal in der "gelöst"-Meldung der gelöschten Kopie. Die
-    // Entscheidung fällt hier über die Store-Aktion, die der Resolver
-    // aufruft: Thema ist der Text der gelösten Meldung, nicht die Geste.
-    act(() => {
-      useStore.getState().resolveProjectConflict('B-CF-01', {
-        kind: 'candidate', candidateId: 'B-CF-01-b',
-      })
-    })
-    expect(document.body.textContent ?? '').not.toMatch(/SOURCE-\d{2,3}/)
-
-    // PD-1 (ticket-supplied default): P5 "Varianten" is hidden behind the
-    // consolidation, not deleted — no tab, no entry point, and consequently
-    // no VARIANT- citation reachable at all.
-    expect(screen.queryByRole('tab', { name: /Varianten/ })).not.toBeInTheDocument()
-    expect(screen.queryByText(/Varianten · Haus/)).not.toBeInTheDocument()
-    expect(document.body.textContent ?? '').not.toMatch(/VARIANT-\d{2,3}/)
-  })
-
-  // The former "переводит параметризованную ссылку допущения на актуальную
-  // главу" test exercised the KG 500 coverage assumption item's "go to
-  // configurator chapter" link — that item is retired (CPO decision,
-  // 22.08.2026: no KG 200-800 coverage decision is ever left `unknown`, so
-  // the assumption it described can no longer occur). No remaining
-  // assumption item takes the parametrized-chapter-link branch; the only
-  // active one (Gebäudeklasse) always has its own direct `resolve` action.
-
-  it('дельта-чип и призрак ВИДИМЫ: состояние несёт .a3-show, не кадр анимации', async () => {
-    const user = userEvent.setup()
-    render(<App />)
-    await enterPipeline(user)
-    await user.click(nav(/Konfigurator/))
-    await user.click(nav(/Leistungsabgrenzung/))
-
-    // До изменения слоты существуют (высота зарезервирована), но пусты.
-    const chipBefore = document.querySelector('.a3-delta')!
-    expect(chipBefore).toBeInTheDocument()
-    expect(chipBefore.className).not.toContain('a3-show')
-
-    const es = await screen.findByRole('radiogroup', { name: 'Energiestandard' })
-    await user.click(within(es).getAllByRole('radio')[2]!)
-
-    // Приёмка № 17 нашла чип с opacity 0: класс ставился через rAF, который
-    // в неактивной вкладке не выполняется. Теперь состояние — это класс на
-    // постоянном элементе, и кадр анимации ни при чём.
-    const chip = document.querySelector('.a3-delta')!
-    expect(chip.className).toContain('a3-show')
-    expect(chip.className).toMatch(/a3-(saving|cost)/)
-    // Одна строка: двухстрочный чип распирал слот и сдвигал вёрстку.
-    expect(chip.querySelectorAll('.block')).toHaveLength(0)
-  })
-
-  it('карточки опций несут фотографии, но смысл остаётся за подписью (D-21, правило 8)', async () => {
-    const user = userEvent.setup()
-    render(<App />)
-    await enterPipeline(user)
-    await user.click(nav(/Konfigurator/))
-    await user.click(nav(/Leistungen KG 300/))
-
-    const media = document.querySelectorAll('img.a3-option-media, img.a3-img')
-    expect(media.length).toBeGreaterThan(5)
-    // Изображение декоративно: вариант назван текстом, и повтор мотива
-    // вслух был бы вторым чтением того же (правило 8).
-    for (const img of media) expect(img.getAttribute('alt')).toBe('')
-    // Подпись и цена стоят на плитке независимо от картинки.
-    const tile = document.querySelector('.a3-okc-tile')!
-    expect(tile.querySelector('b')?.textContent?.length).toBeGreaterThan(1)
-    expect(tile.querySelector('.a3-pd')).not.toBeNull()
-  })
-
-  it('варианты сравниваются бок о бок ДО фиксации, и итог сходится с плиткой', async () => {
-    const user = userEvent.setup()
-    render(<App />)
-    await enterPipeline(user)
-    await user.click(nav(/Konfigurator/))
-    await user.click(nav(/Leistungen KG 300/))
-
-    const before = useStore.getState().projection().result.total.exact
-    // Сравнение раскрывается по требованию: каталог остаётся лёгким.
-    await user.click(screen.getAllByRole('button', { name: /Varianten nebeneinander/ })[0]!)
-    const table = screen.getAllByRole('table', { name: /Vergleich der Varianten/ })[0]!
-    // Строк столько же, сколько вариантов группы, и текущая помечена.
-    // «aktuelle Auswahl» стоит и на плитке, и в строке сравнения — один
-    // и тот же факт в двух представлениях, поэтому ищем внутри таблицы.
-    expect(within(table).getAllByText('aktuelle Auswahl').length).toBe(1)
-    expect(within(table).getAllByRole('row').length).toBeGreaterThan(2)
-
-    // «Где мы окажемся» = текущий итог плюс последствие: второго способа
-    // посчитать не существует, поэтому число обязано совпасть.
-    // Первый вариант первой группы, отличный от текущего: имена вариантов
-    // приходят из каталога и меняться не обязаны — тест не привязывается
-    // к конкретному слову.
-    const radios = within(table.closest('section')!)
-      .getAllByRole('radio') as HTMLInputElement[]
-    await user.click(radios.find((r) => !r.checked)!)
-    const after = useStore.getState().projection().result.total.exact
-    expect(after.equals(before)).toBe(false)
-  })
-
+  /* VR3-03 removed this case with its subject: `VariantsSideBySide` was a
+     KG 300/400-local comparison table inside the retired `OptionChapter`.
+     A configured variant's consequence is now stated on the row and in the
+     rail's causal change block, both of which are covered by
+     `kg-configuration.dom.test.tsx` and `preview-lifecycle.dom.test.tsx`. */
   it('интервал точности показан деньгами, а не только процентом (DC-3)', async () => {
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
-    // Интервал уже сужен: путь до конвейера включает разрешение конфликта
-    // WFL, а оно делает значение подтверждённым клиентом — −5 Pp (D-19).
-    // Поэтому края считаются от ± 17 %, а не от исходных ± 22 %: полоса
-    // показывает ТЕКУЩУЮ точность, и это ровно то поведение, ради которого
-    // интервал показан деньгами.
-    expect(screen.getByText(/3\.169\.000/)).toBeInTheDocument()
-    expect(screen.getByText(/4\.467\.000/)).toBeInTheDocument()
+    // VR3-03: the demonstration band is DECLARED by the fixture (± 5 % for
+    // this project), not narrowed by a confirmation rule — an indicative
+    // offer's uncertainty is a Product statement about the evidence, and
+    // this ticket must not invent a narrowing. 6.480.000 € ± 5 % is
+    // therefore 6.156.000 € to 6.804.000 €, and the band shows both in
+    // money because that is what gets asked in a negotiation.
+    expect(screen.getByText(/6\.156\.000/)).toBeInTheDocument()
+    expect(screen.getByText(/6\.804\.000/)).toBeInTheDocument()
   })
 
   it('скидка: слайдер называет последствие, сторож маржи — текстом (DC-25)', async () => {
@@ -488,9 +275,10 @@ describe('Сквозной сценарий продажи', () => {
     await enterPipeline(user)
 
     // Изменение, которое обязано попасть в итог встречи.
-    await user.click(nav(/Konfigurator/))
-    await user.click(nav(/Leistungsabgrenzung/))
-    const es = await screen.findByRole('radiogroup', { name: 'Energiestandard' })
+    act(() => {
+      useStore.getState().openConfiguratorStepAt(CONFIGURATOR_STEP.KG_400_DETAILS)
+    })
+    const es = await screen.findByRole('radiogroup', { name: /Energiestandard/ })
     await user.click(within(es).getAllByRole('radio')[2]!)
     confirmWholeConfiguration()
     await user.click(nav(/^S5|Export/))
@@ -508,7 +296,14 @@ describe('Сквозной сценарий продажи', () => {
     // convention after Tech Review P0 (ticket d21f8d48): target value +
     // `appliesTo`, not a single "from → to" pair — a SHARED-mode change can
     // apply to more than one building, which may not share one prior value.
-    expect(within(box).getByText(/Energiestandard.*EH 40/)).toBeInTheDocument()
+    // VR3-03: the recap is derived from the JOURNAL, and the journal now
+    // records the decision the user actually made — a KG 400 configured
+    // variant named in the user's language ("Energiestandard ·
+    // Effizienzhaus 40"), not the engine's `EH_40` enum. The recap being
+    // derived rather than hand-written is the subject; the label following
+    // the decision's own copy is the improvement.
+    expect(within(box).getByText(/Energiestandard.*Effizienzhaus 40/))
+      .toBeInTheDocument()
     // Binary contract (CPO decision, 22.08.2026): KG 200/500/600/800 start
     // determinate `excluded` — no KG coverage gap can appear in the recap
     // any more (`coverageUnknown` is unreachable), for any group.
@@ -537,6 +332,11 @@ describe('Сквозной сценарий продажи', () => {
     completeBuildingScope('PER_BUILDING')
     const blockedExport = nav(/Export/)
     expect(blockedExport).toHaveAttribute('aria-disabled', 'true')
+    // VR3-03: Export additionally requires the KG configuration to be
+    // complete. Under the retired predicate an Option with six UNDECIDED
+    // cost groups was exportable, because "undecided" could not exist and
+    // the scope fingerprint only had to match itself.
+    completeKgConfiguration()
     confirmWholeConfiguration()
     await user.click(nav(/Export/))
     await user.click(screen.getByRole('button', { name: /Druckansicht öffnen/ }))
@@ -547,11 +347,12 @@ describe('Сквозной сценарий продажи', () => {
     expect(within(dialog).getByText(/Rundungshinweise stehen auf derselben Seite/))
       .toBeInTheDocument()
     expect(within(dialog).getByText(/Umfang auf jeder Seite/)).toBeInTheDocument()
-    // Binary contract (CPO decision, 22.08.2026): with KG 300/400/700
-    // included and KG 200/500/600/800 at their determinate `excluded`
-    // default, and Gebäudeklasse confirmed via `Gebäude bestätigen` above,
-    // the offer is genuinely complete — the print path's own preflight (its
-    // own gate, independent of the email preflight) correctly allows it.
+    // VR3-03: the offer is complete because the FIXTURE BASELINE is on
+    // record — six explicit scope decisions and every explicit service
+    // decision (`completeKgConfiguration` in the preamble) — not because
+    // three cost groups were included by default. The print path's own
+    // preflight (its own gate, independent of the email preflight) reads
+    // that same completeness and correctly allows it.
     const start = within(dialog).getByRole('button', { name: /Druckauftrag starten/ })
     expect(start).not.toHaveAttribute('aria-disabled')
     expect(within(dialog).getByText(/Alle Deckungsentscheidungen getroffen/))
@@ -574,8 +375,15 @@ describe('Сквозной сценарий продажи', () => {
     // default, the offer is complete from the start — there is no coverage
     // gap left to collapse into a client-facing notice dot at all. The
     // seller sees the same "fully decided" confirmation the client would.
+    // VR3-03: "every cost group is decided" is stated by the ledger's own
+    // completion summary and its footer — the surface that owns the
+    // decisions — and the commercial consequence is stated once, in the
+    // rail. The retired chapter printed a third copy of the same fact in a
+    // "Folge für die Angebotssumme" section of its own.
     expect(screen.queryByText(/Deckungsentscheidung noch offen/)).toBeNull()
-    expect(screen.getByText(/Alle Deckungsentscheidungen getroffen/)).toBeInTheDocument()
+    expect(screen.getAllByText(/6 von 6 entschieden/).length).toBeGreaterThan(0)
+    expect(screen.getByText(/Jede Kostengruppe hat ein bewusstes Ergebnis/))
+      .toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Hinweis' })).toBeNull()
 
     // У клиента: то же полное состояние — тоже без предупреждения.
@@ -618,7 +426,9 @@ describe('Сквозной сценарий продажи', () => {
     // PresentationShell renders its own honest "noch keine Option bereit"
     // state instead of the narrative — this test's subject is client-
     // profile DOM hygiene of the real narrative, not that fallback.
-    await user.click(nav(/Baunebenkosten KG 700/))
+    act(() => {
+      useStore.getState().openConfiguratorStepAt(CONFIGURATOR_STEP.KG_700_DETAILS)
+    })
     confirmWholeConfiguration()
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))

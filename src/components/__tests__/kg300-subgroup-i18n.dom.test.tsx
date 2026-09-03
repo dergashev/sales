@@ -60,8 +60,12 @@ describe('KG 300 subgroup labels translate in EN (AC-1/AC-2)', () => {
   enterOptionWorkspace()
     await confirmBuildingReviewSections(user)
     completeBuildingScope('PER_BUILDING')
+    // VR3-03: KG 300 carries an amount once it is IN SCOPE by an explicit
+    // decision — `setCoverage` no longer writes the Option's scope, the
+    // ledger's own action does (`setKgScopeDecision`), and the subgroup
+    // drilldown needs a real KG 300 figure to split.
     act(() => {
-      useStore.getState().setCoverage('KG_300', 'included')
+      useStore.getState().setKgScopeDecision('KG_300', 'included')
     })
 
     // REDESIGN R3 WAVE 2a (ce17da51): OfferPanel's Level-3 "Nachweise &

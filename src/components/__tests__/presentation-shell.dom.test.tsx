@@ -3,8 +3,11 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PresentationShell, PresentationFlowScreen, type Candidate } from '../PresentationShell'
+import { completeKgConfiguration } from '../../test/offer-option'
+import { allServices } from '../../engine/kgConfiguration'
 import {
-  __resetStoreForTests, configForOption, includedBuildingIds, projectionForOption, useStore,
+  __resetStoreForTests, configForOption, includedBuildingIds, kgCatalogueFor,
+  projectionForOption, useStore,
 } from '../../state/store'
 
 /**
@@ -55,6 +58,26 @@ async function gotoSection(user: ReturnType<typeof userEvent.setup>, label: stri
  *  Energiestandard (unterschiedliche Kalkulation → unterschiedlicher
  *  Hero-Wert) — 'OPT-01' bleibt am Ende aktiv, 'OPT-02' existiert nur im
  *  Speicher (isolationsprobe). */
+/**
+ * VR3-03: an Option created under a demonstration PROJECT carries a KG
+ * configuration, and client eligibility now requires that configuration to
+ * be complete. An Option created with no project open (the harness's other
+ * shape) has none and keeps the released predicate — so this records the
+ * decisions when there is a catalogue to record them against, and is inert
+ * when there is not.
+ */
+function completeConfigurationIfCatalogued() {
+  if (!kgCatalogueFor(st())) return
+  completeKgConfiguration()
+}
+
+/** The energy-standard service of the open catalogue, or `null`. */
+function energyStandardServiceId(): string | null {
+  const catalogue = kgCatalogueFor(st())
+  if (!catalogue) return null
+  return allServices(catalogue).find((svc) => svc.id.endsWith('-400-es'))?.id ?? null
+}
+
 function buildTwoEligibleOptions(opportunityId?: string) {
   if (opportunityId) st().openOpportunity(opportunityId)
   st().resolveWflConflict('customer')
@@ -67,6 +90,7 @@ function buildTwoEligibleOptions(opportunityId?: string) {
   st().setCoverage('KG_300', 'included')
   st().setCoverage('KG_400', 'included')
   st().setEnergiestandard('EH_55')
+  completeConfigurationIfCatalogued()
   st().confirmScopeBoundaries()
   includedBuildingIds(st()).forEach((id) => st().confirmBuildingConfiguration(id))
 
@@ -77,6 +101,13 @@ function buildTwoEligibleOptions(opportunityId?: string) {
   st().setCoverage('KG_300', 'included')
   st().setCoverage('KG_400', 'included')
   st().setEnergiestandard('EH_40')
+  completeConfigurationIfCatalogued()
+  {
+    // The two Options must differ in a way the CURRENT model prices, or the
+    // isolation probe compares two identical totals.
+    const es = energyStandardServiceId()
+    if (es) st().setKgServiceDecision(es, { state: 'selected', variant: 'eh40' })
+  }
   st().confirmScopeBoundaries()
   includedBuildingIds(st()).forEach((id) => st().confirmBuildingConfiguration(id))
 

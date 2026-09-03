@@ -70,8 +70,9 @@ describe('Canonical uncertainty contract', () => {
   it('keeps the released compact label and monetary range presentations', () => {
     const view = render(
       <>
-        <EstimateUncertaintyBadge presentation="compact" pp={22} />
+        <EstimateUncertaintyBadge language="de" presentation="compact" pp={22} />
         <EstimateUncertaintyBadge
+          language="de"
           presentation="range"
           pp={10}
           totalExact={new Decimal('100000')}
@@ -89,7 +90,7 @@ describe('Canonical uncertainty contract', () => {
 
   it('F18: renders the interval as a track + current-value marker, never a filled meter', () => {
     const view = render(
-      <EstimateUncertaintyBadge presentation="range" pp={17} totalExact={new Decimal('6641000')} />,
+      <EstimateUncertaintyBadge language="de" presentation="range" pp={17} totalExact={new Decimal('6641000')} />,
     )
 
     // The old defect: an unconditional `.a3-fill` spanning 0%-100%, painted

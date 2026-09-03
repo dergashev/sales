@@ -499,6 +499,15 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    safely claim the same opaque surface. `z-index:1` (below the preview's
    `2` above) makes their priority explicit rather than accidental. */
 .a3-change-slot-anchor>.a3-delta-slot{position:absolute;top:var(--space-3);left:0;right:0;min-height:0;max-height:var(--size-delta-row);overflow:hidden;background:var(--color-surface-default);max-width:100%;z-index:1}
+/* VR3-03: the overlay slot painted an OPAQUE rectangle over the scroll
+   content even while empty, permanently masking the first ~24px of the
+   rail's first scrolling element — visible at the task's own baseline SHA
+   as a half-cut completeness line. The opaque ground is what makes the chip
+   readable ON TOP of content, so it belongs to the chip's shown state, not
+   to the reservation. Both slots are corrected together: they share the
+   anchor and the same failure. */
+.a3-change-slot-anchor>.a3-delta-slot:not(:has(.a3-show)),
+.a3-change-slot-anchor>.a3-preview-slot:not(:has(.a3-show)){background:none;pointer-events:none}
 .a3-iv-sub{display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap}
 .a3-iv-bandbox{flex:1;max-width:var(--measure-band)}
 /* Task 04 (F-35, rail a11y/visual): F18 already ruled out a coloured
@@ -2371,7 +2380,14 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    .a3-sst-label · .a3-sst-reason · .a3-sst-neutral · .a3-sst-progress ·
    .a3-sst-ok · .a3-sst-attention · .a3-sst-error · .a3-sst-stale ·
    .a3-sst-unknown. */
-.a3-sst{display:inline-flex;align-items:baseline;gap:var(--space-2);font-size:var(--type-badge-status-size);line-height:var(--type-badge-status-line);font-weight:var(--font-weight-bold);letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-primary)}
+/* VR3-03: `flex-wrap` was missing while `.a3-sst-reason` already declared
+   `flex-basis:100%` — so a status WITH a reason had a full-width child in a
+   non-wrapping flex line, and in any constrained column (the commercial
+   rail, a table cell) the reason overlapped its own label. The reason is
+   part of the released contract ("a state the user cannot explain is a
+   state they cannot act on"), so the container has to let it onto its own
+   line. */
+.a3-sst{display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2);font-size:var(--type-badge-status-size);line-height:var(--type-badge-status-line);font-weight:var(--font-weight-bold);letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-primary)}
 .a3-sst-compact{font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);letter-spacing:.04em}
 .a3-sst-glyph{flex:none;width:var(--size-status-glyph);text-align:center;font-weight:var(--font-weight-bold)}
 .a3-sst-label{min-width:0}
@@ -2913,3 +2929,196 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-bsp-row-actions{display:inline-flex;flex-wrap:wrap;gap:var(--space-3);margin-inline-start:var(--space-3)}
 .a3-bsp-row-evidence,.a3-bsp-row-override,.a3-bsp-row-stale{display:block}
 .a3-bsp-row-override,.a3-bsp-row-stale{max-width:var(--measure-band);margin-inline-start:auto}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   VR3-03 · the unified Konfigurator
+   Classes: .a3-choice-fieldset · .a3-choice-legend · .a3-choice ·
+   .a3-choice-compact · .a3-choice-option · .a3-choice-input ·
+   .a3-choice-check · .a3-choice-label · .a3-choice-consequence ·
+   .a3-choice-reason · .a3-cnum · .a3-cnum-hero · .a3-cnum-default ·
+   .a3-cnum-compact · .a3-ledger · .a3-ledger-identity · .a3-ledger-number ·
+   .a3-ledger-meaning · .a3-ledger-boundary · .a3-ledger-decision ·
+   .a3-ledger-summary · .a3-ledger-downstream · .a3-ledger-progress ·
+   .a3-kgp · .a3-kgp-head · .a3-kgp-identity · .a3-kgp-title ·
+   .a3-kgp-progress · .a3-kgp-groupnav · .a3-kgp-groupnav-item ·
+   .a3-kgp-groupnav-label · .a3-kgp-groupnav-count · .a3-kgp-stage ·
+   .a3-kgp-services · .a3-kgp-context · .a3-kgp-dock · .a3-svcg ·
+   .a3-svcg-head · .a3-svcg-label · .a3-svcg-count · .a3-svcg-rows ·
+   .a3-svcg-empty · .a3-svcr · .a3-svcr-main · .a3-svcr-identity ·
+   .a3-svcr-name · .a3-svcr-summary · .a3-svcr-meta · .a3-svcr-control ·
+   .a3-svcr-status · .a3-svcr-amount · .a3-svcr-warning ·
+   .a3-svcr-detail-toggle · .a3-svcr-readonly · .a3-svcd · .a3-svcd-fields ·
+   .a3-svcd-field · .a3-svcd-dependency · .a3-crc · .a3-crc-body ·
+   .a3-crc-label · .a3-crc-amount · .a3-crc-meta · .a3-crs · .a3-crs-rows ·
+   .a3-crs-row · .a3-crst
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── ChoiceGroup ───────────────────────────────────────────────────────────
+   The semantic input owns the hit area and every decorative layer is
+   pointer-inert (audit F-009: an aria-hidden layer once intercepted a real
+   service choice so only a forced check could activate it). */
+.a3-choice-fieldset{border:0;padding:0;margin:0;min-width:0}
+.a3-choice-legend{display:block;font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);color:var(--color-text-secondary);margin-bottom:var(--space-1)}
+.a3-choice{display:inline-flex;border:var(--border-contrast-1px);min-width:0;flex-wrap:wrap}
+/* A recorded decision is TWO options side by side, always: wrapping them onto
+   two lines turns one question into what reads as two, and the ledger's
+   decision column is the whole reason this control exists. */
+.a3-choice-compact{flex-wrap:nowrap}
+.a3-choice-option{position:relative;display:inline-flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);min-height:var(--size-hit-target-default);padding:0 var(--space-3);border-right:var(--border-hairline);cursor:pointer;font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);color:var(--color-text-primary);min-width:0}
+.a3-choice-option:last-child{border-right:0}
+.a3-choice-option[data-checked]{background:var(--color-surface-selected);box-shadow:inset 0 calc(-1 * var(--border-width-strong)) 0 var(--color-selection-border);font-weight:var(--font-weight-bold)}
+.a3-choice-option[data-disabled="true"]{cursor:default;color:var(--color-action-disabled-text);background:var(--color-action-disabled-bg)}
+/* The input is the control: it fills the label so a direct coordinate hit
+   lands on it, and it is transparent rather than hidden so forced-colors
+   users still get the platform's own indicator. */
+.a3-choice-input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:inherit;accent-color:var(--color-selection-border)}
+.a3-choice-option:has(.a3-choice-input:focus-visible){outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--border-width-focus);box-shadow:0 0 0 var(--border-width-focus) var(--color-focus-separator)}
+.a3-choice-check{pointer-events:none;min-width:var(--size-icon-sm);font-weight:var(--font-weight-bold);color:var(--color-selection-border)}
+.a3-choice-label{pointer-events:none;min-width:0}
+/* The consequence sits UNDER its option, not beside it: beside it, a
+   six-row ledger's decision column grew wider than its own summary and
+   consequence columns together and pushed them off the 1280 composition. */
+.a3-choice-consequence{flex-basis:100%;pointer-events:none;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-caption-weight);color:var(--color-text-secondary);white-space:nowrap}
+.a3-choice-compact .a3-choice-option{padding:0 var(--space-2);gap:var(--space-1);font-size:var(--type-caption-size);line-height:var(--type-caption-line)}
+.a3-choice-reason{margin:var(--space-1) 0 0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+
+/* ── CommercialNumber ─────────────────────────────────────────────────── */
+.a3-cnum{font-variant-numeric:tabular-nums;font-family:var(--font-numeric);white-space:nowrap}
+.a3-cnum-hero{font-size:var(--type-display-numeric-desktop-size);line-height:var(--type-display-numeric-desktop-line);font-weight:var(--type-display-numeric-weight)}
+.a3-cnum-default{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-body-weight)}
+.a3-cnum-compact{font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-caption-weight)}
+
+/* ── ScopeDecisionLedger ──────────────────────────────────────────────── */
+.a3-ledger{width:100%;border-collapse:collapse;background:var(--color-surface-default);table-layout:auto}
+.a3-ledger th,.a3-ledger td{text-align:left;vertical-align:top;padding:var(--cell-pad-y) var(--cell-pad-x);border-bottom:var(--border-hairline)}
+.a3-ledger thead th{font-size:var(--type-table-header-size);line-height:var(--type-table-header-line);font-weight:var(--type-table-header-weight);color:var(--color-text-secondary);background:var(--color-surface-subtle);border-bottom:var(--border-contrast-1px);white-space:nowrap}
+.a3-ledger-identity{min-width:16ch}
+.a3-ledger-number{display:block;font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-ledger-meaning{display:block;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-ledger-boundary{display:block;margin-top:var(--space-1);font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);max-width:38ch;overflow-wrap:break-word}
+.a3-ledger-state{display:block;color:var(--color-text-primary)}
+.a3-ledger-decision{white-space:nowrap;width:1%}
+.a3-ledger-summary{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
+/* The glyph stays with the first line of its own label: with the status
+   free to wrap, a narrow consequence column orphaned the `!` on a line of
+   its own above the words it belongs to. */
+.a3-ledger-downstream{min-width:18ch}
+.a3-ledger-downstream .a3-sst{flex-wrap:nowrap;align-items:flex-start}
+.a3-ledger-progress{margin:0}
+
+/* ── KGConfigurationPage ──────────────────────────────────────────────── */
+.a3-kgp{min-width:0}
+.a3-kgp-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-5);margin-bottom:var(--space-5)}
+.a3-kgp-identity{min-width:0}
+.a3-kgp-title{font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:var(--type-heading-weight);color:var(--color-text-primary);margin:var(--space-1) 0 var(--space-2);overflow-wrap:break-word;hyphens:auto}
+.a3-kgp-progress{flex:0 0 auto;text-align:right}
+.a3-kgp-groupnav{margin-bottom:var(--space-4)}
+.a3-kgp-groupnav ul{display:flex;flex-wrap:wrap;gap:var(--space-2);list-style:none;margin:0;padding:0}
+.a3-kgp-groupnav-item{appearance:none;display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--size-hit-target-default);padding:0 var(--space-3);border:var(--border-contrast-1px);background:var(--color-surface-default);font:inherit;font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);color:var(--color-text-primary);cursor:pointer}
+.a3-kgp-groupnav-item[aria-current="true"]{background:var(--color-surface-selected);box-shadow:inset 0 calc(-1 * var(--border-width-strong)) 0 var(--color-selection-border);font-weight:var(--font-weight-bold)}
+.a3-kgp-groupnav-item:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--border-width-focus)}
+.a3-kgp-groupnav-label{min-width:0}
+.a3-kgp-groupnav-count{font-variant-numeric:tabular-nums;color:var(--color-text-secondary)}
+.a3-kgp-groupnav-item[data-outstanding] .a3-kgp-groupnav-count{color:var(--color-status-warning)}
+/* The service workspace is the primary column and the context panel is
+   secondary, so the panel takes a FIXED share and the workspace takes the
+   rest. Giving the panel a `minmax(15rem, 560px)` let it claim half the
+   stage and collapsed the service rows to one character per line. */
+.a3-kgp-stage{display:grid;grid-template-columns:minmax(0,1fr) var(--measure-context-panel-compact);gap:var(--space-5);align-items:start}
+.a3-kgp-services{min-width:0}
+.a3-kgp-context{min-width:0;border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-4)}
+.a3-kgp-dock{display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);margin-top:var(--space-5);padding-top:var(--space-4);border-top:var(--border-hairline)}
+
+/* ── ServiceGroup ─────────────────────────────────────────────────────── */
+.a3-svcg{border:var(--border-contrast-1px);background:var(--color-surface-default);margin-bottom:var(--space-4);min-width:0}
+.a3-svcg-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-3);margin:0;padding:var(--space-3) var(--space-4);background:var(--color-surface-subtle);border-bottom:var(--border-contrast-1px);font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-svcg-label{min-width:0;overflow-wrap:break-word}
+.a3-svcg-count{flex:0 0 auto;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight);color:var(--color-text-secondary)}
+.a3-svcg-rows{list-style:none;margin:0;padding:0}
+.a3-svcg-empty{margin:0;padding:var(--space-4)}
+
+/* ── ServiceDecisionRow ───────────────────────────────────────────────── */
+.a3-svcr{border-bottom:var(--border-hairline);padding:var(--space-3) var(--space-4)}
+.a3-svcr:last-child{border-bottom:0}
+.a3-svcr[data-invalid]{border-left:var(--border-width-strong) solid var(--color-status-error);padding-left:calc(var(--space-4) - var(--border-width-strong))}
+/* Flex, not a four-column grid: the row's three secondary cells each have a
+   real intrinsic width (a two-option control, a status word, an amount), and
+   a fixed grid gave the identity column whatever was left — which at a
+   narrow workspace was nothing. Wrapping keeps service, state and amount
+   legible at every supported width instead. */
+.a3-svcr-main{display:flex;flex-wrap:wrap;align-items:center;column-gap:var(--space-2);row-gap:var(--space-2)}
+/* The identity's flex BASIS is deliberately small (14ch) and its growth does
+   the rest: with a basis wide enough to look right, the four base widths add
+   up to exactly the row and a rounding pixel pushed the amount onto a second
+   line — so every row was two lines tall for no visible reason. */
+.a3-svcr-identity{flex:1 1 22ch;min-width:0}
+.a3-svcr-control,.a3-svcr-status,.a3-svcr-amount{flex:0 0 auto}
+.a3-svcr-name{display:block;font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-svcr-summary{display:block;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
+.a3-svcr-meta{display:block;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-svcr-status{white-space:nowrap}
+.a3-svcr-amount{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.a3-svcr-toggle{position:relative;display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--size-hit-target-default);cursor:pointer;font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);color:var(--color-text-primary);white-space:nowrap}
+.a3-svcr-toggle input{width:var(--size-icon-md);height:var(--size-icon-md);accent-color:var(--color-selection-border);margin:0}
+.a3-svcr-toggle:has(input:focus-visible){outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--border-width-focus)}
+.a3-svcr-readonly{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-svcr-warning{margin:var(--space-2) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
+.a3-svcr-detail-toggle{margin:var(--space-2) 0 0}
+
+/* ── ServiceDetailPanel ───────────────────────────────────────────────── */
+.a3-svcd{margin-top:var(--space-3);border-left:var(--border-width-strong) solid var(--color-selection-border);padding:var(--space-3) var(--space-4);background:var(--color-surface-subtle)}
+.a3-svcd-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(var(--measure-form-control),1fr));gap:var(--space-3);margin:0}
+.a3-svcd-field{min-width:0}
+.a3-svcd-field dt{font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);color:var(--color-text-secondary)}
+.a3-svcd-field dd{margin:0;color:var(--color-text-primary)}
+.a3-svcd-dependency{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);margin:var(--space-3) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
+
+/* ── CommercialRail · the causal parts ────────────────────────────────── */
+.a3-crc{border-top:var(--border-hairline);padding-top:var(--space-3);margin-top:var(--space-3)}
+.a3-crc-body{display:grid;gap:var(--space-1)}
+.a3-crc-body[data-direction="increase"]{border-left:var(--border-width-strong) solid var(--color-status-warning);padding-left:var(--space-3)}
+.a3-crc-body[data-direction="decrease"]{border-left:var(--border-width-strong) solid var(--color-status-success);padding-left:var(--space-3)}
+.a3-crc-body[data-direction="neutral"]{border-left:var(--border-width-strong) solid var(--color-border-default);padding-left:var(--space-3)}
+.a3-crc-label{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-crc-amount{font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-crc-meta{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-crs{border-top:var(--border-hairline);padding-top:var(--space-3);margin-top:var(--space-3)}
+.a3-crs-rows{margin:0}
+.a3-crs-row{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-3);padding:var(--space-1) 0;font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-crs-row dt{color:var(--color-text-secondary);min-width:0}
+.a3-crs-row dd{margin:0;color:var(--color-text-primary);font-variant-numeric:tabular-nums;white-space:nowrap}
+.a3-crst{margin:var(--space-3) 0 0}
+
+/* 1280 recomposition (rule: 1280 is a composition, not a squeezed 1440).
+   The context panel narrows first, then the service row's secondary columns
+   stack — the service name, its state and its amount are the three things
+   that must survive at every supported width. */
+@media (max-width:1439px){
+  /* 1280 is a composition, not a squeezed 1440: the context panel gives up
+     width first, and the service row keeps service, state and amount on one
+     line by letting the decision control wrap beneath them. */
+  .a3-kgp-stage{grid-template-columns:minmax(0,1fr) var(--measure-context-panel-compact)}
+  .a3-svcr-identity{flex:1 1 18ch}
+  .a3-svcr-control{order:3;flex:1 1 100%}
+  .a3-svcr-status{order:1;min-width:12ch}
+  .a3-svcr-amount{order:2}
+}
+
+/* VR3-03 · product compositions of the two Konfigurator surfaces.
+   Classes: .a3-abgrenzung · .a3-abgrenzung-progress · .a3-abgrenzung-dock ·
+   .a3-kgctx · .a3-kgctx-title · .a3-kgctx-list · .a3-kgctx-rows ·
+   .a3-kgctx-row */
+.a3-abgrenzung{min-width:0}
+.a3-abgrenzung-progress{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3);margin-bottom:var(--space-4)}
+.a3-abgrenzung-dock{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-4);margin-top:var(--space-4)}
+.a3-abgrenzung-dock p{margin:0;max-width:var(--measure-band)}
+.a3-kgctx{min-width:0}
+.a3-kgctx-title{font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--type-heading-weight);color:var(--color-text-primary);margin:0 0 var(--space-2)}
+.a3-kgctx-list{list-style:none;margin:var(--space-1) 0 var(--space-3);padding:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
+.a3-kgctx-rows{margin:0 0 var(--space-3)}
+.a3-kgctx-row{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-3);padding:var(--space-1) 0;border-bottom:var(--border-hairline);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-kgctx-row dt{color:var(--color-text-secondary)}
+.a3-kgctx-row dd{margin:0;color:var(--color-text-primary);font-variant-numeric:tabular-nums}
+/* VR3-03 · an excluded cost group stays reachable and says what it is.
+   Classes: .a3-kg-skipped */
+.a3-kg-skipped{display:grid;gap:var(--space-4);justify-items:start;background:var(--color-surface-default);padding:var(--space-7)}

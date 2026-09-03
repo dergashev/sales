@@ -60,7 +60,7 @@
       "productConsumers": [
         {
           "path": "src/components/Sidebar.tsx",
-          "pattern": "<WorkflowStepper"
+          "pattern": "<OptionWorkflowSpine"
         },
         {
           "path": "src/components/WorkflowSpine.tsx",
@@ -295,6 +295,56 @@
         {
           "path": "src/screens/KonfiguratorGate.tsx",
           "pattern": "a3-gatestage"
+        }
+      ]
+    },
+    {
+      "id": "choice-group",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/KgChapter.tsx",
+          "pattern": "controlOf"
+        }
+      ]
+    },
+    {
+      "id": "scope-decision-ledger",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/Leistungsabgrenzung.tsx",
+          "pattern": "<ScopeDecisionLedger"
+        }
+      ]
+    },
+    {
+      "id": "kg-configuration-page",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/KgChapter.tsx",
+          "pattern": "<KGConfigurationPage"
+        }
+      ]
+    },
+    {
+      "id": "commercial-rail",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/components/OfferPanel.tsx",
+          "pattern": "<CommercialRailChange"
+        }
+      ]
+    },
+    {
+      "id": "commercial-number",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/KgChapter.tsx",
+          "pattern": "<CommercialNumber"
         }
       ]
     }

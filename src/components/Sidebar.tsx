@@ -1,20 +1,17 @@
 import type { RefObject } from 'react'
 import { demoProject } from '../state/projectAnalysis'
 import {
-  configuratorStepDone,
   pipelineViewForBuildingGate,
   useStore,
 } from '../state/store'
 import type { PipelineView } from '../state/store'
 import { NNBSP } from '../engine/money'
-import { activeConfiguratorWorkflow } from '../state/chapters'
 import { useT, type MessageKey } from '../i18n'
 import {
   isClientProjection,
   isClientVisiblePipelineView,
 } from '../state/clientProjection'
 import { OutputProfileSwitch, SelectField } from './designSystem'
-import { WorkflowStepper, type WorkflowStep } from '../design-system/WorkflowStepper'
 import { OptionWorkflowSpine } from './WorkflowSpine'
 import { startContinuityTransition, useSemanticMotion } from '../design-system/motion'
 
@@ -103,9 +100,20 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
    * stage while it is still showing its own gate rather than the
    * configurator. Both belong to the journey the spine describes.
    */
-  const preConfigurator = !client
-    && (view === 'buildingScope'
-      || view === 'konfigurator' && (!gateOpen || !s.configurationModeChosen))
+  /**
+   * VR3-03: the spine now carries the whole Option phase, the Konfigurator
+   * included.
+   *
+   * VR3-02 restored it for the pre-Konfigurator stages and deliberately let
+   * the four-item workspace list return once the Konfigurator itself was the
+   * surface, "where its chapter navigation belongs". That chapter navigation
+   * is gone: the six cost groups ARE stages of the one journey now, with
+   * their own current/complete/skipped states, so replacing the spine with a
+   * four-item list at exactly the moment the user enters those stages would
+   * lose the position it was restored to show.
+   */
+  const optionPhase = !client
+    && (view === 'buildingScope' || view === 'konfigurator')
   // Task 03 (deep-coherence audit, F-16/PD-3, CPO-confirmed): the building
   // gate alone used to leave Export reachable at mode choice, before any
   // Configurator confirmation existed at all — a 0-€ or half-configured
@@ -121,10 +129,9 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
     // through — dropping them with the stage list would have removed a
     // released capability from the phase, and repeating the two stages the
     // spine already shows would be two navigations for one journey.
-    : preConfigurator
+    : optionPhase
       ? SCREENS.filter(({ id }) => id === 'vergleich' || id === 'export')
       : SCREENS
-  const workflow = activeConfiguratorWorkflow({ coverage: s.coverage, mode: s.mode })
 
   return (
     <nav
@@ -185,7 +192,7 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
           got longer is how the user's position in it was lost; the
           four-item list returns once the Konfigurator itself is the
           surface, where its chapter navigation belongs. */}
-      {preConfigurator && (
+      {optionPhase && (
         <div className="min-w-0 py-2">
           <p className="a3-cap px-5 pb-1 pt-3">{t('shell.sidebar.workflow')}</p>
           {/* No extra horizontal padding: the spine's own steps carry it,
@@ -270,24 +277,6 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
                 </p>
               )}
 
-              {/* Главы конфигуратора — второй уровень под активным пунктом. */}
-              {item.id === 'konfigurator' && active
-                && s.configurationModeChosen && !s.configurationModeEditing && (
-                <WorkflowStepper
-                  ariaLabel={t('shell.sidebar.workflow')}
-                  size="chapter"
-                  steps={workflow.map((step): WorkflowStep => {
-                    const open = s.openConfiguratorStep === step.id
-                    const stepDone = !open && configuratorStepDone(s, step.id)
-                    return {
-                      id: step.id,
-                      label: t(`chapter.${step.id}`),
-                      state: open ? 'current' : stepDone ? 'done' : 'upcoming',
-                      onSelect: () => s.openConfiguratorStepAt(step.id),
-                    }
-                  })}
-                />
-              )}
             </li>
           )
         })}

@@ -685,6 +685,200 @@ const de = {
   // never read "Gesamt netto" even when coverage was complete).
   'offer.drivers.reconciliationCaption':
     'Kostentreiber: Beiträge summieren sich exakt zur {label}.',
+  // VR3-03: an Option whose six scope decisions are all still open has no
+  // contribution yet. An empty table is not "no cost drivers exist" — it is
+  // "no decision has produced one", and the row has to say which.
+  'offer.drivers.noneYet':
+    'Noch kein Kostentreiber: die Leistungsabgrenzung ist noch offen.',
+  /* ── VR3-03 · unified Konfigurator (T-018–T-028) ──────────────────── */
+  'vr3.kg.ledger.stageMeta':
+    'Konfigurator · Schritt 1',
+  'vr3.kg.ledger.lede':
+    'Treffen Sie für jede DIN-276-Kostengruppe eine ausdrückliche Entscheidung. „Noch offen“ ist nicht dasselbe wie bewusst ausgeschlossen.',
+  'vr3.kg.ledger.caption':
+    'Leistungsabgrenzung: sechs Kostengruppen, je eine ausdrückliche Entscheidung.',
+  'vr3.kg.ledger.column.group':
+    'Kostengruppe',
+  'vr3.kg.ledger.column.decision':
+    'Entscheidung',
+  'vr3.kg.ledger.column.summary':
+    'Bedeutung für den Umfang',
+  'vr3.kg.ledger.column.downstream':
+    'Folge',
+  'vr3.kg.ledger.include':
+    'enthalten',
+  'vr3.kg.ledger.noEffect':
+    'ohne Preiswirkung',
+  'vr3.kg.ledger.exclude':
+    'nicht enthalten',
+  'vr3.kg.ledger.decisionLegend':
+    'Entscheidung {group} {meaning}',
+  'vr3.kg.ledger.progress':
+    '{decided} von {total} entschieden',
+  'vr3.kg.ledger.summary.included':
+    'Im Angebotsumfang',
+  'vr3.kg.ledger.summary.excluded':
+    'Bewusst ausgeschlossen',
+  'vr3.kg.ledger.summary.undecided':
+    'Noch offen',
+  'vr3.kg.ledger.downstream.configure':
+    'Konfiguration erforderlich',
+  'vr3.kg.ledger.downstream.skipped':
+    'Nicht im Umfang · übersprungen',
+  'vr3.kg.ledger.downstream.required':
+    'Entscheidung erforderlich',
+  'vr3.kg.ledger.footerIncomplete':
+    'Die Konfiguration der Kostengruppen bleibt gesperrt, bis alle sechs Entscheidungen ausdrücklich getroffen sind.',
+  'vr3.kg.ledger.footerComplete':
+    'Jede Kostengruppe hat ein bewusstes Ergebnis. Die enthaltenen Gruppen können jetzt konfiguriert werden.',
+  'vr3.kg.ledger.confirm':
+    'Umfang bestätigen und weiter',
+  'vr3.kg.ledger.blockedReason':
+    'Noch {open} von {total} Kostengruppen ohne Entscheidung.',
+  'vr3.kg.ledger.announceComplete':
+    'Alle sechs Kostengruppen sind entschieden. Die erste enthaltene Kostengruppe ist verfügbar.',
+  'vr3.kg.ledger.recheck':
+    'Erneut bestätigen',
+  'vr3.kg.ledger.recheckReason':
+    'Der Umfang hat sich seit der letzten Bestätigung geändert.',
+  'vr3.kg.page.identity':
+    'Konfigurator · {group}',
+  'vr3.kg.page.progress':
+    '{decided} von {total} entschieden',
+  'vr3.kg.page.progressComplete':
+    'Vollständig',
+  'vr3.kg.page.previous':
+    'Zurück zu {group}',
+  'vr3.kg.page.next':
+    'Weiter zu {group}',
+  'vr3.kg.page.toSchedule':
+    'Weiter zum Terminplan',
+  'vr3.kg.page.blockedOpen':
+    'Noch {open} Entscheidungen in dieser Kostengruppe offen.',
+  'vr3.kg.page.blockedInvalid':
+    'Eine Position dieser Kostengruppe ist ungültig oder wartet auf eine andere Entscheidung.',
+  'vr3.kg.group.decisions':
+    '{count} Positionen',
+  'vr3.kg.service.include':
+    'aufnehmen',
+  'vr3.kg.service.includeToggle':
+    'im Angebot',
+  'vr3.kg.service.exclude':
+    'nicht aufnehmen',
+  'vr3.kg.service.legend':
+    'Entscheidung {service}',
+  'vr3.kg.service.mandatory':
+    'verpflichtend enthalten',
+  'vr3.kg.service.variantBaseline':
+    'Projektstandard',
+  'vr3.kg.service.noAmount':
+    'kein Betrag',
+  'vr3.kg.service.status.included':
+    'Enthalten',
+  'vr3.kg.service.status.configured':
+    'Konfiguriert',
+  'vr3.kg.service.status.notIncluded':
+    'Nicht aufgenommen',
+  'vr3.kg.service.status.undecided':
+    'Entscheidung offen',
+  'vr3.kg.service.status.invalid':
+    'Eingabe ungültig',
+  'vr3.kg.service.status.blocked':
+    'Voraussetzung fehlt',
+  'vr3.kg.service.detailOpen':
+    'Details öffnen',
+  'vr3.kg.service.detailClose':
+    'Details schließen',
+  'vr3.kg.service.building':
+    'Gebäude {name}',
+  'vr3.kg.service.authority.sourceEvidenced':
+    'aus der Dokumentation belegt',
+  'vr3.kg.service.authority.derived':
+    'aus Mengen abgeleitet',
+  'vr3.kg.service.authority.assumed':
+    'Annahme — noch nicht bestätigt',
+  'vr3.kg.service.field.authority':
+    'Herkunft',
+  'vr3.kg.service.field.building':
+    'Gebäude',
+  'vr3.kg.service.dependencyWarning':
+    'Diese Position setzt {upstream} voraus.',
+  'vr3.kg.service.dependencyDetail':
+    'Solange {upstream} nicht entsprechend entschieden ist, trägt diese Position nichts zum Angebot bei.',
+  'vr3.kg.service.dependencyRoute':
+    'Voraussetzung öffnen',
+  'vr3.kg.service.quantityLabel':
+    'Menge in {unit}',
+  'vr3.kg.service.quantityHelper':
+    'Ansatz {unitAmount} € je {unit}.',
+  'vr3.kg.service.quantity.notANumber':
+    'Bitte eine Zahl eintragen. Bis dahin rechnet das Angebot mit der letzten gültigen Menge.',
+  'vr3.kg.service.quantity.belowMinimum':
+    'Die Menge kann nicht kleiner als null sein. Bis zur Korrektur gilt die letzte gültige Menge.',
+  'vr3.kg.service.quantity.aboveMaximum':
+    'Die Menge liegt über dem zulässigen Bereich. Bis zur Korrektur gilt die letzte gültige Menge.',
+  'vr3.kg.context.title':
+    'Kontext',
+  'vr3.kg.context.buildings':
+    'Option mit {count} Gebäuden',
+  'vr3.kg.context.warnings':
+    'Hinweise',
+  'vr3.kg.context.selected':
+    'Aufgenommene Positionen',
+  'vr3.kg.context.baselineConfirmed':
+    'Gebäudegrundlage bestätigt',
+  'vr3.kg.context.baselineOpen':
+    'Gebäudegrundlage offen',
+  'vr3.journal.kgScopeConfirmed':
+    'Leistungsabgrenzung bestätigt',
+  'vr3.kg.gate.configurationTitle':
+    'Konfiguration nicht verfügbar',
+  'vr3.kg.gate.configurationPrereq':
+    'Leistungsabgrenzung dieser Option',
+  'vr3.kg.gate.configurationDetail':
+    'Diese Option wurde vor dem aktuellen Konfigurationsvertrag angelegt und trägt keine Kostengruppen-Entscheidungen. Legen Sie den Gebäudeumfang erneut fest, um die Konfiguration zu beginnen.',
+  'vr3.kg.gate.decisionsPrereq':
+    'Sechs ausdrückliche Kostengruppen-Entscheidungen',
+  'vr3.kg.gate.decisionsDetail':
+    'Erst {decided} von {total} Kostengruppen sind entschieden.',
+  'vr3.kg.gate.decisionsRoute':
+    'Zur Leistungsabgrenzung',
+  'vr3.kg.gate.skippedReason':
+    'Diese Kostengruppe wurde bewusst ausgeschlossen. Es gibt hier nichts zu konfigurieren — die Entscheidung bleibt im Angebot sichtbar.',
+  'vr3.kg.gate.reopenScope':
+    'Leistungsabgrenzung öffnen',
+  'vr3.kg.gate.chapterOutstanding':
+    'In {group} sind noch Entscheidungen offen.',
+  'vr3.kg.gate.scheduleReason':
+    'Erst wenn jede enthaltene Kostengruppe vollständig ist, wird der Terminplan verfügbar.',
+  'vr3.rail.scope.heading':
+    'Enthaltener Umfang',
+  'vr3.rail.scope.included':
+    'Kostengruppen enthalten',
+  'vr3.rail.scope.includedValue':
+    '{included} von {total}',
+  'vr3.rail.scope.excluded':
+    'bewusst ausgeschlossen',
+  'vr3.rail.scope.undecided':
+    'noch offen',
+  'vr3.rail.scope.services':
+    'aufgenommene Positionen',
+  'vr3.rail.scope.openDecisions':
+    'offene Entscheidungen',
+  'vr3.rail.change.heading':
+    'Zuletzt geändert',
+  'vr3.rail.change.noEffect':
+    'ohne Preiswirkung',
+  'vr3.rail.status.subtotal':
+    'Zwischensumme',
+  'vr3.rail.status.subtotalUndecided':
+    'Noch {undecided} Kostengruppen ohne Entscheidung — die Summe nennt nur die kalkulierten Positionen.',
+  'vr3.rail.status.subtotalOpenDecisions':
+    'Noch {open} offene Entscheidungen — die Summe nennt nur die kalkulierten Positionen.',
+  'vr3.rail.status.reconcileFailed':
+    'Zusammensetzung stimmt nicht',
+  'vr3.rail.status.reconcileDrift':
+    'Die Kostengruppen summieren sich nicht zur ausgewiesenen Summe. Abweichung {drift}.',
   // SIDEBAR 03 (backlog 2be8e69c, SB-16): the ghost preview's "gegenüber
   // aktuellem Stand" suffix was a hardcoded literal, invisible to `tx()`'s
   // whole-string lookup once interpolated between other fragments.
@@ -2072,6 +2266,197 @@ const en: Partial<Record<MessageKey, string>> = {
     'Rows and percentage shares are rounded independently; the check runs on exact values.',
   'offer.drivers.reconciliationCaption':
     'Cost drivers: contributions sum exactly to the {label}.',
+  'offer.drivers.noneYet':
+    'No cost driver yet: the scope decisions are still open.',
+  /* ── VR3-03 · unified Konfigurator (T-018–T-028) ──────────────────── */
+  'vr3.kg.ledger.stageMeta':
+    'Configurator · step 1',
+  'vr3.kg.ledger.lede':
+    'Make one explicit decision for every DIN 276 cost group. “Still open” is not the same as intentionally excluded.',
+  'vr3.kg.ledger.caption':
+    'Scope boundaries: six cost groups, one explicit decision each.',
+  'vr3.kg.ledger.column.group':
+    'Cost group',
+  'vr3.kg.ledger.column.decision':
+    'Decision',
+  'vr3.kg.ledger.column.summary':
+    'Meaning for the scope',
+  'vr3.kg.ledger.column.downstream':
+    'Consequence',
+  'vr3.kg.ledger.include':
+    'included',
+  'vr3.kg.ledger.noEffect':
+    'no price effect',
+  'vr3.kg.ledger.exclude':
+    'not included',
+  'vr3.kg.ledger.decisionLegend':
+    'Decision {group} {meaning}',
+  'vr3.kg.ledger.progress':
+    '{decided} of {total} decided',
+  'vr3.kg.ledger.summary.included':
+    'In the offer scope',
+  'vr3.kg.ledger.summary.excluded':
+    'Intentionally excluded',
+  'vr3.kg.ledger.summary.undecided':
+    'Still open',
+  'vr3.kg.ledger.downstream.configure':
+    'Configuration required',
+  'vr3.kg.ledger.downstream.skipped':
+    'Out of scope · skipped',
+  'vr3.kg.ledger.downstream.required':
+    'Decision required',
+  'vr3.kg.ledger.footerIncomplete':
+    'Cost-group configuration stays locked until all six decisions are explicit.',
+  'vr3.kg.ledger.footerComplete':
+    'Every cost group has a deliberate outcome. The included groups can now be configured.',
+  'vr3.kg.ledger.confirm':
+    'Confirm scope and continue',
+  'vr3.kg.ledger.blockedReason':
+    '{open} of {total} cost groups still have no decision.',
+  'vr3.kg.ledger.announceComplete':
+    'All six cost groups are decided. The first included cost group is available.',
+  'vr3.kg.ledger.recheck':
+    'Confirm again',
+  'vr3.kg.ledger.recheckReason':
+    'The scope has changed since it was last confirmed.',
+  'vr3.kg.page.identity':
+    'Configurator · {group}',
+  'vr3.kg.page.progress':
+    '{decided} of {total} decided',
+  'vr3.kg.page.progressComplete':
+    'Complete',
+  'vr3.kg.page.previous':
+    'Back to {group}',
+  'vr3.kg.page.next':
+    'Continue to {group}',
+  'vr3.kg.page.toSchedule':
+    'Continue to the schedule',
+  'vr3.kg.page.blockedOpen':
+    '{open} decisions in this cost group are still open.',
+  'vr3.kg.page.blockedInvalid':
+    'One position in this cost group is invalid or waiting on another decision.',
+  'vr3.kg.group.decisions':
+    '{count} positions',
+  'vr3.kg.service.include':
+    'include',
+  'vr3.kg.service.includeToggle':
+    'in the offer',
+  'vr3.kg.service.exclude':
+    'do not include',
+  'vr3.kg.service.legend':
+    'Decision {service}',
+  'vr3.kg.service.mandatory':
+    'mandatory, always included',
+  'vr3.kg.service.variantBaseline':
+    'Project standard',
+  'vr3.kg.service.noAmount':
+    'no amount',
+  'vr3.kg.service.status.included':
+    'Included',
+  'vr3.kg.service.status.configured':
+    'Configured',
+  'vr3.kg.service.status.notIncluded':
+    'Not included',
+  'vr3.kg.service.status.undecided':
+    'Decision open',
+  'vr3.kg.service.status.invalid':
+    'Entry invalid',
+  'vr3.kg.service.status.blocked':
+    'Prerequisite missing',
+  'vr3.kg.service.detailOpen':
+    'Open details',
+  'vr3.kg.service.detailClose':
+    'Close details',
+  'vr3.kg.service.building':
+    'Building {name}',
+  'vr3.kg.service.authority.sourceEvidenced':
+    'evidenced by the documentation',
+  'vr3.kg.service.authority.derived':
+    'derived from quantities',
+  'vr3.kg.service.authority.assumed':
+    'assumption — not yet confirmed',
+  'vr3.kg.service.field.authority':
+    'Authority',
+  'vr3.kg.service.field.building':
+    'Building',
+  'vr3.kg.service.dependencyWarning':
+    'This position requires {upstream}.',
+  'vr3.kg.service.dependencyDetail':
+    'Until {upstream} is decided accordingly, this position contributes nothing to the offer.',
+  'vr3.kg.service.dependencyRoute':
+    'Open the prerequisite',
+  'vr3.kg.service.quantityLabel':
+    'Quantity in {unit}',
+  'vr3.kg.service.quantityHelper':
+    'Rate {unitAmount} € per {unit}.',
+  'vr3.kg.service.quantity.notANumber':
+    'Enter a number. Until then the offer uses the last valid quantity.',
+  'vr3.kg.service.quantity.belowMinimum':
+    'The quantity cannot be below zero. The last valid quantity applies until it is corrected.',
+  'vr3.kg.service.quantity.aboveMaximum':
+    'The quantity is above the permitted range. The last valid quantity applies until it is corrected.',
+  'vr3.kg.context.title':
+    'Context',
+  'vr3.kg.context.buildings':
+    'Option covering {count} buildings',
+  'vr3.kg.context.warnings':
+    'Notices',
+  'vr3.kg.context.selected':
+    'Included positions',
+  'vr3.kg.context.baselineConfirmed':
+    'Building baseline confirmed',
+  'vr3.kg.context.baselineOpen':
+    'Building baseline open',
+  'vr3.journal.kgScopeConfirmed':
+    'Scope boundaries confirmed',
+  'vr3.kg.gate.configurationTitle':
+    'Configuration unavailable',
+  'vr3.kg.gate.configurationPrereq':
+    'This Option’s scope boundaries',
+  'vr3.kg.gate.configurationDetail':
+    'This Option was created before the current configuration contract and carries no cost-group decisions. Define the building scope again to begin configuring it.',
+  'vr3.kg.gate.decisionsPrereq':
+    'Six explicit cost-group decisions',
+  'vr3.kg.gate.decisionsDetail':
+    'Only {decided} of {total} cost groups are decided.',
+  'vr3.kg.gate.decisionsRoute':
+    'Go to the scope boundaries',
+  'vr3.kg.gate.skippedReason':
+    'This cost group was intentionally excluded. There is nothing to configure here — the decision stays visible in the offer.',
+  'vr3.kg.gate.reopenScope':
+    'Open the scope boundaries',
+  'vr3.kg.gate.chapterOutstanding':
+    '{group} still has open decisions.',
+  'vr3.kg.gate.scheduleReason':
+    'The schedule becomes available once every included cost group is complete.',
+  'vr3.rail.scope.heading':
+    'Included scope',
+  'vr3.rail.scope.included':
+    'cost groups included',
+  'vr3.rail.scope.includedValue':
+    '{included} of {total}',
+  'vr3.rail.scope.excluded':
+    'intentionally excluded',
+  'vr3.rail.scope.undecided':
+    'still open',
+  'vr3.rail.scope.services':
+    'included positions',
+  'vr3.rail.scope.openDecisions':
+    'open decisions',
+  'vr3.rail.change.heading':
+    'Last change',
+  'vr3.rail.change.noEffect':
+    'no price effect',
+  'vr3.rail.status.subtotal':
+    'Subtotal',
+  'vr3.rail.status.subtotalUndecided':
+    '{undecided} cost groups still have no decision — the sum names only the priced positions.',
+  'vr3.rail.status.subtotalOpenDecisions':
+    '{open} decisions are still open — the sum names only the priced positions.',
+  'vr3.rail.status.reconcileFailed':
+    'Composition does not add up',
+  'vr3.rail.status.reconcileDrift':
+    'The cost groups do not sum to the stated total. Drift {drift}.',
   'offerPanel.preview.vsCurrent': 'vs. the current state',
   'offerPanel.derivedMarker.legend': '⚙ · derived for the prototype, not calibrated.',
   'panel.rate': 'Rate',

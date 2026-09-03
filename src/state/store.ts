@@ -24,6 +24,35 @@ import {
   type ProjectBaselineSnapshot,
 } from './projectAnalysis'
 import {
+  KG_SCOPE_GROUPS,
+  initialDecisions as initialKgDecisions,
+  kgCatalogue,
+  kgCatalogues,
+  kgChapterProgress,
+  kgConfigurationComplete,
+  kgDrivers,
+  kgGroupAmounts,
+  kgTotal,
+  openKgDecisionCount,
+  scopeDecisionsComplete,
+  serviceById as kgServiceById,
+  serviceDecision as kgServiceDecision,
+  unpricedIncludedKgGroups,
+  type KgCatalogue,
+  type KgDecisions,
+  type KgScopeDecision,
+  type KgScopeGroup,
+  type KgChapterProgress,
+  type KgServiceDecisionRecord,
+} from '../engine/kgConfiguration'
+import {
+  commercialGroupLines,
+  reconcileCommercial,
+  scopeCounts,
+  type CommercialChange,
+  type CommercialResult,
+} from './commercialResult'
+import {
   buildingScopeFingerprint,
   buildingScopeSaved as scopeIsSaved,
   buildingScopeStage,
@@ -33,6 +62,7 @@ import {
   scopeBuildingsFromBaseline,
   scopeFingerprint,
   scopeReadyToSave,
+  scopeMetricValue,
   scopeSelectedIds,
   selectedBgfRSTotal,
   type BuildingScopeCommit,
@@ -67,7 +97,8 @@ import {
   SCOPE_BOUNDARIES_DECIDABLE_GROUPS,
   totalLabel as calculationTotalLabel,
   type BuildingInput, type Coverage, type CoverageState,
-  type CostGroup, type BuildingResult, type Kg800Params,
+  type CostGroup, type BuildingResult, type Driver, type IncompleteReason,
+  type Kg800Params,
 } from '../engine/calculate'
 import {
   present, rate, NNBSP, formatDE, type Displayed, type Rate,
@@ -384,6 +415,21 @@ export type OptionConfig = {
   scopeCatalogQuantities: Record<string, string>
   kg800ClientRevealed: boolean
   scopeBoundariesConfirmedFingerprint: string | null
+  /**
+   * VR3-03 — the Option's KG configuration: six explicit scope decisions and
+   * every service decision under them (`src/engine/kgConfiguration.ts`).
+   *
+   * `null` means "this Option has no KG configuration", which is the honest
+   * state of a directly driven store and of a payload saved before this
+   * contract. It is also the switch that selects the pricing basis: an
+   * Option WITH a configuration is priced from it, an Option without one
+   * keeps the released proposal engine. Same two-layer shape as VR3-02's
+   * `canBeginConfiguration`, and for the same reason — a released path must
+   * not change meaning because a newer one exists beside it.
+   */
+  kgConfig: KgDecisions | null
+  /** Fingerprint of the six scope decisions at the moment they were confirmed. */
+  kgScopeConfirmedFingerprint: string | null
   fields: { wfl: FieldState; bgfOber: FieldState; we: FieldState }
   esConfirmed: boolean
   regionalfaktorActive: boolean
@@ -442,7 +488,8 @@ const OPTION_CONFIG_KEYS = [
   'kg300', 'kg300Provenance', 'kg700Mode', 'kg700ModeAutoFallback', 'coverage',
   'scopeCatalogChoices', 'scopeCatalogProvenance', 'scopeCatalogQuantities',
   'kg800ClientRevealed',
-  'scopeBoundariesConfirmedFingerprint', 'fields',
+  'scopeBoundariesConfirmedFingerprint',
+  'kgConfig', 'kgScopeConfirmedFingerprint', 'fields',
   'esConfirmed', 'regionalfaktorActive', 'risikoAktiv',
   'openConfiguratorStep', 'visitedConfiguratorSteps', 'scopeBuildingId', 'discountPercent',
   'offerDraft', 'constructionStartDate',
@@ -465,6 +512,7 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
   | 'scopeCatalogChoices' | 'scopeCatalogProvenance' | 'scopeCatalogQuantities'
   | 'kg800ClientRevealed'
   | 'scopeBoundariesConfirmedFingerprint'
+  | 'kgConfig' | 'kgScopeConfirmedFingerprint'
   | 'esConfirmed' | 'regionalfaktorActive' | 'risikoAktiv' | 'discountPercent'
   | 'constructionStartDate'
   | 'scopeBuildings' | 'scopeSelected' | 'scopeEdits' | 'scopeConfirmations'
@@ -473,7 +521,7 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
     | 'configurationVisitedChapters' | 'scopeBoundariesConfirmedFingerprint'
     | 'constructionStartDate' | 'kg700ModeAutoFallback'
     | 'scopeCatalogChoices' | 'scopeCatalogProvenance' | 'scopeCatalogQuantities'
-    | 'kg800ClientRevealed'> & {
+    | 'kg800ClientRevealed' | 'kgConfig' | 'kgScopeConfirmedFingerprint'> & {
     /** Optional while reading candidates saved before section review was durable. */
     buildingSectionConfirmations?: Record<
       string,
@@ -513,6 +561,14 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
     scopeConfirmations?: Record<string, ScopeConfirmation>
     scopeSaved?: SavedBuildingScope | null
     scopeActiveBuildingId?: string | null
+    /**
+     * VR3-03 — the Option's KG configuration. Optional as a matter of shape:
+     * an Option saved before this contract has none, and `null` is the state
+     * that keeps it on the released pricing basis rather than pricing it from
+     * a catalogue it never had.
+     */
+    kgConfig?: KgDecisions | null
+    kgScopeConfirmedFingerprint?: string | null
   }
 
 const PERSISTED_CONFIG_KEYS = [
@@ -524,7 +580,8 @@ const PERSISTED_CONFIG_KEYS = [
   'kg300', 'kg300Provenance', 'kg700Mode', 'kg700ModeAutoFallback', 'coverage',
   'scopeCatalogChoices', 'scopeCatalogProvenance', 'scopeCatalogQuantities',
   'kg800ClientRevealed',
-  'scopeBoundariesConfirmedFingerprint', 'esConfirmed',
+  'scopeBoundariesConfirmedFingerprint',
+  'kgConfig', 'kgScopeConfirmedFingerprint', 'esConfirmed',
   'regionalfaktorActive', 'risikoAktiv', 'discountPercent',
   'constructionStartDate',
   'scopeBuildings', 'scopeSelected', 'scopeEdits', 'scopeConfirmations',
@@ -542,7 +599,9 @@ const LEGACY_PERSISTED_CONFIG_KEYS = PERSISTED_CONFIG_KEYS.filter(
     && key !== 'scopeCatalogChoices'
     && key !== 'scopeCatalogProvenance'
     && key !== 'scopeCatalogQuantities'
-    && key !== 'kg800ClientRevealed',
+    && key !== 'kg800ClientRevealed'
+    && key !== 'kgConfig'
+    && key !== 'kgScopeConfirmedFingerprint',
 )
 
 function capturePersistedConfig(
@@ -915,6 +974,8 @@ function defaultOptionConfig(coverage: Coverage = INITIAL_COVERAGE): OptionConfi
     scopeCatalogQuantities: {},
     kg800ClientRevealed: false,
     scopeBoundariesConfirmedFingerprint: null,
+    kgConfig: null,
+    kgScopeConfirmedFingerprint: null,
     fields: legacyFieldsFromReview(INITIAL_REVIEW),
     esConfirmed: false,
     regionalfaktorActive: false,
@@ -1291,7 +1352,16 @@ function restoredOptionConfig(
     // Legacy `unknown`/`notApplicable` coverage never resurfaces as a normal
     // state after load — every decidable KG lands on the current binary
     // contract (`migrateCoverage`).
-    coverage: migrateCoverage(persisted.coverage),
+    // VR3-03: an Option WITH a KG configuration derives its coverage from
+    // that configuration, so a reload cannot produce a coverage the six
+    // decisions contradict — and `migrateCoverage`'s legacy "unknown reads as
+    // excluded" rule, correct while nothing could express undecided, must not
+    // erase a decision the user has genuinely not made yet.
+    coverage: persisted.kgConfig
+      ? coverageFromKgDecisions(persisted.kgConfig)
+      : migrateCoverage(persisted.coverage),
+    kgConfig: persisted.kgConfig ?? null,
+    kgScopeConfirmedFingerprint: persisted.kgScopeConfirmedFingerprint ?? null,
     // Absent in payloads saved before KG 200/500/600/800 catalogs existed.
     scopeCatalogChoices: persisted.scopeCatalogChoices ?? base.scopeCatalogChoices,
     scopeCatalogProvenance:
@@ -1474,6 +1544,20 @@ type Store = {
    * (`scopeBoundariesStatus`), а не тихое сохранение устаревшего решения.
    */
   scopeBoundariesConfirmedFingerprint: string | null
+  /** See the matching field on `OptionConfig` for the full contract. */
+  kgConfig: KgDecisions | null
+  kgScopeConfirmedFingerprint: string | null
+  /**
+   * The most recent causal cost change (T-028, M-07).
+   *
+   * Transient like `activeDelta` and deliberately NOT persisted: it explains
+   * what the user just did, and a reload has no "just". It carries BOTH
+   * languages because the catalogue does, so the rail never prints a German
+   * decision label beside an English interface.
+   */
+  lastCommercialChange: CommercialChange | null
+  /** Monotonic result version, so two surfaces can prove they agree. */
+  commercialResultVersion: number
   fields: { wfl: FieldState; bgfOber: FieldState; we: FieldState }
   journal: JournalEvent[]
   /** seq событий, уже отменённых: каждое отменяется не более одного раза. */
@@ -1892,6 +1976,17 @@ type Store = {
   setKg300: (groupId: string, value: string) => void
   /** Выбрать вариант опции каталога KG 200/500/600/800 — событие с дельтой. */
   setScopeCatalogChoice: (optionId: string, value: string) => void
+  /**
+   * VR3-03 — the six explicit scope decisions and every service decision
+   * under them. Both journal, both produce an undoable inverse and both
+   * publish the causal change the rail explains (T-028, M-06/M-07).
+   */
+  setKgScopeDecision: (group: KgScopeGroup, decision: KgScopeDecision) => void
+  setKgServiceDecision: (serviceId: string, decision: KgServiceDecisionRecord) => void
+  /** Records the confirmation of the six decisions. It does not gate them. */
+  confirmKgScope: () => void
+  /** Opens one KG chapter, refusing an excluded or still-locked one. */
+  openKgChapter: (group: KgScopeGroup) => void
   /** Ручной ввод количественного драйвера (§7 приложения) — десятичная строка. */
   setScopeCatalogQuantity: (key: ScopeQuantityKey, value: string) => void
   /** KG 800 · «Für dieses Meeting freigeben» — приватно по умолчанию. */
@@ -2192,14 +2287,31 @@ export function scopeBoundariesStatus(
     : 'recheck'
 }
 
+/**
+ * Is the Option's configuration complete?
+ *
+ * VR3-03 added the half that was missing. The predicate used to combine the
+ * old Scope Boundaries fingerprint with each included BUILDING's own
+ * confirmation — a model in which a chapter counted as done because it had
+ * been visited and confirmed per building. Under that predicate an Option
+ * with six UNDECIDED cost groups was exportable, because "undecided" could
+ * not exist and the fingerprint only had to match itself.
+ *
+ * An Option that carries a KG configuration must now also satisfy it: every
+ * required service decision, value and dependency in every included cost
+ * group (`kgConfigurationCompleteFor`). An Option without one keeps exactly
+ * the released predicate.
+ */
 export function configurationComplete(
   s: Pick<Store, 'buildings' | 'included' | 'configurationMode'
     | 'configurationModeChosen' | 'configurationVisitedChapters'
     | 'sharedConfiguration' | 'kg300' | 'buildingConfigState'
     | 'buildingReviews' | 'buildingConfirmation' | 'buildingConflicts'
-    | 'coverage' | 'scopeBoundariesConfirmedFingerprint'>,
+    | 'coverage' | 'scopeBoundariesConfirmedFingerprint'
+    | 'kgConfig' | 'opportunityId'>,
 ): boolean {
   const ids = includedBuildingIds(s)
+  if (hasKgConfiguration(s) && !kgConfigurationCompleteFor(s)) return false
   return s.configurationModeChosen && ids.length > 0
     && scopeBoundariesStatus(s) === 'confirmed'
     && ids.every((id) => configurationDisplayStatusFor(s, id) === 'confirmed')
@@ -2264,6 +2376,236 @@ export function pipelineViewForBuildingGate(
  * One predicate, so the router, the spine and the surface cannot disagree
  * about whether the gate is open.
  */
+/* ─────────────────── VR3-03 · the KG configuration ──────────────────── */
+
+/**
+ * The one map between a DIN 276 group and its Configurator step.
+ *
+ * Six instances of one page still need six identities in the journey, and
+ * deriving the step id from the group name by string surgery is how a rename
+ * becomes a silent navigation failure.
+ */
+/**
+ * The KG catalogue's energy-standard services, and the released building
+ * axis each variant maps onto.
+ *
+ * Named explicitly, in one place: a bridge derived from a string pattern is
+ * a bridge that breaks silently when a fixture id changes.
+ */
+const ENERGY_STANDARD_SERVICE_IDS = new Set(['a-400-es', 'b-400-es'])
+
+const ENERGY_STANDARD_OF_VARIANT: Readonly<Record<string, BuildingInput['energiestandard'] | undefined>> = {
+  geg: 'GEG',
+  eh55: 'EH_55',
+  eh40: 'EH_40',
+  eh40nh: 'EH_40_NH',
+}
+
+export const KG_CHAPTER_STEP: Readonly<Record<KgScopeGroup, ConfiguratorStepId>> = {
+  KG_200: CONFIGURATOR_STEP.KG_200_DETAILS,
+  KG_300: CONFIGURATOR_STEP.KG_300_DETAILS,
+  KG_400: CONFIGURATOR_STEP.KG_400_DETAILS,
+  KG_500: CONFIGURATOR_STEP.KG_500_DETAILS,
+  KG_600: CONFIGURATOR_STEP.KG_600_DETAILS,
+  KG_700: CONFIGURATOR_STEP.KG_700_DETAILS,
+}
+
+/** The cost group a Configurator step configures, or `null`. */
+export function kgGroupOfStep(id: ConfiguratorStepId): KgScopeGroup | null {
+  return (Object.entries(KG_CHAPTER_STEP) as Array<[KgScopeGroup, ConfiguratorStepId]>)
+    .find(([, step]) => step === id)?.[0] ?? null
+}
+
+/** The catalogue this Option is priced against, or `null`. */
+export function kgCatalogueFor(
+  s: Pick<Store, 'opportunityId'>,
+): KgCatalogue | null {
+  return kgCatalogue(s.opportunityId)
+}
+
+/** The Option's KG decisions, or `null` when it has no configuration. */
+export function kgDecisionsFor(
+  s: Pick<Store, 'kgConfig'>,
+): KgDecisions | null {
+  return s.kgConfig
+}
+
+/**
+ * Does this Option have a live KG configuration?
+ *
+ * Both halves must hold: the decisions AND the catalogue they describe. A
+ * configuration without its catalogue is a payload restored under a project
+ * that no longer declares one, and pricing it would be pricing a shape whose
+ * meaning is gone.
+ */
+export function hasKgConfiguration(
+  s: Pick<Store, 'kgConfig' | 'opportunityId'>,
+): boolean {
+  return s.kgConfig !== null && kgCatalogueFor(s) !== null
+}
+
+/**
+ * The fingerprint of the six scope decisions.
+ *
+ * A fingerprint, not a flag — the same reason VR3-02 fingerprints the
+ * building scope: reopening one decision invalidates the confirmation by
+ * construction, so no invalidation step can be forgotten.
+ */
+export function kgScopeFingerprint(decisions: KgDecisions): string {
+  return KG_SCOPE_GROUPS.map((g) => `${g}=${decisions.scope[g]}`).join('|')
+}
+
+export type KgScopeStatus = 'open' | 'confirmed' | 'recheck'
+
+export function kgScopeStatus(
+  s: Pick<Store, 'kgConfig' | 'kgScopeConfirmedFingerprint'>,
+): KgScopeStatus {
+  if (!s.kgConfig) return 'open'
+  if (!s.kgScopeConfirmedFingerprint) return 'open'
+  return s.kgScopeConfirmedFingerprint === kgScopeFingerprint(s.kgConfig)
+    ? 'confirmed'
+    : 'recheck'
+}
+
+/** How many of the six decisions are explicit. */
+export function kgDecidedScopeCount(s: Pick<Store, 'kgConfig'>): number {
+  return s.kgConfig
+    ? KG_SCOPE_GROUPS.filter((g) => s.kgConfig!.scope[g] !== 'undecided').length
+    : 0
+}
+
+/**
+ * The gate every KG chapter sits behind: six explicit decisions.
+ *
+ * Not "six decisions AND a confirmation": the state machine's transition is
+ * `six of six decided → first included KG available`, and adding a second
+ * lock would be the extra unmodelled gate the target explicitly refuses.
+ * The confirmation exists, is journalled, and drives the "changed since you
+ * confirmed it" notice — it does not gate the work twice.
+ */
+export function kgScopeDecisionsComplete(
+  s: Pick<Store, 'kgConfig' | 'opportunityId'>,
+): boolean {
+  return hasKgConfiguration(s) && scopeDecisionsComplete(s.kgConfig!)
+}
+
+export function kgChapterProgressFor(
+  s: Pick<Store, 'kgConfig' | 'opportunityId'>,
+  group: KgScopeGroup,
+): KgChapterProgress | null {
+  const catalogue = kgCatalogueFor(s)
+  if (!catalogue || !s.kgConfig) return null
+  return kgChapterProgress(catalogue, s.kgConfig, group)
+}
+
+/**
+ * All included KG configurations complete — the transition that makes
+ * Schedule available (this ticket's end boundary).
+ */
+export function kgConfigurationCompleteFor(
+  s: Pick<Store, 'kgConfig' | 'opportunityId'>,
+): boolean {
+  const catalogue = kgCatalogueFor(s)
+  if (!catalogue || !s.kgConfig) return false
+  return kgConfigurationComplete(catalogue, s.kgConfig)
+}
+
+/**
+ * THE commercial result. One object, produced once, for every surface.
+ *
+ * It is derived from `computeProjection` rather than beside it, so the rail
+ * cannot show a total the comparison screen, the export preflight or a
+ * snapshot disagrees with — which is precisely the class of defect F-001
+ * recorded.
+ */
+export function commercialResult(s: Store): CommercialResult {
+  const projection = s.projection()
+  const decisions = s.kgConfig
+  const catalogue = kgCatalogueFor(s)
+  const decisionOf = (group: CostGroup): KgScopeDecision | 'notDecidable' => {
+    if (!decisions) {
+      // Without a KG configuration the legacy coverage IS the decision, and
+      // its third state has always meant "not answered".
+      const state = s.coverage[group]
+      return state === 'included' ? 'included'
+        : state === 'excluded' ? 'excluded'
+          : state === 'unknown' ? 'undecided' : 'notDecidable'
+    }
+    return (KG_SCOPE_GROUPS as readonly string[]).includes(group)
+      ? decisions.scope[group as KgScopeGroup]
+      : 'notDecidable'
+  }
+  const lines = commercialGroupLines(projection.kgSplit, decisionOf)
+  const discount = projection.discountDriver?.exact ?? new Decimal(0)
+  const { reconciles, drift } = reconcileCommercial(
+    lines, discount, projection.result.total.exact,
+  )
+  const counts = scopeCounts(decisionOf)
+  const progress = catalogue && decisions
+    ? KG_SCOPE_GROUPS.map((g) => kgChapterProgress(catalogue, decisions, g))
+    : []
+  return {
+    version: s.commercialResultVersion,
+    basis: hasKgConfiguration(s) ? 'kgConfiguration' : 'proposal',
+    total: projection.result.total,
+    totalLabel: projection.result.totalLabel,
+    coverage: projection.result.completeness === 'complete' ? 'total' : 'subtotal',
+    uncertaintyPp: projection.uncertaintyPp,
+    leadRate: projection.leadRate,
+    byCostGroup: lines,
+    contributions: projection.result.drivers,
+    scope: {
+      ...counts,
+      selectedServices: progress.reduce((n, p) => n + p.selectedServiceCount, 0),
+      openDecisions: catalogue && decisions
+        ? openKgDecisionCount(catalogue, decisions) : 0,
+      invalidServices: progress.reduce(
+        (n, p) => n + p.invalidServiceIds.length + p.blockedServiceIds.length, 0,
+      ),
+    },
+    lastChange: s.lastCommercialChange,
+    status: 'ready',
+    reconciles,
+    reconciliationDrift: drift,
+  }
+}
+
+/**
+ * The reconciliation the live diagnostic reads (F-001).
+ *
+ * It answers the question the broken check only appeared to ask: do the
+ * contributions the product is SHOWING sum to the total it is showing? The
+ * replaced check read a two-entry excerpt out of an archived fixture run and
+ * compared it against that run's full total — a comparison that could only
+ * ever fail, and did, on a surface a user can reach.
+ */
+export function commercialReconciliation(s: Store): Readonly<{
+  reconciles: boolean
+  contributionsExact: Decimal
+  groupedExact: Decimal
+  totalExact: Decimal
+  contributionCount: number
+}> {
+  const result = commercialResult(s)
+  const contributionsExact = result.contributions
+    .reduce((sum, d) => sum.plus(d.exact), new Decimal(0))
+  const groupedExact = result.byCostGroup
+    .reduce((sum, line) => sum.plus(line.exact ?? new Decimal(0)), new Decimal(0))
+    .plus(result.contributions
+      .filter((d) => d.block === 'discount')
+      .reduce((sum, d) => sum.plus(d.exact), new Decimal(0)))
+  const totalExact = result.total.exact
+  return {
+    reconciles: contributionsExact.equals(totalExact)
+      && groupedExact.equals(totalExact)
+      && result.contributions.length > 0,
+    contributionsExact,
+    groupedExact,
+    totalExact,
+    contributionCount: result.contributions.length,
+  }
+}
+
 export function konfiguratorLocked(
   s: Pick<Store, 'buildings' | 'included' | 'buildingReviews'
     | 'buildingConfirmation' | 'buildingConflicts'> & Partial<BuildingScopeState>,
@@ -2355,12 +2697,18 @@ export function configForOption(
  */
 export function eligibleClientOptions(
   s: Pick<Store, 'options' | 'activeOptionId' | 'optionConfigs' | 'buildingConflicts'
-    | keyof OptionConfig>,
+    | 'opportunityId' | keyof OptionConfig>,
 ): Array<{ id: string; name: string }> {
   return s.options.filter((o) => {
     const cfg = configForOption(s, o.id)
     if (!cfg) return false
-    const withConflicts = { ...cfg, buildingConflicts: s.buildingConflicts }
+    const withConflicts = {
+      ...cfg,
+      buildingConflicts: s.buildingConflicts,
+      // The catalogue is resolved from the PROJECT, which is an Opportunity-
+      // level fact and therefore not part of an Option's own config.
+      opportunityId: s.opportunityId,
+    }
     return canBeginConfiguration(withConflicts) && configurationComplete(withConflicts)
   })
 }
@@ -2432,6 +2780,12 @@ export type PriceChange =
   | { kind: 'kg700'; value: 'vereinfacht' | 'hoaiAho' }
   | { kind: 'kg300'; buildingId: string; groupId: string; value: string }
   | { kind: 'scopeCatalog'; optionId: string; value: string }
+  // VR3-03: the two decisions the unified Konfigurator records. They exist
+  // here for the same reason every other case does — the consequence the
+  // user is promised before the click has to be computed by the SAME
+  // function that computes it after, or the promise and the outcome drift.
+  | { kind: 'kgScope'; group: KgScopeGroup; value: KgScopeDecision }
+  | { kind: 'kgService'; serviceId: string; value: KgServiceDecisionRecord }
 
 /**
  * Состояние, каким оно СТАНЕТ, если решение принять. Гипотеза, а не запись:
@@ -2500,7 +2854,65 @@ function withChange<S extends Parameters<typeof computeProjection>[0] & {
           ...s.scopeCatalogChoices, [change.optionId]: change.value,
         },
       }
+    case 'kgScope':
+      // The legacy `coverage` mirror moves WITH the decision, in the same
+      // hypothetical state: every released consumer of `coverage` (the rail's
+      // DIN 276 rows, the export preflight, the client projection) would
+      // otherwise preview a scope that disagrees with the total beside it.
+      return s.kgConfig
+        ? {
+          ...s,
+          kgConfig: {
+            ...s.kgConfig,
+            scope: { ...s.kgConfig.scope, [change.group]: change.value },
+          },
+          coverage: {
+            ...s.coverage,
+            [change.group]: coverageStateOfKgDecision(change.value),
+          },
+        }
+        : s
+    case 'kgService':
+      return s.kgConfig
+        ? {
+          ...s,
+          kgConfig: {
+            ...s.kgConfig,
+            services: { ...s.kgConfig.services, [change.serviceId]: change.value },
+          },
+        }
+        : s
   }
+}
+
+/**
+ * The legacy `Coverage` value a KG scope decision maps to.
+ *
+ * `undecided` becomes `'unknown'` — the third state the released type always
+ * had and `migrateCoverage` used to erase on read. Erasing it was correct
+ * while no surface could express it; now one can, and reviving the value is
+ * what lets the released consumers (`deriveCompleteness`, the rail, the
+ * export preflight) keep reading ONE coverage instead of two.
+ */
+function coverageStateOfKgDecision(decision: KgScopeDecision): CoverageState {
+  return decision === 'included' ? 'included'
+    : decision === 'excluded' ? 'excluded'
+      : 'unknown'
+}
+
+/** The legacy `Coverage` a whole KG configuration implies. */
+export function coverageFromKgDecisions(decisions: KgDecisions): Coverage {
+  const coverage: Coverage = {
+    ...INITIAL_COVERAGE,
+    // KG 100 and KG 800 are not decidable in this Product; the KG
+    // configuration says nothing about them and must not pretend to.
+    KG_100: 'notApplicable',
+    KG_800: 'excluded',
+  }
+  for (const group of KG_SCOPE_GROUPS) {
+    coverage[group] = coverageStateOfKgDecision(decisions.scope[group])
+  }
+  return coverage
 }
 
 /**
@@ -2543,13 +2955,229 @@ function unpricedScopeCatalogGroups(
   return out
 }
 
-function computeProjection(
-  s: Pick<Store, 'buildings' | 'activeBuildingId' | 'included' | 'coverage'
-    | 'fields' | 'esConfirmed' | 'regionalfaktorActive' | 'kg300' | 'kg700Mode'
-    | 'risikoAktiv' | 'scopeBuildingId' | 'discountPercent'
-    | 'configurationMode' | 'sharedConfiguration' | 'buildingReviews'
-    | 'constructionStartDate' | 'scopeCatalogChoices' | 'scopeCatalogQuantities'>,
+/**
+ * The Bauzeit hero, unchanged from the released implementation and extracted
+ * so both pricing bases read ONE schedule.
+ *
+ * Schedule is VR3-04's stage; this ticket must not invent a delivery window
+ * for the VR3 projects, so the KG-configuration basis keeps the same fixture
+ * schedule the released product already shows rather than a second answer.
+ *
+ * Rule 39: Bauzeit is `max(start + dauer)` over the included buildings, never
+ * a sum and never one arbitrarily chosen building.
+ */
+function proposalDuration(
+  s: Pick<Store, 'buildings' | 'included' | 'scopeBuildingId' | 'constructionStartDate'>,
+): DurationDisplay {
+  const list = scopedBuildings(s)
+  const executionAnchor = demo.schedule.metrics
+    .find((m) => m.metricKey === 'project.planning')!.startDate
+  const buildingExecutionWindows = list.map((b) => {
+    const fixture = demo.schedule.metrics
+      .find((m) => m.metricKey === `building:${b.id}.execution`)!
+    return { buildingId: b.id, startDate: fixture.startDate, endDate: fixture.endDate }
+  })
+  const latestExecution = buildingExecutionWindows.reduce((latest, current) => (
+    current.endDate > latest.endDate ? current : latest
+  ))
+  const shiftedExecution = (s.constructionStartDate
+    ? shiftScheduleMetrics(
+      [latestExecution],
+      executionAnchor,
+      s.constructionStartDate,
+    )
+    : [latestExecution])[0]!
+  return presentDuration(
+    {
+      metricKey: `building:${latestExecution.buildingId}.execution`,
+      kind: 'buildingExecution',
+      startDate: shiftedExecution.startDate,
+      endDate: shiftedExecution.endDate,
+      durationBasis: 'calendarDay',
+    },
+    modelDuration(
+      list.reduce((a, b) => a.plus(bgfAboveGround(b)), new Decimal(0)),
+      D('1.00'), D('1.15'),
+    ),
+  )
+}
+
+type ProjectionInput = Pick<Store, 'buildings' | 'activeBuildingId' | 'included' | 'coverage'
+  | 'fields' | 'esConfirmed' | 'regionalfaktorActive' | 'kg300' | 'kg700Mode'
+  | 'risikoAktiv' | 'scopeBuildingId' | 'discountPercent'
+  | 'configurationMode' | 'sharedConfiguration' | 'buildingReviews'
+  | 'constructionStartDate' | 'scopeCatalogChoices' | 'scopeCatalogQuantities'>
+  & Partial<Pick<Store, 'kgConfig' | 'opportunityId' | 'scopeBuildings'
+    | 'scopeSelected' | 'scopeEdits'>>
+
+/**
+ * ONE projection, TWO bases (VR3-03).
+ *
+ * The `Projection` shape is unchanged, and that is the point: the rail, the
+ * comparison screen, the export preflight, the client projection and every
+ * snapshot already read it, so switching what PRICES an Option cannot make
+ * two surfaces disagree about the same Option. What changes is only where
+ * the drivers come from.
+ *
+ * An Option with a KG configuration is priced from it. An Option without one
+ * — a directly driven store, a payload saved before this contract — keeps the
+ * released proposal engine untouched. The switch is the presence of the
+ * configuration, never a flag someone has to remember to set.
+ */
+function computeProjection(s: ProjectionInput): Projection {
+  const catalogue = kgCatalogueOf(s)
+  if (s.kgConfig && catalogue) return kgConfigurationProjection(s, catalogue, s.kgConfig)
+  return proposalProjection(s)
+}
+
+/** The catalogue this state prices against, or `null`. */
+function kgCatalogueOf(s: Partial<Pick<Store, 'opportunityId'>>): KgCatalogue | null {
+  return kgCatalogue(s.opportunityId ?? null)
+}
+
+/**
+ * The Option's commercial result, derived from its own KG configuration.
+ *
+ * Every euro here is a declared demonstration amount from
+ * `src/fixtures/kg-configuration.json`, summed by
+ * `src/engine/kgConfiguration.ts`. Nothing is a coefficient this ticket
+ * invented, and no released formula is touched: the drivers ARE the
+ * configuration, so the Kostentreiber, the DIN 276 table and the total are
+ * three views of one list rather than three calculations (F-001).
+ */
+function kgConfigurationProjection(
+  s: ProjectionInput, catalogue: KgCatalogue, decisions: KgDecisions,
 ): Projection {
+  const drivers = kgDrivers(catalogue, decisions)
+  const amounts = kgGroupAmounts(catalogue, decisions)
+  const beforeDiscount = kgTotal(catalogue, decisions)
+  const allDrivers: Driver[] = [...drivers]
+  if (s.discountPercent && !s.discountPercent.isZero()) {
+    const factor = s.discountPercent.div(100)
+    allDrivers.push({
+      key: 'rabatt',
+      origin: 'decision',
+      block: 'discount',
+      exact: beforeDiscount.mul(factor).negated(),
+      label: `Rabatt ${formatDE(s.discountPercent, 1)}${NNBSP}%`,
+      scopeRefs: [],
+      basis: { kind: 'factor', appliedTo: beforeDiscount, factor },
+    })
+  }
+  const total = beforeDiscount.plus(sumOfBlock(allDrivers, 'discount'))
+  const kgSplitFull: Projection['kgSplit'] = {
+    KG_300: amounts.KG_300 ?? new Decimal(0),
+    KG_400: amounts.KG_400 ?? new Decimal(0),
+    ...(amounts.KG_200 ? { KG_200: amounts.KG_200 } : {}),
+    ...(amounts.KG_500 ? { KG_500: amounts.KG_500 } : {}),
+    ...(amounts.KG_600 ? { KG_600: amounts.KG_600 } : {}),
+    ...(amounts.KG_700 ? { KG_700: amounts.KG_700 } : {}),
+  }
+  // Completeness is a statement about the SCOPE, not about the arithmetic.
+  // Six explicit decisions and no open service decision make it a total;
+  // anything less is a subtotal of the positions that ARE priced, which is
+  // exactly what rule 16 and R-18 require instead of a confident zero.
+  const undecidedGroups = KG_SCOPE_GROUPS.filter((g) => decisions.scope[g] === 'undecided')
+  const openDecisions = openKgDecisionCount(catalogue, decisions)
+  const unpriced = unpricedIncludedKgGroups(catalogue, decisions)
+  const incompleteReasons: IncompleteReason[] = [
+    ...(undecidedGroups.length > 0
+      ? [{ code: 'coverageUnknown' as const, groups: [...undecidedGroups] }] : []),
+    ...(unpriced.length > 0
+      ? [{ code: 'includedUnpriced' as const, groups: [...unpriced] }] : []),
+    ...(openDecisions > 0
+      ? [{ code: 'openMaterialIssues' as const, count: openDecisions }] : []),
+  ]
+  const completeness = incompleteReasons.length === 0 ? 'complete' : 'incomplete'
+  const scopedBuildingList = kgScopeBuildings(s)
+  const result: BuildingResult = {
+    buildingId: scopedBuildingList.map((b) => b.id).join('+') || 'kg-configuration',
+    drivers: allDrivers,
+    bauwerk: (amounts.KG_300 ?? new Decimal(0)).plus(amounts.KG_400 ?? new Decimal(0)),
+    total: present(total),
+    totalLabel: calculationTotalLabel(completeness, DECLARED_PRICING_SCOPE),
+    completeness,
+    incompleteReasons,
+  }
+  const areas = kgScopeAreas(s, scopedBuildingList)
+  // Rule 39: unit values are derived FROM the sums, never averaged, and a
+  // complex names BGF above ground — the denominator the label promises.
+  const denominator = areas.bgfAbove.gt(0) ? areas.bgfAbove : new Decimal(1)
+  const leadRate = scopedBuildingList.length > 1 || areas.wfl === null
+    ? (areas.nuf !== null && scopedBuildingList.length === 1 && areas.wfl === null
+      ? rate(total, areas.nuf, 'NUF_DIN277')
+      : rate(total, denominator, 'BGF_ABOVE_GROUND'))
+    : rate(total, areas.wfl, 'WFL_WOFLV')
+  return {
+    result,
+    kgSplit: kgSplitFull,
+    discountDriver: allDrivers.find((d) => d.key === 'rabatt') ?? null,
+    leadRate,
+    secondaryRateBgf: rate(total, denominator, 'BGF_ABOVE_GROUND'),
+    perUnit: areas.units === null || areas.units.lte(0)
+      ? null
+      : rate(total, areas.units, 'WOHNEINHEITEN'),
+    duration: proposalDuration(s),
+    aboveGround: present(total.minus(areas.belowGroundShare)),
+    belowGround: present(areas.belowGroundShare),
+    // The demonstration band is DECLARED by the fixture, not narrowed by a
+    // rule this ticket owns: an indicative offer's uncertainty is a Product
+    // statement about the evidence, and inventing a narrowing here would be
+    // inventing commercial semantics (D-19).
+    uncertaintyPp: Number.parseFloat(catalogue.uncertaintyPercent),
+  }
+}
+
+const DECLARED_PRICING_SCOPE = 'Grundleistung All3'
+
+/** The Option's selected scope buildings, or an empty list. */
+function kgScopeBuildings(s: ProjectionInput): readonly ScopeBuilding[] {
+  const buildings = s.scopeBuildings ?? []
+  const selected = s.scopeSelected ?? {}
+  const chosen = buildings.filter((b) => selected[b.id])
+  return chosen.length > 0 ? chosen : buildings
+}
+
+/**
+ * The denominators the lead metric is allowed to use.
+ *
+ * `null` is a real answer: a building whose WFL is unknown must never borrow
+ * another denominator under the same label (DATA-001), and a complex never
+ * sums WFL and NUF into one figure (rule 39 / R-11).
+ */
+function kgScopeAreas(s: ProjectionInput, buildings: readonly ScopeBuilding[]) {
+  const metric = (b: ScopeBuilding, key: ScopeMetricKey): Decimal | null => {
+    const raw = scopeMetricValue({ scopeEdits: s.scopeEdits ?? {} }, b, key)
+    if (raw === null || raw.trim() === '') return null
+    try {
+      const value = new Decimal(raw)
+      return value.isFinite() ? value : null
+    } catch {
+      return null
+    }
+  }
+  const sumOf = (key: ScopeMetricKey): Decimal | null => {
+    const values = buildings.map((b) => metric(b, key))
+    return values.every((v): v is Decimal => v !== null) && values.length > 0
+      ? values.reduce((a, v) => a.plus(v), new Decimal(0))
+      : null
+  }
+  const bgfAbove = sumOf('bgfRSAbove') ?? new Decimal(0)
+  const bgfBelow = sumOf('bgfRSBelow') ?? new Decimal(0)
+  const bgfTotal = bgfAbove.plus(bgfBelow)
+  return {
+    bgfAbove,
+    wfl: sumOf('wfl'),
+    nuf: sumOf('nuf'),
+    units: sumOf('units'),
+    /** Only for the released above/below split the rail already renders. */
+    belowGroundShare: bgfTotal.isZero()
+      ? new Decimal(0)
+      : bgfBelow.div(bgfTotal),
+  }
+}
+
+function proposalProjection(s: ProjectionInput): Projection {
   const CATALOG = withRegionalFactor(s.regionalfaktorActive)
   const list = scopedBuildings(s)
   if (list.length === 0) {
@@ -2893,36 +3521,7 @@ function computeProjection(
   // здания в списке. Rule 39 (Bauzeit = max(start+dauer), никогда сумма
   // и никогда одно случайно выбранное здание): взять реальное окно КАЖДОГО
   // включённого здания из фикстуры и выбрать здание с самым поздним концом.
-  const executionAnchor = demo.schedule.metrics
-    .find((m) => m.metricKey === 'project.planning')!.startDate
-  const buildingExecutionWindows = list.map((b) => {
-    const fixture = demo.schedule.metrics
-      .find((m) => m.metricKey === `building:${b.id}.execution`)!
-    return { buildingId: b.id, startDate: fixture.startDate, endDate: fixture.endDate }
-  })
-  const latestExecution = buildingExecutionWindows.reduce((latest, current) => (
-    current.endDate > latest.endDate ? current : latest
-  ))
-  const shiftedExecution = (s.constructionStartDate
-    ? shiftScheduleMetrics(
-      [latestExecution],
-      executionAnchor,
-      s.constructionStartDate,
-    )
-    : [latestExecution])[0]!
-  const duration = presentDuration(
-    {
-      metricKey: `building:${latestExecution.buildingId}.execution`,
-      kind: 'buildingExecution',
-      startDate: shiftedExecution.startDate,
-      endDate: shiftedExecution.endDate,
-      durationBasis: 'calendarDay',
-    },
-    modelDuration(
-      list.reduce((a, b) => a.plus(bgfAboveGround(b)), new Decimal(0)),
-      D('1.00'), D('1.15'),
-    ),
-  )
+  const duration = proposalDuration(s)
 
   // Интервал: базовые 22 пункта минус объявленные фикстурой сужения.
   // Фикстура задаёт Δ ровно для двух подтверждений: WFL −5 Pp и
@@ -3239,6 +3838,37 @@ const store = createStore<Store>((set, get) => {
    * makes "fixation gates the ghost" a structural invariant instead of a
    * per-action habit that new/existing actions can silently skip.
    */
+  /**
+   * Publishes the CAUSAL change the rail explains (T-028, M-07).
+   *
+   * Separate from `activeDelta` on purpose: the delta chip is a four-second
+   * acknowledgement of an action, while the rail's line answers "what is the
+   * last thing that moved this number" and must still answer it after the
+   * chip has gone and after the user has walked to another chapter. One
+   * lifetime for two different questions was how the rail came to report
+   * state without causality (F-010).
+   *
+   * A change with no price effect is still published: "this decision changed
+   * nothing" is information, and printing nothing would leave the previous,
+   * now-superseded explanation standing.
+   */
+  const publishCommercialChange = (
+    labels: { de: string; en: string },
+    signedExact: Decimal,
+    group: CostGroup | null,
+  ) => {
+    set((state) => ({
+      lastCommercialChange: {
+        id: `chg-${state.journal.length + 1}`,
+        labelDe: labels.de,
+        labelEn: labels.en,
+        signedExact,
+        group,
+        atIso: new Date().toISOString(),
+      },
+    }))
+  }
+
   const apply = (
     e: Omit<JournalEvent, 'seq' | 'at' | 'optionId'>,
     optionIdOverride?: string | null,
@@ -3414,6 +4044,8 @@ const store = createStore<Store>((set, get) => {
     },
 
     uiLanguage: 'de',
+    lastCommercialChange: null,
+    commercialResultVersion: 0,
     density: 'komfortabel',
 
     projection: () => computeProjection(get()),
@@ -4651,6 +5283,16 @@ const store = createStore<Store>((set, get) => {
         fresh.scopeSelected = initialScopeSelection(inheritedScope)
         fresh.scopeActiveBuildingId = inheritedScope[0]!.id
       }
+      // VR3-03: the Option starts with SIX UNDECIDED scope decisions and its
+      // project's own service catalogue. Nothing is pre-included and nothing
+      // is pre-excluded — that absence is the state the target's first frame
+      // shows (T-018) and the defect the replaced model could not express.
+      const catalogue = kgCatalogue(s.opportunityId)
+      if (catalogue) {
+        fresh.kgConfig = initialKgDecisions(catalogue)
+        fresh.kgScopeConfirmedFingerprint = null
+        fresh.coverage = coverageFromKgDecisions(fresh.kgConfig)
+      }
       // Состояние ДО создания — целиком, чтобы отмена вернула его, а не
       // приблизила: рабочая копия, хранилище конфигураций, активная Option
       // и уровень.
@@ -5160,6 +5802,144 @@ const store = createStore<Store>((set, get) => {
         inverse: () => write(prev),
         forward: () => write(value),
       })
+    },
+
+    setKgScopeDecision: (group, decision) => {
+      const s = get()
+      if (!s.kgConfig || !kgCatalogueFor(s)) return
+      const prev = s.kgConfig.scope[group]
+      if (prev === decision) return
+      const before = s.projection().result.total.exact
+      const write = (value: KgScopeDecision) => set((state) => {
+        if (!state.kgConfig) return {}
+        const next: KgDecisions = {
+          ...state.kgConfig,
+          scope: { ...state.kgConfig.scope, [group]: value },
+        }
+        return {
+          kgConfig: next,
+          // ONE coverage. Every released consumer — the DIN 276 rail rows,
+          // the export preflight, the client projection — reads
+          // `coverage`, so the decision has to land in both or two surfaces
+          // describe the same Option differently.
+          coverage: coverageFromKgDecisions(next),
+          commercialResultVersion: state.commercialResultVersion + 1,
+        }
+      })
+      write(decision)
+      const after = get().projection().result.total.exact
+      const delta = after.minus(before)
+      const labels = kgChangeLabels({ kind: 'kgScope', group, value: decision })
+      publishCommercialChange(labels, delta, group)
+      apply({
+        kind: 'coverage.changed',
+        label: labels.de,
+        deltaExact: delta.isZero() ? null : delta,
+        inverse: () => write(prev),
+        forward: () => write(decision),
+      })
+      if (!delta.isZero()) {
+        set({
+          activeDelta: {
+            label: labels.de,
+            deltaExact: delta,
+            percent: before.isZero() ? null : delta.div(before).mul(100),
+          },
+        })
+      }
+    },
+
+    setKgServiceDecision: (serviceId, decision) => {
+      const s = get()
+      const catalogue = kgCatalogueFor(s)
+      if (!s.kgConfig || !catalogue) return
+      const service = kgServiceById(catalogue, serviceId)
+      if (!service) return
+      const prev = kgServiceDecision(s.kgConfig, service)
+      if (prev.state === decision.state
+        && prev.variant === decision.variant
+        && prev.quantity === decision.quantity) return
+      const before = s.projection().result.total.exact
+      const write = (value: KgServiceDecisionRecord) => set((state) => {
+        if (!state.kgConfig) return {}
+        return {
+          kgConfig: {
+            ...state.kgConfig,
+            services: { ...state.kgConfig.services, [serviceId]: value },
+          },
+          commercialResultVersion: state.commercialResultVersion + 1,
+          // ONE energy standard. The axis has a released home in the
+          // building model, and exactly one surface still displays it from
+          // there (the comparison screen's per-building parameter line). A
+          // configured variant that moved the price without moving that
+          // field would put two different standards on two screens of the
+          // same Option — the cross-surface contradiction this ticket
+          // exists to close. The bridge is deliberate and narrow: one axis,
+          // one map, named here rather than inferred from a string.
+          ...(ENERGY_STANDARD_SERVICE_IDS.has(serviceId)
+            && value.state === 'selected' && value.variant
+            && ENERGY_STANDARD_OF_VARIANT[value.variant]
+            ? {
+              buildings: Object.fromEntries(
+                Object.entries(state.buildings).map(([id, building]) => [
+                  id,
+                  { ...building, energiestandard: ENERGY_STANDARD_OF_VARIANT[value.variant!]! },
+                ]),
+              ),
+            }
+            : {}),
+        }
+      })
+      write(decision)
+      const after = get().projection().result.total.exact
+      const delta = after.minus(before)
+      const labels = kgChangeLabels({ kind: 'kgService', serviceId, value: decision })
+      const group = KG_SCOPE_GROUPS.find((g) => {
+        const chapter = catalogue.chapters.find((c) => c.group === g)
+        return chapter?.groups.some((sg) => sg.services.some((sv) => sv.id === serviceId))
+      }) ?? null
+      publishCommercialChange(labels, delta, group)
+      apply({
+        kind: 'option.selected',
+        label: labels.de,
+        deltaExact: delta.isZero() ? null : delta,
+        inverse: () => write(prev),
+        forward: () => write(decision),
+      })
+      if (!delta.isZero()) {
+        set({
+          activeDelta: {
+            label: labels.de,
+            deltaExact: delta,
+            percent: before.isZero() ? null : delta.div(before).mul(100),
+          },
+        })
+      }
+    },
+
+    confirmKgScope: () => {
+      const s = get()
+      if (!s.kgConfig || !kgScopeDecisionsComplete(s)) return
+      const fingerprint = kgScopeFingerprint(s.kgConfig)
+      if (s.kgScopeConfirmedFingerprint === fingerprint) return
+      const prev = s.kgScopeConfirmedFingerprint
+      const write = (value: string | null) => set({ kgScopeConfirmedFingerprint: value })
+      write(fingerprint)
+      apply({
+        kind: 'value.confirmed',
+        label: 'Leistungsabgrenzung bestätigt',
+        labelKey: 'vr3.journal.kgScopeConfirmed',
+        deltaExact: null,
+        inverse: () => write(prev),
+        forward: () => write(fingerprint),
+      })
+    },
+
+    openKgChapter: (group) => {
+      const s = get()
+      if (!kgScopeDecisionsComplete(s)) return
+      if (s.kgConfig?.scope[group] !== 'included') return
+      get().openConfiguratorStepAt(KG_CHAPTER_STEP[group])
     },
 
     setKg800ClientRevealed: (revealed) => {
@@ -5816,7 +6596,8 @@ const LABELS: Record<'wfl' | 'bgfOber' | 'we', string> = {
 function isCurrent(
   s: Pick<Store, 'buildings' | 'activeBuildingId' | 'coverage' | 'risikoAktiv'
     | 'kg700Mode' | 'kg300' | 'configurationMode' | 'sharedConfiguration'
-    | 'included' | 'scopeCatalogChoices'>,
+    | 'included' | 'scopeCatalogChoices'>
+    & Partial<Pick<Store, 'kgConfig'>>,
   change: PriceChange,
 ): boolean {
   switch (change.kind) {
@@ -5833,7 +6614,59 @@ function isCurrent(
       return choicesFor(s, change.buildingId)[change.groupId] === change.value
     case 'scopeCatalog':
       return s.scopeCatalogChoices[change.optionId] === change.value
+    case 'kgScope':
+      return s.kgConfig?.scope[change.group] === change.value
+    case 'kgService': {
+      const held = s.kgConfig?.services[change.serviceId]
+      return held?.state === change.value.state
+        && held?.variant === change.value.variant
+        && held?.quantity === change.value.quantity
+    }
   }
+}
+
+/**
+ * The bilingual label of a KG decision, read from the catalogue that owns it.
+ *
+ * Both languages come back together because the change has to be legible on
+ * the rail in whichever language the interface is in, and a single-language
+ * label would leave the other one either raw or German (the exact class
+ * `translatedDriverLabel` is still recovering from). Service ids are unique
+ * across the two demonstration catalogues, so searching both is a lookup,
+ * not a guess.
+ */
+export function kgChangeLabels(
+  change: Extract<PriceChange, { kind: 'kgScope' | 'kgService' }>,
+): { de: string; en: string } {
+  if (change.kind === 'kgScope') {
+    const group = change.group.replace('_', `${NNBSP}`)
+    return {
+      de: `${group} ${COVERAGE_LABEL[coverageStateOfKgDecision(change.value)]}`,
+      en: `${group} ${COVERAGE_LABEL_EN[coverageStateOfKgDecision(change.value)]}`,
+    }
+  }
+  for (const catalogue of kgCatalogues()) {
+    const service = kgServiceById(catalogue, change.serviceId)
+    if (!service) continue
+    if (change.value.state === 'selected' && service.kind.kind === 'singleChoice') {
+      const variant = service.kind.variants.find((v) => v.value === change.value.variant)
+      if (variant) {
+        return {
+          de: `${service.labelDe} · ${variant.labelDe}`,
+          en: `${service.labelEn} · ${variant.labelEn}`,
+        }
+      }
+    }
+    const suffixDe = change.value.state === 'selected' ? 'aufgenommen'
+      : change.value.state === 'notSelected' ? 'nicht aufgenommen' : 'offen'
+    const suffixEn = change.value.state === 'selected' ? 'included'
+      : change.value.state === 'notSelected' ? 'not included' : 'open'
+    return {
+      de: `${service.labelDe} · ${suffixDe}`,
+      en: `${service.labelEn} · ${suffixEn}`,
+    }
+  }
+  return { de: change.serviceId, en: change.serviceId }
 }
 
 /** Подпись решения для призрака. Немецкий текст — из тех же словарей. */
@@ -5870,6 +6703,9 @@ function changeLabel(change: PriceChange): string {
       const variant = option?.variants.find((v) => v.value === change.value)
       return `${option?.labelDe ?? change.optionId} · ${variant?.labelDe ?? change.value}`
     }
+    case 'kgScope':
+    case 'kgService':
+      return kgChangeLabels(change).de
   }
 }
 
@@ -5885,6 +6721,17 @@ const COVERAGE_LABEL: Record<CoverageState, string> = {
   onRequest: 'auf Anfrage',
   unknown: 'noch offen',
   notApplicable: 'nicht anwendbar',
+}
+
+/** The same six words in English. The catalogue is bilingual, so the label
+ * around it has to be too — a German word beside an English service name is
+ * the mixed-language state rule 10 forbids. */
+const COVERAGE_LABEL_EN: Record<CoverageState, string> = {
+  included: 'included',
+  excluded: 'not included',
+  onRequest: 'on request',
+  unknown: 'still open',
+  notApplicable: 'not applicable',
 }
 
 const COVERAGE_LABEL_KEY: Record<CoverageState, string> = {
@@ -5913,7 +6760,15 @@ export function translatedChangeLabel(
   change: PriceChange,
   t: (key: string, values?: Record<string, string | number>) => string,
   tx: (deText: string) => string,
+  lang: 'de' | 'en' = 'de',
 ): string {
+  // VR3-03: the KG catalogue stores BOTH languages beside each other, so this
+  // is a lookup rather than a reverse-index bridge — the one class of silent
+  // failure `translatedDriverLabel` documents.
+  if (change.kind === 'kgScope' || change.kind === 'kgService') {
+    const labels = kgChangeLabels(change)
+    return lang === 'en' ? labels.en : labels.de
+  }
   if (change.kind === 'coverage') {
     return `${change.group.replace('_', ' ')} ${t(COVERAGE_LABEL_KEY[change.value])}`
   }

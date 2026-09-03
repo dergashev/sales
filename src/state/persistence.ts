@@ -1,15 +1,19 @@
 import { Decimal } from 'decimal.js'
 
 /**
- * VR3-02 bumped this to 2.
+ * VR3-02 bumped this to 2; VR3-03 bumps it to 3.
  *
- * An Option saved before this version carries no building scope, and the
- * Konfigurator gate is now that scope: restoring such a payload would put
- * the user in an Option whose only substantive stage has nothing in it and
- * no way to fill it. The version field exists for exactly this — a stored
- * shape whose meaning changed is discarded, not guessed at.
+ * An Option saved before version 2 carries no building scope, and the
+ * Konfigurator gate is that scope. An Option saved before version 3 carries
+ * no KG configuration, and the configuration IS the offer: its six scope
+ * decisions and every service decision under them are what price it. A
+ * pre-3 payload therefore restores an Option that cannot be configured and
+ * whose stored `coverage` was written under the retired binary contract, in
+ * which "not yet answered" and "deliberately excluded" were the same value.
+ * The version field exists for exactly this — a stored shape whose meaning
+ * changed is discarded, not guessed at.
  */
-export const PROPOSAL_PERSISTENCE_VERSION = 2
+export const PROPOSAL_PERSISTENCE_VERSION = 3
 export const PROPOSAL_STORAGE_PREFIX = 'all3.proposal.v1.'
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>

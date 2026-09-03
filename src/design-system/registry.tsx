@@ -44,6 +44,17 @@ import { SemanticStatus } from './SemanticStatus'
 import { AuthorityTrace, MetricReadout } from './AuthorityTrace'
 import { DocumentRow, ProcessingJob } from './ProcessingJob'
 import { ActionGate, PrerequisiteState, ProjectReadiness } from './ActionGate'
+import { ChoiceGroup } from './ChoiceGroup'
+import { CommercialNumber } from './CommercialNumber'
+import {
+  CommercialRailChange, CommercialRailScope, CommercialRailStatus,
+} from './CommercialRail'
+import {
+  KGConfigurationPage, ServiceDecisionRow, ServiceDetailPanel, ServiceGroup,
+} from './KGConfiguration'
+import {
+  ScopeDecisionLedger, type ScopeLedgerRow,
+} from './ScopeDecisionLedger'
 import {
   BuildingBaselineProvenance,
   BuildingBaselineRow,
@@ -649,7 +660,7 @@ export const COMPONENT_REGISTRY: Specimen[] = [
   {
     id: 'uncertainty', groupId: 'domain', title: 'EstimateUncertaintyBadge (DC-3)', contractId: 'DC-3',
     requirements: ['R-08'], composedContracts: ['Badge'], interactionStates: ['default'], dataStates: ALL_DATA_STATES,
-    blockedVariants: [], maturity: 'alpha', evidence: 'Explicit ± interval in text.', render: () => <EstimateUncertaintyBadge presentation="compact" pp={22} />,
+    blockedVariants: [], maturity: 'alpha', evidence: 'Explicit ± interval in text.', render: () => <EstimateUncertaintyBadge language="de" presentation="compact" pp={22} />,
   },
   {
     id: 'docanalysis', groupId: 'domain', title: 'DocumentAnalysis (DC-10)', contractId: 'DC-10',
@@ -1284,6 +1295,220 @@ export const COMPONENT_REGISTRY: Specimen[] = [
           assumption="Annahme: Rohbau und Kern · Kundenbestätigung angefordert."
         />
       </QuestionQueue>
+    ),
+  },
+  // ── VR3-03 · the unified configuration family ─────────────────────────
+  // Five canonical capabilities declared by VR3-03 (backlog a0136b78). Each
+  // is DECLARED here once and CONSUMED by the product surfaces the manifest
+  // at `design-system/capability-governance.json` names; GOV-CAPABILITY
+  // refuses a registry-only declaration.
+  {
+    id: 'vr3-choice-group', groupId: 'domain', title: 'ChoiceGroup',
+    contractId: 'VR3 · ChoiceGroup', requirements: ['RADIO-001', 'R-04', 'R-05'],
+    composedContracts: [], interactionStates: ['undecided', 'chosen', 'disabled'],
+    dataStates: LOCAL_CONTROL_STATES,
+    blockedVariants: [], maturity: 'alpha',
+    note: 'A RECORDED DECISION, not a setting: nothing is checked until someone answers, and each option states its own consequence at all times.',
+    evidence: 'The first group is UNDECIDED — no option carries `checked` — and the decorative check layer is pointer-inert, so an ordinary click on the label activates the native input (audit F-009).',
+    render: () => (
+      <div className="grid gap-3">
+        <ChoiceGroup
+          legend="Entscheidung KG 200 Vorbereitende Maßnahmen"
+          value={null}
+          onChange={() => {}}
+          density="compact"
+          options={[
+            { value: 'included', label: 'enthalten', consequence: `+ 180.000 € Mehrpreis` },
+            { value: 'excluded', label: 'nicht enthalten', consequence: 'ohne Preiswirkung' },
+          ]}
+        />
+        <ChoiceGroup
+          legend="Entscheidung Wärmekonzept"
+          value="central"
+          onChange={() => {}}
+          options={[
+            { value: 'central', label: 'Zentraler Ambient-Loop' },
+            { value: 'perBuilding', label: 'Gebäudeweise Anlagen' },
+          ]}
+        />
+      </div>
+    ),
+  },
+  {
+    id: 'vr3-scope-decision-ledger', groupId: 'domain', title: 'ScopeDecisionLedger',
+    contractId: 'VR3 · ScopeDecisionLedger', requirements: ['SCOPE-001', 'R-18'],
+    composedContracts: ['VR3 · ChoiceGroup', 'VR3 · SemanticStatus'],
+    interactionStates: ['undecided', 'partial', 'complete'],
+    dataStates: STATIC_LAYOUT_STATES,
+    blockedVariants: [], maturity: 'alpha',
+    note: 'Six binary decisions in six compact rows — the replaced surface spent a full-width option card on each of them, and had already answered three.',
+    evidence: 'Each row names the cost group, its concise boundary, both explicit choices, what the decision means for the scope and what it means downstream; UNDECIDED is a state, not a missing value.',
+    render: () => (
+      <ScopeDecisionLedger
+        caption="Leistungsabgrenzung: sechs Kostengruppen, je eine ausdrückliche Entscheidung."
+        columns={{
+          group: 'Kostengruppe', decision: 'Entscheidung',
+          summary: 'Bedeutung für den Umfang', downstream: 'Folge',
+        }}
+        decisionLegend={(row: ScopeLedgerRow) => `Entscheidung ${row.identity} ${row.meaning}`}
+        onDecide={() => {}}
+        rows={[
+          {
+            id: 'KG_200', identity: `KG${NNBSP}200`, meaning: 'Vorbereitende Maßnahmen',
+            boundary: 'Baustelle, Rückbau, Erschließung', decision: 'undecided',
+            summary: 'Noch offen',
+            downstream: { tone: 'attention', label: 'Entscheidung erforderlich' },
+            includeLabel: 'enthalten', excludeLabel: 'nicht enthalten',
+            includeConsequence: `+ 1.120.000 € Mehrpreis`,
+            excludeConsequence: 'ohne Preiswirkung',
+          },
+          {
+            id: 'KG_300', identity: `KG${NNBSP}300`, meaning: 'Baukonstruktion',
+            boundary: 'Gründung, Untergeschosse, Tragwerk, Fassaden',
+            decision: 'included', summary: 'Im Angebotsumfang',
+            downstream: { tone: 'neutral', label: 'Konfiguration erforderlich' },
+            includeLabel: 'enthalten', excludeLabel: 'nicht enthalten',
+            includeConsequence: 'aktuelle Auswahl',
+            excludeConsequence: `− 23.980.000 € Minderpreis`,
+          },
+          {
+            id: 'KG_400', identity: `KG${NNBSP}400`, meaning: 'Technische Anlagen',
+            boundary: 'Wärme, Lüftung, Sanitär, Elektro',
+            decision: 'excluded', summary: 'Bewusst ausgeschlossen',
+            downstream: { tone: 'neutral', label: 'Nicht im Umfang · übersprungen' },
+            includeLabel: 'enthalten', excludeLabel: 'nicht enthalten',
+            includeConsequence: `+ 8.420.000 € Mehrpreis`,
+            excludeConsequence: 'aktuelle Auswahl',
+          },
+        ]}
+      />
+    ),
+  },
+  {
+    id: 'vr3-kg-configuration-page', groupId: 'domain', title: 'KGConfigurationPage',
+    contractId: 'VR3 · KGConfigurationPage', requirements: ['R-05', 'STATE-003'],
+    composedContracts: ['VR3 · ChoiceGroup', 'VR3 · SemanticStatus', 'VR3 · CommercialNumber'],
+    interactionStates: ['current', 'incomplete', 'complete', 'invalid'],
+    dataStates: STATIC_LAYOUT_STATES,
+    blockedVariants: [], maturity: 'alpha',
+    note: 'ONE page anatomy, instantiated by KG 200 through KG 700. Only the domain content and the allowed variants differ; the shell, the row contract and the navigation do not.',
+    evidence: 'Identity and scope, progress and validation, group index, service rows with progressive detail, the building-context panel and previous/next — the same six parts in every cost group.',
+    render: () => (
+      <KGConfigurationPage
+        identity={`Konfigurator · KG${NNBSP}400`}
+        title={`KG${NNBSP}400 · Technische Anlagen`}
+        lead="Wärme, Lüftung, Sanitär und Elektro für drei Baukörper mit unterschiedlicher Nutzung."
+        progress={{ tone: 'attention', label: '2 von 3 Entscheidungen getroffen' }}
+        context={<p className="a3-cap">Option mit 3 Gebäuden · Grundlage bestätigt</p>}
+        nextAction={<Button variant="primary">{`Weiter zu KG${NNBSP}500`}</Button>}
+      >
+        <ServiceGroup
+          id="specimen-heat" label="Wärme & Lüftung" decisionCount={2}
+          decisionsLabel="3 Positionen"
+        >
+          <ServiceDecisionRow
+            name="Wärmeerzeugung zentral"
+            summary="Gemeinsamer Ambient-Loop mit Wärmepumpen in der Energiezentrale."
+            controlLegend="Entscheidung Wärmeerzeugung zentral"
+            control={{
+              kind: 'toggle', checked: true, label: 'im Angebot', onToggle: () => {},
+            }}
+            status={{ tone: 'ok', label: 'Enthalten' }}
+            amount={<span className="a3-cnum a3-cnum-compact">{`+${NNBSP}1.240.000${NNBSP}€`}</span>}
+          />
+          <ServiceDecisionRow
+            name="Photovoltaik Dachflächen"
+            summary="Alle drei Dächer sind geeignet; das Energiekonzept fordert sie nicht."
+            controlLegend="Entscheidung Photovoltaik Dachflächen"
+            control={{
+              kind: 'choice', value: null, includeLabel: 'aufnehmen',
+              excludeLabel: 'nicht aufnehmen', onDecide: () => {},
+            }}
+            status={{ tone: 'attention', label: 'Entscheidung offen' }}
+            amount={<span className="a3-cnum a3-cnum-compact">kein Betrag</span>}
+          />
+          <ServiceDecisionRow
+            name="QNG-Siegel"
+            summary="QNG-PLUS setzt den Energiestandard Effizienzhaus 40 NH voraus."
+            controlLegend="Entscheidung QNG-Siegel"
+            control={{
+              kind: 'variant', value: 'plus', onDecide: () => {},
+              options: [
+                { value: 'none', label: 'kein QNG' },
+                { value: 'plus', label: 'QNG-PLUS' },
+              ],
+            }}
+            status={{ tone: 'attention', label: 'Voraussetzung fehlt' }}
+            invalid
+            warning="Diese Position setzt Energiestandard voraus."
+            amount={<span className="a3-cnum a3-cnum-compact">kein Betrag</span>}
+            detailToggle={{ label: 'Details öffnen', open: true, onToggle: () => {} }}
+            detail={(
+              <ServiceDetailPanel
+                fields={[{ label: 'Herkunft', value: 'Annahme — noch nicht bestätigt' }]}
+                dependency={{
+                  message: 'Solange Energiestandard nicht entsprechend entschieden ist, trägt diese Position nichts zum Angebot bei.',
+                  action: { label: 'Voraussetzung öffnen', onSelect: () => {} },
+                }}
+              />
+            )}
+          />
+        </ServiceGroup>
+      </KGConfigurationPage>
+    ),
+  },
+  {
+    id: 'vr3-commercial-rail', groupId: 'domain', title: 'CommercialRail',
+    contractId: 'VR3 · CommercialRail', requirements: ['CALC-014', 'R-18'],
+    composedContracts: ['VR3 · SemanticStatus', 'VR3 · CommercialNumber'],
+    interactionStates: ['updated', 'subtotal', 'error'],
+    dataStates: declareDataStates(
+      ['ready', 'partial', 'error', 'stale'],
+      'die kommerzielle Wirkung wird synchron mit dem Journalereignis neu berechnet; ein Ladezustand existiert nicht, und ein leerer Umfang ist eine Aussage, kein leerer Zustand',
+    ),
+    blockedVariants: [], maturity: 'alpha',
+    note: 'The causal half of the rail: what moved the number, what the number contains, and whether it can be trusted right now.',
+    evidence: 'The change block states the decision by name with its signed amount and stays after the delta chip has gone; a subtotal says so; a failed reconciliation is reported rather than asserted away in a caption.',
+    render: () => (
+      <div className="grid gap-3">
+        <CommercialRailScope
+          heading="Enthaltener Umfang"
+          rows={[
+            { label: 'Kostengruppen enthalten', value: '6 von 6' },
+            { label: 'aufgenommene Positionen', value: '50' },
+            { label: 'offene Entscheidungen', value: '11' },
+          ]}
+        />
+        <CommercialRailChange
+          heading="Zuletzt geändert"
+          label="Wärmeerzeugung zentral · aufgenommen"
+          direction="increase"
+          amount={<span className="a3-cnum a3-cnum-default">{`+${NNBSP}1.240.000${NNBSP}€`}</span>}
+          meta={`KG${NNBSP}400`}
+        />
+        <CommercialRailStatus
+          tone="attention"
+          label="Zwischensumme"
+          reason="Noch 11 offene Entscheidungen — die Summe nennt nur die kalkulierten Positionen."
+        />
+      </div>
+    ),
+  },
+  {
+    id: 'vr3-commercial-number', groupId: 'domain', title: 'CommercialNumber',
+    contractId: 'VR3 · CommercialNumber', requirements: ['R-16', 'NBSP'],
+    composedContracts: [], interactionStates: ['default'],
+    dataStates: STATIC_LAYOUT_STATES,
+    blockedVariants: [], maturity: 'alpha',
+    note: 'The single formatted output of the canonical commercial result: one rounding rule, one narrow no-break space, one locale bridge.',
+    evidence: 'A null amount is rendered as the absence it is and never as 0 (rule 16); a signed value prints U+2212 MINUS, because at these sizes a hyphen reads as a dash and the sign is the message.',
+    render: () => (
+      <div className="grid gap-2">
+        <CommercialNumber exact={new Decimal('38740000')} language="de" emphasis="hero" />
+        <CommercialNumber exact={new Decimal('1240000')} language="de" signed />
+        <CommercialNumber exact={new Decimal('-310000')} language="de" signed />
+        <CommercialNumber exact={null} language="de" absentLabel="kein Betrag" emphasis="compact" />
+      </div>
     ),
   },
 ]

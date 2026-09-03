@@ -189,7 +189,13 @@ describe('proposal store recovery', () => {
     const raw = storage.getItem(proposalStorageKey('DEMO-0001'))!
     expect(raw).toContain('"configurationModeChosen":true')
     expect(raw).toContain('"pricingStarted":true')
-    expect(raw).toContain(`"${CONFIGURATOR_STEP.KG_400_DETAILS}"`)
+    expect(st().openConfiguratorStep).toBe(CONFIGURATOR_STEP.KG_400_DETAILS)
+    // VR3-03: what a reload has to bring back is the Option's own
+    // CONFIGURATION, not a list of chapters someone walked past. The
+    // per-scope visit list was the retired "visited means done" progress
+    // model; the six scope decisions and every service decision are the
+    // durable state now, and they are persisted as one object.
+    expect(raw).toContain('"kgConfig"')
 
     __resetStoreForTests()
     const restoredStorage = new MemoryStorage()
@@ -198,16 +204,22 @@ describe('proposal store recovery', () => {
     expect(st().configurationModeChosen).toBe(true)
     expect(st().configurationMode).toBe('PER_BUILDING')
     expect(st().pricingStarted).toBe(true)
-    // Leistungsabgrenzung (chapter 1) is project-level, not building-scoped
-    // — confirmConfigurationMode no longer records it into this per-building
-    // list; only the explicit chapter-3 visit does.
-    expect(st().configurationVisitedChapters['DEMO-B-A'])
-      .toEqual([CONFIGURATOR_STEP.KG_400_DETAILS])
+    // VR3-03: no configuration stage is building-scoped any more, so the
+    // per-building visit list stays empty by construction — and nothing
+    // reads it as progress. The list itself is kept (a v2 payload can carry
+    // one, and the migration below still has to normalise it) rather than
+    // deleted, which is the same "dormant, not removed" treatment KG 800
+    // already gets.
+    expect(st().configurationVisitedChapters['DEMO-B-A']).toBeUndefined()
 
     // Payloads written before semantic step identities stored chapter 3 for
-    // the same KG-400 progress. Restore migrates it without keeping numeric
-    // authority in live state.
-    const legacyRaw = raw.replace(`"${CONFIGURATOR_STEP.KG_400_DETAILS}"`, '3')
+    // the same KG-400 progress. Restore still migrates a numeric chapter to
+    // its semantic identity — the reader has to keep working on a v2-shaped
+    // list even though nothing writes one any more.
+    const legacyRaw = raw.replace(
+      '"configurationVisitedChapters":{}',
+      '"configurationVisitedChapters":{"DEMO-B-A":[3]}',
+    )
     __resetStoreForTests()
     const legacyStorage = new MemoryStorage()
     legacyStorage.setItem(proposalStorageKey('DEMO-0001'), legacyRaw)

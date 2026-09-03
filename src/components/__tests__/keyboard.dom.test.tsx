@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
-import { confirmBuildingReviewSections, confirmWholeConfiguration, enterOptionWorkspace, completeBuildingScope } from '../../test/offer-option'
+import { CONFIGURATOR_STEP } from '../../state/chapters'
+import { confirmBuildingReviewSections, confirmWholeConfiguration, enterOptionWorkspace, completeBuildingScope, decideAllKgScope, completeKgConfiguration } from '../../test/offer-option'
 import { __resetStoreForTests, useStore } from '../../state/store'
 
 /**
@@ -38,13 +39,12 @@ async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
   await enterOption(user)
   await confirmBuildingReviewSections(user)
   completeBuildingScope('PER_BUILDING')
+  // VR3-03: the six cost groups are stages of the one journey now, and a
+  // KG page opens only once every scope decision is explicit.
+  decideAllKgScope('included')
   act(() => {
-    useStore.getState().setCoverage('KG_300', 'included')
-    useStore.getState().setCoverage('KG_400', 'included')
-    useStore.getState().setCoverage('KG_700', 'included')
+    useStore.getState().openConfiguratorStepAt(CONFIGURATOR_STEP.KG_300_DETAILS)
   })
-  await user.click(screen.getAllByRole('button', { name: /Leistungsabgrenzung/ })[0]!)
-  await user.click(screen.getAllByRole('button', { name: /Leistungen KG 300/ })[0]!)
 }
 
 describe('Projektstatus-Überblick (Task 01) — roving tabindex (TABS-001/KEY-003 keyboard contract)', () => {
@@ -177,15 +177,18 @@ describe('Опции — нативная radio-группа (RADIO-001)', () =>
     await enterPipeline(user)
     // Навигация настоящая, через интерфейс: дёргать store мимо React
     // значило бы проверять не тот путь, которым ходит пользователь.
-    // "Rebuild Project Card Workflow" Part 14/15: Energiestandard editing
-    // moved into Leistungsabgrenzung (Scope Boundaries) itself — the
-    // standalone "Energie & Zertifikate" chapter this test used to
-    // navigate to no longer exists. Пункт главы в сайдбаре — первый из
-    // совпадающих (второй появляется в подписи кнопки «Weiter» внизу
-    // рабочей области).
-    await user.click(screen.getAllByRole('button', { name: /Leistungsabgrenzung/ })[0]!)
+    // VR3-03: Energiestandard is a CONFIGURED VARIANT of a KG 400 service
+    // now — the same decision, in the cost group whose services deliver it,
+    // rendered by the canonical `ChoiceGroup`. The contract under test is
+    // unchanged and is exactly what that control has to satisfy: a native
+    // radio group where an arrow both MOVES and SELECTS (RADIO-001), and
+    // where selecting by keyboard journals the same event as selecting by
+    // pointer (M-4).
+    act(() => {
+      useStore.getState().openConfiguratorStepAt(CONFIGURATOR_STEP.KG_400_DETAILS)
+    })
 
-    const group = await screen.findByRole('radiogroup', { name: 'Energiestandard' })
+    const group = await screen.findByRole('radiogroup', { name: /Energiestandard/ })
     const radios = within(group).getAllByRole('radio')
     const checkedBefore = radios.findIndex((r) => (r as HTMLInputElement).checked)
 
@@ -258,6 +261,10 @@ describe('Маршрут экрана возвращает начало доку
     // Task 03 (F-16/PD-3): Export now requires the whole-option confirm
     // CTA — this test's subject is scroll/focus reset on navigation, not
     // that gate itself.
+    // VR3-03: Export additionally requires the KG configuration to be
+    // complete, so the preamble's six scope decisions are joined by every
+    // explicit service decision.
+    completeKgConfiguration()
     confirmWholeConfiguration()
     await user.click(screen.getByRole('button', { name: 'Export' }))
     expect(main.scrollTop).toBe(0)
@@ -320,7 +327,11 @@ describe('DC-33 · единственная модалка системы — в
     await confirmBuildingReviewSections(user)
     completeBuildingScope('PER_BUILDING')
     // Acceptance remediation (cycle 4): position hint is `aria-hidden` now.
-    await user.click(screen.getByRole('button', { name: 'Gebäude & Umfang' }))
+    // VR3-03: the rail carries the journey SPINE during the whole Option
+    // phase, and a spine step's accessible name is its label plus its state
+    // ("Gebäude & Umfang · aktuell") — the four-item workspace list that had
+    // a bare label is retired.
+    await user.click(screen.getAllByRole('button', { name: /^Gebäude & Umfang/ })[0]!)
 
     const trigger = screen.getByRole('button', { name: 'Kundenansicht prüfen' })
     await user.click(trigger)

@@ -1,10 +1,24 @@
 import { Decimal } from 'decimal.js'
 import { NNBSP, formatDE, present } from '../engine/money'
-import { useTx } from '../i18n'
+import { localizeMoneyText, localizePercentText, useTx, type UiLanguage } from '../i18n'
 
+/**
+ * VR3-03: the locale arrives as a PROP, and it is required.
+ *
+ * The badge's monetary edges were typeset in German unconditionally, so an
+ * English interface showed `≈36.416.000 €` beside an English label — the
+ * same class of defect F-20 already fixed for the badge's own prose, one
+ * field further in. A canonical primitive cannot read `uiLanguage` itself:
+ * `GOV-DS-DEP` freezes its dependencies to react, framer-motion, decimal.js,
+ * `src/i18n` and `src/engine/money`, and the store is deliberately outside
+ * that boundary. So the caller passes it, and it is not optional — a default
+ * would have hidden exactly the call site that forgot.
+ */
 type EstimateUncertaintyBadgeProps =
-  | { presentation: 'compact'; pp: number }
-  | { presentation: 'range'; pp: number; totalExact: Decimal }
+  { language: UiLanguage } & (
+    | { presentation: 'compact'; pp: number }
+    | { presentation: 'range'; pp: number; totalExact: Decimal }
+  )
 
 /**
  * DC-3 · one canonical uncertainty component with the two released
@@ -20,7 +34,8 @@ export function EstimateUncertaintyBadge(props: EstimateUncertaintyBadgeProps) {
   if (props.presentation === 'compact') {
     return (
       <span className="text-body text-text-secondary">
-        {tx('Schätzunsicherheit')} ±{NNBSP}{props.pp}{NNBSP}%
+        {tx('Schätzunsicherheit')}{' '}
+        {localizePercentText(`±${NNBSP}${props.pp}${NNBSP}%`, props.language)}
       </span>
     )
   }
@@ -30,8 +45,10 @@ export function EstimateUncertaintyBadge(props: EstimateUncertaintyBadgeProps) {
   const factor = new Decimal(props.pp).div(100)
   const low = present(props.totalExact.mul(new Decimal(1).minus(factor)))
   const high = present(props.totalExact.mul(new Decimal(1).plus(factor)))
-  const money = (value: ReturnType<typeof present>) =>
-    `${value.prefix ? value.prefix + NNBSP : ''}${value.display}${NNBSP}€`
+  const money = (value: ReturnType<typeof present>) => localizeMoneyText(
+    `${value.prefix ? value.prefix + NNBSP : ''}${value.display}${NNBSP}€`,
+    props.language,
+  )
 
   // F18 · the band is the low→high interval, never a filled/success meter
   // (DC-3 forbids interval-as-green, AREA-004); the marker is the current/
@@ -50,7 +67,10 @@ export function EstimateUncertaintyBadge(props: EstimateUncertaintyBadgeProps) {
         </div>
       </div>
       <span className="a3-cap">
-        {tx('Schätzunsicherheit')} ±{NNBSP}{formatDE(new Decimal(props.pp))}{NNBSP}%
+        {tx('Schätzunsicherheit')}{' '}
+        {localizePercentText(
+          `±${NNBSP}${formatDE(new Decimal(props.pp))}${NNBSP}%`, props.language,
+        )}
       </span>
     </div>
   )
