@@ -155,7 +155,8 @@ export function ProjectHome() {
   // same reason the completion announcement does: `CreateOptionGate` is
   // mounted by three different stages and the commitment must not depend on
   // which one is on screen — nor be ticked twice if two ever were.
-  const commitStage = analysis?.optionCommitStage ?? null
+  const commit = s.optionCommit?.projectId === project?.id ? s.optionCommit : null
+  const commitStage = commit?.stage ?? null
   useEffect(() => {
     if (!commitStage) return
     const handle = window.setTimeout(() => s.advanceOptionCreation(), OPTION_COMMIT_STAGE_MS)
@@ -166,7 +167,7 @@ export function ProjectHome() {
   // motion there is no transition to watch, so the announcement IS the
   // feedback (the ticket requires reduced motion to preserve status, focus
   // and next action).
-  const commitError = analysis?.optionCreationErrorKey ?? null
+  const commitError = commit?.errorKey ?? null
   const previousCommitStage = useRef(commitStage)
   useEffect(() => {
     if (commitStage && !previousCommitStage.current) {
@@ -1301,7 +1302,11 @@ function CreateOptionGate({
   const s = useStore()
   const t = useT()
   const state = readiness(project, analysis)
-  const busy = analysis.creatingOption
+  // The commitment is top-level and transient, and it belongs to ONE
+  // project: a commitment opened elsewhere must not make this gate busy.
+  const commit = s.optionCommit?.projectId === project.id ? s.optionCommit : null
+  const busy = Boolean(commit?.stage)
+  const errorKey = commit?.errorKey ?? null
   const lastRequestAt = useRef(0)
 
   const create = () => {
@@ -1320,7 +1325,7 @@ function CreateOptionGate({
 
   return (
     <ActionGate
-      status={analysis.optionCreationErrorKey
+      status={errorKey
         ? 'error'
         : busy ? 'busy' : state.canCreateOption ? 'available' : 'locked'}
       // The reason is NOT repeated here: the canonical Button below renders
@@ -1362,8 +1367,8 @@ function CreateOptionGate({
         },
       }}
       alternative={state.permittedAssumptions > 0 ? t('vr3.readiness.alternative') : undefined}
-      error={analysis.optionCreationErrorKey ? {
-        message: t(analysis.optionCreationErrorKey),
+      error={errorKey ? {
+        message: t(errorKey),
         onRetry: () => s.clearOptionCreationError(),
       } : undefined}
     >
@@ -1374,7 +1379,7 @@ function CreateOptionGate({
           count: state.unresolvedBlockingConflicts || state.blockingQuestions || state.staleFactKeys.length,
         }) : undefined}
         loading={busy}
-        loadingLabel={analysis.optionCommitStage === 'OPTION'
+        loadingLabel={commit?.stage === 'OPTION'
           ? t('vr3.readiness.creatingOption.option')
           : t('vr3.readiness.creatingOption.baseline')}
         onClick={create}

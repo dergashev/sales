@@ -146,10 +146,7 @@ export function settleOptionCommit() {
   // One more than the number of stages: enough to finish, few enough that a
   // commitment which never settles fails here instead of spinning.
   for (let i = 0; i < 4; i++) {
-    const s = useStore.getState()
-    const project = demoProject(s.opportunityId)
-    const analysis = project ? s.projectAnalyses[project.id] : undefined
-    if (!analysis?.creatingOption) return
+    if (!useStore.getState().optionCommit?.stage) return
     act(() => useStore.getState().advanceOptionCreation())
   }
   throw new Error(

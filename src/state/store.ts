@@ -19,6 +19,7 @@ import {
   retryDocument as retryAnalysisDocument,
   startJob,
   type ConflictChoice,
+  type OptionCommit,
   type ProjectAnalysis,
   type ProjectBaselineSnapshot,
 } from './projectAnalysis'
@@ -1371,6 +1372,17 @@ type Store = {
     deltaText: string | null
   } | null
   /**
+   * The Option-creation commitment in flight, or the failure it ended in.
+   *
+   * TRANSIENT, and top-level for the reason recorded on `OptionCommit`: it
+   * lived inside `ProjectAnalysis` for one candidate, and because every
+   * journalled analysis mutation restores a whole previous `ProjectAnalysis`
+   * on undo, undoing a conflict decision mid-commitment erased the
+   * commitment in mid-air — no Option, no error, no trace. It is cleared by
+   * `NO_TRANSIENT` like the preview and the undo toast.
+   */
+  optionCommit: OptionCommit | null
+  /**
    * Режим показа (правило 11). Предпочтение UI, не данные варианта — как
    * openConfiguratorStep, без события. Вход в `praesentation` гейтуется открытым
    * существенным блокером (R-07/DC-7): профиль с material-проблемой не
@@ -1737,6 +1749,10 @@ const NO_TRANSIENT = {
   activeDelta: null,
   preview: null,
   undoToast: null,
+  // An Option-creation commitment is transient in exactly the same sense:
+  // it belongs to one screen and one intent, and navigating away abandons
+  // it rather than carrying it somewhere it no longer means anything.
+  optionCommit: null,
 } as const
 
 /**
@@ -3084,6 +3100,7 @@ const store = createStore<Store>((set, get) => {
     activeDelta: null,
     preview: null,
     undoToast: null,
+    optionCommit: null,
     mode: 'intern',
     constructionStartDate: null,
     level: 'liste',
@@ -4205,54 +4222,34 @@ const store = createStore<Store>((set, get) => {
       const s = get()
       const project = demoProject(s.opportunityId)
       if (!project) return
-      const analysis = s.projectAnalyses[project.id]
-      if (!analysis) return
+      if (!s.projectAnalyses[project.id]) return
       // IDEMPOTENT. A commitment already in flight is not restarted, and
       // this is the guard that actually holds: the canonical Button blocks
       // with `aria-disabled` rather than `disabled`, so a scripted or
       // rapid second activation still dispatches its click. A time window
       // alone let one through once and created a second Option (AUD-03).
-      if (analysis.creatingOption) return
-      set({
-        projectAnalyses: {
-          ...s.projectAnalyses,
-          [project.id]: {
-            ...analysis,
-            creatingOption: true,
-            optionCommitStage: 'BASELINE',
-            optionCreationErrorKey: null,
-          },
-        },
-      })
+      if (s.optionCommit?.stage) return
+      set({ optionCommit: { projectId: project.id, stage: 'BASELINE', errorKey: null } })
     },
 
     advanceOptionCreation: () => {
       const s = get()
+      const commit = s.optionCommit
+      if (!commit?.stage) return
       const project = demoProject(s.opportunityId)
-      if (!project) return
-      const analysis = s.projectAnalyses[project.id]
-      if (!analysis || !analysis.creatingOption) return
-
-      const fail = (errorKey: string) => {
-        const now = get()
-        const current = now.projectAnalyses[project.id]
-        if (!current) return
-        // Readiness, conflict decisions and question responses are NOT
-        // touched: the ticket requires an Option-creation failure to leave
-        // resolution work intact, so only the commitment's own three fields
-        // move.
-        set({
-          projectAnalyses: {
-            ...now.projectAnalyses,
-            [project.id]: {
-              ...current,
-              creatingOption: false,
-              optionCommitStage: null,
-              optionCreationErrorKey: errorKey,
-            },
-          },
-        })
+      // A commitment belongs to the project that opened it. If the user
+      // navigated away it is abandoned, not applied to whatever is open now.
+      if (!project || project.id !== commit.projectId) {
+        set({ optionCommit: null })
+        return
       }
+
+      // A failure moves ONLY the commitment. Readiness, conflict decisions
+      // and question responses are untouched — the ticket requires an
+      // Option-creation failure to leave resolution work intact.
+      const fail = (errorKey: string) => set({
+        optionCommit: { projectId: commit.projectId, stage: null, errorKey },
+      })
 
       // The gate is re-read at EVERY stage boundary, not once when the
       // button rendered. Undoing a conflict resolution mid-flight is a real
@@ -4262,7 +4259,7 @@ const store = createStore<Store>((set, get) => {
         return
       }
 
-      if (analysis.optionCommitStage === 'BASELINE') {
+      if (commit.stage === 'BASELINE') {
         if (!get().projectBaseline) get().commitProjectBaseline()
         // A baseline that refused to commit is a real failure, not a
         // reason to create an Option with no baseline behind it.
@@ -4270,37 +4267,19 @@ const store = createStore<Store>((set, get) => {
           fail('vr3.option.error.baseline')
           return
         }
-        const now = get()
-        const current = now.projectAnalyses[project.id]
-        if (!current) return
-        set({
-          projectAnalyses: {
-            ...now.projectAnalyses,
-            [project.id]: { ...current, optionCommitStage: 'OPTION' },
-          },
-        })
+        set({ optionCommit: { projectId: commit.projectId, stage: 'OPTION', errorKey: null } })
         return
       }
 
-      // Final stage. `createOption` clears the commitment itself on success
-      // and records its own failure, so nothing is cleared here.
-      if (analysis.optionCommitStage === 'OPTION') {
-        if (!get().createOption()) fail('vr3.option.error.gateClosed')
+      // Final stage. `createOption` clears the commitment on success through
+      // `NO_TRANSIENT`, and records its own refusal.
+      if (!get().createOption() && get().optionCommit?.stage) {
+        fail('vr3.option.error.gateClosed')
       }
     },
 
     clearOptionCreationError: () => {
-      const s = get()
-      const project = demoProject(s.opportunityId)
-      if (!project) return
-      const analysis = s.projectAnalyses[project.id]
-      if (!analysis) return
-      set({
-        projectAnalyses: {
-          ...s.projectAnalyses,
-          [project.id]: { ...analysis, optionCreationErrorKey: null },
-        },
-      })
+      if (get().optionCommit?.errorKey) set({ optionCommit: null })
     },
 
     /**
@@ -4335,21 +4314,13 @@ const store = createStore<Store>((set, get) => {
       // genuine failure path, and it must leave readiness and resolution
       // work exactly as it was rather than half-creating an Option.
       if (!get().canCreateOptions()) {
-        const failing = get()
-        const failingProject = demoProject(failing.opportunityId)
-        const failingAnalysis = failingProject
-          ? failing.projectAnalyses[failingProject.id]
-          : undefined
-        if (failingProject && failingAnalysis) {
+        const failingProject = demoProject(get().opportunityId)
+        if (failingProject) {
           set({
-            projectAnalyses: {
-              ...failing.projectAnalyses,
-              [failingProject.id]: {
-                ...failingAnalysis,
-                creatingOption: false,
-                optionCommitStage: null,
-                optionCreationErrorKey: 'vr3.option.error.gateClosed',
-              },
+            optionCommit: {
+              projectId: failingProject.id,
+              stage: null,
+              errorKey: 'vr3.option.error.gateClosed',
             },
           })
         }
@@ -4409,30 +4380,16 @@ const store = createStore<Store>((set, get) => {
         }
         fresh.fields = legacyFieldsFromReview(inheritedReview, s.buildingConflicts)
       }
-      const creatingProject = demoProject(s.opportunityId)
-      const creatingAnalysis = creatingProject
-        ? s.projectAnalyses[creatingProject.id]
-        : undefined
       set({
+        // `NO_TRANSIENT` carries `optionCommit: null`, so a successful
+        // creation clears the commitment through the same one convention
+        // that clears the preview and the undo toast.
         ...NO_TRANSIENT,
         options: [...s.options, { id, name: resolvedName }],
         activeOptionId: id,
         optionSeq: seq,
         pipelineView: 'buildingScope',
         projectStage: 'createOption',
-        ...(creatingProject && creatingAnalysis
-          ? {
-            projectAnalyses: {
-              ...s.projectAnalyses,
-              [creatingProject.id]: {
-                ...creatingAnalysis,
-                creatingOption: false,
-                optionCommitStage: null,
-                optionCreationErrorKey: null,
-              },
-            },
-          }
-          : {}),
         // Новая Option — независимый вариант со свежей конфигурацией.
         // Рабочая копия предыдущей активной Option убирается в хранилище,
         // свежая раскладывается в плоские поля.

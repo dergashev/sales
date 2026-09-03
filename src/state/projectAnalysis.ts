@@ -237,28 +237,6 @@ export type ProjectAnalysis = {
   reanalysisCount: number
   /** Recorded when the project baseline was committed into an Option. */
   baselineCommittedAt: string | null
-  /**
-   * True for exactly as long as an Option-creation commitment is in flight.
-   *
-   * INVARIANT: `creatingOption === (optionCommitStage !== null)`. The two
-   * are always written in one `set()`, and every transition is walked
-   * against this equality by `project-readiness.dom.test.tsx` ("never lets
-   * creatingOption and optionCommitStage disagree").
-   */
-  creatingOption: boolean
-  /**
-   * Which stage of the commitment is pending, or `null` when none is.
-   *
-   * Creating an Option is a COMMITMENT, not a render: it first commits the
-   * project baseline as its own journalled event, and only then creates the
-   * Option that inherits it. Naming the stages is what makes the required
-   * `creating Option` state observable and its failure recoverable — the
-   * gate re-reads readiness at every stage boundary, so a conflict reopened
-   * mid-flight fails the commitment instead of half-creating an Option.
-   */
-  optionCommitStage: OptionCommitStage | null
-  /** A failed Option creation leaves readiness and resolution work intact. */
-  optionCreationErrorKey: string | null
 }
 
 /**
@@ -275,8 +253,33 @@ export type ProjectAnalysis = {
  */
 export type OptionCommitStage = 'BASELINE' | 'OPTION'
 
-/** The stages in commitment order. */
-export const OPTION_COMMIT_STAGES: readonly OptionCommitStage[] = ['BASELINE', 'OPTION']
+/**
+ * An Option-creation commitment in flight, or the failure it ended in.
+ *
+ * This is TRANSIENT state and it lives at the top level of the store, beside
+ * `preview` and `undoToast` in `NO_TRANSIENT` — deliberately NOT inside
+ * `ProjectAnalysis`.
+ *
+ * It was inside `ProjectAnalysis` for one candidate and the browser found
+ * the consequence immediately: every journalled analysis mutation restores a
+ * whole previous `ProjectAnalysis` on undo, so undoing a conflict decision
+ * while a commitment was in flight restored a snapshot taken BEFORE it
+ * started and erased the commitment mid-air. The gate fell back to LOCKED
+ * with no outcome at all — neither the Option nor the error — which is
+ * worse than the unreachable state it replaced. Transient state cannot live
+ * inside an undoable record.
+ *
+ * INVARIANT: exactly one of `stage` and `errorKey` is non-null. In flight is
+ * `stage !== null`; failed is `errorKey !== null`; success clears the whole
+ * object.
+ */
+export type OptionCommit = {
+  projectId: string
+  /** The pending stage; `null` once the commitment has failed. */
+  stage: OptionCommitStage | null
+  /** Why it failed; `null` while it is still in flight. */
+  errorKey: string | null
+}
 
 export const ANALYSIS_ACTOR = 'sales-user'
 
@@ -301,9 +304,6 @@ export function initialProjectAnalysis(project: FixtureProject): ProjectAnalysis
     staleConflictIds: [],
     reanalysisCount: 0,
     baselineCommittedAt: null,
-    creatingOption: false,
-    optionCommitStage: null,
-    optionCreationErrorKey: null,
   }
 }
 
