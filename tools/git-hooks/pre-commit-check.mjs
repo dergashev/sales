@@ -64,6 +64,28 @@ function main() {
     return
   }
 
+  // Feature-branch-flow guard (.claude/skills/feature-branch-flow): master
+  // moves only through GitLab Merge Requests — a direct commit on master is
+  // blocked. Fails OPEN when the branch cannot be determined (detached HEAD,
+  // rebase, git error): those are not "committing on master".
+  // Escape hatch for deliberate human/release-tooling use:
+  //   FEATURE_FLOW_ALLOW_MASTER=1 git commit ...
+  if (process.env.FEATURE_FLOW_ALLOW_MASTER !== '1') {
+    const branchResult = spawnSync('git', ['symbolic-ref', '--quiet', '--short', 'HEAD'], { cwd, encoding: 'utf8' })
+    const branch = branchResult.status === 0 ? branchResult.stdout.trim() : null
+    if (branch === 'master' || branch === 'main') {
+      console.error(
+        `\n[pre-commit] BLOCKED (feature-branch-flow): direct commits on "${branch}" are forbidden — master moves only via Merge Requests.\n` +
+          'Move your work to a feature branch (this carries the staged changes with it):\n' +
+          '  git switch -c <feat|fix|chore>/<short-slug>\n' +
+          'then commit there and push with `-o merge_request.create -o merge_request.target=master`.\n' +
+          'Deliberate override (humans/release tooling only): FEATURE_FLOW_ALLOW_MASTER=1 git commit ...',
+      )
+      process.exit(1)
+      return
+    }
+  }
+
   const agentsRoom = checkAgentsRoomGuard({ changedPaths: changed })
   if (!agentsRoom.ok) {
     console.error(`\n[pre-commit] BLOCKED (DELIVERY-INFRA-01 — AgentsRoom control-state protection): ${agentsRoom.reason}`)
