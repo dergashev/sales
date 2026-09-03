@@ -15,6 +15,7 @@ import {
 } from '../state/clientProjection'
 import { OutputProfileSwitch, SelectField } from './designSystem'
 import { WorkflowStepper, type WorkflowStep } from '../design-system/WorkflowStepper'
+import { OptionWorkflowSpine } from './WorkflowSpine'
 import { startContinuityTransition, useSemanticMotion } from '../design-system/motion'
 
 /**
@@ -97,6 +98,14 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
       ? t('configurator.mode.clientBlocked')
       : undefined
   const gateOpen = s.canBeginConfiguration()
+  /**
+   * The pre-Konfigurator phase: Gebäude & Umfang, and the Konfigurator
+   * stage while it is still showing its own gate rather than the
+   * configurator. Both belong to the journey the spine describes.
+   */
+  const preConfigurator = !client
+    && (view === 'buildingScope'
+      || view === 'konfigurator' && (!gateOpen || !s.configurationModeChosen))
   // Task 03 (deep-coherence audit, F-16/PD-3, CPO-confirmed): the building
   // gate alone used to leave Export reachable at mode choice, before any
   // Configurator confirmation existed at all — a 0-€ or half-configured
@@ -162,6 +171,21 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
         )}
       </div>
 
+      {/* VR3-02: before the Konfigurator opens, the rail carries the ONE
+          canonical thirteen-step journey (target T-012–T-017). Replacing it
+          with a four-item workspace list at exactly the moment the journey
+          got longer is how the user's position in it was lost; the
+          four-item list returns once the Konfigurator itself is the
+          surface, where its chapter navigation belongs. */}
+      {preConfigurator ? (
+        <div className="min-w-0 flex-1 py-2">
+          <p className="a3-cap px-5 pb-1 pt-3">{t('shell.sidebar.workflow')}</p>
+          {/* No extra horizontal padding: the spine's own steps carry it,
+              and doubling it at 1280 left the labels too little room to
+              wrap and they clipped at the rail's edge. */}
+          <div className="min-w-0 pb-3"><OptionWorkflowSpine /></div>
+        </div>
+      ) : (
       <ul className="flex-1 py-2">
         <li>
           <p className="a3-cap px-5 pb-1 pt-3">
@@ -260,6 +284,7 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
           )
         })}
       </ul>
+      )}
 
       {/* Acceptance remediation (cycle 5): the approved target shows the
           Arbeiten/Präsentieren toggle at the BOTTOM of the rail, not

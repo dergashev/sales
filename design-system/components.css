@@ -2786,3 +2786,126 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    PageHeader's `meta` slot, which renders beside it.
    Classes: .a3-project-stage-eyebrow. */
 .a3-project-stage-eyebrow{margin:0 0 var(--space-2);font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);font-weight:var(--font-weight-bold);letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-secondary)}
+
+/* BuildingScopePanel (VR3-02). Structure:
+   .a3-bsp > .a3-bsp-head + .a3-bsp-lead (+ .a3-bsp-notice) +
+   .a3-bsp-selection + .a3-bsp-baseline (+ .a3-bsp-gate).
+   The identity strip is a COMPARISON at three buildings and a REVIEW at
+   one — same component, two densities (design delta: "one- and
+   multi-building cases need different density within one system"). At
+   1280 the comparison becomes one full-width row per identity, so no
+   building's facade, name and use ever compete for a column narrow
+   enough to make two of them look alike.
+   Classes: .a3-bsp · .a3-bsp-head · .a3-bsp-head-copy · .a3-bsp-eyebrow ·
+   .a3-bsp-heading · .a3-bsp-progress · .a3-bsp-lead · .a3-bsp-notice ·
+   .a3-bsp-selection · .a3-bsp-baseline · .a3-bsp-gate ·
+   .a3-bsp-identities · .a3-bsp-identities-single ·
+   .a3-bsp-identities-comparison · .a3-bsp-identity ·
+   .a3-bsp-identity-selected · .a3-bsp-identity-excluded ·
+   .a3-bsp-identity-reviewing · .a3-bsp-identity-media ·
+   .a3-bsp-identity-body · .a3-bsp-identity-select ·
+   .a3-bsp-identity-input · .a3-bsp-identity-select-label ·
+   .a3-bsp-identity-name · .a3-bsp-identity-designation ·
+   .a3-bsp-identity-sep · .a3-bsp-identity-proper ·
+   .a3-bsp-identity-meta · .a3-bsp-identity-status ·
+   .a3-bsp-identity-review · .a3-bsp-baseline-sheet ·
+   .a3-bsp-baseline-head · .a3-bsp-baseline-title ·
+   .a3-bsp-baseline-authority · .a3-bsp-baseline-rows ·
+   .a3-bsp-baseline-notice · .a3-bsp-baseline-actions · .a3-bsp-row ·
+   .a3-bsp-row-invalid · .a3-bsp-row-label · .a3-bsp-row-value ·
+   .a3-bsp-row-number · .a3-bsp-row-unit · .a3-bsp-row-provenance ·
+   .a3-bsp-row-error. */
+.a3-bsp{display:grid;gap:var(--space-5);min-width:0;max-width:var(--measure-gallery)}
+.a3-bsp-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,max-content);gap:var(--space-4);align-items:start}
+.a3-bsp-head-copy{display:grid;gap:var(--space-2);min-width:0}
+.a3-bsp-eyebrow{margin:0;font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);font-weight:var(--font-weight-bold);letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-secondary)}
+.a3-bsp-heading{margin:0;font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-bsp-progress{margin:0;font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);font-weight:var(--font-weight-bold);letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-secondary);text-align:right}
+.a3-bsp-lead{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-primary);max-width:var(--measure-body-max)}
+.a3-bsp-notice,.a3-bsp-selection,.a3-bsp-baseline,.a3-bsp-gate{min-width:0}
+.a3-bsp-identities{border:0;margin:0;padding:0;display:grid;gap:var(--space-4);min-width:0}
+.a3-bsp-identities-comparison{grid-template-columns:repeat(3,minmax(0,1fr))}
+.a3-bsp-identities-single{grid-template-columns:minmax(0,var(--measure-band))}
+/* The identity band is a fixed HEIGHT, not a ratio: three facades of
+   different widths must align on one baseline for the comparison to read
+   as a comparison, and a ratio would make the middle one taller. */
+.a3-bsp-identity-media [class*="aspect-media-"]{aspect-ratio:auto;block-size:var(--size-media-card-landing)}
+.a3-bsp-identity{display:grid;gap:0;border:var(--border-contrast-1px);background:var(--color-surface-default);min-width:0}
+.a3-bsp-identity-reviewing{border:var(--border-contrast-2px)}
+.a3-bsp-identity-excluded{background:var(--color-surface-canvas)}
+.a3-bsp-identity-media{min-width:0}
+.a3-bsp-identity-body{display:grid;gap:var(--space-2);padding:var(--space-4)}
+.a3-bsp-identity-select{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-3);min-width:0}
+.a3-bsp-identity-input{position:relative;inline-size:var(--size-status-dot);block-size:var(--size-status-dot);accent-color:var(--color-selection-border);margin:0}
+.a3-bsp-identity-select-label{font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);font-weight:var(--font-weight-bold);letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-secondary)}
+.a3-bsp-identity-name{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word}
+.a3-bsp-identity-designation,.a3-bsp-identity-proper{display:inline}
+.a3-bsp-identity-meta{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-bsp-identity-status{min-width:0}
+.a3-bsp-identity-review{position:relative;justify-self:start;background:transparent;border:0;padding:0;font-size:var(--type-link-size);line-height:var(--type-link-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary);text-decoration:underline;text-underline-offset:var(--size-text-underline-offset)}
+.a3-bsp-identity-review[aria-pressed="true"]{text-decoration:none;color:var(--color-text-secondary)}
+.a3-bsp-baseline-sheet{display:grid;gap:var(--space-4);border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-5);min-width:0}
+.a3-bsp-baseline-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,max-content);gap:var(--space-4);align-items:baseline}
+.a3-bsp-baseline-title{margin:0;font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-bsp-baseline-authority{margin:0;border:var(--border-contrast-1px);padding:var(--space-1) var(--space-2);font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);font-weight:var(--font-weight-bold);letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-primary);white-space:nowrap}
+.a3-bsp-baseline-rows{margin:0;display:grid;gap:0}
+.a3-bsp-baseline-notice,.a3-bsp-baseline-actions{min-width:0}
+.a3-bsp-baseline-actions{display:flex;flex-wrap:wrap;gap:var(--space-3);align-items:center}
+.a3-bsp-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,max-content) minmax(0,max-content);gap:var(--space-3) var(--space-5);align-items:baseline;border-bottom:var(--border-hairline);padding:var(--space-3) 0}
+.a3-bsp-row:last-child{border-bottom:0}
+.a3-bsp-row-invalid{border-left:var(--size-status-accent-width) solid var(--color-border-warning);padding-left:var(--space-3)}
+.a3-bsp-row-label{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
+.a3-bsp-row-value{margin:0;display:flex;align-items:baseline;gap:var(--space-1);justify-content:flex-end;min-width:0}
+.a3-bsp-row-number{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-bsp-row-unit{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-bsp-row-provenance{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);text-align:right;min-width:0}
+.a3-bsp-row-error{grid-column:1 / -1;margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary)}
+
+/* At 1280 the three-column comparison becomes one row per identity. A
+   third of the narrower main column would render three facades too small
+   to tell apart, which is the one thing the comparison exists to do. */
+@media (max-width: 1439px){
+  .a3-bsp-heading{font-size:var(--type-heading-1-narrow-size);line-height:var(--type-heading-1-narrow-line)}
+  .a3-bsp-identities-comparison{grid-template-columns:minmax(0,1fr)}
+  .a3-bsp-identity{grid-template-columns:minmax(0,var(--measure-card-compact)) minmax(0,1fr);align-items:start}
+  .a3-bsp-identities-single .a3-bsp-identity{grid-template-columns:minmax(0,1fr)}
+}
+
+/* Workflow gate stage (VR3-02, T-016/T-017). A locked stage is a PLACE:
+   it states its status, names the unmet prerequisite and carries the route
+   that resolves it. The same surface carries the save receipt when the
+   gate opens, because a receipt the user has to go and find is not one.
+   Classes: .a3-gatestage · .a3-gatestage-copy · .a3-gatestage-eyebrow ·
+   .a3-gatestage-heading · .a3-gatestage-lead · .a3-gatestage-receipt ·
+   .a3-gatestage-media. */
+.a3-gatestage{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,var(--measure-panel));gap:var(--space-6);align-items:start}
+.a3-gatestage-copy{display:grid;gap:var(--space-4);min-width:0;max-width:var(--measure-body-max)}
+.a3-gatestage-eyebrow{margin:0;font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);font-weight:var(--font-weight-bold);letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-secondary)}
+.a3-gatestage-heading{margin:0;font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-gatestage-lead{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-primary)}
+.a3-gatestage-receipt{margin:0;border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-4);display:grid;gap:var(--space-3)}
+.a3-gatestage-receipt-title{margin:0}
+.a3-gatestage-receipt-next{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-gatestage-receipt-figures{margin:0;display:grid;grid-template-columns:repeat(3,minmax(0,max-content));gap:var(--space-2) var(--space-5);border-top:var(--border-hairline);padding-top:var(--space-3)}
+.a3-gatestage-media{min-width:0}
+
+/* Building-scope editing and consequence blocks (VR3-02).
+   Classes: .a3-bsp-edit · .a3-bsp-edit-actions · .a3-bsp-edit-open ·
+   .a3-bsp-consequence · .a3-bsp-consequence-detail · .a3-bsp-confirmed ·
+   .a3-bsp-confirmed-meta · .a3-bsp-total. */
+.a3-bsp-edit{display:grid;gap:var(--space-3);min-width:0;justify-items:stretch}
+.a3-bsp-edit-actions{display:flex;flex-wrap:wrap;gap:var(--space-3)}
+.a3-bsp-edit-open{position:relative;background:transparent;border:0;padding:0;margin-inline-start:var(--space-3);font-size:var(--type-link-size);line-height:var(--type-link-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary);text-decoration:underline;text-underline-offset:var(--size-text-underline-offset);white-space:nowrap}
+.a3-bsp-consequence{display:grid;gap:var(--space-2);border-left:var(--size-status-accent-width) solid var(--color-border-warning);background:var(--color-surface-default);padding:var(--space-3) var(--space-4)}
+.a3-bsp-consequence-detail{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
+.a3-bsp-confirmed{margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2) var(--space-3)}
+.a3-bsp-confirmed-meta{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-bsp-total{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);font-variant-numeric:tabular-nums}
+
+@media (max-width: 1439px){
+  .a3-gatestage{grid-template-columns:minmax(0,1fr)}
+  .a3-gatestage-heading{font-size:var(--type-heading-1-narrow-size);line-height:var(--type-heading-1-narrow-line)}
+}
+.a3-bsp-row-actions{display:inline-flex;flex-wrap:wrap;gap:var(--space-3);margin-inline-start:var(--space-3)}
+.a3-bsp-row-evidence,.a3-bsp-row-override,.a3-bsp-row-stale{display:block}
+.a3-bsp-row-override,.a3-bsp-row-stale{max-width:var(--measure-band);margin-inline-start:auto}

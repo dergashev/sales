@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { pipelineViewForBuildingGate, useStore } from './state/store'
+import { canBeginConfiguration, pipelineViewForBuildingGate, useStore } from './state/store'
 import { useT } from './i18n'
 import all3Logo from '../design-system/All3Logo.png'
 import { SegmentedControl } from './components/controls'
@@ -15,7 +15,8 @@ import { S5Export } from './screens/S5Export'
 import { S6Einstellungen } from './screens/S6Einstellungen'
 import { OpportunityList } from './screens/OpportunityList'
 import { ProjectHome } from './screens/ProjectHome'
-import { BuildingScope, BuildingScopeReadiness } from './screens/BuildingScope'
+import { BuildingScope } from './screens/BuildingScope'
+import { KonfiguratorGate } from './screens/KonfiguratorGate'
 import { demoProject } from './state/projectAnalysis'
 // GOV-QA-BOUNDARY: App.tsx is the only file permitted to import Grundlagen —
 // it renders the registry Gallery, and the registry is the ONLY specimen
@@ -52,6 +53,15 @@ export function App() {
   const praesentation = isClientProjection(s.mode)
   const outputProfileView = pipelineViewForOutputProfile(s.mode, view)
   const renderedView = pipelineViewForBuildingGate(s, outputProfileView)
+  /**
+   * VR3-02: the Konfigurator stage renders its own GATE until the building
+   * scope is saved AND the user has entered Leistungsabgrenzung. Two states,
+   * one surface (T-016 locked, T-017 available-with-receipt) — and the
+   * configurator itself stays unmounted behind a closed gate, so no empty
+   * pricing surface can ever be read as a fact about this Option.
+   */
+  const konfiguratorGate = renderedView === 'konfigurator'
+    && (!canBeginConfiguration(s) || !s.configurationModeChosen)
 
   // Класс режима на корне — токены и стили дизайн-системы адресуют его.
   useEffect(() => {
@@ -243,7 +253,7 @@ export function App() {
           <main ref={mainRef} tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto bg-surface-default outline-none">
             {renderedView === 'vergleich' && <S4Vergleich />}
             {renderedView === 'buildingScope' && <BuildingScope />}
-            {renderedView === 'konfigurator' && <S3Konfigurator />}
+            {renderedView === 'konfigurator' && (konfiguratorGate ? <KonfiguratorGate /> : <S3Konfigurator />)}
             {renderedView === 'export' && <S5Export />}
             {renderedView === 'einstellungen' && <S6Einstellungen />}
           </main>
@@ -256,9 +266,14 @@ export function App() {
               visible when "Modus ändern" is open, ADDING the notice as
               `OfferPanel`'s `footer` instead of substituting the whole panel
               for it. */}
-          {renderedView !== 'vergleich' && (renderedView === 'buildingScope' ? <BuildingScopeReadiness />
+          {renderedView !== 'vergleich' && (
+            /* VR3-02: no rail before the Konfigurator. The commercial rail
+               belongs to a legitimate price, and no price exists until the
+               scope is saved and Leistungsabgrenzung has been entered; the
+               completion count and the saved receipt live in the centre,
+               where the decision is. */
+            renderedView === 'buildingScope' || konfiguratorGate ? null
             : !s.pricingStarted
-              || renderedView === 'konfigurator' && !s.configurationModeChosen
               ? <ConfigurationModeReadiness />
               : renderedView === 'konfigurator' && s.configurationModeEditing
               ? <OfferPanel variant="level1" footer={<ModeChangeNotice headingLevel={3} />} />

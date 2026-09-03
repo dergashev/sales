@@ -246,7 +246,7 @@ const de = {
     'Gebäudeklasse noch nicht bestätigt. Vorläufig GK 5 · Prüfung erforderlich.',
   'oppcard.rail.recommendation.cta': 'Klassifikation prüfen',
   'buildingScope.gate.navigationReason':
-    'Zuerst mindestens ein Gebäude auswählen und jedes gewählte Gebäude bestätigen.',
+    'Zuerst jede gewählte Gebäudegrundlage bestätigen und den Gebäudeumfang speichern.',
   'buildingScope.title': 'Gebäude & Umfang',
   'buildingScope.meta':
     'Vor dem Konfigurator · {confirmed} von {selected} gewählten Gebäuden bestätigt',
@@ -1023,6 +1023,141 @@ const de = {
   'vr3.building.storeys.bA': 'EG + 5 OG',
   'vr3.building.storeys.bB': 'UG + EG + 4 OG',
   'vr3.building.storeys.bC': 'Teil-UG + EG + 6 OG',
+  /* VR3-02 — Option-Gebäudeumfang und Konfigurator-Gate. */
+  'vr3.scope.eyebrow.review': 'Optionsgrundlage · Prüfung erforderlich',
+  'vr3.scope.eyebrow.saved': 'Optionsgrundlage · Gespeichert',
+  'vr3.scope.eyebrow.noBaseline': 'Optionsgrundlage · Nicht übernommen',
+  'vr3.scope.noBaseline.heading': 'Diese Option hat keine Projektgrundlage',
+  'vr3.scope.noBaseline.explanation':
+    'Der Gebäudeumfang einer Option wird beim Anlegen aus der bestätigten '
+    + 'Projektgrundlage übernommen. Diese Option ist ohne eine solche Grundlage '
+    + 'entstanden, deshalb gibt es hier nichts zu prüfen.',
+  'vr3.scope.noBaseline.absenceTitle': 'Keine Gebäude übernommen',
+  'vr3.scope.noBaseline.absenceDetail':
+    'Legen Sie die Option aus dem Projekt neu an. Vorhandene Optionen bleiben erhalten.',
+  'vr3.scope.noBaseline.action': 'Zum Projekt',
+  'vr3.scope.progress': '{confirmed} von {total} bestätigt',
+  'vr3.scope.lead.single':
+    'Prüfen Sie die Kennwerte und die Herkunft dieses Gebäudes und bestätigen Sie die Grundlage.',
+  'vr3.scope.lead.multi':
+    'Legen Sie fest, was diese Option umfasst, prüfen Sie je Gebäude Kennwerte '
+    + 'und Herkunft und bestätigen Sie jede Grundlage einzeln.',
+  'vr3.scope.selection.legend': 'Gebäude im Angebotsumfang',
+  'vr3.scope.building': 'Gebäude {mark}',
+  'vr3.scope.selectAction': 'Im Angebotsumfang führen',
+  'vr3.scope.reviewAction': 'Grundlage prüfen',
+  'vr3.scope.selected': 'Im Umfang',
+  'vr3.scope.notSelected': 'Nicht im Umfang',
+  'vr3.scope.status.confirmed': 'Grundlage bestätigt',
+  'vr3.scope.status.stale': 'Erneut prüfen',
+  'vr3.scope.status.open': 'Prüfung offen',
+  'vr3.scope.status.unselected': 'Nicht im Umfang',
+  'vr3.scope.empty':
+    'Kein Gebäude im Umfang. Wählen Sie mindestens ein Gebäude, um seine Grundlage zu prüfen.',
+  'vr3.scope.selectedTotal': 'Gewählter Umfang: {value} m² BGF R+S',
+  'vr3.scope.unit.area': 'm²',
+  'vr3.scope.metric.storeys': 'Geschosse',
+  'vr3.scope.metric.underground': 'Untergeschoss',
+  'vr3.scope.metric.bgfRAbove': 'BGF R oberirdisch',
+  'vr3.scope.metric.bgfSAbove': 'BGF S oberirdisch',
+  'vr3.scope.metric.bgfRBelow': 'BGF R unterirdisch',
+  'vr3.scope.metric.bgfRSTotal': 'BGF R+S gesamt',
+  'vr3.scope.metric.wfl': 'Wohnfläche nach WoFlV',
+  'vr3.scope.metric.nuf': 'NUF nach DIN 277',
+  'vr3.scope.metric.commercialNuf': 'NUF Gewerbe',
+  'vr3.scope.metric.units': 'Wohneinheiten',
+  'vr3.scope.metric.workplaces': 'Arbeitsplätze',
+  'vr3.scope.metric.parkingSpaces': 'Stellplätze',
+  'vr3.scope.metric.siteArea': 'Grundstücksfläche',
+  'vr3.scope.underground.none': 'Kein UG',
+  'vr3.scope.underground.partial': 'Teil-UG',
+  'vr3.scope.underground.full': 'UG',
+  'vr3.scope.evidence.planSet': 'Planwerk',
+  'vr3.scope.evidence.section': 'Schnitt',
+  'vr3.scope.baseline.title': 'Grundlage · {building}',
+  'vr3.scope.baseline.authority': 'Herkunft: {authority}',
+  'vr3.scope.edit.open': 'Ändern',
+  'vr3.scope.edit.revert': 'Quellwert',
+  'vr3.scope.edit.commit': 'Wert übernehmen',
+  'vr3.scope.edit.cancel': 'Abbrechen',
+  'vr3.scope.edit.reasonLabel': 'Begründung',
+  'vr3.scope.edit.consequenceTitle': 'Das ändert die Mengenbasis der Kostengruppen',
+  'vr3.scope.edit.consequenceDetail':
+    'Der bisherige Quellwert bleibt in der Historie. Die Grundlage muss danach erneut '
+    + 'bestätigt werden.',
+  'vr3.scope.edit.error.empty': 'Bitte einen Wert eingeben.',
+  'vr3.scope.edit.error.notANumber': 'Bitte eine Zahl eingeben, zum Beispiel 3.410,00.',
+  'vr3.scope.edit.error.negative': 'Eine Fläche oder Anzahl kann nicht negativ sein.',
+  'vr3.scope.edit.error.notAnInteger': 'Bitte eine ganze Anzahl eingeben.',
+  'vr3.scope.edit.error.tooLarge': 'Der Wert liegt außerhalb des zulässigen Bereichs.',
+  'vr3.scope.edit.error.reason': 'Bitte begründen, warum der Quellwert ersetzt wird.',
+  'vr3.scope.confirm.action': 'Gebäudegrundlage bestätigen',
+  'vr3.scope.confirm.blockedByEdit': 'Erst die offene Änderung übernehmen oder abbrechen.',
+  'vr3.scope.confirmed.label': 'Grundlage bestätigt',
+  'vr3.scope.confirmed.meta': '{actor} · {at}',
+  'vr3.scope.stale.building':
+    'Die Angaben von {building} haben sich seit der Bestätigung geändert. '
+    + 'Bitte prüfen und erneut bestätigen.',
+  'vr3.scope.stale.scope':
+    'Der gespeicherte Gebäudeumfang beschreibt nicht mehr die aktuelle Auswahl. '
+    + 'Der Konfigurator ist bis zum erneuten Speichern gesperrt.',
+  'vr3.scope.removal.title': '{building} aus dem Umfang nehmen?',
+  'vr3.scope.removal.detail':
+    'Die Bestätigung dieses Gebäudes und der gespeicherte Umfang verlieren ihre Gültigkeit. '
+    + 'Kennwerte und Herkunft bleiben erhalten.',
+  'vr3.scope.removal.confirm': 'Aus dem Umfang nehmen',
+  'vr3.scope.removal.cancel': 'Im Umfang lassen',
+  'vr3.scope.prereq.selection': 'Mindestens ein Gebäude im Umfang',
+  'vr3.scope.prereq.selectionDetail': 'Wählen Sie mindestens ein Gebäude aus.',
+  'vr3.scope.prereq.building': 'Grundlage bestätigt: {building}',
+  'vr3.scope.prereq.buildingDetail': 'Kennwerte prüfen und Grundlage bestätigen.',
+  'vr3.scope.gate.route': 'Zu {building}',
+  'vr3.scope.save.action': 'Gebäudeumfang speichern',
+  'vr3.scope.save.busy': 'Gebäudeumfang wird gespeichert',
+  'vr3.scope.save.retry': 'Erneut speichern',
+  'vr3.scope.save.blocked.one': 'Noch eine Gebäudegrundlage offen.',
+  'vr3.scope.save.blocked.many': 'Noch {count} Gebäudegrundlagen offen.',
+  'vr3.scope.save.alreadySaved': 'Der aktuelle Umfang ist bereits gespeichert.',
+  'vr3.scope.error.changed':
+    'Der Umfang hat sich während des Speicherns geändert. Auswahl und Änderungen sind erhalten '
+    + 'geblieben; bitte erneut speichern.',
+  'vr3.scope.announce.saving': 'Gebäudeumfang wird gespeichert.',
+  'vr3.scope.announce.saved': 'Gebäudeumfang gespeichert. Der Konfigurator ist jetzt verfügbar.',
+  'vr3.scope.announce.confirmed': 'Grundlage bestätigt: {building}.',
+  'vr3.scope.announce.edited': '{metric} von {building} überschrieben.',
+  'vr3.scope.announce.reverted': '{metric} von {building} auf den Quellwert zurückgesetzt.',
+  'vr3.scope.announce.removed': '{building} aus dem Angebotsumfang genommen.',
+  'vr3.konfigurator.eyebrow': 'Workflow-Gate',
+  'vr3.konfigurator.heading.locked': 'Konfigurator gesperrt',
+  'vr3.konfigurator.heading.available': 'Konfigurator verfügbar',
+  'vr3.konfigurator.lead.locked':
+    'Das System weiß, was fehlt, und führt direkt dorthin. Eine ausgegraute Navigation '
+    + 'wäre keine Erklärung.',
+  'vr3.konfigurator.lead.available':
+    'Die Optionsgrundlage ist bestätigt und gespeichert. Die Leistungsabgrenzung ist '
+    + 'der einzige nächste Schritt.',
+  'vr3.konfigurator.prereq.scope': 'Gebäude & Umfang gespeichert',
+  'vr3.konfigurator.blockedReason':
+    'Der Konfigurator öffnet, sobald der Gebäudeumfang gespeichert ist.',
+  'vr3.konfigurator.prereq.buildingDetail': '{building} braucht noch Prüfung und Bestätigung.',
+  'vr3.konfigurator.prereq.saveDetail': 'Den bestätigten Gebäudeumfang speichern.',
+  'vr3.konfigurator.receipt.title.one': 'Eine Gebäudegrundlage bestätigt und gespeichert',
+  'vr3.konfigurator.receipt.title.many': '{count} Gebäudegrundlagen bestätigt und gespeichert',
+  'vr3.konfigurator.receipt.next':
+    'Nächster Schritt: für alle sechs Kostengruppen entscheiden, ob sie enthalten sind.',
+  'vr3.konfigurator.receipt.buildings': 'Gebäude im Umfang',
+  'vr3.konfigurator.receipt.bgf': 'BGF R+S gesamt',
+  'vr3.konfigurator.receipt.savedAt': 'Gespeichert am',
+  'vr3.konfigurator.route.building': '{building} prüfen',
+  'vr3.konfigurator.route.scope': 'Zu Gebäude & Umfang',
+  'vr3.konfigurator.start': 'Leistungsabgrenzung starten',
+  'vr3.journal.buildingConfirmed': 'Gebäude {building} bestätigt',
+  'vr3.journal.scopeBuildingAdded': '{building} in den Angebotsumfang aufgenommen',
+  'vr3.journal.scopeBuildingRemoved': '{building} aus dem Angebotsumfang genommen',
+  'vr3.journal.scopeBuildingConfirmed': 'Gebäudegrundlage {building} bestätigt',
+  'vr3.journal.scopeMetricEdited': '{building}: {metric} überschrieben',
+  'vr3.journal.scopeMetricReverted': '{building}: {metric} auf Quellwert zurückgesetzt',
+  'vr3.journal.buildingScopeSaved': 'Gebäudeumfang gespeichert · {count} Gebäude',
   'vr3.building.underground.none': 'kein Untergeschoss',
   'vr3.building.underground.partial': 'Teil-Untergeschoss',
   'vr3.building.underground.full': 'Untergeschoss vorhanden',
@@ -1373,6 +1508,18 @@ const de = {
   'vr3.spine.reason.needsAnalysis': 'Dokumentanalyse fehlt',
   'vr3.spine.reason.needsReadiness': 'Projekt noch nicht bereit',
   'vr3.spine.reason.needsOption': 'Option fehlt',
+  'vr3.spine.reason.needsBuildingScope': 'Gebäudeumfang noch nicht gespeichert',
+  'vr3.spine.reason.locked': 'Voraussetzung fehlt',
+  'vr3.spine.reason.needsScopeDecisions': 'Leistungsabgrenzung noch offen',
+  'vr3.option.created.heading': '«{option}» ist bereit für ihre Grundlage',
+  'vr3.option.created.lead':
+    'Nur Gebäude & Umfang ist jetzt verfügbar. Wählen und bestätigen Sie die '
+    + 'Gebäudegrundlage, um den Konfigurator freizugeben.',
+  'vr3.option.created.nextLabel': 'Nächster Schritt: Gebäude & Umfang',
+  'vr3.option.created.nextDetail':
+    'Konfigurator, Terminplan, finale Prüfung und Kundenmodus bleiben gesperrt, '
+    + 'bis ihre Voraussetzungen erfüllt sind.',
+  'vr3.option.created.action': 'Gebäude & Umfang festlegen',
   'vr3.spine.projectLabel': 'Projekt',
   'vr3.evidence.assetCaption': '{label} · Demonstrationsbeleg',
   'vr3.evidence.failedPreview': 'Vorschau nicht verfügbar: der Scan ist beschnitten und die Erkennung ist fehlgeschlagen.',
@@ -1462,7 +1609,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'shell.mode.intern': 'Internal',
   'shell.mode.praesentation': 'Presentation',
   'shell.mode.blockedReason':
-    'Select at least one building and confirm every selected building first.',
+    'Confirm every selected building baseline first and save the building scope.',
   'shell.mode.legend': 'Mode',
   'shell.mode.work': 'WORK',
   'shell.profile.legend': 'View',
@@ -1571,7 +1718,7 @@ const en: Partial<Record<MessageKey, string>> = {
     'Building class not yet confirmed. Provisionally GK 5 · review required.',
   'oppcard.rail.recommendation.cta': 'Review classification',
   'buildingScope.gate.navigationReason':
-    'Select at least one building and confirm every selected building first.',
+    'Confirm every selected building baseline first and save the building scope.',
   'buildingScope.title': 'Building & scope',
   'buildingScope.meta':
     'Before the Configurator · {confirmed} of {selected} selected buildings confirmed',
@@ -2156,6 +2303,140 @@ const en: Partial<Record<MessageKey, string>> = {
   'vr3.building.storeys.bA': 'GF + 5 upper floors',
   'vr3.building.storeys.bB': 'Basement + GF + 4 upper floors',
   'vr3.building.storeys.bC': 'Partial basement + GF + 6 upper floors',
+  /* VR3-02 — Option building scope and the Configurator gate. */
+  'vr3.scope.eyebrow.review': 'Option baseline · review required',
+  'vr3.scope.eyebrow.saved': 'Option baseline · saved',
+  'vr3.scope.eyebrow.noBaseline': 'Option baseline · not inherited',
+  'vr3.scope.noBaseline.heading': 'This Option has no project baseline',
+  'vr3.scope.noBaseline.explanation':
+    'An Option inherits its building scope from the confirmed project baseline when it '
+    + 'is created. This Option was created without one, so there is nothing here to review.',
+  'vr3.scope.noBaseline.absenceTitle': 'No buildings inherited',
+  'vr3.scope.noBaseline.absenceDetail':
+    'Create the Option again from the project. Existing Options are kept.',
+  'vr3.scope.noBaseline.action': 'Go to the project',
+  'vr3.scope.progress': '{confirmed} of {total} confirmed',
+  'vr3.scope.lead.single':
+    'Check this building\u2019s metrics and their authority, then confirm the baseline.',
+  'vr3.scope.lead.multi':
+    'Choose what this Option covers, verify each building\u2019s metrics and authority, '
+    + 'then confirm every baseline individually.',
+  'vr3.scope.selection.legend': 'Buildings in the offer scope',
+  'vr3.scope.building': 'Building {mark}',
+  'vr3.scope.selectAction': 'Keep in the offer scope',
+  'vr3.scope.reviewAction': 'Review baseline',
+  'vr3.scope.selected': 'In scope',
+  'vr3.scope.notSelected': 'Not in scope',
+  'vr3.scope.status.confirmed': 'Baseline confirmed',
+  'vr3.scope.status.stale': 'Recheck required',
+  'vr3.scope.status.open': 'Review open',
+  'vr3.scope.status.unselected': 'Not in scope',
+  'vr3.scope.empty':
+    'No building in scope. Select at least one building to review its baseline.',
+  'vr3.scope.selectedTotal': 'Selected scope: {value} m² gross floor area R+S',
+  'vr3.scope.unit.area': 'm²',
+  'vr3.scope.metric.storeys': 'Storeys',
+  'vr3.scope.metric.underground': 'Basement',
+  'vr3.scope.metric.bgfRAbove': 'BGF R above grade',
+  'vr3.scope.metric.bgfSAbove': 'BGF S above grade',
+  'vr3.scope.metric.bgfRBelow': 'BGF R below grade',
+  'vr3.scope.metric.bgfRSTotal': 'BGF R+S total',
+  'vr3.scope.metric.wfl': 'Living area per WoFlV',
+  'vr3.scope.metric.nuf': 'Usable floor area per DIN 277',
+  'vr3.scope.metric.commercialNuf': 'Commercial usable area',
+  'vr3.scope.metric.units': 'Residential units',
+  'vr3.scope.metric.workplaces': 'Workplaces',
+  'vr3.scope.metric.parkingSpaces': 'Parking spaces',
+  'vr3.scope.metric.siteArea': 'Site area',
+  'vr3.scope.underground.none': 'No basement',
+  'vr3.scope.underground.partial': 'Partial basement',
+  'vr3.scope.underground.full': 'Basement',
+  'vr3.scope.evidence.planSet': 'Plan set',
+  'vr3.scope.evidence.section': 'Section',
+  'vr3.scope.baseline.title': 'Baseline · {building}',
+  'vr3.scope.baseline.authority': 'Authority: {authority}',
+  'vr3.scope.edit.open': 'Change',
+  'vr3.scope.edit.revert': 'Source value',
+  'vr3.scope.edit.commit': 'Apply value',
+  'vr3.scope.edit.cancel': 'Cancel',
+  'vr3.scope.edit.reasonLabel': 'Reason',
+  'vr3.scope.edit.consequenceTitle': 'This changes the cost-group quantity bases',
+  'vr3.scope.edit.consequenceDetail':
+    'The previous source value stays in the history. The baseline has to be confirmed again '
+    + 'afterwards.',
+  'vr3.scope.edit.error.empty': 'Please enter a value.',
+  'vr3.scope.edit.error.notANumber': 'Please enter a number, for example 3,410.00.',
+  'vr3.scope.edit.error.negative': 'An area or a count cannot be negative.',
+  'vr3.scope.edit.error.notAnInteger': 'Please enter a whole number.',
+  'vr3.scope.edit.error.tooLarge': 'The value is outside the permitted range.',
+  'vr3.scope.edit.error.reason': 'Please state why the source value is being replaced.',
+  'vr3.scope.confirm.action': 'Confirm building baseline',
+  'vr3.scope.confirm.blockedByEdit': 'Apply or cancel the open change first.',
+  'vr3.scope.confirmed.label': 'Baseline confirmed',
+  'vr3.scope.confirmed.meta': '{actor} · {at}',
+  'vr3.scope.stale.building':
+    'The values of {building} have changed since it was confirmed. Please review and '
+    + 'confirm it again.',
+  'vr3.scope.stale.scope':
+    'The saved building scope no longer describes the current selection. The Configurator '
+    + 'stays locked until it is saved again.',
+  'vr3.scope.removal.title': 'Remove {building} from the scope?',
+  'vr3.scope.removal.detail':
+    'This building\u2019s confirmation and the saved scope both lose their validity. '
+    + 'Metrics and authority are kept.',
+  'vr3.scope.removal.confirm': 'Remove from scope',
+  'vr3.scope.removal.cancel': 'Keep in scope',
+  'vr3.scope.prereq.selection': 'At least one building in scope',
+  'vr3.scope.prereq.selectionDetail': 'Select at least one building.',
+  'vr3.scope.prereq.building': 'Baseline confirmed: {building}',
+  'vr3.scope.prereq.buildingDetail': 'Verify the metrics and confirm the baseline.',
+  'vr3.scope.gate.route': 'Go to {building}',
+  'vr3.scope.save.action': 'Save building scope',
+  'vr3.scope.save.busy': 'Saving the building scope',
+  'vr3.scope.save.retry': 'Save again',
+  'vr3.scope.save.blocked.one': 'One building baseline still open.',
+  'vr3.scope.save.blocked.many': '{count} building baselines still open.',
+  'vr3.scope.save.alreadySaved': 'The current scope is already saved.',
+  'vr3.scope.error.changed':
+    'The scope changed while it was being saved. Every selection and edit was kept; '
+    + 'please save again.',
+  'vr3.scope.announce.saving': 'Saving the building scope.',
+  'vr3.scope.announce.saved': 'Building scope saved. The Configurator is now available.',
+  'vr3.scope.announce.confirmed': 'Baseline confirmed: {building}.',
+  'vr3.scope.announce.edited': '{metric} of {building} overridden.',
+  'vr3.scope.announce.reverted': '{metric} of {building} reset to the source value.',
+  'vr3.scope.announce.removed': '{building} removed from the offer scope.',
+  'vr3.konfigurator.eyebrow': 'Workflow gate',
+  'vr3.konfigurator.heading.locked': 'Configurator locked',
+  'vr3.konfigurator.heading.available': 'Configurator available',
+  'vr3.konfigurator.lead.locked':
+    'The system knows what is missing and provides a direct recovery path. Disabled '
+    + 'navigation would not be the explanation.',
+  'vr3.konfigurator.lead.available':
+    'The Option baseline is confirmed and saved. Scope boundaries is the only current '
+    + 'next step.',
+  'vr3.konfigurator.prereq.scope': 'Building & scope saved',
+  'vr3.konfigurator.blockedReason':
+    'The Configurator opens as soon as the building scope is saved.',
+  'vr3.konfigurator.prereq.buildingDetail': '{building} still needs review and confirmation.',
+  'vr3.konfigurator.prereq.saveDetail': 'Save the confirmed building scope.',
+  'vr3.konfigurator.receipt.title.one': 'One building baseline confirmed and saved',
+  'vr3.konfigurator.receipt.title.many': '{count} building baselines confirmed and saved',
+  'vr3.konfigurator.receipt.next':
+    'Next step: decide for all six cost groups whether they are in scope.',
+  'vr3.konfigurator.receipt.buildings': 'Buildings in scope',
+  'vr3.konfigurator.receipt.bgf': 'BGF R+S total',
+  'vr3.konfigurator.receipt.savedAt': 'Saved on',
+  'vr3.konfigurator.route.building': 'Review {building}',
+  'vr3.konfigurator.route.scope': 'Go to Building & scope',
+  'vr3.konfigurator.start': 'Start scope boundaries',
+  'vr3.journal.buildingConfirmed': 'Building {building} confirmed',
+  'vr3.journal.scopeBuildingAdded': '{building} added to the offer scope',
+  'vr3.journal.scopeBuildingRemoved': '{building} removed from the offer scope',
+  'vr3.journal.scopeBuildingConfirmed': 'Building baseline {building} confirmed',
+  'vr3.journal.scopeMetricEdited': '{building}: {metric} overridden',
+  'vr3.journal.scopeMetricReverted': '{building}: {metric} reset to the source value',
+  'vr3.journal.buildingScopeSaved': 'Building scope saved · {count} buildings',
   'vr3.building.underground.none': 'no basement',
   'vr3.building.underground.partial': 'partial basement',
   'vr3.building.underground.full': 'basement',
@@ -2506,6 +2787,18 @@ const en: Partial<Record<MessageKey, string>> = {
   'vr3.spine.reason.needsAnalysis': 'Document analysis missing',
   'vr3.spine.reason.needsReadiness': 'Project not ready yet',
   'vr3.spine.reason.needsOption': 'Option missing',
+  'vr3.spine.reason.needsBuildingScope': 'Building scope not saved yet',
+  'vr3.spine.reason.locked': 'Prerequisite missing',
+  'vr3.spine.reason.needsScopeDecisions': 'Scope boundaries still open',
+  'vr3.option.created.heading': '\u201c{option}\u201d is ready for its baseline',
+  'vr3.option.created.lead':
+    'Only Building & scope is available now. Select and confirm the building '
+    + 'baseline to unlock the Configurator.',
+  'vr3.option.created.nextLabel': 'Next step: Building & scope',
+  'vr3.option.created.nextDetail':
+    'Configurator, schedule, final validation and Client Mode stay locked until '
+    + 'their prerequisites are satisfied.',
+  'vr3.option.created.action': 'Define buildings & scope',
   'vr3.spine.projectLabel': 'Project',
   'vr3.evidence.assetCaption': '{label} · demonstration evidence',
   'vr3.evidence.failedPreview': 'Preview unavailable: the scan is cropped and recognition failed.',

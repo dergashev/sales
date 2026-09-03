@@ -13,6 +13,7 @@ import {
   configurationDisplayStatusFor,
   useStore,
 } from '../../state/store'
+import { scopeSelectedIds } from '../../state/optionBuildingScope'
 
 beforeEach(() => __resetStoreForTests())
 
@@ -26,37 +27,58 @@ async function openBuildingScope(_user: ReturnType<typeof userEvent.setup>) {
   enterOptionWorkspace()
 }
 
+/**
+ * VR3-02: reach the Konfigurator's own GATE with the building scope saved,
+ * without yet entering Leistungsabgrenzung.
+ *
+ * `buildingCount` is the number of buildings in the PROPOSAL record the
+ * engine prices — the model this suite is actually about. It is no longer
+ * chosen through a "Gebäude verwalten" disclosure: VR3-02 moved the
+ * Option's user-facing scope onto the project baseline, and the proposal
+ * record became that scope's pricing projection. The store action stays the
+ * same one the retired disclosure called.
+ */
 async function openModeStep(
   user: ReturnType<typeof userEvent.setup>,
   buildingCount: 1 | 2,
 ) {
   await openBuildingScope(user)
   if (buildingCount === 2) {
-    // Acceptance remediation (cycle 5): building inclusion is now behind the
-    // "Gebäude verwalten" disclosure, closed by default once a building is
-    // already selected.
-    await user.click(screen.getByRole('button', { name: 'Gebäude verwalten' }))
-    await user.click(screen.getByRole('checkbox', { name: 'Haus B' }))
+    act(() => {
+      const s = useStore.getState()
+      const second = Object.keys(s.buildings).find((id) => !s.included[id])
+      if (second) {
+        s.toggleBuildingIncluded(second)
+        // The retired flow left the SECOND building under review, because
+        // confirming it was the last thing the user did. The Configurator
+        // opens on the building the user was last looking at, so keep that.
+        useStore.getState().setActiveBuilding(second)
+      }
+    })
   }
   await confirmBuildingReviewSections(user)
-  await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
-  if (buildingCount === 2) {
-    const tabs = screen.getByRole('tablist', { name: 'Gewählte Gebäude' })
-    await user.click(within(tabs).getByRole('tab', { name: /Haus B/ }))
-    await confirmBuildingReviewSections(user)
-    await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
-  }
-  await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
+  act(() => {
+    const s = useStore.getState()
+    scopeSelectedIds(s).forEach((id) => useStore.getState().confirmScopeBuilding(id))
+    useStore.getState().beginBuildingScopeSave()
+    useStore.getState().advanceBuildingScopeSave()
+    useStore.getState().setPipelineView('konfigurator')
+  })
 }
 
+/**
+ * The configuration mode is no longer a gate of its own: it is derived from
+ * the saved scope and confirmed by entering Leistungsabgrenzung (target spec
+ * §3 — "configuration-mode decisions, if retained, belong inside Gebäude &
+ * Umfang; they must not create an extra unmodelled gate"). Choosing it
+ * explicitly stays a real Product setting, editable inside the Configurator,
+ * which is the transition this drives.
+ */
 async function startMode(
-  user: ReturnType<typeof userEvent.setup>,
+  _user: ReturnType<typeof userEvent.setup>,
   mode: 'SHARED' | 'PER_BUILDING',
 ) {
-  await user.click(screen.getByRole('radio', {
-    name: mode === 'SHARED' ? 'Gemeinsam konfigurieren' : 'Je Gebäude konfigurieren',
-  }))
-  await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
+  act(() => { useStore.getState().confirmConfigurationMode(mode) })
 }
 
 function includeCoreScope() {
@@ -83,23 +105,22 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     const user = userEvent.setup()
     await openModeStep(user, 1)
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Leistungsabgrenzung' }))
+    // VR3-02: the stage the user arrives at is the Konfigurator's own gate,
+    // and it is AVAILABLE with the receipt of the scope they just saved —
+    // not a separate mode question standing between them and the journey.
+    expect(screen.getByRole('heading', { level: 1, name: 'Konfigurator verfügbar' }))
       .toBeInTheDocument()
     expect(screen.queryByRole('dialog')).toBeNull()
-    screen.getAllByRole('radio', { name: /konfigurieren/ })
-      .forEach((radio) => expect(radio).not.toBeChecked())
+    // No commercial rail and no pricing before Leistungsabgrenzung is
+    // entered: a legitimate price does not exist yet.
     expect(screen.queryByRole('complementary', { name: 'Angebot' })).toBeNull()
-    expect(screen.getByText('Kalkulation noch nicht gestartet')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Leistungsabgrenzung/ })).toBeNull()
+    expect(useStore.getState().pricingStarted).toBe(false)
 
     const beforeJournal = useStore.getState().journal.length
-    await user.click(screen.getByRole('radio', { name: 'Gemeinsam konfigurieren' }))
-
-    expect(useStore.getState().journal).toHaveLength(beforeJournal)
     expect(useStore.getState().activeDelta).toBeNull()
-    expect(screen.getByText('Kalkulation noch nicht gestartet')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
+    await user.click(screen.getByRole('button', { name: 'Leistungsabgrenzung starten' }))
+    expect(useStore.getState().journal.length).toBeGreaterThan(beforeJournal)
     expect(useStore.getState().configurationModeChosen).toBe(true)
     // Scope Boundaries is the authoritative first Configurator step
     // (Product contract, 2026-08-18): this single click both confirms the
@@ -393,28 +414,21 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
     expect(configurationDisplayStatusFor(useStore.getState(), 'DEMO-B-A'))
       .toBe('confirmed')
 
-    await user.click(nav(/Gebäude & Umfang/))
-    // Acceptance remediation (cycle 6): "Identität & Nutzung" now renders a
-    // read-only summary by default — the edit fields need their own
-    // "Abschnitt bearbeiten" click first.
-    await user.click(screen.getByRole('button', { name: 'Abschnitt bearbeiten: Identität & Nutzung' }))
-    const name = screen.getByRole('textbox', { name: 'Bezeichnung aus der Dokumentation' })
-    await user.clear(name)
-    await user.type(name, 'Haus A Nord')
-    await user.click(screen.getByRole('button', {
-      name: 'Angabe übernehmen: Bezeichnung aus der Dokumentation',
-    }))
+    // VR3-02 retired the proposal record's own edit surface: the Option's
+    // building facts are edited on Gebäude & Umfang, and the proposal
+    // record is that scope's pricing projection. The INVALIDATION contract
+    // this test exists for is unchanged and still lives in the store — a
+    // reviewed fact changing invalidates the CONFIGURATION confirmation
+    // that was built on it, without reviving it silently.
+    act(() => {
+      useStore.getState()
+        .setBuildingFactOverride('DEMO-B-A', 'documentationName', 'Haus A Nord')
+    })
     expect(configurationDisplayStatusFor(useStore.getState(), 'DEMO-B-A'))
       .toBe('recheck')
-    expect(screen.getByText('Konfigurationsbestätigung aufgehoben: Haus A Nord.'))
-      .toBeInTheDocument()
-    expect(screen.getByText(/Andere gültige Konfigurationsarbeit bleibt gespeichert/))
-      .toBeInTheDocument()
 
-    await confirmBuildingReviewSections(user)
-    await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
-    expect(screen.queryByText(/Konfigurationsbestätigung aufgehoben/)).toBeNull()
-    await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
+    act(() => { useStore.getState().confirmBuilding('DEMO-B-A') })
+    act(() => { useStore.getState().setPipelineView('konfigurator') })
     expect(screen.getByText('Erneut prüfen')).toBeInTheDocument()
     expect(screen.queryByText('Die sichtbare Konfiguration ist bestätigt.')).toBeNull()
     expect(screen.getByRole('button', {
@@ -432,11 +446,16 @@ describe('Konfigurator mode entry and building-aware navigation', () => {
   it('does not treat unrelated building price geometry as configuration consent', async () => {
     const user = userEvent.setup()
     await openModeStep(user, 1)
+    // VR3-02: the building's price GEOMETRY exists as soon as its baseline
+    // is saved — that is what makes a projection possible at all. It is
+    // still not configuration CONSENT: nothing is chosen, nothing is
+    // priced, and the mode is not confirmed until the user enters
+    // Leistungsabgrenzung.
     const before = useStore.getState().projection().result.total.exact
-    await user.click(screen.getByRole('radio', { name: 'Je Gebäude konfigurieren' }))
-    expect(useStore.getState().projection().result.total.exact.eq(before)).toBe(true)
     expect(useStore.getState().configurationModeChosen).toBe(false)
+    expect(useStore.getState().pricingStarted).toBe(false)
     expect(before.isPositive()).toBe(true)
+    expect(useStore.getState().projection().result.total.exact.eq(before)).toBe(true)
   })
 
   it('keeps 4+ building views as an overflow tablist with manual activation', async () => {

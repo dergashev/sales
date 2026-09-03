@@ -1,122 +1,129 @@
 import { test, expect } from '../fixtures'
 import {
   BUILDING_SCOPE,
-  BUILDINGS,
   CONFIGURATOR_CHAPTERS,
-  CONFIGURATOR_MODE,
-  CONFIGURATOR_SCOPE,
+  DEMO_COMPLEX_PROJECT_NAME,
   DEMO_PROJECT_NAME,
+  KONFIGURATOR_GATE,
   NAV,
-  SCOPE_BOUNDARIES,
+  SCOPE_BUILDINGS,
 } from '../anchors'
-import { reachOptionWorkspace } from '../journey'
+import { reachOptionWorkspace, saveBuildingScope } from '../journey'
 
 /**
- * Building-aware Configurator scenario (Engineering Architecture handoff,
- * smoke coverage items 5 and 6).
+ * The Option's building-scope gate chain (VR3-02, targets T-013 – T-017).
  *
- * There is no router and nothing on `window` (F3/F4 in the architecture
- * handoff) — the Configurator can only be reached by walking the real
- * gate chain through real UI clicks, exactly as a salesperson would. This
- * spec IS that chain, for the one fully worked-out fixture (DEMO-0001,
- * "Musterprojekt Nordfeld"):
+ * There is no router and nothing on `window` — the Konfigurator can only be
+ * reached by walking the real gate chain through real UI clicks, exactly as
+ * a salesperson would, and this spec IS that chain:
  *
- *   Opportunity list -> open DEMO-0001 -> resolve WFL conflict -> confirm
- *   project params -> create an Option -> open it -> land on Building &
- *   Scope (gate closed) -> confirm building(s) -> Konfigurator unlocked
- *   -> choose "Je Gebäude konfigurieren" (PER_BUILDING) -> per-building
- *   scope tabs.
+ *   Projects → open the project → run the analysis → create an Option →
+ *   Gebäude & Umfang (Konfigurator locked) → confirm each selected
+ *   building → save the scope → Konfigurator available → start
+ *   Leistungsabgrenzung.
  *
- * Along the way it asserts the building gate itself is a genuine,
- * reactive client-facing mechanic — not just "eventually unlocked": adding
- * a second, unconfirmed building RE-LOCKS the Konfigurator nav item, and
- * confirming that building unlocks it again. That reactive lock/unlock is
- * the "meaningful client-facing interaction [that] produces the expected
- * visible result" this suite is required to cover, and it only exists
- * because building state is per-building, not global.
+ * It asserts the gate is a genuine, reactive mechanic and not "eventually
+ * unlocked": a material change AFTER the save re-locks it, and the locked
+ * stage renders its own explanation rather than a greyed-out label. That
+ * reactive lock/unlock only exists because the gate is a fingerprint of the
+ * selected buildings and their confirmed values.
  *
- * Only the fixture data (project/building names) is asserted on; no
- * calculation/total is asserted here — those belong to the calculation
- * engine's own tests (CLAUDE.md rule 32/35).
+ * Only fixture identity is asserted on; no calculation total is asserted
+ * here — those belong to the calculation engine's own tests (rule 32/35).
  */
-test.describe('building-aware Configurator gate chain', () => {
-  test('confirming buildings unlocks the Konfigurator, per-building scope is reachable', async ({ page }) => {
+test.describe('Option building scope · gate chain', () => {
+  test('one building: confirm, save, and the Konfigurator becomes available', async ({ page }) => {
     await page.goto('/')
-
-    // ── Project list -> analysis -> readiness gate -> Option ─────────
-    //    VR3-01 replaced the retired project card's five-control preamble
-    //    with the real journey; `reachOptionWorkspace` walks it as a user.
     await reachOptionWorkspace(page, DEMO_PROJECT_NAME)
 
-    // ── Landed on Building & Scope: the gate is closed by default ────
-    const nav = page.getByRole('navigation', { name: NAV.landmark })
-    const konfiguratorItem = nav.getByRole('button', { name: NAV.items.konfigurator })
-    await expect(konfiguratorItem).toHaveAttribute('aria-disabled', 'true')
-    await expect(konfiguratorItem).toHaveAttribute('aria-describedby', 'building-gate-konfigurator')
+    // ── Landed on Gebäude & Umfang: the gate is closed ───────────────
+    await expect(page.getByRole('heading', { level: 1, name: NAV.items.buildingScope }))
+      .toBeVisible()
+    await expect(page.getByText(BUILDING_SCOPE.progress(0, 1))).toBeVisible()
+    // The Option's buildings come from the PROJECT baseline, not from the
+    // proposal fixture the engine prices.
+    await expect(page.getByText('Lindenhof')).toBeVisible()
 
-    // ── Confirm the only included building (Haus A) — the gate opens ─
-    // Task 02 (deep-coherence audit, F-22): the building review's three
-    // sections (Identität / Flächen / Geschossstruktur) used to each need
-    // their own independent "Abschnitt bestätigen" click before "Gebäude
-    // bestätigen" itself unlocked. The single building-level confirm
-    // action now reviews and confirms every ready section itself as part
-    // of one click (AC5: exactly one confirmation action per building) —
-    // there is no longer a separate section-level control to click first.
-    const activePanel = page.getByRole('tabpanel')
-    await activePanel.getByRole('button', { name: BUILDING_SCOPE.confirmBuilding }).click()
-    await expect(konfiguratorItem).not.toHaveAttribute('aria-disabled', 'true')
+    const save = page.getByRole('button', { name: BUILDING_SCOPE.save })
+    await expect(save).toHaveAttribute('aria-disabled', 'true')
 
-    // ── Include the second building (unconfirmed) — the gate RE-LOCKS ─
-    // This is the reactive, building-aware behavior this scenario exists
-    // to prove: the gate depends on EVERY included building, not on "at
-    // least one".
-    await page.getByRole('button', { name: BUILDING_SCOPE.manageBuildings }).click()
-    await page.getByRole('checkbox', { name: BUILDINGS.b }).check()
-    await expect(konfiguratorItem).toHaveAttribute('aria-disabled', 'true')
+    // ── The locked stage is a PLACE and explains itself (T-016) ──────
+    const spine = page.getByRole('navigation', { name: 'Projekt- und Optionsverlauf' })
+    await spine.getByRole('button', { name: /^Leistungsabgrenzung Schritt 5/ }).click()
+    await expect(page.getByRole('heading', { level: 1, name: KONFIGURATOR_GATE.locked }))
+      .toBeVisible()
+    // Fail-closed: no configurator is mounted behind the closed gate.
+    await expect(page.getByRole('heading', {
+      level: 1, name: CONFIGURATOR_CHAPTERS.scopeBoundaries,
+    })).toHaveCount(0)
+    // A named recovery route, not a disabled label.
+    await page.getByRole('button', { name: /Lindenhof prüfen/ }).click()
+    await expect(page.getByRole('heading', { level: 1, name: NAV.items.buildingScope }))
+      .toBeVisible()
 
-    // ── Confirm the second building too — the gate opens again ───────
-    await page.getByRole('tab', { name: new RegExp(BUILDINGS.b) }).click()
-    const buildingBPanel = page.getByRole('tabpanel')
-    await buildingBPanel.getByRole('button', { name: BUILDING_SCOPE.confirmBuilding }).click()
-    await expect(konfiguratorItem).not.toHaveAttribute('aria-disabled', 'true')
-    await expect(konfiguratorItem).not.toHaveAttribute('aria-describedby', 'building-gate-konfigurator')
+    // ── Confirm and save: the gate opens with its receipt (T-017) ────
+    await page.getByRole('button', { name: BUILDING_SCOPE.confirm(SCOPE_BUILDINGS.a1) }).click()
+    await expect(page.getByText(BUILDING_SCOPE.progress(1, 1))).toBeVisible()
+    await expect(save).not.toHaveAttribute('aria-disabled', 'true')
+    await save.click()
 
-    // ── Enter the Configurator, choose the building-aware mode ───────
-    await konfiguratorItem.click()
-    await expect(page.getByRole('heading', { name: CONFIGURATOR_MODE.title })).toBeVisible()
-    // RadioCardGroup's native <input> is visually `sr-only`; the whole tile
-    // (including a purely decorative `aria-hidden` focus-ring overlay) sits
-    // on top of it and carries the click via native <label> wrapping — the
-    // same way a sighted mouse user activates it. `force` skips Playwright's
-    // hit-test-visibility check for that decorative overlay; it does not
-    // change what gets clicked or what event fires.
-    await page.getByRole('radio', { name: CONFIGURATOR_MODE.perBuildingRadio }).check({ force: true })
-    await page.getByRole('button', { name: CONFIGURATOR_MODE.start }).click()
+    await expect(page.getByRole('heading', { level: 1, name: KONFIGURATOR_GATE.available }))
+      .toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText(/Eine Gebäudegrundlage bestätigt und gespeichert/))
+      .toBeVisible()
 
-    // ── Configurator entered: nav reflects the current pipeline view ─
-    await expect(konfiguratorItem).toHaveAttribute('aria-current', 'page')
-
-    // ── Scope Boundaries is the authoritative first Configurator step ─
-    // (Product contract, 2026-08-18): "Konfiguration starten" lands here
-    // directly, and it is project-level — no per-building scope tabs yet.
+    // ── One transition into Leistungsabgrenzung, not two ─────────────
+    await page.getByRole('button', { name: KONFIGURATOR_GATE.start }).click()
     await expect(page.getByRole('heading', {
       level: 1, name: CONFIGURATOR_CHAPTERS.scopeBoundaries,
     })).toBeVisible()
-    await expect(page.getByRole('tablist', { name: CONFIGURATOR_SCOPE.legend })).toHaveCount(0)
+  })
 
+  test('three buildings: distinct identities, per-building confirmation, and a re-locking gate', async ({ page }) => {
+    await page.goto('/')
+    await reachOptionWorkspace(page, DEMO_COMPLEX_PROJECT_NAME)
 
-    // ── Building-aware client-facing interaction: per-building scope ─
-    // Leistungen KG 300 is the first building-scoped chapter reached from
-    // Scope Boundaries once KG 300 is included. With two included buildings
-    // and PER_BUILDING mode it exposes a scope tablist with a "Gesamt"
-    // (total) tab plus one tab per included building.
-    await nav.getByRole('button', { name: CONFIGURATOR_CHAPTERS.kg300 }).click()
-    const scopeTabs = page.getByRole('tablist', { name: CONFIGURATOR_SCOPE.legend })
-    await expect(scopeTabs).toBeVisible()
-    await expect(scopeTabs.getByRole('tab')).toHaveCount(3)
+    // ── Exactly three identities, each with its own metrics ──────────
+    await expect(page.getByText(BUILDING_SCOPE.progress(0, 3))).toBeVisible()
+    for (const identity of [SCOPE_BUILDINGS.bA, SCOPE_BUILDINGS.bB, SCOPE_BUILDINGS.bC]) {
+      await expect(page.getByRole('checkbox', { name: BUILDING_SCOPE.select(identity) }))
+        .toBeChecked()
+    }
+    // Exactly one baseline is open, and it names the building it belongs to.
+    await expect(page.getByRole('region', { name: new RegExp(SCOPE_BUILDINGS.bA) }))
+      .toBeVisible()
+    await expect(page.getByRole('region', { name: new RegExp(SCOPE_BUILDINGS.bC) }))
+      .toHaveCount(0)
 
-    const buildingBTab = scopeTabs.getByRole('tab', { name: new RegExp(BUILDINGS.b) })
-    await buildingBTab.click()
-    await expect(buildingBTab).toHaveAttribute('aria-selected', 'true')
+    await page.getByRole('button', { name: BUILDING_SCOPE.review(SCOPE_BUILDINGS.bC) }).click()
+    const stadthaus = page.getByRole('region', { name: new RegExp(SCOPE_BUILDINGS.bC) })
+    await expect(stadthaus).toBeVisible()
+    // Stadthaus' own storey structure, from the fixture — never Kontorhaus'.
+    await expect(stadthaus.getByText('Teil-UG + EG + 6 OG')).toBeVisible()
+
+    // ── Save the scope, then break it again ─────────────────────────
+    await saveBuildingScope(page)
+
+    await page.getByRole('button', { name: /^Gebäude & Umfang Schritt 4/ }).click()
+    await expect(page.getByRole('heading', { level: 1, name: NAV.items.buildingScope }))
+      .toBeVisible()
+    await page.getByRole('button', { name: BUILDING_SCOPE.review(SCOPE_BUILDINGS.bB) }).click()
+    await page.getByRole('button', {
+      name: `Ändern · Wohnfläche nach WoFlV · ${SCOPE_BUILDINGS.bB}`,
+    }).click()
+    const field = page.getByRole('textbox', {
+      name: `Wohnfläche nach WoFlV · ${SCOPE_BUILDINGS.bB}`,
+    })
+    await field.fill('3.500')
+    await page.getByRole('textbox', { name: 'Begründung' }).fill('Planaenderung OG2')
+    await page.getByRole('button', { name: 'Wert übernehmen' }).click()
+
+    // The confirmation of the EDITED building dies; the other two stand.
+    await expect(page.getByText(BUILDING_SCOPE.progress(2, 3))).toBeVisible()
+    await expect(page.getByText(/beschreibt nicht mehr die aktuelle Auswahl/)).toBeVisible()
+    // The gate is closed again: a saved scope that no longer describes the
+    // selection is a recheck, never a still-open gate.
+    await expect(page.getByRole('button', { name: BUILDING_SCOPE.save }))
+      .toHaveAttribute('aria-disabled', 'true')
   })
 })

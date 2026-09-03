@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
-import { confirmBuildingReviewSections, enterOptionWorkspace } from '../../test/offer-option'
+import { confirmBuildingReviewSections, enterOptionWorkspace, completeBuildingScope } from '../../test/offer-option'
 import { CONFIGURATOR_STEP } from '../../state/chapters'
 import { __resetStoreForTests, includedBuildingIds, useStore } from '../../state/store'
 
@@ -21,10 +21,7 @@ beforeEach(() => __resetStoreForTests())
 async function enterKg300Chapter(user: ReturnType<typeof userEvent.setup>) {
   enterOptionWorkspace()
   await confirmBuildingReviewSections(user)
-  await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
-  await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
-  await user.click(screen.getByRole('radio', { name: 'Je Gebäude konfigurieren' }))
-  await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
+  completeBuildingScope('PER_BUILDING')
   act(() => {
     useStore.getState().setCoverage('KG_300', 'included')
     useStore.getState().setCoverage('KG_400', 'included')

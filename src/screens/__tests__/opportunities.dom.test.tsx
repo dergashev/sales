@@ -7,6 +7,7 @@ import {
   enterOptionWorkspace,
   enterProjectUnderstanding,
   settleOptionCommit,
+  completeBuildingScope,
 } from '../../test/offer-option'
 import { __resetStoreForTests, useStore } from '../../state/store'
 import { ProjectOptionsSection } from '../ProjectOptions'
@@ -249,10 +250,15 @@ describe('Уровень Projekte', () => {
     expect(useStore.getState().options).toHaveLength(1)
 
     // Option startet im vorgeschalteten Gebäudeschritt — noch ohne Preis.
-    await user.click(screen.getByRole('button', { name: 'Option öffnen' }))
+    // VR3-02: the hand-off's one continuation NAMES the stage it opens
+    // ("Gebäude & Umfang festlegen"), and the Option's first surface is
+    // that stage. There is no commercial rail before it and no readiness
+    // rail either — the completion count lives in the surface's own header,
+    // where the decision is.
+    await user.click(screen.getByRole('button', { name: 'Gebäude & Umfang festlegen' }))
     expect(screen.getByRole('heading', { name: 'Gebäude & Umfang' })).toBeInTheDocument()
     expect(screen.queryByRole('complementary', { name: 'Angebot' })).not.toBeInTheDocument()
-    expect(screen.getByText('Kalkulation noch nicht gestartet')).toBeInTheDocument()
+    expect(screen.getByText('0 von 3 bestätigt')).toBeInTheDocument()
   })
 
   it.each([
@@ -366,10 +372,7 @@ describe('Уровень Projekte', () => {
     // В клиентский профиль входят только из Option через реальный gate.
     enterOptionWorkspace()
     await confirmBuildingReviewSections(user)
-    await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
-    await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
-    await user.click(screen.getByRole('radio', { name: 'Je Gebäude konfigurieren' }))
-    await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
+    completeBuildingScope('PER_BUILDING')
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
 

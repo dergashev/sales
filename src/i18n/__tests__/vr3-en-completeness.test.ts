@@ -42,6 +42,11 @@ const OWNED_SURFACES = [
   'src/design-system/ActionGate.tsx',
   'src/design-system/ConflictResolver.tsx',
   'src/design-system/QuestionQueue.tsx',
+  // VR3-02 — the Option building scope and the Konfigurator gate.
+  'src/screens/BuildingScope.tsx',
+  'src/screens/KonfiguratorGate.tsx',
+  'src/design-system/BuildingScopePanel.tsx',
+  'src/components/WorkflowSpine.tsx',
 ]
 
 function source(relative: string): string {

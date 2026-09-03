@@ -107,6 +107,8 @@ VR3_CAPABILITY_IDS = [
     'semantic-status', 'authority-trace', 'metric-readout', 'processing-job',
     'document-row', 'prerequisite-state', 'action-gate', 'project-readiness',
     'conflict-resolver', 'question-queue',
+    # VR3-02 — the Option building-scope family.
+    'building-scope-panel', 'workflow-gate',
 ]
 VO_T4_IDS = [
     'canvas', 'paper', 'stage', 'stage-deep', 'media-frame',
@@ -133,7 +135,7 @@ def vo_t4_manifest(*, active_consumer_path='src/Probe.tsx', expiry='2099-12-31',
             if cap_id == 'workflow-stepper':
                 consumers = [
                     {'path': 'src/components/Sidebar.tsx', 'pattern': '<WorkflowStepper'},
-                    {'path': 'src/screens/ProjectHome.tsx', 'pattern': '<WorkflowStepper'},
+                    {'path': 'src/components/WorkflowSpine.tsx', 'pattern': '<WorkflowStepper'},
                 ]
             else:
                 consumers = [{'path': active_consumer_path, 'pattern': 'ACTIVE'}]
@@ -176,7 +178,7 @@ def run_vo_t4_capability_cases() -> list[str]:
                 'src/Probe.tsx': 'export const Probe = "ACTIVE"\n',
                 'src/design-system/WorkflowStepper.tsx': 'export function WorkflowStepper() {}\n',
                 'src/components/Sidebar.tsx': "import { WorkflowStepper } from '../design-system/WorkflowStepper'\nexport const Sidebar = <WorkflowStepper />\n",
-                'src/screens/ProjectHome.tsx': "import { WorkflowStepper } from '../design-system/WorkflowStepper'\nexport const ProjectHome = <WorkflowStepper />\n",
+                'src/components/WorkflowSpine.tsx': "import { WorkflowStepper } from '../design-system/WorkflowStepper'\nexport const Spine = <WorkflowStepper />\n",
                 'src/components/designSystem.tsx': 'export const DesignSystem = {}\n',
                 'src/design-system/registry.tsx': 'export const Registry = "ACTIVE"\n',
             }

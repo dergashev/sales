@@ -9,6 +9,7 @@ import {
   confirmWholeConfiguration,
   enterOptionWorkspace,
   enterProjectUnderstanding,
+  completeBuildingScope,
 } from '../../test/offer-option'
 import { activeBuilding, __resetStoreForTests, useStore } from '../../state/store'
 
@@ -47,10 +48,7 @@ async function enterOption(_user: ReturnType<typeof userEvent.setup>) {
 async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
   await enterOption(user)
   await confirmBuildingReviewSections(user)
-  await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
-  await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
-  await user.click(screen.getByRole('radio', { name: /Je Gebäude konfigurieren/ }))
-  await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
+  completeBuildingScope('PER_BUILDING')
   act(() => {
     useStore.getState().setCoverage('KG_300', 'included')
     useStore.getState().setCoverage('KG_400', 'included')
@@ -84,12 +82,17 @@ describe('Сквозной сценарий продажи', () => {
     // #16) — the three `setCoverage` calls in `enterPipeline` above are
     // guarded no-ops and no longer add journal entries (3 fewer than
     // before).
-    expect(useStore.getState().journal).toHaveLength(9)
+    //
+    // VR3-02 replaced one of them: the Option's building baseline is now
+    // confirmed and SAVED as two events, and saving carries the Option's
+    // pricing projection (the proposal record the engine reads) with it —
+    // the inherited WFL resolution and that record's own confirmation.
+    expect(useStore.getState().journal).toHaveLength(8)
 
     // Уход на другой экран и возврат: состояние переживает переход.
     await user.click(nav(/Variantenvergleich/))
     await user.click(nav(/Konfigurator/))
-    expect(useStore.getState().journal).toHaveLength(9)
+    expect(useStore.getState().journal).toHaveLength(8)
     expect(activeBuilding(useStore.getState()).energiestandard).toBe('EH_40')
 
     // Гейт открывается на top-level шаге здания, а не обходится.
@@ -107,7 +110,7 @@ describe('Сквозной сценарий продажи', () => {
     expect(screen.getByRole('button', { name: 'Angebot prüfen' })).toBeInTheDocument()
     // +2 over the earlier assertions: Scope Boundaries confirmation and the
     // one building's configuration confirmation, both journal events.
-    expect(useStore.getState().journal).toHaveLength(11)
+    expect(useStore.getState().journal).toHaveLength(10)
   })
 
   it('глава 9 показывает Bauzeit обеими формами: полосой и таблицей', async () => {
@@ -521,17 +524,19 @@ describe('Сквозной сценарий продажи', () => {
     const user = userEvent.setup()
     render(<App />)
     await enterOption(user)
-    const blockedExport = nav(/Export/)
-    expect(blockedExport).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getAllByText(/mindestens ein Gebäude auswählen/).length).toBeGreaterThan(0)
+    // VR3-02: before the Konfigurator opens, the rail carries the thirteen-
+    // step journey and not the four-item workspace list, so Export is not a
+    // navigation item yet — it is a locked STAGE, and the stage after
+    // Gebäude & Umfang states the prerequisite by name.
+    expect(screen.getAllByText(/Gebäudeumfang noch nicht gespeichert/).length)
+      .toBeGreaterThan(0)
     await confirmBuildingReviewSections(user)
-    await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
-    await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
     // Task 03 (F-16/PD-3): Export now requires a chosen mode plus a fully
     // confirmed configuration — this test's actual subject is print's own
     // independent gate, not the email/export gate itself.
-    await user.click(screen.getByRole('radio', { name: /Je Gebäude konfigurieren/ }))
-    await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
+    completeBuildingScope('PER_BUILDING')
+    const blockedExport = nav(/Export/)
+    expect(blockedExport).toHaveAttribute('aria-disabled', 'true')
     confirmWholeConfiguration()
     await user.click(nav(/Export/))
     await user.click(screen.getByRole('button', { name: /Druckansicht öffnen/ }))

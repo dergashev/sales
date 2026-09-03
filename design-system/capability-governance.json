@@ -63,7 +63,7 @@
           "pattern": "<WorkflowStepper"
         },
         {
-          "path": "src/screens/ProjectHome.tsx",
+          "path": "src/components/WorkflowSpine.tsx",
           "pattern": "<WorkflowStepper"
         }
       ]
@@ -275,6 +275,26 @@
         {
           "path": "src/screens/ProjectHome.tsx",
           "pattern": "<QuestionQueue"
+        }
+      ]
+    },
+    {
+      "id": "building-scope-panel",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/BuildingScope.tsx",
+          "pattern": "<BuildingScopePanel"
+        }
+      ]
+    },
+    {
+      "id": "workflow-gate",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/KonfiguratorGate.tsx",
+          "pattern": "a3-gatestage"
         }
       ]
     }

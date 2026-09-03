@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
-import { confirmBuildingReviewSections, confirmWholeConfiguration, enterOptionWorkspace } from '../../test/offer-option'
+import { confirmBuildingReviewSections, confirmWholeConfiguration, enterOptionWorkspace, completeBuildingScope } from '../../test/offer-option'
 import { __resetStoreForTests, useStore } from '../../state/store'
 
 /**
@@ -37,10 +37,7 @@ async function enterOption(_user: ReturnType<typeof userEvent.setup>) {
 async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
   await enterOption(user)
   await confirmBuildingReviewSections(user)
-  await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
-  await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
-  await user.click(screen.getByRole('radio', { name: 'Je Gebäude konfigurieren' }))
-  await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
+  completeBuildingScope('PER_BUILDING')
   act(() => {
     useStore.getState().setCoverage('KG_300', 'included')
     useStore.getState().setCoverage('KG_400', 'included')
@@ -321,10 +318,7 @@ describe('DC-33 · единственная модалка системы — в
     // диалог: блокировка объясняет себя (правило 12).
     expect(screen.getAllByText(/mindestens ein Gebäude auswählen/).length).toBeGreaterThan(0)
     await confirmBuildingReviewSections(user)
-    await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
-    await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
-    await user.click(screen.getByRole('radio', { name: 'Je Gebäude konfigurieren' }))
-    await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
+    completeBuildingScope('PER_BUILDING')
     // Acceptance remediation (cycle 4): position hint is `aria-hidden` now.
     await user.click(screen.getByRole('button', { name: 'Gebäude & Umfang' }))
 

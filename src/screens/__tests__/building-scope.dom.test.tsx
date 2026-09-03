@@ -2,325 +2,367 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
-import { confirmBuildingReviewSections, enterOptionWorkspace } from '../../test/offer-option'
+import { enterOptionWorkspace } from '../../test/offer-option'
+import { __resetStoreForTests, canBeginConfiguration, useStore } from '../../state/store'
 import {
-  buildingConfirmed,
-  __resetStoreForTests,
-  useStore,
-} from '../../state/store'
-import { effectiveFactValue } from '../../state/buildingReview'
+  buildingScopeStage,
+  scopeBuildingConfirmed,
+  selectedBgfRSTotal,
+  validateScopeMetric,
+} from '../../state/optionBuildingScope'
+
+/**
+ * Gebäude & Umfang — the Option's building scope (VR3-02).
+ *
+ * The suite is organised by the ticket's REQUIRED STATES, because those are
+ * what the surface exists to make reachable: option created, scope
+ * incomplete, no building selected, edited, confirmed, stale, saving, save
+ * failed, confirmed, and the Konfigurator locked or available. A state that
+ * cannot be reached is not implemented, and a state that only the store can
+ * hold is not a state of the product.
+ */
 
 beforeEach(() => __resetStoreForTests())
 
-// VR3-01: the retired five-click project preamble is gone, so this
-// entry point no longer drives the UI — the underscore keeps every
-// existing `await openBuildingScope(user)` call site untouched.
-async function openBuildingScope(_user: ReturnType<typeof userEvent.setup>) {
+/** One save advance per tick, like the surface's own ticker. */
+function settleScopeSave() {
+  act(() => { useStore.getState().advanceBuildingScopeSave() })
+}
+
+async function openScope(projectId = 'DEMO-HAPPY-01') {
   const view = render(<App />)
-  enterOptionWorkspace()
+  enterOptionWorkspace(projectId)
   return view
 }
 
-// Acceptance remediation (cycle 5): building inclusion checkboxes now sit
-// behind the "Gebäude verwalten" disclosure (closed by default whenever a
-// building is already selected — the shipped demo state always has one).
-// Idempotent: if the panel is already open the toggle's name has already
-// flipped to "Verwaltung schließen", so the query below finds nothing and
-// this is a no-op.
-async function openBuildingManagement(user: ReturnType<typeof userEvent.setup>) {
-  const toggle = screen.queryByRole('button', { name: 'Gebäude verwalten' })
-  if (toggle) await user.click(toggle)
+/**
+ * `findBy`, not `getBy`.
+ *
+ * Switching building deliberately runs an `AnimatePresence mode="wait"`
+ * transition, so the outgoing baseline is fully unmounted before the
+ * incoming one mounts and the control is legitimately absent for a moment
+ * after the click. A synchronous query there asserts against a deliberately
+ * asynchronous transition and flakes under suite load.
+ */
+function confirmButton(name: string) {
+  return screen.findByRole('button', { name: `Gebäudegrundlage bestätigen · ${name}` })
 }
 
-describe('Gebäude & Umfang — vorgeschalteter Option-Schritt', () => {
-  it('startet ohne Preisoberfläche und lässt die Auswahl bis null reichen', async () => {
-    const user = userEvent.setup()
-    await openBuildingScope(user)
+const A_LINDENHOF = 'Gebäude A · Lindenhof'
+const B_KONTORHAUS = 'Gebäude A · Kontorhaus'
+const B_HOFHAUS = 'Gebäude B · Hofhaus'
+const B_STADTHAUS = 'Gebäude C · Stadthaus'
+
+describe('Gebäude & Umfang · one building (T-013)', () => {
+  it('inherits the project baseline, not the proposal fixture, and states its exact metrics', async () => {
+    await openScope()
 
     expect(screen.getByRole('heading', { level: 1, name: 'Gebäude & Umfang' }))
       .toBeInTheDocument()
-    const header = document.querySelector('.a3-global-header') as HTMLElement
-    expect(within(header).queryByRole('group', { name: 'Ansicht' })).toBeNull()
-    expect(within(screen.getByRole('navigation', { name: 'Navigation' }))
-      .getByRole('group', { name: 'Ansicht' })).toBeInTheDocument()
+    // The Option's buildings come from the project baseline VR3-01
+    // journalled — "Lindenhof", not the proposal fixture's "Haus A".
+    expect(screen.getByText('Lindenhof')).toBeInTheDocument()
+    expect(screen.queryByText('Haus A')).toBeNull()
+
+    // Exact fixture arithmetic: 2.740 + 160 = 2.900 m² BGF R+S.
+    expect(selectedBgfRSTotal(useStore.getState())).toBe('2900.00')
+    const sheet = screen.getByRole('region', { name: /Grundlage · Gebäude A · Lindenhof/ })
+    expect(within(sheet).getByText('2.740')).toBeInTheDocument()
+    expect(within(sheet).getByText('2.900')).toBeInTheDocument()
+    expect(within(sheet).getByText('EG + 3 OG + DG')).toBeInTheDocument()
+    expect(within(sheet).getByText('Kein UG')).toBeInTheDocument()
+  })
+
+  it('is a concise single-building review, not a multi-select table', async () => {
+    await openScope()
+    // One identity, so there is no comparison to switch between and no
+    // "review this one" control asking the user to choose from a set of one.
+    expect(screen.getAllByRole('checkbox', { name: /Im Angebotsumfang führen/ }))
+      .toHaveLength(1)
+    expect(screen.queryByRole('button', { name: /Grundlage prüfen/ })).toBeNull()
+    expect(screen.getByText('0 von 1 bestätigt')).toBeInTheDocument()
+  })
+
+  it('shows no commercial rail before a legitimate price exists', async () => {
+    await openScope()
     expect(screen.queryByRole('complementary', { name: 'Angebot' })).toBeNull()
-    expect(screen.getByText('Kalkulation noch nicht gestartet')).toBeInTheDocument()
-    expect(screen.queryByText(/Gesamtpreis|Schätzunsicherheit|Bauzeit|Kostentreiber/))
-      .toBeNull()
-
-    // #16 Part 8: a single storey-count field — no per-kind UG/EG/OG/SG
-    // breakdown any more.
-    // Acceptance remediation (cycle 6): "Geometrie & Geschosse" is open by
-    // default now (read summary) — the edit fields need their own
-    // "Abschnitt bearbeiten" click, not the section's open/close toggle.
-    await user.click(screen.getByRole('button', { name: 'Abschnitt bearbeiten: Geometrie & Geschosse' }))
-    const storeyField = screen.getByRole('textbox', { name: 'Anzahl Geschosse' })
-    expect(storeyField).toBeInTheDocument()
-    expect(storeyField).toHaveValue('')
-
-    await openBuildingManagement(user)
-    const hausA = screen.getByRole('checkbox', { name: 'Haus A' })
-    expect(hausA).toBeChecked()
-    await user.click(hausA)
-
-    expect(screen.getAllByRole('checkbox').every((item) => !(item as HTMLInputElement).checked))
-      .toBe(true)
-    expect(screen.getByText(/Noch kein Gebäude ausgewählt/)).toBeInTheDocument()
-    // Acceptance remediation (cycle 4): the sidebar's position hint ("2")
-    // is now `aria-hidden` (a sighted-only glyph, replaced by "✓" once the
-    // step is done) — the accessible name is the plain label again.
-    expect(screen.getByRole('button', { name: 'Konfigurator' }))
-      .toHaveAttribute('aria-disabled', 'true')
-    expect(screen.queryByText(/0\s*€/)).toBeNull()
+    expect(useStore.getState().pricingStarted).toBe(false)
   })
+})
 
-  it('bewahrt bestätigte Fakten beim Ab- und Wiederanwählen', async () => {
+describe('Gebäude & Umfang · selection and its consequences', () => {
+  it('reaches zero selected buildings and says what that means', async () => {
     const user = userEvent.setup()
-    await openBuildingScope(user)
-
-    await confirmBuildingReviewSections(user)
-    await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
-    expect(buildingConfirmed(useStore.getState(), 'DEMO-B-A')).toBe(true)
-
-    await openBuildingManagement(user)
-    const hausA = screen.getByRole('checkbox', { name: 'Haus A' })
-    await user.click(hausA)
-    await user.click(hausA)
-
-    expect(buildingConfirmed(useStore.getState(), 'DEMO-B-A')).toBe(true)
-    expect(screen.getByText('Gebäude bestätigt')).toBeInTheDocument()
-  })
-
-  it('bewahrt Abschnittsbestätigungen über Remounts und invalidiert sie nach Änderungen', async () => {
-    const user = userEvent.setup()
-    const view = await openBuildingScope(user)
-
-    // Task 02 (F-22): sections no longer have an independent confirm
-    // action — the single "Gebäude bestätigen" click now confirms every
-    // ready section (each still gets its own fingerprint/journal event)
-    // AND finalizes the building in one action.
-    await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
-    expect(useStore.getState().buildingSectionConfirmations['DEMO-B-A']?.identity)
-      .toBeDefined()
-    // F05: der Toast/Journal-Eintrag nennt den Anzeigenamen des Gebäudes,
-    // nie die interne ID (gleiche Regel wie confirmBuilding()'s eigener
-    // Toast). The section confirmation is no longer necessarily the LAST
-    // journal entry (the building-level confirmation follows it in the
-    // same click) — assert its presence anywhere in the journal instead.
-    expect(useStore.getState().journal.some((e) =>
-      e.label === 'Gebäude Haus A · Abschnitt Identität bestätigt')).toBe(true)
-    expect(useStore.getState().journal.every((e) => !e.label.includes('DEMO-B-A')))
-      .toBe(true)
-
-    view.unmount()
-    render(<App />)
-    const identity = screen.getByRole('button', { name: 'Identität & Nutzung' }).closest('tr')!
-    expect(within(identity).getByText('Bestätigt')).toBeInTheDocument()
-
-    const documentationName = useStore.getState()
-      .buildingReviews['DEMO-B-A']!.facts.documentationName
-    const currentName = documentationName.override?.value
-      ?? documentationName.extracted.value
-      ?? 'Haus A'
-    act(() => useStore.getState().setBuildingFactOverride(
-      'DEMO-B-A', 'documentationName', `${currentName} Nord`,
-    ))
-    const changedIdentity = screen.getByRole('button', { name: 'Identität & Nutzung' }).closest('tr')!
-    expect(within(changedIdentity).getByText('Geändert · erneut bestätigen'))
-      .toBeInTheDocument()
-  })
-
-  it('übersetzt Kennzahlen und Sidebar-Gruppen ohne Profilbegriffe als Überschriften', async () => {
-    const user = userEvent.setup()
-    await openBuildingScope(user)
-
-    const header = document.querySelector('.a3-global-header') as HTMLElement
-    await user.click(within(header).getByRole('radio', { name: 'EN' }))
-
-    // Acceptance remediation (cycle 6): the full 9-field area breakdown
-    // (including "GFA R+S · total") only renders in the section's edit
-    // view now — the read view shows a simplified 4-figure summary. Enter
-    // editing to check the full breakdown's EN labels, same as before.
-    await user.click(screen.getByRole('button', { name: 'Edit section: Areas' }))
-
-    expect(screen.queryByText('BGF gesamt')).toBeNull()
-    expect(screen.getAllByText('GFA R+S · total').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Living area under WoFlV').length).toBeGreaterThan(0)
-    const navigation = screen.getByRole('navigation', { name: 'Navigation' })
-    expect(within(navigation).getByText('Current option')).toBeInTheDocument()
-    expect(within(navigation).queryByText('Client view', { selector: 'p' })).toBeNull()
-  })
-
-  it('verwendet manuell aktivierte Tabs mit roving tabindex', async () => {
-    const user = userEvent.setup()
-    await openBuildingScope(user)
-    await openBuildingManagement(user)
-    await user.click(screen.getByRole('checkbox', { name: 'Haus B' }))
-
-    const tablist = screen.getByRole('tablist', { name: 'Gewählte Gebäude' })
-    const tabs = within(tablist).getAllByRole('tab')
-    expect(tabs.filter((tab) => tab.tabIndex === 0)).toHaveLength(1)
-    expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
-    expect(tabs[0]).toHaveAttribute('aria-posinset', '1')
-    expect(tabs[0]).toHaveAttribute('aria-setsize', '2')
-    expect(tabs[1]).toHaveAttribute('aria-posinset', '2')
-
-    tabs[0]!.focus()
-    await user.keyboard('{ArrowRight}')
-    expect(document.activeElement).toBe(tabs[1])
-    expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
-
-    await user.keyboard('{Enter}')
-    expect(tabs[1]).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-labelledby', tabs[1]!.id)
-
-    await user.keyboard('{Home}')
-    expect(document.activeElement).toBe(tabs[0])
-    expect(tabs[1]).toHaveAttribute('aria-selected', 'true')
-  })
-
-  it('ungültigt bei einer Korrektur nur das bearbeitete Gebäude', async () => {
-    const user = userEvent.setup()
-    await openBuildingScope(user)
-    await confirmBuildingReviewSections(user)
-    await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
-    await openBuildingManagement(user)
-    await user.click(screen.getByRole('checkbox', { name: 'Haus B' }))
-
-    const tablist = screen.getByRole('tablist', { name: 'Gewählte Gebäude' })
-    const hausBTab = within(tablist).getByRole('tab', { name: /Haus B/ })
-    await user.click(hausBTab)
-    await confirmBuildingReviewSections(user)
-    await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
-    expect(buildingConfirmed(useStore.getState(), 'DEMO-B-B')).toBe(true)
-
-    await user.click(screen.getByRole('button', { name: 'Abschnitt bearbeiten: Identität & Nutzung' }))
-    const name = screen.getByRole('textbox', { name: 'Bezeichnung aus der Dokumentation' })
-    await user.clear(name)
-    await user.type(name, 'Haus B West')
-    await user.click(screen.getByRole('button', {
-      name: 'Angabe übernehmen: Bezeichnung aus der Dokumentation',
+    await openScope()
+    await user.click(screen.getByRole('checkbox', {
+      name: `Im Angebotsumfang führen · ${A_LINDENHOF}`,
     }))
 
-    expect(buildingConfirmed(useStore.getState(), 'DEMO-B-A')).toBe(true)
-    expect(buildingConfirmed(useStore.getState(), 'DEMO-B-B')).toBe(false)
-    expect(screen.getByText('Geändert · erneut bestätigen')).toBeInTheDocument()
-    expect(screen.getByText(/Bestätigung aufgehoben.*Haus B West/))
+    expect(buildingScopeStage(useStore.getState())).toBe('NO_SELECTION')
+    expect(screen.getByText(/Kein Gebäude im Umfang/)).toBeInTheDocument()
+    expect(canBeginConfiguration(useStore.getState())).toBe(false)
+  })
+
+  it('asks before removing a building whose baseline is already confirmed', async () => {
+    const user = userEvent.setup()
+    await openScope()
+    await user.click(await confirmButton(A_LINDENHOF))
+    expect(scopeBuildingConfirmed(useStore.getState(), 'A-BLDG-01')).toBe(true)
+
+    await user.click(screen.getByRole('checkbox', {
+      name: `Im Angebotsumfang führen · ${A_LINDENHOF}`,
+    }))
+    // Still selected: the consequence is a question, not a side effect.
+    expect(useStore.getState().scopeSelected['A-BLDG-01']).toBe(true)
+    expect(screen.getByText(/Lindenhof aus dem Umfang nehmen\?/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Im Umfang lassen' }))
+    expect(useStore.getState().scopeSelected['A-BLDG-01']).toBe(true)
+    expect(scopeBuildingConfirmed(useStore.getState(), 'A-BLDG-01')).toBe(true)
+
+    await user.click(screen.getByRole('checkbox', {
+      name: `Im Angebotsumfang führen · ${A_LINDENHOF}`,
+    }))
+    await user.click(screen.getByRole('button', { name: 'Aus dem Umfang nehmen' }))
+    expect(useStore.getState().scopeSelected['A-BLDG-01']).toBe(false)
+  })
+})
+
+describe('Gebäude & Umfang · three buildings (T-014)', () => {
+  it('presents exactly three distinguishable identities and binds every metric to its owner', async () => {
+    const user = userEvent.setup()
+    await openScope('DEMO-COMPLEX-01')
+
+    for (const name of [B_KONTORHAUS, B_HOFHAUS, B_STADTHAUS]) {
+      expect(screen.getByRole('checkbox', {
+        name: `Im Angebotsumfang führen · ${name}`,
+      })).toBeChecked()
+    }
+    expect(screen.getByText('0 von 3 bestätigt')).toBeInTheDocument()
+    // 6.030 + 5.780 + 7.660 = 19.470 m², derived from the selected ids.
+    expect(selectedBgfRSTotal(useStore.getState())).toBe('19470.00')
+
+    // Exactly one baseline is open, and it names the building it belongs to.
+    const kontorhaus = screen.getByRole('region', { name: new RegExp(B_KONTORHAUS) })
+    expect(within(kontorhaus).getByText('5.820')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: new RegExp(B_HOFHAUS) })).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: `Grundlage prüfen · ${B_HOFHAUS}` }))
+    const hofhaus = await screen.findByRole('region', { name: new RegExp(B_HOFHAUS) })
+    // Hofhaus' own numbers, and none of Kontorhaus'.
+    expect(within(hofhaus).getByText('4.620')).toBeInTheDocument()
+    expect(within(hofhaus).getByText('3.410')).toBeInTheDocument()
+    expect(within(hofhaus).queryByText('5.820')).toBeNull()
+  })
+
+  it('keeps the gate closed on mixed confirmations and names the buildings still owed', async () => {
+    const user = userEvent.setup()
+    await openScope('DEMO-COMPLEX-01')
+    await user.click(await confirmButton(B_KONTORHAUS))
+    expect(screen.getByText('1 von 3 bestätigt')).toBeInTheDocument()
+
+    const save = screen.getByRole('button', { name: 'Gebäudeumfang speichern' })
+    expect(save).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByText(/Grundlage bestätigt: Gebäude B · Hofhaus/))
+      .toBeInTheDocument()
+    expect(screen.getByText(/Grundlage bestätigt: Gebäude C · Stadthaus/))
+      .toBeInTheDocument()
+    expect(canBeginConfiguration(useStore.getState())).toBe(false)
+  })
+})
+
+describe('Gebäude & Umfang · authorised edit (T-015)', () => {
+  it('keeps an invalid edit local, with a field error and the prior value intact', async () => {
+    const user = userEvent.setup()
+    await openScope('DEMO-COMPLEX-01')
+    await user.click(screen.getByRole('button', { name: `Grundlage prüfen · ${B_HOFHAUS}` }))
+    await user.click(await confirmButton(B_HOFHAUS))
+    expect(scopeBuildingConfirmed(useStore.getState(), 'B-BLDG-B')).toBe(true)
+
+    await user.click(await screen.findByRole('button', {
+      name: `Ändern · Wohnfläche nach WoFlV · ${B_HOFHAUS}`,
+    }))
+    const field = screen.getByRole('textbox', {
+      name: `Wohnfläche nach WoFlV · ${B_HOFHAUS}`,
+    })
+    await user.clear(field)
+    await user.type(field, 'abc')
+    await user.click(screen.getByRole('button', { name: 'Wert übernehmen' }))
+
+    expect(screen.getByText(/Bitte eine Zahl eingeben/)).toBeInTheDocument()
+    // Nothing left the field: the confirmed value and its confirmation stand.
+    expect(useStore.getState().scopeEdits['B-BLDG-B']).toBeUndefined()
+    expect(scopeBuildingConfirmed(useStore.getState(), 'B-BLDG-B')).toBe(true)
+  })
+
+  it('requires a reason, records what it replaced, and invalidates only that building', async () => {
+    const user = userEvent.setup()
+    await openScope('DEMO-COMPLEX-01')
+    await user.click(await confirmButton(B_KONTORHAUS))
+    await user.click(screen.getByRole('button', { name: `Grundlage prüfen · ${B_HOFHAUS}` }))
+    await user.click(await confirmButton(B_HOFHAUS))
+
+    await user.click(await screen.findByRole('button', {
+      name: `Ändern · Wohnfläche nach WoFlV · ${B_HOFHAUS}`,
+    }))
+    const field = screen.getByRole('textbox', {
+      name: `Wohnfläche nach WoFlV · ${B_HOFHAUS}`,
+    })
+    await user.clear(field)
+    await user.type(field, '3.500')
+    await user.click(screen.getByRole('button', { name: 'Wert übernehmen' }))
+    expect(screen.getByText(/Bitte begründen/)).toBeInTheDocument()
+
+    await user.type(screen.getByRole('textbox', { name: 'Begründung' }), 'Planaenderung')
+    await user.click(screen.getByRole('button', { name: 'Wert übernehmen' }))
+
+    const edit = useStore.getState().scopeEdits['B-BLDG-B']!.wfl!
+    expect(edit).toMatchObject({ value: '3500.00', previous: '3410.00', reason: 'Planaenderung' })
+    expect(edit.actor).not.toBe('')
+    // Only the edited building loses its confirmation.
+    expect(scopeBuildingConfirmed(useStore.getState(), 'B-BLDG-B')).toBe(false)
+    expect(scopeBuildingConfirmed(useStore.getState(), 'B-BLDG-A')).toBe(true)
+
+    // The prior value is recoverable, as its own event.
+    await user.click(screen.getByRole('button', {
+      name: `Quellwert · Wohnfläche nach WoFlV · ${B_HOFHAUS}`,
+    }))
+    expect(useStore.getState().scopeEdits['B-BLDG-B']?.wfl).toBeUndefined()
+  })
+
+  it('never lets a BGF area be overridden by hand', async () => {
+    const user = userEvent.setup()
+    await openScope()
+    expect(screen.queryByRole('button', {
+      name: `Ändern · BGF R oberirdisch · ${A_LINDENHOF}`,
+    })).toBeNull()
+    expect(screen.getByRole('button', {
+      name: `Ändern · Wohnfläche nach WoFlV · ${A_LINDENHOF}`,
+    })).toBeInTheDocument()
+    // The one editable metric really is editable, so the absence above is a
+    // decision and not a broken control.
+    await user.click(screen.getByRole('button', {
+      name: `Ändern · Wohnfläche nach WoFlV · ${A_LINDENHOF}`,
+    }))
+    expect(screen.getByRole('textbox', {
+      name: `Wohnfläche nach WoFlV · ${A_LINDENHOF}`,
+    })).toBeInTheDocument()
+  })
+})
+
+describe('Gebäude & Umfang · saving and the Konfigurator gate (T-016/T-017)', () => {
+  it('saves a fingerprinted scope and makes the Konfigurator available', async () => {
+    const user = userEvent.setup()
+    await openScope()
+    await user.click(await confirmButton(A_LINDENHOF))
+    await user.click(screen.getByRole('button', { name: 'Gebäudeumfang speichern' }))
+
+    // The busy state is genuinely reachable: the save is staged.
+    expect(useStore.getState().scopeCommit?.stage).toBe('SAVING')
+    expect(canBeginConfiguration(useStore.getState())).toBe(false)
+    settleScopeSave()
+
+    const saved = useStore.getState().scopeSaved!
+    expect(saved.selectedIds).toEqual(['A-BLDG-01'])
+    expect(saved.bgfRSTotal).toBe('2900.00')
+    expect(canBeginConfiguration(useStore.getState())).toBe(true)
+    // The receipt is the availability surface itself.
+    expect(screen.getByRole('heading', { level: 1, name: 'Konfigurator verfügbar' }))
+      .toBeInTheDocument()
+    expect(screen.getByText(/Eine Gebäudegrundlage bestätigt und gespeichert/))
       .toBeInTheDocument()
   })
 
-  it('bleibt auch in der Kundenansicht eine reine Vor-Kalkulationsfläche', async () => {
+  it('fails the save when the scope changes mid-flight, and keeps every selection and edit', async () => {
     const user = userEvent.setup()
-    await openBuildingScope(user)
-    await confirmBuildingReviewSections(user)
-    await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
-    await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
-    await user.click(screen.getByRole('radio', { name: 'Je Gebäude konfigurieren' }))
-    await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
-    // Acceptance remediation (cycle 4): position hint is `aria-hidden` now.
-    await user.click(screen.getByRole('button', { name: 'Gebäude & Umfang' }))
+    await openScope('DEMO-COMPLEX-01')
+    await user.click(await confirmButton(B_KONTORHAUS))
+    await user.click(screen.getByRole('button', { name: `Grundlage prüfen · ${B_HOFHAUS}` }))
+    await user.click(await confirmButton(B_HOFHAUS))
+    await user.click(screen.getByRole('button', { name: `Grundlage prüfen · ${B_STADTHAUS}` }))
+    await user.click(await confirmButton(B_STADTHAUS))
 
-    const profile = screen.getByRole('radiogroup', { name: 'Ansicht' })
-    await user.click(within(profile).getByRole('radio', { name: 'Kundenansicht' }))
-    const gate = screen.getByRole('dialog', { name: /Bereit für die Präsentation/ })
-    expect(within(gate).queryByText(/€|Schätzunsicherheit|Bauzeit|Kostentreiber|KG 700/))
-      .toBeNull()
-    await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
+    await user.click(screen.getByRole('button', { name: 'Gebäudeumfang speichern' }))
+    // A metric moves while the commitment is in flight — a real race, and
+    // the gate is re-read at the commitment's boundary rather than when the
+    // button rendered.
+    act(() => {
+      useStore.getState()
+        .editScopeMetric('B-BLDG-C', 'wfl', '3700.00', 'Planaenderung')
+    })
+    settleScopeSave()
 
-    // REDESIGN R3 WAVE 2a (ce17da51): entering Kundenansicht before
-    // pricing has even started (no coverage decided,
-    // `configurationComplete()` false) means the Option is not yet
-    // client-eligible — PresentationShell shows its own honest,
-    // structurally-guaranteed-empty "not ready" state instead of the
-    // working three-pane composition. No commercial figure exists
-    // anywhere to leak, by construction (no per-chapter routing at all
-    // once in Kundenansicht — see PresentationShell.tsx).
+    expect(useStore.getState().scopeCommit?.errorKey).toBe('vr3.scope.error.changed')
+    expect(useStore.getState().scopeSaved).toBeNull()
+    expect(canBeginConfiguration(useStore.getState())).toBe(false)
+    expect(document.querySelector('.a3-gate-error')).toHaveTextContent(/erneut speichern/)
+    // Nothing was discarded.
+    expect(useStore.getState().scopeEdits['B-BLDG-C']!.wfl!.value).toBe('3700.00')
+    expect(scopeBuildingConfirmed(useStore.getState(), 'B-BLDG-A')).toBe(true)
+
+    // Retry succeeds once the changed building is confirmed again.
+    act(() => { useStore.getState().clearBuildingScopeSaveError() })
+    act(() => { useStore.getState().confirmScopeBuilding('B-BLDG-C') })
+    act(() => { useStore.getState().beginBuildingScopeSave() })
+    settleScopeSave()
+    expect(canBeginConfiguration(useStore.getState())).toBe(true)
+  })
+
+  it('marks a saved scope stale after a material change and never keeps the gate open', async () => {
+    const user = userEvent.setup()
+    await openScope()
+    await user.click(await confirmButton(A_LINDENHOF))
+    await user.click(screen.getByRole('button', { name: 'Gebäudeumfang speichern' }))
+    settleScopeSave()
+    expect(canBeginConfiguration(useStore.getState())).toBe(true)
+
+    act(() => {
+      useStore.getState().editScopeMetric('A-BLDG-01', 'units', '20.00', 'Nachtrag')
+    })
+
+    expect(buildingScopeStage(useStore.getState())).toBe('STALE')
+    expect(canBeginConfiguration(useStore.getState())).toBe(false)
+    // The saved baseline still exists — this is a recheck, not an absence.
+    expect(useStore.getState().scopeSaved).not.toBeNull()
+  })
+
+  it('renders the Konfigurator stage as an explained lock, never as an empty configurator', async () => {
+    await openScope()
+    act(() => { useStore.getState().setPipelineView('konfigurator') })
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Konfigurator gesperrt' }))
+      .toBeInTheDocument()
+    expect(screen.getByText(/Lindenhof braucht noch Prüfung und Bestätigung/))
+      .toBeInTheDocument()
+    // Fail-closed: no configurator, no price, no scope decisions.
+    expect(screen.queryByRole('heading', { name: 'Leistungsabgrenzung' })).toBeNull()
     expect(screen.queryByRole('complementary', { name: 'Angebot' })).toBeNull()
-    expect(screen.getByText(/noch keine Option bereit für die Kundenansicht/))
-      .toBeInTheDocument()
-    expect(document.body).not.toHaveTextContent(
-      /Gesamtpreis|Schätzunsicherheit|Bauzeit|Kostentreiber|KG 300|KG 700|€/,
-    )
+  })
+})
+
+describe('Gebäude & Umfang · numeric contract', () => {
+  it('reads a locale-formatted entry back in the locale that wrote it', () => {
+    // `3.410` is three thousand four hundred and ten in German and three
+    // point four one in English; no heuristic can tell them apart.
+    expect(validateScopeMetric('wfl', '3.410', 'de')).toEqual({ ok: true, value: '3410.00' })
+    expect(validateScopeMetric('wfl', '3,410.50', 'en')).toEqual({ ok: true, value: '3410.50' })
+    expect(validateScopeMetric('wfl', '1.234,56', 'de')).toEqual({ ok: true, value: '1234.56' })
   })
 
-  // Task 02 (deep-coherence audit, F-22): the review-section ladder is
-  // status-only now; "Gebäude bestätigen" alone confirms every ready
-  // section and finalizes the building. AC5: exactly one confirmation
-  // action per building — total for Nordfeld's two buildings must be ≤ 3
-  // (today before this fix: 8).
-  it('confirms a fully-documented building in exactly one action, and both of Nordfeld\'s buildings in two total', async () => {
-    const user = userEvent.setup()
-    await openBuildingScope(user)
-
-    expect(screen.queryByRole('button', { name: 'Abschnitt bestätigen' })).toBeNull()
-    let confirmClicks = 0
-
-    await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
-    confirmClicks += 1
-    expect(buildingConfirmed(useStore.getState(), 'DEMO-B-A')).toBe(true)
-
-    await openBuildingManagement(user)
-    await user.click(screen.getByRole('checkbox', { name: 'Haus B' }))
-    const tablist = screen.getByRole('tablist', { name: 'Gewählte Gebäude' })
-    await user.click(within(tablist).getByRole('tab', { name: /Haus B/ }))
-    await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
-    confirmClicks += 1
-    expect(buildingConfirmed(useStore.getState(), 'DEMO-B-B')).toBe(true)
-
-    expect(confirmClicks).toBe(2)
-    expect(confirmClicks).toBeLessThanOrEqual(3)
-    // Every section still got its own fingerprint/journal event — the
-    // change is which user action triggers them, not whether they happen.
-    expect(useStore.getState().buildingSectionConfirmations['DEMO-B-A']).toMatchObject({
-      identity: expect.anything(),
-      areas: expect.anything(),
-      storeys: expect.anything(),
+  it('refuses a fractional count and a negative area', () => {
+    expect(validateScopeMetric('units', '18,5', 'de')).toEqual({
+      ok: false, error: 'notAnInteger',
     })
-    expect(useStore.getState().buildingSectionConfirmations['DEMO-B-B']).toMatchObject({
-      identity: expect.anything(),
-      areas: expect.anything(),
-      storeys: expect.anything(),
-    })
+    expect(validateScopeMetric('wfl', '-5', 'de')).toEqual({ ok: false, error: 'negative' })
+    expect(validateScopeMetric('wfl', '', 'de')).toEqual({ ok: false, error: 'empty' })
   })
 
-  // #16 Part 8 replaces the former bespoke multi-field Geschossstruktur
-  // editor (Task 02/F-23's own proactive-disable exception for it) with
-  // the canonical `DecimalFactField`/`MissingDecimalField` every other
-  // numeric building fact already uses — an empty commit surfaces its
-  // validation error inline instead of silently writing anything, the same
-  // established contract `units`/`wfl`/`nuf`/etc. already rely on.
-  it('an empty "Angabe übernehmen" for Anzahl Geschosse never silently commits', async () => {
-    const user = userEvent.setup()
-    await openBuildingScope(user)
-
-    await user.click(screen.getByRole('button', { name: 'Abschnitt bearbeiten: Geometrie & Geschosse' }))
-    const apply = screen.getByRole('button', {
-      name: 'Angabe übernehmen: Anzahl Geschosse',
-    })
-
-    const before = useStore.getState().buildingReviews['DEMO-B-A']!.facts.storeyStructure.override
-    await user.click(apply)
-    expect(useStore.getState().buildingReviews['DEMO-B-A']!.facts.storeyStructure.override)
-      .toBe(before)
-    expect(screen.getByText('Nur Zahlen eingeben — nicht übernommen.')).toBeInTheDocument()
-  })
-
-  it('commits a positive integer storey count and lets it be reset back to "not captured"', async () => {
-    const user = userEvent.setup()
-    await openBuildingScope(user)
-
-    await user.click(screen.getByRole('button', { name: 'Abschnitt bearbeiten: Geometrie & Geschosse' }))
-    const field = screen.getByRole('textbox', { name: 'Anzahl Geschosse' })
-    await user.type(field, '6')
-    await user.click(screen.getByRole('button', { name: 'Angabe übernehmen: Anzahl Geschosse' }))
-
-    expect(effectiveFactValue(
-      useStore.getState().buildingReviews['DEMO-B-A']!.facts.storeyStructure,
-    )!.toFixed()).toBe('6')
-
-    await user.click(screen.getByRole('button', { name: 'Auf Quellenwert zurücksetzen: Anzahl Geschosse' }))
-    expect(effectiveFactValue(
-      useStore.getState().buildingReviews['DEMO-B-A']!.facts.storeyStructure,
-    )).toBeNull()
+  it('sums the selected total from the selected ids, never from a formatted string', () => {
+    render(<App />)
+    enterOptionWorkspace('DEMO-COMPLEX-01')
+    expect(selectedBgfRSTotal(useStore.getState())).toBe('19470.00')
+    act(() => { useStore.getState().toggleScopeBuilding('B-BLDG-B') })
+    // 19.470 − 5.780 = 13.690
+    expect(selectedBgfRSTotal(useStore.getState())).toBe('13690.00')
   })
 })

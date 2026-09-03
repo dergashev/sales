@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
-import { confirmBuildingReviewSections, enterOptionWorkspace } from '../../test/offer-option'
+import { confirmBuildingReviewSections, enterOptionWorkspace, completeBuildingScope } from '../../test/offer-option'
 import { __resetStoreForTests, activeBuilding, useStore } from '../../state/store'
 
 /**
@@ -20,10 +20,7 @@ async function openScopeBoundaries(user: ReturnType<typeof userEvent.setup>) {
   render(<App />)
   enterOptionWorkspace()
   await confirmBuildingReviewSections(user)
-  await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
-  await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
-  await user.click(screen.getByRole('radio', { name: /Gemeinsam konfigurieren/ }))
-  await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
+  completeBuildingScope('SHARED')
   await user.click(nav(/Leistungsabgrenzung/))
 }
 
@@ -148,10 +145,7 @@ describe('Leistungsabgrenzung / Scope Boundaries (mandatory-core contract, "Rebu
     act(() => useStore.getState().toggleBuildingIncluded('DEMO-B-B'))
     act(() => useStore.getState().confirmBuilding('DEMO-B-B'))
     await confirmBuildingReviewSections(user)
-    await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
-    await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
-    await user.click(screen.getByRole('radio', { name: /Gemeinsam konfigurieren/ }))
-    await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
+    completeBuildingScope('SHARED')
 
     expect(useStore.getState().buildings['DEMO-B-A']!.energiestandard).toBe('EH_55')
     expect(useStore.getState().buildings['DEMO-B-B']!.energiestandard).toBe('EH_55')

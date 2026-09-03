@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
-import { confirmBuildingReviewSections, enterOptionWorkspace } from '../../test/offer-option'
+import { confirmBuildingReviewSections, enterOptionWorkspace, completeBuildingScope } from '../../test/offer-option'
 import { __resetStoreForTests, useStore } from '../../state/store'
 
 /**
@@ -59,10 +59,7 @@ describe('KG 300 subgroup labels translate in EN (AC-1/AC-2)', () => {
 
   enterOptionWorkspace()
     await confirmBuildingReviewSections(user)
-    await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
-    await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
-    await user.click(screen.getByRole('radio', { name: 'Je Gebäude konfigurieren' }))
-    await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
+    completeBuildingScope('PER_BUILDING')
     act(() => {
       useStore.getState().setCoverage('KG_300', 'included')
     })

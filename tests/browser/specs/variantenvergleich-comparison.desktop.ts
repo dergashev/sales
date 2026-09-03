@@ -1,5 +1,6 @@
 import { test, expect } from '../fixtures'
-import { BUILDING_SCOPE, COMPARISON, DEMO_PROJECT_NAME, NAV, OPPORTUNITY } from '../anchors'
+import { COMPARISON, DEMO_PROJECT_NAME, NAV, OPPORTUNITY } from '../anchors'
+import { saveBuildingScope } from '../journey'
 
 /**
  * Variantenvergleich sticky-column occlusion regression.
@@ -116,14 +117,11 @@ for (const { label: viewportLabel, viewport } of VIEWPORTS) {
         //    regardless (comparison reads per-option stored config, not the
         //    active editing gate), so only this one needs confirming. ────
         await openButtons.last().click()
-        // The proposal fixture's WFL conflict gates the BUILDING
-        // confirmation and lives in Gebäude & Umfang. The retired project
-        // card decided it before the Option existed; it is decided where it
-        // actually lives now (see `tests/browser/journey.ts`).
-        const adopt = page.getByRole('button', { name: OPPORTUNITY.adoptCustomerValue }).first()
-        await expect(adopt).toBeVisible({ timeout: 15_000 })
-        await adopt.click()
-        await page.getByRole('tabpanel').getByRole('button', { name: BUILDING_SCOPE.confirmBuilding }).click()
+        // VR3-02: the gate is the SAVED building scope, so the active
+        // Option's baseline is confirmed and saved here — the same walk
+        // `tests/browser/journey.ts` performs, on whichever buildings this
+        // Option inherited.
+        await saveBuildingScope(page)
         // DC-29's undo toast (8s, bottom-anchored) can visually overlap the
         // comparison table at narrower viewports and silently swallow the
         // wheel gesture below (it, not the scroll region, sits under the

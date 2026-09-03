@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { act, render, screen } from '@testing-library/react'
+import { act, render } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
-import { confirmBuildingReviewSections, enterOptionWorkspace } from '../../test/offer-option'
+import { confirmBuildingReviewSections, enterOptionWorkspace, completeBuildingScope } from '../../test/offer-option'
 import { CONFIGURATOR_STEP, CONFIGURATOR_STEPS } from '../../state/chapters'
 import { __resetStoreForTests, useStore } from '../../state/store'
 
@@ -28,10 +28,7 @@ const DOUBLED = /€[\s  ]*€/
 async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
   enterOptionWorkspace()
   await confirmBuildingReviewSections(user)
-  await user.click(screen.getByRole('button', { name: 'Gebäude bestätigen' }))
-  await user.click(screen.getByRole('button', { name: 'Konfigurator öffnen' }))
-  await user.click(screen.getByRole('radio', { name: 'Je Gebäude konfigurieren' }))
-  await user.click(screen.getByRole('button', { name: 'Konfiguration starten' }))
+  completeBuildingScope('PER_BUILDING')
 }
 
 describe('единицы: знак валюты не удваивается', () => {

@@ -58,33 +58,44 @@ export const OPPORTUNITY = {
   startAnalysis: 'Dokumentanalyse starten',
   createOption: 'Option anlegen',
   openOption: 'Öffnen',
+  /** VR3-02 (T-012): the hand-off's one continuation names the stage. */
+  defineScope: 'Gebäude & Umfang festlegen',
   readinessHeadingRegion: 'Opportunity Options',
-  /**
-   * Gebäude & Umfang's own conflict control. The proposal fixture's WFL
-   * conflict gates the BUILDING confirmation, so it is decided where it
-   * lives — inside the Option workspace — rather than on the project.
-   */
-  adoptCustomerValue: `Diese Angabe übernehmen: 1.560,00\u202fm²`,
 }
 
+/**
+ * VR3-02: Gebäude & Umfang is the Option's building scope, inherited from
+ * the project baseline. Its controls NAME the building they act on (WCAG
+ * 2.5.3), so every anchor here is a function of that identity — a bare verb
+ * would match three different buildings on the complex fixture.
+ *
+ * `Gebäude bestätigen` / `Gebäude verwalten` and the whole
+ * `Konfigurationsmodus wählen` step are gone: the first two belonged to the
+ * retired proposal-review surface, and the mode is now derived from the
+ * saved scope rather than being an extra gate of its own.
+ */
 export const BUILDING_SCOPE = {
-  // Task 02 (deep-coherence audit, F-22): this single action now reviews
-  // and confirms every ready section (Identität / Flächen /
-  // Geschossstruktur) itself and finalizes the building in one click —
-  // there is no longer a separate per-section "Abschnitt bestätigen"
-  // control to click first.
-  confirmBuilding: 'Gebäude bestätigen',
-  // Acceptance remediation (cycle 5): building inclusion checkboxes now sit
-  // behind this disclosure toggle, closed by default whenever a building is
-  // already selected (the shipped demo state always has one).
-  manageBuildings: 'Gebäude verwalten',
+  building: (mark: string, name: string) => `Gebäude ${mark} · ${name}`,
+  select: (identity: string) => `Im Angebotsumfang führen · ${identity}`,
+  review: (identity: string) => `Grundlage prüfen · ${identity}`,
+  confirm: (identity: string) => `Gebäudegrundlage bestätigen · ${identity}`,
+  save: 'Gebäudeumfang speichern',
+  /** The scope surface's own completion count, e.g. "0 von 3 bestätigt". */
+  progress: (confirmed: number, total: number) => `${confirmed} von ${total} bestätigt`,
 }
 
-export const CONFIGURATOR_MODE = {
-  title: 'Konfigurationsmodus wählen',
-  sharedRadio: 'Gemeinsam konfigurieren',
-  perBuildingRadio: 'Je Gebäude konfigurieren',
-  start: 'Konfiguration starten',
+export const KONFIGURATOR_GATE = {
+  locked: 'Konfigurator gesperrt',
+  available: 'Konfigurator verfügbar',
+  start: 'Leistungsabgrenzung starten',
+}
+
+/** Buildings of the two VR3 demonstration projects, by fixture identity. */
+export const SCOPE_BUILDINGS = {
+  a1: BUILDING_SCOPE.building('A', 'Lindenhof'),
+  bA: BUILDING_SCOPE.building('A', 'Kontorhaus'),
+  bB: BUILDING_SCOPE.building('B', 'Hofhaus'),
+  bC: BUILDING_SCOPE.building('C', 'Stadthaus'),
 }
 
 export const CONFIGURATOR_SCOPE = {

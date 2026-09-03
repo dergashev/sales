@@ -1,6 +1,7 @@
 import type userEvent from '@testing-library/user-event'
 import { act } from '@testing-library/react'
-import { includedBuildingIds, useStore } from '../state/store'
+import { canBeginConfiguration, includedBuildingIds, useStore } from '../state/store'
+import { buildingScopeStage, scopeSelectedIds } from '../state/optionBuildingScope'
 import { demoProject } from '../state/projectAnalysis'
 
 /**
@@ -154,4 +155,44 @@ export function settleOptionCommit() {
     + 'four stage advances. Either a stage stopped clearing itself or a new '
     + 'stage was added without updating this helper.',
   )
+}
+
+/**
+ * VR3-02: complete Gebäude & Umfang and enter the Konfigurator.
+ *
+ * The four-control preamble this replaces — "Gebäude bestätigen",
+ * "Konfigurator öffnen", a configuration-mode radio and "Konfiguration
+ * starten" — belonged to two surfaces this ticket rebuilt, and the mode
+ * radio to a step the target removed outright ("configuration-mode
+ * decisions, if retained, belong inside Gebäude & Umfang; they must not
+ * create an extra unmodelled gate"). None of those controls was ever the
+ * SUBJECT of the suites that clicked them: their subject is the
+ * Configurator, and the scope preamble was scaffolding.
+ *
+ * It drives the same transitions the surface drives — confirm every
+ * selected building, save the scope, enter Leistungsabgrenzung — so the
+ * gate is genuinely satisfied rather than bypassed. The building-scope
+ * journey itself is tested where it belongs, in
+ * `src/screens/__tests__/building-scope.dom.test.tsx`.
+ */
+export function completeBuildingScope(mode: 'SHARED' | 'PER_BUILDING' = 'PER_BUILDING') {
+  act(() => {
+    const s = useStore.getState()
+    scopeSelectedIds(s).forEach((id) => useStore.getState().confirmScopeBuilding(id))
+    useStore.getState().beginBuildingScopeSave()
+    useStore.getState().advanceBuildingScopeSave()
+  })
+  act(() => {
+    const s = useStore.getState()
+    if (!canBeginConfiguration(s)) {
+      throw new Error(
+        'Building scope did not open the Konfigurator gate: '
+        + `stage=${buildingScopeStage(s)}, selected=${scopeSelectedIds(s).length}`,
+      )
+    }
+    // The user reaches the Configurator by entering the stage and then
+    // starting Leistungsabgrenzung; both transitions belong to the flow.
+    s.setPipelineView('konfigurator')
+    useStore.getState().confirmConfigurationMode(mode)
+  })
 }

@@ -44,6 +44,13 @@ import { SemanticStatus } from './SemanticStatus'
 import { AuthorityTrace, MetricReadout } from './AuthorityTrace'
 import { DocumentRow, ProcessingJob } from './ProcessingJob'
 import { ActionGate, PrerequisiteState, ProjectReadiness } from './ActionGate'
+import {
+  BuildingBaselineProvenance,
+  BuildingBaselineRow,
+  BuildingBaselineSheet,
+  BuildingIdentityCard,
+  BuildingIdentityGroup,
+} from './BuildingScopePanel'
 import { ConflictResolver } from './ConflictResolver'
 import { QuestionItem, QuestionQueue } from './QuestionQueue'
 import { CompositionBar, type CompositionSegment } from './CompositionBar'
@@ -1125,6 +1132,85 @@ export const COMPONENT_REGISTRY: Specimen[] = [
           Option anlegen
         </Button>
       </ActionGate>
+    ),
+  },
+  {
+    id: 'vr3-building-scope-panel', groupId: 'domain', title: 'BuildingScopePanel',
+    contractId: 'VR3 · BuildingScopePanel', requirements: ['R-13', 'SCOPE-001'],
+    composedContracts: ['MediaFrame', 'SemanticStatus', 'AuthorityTrace', 'ActionGate'],
+    interactionStates: ['selected', 'excluded', 'reviewing', 'editing', 'confirmed'],
+    dataStates: ALL_DATA_STATES, blockedVariants: [], maturity: 'alpha',
+    evidence: 'One system, two densities: a single building is a review, several are a comparison. Every metric, provenance line and edit renders inside exactly one named building, and the identity image supports recognition without ever replacing a label.',
+    render: () => (
+      <BuildingIdentityGroup label="Gebäude im Angebotsumfang" density="comparison">
+        <BuildingIdentityCard
+          designation="Gebäude A"
+          name="Kontorhaus"
+          meta="100 Prozent Büro · Kein UG"
+          selected
+          status="confirmed"
+          onToggle={() => {}}
+          selectLabel="Im Angebotsumfang führen · Gebäude A · Kontorhaus"
+        />
+        <BuildingIdentityCard
+          designation="Gebäude B"
+          name="Hofhaus"
+          meta="100 Prozent Wohnen · UG"
+          selected
+          status="stale"
+          onToggle={() => {}}
+          selectLabel="Im Angebotsumfang führen · Gebäude B · Hofhaus"
+        />
+        <BuildingIdentityCard
+          designation="Gebäude C"
+          name="Stadthaus"
+          meta="Erdgeschoss Gewerbe · Teil-UG"
+          selected={false}
+          status="unselected"
+          onToggle={() => {}}
+          selectLabel="Im Angebotsumfang führen · Gebäude C · Stadthaus"
+        />
+      </BuildingIdentityGroup>
+    ),
+  },
+  {
+    id: 'vr3-building-baseline', groupId: 'domain', title: 'BuildingBaselineSheet',
+    contractId: 'VR3 · BuildingScopePanel', requirements: ['R-13', 'DATA-001'],
+    composedContracts: ['SemanticStatus', 'Button'],
+    interactionStates: ['default', 'editing', 'invalid', 'confirmed'],
+    dataStates: ALL_DATA_STATES, blockedVariants: [], maturity: 'alpha',
+    evidence: 'The baseline heading names its building, so the table below it cannot be read as belonging to another one. Value and provenance are adjacent columns bound by aria-describedby — one object, printed once.',
+    render: () => (
+      <BuildingBaselineSheet
+        title="Grundlage · Gebäude A · Kontorhaus"
+        authorityLabel="Herkunft: aus Quelle belegt"
+        rows={(
+          <>
+            <BuildingBaselineRow
+              label="Geschosse"
+              value="EG + 5 OG"
+              provenance={(
+                <BuildingBaselineProvenance
+                  authority={{ tone: 'ok', label: 'bestätigt' }}
+                  evidence="Planwerk"
+                />
+              )}
+            />
+            <BuildingBaselineRow
+              label="BGF R oberirdisch"
+              value="5.820"
+              unit="m²"
+              provenance={(
+                <BuildingBaselineProvenance
+                  authority={{ tone: 'neutral', label: 'berechnet' }}
+                  evidence="B-DOC-09"
+                />
+              )}
+            />
+          </>
+        )}
+        actions={<Button variant="primary" onClick={() => {}}>Gebäudegrundlage bestätigen</Button>}
+      />
     ),
   },
   {

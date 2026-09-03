@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { Decimal } from 'decimal.js'
 import {
   loadPersistedProposal,
+  PROPOSAL_PERSISTENCE_VERSION,
   proposalStorageKey,
   savePersistedProposal,
   serializeProposalPayload,
@@ -46,8 +47,13 @@ describe('proposal persistence codec', () => {
     })
     expect(storage.getItem(key)).toBeNull()
 
+    // Any version that is not the current one — the number itself is not
+    // the subject, the mismatch is (VR3-02 moved the current one to 2).
     const valid = serializeProposalPayload('P-1', { one: new Decimal(1) })
-    storage.setItem(key, valid.replace('"version":1', '"version":2'))
+    storage.setItem(
+      key,
+      valid.replace(`"version":${PROPOSAL_PERSISTENCE_VERSION}`, '"version":999'),
+    )
     expect(loadPersistedProposal(storage, 'P-1')).toEqual({
       status: 'discarded', reason: 'version',
     })

@@ -3,7 +3,6 @@ import { Decimal } from 'decimal.js'
 import { AnimatePresence } from 'framer-motion'
 import {
   useStore,
-  type ProjectStage,
   type UnderstandingTab,
 } from '../state/store'
 import {
@@ -31,10 +30,10 @@ import {
 import { formatDE } from '../engine/money'
 import { localizeMoneyText, useT, useTx } from '../i18n'
 import { Button } from '../components/primitives'
-import { PageHeader, SectionSheet } from '../components/designSystem'
+import { NextStep, PageHeader, SectionSheet } from '../components/designSystem'
 import { ErrorState, StaleState } from '../components/DataStates'
 import { MediaFrame } from '../design-system/MediaFrame'
-import { WorkflowStepper, type WorkflowStep } from '../design-system/WorkflowStepper'
+import { ProjectWorkflowSpine } from '../components/WorkflowSpine'
 import { SemanticStatus } from '../design-system/SemanticStatus'
 import { AuthorityTrace, MetricReadout, type InformationAuthority } from '../design-system/AuthorityTrace'
 import { DocumentRow, ProcessingJob, type DocumentRowState } from '../design-system/ProcessingJob'
@@ -189,7 +188,7 @@ export function ProjectHome() {
       <aside className="a3-project-spine" aria-label={t('vr3.spine.projectLabel')}>
         <p className="a3-project-spine-eyebrow">{t('vr3.spine.projectLabel')}</p>
         <p className="a3-project-spine-name">{project.name}</p>
-        <ProjectSpine project={project} analysis={analysis} />
+        <ProjectWorkflowSpine project={project} analysis={analysis} />
       </aside>
       <div className="a3-project-main">
         {stage === 'documents' ? (
@@ -206,94 +205,6 @@ export function ProjectHome() {
       </div>
       <p className="sr-only" role="status" aria-live="polite">{stageAnnouncement}</p>
     </div>
-  )
-}
-
-/* ─────────────────────────── workflow spine ─────────────────────────── */
-
-function ProjectSpine({
-  project, analysis,
-}: {
-  project: FixtureProject
-  analysis: ProjectAnalysis
-}) {
-  const s = useStore()
-  const t = useT()
-  const state = readiness(project, analysis)
-  const stage = s.projectStage
-  const hasOption = s.options.length > 0
-
-  const go = (target: ProjectStage) => () => s.setProjectStage(target)
-
-  // The full journey stays visible so it is learnable; only the current
-  // stage is emphasised and every locked stage carries its reason. The
-  // Option-side stages are shown as the one journey they belong to — this
-  // ticket owns the first three and does not pretend to own the rest.
-  const steps: WorkflowStep[] = [
-    {
-      id: 'documents',
-      label: t('vr3.spine.step.documents'),
-      state: stage === 'documents'
-        ? 'current'
-        : analysis.jobState === 'COMPLETE' ? 'done' : 'upcoming',
-      previouslyDone: stage === 'documents' && analysis.jobState === 'COMPLETE',
-      onSelect: go('documents'),
-    },
-    {
-      id: 'understanding',
-      label: t('vr3.spine.step.understanding'),
-      state: stage === 'understanding'
-        ? 'current'
-        : analysis.jobState !== 'COMPLETE'
-          ? 'blocked'
-          : state.state === 'PROJECT_READY_FOR_OPTION' ? 'done' : 'attention',
-      blockedReason: analysis.jobState !== 'COMPLETE'
-        ? t('vr3.spine.reason.needsAnalysis')
-        : undefined,
-      onSelect: analysis.jobState === 'COMPLETE' ? go('understanding') : undefined,
-    },
-    {
-      id: 'createOption',
-      label: t('vr3.spine.step.createOption'),
-      state: stage === 'createOption'
-        ? 'current'
-        : hasOption
-          ? 'done'
-          : state.canCreateOption ? 'attention' : 'blocked',
-      blockedReason: state.canCreateOption || hasOption
-        ? undefined
-        : t('vr3.spine.reason.needsReadiness'),
-      onSelect: hasOption ? go('createOption') : undefined,
-    },
-    // VR3-02…VR3-05 own these stages. They are listed because the journey
-    // must be one journey, and each states the prerequisite it is waiting
-    // for rather than being a silently greyed-out label.
-    ...([
-      ['buildingScope', 'vr3.spine.step.buildingScope'],
-      ['scopeBoundaries', 'vr3.spine.step.scopeBoundaries'],
-      ['kg200', 'costGroup.200'],
-      ['kg300', 'costGroup.300'],
-      ['kg400', 'costGroup.400'],
-      ['kg500', 'costGroup.500'],
-      ['kg600', 'costGroup.600'],
-      ['kg700', 'costGroup.700'],
-      ['schedule', 'vr3.spine.step.schedule'],
-      ['finalValidation', 'vr3.spine.step.finalValidation'],
-    ] as const).map(([id, key]) => ({
-      id,
-      // The rail names a cost group by its NUMBER, as the approved target
-      // does: the full DIN 276 title belongs on the KG page itself, and
-      // thirteen two-line labels would turn the spine into a wall of prose.
-      label: id.startsWith('kg') ? `KG\u202f${id.slice(2)}` : t(key),
-      state: 'blocked' as const,
-      blockedReason: hasOption
-        ? t('vr3.spine.reason.needsOption')
-        : t('vr3.spine.reason.needsReadiness'),
-    })),
-  ]
-
-  return (
-    <WorkflowStepper steps={steps} ariaLabel={t('vr3.spine.label')} size="spine" />
   )
 }
 
@@ -1475,8 +1386,14 @@ function OptionCreatedStage({ project }: { project: FixtureProject }) {
       <ProjectIdentityUtilities project={project} />
       <ProjectReadiness
         eyebrow={t('vr3.readiness.optionCreated')}
-        heading={latest ? latest.name : t('vr3.readiness.optionCreated')}
-        explanation={t('vr3.readiness.optionCreatedLead')}
+        /* VR3-02 (T-012): the hand-off NAMES the Option and says what it is
+           ready for. "Option 1" alone stated that something happened and
+           not what it now needs, which is the one thing the user is here
+           to find out. */
+        heading={latest
+          ? t('vr3.option.created.heading', { option: latest.name })
+          : t('vr3.readiness.optionCreated')}
+        explanation={t('vr3.option.created.lead')}
         rows={s.projectBaseline ? [
           {
             id: 'buildings',
@@ -1494,10 +1411,17 @@ function OptionCreatedStage({ project }: { project: FixtureProject }) {
             value: s.projectBaseline.conflictDecisions.length,
           },
         ] : []}
-        action={latest ? (
-          <Button variant="primary" onClick={() => s.openOption(latest.id)}>
-            {t('vr3.readiness.openOption')}
-          </Button>
+        /* Only Gebäude & Umfang is substantive now, and every later stage
+           is visible as locked WITH ITS REASON — in the spine beside this
+           surface and, named, right here. A disabled label alone is not a
+           gate (rule 12, T-012/T-016). */
+        attention={latest ? (
+          <NextStep
+            label={t('vr3.option.created.nextLabel')}
+            description={t('vr3.option.created.nextDetail')}
+            action={t('vr3.option.created.action')}
+            onAction={() => s.openOption(latest.id)}
+          />
         ) : undefined}
         media={(
           <MediaFrame

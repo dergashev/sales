@@ -820,9 +820,18 @@ export type ProjectBaselineSnapshot = {
     name: string
     usageKey: string
     undergroundLevel: FixtureBuilding['undergroundLevel']
+    /**
+     * VR3-02: the Option's building baseline states the storey structure and
+     * names the documents its facts were read from. Both are carried HERE,
+     * in the journalled snapshot, rather than re-read from the live fixture
+     * by the Option — an Option is a variant of the project as it was
+     * understood on a given day, and a later re-analysis must not move it.
+     */
+    storeysKey: string
     metrics: FixtureBuildingMetrics
     authority: Record<string, string>
     identityAssetId: string
+    evidenceDocIds: string[]
   }>
   documentCount: number
   terminalDistribution: FixtureProject['terminalDistribution']
@@ -847,9 +856,11 @@ export function projectBaselineSnapshot(
       name: b.name,
       usageKey: b.usageKey,
       undergroundLevel: b.undergroundLevel,
+      storeysKey: b.storeysKey,
       metrics: b.metrics,
       authority: b.authority,
       identityAssetId: b.identityAssetId,
+      evidenceDocIds: [...b.evidenceDocIds],
     })),
     documentCount: activeDocumentCount(project, analysis),
     terminalDistribution: project.terminalDistribution,

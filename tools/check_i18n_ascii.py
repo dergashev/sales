@@ -72,7 +72,7 @@ LOCALE_ASCII_ALLOWLIST = frozenset({
     'dauer', 'dauerhaft', 'dauergrundlage',
     'feuer', 'feuerwiderstand',
     'mauer', 'mauerwerk', 'verblendmauerwerk',
-    'quelle', 'quellen', 'quellenreferenzen', 'quellenwert',
+    'quelle', 'quellen', 'quellenreferenzen', 'quellenwert', 'quellwert',
     # VR3-01: same compound family as 'quellenreferenzen'/'quellenwert'.
     'quellenzuordnung',
     'visuelt',  # Schriftname (Eigenname), keine Transliteration

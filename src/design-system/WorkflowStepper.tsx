@@ -62,6 +62,23 @@ export type WorkflowStep = {
   /** Required (and rendered) when `state === 'blocked'` and `onSelect` is set —
    * a blocked step never disables silently (rule 12). */
   blockedReason?: string
+  /**
+   * VR3-02 — the RECOVERY ROUTE of a locked stage.
+   *
+   * `onSelect` is deliberately refused on a blocked step: entering a stage
+   * whose prerequisites are unmet is exactly what a gate exists to prevent.
+   * But "cannot enter" and "cannot even be reached" are different things,
+   * and the second is the defect the target names: "the system knows what
+   * is missing and provides a direct recovery path; disabled navigation is
+   * not the explanation" (T-016). A step that declares this route stays
+   * ACTIVATABLE while blocked and opens its own gate — the stage's own
+   * surface, which states the unmet prerequisite and how to resolve it —
+   * never the stage's contents.
+   *
+   * Without it a blocked step keeps its previous behaviour exactly: focusable,
+   * `aria-disabled`, and inert on activation.
+   */
+  blockedRoute?: () => void
 }
 
 const GLYPH: Record<WorkflowStepState, string> = {
@@ -249,10 +266,13 @@ export function WorkflowStepper({
                   onClick={() => {
                     setRovingIndex(i)
                     if (step.state !== 'blocked') step.onSelect!()
+                    else step.blockedRoute?.()
                   }}
                   onKeyDown={handleKeyDown(i)}
                   tabIndex={i === rovingIndex ? 0 : -1}
-                  aria-disabled={step.state === 'blocked' || undefined}
+                  aria-disabled={
+                    step.state === 'blocked' && !step.blockedRoute ? true : undefined
+                  }
                   aria-current={isCurrent ? 'step' : undefined}
                   aria-describedby={
                     step.state === 'blocked' && step.blockedReason && size !== 'spine'

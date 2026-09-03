@@ -1,5 +1,5 @@
 import { expect, type Page } from '@playwright/test'
-import { OPPORTUNITY } from './anchors'
+import { BUILDING_SCOPE, KONFIGURATOR_GATE, NAV, OPPORTUNITY } from './anchors'
 
 /**
  * The project-level preamble every Option-level smoke needs, walked as a
@@ -30,22 +30,58 @@ export async function reachOptionWorkspace(page: Page, projectName: string) {
   // is the honest signal.
   const create = page.getByRole('button', { name: OPPORTUNITY.createOption, exact: true })
   await expect(create).toBeVisible({ timeout: 30_000 })
+
+  // The complex fixture's six blocking conflicts are a hard gate: no Option
+  // exists until every one of them carries a decision. They are decided from
+  // the fixture's OWN recommendation — the demonstration's sanctioned
+  // answer — so this walks the gate rather than bypassing it.
+  const conflictsTab = page.getByRole('tab', { name: /Strittige Angaben/ })
+  if (await conflictsTab.count() > 0) {
+    await conflictsTab.click()
+    for (let i = 0; i < 12; i += 1) {
+      const recommended = page.getByRole('radio', { name: /Empfohlener Wert/ }).first()
+      if (await recommended.count() === 0) break
+      await recommended.click()
+      const record = page.getByRole('button', { name: 'Entscheidung bestätigen' }).first()
+      if (await record.count() === 0) break
+      await record.click()
+    }
+  }
+
   await expect(create).not.toHaveAttribute('aria-disabled', 'true', { timeout: 30_000 })
   await create.click()
 
-  // Scoped and exact: `Öffnen` alone is a case-insensitive SUBSTRING match
-  // in Playwright and would also match `Option öffnen` beside it.
-  await page.getByRole('region', { name: OPPORTUNITY.readinessHeadingRegion })
-    .getByRole('button', { name: OPPORTUNITY.openOption, exact: true })
-    .click()
+  // VR3-02 (T-012): the hand-off's one continuation names the stage it
+  // opens. `Öffnen` in the Option gallery still exists and still works —
+  // this walks the primary path, which is the one the target describes.
+  await page.getByRole('button', { name: OPPORTUNITY.defineScope }).click()
+  await expect(page.getByRole('heading', { level: 1, name: NAV.items.buildingScope }))
+    .toBeVisible({ timeout: 15_000 })
+}
 
-  // The proposal fixture's own WFL conflict belongs to the OPTION workspace
-  // (Gebäude & Umfang), not to the project: VR3-01's project conflicts are
-  // the six coherent ones in the fixture register, and this one gates the
-  // building confirmation rather than Option creation. The retired project
-  // card resolved it before the Option existed; it is resolved where it
-  // actually lives now, so the building can be confirmed.
-  const resolve = page.getByRole('button', { name: OPPORTUNITY.adoptCustomerValue }).first()
-  await expect(resolve).toBeVisible({ timeout: 15_000 })
-  await resolve.click()
+/**
+ * Confirm every selected building's baseline and save the scope — the
+ * transition that unlocks the Konfigurator (T-017).
+ *
+ * It reads the identities off the surface rather than being told them, so
+ * it walks one building on the clean fixture and three on the complex one
+ * without the caller having to know which.
+ */
+export async function saveBuildingScope(page: Page) {
+  const confirms = page.getByRole('button', { name: /^Gebäudegrundlage bestätigen · / })
+  // Only one baseline is open at a time, so this is a loop over identities,
+  // not over controls that are all on screen at once.
+  const reviews = page.getByRole('button', { name: /^Grundlage prüfen · / })
+  const buildingCount = Math.max(await reviews.count(), 1)
+  for (let i = 0; i < buildingCount; i += 1) {
+    if (await reviews.count() > 0) await reviews.nth(i).click()
+    const confirm = confirms.first()
+    await expect(confirm).toBeVisible({ timeout: 15_000 })
+    await confirm.click()
+  }
+  const save = page.getByRole('button', { name: BUILDING_SCOPE.save })
+  await expect(save).not.toHaveAttribute('aria-disabled', 'true', { timeout: 15_000 })
+  await save.click()
+  await expect(page.getByRole('heading', { level: 1, name: KONFIGURATOR_GATE.available }))
+    .toBeVisible({ timeout: 15_000 })
 }

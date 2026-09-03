@@ -6038,6 +6038,12 @@ class Verifier:
             'processing-job', 'document-row', 'prerequisite-state',
             'action-gate', 'project-readiness', 'conflict-resolver',
             'question-queue',
+            # VR3-02 (backlog d891ff2f): the Option building-scope family.
+            # `building-scope-panel` is the canonical selection/identity/
+            # metrics/provenance/confirmation capability; `workflow-gate` is
+            # the locked-and-available stage surface that replaces "disabled
+            # navigation" as a stage's explanation.
+            'building-scope-panel', 'workflow-gate',
         }
         by_id = {}
         for entry in capabilities:
@@ -6120,15 +6126,20 @@ class Verifier:
         consumers = []
         # VR3-01: `OpportunityCard.tsx` was retired with the four-stage
         # project card; the second real consumer is now the project shell.
-        # This tuple is the explicit manifest the module docstring requires
-        # to move atomically with such a rename.
-        for source_rel in ('src/components/Sidebar.tsx', 'src/screens/ProjectHome.tsx'):
+        # VR3-02: the thirteen-step journey renders in BOTH the project and
+        # the Option context, so the steps are computed once in
+        # `WorkflowSpine.tsx` and both shells consume that. The stepper's
+        # real consumers are therefore the spine and the Sidebar's own
+        # chapter list. This tuple is the explicit manifest the module
+        # docstring requires to move atomically with such a rename.
+        for source_rel in ('src/components/Sidebar.tsx', 'src/components/WorkflowSpine.tsx'):
             source = self.read(source_rel) or ''
             if "from '../design-system/WorkflowStepper'" in source and '<WorkflowStepper' in source:
                 consumers.append(source_rel)
         if len(consumers) != 2:
             self.fail('GOV-CAPABILITY', 'src/design-system/WorkflowStepper.tsx',
-                      'canonical WorkflowStepper must have the two real consumers (Sidebar and ProjectHome), not registry-only adoption')
+                      'canonical WorkflowStepper must have the two real consumers '
+                      '(Sidebar and WorkflowSpine), not registry-only adoption')
         for source_rel, source in self.files('*.tsx'):
             if source_rel == 'src/design-system/WorkflowStepper.tsx':
                 continue

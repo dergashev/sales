@@ -24,6 +24,27 @@ import {
   type ProjectBaselineSnapshot,
 } from './projectAnalysis'
 import {
+  buildingScopeFingerprint,
+  buildingScopeSaved as scopeIsSaved,
+  buildingScopeStage,
+  initialScopeSelection,
+  scopeBuilding,
+  scopeBuildingConfirmed,
+  scopeBuildingsFromBaseline,
+  scopeFingerprint,
+  scopeReadyToSave,
+  scopeSelectedIds,
+  selectedBgfRSTotal,
+  type BuildingScopeCommit,
+  type BuildingScopeStage,
+  type BuildingScopeState,
+  type ScopeBuilding,
+  type ScopeConfirmation,
+  type ScopeMetricEdit,
+  type ScopeMetricKey,
+  type SavedBuildingScope,
+} from './optionBuildingScope'
+import {
   isClientProjection,
   modeForLevelTransition,
   pipelineViewForOutputProfile,
@@ -322,6 +343,19 @@ export type OptionConfig = {
     string,
     Partial<Record<BuildingReviewSection, BuildingSectionConfirmation>>
   >
+  /**
+   * VR3-02 — the Option's building scope, inherited from the journalled
+   * project baseline. See `src/state/optionBuildingScope.ts` for the
+   * contract; these five fields ARE the Option's copy of it, so switching
+   * Option switches the scope with everything else it owns.
+   */
+  scopeBuildings: readonly ScopeBuilding[]
+  scopeSelected: Record<string, boolean>
+  scopeEdits: Record<string, Partial<Record<string, ScopeMetricEdit>>>
+  scopeConfirmations: Record<string, ScopeConfirmation>
+  scopeSaved: SavedBuildingScope | null
+  /** Which selected building's baseline the surface is reviewing. */
+  scopeActiveBuildingId: string | null
   configurationMode: ConfigurationMode
   /** The default mode is an engine fallback, never proof of user consent. */
   configurationModeChosen: boolean
@@ -400,6 +434,8 @@ export type OptionConfig = {
 const OPTION_CONFIG_KEYS = [
   'buildings', 'activeBuildingId', 'included', 'buildingReviews',
   'buildingConfirmation', 'buildingSectionConfirmations',
+  'scopeBuildings', 'scopeSelected', 'scopeEdits', 'scopeConfirmations',
+  'scopeSaved', 'scopeActiveBuildingId',
   'configurationMode', 'configurationModeChosen',
   'pricingStarted', 'configurationVisitedChapters', 'sharedConfiguration',
   'buildingConfigState',
@@ -430,7 +466,9 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
   | 'kg800ClientRevealed'
   | 'scopeBoundariesConfirmedFingerprint'
   | 'esConfirmed' | 'regionalfaktorActive' | 'risikoAktiv' | 'discountPercent'
-  | 'constructionStartDate'>,
+  | 'constructionStartDate'
+  | 'scopeBuildings' | 'scopeSelected' | 'scopeEdits' | 'scopeConfirmations'
+  | 'scopeSaved' | 'scopeActiveBuildingId'>,
   'buildingSectionConfirmations' | 'configurationModeChosen' | 'pricingStarted'
     | 'configurationVisitedChapters' | 'scopeBoundariesConfirmedFingerprint'
     | 'constructionStartDate' | 'kg700ModeAutoFallback'
@@ -459,6 +497,22 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
     scopeCatalogProvenance?: Record<string, string>
     scopeCatalogQuantities?: Record<string, string>
     kg800ClientRevealed?: boolean
+    /**
+     * VR3-02 — the Option's building scope. A reload must not lose a SAVED
+     * scope: the gate is that save, and an Option whose Konfigurator
+     * silently re-locked after a browser refresh would be the product
+     * forgetting a commitment the user made and was given a receipt for.
+     *
+     * Optional as a matter of shape, not of compatibility: an Option
+     * created before this contract existed has no scope, and the version
+     * gate discards those payloads outright.
+     */
+    scopeBuildings?: readonly ScopeBuilding[]
+    scopeSelected?: Record<string, boolean>
+    scopeEdits?: Record<string, Partial<Record<string, ScopeMetricEdit>>>
+    scopeConfirmations?: Record<string, ScopeConfirmation>
+    scopeSaved?: SavedBuildingScope | null
+    scopeActiveBuildingId?: string | null
   }
 
 const PERSISTED_CONFIG_KEYS = [
@@ -473,6 +527,8 @@ const PERSISTED_CONFIG_KEYS = [
   'scopeBoundariesConfirmedFingerprint', 'esConfirmed',
   'regionalfaktorActive', 'risikoAktiv', 'discountPercent',
   'constructionStartDate',
+  'scopeBuildings', 'scopeSelected', 'scopeEdits', 'scopeConfirmations',
+  'scopeSaved', 'scopeActiveBuildingId',
 ] as const satisfies ReadonlyArray<keyof PersistedProposalConfig>
 
 const LEGACY_PERSISTED_CONFIG_KEYS = PERSISTED_CONFIG_KEYS.filter(
@@ -673,6 +729,12 @@ const fxB = demo.buildings[1]!
 export const PROPOSAL_PROJECT_ID = demo.project.id
 const LEGACY_FIELDS_BUILDING_ID = fx.id
 const CUSTOMER_CONFIRMATION_ACTOR = 'customer confirmation'
+/**
+ * Human truth is attributable or it is absent. The prototype has one signed-in
+ * seller and no account system, so the attribution is the role rather than a
+ * fabricated person — an invented name would be a worse lie than a role.
+ */
+const SCOPE_ACTOR = 'A. Muster'
 
 type FixtureBuilding = typeof fx
 
@@ -801,6 +863,16 @@ function defaultOptionConfig(coverage: Coverage = INITIAL_COVERAGE): OptionConfi
     },
     buildingConfirmation: {},
     buildingSectionConfirmations: {},
+    // A fresh Option has NO building scope until it inherits one. An empty
+    // list is not "no buildings" — it is "this Option was not created from a
+    // project baseline", which is exactly what a directly driven store and a
+    // restored legacy session are, and the Konfigurator gate says so.
+    scopeBuildings: [],
+    scopeSelected: {},
+    scopeEdits: {},
+    scopeConfirmations: {},
+    scopeSaved: null,
+    scopeActiveBuildingId: null,
     configurationMode: 'PER_BUILDING',
     configurationModeChosen: false,
     pricingStarted: false,
@@ -903,6 +975,72 @@ function isConfigurationState(value: unknown): value is BuildingConfigurationSta
     || value.fingerprint !== null && typeof value.fingerprint !== 'string'
     || value.at !== null && typeof value.at !== 'string') return false
   return value.status !== 'confirmed' || typeof value.fingerprint === 'string'
+}
+
+/**
+ * The Option's building scope, as a stored shape.
+ *
+ * Structural, not exhaustive: the ids and values come from the project
+ * baseline this Option inherited, so there is no fixed allowlist to check
+ * them against the way `included` is checked against the proposal fixture.
+ * What IS checked is that every part of the contract the gate reads has the
+ * type the gate assumes — a `scopeSaved` without a fingerprint, or a
+ * confirmation without one, would open the Konfigurator on a scope nobody
+ * confirmed.
+ */
+function isPersistedBuildingScope(value: Record<string, unknown>): boolean {
+  const buildings = value.scopeBuildings
+  if (buildings !== undefined) {
+    if (!Array.isArray(buildings)) return false
+    for (const building of buildings) {
+      if (!record(building)
+        || typeof building.id !== 'string'
+        || typeof building.name !== 'string'
+        || typeof building.usageKey !== 'string'
+        || typeof building.storeysKey !== 'string'
+        || typeof building.identityAssetId !== 'string'
+        || (building.undergroundLevel !== 'none' && building.undergroundLevel !== 'partial'
+          && building.undergroundLevel !== 'full')
+        || !record(building.metrics) || !record(building.authority)
+        || !Array.isArray(building.evidenceDocIds)) return false
+    }
+  }
+  if (value.scopeSelected !== undefined) {
+    if (!record(value.scopeSelected)
+      || !Object.values(value.scopeSelected).every((v) => typeof v === 'boolean')) return false
+  }
+  if (value.scopeEdits !== undefined) {
+    if (!record(value.scopeEdits)) return false
+    for (const perBuilding of Object.values(value.scopeEdits)) {
+      if (!record(perBuilding)) return false
+      for (const edit of Object.values(perBuilding)) {
+        if (!record(edit) || typeof edit.value !== 'string'
+          || (edit.previous !== null && typeof edit.previous !== 'string')
+          || typeof edit.reason !== 'string' || typeof edit.actor !== 'string'
+          || typeof edit.at !== 'string') return false
+      }
+    }
+  }
+  if (value.scopeConfirmations !== undefined) {
+    if (!record(value.scopeConfirmations)) return false
+    for (const confirmation of Object.values(value.scopeConfirmations)) {
+      if (!record(confirmation) || typeof confirmation.fingerprint !== 'string'
+        || typeof confirmation.actor !== 'string'
+        || typeof confirmation.at !== 'string') return false
+    }
+  }
+  const saved = value.scopeSaved
+  if (saved !== undefined && saved !== null) {
+    if (!record(saved) || typeof saved.fingerprint !== 'string'
+      || !Array.isArray(saved.selectedIds)
+      || !saved.selectedIds.every((id) => typeof id === 'string')
+      || typeof saved.bgfRSTotal !== 'string'
+      || typeof saved.actor !== 'string' || typeof saved.at !== 'string') return false
+  }
+  if (value.scopeActiveBuildingId !== undefined
+    && value.scopeActiveBuildingId !== null
+    && typeof value.scopeActiveBuildingId !== 'string') return false
+  return true
 }
 
 function isPersistedProposalConfig(value: unknown): value is PersistedProposalConfig {
@@ -1027,6 +1165,7 @@ function isPersistedProposalConfig(value: unknown): value is PersistedProposalCo
   if (value.scopeBoundariesConfirmedFingerprint !== undefined
     && value.scopeBoundariesConfirmedFingerprint !== null
     && typeof value.scopeBoundariesConfirmedFingerprint !== 'string') return false
+  if (!isPersistedBuildingScope(value)) return false
   if (typeof value.esConfirmed !== 'boolean'
     || typeof value.regionalfaktorActive !== 'boolean') return false
   if (!record(value.risikoAktiv)
@@ -1171,6 +1310,12 @@ function restoredOptionConfig(
     scopeBoundariesConfirmedFingerprint:
       persisted.scopeBoundariesConfirmedFingerprint ?? null,
     buildingSectionConfirmations: persisted.buildingSectionConfirmations ?? {},
+    scopeBuildings: persisted.scopeBuildings ?? [],
+    scopeSelected: persisted.scopeSelected ?? {},
+    scopeEdits: persisted.scopeEdits ?? {},
+    scopeConfirmations: persisted.scopeConfirmations ?? {},
+    scopeSaved: persisted.scopeSaved ?? null,
+    scopeActiveBuildingId: persisted.scopeActiveBuildingId ?? null,
     buildings,
     fields: legacyFieldsFromReview(
       buildingReviews[LEGACY_FIELDS_BUILDING_ID]!,
@@ -1241,6 +1386,26 @@ type Store = {
     string,
     Partial<Record<BuildingReviewSection, BuildingSectionConfirmation>>
   >
+  /* VR3-02 — the Option's building scope (`optionBuildingScope.ts`). */
+  scopeBuildings: readonly ScopeBuilding[]
+  scopeSelected: Record<string, boolean>
+  scopeEdits: Record<string, Partial<Record<string, ScopeMetricEdit>>>
+  scopeConfirmations: Record<string, ScopeConfirmation>
+  scopeSaved: SavedBuildingScope | null
+  scopeActiveBuildingId: string | null
+  /**
+   * The scope commitment IN FLIGHT. Top-level and transient, never inside
+   * `OptionConfig`: every journalled scope mutation restores a whole
+   * previous value set in its `inverse`, so a commitment living inside one
+   * of those records would be erased mid-air by an undo — the exact defect
+   * VR3-01 paid a cycle for.
+   */
+  scopeCommit: BuildingScopeCommit | null
+  /**
+   * A deselection awaiting its consequence confirmation. Also transient:
+   * it is one screen's pending question, not a fact about the Option.
+   */
+  scopeRemovalPending: string | null
   /** Shared and per-building choice sets coexist; mode selects the reader. */
   configurationMode: ConfigurationMode
   configurationModeChosen: boolean
@@ -1693,6 +1858,23 @@ type Store = {
   setActiveBuilding: (id: string) => void
   /** Включить/исключить здание из предложения — событие журнала. */
   toggleBuildingIncluded: (id: string) => void
+  /* VR3-02 — the Option's building scope. */
+  setScopeActiveBuilding: (id: string) => void
+  /** Selecting is immediate; DEselecting with consequences asks first. */
+  toggleScopeBuilding: (id: string) => void
+  confirmScopeRemoval: () => void
+  cancelScopeRemoval: () => void
+  /** Only a VALID value reaches the store; the field owns its own error. */
+  editScopeMetric: (
+    buildingId: string, key: ScopeMetricKey, value: string, reason: string,
+  ) => void
+  /** Recovers the value the override replaced, with its own event. */
+  revertScopeMetric: (buildingId: string, key: ScopeMetricKey) => void
+  confirmScopeBuilding: (id: string) => void
+  beginBuildingScopeSave: () => void
+  advanceBuildingScopeSave: () => void
+  clearBuildingScopeSaveError: () => void
+  buildingScopeStage: () => BuildingScopeStage
   confirmBuilding: (id: string) => void
   confirmBuildingSection: (
     id: string,
@@ -1753,6 +1935,10 @@ const NO_TRANSIENT = {
   // it belongs to one screen and one intent, and navigating away abandons
   // it rather than carrying it somewhere it no longer means anything.
   optionCommit: null,
+  // The building-scope save and the pending deselection are transient for
+  // exactly the same reason.
+  scopeCommit: null,
+  scopeRemovalPending: null,
 } as const
 
 /**
@@ -2030,10 +2216,24 @@ export function buildingConfirmed(
   )
 }
 
+/**
+ * The Konfigurator gate.
+ *
+ * VR3-02 moved the authority: when the Option inherited a project baseline,
+ * the SAVED building scope is the gate — at least one building selected,
+ * every selected one confirmed, and the saved fingerprint still describing
+ * what is on screen. The legacy proposal confirmation remains the gate for
+ * an Option with no baseline behind it (a directly driven store, a restored
+ * session from before this ticket), so nothing that used to open loses its
+ * way in.
+ */
 export function canBeginConfiguration(
   s: Pick<Store, 'buildings' | 'included' | 'buildingReviews'
-    | 'buildingConfirmation' | 'buildingConflicts'>,
+    | 'buildingConfirmation' | 'buildingConflicts'> & Partial<BuildingScopeState>,
 ): boolean {
+  if (s.scopeBuildings && s.scopeBuildings.length > 0) {
+    return scopeIsSaved(s as BuildingScopeState)
+  }
   const ids = includedBuildingIds(s)
   return ids.length > 0 && ids.every((id) => buildingConfirmed(s, id))
 }
@@ -2045,12 +2245,30 @@ export function canBeginConfiguration(
  */
 export function pipelineViewForBuildingGate(
   s: Pick<Store, 'buildings' | 'included' | 'buildingReviews'
-    | 'buildingConfirmation' | 'buildingConflicts'>,
+    | 'buildingConfirmation' | 'buildingConflicts'> & Partial<BuildingScopeState>,
   view: PipelineView,
 ): PipelineView {
-  return view !== 'buildingScope' && !canBeginConfiguration(s)
-    ? 'buildingScope'
-    : view
+  if (canBeginConfiguration(s)) return view
+  // VR3-02: the Konfigurator itself is no longer redirected away. It is
+  // still fail-closed — the configurator is NOT MOUNTED behind a closed
+  // gate — but the stage the user asked for renders its own lock, with the
+  // named prerequisite and the route that resolves it. Bouncing them back
+  // to a surface that does not explain itself is the "disabled navigation
+  // as the explanation" defect the target names (T-016).
+  if (view === 'konfigurator') return view
+  return view !== 'buildingScope' ? 'buildingScope' : view
+}
+
+/**
+ * Is the Konfigurator view showing its LOCK rather than the configurator?
+ * One predicate, so the router, the spine and the surface cannot disagree
+ * about whether the gate is open.
+ */
+export function konfiguratorLocked(
+  s: Pick<Store, 'buildings' | 'included' | 'buildingReviews'
+    | 'buildingConfirmation' | 'buildingConflicts'> & Partial<BuildingScopeState>,
+): boolean {
+  return !canBeginConfiguration(s)
 }
 
 /** Existing S2 consumers read this view; conflict authority stays in the registry. */
@@ -3048,6 +3266,70 @@ const store = createStore<Store>((set, get) => {
     })
   }
 
+  /**
+   * One selection change, journalled and reversible.
+   *
+   * Deselecting also moves the REVIEW focus, because a panel reviewing a
+   * building that is no longer in scope is a metric detached from its
+   * owner — the one thing the building-scope surface exists to prevent.
+   */
+  const applyScopeSelection = (id: string, next: boolean, name: string) => {
+    const capture = (state: Pick<Store, 'scopeSelected' | 'scopeActiveBuildingId'>) => ({
+      scopeSelected: state.scopeSelected,
+      scopeActiveBuildingId: state.scopeActiveBuildingId,
+    })
+    const before = capture(get())
+    const write = (value: boolean) => set((state) => {
+      const selected = { ...state.scopeSelected, [id]: value }
+      const stillSelected = state.scopeBuildings
+        .filter((building) => selected[building.id])
+        .map((building) => building.id)
+      const active = value
+        ? id
+        : state.scopeActiveBuildingId === id
+          ? stillSelected[0] ?? null
+          : state.scopeActiveBuildingId
+      return { scopeSelected: selected, scopeActiveBuildingId: active }
+    })
+    write(next)
+    const after = capture(get())
+    apply({
+      kind: 'option.selected',
+      label: next
+        ? `${name} in den Angebotsumfang aufgenommen`
+        : `${name} aus dem Angebotsumfang genommen`,
+      labelKey: next ? 'vr3.journal.scopeBuildingAdded' : 'vr3.journal.scopeBuildingRemoved',
+      labelValues: { building: name },
+      deltaExact: null,
+      inverse: () => set(before),
+      forward: () => set(after),
+    })
+  }
+
+  /**
+   * The Option's PRICING PROJECTION of the baseline the user just confirmed.
+   *
+   * VR3-02 moved the Option's building scope onto the project baseline; the
+   * proposal record in `buildingReviews` is what the calculation engine
+   * reads, and it is no longer a surface the user edits. Confirming the
+   * Option's baseline therefore has to carry through to it, or the engine
+   * would keep pricing an unconfirmed building class — a change in released
+   * commercial behaviour that no one asked for and no one would see.
+   *
+   * The WFL disagreement in the proposal fixture is resolved to its
+   * CUSTOMER-CONFIRMED candidate, which is the value every released journey
+   * already inherited (the retired project preamble adopted it before the
+   * Option existed, and `createOption` still inherits it when the project
+   * carries it). Preserving that is not a new decision — leaving it open
+   * would be the change.
+   */
+  const syncPricingProjection = () => {
+    if (wflConflict(get()).state === 'open') get().resolveWflConflict('customer')
+    for (const id of includedBuildingIds(get())) {
+      if (!buildingConfirmed(get(), id)) get().confirmBuilding(id)
+    }
+  }
+
   const commitReviewChange = (change: {
     buildingId: string
     previousReview: BuildingReview
@@ -3101,6 +3383,8 @@ const store = createStore<Store>((set, get) => {
     preview: null,
     undoToast: null,
     optionCommit: null,
+    scopeCommit: null,
+    scopeRemovalPending: null,
     mode: 'intern',
     constructionStartDate: null,
     level: 'liste',
@@ -4356,6 +4640,17 @@ const store = createStore<Store>((set, get) => {
       // `seq` — тем же счётчиком, тем же надгробным правилом, что и `id`.
       const resolvedName = name ?? `Option ${seq}`
       const fresh = defaultOptionConfig()
+      // VR3-02: the Option INHERITS the project baseline that the stage
+      // before it journalled. Not a live read of the fixture — a variant is
+      // a variant of the project as it was understood on the day it was
+      // created, and a later re-analysis must never move an Option's
+      // commercial base underneath it (M-1/M-3).
+      const inheritedScope = scopeBuildingsFromBaseline(s.projectBaseline)
+      if (inheritedScope.length > 0) {
+        fresh.scopeBuildings = inheritedScope
+        fresh.scopeSelected = initialScopeSelection(inheritedScope)
+        fresh.scopeActiveBuildingId = inheritedScope[0]!.id
+      }
       // Состояние ДО создания — целиком, чтобы отмена вернула его, а не
       // приблизила: рабочая копия, хранилище конфигураций, активная Option
       // и уровень.
@@ -4952,11 +5247,206 @@ const store = createStore<Store>((set, get) => {
       apply({
         kind: 'value.confirmed',
         label: `Gebäude ${effectiveFactValue(review.facts.documentationName) ?? id} bestätigt`,
+        // The stored label stays byte-identical (M-4); the KEY is the
+        // presentation, so the journal and the toast read in the user's own
+        // locale. VR3-02 made this event reachable from the scope save,
+        // where a raw German label would have been the only German line on
+        // an English screen.
+        labelKey: 'vr3.journal.buildingConfirmed',
+        labelValues: {
+          building: effectiveFactValue(review.facts.documentationName) ?? id,
+        },
         deltaExact: null,
         inverse: () => write(previousReview, previousConfirmation),
         forward: () => write(confirmedReview, confirmed),
       })
     },
+
+    /* ───────────── VR3-02 · the Option's building scope ───────────── */
+
+    setScopeActiveBuilding: (id) => {
+      const s = get()
+      if (!s.scopeSelected[id] || s.scopeActiveBuildingId === id) return
+      set({ scopeActiveBuildingId: id })
+    },
+
+    toggleScopeBuilding: (id) => {
+      const s = get()
+      const building = scopeBuilding(s, id)
+      if (!building) return
+      const next = !s.scopeSelected[id]
+      // Removing a building the user already confirmed, or one a saved
+      // scope depends on, is a consequence — so it is asked, once, and the
+      // question is state rather than a browser confirm() the product
+      // cannot style, translate or test.
+      const hasConsequence = !next
+        && (scopeBuildingConfirmed(s, id) || s.scopeSaved !== null)
+      if (hasConsequence && s.scopeRemovalPending !== id) {
+        set({ scopeRemovalPending: id })
+        return
+      }
+      applyScopeSelection(id, next, building.name)
+    },
+
+    confirmScopeRemoval: () => {
+      const s = get()
+      const id = s.scopeRemovalPending
+      if (!id) return
+      const building = scopeBuilding(s, id)
+      set({ scopeRemovalPending: null })
+      if (!building) return
+      applyScopeSelection(id, false, building.name)
+    },
+
+    cancelScopeRemoval: () => {
+      if (get().scopeRemovalPending) set({ scopeRemovalPending: null })
+    },
+
+    editScopeMetric: (buildingId, key, value, reason) => {
+      const s = get()
+      const building = scopeBuilding(s, buildingId)
+      if (!building) return
+      const current = s.scopeEdits[buildingId]?.[key]
+      const previous = current
+        ? current.previous
+        : building.metrics[key] ?? null
+      // The same value again is not an override, and journalling it would
+      // put an event with no change into the record (M-4 works the other
+      // way round: no change without an event, not an event without one).
+      if ((current?.value ?? building.metrics[key] ?? null) === value) return
+      const edit: ScopeMetricEdit = {
+        value,
+        previous,
+        reason,
+        actor: SCOPE_ACTOR,
+        at: new Date().toISOString(),
+      }
+      const before = s.scopeEdits
+      const after = {
+        ...before,
+        [buildingId]: { ...(before[buildingId] ?? {}), [key]: edit },
+      }
+      set({ scopeEdits: after })
+      apply({
+        kind: 'value.edited',
+        label: `${building.name}: ${key} überschrieben`,
+        labelKey: 'vr3.journal.scopeMetricEdited',
+        labelValues: { building: building.name, metric: key },
+        deltaExact: null,
+        inverse: () => set({ scopeEdits: before }),
+        forward: () => set({ scopeEdits: after }),
+      })
+    },
+
+    revertScopeMetric: (buildingId, key) => {
+      const s = get()
+      const building = scopeBuilding(s, buildingId)
+      const current = s.scopeEdits[buildingId]?.[key]
+      if (!building || !current) return
+      const before = s.scopeEdits
+      const { [key]: _removed, ...rest } = before[buildingId] ?? {}
+      const after = { ...before, [buildingId]: rest }
+      set({ scopeEdits: after })
+      apply({
+        kind: 'value.edited',
+        label: `${building.name}: ${key} auf Quellwert zurückgesetzt`,
+        labelKey: 'vr3.journal.scopeMetricReverted',
+        labelValues: { building: building.name, metric: key },
+        deltaExact: null,
+        inverse: () => set({ scopeEdits: before }),
+        forward: () => set({ scopeEdits: after }),
+      })
+    },
+
+    confirmScopeBuilding: (id) => {
+      const s = get()
+      const building = scopeBuilding(s, id)
+      if (!building || !s.scopeSelected[id]) return
+      if (scopeBuildingConfirmed(s, id)) return
+      const confirmation: ScopeConfirmation = {
+        fingerprint: buildingScopeFingerprint(s, building),
+        actor: SCOPE_ACTOR,
+        at: new Date().toISOString(),
+      }
+      const before = s.scopeConfirmations
+      const after = { ...before, [id]: confirmation }
+      set({ scopeConfirmations: after })
+      apply({
+        kind: 'value.confirmed',
+        label: `Gebäudegrundlage ${building.name} bestätigt`,
+        labelKey: 'vr3.journal.scopeBuildingConfirmed',
+        labelValues: { building: building.name },
+        deltaExact: null,
+        inverse: () => set({ scopeConfirmations: before }),
+        forward: () => set({ scopeConfirmations: after }),
+      })
+    },
+
+    beginBuildingScopeSave: () => {
+      const s = get()
+      if (s.scopeCommit?.stage) return
+      if (!scopeReadyToSave(s)) return
+      set({ scopeCommit: { stage: 'SAVING', errorKey: null } })
+    },
+
+    advanceBuildingScopeSave: () => {
+      const s = get()
+      if (!s.scopeCommit?.stage) return
+      // The gate is re-read AT the commitment's boundary, not when the
+      // button rendered. Editing a metric while the save is in flight is a
+      // real race, and this is where it is caught: the save fails, and
+      // every selection and every edit is exactly where the user left it.
+      if (!scopeReadyToSave(s)) {
+        set({ scopeCommit: { stage: null, errorKey: 'vr3.scope.error.changed' } })
+        return
+      }
+      const saved: SavedBuildingScope = {
+        fingerprint: scopeFingerprint(s),
+        selectedIds: scopeSelectedIds(s),
+        bgfRSTotal: selectedBgfRSTotal(s),
+        actor: SCOPE_ACTOR,
+        at: new Date().toISOString(),
+      }
+      const before = s.scopeSaved
+      const beforeMode = s.configurationMode
+      // The configuration MODE is not a separate gate before
+      // Leistungsabgrenzung (target spec §3): it is a consequence of the
+      // scope that was just saved. One selected building is configured as
+      // one thing; several are configured per building, which is exactly
+      // what the user just declared by selecting them. `configurationModeChosen`
+      // is deliberately NOT set here — entering Leistungsabgrenzung is the
+      // transition that starts pricing, and it stays one transition.
+      const mode: ConfigurationMode = saved.selectedIds.length > 1 ? 'PER_BUILDING' : 'SHARED'
+      const write = (
+        value: SavedBuildingScope | null, configMode: ConfigurationMode,
+      ) => set({
+        scopeSaved: value,
+        scopeCommit: null,
+        configurationMode: configMode,
+      })
+      write(saved, mode)
+      // BEFORE the save's own event, not after: `apply` gives the LAST
+      // journalled event the undo toast, and the projection's events are an
+      // internal consequence. Running them afterwards put "Gebäude Haus A
+      // bestätigt" — a building the user has never seen — on screen as the
+      // outcome of saving their scope.
+      syncPricingProjection()
+      apply({
+        kind: 'value.confirmed',
+        label: `Gebäudeumfang gespeichert · ${saved.selectedIds.length} Gebäude`,
+        labelKey: 'vr3.journal.buildingScopeSaved',
+        labelValues: { count: saved.selectedIds.length },
+        deltaExact: null,
+        inverse: () => write(before, beforeMode),
+        forward: () => write(saved, mode),
+      })
+    },
+
+    clearBuildingScopeSaveError: () => {
+      if (get().scopeCommit?.errorKey) set({ scopeCommit: null })
+    },
+
+    buildingScopeStage: () => buildingScopeStage(get()),
 
     setConfigurationMode: (mode) => {
       const s = get()
