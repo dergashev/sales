@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures'
-import { COMPARISON, DEMO_PROJECT_NAME, NAV, OPPORTUNITY } from '../anchors'
+import { COMPARISON, DEMO_PROJECT_NAME, KONFIGURATOR_GATE, NAV, OPPORTUNITY } from '../anchors'
 import { saveBuildingScope } from '../journey'
 
 /**
@@ -122,6 +122,9 @@ for (const { label: viewportLabel, viewport } of VIEWPORTS) {
         // `tests/browser/journey.ts` performs, on whichever buildings this
         // Option inherited.
         await saveBuildingScope(page)
+        // Entering Leistungsabgrenzung is the transition that starts pricing;
+        // this spec's subject is the comparison of priced Options.
+        await page.getByRole('button', { name: KONFIGURATOR_GATE.start }).click()
         // DC-29's undo toast (8s, bottom-anchored) can visually overlap the
         // comparison table at narrower viewports and silently swallow the
         // wheel gesture below (it, not the scroll region, sits under the

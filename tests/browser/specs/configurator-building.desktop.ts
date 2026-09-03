@@ -41,8 +41,11 @@ test.describe('Option building scope · gate chain', () => {
       .toBeVisible()
     await expect(page.getByText(BUILDING_SCOPE.progress(0, 1))).toBeVisible()
     // The Option's buildings come from the PROJECT baseline, not from the
-    // proposal fixture the engine prices.
-    await expect(page.getByText('Lindenhof')).toBeVisible()
+    // proposal fixture the engine prices: this baseline belongs to
+    // Lindenhof, and there is no "Haus A" anywhere on the surface.
+    await expect(page.getByRole('region', { name: new RegExp(SCOPE_BUILDINGS.a1) }))
+      .toBeVisible()
+    await expect(page.getByText('Haus A', { exact: true })).toHaveCount(0)
 
     const save = page.getByRole('button', { name: BUILDING_SCOPE.save })
     await expect(save).toHaveAttribute('aria-disabled', 'true')

@@ -115,7 +115,15 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
   const exportGateOpen = gateOpen && s.configurationComplete()
   const screens = client
     ? SCREENS.filter(({ id }) => isClientVisiblePipelineView(id))
-    : SCREENS
+    // VR3-02: while the spine above carries the journey, this list keeps
+    // only the DESTINATIONS that are not stages of it. Comparison and
+    // output are places an Option can be taken to, not steps it passes
+    // through — dropping them with the stage list would have removed a
+    // released capability from the phase, and repeating the two stages the
+    // spine already shows would be two navigations for one journey.
+    : preConfigurator
+      ? SCREENS.filter(({ id }) => id === 'vergleich' || id === 'export')
+      : SCREENS
   const workflow = activeConfiguratorWorkflow({ coverage: s.coverage, mode: s.mode })
 
   return (
@@ -177,15 +185,15 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
           got longer is how the user's position in it was lost; the
           four-item list returns once the Konfigurator itself is the
           surface, where its chapter navigation belongs. */}
-      {preConfigurator ? (
-        <div className="min-w-0 flex-1 py-2">
+      {preConfigurator && (
+        <div className="min-w-0 py-2">
           <p className="a3-cap px-5 pb-1 pt-3">{t('shell.sidebar.workflow')}</p>
           {/* No extra horizontal padding: the spine's own steps carry it,
               and doubling it at 1280 left the labels too little room to
               wrap and they clipped at the rail's edge. */}
           <div className="min-w-0 pb-3"><OptionWorkflowSpine /></div>
         </div>
-      ) : (
+      )}
       <ul className="flex-1 py-2">
         <li>
           <p className="a3-cap px-5 pb-1 pt-3">
@@ -284,7 +292,6 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
           )
         })}
       </ul>
-      )}
 
       {/* Acceptance remediation (cycle 5): the approved target shows the
           Arbeiten/Präsentieren toggle at the BOTTOM of the rail, not

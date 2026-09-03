@@ -18,7 +18,12 @@ import { BUILDING_SCOPE, KONFIGURATOR_GATE, NAV, OPPORTUNITY } from './anchors'
  * with its own timeout.
  */
 export async function reachOptionWorkspace(page: Page, projectName: string) {
-  await page.getByRole('button', { name: OPPORTUNITY.openCta(projectName) }).click()
+  // Two anchors, because the card's verb follows the ROUTE: the clean
+  // fixture offers `Projekt öffnen`, the one that needs a decision offers
+  // `Projekt prüfen`. A single one would have to guess.
+  const open = page.getByRole('button', { name: OPPORTUNITY.openCta(projectName) })
+  const review = page.getByRole('button', { name: OPPORTUNITY.reviewCta(projectName) })
+  await (await open.count() > 0 ? open : review).click()
 
   const start = page.getByRole('button', { name: OPPORTUNITY.startAnalysis })
   await expect(start).toBeVisible()
