@@ -283,7 +283,15 @@ describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/
     expect(st().activeOptionId).toBe('OPT-01')
     expect(st().viewedOptionId).toBe('OPT-02')
 
-    await user.click(screen.getByRole('button', { name: 'Angebot prüfen & senden →' }))
+    // `findByRole`, not `getByRole`: the radio above switches the viewed
+    // Option through `startContinuityTransition`, and the sections live in an
+    // `AnimatePresence mode="wait"` — the outgoing section fully unmounts
+    // BEFORE the incoming one mounts, so this button is legitimately absent
+    // for a moment. A synchronous query asserts against a deliberately
+    // asynchronous transition, and it failed intermittently under full-suite
+    // load (~1 run in 4). The component's behaviour is correct; the
+    // assertion was not. Pre-existing, unrelated to VR3-01.
+    await user.click(await screen.findByRole('button', { name: 'Angebot prüfen & senden →' }))
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Bereit zum Senden' })).toBeInTheDocument()
     })
@@ -311,7 +319,8 @@ describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/
       // opportunityId='DEMO-HAPPY-01' here, so the real project name applies.
       expect(screen.getByRole('heading', { name: 'Wohnhof Lindenhain bekommt kommerzielle Kontur.' })).toBeInTheDocument()
     })
-    await user.click(screen.getByRole('button', { name: 'Angebot prüfen & senden →' }))
+    // Same transition race as above (findByRole, not getByRole).
+    await user.click(await screen.findByRole('button', { name: 'Angebot prüfen & senden →' }))
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Bereit zum Senden' })).toBeInTheDocument()
     })

@@ -524,6 +524,13 @@ describe('Option creation hands off a gated, authority-aware baseline', () => {
     expect(st().optionCommit).toEqual({
       projectId: 'DEMO-COMPLEX-01', stage: null, errorKey: 'vr3.option.error.gateClosed',
     })
+    // The failure is VISIBLE, not merely announced: the gate owns the
+    // message and its retry, and a withdrawn prerequisite also drops the
+    // ready surface, so the user is put on the tab that carries them.
+    expect(st().understandingTab).toBe('overview')
+    await waitFor(() => expect(document.querySelector('.a3-gate-error')).not.toBeNull())
+    expect(document.querySelector('.a3-gate-error')!.textContent)
+      .toContain('eine Voraussetzung hat sich geändert')
     // NOTHING else moved: no Option, no baseline, and the five decisions
     // that were not undone are still exactly as they were.
     expect(st().options).toHaveLength(0)

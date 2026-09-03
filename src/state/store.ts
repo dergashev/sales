@@ -4247,8 +4247,17 @@ const store = createStore<Store>((set, get) => {
       // A failure moves ONLY the commitment. Readiness, conflict decisions
       // and question responses are untouched — the ticket requires an
       // Option-creation failure to leave resolution work intact.
+      //
+      // It does move the user to the surface that EXPLAINS it. The gate owns
+      // the failure message and its retry, and the gate lives on the
+      // Understanding overview; a withdrawn prerequisite also drops the
+      // ready surface, so without this the user could land on the conflicts
+      // tab with no visible reason why their Option never appeared. Found in
+      // the browser: the announcement was correct and nothing on screen
+      // was. Announced is not the same as observable.
       const fail = (errorKey: string) => set({
         optionCommit: { projectId: commit.projectId, stage: null, errorKey },
+        understandingTab: 'overview',
       })
 
       // The gate is re-read at EVERY stage boundary, not once when the
