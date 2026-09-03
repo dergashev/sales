@@ -225,3 +225,57 @@ window.__all3Fault.trust()              // read the verdict, rather than inferri
 Dev-only; `setCommercialFault` refuses to run in a production build and the handle is not
 registered there. The rail must be on screen to observe the state — inject, then navigate to a
 Konfigurator surface if you are not already on one.
+
+
+---
+
+## 7 · QA-01 rework (candidate C)
+
+QA returned `needsImplementationRework=true` on candidate `5d74cca`. Their symptom report was
+accurate and their ownership call was right; the root cause was one level down from
+"the freeze isn't atomic".
+
+**THE RAIL HAD TWO SOURCES.** `OfferPanel` opened with `const p = s.projection()` — a second,
+unguarded read — and 73 call sites below took their numbers from it: the hero total, the
+uncertainty band, the DIN 276 composition, the drivers. Only the canonical result was frozen. So a
+failed calculation rendered two instants at once: a total from now beside a cause and a scope
+summary from before, under a banner saying the figure was not the result of the latest decision —
+false, because it was exactly that. The freeze did not cause the split; it made an existing one
+visible, and it is the same F-001 class the canonical result was introduced to end.
+
+`commercialSnapshot()` now derives result and projection from a SINGLE projection read and freezes
+them together; `OfferPanel` takes both from it. There is no second source left to disagree with.
+
+**AND THE CAUSE IS NOT ARITHMETIC.** Everything in the snapshot freezes with the figure it
+describes — including the scope summary, which says what THAT total contains and would be a lie if
+it counted today's decisions against yesterday's number. The causal line is different in kind: it
+records what the user did. A decision that could not be priced clears it, and on recovery the
+accumulated movement is attributed to that decision — the answer QA found permanently missing.
+
+### Replay of QA's exact repro, on candidate C
+
+| Step | Total | Scope | Cause | Trust |
+|---|---|---|---|---|
+| 1 · 6/6 decided | `6.480.000 €` | 6 von 6 | KG 600 enthalten · + 100.000 € | ready |
+| 2 · exclude KG 600 | `6.380.000 €` | 5 von 6 | KG 600 nicht enthalten · − 100.000 € | ready |
+| 3 · `calculation(true)` | `6.380.000 €` | 5 von 6 | unchanged | **stale** |
+| 4 · re-include KG 600 **while faulted** | `6.380.000 €` | 5 von 6 | **(none)** | stale |
+| 5 · `calculation(false)` | `6.480.000 €` | 6 von 6 | **KG 600 enthalten · + 100.000 €** | ready |
+
+Step 4 is the defect: previously the total read `6.480.000 €` beside a 5-von-6 summary and an
+"excluded" cause. Now every field is the same trusted instant, and nothing claims to explain a
+figure that predates the decision.
+
+Two decisions inside one outage: after recovery the total is right (`6.080.000 €`) and the causal
+line stays SILENT rather than crediting the first decision with the second's money.
+
+`evidence/after/1440/D01-qa01-frozen-whole.png`, `D02-qa01-recovered-explains-outage.png`
+
+### A harness defect worth recording
+
+Several of my own cycle-1 probes injected the fault with `window.__all3Fault.calculation(true);'on'`
+and piped errors to `/dev/null`. `playwright-cli eval` takes a single EXPRESSION, so that string is
+a `SyntaxError` and the call never ran — which is why some injections looked inert and sent me
+hunting a phantom HMR problem. Wrap console probes as `(()=>{ … })()` and never suppress the tool's
+own stderr. This affected my instrumentation only; QA-01 itself was a genuine product defect,
+independently confirmed by reading the two sources in `OfferPanel`.

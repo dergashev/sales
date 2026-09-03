@@ -1,0 +1,81 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - img "All3" [ref=e6]
+      - navigation "Pfad" [ref=e7]:
+        - generic [ref=e8]: Opportunities
+        - generic [aria-hidden] [ref=e9]: /
+        - generic [ref=e10]: Opportunities
+    - generic [ref=e11]:
+      - generic [ref=e12]: WORK
+      - group "Sprache" [ref=e14]:
+        - radiogroup "Sprache" [ref=e16]:
+          - generic [ref=e17] [cursor=pointer]:
+            - radio "DE" [checked] [ref=e18]
+            - generic [aria-hidden] [ref=e19]: ✓
+            - generic [ref=e20]: DE
+          - generic [ref=e21] [cursor=pointer]:
+            - radio "EN" [ref=e22]
+            - generic [ref=e23]: EN
+      - button "Account" [ref=e25] [cursor=pointer]:
+        - generic [aria-hidden] [ref=e26]: A3
+  - main [ref=e28]:
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - generic [ref=e33]:
+          - paragraph [ref=e34]: Demonstrationsportfolio · 2 Projekte
+          - heading "Projekte" [active] [level=1] [ref=e35]
+          - paragraph [ref=e36]: "Zwei vollständige Beispiele: ein klarer Weg zum indikativen Angebot und eine bewusst realistische Informationslage."
+          - status
+        - search [ref=e37]:
+          - button "Filtern und sortieren" [ref=e39] [cursor=pointer]
+      - search [ref=e40]
+      - list [ref=e41]:
+        - listitem [ref=e42]:
+          - figure [ref=e44]:
+            - img "Fünfgeschossiges Mehrfamilienhaus mit warmer Mineralfassade an einem bepflanzten Innenhof" [ref=e46]
+          - generic [ref=e47]:
+            - generic [ref=e49]:
+              - generic [aria-hidden] [ref=e50]: ✓
+              - generic [ref=e51]: Beispiel ohne Konflikte
+              - generic [ref=e52]: · abgeschlossen
+            - article [ref=e53]:
+              - button "Wohnhof Lindenhain" [ref=e55] [cursor=pointer]
+              - generic [ref=e56]: Lindenhain Wohnen GmbH · Freiburg im Breisgau
+              - generic [ref=e57]:
+                - paragraph [ref=e58]:
+                  - generic [ref=e59]: Mehrfamilienhaus · Neubau
+                  - generic [ref=e60]: 1 Gebäude · 8 Dokumente
+                - generic [ref=e61]:
+                  - generic [ref=e62]:
+                    - term [ref=e63]: Dokumentation
+                    - definition [ref=e64]: Vollständig
+                  - generic [ref=e65]:
+                    - term [ref=e66]: Dokumentanalyse
+                    - definition [ref=e67]: Nicht gestartet
+              - button "Projekt öffnen · Wohnhof Lindenhain" [ref=e69] [cursor=pointer]: Projekt öffnen
+        - listitem [ref=e70]:
+          - figure [ref=e72]:
+            - img "Quartier mit drei unterschiedlichen Baukörpern um einen begrünten Innenhof" [ref=e74]
+          - generic [ref=e75]:
+            - generic [ref=e77]:
+              - generic [aria-hidden] [ref=e78]: "!"
+              - generic [ref=e79]: Prüfung erforderlich
+              - generic [ref=e80]: · benötigt eine Entscheidung
+            - article [ref=e81]:
+              - button "Quartier Am Güterbogen" [ref=e83] [cursor=pointer]
+              - generic [ref=e84]: Güterbogen Projektentwicklung GmbH · Leipzig
+              - generic [ref=e85]:
+                - paragraph [ref=e86]:
+                  - generic [ref=e87]: Quartier · Büro, Wohnen, Mischnutzung
+                  - generic [ref=e88]: 3 Gebäude · 36 Dokumente
+                - generic [ref=e89]:
+                  - generic [ref=e90]:
+                    - term [ref=e91]: Dokumentation
+                    - definition [ref=e92]: Vollständig
+                  - generic [ref=e93]:
+                    - term [ref=e94]: Dokumentanalyse
+                    - definition [ref=e95]: Nicht gestartet
+              - button "Projekt prüfen · Quartier Am Güterbogen" [ref=e97] [cursor=pointer]: Projekt prüfen
+  - generic:
+    - status [aria-hidden]

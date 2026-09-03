@@ -1,0 +1,70 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - img "All3" [ref=e6]
+      - navigation "Pfad" [ref=e98]:
+        - generic [aria-hidden] [ref=e99]: /
+        - button "Opportunities" [ref=e100] [cursor=pointer]
+        - generic [aria-hidden] [ref=e101]: /
+        - generic [ref=e102]: Wohnhof Lindenhain
+    - generic [ref=e11]:
+      - generic [ref=e12]: WORK
+      - group "Sprache" [ref=e14]:
+        - radiogroup "Sprache" [ref=e16]:
+          - generic [ref=e17] [cursor=pointer]:
+            - radio "DE" [checked] [ref=e18]
+            - generic [aria-hidden] [ref=e19]: ✓
+            - generic [ref=e20]: DE
+          - generic [ref=e21] [cursor=pointer]:
+            - radio "EN" [ref=e22]
+            - generic [ref=e23]: EN
+      - button "Account" [ref=e25] [cursor=pointer]:
+        - generic [aria-hidden] [ref=e26]: A3
+  - main [ref=e28]:
+    - generic [ref=e103]:
+      - complementary "Projekt" [ref=e104]:
+        - paragraph [ref=e105]: Projekt
+        - paragraph [ref=e106]: Wohnhof Lindenhain
+        - navigation "Projekt- und Optionsverlauf" [ref=e107]:
+          - list [ref=e108]:
+            - listitem [ref=e109]
+            - listitem [ref=e116]
+            - listitem [ref=e123]
+            - listitem [ref=e130]
+            - listitem [ref=e137]
+            - listitem [ref=e144]
+            - listitem [ref=e151]
+            - listitem [ref=e158]
+            - listitem [ref=e165]
+            - listitem [ref=e172]
+            - listitem [ref=e179]
+            - listitem [ref=e186]
+            - listitem [ref=e193]
+      - generic [ref=e200]:
+        - generic [ref=e495]:
+          - paragraph [ref=e496]: Lindenhain Wohnen GmbH · Freiburg im Breisgau
+          - button "Interne Notiz" [ref=e497] [cursor=pointer]
+        - generic [ref=e498]:
+          - generic [ref=e499]:
+            - paragraph [ref=e500]: Projekt bereit
+            - heading "Alle blockierenden strittigen Angaben sind entschieden." [active] [level=1] [ref=e501]
+            - paragraph [ref=e502]: Fragen, die offen bleiben dürfen, sind dokumentiert. Das Projekt hat damit eine belastbare Grundlage für die Option.
+            - generic [ref=e503]
+            - generic [ref=e517]
+          - figure [ref=e528]:
+            - img "Fünfgeschossiges Mehrfamilienhaus mit warmer Mineralfassade an einem bepflanzten Innenhof" [ref=e530]
+        - generic [ref=e532]:
+          - generic [ref=e533]:
+            - generic [ref=e534]
+            - generic [ref=e538]
+            - generic [ref=e548]
+            - generic [ref=e552]
+          - generic [ref=e556]:
+            - region "Was das System verstanden hat" [ref=e557]
+            - region "Prüfung erforderlich" [ref=e573]
+          - region "Erkannte Gebäude" [ref=e592]:
+            - heading "Erkannte Gebäude" [level=2] [ref=e593]
+            - list [ref=e594]
+      - status [ref=e344]: Analyse abgeschlossen. Das Projektverständnis ist verfügbar.
+  - generic:
+    - status [aria-hidden]

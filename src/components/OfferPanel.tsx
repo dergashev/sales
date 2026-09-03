@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { Decimal } from 'decimal.js'
 import {
-  activeBuilding, commercialResult, includedBuildingIds, projectProjection,
+  activeBuilding, commercialSnapshot, includedBuildingIds, projectProjection,
   translatedChangeLabel, useStore,
 } from '../state/store'
 import { effectiveFactValue } from '../state/buildingReview'
@@ -281,7 +281,24 @@ export function OfferPanel(
   { variant = 'full', footer }: { variant?: 'full' | 'level1'; footer?: ReactNode } = {},
 ) {
   const s = useStore()
-  const p = s.projection()
+  /**
+   * ONE snapshot for the whole rail (VR3-03R rework, QA-01).
+   *
+   * `p` used to be a second, unguarded `s.projection()` read, and 73 call
+   * sites below take their numbers from it — the hero total, the
+   * uncertainty band, the DIN 276 composition, the drivers. So when the
+   * canonical result froze on its last trusted value, those kept committing
+   * the fresh one and the rail rendered two different instants at once: a
+   * total from now beside a cause and a scope summary from before, under a
+   * banner saying the figure was not the result of the latest decision.
+   *
+   * Both halves now come from `commercialSnapshot`, which derives them from
+   * a SINGLE projection read and freezes them together. The rail can no
+   * longer disagree with itself, because there is no second source left to
+   * disagree with.
+   */
+  const snapshot = commercialSnapshot(s)
+  const p = snapshot.projection
   const t = useT()
   const tx = useTx()
   // SIDEBAR 03 (backlog 2be8e69c, SB-14): the single locale read every
@@ -300,11 +317,9 @@ export function OfferPanel(
   const durationHeadingId = useId()
   const compositionHeadingId = useId()
   const { reduced } = useSemanticMotion()
-  // ONE canonical commercial result (VR3-03). The rail's own numbers still
-  // come from `p` — the same projection this object is derived from — so
-  // this adds the scope, causality and trust state the rail was missing
-  // without introducing a second source for the total.
-  const commercial = commercialResult(s)
+  // ONE canonical commercial result (VR3-03), now genuinely sharing its
+  // projection with every number the rail prints (VR3-03R, QA-01).
+  const commercial = snapshot.result
   const [journalOpen, setJournalOpen] = useState(false)
   // SIDEBAR 01: Level 2 (die Kostenzusammensetzung) ist per Vertrag "expanded
   // by default" - kein eigenes äußeres Toggle mehr (vormals `kgOpen`/

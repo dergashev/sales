@@ -7,7 +7,8 @@ import {
   enterOptionWorkspace,
 } from '../../test/offer-option'
 import {
-  __resetStoreForTests, commercialResult, clientProjectionValidFor,
+  __resetStoreForTests, commercialResult, commercialSnapshot,
+  clientProjectionValidFor,
   kgScopeDecisionsComplete, useStore,
 } from '../../state/store'
 import { KG_SCOPE_GROUPS } from '../../engine/kgConfiguration'
@@ -231,6 +232,94 @@ describe('a failed calculation keeps the last trusted total (G-07, spec §15)', 
     expect(mode).not.toBe('production')
     expect(() => st().setCommercialFault(true)).not.toThrow()
     act(() => { st().setCommercialFault(false) })
+  })
+})
+
+describe('QA-01 — a frozen rail freezes WHOLE', () => {
+  /**
+   * The rework this file's first version earned.
+   *
+   * QA induced the fault and then made one more decision. The total and the
+   * DIN 276 table committed the fresh value while the causal line and the
+   * scope summary stayed on the previous one — two instants rendered at
+   * once, under a banner claiming the shown figure was not the result of
+   * the latest decision, which was false because it was exactly that.
+   *
+   * The cause was a SECOND SOURCE: the rail's own numbers came from an
+   * unguarded `s.projection()` while only the canonical result was frozen.
+   * A snapshot is only a snapshot if everything in it is from one instant.
+   */
+  it('shows one instant, not two, while the calculation is down', async () => {
+    const user = userEvent.setup()
+    await reachLedger(user)
+    decideAllKgScope('included')
+
+    const trusted = commercialSnapshot(st())
+    const trustedTotal = trusted.result.total.exact
+    const trustedIncluded = trusted.result.scope.includedGroups
+    expect(trusted.projection.result.total.exact.equals(trustedTotal)).toBe(true)
+
+    act(() => { st().setCommercialFault(true) })
+
+    // One more decision, made while the engine cannot price it.
+    act(() => { st().setKgScopeDecision('KG_600', 'excluded') })
+
+    const frozen = commercialSnapshot(st())
+    expect(frozen.result.trust.status).toBe('stale')
+    // EVERY number the rail prints comes from the same instant: the result's
+    // total and the projection's total are the same frozen figure, and the
+    // scope summary agrees with both.
+    expect(frozen.result.total.exact.equals(trustedTotal)).toBe(true)
+    expect(frozen.projection.result.total.exact.equals(trustedTotal)).toBe(true)
+    expect(frozen.result.scope.includedGroups).toBe(trustedIncluded)
+    // And nothing claims to explain a figure that predates the decision.
+    expect(frozen.result.lastChange).toBeNull()
+
+    act(() => { st().setCommercialFault(false) })
+  })
+
+  it('answers for the outage on recovery instead of staying stuck', async () => {
+    const user = userEvent.setup()
+    await reachLedger(user)
+    decideAllKgScope('included')
+    const before = st().projection().result.total.exact
+
+    act(() => { st().setCommercialFault(true) })
+    act(() => { st().setKgScopeDecision('KG_600', 'excluded') })
+    expect(commercialResult(st()).lastChange).toBeNull()
+
+    act(() => { st().setCommercialFault(false) })
+
+    const recovered = commercialResult(st())
+    expect(recovered.trust.status).toBe('ready')
+    // The total is current again...
+    const after = st().projection().result.total.exact
+    expect(recovered.total.exact.equals(after)).toBe(true)
+    expect(after.lessThan(before)).toBe(true)
+    // ...and the decision taken during the outage is finally explained, for
+    // the amount the number actually moved.
+    const change = recovered.lastChange!
+    expect(change.labelDe).toContain('KG\u202f600')
+    expect(change.signedExact.equals(after.minus(before))).toBe(true)
+    expect(change.signedExact.isNegative()).toBe(true)
+  })
+
+  it('refuses to attribute an outage of several decisions to one of them', async () => {
+    const user = userEvent.setup()
+    await reachLedger(user)
+    decideAllKgScope('included')
+
+    act(() => { st().setCommercialFault(true) })
+    act(() => { st().setKgScopeDecision('KG_600', 'excluded') })
+    act(() => { st().setKgScopeDecision('KG_500', 'excluded') })
+    act(() => { st().setCommercialFault(false) })
+
+    // Two decisions moved one number and nothing can say how much each
+    // contributed. Crediting the first with the second's money would be a
+    // guess wearing a decision's name, so the rail says nothing.
+    const recovered = commercialResult(st())
+    expect(recovered.trust.status).toBe('ready')
+    expect(recovered.lastChange).toBeNull()
   })
 })
 

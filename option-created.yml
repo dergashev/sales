@@ -1,0 +1,124 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - img "All3" [ref=e6]
+      - navigation "Pfad" [ref=e98]:
+        - generic [aria-hidden] [ref=e99]: /
+        - button "Opportunities" [ref=e100] [cursor=pointer]
+        - generic [aria-hidden] [ref=e101]: /
+        - generic [ref=e102]: Wohnhof Lindenhain
+    - generic [ref=e11]:
+      - generic [ref=e12]: WORK
+      - group "Sprache" [ref=e14]:
+        - radiogroup "Sprache" [ref=e16]:
+          - generic [ref=e17] [cursor=pointer]:
+            - radio "DE" [checked] [ref=e18]
+            - generic [aria-hidden] [ref=e19]: ✓
+            - generic [ref=e20]: DE
+          - generic [ref=e21] [cursor=pointer]:
+            - radio "EN" [ref=e22]
+            - generic [ref=e23]: EN
+      - button "Account" [ref=e25] [cursor=pointer]:
+        - generic [aria-hidden] [ref=e26]: A3
+  - main [ref=e28]:
+    - generic [ref=e103]:
+      - complementary "Projekt" [ref=e104]:
+        - paragraph [ref=e105]: Projekt
+        - paragraph [ref=e106]: Wohnhof Lindenhain
+        - navigation "Projekt- und Optionsverlauf" [ref=e107]:
+          - list [ref=e108]:
+            - listitem [ref=e109]:
+              - button "Dokumente Schritt 1 von 13 · erledigt" [ref=e488] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e111]: ✓
+                - generic [ref=e112]
+            - listitem [ref=e116]:
+              - button "Projektverständnis Schritt 2 von 13 · erledigt" [ref=e646] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e490]: ✓
+                - generic [ref=e491]
+            - listitem [ref=e123]:
+              - button "Option anlegen Schritt 3 von 13 · erledigt" [ref=e647] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e648]: ✓
+                - generic [ref=e649]
+            - listitem [ref=e130]:
+              - button "Gebäude & Umfang Schritt 4 von 13 · aktuell" [ref=e653] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e654]: "4"
+                - generic [ref=e655]
+            - listitem [ref=e137]:
+              - generic [ref=e138]:
+                - generic [aria-hidden] [ref=e139]: "5"
+                - generic [ref=e140]
+            - listitem [ref=e144]:
+              - generic [ref=e145]:
+                - generic [aria-hidden] [ref=e146]: "6"
+                - generic [ref=e147]
+            - listitem [ref=e151]:
+              - generic [ref=e152]:
+                - generic [aria-hidden] [ref=e153]: "7"
+                - generic [ref=e154]
+            - listitem [ref=e158]:
+              - generic [ref=e159]:
+                - generic [aria-hidden] [ref=e160]: "8"
+                - generic [ref=e161]
+            - listitem [ref=e165]:
+              - generic [ref=e166]:
+                - generic [aria-hidden] [ref=e167]: "9"
+                - generic [ref=e168]
+            - listitem [ref=e172]:
+              - generic [ref=e173]:
+                - generic [aria-hidden] [ref=e174]: "10"
+                - generic [ref=e175]
+            - listitem [ref=e179]:
+              - generic [ref=e180]:
+                - generic [aria-hidden] [ref=e181]: "11"
+                - generic [ref=e182]
+            - listitem [ref=e186]:
+              - generic [ref=e187]:
+                - generic [aria-hidden] [ref=e188]: "12"
+                - generic [ref=e189]
+            - listitem [ref=e193]:
+              - generic [ref=e194]:
+                - generic [aria-hidden] [ref=e195]: "13"
+                - generic [ref=e196]
+      - generic [ref=e200]:
+        - generic [ref=e659]:
+          - paragraph [ref=e660]: Lindenhain Wohnen GmbH · Freiburg im Breisgau
+          - button "Interne Notiz" [ref=e661] [cursor=pointer]
+        - generic [ref=e662]:
+          - generic [ref=e663]:
+            - paragraph [ref=e664]: Option angelegt
+            - heading "«Option 1» ist bereit für ihre Grundlage" [level=1] [ref=e665]
+            - paragraph [ref=e666]: Nur Gebäude & Umfang ist jetzt verfügbar. Wählen und bestätigen Sie die Gebäudegrundlage, um den Konfigurator freizugeben.
+            - generic [ref=e667]:
+              - generic [ref=e668]:
+                - term [ref=e669]: Gebäude
+                - definition [ref=e670]: "1"
+              - generic [ref=e671]:
+                - term [ref=e672]: Dokumente
+                - definition [ref=e673]: "8"
+            - generic [ref=e675]:
+              - paragraph [ref=e676]: "Nächster Schritt: Gebäude & Umfang"
+              - paragraph [ref=e677]: Konfigurator, Terminplan, finale Prüfung und Kundenmodus bleiben gesperrt, bis ihre Voraussetzungen erfüllt sind.
+              - button "Gebäude & Umfang festlegen" [ref=e679] [cursor=pointer]
+          - figure [ref=e681]:
+            - img "Fünfgeschossiges Mehrfamilienhaus mit warmer Mineralfassade an einem bepflanzten Innenhof" [ref=e683]
+        - region [ref=e684]:
+          - heading "Opportunity Options" [level=2] [ref=e685]
+          - list [ref=e686]:
+            - listitem [active] [ref=e687]:
+              - article [ref=e688]:
+                - button "Option 1" [ref=e690] [cursor=pointer]
+                - generic [ref=e691]: Haus A
+                - generic [ref=e695]
+                - generic [ref=e699]
+                - generic [ref=e701]
+        - generic [ref=e705]:
+          - button "Option anlegen" [ref=e707] [cursor=pointer]
+          - generic [ref=e711]:
+            - generic [aria-hidden] [ref=e712]: ✓
+            - generic [ref=e713]: Verfügbar
+            - generic [ref=e714]: · abgeschlossen
+      - status [ref=e344]: Option wird angelegt. Die Projektgrundlage wird zuerst festgeschrieben.
+  - status [ref=e715]:
+    - generic [ref=e716]: Opportunity Option «Option 1» angelegt
+    - button "Rückgängig" [ref=e717] [cursor=pointer]
+    - button "Schließen" [ref=e718] [cursor=pointer]

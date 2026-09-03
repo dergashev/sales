@@ -1,0 +1,484 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - img "All3" [ref=e6]
+      - navigation "Pfad" [ref=e98]:
+        - generic [aria-hidden] [ref=e99]: /
+        - button "Opportunities" [ref=e100] [cursor=pointer]
+        - generic [aria-hidden] [ref=e101]: /
+        - button "Wohnhof Lindenhain" [ref=e719] [cursor=pointer]
+        - generic [aria-hidden] [ref=e720]: /
+        - generic [ref=e721]: Option 1
+    - generic [ref=e11]:
+      - generic [ref=e12]: WORK
+      - group "Sprache" [ref=e14]:
+        - radiogroup "Sprache" [ref=e16]:
+          - generic [ref=e17] [cursor=pointer]:
+            - radio "DE" [checked] [ref=e18]
+            - generic [aria-hidden] [ref=e19]: ✓
+            - generic [ref=e20]: DE
+          - generic [ref=e21] [cursor=pointer]:
+            - radio "EN" [ref=e22]
+            - generic [ref=e23]: EN
+      - button "Account" [ref=e25] [cursor=pointer]:
+        - generic [aria-hidden] [ref=e26]: A3
+  - generic [ref=e722]:
+    - navigation "Navigation" [ref=e723]:
+      - generic [ref=e724]:
+        - generic [ref=e725]:
+          - generic [ref=e726]: Opportunity Option
+          - combobox "Opportunity Option" [ref=e727]:
+            - option "Option 1" [selected]
+        - paragraph [ref=e728]: Wohnhof Lindenhain
+      - generic [ref=e729]:
+        - paragraph [ref=e730]: Aktuelle Option
+        - navigation "Projekt- und Optionsverlauf" [ref=e732]:
+          - list [ref=e733]:
+            - listitem [ref=e734]:
+              - button "Dokumente Schritt 1 von 13 · erledigt" [ref=e735] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e736]: ✓
+                - generic [ref=e737]:
+                  - generic [ref=e738]: Dokumente
+                  - generic [ref=e739]:
+                    - generic [ref=e740]: Schritt 1 von 13 ·
+                    - text: erledigt
+            - listitem [ref=e741]:
+              - button "Projektverständnis Schritt 2 von 13 · erledigt" [ref=e742] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e743]: ✓
+                - generic [ref=e744]:
+                  - generic [ref=e745]: Projektverständnis
+                  - generic [ref=e746]:
+                    - generic [ref=e747]: Schritt 2 von 13 ·
+                    - text: erledigt
+            - listitem [ref=e748]:
+              - button "Option anlegen Schritt 3 von 13 · erledigt" [ref=e749] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e750]: ✓
+                - generic [ref=e751]:
+                  - generic [ref=e752]: Option anlegen
+                  - generic [ref=e753]:
+                    - generic [ref=e754]: Schritt 3 von 13 ·
+                    - text: erledigt
+            - listitem [ref=e755]:
+              - button "Gebäude & Umfang Schritt 4 von 13 · erledigt" [ref=e1033] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e757]: ✓
+                - generic [ref=e758]:
+                  - generic [ref=e759]: Gebäude & Umfang
+                  - generic [ref=e760]:
+                    - generic [ref=e761]: Schritt 4 von 13 ·
+                    - text: erledigt
+            - listitem [ref=e762]:
+              - button "Leistungsabgrenzung Schritt 5 von 13 · aktuell" [ref=e1034] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e764]: ✓
+                - generic [ref=e765]:
+                  - generic [ref=e766]: Leistungsabgrenzung
+                  - generic [ref=e767]:
+                    - generic [ref=e768]: Schritt 5 von 13 ·
+                    - text: aktuell
+            - listitem [ref=e769]:
+              - button "KG 200 Schritt 6 von 13 · ausstehend" [ref=e1572] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e1036]: "6"
+                - generic [ref=e1037]:
+                  - generic [ref=e1038]: KG 200
+                  - generic [ref=e1039]:
+                    - generic [ref=e1040]: Schritt 6 von 13 ·
+                    - text: ausstehend
+            - listitem [ref=e776]:
+              - button "KG 300 Schritt 7 von 13 · ausstehend" [ref=e1573] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e1042]: "7"
+                - generic [ref=e1043]:
+                  - generic [ref=e1044]: KG 300
+                  - generic [ref=e1045]:
+                    - generic [ref=e1046]: Schritt 7 von 13 ·
+                    - text: ausstehend
+            - listitem [ref=e783]:
+              - button "KG 400 Schritt 8 von 13 · ausstehend" [ref=e1574] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e1048]: "8"
+                - generic [ref=e1049]:
+                  - generic [ref=e1050]: KG 400
+                  - generic [ref=e1051]:
+                    - generic [ref=e1052]: Schritt 8 von 13 ·
+                    - text: ausstehend
+            - listitem [ref=e790]:
+              - button "KG 500 Schritt 9 von 13 · ausstehend" [ref=e1575] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e1054]: "9"
+                - generic [ref=e1055]:
+                  - generic [ref=e1056]: KG 500
+                  - generic [ref=e1057]:
+                    - generic [ref=e1058]: Schritt 9 von 13 ·
+                    - text: ausstehend
+            - listitem [ref=e797]:
+              - button "KG 600 Schritt 10 von 13 · ausstehend" [ref=e1576] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e1060]: "10"
+                - generic [ref=e1061]:
+                  - generic [ref=e1062]: KG 600
+                  - generic [ref=e1063]:
+                    - generic [ref=e1064]: Schritt 10 von 13 ·
+                    - text: ausstehend
+            - listitem [ref=e804]:
+              - button "KG 700 Schritt 11 von 13 · ausstehend" [ref=e1577] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e1066]: "11"
+                - generic [ref=e1067]:
+                  - generic [ref=e1068]: KG 700
+                  - generic [ref=e1069]:
+                    - generic [ref=e1070]: Schritt 11 von 13 ·
+                    - text: ausstehend
+            - listitem [ref=e811]:
+              - button "Terminplan Schritt 12 von 13 · blockiert · Erst wenn jede enthaltene Kostengruppe vollständig ist, wird der Terminplan verfügbar." [ref=e1578]:
+                - generic [aria-hidden] [ref=e813]: "12"
+                - generic [ref=e814]:
+                  - generic [ref=e815]: Terminplan
+                  - generic [ref=e816]:
+                    - generic [ref=e817]: Schritt 12 von 13 ·
+                    - text: blockiert · Erst wenn jede enthaltene Kostengruppe vollständig ist, wird der Terminplan verfügbar.
+            - listitem [ref=e818]:
+              - button "Finale Prüfung Schritt 13 von 13 · blockiert · Erst wenn jede enthaltene Kostengruppe vollständig ist, wird der Terminplan verfügbar." [ref=e819]:
+                - generic [aria-hidden] [ref=e820]: "13"
+                - generic [ref=e821]:
+                  - generic [ref=e822]: Finale Prüfung
+                  - generic [ref=e823]:
+                    - generic [ref=e824]: Schritt 13 von 13 ·
+                    - text: blockiert · Erst wenn jede enthaltene Kostengruppe vollständig ist, wird der Terminplan verfügbar.
+      - list [ref=e825]:
+        - listitem [ref=e826]:
+          - paragraph [ref=e827]: Aktuelle Option
+        - listitem [ref=e828]:
+          - button "Variantenvergleich" [ref=e829] [cursor=pointer]:
+            - generic [aria-hidden] [ref=e830]: "3"
+        - listitem [ref=e832]:
+          - button "Export" [disabled] [ref=e833]:
+            - generic [aria-hidden] [ref=e834]: "4"
+          - paragraph [ref=e836]: Export ist gesperrt, bis die Konfiguration vollständig bestätigt ist.
+      - generic [ref=e838]:
+        - group "Ansicht" [ref=e839]:
+          - radiogroup "Ansicht" [ref=e841]:
+            - generic [ref=e842] [cursor=pointer]:
+              - radio "Vorbereitung" [checked] [ref=e843]
+              - generic [aria-hidden] [ref=e844]: ✓
+              - generic [ref=e845]: Vorbereitung
+            - generic [ref=e846]:
+              - radio "Kundenansicht" [disabled] [ref=e847]
+              - generic [ref=e848]: Kundenansicht
+        - button "Kundenansicht prüfen" [disabled] [ref=e849]
+        - paragraph [ref=e850]: "Die Kundenansicht braucht eine gespeicherte Option: zuerst die finale Prüfung bestätigen und speichern."
+        - status [ref=e851]:
+          - generic [aria-hidden] [ref=e852]: ○
+          - text: Vorbereitung — nur intern sichtbar
+      - generic [ref=e853]:
+        - button "Einstellungen" [ref=e854] [cursor=pointer]:
+          - generic [aria-hidden] [ref=e855]: ⚙
+          - text: Einstellungen
+        - button "Grundlagen" [ref=e856] [cursor=pointer]:
+          - generic [aria-hidden] [ref=e857]: ◇
+          - text: Grundlagen
+    - main [ref=e858]:
+      - generic [ref=e1120]:
+        - generic [ref=e1121]:
+          - generic [ref=e1122]:
+            - paragraph [ref=e1123]: Konfigurator · Schritt 1
+            - heading "Leistungsabgrenzung" [level=1] [ref=e1124]
+            - paragraph [ref=e1125]: Treffen Sie für jede DIN-276-Kostengruppe eine ausdrückliche Entscheidung. „Noch offen“ ist nicht dasselbe wie bewusst ausgeschlossen.
+          - paragraph [ref=e1127]:
+            - generic [ref=e1128]:
+              - generic [aria-hidden] [ref=e1129]: ✓
+              - generic [ref=e1130]: 6 von 6 entschieden
+              - generic [ref=e1131]: · abgeschlossen
+        - table [ref=e1133]:
+          - caption [ref=e1134]: "Leistungsabgrenzung: sechs Kostengruppen, je eine ausdrückliche Entscheidung."
+          - rowgroup [ref=e1135]:
+            - row [ref=e1136]:
+              - columnheader "Kostengruppe" [ref=e1137]
+              - columnheader "Entscheidung" [ref=e1138]
+              - columnheader "Bedeutung für den Umfang" [ref=e1139]
+              - columnheader "Folge" [ref=e1140]
+          - rowgroup [ref=e1141]:
+            - row [ref=e1313]:
+              - rowheader "KG 200 Vorbereitende Maßnahmen" [ref=e1143]:
+                - generic [ref=e1144]: KG 200
+                - generic [ref=e1145]: Vorbereitende Maßnahmen
+              - cell [ref=e1146]:
+                - group "Entscheidung KG 200 Vorbereitende Maßnahmen" [ref=e1147]:
+                  - radiogroup "Entscheidung KG 200 Vorbereitende Maßnahmen" [ref=e1149]:
+                    - generic [ref=e1150] [cursor=pointer]:
+                      - radio "enthalten aktuelle Auswahl" [checked] [ref=e1314]
+                      - generic [aria-hidden]: ✓
+                      - generic: enthalten
+                      - generic: aktuelle Auswahl
+                    - generic [ref=e1152] [cursor=pointer]:
+                      - radio "nicht enthalten − 180.000 €" [ref=e1315]
+                      - generic: nicht enthalten
+                      - generic: − 180.000 €
+              - cell "Im Angebotsumfang Baustelle, Baufeld und Hausanschlüsse" [ref=e1316]:
+                - generic [ref=e1155]: Im Angebotsumfang
+                - generic [ref=e1156]: Baustelle, Baufeld und Hausanschlüsse
+              - cell "Konfiguration erforderlich · noch nichts geschehen" [ref=e1317]:
+                - generic [ref=e1158]:
+                  - generic [aria-hidden] [ref=e1159]: ○
+                  - generic [ref=e1160]: Konfiguration erforderlich
+                  - generic [ref=e1161]: · noch nichts geschehen
+            - row [ref=e1395]:
+              - rowheader "KG 300 Baukonstruktion" [ref=e1163]:
+                - generic [ref=e1164]: KG 300
+                - generic [ref=e1165]: Baukonstruktion
+              - cell [ref=e1166]:
+                - group "Entscheidung KG 300 Baukonstruktion" [ref=e1167]:
+                  - radiogroup "Entscheidung KG 300 Baukonstruktion" [ref=e1169]:
+                    - generic [ref=e1170] [cursor=pointer]:
+                      - radio "enthalten aktuelle Auswahl" [checked] [ref=e1396]
+                      - generic [aria-hidden]: ✓
+                      - generic: enthalten
+                      - generic: aktuelle Auswahl
+                    - generic [ref=e1172] [cursor=pointer]:
+                      - radio "nicht enthalten − 4.020.000 €" [ref=e1397]
+                      - generic: nicht enthalten
+                      - generic: − 4.020.000 €
+              - cell "Im Angebotsumfang Gründung, Tragwerk, Fassade, Dach" [ref=e1398]:
+                - generic [ref=e1175]: Im Angebotsumfang
+                - generic [ref=e1176]: Gründung, Tragwerk, Fassade, Dach
+              - cell "Konfiguration erforderlich · noch nichts geschehen" [ref=e1399]:
+                - generic [ref=e1178]:
+                  - generic [aria-hidden] [ref=e1179]: ○
+                  - generic [ref=e1180]: Konfiguration erforderlich
+                  - generic [ref=e1181]: · noch nichts geschehen
+            - row [ref=e1421]:
+              - rowheader "KG 400 Technische Anlagen" [ref=e1183]:
+                - generic [ref=e1184]: KG 400
+                - generic [ref=e1185]: Technische Anlagen
+              - cell [ref=e1186]:
+                - group "Entscheidung KG 400 Technische Anlagen" [ref=e1187]:
+                  - radiogroup "Entscheidung KG 400 Technische Anlagen" [ref=e1189]:
+                    - generic [ref=e1190] [cursor=pointer]:
+                      - radio "enthalten aktuelle Auswahl" [checked] [ref=e1422]
+                      - generic [aria-hidden]: ✓
+                      - generic: enthalten
+                      - generic: aktuelle Auswahl
+                    - generic [ref=e1192] [cursor=pointer]:
+                      - radio "nicht enthalten − 1.390.000 €" [ref=e1423]
+                      - generic: nicht enthalten
+                      - generic: − 1.390.000 €
+              - cell "Im Angebotsumfang Wärme, Sanitär, Elektro, Energiestandard" [ref=e1424]:
+                - generic [ref=e1195]: Im Angebotsumfang
+                - generic [ref=e1196]: Wärme, Sanitär, Elektro, Energiestandard
+              - cell "Konfiguration erforderlich · noch nichts geschehen" [ref=e1425]:
+                - generic [ref=e1198]:
+                  - generic [aria-hidden] [ref=e1199]: ○
+                  - generic [ref=e1200]: Konfiguration erforderlich
+                  - generic [ref=e1201]: · noch nichts geschehen
+            - row [ref=e1464]:
+              - rowheader "KG 500 Außenanlagen" [ref=e1203]:
+                - generic [ref=e1204]: KG 500
+                - generic [ref=e1205]: Außenanlagen
+              - cell [ref=e1206]:
+                - group "Entscheidung KG 500 Außenanlagen" [ref=e1207]:
+                  - radiogroup "Entscheidung KG 500 Außenanlagen" [ref=e1209]:
+                    - generic [ref=e1210] [cursor=pointer]:
+                      - radio "enthalten aktuelle Auswahl" [checked] [ref=e1465]
+                      - generic [aria-hidden]: ✓
+                      - generic: enthalten
+                      - generic: aktuelle Auswahl
+                    - generic [ref=e1212] [cursor=pointer]:
+                      - radio "nicht enthalten − 300.000 €" [ref=e1466]
+                      - generic: nicht enthalten
+                      - generic: − 300.000 €
+              - cell "Im Angebotsumfang Wege, Bepflanzung, Spielfläche" [ref=e1467]:
+                - generic [ref=e1215]: Im Angebotsumfang
+                - generic [ref=e1216]: Wege, Bepflanzung, Spielfläche
+              - cell "Konfiguration erforderlich · noch nichts geschehen" [ref=e1468]:
+                - generic [ref=e1218]:
+                  - generic [aria-hidden] [ref=e1219]: ○
+                  - generic [ref=e1220]: Konfiguration erforderlich
+                  - generic [ref=e1221]: · noch nichts geschehen
+            - row [ref=e1492]:
+              - rowheader "KG 600 Ausstattung" [ref=e1223]:
+                - generic [ref=e1224]: KG 600
+                - generic [ref=e1225]: Ausstattung
+              - cell [ref=e1226]:
+                - group "Entscheidung KG 600 Ausstattung" [ref=e1227]:
+                  - radiogroup "Entscheidung KG 600 Ausstattung" [ref=e1229]:
+                    - generic [ref=e1230] [cursor=pointer]:
+                      - radio "enthalten aktuelle Auswahl" [checked] [ref=e1493]
+                      - generic [aria-hidden]: ✓
+                      - generic: enthalten
+                      - generic: aktuelle Auswahl
+                    - generic [ref=e1232] [cursor=pointer]:
+                      - radio "nicht enthalten − 100.000 €" [ref=e1494]
+                      - generic: nicht enthalten
+                      - generic: − 100.000 €
+              - cell "Im Angebotsumfang Feste Ausstattung der Gemeinschaftsflächen" [ref=e1495]:
+                - generic [ref=e1235]: Im Angebotsumfang
+                - generic [ref=e1236]: Feste Ausstattung der Gemeinschaftsflächen
+              - cell "Konfiguration erforderlich · noch nichts geschehen" [ref=e1496]:
+                - generic [ref=e1238]:
+                  - generic [aria-hidden] [ref=e1239]: ○
+                  - generic [ref=e1240]: Konfiguration erforderlich
+                  - generic [ref=e1241]: · noch nichts geschehen
+            - row [ref=e1579]:
+              - rowheader "KG 700 Baunebenkosten" [ref=e1243]:
+                - generic [ref=e1244]: KG 700
+                - generic [ref=e1245]: Baunebenkosten
+              - cell [ref=e1246]:
+                - group "Entscheidung KG 700 Baunebenkosten" [ref=e1247]:
+                  - radiogroup "Entscheidung KG 700 Baunebenkosten" [ref=e1249]:
+                    - generic [ref=e1250] [cursor=pointer]:
+                      - radio "enthalten aktuelle Auswahl" [checked] [active] [ref=e1580]
+                      - generic [aria-hidden]: ✓
+                      - generic: enthalten
+                      - generic: aktuelle Auswahl
+                    - generic [ref=e1252] [cursor=pointer]:
+                      - radio "nicht enthalten − 490.000 €" [ref=e1581]
+                      - generic: nicht enthalten
+                      - generic: − 490.000 €
+              - cell "Im Angebotsumfang Planung, Beratung, Nachweise" [ref=e1582]:
+                - generic [ref=e1255]: Im Angebotsumfang
+                - generic [ref=e1256]: Planung, Beratung, Nachweise
+              - cell "Konfiguration erforderlich · noch nichts geschehen" [ref=e1583]:
+                - generic [ref=e1258]:
+                  - generic [aria-hidden] [ref=e1259]: ○
+                  - generic [ref=e1260]: Konfiguration erforderlich
+                  - generic [ref=e1261]: · noch nichts geschehen
+        - generic [ref=e1262]:
+          - paragraph [ref=e1263]: Jede Kostengruppe hat ein bewusstes Ergebnis. Die enthaltenen Gruppen können jetzt konfiguriert werden.
+          - button "Umfang bestätigen und weiter" [ref=e1584] [cursor=pointer]
+        - paragraph [ref=e1267]: Alle sechs Kostengruppen sind entschieden. Die erste enthaltene Kostengruppe ist verfügbar.
+    - complementary "Angebot" [ref=e1268]:
+      - heading "Angebot" [level=2] [ref=e1269]
+      - generic [ref=e1270]:
+        - generic [ref=e1271]: KG 700 enthalten · + 490.000 € · neuer Betrag 6.480.000 €
+        - generic [ref=e1273]:
+          - generic [ref=e1318]:
+            - heading "Zwischensumme der kalkulierten Positionen" [level=3] [ref=e1319]
+            - paragraph [ref=e1320]:
+              - text: 6.480.000
+              - generic [ref=e1321]: €
+            - generic [ref=e1323]:
+              - generic [ref=e1327]:
+                - generic [ref=e1328]: 6.156.000 €
+                - generic [ref=e1329]: 6.804.000 €
+              - generic [ref=e1330]: Schätzunsicherheit ± 5 %
+            - paragraph [ref=e1331]:
+              - text: netto ·
+              - button "Herkunft anzeigen · Zwischensumme der kalkulierten Positionen" [ref=e1333] [cursor=pointer]: Herkunft anzeigen
+          - generic [ref=e1334]:
+            - heading "Leitkennzahl" [level=3] [ref=e1335]
+            - paragraph [ref=e1336]:
+              - generic [aria-hidden] [ref=e1337]: ≈
+              - text: "3.057"
+              - generic [ref=e1338]: €/m²
+            - generic [ref=e1339]: WFL nach WoFlV
+            - paragraph [ref=e1340]:
+              - text: ≈ 2.234 €/m² BGF oberirdisch · 360.000 € je Wohneinheit ·
+              - button "Herkunft anzeigen · WFL nach WoFlV" [ref=e1342] [cursor=pointer]: Herkunft anzeigen
+          - generic [ref=e1343]:
+            - heading "Bauzeit" [level=3] [ref=e1344]
+            - paragraph [ref=e1345]:
+              - generic [aria-hidden] [ref=e1346]: ≈
+              - text: 7,5
+              - generic [ref=e1347]: Monate
+            - generic [ref=e1348]:
+              - text: ab OKBP · Fertigstellung 28.01.2028 ·
+              - button "Herkunft anzeigen · Bauzeit" [ref=e1350] [cursor=pointer]: Herkunft anzeigen
+        - paragraph [ref=e1352]:
+          - generic [ref=e1353]: KG 700 enthalten
+          - generic [ref=e1354]: + 490.000 € (+ ≈ 8,18 %)
+      - generic [ref=e1280]:
+        - region "Zuletzt geändert" [ref=e1355]:
+          - paragraph [ref=e1356]: Zuletzt geändert
+          - generic [ref=e1559]:
+            - generic [ref=e1560]: Rückgängig · KG 700 enthalten
+            - generic [ref=e1561]: − 490.000 €
+            - generic [ref=e1562]: KG 700
+        - status [ref=e1585]:
+          - generic [ref=e1586]:
+            - generic [aria-hidden] [ref=e1587]: ▲
+            - generic [ref=e1588]: Letzter belastbarer Stand
+            - generic [ref=e1589]: · muss erneut geprüft werden
+            - generic [ref=e1590]: Die Kalkulation konnte nicht aktualisiert werden. Angezeigt wird der letzte belastbare Stand — nicht das Ergebnis der jüngsten Entscheidung.
+          - paragraph [ref=e1591]: belastbar um 00:10
+          - button "Erneut versuchen" [ref=e1593] [cursor=pointer]
+        - region "Enthaltener Umfang" [ref=e1281]:
+          - group [ref=e1282]:
+            - generic "Enthaltener Umfang −" [ref=e1283] [cursor=pointer]:
+              - generic [ref=e1284]: Enthaltener Umfang
+              - text: −
+            - generic [ref=e1285]:
+              - generic [ref=e1286]:
+                - term [ref=e1287]: Kostengruppen enthalten
+                - definition [ref=e1288]: 5 von 6
+              - generic [ref=e1563]:
+                - term [ref=e1564]: noch offen
+                - definition [ref=e1565]: "1"
+              - generic [ref=e1292]:
+                - term [ref=e1293]: aufgenommene Positionen
+                - definition [ref=e1294]: "24"
+              - generic [ref=e1361]:
+                - term [ref=e1362]: offene Entscheidungen
+                - definition [ref=e1363]: "5"
+        - status [ref=e1364]:
+          - generic [ref=e1365]:
+            - generic [aria-hidden] [ref=e1366]: "!"
+            - generic [ref=e1367]: Zwischensumme
+            - generic [ref=e1368]: · benötigt eine Entscheidung
+            - generic [ref=e1369]: Noch 1 Kostengruppen ohne Entscheidung — die Summe nennt nur die kalkulierten Positionen.
+        - paragraph [ref=e1370]: 6 von 6 Kostengruppen entschieden · 6 kalkuliert · 0 ohne Preisansatz
+        - region [ref=e1295]:
+          - heading "Kostengruppen nach DIN 276" [level=3] [ref=e1296]
+          - table [ref=e1372]:
+            - caption [ref=e1373]: Kostengruppen nach DIN 276, vereinfachte Verteilung
+            - rowgroup [ref=e1374]:
+              - row [ref=e1594] [cursor=pointer]:
+                - cell [ref=e1431]:
+                  - button "▸ KG 300 Baukonstruktion" [ref=e1406]
+                - cell "4.020.000 €" [ref=e1408]
+                - cell "62 %" [ref=e1595]
+              - row [ref=e1596]:
+                - cell "KG 400 Technische Anlagen" [ref=e1476]
+                - cell "1.390.000 €" [ref=e1436]
+                - cell "21 %" [ref=e1597]
+              - row [ref=e1438] [cursor=pointer]:
+                - cell [ref=e1376]:
+                  - button "▸ KG 200 Vorbereitende Maßnahmen" [ref=e1377]
+                - cell "180.000 €" [ref=e1378]
+                - cell "3 %" [ref=e1439]
+              - row [ref=e1478] [cursor=pointer]:
+                - cell [ref=e1479]:
+                  - button "▸ KG 500 Außenanlagen" [ref=e1480]
+                - cell "300.000 €" [ref=e1481]
+                - cell "5 %" [ref=e1482]
+              - row [ref=e1505] [cursor=pointer]:
+                - cell [ref=e1506]:
+                  - button "▸ KG 600 Ausstattung" [ref=e1507]
+                - cell "100.000 €" [ref=e1508]
+                - cell "2 %" [ref=e1509]
+              - row [ref=e1598] [cursor=pointer]:
+                - cell [ref=e1599]:
+                  - button "▸ KG 700 Baunebenkosten" [ref=e1600]
+                - cell "490.000 €" [ref=e1601]
+                - cell "8 %" [ref=e1602]
+              - row [ref=e1603]:
+                - cell "Zwischensumme der kalkulierten Positionen" [ref=e1381]
+                - cell "6.480.000 €" [ref=e1604]
+          - paragraph [ref=e1383]: Zeilen und Prozentanteile werden unabhängig gerundet; die Prüfung läuft über exakte Werte.
+          - region "Im Angebot gewählt" [ref=e1442]:
+            - paragraph [ref=e1443]: Im Angebot gewählt
+            - list [ref=e1444]:
+              - listitem [ref=e1445]:
+                - generic [ref=e1446]: Wärmeerzeugung Wärmepumpe
+                - generic [ref=e1447]: + 430.000 €
+              - listitem [ref=e1448]:
+                - generic [ref=e1449]: Energiestandard
+                - generic [ref=e1450]: ± 0 €
+              - listitem [ref=e1451]:
+                - generic [ref=e1452]: Heizflächen, Verteilung & Sanitär
+                - generic [ref=e1453]: + 580.000 €
+              - listitem [ref=e1454]:
+                - generic [ref=e1455]: Elektro & Datennetz
+                - generic [ref=e1456]: + 380.000 €
+        - region "Nachweise & Verlauf" [ref=e1298]:
+          - heading "Nachweise & Verlauf" [level=3] [ref=e1299]
+          - paragraph [ref=e1300]: 24 Beiträge · Summe = 6.480.000 €
+          - button "Alle Details ansehen" [ref=e1302] [cursor=pointer]
+  - status [ref=e715]:
+    - generic [ref=e1540]:
+      - text: KG 700 enthalten
+      - generic [ref=e1541]: + 490.000 €
+    - button "Rückgängig" [ref=e1542] [cursor=pointer]
+    - button "Schließen" [ref=e1543] [cursor=pointer]

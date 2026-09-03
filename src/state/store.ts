@@ -1915,6 +1915,15 @@ type Store = {
    */
   commercialTrust: CommercialTrust
   /**
+   * The decision made while the engine could not price it (VR3-03R rework).
+   *
+   * `null` with a non-zero count means SEVERAL decisions went unpriced, and
+   * attributing the accumulated movement to any one of them would be a
+   * guess wearing a decision's name.
+   */
+  commercialPendingCause: CommercialCause | null
+  commercialPendingCount: number
+  /**
    * The controlled calculation-failure mechanism (screen-by-screen spec §15,
    * "ENTRY PRECONDITION=Controlled fixture/runtime failure mechanism").
    *
@@ -2974,14 +2983,13 @@ export function kgConfigurationCompleteFor(
  * what a reader sees when it does. Merging the two is how VR3-03 came to
  * declare a `status` field and then hard-code it to `'ready'`.
  */
-function deriveCommercialResult(s: Store): CommercialResult {
+function deriveCommercialResult(s: Store, projection: Projection): CommercialResult {
   if (s.commercialFault) {
     // The controlled failure mechanism, from the SAME place a genuine engine
     // failure would surface: the guarded reader below cannot tell them
     // apart, so the state QA reaches is the state a real failure produces.
     throw new Error('commercial calculation fault injected')
   }
-  const projection = s.projection()
   const decisions = s.kgConfig
   const catalogue = kgCatalogueFor(s)
   const decisionOf = (group: CostGroup): KgScopeDecision | 'notDecidable' => {
@@ -3050,16 +3058,37 @@ function deriveCommercialResult(s: Store): CommercialResult {
  * with the store in `__resetStoreForTests`, because a snapshot of a
  * discarded Option is not a fallback, it is a wrong answer.
  */
-let lastTrustedCommercial: CommercialResult | null = null
+type CommercialSnapshot = Readonly<{
+  result: CommercialResult
+  /** The SAME projection the result was derived from, never a second read. */
+  projection: Projection
+}>
+
+let lastTrustedCommercial: CommercialSnapshot | null = null
 
 /**
- * THE commercial result a surface reads. Never throws, never zero.
+ * THE commercial snapshot every rail surface reads — result AND the
+ * projection it came from, as ONE object.
+ *
+ * WHY BOTH TRAVEL TOGETHER (VR3-03R rework, QA-01). The first draft guarded
+ * only the result, while `OfferPanel` went on reading `s.projection()`
+ * directly for its hero total, its uncertainty band and its DIN 276 table —
+ * 73 call sites of a second, unguarded source. So a failed calculation
+ * rendered a TORN rail: the total and the composition committed the fresh
+ * value while the causal line and the scope summary stayed frozen on the
+ * previous one, under a banner claiming the shown figure was not the result
+ * of the latest decision — which was false, because it was exactly that.
+ *
+ * Two renderings of one truth is precisely the F-001 class this whole
+ * object was introduced to end, and the freeze made it visible rather than
+ * causing it. A snapshot is only a snapshot if EVERYTHING in it is from the
+ * same instant.
  *
  * Three outcomes, in the order the reader's trust decays:
  *
  * 1. the engine answers, and the answer describes the current decisions;
  * 2. the engine cannot answer, and the LAST answer it gave stays on screen
- *    carrying `trust.status = 'stale'` and the reason;
+ *    — whole — carrying `trust.status = 'stale'` and the reason;
  * 3. the engine has never answered, so there is nothing trusted to show —
  *    and this rethrows rather than invent a snapshot, because a fabricated
  *    "last trusted" total is worse than a boundary that admits it has none.
@@ -3069,9 +3098,16 @@ let lastTrustedCommercial: CommercialResult | null = null
  * with a named reason beats two independent badges the reader has to
  * reconcile (target L).
  */
-export function commercialResult(s: Store): CommercialResult {
+export function commercialSnapshot(s: Store): CommercialSnapshot {
   try {
-    const fresh = deriveCommercialResult(s)
+    // ONE projection read, shared by the result and by every consumer of
+    // this snapshot — the rail can no longer show a total the result object
+    // disagrees with, because there is nothing left for it to disagree with.
+    const projection = s.projection()
+    const fresh: CommercialSnapshot = {
+      result: deriveCommercialResult(s, projection),
+      projection,
+    }
     // A persistence failure does not make the NUMBERS stale — it makes the
     // saved copy of them stale — so the fresh result keeps its own values
     // and carries the store's trust verdict verbatim.
@@ -3081,17 +3117,38 @@ export function commercialResult(s: Store): CommercialResult {
     const trusted = lastTrustedCommercial
     if (!trusted) throw error
     return {
-      ...trusted,
-      trust: s.commercialTrust.status === 'stale'
-        ? s.commercialTrust
-        : {
-          status: 'stale',
-          reason: 'calculation',
-          sinceIso: trusted.derivedAtIso,
-          attempts: 0,
-        },
+      projection: trusted.projection,
+      result: {
+        ...trusted.result,
+        /**
+         * THE CAUSE IS NOT PART OF THE FROZEN COMPUTATION.
+         *
+         * Everything else here is arithmetic and freezes with the figure it
+         * describes — including the scope summary, which says what THAT
+         * total contains and would be a lie if it counted today's decisions
+         * against yesterday's number. The causal line is different in kind:
+         * it records what the user did, and the door already cleared it the
+         * moment a decision could not be priced. Reading it from the store
+         * rather than from the snapshot is what stops the rail explaining a
+         * frozen figure with a decision taken after it.
+         */
+        lastChange: s.lastCommercialChange,
+        trust: s.commercialTrust.status === 'stale'
+          ? s.commercialTrust
+          : {
+            status: 'stale',
+            reason: 'calculation',
+            sinceIso: trusted.result.derivedAtIso,
+            attempts: 0,
+          },
+      },
     }
   }
+}
+
+/** The result half, for surfaces that need no projection of their own. */
+export function commercialResult(s: Store): CommercialResult {
+  return commercialSnapshot(s).result
 }
 
 /* ─────────── VR3-04 · schedule, final validation and the save ────────── */
@@ -4809,31 +4866,51 @@ const store = createStore<Store>((set, get) => {
   ) => {
     const cause = e.cause
     const state = get()
-    let fresh: CommercialResult | null = null
+    let fresh: CommercialSnapshot | null = null
     try {
-      fresh = deriveCommercialResult(state)
+      const projection = state.projection()
+      fresh = { result: deriveCommercialResult(state, projection), projection }
     } catch {
       fresh = null
     }
 
     if (!fresh) {
-      // The engine could not answer. Everything the reader currently sees
-      // stays exactly as it is — that is the point — and only the verdict
-      // about it changes.
+      /**
+       * The engine could not answer. Everything the reader currently sees
+       * stays exactly as it is — that is the point — and only the verdict
+       * about it changes.
+       *
+       * THE STANDING CAUSE GOES (VR3-03R rework, QA-01). A decision has just
+       * been made and could not be priced, so the previous explanation is no
+       * longer the last thing that happened to this offer: leaving it would
+       * be the stale-label defect G-06 exists to forbid, arriving through
+       * the outage instead of through an unattributed mutation.
+       *
+       * The decision itself is REMEMBERED, so recovery can still explain it.
+       * One pending cause can be attributed to the whole accumulated
+       * movement once the engine answers again; a second one makes that
+       * attribution a guess, and `pendingCause` collapses to `null` to say
+       * so rather than credit one decision with another's money.
+       */
       set((current) => ({
+        lastCommercialChange: null,
+        commercialPendingCause: current.commercialPendingCount === 0
+          ? cause ?? null
+          : null,
+        commercialPendingCount: current.commercialPendingCount + 1,
         commercialTrust: current.commercialTrust.status === 'stale'
           ? current.commercialTrust
           : {
             status: 'stale',
             reason: 'calculation',
-            sinceIso: lastTrustedCommercial?.derivedAtIso ?? null,
+            sinceIso: lastTrustedCommercial?.result.derivedAtIso ?? null,
             attempts: 0,
           },
       }))
       return
     }
 
-    const after = fresh.total.exact
+    const after = fresh.result.total.exact
     /**
      * THE FIRST result of a session has nothing to have moved FROM.
      *
@@ -4881,6 +4958,11 @@ const store = createStore<Store>((set, get) => {
         // An unattributable move clears the explanation; a move of zero
         // leaves the standing one, which is still the last real cause.
         : moved ? null : current.lastCommercialChange,
+      // A settle that succeeded leaves nothing pending: this event's own
+      // cause has just been published (or deliberately cleared), so an
+      // earlier outage's memory would only mislead the next recovery.
+      commercialPendingCause: null,
+      commercialPendingCount: 0,
     }))
   }
 
@@ -5113,6 +5195,8 @@ const store = createStore<Store>((set, get) => {
     // a delta measured against a different offer.
     commercialBaselineTotal: new Decimal(0),
     commercialTrust: COMMERCIAL_TRUSTED,
+    commercialPendingCause: null,
+    commercialPendingCount: 0,
     commercialFault: false,
     density: 'komfortabel',
 
@@ -5146,9 +5230,11 @@ const store = createStore<Store>((set, get) => {
         }
         return
       }
-      let fresh: CommercialResult | null = null
+      let fresh: CommercialSnapshot | null = null
       try {
-        fresh = deriveCommercialResult(get())
+        const current = get()
+        const projection = current.projection()
+        fresh = { result: deriveCommercialResult(current, projection), projection }
       } catch {
         fresh = null
       }
@@ -5161,15 +5247,46 @@ const store = createStore<Store>((set, get) => {
         }))
         return
       }
-      // Recovery updates the snapshot ONCE and clears the stale state. The
-      // cause is left alone: the last decision that moved this number is
-      // still the last decision that moved it — the engine's outage did not
-      // change what the user decided.
+      /**
+       * Recovery updates the snapshot ONCE, clears the stale state, and
+       * ANSWERS FOR THE OUTAGE (VR3-03R rework, QA-01).
+       *
+       * A decision taken while the engine was down still moved this number,
+       * and after recovery the user is owed the same explanation any other
+       * decision earns. The amount is the movement accumulated since the
+       * last trusted total — which is exactly what the baseline holds — and
+       * it is attributable only when ONE decision went unpriced. Two or
+       * more, and the honest rail says nothing rather than crediting the
+       * first with the second's money.
+       *
+       * With nothing pending, the standing cause is left alone: the engine's
+       * outage did not change what the user last decided.
+       */
+      const after = fresh.result.total.exact
+      const recoveredDelta = after.minus(s.commercialBaselineTotal)
+      const pending = s.commercialPendingCause
       lastTrustedCommercial = fresh
-      set({
-        commercialBaselineTotal: fresh.total.exact,
+      set((current) => ({
+        commercialBaselineTotal: after,
         commercialTrust: COMMERCIAL_TRUSTED,
-      })
+        commercialPendingCause: null,
+        commercialPendingCount: 0,
+        commercialResultVersion: recoveredDelta.isZero()
+          ? current.commercialResultVersion
+          : current.commercialResultVersion + 1,
+        lastCommercialChange: s.commercialPendingCount === 0
+          ? current.lastCommercialChange
+          : pending
+            ? {
+              id: `chg-recovered-${current.journal.length}`,
+              labelDe: pending.de,
+              labelEn: pending.en,
+              signedExact: recoveredDelta,
+              group: pending.group,
+              atIso: new Date().toISOString(),
+            }
+            : null,
+      }))
     },
 
     /**
@@ -5196,7 +5313,7 @@ const store = createStore<Store>((set, get) => {
           commercialTrust: {
             status: 'stale',
             reason: 'calculation',
-            sinceIso: lastTrustedCommercial?.derivedAtIso ?? null,
+            sinceIso: lastTrustedCommercial?.result.derivedAtIso ?? null,
             attempts: 0,
           },
         }))

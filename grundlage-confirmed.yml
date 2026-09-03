@@ -1,0 +1,320 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - img "All3" [ref=e6]
+      - navigation "Pfad" [ref=e98]:
+        - generic [aria-hidden] [ref=e99]: /
+        - button "Opportunities" [ref=e100] [cursor=pointer]
+        - generic [aria-hidden] [ref=e101]: /
+        - button "Wohnhof Lindenhain" [ref=e719] [cursor=pointer]
+        - generic [aria-hidden] [ref=e720]: /
+        - generic [ref=e721]: Option 1
+    - generic [ref=e11]:
+      - generic [ref=e12]: WORK
+      - group "Sprache" [ref=e14]:
+        - radiogroup "Sprache" [ref=e16]:
+          - generic [ref=e17] [cursor=pointer]:
+            - radio "DE" [checked] [ref=e18]
+            - generic [aria-hidden] [ref=e19]: ✓
+            - generic [ref=e20]: DE
+          - generic [ref=e21] [cursor=pointer]:
+            - radio "EN" [ref=e22]
+            - generic [ref=e23]: EN
+      - button "Account" [ref=e25] [cursor=pointer]:
+        - generic [aria-hidden] [ref=e26]: A3
+  - generic [ref=e722]:
+    - navigation "Navigation" [ref=e723]:
+      - generic [ref=e724]:
+        - generic [ref=e725]:
+          - generic [ref=e726]: Opportunity Option
+          - combobox "Opportunity Option" [ref=e727]:
+            - option "Option 1" [selected]
+        - paragraph [ref=e728]: Wohnhof Lindenhain
+      - generic [ref=e729]:
+        - paragraph [ref=e730]: Aktuelle Option
+        - navigation "Projekt- und Optionsverlauf" [ref=e732]:
+          - list [ref=e733]:
+            - listitem [ref=e734]:
+              - button "Dokumente Schritt 1 von 13 · erledigt" [ref=e735] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e736]: ✓
+                - generic [ref=e737]:
+                  - generic [ref=e738]: Dokumente
+                  - generic [ref=e739]:
+                    - generic [ref=e740]: Schritt 1 von 13 ·
+                    - text: erledigt
+            - listitem [ref=e741]:
+              - button "Projektverständnis Schritt 2 von 13 · erledigt" [ref=e742] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e743]: ✓
+                - generic [ref=e744]:
+                  - generic [ref=e745]: Projektverständnis
+                  - generic [ref=e746]:
+                    - generic [ref=e747]: Schritt 2 von 13 ·
+                    - text: erledigt
+            - listitem [ref=e748]:
+              - button "Option anlegen Schritt 3 von 13 · erledigt" [ref=e749] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e750]: ✓
+                - generic [ref=e751]:
+                  - generic [ref=e752]: Option anlegen
+                  - generic [ref=e753]:
+                    - generic [ref=e754]: Schritt 3 von 13 ·
+                    - text: erledigt
+            - listitem [ref=e755]:
+              - button "Gebäude & Umfang Schritt 4 von 13 · aktuell" [ref=e756] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e757]: "4"
+                - generic [ref=e758]:
+                  - generic [ref=e759]: Gebäude & Umfang
+                  - generic [ref=e760]:
+                    - generic [ref=e761]: Schritt 4 von 13 ·
+                    - text: aktuell
+            - listitem [ref=e762]:
+              - button "Leistungsabgrenzung Schritt 5 von 13 · blockiert · Gebäudeumfang noch nicht gespeichert" [ref=e763]:
+                - generic [aria-hidden] [ref=e764]: "5"
+                - generic [ref=e765]:
+                  - generic [ref=e766]: Leistungsabgrenzung
+                  - generic [ref=e767]:
+                    - generic [ref=e768]: Schritt 5 von 13 ·
+                    - text: blockiert · Gebäudeumfang noch nicht gespeichert
+            - listitem [ref=e769]:
+              - generic [ref=e770]:
+                - generic [aria-hidden] [ref=e771]: "6"
+                - generic [ref=e772]:
+                  - generic [ref=e773]: KG 200
+                  - generic [ref=e774]:
+                    - generic [ref=e775]: Schritt 6 von 13 ·
+                    - text: blockiert · Gebäudeumfang noch nicht gespeichert
+            - listitem [ref=e776]:
+              - generic [ref=e777]:
+                - generic [aria-hidden] [ref=e778]: "7"
+                - generic [ref=e779]:
+                  - generic [ref=e780]: KG 300
+                  - generic [ref=e781]:
+                    - generic [ref=e782]: Schritt 7 von 13 ·
+                    - text: blockiert · Gebäudeumfang noch nicht gespeichert
+            - listitem [ref=e783]:
+              - generic [ref=e784]:
+                - generic [aria-hidden] [ref=e785]: "8"
+                - generic [ref=e786]:
+                  - generic [ref=e787]: KG 400
+                  - generic [ref=e788]:
+                    - generic [ref=e789]: Schritt 8 von 13 ·
+                    - text: blockiert · Gebäudeumfang noch nicht gespeichert
+            - listitem [ref=e790]:
+              - generic [ref=e791]:
+                - generic [aria-hidden] [ref=e792]: "9"
+                - generic [ref=e793]:
+                  - generic [ref=e794]: KG 500
+                  - generic [ref=e795]:
+                    - generic [ref=e796]: Schritt 9 von 13 ·
+                    - text: blockiert · Gebäudeumfang noch nicht gespeichert
+            - listitem [ref=e797]:
+              - generic [ref=e798]:
+                - generic [aria-hidden] [ref=e799]: "10"
+                - generic [ref=e800]:
+                  - generic [ref=e801]: KG 600
+                  - generic [ref=e802]:
+                    - generic [ref=e803]: Schritt 10 von 13 ·
+                    - text: blockiert · Gebäudeumfang noch nicht gespeichert
+            - listitem [ref=e804]:
+              - generic [ref=e805]:
+                - generic [aria-hidden] [ref=e806]: "11"
+                - generic [ref=e807]:
+                  - generic [ref=e808]: KG 700
+                  - generic [ref=e809]:
+                    - generic [ref=e810]: Schritt 11 von 13 ·
+                    - text: blockiert · Gebäudeumfang noch nicht gespeichert
+            - listitem [ref=e811]:
+              - button "Terminplan Schritt 12 von 13 · blockiert · Erst 0 von 6 Kostengruppen sind entschieden." [ref=e812]:
+                - generic [aria-hidden] [ref=e813]: "12"
+                - generic [ref=e814]:
+                  - generic [ref=e815]: Terminplan
+                  - generic [ref=e816]:
+                    - generic [ref=e817]: Schritt 12 von 13 ·
+                    - text: blockiert · Erst 0 von 6 Kostengruppen sind entschieden.
+            - listitem [ref=e818]:
+              - button "Finale Prüfung Schritt 13 von 13 · blockiert · Erst wenn jede enthaltene Kostengruppe vollständig ist, wird der Terminplan verfügbar." [ref=e819]:
+                - generic [aria-hidden] [ref=e820]: "13"
+                - generic [ref=e821]:
+                  - generic [ref=e822]: Finale Prüfung
+                  - generic [ref=e823]:
+                    - generic [ref=e824]: Schritt 13 von 13 ·
+                    - text: blockiert · Erst wenn jede enthaltene Kostengruppe vollständig ist, wird der Terminplan verfügbar.
+      - list [ref=e825]:
+        - listitem [ref=e826]:
+          - paragraph [ref=e827]: Aktuelle Option
+        - listitem [ref=e828]:
+          - button "Variantenvergleich" [ref=e829] [cursor=pointer]:
+            - generic [aria-hidden] [ref=e830]: "3"
+        - listitem [ref=e832]:
+          - button "Export" [disabled] [ref=e833]:
+            - generic [aria-hidden] [ref=e834]: "4"
+          - paragraph [ref=e836]: Zuerst jede gewählte Gebäudegrundlage bestätigen und den Gebäudeumfang speichern.
+      - generic [ref=e838]:
+        - group "Ansicht" [ref=e839]:
+          - radiogroup "Ansicht" [ref=e841]:
+            - generic [ref=e842] [cursor=pointer]:
+              - radio "Vorbereitung" [checked] [ref=e843]
+              - generic [aria-hidden] [ref=e844]: ✓
+              - generic [ref=e845]: Vorbereitung
+            - generic [ref=e846]:
+              - radio "Kundenansicht" [disabled] [ref=e847]
+              - generic [ref=e848]: Kundenansicht
+        - button "Kundenansicht prüfen" [disabled] [ref=e849]
+        - paragraph [ref=e850]: Zuerst mindestens ein Gebäude auswählen und jedes gewählte Gebäude bestätigen.
+        - status [ref=e851]:
+          - generic [aria-hidden] [ref=e852]: ○
+          - text: Vorbereitung — nur intern sichtbar
+      - generic [ref=e853]:
+        - button "Einstellungen" [ref=e854] [cursor=pointer]:
+          - generic [aria-hidden] [ref=e855]: ⚙
+          - text: Einstellungen
+        - button "Grundlagen" [ref=e856] [cursor=pointer]:
+          - generic [aria-hidden] [ref=e857]: ◇
+          - text: Grundlagen
+    - main [ref=e858]:
+      - generic [ref=e859]:
+        - generic [ref=e860]:
+          - generic [ref=e861]:
+            - generic [ref=e862]:
+              - paragraph [ref=e863]: Optionsgrundlage · Prüfung erforderlich
+              - heading "Gebäude & Umfang" [level=1] [ref=e864]
+            - paragraph [ref=e865]: 1 von 1 bestätigt
+          - paragraph [ref=e866]: Prüfen Sie die Kennwerte und die Herkunft dieses Gebäudes und bestätigen Sie die Grundlage.
+          - group "Gebäude im Angebotsumfang" [ref=e868]:
+            - generic [ref=e870]:
+              - figure [ref=e872]:
+                - img "Fünfgeschossiges Mehrfamilienhaus mit warmer Mineralfassade an einem bepflanzten Innenhof" [ref=e874]
+              - generic [ref=e875]:
+                - generic [ref=e876]:
+                  - checkbox "Im Angebotsumfang führen · Gebäude A · Lindenhof" [checked] [ref=e877]
+                  - generic [ref=e878]: Im Umfang
+                  - generic [ref=e880]:
+                    - generic [aria-hidden] [ref=e881]: ✓
+                    - generic [ref=e882]: Grundlage bestätigt
+                    - generic [ref=e883]: · abgeschlossen
+                - paragraph [ref=e884]: Gebäude A · Lindenhof
+                - paragraph [ref=e885]: 100 Prozent Wohnen · Mehrfamilienhaus · Kein UG
+          - region "Grundlage · Gebäude A · Lindenhof" [ref=e888]:
+            - generic [ref=e889]:
+              - heading "Grundlage · Gebäude A · Lindenhof" [level=2] [ref=e890]
+              - paragraph [ref=e891]: "Herkunft: aus Quelle belegt"
+            - generic [ref=e892]:
+              - generic [ref=e893]:
+                - term [ref=e894]: Geschosse
+                - definition [ref=e895]:
+                  - generic [ref=e896]: EG + 3 OG + DG
+                - definition [ref=e897]:
+                  - generic [ref=e898]:
+                    - generic [aria-hidden] [ref=e899]: ✓
+                    - generic [ref=e900]: bestätigt
+                    - generic [ref=e901]: · abgeschlossen
+                  - generic [ref=e902]: Planwerk
+              - generic [ref=e903]:
+                - term [ref=e904]: Untergeschoss
+                - definition [ref=e905]:
+                  - generic [ref=e906]: Kein UG
+                - definition [ref=e907]:
+                  - generic [ref=e908]:
+                    - generic [aria-hidden] [ref=e909]: ✓
+                    - generic [ref=e910]: bestätigt
+                    - generic [ref=e911]: · abgeschlossen
+                  - generic [ref=e912]: Schnitt
+              - generic [ref=e913]:
+                - term [ref=e914]: BGF R oberirdisch
+                - definition [ref=e915]:
+                  - generic [ref=e916]: "2.740"
+                  - generic [ref=e917]: m²
+                - definition [ref=e918]:
+                  - generic [ref=e919]:
+                    - generic [aria-hidden] [ref=e920]: ○
+                    - generic [ref=e921]: berechnet
+                    - generic [ref=e922]: · noch nichts geschehen
+                  - generic [ref=e923]: A-DOC-02
+              - generic [ref=e924]:
+                - term [ref=e925]: BGF S oberirdisch
+                - definition [ref=e926]:
+                  - generic [ref=e927]: "160"
+                  - generic [ref=e928]: m²
+                - definition [ref=e929]:
+                  - generic [ref=e930]:
+                    - generic [aria-hidden] [ref=e931]: ○
+                    - generic [ref=e932]: berechnet
+                    - generic [ref=e933]: · noch nichts geschehen
+                  - generic [ref=e934]: A-DOC-02
+              - generic [ref=e935]:
+                - term [ref=e936]: BGF R+S gesamt
+                - definition [ref=e937]:
+                  - generic [ref=e938]: "2.900"
+                  - generic [ref=e939]: m²
+                - definition [ref=e940]:
+                  - generic [ref=e941]:
+                    - generic [aria-hidden] [ref=e942]: ○
+                    - generic [ref=e943]: berechnet
+                    - generic [ref=e944]: · noch nichts geschehen
+                  - generic [ref=e945]: A-DOC-02
+              - generic [ref=e946]:
+                - term [ref=e947]: Wohnfläche nach WoFlV
+                - definition [ref=e948]:
+                  - generic [ref=e949]: "2.120"
+                  - generic [ref=e950]: m²
+                - definition [ref=e951]:
+                  - generic [ref=e952]:
+                    - generic [aria-hidden] [ref=e953]: ✓
+                    - generic [ref=e954]: bestätigt
+                    - generic [ref=e955]: · abgeschlossen
+                  - generic [ref=e956]: A-DOC-02
+                  - button "Ändern · Wohnfläche nach WoFlV · Gebäude A · Lindenhof" [ref=e958] [cursor=pointer]: Ändern
+              - generic [ref=e959]:
+                - term [ref=e960]: NUF nach DIN 277
+                - definition [ref=e961]:
+                  - generic [ref=e962]: "2.240"
+                  - generic [ref=e963]: m²
+                - definition [ref=e964]:
+                  - generic [ref=e965]:
+                    - generic [aria-hidden] [ref=e966]: ✓
+                    - generic [ref=e967]: bestätigt
+                    - generic [ref=e968]: · abgeschlossen
+                  - generic [ref=e969]: A-DOC-02
+                  - button "Ändern · NUF nach DIN 277 · Gebäude A · Lindenhof" [ref=e971] [cursor=pointer]: Ändern
+              - generic [ref=e972]:
+                - term [ref=e973]: Wohneinheiten
+                - definition [ref=e974]:
+                  - generic [ref=e975]: "18"
+                - definition [ref=e976]:
+                  - generic [ref=e977]:
+                    - generic [aria-hidden] [ref=e978]: ✓
+                    - generic [ref=e979]: bestätigt
+                    - generic [ref=e980]: · abgeschlossen
+                  - generic [ref=e981]: A-DOC-02
+                  - button "Ändern · Wohneinheiten · Gebäude A · Lindenhof" [ref=e983] [cursor=pointer]: Ändern
+              - generic [ref=e984]:
+                - term [ref=e985]: Grundstücksfläche
+                - definition [ref=e986]:
+                  - generic [ref=e987]: "3.860"
+                  - generic [ref=e988]: m²
+                - definition [ref=e989]:
+                  - generic [ref=e990]:
+                    - generic [aria-hidden] [ref=e991]: ✓
+                    - generic [ref=e992]: bestätigt
+                    - generic [ref=e993]: · abgeschlossen
+                  - generic [ref=e994]: A-DOC-02
+                  - button "Ändern · Grundstücksfläche · Gebäude A · Lindenhof" [ref=e996] [cursor=pointer]: Ändern
+            - paragraph [ref=e1021]:
+              - generic [ref=e1022]:
+                - generic [aria-hidden] [ref=e1023]: ✓
+                - generic [ref=e1024]: Grundlage bestätigt
+                - generic [ref=e1025]: · abgeschlossen
+              - generic [ref=e1026]: A. Muster · 2026-09-03
+          - generic [ref=e1000]:
+            - button "Gebäudeumfang speichern" [ref=e1027] [cursor=pointer]
+            - generic [ref=e1007]:
+              - generic [ref=e1008]:
+                - generic [aria-hidden] [ref=e1009]: ✓
+                - generic [ref=e1010]: Verfügbar
+                - generic [ref=e1011]: · abgeschlossen
+              - paragraph [ref=e1018]: "Gewählter Umfang: 2.900 m² BGF R+S"
+        - status [ref=e1019]: "Grundlage bestätigt: Gebäude A · Lindenhof."
+        - paragraph [ref=e1020]: "Gewählter Umfang: 2.900 m² BGF R+S"
+  - status [ref=e715]:
+    - generic [ref=e1030]: Gebäudegrundlage Lindenhof bestätigt
+    - button "Rückgängig" [ref=e1031] [cursor=pointer]
+    - button "Schließen" [ref=e1032] [cursor=pointer]
