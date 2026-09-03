@@ -3215,7 +3215,11 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-rvs[data-state="ISSUE"]{border-left:var(--border-width-strong) solid var(--color-status-error)}
 .a3-rvs[data-state="STALE"]{border-left:var(--border-width-strong) solid var(--color-status-warning)}
 .a3-rvs-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:var(--space-3)}
-.a3-rvs-title{font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--type-heading-weight);color:var(--color-text-primary);margin:0;overflow-wrap:break-word;hyphens:auto}
+/* The heading is the scroll target: focusing it is what an edit route and
+   the index both do, and `scroll-margin-top` is what keeps it clear of the
+   top edge when the browser scrolls it into view. The section keeps its own
+   margin for anchor navigation. */
+.a3-rvs-title{font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--type-heading-weight);color:var(--color-text-primary);margin:0;overflow-wrap:break-word;hyphens:auto;scroll-margin-top:var(--space-6)}
 .a3-rvs-title:focus{outline:none}
 .a3-rvs-title:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--border-width-focus)}
 .a3-rvs-rows{margin:var(--space-3) 0 0}

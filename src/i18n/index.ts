@@ -1778,6 +1778,11 @@ const de = {
     'Zuerst die benannten Termindaten korrigieren.',
   'vr3.schedule.blocked.warning':
     'Zuerst die dokumentierte Terminabhängigkeit ausdrücklich bestätigen.',
+  'vr3.schedule.blocked.none': 'Diese Option trägt keinen Terminplan.',
+  'vr3.schedule.blocked.incomplete': 'Zuerst den Baubeginn setzen.',
+  'vr3.schedule.blocked.ready': 'Der Terminplan ist bestätigungsbereit.',
+  'vr3.schedule.blocked.confirmed':
+    'Der Terminplan ist bestätigt. Eine wesentliche Änderung öffnet ihn erneut.',
   'vr3.schedule.state.none': 'Kein Terminplan',
   'vr3.schedule.state.incomplete': 'Baubeginn fehlt',
   'vr3.schedule.state.invalid': 'Termindaten ungültig',
@@ -1934,6 +1939,8 @@ const de = {
     'Zuerst jeden Abschnitt prüfen und jeden Befund beheben.',
   'vr3.review.dock.alreadyConfirmed':
     'Die Prüfung ist bestätigt. Eine wesentliche Änderung öffnet sie erneut.',
+  'vr3.review.dock.unavailable':
+    'Die finale Prüfung wird verfügbar, sobald der Terminplan bestätigt ist.',
   /* ─────────── VR3-04 · Speichern und Kundenmodus (T-032, T-033) ────── */
   'vr3.save.prereq.confirmation': 'Finale Prüfung bestätigt',
   'vr3.save.prereq.blockers': '{count} Befunde sind noch offen.',
@@ -3529,6 +3536,11 @@ const en: Partial<Record<MessageKey, string>> = {
   'vr3.schedule.blocked.invalid': 'Correct the named schedule values first.',
   'vr3.schedule.blocked.warning':
     'Confirm the documented schedule dependency explicitly first.',
+  'vr3.schedule.blocked.none': 'This Option carries no schedule.',
+  'vr3.schedule.blocked.incomplete': 'Set the construction start first.',
+  'vr3.schedule.blocked.ready': 'The schedule is ready to confirm.',
+  'vr3.schedule.blocked.confirmed':
+    'The schedule is confirmed. A material change reopens it.',
   'vr3.schedule.state.none': 'No schedule',
   'vr3.schedule.state.incomplete': 'Construction start missing',
   'vr3.schedule.state.invalid': 'Schedule values invalid',
@@ -3684,6 +3696,8 @@ const en: Partial<Record<MessageKey, string>> = {
   'vr3.review.dock.blocked': 'Review every section and resolve every issue first.',
   'vr3.review.dock.alreadyConfirmed':
     'The validation is confirmed. A material change reopens it.',
+  'vr3.review.dock.unavailable':
+    'Final validation becomes available once the schedule is confirmed.',
   /* ─────────── VR3-04 · save and Client Mode (T-032, T-033) ────────── */
   'vr3.save.prereq.confirmation': 'Final validation confirmed',
   'vr3.save.prereq.blockers': '{count} issues are still open.',

@@ -57,6 +57,20 @@ const OWNED_SURFACES = [
   'src/design-system/KGConfiguration.tsx',
   'src/design-system/CommercialRail.tsx',
   'src/design-system/ChoiceGroup.tsx',
+  // VR3-04 — the schedule stage, the long review and the explicit save.
+  //
+  // ADDED IN CYCLE 2, and the reason is worth recording: the cycle-1 change
+  // manifest CLAIMED these five surfaces were already listed here. They were
+  // not. Every key they reference did have both a DE and an EN row (that was
+  // checked by hand), so the substance held — but the machine guard that was
+  // said to prove it did not exist, and QA reasonably relied on the claim
+  // instead of re-driving a full DE/EN sweep. A guard that is asserted in
+  // prose and absent from the suite is worse than an acknowledged gap.
+  'src/screens/ScheduleStage.tsx',
+  'src/screens/FinalValidation.tsx',
+  'src/design-system/ScheduleEditor.tsx',
+  'src/design-system/ValidationReview.tsx',
+  'src/design-system/SaveReceipt.tsx',
 ]
 
 function source(relative: string): string {

@@ -22,6 +22,7 @@ import {
   REVIEW_GROUPS,
   REVIEW_SECTIONS,
   type ReviewSectionId,
+  type ReviewStage,
 } from '../state/optionReview'
 import { KG_SCOPE_GROUPS, type KgScopeGroup } from '../engine/kgConfiguration'
 import { scopeSelectedIds, scopeBuilding, scopeMetricValue, selectedBgfRSTotal } from '../state/optionBuildingScope'
@@ -530,12 +531,26 @@ export function FinalValidation() {
         : undefined,
       current: group.sectionIds.includes(s.reviewFocusSectionId ?? 'projectBaseline')
         && s.reviewFocusSectionId !== null,
+      /**
+       * ONE operation, not two.
+       *
+       * `focus()` already scrolls a focusable element into view — that is
+       * spec behaviour, not a browser courtesy — so the `scrollIntoView`
+       * that used to follow it was doing the same job a second time. It was
+       * also the only reason this handler threw in jsdom, which implements
+       * `focus` and not `scrollIntoView`: QA saw a green suite logging an
+       * unhandled TypeError, which is exactly the noise that hides the next
+       * real error.
+       *
+       * Where the heading LANDS is a styling question, and it is answered in
+       * styling: `.a3-rvs-title` carries `scroll-margin-top`, so the focused
+       * heading is not jammed against the top edge. Same result, one call,
+       * and nothing to stub in a test environment.
+       */
       onSelect: () => {
         const first = group.sectionIds[0]!
         s.setReviewFocusSection(first)
         document.getElementById(`review-${first}-heading`)?.focus()
-        document.getElementById(`review-${first}`)
-          ?.scrollIntoView({ behavior: 'auto', block: 'start' })
       },
     }
   })
@@ -629,11 +644,15 @@ export function FinalValidation() {
                     // "review every section first" to somebody who just did
                     // is the wrong sentence twice over: it is untrue, and it
                     // sends them back into a document they have finished.
+                    /* Same total-map discipline as the schedule stage after
+                       QA-01: this ternary told the truth for every stage it
+                       could reach, but it is the SHAPE that failed there —
+                       one named branch and a default everything else
+                       borrows. `REVIEW_BLOCKED_REASON_KEY` is exhaustive, so
+                       a new review stage cannot inherit a wrong sentence. */
                     disabledReason={readyToConfirm
                       ? undefined
-                      : t(stage === 'CONFIRMED'
-                        ? 'vr3.review.dock.alreadyConfirmed'
-                        : 'vr3.review.dock.blocked')}
+                      : t(REVIEW_BLOCKED_REASON_KEY[stage])}
                     onClick={() => s.confirmFinalValidation()}
                   >
                     {t('vr3.review.action.confirm')}
@@ -690,6 +709,25 @@ export function FinalValidation() {
       />
     </div>
   )
+}
+
+/**
+ * Why the review's confirm reason is a total map too — see the schedule
+ * stage's `STAGE_BLOCKED_REASON_KEY` for the defect that motivated it.
+ *
+ * `UNAVAILABLE` is unreachable from this control (the stage renders its own
+ * gate instead of the dock), and `READY` is confirmable, so neither entry is
+ * read in practice. They exist because the map is total and because a
+ * sentence that would be wrong if it were ever read is exactly the thing
+ * this shape exists to prevent.
+ */
+const REVIEW_BLOCKED_REASON_KEY: Readonly<Record<ReviewStage, string>> = {
+  UNAVAILABLE: 'vr3.review.dock.unavailable',
+  INCOMPLETE: 'vr3.review.dock.blocked',
+  ISSUES: 'vr3.review.dock.blocked',
+  READY: 'vr3.review.dock.blocked',
+  CONFIRMED: 'vr3.review.dock.alreadyConfirmed',
+  STALE: 'vr3.review.dock.blocked',
 }
 
 /**

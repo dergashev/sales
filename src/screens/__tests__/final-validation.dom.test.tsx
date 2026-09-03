@@ -185,12 +185,68 @@ describe('the Schedule is a stage: unavailable, then separately confirmable', ()
     expect(screen.getAllByText(/B-Q-08/).length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: 'Terminplan bestätigen' }))
       .toHaveAttribute('aria-disabled', 'true')
+    // The reason names the WARNING, and never the invalid-dates sentence.
+    expect(screen.getByText(/Zuerst die dokumentierte Terminabhängigkeit/))
+      .toBeInTheDocument()
+    expect(screen.queryByText(/Zuerst die benannten Termindaten korrigieren/))
+      .toBeNull()
 
     // Accepting the documented question is one explicit action with its own
     // journal entry — never a default the product takes on the user's behalf.
     await user.click(screen.getByRole('button', { name: 'Abhängigkeit bestätigen' }))
     expect(optionScheduleStageFor(st())).toBe('READY_TO_CONFIRM')
     expect(st().journal.at(-1)!.labelKey).toBe('vr3.journal.scheduleDependencyConfirmed')
+  })
+
+  /**
+   * QA-01, as a class rather than a sentence.
+   *
+   * The confirm button's reason used to be
+   * `stage === 'WARNING' ? warning : invalid`, so a CONFIRMED schedule told
+   * the user to "correct the named schedule values" — about a schedule the
+   * product had just accepted. QA reproduced it on both fixtures, every
+   * time.
+   *
+   * The guard is therefore not "the confirmed sentence appears". It is: no
+   * disabled state of this control may ever show a sentence that belongs to
+   * a DIFFERENT state. That is what would have caught the original defect,
+   * and it is what will catch the next stage somebody adds.
+   */
+  it('QA-01: no schedule stage shows another stage’s disabled reason', async () => {
+    const user = userEvent.setup()
+    reachSchedule()
+    render(<App />)
+    openSchedule()
+
+    const FIX_DATES = /Zuerst die benannten Termindaten korrigieren/
+    const ACCEPT_DEPENDENCY = /Zuerst die dokumentierte Terminabhängigkeit/
+    const ALREADY_CONFIRMED = /Der Terminplan ist bestätigt/
+
+    // READY_TO_CONFIRM: enabled, so it states no reason at all.
+    expect(optionScheduleStageFor(st())).toBe('READY_TO_CONFIRM')
+    const confirm = () => screen.getByRole('button', { name: 'Terminplan bestätigen' })
+    expect(confirm()).not.toHaveAttribute('aria-disabled', 'true')
+    expect(screen.queryByText(FIX_DATES)).toBeNull()
+    expect(screen.queryByText(ALREADY_CONFIRMED)).toBeNull()
+
+    // CONFIRMED: disabled, and the reason is the confirmation — never the
+    // invalid-dates sentence, which is the defect QA reported.
+    await user.click(confirm())
+    expect(optionScheduleStageFor(st())).toBe('CONFIRMED')
+    expect(confirm()).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByText(ALREADY_CONFIRMED)).toBeInTheDocument()
+    expect(screen.queryByText(FIX_DATES)).toBeNull()
+    expect(screen.queryByText(ACCEPT_DEPENDENCY)).toBeNull()
+
+    // INVALID: the invalid-dates sentence is CORRECT here, and it is the
+    // only stage that may say it.
+    const duration = screen.getByLabelText(/^Dauer Planung/)
+    await user.clear(duration)
+    await user.type(duration, '4,5')
+    await user.tab()
+    await waitFor(() => expect(optionScheduleStageFor(st())).toBe('INVALID'))
+    expect(screen.getByText(FIX_DATES)).toBeInTheDocument()
+    expect(screen.queryByText(ALREADY_CONFIRMED)).toBeNull()
   })
 
   it('a material edit after confirmation makes the schedule STALE, not confirmed', async () => {

@@ -424,11 +424,11 @@ export function ScheduleStage() {
             <Button
               variant="primary"
               disabled={!readyToConfirm}
+              /* QA-01: the reason comes from an EXHAUSTIVE map, never from a
+                 fall-through branch. See `STAGE_BLOCKED_REASON_KEY` below. */
               disabledReason={readyToConfirm
                 ? undefined
-                : t(stage === 'WARNING'
-                  ? 'vr3.schedule.blocked.warning'
-                  : 'vr3.schedule.blocked.invalid')}
+                : t(STAGE_BLOCKED_REASON_KEY[stage])}
               onClick={() => s.confirmSchedule()}
             >
               {t('vr3.schedule.action.confirm')}
@@ -470,6 +470,38 @@ const STAGE_STATUS: Readonly<Record<ScheduleStageState, {
     labelKey: 'vr3.schedule.state.stale',
     reasonKey: 'vr3.schedule.state.staleReason',
   },
+}
+
+/**
+ * WHY THIS IS A TOTAL MAP AND NOT A TERNARY (QA-01).
+ *
+ * The confirm button used to read
+ * `stage === 'WARNING' ? warning : invalid`, so every OTHER disabled stage
+ * inherited "Zuerst die benannten Termindaten korrigieren." — and the stage
+ * that inherits it most often is `CONFIRMED`, where nothing is wrong at all.
+ * QA reproduced it on both fixtures, every time, immediately after a
+ * successful confirmation: the product told the user to correct dates it had
+ * just accepted.
+ *
+ * That is the same defect class the review dock already carried a fix for
+ * (`vr3.review.dock.alreadyConfirmed`) — a shared control whose reason was
+ * written for one branch and silently borrowed by the rest. A ternary cannot
+ * be audited for that; a `Record` keyed by the stage union can, because
+ * TypeScript refuses to compile a missing key and a NEW stage cannot quietly
+ * inherit somebody else's sentence.
+ *
+ * `READY_TO_CONFIRM` and `STALE` are the two confirmable stages, so their
+ * entries are never read — they are present because the map is total, and
+ * they name what would be true if they ever were read.
+ */
+const STAGE_BLOCKED_REASON_KEY: Readonly<Record<ScheduleStageState, string>> = {
+  NO_SCHEDULE: 'vr3.schedule.blocked.none',
+  INCOMPLETE: 'vr3.schedule.blocked.incomplete',
+  INVALID: 'vr3.schedule.blocked.invalid',
+  WARNING: 'vr3.schedule.blocked.warning',
+  READY_TO_CONFIRM: 'vr3.schedule.blocked.ready',
+  CONFIRMED: 'vr3.schedule.blocked.confirmed',
+  STALE: 'vr3.schedule.blocked.ready',
 }
 
 /** `2027-03-15` → `15.03.2027`. */
