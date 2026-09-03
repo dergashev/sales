@@ -54,8 +54,15 @@ beforeEach(() => {
 
   writeFileSync(path.join(repo, 'README.md'), 'root\n')
   git(repo, ['add', 'README.md'])
-  const initial = git(repo, ['-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'initial commit'], { GIT_AUTHOR_DATE: '2024-01-01T00:00:00Z', GIT_COMMITTER_DATE: '2024-01-01T00:00:00Z' })
+  const initial = git(repo, ['-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'initial commit'], { GIT_AUTHOR_DATE: '2024-01-01T00:00:00Z', GIT_COMMITTER_DATE: '2024-01-01T00:00:00Z', FEATURE_FLOW_ALLOW_MASTER: '1' })
   expect(initial.status).toBe(0)
+
+  // The feature-branch-flow guard blocks any commit on master/main, so the
+  // path/content guards under test are exercised on a feature branch — the
+  // only place agent commits legitimately happen. The guard itself has its
+  // own describe block below.
+  const branch = git(repo, ['switch', '-q', '-c', 'fix/hook-test'])
+  expect(branch.status).toBe(0)
 })
 
 afterEach(() => {
@@ -103,6 +110,25 @@ describe('CASE C — root-checkout commit-time backstop', () => {
     git(repo, ['add', 'docs/tooling/note.md'])
 
     const commit = git(repo, ['-c', 'commit.gpgsign=false', 'commit', '-m', 'delivery-infra doc update'])
+    expect(commit.status).toBe(0)
+  })
+})
+
+describe('feature-branch-flow — direct commits on master are blocked', () => {
+  it('refuses a commit while HEAD is on master', () => {
+    git(repo, ['switch', '-q', 'master'])
+    writeFileSync(path.join(repo, 'README.md'), 'root\nmaster edit\n')
+    git(repo, ['add', 'README.md'])
+    const commit = git(repo, ['-c', 'commit.gpgsign=false', 'commit', '-m', 'direct master commit'])
+    expect(commit.status).not.toBe(0)
+    expect(commit.stderr + commit.stdout).toMatch(/feature-branch-flow/)
+  })
+
+  it('FEATURE_FLOW_ALLOW_MASTER=1 allows a deliberate master commit (humans/release tooling)', () => {
+    git(repo, ['switch', '-q', 'master'])
+    writeFileSync(path.join(repo, 'README.md'), 'root\ndeliberate master edit\n')
+    git(repo, ['add', 'README.md'])
+    const commit = git(repo, ['-c', 'commit.gpgsign=false', 'commit', '-m', 'release commit'], { FEATURE_FLOW_ALLOW_MASTER: '1' })
     expect(commit.status).toBe(0)
   })
 })

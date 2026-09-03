@@ -5,7 +5,13 @@ node_modules/
 dist/
 .vite/
 coverage/
-.claude/
+# .claude/ is per-checkout state, EXCEPT skills — those are shared team/agent
+# workflow instructions and are versioned (see .claude/skills/feature-branch-flow).
+.claude/*
+!.claude/skills/
+# ...but Playwright CLI installs its regenerable native skills there too —
+# those stay ignored (see the .agents/skills rule below).
+.claude/skills/playwright-cli/
 .artifacts/
 .preview/
 
