@@ -3,7 +3,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
 import { CONFIGURATOR_STEP } from '../../state/chapters'
-import { confirmBuildingReviewSections, confirmWholeConfiguration, enterOptionWorkspace, completeBuildingScope, decideAllKgScope, completeKgConfiguration } from '../../test/offer-option'
+import { confirmBuildingReviewSections, confirmWholeConfiguration, enterOptionWorkspace, completeBuildingScope, decideAllKgScope, completeKgConfiguration, saveOptionBaseline } from '../../test/offer-option'
 import { __resetStoreForTests, useStore } from '../../state/store'
 
 /**
@@ -45,6 +45,23 @@ async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
   act(() => {
     useStore.getState().openConfiguratorStepAt(CONFIGURATOR_STEP.KG_300_DETAILS)
   })
+}
+
+/**
+ * VR3-04: the pipeline plus a SAVED Option — the state the client-view gate
+ * now requires.
+ *
+ * `enterPipeline` above reaches the Konfigurator, which used to be all the
+ * client-view switch needed (`canBeginConfiguration && configurationComplete`).
+ * It is not enough any more: eligibility is a valid saved baseline (audit
+ * F-002), so the tests whose subject is the gate DIALOG — its focus trap,
+ * its Escape return, the fact that the mode changes from inside it and not
+ * past it — have to reach a state in which the gate can legitimately open.
+ */
+async function enterClientReadyPipeline(user: ReturnType<typeof userEvent.setup>) {
+  await enterPipeline(user)
+  completeKgConfiguration()
+  saveOptionBaseline()
 }
 
 describe('Projektstatus-Überblick (Task 01) — roving tabindex (TABS-001/KEY-003 keyboard contract)', () => {
@@ -213,9 +230,16 @@ describe('Гейт режима презентации — блокировка 
     expect(screen.getAllByText(/mindestens ein Gebäude auswählen/).length).toBeGreaterThan(0)
   })
 
-  it('после подтверждения классификации переключение работает', async () => {
+  /**
+   * VR3-04: the precondition is now a SAVED Option, not a confirmed
+   * building — the gate moved (audit F-002) and this test's subject is the
+   * route through the gate, not the gate's own predicate. The predicate is
+   * proved in `src/state/__tests__/store.test.ts` and in
+   * `src/screens/__tests__/final-validation.dom.test.tsx`.
+   */
+  it('nach dem Speichern der Option funktioniert der Wechsel', async () => {
     const user = userEvent.setup()
-    await enterPipeline(user)
+    await enterClientReadyPipeline(user)
 
     const group = screen.getByRole('radiogroup', { name: 'Ansicht' })
     const praesentation = within(group).getAllByRole('radio')[1] as HTMLInputElement
@@ -326,6 +350,14 @@ describe('DC-33 · единственная модалка системы — в
     expect(screen.getAllByText(/mindestens ein Gebäude auswählen/).length).toBeGreaterThan(0)
     await confirmBuildingReviewSections(user)
     completeBuildingScope('PER_BUILDING')
+    // VR3-04: a saved scope opens the KONFIGURATOR, not the client view.
+    // The gate's own reason changes accordingly, and the dialog still does
+    // not open — which is the "blocking explains itself" rule holding at
+    // the next prerequisite rather than stopping at the first.
+    expect(screen.getAllByText(/Die Kundenansicht braucht eine gespeicherte Option/).length)
+      .toBeGreaterThan(0)
+    completeKgConfiguration()
+    saveOptionBaseline()
     // Acceptance remediation (cycle 4): position hint is `aria-hidden` now.
     // VR3-03: the rail carries the journey SPINE during the whole Option
     // phase, and a spine step's accessible name is its label plus its state
@@ -349,7 +381,7 @@ describe('DC-33 · единственная модалка системы — в
 
   it('переход в клиентский вид происходит из диалога, а не мимо него', async () => {
     const user = userEvent.setup()
-    await enterPipeline(user)
+    await enterClientReadyPipeline(user)
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
     expect(useStore.getState().mode).toBe('praesentation')
@@ -368,7 +400,7 @@ describe('Preparation navigation cleanup', () => {
 
   it('в презентации тура не существует — ни кнопки, ни карточки', async () => {
     const user = userEvent.setup()
-    await enterPipeline(user)
+    await enterClientReadyPipeline(user)
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
 

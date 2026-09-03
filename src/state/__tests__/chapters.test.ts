@@ -28,7 +28,8 @@ describe('semantic Configurator workflow', () => {
       'Außenanlagen KG 500',
       'Ausstattung KG 600',
       'Baunebenkosten KG 700',
-      'Termine',
+      'Terminplan',
+      'Finale Prüfung',
     ])
     expect(CONFIGURATOR_STEPS.some((step) => step.label === 'Baugrund & Erschließung'))
       .toBe(false)
@@ -78,10 +79,14 @@ describe('semantic Configurator workflow', () => {
       CONFIGURATOR_STEP.KG_600_DETAILS,
       CONFIGURATOR_STEP.KG_700_DETAILS,
       CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE,
+      // VR3-04: Final Validation is the last preparation stage, and it is
+      // `internalOnly` — it appears in `intern` and never in a client
+      // projection.
+      CONFIGURATOR_STEP.FINAL_VALIDATION,
     ])
   })
 
-  it('excluding every cost group still leaves all eight stages — nothing disappears', () => {
+  it('excluding every cost group still leaves all nine stages — nothing disappears', () => {
     const s = useStore.getState()
     const allExcluded = Object.fromEntries(
       Object.entries(s.coverage).map(([group]) => [group, 'excluded' as const]),
@@ -96,6 +101,10 @@ describe('semantic Configurator workflow', () => {
       CONFIGURATOR_STEP.KG_600_DETAILS,
       CONFIGURATOR_STEP.KG_700_DETAILS,
       CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE,
+      // VR3-04: Final Validation is the last preparation stage, and it is
+      // `internalOnly` — it appears in `intern` and never in a client
+      // projection.
+      CONFIGURATOR_STEP.FINAL_VALIDATION,
     ])
   })
 

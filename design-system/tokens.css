@@ -683,6 +683,20 @@
   --type-metric-section-weight: var(--font-weight-bold);
   --type-section-title-weight:  var(--font-weight-bold);
 
+  /* ============ CAPS TRACKING [provisional] ============
+     VR3-04. Uppercase eyebrows at caption size need tracking or the caps
+     close up; the value is the one four places in components.css already
+     spell as a `.04em` literal, and `.a3-surface-foundation__eyebrow`
+     already REFERENCED `--tracking-caps`, a name nothing ever declared, so
+     an eyebrow that asked for tracking silently got none; that reference is
+     repointed here in the same change, because a token whose obvious
+     existing consumer keeps a dangling name under a second spelling is the
+     "one thing, two names" class this repository has already paid for
+     twice. Prefixed `--type-` to stay inside the R-15 visual-family
+     allowlist (tools/verify.py) — typography, not a new token family.
+     [provisional]: it is a single ratified value, not yet a scale. */
+  --type-tracking-caps: .04em;
+
   /* ============ R1 — MEDIAFRAME RATIOS [provisional] ============
      DESIGN-05/§8. Values are the audit's starting ratios, not locked —
      composition testing during R2 may revise them (ticket explicitly

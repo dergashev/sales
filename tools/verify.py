@@ -6056,6 +6056,14 @@ class Verifier:
             # output of the canonical commercial result.
             'choice-group', 'scope-decision-ledger', 'kg-configuration-page',
             'commercial-rail', 'commercial-number',
+            # VR3-04 (backlog b50baba6): the schedule/validation/save family.
+            # `schedule-editor` is the schedule as a WORKING stage (the
+            # read-only `ScheduleGantt` projection stays as it is, for the
+            # client presentation); `validation-review` is the long grouped
+            # review with its sticky index, its per-section status and its
+            # exact return-to-edit routes; `save-receipt` is the outcome of
+            # an explicit commitment, naming Option, version and time.
+            'schedule-editor', 'validation-review', 'save-receipt',
         }
         by_id = {}
         for entry in capabilities:

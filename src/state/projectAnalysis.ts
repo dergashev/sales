@@ -122,6 +122,36 @@ export type FixtureQuestion = {
   evidenceDocIds: string[]
 }
 
+/**
+ * The project's demonstration schedule (VR3-04).
+ *
+ * Durations are HALF MONTHS on the lattice `src/engine/schedule.ts` owns, so
+ * `constructionStartDate + totalHalfMonths` reproduces
+ * `plannedCompletionDate` exactly rather than approximately. `leadHalfMonths`
+ * is the declared overlap with the predecessor (`0` = strictly afterwards),
+ * and `dependencyQuestionId` names a documented open question that makes the
+ * dependency require an explicit confirmation before the Option can be
+ * reviewed.
+ */
+export type FixtureSchedulePhaseKind = 'planning' | 'tender' | 'execution' | 'handover'
+
+export type FixtureSchedulePhase = {
+  id: string
+  kind: FixtureSchedulePhaseKind
+  buildingId: string | null
+  durationHalfMonths: number
+  dependsOn: string | null
+  leadHalfMonths: number
+  dependencyQuestionId: string | null
+}
+
+export type FixtureSchedule = {
+  constructionStartDate: string
+  plannedCompletionDate: string
+  totalHalfMonths: number
+  phases: FixtureSchedulePhase[]
+}
+
 export type FixtureProject = {
   id: string
   route: 'clean' | 'complex'
@@ -156,6 +186,7 @@ export type FixtureProject = {
     lowConfidence: number
     failed: number
   }
+  schedule: FixtureSchedule
 }
 
 type Fixture = {

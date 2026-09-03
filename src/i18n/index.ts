@@ -1719,6 +1719,286 @@ const de = {
   'vr3.spine.projectLabel': 'Projekt',
   'vr3.evidence.assetCaption': '{label} · Demonstrationsbeleg',
   'vr3.evidence.failedPreview': 'Vorschau nicht verfügbar: der Scan ist beschnitten und die Erkennung ist fehlgeschlagen.',
+  /* ─────────────────── VR3-04 · Terminplan (T-029) ─────────────────── */
+  'vr3.schedule.eyebrow': 'Konfiguration · Terminplan',
+  'vr3.schedule.heading.stage': 'Terminplan',
+  'vr3.schedule.heading.locked': 'Terminplan gesperrt',
+  'vr3.schedule.lead':
+    'Ein bewusster nächster Schritt: Termine, Phasen und Abhängigkeiten verbinden '
+    + 'die Optionsgrundlage mit der Kundenerzählung.',
+  'vr3.schedule.keyDates': 'Schlüsseltermine',
+  'vr3.schedule.phases': 'Projektphasen',
+  'vr3.schedule.tableCaption':
+    'Terminplan nach Phasen mit Einheit, Beginn, Ende, Dauer und Abhängigkeit',
+  'vr3.schedule.tableView': 'Tabellarische Terminansicht',
+  'vr3.schedule.unit.month': 'Monat',
+  'vr3.schedule.unit.months': 'Monate',
+  'vr3.schedule.unit.project': 'Gesamtprojekt',
+  'vr3.schedule.column.phase': 'Phase',
+  'vr3.schedule.column.unit': 'Einheit',
+  'vr3.schedule.column.start': 'Beginn',
+  'vr3.schedule.column.end': 'Ende',
+  'vr3.schedule.column.duration': 'Dauer',
+  'vr3.schedule.column.dependency': 'Abhängigkeit',
+  'vr3.schedule.phase.planning': 'Planung',
+  'vr3.schedule.phase.tender': 'Vergabe und Baustelleneinrichtung',
+  'vr3.schedule.phase.execution': 'Ausführung {building}',
+  'vr3.schedule.phase.handover': 'Übergabe',
+  'vr3.schedule.dependency.start': 'Baubeginn',
+  'vr3.schedule.dependency.after': 'nach {phase}',
+  'vr3.schedule.field.start': 'Baubeginn',
+  'vr3.schedule.field.startHint':
+    'Verschiebt den gesamten Terminplan; die Dauer der Phasen bleibt gleich.',
+  'vr3.schedule.field.completion': 'Geplante Fertigstellung',
+  'vr3.schedule.field.completionHint':
+    'Ihr Zieltermin. Endet der Plan später, wird das als Abweichung benannt.',
+  'vr3.schedule.field.total': 'Gesamtdauer',
+  'vr3.schedule.field.totalAbsent': 'nicht ermittelt',
+  'vr3.schedule.field.totalHint': 'Abgeleitet aus den Phasen · Ende {date}',
+  'vr3.schedule.field.totalHintAbsent':
+    'Die Gesamtdauer erscheint, sobald Baubeginn und Phasen einen Zeitraum ergeben.',
+  'vr3.schedule.field.duration': 'Dauer {phase}',
+  'vr3.schedule.field.lead': 'Vorlauf {phase}',
+  'vr3.schedule.field.dependency': 'Abhängigkeit {phase}',
+  'vr3.schedule.field.acceptDependency': 'Offene Frage {question} beantwortet und Abhängigkeit bestätigt',
+  'vr3.schedule.critical.label': '{phase} bestimmt die Fertigstellung',
+  'vr3.schedule.critical.reason':
+    'Diese Phase endet {months} nach dem nächstspäteren Bauende.',
+  'vr3.schedule.dependencies.open': 'Abhängigkeiten bearbeiten',
+  'vr3.schedule.dependencies.explain':
+    'Der Vorlauf ist die Überlappung mit der Vorgängerphase: null bedeutet '
+    + 'streng danach. Trägt eine Abhängigkeit eine dokumentierte offene Frage, '
+    + 'muss sie ausdrücklich bestätigt werden.',
+  'vr3.schedule.notice.error': 'Terminplan unvollständig',
+  'vr3.schedule.notice.warning': 'Bestätigung offen',
+  'vr3.schedule.action.confirm': 'Terminplan bestätigen',
+  'vr3.schedule.action.toValidation': 'Weiter zur finalen Prüfung',
+  'vr3.schedule.action.acceptDependency': 'Abhängigkeit bestätigen',
+  'vr3.schedule.blocked.invalid':
+    'Zuerst die benannten Termindaten korrigieren.',
+  'vr3.schedule.blocked.warning':
+    'Zuerst die dokumentierte Terminabhängigkeit ausdrücklich bestätigen.',
+  'vr3.schedule.state.none': 'Kein Terminplan',
+  'vr3.schedule.state.incomplete': 'Baubeginn fehlt',
+  'vr3.schedule.state.invalid': 'Termindaten ungültig',
+  'vr3.schedule.state.warning': 'Abhängigkeit unbestätigt',
+  'vr3.schedule.state.confirmationRequired': 'Bestätigung erforderlich',
+  'vr3.schedule.state.confirmed': 'Bestätigt',
+  'vr3.schedule.state.confirmedReason': 'Die finale Prüfung ist damit verfügbar.',
+  'vr3.schedule.state.stale': 'Bestätigung veraltet',
+  'vr3.schedule.state.staleReason':
+    'Der Terminplan hat sich nach der Bestätigung geändert und braucht sie erneut.',
+  'vr3.schedule.prereq.configuration': 'Alle einbezogenen Kostengruppen vollständig',
+  'vr3.schedule.prereq.configurationDetail':
+    'Der Terminplan folgt der Konfiguration; er wird verfügbar, sobald jede '
+    + 'einbezogene Kostengruppe vollständig ist.',
+  'vr3.schedule.route.chapter': '{group} öffnen',
+  'vr3.schedule.route.scope': 'Leistungsabgrenzung öffnen',
+  'vr3.schedule.issue.startMissing': 'Baubeginn fehlt — ohne ihn hat keine Phase ein Datum.',
+  'vr3.schedule.issue.startOffLattice':
+    'Baubeginn muss auf den fünfzehnten oder den letzten Tag eines Monats fallen.',
+  'vr3.schedule.issue.completionOffLattice':
+    'Geplante Fertigstellung muss auf den fünfzehnten oder den letzten Tag eines Monats fallen.',
+  'vr3.schedule.issue.completionOvershoot':
+    'Der Plan endet {months} nach der geplanten Fertigstellung.',
+  'vr3.schedule.issue.duration':
+    'Dauer muss ein positives Vielfaches eines halben Monats sein.',
+  'vr3.schedule.issue.lead':
+    'Der Vorlauf ist länger als die Vorgängerphase — die Reihenfolge wäre damit aufgehoben.',
+  'vr3.schedule.issue.dependencyMissing':
+    'Die Vorgängerphase gehört nicht mehr zum Angebotsumfang — Abhängigkeit neu wählen.',
+  'vr3.schedule.issue.unresolved':
+    'Diese Phase lässt sich aus der Abhängigkeitskette nicht einordnen.',
+  'vr3.schedule.issue.beforeStart': 'Eine Phase beginnt vor dem Baubeginn.',
+  'vr3.schedule.issue.dependencyUnconfirmed':
+    'Die dokumentierte offene Frage {question} zu dieser Abhängigkeit ist noch nicht beantwortet.',
+  /* ────────────── VR3-04 · finale Prüfung (T-030 – T-032) ───────────── */
+  'vr3.review.eyebrow': 'Finale Prüfung · {count} Abschnitte',
+  'vr3.review.heading.review': 'Die Option vollständig prüfen',
+  'vr3.review.heading.ready': 'Option bereit zum Speichern',
+  'vr3.review.heading.locked': 'Finale Prüfung gesperrt',
+  'vr3.review.lead':
+    'Eine lange Fachspezifikation bleibt lang, gewinnt aber Abschnittsnavigation, '
+    + 'Status, Änderungsmarken und ausdrückliche Rückwege zur Bearbeitung.',
+  'vr3.review.indexLabel': 'Prüfabschnitte',
+  'vr3.review.sectionsLabel': 'Prüfinhalt',
+  'vr3.review.prereq.schedule': 'Terminplan bestätigt',
+  'vr3.review.prereq.scheduleDetail':
+    'Die finale Prüfung folgt dem Terminplan; sie wird verfügbar, sobald er bestätigt ist.',
+  'vr3.review.route.schedule': 'Terminplan öffnen',
+  'vr3.review.route.section': 'In {stage} beheben',
+  'vr3.review.stage.project': 'Projektverständnis',
+  'vr3.review.stage.buildingScope': 'Gebäude & Umfang',
+  'vr3.review.stage.scopeBoundaries': 'Leistungsabgrenzung',
+  'vr3.review.stage.kg200': 'KG 200',
+  'vr3.review.stage.kg300': 'KG 300',
+  'vr3.review.stage.kg400': 'KG 400',
+  'vr3.review.stage.kg500': 'KG 500',
+  'vr3.review.stage.kg600': 'KG 600',
+  'vr3.review.stage.kg700': 'KG 700',
+  'vr3.review.stage.schedule': 'Terminplan',
+  'vr3.review.group.projectBaseline': 'Projektgrundlage',
+  'vr3.review.group.buildings': 'Gebäude',
+  'vr3.review.group.scope': 'Umfang',
+  'vr3.review.group.costGroups': 'KG 200 – 700',
+  'vr3.review.group.schedule': 'Terminplan',
+  'vr3.review.group.assumptions': 'Annahmen',
+  'vr3.review.group.commercialResult': 'Kommerzielles Ergebnis',
+  'vr3.review.section.projectBaseline': 'Projektgrundlage',
+  'vr3.review.section.buildings': 'Gebäude und Kennzahlen',
+  'vr3.review.section.scopeDecisions': 'Leistungsabgrenzung — sechs Entscheidungen',
+  'vr3.review.section.kg200': 'KG 200 · Vorbereitende Maßnahmen',
+  'vr3.review.section.kg300': 'KG 300 · Baukonstruktion',
+  'vr3.review.section.kg400': 'KG 400 · Technische Anlagen',
+  'vr3.review.section.kg500': 'KG 500 · Außenanlagen',
+  'vr3.review.section.kg600': 'KG 600 · Ausstattung',
+  'vr3.review.section.kg700': 'KG 700 · Baunebenkosten',
+  'vr3.review.section.schedule': 'Terminplan',
+  'vr3.review.section.assumptions': 'Annahmen und zulässige Hinweise',
+  'vr3.review.section.commercialResult': 'Kommerzielles Ergebnis',
+  'vr3.review.state.PENDING': 'noch zu prüfen',
+  'vr3.review.state.REVIEWED': 'geprüft',
+  'vr3.review.state.STALE': 'erneut zu prüfen',
+  'vr3.review.state.ISSUE': 'Befund offen',
+  'vr3.review.status.progress': '{reviewed} von {total} geprüft',
+  'vr3.review.status.confirmed': 'Prüfung bestätigt',
+  'vr3.review.status.issue': '{count} offener Befund',
+  'vr3.review.status.issues': '{count} offene Befunde',
+  'vr3.review.status.staleReason':
+    'Nach der Bestätigung wurde etwas Wesentliches geändert — die betroffenen Abschnitte sind erneut zu prüfen.',
+  'vr3.review.issue.blocker': 'Befund blockiert das Speichern',
+  'vr3.review.issue.permitted': 'Zulässiger Hinweis',
+  'vr3.review.issue.baselineMissing':
+    'Diese Option trägt keine Projektgrundlage — ohne sie hat der Umfang keinen Ursprung.',
+  'vr3.review.issue.scopeNotSaved':
+    'Der Gebäudeumfang ist nicht gespeichert oder beschreibt die Auswahl nicht mehr.',
+  'vr3.review.issue.scopeDecisionsOpen':
+    'Erst {decided} von {total} Kostengruppen sind entschieden.',
+  'vr3.review.issue.kgIncomplete': '{group} ist noch nicht vollständig konfiguriert.',
+  'vr3.review.issue.kgInvalid': '{group} enthält ungültige oder gesperrte Leistungen.',
+  'vr3.review.issue.scheduleNotConfirmed': 'Der Terminplan ist nicht bestätigt.',
+  'vr3.review.issue.scheduleStale':
+    'Der Terminplan hat sich nach seiner Bestätigung geändert.',
+  'vr3.review.issue.permittedAssumption':
+    'Annahme {assumption} reist mit dem indikativen Angebot mit.',
+  'vr3.review.issue.regionalfaktorInactive':
+    'Regionalfaktor nicht aktiviert — gerechnet wird mit dem Bundesdurchschnitt.',
+  'vr3.review.issue.resultDrift':
+    'Die Zusammensetzung ergibt nicht die ausgewiesene Summe.',
+  'vr3.review.issue.resultSubtotal':
+    'Ausgewiesen ist eine Zwischensumme der kalkulierten Positionen, keine Gesamtsumme.',
+  'vr3.review.issue.resultUncertainty':
+    'Die Schätzunsicherheit liegt bei ± {pp} Prozentpunkten.',
+  'vr3.review.row.project': 'Projekt',
+  'vr3.review.row.baselineBuildings': 'Grundlage',
+  'vr3.review.row.documents': 'Dokumente',
+  'vr3.review.row.conflictDecisions': 'Getroffene Entscheidungen',
+  'vr3.review.row.selectedBuildings': 'Im Angebotsumfang',
+  'vr3.review.row.decision': 'Entscheidung',
+  'vr3.review.row.services': 'Leistungen',
+  'vr3.review.row.amount': 'Betrag',
+  'vr3.review.row.scheduleWindow': 'Zeitraum',
+  'vr3.review.row.scheduleTotal': 'Gesamtdauer',
+  'vr3.review.row.scheduleCritical': 'Bestimmt die Fertigstellung',
+  'vr3.review.row.schedulePhases': 'Phasen',
+  'vr3.review.row.permittedAssumptions': 'Zulässige Annahmen',
+  'vr3.review.row.openQuestions': 'Offene Fragen',
+  'vr3.review.row.regionalfaktor': 'Regionalfaktor',
+  'vr3.review.row.uncertainty': 'Schätzunsicherheit',
+  'vr3.review.row.reconciles': 'Zusammensetzung',
+  'vr3.review.row.savedMatch': 'Gegen gespeicherte Version',
+  'vr3.review.value.absent': 'nicht ermittelt',
+  'vr3.review.value.unpriced': 'Preis nicht ermittelt',
+  'vr3.review.value.baselineBuildings': '{count} Gebäude · {area} m² BGF R+S',
+  'vr3.review.value.selectedBuildings': '{count} Gebäude · {area} m² BGF R+S',
+  'vr3.review.value.scope.included': 'enthalten',
+  'vr3.review.value.scope.excluded': 'nicht enthalten',
+  'vr3.review.value.scope.undecided': 'nicht entschieden',
+  'vr3.review.value.services': '{selected} gewählt · {decided} von {required} entschieden',
+  'vr3.review.value.noCritical': 'keine einzelne Phase',
+  'vr3.review.value.reconciles': 'stimmt mit der Summe überein',
+  'vr3.review.value.reconcilesNot': 'weicht von der Summe ab',
+  'vr3.review.value.regionalfaktorActive': 'aktiviert',
+  'vr3.review.value.regionalfaktorInactive': 'nicht aktiviert',
+  'vr3.review.value.savedMatch': 'identisch',
+  'vr3.review.value.savedDiffers': 'weicht ab',
+  'vr3.review.action.review': 'Abschnitt geprüft',
+  'vr3.review.action.reviewAgain': 'Erneut geprüft',
+  'vr3.review.action.alreadyReviewed': 'Dieser Abschnitt ist geprüft.',
+  'vr3.review.action.openStage': '{stage} öffnen',
+  'vr3.review.action.confirm': 'Prüfung bestätigen',
+  'vr3.review.dock.open': 'Prüfung offen',
+  'vr3.review.dock.confirmed': 'Prüfung bestätigt',
+  'vr3.review.dock.outstanding': 'Als nächstes: {section}',
+  'vr3.review.dock.blocked':
+    'Zuerst jeden Abschnitt prüfen und jeden Befund beheben.',
+  'vr3.review.dock.alreadyConfirmed':
+    'Die Prüfung ist bestätigt. Eine wesentliche Änderung öffnet sie erneut.',
+  /* ─────────── VR3-04 · Speichern und Kundenmodus (T-032, T-033) ────── */
+  'vr3.save.prereq.confirmation': 'Finale Prüfung bestätigt',
+  'vr3.save.prereq.blockers': '{count} Befunde sind noch offen.',
+  'vr3.save.prereq.outstanding': 'Noch {count} Abschnitte zu prüfen.',
+  'vr3.save.prereq.confirmationMissing':
+    'Alle Abschnitte sind geprüft — jetzt fehlt nur noch die Bestätigung.',
+  'vr3.save.route.section': 'Zu {section}',
+  'vr3.save.action.save': 'Option speichern',
+  'vr3.save.action.saving': 'Wird gespeichert …',
+  'vr3.save.action.enterClientMode': 'Kundenpräsentation starten',
+  'vr3.save.action.anotherOption': 'Weitere Option anlegen',
+  'vr3.save.receipt.eyebrow': 'Option gespeichert · Version {version}',
+  'vr3.save.receipt.heading': '{option} ist kundenbereit.',
+  'vr3.save.receipt.explanation':
+    'Die gespeicherte interne Option ist ab jetzt die unveränderliche '
+    + 'Präsentationsgrundlage. Weitere Bearbeitung ändert die Arbeitsfassung und '
+    + 'überschreibt diese Version nicht.',
+  'vr3.save.receipt.row.validation': 'Finale Prüfung',
+  'vr3.save.receipt.row.validationConfirmed': 'bestätigt',
+  'vr3.save.receipt.row.savedAt': 'Gespeichert am',
+  'vr3.save.receipt.row.clientMode': 'Kundenmodus',
+  'vr3.save.receipt.row.clientAvailable': 'verfügbar',
+  'vr3.save.receipt.row.clientLocked': 'gesperrt',
+  'vr3.save.unlock.available': 'Kundenmodus freigeschaltet',
+  'vr3.save.unlock.availableReason':
+    'Die Kundenansicht liest diese gespeicherte Version, nicht die Arbeitsfassung.',
+  'vr3.save.unlock.locked': 'Kundenmodus gesperrt',
+  'vr3.save.unlock.notSaved':
+    'Für diese Option ist noch keine Version gespeichert.',
+  'vr3.save.unlock.projectionInvalid':
+    'Die kundensichere Projektion der gespeicherten Version ist nicht gültig — Umfang, Konfiguration und Ergebnis müssen zusammenpassen.',
+  'vr3.save.unlock.projectionOutdated':
+    'Die gespeicherte Version wurde gegen einen älteren Projektionsvertrag geprüft und braucht eine neue Prüfung.',
+  'vr3.save.failed.label': 'Speichern fehlgeschlagen',
+  'vr3.save.failed.preserved':
+    'Die bestätigte Prüfung bleibt bestätigt; kein Arbeitsstand ist verloren.',
+  'vr3.save.failed.retry': 'Erneut speichern',
+  'vr3.save.failed.dismiss': 'Meldung schließen',
+  'vr3.save.error.changed':
+    'Während des Speichervorgangs hat sich die Option geändert — die Prüfung ist erneut zu bestätigen.',
+  'vr3.save.error.optionChanged':
+    'Während des Speichervorgangs wurde eine andere Option geöffnet.',
+  'vr3.save.unsaved.label': 'Ungespeicherte Änderungen',
+  'vr3.save.unsaved.reason':
+    'Die Arbeitsfassung weicht von Version {version} ab. Die Kundenansicht zeigt weiter die gespeicherte Version.',
+  'vr3.save.unsaved.reopen': 'Prüfung erneut öffnen',
+  'vr3.client.blockedReason':
+    'Die Kundenansicht braucht eine gespeicherte Option: zuerst die finale Prüfung bestätigen und speichern.',
+  'vr3.spine.reason.needsSchedule': 'Terminplan noch nicht bestätigt',
+  'vr3.spine.rationale.clientAvailable':
+    'Gespeichert — die Kundenpräsentation ist freigeschaltet.',
+  /* ───────────────── VR3-04 · Journal (Rückgängig-Toast) ───────────── */
+  'vr3.journal.scheduleStartSet': 'Baubeginn auf {date} gesetzt',
+  'vr3.journal.scheduleStartCleared': 'Baubeginn zurückgesetzt',
+  'vr3.journal.scheduleCompletionSet': 'Geplante Fertigstellung auf {date} gesetzt',
+  'vr3.journal.scheduleCompletionCleared': 'Geplante Fertigstellung zurückgesetzt',
+  'vr3.journal.schedulePhaseDuration': 'Dauer geändert · {phase}',
+  'vr3.journal.schedulePhaseLead': 'Vorlauf geändert · {phase}',
+  'vr3.journal.schedulePhaseDependency': 'Abhängigkeit geändert · {phase}',
+  'vr3.journal.scheduleDependencyConfirmed': 'Terminabhängigkeit bestätigt · {question}',
+  'vr3.journal.scheduleDependencyWithdrawn': 'Terminabhängigkeit zurückgezogen · {question}',
+  'vr3.journal.scheduleConfirmed': 'Terminplan bestätigt',
+  'vr3.journal.reviewSectionAcknowledged': 'Prüfabschnitt geprüft · {section}',
+  'vr3.journal.finalValidationConfirmed': 'Finale Prüfung bestätigt',
+  'vr3.journal.optionSaved': 'Option gespeichert · {option} · Version {version}',
 } as const
 
 export type MessageKey = keyof typeof de
@@ -3191,6 +3471,281 @@ const en: Partial<Record<MessageKey, string>> = {
   'vr3.spine.projectLabel': 'Project',
   'vr3.evidence.assetCaption': '{label} · demonstration evidence',
   'vr3.evidence.failedPreview': 'Preview unavailable: the scan is cropped and recognition failed.',
+  /* ─────────────────── VR3-04 · schedule (T-029) ───────────────────── */
+  'vr3.schedule.eyebrow': 'Configuration · Schedule',
+  'vr3.schedule.heading.stage': 'Schedule',
+  'vr3.schedule.heading.locked': 'Schedule locked',
+  'vr3.schedule.lead':
+    'A deliberate next stage: dates, phases and dependencies connect the Option '
+    + 'baseline to the client narrative.',
+  'vr3.schedule.keyDates': 'Key dates',
+  'vr3.schedule.phases': 'Project phases',
+  'vr3.schedule.tableCaption':
+    'Schedule by phase, with unit, start, end, duration and dependency',
+  'vr3.schedule.tableView': 'Schedule table',
+  'vr3.schedule.unit.month': 'month',
+  'vr3.schedule.unit.months': 'months',
+  'vr3.schedule.unit.project': 'Whole project',
+  'vr3.schedule.column.phase': 'Phase',
+  'vr3.schedule.column.unit': 'Unit',
+  'vr3.schedule.column.start': 'Start',
+  'vr3.schedule.column.end': 'End',
+  'vr3.schedule.column.duration': 'Duration',
+  'vr3.schedule.column.dependency': 'Dependency',
+  'vr3.schedule.phase.planning': 'Planning',
+  'vr3.schedule.phase.tender': 'Tender and mobilisation',
+  'vr3.schedule.phase.execution': 'Construction {building}',
+  'vr3.schedule.phase.handover': 'Handover',
+  'vr3.schedule.dependency.start': 'Construction start',
+  'vr3.schedule.dependency.after': 'after {phase}',
+  'vr3.schedule.field.start': 'Construction start',
+  'vr3.schedule.field.startHint':
+    'Moves the whole schedule; the phase durations stay the same.',
+  'vr3.schedule.field.completion': 'Planned completion',
+  'vr3.schedule.field.completionHint':
+    'Your target date. If the plan ends later, that is named as a deviation.',
+  'vr3.schedule.field.total': 'Total duration',
+  'vr3.schedule.field.totalAbsent': 'not determined',
+  'vr3.schedule.field.totalHint': 'Derived from the phases · ends {date}',
+  'vr3.schedule.field.totalHintAbsent':
+    'The total duration appears once the start and the phases form a period.',
+  'vr3.schedule.field.duration': 'Duration {phase}',
+  'vr3.schedule.field.lead': 'Overlap {phase}',
+  'vr3.schedule.field.dependency': 'Dependency {phase}',
+  'vr3.schedule.field.acceptDependency': 'Open question {question} answered and dependency confirmed',
+  'vr3.schedule.critical.label': '{phase} drives completion',
+  'vr3.schedule.critical.reason':
+    'This phase ends {months} after the next-latest construction end.',
+  'vr3.schedule.dependencies.open': 'Edit dependencies',
+  'vr3.schedule.dependencies.explain':
+    'The overlap is how far a phase starts before its predecessor ends: zero '
+    + 'means strictly afterwards. Where a dependency carries a documented open '
+    + 'question, it has to be confirmed explicitly.',
+  'vr3.schedule.notice.error': 'Schedule incomplete',
+  'vr3.schedule.notice.warning': 'Confirmation outstanding',
+  'vr3.schedule.action.confirm': 'Confirm schedule',
+  'vr3.schedule.action.toValidation': 'Continue to final validation',
+  'vr3.schedule.action.acceptDependency': 'Confirm dependency',
+  'vr3.schedule.blocked.invalid': 'Correct the named schedule values first.',
+  'vr3.schedule.blocked.warning':
+    'Confirm the documented schedule dependency explicitly first.',
+  'vr3.schedule.state.none': 'No schedule',
+  'vr3.schedule.state.incomplete': 'Construction start missing',
+  'vr3.schedule.state.invalid': 'Schedule values invalid',
+  'vr3.schedule.state.warning': 'Dependency unconfirmed',
+  'vr3.schedule.state.confirmationRequired': 'Confirmation required',
+  'vr3.schedule.state.confirmed': 'Confirmed',
+  'vr3.schedule.state.confirmedReason': 'Final validation is available.',
+  'vr3.schedule.state.stale': 'Confirmation out of date',
+  'vr3.schedule.state.staleReason':
+    'The schedule changed after it was confirmed and needs confirming again.',
+  'vr3.schedule.prereq.configuration': 'Every included cost group complete',
+  'vr3.schedule.prereq.configurationDetail':
+    'The schedule follows the configuration; it becomes available once every '
+    + 'included cost group is complete.',
+  'vr3.schedule.route.chapter': 'Open {group}',
+  'vr3.schedule.route.scope': 'Open scope decisions',
+  'vr3.schedule.issue.startMissing':
+    'Construction start missing — without it no phase has a date.',
+  'vr3.schedule.issue.startOffLattice':
+    'Construction start must fall on the fifteenth or the last day of a month.',
+  'vr3.schedule.issue.completionOffLattice':
+    'Planned completion must fall on the fifteenth or the last day of a month.',
+  'vr3.schedule.issue.completionOvershoot':
+    'The plan ends {months} after the planned completion.',
+  'vr3.schedule.issue.duration':
+    'Duration must be a positive multiple of half a month.',
+  'vr3.schedule.issue.lead':
+    'The overlap is longer than the predecessor phase — that would remove the order.',
+  'vr3.schedule.issue.dependencyMissing':
+    'The predecessor phase is no longer in the offer scope — choose a new dependency.',
+  'vr3.schedule.issue.unresolved':
+    'This phase cannot be placed from the dependency chain.',
+  'vr3.schedule.issue.beforeStart': 'A phase starts before the construction start.',
+  'vr3.schedule.issue.dependencyUnconfirmed':
+    'The documented open question {question} about this dependency is not answered yet.',
+  /* ────────────── VR3-04 · final validation (T-030 – T-032) ─────────── */
+  'vr3.review.eyebrow': 'Final validation · {count} sections',
+  'vr3.review.heading.review': 'Review the complete Option',
+  'vr3.review.heading.ready': 'Option ready to save',
+  'vr3.review.heading.locked': 'Final validation locked',
+  'vr3.review.lead':
+    'A long professional specification stays long, but gains section navigation, '
+    + 'status, change markers and explicit return-to-edit routes.',
+  'vr3.review.indexLabel': 'Review sections',
+  'vr3.review.sectionsLabel': 'Review content',
+  'vr3.review.prereq.schedule': 'Schedule confirmed',
+  'vr3.review.prereq.scheduleDetail':
+    'Final validation follows the schedule; it becomes available once the schedule is confirmed.',
+  'vr3.review.route.schedule': 'Open schedule',
+  'vr3.review.route.section': 'Fix in {stage}',
+  'vr3.review.stage.project': 'Project understanding',
+  'vr3.review.stage.buildingScope': 'Buildings & scope',
+  'vr3.review.stage.scopeBoundaries': 'Scope decisions',
+  'vr3.review.stage.kg200': 'KG 200',
+  'vr3.review.stage.kg300': 'KG 300',
+  'vr3.review.stage.kg400': 'KG 400',
+  'vr3.review.stage.kg500': 'KG 500',
+  'vr3.review.stage.kg600': 'KG 600',
+  'vr3.review.stage.kg700': 'KG 700',
+  'vr3.review.stage.schedule': 'Schedule',
+  'vr3.review.group.projectBaseline': 'Project baseline',
+  'vr3.review.group.buildings': 'Buildings',
+  'vr3.review.group.scope': 'Scope',
+  'vr3.review.group.costGroups': 'KG 200 – 700',
+  'vr3.review.group.schedule': 'Schedule',
+  'vr3.review.group.assumptions': 'Assumptions',
+  'vr3.review.group.commercialResult': 'Commercial result',
+  'vr3.review.section.projectBaseline': 'Project baseline',
+  'vr3.review.section.buildings': 'Buildings and metrics',
+  'vr3.review.section.scopeDecisions': 'Scope decisions — six of six',
+  'vr3.review.section.kg200': 'KG 200 · Site preparation',
+  'vr3.review.section.kg300': 'KG 300 · Building construction',
+  'vr3.review.section.kg400': 'KG 400 · Building services',
+  'vr3.review.section.kg500': 'KG 500 · External works',
+  'vr3.review.section.kg600': 'KG 600 · Equipment',
+  'vr3.review.section.kg700': 'KG 700 · Ancillary costs',
+  'vr3.review.section.schedule': 'Schedule',
+  'vr3.review.section.assumptions': 'Assumptions and permitted warnings',
+  'vr3.review.section.commercialResult': 'Commercial result',
+  'vr3.review.state.PENDING': 'review next',
+  'vr3.review.state.REVIEWED': 'reviewed',
+  'vr3.review.state.STALE': 'review again',
+  'vr3.review.state.ISSUE': 'issue open',
+  'vr3.review.status.progress': '{reviewed} of {total} reviewed',
+  'vr3.review.status.confirmed': 'Validation confirmed',
+  'vr3.review.status.issue': '{count} issue',
+  'vr3.review.status.issues': '{count} issues',
+  'vr3.review.status.staleReason':
+    'Something material changed after the confirmation — the affected sections need reviewing again.',
+  'vr3.review.issue.blocker': 'Issue blocks the save',
+  'vr3.review.issue.permitted': 'Permitted warning',
+  'vr3.review.issue.baselineMissing':
+    'This Option carries no project baseline — without one the scope has no origin.',
+  'vr3.review.issue.scopeNotSaved':
+    'The building scope is not saved, or no longer describes the selection.',
+  'vr3.review.issue.scopeDecisionsOpen':
+    'Only {decided} of {total} cost groups are decided.',
+  'vr3.review.issue.kgIncomplete': '{group} is not fully configured yet.',
+  'vr3.review.issue.kgInvalid': '{group} contains invalid or blocked services.',
+  'vr3.review.issue.scheduleNotConfirmed': 'The schedule is not confirmed.',
+  'vr3.review.issue.scheduleStale': 'The schedule changed after it was confirmed.',
+  'vr3.review.issue.permittedAssumption':
+    'Assumption {assumption} travels with the indicative offer.',
+  'vr3.review.issue.regionalfaktorInactive':
+    'Regional factor not activated — the calculation uses the national average.',
+  'vr3.review.issue.resultDrift':
+    'The composition does not add up to the stated total.',
+  'vr3.review.issue.resultSubtotal':
+    'What is stated is a subtotal of calculated items, not a total.',
+  'vr3.review.issue.resultUncertainty':
+    'The estimate uncertainty is ± {pp} percentage points.',
+  'vr3.review.row.project': 'Project',
+  'vr3.review.row.baselineBuildings': 'Baseline',
+  'vr3.review.row.documents': 'Documents',
+  'vr3.review.row.conflictDecisions': 'Decisions taken',
+  'vr3.review.row.selectedBuildings': 'In the offer scope',
+  'vr3.review.row.decision': 'Decision',
+  'vr3.review.row.services': 'Services',
+  'vr3.review.row.amount': 'Amount',
+  'vr3.review.row.scheduleWindow': 'Period',
+  'vr3.review.row.scheduleTotal': 'Total duration',
+  'vr3.review.row.scheduleCritical': 'Drives completion',
+  'vr3.review.row.schedulePhases': 'Phases',
+  'vr3.review.row.permittedAssumptions': 'Permitted assumptions',
+  'vr3.review.row.openQuestions': 'Open questions',
+  'vr3.review.row.regionalfaktor': 'Regional factor',
+  'vr3.review.row.uncertainty': 'Estimate uncertainty',
+  'vr3.review.row.reconciles': 'Composition',
+  'vr3.review.row.savedMatch': 'Against the saved version',
+  'vr3.review.value.absent': 'not determined',
+  'vr3.review.value.unpriced': 'price not determined',
+  'vr3.review.value.baselineBuildings': '{count} buildings · {area} m² GFA above and below',
+  'vr3.review.value.selectedBuildings': '{count} buildings · {area} m² GFA above and below',
+  'vr3.review.value.scope.included': 'in scope',
+  'vr3.review.value.scope.excluded': 'out of scope',
+  'vr3.review.value.scope.undecided': 'not decided',
+  'vr3.review.value.services': '{selected} selected · {decided} of {required} decided',
+  'vr3.review.value.noCritical': 'no single phase',
+  'vr3.review.value.reconciles': 'agrees with the total',
+  'vr3.review.value.reconcilesNot': 'differs from the total',
+  'vr3.review.value.regionalfaktorActive': 'activated',
+  'vr3.review.value.regionalfaktorInactive': 'not activated',
+  'vr3.review.value.savedMatch': 'identical',
+  'vr3.review.value.savedDiffers': 'differs',
+  'vr3.review.action.review': 'Section reviewed',
+  'vr3.review.action.reviewAgain': 'Reviewed again',
+  'vr3.review.action.alreadyReviewed': 'This section is reviewed.',
+  'vr3.review.action.openStage': 'Open {stage}',
+  'vr3.review.action.confirm': 'Confirm validation',
+  'vr3.review.dock.open': 'Validation open',
+  'vr3.review.dock.confirmed': 'Validation confirmed',
+  'vr3.review.dock.outstanding': 'Review next: {section}',
+  'vr3.review.dock.blocked': 'Review every section and resolve every issue first.',
+  'vr3.review.dock.alreadyConfirmed':
+    'The validation is confirmed. A material change reopens it.',
+  /* ─────────── VR3-04 · save and Client Mode (T-032, T-033) ────────── */
+  'vr3.save.prereq.confirmation': 'Final validation confirmed',
+  'vr3.save.prereq.blockers': '{count} issues are still open.',
+  'vr3.save.prereq.outstanding': '{count} sections still to review.',
+  'vr3.save.prereq.confirmationMissing':
+    'Every section is reviewed — only the confirmation is outstanding.',
+  'vr3.save.route.section': 'Go to {section}',
+  'vr3.save.action.save': 'Save Option',
+  'vr3.save.action.saving': 'Saving …',
+  'vr3.save.action.enterClientMode': 'Enter Client Presentation',
+  'vr3.save.action.anotherOption': 'Create another Option',
+  'vr3.save.receipt.eyebrow': 'Option saved · Version {version}',
+  'vr3.save.receipt.heading': '{option} is client-ready.',
+  'vr3.save.receipt.explanation':
+    'The saved internal Option is now the immutable presentation baseline. '
+    + 'Further editing changes the working copy and does not overwrite this version.',
+  'vr3.save.receipt.row.validation': 'Final validation',
+  'vr3.save.receipt.row.validationConfirmed': 'confirmed',
+  'vr3.save.receipt.row.savedAt': 'Saved at',
+  'vr3.save.receipt.row.clientMode': 'Client Mode',
+  'vr3.save.receipt.row.clientAvailable': 'available',
+  'vr3.save.receipt.row.clientLocked': 'locked',
+  'vr3.save.unlock.available': 'Client Mode unlocked',
+  'vr3.save.unlock.availableReason':
+    'Client Presentation reads this saved version, not the working copy.',
+  'vr3.save.unlock.locked': 'Client Mode locked',
+  'vr3.save.unlock.notSaved': 'No version has been saved for this Option yet.',
+  'vr3.save.unlock.projectionInvalid':
+    'The saved version’s client-safe projection is not valid — scope, configuration and result have to agree.',
+  'vr3.save.unlock.projectionOutdated':
+    'The saved version was validated against an older projection contract and needs validating again.',
+  'vr3.save.failed.label': 'Save failed',
+  'vr3.save.failed.preserved':
+    'The confirmed validation stays confirmed; no work is lost.',
+  'vr3.save.failed.retry': 'Save again',
+  'vr3.save.failed.dismiss': 'Dismiss message',
+  'vr3.save.error.changed':
+    'The Option changed while the save was in flight — confirm the validation again.',
+  'vr3.save.error.optionChanged':
+    'A different Option was opened while the save was in flight.',
+  'vr3.save.unsaved.label': 'Unsaved changes',
+  'vr3.save.unsaved.reason':
+    'The working copy differs from version {version}. Client Presentation still shows the saved version.',
+  'vr3.save.unsaved.reopen': 'Reopen validation',
+  'vr3.client.blockedReason':
+    'Client Presentation needs a saved Option: confirm the final validation and save first.',
+  'vr3.spine.reason.needsSchedule': 'Schedule not confirmed yet',
+  'vr3.spine.rationale.clientAvailable': 'Saved — Client Presentation is unlocked.',
+  /* ───────────────── VR3-04 · journal (undo toast) ─────────────────── */
+  'vr3.journal.scheduleStartSet': 'Construction start set to {date}',
+  'vr3.journal.scheduleStartCleared': 'Construction start cleared',
+  'vr3.journal.scheduleCompletionSet': 'Planned completion set to {date}',
+  'vr3.journal.scheduleCompletionCleared': 'Planned completion cleared',
+  'vr3.journal.schedulePhaseDuration': 'Duration changed · {phase}',
+  'vr3.journal.schedulePhaseLead': 'Overlap changed · {phase}',
+  'vr3.journal.schedulePhaseDependency': 'Dependency changed · {phase}',
+  'vr3.journal.scheduleDependencyConfirmed': 'Schedule dependency confirmed · {question}',
+  'vr3.journal.scheduleDependencyWithdrawn': 'Schedule dependency withdrawn · {question}',
+  'vr3.journal.scheduleConfirmed': 'Schedule confirmed',
+  'vr3.journal.reviewSectionAcknowledged': 'Review section reviewed · {section}',
+  'vr3.journal.finalValidationConfirmed': 'Final validation confirmed',
+  'vr3.journal.optionSaved': 'Option saved · {option} · version {version}',
 }
 
 /**

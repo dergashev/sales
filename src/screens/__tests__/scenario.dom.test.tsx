@@ -11,6 +11,7 @@ import {
   enterProjectUnderstanding,
   completeBuildingScope,
   completeKgConfiguration,
+  saveOptionBaseline,
 } from '../../test/offer-option'
 import { activeBuilding, __resetStoreForTests, useStore } from '../../state/store'
 import { CONFIGURATOR_STEP } from '../../state/chapters'
@@ -58,6 +59,13 @@ async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
   // BASELINE: six groups in scope and every explicit service decision
   // recorded, which is the state in which the Option is genuinely complete.
   completeKgConfiguration()
+  // VR3-04: Client Mode is no longer unlocked by a complete configuration —
+  // it needs a valid SAVED baseline (audit F-002). These suites' subject is
+  // downstream of the meeting, so the schedule confirmation, the twelve
+  // review sections and the save are DRIVEN here rather than faked: a helper
+  // that wrote the saved version directly would let a broken gate keep
+  // passing, which is the failure mode this ticket removes.
+  saveOptionBaseline()
   act(() => {
     // These explicit fixture decisions belong to setup, not to the transient
     // UI state that the scenario under test is about.
@@ -103,11 +111,17 @@ describe('Сквозной сценарий продажи', () => {
     // decision with a price consequence and an inverse — data cannot change
     // without an event (M-4), and the count is asserted exactly so a hidden
     // write would fail here rather than pass unnoticed.
-    expect(useStore.getState().journal).toHaveLength(21)
+    // VR3-04 adds FIFTEEN: the schedule confirmation, twelve review-section
+    // acknowledgements, the final validation confirmation and the save.
+    // Every one of them is a decision somebody took — a review nobody could
+    // prove had happened is exactly the thing this stage exists to replace —
+    // and the count is asserted exactly so a hidden write fails here rather
+    // than passing unnoticed.
+    expect(useStore.getState().journal).toHaveLength(36)
 
     // Уход на другой экран и возврат: состояние переживает переход.
     await user.click(nav(/Variantenvergleich/))
-    expect(useStore.getState().journal).toHaveLength(21)
+    expect(useStore.getState().journal).toHaveLength(36)
     expect(activeBuilding(useStore.getState()).energiestandard).toBe('EH_40')
 
     // Гейт открывается на top-level шаге здания, а не обходится.
@@ -129,10 +143,24 @@ describe('Сквозной сценарий продажи', () => {
     expect(screen.getByRole('button', { name: 'Angebot prüfen' })).toBeInTheDocument()
     // +2 over the earlier assertions: Scope Boundaries confirmation and the
     // one building's configuration confirmation, both journal events.
-    expect(useStore.getState().journal).toHaveLength(23)
+    expect(useStore.getState().journal).toHaveLength(38)
   })
 
-  it('глава 9 показывает Bauzeit обеими формами: полосой и таблицей', async () => {
+  /**
+   * VR3-04 replaced this test's SUBJECT and kept its principle.
+   *
+   * It used to assert the retired `ChapterTermine`: a read-only fixture
+   * Gantt with the caption "Bauzeit nach Phasen …", the legacy proposal
+   * building "Haus A" and the model duration "≈ 7,5 Monate ab OKBP". That
+   * chapter is gone, replaced by the `ScheduleStage` — a stage with a phase
+   * model, dependencies, validation and a confirmation of its own.
+   *
+   * GANTT-003's principle survives untouched and is what this checks: the
+   * bar ILLUSTRATES, the table CARRIES. Every value the timeline draws is
+   * read from the table, and the values come from the demonstration
+   * project's own schedule rather than from the markup.
+   */
+  it('der Terminplan zeigt beide Formen: Balken und Tabelle (GANTT-003)', async () => {
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
@@ -140,22 +168,31 @@ describe('Сквозной сценарий продажи', () => {
       useStore.getState().openConfiguratorStepAt(CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE)
     })
 
-    // Диаграмма скрыта от скринридера, содержание доступно таблицей
-    // (GANTT-003): полоса иллюстрирует, но не является носителем.
-    const table = await screen.findByRole('table', { name: /Bauzeit nach Phasen/ })
+    const table = await screen.findByRole('table', { name: /Terminplan nach Phasen/ })
+    // Every phase of the clean fixture, named, with the building its
+    // execution belongs to in its own column.
     expect(within(table).getByText('Planung')).toBeInTheDocument()
-    // Полный каркас DC-19: фаза и единица — разные колонки таблицы.
-    expect(within(table).getByText('Rohbau + Ausbau')).toBeInTheDocument()
-    // Матчеры testing-library нормализуют пробелы: U+202F в DOM
-    // сравнивается как обычный пробел — норму U+202F держит verify, не тест.
-    expect(within(table).getByText(/Haus A/)).toBeInTheDocument()
-    // Подпись длительности — из той же модели, что герой срока (D-17).
-    expect(within(table).getByText(/≈ 7,5 Monate ab OKBP/)).toBeInTheDocument()
-    // Даты — из фикстуры, а не из разметки. 04.04 встречается дважды по
-    // построению: конец планирования и начало исполнения — одна дата
-    // (halfOpen-конвенция фикстуры), и это правильно, а не дубль.
-    expect(within(table).getAllByText('04.04.2027')).toHaveLength(2)
-    expect(within(table).getByText('19.11.2027')).toBeInTheDocument()
+    expect(within(table).getByText('Vergabe und Baustelleneinrichtung')).toBeInTheDocument()
+    expect(within(table).getByText('Ausführung Lindenhof')).toBeInTheDocument()
+    expect(within(table).getByText('Übergabe')).toBeInTheDocument()
+    expect(within(table).getByText('Lindenhof')).toBeInTheDocument()
+    expect(within(table).getAllByText('Gesamtprojekt')).toHaveLength(3)
+
+    // Dates come from the fixture's own schedule, on the half-month lattice
+    // the engine owns: 15.03.2027 + 33 half months is exactly 31.07.2028,
+    // which is the completion the fixture specification states.
+    expect(within(table).getByText('15.03.2027')).toBeInTheDocument()
+    // 15.07.2027 appears twice by construction — the end of planning and the
+    // start of tendering are one date, and that is right rather than a
+    // duplicate.
+    expect(within(table).getAllByText('15.07.2027')).toHaveLength(2)
+    expect(within(table).getByText('31.07.2028')).toBeInTheDocument()
+    // Matchers normalise whitespace: U+202F in the DOM compares as a plain
+    // space — the U+202F norm itself is held by verify, not by this test.
+    expect(within(table).getByText('10 Monate')).toBeInTheDocument()
+    expect(within(table).getByText('1 Monat')).toBeInTheDocument()
+    // The dependency is a column of the table, not a tooltip on the bar.
+    expect(within(table).getByText('nach Ausführung Lindenhof')).toBeInTheDocument()
   })
 
   /* VR3-03 removed this case with its subject. It asserted the KG 300

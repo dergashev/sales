@@ -232,6 +232,50 @@
         "warning": 0,
         "lowConfidence": 0,
         "failed": 0
+      },
+      "schedule": {
+        "$comment": "DEMO schedule. Authority: artifacts/VR3-00-global-design-audit/06-demo-fixtures/demo-project-fixtures.md — 15 Mar 2027 to 31 Jul 2028, 16.5 months. Durations are HALF MONTHS (see src/engine/schedule.ts, the Monatshaelften lattice), so 33 half months from 15.03.2027 is exactly 31.07.2028. leadHalfMonths is the overlap with the predecessor: 0 means strictly afterwards. The clean project has no open question, so no dependency needs a separate confirmation.",
+        "constructionStartDate": "2027-03-15",
+        "plannedCompletionDate": "2028-07-31",
+        "totalHalfMonths": 33,
+        "phases": [
+          {
+            "id": "planning",
+            "kind": "planning",
+            "buildingId": null,
+            "durationHalfMonths": 8,
+            "dependsOn": null,
+            "leadHalfMonths": 0,
+            "dependencyQuestionId": null
+          },
+          {
+            "id": "tender",
+            "kind": "tender",
+            "buildingId": null,
+            "durationHalfMonths": 3,
+            "dependsOn": "planning",
+            "leadHalfMonths": 0,
+            "dependencyQuestionId": null
+          },
+          {
+            "id": "execution:A-BLDG-01",
+            "kind": "execution",
+            "buildingId": "A-BLDG-01",
+            "durationHalfMonths": 20,
+            "dependsOn": "tender",
+            "leadHalfMonths": 0,
+            "dependencyQuestionId": null
+          },
+          {
+            "id": "handover",
+            "kind": "handover",
+            "buildingId": null,
+            "durationHalfMonths": 2,
+            "dependsOn": "execution:A-BLDG-01",
+            "leadHalfMonths": 0,
+            "dependencyQuestionId": null
+          }
+        ]
       }
     },
     {
@@ -1477,6 +1521,68 @@
         "warning": 4,
         "lowConfidence": 3,
         "failed": 1
+      },
+      "schedule": {
+        "$comment": "DEMO schedule. Authority: artifacts/VR3-00-global-design-audit/06-demo-fixtures/demo-project-fixtures.md — 15 Mar 2027 to 30 Sep 2028, 18.5 months, ONE baseline handover, plus the documented phased-handover question B-Q-08. Phase durations are the approved target frame T-029: planning 5, tender/mobilisation 2, execution A 12, B 13, C 14, handover 1.5 months — expressed in HALF MONTHS, so 37 half months from 15.03.2027 is exactly 30.09.2028. leadHalfMonths is the declared overlap with the predecessor. The single handover follows building C, and that dependency carries B-Q-08: it is the open question the fixture documents, so the Option cannot be reviewed until it is explicitly confirmed.",
+        "constructionStartDate": "2027-03-15",
+        "plannedCompletionDate": "2028-09-30",
+        "totalHalfMonths": 37,
+        "phases": [
+          {
+            "id": "planning",
+            "kind": "planning",
+            "buildingId": null,
+            "durationHalfMonths": 10,
+            "dependsOn": null,
+            "leadHalfMonths": 0,
+            "dependencyQuestionId": null
+          },
+          {
+            "id": "tender",
+            "kind": "tender",
+            "buildingId": null,
+            "durationHalfMonths": 4,
+            "dependsOn": "planning",
+            "leadHalfMonths": 6,
+            "dependencyQuestionId": null
+          },
+          {
+            "id": "execution:B-BLDG-A",
+            "kind": "execution",
+            "buildingId": "B-BLDG-A",
+            "durationHalfMonths": 24,
+            "dependsOn": "tender",
+            "leadHalfMonths": 2,
+            "dependencyQuestionId": null
+          },
+          {
+            "id": "execution:B-BLDG-B",
+            "kind": "execution",
+            "buildingId": "B-BLDG-B",
+            "durationHalfMonths": 26,
+            "dependsOn": "tender",
+            "leadHalfMonths": 3,
+            "dependencyQuestionId": null
+          },
+          {
+            "id": "execution:B-BLDG-C",
+            "kind": "execution",
+            "buildingId": "B-BLDG-C",
+            "durationHalfMonths": 28,
+            "dependsOn": "tender",
+            "leadHalfMonths": 2,
+            "dependencyQuestionId": null
+          },
+          {
+            "id": "handover",
+            "kind": "handover",
+            "buildingId": null,
+            "durationHalfMonths": 3,
+            "dependsOn": "execution:B-BLDG-C",
+            "leadHalfMonths": 0,
+            "dependencyQuestionId": "B-Q-08"
+          }
+        ]
       }
     }
   ]

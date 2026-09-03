@@ -70,6 +70,8 @@ LOCALE_ASCII_ALLOWLIST = frozenset({
     # VR3-01: routine inflected forms of the already-verified 'manuell'.
     'manuelle', 'manuellem', 'manuellen', 'manueller', 'manuelles',
     'dauer', 'dauerhaft', 'dauergrundlage',
+    # VR3-04: same compound family as 'dauer' — the schedule's total duration.
+    'gesamtdauer',
     'feuer', 'feuerwiderstand',
     'mauer', 'mauerwerk', 'verblendmauerwerk',
     'quelle', 'quellen', 'quellenreferenzen', 'quellenwert', 'quellwert',

@@ -3,8 +3,9 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
 import {
-  completeKgConfiguration, confirmBuildingReviewSections, confirmWholeConfiguration,
+  completeKgConfiguration, confirmBuildingReviewSections,
   decideAllKgScope, enterOptionWorkspace, completeBuildingScope,
+  saveOptionBaseline,
 } from '../../test/offer-option'
 import { __resetStoreForTests, useStore } from '../../state/store'
 
@@ -96,10 +97,11 @@ describe('DC-21: происхождение раскрывается у кажд
     render(<App />)
     await enterPipeline(user)
     // REDESIGN R3 WAVE 2a (ce17da51): Kundenansicht needs the Option to be
-    // client-eligible (PD-3 readiness) before it renders any commercial
-    // narrative section at all.
+    // client-eligible before it renders any commercial narrative section at
+    // all. VR3-04 changed WHAT eligible means — a valid SAVED baseline, not
+    // a confirmed configuration (audit F-002) — so the preamble saves.
     completeKgConfiguration()
-    confirmWholeConfiguration()
+    saveOptionBaseline()
 
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))

@@ -1,36 +1,24 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useSemanticMotion } from '../design-system/motion'
-import {
-  KG_SCOPE_GROUPS,
-  firstOutstandingKgGroup,
-} from '../engine/kgConfiguration'
+import { KG_SCOPE_GROUPS } from '../engine/kgConfiguration'
 import {
   hasKgConfiguration,
-  includedBuildingIds,
-  kgCatalogueFor,
-  kgConfigurationCompleteFor,
   kgDecidedScopeCount,
   kgGroupOfStep,
   kgScopeDecisionsComplete,
   useStore,
 } from '../state/store'
 import { NNBSP } from '../engine/money'
-import { useT, useTx } from '../i18n'
-import { Decimal } from 'decimal.js'
+import { useT } from '../i18n'
 import { Button } from '../components/primitives'
-import { SectionSheet } from '../components/designSystem'
-import { DateField } from '../components/controls'
-import { ScheduleGantt } from '../components/ScheduleGantt'
-import { modelDuration, presentDuration, shiftScheduleMetrics } from '../engine/schedule'
-import demo from '../fixtures/demo-0001.json'
-import { bgfAboveGround } from '../engine/calculate'
-import { effectiveFactValue } from '../state/buildingReview'
 import { CONFIGURATOR_STEP } from '../state/chapters'
 import { ActionGate } from '../design-system/ActionGate'
 import { SemanticStatus } from '../design-system/SemanticStatus'
 import { Leistungsabgrenzung } from './Leistungsabgrenzung'
 import { KgChapter } from './KgChapter'
+import { ScheduleStage } from './ScheduleStage'
+import { FinalValidation } from './FinalValidation'
 
 /**
  * S3 Konfigurator — the stage of the Option's configuration.
@@ -87,7 +75,9 @@ export function S3Konfigurator() {
     ? KG_SCOPE_GROUPS.indexOf(group) + 1
     : currentId === CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE
       ? KG_SCOPE_GROUPS.length + 1
-      : 0
+      : currentId === CONFIGURATOR_STEP.FINAL_VALIDATION
+        ? KG_SCOPE_GROUPS.length + 2
+        : 0
   const previousStageIndexRef = useRef(stageIndex)
   const stageDirection = stageIndex >= previousStageIndexRef.current ? 'forward' : 'backward'
   useEffect(() => { previousStageIndexRef.current = stageIndex }, [stageIndex])
@@ -118,7 +108,8 @@ export function S3Konfigurator() {
       )
     }
     if (currentId === CONFIGURATOR_STEP.SCOPE_BOUNDARIES) return <Leistungsabgrenzung />
-    if (currentId === CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE) return <ChapterTermine />
+    if (currentId === CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE) return <ScheduleStage />
+    if (currentId === CONFIGURATOR_STEP.FINAL_VALIDATION) return <FinalValidation />
     if (!group) return <Leistungsabgrenzung />
     if (!scopeComplete) {
       return (
@@ -232,90 +223,24 @@ export function ConfigurationModeReadiness() {
   )
 }
 
-const HINT_STORAGE_PREFIX = 'all3.hints.v1.'
-const HINT_MAX_SHOWS = 3
-
-/**
- * Task 03 (deep-coherence audit, F-40): guidance-system.md §2 L3 layer —
- * a contextual hint shows on first visit, closes, and fades after three
- * shows (a per-user counter), never as permanent furniture. This is a
- * small product-local composition, not a new canonical primitive: no
- * dismissable/fading contextual-hint contract exists yet in the Design
- * System (CANONICAL DESIGN SYSTEM GAP, non-blocking — flagged, not
- * invented here). The counter lives in its own localStorage namespace,
- * deliberately separate from `all3.proposal.v1.*` (`persistence.ts`): it
- * is a per-viewer UI preference, never proposal/commercial state.
+/*
+ * VR3-04 also removed `useFadingHint` and `Card` from this shell.
  *
- * Known limitation: guidance-system.md also expects a hint to stay
- * reachable again via "?" after it fades. No such help affordance exists
- * anywhere in the product yet (not just for chapter intros) — building one
- * is a larger, cross-cutting feature outside this task's owned findings.
+ * They were the L3 guidance layer (F-40): a coaching intro that faded after
+ * three showings. Their ONLY consumers were `ChapterTermine` and
+ * `ConfigurationCompleteNotice`, both replaced above, so the mechanism had
+ * no remaining caller and dead code in a shell this central is worse than a
+ * named absence.
+ *
+ * WHAT IS LOST, STATED PLAINLY: the schedule's coaching hint no longer
+ * fades — `ScheduleStage` carries a permanent lede instead ("Dates, phases
+ * and dependencies…", the approved frame's own sentence), which is an
+ * explanation of the stage rather than a coach mark for a first visit. That
+ * is a deliberate trade, not an oversight: the fading-hint contract was
+ * flagged as a CANONICAL DESIGN SYSTEM GAP when it was written, and
+ * re-creating a product-local copy of a missing capability on a new surface
+ * would be adding the second copy rather than closing the gap.
  */
-function useFadingHint(id: string): { visible: boolean; dismiss: () => void } {
-  const [count, setCount] = useState<number>(() => {
-    try {
-      const raw = window.localStorage.getItem(HINT_STORAGE_PREFIX + id)
-      return raw === null ? 0 : Number(raw)
-    } catch {
-      return 0
-    }
-  })
-  useEffect(() => {
-    if (count >= HINT_MAX_SHOWS) return
-    try {
-      window.localStorage.setItem(HINT_STORAGE_PREFIX + id, String(count + 1))
-    } catch {
-      // Storage unavailable (private mode, quota) — the hint simply shows
-      // every visit instead of fading; never block the chapter on this.
-    }
-    // Runs once per mount (per `id`): this records "this hint was shown",
-    // it does not react to `count` changing again within the same mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id])
-  const dismiss = () => {
-    setCount(HINT_MAX_SHOWS)
-    try {
-      window.localStorage.setItem(HINT_STORAGE_PREFIX + id, String(HINT_MAX_SHOWS))
-    } catch {
-      // See above — dismiss still hides it for this render either way.
-    }
-  }
-  return { visible: count < HINT_MAX_SHOWS, dismiss }
-}
-
-/**
- * Карточка раздела внутри главы: заголовок H3 из шкалы, воздух, бордер.
- * `intro` — коучинг-подсказка для sales: в презентации не существует
- * (правило 11); данные карточки остаются. Больше не постоянная мебель
- * (F-40): затухает после трёх показов или закрывается вручную.
- */
-function Card({ title, intro, children }: {
-  title: string
-  intro?: string
-  children: ReactNode
-}) {
-  const mode = useStore().mode
-  const t = useT()
-  const tx = useTx()
-  const hint = useFadingHint(title)
-  const showIntro = Boolean(intro) && mode === 'intern' && hint.visible
-  return (
-    <SectionSheet
-      title={tx(title)}
-      intro={showIntro ? (
-        <>
-          {tx(intro!)}
-          {' '}
-          <Button variant="ghost" onClick={hint.dismiss}>
-            {t('configurator.hint.dismiss')}
-          </Button>
-        </>
-      ) : undefined}
-    >
-      <div className="mt-3">{children}</div>
-    </SectionSheet>
-  )
-}
 
 /**
  * Semantic step SCOPE_BOUNDARIES (Leistungsabgrenzung) — welche
@@ -361,244 +286,23 @@ function Card({ title, intro, children }: {
  * Quelle (D-22 erlaubt Ableitung, nicht Erfindung ohne jede Basis).
  */
 
-function buildingName(
-  state: ReturnType<typeof useStore.getState>,
-  buildingId: string,
-): string {
-  const review = state.buildingReviews[buildingId]
-  return review
-    ? effectiveFactValue(review.facts.documentationName) ?? buildingId
-    : buildingId
-}
-
-
-function ConstructionStartDateField() {
-  const s = useStore()
-  const tx = useTx()
-  const value = s.constructionStartDate
-    ? new Date(`${s.constructionStartDate}T00:00:00`)
-    : null
-
-  // The store owns an ISO date-only string. Never serialize through UTC:
-  // `toISOString()` can shift the selected calendar day for local timezones.
-  const toLocalIsoDate = (date: Date) => {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-  }
-
-  return (
-      <DateField
-        label={tx('Baubeginn')}
-        name="construction-start-date"
-      helperText={tx('Verschiebt die Termine unten; die Bauzeit selbst bleibt gleich.')}
-      value={value}
-      onCommit={(date) => s.setConstructionStartDate(date ? toLocalIsoDate(date) : null)}
-    />
-  )
-}
-
-// Task 02: one execution color per included building, cycling the same
-// dataviz category scale planning already uses category-1 from.
-const EXECUTION_COLOR_VARS = [
-  '--color-dataviz-category-2', '--color-dataviz-category-3',
-]
-
-function ChapterTermine() {
-  const s = useStore()
-  const tx9 = useTx()
-  const t = useT()
-  const metrics = demo.schedule.metrics
-  const planningFixture = metrics.find((m) => m.metricKey === 'project.planning')!
-  const includedIds = includedBuildingIds(s)
-  const executionFixtures = includedIds.map((id) => ({
-    id,
-    fixture: metrics.find((m) => m.metricKey === `building:${id}.execution`)!,
-  }))
-  const shifted = s.constructionStartDate
-    ? shiftScheduleMetrics(
-      [planningFixture, ...executionFixtures.map((e) => e.fixture)],
-      planningFixture.startDate,
-      s.constructionStartDate,
-    )
-    : [planningFixture, ...executionFixtures.map((e) => e.fixture)]
-  const planning = shifted.find((m) => m.metricKey === planningFixture.metricKey)!
-  const executions = executionFixtures.map(({ id, fixture }) => ({
-    id,
-    metric: shifted.find((m) => m.metricKey === fixture.metricKey)!,
-  }))
-  // Rule 39: die Fertigstellung des Komplexes ist das SPÄTESTE Bauende
-  // unter allen einbezogenen Gebäuden — nie ein einzelnes, zufällig
-  // zuerst in der Liste stehendes Gebäude (F-17). Dieselbe Auswahl trifft
-  // `computeProjection`'s Held-Dauer; beide lesen dieselbe Fixture.
-  const latestExecution = executions.reduce((latest, current) => (
-    current.metric.endDate > latest.metric.endDate ? current : latest
-  ))
-  // Planung: 3 Monate ist eine feste Katalogkonstante (calculation-spec §4),
-  // unabhängig vom Anker. Aber ein verschobener Baubeginn kann die
-  // Kalendergrenze aus einem GANZEN Kalendermonat herausschieben (Tech
-  // Review P2, D-17): dann ist die Anzeige nicht mehr exakt und braucht das
-  // `≈`-Präfix — genau das, was `presentDuration` bereits für die
-  // Ausführung leistet, hier auf die feste Planungsdauer angewendet statt
-  // eine zweite Rundungsregel zu erfinden.
-  const planningDuration = presentDuration(
-    {
-      metricKey: planning.metricKey,
-      kind: 'planning',
-      startDate: planning.startDate,
-      endDate: planning.endDate,
-      durationBasis: 'calendarDay',
-    },
-    // Tech Review P3: die Katalogkonstante steht schon in der Fixture
-    // (`project.planning.wholeCalendarMonths`) — hier nochmal `3` zu
-    // schreiben hieße, denselben Fakt an zwei Stellen zu pflegen.
-    new Decimal(planningFixture.wholeCalendarMonths!),
-  )
-  // Task 02: die Modell-Dauer je Zeile kommt aus dem BGF oberirdisch DIESES
-  // Gebäudes — nie aus der Projekt-Summe (die bleibt für den Held reserviert,
-  // s. computeProjection). Sonst trüge Haus B die Dauer-Schätzung, die auf
-  // der BGF-Summe beider Gebäude beruht, statt auf seiner eigenen.
-  const executionDurations = Object.fromEntries(executions.map(({ id, metric }) => [
-    id,
-    presentDuration(
-      { ...metric, kind: 'buildingExecution', durationBasis: 'calendarDay' },
-      modelDuration(bgfAboveGround(s.buildings[id]!), new Decimal('1.00'), new Decimal('1.15')),
-    ),
-  ]))
-
-  return (
-    <div className="grid gap-5">
-      <Card
-        title={t('configurator.schedule.title')}
-        intro={'Planung ist Projektgröße, Ausführung gehört zum Gebäude — deshalb ' +
-          'mehrere Zeilen und nicht eine. Die Fertigstellung ist dieselbe Zahl, die ' +
-          'oben rechts als Kennzahl steht.'}
-      >
-        <ConstructionStartDateField />
-        <div className="mt-4">
-        <ScheduleGantt
-          caption="Bauzeit nach Phasen mit Beginn, Ende, Dauer und Abhängigkeit"
-          finishISO={latestExecution.metric.endDate}
-          provenance={s.mode === 'intern'
-            ? tx9('Kalender: Kalendermonate · Baubeginn aus dem Bauzeitplan')
-            : undefined}
-          phases={[
-            {
-              key: planning.metricKey,
-              label: 'Planung',
-              unit: 'Gesamtprojekt',
-              dependency: 'Planungsbeginn',
-              startISO: planning.startDate,
-              endISO: planning.endDate,
-              durationLabel: `${planningDuration.prefix}${planningDuration.prefix ? NNBSP : ''}${planningDuration.display}`,
-              colorVar: '--color-dataviz-category-1',
-            },
-            ...executions.map(({ id, metric }, index) => {
-              const dur = executionDurations[id]!
-              return {
-                key: metric.metricKey,
-                label: 'Rohbau + Ausbau',
-                unit: buildingName(s, id),
-                dependency: 'nach Planung',
-                startISO: metric.startDate,
-                endISO: metric.endDate,
-                durationLabel: `${dur.prefix}${dur.prefix ? NNBSP : ''}${dur.display} ab${NNBSP}OKBP`,
-                colorVar: EXECUTION_COLOR_VARS[index % EXECUTION_COLOR_VARS.length]!,
-              }
-            }),
-          ]}
-        />
-        </div>
-        {s.mode === 'intern' && executions.length > 1 && (
-          <p className="a3-cap mt-3">
-            {t('configurator.schedule.completionOwner', {
-              building: buildingName(s, latestExecution.id),
-            })}
-          </p>
-        )}
-      </Card>
-
-      {/* Task 03 (deep-coherence audit, F-16/AC4): the confirm CTA is the
-          last step of the chapter sequence — this project-scoped chapter
-          previously said nothing about it, so "Nächster Schritt" below
-          looked like the genuine end of the road even with 0 of N
-          buildings confirmed. Silent while everything is already
-          confirmed (rule 30: `ready` needs no separate status surface). */}
-      <ConfigurationCompleteNotice />
-
-      {/* Последняя глава конвейера обязана называть следующий шаг (DC-27):
-          продолжение в левой навигации — это поиск, а не маршрут. Task 03
-          (PD-3=yes): confirmation gates EXPORT, not this comparison step —
-          comparing variants before confirming remains a legitimate, lower-
-          stakes exploratory action. */}
-      <div className="a3-nextstep">
-        <p className="a3-mtag">{tx9('Nächster Schritt')}</p>
-        <p className="text-body text-text-primary">
-          {tx9('Die Konfiguration ist durchlaufen — weiter zum Vergleich der Optionen nebeneinander.')}
-        </p>
-        <div className="mt-2">
-          <Button variant="primary" onClick={() => s.setPipelineView('vergleich')}>
-            {tx9('Varianten vergleichen')}
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/**
- * The aggregate outstanding-work notice at the end of the chapter sequence.
+/*
+ * VR3-04 removed `ChapterTermine` and `ConfigurationCompleteNotice` from
+ * this shell.
  *
- * VR3-03 moved its predicate onto the canonical one. It used to combine the
- * old Scope Boundaries fingerprint with each included BUILDING's own
- * confirmation, which is a model in which a chapter was complete because it
- * had been visited and confirmed per building. Completion is now derived
- * from the domain: the six scope decisions plus every required service
- * decision, value and dependency in every included cost group
- * (`kgConfigurationCompleteFor`). It names whichever cost group is still
- * outstanding and routes there, and renders nothing once nothing is.
+ * `ChapterTermine` was the schedule: a read-only fixture Gantt plus one
+ * date field, mounted as a chapter of the configuration. It is replaced by
+ * `ScheduleStage` — a stage with a phase model, dependencies, validation
+ * and a confirmation of its own — because "Schedule and configuration
+ * completion responsibilities are mixed" was this ticket's own problem
+ * statement (audit F-011).
+ *
+ * `ConfigurationCompleteNotice` was the aggregate outstanding-work notice
+ * that lived at the end of that chapter. Its job — name the outstanding
+ * cost group and route there — is now done by `ScheduleStage`'s own
+ * `ActionGate`, which is the stage the outstanding work actually blocks.
+ * Two surfaces stating one prerequisite is two places for it to drift.
  */
-function ConfigurationCompleteNotice() {
-  const s = useStore()
-  const t = useT()
-  if (!hasKgConfiguration(s)) return null
-  if (kgConfigurationCompleteFor(s)) return null
-  const scopeComplete = kgScopeDecisionsComplete(s)
-  const catalogue = kgCatalogueFor(s)
-  const outstanding = catalogue && s.kgConfig
-    ? firstOutstandingKgGroup(catalogue, s.kgConfig)
-    : null
-  return (
-    <Card title={t('configurator.confirmConfig.title')}>
-      <SemanticStatus
-        tone="attention"
-        label={t('configurator.finalGate.label')}
-        reason={!scopeComplete
-          ? t('vr3.kg.gate.decisionsDetail', {
-            decided: kgDecidedScopeCount(s), total: KG_SCOPE_GROUPS.length,
-          })
-          : outstanding
-            ? t('vr3.kg.gate.chapterOutstanding', {
-              group: `KG${NNBSP}${outstanding.slice(3)}`,
-            })
-            : t('configurator.finalGate.label')}
-      />
-      <Button
-        variant="primary"
-        onClick={() => {
-          if (!scopeComplete || !outstanding) {
-            s.openConfiguratorStepAt(CONFIGURATOR_STEP.SCOPE_BOUNDARIES)
-            return
-          }
-          s.openKgChapter(outstanding)
-        }}
-      >
-        {t('configurator.finalGate.action')}
-      </Button>
-    </Card>
-  )
-}
 
 /**
  * Semantic step KG_700_DETAILS — preparation, not negotiation (Punkt 12).

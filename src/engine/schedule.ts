@@ -178,3 +178,87 @@ export function shiftScheduleMetrics<
     endDate: addDaysISO(m.endDate, deltaDays),
   }))
 }
+
+/* ──────────────────── VR3-04 · the half-month lattice ─────────────────── */
+
+/**
+ * A construction schedule is planned in **Monatshälften**, and this is the
+ * whole reason the two demonstration projects land on their authoritative
+ * completion dates exactly rather than approximately.
+ *
+ * The fixture specification states three facts per project: the construction
+ * start, the planned completion and the total duration in months — Project A
+ * `15.03.2027 → 31.07.2028 · 16,5 Monate`, Project B `15.03.2027 →
+ * 30.09.2028 · 18,5 Monate`. Half months are therefore not a rounding
+ * artefact of the display (that is D-17's separate concern); they are the
+ * unit the plan is actually built in.
+ *
+ * Adding `16,5 × 30,44` days to 15.03.2027 lands on 30.07.2028 — one day
+ * short — and adding "16 calendar months and 15 days" lands on 30.07.2028
+ * too. Neither reproduces the authority, and a schedule whose own arithmetic
+ * cannot reach its own stated completion date is a schedule nobody can
+ * confirm. So a schedule date lives on a LATTICE with two positions per
+ * calendar month: the **15th** (`mid`) and the **month end** (`end`). One
+ * half-month step moves from one position to the next, and the month end is
+ * whatever the calendar says it is — 30.09., 31.07., 29.02. in a leap year.
+ *
+ * On that lattice `15.03.2027 + 33` half months is 31.07.2028 and `+ 37` is
+ * 30.09.2028, both exact, and February needs no special case.
+ */
+
+export type SchedulePosition = 'mid' | 'end'
+
+function lastDayOfMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate()
+}
+
+/**
+ * Which lattice position a date occupies, or `null` when it occupies none —
+ * an off-lattice date is a rejected input, never a silently snapped one.
+ */
+export function schedulePositionOf(iso: string): SchedulePosition | null {
+  const { y, m, d } = parse(iso)
+  if (d === 15) return 'mid'
+  return d === lastDayOfMonth(y, m) ? 'end' : null
+}
+
+/** Lattice index: two slots per calendar month, `mid` before `end`. */
+function slotOf(iso: string): number {
+  const position = schedulePositionOf(iso)
+  if (position === null) {
+    throw new Error(`Termindatum liegt nicht im Monatshälften-Raster: ${iso}`)
+  }
+  const { y, m } = parse(iso)
+  return (y * 12 + (m - 1)) * 2 + (position === 'mid' ? 0 : 1)
+}
+
+function isoOfSlot(slot: number): string {
+  const monthIndex = Math.floor(slot / 2)
+  const mid = slot % 2 === 0
+  const y = Math.floor(monthIndex / 12)
+  const m = (monthIndex % 12) + 1
+  const d = mid ? 15 : lastDayOfMonth(y, m)
+  return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+}
+
+/** Advance (or rewind) a lattice date by whole half months. */
+export function addHalfMonths(iso: string, halfMonths: number): string {
+  if (!Number.isInteger(halfMonths)) {
+    throw new Error(`Halbmonate müssen ganzzahlig sein: ${halfMonths}`)
+  }
+  return isoOfSlot(slotOf(iso) + halfMonths)
+}
+
+/** Half months between two lattice dates. Negative when `toISO` is earlier. */
+export function halfMonthsBetween(fromISO: string, toISO: string): number {
+  return slotOf(toISO) - slotOf(fromISO)
+}
+
+/**
+ * Half months as a month figure for display. `33 → 16,5`, `24 → 12`.
+ * The caller formats it; this only owns the halving, so no surface divides
+ * by two on its own and no surface can disagree about the result.
+ */
+export function halfMonthsToMonths(halfMonths: number): Decimal {
+  return new Decimal(halfMonths).div(2)
+}

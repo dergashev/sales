@@ -112,6 +112,12 @@ VR3_CAPABILITY_IDS = [
     # VR3-03 — the unified configuration family.
     'choice-group', 'scope-decision-ledger', 'kg-configuration-page',
     'commercial-rail', 'commercial-number',
+    # VR3-04 — the schedule/validation/save family. Governance requires this
+    # harness and `verify.py`'s own allowlist to move ATOMICALLY: the
+    # synthetic manifest below must carry exactly the ids the gate expects,
+    # or the "valid lifecycle metadata" branch fails on a manifest that is
+    # only missing the newest capabilities.
+    'schedule-editor', 'validation-review', 'save-receipt',
 ]
 VO_T4_IDS = [
     'canvas', 'paper', 'stage', 'stage-deep', 'media-frame',

@@ -1,7 +1,7 @@
 import { Decimal } from 'decimal.js'
 
 /**
- * VR3-02 bumped this to 2; VR3-03 bumps it to 3.
+ * VR3-02 bumped this to 2; VR3-03 to 3; VR3-04 bumps it to 4.
  *
  * An Option saved before version 2 carries no building scope, and the
  * Konfigurator gate is that scope. An Option saved before version 3 carries
@@ -10,10 +10,19 @@ import { Decimal } from 'decimal.js'
  * pre-3 payload therefore restores an Option that cannot be configured and
  * whose stored `coverage` was written under the retired binary contract, in
  * which "not yet answered" and "deliberately excluded" were the same value.
+ *
+ * An Option saved before version 4 carries no schedule stage, no Final
+ * Validation and — the reason this bump is not optional — NO SAVED VERSION.
+ * Under the pre-4 contract, persistence WAS the commitment: client
+ * eligibility followed configuration completeness, so restoring such a
+ * payload into a product where Client Mode requires an explicit saved
+ * baseline would either silently revoke an eligibility the user had, or
+ * silently grant one nobody ever gave. Neither is a state to guess at.
+ *
  * The version field exists for exactly this — a stored shape whose meaning
  * changed is discarded, not guessed at.
  */
-export const PROPOSAL_PERSISTENCE_VERSION = 3
+export const PROPOSAL_PERSISTENCE_VERSION = 4
 export const PROPOSAL_STORAGE_PREFIX = 'all3.proposal.v1.'
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>

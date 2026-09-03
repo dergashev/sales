@@ -5,12 +5,18 @@ import {
   __resetStoreForTests, useStore, wflConflict, scopeBoundariesStatus,
   eligibleClientOptions, resolvedViewedOptionId,
   initializeProposalPersistence, PROPOSAL_PROJECT_ID,
+  clientModeLockReasonFor,
 } from '../store'
 import { KG400_GROUPS, choiceBlocked } from '../../engine/options'
 import type { CostGroup } from '../../engine/calculate'
 import type { JournalEvent, OfferSnapshot } from '../store'
 import { CONFIGURATOR_STEP } from '../chapters'
-import { confirmWholeConfiguration } from '../../test/offer-option'
+import {
+  completeBuildingScope,
+  completeKgConfiguration,
+  enterOptionWorkspace,
+  saveOptionBaseline,
+} from '../../test/offer-option'
 import { proposalStorageKey, type StorageLike } from '../persistence'
 
 class MemoryStorage implements StorageLike {
@@ -358,7 +364,25 @@ describe('DC-44: сумма драйверов обязана давать ит�
 })
 
 describe('Правило 11: вход в презентацию гейтуется блокером', () => {
-  it('переключение в praesentation — no-op вне Option и до подтверждения', () => {
+  /**
+   * VR3-04 CHANGED THIS GATE, and the change is the point of the test.
+   *
+   * The previous contract was: outside an Option, no presentation; with
+   * every included building confirmed, presentation. Confirming a building
+   * is what this assertion used to end on, and it is exactly the defect the
+   * audit recorded as F-002 — a working configuration nobody had reviewed,
+   * confirmed or saved was already client-ready, because continuous
+   * persistence was the only kind of commitment the product had.
+   *
+   * The gate is now a valid SAVED baseline. So a directly driven Option on
+   * the legacy proposal fixture stays in `intern` however many buildings it
+   * confirms: it has no saved version, and nothing about confirming a
+   * building creates one. The POSITIVE path is proved where it belongs —
+   * `src/screens/__tests__/final-validation.dom.test.tsx` walks schedule
+   * confirmation, twelve review sections, the confirmation and the save,
+   * and only then finds Client Mode available.
+   */
+  it('переключение в praesentation — no-op без сохранённой версии Option', () => {
     useStore.getState().setMode('praesentation')
     expect(useStore.getState().mode).toBe('intern')
 
@@ -371,8 +395,11 @@ describe('Правило 11: вход в презентацию гейтуетс
     useStore.getState().setMode('praesentation')
     expect(useStore.getState().mode).toBe('intern')
     useStore.getState().confirmBuilding(useStore.getState().activeBuildingId)
+    // Building confirmation opens the KONFIGURATOR, and nothing else.
+    expect(useStore.getState().canBeginConfiguration()).toBe(true)
     useStore.getState().setMode('praesentation')
-    expect(useStore.getState().mode).toBe('praesentation')
+    expect(useStore.getState().mode).toBe('intern')
+    expect(clientModeLockReasonFor(useStore.getState(), 'OPT-01')).toBe('notSaved')
     // Обратно в intern — всегда можно.
     useStore.getState().setMode('intern')
     expect(useStore.getState().mode).toBe('intern')
@@ -1515,29 +1542,38 @@ describe('KG 200/500 anti-double-counting (AC-19)', () => {
 describe('REDESIGN R3: viewedOptionId isolation (mandatory acceptance contract)', () => {
   const st = () => useStore.getState()
 
-  /** Two independently confirmed, client-eligible Options: A (created and
-   * left active) and B. Mirrors the ticket's own precondition exactly. */
+  /**
+   * Two independently SAVED, client-eligible Options: A (created and left
+   * active) and B. Mirrors the ticket's own precondition exactly.
+   *
+   * VR3-04 rebuilt this precondition on the real journey. It used to be the
+   * legacy proposal fixture plus `confirmBuilding` +
+   * `confirmWholeConfiguration`, which under the released predicate
+   * (`canBeginConfiguration && configurationComplete`) was enough to be
+   * client-eligible. It is not enough any more, and that is the audit's
+   * F-002 being closed rather than a test getting harder: eligibility is a
+   * valid SAVED baseline, so each Option here saves its scope, completes
+   * its six cost groups, confirms its schedule, reads its twelve review
+   * sections, confirms the review and saves — through the store's own
+   * actions, never by writing a saved version directly.
+   */
   function twoEligibleOptions(): void {
-    st().openOpportunity('DEMO-0001')
-    st().resolveWflConflict('customer')
-    st().confirmProjectParams()
+    enterOptionWorkspace('DEMO-HAPPY-01')
+    st().renameOption(st().activeOptionId!, 'Option A')
+    completeBuildingScope('SHARED')
+    completeKgConfiguration()
+    saveOptionBaseline()
+    const first = st().activeOptionId!
 
-    st().createOption('Option A')
-    st().openOption('OPT-01')
-    st().confirmBuilding(st().activeBuildingId)
-    st().confirmConfigurationMode('SHARED')
-    confirmWholeConfiguration()
-
-    st().openOpportunity('DEMO-0001')
-    st().createOption('Option B')
-    st().openOption('OPT-02')
-    st().confirmBuilding(st().activeBuildingId)
-    st().confirmConfigurationMode('SHARED')
-    confirmWholeConfiguration()
+    const second = st().createOption('Option B')!
+    st().openOption(second)
+    completeBuildingScope('SHARED')
+    completeKgConfiguration()
+    saveOptionBaseline()
 
     // Land back on A as the internally active/preparation Option — the
     // ticket's own precondition ("Internal active/preparation Option = A").
-    st().openOption('OPT-01')
+    st().openOption(first)
   }
 
   it('switching the presented Option never touches activeOptionId, and reverts on exit — the full mandatory scenario', () => {
@@ -1618,23 +1654,40 @@ describe('REDESIGN R3: viewedOptionId isolation (mandatory acceptance contract)'
     expect(st().activeOptionId).toBe('OPT-01')
   })
 
-  it('setViewedOption refuses an ineligible or nonexistent Option id', () => {
-    st().openOpportunity('DEMO-0001')
-    st().resolveWflConflict('customer')
-    st().confirmProjectParams()
-    st().createOption('Unbereit')
-    st().openOption('OPT-01')
-    st().confirmBuilding(st().activeBuildingId)
-    // Building confirmed (canBeginConfiguration true) but configuration
-    // never confirmed (configurationComplete false) — not client-eligible.
+  /**
+   * VR3-04 rebuilt this test's PRECONDITION and kept its subject.
+   *
+   * It used to reach presentation with an Option that was confirmed but
+   * unconfirmed-configuration, and assert that no Option was eligible while
+   * standing inside Kundenansicht. That state no longer exists: entering
+   * presentation now requires a saved baseline, so "inside presentation
+   * with nothing eligible" is unreachable by construction — which is the
+   * point of the new gate, not a gap in it.
+   *
+   * The subject survives intact, and gets sharper: ONE saved Option opens
+   * Kundenansicht, a SECOND Option that was never saved sits beside it, and
+   * `setViewedOption` refuses the unsaved one exactly as it refuses an id
+   * that does not exist at all.
+   */
+  it('setViewedOption refuses an unsaved or nonexistent Option id', () => {
+    enterOptionWorkspace('DEMO-HAPPY-01')
+    completeBuildingScope('SHARED')
+    completeKgConfiguration()
+    saveOptionBaseline()
+    const saved = st().activeOptionId!
+
+    const unsaved = st().createOption('Unbereit')!
+    st().openOption(unsaved)
+    st().openOption(saved)
+
     st().setMode('praesentation')
     expect(st().mode).toBe('praesentation')
-    expect(eligibleClientOptions(st())).toEqual([])
+    expect(eligibleClientOptions(st()).map((o) => o.id)).toEqual([saved])
 
-    st().setViewedOption('OPT-01')
-    expect(st().viewedOptionId).toBe('OPT-01') // initial-continuity default, unchanged
+    st().setViewedOption(unsaved)
+    expect(st().viewedOptionId).toBe(saved) // initial-continuity default, unchanged
     st().setViewedOption('OPT-99')
-    expect(st().viewedOptionId).toBe('OPT-01')
+    expect(st().viewedOptionId).toBe(saved)
   })
 
   it('viewedOptionId never enters the persisted proposal payload', () => {

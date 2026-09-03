@@ -142,7 +142,8 @@ function readKg800Params(
   }
 }
 import {
-  modelDuration, presentDuration, shiftScheduleMetrics, type DurationDisplay,
+  addHalfMonths, halfMonthsBetween, modelDuration, presentDuration,
+  schedulePositionOf, shiftScheduleMetrics, type DurationDisplay,
 } from '../engine/schedule'
 import { RISK_ITEMS, riskDriver } from '../engine/risk'
 import {
@@ -168,6 +169,59 @@ import {
   type ConflictResolution,
   type ReviewedBuildingInput,
 } from './buildingReview'
+import {
+  activeSchedulePhases,
+  optionScheduleStage,
+  scheduleConfirmed as scheduleIsConfirmed,
+  scheduleCriticalLeadHalfMonths,
+  scheduleCriticalPhase,
+  scheduleDerivation,
+  scheduleErrors,
+  scheduleFingerprint,
+  scheduleIssues,
+  schedulePhasesFromProject,
+  scheduleReadyToConfirm,
+  scheduleWarnings,
+  type ScheduleConfirmation,
+  type ScheduleIssue,
+  type SchedulePhase,
+  type SchedulePhaseEdit,
+  type ScheduleStage,
+} from './optionSchedule'
+import {
+  REVIEW_SECTIONS,
+  nextReviewSection,
+  optionReviewStage,
+  reviewConfirmed as reviewIsConfirmed,
+  reviewFingerprint,
+  reviewProgress,
+  reviewReadyToConfirm,
+  reviewSectionStatus,
+  type ReviewAcknowledgement,
+  type ReviewConfirmation,
+  type ReviewIssue,
+  type ReviewProgress,
+  type ReviewSectionId,
+  type ReviewSectionInput,
+  type ReviewSectionStatus,
+  type ReviewStage,
+} from './optionReview'
+import {
+  CLIENT_PROJECTION_VERSION,
+  clientBaselineFor,
+  clientModeAvailableFor,
+  clientModeLockReason,
+  hasUnsavedWorkingChanges,
+  latestSavedVersion,
+  nextSavedVersionNumber,
+  optionSaveStage,
+  savedResultMatchesLive,
+  savedVersionsFor,
+  type ClientModeLockReason,
+  type OptionSaveCommit,
+  type SaveStage,
+  type SavedOptionVersion,
+} from './optionSave'
 import {
   browserProposalStorage,
   clearPersistedProposal,
@@ -475,6 +529,35 @@ export type OptionConfig = {
    * Vergleichsbildschirm). Ein Eigentümer, eine Option, ein Termin überall.
    */
   constructionStartDate: string | null
+  /**
+   * VR3-04 — the Option's SCHEDULE, as a stage rather than a chapter.
+   *
+   * `constructionStartDate` above stays exactly what it was: the anchor the
+   * released Gantt and the presentation projection both shift by. What is new
+   * is a phase model with its own durations, dependencies, accepted
+   * dependency questions and one fingerprinted confirmation — the thing that
+   * makes "the schedule is settled" a fact the product can hold instead of a
+   * conclusion downstream had to infer (audit F-011).
+   *
+   * `scheduleStartDate` and `constructionStartDate` are kept in step by the
+   * same action, deliberately: two owners of one date is exactly the defect
+   * `constructionStartDate`'s own docblock records.
+   */
+  schedulePhases: readonly SchedulePhase[]
+  scheduleEdits: Record<string, SchedulePhaseEdit>
+  scheduleStartDate: string | null
+  schedulePlannedCompletion: string | null
+  scheduleDependencyConfirmed: readonly string[]
+  scheduleConfirmation: ScheduleConfirmation | null
+  /**
+   * VR3-04 — FINAL VALIDATION. Twelve sections, each acknowledged against the
+   * fingerprint of what it showed, plus the one final confirmation that makes
+   * Save available. `reviewFocusSectionId` is what lets an edit route return
+   * the reader to the section they left (T-031).
+   */
+  reviewAcknowledged: Partial<Record<ReviewSectionId, ReviewAcknowledgement>>
+  reviewConfirmation: ReviewConfirmation | null
+  reviewFocusSectionId: ReviewSectionId | null
 }
 
 const OPTION_CONFIG_KEYS = [
@@ -493,6 +576,9 @@ const OPTION_CONFIG_KEYS = [
   'esConfirmed', 'regionalfaktorActive', 'risikoAktiv',
   'openConfiguratorStep', 'visitedConfiguratorSteps', 'scopeBuildingId', 'discountPercent',
   'offerDraft', 'constructionStartDate',
+  'schedulePhases', 'scheduleEdits', 'scheduleStartDate',
+  'schedulePlannedCompletion', 'scheduleDependencyConfirmed', 'scheduleConfirmation',
+  'reviewAcknowledged', 'reviewConfirmation', 'reviewFocusSectionId',
 ] as const satisfies ReadonlyArray<keyof OptionConfig>
 
 /** Снять конфигурацию активной Option с плоского состояния. */
@@ -516,12 +602,19 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
   | 'esConfirmed' | 'regionalfaktorActive' | 'risikoAktiv' | 'discountPercent'
   | 'constructionStartDate'
   | 'scopeBuildings' | 'scopeSelected' | 'scopeEdits' | 'scopeConfirmations'
-  | 'scopeSaved' | 'scopeActiveBuildingId'>,
+  | 'scopeSaved' | 'scopeActiveBuildingId'
+  | 'schedulePhases' | 'scheduleEdits' | 'scheduleStartDate'
+  | 'schedulePlannedCompletion' | 'scheduleDependencyConfirmed'
+  | 'scheduleConfirmation'
+  | 'reviewAcknowledged' | 'reviewConfirmation'>,
   'buildingSectionConfirmations' | 'configurationModeChosen' | 'pricingStarted'
     | 'configurationVisitedChapters' | 'scopeBoundariesConfirmedFingerprint'
     | 'constructionStartDate' | 'kg700ModeAutoFallback'
     | 'scopeCatalogChoices' | 'scopeCatalogProvenance' | 'scopeCatalogQuantities'
-    | 'kg800ClientRevealed' | 'kgConfig' | 'kgScopeConfirmedFingerprint'> & {
+    | 'kg800ClientRevealed' | 'kgConfig' | 'kgScopeConfirmedFingerprint'
+    | 'schedulePhases' | 'scheduleEdits' | 'scheduleStartDate'
+    | 'schedulePlannedCompletion' | 'scheduleDependencyConfirmed'
+    | 'scheduleConfirmation' | 'reviewAcknowledged' | 'reviewConfirmation'> & {
     /** Optional while reading candidates saved before section review was durable. */
     buildingSectionConfirmations?: Record<
       string,
@@ -569,6 +662,24 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
      */
     kgConfig?: KgDecisions | null
     kgScopeConfirmedFingerprint?: string | null
+    /**
+     * VR3-04 — the schedule and the review.
+     *
+     * A reload must not lose a CONFIRMED schedule or a review somebody has
+     * already read twelve sections of: both are commitments the user made and
+     * was given a receipt for, and re-earning them after a browser refresh
+     * would be the product forgetting work it acknowledged. Optional as a
+     * matter of shape (an Option created before this contract has neither),
+     * and the version gate discards genuinely older payloads outright.
+     */
+    schedulePhases?: readonly SchedulePhase[]
+    scheduleEdits?: Record<string, SchedulePhaseEdit>
+    scheduleStartDate?: string | null
+    schedulePlannedCompletion?: string | null
+    scheduleDependencyConfirmed?: readonly string[]
+    scheduleConfirmation?: ScheduleConfirmation | null
+    reviewAcknowledged?: Partial<Record<ReviewSectionId, ReviewAcknowledgement>>
+    reviewConfirmation?: ReviewConfirmation | null
   }
 
 const PERSISTED_CONFIG_KEYS = [
@@ -586,6 +697,9 @@ const PERSISTED_CONFIG_KEYS = [
   'constructionStartDate',
   'scopeBuildings', 'scopeSelected', 'scopeEdits', 'scopeConfirmations',
   'scopeSaved', 'scopeActiveBuildingId',
+  'schedulePhases', 'scheduleEdits', 'scheduleStartDate',
+  'schedulePlannedCompletion', 'scheduleDependencyConfirmed', 'scheduleConfirmation',
+  'reviewAcknowledged', 'reviewConfirmation',
 ] as const satisfies ReadonlyArray<keyof PersistedProposalConfig>
 
 const LEGACY_PERSISTED_CONFIG_KEYS = PERSISTED_CONFIG_KEYS.filter(
@@ -601,7 +715,15 @@ const LEGACY_PERSISTED_CONFIG_KEYS = PERSISTED_CONFIG_KEYS.filter(
     && key !== 'scopeCatalogQuantities'
     && key !== 'kg800ClientRevealed'
     && key !== 'kgConfig'
-    && key !== 'kgScopeConfirmedFingerprint',
+    && key !== 'kgScopeConfirmedFingerprint'
+    && key !== 'schedulePhases'
+    && key !== 'scheduleEdits'
+    && key !== 'scheduleStartDate'
+    && key !== 'schedulePlannedCompletion'
+    && key !== 'scheduleDependencyConfirmed'
+    && key !== 'scheduleConfirmation'
+    && key !== 'reviewAcknowledged'
+    && key !== 'reviewConfirmation',
 )
 
 function capturePersistedConfig(
@@ -639,6 +761,16 @@ type PersistedProposalPayload = {
    * discarded whole.
    */
   snapshots?: OfferSnapshot[]
+  /**
+   * VR3-04 (M-3): the immutable saved Option versions, per Option.
+   *
+   * A saved version is the client baseline, and "immutable/recoverable" is
+   * this ticket's done condition — a baseline that a browser reload could
+   * lose would be neither. Optional/defaults to `{}` on restore so an older
+   * stored payload keeps loading rather than being discarded whole, the same
+   * conservative shape `snapshots` already uses.
+   */
+  savedOptionVersions?: Record<string, SavedOptionVersion[]>
 }
 
 /**
@@ -794,6 +926,12 @@ const CUSTOMER_CONFIRMATION_ACTOR = 'customer confirmation'
  * fabricated person — an invented name would be a worse lie than a role.
  */
 const SCOPE_ACTOR = 'A. Muster'
+
+/** `2027-03-15` → `15.03.2027`. Journal labels are German by contract. */
+function germanDate(iso: string): string {
+  const [y, m, d] = iso.split('-')
+  return `${d}.${m}.${y}`
+}
 
 type FixtureBuilding = typeof fx
 
@@ -998,6 +1136,19 @@ function defaultOptionConfig(coverage: Coverage = INITIAL_COVERAGE): OptionConfi
     visitedConfiguratorSteps: [],
     scopeBuildingId: null,
     constructionStartDate: null,
+    // VR3-04: a fresh Option has NO schedule until it inherits one from the
+    // project, exactly like `scopeBuildings` above. An empty list is not "no
+    // phases" — it is "this Option was not created from a project", which is
+    // what a directly driven store is, and the stage says so.
+    schedulePhases: [],
+    scheduleEdits: {},
+    scheduleStartDate: null,
+    schedulePlannedCompletion: null,
+    scheduleDependencyConfirmed: [],
+    scheduleConfirmation: null,
+    reviewAcknowledged: {},
+    reviewConfirmation: null,
+    reviewFocusSectionId: null,
   }
 }
 
@@ -1235,12 +1386,135 @@ function isPersistedProposalConfig(value: unknown): value is PersistedProposalCo
   if (value.constructionStartDate !== undefined
     && value.constructionStartDate !== null
     && typeof value.constructionStartDate !== 'string') return false
+  if (!isPersistedOptionSchedule(value)) return false
+  if (!isPersistedOptionReview(value)) return false
   return value.discountPercent === null || Decimal.isDecimal(value.discountPercent)
+}
+
+/**
+ * VR3-04 — the SHAPE of a restored schedule.
+ *
+ * Shape only, like every other validator here: a malformed payload must not
+ * resurrect a phase model the model itself cannot resolve, but a well-formed
+ * one is trusted, and `optionScheduleStage` re-derives every gate from it
+ * anyway. A confirmation is a fingerprint, so a payload whose values have
+ * been tampered with reads as STALE rather than as CONFIRMED — the
+ * fingerprint is the validation that matters.
+ */
+function isPersistedOptionSchedule(value: Record<string, unknown>): boolean {
+  if (value.schedulePhases !== undefined) {
+    if (!Array.isArray(value.schedulePhases)) return false
+    for (const phase of value.schedulePhases) {
+      if (!record(phase)
+        || typeof phase.id !== 'string'
+        || !SCHEDULE_PHASE_KINDS.includes(phase.kind as SchedulePhase['kind'])
+        || (phase.buildingId !== null && typeof phase.buildingId !== 'string')
+        || !Number.isInteger(phase.durationHalfMonths)
+        || (phase.dependsOn !== null && typeof phase.dependsOn !== 'string')
+        || !Number.isInteger(phase.leadHalfMonths)
+        || (phase.dependencyQuestionId !== null
+          && typeof phase.dependencyQuestionId !== 'string')) return false
+    }
+  }
+  if (value.scheduleEdits !== undefined) {
+    if (!record(value.scheduleEdits)) return false
+    for (const edit of Object.values(value.scheduleEdits)) {
+      if (!record(edit)) return false
+      if (edit.durationHalfMonths !== undefined
+        && !Number.isInteger(edit.durationHalfMonths)) return false
+      if (edit.leadHalfMonths !== undefined
+        && !Number.isInteger(edit.leadHalfMonths)) return false
+      if (edit.dependsOn !== undefined
+        && edit.dependsOn !== null
+        && typeof edit.dependsOn !== 'string') return false
+    }
+  }
+  for (const key of ['scheduleStartDate', 'schedulePlannedCompletion'] as const) {
+    const date = value[key]
+    if (date !== undefined && date !== null && typeof date !== 'string') return false
+  }
+  if (value.scheduleDependencyConfirmed !== undefined) {
+    if (!Array.isArray(value.scheduleDependencyConfirmed)
+      || !value.scheduleDependencyConfirmed.every((id) => typeof id === 'string')) return false
+  }
+  const confirmation = value.scheduleConfirmation
+  if (confirmation !== undefined && confirmation !== null) {
+    if (!record(confirmation) || typeof confirmation.fingerprint !== 'string'
+      || typeof confirmation.actor !== 'string'
+      || typeof confirmation.at !== 'string') return false
+  }
+  return true
+}
+
+/** VR3-04 — the SHAPE of a restored Final Validation. */
+function isPersistedOptionReview(value: Record<string, unknown>): boolean {
+  if (value.reviewAcknowledged !== undefined) {
+    if (!record(value.reviewAcknowledged)) return false
+    for (const [id, acknowledgement] of Object.entries(value.reviewAcknowledged)) {
+      if (!REVIEW_SECTIONS.some((section) => section.id === id)) return false
+      if (!record(acknowledgement) || typeof acknowledgement.fingerprint !== 'string'
+        || typeof acknowledgement.actor !== 'string'
+        || typeof acknowledgement.at !== 'string') return false
+    }
+  }
+  const confirmation = value.reviewConfirmation
+  if (confirmation !== undefined && confirmation !== null) {
+    if (!record(confirmation) || typeof confirmation.fingerprint !== 'string'
+      || typeof confirmation.actor !== 'string'
+      || typeof confirmation.at !== 'string') return false
+  }
+  return true
+}
+
+const SCHEDULE_PHASE_KINDS: readonly SchedulePhase['kind'][] = [
+  'planning', 'tender', 'execution', 'handover',
+]
+
+const SAVED_OPTION_VERSION_KEYS = [
+  'optionId', 'optionName', 'version', 'savedAt', 'savedBy',
+  'projectBaselineId', 'buildingScopeFingerprint', 'configurationFingerprint',
+  'scheduleFingerprint', 'reviewFingerprint', 'clientProjectionVersion',
+  'clientProjectionValid', 'result',
+] as const
+
+/**
+ * VR3-04 (M-3): a restored saved version's SHAPE is validated; its CONTENTS
+ * are trusted as-is, exactly like `isOfferSnapshot` — the version was already
+ * `deepFreeze`d before it was ever persisted, and a saved baseline that a
+ * malformed neighbour could discard would not be recoverable.
+ */
+function isSavedOptionVersion(value: unknown): value is SavedOptionVersion {
+  if (!record(value) || !hasOnlyKeys(value, SAVED_OPTION_VERSION_KEYS)) return false
+  const result = value.result
+  if (!record(result)
+    || typeof result.totalExact !== 'string'
+    || typeof result.totalDisplay !== 'string'
+    || typeof result.totalLabel !== 'string'
+    || (result.coverage !== 'total' && result.coverage !== 'subtotal')
+    || typeof result.uncertaintyPp !== 'number'
+    || !Number.isInteger(result.resultVersion)
+    || !Array.isArray(result.byCostGroup)
+    || !result.byCostGroup.every((line) => record(line)
+      && typeof line.group === 'string'
+      && (line.exact === null || typeof line.exact === 'string'))) return false
+  return typeof value.optionId === 'string'
+    && typeof value.optionName === 'string'
+    && Number.isInteger(value.version) && (value.version as number) >= 1
+    && typeof value.savedAt === 'string'
+    && typeof value.savedBy === 'string'
+    && (value.projectBaselineId === null || typeof value.projectBaselineId === 'string')
+    && typeof value.buildingScopeFingerprint === 'string'
+    && typeof value.configurationFingerprint === 'string'
+    && typeof value.scheduleFingerprint === 'string'
+    && typeof value.reviewFingerprint === 'string'
+    && Number.isInteger(value.clientProjectionVersion)
+    && typeof value.clientProjectionValid === 'boolean'
 }
 
 const PERSISTED_PROPOSAL_PAYLOAD_KEYS = [
   'active', 'options', 'activeOptionId', 'optionSeq', 'optionConfigs',
   'buildingConflicts', 'projectParamsConfirmed', 'snapshots',
+  'savedOptionVersions',
 ] as const
 
 const OFFER_SNAPSHOT_KEYS = [
@@ -1285,7 +1559,11 @@ function isPersistedProposalPayload(value: unknown): value is PersistedProposalP
     || (value.projectParamsConfirmed !== undefined
       && typeof value.projectParamsConfirmed !== 'boolean')
     || (value.snapshots !== undefined
-      && (!Array.isArray(value.snapshots) || !value.snapshots.every(isOfferSnapshot)))) return false
+      && (!Array.isArray(value.snapshots) || !value.snapshots.every(isOfferSnapshot)))
+    || (value.savedOptionVersions !== undefined
+      && (!record(value.savedOptionVersions)
+        || !Object.values(value.savedOptionVersions).every((versions) =>
+          Array.isArray(versions) && versions.every(isSavedOptionVersion))))) return false
 
   const options = value.options
   if (!options.every((option) => record(option)
@@ -1386,6 +1664,20 @@ function restoredOptionConfig(
     scopeConfirmations: persisted.scopeConfirmations ?? {},
     scopeSaved: persisted.scopeSaved ?? null,
     scopeActiveBuildingId: persisted.scopeActiveBuildingId ?? null,
+    // VR3-04: absent in payloads saved before the schedule became a stage.
+    // An Option restored without one has no schedule, and the stage says so
+    // rather than fabricating phases the Option never had.
+    schedulePhases: persisted.schedulePhases ?? [],
+    scheduleEdits: persisted.scheduleEdits ?? {},
+    scheduleStartDate: persisted.scheduleStartDate ?? null,
+    schedulePlannedCompletion: persisted.schedulePlannedCompletion ?? null,
+    scheduleDependencyConfirmed: persisted.scheduleDependencyConfirmed ?? [],
+    scheduleConfirmation: persisted.scheduleConfirmation ?? null,
+    reviewAcknowledged: persisted.reviewAcknowledged ?? {},
+    reviewConfirmation: persisted.reviewConfirmation ?? null,
+    // Never persisted: where the reader's eye was is a view position, not a
+    // commitment. A reload opens the review at its own beginning.
+    reviewFocusSectionId: null,
     buildings,
     fields: legacyFieldsFromReview(
       buildingReviews[LEGACY_FIELDS_BUILDING_ID]!,
@@ -1407,6 +1699,9 @@ function capturePersistedProposal(state: Store): PersistedProposalPayload {
     // VR2-08 (M-3): already-frozen values — a plain reference is enough,
     // JSON serialisation does the actual copying on the way to storage.
     snapshots: state.snapshots,
+    savedOptionVersions: Object.fromEntries(
+      Object.entries(state.savedOptionVersions).map(([id, versions]) => [id, [...versions]]),
+    ),
   }
 }
 
@@ -1571,6 +1866,18 @@ type Store = {
   /** Применённые надбавки за риск — часть конфигурации Option (D-02). */
   risikoAktiv: Record<string, boolean>
   snapshots: OfferSnapshot[]
+  /**
+   * VR3-04 (M-3): the immutable saved Option versions, per Option id.
+   *
+   * NOT part of `OptionConfig`. A saved version is a record ABOUT an Option,
+   * not a value inside it: switching Options must not carry one Option's
+   * saved baseline into another's working copy, and `openOption`'s
+   * working-copy swap is exactly the operation that would. It lives beside
+   * `snapshots`, which is the same kind of fact for the same reason.
+   */
+  savedOptionVersions: Record<string, readonly SavedOptionVersion[]>
+  /** The save in flight, or the one that failed. Transient, never undoable. */
+  optionSaveCommit: OptionSaveCommit | null
   /** Дельта-чип живёт 4 секунды, потом уезжает в журнал (DC-2).
    *  `percent: null` — процент от нулевой базы математически не определён
    *  (деление на ноль); Task 04 (F-30) заменяет прежнее «(+ 0,00 %)» рядом
@@ -1780,6 +2087,21 @@ type Store = {
    * Option immer denselben Fertigstellungstermin zeigen.
    */
   constructionStartDate: string | null
+  /**
+   * VR3-04 — the Option's schedule stage and its Final Validation, both part
+   * of `OptionConfig` for the same reason `constructionStartDate` is: they
+   * describe ONE Option, and comparing two Options must compare two
+   * schedules rather than one global one. See the `OptionConfig` docblocks.
+   */
+  schedulePhases: readonly SchedulePhase[]
+  scheduleEdits: Record<string, SchedulePhaseEdit>
+  scheduleStartDate: string | null
+  schedulePlannedCompletion: string | null
+  scheduleDependencyConfirmed: readonly string[]
+  scheduleConfirmation: ScheduleConfirmation | null
+  reviewAcknowledged: Partial<Record<ReviewSectionId, ReviewAcknowledgement>>
+  reviewConfirmation: ReviewConfirmation | null
+  reviewFocusSectionId: ReviewSectionId | null
 
   projection: () => Projection
   editField: (key: 'wfl' | 'bgfOber' | 'we', value: Decimal, confirmed: boolean) => void
@@ -2000,6 +2322,50 @@ type Store = {
   /** Task 03 (F-16/PD-3): Scope Boundaries confirmed + every included
    * building's visible configuration confirmed. Export/preflight gate. */
   configurationComplete: () => boolean
+
+  /**
+   * VR3-04 — the SCHEDULE stage.
+   *
+   * Every one of these journals an undoable inverse: a schedule edit is a
+   * commercial decision about a delivery date, and rule 13's "no data
+   * change without an event" does not stop being true because the value is
+   * a duration rather than a price.
+   */
+  setScheduleStart: (iso: string | null) => void
+  setSchedulePlannedCompletion: (iso: string | null) => void
+  setSchedulePhaseDuration: (phaseId: string, halfMonths: number) => void
+  setSchedulePhaseLead: (phaseId: string, halfMonths: number) => void
+  setSchedulePhaseDependency: (phaseId: string, dependsOn: string | null) => void
+  /** Accept (or withdraw) a documented dependency question. */
+  setScheduleDependencyConfirmed: (phaseId: string, confirmed: boolean) => void
+  /** Records the confirmation that unlocks Final Validation. */
+  confirmSchedule: () => void
+
+  /**
+   * VR3-04 — FINAL VALIDATION.
+   *
+   * `acknowledgeReviewSection` records that one of twelve sections has been
+   * read, against the fingerprint of what it showed; `confirmFinalValidation`
+   * is the single explicit confirmation that makes Save available.
+   */
+  acknowledgeReviewSection: (sectionId: ReviewSectionId) => void
+  setReviewFocusSection: (sectionId: ReviewSectionId | null) => void
+  confirmFinalValidation: () => void
+  /** Return to the stage that owns one section's data, and come back to it. */
+  openReviewIssueRoute: (sectionId: ReviewSectionId) => void
+
+  /**
+   * VR3-04 — the EXPLICIT SAVE.
+   *
+   * Two steps, exactly like the building-scope save and Option creation:
+   * `beginOptionSave` states the intent and shows the busy action,
+   * `advanceOptionSave` performs it and either appends ONE immutable version
+   * or records the failure. A retry reuses the intended version number, so a
+   * failure followed by a success produces one version and not two.
+   */
+  beginOptionSave: () => void
+  advanceOptionSave: () => void
+  clearOptionSaveError: () => void
   setUiLanguage: (l: 'de' | 'en') => void
   setDensity: (d: 'komfortabel' | 'kompakt') => void
   /** Экран конвейера — konfigurator/vergleich/export/… (UI-состояние). */
@@ -2034,6 +2400,11 @@ const NO_TRANSIENT = {
   // exactly the same reason.
   scopeCommit: null,
   scopeRemovalPending: null,
+  // A save commitment is transient in exactly the same sense: the SAVED
+  // VERSION is durable, the attempt that produced it is not. Carrying a
+  // failed attempt to another surface would report a failure about an Option
+  // the user is no longer looking at.
+  optionSaveCommit: null,
 } as const
 
 /**
@@ -2570,6 +2941,393 @@ export function commercialResult(s: Store): CommercialResult {
   }
 }
 
+/* ─────────── VR3-04 · schedule, final validation and the save ────────── */
+
+/**
+ * The buildings the Option's schedule plans for.
+ *
+ * The SAVED building scope, not the legacy proposal's `included` map: the
+ * schedule's execution phases are keyed by the PROJECT's building ids
+ * (`A-BLDG-01`, `B-BLDG-C`), which is what `scopeBuildings` carries, and the
+ * legacy map's fixture ids describe a different set of buildings entirely.
+ * Mixing the two would silently plan for buildings the Option does not
+ * cover — the "one number, two meanings" class ACCEPT-01 recorded, one
+ * ticket on.
+ */
+export function optionScheduleBuildingIds(
+  s: Pick<Store, 'scopeBuildings' | 'scopeSelected'>,
+): readonly string[] {
+  return scopeSelectedIds(s)
+}
+
+/**
+ * Is the Schedule stage available at all?
+ *
+ * One transition, stated once: all included KGs complete. The spine, the
+ * stage's own gate and Final Validation's prerequisite all read this, so
+ * they cannot disagree about whether the schedule can be worked on.
+ */
+export function scheduleAvailableFor(
+  s: Pick<Store, 'kgConfig' | 'opportunityId'>,
+): boolean {
+  return kgConfigurationCompleteFor(s)
+}
+
+export function scheduleDerivationFor(s: Store) {
+  return scheduleDerivation(s, optionScheduleBuildingIds(s))
+}
+
+export function scheduleIssuesFor(s: Store): ScheduleIssue[] {
+  return scheduleIssues(s, optionScheduleBuildingIds(s))
+}
+
+export function scheduleFingerprintFor(s: Store): string {
+  return scheduleFingerprint(s, optionScheduleBuildingIds(s))
+}
+
+export function optionScheduleStageFor(s: Store): ScheduleStage {
+  return optionScheduleStage(s, optionScheduleBuildingIds(s))
+}
+
+export function scheduleConfirmedFor(s: Store): boolean {
+  return scheduleIsConfirmed(s, optionScheduleBuildingIds(s))
+}
+
+export function scheduleReadyToConfirmFor(s: Store): boolean {
+  return scheduleReadyToConfirm(s, optionScheduleBuildingIds(s))
+}
+
+export function scheduleCriticalPhaseFor(s: Store) {
+  return scheduleCriticalPhase(scheduleDerivationFor(s))
+}
+
+export function scheduleCriticalLeadFor(s: Store): number | null {
+  return scheduleCriticalLeadHalfMonths(scheduleDerivationFor(s))
+}
+
+export function activeSchedulePhasesFor(s: Store): SchedulePhase[] {
+  return activeSchedulePhases(s, optionScheduleBuildingIds(s))
+}
+
+/**
+ * Final Validation is available when the schedule is confirmed — and it
+ * STAYS available once a review has legitimately begun.
+ *
+ * The first half is the gate: not configuration completeness (that is the
+ * SCHEDULE's prerequisite, one stage earlier), and not a visit.
+ *
+ * The second half is what the approved target shows. T-031 is a review with
+ * nine of twelve sections read and an OPEN schedule issue beside them — a
+ * state that only exists if losing the schedule confirmation reopens the
+ * schedule SECTION rather than closing the whole stage. Slamming the door
+ * on a reader who has already worked through nine sections, because a date
+ * they were about to fix went stale, would throw away their work to enforce
+ * an ordering they had already satisfied once.
+ *
+ * Nothing is weakened by it: the schedule section becomes a BLOCKER with an
+ * exact route (`reviewSectionInputsFor`), and Save stays locked while any
+ * blocker exists.
+ */
+export function finalValidationAvailableFor(s: Store): boolean {
+  if (scheduleConfirmedFor(s)) return true
+  return Object.keys(s.reviewAcknowledged).length > 0
+    || s.reviewConfirmation !== null
+}
+
+/**
+ * The twelve review sections, each with the fingerprint of what it currently
+ * shows and its own findings.
+ *
+ * Every value is READ from its canonical authority here and nothing is
+ * copied into review state — the ticket's data invariant ("Validation and
+ * saved snapshot read canonical sources; they store no duplicate editable
+ * totals"). What the review stores is a fingerprint, which is a statement
+ * about values rather than a second copy of them.
+ */
+export function reviewSectionInputsFor(s: Store): ReviewSectionInput[] {
+  const inputs: ReviewSectionInput[] = []
+  const push = (
+    id: ReviewSectionId, fingerprint: string, issues: ReviewIssue[],
+  ) => { inputs.push({ id, fingerprint, issues }) }
+
+  // 1 — the project baseline this Option inherited.
+  const baseline = s.projectBaseline
+  push('projectBaseline',
+    baseline
+      ? [baseline.projectId, baseline.at, baseline.buildingCount,
+        baseline.bgfRSTotal, baseline.documentCount,
+        baseline.conflictDecisions.length, baseline.reanalysisCount].join(':')
+      : 'none',
+    baseline ? [] : [{
+      id: 'baselineMissing',
+      sectionId: 'projectBaseline',
+      severity: 'blocker',
+      messageKey: 'vr3.review.issue.baselineMissing',
+      route: 'project',
+    }])
+
+  // 2 — the confirmed and saved building scope.
+  const scopeSaved = scopeIsSaved(s)
+  push('buildings', scopeFingerprint(s), scopeSaved ? [] : [{
+    id: 'scopeNotSaved',
+    sectionId: 'buildings',
+    severity: 'blocker',
+    messageKey: 'vr3.review.issue.scopeNotSaved',
+    route: 'buildingScope',
+  }])
+
+  // 3 — the six explicit scope decisions.
+  const decisions = s.kgConfig
+  push('scopeDecisions',
+    decisions ? kgScopeFingerprint(decisions) : 'none',
+    kgScopeDecisionsComplete(s) ? [] : [{
+      id: 'scopeDecisionsOpen',
+      sectionId: 'scopeDecisions',
+      severity: 'blocker',
+      messageKey: 'vr3.review.issue.scopeDecisionsOpen',
+      values: { decided: kgDecidedScopeCount(s), total: KG_SCOPE_GROUPS.length },
+      route: 'scopeBoundaries',
+    }])
+
+  // 4–9 — one section per cost group. An EXCLUDED group is a section too:
+  // "out of scope by decision" is exactly the kind of thing a reviewer has
+  // to see and acknowledge, and hiding it would be the D-016 defect again.
+  for (const group of KG_SCOPE_GROUPS) {
+    const sectionId = `kg${group.slice(3)}` as ReviewSectionId
+    const progress = kgChapterProgressFor(s, group)
+    const decision = decisions?.scope[group] ?? 'undecided'
+    const fingerprint = progress
+      ? [decision, progress.state, progress.requiredDecisions,
+        progress.decidedDecisions, progress.selectedServiceCount,
+        progress.invalidServiceIds.join(','),
+        progress.blockedServiceIds.join(',')].join(':')
+      : `${decision}:none`
+    const blocked = progress !== null
+      && progress.state !== 'complete'
+      && progress.state !== 'outOfScope'
+    push(sectionId, fingerprint, blocked ? [{
+      id: `kgIncomplete:${group}`,
+      sectionId,
+      severity: 'blocker',
+      messageKey: progress!.state === 'invalid'
+        ? 'vr3.review.issue.kgInvalid'
+        : 'vr3.review.issue.kgIncomplete',
+      values: { group: `KG${NNBSP}${group.slice(3)}` },
+      route: sectionId as ReviewIssue['route'],
+    }] : [])
+  }
+
+  // 10 — the schedule. It can only be reached with a confirmed schedule, so
+  // an issue here means the confirmation was LOST after the review began:
+  // an edit, a withdrawn dependency acceptance, a building leaving the
+  // scope. The sentence names which, because "not confirmed" is not a route.
+  const scheduleStage = optionScheduleStageFor(s)
+  const scheduleErrorList = scheduleErrors(s, optionScheduleBuildingIds(s))
+  const scheduleWarningList = scheduleWarnings(s, optionScheduleBuildingIds(s))
+  const scheduleIssueList: ReviewIssue[] = []
+  if (scheduleStage !== 'CONFIRMED') {
+    const first = scheduleErrorList[0] ?? scheduleWarningList[0] ?? null
+    scheduleIssueList.push({
+      id: 'scheduleNotConfirmed',
+      sectionId: 'schedule',
+      severity: 'blocker',
+      messageKey: first
+        ? first.messageKey
+        : scheduleStage === 'STALE'
+          ? 'vr3.review.issue.scheduleStale'
+          : 'vr3.review.issue.scheduleNotConfirmed',
+      values: first?.values,
+      durationHalfMonths: first?.durationHalfMonths,
+      route: 'schedule',
+    })
+  }
+  push('schedule', scheduleFingerprintFor(s), scheduleIssueList)
+
+  // 11 — assumptions and the warnings the Product permits to travel with an
+  // indicative offer. These are `permittedWarning`, never blockers: an
+  // indicative offer that could not carry a permitted assumption would not
+  // be an indicative offer.
+  const assumptions = baseline?.permittedAssumptionIds ?? []
+  const openQuestionIds = baseline?.openQuestionIds ?? []
+  push('assumptions',
+    [assumptions.join(','), openQuestionIds.join(','),
+      s.esConfirmed ? 'es' : '-', s.regionalfaktorActive ? 'rf' : '-'].join('#'),
+    [
+      ...assumptions.map((id): ReviewIssue => ({
+        id: `assumption:${id}`,
+        sectionId: 'assumptions',
+        severity: 'permittedWarning',
+        messageKey: 'vr3.review.issue.permittedAssumption',
+        values: { assumption: id },
+        route: 'project',
+      })),
+      ...(s.regionalfaktorActive ? [] : [{
+        id: 'regionalfaktorInactive',
+        sectionId: 'assumptions' as ReviewSectionId,
+        severity: 'permittedWarning' as const,
+        messageKey: 'vr3.review.issue.regionalfaktorInactive',
+        route: 'scopeBoundaries' as ReviewIssue['route'],
+      }]),
+    ])
+
+  // 12 — the canonical commercial result. A result whose own composition
+  // does not sum to its own total is a release blocker (rule 32), and this
+  // is the surface that says so instead of printing it anyway.
+  const result = commercialResult(s)
+  push('commercialResult',
+    [result.version, result.total.exact.toFixed(2), result.totalLabel,
+      result.coverage, result.uncertaintyPp].join(':'),
+    [
+      ...(result.reconciles ? [] : [{
+        id: 'resultDrift',
+        sectionId: 'commercialResult' as ReviewSectionId,
+        severity: 'blocker' as const,
+        messageKey: 'vr3.review.issue.resultDrift',
+        route: 'scopeBoundaries' as ReviewIssue['route'],
+      }]),
+      ...(result.coverage === 'subtotal' ? [{
+        id: 'resultSubtotal',
+        sectionId: 'commercialResult' as ReviewSectionId,
+        severity: 'permittedWarning' as const,
+        messageKey: 'vr3.review.issue.resultSubtotal',
+        route: 'scopeBoundaries' as ReviewIssue['route'],
+      }] : []),
+      ...(result.uncertaintyPp > 25 ? [{
+        id: 'resultUncertainty',
+        sectionId: 'commercialResult' as ReviewSectionId,
+        severity: 'permittedWarning' as const,
+        messageKey: 'vr3.review.issue.resultUncertainty',
+        values: { pp: result.uncertaintyPp },
+        route: 'scopeBoundaries' as ReviewIssue['route'],
+      }] : []),
+    ])
+
+  return inputs
+}
+
+export function reviewFingerprintFor(s: Store): string {
+  return reviewFingerprint(reviewSectionInputsFor(s))
+}
+
+export function reviewProgressFor(s: Store): ReviewProgress {
+  return reviewProgress(s, reviewSectionInputsFor(s))
+}
+
+export function reviewSectionStatusFor(
+  s: Store, sectionId: ReviewSectionId,
+): ReviewSectionStatus {
+  const input = reviewSectionInputsFor(s).find((c) => c.id === sectionId)
+  if (!input) return 'PENDING'
+  return reviewSectionStatus(s, input)
+}
+
+export function optionReviewStageFor(s: Store): ReviewStage {
+  return optionReviewStage(
+    s, reviewSectionInputsFor(s), finalValidationAvailableFor(s),
+  )
+}
+
+export function reviewReadyToConfirmFor(s: Store): boolean {
+  return reviewReadyToConfirm(
+    s, reviewSectionInputsFor(s), finalValidationAvailableFor(s),
+  )
+}
+
+export function finalValidationConfirmedFor(s: Store): boolean {
+  return reviewIsConfirmed(
+    s, reviewSectionInputsFor(s), finalValidationAvailableFor(s),
+  )
+}
+
+export function nextReviewSectionFor(s: Store): ReviewSectionId | null {
+  return nextReviewSection(s, reviewSectionInputsFor(s))
+}
+
+export function optionSaveStageFor(s: Store): SaveStage {
+  return optionSaveStage(
+    s, s.activeOptionId, finalValidationConfirmedFor(s), reviewFingerprintFor(s),
+  )
+}
+
+export function unsavedWorkingChangesFor(s: Store): boolean {
+  return hasUnsavedWorkingChanges(s, s.activeOptionId, reviewFingerprintFor(s))
+}
+
+export function savedOptionVersionsFor(
+  s: Pick<Store, 'savedOptionVersions'>, optionId: string | null,
+): readonly SavedOptionVersion[] {
+  return savedVersionsFor(s, optionId)
+}
+
+export function latestSavedOptionVersion(
+  s: Pick<Store, 'savedOptionVersions'>, optionId: string | null,
+): SavedOptionVersion | null {
+  return latestSavedVersion(s, optionId)
+}
+
+/**
+ * Is the client projection of the working copy valid RIGHT NOW?
+ *
+ * Checked at save time and stored on the saved version, so Client Mode reads
+ * one recorded fact instead of re-deriving a projection every time it is
+ * asked. A projection is valid when the Option has a saved building scope,
+ * a complete configuration and a commercial result that reconciles: those
+ * are the three things a client-facing number rests on.
+ */
+export function clientProjectionValidFor(s: Store): boolean {
+  return scopeIsSaved(s)
+    && kgConfigurationCompleteFor(s)
+    && commercialResult(s).reconciles
+}
+
+/**
+ * THE Client Mode predicate, per Option.
+ *
+ * It replaces `canBeginConfiguration && configurationComplete`, which was
+ * the audit's F-002: a working configuration nobody had reviewed was already
+ * client-ready, because persistence was the only kind of commitment the
+ * product had. Now a valid SAVED baseline is the only thing that unlocks a
+ * meeting, and continuing to work never revokes it (M-3).
+ */
+export function clientModeAvailableForOption(
+  s: Pick<Store, 'savedOptionVersions'>, optionId: string | null,
+): boolean {
+  return clientModeAvailableFor(s, optionId)
+}
+
+export function clientModeLockReasonFor(
+  s: Pick<Store, 'savedOptionVersions'>, optionId: string | null,
+): ClientModeLockReason | null {
+  return clientModeLockReason(s, optionId)
+}
+
+export function savedClientBaseline(
+  s: Pick<Store, 'savedOptionVersions'>, optionId: string | null,
+): SavedOptionVersion | null {
+  return clientBaselineFor(s, optionId)
+}
+
+/**
+ * The reconciliation the receipt and the review both print: does the SAVED
+ * baseline still say the same thing as the live canonical result?
+ *
+ * `true` with unsaved working changes is normal and expected — it means the
+ * changes did not move the number. `false` is the honest statement that the
+ * working copy has moved past its saved baseline commercially, which is
+ * different from having moved at all.
+ */
+export function savedBaselineMatchesLiveResult(s: Store): boolean | null {
+  const saved = latestSavedVersion(s, s.activeOptionId)
+  if (!saved) return null
+  const result = commercialResult(s)
+  return savedResultMatchesLive(saved, {
+    totalExact: result.total.exact.toFixed(2),
+    totalLabel: result.totalLabel,
+    coverage: result.coverage,
+    uncertaintyPp: result.uncertaintyPp,
+  })
+}
+
 /**
  * The reconciliation the live diagnostic reads (F-001).
  *
@@ -2685,32 +3443,28 @@ export function configForOption(
 }
 
 /**
- * REDESIGN R3: Options eligible for client presentation — the SAME PD-3
- * readiness signal that already gates Export for that Option
- * (`canBeginConfiguration && configurationComplete`), evaluated per Option
- * from its own stored/live config. Deliberately not a new eligibility
- * model: "client-presentable" and "ready to export" are one question, not
- * two. `buildingConflicts` is Opportunity-level (shared by every Option,
- * not part of `OptionConfig`), so it always comes from the live store even
- * when reading another Option's stored config — the exact pattern
- * `openOption` already uses for the same reason.
+ * Options eligible for client presentation — a VALID SAVED BASELINE, and
+ * nothing else (VR3-04, audit F-002).
+ *
+ * The replaced predicate was `canBeginConfiguration && configurationComplete`
+ * per Option, argued at the time as "client-presentable and ready to export
+ * are one question, not two". They are one question, and the answer both of
+ * them needed was the one the product did not have: an explicit saved
+ * baseline. Under the old predicate a configuration that was merely complete
+ * — never reviewed, never confirmed, never saved by anybody — was already
+ * client-ready, because continuous persistence was the only kind of
+ * commitment that existed.
+ *
+ * `clientBaselineFor` is now the single authority (this ticket's done
+ * condition: "Client Mode availability has one authoritative predicate"), and
+ * it reads a RECORD rather than re-deriving a projection: the baseline was
+ * validated when it was saved, and it is immutable, so continuing to work
+ * never revokes a client's right to see what was saved (M-3).
  */
 export function eligibleClientOptions(
-  s: Pick<Store, 'options' | 'activeOptionId' | 'optionConfigs' | 'buildingConflicts'
-    | 'opportunityId' | keyof OptionConfig>,
+  s: Pick<Store, 'options' | 'savedOptionVersions'>,
 ): Array<{ id: string; name: string }> {
-  return s.options.filter((o) => {
-    const cfg = configForOption(s, o.id)
-    if (!cfg) return false
-    const withConflicts = {
-      ...cfg,
-      buildingConflicts: s.buildingConflicts,
-      // The catalogue is resolved from the PROJECT, which is an Opportunity-
-      // level fact and therefore not part of an Option's own config.
-      opportunityId: s.opportunityId,
-    }
-    return canBeginConfiguration(withConflicts) && configurationComplete(withConflicts)
-  })
+  return s.options.filter((o) => clientModeAvailableFor(s, o.id))
 }
 
 /**
@@ -3903,6 +4657,48 @@ const store = createStore<Store>((set, get) => {
    * building that is no longer in scope is a metric detached from its
    * owner — the one thing the building-scope surface exists to prevent.
    */
+  /**
+   * One writer for every phase override of the schedule.
+   *
+   * Three actions, one journalled transition: duration, lead and dependency
+   * are the same kind of change to the same record, and three copies of this
+   * closure would be three places for the inverse to drift.
+   *
+   * ACCEPTING A DEPENDENCY IS WITHDRAWN BY EDITING IT. Changing the
+   * dependency a documented question hangs on drops that phase's acceptance:
+   * the question was answered ABOUT a dependency, so a different dependency
+   * has not been answered.
+   */
+  const editSchedulePhase = (
+    phaseId: string, patch: SchedulePhaseEdit, labelKey: string,
+  ) => {
+    const s = get()
+    const phase = s.schedulePhases.find((candidate) => candidate.id === phaseId)
+    if (!phase) return
+    const previousEdits = s.scheduleEdits
+    const previousConfirmed = s.scheduleDependencyConfirmed
+    const nextEdits: Record<string, SchedulePhaseEdit> = {
+      ...previousEdits,
+      [phaseId]: { ...previousEdits[phaseId], ...patch },
+    }
+    const nextConfirmed = Object.hasOwn(patch, 'dependsOn')
+      ? previousConfirmed.filter((id) => id !== phaseId)
+      : previousConfirmed
+    const write = (
+      edits: Record<string, SchedulePhaseEdit>, confirmed: readonly string[],
+    ) => set({ scheduleEdits: edits, scheduleDependencyConfirmed: confirmed })
+    write(nextEdits, nextConfirmed)
+    apply({
+      kind: 'value.edited',
+      label: `Terminplan geändert · ${phaseId}`,
+      labelKey,
+      labelValues: { phase: phaseId },
+      deltaExact: null,
+      inverse: () => write(previousEdits, previousConfirmed),
+      forward: () => write(nextEdits, nextConfirmed),
+    })
+  }
+
   const applyScopeSelection = (id: string, next: boolean, name: string) => {
     const capture = (state: Pick<Store, 'scopeSelected' | 'scopeActiveBuildingId'>) => ({
       scopeSelected: state.scopeSelected,
@@ -4009,6 +4805,8 @@ const store = createStore<Store>((set, get) => {
     buildingConflicts: INITIAL_BUILDING_CONFLICTS,
     activeGrundrisse: 'V2',
     snapshots: [],
+    savedOptionVersions: {},
+    optionSaveCommit: null,
     activeDelta: null,
     preview: null,
     undoToast: null,
@@ -4775,8 +5573,15 @@ const store = createStore<Store>((set, get) => {
 
     setMode: (m) => {
       const s = get()
+      // VR3-04: the entry gate is a VALID SAVED BASELINE, not configuration
+      // completeness. The building gate stays in the predicate because an
+      // Option whose scope is not saved cannot have a saved baseline either
+      // — keeping it makes the refusal explicable at the point of refusal
+      // rather than only downstream.
       if (m === 'praesentation'
-        && (s.level !== 'option' || !canBeginConfiguration(s))) return
+        && (s.level !== 'option'
+          || !canBeginConfiguration(s)
+          || !clientModeAvailableFor(s, s.activeOptionId))) return
       const outputView = pipelineViewForOutputProfile(m, s.pipelineView)
       // R3 isolation contract: entering Kundenansicht starts the
       // presentation-only viewed Option at the internally active one, for
@@ -5292,6 +6097,21 @@ const store = createStore<Store>((set, get) => {
         fresh.kgConfig = initialKgDecisions(catalogue)
         fresh.kgScopeConfirmedFingerprint = null
         fresh.coverage = coverageFromKgDecisions(fresh.kgConfig)
+      }
+      // VR3-04: the Option INHERITS the project's schedule model the same
+      // way it inherits the building scope — phases, durations, dependencies
+      // and the documented dependency questions, once, at creation. The
+      // construction start is inherited too, so the stage opens on a real
+      // plan rather than on an empty date field, and `constructionStartDate`
+      // is set from the same value so the released presentation projection
+      // and the offer panel's Bauzeit hero never disagree with it.
+      const project = demoProject(s.opportunityId)
+      const inheritedPhases = schedulePhasesFromProject(project)
+      if (project && inheritedPhases.length > 0) {
+        fresh.schedulePhases = inheritedPhases
+        fresh.scheduleStartDate = project.schedule.constructionStartDate
+        fresh.schedulePlannedCompletion = project.schedule.plannedCompletionDate
+        fresh.constructionStartDate = project.schedule.constructionStartDate
       }
       // Состояние ДО создания — целиком, чтобы отмена вернула его, а не
       // приблизила: рабочая копия, хранилище конфигураций, активная Option
@@ -5933,6 +6753,345 @@ const store = createStore<Store>((set, get) => {
         inverse: () => write(prev),
         forward: () => write(fingerprint),
       })
+    },
+
+    /* ─────────── VR3-04 · the schedule stage's own actions ─────────── */
+
+    setScheduleStart: (iso) => {
+      const s = get()
+      if (s.scheduleStartDate === iso) return
+      const previousStart = s.scheduleStartDate
+      const previousCompletion = s.schedulePlannedCompletion
+      const previousAnchor = s.constructionStartDate
+      // MOVING THE START MOVES THE PLAN, not the duration. That is the
+      // released anchor-shift semantics the date field already promised
+      // ("Verschiebt die Termine unten; die Bauzeit selbst bleibt gleich"),
+      // and keeping the planned completion where it was would report an
+      // overshoot for a plan the user only slid sideways.
+      const shifted = iso !== null && previousStart !== null
+        && previousCompletion !== null
+        && schedulePositionOf(iso) !== null
+        && schedulePositionOf(previousStart) !== null
+        && schedulePositionOf(previousCompletion) !== null
+        ? addHalfMonths(previousCompletion, halfMonthsBetween(previousStart, iso))
+        : previousCompletion
+      const write = (
+        start: string | null, completion: string | null, anchor: string | null,
+      ) => set({
+        scheduleStartDate: start,
+        schedulePlannedCompletion: completion,
+        // ONE date, one owner. `constructionStartDate` is what the released
+        // presentation projection and the offer panel's Bauzeit hero both
+        // shift by, so the two must never diverge — two owners of one date
+        // is the defect that field's own docblock records.
+        constructionStartDate: anchor,
+      })
+      write(iso, shifted, iso)
+      apply({
+        kind: 'value.edited',
+        label: iso
+          ? `Baubeginn auf ${germanDate(iso)} gesetzt`
+          : 'Baubeginn zurückgesetzt',
+        labelKey: iso ? 'vr3.journal.scheduleStartSet' : 'vr3.journal.scheduleStartCleared',
+        labelValues: iso ? { date: germanDate(iso) } : undefined,
+        deltaExact: null,
+        inverse: () => write(previousStart, previousCompletion, previousAnchor),
+        forward: () => write(iso, shifted, iso),
+      })
+    },
+
+    setSchedulePlannedCompletion: (iso) => {
+      const s = get()
+      if (s.schedulePlannedCompletion === iso) return
+      const previous = s.schedulePlannedCompletion
+      const write = (value: string | null) => set({ schedulePlannedCompletion: value })
+      write(iso)
+      apply({
+        kind: 'value.edited',
+        label: iso
+          ? `Geplante Fertigstellung auf ${germanDate(iso)} gesetzt`
+          : 'Geplante Fertigstellung zurückgesetzt',
+        labelKey: iso
+          ? 'vr3.journal.scheduleCompletionSet'
+          : 'vr3.journal.scheduleCompletionCleared',
+        labelValues: iso ? { date: germanDate(iso) } : undefined,
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(iso),
+      })
+    },
+
+    setSchedulePhaseDuration: (phaseId, halfMonths) => {
+      editSchedulePhase(phaseId, { durationHalfMonths: halfMonths },
+        'vr3.journal.schedulePhaseDuration')
+    },
+
+    setSchedulePhaseLead: (phaseId, halfMonths) => {
+      editSchedulePhase(phaseId, { leadHalfMonths: halfMonths },
+        'vr3.journal.schedulePhaseLead')
+    },
+
+    setSchedulePhaseDependency: (phaseId, dependsOn) => {
+      editSchedulePhase(phaseId, { dependsOn },
+        'vr3.journal.schedulePhaseDependency')
+    },
+
+    setScheduleDependencyConfirmed: (phaseId, confirmed) => {
+      const s = get()
+      const phase = activeSchedulePhasesFor(s)
+        .find((candidate) => candidate.id === phaseId)
+      // Only a dependency that CARRIES a documented question can be
+      // accepted. Accepting one that never asked anything would be a
+      // recorded decision about nothing.
+      if (!phase?.dependencyQuestionId) return
+      const already = s.scheduleDependencyConfirmed.includes(phaseId)
+      if (already === confirmed) return
+      const previous = s.scheduleDependencyConfirmed
+      const next = confirmed
+        ? [...previous, phaseId]
+        : previous.filter((id) => id !== phaseId)
+      const write = (value: readonly string[]) =>
+        set({ scheduleDependencyConfirmed: value })
+      write(next)
+      apply({
+        kind: 'value.confirmed',
+        label: confirmed
+          ? `Terminabhängigkeit bestätigt · ${phase.dependencyQuestionId}`
+          : `Terminabhängigkeit zurückgezogen · ${phase.dependencyQuestionId}`,
+        labelKey: confirmed
+          ? 'vr3.journal.scheduleDependencyConfirmed'
+          : 'vr3.journal.scheduleDependencyWithdrawn',
+        labelValues: { question: phase.dependencyQuestionId },
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(next),
+      })
+    },
+
+    confirmSchedule: () => {
+      const s = get()
+      // The gate is re-read AT the transition, never trusted from the render
+      // that drew the button — the same boundary `advanceBuildingScopeSave`
+      // guards, for the same reason.
+      if (!scheduleAvailableFor(s) || !scheduleReadyToConfirmFor(s)) return
+      const fingerprint = scheduleFingerprintFor(s)
+      const previous = s.scheduleConfirmation
+      const next: ScheduleConfirmation = {
+        fingerprint,
+        actor: SCOPE_ACTOR,
+        at: new Date().toISOString(),
+      }
+      const write = (value: ScheduleConfirmation | null) =>
+        set({ scheduleConfirmation: value })
+      write(next)
+      apply({
+        kind: 'value.confirmed',
+        label: 'Terminplan bestätigt',
+        labelKey: 'vr3.journal.scheduleConfirmed',
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(next),
+      })
+    },
+
+    /* ───────────── VR3-04 · Final Validation's own actions ──────────── */
+
+    acknowledgeReviewSection: (sectionId) => {
+      const s = get()
+      if (!finalValidationAvailableFor(s)) return
+      const input = reviewSectionInputsFor(s).find((c) => c.id === sectionId)
+      if (!input) return
+      // A section with a blocker cannot be marked read: the review would
+      // then count a section whose own content is not yet valid, which is
+      // exactly the "complete means reviewed" conflation this stage exists
+      // to remove.
+      if (input.issues.some((issue) => issue.severity === 'blocker')) return
+      const previous = s.reviewAcknowledged
+      const next = {
+        ...previous,
+        [sectionId]: {
+          fingerprint: input.fingerprint,
+          actor: SCOPE_ACTOR,
+          at: new Date().toISOString(),
+        },
+      }
+      const write = (
+        value: Partial<Record<ReviewSectionId, ReviewAcknowledgement>>,
+      ) => set({ reviewAcknowledged: value, reviewFocusSectionId: sectionId })
+      write(next)
+      apply({
+        kind: 'value.confirmed',
+        label: `Prüfabschnitt geprüft · ${sectionId}`,
+        labelKey: 'vr3.journal.reviewSectionAcknowledged',
+        labelValues: { section: sectionId },
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(next),
+      })
+    },
+
+    setReviewFocusSection: (sectionId) => {
+      if (get().reviewFocusSectionId === sectionId) return
+      set({ reviewFocusSectionId: sectionId })
+    },
+
+    /**
+     * Leave the review for the stage that owns a section's data, remembering
+     * where to come back to.
+     *
+     * The return is not a history entry: the review REMEMBERS the section
+     * (`reviewFocusSectionId`), so coming back lands on it rather than at the
+     * top of a twelve-section page — which on a long review is the difference
+     * between an edit route and losing your place (T-031).
+     */
+    openReviewIssueRoute: (sectionId) => {
+      const definition = REVIEW_SECTIONS.find((section) => section.id === sectionId)
+      if (!definition) return
+      set({ reviewFocusSectionId: sectionId })
+      const route = definition.route
+      if (route === 'project') { get().backToOpportunity(); return }
+      if (route === 'buildingScope') { get().setPipelineView('buildingScope'); return }
+      get().setPipelineView('konfigurator')
+      if (route === 'scopeBoundaries') {
+        get().openConfiguratorStepAt(CONFIGURATOR_STEP.SCOPE_BOUNDARIES)
+        return
+      }
+      if (route === 'schedule') {
+        get().openConfiguratorStepAt(CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE)
+        return
+      }
+      const group = `KG_${route.slice(2)}` as KgScopeGroup
+      get().openKgChapter(group)
+    },
+
+    confirmFinalValidation: () => {
+      const s = get()
+      if (!reviewReadyToConfirmFor(s)) return
+      const fingerprint = reviewFingerprintFor(s)
+      const previous = s.reviewConfirmation
+      const next: ReviewConfirmation = {
+        fingerprint,
+        actor: SCOPE_ACTOR,
+        at: new Date().toISOString(),
+      }
+      const write = (value: ReviewConfirmation | null) =>
+        set({ reviewConfirmation: value })
+      write(next)
+      apply({
+        kind: 'value.confirmed',
+        label: 'Finale Prüfung bestätigt',
+        labelKey: 'vr3.journal.finalValidationConfirmed',
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(next),
+      })
+    },
+
+    /* ──────────────── VR3-04 · the explicit save ───────────────── */
+
+    beginOptionSave: () => {
+      const s = get()
+      const optionId = s.activeOptionId
+      if (!optionId) return
+      if (s.optionSaveCommit?.stage === 'SAVING') return
+      if (!finalValidationConfirmedFor(s)) return
+      // The intended version is minted HERE and reused by every retry of
+      // this attempt, so a failure followed by a success produces one
+      // version and not two. A retry of a FAILED commit keeps the number the
+      // failed attempt reserved.
+      const intendedVersion = s.optionSaveCommit?.optionId === optionId
+        && s.optionSaveCommit.errorKey !== null
+        ? s.optionSaveCommit.intendedVersion
+        : nextSavedVersionNumber(s, optionId)
+      set({
+        optionSaveCommit: { optionId, stage: 'SAVING', errorKey: null, intendedVersion },
+      })
+    },
+
+    advanceOptionSave: () => {
+      const s = get()
+      const commit = s.optionSaveCommit
+      if (!commit?.stage) return
+      const optionId = commit.optionId
+      if (optionId !== s.activeOptionId) {
+        set({
+          optionSaveCommit: {
+            ...commit, stage: null, errorKey: 'vr3.save.error.optionChanged',
+          },
+        })
+        return
+      }
+      // Re-read the gate AT the commitment. Editing while the save is in
+      // flight is a real race, and this is where it is caught: the save
+      // fails, the confirmed validation stays confirmed, and nothing the
+      // user did is lost.
+      if (!finalValidationConfirmedFor(s)) {
+        set({
+          optionSaveCommit: {
+            ...commit, stage: null, errorKey: 'vr3.save.error.changed',
+          },
+        })
+        return
+      }
+      const existing = savedVersionsFor(s, optionId)
+      // IDEMPOTENT BY IDENTITY, not by luck: a version whose reviewFingerprint
+      // is already saved is the same commitment, so a double-advance appends
+      // nothing rather than minting a second identical version.
+      const reviewPrint = reviewFingerprintFor(s)
+      if (existing.some((version) => version.reviewFingerprint === reviewPrint)) {
+        set({ optionSaveCommit: null })
+        return
+      }
+      const result = commercialResult(s)
+      const option = s.options.find((candidate) => candidate.id === optionId)
+      const baseline = s.projectBaseline
+      const version: SavedOptionVersion = deepFreeze({
+        optionId,
+        optionName: option?.name ?? optionId,
+        version: commit.intendedVersion,
+        savedAt: new Date().toISOString(),
+        savedBy: SCOPE_ACTOR,
+        projectBaselineId: baseline ? `${baseline.projectId}@${baseline.at}` : null,
+        buildingScopeFingerprint: scopeFingerprint(s),
+        configurationFingerprint: s.kgConfig ? kgScopeFingerprint(s.kgConfig) : '',
+        scheduleFingerprint: scheduleFingerprintFor(s),
+        reviewFingerprint: reviewPrint,
+        clientProjectionVersion: CLIENT_PROJECTION_VERSION,
+        clientProjectionValid: clientProjectionValidFor(s),
+        result: {
+          totalExact: result.total.exact.toFixed(2),
+          totalDisplay: result.total.display,
+          totalLabel: result.totalLabel,
+          coverage: result.coverage,
+          uncertaintyPp: result.uncertaintyPp,
+          byCostGroup: result.byCostGroup.map((line) => ({
+            group: line.group,
+            exact: line.exact ? line.exact.toFixed(2) : null,
+          })),
+          resultVersion: result.version,
+        },
+      })
+      const previous = s.savedOptionVersions
+      const next = {
+        ...previous,
+        [optionId]: Object.freeze([...existing, version]),
+      }
+      // NO INVERSE. A saved Option version is the client baseline (M-3), and
+      // an offer that could be un-saved by pressing Rückgängig would be a
+      // baseline the client's own copy might no longer match. Same contract
+      // as a sent snapshot, for the same reason.
+      set({ savedOptionVersions: next, optionSaveCommit: null })
+      apply({
+        kind: 'value.confirmed',
+        label: `Option gespeichert · ${version.optionName} · Version ${version.version}`,
+        labelKey: 'vr3.journal.optionSaved',
+        labelValues: { option: version.optionName, version: version.version },
+        deltaExact: null,
+      })
+    },
+
+    clearOptionSaveError: () => {
+      if (get().optionSaveCommit?.errorKey) set({ optionSaveCommit: null })
     },
 
     openKgChapter: (group) => {

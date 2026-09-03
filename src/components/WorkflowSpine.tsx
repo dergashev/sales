@@ -1,11 +1,15 @@
 import {
   KG_CHAPTER_STEP,
   canBeginConfiguration,
+  clientModeAvailableForOption,
   hasKgConfiguration,
   kgChapterProgressFor,
   kgConfigurationCompleteFor,
   kgDecidedScopeCount,
   kgScopeDecisionsComplete,
+  optionReviewStageFor,
+  optionSaveStageFor,
+  optionScheduleStageFor,
   useStore,
 } from '../state/store'
 import { KG_SCOPE_GROUPS, type KgScopeGroup } from '../engine/kgConfiguration'
@@ -72,6 +76,10 @@ export function OptionWorkflowSpine() {
   const decided = kgDecidedScopeCount(s)
   const totalGroups = KG_SCOPE_GROUPS.length
   const configurationComplete = kgConfigurationCompleteFor(s)
+  const scheduleStage = optionScheduleStageFor(s)
+  const reviewStage = optionReviewStageFor(s)
+  const saveStage = optionSaveStageFor(s)
+  const clientAvailable = clientModeAvailableForOption(s, s.activeOptionId)
   const openStep = s.openConfiguratorStep
   const decisionsReason = t('vr3.kg.gate.decisionsDetail', {
     decided, total: totalGroups,
@@ -188,11 +196,32 @@ export function OptionWorkflowSpine() {
     },
     ...KG_SCOPE_GROUPS.map(kgStep),
     {
+      /**
+       * VR3-04 — the schedule is a STAGE, so it has the states of one.
+       *
+       * `done` is a CONFIRMED schedule and nothing else. `attention` is a
+       * schedule that is invalid, or one whose confirmation has gone stale,
+       * or one whose documented dependency question is still unanswered:
+       * three different reasons, one visible "this needs you again", and
+       * the reason names which. Showing a tick for a schedule that had been
+       * confirmed and then edited would be the "CONFIRMED without
+       * qualification" the interaction legend forbids — the same rule the
+       * building-scope step above already follows.
+       */
       id: 'schedule',
       label: t('vr3.spine.step.schedule'),
-      state: inConfigurator && openStep === 'commercialSchedule'
-        ? 'current'
-        : configurationComplete ? 'upcoming' : 'blocked',
+      state: !configurationComplete
+        ? 'blocked'
+        : inConfigurator && openStep === 'commercialSchedule'
+          ? 'current'
+          : scheduleStage === 'CONFIRMED'
+            ? 'done'
+            : scheduleStage === 'INVALID' || scheduleStage === 'STALE'
+              || scheduleStage === 'WARNING'
+              ? 'attention'
+              : 'upcoming',
+      previouslyDone: inConfigurator && openStep === 'commercialSchedule'
+        && scheduleStage === 'CONFIRMED',
       blockedReason: configurationComplete
         ? undefined
         : !scopeComplete ? decisionsReason : t('vr3.kg.gate.scheduleReason'),
@@ -202,12 +231,54 @@ export function OptionWorkflowSpine() {
           s.openConfiguratorStepAt('commercialSchedule')
         }
         : undefined,
+      blockedRoute: configurationComplete ? undefined : () => {
+        s.setPipelineView('konfigurator')
+        s.openConfiguratorStepAt('commercialSchedule')
+      },
     },
     {
+      /**
+       * VR3-04 — Final Validation was hardcoded `blocked` with a generic
+       * reason, because the stage did not exist. It now carries the state of
+       * the review and, once the Option is saved, of the save: `done` means
+       * a saved Option, `attention` means a review with issues or one that
+       * went stale, and the locked reason names the schedule it waits for.
+       */
       id: 'finalValidation',
       label: t('vr3.spine.step.finalValidation'),
-      state: 'blocked',
-      blockedReason: t('vr3.spine.reason.locked'),
+      state: reviewStage === 'UNAVAILABLE'
+        ? 'blocked'
+        : inConfigurator && openStep === 'finalValidation'
+          ? 'current'
+          : saveStage === 'SAVED'
+            ? 'done'
+            : reviewStage === 'ISSUES' || reviewStage === 'STALE'
+              ? 'attention'
+              : 'upcoming',
+      previouslyDone: inConfigurator && openStep === 'finalValidation'
+        && saveStage === 'SAVED',
+      blockedReason: reviewStage === 'UNAVAILABLE'
+        ? (configurationComplete
+          ? t('vr3.spine.reason.needsSchedule')
+          : t('vr3.kg.gate.scheduleReason'))
+        : undefined,
+      rationale: saveStage === 'SAVED' && clientAvailable
+        ? t('vr3.spine.rationale.clientAvailable')
+        : undefined,
+      onSelect: reviewStage === 'UNAVAILABLE'
+        ? undefined
+        : () => {
+          s.setPipelineView('konfigurator')
+          s.openConfiguratorStepAt('finalValidation')
+        },
+      // T-016's principle one stage later: a locked stage is REACHABLE so it
+      // can explain itself, and it lands on its own gate.
+      blockedRoute: reviewStage === 'UNAVAILABLE'
+        ? () => {
+          s.setPipelineView('konfigurator')
+          s.openConfiguratorStepAt('finalValidation')
+        }
+        : undefined,
     },
   ]
 

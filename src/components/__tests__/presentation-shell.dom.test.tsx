@@ -3,10 +3,15 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PresentationShell, PresentationFlowScreen, type Candidate } from '../PresentationShell'
-import { completeKgConfiguration } from '../../test/offer-option'
+import {
+  completeBuildingScope,
+  completeKgConfiguration,
+  enterOptionWorkspace,
+  saveOptionBaseline,
+} from '../../test/offer-option'
 import { allServices } from '../../engine/kgConfiguration'
 import {
-  __resetStoreForTests, configForOption, includedBuildingIds, kgCatalogueFor,
+  __resetStoreForTests, configForOption, kgCatalogueFor,
   projectionForOption, useStore,
 } from '../../state/store'
 
@@ -78,45 +83,69 @@ function energyStandardServiceId(): string | null {
   return allServices(catalogue).find((svc) => svc.id.endsWith('-400-es'))?.id ?? null
 }
 
-function buildTwoEligibleOptions(opportunityId?: string) {
-  if (opportunityId) st().openOpportunity(opportunityId)
-  st().resolveWflConflict('customer')
-  st().confirmProjectParams()
+/**
+ * VR3-04: build ONE saved, client-eligible Option.
+ *
+ * Same reason as `buildTwoEligibleOptions` below: eligibility is a valid
+ * saved baseline, so the three `resolveWflConflict` /
+ * `confirmBuildingConfiguration` preambles this replaces can no longer
+ * reach Kundenansicht at all. Their subject was never the preamble — it is
+ * the narrative with exactly one Option, which is what "no §5 Optionen tab"
+ * asserts.
+ */
+function buildOneEligibleOption(name = 'Solo') {
+  enterOptionWorkspace('DEMO-HAPPY-01')
+  st().renameOption(st().activeOptionId!, name)
+  completeBuildingScope('SHARED')
+  completeConfigurationIfCatalogued()
+  saveOptionBaseline()
+}
 
-  st().createOption('Option A')
-  st().openOption('OPT-01')
-  includedBuildingIds(st()).forEach((id) => st().confirmBuilding(id))
-  st().confirmConfigurationMode('SHARED')
-  st().setCoverage('KG_300', 'included')
-  st().setCoverage('KG_400', 'included')
+/**
+ * VR3-04: build two SAVED, client-eligible Options.
+ *
+ * The precondition was rebuilt, and the reason is the audit's F-002. It used
+ * to be enough to confirm the buildings and confirm the configuration —
+ * client eligibility was `canBeginConfiguration && configurationComplete`,
+ * so an Option nobody had reviewed or saved was already presentable, and
+ * the presentation would then be reading a WORKING copy that could still
+ * move under a meeting. Eligibility is now a valid SAVED baseline.
+ *
+ * So each Option walks the real journey: inherit the project baseline, save
+ * its building scope, complete its six cost groups, confirm its schedule,
+ * read its twelve review sections, confirm the review and save. Driven
+ * through the store's own actions — writing a saved version directly would
+ * let a broken gate keep this suite green, which is exactly the failure
+ * mode the new gate exists to remove.
+ */
+function buildTwoEligibleOptions(opportunityId = 'DEMO-HAPPY-01') {
+  enterOptionWorkspace(opportunityId)
+  const first = st().activeOptionId!
+  st().renameOption(first, 'Option A')
+  completeBuildingScope('SHARED')
+  completeConfigurationIfCatalogued()
   st().setEnergiestandard('EH_55')
-  completeConfigurationIfCatalogued()
-  st().confirmScopeBoundaries()
-  includedBuildingIds(st()).forEach((id) => st().confirmBuildingConfiguration(id))
+  saveOptionBaseline()
 
-  st().createOption('Option B')
-  st().openOption('OPT-02')
-  includedBuildingIds(st()).forEach((id) => st().confirmBuilding(id))
-  st().confirmConfigurationMode('SHARED')
-  st().setCoverage('KG_300', 'included')
-  st().setCoverage('KG_400', 'included')
-  st().setEnergiestandard('EH_40')
+  const second = st().createOption('Option B')!
+  st().openOption(second)
+  completeBuildingScope('SHARED')
   completeConfigurationIfCatalogued()
+  st().setEnergiestandard('EH_40')
   {
     // The two Options must differ in a way the CURRENT model prices, or the
     // isolation probe compares two identical totals.
     const es = energyStandardServiceId()
     if (es) st().setKgServiceDecision(es, { state: 'selected', variant: 'eh40' })
   }
-  st().confirmScopeBoundaries()
-  includedBuildingIds(st()).forEach((id) => st().confirmBuildingConfiguration(id))
+  saveOptionBaseline()
 
-  st().openOption('OPT-01')
+  st().openOption(first)
   // `setViewedOption` is intentionally a no-op outside Kundenansicht
   // (store.ts: `if (!isClientProjection(s.mode)) return`) — defense in
   // depth so a stale/expired selector click can never mutate presentation
-  // state anywhere but inside the client projection. `setMode` itself
-  // requires `canBeginConfiguration`, already satisfied above.
+  // state anywhere but inside the client projection. `setMode` itself now
+  // requires a valid SAVED baseline, which both Options above have.
   st().setMode('praesentation')
 }
 
@@ -140,15 +169,7 @@ describe('PresentationShell — empty/edge states (AC 6/9/11/12)', () => {
 
   it('renders the full narrative with exactly one eligible Option, without a §5 Optionen tab or region', async () => {
     const user = userEvent.setup()
-    st().resolveWflConflict('customer')
-    st().confirmProjectParams()
-    st().createOption('Solo')
-    st().openOption('OPT-01')
-    includedBuildingIds(st()).forEach((id) => st().confirmBuilding(id))
-    st().confirmConfigurationMode('SHARED')
-    st().setCoverage('KG_300', 'included')
-    st().confirmScopeBoundaries()
-    includedBuildingIds(st()).forEach((id) => st().confirmBuildingConfiguration(id))
+    buildOneEligibleOption()
 
     render(<Harness />)
     expect(screen.queryByRole('button', { name: 'Optionen' })).toBeNull()
@@ -159,15 +180,7 @@ describe('PresentationShell — empty/edge states (AC 6/9/11/12)', () => {
 
   it('uses client-safe English keys for the timeline labels and continuation action', async () => {
     const user = userEvent.setup()
-    st().resolveWflConflict('customer')
-    st().confirmProjectParams()
-    st().createOption('Solo')
-    st().openOption('OPT-01')
-    includedBuildingIds(st()).forEach((id) => st().confirmBuilding(id))
-    st().confirmConfigurationMode('SHARED')
-    st().setCoverage('KG_300', 'included')
-    st().confirmScopeBoundaries()
-    includedBuildingIds(st()).forEach((id) => st().confirmBuildingConfiguration(id))
+    buildOneEligibleOption()
     st().setUiLanguage('en')
 
     render(<Harness />)
@@ -195,15 +208,7 @@ describe('PresentationShell — empty/edge states (AC 6/9/11/12)', () => {
    */
   it('always shows the Regionalfaktor "nicht aktiviert" disclosure in Kostentreiber when inactive, and hides it when active (rule 40)', async () => {
     const user = userEvent.setup()
-    st().resolveWflConflict('customer')
-    st().confirmProjectParams()
-    st().createOption('Solo')
-    st().openOption('OPT-01')
-    includedBuildingIds(st()).forEach((id) => st().confirmBuilding(id))
-    st().confirmConfigurationMode('SHARED')
-    st().setCoverage('KG_300', 'included')
-    st().confirmScopeBoundaries()
-    includedBuildingIds(st()).forEach((id) => st().confirmBuildingConfiguration(id))
+    buildOneEligibleOption()
 
     // D-15: Regionalfaktor is inactive by default — the disclosure row
     // must be present.
@@ -302,11 +307,12 @@ describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/
     await gotoSection(user, 'Nächster Schritt')
     await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
     await waitFor(() => {
-      // VR2-07: the commercial-climax headline names the project — this
-      // harness never calls `openOpportunity`, so `s.opportunityId` stays
-      // null and the honest fallback subject applies (same `|| fallback`
-      // pattern `PageIdentity`'s own empty-state H1 already uses).
-      expect(screen.getByRole('heading', { name: 'Ihr Projekt bekommt kommerzielle Kontur.' })).toBeInTheDocument()
+      // VR2-07: the commercial-climax headline names the project. VR3-04's
+      // precondition walks the real journey, so an Opportunity IS open and
+      // the headline names it — the `|| fallback` subject ("Ihr Projekt")
+      // now belongs to the harness shapes that genuinely have no project,
+      // which is what it was always for.
+      expect(screen.getByRole('heading', { name: 'Wohnhof Lindenhain bekommt kommerzielle Kontur.' })).toBeInTheDocument()
     })
 
     const switcher = screen.getByRole('radiogroup', { name: 'Ansicht' })
@@ -322,21 +328,82 @@ describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/
     // asynchronous transition, and it failed intermittently under full-suite
     // load (~1 run in 4). The component's behaviour is correct; the
     // assertion was not. Pre-existing, unrelated to VR3-01.
-    await user.click(await screen.findByRole('button', { name: 'Angebot prüfen & senden →' }))
+    // VR3-04 raised this one timeout, and owns the reason. The comment above
+    // already recorded the race: the section transition is genuinely
+    // asynchronous, and the default `findBy` window is one second. This
+    // suite's precondition now walks the whole journey twice per test (the
+    // save gate requires it), so under full-suite load that window closed
+    // first about half the time. The component's behaviour is correct; the
+    // window was too small for the work the test now does around it.
+    await user.click(await screen.findByRole(
+      'button', { name: 'Angebot prüfen & senden →' }, { timeout: 8000 },
+    ))
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Bereit zum Senden' })).toBeInTheDocument()
     })
     // VR2-08: the subject line now names the PROJECT (what a real email
     // subject would read), not the internal Option name.
-    expect(screen.getByText(/Indikatives Angebot · Ihr Projekt/)).toBeInTheDocument()
+    expect(screen.getByText(/Indikatives Angebot · Wohnhof Lindenhain/)).toBeInTheDocument()
 
-    const sendButton = screen.getByRole('button', { name: 'Angebot senden' })
-    expect(sendButton).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getAllByText('Noch kein Empfänger hinterlegt')).not.toHaveLength(0)
-    await user.click(sendButton)
+    // VR3-04 SPLIT THIS ASSERTION, and the split is a consequence of the
+    // new save gate rather than a weakening.
+    //
+    // The recipient is resolved from the OPPORTUNITY
+    // (`recipientForOpportunity`), and both demonstration projects have
+    // one. Client eligibility now requires a saved baseline, which requires
+    // a project's schedule and building scope — so "a presentable Option
+    // whose project has no validated recipient" is no longer a reachable
+    // state, and asserting it here would mean building an Option that
+    // cannot be presented in the first place.
+    //
+    // The recipient block itself is proved directly against
+    // `PresentationFlowScreen` with `recipient={null}` in the missing-
+    // recipient test below — the same direct-prop pattern this suite
+    // already uses for the undetermined-price block, and for the same
+    // reason: it exercises the condition rather than a route to it.
+    //
+    // What stays HERE is what this test is named for: the VIEWED Option
+    // survives the whole offer review, and the internal active Option is
+    // never touched by it.
     expect(st().activeOptionId).toBe('OPT-01')
+    expect(st().viewedOptionId).toBe('OPT-02')
     expect(st().snapshots).toHaveLength(0)
     expect(screen.getByRole('heading', { name: 'Bereit zum Senden' })).toBeInTheDocument()
+  })
+
+  it('blocks sending without a validated recipient, with its own distinct reason (EMAIL-001 §9.3 condition #1)', () => {
+    // Direct against the flow screen, exactly like the undetermined-price
+    // case: the state "no validated recipient" belongs to the OPPORTUNITY
+    // and not to the Option, so a route through a presentable Option
+    // cannot reach it any more (see the note above).
+    buildTwoEligibleOptions()
+    const cfg = configForOption(st(), st().activeOptionId!)!
+    const p = projectionForOption(st(), st().activeOptionId!)!
+    const current: Candidate = { id: st().activeOptionId!, name: 'Option A', cfg, p }
+    render(
+      <PresentationFlowScreen
+        flow="send"
+        delivery="sent"
+        current={current}
+        projectName="Wohnhof Lindenhain"
+        galleryArtifacts={[]}
+        onPrepare={() => {}}
+        onOpenOffer={() => {}}
+        priceUnavailable={false}
+        canSend={false}
+        recipient={null}
+        onSend={() => {}}
+        sendStatus="idle"
+        onRetry={() => {}}
+        onOpenSent={() => {}}
+        onCloseSnapshot={() => {}}
+        onNewVersion={() => {}}
+        headingRef={{ current: null }}
+      />,
+    )
+    expect(screen.getByRole('button', { name: 'Angebot senden' }))
+      .toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getAllByText('Noch kein Empfänger hinterlegt')).not.toHaveLength(0)
   })
 
   it('enables the validated recipient flow and creates exactly one immutable snapshot', async () => {
@@ -351,7 +418,16 @@ describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/
       expect(screen.getByRole('heading', { name: 'Wohnhof Lindenhain bekommt kommerzielle Kontur.' })).toBeInTheDocument()
     })
     // Same transition race as above (findByRole, not getByRole).
-    await user.click(await screen.findByRole('button', { name: 'Angebot prüfen & senden →' }))
+    // VR3-04 raised this one timeout, and owns the reason. The comment above
+    // already recorded the race: the section transition is genuinely
+    // asynchronous, and the default `findBy` window is one second. This
+    // suite's precondition now walks the whole journey twice per test (the
+    // save gate requires it), so under full-suite load that window closed
+    // first about half the time. The component's behaviour is correct; the
+    // window was too small for the work the test now does around it.
+    await user.click(await screen.findByRole(
+      'button', { name: 'Angebot prüfen & senden →' }, { timeout: 8000 },
+    ))
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Bereit zum Senden' })).toBeInTheDocument()
     })

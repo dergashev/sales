@@ -1,7 +1,7 @@
 import { useId, useRef, type RefObject } from 'react'
-import { useStore } from '../state/store'
+import { clientModeLockReasonFor, useStore } from '../state/store'
 import { Button } from './primitives'
-import { useTx } from '../i18n'
+import { useT, useTx } from '../i18n'
 import { NNBSP } from '../engine/money'
 import { Dialog, type DialogHandle } from './Dialog'
 import { startContinuityTransition, useSemanticMotion } from '../design-system/motion'
@@ -32,6 +32,7 @@ export function ClientOutputGateDialog({ returnFocusTo }: {
   const s = useStore()
   const open = s.gateOpen
   const onClose = () => s.setGateOpen(false)
+  const t = useT()
   const tx = useTx()
   const { reduced } = useSemanticMotion()
   const titleId = useId()
@@ -41,9 +42,24 @@ export function ClientOutputGateDialog({ returnFocusTo }: {
   // Gebäude & Umfang is deliberately pre-calculation. Even its client-view
   // gate must not invoke or reveal a projection before the Configurator.
   const p = s.pipelineView === 'buildingScope' ? null : s.projection()
-  const blockers = s.canBeginConfiguration()
-    ? []
-    : ['Gebäude & Umfang nicht vollständig bestätigt']
+  /**
+   * VR3-04 — the gate's blockers, in journey order.
+   *
+   * The building gate stays first because it is the earliest thing that can
+   * be missing; the SAVED BASELINE is the new second one (audit F-002).
+   * Entering a client meeting used to require only a complete
+   * configuration, so a variant nobody had reviewed could be presented —
+   * and the presentation would then be reading a working copy that could
+   * still move under it. A saved Option cannot.
+   */
+  const blockers = [
+    ...(s.canBeginConfiguration()
+      ? []
+      : ['Gebäude & Umfang nicht vollständig bestätigt']),
+    ...(clientModeLockReasonFor(s, s.activeOptionId) === null
+      ? []
+      : ['Option noch nicht gespeichert — die Kundenansicht zeigt nur eine gespeicherte Option']),
+  ]
   const risksActive = Object.values(s.risikoAktiv).some(Boolean)
 
   return (
@@ -122,7 +138,9 @@ export function ClientOutputGateDialog({ returnFocusTo }: {
             variant="primary"
             disabled={blockers.length > 0}
             disabledReason={blockers.length > 0
-              ? tx('Zuerst mindestens ein Gebäude auswählen und jedes gewählte Gebäude bestätigen.')
+              ? (s.canBeginConfiguration()
+                ? t('vr3.client.blockedReason')
+                : tx('Zuerst mindestens ein Gebäude auswählen und jedes gewählte Gebäude bestätigen.'))
               : undefined}
             onClick={() => {
               // VR2-09 — approved motion storyboard 5 "Presentation entry"

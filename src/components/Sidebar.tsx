@@ -3,6 +3,7 @@ import { demoProject } from '../state/projectAnalysis'
 import {
   pipelineViewForBuildingGate,
   useStore,
+  clientModeLockReasonFor,
 } from '../state/store'
 import type { PipelineView } from '../state/store'
 import { NNBSP } from '../engine/money'
@@ -88,12 +89,26 @@ export function Sidebar({ modeRef }: { modeRef: RefObject<HTMLButtonElement> }) 
   const client = isClientProjection(s.mode)
   const buildingGateBlocked = !s.canBeginConfiguration()
   const configurationGateBlocked = !s.configurationModeChosen || s.configurationModeEditing
+  /**
+   * VR3-04 — the client-view switch waits for a SAVED BASELINE.
+   *
+   * The three reasons are ordered from earliest to latest in the journey, so
+   * the sentence the user reads is about the step they are actually on: no
+   * building scope, then no configuration, then no saved Option. The last
+   * one is the new gate (audit F-002) and it is stated as its own reason —
+   * "not yet confirmed" would have sent the user back to the configuration
+   * they had already finished.
+   */
+  const clientBaselineBlocked = clientModeLockReasonFor(s, s.activeOptionId) !== null
   const modeBlocked = buildingGateBlocked || configurationGateBlocked
+    || clientBaselineBlocked
   const modeBlockedReason = buildingGateBlocked
     ? t('shell.mode.blockedReason')
     : configurationGateBlocked
       ? t('configurator.mode.clientBlocked')
-      : undefined
+      : clientBaselineBlocked
+        ? t('vr3.client.blockedReason')
+        : undefined
   const gateOpen = s.canBeginConfiguration()
   /**
    * The pre-Konfigurator phase: Gebäude & Umfang, and the Konfigurator

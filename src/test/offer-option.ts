@@ -2,7 +2,15 @@ import type userEvent from '@testing-library/user-event'
 import { act } from '@testing-library/react'
 import {
   canBeginConfiguration, includedBuildingIds, kgCatalogueFor, useStore,
+  activeSchedulePhasesFor,
+  clientModeAvailableForOption,
+  finalValidationConfirmedFor,
+  optionSaveStageFor,
+  optionScheduleStageFor,
+  reviewProgressFor,
+  scheduleConfirmedFor,
 } from '../state/store'
+import { REVIEW_SECTIONS } from '../state/optionReview'
 import {
   KG_SCOPE_GROUPS, allServices, type KgScopeDecision,
 } from '../engine/kgConfiguration'
@@ -242,5 +250,75 @@ export function completeBuildingScope(mode: 'SHARED' | 'PER_BUILDING' = 'PER_BUI
     // starting Leistungsabgrenzung; both transitions belong to the flow.
     s.setPipelineView('konfigurator')
     useStore.getState().confirmConfigurationMode(mode)
+  })
+}
+
+/**
+ * VR3-04: reach a SAVED OPTION — the state Client Mode requires.
+ *
+ * This exists because VR3-04 moved the client-mode gate. It used to be
+ * `canBeginConfiguration && configurationComplete`, so every suite whose
+ * subject is downstream of the meeting (presentation, scenario, export,
+ * keyboard traversal) reached Client Mode simply by finishing the
+ * configuration. That predicate was the audit's F-002 and it is gone: the
+ * gate is now a valid SAVED baseline.
+ *
+ * So those suites need the four remaining transitions, and they need them
+ * DRIVEN rather than faked — a helper that wrote `savedOptionVersions`
+ * directly would let a broken gate keep passing, which is precisely the
+ * failure mode this ticket exists to remove. It therefore accepts the
+ * documented dependency questions, confirms the schedule, reads every one of
+ * the twelve review sections, confirms the review and saves.
+ *
+ * The stages themselves are tested where they belong, in
+ * `src/screens/__tests__/final-validation.dom.test.tsx` and
+ * `src/state/__tests__/optionSchedule.test.ts`.
+ */
+export function saveOptionBaseline() {
+  act(() => {
+    const s = useStore.getState()
+    // Accept every documented dependency question the fixture carries. It is
+    // a real decision with a real journal entry; nothing else can make a
+    // WARNING schedule confirmable.
+    for (const phase of activeSchedulePhasesFor(s)) {
+      if (!phase.dependencyQuestionId) continue
+      useStore.getState().setScheduleDependencyConfirmed(phase.id, true)
+    }
+    useStore.getState().confirmSchedule()
+  })
+  act(() => {
+    const s = useStore.getState()
+    if (!scheduleConfirmedFor(s)) {
+      throw new Error(
+        `Schedule did not confirm: stage=${optionScheduleStageFor(s)}`,
+      )
+    }
+    for (const section of REVIEW_SECTIONS) {
+      useStore.getState().acknowledgeReviewSection(section.id)
+    }
+    useStore.getState().confirmFinalValidation()
+  })
+  act(() => {
+    const s = useStore.getState()
+    if (!finalValidationConfirmedFor(s)) {
+      const progress = reviewProgressFor(s)
+      throw new Error(
+        'Final validation did not confirm: '
+        + `${progress.reviewed}/${progress.total} reviewed, `
+        + `${progress.blockers.length} blockers `
+        + `(${progress.blockers.map((issue) => issue.id).join(', ')})`,
+      )
+    }
+    useStore.getState().beginOptionSave()
+    useStore.getState().advanceOptionSave()
+  })
+  act(() => {
+    const s = useStore.getState()
+    if (!clientModeAvailableForOption(s, s.activeOptionId)) {
+      throw new Error(
+        `Option did not save: stage=${optionSaveStageFor(s)}, `
+        + `error=${s.optionSaveCommit?.errorKey ?? 'none'}`,
+      )
+    }
   })
 }

@@ -24,6 +24,7 @@ export const CONFIGURATOR_STEP = {
   KG_700_DETAILS: 'kg700Details',
   KG_800_DETAILS: 'kg800Details',
   COMMERCIAL_SCHEDULE: 'commercialSchedule',
+  FINAL_VALIDATION: 'finalValidation',
 } as const
 
 export type ConfiguratorStepId =
@@ -147,9 +148,27 @@ export const CONFIGURATOR_STEPS: readonly ConfiguratorStep[] = [
     // never here. "Termine & Kommerzielles" asserted content this chapter
     // does not own; the title now names exactly what it shows.
     id: CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE,
-    label: 'Termine',
+    label: 'Terminplan',
     scope: 'project',
     visibility: 'clientSafe',
+    applicability: { kind: 'required' },
+  },
+  {
+    /**
+     * VR3-04 — FINAL VALIDATION, the last preparation stage.
+     *
+     * `internalOnly` by contract, not by taste: this is the seller's own
+     * review of the Option before it becomes a client baseline, and its
+     * content includes the permitted warnings, the open assumptions and the
+     * reconciliation of the result. None of that belongs in a client
+     * projection, and `isVisibleInOutputProfile` is what keeps it out —
+     * hiding it in presentation mode with a conditional would be the
+     * "suppressible field" the output model forbids.
+     */
+    id: CONFIGURATOR_STEP.FINAL_VALIDATION,
+    label: 'Finale Prüfung',
+    scope: 'project',
+    visibility: 'internalOnly',
     applicability: { kind: 'required' },
   },
 ]

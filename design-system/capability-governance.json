@@ -77,7 +77,7 @@
       "disposition": "ACTIVE",
       "productConsumers": [
         {
-          "path": "src/screens/S3Konfigurator.tsx",
+          "path": "src/screens/ScheduleStage.tsx",
           "pattern": "<DateField"
         }
       ]
@@ -345,6 +345,36 @@
         {
           "path": "src/screens/KgChapter.tsx",
           "pattern": "<CommercialNumber"
+        }
+      ]
+    },
+    {
+      "id": "schedule-editor",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/ScheduleStage.tsx",
+          "pattern": "<ScheduleEditor"
+        }
+      ]
+    },
+    {
+      "id": "validation-review",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/FinalValidation.tsx",
+          "pattern": "<ValidationReview"
+        }
+      ]
+    },
+    {
+      "id": "save-receipt",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/FinalValidation.tsx",
+          "pattern": "<SaveReceipt"
         }
       ]
     }

@@ -8,6 +8,8 @@ import {
   enterProjectUnderstanding,
   settleOptionCommit,
   completeBuildingScope,
+  completeKgConfiguration,
+  saveOptionBaseline,
 } from '../../test/offer-option'
 import { __resetStoreForTests, useStore } from '../../state/store'
 import { ProjectOptionsSection } from '../ProjectOptions'
@@ -370,9 +372,14 @@ describe('Уровень Projekte', () => {
     expect(screen.getByText(/synchronisiert · HubSpot/)).toBeInTheDocument()
 
     // В клиентский профиль входят только из Option через реальный gate.
+    // VR3-04: этот gate — сохранённая версия Option, а не подтверждённая
+    // конфигурация (аудит F-002), поэтому преамбула проходит весь путь:
+    // умфанг, шесть KG, терминплан, финальная проверка, сохранение.
     enterOptionWorkspace()
     await confirmBuildingReviewSections(user)
     completeBuildingScope('PER_BUILDING')
+    completeKgConfiguration()
+    saveOptionBaseline()
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
 

@@ -46,6 +46,11 @@ import { DocumentRow, ProcessingJob } from './ProcessingJob'
 import { ActionGate, PrerequisiteState, ProjectReadiness } from './ActionGate'
 import { ChoiceGroup } from './ChoiceGroup'
 import { CommercialNumber } from './CommercialNumber'
+import { ScheduleEditor } from './ScheduleEditor'
+import {
+  ReviewIndex, ReviewSection, ValidationReview,
+} from './ValidationReview'
+import { SaveFailureNotice, SaveReceipt } from './SaveReceipt'
 import {
   CommercialRailChange, CommercialRailScope, CommercialRailStatus,
 } from './CommercialRail'
@@ -1508,6 +1513,139 @@ export const COMPONENT_REGISTRY: Specimen[] = [
         <CommercialNumber exact={new Decimal('1240000')} language="de" signed />
         <CommercialNumber exact={new Decimal('-310000')} language="de" signed />
         <CommercialNumber exact={null} language="de" absentLabel="kein Betrag" emphasis="compact" />
+      </div>
+    ),
+  },
+
+  /* ───────────────────── VR3-04 (backlog b50baba6) ────────────────────── */
+  {
+    id: 'vr3-schedule-editor', groupId: 'domain', title: 'ScheduleEditor',
+    contractId: 'VR3 · ScheduleEditor', requirements: ['GANTT-003', 'SCHED-D17', 'R-04'],
+    composedContracts: ['SemanticStatus', 'DateField'],
+    interactionStates: ['default', 'editing', 'invalid', 'confirmed'],
+    dataStates: ALL_DATA_STATES,
+    blockedVariants: [], maturity: 'alpha',
+    note: 'The schedule as a working stage: key dates beside phase rows, each row carrying its own duration field, its bar and its place in the accessible table.',
+    evidence: 'The bar is aria-hidden decoration of a number the row already states; the table alternative is the equal representation, never a footnote (GANTT-003). The two key DATES are the canonical DateField — this capability owns only the half-month duration field, which no existing control can render in German decimals.',
+    render: () => (
+      <ScheduleEditor
+        keyDatesTitle="Schlüsseltermine"
+        phasesTitle="Projektphasen"
+        keyDates={(
+          <div className="a3-sched-field">
+            <p className="a3-sched-field-label" id="specimen-schedule-total">Gesamtdauer</p>
+            <p className="a3-sched-field-readout numeric" aria-labelledby="specimen-schedule-total">
+              {`18,5${NNBSP}Monate`}
+            </p>
+            <p className="a3-sched-field-hint">Abgeleitet aus den Phasen · Ende 30.09.2028</p>
+          </div>
+        )}
+        phases={[
+          {
+            id: 'planning', label: 'Planung', unit: 'Gesamtprojekt',
+            dependency: 'Baubeginn', startLabel: '15.03.2027', endLabel: '15.08.2027',
+            durationLabel: `5${NNBSP}Monate`, offsetPercent: 0, widthPercent: 27,
+          },
+          {
+            id: 'execution', label: 'Ausführung Stadthaus', unit: 'Stadthaus',
+            dependency: 'nach Vergabe und Baustelleneinrichtung',
+            startLabel: '15.06.2027', endLabel: '31.08.2028',
+            durationLabel: `14${NNBSP}Monate`, offsetPercent: 16, widthPercent: 76,
+            critical: true,
+            durationField: {
+              id: 'specimen-duration', label: 'Dauer Ausführung Stadthaus',
+              value: '14', unit: 'Monate', kind: 'duration', onCommit: () => {},
+            },
+          },
+        ]}
+        notices={[{
+          id: 'dependency', tone: 'attention', label: 'Bestätigung offen',
+          reason: 'Die dokumentierte offene Frage B-Q-08 zu dieser Abhängigkeit ist noch nicht beantwortet.',
+        }]}
+        tableCaption="Terminplan nach Phasen mit Einheit, Beginn, Ende, Dauer und Abhängigkeit"
+        tableView="Tabellarische Terminansicht"
+        columns={{
+          phase: 'Phase', unit: 'Einheit', start: 'Beginn', end: 'Ende',
+          duration: 'Dauer', dependency: 'Abhängigkeit',
+        }}
+      />
+    ),
+  },
+  {
+    id: 'vr3-validation-review', groupId: 'domain', title: 'ValidationReview',
+    contractId: 'VR3 · ValidationReview', requirements: ['R-12', 'STATE-003'],
+    composedContracts: ['ReviewIndex', 'ReviewSection', 'SemanticStatus'],
+    interactionStates: ['default', 'reviewed', 'stale', 'issue'],
+    dataStates: ALL_DATA_STATES,
+    blockedVariants: [], maturity: 'alpha',
+    note: 'A long professional review, kept long: a sticky index with a status per entry, a status per section, and an exact return-to-edit route on every finding.',
+    evidence: 'The index is a nav of in-document links, not a tablist: a tablist would unmount every section but one, and "the reviewer read all twelve" would then be a claim about a document that was never on screen. Section headings are focusable so a jump is announced rather than silently scrolled.',
+    render: () => (
+      <ValidationReview
+        sectionsLabel="Prüfinhalt"
+        index={(
+          <ReviewIndex
+            label="Prüfabschnitte"
+            progressLabel="9 von 12 geprüft"
+            entries={[
+              { id: 'baseline', label: 'Projektgrundlage', state: 'REVIEWED', stateLabel: 'geprüft', onSelect: () => {} },
+              { id: 'kg', label: 'KG 200 – 700', state: 'REVIEWED', stateLabel: 'geprüft', count: { reviewed: 6, total: 6 }, onSelect: () => {} },
+              { id: 'schedule', label: 'Terminplan', state: 'ISSUE', stateLabel: 'Befund offen', current: true, onSelect: () => {} },
+              { id: 'result', label: 'Kommerzielles Ergebnis', state: 'PENDING', stateLabel: 'noch zu prüfen', onSelect: () => {} },
+            ]}
+          />
+        )}
+        sections={(
+          <>
+            <ReviewSection
+              id="specimen-review-baseline" title="Projektgrundlage"
+              state="REVIEWED" stateLabel="geprüft"
+              rows={[
+                { id: 'project', label: 'Projekt', value: 'Quartier Am Güterbogen · Leipzig' },
+                { id: 'buildings', label: 'Grundlage', value: `3 Gebäude · 19.470${NNBSP}m² BGF R+S` },
+              ]}
+            />
+            <ReviewSection
+              id="specimen-review-schedule" title="Terminplan"
+              state="ISSUE" stateLabel="Befund offen"
+              rows={[{ id: 'window', label: 'Zeitraum', value: `15.03.2027${NNBSP}→${NNBSP}30.09.2028` }]}
+              issues={[{
+                id: 'dependency', tone: 'error', label: 'Befund blockiert das Speichern',
+                reason: 'Die dokumentierte offene Frage B-Q-08 zu dieser Abhängigkeit ist noch nicht beantwortet.',
+                route: { label: 'In Terminplan beheben', onSelect: () => {} },
+              }]}
+            />
+          </>
+        )}
+      />
+    ),
+  },
+  {
+    id: 'vr3-save-receipt', groupId: 'domain', title: 'SaveReceipt',
+    contractId: 'VR3 · SaveReceipt', requirements: ['R-12', 'MOTION-M08'],
+    composedContracts: ['SemanticStatus'],
+    interactionStates: ['default', 'failed'],
+    dataStates: ACTION_STATES,
+    blockedVariants: [], maturity: 'alpha',
+    note: 'The outcome of an explicit commitment: which Option, which version, when — and the one thing the save unlocked, emphasised exactly once (M-08).',
+    evidence: 'role="status" announces the receipt politely and a failure is role="alert"; the unlock emphasis is a single non-looping CSS animation the reduced-motion preference removes, and the focus move plus the announcement carry the meaning without it.',
+    render: () => (
+      <div className="grid gap-5">
+        <SaveReceipt
+          eyebrow="Option gespeichert · Version 1"
+          heading="Option Basis ist kundenbereit."
+          explanation="Die gespeicherte interne Option ist ab jetzt die unveränderliche Präsentationsgrundlage."
+          rows={[
+            { id: 'validation', label: 'Finale Prüfung', value: 'bestätigt' },
+            { id: 'savedAt', label: 'Gespeichert am', value: `02.09.2026${NNBSP}·${NNBSP}16:42` },
+          ]}
+          unlock={{ tone: 'ok', label: 'Kundenmodus freigeschaltet' }}
+        />
+        <SaveFailureNotice
+          label="Speichern fehlgeschlagen"
+          reason="Während des Speichervorgangs hat sich die Option geändert — die Prüfung ist erneut zu bestätigen."
+          preserved="Die bestätigte Prüfung bleibt bestätigt; kein Arbeitsstand ist verloren."
+        />
       </div>
     ),
   },

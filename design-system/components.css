@@ -745,7 +745,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-surface-foundation__head{min-height:var(--size-section-header);padding:var(--space-4);border-bottom:var(--border-hairline);background:var(--color-surface-paper);color:var(--color-text-primary)}
 .a3-surface-foundation__content{display:grid;min-width:0;align-content:start;gap:var(--space-3);padding:var(--space-5)}
 .a3-surface-foundation__sheet{display:grid;gap:var(--space-3);padding:var(--space-4);border:var(--border-hairline);background:var(--color-surface-paper)}
-.a3-surface-foundation__eyebrow{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-label-weight);letter-spacing:var(--tracking-caps);text-transform:uppercase}
+.a3-surface-foundation__eyebrow{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-label-weight);letter-spacing:var(--type-tracking-caps);text-transform:uppercase}
 .a3-surface-foundation__title{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--type-heading-3-weight)}
 .a3-surface-foundation__section-title{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--type-heading-3-weight)}
 .a3-surface-foundation__support{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line)}
@@ -3122,3 +3122,166 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 /* VR3-03 · an excluded cost group stays reachable and says what it is.
    Classes: .a3-kg-skipped */
 .a3-kg-skipped{display:grid;gap:var(--space-4);justify-items:start;background:var(--color-surface-default);padding:var(--space-7)}
+
+/* ── VR3-04 · ScheduleEditor (target T-029) ───────────────────────────────
+   The schedule as a working stage. Structure:
+   .a3-sched > .a3-sched-panels >
+     (.a3-sched-keydates > .a3-sched-panel-title + .a3-sched-field*)
+     + (.a3-sched-phases > .a3-sched-panel-title + .a3-sched-rows +
+        table.a3-sched-table + [.a3-sched-deps] + [.a3-sched-actions])
+   + [.a3-sched-notices].
+   Classes: .a3-sched · .a3-sched-panels ·
+   .a3-sched-keydates · .a3-sched-phases · .a3-sched-panel-title ·
+   .a3-sched-rows · .a3-sched-row · .a3-sched-row-label · .a3-sched-track ·
+   .a3-sched-bar · .a3-sched-row-duration · .a3-sched-table ·
+   .a3-sched-deps · .a3-sched-deps-disclosure · .a3-sched-deps-content ·
+   .a3-sched-actions · .a3-sched-notices ·
+   .a3-sched-notice · .a3-sched-notice-action · .a3-sched-field ·
+   .a3-sched-field-compact · .a3-sched-field-label · .a3-sched-field-control ·
+   .a3-sched-field-input · .a3-sched-field-unit · .a3-sched-field-readout ·
+   .a3-sched-field-hint · .a3-sched-field-error */
+.a3-sched{display:grid;gap:var(--space-5);min-width:0}
+.a3-sched-panels{display:grid;grid-template-columns:minmax(0,var(--measure-context-panel-compact)) minmax(0,1fr);gap:var(--space-5);align-items:start}
+.a3-sched-keydates,.a3-sched-phases{background:var(--color-surface-default);border:var(--border-hairline);padding:var(--space-5);min-width:0}
+.a3-sched-panel-title{font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--type-heading-weight);color:var(--color-text-primary);margin:0 0 var(--space-4)}
+.a3-sched-rows{list-style:none;margin:0 0 var(--space-5);padding:0;display:grid;gap:var(--space-2)}
+.a3-sched-row{display:grid;grid-template-columns:minmax(12ch,18ch) minmax(8rem,1fr) max-content;gap:var(--space-3);align-items:center;min-width:0}
+.a3-sched-row-label{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-sched-track{position:relative;display:block;height:var(--space-4);background:var(--color-surface-subtle);min-width:0}
+.a3-sched-bar{position:absolute;top:0;bottom:0;background:var(--color-text-primary)}
+.a3-sched-row[data-critical="true"] .a3-sched-bar{background:var(--color-brand-accent)}
+.a3-sched-row-duration{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);white-space:nowrap}
+.a3-sched-tableview{margin-top:var(--space-4);border-top:var(--border-hairline);padding-top:var(--space-3)}
+.a3-sched-tableview>summary{font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-sched-table{width:100%;border-collapse:collapse;background:var(--color-surface-default);table-layout:auto}
+/* Six columns inside a side-by-side panel: the table is DENSE on purpose
+   (rule: correct density), so start, end, duration and dependency are all
+   readable at 1440 without the reader having to scroll a table sideways to
+   find the number the bar beside it illustrates. It still lives in its own
+   `overflow-x` container (rule 3a) — density reduces the need for it, it
+   does not remove the guarantee. */
+.a3-sched-table th,.a3-sched-table td{text-align:left;vertical-align:top;padding:var(--space-2) var(--space-3);border-bottom:var(--border-hairline);font-size:var(--type-table-body-size);line-height:var(--type-table-body-line)}
+.a3-sched-table thead th{font-size:var(--type-table-header-size);line-height:var(--type-table-header-line);font-weight:var(--type-table-header-weight);color:var(--color-text-secondary);background:var(--color-surface-subtle);border-bottom:var(--border-contrast-1px);white-space:nowrap}
+.a3-sched-deps{margin-top:var(--space-5);border-top:var(--border-hairline);padding-top:var(--space-4)}
+.a3-sched-deps-disclosure{min-width:0}
+.a3-sched-deps-content{display:grid;grid-template-columns:repeat(auto-fit,minmax(var(--measure-form-control),1fr));gap:var(--space-4) var(--space-5);align-items:start;margin-top:var(--space-3)}
+.a3-sched-deps-content>p{grid-column:1/-1;margin:0;max-width:var(--measure-band)}
+.a3-sched-actions{display:flex;flex-wrap:wrap;gap:var(--space-3);margin-top:var(--space-5)}
+.a3-sched-notices{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-3)}
+.a3-sched-notice{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-3);border-left:var(--border-width-strong) solid var(--color-status-warning);padding:var(--space-3) var(--space-4);background:var(--color-surface-default)}
+.a3-sched-notice-action{flex:none}
+.a3-sched-field{display:grid;gap:var(--space-1);margin-bottom:var(--space-4);min-width:0}
+.a3-sched-field-compact{margin-bottom:0}
+/* One label style across this panel. The two key DATES are the canonical
+   `DateField`, whose label is small/medium/primary — so the derived readout
+   beside them wears the same, rather than a capsed eyebrow that would make
+   one panel read as two. */
+.a3-sched-field-label{display:block;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary);margin:0}
+.a3-sched-field-control{display:inline-flex;align-items:baseline;gap:var(--space-2);min-width:0}
+.a3-sched-field-input{box-sizing:border-box;min-height:var(--size-hit-target-default);width:min(100%,14ch);border:var(--border-default);padding:var(--space-2) var(--space-3);font-size:var(--type-input-size);line-height:var(--type-input-line);font-weight:var(--type-input-weight);color:var(--color-text-primary);background:var(--color-surface-default)}
+.a3-sched-field-input:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--border-width-focus);box-shadow:0 0 0 var(--border-width-focus) var(--color-focus-separator)}
+.a3-sched-field[data-invalid="true"] .a3-sched-field-input{border:var(--border-width-strong) solid var(--color-status-error)}
+.a3-sched-field-unit{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);white-space:nowrap}
+.a3-sched-field-readout{margin:0;font-size:var(--type-input-size);line-height:var(--type-input-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);border:var(--border-hairline);padding:var(--space-2) var(--space-3);overflow-wrap:break-word}
+.a3-sched-field-hint{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);max-width:38ch}
+.a3-sched-field-error{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-status-error);max-width:38ch}
+
+/* ── VR3-04 · ValidationReview · ReviewIndex · ReviewSection (T-030–T-032)
+   A long review, grouped and navigable. Structure:
+   .a3-rvw > .a3-rvw-body > (.a3-rvw-index > nav.a3-rvi) +
+     (.a3-rvw-sections > section.a3-rvs*) + [.a3-rvw-dock].
+   Classes: .a3-rvw · .a3-rvw-body · .a3-rvw-index · .a3-rvw-sections ·
+   .a3-rvw-dock · .a3-rvi · .a3-rvi-progress · .a3-rvi-list · .a3-rvi-item ·
+   .a3-rvi-link · .a3-rvi-state · .a3-rvi-label · .a3-rvi-count · .a3-rvs ·
+   .a3-rvs-head · .a3-rvs-title · .a3-rvs-rows · .a3-rvs-row ·
+   .a3-rvs-issues · .a3-rvs-issue · .a3-rvs-route · .a3-rvs-ack */
+.a3-rvw{display:grid;gap:var(--space-5);min-width:0}
+.a3-rvw-body{display:grid;grid-template-columns:minmax(0,var(--measure-context-panel-compact)) minmax(0,1fr);gap:var(--space-5);align-items:start}
+.a3-rvw-index{position:sticky;top:var(--space-4);align-self:start;min-width:0}
+.a3-rvw-sections{display:grid;gap:var(--space-4);min-width:0}
+.a3-rvw-dock{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:var(--space-4);background:var(--color-surface-default);border:var(--border-hairline);padding:var(--space-5)}
+.a3-rvw-dock>.a3-rvs-ack{margin-top:0}
+.a3-rvi{background:var(--color-surface-default);border:var(--border-hairline);padding:var(--space-4);min-width:0}
+.a3-rvi-progress{margin:0 0 var(--space-3);font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-label-weight);color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:var(--type-tracking-caps)}
+.a3-rvi-list{list-style:none;margin:0;padding:0}
+.a3-rvi-item{border-top:var(--border-hairline)}
+.a3-rvi-item:first-child{border-top:none}
+.a3-rvi-link{display:grid;grid-template-columns:2ch minmax(0,1fr) max-content;gap:var(--space-2);align-items:baseline;width:100%;min-height:var(--size-hit-target-default);padding:var(--space-2) 0;background:none;border:none;font:inherit;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);text-align:left;cursor:pointer}
+.a3-rvi-link[aria-current="true"]{font-weight:var(--font-weight-bold);box-shadow:inset var(--border-width-strong) 0 0 var(--color-text-primary);padding-left:var(--space-2)}
+.a3-rvi-state{color:var(--color-text-secondary)}
+.a3-rvi-label{overflow-wrap:break-word;hyphens:auto;min-width:0}
+.a3-rvi-count{font-variant-numeric:tabular-nums;color:var(--color-text-secondary);white-space:nowrap}
+.a3-rvs{background:var(--color-surface-default);border:var(--border-hairline);padding:var(--space-5);scroll-margin-top:var(--space-6);min-width:0}
+.a3-rvs[data-state="ISSUE"]{border-left:var(--border-width-strong) solid var(--color-status-error)}
+.a3-rvs[data-state="STALE"]{border-left:var(--border-width-strong) solid var(--color-status-warning)}
+.a3-rvs-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:var(--space-3)}
+.a3-rvs-title{font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--type-heading-weight);color:var(--color-text-primary);margin:0;overflow-wrap:break-word;hyphens:auto}
+.a3-rvs-title:focus{outline:none}
+.a3-rvs-title:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--border-width-focus)}
+.a3-rvs-rows{margin:var(--space-3) 0 0}
+.a3-rvs-row{display:grid;grid-template-columns:minmax(14ch,22ch) minmax(0,1fr);gap:var(--space-3);padding:var(--space-2) 0;border-bottom:var(--border-hairline);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-rvs-row dt{color:var(--color-text-secondary);min-width:0;overflow-wrap:break-word}
+.a3-rvs-row dd{margin:0;color:var(--color-text-primary);min-width:0;overflow-wrap:break-word}
+.a3-rvs-issues{list-style:none;margin:var(--space-4) 0 0;padding:0;display:grid;gap:var(--space-2)}
+.a3-rvs-issue{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-3);border-left:var(--border-width-strong) solid var(--color-status-error);padding:var(--space-2) var(--space-4);background:var(--color-surface-subtle)}
+.a3-rvs-route{appearance:none;display:inline-flex;align-items:center;min-height:var(--size-hit-target-default);background:none;border:none;font:inherit;font-size:var(--type-small-size);line-height:var(--type-small-line);padding:0;cursor:pointer;text-decoration:underline;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset);color:var(--color-text-primary)}
+.a3-rvs-ack{margin-top:var(--space-4);display:flex;flex-wrap:wrap;align-items:flex-start;gap:var(--space-3)}
+
+/* ── VR3-04 · SaveReceipt (targets T-033, M-08) ──────────────────────────
+   Structure: .a3-svr > .a3-svr-body > .a3-svr-eyebrow + .a3-svr-heading +
+   [.a3-svr-explanation] + .a3-svr-rows > .a3-svr-row* +
+   [.a3-svr-unlock] + [.a3-svr-actions], then [.a3-svr-media].
+   Classes: .a3-svr · .a3-svr-body · .a3-svr-eyebrow · .a3-svr-heading ·
+   .a3-svr-explanation · .a3-svr-rows · .a3-svr-row · .a3-svr-unlock ·
+   .a3-svr-unlock-emphasis · .a3-svr-actions · .a3-svr-media · .a3-svf ·
+   .a3-svf-preserved · .a3-svf-retry */
+/* The media gets a REAL column. `minmax(0,auto)` collapsed it to zero
+   width — the image was in the DOM, loaded, and 0×0 on screen, which is the
+   worst of both: a media slot that costs a request and shows nothing. */
+.a3-svr{display:grid;grid-template-columns:minmax(0,1fr) minmax(12rem,20rem);gap:var(--space-6);align-items:start;min-width:0}
+.a3-svr-body{min-width:0;max-width:var(--measure-band)}
+.a3-svr-eyebrow{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-label-weight);color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:var(--type-tracking-caps)}
+.a3-svr-heading{margin:var(--space-2) 0 var(--space-3)}
+.a3-svr-explanation{margin:0 0 var(--space-5);font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-primary)}
+.a3-svr-rows{margin:0;border:var(--border-hairline);background:var(--color-surface-default)}
+.a3-svr-row{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-4);padding:var(--space-3) var(--space-4);border-bottom:var(--border-hairline);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-svr-row:last-child{border-bottom:none}
+.a3-svr-row dt{color:var(--color-text-secondary);min-width:0}
+.a3-svr-row dd{margin:0;color:var(--color-text-primary);font-weight:var(--font-weight-bold);text-align:right;min-width:0}
+.a3-svr-unlock{margin:var(--space-4) 0 0}
+/* M-08: one non-flashing surface emphasis, once, and never a loop. The
+   blanket `[class^="a3-"]` prefers-reduced-motion rule silences it, and the
+   component also drops the class outright under a reduced-motion
+   preference — belt and braces, because this is the one emphasis the ticket
+   permits and a looping highlight would be decoration. */
+.a3-svr-unlock-emphasis{animation:a3-svr-unlock-once var(--motion-reveal) var(--motion-easing-standard) 1}
+@keyframes a3-svr-unlock-once{from{background:var(--color-surface-subtle)}to{background:transparent}}
+.a3-svr-actions{display:flex;flex-wrap:wrap;gap:var(--space-3);margin-top:var(--space-5)}
+.a3-svr-media{min-width:0}
+.a3-svf{border-left:var(--border-width-strong) solid var(--color-status-error);padding:var(--space-4);background:var(--color-surface-default);display:grid;gap:var(--space-3)}
+.a3-svf:focus{outline:none}
+.a3-svf:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--border-width-focus)}
+.a3-svf-preserved{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-svf-retry{display:flex;flex-wrap:wrap;gap:var(--space-3)}
+
+/* 1280 · the schedule and the review are compositions, not squeezed 1440s.
+   Both give up their side column first: the key-dates panel sits above the
+   phases, and the review index becomes a compact section chooser ABOVE the
+   review rather than a second full-height rail competing with it for the
+   reader's eye (the ContextRail contract). */
+@media (max-width:1439px){
+  .a3-sched-panels{grid-template-columns:minmax(0,1fr)}
+  .a3-sched-keydates{display:grid;grid-template-columns:repeat(auto-fit,minmax(16ch,1fr));gap:var(--space-4) var(--space-5);align-items:start}
+  .a3-sched-keydates .a3-sched-panel-title{grid-column:1/-1}
+  /* The critical-path notice is a SENTENCE, not a field: squeezed into one
+     16ch column it wrapped a four-word status over four lines. It spans the
+     row it explains. */
+  .a3-sched-keydates .a3-sched-notice{grid-column:1/-1}
+  .a3-sched-row{grid-template-columns:minmax(10ch,14ch) minmax(0,1fr) max-content}
+  .a3-rvw-body{grid-template-columns:minmax(0,1fr)}
+  .a3-rvw-index{position:static}
+  .a3-rvi-list{display:flex;flex-wrap:wrap;gap:var(--space-1) var(--space-4)}
+  .a3-rvi-item{border-top:none}
+  .a3-rvi-link{width:auto;grid-template-columns:2ch max-content max-content}
+  .a3-svr{grid-template-columns:minmax(0,1fr)}
+}

@@ -3,6 +3,12 @@ import { act, render } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { InternalNote } from '../InternalNote'
 import { __resetStoreForTests, useStore } from '../../state/store'
+import {
+  completeBuildingScope,
+  completeKgConfiguration,
+  enterOptionWorkspace,
+  saveOptionBaseline,
+} from '../../test/offer-option'
 
 /**
  * Заметка (DC-43) не теряется при быстром уходе.
@@ -32,12 +38,17 @@ describe('DC-43: набранное переживает уход с экран�
   })
 
   it('переход в презентацию убирает поле — и тоже дописывает', async () => {
-    useStore.getState().openOpportunity('DEMO-0001')
-    useStore.getState().resolveWflConflict('customer')
-    useStore.getState().confirmProjectParams()
-    useStore.getState().createOption('Basis')
-    useStore.getState().openOption('OPT-01')
-    useStore.getState().confirmBuilding(useStore.getState().activeBuildingId)
+    // VR3-04: entering the client profile requires a valid SAVED baseline
+    // (audit F-002), so this preamble walks the real journey rather than
+    // confirming one building. The subject is unchanged — the note field
+    // disappears in the client profile and the draft is flushed on the way
+    // out — but the transition that triggers it is now a gate with a
+    // prerequisite, and a preamble that could not satisfy it would be
+    // testing a mode change that never happened.
+    enterOptionWorkspace('DEMO-HAPPY-01')
+    completeBuildingScope('SHARED')
+    completeKgConfiguration()
+    saveOptionBaseline()
 
     const user = userEvent.setup()
     render(<InternalNote />)
