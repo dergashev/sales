@@ -67,6 +67,24 @@ export type SavedOptionVersion = Readonly<{
   version: number
   savedAt: string
   savedBy: string
+  /**
+   * VR3-05 — the Option this one DESCENDS FROM, or `null` for an Option
+   * saved from preparation.
+   *
+   * Lineage lives on the saved version and not on the Option row because a
+   * descendant is created by a SAVE: the relationship is a fact about the
+   * commitment ("these decisions, taken from that baseline, on that date"),
+   * and an Option row carries no date and no decisions. It is also why a
+   * descendant starts at version 1 rather than continuing the source's
+   * numbering — it is a new Option with a parent, not a new version of an
+   * old one, and the source's history stays exactly as long as it was.
+   *
+   * Optional on READ: baselines saved before this field existed are valid
+   * and simply have no recorded parent. See `hasOnlyKeys` in `store.ts` —
+   * adding a key here without adding it to `SAVED_OPTION_VERSION_KEYS`
+   * makes every newly written payload fail rehydration.
+   */
+  sourceOptionId?: string | null
   /** The project baseline this Option inherited, by its own commit id. */
   projectBaselineId: string | null
   buildingScopeFingerprint: string

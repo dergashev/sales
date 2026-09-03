@@ -2031,6 +2031,67 @@ const de = {
   'vr3.journal.reviewSectionAcknowledged': 'Prüfabschnitt geprüft · {section}',
   'vr3.journal.finalValidationConfirmed': 'Finale Prüfung bestätigt',
   'vr3.journal.optionSaved': 'Option gespeichert · {option} · Version {version}',
+  'vr3.journal.optionSavedFromScenario':
+    'Option gespeichert · {option} · aus {source}',
+  /* VR3-05 — client presentation, scenario and outputs. */
+  'vr3.client.decision.energyStandard.title': 'Energiestandard',
+  'vr3.client.decision.energyStandard.eh55': 'Effizienzhaus 55',
+  'vr3.client.decision.energyStandard.eh40': 'Effizienzhaus 40',
+  'vr3.client.decision.energyStandard.eh40nh': 'Effizienzhaus 40 NH',
+  'vr3.client.decision.energyStandard.consequence.eh55':
+    'Der Standard des Angebots. Gebäudehülle und Anlagentechnik sind darauf ausgelegt.',
+  'vr3.client.decision.energyStandard.consequence.eh40':
+    'Höhere Dämmstandards und Anlagentechnik. Der Förderrahmen erweitert sich, '
+    + 'die Investition steigt.',
+  'vr3.client.decision.energyStandard.consequence.eh40nh':
+    'Effizienzhaus 40 mit Nachhaltigkeitsnachweis. Voraussetzung für die '
+    + 'weitergehende Förderung.',
+  'vr3.client.decision.photovoltaics.title': 'Photovoltaik',
+  'vr3.client.decision.photovoltaics.without': 'Ohne Photovoltaik',
+  'vr3.client.decision.photovoltaics.with': 'Mit Photovoltaik',
+  'vr3.client.decision.photovoltaics.consequence.without':
+    'Die Dachfläche bleibt für eine spätere Anlage vorbereitet, ist aber nicht Teil '
+    + 'des Angebots.',
+  'vr3.client.decision.photovoltaics.consequence.with':
+    'Die Dachfläche wird mit dem Gebäude belegt. Anlage und Anschluss sind im '
+    + 'Angebot enthalten.',
+  'vr3.client.decision.heatStrategy.title': 'Wärmekonzept',
+  'vr3.client.decision.heatStrategy.central': 'Zentrale Erzeugung',
+  'vr3.client.decision.heatStrategy.perBuilding': 'Dezentral je Gebäude',
+  'vr3.client.decision.heatStrategy.consequence.central':
+    'Eine Energiezentrale versorgt alle drei Häuser. Ein Betriebspunkt, eine '
+    + 'Wartung, eine Abrechnung für das Quartier.',
+  'vr3.client.decision.heatStrategy.consequence.perBuilding':
+    'Jedes Haus erzeugt seine Wärme selbst. Die Quartiersleitung entfällt, '
+    + 'Betrieb und Abrechnung liegen beim einzelnen Gebäude.',
+  'vr3.client.decision.gastronomy.title': 'Gewerbeeinheit im Erdgeschoss',
+  'vr3.client.decision.gastronomy.retailOnly': 'Nur Einzelhandel',
+  'vr3.client.decision.gastronomy.ready': 'Gastronomie vorbereitet',
+  'vr3.client.decision.gastronomy.consequence.retailOnly':
+    'Die Fläche im Stadthaus ist für Einzelhandel ausgelegt — die Grundlage des '
+    + 'gespeicherten Angebots.',
+  'vr3.client.decision.gastronomy.consequence.ready':
+    'Lüftung und Sanitär der Erdgeschossfläche werden für Gastronomie ausgelegt. '
+    + 'Die Nutzung bleibt später wählbar.',
+  'vr3.client.decision.handover.title': 'Übergabe',
+  'vr3.client.decision.handover.single': 'Gemeinsame Übergabe',
+  'vr3.client.decision.handover.phased': 'Übergabe in Etappen',
+  'vr3.client.decision.handover.consequence.single':
+    'Alle drei Häuser werden zusammen übergeben. Das Stadthaus bestimmt den '
+    + 'Fertigstellungstermin.',
+  'vr3.client.decision.handover.consequence.phased':
+    'Das Kontorhaus wird vor Hof- und Stadthaus übergeben. Die Bauzeit des '
+    + 'Quartiers bleibt, der erste Bezug rückt vor.',
+  'vr3.client.save.error.nameEmpty': 'Bitte einen Namen für die neue Option angeben.',
+  'vr3.client.save.error.nameTaken':
+    'Dieser Name ist bereits vergeben. Bitte einen anderen wählen.',
+  'vr3.client.save.error.noChanges':
+    'Das Szenario entspricht der gespeicherten Option — es gibt nichts zu speichern.',
+  'vr3.client.save.error.sourceChanged':
+    'Die präsentierte Option hat gewechselt. Das Szenario wurde nicht gespeichert.',
+  'vr3.client.save.error.calculation':
+    'Die Kalkulation konnte das Ergebnis nicht bestätigen. Es wurde keine Option '
+    + 'angelegt.',
 } as const
 
 export type MessageKey = keyof typeof de
@@ -3803,6 +3864,66 @@ const en: Partial<Record<MessageKey, string>> = {
   'vr3.journal.reviewSectionAcknowledged': 'Review section reviewed · {section}',
   'vr3.journal.finalValidationConfirmed': 'Final validation confirmed',
   'vr3.journal.optionSaved': 'Option saved · {option} · version {version}',
+  'vr3.journal.optionSavedFromScenario':
+    'Option saved · {option} · from {source}',
+  /* VR3-05 — client presentation, scenario and outputs. */
+  'vr3.client.decision.energyStandard.title': 'Energy standard',
+  'vr3.client.decision.energyStandard.eh55': 'Efficiency house 55',
+  'vr3.client.decision.energyStandard.eh40': 'Efficiency house 40',
+  'vr3.client.decision.energyStandard.eh40nh': 'Efficiency house 40 NH',
+  'vr3.client.decision.energyStandard.consequence.eh55':
+    'The standard this offer is built to. Envelope and building systems are sized '
+    + 'for it.',
+  'vr3.client.decision.energyStandard.consequence.eh40':
+    'Higher insulation standards and building systems. The funding envelope widens '
+    + 'and the investment rises.',
+  'vr3.client.decision.energyStandard.consequence.eh40nh':
+    'Efficiency house 40 with a sustainability certificate — the precondition for '
+    + 'the extended funding.',
+  'vr3.client.decision.photovoltaics.title': 'Photovoltaics',
+  'vr3.client.decision.photovoltaics.without': 'Without photovoltaics',
+  'vr3.client.decision.photovoltaics.with': 'With photovoltaics',
+  'vr3.client.decision.photovoltaics.consequence.without':
+    'The roof stays prepared for a later installation, but it is not part of this '
+    + 'offer.',
+  'vr3.client.decision.photovoltaics.consequence.with':
+    'The roof is fitted with the building. Installation and connection are included '
+    + 'in the offer.',
+  'vr3.client.decision.heatStrategy.title': 'Heat strategy',
+  'vr3.client.decision.heatStrategy.central': 'Central generation',
+  'vr3.client.decision.heatStrategy.perBuilding': 'Decentralised per building',
+  'vr3.client.decision.heatStrategy.consequence.central':
+    'One energy centre serves all three houses. One operating point, one '
+    + 'maintenance regime, one settlement for the quarter.',
+  'vr3.client.decision.heatStrategy.consequence.perBuilding':
+    'Each house generates its own heat. The quarter-wide network is dropped; '
+    + 'operation and settlement sit with the individual building.',
+  'vr3.client.decision.gastronomy.title': 'Ground-floor commercial unit',
+  'vr3.client.decision.gastronomy.retailOnly': 'Retail only',
+  'vr3.client.decision.gastronomy.ready': 'Gastronomy prepared',
+  'vr3.client.decision.gastronomy.consequence.retailOnly':
+    'The Stadthaus ground floor is sized for retail — the basis of the saved offer.',
+  'vr3.client.decision.gastronomy.consequence.ready':
+    'Ventilation and sanitary services for the ground floor are sized for '
+    + 'gastronomy. The use itself stays open.',
+  'vr3.client.decision.handover.title': 'Handover',
+  'vr3.client.decision.handover.single': 'Single handover',
+  'vr3.client.decision.handover.phased': 'Phased handover',
+  'vr3.client.decision.handover.consequence.single':
+    'All three houses are handed over together. The Stadthaus determines the '
+    + 'completion date.',
+  'vr3.client.decision.handover.consequence.phased':
+    'The Kontorhaus is handed over before the Hofhaus and Stadthaus. The quarter\'s '
+    + 'build time is unchanged; first occupancy moves forward.',
+  'vr3.client.save.error.nameEmpty': 'Please give the new Option a name.',
+  'vr3.client.save.error.nameTaken':
+    'That name is already in use. Please choose another one.',
+  'vr3.client.save.error.noChanges':
+    'The scenario matches the saved Option — there is nothing to save.',
+  'vr3.client.save.error.sourceChanged':
+    'The presented Option changed. The scenario was not saved.',
+  'vr3.client.save.error.calculation':
+    'The calculation could not confirm the result. No Option was created.',
 }
 
 /**

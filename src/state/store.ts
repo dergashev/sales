@@ -46,6 +46,18 @@ import {
   type KgServiceDecisionRecord,
 } from '../engine/kgConfiguration'
 import {
+  applyScenarioChanges,
+  availablePresentationDecisions,
+  emptyScenario,
+  scenarioChangeCount,
+  scenarioDecisionValue,
+  scenarioOpenQuestions,
+  withDecision,
+  type ClientScenario,
+  type PresentationDecision,
+  type ScenarioConfigSlice,
+} from './clientScenario'
+import {
   COMMERCIAL_TRUSTED,
   commercialGroupLines,
   reconcileCommercial,
@@ -1512,6 +1524,12 @@ const SCHEDULE_PHASE_KINDS: readonly SchedulePhase['kind'][] = [
 
 const SAVED_OPTION_VERSION_KEYS = [
   'optionId', 'optionName', 'version', 'savedAt', 'savedBy',
+  // VR3-05 lineage. Listed here because `hasOnlyKeys` is a STRICT allowlist:
+  // a field added to the type but not to this array makes `isSavedOptionVersion`
+  // reject every newly written payload, and the saved baselines silently stop
+  // surviving a reload — the pitfall `PERSISTED_PROPOSAL_PAYLOAD_KEYS` already
+  // recorded once. Absent from older payloads, which stay valid.
+  'sourceOptionId',
   'projectBaselineId', 'buildingScopeFingerprint', 'configurationFingerprint',
   'scheduleFingerprint', 'reviewFingerprint', 'clientProjectionVersion',
   'clientProjectionValid', 'result',
@@ -1542,6 +1560,8 @@ function isSavedOptionVersion(value: unknown): value is SavedOptionVersion {
     && Number.isInteger(value.version) && (value.version as number) >= 1
     && typeof value.savedAt === 'string'
     && typeof value.savedBy === 'string'
+    && (value.sourceOptionId === undefined || value.sourceOptionId === null
+      || typeof value.sourceOptionId === 'string')
     && (value.projectBaselineId === null || typeof value.projectBaselineId === 'string')
     && typeof value.buildingScopeFingerprint === 'string'
     && typeof value.configurationFingerprint === 'string'
@@ -2111,6 +2131,38 @@ type Store = {
    */
   viewedOptionId: string | null
   /**
+   * VR3-05 — the temporary presentation scenario, or `null` while the
+   * presentation is showing the saved baseline unmodified.
+   *
+   * NEVER PERSISTED, for the same reason `viewedOptionId` is not: a scenario
+   * is a conversation in a meeting, and a reload that resurrected one would
+   * put an unsaved what-if in front of the next client under the name of a
+   * saved Option. Its lifetime is exactly the Client Mode session — created
+   * on entry, cleared on exit, on option switch and on level change, in the
+   * same `set()` calls that clear `viewedOptionId`.
+   *
+   * It holds a CHANGE LIST, not a configuration: see `clientScenario.ts` for
+   * why the saved Option's immutability is then structural rather than
+   * maintained.
+   */
+  clientScenario: ClientScenario | null
+  /**
+   * The last scenario result that derived successfully.
+   *
+   * The ticket requires that a calculation failure "retains the last trusted
+   * scenario result and lets the user revert/retry" — so the failure path
+   * needs somewhere to fall back TO. This is a read-through memo of the pure
+   * derivation, exactly as `commercialTrusted` is for the baseline, and for
+   * the lesson the VR3-03R remediation recorded: a trusted snapshot kept as
+   * store state alone has nothing to offer when the FIRST derivation is the
+   * one that fails.
+   */
+  clientScenarioTrusted: ClientScenarioSnapshot | null
+  /** The presenter has acknowledged exporting an unsaved scenario. */
+  clientScenarioExportAcknowledged: boolean
+  /** The Save-as-new-Option commitment, or `null` when the dialog is closed. */
+  clientScenarioSave: ClientScenarioSaveCommit | null
+  /**
    * Сколько Options было создано за жизнь Opportunity. Идентификатор берётся
    * отсюда, а не из длины списка: удалённый номер не переиспользуется, иначе
    * события журнала прежней Option начинают ссылаться на чужую (сплошное
@@ -2349,6 +2401,28 @@ type Store = {
    * client-eligible (see `eligibleClientOptions`).
    */
   setViewedOption: (id: string) => void
+  /* ── VR3-05 · the presentation scenario ──────────────────────────────── */
+  /**
+   * Choose `value` on a supported presentation decision.
+   *
+   * Writes the CHANGE SET and nothing else — no Option field, no journal
+   * entry, no commercial settle. That is deliberate and it is the ticket's
+   * boundary: "must not change private preparation state except through an
+   * explicit Save as New Option command". A what-if that journalled would be
+   * a what-if the Option's own history had to carry, and undo inside the
+   * Konfigurator would then be able to reach into a client meeting.
+   */
+  setPresentationDecision: (decisionId: string, value: string) => void
+  /** Discard every temporary change and return to the saved baseline. */
+  revertPresentationScenario: () => void
+  /** Acknowledge that an unsaved scenario may go to PDF/print, labelled. */
+  acknowledgeScenarioExport: () => void
+  /** Open the Save-as-new-Option dialog with a proposed unique name. */
+  beginScenarioSaveAsNew: () => void
+  setScenarioSaveName: (name: string) => void
+  cancelScenarioSaveAsNew: () => void
+  /** Commit: create a distinct saved Option descended from the source. */
+  commitScenarioSaveAsNew: () => void
   setActiveBuilding: (id: string) => void
   /** Включить/исключить здание из предложения — событие журнала. */
   toggleBuildingIncluded: (id: string) => void
@@ -2493,6 +2567,14 @@ const NO_TRANSIENT = {
   // failed attempt to another surface would report a failure about an Option
   // the user is no longer looking at.
   optionSaveCommit: null,
+  // VR3-05: a presentation scenario is the MOST transient thing in the
+  // store — it is one meeting's what-if against one saved Option. Anything
+  // that abandons the Option abandons it, and it is listed here so that
+  // every such exit gets the reset for free instead of each remembering.
+  clientScenario: null,
+  clientScenarioTrusted: null,
+  clientScenarioExportAcknowledged: false,
+  clientScenarioSave: null,
 } as const
 
 /**
@@ -3709,6 +3791,211 @@ export function resolvedViewedOptionId(
   s: Pick<Store, 'viewedOptionId' | 'activeOptionId'>,
 ): string | null {
   return s.viewedOptionId ?? s.activeOptionId
+}
+
+/* ──────────────── VR3-05 · the client presentation scenario ───────────── */
+
+/**
+ * One derivation of a presentation state — baseline or scenario — through
+ * the SAME canonical path preparation uses.
+ *
+ * `config` is the configuration that produced it, which is what Save as New
+ * Option persists: the new Option is not "the baseline plus a note about
+ * three changes", it is the exact configuration the client was looking at.
+ */
+export type ClientScenarioSnapshot = Readonly<{
+  config: OptionConfig
+  projection: Projection
+  result: CommercialResult
+}>
+
+/**
+ * The Save-as-new-Option commitment.
+ *
+ * Modelled on `OptionSaveCommit` rather than on a component's `useState`
+ * because the failure contract is the same one VR3-04 already wrote down:
+ * "Save-new failure retains name and changes and creates no partial Option."
+ * A name typed into a dialog that unmounts on error is a name the presenter
+ * has to retype in front of a client.
+ */
+export type ClientScenarioSaveCommit = Readonly<{
+  sourceOptionId: string
+  name: string
+  stage: 'NAMING' | 'SAVING' | null
+  errorKey: string | null
+  /** The Option the last successful save created, for the receipt. */
+  savedOptionId: string | null
+}>
+
+/** The configuration slice a scenario may address, from any Option config. */
+function scenarioSliceOf(config: OptionConfig): ScenarioConfigSlice {
+  return {
+    kgConfig: config.kgConfig,
+    scheduleEdits: config.scheduleEdits,
+    schedulePhases: config.schedulePhases,
+  }
+}
+
+/**
+ * Derive one presentation state from a configuration.
+ *
+ * THE WHOLE POINT of this function is that it takes a CONFIGURATION and not
+ * the store: `{ ...s, ...config }` is a new object, so a scenario is priced
+ * by the canonical derivation without a single write anywhere. That is what
+ * makes "the baseline snapshot remains byte-equivalent before and after
+ * unsaved scenario editing" true by construction rather than by care.
+ *
+ * Throws exactly where `deriveCommercialResult` throws — the caller decides
+ * whether a failure is a white screen or a retained last-trusted result, and
+ * for the presentation it is always the latter.
+ */
+function deriveClientSnapshot(s: Store, config: OptionConfig): ClientScenarioSnapshot {
+  const overlay = { ...s, ...config }
+  const projection = projectProjection(overlay)
+  return { config, projection, result: deriveCommercialResult(overlay, projection) }
+}
+
+/**
+ * The saved Option the presentation is speaking for, as a configuration.
+ *
+ * `configForOption` and not the `SavedOptionVersion` record: the record
+ * stores the RESULT of a save, not the configuration that produced it, and a
+ * scenario needs a configuration to change. The saved record remains the
+ * authority for what the presentation CLAIMS — `clientBaselineFor` names the
+ * Option, its version and its saved total — and this is the state the story
+ * is rendered from, exactly as it was before this ticket.
+ */
+export function clientBaselineConfig(s: Store): OptionConfig | null {
+  const optionId = resolvedViewedOptionId(s)
+  return optionId ? configForOption(s, optionId) : null
+}
+
+/**
+ * The presentation's baseline derivation: the saved Option, unmodified.
+ *
+ * Guarded like `commercialSnapshot`: a derivation failure must not take the
+ * client screen down mid-meeting. `null` is the honest answer and the shell
+ * renders the projection-error state the ticket requires.
+ */
+export function clientBaselineSnapshot(s: Store): ClientScenarioSnapshot | null {
+  const config = clientBaselineConfig(s)
+  if (!config) return null
+  try {
+    return deriveClientSnapshot(s, config)
+  } catch {
+    return null
+  }
+}
+
+/** The decisions this presentation may offer, in narrative order. */
+export function clientPresentationDecisions(s: Store): readonly PresentationDecision[] {
+  const config = clientBaselineConfig(s)
+  if (!config) return []
+  return availablePresentationDecisions(kgCatalogueFor(s), scenarioSliceOf(config))
+}
+
+/** The value a decision currently holds in the presented state. */
+export function clientDecisionValue(
+  s: Store, decision: PresentationDecision,
+): string | null {
+  const config = clientBaselineConfig(s)
+  if (!config) return null
+  return scenarioDecisionValue(
+    s.clientScenario, decision, scenarioSliceOf(config), kgCatalogueFor(s),
+  )
+}
+
+/** Decisions the scenario moved that leave a documented question open. */
+export function clientScenarioWarnings(s: Store): readonly PresentationDecision[] {
+  return scenarioOpenQuestions(s.clientScenario, clientPresentationDecisions(s))
+}
+
+/**
+ * The state the presentation is currently SHOWING: baseline, or baseline
+ * with the scenario's changes applied.
+ *
+ * On a derivation failure the last trusted scenario snapshot is returned
+ * instead — the number on screen stays the last one that was true, and the
+ * shell says so and offers revert/retry. Returning the BASELINE here would
+ * have been worse than a failure: the client would see a total that silently
+ * stopped answering the control they just used.
+ */
+export function clientPresentedSnapshot(s: Store): ClientScenarioSnapshot | null {
+  const config = clientBaselineConfig(s)
+  if (!config) return null
+  const scenario = s.clientScenario
+  if (!scenario || scenario.changes.length === 0) return clientBaselineSnapshot(s)
+  const catalogue = kgCatalogueFor(s)
+  // Applied to the WHOLE config rather than to the slice: the slice type is
+  // the boundary declaring what a scenario may touch, and passing the whole
+  // config through a function typed by that boundary keeps the guarantee
+  // while returning something the canonical derivation accepts unchanged.
+  const scenarioConfig = applyScenarioChanges(config, scenario.changes, catalogue)
+  try {
+    return deriveClientSnapshot(s, scenarioConfig)
+  } catch {
+    return s.clientScenarioTrusted
+  }
+}
+
+/**
+ * Is the presented number the one the current decisions imply?
+ *
+ * `false` means a derivation failed and the screen is holding the last
+ * trusted scenario result. It is the scenario's own equivalent of
+ * `CommercialTrust.status === 'stale'`, and the shell must say it in words —
+ * a stale total that looks fresh is the one failure a client cannot detect.
+ */
+export function clientScenarioTrustedNow(s: Store): boolean {
+  const config = clientBaselineConfig(s)
+  if (!config) return false
+  const scenario = s.clientScenario
+  if (!scenario || scenario.changes.length === 0) return clientBaselineSnapshot(s) !== null
+  const catalogue = kgCatalogueFor(s)
+  try {
+    deriveClientSnapshot(s, applyScenarioChanges(config, scenario.changes, catalogue))
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * The scenario's signed delta against the saved baseline, or `null` when the
+ * presentation is at the baseline.
+ *
+ * Measured between two derivations of the SAME function over two
+ * configurations that differ only by the change set. An empty change set
+ * therefore yields exactly zero — not "approximately zero", not "zero
+ * because we restored the fields we remembered".
+ */
+export function clientScenarioDelta(s: Store): Decimal | null {
+  if (scenarioChangeCount(s.clientScenario) === 0) return null
+  const baseline = clientBaselineSnapshot(s)
+  const presented = clientPresentedSnapshot(s)
+  if (!baseline || !presented) return null
+  return presented.result.total.exact.minus(baseline.result.total.exact)
+}
+
+/** Is a name free for a new Option in this Opportunity? */
+export function clientScenarioNameAvailable(s: Store, name: string): boolean {
+  const trimmed = name.trim()
+  if (trimmed.length === 0) return false
+  return !s.options.some((o) => o.name.trim().toLowerCase() === trimmed.toLowerCase())
+}
+
+/** The name Save as New proposes: the source's name plus the moved decision. */
+export function clientScenarioProposedName(s: Store): string {
+  const sourceId = resolvedViewedOptionId(s)
+  const source = s.options.find((o) => o.id === sourceId)
+  const base = source?.name ?? 'Option'
+  const proposal = `${base} · Szenario`
+  if (clientScenarioNameAvailable(s, proposal)) return proposal
+  for (let n = 2; n < 100; n += 1) {
+    const candidate = `${proposal} ${n}`
+    if (clientScenarioNameAvailable(s, candidate)) return candidate
+  }
+  return proposal
 }
 
 /**
@@ -5172,6 +5459,10 @@ const store = createStore<Store>((set, get) => {
     options: [],
     activeOptionId: null,
     viewedOptionId: null,
+    clientScenario: null,
+    clientScenarioTrusted: null,
+    clientScenarioExportAcknowledged: false,
+    clientScenarioSave: null,
     optionSeq: 0,
     discountPercent: null,
     offerDraft: {
@@ -6085,6 +6376,24 @@ const store = createStore<Store>((set, get) => {
         mode: m,
         ...(entering ? { viewedOptionId: s.activeOptionId } : {}),
         ...(leaving ? { viewedOptionId: null } : {}),
+        // VR3-05 gating contract: "Entry creates scenario state from saved
+        // baseline WITHOUT writing the Option". Entry therefore mints an
+        // EMPTY scenario — a branch that exists and has changed nothing —
+        // rather than deferring creation to the first click. The difference
+        // is not cosmetic: the scenario's `sourceOptionId` is pinned at the
+        // moment of entry, so a later option switch cannot retro-attach the
+        // presenter's changes to an Option they were not exploring.
+        ...(entering && s.activeOptionId
+          ? { clientScenario: emptyScenario(s.activeOptionId) }
+          : {}),
+        ...(leaving
+          ? {
+            clientScenario: null,
+            clientScenarioTrusted: null,
+            clientScenarioExportAcknowledged: false,
+            clientScenarioSave: null,
+          }
+          : {}),
         pipelineView: pipelineViewForBuildingGate(s, outputView),
         openConfiguratorStep: nearestActiveConfiguratorStep({
           coverage: s.coverage,
@@ -6850,7 +7159,231 @@ const store = createStore<Store>((set, get) => {
       const s = get()
       if (!isClientProjection(s.mode)) return
       if (!eligibleClientOptions(s).some((o) => o.id === id)) return
-      set({ viewedOptionId: id })
+      // VR3-05: switching the presented Option starts a NEW scenario against
+      // the new source. A change set is meaningful only against the Option
+      // it was measured from — carrying one across would price a heating
+      // decision taken on Option 1 into Option 2's total and call the
+      // difference a delta.
+      set({
+        viewedOptionId: id,
+        clientScenario: emptyScenario(id),
+        clientScenarioTrusted: null,
+        clientScenarioExportAcknowledged: false,
+        clientScenarioSave: null,
+      })
+    },
+
+    /* ── VR3-05 · the presentation scenario ────────────────────────────── */
+
+    setPresentationDecision: (decisionId, value) => {
+      const s = get()
+      if (!isClientProjection(s.mode)) return
+      const sourceOptionId = resolvedViewedOptionId(s)
+      if (!sourceOptionId) return
+      const config = clientBaselineConfig(s)
+      if (!config) return
+      const decision = clientPresentationDecisions(s).find((d) => d.id === decisionId)
+      if (!decision) return
+      const scenario = s.clientScenario ?? emptyScenario(sourceOptionId)
+      if (scenario.sourceOptionId !== sourceOptionId) return
+      const next = withDecision(
+        scenario, decision, value, scenarioSliceOf(config), kgCatalogueFor(s),
+      )
+      if (next === scenario) return
+      // The trusted memo is refreshed from the NEW state, so a later
+      // derivation failure falls back to what this decision produced rather
+      // than to a state two decisions ago. Refreshed BEFORE the set() has
+      // any reader, and only when the new state actually derives — a failing
+      // derivation must not overwrite the last good one with nothing.
+      const candidate = { ...s, clientScenario: next }
+      let trusted = s.clientScenarioTrusted
+      try {
+        trusted = clientPresentedSnapshot(candidate as Store) ?? trusted
+      } catch {
+        // Keep the previous trusted snapshot: that is its entire purpose.
+      }
+      set({
+        clientScenario: next,
+        clientScenarioTrusted: trusted,
+        // A new change invalidates an acknowledgement given for the previous
+        // one: the presenter agreed to export THAT state, not this one.
+        clientScenarioExportAcknowledged: false,
+      })
+    },
+
+    revertPresentationScenario: () => {
+      const s = get()
+      if (!isClientProjection(s.mode)) return
+      const sourceOptionId = resolvedViewedOptionId(s)
+      if (!sourceOptionId) return
+      // Revert is not a restore. It is the removal of the change set, which
+      // is why it cannot half-fail and why the resulting derivation is the
+      // baseline derivation itself rather than something equal to it.
+      set({
+        clientScenario: emptyScenario(sourceOptionId),
+        clientScenarioTrusted: null,
+        clientScenarioExportAcknowledged: false,
+        clientScenarioSave: null,
+      })
+    },
+
+    acknowledgeScenarioExport: () => {
+      if (!isClientProjection(get().mode)) return
+      set({ clientScenarioExportAcknowledged: true })
+    },
+
+    beginScenarioSaveAsNew: () => {
+      const s = get()
+      if (!isClientProjection(s.mode)) return
+      const sourceOptionId = resolvedViewedOptionId(s)
+      if (!sourceOptionId) return
+      if (scenarioChangeCount(s.clientScenario) === 0) return
+      if (s.clientScenarioSave?.stage === 'SAVING') return
+      set({
+        clientScenarioSave: {
+          sourceOptionId,
+          name: clientScenarioProposedName(s),
+          stage: 'NAMING',
+          errorKey: null,
+          savedOptionId: null,
+        },
+      })
+    },
+
+    setScenarioSaveName: (name) => {
+      const commit = get().clientScenarioSave
+      if (!commit || commit.stage !== 'NAMING') return
+      // Typing clears the previous refusal: a name error that outlived the
+      // name it described would tell the presenter their new name is taken.
+      set({ clientScenarioSave: { ...commit, name, errorKey: null } })
+    },
+
+    cancelScenarioSaveAsNew: () => {
+      const commit = get().clientScenarioSave
+      if (!commit || commit.stage === 'SAVING') return
+      // Cancel leaves the SCENARIO intact — only the naming attempt ends.
+      set({ clientScenarioSave: null })
+    },
+
+    commitScenarioSaveAsNew: () => {
+      const s = get()
+      const commit = s.clientScenarioSave
+      if (!commit || commit.stage !== 'NAMING') return
+      const sourceOptionId = resolvedViewedOptionId(s)
+      // Re-read every precondition AT the commitment, exactly as
+      // `advanceOptionSave` does: the dialog rendered against a state that
+      // may have moved, and a partial Option is the one outcome the failure
+      // contract forbids.
+      if (!isClientProjection(s.mode) || sourceOptionId !== commit.sourceOptionId) {
+        set({
+          clientScenarioSave: {
+            ...commit, stage: null, errorKey: 'vr3.client.save.error.sourceChanged',
+          },
+        })
+        return
+      }
+      const name = commit.name.trim()
+      if (!clientScenarioNameAvailable(s, name)) {
+        set({
+          clientScenarioSave: {
+            ...commit,
+            errorKey: name.length === 0
+              ? 'vr3.client.save.error.nameEmpty'
+              : 'vr3.client.save.error.nameTaken',
+          },
+        })
+        return
+      }
+      if (scenarioChangeCount(s.clientScenario) === 0) {
+        set({
+          clientScenarioSave: {
+            ...commit, stage: null, errorKey: 'vr3.client.save.error.noChanges',
+          },
+        })
+        return
+      }
+      const snapshot = clientPresentedSnapshot(s)
+      const trustedNow = clientScenarioTrustedNow(s)
+      if (!snapshot || !trustedNow) {
+        // Saving a total the calculator could not reproduce would mint a
+        // baseline nobody can recompute. The scenario and the name survive.
+        set({
+          clientScenarioSave: {
+            ...commit, stage: null, errorKey: 'vr3.client.save.error.calculation',
+          },
+        })
+        return
+      }
+      const seq = s.optionSeq + 1
+      const newOptionId = `OPT-${String(seq).padStart(2, '0')}`
+      const baseline = s.projectBaseline
+      const overlay = { ...s, ...snapshot.config }
+      // Version 1 of a NEW Option, not version N+1 of the source. The
+      // lineage lives in `sourceOptionId`, and the source's own version
+      // history is untouched — that is what "the original remains
+      // recoverable" means at the level of the record.
+      const version: SavedOptionVersion = deepFreeze({
+        optionId: newOptionId,
+        optionName: name,
+        version: 1,
+        savedAt: new Date().toISOString(),
+        savedBy: SCOPE_ACTOR,
+        sourceOptionId: commit.sourceOptionId,
+        projectBaselineId: baseline ? `${baseline.projectId}@${baseline.at}` : null,
+        buildingScopeFingerprint: scopeFingerprint(overlay),
+        configurationFingerprint: snapshot.config.kgConfig
+          ? kgScopeFingerprint(snapshot.config.kgConfig)
+          : '',
+        scheduleFingerprint: scheduleFingerprintFor(overlay),
+        reviewFingerprint: reviewFingerprintFor(overlay),
+        clientProjectionVersion: CLIENT_PROJECTION_VERSION,
+        clientProjectionValid: true,
+        result: {
+          totalExact: snapshot.result.total.exact.toFixed(2),
+          totalDisplay: snapshot.result.total.display,
+          totalLabel: snapshot.result.totalLabel,
+          coverage: snapshot.result.coverage,
+          uncertaintyPp: snapshot.result.uncertaintyPp,
+          byCostGroup: snapshot.result.byCostGroup.map((line) => ({
+            group: line.group,
+            exact: line.exact ? line.exact.toFixed(2) : null,
+          })),
+          resultVersion: snapshot.result.version,
+        },
+      })
+      set({
+        options: [...s.options, { id: newOptionId, name }],
+        optionSeq: seq,
+        // The scenario's configuration IS the new Option's configuration.
+        // `activeOptionId` is untouched, so this write cannot collide with
+        // the flat working copy: the new Option is never the active one.
+        optionConfigs: { ...s.optionConfigs, [newOptionId]: snapshot.config },
+        savedOptionVersions: {
+          ...s.savedOptionVersions,
+          [newOptionId]: Object.freeze([version]),
+        },
+        // The new Option becomes the presented baseline, with no changes
+        // against it — the scenario has been spent.
+        viewedOptionId: newOptionId,
+        clientScenario: emptyScenario(newOptionId),
+        clientScenarioTrusted: null,
+        clientScenarioExportAcknowledged: false,
+        clientScenarioSave: {
+          ...commit, stage: null, errorKey: null, savedOptionId: newOptionId,
+        },
+      })
+      // NO INVERSE, for the reason `advanceOptionSave` states: a saved
+      // Option version is a client baseline (M-3). This is the one and only
+      // journalled consequence a client presentation may have, and it is
+      // journalled precisely because it is the moment the meeting changed
+      // preparation state.
+      apply({
+        kind: 'value.confirmed',
+        label: `Option gespeichert · ${name} · aus ${commit.sourceOptionId}`,
+        labelKey: 'vr3.journal.optionSavedFromScenario',
+        labelValues: { option: name, source: commit.sourceOptionId },
+        deltaExact: null,
+      })
     },
 
     setPipelineView: (v) => set((s) => {
