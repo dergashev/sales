@@ -401,4 +401,113 @@ describe('Option creation hands off a gated, authority-aware baseline', () => {
     expect(analysis.jobState).toBe('COMPLETE')
     expect(st().projectBaseline).toBeNull()
   })
+
+  /**
+   * The two states the acceptance audit found unreachable.
+   *
+   * They existed in the model and a unit test proved the store could hold
+   * them, but the click handler ran both stages in one tick: React never
+   * painted `creating Option`, and the failure branch needed a race nobody
+   * could win. The commitment is now staged, so both are ordinary states.
+   */
+  it('holds the creating-Option state through its stages, naming each one', async () => {
+    const user = userEvent.setup()
+    await openProject(user, 'Wohnhof Lindenhain')
+    finishAnalysis()
+    await waitFor(() => expect(document.querySelector('.a3-readiness')).not.toBeNull())
+    const st = () => useStore.getState()
+    const current = () => st().projectAnalyses['DEMO-HAPPY-01']!
+
+    // Scoped to the gate: the spine's step 3 shows the same words, and its
+    // accessible name differs only by position and state.
+    const gate = () => document.querySelector('.a3-gate') as HTMLElement
+    await user.click(within(gate()).getByRole('button', { name: 'Option anlegen' }))
+
+    // Stage 1 is HELD and named: the baseline is committed before an Option
+    // exists, and the control says so rather than showing a percentage.
+    expect(current().creatingOption).toBe(true)
+    expect(current().optionCommitStage).toBe('BASELINE')
+    expect(screen.getByText('Projektgrundlage wird festgeschrieben …')).toBeInTheDocument()
+    expect(st().options).toHaveLength(0)
+    // A second activation while the commitment is in flight is a no-op —
+    // the guard that matters, since the canonical Button blocks with
+    // `aria-disabled` and the click still dispatches.
+    await user.click(
+      within(gate()).getByRole('button', { name: /Projektgrundlage wird festgeschrieben/ }),
+    )
+    expect(current().optionCommitStage).toBe('BASELINE')
+
+    act(() => { st().advanceOptionCreation() })
+    expect(current().optionCommitStage).toBe('OPTION')
+    expect(st().projectBaseline).not.toBeNull()
+    expect(st().options).toHaveLength(0)
+
+    act(() => { st().advanceOptionCreation() })
+    expect(current().creatingOption).toBe(false)
+    expect(current().optionCommitStage).toBeNull()
+    expect(current().optionCreationErrorKey).toBeNull()
+    expect(st().options).toHaveLength(1)
+  })
+
+  it('never lets creatingOption and optionCommitStage disagree', async () => {
+    // The two fields are one fact stored twice, so the only thing that can
+    // go wrong is that they drift. Every transition is walked here, success
+    // and failure, and the invariant is checked after each one.
+    const user = userEvent.setup()
+    await openProject(user, 'Wohnhof Lindenhain')
+    finishAnalysis()
+    const st = () => useStore.getState()
+    const agree = () => {
+      const a = st().projectAnalyses['DEMO-HAPPY-01']!
+      expect(a.creatingOption).toBe(a.optionCommitStage !== null)
+    }
+    agree()
+    act(() => { st().beginOptionCreation() }); agree()
+    act(() => { st().beginOptionCreation() }); agree()  // idempotent
+    act(() => { st().advanceOptionCreation() }); agree()
+    act(() => { st().advanceOptionCreation() }); agree()
+    act(() => { st().advanceOptionCreation() }); agree()  // past the end
+    expect(st().options).toHaveLength(1)
+  })
+
+  it('a prerequisite withdrawn mid-commitment fails it and preserves every resolution', async () => {
+    const user = userEvent.setup()
+    await openProject(user, 'Quartier Am Güterbogen')
+    const st = () => useStore.getState()
+    act(() => st().seedProjectCheckpoint('DEMO-COMPLEX-01'))
+    await waitFor(() => expect(
+      readiness(demoProject('DEMO-COMPLEX-01')!, st().projectAnalyses['DEMO-COMPLEX-01']!)
+        .canCreateOption,
+    ).toBe(true))
+    const current = () => st().projectAnalyses['DEMO-COMPLEX-01']!
+    const decisionsBefore = current().conflictDecisions
+    const resolvedBefore = Object.keys(decisionsBefore).length
+    expect(resolvedBefore).toBe(6)
+
+    act(() => { st().beginOptionCreation() })
+    expect(current().optionCommitStage).toBe('BASELINE')
+
+    // The race, now winnable: reopen one conflict while the commitment is
+    // in flight. This is a REAL failure path, not a contrived one — undo is
+    // available on every resolved conflict (DC-29).
+    const firstConflict = Object.keys(decisionsBefore)[0]!
+    act(() => { st().reopenProjectConflict(firstConflict) })
+    act(() => { st().advanceOptionCreation() })
+
+    expect(current().creatingOption).toBe(false)
+    expect(current().optionCommitStage).toBeNull()
+    expect(current().optionCreationErrorKey).toBe('vr3.option.error.gateClosed')
+    // NOTHING else moved: no Option, no baseline, and the five decisions
+    // that were not undone are still exactly as they were.
+    expect(st().options).toHaveLength(0)
+    expect(st().projectBaseline).toBeNull()
+    expect(Object.keys(current().conflictDecisions)).toHaveLength(resolvedBefore - 1)
+    expect(current().jobState).toBe('COMPLETE')
+
+    // And the error is recoverable: clearing it returns the gate to the
+    // state the work actually justifies, without redoing the analysis.
+    act(() => { st().clearOptionCreationError() })
+    expect(current().optionCreationErrorKey).toBeNull()
+    expect(current().jobState).toBe('COMPLETE')
+  })
 })

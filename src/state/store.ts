@@ -1642,6 +1642,14 @@ type Store = {
   /** Commits the project baseline snapshot Option creation consumes. */
   commitProjectBaseline: () => void
   beginOptionCreation: () => void
+  /**
+   * Advance the in-flight Option-creation commitment by ONE stage.
+   *
+   * Same shape as `tickDocumentAnalysis`: the store owns the state, the UI
+   * schedules the tick, and tests drive it directly without timers — so a
+   * stalled commitment fails on state rather than on timing.
+   */
+  advanceOptionCreation: () => void
   clearOptionCreationError: () => void
   /** Гейт: можно ли создавать Options (конфликты решены, параметры приняты). */
   canCreateOptions: () => boolean
@@ -4199,12 +4207,86 @@ const store = createStore<Store>((set, get) => {
       if (!project) return
       const analysis = s.projectAnalyses[project.id]
       if (!analysis) return
+      // IDEMPOTENT. A commitment already in flight is not restarted, and
+      // this is the guard that actually holds: the canonical Button blocks
+      // with `aria-disabled` rather than `disabled`, so a scripted or
+      // rapid second activation still dispatches its click. A time window
+      // alone let one through once and created a second Option (AUD-03).
+      if (analysis.creatingOption) return
       set({
         projectAnalyses: {
           ...s.projectAnalyses,
-          [project.id]: { ...analysis, creatingOption: true, optionCreationErrorKey: null },
+          [project.id]: {
+            ...analysis,
+            creatingOption: true,
+            optionCommitStage: 'BASELINE',
+            optionCreationErrorKey: null,
+          },
         },
       })
+    },
+
+    advanceOptionCreation: () => {
+      const s = get()
+      const project = demoProject(s.opportunityId)
+      if (!project) return
+      const analysis = s.projectAnalyses[project.id]
+      if (!analysis || !analysis.creatingOption) return
+
+      const fail = (errorKey: string) => {
+        const now = get()
+        const current = now.projectAnalyses[project.id]
+        if (!current) return
+        // Readiness, conflict decisions and question responses are NOT
+        // touched: the ticket requires an Option-creation failure to leave
+        // resolution work intact, so only the commitment's own three fields
+        // move.
+        set({
+          projectAnalyses: {
+            ...now.projectAnalyses,
+            [project.id]: {
+              ...current,
+              creatingOption: false,
+              optionCommitStage: null,
+              optionCreationErrorKey: errorKey,
+            },
+          },
+        })
+      }
+
+      // The gate is re-read at EVERY stage boundary, not once when the
+      // button rendered. Undoing a conflict resolution mid-flight is a real
+      // race and this is where it is caught.
+      if (!get().canCreateOptions()) {
+        fail('vr3.option.error.gateClosed')
+        return
+      }
+
+      if (analysis.optionCommitStage === 'BASELINE') {
+        if (!get().projectBaseline) get().commitProjectBaseline()
+        // A baseline that refused to commit is a real failure, not a
+        // reason to create an Option with no baseline behind it.
+        if (!get().projectBaseline) {
+          fail('vr3.option.error.baseline')
+          return
+        }
+        const now = get()
+        const current = now.projectAnalyses[project.id]
+        if (!current) return
+        set({
+          projectAnalyses: {
+            ...now.projectAnalyses,
+            [project.id]: { ...current, optionCommitStage: 'OPTION' },
+          },
+        })
+        return
+      }
+
+      // Final stage. `createOption` clears the commitment itself on success
+      // and records its own failure, so nothing is cleared here.
+      if (analysis.optionCommitStage === 'OPTION') {
+        if (!get().createOption()) fail('vr3.option.error.gateClosed')
+      }
     },
 
     clearOptionCreationError: () => {
@@ -4265,6 +4347,7 @@ const store = createStore<Store>((set, get) => {
               [failingProject.id]: {
                 ...failingAnalysis,
                 creatingOption: false,
+                optionCommitStage: null,
                 optionCreationErrorKey: 'vr3.option.error.gateClosed',
               },
             },
@@ -4344,6 +4427,7 @@ const store = createStore<Store>((set, get) => {
               [creatingProject.id]: {
                 ...creatingAnalysis,
                 creatingOption: false,
+                optionCommitStage: null,
                 optionCreationErrorKey: null,
               },
             },

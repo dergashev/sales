@@ -6,6 +6,7 @@ import {
   confirmBuildingReviewSections,
   enterOptionWorkspace,
   enterProjectUnderstanding,
+  settleOptionCommit,
 } from '../../test/offer-option'
 import { __resetStoreForTests, useStore } from '../../state/store'
 import { ProjectOptionsSection } from '../ProjectOptions'
@@ -244,7 +245,7 @@ describe('Уровень Projekte', () => {
     expect(useStore.getState().canCreateOptions()).toBe(true)
 
     await user.click(screen.getAllByRole('button', { name: 'Option anlegen' })[0]!)
-    await act(() => new Promise((r) => setTimeout(r, 400)))
+    settleOptionCommit()
     expect(useStore.getState().options).toHaveLength(1)
 
     // Option startet im vorgeschalteten Gebäudeschritt — noch ohne Preis.
@@ -446,7 +447,7 @@ describe('AUD-03 — Option identity & creation continuity', () => {
     const button = create()
     fireEvent.click(button)
     fireEvent.click(button)
-    await act(() => new Promise((r) => setTimeout(r, 400)))
+    settleOptionCommit()
     expect(useStore.getState().options).toHaveLength(1)
     expect(useStore.getState().journal.length).toBe(journalBefore + 1)
     expect(useStore.getState().undoToast?.statusText).toContain('Option 1')
@@ -456,7 +457,7 @@ describe('AUD-03 — Option identity & creation continuity', () => {
     const user = userEvent.setup()
     const create = reachCreateGate()
     await user.click(create())
-    await act(() => new Promise((r) => setTimeout(r, 400)))
+    settleOptionCommit()
     expect(useStore.getState().options.map((o) => o.name)).toEqual(['Option 1'])
 
     // Kein Doppelklick: die Guard ist abgelaufen, das Gate ist über den
@@ -465,7 +466,7 @@ describe('AUD-03 — Option identity & creation continuity', () => {
     const spine = screen.getByRole('navigation', { name: 'Projekt- und Optionsverlauf' })
     await user.click(within(spine).getByText('Projektverständnis').closest('button')!)
     await user.click(create())
-    await act(() => new Promise((r) => setTimeout(r, 400)))
+    settleOptionCommit()
     expect(useStore.getState().options.map((o) => o.name)).toEqual(['Option 1', 'Option 2'])
   })
 
@@ -477,7 +478,7 @@ describe('AUD-03 — Option identity & creation continuity', () => {
     // ausgelöst (scrollTop=0 + Fokus auf das Seiten-`h1`), obwohl der
     // Bildschirm dieselbe Projektebene blieb.
     await user.click(create())
-    await act(() => new Promise((r) => setTimeout(r, 400)))
+    settleOptionCommit()
 
     const section = screen.getByRole('region', { name: 'Opportunity Options' })
     const row = within(section).getByText('Option 1').closest('li')!

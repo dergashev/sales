@@ -81,17 +81,37 @@ import { InternalNoteDialog, ProjectOptionsSection } from './ProjectOptions'
 const ANALYSIS_TICK_MS = 45
 
 /**
- * Rapid-click guard on Option creation (the retired project card's
- * AUD-03 protection, kept): a second activation inside this window is a
- * deliberate no-op, so a double click cannot produce two Options.
+ * One stage of the Option-creation commitment.
  *
- * There is deliberately NO simulated commit delay. `creatingOption` is a
- * real state in the model — the store sets it, clears it and a unit test
- * proves it — but the commit itself is synchronous here, because this
- * prototype has no persistence behind it. Holding the busy state open with
- * an invented duration would be exactly the fabricated progress rule 25
- * forbids; VR3-02, which owns actually persisting an Option, is where the
- * state becomes observable.
+ * Creating an Option is a COMMITMENT — it journals the project baseline and
+ * then creates the Option that inherits it — and the ticket requires both
+ * `creating Option` and `Create Option error` to be observable states with
+ * recovery that leaves readiness and resolution work intact. The canonical
+ * Design System delta says the same thing about the control itself: the
+ * action must "explain commitment level and asynchronous outcome".
+ *
+ * An earlier candidate ran both stages inside the click handler. The state
+ * existed in the model and a unit test proved it, but React never painted
+ * it and the failure branch could not be reached by anyone, which is
+ * exactly what the acceptance audit rejected.
+ *
+ * On rule 25: what it forbids is INVENTED PROGRESS — "no made-up
+ * percentages" — and what it prescribes instead is an indeterminate state
+ * plus a protocol of completed phases. This shows no percentage and no
+ * estimate; it names the stage that is actually pending, of two real stages
+ * with real results. Simulating the duration of work that is real in
+ * production is the prototype's own established convention: the document
+ * analysis advances on exactly this pattern (DC-10), one file-phase per
+ * tick.
+ */
+const OPTION_COMMIT_STAGE_MS = 200
+
+/**
+ * Rapid-click guard on Option creation (the retired project card's AUD-03
+ * protection, kept). It is the SECOND line of defence: the first is
+ * `beginOptionCreation`'s own idempotence, because the canonical Button
+ * blocks with `aria-disabled` rather than `disabled` and a scripted click
+ * therefore still dispatches.
  */
 const OPTION_CREATE_GUARD_MS = 500
 
@@ -130,6 +150,33 @@ export function ProjectHome() {
     }
     previousJobState.current = jobState
   }, [jobState, t])
+
+  // The Option-creation commitment advances here, in the shell, for the
+  // same reason the completion announcement does: `CreateOptionGate` is
+  // mounted by three different stages and the commitment must not depend on
+  // which one is on screen — nor be ticked twice if two ever were.
+  const commitStage = analysis?.optionCommitStage ?? null
+  useEffect(() => {
+    if (!commitStage) return
+    const handle = window.setTimeout(() => s.advanceOptionCreation(), OPTION_COMMIT_STAGE_MS)
+    return () => window.clearTimeout(handle)
+  }, [commitStage, s])
+
+  // The commitment and its outcome are announced politely: under reduced
+  // motion there is no transition to watch, so the announcement IS the
+  // feedback (the ticket requires reduced motion to preserve status, focus
+  // and next action).
+  const commitError = analysis?.optionCreationErrorKey ?? null
+  const previousCommitStage = useRef(commitStage)
+  useEffect(() => {
+    if (commitStage && !previousCommitStage.current) {
+      setStageAnnouncement(t('vr3.readiness.announce.creating'))
+    }
+    previousCommitStage.current = commitStage
+  }, [commitStage, t])
+  useEffect(() => {
+    if (commitError) setStageAnnouncement(t(commitError))
+  }, [commitError, t])
 
   if (!project || !analysis) return null
 
@@ -1258,11 +1305,17 @@ function CreateOptionGate({
   const lastRequestAt = useRef(0)
 
   const create = () => {
+    // Guarded by STATE first, then by time. `beginOptionCreation` is
+    // idempotent for the same reason, so three independent things would
+    // have to fail at once to create two Options from one intent.
+    if (busy) return
     const now = Date.now()
     if (now - lastRequestAt.current < OPTION_CREATE_GUARD_MS) return
     lastRequestAt.current = now
+    // Only OPENS the commitment. The stages are advanced by the shell's
+    // own tick, so the busy state is actually painted and the gate is
+    // re-read at every stage boundary.
     s.beginOptionCreation()
-    s.createOption()
   }
 
   return (
@@ -1321,7 +1374,9 @@ function CreateOptionGate({
           count: state.unresolvedBlockingConflicts || state.blockingQuestions || state.staleFactKeys.length,
         }) : undefined}
         loading={busy}
-        loadingLabel={t('vr3.readiness.creatingOption')}
+        loadingLabel={analysis.optionCommitStage === 'OPTION'
+          ? t('vr3.readiness.creatingOption.option')
+          : t('vr3.readiness.creatingOption.baseline')}
         onClick={create}
       >
         {t('vr3.readiness.createOption')}

@@ -237,10 +237,46 @@ export type ProjectAnalysis = {
   reanalysisCount: number
   /** Recorded when the project baseline was committed into an Option. */
   baselineCommittedAt: string | null
+  /**
+   * True for exactly as long as an Option-creation commitment is in flight.
+   *
+   * INVARIANT: `creatingOption === (optionCommitStage !== null)`. The two
+   * are always written in one `set()`, and every transition is walked
+   * against this equality by `project-readiness.dom.test.tsx` ("never lets
+   * creatingOption and optionCommitStage disagree").
+   */
   creatingOption: boolean
+  /**
+   * Which stage of the commitment is pending, or `null` when none is.
+   *
+   * Creating an Option is a COMMITMENT, not a render: it first commits the
+   * project baseline as its own journalled event, and only then creates the
+   * Option that inherits it. Naming the stages is what makes the required
+   * `creating Option` state observable and its failure recoverable — the
+   * gate re-reads readiness at every stage boundary, so a conflict reopened
+   * mid-flight fails the commitment instead of half-creating an Option.
+   */
+  optionCommitStage: OptionCommitStage | null
   /** A failed Option creation leaves readiness and resolution work intact. */
   optionCreationErrorKey: string | null
 }
+
+/**
+ * The stages of the Option-creation commitment, in order.
+ *
+ * `BASELINE` — build, validate and journal the project-baseline snapshot
+ * (the artefact VR3-02 consumes). `OPTION` — create the Option that
+ * inherits it.
+ *
+ * There are no percentages here and there never will be: rule 25 forbids
+ * invented progress, and prescribes an indeterminate state plus a protocol
+ * of COMPLETED phases instead. These are real phases with real results, so
+ * naming the pending one is a fact rather than an estimate.
+ */
+export type OptionCommitStage = 'BASELINE' | 'OPTION'
+
+/** The stages in commitment order. */
+export const OPTION_COMMIT_STAGES: readonly OptionCommitStage[] = ['BASELINE', 'OPTION']
 
 export const ANALYSIS_ACTOR = 'sales-user'
 
@@ -266,6 +302,7 @@ export function initialProjectAnalysis(project: FixtureProject): ProjectAnalysis
     reanalysisCount: 0,
     baselineCommittedAt: null,
     creatingOption: false,
+    optionCommitStage: null,
     optionCreationErrorKey: null,
   }
 }

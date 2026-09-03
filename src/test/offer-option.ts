@@ -127,3 +127,34 @@ export function enterProjectUnderstanding(
     })
   }
 }
+
+/**
+ * Drive an in-flight Option-creation commitment to its conclusion.
+ *
+ * Creating an Option is a staged commitment (baseline, then Option), and
+ * the UI advances one stage per timer tick. Tests drive the STAGES instead
+ * of waiting out the clock, for exactly the reason the document-analysis
+ * suites do: an assertion about state cannot be made flaky by a slow
+ * machine, and a commitment that stalls fails on its state rather than on
+ * a sleep that happened to be long enough.
+ *
+ * Safe to call when nothing is in flight, and safe to call alongside the
+ * component's own tick: `advanceOptionCreation` is a no-op unless a
+ * commitment is actually pending.
+ */
+export function settleOptionCommit() {
+  // One more than the number of stages: enough to finish, few enough that a
+  // commitment which never settles fails here instead of spinning.
+  for (let i = 0; i < 4; i++) {
+    const s = useStore.getState()
+    const project = demoProject(s.opportunityId)
+    const analysis = project ? s.projectAnalyses[project.id] : undefined
+    if (!analysis?.creatingOption) return
+    act(() => useStore.getState().advanceOptionCreation())
+  }
+  throw new Error(
+    'Option creation did not settle: the commitment is still in flight after '
+    + 'four stage advances. Either a stage stopped clearing itself or a new '
+    + 'stage was added without updating this helper.',
+  )
+}
