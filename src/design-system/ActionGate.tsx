@@ -137,7 +137,14 @@ export function ActionGate({
         ) : null}
         {error ? (
           <div className="a3-gate-error" role="alert" tabIndex={-1} ref={errorRef}>
-            <SemanticStatus tone="error" label={t('ds.actionGate.status.error')} size="compact" />
+            {/* The gate's own status line already says FAILED when the gate
+                is in its error status, and printing it twice is the
+                duplicated label this system exists to avoid. It stays for a
+                consumer that reports a failed attempt while the gate itself
+                is available again — there the word appears once. */}
+            {status === 'error' ? null : (
+              <SemanticStatus tone="error" label={t('ds.actionGate.status.error')} size="compact" />
+            )}
             <p className="a3-gate-error-message">{error.message}</p>
             {error.onRetry ? (
               <button

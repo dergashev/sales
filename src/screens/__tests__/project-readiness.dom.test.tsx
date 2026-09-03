@@ -538,6 +538,11 @@ describe('Option creation hands off a gated, authority-aware baseline', () => {
     await waitFor(() => expect(document.activeElement).toBe(failure))
     // The recovery route is inside the region that just took focus.
     expect(failure.querySelector('button')).not.toBeNull()
+    // And the word FAILED appears ONCE on the gate, not twice: the gate's
+    // status line and the failure region used to print it both.
+    const gateEl = failure.closest('.a3-gate')!
+    // 'Fehlgeschlagen' in the DOM; the uppercase on screen is CSS.
+    expect(gateEl.textContent!.match(/Fehlgeschlagen/g) ?? []).toHaveLength(1)
     // NOTHING else moved: no Option, no baseline, and the five decisions
     // that were not undone are still exactly as they were.
     expect(st().options).toHaveLength(0)
