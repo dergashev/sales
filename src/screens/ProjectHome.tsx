@@ -1405,11 +1405,31 @@ function OptionCreatedStage({ project }: { project: FixtureProject }) {
             label: t('vr3.understanding.metric.documents'),
             value: s.projectBaseline.documentCount,
           },
-          {
+          /**
+           * ACCEPT-01. This row printed `conflictDecisions.length` — the
+           * number of disputed values the baseline carries a DECISION for —
+           * under the label that everywhere else in this file means the
+           * number still OUTSTANDING (`state.unresolvedBlockingConflicts`,
+           * rows above and in `ReadyStage`). So a Project B hand-off,
+           * reached only because that count had reached zero, announced
+           * "Blockierende strittige Angaben 6" and contradicted the gate
+           * that had just opened.
+           *
+           * One number, two meanings — the defect class CLAUDE.md's own
+           * correction log names. The number is worth showing: six recorded
+           * decisions are exactly what this Option inherited. It now says
+           * so, against the project's own conflict count, and it is ABSENT
+           * when the project had nothing to decide rather than printing a
+           * zero that would read as a finding.
+           */
+          ...(project.conflicts.length > 0 ? [{
             id: 'decisions',
-            label: t('vr3.readiness.row.blockingConflicts'),
-            value: s.projectBaseline.conflictDecisions.length,
-          },
+            label: t('vr3.readiness.row.resolvedConflicts'),
+            value: t('vr3.readiness.row.decidedOf', {
+              decided: s.projectBaseline.conflictDecisions.length,
+              total: project.conflicts.length,
+            }),
+          }] : []),
         ] : []}
         /* Only Gebäude & Umfang is substantive now, and every later stage
            is visible as locked WITH ITS REASON — in the spine beside this

@@ -363,6 +363,73 @@ describe('accessibility of the project surfaces', () => {
   })
 })
 
+/**
+ * ACCEPT-01 (VR3-02 acceptance remediation).
+ *
+ * The Option-created hand-off printed the number of RECORDED conflict
+ * decisions under the label that means the number still OUTSTANDING. On the
+ * complex fixture that produced "Blockierende strittige Angaben 6" on a
+ * surface the user can only reach because that count had reached zero — the
+ * hand-off contradicted the gate that opened it.
+ *
+ * These two cases guard the CLASS, not the sentence: the outstanding label
+ * must never appear on this surface, and the number that IS shown has to be
+ * the decisions it claims to be, against the project's own conflict count.
+ */
+describe('the Option-created hand-off never contradicts the gate that opened it', () => {
+  const OUTSTANDING = 'Blockierende strittige Angaben'
+
+  it('reports six DECIDED conflicts on the complex route, and none outstanding', async () => {
+    const user = userEvent.setup()
+    await openProject(user, 'Quartier Am Güterbogen')
+    finishAnalysis()
+    const st = () => useStore.getState()
+
+    const project = demoProject('DEMO-COMPLEX-01')!
+    expect(project.conflicts).toHaveLength(6)
+    act(() => {
+      for (const conflict of project.conflicts) {
+        st().resolveProjectConflict(conflict.id, {
+          kind: 'candidate', candidateId: conflict.recommendedCandidateId,
+        })
+      }
+    })
+    // The gate is open precisely BECAUSE nothing is outstanding any more.
+    expect(readiness(project, st().projectAnalyses['DEMO-COMPLEX-01']!)
+      .unresolvedBlockingConflicts).toBe(0)
+    act(() => { st().createOption() })
+    act(() => { st().setProjectStage('createOption') })
+
+    const readinessPanel = document.querySelector('.a3-readiness')!
+    // The outstanding label cannot appear here at all: this surface has no
+    // outstanding conflicts to report, by construction.
+    expect(readinessPanel.textContent).not.toContain(OUTSTANDING)
+    // What it does report is the decisions the Option inherited, named.
+    expect(within(readinessPanel as HTMLElement)
+      .getByText('Entschiedene strittige Angaben')).toBeInTheDocument()
+    expect(within(readinessPanel as HTMLElement).getByText('6 von 6')).toBeInTheDocument()
+    expect(st().projectBaseline!.conflictDecisions).toHaveLength(6)
+  })
+
+  it('omits the row entirely on a project that had nothing to decide', async () => {
+    const user = userEvent.setup()
+    await openProject(user, 'Wohnhof Lindenhain')
+    finishAnalysis()
+    const st = () => useStore.getState()
+    expect(demoProject('DEMO-HAPPY-01')!.conflicts).toHaveLength(0)
+
+    act(() => { st().createOption() })
+    act(() => { st().setProjectStage('createOption') })
+
+    const readinessPanel = document.querySelector('.a3-readiness')!
+    expect(readinessPanel.textContent).not.toContain(OUTSTANDING)
+    // A zero here would read as a finding about the project. Absence is the
+    // honest state: there was never anything to decide.
+    expect(readinessPanel.textContent).not.toContain('Entschiedene strittige Angaben')
+    expect(within(readinessPanel as HTMLElement).getByText('Gebäude')).toBeInTheDocument()
+  })
+})
+
 describe('Option creation hands off a gated, authority-aware baseline', () => {
   it('emits the snapshot as one journalled confirmation and only then creates the Option', async () => {
     const user = userEvent.setup()
