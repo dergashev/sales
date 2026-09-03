@@ -529,8 +529,15 @@ describe('Option creation hands off a gated, authority-aware baseline', () => {
     // ready surface, so the user is put on the tab that carries them.
     expect(st().understandingTab).toBe('overview')
     await waitFor(() => expect(document.querySelector('.a3-gate-error')).not.toBeNull())
-    expect(document.querySelector('.a3-gate-error')!.textContent)
-      .toContain('eine Voraussetzung hat sich geändert')
+    const failure = document.querySelector('.a3-gate-error')!
+    expect(failure.textContent).toContain('eine Voraussetzung hat sich geändert')
+    // It is an alert AND it takes focus, so it is reached rather than merely
+    // announced: a gate sits far down a long review surface, and the failure
+    // was once announced correctly while nothing on screen showed it.
+    expect(failure).toHaveAttribute('role', 'alert')
+    await waitFor(() => expect(document.activeElement).toBe(failure))
+    // The recovery route is inside the region that just took focus.
+    expect(failure.querySelector('button')).not.toBeNull()
     // NOTHING else moved: no Option, no baseline, and the five decisions
     // that were not undone are still exactly as they were.
     expect(st().options).toHaveLength(0)

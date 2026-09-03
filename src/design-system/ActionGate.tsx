@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { useT } from '../i18n'
 import { SemanticStatus, type SemanticStatusTone } from './SemanticStatus'
 
@@ -74,6 +74,33 @@ export function ActionGate({
   const t = useT()
   const reasonId = useId()
   const unmet = (prerequisites ?? []).filter((p) => !p.met)
+
+  /**
+   * A failed commitment takes focus, once, when it appears.
+   *
+   * `role="alert"` announces the failure but moves nothing, and a gate is
+   * often far down a long review surface: a failed Option creation was
+   * announced correctly while the screen showed the top of the page with no
+   * error in sight — observed in the browser, on the exact candidate. So the
+   * capability that owns the failure also owns bringing the user to it:
+   * focusing scrolls it into view for a sighted user and puts a keyboard
+   * user on the retry control's own region, which is the recovery route.
+   *
+   * Only on the TRANSITION into failure. Focusing on every render would
+   * steal focus from whatever the user did next, including the retry itself.
+   */
+  const errorRef = useRef<HTMLDivElement>(null)
+  const hadError = useRef(false)
+  const hasError = Boolean(error)
+  useEffect(() => {
+    if (hasError && !hadError.current) {
+      errorRef.current?.focus()
+      // `?.()` like `ProjectOptions`' own scroll: jsdom does not implement
+      // it, and this is presentation, not behaviour under test.
+      errorRef.current?.scrollIntoView?.({ block: 'nearest' })
+    }
+    hadError.current = hasError
+  }, [hasError])
   return (
     <div className={status === 'available' ? 'a3-gate a3-gate-open' : 'a3-gate a3-gate-closed'}>
       <div className="a3-gate-action">{children}</div>
@@ -109,7 +136,7 @@ export function ActionGate({
           <div className="a3-gate-alternative">{alternative}</div>
         ) : null}
         {error ? (
-          <div className="a3-gate-error" role="alert">
+          <div className="a3-gate-error" role="alert" tabIndex={-1} ref={errorRef}>
             <SemanticStatus tone="error" label={t('ds.actionGate.status.error')} size="compact" />
             <p className="a3-gate-error-message">{error.message}</p>
             {error.onRetry ? (

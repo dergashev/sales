@@ -167,7 +167,10 @@ export function ProjectHome() {
   // motion there is no transition to watch, so the announcement IS the
   // feedback (the ticket requires reduced motion to preserve status, focus
   // and next action).
-  const commitError = commit?.errorKey ?? null
+  //
+  // The FAILURE is deliberately not announced here. `ActionGate` renders it
+  // in a `role="alert"` region and takes focus to it, so repeating it in this
+  // polite region would announce one failure twice.
   const previousCommitStage = useRef(commitStage)
   useEffect(() => {
     if (commitStage && !previousCommitStage.current) {
@@ -175,9 +178,6 @@ export function ProjectHome() {
     }
     previousCommitStage.current = commitStage
   }, [commitStage, t])
-  useEffect(() => {
-    if (commitError) setStageAnnouncement(t(commitError))
-  }, [commitError, t])
 
   if (!project || !analysis) return null
 
