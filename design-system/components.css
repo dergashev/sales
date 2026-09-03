@@ -669,6 +669,13 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-wfs-attention .a3-wfs-marker{border:var(--border-warning);color:var(--color-text-primary)}
 .a3-wfs-blocked .a3-wfs-button{cursor:not-allowed}
 .a3-wfs-blocked .a3-wfs-marker,.a3-wfs-skipped .a3-wfs-marker{color:var(--color-text-muted)}
+/* M-06's unlock half (VR3-03R): a step that just BECAME AVAILABLE resolves
+   once, within the contract's 220ms, and then the mark is removed by the
+   component that set it. It states nothing the step's own state class,
+   glyph and words do not already state — so reduced motion (which zeroes
+   `--motion-reveal`) and a reader who looked away both lose nothing. */
+.a3-wfs-unlocked{animation:a3-m06-unlock var(--motion-reveal) var(--motion-easing-emphasized) 1}
+@keyframes a3-m06-unlock{from{background:var(--color-surface-selected)}to{background:var(--color-surface-default)}}
 .a3-wfs-blocked-reason{margin:0 var(--space-4) var(--space-3);padding-left:calc(var(--size-chapter-marker) + var(--space-3))}
 .a3-wfs-rationale{margin:0 var(--space-4) var(--space-3);padding-left:calc(var(--size-chapter-marker) + var(--space-3))}
 .a3-wfs-rationale summary{min-height:var(--size-hit-target-default);display:inline-flex;align-items:center;cursor:pointer;text-decoration:underline;text-underline-offset:var(--size-text-underline-offset);font-weight:var(--type-label-weight)}
@@ -3005,6 +3012,27 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-ledger-downstream{min-width:18ch}
 .a3-ledger-downstream .a3-sst{flex-wrap:nowrap;align-items:flex-start}
 .a3-ledger-progress{margin:0}
+/* ── M-06 · the sixth scope decision resolves (VR3-03R, audit G-09) ─────
+   Two one-shot resolutions, both inside the contract's own ceilings: the
+   completing ROW within 160ms (`--motion-feedback`, 120ms) and the n/6
+   COUNT within 220ms (`--motion-reveal`, 200ms). The journey's unlock
+   (`.a3-wfs-unlocked`) shares the second.
+
+   WHAT THEY MAY NOT DO. Neither carries meaning: the row's `data-decision`,
+   the summary sentence and the counter's own words already state the new
+   truth, so a reader who has motion suppressed, or who simply blinked,
+   reads exactly the same thing. Neither loops, neither scales, neither
+   bounces — the vocabulary is a single surface wash that settles (README §5:
+   movement explains cause and effect and then stops existing).
+
+   `prefers-reduced-motion` zeroes `--motion-feedback`/`--motion-reveal` at
+   the token level, so both animations complete in 0ms with the same end
+   state. That is why they are written against tokens and not against
+   literal durations. */
+.a3-ledger tbody tr[data-resolved="m06"]{animation:a3-m06-row var(--motion-feedback) var(--motion-easing-standard) 1}
+@keyframes a3-m06-row{from{background:var(--color-surface-selected)}to{background:transparent}}
+.a3-ledger-progress[data-resolved="m06"]{animation:a3-m06-count var(--motion-reveal) var(--motion-easing-emphasized) 1}
+@keyframes a3-m06-count{from{background:var(--color-surface-selected)}to{background:transparent}}
 
 /* ── KGConfigurationPage ──────────────────────────────────────────────── */
 .a3-kgp{min-width:0}
@@ -3083,21 +3111,52 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-crc-amount{font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
 .a3-crc-meta{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
 .a3-crs{border-top:var(--border-hairline);padding-top:var(--space-3);margin-top:var(--space-3)}
+/* VR3-03R: the scope composition is a native `<details>`, so the whole
+   summary row is the disclosure target and it needs the canonical 44px hit
+   zone and focus ring like any other control (rule 23, R-04). */
+.a3-crs-summary{display:flex;align-items:center;min-height:var(--size-hit-target-default);cursor:pointer;list-style:none}
+.a3-crs-summary::-webkit-details-marker{display:none}
+.a3-crs-summary::after{content:"+";margin-left:auto;padding-left:var(--space-2);color:var(--color-text-secondary);font-variant-numeric:tabular-nums}
+.a3-crs details[open]>.a3-crs-summary::after{content:"−"}
+.a3-crs-summary:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--border-width-focus)}
 .a3-crs-rows{margin:0}
 .a3-crs-row{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-3);padding:var(--space-1) 0;font-size:var(--type-small-size);line-height:var(--type-small-line)}
 .a3-crs-row dt{color:var(--color-text-secondary);min-width:0}
 .a3-crs-row dd{margin:0;color:var(--color-text-primary);font-variant-numeric:tabular-nums;white-space:nowrap}
-.a3-crst{margin:var(--space-3) 0 0}
+/* VR3-03R: the trust block carries a reason, an optional detail and the
+   recovery action. The left rule marks it as a caveat about the number
+   directly above it — the same device `.a3-svcr[data-invalid]` and
+   `.a3-svf` already use — and the status WORD plus glyph carry the meaning,
+   never the rule's colour alone (rule 8). */
+.a3-crst{margin:var(--space-3) 0 0;display:grid;gap:var(--space-2);border-left:var(--border-width-strong) solid var(--color-status-warning);padding-left:var(--space-3)}
+.a3-crst-detail{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);font-variant-numeric:tabular-nums}
+.a3-crst-recovery{display:flex;flex-wrap:wrap;gap:var(--space-2)}
 
 /* 1280 recomposition (rule: 1280 is a composition, not a squeezed 1440).
    The context panel narrows first, then the service row's secondary columns
    stack — the service name, its state and its amount are the three things
    that must survive at every supported width. */
 @media (max-width:1439px){
-  /* 1280 is a composition, not a squeezed 1440: the context panel gives up
-     width first, and the service row keeps service, state and amount on one
-     line by letting the decision control wrap beneath them. */
-  .a3-kgp-stage{grid-template-columns:minmax(0,1fr) var(--measure-context-panel-compact)}
+  /* 1280 IS A RECOMPOSITION, NOT A SQUEEZE (VR3-03R, audit G-08).
+     The previous rule here restated the 1440 grid verbatim — the same
+     `1fr + --measure-context-panel-compact` split — so it changed nothing
+     and 1280 really was 1440 made narrower. Measured on the exact
+     candidate: the service workspace fell to 515px against the contract's
+     520px floor.
+     So the KG stage now gives up its SIDE COLUMN first, exactly as the
+     schedule (`.a3-sched-panels`) and the review (`.a3-rvw-body`) already
+     do at this same breakpoint. The chapter context is orientation — which
+     buildings, how many warnings, is the basis confirmed — and orientation
+     reads perfectly well above the work it orients; a 515px column of
+     dense German service rows does not. Measured after: 835px. */
+  .a3-kgp-stage{grid-template-columns:minmax(0,1fr);gap:var(--space-4)}
+  /* Above the workspace, and horizontal: as a full-width band the three
+     context facts sit side by side instead of stacking into a tall
+     preamble the reader has to scroll past to reach the first decision. */
+  .a3-kgp-context{order:-1}
+  .a3-kgp-context .a3-kgctx{display:grid;grid-template-columns:repeat(auto-fit,minmax(18ch,1fr));gap:var(--space-3) var(--space-5);align-items:start}
+  .a3-kgp-context .a3-kgctx-title{grid-column:1/-1}
+  .a3-kgp-context .a3-kgctx-rows{margin:0}
   .a3-svcr-identity{flex:1 1 18ch}
   .a3-svcr-control{order:3;flex:1 1 100%}
   .a3-svcr-status{order:1;min-width:12ch}

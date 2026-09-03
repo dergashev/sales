@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import {
   KG_CHAPTER_STEP,
   canBeginConfiguration,
@@ -17,6 +18,7 @@ import { buildingScopeStage } from '../state/optionBuildingScope'
 import { readiness, type ProjectAnalysis, type FixtureProject } from '../state/projectAnalysis'
 import { useT } from '../i18n'
 import { WorkflowStepper, type WorkflowStep } from '../design-system/WorkflowStepper'
+import { M06_UNLOCK_MS } from '../config/ui-policy'
 
 /**
  * The canonical thirteen-step journey, computed once for both contexts.
@@ -67,6 +69,20 @@ const DOWNSTREAM: ReadonlyArray<readonly [SpineStepId, string]> = [
 export function OptionWorkflowSpine() {
   const s = useStore()
   const t = useT()
+  /**
+   * M-06's unlock half (VR3-03R, audit G-09).
+   *
+   * The sixth scope decision is what opens the cost groups, and the journey
+   * is where "opened" becomes visible. This watches the PREDICATE, not the
+   * click: the spine is a different surface from the ledger, and a callback
+   * threaded between them would couple two components to say something both
+   * already derive from the same store.
+   *
+   * It resolves once and stays resolved for one paint cycle's worth of
+   * transition, then clears — a permanently emphasised step is decoration,
+   * and the step's own state class carries the standing truth.
+   */
+  const [justUnlocked, setJustUnlocked] = useState(false)
   const gateOpen = canBeginConfiguration(s)
   const stage = buildingScopeStage(s)
   const onScope = s.pipelineView === 'buildingScope'
@@ -84,6 +100,20 @@ export function OptionWorkflowSpine() {
   const decisionsReason = t('vr3.kg.gate.decisionsDetail', {
     decided, total: totalGroups,
   })
+
+  const previouslyComplete = useRef(scopeComplete)
+  useEffect(() => {
+    if (scopeComplete && !previouslyComplete.current) {
+      setJustUnlocked(true)
+      // M-06 allows the availability transition up to 220ms. The class is
+      // removed after it, so the emphasis cannot repeat or persist.
+      const timer = window.setTimeout(() => setJustUnlocked(false), M06_UNLOCK_MS)
+      previouslyComplete.current = scopeComplete
+      return () => window.clearTimeout(timer)
+    }
+    previouslyComplete.current = scopeComplete
+    return undefined
+  }, [scopeComplete])
 
   /**
    * VR3-03 — the six cost groups are now LIVE steps of this one journey.
@@ -139,6 +169,10 @@ export function OptionWorkflowSpine() {
           s.openConfiguratorStepAt('scopeBoundaries')
         }
         : undefined,
+      // Only the groups the six decisions actually OPENED resolve. An
+      // excluded group was decided too, but nothing about it became
+      // available — marking it would say the opposite of `skipped`.
+      justAvailable: justUnlocked && decision === 'included',
     }
   }
 

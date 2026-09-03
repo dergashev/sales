@@ -11,6 +11,7 @@ import {
 import {
   hydrateProposalState,
   initializeProposalPersistence,
+  kgCatalogueFor,
   projectionForOption,
   useStore,
   wflConflict,
@@ -473,5 +474,102 @@ describe('proposal store recovery', () => {
   it('does not emit state.restored when no payload exists', () => {
     expect(hydrateProposalState(new MemoryStorage())).toBe(false)
     expect(useStore.getState().journal).toEqual([])
+  })
+})
+
+/**
+ * VR3-03R — two failures the persistence layer used to swallow.
+ *
+ * Both were found while reconciling the audit register against the merged
+ * candidate, and neither is in that register: the audit never reloaded the
+ * page and never blocked the storage backend.
+ */
+describe('VR3-03R · reload and save failure', () => {
+  beforeEach(() => __resetStoreForTests())
+
+  it('restores the Option under the project it was written for, not the legacy demo id', () => {
+    const storage = new MemoryStorage()
+    const st = () => useStore.getState()
+    initializeProposalPersistence(storage)
+
+    // The Option belongs to a FIXTURE project, and the KG catalogue is keyed
+    // by that id. Restore used to hard-code the legacy `demo.project.id`, so
+    // after every reload `kgCatalogue(opportunityId)` resolved to null,
+    // `hasKgConfiguration` went false with all six decisions still stored,
+    // and every cost group in the journey reported itself blocked with the
+    // self-contradicting reason "Erst 6 von 6 Kostengruppen sind
+    // entschieden."
+    st().openOpportunity('DEMO-HAPPY-01')
+    st().resolveWflConflict('customer')
+    st().confirmProjectParams()
+    st().createOption('Reload')
+    expect(st().opportunityId).toBe('DEMO-HAPPY-01')
+    expect(st().activeOptionId).not.toBeNull()
+    const raw = storage.getItem(proposalStorageKey('DEMO-0001'))!
+    expect(raw).toContain('DEMO-HAPPY-01')
+
+    __resetStoreForTests()
+    expect(st().opportunityId).toBeNull()
+    const restored = new MemoryStorage()
+    restored.setItem(proposalStorageKey('DEMO-0001'), raw)
+    expect(hydrateProposalState(restored)).toBe(true)
+    expect(st().opportunityId).toBe('DEMO-HAPPY-01')
+    // The catalogue the six decisions describe resolves again.
+    expect(kgCatalogueFor(st())).not.toBeNull()
+  })
+
+  it('a payload saved before the fix still restores, under the previous id', () => {
+    const storage = new MemoryStorage()
+    const st = () => useStore.getState()
+    initializeProposalPersistence(storage)
+    st().openOpportunity('DEMO-HAPPY-01')
+    st().resolveWflConflict('customer')
+    st().confirmProjectParams()
+    st().createOption('Legacy')
+    const envelope = JSON.parse(storage.getItem(proposalStorageKey('DEMO-0001'))!)
+    delete envelope.payload.opportunityId
+
+    __resetStoreForTests()
+    const restored = new MemoryStorage()
+    restored.setItem(proposalStorageKey('DEMO-0001'), JSON.stringify(envelope))
+    // Not discarded, and not crashed: the conservative default is the
+    // behaviour it had before the field existed.
+    expect(hydrateProposalState(restored)).toBe(true)
+    expect(st().opportunityId).toBe('DEMO-0001')
+  })
+
+  it('a blocked storage backend says so and keeps every decision', () => {
+    class BlockedStorage extends MemoryStorage {
+      allow = true
+      override setItem(key: string, value: string) {
+        if (!this.allow) throw new Error('QuotaExceededError')
+        super.setItem(key, value)
+      }
+    }
+    const storage = new BlockedStorage()
+    const st = () => useStore.getState()
+    initializeProposalPersistence(storage)
+
+    storage.allow = false
+    st().confirmBuildingSection('DEMO-B-A', 'identity', 'identity:blocked')
+
+    // THE DEFECT. `savePersistedProposal` returned false and the subscriber
+    // simply did not update its bookkeeping — no state, no surface, no
+    // retry. The user kept working against decisions that were no longer
+    // being saved and nothing anywhere said so.
+    expect(st().commercialTrust.status).toBe('stale')
+    expect(st().commercialTrust.reason).toBe('persistence')
+    // The decision itself is untouched — it lives in the store, and the
+    // failure is about the copy, not the truth.
+    expect(st().buildingSectionConfirmations['DEMO-B-A']?.identity?.fingerprint)
+      .toBe('identity:blocked')
+
+    // The retry is the way out, and it is idempotent.
+    storage.allow = true
+    st().retryCommercialResult()
+    expect(st().commercialTrust.status).toBe('ready')
+    expect(storage.getItem(proposalStorageKey('DEMO-0001'))).toContain('identity:blocked')
+    st().retryCommercialResult()
+    expect(st().commercialTrust.status).toBe('ready')
   })
 })

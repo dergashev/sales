@@ -46,11 +46,14 @@ import {
   type KgServiceDecisionRecord,
 } from '../engine/kgConfiguration'
 import {
+  COMMERCIAL_TRUSTED,
   commercialGroupLines,
   reconcileCommercial,
   scopeCounts,
+  type CommercialCause,
   type CommercialChange,
   type CommercialResult,
+  type CommercialTrust,
 } from './commercialResult'
 import {
   buildingScopeFingerprint,
@@ -336,6 +339,17 @@ export type JournalEvent = {
    * inverse = forward отменённого, и потому само отменяемо.
    */
   forward?: () => void
+  /**
+   * VR3-03R (audit G-06): the decision this event lets the rail name.
+   *
+   * Carried on the EVENT rather than passed beside it so that undoing the
+   * event can derive its own truthful cause from the one it reverses — the
+   * rail's "last thing that moved this number" after a Rückgängig is the
+   * Rückgängig, not the decision it undid. An event without a cause is one
+   * whose price effect cannot be attributed, and the door treats it as
+   * such.
+   */
+  cause?: CommercialCause
 }
 
 export type Provenance =
@@ -771,6 +785,32 @@ type PersistedProposalPayload = {
    * conservative shape `snapshots` already uses.
    */
   savedOptionVersions?: Record<string, SavedOptionVersion[]>
+  /**
+   * WHICH PROJECT this Option belongs to (VR3-03R).
+   *
+   * Restore used to hard-code `opportunityId: PROPOSAL_PROJECT_ID` — the
+   * LEGACY single-demo id (`demo.project.id`). VR3-01 replaced that single
+   * demo with a two-fixture register, and VR3-03 keyed the KG catalogue by
+   * the fixture project id (`DEMO-HAPPY-01` / `DEMO-COMPLEX-01`). So after
+   * any browser reload `kgCatalogue(opportunityId)` resolved to `null`,
+   * `hasKgConfiguration` went false with the decisions still stored, and
+   * every cost group in the journey reported itself blocked with the
+   * self-contradicting reason "Erst 6 von 6 Kostengruppen sind
+   * entschieden."
+   *
+   * That is the same class this ticket exists to close — a stated reason
+   * that contradicts the state it describes — and it made the recovered
+   * Konfigurator unreachable after a reload, so it could not be left for
+   * later. It is NOT in the VR3-03A gap register: the audit never reloaded
+   * the page. Named here, and in the change manifest, as a finding of this
+   * remediation rather than one of its assignments.
+   *
+   * Optional, defaulting to the previous constant, so a payload stored
+   * before this fix keeps loading exactly as it did rather than being
+   * discarded — the same conservative shape `snapshots` and
+   * `savedOptionVersions` already use.
+   */
+  opportunityId?: string | null
 }
 
 /**
@@ -1514,7 +1554,7 @@ function isSavedOptionVersion(value: unknown): value is SavedOptionVersion {
 const PERSISTED_PROPOSAL_PAYLOAD_KEYS = [
   'active', 'options', 'activeOptionId', 'optionSeq', 'optionConfigs',
   'buildingConflicts', 'projectParamsConfirmed', 'snapshots',
-  'savedOptionVersions',
+  'savedOptionVersions', 'opportunityId',
 ] as const
 
 const OFFER_SNAPSHOT_KEYS = [
@@ -1563,7 +1603,10 @@ function isPersistedProposalPayload(value: unknown): value is PersistedProposalP
     || (value.savedOptionVersions !== undefined
       && (!record(value.savedOptionVersions)
         || !Object.values(value.savedOptionVersions).every((versions) =>
-          Array.isArray(versions) && versions.every(isSavedOptionVersion))))) return false
+          Array.isArray(versions) && versions.every(isSavedOptionVersion))))
+    // VR3-03R: optional, so a payload saved before the fix still restores.
+    || (value.opportunityId !== undefined && value.opportunityId !== null
+      && typeof value.opportunityId !== 'string')) return false
 
   const options = value.options
   if (!options.every((option) => record(option)
@@ -1702,6 +1745,7 @@ function capturePersistedProposal(state: Store): PersistedProposalPayload {
     savedOptionVersions: Object.fromEntries(
       Object.entries(state.savedOptionVersions).map(([id, versions]) => [id, [...versions]]),
     ),
+    opportunityId: state.opportunityId,
   }
 }
 
@@ -1853,6 +1897,34 @@ type Store = {
   lastCommercialChange: CommercialChange | null
   /** Monotonic result version, so two surfaces can prove they agree. */
   commercialResultVersion: number
+  /**
+   * The total the published cause was measured AGAINST (VR3-03R, audit
+   * G-06).
+   *
+   * The causality contract needs a "before" that survives between actions,
+   * not one each action captures for itself: an action that captures its own
+   * before can only explain its own change, and every OTHER path to a new
+   * total then leaves the previous explanation standing beside it. This is
+   * that shared before, maintained by the one door every commit passes
+   * through.
+   */
+  commercialBaselineTotal: Decimal
+  /**
+   * Whether the shown commercial result is current, and if not, why
+   * (VR3-03R, audit G-07).
+   */
+  commercialTrust: CommercialTrust
+  /**
+   * The controlled calculation-failure mechanism (screen-by-screen spec §15,
+   * "ENTRY PRECONDITION=Controlled fixture/runtime failure mechanism").
+   *
+   * A recovery state nobody can reach is a recovery state nobody can review,
+   * and the audit's own G-07 evidence line is "failure could not be induced
+   * through ordinary Product controls". So the fault is inducible — from the
+   * console, never from product UI — and refused in a production build for
+   * the same reason `__resetStoreForTests` is.
+   */
+  commercialFault: boolean
   fields: { wfl: FieldState; bgfOber: FieldState; we: FieldState }
   journal: JournalEvent[]
   /** seq событий, уже отменённых: каждое отменяется не более одного раза. */
@@ -2104,6 +2176,13 @@ type Store = {
   reviewFocusSectionId: ReviewSectionId | null
 
   projection: () => Projection
+  /**
+   * Re-derive the commercial result and record the outcome (VR3-03R,
+   * audit G-07). Idempotent; never discards a user decision.
+   */
+  retryCommercialResult: () => void
+  /** Induce/clear the controlled calculation failure. Non-production only. */
+  setCommercialFault: (on: boolean) => void
   editField: (key: 'wfl' | 'bgfOber' | 'we', value: Decimal, confirmed: boolean) => void
   setBuildingFactOverride: <K extends BuildingFactKey>(
     id: string, key: K, value: BuildingFactValueMap[K], actor?: string,
@@ -2882,14 +2961,26 @@ export function kgConfigurationCompleteFor(
 }
 
 /**
- * THE commercial result. One object, produced once, for every surface.
+ * THE commercial result, derived. Throws if the engine cannot answer.
  *
  * It is derived from `computeProjection` rather than beside it, so the rail
  * cannot show a total the comparison screen, the export preflight or a
  * snapshot disagrees with — which is precisely the class of defect F-001
  * recorded.
+ *
+ * VR3-03R split this from `commercialResult` below. The derivation is
+ * allowed to FAIL — that is the honest behaviour of a calculation whose
+ * basis is broken — and the guarded reader is the one place that decides
+ * what a reader sees when it does. Merging the two is how VR3-03 came to
+ * declare a `status` field and then hard-code it to `'ready'`.
  */
-export function commercialResult(s: Store): CommercialResult {
+function deriveCommercialResult(s: Store): CommercialResult {
+  if (s.commercialFault) {
+    // The controlled failure mechanism, from the SAME place a genuine engine
+    // failure would surface: the guarded reader below cannot tell them
+    // apart, so the state QA reaches is the state a real failure produces.
+    throw new Error('commercial calculation fault injected')
+  }
   const projection = s.projection()
   const decisions = s.kgConfig
   const catalogue = kgCatalogueFor(s)
@@ -2935,9 +3026,71 @@ export function commercialResult(s: Store): CommercialResult {
       ),
     },
     lastChange: s.lastCommercialChange,
-    status: 'ready',
+    trust: s.commercialTrust,
+    derivedAtIso: new Date().toISOString(),
     reconciles,
     reconciliationDrift: drift,
+  }
+}
+
+/**
+ * The last result the engine actually produced.
+ *
+ * A READ-THROUGH CACHE of a pure selector, not store state — and the
+ * distinction is what makes it correct. The first draft kept this snapshot
+ * in the store, written only by the journal door, so a failure that arrived
+ * before the first journalled commit found nothing to fall back on and the
+ * guarded reader rethrew. Observed live: injecting a calculation fault on a
+ * freshly loaded page produced a WHITE SCREEN — a React crash — which is the
+ * one outcome this whole state exists to prevent. Rule 16 forbids answering
+ * 0 EUR for a missing basis; crashing is not the permitted alternative.
+ *
+ * As a cache it is warmed by every successful READ, so the app's own first
+ * render seeds it and no reachable failure can find it empty. It is cleared
+ * with the store in `__resetStoreForTests`, because a snapshot of a
+ * discarded Option is not a fallback, it is a wrong answer.
+ */
+let lastTrustedCommercial: CommercialResult | null = null
+
+/**
+ * THE commercial result a surface reads. Never throws, never zero.
+ *
+ * Three outcomes, in the order the reader's trust decays:
+ *
+ * 1. the engine answers, and the answer describes the current decisions;
+ * 2. the engine cannot answer, and the LAST answer it gave stays on screen
+ *    carrying `trust.status = 'stale'` and the reason;
+ * 3. the engine has never answered, so there is nothing trusted to show —
+ *    and this rethrows rather than invent a snapshot, because a fabricated
+ *    "last trusted" total is worse than a boundary that admits it has none.
+ *
+ * The persistence half rides the same object: a result that is current but
+ * unsaved is also a result the user should not quote yet, and one state
+ * with a named reason beats two independent badges the reader has to
+ * reconcile (target L).
+ */
+export function commercialResult(s: Store): CommercialResult {
+  try {
+    const fresh = deriveCommercialResult(s)
+    // A persistence failure does not make the NUMBERS stale — it makes the
+    // saved copy of them stale — so the fresh result keeps its own values
+    // and carries the store's trust verdict verbatim.
+    lastTrustedCommercial = fresh
+    return fresh
+  } catch (error) {
+    const trusted = lastTrustedCommercial
+    if (!trusted) throw error
+    return {
+      ...trusted,
+      trust: s.commercialTrust.status === 'stale'
+        ? s.commercialTrust
+        : {
+          status: 'stale',
+          reason: 'calculation',
+          sinceIso: trusted.derivedAtIso,
+          attempts: 0,
+        },
+    }
   }
 }
 
@@ -3176,7 +3329,12 @@ export function reviewSectionInputsFor(s: Store): ReviewSectionInput[] {
   const result = commercialResult(s)
   push('commercialResult',
     [result.version, result.total.exact.toFixed(2), result.totalLabel,
-      result.coverage, result.uncertaintyPp].join(':'),
+      result.coverage, result.uncertaintyPp,
+      // VR3-03R: trust is part of this section's IDENTITY, not a note beside
+      // it. Without it a result that went stale would carry the fingerprint
+      // it had while trusted, and `advanceSavedVersion`'s idempotence check
+      // would read the two as the same commitment.
+      result.trust.status, result.trust.reason ?? '-'].join(':'),
     [
       ...(result.reconciles ? [] : [{
         id: 'resultDrift',
@@ -3185,6 +3343,15 @@ export function reviewSectionInputsFor(s: Store): ReviewSectionInput[] {
         messageKey: 'vr3.review.issue.resultDrift',
         route: 'scopeBoundaries' as ReviewIssue['route'],
       }]),
+      ...(result.trust.status === 'stale' ? [{
+        id: 'resultStale',
+        sectionId: 'commercialResult' as ReviewSectionId,
+        severity: 'blocker' as const,
+        messageKey: result.trust.reason === 'persistence'
+          ? 'vr3.review.issue.resultUnsaved'
+          : 'vr3.review.issue.resultStale',
+        route: 'scopeBoundaries' as ReviewIssue['route'],
+      }] : []),
       ...(result.coverage === 'subtotal' ? [{
         id: 'resultSubtotal',
         sectionId: 'commercialResult' as ReviewSectionId,
@@ -3275,9 +3442,16 @@ export function latestSavedOptionVersion(
  * are the three things a client-facing number rests on.
  */
 export function clientProjectionValidFor(s: Store): boolean {
+  const result = commercialResult(s)
   return scopeIsSaved(s)
     && kgConfigurationCompleteFor(s)
-    && commercialResult(s).reconciles
+    && result.reconciles
+    // VR3-03R: a STALE total must not become a client-visible offer. This
+    // tightens the VR3-04 predicate only in a state that did not previously
+    // exist — before this ticket the result could not report staleness at
+    // all — so the ordinary path is unchanged, and the failure path stops
+    // committing a number the engine had already disowned.
+    && result.trust.status === 'ready'
 }
 
 /**
@@ -4593,33 +4767,120 @@ const store = createStore<Store>((set, get) => {
    * per-action habit that new/existing actions can silently skip.
    */
   /**
-   * Publishes the CAUSAL change the rail explains (T-028, M-07).
+   * THE commercial transaction (VR3-03R, audit G-06 and G-07).
    *
-   * Separate from `activeDelta` on purpose: the delta chip is a four-second
-   * acknowledgement of an action, while the rail's line answers "what is the
-   * last thing that moved this number" and must still answer it after the
-   * chip has gone and after the user has walked to another chapter. One
-   * lifetime for two different questions was how the rail came to report
-   * state without causality (F-010).
+   * WHAT WENT WRONG BEFORE. VR3-03 published the rail's causal line from a
+   * helper (`publishCommercialChange`) that two actions out of thirteen
+   * remembered to call. Everything else that moved the total — `undo` most
+   * visibly, since its button lives INSIDE the rail — moved it silently and
+   * left the previous explanation standing. Reproduced live on the ordinary
+   * path: include all six cost groups, undo the sixth, and the total drops
+   * by 490.000 EUR while the rail still reads "KG 700 enthalten · +
+   * 490.000 EUR". The rail did not merely lose its explanation; it asserted
+   * the opposite of the truth, confidently, in the one place a salesperson
+   * looks to answer a client's "why".
    *
-   * A change with no price effect is still published: "this decision changed
-   * nothing" is information, and printing nothing would leave the previous,
-   * now-superseded explanation standing.
+   * This is the SAME lesson `preview: null` above already learned, one
+   * ticket on: a rule that lives in each action's memory is a rule the next
+   * action forgets. So the door enforces it instead.
+   *
+   * THREE OBLIGATIONS, ONE PLACE:
+   *
+   * · CAUSALITY. An event that names its cause publishes it with the delta
+   *   measured against the shared baseline. An event that moves the total
+   *   WITHOUT naming a cause clears the old one — "I cannot tell you why
+   *   this moved" is a truthful answer and a stale label is not. An event
+   *   that moves nothing leaves the standing explanation alone, because it
+   *   is still the last thing that moved the number.
+   *
+   * · VERSION. `commercialResultVersion` documented itself as incrementing
+   *   "whenever the numbers change" while only two actions bumped it. Now
+   *   the door bumps it exactly when the total actually moved, so the field
+   *   means what it says and two surfaces comparing versions are comparing
+   *   something real.
+   *
+   * · TRUST. The derivation runs here, once, and its outcome is recorded:
+   *   success refreshes the last trusted snapshot, failure marks the result
+   *   stale and leaves that snapshot — and the baseline, and the standing
+   *   cause — exactly as they were. Nothing falls to zero.
    */
-  const publishCommercialChange = (
-    labels: { de: string; en: string },
-    signedExact: Decimal,
-    group: CostGroup | null,
+  const settleCommercial = (
+    e: Pick<JournalEvent, 'cause' | 'deltaExact'>, seq: number,
   ) => {
-    set((state) => ({
-      lastCommercialChange: {
-        id: `chg-${state.journal.length + 1}`,
-        labelDe: labels.de,
-        labelEn: labels.en,
-        signedExact,
-        group,
-        atIso: new Date().toISOString(),
-      },
+    const cause = e.cause
+    const state = get()
+    let fresh: CommercialResult | null = null
+    try {
+      fresh = deriveCommercialResult(state)
+    } catch {
+      fresh = null
+    }
+
+    if (!fresh) {
+      // The engine could not answer. Everything the reader currently sees
+      // stays exactly as it is — that is the point — and only the verdict
+      // about it changes.
+      set((current) => ({
+        commercialTrust: current.commercialTrust.status === 'stale'
+          ? current.commercialTrust
+          : {
+            status: 'stale',
+            reason: 'calculation',
+            sinceIso: lastTrustedCommercial?.derivedAtIso ?? null,
+            attempts: 0,
+          },
+      }))
+      return
+    }
+
+    const after = fresh.total.exact
+    /**
+     * THE FIRST result of a session has nothing to have moved FROM.
+     *
+     * The baseline starts at zero, and `after − 0` is the whole total, not a
+     * delta — caught live on the exact candidate: the first scope decision
+     * after a reload published "KG 500 nicht enthalten · + 6.180.000 €",
+     * which is the total wearing a delta's sign. So the first settle
+     * ESTABLISHES the baseline and asserts nothing about movement. There is
+     * no standing explanation to clear either: `lastCommercialChange` is
+     * transient by contract, so a freshly loaded rail has none.
+     */
+    const seeding = lastTrustedCommercial === null
+    /**
+     * The delta a CAUSAL event publishes is the one the action measured
+     * around its own write (`deltaExact`), not a difference against the
+     * shared baseline. The action is the only place that knows the total
+     * immediately before its own mutation; the baseline exists for the
+     * other question — whether a CAUSELESS event moved the number — and
+     * using it for both is how the seeding defect above arose.
+     */
+    const signed = e.deltaExact ?? new Decimal(0)
+    const moved = !seeding && !after.equals(state.commercialBaselineTotal)
+
+    lastTrustedCommercial = fresh
+    set((current) => ({
+      commercialBaselineTotal: after,
+      commercialResultVersion: moved
+        ? current.commercialResultVersion + 1
+        : current.commercialResultVersion,
+      // A calculation that just succeeded is not stale. A PERSISTENCE
+      // failure is a different claim about the same result and is not
+      // cleared here — only a successful write clears that one.
+      commercialTrust: current.commercialTrust.reason === 'persistence'
+        ? current.commercialTrust
+        : COMMERCIAL_TRUSTED,
+      lastCommercialChange: cause
+        ? {
+          id: `chg-${seq}`,
+          labelDe: cause.de,
+          labelEn: cause.en,
+          signedExact: signed,
+          group: cause.group,
+          atIso: new Date().toISOString(),
+        }
+        // An unattributable move clears the explanation; a move of zero
+        // leaves the standing one, which is still the last real cause.
+        : moved ? null : current.lastCommercialChange,
     }))
   }
 
@@ -4648,6 +4909,7 @@ const store = createStore<Store>((set, get) => {
         : null,
       preview: null,
     })
+    settleCommercial(e, seq)
   }
 
   /**
@@ -4844,9 +5106,104 @@ const store = createStore<Store>((set, get) => {
     uiLanguage: 'de',
     lastCommercialChange: null,
     commercialResultVersion: 0,
+    // The baseline starts at zero and the first commit through the door
+    // establishes the real one. It is deliberately NOT seeded from a
+    // derivation at construction time: the store is built before its
+    // fixtures are chosen, and a baseline captured from the wrong Option is
+    // a delta measured against a different offer.
+    commercialBaselineTotal: new Decimal(0),
+    commercialTrust: COMMERCIAL_TRUSTED,
+    commercialFault: false,
     density: 'komfortabel',
 
     projection: () => computeProjection(get()),
+
+    /**
+     * Recover the commercial result (VR3-03R, audit G-07; target L).
+     *
+     * IDEMPOTENT BY CONSTRUCTION: it re-derives and records the outcome, so
+     * calling it twice on a healthy result changes nothing and calling it
+     * twice on a broken one reports two failed attempts rather than
+     * pretending the second one was the first. Nothing about the user's
+     * decisions is touched on either path — recovery that could lose work
+     * is not recovery.
+     *
+     * A PERSISTENCE failure retries the write, not the arithmetic: the
+     * numbers were never in doubt, only the saved copy of them.
+     */
+    retryCommercialResult: () => {
+      const s = get()
+      if (s.commercialTrust.reason === 'persistence') {
+        if (retryProposalPersistence()) {
+          set({ commercialTrust: COMMERCIAL_TRUSTED })
+        } else {
+          set((current) => ({
+            commercialTrust: {
+              ...current.commercialTrust,
+              attempts: current.commercialTrust.attempts + 1,
+            },
+          }))
+        }
+        return
+      }
+      let fresh: CommercialResult | null = null
+      try {
+        fresh = deriveCommercialResult(get())
+      } catch {
+        fresh = null
+      }
+      if (!fresh) {
+        set((current) => ({
+          commercialTrust: {
+            ...current.commercialTrust,
+            attempts: current.commercialTrust.attempts + 1,
+          },
+        }))
+        return
+      }
+      // Recovery updates the snapshot ONCE and clears the stale state. The
+      // cause is left alone: the last decision that moved this number is
+      // still the last decision that moved it — the engine's outage did not
+      // change what the user decided.
+      lastTrustedCommercial = fresh
+      set({
+        commercialBaselineTotal: fresh.total.exact,
+        commercialTrust: COMMERCIAL_TRUSTED,
+      })
+    },
+
+    /**
+     * The controlled failure mechanism (screen-by-screen spec §15).
+     *
+     * Refused in a production build, exactly like `__resetStoreForTests`:
+     * a switch that can make a released offer engine lie is not a switch a
+     * released build should own. In development it is reachable from the
+     * console (`window.__all3Fault`), never from product UI — a recovery
+     * state has to be inducible to be reviewable, and the audit's own G-07
+     * finding was that it could not be induced at all.
+     */
+    setCommercialFault: (on) => {
+      const mode = (import.meta as { env?: { MODE?: string } }).env?.MODE
+      if (mode === 'production') {
+        throw new Error(
+          'setCommercialFault ist nur außerhalb des Produktionsbuilds erlaubt: '
+          + 'eine erzwungene Kalkulationsstörung ist ein Prüfwerkzeug, kein Produktschalter',
+        )
+      }
+      set({ commercialFault: on })
+      if (on) {
+        set(() => ({
+          commercialTrust: {
+            status: 'stale',
+            reason: 'calculation',
+            sinceIso: lastTrustedCommercial?.derivedAtIso ?? null,
+            attempts: 0,
+          },
+        }))
+      } else {
+        get().retryCommercialResult()
+      }
+    },
 
     setBuildingFactOverride: (id, key, value, actor = 'sales-user') => {
       const s = get()
@@ -5566,6 +5923,23 @@ const store = createStore<Store>((set, get) => {
         undoOf: seq,
         inverse: target.forward,
         forward: target.inverse,
+        /**
+         * VR3-03R (audit G-06): an undo EXPLAINS ITSELF.
+         *
+         * The last thing that moved the number after a Rückgängig is the
+         * Rückgängig — so the rail says so, with the reversed amount,
+         * instead of keeping the label of the decision that no longer
+         * applies. Undoing an event that never had an attributable cause
+         * supplies none here either, and the door clears the standing one:
+         * the honest outcome, since nothing available can name why.
+         */
+        cause: target.cause
+          ? {
+            de: `${UNDO_CAUSE_PREFIX.de}${target.cause.de}`,
+            en: `${UNDO_CAUSE_PREFIX.en}${target.cause.en}`,
+            group: target.cause.group,
+          }
+          : undefined,
       })
     },
 
@@ -6643,20 +7017,20 @@ const store = createStore<Store>((set, get) => {
           // `coverage`, so the decision has to land in both or two surfaces
           // describe the same Option differently.
           coverage: coverageFromKgDecisions(next),
-          commercialResultVersion: state.commercialResultVersion + 1,
         }
       })
       write(decision)
       const after = get().projection().result.total.exact
       const delta = after.minus(before)
       const labels = kgChangeLabels({ kind: 'kgScope', group, value: decision })
-      publishCommercialChange(labels, delta, group)
       apply({
         kind: 'coverage.changed',
         label: labels.de,
         deltaExact: delta.isZero() ? null : delta,
         inverse: () => write(prev),
         forward: () => write(decision),
+        // The cause travels WITH the event, so undoing it can name itself.
+        cause: { de: labels.de, en: labels.en, group },
       })
       if (!delta.isZero()) {
         set({
@@ -6687,7 +7061,6 @@ const store = createStore<Store>((set, get) => {
             ...state.kgConfig,
             services: { ...state.kgConfig.services, [serviceId]: value },
           },
-          commercialResultVersion: state.commercialResultVersion + 1,
           // ONE energy standard. The axis has a released home in the
           // building model, and exactly one surface still displays it from
           // there (the comparison screen's per-building parameter line). A
@@ -6718,13 +7091,13 @@ const store = createStore<Store>((set, get) => {
         const chapter = catalogue.chapters.find((c) => c.group === g)
         return chapter?.groups.some((sg) => sg.services.some((sv) => sv.id === serviceId))
       }) ?? null
-      publishCommercialChange(labels, delta, group)
       apply({
         kind: 'option.selected',
         label: labels.de,
         deltaExact: delta.isZero() ? null : delta,
         inverse: () => write(prev),
         forward: () => write(decision),
+        cause: { de: labels.de, en: labels.en, group },
       })
       if (!delta.isZero()) {
         set({
@@ -7616,6 +7989,73 @@ const INITIAL_SNAPSHOT = store.getState()
 
 let stopProposalPersistence: (() => void) | null = null
 let activeProposalStorage: StorageLike | null = null
+/**
+ * The payload already on disk, so an unchanged state does not rewrite it.
+ *
+ * VR3-03R moved this out of `initializeProposalPersistence`'s closure: a
+ * failed write has to be RETRYABLE from the rail, and a retry needs to know
+ * what the last successful write actually was. Keeping it in the closure is
+ * what made the failure unrecoverable as well as invisible.
+ */
+let lastPersistedSerialization: string | null = null
+/**
+ * The payload whose write already FAILED.
+ *
+ * Without it the failure handler recurses without end: recording the
+ * failure is itself a state change, the subscriber runs again, the payload
+ * still differs from the last SUCCESSFUL write, so it writes again, fails
+ * again, records again. Caught by the blocked-storage test with "Maximum
+ * call stack size exceeded" — a self-inflicted defect of exactly the kind
+ * the visible-failure requirement exists to expose rather than hide.
+ *
+ * A payload known to fail is not retried on every subsequent keystroke.
+ * The user's explicit Retry clears this, because "try it again" is a new
+ * instruction, not a repeat of the same one.
+ */
+let lastFailedSerialization: string | null = null
+
+/**
+ * Write the current state to storage, once, and say whether it worked.
+ *
+ * WHY THIS EXISTS (VR3-03R, audit G-07). The subscriber used to read
+ * `savePersistedProposal`'s boolean and, on `false`, simply not update its
+ * bookkeeping — no state, no surface, no retry. So a full or blocked
+ * storage backend meant the user kept working against decisions that were
+ * no longer being saved, and nothing anywhere said so. Target L's own
+ * words: "REMOVE=Zero fallback, silent failure and hidden save rejection."
+ *
+ * The user's decisions are never at risk here — they live in the store, and
+ * this function does not touch them. What is at risk is the user's BELIEF
+ * that they are safe, which is why the failure has to be visible.
+ */
+function writeProposalPersistence(): boolean {
+  const storage = activeProposalStorage
+  if (!storage) return false
+  const state = store.getState()
+  const payload = capturePersistedProposal(state)
+  const serialized = serializeProposalPayload(PROPOSAL_PROJECT_ID, payload)
+  if (serialized === lastPersistedSerialization) return true
+  if (!savePersistedProposal(storage, PROPOSAL_PROJECT_ID, payload)) {
+    lastFailedSerialization = serialized
+    return false
+  }
+  lastPersistedSerialization = serialized
+  lastFailedSerialization = null
+  return true
+}
+
+/**
+ * The rail's Retry for a save failure.
+ *
+ * IDEMPOTENT, and it forgets the previous failure first: the subscriber
+ * deliberately does not re-attempt a payload it already knows fails, so a
+ * retry that did not clear that memory would report success without ever
+ * having tried.
+ */
+function retryProposalPersistence(): boolean {
+  lastFailedSerialization = null
+  return writeProposalPersistence()
+}
 
 /**
  * Restore is explicit and atomic. A valid payload adds exactly one
@@ -7661,7 +8101,10 @@ export function hydrateProposalState(storage = browserProposalStorage()): boolea
         (payload.snapshots ?? []).map((snap) => deepFreeze({ ...snap })),
       ) as OfferSnapshot[],
       level: payload.activeOptionId ? 'option' : 'liste',
-      opportunityId: payload.activeOptionId ? PROPOSAL_PROJECT_ID : null,
+      // The project the payload was WRITTEN for, not the legacy demo id.
+      opportunityId: payload.activeOptionId
+        ? payload.opportunityId ?? PROPOSAL_PROJECT_ID
+        : null,
       mode: 'intern',
       ...NO_TRANSIENT,
       journal: [...state.journal, {
@@ -7690,16 +8133,37 @@ export function initializeProposalPersistence(
   if (stopProposalPersistence) return true
   activeProposalStorage = storage
   hydrateProposalState(storage)
-  let lastSerialized = serializeProposalPayload(
+  lastPersistedSerialization = serializeProposalPayload(
     PROPOSAL_PROJECT_ID, capturePersistedProposal(store.getState()),
   )
   stopProposalPersistence = store.subscribe((state) => {
     const payload = capturePersistedProposal(state)
     const serialized = serializeProposalPayload(PROPOSAL_PROJECT_ID, payload)
-    if (serialized === lastSerialized) return
+    if (serialized === lastPersistedSerialization) return
+    // A payload already known to fail is not written again on every
+    // subsequent state change — see `lastFailedSerialization`.
+    if (serialized === lastFailedSerialization) return
     if (savePersistedProposal(storage, PROPOSAL_PROJECT_ID, payload)) {
-      lastSerialized = serialized
+      lastPersistedSerialization = serialized
+      lastFailedSerialization = null
+      // A write that succeeded clears a save failure and nothing else. A
+      // CALCULATION failure is a different claim about a different thing,
+      // and a successful save is no evidence about the arithmetic.
+      if (state.commercialTrust.reason === 'persistence') {
+        store.setState({ commercialTrust: COMMERCIAL_TRUSTED })
+      }
+      return
     }
+    lastFailedSerialization = serialized
+    if (state.commercialTrust.reason === 'persistence') return
+    store.setState({
+      commercialTrust: {
+        status: 'stale',
+        reason: 'persistence',
+        sinceIso: new Date().toISOString(),
+        attempts: 0,
+      },
+    })
   })
   return true
 }
@@ -7713,6 +8177,53 @@ type UseStore = (() => Store) & { getState: () => Store }
 const hook = (() => useZustandStore(store)) as UseStore
 hook.getState = store.getState
 export const useStore = hook
+
+/**
+ * The controlled calculation-failure door (VR3-03R, audit G-07;
+ * screen-by-screen spec §15 "ENTRY PRECONDITION=Controlled fixture/runtime
+ * failure mechanism").
+ *
+ *   window.__all3Fault.calculation(true)   // induce
+ *   window.__all3Fault.calculation(false)  // recover
+ *
+ * The audit's own G-07 evidence line was "failure could not be induced
+ * through ordinary Product controls", and a recovery state nobody can reach
+ * is a recovery state nobody can review — which is how it went unbuilt for a
+ * release. So it is reachable from the console, and from nowhere else: no
+ * button, no setting, no URL parameter.
+ *
+ * IT LIVES HERE, NOT IN `main.tsx`. The first draft registered it from the
+ * entry module, which imports this one — and under Vite's HMR that left the
+ * handle holding a store instance the React tree no longer rendered from, so
+ * injecting a fault silently did nothing (observed live: three calls, no
+ * state change, no error, and a stale state that would not clear).
+ * Registering it beside the store it perturbs means the handle and the state
+ * can only ever come from the same module instance. Absent entirely from a
+ * production build, which is also why `setCommercialFault` refuses to run
+ * there.
+ */
+if (typeof window !== 'undefined'
+  && (import.meta as { env?: { MODE?: string } }).env?.MODE !== 'production') {
+  (window as unknown as {
+    __all3Fault?: {
+      calculation: (on: boolean) => void
+      trust: () => unknown
+    }
+  }).__all3Fault = {
+    calculation: (on: boolean) => store.getState().setCommercialFault(on),
+    /**
+     * Read the trust verdict without inferring it from the screen.
+     *
+     * A reviewer proving "the total stayed and the state says stale" should
+     * not have to deduce the state from the pixels that are the thing under
+     * review. Read-only, and dev-only like its neighbour.
+     */
+    trust: () => ({
+      fault: store.getState().commercialFault,
+      ...store.getState().commercialTrust,
+    }),
+  }
+}
 
 /**
  * Тестовый сброс — единственная санкционированная замена состояния целиком.
@@ -7730,6 +8241,15 @@ export function __resetStoreForTests(): void {
   }
   stopProposalPersistence?.()
   stopProposalPersistence = null
+  // VR3-03R: the written-payload bookkeeping moved to module scope so a
+  // failed write could be retried. It has to be reset with the rest of it,
+  // or a serialization left by the previous test makes the next one's first
+  // write look like a no-op.
+  lastPersistedSerialization = null
+  lastFailedSerialization = null
+  // A trusted snapshot of a discarded Option is not a fallback, it is a
+  // wrong answer.
+  lastTrustedCommercial = null
   if (activeProposalStorage) {
     clearPersistedProposal(activeProposalStorage, PROPOSAL_PROJECT_ID)
   }
@@ -7873,6 +8393,18 @@ const LABEL_UG: Record<BuildingInput['untergeschoss'], string> = {
   ab_decke: 'Leistungsbeginn ab OK Decke über UG',
   vollausbau: 'vollständig inkl. Gründung',
 }
+
+/**
+ * The undo prefix, in both languages (VR3-03R).
+ *
+ * Beside `COVERAGE_LABEL`/`COVERAGE_LABEL_EN` rather than in a dictionary
+ * because it composes a `CommercialChange`, and that record stores resolved
+ * text in both languages by contract — the rail picks the language, it does
+ * not translate. `translatedChangeLabel` documents why: store logic has no
+ * i18n hook, and a key resolved at the wrong moment is how a German label
+ * ends up beside an English service name.
+ */
+const UNDO_CAUSE_PREFIX = { de: 'Rückgängig · ', en: 'Undone · ' } as const
 
 const COVERAGE_LABEL: Record<CoverageState, string> = {
   included: 'enthalten',

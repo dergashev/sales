@@ -79,6 +79,23 @@ export function CommercialRailChange({
   )
 }
 
+/**
+ * What the number currently contains.
+ *
+ * VR3-03R made it COLLAPSIBLE (target O: "make secondary rail detail
+ * expandable" at 1280). The composition of the scope is secondary to the
+ * total and its cause, and at 1280 those two have to be readable without
+ * scrolling the rail — which they were not while this block sat BETWEEN
+ * them in the rail's flow. Two changes, one requirement: the causal line
+ * moved above this block (see `OfferPanel`), and this block can now be
+ * folded away by the reader who wants the rail shorter still.
+ *
+ * It stays open by default, at both supported widths, because collapsing
+ * information the reader did not ask to hide is its own defect — the
+ * disclosure is theirs to use, not a default that hides scope from someone
+ * who never learns it is there. Native `<details>`, so it is
+ * keyboard-operable and announced with no disclosure state of our own.
+ */
 export function CommercialRailScope({
   heading, rows,
 }: {
@@ -86,38 +103,69 @@ export function CommercialRailScope({
   rows: ReadonlyArray<{ label: string; value: string }>
 }) {
   return (
+    // The LANDMARK stays a labelled region and the disclosure lives inside
+    // it. Making the `<details>` itself the outer element cost the block its
+    // region role and its accessible name — a collapsible section is still a
+    // section, and a screen-reader user navigating by landmark should not
+    // lose one because a sighted user gained a fold.
     <section className="a3-crs" aria-label={heading}>
-      <p className="a3-cap">{heading}</p>
-      <dl className="a3-crs-rows">
-        {rows.map((row) => (
-          <div className="a3-crs-row" key={row.label}>
-            <dt>{row.label}</dt>
-            <dd>{row.value}</dd>
-          </div>
-        ))}
-      </dl>
+      <details open>
+        <summary className="a3-crs-summary">
+          <span className="a3-cap">{heading}</span>
+        </summary>
+        <dl className="a3-crs-rows">
+          {rows.map((row) => (
+            <div className="a3-crs-row" key={row.label}>
+              <dt>{row.label}</dt>
+              <dd>{row.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>
     </section>
   )
 }
 
 /**
- * The rail's trust state.
+ * The rail's trust state, and the way out of it.
  *
  * `stale` exists because a failed calculation must keep the LAST TRUSTED
  * total and say so, rather than print a zero or a blank. Rule 16 forbids
  * the zero; a blank would be worse, because it looks like the number is
  * still coming.
+ *
+ * VR3-03R added `recovery` (audit G-07, target L). A state that names a
+ * failure and offers nothing is a dead end: the reader learns the number
+ * cannot be trusted and has no way to change that. `SaveReceipt` already
+ * pairs a failure with its retry for the Option save; this is the same
+ * pairing for the commercial result, on the surface the number lives on.
+ *
+ * FOCUS IS NOT STOLEN. The block renders as a `status`, not an `alert`, and
+ * nothing here moves the caret: the user may well be mid-decision when a
+ * write fails, and yanking focus to a retry button would interrupt the very
+ * work the retry exists to protect (spec §15's own words). Urgency is
+ * carried by the tone and the words.
+ *
+ * `detail` holds what the reader needs only if they ask — when the value
+ * was last current, how many attempts have failed — and is a sibling of the
+ * reason rather than a second status line, so the compact 1280 rail keeps
+ * one trust block, not two.
  */
 export function CommercialRailStatus({
-  tone, label, reason,
+  tone, label, reason, detail, recovery,
 }: {
   tone: SemanticStatusTone
   label: string
   reason?: string
+  detail?: string
+  /** The action that resolves this state. Idempotent by contract. */
+  recovery?: ReactNode
 }) {
   return (
-    <p className="a3-crst">
+    <div className="a3-crst" role="status">
       <SemanticStatus tone={tone} label={label} reason={reason} />
-    </p>
+      {detail && <p className="a3-crst-detail">{detail}</p>}
+      {recovery && <div className="a3-crst-recovery">{recovery}</div>}
+    </div>
   )
 }

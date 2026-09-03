@@ -52,3 +52,28 @@ export const DELIVERY_SIMULATION_MS = 2500
  * kurze Übermittlung selbst, bevor der unveränderliche Snapshot entsteht.
  */
 export const SEND_COMMIT_SIMULATION_MS = 500
+
+/**
+ * M-06 — die Auflösung der sechsten Leistungsabgrenzungs-Entscheidung.
+ *
+ * Quelle: `vr3-03a-review/07-canonical-konfigurator-contract.md` §"M-06 —
+ * scope completion", wortwörtlich: "The sixth decision resolves in no more
+ * than 160ms; `6/6 entschieden` and first-included-KG availability resolve
+ * within 220ms."
+ *
+ * Warum als POLITIK und nicht als Token: die beiden Werte steuern, WIE
+ * LANGE ein einmaliger Zustandswechsel als solcher markiert bleibt, und der
+ * Code muss sie kennen — die Markierung muss danach VERSCHWINDEN, sonst ist
+ * eine dauerhafte Betonung daraus geworden, und genau das verbietet der
+ * Vertrag ("Remove=Generic celebration or decorative motion"). Die
+ * tatsächliche Dauer der Bewegung bleibt bei den kanonischen Tokens
+ * (`--motion-feedback` 120 ms für die Zeile, `--motion-reveal` 200 ms für
+ * Zähler und Freischaltung) — beide liegen innerhalb der genannten
+ * Obergrenzen, deshalb entsteht hier kein neuer Zeitwert im Visuellen.
+ *
+ * `prefers-reduced-motion` nullt die Tokens, nicht diese Zahlen: der
+ * Endzustand, der Fokus und die Ansage sind identisch, nur ohne Bewegung
+ * (Regel 21, Vertrag §"Reduced motion").
+ */
+export const M06_ROW_MS = 160
+export const M06_UNLOCK_MS = 220

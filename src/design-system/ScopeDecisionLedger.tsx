@@ -47,7 +47,7 @@ export type ScopeLedgerRow = {
 }
 
 export function ScopeDecisionLedger({
-  rows, columns, decisionLegend, onDecide, onPreview, caption,
+  rows, columns, decisionLegend, onDecide, onPreview, caption, resolvedRowId,
 }: {
   rows: readonly ScopeLedgerRow[]
   columns: { group: string; decision: string; summary: string; downstream: string }
@@ -56,6 +56,16 @@ export function ScopeDecisionLedger({
   onDecide: (id: string, decision: Exclude<ScopeLedgerDecision, 'undecided'>) => void
   onPreview?: (id: string, decision: ScopeLedgerDecision | null) => void
   caption: string
+  /**
+   * M-06 (VR3-03R): the row whose decision just COMPLETED the set.
+   *
+   * One row, once. The ledger does not know which decision is the sixth —
+   * that is the product's count, not the table's — so the composition names
+   * it and the table marks it. Purely a resolution mark: the row's decided
+   * state, its summary and its downstream status all already say what
+   * changed, so nothing is lost when the mark is suppressed or missed.
+   */
+  resolvedRowId?: string | null
 }) {
   return (
     // Every table lives in its own horizontal scroll container (rule 3a):
@@ -74,7 +84,11 @@ export function ScopeDecisionLedger({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.id} data-decision={row.decision}>
+            <tr
+              key={row.id}
+              data-decision={row.decision}
+              data-resolved={row.id === resolvedRowId ? 'm06' : undefined}
+            >
               <th scope="row" className="a3-ledger-identity">
                 {/* Each label is its own block element: the identity and the
                     meaning must not rely on markup whitespace to separate
@@ -129,15 +143,21 @@ export function ScopeDecisionLedger({
  * one number, one place, rendered wherever the composition needs it.
  */
 export function ScopeDecisionSummary({
-  decided, total, label, tone,
+  decided, total, label, tone, resolving,
 }: {
   decided: number
   total: number
   label: string
   tone: SemanticStatusTone
+  /** M-06: the count just reached its total. One-shot, meaning-free. */
+  resolving?: boolean
 }) {
   return (
-    <p className="a3-ledger-progress" data-complete={decided === total || undefined}>
+    <p
+      className="a3-ledger-progress"
+      data-complete={decided === total || undefined}
+      data-resolved={resolving ? 'm06' : undefined}
+    >
       <SemanticStatus tone={tone} label={label} />
     </p>
   )

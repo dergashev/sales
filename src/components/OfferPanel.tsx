@@ -1119,6 +1119,78 @@ export function OfferPanel(
             rail's normal scroll flow, immediately under the pinned header,
             for the same reason the completeness line does — that header
             budget is a committed ceiling and must not be reopened. */}
+        {/* VR3-03R (target K, audit G-08): the causal line comes FIRST.
+            Target K's order is total → meaning/uncertainty → signed delta
+            and cause together → optional breakdown after; VR3-03 shipped
+            the scope summary between the total and its cause, and measured
+            at 1280×800 that pushed the cause to y=759 with the rail's
+            visible bottom at y=800. The reader had to scroll the rail to
+            learn why the number they were looking at had moved. Restoring
+            the target's own order puts total and cause in one frame at both
+            supported widths, and the composition — which is genuinely
+            secondary — is what scrolls and what collapses. */}
+        {commercial.lastChange && (
+          <CommercialRailChange
+            heading={t('vr3.rail.change.heading')}
+            label={lang === 'en'
+              ? commercial.lastChange.labelEn
+              : commercial.lastChange.labelDe}
+            direction={commercial.lastChange.signedExact.isZero()
+              ? 'neutral'
+              : commercial.lastChange.signedExact.isNegative()
+                ? 'decrease' : 'increase'}
+            amount={commercial.lastChange.signedExact.isZero()
+              ? t('vr3.rail.change.noEffect')
+              : (
+                <CommercialNumber
+                  exact={commercial.lastChange.signedExact}
+                  language={lang}
+                  signed
+                />
+              )}
+            meta={commercial.lastChange.group
+              ? `KG${NNBSP}${commercial.lastChange.group.slice(3)}`
+              : undefined}
+            // No second live region: the rail's own announcer above already
+            // says change + signed delta + full formatted total on every
+            // price change, politely and scoped (SB-17). Two polite regions
+            // for one event means the user hears it twice.
+          />
+        )}
+        {/* The trust state, immediately under the number it qualifies. A
+            stale result keeps its last trusted total and offers the way
+            out; a subtotal says it is one. */}
+        {commercial.trust.status === 'stale' && (
+          <CommercialRailStatus
+            tone="stale"
+            label={commercial.trust.reason === 'persistence'
+              ? t('vr3.rail.status.unsavedLabel')
+              : t('vr3.rail.status.staleLabel')}
+            reason={commercial.trust.reason === 'persistence'
+              ? t('vr3.rail.status.unsavedReason')
+              : t('vr3.rail.status.staleReason')}
+            detail={[
+              commercial.trust.sinceIso
+                ? t('vr3.rail.status.staleSince', {
+                  time: new Intl.DateTimeFormat(
+                    lang === 'en' ? 'en-GB' : 'de-DE',
+                    { hour: '2-digit', minute: '2-digit' },
+                  ).format(new Date(commercial.trust.sinceIso)),
+                })
+                : null,
+              commercial.trust.attempts > 0
+                ? t('vr3.rail.status.staleAttempts', {
+                  attempts: commercial.trust.attempts,
+                })
+                : null,
+            ].filter(Boolean).join(' · ') || undefined}
+            recovery={(
+              <Button variant="secondary" onClick={() => s.retryCommercialResult()}>
+                {t('vr3.rail.status.retry')}
+              </Button>
+            )}
+          />
+        )}
         <CommercialRailScope
           heading={t('vr3.rail.scope.heading')}
           rows={[
@@ -1155,36 +1227,6 @@ export function OfferPanel(
               : []),
           ]}
         />
-        {commercial.lastChange && (
-          <CommercialRailChange
-            heading={t('vr3.rail.change.heading')}
-            label={lang === 'en'
-              ? commercial.lastChange.labelEn
-              : commercial.lastChange.labelDe}
-            direction={commercial.lastChange.signedExact.isZero()
-              ? 'neutral'
-              : commercial.lastChange.signedExact.isNegative()
-                ? 'decrease' : 'increase'}
-            amount={commercial.lastChange.signedExact.isZero()
-              ? t('vr3.rail.change.noEffect')
-              : (
-                <CommercialNumber
-                  exact={commercial.lastChange.signedExact}
-                  language={lang}
-                  signed
-                />
-              )}
-            meta={commercial.lastChange.group
-              ? `KG${NNBSP}${commercial.lastChange.group.slice(3)}`
-              : undefined}
-            // No second live region: the rail's own announcer above already
-            // says change + signed delta + full formatted total on every
-            // price change, politely and scoped (SB-17). Two polite regions
-            // for one event means the user hears it twice.
-          />
-        )}
-        {/* The trust state. A subtotal says so; a failed calculation keeps
-            the last trusted total and labels it, never prints a zero. */}
         {commercial.coverage === 'subtotal' && !scopeEmpty && (
           <CommercialRailStatus
             tone="attention"

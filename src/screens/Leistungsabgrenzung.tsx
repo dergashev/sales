@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   KG_SCOPE_GROUPS,
   chapterOf,
@@ -18,8 +18,10 @@ import { SemanticStatus } from '../design-system/SemanticStatus'
 import { signedMoneyText } from '../design-system/CommercialNumber'
 import {
   ScopeDecisionLedger,
+  ScopeDecisionSummary,
   type ScopeLedgerRow,
 } from '../design-system/ScopeDecisionLedger'
+import { M06_ROW_MS, M06_UNLOCK_MS } from '../config/ui-policy'
 
 /**
  * Leistungsabgrenzung — six explicit scope decisions (VR3-03, T-018–T-020).
@@ -45,13 +47,66 @@ export function Leistungsabgrenzung() {
   const total = KG_SCOPE_GROUPS.length
   const complete = kgScopeDecisionsComplete(s)
   const status = kgScopeStatus(s)
-  const announced = useRef(false)
 
-  // M-06: the SIXTH decision is the one that changes the journey, so that is
-  // the moment worth announcing — not each of the six.
+  /**
+   * M-06 — THE SIXTH DECISION (VR3-03R, audit G-09).
+   *
+   * The announcement and the focus behaviour were already right: the polite
+   * region names the unlock, and focus stays on the row the user just
+   * decided. What did not exist was the visible half — probed on the exact
+   * pre-remediation candidate, `document.getAnimations()` returned an empty
+   * array at the moment 5/6 became 6/6. The state simply teleported.
+   *
+   * Two marks, two durations, both from the contract: the row that
+   * completed the set resolves within 160ms, and the counter resolves
+   * within 220ms alongside the journey's own unlock (owned by
+   * `OptionWorkflowSpine`, which watches the same predicate rather than
+   * being told).
+   *
+   * WHAT IS DELIBERATELY ABSENT. No celebration, no confetti, no badge
+   * (rule 27 forbids all three by name). The transition says one thing —
+   * "that was the last one" — and then it is gone. Under reduced motion the
+   * marks are still set and the CSS durations are zero, so the end state,
+   * the focus and the announcement are identical and nothing moves; the
+   * meaning was never in the movement.
+   */
+  const previouslyComplete = useRef(complete)
+  const [resolvedRowId, setResolvedRowId] = useState<string | null>(null)
+  const [countResolving, setCountResolving] = useState(false)
+
+  /**
+   * Which row the sixth decision will land on.
+   *
+   * Recorded while five are decided, so that once six are, the row that
+   * completed the set is already known. Reading it AFTER completion is
+   * impossible — by then every row is decided and none of them is
+   * distinguishable as the last. Watching the store rather than the click
+   * keeps this true for a decision made by keyboard, by pointer, or by an
+   * undo that puts the sixth back.
+   */
+  const previouslyUndecided = useRef<string | null>(null)
   useEffect(() => {
-    if (complete && !announced.current) announced.current = true
-    if (!complete) announced.current = false
+    if (decided !== total - 1 || !decisions) return
+    previouslyUndecided.current = KG_SCOPE_GROUPS
+      .find((group) => decisions.scope[group] === 'undecided') ?? null
+  }, [decided, total, decisions])
+
+  useEffect(() => {
+    if (complete && !previouslyComplete.current) {
+      // The sixth decision is the last row still undecided a moment ago.
+      const sixth = previouslyUndecided.current
+      setResolvedRowId(sixth)
+      setCountResolving(true)
+      const rowTimer = window.setTimeout(() => setResolvedRowId(null), M06_ROW_MS)
+      const countTimer = window.setTimeout(() => setCountResolving(false), M06_UNLOCK_MS)
+      previouslyComplete.current = complete
+      return () => {
+        window.clearTimeout(rowTimer)
+        window.clearTimeout(countTimer)
+      }
+    }
+    previouslyComplete.current = complete
+    return undefined
   }, [complete])
 
   if (!catalogue || !decisions) return null
@@ -127,9 +182,15 @@ export function Leistungsabgrenzung() {
           <p className="a3-lede">{t('vr3.kg.ledger.lede')}</p>
         </div>
         <div className="a3-kgp-progress">
-          <SemanticStatus
+          {/* The canonical `n/6` readout, so the M-06 resolution lands on
+              the one element that owns the count rather than on a local
+              copy of it. */}
+          <ScopeDecisionSummary
+            decided={decided}
+            total={total}
             tone={complete ? 'ok' : decided > 0 ? 'attention' : 'neutral'}
             label={t('vr3.kg.ledger.progress', { decided, total })}
+            resolving={countResolving}
           />
           {status === 'recheck' && (
             <SemanticStatus
@@ -153,6 +214,7 @@ export function Leistungsabgrenzung() {
         decisionLegend={(row) => t('vr3.kg.ledger.decisionLegend', {
           group: row.identity, meaning: row.meaning,
         })}
+        resolvedRowId={resolvedRowId}
         onDecide={(id, decision) => s.setKgScopeDecision(id as KgScopeGroup, decision)}
         onPreview={(id, decision) => s.previewOption(
           decision === null || decision === 'undecided'

@@ -879,6 +879,24 @@ const de = {
     'Zusammensetzung stimmt nicht',
   'vr3.rail.status.reconcileDrift':
     'Die Kostengruppen summieren sich nicht zur ausgewiesenen Summe. Abweichung {drift}.',
+  // VR3-03R (audit G-07, target L): the trust state of the shown result.
+  // The wording never says "0 €" and never says "unbekannt": the number on
+  // screen is a real number that WAS current, and the sentence says exactly
+  // that much and no more.
+  'vr3.rail.status.staleLabel':
+    'Letzter belastbarer Stand',
+  'vr3.rail.status.staleReason':
+    'Die Kalkulation konnte nicht aktualisiert werden. Angezeigt wird der letzte belastbare Stand — nicht das Ergebnis der jüngsten Entscheidung.',
+  'vr3.rail.status.unsavedLabel':
+    'Nicht gespeichert',
+  'vr3.rail.status.unsavedReason':
+    'Die Zahlen sind aktuell, konnten aber nicht gespeichert werden. Ihre Entscheidungen bleiben erhalten.',
+  'vr3.rail.status.staleSince':
+    'belastbar um {time}',
+  'vr3.rail.status.staleAttempts':
+    '{attempts} Versuche ohne Erfolg',
+  'vr3.rail.status.retry':
+    'Erneut versuchen',
   // SIDEBAR 03 (backlog 2be8e69c, SB-16): the ghost preview's "gegenüber
   // aktuellem Stand" suffix was a hardcoded literal, invisible to `tx()`'s
   // whole-string lookup once interpolated between other fragments.
@@ -1890,6 +1908,13 @@ const de = {
     'Regionalfaktor nicht aktiviert — gerechnet wird mit dem Bundesdurchschnitt.',
   'vr3.review.issue.resultDrift':
     'Die Zusammensetzung ergibt nicht die ausgewiesene Summe.',
+  // VR3-03R: a stale or unsaved result BLOCKS the save. An Option committed
+  // on a figure the engine has already disowned is a client-visible number
+  // nobody computed.
+  'vr3.review.issue.resultStale':
+    'Angezeigt wird der letzte belastbare Stand, nicht das Ergebnis der jüngsten Entscheidung.',
+  'vr3.review.issue.resultUnsaved':
+    'Der aktuelle Stand konnte nicht gespeichert werden.',
   'vr3.review.issue.resultSubtotal':
     'Ausgewiesen ist eine Zwischensumme der kalkulierten Positionen, keine Gesamtsumme.',
   'vr3.review.issue.resultUncertainty':
@@ -2744,6 +2769,20 @@ const en: Partial<Record<MessageKey, string>> = {
     'Composition does not add up',
   'vr3.rail.status.reconcileDrift':
     'The cost groups do not sum to the stated total. Drift {drift}.',
+  'vr3.rail.status.staleLabel':
+    'Last trusted figure',
+  'vr3.rail.status.staleReason':
+    'The calculation could not be updated. What is shown is the last trusted figure — not the result of the most recent decision.',
+  'vr3.rail.status.unsavedLabel':
+    'Not saved',
+  'vr3.rail.status.unsavedReason':
+    'The figures are current but could not be saved. Your decisions are preserved.',
+  'vr3.rail.status.staleSince':
+    'trusted at {time}',
+  'vr3.rail.status.staleAttempts':
+    '{attempts} attempts without success',
+  'vr3.rail.status.retry':
+    'Try again',
   'offerPanel.preview.vsCurrent': 'vs. the current state',
   'offerPanel.derivedMarker.legend': '⚙ · derived for the prototype, not calibrated.',
   'panel.rate': 'Rate',
@@ -3648,6 +3687,10 @@ const en: Partial<Record<MessageKey, string>> = {
     'Regional factor not activated — the calculation uses the national average.',
   'vr3.review.issue.resultDrift':
     'The composition does not add up to the stated total.',
+  'vr3.review.issue.resultStale':
+    'What is shown is the last trusted figure, not the result of the most recent decision.',
+  'vr3.review.issue.resultUnsaved':
+    'The current state could not be saved.',
   'vr3.review.issue.resultSubtotal':
     'What is stated is a subtotal of calculated items, not a total.',
   'vr3.review.issue.resultUncertainty':

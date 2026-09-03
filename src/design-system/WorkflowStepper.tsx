@@ -79,6 +79,21 @@ export type WorkflowStep = {
    * `aria-disabled`, and inert on activation.
    */
   blockedRoute?: () => void
+  /**
+   * VR3-03R (motion M-06): this step BECAME AVAILABLE just now.
+   *
+   * The unlock is the half of M-06 the journey owns. A step that changes
+   * from blocked to reachable while the user is looking at another surface
+   * is a change they have to go and notice; a one-shot resolution on the
+   * step itself is how the action they just took and the door it opened
+   * read as one event.
+   *
+   * ONE-SHOT, NEVER LOOPING, and it carries no meaning of its own: the
+   * step's state class, glyph and words already say "reachable", so a
+   * reader with reduced motion, or one who simply looked away, loses
+   * nothing. That is the same contract `.a3-svr-unlock-emphasis` follows.
+   */
+  justAvailable?: boolean
 }
 
 const GLYPH: Record<WorkflowStepState, string> = {
@@ -226,6 +241,7 @@ export function WorkflowStepper({
             'a3-wfs-step',
             composite ? 'a3-wfs-done' : STATE_CLASS[step.state],
             composite ? 'a3-wfs-cur' : '',
+            step.justAvailable ? 'a3-wfs-unlocked' : '',
           ].filter(Boolean).join(' ')
           const marker = (
             <span className="a3-wfs-marker" aria-hidden="true">

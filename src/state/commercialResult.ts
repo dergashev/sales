@@ -24,11 +24,56 @@ export type CommercialStatus =
   /** The result describes the current decisions. */
   | 'ready'
   /**
-   * The last calculation failed and this is the previous TRUSTED result.
+   * The shown snapshot is the last TRUSTED one, not the current one.
    * Never a zero and never a blank: an offer engine that answers "0 EUR"
    * when it cannot answer is worse than one that says so (rule 16).
    */
-  | 'error'
+  | 'stale'
+
+/**
+ * WHY the shown snapshot is not current.
+ *
+ * Two failures, one state, because the reader's question is the same one:
+ * "can I quote this number right now?". They are told apart by their words
+ * and by which retry resolves them, never by tone alone (rule 8).
+ */
+export type CommercialStaleReason =
+  /** The calculation itself could not produce a result. */
+  | 'calculation'
+  /** The result is current but could not be written to storage. */
+  | 'persistence'
+
+/**
+ * The trust state of the shown commercial result (VR3-03R, audit G-07;
+ * target L; screen-by-screen spec §15).
+ *
+ * VR3-03 declared a two-value `CommercialStatus` and then hard-coded
+ * `status: 'ready'` at the one place a result was built — so the type
+ * described a state machine the product could not enter, and no surface
+ * could render one. Rule 16 forbids the zero on a missing basis; this is
+ * the same obligation one level up: when the ENGINE cannot answer, the
+ * last answer it gave stays on screen, labelled, with the action that
+ * resolves it.
+ *
+ * `attempts` exists so a retry that fails AGAIN still says so. A recovery
+ * affordance that looks identical before and after a failed attempt is how
+ * a user comes to believe a number recovered when it did not.
+ */
+export type CommercialTrust = Readonly<{
+  status: CommercialStatus
+  reason: CommercialStaleReason | null
+  /** When the shown values were last known to be current. */
+  sinceIso: string | null
+  /** How many recovery attempts have failed since `sinceIso`. */
+  attempts: number
+}>
+
+export const COMMERCIAL_TRUSTED: CommercialTrust = Object.freeze({
+  status: 'ready' as const,
+  reason: null,
+  sinceIso: null,
+  attempts: 0,
+})
 
 export type CommercialCoverage = 'total' | 'subtotal'
 
@@ -41,6 +86,25 @@ export type CommercialChange = Readonly<{
   signedExact: Decimal
   group: CostGroup | null
   atIso: string
+}>
+
+/**
+ * The attributable cause of one commercial mutation (VR3-03R, audit G-06).
+ *
+ * Both languages, for the reason `CommercialChange` carries both: the rail
+ * has to name the decision in the interface's own language, and a German
+ * label beside an English service name is the mixed-language state rule 10
+ * forbids.
+ *
+ * An action that changes the total and supplies NO cause is not a bug in
+ * this type — it is the case the contract exists for: the previous
+ * explanation is cleared rather than left standing beside a number it no
+ * longer explains.
+ */
+export type CommercialCause = Readonly<{
+  de: string
+  en: string
+  group: CostGroup | null
 }>
 
 export type CommercialGroupLine = Readonly<{
@@ -75,7 +139,14 @@ export type CommercialResult = Readonly<{
   contributions: readonly Driver[]
   scope: CommercialScopeSummary
   lastChange: CommercialChange | null
-  status: CommercialStatus
+  /**
+   * Whether these numbers describe the current decisions, and if not, why.
+   * Read `trust.status`, never a bare boolean: "stale" and "wrong" are
+   * different claims and only one of them is true here.
+   */
+  trust: CommercialTrust
+  /** When this snapshot was derived — the timestamp a stale label cites. */
+  derivedAtIso: string
   reconciles: boolean
   reconciliationDrift: Decimal
 }>
