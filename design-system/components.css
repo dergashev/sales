@@ -2905,6 +2905,10 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 @media (max-width: 1439px){
   .a3-gatestage{grid-template-columns:minmax(0,1fr)}
   .a3-gatestage-heading{font-size:var(--type-heading-1-narrow-size);line-height:var(--type-heading-1-narrow-line)}
+  /* Stacked, the identity image would run the full column width and become
+     the loudest element on a surface whose subject is a sentence about what
+     is missing. It stays a supporting band, not a hero. */
+  .a3-gatestage-media{max-inline-size:var(--measure-panel)}
 }
 .a3-bsp-row-actions{display:inline-flex;flex-wrap:wrap;gap:var(--space-3);margin-inline-start:var(--space-3)}
 .a3-bsp-row-evidence,.a3-bsp-row-override,.a3-bsp-row-stale{display:block}
