@@ -99,10 +99,12 @@ function buildCandidate(
   return cfg && p ? { id, name, cfg, p } : null
 }
 
-function money(d: Decimal): string {
-  const pr = present(d)
-  return `${pr.prefix}${pr.prefix ? NNBSP : ''}${pr.display}`
-}
+/* `money(d)` stood here and formatted a Decimal straight off the legacy
+   proposal projection. Its last two callers were the Option switcher's
+   announcement and its >3-Option select, both of which now read the saved
+   Option's own committed total like everything else. A helper whose only
+   purpose is to print the second engine's number is removed rather than
+   left as an invitation. */
 
 function durationNumber(duration: Projection['duration'], language: 'de' | 'en'): string {
   const number = duration.display.replace(`${NNBSP}Monate`, '')
@@ -899,15 +901,23 @@ function OptionSwitcher({ candidates, currentId, onSwitch, savedTotalOf }: {
         >
           {candidates.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.name} · {money(c.p.result.total.exact)}{NNBSP}€
+              {c.name} · {savedTotalOf(c.id)}
             </option>
           ))}
         </SelectField>
       )}
       {/* Eine knappe polite-Ansage pro Wechsel (a11y-Vertrag) — kein
-          Wert-für-Wert-Rieseln. */}
+          Wert-für-Wert-Rieseln.
+
+          `savedTotalOf`, like the segments above and for the same reason:
+          the rule stated over `segments` was applied to `segments` only, so
+          this announcement and the >3-Option `SelectField` kept reading
+          `c.p` — the legacy proposal projection. A screen-reader user heard
+          ≈ 3.980.000 € for the Option everyone else saw priced at
+          38.430.000 €. One Option has one client-facing number, on every
+          path that states it. */}
       <p className="sr-only" aria-live="polite">
-        {`${legend}: ${current.name} · ${money(current.p.result.total.exact)}${NNBSP}€`}
+        {`${legend}: ${current.name} · ${savedTotalOf(current.id)}`}
       </p>
     </div>
   )
