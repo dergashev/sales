@@ -410,7 +410,11 @@ test.describe('VR3-05 · client presentation, scenario and outputs', () => {
     })
     expect(ring?.tag).toBe('H1')
     expect(ring?.visible, 'the incoming heading shows a visible focus ring').toBe(true)
-    await shot(page, 'M-10-heading-focus-1440')
+    // The width is READ, never asserted: this file is also run at 1280, and a
+    // 1280 frame filed under a 1440 name is the kind of evidence that proves
+    // whatever the reader already believes.
+    const w = page.viewportSize()?.width ?? 0
+    await shot(page, `M-10-heading-focus-${w}`)
   })
 
   test('M-10 under reduced motion: the direct cut still moves focus', async ({ page }) => {
