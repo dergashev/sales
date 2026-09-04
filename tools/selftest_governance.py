@@ -118,6 +118,8 @@ VR3_CAPABILITY_IDS = [
     # or the "valid lifecycle metadata" branch fails on a manifest that is
     # only missing the newest capabilities.
     'schedule-editor', 'validation-review', 'save-receipt',
+    # Projects portfolio rebuild.
+    'combobox',
 ]
 VO_T4_IDS = [
     'canvas', 'paper', 'stage', 'stage-deep', 'media-frame',

@@ -1,5 +1,5 @@
 {
-  "$comment": "DEMO / NON-PRODUCTION PRODUCT FIXTURE (VR3-01). Every name, value, cost, date and document here is synthetic and exists only to demonstrate Product behaviour. It is not calculation authority, a quotation or a real client record. Transcribed from the accepted VR3-00 fixture specification artifacts/VR3-00-global-design-audit/06-demo-fixtures/demo-project-fixtures.md; the counts, filenames, buildings, areas, source relations, questions, conflicts and media ids are invariants of that specification and are re-proved mechanically by src/fixtures/__tests__/vr3-demo-projects.test.ts. Prose is not stored here: every user-visible sentence is an i18n key (rule 36), resolved DE/EN from src/i18n. Numbers are decimal STRINGS, never JSON numbers, so no float ever enters the model.",
+  "$comment": "DEMO / NON-PRODUCTION PRODUCT FIXTURE (VR3-01). Every name, value, cost, date and document here is synthetic and exists only to demonstrate Product behaviour. It is not calculation authority, a quotation or a real client record. Transcribed from the accepted VR3-00 fixture specification artifacts/VR3-00-global-design-audit/06-demo-fixtures/demo-project-fixtures.md; the counts, filenames, buildings, areas, source relations, questions, conflicts and media ids are invariants of that specification and are re-proved mechanically by src/fixtures/__tests__/vr3-demo-projects.test.ts. Prose is not stored here: every user-visible sentence is an i18n key (rule 36), resolved DE/EN from src/i18n. Numbers are decimal STRINGS, never JSON numbers, so no float ever enters the model. VR3 PORTFOLIO EXTENSION (Projects portfolio rebuild): each project now also carries a `portfolio` block — the ISO country code, postcode, street, lifecycle status, created/last-modified/next-client-meeting timestamps and the declared portfolio area metric. Those fields are PRESENTATION identity for the Projects register; they never enter the calculation, the Option or the client output. `owner` now carries the responsible manager's full first name and surname, because the portfolio filters on a person and initials are not a person.",
   "normalListProjectCount": 2,
   "projects": [
     {
@@ -10,7 +10,17 @@
       "city": "Freiburg im Breisgau",
       "region": "Baden-Württemberg",
       "country": "Deutschland",
-      "owner": "A. Muster",
+      "owner": "Daniel Weber",
+      "portfolio": {
+        "countryCode": "DE",
+        "postcode": "79100",
+        "addressLine": "Lindenhain 12",
+        "lifecycleStatus": "ready_to_pitch",
+        "createdAt": "2026-08-12T09:15:00+02:00",
+        "updatedAt": "2026-09-04T08:40:00+02:00",
+        "nextClientMeetingAt": null,
+        "areaMetric": "wfl"
+      },
       "projectTypeKey": "vr3.project.type.mfh",
       "descriptionKey": "vr3.project.DEMO-HAPPY-01.description",
       "listStatusKey": "vr3.project.DEMO-HAPPY-01.listStatus",
@@ -286,7 +296,17 @@
       "city": "Leipzig",
       "region": "Sachsen",
       "country": "Deutschland",
-      "owner": "B. Beispiel",
+      "owner": "Lena Hoffmann",
+      "portfolio": {
+        "countryCode": "DE",
+        "postcode": "04109",
+        "addressLine": "Am Güterbogen 5",
+        "lifecycleStatus": "review_required",
+        "createdAt": "2026-05-21T11:00:00+02:00",
+        "updatedAt": "2026-08-29T16:20:00+02:00",
+        "nextClientMeetingAt": "2026-09-01T14:00:00+02:00",
+        "areaMetric": "nuf"
+      },
       "projectTypeKey": "vr3.project.type.quarter",
       "descriptionKey": "vr3.project.DEMO-COMPLEX-01.description",
       "listStatusKey": "vr3.project.DEMO-COMPLEX-01.listStatus",

@@ -24,6 +24,24 @@ export const DEMO_PROJECT_NAME = 'Wohnhof Lindenhain'
 export const DEMO_PROJECT_ID = 'DEMO-HAPPY-01'
 export const DEMO_COMPLEX_PROJECT_NAME = 'Quartier Am Güterbogen'
 export const DEMO_COMPLEX_PROJECT_ID = 'DEMO-COMPLEX-01'
+/**
+ * The portfolio card's canonical TITLE — `[country] – [postcode] [city] –
+ * [address]`. The card no longer prints the short project name at all, so
+ * every card-level locator needs the title; the short names above still
+ * identify the fixtures everywhere INSIDE a project, where they remain the
+ * heading.
+ */
+const composeTitle = (
+  countryCode: string, postcode: string, city: string, addressLine: string,
+) => `${countryCode} – ${postcode} ${city} – ${addressLine}`
+export const DEMO_PROJECT_TITLE =
+  composeTitle('DE', '79100', 'Freiburg im Breisgau', 'Lindenhain 12')
+export const DEMO_COMPLEX_PROJECT_TITLE =
+  composeTitle('DE', '04109', 'Leipzig', 'Am Güterbogen 5')
+/** The register: five cards, two of them navigable journeys. */
+export const PORTFOLIO_CARD_COUNT = 5
+export const PORTFOLIO_NAVIGABLE_COUNT = 2
+export const PORTFOLIO_DISPLAY_ONLY_COUNT = 3
 export const PROJECT_LIST_HEADING = 'Projekte'
 /** The canonical full-journey rail on the project level. */
 export const PROJECT_SPINE_LANDMARK = 'Projekt- und Optionsverlauf'
@@ -44,12 +62,18 @@ export const BREADCRUMB_LANDMARK = 'Pfad'
 
 export const OPPORTUNITY = {
   // The card action's accessible name is its VISIBLE label plus the
-  // project (WCAG 2.5.3), and the two fixtures carry different verbs:
-  // the clean route offers `Projekt öffnen`, the one that needs a
-  // decision offers `Projekt prüfen`. Two anchors, because a single
-  // one would have to guess the route.
-  openCta: (name: string) => `Projekt öffnen · ${name}`,
-  reviewCta: (name: string) => `Projekt prüfen · ${name}`,
+  // canonical project title (WCAG 2.5.3).
+  //
+  // The Projects portfolio rebuild collapsed the two route-specific verbs
+  // (`Projekt öffnen` / `Projekt prüfen`) into ONE primary action,
+  // `Projekt konfigurieren`, for every navigable project: the portfolio's
+  // question is "can I continue configuring this", and the answer does not
+  // depend on whether the analysis found conflicts. So there is one anchor
+  // now, and it takes the card's canonical TITLE (see
+  // `DEMO_PROJECT_TITLE` above), not the project's short name, because the
+  // title is what the card renders and what its accessible name contains.
+  configureCta: (title: string) => `Projekt konfigurieren · ${title}`,
+  clientViewCta: (title: string) => `Kundenansicht öffnen · ${title}`,
   // VR3-01 replaced the retired project card's five-control preamble
   // (`Kundenwert übernehmen` / `Dokumentwert beibehalten` /
   // `Projektparameter bestätigen` / `Opportunity Option anlegen`) with the

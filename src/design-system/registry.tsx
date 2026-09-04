@@ -20,7 +20,7 @@ import {
   type DataStateKind,
   type OwnerDataState,
 } from '../components/DataStates'
-import { RadioCardGroup, SegmentedControl, Switch } from '../components/controls'
+import { Combobox, RadioCardGroup, SegmentedControl, Switch } from '../components/controls'
 import {
   Badge,
   Card,
@@ -138,6 +138,83 @@ function SegmentedDemo() {
         { value: 'b', label: 'Zustand B' },
       ]}
     />
+  )
+}
+
+/**
+ * The compact size, next to the default one, because the whole point of the
+ * variant is the COMPARISON: same control, same 44 × 44 press target, less
+ * visual weight where the header cannot afford 46 px.
+ */
+function SegmentedCompactDemo() {
+  const [value, setValue] = useState<'de' | 'en'>('de')
+  return (
+    <SegmentedControl
+      layout="inline"
+      size="compact"
+      legend="Sprache"
+      value={value}
+      onChange={setValue}
+      options={[
+        { value: 'de', label: 'DE' },
+        { value: 'en', label: 'EN' },
+      ]}
+    />
+  )
+}
+
+/**
+ * The searchable single select, in its ready state and in the three states
+ * an option SOURCE can be in — because those are the states a consumer has
+ * to design for and the ones a catalogue that only shows `ready` hides.
+ */
+function ComboboxDemo() {
+  const [value, setValue] = useState('')
+  return (
+    <div className="grid gap-4">
+      <Combobox
+        id="specimen-combobox"
+        label="Stadt"
+        value={value}
+        onChange={setValue}
+        placeholder="Alle"
+        options={[
+          { value: '', label: 'Alle' },
+          { value: 'Freiburg', label: 'Freiburg im Breisgau' },
+          { value: 'Hamburg', label: 'Hamburg' },
+          { value: 'Leipzig', label: 'Leipzig' },
+          { value: 'Wien', label: 'Wien' },
+        ]}
+      />
+      <Combobox
+        id="specimen-combobox-loading"
+        label="Stadt · loading"
+        value=""
+        onChange={() => {}}
+        options={[]}
+        loading
+      />
+      <Combobox
+        id="specimen-combobox-error"
+        label="Stadt · error"
+        value=""
+        onChange={() => {}}
+        options={[]}
+        error="Die Liste konnte nicht geladen werden."
+        onRetry={() => {}}
+      />
+      <Combobox
+        id="specimen-combobox-permission"
+        label="Stadt · permission"
+        value=""
+        onChange={() => {}}
+        options={[]}
+        disabled
+        disabledReason="Für diese Rolle nicht verfügbar."
+        stale="Stand 10:00 — seitdem nicht aktualisiert."
+        partial="Archivierte Einträge fehlen."
+      />
+    </div>
   )
 }
 
@@ -587,6 +664,33 @@ export const COMPONENT_REGISTRY: Specimen[] = [
     composedContracts: [], interactionStates: ['default', 'hover', 'focus', 'selected', 'disabled'],
     dataStates: LOCAL_CONTROL_STATES, blockedVariants: [], maturity: 'alpha',
     evidence: 'One native radio API with visible legend, check, text, and selection border.', render: () => <SegmentedDemo />,
+  },
+  {
+    id: 'segmented-compact', groupId: 'selections', title: 'SegmentedControl · compact',
+    contractId: 'components-core · SegmentedControl',
+    requirements: ['TABS-002', 'DENSITY-002', 'LOCALE-004', 'R-04'],
+    composedContracts: [], interactionStates: ['default', 'hover', 'focus', 'selected', 'disabled'],
+    dataStates: LOCAL_CONTROL_STATES, blockedVariants: [], maturity: 'alpha',
+    note: 'Visible height 32 px; the press and focus target stays 44 × 44 through '
+      + '.hit-target::before, and each segment stays at least 44 px WIDE so the two '
+      + 'invisible zones cannot overlap — both halves of R-04, not one.',
+    evidence: 'Same radio API and same selection carrier as the default size, at '
+      + '--size-control-visual-sm.',
+    render: () => <SegmentedCompactDemo />,
+  },
+  {
+    id: 'combobox', groupId: 'selections', title: 'Combobox',
+    contractId: 'components-core · Combobox',
+    requirements: ['LOCALE-004', 'STATE-003', 'R-04'],
+    composedContracts: [],
+    interactionStates: ['default', 'hover', 'focus', 'open', 'active-option', 'selected', 'disabled'],
+    dataStates: ALL_DATA_STATES, blockedVariants: [], maturity: 'alpha',
+    note: 'Single select from a list that narrows as it is typed — what '
+      + 'SegmentedControl cannot do past three values and Select cannot do at all.',
+    evidence: 'ARIA 1.2 editable combobox: the role is on the input, the popup is a '
+      + 'listbox, the active option is named by aria-activedescendant so typing is '
+      + 'never interrupted, and the field never keeps an uncommitted query.',
+    render: () => <ComboboxDemo />,
   },
   {
     id: 'switch', groupId: 'selections', title: 'Switch', contractId: 'components-core · Switch',

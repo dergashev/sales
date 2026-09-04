@@ -1,4 +1,4 @@
-import manifest from '../../design-system/assets/identity/manifest.json'
+import { identityAsset } from './identity-media'
 
 /**
  * VR2-01 (Acceptance remediation, cycle 3) — project identity photography
@@ -32,19 +32,6 @@ import manifest from '../../design-system/assets/identity/manifest.json'
  * lookup, not a silently wrong image.
  */
 
-type Entry = { id: string; file: string; motifDe: string }
-
-const FILES = import.meta.glob(
-  '../../design-system/assets/identity/*.webp',
-  { eager: true, query: '?url', import: 'default' },
-) as Record<string, string>
-
-const BY_NAME = new Map(
-  Object.entries(FILES).map(([path, url]) => [path.split('/').pop()!, url]),
-)
-
-const INDEX = new Map((manifest as Entry[]).map((e) => [e.id, e]))
-
 /** Opportunity id → { manifest id, focal point on the shared source frame,
  * i18n key naming the specific view/credit }. Only the three opportunities
  * the approved VO-T1 target itself names as photographed are mapped — every
@@ -72,9 +59,10 @@ export type OpportunityMedia = { url: string; focalPoint: 'left' | 'center' | 'r
 export function opportunityMedia(opportunityId: string): OpportunityMedia | null {
   const mapped = OPPORTUNITY_MEDIA[opportunityId]
   if (!mapped) return null
-  const entry = INDEX.get(mapped.assetId)
-  if (!entry) return null
-  const url = BY_NAME.get(entry.file)
-  if (!url) return null
-  return { url, focalPoint: mapped.focalPoint, altKey: 'opplist.media.photoAlt', creditKey: mapped.creditKey }
+  // The manifest lookup and the file glob live ONCE, in `identity-media.ts`.
+  // Two readers of one manifest drift the moment one of them learns a new
+  // file extension and the other does not.
+  const asset = identityAsset(mapped.assetId)
+  if (!asset) return null
+  return { url: asset.url, focalPoint: mapped.focalPoint, altKey: 'opplist.media.photoAlt', creditKey: mapped.creditKey }
 }

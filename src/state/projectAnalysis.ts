@@ -152,6 +152,32 @@ export type FixtureSchedule = {
   phases: FixtureSchedulePhase[]
 }
 
+/**
+ * The PORTFOLIO half of a project record — its canonical postal identity,
+ * its commercial lifecycle state, its dates and the area metric the register
+ * reports for it.
+ *
+ * It lives beside the workflow fields rather than inside them because it
+ * answers a different question. The workflow asks "what can this product
+ * still do with the project"; this block answers "what is this project, where
+ * is it, who owns it, and when does the client see us next". Nothing here
+ * enters the calculation, the Option or a client output.
+ */
+export type FixtureProjectPortfolio = {
+  /** ISO-style display code — `DE`, `AT`. */
+  countryCode: string
+  postcode: string
+  addressLine: string
+  /** One of the seven canonical values in `projectPortfolio.ts`. */
+  lifecycleStatus: string
+  createdAt: string
+  updatedAt: string
+  /** ISO timestamp with an unambiguous offset, or `null` when unscheduled. */
+  nextClientMeetingAt: string | null
+  /** `wfl` for a residential-only project, `nuf` once it sells commercial. */
+  areaMetric: 'wfl' | 'nuf'
+}
+
 export type FixtureProject = {
   id: string
   route: 'clean' | 'complex'
@@ -160,7 +186,9 @@ export type FixtureProject = {
   city: string
   region: string
   country: string
+  /** The responsible manager, full first name and surname. */
   owner: string
+  portfolio: FixtureProjectPortfolio
   projectTypeKey: string
   descriptionKey: string
   listStatusKey: string

@@ -1,5 +1,21 @@
 import { expect, type Page } from '@playwright/test'
-import { BUILDING_SCOPE, KONFIGURATOR_GATE, NAV, OPPORTUNITY } from './anchors'
+import {
+  BUILDING_SCOPE, DEMO_COMPLEX_PROJECT_NAME, DEMO_COMPLEX_PROJECT_TITLE,
+  DEMO_PROJECT_NAME, DEMO_PROJECT_TITLE, KONFIGURATOR_GATE, NAV, OPPORTUNITY,
+} from './anchors'
+
+/**
+ * Short project name → the portfolio card's canonical title.
+ *
+ * Specs identify a fixture by the name they see everywhere INSIDE it; the
+ * portfolio card is the one surface that titles it by address. One mapping
+ * here beats every spec learning the address form.
+ */
+function portfolioTitleOf(projectName: string): string {
+  if (projectName === DEMO_PROJECT_NAME) return DEMO_PROJECT_TITLE
+  if (projectName === DEMO_COMPLEX_PROJECT_NAME) return DEMO_COMPLEX_PROJECT_TITLE
+  throw new Error(`journey: «${projectName}» is not a navigable portfolio project`)
+}
 
 /**
  * The project-level preamble every Option-level smoke needs, walked as a
@@ -18,12 +34,13 @@ import { BUILDING_SCOPE, KONFIGURATOR_GATE, NAV, OPPORTUNITY } from './anchors'
  * with its own timeout.
  */
 export async function reachOptionWorkspace(page: Page, projectName: string) {
-  // Two anchors, because the card's verb follows the ROUTE: the clean
-  // fixture offers `Projekt öffnen`, the one that needs a decision offers
-  // `Projekt prüfen`. A single one would have to guess.
-  const open = page.getByRole('button', { name: OPPORTUNITY.openCta(projectName) })
-  const review = page.getByRole('button', { name: OPPORTUNITY.reviewCta(projectName) })
-  await (await open.count() > 0 ? open : review).click()
+  // One anchor: every navigable card offers the same primary action, and
+  // its accessible name carries the card's canonical TITLE. `projectName`
+  // stays the parameter because that is what callers know; the title is
+  // resolved here so no spec has to.
+  await page.getByRole('button', {
+    name: OPPORTUNITY.configureCta(portfolioTitleOf(projectName)),
+  }).click()
 
   const start = page.getByRole('button', { name: OPPORTUNITY.startAnalysis })
   await expect(start).toBeVisible()

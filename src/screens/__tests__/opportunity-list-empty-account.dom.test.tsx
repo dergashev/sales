@@ -9,19 +9,25 @@ import { __resetStoreForTests } from '../../state/store'
  * unterscheidbar bleiben — nie derselbe Text, und der Konto-Leerzustand
  * bietet KEINEN Reset-Weg an: es gibt nichts zurückzusetzen.
  *
- * VR3-01 hat die Datenquelle des Zweigs ersetzt: der Konto-Leerzustand
- * hängt jetzt an `DEMO_PROJECTS.length === 0`, also an
- * `src/fixtures/vr3-demo-projects.json` (über `state/projectAnalysis.ts`) —
- * `opportunities.json` liest in `src/**` niemand mehr. Die reale Fixture
- * trägt IMMER genau zwei Projekte (Fixture-Invariante des Tickets), deshalb
- * ist dieser Pfad in der App nie live erreichbar; dieses Modul-Mock ist die
- * einzige Möglichkeit, den Zweig überhaupt zu durchlaufen und ihn nicht
- * bloß per Code-Lesen zu behaupten. Eigene Testdatei, damit das Mock nicht
- * in die übrigen Projektlisten-Tests hineinwirkt (`vi.mock` gilt pro
- * Testdatei).
+ * Das Register speist sich jetzt aus ZWEI Fixtures: den navigierbaren
+ * Projekten (`vr3-demo-projects.json`, über `state/projectAnalysis.ts`) und
+ * den reinen Anzeige-Datensätzen (`portfolio-display-projects.json`, über
+ * `state/projectPortfolio.ts`). Der Konto-Leerzustand hängt an der SUMME
+ * beider, also müssen beide leer sein — ein Mock von nur einer Quelle würde
+ * drei Karten stehen lassen und den Zweig gar nicht erreichen.
+ *
+ * Das reale Register trägt IMMER fünf Einträge (Fixture-Invariante des
+ * Tickets), deshalb ist dieser Pfad in der App nie live erreichbar; diese
+ * Modul-Mocks sind die einzige Möglichkeit, den Zweig überhaupt zu
+ * durchlaufen und ihn nicht bloß per Code-Lesen zu behaupten. Eigene
+ * Testdatei, damit die Mocks nicht in die übrigen Projektlisten-Tests
+ * hineinwirken (`vi.mock` gilt pro Testdatei).
  */
 vi.mock('../../fixtures/vr3-demo-projects.json', () => ({
   default: { normalListProjectCount: 0, projects: [] },
+}))
+vi.mock('../../fixtures/portfolio-display-projects.json', () => ({
+  default: { displayOnlyProjectCount: 0, projects: [] },
 }))
 
 beforeEach(() => __resetStoreForTests())
@@ -34,7 +40,7 @@ describe('Opportunities — Konto-Leerzustand', () => {
       'Neue Opportunities erscheinen hier automatisch, sobald sie aus HubSpot übernommen werden.',
     )).toBeInTheDocument()
     // Der Filter-Leertext ist ein ANDERER Satz und existiert hier nicht.
-    expect(screen.queryByText(/Keine Opportunity entspricht/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Kein Projekt entspricht/)).not.toBeInTheDocument()
     // Kein Reset-Weg: es gibt nichts zurückzusetzen (Design-Handoff #5).
     // Stärker als „kein Knopf mit Namen X": der Leerzustand trägt
     // ÜBERHAUPT keine Aktion, während der Filter-Zweig genau eine trägt.

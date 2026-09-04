@@ -68,12 +68,34 @@ function runToCompletion(project: FixtureProject, from?: ProjectAnalysis): Proje
 }
 
 describe('VR3-01 fixture invariants (rule 32 — a number must reconcile with its own fixture)', () => {
-  it('the normal Project List contains exactly the two specified projects', () => {
+  it('exactly two projects have a journey, and both carry a portfolio identity', () => {
     expect(NORMAL_LIST_PROJECT_COUNT).toBe(2)
     expect(DEMO_PROJECTS).toHaveLength(2)
     expect(DEMO_PROJECTS.map((p) => p.id)).toEqual(['DEMO-HAPPY-01', 'DEMO-COMPLEX-01'])
     // The declared count and the actual list cannot drift apart.
     expect(fixture.normalListProjectCount).toBe(fixture.projects.length)
+    // The portfolio register may grow past two cards; the WORKFLOW layer
+    // may not. Every project this module knows is navigable by definition,
+    // so the invariant that matters here is that each one is complete.
+    for (const project of DEMO_PROJECTS) {
+      expect(project.portfolio.countryCode).toMatch(/^[A-Z]{2}$/)
+      expect(project.portfolio.postcode).toMatch(/^\d{4,5}$/)
+      expect(project.portfolio.addressLine.length).toBeGreaterThan(0)
+      expect(['wfl', 'nuf']).toContain(project.portfolio.areaMetric)
+      // Full first name and surname, never initials: the register filters
+      // on a person, and `A. Muster` is not a person.
+      expect(project.owner).toMatch(/^\S+ \S+/)
+      expect(project.owner).not.toMatch(/^[A-ZÄÖÜ]\./)
+      // Timestamps are parseable and ordered.
+      expect(Number.isNaN(Date.parse(project.portfolio.createdAt))).toBe(false)
+      expect(Date.parse(project.portfolio.updatedAt))
+        .toBeGreaterThanOrEqual(Date.parse(project.portfolio.createdAt))
+      const meeting = project.portfolio.nextClientMeetingAt
+      if (meeting !== null) {
+        // An unambiguous offset, never a bare local time.
+        expect(meeting).toMatch(/(Z|[+-]\d{2}:\d{2})$/)
+      }
+    }
   })
 
   it('Project A: 1 building, 8 documents, 0 conflicts, 0 blocking questions', () => {

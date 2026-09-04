@@ -6064,6 +6064,14 @@ class Verifier:
             # exact return-to-edit routes; `save-receipt` is the outcome of
             # an explicit commitment, naming Option, version and time.
             'schedule-editor', 'validation-review', 'save-receipt',
+            # Projects portfolio rebuild: the searchable single select the
+            # register's Country/City/Manager filters share. It is a
+            # lifecycle-tracked capability and not only a components-core
+            # primitive because it was added FOR a named product surface —
+            # so the manifest can prove a real consumer instead of an
+            # intention, and a future removal of that consumer surfaces here
+            # rather than leaving an orphaned control in the catalogue.
+            'combobox',
         }
         by_id = {}
         for entry in capabilities:

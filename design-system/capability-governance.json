@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-09-03",
+  "reviewedAt": "2026-09-04",
   "capabilities": [
     {
       "id": "canvas",
@@ -375,6 +375,16 @@
         {
           "path": "src/screens/FinalValidation.tsx",
           "pattern": "<SaveReceipt"
+        }
+      ]
+    },
+    {
+      "id": "combobox",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/OpportunityList.tsx",
+          "pattern": "<Combobox"
         }
       ]
     }

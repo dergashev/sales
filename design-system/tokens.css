@@ -408,6 +408,11 @@
   --size-control-visual-lg: 48px;
   --size-hit-target-default:        44px;
   --size-icon-sm: 16px; --size-icon-md: 20px; --size-icon-lg: 24px;
+  /* Портрет пользователя [provisional]. Идеальный круг (правило 4),
+     два размера: в шапке рядом с именем и в поповере рядом с ролью.
+     Шкала иконок здесь не подходит — 24px портрет нечитаем, а зона
+     нажатия триггера всё равно приходит от --size-hit-target-default. */
+  --size-avatar-sm: 32px; --size-avatar-md: 40px;
 
   /* Геометрия, перенесённая из эталонной витрины [provisional].
      Восьмишаговая spacing-шкала не заменяет эти значения без заметного

@@ -1,110 +1,271 @@
-import { useId, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useStore } from '../state/store'
 import {
-  DEMO_PROJECTS,
-  NORMAL_LIST_PROJECT_COUNT,
-  readiness,
-  type FixtureProject,
-} from '../state/projectAnalysis'
+  ANY,
+  DEFAULT_PORTFOLIO_QUERY,
+  LIFECYCLE_STATUSES,
+  PORTFOLIO_PROJECTS,
+  PORTFOLIO_SORTS,
+  activeFilterCount,
+  cityOptions,
+  countryOptions,
+  deadlineState,
+  decodePortfolioQuery,
+  encodePortfolioQuery,
+  invalidatedCity,
+  latestPresentableSnapshot,
+  lifecycleStatusKey,
+  lifecycleStatusTone,
+  managerOptions,
+  portfolioTitle,
+  portfolioValue,
+  selectPortfolio,
+  type DeadlineState,
+  type PortfolioAggregate,
+  type PortfolioProject,
+  type PortfolioQuery,
+  type PortfolioSort,
+} from '../state/projectPortfolio'
 import { Button } from '../components/primitives'
-import { Card, FormField, SelectField } from '../components/designSystem'
+import { Combobox } from '../components/controls'
+import { FormField, SelectField } from '../components/designSystem'
 import { EmptyState } from '../components/DataStates'
-import { useT, useTx } from '../i18n'
+import { localizeMoneyText, useT } from '../i18n'
 import { MediaFrame } from '../design-system/MediaFrame'
 import { SemanticStatus } from '../design-system/SemanticStatus'
 import { projectAsset } from '../assets/project-media'
 import { startContinuityTransition, useSemanticMotion } from '../design-system/motion'
 
 /**
- * The normal Project List — the product's root (VR3-01, target `T-001`).
+ * The Projects portfolio — the product's root register.
  *
- * VR3-01 replaced the eight uneven demonstration rows with EXACTLY TWO
- * complete, purposeful cases: one clean route to an indicative offer and
- * one deliberate real-world information challenge. That is a fixture
- * invariant, not a presentation choice, and `NORMAL_LIST_PROJECT_COUNT`
- * carries it from the fixture rather than from this file.
+ * It answers five questions without opening anything: which projects match
+ * the country, city, manager or lifecycle state I need · which client
+ * meeting is next · what is this project's scale and latest value · can I
+ * continue configuring it · is a client-ready presentation available.
  *
- * Three properties are deliberate and each replaces a recorded defect:
+ * Four properties are structural, not stylistic:
  *
- * 1. **Every card is fully imaged.** Both projects have registered
- *    photographic identity (`heroAssetId` → `design-system/assets/projects`),
- *    so no card renders the fallback identity graphic any more. A missing
- *    registration still renders `MediaFrame`'s information-bearing state —
- *    the absence stays visible instead of being papered over.
- * 2. **The readiness rows are DERIVED from the project's own analysis
- *    state.** Before the analysis has run, the card says what is actually
- *    known — the documentation is complete and the analysis has not started
- *    — and only afterwards does it report blocking conflicts and
- *    recognition attention. The approved target frame shows the
- *    post-analysis rows because the prototype it was rendered from had no
- *    state at all; showing those numbers on a fresh reset would state a
- *    result the analysis has not produced, which is the exact defect this
- *    ticket exists to remove.
- * 3. **There is no price here and there cannot be.** A total belongs to an
- *    Option, and no Option exists yet.
+ * 1. **Five cards, two journeys.** Three records are `displayOnly` and live
+ *    in a separate register (`projectPortfolio.ts`) that the workflow layer
+ *    has never heard of. They cannot navigate because there is nothing to
+ *    navigate TO — not because a handler declines. `onOpen` is simply never
+ *    passed, the media carries no continuity name, and both actions are
+ *    natively blocked with one card-level reason.
+ * 2. **The next client meeting is the loudest thing on the card.** It is the
+ *    presentation deadline, and it is the only fact on this screen that
+ *    makes somebody act today. It gets its own column, a heading-size value,
+ *    an accent rule, an exact localized date and time in a `<time>` element,
+ *    a plain-language cue when it is close, and words — not colour — when it
+ *    is overdue. When nothing is booked it says so and keeps its space: a
+ *    collapsed row would make "no meeting" and "meeting not loaded" look
+ *    identical.
+ * 3. **The register never prices anything.** The value comes from the latest
+ *    saved, presentation-eligible Option snapshot, or it says the price has
+ *    not been determined. It is never 0 and it is never a sum of areas.
+ * 4. **Search, filters and sort survive a reload.** They live in the URL, so
+ *    back, forward and a copied link all restore the same register. Nothing
+ *    else in this product uses the URL yet; this screen owns that little bit
+ *    of it and touches no other state.
  *
- * Search and sort survive behind ONE "filter and sort" disclosure, closed
- * by default, exactly as the approved target's single control shows. The
- * two former HubSpot lifecycle switches are gone with the data they filtered
- * on: the VR3 fixtures carry no CRM lifecycle stage, and a control that
- * filters a field which no longer exists is worse than no control.
+ * Documentation state left this card deliberately. A document count answers
+ * "how much did the analysis have to read", which matters INSIDE a project
+ * and tells a portfolio manager nothing about which project to open next.
  */
 
-type SortMode = 'recommended' | 'name' | 'status'
-
-const SORTERS: Record<SortMode, (a: FixtureProject, b: FixtureProject) => number> = {
-  // Recommended = the clean route first, then the case that needs review:
-  // the list's own purpose is to teach both journeys in that order.
-  recommended: (a, b) => (a.route === b.route ? a.name.localeCompare(b.name) : a.route === 'clean' ? -1 : 1),
-  name: (a, b) => a.name.localeCompare(b.name),
-  status: (a, b) => (a.route === b.route ? a.name.localeCompare(b.name) : a.route === 'complex' ? -1 : 1),
-}
-
-const ALL = 'alle'
+/* ─────────────────────── URL as the register's state ────────────────── */
 
 /**
- * "1 Projekte" is not German. The eyebrow has a singular form, chosen by
- * the count rather than assembled from a number and a plural noun.
+ * The query, mirrored in `location.search`.
+ *
+ * Discrete choices push a history entry (Back undoes the filter you just
+ * applied — the behaviour a person expects). Typing replaces it, because a
+ * history entry per keystroke turns Back into a spell-checker.
  */
-function eyebrowKey(count: number): string {
-  return count === 1 ? 'vr3.list.eyebrowOne' : 'vr3.list.eyebrow'
+function usePortfolioQuery(): [
+  PortfolioQuery,
+  (next: PortfolioQuery, history?: 'push' | 'replace') => void,
+] {
+  const [query, setQuery] = useState<PortfolioQuery>(() => (
+    typeof window === 'undefined'
+      ? DEFAULT_PORTFOLIO_QUERY
+      : decodePortfolioQuery(window.location.search)
+  ))
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const onPopState = () => setQuery(decodePortfolioQuery(window.location.search))
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  const apply = useCallback((next: PortfolioQuery, history: 'push' | 'replace' = 'push') => {
+    setQuery(next)
+    if (typeof window === 'undefined') return
+    const search = encodePortfolioQuery(next)
+    const url = `${window.location.pathname}${search ? `?${search}` : ''}`
+    if (history === 'push') window.history.pushState(null, '', url)
+    else window.history.replaceState(null, '', url)
+  }, [])
+
+  return [query, apply]
 }
+
+/* ───────────────────────────── formatting ───────────────────────────── */
+
+type Locale = 'de' | 'en'
+
+function intlTag(language: Locale): string {
+  return language === 'de' ? 'de-DE' : 'en-GB'
+}
+
+function formatDate(iso: string, language: Locale): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return '—'
+  return new Intl.DateTimeFormat(intlTag(language), {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  }).format(date)
+}
+
+function formatDateTime(iso: string, language: Locale): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return '—'
+  return new Intl.DateTimeFormat(intlTag(language), {
+    weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  }).format(date)
+}
+
+/** Narrow no-break space between number and unit (rule 7), never a plain one. */
+const NNBSP = ' '
+
+function formatArea(value: string, language: Locale): string {
+  const amount = new Intl.NumberFormat(intlTag(language), {
+    maximumFractionDigits: 0,
+  }).format(Number(value))
+  return `${amount}${NNBSP}m²`
+}
+
+function formatCount(value: string | number, language: Locale): string {
+  return new Intl.NumberFormat(intlTag(language)).format(Number(value))
+}
+
+/* ─────────────────────────────── screen ─────────────────────────────── */
 
 export function OpportunityList() {
   const s = useStore()
   const t = useT()
-  const tx = useTx()
+  const language = s.uiLanguage as Locale
   const { reduced } = useSemanticMotion()
-  const filtersPanelId = useId()
-  const [q, setQ] = useState('')
-  const [city, setCity] = useState<string>(ALL)
-  const [sort, setSort] = useState<SortMode>('recommended')
-  const [filtersOpen, setFiltersOpen] = useState(false)
+  const panelId = useId()
+  const [query, applyQuery] = usePortfolioQuery()
+  const [filtersOpen, setFiltersOpen] = useState(() => activeFilterCount(query) > 0)
+  const [cityResetNotice, setCityResetNotice] = useState<string>('')
+  const [announcedCount, setAnnouncedCount] = useState<number | null>(null)
+
+  const countries = useMemo(() => countryOptions(PORTFOLIO_PROJECTS), [])
+  const cities = useMemo(() => cityOptions(PORTFOLIO_PROJECTS, query.country), [query.country])
+  const managers = useMemo(() => managerOptions(PORTFOLIO_PROJECTS), [])
+  const shown = useMemo(() => selectPortfolio(PORTFOLIO_PROJECTS, query), [query])
+  const filtersActive = activeFilterCount(query)
+  const total = PORTFOLIO_PROJECTS.length
+
+  // The result count is announced once the set has settled, never per
+  // keystroke — a live region that fires on every letter is noise, not
+  // access. The visible count updates immediately; only the announcement waits.
+  useEffect(() => {
+    const timer = window.setTimeout(() => setAnnouncedCount(shown.length), 600)
+    return () => window.clearTimeout(timer)
+  }, [shown.length])
+
+  const patch = (
+    next: Partial<PortfolioQuery>,
+    history: 'push' | 'replace' = 'push',
+  ) => applyQuery({ ...query, ...next }, history)
+
+  /**
+   * Changing the country can invalidate the city. The reset is DELIBERATE
+   * and announced once: the known failure class here is a dependent select
+   * whose visible value and filtered state stop agreeing, and the only way
+   * to be sure they agree is to clear the value in the same update that
+   * changes its parent.
+   */
+  const changeCountry = (country: string) => {
+    const stale = invalidatedCity(PORTFOLIO_PROJECTS, country, query.city)
+    if (stale) {
+      setCityResetNotice(t('portfolio.filter.cityReset', {
+        city: stale,
+        country: country === ANY ? t('portfolio.filter.any') : country,
+      }))
+    } else {
+      setCityResetNotice('')
+    }
+    patch({ country, city: stale ? ANY : query.city })
+  }
+
+  const toggleStatus = (status: (typeof LIFECYCLE_STATUSES)[number], checked: boolean) => {
+    patch({
+      statuses: checked
+        ? [...query.statuses, status]
+        : query.statuses.filter((v) => v !== status),
+    })
+  }
+
+  const clearAll = () => {
+    setCityResetNotice('')
+    applyQuery(DEFAULT_PORTFOLIO_QUERY)
+  }
 
   const openProject = (id: string) => {
     startContinuityTransition(reduced, () => s.openOpportunity(id))
   }
 
-  const cities = useMemo(
-    () => [ALL, ...new Set(DEMO_PROJECTS.map((p) => p.city))],
-    [],
-  )
+  /**
+   * The client view is reached through the EXISTING preflight, never around
+   * it. This selects the project and the Option whose saved baseline is
+   * client-valid, then opens `ClientOutputGateDialog` — the one gate in the
+   * system — which re-checks the building scope and the save state itself
+   * and is the only thing that may set presentation mode. Nothing here
+   * decides that a client may see anything.
+   */
+  const openClientView = (id: string) => {
+    const snapshot = latestPresentableSnapshot(s, id)
+    if (!snapshot) return
+    startContinuityTransition(reduced, () => {
+      s.openOpportunity(id)
+      s.openOption(snapshot.optionId)
+      s.setGateOpen(true)
+    })
+  }
 
-  const shown = useMemo(() => {
-    const needle = q.trim().toLowerCase()
-    return DEMO_PROJECTS
-      .filter((p) => (city === ALL || p.city === city))
-      // The haystack matches what the placeholder promises: name, city,
-      // owner and id. It searched the client instead of the owner, so a
-      // search by owner silently found nothing.
-      .filter((p) => (needle === ''
-        || `${p.name} ${p.city} ${p.client} ${p.owner} ${p.id}`
-          .toLowerCase().includes(needle)))
-      .slice()
-      .sort(SORTERS[sort])
-  }, [q, city, sort])
-
-  const filtersActive = (q.trim() !== '' ? 1 : 0) + (city !== ALL ? 1 : 0)
+  const chips: Array<{ id: string; label: string; clear: () => void }> = [
+    ...(query.text.trim() !== '' ? [{
+      id: 'text',
+      label: t('portfolio.filter.chip.text', { value: query.text.trim() }),
+      clear: () => patch({ text: '' }),
+    }] : []),
+    ...(query.country !== ANY ? [{
+      id: 'country',
+      label: t('portfolio.filter.chip.country', { value: query.country }),
+      clear: () => changeCountry(ANY),
+    }] : []),
+    ...(query.city !== ANY ? [{
+      id: 'city',
+      label: t('portfolio.filter.chip.city', { value: query.city }),
+      clear: () => patch({ city: ANY }),
+    }] : []),
+    ...(query.manager !== ANY ? [{
+      id: 'manager',
+      label: t('portfolio.filter.chip.manager', { value: query.manager }),
+      clear: () => patch({ manager: ANY }),
+    }] : []),
+    ...query.statuses.map((status) => ({
+      id: `status-${status}`,
+      label: t('portfolio.filter.chip.status', { value: t(lifecycleStatusKey(status)) }),
+      clear: () => toggleStatus(status, false),
+    })),
+  ]
 
   return (
     <div className="a3-opportunities-canvas">
@@ -113,82 +274,172 @@ export function OpportunityList() {
           <header className="a3-masthead a3-portfolio-headline">
             <div>
               <p className="a3-portfolio-eyebrow">
-                {t(eyebrowKey(NORMAL_LIST_PROJECT_COUNT), { count: NORMAL_LIST_PROJECT_COUNT })}
+                {t('vr3.list.eyebrow', { count: total })}
               </p>
               <h1 className="a3-hero-title" tabIndex={-1} data-page-heading>
                 {t('vr3.list.title')}
               </h1>
               <p className="a3-project-lede">{t('vr3.list.lead')}</p>
-              {/* Announced once, after the set narrows — never per keystroke. */}
-              <p className="a3-search-result-count mt-1" role="status" aria-live="polite">
-                {shown.length === DEMO_PROJECTS.length
-                  ? ''
-                  : t(eyebrowKey(shown.length), { count: shown.length })}
-              </p>
             </div>
           </header>
-          <div role="search" className="a3-portfolio-toolbar">
-            <div className="a3-search-line-toolbar">
-              <Button
-                variant="secondary"
-                aria-expanded={filtersOpen}
-                aria-controls={filtersPanelId}
-                onClick={() => setFiltersOpen((v) => !v)}
-              >
-                {t('vr3.list.filterToggle')}
-                {filtersActive > 0 ? ` (${filtersActive})` : ''}
-              </Button>
-            </div>
-          </div>
         </div>
 
-        <div role="search" className="a3-project-search">
-          {filtersOpen && (
-            <div id={filtersPanelId} className="mt-3">
-              <div className="a3-search-line">
-                <SelectField
-                  id="project-sort"
-                  label={t('opplist.sort.legend')}
-                  value={sort}
-                  onChange={(e) => setSort(e.target.value as SortMode)}
-                >
-                  <option value="recommended">{t('opplist.sort.recommended')}</option>
-                  <option value="name">{t('opplist.sort.name')}</option>
-                  <option value="status">{t('opplist.sort.status')}</option>
-                </SelectField>
-                <FormField htmlFor="project-search" label={tx('Opportunities durchsuchen')}>
-                  <input
-                    id="project-search"
-                    type="search"
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                    placeholder={tx('Name, Stadt, Owner, ID')}
+        <div role="search" aria-label={t('portfolio.filter.legend')} className="a3-pf-toolbar mt-5">
+          <div className="a3-pf-toolbar-row">
+            <FormField
+              htmlFor="portfolio-search"
+              label={t('portfolio.filter.search.label')}
+            >
+              <input
+                id="portfolio-search"
+                type="search"
+                value={query.text}
+                placeholder={t('portfolio.filter.search.placeholder')}
+                onChange={(event) => patch({ text: event.target.value }, 'replace')}
+              />
+            </FormField>
+            <SelectField
+              id="portfolio-sort"
+              label={t('portfolio.filter.sort.label')}
+              value={query.sort}
+              onChange={(event) => patch({ sort: event.target.value as PortfolioSort })}
+            >
+              {PORTFOLIO_SORTS.map((sort) => (
+                <option key={sort} value={sort}>{t(`portfolio.sort.${sort}`)}</option>
+              ))}
+            </SelectField>
+            <Button
+              variant="secondary"
+              aria-expanded={filtersOpen}
+              aria-controls={panelId}
+              onClick={() => setFiltersOpen((open) => !open)}
+            >
+              {filtersActive > 0
+                ? t('portfolio.filter.toggleCount', { count: filtersActive })
+                : t('portfolio.filter.toggle')}
+            </Button>
+          </div>
+
+          {/* DISCLOSURE: the panel reveals downward from the control that
+              owns it and collapses back into it, so the relationship stays
+              readable. Interruptible by construction — `AnimatePresence`
+              reverses a running reveal instead of queueing behind it. */}
+          <AnimatePresence initial={false}>
+            {filtersOpen && (
+              <motion.div
+                id={panelId}
+                className="a3-pf-panel"
+                initial={reduced ? false : { opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={reduced ? { opacity: 1, height: 0 } : { opacity: 0, height: 0 }}
+                transition={{ duration: reduced ? 0 : 0.2, ease: [0.25, 0.6, 0.3, 1] }}
+                style={{ overflow: 'hidden' }}
+              >
+                <div className="a3-pf-panel-grid">
+                  <Combobox
+                    id="portfolio-country"
+                    label={t('portfolio.filter.country.label')}
+                    value={query.country}
+                    options={[
+                      { value: ANY, label: t('portfolio.filter.any') },
+                      ...countries.map((value) => ({ value, label: value })),
+                    ]}
+                    onChange={changeCountry}
+                    placeholder={t('portfolio.filter.any')}
                   />
-                </FormField>
-                <SelectField
-                  id="project-city"
-                  label={t('opplist.filter.city.label')}
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                >
-                  {cities.map((value) => (
-                    <option key={value} value={value}>
-                      {value === ALL ? tx('alle') : value}
-                    </option>
-                  ))}
-                </SelectField>
-              </div>
+                  <Combobox
+                    id="portfolio-city"
+                    label={t('portfolio.filter.city.label')}
+                    value={query.city}
+                    options={[
+                      { value: ANY, label: t('portfolio.filter.any') },
+                      ...cities.map((value) => ({ value, label: value })),
+                    ]}
+                    onChange={(city) => patch({ city })}
+                    placeholder={t('portfolio.filter.any')}
+                  />
+                  <Combobox
+                    id="portfolio-manager"
+                    label={t('portfolio.filter.manager.label')}
+                    value={query.manager}
+                    options={[
+                      { value: ANY, label: t('portfolio.filter.any') },
+                      ...managers.map((value) => ({ value, label: value })),
+                    ]}
+                    onChange={(manager) => patch({ manager })}
+                    placeholder={t('portfolio.filter.any')}
+                  />
+                </div>
+                <fieldset className="a3-pf-status">
+                  <legend>{t('portfolio.filter.status.legend')}</legend>
+                  <div className="a3-pf-status-list">
+                    {LIFECYCLE_STATUSES.map((status) => (
+                      <label key={status} className="a3-pf-status-option">
+                        <input
+                          type="checkbox"
+                          checked={query.statuses.includes(status)}
+                          onChange={(event) => toggleStatus(status, event.target.checked)}
+                        />
+                        <span>{t(lifecycleStatusKey(status))}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {chips.length > 0 && (
+            <div className="a3-pf-chips" role="group" aria-label={t('portfolio.filter.activeLegend')}>
+              {chips.map((chip) => (
+                <span key={chip.id} className="a3-pf-chip">
+                  <span>{chip.label}</span>
+                  <button
+                    type="button"
+                    className="a3-pf-chip-remove"
+                    aria-label={t('portfolio.filter.chip.remove', { label: chip.label })}
+                    onClick={chip.clear}
+                  >
+                    <span aria-hidden="true">✕</span>
+                  </button>
+                </span>
+              ))}
+              <Button variant="ghost" onClick={clearAll}>
+                {t('portfolio.filter.clearAll')}
+              </Button>
             </div>
           )}
         </div>
 
-        {/* Two distinct empty states, kept distinct (approved landing
-            contract, AC 4/6). The account-empty branch is structurally
-            unreachable while the fixture invariant is "exactly two
-            projects" — it is retained rather than deleted because the
-            branch belongs to the capability, not to the fixture, and it
-            offers NO reset: there is nothing to reset. */}
-        {DEMO_PROJECTS.length === 0 ? (
+        <div className="a3-pf-summary">
+          <p className="a3-pf-count">
+            {filtersActive === 0
+              ? t('portfolio.result.all', { total })
+              : shown.length === 0
+                ? t('portfolio.result.none', { total })
+                : shown.length === 1
+                  ? t('portfolio.result.one', { total })
+                  : t('portfolio.result.some', { count: shown.length, total })}
+          </p>
+        </div>
+        {/* Two polite regions, two different facts. Merging them would make
+            a city reset overwrite a result count that had just been read. */}
+        <p className="sr-only" role="status" aria-live="polite">
+          {announcedCount === null ? '' : (
+            announcedCount === 1
+              ? t('portfolio.result.one', { total })
+              : t('portfolio.result.some', { count: announcedCount, total })
+          )}
+        </p>
+        <p className="sr-only" role="status" aria-live="polite">{cityResetNotice}</p>
+
+        {/* Two empty states, kept distinct. An account with no projects at
+            all offers NO reset — there is nothing to reset — while a filter
+            that matched nothing says so and offers exactly one way out. The
+            account branch is unreachable while the register carries five
+            fixtures; it is retained because it belongs to the capability,
+            not to the fixture. */}
+        {total === 0 ? (
           <div className="a3-empty-spec">
             <EmptyState>{t('opplist.emptyAccount.sentence')}</EmptyState>
             <p className="a3-project-lede">{t('opplist.emptyAccount.detail')}</p>
@@ -197,25 +448,35 @@ export function OpportunityList() {
           <div className="a3-empty-spec">
             <EmptyState
               action={(
-                <Button
-                  variant="secondary"
-                  onClick={() => { setQ(''); setCity(ALL) }}
-                >
-                  {t('opplist.empty.filtered.reset')}
+                <Button variant="secondary" onClick={clearAll}>
+                  {t('portfolio.filter.clearAll')}
                 </Button>
               )}
             >
-              {t('vr3.list.empty.filtered')}
+              {t('portfolio.empty.filtered')}
             </EmptyState>
+            <p className="a3-project-lede">{t('portfolio.empty.filtered.detail')}</p>
           </div>
         ) : (
-          <ul className="a3-project-grid">
+          <ul className="a3-pf-list">
             {shown.map((project) => (
-              <ProjectListCard
+              /* Per-item identity: a card keeps its own boundary while the
+                 set is re-ordered or narrowed, so a row that stays is seen
+                 to move rather than to be replaced. */
+              <motion.li
                 key={project.id}
-                project={project}
-                onOpen={() => openProject(project.id)}
-              />
+                layout={reduced ? false : 'position'}
+                transition={{ duration: reduced ? 0 : 0.24, ease: [0.2, 0.8, 0.2, 1] }}
+                className="a3-pf-card"
+                data-display-only={project.displayOnly || undefined}
+              >
+                <PortfolioCard
+                  project={project}
+                  language={language}
+                  onOpen={project.displayOnly ? null : () => openProject(project.id)}
+                  onOpenClientView={project.displayOnly ? null : () => openClientView(project.id)}
+                />
+              </motion.li>
             ))}
           </ul>
         )}
@@ -224,62 +485,63 @@ export function OpportunityList() {
   )
 }
 
-function ProjectListCard({
-  project, onOpen,
+/* ──────────────────────────────── card ──────────────────────────────── */
+
+function PortfolioCard({
+  project, language, onOpen, onOpenClientView,
 }: {
-  project: FixtureProject
-  onOpen: () => void
+  project: PortfolioProject
+  language: Locale
+  /** `null` for a display-only record: there is nothing to open. */
+  onOpen: (() => void) | null
+  onOpenClientView: (() => void) | null
 }) {
   const s = useStore()
   const t = useT()
   const asset = projectAsset(project.heroAssetId)
-  const analysis = s.projectAnalyses[project.id]
-  const state = analysis ? readiness(project, analysis) : null
-  const clean = project.route === 'clean'
-  const actionLabel = clean
-    ? t('vr3.list.card.openProject')
-    : t('vr3.list.card.reviewProject')
+  const title = portfolioTitle(project)
+  const value = portfolioValue(project, s)
+  const deadline = useDeadline(project.nextClientMeetingAt)
 
-  const buildings = project.buildings.length === 1
-    ? t('vr3.list.card.buildingsOne')
-    : t('vr3.list.card.buildingsMany', { count: project.buildings.length })
-  const documents = t('vr3.list.card.documentsMany', { count: project.documents.length })
+  const configureLabel = t('portfolio.card.configure')
+  const clientViewLabel = t('portfolio.card.clientView')
 
-  // Two readiness rows, derived from the project's OWN state. Before the
-  // analysis has produced evidence the card reports what is actually known;
-  // it never reports a conflict count the analysis has not computed.
-  const notStarted = !state || state.state === 'DOCUMENT_ANALYSIS_NOT_STARTED'
-  const attentionCount = project.terminalDistribution.warning
-    + project.terminalDistribution.lowConfidence
-  const rows = notStarted
-    ? [
-      {
-        id: 'documentation',
-        label: t('vr3.list.card.documentation'),
-        value: t('vr3.list.card.documentationComplete'),
-      },
-      {
-        id: 'analysis',
-        label: t('vr3.list.card.analysis'),
-        value: t('ds.processingJob.state.notStarted'),
-      },
-    ]
-    : [
-      {
-        id: 'blocking',
-        label: t('vr3.list.card.blockingConflicts'),
-        value: String(state.unresolvedBlockingConflicts),
-      },
-      {
-        id: 'warnings',
-        label: t('vr3.list.card.recognitionWarnings'),
-        value: String(attentionCount),
-      },
-    ]
+  /**
+   * The client view is never opened from here directly. A display-only
+   * record has no Option at all; a real project needs a saved, client-valid
+   * baseline, and the decision to show it belongs to the existing gate
+   * modal — this button only says whether that gate is reachable and, when
+   * it is, hands over to the project so the gate can ask its own questions.
+   */
+  const clientReady = !project.displayOnly
+    && latestPresentableSnapshot(s, project.id) !== null
+
+  /**
+   * A display-only record states its reason ONCE, at card level, and both
+   * blocked actions point at that one sentence. Passing it as each button's
+   * own `disabledReason` printed it three times on one card — the same
+   * duplicated-message defect this ticket removes from the account popover.
+   */
+  const clientViewBlockedReason = project.displayOnly
+    ? undefined
+    : clientReady ? undefined : t('portfolio.card.clientViewLocked')
+
+  const displayOnlyReasonId = `${project.id}-display-only`
+  const blockedBy = project.displayOnly ? displayOnlyReasonId : undefined
+
+  const areaLabel = project.metrics.areaMetric === 'wfl'
+    ? t('portfolio.card.wfl')
+    : t('portfolio.card.nuf')
 
   return (
-    <li className="a3-project-card">
-      <div className="a3-project-card-media" style={{ viewTransitionName: `project-media-${project.id}` }}>
+    <>
+      <div
+        className="a3-pf-media"
+        /* Continuity belongs to a destination. A display-only record has
+           none, so it carries no shared name and no transition can imply
+           that clicking it goes somewhere. */
+        style={onOpen ? { viewTransitionName: `project-media-${project.id}` } : undefined}
+      >
         <MediaFrame
           ratio="card"
           state={asset ? 'loaded' : 'fallback'}
@@ -289,63 +551,194 @@ function ProjectListCard({
           sourceId={asset?.assetId}
         />
       </div>
-      {/* The status mark sits ABOVE the project name, in the eyebrow
-          position the approved target uses. The canonical `Card`'s own
-          `status` slot renders after the body, so the two are stacked in
-          one column here instead of forking the primitive. */}
-      <div className="a3-project-card-column">
-      <div className="a3-project-card-status">
-        <SemanticStatus
-          tone={clean ? 'ok' : 'attention'}
-          label={t(project.listStatusKey)}
-        />
-      </div>
-      <Card
-        className="a3-project-card-body"
-        title={project.name}
-        meta={<>{project.client} · {project.city}</>}
-        actions={(
+
+      <div className="a3-pf-body">
+        <div>
+          <div className="a3-pf-status-line">
+            <SemanticStatus
+              tone={lifecycleStatusTone(project.lifecycleStatus)}
+              label={t(lifecycleStatusKey(project.lifecycleStatus))}
+            />
+          </div>
+          <h2 className="a3-pf-title" lang={language}>
+            {onOpen ? (
+              <button type="button" className="a3-linkbtn" onClick={onOpen}>{title}</button>
+            ) : title}
+          </h2>
+          <p className="a3-pf-parties">
+            <span className="a3-pf-party"><b>{project.client}</b></span>
+            <span className="a3-pf-party">
+              {t('portfolio.filter.manager.label')}: {project.manager}
+            </span>
+          </p>
+        </div>
+
+        <dl className="a3-pf-metrics">
+          <div className="a3-pf-metric">
+            <dt>{t('portfolio.card.buildings')}</dt>
+            <dd className="numeric">{formatCount(project.metrics.buildingCount, language)}</dd>
+          </div>
+          <AggregateMetric
+            label={t('portfolio.card.bgf')}
+            aggregate={project.metrics.bgfRSTotal}
+            render={(v) => formatArea(v, language)}
+          />
+          <AggregateMetric
+            label={areaLabel}
+            aggregate={project.metrics.area}
+            render={(v) => formatArea(v, language)}
+          />
+          <AggregateMetric
+            label={t('portfolio.card.units')}
+            aggregate={project.metrics.residentialUnits}
+            render={(v) => formatCount(v, language)}
+          />
+        </dl>
+
+        <dl className="a3-pf-value">
+          <dt>
+            {value.kind === 'amount' && value.coverage === 'subtotal'
+              ? t('portfolio.card.value.subtotal')
+              : t('portfolio.card.value')}
+          </dt>
+          <dd className="numeric" data-unknown={value.kind === 'notCalculated' || undefined}>
+            {value.kind === 'notCalculated'
+              ? t('portfolio.card.value.notCalculated')
+              : `${localizeMoneyText(value.display, language)}${NNBSP}€`}
+          </dd>
+        </dl>
+        {/* Where the number came from, beside the number. A value's
+            provenance in a separate metadata list is a value whose
+            provenance nobody reads. */}
+        {value.kind === 'amount' && (
+          <p className="a3-pf-value-note">
+            {t(value.provenance === 'syntheticPortfolioFixture'
+              ? 'portfolio.card.value.synthetic'
+              : 'portfolio.card.value.fromSnapshot', {
+              date: formatDate(value.asOf, language),
+            })}
+          </p>
+        )}
+
+        <div className="a3-pf-actions">
           <Button
             variant="primary"
-            onClick={onOpen}
-            // The accessible name is the VISIBLE label plus the project it
-            // acts on — the shape `DocumentRow` already uses for its
-            // per-file actions.
-            //
-            // Two rules meet here and only this shape satisfies both. The
-            // name must disambiguate two identical-looking buttons in a
-            // list (so it carries the project), and WCAG 2.5.3 Label in
-            // Name requires the visible text to be CONTAINED in the
-            // accessible name (so it cannot merely paraphrase it). The
-            // previous `{name} öffnen` failed the second: the review card
-            // reads "Projekt prüfen" / "Review project" while announcing
-            // "… öffnen" / "Open …", so a speech-input user saying what
-            // they see could not activate it. Deriving the name from the
-            // rendered label instead of restating it makes the two
-            // incapable of disagreeing.
-            aria-label={t('vr3.list.card.actionOn', {
-              action: actionLabel, name: project.name,
-            })}
+            disabled={!onOpen}
+            aria-describedby={blockedBy}
+            aria-label={t('portfolio.card.actionOn', { action: configureLabel, name: title })}
+            onClick={onOpen ?? undefined}
           >
-            {actionLabel}
+            {configureLabel}
           </Button>
+          <Button
+            variant="secondary"
+            disabled={!clientReady}
+            disabledReason={clientViewBlockedReason}
+            aria-describedby={blockedBy}
+            aria-label={t('portfolio.card.actionOn', { action: clientViewLabel, name: title })}
+            onClick={clientReady ? (onOpenClientView ?? undefined) : undefined}
+          >
+            {clientViewLabel}
+          </Button>
+        </div>
+
+        {project.displayOnly && (
+          <p id={displayOnlyReasonId} className="a3-pf-note">
+            {t('portfolio.card.displayOnly')}
+          </p>
         )}
-        onOpen={onOpen}
-      >
-        <p className="a3-project-card-facts">
-          <span className="block">{t(project.projectTypeKey)}</span>
-          <span className="block">{buildings} · {documents}</span>
-        </p>
-        <dl className="a3-project-card-rows">
-          {rows.map((row) => (
-            <div key={row.id} className="a3-project-card-row">
-              <dt>{row.label}</dt>
-              <dd className="numeric">{row.value}</dd>
-            </div>
-          ))}
-        </dl>
-      </Card>
       </div>
-    </li>
+
+      <div className="a3-pf-aside">
+        <div className="a3-pf-deadline" data-tone={deadline.kind === 'overdue' ? 'overdue' : deadline.kind === 'none' ? 'none' : 'scheduled'}>
+          <p className="a3-pf-deadline-label">{t('portfolio.card.meeting.label')}</p>
+          {deadline.kind === 'none' ? (
+            <p className="a3-pf-deadline-value" data-none>
+              {t('portfolio.card.meeting.none')}
+            </p>
+          ) : (
+            <>
+              <p className="a3-pf-deadline-value">
+                <time dateTime={deadline.at}>{formatDateTime(deadline.at, language)}</time>
+              </p>
+              {deadline.kind === 'overdue' && (
+                <p className="a3-pf-deadline-cue">
+                  <span aria-hidden="true">!</span>
+                  {t('portfolio.card.meeting.overdue')}
+                </p>
+              )}
+              {deadline.kind === 'soon' && (
+                <p className="a3-pf-deadline-cue">
+                  <span aria-hidden="true">→</span>
+                  {deadline.days <= 0
+                    ? t('portfolio.card.meeting.today')
+                    : deadline.days === 1
+                      ? t('portfolio.card.meeting.tomorrow')
+                      : t('portfolio.card.meeting.inDays', { count: deadline.days })}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+
+        <dl className="a3-pf-dates">
+          <div className="a3-pf-date">
+            <dt>{t('portfolio.card.created')}</dt>
+            <dd><time dateTime={project.createdAt}>{formatDate(project.createdAt, language)}</time></dd>
+          </div>
+          <div className="a3-pf-date">
+            <dt>{t('portfolio.card.updated')}</dt>
+            <dd><time dateTime={project.updatedAt}>{formatDate(project.updatedAt, language)}</time></dd>
+          </div>
+        </dl>
+      </div>
+    </>
   )
+}
+
+/**
+ * A metric that may not be fully known.
+ *
+ * `incomplete` prints words and the two counts, never the partial sum: a
+ * number under the label "Total NUF" claims the project total, and the
+ * sources do not support that claim.
+ */
+function AggregateMetric({
+  label, aggregate, render,
+}: {
+  label: string
+  aggregate: PortfolioAggregate
+  render: (value: string) => string
+}) {
+  const t = useT()
+  return (
+    <div className="a3-pf-metric">
+      <dt>{label}</dt>
+      <dd className="numeric" data-unknown={aggregate.kind !== 'exact' || undefined}>
+        {aggregate.kind === 'exact' ? render(aggregate.value)
+          : aggregate.kind === 'incomplete'
+            ? t('portfolio.card.incomplete', {
+              known: aggregate.knownCount, total: aggregate.applicableCount,
+            })
+            : t('portfolio.card.unknown')}
+      </dd>
+    </div>
+  )
+}
+
+/**
+ * The deadline against a clock that ticks.
+ *
+ * "in 5 days" is a claim about the moment it is read, so the classification
+ * is recomputed on mount and once an hour afterwards. A card left open over
+ * a lunch break must not still say "tomorrow" about yesterday.
+ */
+function useDeadline(iso: string | null): DeadlineState {
+  const [now, setNow] = useState(() => Date.now())
+  const timer = useRef<number>()
+  useEffect(() => {
+    timer.current = window.setInterval(() => setNow(Date.now()), 3_600_000)
+    return () => window.clearInterval(timer.current)
+  }, [])
+  return useMemo(() => deadlineState(iso, now), [iso, now])
 }

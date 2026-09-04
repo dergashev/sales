@@ -66,6 +66,9 @@ LOCALE_ASCII_ALLOWLIST = frozenset({
     'neu', 'neue', 'neuen', 'neuer', 'neues',
     # VR3-01: routine comparative forms of the already-verified 'neu'.
     'neuere', 'neuerem', 'neueren', 'neuerer', 'neueres',
+    # Projects portfolio: superlative forms of the same already-verified
+    # 'neu'. The portfolio sorts by date and names the order in words.
+    'neueste', 'neuestem', 'neuesten', 'neuester', 'neuestes',
     'manuell',
     # VR3-01: routine inflected forms of the already-verified 'manuell'.
     'manuelle', 'manuellem', 'manuellen', 'manueller', 'manuelles',

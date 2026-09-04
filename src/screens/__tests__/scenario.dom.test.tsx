@@ -16,6 +16,7 @@ import {
 } from '../../test/offer-option'
 import { activeBuilding, __resetStoreForTests, useStore } from '../../state/store'
 import { CONFIGURATOR_STEP } from '../../state/chapters'
+import { openProjectCard } from '../../test/portfolio'
 
 /**
  * Сквозной сценарий одним проходом: очередь → подготовка → конфигуратор →
@@ -269,7 +270,7 @@ describe('Сквозной сценарий продажи', () => {
     const user = userEvent.setup()
     render(<App />)
     // Гейт живёт на уровне проекта, а не в списке проектов.
-    await user.click(await screen.findByRole('button', { name: /Projekt prüfen · Quartier Am Güterbogen/ }))
+    await openProjectCard(user, 'Quartier Am Güterbogen')
     // Ein GESCHLOSSENES Gate braucht einen echten offenen Grund: Analyse
     // abgeschlossen, aber die sechs blockierenden strittigen Angaben noch
     // nicht entschieden.

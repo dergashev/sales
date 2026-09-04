@@ -11,5 +11,19 @@
     "intendedUse": "project-identity",
     "retrievedAt": "unknown (asset first appears in repository history at commit 966c833)",
     "auditStatus": "PENDING — this entry intentionally leaves sourceUrl/author/licence unresolved rather than inventing them (design-system/asset-provenance.md forbids fabricated provenance); track a dedicated asset-sourcing task to either confirm this image's real licence/author or replace it with a properly sourced one before any client-facing/export use."
+  },
+  {
+    "id": "USER-DANIEL-WEBER",
+    "file": "user-daniel-weber.jpg",
+    "motifDe": "Porträt eines Projektleiters vor einem hellen Büroraum, quadratisch, für einen kreisrunden Zuschnitt",
+    "source": "Projects-portfolio asset pack, artifacts/project-list-portfolio-redesign/manager-portrait.png. Synthetic portrait generated for this ticket on 2026-09-04; the shipped file is a 256 px JPEG derivative of that PNG. FICTIONAL PERSON: it depicts no known, identifiable or real individual, and the name «Daniel Weber» is the prototype's invented signed-in user, not an All3 employee.",
+    "sourceUrl": "artifacts/project-list-portfolio-redesign/README.md",
+    "sourceService": "openai-imagegen",
+    "author": "All3 — generated for the Projects portfolio rebuild on 2026-09-04",
+    "licence": "in-house — All3 owns the asset. Synthetic demonstration material depicting a fictional person. Approved use: internal Product design, implementation, test fixtures and clearly labelled client-demo environments. It must never be presented as a photograph of a real employee, and any external or client-facing use requires legal/brand approval.",
+    "intendedUse": "account-identity",
+    "retrievedAt": "2026-09-04",
+    "demoFixture": true,
+    "accessibleTreatment": "decorative — rendered with alt=\"\"; the adjacent visible name is the accessible identity"
   }
 ]

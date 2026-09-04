@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { canBeginConfiguration, pipelineViewForBuildingGate, useStore } from './state/store'
 import { useT } from './i18n'
 import all3Logo from '../design-system/All3Logo.png'
 import { SegmentedControl } from './components/controls'
 import { Button } from './components/primitives'
 import { Sidebar } from './components/Sidebar'
+import { ACCOUNT_PORTRAIT_ASSET_ID, identityAsset } from './assets/identity-media'
 import { ClientOutputGateDialog } from './components/ClientOutputGateDialog'
 import { OfferPanel } from './components/OfferPanel'
 import { PresentationShell } from './components/PresentationShell'
@@ -329,22 +330,25 @@ function AppHeader() {
         {/* VR2-01 (ACCEPT-01): auf der Liste trägt der Kopf jetzt denselben
             Pfad wie im Ziel — Sektion „Opportunities" → aktuelle Seite. Im
             Präsentationsmodus bleibt der interne Pfad ausgeblendet. */}
+        {/* The root is ONE page, so the path names it once. The previous
+            «Opportunities / Opportunities» was a breadcrumb with a parent
+            that does not exist: it printed the section and the page under
+            the same word, which tells a reader nothing and offers nowhere
+            to go. Inside a project the path is real and every step up is a
+            control. */}
         {s.level === 'liste' && !praesentation && (
           <nav aria-label="Pfad" className="flex flex-wrap items-center gap-2">
-            <span className="a3-cap text-text-secondary">{t('opplist.title')}</span>
-            <span aria-hidden="true" className="text-text-muted">/</span>
-            <span className="a3-cap" aria-current="page">{t('opplist.title')}</span>
+            <span className="a3-cap" aria-current="page">{t('vr3.list.title')}</span>
           </nav>
         )}
         {s.level !== 'liste' && !praesentation && (
           <nav aria-label="Pfad" className="flex flex-wrap items-center gap-2">
-            <span aria-hidden="true" className="text-text-muted">/</span>
             <button
               type="button"
               onClick={() => navigateUp(() => s.backToList())}
               className="a3-linkbtn"
             >
-              Opportunities
+              {t('vr3.list.title')}
             </button>
             <span aria-hidden="true" className="text-text-muted">/</span>
             {s.level === 'option' ? (
@@ -368,39 +372,32 @@ function AppHeader() {
         )}
       </div>
       <div className="a3-header-controls">
-        {/* VR2-01 (ACCEPT-01): Modus-Tag im Kopf wie im Ziel. Nicht-interaktiver
-            Zustandshinweis (WORK/Arbeitsmodus); im Präsentationsmodus existiert
-            der interne Modus-Hinweis nicht (Regel 11). */}
-        {!praesentation && (
-          <span className="a3-mode-tag">{t('shell.mode.work')}</span>
-        )}
-        {/* EN честно назван ЧАСТИЧНЫМ до переключения (приёмка № 17,
-            дефект 2). Причина теперь ОДНА и временная: перевод ещё не
-            доставлен целиком. Решение PO D-24 отменило D-20 — английская
-            версия обязана быть английской, включая guidance; пометка
-            снимается поставкой № 4, а не остаётся навсегда.
-            Тикет REBUILD PROJECT CARD SHELL, пункт 5: полное предложение
-            выше делало общий заголовок шире базовой ширины на каждом
-            экране (замер Tech Review на 1280 px). Полный текст никуда не
-            делся — он доступен ассистивным технологиям через `sr-only`
-            рядом в потоке документа (не через `aria-describedby` на
-            `SegmentedControl`: канонический компонент не принимает этот
-            проп, и расширять его API ради одного места использования не
-            требуется). Видимый след — только подпись самого сегмента:
-            «EN · Entwurf» / «EN · Draft» через словарный ключ целиком
-            (`shell.en.draftOption`, правило 36 — не конкатенация), видна
-            ПОСТОЯННО, до и после переключения. Design Review (тикет REBUILD
-            PROJECT CARD SHELL, находка UX-PC-01) снял отдельный компактный
-            DC-16-тег, который раньше дублировал ровно то же слово рядом с
-            уже видимой подписью сегмента: два независимых узла заявляли
-            один и тот же факт одновременно, что нарушало правило 9 (один
-            способ выделения на фрагмент). Отсутствие тега не роняет ни
-            видимую, ни ассистивную информацию — обе остаются на своих
-            местах. */}
+        {/* The WORK badge is gone and nothing takes its place. It stated the
+            only mode this header is ever rendered in — the presentation
+            shell has its own top bar — so it carried no information at any
+            moment a person could read it, while spending header width and
+            a second competing emphasis next to the language control. */}
+        {/* Историческая справка к этому контролу: отдельный компактный
+            DC-16-тег «EN · Entwurf» рядом с сегментом был снят Design
+            Review (тикет REBUILD PROJECT CARD SHELL, находка UX-PC-01) —
+            два независимых узла заявляли один и тот же факт одновременно
+            (правило 9). Ключ `shell.en.draftOption` остаётся в словаре и
+            здесь ничего не рендерит. */}
+        {/* The language control is a canonical `SegmentedControl` at its
+            COMPACT size, not a new miniature toggle: the visible segment is
+            32 px while `.hit-target::before` keeps the 44 × 44 press and
+            focus target, and each segment is at least 44 px wide so the two
+            invisible zones cannot overlap (R-04, both conditions). It was
+            167 × 46 px and set the header's height on its own; the account
+            trigger's own 44 px now does, so the header got shorter rather
+            than taller. The accessible name stays `Sprache` / `Language` —
+            through the dictionary, because a hard-coded legend renders one
+            language on both locales. */}
         <div className="a3-language-control">
           <SegmentedControl
             layout="inline"
-            legend="Sprache"
+            size="compact"
+            legend={t('shell.language')}
             value={s.uiLanguage}
             onChange={(l) => s.setUiLanguage(l)}
             options={[
@@ -422,6 +419,9 @@ function AccountMenu() {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const demoId = useId()
+  const portrait = identityAsset(ACCOUNT_PORTRAIT_ASSET_ID)
+  const name = t('shell.account.name')
 
   useEffect(() => {
     if (!open) return
@@ -443,23 +443,65 @@ function AccountMenu() {
   }, [open])
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className="a3-account">
+      {/* The trigger names the signed-in person, because that is what an
+          account control is FOR. «Account» named the control, not the user,
+          and an `A3` monogram named the vendor. The portrait carries an
+          EMPTY alt on purpose: the name stands right next to it, and an alt
+          text here would make a screen reader read the same person twice.
+          The identity lives in the accessible name instead, which also
+          contains the visible text (WCAG 2.5.3). */}
       <button
         ref={triggerRef}
         type="button"
         aria-haspopup="dialog"
         aria-expanded={open}
+        aria-label={t('shell.account.open', { name })}
         onClick={() => setOpen((current) => !current)}
-        className="flex min-h-hit-target items-center gap-2 rounded-control px-2 text-small font-medium text-text-primary outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+        className="a3-account-trigger"
       >
-        <span aria-hidden="true" className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-subtle">A3</span>
-        <span>{t('shell.account')}</span>
+        {portrait ? (
+          <img
+            src={portrait.url}
+            alt=""
+            width={32}
+            height={32}
+            className="a3-account-portrait"
+          />
+        ) : (
+          <span aria-hidden="true" className="a3-account-portrait" />
+        )}
+        <span>{name}</span>
       </button>
       {open && (
-        <div role="dialog" aria-label={t('shell.account')} className="absolute right-0 z-popover mt-2 w-56 rounded-card border border-border-strong bg-surface-default p-3 shadow-elevated">
-          <p className="text-small font-medium text-text-primary">{t('shell.account')}</p>
-          <p className="mt-1 text-small text-text-secondary">{t('shell.accountUnavailable')}</p>
-          <Button className="mt-3 w-full" disabled disabledReason={t('shell.accountUnavailable')}>
+        <div role="dialog" aria-label={name} className="a3-account-popover">
+          <div className="a3-account-identity">
+            {portrait && (
+              <img
+                src={portrait.url}
+                alt=""
+                width={40}
+                height={40}
+                className="a3-account-portrait"
+              />
+            )}
+            <div>
+              <p className="a3-account-name">{name}</p>
+              <p className="a3-account-role">{t('shell.account.role')}</p>
+            </div>
+          </div>
+          <hr className="a3-account-sep" />
+          {/* ONE explanation, stated once. The previous popover printed the
+              same unavailable-session sentence twice: as its own body and
+              again as the button's `disabledReason`. Passing `disabled`
+              WITHOUT `disabledReason` and pointing `aria-describedby` at
+              the sentence that is already on screen keeps the reason both
+              visible and announced, and keeps it singular. Nothing here
+              pretends a sign-out happened: the prototype carries no session
+              to end, and inventing the side effect would be a lie about
+              authentication. */}
+          <p id={demoId} className="a3-account-demo">{t('shell.account.demo')}</p>
+          <Button className="w-full" disabled aria-describedby={demoId}>
             {t('shell.signOut')}
           </Button>
         </div>

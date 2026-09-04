@@ -128,24 +128,38 @@ register and the mechanical checks atomically.
   compact contract without losing required product layout or information.
 - **Review trigger:** approval or release of a new DC-3 information model.
 
-### DS-GOV-EX-03 — Opportunity search composition
+### DS-GOV-EX-03 — Projects portfolio search composition
 
-- **Affected implementation / path:** native search input inside
-  `src/screens/OpportunityList.tsx` (DC-34), wrapped by canonical `FormField`.
-- **Reason:** filtering behavior belongs to the Opportunity workflow and no
-  standalone canonical search-control React API is released.
-- **Why canonical is insufficient:** the system supplies the field wrapper and
-  visual semantics, not the complete product search composition.
+**Narrowed 2026-09-04 (Projects portfolio rebuild).** The half of this
+exception that covered a *searchable list control* is CLOSED: the canonical
+`Combobox` (`components-core.md` § Combobox, capability `combobox`,
+registry specimen `combobox`) is released, and the register's Country, City
+and Manager filters all consume it — three product fields, one canonical
+implementation, no local listbox anywhere. What remains under exception is
+narrower and of a different kind, recorded below.
+
+- **Affected implementation / path:** the product-local FILTER COMPOSITION in
+  `src/screens/OpportunityList.tsx` — the plain-text search field (native
+  `input[type=search]` inside canonical `FormField`), the lifecycle-status
+  `fieldset` of native checkboxes, and the removable active-filter chips.
+- **Reason:** these are a business composition, not reusable primitives. What
+  is filtered, in which groups, with which AND/OR semantics and which chips,
+  belongs to the portfolio workflow; the Design System owns the field
+  wrapper, the tokens and the searchable-select control the composition uses.
+- **Why canonical is insufficient:** the system supplies `FormField`,
+  `Combobox`, `Button` and the token set — not a generic "filter bar" whose
+  groups and semantics would have to be re-specified per product surface.
 - **Production reachability:** yes, internal preparation mode.
-- **Owner:** Sales Platform Opportunities.
-- **Risk:** native subcontrol behavior may diverge when a canonical search API
-  eventually ships.
-- **Follow-up:** evaluate and adopt that API while preserving filtering
-  semantics and accessibility.
-- **Removal condition:** a released canonical search control satisfies DC-34
-  and the product composition has migrated.
-- **Review trigger:** addition or material change of a canonical search/input
-  API or of Opportunity filtering.
+- **Owner:** Sales Platform Projects.
+- **Risk:** a second product surface needing the same status-checkbox group
+  would be tempted to copy it rather than promote it.
+- **Follow-up:** promote the status-checkbox group to a canonical capability
+  IF and WHEN a second surface needs it — not before, so the contract is
+  written against two real consumers rather than one imagined one.
+- **Removal condition:** a released canonical filter-group control satisfies
+  the register's semantics and the composition has migrated.
+- **Review trigger:** a second product surface needing a multi-select filter
+  group, or a material change to portfolio filtering.
 
 ### DS-GOV-EX-04 — DiscountControl native slider
 

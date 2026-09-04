@@ -178,17 +178,40 @@ describe('Account menu — controlled dismissal', () => {
   it('closes on Escape and outside click, returning focus after Escape', async () => {
     const user = userEvent.setup()
     render(<App />)
-    const trigger = screen.getByRole('button', { name: 'Account' })
+    // The trigger names the signed-in person and the action it performs;
+    // the popover is that person's menu.
+    const trigger = screen.getByRole('button', { name: 'Daniel Weber, Kontomenü öffnen' })
 
     await user.click(trigger)
-    expect(screen.getByRole('dialog', { name: 'Account' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Daniel Weber' })).toBeInTheDocument()
     await user.keyboard('{Escape}')
-    expect(screen.queryByRole('dialog', { name: 'Account' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Daniel Weber' })).toBeNull()
     expect(trigger).toHaveFocus()
 
     await user.click(trigger)
     await user.click(document.body)
-    expect(screen.queryByRole('dialog', { name: 'Account' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Daniel Weber' })).toBeNull()
+  })
+
+  it('states the demo-account reason exactly once and points the blocked action at it', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(screen.getByRole('button', { name: 'Daniel Weber, Kontomenü öffnen' }))
+    const popover = screen.getByRole('dialog', { name: 'Daniel Weber' })
+
+    const reason = 'Demo-Konto: dieser Prototyp führt keine verifizierte Sitzungsidentität, '
+      + 'deshalb ist Abmelden ohne Wirkung und bleibt gesperrt.'
+    // ONE sentence, not the same message printed as body and again as the
+    // button's own disabled reason.
+    expect(within(popover).getAllByText(reason)).toHaveLength(1)
+
+    const signOut = within(popover).getByRole('button', { name: 'Abmelden' })
+    expect(signOut).toHaveAttribute('aria-disabled', 'true')
+    // The reason is ANNOUNCED with the action, without being repeated.
+    const describedBy = signOut.getAttribute('aria-describedby')!
+    expect(document.getElementById(describedBy)!).toHaveTextContent(reason)
+    // Identity hierarchy: name, then role.
+    expect(within(popover).getByText('Projektleiter')).toBeInTheDocument()
   })
 })
 

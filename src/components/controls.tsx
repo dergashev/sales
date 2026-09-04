@@ -1,4 +1,7 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import {
+  useEffect, useId, useRef, useState,
+  type KeyboardEvent as ReactKeyboardEvent, type ReactNode,
+} from 'react'
 import { useT, useTx } from '../i18n'
 
 /**
@@ -40,7 +43,7 @@ export type Segment<T extends string> = {
  */
 export function SegmentedControl<T extends string>({
   legend, value, options, onChange, helperText, layout = 'stack',
-  disabled, disabledReason,
+  size = 'default', disabled, disabledReason,
 }: {
   legend: string
   value: T
@@ -49,6 +52,18 @@ export function SegmentedControl<T extends string>({
   helperText?: string
   /** `row` — legend слева в строке списка; `inline` — компактно в шапке. */
   layout?: 'stack' | 'row' | 'inline'
+  /**
+   * Видимый размер сегмента. `compact` опускает высоту до
+   * `--size-control-visual-sm` (32 px) и сужает горизонтальный воздух —
+   * зона нажатия и фокуса остаётся 44 × 44 px через `.hit-target::before`
+   * (R-04). Разрешено только там, где оба условия R-04 выполняются
+   * одновременно: невидимая зона не перекрывает соседний контрол и контур
+   * фокуса виден целиком. Ровно поэтому у компактного сегмента есть
+   * собственная минимальная ШИРИНА (44 px): два сегмента по 32 px высотой,
+   * но по 30 px шириной дали бы две перекрывающиеся зоны нажатия — то есть
+   * ровно тот дефект, ради запрета которого условие существует.
+   */
+  size?: 'default' | 'compact'
   /** Недоступность всей группы — только с видимой причиной (STATE-006). */
   disabled?: boolean
   disabledReason?: string
@@ -74,7 +89,10 @@ export function SegmentedControl<T extends string>({
   ]
 
   return (
-    <fieldset className={`a3-segmented-fieldset ${layoutClass}`}>
+    <fieldset
+      className={`a3-segmented-fieldset ${layoutClass}`}
+      data-size={size === 'compact' ? 'compact' : undefined}
+    >
       <legend>
         {legend}
       </legend>
@@ -103,7 +121,11 @@ export function SegmentedControl<T extends string>({
           const active = o.value === value
           const off = disabled || o.disabled
           return (
-            <label key={o.value} data-disabled={off || undefined}>
+            <label
+              key={o.value}
+              className={size === 'compact' ? 'hit-target' : undefined}
+              data-disabled={off || undefined}
+            >
               <input
                 type="radio"
                 className="peer sr-only"
@@ -798,6 +820,355 @@ export function Stepper({
         </button>
         {impact && <span className="ml-2 numeric text-text-secondary">{impact}</span>}
       </div>
+    </div>
+  )
+}
+
+/* ── Combobox (searchable single select) ───────────────────────────────── */
+
+export type ComboboxOption = {
+  value: string
+  label: string
+  disabled?: boolean
+  /** Недоступный пункт существует только вместе с видимой причиной. */
+  disabledReason?: string
+}
+
+/**
+ * Combobox (`design-system/components-core.md` § Combobox) — выбор ОДНОГО
+ * значения из списка, который сам сужается набором текста.
+ *
+ * Зачем понадобился отдельный контракт. `SegmentedControl` заканчивается на
+ * трёх значениях (LOCALE-004), `Select` показывает всё сразу и не
+ * сужается. Реестр проектов фильтрует по стране, городу и ответственному —
+ * это открытые списки, которые растут с портфелем, и три собственных
+ * `role="listbox"` рядом с полем ввода были бы тремя частными контролами
+ * без клавиатурного контракта. Здесь он один, канонический, и все три поля
+ * его переиспользуют.
+ *
+ * ARIA 1.2 «combobox with listbox popup», редактируемый вариант:
+ * `role="combobox"` живёт НА `input`, всплывающий список — `role="listbox"`,
+ * активный пункт называется `aria-activedescendant` (фокус остаётся в поле
+ * ввода, поэтому набор текста не прерывается).
+ *
+ * Три поведения, которые легко потерять и которые здесь обязательны:
+ *
+ * 1. **Поле ввода никогда не остаётся с незафиксированным запросом.** Уход
+ *    фокуса и `Escape` возвращают подпись ВЫБРАННОГО значения. Иначе экран
+ *    показывал бы «Ham» там, где выбран «Hamburg», — то есть врал бы о
+ *    состоянии фильтра.
+ * 2. **Число найденного объявляется с задержкой, не на каждое нажатие.**
+ *    Живая область, кричащая на каждую букву, — не доступность, а шум.
+ * 3. **Ошибка загрузки списка сохраняет выбранное значение** и предлагает
+ *    повтор: последнее верное состояние фильтра важнее пустого списка.
+ */
+export function Combobox({
+  id,
+  label,
+  value,
+  options,
+  onChange,
+  placeholder,
+  emptyLabel,
+  noMatchLabel,
+  helperText,
+  disabled,
+  disabledReason,
+  loading = false,
+  error,
+  onRetry,
+  retryLabel,
+  stale,
+  partial,
+}: {
+  id: string
+  /** Постоянная видимая подпись. Скрытой она не бывает. */
+  label: string
+  /** Текущее значение; `''` — «alle»/«all», если оно есть в `options`. */
+  value: string
+  options: ReadonlyArray<ComboboxOption>
+  onChange: (value: string) => void
+  placeholder?: string
+  /** Список пуст в источнике — не «ничего не найдено», а «нечего выбирать». */
+  emptyLabel?: string
+  /** Запрос не совпал ни с одним пунктом. */
+  noMatchLabel?: string
+  helperText?: ReactNode
+  disabled?: boolean
+  /** `permission`: недоступность всегда вместе с видимой причиной. */
+  disabledReason?: ReactNode
+  loading?: boolean
+  /** `error`: источник списка не загрузился. Выбранное значение остаётся. */
+  error?: ReactNode
+  onRetry?: () => void
+  retryLabel?: string
+  /** `stale`: список получен, но с тех пор источник изменился. */
+  stale?: ReactNode
+  /** `partial`: список заведомо неполон. */
+  partial?: ReactNode
+}) {
+  const t = useT()
+  const listId = `${id}-listbox`
+  const helperId = `${id}-helper`
+  const statusId = `${id}-status`
+  const rootRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [activeIndex, setActiveIndex] = useState(0)
+  /** Объявляемое число — отдельное состояние, чтобы не кричать по букве. */
+  const [announced, setAnnounced] = useState<number | null>(null)
+
+  /**
+   * The label last resolved for the CURRENT value.
+   *
+   * When the option source fails or goes stale the list can no longer name
+   * the selected value — and a field that blanks itself has thrown away the
+   * last valid state of the filter, which is the one thing the `error`
+   * state is supposed to protect. The remembered label is written only when
+   * the list DOES resolve the value, so it can never invent one.
+   */
+  const lastLabel = useRef<{ value: string; label: string } | null>(null)
+  const selected = options.find((o) => o.value === value) ?? null
+  if (selected) lastLabel.current = { value, label: selected.label }
+  const selectedLabel = selected?.label
+    ?? (lastLabel.current?.value === value ? lastLabel.current.label : '')
+  const needle = query.trim().toLowerCase()
+  const matches = needle === ''
+    ? options
+    : options.filter((o) => o.label.toLowerCase().includes(needle))
+
+  /**
+   * Открытое поле показывает НАБОР, закрытое — выбранное значение.
+   *
+   * Открытие очищает видимый текст, чтобы набор не приходилось стирать
+   * вручную; выбранное значение при этом не исчезает с экрана — оно
+   * остаётся подсказкой в самом поле и галочкой в списке. Ни в один момент
+   * поле не показывает наполовину набранный запрос как будто это фильтр.
+   */
+  const shownText = open ? query : selectedLabel
+  const shownPlaceholder = open && selectedLabel !== '' ? selectedLabel : placeholder
+
+  useEffect(() => {
+    if (!open) { setAnnounced(null); return }
+    const timer = window.setTimeout(() => setAnnounced(matches.length), 500)
+    return () => window.clearTimeout(timer)
+  }, [open, matches.length])
+
+  useEffect(() => {
+    if (!open) return
+    const onPointerDown = (event: PointerEvent) => {
+      if (rootRef.current?.contains(event.target as Node)) return
+      setOpen(false)
+      setQuery('')
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [open])
+
+  const inoperable = Boolean(disabled || loading || (options.length === 0 && !error))
+
+  const commit = (option: ComboboxOption) => {
+    if (option.disabled) return
+    onChange(option.value)
+    setQuery('')
+    setOpen(false)
+    inputRef.current?.focus()
+  }
+
+  const openWith = (index: number) => {
+    setOpen(true)
+    setActiveIndex(index)
+  }
+
+  const move = (delta: number) => {
+    if (matches.length === 0) return
+    const next = (activeIndex + delta + matches.length) % matches.length
+    setActiveIndex(next)
+  }
+
+  const onKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (inoperable) return
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault()
+        if (!open) openWith(Math.max(0, matches.findIndex((o) => o.value === value)))
+        else move(1)
+        break
+      case 'ArrowUp':
+        event.preventDefault()
+        if (!open) openWith(Math.max(0, matches.length - 1))
+        else move(-1)
+        break
+      case 'Home':
+        if (!open) return
+        event.preventDefault()
+        setActiveIndex(0)
+        break
+      case 'End':
+        if (!open) return
+        event.preventDefault()
+        setActiveIndex(Math.max(0, matches.length - 1))
+        break
+      case 'Enter': {
+        if (!open) return
+        event.preventDefault()
+        const option = matches[activeIndex]
+        if (option) commit(option)
+        break
+      }
+      case 'Escape':
+        // Первый Escape закрывает и восстанавливает подпись выбранного;
+        // второй отдаёт событие дальше (оверлей-контракт: Esc закрывает
+        // ближайший слой, а не сразу все).
+        if (!open) return
+        event.preventDefault()
+        event.stopPropagation()
+        setOpen(false)
+        setQuery('')
+        break
+      case 'Tab':
+        setOpen(false)
+        setQuery('')
+        break
+      default:
+        break
+    }
+  }
+
+  const describedBy = [
+    helperText && helperId,
+    (disabledReason || error || stale || partial) && `${id}-note`,
+  ].filter(Boolean).join(' ')
+
+  /**
+   * The active option is addressed by its POSITION in the filtered list, not
+   * by its value. A value like `Lena Hoffmann` produces an `id` with a space
+   * in it — invalid HTML, and an IDREF that `aria-activedescendant` cannot
+   * resolve, so the announcement silently stops working while the list still
+   * looks right. Positions are always id-safe.
+   */
+  const optionId = (index: number) => `${id}-option-${index}`
+  const activeId = open && matches[activeIndex] ? optionId(activeIndex) : undefined
+
+  return (
+    <div ref={rootRef} className="a3-form-field a3-combobox" aria-busy={loading || undefined}>
+      <label htmlFor={id}>{label}</label>
+      <div className="a3-combobox-shell" data-open={open || undefined}>
+        <input
+          ref={inputRef}
+          id={id}
+          type="text"
+          role="combobox"
+          className="a3-combobox-input"
+          autoComplete="off"
+          spellCheck={false}
+          value={shownText}
+          placeholder={shownPlaceholder}
+          disabled={inoperable}
+          aria-expanded={open}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={activeId}
+          aria-describedby={describedBy || undefined}
+          aria-invalid={error ? true : undefined}
+          onChange={(event) => {
+            setQuery(event.target.value)
+            setOpen(true)
+            setActiveIndex(0)
+          }}
+          // A pointer press on the field opens the list; FOCUS alone does
+          // not. Tabbing through a filter panel that pops a list open at
+          // every stop is a form that shouts at the keyboard user.
+          onClick={() => { if (!inoperable) setOpen(true) }}
+          onKeyDown={onKeyDown}
+        />
+        {/* APG: вспомогательная кнопка вне Tab-порядка (поле ввода уже
+            в нём), но с настоящим доступным именем — `aria-hidden` на
+            кликабельном контроле сделал бы его невидимым для того, кто им
+            всё-таки пользуется. */}
+        <button
+          type="button"
+          className="a3-combobox-toggle hit-target"
+          tabIndex={-1}
+          aria-label={t('ds.combobox.toggle', { field: label })}
+          disabled={inoperable}
+          onClick={() => {
+            if (inoperable) return
+            if (open) { setOpen(false); setQuery('') } else openWith(0)
+            inputRef.current?.focus()
+          }}
+        >
+          <span aria-hidden="true">▾</span>
+        </button>
+      </div>
+      {/* Список существует в разметке всегда — `aria-controls` обязан
+          указывать на существующий узел, иначе ссылка висит в пустоту. */}
+      {/* The popup's name is NOT the field's own label. Two nodes carrying
+          the identical accessible name — the input and its listbox — makes
+          «find the control called Land» ambiguous for a screen reader user
+          and for every test that asks the same question. */}
+      <ul
+        id={listId}
+        role="listbox"
+        aria-label={t('ds.combobox.listLabel', { field: label })}
+        className="a3-combobox-list"
+        hidden={!open}
+      >
+        {matches.map((option, index) => (
+          <li
+            key={option.value || 'all'}
+            id={optionId(index)}
+            role="option"
+            aria-selected={option.value === value}
+            aria-disabled={option.disabled || undefined}
+            data-active={index === activeIndex || undefined}
+            className="a3-combobox-option"
+            onPointerDown={(event) => event.preventDefault()}
+            onClick={() => commit(option)}
+            onPointerEnter={() => setActiveIndex(index)}
+          >
+            <span className="a3-combobox-option-mark" aria-hidden="true">
+              {option.value === value ? '✓' : ''}
+            </span>
+            <span>{option.label}</span>
+          </li>
+        ))}
+        {matches.length === 0 && (
+          <li role="presentation" className="a3-combobox-option a3-combobox-option-none">
+            {options.length === 0
+              ? (emptyLabel ?? t('ds.combobox.empty'))
+              : (noMatchLabel ?? t('ds.combobox.noMatch'))}
+          </li>
+        )}
+      </ul>
+      <p id={statusId} className="sr-only" role="status" aria-live="polite">
+        {announced === null ? '' : t('ds.combobox.resultCount', { count: announced })}
+      </p>
+      {helperText && <p id={helperId} className="a3-form-helper">{helperText}</p>}
+      {(disabledReason || error || stale || partial) && (
+        <div id={`${id}-note`}>
+          {error && (
+            <p className="a3-form-error">
+              {error}
+              {onRetry && (
+                <>
+                  {' '}
+                  <button type="button" className="a3-linkbtn hit-target" onClick={onRetry}>
+                    {retryLabel ?? t('ds.combobox.retry')}
+                  </button>
+                </>
+              )}
+            </p>
+          )}
+          {/* Каждое из трёх состояний говорит своё: право доступа, возраст
+              списка и его полнота — разные факты, и склеивать их в одну
+              строку значило бы сообщить только первый. */}
+          {disabledReason && <p className="a3-form-disabled-reason">{disabledReason}</p>}
+          {stale && <p className="a3-form-disabled-reason">{stale}</p>}
+          {partial && <p className="a3-form-disabled-reason">{partial}</p>}
+        </div>
+      )}
     </div>
   )
 }

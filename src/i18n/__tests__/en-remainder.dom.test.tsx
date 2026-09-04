@@ -6,6 +6,7 @@ import { writeFileSync } from 'node:fs'
 import { __resetStoreForTests, useStore } from '../../state/store'
 import { CONFIGURATOR_STEPS } from '../../state/chapters'
 import { GENERATED_DE } from '../generated'
+import { PORTFOLIO_TITLE } from '../../test/portfolio'
 
 /**
  * Остаток немецкого на английском пути — замер ПО DOM, а не по исходнику.
@@ -100,6 +101,14 @@ const DE_TO_KEY = new Set(Object.values(GENERATED_DE))
 const REPORT = 'docs/audit/i18n-en-remainder-dom.md'
 
 const NORMATIVE = /^(WoFlV|DIN\b|MBO|GEG|EH\b|GK\b|KG\b|BGF|WFL|NUF|NRF|HOAI|AHO|QNG|DGNB|OKBP|CRM|HubSpot|All3|DEMO-|OPT-|SNAP-|RS\b)/
+/**
+ * A project's canonical postal identity — `DE – 79100 …` — is not German
+ * PROSE and must never reach a copy delivery. Translating an address is the
+ * defect, not the fix (D-24 allows language-neutral names, addresses,
+ * company names and units). Without this the report told the next delivery
+ * to translate three street addresses.
+ */
+const POSTAL_IDENTITY = /^[A-Z]{2} – \d{4,5} /
 
 function germanFragments(): string[] {
   const out: string[] = []
@@ -113,6 +122,7 @@ function germanFragments(): string[] {
     const text = (n.textContent ?? '').trim()
     if (text.length < 3) continue
     if (NORMATIVE.test(text)) continue
+    if (POSTAL_IDENTITY.test(text)) continue
     if (GERMAN.test(text)) out.push(text)
   }
   return [...new Set(out)]
@@ -146,7 +156,9 @@ describe('Остаток немецкого на английском пути (
     // The card's stretched title and its CTA both name the project (the
     // title IS the primary destination, CARD-001). Either opens it; the
     // CTA is the one the accessible-name walk cares about.
-    await user.click(screen.getByRole('button', { name: 'Open project · Wohnhof Lindenhain' }))
+    await user.click(screen.getByRole('button', {
+      name: `Configure project · ${PORTFOLIO_TITLE['Wohnhof Lindenhain']}`,
+    }))
     germanFragments().forEach((f) => seen.add(f))
 
     act(() => {

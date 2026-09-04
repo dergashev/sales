@@ -3581,3 +3581,163 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 @media (prefers-reduced-motion:reduce){
   .a3-client-receipt{transition:none}
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   Combobox — searchable single select (components-core.md § Combobox).
+   Structure: .a3-form-field.a3-combobox > label + .a3-combobox-shell
+   (input[role=combobox] + .a3-combobox-toggle) + ul.a3-combobox-list >
+   li.a3-combobox-option (> .a3-combobox-option-mark) | .a3-combobox-option-none.
+   The list is positioned, not in flow: an open list must not push the card
+   grid below it down — that is a layout shift on every keystroke.
+   Classes: .a3-combobox · .a3-combobox-shell · .a3-combobox-input ·
+   .a3-combobox-toggle · .a3-combobox-list · .a3-combobox-option ·
+   .a3-combobox-option-mark · .a3-combobox-option-none. */
+.a3-combobox{position:relative;min-width:0}
+.a3-combobox-shell{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:stretch;border:var(--border-contrast-1px);background:var(--color-surface-default)}
+.a3-combobox-shell:focus-within{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--border-width-focus)}
+.a3-combobox-input{min-width:0;border:0;background:transparent;padding:0 var(--space-3);min-height:var(--control-height);font-family:inherit;font-size:var(--type-input-size);line-height:var(--type-body-line);color:var(--color-text-primary);outline:none}
+.a3-combobox-input::placeholder{color:var(--color-text-muted)}
+.a3-combobox-input:disabled{color:var(--color-action-disabled-text);background:var(--color-action-disabled-bg)}
+.a3-combobox-toggle{display:inline-flex;align-items:center;justify-content:center;min-width:var(--control-height);border:0;border-left:var(--border-hairline);background:transparent;color:var(--color-text-secondary);cursor:pointer;font-family:inherit}
+.a3-combobox-toggle:disabled{color:var(--color-action-disabled-text);cursor:default}
+.a3-combobox-shell[data-open] .a3-combobox-toggle{color:var(--color-text-primary)}
+.a3-combobox-list{position:absolute;z-index:var(--layer-popover);inset-inline:0;top:100%;margin:0;padding:0;list-style:none;max-height:calc(6 * var(--size-hit-target-default));overflow-y:auto;border:var(--border-contrast-1px);border-top:0;background:var(--color-surface-default)}
+.a3-combobox-option{display:grid;grid-template-columns:var(--size-icon-sm) minmax(0,1fr);gap:var(--space-2);align-items:center;min-height:var(--size-hit-target-default);padding:0 var(--space-3);border-bottom:var(--border-hairline);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);cursor:pointer}
+.a3-combobox-option:last-child{border-bottom:0}
+.a3-combobox-option[data-active]{background:var(--color-surface-selected);box-shadow:inset var(--size-status-accent-width) 0 0 var(--color-selection-border)}
+.a3-combobox-option[aria-disabled="true"]{color:var(--color-action-disabled-text);cursor:default}
+.a3-combobox-option-mark{font-weight:var(--font-weight-bold)}
+.a3-combobox-option-none{grid-template-columns:minmax(0,1fr);color:var(--color-text-secondary);cursor:default}
+
+/* Compact SegmentedControl (R-04). The visible segment drops to 32 px while
+   `.hit-target::before` keeps the 44 × 44 press/focus target; the explicit
+   min-width is the second half of R-04 — two 32 px-tall segments narrower
+   than 44 px would overlap each other's invisible zones, which is the exact
+   defect the condition exists to forbid. */
+.a3-segmented-fieldset[data-size="compact"] .a3-radio-segments label{min-height:var(--size-control-visual-sm);min-width:var(--size-hit-target-default);justify-content:center;padding:0 var(--space-3);gap:var(--space-1);font-size:var(--type-caption-size);line-height:var(--type-caption-line)}
+.a3-segmented-fieldset[data-size="compact"] .a3-segment-check{min-width:0}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Projects portfolio register.
+
+   One full-width row per project, three columns: identity photography ·
+   the project and what it is worth · the deadline and its dates. The card
+   stays a CARD (one bordered surface, one media role, one action row) and
+   never becomes an admin table — a table would give the next client meeting
+   the same weight as a postcode, and the meeting is the one fact that makes
+   somebody act today.
+   Classes: .a3-pf-toolbar · .a3-pf-toolbar-row · .a3-pf-panel ·
+   .a3-pf-panel-grid · .a3-pf-status · .a3-pf-status-list ·
+   .a3-pf-status-option · .a3-pf-chips · .a3-pf-chip · .a3-pf-chip-remove ·
+   .a3-pf-summary · .a3-pf-count · .a3-pf-list · .a3-pf-card · .a3-pf-media ·
+   .a3-pf-body · .a3-pf-status-line · .a3-pf-title · .a3-pf-parties ·
+   .a3-pf-party · .a3-pf-metrics · .a3-pf-metric · .a3-pf-actions ·
+   .a3-pf-note · .a3-pf-aside · .a3-pf-deadline · .a3-pf-deadline-label ·
+   .a3-pf-deadline-value · .a3-pf-deadline-cue · .a3-pf-dates · .a3-pf-date. */
+.a3-pf-toolbar{display:grid;gap:var(--space-3);min-width:0}
+.a3-pf-toolbar-row{display:flex;flex-wrap:wrap;align-items:end;gap:var(--space-3);min-width:0}
+.a3-pf-toolbar-row>.a3-form-field{flex:0 1 auto;min-width:0}
+.a3-pf-toolbar-row>.a3-form-field:first-child{flex:1 1 var(--measure-form-control)}
+.a3-pf-toolbar-row>.a3-btn{flex:0 0 auto;white-space:nowrap}
+.a3-pf-panel{margin-top:var(--space-4);border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-4);display:grid;gap:var(--space-4);min-width:0}
+.a3-pf-panel-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(var(--measure-form-control),1fr));gap:var(--space-4);align-items:start;min-width:0}
+.a3-pf-status{border:0;padding:0;margin:0;min-width:0}
+.a3-pf-status>legend{padding:0;font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);color:var(--color-text-primary)}
+.a3-pf-status-list{margin-top:var(--space-2);display:flex;flex-wrap:wrap;gap:var(--space-2) var(--space-4)}
+.a3-pf-status-option{position:relative;display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--size-hit-target-default);padding-right:var(--space-2);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);cursor:pointer}
+.a3-pf-status-option input{accent-color:var(--color-selection-border);width:var(--size-icon-sm);height:var(--size-icon-sm)}
+.a3-pf-status-option:has(input:focus-visible){outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--border-width-focus)}
+.a3-pf-chips{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);margin-top:var(--space-3);min-width:0}
+.a3-pf-chip{display:inline-flex;align-items:center;gap:var(--space-2);border:var(--border-contrast-1px);background:var(--color-surface-default);padding:0 0 0 var(--space-3);font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary);max-width:100%}
+.a3-pf-chip>span{overflow-wrap:break-word;min-width:0}
+.a3-pf-chip-remove{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:var(--size-hit-target-default);min-height:var(--size-hit-target-default);border:0;border-left:var(--border-hairline);background:transparent;color:var(--color-text-secondary);cursor:pointer;font-family:inherit}
+.a3-pf-chip-remove:hover{color:var(--color-text-primary);background:var(--color-action-secondary-hover)}
+.a3-pf-chip-remove:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:calc(-1 * var(--border-width-focus))}
+.a3-pf-summary{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:var(--space-3);margin-top:var(--space-4);min-width:0}
+.a3-pf-count{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+
+.a3-pf-list{list-style:none;margin:var(--space-4) 0 0;padding:0;display:grid;gap:var(--space-4);min-width:0}
+.a3-pf-card{display:grid;grid-template-columns:minmax(0,264px) minmax(0,1fr) minmax(0,272px);border:var(--border-contrast-1px);background:var(--color-surface-default);min-width:0}
+.a3-pf-media{min-width:0;display:grid;grid-template-columns:minmax(0,1fr);overflow:hidden}
+.a3-pf-media figure{min-inline-size:0}
+.a3-pf-media figure,.a3-pf-media figure>div{block-size:100%}
+.a3-pf-body{min-width:0;padding:var(--space-5);display:grid;align-content:start;gap:var(--space-4)}
+.a3-pf-status-line{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3)}
+.a3-pf-title{margin:var(--space-2) 0 0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-pf-parties{margin:var(--space-2) 0 0;display:grid;gap:var(--space-1);min-width:0}
+.a3-pf-party{display:block;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word}
+.a3-pf-party b{font-weight:var(--font-weight-medium);color:var(--color-text-primary)}
+/* A metric strip reads DOWN each column — label above value, both flush
+   left. `.numeric` right-aligns for a table, where a column of figures
+   shares one right edge; here every value has its own column and its own
+   label, so the shared edge does not exist and the alignment would only
+   push each number away from the word that names it. Tabular figures stay. */
+.a3-pf-metrics{margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(8rem,1fr));gap:var(--space-3) var(--space-4);border-top:var(--border-hairline);padding-top:var(--space-3);min-width:0}
+.a3-pf-metric{min-width:0}
+.a3-pf-metric dt{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
+.a3-pf-metric dd{margin:var(--space-1) 0 0;text-align:left;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word}
+.a3-pf-metric dd[data-unknown]{font-weight:var(--font-weight-regular);color:var(--color-text-secondary)}
+
+/* The value is not a fifth metric. It is what the project is worth today,
+   it is the row a portfolio manager scans for, and it is the one number on
+   this card whose absence has to be a sentence rather than a blank. It gets
+   its own line, its own weight, and the coverage-aware label R-18 requires:
+   an incomplete scope is a SUBTOTAL and says so. */
+.a3-pf-value{margin:0;display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-1);border-top:var(--border-hairline);padding-top:var(--space-3);min-width:0}
+.a3-pf-value dt{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
+.a3-pf-value dd{margin:0;text-align:left;font-size:var(--type-metric-section-size);line-height:var(--type-metric-section-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word}
+.a3-pf-value dd[data-unknown]{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-regular);color:var(--color-text-secondary)}
+.a3-pf-value-note{margin:calc(-1 * var(--space-2)) 0 0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
+.a3-pf-actions{display:flex;flex-wrap:wrap;align-items:flex-start;gap:var(--space-3)}
+.a3-pf-note{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+
+.a3-pf-aside{min-width:0;border-left:var(--border-hairline);padding:var(--space-5);display:grid;align-content:start;gap:var(--space-4)}
+.a3-pf-deadline{border-left:var(--size-status-accent-width) solid var(--color-deadline-warning);padding-left:var(--space-3);min-width:0}
+.a3-pf-deadline[data-tone="overdue"]{border-left-color:var(--color-deadline-critical)}
+.a3-pf-deadline[data-tone="none"]{border-left-color:var(--color-border-subtle)}
+.a3-pf-deadline-label{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-medium);letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-secondary)}
+.a3-pf-deadline-value{margin:var(--space-1) 0 0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word}
+.a3-pf-deadline-value[data-none]{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-regular);color:var(--color-text-secondary)}
+.a3-pf-deadline-cue{margin:var(--space-1) 0 0;display:flex;align-items:center;gap:var(--space-2);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary)}
+/* The overdue cue is BLACK and bold, not red text. `--color-deadline-critical`
+   (#F04859) reaches 3.64:1 on white — enough for the 3 px accent rule, which
+   is a non-text UI component at a 3:1 threshold, and NOT enough for 14 px
+   prose at 4.5:1. The meaning never depended on the colour anyway: the glyph
+   and the word «Überfällig» carry it, and the accent rule reinforces it. */
+.a3-pf-deadline[data-tone="overdue"] .a3-pf-deadline-cue{color:var(--color-text-primary);font-weight:var(--font-weight-bold)}
+.a3-pf-dates{margin:0;display:grid;gap:var(--space-2);border-top:var(--border-hairline);padding-top:var(--space-3);min-width:0}
+.a3-pf-date{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,max-content);gap:var(--space-3);align-items:baseline}
+.a3-pf-date dt{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
+.a3-pf-date dd{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);text-align:right;font-variant-numeric:tabular-nums}
+
+/* 1280 is recomposed, not squeezed: the media column narrows, the metric
+   strip drops from five columns to three by its own auto-fit, and the
+   deadline column keeps the width its 24 px date needs. */
+@media (max-width:1365px){
+  .a3-pf-card{grid-template-columns:minmax(0,208px) minmax(0,1fr) minmax(0,240px)}
+  .a3-pf-body,.a3-pf-aside{padding:var(--space-4)}
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Account bar and menu.
+   Classes: .a3-account · .a3-account-trigger · .a3-account-portrait ·
+   .a3-account-popover · .a3-account-identity · .a3-account-name ·
+   .a3-account-role · .a3-account-sep · .a3-account-demo. */
+.a3-account{position:relative}
+.a3-account-trigger{display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--size-hit-target-default);padding:0 var(--space-2);border:0;background:transparent;font-family:inherit;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary);cursor:pointer;white-space:nowrap}
+.a3-account-trigger:hover{background:var(--color-action-secondary-hover)}
+.a3-account-trigger:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--border-width-focus)}
+/* A perfect circle, the one curve the visual language allows. Explicit
+   width/height keep the header from reflowing while the file loads. */
+.a3-account-portrait{width:var(--size-avatar-sm);height:var(--size-avatar-sm);border-radius:50%;object-fit:cover;flex:none;background:var(--color-surface-subtle)}
+.a3-account-popover{position:absolute;z-index:var(--layer-popover);top:100%;right:0;margin-top:var(--space-2);min-width:18rem;max-width:min(var(--size-popover-max-width),calc(100vw - 2 * var(--space-5)));border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-4);display:grid;gap:var(--space-3)}
+.a3-account-identity .a3-account-portrait{width:var(--size-avatar-md);height:var(--size-avatar-md)}
+.a3-account-identity{display:flex;align-items:center;gap:var(--space-3);min-width:0}
+.a3-account-name{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word}
+.a3-account-role{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-account-sep{border:0;border-top:var(--border-hairline);margin:0}
+.a3-account-demo{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+/* The action never wraps: `Abmelden` / `Sign out` on one line at both
+   locales and at 200 % zoom is an acceptance criterion, and the popover's
+   own min-width is what makes it true rather than a hope. */
+.a3-account-popover .a3-btn{white-space:nowrap}

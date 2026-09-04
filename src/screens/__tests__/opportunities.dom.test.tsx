@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
 import {
@@ -14,6 +14,11 @@ import {
 import { __resetStoreForTests, useStore } from '../../state/store'
 import { ProjectOptionsSection } from '../ProjectOptions'
 import { demoProject } from '../../state/projectAnalysis'
+import { LIFECYCLE_STATUSES, decodePortfolioQuery } from '../../state/projectPortfolio'
+import {
+  PORTFOLIO_CARD_COUNT, PORTFOLIO_DISPLAY_ONLY_COUNT, PORTFOLIO_NAVIGABLE_COUNT,
+  PORTFOLIO_TITLE, openProjectCard,
+} from '../../test/portfolio'
 
 /**
  * Корень продукта: список проектов, поиск, сортировка, фильтр, и гейт
@@ -31,191 +36,332 @@ import { demoProject } from '../../state/projectAnalysis'
  * Что проверяется здесь и не проверяется больше нигде: до Option цены нет,
  * а до решённых блокирующих расхождений нет Option.
  */
-beforeEach(() => __resetStoreForTests())
+beforeEach(() => {
+  __resetStoreForTests()
+  // The register now keeps its query in the URL, and jsdom shares one
+  // `window.location` across a file: without this, the first test that
+  // filters leaves every later test rendering a pre-filtered portfolio.
+  window.history.replaceState(null, '', '/')
+})
 
-/** Оба CTA карточек в порядке отображения — единственный надёжный способ
- *  прочитать ПОРЯДОК списка, не завязываясь на классы. */
-const CARD_CTA = /^Projekt (öffnen|prüfen) · /
+/**
+ * Every card's primary CTA, in display order — the only reliable way to
+ * read the register's ORDER without binding to a class name. The accessible
+ * name carries the card's canonical title, so this also proves the title
+ * format on every card at once.
+ */
+const CARD_CTA = /^Projekt konfigurieren · /
 const cardOrder = () => screen
   .getAllByRole('button', { name: CARD_CTA })
-  .map((b) => b.getAttribute('aria-label'))
+  .map((b) => b.getAttribute('aria-label')!.replace('Projekt konfigurieren · ', ''))
 
-async function openFilters(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole('button', { name: /Filtern und sortieren/ }))
+const TITLES = {
+  lindenhain: PORTFOLIO_TITLE['Wohnhof Lindenhain']!,
+  guterbogen: PORTFOLIO_TITLE['Quartier Am Güterbogen']!,
+  hamburg: PORTFOLIO_TITLE['Hafenbogen']!,
+  wien: PORTFOLIO_TITLE['Donauquartier']!,
+  muenchen: PORTFOLIO_TITLE['Feldmark']!,
 }
 
+async function openFilters(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: /^Filter/ }))
+}
+
+/** The card element for a title, whichever column the text sits in. */
+const cardOf = (title: string) => screen.getByText(title).closest('li')!
+
 describe('Уровень Projekte', () => {
-  it('корень показывает ровно два проекта, без панели цены', () => {
+  it('корень показывает пять карточек: два маршрута и три витринных проекта, без панели цены', () => {
     render(<App />)
     expect(screen.getByRole('heading', { name: 'Projekte' })).toBeInTheDocument()
     // Цена принадлежит Option, а Option ещё не выбран.
     expect(screen.queryByRole('complementary', { name: 'Angebot' })).not.toBeInTheDocument()
-    // Инвариант фикстуры: ровно две карточки, обе полные.
-    expect(screen.getAllByRole('article')).toHaveLength(2)
-    // Резюме называет размер портфеля из самой фикстуры — не «X из X».
-    expect(screen.getByText('Demonstrationsportfolio · 2 Projekte')).toBeInTheDocument()
-    expect(screen.queryByText(/von 2 Projekte/)).not.toBeInTheDocument()
-    // Kein Root-Breadcrumb mehr im PageHeader (TASK 02): der Term ist
-    // Code-Jargon und die globale Shell-Kopfzeile übernimmt die Verortung.
+    expect(screen.getAllByRole('listitem')).toHaveLength(PORTFOLIO_CARD_COUNT)
+    // Ровно два проекта навигабельны — ровно три являются витриной.
+    expect(screen.getAllByRole('button', { name: CARD_CTA })
+      .filter((b) => b.getAttribute('aria-disabled') !== 'true'))
+      .toHaveLength(PORTFOLIO_NAVIGABLE_COUNT)
+    expect(screen.getAllByText('Demonstrationsprojekt — kein Workflow verfügbar'))
+      .toHaveLength(PORTFOLIO_DISPLAY_ONLY_COUNT)
+    expect(screen.getByText('Demonstrationsportfolio · 5 Projekte')).toBeInTheDocument()
     expect(screen.queryByText(/Wurzel/)).not.toBeInTheDocument()
-    // Keine erfundene Ranking-/Sortier-Behauptung im Ergebnis-Resümee.
     expect(screen.queryByText(/sortiert/)).not.toBeInTheDocument()
   })
 
-  it('каждая карточка называет проект, клиента с городом, статус, две строки готовности и один основной CTA', () => {
+  it('каждая карточка называет личность, стороны, срок, масштаб, стоимость и оба действия', () => {
     render(<App />)
-    // Карточка целиком — это `<li>`: `Card` (article) живёт в ней рядом с
-    // кадром изображения и меткой статуса, которая стоит в позиции
-    // «бровки» НАД именем проекта, а не в слоте `status` примитива.
-    // Matched on the project half of the accessible name: the verb is the
-    // route's ("Projekt öffnen" vs "Projekt prüfen"), and this helper is
-    // about WHICH card, not which route.
-    const card = (name: string) => screen
-      .getByRole('button', { name: (accessible) => accessible.endsWith(`· ${name}`) })
-      .closest('li')!
-    const clean = card('Wohnhof Lindenhain')
-    const complex = card('Quartier Am Güterbogen')
+    const clean = cardOf(TITLES.lindenhain)
 
-    expect(within(clean!).getByText('Wohnhof Lindenhain')).toBeInTheDocument()
-    expect(within(clean!).getByText(/Lindenhain Wohnen GmbH/)).toBeInTheDocument()
-    expect(within(clean!).getByText(/Freiburg im Breisgau/)).toBeInTheDocument()
-    // Статус не только цветом: у метки есть подпись (правило 8).
-    expect(within(clean!).getByText('Beispiel ohne Konflikte')).toBeInTheDocument()
-    expect(within(clean!).getByText('Mehrfamilienhaus · Neubau')).toBeInTheDocument()
-    expect(within(clean!).getByText(/1 Gebäude · 8 Dokumente/)).toBeInTheDocument()
-    // Две строки готовности ВЫВЕДЕНЫ из собственного состояния проекта:
-    // до анализа карточка говорит то, что действительно известно, и НЕ
-    // называет число расхождений, которого анализ ещё не вычислял.
-    expect(within(clean!).getByText('Dokumentation')).toBeInTheDocument()
-    expect(within(clean!).getByText('Vollständig')).toBeInTheDocument()
-    expect(within(clean!).getByText('Dokumentanalyse')).toBeInTheDocument()
-    expect(within(clean!).getByText('Nicht gestartet')).toBeInTheDocument()
-    // Ровно один основной CTA на карточку.
-    expect(within(clean!).getAllByRole('button', { name: 'Projekt öffnen · Wohnhof Lindenhain' }))
-      .toHaveLength(1)
-    expect(within(clean!).getByRole('button', { name: 'Projekt öffnen · Wohnhof Lindenhain' }))
-      .toHaveTextContent('Projekt öffnen')
-
-    expect(within(complex!).getByText('Quartier Am Güterbogen')).toBeInTheDocument()
-    expect(within(complex!).getByText(/Güterbogen Projektentwicklung GmbH/)).toBeInTheDocument()
-    expect(within(complex!).getByText(/Leipzig/)).toBeInTheDocument()
-    expect(within(complex!).getByText('Prüfung erforderlich')).toBeInTheDocument()
-    expect(within(complex!).getByText(/3 Gebäude · 36 Dokumente/)).toBeInTheDocument()
-    expect(within(complex!).getByRole('button', { name: 'Projekt prüfen · Quartier Am Güterbogen' }))
-      .toHaveTextContent('Projekt prüfen')
-
-    // Ни одна карточка не показывает цены: тотал принадлежит Option.
-    expect(document.querySelector('.a3-project-grid')!.textContent)
-      .not.toMatch(/€/)
+    // 1 — жизненный цикл словом, не только цветом (правило 8).
+    expect(within(clean).getByText('Bereit zur Präsentation')).toBeInTheDocument()
+    // 2 — канонический титул в точном формате.
+    expect(within(clean).getByText(TITLES.lindenhain)).toBeInTheDocument()
+    // 3 — клиент и ответственный полным именем.
+    expect(within(clean).getByText('Lindenhain Wohnen GmbH')).toBeInTheDocument()
+    expect(within(clean).getByText(/Verantwortlich: Daniel Weber/)).toBeInTheDocument()
+    // 4 — срок: у этого проекта термина нет, и строка это ГОВОРИТ.
+    expect(within(clean).getByText('Nächster Kundentermin')).toBeInTheDocument()
+    expect(within(clean).getByText('Kein Kundentermin geplant')).toBeInTheDocument()
+    // 5 — масштаб и стоимость.
+    expect(within(clean).getByText('Gebäude')).toBeInTheDocument()
+    expect(within(clean).getByText('BGF gesamt')).toBeInTheDocument()
+    expect(within(clean).getByText('WFL nach WoFlV')).toBeInTheDocument()
+    expect(within(clean).getByText('Wohneinheiten')).toBeInTheDocument()
+    expect(within(clean).getByText('Gesamtwert')).toBeInTheDocument()
+    // 6 — даты создания и изменения.
+    expect(within(clean).getByText('Erstellt')).toBeInTheDocument()
+    expect(within(clean).getByText('Zuletzt geändert')).toBeInTheDocument()
+    // 7 — два действия, ровно по одному разу.
+    expect(within(clean).getAllByRole('button', {
+      name: `Projekt konfigurieren · ${TITLES.lindenhain}`,
+    })).toHaveLength(1)
+    expect(within(clean).getByRole('button', {
+      name: `Kundenansicht öffnen · ${TITLES.lindenhain}`,
+    })).toBeInTheDocument()
   })
 
-  it('обе карточки полностью изображены — ни одна не падает в графику-заглушку', () => {
+  it('карточка портфеля не показывает ни числа документов, ни состояния анализа', () => {
     render(<App />)
-    const alts = screen.getAllByRole('img').map((i) => i.getAttribute('alt'))
-    expect(alts).toContain(
-      'Fünfgeschossiges Mehrfamilienhaus mit warmer Mineralfassade an einem bepflanzten Innenhof',
-    )
-    expect(alts).toContain(
-      'Quartier mit drei unterschiedlichen Baukörpern um einen begrünten Innenhof',
-    )
-    // Информационное состояние «изображение не зарегистрировано» остаётся
-    // в MediaFrame, но ни одна из двух карточек в него не попадает.
-    expect(document.querySelector('.a3-project-grid .a3-mediaframe-fallback')).toBeNull()
+    expect(screen.queryByText(/Dokumente/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Dokumentation')).not.toBeInTheDocument()
+    expect(screen.queryByText('Dokumentanalyse')).not.toBeInTheDocument()
+    expect(screen.queryByText('Nicht gestartet')).not.toBeInTheDocument()
   })
 
-  it('поиск, сортировка и фильтр живут за ОДНИМ раскрытием и по умолчанию закрыты', async () => {
+  it('жилой проект показывает WFL, проект с коммерцией — NUF, и никогда обе сразу', () => {
+    render(<App />)
+    const clean = cardOf(TITLES.lindenhain)
+    expect(within(clean).getByText('WFL nach WoFlV')).toBeInTheDocument()
+    expect(within(clean).queryByText('NUF nach DIN 277')).toBeNull()
+
+    const complex = cardOf(TITLES.guterbogen)
+    expect(within(complex).getByText('NUF nach DIN 277')).toBeInTheDocument()
+    expect(within(complex).queryByText('WFL nach WoFlV')).toBeNull()
+  })
+
+  it('стоимость приходит только из сохранённого снимка Option, иначе — «не определена», но никогда 0', () => {
+    render(<App />)
+    // Свежее состояние: ни одной сохранённой Option, значит цены нет.
+    const clean = cardOf(TITLES.lindenhain)
+    expect(within(clean).getByText('Preis nicht ermittelt')).toBeInTheDocument()
+    // «Нет цены» никогда не рендерится нулём (правило 16).
+    expect(clean.textContent).not.toMatch(/(^|\s)0(,00)?\s*€/)
+    // Витринная запись несёт собственную, явно помеченную величину.
+    const hamburg = cardOf(TITLES.hamburg)
+    expect(within(hamburg).getByText(/51\.240\.000/)).toBeInTheDocument()
+    expect(within(hamburg).getByText(/Demonstrationswert · Stand/)).toBeInTheDocument()
+  })
+
+  it('неполный агрегат называется словами, а не частичной суммой', () => {
+    render(<App />)
+    const complex = cardOf(TITLES.guterbogen)
+    // NUF известен у одного здания из трёх.
+    expect(within(complex).getByText('Nicht vollständig erfasst · 1 von 3')).toBeInTheDocument()
+    // BGF известен у всех трёх — точная сумма.
+    expect(within(complex).getByText('19.470 m²')).toBeInTheDocument()
+  })
+
+  it('срок имеет три состояния: просрочен, близок и отсутствует', () => {
+    render(<App />)
+    // Просрочен: слово, а не только цвет.
+    expect(within(cardOf(TITLES.guterbogen)).getByText('Überfällig')).toBeInTheDocument()
+    // Близок: обычная подсказка на человеческом языке.
+    expect(within(cardOf(TITLES.hamburg)).getByText(/^in \d+ Tagen$/)).toBeInTheDocument()
+    // Отсутствует: строка остаётся и говорит это.
+    expect(within(cardOf(TITLES.lindenhain)).getByText('Kein Kundentermin geplant'))
+      .toBeInTheDocument()
+    // Дата машиночитаема.
+    const meeting = within(cardOf(TITLES.hamburg))
+      .getByText('Nächster Kundentermin')
+      .parentElement!.querySelector('time')
+    expect(meeting).toHaveAttribute('datetime', '2026-09-11T09:30:00+02:00')
+  })
+
+  it('витринная запись не ведёт никуда: ни титул, ни изображение, ни клавиатура, ни кнопки', async () => {
     const user = userEvent.setup()
     render(<App />)
-    const toggle = screen.getByRole('button', { name: /Filtern und sortieren/ })
+    const hamburg = cardOf(TITLES.hamburg)
+    // Титул не является контролом.
+    expect(within(hamburg).queryByRole('button', { name: TITLES.hamburg })).toBeNull()
+    // Оба действия заблокированы нативно и объяснены ОДИН раз.
+    for (const action of ['Projekt konfigurieren', 'Kundenansicht öffnen']) {
+      const button = within(hamburg).getByRole('button', {
+        name: `${action} · ${TITLES.hamburg}`,
+      })
+      expect(button).toHaveAttribute('aria-disabled', 'true')
+      await user.click(button)
+    }
+    expect(within(hamburg).getAllByText('Demonstrationsprojekt — kein Workflow verfügbar'))
+      .toHaveLength(1)
+    // Ни один клик не увёл со списка.
+    expect(useStore.getState().level).toBe('liste')
+    // И программный путь тоже закрыт: слой рабочего процесса о такой
+    // записи не знает вовсе.
+    act(() => useStore.getState().openOpportunity('PORTFOLIO-HH-01'))
+    expect(demoProject('PORTFOLIO-HH-01')).toBeNull()
+  })
+
+  it('панель фильтров закрыта по умолчанию и содержит страну, город, ответственного и статусы', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    const toggle = screen.getByRole('button', { name: /^Filter/ })
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByRole('searchbox')).toBeNull()
-    expect(screen.queryByLabelText('Sortierung')).toBeNull()
+    // Поиск и сортировка живут В панели инструментов, не за раскрытием:
+    // это два самых частых действия, и прятать их означало бы стоить
+    // клика при каждом заходе.
+    expect(screen.getByRole('searchbox')).toBeInTheDocument()
+    expect(screen.getByLabelText('Sortierung')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Land')).toBeNull()
 
     await openFilters(user)
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('searchbox')).toBeInTheDocument()
-    expect(screen.getByLabelText('Sortierung')).toBeInTheDocument()
+    for (const label of ['Land', 'Stadt', 'Verantwortlich']) {
+      const control = screen.getByLabelText(label)
+      expect(control).toHaveAttribute('role', 'combobox')
+      expect(control).toHaveAttribute('aria-expanded', 'false')
+    }
+    // Все семь канонических статусов, как настоящие чекбоксы в fieldset.
+    const statuses = within(screen.getByRole('group', { name: 'Projektstatus' }))
+      .getAllByRole('checkbox')
+    expect(statuses).toHaveLength(LIFECYCLE_STATUSES.length)
   })
 
-  it('сортировка меняет порядок: Empfohlen ведёт чистым маршрутом, Name — алфавитом', async () => {
+  it('четыре хронологические сортировки дают детерминированный порядок', async () => {
     const user = userEvent.setup()
     render(<App />)
-    await openFilters(user)
     const sort = screen.getByLabelText('Sortierung') as HTMLSelectElement
-
-    // Empfohlen (по умолчанию): сначала чистый маршрут — сам смысл списка
-    // в том, чтобы показать оба пути в этом порядке.
-    expect(sort.value).toBe('recommended')
+    // По умолчанию — последнее изменение, новейшее первым.
+    expect(sort.value).toBe('updatedDesc')
     expect(cardOrder()).toEqual([
-      'Projekt öffnen · Wohnhof Lindenhain', 'Projekt prüfen · Quartier Am Güterbogen',
+      TITLES.lindenhain, TITLES.hamburg, TITLES.wien, TITLES.muenchen, TITLES.guterbogen,
     ])
 
-    await user.selectOptions(sort, 'name')
+    await user.selectOptions(sort, 'updatedAsc')
     expect(cardOrder()).toEqual([
-      'Projekt prüfen · Quartier Am Güterbogen', 'Projekt öffnen · Wohnhof Lindenhain',
+      TITLES.guterbogen, TITLES.muenchen, TITLES.wien, TITLES.hamburg, TITLES.lindenhain,
     ])
 
-    // Status ставит вперёд случай, который требует решения.
-    await user.selectOptions(sort, 'status')
+    await user.selectOptions(sort, 'createdDesc')
     expect(cardOrder()).toEqual([
-      'Projekt prüfen · Quartier Am Güterbogen', 'Projekt öffnen · Wohnhof Lindenhain',
+      TITLES.hamburg, TITLES.lindenhain, TITLES.wien, TITLES.muenchen, TITLES.guterbogen,
+    ])
+
+    await user.selectOptions(sort, 'createdAsc')
+    expect(cardOrder()).toEqual([
+      TITLES.guterbogen, TITLES.muenchen, TITLES.wien, TITLES.lindenhain, TITLES.hamburg,
     ])
   })
 
-  it('фильтр по городу сужает множество и сообщает получившийся размер', async () => {
+  it('поиск находит по титулу, клиенту, ответственному, городу, адресу, индексу и id', async () => {
     const user = userEvent.setup()
     render(<App />)
-    await openFilters(user)
-    // Селектор города опознаётся по своему СОДЕРЖИМОМУ, а не по подписи:
-    // подпись рендерится сырым ключом `opplist.filter.city.label`
-    // (дефект словаря, сообщён отдельно) — тест не закрепляет дефект как
-    // ожидаемый текст и не ослабляет предмет проверки.
-    const city = screen.getAllByRole('combobox')
-      .find((c) => c.querySelector('option[value="Leipzig"]')) as HTMLSelectElement
-    expect(city).toBeDefined()
-
-    await user.selectOptions(city, 'Leipzig')
-    expect(screen.getAllByRole('article')).toHaveLength(1)
-    expect(cardOrder()).toEqual(['Projekt prüfen · Quartier Am Güterbogen'])
-    // Сузившееся множество объявляется ОДИН раз, после сужения.
-    // "1 Projekte" is not German: the eyebrow has a singular form.
-    expect(screen.getByText('Demonstrationsportfolio · 1 Projekt')).toBeInTheDocument()
-    // Активный фильтр виден на самом раскрытии — счётчиком, а не чипом:
-    // прежние удаляемые чипы фильтров ушли вместе с четырьмя фильтрами.
-    expect(screen.getByRole('button', { name: /Filtern und sortieren \(1\)/ }))
-      .toBeInTheDocument()
-
-    await user.selectOptions(city, 'alle')
-    expect(screen.getAllByRole('article')).toHaveLength(2)
-  })
-
-  it('поиск ищет по имени, городу и клиенту', async () => {
-    const user = userEvent.setup()
-    render(<App />)
-    await openFilters(user)
     const search = screen.getByRole('searchbox')
-
-    await user.type(search, 'Lindenhain')
-    expect(cardOrder()).toEqual(['Projekt öffnen · Wohnhof Lindenhain'])
-
-    await user.clear(search)
-    await user.type(search, 'Leipzig')
-    expect(cardOrder()).toEqual(['Projekt prüfen · Quartier Am Güterbogen'])
-
-    await user.clear(search)
-    await user.type(search, 'Güterbogen Projektentwicklung')
-    expect(cardOrder()).toEqual(['Projekt prüfen · Quartier Am Güterbogen'])
+    const only = async (needle: string, expected: string) => {
+      await user.clear(search)
+      await user.type(search, needle)
+      expect(cardOrder()).toEqual([expected])
+    }
+    await only('Lindenhain', TITLES.lindenhain)
+    await only('Nordraum Projekt', TITLES.hamburg)
+    await only('  miriam schneider  ', TITLES.muenchen)
+    await only('Wien', TITLES.wien)
+    await only('Hafenbogen 18', TITLES.hamburg)
+    await only('04109', TITLES.guterbogen)
+    await only('DEMO-HAPPY-01', TITLES.lindenhain)
   })
 
-  it('пустой результат объясняет себя и предлагает сброс', async () => {
+  it('группы фильтров складываются по И, статусы внутри группы — по ИЛИ', async () => {
     const user = userEvent.setup()
     render(<App />)
     await openFilters(user)
+    const status = (label: string) => within(
+      screen.getByRole('group', { name: 'Projektstatus' }),
+    ).getByRole('checkbox', { name: label })
+
+    // ИЛИ внутри группы: два статуса дают объединение.
+    await user.click(status('Neu'))
+    expect(cardOrder()).toEqual([TITLES.hamburg])
+    await user.click(status('In Bearbeitung'))
+    expect(cardOrder()).toEqual([TITLES.hamburg, TITLES.wien])
+
+    // И между группами: тот же выбор плюс страна AT оставляет один.
+    await user.type(screen.getByLabelText('Land'), 'AT')
+    await user.keyboard('{Enter}')
+    expect(cardOrder()).toEqual([TITLES.wien])
+
+    // Ни одного выбранного статуса — значит все статусы.
+    await user.click(status('Neu'))
+    await user.click(status('In Bearbeitung'))
+    expect(cardOrder()).toEqual([TITLES.wien])
+  })
+
+  it('смена страны безопасно очищает несовместимый город и объявляет это один раз', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await openFilters(user)
+    const city = screen.getByLabelText('Stadt') as HTMLInputElement
+    await user.type(city, 'Wien')
+    await user.keyboard('{Enter}')
+    expect(city.value).toBe('Wien')
+    expect(cardOrder()).toEqual([TITLES.wien])
+
+    await user.type(screen.getByLabelText('Land'), 'DE')
+    await user.keyboard('{Enter}')
+    // Значение контрола и отфильтрованное множество не расходятся.
+    expect((screen.getByLabelText('Stadt') as HTMLInputElement).value).toBe('Alle')
+    expect(cardOrder()).toHaveLength(4)
+    expect(screen.getByText('Stadt zurückgesetzt: Wien liegt nicht in DE.'))
+      .toBeInTheDocument()
+  })
+
+  it('активные фильтры видны чипами, снимаются поштучно и сбрасываются целиком', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    // Без фильтров чипов не существует.
+    expect(screen.queryByRole('group', { name: 'Aktive Filter' })).toBeNull()
+
+    await user.type(screen.getByRole('searchbox'), 'Wien')
+    const chips = screen.getByRole('group', { name: 'Aktive Filter' })
+    expect(within(chips).getByText('Suche: Wien')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Filter \(1\)/ })).toBeInTheDocument()
+    expect(screen.getByText('1 von 5 Projekten')).toBeInTheDocument()
+
+    await user.click(within(chips).getByRole('button', { name: 'Filter entfernen: Suche: Wien' }))
+    expect(screen.queryByRole('group', { name: 'Aktive Filter' })).toBeNull()
+    expect(cardOrder()).toHaveLength(PORTFOLIO_CARD_COUNT)
+
+    await user.type(screen.getByRole('searchbox'), 'Wien')
+    await user.click(screen.getAllByRole('button', { name: 'Alle Filter zurücksetzen' })[0]!)
+    expect(cardOrder()).toHaveLength(PORTFOLIO_CARD_COUNT)
+  })
+
+  it('состояние регистра переживает перезагрузку через параметры адреса', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.type(screen.getByRole('searchbox'), 'Wien')
+    expect(window.location.search).toBe('?q=Wien')
+
+    await user.selectOptions(screen.getByLabelText('Sortierung'), 'createdAsc')
+    expect(decodePortfolioQuery(window.location.search)).toMatchObject({
+      text: 'Wien', sort: 'createdAsc',
+    })
+
+    // Перерисовка из адреса восстанавливает ровно то же множество.
+    cleanup()
+    render(<App />)
+    expect(cardOrder()).toEqual([TITLES.wien])
+    expect((screen.getByRole('searchbox') as HTMLInputElement).value).toBe('Wien')
+  })
+
+  it('пустой результат называет причину и предлагает ровно один выход', async () => {
+    const user = userEvent.setup()
+    render(<App />)
     await user.type(screen.getByRole('searchbox'), 'zzz')
-    expect(screen.getByText(/Keine Opportunity entspricht der Suche/)).toBeInTheDocument()
-    expect(screen.queryAllByRole('article')).toHaveLength(0)
-    // Отличается от текста «в аккаунте вообще ничего нет» — тот живёт в
-    // `opportunity-list-empty-account.dom.test.tsx` и сброса не предлагает.
+    expect(screen.getByText('Kein Projekt entspricht den aktiven Filtern.')).toBeInTheDocument()
+    expect(screen.getByText(/Die Filter grenzen das Register auf null Projekte ein/))
+      .toBeInTheDocument()
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0)
+    // Отличается от «в аккаунте вообще ничего нет» — тот сброса не предлагает.
     expect(screen.queryByText('Es sind noch keine Opportunities vorhanden.')).toBeNull()
     expect(document.querySelector('.a3-empty-spec button')).not.toBeNull()
   })
@@ -223,7 +369,7 @@ describe('Уровень Projekte', () => {
   it('Option нельзя создать, пока блокирующие расхождения не решены; свежая Option — без цены', async () => {
     const user = userEvent.setup()
     render(<App />)
-    await user.click(screen.getByRole('button', { name: 'Projekt prüfen · Quartier Am Güterbogen' }))
+    await openProjectCard(user, 'Quartier Am Güterbogen')
     // Анализ прошёл, шесть блокирующих расхождений ещё не решены.
     enterProjectUnderstanding('DEMO-COMPLEX-01', { conflicts: 'open' })
 
@@ -318,29 +464,50 @@ describe('Уровень Projekte', () => {
     expect(screen.getByRole('radio', { name: 'EN' })).toBeInTheDocument()
     expect(screen.queryByText(/Entwurf|Draft/)).not.toBeInTheDocument()
     // Содержимое самого списка, а не только хрома: резюме и заголовок.
-    expect(screen.getByText('Demonstrationsportfolio · 2 Projekte')).toBeInTheDocument()
+    expect(screen.getByText('Demonstrationsportfolio · 5 Projekte')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Projekte' })).toBeInTheDocument()
     await openFilters(user)
-    expect(screen.getByPlaceholderText('Name, Stadt, Owner, ID')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(
+      'Titel, Kunde, Verantwortliche, Stadt, Adresse, PLZ',
+    )).toBeInTheDocument()
+    expect(screen.getByLabelText('Verantwortlich')).toBeInTheDocument()
 
     await user.click(screen.getByRole('radio', { name: /EN/ }))
     // Немецкая строка поискового лейбла исчезла — заменена переводом.
-    expect(screen.queryByText('Opportunities durchsuchen')).toBeNull()
-    expect(screen.getByPlaceholderText('Name, city, owner, ID')).toBeInTheDocument()
-    expect(screen.getByText('Demonstration portfolio · 2 projects')).toBeInTheDocument()
+    expect(screen.queryByText('Projekte durchsuchen')).toBeNull()
+    expect(screen.getByPlaceholderText(
+      'Title, client, manager, city, address, postcode',
+    )).toBeInTheDocument()
+    expect(screen.getByText('Demonstration portfolio · 5 projects')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Projects' })).toBeInTheDocument()
-    expect(screen.getByText('Client ready example')).toBeInTheDocument()
+    // Содержимое КАРТОЧКИ, не только панели: статус жизненного цикла,
+    // подписи метрик и обе подписи действий переводятся вместе с хромом.
+    // Дважды: подпись статуса на карточке и его же чекбокс в панели.
+    expect(screen.getAllByText('Ready to pitch')).toHaveLength(2)
+    expect(screen.getAllByText('Next client meeting')).toHaveLength(PORTFOLIO_CARD_COUNT)
+    expect(screen.getAllByText('Total project value')).toHaveLength(PORTFOLIO_CARD_COUNT)
+    expect(screen.getByText('No client meeting scheduled')).toBeInTheDocument()
+    expect(screen.getByText('Overdue')).toBeInTheDocument()
+    expect(screen.getAllByText('Demonstration project — workflow unavailable'))
+      .toHaveLength(PORTFOLIO_DISPLAY_ONLY_COUNT)
+    // Числа и даты типографируются по локали, не по языку записи.
+    expect(screen.getByText('2,900 m²')).toBeInTheDocument()
+    expect(screen.getByText('51,240,000 €')).toBeInTheDocument()
 
     // Немецкий остаётся источником: переключение обратно восстанавливает.
     await user.click(screen.getByRole('radio', { name: /^DE$/ }))
-    expect(screen.getByPlaceholderText('Name, Stadt, Owner, ID')).toBeInTheDocument()
-    expect(screen.getByText('Beispiel ohne Konflikte')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(
+      'Titel, Kunde, Verantwortliche, Stadt, Adresse, PLZ',
+    )).toBeInTheDocument()
+    expect(screen.getAllByText('Bereit zur Präsentation')).toHaveLength(2)
+    expect(screen.getByText('2.900 m²')).toBeInTheDocument()
+    expect(screen.getByText('51.240.000 €')).toBeInTheDocument()
   })
 
   it('заметка: тихая запись, чип вместо тоста, в презентации не существует (DC-43, правило 34)', async () => {
     const user = userEvent.setup()
     render(<App />)
-    await user.click(screen.getByRole('button', { name: 'Projekt öffnen · Wohnhof Lindenhain' }))
+    await openProjectCard(user, 'Wohnhof Lindenhain')
 
     // #16 Part 5/AC-07: Internal Note ist keine primäre Workflow-Stufe mehr —
     // der EINZIGE Einstieg ist jetzt der Header-Utility-Button, der den

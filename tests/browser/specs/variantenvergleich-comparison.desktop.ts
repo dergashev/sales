@@ -1,5 +1,7 @@
 import { test, expect } from '../fixtures'
-import { COMPARISON, DEMO_PROJECT_NAME, KONFIGURATOR_GATE, NAV, OPPORTUNITY } from '../anchors'
+import {
+  COMPARISON, DEMO_PROJECT_TITLE, KONFIGURATOR_GATE, NAV, OPPORTUNITY,
+} from '../anchors'
 import { saveBuildingScope } from '../journey'
 
 /**
@@ -75,7 +77,7 @@ for (const { label: viewportLabel, viewport } of VIEWPORTS) {
         //    This spec creates several Options from that gate, so it walks
         //    the project half once and then stays on the project level.
         await page.getByRole('button', {
-          name: OPPORTUNITY.openCta(DEMO_PROJECT_NAME),
+          name: OPPORTUNITY.configureCta(DEMO_PROJECT_TITLE),
         }).click()
         await page.getByRole('button', { name: OPPORTUNITY.startAnalysis }).click()
         await expect(

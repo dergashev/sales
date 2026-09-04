@@ -4,6 +4,9 @@ import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
 import { __resetStoreForTests, useStore } from '../../state/store'
 import { demoProject, readiness } from '../../state/projectAnalysis'
+import {
+  PORTFOLIO_CARD_COUNT, configureCtaName, openProjectCard,
+} from '../../test/portfolio'
 
 /**
  * VR3-01 — the project journey as the user actually walks it.
@@ -38,25 +41,22 @@ function finishAnalysis() {
 
 async function openProject(user: ReturnType<typeof userEvent.setup>, name: string) {
   render(<App />)
-  // The card CTA's accessible name is its visible label plus the project
-  // ("Projekt öffnen · X" on the clean route, "Projekt prüfen · X" on the
-  // one that needs a decision), so this matches the project half.
-  await user.click(await screen.findByRole('button', {
-    name: (accessible) => accessible.endsWith(`· ${name}`),
-  }))
+  await openProjectCard(user, name)
 }
 
-describe('the normal Project List contains exactly two complete projects', () => {
-  it('renders both fixtures, both fully imaged, and no third demo', async () => {
+describe('the portfolio register holds five cards and exactly two journeys', () => {
+  it('renders every card fully imaged, and no retired demonstration row', async () => {
     render(<App />)
     const cards = await screen.findAllByRole('listitem')
-    expect(cards).toHaveLength(2)
-    expect(screen.getByRole('button', { name: 'Projekt öffnen · Wohnhof Lindenhain' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Projekt prüfen · Quartier Am Güterbogen' })).toBeInTheDocument()
-    // No card falls back to the placeholder identity graphic: both projects
-    // have registered photographic media.
+    expect(cards).toHaveLength(PORTFOLIO_CARD_COUNT)
+    expect(screen.getByRole('button', { name: configureCtaName('Wohnhof Lindenhain') }))
+      .toBeInTheDocument()
+    expect(screen.getByRole('button', { name: configureCtaName('Quartier Am Güterbogen') }))
+      .toBeInTheDocument()
+    // No card falls back to the placeholder identity graphic: every project
+    // in the register has registered photographic media.
     const images = screen.getAllByRole('img')
-    expect(images.length).toBeGreaterThanOrEqual(2)
+    expect(images.length).toBeGreaterThanOrEqual(PORTFOLIO_CARD_COUNT)
     for (const card of cards) {
       const img = within(card).getByRole('img')
       expect(img).toHaveAttribute('src')
@@ -67,13 +67,30 @@ describe('the normal Project List contains exactly two complete projects', () =>
     expect(screen.queryByText(/Musterquartier Südhang/)).not.toBeInTheDocument()
   })
 
-  it('states the counts the fixture declares, not a screen-local number', async () => {
+  it('states scale from the fixture itself, and never a partial total', async () => {
     render(<App />)
-    const complex = (await screen.findByRole('button', { name: 'Projekt prüfen · Quartier Am Güterbogen' }))
-      .closest('li')!
-    expect(within(complex).getByText(/3 Gebäude · 36 Dokumente/)).toBeInTheDocument()
-    const clean = screen.getByRole('button', { name: 'Projekt öffnen · Wohnhof Lindenhain' }).closest('li')!
-    expect(within(clean).getByText(/1 Gebäude · 8 Dokumente/)).toBeInTheDocument()
+    const complex = (await screen.findByRole('button', {
+      name: configureCtaName('Quartier Am Güterbogen'),
+    })).closest('li')!
+    // Σ bgfRSTotal over the three buildings — exact, from the fixture.
+    expect(within(complex).getByText('19.470 m²')).toBeInTheDocument()
+    // NUF is known for ONE of three buildings, so the register refuses to
+    // print a sum under a label that would claim the project total.
+    expect(within(complex).getByText(/Nicht vollständig erfasst · 1 von 3/))
+      .toBeInTheDocument()
+    const clean = screen.getByRole('button', {
+      name: configureCtaName('Wohnhof Lindenhain'),
+    }).closest('li')!
+    expect(within(clean).getByText('2.900 m²')).toBeInTheDocument()
+    expect(within(clean).getByText('2.120 m²')).toBeInTheDocument()
+  })
+
+  it('no card shows document count, documentation state or analysis state', async () => {
+    render(<App />)
+    await screen.findAllByRole('listitem')
+    expect(screen.queryByText(/Dokumente/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Dokumentation')).not.toBeInTheDocument()
+    expect(screen.queryByText('Dokumentanalyse')).not.toBeInTheDocument()
   })
 })
 

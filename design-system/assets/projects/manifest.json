@@ -194,5 +194,47 @@
     "retrievedAt": "2026-09-02",
     "demoFixture": true,
     "altKey": "vr3.asset.alt.B-SECTION"
+  },
+  {
+    "id": "P-HAMBURG-HAFENBOGEN",
+    "file": "P-HAMBURG-HAFENBOGEN.jpg",
+    "motifDe": "Vier Klinkerbauten mit Balkonen um einen bepflanzten Wohnhof",
+    "source": "Projects-portfolio asset pack, artifacts/project-list-portfolio-redesign/project-hamburg.png. Synthetic image generated for this ticket on 2026-09-04; the shipped file is an optimised JPEG derivative (max 1400 px, q80) of that PNG — pixel content unmodified apart from downscaling and re-encoding. Depicts no real project, client property or identifiable person; carries no logo, text or watermark.",
+    "sourceUrl": "artifacts/project-list-portfolio-redesign/README.md",
+    "sourceService": "openai-imagegen",
+    "author": "All3 — generated for the Projects portfolio rebuild on 2026-09-04",
+    "licence": "in-house — All3 owns the asset. Synthetic demonstration material. Approved use: internal Product design, implementation, test fixtures and clearly labelled client-demo environments. External campaign, tender or unlabelled client use requires legal/brand approval.",
+    "intendedUse": "project-identity",
+    "retrievedAt": "2026-09-04",
+    "demoFixture": true,
+    "altKey": "vr3.asset.alt.P-HAMBURG-HAFENBOGEN"
+  },
+  {
+    "id": "P-WIEN-DONAUQUARTIER",
+    "file": "P-WIEN-DONAUQUARTIER.jpg",
+    "motifDe": "Zwei helle Putzbauten mit Loggien an einem gemeinsamen Innenhof",
+    "source": "Projects-portfolio asset pack, artifacts/project-list-portfolio-redesign/project-vienna.png. Synthetic image generated for this ticket on 2026-09-04; the shipped file is an optimised JPEG derivative (max 1400 px, q80) of that PNG — pixel content unmodified apart from downscaling and re-encoding. Depicts no real project, client property or identifiable person; carries no logo, text or watermark.",
+    "sourceUrl": "artifacts/project-list-portfolio-redesign/README.md",
+    "sourceService": "openai-imagegen",
+    "author": "All3 — generated for the Projects portfolio rebuild on 2026-09-04",
+    "licence": "in-house — All3 owns the asset. Synthetic demonstration material. Approved use: internal Product design, implementation, test fixtures and clearly labelled client-demo environments. External campaign, tender or unlabelled client use requires legal/brand approval.",
+    "intendedUse": "project-identity",
+    "retrievedAt": "2026-09-04",
+    "demoFixture": true,
+    "altKey": "vr3.asset.alt.P-WIEN-DONAUQUARTIER"
+  },
+  {
+    "id": "P-MUENCHEN-FELDMARK",
+    "file": "P-MUENCHEN-FELDMARK.jpg",
+    "motifDe": "Wohngebäude in Holzhybridbauweise mit vorgesetzten Balkonschichten",
+    "source": "Projects-portfolio asset pack, artifacts/project-list-portfolio-redesign/project-munich.png. Synthetic image generated for this ticket on 2026-09-04; the shipped file is an optimised JPEG derivative (max 1400 px, q80) of that PNG — pixel content unmodified apart from downscaling and re-encoding. Depicts no real project, client property or identifiable person; carries no logo, text or watermark.",
+    "sourceUrl": "artifacts/project-list-portfolio-redesign/README.md",
+    "sourceService": "openai-imagegen",
+    "author": "All3 — generated for the Projects portfolio rebuild on 2026-09-04",
+    "licence": "in-house — All3 owns the asset. Synthetic demonstration material. Approved use: internal Product design, implementation, test fixtures and clearly labelled client-demo environments. External campaign, tender or unlabelled client use requires legal/brand approval.",
+    "intendedUse": "project-identity",
+    "retrievedAt": "2026-09-04",
+    "demoFixture": true,
+    "altKey": "vr3.asset.alt.P-MUENCHEN-FELDMARK"
   }
 ]
