@@ -320,7 +320,14 @@ export function PresentationShell({ mainRef, modeRef }: {
    * Every narrative page is its own small "document" — moving to it focuses
    * its own heading (M-10: "heading receives programmatic focus"; the same
    * continuity contract App.tsx's scroll-reset effect gives every Work
-   * screen). The first render never steals focus.
+   * screen).
+   *
+   * MODE ENTRY IS NOT THIS EFFECT'S TRANSITION. It already has an owner:
+   * App.tsx's scroll-and-focus effect depends on `s.mode`, so crossing into
+   * Client Mode focuses the boundary heading there, as every document
+   * transition in the product has since acceptance defect 8. The rule below
+   * must therefore SETTLE on the first render rather than fire a second
+   * time at the same heading — one transition, one focus move.
    *
    * FOCUS IS SPENT BY THE REF, AND THE INTENT IS DERIVED DURING RENDER.
    * Both halves are load-bearing, and each one is a bug on its own:
@@ -347,8 +354,9 @@ export function PresentationShell({ mainRef, modeRef }: {
   const focusKey = flow === 'narrative' ? `section:${activeSection}` : `flow:${flow}`
   const headingEl = useRef<HTMLHeadingElement | null>(null)
   const wantedFocusKey = useRef<string>(focusKey)
-  // Initialised to the first render's key, which is what makes mode entry
-  // announce itself without taking the caret away from anybody.
+  // Initialised to the FIRST render's key: that render is mode entry, whose
+  // focus App.tsx has already placed on this very heading. Starting level
+  // means this rule spends nothing there and owns every move afterwards.
   const focusedKey = useRef<string>(focusKey)
   wantedFocusKey.current = focusKey
   const pageHeadingRef = useCallback((el: HTMLHeadingElement | null) => {

@@ -392,6 +392,25 @@ test.describe('VR3-05 · client presentation, scenario and outputs', () => {
       expect(focused.tag, `focus after navigating to ${label}`).toBe('H1')
       expect(focused.text).toMatch(heading)
     }
+
+    // A focus move a keyboard user cannot SEE is only half of M-10. The strip
+    // is a NAVIGATION of ordinary buttons — not a tablist, so Tab and Enter
+    // are the right keys and arrows are correctly inert — and committing one
+    // from the keyboard must land a visible ring on the incoming heading
+    // rather than a silent caret.
+    await page.getByRole('navigation', { name: 'Präsentation' })
+      .getByRole('button', { name: 'Leistungen' }).focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(/sichtbar gemacht\.$/)
+    await page.waitForTimeout(700)
+    const ring = await page.evaluate(() => {
+      const el = document.activeElement as HTMLElement | null
+      if (!el) return null
+      return { tag: el.tagName, visible: el.matches(':focus-visible') }
+    })
+    expect(ring?.tag).toBe('H1')
+    expect(ring?.visible, 'the incoming heading shows a visible focus ring').toBe(true)
+    await shot(page, 'M-10-heading-focus-1440')
   })
 
   test('M-10 under reduced motion: the direct cut still moves focus', async ({ page }) => {
@@ -409,12 +428,54 @@ test.describe('VR3-05 · client presentation, scenario and outputs', () => {
     expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('H1')
   })
 
-  test('entering Client Mode does not steal focus before the presentation starts', async ({ page }) => {
+  /**
+   * The other half of the same mechanism, and the one that keeps M-10 from
+   * becoming a nuisance: focus follows a DOCUMENT TRANSITION, never an
+   * ordinary re-render.
+   *
+   * Entering Client Mode is a document transition and already has an owner —
+   * `App.tsx`'s scroll-and-focus effect, whose dependencies include
+   * `s.mode`, established long before VR3-05 ("after the transition
+   * `activeElement` stayed BODY and no context was announced"). The shell's
+   * own rule must therefore SETTLE on the boundary rather than fire a second
+   * time at it: one focus move for one transition.
+   *
+   * Choosing a scenario option is the opposite case. The screen recalculates
+   * — new total, new delta, a re-render of the whole narrative page — but
+   * the presenter has not gone anywhere, so the radio they just pressed must
+   * keep the caret. Deriving the wanted key during render is exactly what
+   * buys this: the key is unchanged, so the ref spends nothing.
+   */
+  test('focus follows a document transition, not a recalculation', async ({ page }) => {
     test.setTimeout(180_000)
     await reachClientMode(page)
-    // The boundary is the FIRST render of the shell: M-09 announces the mode,
-    // it does not grab the caret. Focus is only moved by navigation.
-    const tag = await page.evaluate(() => document.activeElement?.tagName)
-    expect(tag).not.toBe('H1')
+
+    // Mode entry: one owner, one move, landing on the boundary heading.
+    await expect(page.getByRole('heading', { level: 1 }))
+      .toContainText('Eine gespeicherte Option zeigen')
+    const onEntry = await page.evaluate(() => ({
+      tag: document.activeElement?.tagName ?? null,
+      text: document.activeElement?.textContent?.trim() ?? null,
+    }))
+    expect(onEntry.tag).toBe('H1')
+    expect(onEntry.text).toMatch(/Eine gespeicherte Option zeigen/)
+
+    await page.getByRole('button', { name: 'Präsentation starten' }).click()
+    await toSection(page, 'Leistungen', /sichtbar gemacht\.$/)
+
+    // A live what-if: the money changes, the presenter does not move.
+    const decentral = page.getByRole('radio', { name: /Dezentral je Gebäude/ })
+    await decentral.click()
+    await expect(page.locator('.a3-client-scenario-bar')).toContainText(/−.?310\.000/)
+    await page.waitForTimeout(700)
+    const afterDecision = await page.evaluate(() => ({
+      tag: document.activeElement?.tagName ?? null,
+      role: document.activeElement?.getAttribute('role')
+        ?? (document.activeElement as HTMLInputElement | null)?.type
+        ?? null,
+    }))
+    expect(afterDecision.tag, 'a recalculation must not pull focus to the heading')
+      .not.toBe('H1')
+    expect(afterDecision.role).toBe('radio')
   })
 })
