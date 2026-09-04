@@ -550,7 +550,17 @@ export function PresentationShell({ mainRef, modeRef }: {
 
   // One authority for "what does this Option cost": its own saved record.
   const savedOf = (id: string) => latestSavedOptionVersion(s, id)
-  const savedTotalOf = (id: string) => savedOf(id)?.result.totalDisplay ?? '—'
+  // ...and one authority for HOW it is typeset. `totalDisplay` is the string
+  // frozen at save time by `formatDE`, which is German by construction, so
+  // reusing it verbatim printed "38.740.000" inside an English presentation
+  // while the KG breakdown and the comparison delta beside it were already
+  // correctly "38,740,000" — two number systems in one client screen.
+  // `localizeMoneyText` re-typesets the ROUNDED numeral that is already
+  // there; it does not re-decide the rounding rule (see its own contract in
+  // i18n/index.ts), so the number and its `≈` prefix are untouched. `—`
+  // carries no numerals and passes through unchanged.
+  const savedTotalOf = (id: string) =>
+    localizeMoneyText(savedOf(id)?.result.totalDisplay ?? '—', s.uiLanguage)
 
   const motionKey = flow === 'narrative' ? activeSection : flow
 
@@ -731,9 +741,19 @@ function ClientOptionComparison({ candidates, currentId, onSwitch, language, sav
             <div key={candidate.id} className="a3-client-row">
               <span className="a3-client-row-label">{candidate.name}</span>
               <span className="a3-client-row-value numeric">
-                {saved ? saved.result.totalDisplay : '—'}
+                {saved ? localizeMoneyText(saved.result.totalDisplay, language) : '—'}
                 {delta && !delta.isZero() ? (
                   <span className="a3-client-comparison-delta">
+                    {/* The 8px margin separates these two numbers for the
+                        eye, but nothing separated them in the TEXT: the row
+                        read "38.740.000+ 310.000 €" as one token to a screen
+                        reader and to anything else reading the accessible
+                        name. A visible space would double a gap the design
+                        already sets deliberately, so the separator is the
+                        delta's own name, clipped from view. */}
+                    <span className="sr-only">
+                      {` ${t('vr3.client.comparison.delta')} `}
+                    </span>
                     {signedMoneyText(delta, language)}
                   </span>
                 ) : null}

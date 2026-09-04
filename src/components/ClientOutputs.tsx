@@ -6,7 +6,7 @@ import {
 } from '../state/store'
 import { scenarioChangeCount } from '../state/clientScenario'
 import { signedMoneyText } from '../design-system/CommercialNumber'
-import { useT } from '../i18n'
+import { localizeMoneyText, useT } from '../i18n'
 import { Button } from './primitives'
 import { ClientPanel, PageFrame, PageLede } from './ClientNarrative'
 import type { ClientView } from './ClientNarrative'
@@ -374,7 +374,16 @@ export function ClientPrintDocument({ view }: { view: ClientView }) {
           })}
       </p>
       <h1 className="a3-client-print-title">{view.projectName}</h1>
-      <p className="a3-client-print-total numeric">{result.total.display}</p>
+      {/* QA-01's family, on the artefact the client KEEPS: `display` comes
+          from `formatDE` and is German by construction, so an English
+          presentation printed "38.740.000" directly under an authority line
+          that had already localised its own delta to "+ 310,000 €". Every
+          other string in this document goes through `t()` or
+          `signedMoneyText(..., view.language)`; this was the one that did
+          not. */}
+      <p className="a3-client-print-total numeric">
+        {localizeMoneyText(result.total.display, view.language)}
+      </p>
       <p className="a3-client-print-total-label">{result.totalLabel}</p>
       <p className="a3-client-print-note">{t('vr3.client.print.demo')}</p>
     </div>

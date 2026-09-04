@@ -149,3 +149,125 @@ describe('VR3-05 · the client Option switcher states one number per Option', ()
     })
   })
 })
+
+/**
+ * QA-01 (cycle 2) — the SAME number, typeset for the reader's own language.
+ *
+ * `SavedOptionResult.totalDisplay` is frozen at save time by `formatDE`,
+ * which is German by construction: `.` thousands, `,` decimal. Reusing that
+ * string verbatim printed "38.740.000" inside an English presentation while
+ * the KG breakdown and the comparison delta 8 px away were already correctly
+ * "38,740,000" — two number systems on one client screen, which is exactly
+ * what CLAUDE.md rule 36 exists to prevent.
+ *
+ * The tests below assert FORMAT, not value: the sibling suite above already
+ * pins WHICH number each surface states, and a suite that checks the value
+ * only is how this shipped past a green build twice.
+ */
+describe('VR3-05 · the saved total is typeset for the active UI language', () => {
+  /** A DE-grouped numeral (1.234.567) that is NOT also valid EN grouping. */
+  const DE_GROUPED = /\d{1,3}(?:\.\d{3})+/
+  /** An EN-grouped numeral (1,234,567). */
+  const EN_GROUPED = /\d{1,3}(?:,\d{3})+/
+
+  const switcherTexts = () => {
+    const group = screen.getByRole('radiogroup', { name: /Ansicht|Viewing/ })
+    return [...group.querySelectorAll('label')].map((l) => l.textContent ?? '')
+  }
+  const announcement = () => screen.getByText(/^(Ansicht|Viewing):/).textContent ?? ''
+
+  it('states DE grouping in DE and EN grouping in EN, on every switcher surface', async () => {
+    const user = userEvent.setup()
+    buildSavedOptions(2)
+    render(<Harness />)
+    await startPresentation(user)
+
+    // DE is the source language: dots, and no EN grouping anywhere.
+    for (const text of switcherTexts()) {
+      expect(text).toMatch(DE_GROUPED)
+      expect(text).not.toMatch(EN_GROUPED)
+    }
+    expect(announcement()).toMatch(DE_GROUPED)
+
+    act(() => { st().setUiLanguage('en') })
+
+    // EN: commas, and the frozen German numeral must be gone.
+    for (const text of switcherTexts()) {
+      expect(text).toMatch(EN_GROUPED)
+      expect(text).not.toMatch(DE_GROUPED)
+    }
+    expect(announcement()).toMatch(EN_GROUPED)
+    expect(announcement()).not.toMatch(DE_GROUPED)
+  })
+
+  it('states EN grouping in the >3-Option select branch too', async () => {
+    const user = userEvent.setup()
+    buildSavedOptions(4)
+    render(<Harness />)
+    await startPresentation(user)
+    act(() => { st().setUiLanguage('en') })
+
+    const select = screen.getByLabelText(/Ansicht|Viewing/)
+    for (const option of [...select.querySelectorAll('option')]) {
+      const text = option.textContent ?? ''
+      expect(text).toMatch(EN_GROUPED)
+      expect(text).not.toMatch(DE_GROUPED)
+    }
+  })
+
+  it('states EN grouping in the Investition comparison rows, and separates the delta', async () => {
+    const user = userEvent.setup()
+    buildSavedOptions(2)
+    render(<Harness />)
+    await startPresentation(user)
+    act(() => { st().setUiLanguage('en') })
+
+    await user.click(screen.getByRole('button', { name: 'Investment' }))
+    const panel = await screen.findByRole('region', { name: 'Other saved Options' })
+    const values = [...panel.querySelectorAll('.a3-client-row-value')]
+    expect(values.length).toBeGreaterThan(0)
+
+    for (const value of values) {
+      const text = value.textContent ?? ''
+      expect(text).toMatch(EN_GROUPED)
+      // The frozen German total was the one thing on this row that did not
+      // re-typeset, so its absence IS the fix.
+      expect(text).not.toMatch(DE_GROUPED)
+      // And the total must not be glued to the delta: the row read
+      // "38.740.000+ 310,000 €" as a single token to any reader of the
+      // accessible name. A separator exists, so no digit is ever followed
+      // immediately by a sign.
+      expect(text).not.toMatch(/\d[+−-]/)
+    }
+  })
+})
+
+/**
+ * The same defect on the artefact the client KEEPS.
+ *
+ * `ClientPrintDocument` is the client-safe document both PDF and print drive.
+ * Every string in it goes through `t()` or `signedMoneyText(…, language)` —
+ * except the total, which printed `Displayed.display` straight from
+ * `formatDE`. An English presentation therefore handed the client a sheet
+ * reading "38.740.000" directly beneath an authority line that had already
+ * localised its own delta to "+ 310,000 €".
+ */
+describe('VR3-05 · the client print document typesets its total for the reader', () => {
+  it('prints EN grouping under EN and DE grouping under DE', async () => {
+    const user = userEvent.setup()
+    buildSavedOptions(1)
+    render(<Harness />)
+    await startPresentation(user)
+
+    const printTotal = () =>
+      document.querySelector('.a3-client-print-total')?.textContent?.trim() ?? ''
+
+    expect(printTotal()).toMatch(/\d{1,3}(?:\.\d{3})+/)
+    expect(printTotal()).not.toMatch(/\d{1,3}(?:,\d{3})+/)
+
+    act(() => { st().setUiLanguage('en') })
+
+    expect(printTotal()).toMatch(/\d{1,3}(?:,\d{3})+/)
+    expect(printTotal()).not.toMatch(/\d{1,3}(?:\.\d{3})+/)
+  })
+})
