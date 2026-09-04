@@ -482,4 +482,160 @@ test.describe('VR3-05 · client presentation, scenario and outputs', () => {
       .not.toBe('H1')
     expect(afterDecision.role).toBe('radio')
   })
+
+  /**
+   * ACCEPT-02 — the scenario bar stays actionable WITHOUT overlaying the
+   * story it is a delta from.
+   *
+   * The bar used to be the last child of the scrolling `<main>`, held in
+   * view by `position: sticky; bottom: 0`, and the narrative page inside
+   * that `<main>` carried `min-height: 0` — which defeats a column flex
+   * item's automatic minimum size, so the page was laid out shorter than
+   * its own content and, having no `overflow` of its own, simply painted
+   * that content outside its box. The two together are why the Terminplan
+   * section — the tallest one, and the one carrying the phased-handover
+   * what-if — put its choice labels behind the bar at BOTH approved
+   * viewports (1440×900: labels y802–958 behind a bar at y818–900) and why
+   * scrolling could not free them: there was nothing to scroll, because the
+   * page had never claimed the height its content needed.
+   *
+   * A DOM test cannot see any of this. The markup was correct and the
+   * control was present, focusable and clickable — it was simply not
+   * READABLE, which is a geometry fact and belongs here.
+   *
+   * So this asserts the two halves of §17's "the scenario bar remains fully
+   * actionable" as GEOMETRY:
+   *
+   *   1. the bar occupies its own band — it does not intersect the region
+   *      the narrative is laid out in, so it cannot cover anything at any
+   *      content height, at rest or scrolled;
+   *   2. the scenario choice is fully READABLE inside that region — the
+   *      whole control, not a bisected fragment.
+   *
+   * It must not be satisfied by deleting the lever, so the control's
+   * existence is asserted first: the phased-handover decision is part of
+   * the demonstration fixture and part of this ticket's scope.
+   */
+  for (const [w, h] of [[1440, 900], [1280, 800]] as const) {
+    test(`ACCEPT-02: the scenario bar never covers a scenario choice at ${w}x${h}`,
+      async ({ page }) => {
+        test.setTimeout(180_000)
+        await page.setViewportSize({ width: w, height: h })
+        await reachClientMode(page)
+        await page.getByRole('button', { name: 'Präsentation starten' }).click()
+        await toSection(page, 'Terminplan', /^Ein abgestimmter Weg/)
+
+        // The lever exists. A "fix" that removed the phased-handover choice
+        // would satisfy every geometry assertion below and fail the ticket.
+        const choices = page.locator('.a3-client-schedule-decision label')
+        expect(await choices.count(),
+          'the phased-handover what-if must still be offered')
+          .toBeGreaterThan(0)
+
+        /**
+         * The bar's band and the narrative's band are disjoint.
+         *
+         * This is the structural claim, and it is what makes the defect
+         * unrepeatable rather than merely absent on this fixture: while the
+         * bar lives outside the scroll region, no content height can put
+         * anything behind it.
+         */
+        const bands = await page.evaluate(() => {
+          const main = document.querySelector('main')
+          const bar = document.querySelector('.a3-client-scenario-bar')
+          if (!main || !bar) return null
+          const m = main.getBoundingClientRect()
+          const b = bar.getBoundingClientRect()
+          return {
+            main: { top: m.top, bottom: m.bottom },
+            bar: { top: b.top, bottom: b.bottom },
+            scrollable: main.scrollHeight - main.clientHeight,
+            contained: main.contains(bar),
+          }
+        })
+        expect(bands).not.toBeNull()
+        // The bar is not INSIDE the scroller — that is the fix, stated.
+        expect(bands!.contained,
+          'the scenario bar must not live inside the scrolling narrative')
+          .toBe(false)
+        expect(bands!.bar.top,
+          'the bar must begin at or below the end of the narrative region')
+          .toBeGreaterThanOrEqual(bands!.main.bottom - 1)
+        // And it is fully on screen: "actionable" is the other half of the
+        // requirement, and a bar pushed off the bottom would pass the
+        // no-overlap check by not being there.
+        expect(bands!.bar.bottom).toBeLessThanOrEqual(h + 1)
+        expect(bands!.bar.top).toBeGreaterThanOrEqual(0)
+
+        /**
+         * And the choice is fully readable inside the narrative region.
+         *
+         * The page now claims the height its content needs, so the surplus
+         * is SCROLLABLE rather than painted outside the box — this asserts
+         * the consequence a presenter cares about: after bringing the
+         * decision into view, the whole card is visible, not a headless
+         * fragment cut off mid-sentence.
+         */
+        await choices.first().scrollIntoViewIfNeeded()
+        await page.waitForTimeout(200)
+        const clipped = await page.evaluate(() => {
+          const main = document.querySelector('main')
+          if (!main) return ['no narrative region']
+          const m = main.getBoundingClientRect()
+          const hits: string[] = []
+          for (const el of document.querySelectorAll('.a3-client-schedule-decision label')) {
+            const r = el.getBoundingClientRect()
+            if (r.top < m.top - 1 || r.bottom > m.bottom + 1) {
+              hits.push(`${(el.textContent ?? '').trim().slice(0, 40)}`
+                + ` @ ${Math.round(r.top)}-${Math.round(r.bottom)}`
+                + ` vs narrative ${Math.round(m.top)}-${Math.round(m.bottom)}`)
+            }
+          }
+          return hits
+        })
+        expect(clipped,
+          'a scenario choice must be readable in full, not bisected')
+          .toEqual([])
+
+        await shot(page, `ACCEPT-02-schedule-scenario-bar-${w}`)
+      })
+  }
+
+  /**
+   * ACCEPT-01 — what the browser would actually PRINT.
+   *
+   * `@media print` hides the narrative and prints the client-safe document,
+   * so what a client keeps is only ever visible under print media. Reading
+   * the page's own text under `emulateMedia({ media: 'print' })` is the only
+   * place the cover-sheet defect was observable at all — which is exactly
+   * why it passed three green cycles.
+   */
+  test('ACCEPT-01: the printed document contains the six client sections',
+    async ({ page }) => {
+      test.setTimeout(180_000)
+      await reachClientMode(page)
+      await page.getByRole('button', { name: 'Präsentation starten' }).click()
+
+      await page.emulateMedia({ media: 'print' })
+      const printed = await page.evaluate(() => document.body.innerText)
+
+      // Section headings are `text-transform: uppercase`, and `innerText`
+      // returns the TRANSFORMED text — so the comparison is case-folded
+      // rather than asserting the casing the stylesheet chose.
+      const folded = printed.toLocaleLowerCase('de-DE')
+      for (const section of ['Projekt', 'Gebäude', 'Umfang', 'Leistungen',
+        'Terminplan', 'Investition', 'Annahmen']) {
+        expect(folded, `the printed sheet must contain "${section}"`)
+          .toContain(section.toLocaleLowerCase('de-DE'))
+      }
+      // Option, version and date (§16), and the lead metric with its unit.
+      expect(printed).toMatch(/Version\s*1/)
+      expect(printed).toContain('€/m²')
+      // Nothing internal came with the extra content.
+      expect(printed).not.toMatch(/\bDEMO-[A-Z0-9-]+\b/)
+      expect(printed).not.toMatch(/Konfidenz|OCR|Marge/i)
+
+      await shot(page, 'ACCEPT-01-print-media-1440')
+      await page.emulateMedia({ media: 'screen' })
+    })
 })

@@ -170,6 +170,19 @@ export function rate(
  * Знаменатель назван всегда; `€/m²` появляется только у площадных.
  */
 export function rateLabel(r: Rate): string {
-  const unit = r.denominatorKind === 'area' ? `€/m²${NNBSP}` : `€${NNBSP}`
-  return `${r.prefix}${r.prefix ? NNBSP : ''}${r.display}${NNBSP}${unit}${r.denominatorLabel}`
+  return `${rateUnit(r)}${NNBSP}${r.denominatorLabel}`
+}
+
+/**
+ * Ставка БЕЗ имени знаменателя: `≈ 2.545 €/m²`.
+ *
+ * Для узких плиток, где знаменатель назван в ПОДПИСИ (правило 31:
+ * `Leitkennzahl … €/m² WFL nach WoFlV` — норматив принадлежит имени
+ * метрики), а в значении остаётся число с единицей. Выбор единицы —
+ * площадная или поштучная — живёт ТОЛЬКО здесь: тернарник, скопированный
+ * в компонент, расходится с `rateLabel` при первой правке.
+ */
+export function rateUnit(r: Rate): string {
+  const unit = r.denominatorKind === 'area' ? '€/m²' : '€'
+  return `${r.prefix}${r.prefix ? NNBSP : ''}${r.display}${NNBSP}${unit}`
 }

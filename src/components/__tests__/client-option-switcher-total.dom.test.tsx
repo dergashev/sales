@@ -326,8 +326,14 @@ describe('VR3-05 · the client investment hero speaks one language', () => {
     const rateValue = panel.querySelector('.a3-client-metric-grid dd')?.textContent ?? ''
     expect(rateValue).not.toMatch(/\d{1,3}(?:\.\d{3})+/)
 
+    // ACCEPT-03: the value now carries the UNIT the tile used to omit...
+    expect(rateValue).toContain('€/m²')
     // ...and the normative denominator name is deliberately NOT translated.
-    const rateLabel = panel.querySelector('.a3-client-metric-grid dt')?.textContent ?? ''
-    expect(rateLabel).toMatch(/BGF|WFL|NUF/)
+    // It stands in the TERM beside the metric's own name, which is how
+    // rule 31 words the Leitkennzahl and what keeps the 180 px value cell
+    // from wrapping mid-unit. So the German norm is asserted where it lives.
+    const rateTerm = panel.querySelector('.a3-client-metric-grid dt')?.textContent ?? ''
+    expect(rateTerm).toMatch(/lead rate/i)
+    expect(rateTerm).toMatch(/BGF|WFL|NUF/)
   })
 })

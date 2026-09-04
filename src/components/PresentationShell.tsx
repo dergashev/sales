@@ -609,7 +609,10 @@ export function PresentationShell({ mainRef, modeRef }: {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="flex min-h-0 flex-1 flex-col"
+            /* ACCEPT-02: no `min-h-0` here either — the same automatic
+               minimum size the page needs has to survive its wrapper, or the
+               wrapper shrinks and the page overflows the wrapper instead. */
+            className="flex flex-1 flex-col"
           >
             {flow === 'outputs' ? (
               <PageOutputs
@@ -672,21 +675,45 @@ export function PresentationShell({ mainRef, modeRef }: {
         </AnimatePresence>
         )}
 
-        {/* The bar is persistent across every section, which is the point:
-            a presenter must not be able to navigate away from the fact that
-            the number on screen is a temporary one. It is suppressed only
-            for the entry boundary and the released send lifecycle, where a
-            scenario is by definition not what is being looked at. */}
-        {view && (flow === 'narrative' || flow === 'outputs') ? (
-          <div ref={scenarioBarRef}>
-            <ScenarioBar
-              view={view}
-              onRevert={() => setRevertOpen(true)}
-              onSaveAsNew={() => { s.beginScenarioSaveAsNew(); setSaveOpen(true) }}
-            />
-          </div>
-        ) : null}
       </main>
+
+      {/* The bar is persistent across every section, which is the point:
+          a presenter must not be able to navigate away from the fact that
+          the number on screen is a temporary one. It is suppressed only
+          for the entry boundary and the released send lifecycle, where a
+          scenario is by definition not what is being looked at.
+
+          ACCEPT-02. It used to be the LAST CHILD OF THE SCROLLING <main>,
+          held in view by `position: sticky; bottom: 0`. Sticky is the wrong
+          mechanism for a bar that must never hide anything: it keeps the bar
+          on screen by lifting it OVER the content still below it, so on the
+          Terminplan section — the tallest one, and the one that carries the
+          phased-handover what-if — the choice labels were painted over at
+          both approved viewports, and scrolling to the end of `main` could
+          not free them because the bar travels with the scrollport.
+
+          It is now a ROW OF THE SHELL, a sibling of the scroll region rather
+          than a passenger inside it. `main` is measured with the bar's band
+          already taken out, so the narrative simply has less height to use
+          and scrolls within it: the bar is always visible AND always beside
+          the content instead of on top of it, which is what T-041 shows and
+          what §17 means by "the scenario bar remains fully actionable".
+          `role="region"` keeps it inside a landmark now that it has left
+          `main`, so a screen-reader user can still reach it directly. */}
+      {view && (flow === 'narrative' || flow === 'outputs') ? (
+        <div
+          ref={scenarioBarRef}
+          role="region"
+          aria-label={t('vr3.client.scenario.region')}
+          className="shrink-0"
+        >
+          <ScenarioBar
+            view={view}
+            onRevert={() => setRevertOpen(true)}
+            onSaveAsNew={() => { s.beginScenarioSaveAsNew(); setSaveOpen(true) }}
+          />
+        </div>
+      ) : null}
 
       {view ? (
         <>

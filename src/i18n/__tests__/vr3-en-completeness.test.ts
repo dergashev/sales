@@ -337,10 +337,27 @@ describe('VR3-01 · nothing on the owned surfaces can reach EN untranslated', ()
  * `denominatorLabel` is the DECLARED EXCEPTION and is asserted as one:
  * LOCALE-009 keeps normative denominators (`BGF oberirdisch`,
  * `WFL nach WoFlV`, `NUF nach DIN 277`) out of machine translation on
- * purpose, so it must stay bare — and stating that here is what stops a
- * future reader from "fixing" it.
+ * purpose — and stating that here is what stops a future reader from
+ * "fixing" it.
+ *
+ * ACCEPT-03 changed the SHAPE of that exception, not the rule. The client
+ * investment tile used to render `{result.leadRate.denominatorLabel}` bare
+ * as its term and the bare `display` as its value, which is how a €/m² rate
+ * came to stand under an area label with no unit at all. The denominator
+ * now reaches the client beside the engine's own composers — `rateUnit()`
+ * attaches the `≈` and the `€/m²` to the number, `rateLabel()` adds the
+ * denominator name for the wide surfaces that print it inline — so the
+ * exception is no longer "a bare JSX interpolation exists" but "a composer
+ * is what carries the unit, and the normative name is never handed to a
+ * translator", and that is what the companion assertion pins.
  */
 describe('VR3 · an engine-composed German label is never rendered bare', () => {
+  /** The client presentation, which is the surface VR3-05 owns. */
+  const CLIENT_SURFACES = [
+    'src/components/ClientNarrative.tsx',
+    'src/components/ClientScenario.tsx',
+    'src/components/ClientOutputs.tsx',
+  ]
   /** Fields the engine composes in German by contract. */
   const BRIDGED_LABELS = ['totalLabel']
   /** Fields that must stay German (LOCALE-009). Bare is CORRECT here. */
@@ -366,19 +383,46 @@ describe('VR3 · an engine-composed German label is never rendered bare', () => 
     // A guard that silently matches nothing is worse than no guard: it
     // reports success forever. This pins that the fields are really there.
     let bridged = 0
-    let bare = 0
+    let composed = 0
     for (const surface of OWNED_SURFACES) {
       const text = withoutComments(source(surface))
       bridged += [...text.matchAll(/\btx\(\s*[A-Za-z_$][\w$.?]*\.totalLabel\s*\)/g)].length
-      for (const field of DELIBERATELY_BARE) {
-        bare += [...text.matchAll(
-          new RegExp(String.raw`\{\s*[A-Za-z_$][\w$.?]*\.${field}\s*\}`, 'g'),
-        )].length
-      }
+      composed += [...text.matchAll(/\brate(?:Label|Unit)\(/g)].length
     }
     expect(bridged).toBeGreaterThan(0)
-    // The normative denominator is rendered bare on purpose, and that is
-    // the state this suite is asserting is CORRECT.
-    expect(bare).toBeGreaterThan(0)
+    // The normative denominator reaches the client through the engine's own
+    // composer, which is the state this suite asserts is CORRECT: it is
+    // what keeps the unit attached to the number (ACCEPT-03) while keeping
+    // the normative name out of translation.
+    expect(composed).toBeGreaterThan(0)
+  })
+
+  it('never hands a normative denominator to a translator, on the client surfaces', () => {
+    // The inverse of ACCEPT-03's fix, and the one a future reader is most
+    // likely to get wrong: seeing German inside an English presentation and
+    // wrapping it. `BGF oberirdisch` / `WFL nach WoFlV` / `NUF nach DIN 277`
+    // name a NORM, and a translated norm cites nothing.
+    //
+    // SCOPED DELIBERATELY to the client presentation, which is the surface
+    // VR3-05 owns. The same `tx(…denominatorLabel)` pattern exists on four
+    // sites of three VR2 surfaces (`PresentationShell`'s offer climax,
+    // `OfferPanel`, `S4Vergleich`). It is inert TODAY — `translateText`
+    // matches whole dictionary VALUES and no denominator name is one — so it
+    // has never mistranslated anything, and widening this guard would either
+    // ship red or force an unrelated cross-ticket edit into an acceptance
+    // remediation. It is reported instead, with its own ticket.
+    const translated: string[] = []
+    for (const surface of CLIENT_SURFACES) {
+      const text = withoutComments(source(surface))
+      for (const field of DELIBERATELY_BARE) {
+        const pattern = new RegExp(
+          String.raw`\b(?:t|tx)\(\s*[A-Za-z_$][\w$.?]*\.${field}\b`, 'g',
+        )
+        for (const match of text.matchAll(pattern)) {
+          translated.push(`${surface}: ${match[0]} — a normative denominator is not translated`)
+        }
+      }
+    }
+    expect(translated).toEqual([])
   })
 })

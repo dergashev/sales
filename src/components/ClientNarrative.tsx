@@ -10,6 +10,8 @@ import type { SavedOptionVersion } from '../state/optionSave'
 import type { ScopeBuilding } from '../state/optionBuildingScope'
 import { scopeMetricValue } from '../state/optionBuildingScope'
 import { KG_SCOPE_GROUPS, chapterOf, kgCatalogue } from '../engine/kgConfiguration'
+import type { KgCatalogue, KgScopeDecision, KgScopeGroup } from '../engine/kgConfiguration'
+import { rateUnit } from '../engine/money'
 import { projectAsset } from '../assets/project-media'
 import { MediaFrame } from '../design-system/MediaFrame'
 import { CommercialNumber } from '../design-system/CommercialNumber'
@@ -183,6 +185,58 @@ function dateText(iso: string | null, language: 'de' | 'en'): string {
 function selectedBuildingsOf(view: ClientView): readonly ScopeBuilding[] {
   const config = view.presented.config
   return config.scopeBuildings.filter((b) => config.scopeSelected[b.id])
+}
+
+/**
+ * The six scope decisions, titled in the reader's language.
+ *
+ * ONE mapping, read by the scope section AND by the printed document. Two
+ * copies of "which cost groups are in, and what are they called" is the
+ * shape every "one number, two meanings" defect in this programme has had:
+ * the screen and the sheet in the client's hand would drift on the first
+ * edit, and drift silently.
+ */
+export type ClientScopeRow = Readonly<{
+  group: KgScopeGroup
+  title: string
+  decision: KgScopeDecision | 'undecided'
+}>
+
+export function clientScopeRows(
+  view: ClientView,
+  catalogue: KgCatalogue | null,
+): readonly ClientScopeRow[] {
+  const decisions = view.presented.config.kgConfig
+  return KG_SCOPE_GROUPS.map((group) => {
+    const chapter = catalogue ? chapterOf(catalogue, group) : null
+    return {
+      group,
+      title: chapter
+        ? (view.language === 'en' ? chapter.titleEn : chapter.titleDe)
+        : group.replace('_', ' '),
+      decision: decisions?.scope[group] ?? 'undecided',
+    }
+  })
+}
+
+/**
+ * A DIN 276 line's client title.
+ *
+ * `CostGroup` is wider than the six SCOPE groups (it carries KG 100, which
+ * the Option's ledger does not decide), so the chapter lookup is guarded
+ * rather than cast — and guarded in ONE place, for both consumers.
+ */
+export function clientCostGroupTitle(
+  group: string,
+  catalogue: KgCatalogue | null,
+  language: 'de' | 'en',
+): string {
+  const scopeGroup = (KG_SCOPE_GROUPS as readonly string[]).includes(group)
+    ? group as KgScopeGroup
+    : null
+  const chapter = catalogue && scopeGroup ? chapterOf(catalogue, scopeGroup) : null
+  if (!chapter) return group.replace('_', ' ')
+  return language === 'en' ? chapter.titleEn : chapter.titleDe
 }
 
 /* ─────────────────────── §0 · entry (T-034) ───────────────────────────── */
@@ -396,20 +450,10 @@ export function PageScopeStory({ view, headingRef }: {
   const t = useT()
   const s = useStore()
   const catalogue = kgCatalogue(s.opportunityId)
-  const decisions = view.presented.config.kgConfig
   const asset = view.projectHeroAssetId ? projectAsset(view.projectHeroAssetId) : null
   const buildings = selectedBuildingsOf(view)
 
-  const rows = KG_SCOPE_GROUPS.map((group) => {
-    const chapter = catalogue ? chapterOf(catalogue, group) : null
-    return {
-      group,
-      title: chapter
-        ? (view.language === 'en' ? chapter.titleEn : chapter.titleDe)
-        : group.replace('_', ' '),
-      decision: decisions?.scope[group] ?? 'undecided',
-    }
-  })
+  const rows = clientScopeRows(view, catalogue)
   const included = rows.filter((r) => r.decision === 'included')
   const excluded = rows.filter((r) => r.decision === 'excluded')
 
@@ -638,17 +682,37 @@ export function PageInvestment({ view, headingRef, onConclude, comparison }: {
           </p>
           <dl className="a3-client-metric-grid">
             <div>
-              {/* A rate without its denominator is a number nobody can check
-                  (rule 39 / DATA-001): the label names the norm the
-                  denominator comes from, and it comes from the rate itself
-                  rather than being written here a second time. */}
-              {/* The DENOMINATOR NAME stays German on purpose (LOCALE-009:
+              {/* ACCEPT-03. This tile used to name the DENOMINATOR as its
+                  term and print `display` as its value — "BGF oberirdisch /
+                  2.246" — so a €/m² rate stood under an area label with no
+                  unit at all, in both locales, and a client could only read
+                  it as an area. The engine composes this string —
+                  `rateUnit()` is `prefix · display · €/m²`, and the unit's
+                  area-vs-per-unit decision lives THERE, beside
+                  `rateLabel()`'s, so the two cannot disagree. Composing the
+                  parts here a second time is how the unit went missing in
+                  the first place.
+
+                  A rate without its denominator is a number nobody can
+                  check (rule 39 / DATA-001), so the term names both the
+                  metric and its norm — which is how rule 31 words the
+                  Leitkennzahl itself (`€/m² WFL nach WoFlV`) — and the
+                  value carries the number with its unit, which is what
+                  T-040 prints ("Lead rate" / "1,990 €/m²"). Keeping the
+                  norm out of the 180 px value cell is also what stops it
+                  wrapping mid-unit.
+
+                  The DENOMINATOR NAME stays German on purpose (LOCALE-009:
                   normative denominators are never machine-translated). Its
                   NUMERAL must not: `display` comes from `formatDE`, so the
-                  rate read "2.228" beside a hero reading "38,430,000". */}
-              <dt>{result.leadRate.denominatorLabel}</dt>
+                  rate read "2.228" beside a hero reading "38,430,000" —
+                  `localizeMoneyText` re-typesets the numeral and leaves
+                  every letter alone. */}
+              <dt>
+                {`${t('vr3.client.investment.leadRate')} · ${result.leadRate.denominatorLabel}`}
+              </dt>
               <dd className="numeric">
-                {localizeMoneyText(result.leadRate.display, view.language)}
+                {localizeMoneyText(rateUnit(result.leadRate), view.language)}
               </dd>
             </div>
             <div>
@@ -672,22 +736,10 @@ export function PageInvestment({ view, headingRef, onConclude, comparison }: {
         <ClientPanel title={t('vr3.client.investment.composition')}>
           <div className="a3-client-rows">
             {result.byCostGroup.map((line) => {
-              // `CostGroup` is wider than the six SCOPE groups (it carries
-              // KG 100, which the Option's ledger does not decide), so the
-              // chapter lookup is guarded rather than cast.
-              const scopeGroup = (KG_SCOPE_GROUPS as readonly string[])
-                .includes(line.group)
-                ? line.group as typeof KG_SCOPE_GROUPS[number]
-                : null
-              const chapter = catalogue && scopeGroup
-                ? chapterOf(catalogue, scopeGroup)
-                : null
               return (
                 <div key={line.group} className="a3-client-row">
                   <span className="a3-client-row-label">
-                    {chapter
-                      ? (view.language === 'en' ? chapter.titleEn : chapter.titleDe)
-                      : line.group.replace('_', ' ')}
+                    {clientCostGroupTitle(line.group, catalogue, view.language)}
                   </span>
                   <span className="a3-client-row-value numeric">
                     <CommercialNumber

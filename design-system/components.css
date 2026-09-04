@@ -3375,7 +3375,16 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-client-topbar .a3-cap,.a3-client-topbar .a3-mode-indicator{color:var(--color-text-stage-deep-secondary)}
 
 /* ── page skeleton ──────────────────────────────────────────────────── */
-.a3-client-page{display:flex;flex:1 1 auto;min-height:0;flex-direction:column;gap:var(--space-5);background:var(--color-surface-editorial-ground);padding:var(--space-7) var(--space-7) var(--space-8)}
+/* ACCEPT-02, second half. `min-height: 0` defeats a column flex item's
+   AUTOMATIC MINIMUM SIZE, so the narrative page was free to be laid out
+   shorter than its own content — and with no `overflow` of its own, that
+   content simply painted outside the box: through the scenario bar's band
+   and past the bottom of the window, which is why moving the bar out of
+   the scroller was necessary but not sufficient. `min-height: auto` (the
+   default, restored by dropping the override) lets the page still GROW to
+   fill a short section and stops it SHRINKING below a tall one, so `main`
+   scrolls the surplus instead of the page leaking it. */
+.a3-client-page{display:flex;flex:1 1 auto;flex-direction:column;gap:var(--space-5);background:var(--color-surface-editorial-ground);padding:var(--space-7) var(--space-7) var(--space-8)}
 .a3-client-lede{display:grid;gap:var(--space-2);max-width:var(--measure-wide)}
 .a3-client-eyebrow{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-label-weight);letter-spacing:var(--type-tracking-caps);text-transform:uppercase;color:var(--color-text-secondary)}
 .a3-client-eyebrow-onpanel{color:var(--color-text-muted)}
@@ -3485,7 +3494,13 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-client-stale,.a3-client-warning{margin:0;border-left:var(--size-status-accent-width) solid var(--color-status-warning);background:var(--color-surface-emphasis-warm);padding:var(--space-3) var(--space-4);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
 
 /* ── the scenario bar (T-041) ───────────────────────────────────────── */
-.a3-client-scenario-bar{position:sticky;bottom:0;z-index:2;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,auto) auto;align-items:center;gap:var(--space-5);border-top:var(--border-contrast-2px);background:var(--color-surface-default);padding:var(--space-4) var(--space-7)}
+/* ACCEPT-02: a row of the shell, not a sticky layer over the story.
+   `position: sticky; bottom: 0` kept the bar visible by lifting it OVER the
+   content still below it, which on the tallest section painted out the
+   handover what-if at both approved viewports. As a flex row beside the
+   scroll region it is measured out of the narrative's height instead, so it
+   is permanently visible and permanently clear of the content. */
+.a3-client-scenario-bar{flex:0 0 auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,auto) auto;align-items:center;gap:var(--space-5);border-top:var(--border-contrast-2px);background:var(--color-surface-default);padding:var(--space-4) var(--space-7)}
 .a3-client-scenario-identity{min-width:0}
 .a3-client-scenario-title{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-label-weight);color:var(--color-text-primary)}
 .a3-client-scenario-source{margin:var(--space-1) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
@@ -3527,9 +3542,19 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
   .a3-client-print-doc{display:block;padding:var(--space-7)}
   .a3-client-print-banner{margin:0 0 var(--space-5);border:var(--border-contrast-2px);padding:var(--space-3) var(--space-4);font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);letter-spacing:var(--type-tracking-caps)}
   .a3-client-print-authority{margin:0 0 var(--space-6);font-size:var(--type-small-size);line-height:var(--type-small-line)}
-  .a3-client-print-title{margin:0 0 var(--space-5);font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line)}
+  .a3-client-print-title{margin:0 0 var(--space-2);font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line)}
+  .a3-client-print-meta{margin:0 0 var(--space-6);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+  /* ACCEPT-01 · paper hierarchy and page-break rules (§16). A section that
+     splits across a page break puts a client's scope list in two places, so
+     each one is kept whole and its heading is never orphaned from it. */
+  .a3-client-print-section{break-inside:avoid;margin:0 0 var(--space-6)}
+  .a3-client-print-section-title{break-after:avoid;margin:0 0 var(--space-2);border-bottom:var(--border-contrast-1px);padding-bottom:var(--space-1);font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);letter-spacing:var(--type-tracking-caps);text-transform:uppercase}
+  .a3-client-print-lede{margin:0 0 var(--space-3);font-size:var(--type-body-size);line-height:var(--type-body-line)}
+  .a3-client-print-rows{display:grid}
+  .a3-client-print-row{display:grid;grid-template-columns:minmax(0,1fr) max-content;gap:var(--space-4);border-bottom:var(--border-hairline);padding:var(--space-1) 0;font-size:var(--type-small-size);line-height:var(--type-small-line)}
+  .a3-client-print-list{margin:0;padding-left:var(--space-4);font-size:var(--type-small-size);line-height:var(--type-small-line)}
   .a3-client-print-total{margin:0;font-size:var(--type-display-numeric-desktop-size);line-height:var(--type-display-numeric-desktop-line);font-weight:var(--type-display-numeric-weight)}
-  .a3-client-print-total-label{margin:var(--space-2) 0 var(--space-6);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+  .a3-client-print-total-label{margin:var(--space-2) 0 var(--space-4);font-size:var(--type-small-size);line-height:var(--type-small-line)}
   .a3-client-print-note{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line)}
 }
 

@@ -1,14 +1,26 @@
 import { useEffect, useRef, useState, type Ref } from 'react'
+import { Decimal } from 'decimal.js'
 import {
+  clientDecisionValue,
+  clientPresentationDecisions,
   clientScenarioDelta,
   clientScenarioTrustedNow,
+  clientSchedulePhases,
+  clientScheduleDerivation,
   useStore,
 } from '../state/store'
 import { scenarioChangeCount } from '../state/clientScenario'
-import { signedMoneyText } from '../design-system/CommercialNumber'
+import { scopeMetricValue } from '../state/optionBuildingScope'
+import { kgCatalogue } from '../engine/kgConfiguration'
+import { rateUnit } from '../engine/money'
+import { CommercialNumber, signedMoneyText } from '../design-system/CommercialNumber'
 import { localizeMoneyText, useT, useTx } from '../i18n'
 import { Button } from './primitives'
-import { ClientPanel, PageFrame, PageLede } from './ClientNarrative'
+import {
+  ClientPanel, PageFrame, PageLede,
+  areaText, clientCostGroupTitle, clientScopeRows, dateText, monthsText,
+  selectedBuildingsOf,
+} from './ClientNarrative'
 import type { ClientView } from './ClientNarrative'
 
 /**
@@ -348,6 +360,47 @@ function OutputPreflight({
  * screen cannot disagree about which state was exported — and carrying the
  * authority statement as the document's own first block means the label
  * survives being handed to somebody who never saw the screen.
+ *
+ * ## ACCEPT-01 — the sheet now contains the presentation, not its cover
+ *
+ * `@media print` hides the whole narrative (`.a3-client-page`,
+ * `.a3-client-hero`, `.a3-client-entry`) and prints this document instead,
+ * because a client artefact is a DOCUMENT and not a photograph of a
+ * meeting-scale stage: the six sections are laid out for paper, in one
+ * column, without the imagery and the interactive controls that only make
+ * sense on the stage. That decision was right. What was missing is that this
+ * document only ever carried the banner, the authority line, the project
+ * name, the total and its label — so hiding the narrative and printing this
+ * meant the PDF the client keeps was a cover sheet, while the card offering
+ * it promised "Kundennarrativ" and the preflight listed all six sections as
+ * ENTHALTEN. The output stated an authority it did not carry.
+ *
+ * Target spec §16 enumerates what a PDF contains: "client narrative,
+ * buildings, scope, services, schedule, commercial result, Option/version/
+ * date and approved assumptions". Every one of those is now a section here,
+ * derived from the presented snapshot through the SAME helpers the screen
+ * uses (`clientScopeRows`, `clientCostGroupTitle`, `clientScheduleDerivation`,
+ * `clientSchedulePhases`, `selectedBuildingsOf`, `areaText`, `monthsText`,
+ * `dateText`, `CommercialNumber`) — not a second reading of the store. A
+ * paper document that computed its own scope list would be free to disagree
+ * with the screen it was printed from.
+ *
+ * ## Client-safe by the same construction, and NOT by CSS
+ *
+ * Everything here comes from `ClientView` and the client-scenario selectors,
+ * which is the allowlisted projection: there is no internal id, note,
+ * confidence, OCR diagnostic or CRM field to hide, because none of it
+ * reaches this component. §16's own last line requires exactly that —
+ * "excluded by allowlisted projection, not CSS".
+ *
+ * ## What is deliberately NOT here
+ *
+ * Kostentreiber. CLAUDE.md rule 35 requires it in the client PDF; the
+ * approved target's §16 list and T-040/T-045 do not name it. That conflict
+ * is unresolved AUTHORITY and has been carried since cycle 1 — the
+ * Acceptance report that ordered this remediation says explicitly to
+ * implement §16's list only and leave Kostentreiber alone until Product
+ * rules. So this delta adds §16's sections and nothing beyond them.
  */
 export function ClientPrintDocument({ view }: { view: ClientView }) {
   const t = useT()
@@ -356,6 +409,23 @@ export function ClientPrintDocument({ view }: { view: ClientView }) {
   const changed = scenarioChangeCount(s.clientScenario) > 0
   const delta = clientScenarioDelta(s)
   const result = view.presented.result
+  const language = view.language
+
+  const catalogue = kgCatalogue(s.opportunityId)
+  const buildings = selectedBuildingsOf(view)
+  const scopeRows = clientScopeRows(view, catalogue)
+  const included = scopeRows.filter((r) => r.decision === 'included')
+  const excluded = scopeRows.filter((r) => r.decision === 'excluded')
+  const derivation = clientScheduleDerivation(s, view.presented)
+  const phases = clientSchedulePhases(s, view.presented)
+  const decisions = clientPresentationDecisions(s)
+  const bgf = buildings.reduce((sum, b) => {
+    const value = scopeMetricValue(view.presented.config, b, 'bgfRSAbove')
+    return value === null ? sum : sum.plus(new Decimal(value))
+  }, new Decimal(0))
+  const nameOf = (buildingId: string | null) =>
+    buildings.find((b) => b.id === buildingId)?.name ?? ''
+
   return (
     <div className="a3-client-print-doc" aria-hidden="true">
       {changed ? (
@@ -367,7 +437,7 @@ export function ClientPrintDocument({ view }: { view: ClientView }) {
         {changed
           ? t('vr3.client.print.sourceScenario', {
             option: view.optionName,
-            delta: delta ? signedMoneyText(delta, view.language) : '',
+            delta: delta ? signedMoneyText(delta, language) : '',
           })
           : t('vr3.client.print.sourceSaved', {
             option: view.optionName,
@@ -375,23 +445,252 @@ export function ClientPrintDocument({ view }: { view: ClientView }) {
           })}
       </p>
       <h1 className="a3-client-print-title">{view.projectName}</h1>
-      {/* QA-01's family, on the artefact the client KEEPS: `display` comes
-          from `formatDE` and is German by construction, so an English
-          presentation printed "38.740.000" directly under an authority line
-          that had already localised its own delta to "+ 310,000 €". Every
-          other string in this document goes through `t()` or
-          `signedMoneyText(..., view.language)`; this was the one that did
-          not. */}
-      <p className="a3-client-print-total numeric">
-        {localizeMoneyText(result.total.display, view.language)}
+      {/* §16: "Option/version/date". The date is the one a client can check
+          the sheet against — when it was printed — formatted through `Intl`
+          for the reader's locale like every other date in the product. */}
+      <p className="a3-client-print-meta">
+        {t('vr3.client.print.meta', {
+          option: view.optionName,
+          version: view.savedVersion?.version ?? 1,
+          date: printDateText(language),
+        })}
       </p>
-      {/* QA-02. The NUMBER above this line was localised last cycle and its
-          own LABEL was not, so the sheet read "38,850,000" over
-          "Gesamt netto · Grundleistung All3". The identical string one file
-          over (the on-screen hero) was bridged in the same commit — the
-          sibling was missed. Same `tx` bridge, same reason. */}
-      <p className="a3-client-print-total-label">{tx(result.totalLabel)}</p>
+
+      {/* §1 · PROJEKT — the client narrative's own opening claim. */}
+      <PrintSection title={t('vr3.client.nav.project')}>
+        <p className="a3-client-print-lede">
+          {t(buildings.length > 1
+            ? 'vr3.client.identity.lede.complex'
+            : 'vr3.client.identity.lede.single', { count: buildings.length })}
+        </p>
+        <PrintRows>
+          <PrintRow
+            label={t('vr3.client.identity.metric.buildings')}
+            value={String(buildings.length)}
+          />
+          <PrintRow
+            label={t('vr3.client.identity.metric.bgf')}
+            value={areaText(bgf.toFixed(2), language)}
+          />
+          <PrintRow
+            label={t('vr3.client.identity.metric.completion')}
+            value={dateText(derivation?.completionISO ?? null, language)}
+          />
+        </PrintRows>
+      </PrintSection>
+
+      {/* §2 · GEBÄUDE — the same A/B/C identity the stage and the schedule
+          use, so a reader can follow one building across three sections. */}
+      <PrintSection title={t('vr3.client.nav.buildings')}>
+        <PrintRows>
+          {buildings.map((building, index) => (
+            <PrintRow
+              key={building.id}
+              label={`${String.fromCharCode(65 + index)} · ${building.name} · ${t(building.usageKey)}`}
+              value={areaText(
+                scopeMetricValue(view.presented.config, building, 'bgfRSAbove'),
+                language,
+              )}
+            />
+          ))}
+        </PrintRows>
+      </PrintSection>
+
+      {/* §3 · UMFANG — included first, then what is explicitly NOT included.
+          An exclusion a client cannot read is the one that becomes a
+          dispute. */}
+      <PrintSection title={t('vr3.client.nav.scope')}>
+        <PrintRows>
+          {included.map((row) => (
+            <PrintRow
+              key={row.group}
+              label={row.title}
+              value={t('vr3.client.scope.state.included')}
+            />
+          ))}
+          {excluded.map((row) => (
+            <PrintRow
+              key={row.group}
+              label={row.title}
+              value={t('vr3.client.scope.state.excluded')}
+            />
+          ))}
+        </PrintRows>
+      </PrintSection>
+
+      {/* §4 · LEISTUNGEN — the decisions in force, each with the consequence
+          the stage states for the value that is actually selected. */}
+      <PrintSection title={t('vr3.client.nav.services')}>
+        {decisions.length > 0 ? (
+          <PrintRows>
+            {decisions.map((decision) => {
+              const value = clientDecisionValue(s, decision)
+              const option = decision.options.find((o) => o.value === value)
+              return (
+                <PrintRow
+                  key={decision.id}
+                  label={t(decision.titleKey)}
+                  value={option ? t(option.labelKey) : '—'}
+                />
+              )
+            })}
+          </PrintRows>
+        ) : (
+          <p className="a3-client-print-lede">{t('vr3.client.services.none')}</p>
+        )}
+      </PrintSection>
+
+      {/* §5 · TERMINPLAN — duration, the two dates, the sequence, and what
+          determines completion. */}
+      <PrintSection title={t('vr3.client.nav.schedule')}>
+        <PrintRows>
+          <PrintRow
+            label={t('vr3.client.schedule.duration')}
+            value={t('vr3.client.schedule.months', {
+              months: monthsText(derivation?.totalHalfMonths ?? null, language),
+            })}
+          />
+          <PrintRow
+            label={t('vr3.client.schedule.start')}
+            value={dateText(derivation?.startISO ?? null, language)}
+          />
+          <PrintRow
+            label={t('vr3.client.schedule.completion')}
+            value={dateText(derivation?.completionISO ?? null, language)}
+          />
+          {phases.map((phase) => {
+            const window = derivation?.windows.find((w) => w.phase.id === phase.id)
+            return (
+              <PrintRow
+                key={phase.id}
+                label={phase.buildingId
+                  ? `${t(PRINT_PHASE_LABEL_KEY[phase.kind] ?? phase.kind)} · ${nameOf(phase.buildingId)}`
+                  : t(PRINT_PHASE_LABEL_KEY[phase.kind] ?? phase.kind)}
+                value={t('vr3.client.schedule.months', {
+                  months: monthsText(
+                    window ? window.phase.durationHalfMonths : phase.durationHalfMonths,
+                    language,
+                  ),
+                })}
+              />
+            )
+          })}
+        </PrintRows>
+      </PrintSection>
+
+      {/* §6 · INVESTITION — the commercial result. The total and its label
+          keep their own classes: they are the document's largest claim, and
+          the two locale regressions QA found (a German numeral under an
+          English delta, then a German label under an English numeral) are
+          asserted against exactly these two hooks. */}
+      <PrintSection title={t('vr3.client.nav.investment')}>
+        {/* QA-01's family, on the artefact the client KEEPS: `display` comes
+            from `formatDE` and is German by construction, so an English
+            presentation printed "38.740.000" directly under an authority
+            line that had already localised its own delta to "+ 310,000 €".
+            Every other string in this document goes through `t()` or
+            `signedMoneyText(..., view.language)`; this was the one that did
+            not. */}
+        <p className="a3-client-print-total numeric">
+          {localizeMoneyText(result.total.display, language)}
+        </p>
+        {/* QA-02. The NUMBER above this line was localised last cycle and
+            its own LABEL was not, so the sheet read "38,850,000" over
+            "Gesamt netto · Grundleistung All3". The identical string one
+            file over (the on-screen hero) was bridged in the same commit —
+            the sibling was missed. Same `tx` bridge, same reason. */}
+        <p className="a3-client-print-total-label">{tx(result.totalLabel)}</p>
+        <PrintRows>
+          {/* ACCEPT-03's sibling: the rate names its unit and its
+              denominator through the engine's own composer here too, so the
+              sheet and the stage state the lead metric identically. */}
+          <PrintRow
+            label={`${t('vr3.client.investment.leadRate')} · ${result.leadRate.denominatorLabel}`}
+            value={localizeMoneyText(rateUnit(result.leadRate), language)}
+          />
+          {result.byCostGroup.map((line) => (
+            <div key={line.group} className="a3-client-print-row">
+              <span>{clientCostGroupTitle(line.group, catalogue, language)}</span>
+              <span className="numeric">
+                <CommercialNumber
+                  exact={line.exact}
+                  language={language}
+                  emphasis="compact"
+                  absentLabel={t('vr3.client.investment.notPriced')}
+                />
+              </span>
+            </div>
+          ))}
+        </PrintRows>
+      </PrintSection>
+
+      {/* §16's last content item: the approved assumptions the presentation
+          stands on. They are QUOTED from the client surface — the
+          uncertainty band, what the scope decisions mean, and the
+          demonstration-data statement — not composed here. Rule 10: these
+          texts come from the documents, they are not written by this
+          component. */}
+      <PrintSection title={t('vr3.client.print.assumptions')}>
+        <ul className="a3-client-print-list">
+          <li>{t('vr3.client.investment.uncertainty', { pp: result.uncertaintyPp })}</li>
+          <li>
+            {t(included.length === scopeRows.length
+              ? 'vr3.client.scope.meaning.complete'
+              : 'vr3.client.scope.meaning.partial', { count: buildings.length })}
+          </li>
+          <li>{t('vr3.client.outputs.preflight.excludes')}</li>
+        </ul>
+      </PrintSection>
+
       <p className="a3-client-print-note">{t('vr3.client.print.demo')}</p>
+    </div>
+  )
+}
+
+/** The phase words, printed the same way the stage says them. */
+const PRINT_PHASE_LABEL_KEY: Record<string, string> = {
+  planning: 'vr3.client.schedule.phase.planning',
+  tender: 'vr3.client.schedule.phase.tender',
+  execution: 'vr3.client.schedule.phase.execution',
+  handover: 'vr3.client.schedule.phase.handover',
+}
+
+/** The date the sheet was produced, in the reader's locale (rule 36). */
+function printDateText(language: 'de' | 'en'): string {
+  return new Intl.DateTimeFormat(language === 'en' ? 'en-GB' : 'de-DE', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  }).format(new Date())
+}
+
+/**
+ * One printed section: a heading and its block, kept on one page.
+ *
+ * `break-inside: avoid` lives in the stylesheet against this class rather
+ * than on each section, which is what §16 means by "paper-specific
+ * hierarchy and page-break rules" — a section that splits across a page
+ * break puts a client's scope list in two places.
+ */
+function PrintSection({ title, children }: {
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <section className="a3-client-print-section">
+      <h2 className="a3-client-print-section-title">{title}</h2>
+      {children}
+    </section>
+  )
+}
+
+function PrintRows({ children }: { children: React.ReactNode }) {
+  return <div className="a3-client-print-rows">{children}</div>
+}
+
+function PrintRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="a3-client-print-row">
+      <span>{label}</span>
+      <span className="numeric">{value}</span>
     </div>
   )
 }
