@@ -49,3 +49,4 @@ docs/audit/verdicts/.*.mjs
 # Graphify generated repository graph
 # Local per-worktree snapshot; must correspond to the current candidate SHA.
 graphify-out/
+.agentsroom/fork-context-*.txt
