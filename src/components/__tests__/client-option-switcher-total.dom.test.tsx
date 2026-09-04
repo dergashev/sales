@@ -271,3 +271,38 @@ describe('VR3-05 · the client print document typesets its total for the reader'
     expect(printTotal()).not.toMatch(/\d{1,3}(?:\.\d{3})+/)
   })
 })
+
+/**
+ * The hero is rule 31's largest element, and it had two of the same defect.
+ *
+ * Found by looking at the EN screenshot rather than at the report: the
+ * scope eyebrow over a "38,430,000 €" hero still read
+ * "GESAMT NETTO · GRUNDLEISTUNG ALL3", and the lead rate beside it read
+ * "2.228" — German grouping — while every other number on the panel had
+ * already re-typeset. The DENOMINATOR NAME is a separate matter and must
+ * stay German (LOCALE-009: normative denominators are never machine
+ * translated), which is why it is asserted to SURVIVE below.
+ */
+describe('VR3-05 · the client investment hero speaks one language', () => {
+  it('bridges the scope label and re-typesets the rate, keeping the normative denominator', async () => {
+    const user = userEvent.setup()
+    buildSavedOptions(1)
+    render(<Harness />)
+    await startPresentation(user)
+    act(() => { st().setUiLanguage('en') })
+    await user.click(screen.getByRole('button', { name: 'Investment' }))
+
+    const panel = (await screen.findByRole('region', { name: 'Investment' }))
+    const eyebrow = panel.querySelector('.a3-client-eyebrow-onpanel')?.textContent ?? ''
+    // The scope label is bridged, so the German original is gone.
+    expect(eyebrow).not.toMatch(/Gesamt netto/i)
+    expect(eyebrow).toMatch(/net total/i)
+
+    const rateValue = panel.querySelector('.a3-client-metric-grid dd')?.textContent ?? ''
+    expect(rateValue).not.toMatch(/\d{1,3}(?:\.\d{3})+/)
+
+    // ...and the normative denominator name is deliberately NOT translated.
+    const rateLabel = panel.querySelector('.a3-client-metric-grid dt')?.textContent ?? ''
+    expect(rateLabel).toMatch(/BGF|WFL|NUF/)
+  })
+})

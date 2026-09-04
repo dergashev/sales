@@ -13,7 +13,7 @@ import { KG_SCOPE_GROUPS, chapterOf, kgCatalogue } from '../engine/kgConfigurati
 import { projectAsset } from '../assets/project-media'
 import { MediaFrame } from '../design-system/MediaFrame'
 import { CommercialNumber } from '../design-system/CommercialNumber'
-import { useT } from '../i18n'
+import { localizeMoneyText, useT, useTx } from '../i18n'
 import { Button } from './primitives'
 
 /**
@@ -599,6 +599,7 @@ export function PageInvestment({ view, headingRef, onConclude, comparison }: {
   comparison?: React.ReactNode
 }) {
   const t = useT()
+  const tx = useTx()
   const s = useStore()
   const result = view.presented.result
   const derivation = clientScheduleDerivation(s, view.presented)
@@ -614,8 +615,14 @@ export function PageInvestment({ view, headingRef, onConclude, comparison }: {
       />
       <div className="a3-client-split">
         <ClientPanel>
+          {/* The hero's Declared Pricing Scope (R-18) is composed in German
+              by the engine, by contract. Rendered raw it left
+              "GESAMT NETTO · GRUNDLEISTUNG ALL3" standing over an English
+              presentation's largest number — `tx` is the bridge the delivery
+              already carries for exactly this label, and
+              `vr3-en-completeness` asserts that it resolves. */}
           <p className="a3-client-eyebrow a3-client-eyebrow-onpanel">
-            {result.totalLabel}
+            {tx(result.totalLabel)}
           </p>
           <p className="a3-client-hero-number">
             <CommercialNumber
@@ -635,8 +642,14 @@ export function PageInvestment({ view, headingRef, onConclude, comparison }: {
                   (rule 39 / DATA-001): the label names the norm the
                   denominator comes from, and it comes from the rate itself
                   rather than being written here a second time. */}
+              {/* The DENOMINATOR NAME stays German on purpose (LOCALE-009:
+                  normative denominators are never machine-translated). Its
+                  NUMERAL must not: `display` comes from `formatDE`, so the
+                  rate read "2.228" beside a hero reading "38,430,000". */}
               <dt>{result.leadRate.denominatorLabel}</dt>
-              <dd className="numeric">{result.leadRate.display}</dd>
+              <dd className="numeric">
+                {localizeMoneyText(result.leadRate.display, view.language)}
+              </dd>
             </div>
             <div>
               <dt>{t('vr3.client.investment.duration')}</dt>

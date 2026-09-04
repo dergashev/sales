@@ -185,6 +185,12 @@ describe('VR3-01 · nothing on the owned surfaces can reach EN untranslated', ()
       // by the next test in this file, so this is the accepted class and not
       // a second exemption. The VR3-05 CLIENT NARRATIVE itself bridges
       // nothing: it is fully keyed.
+      // The CLIENT hero's Declared Pricing Scope (R-18), same engine-composed
+      // label as the offer screens below and asserted to bridge by the next
+      // test. Rendered raw it left "GESAMT NETTO · GRUNDLEISTUNG ALL3"
+      // standing over an English presentation's largest number (QA-01's
+      // family, cycle 2).
+      'src/components/ClientNarrative.tsx: tx(result.totalLabel)',
       'src/components/PresentationShell.tsx: tx(p.leadRate.denominatorLabel)',
       'src/components/PresentationShell.tsx: tx(p.result.totalLabel)',
       'src/components/PresentationShell.tsx: tx(p.result.totalLabel)',
