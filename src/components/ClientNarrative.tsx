@@ -496,6 +496,19 @@ export function PageScheduleStory({ view, headingRef, decision }: {
   const nameOf = (buildingId: string | null) =>
     buildings.find((b) => b.id === buildingId)?.name ?? ''
   const criticalPhase = phases.find((p) => p.id === derivation?.criticalPhaseId)
+  /**
+   * WHAT determines completion, not WHICH ROW is last.
+   *
+   * The critical phase is usually the handover, and "the handover
+   * determines completion" is true and says nothing — the handover is the
+   * end by definition. What a client needs is the building the handover is
+   * waiting for, which is exactly what its dependency names. This is also
+   * what makes the phased-handover what-if visible in words: change which
+   * building the handover follows and this sentence changes with it.
+   */
+  const criticalDriver = criticalPhase && !criticalPhase.buildingId
+    ? phases.find((p) => p.id === criticalPhase.dependsOn) ?? criticalPhase
+    : criticalPhase
 
   return (
     <PageFrame label={t('vr3.client.nav.schedule')}>
@@ -558,9 +571,10 @@ export function PageScheduleStory({ view, headingRef, decision }: {
               <div>
                 <p className="a3-client-callout-title">
                   {t('vr3.client.schedule.critical', {
-                    phase: criticalPhase.buildingId
-                      ? nameOf(criticalPhase.buildingId)
-                      : t(PHASE_LABEL_KEY[criticalPhase.kind] ?? criticalPhase.kind),
+                    phase: criticalDriver?.buildingId
+                      ? nameOf(criticalDriver.buildingId)
+                      : t(PHASE_LABEL_KEY[criticalDriver?.kind ?? 'handover']
+                        ?? 'vr3.client.schedule.phase.handover'),
                   })}
                 </p>
                 <p className="a3-client-callout-body">

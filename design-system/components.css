@@ -3382,7 +3382,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-client-title{margin:0;font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:var(--type-heading-weight);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
 .a3-client-title:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--space-1)}
 .a3-client-sub{margin:0;max-width:var(--measure-body-max);font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-secondary)}
-.a3-client-split{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-5);align-items:start}
+.a3-client-split{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-5);align-items:stretch}
 .a3-client-panel{display:flex;flex-direction:column;gap:var(--space-4);min-width:0;background:var(--color-surface-default);padding:var(--space-6)}
 .a3-client-panel-title{margin:0;font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--type-section-title-weight);color:var(--color-text-primary)}
 .a3-client-panel-subtitle{margin:var(--space-4) 0 0;font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);color:var(--color-text-secondary)}
@@ -3454,7 +3454,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-client-building-metric-unit{font-size:var(--type-small-size);font-weight:var(--type-small-weight);color:var(--color-text-secondary)}
 
 /* ── schedule (T-039) ───────────────────────────────────────────────── */
-.a3-client-bignumber{margin:0;font-size:var(--type-display-numeric-desktop-size);line-height:var(--type-display-numeric-desktop-line);font-weight:var(--type-display-numeric-weight);color:var(--color-text-primary)}
+.a3-client-bignumber{margin:0;text-align:left;font-size:var(--type-display-numeric-desktop-size);line-height:var(--type-display-numeric-desktop-line);font-weight:var(--type-display-numeric-weight);color:var(--color-text-primary)}
 .a3-client-callout{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--space-3);margin-top:var(--space-4);border:var(--border-default);padding:var(--space-4)}
 .a3-client-callout-mark{color:var(--color-brand-accent);font-weight:var(--type-label-weight)}
 .a3-client-callout-title{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-label-weight);color:var(--color-text-primary)}
