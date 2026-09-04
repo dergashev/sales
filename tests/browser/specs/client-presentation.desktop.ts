@@ -354,4 +354,67 @@ test.describe('VR3-05 · client presentation, scenario and outputs', () => {
     expect(running).toBe(0)
     await shot(page, 'M-11-reduced-motion-1440')
   })
+
+  /**
+   * M-10 — "Heading receives programmatic focus".
+   *
+   * ACCEPTANCE REMEDIATION (cycle 2). The reproduction the auditor recorded:
+   * navigate to Terminplan, wait 700 ms, and `document.activeElement` is
+   * BODY. Cause: the focus effect fired on the state change, but
+   * `AnimatePresence mode="wait"` mounts the incoming page only after the
+   * outgoing one has exited — so it addressed the heading that was leaving.
+   *
+   * This walks EVERY transition rather than the one that was reported: the
+   * defect was in the mechanism, not in one section, and a test that only
+   * covers Terminplan would let the same mechanism fail anywhere else.
+   */
+  test('M-10: every section move lands focus on the incoming heading', async ({ page }) => {
+    test.setTimeout(180_000)
+    await reachClientMode(page)
+    await page.getByRole('button', { name: 'Präsentation starten' }).click()
+
+    const sections: Array<[string, RegExp]> = [
+      ['Terminplan', /^Ein abgestimmter Weg/],
+      ['Gebäude', /Gebäudegeschichten|Aufgabe/],
+      ['Investition', /gemeinsame\s+Entscheidung\.$/],
+      ['Umfang', /Umfang\.$/],
+      ['Leistungen', /sichtbar gemacht\.$/],
+      ['Projekt', /Quartier/],
+    ]
+    for (const [label, heading] of sections) {
+      await toSection(page, label, heading)
+      // The auditor's own wait, so a pass here answers the same question.
+      await page.waitForTimeout(700)
+      const focused = await page.evaluate(() => {
+        const el = document.activeElement
+        return { tag: el?.tagName ?? null, text: el?.textContent?.trim() ?? null }
+      })
+      expect(focused.tag, `focus after navigating to ${label}`).toBe('H1')
+      expect(focused.text).toMatch(heading)
+    }
+  })
+
+  test('M-10 under reduced motion: the direct cut still moves focus', async ({ page }) => {
+    test.setTimeout(180_000)
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await reachClientMode(page)
+    await page.getByRole('button', { name: 'Präsentation starten' }).click()
+
+    await toSection(page, 'Terminplan', /^Ein abgestimmter Weg/)
+    await page.waitForTimeout(700)
+    expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('H1')
+
+    await toSection(page, 'Investition', /gemeinsame\s+Entscheidung\.$/)
+    await page.waitForTimeout(700)
+    expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('H1')
+  })
+
+  test('entering Client Mode does not steal focus before the presentation starts', async ({ page }) => {
+    test.setTimeout(180_000)
+    await reachClientMode(page)
+    // The boundary is the FIRST render of the shell: M-09 announces the mode,
+    // it does not grab the caret. Focus is only moved by navigation.
+    const tag = await page.evaluate(() => document.activeElement?.tagName)
+    expect(tag).not.toBe('H1')
+  })
 })

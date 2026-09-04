@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type RefObject } from 'react'
+import { useEffect, useId, useRef, useState, type Ref, type RefObject } from 'react'
 import {
   clientBaselineDecisionValue,
   clientDecisionOptionDelta,
@@ -120,7 +120,7 @@ function ScenarioDecisionGroup({ decision, language }: {
  */
 export function PageServices({ view, headingRef }: {
   view: ClientView
-  headingRef: RefObject<HTMLHeadingElement>
+  headingRef: Ref<HTMLHeadingElement>
 }) {
   const t = useT()
   const s = useStore()

@@ -1,4 +1,7 @@
-import { useEffect, useId, useRef, useState, type RefObject } from 'react'
+import {
+  useCallback, useEffect, useId, useRef, useState,
+  type Ref, type RefObject,
+} from 'react'
 import { Decimal } from 'decimal.js'
 import { AnimatePresence, motion } from 'framer-motion'
 import { demoProject } from '../state/projectAnalysis'
@@ -313,17 +316,47 @@ export function PresentationShell({ mainRef, modeRef }: {
     return () => window.clearTimeout(timer)
   }, [flow])
 
-  // Every narrative page is its own small "document" (VR2-06 shell recompose:
-  // one full-bleed page at a time, not a scrolled stack) — moving to it
-  // focuses its own heading, the same continuity contract App.tsx's own
-  // scroll-reset effect already gives every Work screen. First render is
-  // skipped: nobody's focus should be stolen on mode entry.
-  const pageHeadingRef = useRef<HTMLHeadingElement>(null)
-  const firstSectionRender = useRef(true)
-  useEffect(() => {
-    if (firstSectionRender.current) { firstSectionRender.current = false; return }
-    pageHeadingRef.current?.focus()
-  }, [activeSection, flow])
+  /**
+   * Every narrative page is its own small "document" — moving to it focuses
+   * its own heading (M-10: "heading receives programmatic focus"; the same
+   * continuity contract App.tsx's scroll-reset effect gives every Work
+   * screen). The first render never steals focus.
+   *
+   * FOCUS IS SPENT BY THE REF, AND THE INTENT IS DERIVED DURING RENDER.
+   * Both halves are load-bearing, and each one is a bug on its own:
+   *
+   * - Focusing from an effect keyed on `[activeSection, flow]` addresses the
+   *   heading that is LEAVING. `AnimatePresence mode="wait"` mounts the
+   *   incoming page only after the outgoing one has exited, so the effect
+   *   runs while the new heading does not exist; once the old one detaches,
+   *   focus falls back to `<body>`. Acceptance reproduced exactly that —
+   *   navigate to Terminplan, wait 700 ms, `document.activeElement` is BODY.
+   *
+   * - Arming that intent from an effect is then too late for the transitions
+   *   that DO remount synchronously (the entry boundary into the narrative,
+   *   which lives outside the section swap): React attaches refs before it
+   *   runs effects, so the ref callback would fire with nothing armed and
+   *   the heading would never be focused.
+   *
+   * Deriving the wanted key during render satisfies both without branching
+   * on which kind of transition it is, and without a timer guessing when the
+   * DOM caught up. It is also why an ordinary re-render — a scenario
+   * decision, a recalculation — moves nothing: the key is unchanged, so the
+   * presenter keeps the control they just used.
+   */
+  const focusKey = flow === 'narrative' ? `section:${activeSection}` : `flow:${flow}`
+  const headingEl = useRef<HTMLHeadingElement | null>(null)
+  const wantedFocusKey = useRef<string>(focusKey)
+  // Initialised to the first render's key, which is what makes mode entry
+  // announce itself without taking the caret away from anybody.
+  const focusedKey = useRef<string>(focusKey)
+  wantedFocusKey.current = focusKey
+  const pageHeadingRef = useCallback((el: HTMLHeadingElement | null) => {
+    headingEl.current = el
+    if (!el || focusedKey.current === wantedFocusKey.current) return
+    focusedKey.current = wantedFocusKey.current
+    el.focus()
+  }, [])
 
   // VR2-08: the deliberate 'sending' commit delay (see `commitSend` below)
   // needs its own timer handle so unmount mid-flight cannot call `setState`
@@ -865,7 +898,7 @@ function OptionSwitcher({ candidates, currentId, onSwitch, savedTotalOf }: {
   )
 }
 
-type PageHeadingRef = RefObject<HTMLHeadingElement>
+type PageHeadingRef = Ref<HTMLHeadingElement>
 
 /* VR3-05 — §1…§6 of the client narrative moved to `ClientNarrative.tsx`,
    `ClientScenario.tsx` and `ClientOutputs.tsx`. The six VR2-06 pages that

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useRef, useState, type Ref } from 'react'
 import {
   clientScenarioDelta,
   clientScenarioTrustedNow,
@@ -60,7 +60,7 @@ const OUTPUT_SECTIONS = [
 
 export function PageOutputs({ view, headingRef, onSaveAsNew, onEmail }: {
   view: ClientView
-  headingRef: RefObject<HTMLHeadingElement>
+  headingRef: Ref<HTMLHeadingElement>
   onSaveAsNew: () => void
   onEmail: () => void
 }) {

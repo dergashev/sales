@@ -1,4 +1,4 @@
-import type { RefObject } from 'react'
+import type { Ref } from 'react'
 import { Decimal } from 'decimal.js'
 import {
   clientSchedulePhases,
@@ -113,7 +113,7 @@ function PageFrame({ children, label }: {
 function PageLede({ eyebrow, title, headingRef, lede }: {
   eyebrow: string
   title: string
-  headingRef: RefObject<HTMLHeadingElement>
+  headingRef: Ref<HTMLHeadingElement>
   lede?: string
 }) {
   return (
@@ -200,7 +200,7 @@ export function PresentationEntry({ view, onStart, onReturn, headingRef }: {
   view: ClientView
   onStart: () => void
   onReturn: () => void
-  headingRef: RefObject<HTMLHeadingElement>
+  headingRef: Ref<HTMLHeadingElement>
 }) {
   const t = useT()
   const asset = view.projectHeroAssetId ? projectAsset(view.projectHeroAssetId) : null
@@ -256,7 +256,7 @@ export function PresentationEntry({ view, onStart, onReturn, headingRef }: {
 
 export function PageProjectIdentity({ view, headingRef }: {
   view: ClientView
-  headingRef: RefObject<HTMLHeadingElement>
+  headingRef: Ref<HTMLHeadingElement>
 }) {
   const t = useT()
   const s = useStore()
@@ -320,7 +320,7 @@ export function PageProjectIdentity({ view, headingRef }: {
 
 export function PageBuildings({ view, headingRef }: {
   view: ClientView
-  headingRef: RefObject<HTMLHeadingElement>
+  headingRef: Ref<HTMLHeadingElement>
 }) {
   const t = useT()
   const buildings = selectedBuildingsOf(view)
@@ -391,7 +391,7 @@ export function PageBuildings({ view, headingRef }: {
 
 export function PageScopeStory({ view, headingRef }: {
   view: ClientView
-  headingRef: RefObject<HTMLHeadingElement>
+  headingRef: Ref<HTMLHeadingElement>
 }) {
   const t = useT()
   const s = useStore()
@@ -484,7 +484,7 @@ const PHASE_LABEL_KEY: Record<string, string> = {
 
 export function PageScheduleStory({ view, headingRef, decision }: {
   view: ClientView
-  headingRef: RefObject<HTMLHeadingElement>
+  headingRef: Ref<HTMLHeadingElement>
   /** The handover what-if, rendered inside the sequence it changes. */
   decision?: React.ReactNode
 }) {
@@ -594,7 +594,7 @@ export function PageScheduleStory({ view, headingRef, decision }: {
 
 export function PageInvestment({ view, headingRef, onConclude, comparison }: {
   view: ClientView
-  headingRef: RefObject<HTMLHeadingElement>
+  headingRef: Ref<HTMLHeadingElement>
   onConclude: () => void
   comparison?: React.ReactNode
 }) {
