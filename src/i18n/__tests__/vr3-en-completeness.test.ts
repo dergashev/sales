@@ -71,6 +71,17 @@ const OWNED_SURFACES = [
   'src/design-system/ScheduleEditor.tsx',
   'src/design-system/ValidationReview.tsx',
   'src/design-system/SaveReceipt.tsx',
+  // VR3-05 — the client presentation, its scenarios and its outputs.
+  //
+  // Added for the same reason the VR3-04 block above was: this ticket puts
+  // four NEW product-owned surfaces in front of a client and the guard that
+  // proves their EN path exists did not cover a single one of them. The
+  // client narrative is the one place where a German string leaking into an
+  // English presentation is visible to the CUSTOMER rather than to us.
+  'src/components/PresentationShell.tsx',
+  'src/components/ClientNarrative.tsx',
+  'src/components/ClientScenario.tsx',
+  'src/components/ClientOutputs.tsx',
 ]
 
 function source(relative: string): string {
@@ -167,6 +178,19 @@ describe('VR3-01 · nothing on the owned surfaces can reach EN untranslated', ()
       }
     }
     expect(dynamic.sort()).toEqual([
+      // The VR2-07/VR2-08 offer-climax, send-review and delivered screens
+      // print the same engine-composed labels `ProjectOptions.tsx` already
+      // bridges below — a total naming its Declared Pricing Scope (R-18) and
+      // a lead rate naming its norm. Both are asserted to bridge to English
+      // by the next test in this file, so this is the accepted class and not
+      // a second exemption. The VR3-05 CLIENT NARRATIVE itself bridges
+      // nothing: it is fully keyed.
+      'src/components/PresentationShell.tsx: tx(p.leadRate.denominatorLabel)',
+      'src/components/PresentationShell.tsx: tx(p.result.totalLabel)',
+      'src/components/PresentationShell.tsx: tx(p.result.totalLabel)',
+      'src/components/PresentationShell.tsx: tx(p.result.totalLabel)',
+      'src/components/PresentationShell.tsx: tx(p.result.totalLabel)',
+      'src/components/PresentationShell.tsx: tx(snapshot.totalLabel)',
       'src/design-system/WorkflowStepper.tsx: tx(key)',
       'src/screens/ProjectOptions.tsx: tx(projection.result.totalLabel)',
     ])

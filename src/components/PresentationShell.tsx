@@ -204,7 +204,8 @@ export function PresentationShell({ mainRef, modeRef }: {
 }) {
   const s = useStore()
   const t = useT()
-  const tx = useTx()
+  // No `useTx()` here any more: the client shell's last two bridged
+  // literals became dictionary keys, so this component is fully keyed.
 // VR3-01: the project's display name now comes from the two-fixture
 // project register (`state/projectAnalysis`). The eight-row
 // `fixtures/opportunities.json` this used to read is gone with the
@@ -405,9 +406,15 @@ export function PresentationShell({ mainRef, modeRef }: {
           </h1>
           <p className="mt-4 text-body text-text-secondary">
             <span aria-hidden="true">○ </span>
+            {/* `tx()` is a BRIDGE for German the generated delivery already
+                carries; handed a literal delivery never had, it returns the
+                German unchanged in EN — silently, which is how QA-01
+                shipped. These two sentences were exactly that, and they are
+                this ticket's own CLIENT MODE LOCKED state, so they become
+                dictionary keys with both rows. */}
             {s.options.length > 0
-              ? tx('Für dieses Projekt ist noch keine Option bereit für die Kundenansicht.')
-              : tx('Noch keine Opportunity Option angelegt.')}
+              ? t('presentation.empty.noneReady')
+              : t('presentation.empty.noOption')}
           </p>
         </main>
       </div>

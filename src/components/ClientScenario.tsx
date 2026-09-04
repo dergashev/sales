@@ -398,14 +398,18 @@ export function ScenarioRevertDialog({ open, onClose, view, returnFocusTo }: {
         {t('vr3.client.revert.title', { option: view.optionName })}
       </h2>
       <p className="a3-client-prose">
-        {t('vr3.client.revert.body', { count })}
+        {t(count === 1
+          ? 'vr3.client.revert.body.one'
+          : 'vr3.client.revert.body', { count })}
       </p>
       <div className="a3-client-modal-actions">
         <Button
           variant="primary"
           onClick={() => { s.revertPresentationScenario(); onClose() }}
         >
-          {t('vr3.client.revert.confirm', { count })}
+          {t(count === 1
+            ? 'vr3.client.revert.confirm.one'
+            : 'vr3.client.revert.confirm', { count })}
         </Button>
         <Button variant="secondary" onClick={onClose}>
           {t('vr3.client.revert.cancel')}
@@ -430,6 +434,14 @@ export function ScenarioSaveDialog({ open, onClose, view, returnFocusTo }: {
   const delta = clientScenarioDelta(s)
   if (!commit || commit.stage !== 'NAMING') return null
   const nameOk = clientScenarioNameAvailable(s, commit.name)
+  // A blocked control states ITS OWN reason (VR3-04, d56342d). `nameOk` is
+  // false for TWO different constraints and the commit action already tells
+  // them apart, so the disabled reason must make the same distinction: a
+  // presenter looking at a filled field being told to "give it a name" is
+  // being sent to fix something that is not wrong.
+  const blockedReasonKey = commit.name.trim().length === 0
+    ? 'vr3.client.save.error.nameEmpty'
+    : 'vr3.client.save.error.nameTaken'
 
   return (
     <ClientDialog
@@ -466,7 +478,9 @@ export function ScenarioSaveDialog({ open, onClose, view, returnFocusTo }: {
             {t('vr3.client.save.source', { option: view.optionName })}
           </p>
           <p className="a3-client-callout-body">
-            {t('vr3.client.save.summary', {
+            {t(count === 1
+              ? 'vr3.client.save.summary.one'
+              : 'vr3.client.save.summary', {
               count,
               delta: delta ? signedMoneyText(delta, view.language) : '',
               option: view.optionName,
@@ -479,7 +493,7 @@ export function ScenarioSaveDialog({ open, onClose, view, returnFocusTo }: {
           variant="primary"
           onClick={() => s.commitScenarioSaveAsNew()}
           disabled={!nameOk}
-          disabledReason={t('vr3.client.save.error.nameEmpty')}
+          disabledReason={t(blockedReasonKey)}
         >
           {t('vr3.client.save.confirm')}
         </Button>
