@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type RefObject } from 'react'
 import {
-  clientBaselineConfig,
+  clientBaselineDecisionValue,
+  clientDecisionOptionDelta,
   clientDecisionValue,
   clientPresentationDecisions,
   clientScenarioDelta,
@@ -12,9 +13,12 @@ import {
 import { scenarioChangeCount } from '../state/clientScenario'
 import type { PresentationDecision } from '../state/clientScenario'
 import { CommercialNumber, signedMoneyText } from '../design-system/CommercialNumber'
+import { label as moneyLabel, type Displayed } from '../engine/money'
+import { localizeMoneyText } from '../i18n'
 import { useSemanticMotion } from '../design-system/motion'
 import { useT } from '../i18n'
 import { Button } from './primitives'
+import { RadioCardGroup } from './controls'
 import { ClientPanel, ClientFactRow, PageFrame, PageLede } from './ClientNarrative'
 import type { ClientView } from './ClientNarrative'
 
@@ -33,57 +37,76 @@ import type { ClientView } from './ClientNarrative'
  * meeting that failure is not a bug report, it is a stalled sentence.
  */
 
+/** A money row: one formatter, one unit, one absence rule (rule 16). */
+function ClientMoneyRow({ label, displayed, language }: {
+  label: string
+  displayed: Displayed | null
+  language: 'de' | 'en'
+}) {
+  return (
+    <div className="a3-client-row">
+      <span className="a3-client-row-label">{label}</span>
+      <span className="a3-client-row-value numeric">
+        <CommercialNumber
+          exact={displayed ? displayed.exact : null}
+          displayed={displayed ?? undefined}
+          language={language}
+          absentLabel="—"
+        />
+      </span>
+    </div>
+  )
+}
+
+/** The formatted money of an already-rounded presentation. */
+function moneyText(displayed: Displayed, language: 'de' | 'en'): string {
+  return localizeMoneyText(moneyLabel(displayed, '€'), language)
+}
+
 /* ─────────────────────────── decision control ─────────────────────────── */
 
-function ScenarioDecisionGroup({ decision }: {
+function ScenarioDecisionGroup({ decision, language }: {
   decision: PresentationDecision
+  language: 'de' | 'en'
 }) {
   const t = useT()
   const s = useStore()
-  const groupId = useId()
   const current = clientDecisionValue(s, decision)
-  const baselineConfig = clientBaselineConfig(s)
-  const baselineValue = baselineConfig
-    ? clientDecisionValue({ ...s, clientScenario: null } as typeof s, decision)
-    : null
+  const baselineValue = clientBaselineDecisionValue(s, decision)
+
+  // The CANONICAL choice control, not a local one. Its contract is exactly
+  // what a client-facing decision needs and what a hand-rolled fieldset
+  // silently loses: the whole label is the hit area, the decoration is
+  // inert, keyboard and pointer behave identically, and `consequence` is a
+  // permanent slot rather than a hover affordance — R-05/OPTION-009, "the
+  // consequence is ALWAYS visible".
+  const options = decision.options.map((option) => {
+    const delta = clientDecisionOptionDelta(s, decision, option.value)
+    const isBaseline = option.value === baselineValue
+    const effect = delta === null
+      ? t('vr3.client.decision.effect.unknown')
+      : delta.isZero()
+        ? t('vr3.client.decision.effect.none')
+        : signedMoneyText(delta, language)
+    return {
+      value: option.value,
+      title: t(option.labelKey),
+      description: t(decision.consequenceKeyOf[option.value] ?? ''),
+      consequence: isBaseline
+        ? `${t('vr3.client.decision.role.baseline')} · ${effect}`
+        : effect,
+    }
+  })
 
   return (
-    <fieldset className="a3-client-decision" aria-describedby={`${groupId}-note`}>
-      <legend className="a3-client-panel-title">{t(decision.titleKey)}</legend>
-      <div className="a3-client-decision-options">
-        {decision.options.map((option) => {
-          const selected = option.value === current
-          const isBaseline = option.value === baselineValue
-          return (
-            <label
-              key={option.value}
-              className="a3-client-decision-option hit-target"
-              data-selected={selected ? 'true' : undefined}
-            >
-              <input
-                type="radio"
-                className="a3-client-decision-input"
-                name={`${groupId}-${decision.id}`}
-                value={option.value}
-                checked={selected}
-                onChange={() => s.setPresentationDecision(decision.id, option.value)}
-              />
-              <span className="a3-client-decision-label">{t(option.labelKey)}</span>
-              <span className="a3-client-decision-note">
-                {isBaseline
-                  ? t('vr3.client.decision.role.baseline')
-                  : selected
-                    ? t('vr3.client.decision.role.scenario')
-                    : t('vr3.client.decision.role.alternative')}
-              </span>
-            </label>
-          )
-        })}
-      </div>
-      <p id={`${groupId}-note`} className="a3-client-prose a3-client-decision-consequence">
-        {current ? t(decision.consequenceKeyOf[current] ?? '') : ''}
-      </p>
-    </fieldset>
+    <div className="a3-client-decision">
+      <RadioCardGroup
+        legend={t(decision.titleKey)}
+        value={current}
+        options={options}
+        onChange={(value) => s.setPresentationDecision(decision.id, value)}
+      />
+    </div>
   )
 }
 
@@ -109,7 +132,7 @@ export function PageServices({ view, headingRef }: {
   const baselineResult = view.baseline.result
 
   return (
-    <PageFrame>
+    <PageFrame label={t('vr3.client.nav.services')}>
       <PageLede
         eyebrow={changed
           ? t('vr3.client.services.eyebrow.scenario')
@@ -123,7 +146,9 @@ export function PageServices({ view, headingRef }: {
         <ClientPanel>
           {decisions.length > 0
             ? decisions.map((decision) => (
-              <ScenarioDecisionGroup key={decision.id} decision={decision} />
+              <ScenarioDecisionGroup
+                key={decision.id} decision={decision} language={view.language}
+              />
             ))
             : <p className="a3-client-prose">{t('vr3.client.services.none')}</p>}
         </ClientPanel>
@@ -151,7 +176,7 @@ export function PageServices({ view, headingRef }: {
               ? t('vr3.client.services.versus', {
                 delta: signedMoneyText(delta, view.language),
                 option: view.optionName,
-                total: result.total.display,
+                total: moneyText(result.total, view.language),
               })
               : t('vr3.client.services.atBaseline', { option: view.optionName })}
           </p>
@@ -162,13 +187,19 @@ export function PageServices({ view, headingRef }: {
             </p>
           ) : null}
           <div className="a3-client-rows">
-            <ClientFactRow
+            {/* `total.display` is the ROUNDED PRESENTATION and carries no
+                unit — `CommercialNumber` is the one place that turns a value
+                into money, so these rows go through it rather than printing
+                a bare number beside a euro sign somewhere else. */}
+            <ClientMoneyRow
               label={t('vr3.client.services.savedOption')}
-              value={baselineResult.total.display}
+              displayed={baselineResult.total}
+              language={view.language}
             />
-            <ClientFactRow
+            <ClientMoneyRow
               label={t('vr3.client.services.temporaryScenario')}
-              value={changed ? result.total.display : '—'}
+              displayed={changed ? result.total : null}
+              language={view.language}
             />
             <ClientFactRow
               label={t('vr3.client.services.changeCount')}
@@ -184,7 +215,7 @@ export function PageServices({ view, headingRef }: {
 /* ───────────────────── the schedule what-if, as a warning ─────────────── */
 
 /** The schedule page's own decision plus the open question it leaves. */
-export function ScheduleScenarioSlot() {
+export function ScheduleScenarioSlot({ language }: { language: 'de' | 'en' }) {
   const t = useT()
   const s = useStore()
   const decisions = clientPresentationDecisions(s).filter((d) => d.section === 'schedule')
@@ -199,7 +230,7 @@ export function ScheduleScenarioSlot() {
         </p>
       ) : null}
       {decisions.map((decision) => (
-        <ScenarioDecisionGroup key={decision.id} decision={decision} />
+        <ScenarioDecisionGroup key={decision.id} decision={decision} language={language} />
       ))}
     </div>
   )
@@ -247,28 +278,28 @@ export function ScenarioBar({ view, onRevert, onSaveAsNew }: {
         {changed && delta ? signedMoneyText(delta, view.language) : ''}
         {changed ? (
           <span className="a3-client-scenario-count">
-            {t('vr3.client.scenario.changes', { count })}
+            {t(count === 1
+              ? 'vr3.client.scenario.changes.one'
+              : 'vr3.client.scenario.changes', { count })}
           </span>
         ) : null}
       </p>
-      <div className="a3-client-scenario-actions">
-        <Button
-          variant="secondary"
-          onClick={onRevert}
-          disabled={!changed}
-          disabledReason={t('vr3.client.scenario.revertDisabled')}
-        >
-          {t('vr3.client.scenario.revert')}
-        </Button>
-        <Button
-          variant="primary"
-          onClick={onSaveAsNew}
-          disabled={!changed}
-          disabledReason={t('vr3.client.scenario.saveDisabled')}
-        >
-          {t('vr3.client.scenario.saveAsNew')}
-        </Button>
-      </div>
+      {/* The two commitments exist only where there is something to commit.
+          At the saved baseline there is no scenario to revert or to save, so
+          rendering them blocked would not be rule 12's "a blocked control
+          explains itself" — it would be two permanently dead controls and
+          two permanent explanations, in front of a client, on every section.
+          The bar still says WHICH state is on screen, which is its job. */}
+      {changed ? (
+        <div className="a3-client-scenario-actions">
+          <Button variant="secondary" onClick={onRevert}>
+            {t('vr3.client.scenario.revert')}
+          </Button>
+          <Button variant="primary" onClick={onSaveAsNew}>
+            {t('vr3.client.scenario.saveAsNew')}
+          </Button>
+        </div>
+      ) : null}
     </div>
   )
 }

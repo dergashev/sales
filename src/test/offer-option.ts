@@ -1,5 +1,5 @@
 import type userEvent from '@testing-library/user-event'
-import { act } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import {
   canBeginConfiguration, includedBuildingIds, kgCatalogueFor, useStore,
   activeSchedulePhasesFor,
@@ -321,4 +321,23 @@ export function saveOptionBaseline() {
       )
     }
   })
+}
+
+/**
+ * VR3-05 — cross the Client Mode boundary (T-034).
+ *
+ * Entering Client Mode now opens on a boundary screen that names the saved
+ * Option being presented and asks for one deliberate action; the narrative
+ * begins after it. Suites whose subject is the narrative (or anything past
+ * it) call this immediately after `setMode('praesentation')` — the boundary
+ * itself is tested where it belongs, in `client-presentation.dom.test.tsx`.
+ */
+export async function startClientPresentation(
+  user: ReturnType<typeof userEvent.setup>,
+) {
+  // `findByRole`, not `queryByRole`: the gate dialog's close and the shell
+  // swap are two renders, so the boundary is not on screen in the same tick
+  // as the click that opened Client Mode.
+  const start = await screen.findByRole('button', { name: 'Präsentation starten' })
+  await user.click(start)
 }

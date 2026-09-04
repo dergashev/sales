@@ -51,6 +51,7 @@ import {
   emptyScenario,
   scenarioChangeCount,
   scenarioDecisionValue,
+  decisionValueIn,
   scenarioOpenQuestions,
   withDecision,
   type ClientScenario,
@@ -3931,6 +3932,50 @@ export function clientDecisionValue(
   return scenarioDecisionValue(
     s.clientScenario, decision, scenarioSliceOf(config), kgCatalogueFor(s),
   )
+}
+
+/**
+ * What choosing `value` on `decision` would cost, against the SAVED baseline.
+ *
+ * The ticket's "supported in-context alternatives expose client-readable
+ * consequence BEFORE commit": every option can state its own effect while it
+ * is still just an option, because pricing one is a pure derivation over a
+ * configuration nobody has to adopt first. Measured against the baseline
+ * rather than against the current scenario so the three numbers on a control
+ * are comparable with each other — a delta-against-the-last-click would
+ * change every option's label every time any option was pressed.
+ */
+export function clientDecisionOptionDelta(
+  s: Store, decision: PresentationDecision, value: string,
+): Decimal | null {
+  const config = clientBaselineConfig(s)
+  const baseline = clientBaselineSnapshot(s)
+  if (!config || !baseline) return null
+  const catalogue = kgCatalogueFor(s)
+  const sourceOptionId = resolvedViewedOptionId(s)
+  if (!sourceOptionId) return null
+  // A HYPOTHETICAL scenario: one decision, against the baseline, adopted by
+  // nobody. It is never written to the store — it exists for the length of
+  // this derivation and then it is garbage.
+  const hypothetical = withDecision(
+    emptyScenario(sourceOptionId), decision, value, scenarioSliceOf(config), catalogue,
+  )
+  try {
+    const applied = applyScenarioChanges(config, hypothetical.changes, catalogue)
+    const result = deriveClientSnapshot(s, applied)
+    return result.result.total.exact.minus(baseline.result.total.exact)
+  } catch {
+    return null
+  }
+}
+
+/** The value a decision holds in the SAVED baseline, ignoring the scenario. */
+export function clientBaselineDecisionValue(
+  s: Store, decision: PresentationDecision,
+): string | null {
+  const config = clientBaselineConfig(s)
+  if (!config) return null
+  return decisionValueIn(decision, scenarioSliceOf(config), kgCatalogueFor(s))
 }
 
 /** Decisions the scenario moved that leave a documented question open. */

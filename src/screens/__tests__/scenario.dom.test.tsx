@@ -12,6 +12,7 @@ import {
   completeBuildingScope,
   completeKgConfiguration,
   saveOptionBaseline,
+  startClientPresentation,
 } from '../../test/offer-option'
 import { activeBuilding, __resetStoreForTests, useStore } from '../../state/store'
 import { CONFIGURATOR_STEP } from '../../state/chapters'
@@ -252,6 +253,9 @@ describe('Сквозной сценарий продажи', () => {
     confirmWholeConfiguration()
     await user.click(within(modus).getAllByRole('radio')[1]!)
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
+    // VR3-05 (T-034): Client Mode opens on its boundary screen; the
+    // narrative these suites are about begins one deliberate click later.
+    await startClientPresentation(user)
     // REDESIGN R3 WAVE 2a (ce17da51): Kundenansicht is now ONE continuous
     // PresentationShell document, not a per-chapter router — every
     // narrative section (incl. §3 Ergebnis, the only place a commercial
@@ -426,6 +430,9 @@ describe('Сквозной сценарий продажи', () => {
     // У клиента: то же полное состояние — тоже без предупреждения.
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
+    // VR3-05 (T-034): Client Mode opens on its boundary screen; the
+    // narrative these suites are about begins one deliberate click later.
+    await startClientPresentation(user)
 
     expect(screen.queryByText(/Deckungsentscheidung noch offen/)).toBeNull()
     expect(screen.queryByRole('button', { name: 'Hinweis' })).toBeNull()
@@ -440,6 +447,9 @@ describe('Сквозной сценарий продажи', () => {
     const modes = screen.getByRole('radiogroup', { name: 'Ansicht' })
     await user.click(within(modes).getAllByRole('radio')[1]!)
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
+    // VR3-05 (T-034): Client Mode opens on its boundary screen; the
+    // narrative these suites are about begins one deliberate click later.
+    await startClientPresentation(user)
     expect(useStore.getState().mode).toBe('praesentation')
 
     // Коды реестра — доказательная база подготовки, не язык переговоров.
@@ -469,6 +479,9 @@ describe('Сквозной сценарий продажи', () => {
     confirmWholeConfiguration()
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
+    // VR3-05 (T-034): Client Mode opens on its boundary screen; the
+    // narrative these suites are about begins one deliberate click later.
+    await startClientPresentation(user)
 
     // REDESIGN R3 WAVE 2a (ce17da51): Kundenansicht is now ONE continuous
     // PresentationShell document — no per-chapter router, no Sidebar, no
@@ -477,7 +490,7 @@ describe('Сквозной сценарий продажи', () => {
     // navigation, never a workflow stepper). §1 Projekt is always the
     // shell's opening section, so its H1 (the project's own name, not a
     // leftover internal chapter title) is the mode-entry focus target.
-    expect(screen.getByText('Kundenansicht — der Kunde sieht diesen Bildschirm'))
+    expect(screen.getByText(/Kundenansicht — der Kunde sieht diesen Bildschirm/))
       .toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 1, name: 'Wohnhof Lindenhain' }))
       .toHaveFocus()
@@ -533,14 +546,19 @@ describe('Сквозной сценарий продажи', () => {
 
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
+    // VR3-05 (T-034): Client Mode opens on its boundary screen; the
+    // narrative these suites are about begins one deliberate click later.
+    await startClientPresentation(user)
     expect(useStore.getState().mode).toBe('praesentation')
 
-    // Внутри Kundenansicht переключателя-<select> больше нет вовсе — только
-    // информационная подпись с тем же именем Option, не идентификатором
-    // (правило клиентского профиля: `OPT-xx` не выводится, см. соседний
-    // тест этого файла).
+    // Внутри Kundenansicht переключателя-<select> больше нет вовсе. Имя
+    // презентуемой Option по-прежнему названо — VR3-05 перенёс его в
+    // индикатор режима (цель T-034/T-035: `KUNDENPRÄSENTATION · <Option>`),
+    // чтобы одно и то же имя не стояло на экране дважды. Идентификатор
+    // `OPT-xx` не выводится по-прежнему — соседний тест этого файла.
     expect(screen.queryByRole('combobox', { name: 'Opportunity Option' })).toBeNull()
-    expect(screen.getByText('Option 1')).toBeInTheDocument()
+    expect(screen.getByText(/Kundenansicht — der Kunde sieht diesen Bildschirm · Option 1/))
+      .toBeInTheDocument()
 
     // Раньше: выбор в этом контроле молча переключал `activeOptionId` даже
     // в клиентском виде. Контрола для этого больше нет — состояние
@@ -554,6 +572,9 @@ describe('Сквозной сценарий продажи', () => {
     await enterPipeline(user)
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
+    // VR3-05 (T-034): Client Mode opens on its boundary screen; the
+    // narrative these suites are about begins one deliberate click later.
+    await startClientPresentation(user)
 
     expect(useStore.getState().mode).toBe('praesentation')
     expect(useStore.getState().level).toBe('option')

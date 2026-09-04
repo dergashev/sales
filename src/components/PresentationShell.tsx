@@ -20,6 +20,7 @@ import {
 } from './ClientScenario'
 import { ClientPrintDocument, PageOutputs } from './ClientOutputs'
 import { signedMoneyText } from '../design-system/CommercialNumber'
+import type { SavedOptionVersion } from '../state/optionSave'
 import { NNBSP, present, label as moneyLabel } from '../engine/money'
 import { localizeMoneyText, useT, useTx } from '../i18n'
 import { recipientForOpportunity, type ValidatedRecipient } from '../state/emailRecipient'
@@ -284,7 +285,13 @@ export function PresentationShell({ mainRef, modeRef }: {
       setDelivery('delivered')
       setFlow('delivered')
     } else {
-      setFlow('entry')
+      // VR3-05: the boundary is crossed ONCE per presentation. Switching the
+      // presented Option — and above all saving a descendant from inside the
+      // meeting, which switches it — must not throw the presenter back to
+      // "Präsentation starten" in front of the client. The boundary exists
+      // to enter Client Mode, not to re-enter the narrative; `setMode` is
+      // what resets it, and that only happens on a real exit.
+      setFlow((current) => (current === 'entry' ? 'entry' : 'narrative'))
     }
     // Deliberately keyed on `currentId` alone: a send/delivery happening for
     // the option already being viewed is handled explicitly by `commitSend`,
@@ -347,7 +354,7 @@ export function PresentationShell({ mainRef, modeRef }: {
       <div className="flex min-h-0 flex-1 flex-col">
         <PresentationTopBar
           sections={[]} activeSection={activeSection}
-          candidates={[]} currentId={null}
+          candidates={[]} currentId={null} savedTotalOf={() => '—'}
           onSwitch={() => {}} onExit={exitToWork} modeRef={modeRef}
         />
         <main ref={mainRef} tabIndex={-1}
@@ -468,7 +475,7 @@ export function PresentationShell({ mainRef, modeRef }: {
       <div className="flex min-h-0 flex-1 flex-col">
         <PresentationTopBar
           sections={[]} activeSection={activeSection}
-          candidates={[]} currentId={null}
+          candidates={[]} currentId={null} savedTotalOf={() => '—'}
           onSwitch={() => {}} onExit={exitToWork} modeRef={modeRef}
         />
         <main ref={mainRef} tabIndex={-1}
@@ -491,14 +498,24 @@ export function PresentationShell({ mainRef, modeRef }: {
     )
   }
 
+  // One authority for "what does this Option cost": its own saved record.
+  const savedOf = (id: string) => latestSavedOptionVersion(s, id)
+  const savedTotalOf = (id: string) => savedOf(id)?.result.totalDisplay ?? '—'
+
   const motionKey = flow === 'narrative' ? activeSection : flow
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <PresentationTopBar
         sections={sections}
-        activeSection={activeSection} onNavigate={goTo}
+        // The entry boundary is not a section of the narrative, so no rail
+        // item is current while it is on screen — an underline there would
+        // claim the presentation had already started.
+        activeSection={flow === 'entry' ? null : activeSection}
+        onNavigate={goTo}
+        optionName={current.name}
         candidates={candidates} currentId={current.id}
+        savedTotalOf={savedTotalOf}
         onSwitch={switchViewedOption}
         onExit={exitToWork} modeRef={modeRef}
       />
@@ -511,6 +528,20 @@ export function PresentationShell({ mainRef, modeRef }: {
             collapse) — the same vocabulary every Work surface uses — instead
             of a Present-local copy of that motion with literal `y: 8` /
             `0.2` / `0.12` values (rule 20: "only the shared variants"). */}
+        {/* M-09 is a MODE transition, not a section change: the boundary
+            replaces the shell, it does not cross-fade with a narrative
+            section. Keeping it out of the section `AnimatePresence` is also
+            what stops the boundary and the first section from being mounted
+            at the same time while a `mode="wait"` exit is still settling —
+            two client screens in one document, one of which is stale. */}
+        {flow === 'entry' ? (
+          <PresentationEntry
+            view={view}
+            onStart={() => { setFlow('narrative'); setActiveSection('project') }}
+            onReturn={exitToWork}
+            headingRef={pageHeadingRef}
+          />
+        ) : (
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={motionKey}
@@ -520,14 +551,7 @@ export function PresentationShell({ mainRef, modeRef }: {
             exit="exit"
             className="flex min-h-0 flex-1 flex-col"
           >
-            {flow === 'entry' ? (
-              <PresentationEntry
-                view={view}
-                onStart={() => { setFlow('narrative'); setActiveSection('project') }}
-                onReturn={exitToWork}
-                headingRef={pageHeadingRef}
-              />
-            ) : flow === 'outputs' ? (
+            {flow === 'outputs' ? (
               <PageOutputs
                 view={view}
                 headingRef={pageHeadingRef}
@@ -546,7 +570,7 @@ export function PresentationShell({ mainRef, modeRef }: {
               ) : activeSection === 'schedule' ? (
                 <PageScheduleStory
                   view={view} headingRef={pageHeadingRef}
-                  warning={<ScheduleScenarioSlot />}
+                  decision={<ScheduleScenarioSlot language={s.uiLanguage} />}
                 />
               ) : (
                 <PageInvestment
@@ -557,6 +581,7 @@ export function PresentationShell({ mainRef, modeRef }: {
                     <ClientOptionComparison
                       candidates={candidates} currentId={current.id}
                       onSwitch={switchViewedOption} language={s.uiLanguage}
+                      savedOf={savedOf}
                     />
                   ) : undefined}
                 />
@@ -585,6 +610,7 @@ export function PresentationShell({ mainRef, modeRef }: {
             )}
           </motion.div>
         </AnimatePresence>
+        )}
 
         {/* The bar is persistent across every section, which is the point:
             a presenter must not be able to navigate away from the fact that
@@ -631,28 +657,31 @@ export function PresentationShell({ mainRef, modeRef }: {
  * Only client-eligible Options appear, and switching is `setViewedOption`,
  * which touches nothing but which Option is being shown.
  */
-function ClientOptionComparison({ candidates, currentId, onSwitch, language }: {
+function ClientOptionComparison({ candidates, currentId, onSwitch, language, savedOf }: {
   candidates: Candidate[]
   currentId: string
   onSwitch: (id: string) => void
   language: 'de' | 'en'
+  savedOf: (id: string) => SavedOptionVersion | null
 }) {
   const t = useT()
-  const current = candidates.find((c) => c.id === currentId)
+  const currentSaved = savedOf(currentId)
   return (
     <section className="a3-client-comparison" aria-label={t('vr3.client.comparison.title')}>
       <h3 className="a3-client-panel-subtitle">{t('vr3.client.comparison.title')}</h3>
       <div className="a3-client-rows">
         {candidates.map((candidate) => {
-          const delta = current
-            ? candidate.p.result.total.exact.minus(current.p.result.total.exact)
+          const saved = savedOf(candidate.id)
+          const delta = saved && currentSaved
+            ? new Decimal(saved.result.totalExact)
+              .minus(new Decimal(currentSaved.result.totalExact))
             : null
           const presented = candidate.id === currentId
           return (
             <div key={candidate.id} className="a3-client-row">
               <span className="a3-client-row-label">{candidate.name}</span>
               <span className="a3-client-row-value numeric">
-                {candidate.p.result.total.display}
+                {saved ? saved.result.totalDisplay : '—'}
                 {delta && !delta.isZero() ? (
                   <span className="a3-client-comparison-delta">
                     {signedMoneyText(delta, language)}
@@ -687,11 +716,13 @@ function ClientOptionComparison({ candidates, currentId, onSwitch, language }: {
  * directly visible, never folded into a menu.
  */
 function PresentationTopBar({
-  sections, activeSection, onNavigate,
-  candidates, currentId, onSwitch, onExit, modeRef,
+  sections, activeSection, optionName, onNavigate,
+  candidates, currentId, onSwitch, onExit, modeRef, savedTotalOf,
 }: {
   sections: Array<{ id: NarrativeSectionId; label: string }>
-  activeSection: NarrativeSectionId
+  activeSection: NarrativeSectionId | null
+  optionName?: string
+  savedTotalOf: (id: string) => string
   onNavigate?: (id: NarrativeSectionId) => void
   candidates: Candidate[]
   currentId: string | null
@@ -735,21 +766,17 @@ function PresentationTopBar({
       <div className="a3-presentation-topbar-actions">
         {candidates.length >= 2 && currentId ? (
           <div className="a3-presentation-ansicht">
-            <OptionSwitcher candidates={candidates} currentId={currentId} onSwitch={onSwitch} />
+            <OptionSwitcher
+              candidates={candidates} currentId={currentId}
+              onSwitch={onSwitch} savedTotalOf={savedTotalOf}
+            />
           </div>
-        ) : currentId ? (
-          // Exactly one eligible Option: no switcher to show (nothing to
-          // switch between), but the client must still be able to name
-          // which Option context they are looking at — an informational
-          // caption with the Option's NAME, never its internal id.
-          <p className="a3-presentation-ansicht">
-            <span className="a3-cap">{t('presentation.ansicht.legend')}</span>
-            <br />
-            <span className="text-small font-bold text-text-primary">
-              {candidates.find((c) => c.id === currentId)?.name}
-            </span>
-          </p>
         ) : null}
+        {/* VR3-05: with exactly one eligible Option there is nothing to
+            switch between, and the caption that used to stand here said the
+            Option's name a second time — the mode indicator to its right
+            already names it. One statement of which Option is on screen, in
+            the place the target puts it. */}
         <div className="a3-language-control">
           <SegmentedControl
             layout="inline"
@@ -766,9 +793,17 @@ function PresentationTopBar({
           <Button ref={modeRef} variant="secondary" onClick={onExit}>
             {t('shell.profile.exit')}
           </Button>
+          {/* The indicator names the MODE and the saved Option it is
+              presenting — the target's `CLIENT PRESENTATION · <Option>`.
+              Naming the Option here is what lets the redundant static
+              "Ansicht" label disappear when there is only one to show. */}
           <p className="a3-mode-indicator" role="status" aria-live="polite" aria-atomic="true">
             <span aria-hidden="true">◉</span>
-            <span>{t('shell.profile.clientIndicator')}</span>
+            <span>
+              {optionName
+                ? `${t('shell.profile.clientIndicator')} · ${optionName}`
+                : t('shell.profile.clientIndicator')}
+            </span>
           </p>
         </div>
       </div>
@@ -779,17 +814,23 @@ function PresentationTopBar({
 /** Dieselbe Auswahl-Semantik wie S4Vergleich (Wave 1): SegmentedControl bis
  *  3 Optionen (LOCALE-004), sonst kanonisches SelectField — nur an einer
  *  Stelle wiederverwendet, die die GESAMTE Erzählung erreicht. */
-function OptionSwitcher({ candidates, currentId, onSwitch }: {
+function OptionSwitcher({ candidates, currentId, onSwitch, savedTotalOf }: {
   candidates: Candidate[]
   currentId: string
   onSwitch: (id: string) => void
+  savedTotalOf: (id: string) => string
 }) {
   const t = useT()
   const current = candidates.find((c) => c.id === currentId)!
   const legend = t('presentation.ansicht.legend')
+  // The SAVED baseline's own recorded total, never a re-derivation and never
+  // the legacy proposal projection: an Option's client-facing number is the
+  // one its save committed (M-3). Reading `c.p` here printed a total from a
+  // different engine beside the canonical one on the investment page — two
+  // numbers for one Option, in front of the client.
   const segments = candidates.map((c) => ({
     value: c.id,
-    label: `${c.name} · ${money(c.p.result.total.exact)}${NNBSP}€`,
+    label: `${c.name} · ${savedTotalOf(c.id)}`,
   }))
 
   return (

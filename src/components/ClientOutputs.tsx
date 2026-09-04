@@ -112,7 +112,7 @@ export function PageOutputs({ view, headingRef, onSaveAsNew, onEmail }: {
   const emailBlocked = changed
 
   return (
-    <PageFrame>
+    <PageFrame label={t('vr3.client.outputs.eyebrow')}>
       <PageLede
         eyebrow={t('vr3.client.outputs.eyebrow')}
         title={t('vr3.client.outputs.title')}

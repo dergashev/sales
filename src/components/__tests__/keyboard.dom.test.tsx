@@ -3,7 +3,11 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
 import { CONFIGURATOR_STEP } from '../../state/chapters'
-import { confirmBuildingReviewSections, confirmWholeConfiguration, enterOptionWorkspace, completeBuildingScope, decideAllKgScope, completeKgConfiguration, saveOptionBaseline } from '../../test/offer-option'
+import {
+  confirmBuildingReviewSections, confirmWholeConfiguration, enterOptionWorkspace,
+  completeBuildingScope, decideAllKgScope, completeKgConfiguration,
+  saveOptionBaseline, startClientPresentation,
+} from '../../test/offer-option'
 import { __resetStoreForTests, useStore } from '../../state/store'
 
 /**
@@ -249,6 +253,9 @@ describe('Гейт режима презентации — блокировка 
     await user.click(praesentation)
     expect(useStore.getState().mode).toBe('intern')
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
+    // VR3-05 (T-034): Client Mode opens on its boundary screen; the
+    // narrative these suites are about begins one deliberate click later.
+    await startClientPresentation(user)
     expect(useStore.getState().mode).toBe('praesentation')
     expect(useStore.getState().gateOpen).toBe(false)
     await waitFor(() => expect(screen.queryByRole('dialog', { name: /Bereit für die Präsentation/ })).toBeNull())
@@ -384,6 +391,9 @@ describe('DC-33 · единственная модалка системы — в
     await enterClientReadyPipeline(user)
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
+    // VR3-05 (T-034): Client Mode opens on its boundary screen; the
+    // narrative these suites are about begins one deliberate click later.
+    await startClientPresentation(user)
     expect(useStore.getState().mode).toBe('praesentation')
   })
 })
@@ -403,6 +413,9 @@ describe('Preparation navigation cleanup', () => {
     await enterClientReadyPipeline(user)
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
+    // VR3-05 (T-034): Client Mode opens on its boundary screen; the
+    // narrative these suites are about begins one deliberate click later.
+    await startClientPresentation(user)
 
     expect(screen.queryByRole('button', { name: /Rundgang/ })).toBeNull()
     act(() => useStore.getState().setTourOpen(true))

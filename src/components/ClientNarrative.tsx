@@ -91,14 +91,20 @@ export type ClientView = {
 
 /* ───────────────────────────── shared pieces ─────────────────────────── */
 
-function PageFrame({ children, tone = 'canvas' }: {
+/**
+ * One narrative section, as a LANDMARK.
+ *
+ * `aria-label` carries the same word the rail carries, so moving through the
+ * story announces WHERE the reader now is — the ticket's "section nav is
+ * keyboard operable and announces location". Meeting-scale type does not
+ * replace semantics; this is the semantics.
+ */
+function PageFrame({ children, label }: {
   children: React.ReactNode
-  tone?: 'canvas' | 'deep'
+  label: string
 }) {
   return (
-    <section
-      className={`a3-client-page${tone === 'deep' ? ' a3-client-page-deep a3-stage-deep' : ''}`}
-    >
+    <section aria-label={label} className="a3-client-page">
       {children}
     </section>
   )
@@ -263,7 +269,7 @@ export function PageProjectIdentity({ view, headingRef }: {
   const derivation = clientScheduleDerivation(s, view.presented)
 
   return (
-    <section className="a3-client-hero a3-stage-deep">
+    <section aria-label={t('vr3.client.nav.project')} className="a3-client-hero a3-stage-deep">
       <div className="a3-client-hero-media">
         {asset ? (
           <MediaFrame
@@ -319,7 +325,7 @@ export function PageBuildings({ view, headingRef }: {
   const t = useT()
   const buildings = selectedBuildingsOf(view)
   return (
-    <PageFrame>
+    <PageFrame label={t('vr3.client.nav.buildings')}>
       <PageLede
         eyebrow={t('vr3.client.buildings.eyebrow')}
         title={t(buildings.length > 1
@@ -331,8 +337,14 @@ export function PageBuildings({ view, headingRef }: {
         className="a3-client-building-grid"
         data-count={Math.min(buildings.length, 3)}
       >
-        {buildings.map((building) => {
+        {buildings.map((building, index) => {
           const asset = projectAsset(building.identityAssetId)
+          // The same A/B/C designation the preparation surface uses — a
+          // building's IDENTITY in this project, derived from its position
+          // in the Option's own scope, never its internal id. The site plan
+          // and the schedule name the same letters, so the client can follow
+          // one building across three sections.
+          const mark = String.fromCharCode(65 + index)
           return (
             <article key={building.id} className="a3-client-building">
               <div className="a3-client-building-media">
@@ -349,7 +361,12 @@ export function PageBuildings({ view, headingRef }: {
                 )}
               </div>
               <div className="a3-client-building-copy">
-                <h2 className="a3-client-building-name">{building.name}</h2>
+                <p className="a3-client-eyebrow">
+                  {t('vr3.scope.building', { mark })}
+                </p>
+                <h2 className="a3-client-building-name">
+                  {`${mark} · ${building.name}`}
+                </h2>
                 <p className="a3-client-building-use">{t(building.usageKey)}</p>
                 <p className="a3-client-building-metric numeric">
                   {areaText(
@@ -397,7 +414,7 @@ export function PageScopeStory({ view, headingRef }: {
   const excluded = rows.filter((r) => r.decision === 'excluded')
 
   return (
-    <PageFrame>
+    <PageFrame label={t('vr3.client.nav.scope')}>
       <PageLede
         eyebrow={t('vr3.client.scope.eyebrow', { option: view.optionName })}
         title={t('vr3.client.scope.title')}
@@ -465,10 +482,11 @@ const PHASE_LABEL_KEY: Record<string, string> = {
   handover: 'vr3.client.schedule.phase.handover',
 }
 
-export function PageScheduleStory({ view, headingRef, warning }: {
+export function PageScheduleStory({ view, headingRef, decision }: {
   view: ClientView
   headingRef: RefObject<HTMLHeadingElement>
-  warning?: React.ReactNode
+  /** The handover what-if, rendered inside the sequence it changes. */
+  decision?: React.ReactNode
 }) {
   const t = useT()
   const s = useStore()
@@ -480,7 +498,7 @@ export function PageScheduleStory({ view, headingRef, warning }: {
   const criticalPhase = phases.find((p) => p.id === derivation?.criticalPhaseId)
 
   return (
-    <PageFrame>
+    <PageFrame label={t('vr3.client.nav.schedule')}>
       <PageLede
         eyebrow={t('vr3.client.schedule.eyebrow', { option: view.optionName })}
         title={t('vr3.client.schedule.title', {
@@ -488,7 +506,6 @@ export function PageScheduleStory({ view, headingRef, warning }: {
         })}
         headingRef={headingRef}
       />
-      {warning}
       <div className="a3-client-split">
         <ClientPanel>
           <p className="a3-client-bignumber numeric">
@@ -552,6 +569,7 @@ export function PageScheduleStory({ view, headingRef, warning }: {
               </div>
             </div>
           ) : null}
+          {decision}
         </ClientPanel>
       </div>
     </PageFrame>
@@ -574,7 +592,7 @@ export function PageInvestment({ view, headingRef, onConclude, comparison }: {
   const catalogue = kgCatalogue(s.opportunityId)
 
   return (
-    <PageFrame>
+    <PageFrame label={t('vr3.client.nav.investment')}>
       <PageLede
         eyebrow={t('vr3.client.investment.eyebrow', { option: view.optionName })}
         title={t('vr3.client.investment.title')}
@@ -599,12 +617,12 @@ export function PageInvestment({ view, headingRef, onConclude, comparison }: {
           </p>
           <dl className="a3-client-metric-grid">
             <div>
-              <dt>{t('vr3.client.investment.leadRate')}</dt>
-              <dd className="numeric">
-                {result.leadRate.display
-                  ? `${result.leadRate.display}`
-                  : '—'}
-              </dd>
+              {/* A rate without its denominator is a number nobody can check
+                  (rule 39 / DATA-001): the label names the norm the
+                  denominator comes from, and it comes from the rate itself
+                  rather than being written here a second time. */}
+              <dt>{result.leadRate.denominatorLabel}</dt>
+              <dd className="numeric">{result.leadRate.display}</dd>
             </div>
             <div>
               <dt>{t('vr3.client.investment.duration')}</dt>

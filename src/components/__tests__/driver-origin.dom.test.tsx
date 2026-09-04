@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
 import {
   completeKgConfiguration, confirmBuildingReviewSections,
   decideAllKgScope, enterOptionWorkspace, completeBuildingScope,
   saveOptionBaseline,
+  startClientPresentation,
 } from '../../test/offer-option'
 import { __resetStoreForTests, useStore } from '../../state/store'
 
@@ -105,33 +106,27 @@ describe('DC-21: происхождение раскрывается у кажд
 
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
+    // VR3-05 (T-034): Client Mode opens on its boundary screen; the
+    // narrative these suites are about begins one deliberate click later.
+    await startClientPresentation(user)
 
-    // OfferPanel's rich Level-3 "Nachweise & Verlauf" dialog (origin
-    // popovers, per-driver reconciliation table) no longer renders in
-    // Kundenansicht at all — the rail itself is unmounted in client mode;
-    // PresentationShell's §3 Ergebnis shows a simpler top-5 Kostentreiber-
-    // Auszug instead (rule 35's actual minimum bar is up to 5 drivers +
-    // sum = total, not the drill-down audit trail — see PresentationShell
-    // .tsx and its own memory note on this disclosed scope boundary). The
-    // underlying invariant this test exists to prove — DIN 276 scope
-    // naming, never a building name — still holds, even more directly:
-    // the new surface never calls the building-attribution resolver at
-    // all (it strips any building-id key prefix and aggregates by label
-    // instead of ever reading a building's display name).
-    //
-    // VR2-06: the narrative shell now shows one full-bleed page at a time
-    // (switched by the top-bar strip) instead of a scrolled stack of every
-    // section — §3 Ergebnis only mounts once its tab is active, and the
-    // tab-switch cross-fade resolves on a real timer tick, not
-    // synchronously with the click (`src/test/setup.ts`'s `requestAnimation
-    // Frame` polyfill).
-    await user.click(screen.getByRole('button', { name: 'Ergebnis' }))
-    await waitFor(() => {
-      expect(screen.getByRole('region', { name: 'Ergebnis' })).toBeInTheDocument()
+    // VR3-05: the surface moved again — the approved client narrative
+    // (T-040) replaces the Kostentreiber extract with the Option's
+    // INVESTMENT COMPOSITION by cost group. The invariant this test exists
+    // to prove is unchanged and is what is asserted below: a client-facing
+    // attribution names the DIN 276 cost group, never a building. The new
+    // surface cannot break it by construction — it reads the KG catalogue's
+    // own chapter titles and never touches a building's display name — so
+    // this is a regression guard on that construction, not on a formatter.
+    await user.click(screen.getByRole('button', { name: 'Investition' }))
+    const composition = await screen.findByRole('heading', {
+      level: 2, name: 'Zusammensetzung',
     })
-    const ergebnis = screen.getByRole('region', { name: 'Ergebnis' })
-    expect(within(ergebnis).getByText('Kostentreiber')).toBeInTheDocument()
-    expect(ergebnis).not.toHaveTextContent('Haus A')
-    expect(ergebnis).not.toHaveTextContent('Haus B')
+    const panel = composition.closest('article') as HTMLElement
+    expect(panel).not.toBeNull()
+    expect(within(panel).getByText('Baukonstruktion')).toBeInTheDocument()
+    expect(within(panel).getByText('Technische Anlagen')).toBeInTheDocument()
+    expect(panel).not.toHaveTextContent('Haus A')
+    expect(panel).not.toHaveTextContent('Haus B')
   })
 })

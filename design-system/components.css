@@ -744,6 +744,11 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-stage{background:var(--color-surface-stage);border:var(--border-contrast-2px);color:var(--color-text-primary)}
 .a3-stage-deep{background:var(--color-surface-stage-deep);color:var(--color-text-stage-deep-primary)}
 .a3-stage-deep .a3-display-accent{color:var(--color-text-display-accent-on-stage-deep)}
+/* VR3-05: the client narrative's hero total is rule 31's single orange, on a
+   WHITE panel — the surface where `--color-text-display-accent` measures
+   3,10:1 and is therefore permitted. Scoped to the client panel so no other
+   consumer of `.a3-display-accent` changes. */
+.a3-client-panel .a3-display-accent{color:var(--color-text-display-accent)}
 
 /* Surface foundations are four comparable governance specimens. Each shows
    its role through real composition before the lifecycle caption. */
@@ -3397,8 +3402,8 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 
 /* ── entry (T-034) ──────────────────────────────────────────────────── */
 .a3-client-entry{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);flex:1 1 auto;min-height:0}
-.a3-client-entry-media{position:relative;min-width:0;overflow:hidden}
-.a3-client-entry-media figure{height:100%;display:flex;flex-direction:column}
+.a3-client-entry-media{position:relative;min-width:0;min-height:0;overflow:hidden}
+.a3-client-entry-media figure{position:absolute;inset:0;height:100%;display:flex;flex-direction:column}
 .a3-client-entry-media [class*="aspect-media-"]{flex:1 1 auto;min-height:0;aspect-ratio:auto}
 .a3-client-entry-copy{display:flex;flex-direction:column;justify-content:center;gap:var(--space-4);min-width:0;padding:var(--space-8) var(--space-7)}
 .a3-client-entry-title{margin:0;max-width:18ch;font-size:var(--type-display-numeric-desktop-size);line-height:var(--type-display-numeric-desktop-line);font-weight:var(--type-heading-weight);color:var(--color-text-stage-deep-primary);overflow-wrap:break-word;hyphens:auto}
@@ -3415,10 +3420,14 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-client-hero-media{position:absolute;inset:0}
 .a3-client-hero-media figure{height:100%;display:flex;flex-direction:column}
 .a3-client-hero-media [class*="aspect-media-"]{flex:1 1 auto;min-height:0;aspect-ratio:auto}
-/* The scrim is a legibility device, not decoration: white display type over
-   a photograph needs a guaranteed contrast floor, and a flat tint would
-   dull the image everywhere instead of only where the words are. */
-.a3-client-hero::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,var(--color-surface-stage-deep) 0%,color-mix(in srgb,var(--color-surface-stage-deep) 72%,transparent) 38%,transparent 74%)}
+/* The scrim is a legibility device: white display type over a photograph
+   needs a guaranteed contrast floor. It is FLAT and it is a token — rule 4
+   forbids gradients outright, and the approved target's soft edge is
+   illustrative styling, not approved hierarchy (design-system-delta,
+   canonical ownership rule 7). A uniform overlay costs the image a little
+   brightness everywhere and buys the headline a contrast floor that does
+   not depend on where the crop happens to be dark. */
+.a3-client-hero::after{content:'';position:absolute;inset:0;background:var(--color-surface-overlay)}
 .a3-client-hero-copy{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:center;gap:var(--space-3);max-width:var(--measure-body-max);height:100%;padding:var(--space-8) var(--space-7)}
 .a3-client-hero-title{margin:0;font-size:var(--type-display-numeric-desktop-size);line-height:var(--type-display-numeric-desktop-line);font-weight:var(--type-heading-weight);color:var(--color-text-stage-deep-primary);overflow-wrap:break-word;hyphens:auto}
 .a3-client-hero-title:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--space-1)}
@@ -3437,7 +3446,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-client-building-copy{display:grid;gap:var(--space-2);padding:var(--space-5)}
 .a3-client-building-name{margin:0;font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--type-section-title-weight);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
 .a3-client-building-use{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-secondary)}
-.a3-client-building-metric{margin:var(--space-2) 0 0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-label-weight);color:var(--color-text-primary)}
+.a3-client-building-metric{margin:var(--space-2) 0 0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-label-weight);color:var(--color-text-primary);text-align:left}
 .a3-client-building-metric-unit{font-size:var(--type-small-size);font-weight:var(--type-small-weight);color:var(--color-text-secondary)}
 
 /* ── schedule (T-039) ───────────────────────────────────────────────── */
@@ -3473,6 +3482,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 
 /* ── the scenario bar (T-041) ───────────────────────────────────────── */
 .a3-client-scenario-bar{position:sticky;bottom:0;z-index:2;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,auto) auto;align-items:center;gap:var(--space-5);border-top:var(--border-contrast-2px);background:var(--color-surface-default);padding:var(--space-4) var(--space-7)}
+.a3-client-scenario-identity{min-width:0}
 .a3-client-scenario-title{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-label-weight);color:var(--color-text-primary)}
 .a3-client-scenario-source{margin:var(--space-1) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
 .a3-client-scenario-delta{display:flex;align-items:baseline;gap:var(--space-3);margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--type-display-numeric-weight);color:var(--color-text-display-accent)}

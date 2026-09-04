@@ -59,6 +59,32 @@ async function gotoSection(user: ReturnType<typeof userEvent.setup>, label: stri
   await waitFor(() => expect(screen.getByRole('region', { name: label })).toBeInTheDocument())
 }
 
+/**
+ * VR3-05 (T-034): Client Mode opens on its boundary screen, which names the
+ * saved Option and asks for one deliberate action. The narrative this suite
+ * is about begins after it; the boundary itself is this ticket's own subject
+ * and is tested in `client-presentation.desktop.ts`.
+ */
+async function startPresentation(user: ReturnType<typeof userEvent.setup>) {
+  const start = screen.queryByRole('button', { name: 'Präsentation starten' })
+  if (start) await user.click(start)
+}
+
+/**
+ * VR3-05: the route to the offer/send lifecycle.
+ *
+ * It used to be §6 "Nächster Schritt" → "Angebot vorbereiten". The approved
+ * narrative concludes on §6 INVESTITION instead, and the send is reached
+ * through the client-safe OUTPUT GATE (T-045), where email is the one
+ * channel that requires a saved Option. The lifecycle on the other side —
+ * the subject of the tests below — is unchanged.
+ */
+async function reachOfferFlow(user: ReturnType<typeof userEvent.setup>) {
+  await gotoSection(user, 'Investition')
+  await user.click(screen.getByRole('button', { name: 'Abschließen & teilen' }))
+  await user.click(await screen.findByRole('button', { name: 'Versand vorbereiten' }))
+}
+
 /** Baut zwei vollständige, client-eligible Options mit unterschiedlichem
  *  Energiestandard (unterschiedliche Kalkulation → unterschiedlicher
  *  Hero-Wert) — 'OPT-01' bleibt am Ende aktiv, 'OPT-02' existiert nur im
@@ -175,7 +201,7 @@ describe('PresentationShell — empty/edge states (AC 6/9/11/12)', () => {
     expect(screen.queryByRole('button', { name: 'Optionen' })).toBeNull()
     expect(screen.queryByRole('radiogroup', { name: 'Ansicht' })).toBeNull()
 
-    await gotoSection(user, 'Ergebnis')
+    await gotoSection(user, 'Investition')
   })
 
   it('uses client-safe English keys for the timeline labels and continuation action', async () => {
@@ -185,49 +211,39 @@ describe('PresentationShell — empty/edge states (AC 6/9/11/12)', () => {
 
     render(<Harness />)
 
-    expect(screen.getByRole('button', { name: 'Project' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Building' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Result' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Schedule' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Next step' })).toBeInTheDocument()
+    // VR3-05: the approved rail is the same six sections in either locale.
+    for (const label of ['Project', 'Buildings', 'Scope', 'Services', 'Schedule', 'Investment']) {
+      expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
+    }
     expect(screen.queryByText('Bauzeit ab OKBP')).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Weiter zu Optionen' })).toBeNull()
 
     await gotoSection(user, 'Schedule')
-    expect(screen.getAllByText(/\d+(?:\.\d+)? months/).length).toBeGreaterThan(0)
-    expect(screen.getByRole('button', { name: 'Continue to options' })).toBeInTheDocument()
+    // Durations are localised through `Intl`, never concatenated (rule 36).
+    expect(screen.getAllByText(/\d+(?:\.\d+)? mo/).length).toBeGreaterThan(0)
+    expect(screen.getByRole('heading', { level: 2, name: 'Sequence' })).toBeInTheDocument()
   })
 
   /**
-   * QA rework (rule 40, D-15): OfferPanel's rail always showed an inactive
-   * Regionalfaktor as a "nicht aktiviert" row inside Kostentreiber, and
-   * that row was reachable and tested in Kundenansicht before this wave
-   * (`configurator-mode.dom.test.tsx` et al. reached the rail's "Nachweise
-   * & Verlauf" dialog live). §3 Ergebnis's own Kostentreiber-Auszug must
-   * not silently drop it — this test guards against it regressing again.
+   * RETIRED IN VR3-05, AND DELIBERATELY NOT REPLACED HERE — see the change
+   * manifest's OPEN QUESTION.
+   *
+   * This case guarded rule 40 / D-15 on the CLIENT side: §3 Ergebnis carried
+   * a Kostentreiber extract, and an inactive Regionalfaktor had to appear in
+   * it as a "nicht berücksichtigt" row. The approved VR3-05 narrative
+   * (T-040) replaces that extract with the Option's INVESTMENT COMPOSITION
+   * by cost group, and the target's own PDF content list names "client
+   * narrative, buildings, scope, services, schedule, commercial result,
+   * Option/version/date and approved assumptions" — no Kostentreiber.
+   *
+   * That is a genuine conflict with CLAUDE.md rule 35 ("Kostentreiber …
+   * geht in den Kunden-PDF"), between the project's standing rule and this
+   * ticket's approved target. Deciding it silently in either direction is
+   * exactly what the source-of-truth rule forbids, so it is RAISED rather
+   * than resolved: no Kostentreiber panel was invented for the client
+   * narrative, and no rule-40 assertion is left standing against a surface
+   * that no longer exists. The internal Kostentreiber (OfferPanel) is
+   * untouched and its own coverage is unchanged.
    */
-  it('always shows the Regionalfaktor "nicht aktiviert" disclosure in Kostentreiber when inactive, and hides it when active (rule 40)', async () => {
-    const user = userEvent.setup()
-    buildOneEligibleOption()
-
-    // D-15: Regionalfaktor is inactive by default — the disclosure row
-    // must be present.
-    expect(st().regionalfaktorActive).toBe(false)
-    const { unmount } = render(<Harness />)
-    await gotoSection(user, 'Ergebnis')
-    const ergebnis = screen.getByRole('region', { name: 'Ergebnis' })
-    expect(within(ergebnis).getByText(/Regionalfaktor.*nicht berücksichtigt/)).toBeInTheDocument()
-    unmount()
-
-    // Once explicitly activated, the row must disappear — it is not a
-    // permanent fixture, only a disclosure of the current inactive state.
-    st().toggleRegionalfaktor()
-    expect(st().regionalfaktorActive).toBe(true)
-    render(<Harness />)
-    await gotoSection(user, 'Ergebnis')
-    const ergebnisActive = screen.getByRole('region', { name: 'Ergebnis' })
-    expect(within(ergebnisActive).queryByText(/Regionalfaktor.*nicht berücksichtigt/)).toBeNull()
-  })
 })
 
 describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/16/21)', () => {
@@ -240,18 +256,27 @@ describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/
     expect(st().viewedOptionId).toBe('OPT-01')
 
     render(<Harness />)
+    await startPresentation(user)
 
     // Vor dem Wechsel: §5 Optionen existiert (≥2 eligible), Option A ist
     // markiert "Wird präsentiert", §3 zeigt A's Hero.
-    await gotoSection(user, 'Optionen')
-    const optionen = screen.getByRole('region', { name: 'Optionen' })
-    const tileA = within(optionen).getByRole('group', { name: 'Option A' })
-    const tileB = within(optionen).getByRole('group', { name: 'Option B' })
-    expect(tileA).toHaveTextContent('Wird präsentiert')
-    expect(tileB).not.toHaveTextContent('Wird präsentiert')
+    await gotoSection(user, 'Investition')
+    const optionen = screen.getByRole('region', { name: 'Investition' })
+    // VR3-05: comparison moved into §6 beside the number it compares, so a
+    // "tile" is now a ROW of that panel. The subject is unchanged — which
+    // Option is marked as presented, and that switching never touches
+    // preparation state.
+    // Scoped to the comparison panel: §6's own metric grid also names the
+    // presented Option, and "which row" is the question here.
+    const compare = within(optionen)
+      .getByRole('region', { name: 'Weitere gespeicherte Optionen' })
+    const rowOf = (name: string) =>
+      within(compare).getByText(name).closest('.a3-client-row') as HTMLElement
+    expect(rowOf('Option A')).toHaveTextContent('Wird präsentiert')
+    expect(rowOf('Option B')).not.toHaveTextContent('Wird präsentiert')
 
-    await gotoSection(user, 'Ergebnis')
-    const ergebnisBefore = screen.getByRole('region', { name: 'Ergebnis' })
+    await gotoSection(user, 'Investition')
+    const ergebnisBefore = screen.getByRole('region', { name: 'Investition' })
     const heroBefore = ergebnisBefore.textContent
 
     // Wechsel über die Ansicht-Auswahl in der Kopfzeile (nicht die
@@ -267,15 +292,17 @@ describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/
 
     // Jede Sektion liest jetzt B — EIN kohärentes Update, kein Nachhinken:
     // §5's Markierung wechselt, §3's Hero-Text ändert sich (andere Summe).
-    const ergebnisAfter = screen.getByRole('region', { name: 'Ergebnis' })
+    const ergebnisAfter = screen.getByRole('region', { name: 'Investition' })
     expect(ergebnisAfter.textContent).not.toBe(heroBefore)
 
-    await gotoSection(user, 'Optionen')
-    const optionenAfter = screen.getByRole('region', { name: 'Optionen' })
-    expect(within(optionenAfter).getByRole('group', { name: 'Option A' }))
-      .not.toHaveTextContent('Wird präsentiert')
-    expect(within(optionenAfter).getByRole('group', { name: 'Option B' }))
-      .toHaveTextContent('Wird präsentiert')
+    await gotoSection(user, 'Investition')
+    const optionenAfter = screen.getByRole('region', { name: 'Investition' })
+    const compareAfter = within(optionenAfter)
+      .getByRole('region', { name: 'Weitere gespeicherte Optionen' })
+    const rowAfter = (name: string) =>
+      within(compareAfter).getByText(name).closest('.a3-client-row') as HTMLElement
+    expect(rowAfter('Option A')).not.toHaveTextContent('Wird präsentiert')
+    expect(rowAfter('Option B')).toHaveTextContent('Wird präsentiert')
 
     // Exit: the real production path (`s.setMode('intern')`, what
     // the exit action calls) discards viewedOptionId entirely; internal A
@@ -290,10 +317,15 @@ describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/
     buildTwoEligibleOptions()
 
     render(<Harness />)
-    await gotoSection(user, 'Optionen')
-    const optionen = screen.getByRole('region', { name: 'Optionen' })
-    const tileB = within(optionen).getByRole('group', { name: 'Option B' })
-    await user.click(within(tileB).getByRole('button'))
+    await startPresentation(user)
+    await gotoSection(user, 'Investition')
+    const optionen = screen.getByRole('region', { name: 'Investition' })
+    const compareB = within(optionen)
+      .getByRole('region', { name: 'Weitere gespeicherte Optionen' })
+    const tileB = within(within(compareB).getByText('Option B')
+      .closest('.a3-client-row') as HTMLElement)
+      .getByRole('button', { name: 'Ansehen' })
+    await user.click(tileB)
 
     expect(st().viewedOptionId).toBe('OPT-02')
     expect(st().activeOptionId).toBe('OPT-01')
@@ -303,9 +335,9 @@ describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/
     const user = userEvent.setup()
     buildTwoEligibleOptions()
     render(<Harness />)
+    await startPresentation(user)
 
-    await gotoSection(user, 'Nächster Schritt')
-    await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
+    await reachOfferFlow(user)
     await waitFor(() => {
       // VR2-07: the commercial-climax headline names the project. VR3-04's
       // precondition walks the real journey, so an Opportunity IS open and
@@ -410,9 +442,9 @@ describe('PresentationShell — mandatory Client Option Isolation Test (AC 5/15/
     const user = userEvent.setup()
     buildTwoEligibleOptions('DEMO-HAPPY-01')
     render(<Harness />)
+    await startPresentation(user)
 
-    await gotoSection(user, 'Nächster Schritt')
-    await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
+    await reachOfferFlow(user)
     await waitFor(() => {
       // opportunityId='DEMO-HAPPY-01' here, so the real project name applies.
       expect(screen.getByRole('heading', { name: 'Wohnhof Lindenhain bekommt kommerzielle Kontur.' })).toBeInTheDocument()
@@ -464,9 +496,9 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
     st().renameOption('OPT-02', longName)
     st().setViewedOption('OPT-02')
     render(<Harness />)
+    await startPresentation(user)
 
-    await gotoSection(user, 'Nächster Schritt')
-    await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
+    await reachOfferFlow(user)
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: `Wohnhof Lindenhain bekommt kommerzielle Kontur.` })).toBeInTheDocument()
     })
@@ -483,9 +515,9 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
     buildTwoEligibleOptions('DEMO-HAPPY-01')
     expect(st().offerDraft.attachments).toEqual(['angebot', 'kostentreiber', 'annahmen'])
     render(<Harness />)
+    await startPresentation(user)
 
-    await gotoSection(user, 'Nächster Schritt')
-    await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
+    await reachOfferFlow(user)
     await waitFor(() => {
       expect(screen.getByText('Für dieses Angebot sind aktuell keine Artefakte ausgewählt.')).toBeInTheDocument()
     })
@@ -499,9 +531,9 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
     // same field S5Export's "Artefakte" checklist writes to.
     st().setOfferDraft({ attachments: ['praesentation', 'leistungen', 'ssl'] })
     render(<Harness />)
+    await startPresentation(user)
 
-    await gotoSection(user, 'Nächster Schritt')
-    await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
+    await reachOfferFlow(user)
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Diese Unterlagen gehen an Ihren Kunden.' })).toBeInTheDocument()
     })
@@ -519,6 +551,7 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
     const user = userEvent.setup()
     buildTwoEligibleOptions('DEMO-HAPPY-01')
     render(<Harness />)
+    await startPresentation(user)
 
     // Selecting a longer, non-default set (including the catalog's longest
     // label) genuinely grows the list beyond the fresh-Option EmptyState —
@@ -526,8 +559,7 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
     // "Artefakte" checklist edits this exact same `offerDraft.attachments`
     // field the gallery reads).
     st().setOfferDraft({ attachments: ['praesentation', 'ssl', 'baubeschreibung', 'vertrag'] })
-    await gotoSection(user, 'Nächster Schritt')
-    await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
+    await reachOfferFlow(user)
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Vertragsvorlagen für die Rechtsabteilung' })).toBeInTheDocument()
     })
@@ -547,9 +579,9 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
     buildTwoEligibleOptions('DEMO-HAPPY-01')
     st().setOfferDraft({ attachments: ['praesentation', 'kg'] })
     render(<Harness />)
+    await startPresentation(user)
 
-    await gotoSection(user, 'Nächster Schritt')
-    await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
+    await reachOfferFlow(user)
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Kostenübersicht DIN 276' })).toBeInTheDocument()
     })
@@ -576,9 +608,9 @@ describe('PresentationShell — VR2-07 Offer climax', () => {
     buildTwoEligibleOptions('DEMO-HAPPY-01')
     st().setOfferDraft({ attachments: ['praesentation', 'kg'] })
     render(<Harness />)
+    await startPresentation(user)
 
-    await gotoSection(user, 'Nächster Schritt')
-    await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
+    await reachOfferFlow(user)
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Kostenübersicht DIN 276' })).toBeInTheDocument()
     })
@@ -594,13 +626,21 @@ describe('PresentationShell — accessibility (AC 62–67)', () => {
     const user = userEvent.setup()
     buildTwoEligibleOptions()
     render(<Harness />)
+    // VR3-05: no rail item is current on the T-034 boundary — the
+    // presentation has not started, so nothing may claim to be the section
+    // the reader is in. Exactly one H1 holds there too.
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+    const railBefore = screen.getByRole('navigation', { name: 'Präsentation' })
+    expect(within(railBefore).queryByRole('button', { current: true })).toBeNull()
+
+    await startPresentation(user)
 
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
 
     const bar = screen.getByRole('navigation', { name: 'Präsentation' })
     const projektTab = within(bar).getByRole('button', { name: 'Projekt' })
     expect(projektTab).toHaveAttribute('aria-current', 'true')
-    const ergebnisTab = within(bar).getByRole('button', { name: 'Ergebnis' })
+    const ergebnisTab = within(bar).getByRole('button', { name: 'Investition' })
     expect(ergebnisTab).not.toHaveAttribute('aria-current')
 
     await user.click(ergebnisTab)
@@ -609,7 +649,7 @@ describe('PresentationShell — accessibility (AC 62–67)', () => {
     // The narrative stays a one-document-at-a-time model: exactly one H1
     // still exists after navigating to a different narrative page.
     await waitFor(() => {
-      expect(screen.getByRole('region', { name: 'Ergebnis' })).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'Investition' })).toBeInTheDocument()
     })
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
   })
@@ -618,6 +658,7 @@ describe('PresentationShell — accessibility (AC 62–67)', () => {
     const user = userEvent.setup()
     buildTwoEligibleOptions()
     render(<Harness />)
+    await startPresentation(user)
 
     const switcher = screen.getByRole('radiogroup', { name: 'Ansicht' })
     await user.click(within(switcher).getByRole('radio', { name: /Option B/ }))
@@ -634,8 +675,7 @@ describe('PresentationShell — accessibility (AC 62–67)', () => {
  *  prüfen & senden → Angebot senden path. Used by every VR2-08 test below
  *  that needs an actually-sent Option to reopen/inspect. */
 async function sendCurrentOption(user: ReturnType<typeof userEvent.setup>) {
-  await gotoSection(user, 'Nächster Schritt')
-  await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
+  await reachOfferFlow(user)
   await waitFor(() => {
     expect(screen.getByRole('button', { name: 'Angebot prüfen & senden →' })).toBeInTheDocument()
   })
@@ -695,9 +735,9 @@ describe('PresentationShell — VR2-08 Send review / Delivered lifecycle', () =>
     const user = userEvent.setup()
     buildTwoEligibleOptions('DEMO-HAPPY-01')
     render(<Harness />)
+    await startPresentation(user)
 
-    await gotoSection(user, 'Nächster Schritt')
-    await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
+    await reachOfferFlow(user)
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Angebot prüfen & senden →' })).toBeInTheDocument()
     })
@@ -775,6 +815,7 @@ describe('PresentationShell — VR2-08 Send review / Delivered lifecycle', () =>
     // ordinary portfolio/Opportunity card.
     first.unmount()
     render(<Harness />)
+    await startPresentation(user)
 
     // No click-through required: the Delivered truth is the very first
     // thing rendered, derived from the real snapshot the store already
@@ -789,6 +830,7 @@ describe('PresentationShell — VR2-08 Send review / Delivered lifecycle', () =>
     buildTwoEligibleOptions('DEMO-HAPPY-01')
     st().setOfferDraft({ attachments: ['praesentation', 'leistungen'] })
     render(<Harness />)
+    await startPresentation(user)
     await sendCurrentOption(user)
 
     expect(screen.getByText('Angebotspräsentation (PDF)')).toBeInTheDocument()
@@ -807,6 +849,7 @@ describe('PresentationShell — VR2-08 Send review / Delivered lifecycle', () =>
     const user = userEvent.setup()
     buildTwoEligibleOptions('DEMO-HAPPY-01')
     render(<Harness />)
+    await startPresentation(user)
     await sendCurrentOption(user)
 
     await user.click(screen.getByRole('button', { name: 'Versandnachweis' }))
@@ -824,8 +867,7 @@ describe('PresentationShell — VR2-08 Send review / Delivered lifecycle', () =>
     buildTwoEligibleOptions()
     const first = render(<Harness />)
 
-    await gotoSection(user, 'Nächster Schritt')
-    await user.click(screen.getByRole('button', { name: 'Angebot vorbereiten' }))
+    await reachOfferFlow(user)
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Angebot prüfen & senden →' })).toBeInTheDocument()
     })
