@@ -3428,6 +3428,10 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    brightness everywhere and buys the headline a contrast floor that does
    not depend on where the crop happens to be dark. */
 .a3-client-hero::after{content:'';position:absolute;inset:0;background:var(--color-surface-overlay)}
+/* Over a photograph the eyebrow cannot use the secondary ink: a caption-
+   sized grey on an unpredictable image is the one place AA fails silently.
+   On the deep stage's flat panels secondary is fine; here it is not. */
+.a3-client-hero .a3-client-eyebrow,.a3-client-entry .a3-client-eyebrow{color:var(--color-text-stage-deep-primary)}
 .a3-client-hero-copy{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:center;gap:var(--space-3);max-width:var(--measure-body-max);height:100%;padding:var(--space-8) var(--space-7)}
 .a3-client-hero-title{margin:0;font-size:var(--type-display-numeric-desktop-size);line-height:var(--type-display-numeric-desktop-line);font-weight:var(--type-heading-weight);color:var(--color-text-stage-deep-primary);overflow-wrap:break-word;hyphens:auto}
 .a3-client-hero-title:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--space-1)}
