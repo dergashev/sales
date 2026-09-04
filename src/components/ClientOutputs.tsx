@@ -6,7 +6,7 @@ import {
 } from '../state/store'
 import { scenarioChangeCount } from '../state/clientScenario'
 import { signedMoneyText } from '../design-system/CommercialNumber'
-import { localizeMoneyText, useT } from '../i18n'
+import { localizeMoneyText, useT, useTx } from '../i18n'
 import { Button } from './primitives'
 import { ClientPanel, PageFrame, PageLede } from './ClientNarrative'
 import type { ClientView } from './ClientNarrative'
@@ -351,6 +351,7 @@ function OutputPreflight({
  */
 export function ClientPrintDocument({ view }: { view: ClientView }) {
   const t = useT()
+  const tx = useTx()
   const s = useStore()
   const changed = scenarioChangeCount(s.clientScenario) > 0
   const delta = clientScenarioDelta(s)
@@ -384,7 +385,12 @@ export function ClientPrintDocument({ view }: { view: ClientView }) {
       <p className="a3-client-print-total numeric">
         {localizeMoneyText(result.total.display, view.language)}
       </p>
-      <p className="a3-client-print-total-label">{result.totalLabel}</p>
+      {/* QA-02. The NUMBER above this line was localised last cycle and its
+          own LABEL was not, so the sheet read "38,850,000" over
+          "Gesamt netto · Grundleistung All3". The identical string one file
+          over (the on-screen hero) was bridged in the same commit — the
+          sibling was missed. Same `tx` bridge, same reason. */}
+      <p className="a3-client-print-total-label">{tx(result.totalLabel)}</p>
       <p className="a3-client-print-note">{t('vr3.client.print.demo')}</p>
     </div>
   )

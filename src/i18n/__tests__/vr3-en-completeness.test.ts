@@ -191,6 +191,11 @@ describe('VR3-01 · nothing on the owned surfaces can reach EN untranslated', ()
       // standing over an English presentation's largest number (QA-01's
       // family, cycle 2).
       'src/components/ClientNarrative.tsx: tx(result.totalLabel)',
+      // The same label on the CLIENT-SAFE PRINT DOCUMENT — the artefact the
+      // client keeps. Its number was localised in cycle 2 and its label was
+      // not, so the sheet read "38,850,000" over "Gesamt netto ·
+      // Grundleistung All3" (QA-02). Bridged now, like its on-screen twin.
+      'src/components/ClientOutputs.tsx: tx(result.totalLabel)',
       'src/components/PresentationShell.tsx: tx(p.leadRate.denominatorLabel)',
       'src/components/PresentationShell.tsx: tx(p.result.totalLabel)',
       'src/components/PresentationShell.tsx: tx(p.result.totalLabel)',
@@ -304,5 +309,76 @@ describe('VR3-01 · nothing on the owned surfaces can reach EN untranslated', ()
     // Sanity: the sweep must actually find keys, or it proves nothing.
     expect(seen.size).toBeGreaterThan(50)
     expect(missing).toEqual([])
+  })
+})
+
+/**
+ * THE NEGATIVE CASE — the gap that let the same defect ship three times.
+ *
+ * Every guard above scans for something PRESENT and checks it resolves:
+ * a `tx('…')` literal, a `vr3.*` key. None of them can see something
+ * ABSENT. An engine-composed German label rendered as a bare
+ * `{result.totalLabel}` is invisible to all of them, which is exactly how
+ * this shipped:
+ *
+ *   cycle 1 — the client hero's `totalLabel` rendered raw, so
+ *             "GESAMT NETTO · GRUNDLEISTUNG ALL3" stood over an English
+ *             presentation's largest number;
+ *   cycle 2 — fixed the hero, and missed the identical string in
+ *             `ClientPrintDocument` one file over, in the same commit;
+ *   cycle 3 — QA found it on the artefact the client keeps (QA-02).
+ *
+ * Three passes, one mistake, because the detector could only confirm what
+ * had already been done rather than find what had not. So this asserts the
+ * INVERSE: on an owned surface, an engine-composed German label is never
+ * rendered bare. It reads the same sources the guards above read, and it
+ * fails on an unwrapped render rather than on a missing dictionary row.
+ *
+ * `denominatorLabel` is the DECLARED EXCEPTION and is asserted as one:
+ * LOCALE-009 keeps normative denominators (`BGF oberirdisch`,
+ * `WFL nach WoFlV`, `NUF nach DIN 277`) out of machine translation on
+ * purpose, so it must stay bare — and stating that here is what stops a
+ * future reader from "fixing" it.
+ */
+describe('VR3 · an engine-composed German label is never rendered bare', () => {
+  /** Fields the engine composes in German by contract. */
+  const BRIDGED_LABELS = ['totalLabel']
+  /** Fields that must stay German (LOCALE-009). Bare is CORRECT here. */
+  const DELIBERATELY_BARE = ['denominatorLabel']
+
+  it('renders every totalLabel through the tx bridge, on every owned surface', () => {
+    const bare: string[] = []
+    for (const surface of OWNED_SURFACES) {
+      const text = withoutComments(source(surface))
+      for (const field of BRIDGED_LABELS) {
+        // A JSX interpolation of the field that is NOT preceded by `tx(`.
+        // `{tx(x.totalLabel)}` is fine; `{x.totalLabel}` is the defect.
+        const pattern = new RegExp(String.raw`\{\s*([A-Za-z_$][\w$.?]*\.${field})\s*\}`, 'g')
+        for (const match of text.matchAll(pattern)) {
+          bare.push(`${surface}: {${match[1]}} is not bridged`)
+        }
+      }
+    }
+    expect(bare).toEqual([])
+  })
+
+  it('still finds the fields at all, so the sweep proves something', () => {
+    // A guard that silently matches nothing is worse than no guard: it
+    // reports success forever. This pins that the fields are really there.
+    let bridged = 0
+    let bare = 0
+    for (const surface of OWNED_SURFACES) {
+      const text = withoutComments(source(surface))
+      bridged += [...text.matchAll(/\btx\(\s*[A-Za-z_$][\w$.?]*\.totalLabel\s*\)/g)].length
+      for (const field of DELIBERATELY_BARE) {
+        bare += [...text.matchAll(
+          new RegExp(String.raw`\{\s*[A-Za-z_$][\w$.?]*\.${field}\s*\}`, 'g'),
+        )].length
+      }
+    }
+    expect(bridged).toBeGreaterThan(0)
+    // The normative denominator is rendered bare on purpose, and that is
+    // the state this suite is asserting is CORRECT.
+    expect(bare).toBeGreaterThan(0)
   })
 })

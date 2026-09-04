@@ -253,6 +253,31 @@ describe('VR3-05 · the saved total is typeset for the active UI language', () =
  * localised its own delta to "+ 310,000 €".
  */
 describe('VR3-05 · the client print document typesets its total for the reader', () => {
+  it('prints the total AND its label in the reader\'s language (QA-02)', async () => {
+    const user = userEvent.setup()
+    buildSavedOptions(1)
+    render(<Harness />)
+    await startPresentation(user)
+
+    const label = () =>
+      document.querySelector('.a3-client-print-total-label')?.textContent?.trim() ?? ''
+    const total = () =>
+      document.querySelector('.a3-client-print-total')?.textContent?.trim() ?? ''
+
+    // DE is the source language: both halves German.
+    expect(total()).toMatch(/\d{1,3}(?:\.\d{3})+/)
+    expect(label()).toMatch(/Gesamt netto/i)
+
+    act(() => { st().setUiLanguage('en') })
+
+    // QA-02: cycle 2 localised the NUMBER and left the LABEL under it in
+    // German, so the sheet read "38,850,000" over "Gesamt netto ·
+    // Grundleistung All3". Both halves must move together.
+    expect(total()).toMatch(/\d{1,3}(?:,\d{3})+/)
+    expect(label()).not.toMatch(/Gesamt netto/i)
+    expect(label()).toMatch(/net total/i)
+  })
+
   it('prints EN grouping under EN and DE grouping under DE', async () => {
     const user = userEvent.setup()
     buildSavedOptions(1)
