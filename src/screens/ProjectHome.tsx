@@ -157,22 +157,16 @@ export function ProjectHome() {
   const t = useT()
   const project = demoProject(s.opportunityId)
   const analysis = project ? s.projectAnalyses[project.id] : undefined
-  const jobState = analysis?.jobState
   const [stageAnnouncement, setStageAnnouncement] = useState('')
 
-  // M-03: completion is one meaningful transition, and it has to be
-  // ANNOUNCED. The announcement cannot live inside the job: the transition
-  // replaces the rail's content, so a screen reader would never be told the
-  // analysis had finished. This region belongs to the shell, which survives
-  // the stage change.
-  const previousJobState = useRef(jobState)
-  useEffect(() => {
-    if (jobState === 'COMPLETE' && previousJobState.current !== 'COMPLETE') {
-      setStageAnnouncement(t('vr3.analysis.announce.complete'))
-    }
-    previousJobState.current = jobState
-  }, [jobState, t])
-
+  // The JOB's announcements — including its completion — belong to the one
+  // live region the Documents workspace owns (M-03). They used to be split
+  // between that region and this one, so a completed analysis was announced
+  // twice; the rail now survives completion in place, so there is no longer
+  // any reason for the shell to speak for it.
+  //
+  // What is left here is what genuinely outlives a stage change: the
+  // Option-creation commitment, which is mounted by three different stages.
   // The Option-creation commitment advances here, in the shell, for the
   // same reason the completion announcement does: `CreateOptionGate` is
   // mounted by three different stages and the commitment must not depend on
@@ -353,6 +347,16 @@ function DocumentsWorkspace({
       }))
     }
   }, [activeDoc, activeState, t])
+
+  // M-03: completion is ONE meaningful transition and it is announced once,
+  // through the same region that has been narrating the run.
+  const previousJobState = useRef(analysis.jobState)
+  useEffect(() => {
+    if (analysis.jobState === 'COMPLETE' && previousJobState.current !== 'COMPLETE') {
+      setAnnouncement(t('vr3.analysis.announce.complete'))
+    }
+    previousJobState.current = analysis.jobState
+  }, [analysis.jobState, t])
 
   /* ── the document set, and what is true about it ── */
 

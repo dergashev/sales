@@ -3781,6 +3781,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-wfn-list{list-style:none;margin-inline:auto;padding:0;inline-size:100%;max-inline-size:var(--measure-workspace);display:flex;flex-wrap:nowrap;align-items:stretch;gap:var(--space-1);min-width:0}
 .a3-wfn-stage{display:flex;flex-direction:column;min-width:0}
 .a3-wfn-button,.a3-wfn-static{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-1) var(--space-3);background:transparent;border:0;border-bottom:var(--border-width-strong) solid transparent;text-align:start;color:var(--color-text-secondary);min-width:0}
+.a3-wfn-button:focus-visible,.a3-wfn-subbutton:focus-visible{outline:var(--border-width-focus-emphasis) solid var(--color-focus-ring);outline-offset:var(--border-width-focus-emphasis)}
 .a3-wfn-marker{flex:none;display:inline-flex;align-items:center;justify-content:center;inline-size:var(--space-5);block-size:var(--space-5);border:var(--border-hairline);font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-bold);font-variant-numeric:tabular-nums}
 .a3-wfn-text{display:grid;gap:0;min-width:0}
 .a3-wfn-label{font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);white-space:nowrap}
