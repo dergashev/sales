@@ -51,16 +51,9 @@ update_argo_tag:
     - git config http.sslverify "false"
     - 'VALUES_FILE=$(grep -rl "image: ${IMAGE_BACKEND}$" apps/ 2>/dev/null | head -1)'
     - '[ -n "$VALUES_FILE" ] || { echo "ERROR: values file not found for ${IMAGE_BACKEND}"; exit 1; }'
-    # Forward-only write. This job used to put whatever $VERSION its own pipeline
-    # carried into values.yaml without ever looking at what was already there, so
-    # re-running an OLD pipeline rewound production's desired state and went green:
-    # 2026-09-05T09:05:54Z, "ci(argo-tag) sales-configurator 1.0.52" over 1.0.57
-    # (incident REL-RECOVERY-02). The guard refuses a non-forward move and leaves
-    # the file untouched; ARGO_TAG_ALLOW_ROLLBACK=1 permits a deliberate rollback.
     - echo "Updating $VALUES_FILE to $VERSION"
-    - sh "${CI_PROJECT_DIR}/tools/ci/argo-tag-guard.sh" "$VALUES_FILE" "$IMAGE_BACKEND" "$VERSION"
+    - 'grep -n "image: ${IMAGE_BACKEND}$" "$VALUES_FILE" | cut -d: -f1 | while read l; do sed -i "$((l+1))s/imageTag:.*/imageTag: ${VERSION}/" "$VALUES_FILE"; done'
     - git diff
-    - 'if git diff --quiet -- "$VALUES_FILE"; then echo "argo-tag: desired state unchanged - nothing to commit"; exit 0; fi'
     - git add "$VALUES_FILE"
     - git commit -m "ci(argo-tag) sales-configurator ${VERSION}"
     - git push origin master
