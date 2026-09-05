@@ -6,11 +6,12 @@ import { Pagination } from '../Pagination'
 /**
  * The canonical Pagination as a control, not as a model.
  *
- * The page model itself is proved in `state/__tests__/projectDocumentsView`.
- * What is proved here is the part a model cannot: that the control is a
- * real navigation landmark, that its boundaries use NATIVE disabled
- * semantics, that the current page is identified to assistive technology,
- * and that an ellipsis is never something a keyboard can land on.
+ * The page model itself is proved in `state/__tests__/projectDocumentsView`
+ * and `state/__tests__/projectPortfolio`. What is proved here is the part a
+ * model cannot: that the control is a real navigation landmark, that its
+ * boundaries stay in the DOM and in the tab order while refusing to move,
+ * that the current page is identified to assistive technology, and that an
+ * ellipsis is never something a keyboard can land on.
  */
 
 function renderPagination(page: number, pageCount: number) {
@@ -46,22 +47,40 @@ describe('canonical Pagination', () => {
     expect(onPageChange).toHaveBeenLastCalledWith(1)
   })
 
-  it('identifies the current page and disables only the real boundaries', () => {
-    const { nav } = renderPagination(1, 6)
+  it('identifies the current page and blocks only the real boundaries', async () => {
+    const user = userEvent.setup()
+    const { onPageChange, nav } = renderPagination(1, 6)
     expect(within(nav).getByRole('button', { name: 'Seite 1' }))
       .toHaveAttribute('aria-current', 'page')
     expect(within(nav).getByRole('button', { name: 'Seite 2' }))
       .not.toHaveAttribute('aria-current')
-    // Native disabled: a Previous on page 1 has nothing to explain, so it
-    // is genuinely inoperable rather than aria-disabled with a reason.
-    expect(within(nav).getByRole('button', { name: 'Zurück' })).toBeDisabled()
-    expect(within(nav).getByRole('button', { name: 'Weiter' })).toBeEnabled()
+    /**
+     * `aria-disabled`, not native `disabled`: the boundary stays in the DOM
+     * AND in the tab order. A keyboard reader who finds Previous missing on
+     * page 1 and present on page 2 has to re-learn the control's shape on
+     * every page; one that is always there and simply refuses to move is a
+     * stable landmark. It must still be genuinely inert.
+     */
+    const previous = within(nav).getByRole('button', { name: 'Zurück' })
+    expect(previous).toHaveAttribute('aria-disabled', 'true')
+    expect(previous).not.toBeDisabled()
+    await user.click(previous)
+    expect(onPageChange).not.toHaveBeenCalled()
+    previous.focus()
+    expect(document.activeElement).toBe(previous)
+    expect(within(nav).getByRole('button', { name: 'Weiter' }))
+      .not.toHaveAttribute('aria-disabled')
   })
 
-  it('disables Next on the final page', () => {
-    const { nav } = renderPagination(6, 6)
-    expect(within(nav).getByRole('button', { name: 'Weiter' })).toBeDisabled()
-    expect(within(nav).getByRole('button', { name: 'Zurück' })).toBeEnabled()
+  it('blocks Next on the final page without removing it', async () => {
+    const user = userEvent.setup()
+    const { onPageChange, nav } = renderPagination(6, 6)
+    const next = within(nav).getByRole('button', { name: 'Weiter' })
+    expect(next).toHaveAttribute('aria-disabled', 'true')
+    await user.click(next)
+    expect(onPageChange).not.toHaveBeenCalled()
+    expect(within(nav).getByRole('button', { name: 'Zurück' }))
+      .not.toHaveAttribute('aria-disabled')
   })
 
   it('bounds a 150-document register and keeps the ellipses out of the way', async () => {

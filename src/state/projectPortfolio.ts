@@ -1,4 +1,5 @@
 import { Decimal } from 'decimal.js'
+import { clampPage, pageCountFor, paginationRange } from '../design-system/Pagination'
 import displayFixture from '../fixtures/portfolio-display-projects.json'
 import {
   CLIENT_PROJECTION_VERSION,
@@ -380,8 +381,20 @@ export function deadlineState(iso: string | null, now: number): DeadlineState {
 
 /* ─────────────────── search, filters, ordering, URL ─────────────────── */
 
+/**
+ * The orderings the register offers.
+ *
+ * The four date orderings are the original register's. `meetingAsc` and
+ * `titleAsc` were added when the card's own thesis — *the next client
+ * meeting is the one fact that makes somebody act today* — turned out to be
+ * unorderable: the screen prioritised urgency visually and denied it
+ * structurally. Neither addition invents a ranking. `meetingAsc` orders an
+ * existing date field ascending; `titleAsc` orders the canonical identity
+ * `portfolioTitle()` already produces.
+ */
 export const PORTFOLIO_SORTS = [
   'createdDesc', 'createdAsc', 'updatedDesc', 'updatedAsc',
+  'meetingAsc', 'titleAsc',
 ] as const
 
 export type PortfolioSort = (typeof PORTFOLIO_SORTS)[number]
@@ -400,6 +413,12 @@ export type PortfolioQuery = {
   manager: string
   statuses: readonly LifecycleStatus[]
   sort: PortfolioSort
+  /**
+   * 1-based. PRESENTATION ONLY — it decides which matches are listed and
+   * nothing else. Clamped against the CURRENT result set by
+   * `portfolioPage`, so a stale link can never put an empty page in the DOM.
+   */
+  page: number
 }
 
 export const DEFAULT_PORTFOLIO_QUERY: PortfolioQuery = {
@@ -409,6 +428,7 @@ export const DEFAULT_PORTFOLIO_QUERY: PortfolioQuery = {
   manager: ANY,
   statuses: [],
   sort: 'updatedDesc',
+  page: 1,
 }
 
 function haystack(project: PortfolioProject): string {
@@ -437,18 +457,60 @@ export function matchesQuery(project: PortfolioProject, query: PortfolioQuery): 
   return true
 }
 
+/**
+ * Deterministic tie-breakers: the canonical identity, then the id. Two
+ * projects saved in the same second must not swap places between renders.
+ */
+function breakTie(a: PortfolioProject, b: PortfolioProject): number {
+  const byTitle = portfolioTitle(a).localeCompare(portfolioTitle(b))
+  return byTitle !== 0 ? byTitle : a.id.localeCompare(b.id)
+}
+
+/** A bookable meeting as a comparable instant, or `null` when none exists. */
+function meetingInstant(project: PortfolioProject): number | null {
+  if (!project.nextClientMeetingAt) return null
+  const at = Date.parse(project.nextClientMeetingAt)
+  return Number.isNaN(at) ? null : at
+}
+
 function compareBy(sort: PortfolioSort, a: PortfolioProject, b: PortfolioProject): number {
+  if (sort === 'titleAsc') return breakTie(a, b)
+  if (sort === 'meetingAsc') {
+    /**
+     * Overdue first (oldest miss first), then upcoming (soonest first),
+     * then everything with no meeting at all.
+     *
+     * A plain ascending sort on the instant produces exactly that order —
+     * every overdue meeting is in the past and every upcoming one is in the
+     * future — so the ordering needs NO clock. That matters twice: a sort
+     * whose result depends on `Date.now()` is untestable, and a register
+     * that silently re-ordered itself between two renders of the same page
+     * would not be a work queue.
+     */
+    const left = meetingInstant(a)
+    const right = meetingInstant(b)
+    if (left === null || right === null) {
+      if (left !== right) return left === null ? 1 : -1
+    } else if (left !== right) {
+      return left - right
+    }
+    return breakTie(a, b)
+  }
   const field = sort === 'createdDesc' || sort === 'createdAsc' ? 'createdAt' : 'updatedAt'
   const descending = sort === 'createdDesc' || sort === 'updatedDesc'
   const left = Date.parse(a[field])
   const right = Date.parse(b[field])
   if (left !== right) return descending ? right - left : left - right
-  // Deterministic tie-breakers: the canonical identity, then the id. Two
-  // projects saved in the same second must not swap places between renders.
-  const byTitle = portfolioTitle(a).localeCompare(portfolioTitle(b))
-  return byTitle !== 0 ? byTitle : a.id.localeCompare(b.id)
+  return breakTie(a, b)
 }
 
+/**
+ * The WHOLE matching result set, ordered.
+ *
+ * Filter → sort → (only then) slice. Sorting a page rather than the result
+ * set would make page 2 of «next meeting first» a second, unrelated queue,
+ * so the slice deliberately lives in `portfolioPage` and never in here.
+ */
 export function selectPortfolio(
   projects: readonly PortfolioProject[],
   query: PortfolioQuery,
@@ -457,6 +519,61 @@ export function selectPortfolio(
     .filter((p) => matchesQuery(p, query))
     .slice()
     .sort((a, b) => compareBy(query.sort, a, b))
+}
+
+/* ───────────────────────────── pagination ──────────────────────────── */
+
+/**
+ * The register's page size, inherited verbatim from the accepted Documents
+ * workspace contract — 10 per page, controls from the 11th result.
+ *
+ * One product, one pagination rhythm: somebody who learns 10-per-page in a
+ * project's Documents register must not meet 12-per-page in Projects.
+ */
+export const PORTFOLIO_PAGE_SIZE = 10
+
+export type PortfolioPage = {
+  /** The cards to render. */
+  rows: PortfolioProject[]
+  /** Clamped: a filter that shrinks the set never strands the reader. */
+  page: number
+  pageCount: number
+  total: number
+  from: number
+  to: number
+  /** Below the activation threshold the register shows everything. */
+  paginated: boolean
+}
+
+/**
+ * One page of the ordered result set.
+ *
+ * Up to ten matches are all shown with no controls at all; from the
+ * eleventh the register paginates at ten. The page is clamped HERE rather
+ * than in a component, so an out-of-range `?page=` from a stale link can
+ * never reach the DOM in the first place.
+ */
+export function portfolioPage(
+  matching: readonly PortfolioProject[],
+  page: number,
+  pageSize = PORTFOLIO_PAGE_SIZE,
+): PortfolioPage {
+  const total = matching.length
+  if (total <= pageSize) {
+    return {
+      rows: [...matching],
+      page: 1,
+      pageCount: 1,
+      total,
+      from: total === 0 ? 0 : 1,
+      to: total,
+      paginated: false,
+    }
+  }
+  const pageCount = pageCountFor(total, pageSize)
+  const current = clampPage(page, pageCount)
+  const { from, to } = paginationRange(current, pageSize, total)
+  return { rows: matching.slice(from - 1, to), page: current, pageCount, total, from, to, paginated: true }
 }
 
 /**
@@ -515,6 +632,7 @@ const PARAM = {
   manager: 'manager',
   status: 'status',
   sort: 'sort',
+  page: 'page',
 } as const
 
 /**
@@ -531,6 +649,7 @@ export function encodePortfolioQuery(query: PortfolioQuery): string {
   if (query.manager !== ANY) params.set(PARAM.manager, query.manager)
   for (const status of query.statuses) params.append(PARAM.status, status)
   if (query.sort !== DEFAULT_PORTFOLIO_QUERY.sort) params.set(PARAM.sort, query.sort)
+  if (query.page > 1) params.set(PARAM.page, String(query.page))
   return params.toString()
 }
 
@@ -539,6 +658,7 @@ export function decodePortfolioQuery(search: string): PortfolioQuery {
   const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search)
   const sort = params.get(PARAM.sort)
   const statuses = params.getAll(PARAM.status).filter(isLifecycleStatus)
+  const page = Number.parseInt(params.get(PARAM.page) ?? '', 10)
   return {
     text: params.get(PARAM.text) ?? '',
     country: params.get(PARAM.country) ?? ANY,
@@ -547,6 +667,11 @@ export function decodePortfolioQuery(search: string): PortfolioQuery {
     // A link that repeats a status is still one selection of it.
     statuses: [...new Set(statuses)],
     sort: sort && isPortfolioSort(sort) ? sort : DEFAULT_PORTFOLIO_QUERY.sort,
+    // A page BEYOND the last one is not rejected here: it is a legitimate
+    // link to a register that has since shrunk, and `portfolioPage` clamps
+    // it to the last page that exists. Only a non-page (`?page=abc`,
+    // `?page=0`, `?page=-3`) falls back to the first.
+    page: Number.isFinite(page) && page > 0 ? page : 1,
   }
 }
 

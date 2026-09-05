@@ -18,6 +18,7 @@ import {
   lifecycleStatusKey,
   lifecycleStatusTone,
   managerOptions,
+  portfolioPage,
   portfolioTitle,
   portfolioValue,
   selectPortfolio,
@@ -33,6 +34,7 @@ import { FormField, SelectField } from '../components/designSystem'
 import { EmptyState } from '../components/DataStates'
 import { localizeMoneyText, useT } from '../i18n'
 import { MediaFrame } from '../design-system/MediaFrame'
+import { Pagination } from '../design-system/Pagination'
 import { SemanticStatus } from '../design-system/SemanticStatus'
 import { projectAsset } from '../assets/project-media'
 import { startContinuityTransition, useSemanticMotion } from '../design-system/motion'
@@ -128,13 +130,31 @@ function formatDate(iso: string, language: Locale): string {
   }).format(date)
 }
 
-function formatDateTime(iso: string, language: Locale): string {
+/**
+ * The meeting instant, split into the two facts it carries.
+ *
+ * The DAY is what ranks the queue and takes the heading weight; the CLOCK
+ * TIME is the detail that sits beside it. They are formatted separately —
+ * never sliced out of one formatted string — so every locale keeps its own
+ * order and punctuation, and both halves stay inside one `<time datetime>`
+ * carrying the exact ISO instant.
+ */
+function formatMeeting(iso: string, language: Locale): { day: string; weekday: string; clock: string } {
   const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return '—'
-  return new Intl.DateTimeFormat(intlTag(language), {
-    weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  }).format(date)
+  if (Number.isNaN(date.getTime())) return { day: '—', weekday: '', clock: '' }
+  const tag = intlTag(language)
+  const part = (options: Intl.DateTimeFormatOptions) => (
+    new Intl.DateTimeFormat(tag, options).format(date)
+  )
+  return {
+    // The CALENDAR DAY alone at heading weight. The weekday used to ride
+    // with it and, at 24 px in a 232 px column, `Fri, 11/09/2026` broke
+    // across two lines mid-date in `en` while `Fr., 11.09.2026` fitted in
+    // `de` — one composition that only held in one locale.
+    day: part({ day: '2-digit', month: '2-digit', year: 'numeric' }),
+    weekday: part({ weekday: 'short' }),
+    clock: part({ hour: '2-digit', minute: '2-digit' }),
+  }
 }
 
 /** Narrow no-break space between number and unit (rule 7), never a plain one. */
@@ -153,36 +173,106 @@ function formatCount(value: string | number, language: Locale): string {
 
 /* ─────────────────────────────── screen ─────────────────────────────── */
 
-export function OpportunityList() {
+export function OpportunityList({
+  projects = PORTFOLIO_PROJECTS,
+}: {
+  /**
+   * The register to show. Defaults to the canonical one; the parameter
+   * exists so a test can prove the >10 pagination contract, which the
+   * shipped five-project register cannot reach on its own. Product code
+   * never passes it.
+   */
+  projects?: readonly PortfolioProject[]
+} = {}) {
   const s = useStore()
   const t = useT()
   const language = s.uiLanguage as Locale
-  const { reduced } = useSemanticMotion()
+  const { reduced, fadeOnly } = useSemanticMotion()
   const panelId = useId()
   const [query, applyQuery] = usePortfolioQuery()
   const [filtersOpen, setFiltersOpen] = useState(() => activeFilterCount(query) > 0)
   const [cityResetNotice, setCityResetNotice] = useState<string>('')
-  const [announcedCount, setAnnouncedCount] = useState<number | null>(null)
+  const [announcement, setAnnouncement] = useState('')
+  const countRef = useRef<HTMLParagraphElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
 
-  const countries = useMemo(() => countryOptions(PORTFOLIO_PROJECTS), [])
-  const cities = useMemo(() => cityOptions(PORTFOLIO_PROJECTS, query.country), [query.country])
-  const managers = useMemo(() => managerOptions(PORTFOLIO_PROJECTS), [])
-  const shown = useMemo(() => selectPortfolio(PORTFOLIO_PROJECTS, query), [query])
+  const countries = useMemo(() => countryOptions(projects), [projects])
+  const cities = useMemo(() => cityOptions(projects, query.country), [projects, query.country])
+  const managers = useMemo(() => managerOptions(projects), [projects])
+  // Filter → sort the WHOLE result set → slice. Never the other way round.
+  const shown = useMemo(() => selectPortfolio(projects, query), [projects, query])
+  const page = portfolioPage(shown, query.page)
   const filtersActive = activeFilterCount(query)
-  const total = PORTFOLIO_PROJECTS.length
+  const total = projects.length
 
-  // The result count is announced once the set has settled, never per
-  // keystroke — a live region that fires on every letter is noise, not
-  // access. The visible count updates immediately; only the announcement waits.
+  /**
+   * The one live count sentence, and the one thing announced about it.
+   *
+   * Paginated, the count IS the range — `1–10 von 23 Treffern · 48 im
+   * Register` — because a reader on page 2 needs to know where they are,
+   * not only how many matched. Unpaginated it is the four phrasings the
+   * register has always had.
+   */
+  const countText = page.paginated
+    ? (filtersActive > 0
+      ? t('portfolio.result.page.filtered', {
+        from: page.from, to: page.to, shown: page.total, total,
+      })
+      : t('portfolio.result.page.all', { from: page.from, to: page.to, total }))
+    : filtersActive === 0
+      ? t('portfolio.result.all', { total })
+      : page.total === 0
+        ? t('portfolio.result.none', { total })
+        : page.total === 1
+          ? t('portfolio.result.one', { total })
+          : t('portfolio.result.some', { count: page.total, total })
+
+  // The count is announced once the set has SETTLED, never per keystroke —
+  // a live region that fires on every letter is noise, not access. The
+  // visible line updates immediately; only the announcement waits. A page
+  // change flows through the same region and the same settle, so there is
+  // still exactly one voice for "what is in this list now".
   useEffect(() => {
-    const timer = window.setTimeout(() => setAnnouncedCount(shown.length), 600)
+    const timer = window.setTimeout(() => setAnnouncement(countText), 600)
     return () => window.clearTimeout(timer)
-  }, [shown.length])
+  }, [countText])
 
+  /**
+   * Every query change except a page change returns to page 1.
+   *
+   * Enforced HERE, in the one function every control patches through,
+   * rather than at each call site: a reset rule spread over six handlers is
+   * a reset rule that one later control forgets, and the symptom — an empty
+   * page 3 of a set that now has four matches — looks like a data bug.
+   */
   const patch = (
     next: Partial<PortfolioQuery>,
     history: 'push' | 'replace' = 'push',
-  ) => applyQuery({ ...query, ...next }, history)
+  ) => {
+    const changesPageOnly = Object.keys(next).every((key) => key === 'page')
+    applyQuery({ ...query, ...next, ...(changesPageOnly ? null : { page: 1 }) }, history)
+  }
+
+  /**
+   * A page change: new rows, focus on the count, the list back in view.
+   *
+   * Focus goes to the count line because that is the sentence which just
+   * changed meaning, and it is deliberately NOT a tab stop (`tabIndex=-1`)
+   * — pagination must not buy its focus management with a permanent extra
+   * stop in everybody else's keyboard path. `preventScroll` keeps that
+   * focus from yanking the viewport to the page head; the scroll target is
+   * the RESULT LIST, which is what the reader is actually returning to.
+   */
+  const goToPage = (next: number) => {
+    patch({ page: next })
+    countRef.current?.focus({ preventScroll: true })
+    // Optional by design, not by accident: a non-browser host (jsdom, a
+    // print pass) has no scrolling to do, and the focus move above is the
+    // behaviour, not this.
+    listRef.current?.scrollIntoView?.({
+      block: 'start', behavior: reduced ? 'auto' : 'smooth',
+    })
+  }
 
   /**
    * Changing the country can invalidate the city. The reset is DELIBERATE
@@ -192,7 +282,7 @@ export function OpportunityList() {
    * changes its parent.
    */
   const changeCountry = (country: string) => {
-    const stale = invalidatedCity(PORTFOLIO_PROJECTS, country, query.city)
+    const stale = invalidatedCity(projects, country, query.city)
     if (stale) {
       setCityResetNotice(t('portfolio.filter.cityReset', {
         city: stale,
@@ -269,22 +359,27 @@ export function OpportunityList() {
 
   return (
     <div className="a3-opportunities-canvas">
-      <div className="a3-page px-7 py-6">
-        <div className="a3-portfolio-head">
-          <header className="a3-masthead a3-portfolio-headline">
-            <div>
-              <p className="a3-portfolio-eyebrow">
-                {t('vr3.list.eyebrow', { count: total })}
-              </p>
-              <h1 className="a3-hero-title" tabIndex={-1} data-page-heading>
-                {t('vr3.list.title')}
-              </h1>
-              <p className="a3-project-lede">{t('vr3.list.lead')}</p>
-            </div>
-          </header>
-        </div>
+      <div className="a3-page px-7 py-5">
+        {/* ONE head band, full width, two facts on one baseline: what this
+            page is, and what is currently in it. The lede paragraph that
+            used to sit here was fixture commentary read once ever and paid
+            for on every visit; its one durable fact — that this is
+            demonstration data — survives in the count line, which is also
+            the only counter on the page. Two counters, one of which stops
+            being true the moment a filter is applied, is the "one fact, two
+            places" class this repository has been bitten by before. */}
+        <header className="a3-portfolio-head">
+          <h1 className="a3-portfolio-title" tabIndex={-1} data-page-heading>
+            {t('vr3.list.title')}
+          </h1>
+          <p className="a3-pf-count" ref={countRef} tabIndex={-1}>
+            {t('portfolio.result.line', {
+              marker: t('portfolio.result.marker'), count: countText,
+            })}
+          </p>
+        </header>
 
-        <div role="search" aria-label={t('portfolio.filter.legend')} className="a3-pf-toolbar mt-5">
+        <div role="search" aria-label={t('portfolio.filter.legend')} className="a3-pf-toolbar">
           <div className="a3-pf-toolbar-row">
             <FormField
               htmlFor="portfolio-search"
@@ -335,6 +430,11 @@ export function OpportunityList() {
                 transition={{ duration: reduced ? 0 : 0.2, ease: [0.25, 0.6, 0.3, 1] }}
                 style={{ overflow: 'hidden' }}
               >
+                {/* ONE grid, four cells — three comboboxes and the status
+                    set share it instead of a grid stacked above a fieldset.
+                    That single change is most of the panel's 196 → 138 px:
+                    the status options are no longer paying for a row of
+                    their own. */}
                 <div className="a3-pf-panel-grid">
                   <Combobox
                     id="portfolio-country"
@@ -369,22 +469,22 @@ export function OpportunityList() {
                     onChange={(manager) => patch({ manager })}
                     placeholder={t('portfolio.filter.any')}
                   />
+                  <fieldset className="a3-pf-status">
+                    <legend>{t('portfolio.filter.status.legend')}</legend>
+                    <div className="a3-pf-status-list">
+                      {LIFECYCLE_STATUSES.map((status) => (
+                        <label key={status} className="a3-pf-status-option hit-target">
+                          <input
+                            type="checkbox"
+                            checked={query.statuses.includes(status)}
+                            onChange={(event) => toggleStatus(status, event.target.checked)}
+                          />
+                          <span>{t(lifecycleStatusKey(status))}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
                 </div>
-                <fieldset className="a3-pf-status">
-                  <legend>{t('portfolio.filter.status.legend')}</legend>
-                  <div className="a3-pf-status-list">
-                    {LIFECYCLE_STATUSES.map((status) => (
-                      <label key={status} className="a3-pf-status-option">
-                        <input
-                          type="checkbox"
-                          checked={query.statuses.includes(status)}
-                          onChange={(event) => toggleStatus(status, event.target.checked)}
-                        />
-                        <span>{t(lifecycleStatusKey(status))}</span>
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
               </motion.div>
             )}
           </AnimatePresence>
@@ -411,26 +511,9 @@ export function OpportunityList() {
           )}
         </div>
 
-        <div className="a3-pf-summary">
-          <p className="a3-pf-count">
-            {filtersActive === 0
-              ? t('portfolio.result.all', { total })
-              : shown.length === 0
-                ? t('portfolio.result.none', { total })
-                : shown.length === 1
-                  ? t('portfolio.result.one', { total })
-                  : t('portfolio.result.some', { count: shown.length, total })}
-          </p>
-        </div>
         {/* Two polite regions, two different facts. Merging them would make
             a city reset overwrite a result count that had just been read. */}
-        <p className="sr-only" role="status" aria-live="polite">
-          {announcedCount === null ? '' : (
-            announcedCount === 1
-              ? t('portfolio.result.one', { total })
-              : t('portfolio.result.some', { count: announcedCount, total })
-          )}
-        </p>
+        <p className="sr-only" role="status" aria-live="polite">{announcement}</p>
         <p className="sr-only" role="status" aria-live="polite">{cityResetNotice}</p>
 
         {/* Two empty states, kept distinct. An account with no projects at
@@ -439,47 +522,87 @@ export function OpportunityList() {
             account branch is unreachable while the register carries five
             fixtures; it is retained because it belongs to the capability,
             not to the fixture. */}
-        {total === 0 ? (
-          <div className="a3-empty-spec">
-            <EmptyState>{t('opplist.emptyAccount.sentence')}</EmptyState>
-            <p className="a3-project-lede">{t('opplist.emptyAccount.detail')}</p>
-          </div>
-        ) : shown.length === 0 ? (
-          <div className="a3-empty-spec">
-            <EmptyState
-              action={(
-                <Button variant="secondary" onClick={clearAll}>
-                  {t('portfolio.filter.clearAll')}
-                </Button>
-              )}
-            >
-              {t('portfolio.empty.filtered')}
-            </EmptyState>
-            <p className="a3-project-lede">{t('portfolio.empty.filtered.detail')}</p>
-          </div>
-        ) : (
-          <ul className="a3-pf-list">
-            {shown.map((project) => (
-              /* Per-item identity: a card keeps its own boundary while the
-                 set is re-ordered or narrowed, so a row that stays is seen
-                 to move rather than to be replaced. */
-              <motion.li
-                key={project.id}
-                layout={reduced ? false : 'position'}
-                transition={{ duration: reduced ? 0 : 0.24, ease: [0.2, 0.8, 0.2, 1] }}
-                className="a3-pf-card"
-                data-display-only={project.displayOnly || undefined}
+        <div className="a3-pf-results" ref={listRef}>
+          {total === 0 ? (
+            <div className="a3-empty-spec">
+              <EmptyState>{t('opplist.emptyAccount.sentence')}</EmptyState>
+              <p className="a3-project-lede">{t('opplist.emptyAccount.detail')}</p>
+            </div>
+          ) : page.total === 0 ? (
+            <div className="a3-empty-spec">
+              <EmptyState
+                action={(
+                  <Button variant="secondary" onClick={clearAll}>
+                    {t('portfolio.filter.clearAll')}
+                  </Button>
+                )}
               >
-                <PortfolioCard
-                  project={project}
-                  language={language}
-                  onOpen={project.displayOnly ? null : () => openProject(project.id)}
-                  onOpenClientView={project.displayOnly ? null : () => openClientView(project.id)}
-                />
-              </motion.li>
-            ))}
-          </ul>
-        )}
+                {t('portfolio.empty.filtered')}
+              </EmptyState>
+              <p className="a3-project-lede">{t('portfolio.empty.filtered.detail')}</p>
+            </div>
+          ) : (
+            /**
+             * TWO different changes, two different meanings.
+             *
+             * A PAGE change is a REPLACEMENT: different records, same
+             * position in the register. Keying the list on the page number
+             * swaps the whole list and fades the new one in (`fadeOnly`) —
+             * it must NOT animate as though rows physically re-ordered,
+             * because they did not.
+             *
+             * A FILTER or SORT change is a RE-ORDERING of one set, so the
+             * key is unchanged and `layout="position"` on each row lets a
+             * record that survives be SEEN to move rather than be replaced.
+             *
+             * Deliberately no `AnimatePresence` here: an exiting page would
+             * keep the previous ten cards in the DOM beside the new ten,
+             * which is a duplicate register for a reader using a screen
+             * reader and a delayed one for everybody else. The old page
+             * leaves at once; the new one arrives explained.
+             */
+            <motion.ul
+              key={page.page}
+              className="a3-pf-list"
+              variants={reduced ? undefined : fadeOnly}
+              initial={reduced ? false : 'hidden'}
+              animate={reduced ? undefined : 'visible'}
+            >
+              {page.rows.map((project) => (
+                <motion.li
+                  key={project.id}
+                  layout={reduced ? false : 'position'}
+                  transition={{ duration: reduced ? 0 : 0.24, ease: [0.2, 0.8, 0.2, 1] }}
+                  className="a3-pf-card"
+                  data-display-only={project.displayOnly || undefined}
+                >
+                  <PortfolioCard
+                    project={project}
+                    language={language}
+                    onOpen={project.displayOnly ? null : () => openProject(project.id)}
+                    onOpenClientView={project.displayOnly ? null : () => openClientView(project.id)}
+                  />
+                </motion.li>
+              ))}
+            </motion.ul>
+          )}
+        </div>
+
+        {/* Controls only exist once there is something to page THROUGH: at
+            ten matches or fewer the register is pixel-identical to the one
+            without pagination at all. Neither empty state renders them. */}
+        {page.paginated ? (
+          <Pagination
+            page={page.page}
+            pageCount={page.pageCount}
+            onPageChange={goToPage}
+            ariaLabel={t('portfolio.pagination.label')}
+            rangeLabel={t('portfolio.pagination.range', {
+              from: page.from, to: page.to, total: page.total,
+            })}
+            pageButtonLabel={(n) => t('portfolio.pagination.page', { page: n })}
+          />
+        ) : null}
       </div>
     </div>
   )
@@ -502,6 +625,7 @@ function PortfolioCard({
   const title = portfolioTitle(project)
   const value = portfolioValue(project, s)
   const deadline = useDeadline(project.nextClientMeetingAt)
+  const meeting = deadline.kind === 'none' ? null : formatMeeting(deadline.at, language)
 
   const configureLabel = t('portfolio.card.configure')
   const clientViewLabel = t('portfolio.card.clientView')
@@ -553,7 +677,7 @@ function PortfolioCard({
       </div>
 
       <div className="a3-pf-body">
-        <div>
+        <div className="a3-pf-identity">
           <div className="a3-pf-status-line">
             <SemanticStatus
               tone={lifecycleStatusTone(project.lifecycleStatus)}
@@ -565,8 +689,12 @@ function PortfolioCard({
               <button type="button" className="a3-linkbtn" onClick={onOpen}>{title}</button>
             ) : title}
           </h2>
+          {/* Client and manager on ONE line. Neither field is deleted —
+              the two 20 px rows they used to occupy become one, because
+              «who is this for» and «who owns it» are read together. */}
           <p className="a3-pf-parties">
             <span className="a3-pf-party"><b>{project.client}</b></span>
+            <span className="a3-pf-party-sep" aria-hidden="true">·</span>
             <span className="a3-pf-party">
               {t('portfolio.filter.manager.label')}: {project.manager}
             </span>
@@ -595,31 +723,39 @@ function PortfolioCard({
           />
         </dl>
 
-        <dl className="a3-pf-value">
-          <dt>
-            {value.kind === 'amount' && value.coverage === 'subtotal'
-              ? t('portfolio.card.value.subtotal')
-              : t('portfolio.card.value')}
-          </dt>
-          <dd className="numeric" data-unknown={value.kind === 'notCalculated' || undefined}>
-            {value.kind === 'notCalculated'
-              ? t('portfolio.card.value.notCalculated')
-              : `${localizeMoneyText(value.display, language)}${NNBSP}€`}
-          </dd>
-        </dl>
-        {/* Where the number came from, beside the number. A value's
-            provenance in a separate metadata list is a value whose
-            provenance nobody reads. */}
-        {value.kind === 'amount' && (
-          <p className="a3-pf-value-note">
-            {t(value.provenance === 'syntheticPortfolioFixture'
-              ? 'portfolio.card.value.synthetic'
-              : 'portfolio.card.value.fromSnapshot', {
-              date: formatDate(value.asOf, language),
-            })}
-          </p>
-        )}
+        {/* Label, number and provenance on ONE line. Where the number came
+            from belongs beside the number: a value's provenance in a
+            separate row below it is a provenance nobody reads. */}
+        <div className="a3-pf-value">
+          <dl className="a3-pf-value-figure">
+            <dt>
+              {value.kind === 'amount' && value.coverage === 'subtotal'
+                ? t('portfolio.card.value.subtotal')
+                : t('portfolio.card.value')}
+            </dt>
+            <dd className="numeric" data-unknown={value.kind === 'notCalculated' || undefined}>
+              {value.kind === 'notCalculated'
+                ? t('portfolio.card.value.notCalculated')
+                : `${localizeMoneyText(value.display, language)}${NNBSP}€`}
+            </dd>
+          </dl>
+          {value.kind === 'amount' && (
+            <p className="a3-pf-value-note">
+              {t(value.provenance === 'syntheticPortfolioFixture'
+                ? 'portfolio.card.value.synthetic'
+                : 'portfolio.card.value.fromSnapshot', {
+                date: formatDate(value.asOf, language),
+              })}
+            </p>
+          )}
+        </div>
 
+        {/* The demonstration marker rides IN this row, not above it. The
+            row already wraps, so one short caption beside two 44 px buttons
+            costs zero rows — where the old full-width sentence cost 20 px
+            plus a 16 px gap on three cards out of five. It is still the
+            `aria-describedby` target of both blocked buttons: it is the
+            reason they are inert, not decoration. */}
         <div className="a3-pf-actions">
           <Button
             variant="primary"
@@ -640,17 +776,22 @@ function PortfolioCard({
           >
             {clientViewLabel}
           </Button>
+          {project.displayOnly && (
+            <p id={displayOnlyReasonId} className="a3-pf-note">
+              {t('portfolio.card.displayOnly')}
+            </p>
+          )}
         </div>
-
-        {project.displayOnly && (
-          <p id={displayOnlyReasonId} className="a3-pf-note">
-            {t('portfolio.card.displayOnly')}
-          </p>
-        )}
       </div>
 
+      {/* `align-content: space-between`: the meeting pinned to the top,
+          the record dates pinned to the bottom, air between them. The
+          column used to be `align-content: start` inside a border, which
+          rendered 57–70 % emptiness as a tall box with its content
+          stranded at the top — the register's single largest visual
+          defect, present on the overdue card too. */}
       <div className="a3-pf-aside">
-        <div className="a3-pf-deadline" data-tone={deadline.kind === 'overdue' ? 'overdue' : deadline.kind === 'none' ? 'none' : 'scheduled'}>
+        <div className="a3-pf-deadline" data-state={deadline.kind}>
           <p className="a3-pf-deadline-label">{t('portfolio.card.meeting.label')}</p>
           {deadline.kind === 'none' ? (
             <p className="a3-pf-deadline-value" data-none>
@@ -658,8 +799,18 @@ function PortfolioCard({
             </p>
           ) : (
             <>
+              {/* The exact date and time stay in a `<time datetime>` in
+                  EVERY non-empty state. A relative cue is a cue BESIDE the
+                  absolute value; it never replaces it. */}
               <p className="a3-pf-deadline-value">
-                <time dateTime={deadline.at}>{formatDateTime(deadline.at, language)}</time>
+                <time dateTime={deadline.at}>
+                  <span>{meeting!.day}</span>
+                  <span className="a3-pf-deadline-clock">
+                    {t('portfolio.card.meeting.when', {
+                      weekday: meeting!.weekday, time: meeting!.clock,
+                    })}
+                  </span>
+                </time>
               </p>
               {deadline.kind === 'overdue' && (
                 <p className="a3-pf-deadline-cue">
@@ -681,6 +832,10 @@ function PortfolioCard({
           )}
         </div>
 
+        {/* Both dates kept, both demoted to caption rows — label left,
+            value right, 64 px → 32 px. No record is removed; two
+            record-keeping dates simply stop outweighing the one fact that
+            makes somebody act today. */}
         <dl className="a3-pf-dates">
           <div className="a3-pf-date">
             <dt>{t('portfolio.card.created')}</dt>

@@ -33,12 +33,24 @@ import { useT } from '../i18n'
  *   renders an ellipsis standing for a single page it could have shown.
  *
  * Accessibility: a real `<nav>` with a required accessible name, real
- * `<button>`s, `aria-current="page"` on the current page, NATIVE `disabled`
- * on the boundaries (the audit asks for native disabled semantics here —
- * unlike an action whose refusal has to be explained, a Previous on page 1
- * has nothing to explain), and non-focusable ellipses that are hidden from
- * assistive technology because the pages they stand for are reachable by
- * the numeric buttons around them.
+ * `<button>`s, `aria-current="page"` on the current page, `aria-disabled`
+ * boundaries that KEEP FOCUS, and non-focusable ellipses that are hidden
+ * from assistive technology because the pages they stand for are reachable
+ * by the numeric buttons around them.
+ *
+ * **Why `aria-disabled` and not native `disabled` on Previous/Next.** The
+ * first release of this capability used native `disabled`, reasoning that
+ * a Previous on page 1 has nothing to explain. The accepted Projects
+ * portfolio contract (2026-09-05) requires the opposite and states why:
+ * the ends must "remain present and focusable … not disappear from the DOM
+ * merely because the user is at the first/last page". A keyboard user who
+ * tabs through the control and finds Previous missing on page 1 and present
+ * on page 2 has to re-learn the control's shape on every page; a boundary
+ * that stays in the tab order is a stable landmark that simply refuses to
+ * move. This is the same choice the canonical `Button` already makes for
+ * every blocked action in this product, so the two now agree. Evolved
+ * ONCE, canonically — the alternative was a second Projects-local pager,
+ * which is the defect this capability exists to prevent.
  */
 
 export type PaginationPage = number | 'gap'
@@ -127,6 +139,8 @@ export function Pagination({
     const target = clampPage(next, total)
     if (target !== current) onPageChange(target)
   }
+  const atFirst = current <= 1
+  const atLast = current >= total
   return (
     <nav className="a3-pgn" aria-label={ariaLabel}>
       <p className="a3-pgn-range">{rangeLabel}</p>
@@ -134,8 +148,8 @@ export function Pagination({
         <button
           type="button"
           className="a3-pgn-step hit-target"
-          disabled={current <= 1}
-          onClick={() => go(current - 1)}
+          aria-disabled={atFirst || undefined}
+          onClick={() => { if (!atFirst) go(current - 1) }}
         >
           {t('ds.pagination.previous')}
         </button>
@@ -166,8 +180,8 @@ export function Pagination({
         <button
           type="button"
           className="a3-pgn-step hit-target"
-          disabled={current >= total}
-          onClick={() => go(current + 1)}
+          aria-disabled={atLast || undefined}
+          onClick={() => { if (!atLast) go(current + 1) }}
         >
           {t('ds.pagination.next')}
         </button>

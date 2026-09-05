@@ -81,7 +81,7 @@ describe('Уровень Projekte', () => {
     expect(screen.getAllByRole('button', { name: CARD_CTA })
       .filter((b) => b.getAttribute('aria-disabled') !== 'true'))
       .toHaveLength(PORTFOLIO_NAVIGABLE_COUNT)
-    expect(screen.getAllByText('Demonstrationsprojekt — kein Workflow verfügbar'))
+    expect(screen.getAllByText('Demonstration · kein Workflow'))
       .toHaveLength(PORTFOLIO_DISPLAY_ONLY_COUNT)
     expect(screen.getByText('Demonstrationsportfolio · 5 Projekte')).toBeInTheDocument()
     expect(screen.queryByText(/Wurzel/)).not.toBeInTheDocument()
@@ -191,7 +191,7 @@ describe('Уровень Projekte', () => {
       expect(button).toHaveAttribute('aria-disabled', 'true')
       await user.click(button)
     }
-    expect(within(hamburg).getAllByText('Demonstrationsprojekt — kein Workflow verfügbar'))
+    expect(within(hamburg).getAllByText('Demonstration · kein Workflow'))
       .toHaveLength(1)
     // Ни один клик не увёл со списка.
     expect(useStore.getState().level).toBe('liste')
@@ -324,7 +324,10 @@ describe('Уровень Projekte', () => {
     const chips = screen.getByRole('group', { name: 'Aktive Filter' })
     expect(within(chips).getByText('Suche: Wien')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^Filter \(1\)/ })).toBeInTheDocument()
-    expect(screen.getByText('1 von 5 Projekten')).toBeInTheDocument()
+    // ONE counter, and it carries the page-level demonstration marker:
+    // the eyebrow that used to state the same number 268 px away is gone.
+    expect(screen.getByText('Demonstrationsportfolio · 1 von 5 Projekten'))
+      .toBeInTheDocument()
 
     await user.click(within(chips).getByRole('button', { name: 'Filter entfernen: Suche: Wien' }))
     expect(screen.queryByRole('group', { name: 'Aktive Filter' })).toBeNull()
@@ -488,7 +491,7 @@ describe('Уровень Projekte', () => {
     expect(screen.getAllByText('Total project value')).toHaveLength(PORTFOLIO_CARD_COUNT)
     expect(screen.getByText('No client meeting scheduled')).toBeInTheDocument()
     expect(screen.getByText('Overdue')).toBeInTheDocument()
-    expect(screen.getAllByText('Demonstration project — workflow unavailable'))
+    expect(screen.getAllByText('Demonstration · no workflow'))
       .toHaveLength(PORTFOLIO_DISPLAY_ONLY_COUNT)
     // Числа и даты типографируются по локали, не по языку записи.
     expect(screen.getByText('2,900 m²')).toBeInTheDocument()

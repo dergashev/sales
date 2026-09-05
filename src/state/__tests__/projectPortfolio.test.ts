@@ -18,6 +18,8 @@ import {
   latestPresentableSnapshot,
   lifecycleStatusTone,
   managerOptions,
+  PORTFOLIO_PAGE_SIZE,
+  portfolioPage,
   portfolioTitle,
   portfolioValue,
   projectIdOfSavedVersion,
@@ -297,6 +299,102 @@ describe('the four chronological orders are deterministic', () => {
   })
 })
 
+describe('urgency is orderable, not only visible', () => {
+  /**
+   * A plain ascending sort on the meeting instant IS the queue order:
+   * every overdue meeting is in the past and every upcoming one is in the
+   * future, so «missed longest ago» → «happening soonest» → «nothing
+   * booked» falls out of one comparison and needs no clock at all.
+   */
+  it('puts overdue first, then soonest, then no meeting at all', () => {
+    expect(titles({ sort: 'meetingAsc' }))
+      .toEqual([T.guterbogen, T.wien, T.hamburg, T.muenchen, T.lindenhain])
+  })
+
+  it('does not depend on the clock', () => {
+    // Two runs a decade apart must produce the same register. A sort that
+    // re-ranked itself as time passed would not be an order, it would be
+    // an event.
+    const first = titles({ sort: 'meetingAsc' })
+    expect(titles({ sort: 'meetingAsc' })).toEqual(first)
+    const unreadable = PORTFOLIO_PROJECTS.map((p) => (
+      p.id === 'PORTFOLIO-AT-01' ? { ...p, nextClientMeetingAt: 'not-a-date' } : p
+    ))
+    // An unreadable stamp is «no meeting», never «the epoch».
+    const ordered = selectPortfolio(unreadable, {
+      ...DEFAULT_PORTFOLIO_QUERY, sort: 'meetingAsc',
+    }).map(portfolioTitle)
+    expect(ordered.slice(-2)).toEqual([T.wien, T.lindenhain].sort((a, b) => a.localeCompare(b)))
+    expect(ordered[0]).toBe(T.guterbogen)
+  })
+
+  it('orders alphabetically by the ONE canonical title', () => {
+    expect(titles({ sort: 'titleAsc' }))
+      .toEqual([T.wien, T.guterbogen, T.hamburg, T.lindenhain, T.muenchen])
+  })
+
+  it('leaves the default alone', () => {
+    // Changing it would silently re-order every shared URL and every test
+    // that has ever linked to this register. It is a Product Decision, and
+    // this ticket deliberately does not take it.
+    expect(DEFAULT_PORTFOLIO_QUERY.sort).toBe('updatedDesc')
+  })
+})
+
+describe('the register pages at ten, and only past ten', () => {
+  const stub = (n: number) => Array.from({ length: n }, (_, i) => ({
+    ...PORTFOLIO_PROJECTS[0]!, id: `P${String(i).padStart(3, '0')}`,
+  }))
+
+  it('shows everything and paginates nothing at the threshold', () => {
+    for (const n of [0, 1, 10]) {
+      const page = portfolioPage(stub(n), 1)
+      expect(page.paginated).toBe(false)
+      expect(page.rows).toHaveLength(n)
+      expect(page.pageCount).toBe(1)
+      expect(page.total).toBe(n)
+      expect(page.from).toBe(n === 0 ? 0 : 1)
+      expect(page.to).toBe(n)
+    }
+  })
+
+  it('slices at ten from the eleventh result', () => {
+    const page = portfolioPage(stub(11), 1)
+    expect(page.paginated).toBe(true)
+    expect(page.rows).toHaveLength(PORTFOLIO_PAGE_SIZE)
+    expect(page.pageCount).toBe(2)
+    expect([page.from, page.to]).toEqual([1, 10])
+    const last = portfolioPage(stub(11), 2)
+    expect(last.rows.map((p) => p.id)).toEqual(['P010'])
+    expect([last.from, last.to]).toEqual([11, 11])
+  })
+
+  it('clamps a page that no longer exists instead of stranding the reader', () => {
+    // A copied link to page 5 of a register that has since been filtered
+    // down to 23 results lands on the last page that DOES exist — never on
+    // an empty page, and never on a thrown error in front of a reader.
+    expect(portfolioPage(stub(23), 99).page).toBe(3)
+    expect(portfolioPage(stub(23), 99).rows).toHaveLength(3)
+    expect(portfolioPage(stub(23), 0).page).toBe(1)
+    expect(portfolioPage(stub(23), Number.NaN).page).toBe(1)
+  })
+
+  it('slices the set the sort already ordered, never the other way round', () => {
+    const many = [1, 2, 3].flatMap((round) => PORTFOLIO_PROJECTS.map((p, i) => ({
+      ...p,
+      id: `${p.id}-${round}`,
+      nextClientMeetingAt: p.nextClientMeetingAt
+        ? `2026-1${round}-0${i + 1}T09:00:00+01:00`
+        : null,
+    })))
+    const ordered = selectPortfolio(many, { ...DEFAULT_PORTFOLIO_QUERY, sort: 'meetingAsc' })
+    const first = portfolioPage(ordered, 1)
+    const second = portfolioPage(ordered, 2)
+    expect([...first.rows, ...second.rows].map((p) => p.id))
+      .toEqual(ordered.map((p) => p.id))
+  })
+})
+
 describe('the URL carries exactly the register state', () => {
   it('writes only what differs from the default', () => {
     expect(encodePortfolioQuery(DEFAULT_PORTFOLIO_QUERY)).toBe('')
@@ -312,9 +410,22 @@ describe('the URL carries exactly the register state', () => {
       manager: 'Daniel Weber',
       statuses: ['new', 'ready_to_pitch'],
       sort: 'createdAsc',
+      page: 3,
     }
     expect(decodePortfolioQuery(encodePortfolioQuery(query))).toEqual(query)
     expect(decodePortfolioQuery(`?${encodePortfolioQuery(query)}`)).toEqual(query)
+  })
+
+  it('carries the page, and only past the first one', () => {
+    expect(encodePortfolioQuery({ ...DEFAULT_PORTFOLIO_QUERY, page: 1 })).toBe('')
+    expect(encodePortfolioQuery({ ...DEFAULT_PORTFOLIO_QUERY, page: 4 })).toBe('page=4')
+    // An OUT-OF-RANGE page is decoded, not rejected: it is a legitimate
+    // link to a register that has since shrunk, and `portfolioPage` clamps
+    // it. Only a NON-page falls back to the first.
+    expect(decodePortfolioQuery('?page=999').page).toBe(999)
+    expect(decodePortfolioQuery('?page=abc').page).toBe(1)
+    expect(decodePortfolioQuery('?page=0').page).toBe(1)
+    expect(decodePortfolioQuery('?page=-3').page).toBe(1)
   })
 
   it('falls back rather than throwing at an unreadable link', () => {

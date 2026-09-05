@@ -3642,96 +3642,208 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    never becomes an admin table — a table would give the next client meeting
    the same weight as a postcode, and the meeting is the one fact that makes
    somebody act today.
-   Classes: .a3-pf-toolbar · .a3-pf-toolbar-row · .a3-pf-panel ·
-   .a3-pf-panel-grid · .a3-pf-status · .a3-pf-status-list ·
+
+   Rebuilt to WORK-QUEUE RHYTHM (accepted 2026-09-05 density audit). The
+   card was never over-decorated; it was built on the 16/24 spacing pair of
+   a detail page, and 27 % of a 442 px row was padding and gutter. Padding
+   24 → 16, gaps 16 → 12, two row merges (client+manager, value+provenance)
+   and an aside that composes its own emptiness bring a 404–444 px row to
+   300 px (324 with a blocked-action reason) — WITHOUT deleting a field or
+   dropping any text below the type scale. The head loses its lede
+   paragraph and its duplicate counter and becomes a full-width band, so
+   the first card starts at 226 px instead of 398.
+   Classes: .a3-portfolio-title · .a3-pf-toolbar · .a3-pf-toolbar-row ·
+   .a3-pf-panel · .a3-pf-panel-grid · .a3-pf-status · .a3-pf-status-list ·
    .a3-pf-status-option · .a3-pf-chips · .a3-pf-chip · .a3-pf-chip-remove ·
-   .a3-pf-summary · .a3-pf-count · .a3-pf-list · .a3-pf-card · .a3-pf-media ·
-   .a3-pf-body · .a3-pf-status-line · .a3-pf-title · .a3-pf-parties ·
-   .a3-pf-party · .a3-pf-metrics · .a3-pf-metric · .a3-pf-actions ·
-   .a3-pf-note · .a3-pf-aside · .a3-pf-deadline · .a3-pf-deadline-label ·
-   .a3-pf-deadline-value · .a3-pf-deadline-cue · .a3-pf-dates · .a3-pf-date. */
+   .a3-pf-count · .a3-pf-results · .a3-pf-list · .a3-pf-card ·
+   .a3-pf-media · .a3-pf-body · .a3-pf-identity · .a3-pf-status-line ·
+   .a3-pf-title · .a3-pf-parties · .a3-pf-party · .a3-pf-party-sep ·
+   .a3-pf-metrics · .a3-pf-metric · .a3-pf-value · .a3-pf-value-figure ·
+   .a3-pf-value-note · .a3-pf-actions · .a3-pf-note · .a3-pf-aside ·
+   .a3-pf-deadline · .a3-pf-deadline-label · .a3-pf-deadline-value ·
+   .a3-pf-deadline-clock · .a3-pf-deadline-cue · .a3-pf-dates ·
+   .a3-pf-date. */
+
+/* HEAD — one full-width band. `.a3-portfolio-head` keeps its two-column
+   baseline layout; what changed is that the second column is now the live
+   result count instead of a toolbar, and the column is no longer capped at
+   352 px inside a 1344 px field. */
+.a3-portfolio-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-2) var(--space-4);flex-wrap:wrap;margin:0 0 var(--space-4)}
+.a3-portfolio-title{margin:0;font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word}
+/* The heading takes programmatic focus on every route entry (App's own
+   `[data-page-heading]` handler), so its ring would greet the reader on
+   arrival rather than mark a keyboard move — the same reason
+   `.a3-hero-title` and `.a3-docws-title` suppress theirs. The RESULT
+   COUNT below keeps its ring, because there the focus move is a real
+   answer to something the reader just did. */
+.a3-portfolio-title:focus,.a3-portfolio-title:focus-visible{outline:none;box-shadow:none}
+/* The count is the page's only counter AND the programmatic focus target
+   after a page change. `tabIndex=-1` keeps it out of everybody's sequential
+   path; the focus ring is deliberately NOT suppressed, so a reader who
+   paged with the keyboard sees where they landed. */
+.a3-pf-count{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);font-variant-numeric:tabular-nums;text-align:right}
+.a3-pf-count:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--border-width-focus)}
+
+/* TOOLBAR — one row, one landmark: Search (flexible) · Sort · Filter (n). */
 .a3-pf-toolbar{display:grid;gap:var(--space-3);min-width:0}
 .a3-pf-toolbar-row{display:flex;flex-wrap:wrap;align-items:end;gap:var(--space-3);min-width:0}
-.a3-pf-toolbar-row>.a3-form-field{flex:0 1 auto;min-width:0}
-.a3-pf-toolbar-row>.a3-form-field:first-child{flex:1 1 var(--measure-form-control)}
+/* `.a3-form-field`'s own `max-width:--measure-component` is the right
+   default for a form: a 900 px text input is unreadable. In a TOOLBAR
+   the search field is not prose, it is the row's flexible member, and
+   the cap would leave a third of the band empty. */
+.a3-pf-toolbar-row>.a3-form-field{flex:0 1 auto;min-width:0;max-inline-size:none}
+.a3-pf-toolbar-row>.a3-form-field:first-child{flex:1 1 20rem;min-inline-size:20rem}
+.a3-pf-toolbar-row>.a3-form-field:nth-child(2){flex:0 1 18rem;min-inline-size:16.25rem}
 .a3-pf-toolbar-row>.a3-btn{flex:0 0 auto;white-space:nowrap}
-.a3-pf-panel{margin-top:var(--space-4);border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-4);display:grid;gap:var(--space-4);min-width:0}
-.a3-pf-panel-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(var(--measure-form-control),1fr));gap:var(--space-4);align-items:start;min-width:0}
+/* ONE grid for all four filter groups. Stacking a three-column grid above
+   a full-width fieldset cost the status options a row of their own — 196 px
+   of panel for four controls. Sharing one row brings it to ~138 px, which
+   is what keeps the first card above 400 px with the panel open. */
+.a3-pf-panel{border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-4);min-width:0}
+.a3-pf-panel-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,2.4fr);gap:var(--space-3) var(--space-4);align-items:start;min-width:0}
 .a3-pf-status{border:0;padding:0;margin:0;min-width:0}
 .a3-pf-status>legend{padding:0;font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);color:var(--color-text-primary)}
-.a3-pf-status-list{margin-top:var(--space-2);display:flex;flex-wrap:wrap;gap:var(--space-2) var(--space-4)}
-.a3-pf-status-option{position:relative;display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--size-hit-target-default);padding-right:var(--space-2);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);cursor:pointer}
+/* R-04, BOTH conditions. The visible option drops to 32 px while
+   `.hit-target::before` keeps a 44 × 44 press/focus target; the 12 px row
+   gap makes 32 + 12 = 44 exactly, so two vertically adjacent zones ABUT
+   and never overlap — the defect the condition exists to forbid. Every
+   option is already wider than 44 px, so the horizontal half is free. */
+.a3-pf-status-list{margin-top:var(--space-2);display:flex;flex-wrap:wrap;gap:var(--space-3) var(--space-4)}
+.a3-pf-status-option{display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--size-control-visual-sm);padding-right:var(--space-2);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);cursor:pointer}
 .a3-pf-status-option input{accent-color:var(--color-selection-border);width:var(--size-icon-sm);height:var(--size-icon-sm)}
 .a3-pf-status-option:has(input:focus-visible){outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--border-width-focus)}
-.a3-pf-chips{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);margin-top:var(--space-3);min-width:0}
+.a3-pf-chips{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);min-width:0}
 .a3-pf-chip{display:inline-flex;align-items:center;gap:var(--space-2);border:var(--border-contrast-1px);background:var(--color-surface-default);padding:0 0 0 var(--space-3);font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary);max-width:100%}
 .a3-pf-chip>span{overflow-wrap:break-word;min-width:0}
 .a3-pf-chip-remove{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:var(--size-hit-target-default);min-height:var(--size-hit-target-default);border:0;border-left:var(--border-hairline);background:transparent;color:var(--color-text-secondary);cursor:pointer;font-family:inherit}
 .a3-pf-chip-remove:hover{color:var(--color-text-primary);background:var(--color-action-secondary-hover)}
 .a3-pf-chip-remove:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:calc(-1 * var(--border-width-focus))}
-.a3-pf-summary{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:var(--space-3);margin-top:var(--space-4);min-width:0}
-.a3-pf-count{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
 
-.a3-pf-list{list-style:none;margin:var(--space-4) 0 0;padding:0;display:grid;gap:var(--space-4);min-width:0}
-.a3-pf-card{display:grid;grid-template-columns:minmax(0,264px) minmax(0,1fr) minmax(0,272px);border:var(--border-contrast-1px);background:var(--color-surface-default);min-width:0}
+/* RESULTS — the scroll target after a page change, so the reader returns
+   to the list rather than to the top of the document. */
+.a3-pf-results{margin-top:var(--space-3);min-width:0;scroll-margin-top:var(--space-4)}
+.a3-pf-list{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-4);min-width:0}
+.a3-pf-card{display:grid;grid-template-columns:minmax(0,240px) minmax(0,1fr) minmax(0,232px);border:var(--border-contrast-1px);background:var(--color-surface-default);min-width:0}
+/* Media stays FULL CARD HEIGHT and is resized, never reduced to a
+   thumbnail: at a 300 px card, 240 px wide is a 4:5 architectural portrait,
+   and it is the reason five German timber projects are distinguishable at a
+   glance instead of being five rows of text. */
 .a3-pf-media{min-width:0;display:grid;grid-template-columns:minmax(0,1fr);overflow:hidden}
 .a3-pf-media figure{min-inline-size:0}
 .a3-pf-media figure,.a3-pf-media figure>div{block-size:100%}
-.a3-pf-body{min-width:0;padding:var(--space-5);display:grid;align-content:start;gap:var(--space-4)}
+.a3-pf-body{min-width:0;padding:var(--space-4);display:grid;align-content:start;gap:var(--space-3)}
+.a3-pf-identity{min-width:0}
 .a3-pf-status-line{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3)}
-.a3-pf-title{margin:var(--space-2) 0 0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
-.a3-pf-parties{margin:var(--space-2) 0 0;display:grid;gap:var(--space-1);min-width:0}
-.a3-pf-party{display:block;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word}
+.a3-pf-title{position:relative;margin:var(--space-1) 0 0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+/* The title is the card's navigation control and stays the strongest text
+   in it — so the canonical `.a3-linkbtn`'s own 44 × 44 inline-flex PILL box
+   has to be neutralised here, exactly as `.a3-offer-artifact-open` does:
+   left as it is, it makes the heading line 44 px tall instead of 32 and
+   centres the text. R-04 is then satisfied the honest way — a ::before that
+   spans the title's width at 44 px height. The zone's 6 px overhang meets
+   only the status word above and the parties line below, neither of which
+   is interactive, so no two press zones overlap. */
+.a3-pf-title .a3-linkbtn{display:inline;min-inline-size:0;min-block-size:0;text-align:start}
+.a3-pf-title .a3-linkbtn::before{content:'';position:absolute;inset-inline:0;top:50%;transform:translateY(-50%);block-size:var(--size-hit-target-default)}
+.a3-pf-parties{margin:var(--space-2) 0 0;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 var(--space-2);min-width:0}
+.a3-pf-party{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word}
 .a3-pf-party b{font-weight:var(--font-weight-medium);color:var(--color-text-primary)}
+.a3-pf-party-sep{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-muted)}
 /* A metric strip reads DOWN each column — label above value, both flush
    left. `.numeric` right-aligns for a table, where a column of figures
    shares one right edge; here every value has its own column and its own
    label, so the shared edge does not exist and the alignment would only
    push each number away from the word that names it. Tabular figures stay. */
-.a3-pf-metrics{margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(8rem,1fr));gap:var(--space-3) var(--space-4);border-top:var(--border-hairline);padding-top:var(--space-3);min-width:0}
+.a3-pf-metrics{margin:0;display:grid;grid-template-columns:repeat(4,minmax(8rem,1fr));gap:var(--space-3) var(--space-4);border-top:var(--border-hairline);padding-top:var(--space-3);min-width:0}
 .a3-pf-metric{min-width:0}
 .a3-pf-metric dt{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
 .a3-pf-metric dd{margin:var(--space-1) 0 0;text-align:left;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word}
-.a3-pf-metric dd[data-unknown]{font-weight:var(--font-weight-regular);color:var(--color-text-secondary)}
+/* An ABSENT value is a SENTENCE, not a figure, and it is typeset as one.
+   It keeps its full honest wording — `Nicht vollständig erfasst · 1 von 3`
+   is the Product's contract and is never shortened into a number, because
+   a partial sum under a total's label is a lie — and it takes the caption
+   role, which is what a statement about missing data is. The figure weight
+   stays reserved for figures, so a project that KNOWS its BGF never reads
+   as quieter than one that does not. */
+.a3-pf-metric dd[data-unknown]{font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-regular);color:var(--color-text-secondary)}
 
 /* The value is not a fifth metric. It is what the project is worth today,
    it is the row a portfolio manager scans for, and it is the one number on
-   this card whose absence has to be a sentence rather than a blank. It gets
-   its own line, its own weight, and the coverage-aware label R-18 requires:
-   an incomplete scope is a SUBTOTAL and says so. */
-.a3-pf-value{margin:0;display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-1);border-top:var(--border-hairline);padding-top:var(--space-3);min-width:0}
-.a3-pf-value dt{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
-.a3-pf-value dd{margin:0;text-align:left;font-size:var(--type-metric-section-size);line-height:var(--type-metric-section-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word}
-.a3-pf-value dd[data-unknown]{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-regular);color:var(--color-text-secondary)}
-.a3-pf-value-note{margin:calc(-1 * var(--space-2)) 0 0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
-.a3-pf-actions{display:flex;flex-wrap:wrap;align-items:flex-start;gap:var(--space-3)}
-.a3-pf-note{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+   this card whose absence has to be a sentence rather than a blank. It
+   keeps its own line, its own weight, and the coverage-aware label R-18
+   requires: an incomplete scope is a SUBTOTAL and says so. 32 → 24 px: it
+   is still the largest numeral in the card, and it no longer competes with
+   the title for the eye. */
+.a3-pf-value{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 var(--space-3);border-top:var(--border-hairline);padding-top:var(--space-3);min-width:0}
+.a3-pf-value-figure{margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 var(--space-3);min-width:0}
+.a3-pf-value-figure dt{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
+.a3-pf-value-figure dd{margin:0;text-align:left;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word}
+.a3-pf-value-figure dd[data-unknown]{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-regular);color:var(--color-text-secondary)}
+.a3-pf-value-note{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
+/* One wrapping row. The demonstration marker is a flex ITEM here, centred
+   against the 44 px controls, so it costs zero rows; the canonical
+   `Button.disabledReason` still renders below its own button, in reading
+   order, and is what makes the row 68 px on the cards that need it. */
+.a3-pf-actions{display:flex;flex-wrap:wrap;align-items:flex-start;gap:var(--space-2) var(--space-3)}
+.a3-pf-note{margin:0;align-self:center;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
 
-.a3-pf-aside{min-width:0;border-left:var(--border-hairline);padding:var(--space-5);display:grid;align-content:start;gap:var(--space-4)}
+.a3-pf-aside{min-width:0;border-left:var(--border-hairline);padding:var(--space-4);display:grid;align-content:space-between;gap:var(--space-4)}
+/* Four states, four INDEPENDENT channels — type size, rule presence and
+   colour, cue word, cue glyph — so the ranking survives greyscale, a
+   missing stylesheet and colour-blindness. The material change is
+   SCHEDULED: a meeting thirteen days away used to render at the same
+   24 px bold as one that had already been missed. */
 .a3-pf-deadline{border-left:var(--size-status-accent-width) solid var(--color-deadline-warning);padding-left:var(--space-3);min-width:0}
-.a3-pf-deadline[data-tone="overdue"]{border-left-color:var(--color-deadline-critical)}
-.a3-pf-deadline[data-tone="none"]{border-left-color:var(--color-border-subtle)}
+.a3-pf-deadline[data-state="overdue"]{border-left-color:var(--color-deadline-critical)}
+.a3-pf-deadline[data-state="none"]{border-left-width:var(--border-width-default);border-left-color:var(--color-border-subtle)}
 .a3-pf-deadline-label{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-medium);letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-secondary)}
+/* SOON and OVERDUE at 24/32 bold; SCHEDULED demoted to 16/24 medium; NONE
+   quietest of all at 14/20 regular secondary. */
 .a3-pf-deadline-value{margin:var(--space-1) 0 0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word}
-.a3-pf-deadline-value[data-none]{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-regular);color:var(--color-text-secondary)}
+/* Date and clock time are ONE `<time datetime>` and share one baseline —
+   the day is the fact that ranks the queue, the hour is the detail beside
+   it. Wrapping is allowed and stays legible because the break falls
+   BETWEEN the two, never inside `14:00`. */
+.a3-pf-deadline-value>time{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 var(--space-2)}
+.a3-pf-deadline-clock{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-medium);color:var(--color-text-secondary);font-variant-numeric:tabular-nums}
+.a3-pf-deadline[data-state="scheduled"] .a3-pf-deadline-value{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-medium)}
+/* NONE is the quietest state and must STAY the quietest at both supported
+   widths. At 14/20 the sentence fitted one line in a 232 px aside and
+   wrapped to two in a 200 px one — which made "no meeting booked" render
+   TALLER than a booked one at 1280 and inverted the whole ranking. At the
+   caption role it is one line at both widths, and the block lands on the
+   36 px the target asks for. */
+.a3-pf-deadline-value[data-none]{font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-regular);color:var(--color-text-secondary)}
 .a3-pf-deadline-cue{margin:var(--space-1) 0 0;display:flex;align-items:center;gap:var(--space-2);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary)}
 /* The overdue cue is BLACK and bold, not red text. `--color-deadline-critical`
    (#F04859) reaches 3.64:1 on white — enough for the 3 px accent rule, which
    is a non-text UI component at a 3:1 threshold, and NOT enough for 14 px
    prose at 4.5:1. The meaning never depended on the colour anyway: the glyph
    and the word «Überfällig» carry it, and the accent rule reinforces it. */
-.a3-pf-deadline[data-tone="overdue"] .a3-pf-deadline-cue{color:var(--color-text-primary);font-weight:var(--font-weight-bold)}
-.a3-pf-dates{margin:0;display:grid;gap:var(--space-2);border-top:var(--border-hairline);padding-top:var(--space-3);min-width:0}
+.a3-pf-deadline[data-state="overdue"] .a3-pf-deadline-cue{color:var(--color-text-primary);font-weight:var(--font-weight-bold)}
+/* Two caption rows, label left / value right, ≤ 32 px together — pinned to
+   the bottom of the column by the aside's `space-between`. Nothing is
+   removed; both dates are still readable, they simply stop outweighing the
+   meeting in a column that exists to carry urgency. */
+.a3-pf-dates{margin:0;display:grid;gap:0;min-width:0}
 .a3-pf-date{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,max-content);gap:var(--space-3);align-items:baseline}
 .a3-pf-date dt{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
-.a3-pf-date dd{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);text-align:right;font-variant-numeric:tabular-nums}
+.a3-pf-date dd{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary);text-align:right;font-variant-numeric:tabular-nums}
 
-/* 1280 is recomposed, not squeezed: the media column narrows, the metric
-   strip drops from five columns to three by its own auto-fit, and the
-   deadline column keeps the width its 24 px date needs. */
+/* 1280 is recomposed, not squeezed: media and aside narrow to 200 px, the
+   filter grid drops to two columns with the status set full-width beneath
+   it, and the metric strip keeps ALL FOUR columns because the body is still
+   ~780 px wide. No band moves, nothing stacks, no field is hidden. */
 @media (max-width:1365px){
-  .a3-pf-card{grid-template-columns:minmax(0,208px) minmax(0,1fr) minmax(0,240px)}
-  .a3-pf-body,.a3-pf-aside{padding:var(--space-4)}
+  .a3-pf-card{grid-template-columns:minmax(0,200px) minmax(0,1fr) minmax(0,200px)}
+  /* The narrower aside squeezes the record-date label column to ~90 px, and
+     `Zuletzt geändert` needs ~88 — one token of gutter is the difference
+     between two 16 px rows and four. */
+  .a3-pf-date{gap:var(--space-1)}
+}
+@media (max-width:1300px){
+  .a3-pf-panel-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .a3-pf-panel-grid>.a3-pf-status{grid-column:1 / -1}
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -3812,7 +3924,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-pgn-pages{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-1)}
 .a3-pgn-page{display:flex}
 .a3-pgn-step,.a3-pgn-number{display:inline-flex;align-items:center;justify-content:center;min-inline-size:var(--size-control-visual-sm);padding:var(--space-2) var(--space-3);background:var(--color-surface-default);border:var(--border-contrast-1px);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary);font-variant-numeric:tabular-nums}
-.a3-pgn-step[disabled]{color:var(--color-text-disabled);border-color:var(--color-border-subtle);background:var(--color-surface-subtle)}
+.a3-pgn-step[aria-disabled="true"]{color:var(--color-text-disabled);border-color:var(--color-border-subtle);background:var(--color-surface-subtle);cursor:default}
 .a3-pgn-number[aria-current="page"]{background:var(--color-surface-selected);border-color:var(--color-selection-border);font-weight:var(--font-weight-bold)}
 .a3-pgn-gap{padding-inline:var(--space-1);color:var(--color-text-muted);font-size:var(--type-small-size);line-height:var(--type-small-line)}
 

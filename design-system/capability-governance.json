@@ -405,6 +405,10 @@
         {
           "path": "src/screens/ProjectHome.tsx",
           "pattern": "<Pagination"
+        },
+        {
+          "path": "src/screens/OpportunityList.tsx",
+          "pattern": "<Pagination"
         }
       ]
     }

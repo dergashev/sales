@@ -62,12 +62,16 @@ describe('the register is the working object', () => {
     expect(document.querySelectorAll('.a3-drow')).toHaveLength(10)
     const pages = screen.getByRole('navigation', { name: 'Dokumentseiten' })
     expect(within(pages).getByText('1–10 von 36 Dokumenten')).toBeInTheDocument()
-    expect(within(pages).getByRole('button', { name: 'Zurück' })).toBeDisabled()
+    // The boundary keeps its place in the DOM and in the tab order and
+    // refuses to move (canonical Pagination's `aria-disabled` contract).
+    expect(within(pages).getByRole('button', { name: 'Zurück' }))
+      .toHaveAttribute('aria-disabled', 'true')
 
     await user.click(within(pages).getByRole('button', { name: 'Seite 4' }))
     expect(within(pages).getByText('31–36 von 36 Dokumenten')).toBeInTheDocument()
     expect(document.querySelectorAll('.a3-drow')).toHaveLength(6)
-    expect(within(pages).getByRole('button', { name: 'Weiter' })).toBeDisabled()
+    expect(within(pages).getByRole('button', { name: 'Weiter' }))
+      .toHaveAttribute('aria-disabled', 'true')
     // A page change is announced and takes focus to the register heading,
     // rather than leaving the reader where the button was.
     expect(document.activeElement).toHaveClass('a3-docws-count-text')
