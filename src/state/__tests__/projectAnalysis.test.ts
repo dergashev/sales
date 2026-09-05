@@ -7,7 +7,12 @@ import {
   activeDocumentId,
   advanceJob,
   affectedByDocuments,
+  analysisWorkspaceState,
+  attentionCount,
   cancelJob,
+  documentDisplayState,
+  eligibleDocuments,
+  processedOutcomeCount,
   conflictResolved,
   demoProject,
   documentTypeTally,
@@ -507,5 +512,87 @@ describe('the deterministic reset and the seeded checkpoint', () => {
     expect(Object.keys(seeded.conflictDecisions)).toHaveLength(6)
     // …and it never becomes a third project.
     expect(DEMO_PROJECTS).toHaveLength(2)
+  })
+})
+
+/* ───────────── the Documents workspace's derived states ───────────── */
+
+describe('analysisWorkspaceState is a presentation of JobState, not a new one', () => {
+  const project = demoProject('DEMO-COMPLEX-01')!
+
+  it('separates "never begun" from "begun, then cancelled"', () => {
+    const fresh = initialProjectAnalysis(project)
+    expect(fresh.jobState).toBe('NOT_STARTED')
+    expect(analysisWorkspaceState(project, fresh)).toBe('READY')
+
+    const started = startJob(project, fresh, '2026-09-05T10:00:00.000Z')
+    expect(analysisWorkspaceState(project, started)).toBe('ANALYSING')
+
+    const cancelled = cancelJob(started)
+    // The store's own value is unchanged — the distinction is the start
+    // timestamp, which cancelling preserves.
+    expect(cancelled.jobState).toBe('NOT_STARTED')
+    expect(analysisWorkspaceState(project, cancelled)).toBe('CANCELLED')
+  })
+
+  it('qualifies a terminal job by the outcomes it actually produced', () => {
+    let analysis = startJob(project, initialProjectAnalysis(project), '2026-09-05T10:00:00.000Z')
+    for (let i = 0; i < project.documents.length * 8; i += 1) {
+      if (analysis.jobState === 'COMPLETE') break
+      analysis = advanceJob(project, analysis)
+    }
+    expect(analysis.jobState).toBe('COMPLETE')
+    // The complex fixture ends with 4 warnings, 3 low confidence, 1 failed.
+    expect(attentionCount(project, analysis)).toBe(8)
+    expect(analysisWorkspaceState(project, analysis)).toBe('COMPLETE_WITH_ISSUES')
+    expect(processedOutcomeCount(project, analysis)).toBe(28)
+
+    const clean = demoProject('DEMO-HAPPY-01')!
+    let happy = startJob(clean, initialProjectAnalysis(clean), '2026-09-05T10:00:00.000Z')
+    for (let i = 0; i < clean.documents.length * 8; i += 1) {
+      if (happy.jobState === 'COMPLETE') break
+      happy = advanceJob(clean, happy)
+    }
+    expect(attentionCount(clean, happy)).toBe(0)
+    expect(analysisWorkspaceState(clean, happy)).toBe('COMPLETE')
+  })
+
+  it('eligibleDocuments IS the set the job processes — one function, not two', () => {
+    const fresh = initialProjectAnalysis(project)
+    expect(eligibleDocuments(project, fresh)).toHaveLength(project.documents.length)
+
+    const removed = removeDocument(
+      project, fresh, project.documents[0]!.id, '2026-09-05T10:00:00.000Z',
+    )
+    expect(eligibleDocuments(project, removed)).toHaveLength(project.documents.length - 1)
+    // And the job agrees: a removed row is not re-queued by a start and is
+    // never walked by the cursor, so the two counts cannot drift.
+    let analysis = startJob(project, removed, '2026-09-05T10:00:00.000Z')
+    const removedId = project.documents[0]!.id
+    expect(analysis.documents[removedId]!.removedAt).not.toBeNull()
+    for (let i = 0; i < project.documents.length * 8; i += 1) {
+      if (analysis.jobState === 'COMPLETE') break
+      analysis = advanceJob(project, analysis)
+      expect(activeDocumentId(project, analysis)).not.toBe(removedId)
+    }
+    expect(analysis.jobState).toBe('COMPLETE')
+    expect(processedCount(project, analysis)).toBe(project.documents.length - 1)
+  })
+
+  it('QUEUED is only ever true after a run was accepted', () => {
+    const fresh = initialProjectAnalysis(project)
+    const id = project.documents[0]!.id
+    // The stored value is QUEUED from the first moment — that is the
+    // store's initial value and this rebuild does not change it. What the
+    // register SHOWS before a run exists is READY.
+    expect(fresh.documents[id]!.state).toBe('QUEUED')
+    expect(documentDisplayState(fresh, id, 'READY')).toBe('READY')
+    expect(documentDisplayState(fresh, id, 'CANCELLED')).toBe('READY')
+    // Once work is accepted, the same value means what it says.
+    const started = startJob(project, fresh, '2026-09-05T10:00:00.000Z')
+    expect(documentDisplayState(started, id, 'ANALYSING')).toBe('QUEUED')
+    // A removed row is neither.
+    const removed = removeDocument(project, fresh, id, '2026-09-05T10:00:00.000Z')
+    expect(documentDisplayState(removed, id, 'READY')).toBe('REMOVED')
   })
 })

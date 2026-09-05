@@ -82,6 +82,10 @@ const OWNED_SURFACES = [
   'src/components/ClientNarrative.tsx',
   'src/components/ClientScenario.tsx',
   'src/components/ClientOutputs.tsx',
+  // Documents workspace rebuild — the two canonical additions the accepted
+  // 2026-09-05 audit required, plus the register they are composed into.
+  'src/design-system/WorkflowNavigator.tsx',
+  'src/design-system/Pagination.tsx',
 ]
 
 function source(relative: string): string {

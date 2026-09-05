@@ -6072,6 +6072,13 @@ class Verifier:
             # intention, and a future removal of that consumer surfaces here
             # rather than leaving an orphaned control in the catalogue.
             'combobox',
+            # Documents workspace rebuild (accepted 2026-09-05 audit): the
+            # hierarchical journey navigation that replaces the flat
+            # thirteen-row project spine, and the first canonical
+            # pagination this system has had. Both are declared in
+            # src/design-system/registry.tsx and consumed by real product
+            # surfaces, not by the gallery.
+            'workflow-navigator', 'pagination',
         }
         by_id = {}
         for entry in capabilities:
@@ -6151,6 +6158,29 @@ class Verifier:
         if 'export function WorkflowStepper' not in canonical:
             self.fail('GOV-CAPABILITY', 'src/design-system/WorkflowStepper.tsx',
                       'canonical WorkflowStepper owner is absent')
+        # The hierarchical navigator is an EVOLUTION of the same family, not
+        # a second one: the flat stepper keeps the Option workspace, the
+        # navigator owns the grouped project journey, and both live under
+        # Design System ownership. A Documents-local copy of either is the
+        # failure this pair of checks exists to catch.
+        navigator = self.read('src/design-system/WorkflowNavigator.tsx') or ''
+        if 'export function WorkflowNavigator' not in navigator:
+            self.fail('GOV-CAPABILITY', 'src/design-system/WorkflowNavigator.tsx',
+                      'canonical WorkflowNavigator owner is absent')
+        pagination = self.read('src/design-system/Pagination.tsx') or ''
+        if 'export function Pagination' not in pagination:
+            self.fail('GOV-CAPABILITY', 'src/design-system/Pagination.tsx',
+                      'canonical Pagination owner is absent')
+        for owner_rel, symbol in (
+                ('src/design-system/WorkflowNavigator.tsx', 'WorkflowNavigator'),
+                ('src/design-system/Pagination.tsx', 'Pagination')):
+            for source_rel, source in self.files('*.tsx'):
+                if source_rel == owner_rel or '__tests__' in source_rel:
+                    continue
+                clean = self._mask_comments(source)
+                if re.search(rf'\b(?:export\s+)?(?:function|const)\s+{symbol}\b', clean):
+                    self.emit('GOV-CAPABILITY', source_rel, 1, source.split('\n')[0],
+                              f'a second {symbol} owner returned; consume {owner_rel} instead')
         # VR3-01: `OpportunityCard.tsx` was retired with the four-stage
         # project card; the second real consumer became the project shell.
         # VR3-02: the thirteen-step journey renders in BOTH the project and

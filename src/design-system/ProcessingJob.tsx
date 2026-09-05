@@ -22,22 +22,58 @@ import { SemanticStatus, type SemanticStatusTone } from './SemanticStatus'
  * - **A warning never erases successful files.** Filtering to the rows that
  *   need attention changes which ROWS are listed; the job's own counts stay
  *   on screen, so the filter can never hide the overall truth.
+ *
+ * ── Evolution, accepted 2026-09-05 Documents workspace UX audit ──────────
+ *
+ * The audit found three untruths in this capability and one missing layout.
+ * All four are corrected HERE, canonically, rather than being worked around
+ * by the one screen that noticed them:
+ *
+ * 1. **`READY` is a state.** A document that has never been submitted was
+ *    rendered `QUEUED` with a zero-percent bar, which says processing was
+ *    accepted and is about to start. It was not. `QUEUED` now means what it
+ *    says — accepted, waiting for its turn — and `READY` carries the
+ *    pre-start truth with no progress treatment at all.
+ * 2. **The job's own vocabulary is the analysis vocabulary.** `READY`,
+ *    `CANCELLED`, `RUNNING`, `COMPLETE` and `COMPLETE_WITH_ISSUES`. A
+ *    terminal job with unresolved document issues can no longer be dressed
+ *    as an unqualified success, which is what `COMPLETE` did while eight
+ *    documents still needed attention.
+ * 3. **Inspection is not a by-product of failure.** The detail disclosure
+ *    used to render only inside the recovery-actions block, so a normal
+ *    processed document — the overwhelming majority — could not be opened
+ *    at all. Inspection is now independent: a row with a `detail` gets its
+ *    toggle whether or not it has anything to recover from.
+ * 4. **`layout="rail"` is a real layout.** The global job state belongs
+ *    beside the register it describes, not above it. The rail is the same
+ *    capability in a narrow column: same states, same counts, same progress
+ *    semantics, no row list.
  */
 
-export type ProcessingJobState = 'NOT_STARTED' | 'RUNNING' | 'PARTIAL_FAILURE' | 'COMPLETE'
+export type ProcessingJobState =
+  /** Never started. No progress treatment exists for this state. */
+  | 'READY'
+  /** Started, then cancelled. Terminal outcomes already produced are kept. */
+  | 'CANCELLED'
+  | 'RUNNING'
+  | 'COMPLETE'
+  /** Terminal, with outcomes that still need a decision. Never success-only. */
+  | 'COMPLETE_WITH_ISSUES'
 
 const JOB_TONE: Record<ProcessingJobState, SemanticStatusTone> = {
-  NOT_STARTED: 'neutral',
+  READY: 'neutral',
+  CANCELLED: 'neutral',
   RUNNING: 'progress',
-  PARTIAL_FAILURE: 'attention',
   COMPLETE: 'ok',
+  COMPLETE_WITH_ISSUES: 'attention',
 }
 
 const JOB_LABEL_KEY: Record<ProcessingJobState, string> = {
-  NOT_STARTED: 'ds.processingJob.state.notStarted',
+  READY: 'ds.processingJob.state.ready',
+  CANCELLED: 'ds.processingJob.state.cancelled',
   RUNNING: 'ds.processingJob.state.running',
-  PARTIAL_FAILURE: 'ds.processingJob.state.partialFailure',
   COMPLETE: 'ds.processingJob.state.complete',
+  COMPLETE_WITH_ISSUES: 'ds.processingJob.state.completeWithIssues',
 }
 
 export type ProcessingJobFilter = {
@@ -49,11 +85,19 @@ export type ProcessingJobFilter = {
 }
 
 export function ProcessingJob({
-  state, processedCount, totalCount, progressPercent,
+  state, layout = 'panel', heading,
+  processedCount, totalCount, progressPercent,
   activeFileName, activePhaseLabel, nextStepLabel,
-  filters, filterLegend, announcement, actions, notice, children,
+  filters, filterLegend, announcement, summary, actions, notice, children,
 }: {
   state: ProcessingJobState
+  /**
+   * `panel` is the full job with its row list; `rail` is the same job as a
+   * narrow contextual column beside the register it describes.
+   */
+  layout?: 'panel' | 'rail'
+  /** Defaults to the counted heading. The rail names the STATE instead. */
+  heading?: string
   processedCount: number
   /** The real denominator. The owner never passes an estimate. */
   totalCount: number
@@ -69,49 +113,65 @@ export function ProcessingJob({
    * announced through here, not by making every row its own live region.
    */
   announcement?: string
+  /** Scope before the work, results after it. Never a second progress bar. */
+  summary?: ReactNode
   actions?: ReactNode
   /** A partial failure explains itself here, above the rows. */
   notice?: ReactNode
-  children: ReactNode
+  children?: ReactNode
 }) {
   const t = useT()
   const headingId = useId()
-  const running = state === 'RUNNING' || state === 'PARTIAL_FAILURE'
+  const running = state === 'RUNNING'
+  // A job that has never run has NO progress to show. Rendering a 0 % bar
+  // before any work was accepted is the exact untruth the audit removed.
+  const hasProgress = state !== 'READY'
   return (
     <section
-      className="a3-pjob"
+      className={layout === 'rail' ? 'a3-pjob a3-pjob-rail' : 'a3-pjob'}
       aria-labelledby={headingId}
       aria-busy={running || undefined}
     >
       <div className="a3-pjob-head">
         <h2 id={headingId} className="a3-pjob-title">
-          {t('ds.processingJob.heading', { done: processedCount, total: totalCount })}
+          {heading ?? t('ds.processingJob.heading', {
+            done: processedCount, total: totalCount,
+          })}
         </h2>
-        <SemanticStatus tone={JOB_TONE[state]} label={t(JOB_LABEL_KEY[state])} />
-        {actions ? <div className="a3-pjob-actions">{actions}</div> : null}
+        {/* The status mark carries the state where the heading counts files.
+            A rail whose heading IS the state does not repeat it two lines
+            later — "Ready for analysis" above "READY" is the same sentence
+            twice, and the audit removed six of those from this page. */}
+        {heading ? null : (
+          <SemanticStatus tone={JOB_TONE[state]} label={t(JOB_LABEL_KEY[state])} />
+        )}
       </div>
+
+      {summary ? <div className="a3-pjob-summary">{summary}</div> : null}
 
       {/* Semantic progress, not a decorative bar: the same numbers are in
           the accessible attributes and in the visible text. */}
-      <div className="a3-pjob-progress">
-        <div
-          className="a3-pjob-meter"
-          role="progressbar"
-          aria-valuemin={0}
-          aria-valuemax={totalCount}
-          aria-valuenow={processedCount}
-          aria-valuetext={t('ds.processingJob.progressText', {
-            done: processedCount, total: totalCount, percent: progressPercent,
-          })}
-        >
-          <span className="a3-pjob-meter-fill" style={{ inlineSize: `${progressPercent}%` }} />
+      {hasProgress ? (
+        <div className="a3-pjob-progress">
+          <div
+            className="a3-pjob-meter"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={totalCount}
+            aria-valuenow={processedCount}
+            aria-valuetext={t('ds.processingJob.progressText', {
+              done: processedCount, total: totalCount, percent: progressPercent,
+            })}
+          >
+            <span className="a3-pjob-meter-fill" style={{ inlineSize: `${progressPercent}%` }} />
+          </div>
+          <p className="a3-pjob-progress-text">
+            <b className="numeric">{progressPercent}{'\u202f'}%</b>
+            {' '}
+            {t('ds.processingJob.overallProgress')}
+          </p>
         </div>
-        <p className="a3-pjob-progress-text">
-          <b className="numeric">{progressPercent}{'\u202f'}%</b>
-          {' '}
-          {t('ds.processingJob.overallProgress')}
-        </p>
-      </div>
+      ) : null}
 
       {running && activeFileName ? (
         <div className="a3-pjob-active">
@@ -128,6 +188,8 @@ export function ProcessingJob({
           ) : null}
         </div>
       ) : null}
+
+      {notice ? <div className="a3-pjob-notice">{notice}</div> : null}
 
       {filters && filters.length > 0 ? (
         <fieldset className="a3-pjob-filters">
@@ -147,9 +209,9 @@ export function ProcessingJob({
         </fieldset>
       ) : null}
 
-      {notice ? <div className="a3-pjob-notice">{notice}</div> : null}
+      {actions ? <div className="a3-pjob-actions">{actions}</div> : null}
 
-      <ul className="a3-pjob-rows">{children}</ul>
+      {children ? <ul className="a3-pjob-rows">{children}</ul> : null}
 
       <p className="sr-only" role="status" aria-live="polite">
         {announcement ?? ''}
@@ -159,10 +221,15 @@ export function ProcessingJob({
 }
 
 export type DocumentRowState =
-  | 'QUEUED' | 'READING' | 'CLASSIFYING' | 'EXTRACTING' | 'CROSS_CHECKING'
+  /** Never submitted. Not queued, and never shown with a progress bar. */
+  | 'READY'
+  /** Submitted and waiting for its turn. Only valid once work was accepted. */
+  | 'QUEUED'
+  | 'READING' | 'CLASSIFYING' | 'EXTRACTING' | 'CROSS_CHECKING'
   | 'PROCESSED' | 'WARNING' | 'LOW_CONFIDENCE' | 'FAILED' | 'REMOVED'
 
 const ROW_TONE: Record<DocumentRowState, SemanticStatusTone> = {
+  READY: 'neutral',
   QUEUED: 'neutral',
   READING: 'progress',
   CLASSIFYING: 'progress',
@@ -178,6 +245,7 @@ const ROW_TONE: Record<DocumentRowState, SemanticStatusTone> = {
 }
 
 const ROW_CLASS: Record<DocumentRowState, string> = {
+  READY: 'a3-drow-ready',
   QUEUED: 'a3-drow-queued',
   READING: 'a3-drow-active',
   CLASSIFYING: 'a3-drow-active',
@@ -189,6 +257,11 @@ const ROW_CLASS: Record<DocumentRowState, string> = {
   FAILED: 'a3-drow-failed',
   REMOVED: 'a3-drow-removed',
 }
+
+/** The four phases that describe work actually in flight. */
+const IN_FLIGHT: ReadonlySet<DocumentRowState> = new Set<DocumentRowState>([
+  'READING', 'CLASSIFYING', 'EXTRACTING', 'CROSS_CHECKING',
+])
 
 /**
  * The row's own entry choreography (M-01). Passed in by the owner rather
@@ -209,21 +282,22 @@ export type DocumentRowAction = {
 
 export function DocumentRow({
   file, typeLabel, versionLabel, associationLabel, note, state, stateLabel,
-  stateReason, progress, active, stale, lineage, actions, detail,
-  detailOpen, onToggleDetail, detailToggleLabel, rowMotion,
+  stateReason, progress = 0, active, stale, lineage, actions, detail,
+  detailOpen, onToggleDetail, detailToggleLabel, rowMotion, density = 'default',
 }: {
   file: string
   typeLabel: string
-  versionLabel: string
+  /** Omitted where the source carries no version — never invented. */
+  versionLabel?: string
   /** Which building (or the project) the document is attributed to. */
-  associationLabel: string
+  associationLabel?: string
   note?: string
   state: DocumentRowState
   /** The state as a word. The accessible name is filename + state. */
   stateLabel: string
   stateReason?: string
-  /** 0…1 processing progress. Only rendered while the row is not terminal. */
-  progress: number
+  /** 0…1 processing progress. Only rendered while work is actually in flight. */
+  progress?: number
   active?: boolean
   /** Source evidence changed after this row was processed. */
   stale?: boolean
@@ -235,27 +309,51 @@ export function DocumentRow({
   onToggleDetail?: () => void
   detailToggleLabel?: string
   rowMotion?: DocumentRowMotion
+  /** `compact` is the operational register density (64–72px collapsed). */
+  density?: 'default' | 'compact'
 }) {
   const t = useT()
   const detailId = useId()
-  const terminal = state === 'PROCESSED' || state === 'WARNING'
-    || state === 'LOW_CONFIDENCE' || state === 'FAILED' || state === 'REMOVED'
-  const className = `a3-drow ${ROW_CLASS[state]}${active ? ' a3-drow-current' : ''}`
+  const inFlight = IN_FLIGHT.has(state)
+  const meta = [typeLabel, versionLabel, associationLabel].filter(Boolean).join(' · ')
+  const className = [
+    'a3-drow',
+    ROW_CLASS[state],
+    density === 'compact' ? 'a3-drow-compact' : '',
+    active ? 'a3-drow-current' : '',
+  ].filter(Boolean).join(' ')
+  // Inspection is INDEPENDENT of recovery (audit finding 3): a row that has
+  // nothing to retry still has evidence to look at.
+  const inspect = detail && onToggleDetail ? (
+    <button
+      type="button"
+      className="a3-drow-action a3-drow-action-inspect hit-target"
+      aria-expanded={Boolean(detailOpen)}
+      aria-controls={detailId}
+      aria-label={t('ds.documentRow.actionOn', {
+        action: detailToggleLabel ?? t('ds.documentRow.inspect'), file,
+      })}
+      onClick={onToggleDetail}
+    >
+      {detailToggleLabel ?? t('ds.documentRow.inspect')}
+    </button>
+  ) : null
   const Row = rowMotion ? motion.li : 'li'
   return (
     <Row className={className} {...(rowMotion ?? {})}>
       <div className="a3-drow-main">
         <span className="a3-drow-kind" aria-hidden="true">PDF</span>
         <div className="a3-drow-identity">
-          <b className="a3-drow-file">{file}</b>
-          <span className="a3-drow-meta">
-            {typeLabel} · {versionLabel} · {associationLabel}
-          </span>
+          <b className="a3-drow-file" title={file}>{file}</b>
+          {meta ? <span className="a3-drow-meta">{meta}</span> : null}
           {note ? <span className="a3-drow-note">{note}</span> : null}
           {lineage ? <span className="a3-drow-lineage">{lineage}</span> : null}
         </div>
         <div className="a3-drow-progress">
-          {terminal ? null : (
+          {/* Only work that is actually in flight has a bar. A pre-start or
+              terminal row has none — a 0 % or 100 % bar would be decoration
+              standing where a state word already says the truth. */}
+          {inFlight ? (
             <span
               className="a3-drow-meter"
               role="progressbar"
@@ -269,20 +367,30 @@ export function DocumentRow({
                 style={{ inlineSize: `${Math.round(progress * 100)}%` }}
               />
             </span>
-          )}
+          ) : null}
         </div>
         <div className="a3-drow-state">
           {/* The accessible name of the state is filename + state, so a
               screen-reader user never hears a bare "WARNING" with no
-              subject. */}
-          <SemanticStatus
-            tone={stale ? 'stale' : ROW_TONE[state]}
-            label={stateLabel}
-            reason={stateReason}
-            size="compact"
-          />
+              subject.
+
+              A row that has not been submitted yet is QUIET: the word is
+              there, in full, but a register of eight identical status marks
+              is a wall of pills that emphasises nothing. Emphasis is
+              reserved for the states that need a decision. */}
+          {state === 'READY' && !stale ? (
+            <span className="a3-drow-quiet-state">{stateLabel}</span>
+          ) : (
+            <SemanticStatus
+              tone={stale ? 'stale' : ROW_TONE[state]}
+              label={stateLabel}
+              reason={stateReason}
+              size="compact"
+            />
+          )}
           <span className="sr-only">{t('ds.documentRow.stateOf', { file })}</span>
         </div>
+        {inspect ? <div className="a3-drow-inspect">{inspect}</div> : null}
       </div>
       {actions && actions.length > 0 ? (
         <div className="a3-drow-actions">
@@ -307,17 +415,6 @@ export function DocumentRow({
               {action.label}
             </button>
           ))}
-          {detail && onToggleDetail ? (
-            <button
-              type="button"
-              className="a3-drow-action a3-drow-action-ghost hit-target"
-              aria-expanded={Boolean(detailOpen)}
-              aria-controls={detailId}
-              onClick={onToggleDetail}
-            >
-              {detailToggleLabel ?? t('ds.documentRow.inspect')}
-            </button>
-          ) : null}
         </div>
       ) : null}
       {detail ? (

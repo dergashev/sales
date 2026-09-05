@@ -77,25 +77,33 @@ describe('Projektstatus-Überblick (Task 01) — roving tabindex (TABS-001/KEY-0
   // all (a known, deliberately-deferred DS-GOV-EX-07 gap) — Task 01 closes
   // it for this instance, so the TABS-001/KEY-003 keyboard contract this
   // block protected now applies here instead.
-  // VR3-01: the project's ONE progress model is the canonical workflow
-  // SPINE (`WorkflowStepper size="spine"`, nav «Projekt- und
-  // Optionsverlauf»), which replaces the former «Projektstatus» stepper.
-  // The contract this block protects — roving tabindex, arrow movement,
-  // Home/End, and NO activation on arrow — is unchanged and now lives
-  // there. An Option is created first because only then are all three
-  // project stations navigable (`onSelect`) at once: a spine with a single
-  // interactive step could not prove movement between them at all.
+  // The project's ONE progress model is the canonical journey navigation.
+  // It is now `WorkflowNavigator` (nav «Projektablauf», six grouped
+  // stages) instead of the thirteen-row spine; the contract this block
+  // protects — roving tabindex, arrow movement, Home/End, and NO
+  // activation on arrow — is unchanged and moved with it. An Option is
+  // created first because only then are several project stations
+  // navigable (`onSelect`) at once: a navigator with a single interactive
+  // stage could not prove movement between them at all.
+  //
+  // The queries below are scoped to the TOP-LEVEL stage buttons: the
+  // current stage also discloses its own members, and those are ordinary
+  // buttons outside the roving cycle.
   async function openOverview(_user: ReturnType<typeof userEvent.setup>) {
     render(<App />)
     enterOptionWorkspace()
     act(() => { useStore.getState().backToOpportunity() })
-    return screen.getByRole('navigation', { name: 'Projekt- und Optionsverlauf' })
+    return screen.getByRole('navigation', { name: 'Projektablauf' })
+  }
+
+  function stageButtons(overview: HTMLElement): HTMLButtonElement[] {
+    return [...overview.querySelectorAll<HTMLButtonElement>('.a3-wfn-button')]
   }
 
   it('стрелка двигает фокус, но НЕ открывает раздел — открытие только по клику/Enter/Space (STEP-003)', async () => {
     const user = userEvent.setup()
     const overview = await openOverview(user)
-    const steps = within(overview).getAllByRole('button')
+    const steps = stageButtons(overview)
     expect(steps.length).toBeGreaterThan(1)
     expect(useStore.getState().projectStage).toBe('createOption')
 
@@ -119,7 +127,7 @@ describe('Projektstatus-Überblick (Task 01) — roving tabindex (TABS-001/KEY-0
   it('roving tabindex: ровно одна кнопка обзора в цикле Tab', async () => {
     const user = userEvent.setup()
     const overview = await openOverview(user)
-    const steps = within(overview).getAllByRole('button')
+    const steps = stageButtons(overview)
     const inCycle = steps.filter((s) => s.getAttribute('tabindex') === '0')
     expect(inCycle).toHaveLength(1)
   })
@@ -127,7 +135,7 @@ describe('Projektstatus-Überblick (Task 01) — roving tabindex (TABS-001/KEY-0
   it('Home и End уводят фокус на края списка', async () => {
     const user = userEvent.setup()
     const overview = await openOverview(user)
-    const steps = within(overview).getAllByRole('button')
+    const steps = stageButtons(overview)
 
     steps[0]!.focus()
     await user.keyboard('{End}')

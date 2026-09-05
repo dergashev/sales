@@ -282,11 +282,13 @@ describe('Сквозной сценарий продажи', () => {
     // carried by the workflow spine together with the create-option gate's
     // own named reason (rule 12), not a second, separate checklist.
     expect(screen.queryByRole('group', { name: /Bereitschaft/ })).not.toBeInTheDocument()
-    // VR3-01: der eine Verlauf heißt jetzt „Projekt- und Optionsverlauf"
-    // und nennt die Stationen; die Bereitschaftszeilen nennen die Sache.
-    const spine = screen.getByRole('navigation', { name: 'Projekt- und Optionsverlauf' })
-    expect(within(spine).getByText('Projektverständnis')).toBeInTheDocument()
-    expect(within(spine).getByText('Option anlegen')).toBeInTheDocument()
+    // Documents-workspace rebuild: der Projektablauf sind jetzt SECHS
+    // gruppierte Stationen statt dreizehn erstrangiger Zeilen. Die
+    // Stationen nennen den Weg, die Bereitschaftszeilen die Sache.
+    const journey = screen.getByRole('navigation', { name: 'Projektablauf' })
+    expect(journey.querySelectorAll('.a3-wfn-stage')).toHaveLength(6)
+    expect(within(journey).getByText('Verstehen')).toBeInTheDocument()
+    expect(within(journey).getByText('Konfigurieren')).toBeInTheDocument()
     expect(screen.getAllByText('Blockierende strittige Angaben').length).toBeGreaterThan(0)
 
     const create = screen.getByRole('button', { name: 'Option anlegen' })

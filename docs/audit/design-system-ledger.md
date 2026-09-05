@@ -335,3 +335,43 @@ Option и смену главы, подпись выбора KG 300 печата
 границей шва; жалоба «строка рассечена пополам при остановке колёсиком
 где угодно» им не закрывается. Зафиксировано в `components-core.md` §13
 как DESIGN SYSTEM CONSTRAINT, а не домыслено втихую.
+
+---
+
+## Партия «Documents-Workspace» · принятый аудит 05.09.2026
+
+Источник: `docs/audit/documents-workspace-ux-audit-328330c.md` (ACCEPTED
+TARGET). Партия вводит **две** канонические возможности и **эволюционирует
+две**. Реестр ниже отвечает на тот же вопрос, что и весь документ: где
+компонент существует и где его нет.
+
+| Возможность | Контракт | Витрина / реестр специменов | Прототип | Манифест GOV-CAPABILITY |
+|---|---|---|---|---|
+| **WorkflowNavigator** (новая) | `components-core.md` §14 · `.a3-wfn` | `registry.tsx` → `docws-workflow-navigator` | `src/design-system/WorkflowNavigator.tsx`; потребитель `src/components/WorkflowSpine.tsx` (`ProjectWorkflowNavigator`) | `workflow-navigator` · ACTIVE |
+| **Pagination** (новая) | `components-core.md` §14 · `.a3-pgn` | `registry.tsx` → `docws-pagination` (6 и 15 страниц) | `src/design-system/Pagination.tsx`; потребитель `src/screens/ProjectHome.tsx` | `pagination` · ACTIVE |
+| **ProcessingJob** (эволюция) | `components-core.md` §14, подраздел «Эволюция» | `registry.tsx` → `vr3-processing-job` (панель + две рельсы) | `src/design-system/ProcessingJob.tsx` · новые `.a3-pjob-rail`, `.a3-pjob-summary` | `processing-job` · ACTIVE (без изменений) |
+| **DocumentRow** (эволюция) | там же | `registry.tsx` → `vr3-document-row` (READY + WARNING с восстановлением) | там же · новые `.a3-drow-ready`, `.a3-drow-compact`, `.a3-drow-inspect`, `.a3-drow-action-inspect`, `.a3-drow-quiet-state` | `document-row` · ACTIVE (без изменений) |
+| **PrerequisiteState** | `README.md` DC-24 (без изменений) | `registry.tsx` → `vr3-prerequisite-state` (остаётся) | потребителя в продукте больше нет | `prerequisite-state` · **ACTIVE → APPROVED_DOWNSTREAM**, владельцы названы, срок 05.03.2027 |
+
+### Почему PrerequisiteState сменил статус, а не был удалён
+
+Его единственным потребителем была не-начатая композиция Documents, которую
+принятый аудит заменил: отсутствие результата теперь несут рельса анализа и
+сам реестр, а не отдельная карточка «Noch keine Analyseergebnisse». Возможность
+остаётся канонической и подкреплённой специменом — но **утверждать ACTIVE без
+живого потребителя означало бы называть намерение адаптацией**, и именно это
+GOV-CAPABILITY запрещает. Срок годности стоит намеренно: «оставлено на потом»
+придётся защитить заново, а не унаследовать молча.
+
+### Что НЕ добавлено этой партией
+
+- Сетка `.a3-docws`, компактная шапка проекта `.a3-project-context`, доменная
+  сводка анализа `.a3-docws-facts` и порядок полей документа — **продуктовая
+  композиция**, остаётся у продукта. В канонические примитивы бизнес-семантика
+  не переезжает.
+- Снятые классы удалены, а не оставлены сиротами: `.a3-project-spine*`,
+  `.a3-project-utilities*`, `.a3-doc-tally*`, `.a3-doc-register`,
+  `.a3-doc-filter-notice` уходят вместе с композицией, которую они одевали.
+- `WorkflowStepper` **не** заменён: он остаётся каноническим владельцем плоского
+  маршрута Option-воркспейса. Иерархический навигатор — эволюция семейства, а не
+  второй его владелец; обе границы держит GOV-CAPABILITY машинно.

@@ -640,8 +640,8 @@ describe('AUD-03 — Option identity & creation continuity', () => {
     // Kein Doppelklick: die Guard ist abgelaufen, das Gate ist über den
     // einen Verlauf (Spine) wieder erreichbar, und der zweite,
     // eigenständige Klick legt eine zweite, eindeutig benannte Option an.
-    const spine = screen.getByRole('navigation', { name: 'Projekt- und Optionsverlauf' })
-    await user.click(within(spine).getByText('Projektverständnis').closest('button')!)
+    const journey = screen.getByRole('navigation', { name: 'Projektablauf' })
+    await user.click(within(journey).getByText('Verstehen').closest('button')!)
     await user.click(create())
     settleOptionCommit()
     expect(useStore.getState().options.map((o) => o.name)).toEqual(['Option 1', 'Option 2'])

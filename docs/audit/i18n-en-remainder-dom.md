@@ -14,5 +14,5 @@
 
 ## Перевода нет — в следующую поставку копирайта
 
+- Freiburg im Breisgau
 - Güterbogen Projektentwicklung GmbH
-- Lindenhain Wohnen GmbH · Freiburg im Breisgau

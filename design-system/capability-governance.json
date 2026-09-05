@@ -230,13 +230,13 @@
     },
     {
       "id": "prerequisite-state",
-      "disposition": "ACTIVE",
-      "productConsumers": [
-        {
-          "path": "src/screens/ProjectHome.tsx",
-          "pattern": "<PrerequisiteState"
-        }
-      ]
+      "disposition": "APPROVED_DOWNSTREAM",
+      "owners": [
+        "Frontend Design Engineer",
+        "UX/UI Design Director"
+      ],
+      "expiresAt": "2027-03-05",
+      "reason": "Its one product consumer was the Documents not-started composition, which the accepted 2026-09-05 Documents workspace audit replaced: the absence is now carried by the analysis rail and the register itself. The capability stays canonical and specimen-backed for the next surface that genuinely has a prerequisite to state; this approval expires so that \"kept for later\" has to be re-argued rather than assumed."
     },
     {
       "id": "action-gate",
@@ -385,6 +385,26 @@
         {
           "path": "src/screens/OpportunityList.tsx",
           "pattern": "<Combobox"
+        }
+      ]
+    },
+    {
+      "id": "workflow-navigator",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/components/WorkflowSpine.tsx",
+          "pattern": "<WorkflowNavigator"
+        }
+      ]
+    },
+    {
+      "id": "pagination",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/ProjectHome.tsx",
+          "pattern": "<Pagination"
         }
       ]
     }

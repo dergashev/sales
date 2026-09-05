@@ -80,6 +80,13 @@ for (const { label: viewportLabel, viewport } of VIEWPORTS) {
           name: OPPORTUNITY.configureCta(DEMO_PROJECT_TITLE),
         }).click()
         await page.getByRole('button', { name: OPPORTUNITY.startAnalysis }).click()
+        // Completion is visible and deliberate: the rail offers the step
+        // into Understanding instead of taking it for the user.
+        const review = page.getByRole('button', {
+          name: OPPORTUNITY.reviewUnderstanding,
+        })
+        await expect(review).toBeVisible({ timeout: 30_000 })
+        await review.click()
         await expect(
           page.getByRole('button', { name: OPPORTUNITY.createOption, exact: true }),
         ).toBeVisible({ timeout: 30_000 })

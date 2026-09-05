@@ -80,6 +80,9 @@ LOCALE_ASCII_ALLOWLIST = frozenset({
     'quelle', 'quellen', 'quellenreferenzen', 'quellenwert', 'quellwert',
     # VR3-01: same compound family as 'quellenreferenzen'/'quellenwert'.
     'quellenzuordnung',
+    # Documents workspace: the same 'quelle' family again — the register's
+    # empty state names the source documents that are absent.
+    'quelldokument', 'quelldokumente', 'quelldokumenten',
     'visuelt',  # Schriftname (Eigenname), keine Transliteration
     'zuerst',
 })

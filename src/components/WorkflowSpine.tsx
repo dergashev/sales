@@ -18,6 +18,7 @@ import { buildingScopeStage } from '../state/optionBuildingScope'
 import { readiness, type ProjectAnalysis, type FixtureProject } from '../state/projectAnalysis'
 import { useT } from '../i18n'
 import { WorkflowStepper, type WorkflowStep } from '../design-system/WorkflowStepper'
+import { WorkflowNavigator, type WorkflowStage } from '../design-system/WorkflowNavigator'
 import { M06_UNLOCK_MS } from '../config/ui-policy'
 
 /**
@@ -43,18 +44,6 @@ export type SpineStepId =
   | 'documents' | 'understanding' | 'createOption' | 'buildingScope'
   | 'scopeBoundaries' | 'kg200' | 'kg300' | 'kg400' | 'kg500' | 'kg600' | 'kg700'
   | 'schedule' | 'finalValidation'
-
-const DOWNSTREAM: ReadonlyArray<readonly [SpineStepId, string]> = [
-  ['scopeBoundaries', 'vr3.spine.step.scopeBoundaries'],
-  ['kg200', 'costGroup.200'],
-  ['kg300', 'costGroup.300'],
-  ['kg400', 'costGroup.400'],
-  ['kg500', 'costGroup.500'],
-  ['kg600', 'costGroup.600'],
-  ['kg700', 'costGroup.700'],
-  ['schedule', 'vr3.spine.step.schedule'],
-  ['finalValidation', 'vr3.spine.step.finalValidation'],
-]
 
 /**
  * The Option-level spine (VR3-02, targets T-012–T-017).
@@ -320,11 +309,33 @@ export function OptionWorkflowSpine() {
 }
 
 /**
- * The project-level spine. Extracted from `ProjectHome` unchanged in
- * meaning so both contexts read one definition of the journey; the only
- * difference is that here the first three stages are still being earned.
+ * The PROJECT-level journey, as six grouped stages (accepted 2026-09-05
+ * Documents workspace UX audit, "Workflow navigation target").
+ *
+ * What this replaces: thirteen first-level rows in a permanent left rail,
+ * nine of them locked, most repeating the same reason. It published the
+ * whole Product model — six cost groups included — before the user had
+ * finished the first task, and it consumed permanent width to do it.
+ *
+ * What is NOT changed, and the distinction this whole node rests on:
+ * grouping is PRESENTATION. Every destination below is the destination the
+ * flat spine already used, every prerequisite is the predicate the flat
+ * spine already read, and nothing here decides whether a stage is reachable
+ * — `canCreateOption`, `jobState` and the Option's own existence still do.
+ * Six labels replace thirteen rows; not one gate moved.
+ *
+ * Only ONE stage is ever locked here, and only the immediate next one:
+ * Understand, while the analysis has not produced anything to understand.
+ * The four stages after it are `upcoming` — neutral orientation, no reason,
+ * no cross. A rail of nine crosses described the system's complexity, not
+ * the user's position.
+ *
+ * KG 200–700 exist as Calculate's own members and render only while
+ * Calculate is the current stage, which at project level it never is: the
+ * cost groups belong to the Option workspace, which keeps its own
+ * (unchanged) full-journey spine.
  */
-export function ProjectWorkflowSpine({
+export function ProjectWorkflowNavigator({
   project, analysis,
 }: {
   project: FixtureProject
@@ -336,72 +347,91 @@ export function ProjectWorkflowSpine({
   const stage = s.projectStage
   const hasOption = s.options.length > 0
   const latestOption = s.options[s.options.length - 1]
-
+  const analysed = analysis.jobState === 'COMPLETE'
   const go = (target: typeof stage) => () => s.setProjectStage(target)
 
-  const steps: WorkflowStep[] = [
+  const stages: WorkflowStage[] = [
     {
       id: 'documents',
       label: t('vr3.spine.step.documents'),
-      state: stage === 'documents'
-        ? 'current'
-        : analysis.jobState === 'COMPLETE' ? 'done' : 'upcoming',
-      previouslyDone: stage === 'documents' && analysis.jobState === 'COMPLETE',
+      state: stage === 'documents' ? 'current' : analysed ? 'done' : 'upcoming',
       onSelect: go('documents'),
     },
     {
-      id: 'understanding',
-      label: t('vr3.spine.step.understanding'),
+      id: 'understand',
+      label: t('vr3.journey.stage.understand'),
+      // The one useful lock: the stage the user would reach for next, with
+      // the prerequisite that is actually missing.
       state: stage === 'understanding'
         ? 'current'
-        : analysis.jobState !== 'COMPLETE'
-          ? 'blocked'
-          : state.state === 'PROJECT_READY_FOR_OPTION' ? 'done' : 'attention',
-      blockedReason: analysis.jobState !== 'COMPLETE'
-        ? t('vr3.spine.reason.needsAnalysis')
-        : undefined,
-      onSelect: analysis.jobState === 'COMPLETE' ? go('understanding') : undefined,
+        : !analysed
+          ? 'locked'
+          : state.state === 'PROJECT_READY_FOR_OPTION' ? 'done' : 'upcoming',
+      lockedReason: analysed ? undefined : t('vr3.spine.reason.needsAnalysis'),
+      onSelect: analysed ? go('understanding') : undefined,
     },
     {
-      id: 'createOption',
-      label: t('vr3.spine.step.createOption'),
-      // VR3-02 (T-012): once the Option EXISTS this stage is complete, and
-      // the current stage is the one it handed off to. Leaving it "current"
-      // while an Option sat beside it said the user still had to do the
-      // thing they had just done.
-      state: hasOption
-        ? 'done'
-        : stage === 'createOption'
-          ? 'current'
-          : state.canCreateOption ? 'attention' : 'blocked',
-      blockedReason: state.canCreateOption || hasOption
-        ? undefined
-        : t('vr3.spine.reason.needsReadiness'),
-      onSelect: hasOption ? go('createOption') : undefined,
-    },
-    {
-      id: 'buildingScope',
-      label: t('nav.buildingScope'),
-      // VR3-02: once the Option exists this stage is the CURRENT one — it
-      // is not "blocked · Option fehlt", which is what it said while an
-      // Option sat right beside it.
-      state: hasOption ? 'current' : 'blocked',
-      blockedReason: hasOption ? undefined : t('vr3.spine.reason.needsReadiness'),
+      id: 'configure',
+      label: t('vr3.journey.stage.configure'),
+      state: stage === 'createOption' || hasOption ? 'current' : 'upcoming',
       onSelect: hasOption && latestOption
         ? () => s.openOption(latestOption.id)
-        : undefined,
+        : state.canCreateOption ? go('createOption') : undefined,
+      steps: [
+        {
+          id: 'createOption',
+          label: t('vr3.spine.step.createOption'),
+          state: hasOption ? 'done' : stage === 'createOption' ? 'current' : 'upcoming',
+          onSelect: state.canCreateOption || hasOption ? go('createOption') : undefined,
+        },
+        {
+          id: 'buildingScope',
+          label: t('nav.buildingScope'),
+          state: hasOption ? 'current' : 'upcoming',
+          onSelect: hasOption && latestOption
+            ? () => s.openOption(latestOption.id)
+            : undefined,
+        },
+        {
+          id: 'scopeBoundaries',
+          label: t('vr3.spine.step.scopeBoundaries'),
+          state: 'upcoming',
+        },
+      ],
     },
-    ...DOWNSTREAM.map(([id, key]): WorkflowStep => ({
-      id,
-      label: id.startsWith('kg') ? `KG ${id.slice(2)}` : t(key),
-      state: 'blocked' as const,
-      blockedReason: !hasOption
-        ? t('vr3.spine.reason.needsReadiness')
-        : id === 'scopeBoundaries'
-          ? t('vr3.spine.reason.needsBuildingScope')
-          : t('vr3.spine.reason.locked'),
-    })),
+    {
+      id: 'calculate',
+      label: t('vr3.journey.stage.calculate'),
+      state: 'upcoming',
+      // Declared, never rendered from here: a stage's members appear only
+      // while that stage is current, and Calculate is current inside the
+      // Option workspace, not at project level.
+      steps: KG_SCOPE_GROUPS.map((group) => ({
+        id: group.toLowerCase(),
+        label: `KG ${group.slice(3)}`,
+        state: 'upcoming' as const,
+      })),
+    },
+    {
+      id: 'validate',
+      label: t('vr3.journey.stage.validate'),
+      state: 'upcoming',
+      steps: [
+        { id: 'schedule', label: t('vr3.spine.step.schedule'), state: 'upcoming' },
+        {
+          id: 'finalValidation',
+          label: t('vr3.spine.step.finalValidation'),
+          state: 'upcoming',
+        },
+        { id: 'save', label: t('vr3.journey.step.save'), state: 'upcoming' },
+      ],
+    },
+    {
+      id: 'present',
+      label: t('vr3.journey.stage.present'),
+      state: 'upcoming',
+    },
   ]
 
-  return <WorkflowStepper steps={steps} ariaLabel={t('vr3.spine.label')} size="spine" />
+  return <WorkflowNavigator stages={stages} ariaLabel={t('vr3.journey.label')} />
 }

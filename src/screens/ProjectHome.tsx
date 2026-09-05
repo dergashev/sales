@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Decimal } from 'decimal.js'
 import { AnimatePresence } from 'framer-motion'
 import {
@@ -7,37 +7,60 @@ import {
 } from '../state/store'
 import {
   activeDocumentId,
+  analysisWorkspaceState,
+  attentionCount,
   conflictResolved,
   demoProject,
+  documentDisplayState,
   documentLineage,
   documentProgress,
-  documentTypeTally,
-  filterDocuments,
+  eligibleDocuments,
   openQuestions,
   overallProgressPercent,
   processedCount,
+  processedOutcomeCount,
   questionStatus,
   readiness,
   resolvedConflictValue,
   totalBgfRS,
-  type DocumentFilter,
+  type AnalysisWorkspaceState,
+  type DocumentDisplayState,
   type FixtureConflict,
   type FixtureDocument,
   type FixtureProject,
   type FixtureQuestion,
   type ProjectAnalysis,
 } from '../state/projectAnalysis'
+import {
+  ANY_TYPE,
+  DEFAULT_DOCUMENTS_QUERY,
+  DOCUMENTS_PAGE_SIZE,
+  activeDocumentFilters,
+  decodeDocumentsQuery,
+  documentSearchEntry,
+  documentTypeCounts,
+  documentsMatching,
+  documentsPage,
+  encodeDocumentsQuery,
+  type DocumentStatusFilter,
+  type DocumentsQuery,
+} from '../state/projectDocumentsView'
 import { formatDE } from '../engine/money'
 import { localizeMoneyText, useT, useTx } from '../i18n'
 import { Button } from '../components/primitives'
-import { NextStep, PageHeader, SectionSheet } from '../components/designSystem'
-import { ErrorState, StaleState } from '../components/DataStates'
+import { Combobox, SegmentedControl } from '../components/controls'
+import { FormField, NextStep, PageHeader, SectionSheet } from '../components/designSystem'
+import { EmptyState, StaleState } from '../components/DataStates'
 import { MediaFrame } from '../design-system/MediaFrame'
-import { ProjectWorkflowSpine } from '../components/WorkflowSpine'
+import { ProjectWorkflowNavigator } from '../components/WorkflowSpine'
 import { SemanticStatus } from '../design-system/SemanticStatus'
 import { AuthorityTrace, MetricReadout, type InformationAuthority } from '../design-system/AuthorityTrace'
-import { DocumentRow, ProcessingJob, type DocumentRowState } from '../design-system/ProcessingJob'
-import { ActionGate, PrerequisiteState, ProjectReadiness } from '../design-system/ActionGate'
+import {
+  DocumentRow, ProcessingJob,
+  type DocumentRowState, type ProcessingJobState,
+} from '../design-system/ProcessingJob'
+import { Pagination } from '../design-system/Pagination'
+import { ActionGate, ProjectReadiness } from '../design-system/ActionGate'
 import { ConflictResolver } from '../design-system/ConflictResolver'
 import { QuestionItem, QuestionQueue } from '../design-system/QuestionQueue'
 import { projectAsset } from '../assets/project-media'
@@ -139,9 +162,9 @@ export function ProjectHome() {
 
   // M-03: completion is one meaningful transition, and it has to be
   // ANNOUNCED. The announcement cannot live inside the job: the transition
-  // unmounts the job, and its live region with it, so a screen reader was
-  // never told the analysis had finished. This region belongs to the shell,
-  // which survives the stage change.
+  // replaces the rail's content, so a screen reader would never be told the
+  // analysis had finished. This region belongs to the shell, which survives
+  // the stage change.
   const previousJobState = useRef(jobState)
   useEffect(() => {
     if (jobState === 'COMPLETE' && previousJobState.current !== 'COMPLETE') {
@@ -185,14 +208,16 @@ export function ProjectHome() {
 
   return (
     <div className="a3-project-shell">
-      <aside className="a3-project-spine" aria-label={t('vr3.spine.projectLabel')}>
-        <p className="a3-project-spine-eyebrow">{t('vr3.spine.projectLabel')}</p>
-        <p className="a3-project-spine-name">{project.name}</p>
-        <ProjectWorkflowSpine project={project} analysis={analysis} />
-      </aside>
+      {/* Accepted 2026-09-05 Documents workspace audit, target anatomy 1-3:
+          compact project CONTEXT, then a six-stage orientation, then the
+          working object. The permanent thirteen-row spine that used to take
+          the left column is gone — it consumed width to publish a workflow
+          the user could not act on yet. */}
+      <ProjectContextBar project={project} />
+      <ProjectWorkflowNavigator project={project} analysis={analysis} />
       <div className="a3-project-main">
         {stage === 'documents' ? (
-          <DocumentsStage project={project} analysis={analysis} />
+          <DocumentsWorkspace project={project} analysis={analysis} />
         ) : stage === 'understanding' ? (
           state.state === 'PROJECT_READY_FOR_OPTION' ? (
             <ReadyStage project={project} analysis={analysis} />
@@ -208,9 +233,90 @@ export function ProjectHome() {
   )
 }
 
-/* ─────────────────────── stage 1 · documentation ─────────────────────── */
+/* ───────────────── stage 1 · the Documents workspace ───────────────── */
 
-function DocumentsStage({
+/**
+ * The register's own state, mirrored in `location.search`.
+ *
+ * Same contract as the portfolio register (`OpportunityList`): a discrete
+ * choice pushes a history entry so Back undoes the filter the user just
+ * applied, and typing replaces it, because a history entry per keystroke
+ * turns Back into a spell-checker. Encoding preserves parameters this
+ * register does not own, so returning to the portfolio does not arrive with
+ * its filters silently dropped.
+ */
+function useDocumentsQuery(): [
+  DocumentsQuery,
+  (next: Partial<DocumentsQuery>, history?: 'push' | 'replace') => void,
+] {
+  const [query, setQuery] = useState<DocumentsQuery>(() => (
+    typeof window === 'undefined'
+      ? DEFAULT_DOCUMENTS_QUERY
+      : decodeDocumentsQuery(window.location.search)
+  ))
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const onPopState = () => setQuery(decodeDocumentsQuery(window.location.search))
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  const patch = useCallback((
+    next: Partial<DocumentsQuery>, history: 'push' | 'replace' = 'push',
+  ) => {
+    setQuery((current) => {
+      // Any change to search, type or status returns to page 1: the audit's
+      // reset rule, applied where the change happens rather than in six call
+      // sites that each have to remember it.
+      const narrowed = next.text !== undefined || next.type !== undefined
+        || next.status !== undefined
+      const merged: DocumentsQuery = {
+        ...current,
+        ...next,
+        page: next.page ?? (narrowed ? 1 : current.page),
+      }
+      if (typeof window !== 'undefined') {
+        const search = encodeDocumentsQuery(merged, window.location.search)
+        const url = `${window.location.pathname}${search ? `?${search}` : ''}`
+        if (history === 'push') window.history.pushState(null, '', url)
+        else window.history.replaceState(null, '', url)
+      }
+      return merged
+    })
+  }, [])
+
+  return [query, patch]
+}
+
+/**
+ * Project → Documents, rebuilt as a document-first analysis workspace
+ * (accepted Design Director audit `docs/audit/documents-workspace-ux-audit-328330c.md`,
+ * status ACCEPTED TARGET, 2026-09-05).
+ *
+ * The surface this replaces was six pages at once: a project landing page,
+ * a thirteen-step sitemap, an analysis empty state, an explainer, a launch
+ * control and — last, below all of it — the documents. At 1280×800 not one
+ * document row reached the first viewport. The register is the working
+ * object, so it takes the workspace; everything project-wide about the
+ * analysis moves into ONE sticky rail beside it.
+ *
+ * Three boundaries hold this composition together:
+ *
+ * 1. **The register owns presentation, the rail owns the job.** Search,
+ *    type, status and page decide which rows are listed. They decide
+ *    nothing about scope: the CTA counts `eligibleDocuments`, which is the
+ *    exact set `startJob`/`advanceJob` process, so "analyse all 36" cannot
+ *    drift from what the operation does — the count and the operation read
+ *    one function. Starting from page 2 of 6 still analyses all sixty.
+ * 2. **A row owns only what is true about that document.** Its state, its
+ *    reason, its recovery, its evidence. Never the job's progress.
+ * 3. **Nothing claims more than the Product does.** Cancelling keeps the
+ *    outcomes already produced — that is real — but `startJob` re-queues
+ *    every eligible document, so a new run reads them all again and the
+ *    rail says so instead of promising a resume that does not exist.
+ */
+function DocumentsWorkspace({
   project, analysis,
 }: {
   project: FixtureProject
@@ -219,11 +325,12 @@ function DocumentsStage({
   const s = useStore()
   const t = useT()
   const { reduced, fadeRise, transition } = useSemanticMotion()
-  const [filter, setFilter] = useState<DocumentFilter>('all')
+  const [query, patchQuery] = useDocumentsQuery()
   const [openDetailId, setOpenDetailId] = useState<string | null>(null)
   const [announcement, setAnnouncement] = useState('')
-  const jobHeadingRef = useRef<HTMLDivElement>(null)
+  const registerHeadingRef = useRef<HTMLHeadingElement>(null)
   const running = analysis.jobState === 'RUNNING' || analysis.jobState === 'PARTIAL_FAILURE'
+  const workspaceState = analysisWorkspaceState(project, analysis)
 
   // M-01/M-02: the job advances itself, one file-phase at a time, and the
   // active file's name and state are announced politely. Cancelling stops
@@ -247,261 +354,405 @@ function DocumentsStage({
     }
   }, [activeDoc, activeState, t])
 
-  // M-03: completion is ONE meaningful transition. The job control gives
-  // way to the readiness summary, focus moves to the new heading and the
-  // change is announced — under reduced motion the state replacement is
-  // immediate but the focus move and the announcement still happen.
-  const completed = analysis.jobState === 'COMPLETE'
-  const previousCompleted = useRef(completed)
-  useEffect(() => {
-    if (completed && !previousCompleted.current) {
-      // The completion announcement belongs to the shell's live region
-      // (see `ProjectHome`) — this component is about to unmount.
-      s.setProjectStage('understanding')
-    }
-    previousCompleted.current = completed
-  }, [completed, s, t])
+  /* ── the document set, and what is true about it ── */
 
-  useEffect(() => {
-    if (running) jobHeadingRef.current?.focus()
-  }, [running])
+  const documents = project.documents
+  const eligible = eligibleDocuments(project, analysis)
+  const attention = attentionCount(project, analysis)
+  const processed = processedOutcomeCount(project, analysis)
+  const done = processedCount(project, analysis)
 
-  if (analysis.jobState === 'NOT_STARTED') {
-    const asset = projectAsset(project.heroAssetId)
-    const tally = documentTypeTally(project)
-    return (
-      <>
-        <ProjectIdentityUtilities project={project} />
-        <PrerequisiteState
-          eyebrow={t('vr3.analysis.eyebrow.notStarted')}
-          heading={project.name}
-          explanation={t('vr3.analysis.notStarted.lead', { count: project.documents.length })}
-          absenceTitle={t('vr3.analysis.notStarted.absenceTitle')}
-          absenceDetail={t('vr3.analysis.notStarted.absenceDetail')}
-          action={(
-            <Button variant="primary" onClick={() => s.startDocumentAnalysis()}>
-              {t('vr3.analysis.start')}
-            </Button>
-          )}
-          secondaryAction={(
-            <Button
-              variant="ghost"
-              onClick={() => setFilter('all')}
-              aria-describedby={undefined}
-            >
-              {t('vr3.analysis.inspectDocuments', { count: project.documents.length })}
-            </Button>
-          )}
-          media={(
-            <MediaFrame
-              ratio="pano"
-              state={asset ? 'loaded' : 'fallback'}
-              src={asset?.url}
-              alt={asset ? t(asset.altKey) : undefined}
-              seed={project.id}
-              sourceId={asset?.assetId}
-            />
-          )}
-          inventory={(
-            <SectionSheet
-              title={t('vr3.analysis.inventoryTitle', { count: project.documents.length })}
-              intro={t('vr3.analysis.inventoryLead')}
-            >
-              <ul className="a3-doc-tally">
-                {tally.map((entry) => (
-                  <li key={entry.documentType} className="a3-doc-tally-item">
-                    {t(`vr3.analysis.tally.${entry.documentType}`, { count: entry.count })}
-                  </li>
-                ))}
-              </ul>
-              <div className="a3-doc-register">
-                <ul className="a3-pjob-rows">
-                  {project.documents.map((doc) => (
-                    <DocumentRegisterRow
-                      key={doc.id}
-                      project={project}
-                      analysis={analysis}
-                      doc={doc}
-                      openDetailId={openDetailId}
-                      onToggleDetail={setOpenDetailId}
-                    />
-                  ))}
-                </ul>
-              </div>
-            </SectionSheet>
-          )}
-        />
-      </>
-    )
+  const association = (doc: FixtureDocument): string => (doc.projectLevel
+    ? t('vr3.analysis.association.project')
+    : t('vr3.analysis.association.buildings', {
+      names: doc.buildingIds
+        .map((id) => project.buildings.find((b) => b.id === id)?.name ?? id)
+        .join(', '),
+    }))
+
+  // Search matches exactly what the register shows: filename, recognised
+  // type, association. Nothing is searchable that is not visible.
+  const searchIndex = useMemo(() => Object.fromEntries(documents.map((doc) => [
+    doc.id,
+    documentSearchEntry(doc.file, t(`vr3.docType.${doc.documentType}`), association(doc)),
+  ])), [documents, t, project.buildings])
+
+  const displayState = (docId: string): DocumentDisplayState => (
+    documentDisplayState(analysis, docId, workspaceState)
+  )
+
+  const matching = documentsMatching(documents, query, searchIndex, displayState)
+  const page = documentsPage(matching, query.page)
+  const filtersActive = activeDocumentFilters(query)
+
+  const typeOptions = useMemo(() => [
+    { value: ANY_TYPE, label: t('vr3.documents.filter.allTypes') },
+    ...documentTypeCounts(documents).map(({ type, count }) => ({
+      value: type,
+      label: t('vr3.documents.filter.typeOption', {
+        type: t(`vr3.docType.${type}`), count,
+      }),
+    })),
+  ], [documents, t])
+
+  /* ── page changes: focus and one announcement, never a jump ── */
+
+  const goToPage = (next: number) => {
+    patchQuery({ page: next })
+    setAnnouncement(t('vr3.documents.announce.page', {
+      page: next,
+      pages: page.pageCount,
+      from: (next - 1) * DOCUMENTS_PAGE_SIZE + 1,
+      to: Math.min(next * DOCUMENTS_PAGE_SIZE, page.total),
+      total: page.total,
+    }))
+    registerHeadingRef.current?.focus()
+    // `scrollIntoView` is optional by design, not by accident: the audit
+    // asks for the register to be brought into view WHERE REQUIRED, and a
+    // non-browser host (jsdom, a print pass) has no scrolling to do. It is
+    // an enhancement of the focus move above, never its precondition.
+    registerHeadingRef.current?.scrollIntoView?.({
+      block: 'start', behavior: reduced ? 'auto' : 'smooth',
+    })
   }
 
-  const done = processedCount(project, analysis)
-  const total = project.documents.length
-  const shown = filterDocuments(project, analysis, filter)
-  const failedDoc = project.documents.find(
-    (d) => analysis.documents[d.id]?.state === 'FAILED',
-  )
-  const attentionCount = project.documents.filter((d) => {
-    const st = analysis.documents[d.id]?.state
-    return st === 'WARNING' || st === 'LOW_CONFIDENCE' || st === 'FAILED'
-  }).length
-  const processedTotal = project.documents.filter(
-    (d) => analysis.documents[d.id]?.state === 'PROCESSED',
-  ).length
+  const resetFilters = () => patchQuery({
+    text: '', type: ANY_TYPE, status: 'all', page: 1,
+  })
 
-  // The heading states the job's ACTUAL state. It read "revisions are being
-  // cross-checked" on a finished job, because the completed case fell
-  // through to the running title.
-  const title = analysis.jobState === 'PARTIAL_FAILURE'
-    ? t('vr3.analysis.title.attention')
-    : completed
-      ? t('vr3.analysis.title.complete')
-      : project.route === 'clean'
-        ? t('vr3.analysis.title.running.clean')
-        : t('vr3.analysis.title.running.complex')
+  const countLabel = filtersActive > 0
+    ? t('vr3.documents.count.filtered', { shown: page.total, total: documents.length })
+    : t('vr3.documents.count.all', { count: documents.length })
 
   return (
     <>
-      <ProjectIdentityUtilities project={project} />
-      <div ref={jobHeadingRef} tabIndex={-1} className="a3-project-stage-head">
-        <p className="a3-project-stage-eyebrow">
-          {t('vr3.analysis.eyebrow.running', { done, total })}
-        </p>
-        <PageHeader
-          title={title}
-          lede={analysis.jobState === 'PARTIAL_FAILURE'
-            ? t('vr3.analysis.lead.attention')
-            : completed
-              ? t('vr3.analysis.lead.complete')
-              : t('vr3.analysis.lead.running')}
-        />
-      </div>
-      <ProcessingJob
-        state={analysis.jobState}
-        processedCount={done}
-        totalCount={total}
-        progressPercent={overallProgressPercent(project, analysis)}
-        activeFileName={activeDoc?.file ?? null}
-        activePhaseLabel={activeState ? documentStateLabel(t, activeState as DocumentRowState) : null}
-        nextStepLabel={t('vr3.analysis.next')}
-        filterLegend={t('vr3.analysis.filter.legend')}
-        filters={[
-          {
-            id: 'all',
-            label: t('vr3.analysis.filter.all'),
-            count: total,
-            active: filter === 'all',
-            onSelect: () => setFilter('all'),
-          },
-          {
-            id: 'attention',
-            label: t('vr3.analysis.filter.attention'),
-            count: attentionCount,
-            active: filter === 'attention',
-            onSelect: () => setFilter('attention'),
-          },
-          {
-            id: 'processed',
-            label: t('vr3.analysis.filter.processed'),
-            count: processedTotal,
-            active: filter === 'processed',
-            onSelect: () => setFilter('processed'),
-          },
-        ]}
-        announcement={announcement}
-        actions={(
-          <>
-            {running ? (
-              <Button variant="secondary" onClick={() => s.cancelDocumentAnalysis()}>
-                {t('vr3.analysis.cancel')}
-              </Button>
-            ) : (
-              <Button variant="secondary" onClick={() => s.rerunDocumentAnalysis()}>
-                {t('vr3.analysis.rerun')}
-              </Button>
-            )}
-          </>
-        )}
-        notice={failedDoc ? (
-          <ErrorState
-            cause={t('vr3.analysis.failureTitle', { file: failedDoc.file })}
-            impact={t('vr3.analysis.failureDetail', {
-              affected: t('vr3.analysis.failureAffectedC'),
-              remaining: total - 1,
-            })}
-            remedy={t('vr3.analysis.lead.attention')}
-            retryPolicy={t('vr3.analysis.retryPolicy')}
-            action={(
-              <div className="a3-drow-actions">
-                <Button
-                  variant="primary"
-                  onClick={() => s.replaceDocumentRow(
-                    failedDoc.id, `${failedDoc.file.replace('.pdf', '')}_REV-B.pdf`,
-                  )}
-                >
-                  {t('vr3.analysis.action.replace')}
-                </Button>
-                <Button variant="secondary" onClick={() => s.retryDocumentRow(failedDoc.id)}>
-                  {t('vr3.analysis.action.retry')}
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    if (window.confirm(t('vr3.analysis.removeConfirm', { file: failedDoc.file }))) {
-                      s.removeDocumentRow(failedDoc.id)
-                    }
-                  }}
-                >
-                  {t('vr3.analysis.action.remove')}
-                </Button>
-              </div>
-            )}
-          />
+      <header className="a3-docws-head">
+        <h1 className="a3-docws-title" tabIndex={-1} data-page-heading>
+          {t('vr3.documents.title')}
+        </h1>
+        {/* The total is stated once, by the register's own heading below.
+            The page header adds only what that line cannot: whether
+            anything needs a decision. */}
+        {attention > 0 ? (
+          <p className="a3-docws-summary">
+            {t('vr3.documents.summary.attention', { attention })}
+          </p>
         ) : null}
-      >
-        <AnimatePresence initial={false}>
-          {shown.map((doc, index) => (
-            <DocumentRegisterRow
-              key={doc.id}
-              project={project}
-              analysis={analysis}
-              doc={doc}
-              openDetailId={openDetailId}
-              onToggleDetail={setOpenDetailId}
-              // M-01: the queue is ADMITTED in place, one canonical
-              // `fadeRise` per row with the bounded causal wave — never a
-              // stagger longer than the reveal itself, and nothing at all
-              // under `prefers-reduced-motion`.
-              rowMotion={reduced ? undefined : {
-                variants: fadeRise,
-                initial: 'hidden',
-                animate: 'visible',
-                transition: transition('reveal', Math.min(index, 6)),
-              }}
+      </header>
+
+      <div className="a3-docws">
+        {/* The rail comes FIRST in the DOM: the audit's keyboard order is
+            context → workflow → the global analysis action → filters → rows
+            → pagination, and reaching the primary action of the page by
+            tabbing through ten rows first is not an order, it is a queue.
+            At desktop it is placed in the second grid column; below the
+            supported desktop range it simply stacks where it already is. */}
+        <aside className="a3-docws-rail" aria-label={t('vr3.documents.rail.label')}>
+          <AnalysisRail
+            project={project}
+            analysis={analysis}
+            workspaceState={workspaceState}
+            eligibleCount={eligible.length}
+            attentionCount={attention}
+            processedCount={processed}
+            doneCount={done}
+            activeFile={activeDoc?.file ?? null}
+            activePhase={activeState
+              ? documentStateLabel(t, activeState as DocumentRowState)
+              : null}
+            announcement={announcement}
+            onShowAttention={() => patchQuery({ status: 'attention' })}
+          />
+        </aside>
+
+        <section className="a3-docws-register" aria-labelledby="documents-register-heading">
+          <div className="a3-docws-controls">
+          <div
+            role="search"
+            aria-label={t('vr3.documents.filter.legend')}
+            className="a3-docws-toolbar"
+          >
+            <div className="a3-docws-control a3-docws-control-search">
+              <FormField htmlFor="documents-search" label={t('vr3.documents.filter.search')}>
+                <input
+                  id="documents-search"
+                  type="search"
+                  value={query.text}
+                  placeholder={t('vr3.documents.filter.searchPlaceholder')}
+                  onChange={(event) => patchQuery({ text: event.target.value }, 'replace')}
+                />
+              </FormField>
+            </div>
+            <div className="a3-docws-control a3-docws-control-type">
+              <Combobox
+                id="documents-type"
+                label={t('vr3.documents.filter.type')}
+                value={query.type}
+                options={typeOptions}
+                onChange={(value) => patchQuery({ type: value })}
+                placeholder={t('vr3.documents.filter.allTypes')}
+              />
+            </div>
+            {/* The status filter exists only once analysis has produced
+                states to filter BY. Before that it would be three empty
+                choices dressed as a control. */}
+            {workspaceState !== 'READY' ? (
+              <div className="a3-docws-control">
+              <SegmentedControl
+                legend={t('vr3.documents.filter.status')}
+                value={query.status}
+                onChange={(value: DocumentStatusFilter) => patchQuery({ status: value })}
+                options={[
+                  { value: 'all', label: t('vr3.documents.filter.statusAll') },
+                  {
+                    value: 'attention',
+                    label: t('vr3.documents.filter.statusAttention'),
+                  },
+                  {
+                    value: 'processed',
+                    label: t('vr3.documents.filter.statusProcessed'),
+                  },
+                ]}
+              />
+              </div>
+            ) : null}
+          </div>
+
+          <div className="a3-docws-count">
+            {/* The result count IS the register's heading: it names the
+                region, it is the visible focus target after a page change,
+                and it is the one place the filtered/unfiltered truth is
+                stated. A second decorative "Dokumentenregister" title
+                above it would repeat the H1 and cost a row of the first
+                viewport. */}
+            <h2
+              id="documents-register-heading"
+              ref={registerHeadingRef}
+              tabIndex={-1}
+              className="a3-docws-count-text"
+            >
+              {countLabel}
+            </h2>
+            {filtersActive > 0 ? (
+              <Button variant="ghost" onClick={resetFilters}>
+                {t('vr3.documents.filter.reset')}
+              </Button>
+            ) : null}
+          </div>
+          </div>
+
+          {documents.length === 0 ? (
+            <EmptyState>{t('vr3.documents.empty.noDocuments')}</EmptyState>
+          ) : page.total === 0 ? (
+            <EmptyState action={(
+              <Button variant="secondary" onClick={resetFilters}>
+                {t('vr3.documents.filter.reset')}
+              </Button>
+            )}
+            >
+              {t('vr3.documents.empty.noMatches')}
+            </EmptyState>
+          ) : (
+            <ul className="a3-pjob-rows">
+              <AnimatePresence initial={false}>
+                {page.rows.map((doc, index) => (
+                  <DocumentRegisterRow
+                    key={doc.id}
+                    project={project}
+                    analysis={analysis}
+                    doc={doc}
+                    rowState={displayState(doc.id) as DocumentRowState}
+                    associationLabel={association(doc)}
+                    openDetailId={openDetailId}
+                    onToggleDetail={setOpenDetailId}
+                    // M-01: the queue is ADMITTED in place, one canonical
+                    // `fadeRise` per row with the bounded causal wave — never
+                    // a stagger longer than the reveal itself, and nothing at
+                    // all under `prefers-reduced-motion`.
+                    rowMotion={reduced ? undefined : {
+                      variants: fadeRise,
+                      initial: 'hidden',
+                      animate: 'visible',
+                      transition: transition('reveal', Math.min(index, 6)),
+                    }}
+                  />
+                ))}
+              </AnimatePresence>
+            </ul>
+          )}
+
+          {page.paginated ? (
+            <Pagination
+              page={page.page}
+              pageCount={page.pageCount}
+              onPageChange={goToPage}
+              ariaLabel={t('vr3.documents.pagination.label')}
+              rangeLabel={t('vr3.documents.pagination.range', {
+                from: page.from, to: page.to, total: page.total,
+              })}
+              pageButtonLabel={(n) => t('vr3.documents.pagination.page', { page: n })}
             />
-          ))}
-        </AnimatePresence>
-      </ProcessingJob>
-      {filter !== 'all' ? (
-        <p className="a3-doc-filter-notice">{t('vr3.analysis.filterNotice')}</p>
-      ) : null}
-      {completed ? (
-        <div className="a3-project-stage-continue">
-          <Button variant="primary" onClick={() => s.setProjectStage('understanding')}>
-            {t('vr3.understanding.eyebrow')}
-          </Button>
-        </div>
-      ) : null}
+          ) : null}
+        </section>
+      </div>
     </>
   )
 }
 
+/**
+ * The analysis context rail — everything project-wide about the job, once.
+ *
+ * The not-started state used to be told six times (eyebrow, lede, empty
+ * card, CTA, queued count, every row). It is told here, once, together with
+ * the scope the action applies to. The rail never derives anything from the
+ * visible page: its counts come from the eligible project set.
+ */
+function AnalysisRail({
+  project, analysis, workspaceState, eligibleCount, attentionCount: attention,
+  processedCount: processed, doneCount, activeFile, activePhase, announcement,
+  onShowAttention,
+}: {
+  project: FixtureProject
+  analysis: ProjectAnalysis
+  workspaceState: AnalysisWorkspaceState
+  eligibleCount: number
+  attentionCount: number
+  processedCount: number
+  doneCount: number
+  activeFile: string | null
+  activePhase: string | null
+  announcement: string
+  onShowAttention: () => void
+}) {
+  const s = useStore()
+  const t = useT()
+  const total = project.documents.length
+  const running = workspaceState === 'ANALYSING'
+  const terminal = workspaceState === 'COMPLETE' || workspaceState === 'COMPLETE_WITH_ISSUES'
+  const jobState: ProcessingJobState = workspaceState === 'ANALYSING'
+    ? 'RUNNING'
+    : workspaceState
+
+  const startLabel = t('vr3.analysis.start.scoped', { count: eligibleCount })
+
+  const summary = (
+    <dl className="a3-docws-facts">
+      <div className="a3-docws-fact">
+        <dt>{t('vr3.documents.rail.fact.documents')}</dt>
+        <dd className="numeric">{total}</dd>
+      </div>
+      <div className="a3-docws-fact">
+        <dt>{t('vr3.documents.rail.fact.eligible')}</dt>
+        <dd className="numeric">{eligibleCount}</dd>
+      </div>
+      {workspaceState === 'READY' ? null : (
+        <>
+          <div className="a3-docws-fact">
+            <dt>{t('vr3.documents.rail.fact.processed')}</dt>
+            <dd className="numeric">{processed}</dd>
+          </div>
+          <div className="a3-docws-fact">
+            <dt>{t('vr3.documents.rail.fact.attention')}</dt>
+            <dd className="numeric">{attention}</dd>
+          </div>
+        </>
+      )}
+    </dl>
+  )
+
+  const outcome = terminal ? (
+    <dl className="a3-docws-facts">
+      <div className="a3-docws-fact">
+        <dt>{t('vr3.documents.rail.result.values')}</dt>
+        <dd className="numeric">{project.analysis.valuesExtracted}</dd>
+      </div>
+      <div className="a3-docws-fact">
+        <dt>{t('vr3.documents.rail.result.buildings')}</dt>
+        <dd className="numeric">{project.buildings.length}</dd>
+      </div>
+      <div className="a3-docws-fact">
+        <dt>{t('vr3.documents.rail.result.conflicts')}</dt>
+        <dd className="numeric">{project.conflicts.length}</dd>
+      </div>
+      <div className="a3-docws-fact">
+        <dt>{t('vr3.documents.rail.result.questions')}</dt>
+        <dd className="numeric">{openQuestions(project, analysis).length}</dd>
+      </div>
+    </dl>
+  ) : null
+
+  return (
+    <ProcessingJob
+      layout="rail"
+      state={jobState}
+      heading={t(`vr3.documents.rail.title.${workspaceState}`)}
+      processedCount={doneCount}
+      totalCount={eligibleCount}
+      progressPercent={overallProgressPercent(project, analysis)}
+      activeFileName={activeFile}
+      activePhaseLabel={activePhase}
+      announcement={announcement}
+      summary={(
+        <>
+          {summary}
+          {outcome}
+          <p className="a3-docws-rail-lede">
+            {t(`vr3.documents.rail.lede.${workspaceState}`, {
+              count: eligibleCount, attention, processed: doneCount,
+            })}
+          </p>
+        </>
+      )}
+      actions={(
+        <>
+          {workspaceState === 'READY' || workspaceState === 'CANCELLED' ? (
+            <Button
+              variant="primary"
+              disabled={eligibleCount === 0}
+              disabledReason={t('vr3.documents.empty.noDocuments')}
+              onClick={() => s.startDocumentAnalysis()}
+            >
+              {startLabel}
+            </Button>
+          ) : null}
+          {running ? (
+            <Button variant="secondary" onClick={() => s.cancelDocumentAnalysis()}>
+              {t('vr3.analysis.cancel')}
+            </Button>
+          ) : null}
+          {terminal ? (
+            <Button variant="primary" onClick={() => s.setProjectStage('understanding')}>
+              {t('vr3.documents.rail.review')}
+            </Button>
+          ) : null}
+          {workspaceState === 'COMPLETE_WITH_ISSUES' ? (
+            <Button variant="secondary" onClick={onShowAttention}>
+              {t('vr3.documents.rail.showAttention', { count: attention })}
+            </Button>
+          ) : null}
+          {terminal ? (
+            <Button variant="ghost" onClick={() => s.rerunDocumentAnalysis()}>
+              {t('vr3.analysis.rerun')}
+            </Button>
+          ) : null}
+        </>
+      )}
+      notice={workspaceState === 'READY' || workspaceState === 'CANCELLED' ? (
+        <p className="a3-docws-rail-scope">{t('vr3.documents.rail.scopeHelper')}</p>
+      ) : null}
+    />
+  )
+}
+
 function DocumentRegisterRow({
-  project, analysis, doc, openDetailId, onToggleDetail, rowMotion,
+  project, analysis, doc, rowState, associationLabel, openDetailId,
+  onToggleDetail, rowMotion,
 }: {
   project: FixtureProject
   analysis: ProjectAnalysis
   doc: FixtureDocument
+  rowState: DocumentRowState
+  associationLabel: string
   openDetailId: string | null
   onToggleDetail: (id: string | null) => void
   rowMotion?: Parameters<typeof DocumentRow>[0]['rowMotion']
@@ -509,9 +760,6 @@ function DocumentRegisterRow({
   const s = useStore()
   const t = useT()
   const runtime = analysis.documents[doc.id]
-  const rowState: DocumentRowState = runtime?.removedAt
-    ? 'REMOVED'
-    : (runtime?.state ?? 'QUEUED') as DocumentRowState
   const terminal = rowState === 'PROCESSED' || rowState === 'WARNING'
     || rowState === 'LOW_CONFIDENCE' || rowState === 'FAILED' || rowState === 'REMOVED'
   const lineage = documentLineage(project, doc.id)
@@ -528,24 +776,17 @@ function DocumentRegisterRow({
       : null,
   ].filter(Boolean).join(' · ')
 
-  const association = doc.projectLevel
-    ? t('vr3.analysis.association.project')
-    : t('vr3.analysis.association.buildings', {
-      names: doc.buildingIds
-        .map((id) => project.buildings.find((b) => b.id === id)?.name ?? id)
-        .join(', '),
-    })
-
   return (
     <DocumentRow
+      density="compact"
       file={doc.file}
       typeLabel={t(`vr3.docType.${doc.documentType}`)}
       versionLabel={doc.version}
-      associationLabel={association}
+      associationLabel={associationLabel}
       note={doc.issueKey ? t(doc.issueKey) : undefined}
       state={rowState}
       stateLabel={documentStateLabel(t, rowState)}
-      stateReason={terminal && rowState !== 'PROCESSED'
+      stateReason={terminal && rowState !== 'PROCESSED' && rowState !== 'REMOVED'
         ? `${t(`vr3.recognition.${doc.recognitionQuality}`)} · ${t(`vr3.medium.${doc.recognitionMedium}`)}`
         : undefined}
       progress={documentProgress(runtime?.state ?? 'QUEUED')}
@@ -553,6 +794,9 @@ function DocumentRegisterRow({
       stale={runtime?.stale}
       lineage={lineageText || undefined}
       rowMotion={rowMotion}
+      // Recovery stays exactly where the Product supports it: an outcome
+      // that needs a decision. It is no longer the gatekeeper of
+      // inspection — every row below has that, always.
       actions={terminal && rowState !== 'REMOVED' && rowState !== 'PROCESSED' ? [
         {
           id: 'retry',
@@ -641,7 +885,6 @@ function UnderstandingStage({
 
   return (
     <>
-      <ProjectIdentityUtilities project={project} />
       <div className="a3-project-stage-head">
         <p className="a3-project-stage-eyebrow">{t('vr3.understanding.eyebrow')}</p>
         <PageHeader
@@ -1315,7 +1558,6 @@ function ReadyStage({
 
   return (
     <>
-      <ProjectIdentityUtilities project={project} />
       <ProjectReadiness
         eyebrow={t('vr3.readiness.eyebrow.ready')}
         heading={t('vr3.readiness.title.ready')}
@@ -1383,7 +1625,6 @@ function OptionCreatedStage({ project }: { project: FixtureProject }) {
   // step is reachable.
   return (
     <>
-      <ProjectIdentityUtilities project={project} />
       <ProjectReadiness
         eyebrow={t('vr3.readiness.optionCreated')}
         /* VR3-02 (T-012): the hand-off NAMES the Option and says what it is
@@ -1468,33 +1709,64 @@ function OptionCreatedStage({ project }: { project: FixtureProject }) {
   )
 }
 
-/* ───────────────────────── project utilities ───────────────────────── */
+/* ─────────────────────── compact project context ─────────────────────── */
 
 /**
+ * The project as CONTEXT, in one bar (accepted 2026-09-05 Documents
+ * workspace audit, "Compact project context").
+ *
+ * What this replaces: a panoramic hero, the project name as the page H1,
+ * and a status eyebrow — a landing page stacked on top of an operational
+ * task, pushing the first document row to y=774 at 1440x900 and off the
+ * viewport entirely at 1280x800. The identity is still here, because a
+ * sales user works several projects a day and has to know which one is
+ * open; it is 56px of it (48px at 1280), on one line, and the page H1 now
+ * names the TASK.
+ *
  * The internal note (DC-43) is a released Opportunity-level capability and
- * it survives this rebuild unchanged: it does not exist in a client
- * projection at all, and it stays a header utility rather than competing
- * with the workflow for attention.
+ * survives unchanged: it does not exist in a client projection at all, and
+ * it stays a tertiary utility at the end of the bar rather than competing
+ * with the analysis for attention.
  */
-function ProjectIdentityUtilities({ project }: { project: FixtureProject }) {
+function ProjectContextBar({ project }: { project: FixtureProject }) {
   const s = useStore()
+  const t = useT()
   const tx = useTx()
   const [noteOpen, setNoteOpen] = useState(false)
   const noteButtonRef = useRef<HTMLButtonElement>(null)
-  const client = useMemo(() => `${project.client} · ${project.city}`, [project])
+  const asset = projectAsset(project.heroAssetId)
 
   if (s.mode === 'praesentation') return null
 
   return (
-    <div className="a3-project-utilities">
-      <p className="a3-project-utilities-meta">{client}</p>
-      <Button
-        ref={noteButtonRef}
-        variant="ghost"
-        onClick={() => setNoteOpen(true)}
-      >
-        {tx('Interne Notiz')}
-      </Button>
+    <div className="a3-project-context">
+      <span className="a3-project-context-media" aria-hidden="true">
+        <MediaFrame
+          ratio="tile"
+          state={asset ? 'loaded' : 'fallback'}
+          src={asset?.url}
+          alt={asset ? t(asset.altKey) : undefined}
+          seed={project.id}
+          sourceId={asset?.assetId}
+        />
+      </span>
+      <div className="a3-project-context-identity">
+        <p className="a3-project-context-name">{project.name}</p>
+        <p className="a3-project-context-meta">
+          {project.client}
+          {' · '}
+          {project.city}
+        </p>
+      </div>
+      <div className="a3-project-context-utilities">
+        <Button
+          ref={noteButtonRef}
+          variant="ghost"
+          onClick={() => setNoteOpen(true)}
+        >
+          {tx('Interne Notiz')}
+        </Button>
+      </div>
       <InternalNoteDialog
         open={noteOpen}
         onOpenChange={setNoteOpen}

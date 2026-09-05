@@ -120,6 +120,12 @@ VR3_CAPABILITY_IDS = [
     'schedule-editor', 'validation-review', 'save-receipt',
     # Projects portfolio rebuild.
     'combobox',
+    # Documents workspace rebuild (accepted 2026-09-05 audit): the
+    # hierarchical journey navigation and the first canonical pagination.
+    # Same atomicity rule as VR3-04 above — this harness and `verify.py`'s
+    # allowlist move together, and the gate now also requires both canonical
+    # owner modules to exist, so the synthetic tree carries them too.
+    'workflow-navigator', 'pagination',
 ]
 VO_T4_IDS = [
     'canvas', 'paper', 'stage', 'stage-deep', 'media-frame',
@@ -206,6 +212,8 @@ def run_vo_t4_capability_cases() -> list[str]:
             base = {
                 'src/Probe.tsx': 'export const Probe = "ACTIVE"\n',
                 'src/design-system/WorkflowStepper.tsx': 'export function WorkflowStepper() {}\n',
+                'src/design-system/WorkflowNavigator.tsx': 'export function WorkflowNavigator() {}\n',
+                'src/design-system/Pagination.tsx': 'export function Pagination() {}\n',
                 'src/components/Sidebar.tsx': "import { OptionWorkflowSpine } from './WorkflowSpine'\nexport const Sidebar = <OptionWorkflowSpine />\n",
                 'src/components/WorkflowSpine.tsx': "import { WorkflowStepper } from '../design-system/WorkflowStepper'\nexport const Spine = <WorkflowStepper />\n",
                 'src/components/designSystem.tsx': 'export const DesignSystem = {}\n',

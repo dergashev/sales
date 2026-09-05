@@ -43,8 +43,11 @@ export const PORTFOLIO_CARD_COUNT = 5
 export const PORTFOLIO_NAVIGABLE_COUNT = 2
 export const PORTFOLIO_DISPLAY_ONLY_COUNT = 3
 export const PROJECT_LIST_HEADING = 'Projekte'
-/** The canonical full-journey rail on the project level. */
+/** The canonical full-journey rail — now the OPTION workspace's, since the
+ *  project level carries the six-stage `WorkflowNavigator` instead. */
 export const PROJECT_SPINE_LANDMARK = 'Projekt- und Optionsverlauf'
+/** The project level's grouped six-stage journey navigation. */
+export const PROJECT_JOURNEY_LANDMARK = 'Projektablauf'
 
 export const NAV = {
   landmark: 'Navigation',
@@ -79,7 +82,13 @@ export const OPPORTUNITY = {
   // `Projektparameter bestätigen` / `Opportunity Option anlegen`) with the
   // real journey: start the analysis, then create the Option once the
   // readiness gate is open. The Option gallery's own `Öffnen` survives.
-  startAnalysis: 'Dokumentanalyse starten',
+  // Documents-workspace rebuild: the analysis action is SCOPE-AWARE — it
+  // names the eligible set it will process, so the anchor is a pattern
+  // rather than a fixed string (8 documents on the clean fixture, 36 on
+  // the complex one).
+  startAnalysis: /^Alle \d+ analysierbaren Dokumente analysieren$/,
+  /** Completion no longer navigates by itself; the rail offers the step. */
+  reviewUnderstanding: 'Projektverständnis prüfen',
   createOption: 'Option anlegen',
   openOption: 'Öffnen',
   /** VR3-02 (T-012): the hand-off's one continuation names the stage. */

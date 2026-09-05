@@ -1005,3 +1005,95 @@ export function filterDocuments(
     return filter === 'attention' ? attention : state === 'PROCESSED'
   })
 }
+
+/* ─────────────── the Documents workspace: derived, never new ───────────── */
+
+/**
+ * The five states the Documents workspace presents (accepted 2026-09-05
+ * Documents workspace UX audit, "Analysis state model").
+ *
+ * These are a PRESENTATION of `JobState`, derived here so the mapping can be
+ * proved without rendering. Nothing new is persisted and no new outcome is
+ * invented: `CANCELLED` is the existing `NOT_STARTED`-after-a-start that
+ * `cancelJob` produces, and `COMPLETE_WITH_ISSUES` is the existing
+ * `COMPLETE` seen together with the attention outcomes the run produced.
+ *
+ * The audit's own table names the fifth state `PAUSED`. It is NOT called
+ * that here, and the implementation ticket is explicit about why: a pause
+ * implies that continuing resumes where the work stopped. `startJob` does
+ * not — it re-queues every non-removed document and reads them all again.
+ * Cancelling keeps what was already produced, so nothing is lost, but the
+ * word for that is cancelled, and the rail says restarting reads the whole
+ * eligible set again rather than promising a resume this Product cannot
+ * perform.
+ */
+export type AnalysisWorkspaceState =
+  | 'READY' | 'CANCELLED' | 'ANALYSING' | 'COMPLETE' | 'COMPLETE_WITH_ISSUES'
+
+/**
+ * The documents an analysis run actually processes.
+ *
+ * This is the EXISTING input set, not a new eligibility model: `startJob`
+ * queues every document that has not been removed and `advanceJob` walks
+ * exactly the same set. The workspace's "analyse all N eligible documents"
+ * therefore counts the set the operation will process, and the two cannot
+ * drift apart, because they are one function.
+ */
+export function eligibleDocuments(
+  project: FixtureProject, analysis: ProjectAnalysis,
+): FixtureDocument[] {
+  return project.documents.filter((d) => !analysis.documents[d.id]?.removedAt)
+}
+
+/** Outcomes that need a decision. Removed rows are not an outcome. */
+export function attentionCount(
+  project: FixtureProject, analysis: ProjectAnalysis,
+): number {
+  return eligibleDocuments(project, analysis).filter((doc) => {
+    const state = analysis.documents[doc.id]?.state
+    return state === 'WARNING' || state === 'LOW_CONFIDENCE' || state === 'FAILED'
+  }).length
+}
+
+/** Documents whose run ended cleanly. */
+export function processedOutcomeCount(
+  project: FixtureProject, analysis: ProjectAnalysis,
+): number {
+  return eligibleDocuments(project, analysis)
+    .filter((doc) => analysis.documents[doc.id]?.state === 'PROCESSED').length
+}
+
+export function analysisWorkspaceState(
+  project: FixtureProject, analysis: ProjectAnalysis,
+): AnalysisWorkspaceState {
+  if (analysis.jobState === 'RUNNING' || analysis.jobState === 'PARTIAL_FAILURE') {
+    return 'ANALYSING'
+  }
+  if (analysis.jobState === 'COMPLETE') {
+    return attentionCount(project, analysis) > 0 ? 'COMPLETE_WITH_ISSUES' : 'COMPLETE'
+  }
+  // NOT_STARTED covers both "never begun" and "begun, then cancelled". The
+  // start timestamp is what tells them apart, and it survives cancellation.
+  return analysis.startedAt ? 'CANCELLED' : 'READY'
+}
+
+/** What a document row truthfully reads as, given the job around it. */
+export type DocumentDisplayState = 'READY' | DocumentProcessingState | 'REMOVED'
+
+/**
+ * `QUEUED` means accepted and waiting. Before a run is accepted — and after
+ * one was cancelled, when nothing is waiting for anything — an unfinished
+ * document is READY, not queued. The store's own value is unchanged; this
+ * is the presentation of it.
+ */
+export function documentDisplayState(
+  analysis: ProjectAnalysis, docId: string, workspace: AnalysisWorkspaceState,
+): DocumentDisplayState {
+  const runtime = analysis.documents[docId]
+  if (runtime?.removedAt) return 'REMOVED'
+  const state = runtime?.state ?? 'QUEUED'
+  if (state === 'QUEUED' && (workspace === 'READY' || workspace === 'CANCELLED')) {
+    return 'READY'
+  }
+  return state
+}

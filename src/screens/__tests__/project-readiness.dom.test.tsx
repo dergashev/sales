@@ -28,7 +28,15 @@ import {
 
 beforeEach(() => __resetStoreForTests())
 
-/** Run the analysis of the currently open project to completion. */
+/**
+ * Run the analysis of the currently open project to completion AND take the
+ * deliberate step into Understanding.
+ *
+ * Completion no longer navigates by itself (accepted 2026-09-05 Documents
+ * workspace audit: the user has to be able to see what happened before the
+ * page moves), so the helper does what the rail's primary action does. The
+ * step itself is asserted separately, in the Documents workspace suite.
+ */
 function finishAnalysis() {
   const st = () => useStore.getState()
   const project = demoProject(st().opportunityId)!
@@ -37,6 +45,7 @@ function finishAnalysis() {
     if (st().projectAnalyses[project.id]!.jobState === 'COMPLETE') break
     act(() => st().tickDocumentAnalysis())
   }
+  act(() => st().setProjectStage('understanding'))
 }
 
 async function openProject(user: ReturnType<typeof userEvent.setup>, name: string) {
@@ -94,18 +103,53 @@ describe('the portfolio register holds five cards and exactly two journeys', () 
   })
 })
 
-describe('before the analysis: a prerequisite state, and NO result anatomy', () => {
-  it('explains the documents and the unlock, and offers exactly one primary action', async () => {
+describe('before the analysis: the document register, and NO result anatomy', () => {
+  it('is a document workspace: the task is the H1 and the rows are on screen', async () => {
     const user = userEvent.setup()
     await openProject(user, 'Wohnhof Lindenhain')
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Wohnhof Lindenhain' }))
+    // The page H1 names the TASK. The project name is context, not the
+    // page's subject — it is present, once, in the compact context bar.
+    expect(screen.getByRole('heading', { level: 1, name: 'Dokumente' }))
       .toBeInTheDocument()
-    expect(screen.getByText('Noch keine Analyseergebnisse')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Dokumentanalyse starten' })).toBeInTheDocument()
-    // The document set is explained from its own register.
-    expect(screen.getByText(/8 Dokumente in der Warteschlange/)).toBeInTheDocument()
-    expect(screen.getByText('Grundrisse · 3')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { level: 1, name: 'Wohnhof Lindenhain' }))
+      .not.toBeInTheDocument()
+    const context = document.querySelector('.a3-project-context') as HTMLElement
+    expect(within(context).getByText('Wohnhof Lindenhain')).toBeInTheDocument()
+    expect(within(context).getByText(/Lindenhain Wohnen GmbH · Freiburg/))
+      .toBeInTheDocument()
+    // Every document is listed, with its own always-available inspection.
+    expect(document.querySelectorAll('.a3-drow')).toHaveLength(8)
+    expect(document.querySelectorAll('.a3-drow-action-inspect')).toHaveLength(8)
+    // The register's heading IS its result count; eight results need no
+    // pagination at a page size of ten.
+    expect(screen.getByRole('heading', { level: 2, name: '8 Dokumente' }))
+      .toBeInTheDocument()
+    expect(document.querySelector('.a3-pgn')).toBeNull()
+    // The retired composition: hero, essay, empty-result card, aggregate
+    // inspect action and static tally are all gone.
+    expect(screen.queryByText('Noch keine Analyseergebnisse')).not.toBeInTheDocument()
+    expect(screen.queryByText(/8 Dokumente in der Warteschlange/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Grundrisse · 3')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '8 Dokumente ansehen' }))
+      .not.toBeInTheDocument()
+  })
+
+  it('states READY, never QUEUED, and shows no progress before work is accepted', async () => {
+    const user = userEvent.setup()
+    await openProject(user, 'Wohnhof Lindenhain')
+
+    // `QUEUED` claims processing was accepted and is waiting to start. It
+    // was not: nothing has been submitted.
+    expect(screen.queryByText('In der Warteschlange')).not.toBeInTheDocument()
+    expect(screen.getAllByText('Bereit für die Analyse').length).toBeGreaterThan(8)
+    // No zero-percent processing visuals, anywhere, before a run exists.
+    expect(document.querySelectorAll('.a3-drow-meter')).toHaveLength(0)
+    expect(document.querySelector('.a3-pjob-progress')).toBeNull()
+    // The scope-aware action names the set the operation will process.
+    expect(screen.getByRole('button', {
+      name: 'Alle 8 analysierbaren Dokumente analysieren',
+    })).toBeInTheDocument()
   })
 
   it('mounts no metrics, no conflict, no question and no readiness panel', async () => {
@@ -132,7 +176,9 @@ describe('before the analysis: a prerequisite state, and NO result anatomy', () 
     // A tick on its own does nothing: the transition has exactly one door.
     act(() => st().tickDocumentAnalysis())
     expect(st().projectAnalyses['DEMO-HAPPY-01']!.jobState).toBe('NOT_STARTED')
-    await user.click(screen.getByRole('button', { name: 'Dokumentanalyse starten' }))
+    await user.click(screen.getByRole('button', {
+      name: 'Alle 8 analysierbaren Dokumente analysieren',
+    }))
     expect(st().projectAnalyses['DEMO-HAPPY-01']!.jobState).toBe('RUNNING')
   })
 })
@@ -141,7 +187,9 @@ describe('during the analysis: per-file truth', () => {
   it('names the active file, the processed count and every file with its own state', async () => {
     const user = userEvent.setup()
     await openProject(user, 'Wohnhof Lindenhain')
-    await user.click(screen.getByRole('button', { name: 'Dokumentanalyse starten' }))
+    await user.click(screen.getByRole('button', {
+      name: 'Alle 8 analysierbaren Dokumente analysieren',
+    }))
     const st = () => useStore.getState()
     act(() => st().tickDocumentAnalysis())
 
@@ -156,40 +204,55 @@ describe('during the analysis: per-file truth', () => {
     expect(document.querySelectorAll('.a3-drow')).toHaveLength(8)
   })
 
-  it('a filter changes which rows are listed and never the overall counts', async () => {
+  it('a status filter changes which rows are listed and never the global scope', async () => {
     const user = userEvent.setup()
     await openProject(user, 'Quartier Am Güterbogen')
     finishAnalysis()
-
-    await waitFor(() => expect(screen.getAllByRole('tab')).toHaveLength(3))
-    await user.click(screen.getByRole('tab', { name: /Übersicht/ }))
-    // Back to the document stage to reach the filters.
     act(() => useStore.getState().setProjectStage('documents'))
 
-    const attention = screen.getByRole('button', { name: /Brauchen Aufmerksamkeit/ })
-    expect(attention).toHaveAttribute('aria-pressed', 'false')
-    await user.click(attention)
-    expect(attention).toHaveAttribute('aria-pressed', 'true')
+    // Unfiltered: ten of thirty-six, because the register paginates from
+    // the eleventh result.
+    expect(screen.getByRole('heading', { level: 2, name: '36 Dokumente' }))
+      .toBeInTheDocument()
+    expect(document.querySelectorAll('.a3-drow')).toHaveLength(10)
+
+    await user.click(screen.getByRole('radio', { name: 'Aufmerksamkeit' }))
     // 4 warnings + 3 low confidence + 1 failed = 8 rows listed…
     expect(document.querySelectorAll('.a3-drow')).toHaveLength(8)
-    // …while the job's own heading still states all 36.
-    expect(screen.getByText(/36 Dateien verarbeitet/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: '8 von 36 Dokumenten' }))
+      .toBeInTheDocument()
+    // …while the rail's own facts still describe all thirty-six. Filtering
+    // is presentation; it never narrows what the analysis covered.
+    const rail = document.querySelector('.a3-docws-rail') as HTMLElement
+    expect(within(rail).getByText('Analysierbar').parentElement)
+      .toHaveTextContent('36')
+    // A filter that is active offers its own way out.
+    expect(screen.getByRole('button', { name: 'Filter zurücksetzen' }))
+      .toBeInTheDocument()
   })
 
-  it('a failed file explains the cause, the consequence and offers local recovery', async () => {
+  it('a failed file explains itself IN ITS ROW and offers local recovery there', async () => {
     const user = userEvent.setup()
     await openProject(user, 'Quartier Am Güterbogen')
     finishAnalysis()
     act(() => useStore.getState().setProjectStage('documents'))
+    await user.click(screen.getByRole('radio', { name: 'Aufmerksamkeit' }))
 
-    expect(screen.getByText(/24_C_Grundriss_UG_V1_SCAN\.pdf konnte nicht erkannt werden/))
-      .toBeInTheDocument()
-    // The consequence names what is affected and that the job continued.
-    expect(screen.getByText(/Die übrigen 35 Dateien bleiben nutzbar/)).toBeInTheDocument()
-    const notice = document.querySelector('.a3-pjob-notice')!
-    expect(within(notice as HTMLElement).getByRole('button', { name: /Datei ersetzen/ }))
-      .toBeInTheDocument()
-    expect(within(notice as HTMLElement).getByRole('button', { name: /Erneut lesen/ }))
+    const failed = [...document.querySelectorAll('.a3-drow')]
+      .find((row) => row.textContent?.includes('24_C_Grundriss_UG_V1_SCAN.pdf')) as HTMLElement
+    expect(failed).toBeDefined()
+    // The row carries the outcome as a word and the reason as text.
+    expect(within(failed).getByText('Fehlgeschlagen')).toBeInTheDocument()
+    expect(failed.querySelector('.a3-sst-reason')?.textContent ?? '')
+      .toMatch(/Erkennung/)
+    // Recovery is local and only what the Product supports.
+    for (const action of ['Datei ersetzen', 'Erneut lesen', 'Entfernen']) {
+      expect(within(failed).getByRole('button', { name: new RegExp(action) }))
+        .toBeInTheDocument()
+    }
+    // Inspection is independent of recovery: it exists on this row and on
+    // rows that have nothing to recover from.
+    expect(within(failed).getByRole('button', { name: /Beleg ansehen/ }))
       .toBeInTheDocument()
   })
 })
@@ -319,17 +382,26 @@ describe('the complex route: the gate, the comparison and the audit record', () 
 })
 
 describe('accessibility of the project surfaces', () => {
-  it('the workflow spine is a real navigation with a current step and a reason for each lock', async () => {
+  it('the workflow is six grouped stages, one current, and no KG rows', async () => {
     const user = userEvent.setup()
     await openProject(user, 'Wohnhof Lindenhain')
-    const spine = screen.getByRole('navigation', { name: 'Projekt- und Optionsverlauf' })
-    expect(spine).toBeInTheDocument()
-    expect(within(spine).getByText('Dokumente')).toBeInTheDocument()
-    // A locked step never disables silently: the reason is in its text.
-    expect(within(spine).getAllByText(/Voraussetzung fehlt|Dokumentanalyse fehlt|Projekt noch nicht bereit/).length)
-      .toBeGreaterThan(0)
-    // Exactly one step is current.
-    expect(spine.querySelectorAll('[aria-current="step"]')).toHaveLength(1)
+    const nav = screen.getByRole('navigation', { name: 'Projektablauf' })
+    expect(nav).toBeInTheDocument()
+    expect(nav.querySelectorAll('.a3-wfn-stage')).toHaveLength(6)
+    for (const stage of [
+      'Dokumente', 'Verstehen', 'Konfigurieren', 'Kalkulieren', 'Prüfen', 'Präsentieren',
+    ]) {
+      expect(within(nav).getByText(stage)).toBeInTheDocument()
+    }
+    // Exactly one stage is current, and it is this page's.
+    const current = nav.querySelectorAll('[aria-current="step"]')
+    expect(current).toHaveLength(1)
+    expect(current[0]).toHaveTextContent('Dokumente')
+    // The one lock that is useful names its prerequisite; the four stages
+    // after it stay neutral rather than reporting four failures.
+    expect(within(nav).getByText(/Dokumentanalyse fehlt/)).toBeInTheDocument()
+    expect(within(nav).queryAllByText(/^KG \d00$/)).toHaveLength(0)
+    expect(within(nav).getAllByText('ausstehend')).toHaveLength(4)
   })
 
   it('the Understanding sections are a keyboard-operable tablist', async () => {
@@ -360,7 +432,9 @@ describe('accessibility of the project surfaces', () => {
   it('the job announces its progress through one scoped polite region', async () => {
     const user = userEvent.setup()
     await openProject(user, 'Wohnhof Lindenhain')
-    await user.click(screen.getByRole('button', { name: 'Dokumentanalyse starten' }))
+    await user.click(screen.getByRole('button', {
+      name: 'Alle 8 analysierbaren Dokumente analysieren',
+    }))
     const live = document.querySelectorAll('.a3-pjob [aria-live="polite"]')
     // One region for the whole job — not one per row.
     expect(live).toHaveLength(1)

@@ -602,6 +602,17 @@
                                  margin below (--panel-right-width stays
                                  520px, unchanged) — narrowing the left rail
                                  never shrinks the workspace column. */
+  /* Documents workspace (accepted 2026-09-05 Project Documents UX audit).
+     [provisional] — measured from the accepted target, not yet an ADR.
+     The operational document workspace is WIDER than the 1200px reading
+     column: it is a register plus a contextual rail, not prose, and the
+     target measures ~1320px of centred working width at 1440 with a 320px
+     rail and a 24px gap. `--content-max-width` stays what it is: it is the
+     READING measure of editorial routes and narrowing a register to it is
+     what produced the accidental right-side void this rebuild removes. */
+  --measure-workspace: 1320px;
+  --measure-analysis-rail: 320px;
+  --gutter-workspace: var(--space-5);
   --size-app-min-width: 1280px; /* [provisional] supported shell minimum;
                                    requires design-token ADR ratification */
   /* --duration-toast-undo здесь НЕ живёт: окно отмены — политика
@@ -753,6 +764,17 @@
   /* VR2-03 Acceptance remediation (cycle 5): approved target measures
      ~189px at 1280 (narrowing from the prior 232px working value). */
   :root { --panel-left-width: 189px; }
+  /* Documents workspace at the 1280 floor: ~1216px of working width, a
+     288px rail and a 20px gap (accepted target, "1280px desktop"). The
+     rail does NOT collapse at this supported width — it narrows. 20px is
+     not on the 8-px spacing scale on purpose: it is the target's measured
+     gap, declared once here as a token rather than inlined at the call
+     site (rule 2). */
+  :root {
+    --measure-workspace: 1216px;
+    --measure-analysis-rail: 288px;
+    --gutter-workspace: 20px;
+  }
   /* VR2-03 Acceptance remediation (cycle 6): approved target's
      Building & Scope readiness rail measures ~226px at 1280 (narrower
      than the ~264px value at 1440 and above). */

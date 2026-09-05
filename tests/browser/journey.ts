@@ -46,6 +46,14 @@ export async function reachOptionWorkspace(page: Page, projectName: string) {
   await expect(start).toBeVisible()
   await start.click()
 
+  // Completion does not navigate by itself (accepted 2026-09-05 Documents
+  // workspace audit): the user has to be able to see what the analysis
+  // produced before the page moves. The rail's primary action is that
+  // deliberate step, and it appears only when the job is terminal.
+  const review = page.getByRole('button', { name: OPPORTUNITY.reviewUnderstanding })
+  await expect(review).toBeVisible({ timeout: 30_000 })
+  await review.click()
+
   // The gate opens only when the analysis has completed and no blocking
   // conflict is outstanding. `toBeEnabled` is not enough on its own: the
   // canonical Button blocks with `aria-disabled`, so the gate's own state

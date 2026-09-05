@@ -2497,17 +2497,20 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    progress · state) (+ .a3-drow-actions) (+ .a3-drow-detail). The row is a
    workflow entity: filename and state are always both present, and the
    filename column is the one that absorbs the remaining width.
-   Classes: .a3-drow · .a3-drow-current · .a3-drow-queued · .a3-drow-active ·
-   .a3-drow-processed · .a3-drow-warning · .a3-drow-lowconfidence ·
-   .a3-drow-failed · .a3-drow-removed · .a3-drow-main · .a3-drow-kind ·
+   Classes: .a3-drow · .a3-drow-current · .a3-drow-ready · .a3-drow-queued ·
+   .a3-drow-active · .a3-drow-processed · .a3-drow-warning ·
+   .a3-drow-lowconfidence · .a3-drow-failed · .a3-drow-removed ·
+   .a3-drow-compact · .a3-drow-main · .a3-drow-kind ·
    .a3-drow-identity · .a3-drow-file · .a3-drow-meta · .a3-drow-note ·
    .a3-drow-lineage · .a3-drow-progress · .a3-drow-meter ·
-   .a3-drow-meter-fill · .a3-drow-state · .a3-drow-actions ·
-   .a3-drow-action · .a3-drow-action-primary · .a3-drow-action-ghost ·
-   .a3-drow-detail. */
+   .a3-drow-meter-fill · .a3-drow-state · .a3-drow-inspect ·
+   .a3-drow-actions · .a3-drow-action · .a3-drow-action-primary ·
+   .a3-drow-action-ghost · .a3-drow-action-inspect ·
+   .a3-drow-quiet-state · .a3-drow-detail. */
 .a3-drow{border-top:var(--border-hairline);padding:var(--space-3) 0;min-width:0}
 .a3-drow:last-child{border-bottom:var(--border-hairline)}
-.a3-drow-main{display:grid;grid-template-columns:5ch minmax(0,1fr) minmax(0,var(--measure-band)) minmax(0,max-content);align-items:start;gap:var(--space-3)}
+.a3-drow-main{display:grid;grid-template-columns:5ch minmax(0,1fr) minmax(0,var(--measure-band)) minmax(0,max-content) max-content;align-items:start;gap:var(--space-3)}
+.a3-drow-inspect{align-self:center;justify-self:end}
 .a3-drow-kind{font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-bold);color:var(--color-text-secondary);border:var(--border-hairline);padding:var(--space-1);text-align:center}
 .a3-drow-identity{display:grid;gap:var(--space-1);min-width:0}
 .a3-drow-file{font-size:var(--type-table-body-size);line-height:var(--type-table-body-line);font-weight:var(--font-weight-bold);overflow-wrap:break-word;hyphens:auto}
@@ -2522,10 +2525,21 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-drow-failed .a3-drow-file{color:var(--color-status-error)}
 .a3-drow-removed .a3-drow-file{text-decoration:line-through;color:var(--color-text-muted)}
 .a3-drow-actions{display:flex;flex-wrap:wrap;gap:var(--space-2);padding-top:var(--space-2)}
+/* The OPERATIONAL density of the register (audit: 64-72px collapsed, more
+   only for a wrapped two-line filename). The row is a line of a register,
+   not a card: hover and focus-within light the whole line, so the always-
+   available Inspect never has to be hunted for, and nothing critical is
+   hover-only — Inspect is a real, permanently visible button. */
+.a3-drow-compact{padding:var(--space-2) var(--space-2)}
+.a3-drow-compact .a3-drow-main{grid-template-columns:4ch minmax(0,1fr) minmax(0,var(--measure-showcase-narrow)) minmax(0,max-content) max-content;align-items:center;gap:var(--space-3);min-block-size:var(--space-7)}
+.a3-drow-compact .a3-drow-file{font-size:var(--type-body-size);line-height:var(--type-body-line)}
+.a3-drow:hover,.a3-drow:focus-within{background:var(--color-surface-subtle)}
+.a3-drow-quiet-state{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-muted)}
 .a3-drow-action{background:var(--color-action-secondary-bg);color:var(--color-action-secondary-text);border:var(--border-contrast-1px);padding:var(--space-2) var(--space-3);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-medium)}
 .a3-drow-action-primary{background:var(--color-action-primary-bg);color:var(--color-action-primary-text);border-color:var(--color-action-primary-bg);font-weight:var(--font-weight-bold)}
 .a3-drow-action-ghost{background:transparent;border-color:transparent;text-decoration:underline;text-underline-offset:var(--size-text-underline-offset)}
 .a3-drow-action[disabled]{background:var(--color-action-disabled-bg);color:var(--color-action-disabled-text);border-color:var(--color-action-disabled-border)}
+.a3-drow-action.a3-drow-action-inspect{background:transparent;border:0;padding:var(--space-1) 0;font-weight:var(--font-weight-medium);text-decoration:underline;text-underline-offset:var(--space-1);color:var(--color-text-primary)}
 .a3-drow-detail{padding:var(--space-3) 0 var(--space-2) calc(5ch + var(--space-3));display:grid;gap:var(--space-3);min-width:0}
 
 /* ActionGate. Structure: .a3-gate > .a3-gate-action + .a3-gate-explanation.
@@ -2703,32 +2717,34 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    this level. Two zones, therefore, not three.
    ══════════════════════════════════════════════════════════════════════ */
 
-/* Project shell. Structure: .a3-project-shell > .a3-project-spine +
-   .a3-project-main. At 1280 the spine narrows (its state and reason stay,
-   only the meta loosens) and the centre keeps at least the reading measure.
-   Classes: .a3-project-shell · .a3-project-spine ·
-   .a3-project-spine-eyebrow · .a3-project-spine-name · .a3-project-main. */
-.a3-project-shell{display:grid;grid-template-columns:var(--panel-left-width) minmax(0,1fr);align-items:start;min-height:100%}
-.a3-project-spine{position:sticky;top:0;align-self:start;background:var(--color-surface-subtle);border-right:var(--border-default);padding:var(--space-5) var(--space-4);min-width:0}
-.a3-project-spine-eyebrow{margin:0 0 var(--space-2);font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);font-weight:var(--font-weight-bold);letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-secondary)}
-.a3-project-spine-name{margin:0 0 var(--space-5);border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-3);font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-medium);overflow-wrap:break-word;hyphens:auto}
-.a3-project-main{display:grid;gap:var(--space-6);align-content:start;padding:var(--space-6) var(--space-7);min-width:0;max-width:var(--content-max-width)}
+/* Project shell. Structure: .a3-project-shell > .a3-project-context +
+   .a3-wfn + .a3-project-main — three stacked bands, no permanent left
+   column. The thirteen-row spine that used to hold `--panel-left-width`
+   was removed by the accepted 2026-09-05 Documents workspace audit: it
+   consumed width at every viewport to publish a workflow the user could
+   not act on yet, and pushed the working object below the fold.
+   Classes: .a3-project-shell · .a3-project-context ·
+   .a3-project-context-media · .a3-project-context-identity ·
+   .a3-project-context-name · .a3-project-context-meta ·
+   .a3-project-context-utilities · .a3-project-main. */
+.a3-project-shell{display:flex;flex-direction:column;align-items:stretch;min-height:100%;min-width:0;padding-inline:var(--space-6)}
+.a3-project-context{display:flex;align-items:center;gap:var(--space-4);inline-size:100%;max-inline-size:var(--measure-workspace);margin-inline:auto;padding-block:var(--space-1);border-bottom:var(--border-hairline);min-width:0}
+.a3-project-context-media{flex:none;display:block;inline-size:56px}
+.a3-project-context-identity{display:grid;gap:var(--space-1);min-width:0}
+.a3-project-context-name{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-bold);overflow-wrap:break-word}
+.a3-project-context-meta{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word}
+.a3-project-context-utilities{margin-inline-start:auto;display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.a3-project-main{display:grid;gap:var(--space-3);align-content:start;padding-block:var(--space-3) var(--space-7);min-width:0;inline-size:100%;max-inline-size:var(--measure-workspace);margin-inline:auto}
 .a3-project-stage-head{outline:0;min-width:0}
 .a3-project-stage-continue{display:flex;flex-wrap:wrap;gap:var(--space-3)}
-.a3-project-utilities{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-4);min-width:0}
-.a3-project-utilities-meta{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
-@media (max-width:1365px){
-  .a3-project-shell{grid-template-columns:var(--panel-right-width-compact) minmax(0,1fr)}
-  .a3-project-main{padding:var(--space-5) var(--space-5)}
+@media (max-width:1439px){
+  .a3-project-shell{padding-inline:var(--space-5)}
+  .a3-project-context-media{inline-size:48px}
+  .a3-project-main{padding-block:var(--space-3) var(--space-6)}
 }
 
-/* Document register helpers on the pre-analysis and job surfaces.
-   Classes: .a3-doc-tally · .a3-doc-tally-item · .a3-doc-register ·
-   .a3-doc-filter-notice · .a3-doc-detail-meta. */
-.a3-doc-tally{list-style:none;margin:0 0 var(--space-4);padding:0;display:flex;flex-wrap:wrap;gap:var(--space-2)}
-.a3-doc-tally-item{border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-2) var(--space-3);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-medium)}
-.a3-doc-register{min-width:0;overflow-x:auto}
-.a3-doc-filter-notice{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+/* Document detail disclosure inside a register row.
+   Classes: .a3-doc-detail-meta. */
 .a3-doc-detail-meta{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
 
 /* Project Understanding. Structure: status mark → tablist → panel. The
@@ -3741,3 +3757,111 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    locales and at 200 % zoom is an acceptance criterion, and the popover's
    own min-width is what makes it true rather than a hope. */
 .a3-account-popover .a3-btn{white-space:nowrap}
+
+/* ══════════════════════════════════════════════════════════════════════
+   DOCUMENTS WORKSPACE (accepted 2026-09-05 Project Documents UX audit)
+   Three canonical additions — a hierarchical workflow navigator, an
+   accessible pagination control and the job's rail layout — plus the
+   Product composition that arranges them. The register is the working
+   object and takes the workspace; everything project-wide about the
+   analysis lives in ONE sticky rail beside it.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* WorkflowNavigator. Structure: .a3-wfn > .a3-wfn-list > .a3-wfn-stage >
+   (.a3-wfn-button | .a3-wfn-static) (+ .a3-wfn-sub). Six grouped stages in
+   one horizontal band; a stage's own members render only while it is
+   current, which is why the band is one row deep at Documents and never
+   scrolls sideways at 1280.
+   Classes: .a3-wfn · .a3-wfn-list · .a3-wfn-stage · .a3-wfn-current ·
+   .a3-wfn-done · .a3-wfn-upcoming · .a3-wfn-locked · .a3-wfn-button ·
+   .a3-wfn-static · .a3-wfn-marker · .a3-wfn-text · .a3-wfn-label ·
+   .a3-wfn-state · .a3-wfn-sub · .a3-wfn-substep · .a3-wfn-subbutton ·
+   .a3-wfn-substatic · .a3-wfn-sublabel · .a3-wfn-substate. */
+.a3-wfn{inline-size:100%;border-bottom:var(--border-hairline);min-width:0}
+.a3-wfn-list{list-style:none;margin-inline:auto;padding:0;inline-size:100%;max-inline-size:var(--measure-workspace);display:flex;flex-wrap:nowrap;align-items:stretch;gap:var(--space-1);min-width:0}
+.a3-wfn-stage{display:flex;flex-direction:column;min-width:0}
+.a3-wfn-button,.a3-wfn-static{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-1) var(--space-3);background:transparent;border:0;border-bottom:var(--border-width-strong) solid transparent;text-align:start;color:var(--color-text-secondary);min-width:0}
+.a3-wfn-marker{flex:none;display:inline-flex;align-items:center;justify-content:center;inline-size:var(--space-5);block-size:var(--space-5);border:var(--border-hairline);font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-bold);font-variant-numeric:tabular-nums}
+.a3-wfn-text{display:grid;gap:0;min-width:0}
+.a3-wfn-label{font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);white-space:nowrap}
+.a3-wfn-state{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.a3-wfn-current > .a3-wfn-button,.a3-wfn-current > .a3-wfn-static{border-bottom-color:var(--color-brand-accent);color:var(--color-text-primary)}
+.a3-wfn-current > .a3-wfn-button .a3-wfn-label,.a3-wfn-current > .a3-wfn-static .a3-wfn-label{font-weight:var(--font-weight-bold)}
+.a3-wfn-current > .a3-wfn-button .a3-wfn-marker,.a3-wfn-current > .a3-wfn-static .a3-wfn-marker{border-color:var(--color-border-strong)}
+.a3-wfn-done > .a3-wfn-button .a3-wfn-marker,.a3-wfn-done > .a3-wfn-static .a3-wfn-marker{background:var(--color-surface-subtle);border-color:var(--color-border-strong)}
+.a3-wfn-locked > .a3-wfn-button,.a3-wfn-locked > .a3-wfn-static{color:var(--color-text-muted)}
+.a3-wfn-sub{list-style:none;margin:0;padding:0 0 var(--space-2) calc(var(--space-5) + var(--space-5));display:flex;flex-wrap:wrap;gap:var(--space-3);min-width:0}
+.a3-wfn-substep{min-width:0}
+.a3-wfn-subbutton,.a3-wfn-substatic{display:flex;align-items:baseline;gap:var(--space-2);padding:var(--space-1) 0;background:transparent;border:0;text-align:start;color:var(--color-text-secondary);min-width:0}
+.a3-wfn-sublabel{font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);white-space:nowrap}
+.a3-wfn-substate{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-muted);white-space:nowrap}
+.a3-wfn-sub .a3-wfn-current .a3-wfn-sublabel{font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+@media (max-width:1439px){
+  .a3-wfn-list{gap:0}
+  .a3-wfn-button,.a3-wfn-static{padding-inline:var(--space-2)}
+}
+
+/* Pagination. Structure: .a3-pgn > .a3-pgn-range + .a3-pgn-controls
+   (.a3-pgn-step + .a3-pgn-pages > .a3-pgn-page|.a3-pgn-gap + .a3-pgn-step).
+   Classes: .a3-pgn · .a3-pgn-range · .a3-pgn-controls · .a3-pgn-step ·
+   .a3-pgn-pages · .a3-pgn-page · .a3-pgn-number · .a3-pgn-gap. */
+.a3-pgn{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-3);padding-top:var(--space-3);min-width:0}
+.a3-pgn-range{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);font-variant-numeric:tabular-nums}
+.a3-pgn-controls{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);min-width:0}
+.a3-pgn-pages{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-1)}
+.a3-pgn-page{display:flex}
+.a3-pgn-step,.a3-pgn-number{display:inline-flex;align-items:center;justify-content:center;min-inline-size:var(--size-control-visual-sm);padding:var(--space-2) var(--space-3);background:var(--color-surface-default);border:var(--border-contrast-1px);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary);font-variant-numeric:tabular-nums}
+.a3-pgn-step[disabled]{color:var(--color-text-disabled);border-color:var(--color-border-subtle);background:var(--color-surface-subtle)}
+.a3-pgn-number[aria-current="page"]{background:var(--color-surface-selected);border-color:var(--color-selection-border);font-weight:var(--font-weight-bold)}
+.a3-pgn-gap{padding-inline:var(--space-1);color:var(--color-text-muted);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+
+/* ProcessingJob, rail layout. The same job in a narrow contextual column:
+   state headline, scope or result facts, progress, one primary action.
+   Classes: .a3-pjob-rail · .a3-pjob-summary. */
+.a3-pjob-rail{background:var(--color-surface-subtle);border:var(--border-hairline);padding:var(--space-4);gap:var(--space-3)}
+.a3-pjob-rail .a3-pjob-head{flex-direction:column;align-items:flex-start;gap:var(--space-2)}
+.a3-pjob-rail .a3-pjob-title{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line)}
+.a3-pjob-rail .a3-pjob-actions{margin-inline-start:0;flex-direction:column;align-items:stretch;gap:var(--space-2)}
+.a3-pjob-rail .a3-pjob-progress{flex-wrap:wrap;gap:var(--space-2)}
+.a3-pjob-rail .a3-pjob-progress-text b{font-size:var(--type-body-size);line-height:var(--type-body-line)}
+.a3-pjob-rail .a3-pjob-active{padding:var(--space-3)}
+.a3-pjob-rail .a3-pjob-active-file{font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-pjob-rail .a3-pjob-active-count{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line)}
+.a3-pjob-summary{display:grid;gap:var(--space-3);min-width:0}
+
+/* Documents workspace. Structure: .a3-docws-head + .a3-docws >
+   (.a3-docws-rail + .a3-docws-register). The rail is FIRST in the DOM —
+   the audit's keyboard order puts the global analysis action before the
+   filters — and is placed in the second column at desktop. Below the
+   supported desktop range it stacks where it already is.
+   Classes: .a3-docws · .a3-docws-head · .a3-docws-title ·
+   .a3-docws-summary · .a3-docws-rail · .a3-docws-register ·
+   .a3-docws-controls · .a3-docws-toolbar · .a3-docws-control ·
+   .a3-docws-control-search · .a3-docws-control-type · .a3-docws-count ·
+   .a3-docws-count-text ·
+   .a3-docws-facts · .a3-docws-fact · .a3-docws-rail-lede ·
+   .a3-docws-rail-scope. */
+.a3-docws-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2) var(--space-4);min-width:0}
+.a3-docws-title{margin:0;font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);outline:0}
+.a3-docws-summary{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-docws{display:grid;grid-template-columns:minmax(0,1fr) var(--measure-analysis-rail);gap:var(--gutter-workspace);align-items:start;min-width:0}
+.a3-docws-register{grid-column:1;grid-row:1;display:grid;gap:var(--space-3);align-content:start;min-width:0}
+.a3-docws-rail{grid-column:2;grid-row:1;position:sticky;top:var(--space-4);align-self:start;min-width:0}
+.a3-docws-controls{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--space-3);border-bottom:var(--border-default);padding-bottom:var(--space-2);min-width:0}
+.a3-docws-toolbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--space-3);flex:1 1 var(--measure-panel);min-width:0}
+.a3-docws-control{flex:0 1 auto;min-inline-size:0}
+.a3-docws-control-search{flex:1 1 var(--measure-form-control);max-inline-size:var(--measure-card-compact)}
+.a3-docws-control-type{flex:1 1 var(--measure-form-control);max-inline-size:var(--measure-card-compact)}
+.a3-docws-count{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-3);padding-block-end:var(--space-2);min-width:0}
+.a3-docws-count-text{margin:0;font-size:var(--type-table-header-size);line-height:var(--type-table-header-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary);font-variant-numeric:tabular-nums;outline:0}
+.a3-docws-facts{display:grid;gap:var(--space-1);margin:0;min-width:0}
+.a3-docws-fact{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-3);min-width:0}
+.a3-docws-fact dt{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-docws-fact dd{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);font-variant-numeric:tabular-nums}
+.a3-docws-rail-lede{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-docws-rail-scope{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+@media (max-width:1279px){
+  .a3-docws{grid-template-columns:minmax(0,1fr)}
+  .a3-docws-register,.a3-docws-rail{grid-column:1;grid-row:auto}
+  .a3-docws-rail{position:static}
+}

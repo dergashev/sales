@@ -71,6 +71,8 @@ import { ConflictResolver } from './ConflictResolver'
 import { QuestionItem, QuestionQueue } from './QuestionQueue'
 import { CompositionBar, type CompositionSegment } from './CompositionBar'
 import { WorkflowStepper, type WorkflowStep } from './WorkflowStepper'
+import { WorkflowNavigator, type WorkflowStage } from './WorkflowNavigator'
+import { Pagination } from './Pagination'
 import { useSemanticMotion } from './motion'
 
 export type ContractStateDeclaration = Readonly<Record<DataStateKind, string>>
@@ -1179,19 +1181,93 @@ export const COMPONENT_REGISTRY: Specimen[] = [
     contractId: 'VR3 · ProcessingJob', requirements: ['DC-10', 'R-25'],
     composedContracts: ['SemanticStatus', 'DocumentRow'], interactionStates: ['default', 'busy'],
     dataStates: ALL_DATA_STATES, blockedVariants: [], maturity: 'alpha',
-    evidence: 'Per-file truth with the real denominator: no page spinner stands in for the job story and no percentage is estimated.',
+    evidence: 'Per-file truth with the real denominator: no page spinner stands in for the job story and no percentage is estimated. READY carries no progress treatment at all, and a terminal job with open outcomes is never dressed as an unqualified success.',
     render: () => (
-      <ProcessingJob
-        state="PARTIAL_FAILURE" processedCount={27} totalCount={36} progressPercent={75}
-        activeFileName="04_Flaechenliste_Gesamt_FINAL.xlsx.pdf" activePhaseLabel="Wird gegengeprüft"
-        filterLegend="Dateien filtern"
-      >
-        <DocumentRow
-          file="24_C_Grundriss_UG_V1_SCAN.pdf" typeLabel="Grundriss" versionLabel="V1"
-          associationLabel="Gebäude Stadthaus" state="FAILED" stateLabel="Fehlgeschlagen"
-          stateReason="sehr geringe Erkennung · beschnittener Scan" progress={1}
+      <div className="grid gap-6">
+        <ProcessingJob
+          state="RUNNING" processedCount={27} totalCount={36} progressPercent={75}
+          activeFileName="04_Flaechenliste_Gesamt_FINAL.xlsx.pdf" activePhaseLabel="Wird gegengeprüft"
+          filterLegend="Dateien filtern"
+        >
+          <DocumentRow
+            file="24_C_Grundriss_UG_V1_SCAN.pdf" typeLabel="Grundriss" versionLabel="V1"
+            associationLabel="Gebäude Stadthaus" state="FAILED" stateLabel="Fehlgeschlagen"
+            stateReason="sehr geringe Erkennung · beschnittener Scan" progress={1}
+          />
+        </ProcessingJob>
+        {/* The rail layout: the same job as a narrow contextual column
+            beside the register it describes. No row list, and READY shows
+            no progress bar because no work has been accepted. */}
+        <div style={{ inlineSize: 'var(--measure-analysis-rail)' }}>
+          <ProcessingJob
+            layout="rail" state="READY" heading="Bereit für die Analyse"
+            processedCount={0} totalCount={8} progressPercent={0}
+            summary={<p className="a3-docws-rail-lede">8 Dokumente · 8 analysierbar</p>}
+            actions={<Button variant="primary" onClick={() => {}}>Alle 8 analysierbaren Dokumente analysieren</Button>}
+          />
+        </div>
+        <div style={{ inlineSize: 'var(--measure-analysis-rail)' }}>
+          <ProcessingJob
+            layout="rail" state="COMPLETE_WITH_ISSUES" heading="Mit Hinweisen abgeschlossen"
+            processedCount={36} totalCount={36} progressPercent={100}
+            actions={<Button variant="primary" onClick={() => {}}>Projektverständnis prüfen</Button>}
+          />
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'docws-workflow-navigator', groupId: 'domain', title: 'WorkflowNavigator',
+    contractId: 'DOCWS · WorkflowNavigator', requirements: ['STEP-003', 'KEY-003', 'R-04'],
+    composedContracts: [], interactionStates: ['default', 'current', 'locked'],
+    dataStates: STATIC_LAYOUT_STATES, blockedVariants: [], maturity: 'alpha',
+    evidence: 'Six grouped stages replace thirteen first-level rows without changing one route: grouping is presentation. A stage discloses its own members only while it is current, and a future stage is neutral orientation rather than a repeated failure.',
+    render: () => {
+      const stages: WorkflowStage[] = [
+        { id: 'documents', label: 'Dokumente', state: 'current', onSelect: () => {} },
+        {
+          id: 'understand',
+          label: 'Verstehen',
+          state: 'locked',
+          lockedReason: 'Dokumentanalyse fehlt',
+        },
+        {
+          id: 'configure',
+          label: 'Konfigurieren',
+          state: 'upcoming',
+          steps: [
+            { id: 'createOption', label: 'Option anlegen', state: 'upcoming' },
+            { id: 'buildingScope', label: 'Gebäude & Umfang', state: 'upcoming' },
+          ],
+        },
+        { id: 'calculate', label: 'Kalkulieren', state: 'upcoming' },
+        { id: 'validate', label: 'Prüfen', state: 'upcoming' },
+        { id: 'present', label: 'Präsentieren', state: 'upcoming' },
+      ]
+      return <WorkflowNavigator stages={stages} ariaLabel="Projektablauf (Beispiel)" />
+    },
+  },
+  {
+    id: 'docws-pagination', groupId: 'domain', title: 'Pagination',
+    contractId: 'DOCWS · Pagination', requirements: ['KEY-003', 'R-04', 'LOCALE-004'],
+    composedContracts: [], interactionStates: ['default', 'current', 'disabled'],
+    dataStates: STATIC_LAYOUT_STATES, blockedVariants: [], maturity: 'alpha',
+    evidence: 'Controlled page state with a bounded numeric model: seven pages or fewer are all listed, above that first · last · current ±1 with ellipses, and an ellipsis never stands for a single page it could have shown. It owns no live region and implies no scope.',
+    render: () => (
+      <div className="grid gap-4">
+        <Pagination
+          page={2} pageCount={6} onPageChange={() => {}}
+          ariaLabel="Dokumentseiten (Beispiel, 6 Seiten)"
+          rangeLabel="11–20 von 60 Dokumenten"
+          pageButtonLabel={(n) => `Seite ${n}`}
         />
-      </ProcessingJob>
+        <Pagination
+          page={8} pageCount={15} onPageChange={() => {}}
+          ariaLabel="Dokumentseiten (Beispiel, 15 Seiten)"
+          rangeLabel="71–80 von 150 Dokumenten"
+          pageButtonLabel={(n) => `Seite ${n}`}
+        />
+      </div>
     ),
   },
   {
@@ -1199,18 +1275,29 @@ export const COMPONENT_REGISTRY: Specimen[] = [
     contractId: 'VR3 · DocumentRow', requirements: ['DC-10', 'R-04', 'KEY-003'],
     composedContracts: ['SemanticStatus'], interactionStates: ['default', 'expanded'],
     dataStates: ALL_DATA_STATES, blockedVariants: [], maturity: 'alpha',
-    evidence: 'A document is a workflow entity: filename and state are always both present, and the accessible name of the state names the file.',
+    evidence: 'A document is a workflow entity: filename and state are always both present, the accessible name of the state names the file, and inspection is INDEPENDENT of recovery — a row with nothing to retry still has evidence to open.',
     render: () => (
       <ul className="a3-pjob-rows">
         <DocumentRow
+          density="compact"
           file="06_A_Grundriss_EG_REV-B.pdf" typeLabel="Grundriss" versionLabel="REV-B"
-          associationLabel="Gebäude Kontorhaus" state="PROCESSED" stateLabel="Verarbeitet"
-          progress={1} lineage="ersetzt 05_A_Grundriss_EG_REV-A.pdf"
+          associationLabel="Gebäude Kontorhaus" state="READY" stateLabel="Bereit für die Analyse"
+          detail={<p className="a3-doc-detail-meta">Beleg · 2026-04-27</p>}
+          detailToggleLabel="Beleg ansehen"
+          onToggleDetail={() => {}}
         />
         <DocumentRow
+          density="compact"
           file="13_A_Grundriss_EG_REV-B_KOPIE.pdf" typeLabel="Grundriss · Doppel" versionLabel="REV-B"
           associationLabel="Gebäude Kontorhaus" state="WARNING" stateLabel="Hinweis"
           note="Inhaltsgleiches Doppel unter anderem Dateinamen" progress={1}
+          detail={<p className="a3-doc-detail-meta">Beleg · 2026-05-02</p>}
+          detailToggleLabel="Beleg ansehen"
+          onToggleDetail={() => {}}
+          actions={[
+            { id: 'retry', label: 'Erneut lesen', onSelect: () => {} },
+            { id: 'remove', label: 'Entfernen', priority: 'ghost', onSelect: () => {} },
+          ]}
         />
       </ul>
     ),
