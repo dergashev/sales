@@ -1,10 +1,10 @@
 #!/bin/sh
-# Monotonic guard for the `argo_tagging` stage (incident REL-RECOVERY-02).
+# Monotonic guard for the generated `update_argo_tag` job.
 #
-# `update_argo_tag` writes whatever $VERSION its own pipeline carries into the
-# GitOps repository's values.yaml. Nothing compared that value against the tag
-# already in the file, so re-running an OLD pipeline silently rewound
-# production's desired state:
+# The job writes whatever $VERSION its own pipeline carries into the GitOps
+# repository's values.yaml. Nothing compared that value against the tag already
+# in the file, so re-running an OLD pipeline silently rewound production's
+# desired state (incident REL-RECOVERY-02, ebf/vibe-apps/sales-configurator):
 #
 #   2026-09-05T09:05:54Z  commit 4ad8fff "ci(argo-tag) sales-configurator 1.0.52"
 #   moved apps/sales-configurator/values.yaml from imageTag 1.0.57 to 1.0.52 —
