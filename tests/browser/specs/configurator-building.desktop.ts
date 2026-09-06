@@ -6,6 +6,7 @@ import {
   DEMO_PROJECT_NAME,
   KONFIGURATOR_GATE,
   NAV,
+  OPTION_JOURNEY_LANDMARK,
   SCOPE_BUILDINGS,
 } from '../anchors'
 import { reachOptionWorkspace, saveBuildingScope } from '../journey'
@@ -50,9 +51,12 @@ test.describe('Option building scope · gate chain', () => {
     const save = page.getByRole('button', { name: BUILDING_SCOPE.save })
     await expect(save).toHaveAttribute('aria-disabled', 'true')
 
-    // ── The locked stage is a PLACE and explains itself (T-016) ──────
-    const spine = page.getByRole('navigation', { name: 'Projekt- und Optionsverlauf' })
-    await spine.getByRole('button', { name: /^Leistungsabgrenzung Schritt 5/ }).click()
+    // ── The locked step is a PLACE and explains itself (T-016) ───────
+    //    2026-09-06 IA rebuild: one rail, `Optionsablauf`, and a step's
+    //    accessible name is its label plus its state — the retired flat
+    //    spine's `Schritt 5 von 13` position no longer exists.
+    const rail = page.getByRole('navigation', { name: OPTION_JOURNEY_LANDMARK })
+    await rail.getByRole('button', { name: /^Leistungsabgrenzung/ }).click()
     await expect(page.getByRole('heading', { level: 1, name: KONFIGURATOR_GATE.locked }))
       .toBeVisible()
     // Fail-closed: no configurator is mounted behind the closed gate.
@@ -107,7 +111,8 @@ test.describe('Option building scope · gate chain', () => {
     // ── Save the scope, then break it again ─────────────────────────
     await saveBuildingScope(page)
 
-    await page.getByRole('button', { name: /^Gebäude & Umfang Schritt 4/ }).click()
+    await page.getByRole('navigation', { name: OPTION_JOURNEY_LANDMARK })
+      .getByRole('button', { name: /^Gebäude & Umfang/ }).click()
     await expect(page.getByRole('heading', { level: 1, name: NAV.items.buildingScope }))
       .toBeVisible()
     await page.getByRole('button', { name: BUILDING_SCOPE.review(SCOPE_BUILDINGS.bB) }).click()

@@ -118,16 +118,21 @@ for (const { label: viewportLabel, viewport } of VIEWPORTS) {
           name: OPPORTUNITY.openNewOption, exact: true,
         })
         for (let i = 0; i < OPTION_COUNT; i++) {
-          await expect(createOption()).toBeEnabled()
-          // OpportunityCard.tsx debounces rapid creation with a 500ms
-          // guard (OPTION_CREATE_GUARD_MS, AUD-03 rapid-click protection) —
-          // a click inside that window is a deliberate no-op, not a
-          // failure. Retry the click itself (not just the assertion) until
-          // one lands outside the guard window.
-          await expect(async () => {
-            await createOption().click()
-            await expect(openButtons).toHaveCount(i + 1, { timeout: 200 })
-          }).toPass({ timeout: 10_000 })
+          const action = createOption()
+          await expect(action).toBeEnabled()
+          await action.click()
+          /**
+           * Creating an Option is a STAGED commitment (BASELINE → OPTION,
+           * ~200 ms per stage) and the first one also navigates to the
+           * collection, so the row it produces is two renders away — not
+           * one tick. Waiting for the row is the honest signal; retrying the
+           * CLICK instead used to overshoot into a second Option the moment
+           * the first was slower than the assertion's own window.
+           */
+          await expect(openButtons).toHaveCount(i + 1, { timeout: 15_000 })
+          // The 500 ms rapid-click guard (OPTION_CREATE_GUARD_MS, AUD-03) is
+          // deliberate: the next deliberate creation waits it out.
+          await page.waitForTimeout(600)
         }
 
         // ── Open the last-created Option. The pipeline-view gate

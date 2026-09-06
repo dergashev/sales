@@ -31,6 +31,18 @@ import { startContinuityTransition, useSemanticMotion } from '../design-system/m
  *
  * PROJECT IDENTITY IS NOT REPEATED HERE. The breadcrumb already carries
  * `Projekte / Wohnhof Lindenhain / Option 2`; this band carries the Option.
+ *
+ * WHY THE OPTION NAME IS NOT AN `h1`. The ticket's sketch calls it one, and
+ * the first candidate obeyed literally — which put TWO `h1`s in one document
+ * (this band and the work column's own page title) and broke every released
+ * `getByRole('heading', { level: 1 })` contract in the browser suite, with
+ * strict-mode violations rather than a debate. The product already has a
+ * settled answer for a context band: `ProjectContextBar` renders the project
+ * name as a `<p>` and lets the work column own the heading, because the band
+ * is CONTEXT and the page title is the TASK. This follows it. Everything the
+ * requirement was for survives: the section carries the Option name as its
+ * accessible name, focus lands here on a switch, and a reader is told which
+ * Option they are in before anything else on the screen.
  */
 
 export const OPTION_HEADING_ATTR = 'data-option-heading'
@@ -80,7 +92,7 @@ export function OptionContextHeader() {
   const s = useStore()
   const t = useT()
   const nameId = useId()
-  const headingRef = useRef<HTMLHeadingElement>(null)
+  const headingRef = useRef<HTMLParagraphElement>(null)
   const { reduced } = useSemanticMotion()
   const optionId = s.activeOptionId
   const option = s.options.find((o) => o.id === optionId)
@@ -133,7 +145,7 @@ export function OptionContextHeader() {
   return (
     <section className="a3-optctx" aria-labelledby={nameId}>
       <div className="a3-optctx-identity">
-        <h1
+        <p
           ref={headingRef}
           id={nameId}
           tabIndex={-1}
@@ -141,7 +153,7 @@ export function OptionContextHeader() {
           className="a3-optctx-name"
         >
           {option.name}
-        </h1>
+        </p>
         <p className="a3-optctx-meta">{facts.join(' · ')}</p>
         {disclosure.drifted && (
           /* NEUTRAL. Not a warning, not a lock, not a gate — the Product
