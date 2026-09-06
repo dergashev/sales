@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { proposalStorageKey, type StorageLike } from '../persistence'
+import {
+  PROPOSAL_LAST_PROJECT_KEY, proposalStorageKey, type StorageLike,
+} from '../persistence'
 import {
   clientModeAvailableForOption,
   hydrateProposalState,
   initializeProposalPersistence,
-  PROPOSAL_PROJECT_ID,
   useStore,
   __resetStoreForTests,
 } from '../store'
@@ -23,6 +24,14 @@ class MemoryStorage implements StorageLike {
 }
 
 const st = () => useStore.getState()
+
+/**
+ * The project these Options belong to — and therefore the key their
+ * workspace is filed under. It used to be `PROPOSAL_PROJECT_ID`, the single
+ * key the whole prototype shared; a stored proposal is now named after its
+ * own project.
+ */
+const PROJECT_ID = 'DEMO-HAPPY-01'
 
 describe('a saved Option survives a reload', () => {
   beforeEach(() => { __resetStoreForTests() })
@@ -53,10 +62,13 @@ describe('a saved Option survives a reload', () => {
     expect(st().savedOptionVersions[optionId]).toHaveLength(1)
     expect(st().savedOptionVersions[optionId]![0]!.sourceOptionId).toBeUndefined()
 
-    const raw = storage.getItem(proposalStorageKey(PROPOSAL_PROJECT_ID))!
+    const raw = storage.getItem(proposalStorageKey(PROJECT_ID))!
     __resetStoreForTests()
     const restored = new MemoryStorage()
-    restored.setItem(proposalStorageKey(PROPOSAL_PROJECT_ID), raw)
+    restored.setItem(proposalStorageKey(PROJECT_ID), raw)
+    // A reload carries the whole browser, pointer included: without it the
+    // boot path does not know which project to restore.
+    restored.setItem(PROPOSAL_LAST_PROJECT_KEY, PROJECT_ID)
 
     expect(hydrateProposalState(restored)).toBe(true)
     expect(st().savedOptionVersions[optionId]).toHaveLength(1)
@@ -75,11 +87,14 @@ describe('a saved Option survives a reload', () => {
     completeKgConfiguration()
     saveOptionBaseline()
 
-    const raw = storage.getItem(proposalStorageKey(PROPOSAL_PROJECT_ID))!
+    const raw = storage.getItem(proposalStorageKey(PROJECT_ID))!
     const tampered = raw.replace('"clientProjectionValid"', '"erfundenesFeld":1,"clientProjectionValid"')
     __resetStoreForTests()
     const restored = new MemoryStorage()
-    restored.setItem(proposalStorageKey(PROPOSAL_PROJECT_ID), tampered)
+    restored.setItem(proposalStorageKey(PROJECT_ID), tampered)
+    // Present, so the refusal below is about the unknown FIELD and not
+    // about the boot path failing to find a project at all.
+    restored.setItem(PROPOSAL_LAST_PROJECT_KEY, PROJECT_ID)
     expect(hydrateProposalState(restored)).toBe(false)
   })
 })

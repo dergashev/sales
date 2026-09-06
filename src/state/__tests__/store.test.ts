@@ -4,7 +4,7 @@ import {
   activeBuilding, configuratorStepDone, preparationProjection, projectionForOption,
   __resetStoreForTests, useStore, wflConflict, scopeBoundariesStatus,
   eligibleClientOptions, resolvedViewedOptionId,
-  initializeProposalPersistence, PROPOSAL_PROJECT_ID,
+  initializeProposalPersistence,
   clientModeLockReasonFor,
 } from '../store'
 import { KG400_GROUPS, choiceBlocked } from '../../engine/options'
@@ -1699,7 +1699,11 @@ describe('REDESIGN R3: viewedOptionId isolation (mandatory acceptance contract)'
     const storage = new MemoryStorage()
     initializeProposalPersistence(storage)
     twoEligibleOptions()
-    const rawAfterSetup = storage.values.get(proposalStorageKey(PROPOSAL_PROJECT_ID))
+    // Both Options belong to `DEMO-HAPPY-01`, so that is the key their
+    // workspace is filed under — not the legacy single key the whole
+    // prototype used to share.
+    const key = proposalStorageKey('DEMO-HAPPY-01')
+    const rawAfterSetup = storage.values.get(key)
     expect(rawAfterSetup).toBeDefined()
 
     st().setMode('praesentation')
@@ -1707,7 +1711,7 @@ describe('REDESIGN R3: viewedOptionId isolation (mandatory acceptance contract)'
 
     // The Option itself and its stored config legitimately persist — only
     // the fact that it is currently VIEWED must not.
-    const raw = storage.values.get(proposalStorageKey(PROPOSAL_PROJECT_ID))
+    const raw = storage.values.get(key)
     expect(raw).toBeDefined()
     expect(raw).not.toContain('viewedOptionId')
     // No new write happened for mode/viewedOptionId changes at all — the

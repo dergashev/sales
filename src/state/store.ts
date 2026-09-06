@@ -250,10 +250,14 @@ import {
 } from './optionSave'
 import {
   browserProposalStorage,
+  clearAllPersistedProposals,
   clearPersistedProposal,
   loadPersistedProposal,
+  prunePersistedProposals,
+  readLastProjectId,
   savePersistedProposal,
   serializeProposalPayload,
+  writeLastProjectId,
   type StorageLike,
 } from './persistence'
 
@@ -991,6 +995,17 @@ const RISK_IDS = new Set(RISK_ITEMS.map((risk) => risk.id))
 const fx = demo.buildings[0]!
 const fxConflict = demo.conflicts[0]!
 const fxB = demo.buildings[1]!
+/**
+ * The bucket a working copy is filed under BEFORE any project is opened.
+ *
+ * It is not "the project". Every stored proposal is now keyed by the project
+ * it belongs to (`proposalProjectIdOf`), and this legacy id names the one
+ * state that has no project yet: the fixture working copy the store always
+ * holds, which serves the Opportunity level before the first Option exists.
+ *
+ * It used to be the ONLY key, for every project at once — the defect
+ * `PROPOSAL_PERSISTENCE_VERSION` 5 closes.
+ */
 export const PROPOSAL_PROJECT_ID = demo.project.id
 const LEGACY_FIELDS_BUILDING_ID = fx.id
 const CUSTOMER_CONFIRMATION_ACTOR = 'customer confirmation'
@@ -6590,13 +6605,40 @@ const store = createStore<Store>((set, get) => {
       })
     },
 
-    openOpportunity: (id) => set((s) => ({
-      mode: modeForLevelTransition(s.mode, 'opportunity'),
-      level: 'opportunity',
-      opportunityId: id,
-      projectStage: landingProjectStage(s, id),
-      understandingTab: 'overview',
-    })),
+    /**
+     * Open a project — and, when it is a DIFFERENT project, move the whole
+     * Option workspace with it.
+     *
+     * Until this fix the action set `opportunityId` and nothing else, so the
+     * Options, the confirmed building scope, the KG configuration, the saved
+     * versions and the journal of the project being LEFT stayed in the
+     * store and were served to the project being opened. Measured on
+     * `887c74c`: an Option created under `DEMO-HAPPY-01` appeared in
+     * `DEMO-COMPLEX-01`'s collection, opened there, and kept `Lindenhof` —
+     * the other project's building — as its confirmed scope, through a
+     * reload. Since `kgCatalogueFor` keys the price catalogue off
+     * `opportunityId`, KG 400 could then price one project's catalogue
+     * against another project's buildings.
+     *
+     * The swap happens BEFORE `landingProjectStage` reads the state, because
+     * where a project lands ("does it have Options yet?") is a question about
+     * the incoming project and must not be answered from the outgoing one's
+     * workspace.
+     */
+    openOpportunity: (id) => {
+      const swapped = switchProjectWorkspace(id)
+      set((s) => {
+        const next = { ...s, ...swapped } as Store
+        return {
+          ...swapped,
+          mode: modeForLevelTransition(s.mode, 'opportunity'),
+          level: 'opportunity',
+          opportunityId: id,
+          projectStage: landingProjectStage(next, id),
+          understandingTab: 'overview',
+        }
+      })
+    },
     backToList: () => {
       const s = get()
       set({
@@ -8883,6 +8925,96 @@ let lastPersistedSerialization: string | null = null
 let lastFailedSerialization: string | null = null
 
 /**
+ * WHICH PROJECT the working copy currently in the store belongs to.
+ *
+ * One function, so the subscriber, the explicit write, the restore and the
+ * reset cannot disagree about where a proposal is filed. Before any project
+ * is opened there is no project to name, and the pre-project bucket answers
+ * for the fixture working copy the store always holds.
+ */
+function proposalProjectIdOf(state: Pick<Store, 'opportunityId'>): string {
+  return state.opportunityId ?? PROPOSAL_PROJECT_ID
+}
+
+/**
+ * Everything in the store that belongs to ONE project's Option workspace.
+ *
+ * Derived by SUBTRACTION, deliberately. Listing what to swap would mean that
+ * a field added later and forgotten silently leaks across projects — the
+ * exact defect this fix exists to close, reintroduced by omission. Listing
+ * what to KEEP makes the safe direction the default: a new field is
+ * project-scoped until somebody says otherwise, in writing, here.
+ *
+ * Kept across a project switch, and why:
+ *   uiLanguage · density        the user's preferences, not the project's
+ *   projectAnalyses             the project REGISTER's own state, already
+ *                               keyed by project id — swapping it would
+ *                               discard the analysis of every other project
+ *   mode · level · projectStage · understandingTab · opportunityId
+ *                               navigation, which `openOpportunity` sets
+ *                               itself in the same write
+ *
+ * Actions are excluded by their type: a partial `set` never replaces them,
+ * and `INITIAL_SNAPSHOT` carries the same function identities anyway.
+ */
+const PROJECT_SCOPED_KEEP: ReadonlySet<string> = new Set([
+  'uiLanguage', 'density', 'projectAnalyses',
+  'mode', 'level', 'opportunityId', 'projectStage', 'understandingTab',
+])
+
+/**
+ * The initial value of every project-scoped field — i.e. the workspace a
+ * project that has never been opened starts from.
+ *
+ * Computed once from `INITIAL_SNAPSHOT`, which is the store's own boot state
+ * rather than a second hand-written copy of it.
+ */
+function emptyProjectWorkspace(): Partial<Store> {
+  const initial = INITIAL_SNAPSHOT as unknown as Record<string, unknown>
+  const empty: Record<string, unknown> = {}
+  for (const key of Object.keys(initial)) {
+    if (PROJECT_SCOPED_KEEP.has(key)) continue
+    if (typeof initial[key] === 'function') continue
+    empty[key] = initial[key]
+  }
+  return empty as Partial<Store>
+}
+
+/**
+ * Move the store from the project it is in to another one.
+ *
+ * Three steps, and the order is the whole point: the project being LEFT is
+ * written to its own key first, so nothing it holds is lost; the store is
+ * then reset to an empty workspace, so nothing it holds can be inherited;
+ * and only then is the incoming project's stored workspace restored over it.
+ *
+ * The reset in the middle is not redundant with the restore. A project with
+ * nothing stored must start empty, not inherit whatever the previous project
+ * happened to leave in the fields its own payload does not mention.
+ *
+ * The JOURNAL is part of the workspace and is cleared with it. Its entries
+ * carry `inverse`/`forward` closures written against the state that produced
+ * them, so an undo surviving a project switch would apply another project's
+ * change to this one's data — the same class of defect, one level down. It
+ * is session-scoped by construction anyway: a reload has never restored it.
+ */
+function switchProjectWorkspace(nextProjectId: string): Partial<Store> {
+  const state = store.getState()
+  if (state.opportunityId === nextProjectId) return {}
+  if (activeProposalStorage) writeProposalPersistence()
+  const empty = emptyProjectWorkspace()
+  const restored = activeProposalStorage
+    ? restoredProjectWorkspace(activeProposalStorage, nextProjectId)
+    : null
+  // The bookkeeping describes a payload for the project being left; keeping
+  // it would make the incoming project's first write look like a no-op.
+  lastPersistedSerialization = null
+  lastFailedSerialization = null
+  lastTrustedCommercial = null
+  return { ...empty, ...(restored ?? {}), opportunityId: nextProjectId }
+}
+
+/**
  * Write the current state to storage, once, and say whether it worked.
  *
  * WHY THIS EXISTS (VR3-03R, audit G-07). The subscriber used to read
@@ -8900,13 +9032,15 @@ function writeProposalPersistence(): boolean {
   const storage = activeProposalStorage
   if (!storage) return false
   const state = store.getState()
+  const projectId = proposalProjectIdOf(state)
   const payload = capturePersistedProposal(state)
-  const serialized = serializeProposalPayload(PROPOSAL_PROJECT_ID, payload)
+  const serialized = serializeProposalPayload(projectId, payload)
   if (serialized === lastPersistedSerialization) return true
-  if (!savePersistedProposal(storage, PROPOSAL_PROJECT_ID, payload)) {
+  if (!savePersistedProposal(storage, projectId, payload)) {
     lastFailedSerialization = serialized
     return false
   }
+  writeLastProjectId(storage, projectId)
   lastPersistedSerialization = serialized
   lastFailedSerialization = null
   return true
@@ -8926,18 +9060,28 @@ function retryProposalPersistence(): boolean {
 }
 
 /**
- * Restore is explicit and atomic. A valid payload adds exactly one
- * non-undoable event; absent or rejected payloads leave the fixture intact.
+ * One project's stored workspace, as a state patch — or `null` when it has
+ * none, or has one that cannot be trusted.
+ *
+ * Extracted from `hydrateProposalState` so that booting into a project and
+ * SWITCHING to one restore through exactly the same reader. Two readers were
+ * how the single-key contract survived as long as it did: the boot path was
+ * the only one anybody looked at, and switching projects had no restore at
+ * all — it simply kept whatever was already in the store.
+ *
+ * It deliberately does NOT set `opportunityId`: the caller knows which
+ * project it asked for, and a payload is not allowed to answer that question
+ * for itself.
  */
-export function hydrateProposalState(storage = browserProposalStorage()): boolean {
-  if (!storage) return false
-  const loaded = loadPersistedProposal(storage, PROPOSAL_PROJECT_ID)
-  if (loaded.status !== 'loaded') return false
+function restoredProjectWorkspace(
+  storage: StorageLike, projectId: string,
+): Partial<Store> | null {
+  const loaded = loadPersistedProposal(storage, projectId)
+  if (loaded.status !== 'loaded') return null
   if (!isPersistedProposalPayload(loaded.payload)) {
-    clearPersistedProposal(storage, PROPOSAL_PROJECT_ID)
-    return false
+    clearPersistedProposal(storage, projectId)
+    return null
   }
-
   try {
     const payload = loaded.payload
     const active = restoredOptionConfig(payload.active, payload.buildingConflicts)
@@ -8946,7 +9090,7 @@ export function hydrateProposalState(storage = browserProposalStorage()): boolea
         id, restoredOptionConfig(config, payload.buildingConflicts),
       ]),
     )
-    store.setState((state) => ({
+    return {
       ...active,
       configurationModeEditing: false,
       options: payload.options,
@@ -8954,42 +9098,67 @@ export function hydrateProposalState(storage = browserProposalStorage()): boolea
       optionSeq: payload.optionSeq,
       optionConfigs,
       buildingConflicts: payload.buildingConflicts,
-      // F-07 (deep-coherence audit): this gate flag now survives reload with
-      // the same rigor as the conflict decision above, instead of silently
-      // reverting to unconfirmed. Absent in payloads saved before this fix.
       projectParamsConfirmed: payload.projectParamsConfirmed === true,
-      // VR2-08 (M-3): a sent Option's immutable snapshot now survives an
-      // ordinary reload the same way every other confirmed decision above
-      // already does — `Object.freeze` re-applied since JSON deserialisation
-      // produces a genuinely new, mutable array/objects (M-3's own
-      // "неприкосновенен по построению" invariant does not survive a
-      // structured-clone round trip for free). Absent in payloads saved
-      // before this fix, defaults to the same `[]` the initial state uses.
       snapshots: Object.freeze(
         (payload.snapshots ?? []).map((snap) => deepFreeze({ ...snap })),
       ) as OfferSnapshot[],
-      /**
-       * VR3-04 (M-3): a SAVED Option version is written to the payload and,
-       * until now, never read back — so the one record in this product that
-       * is a commercial COMMITMENT, and the only thing Client Mode reads,
-       * did not survive a reload even when the payload carried it intact.
-       * Re-frozen for the same reason `snapshots` above is: JSON produces
-       * genuinely new, mutable objects, and an immutable saved baseline that
-       * silently becomes mutable is not immutable.
-       */
       savedOptionVersions: Object.fromEntries(
         Object.entries(payload.savedOptionVersions ?? {}).map(([id, versions]) => [
           id,
           Object.freeze(versions.map((version) => deepFreeze({ ...version }))),
         ]),
       ) as Record<string, readonly SavedOptionVersion[]>,
-      level: payload.activeOptionId ? 'option' : 'liste',
-      // The project the payload was WRITTEN for, not the legacy demo id.
-      opportunityId: payload.activeOptionId
-        ? payload.opportunityId ?? PROPOSAL_PROJECT_ID
-        : null,
-      mode: 'intern',
       ...NO_TRANSIENT,
+    }
+  } catch {
+    // An incompatible payload must never prevent the fixture-backed store
+    // from mounting, nor a project from being opened.
+    clearPersistedProposal(storage, projectId)
+    return null
+  }
+}
+
+/**
+ * Restore is explicit and atomic. A valid payload adds exactly one
+ * non-undoable event; absent or rejected payloads leave the fixture intact.
+ *
+ * `projectId` names WHICH project to restore. It defaults to the project the
+ * browser was last working in, because with one key per project the boot
+ * path can no longer assume there is only one candidate — and guessing would
+ * restore a project the user never asked for.
+ */
+export function hydrateProposalState(
+  storage = browserProposalStorage(),
+  projectId?: string,
+): boolean {
+  if (!storage) return false
+  const wanted = projectId ?? readLastProjectId(storage) ?? PROPOSAL_PROJECT_ID
+  const loaded = loadPersistedProposal(storage, wanted)
+  if (loaded.status !== 'loaded') return false
+  if (!isPersistedProposalPayload(loaded.payload)) {
+    clearPersistedProposal(storage, wanted)
+    return false
+  }
+
+  try {
+    const payload = loaded.payload
+    const restored = restoredProjectWorkspace(storage, wanted)
+    if (!restored) return false
+    store.setState((state) => ({
+      ...restored,
+      level: payload.activeOptionId ? 'option' : 'liste',
+      /**
+       * The project the payload was FILED UNDER, not the one it claims.
+       *
+       * Under the single-key contract this read `payload.opportunityId`,
+       * because the key could not answer the question — it was the same key
+       * for every project. It can now, and the key is the authority: a
+       * payload restored from `proposalStorageKey(X)` belongs to X by
+       * construction, and `prunePersistedProposals` has already dropped any
+       * payload whose envelope disagreed with its own key.
+       */
+      opportunityId: payload.activeOptionId ? wanted : null,
+      mode: 'intern',
       journal: [...state.journal, {
         seq: state.journal.length + 1,
         kind: 'state.restored',
@@ -9003,7 +9172,7 @@ export function hydrateProposalState(storage = browserProposalStorage()): boolea
   } catch {
     // Recovery is an application-start boundary: an incompatible payload must
     // never prevent the fixture-backed store from mounting.
-    clearPersistedProposal(storage, PROPOSAL_PROJECT_ID)
+    clearPersistedProposal(storage, wanted)
     return false
   }
 }
@@ -9015,18 +9184,32 @@ export function initializeProposalPersistence(
   if (!storage) return false
   if (stopProposalPersistence) return true
   activeProposalStorage = storage
+  /**
+   * Drop untrusted payloads BEFORE restoring anything.
+   *
+   * This is what retires the single-key contract on a browser that already
+   * holds one: the legacy payload is filed under a constant that names no
+   * project, so it fails the envelope check and is removed rather than being
+   * served to whichever project is opened first.
+   */
+  prunePersistedProposals(storage)
   hydrateProposalState(storage)
   lastPersistedSerialization = serializeProposalPayload(
-    PROPOSAL_PROJECT_ID, capturePersistedProposal(store.getState()),
+    proposalProjectIdOf(store.getState()), capturePersistedProposal(store.getState()),
   )
   stopProposalPersistence = store.subscribe((state) => {
+    const projectId = proposalProjectIdOf(state)
     const payload = capturePersistedProposal(state)
-    const serialized = serializeProposalPayload(PROPOSAL_PROJECT_ID, payload)
+    const serialized = serializeProposalPayload(projectId, payload)
     if (serialized === lastPersistedSerialization) return
     // A payload already known to fail is not written again on every
     // subsequent state change — see `lastFailedSerialization`.
     if (serialized === lastFailedSerialization) return
-    if (savePersistedProposal(storage, PROPOSAL_PROJECT_ID, payload)) {
+    if (savePersistedProposal(storage, projectId, payload)) {
+      // Recorded only on a SUCCESSFUL write: a pointer at a project whose
+      // workspace was never stored would restore nothing on the next boot
+      // and lose the project the user actually was in.
+      writeLastProjectId(storage, projectId)
       lastPersistedSerialization = serialized
       lastFailedSerialization = null
       // A write that succeeded clears a save failure and nothing else. A
@@ -9133,11 +9316,17 @@ export function __resetStoreForTests(): void {
   // A trusted snapshot of a discarded Option is not a fallback, it is a
   // wrong answer.
   lastTrustedCommercial = null
+  // EVERY project's workspace, not just one: with a key per project, clearing
+  // a single id would leave the next test inheriting another project's
+  // proposal — the very leak this contract exists to prevent, reintroduced
+  // inside the reset that is supposed to guarantee a clean slate.
   if (activeProposalStorage) {
+    clearAllPersistedProposals(activeProposalStorage)
     clearPersistedProposal(activeProposalStorage, PROPOSAL_PROJECT_ID)
   }
   const browserStorage = browserProposalStorage()
   if (browserStorage && browserStorage !== activeProposalStorage) {
+    clearAllPersistedProposals(browserStorage)
     clearPersistedProposal(browserStorage, PROPOSAL_PROJECT_ID)
   }
   activeProposalStorage = null

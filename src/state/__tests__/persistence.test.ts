@@ -505,20 +505,23 @@ describe('VR3-03R · reload and save failure', () => {
     st().createOption('Reload')
     expect(st().opportunityId).toBe('DEMO-HAPPY-01')
     expect(st().activeOptionId).not.toBeNull()
-    const raw = storage.getItem(proposalStorageKey('DEMO-0001'))!
+    // The workspace is filed under the project it belongs to, and the legacy
+    // single key holds nothing at all.
+    const raw = storage.getItem(proposalStorageKey('DEMO-HAPPY-01'))!
     expect(raw).toContain('DEMO-HAPPY-01')
+    expect(storage.getItem(proposalStorageKey('DEMO-0001'))).toBeNull()
 
     __resetStoreForTests()
     expect(st().opportunityId).toBeNull()
     const restored = new MemoryStorage()
-    restored.setItem(proposalStorageKey('DEMO-0001'), raw)
-    expect(hydrateProposalState(restored)).toBe(true)
+    restored.setItem(proposalStorageKey('DEMO-HAPPY-01'), raw)
+    expect(hydrateProposalState(restored, 'DEMO-HAPPY-01')).toBe(true)
     expect(st().opportunityId).toBe('DEMO-HAPPY-01')
     // The catalogue the six decisions describe resolves again.
     expect(kgCatalogueFor(st())).not.toBeNull()
   })
 
-  it('a payload saved before the fix still restores, under the previous id', () => {
+  it('files the workspace under the KEY, which outranks what the payload claims', () => {
     const storage = new MemoryStorage()
     const st = () => useStore.getState()
     initializeProposalPersistence(storage)
@@ -526,16 +529,27 @@ describe('VR3-03R · reload and save failure', () => {
     st().resolveWflConflict('customer')
     st().confirmProjectParams()
     st().createOption('Legacy')
-    const envelope = JSON.parse(storage.getItem(proposalStorageKey('DEMO-0001'))!)
+    const envelope = JSON.parse(storage.getItem(proposalStorageKey('DEMO-HAPPY-01'))!)
+
+    /**
+     * The single-key contract had no way to know which project a payload
+     * belonged to, so restore read the claim the payload made about itself
+     * (`payload.opportunityId`) and fell back to the legacy demo id when it
+     * made none. Both are now superseded: the KEY names the project, a
+     * payload does not get to answer that question for itself, and a payload
+     * whose envelope disagrees with its key never survives pruning.
+     *
+     * Proved by removing the claim entirely — restore must still land in the
+     * project the key names, not in the legacy bucket.
+     */
     delete envelope.payload.opportunityId
 
     __resetStoreForTests()
     const restored = new MemoryStorage()
-    restored.setItem(proposalStorageKey('DEMO-0001'), JSON.stringify(envelope))
-    // Not discarded, and not crashed: the conservative default is the
-    // behaviour it had before the field existed.
-    expect(hydrateProposalState(restored)).toBe(true)
-    expect(st().opportunityId).toBe('DEMO-0001')
+    restored.setItem(proposalStorageKey('DEMO-HAPPY-01'), JSON.stringify(envelope))
+    expect(hydrateProposalState(restored, 'DEMO-HAPPY-01')).toBe(true)
+    expect(st().opportunityId).toBe('DEMO-HAPPY-01')
+    expect(kgCatalogueFor(st())).not.toBeNull()
   })
 
   it('a blocked storage backend says so and keeps every decision', () => {

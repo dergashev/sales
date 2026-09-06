@@ -19,13 +19,48 @@ import { Decimal } from 'decimal.js'
  * baseline would either silently revoke an eligibility the user had, or
  * silently grant one nobody ever gave. Neither is a state to guess at.
  *
+ * An Option saved before version 5 belongs to NO IDENTIFIABLE PROJECT. Up to
+ * version 4 the whole prototype shared ONE stored proposal, written under a
+ * constant id (`demo.project.id`) that names neither demonstration project,
+ * so the Options, the confirmed building scope and the KG configuration
+ * inside a single payload could have been created under different projects —
+ * and after a reload they were served to whichever project happened to be
+ * open. That is the defect this version closes, and it is precisely why such
+ * a payload cannot be MIGRATED: its `opportunityId` records only the project
+ * it was last viewed under, not the project each part of it came from.
+ * Attributing the whole payload to that one project would keep the leak and
+ * merely make it look deliberate.
+ *
  * The version field exists for exactly this — a stored shape whose meaning
  * changed is discarded, not guessed at.
  */
-export const PROPOSAL_PERSISTENCE_VERSION = 4
+export const PROPOSAL_PERSISTENCE_VERSION = 5
 export const PROPOSAL_STORAGE_PREFIX = 'all3.proposal.v1.'
 
+/**
+ * WHICH PROJECT the browser was last working in.
+ *
+ * A pointer, not proposal data, and deliberately outside
+ * `PROPOSAL_STORAGE_PREFIX` so that pruning the proposal namespace cannot
+ * eat it and a project can never be named `lastProject`.
+ *
+ * It exists because per-project keys create a question the single-key
+ * contract never had: on boot, WHICH stored proposal should be restored?
+ * Guessing — newest write, first key, the fixture default — would restore a
+ * project the user never asked for. This records the answer instead.
+ */
+export const PROPOSAL_LAST_PROJECT_KEY = 'all3.session.v1.lastProject'
+
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
+
+/**
+ * Storage that can also be ENUMERATED.
+ *
+ * Only the pruning path needs it: everything else addresses one known key.
+ * `localStorage` satisfies it; a narrow test double may not, which is why
+ * pruning is a separate entry point rather than a step inside `load`.
+ */
+export type EnumerableStorageLike = StorageLike & Pick<Storage, 'length' | 'key'>
 
 export type PersistedProposalLoad =
   | { status: 'missing' }
@@ -160,4 +195,121 @@ export function browserProposalStorage(): StorageLike | null {
   } catch {
     return null
   }
+}
+
+/* ── which project the browser was last in ─────────────────────────────── */
+
+export function readLastProjectId(storage: StorageLike): string | null {
+  try {
+    const raw = storage.getItem(PROPOSAL_LAST_PROJECT_KEY)
+    return raw && raw.length > 0 ? raw : null
+  } catch {
+    return null
+  }
+}
+
+export function writeLastProjectId(
+  storage: StorageLike, projectId: string,
+): boolean {
+  try {
+    storage.setItem(PROPOSAL_LAST_PROJECT_KEY, projectId)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function clearLastProjectId(storage: StorageLike): boolean {
+  try {
+    storage.removeItem(PROPOSAL_LAST_PROJECT_KEY)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/* ── the proposal namespace ────────────────────────────────────────────── */
+
+function isEnumerable(storage: StorageLike): storage is EnumerableStorageLike {
+  const candidate = storage as Partial<EnumerableStorageLike>
+  return typeof candidate.length === 'number' && typeof candidate.key === 'function'
+}
+
+/** Every project id that currently has a stored proposal, in storage order. */
+export function persistedProposalProjectIds(
+  storage: StorageLike,
+): readonly string[] {
+  if (!isEnumerable(storage)) return []
+  const ids: string[] = []
+  try {
+    for (let i = 0; i < storage.length; i += 1) {
+      const key = storage.key(i)
+      if (key && key.startsWith(PROPOSAL_STORAGE_PREFIX)) {
+        ids.push(key.slice(PROPOSAL_STORAGE_PREFIX.length))
+      }
+    }
+  } catch {
+    return ids
+  }
+  return ids
+}
+
+/**
+ * Drop every stored proposal that cannot be trusted to belong to the project
+ * its key names.
+ *
+ * Three things make a payload untrustworthy, and all three are the same
+ * defect seen from different sides: it is unparsable, it was written under a
+ * superseded contract, or its envelope claims a different project from the
+ * key it is filed under. The third check is what turns "the key names the
+ * project" from a convention into an invariant — without it, a stale
+ * single-key payload would keep being served to whatever project asked.
+ *
+ * Returns the project ids it removed, so a caller can say what happened
+ * rather than silently losing work.
+ */
+export function prunePersistedProposals(
+  storage: StorageLike,
+): readonly string[] {
+  const removed: string[] = []
+  for (const projectId of persistedProposalProjectIds(storage)) {
+    let raw: string | null
+    try {
+      raw = storage.getItem(proposalStorageKey(projectId))
+    } catch {
+      continue
+    }
+    if (raw === null) continue
+    let keep = false
+    try {
+      const envelope: unknown = JSON.parse(raw)
+      if (envelope !== null && typeof envelope === 'object' && !Array.isArray(envelope)) {
+        const record = envelope as Record<string, unknown>
+        keep = record.version === PROPOSAL_PERSISTENCE_VERSION
+          && record.projectId === projectId
+          && Object.hasOwn(record, 'payload')
+      }
+    } catch {
+      keep = false
+    }
+    if (keep) continue
+    try {
+      storage.removeItem(proposalStorageKey(projectId))
+      removed.push(projectId)
+    } catch {
+      // A blocked backend simply keeps the payload; the load path rejects it
+      // again on its own terms, so nothing untrusted is ever restored.
+    }
+  }
+  return removed
+}
+
+/** Forget every project's proposal AND the pointer to the last one. */
+export function clearAllPersistedProposals(storage: StorageLike): readonly string[] {
+  const cleared: string[] = []
+  for (const projectId of persistedProposalProjectIds(storage)) {
+    if (clearPersistedProposal(storage, projectId)) cleared.push(projectId)
+  }
+  clearLastProjectId(storage)
+  return cleared
 }
