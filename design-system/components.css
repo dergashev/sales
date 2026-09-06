@@ -4060,3 +4060,84 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
   .a3-docws-register,.a3-docws-rail{grid-column:1;grid-row:auto}
   .a3-docws-rail{position:static}
 }
+
+/* ─────────── Project → Option → Configurator IA (2026-09-06 audit) ───────────
+   TWO WORKSPACES, ONE SEAM. The Option workspace stacks the same three bands
+   the project workspace already uses — identity, one rail, the work — so the
+   grammar does not change at the boundary the user is crossing. The retired
+   left rail was 2.21 viewports tall at 1440 and 2.63 at 1280; nothing here
+   reintroduces a navigation column, and every band is capped at
+   --measure-workspace exactly like .a3-project-context / .a3-project-main.
+
+   Classes: .a3-option-shell · .a3-option-main · .a3-optctx ·
+   .a3-optctx-identity · .a3-optctx-name · .a3-optctx-meta · .a3-optctx-note ·
+   .a3-optctx-actions · .a3-optsw · .a3-optsw-trigger · .a3-optsw-caret ·
+   .a3-optsw-menu · .a3-optsw-item · .a3-optsw-current · .a3-optsw-name ·
+   .a3-optsw-state · .a3-options · .a3-options-head · .a3-options-title ·
+   .a3-options-count · .a3-options-resume · .a3-options-list · .a3-options-links ·
+   .a3-optrow · .a3-optrow-active ·
+   .a3-optrow-head · .a3-optrow-identity · .a3-optrow-name · .a3-optrow-badges ·
+   .a3-optrow-value · .a3-optrow-valuelabel · .a3-optrow-amount ·
+   .a3-optrow-pending · .a3-optrow-meta · .a3-optrow-note · .a3-optrow-actions ·
+   .a3-present-stage · .a3-present-lead · .a3-present-baseline ·
+   .a3-present-baseline-row · .a3-present-actions · .a3-route-notice ·
+   .a3-account-link. */
+.a3-option-shell{display:flex;flex-direction:column;align-items:stretch;min-height:100%;min-width:0;padding-inline:var(--space-6)}
+.a3-option-main{display:grid;gap:var(--space-3);align-content:start;padding-block:var(--space-3) var(--space-7);min-width:0;inline-size:100%;max-inline-size:var(--measure-workspace);margin-inline:auto}
+.a3-optctx{display:flex;align-items:flex-start;gap:var(--space-4);inline-size:100%;max-inline-size:var(--measure-workspace);margin-inline:auto;padding-block:var(--space-3);border-bottom:var(--border-hairline);border-left:var(--border-width-strong) solid var(--color-brand-accent);padding-inline-start:var(--space-3);min-width:0}
+.a3-optctx-identity{display:grid;gap:var(--space-1);min-width:0}
+.a3-optctx-name{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;outline:none}
+.a3-optctx-name:focus-visible{outline:var(--border-width-focus-emphasis) solid var(--color-focus-ring);outline-offset:var(--border-width-focus-emphasis)}
+.a3-optctx-meta{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word}
+.a3-optctx-note{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-muted)}
+.a3-optctx-actions{margin-inline-start:auto;display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2)}
+.a3-optsw{position:relative}
+.a3-optsw-trigger{display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--size-hit-target-default);padding:var(--space-2) var(--space-3);border:var(--border-contrast-1px);background:var(--color-surface-default);color:var(--color-text-primary);font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-medium)}
+.a3-optsw-trigger:hover{background:var(--color-surface-subtle)}
+.a3-optsw-trigger:focus-visible{outline:var(--border-width-focus-emphasis) solid var(--color-focus-ring);outline-offset:var(--border-width-focus-emphasis)}
+.a3-optsw-caret{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-muted)}
+.a3-optsw-menu{position:absolute;z-index:var(--layer-popover);top:100%;right:0;margin:var(--space-2) 0 0;padding:0;list-style:none;min-width:20rem;max-width:min(var(--size-popover-max-width),calc(100vw - 2 * var(--space-5)));border:var(--border-contrast-1px);background:var(--color-surface-default)}
+.a3-optsw-item{display:grid;gap:0;inline-size:100%;min-height:var(--size-hit-target-default);padding:var(--space-2) var(--space-3);border:0;border-bottom:var(--border-hairline);background:transparent;text-align:start}
+.a3-optsw-menu > li:last-child .a3-optsw-item{border-bottom:0}
+.a3-optsw-item:hover{background:var(--color-surface-subtle)}
+.a3-optsw-item:focus-visible{outline:var(--border-width-focus-emphasis) solid var(--color-focus-ring);outline-offset:calc(-1 * var(--border-width-focus-emphasis))}
+.a3-optsw-current{border-left:var(--border-width-strong) solid var(--color-selection-border)}
+.a3-optsw-name{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary)}
+.a3-optsw-state{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-options{display:grid;gap:var(--space-4);min-width:0}
+.a3-options-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-3);min-width:0}
+.a3-options-title{margin:0;font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);outline:none}
+.a3-options-title:focus-visible{outline:var(--border-width-focus-emphasis) solid var(--color-focus-ring);outline-offset:var(--border-width-focus-emphasis)}
+.a3-options-count{font-weight:var(--font-weight-regular);color:var(--color-text-secondary)}
+.a3-options-resume{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-secondary)}
+.a3-options-list{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-3);min-width:0}
+.a3-options-links{margin:0;display:flex;flex-wrap:wrap;gap:var(--space-4)}
+.a3-optrow{display:grid;gap:var(--space-2);border:var(--border-contrast-1px);padding:var(--space-4);min-width:0;outline:none}
+.a3-optrow:focus-visible{outline:var(--border-width-focus-emphasis) solid var(--color-focus-ring);outline-offset:var(--border-width-focus-emphasis)}
+.a3-optrow-active{border-left:var(--border-width-strong) solid var(--color-brand-accent)}
+.a3-optrow-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:var(--space-4);min-width:0}
+.a3-optrow-identity{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3);min-width:0}
+.a3-optrow-name{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word}
+.a3-optrow-badges{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2)}
+.a3-optrow-value{display:grid;gap:0;justify-items:end;text-align:end;min-width:0}
+.a3-optrow-valuelabel{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-optrow-amount{font-size:var(--type-metric-section-size);line-height:var(--type-metric-section-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-optrow-pending{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-medium);color:var(--color-text-secondary)}
+.a3-optrow-meta{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word}
+.a3-optrow-note{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-muted)}
+.a3-optrow-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:var(--space-3);border-top:var(--border-hairline);padding-top:var(--space-3)}
+.a3-present-stage{display:grid;gap:var(--space-4);justify-items:start;max-inline-size:var(--measure-body-max);min-width:0}
+.a3-present-lead{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-secondary)}
+.a3-present-baseline{margin:0;display:grid;gap:var(--space-2);inline-size:100%}
+.a3-present-baseline-row{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:var(--space-3);border-bottom:var(--border-hairline);padding-bottom:var(--space-2)}
+.a3-present-baseline-row > dt{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-present-baseline-row > dd{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-present-actions{display:flex;flex-wrap:wrap;gap:var(--space-3)}
+.a3-route-notice{margin:0;flex:none;border-bottom:var(--border-hairline);background:var(--color-surface-subtle);padding:var(--space-2) var(--space-6);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-account-link{display:flex;align-items:center;gap:var(--space-3);inline-size:100%;min-height:var(--size-hit-target-default);border:0;background:transparent;text-align:start;font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-secondary)}
+.a3-account-link:hover{color:var(--color-text-primary)}
+.a3-account-link:focus-visible{outline:var(--border-width-focus-emphasis) solid var(--color-focus-ring);outline-offset:var(--border-width-focus-emphasis)}
+@media (max-width:1439px){
+  .a3-option-shell{padding-inline:var(--space-5)}
+  .a3-option-main{padding-block:var(--space-3) var(--space-6)}
+}

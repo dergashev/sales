@@ -1,6 +1,7 @@
 import { test, expect } from '../fixtures'
 import {
   COMPARISON, DEMO_PROJECT_TITLE, KONFIGURATOR_GATE, NAV, OPPORTUNITY,
+  OPTION_WORKSPACE,
 } from '../anchors'
 import { saveBuildingScope } from '../journey'
 
@@ -96,24 +97,35 @@ for (const { label: viewportLabel, viewport } of VIEWPORTS) {
         //    on creation (store.ts createOption -> defaultOptionConfig) —
         //    this regression targets RENDERING, not calculation, so no
         //    Building/Configurator walkthrough is needed for any of them. ─
-        // `exact: true`: the workflow spine's own step 3 is also called
-        // "Option anlegen" (its full accessible name carries the position
-        // and state, "… Schritt 3 von 13 · aktueller Schritt"), and
-        // Playwright's role-name match is substring by default.
-        const createOption = page.getByRole('button', {
+        /**
+         * `Option anlegen` creates the FIRST Option from the readiness gate
+         * and lands in the collection; every further one is created from the
+         * collection itself, where the action is `Weitere Option anlegen`.
+         * `exact: true` keeps the two apart.
+         */
+        const createFirst = page.getByRole('button', {
           name: OPPORTUNITY.createOption, exact: true,
         })
-        const optionsRegion = page.getByRole('region', { name: 'Opportunity Options' })
-        const openButtons = optionsRegion.getByRole('button', { name: OPPORTUNITY.openOption, exact: true })
+        const createFurther = page.getByRole('button', {
+          name: 'Weitere Option anlegen', exact: true,
+        })
+        const createOption = () => (
+          page.url().includes('/optionen') ? createFurther : createFirst
+        )
+        // Every row's action names its destination, so a new Option's is
+        // `Öffnen · Gebäude & Umfang`.
+        const openButtons = page.getByRole('button', {
+          name: OPPORTUNITY.openNewOption, exact: true,
+        })
         for (let i = 0; i < OPTION_COUNT; i++) {
-          await expect(createOption).toBeEnabled()
+          await expect(createOption()).toBeEnabled()
           // OpportunityCard.tsx debounces rapid creation with a 500ms
           // guard (OPTION_CREATE_GUARD_MS, AUD-03 rapid-click protection) —
           // a click inside that window is a deliberate no-op, not a
           // failure. Retry the click itself (not just the assertion) until
           // one lands outside the guard window.
           await expect(async () => {
-            await createOption.click()
+            await createOption().click()
             await expect(openButtons).toHaveCount(i + 1, { timeout: 200 })
           }).toPass({ timeout: 10_000 })
         }
@@ -140,6 +152,13 @@ for (const { label: viewportLabel, viewport } of VIEWPORTS) {
         // pointer). Dismiss it explicitly rather than depending on timing.
         const undoToastClose = page.getByRole('button', { name: 'Schließen' })
         if (await undoToastClose.isVisible().catch(() => false)) await undoToastClose.click()
+        /**
+         * Comparison is a PROJECT destination since the 2026-09-06 IA
+         * rebuild — it is about the collection, so it is offered there. The
+         * way back out of the Option workspace is the explicit
+         * `Alle Optionen` control the audit required.
+         */
+        await page.getByRole('button', { name: OPTION_WORKSPACE.allOptions }).click()
         await expect(page.getByRole('button', { name: NAV.items.vergleich })).toBeVisible()
         await page.getByRole('button', { name: NAV.items.vergleich }).click()
 

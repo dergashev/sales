@@ -37,6 +37,31 @@ beforeEach(() => __resetStoreForTests())
 const nav = (name: RegExp) => screen.getAllByRole('button', { name })[0]!
 
 /**
+ * Three destinations moved with the 2026-09-06 Project → Option →
+ * Configurator IA rebuild, and these helpers say where they went.
+ *
+ * `Variantenvergleich` is a PROJECT destination now (it is about the
+ * collection, so it is reached from the collection). `Präsentieren` is the
+ * Option stage that owns the mode switch, and `Export` is an Option ACTION
+ * on that stage. None of them is a rail item any more, which is why the
+ * regex-over-the-rail idiom below could not find them: the rail they lived
+ * in no longer exists.
+ */
+const goComparison = () => act(() => { useStore.getState().openComparison() })
+const goPresent = () => act(() => { useStore.getState().setPipelineView('praesentieren') })
+const goConfigurator = () => act(() => {
+  const st = useStore.getState()
+  if (st.activeOptionId) st.openOption(st.activeOptionId)
+  st.setPipelineView('konfigurator')
+})
+const goExport = () => act(() => { useStore.getState().setPipelineView('export') })
+const goScopeBoundaries = () => act(() => {
+  const st = useStore.getState()
+  st.setPipelineView('konfigurator')
+  st.openConfiguratorStepAt(CONFIGURATOR_STEP.SCOPE_BOUNDARIES)
+})
+
+/**
  * Путь до конвейера: корень → карточка → разрешить конфликт →
  * подтвердить параметры → создать Option → открыть его. Раньше конвейер
  * был корнем продукта; теперь он живёт внутри Option, и каждый тест,
@@ -122,7 +147,7 @@ describe('Сквозной сценарий продажи', () => {
     expect(useStore.getState().journal).toHaveLength(36)
 
     // Уход на другой экран и возврат: состояние переживает переход.
-    await user.click(nav(/Variantenvergleich/))
+    goComparison()
     expect(useStore.getState().journal).toHaveLength(36)
     expect(activeBuilding(useStore.getState()).energiestandard).toBe('EH_40')
 
@@ -134,12 +159,12 @@ describe('Сквозной сценарий продажи', () => {
     // Sidebar there), so the way onward is its OWN navigation — clicking a
     // rail item that is not on screen was only ever reaching the first
     // match of a regex, not a real route.
-    await user.click(nav(/^Konfigurator$/))
+    goConfigurator()
     // Task 03 (F-16/PD-3): Export now requires the whole-option confirm
     // CTA — this test's subject is state continuity across screens, not
     // that gate itself.
     confirmWholeConfiguration()
-    await user.click(nav(/^S5|Export/))
+    goExport()
     // REDESIGN R3 (877f2c2a): "Preflight" was renamed to the outcome-language
     // "prüfen"/"Prüfung" across S5Export.tsx — same stage-advance CTA.
     expect(screen.getByRole('button', { name: 'Angebot prüfen' })).toBeInTheDocument()
@@ -236,7 +261,7 @@ describe('Сквозной сценарий продажи', () => {
     render(<App />)
     await enterPipeline(user)
     confirmWholeConfiguration()
-    await user.click(nav(/^S5|Export/))
+    goExport()
 
     const slider = screen.getByRole('slider', { name: /Rabatt in Prozent/ })
     // aria-valuetext называет деньги, а не только процент: процент без
@@ -250,6 +275,7 @@ describe('Сквозной сценарий продажи', () => {
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
+    goPresent()
     const modus = screen.getByRole('radiogroup', { name: 'Ansicht' })
     confirmWholeConfiguration()
     await user.click(within(modus).getAllByRole('radio')[1]!)
@@ -282,13 +308,14 @@ describe('Сквозной сценарий продажи', () => {
     // carried by the workflow spine together with the create-option gate's
     // own named reason (rule 12), not a second, separate checklist.
     expect(screen.queryByRole('group', { name: /Bereitschaft/ })).not.toBeInTheDocument()
-    // Documents-workspace rebuild: der Projektablauf sind jetzt SECHS
-    // gruppierte Stationen statt dreizehn erstrangiger Zeilen. Die
-    // Stationen nennen den Weg, die Bereitschaftszeilen die Sache.
+    // 2026-09-06 IA rebuild: der Projektablauf sind DREI projekt-eigene
+    // Stationen. `Konfigurieren` gehört der Option und steht hier gar nicht
+    // mehr — eine Station darf nur in der Leiste der Ebene stehen, der ihre
+    // Daten gehören.
     const journey = screen.getByRole('navigation', { name: 'Projektablauf' })
-    expect(journey.querySelectorAll('.a3-wfn-stage')).toHaveLength(6)
-    expect(within(journey).getByText('Verstehen')).toBeInTheDocument()
-    expect(within(journey).getByText('Konfigurieren')).toBeInTheDocument()
+    expect(journey.querySelectorAll('.a3-wfn-stage')).toHaveLength(3)
+    expect(within(journey).getByText('Projektverständnis')).toBeInTheDocument()
+    expect(within(journey).queryByText('Konfigurieren')).toBeNull()
     expect(screen.getAllByText('Blockierende strittige Angaben').length).toBeGreaterThan(0)
 
     const create = screen.getByRole('button', { name: 'Option anlegen' })
@@ -325,7 +352,7 @@ describe('Сквозной сценарий продажи', () => {
     const es = await screen.findByRole('radiogroup', { name: /Energiestandard/ })
     await user.click(within(es).getAllByRole('radio')[2]!)
     confirmWholeConfiguration()
-    await user.click(nav(/^S5|Export/))
+    goExport()
     await user.click(screen.getByRole('button', { name: 'Angebot prüfen' }))
     await user.click(screen.getByRole('button', { name: /Prüfung bestanden/ }))
     await user.click(screen.getByRole('button', { name: /Bestätigen/ }))
@@ -374,7 +401,8 @@ describe('Сквозной сценарий продажи', () => {
     // confirmed configuration — this test's actual subject is print's own
     // independent gate, not the email/export gate itself.
     completeBuildingScope('PER_BUILDING')
-    const blockedExport = nav(/Export/)
+    goPresent()
+    const blockedExport = nav(/^Export$/)
     expect(blockedExport).toHaveAttribute('aria-disabled', 'true')
     // VR3-03: Export additionally requires the KG configuration to be
     // complete. Under the retired predicate an Option with six UNDECIDED
@@ -382,7 +410,8 @@ describe('Сквозной сценарий продажи', () => {
     // the scope fingerprint only had to match itself.
     completeKgConfiguration()
     confirmWholeConfiguration()
-    await user.click(nav(/Export/))
+    goPresent()
+    await user.click(nav(/^Export$/))
     await user.click(screen.getByRole('button', { name: /Druckansicht öffnen/ }))
 
     const dialog = screen.getByRole('dialog', { name: /Drucken/ })
@@ -412,7 +441,7 @@ describe('Сквозной сценарий продажи', () => {
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
-    await user.click(nav(/Leistungsabgrenzung/))
+    goScopeBoundaries()
 
     // Binary contract (CPO decision, 22.08.2026): with KG 300/400/700
     // included and KG 200/500/600/800 at their determinate `excluded`
@@ -431,6 +460,7 @@ describe('Сквозной сценарий продажи', () => {
     expect(screen.queryByRole('button', { name: 'Hinweis' })).toBeNull()
 
     // У клиента: то же полное состояние — тоже без предупреждения.
+    goPresent()
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
     // VR3-05 (T-034): Client Mode opens on its boundary screen; the
@@ -447,6 +477,7 @@ describe('Сквозной сценарий продажи', () => {
     await enterPipeline(user)
     confirmWholeConfiguration()
     // Вход в презентацию гейтуется подтверждением здания.
+    goPresent()
     const modes = screen.getByRole('radiogroup', { name: 'Ansicht' })
     await user.click(within(modes).getAllByRole('radio')[1]!)
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
@@ -480,6 +511,7 @@ describe('Сквозной сценарий продажи', () => {
       useStore.getState().openConfiguratorStepAt(CONFIGURATOR_STEP.KG_700_DETAILS)
     })
     confirmWholeConfiguration()
+    goPresent()
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
     // VR3-05 (T-034): Client Mode opens on its boundary screen; the
@@ -520,6 +552,7 @@ describe('Сквозной сценарий продажи', () => {
 
     await user.click(screen.getByRole('button', { name: 'Beenden' }))
     expect(useStore.getState().mode).toBe('intern')
+    goPresent()
     expect(screen.getByRole('button', { name: 'Kundenansicht prüfen' })).toBeInTheDocument()
   })
 
@@ -537,16 +570,23 @@ describe('Сквозной сценарий продажи', () => {
    * fix: the interactive switcher is gone from client DOM; only a static,
    * non-interactive label remains.
    */
-  it('the "Opportunity Option" switcher is not interactive inside Kundenansicht (QA rework, 877f2c2a)', async () => {
+  it('the internal Option switcher does not exist inside Kundenansicht (QA rework, 877f2c2a)', async () => {
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
     confirmWholeConfiguration()
     expect(useStore.getState().activeOptionId).toBe('OPT-01')
 
-    // Внутри Vorbereitung переключатель — живой <select>.
-    expect(screen.getByRole('combobox', { name: 'Opportunity Option' })).toBeInTheDocument()
+    // The switcher offers a CHOICE, so it exists once there is one. With a
+    // second Option it appears in the Option context header, named
+    // `Option wechseln` — the retired `Opportunity Option` `<select>` was
+    // untranslated English inside the `de` locale and named the container,
+    // not the act.
+    act(() => { useStore.getState().createOption() })
+    act(() => { useStore.getState().openOption('OPT-01') })
+    expect(screen.getByRole('button', { name: /Option wechseln/ })).toBeInTheDocument()
 
+    goPresent()
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
     // VR3-05 (T-034): Client Mode opens on its boundary screen; the
@@ -554,11 +594,11 @@ describe('Сквозной сценарий продажи', () => {
     await startClientPresentation(user)
     expect(useStore.getState().mode).toBe('praesentation')
 
-    // Внутри Kundenansicht переключателя-<select> больше нет вовсе. Имя
-    // презентуемой Option по-прежнему названо — VR3-05 перенёс его в
-    // индикатор режима (цель T-034/T-035: `KUNDENPRÄSENTATION · <Option>`),
-    // чтобы одно и то же имя не стояло на экране дважды. Идентификатор
-    // `OPT-xx` не выводится по-прежнему — соседний тест этого файла.
+    // Inside Kundenansicht the whole Option context header is not rendered,
+    // so the internal switcher does not exist in client DOM at all — the
+    // strongest form of the invariant this case was written for. The
+    // presented Option is still NAMED, by the mode indicator (T-034/T-035).
+    expect(screen.queryByRole('button', { name: /Option wechseln/ })).toBeNull()
     expect(screen.queryByRole('combobox', { name: 'Opportunity Option' })).toBeNull()
     expect(screen.getByText(/Kundenansicht — der Kunde sieht diesen Bildschirm · Option 1/))
       .toBeInTheDocument()
@@ -573,6 +613,7 @@ describe('Сквозной сценарий продажи', () => {
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
+    goPresent()
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
     // VR3-05 (T-034): Client Mode opens on its boundary screen; the

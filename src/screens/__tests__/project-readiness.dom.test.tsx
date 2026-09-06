@@ -387,26 +387,58 @@ describe('the complex route: the gate, the comparison and the audit record', () 
 })
 
 describe('accessibility of the project surfaces', () => {
-  it('the workflow is six grouped stages, one current, and no KG rows', async () => {
+  /**
+   * The PROJECT rail owns three project-scoped stages and nothing else
+   * (accepted 2026-09-06 IA audit). The six-stage rail this replaces
+   * declared `Konfigurieren`, `Kalkulieren`, `Prüfen` and `Präsentieren` at
+   * a tier that owns none of their data, and all four were hardcoded
+   * `'upcoming'` — four labels that could never change state, on a rail
+   * whose purpose is to say where you are.
+   *
+   * This case is the regression guard for both halves: the four
+   * Option-scoped stages must not appear here at all, and no stage in this
+   * rail may be a permanent constant.
+   */
+  it('the project rail is three project-scoped stages, one current, no Option stages', async () => {
     const user = userEvent.setup()
     await openProject(user, 'Wohnhof Lindenhain')
     const nav = screen.getByRole('navigation', { name: 'Projektablauf' })
     expect(nav).toBeInTheDocument()
-    expect(nav.querySelectorAll('.a3-wfn-stage')).toHaveLength(6)
-    for (const stage of [
-      'Dokumente', 'Verstehen', 'Konfigurieren', 'Kalkulieren', 'Prüfen', 'Präsentieren',
-    ]) {
+    expect(nav.querySelectorAll('.a3-wfn-stage')).toHaveLength(3)
+    for (const stage of ['Dokumente', 'Projektverständnis', 'Optionen']) {
       expect(within(nav).getByText(stage)).toBeInTheDocument()
+    }
+    // AC-6: a stage may only appear in the rail of the tier that owns its
+    // data, so none of the Option-scoped four exists here.
+    for (const stage of ['Konfigurieren', 'Kalkulieren', 'Prüfen', 'Präsentieren']) {
+      expect(within(nav).queryByText(stage)).toBeNull()
     }
     // Exactly one stage is current, and it is this page's.
     const current = nav.querySelectorAll('[aria-current="step"]')
     expect(current).toHaveLength(1)
     expect(current[0]).toHaveTextContent('Dokumente')
-    // The one lock that is useful names its prerequisite; the four stages
-    // after it stay neutral rather than reporting four failures.
-    expect(within(nav).getByText(/Dokumentanalyse fehlt/)).toBeInTheDocument()
+    // Every lock names its prerequisite, and both locks here are real: the
+    // analysis has not run, so neither the understanding nor an Option can
+    // exist yet.
+    // Both locks state the same missing prerequisite, because it IS the
+    // same one: nothing can be understood or optioned before the analysis.
+    expect(within(nav).getAllByText(/Dokumentanalyse fehlt/)).toHaveLength(2)
     expect(within(nav).queryAllByText(/^KG \d00$/)).toHaveLength(0)
-    expect(within(nav).getAllByText('ausstehend')).toHaveLength(4)
+    // AC-4: no stage of this rail is a constant. Every one of the three can
+    // become current, and each is proved so by driving the project.
+    finishAnalysis()
+    await waitFor(() => {
+      expect(within(screen.getByRole('navigation', { name: 'Projektablauf' }))
+        .getByText('Projektverständnis').closest('li'))
+        .not.toHaveClass('a3-wfn-locked')
+    })
+    act(() => { useStore.getState().setProjectStage('understanding') })
+    expect(screen.getByRole('navigation', { name: 'Projektablauf' })
+      .querySelector('[aria-current="step"]')).toHaveTextContent('Projektverständnis')
+    act(() => { useStore.getState().createOption() })
+    act(() => { useStore.getState().setProjectStage('options') })
+    expect(screen.getByRole('navigation', { name: 'Projektablauf' })
+      .querySelector('[aria-current="step"]')).toHaveTextContent('Optionen')
   })
 
   it('the Understanding sections are a keyboard-operable tablist', async () => {
@@ -460,19 +492,22 @@ describe('accessibility of the project surfaces', () => {
 })
 
 /**
- * ACCEPT-01 (VR3-02 acceptance remediation).
+ * ACCEPT-01 (VR3-02 acceptance remediation), carried forward.
  *
  * The Option-created hand-off printed the number of RECORDED conflict
  * decisions under the label that means the number still OUTSTANDING. On the
  * complex fixture that produced "Blockierende strittige Angaben 6" on a
- * surface the user can only reach because that count had reached zero — the
- * hand-off contradicted the gate that opened it.
+ * surface the user can only reach because that count had reached zero.
  *
- * These two cases guard the CLASS, not the sentence: the outstanding label
- * must never appear on this surface, and the number that IS shown has to be
- * the decisions it claims to be, against the project's own conflict count.
+ * The 2026-09-06 IA audit removed that hand-off surface entirely — creating
+ * an Option now lands in the Options COLLECTION, whose card states the
+ * baseline the Option inherited rather than restating the project's conflict
+ * arithmetic. The guarded CLASS survives the move and is what these two cases
+ * still assert: the outstanding label must never appear where an Option is
+ * presented, and the baseline the Option rests on must be stated rather than
+ * assumed.
  */
-describe('the Option-created hand-off never contradicts the gate that opened it', () => {
+describe('the Option collection never contradicts the gate that opened it', () => {
   const OUTSTANDING = 'Blockierende strittige Angaben'
 
   it('reports six DECIDED conflicts on the complex route, and none outstanding', async () => {
@@ -494,16 +529,18 @@ describe('the Option-created hand-off never contradicts the gate that opened it'
     expect(readiness(project, st().projectAnalyses['DEMO-COMPLEX-01']!)
       .unresolvedBlockingConflicts).toBe(0)
     act(() => { st().createOption() })
-    act(() => { st().setProjectStage('createOption') })
+    act(() => { st().setProjectStage('options') })
 
-    const readinessPanel = document.querySelector('.a3-readiness')!
+    const collection = document.querySelector('.a3-options') as HTMLElement
     // The outstanding label cannot appear here at all: this surface has no
     // outstanding conflicts to report, by construction.
-    expect(readinessPanel.textContent).not.toContain(OUTSTANDING)
-    // What it does report is the decisions the Option inherited, named.
-    expect(within(readinessPanel as HTMLElement)
-      .getByText('Entschiedene strittige Angaben')).toBeInTheDocument()
-    expect(within(readinessPanel as HTMLElement).getByText('6 von 6')).toBeInTheDocument()
+    expect(collection.textContent).not.toContain(OUTSTANDING)
+    // What it DOES report is the baseline the Option inherited — the day's
+    // understanding it rests on, which is the fact the reader could not see
+    // before (scope addition B). The six decisions are still in the
+    // baseline; they are simply no longer restated as a project statistic on
+    // an Option surface.
+    expect(collection.textContent).toContain('aus der Projektgrundlage vom')
     expect(st().projectBaseline!.conflictDecisions).toHaveLength(6)
   })
 
@@ -515,14 +552,14 @@ describe('the Option-created hand-off never contradicts the gate that opened it'
     expect(demoProject('DEMO-HAPPY-01')!.conflicts).toHaveLength(0)
 
     act(() => { st().createOption() })
-    act(() => { st().setProjectStage('createOption') })
+    act(() => { st().setProjectStage('options') })
 
-    const readinessPanel = document.querySelector('.a3-readiness')!
-    expect(readinessPanel.textContent).not.toContain(OUTSTANDING)
+    const collection = document.querySelector('.a3-options') as HTMLElement
+    expect(collection.textContent).not.toContain(OUTSTANDING)
     // A zero here would read as a finding about the project. Absence is the
     // honest state: there was never anything to decide.
-    expect(readinessPanel.textContent).not.toContain('Entschiedene strittige Angaben')
-    expect(within(readinessPanel as HTMLElement).getByText('Gebäude')).toBeInTheDocument()
+    expect(collection.textContent).not.toContain('Entschiedene strittige Angaben')
+    expect(collection.textContent).toContain('Gebäude')
   })
 })
 

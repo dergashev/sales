@@ -1,288 +1,229 @@
-import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useId, useRef, useState, type RefObject } from "react";
+import { AnimatePresence, motion } from 'framer-motion'
 import {
-  buildingConfirmed,
+  useCallback, useEffect, useId, useMemo, useRef, useState, type RefObject,
+} from 'react'
+import {
   configForOption,
-  projectionForOption,
+  latestSavedOptionVersion,
   useStore,
-} from "../state/store";
-import { buildKgCompositionSegments } from "../components/costComposition";
-import { CompositionBar } from "../design-system/CompositionBar";
+} from '../state/store'
+import { scopeSelectedIds } from '../state/optionBuildingScope'
 import {
-  NNBSP,
-  label as moneyLabel,
-  present,
-} from "../engine/money";
-import { Button } from "../components/primitives";
-import { useT, useTx, localizeMoneyText } from "../i18n";
-import { InternalNote } from "../components/InternalNote";
-import { Badge, Card, FormField } from "../components/designSystem";
-import { startContinuityTransition, useSemanticMotion } from "../design-system/motion";
-import { Dialog, type DialogHandle } from "../components/Dialog";
-import type { Decimal } from "decimal.js";
+  optionIsFinished,
+  orderedOptions,
+  resumeOption,
+  type OrderedOption,
+} from '../state/optionLifecycle'
+import {
+  OPTIONS_PAGE_SIZE,
+  decodeOptionsPage,
+  encodeOptionsPage,
+  optionsPage,
+} from '../state/projectOptionsView'
+import {
+  optionDestinationLabel,
+  optionLifecycleBadge,
+  optionOpenActionLabel,
+} from '../components/optionLabels'
+import { Pagination } from '../design-system/Pagination'
+import { ProjectReadiness } from '../design-system/ActionGate'
+import { Button } from '../components/primitives'
+import { useT, useTx, localizeMoneyText } from '../i18n'
+import { InternalNote } from '../components/InternalNote'
+import { Badge, FormField } from '../components/designSystem'
+import { useBaselineDisclosure, baselineDate } from '../components/OptionContextHeader'
+import { CreateOptionButton } from '../components/OptionCreation'
+import { startContinuityTransition, useSemanticMotion } from '../design-system/motion'
+import { Dialog, type DialogHandle } from '../components/Dialog'
+import type { FixtureProject, ProjectAnalysis } from '../state/projectAnalysis'
 
 /**
- * Opportunity Options — die Option als kommerzielles Objekt, plus die
- * DC-43-Notiz-Einstiegsstelle, die mit ihr dieselbe Projektebene teilt.
+ * `Optionen` — the HOME of every Option of a project.
  *
- * Reine Extraktion aus dem zurückgezogenen `OpportunityCard.tsx`: dieselben
- * Komponenten, dasselbe Markup, dieselben i18n-Schlüssel, dieselbe
- * Accessibility-Anatomie. Der neue Projekt-Bildschirm besitzt das Anlegen
- * einer Option über eine andere kanonische Fähigkeit — deshalb trägt der
- * Abschnitt hier KEINE eigene "Opportunity Option anlegen"-Primäraktion und
- * kein eigenes Gate mehr; die Galerie selbst (1-vs-mehrere-Spalten, Fokus
- * und Scroll auf die frisch angelegte Zeile) bleibt unverändert.
+ * Accepted 2026-09-06 Project → Option → Configurator IA audit, target frames
+ * T-02, T-03 and T-05. What it replaces was measured, not disliked: the
+ * collection had no destination at all. It rendered inside
+ * `projectStage: 'createOption'`, so the home of every Option was a surface
+ * named after the act of creating one, returning to a project landed there,
+ * `activeOptionId` was never referenced in this file (verified by DOM probe
+ * with three Options — no `aria-current` on any card), `Preis nicht ermittelt`
+ * was the visually dominant element of every card, Options 2+ printed
+ * `Unterschied zu Option 1 · —`, and the heading read `Opportunity Options`
+ * in untranslated English inside the `de` locale.
+ *
+ * Four properties define the surface now:
+ *
+ * 1. **The active Option is visible.** `● Aktiv` plus `aria-current="page"`,
+ *    driven by `activeOptionId` and NEVER by `resolvedViewedOptionId()` —
+ *    the presented Option is a client-mode selection and has no business
+ *    marking internal preparation work.
+ * 2. **Every action names its destination**, from the one deterministic
+ *    function the store's own `openOption` navigates by.
+ * 3. **Order is work, not chronology alone.** Incomplete first, then most
+ *    recently changed — so the active Option is on the first screen.
+ * 4. **A number is a commitment.** The metric is the SAVED version's total
+ *    with its own Declared Pricing Scope label (R-18); an Option that has
+ *    never been saved says `Preis nicht ermittelt`, quietly, as a secondary
+ *    line rather than as the loudest thing on the card.
  */
 
-/** Тот же состав, что у `OfferPanel.tsx`'s локального `moneyOut` — не
- *  переизобретается, просто недоступен оттуда как экспорт. */
-function optionRowMoney(exact: Decimal, language: "de" | "en"): string {
-  return localizeMoneyText(moneyLabel(present(exact)), language);
+function moneyText(text: string, language: 'de' | 'en'): string {
+  return localizeMoneyText(text, language)
 }
 
-function optionEventTimestamp(iso: string, language: "de" | "en"): string {
-  return new Intl.DateTimeFormat(language === "de" ? "de-DE" : "en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(iso));
+function dayStamp(iso: string, language: 'de' | 'en'): string {
+  return new Intl.DateTimeFormat(language === 'de' ? 'de-DE' : 'en-GB', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  }).format(new Date(iso))
 }
 
-/** Same signed-delta convention as `S4Vergleich.tsx`'s local `delta()` —
- *  not exported from there, so restated here rather than imported across a
- *  screen boundary for one six-line formatter. */
-function optionDeltaMoney(exact: Decimal, language: "de" | "en"): string {
-  if (exact.isZero()) return "—";
-  const sign = exact.isNegative() ? "−" : "+";
-  return localizeMoneyText(
-    `${sign}${NNBSP}${moneyLabel(present(exact.abs()))}`,
-    language,
-  );
+function timeStamp(iso: string, language: 'de' | 'en'): string {
+  return new Intl.DateTimeFormat(language === 'de' ? 'de-DE' : 'en-GB', {
+    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+  }).format(new Date(iso))
 }
 
 /**
- * Internal Note (DC-43) behind the canonical `Dialog` (#16 Part 5/AC-07):
- * the header utility button is the ONLY entry point now — the note no
- * longer sits inline at the bottom of the primary page, so it never
- * occupies readiness navigation or competes with the stepper/gate flow for
- * attention. `InternalNote` itself is untouched (data, autosave-on-idle,
- * NOTE-006 presentation-mode hiding all unchanged) — only its mount point
- * moves. The dialog title is `sr-only`: `InternalNote`'s own visible field
- * label already says "Interne Notiz" and is the entire dialog content, so a
- * second visible heading with the same words would be a duplicated label
- * the reader doesn't need (removal test) — the `sr-only` heading still
- * gives the dialog its required accessible name and initial-focus target.
+ * Internal Note (DC-43) behind the canonical `Dialog`. Unchanged by this
+ * ticket: same data, same autosave-on-idle, same NOTE-006 presentation-mode
+ * hiding, same single entry point from the project context bar.
  */
 export function InternalNoteDialog({
   open,
   onOpenChange,
   returnFocusTo,
 }: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  returnFocusTo: RefObject<HTMLElement>;
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  returnFocusTo: RefObject<HTMLElement>
 }) {
-  const t = useT();
-  const tx = useTx();
-  const titleId = useId();
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const dialogRef = useRef<DialogHandle>(null);
-  if (!open) return null;
+  const t = useT()
+  const tx = useTx()
+  const titleId = useId()
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  const dialogRef = useRef<DialogHandle>(null)
+  if (!open) return null
   return (
     <Dialog
       ref={dialogRef}
       open={open}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) onOpenChange(false);
-      }}
+      onOpenChange={(nextOpen) => { if (!nextOpen) onOpenChange(false) }}
       labelledBy={titleId}
       initialFocusRef={titleRef}
       returnFocusTo={returnFocusTo}
     >
-      <h2
-        ref={titleRef}
-        id={titleId}
-        tabIndex={-1}
-        className="sr-only outline-none"
-      >
-        {tx("Interne Notiz")}
+      <h2 ref={titleRef} id={titleId} tabIndex={-1} className="sr-only outline-none">
+        {tx('Interne Notiz')}
       </h2>
       <InternalNote />
       <div className="a3-row mt-4">
         <Button variant="ghost" onClick={() => dialogRef.current?.close()}>
-          {t("common.close")}
+          {t('common.close')}
         </Button>
       </div>
     </Dialog>
-  );
+  )
 }
 
-/**
- * OptionCard · Opportunity Option as a commercial object (AUD-03/EXP-04,
- * REDESIGN R2 §3 DESIGN-09). Built on the canonical `Card`
- * (title/status/meta/actions, `components-core.md` CARD-001) — no second
- * card primitive — with the option's building composition, subtotal,
- * KG mini-composition (`CompositionBar`, R1) and, at ≥2 options, a delta
- * against the same array-order baseline `S4Vergleich.tsx` already names
- * "Vergleichsbasis" (VARIANT-001). No new commercial semantics: every value
- * here already exists in `projectionForOption`/`configForOption`.
- *
- * Deliberately carries NO `MediaFrame` — options of one project have no
- * truthful differentiating imagery yet, and near-identical placeholder art
- * would violate the imagery-semantic rule (R2 §6). Identity comes from
- * name + building composition + commercial structure instead.
- */
-export function OptionCard({
-  option,
-  justCreated,
-  rowRef,
+/* ────────────────────────────── one Option ───────────────────────────── */
+
+function OptionRow({
+  row, active, justCreated,
 }: {
-  option: { id: string; name: string };
-  justCreated: boolean;
-  rowRef?: RefObject<HTMLLIElement>;
+  row: OrderedOption
+  active: boolean
+  justCreated: boolean
 }) {
-  const s = useStore();
-  const t = useT();
-  const tx = useTx();
-  const { fadeRise, reduced } = useSemanticMotion();
-  const [renaming, setRenaming] = useState(false);
-  const [draftName, setDraftName] = useState(option.name);
-  const [renameError, setRenameError] = useState<string | null>(null);
-  const nameInputRef = useRef<HTMLInputElement>(null);
-  const nameFieldId = useId();
+  const s = useStore()
+  const t = useT()
+  const tx = useTx()
+  const { fadeRise, reduced } = useSemanticMotion()
+  const [renaming, setRenaming] = useState(false)
+  const [draftName, setDraftName] = useState(row.name)
+  const [renameError, setRenameError] = useState<string | null>(null)
+  const nameInputRef = useRef<HTMLInputElement>(null)
+  const nameFieldId = useId()
+  const nameId = useId()
+  const disclosure = useBaselineDisclosure()
 
   useEffect(() => {
-    if (!renaming) return;
-    nameInputRef.current?.focus();
-    nameInputRef.current?.select();
-  }, [renaming]);
+    if (!renaming) return
+    nameInputRef.current?.focus()
+    nameInputRef.current?.select()
+  }, [renaming])
 
-  /**
-   * QA-Rework (AUD-03): ohne Prüfung erzeugte Umbenennen genau die
-   * Namenskollision, die dieses Ticket beseitigt — «Option 2» in «Option
-   * 1» umbenannt, während «Option 1» schon existiert, ergab zwei Zeilen
-   * mit demselben Namen und einen Toast, der das still bestätigte. Rule
-   * 12 (kein Blockieren ohne Erklärung): eine Kollision wird nicht
-   * stillschweigend verworfen — der Bearbeitungsmodus bleibt offen, mit
-   * einer Ursache · Abhilfe-Zeile (FORM-003-Muster), bis der Name
-   * eindeutig ist oder die Umbenennung abgebrochen wird (Escape).
-   */
   function commitRename() {
-    const next = draftName.trim();
-    if (!next || next === option.name) {
-      setRenaming(false);
-      setRenameError(null);
-      setDraftName(option.name);
-      return;
+    const next = draftName.trim()
+    if (!next || next === row.name) {
+      setRenaming(false)
+      setRenameError(null)
+      setDraftName(row.name)
+      return
     }
-    if (s.options.some((o) => o.id !== option.id && o.name === next)) {
-      setRenameError(t('vr3.option.nameTaken', { name: next }));
-      return;
+    if (s.options.some((o) => o.id !== row.id && o.name === next)) {
+      setRenameError(t('vr3.option.nameTaken', { name: next }))
+      return
     }
-    setRenaming(false);
-    setRenameError(null);
-    s.renameOption(option.id, next);
+    setRenaming(false)
+    setRenameError(null)
+    s.renameOption(row.id, next)
   }
 
-  // M-3: eine bereits versendete Option ist ein unveränderliches Snapshot —
-  // dasselbe Feld (`snapshots[].optionId`), das den Snapshot selbst nennt,
-  // beantwortet hier "wurde diese Option je verschickt?".
-  const sent = s.snapshots.some((snap) => snap.optionId === option.id);
-  const cfg = configForOption(s, option.id);
-  const projection = projectionForOption(s, option.id);
-  // AUD-03: die Erstellung selbst ist bewusst ein Opportunity-Ereignis
-  // (`optionId: null`, siehe `JournalEvent` in store.ts — sie passiert VOR
-  // dem Eintritt in die Pipeline) und zählt hier deshalb nicht als
-  // "Aktivität dieser Option": eine frisch angelegte, nie geöffnete Option
-  // hat ehrlich keine.
-  const lastOwnEvent = s.journal.filter((e) => e.optionId === option.id).at(-1);
-  const configured = Boolean(lastOwnEvent);
-  const stateLabel = sent
-    ? t('vr3.option.state.sent')
-    : configured
-      ? t('vr3.option.state.inProgress')
-      : t('vr3.option.state.new');
-  const stateSign = sent ? "●" : configured ? "◐" : "○";
+  // M-3: a sent Option is an immutable snapshot and cannot be renamed. The
+  // same field that names the snapshot answers "was this ever sent?".
+  const sent = s.snapshots.some((snapshot) => snapshot.optionId === row.id)
+  const config = configForOption(s, row.id)
+  const buildings = config
+    ? scopeSelectedIds(config)
+      .map((id) => config.scopeBuildings.find((b) => b.id === id)?.name)
+      .filter((name): name is string => Boolean(name))
+    : []
+  const saved = latestSavedOptionVersion(s, row.id)
+  const badge = row.state ? optionLifecycleBadge(t, row.state, row.destination) : null
 
-  // REDESIGN R2 §3 "BUILDING COMPOSITION": chips, not a joined string —
-  // `buildingConfirmed` is the SAME function `canBeginConfiguration` gates
-  // pricing on, fed this option's own reviews/confirmation plus the
-  // opportunity-level `buildingConflicts` (conflicts predate Options —
-  // resolved once at document-analysis time, shared by every Option of
-  // this Opportunity, never per-Option state).
-  const buildingChips = cfg
-    ? Object.keys(cfg.buildings)
-        .filter((id) => cfg.included[id])
-        .map((id) => ({
-          id,
-          name: cfg.buildings[id]?.stableName ?? tx("Gebäude"),
-          confirmed: buildingConfirmed(
-            {
-              buildingReviews: cfg.buildingReviews,
-              buildingConfirmation: cfg.buildingConfirmation,
-              buildingConflicts: s.buildingConflicts,
-            },
-            id,
-          ),
-        }))
-    : [];
+  const facts = [
+    buildings.length > 0
+      ? t(buildings.length === 1
+        ? 'vr3.option.meta.buildingsOne'
+        : 'vr3.option.meta.buildings', { count: buildings.length })
+      : null,
+    buildings.length > 0 && buildings.length <= 3 ? buildings.join(' · ') : null,
+    // Scope addition B: WHICH day's understanding this Option rests on. An
+    // Option inherits the baseline by value at creation (M-1/M-3) and that is
+    // correct — what was missing is that nobody could see it.
+    disclosure.date
+      ? t('vr3.option.meta.baseline', {
+        date: baselineDate(disclosure.date, s.uiLanguage),
+      })
+      : null,
+    saved
+      ? t('vr3.option.meta.saved', {
+        date: dayStamp(saved.savedAt, s.uiLanguage), version: saved.version,
+      })
+      : null,
+    row.lastChangedAt
+      ? t('vr3.option.meta.changed', {
+        at: timeStamp(row.lastChangedAt, s.uiLanguage),
+      })
+      : t('vr3.option.meta.notConfigured'),
+  ].filter((entry): entry is string => Boolean(entry))
 
-  const priceUnavailable =
-    !projection || projection.result.total.exact.isZero();
-  const totalLabelText = projection
-    ? tx(projection.result.totalLabel)
-    : t("money.priceNotDetermined");
-  const totalValueText =
-    projection && !priceUnavailable
-      ? optionRowMoney(projection.result.total.exact, s.uiLanguage)
-      : t("money.priceNotDetermined");
-
-  // REDESIGN R2 §8: the SAME `kgSplit` the KG tables elsewhere reconcile
-  // against — no second sum, no second rounding.
-  const segments = projection
-    ? buildKgCompositionSegments(projection.kgSplit, (group) =>
-        t(`costGroup.${group}`),
-      )
-    : [];
-
-  // REDESIGN R2 §3 "COMPARISON SIGNAL": baseline = `s.options[0]`, the same
-  // array-order baseline `S4Vergleich.tsx` names "Vergleichsbasis"
-  // (VARIANT-001) — one comparison semantic, not a second one invented here.
-  const baselineOption = s.options[0];
-  const isBaseline = baselineOption?.id === option.id;
-  const baselineProjection =
-    !isBaseline && baselineOption
-      ? projectionForOption(s, baselineOption.id)
-      : null;
-  const showDelta =
-    s.options.length > 1 && !isBaseline && projection && baselineProjection;
-
-  // VR2-09 — approved motion storyboard 2 "Option → Configurator"
-  // (CONTINUITY): entering the Work shell from this Option card is the same
-  // shared-identity edge the portfolio → Project step already uses
-  // (`OpportunityList`), so the brand mark / shell cross-fade anchors the
-  // entry to the commercial object instead of an instant page replacement.
-  // `openOption` itself is untouched (internal active Option stays
-  // authoritative); reduced motion applies the state change immediately.
-  const openThisOption = () =>
-    startContinuityTransition(reduced, () => s.openOption(option.id));
+  const open = () => startContinuityTransition(reduced, () => s.openOption(row.id))
 
   return (
     <motion.li
-      ref={rowRef}
+      data-option-id={row.id}
       tabIndex={-1}
       variants={fadeRise}
-      initial={justCreated ? "hidden" : false}
+      initial={justCreated ? 'hidden' : false}
       animate="visible"
-      exit="exit"
-      className="outline-none"
+      aria-current={active ? 'page' : undefined}
+      aria-labelledby={nameId}
+      className={`a3-optrow${active ? ' a3-optrow-active' : ''}${justCreated ? ' a3-flash' : ''}`}
     >
-      <Card
-        className={justCreated ? "a3-flash" : undefined}
-        title={
-          renaming ? (
+      <div className="a3-optrow-head">
+        <div className="a3-optrow-identity">
+          {renaming ? (
             <FormField
               label={t('vr3.option.nameLabel')}
               htmlFor={nameFieldId}
@@ -290,192 +231,262 @@ export function OptionCard({
             >
               <input
                 ref={nameInputRef}
+                id={nameFieldId}
                 value={draftName}
-                onChange={(e) => {
-                  setDraftName(e.target.value);
-                  setRenameError(null);
+                onChange={(event) => {
+                  setDraftName(event.target.value)
+                  setRenameError(null)
                 }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    commitRename();
-                  }
-                  if (e.key === "Escape") {
-                    e.preventDefault();
-                    setDraftName(option.name);
-                    setRenameError(null);
-                    setRenaming(false);
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') { event.preventDefault(); commitRename() }
+                  if (event.key === 'Escape') {
+                    event.preventDefault()
+                    setDraftName(row.name)
+                    setRenameError(null)
+                    setRenaming(false)
                   }
                 }}
                 onBlur={commitRename}
               />
             </FormField>
           ) : (
-            option.name
-          )
-        }
-        status={<Badge sign={stateSign}>{stateLabel}</Badge>}
-        meta={
-          buildingChips.length > 0 ? (
-            <span className="flex flex-wrap gap-1">
-              {buildingChips.map((b) => (
-                <span
-                  key={b.id}
-                  // `py-1` (`--space-1`, 4px) — the project's spacing scale
-                  // stops at 8 with no fractional keys (full theme.spacing
-                  // replacement, not `extend`); `py-0.5` silently resolves to
-                  // nothing rather than a smaller value.
-                  className="inline-flex items-center gap-1 border border-border-default px-2 py-1 text-small text-text-secondary"
-                >
-                  {b.name}
-                  {b.confirmed && <span aria-hidden="true">✓</span>}
-                </span>
-              ))}
-            </span>
-          ) : undefined
-        }
-        actions={
-          <>
-            {!sent && !renaming && (
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setDraftName(option.name);
-                  setRenaming(true);
-                }}
-              >
-                {t('vr3.option.rename')}
-              </Button>
+            <h2 id={nameId} className="a3-optrow-name">{row.name}</h2>
+          )}
+          <span className="a3-optrow-badges">
+            {active && (
+              <Badge sign="●">{t('vr3.option.activeMarker')}</Badge>
             )}
-            <Button onClick={openThisOption}>
-              {tx("Öffnen")}
-            </Button>
-          </>
-        }
-        onOpen={renaming ? undefined : openThisOption}
-      >
-        <div>
-          <span className="a3-cap block">{totalLabelText}</span>
-          <span className="text-metric-section font-bold text-text-primary numeric block">
-            {totalValueText}
+            {badge && <Badge sign={badge.sign}>{badge.label}</Badge>}
           </span>
         </div>
-        {segments.length > 0 && projection && (
-          <div className="mt-3">
-            <CompositionBar
-              segments={segments}
-              total={projection.result.total.exact}
-              variant="compact"
-              incompleteLabel={t("money.priceNotDetermined")}
-            />
-          </div>
+        <div className="a3-optrow-value">
+          {saved ? (
+            <>
+              {/* The engine composes a total's label in German by contract
+                  (it must name its Declared Pricing Scope, R-18); the UI
+                  bridges it, exactly as every other surface that prints one
+                  does. The saved version's own string is used, not the live
+                  one: a receipt states what was committed. */}
+              <span className="a3-optrow-valuelabel">{tx(saved.result.totalLabel)}</span>
+              <span className="a3-optrow-amount numeric">
+                {moneyText(saved.result.totalDisplay, s.uiLanguage)}
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="a3-optrow-valuelabel">{t('vr3.rail.status.subtotal')}</span>
+              {/* Quiet, secondary, and never the loudest thing on the card. */}
+              <span className="a3-optrow-pending">{t('money.priceNotDetermined')}</span>
+            </>
+          )}
+        </div>
+      </div>
+      <p className="a3-optrow-meta">{facts.join(' · ')}</p>
+      {disclosure.drifted && (
+        /* Scope addition B, second half. NEUTRAL and informational: no
+           warning treatment, no lock, no gate, no stage state changes, and
+           no predicate reads it. The Product deliberately holds no
+           cross-option invalidation (M-1/M-3, audit OPT-12) and this line
+           does not introduce one — it states the truth the Product already
+           holds instead of letting the reader assume the opposite. */
+        <p className="a3-optrow-note">{t('vr3.option.baselineMoved')}</p>
+      )}
+      <div className="a3-optrow-actions">
+        {!sent && !renaming && (
+          <Button
+            variant="ghost"
+            onClick={() => { setDraftName(row.name); setRenaming(true) }}
+          >
+            {t('vr3.option.rename')}
+          </Button>
         )}
-        {showDelta && (
-          <span className="a3-cap mt-2 block">
-            {t("option.deltaVsBaseline", { baseline: baselineOption!.name })}
-            {NNBSP}·{NNBSP}
-            <span className="numeric">
-              {optionDeltaMoney(
-                projection!.result.total.exact.minus(
-                  baselineProjection!.result.total.exact,
-                ),
-                s.uiLanguage,
-              )}
-            </span>
-          </span>
-        )}
-        {lastOwnEvent && (
-          <span className="a3-cap block mt-1">
-            {t('vr3.option.lastChanged')}
-            {NNBSP}
-            {optionEventTimestamp(lastOwnEvent.at, s.uiLanguage)}
-          </span>
-        )}
-      </Card>
+        <Button variant={active ? 'primary' : 'secondary'} onClick={open}>
+          {optionOpenActionLabel(t, row.state, row.destination)}
+        </Button>
+      </div>
     </motion.li>
-  );
+  )
 }
 
-/**
- * Der Options-Abschnitt selbst — die Galerie und nichts weiter.
- *
- * Das Anlegen einer Option gehört zum neuen Projekt-Bildschirm (andere
- * kanonische Fähigkeit), deshalb trägt dieser Abschnitt keine eigene
- * Primäraktion und kein eigenes Gate mehr. Der Aufrufer sagt nur, WELCHE
- * Option frisch angelegt wurde (`justCreatedOptionId`) — die Kontinuität
- * danach (Fokus und Scroll auf DIE eine Zeile, `focusSection`-Idiom, hier
- * auf die Zeile statt den ganzen Abschnitt gerichtet) bleibt hier, direkt
- * bei der Liste, die die Zeile rendert.
- */
-export function ProjectOptionsSection({
-  justCreatedOptionId,
-  sectionRef,
+/* ────────────────────────── the Optionen surface ──────────────────────── */
+
+export function OptionsWorkspace({
+  project, analysis, justCreatedOptionId,
 }: {
-  justCreatedOptionId: string | null;
-  sectionRef?: React.RefObject<HTMLElement>;
+  project: FixtureProject
+  analysis: ProjectAnalysis
+  justCreatedOptionId: string | null
 }) {
-  const s = useStore();
-  const tx = useTx();
-  const headingId = useId();
-  const justCreatedRowRef = useRef<HTMLLIElement>(null);
+  const s = useStore()
+  const t = useT()
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  const listRef = useRef<HTMLUListElement>(null)
+  const [page, setPage] = useState(() => (
+    typeof window === 'undefined' ? 1 : decodeOptionsPage(window.location.search)
+  ))
 
   useEffect(() => {
-    if (!justCreatedOptionId) return;
-    justCreatedRowRef.current?.scrollIntoView?.({ block: "nearest" });
-    justCreatedRowRef.current?.focus();
-  }, [justCreatedOptionId]);
+    if (typeof window === 'undefined') return
+    const onPopState = () => setPage(decodeOptionsPage(window.location.search))
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  const goToPage = useCallback((next: number) => {
+    setPage(next)
+    if (typeof window === 'undefined') return
+    const search = encodeOptionsPage(next, window.location.search)
+    const url = `${window.location.pathname}${search ? `?${search}` : ''}`
+    window.history.pushState(null, '', url)
+  }, [])
+
+  const rows = useMemo(() => orderedOptions(s), [s])
+  const resume = useMemo(() => resumeOption(s), [s])
+  const view = optionsPage(rows, page, OPTIONS_PAGE_SIZE)
+
+  /**
+   * A newly created Option takes focus, on its own row.
+   *
+   * The list is ordered incomplete-first, so a new Option is always on page
+   * one and always visible without scrolling — the audit's requirement,
+   * satisfied by the ordering rather than by a scroll.
+   */
+  useEffect(() => {
+    if (!justCreatedOptionId) return
+    // The row is addressed by its OPTION, not by a forwarded ref: the row is
+    // a `motion.li`, and framer-motion attaches an external ref through its
+    // own effect, so a parent effect can observe it still `null` on the very
+    // commit that first renders the new row — which is precisely the commit
+    // that has to move focus.
+    const row = listRef.current?.querySelector<HTMLElement>(
+      `[data-option-id="${justCreatedOptionId}"]`,
+    )
+    row?.scrollIntoView?.({ block: 'nearest' })
+    row?.focus()
+  }, [justCreatedOptionId])
+
+  const empty = rows.length === 0
+  const allFinished = !empty && rows.every((row) => optionIsFinished(row.state))
+  const created = justCreatedOptionId
+    ? rows.find((row) => row.id === justCreatedOptionId) ?? null
+    : null
+  const resumeLine = created
+    ? t('vr3.options.resume.created', { option: created.name })
+    : resume
+      ? t(
+        resume.lastChangedAt
+          ? 'vr3.options.resume.continue'
+          : 'vr3.options.resume.continueNew',
+        {
+          option: resume.name,
+          when: resume.lastChangedAt
+            ? timeStamp(resume.lastChangedAt, s.uiLanguage)
+            : '',
+          where: resume.destination
+            ? optionDestinationLabel(t, resume.destination)
+            : '',
+        },
+      )
+      : allFinished && rows[0]
+        ? t('vr3.options.resume.allReady', { option: rows[0].name })
+        : ''
 
   return (
-    <section
-      ref={sectionRef}
-      tabIndex={-1}
-      className="a3-sheet mt-6 outline-none"
-      // The region is named BY its own heading, not by a second copy of the
-      // words. A hardcoded `aria-label="Opportunity Options"` here announced
-      // the German casing in the EN locale while the heading beside it read
-      // "Opportunity options" — the same silent-fallback class as QA-01,
-      // moved into the accessible name where no screenshot can show it. One
-      // source cannot drift from itself, and it is the pattern
-      // ProcessingJob, ConflictResolver and QuestionQueue already use.
-      aria-labelledby={headingId}
-    >
-      <h2 id={headingId} className="text-heading-3 font-bold text-text-primary">
-        {tx("Opportunity Options")}
-      </h2>
-
-      {s.options.length > 0 && (
-        // REDESIGN R2 §3 "OPTION GALLERY": at 1 option a single card at a
-        // constrained measure (identity + completeness, no pretend
-        // comparison); at ≥2, a comparison-ready 2-up grid so aligned
-        // OptionCard rows can be scanned side by side (wraps to a further
-        // row at 3+, never forced into horizontal scroll here).
-        <ul
-          className={
-            s.options.length > 1
-              ? "mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2"
-              : // Single option: no grid needed, and a `max-w-content` cap
-                // (the same content-column token every other single-column
-                // section already uses) keeps one lonely card from stretching
-                // edge to edge — no new width token invented for this.
-                "mt-3 flex max-w-content flex-col gap-3"
-          }
-        >
-          <AnimatePresence initial={false}>
-            {s.options.map((o) => (
-              <OptionCard
-                key={o.id}
-                option={o}
-                justCreated={o.id === justCreatedOptionId}
-                rowRef={
-                  o.id === justCreatedOptionId
-                    ? justCreatedRowRef
-                    : undefined
-                }
-              />
-            ))}
-          </AnimatePresence>
-        </ul>
+    <div className="a3-options">
+      {!empty && (
+        <div className="a3-options-head">
+          <h1
+            ref={headingRef}
+            tabIndex={-1}
+            data-page-heading
+            className="a3-options-title"
+          >
+            {t('vr3.options.stage')}
+            <span className="a3-options-count">
+              {' · '}
+              <span className="numeric">{rows.length}</span>
+            </span>
+          </h1>
+          <CreateOptionButton
+            project={project}
+            analysis={analysis}
+            variant="secondary"
+            label={t('vr3.options.createFurther')}
+          />
+        </div>
       )}
-    </section>
-  );
+
+      {empty ? (
+        /* The canonical readiness capability, on the surface it was built
+           for: "the project's lifecycle and next action as the first
+           hierarchy on the page", with exactly one primary action and no
+           result anatomy mounted behind zeros. It owns the `h1` in this
+           branch, which is why the collection's own head is not rendered
+           above it — one page, one title. */
+        <ProjectReadiness
+          eyebrow={t('vr3.options.stage')}
+          heading={t('vr3.options.emptyHeading')}
+          explanation={t('vr3.options.emptyLead')}
+          rows={[]}
+          action={(
+            <CreateOptionButton
+              project={project}
+              analysis={analysis}
+              variant="primary"
+              label={t('vr3.readiness.createOption')}
+            />
+          )}
+        />
+      ) : (
+        <>
+          {/* One sentence that names the Option to continue and WHY — the
+              collection's answer to "where was I", stated before the list so
+              a returning user never has to reconstruct it from eleven rows. */}
+          <p className="a3-options-resume">{resumeLine}</p>
+
+          <ul ref={listRef} className="a3-options-list">
+            <AnimatePresence initial={false}>
+              {view.rows.map((row) => (
+                <OptionRow
+                  key={row.id}
+                  row={row}
+                  active={row.id === s.activeOptionId}
+                  justCreated={row.id === justCreatedOptionId}
+                />
+              ))}
+            </AnimatePresence>
+          </ul>
+
+          {view.paginated && (
+            <Pagination
+              page={view.page}
+              pageCount={view.pageCount}
+              onPageChange={goToPage}
+              ariaLabel={t('vr3.options.pagesLabel')}
+              rangeLabel={t('vr3.options.range', {
+                from: (view.page - 1) * OPTIONS_PAGE_SIZE + 1,
+                to: Math.min(view.page * OPTIONS_PAGE_SIZE, view.total),
+                total: view.total,
+              })}
+              pageButtonLabel={(n) => t('vr3.options.pageLabel', { n })}
+            />
+          )}
+
+          {/* A cross-Option destination of the PROJECT, offered where the
+              collection is — never a numbered step beneath a rail. */}
+          {rows.length > 1 && (
+            <p className="a3-options-links">
+              <button
+                type="button"
+                className="a3-linkbtn hit-target"
+                onClick={() => s.openComparison()}
+              >
+                {t('nav.vergleich')}
+              </button>
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  )
 }

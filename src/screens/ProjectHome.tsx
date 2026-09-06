@@ -50,7 +50,7 @@ import { formatDE } from '../engine/money'
 import { localizeMoneyText, useT, useTx } from '../i18n'
 import { Button } from '../components/primitives'
 import { Combobox, SegmentedControl } from '../components/controls'
-import { FormField, NextStep, PageHeader, SectionSheet } from '../components/designSystem'
+import { FormField, PageHeader, SectionSheet } from '../components/designSystem'
 import { EmptyState, StaleState } from '../components/DataStates'
 import { MediaFrame } from '../design-system/MediaFrame'
 import { ProjectWorkflowNavigator } from '../components/WorkflowSpine'
@@ -61,12 +61,13 @@ import {
   type DocumentRowState, type ProcessingJobState,
 } from '../design-system/ProcessingJob'
 import { Pagination } from '../design-system/Pagination'
-import { ActionGate, ProjectReadiness } from '../design-system/ActionGate'
 import { ConflictResolver } from '../design-system/ConflictResolver'
 import { QuestionItem, QuestionQueue } from '../design-system/QuestionQueue'
 import { projectAsset } from '../assets/project-media'
 import { useSemanticMotion } from '../design-system/motion'
-import { InternalNoteDialog, ProjectOptionsSection } from './ProjectOptions'
+import { InternalNoteDialog, OptionsWorkspace } from './ProjectOptions'
+import { CreateOptionGate } from '../components/OptionCreation'
+import { S4Vergleich } from './S4Vergleich'
 
 /**
  * Project Home — the project half of the canonical journey (VR3-01, targets
@@ -129,14 +130,6 @@ const ANALYSIS_TICK_MS = 45
  */
 const OPTION_COMMIT_STAGE_MS = 200
 
-/**
- * Rapid-click guard on Option creation (the retired project card's AUD-03
- * protection, kept). It is the SECOND line of defence: the first is
- * `beginOptionCreation`'s own idempotence, because the canonical Button
- * blocks with `aria-disabled` rather than `disabled` and a scripted click
- * therefore still dispatches.
- */
-const OPTION_CREATE_GUARD_MS = 500
 
 /**
  * The label for one document state. A processing PHASE and a terminal
@@ -196,6 +189,43 @@ export function ProjectHome() {
     previousCommitStage.current = commitStage
   }, [commitStage, t])
 
+  /**
+   * A NEW Option, announced once, by the ONE live region this shell owns.
+   *
+   * Creating an Option also makes it the active one (released
+   * `createOption` behaviour, `store.ts:7028`) and that change was silent —
+   * the audit's OPT-07. It is stated here rather than in the Options
+   * workspace because a second polite region beside this one would deliver
+   * the same message twice, which is the defect the Documents release
+   * recorded and fixed.
+   *
+   * `justCreated` is also what the collection focuses. It is derived from a
+   * real transition (the list grew) rather than from "the last Option",
+   * which is why a returning user landing on `/optionen` does not have
+   * focus yanked onto a card they did not just make.
+   */
+  const [justCreated, setJustCreated] = useState<string | null>(null)
+  const previousOptionCount = useRef(s.options.length)
+  useEffect(() => {
+    if (s.options.length > previousOptionCount.current) {
+      const created = s.options[s.options.length - 1]
+      if (created) {
+        setJustCreated(created.id)
+        setStageAnnouncement(t('vr3.options.announce.created', { option: created.name }))
+      }
+    } else if (s.options.length < previousOptionCount.current) {
+      setJustCreated(null)
+    }
+    previousOptionCount.current = s.options.length
+  }, [s.options, t])
+
+  // Leaving the collection ends the "just created" continuity: coming back
+  // later is a return, not a creation, and it must not steal focus again.
+  const stageKey = s.projectStage
+  useEffect(() => {
+    if (stageKey !== 'options') setJustCreated(null)
+  }, [stageKey])
+
   if (!project || !analysis) return null
 
   const state = readiness(project, analysis)
@@ -219,8 +249,17 @@ export function ProjectHome() {
           ) : (
             <UnderstandingStage project={project} analysis={analysis} />
           )
+        ) : stage === 'comparison' ? (
+          /* A cross-Option destination of the PROJECT tier. It renders here
+             rather than inside an Option because it is ABOUT the collection;
+             the surface itself is unchanged by this ticket. */
+          <S4Vergleich />
         ) : (
-          <OptionCreatedStage project={project} />
+          <OptionsWorkspace
+            project={project}
+            analysis={analysis}
+            justCreatedOptionId={justCreated}
+          />
         )}
       </div>
       <p className="sr-only" role="status" aria-live="polite">{stageAnnouncement}</p>
@@ -1417,114 +1456,6 @@ function ReadinessRows({
   )
 }
 
-function CreateOptionGate({
-  project, analysis,
-}: {
-  project: FixtureProject
-  analysis: ProjectAnalysis
-}) {
-  const s = useStore()
-  const t = useT()
-  const state = readiness(project, analysis)
-  // The commitment is top-level and transient, and it belongs to ONE
-  // project: a commitment opened elsewhere must not make this gate busy.
-  const commit = s.optionCommit?.projectId === project.id ? s.optionCommit : null
-  const busy = Boolean(commit?.stage)
-  const errorKey = commit?.errorKey ?? null
-  const lastRequestAt = useRef(0)
-
-  const create = () => {
-    // Guarded by STATE first, then by time. `beginOptionCreation` is
-    // idempotent for the same reason, so three independent things would
-    // have to fail at once to create two Options from one intent.
-    if (busy) return
-    const now = Date.now()
-    if (now - lastRequestAt.current < OPTION_CREATE_GUARD_MS) return
-    lastRequestAt.current = now
-    // Only OPENS the commitment. The stages are advanced by the shell's
-    // own tick, so the busy state is actually painted and the gate is
-    // re-read at every stage boundary.
-    s.beginOptionCreation()
-  }
-
-  return (
-    <ActionGate
-      status={errorKey
-        ? 'error'
-        : busy ? 'busy' : state.canCreateOption ? 'available' : 'locked'}
-      // The reason is NOT repeated here: the canonical Button below renders
-      // its `disabledReason` in reading order and associates it with
-      // `aria-describedby`. One sentence, one place.
-      prerequisites={[
-        {
-          id: 'analysis',
-          label: t('vr3.readiness.prereq.analysis'),
-          met: state.analysisComplete,
-        },
-        {
-          id: 'conflicts',
-          label: t('vr3.readiness.prereq.conflicts'),
-          met: state.unresolvedBlockingConflicts === 0,
-          detail: t('vr3.readiness.prereq.conflictsDetail', {
-            count: state.unresolvedBlockingConflicts,
-          }),
-        },
-        {
-          id: 'baseline',
-          label: t('vr3.readiness.prereq.baseline'),
-          met: state.requiredBaselineComplete >= state.requiredBaselineTotal,
-          detail: t('vr3.readiness.prereq.baselineDetail', {
-            done: state.requiredBaselineComplete, total: state.requiredBaselineTotal,
-          }),
-        },
-      ]}
-      /* An OPEN gate with open questions still needs the route, and this is
-         where the clean-pass audit's P1 was: the alternative below said the
-         questions "can be answered later" while offering no way to reach
-         them, because reaching readiness unmounted the questions surface.
-         A clean pass has no open question, so it renders no route — the
-         predicate decides, not the layout. */
-      route={state.canCreateOption
-        ? (state.openQuestions > 0 ? {
-          label: t('vr3.readiness.routeToQuestions'),
-          onSelect: () => s.setUnderstandingTab('questions'),
-        } : undefined)
-        : {
-          label: state.unresolvedBlockingConflicts > 0
-            ? t('vr3.readiness.routeToConflicts')
-            : state.analysisComplete
-              ? t('vr3.readiness.routeToQuestions')
-              : t('vr3.readiness.routeToAnalysis'),
-          onSelect: () => {
-            if (!state.analysisComplete) s.setProjectStage('documents')
-            else if (state.unresolvedBlockingConflicts > 0) s.setUnderstandingTab('conflicts')
-            else s.setUnderstandingTab('questions')
-          },
-        }}
-      alternative={state.permittedAssumptions > 0 ? t('vr3.readiness.alternative') : undefined}
-      error={errorKey ? {
-        message: t(errorKey),
-        onRetry: () => s.clearOptionCreationError(),
-      } : undefined}
-    >
-      <Button
-        variant="primary"
-        disabled={!state.canCreateOption || busy}
-        disabledReason={state.lockReasonKey ? t(state.lockReasonKey, {
-          count: state.unresolvedBlockingConflicts || state.blockingQuestions || state.staleFactKeys.length,
-        }) : undefined}
-        loading={busy}
-        loadingLabel={commit?.stage === 'OPTION'
-          ? t('vr3.readiness.creatingOption.option')
-          : t('vr3.readiness.creatingOption.baseline')}
-        onClick={create}
-      >
-        {t('vr3.readiness.createOption')}
-      </Button>
-    </ActionGate>
-  )
-}
-
 /* ─────────────────────────── stage 2b · ready ─────────────────────────── */
 
 /**
@@ -2121,6 +2052,7 @@ function ReadyProvenance({ project }: { project: FixtureProject }) {
   )
 }
 
+
 /** Disclosed column 2 — every recognised value with its authority and source. */
 function ReadyEvidence({ project }: { project: FixtureProject }) {
   const t = useT()
@@ -2194,106 +2126,6 @@ function BuildingEvidenceRow({
         </AuthorityTrace>
       </dd>
     </div>
-  )
-}
-
-/* ───────────────────── stage 3 · Option created ───────────────────── */
-
-function OptionCreatedStage({ project }: { project: FixtureProject }) {
-  const s = useStore()
-  const t = useT()
-  const asset = projectAsset(project.heroAssetId)
-  const latest = s.options.at(-1) ?? null
-  const analysis = s.projectAnalyses[project.id]
-
-  // VR3-01's boundary ends the moment Create Option is triggered; VR3-02
-  // owns the full Option-created composition (`T-012`) and Gebäude & Umfang.
-  // What is here is the honest hand-off: the Option exists, the project
-  // baseline snapshot behind it is recorded, and the only substantive next
-  // step is reachable.
-  return (
-    <>
-      <ProjectReadiness
-        eyebrow={t('vr3.readiness.optionCreated')}
-        /* VR3-02 (T-012): the hand-off NAMES the Option and says what it is
-           ready for. "Option 1" alone stated that something happened and
-           not what it now needs, which is the one thing the user is here
-           to find out. */
-        heading={latest
-          ? t('vr3.option.created.heading', { option: latest.name })
-          : t('vr3.readiness.optionCreated')}
-        explanation={t('vr3.option.created.lead')}
-        rows={s.projectBaseline ? [
-          {
-            id: 'buildings',
-            label: t('vr3.understanding.metric.buildings'),
-            value: s.projectBaseline.buildingCount,
-          },
-          {
-            id: 'documents',
-            label: t('vr3.understanding.metric.documents'),
-            value: s.projectBaseline.documentCount,
-          },
-          /**
-           * ACCEPT-01. This row printed `conflictDecisions.length` — the
-           * number of disputed values the baseline carries a DECISION for —
-           * under the label that everywhere else in this file means the
-           * number still OUTSTANDING (`state.unresolvedBlockingConflicts`,
-           * rows above and in `ReadyStage`). So a Project B hand-off,
-           * reached only because that count had reached zero, announced
-           * "Blockierende strittige Angaben 6" and contradicted the gate
-           * that had just opened.
-           *
-           * One number, two meanings — the defect class CLAUDE.md's own
-           * correction log names. The number is worth showing: six recorded
-           * decisions are exactly what this Option inherited. It now says
-           * so, against the project's own conflict count, and it is ABSENT
-           * when the project had nothing to decide rather than printing a
-           * zero that would read as a finding.
-           */
-          ...(project.conflicts.length > 0 ? [{
-            id: 'decisions',
-            label: t('vr3.readiness.row.resolvedConflicts'),
-            value: t('vr3.readiness.row.decidedOf', {
-              decided: s.projectBaseline.conflictDecisions.length,
-              total: project.conflicts.length,
-            }),
-          }] : []),
-        ] : []}
-        /* Only Gebäude & Umfang is substantive now, and every later stage
-           is visible as locked WITH ITS REASON — in the spine beside this
-           surface and, named, right here. A disabled label alone is not a
-           gate (rule 12, T-012/T-016). */
-        attention={latest ? (
-          <NextStep
-            label={t('vr3.option.created.nextLabel')}
-            description={t('vr3.option.created.nextDetail')}
-            action={t('vr3.option.created.action')}
-            onAction={() => s.openOption(latest.id)}
-          />
-        ) : undefined}
-        media={(
-          <MediaFrame
-            ratio="pano"
-            state={asset ? 'loaded' : 'fallback'}
-            src={asset?.url}
-            alt={asset ? t(asset.altKey) : undefined}
-            seed={project.id}
-            sourceId={asset?.assetId}
-          />
-        )}
-      />
-      <ProjectOptionsSection justCreatedOptionId={latest?.id ?? null} />
-      {/* Creating a FURTHER Option is a real capability the comparison
-          feature depends on, and it belongs beside the gallery of Options
-          rather than in the hero — the hero's one continuation is opening
-          the Option that was just created (DC-27). */}
-      {analysis ? (
-        <div className="a3-project-stage-continue">
-          <CreateOptionGate project={project} analysis={analysis} />
-        </div>
-      ) : null}
-    </>
   )
 }
 

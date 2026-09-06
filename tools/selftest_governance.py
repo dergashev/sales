@@ -134,8 +134,13 @@ VO_T4_IDS = [
     'continuity', 'direction', 'reveal', 'state', 'stagger-list',
     *VR3_CAPABILITY_IDS,
 ]
+# 2026-09-06 IA audit: `workflow-stepper` left this set. Both tiers render
+# the hierarchical navigator now, so the flat stepper has no product consumer
+# and the shipped manifest records it RETIRED — this synthetic one must agree,
+# or the "valid lifecycle metadata" branch would pass against a manifest the
+# gate no longer accepts. The two move ATOMICALLY, in one commit.
 VO_T4_ACTIVE = {
-    'canvas', 'media-frame', 'workflow-stepper', 'date-field',
+    'canvas', 'media-frame', 'date-field',
     'composition-bar', 'metric-hierarchy', 'warning', 'continuity',
     *VR3_CAPABILITY_IDS,
 }
@@ -146,19 +151,16 @@ VO_T4_DOWNSTREAM = {
 
 
 def vo_t4_manifest(*, active_consumer_path='src/Probe.tsx', expiry='2099-12-31',
-                   owners=True, spine_shell='src/components/Sidebar.tsx'):
+                   owners=True):
     capabilities = []
     for cap_id in VO_T4_IDS:
         if cap_id in VO_T4_ACTIVE:
-            if cap_id == 'workflow-stepper':
-                # VR3-03: the Sidebar renders the canonical journey SPINE,
-                # not a second stepper of its own — the chapter list that
-                # justified the old two-consumer manifest is retired.
+            if cap_id == 'workflow-navigator':
+                # Both tiers render it, and the gate proves the rails module
+                # is its real consumer rather than the registry.
                 consumers = [
-                    {'path': spine_shell,
-                     'pattern': '<OptionWorkflowSpine' if spine_shell.endswith('Sidebar.tsx')
-                     else '<ProjectWorkflowSpine'},
-                    {'path': 'src/components/WorkflowSpine.tsx', 'pattern': '<WorkflowStepper'},
+                    {'path': 'src/components/WorkflowSpine.tsx',
+                     'pattern': '<WorkflowNavigator'},
                 ]
             else:
                 consumers = [{'path': active_consumer_path, 'pattern': 'ACTIVE'}]
@@ -192,17 +194,22 @@ def run_vo_t4_capability_cases() -> list[str]:
         ('GOV-CAPABILITY: duplicate WorkflowStepper ownership is rejected',
          {'src/components/designSystem.tsx': 'export function WorkflowStepper() {}\n'},
          'second WorkflowStepper owner'),
-        # VR3-03: one canonical journey definition is the stronger state, but
-        # only while a product shell actually renders it — otherwise it is
-        # registry-only adoption with one extra hop.
-        ('GOV-CAPABILITY: an unrendered journey spine is rejected',
-         {'src/components/Sidebar.tsx': 'export const Sidebar = null\n',
+        # 2026-09-06: the flat stepper is RETIRED as a product capability, so
+        # a product surface that renders one again is the regression this
+        # branch exists to catch.
+        ('GOV-CAPABILITY: a returning product WorkflowStepper is rejected',
+         {'src/screens/Probe2.tsx': 'export const P = <WorkflowStepper />\n'},
+         'RETIRED as a product capability'),
+        # One canonical rail definition is the stronger state, but only while
+        # a product shell actually renders it — otherwise it is registry-only
+        # adoption with one extra hop.
+        ('GOV-CAPABILITY: an unrendered workflow rail is rejected',
+         {'src/App.tsx': 'export const App = null\n',
           'src/screens/ProjectHome.tsx': 'export const ProjectHome = null\n'},
-         'no product shell renders the canonical journey spine'),
-        ('GOV-CAPABILITY: a spine rendered by the project shell alone is accepted',
-         {'manifest': vo_t4_manifest(spine_shell='src/screens/ProjectHome.tsx'),
-          'src/components/Sidebar.tsx': 'export const Sidebar = null\n',
-          'src/screens/ProjectHome.tsx': "import { ProjectWorkflowSpine } from '../components/WorkflowSpine'\nexport const ProjectHome = <ProjectWorkflowSpine />\n"},
+         'no product shell renders a canonical workflow rail'),
+        ('GOV-CAPABILITY: a rail rendered by the project shell alone is accepted',
+         {'src/App.tsx': 'export const App = null\n',
+          'src/screens/ProjectHome.tsx': "import { ProjectWorkflowNavigator } from '../components/WorkflowSpine'\nexport const ProjectHome = <ProjectWorkflowNavigator />\n"},
          None),
     ]
     failed = []
@@ -214,8 +221,9 @@ def run_vo_t4_capability_cases() -> list[str]:
                 'src/design-system/WorkflowStepper.tsx': 'export function WorkflowStepper() {}\n',
                 'src/design-system/WorkflowNavigator.tsx': 'export function WorkflowNavigator() {}\n',
                 'src/design-system/Pagination.tsx': 'export function Pagination() {}\n',
-                'src/components/Sidebar.tsx': "import { OptionWorkflowSpine } from './WorkflowSpine'\nexport const Sidebar = <OptionWorkflowSpine />\n",
-                'src/components/WorkflowSpine.tsx': "import { WorkflowStepper } from '../design-system/WorkflowStepper'\nexport const Spine = <WorkflowStepper />\n",
+                'src/App.tsx': "import { OptionWorkflowNavigator } from './components/WorkflowSpine'\nexport const App = <OptionWorkflowNavigator />\n",
+                'src/screens/ProjectHome.tsx': "import { ProjectWorkflowNavigator } from '../components/WorkflowSpine'\nexport const ProjectHome = <ProjectWorkflowNavigator />\n",
+                'src/components/WorkflowSpine.tsx': "import { WorkflowNavigator } from '../design-system/WorkflowNavigator'\nexport const Rails = <WorkflowNavigator />\n",
                 'src/components/designSystem.tsx': 'export const DesignSystem = {}\n',
                 'src/design-system/registry.tsx': 'export const Registry = "ACTIVE"\n',
             }

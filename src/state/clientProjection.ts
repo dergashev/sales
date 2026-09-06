@@ -13,7 +13,7 @@ import type { Driver } from '../engine/calculate'
 export type OutputMode = 'intern' | 'praesentation'
 
 export type PipelineView =
-  | 'buildingScope' | 'konfigurator' | 'vergleich' | 'export'
+  | 'buildingScope' | 'konfigurator' | 'praesentieren' | 'vergleich' | 'export'
   | 'einstellungen' | 'grundlagen'
 
 export type ProductLevel = 'liste' | 'opportunity' | 'option'

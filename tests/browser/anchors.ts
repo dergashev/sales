@@ -43,21 +43,41 @@ export const PORTFOLIO_CARD_COUNT = 5
 export const PORTFOLIO_NAVIGABLE_COUNT = 2
 export const PORTFOLIO_DISPLAY_ONLY_COUNT = 3
 export const PROJECT_LIST_HEADING = 'Projekte'
-/** The canonical full-journey rail — now the OPTION workspace's, since the
- *  project level carries the six-stage `WorkflowNavigator` instead. */
-export const PROJECT_SPINE_LANDMARK = 'Projekt- und Optionsverlauf'
-/** The project level's grouped six-stage journey navigation. */
+/**
+ * TWO WORKSPACES, ONE SEAM (accepted 2026-09-06 IA audit): one rail is
+ * mounted at a time, and both are the canonical `WorkflowNavigator`.
+ * The retired flat spine's landmark (`Projekt- und Optionsverlauf`) exists
+ * on no surface any more.
+ */
 export const PROJECT_JOURNEY_LANDMARK = 'Projektablauf'
+export const OPTION_JOURNEY_LANDMARK = 'Optionsablauf'
 
+/**
+ * Destination LABELS. The left rail that used to carry them as a numbered
+ * list is retired: `Gebäude & Umfang` and the cost groups are nested steps
+ * of the Option rail, `Variantenvergleich` is a project destination offered
+ * on the Options collection, and `Export` is an Option action on the
+ * `Präsentieren` stage. The words are unchanged; only their homes moved.
+ */
 export const NAV = {
-  landmark: 'Navigation',
   items: {
     buildingScope: 'Gebäude & Umfang',
-    konfigurator: 'Konfigurator',
     vergleich: 'Variantenvergleich',
     export: 'Export',
     einstellungen: 'Einstellungen',
     grundlagen: 'Grundlagen',
+  },
+} as const
+
+/** The Option workspace: its context header, its rail and its collection. */
+export const OPTION_WORKSPACE = {
+  allOptions: 'Alle Optionen',
+  switcher: 'Option wechseln',
+  stages: {
+    configure: 'Konfigurieren',
+    calculate: 'Kalkulieren',
+    validate: 'Prüfen',
+    present: 'Präsentieren',
   },
 } as const
 
@@ -91,9 +111,14 @@ export const OPPORTUNITY = {
   reviewUnderstanding: 'Projektverständnis prüfen',
   createOption: 'Option anlegen',
   openOption: 'Öffnen',
-  /** VR3-02 (T-012): the hand-off's one continuation names the stage. */
-  defineScope: 'Gebäude & Umfang festlegen',
-  readinessHeadingRegion: 'Opportunity Options',
+  /**
+   * The Options collection's own action NAMES its destination (2026-09-06 IA
+   * audit): `Öffnen · <first step>` for a new Option, `Fortsetzen · <where>`
+   * for one in progress, `Präsentieren` for a client-ready one. The retired
+   * hand-off page's `Gebäude & Umfang festlegen` is gone with the page.
+   */
+  openNewOption: 'Öffnen · Gebäude & Umfang',
+  optionsHeading: 'Optionen',
 }
 
 /**

@@ -1132,3 +1132,34 @@ export function documentDisplayState(
   }
   return state
 }
+
+/**
+ * Has the project understanding MOVED since this baseline was committed?
+ *
+ * Scope addition B of the 2026-09-06 IA audit, CPO ruling of the same day:
+ * DISCLOSURE, not invalidation. An Option inherits the project baseline by
+ * value at creation, deliberately, under M-1/M-3 — a later re-analysis must
+ * never move an Option's commercial base, and this function moves nothing.
+ * It answers one read-only question so the product can state the truth it
+ * already holds instead of letting a reader assume every Option tracks the
+ * latest understanding.
+ *
+ * It re-derives the snapshot the project would produce RIGHT NOW and compares
+ * it with the one that was committed, with the timestamp neutralised so the
+ * comparison is about the understanding and not about the clock. Reusing
+ * `projectBaselineSnapshot` is deliberate: a hand-written list of "material"
+ * fields would be a second definition of what a baseline is, and it would
+ * drift from the first one the next time a field is added.
+ *
+ * It gates NOTHING. No predicate reads it, no stage locks on it, and no
+ * Option is invalidated by it.
+ */
+export function projectBaselineDrifted(
+  project: FixtureProject,
+  analysis: ProjectAnalysis,
+  baseline: ProjectBaselineSnapshot,
+): boolean {
+  if (baseline.projectId !== project.id) return false
+  const live = projectBaselineSnapshot(project, analysis, baseline.at)
+  return JSON.stringify(live) !== JSON.stringify(baseline)
+}

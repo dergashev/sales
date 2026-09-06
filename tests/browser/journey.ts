@@ -81,10 +81,15 @@ export async function reachOptionWorkspace(page: Page, projectName: string) {
   await expect(create).not.toHaveAttribute('aria-disabled', 'true', { timeout: 30_000 })
   await create.click()
 
-  // VR3-02 (T-012): the hand-off's one continuation names the stage it
-  // opens. `Öffnen` in the Option gallery still exists and still works —
-  // this walks the primary path, which is the one the target describes.
-  await page.getByRole('button', { name: OPPORTUNITY.defineScope }).click()
+  /**
+   * 2026-09-06 IA rebuild: creating an Option lands in the COLLECTION and
+   * stops. Configuration is a separate, deliberate act, and the card's own
+   * action names the stage it opens — which is the walk this helper now
+   * performs, and the one the target frames describe (T-03 → T-04).
+   */
+  await expect(page.getByRole('heading', { level: 1, name: /^Optionen/ }))
+    .toBeVisible({ timeout: 15_000 })
+  await page.getByRole('button', { name: OPPORTUNITY.openNewOption }).click()
   await expect(page.getByRole('heading', { level: 1, name: NAV.items.buildingScope }))
     .toBeVisible({ timeout: 15_000 })
 }

@@ -6181,37 +6181,44 @@ class Verifier:
                 if re.search(rf'\b(?:export\s+)?(?:function|const)\s+{symbol}\b', clean):
                     self.emit('GOV-CAPABILITY', source_rel, 1, source.split('\n')[0],
                               f'a second {symbol} owner returned; consume {owner_rel} instead')
-        # VR3-01: `OpportunityCard.tsx` was retired with the four-stage
-        # project card; the second real consumer became the project shell.
-        # VR3-02: the thirteen-step journey renders in BOTH the project and
-        # the Option context, so the steps were computed once in
-        # `WorkflowSpine.tsx` and both shells consumed that — while the
-        # Sidebar ALSO kept its own `<WorkflowStepper>` for the Configurator
-        # chapter list, which is why this manifest named two consumers.
+        # VR3-01 → VR3-03 → 2026-09-06 IA audit, in three moves.
         #
-        # VR3-03 retired that chapter list: the six cost groups are stages of
-        # the one journey now, with their own current/complete/skipped
-        # states, so the spine carries them and the Sidebar renders the spine
-        # rather than a second stepper beside it. The canonical stepper
-        # therefore has exactly ONE direct consumer, and that is the
-        # stronger state — a single definition of the journey — not weaker
-        # adoption. The manifest moves with the change, as the module
-        # docstring requires.
+        # The manifest used to name TWO real consumers of the flat
+        # `WorkflowStepper`: the Option-workspace spine and the Sidebar's own
+        # Configurator chapter list. VR3-03 retired the chapter list, leaving
+        # one. The Project → Option → Configurator IA audit retires the last
+        # one: the 13-step vertical spine WAS the Option rail, and both tiers
+        # now render the hierarchical `WorkflowNavigator` instead — so the
+        # flat stepper has no product adoption left and the manifest records
+        # it `RETIRED`. Its canonical module and registry specimen remain, as
+        # a catalogue shape with no consumer, which is what that disposition
+        # means here.
+        #
+        # What the gate enforces therefore MOVES with the capability: the
+        # SURVIVING rail has to be genuinely adopted, and no product surface
+        # may quietly re-grow a flat stepper of its own.
+        for source_rel, source in self.files('*.tsx'):
+            if (source_rel.startswith('src/design-system/')
+                    or '__tests__' in source_rel):
+                continue
+            if '<WorkflowStepper' in self._mask_comments(source):
+                self.fail('GOV-CAPABILITY', source_rel,
+                          'WorkflowStepper is RETIRED as a product capability; '
+                          'consume src/design-system/WorkflowNavigator.tsx instead')
         consumer_rel = 'src/components/WorkflowSpine.tsx'
         consumer = self.read(consumer_rel) or ''
-        if ("from '../design-system/WorkflowStepper'" not in consumer
-                or '<WorkflowStepper' not in consumer):
-            self.fail('GOV-CAPABILITY', 'src/design-system/WorkflowStepper.tsx',
-                      'canonical WorkflowStepper must have its real consumer '
+        if ("from '../design-system/WorkflowNavigator'" not in consumer
+                or '<WorkflowNavigator' not in consumer):
+            self.fail('GOV-CAPABILITY', 'src/design-system/WorkflowNavigator.tsx',
+                      'canonical WorkflowNavigator must have its real consumer '
                       '(WorkflowSpine), not registry-only adoption')
-        # And the spine has to be REACHED: a journey definition no shell
+        # And the rails have to be REACHED: a journey definition no shell
         # renders is the same registry-only adoption in one more hop.
-        shells = [rel for rel in ('src/components/Sidebar.tsx',
-                                  'src/screens/ProjectHome.tsx')
+        shells = [rel for rel in ('src/App.tsx', 'src/screens/ProjectHome.tsx')
                   if 'WorkflowSpine' in (self.read(rel) or '')]
         if not shells:
             self.fail('GOV-CAPABILITY', 'src/components/WorkflowSpine.tsx',
-                      'no product shell renders the canonical journey spine')
+                      'no product shell renders a canonical workflow rail')
         for source_rel, source in self.files('*.tsx'):
             if source_rel == 'src/design-system/WorkflowStepper.tsx':
                 continue

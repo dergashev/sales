@@ -139,7 +139,12 @@ describe('Leistungsabgrenzung — six explicit decisions (T-018–T-020)', () =>
     expect(screen.getByText('Bewusst ausgeschlossen')).toBeInTheDocument()
     expect(screen.getAllByText(/Nicht im Umfang · übersprungen/).length)
       .toBeGreaterThan(0)
-    // And it is still a REACHABLE step of the journey.
+    // And it is still a REACHABLE step of the journey. Since the 2026-09-06
+    // IA rebuild the cost groups are steps of KALKULIEREN and render inside
+    // that stage — progressive disclosure is the canonical navigator's
+    // contract, not a flag — so the journey is walked to get to them, which
+    // is exactly what a user does.
+    await user.click(screen.getByRole('button', { name: /^Kalkulieren/ }))
     expect(screen.getAllByRole('button', { name: /^KG 400/ }).length)
       .toBeGreaterThan(0)
   })
@@ -184,6 +189,10 @@ describe('gating (workflow state machine invariants 4 and 5)', () => {
 
     completeKgConfiguration()
     expect(kgConfigurationCompleteFor(st())).toBe(true)
+    // Terminplan is the last step of Kalkulieren, so it is asserted where a
+    // user meets it: inside that stage, unlocked, once every included cost
+    // group is complete.
+    await user.click(screen.getByRole('button', { name: /^Kalkulieren/ }))
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: /^Terminplan/ }).length)
         .toBeGreaterThan(0)

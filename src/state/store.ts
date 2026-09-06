@@ -68,6 +68,15 @@ import {
   type CommercialResult,
   type CommercialTrust,
 } from './commercialResult'
+/**
+ * `optionLifecycle` imports this module back, and the cycle is deliberate and
+ * safe: BOTH directions are used only inside function bodies, never at module
+ * evaluation. The alternative was a second copy of the destination rule — one
+ * in the reducer that navigates and one in the button that names where it
+ * goes — which is precisely the "one question, two answers" defect the audit
+ * measured on the released `openOption`.
+ */
+import { optionNav, optionOpenDestination } from './optionLifecycle'
 import {
   buildingScopeFingerprint,
   buildingScopeSaved as scopeIsSaved,
@@ -292,12 +301,23 @@ const D = (s: string) => new Decimal(s)
  */
 
 /**
- * VR3-01 — the three project-level stages of the canonical journey. They
- * are the first three entries of the workflow spine (Dokumente →
- * Projektverständnis → Option anlegen); everything after them belongs to
- * an Option and is addressed by `pipelineView`.
+ * The PROJECT WORKSPACE's destinations (accepted 2026-09-06 Project → Option
+ * → Configurator IA audit).
+ *
+ * Three stages own project data — documents, understanding, and the Options
+ * collection — plus one cross-Option destination (`comparison`) that is
+ * reached FROM the collection and is deliberately not a stage of it.
+ * Everything after them belongs to ONE Option and is addressed by
+ * `pipelineView` inside the Option workspace.
+ *
+ * `'createOption'` is gone as a value, and its removal is the whole point of
+ * the audit: object CREATION was narrated as the first step of configuring
+ * the object it creates, so the home of every Option was a surface named
+ * after the act of making one. The collection's own name is `'options'`; the
+ * act is a button inside it.
  */
-export type ProjectStage = 'documents' | 'understanding' | 'createOption'
+export type ProjectStage =
+  | 'documents' | 'understanding' | 'options' | 'comparison'
 
 /** Sections of Project Understanding. Questions are not conflicts. */
 export type UnderstandingTab = 'overview' | 'conflicts' | 'questions'
@@ -1793,7 +1813,7 @@ export type Projection = {
   uncertaintyPp: number
 }
 
-type Store = {
+export type Store = {
   /**
    * Все здания проекта. Раньше здесь жило одно — и это была не упрощённая
    * модель, а неверная: у комплекса нет «того самого» здания, а оси
@@ -2335,6 +2355,25 @@ type Store = {
    * переход режима), другой целевой уровень.
    */
   backToOpportunity: () => void
+  /**
+   * `Alle Optionen` — the explicit reverse of crossing the seam.
+   *
+   * It leaves the Option WORKSPACE without leaving the Option: the
+   * collection marks the Option the user just left as the active one, so
+   * their position in it is never lost. That is why, unlike `backToList`,
+   * it does not clear `activeOptionId` — a state the released product
+   * already produces on every `createOption` (level stays `'opportunity'`
+   * while the new Option becomes active).
+   */
+  openOptionsStage: () => void
+  /**
+   * `Variantenvergleich` — a project-level, cross-Option destination.
+   *
+   * Not a stage and never numbered beneath a rail: comparison is about the
+   * COLLECTION, so it is reached from the collection and belongs to the
+   * project tier that owns it.
+   */
+  openComparison: () => void
   confirmProjectParams: () => void
   /** VR3-01 — project-level navigation and documentation analysis. */
   setProjectStage: (stage: ProjectStage) => void
@@ -2910,8 +2949,61 @@ export function pipelineViewForBuildingGate(
   // named prerequisite and the route that resolves it. Bouncing them back
   // to a surface that does not explain itself is the "disabled navigation
   // as the explanation" defect the target names (T-016).
-  if (view === 'konfigurator') return view
+  //
+  // 2026-09-06: `praesentieren` joins it for exactly the same reason. Its
+  // surface carries the released mode switch, blocked, with the first of
+  // three ordered reasons — which is the explanation a bounce would deny.
+  if (view === 'konfigurator' || view === 'praesentieren') return view
   return view !== 'buildingScope' ? 'buildingScope' : view
+}
+
+/**
+ * WHERE a returning user lands when they open a project (accepted 2026-09-06
+ * IA audit, "Returning user behaviour").
+ *
+ * The rule is derived from the project's own job and its own collection, and
+ * it decides ONE thing: which of the three project stages is on screen. It
+ * enables nothing — every gate below it is unchanged — and it can never send
+ * a user to a stage that has no content, because the stage it names always
+ * has some.
+ *
+ * The old rule stopped at `understanding`, so a user with three Options in
+ * progress was greeted, every single morning, by the surface whose primary
+ * action is `Option anlegen`: the product's answer to "where was I" was
+ * "make another one".
+ */
+export function landingProjectStage(
+  s: Pick<Store, 'projectAnalyses' | 'options'>, projectId: string | null,
+): ProjectStage {
+  const analysis = projectId ? s.projectAnalyses[projectId] : undefined
+  if (!analysis || analysis.jobState !== 'COMPLETE') return 'documents'
+  return s.options.length > 0 ? 'options' : 'understanding'
+}
+
+/**
+ * Crossing the seam OUTWARDS: the shared half of `backToOpportunity`,
+ * `openOptionsStage` and `openComparison`.
+ *
+ * `activeOptionId` deliberately SURVIVES. It is the internal preparation
+ * Option, the collection marks it `● Aktiv`, and clearing it would lose the
+ * reader's place in the very list they were sent to. The state is not new:
+ * `createOption` has always left `level: 'opportunity'` with an active
+ * Option. What must still reset is `viewedOptionId` — the presented Option
+ * is a client-mode selection and it never outlives the client mode, exactly
+ * as `modeForLevelTransition` handles `mode` itself.
+ *
+ * The working copy stays in the flat fields rather than being captured into
+ * `optionConfigs`, because the Option is still the active one:
+ * `configForOption` reads `captureConfig` for the active Option and the
+ * store for every other, so both halves agree with no copy to keep in sync.
+ */
+function leaveOptionWorkspace(s: Store) {
+  return {
+    mode: modeForLevelTransition(s.mode, 'opportunity'),
+    level: 'opportunity' as const,
+    viewedOptionId: null,
+    configurationModeEditing: false,
+  }
 }
 
 /**
@@ -6475,22 +6567,13 @@ const store = createStore<Store>((set, get) => {
       })
     },
 
-    openOpportunity: (id) => set((s) => {
-      // Entering a project always lands on its CURRENT stage, derived from
-      // its own job — not on whatever stage the previously opened project
-      // happened to be showing.
-      const analysis = s.projectAnalyses[id]
-      const stage: ProjectStage = !analysis || analysis.jobState !== 'COMPLETE'
-        ? 'documents'
-        : 'understanding'
-      return {
-        mode: modeForLevelTransition(s.mode, 'opportunity'),
-        level: 'opportunity',
-        opportunityId: id,
-        projectStage: stage,
-        understandingTab: 'overview',
-      }
-    }),
+    openOpportunity: (id) => set((s) => ({
+      mode: modeForLevelTransition(s.mode, 'opportunity'),
+      level: 'opportunity',
+      opportunityId: id,
+      projectStage: landingProjectStage(s, id),
+      understandingTab: 'overview',
+    })),
     backToList: () => {
       const s = get()
       set({
@@ -6514,14 +6597,26 @@ const store = createStore<Store>((set, get) => {
       const s = get()
       set({
         ...NO_TRANSIENT,
-        mode: modeForLevelTransition(s.mode, 'opportunity'),
-        level: 'opportunity',
-        activeOptionId: null,
-        viewedOptionId: null,
-        configurationModeEditing: false,
-        ...(s.activeOptionId
-          ? { optionConfigs: { ...s.optionConfigs, [s.activeOptionId]: captureConfig(s) } }
-          : {}),
+        ...leaveOptionWorkspace(s),
+        projectStage: landingProjectStage(s, s.opportunityId),
+      })
+    },
+
+    openOptionsStage: () => {
+      const s = get()
+      set({
+        ...NO_TRANSIENT,
+        ...leaveOptionWorkspace(s),
+        projectStage: 'options',
+      })
+    },
+
+    openComparison: () => {
+      const s = get()
+      set({
+        ...NO_TRANSIENT,
+        ...leaveOptionWorkspace(s),
+        projectStage: 'comparison',
       })
     },
 
@@ -7028,7 +7123,11 @@ const store = createStore<Store>((set, get) => {
         activeOptionId: id,
         optionSeq: seq,
         pipelineView: 'buildingScope',
-        projectStage: 'createOption',
+        // The Option's HOME is the collection. Creating one navigates there
+        // and stops: configuration is a separate, deliberate act, and the
+        // Open button on the new card says where it leads (target frame
+        // T-03, which is normative for this exact state).
+        projectStage: 'options',
         // Новая Option — независимый вариант со свежей конфигурацией.
         // Рабочая копия предыдущей активной Option убирается в хранилище,
         // свежая раскладывается в плоские поля.
@@ -7165,21 +7264,41 @@ const store = createStore<Store>((set, get) => {
       })
     },
 
+    /**
+     * Enter the Option workspace at the first stage that is not complete.
+     *
+     * DETERMINISTIC AND TOTAL (accepted 2026-09-06 IA audit, §8). The
+     * released action chose between two surfaces from one predicate and
+     * announced neither; every card action and every switcher entry now
+     * NAMES this destination before the click, and they name it by calling
+     * the same function (`optionOpenDestination`) that this action lands on.
+     * A button that says `Fortsetzen · Kalkulieren` and a store that opens
+     * Gebäude & Umfang would be two answers to one question.
+     *
+     * It decides nothing about what is ALLOWED. Every gate predicate is
+     * untouched; the destination is simply the furthest point the gates
+     * already permit, computed instead of guessed.
+     */
     openOption: (id) => {
       const s = get()
       if (!s.options.some((o) => o.id === id)) return
+      const target = optionOpenDestination(s, id)
+      const nav = target ? optionNav(target) : null
       if (s.activeOptionId === id) {
+        const pipelineView = nav?.view ?? (canBeginConfiguration(s) ? 'konfigurator' : 'buildingScope')
+        const openConfiguratorStep = nav?.step ?? s.openConfiguratorStep
         set({
           level: 'option',
-          pipelineView: canBeginConfiguration(s) ? 'konfigurator' : 'buildingScope',
+          pipelineView,
+          openConfiguratorStep,
           configurationModeEditing: false,
           ...(canBeginConfiguration(s) && s.configurationModeChosen
             && !s.configurationModeEditing
-            && !s.visitedConfiguratorSteps.includes(s.openConfiguratorStep)
+            && !s.visitedConfiguratorSteps.includes(openConfiguratorStep)
             ? {
                 visitedConfiguratorSteps: [
                   ...s.visitedConfiguratorSteps,
-                  s.openConfiguratorStep,
+                  openConfiguratorStep,
                 ],
               }
             : {}),
@@ -7205,15 +7324,18 @@ const store = createStore<Store>((set, get) => {
         ...NO_TRANSIENT,
         level: 'option',
         activeOptionId: id,
-        pipelineView: canBeginConfiguration({
-          ...next,
-          buildingConflicts: s.buildingConflicts,
-        }) ? 'konfigurator' : 'buildingScope',
         optionConfigs: s.activeOptionId
           ? { ...rest, [s.activeOptionId]: captureConfig(s) }
           : rest,
         ...next,
-        openConfiguratorStep: nearestActiveConfiguratorStep({
+        pipelineView: nav?.view ?? (canBeginConfiguration({
+          ...next,
+          buildingConflicts: s.buildingConflicts,
+        }) ? 'konfigurator' : 'buildingScope'),
+        // The destination's own step wins; `nearestActiveConfiguratorStep`
+        // remains the fallback for a stored step that the Option's current
+        // output profile no longer renders.
+        openConfiguratorStep: nav?.step ?? nearestActiveConfiguratorStep({
           coverage: next.coverage,
           mode: s.mode,
         }, next.openConfiguratorStep),

@@ -12,7 +12,7 @@ import {
   saveOptionBaseline,
 } from '../../test/offer-option'
 import { __resetStoreForTests, useStore } from '../../state/store'
-import { ProjectOptionsSection } from '../ProjectOptions'
+import { OptionsWorkspace } from '../ProjectOptions'
 import { demoProject } from '../../state/projectAnalysis'
 import { LIFECYCLE_STATUSES, decodePortfolioQuery } from '../../state/projectPortfolio'
 import {
@@ -400,13 +400,13 @@ describe('Уровень Projekte', () => {
     settleOptionCommit()
     expect(useStore.getState().options).toHaveLength(1)
 
-    // Option startet im vorgeschalteten Gebäudeschritt — noch ohne Preis.
-    // VR3-02: the hand-off's one continuation NAMES the stage it opens
-    // ("Gebäude & Umfang festlegen"), and the Option's first surface is
-    // that stage. There is no commercial rail before it and no readiness
-    // rail either — the completion count lives in the surface's own header,
-    // where the decision is.
-    await user.click(screen.getByRole('button', { name: 'Gebäude & Umfang festlegen' }))
+    // Creating an Option lands in the COLLECTION and stops (2026-09-06 IA
+    // audit, target frame T-03): configuration is a separate, deliberate
+    // act. The card's own action names the stage it opens, so the walk into
+    // the Option workspace is the same one sentence it always was — it is
+    // simply on the Option now, rather than on a hand-off page named after
+    // the act of creating one.
+    await user.click(screen.getByRole('button', { name: 'Öffnen · Gebäude & Umfang' }))
     expect(screen.getByRole('heading', { name: 'Gebäude & Umfang' })).toBeInTheDocument()
     expect(screen.queryByRole('complementary', { name: 'Angebot' })).not.toBeInTheDocument()
     expect(screen.getByText('0 von 3 bestätigt')).toBeInTheDocument()
@@ -550,6 +550,10 @@ describe('Уровень Projekte', () => {
     completeBuildingScope('PER_BUILDING')
     completeKgConfiguration()
     saveOptionBaseline()
+    // `Präsentieren` is the Option stage whose ACTION enters the client
+    // projection (2026-09-06 IA audit): the mode switch left the retired
+    // left rail and is now the primary action of that stage's surface.
+    act(() => { useStore.getState().setPipelineView('praesentieren') })
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
 
@@ -603,10 +607,34 @@ describe('AUD-03 — Option identity & creation continuity', () => {
    * состояние, которое проверяется, а не путь к нему. Компонент —
    * канонический источник, тот же, что рендерит продукт.
    */
+  /**
+   * The Options collection is a full DESTINATION now (2026-09-06 IA audit),
+   * so it takes the project and its analysis rather than being a section
+   * mounted inside a hand-off. It is still rendered directly and still the
+   * canonical source the product renders, for the same reason as before:
+   * the subject is the collection itself, and reaching it through
+   * `backToOpportunity()` used to clear the active Option these cases assert
+   * on. (It no longer does — `activeOptionId` survives leaving the Option
+   * workspace by design — but rendering the surface directly keeps the
+   * cases about the surface.)
+   */
+  function renderOptionsCollection(justCreatedOptionId: string | null = null) {
+    const s = useStore.getState()
+    const project = demoProject(s.opportunityId!)!
+    const analysis = s.projectAnalyses[project.id]!
+    render(
+      <OptionsWorkspace
+        project={project}
+        analysis={analysis}
+        justCreatedOptionId={justCreatedOptionId}
+      />,
+    )
+    return document.querySelector('.a3-options') as HTMLElement
+  }
+
   function reachOptionGallery() {
     enterOptionWorkspace()
-    render(<ProjectOptionsSection justCreatedOptionId={null} />)
-    return screen.getByRole('region', { name: 'Opportunity Options' })
+    return renderOptionsCollection()
   }
 
   it('AC-1/AC-2: ein schneller Doppelklick erzeugt genau eine Option, ein Journal-Event', async () => {
@@ -644,7 +672,7 @@ describe('AUD-03 — Option identity & creation continuity', () => {
     // einen Verlauf (Spine) wieder erreichbar, und der zweite,
     // eigenständige Klick legt eine zweite, eindeutig benannte Option an.
     const journey = screen.getByRole('navigation', { name: 'Projektablauf' })
-    await user.click(within(journey).getByText('Verstehen').closest('button')!)
+    await user.click(within(journey).getByText('Projektverständnis').closest('button')!)
     await user.click(create())
     settleOptionCommit()
     expect(useStore.getState().options.map((o) => o.name)).toEqual(['Option 1', 'Option 2'])
@@ -660,7 +688,7 @@ describe('AUD-03 — Option identity & creation continuity', () => {
     await user.click(create())
     settleOptionCommit()
 
-    const section = screen.getByRole('region', { name: 'Opportunity Options' })
+    const section = document.querySelector('.a3-options') as HTMLElement
     const row = within(section).getByText('Option 1').closest('li')!
     expect(row.contains(document.activeElement)).toBe(true)
     expect(document.activeElement).not.toBe(document.querySelector('[data-page-heading]'))
@@ -692,9 +720,11 @@ describe('AUD-03 — Option identity & creation continuity', () => {
     act(() => { useStore.getState().createOption() })
     expect(useStore.getState().options.map((o) => o.name)).toEqual(['Option 1', 'Option 2'])
 
-    const rows = within(section).getAllByRole('button', { name: 'Umbenennen' })
-    expect(rows).toHaveLength(2)
-    await user.click(rows[1]!)
+    // The collection is ordered incomplete-first, then most recently
+    // changed — so a row is addressed by its Option, never by its position.
+    const secondRow = within(section).getByText('Option 2').closest('li')!
+    expect(within(section).getAllByRole('button', { name: 'Umbenennen' })).toHaveLength(2)
+    await user.click(within(secondRow).getByRole('button', { name: 'Umbenennen' }))
     const field = screen.getByLabelText('Name der Option')
     await user.clear(field)
     await user.type(field, 'Option 1{Enter}')
@@ -726,8 +756,12 @@ describe('AUD-03 — Option identity & creation continuity', () => {
     const total = useStore.getState().projection().result.total.exact
     expect(total.isZero()).toBe(true)
     expect(row()).toHaveTextContent('Preis nicht ermittelt')
-    // Umfang: die Gebäudekomposition der Option, als Chips.
-    expect(row()).toHaveTextContent('Haus A')
+    // Umfang: die Gebäude, die die Option aus der Projektgrundlage geerbt
+    // hat — mit ihren Namen AUS DIESER GRUNDLAGE, nicht aus einer zweiten
+    // Quelle (M-1/M-3).
+    expect(row()).toHaveTextContent('1 Gebäude')
+    expect(row()).toHaveTextContent('Lindenhof')
+    expect(row()).toHaveTextContent('aus der Projektgrundlage vom')
     expect(within(section).getByRole('button', { name: 'Umbenennen' })).toBeInTheDocument()
 
     act(() => { useStore.getState().sendOffer('email') })
@@ -735,16 +769,32 @@ describe('AUD-03 — Option identity & creation continuity', () => {
     expect(within(section).queryByRole('button', { name: 'Umbenennen' })).toBeNull()
   })
 
-  it('AC-4: eine geöffnete, aber noch nicht gesendete Option zeigt "In Arbeit"', () => {
+  /**
+   * AC-4, restated by the 2026-09-06 IA audit's scope addition A.
+   *
+   * "In Arbeit" used to mean "this Option has a journal event", which is
+   * activity rather than progress: three Options that had each been opened
+   * once were indistinguishable, and so were an Option with a saved scope
+   * and one without. The badge is derived from the GATES now, so this case
+   * drives the real transition instead of a proxy for it — an Option is
+   * `Neu` until its building scope is saved and `In Arbeit · …` after,
+   * naming the stage that is actually open.
+   */
+  it('AC-4: der Fortschritt kommt aus den Gates, nicht aus blosser Aktivität', async () => {
+    const user = userEvent.setup()
     enterOptionWorkspace()
-    // Eine triviale In-Pipeline-Aktion (level: 'option') erzeugt ein
-    // optionId-getaggtes Journal-Ereignis (siehe `apply()` in store.ts) —
-    // das Erzeugen selbst zählt bewusst NICHT (siehe `OptionCard`).
     act(() => { useStore.getState().toggleBuildingIncluded('DEMO-B-B') })
-    render(<ProjectOptionsSection justCreatedOptionId={null} />)
-    const section = screen.getByRole('region', { name: 'Opportunity Options' })
+    const before = renderOptionsCollection()
+    // Aktivität allein bewegt nichts: der Gebäudeumfang ist nicht gespeichert.
+    expect(within(before).getByText('Option 1').closest('li')!)
+      .toHaveTextContent('Neu')
+    cleanup()
+
+    await confirmBuildingReviewSections(user)
+    completeBuildingScope('PER_BUILDING')
+    const section = renderOptionsCollection()
     const row = within(section).getByText('Option 1').closest('li')!
-    expect(row).toHaveTextContent('In Arbeit')
+    expect(row).toHaveTextContent('In Arbeit · Leistungsabgrenzung')
     expect(row).not.toHaveTextContent('Versendet')
   })
 })

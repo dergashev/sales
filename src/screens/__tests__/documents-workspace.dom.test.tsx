@@ -233,11 +233,15 @@ describe('the rail tells the truth about the job', () => {
 })
 
 describe('the workflow orients without publishing the model', () => {
-  it('exposes six stages, one current, and no cost groups', async () => {
+  it('exposes three project stages, one current, and no cost groups', async () => {
     const user = userEvent.setup()
     await openProject(user, CLEAN)
     const nav = screen.getByRole('navigation', { name: 'Projektablauf' })
-    expect(nav.querySelectorAll('.a3-wfn-stage')).toHaveLength(6)
+    // 2026-09-06 IA rebuild: THREE, not six. The four Option-scoped stages
+    // moved to the tier that owns their data; the rail's own grammar —
+    // one current stage, members disclosed only inside it, no cost groups
+    // at project level — is unchanged.
+    expect(nav.querySelectorAll('.a3-wfn-stage')).toHaveLength(3)
     expect(nav.querySelectorAll('[aria-current="step"]')).toHaveLength(1)
     expect(within(nav).queryByText('KG 200')).not.toBeInTheDocument()
     expect(within(nav).queryByText('KG 700')).not.toBeInTheDocument()
@@ -253,11 +257,13 @@ describe('the workflow orients without publishing the model', () => {
 
     // Understand is gated by the same predicate as before: no analysis, no
     // entry — and the lock names the prerequisite instead of being grey.
-    expect(within(nav()).getByText(/gesperrt · Dokumentanalyse fehlt/)).toBeInTheDocument()
-    expect(within(nav()).getByText('Verstehen').closest('button')).toBeNull()
+    // Both locks name the SAME missing prerequisite, because it is the same
+    // one: nothing can be understood or optioned before the analysis has run.
+    expect(within(nav()).getAllByText(/gesperrt · Dokumentanalyse fehlt/)).toHaveLength(2)
+    expect(within(nav()).getByText('Projektverständnis').closest('button')).toBeNull()
 
     runAnalysis()
-    const understand = within(nav()).getByText('Verstehen').closest('button')!
+    const understand = within(nav()).getByText('Projektverständnis').closest('button')!
     await user.click(understand)
     expect(useStore.getState().projectStage).toBe('understanding')
     // Returning is the same store transition it always was.

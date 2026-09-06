@@ -56,17 +56,8 @@
     },
     {
       "id": "workflow-stepper",
-      "disposition": "ACTIVE",
-      "productConsumers": [
-        {
-          "path": "src/components/Sidebar.tsx",
-          "pattern": "<OptionWorkflowSpine"
-        },
-        {
-          "path": "src/components/WorkflowSpine.tsx",
-          "pattern": "<WorkflowStepper"
-        }
-      ]
+      "disposition": "RETIRED",
+      "note": "RETIRED as a product capability by the 2026-09-06 Project -> Option -> Configurator IA audit. The flat 13-step vertical spine was the Option workspace rail; it was 2.21 viewports tall at 1440 and 2.63 at 1280 and replaced the project rail grammar at the exact boundary the user was crossing. Both tiers now render the hierarchical WorkflowNavigator, so the flat stepper has no product consumer left. The canonical module and its registry specimen remain as a catalogue shape with no adoption, which is what this disposition records."
     },
     {
       "id": "legacy-workflow-stepper",
@@ -95,11 +86,11 @@
       "disposition": "ACTIVE",
       "productConsumers": [
         {
-          "path": "src/screens/ProjectOptions.tsx",
+          "path": "src/screens/S4Vergleich.tsx",
           "pattern": "<CompositionBar"
         },
         {
-          "path": "src/screens/S4Vergleich.tsx",
+          "path": "src/components/PresentationShell.tsx",
           "pattern": "<CompositionBar"
         }
       ]
@@ -243,7 +234,11 @@
       "disposition": "ACTIVE",
       "productConsumers": [
         {
-          "path": "src/screens/ProjectHome.tsx",
+          "path": "src/components/OptionCreation.tsx",
+          "pattern": "<ActionGate"
+        },
+        {
+          "path": "src/screens/BuildingScope.tsx",
           "pattern": "<ActionGate"
         }
       ]
@@ -253,7 +248,7 @@
       "disposition": "ACTIVE",
       "productConsumers": [
         {
-          "path": "src/screens/ProjectHome.tsx",
+          "path": "src/screens/ProjectOptions.tsx",
           "pattern": "<ProjectReadiness"
         }
       ]
@@ -408,6 +403,10 @@
         },
         {
           "path": "src/screens/OpportunityList.tsx",
+          "pattern": "<Pagination"
+        },
+        {
+          "path": "src/screens/ProjectOptions.tsx",
           "pattern": "<Pagination"
         }
       ]

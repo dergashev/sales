@@ -341,3 +341,16 @@ export async function startClientPresentation(
   const start = await screen.findByRole('button', { name: 'Präsentation starten' })
   await user.click(start)
 }
+
+/**
+ * The `Präsentieren` stage — where the released mode switch lives since the
+ * 2026-09-06 Project → Option → Configurator IA rebuild.
+ *
+ * The switch used to sit permanently at the bottom of the left rail, which
+ * is why so many suites reached it without navigating. That rail is gone:
+ * entering the client projection is a stage of ONE Option now, and the stage
+ * is reachable while it is locked precisely so it can still explain itself.
+ */
+export function openPresentStage() {
+  act(() => { useStore.getState().setPipelineView('praesentieren') })
+}

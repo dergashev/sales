@@ -5,6 +5,7 @@ import { App } from '../../App'
 import {
   completeKgConfiguration, confirmBuildingReviewSections,
   decideAllKgScope, enterOptionWorkspace, completeBuildingScope,
+  openPresentStage,
   saveOptionBaseline,
   startClientPresentation,
 } from '../../test/offer-option'
@@ -104,6 +105,7 @@ describe('DC-21: происхождение раскрывается у кажд
     completeKgConfiguration()
     saveOptionBaseline()
 
+    openPresentStage()
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
     // VR3-05 (T-034): Client Mode opens on its boundary screen; the

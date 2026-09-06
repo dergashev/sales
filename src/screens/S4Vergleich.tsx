@@ -64,6 +64,22 @@ export function S4Vergleich() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { reduced: reducedMotion } = useSemanticMotion();
   const client = isClientProjection(s.mode);
+  /**
+   * Re-enter the Option workspace from the comparison surface.
+   *
+   * The comparison is a cross-Option destination of the PROJECT tier now
+   * (accepted 2026-09-06 IA audit), so `setPipelineView` alone would set a
+   * view at a level that does not render one. `openOption` crosses the seam
+   * and lands on the Option's own first incomplete stage; the optional view
+   * overrides that for the export action, which is an Option ACTION rather
+   * than a stage of it.
+   */
+  const reopenActiveOption = (view?: "export") => {
+    const target = s.activeOptionId ?? s.options[0]?.id
+    if (!target) return
+    s.openOption(target)
+    if (view) s.setPipelineView(view)
+  };
   // ACCEPTANCE REMEDIATION (cycle 2, ACCEPT-01): the approved target leads
   // its first viewport with project context (name + Option count) above the
   // decision headline — the same `opportunities.json` lookup Sidebar.tsx
@@ -340,11 +356,14 @@ export function S4Vergleich() {
               className="a3-comparison-toolbar-group"
               aria-label={tx("Vergleichsnavigation")}
             >
-              <Button variant="ghost" onClick={() => s.setPipelineView("konfigurator")}>
+              {/* Comparison is a PROJECT destination now, so returning to
+                  work means re-entering the Option workspace rather than
+                  setting a view that this level does not render. */}
+              <Button variant="ghost" onClick={() => reopenActiveOption()}>
                 {t("nav.konfigurator")}
               </Button>
               <Button
-                onClick={() => s.setPipelineView("export")}
+                onClick={() => reopenActiveOption("export")}
                 disabled={!s.canBeginConfiguration() || !s.configurationComplete()}
                 disabledReason={t("configurator.finalGate.exportBlockedReason")}
               >
@@ -715,7 +734,7 @@ export function S4Vergleich() {
                         {c.option.id === s.activeOptionId ? (
                           <Button
                             variant="secondary"
-                            onClick={() => s.setPipelineView("konfigurator")}
+                            onClick={() => reopenActiveOption()}
                           >
                             {t("nav.konfigurator")}
                           </Button>
@@ -761,7 +780,7 @@ export function S4Vergleich() {
               "Die aktive Option ist verglichen — weiter zur Prüfung und zum Versand des Angebots.",
             )}
             action={tx("Angebot prüfen und exportieren")}
-            onAction={() => s.setPipelineView("export")}
+            onAction={() => reopenActiveOption("export")}
           />
         </div>
       )}

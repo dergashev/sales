@@ -86,6 +86,15 @@ const OWNED_SURFACES = [
   // 2026-09-05 audit required, plus the register they are composed into.
   'src/design-system/WorkflowNavigator.tsx',
   'src/design-system/Pagination.tsx',
+  // Project → Option → Configurator IA rebuild (accepted 2026-09-06 audit):
+  // the two workspaces' own surfaces. Every product-owned string on them is
+  // a dictionary key with a DE and an EN row — the ONE bridge call is the
+  // engine-composed Declared Pricing Scope label named in the next test,
+  // which is the accepted class rather than a new exemption.
+  'src/components/OptionContextHeader.tsx',
+  'src/components/OptionCreation.tsx',
+  'src/components/optionLabels.ts',
+  'src/screens/PraesentierenStage.tsx',
 ]
 
 function source(relative: string): string {
@@ -207,7 +216,13 @@ describe('VR3-01 · nothing on the owned surfaces can reach EN untranslated', ()
       'src/components/PresentationShell.tsx: tx(p.result.totalLabel)',
       'src/components/PresentationShell.tsx: tx(snapshot.totalLabel)',
       'src/design-system/WorkflowStepper.tsx: tx(key)',
-      'src/screens/ProjectOptions.tsx: tx(projection.result.totalLabel)',
+      // The Option card's metric is the SAVED version's total, and a saved
+      // total carries the same engine-composed German label every other
+      // surface bridges (R-18). The live-projection call it replaces was
+      // this same accepted class; the receipt on the Präsentieren stage is
+      // the same label once more, on the stage that presents it.
+      'src/screens/PraesentierenStage.tsx: tx(saved.result.totalLabel)',
+      'src/screens/ProjectOptions.tsx: tx(saved.result.totalLabel)',
     ])
   })
 

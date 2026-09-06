@@ -7,6 +7,7 @@ import {
   confirmBuildingReviewSections, confirmWholeConfiguration, enterOptionWorkspace,
   completeBuildingScope, decideAllKgScope, completeKgConfiguration,
   saveOptionBaseline, startClientPresentation,
+  openPresentStage,
 } from '../../test/offer-option'
 import { __resetStoreForTests, useStore } from '../../state/store'
 
@@ -105,7 +106,9 @@ describe('Projektstatus-Überblick (Task 01) — roving tabindex (TABS-001/KEY-0
     const overview = await openOverview(user)
     const steps = stageButtons(overview)
     expect(steps.length).toBeGreaterThan(1)
-    expect(useStore.getState().projectStage).toBe('createOption')
+    // Leaving the Option workspace lands on the collection — the Option's
+    // home — not on a stage named after the act of creating one.
+    expect(useStore.getState().projectStage).toBe('options')
 
     steps[0]!.focus()
     await user.keyboard('{ArrowRight}')
@@ -114,7 +117,7 @@ describe('Projektstatus-Überblick (Task 01) — roving tabindex (TABS-001/KEY-0
     expect(document.activeElement).toBe(steps[1])
     // …а сама стадия ещё НЕ открыта: автоактивация стрелкой меняла бы
     // экран при каждом нажатии.
-    expect(useStore.getState().projectStage).toBe('createOption')
+    expect(useStore.getState().projectStage).toBe('options')
 
     await user.keyboard('{Enter}')
     // Enter открывает — и открывает ИМЕННО ту стадию, на которой фокус.
@@ -260,6 +263,10 @@ describe('Опции — нативная radio-группа (RADIO-001)', () =>
 describe('Гейт режима презентации — блокировка объясняет причину (правило 12)', () => {
   it('сегмент недоступен и несёт видимую причину, а не только погашен', async () => {
     await enterOption(userEvent.setup())
+    // The mode switch is the `Präsentieren` stage's own control now. The
+    // stage stays REACHABLE while it is locked, precisely so the blocked
+    // segment can carry its reason instead of the rail simply refusing.
+    openPresentStage()
     const group = screen.getByRole('radiogroup', { name: 'Ansicht' })
     const praesentation = within(group).getAllByRole('radio')[1] as HTMLInputElement
     expect(praesentation.disabled).toBe(true)
@@ -278,6 +285,7 @@ describe('Гейт режима презентации — блокировка 
     const user = userEvent.setup()
     await enterClientReadyPipeline(user)
 
+    openPresentStage()
     const group = screen.getByRole('radiogroup', { name: 'Ansicht' })
     const praesentation = within(group).getAllByRole('radio')[1] as HTMLInputElement
     expect(praesentation.disabled).toBe(false)
@@ -309,10 +317,20 @@ describe('Маршрут экрана возвращает начало доку
     const main = screen.getByRole('main')
     main.scrollTop = 420
 
+    /**
+     * Comparison is a PROJECT destination since the 2026-09-06 IA rebuild —
+     * it is about the COLLECTION, so it is reached from the collection. The
+     * subject of this case is unchanged (scroll and focus return to the top
+     * of a new document on every route change); only the route changed.
+     */
+    act(() => { useStore.getState().openOptionsStage() })
+    const main2 = screen.getByRole('main')
+    main2.scrollTop = 420
+    act(() => { useStore.getState().createOption() })
     const comparisonEntries = screen.getAllByRole('button', { name: 'Variantenvergleich' })
     expect(comparisonEntries).toHaveLength(1)
     await user.click(comparisonEntries[0]!)
-    expect(main.scrollTop).toBe(0)
+    expect(main2.scrollTop).toBe(0)
     // ACCEPTANCE REMEDIATION (cycle 2, ACCEPT-01): the H1 on this route is
     // now the approved target's decision headline (comparison.headline),
     // not the generic screen name — this assertion's subject remains
@@ -321,7 +339,13 @@ describe('Маршрут экрана возвращает начало доку
       screen.getByRole('heading', { level: 1, name: 'Entscheiden, nicht nur vergleichen.' }),
     ).toHaveFocus()
 
-    main.scrollTop = 320
+    // Back into the Option workspace for the Export route below.
+    act(() => {
+      const st = useStore.getState()
+      st.openOption(st.options[0]!.id)
+    })
+    const main3 = screen.getByRole('main')
+    main3.scrollTop = 320
     // Task 03 (F-16/PD-3): Export now requires the whole-option confirm
     // CTA — this test's subject is scroll/focus reset on navigation, not
     // that gate itself.
@@ -330,8 +354,9 @@ describe('Маршрут экрана возвращает начало доку
     // explicit service decision.
     completeKgConfiguration()
     confirmWholeConfiguration()
+    openPresentStage()
     await user.click(screen.getByRole('button', { name: 'Export' }))
-    expect(main.scrollTop).toBe(0)
+    expect(main3.scrollTop).toBe(0)
     expect(screen.getByRole('heading', { level: 1, name: /Export/ })).toHaveFocus()
   })
 })
@@ -386,10 +411,14 @@ describe('DC-33 · единственная модалка системы — в
     const user = userEvent.setup()
     await enterOption(user)
     // Пока здание не подтверждено, ворота показывают причину, а не
-    // диалог: блокировка объясняет себя (правило 12).
+    // диалог: блокировка объясняет себя (правило 12). Ворота живут на
+    // стадии «Präsentieren», и стадия достижима именно в запертом
+    // состоянии — иначе причина была бы недостижима вместе с ними.
+    openPresentStage()
     expect(screen.getAllByText(/mindestens ein Gebäude auswählen/).length).toBeGreaterThan(0)
     await confirmBuildingReviewSections(user)
     completeBuildingScope('PER_BUILDING')
+    openPresentStage()
     // VR3-04: a saved scope opens the KONFIGURATOR, not the client view.
     // The gate's own reason changes accordingly, and the dialog still does
     // not open — which is the "blocking explains itself" rule holding at
@@ -398,20 +427,18 @@ describe('DC-33 · единственная модалка системы — в
       .toBeGreaterThan(0)
     completeKgConfiguration()
     saveOptionBaseline()
-    // Acceptance remediation (cycle 4): position hint is `aria-hidden` now.
-    // VR3-03: the rail carries the journey SPINE during the whole Option
-    // phase, and a spine step's accessible name is its label plus its state
-    // ("Gebäude & Umfang · aktuell") — the four-item workspace list that had
-    // a bare label is retired.
-    await user.click(screen.getAllByRole('button', { name: /^Gebäude & Umfang/ })[0]!)
-
+    // The gate lives on the `Präsentieren` stage: one rail, one place, and
+    // the stage the action belongs to.
+    openPresentStage()
     const trigger = screen.getByRole('button', { name: 'Kundenansicht prüfen' })
     await user.click(trigger)
     const dialog = screen.getByRole('dialog', { name: /Bereit für die Präsentation/ })
     expect(dialog.contains(document.activeElement)).toBe(true)
-    // Показано ИМЕННО то, что перестанет быть видимым; на vorgeschaltetem
-    // Gebäudeschritt ohne vorgezogene Kalkulationsdaten.
-    expect(within(dialog).getByText(/Bearbeitungshinweise und Quellenreferenzen/))
+    // Показано ИМЕННО то, что перестанет быть видимым. Ворота открываются
+    // теперь со стадии «Präsentieren», где Option уже сохранена, поэтому
+    // это полная формулировка профиля выдачи, а не её укороченный вариант
+    // для предшествующего шага Gebäude & Umfang.
+    expect(within(dialog).getByText(/Marge, Δ-Werte, KG-700-Modus/))
       .toBeInTheDocument()
 
     await user.keyboard('{Escape}')
@@ -422,6 +449,7 @@ describe('DC-33 · единственная модалка системы — в
   it('переход в клиентский вид происходит из диалога, а не мимо него', async () => {
     const user = userEvent.setup()
     await enterClientReadyPipeline(user)
+    openPresentStage()
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
     // VR3-05 (T-034): Client Mode opens on its boundary screen; the
@@ -444,6 +472,7 @@ describe('Preparation navigation cleanup', () => {
   it('в презентации тура не существует — ни кнопки, ни карточки', async () => {
     const user = userEvent.setup()
     await enterClientReadyPipeline(user)
+    openPresentStage()
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
     // VR3-05 (T-034): Client Mode opens on its boundary screen; the

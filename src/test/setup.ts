@@ -45,4 +45,20 @@ afterEach(() => {
   cleanup()
   setReducedMotion(false)
   vi.useRealTimers()
+  /**
+   * The address bar is application state now (2026-09-06 IA audit): a
+   * destination writes a path, and `App` reads that path back on mount. In
+   * a browser every session starts at whatever the user opened; in a suite,
+   * jsdom keeps ONE `window` for a whole file, so a case that navigated
+   * into an Option would hand the next case its deep link and the next case
+   * would boot inside that Option instead of at the portfolio.
+   *
+   * Resetting here is the honest equivalent of a fresh tab, and it is the
+   * SAME place `cleanup()` already resets the DOM — the alternative, making
+   * `__resetStoreForTests` touch `history`, would put a browser concern
+   * inside the store.
+   */
+  if (typeof window !== 'undefined') {
+    window.history.replaceState(null, '', '/')
+  }
 })

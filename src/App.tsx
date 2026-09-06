@@ -4,18 +4,20 @@ import { useT } from './i18n'
 import all3Logo from '../design-system/All3Logo.png'
 import { SegmentedControl } from './components/controls'
 import { Button } from './components/primitives'
-import { Sidebar } from './components/Sidebar'
 import { ACCOUNT_PORTRAIT_ASSET_ID, identityAsset } from './assets/identity-media'
 import { ClientOutputGateDialog } from './components/ClientOutputGateDialog'
 import { OfferPanel } from './components/OfferPanel'
 import { PresentationShell } from './components/PresentationShell'
 import { UndoToast } from './components/UndoToast'
 import { ConfigurationModeReadiness, ModeChangeNotice, S3Konfigurator } from './screens/S3Konfigurator'
-import { S4Vergleich } from './screens/S4Vergleich'
 import { S5Export } from './screens/S5Export'
 import { S6Einstellungen } from './screens/S6Einstellungen'
 import { OpportunityList } from './screens/OpportunityList'
 import { ProjectHome } from './screens/ProjectHome'
+import { PraesentierenStage } from './screens/PraesentierenStage'
+import { OptionContextHeader, OPTION_HEADING_ATTR } from './components/OptionContextHeader'
+import { OptionWorkflowNavigator } from './components/WorkflowSpine'
+import { useAppRouting } from './state/useAppRouting'
 import { BuildingScope } from './screens/BuildingScope'
 import { KonfiguratorGate } from './screens/KonfiguratorGate'
 import { demoProject } from './state/projectAnalysis'
@@ -47,6 +49,12 @@ import { startContinuityTransition, useSemanticMotion } from './design-system/mo
  */
 export function App() {
   const s = useStore()
+  /**
+   * The address bar, bound to the store (accepted 2026-09-06 IA audit).
+   * Mounted here because `App` is the one component that outlives every
+   * navigation; the hook itself owns the whole contract.
+   */
+  const routeNotice = useAppRouting()
   // Экран конвейера живёт в сторе: CTA глав («Varianten vergleichen»,
   // «Angebot prüfen») обязаны уметь вести к сравнению и экспорту — из
   // локального состояния App они бы этого не могли (DC-27, ревью № 13).
@@ -91,6 +99,10 @@ export function App() {
   // Куда вернуть фокус после ворот, открытых из шапки.
   const modeRef = useRef<HTMLButtonElement>(null)
   const firstRender = useRef(true)
+  // How many Options existed at the last reset, so an in-place list append
+  // can be told apart from a navigation.
+  const optionCountRef = useRef(0)
+  const previousOptionLevelId = useRef<string | null>(null)
   // AUD-03/EXP-04: `activeOptionId` changes the instant an Option is
   // CREATED from the Opportunity Card (`store.ts`'s `createOption`), before
   // the user ever enters that Option's configurator — `level` stays
@@ -114,14 +126,19 @@ export function App() {
     // works, and moving it to the page heading on every arrow press made
     // the tablist unusable (the second arrow press never reached a tab).
     //
-    // The Option-created stage owns its own focus destination — its
-    // component scrolls and focuses the newly created Option row (AUD-03
-    // AC-3). A reset here would take the focus straight back to the page
+    // The Options collection owns its own focus destination when an Option
+    // has just been created — its component focuses the new row (AUD-03
+    // AC-3). A reset here would take focus straight back to the page
     // heading; instrumenting `HTMLElement.focus` showed exactly that,
     // ["LI.outline-none", "H1.a3-readiness-heading"], in that order. Every
     // OTHER project-stage change is a genuine document transition and does
     // reset both.
-    if (s.level === 'opportunity' && s.projectStage === 'createOption') return
+    if (s.level === 'opportunity' && s.projectStage === 'options'
+        && optionCountRef.current < s.options.length) {
+      optionCountRef.current = s.options.length
+      return
+    }
+    optionCountRef.current = s.options.length
     // jsdom не реализует scrollTo на элементах — свойство надёжнее метода.
     if (mainRef.current) mainRef.current.scrollTop = 0
     // Прокрутка возвращает НАЧАЛО документа глазам; клавиатуре и
@@ -130,7 +147,31 @@ export function App() {
     // происходило). Первый рендер пропускается: там фокус ничей и
     // забирать его у пользователя не за что.
     if (firstRender.current) { firstRender.current = false; return }
-    const heading = mainRef.current?.querySelector<HTMLElement>('[data-page-heading], h1')
+    /**
+     * WHICH heading, and why the order changed.
+     *
+     * The Option workspace now carries TWO headings in `main`: the Option
+     * context header names the Option (the document you are in) and the work
+     * column names the stage (the page you are on). `querySelector` returns
+     * the first match in DOCUMENT order, so a combined
+     * `'[data-page-heading], h1'` selector would have silently started
+     * announcing the Option name on every KG chapter change and stopped
+     * announcing the chapter at all. The two questions are now asked
+     * separately, in priority order:
+     *
+     * - a change of OPTION IDENTITY (entering the workspace, or switching)
+     *   is a change of document → the context header;
+     * - every other route change is a change of page → the destination's own
+     *   `[data-page-heading]`, exactly as before.
+     */
+    const identityChanged = previousOptionLevelId.current !== optionLevelId
+    previousOptionLevelId.current = optionLevelId
+    const root = mainRef.current
+    const heading = (identityChanged
+      ? root?.querySelector<HTMLElement>(`[${OPTION_HEADING_ATTR}]`)
+      : null)
+      ?? root?.querySelector<HTMLElement>('[data-page-heading]')
+      ?? root?.querySelector<HTMLElement>('h1')
     if (heading) {
       if (!heading.hasAttribute('tabindex')) heading.tabIndex = -1
       heading.focus({ preventScroll: true })
@@ -146,7 +187,7 @@ export function App() {
     // and the viewport still deep inside the previous page.
   }, [renderedView, s.openConfiguratorStep, optionLevelId, s.level, s.mode,
     s.configurationModeChosen, s.configurationModeEditing,
-    projectStageKey])
+    projectStageKey, s.options.length])
 
   // Defensive fail-closed projection: normal store transitions leave client
   // mode before changing level, but corrupted/external state still must not
@@ -182,6 +223,7 @@ export function App() {
         <FontRuntimeWarning />
         <AppHeader />
         {!praesentation && <ClientOutputGateDialog returnFocusTo={modeRef} />}
+        <RouteNotice notice={routeNotice} />
         <main ref={mainRef} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto bg-surface-default outline-none">
           {s.level === 'liste' ? <OpportunityList /> : <ProjectHome />}
         </main>
@@ -243,20 +285,28 @@ export function App() {
         <PresentationShell mainRef={mainRef} modeRef={modeRef} />
       ) : (
         <div className={`flex min-h-0 flex-1${renderedView === 'konfigurator' ? ' a3-config-work-shell' : ''}`}>
-          {/* VO-T5 / AC-17: comparison is a decision surface, not an
-              operational editing step. Collapse both rails only for this
-              route so its sticky labels and three visible Option columns
-              receive the full supported desktop width. Keeping one main
-              element across routes also preserves the existing scroll-reset
-              and focus contract during navigation. */}
-          {renderedView !== 'vergleich' && <Sidebar modeRef={modeRef} />}
-
+          {/* THE SEAM, from the inside (accepted 2026-09-06 IA audit).
+              The left rail is gone. It carried a 13-step vertical spine that
+              was 2.21 viewports tall at 1440 and 2.63 at 1280, replaced the
+              project rail's grammar wholesale at exactly the boundary where
+              the user most needed the map, and was a third `nav` landmark
+              besides. In its place the Option workspace stacks the same
+              three bands the project workspace already uses: identity, one
+              rail, the work. The commercial `OfferPanel` on the right is
+              UNTOUCHED — "цена видна всегда" is a Product mechanic, not a
+              consequence of the navigation this ticket rebuilds. */}
           <main ref={mainRef} tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto bg-surface-default outline-none">
-            {renderedView === 'vergleich' && <S4Vergleich />}
-            {renderedView === 'buildingScope' && <BuildingScope />}
-            {renderedView === 'konfigurator' && (konfiguratorGate ? <KonfiguratorGate /> : <S3Konfigurator />)}
-            {renderedView === 'export' && <S5Export />}
-            {renderedView === 'einstellungen' && <S6Einstellungen />}
+            <div className="a3-option-shell">
+              <OptionContextHeader />
+              <OptionWorkflowNavigator />
+              <div className="a3-option-main">
+                {renderedView === 'buildingScope' && <BuildingScope />}
+                {renderedView === 'konfigurator' && (konfiguratorGate ? <KonfiguratorGate /> : <S3Konfigurator />)}
+                {renderedView === 'praesentieren' && <PraesentierenStage modeRef={modeRef} />}
+                {renderedView === 'export' && <S5Export />}
+                {renderedView === 'einstellungen' && <S6Einstellungen />}
+              </div>
+            </div>
           </main>
 
           {/* SIDEBAR 01 (backlog eda1e221): the rail slot below is the single
@@ -267,7 +317,7 @@ export function App() {
               visible when "Modus ändern" is open, ADDING the notice as
               `OfferPanel`'s `footer` instead of substituting the whole panel
               for it. */}
-          {renderedView !== 'vergleich' && (
+          {(
             /* VR3-02: no rail before the Konfigurator. The commercial rail
                belongs to a legitimate price, and no price exists until the
                scope is saved and Leistungsabgrenzung has been entered; the
@@ -279,7 +329,7 @@ export function App() {
               : renderedView === 'konfigurator' && s.configurationModeEditing
               ? <OfferPanel variant="level1" footer={<ModeChangeNotice headingLevel={3} />} />
               : renderedView === 'export' || renderedView === 'einstellungen'
-                || renderedView === 'grundlagen'
+                || renderedView === 'grundlagen' || renderedView === 'praesentieren'
               ? <OfferPanel variant="level1" />
                 : <OfferPanel />)}
         </div>
@@ -414,7 +464,27 @@ function AppHeader() {
   )
 }
 
+/**
+ * An address that could not be honoured, STATED.
+ *
+ * The audit's rule for an unknown `:optionId` is explicit: it resolves to
+ * `/optionen` with a stated reason, never to a blank Configurator. A silent
+ * redirect is the same defect one level up — the reader typed or followed a
+ * link and the product quietly showed them somewhere else.
+ */
+function RouteNotice({ notice }: { notice: 'unknownProject' | 'unknownOption' | null }) {
+  const t = useT()
+  if (!notice) return null
+  return (
+    <p className="a3-route-notice" role="status">
+      <span aria-hidden="true">△ </span>
+      {t(`vr3.route.notice.${notice}`)}
+    </p>
+  )
+}
+
 function AccountMenu() {
+  const s = useStore()
   const t = useT()
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -500,6 +570,32 @@ function AccountMenu() {
               pretends a sign-out happened: the prototype carries no session
               to end, and inventing the side effect would be a lie about
               authentication. */}
+          {/* The two utility destinations the retired left rail used to
+              carry. Their REACHABILITY is unchanged: both were reachable
+              only from inside an Option workspace and only outside the
+              client projection, and both still are — the rail they lived
+              in is gone, so they moved to the one utility surface the
+              header already had rather than becoming a fourth stage of a
+              rail that owns neither. */}
+          {s.level === 'option' && (
+            <>
+              <button
+                type="button"
+                className="a3-account-link hit-target"
+                onClick={() => { setOpen(false); s.setPipelineView('einstellungen') }}
+              >
+                <span aria-hidden="true">⚙</span>{t('nav.einstellungen')}
+              </button>
+              <button
+                type="button"
+                className="a3-account-link hit-target"
+                onClick={() => { setOpen(false); s.setPipelineView('grundlagen') }}
+              >
+                <span aria-hidden="true">◇</span>{t('nav.grundlagen')}
+              </button>
+              <hr className="a3-account-sep" />
+            </>
+          )}
           <p id={demoId} className="a3-account-demo">{t('shell.account.demo')}</p>
           <Button className="w-full" disabled aria-describedby={demoId}>
             {t('shell.signOut')}
