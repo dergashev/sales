@@ -68,6 +68,31 @@ async function decideScopeLedger(page: Page) {
  */
 async function configureAllChapters(page: Page) {
   for (let chapter = 0; chapter < 8; chapter += 1) {
+    /**
+     * VR3-TGA-01: a chapter may present its decisions inside SYSTEMS that
+     * open one at a time. An outstanding decision inside a collapsed system
+     * is real work the user has to do, so the walk has to do it too — the
+     * previous version simply never saw those controls and then failed on
+     * the forward action they block, which is the correct refusal reported
+     * at the wrong place.
+     */
+    const systems = page.locator('.a3-sys-btn')
+    const systemCount = await systems.count()
+    for (let sys = 0; sys < systemCount; sys += 1) {
+      const button = systems.nth(sys)
+      const state = await button.locator('.a3-sys-state').innerText().catch(() => '')
+      if (!/offen/i.test(state)) continue
+      if (await button.getAttribute('aria-expanded') !== 'true') await button.click()
+      const open = page.locator('.a3-sys-body:not([hidden])').getByRole('radiogroup')
+      const openCount = await open.count()
+      for (let i = 0; i < openCount; i += 1) {
+        const group = open.nth(i)
+        if (await group.getByRole('radio', { checked: true }).count() > 0) continue
+        // The first alternative — the All3 standard where one is marked.
+        await group.locator('label').first().click()
+      }
+      await button.click()
+    }
     const groups = page.getByRole('radiogroup')
     const count = await groups.count()
     for (let i = 0; i < count; i += 1) {
