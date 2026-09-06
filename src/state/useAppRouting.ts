@@ -98,23 +98,47 @@ export type RouteNotice = 'unknownProject' | 'unknownOption' | null
  * returns a notice instead of silently succeeding.
  */
 function applyRoute(s: Store, route: AppRoute): RouteNotice {
+  /**
+   * Every decision below reads LIVE state, never the snapshot this function
+   * was called with. The branches mutate as they go — `openOpportunity`,
+   * `backToOpportunity` — so a later `level` or `options` read taken from the
+   * entry snapshot is a claim about a store that has already moved. That is
+   * not a theoretical tidiness point: it is the shape of ACCEPT-01 below.
+   */
+  const live = () => useStore.getState()
+
   if (route.kind === 'portfolio') {
-    if (s.level !== 'liste') s.backToList()
+    if (live().level !== 'liste') s.backToList()
     return null
   }
   if (!demoProject(route.projectId)) {
-    if (s.level !== 'liste') s.backToList()
+    if (live().level !== 'liste') s.backToList()
     return 'unknownProject'
   }
-  if (route.projectId !== s.opportunityId || s.level === 'liste') {
+  if (route.projectId !== live().opportunityId || live().level === 'liste') {
     s.openOpportunity(route.projectId)
   }
   if (route.kind === 'project') {
-    if (s.level === 'option') s.backToOpportunity()
+    if (live().level === 'option') s.backToOpportunity()
     s.setProjectStage(PROJECT_STAGE_OF_ROUTE[route.stage] ?? 'options')
     return null
   }
-  if (!s.options.some((option) => option.id === route.optionId)) {
+  if (!live().options.some((option) => option.id === route.optionId)) {
+    /**
+     * A STALE OPTION LINK MUST NOT OPEN A DIFFERENT OPTION.
+     *
+     * Setting the project stage is not enough. The store persists
+     * `level: 'option'` for anyone whose last position was inside an Option —
+     * which is exactly the population that copies a URL and reopens it later
+     * — so the stage was being set UNDERNEATH a still-mounted Option
+     * workspace. The address bar was then rewritten to the ACTIVE Option's
+     * Configurator, and the notice never reached a surface that renders it:
+     * a stale link answered with the wrong Option, silently. Leaving the
+     * workspace first, exactly as the `route.kind === 'project'` branch above
+     * already does, is what makes `/optionen` and its reason reachable in
+     * EVERY store state rather than only from a cleared one.
+     */
+    if (live().level === 'option') s.backToOpportunity()
     s.setProjectStage('options')
     return 'unknownOption'
   }

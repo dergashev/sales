@@ -296,22 +296,64 @@ describe('the address bar', () => {
     expect(window.location.href).not.toMatch(/viewed|mode|praesentation/i)
   })
 
-  it('AC-24: an unknown Option resolves to the collection with a stated reason', async () => {
-    render(<App />)
-    oneOption()
-    cleanup()
-    act(() => { st().backToList() })
-    window.history.replaceState(
-      null, '', '/projekt/DEMO-HAPPY-01/option/OPT-99/kalkulieren/kg300',
-    )
-    render(<App />)
+  /**
+   * AC-24, from BOTH store states — and the second one is the one that
+   * matters.
+   *
+   * The first version of this case called `backToList()` before replacing the
+   * URL, so it only ever exercised a cleared store, where the implementation
+   * was already correct. The Acceptance Auditor found the other half live:
+   * the store PERSISTS `level: 'option'` for anyone whose last position was
+   * inside an Option — exactly the population that copies a URL and reopens
+   * it later — and on that path a stale link silently rewrote the address to
+   * the ACTIVE Option's Configurator with no reason anywhere. A stale link
+   * answering with the wrong Option is the single thing this route model
+   * exists to prevent.
+   *
+   * So the case asserts the ROUTE and the NOTICE and WHICH RAIL is mounted,
+   * from both starting states, rather than the store alone.
+   */
+  const STALE = '/projekt/DEMO-HAPPY-01/option/OPT-99/kalkulieren/kg300'
+
+  async function expectStaleLinkIsAnswered() {
     await waitFor(() => {
       const notices = screen.getAllByRole('status').map((node) => node.textContent ?? '')
       expect(notices.join(' '))
         .toMatch(/Diese Option gibt es in diesem Projekt nicht/)
     })
-    // Never a blank Configurator: the collection is what the reader gets.
+    expect(window.location.pathname).toBe('/projekt/DEMO-HAPPY-01/optionen')
     expect(st().level).toBe('opportunity')
     expect(st().projectStage).toBe('options')
+    // The project rail is what a reader of the collection gets; the Option
+    // workspace must not still be mounted underneath the notice.
+    expect(screen.getByRole('navigation', { name: 'Projektablauf' })).toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: 'Optionsablauf' })).toBeNull()
+  }
+
+  it('AC-24: an unknown Option resolves to the collection with a stated reason', async () => {
+    render(<App />)
+    oneOption()
+    cleanup()
+    act(() => { st().backToList() })
+    window.history.replaceState(null, '', STALE)
+    render(<App />)
+    await expectStaleLinkIsAnswered()
+  })
+
+  it('AC-24: …including when the store is still inside another Option', async () => {
+    render(<App />)
+    enterOptionWorkspace('DEMO-HAPPY-01')
+    expect(st().level).toBe('option')
+    const active = st().activeOptionId
+    cleanup()
+    // No `backToList()`: the store keeps `level: 'option'`, which is what a
+    // reload of a persisted session looks like.
+    window.history.replaceState(null, '', STALE)
+    render(<App />)
+    await expectStaleLinkIsAnswered()
+    // The Option the reader was in is untouched and still marked, so the
+    // refusal costs them nothing.
+    expect(st().activeOptionId).toBe(active)
+    expect(window.location.pathname).not.toContain(`/option/${active}`)
   })
 })
