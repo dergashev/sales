@@ -242,7 +242,8 @@ test.describe('VR3-05 · client presentation, scenario and outputs', () => {
 
     // What-if 2 — gastronomy readiness composes with it.
     await page.getByRole('radio', { name: /Gastronomie vorbereitet/ }).click()
-    await expect(bar).toContainText(/\+.?110\.000/)
+    // + 420 000 gastronomy − 1 550 000 heat (see the cascade note above).
+    await expect(bar).toContainText(/−.?1\.130\.000/)
     await expect(bar).toContainText('2 Änderungen')
     await shot(page, 'T-042-recalculation-1440')
 
