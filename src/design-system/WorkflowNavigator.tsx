@@ -211,8 +211,18 @@ export function WorkflowNavigator({
                   onClick={step.onSelect}
                 >
                   <span className="a3-wfn-sublabel">{step.label}</span>
+                  {/* A LOCK ALWAYS NAMES ITS REASON — including when the
+                      locked step is reachable so it can explain itself
+                      (T-016). The static branch below always did; this one
+                      did not, so a reachable lock silently lost the one
+                      sentence that makes it a route rather than a refusal.
+                      The top-level stage renders the reason in both branches
+                      already; these two now agree. */}
                   <span className="a3-wfn-substate">
                     {t(STATE_KEY[step.state])}
+                    {step.state === 'locked' && step.lockedReason
+                      ? ` · ${step.lockedReason}`
+                      : ''}
                   </span>
                 </button>
               ) : (

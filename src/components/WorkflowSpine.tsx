@@ -204,18 +204,33 @@ export function OptionWorkflowNavigator() {
     if (nav.step) s.openConfiguratorStepAt(nav.step)
   }
 
+  /**
+   * One nested step.
+   *
+   * A LOCKED STEP STAYS REACHABLE unless `dead` says otherwise — the T-016
+   * principle this product already applied through the retired spine's
+   * `blockedRoute`: a locked stage is a PLACE that explains itself, and it
+   * lands on its own gate rather than on its contents. Disabled navigation
+   * IS NOT an explanation, and the surfaces behind these steps (the
+   * Konfigurator gate, the schedule, the review) each render their own lock
+   * with the prerequisite and the route that resolves it.
+   *
+   * The exception is a cost group: its lock has no gate surface of its own
+   * — the reason lives in the rail — so it is stated and not offered.
+   */
   const step = (
     stage: OptionStageId,
     id: OptionStepId,
     label: string,
     stepState: WorkflowStageState,
     lockedReason?: string,
+    dead = false,
   ): WorkflowSubStep => ({
     id,
     label,
     state: here.step === id ? 'current' : stepState,
     lockedReason: stepState === 'locked' ? lockedReason : undefined,
-    onSelect: stepState === 'locked' ? undefined : go({ stage, step: id }),
+    onSelect: stepState === 'locked' && dead ? undefined : go({ stage, step: id }),
   })
 
   const kgStep = (group: KgScopeGroup): WorkflowSubStep => {
@@ -231,7 +246,7 @@ export function OptionWorkflowNavigator() {
         : 'upcoming'
     return step(
       'kalkulieren', KG_STEP_ID[group], `KG ${group.slice(3)}`, stepState,
-      t('vr3.spine.reason.needsScopeDecisions'),
+      t('vr3.spine.reason.needsScopeDecisions'), true,
     )
   }
 
