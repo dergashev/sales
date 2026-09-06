@@ -78,6 +78,29 @@ function focusDecision(id: string): void {
   node?.focus()
 }
 
+/**
+ * Including a decision has to include everything it needs to be VALID.
+ *
+ * A quantity decision carries its quantity: selecting one without seeding the
+ * fixture's baseline leaves an empty entry, which `quantityProblem` correctly
+ * calls invalid — so the row the user just said yes to blocks its own cost
+ * group, with a reason that describes a value they were never asked for.
+ * Caught by the canonical desktop smoke, which is the one gate that walks the
+ * whole journey rather than one screen of it.
+ */
+function includeValueOf(
+  service: KgService,
+  current: KgServiceDecisionRecord,
+  choice: 'included' | 'excluded',
+): KgServiceDecisionRecord {
+  if (choice === 'excluded') return { state: 'notSelected' }
+  if (service.kind.kind !== 'quantity') return { state: 'selected' }
+  return {
+    state: 'selected',
+    quantity: current.quantity ?? service.kind.baselineQuantity,
+  }
+}
+
 /** The translator's own signature, so helpers below share it exactly. */
 type TFn = (key: string, values?: Readonly<Record<string, string | number>>) => string
 
@@ -348,12 +371,10 @@ export function KgSystemChapter({ chapter, group }: {
             },
             { value: 'excluded' as const, label: t('vr3.kg.service.exclude') },
           ]}
-          onChange={(choice) => commit(service, choice === 'included'
-            ? { state: 'selected' }
-            : { state: 'notSelected' })}
+          onChange={(choice) => commit(service, includeValueOf(service, decision, choice))}
           onPreview={(choice) => s.previewOption(choice === null ? null : {
             kind: 'kgService', serviceId: service.id,
-            value: choice === 'included' ? { state: 'selected' } : { state: 'notSelected' },
+            value: includeValueOf(service, decision, choice),
           })}
         />
       </div>
