@@ -88,8 +88,20 @@ async function configureAllChapters(page: Page) {
       for (let i = 0; i < openCount; i += 1) {
         const group = open.nth(i)
         if (await group.getByRole('radio', { checked: true }).count() > 0) continue
-        // The first alternative — the All3 standard where one is marked.
-        await group.locator('label').first().click()
+        /**
+         * The SAME answer the rest of this walk gives: an include/exclude
+         * decision is recorded as NOT included, which is the fixture baseline
+         * the declared demonstration totals hold at. Including it instead
+         * silently moves the baseline for every downstream spec — the client
+         * scenario then had nothing left to change, because the walk had
+         * already made the change for it.
+         *
+         * A decision among real ALTERNATIVES has no such answer, so it takes
+         * the first — the All3 standard wherever one is marked.
+         */
+        const exclude = group.getByRole('radio', { name: 'nicht aufnehmen' })
+        if (await exclude.count() > 0) await group.locator('label').nth(1).click()
+        else await group.locator('label').first().click()
       }
       await button.click()
     }
