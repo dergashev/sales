@@ -28,6 +28,8 @@ import {
 import { Pagination } from '../design-system/Pagination'
 import { ProjectReadiness } from '../design-system/ActionGate'
 import { Button } from '../components/primitives'
+import { Decimal } from 'decimal.js'
+import { label as moneyLabel, present } from '../engine/money'
 import { useT, useTx, localizeMoneyText } from '../i18n'
 import { InternalNote } from '../components/InternalNote'
 import { Badge, FormField } from '../components/designSystem'
@@ -67,8 +69,19 @@ import type { FixtureProject, ProjectAnalysis } from '../state/projectAnalysis'
  *    line rather than as the loudest thing on the card.
  */
 
-function moneyText(text: string, language: 'de' | 'en'): string {
-  return localizeMoneyText(text, language)
+/**
+ * A SAVED total, formatted by the canonical formatter from the value that
+ * was committed.
+ *
+ * `totalDisplay` on a saved version is the bare numeral the user read; the
+ * unit and the approximation mark belong to `label(present(...))`, which is
+ * the one place in this product that decides both. Re-deriving them from
+ * `totalExact` through that function means the card cannot print `6.480.000`
+ * where every other surface prints `6.480.000 €`, and cannot drop an `≈`
+ * that the rounding rule says is owed.
+ */
+function savedTotal(exact: string, language: 'de' | 'en'): string {
+  return localizeMoneyText(moneyLabel(present(new Decimal(exact))), language)
 }
 
 function dayStamp(iso: string, language: 'de' | 'en'): string {
@@ -269,7 +282,7 @@ function OptionRow({
                   one: a receipt states what was committed. */}
               <span className="a3-optrow-valuelabel">{tx(saved.result.totalLabel)}</span>
               <span className="a3-optrow-amount numeric">
-                {moneyText(saved.result.totalDisplay, s.uiLanguage)}
+                {savedTotal(saved.result.totalExact, s.uiLanguage)}
               </span>
             </>
           ) : (

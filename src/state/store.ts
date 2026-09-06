@@ -1232,11 +1232,33 @@ function record(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
-function hasOnlyKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
-  const actual = Object.keys(value).sort()
-  const expected = [...keys].sort()
-  return actual.length === expected.length
-    && actual.every((key, index) => key === expected[index])
+/**
+ * A STRICT allowlist: no key the contract does not declare, and no declared
+ * key missing — except the ones named `optional`, which a payload written
+ * before that field existed (or by a path that legitimately never sets it)
+ * is allowed to omit.
+ *
+ * `optional` was added because its absence was silently destroying saved
+ * baselines. `SavedOptionVersion.sourceOptionId` is optional BY CONTRACT —
+ * an Option saved from preparation has no parent — and every such version
+ * therefore has one key fewer than the allowlist. The exact-length test
+ * rejected it, `isPersistedProposalPayload` rejected the whole payload,
+ * `hydrateProposalState` CLEARED it and returned false, and every saved
+ * Option stopped surviving a reload. Reproduced on the released baseline
+ * `06a4acf` as well as here, so it is not a regression — but it is the kind
+ * of silent data loss whose own guard's comment predicted it two fields
+ * earlier and could not prevent it.
+ */
+function hasOnlyKeys(
+  value: Record<string, unknown>,
+  keys: readonly string[],
+  optional: readonly string[] = [],
+): boolean {
+  const declared = new Set(keys)
+  const actual = Object.keys(value)
+  if (!actual.every((key) => declared.has(key))) return false
+  const present = new Set(actual)
+  return keys.every((key) => present.has(key) || optional.includes(key))
 }
 
 function isStringRecord(value: unknown, requiredKeys?: readonly string[]): boolean {
@@ -1564,7 +1586,8 @@ const SAVED_OPTION_VERSION_KEYS = [
  * malformed neighbour could discard would not be recoverable.
  */
 function isSavedOptionVersion(value: unknown): value is SavedOptionVersion {
-  if (!record(value) || !hasOnlyKeys(value, SAVED_OPTION_VERSION_KEYS)) return false
+  if (!record(value)
+    || !hasOnlyKeys(value, SAVED_OPTION_VERSION_KEYS, ['sourceOptionId'])) return false
   const result = value.result
   if (!record(result)
     || typeof result.totalExact !== 'string'
@@ -8945,6 +8968,21 @@ export function hydrateProposalState(storage = browserProposalStorage()): boolea
       snapshots: Object.freeze(
         (payload.snapshots ?? []).map((snap) => deepFreeze({ ...snap })),
       ) as OfferSnapshot[],
+      /**
+       * VR3-04 (M-3): a SAVED Option version is written to the payload and,
+       * until now, never read back — so the one record in this product that
+       * is a commercial COMMITMENT, and the only thing Client Mode reads,
+       * did not survive a reload even when the payload carried it intact.
+       * Re-frozen for the same reason `snapshots` above is: JSON produces
+       * genuinely new, mutable objects, and an immutable saved baseline that
+       * silently becomes mutable is not immutable.
+       */
+      savedOptionVersions: Object.fromEntries(
+        Object.entries(payload.savedOptionVersions ?? {}).map(([id, versions]) => [
+          id,
+          Object.freeze(versions.map((version) => deepFreeze({ ...version }))),
+        ]),
+      ) as Record<string, readonly SavedOptionVersion[]>,
       level: payload.activeOptionId ? 'option' : 'liste',
       // The project the payload was WRITTEN for, not the legacy demo id.
       opportunityId: payload.activeOptionId

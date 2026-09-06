@@ -4094,12 +4094,12 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-option-shell{display:flex;flex-direction:column;align-items:stretch;min-height:100%;min-width:0;padding-inline:var(--space-6)}
 .a3-option-main{display:grid;gap:var(--space-3);align-content:start;padding-block:var(--space-3) var(--space-7);min-width:0;inline-size:100%;max-inline-size:var(--measure-workspace);margin-inline:auto}
 .a3-optctx{display:flex;align-items:flex-start;gap:var(--space-4);inline-size:100%;max-inline-size:var(--measure-workspace);margin-inline:auto;padding-block:var(--space-3);border-bottom:var(--border-hairline);border-left:var(--border-width-strong) solid var(--color-brand-accent);padding-inline-start:var(--space-3);min-width:0}
-.a3-optctx-identity{display:grid;gap:var(--space-1);min-width:0}
+.a3-optctx-identity{display:grid;gap:var(--space-1);min-width:0;flex:1 1 auto}
 .a3-optctx-name{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;outline:none}
 .a3-optctx-name:focus-visible{outline:var(--border-width-focus-emphasis) solid var(--color-focus-ring);outline-offset:var(--border-width-focus-emphasis)}
 .a3-optctx-meta{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word}
 .a3-optctx-note{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-muted)}
-.a3-optctx-actions{margin-inline-start:auto;display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2)}
+.a3-optctx-actions{margin-inline-start:auto;flex:none;display:flex;flex-wrap:nowrap;align-items:center;gap:var(--space-2)}
 .a3-optsw{position:relative}
 .a3-optsw-trigger{display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--size-hit-target-default);padding:var(--space-2) var(--space-3);border:var(--border-contrast-1px);background:var(--color-surface-default);color:var(--color-text-primary);font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-medium)}
 .a3-optsw-trigger:hover{background:var(--color-surface-subtle)}

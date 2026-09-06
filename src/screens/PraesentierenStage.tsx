@@ -6,6 +6,8 @@ import {
 } from '../state/store'
 import { OutputProfileSwitch } from '../components/designSystem'
 import { Button } from '../components/primitives'
+import { Decimal } from 'decimal.js'
+import { label as moneyLabel, present } from '../engine/money'
 import { useT, useTx, localizeMoneyText } from '../i18n'
 import { startContinuityTransition, useSemanticMotion } from '../design-system/motion'
 
@@ -70,7 +72,9 @@ export function PraesentierenStage({
 
   return (
     <div className="a3-present-stage">
-      <p className="a3-cap">{t('vr3.journey.stage.present')}</p>
+      {/* No eyebrow: the rail already names the stage, and repeating it
+          directly above a heading that contains the same word is the
+          duplicated label rule 9 forbids. */}
       <h1 className="a3-hero-title" data-page-heading tabIndex={-1}>
         {option
           ? t('vr3.present.title', { option: option.name })
@@ -87,7 +91,10 @@ export function PraesentierenStage({
           <div className="a3-present-baseline-row">
             <dt>{tx(saved.result.totalLabel)}</dt>
             <dd className="numeric">
-              {localizeMoneyText(saved.result.totalDisplay, s.uiLanguage)}
+              {localizeMoneyText(
+                moneyLabel(present(new Decimal(saved.result.totalExact))),
+                s.uiLanguage,
+              )}
             </dd>
           </div>
         </dl>
