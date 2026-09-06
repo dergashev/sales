@@ -350,6 +350,23 @@ export type KgServiceGroup = Readonly<{
   applicability?: KgApplicability
   /** The system's commercial state when no amount is rendered. */
   costAuthority?: KgCostAuthority
+  /**
+   * The decision whose answer governs how this system READS in the overview.
+   *
+   * The two sentences above are the row's whole content at a glance, and a
+   * frozen sentence describing a shared plant survives the user choosing one
+   * plant per building — an overview stating a configuration that is no
+   * longer the configuration. The baseline variant is deliberately absent
+   * from `byVariant`: it falls back to the editorial sentences above, so the
+   * default state renders exactly as it always did.
+   */
+  governedBy?: string
+  byVariant?: Readonly<Record<string, Readonly<{
+    summaryDe: string
+    summaryEn: string
+    scopeDe?: string
+    scopeEn?: string
+  }>>>
 }>
 
 export type KgChapter = Readonly<{
@@ -587,13 +604,48 @@ export function changedFromSource(
 
 /** Every decision in the chapter that now differs from the client source. */
 export function proposalChanges(
-  chapter: KgChapter, decisions: KgDecisions,
+  catalogue: KgCatalogue, chapter: KgChapter, decisions: KgDecisions,
 ): readonly KgService[] {
   return chapterServices(chapter).filter((service) =>
-    isApplicable(service) && changedFromSource(decisions, service) === true)
+    isApplicable(service)
+    && dependencySuspension(catalogue, decisions, service) === null
+    && changedFromSource(decisions, service) === true)
 }
 
 /* ── VR3-TGA-01 · the system overview ──────────────────────────────────── */
+
+/**
+ * How this system reads RIGHT NOW — the two overview sentences.
+ *
+ * Data, never a branch on an id: a group that declares no `governedBy`
+ * returns its own sentences unchanged, which is every system but one.
+ */
+export function systemNarrative(
+  catalogue: KgCatalogue, decisions: KgDecisions, group: KgServiceGroup,
+): Readonly<{
+  summaryDe?: string; summaryEn?: string; scopeDe?: string; scopeEn?: string
+}> {
+  const fallback = {
+    summaryDe: group.summaryDe,
+    summaryEn: group.summaryEn,
+    scopeDe: group.scopeDe,
+    scopeEn: group.scopeEn,
+  }
+  if (!group.governedBy || !group.byVariant) return fallback
+  const governor = serviceById(catalogue, group.governedBy)
+  if (!governor || governor.kind.kind !== 'singleChoice') return fallback
+  const decision = serviceDecision(decisions, governor)
+  if (decision.state !== 'selected') return fallback
+  const variant = decision.variant ?? governor.kind.baselineVariant
+  const stated = group.byVariant[variant]
+  if (!stated) return fallback
+  return {
+    summaryDe: stated.summaryDe,
+    summaryEn: stated.summaryEn,
+    scopeDe: stated.scopeDe ?? group.scopeDe,
+    scopeEn: stated.scopeEn ?? group.scopeEn,
+  }
+}
 
 export type KgSystemState =
   | 'notApplicable' | 'partial' | 'open' | 'fromSource' | 'decided'
@@ -623,7 +675,11 @@ export function kgSystemProgress(
   catalogue: KgCatalogue, decisions: KgDecisions, group: KgServiceGroup,
 ): KgSystemProgress {
   const services = systemServices(group)
-  const applicable = services.filter(isApplicable)
+  // A lapsed decision is not this system's outstanding work, not a deviation
+  // from the client's documents and not a priced position: it is described
+  // where it lives, and it counts nowhere until its precondition returns.
+  const applicable = services.filter((service) => isApplicable(service)
+    && dependencySuspension(catalogue, decisions, service) === null)
   const open = applicable.filter((service) =>
     service.requiresDecision
     && serviceDecision(decisions, service).state === 'undecided').length
@@ -702,7 +758,7 @@ export function kgChapterOverview(
     open: progress.filter((entry) => entry.state === 'open').length,
     notApplicable: progress.filter((entry) => entry.state === 'notApplicable').length,
     partial: progress.filter((entry) => entry.state === 'partial').length,
-    proposalChanges: proposalChanges(chapter, decisions).length,
+    proposalChanges: proposalChanges(catalogue, chapter, decisions).length,
     amount: amounts.length === 0
       ? null
       : amounts.reduce((sum, value) => sum.plus(value), new Decimal(0)),
@@ -770,6 +826,109 @@ export function dependencyBlocker(
   return null
 }
 
+/**
+ * DOES THIS DECISION EXIST AT ALL RIGHT NOW — and if not, because of whom?
+ *
+ * `dependencyBlocker` answers a narrower question: *is the answer this
+ * service currently holds contradicted?* It deliberately returns `null` for a
+ * service nobody has answered, because an unanswered decision cannot be
+ * inconsistent with anything.
+ *
+ * That is not the question the state AFTER a cascade asks. When the plant
+ * concept becomes one plant per building, the shared heat generator is not
+ * "wrong" and it is not "unanswered" — it is a decision this project no
+ * longer contains. `notApplicable` is the audit's own word for exactly that,
+ * and the only difference here is that the cause is another DECISION rather
+ * than the site: it can be reversed, and naming it tells the user how.
+ *
+ * Two properties earn their keep:
+ *
+ * 1. It is INDEPENDENT of the service's own state, so a lapsed decision is
+ *    described the same way whether it was included, excluded or open.
+ * 2. It is TRANSITIVE, and it returns the ROOT. A decision whose precondition
+ *    is itself suspended has no precondition either — the reason domestic hot
+ *    water lapses is the plant concept, not the heat generator standing
+ *    between them, and pointing at the middle of a chain sends the user to a
+ *    control that cannot help them.
+ *
+ * The returned service is the one to change to get this decision back.
+ */
+export function dependencySuspension(
+  catalogue: KgCatalogue, decisions: KgDecisions, service: KgService,
+): KgService | null {
+  return suspensionOf(catalogue, decisions, service, new Set())
+}
+
+function suspensionOf(
+  catalogue: KgCatalogue,
+  decisions: KgDecisions,
+  service: KgService,
+  seen: Set<string>,
+): KgService | null {
+  const dep = service.dependsOn
+  if (!dep) return null
+  // A malformed cyclic fixture must not hang the configurator; a cycle is a
+  // fixture defect and `tools/verify.py` owns saying so.
+  if (seen.has(service.id)) return null
+  seen.add(service.id)
+  /**
+   * WHO MOVED — the only question that separates the two failures.
+   *
+   * A dependency scoped with `appliesToVariants` belongs to the CHOICE, not
+   * to the decision: it exists because the user picked that alternative, so
+   * the user picked into a world that does not hold and only the user can
+   * pick their way out. `QNG-PLUS` demanding `EH 40 NH` is that case — the
+   * control stays, `dependencyBlocker` refuses completion, and the chapter is
+   * right to report it as something to resolve.
+   *
+   * An UNSCOPED dependency is the opposite direction: the parent moved and
+   * the decision's whole subject went with it. There is nothing here for the
+   * user to correct, because the question itself has stopped existing.
+   * Suspension is only ever about that second case.
+   */
+  if (dep.appliesToVariants) return null
+  const upstream = serviceById(catalogue, dep.serviceId)
+  // An unresolvable upstream is a broken fixture, not a lapsed decision:
+  // `dependencyBlocker` already refuses completion for it, and calling it
+  // "not applicable" would hide the defect behind a legitimate-looking state.
+  if (!upstream) return null
+  const upstreamGroup = groupOfService(catalogue, dep.serviceId)
+  if (upstreamGroup && decisions.scope[upstreamGroup] !== 'included') return upstream
+  if (!isApplicable(upstream)) return upstream
+  const state = serviceDecision(decisions, upstream)
+  if (dep.requiresSelected && state.state !== 'selected') return upstream
+  if (dep.requiresVariant) {
+    const current = state.state === 'selected'
+      ? state.variant ?? (upstream.kind.kind === 'singleChoice'
+        ? upstream.kind.baselineVariant
+        : undefined)
+      : undefined
+    if (current !== dep.requiresVariant) return upstream
+  }
+  return suspensionOf(catalogue, decisions, upstream, seen)
+}
+
+/**
+ * The variant the suspending decision holds, so the cause can NAME it.
+ *
+ * The fixture's own labels, never a sentence: "not applicable" is only
+ * actionable when it says which answer made it so. `null` where the
+ * suspending decision carries no variant — the caller supplies the word for
+ * its state from the dictionary, because a state is a text and texts are keys
+ * (rule 36).
+ */
+export function suspensionVariantLabel(
+  service: KgService, decisions: KgDecisions, language: 'de' | 'en',
+): string | null {
+  if (service.kind.kind !== 'singleChoice') return null
+  const decision = serviceDecision(decisions, service)
+  if (decision.state !== 'selected') return null
+  const wanted = decision.variant ?? service.kind.baselineVariant
+  const variant = service.kind.variants.find((v) => v.value === wanted)
+  if (!variant) return null
+  return language === 'en' ? variant.labelEn : variant.labelDe
+}
+
 /* ── amounts ───────────────────────────────────────────────────────────── */
 
 /**
@@ -791,6 +950,10 @@ export function serviceContribution(
   // statement from a position that happens to be free (rule 16).
   if (!isApplicable(service)) return null
   if (dependencyBlocker(catalogue, decisions, service)) return null
+  // A decision whose precondition no longer holds is not in the offer, and it
+  // is `null` rather than `0` for the same reason as every other absent
+  // position: no priced position exists here (rule 16).
+  if (dependencySuspension(catalogue, decisions, service)) return null
   const base = new Decimal(service.amount)
   switch (service.kind.kind) {
     case 'singleChoice': {
@@ -981,17 +1144,28 @@ export function kgChapterProgress(
    * waiting on an answer nobody is entitled to give. `notApplicable` is a
    * statement about the project, not a gap in the configuration.
    */
-  const required = services.filter((s) => s.requiresDecision && isApplicable(s))
+  const live = services.filter((s) =>
+    dependencySuspension(catalogue, decisions, s) === null)
+  const required = live.filter((s) => s.requiresDecision && isApplicable(s))
   const decided = required.filter((s) =>
     serviceDecision(decisions, s).state !== 'undecided')
-  const invalid = services.filter((s) => {
+  const invalid = live.filter((s) => {
     const decision = serviceDecision(decisions, s)
     return decision.state === 'selected'
       && quantityProblem(s, decision.quantity) !== null
   })
-  const blocked = services.filter((s) =>
+  /**
+   * A LAPSED PRECONDITION IS NOT A BROKEN ONE.
+   *
+   * `blocked` refuses to let a chapter complete, and it is right to for a
+   * fixture whose upstream does not resolve. It was also catching every
+   * decision a cascade had just suspended — so changing the plant concept
+   * reported the chapter as FAILED, a state the domain does not have, for a
+   * configuration that was in fact perfectly consistent.
+   */
+  const blocked = live.filter((s) =>
     dependencyBlocker(catalogue, decisions, s) !== null)
-  const selected = services.filter((s) =>
+  const selected = live.filter((s) =>
     serviceDecision(decisions, s).state === 'selected')
   const state: KgChapterState = scope === 'excluded'
     ? 'outOfScope'
@@ -1090,36 +1264,54 @@ export function unpricedIncludedKgGroups(
 
 /* ── VR3-TGA-01 · cascading change ─────────────────────────────────────── */
 
-export type KgCascadeEffect = 'reset' | 'preserve'
+export type KgCascadeEffect = 'suspend' | 'restore' | 'preserve'
 
 export type KgCascadeEntry = Readonly<{
   service: KgService
   group: KgScopeGroup
   effect: KgCascadeEffect
-  /** What the decision holds now, so the dialogue can name it. */
+  /** What the decision holds while it is live, so the dialogue can name it. */
   currentVariant?: string
-  /** Its contribution today — what is at stake if it resets. */
+  /**
+   * The money this entry moves — what leaves the offer, or what returns.
+   *
+   * `null` wherever this decision has no authority to name a euro, and the
+   * rule is applied HERE rather than trusted to each dialogue: a bundled
+   * position contributes a real `0`, and a confirmation reading
+   * `entfällt · 0 €` tells the user that removing it is free. It is not free;
+   * its price simply lives in another position (rule 16, AC 21).
+   */
   currentAmount: Decimal | null
 }>
 
 export type KgCascade = Readonly<{
   entries: readonly KgCascadeEntry[]
-  /** Does this change destroy something priced or client-relevant? */
+  /** Does this change move something priced or client-relevant? */
   material: boolean
 }>
 
 /**
  * WHAT WOULD CHANGE, computed BEFORE the change is applied.
  *
- * The audit's five-step cascade, steps 1 and 2: reach every child by a live
- * edge, and classify it. A child whose dependency still holds under the new
- * value is `preserve` — and it is returned, not filtered out, because a
- * dialogue that lists only losses reads as a warning and never tells the user
- * whether the rest of their work is safe.
+ * The audit's five-step cascade, steps 1 and 2 — with one correction the
+ * Acceptance audit forced and one it earned.
  *
- * `material` is the audit's own threshold for step 3: a reset that destroys a
- * decision with real cost authority, or one the client sees, must be shown
- * before it happens. Everything else may simply happen.
+ * **It is the whole closure, not the direct children.** The first version
+ * reached only services that named the changed one, so changing the plant
+ * concept suspended the shared heat generator and left domestic hot water —
+ * which depends on the generator, not on the concept — asserting a
+ * precondition that no longer existed. Nothing in the dialogue mentioned it
+ * and the chapter came to rest reporting FAILED. `dependencySuspension` is
+ * transitive, so asking it before and after reaches every depth for free.
+ *
+ * **A cascade runs in both directions.** Restoring the plant concept restores
+ * the decisions it suspended, and the user is entitled to see the 1.240.000 €
+ * coming back with the same ceremony that saw it leave. A dialogue that only
+ * ever describes losses teaches that changes are one-way.
+ *
+ * `preserve` is returned rather than filtered out for the same reason: a
+ * dialogue that lists only what it destroys reads as a warning and never
+ * tells the user whether the rest of their work is safe.
  */
 export function kgCascadeFor(
   catalogue: KgCatalogue,
@@ -1134,32 +1326,47 @@ export function kgCascadeFor(
   const entries: KgCascadeEntry[] = []
   for (const service of allServices(catalogue)) {
     if (service.id === serviceId) continue
-    if (service.dependsOn?.serviceId !== serviceId) continue
+    if (!service.dependsOn) continue
     if (!isApplicable(service)) continue
-    const decision = serviceDecision(decisions, service)
-    // A decision nobody has taken cannot be destroyed by this change.
-    if (decision.state === 'undecided') continue
-    const blockedBefore = dependencyBlocker(catalogue, decisions, service) !== null
-    const blockedAfter = dependencyBlocker(catalogue, after, service) !== null
-    if (blockedBefore || !blockedAfter) {
+    const before = dependencySuspension(catalogue, decisions, service)
+    const now = dependencySuspension(catalogue, after, service)
+    if (before === null && now === null) {
+      // Still live, and still depends on something in this chain: say so only
+      // when this change could plausibly have touched it.
+      if (dependsOnTransitively(catalogue, service, serviceId)) {
+        entries.push({
+          service,
+          group: groupOfService(catalogue, service.id) ?? 'KG_400',
+          effect: 'preserve',
+          currentVariant: serviceDecision(decisions, service).variant,
+          currentAmount: serviceContribution(catalogue, decisions, service),
+        })
+      }
+      continue
+    }
+    if (before === null && now !== null) {
+      // A decision nobody has taken cannot be lost by this change.
+      if (serviceDecision(decisions, service).state === 'undecided') continue
       entries.push({
         service,
         group: groupOfService(catalogue, service.id) ?? 'KG_400',
-        effect: 'preserve',
-        currentVariant: decision.variant,
-        currentAmount: serviceContribution(catalogue, decisions, service),
+        effect: 'suspend',
+        currentVariant: serviceDecision(decisions, service).variant,
+        currentAmount: nameableAmount(catalogue, decisions, service),
       })
       continue
     }
-    entries.push({
-      service,
-      group: groupOfService(catalogue, service.id) ?? 'KG_400',
-      effect: 'reset',
-      currentVariant: decision.variant,
-      currentAmount: serviceContribution(catalogue, decisions, service),
-    })
+    if (before !== null && now === null) {
+      entries.push({
+        service,
+        group: groupOfService(catalogue, service.id) ?? 'KG_400',
+        effect: 'restore',
+        currentVariant: serviceDecision(after, service).variant,
+        currentAmount: nameableAmount(catalogue, after, service),
+      })
+    }
   }
-  const material = entries.some((entry) => entry.effect === 'reset' && (
+  const material = entries.some((entry) => entry.effect !== 'preserve' && (
     entry.currentAmount !== null
     || costAuthorityOf(entry.service) === 'direct'
     || costAuthorityOf(entry.service) === 'bundle'
@@ -1167,17 +1374,25 @@ export function kgCascadeFor(
   return { entries, material }
 }
 
-/**
- * The state a cascaded child returns to.
- *
- * `undecided` where the domain demands an answer — the row re-enters
- * `Entscheidung offen` and the user is told where it is. `notSelected`
- * otherwise, because a service that was included on a precondition that no
- * longer holds is not included any more, and pretending it is undecided would
- * invent work nobody owes.
- */
-export function kgCascadeReset(service: KgService): KgServiceDecisionRecord {
-  return service.requiresDecision
-    ? { state: 'undecided' }
-    : { state: 'notSelected' }
+/** The contribution, but only where this decision may name a euro at all. */
+function nameableAmount(
+  catalogue: KgCatalogue, decisions: KgDecisions, service: KgService,
+): Decimal | null {
+  if (!rendersAmount(service)) return null
+  return serviceContribution(catalogue, decisions, service)
+}
+
+/** Does `service` hang off `ancestorId` through any chain of dependencies? */
+function dependsOnTransitively(
+  catalogue: KgCatalogue, service: KgService, ancestorId: string,
+): boolean {
+  const seen = new Set<string>()
+  let current: KgService | null = service
+  while (current?.dependsOn) {
+    if (seen.has(current.id)) return false
+    seen.add(current.id)
+    if (current.dependsOn.serviceId === ancestorId) return true
+    current = serviceById(catalogue, current.dependsOn.serviceId)
+  }
+  return false
 }

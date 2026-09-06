@@ -2248,6 +2248,15 @@
               "summaryEn": "Shared ambient loop · low-temperature distribution per use",
               "scopeDe": "gemeinsame Anlage · Verteilung je Gebäude",
               "scopeEn": "shared plant · distribution per building",
+              "governedBy": "b-400-heat",
+              "byVariant": {
+                "perBuilding": {
+                  "summaryDe": "Je Gebäude eine eigene Anlage · Niedertemperatur-Verteilung je Nutzung",
+                  "summaryEn": "One plant per building · low-temperature distribution per use",
+                  "scopeDe": "Anlage je Gebäude · Verteilung je Gebäude",
+                  "scopeEn": "plant per building · distribution per building"
+                }
+              },
               "costAuthority": "direct"
             },
             {

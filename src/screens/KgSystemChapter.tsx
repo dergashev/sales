@@ -8,6 +8,7 @@ import {
   chapterServiceById,
   costAuthorityOf,
   dependencyBlocker,
+  dependencySuspension,
   isApplicable,
   kgCascadeFor,
   kgChapterOverview,
@@ -15,6 +16,8 @@ import {
   proposalChanges,
   serviceContribution,
   serviceDecision as decisionOf,
+  suspensionVariantLabel,
+  systemNarrative,
   systemServices,
   type KgCascade,
   type KgChapter as KgChapterData,
@@ -215,7 +218,7 @@ export function KgSystemChapter({ chapter, group }: {
   if (!catalogue || !decisions) return null
 
   const overview = kgChapterOverview(catalogue, decisions, chapter)
-  const changes = proposalChanges(chapter, decisions)
+  const changes = proposalChanges(catalogue, chapter, decisions)
   const identity = `KG${NNBSP}${group.slice(3)}`
 
   /* ── the Rahmen band ────────────────────────────────────────────────── */
@@ -283,10 +286,10 @@ export function KgSystemChapter({ chapter, group }: {
     /**
      * A MATERIAL consequence is shown BEFORE it is applied.
      *
-     * The audit's step 3: a reset that destroys a priced or client-relevant
-     * decision must be named first. Everything else simply happens — asking
-     * about every change would make the dialogue noise, and noise is how a
-     * confirmation stops being read.
+     * The audit's step 3: a change that moves a priced or client-relevant
+     * decision — out of the offer or back into it — must be named first.
+     * Everything else simply happens: asking about every change would make
+     * the dialogue noise, and noise is how a confirmation stops being read.
      */
     if (cascade.material) {
       pendingDecision.current = service.id
@@ -304,19 +307,22 @@ export function KgSystemChapter({ chapter, group }: {
   ) => {
     s.previewOption(null)
     s.setKgServiceDecision(service.id, next)
-    const resets = cascade.entries.filter((entry) => entry.effect === 'reset')
+    const moved = cascade.entries.filter((entry) => entry.effect !== 'preserve')
     // The SERVICE, not its label: a label is already a language, and the one
     // sentence a screen-reader user hears has to be in theirs.
     setAnnouncement({
-      key: resets.length === 0
+      key: moved.length === 0
         ? 'vr3.tga.cascade.announceNone'
-        : resets.length === 1
+        : moved.length === 1
           ? 'vr3.tga.cascade.announce'
           : 'vr3.tga.cascade.announcePlural',
       service,
-      count: resets.length,
+      count: moved.length,
     })
-    focusAfterCascade.current = resets[0]?.service.id ?? null
+    // Focus the decision that CAME BACK where one did: a returning decision
+    // is the one the user can act on, a lapsed one is only a statement.
+    focusAfterCascade.current = moved.find((e) => e.effect === 'restore')?.service.id
+      ?? moved[0]?.service.id ?? null
   }
 
   /* ── one decision ───────────────────────────────────────────────────── */
@@ -338,6 +344,34 @@ export function KgSystemChapter({ chapter, group }: {
           notApplicable={`${t('vr3.tga.notApplicable')} — ${label(
             service.applicability?.reasonDe, service.applicability?.reasonEn,
           )}`}
+        />
+      )
+    }
+
+    /**
+     * A DECISION WHOSE PRECONDITION LAPSED SAYS SO, AND SAYS WHOSE.
+     *
+     * The Acceptance audit found the alternative: after the plant concept
+     * moved to one plant per building, the shared heat generator still
+     * printed its superseded proposal, still asserted `direkt bepreist` with
+     * no amount behind it, and carried no control — a block that stated
+     * things that were no longer true and offered no way to act on any of
+     * them. `nicht anwendbar` was already this product's word for a decision
+     * the project does not contain; the only thing missing was that here the
+     * cause is another decision, and therefore reversible. Naming it turns a
+     * dead end into an instruction.
+     */
+    const suspendedBy = dependencySuspension(catalogue, decisions, service)
+    if (suspendedBy) {
+      const held = suspensionVariantLabel(suspendedBy, decisions, s.uiLanguage)
+      const cause = label(suspendedBy.labelDe, suspendedBy.labelEn)
+      return (
+        <DecisionBlock
+          key={service.id}
+          name={name}
+          notApplicable={`${t('vr3.tga.notApplicable')} — ${held
+            ? t('vr3.tga.suspendedBy', { decision: cause, value: held })
+            : t('vr3.tga.suspendedByOpen', { decision: cause })}`}
         />
       )
     }
@@ -485,7 +519,8 @@ export function KgSystemChapter({ chapter, group }: {
           />
         ) : undefined}
         price={priceLineOf(
-          service, authority, contribution, blocker !== null, t, label, s.uiLanguage,
+          service, decision, authority, contribution, blocker !== null,
+          t, label, s.uiLanguage,
         )}
         rule={rule ? (
           <SystemRuleNote
@@ -504,6 +539,9 @@ export function KgSystemChapter({ chapter, group }: {
 
   const renderSystem = (serviceGroup: KgServiceGroup) => {
     const progress = kgSystemProgress(catalogue, decisions, serviceGroup)
+    // The overview states the configuration as it IS, not as the fixture
+    // first described it (AC 15, Acceptance ACCEPT-01).
+    const narrative = systemNarrative(catalogue, decisions, serviceGroup)
     const expanded = openSystem === serviceGroup.id
     const services = systemServices(serviceGroup)
     const stateLabel = progress.state === 'open'
@@ -518,8 +556,8 @@ export function KgSystemChapter({ chapter, group }: {
         name={label(serviceGroup.labelDe, serviceGroup.labelEn)}
         summary={serviceGroup.applicability
           ? label(serviceGroup.applicability.reasonDe, serviceGroup.applicability.reasonEn)
-          : label(serviceGroup.summaryDe, serviceGroup.summaryEn)}
-        scope={label(serviceGroup.scopeDe, serviceGroup.scopeEn) || undefined}
+          : label(narrative.summaryDe, narrative.summaryEn)}
+        scope={label(narrative.scopeDe, narrative.scopeEn) || undefined}
         state={progress.state}
         stateLabel={stateLabel}
         stateGlyph={STATE_GLYPH[progress.state]}
@@ -701,7 +739,7 @@ export function KgSystemChapter({ chapter, group }: {
                   <b>{t(`vr3.tga.cascade.${entry.effect}`)}</b>
                   {entry.effect === 'preserve'
                     ? t('vr3.tga.cascade.preserveWhy')
-                    : t('vr3.tga.cascade.resetWhy', {
+                    : t(`vr3.tga.cascade.${entry.effect}Why`, {
                       price: entry.currentAmount === null
                         ? t('vr3.tga.price.noBasis')
                         : money(entry.currentAmount, s.uiLanguage),
@@ -777,6 +815,7 @@ function consequenceOf(
 /** The decision's own price line — a statement, never a blank. */
 function priceLineOf(
   service: KgService,
+  decision: KgServiceDecisionRecord,
   authority: ReturnType<typeof costAuthorityOf>,
   contribution: Decimal | null,
   blocked: boolean,
@@ -819,7 +858,22 @@ function priceLineOf(
      * the control above. Printing `direkt bepreist · 0 €` here says the
      * decision costs nothing, which is the opposite of true: it is the single
      * most expensive decision in the system.
+     *
+     * That is only honest while the decision HAS no position of its own. A
+     * service carrying a real amount that currently contributes nothing is a
+     * different sentence, and `direkt bepreist` with the number missing was
+     * the one the Acceptance audit caught: authority asserted, figure blank.
+     * Rule 16 has the words for both cases and neither of them is silence.
      */
+    if (!new DecimalCtor(service.amount).isZero()) {
+      return {
+        label: key,
+        value: decision.state === 'notSelected'
+          ? t('vr3.tga.price.notInOffer')
+          : t('vr3.tga.price.notDetermined'),
+        muted: true,
+      }
+    }
     return { label: key, value: t('vr3.tga.price.direct'), muted: true }
   }
   return {

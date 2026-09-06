@@ -7,22 +7,23 @@ import {
   chapterOf,
   chapterServiceById,
   costAuthorityOf,
+  dependencySuspension,
   initialDecisions,
   isApplicable,
   kgCascadeFor,
-  kgCascadeReset,
   kgCatalogue,
   kgChapterOverview,
+  kgChapterProgress,
   kgContributions,
   kgGroupAmounts,
-  kgTotal,
-  kgChapterProgress,
   kgSystemProgress,
+  kgTotal,
   proposalChanges,
   rendersAmount,
   serviceById,
   serviceContribution,
   serviceDecision,
+  systemNarrative,
   systemServices,
   type KgDecisions,
   type KgScopeGroup,
@@ -140,7 +141,7 @@ describe('the source baseline and the Option proposal are two things', () => {
   })
 
   it('lists every deviation from the client documents for the review', () => {
-    const changed = proposalChanges(chapterA, included())
+    const changed = proposalChanges(A, chapterA, included())
     expect(changed.map((s) => s.id)).toContain('a-400-01')
     // A restored proposal leaves the review with nothing to show for it.
     const restored: KgDecisions = {
@@ -150,7 +151,7 @@ describe('the source baseline and the Option proposal are two things', () => {
         'a-400-01': { state: 'selected', variant: 'WE_FW' },
       },
     }
-    expect(proposalChanges(chapterA, restored).map((s) => s.id))
+    expect(proposalChanges(A, chapterA, restored).map((s) => s.id))
       .not.toContain('a-400-01')
   })
 })
@@ -307,17 +308,17 @@ describe('a parent change cannot leave an impossible combination', () => {
     const cascade = kgCascadeFor(B, before, 'b-400-heat', {
       state: 'selected', variant: 'perBuilding',
     })
-    const reset = cascade.entries.filter((e) => e.effect === 'reset')
-    expect(reset.map((e) => e.service.id)).toContain('b-400-01')
+    const gone = cascade.entries.filter((e) => e.effect === 'suspend')
+    expect(gone.map((e) => e.service.id)).toContain('b-400-01')
     // It carries 1 240 000 €, so the user is told BEFORE it happens.
     expect(cascade.material).toBe(true)
 
+    // THE CONSEQUENCE IS DERIVED, NOT WRITTEN: only the parent changes.
     const after: KgDecisions = {
       ...before,
       services: {
         ...before.services,
         'b-400-heat': { state: 'selected', variant: 'perBuilding' },
-        ...Object.fromEntries(reset.map((e) => [e.service.id, kgCascadeReset(e.service)])),
       },
     }
     expect(serviceContribution(B, after, generator)).toBeNull()
@@ -333,11 +334,20 @@ describe('a parent change cannot leave an impossible combination', () => {
     expect(cascade.material).toBe(false)
   })
 
-  it('reopens a required child rather than silently excluding it', () => {
-    const dhw = chapterServiceById(chapterB, 'b-400-07')!
-    const gastro = chapterServiceById(chapterB, 'b-400-92')!
-    expect(kgCascadeReset(dhw)).toEqual({ state: 'notSelected' })
-    expect(kgCascadeReset(gastro)).toEqual({ state: 'undecided' })
+  it('reaches the WHOLE closure, not only the direct children', () => {
+    /**
+     * ACCEPT-01. `b-400-07` hangs off `b-400-01`, which hangs off the plant
+     * concept. The first cascade walked one level, so domestic hot water was
+     * never named in the dialogue and came to rest asserting a precondition
+     * that no longer existed — which reported the chapter as FAILED.
+     */
+    const cascade = kgCascadeFor(B, included(B), 'b-400-heat', {
+      state: 'selected', variant: 'perBuilding',
+    })
+    const gone = cascade.entries.filter((e) => e.effect === 'suspend')
+      .map((e) => e.service.id)
+    expect(gone).toContain('b-400-01')
+    expect(gone).toContain('b-400-07')
   })
 
   it('treats a change with no priced victim as immaterial', () => {
@@ -538,5 +548,115 @@ describe('the ten things this Product must never say', () => {
   it('never presents funding as an entitlement', () => {
     const energy = chapterServiceById(chapterA, 'a-400-es')!
     expect(energy.whyDe).toContain('kein Rechtsanspruch')
+  })
+})
+
+/**
+ * THE STATE A CASCADE COMES TO REST IN (Acceptance ACCEPT-01).
+ *
+ * The forward half was right from the first candidate: the dialogue named
+ * `Wärmeerzeuger · 1.240.000 €` before anything moved, and undo restored the
+ * whole combination in one action. What it left behind was not.
+ *
+ * Every assertion below is one sentence of the Acceptance report, and each
+ * was measured FAILING on `cfc8e9f`.
+ */
+describe('the resting state after a cascade', () => {
+  const perBuilding: KgDecisions = {
+    ...included(B),
+    services: {
+      ...included(B).services,
+      'b-400-heat': { state: 'selected', variant: 'perBuilding' },
+    },
+  }
+
+  it('does not report the chapter as FAILED for a consistent configuration', () => {
+    // `✗ 0 VON 3 ENTSCHIEDEN · FEHLGESCHLAGEN` — and "failed" is not one of
+    // this domain's decision states at all. The cause was a grandchild the
+    // one-level cascade never reached, left asserting a dead precondition.
+    expect(kgChapterProgress(B, included(B), CHAPTER).state).toBe('incomplete')
+    const after = kgChapterProgress(B, perBuilding, CHAPTER)
+    expect(after.state).toBe('incomplete')
+    expect(after.blockedServiceIds).toEqual([])
+  })
+
+  it('states the lapsed decision as not applicable, and names the cause', () => {
+    const generator = chapterServiceById(chapterB, 'b-400-01')!
+    expect(dependencySuspension(B, included(B), generator)).toBeNull()
+    // The ROOT, never the link in the middle: the decision to change.
+    expect(dependencySuspension(B, perBuilding, generator)?.id).toBe('b-400-heat')
+    const dhw = chapterServiceById(chapterB, 'b-400-07')!
+    expect(dependencySuspension(B, perBuilding, dhw)?.id).toBe('b-400-heat')
+  })
+
+  it('keeps a lapsed decision out of the offer, and out of the counts', () => {
+    const generator = chapterServiceById(chapterB, 'b-400-01')!
+    expect(serviceContribution(B, perBuilding, generator)).toBeNull()
+    const heat = chapterB.groups.find((g) => g.id === 'b-kg400-heat')!
+    const progress = kgSystemProgress(B, perBuilding, heat)
+    expect(progress.openDecisions).toBe(0)
+  })
+
+  it('states the CURRENT configuration in the overview, not the first one', () => {
+    // `gemeinsame Anlage · Verteilung je Gebäude` survived the user choosing
+    // one plant per building — the overview asserting a combination the
+    // decision three lines below it forbids.
+    const heat = chapterB.groups.find((g) => g.id === 'b-kg400-heat')!
+    expect(systemNarrative(B, included(B), heat).scopeDe)
+      .toBe('gemeinsame Anlage · Verteilung je Gebäude')
+    expect(systemNarrative(B, perBuilding, heat).scopeDe)
+      .toBe('Anlage je Gebäude · Verteilung je Gebäude')
+    expect(systemNarrative(B, perBuilding, heat).summaryDe).toContain('Je Gebäude')
+  })
+
+  it('gives the money back when the precondition is restored', () => {
+    /**
+     * THE SHARPEST ASSERTION IN THE ACCEPTANCE REPORT.
+     *
+     * Putting the plant concept back raised no dialogue and restored nothing:
+     * outside the eight-second undo window the largest single KG 400 position
+     * was gone for good, because the cascade had DELETED the answer rather
+     * than suspended the question.
+     */
+    expect(kgTotal(B, included(B)).toFixed(2)).toBe('38740000.00')
+    expect(kgGroupAmounts(B, included(B)).KG_400!.toFixed(2)).toBe('8420000.00')
+
+    const back: KgDecisions = {
+      ...perBuilding,
+      services: {
+        ...perBuilding.services,
+        'b-400-heat': { state: 'selected', variant: 'central' },
+      },
+    }
+    expect(kgTotal(B, back).toFixed(2)).toBe('38740000.00')
+    expect(kgGroupAmounts(B, back).KG_400!.toFixed(2)).toBe('8420000.00')
+    const generator = chapterServiceById(chapterB, 'b-400-01')!
+    expect(serviceContribution(B, back, generator)!.toFixed(2)).toBe('1240000.00')
+
+    // And it is announced with the same ceremony that saw it leave.
+    const cascade = kgCascadeFor(B, perBuilding, 'b-400-heat', {
+      state: 'selected', variant: 'central',
+    })
+    expect(cascade.material).toBe(true)
+    const returning = cascade.entries.filter((e) => e.effect === 'restore')
+    expect(returning.map((e) => e.service.id)).toContain('b-400-01')
+    expect(returning.find((e) => e.service.id === 'b-400-01')!.currentAmount!.toFixed(2))
+      .toBe('1240000.00')
+  })
+
+  it('never names a euro a lapsing decision has no authority to name', () => {
+    // `entfällt · 0 €` says removing a bundled position is free. It is not:
+    // its price lives in another position (rule 16, AC 21).
+    const cascade = kgCascadeFor(B, included(B), 'b-400-heat', {
+      state: 'selected', variant: 'perBuilding',
+    })
+    const dhw = cascade.entries.find((e) => e.service.id === 'b-400-07')!
+    expect(costAuthorityOf(dhw.service)).toBe('bundle')
+    expect(dhw.currentAmount).toBeNull()
+    for (const entry of cascade.entries) {
+      if (entry.currentAmount === null) continue
+      expect(rendersAmount(entry.service)).toBe(true)
+      expect(entry.currentAmount.isZero()).toBe(false)
+    }
   })
 })

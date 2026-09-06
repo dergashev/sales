@@ -980,6 +980,24 @@ B = [
       summaryEn='Shared ambient loop · low-temperature distribution per use',
       scopeDe='gemeinsame Anlage · Verteilung je Gebäude',
       scopeEn='shared plant · distribution per building',
+      # THE OVERVIEW LINE FOLLOWS THE DECISION THAT GOVERNS IT.
+      #
+      # Both sentences above assert a SHARED plant, and the overview is where
+      # this chapter states the configuration (AC 15). Once `Anlagenkonzept`
+      # can say otherwise, a frozen sentence makes the row contradict the
+      # decision three lines below it — the combination AC 16 forbids, found
+      # by the Acceptance audit. The baseline variant keeps the editorial
+      # sentence verbatim, so nothing moves until the user moves it.
+      governedBy='b-400-heat',
+      byVariant={
+        'perBuilding': {
+          'summaryDe': ('Je Gebäude eine eigene Anlage · Niedertemperatur-Verteilung '
+                        'je Nutzung'),
+          'summaryEn': 'One plant per building · low-temperature distribution per use',
+          'scopeDe': 'Anlage je Gebäude · Verteilung je Gebäude',
+          'scopeEn': 'plant per building · distribution per building',
+        },
+      },
       costAuthority='direct'),
 
     # ── 2 · Trinkwasser & Warmwasser ─────────────────────────────────────
