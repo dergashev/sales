@@ -261,7 +261,8 @@ test.describe('VR3-05 · client presentation, scenario and outputs', () => {
 
     // The investment page recomposed with it — one result, not two.
     await nav.getByRole('button', { name: 'Investition' }).click()
-    await expect(page.getByText('38.850.000\u202f€').first()).toBeVisible()
+    // 38 740 000 + 420 000 gastronomy − 1 550 000 heat (see the cascade note).
+    await expect(page.getByText('37.610.000\u202f€').first()).toBeVisible()
 
     // T-043 — revert states the count and that the saved Option is untouched.
     await toSection(page, 'Leistungen', /hidden|./)
