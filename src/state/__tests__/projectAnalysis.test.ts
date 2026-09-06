@@ -10,6 +10,7 @@ import {
   analysisWorkspaceState,
   attentionCount,
   cancelJob,
+  cleanPresentation,
   documentDisplayState,
   eligibleDocuments,
   processedOutcomeCount,
@@ -594,5 +595,94 @@ describe('analysisWorkspaceState is a presentation of JobState, not a new one', 
     // A removed row is neither.
     const removed = removeDocument(project, fresh, id, '2026-09-05T10:00:00.000Z')
     expect(documentDisplayState(removed, id, 'READY')).toBe('REMOVED')
+  })
+})
+
+/**
+ * The clean-pass split (accepted 2026-09-05 Project Understanding audit).
+ *
+ * `PROJECT_READY_FOR_OPTION` is a GATE state, not a CLEANLINESS state, and the
+ * whole ticket rests on that being provable without rendering: the gate reads
+ * `jobState`, unresolved BLOCKING conflicts, BLOCKING questions, `staleFactKeys`
+ * and required-field completion, and nothing else. `cleanPresentation()` is
+ * therefore a SECOND, independent predicate — presentation only — and the pair
+ * of tests below prove both halves: it separates the two fixtures, and it
+ * cannot have moved the gate.
+ */
+describe('cleanPresentation — the presentation split that gates nothing', () => {
+  it('DEMO-HAPPY-01 is CLEAN and DEMO-COMPLEX-01 with every conflict decided is not', () => {
+    const happy = runToCompletion(A)
+    expect(readiness(A, happy).state).toBe('PROJECT_READY_FOR_OPTION')
+    expect(cleanPresentation(A, happy)).toBe(true)
+
+    let complex = runToCompletion(B)
+    // The six blocking conflicts are decided from the fixture's own
+    // recommendation — the demonstration's sanctioned answer.
+    for (const conflict of B.conflicts) {
+      complex = resolveConflict(B, complex, conflict.id, {
+        kind: 'candidate', candidateId: conflict.recommendedCandidateId,
+      }, '2026-09-06T09:00:00.000Z')
+    }
+    // The GATE is open …
+    expect(readiness(B, complex).state).toBe('PROJECT_READY_FOR_OPTION')
+    expect(readiness(B, complex).canCreateOption).toBe(true)
+    // … and the project is nonetheless NOT a clean pass: seven questions are
+    // open, twelve values were inferred, eighteen need attention and one
+    // document failed. Reaching the gate says nothing about any of them.
+    expect(cleanPresentation(B, complex)).toBe(false)
+    expect(openQuestions(B, complex).length).toBe(7)
+    expect(B.terminalDistribution.failed).toBe(1)
+    expect(B.analysis.aiInferredValues).toBe(12)
+    expect(B.analysis.valuesRequiringAttention).toBe(18)
+  })
+
+  it('is false in every state that does not reach the gate', () => {
+    const fresh = initialProjectAnalysis(A)
+    expect(readiness(A, fresh).state).toBe('DOCUMENT_ANALYSIS_NOT_STARTED')
+    expect(cleanPresentation(A, fresh)).toBe(false)
+
+    const blocked = runToCompletion(B)
+    expect(readiness(B, blocked).state).toBe('BLOCKING_CONFLICTS_PRESENT')
+    expect(cleanPresentation(B, blocked)).toBe(false)
+  })
+
+  it('leaves readiness() byte-identical — the gate does not know it exists', () => {
+    /**
+     * The literal requirement of the ticket ("a test proving `readiness()`
+     * output is byte-identical before and after `cleanPresentation` is
+     * introduced"), expressed as something that keeps holding: for every state
+     * either fixture can be in, the gate's serialised output must not depend on
+     * whether `cleanPresentation` was consulted, and the two predicates must
+     * not agree by construction — READY WITH REVIEW is precisely the state
+     * where the gate says yes and the presentation says no.
+     */
+    const states: Array<[FixtureProject, ProjectAnalysis]> = []
+    states.push([A, initialProjectAnalysis(A)])
+    states.push([A, runToCompletion(A)])
+    states.push([B, initialProjectAnalysis(B)])
+    const decided = B.conflicts.reduce(
+      (analysis, conflict) => resolveConflict(B, analysis, conflict.id, {
+        kind: 'candidate', candidateId: conflict.recommendedCandidateId,
+      }, '2026-09-06T09:00:00.000Z'),
+      runToCompletion(B),
+    )
+    states.push([B, runToCompletion(B)])
+    states.push([B, decided])
+
+    for (const [project, analysis] of states) {
+      const before = JSON.stringify(readiness(project, analysis))
+      // Consulting the presentation predicate must have no effect of any kind
+      // on the gate — not on its value, and not through a shared mutation.
+      cleanPresentation(project, analysis)
+      expect(JSON.stringify(readiness(project, analysis))).toBe(before)
+      // `canCreateOption` is `state === 'PROJECT_READY_FOR_OPTION'`, full stop.
+      const gate = readiness(project, analysis)
+      expect(gate.canCreateOption).toBe(gate.state === 'PROJECT_READY_FOR_OPTION')
+    }
+
+    // The two predicates genuinely disagree somewhere: without this the test
+    // above would pass on an implementation where clean === gate.
+    expect(readiness(B, decided).canCreateOption).toBe(true)
+    expect(cleanPresentation(B, decided)).toBe(false)
   })
 })

@@ -2767,6 +2767,88 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-understanding-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(var(--measure-panel),1fr));gap:var(--space-5);align-items:start}
 .a3-understanding-copy{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-primary);max-width:var(--measure-body-max)}
 
+/* Project Understanding — the READY composition (accepted 2026-09-05
+   clean-pass audit). Structure: .a3-ready > .a3-ready-primary
+   (.a3-ready-outcome + .a3-verify) + .a3-ready-facts + .a3-ready-disclosure
+   + .a3-ready-details. Product-specific composition of canonical primitives:
+   nothing here is a new system capability.
+
+   Classes: .a3-ready · .a3-ready-primary · .a3-ready-outcome ·
+   .a3-ready-eyebrow · .a3-ready-title · .a3-ready-lead · .a3-ready-next ·
+   .a3-ready-facts · .a3-ready-fact · .a3-ready-fact-label ·
+   .a3-ready-fact-value · .a3-ready-fact-route · .a3-ready-disclosure ·
+   .a3-ready-disclosure-glyph · .a3-ready-details · .a3-ready-details-grid ·
+   .a3-ready-details-col · .a3-ready-details-title · .a3-ready-details-route ·
+   .a3-ready-evidence · .a3-ready-evidence-name · .a3-ready-evidence-hint ·
+   .a3-ready-review. */
+.a3-ready{display:grid;gap:var(--space-5);align-content:start;min-width:0}
+.a3-ready-primary{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--gutter-workspace);align-items:start;min-width:0}
+.a3-ready-outcome{display:grid;gap:var(--space-3);align-content:start;min-width:0}
+.a3-ready-eyebrow{margin:0;font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);font-weight:var(--font-weight-bold);letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-secondary)}
+.a3-ready-title{margin:0;font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);outline:0;overflow-wrap:break-word;hyphens:auto}
+.a3-ready-lead{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-primary);max-width:52ch}
+.a3-ready-next{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+/* Six facts, two columns, each stated exactly once on the collapsed page. */
+.a3-ready-facts{margin:var(--space-2) 0 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:var(--border-contrast-1px);min-width:0}
+.a3-ready-fact{display:grid;gap:var(--space-1);align-content:start;padding:var(--space-3) 0;border-bottom:var(--border-hairline);min-width:0}
+.a3-ready-fact:nth-child(odd){padding-right:var(--space-4);border-right:var(--border-hairline)}
+.a3-ready-fact:nth-child(even){padding-left:var(--space-4)}
+.a3-ready-fact-label{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-ready-fact-value{margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3);font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);font-variant-numeric:tabular-nums;overflow-wrap:break-word}
+.a3-ready-fact-route{background:transparent;border:0;padding:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary);text-decoration:underline;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset)}
+.a3-ready-disclosure{display:inline-flex;align-items:center;gap:var(--space-2);justify-self:start;background:var(--color-surface-default);border:var(--border-contrast-1px);padding:var(--space-3) var(--space-4);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-ready-disclosure-glyph{font-size:var(--type-caption-size);line-height:1}
+.a3-ready-details{min-width:0}
+.a3-ready-details-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--gutter-workspace);align-items:start;min-width:0}
+.a3-ready-details-col{display:grid;gap:var(--space-3);align-content:start;min-width:0}
+.a3-ready-details-title{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-ready-details-route{justify-self:start;background:transparent;border:var(--border-contrast-1px);padding:var(--space-2) var(--space-4);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary)}
+.a3-ready-evidence{display:grid;gap:var(--space-2);min-width:0}
+.a3-ready-evidence-name{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-ready-evidence-hint{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+/* The restored review band. It exists only where its own predicate does. */
+.a3-ready-review{display:grid;gap:var(--space-3);min-width:0}
+
+/* Project verification card — the recognised building, promoted from y 1835
+   to the first viewport. Structure: .a3-verify > .a3-verify-media +
+   .a3-verify-body, or .a3-verify > .a3-verify-eyebrow + .a3-verify-list for
+   n >= 2 buildings.
+
+   Classes: .a3-verify · .a3-verify-media · .a3-verify-body ·
+   .a3-verify-eyebrow · .a3-verify-name · .a3-verify-meta ·
+   .a3-verify-metrics · .a3-verify-metric · .a3-verify-metric-label ·
+   .a3-verify-metric-value · .a3-verify-list · .a3-verify-list-item ·
+   .a3-verify-thumb · .a3-verify-list-body · .a3-verify-list-name ·
+   .a3-verify-list-meta · .a3-verify-list-metric · .a3-verify-list-label. */
+.a3-verify{border:var(--border-contrast-1px);background:var(--color-surface-default);min-width:0}
+.a3-verify-media{min-width:0}
+.a3-verify-body{display:grid;gap:var(--space-1);padding:var(--space-4);min-width:0}
+.a3-verify-eyebrow{margin:0 0 var(--space-1);font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);font-weight:var(--font-weight-bold);letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-secondary)}
+.a3-verify-name{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-verify-meta{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-verify-metrics{margin:var(--space-3) 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr));gap:var(--space-3);align-items:start;min-width:0}
+.a3-verify-metric{display:grid;gap:var(--space-1);align-content:start;min-width:0}
+.a3-verify-metric-label{font-size:var(--type-label-size);line-height:var(--type-label-line);color:var(--color-text-secondary)}
+.a3-verify-metric-value{margin:0;min-width:0}
+.a3-verify-metric .a3-aut-value{font-size:var(--type-metric-section-size);line-height:var(--type-metric-section-line);font-weight:var(--font-weight-bold)}
+.a3-verify-list{list-style:none;margin:0;padding:var(--space-4);display:grid;gap:var(--space-3);min-width:0}
+.a3-verify-list .a3-verify-eyebrow{margin:0}
+.a3-verify-list-head{list-style:none}
+.a3-verify-list-item{display:grid;grid-template-columns:minmax(0,4rem) minmax(0,1fr);gap:var(--space-3);align-items:start;border-top:var(--border-hairline);padding-top:var(--space-3);min-width:0}
+.a3-verify-list-head + .a3-verify-list-item{border-top:0;padding-top:0}
+.a3-verify-thumb{min-width:0}
+.a3-verify-list-body{display:grid;gap:var(--space-1);min-width:0}
+.a3-verify-list-name{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-verify-list-meta{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-verify-list-metric{margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2);min-width:0}
+.a3-verify-list-label{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+@media (max-width: 1330px){
+  /* 1280 is a composition, not a squeezed 1440: the band count holds, the
+     lead rewraps to three lines and the card narrows. */
+  .a3-verify-metrics{grid-template-columns:repeat(auto-fit,minmax(7.5rem,1fr));gap:var(--space-2)}
+  .a3-verify-body{padding:var(--space-3)}
+}
+
 /* Recognised buildings. Structure: .a3-building-list > .a3-building-item >
    .a3-building-media + .a3-building-body. Building identity never floats
    away from the metrics it owns.

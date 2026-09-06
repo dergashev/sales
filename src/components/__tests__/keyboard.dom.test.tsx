@@ -120,7 +120,9 @@ describe('Projektstatus-Überblick (Task 01) — roving tabindex (TABS-001/KEY-0
     // Enter открывает — и открывает ИМЕННО ту стадию, на которой фокус.
     expect(useStore.getState().projectStage).toBe('understanding')
     expect(screen.getByRole('heading', {
-      name: 'Alle blockierenden strittigen Angaben sind entschieden.',
+      // The ready stage's H1 states the OUTCOME (clean-pass audit PU-03); the
+      // former string claimed a resolution history this project never had.
+      name: 'Bereit, eine Option anzulegen',
     })).toBeInTheDocument()
   })
 

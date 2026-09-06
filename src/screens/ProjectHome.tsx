@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Decimal } from 'decimal.js'
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   useStore,
   type UnderstandingTab,
@@ -9,6 +9,7 @@ import {
   activeDocumentId,
   analysisWorkspaceState,
   attentionCount,
+  cleanPresentation,
   conflictResolved,
   demoProject,
   documentDisplayState,
@@ -861,11 +862,9 @@ function UnderstandingStage({
   project: FixtureProject
   analysis: ProjectAnalysis
 }) {
-  const s = useStore()
   const t = useT()
   const state = readiness(project, analysis)
-  const tab = s.understandingTab
-  const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const tab = useStore().understandingTab
 
   const tabs: Array<{ id: UnderstandingTab; label: string }> = [
     { id: 'overview', label: t('vr3.understanding.tab.overview') },
@@ -880,12 +879,6 @@ function UnderstandingStage({
       }),
     },
   ]
-
-  const move = (from: number, delta: 1 | -1) => {
-    const next = (from + delta + tabs.length) % tabs.length
-    s.setUnderstandingTab(tabs[next]!.id)
-    tabRefs.current[next]?.focus()
-  }
 
   return (
     <>
@@ -912,34 +905,7 @@ function UnderstandingStage({
       </div>
       {/* Only mounted once the analysis has produced results, so these tabs
           can never advertise a section that has nothing behind it. */}
-      <div
-        className="a3-understanding-tabs"
-        role="tablist"
-        aria-label={t('vr3.understanding.tablist')}
-      >
-        {tabs.map((entry, index) => (
-          <button
-            key={entry.id}
-            ref={(el) => { tabRefs.current[index] = el }}
-            type="button"
-            role="tab"
-            id={`understanding-tab-${entry.id}`}
-            aria-selected={tab === entry.id}
-            aria-controls={`understanding-panel-${entry.id}`}
-            tabIndex={tab === entry.id ? 0 : -1}
-            className={tab === entry.id
-              ? 'a3-understanding-tab a3-understanding-tab-current hit-target'
-              : 'a3-understanding-tab hit-target'}
-            onClick={() => s.setUnderstandingTab(entry.id)}
-            onKeyDown={(e) => {
-              if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); move(index, 1) }
-              if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); move(index, -1) }
-            }}
-          >
-            {entry.label}
-          </button>
-        ))}
-      </div>
+      <UnderstandingTabList tabs={tabs} current={tab} />
       <div
         id={`understanding-panel-${tab}`}
         role="tabpanel"
@@ -1329,7 +1295,7 @@ function QuestionsPanel({
   const open = openQuestions(project, analysis)
 
   if (project.questions.length === 0) {
-    return <p className="a3-understanding-copy">{t('vr3.readiness.lead.ready')}</p>
+    return <p className="a3-understanding-copy">{t('vr3.understanding.questionsNoneIntro')}</p>
   }
 
   return (
@@ -1512,18 +1478,29 @@ function CreateOptionGate({
           }),
         },
       ]}
-      route={state.canCreateOption ? undefined : {
-        label: state.unresolvedBlockingConflicts > 0
-          ? t('vr3.readiness.routeToConflicts')
-          : state.analysisComplete
-            ? t('vr3.readiness.routeToQuestions')
-            : t('vr3.readiness.routeToAnalysis'),
-        onSelect: () => {
-          if (!state.analysisComplete) s.setProjectStage('documents')
-          else if (state.unresolvedBlockingConflicts > 0) s.setUnderstandingTab('conflicts')
-          else s.setUnderstandingTab('questions')
-        },
-      }}
+      /* An OPEN gate with open questions still needs the route, and this is
+         where the clean-pass audit's P1 was: the alternative below said the
+         questions "can be answered later" while offering no way to reach
+         them, because reaching readiness unmounted the questions surface.
+         A clean pass has no open question, so it renders no route — the
+         predicate decides, not the layout. */
+      route={state.canCreateOption
+        ? (state.openQuestions > 0 ? {
+          label: t('vr3.readiness.routeToQuestions'),
+          onSelect: () => s.setUnderstandingTab('questions'),
+        } : undefined)
+        : {
+          label: state.unresolvedBlockingConflicts > 0
+            ? t('vr3.readiness.routeToConflicts')
+            : state.analysisComplete
+              ? t('vr3.readiness.routeToQuestions')
+              : t('vr3.readiness.routeToAnalysis'),
+          onSelect: () => {
+            if (!state.analysisComplete) s.setProjectStage('documents')
+            else if (state.unresolvedBlockingConflicts > 0) s.setUnderstandingTab('conflicts')
+            else s.setUnderstandingTab('questions')
+          },
+        }}
       alternative={state.permittedAssumptions > 0 ? t('vr3.readiness.alternative') : undefined}
       error={errorKey ? {
         message: t(errorKey),
@@ -1550,66 +1527,673 @@ function CreateOptionGate({
 
 /* ─────────────────────────── stage 2b · ready ─────────────────────────── */
 
+/**
+ * The READY state, in two presentations (accepted 2026-09-05 clean-pass audit).
+ *
+ * `PROJECT_READY_FOR_OPTION` is a GATE state, not a CLEANLINESS state, and this
+ * screen used to answer only the gate. One composition served both a project
+ * that never had a conflict and a project with six decided conflicts, seven
+ * open questions and one failed document: on the first its copy was false, and
+ * on the second it stated those numbers with no route to any of them, because
+ * reaching readiness unmounted the Conflicts and Questions surfaces entirely.
+ *
+ * So the composition branches on `cleanPresentation()` — presentation only,
+ * never a gate — and the branch is a SHORTENING, not a different screen:
+ *
+ *   band 1   outcome + next action  │  project verification (building 1 of n)
+ *            six confidence facts, each stated exactly once on the page
+ *            one disclosure control
+ *   band 2   the disclosed region: provenance, document outcomes, evidence
+ *   band 3   the review surfaces — ONLY where their own predicate is non-empty
+ *
+ * A region is absent only when its own predicate is empty. The review tabs are
+ * absent on a clean pass because `project.conflicts.length === 0` and no
+ * question is open — not because the page is tidier without them.
+ */
 function ReadyStage({
   project, analysis,
 }: {
   project: FixtureProject
   analysis: ProjectAnalysis
 }) {
+  const s = useStore()
   const t = useT()
-  const asset = projectAsset(project.heroAssetId)
-  const state = readiness(project, analysis)
+  const { fadeRise, transition } = useSemanticMotion()
+  const clean = cleanPresentation(project, analysis)
+  const open = openQuestions(project, analysis)
+
+  const detailsId = useId()
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  /**
+   * The region stays in the DOM under `aria-controls`. `mounted` drives the
+   * `hidden` attribute and lags `detailsOpen` on CLOSE only, so the fade is
+   * actually painted before the element leaves the box tree.
+   *
+   * Both are set in the SAME event, deliberately. An earlier candidate raised
+   * `mounted` in an effect: the reveal then started while the region was still
+   * `display: none`, finished unseen, and the content appeared fully opaque the
+   * moment `hidden` came off — the animation ran and nobody could watch it.
+   */
+  const [mounted, setMounted] = useState(false)
+  const toggleDetails = () => {
+    if (!detailsOpen) setMounted(true)
+    setDetailsOpen(!detailsOpen)
+  }
+
+  const reviewPanel = useRef<HTMLDivElement | null>(null)
+
+  // RESTORED, not preserved: at the audit baseline these two surfaces did not
+  // exist once the gate opened, so seven open questions and six decisions were
+  // numerals with no keyboard route of any kind (5 focusable elements in
+  // `main`, none of them a route).
+  const reviewTabs: Array<{ id: UnderstandingTab; label: string }> = clean ? [] : [
+    ...(project.conflicts.length > 0
+      ? [{
+        id: 'conflicts' as const,
+        label: t('vr3.understanding.tab.conflicts', { count: project.conflicts.length }),
+      }]
+      : []),
+    ...(open.length > 0
+      ? [{
+        id: 'questions' as const,
+        label: t('vr3.understanding.tab.questions', { count: open.length }),
+      }]
+      : []),
+  ]
+  // A tab remembered from the closed-gate stage must never select a panel this
+  // presentation does not render.
+  const tab = reviewTabs.some((entry) => entry.id === s.understandingTab)
+    ? s.understandingTab
+    : reviewTabs[0]?.id ?? 'overview'
+
+  /**
+   * A fact's route opens the surface that fact is about and takes focus with
+   * it. Selecting a tab without moving focus would leave a keyboard user at
+   * the top of a page whose bottom silently changed.
+   */
+  const routeTo = (target: UnderstandingTab) => () => {
+    s.setUnderstandingTab(target)
+    window.requestAnimationFrame(() => reviewPanel.current?.focus())
+  }
 
   return (
-    <>
-      <ProjectReadiness
-        eyebrow={t('vr3.readiness.eyebrow.ready')}
-        heading={t('vr3.readiness.title.ready')}
-        explanation={t('vr3.readiness.lead.ready')}
-        rows={[
-          {
-            id: 'blocking',
-            label: t('vr3.readiness.row.blockingConflicts'),
-            value: state.unresolvedBlockingConflicts,
-          },
-          {
-            id: 'metrics',
-            label: t('vr3.readiness.row.requiredInformation'),
-            value: t('vr3.readiness.row.requiredInformationComplete'),
-          },
-          {
-            id: 'baseline',
-            label: t('vr3.readiness.row.projectBaseline'),
-            value: t('vr3.readiness.row.projectBaselineConfirmed'),
-          },
-          {
-            id: 'questions',
-            label: t('vr3.readiness.row.openQuestions'),
-            value: t('vr3.readiness.row.openQuestionsValue', {
-              open: state.openQuestions, blocking: state.blockingQuestions,
-            }),
-          },
-        ]}
-        action={<CreateOptionGate project={project} analysis={analysis} />}
-        media={(
-          <MediaFrame
-            ratio="pano"
-            state={asset ? 'loaded' : 'fallback'}
-            src={asset?.url}
-            alt={asset ? t(asset.altKey) : undefined}
-            seed={project.id}
-            sourceId={asset?.assetId}
+    <div className="a3-ready">
+      <div className="a3-ready-primary">
+        <div className="a3-ready-outcome">
+          <p className="a3-ready-eyebrow">{t('vr3.readiness.eyebrow.stage')}</p>
+          {/* An OUTCOME, not a resolution history. `All blocking conflicts are
+              resolved.` was rendered at 48/56 on a project whose `conflicts`
+              array was empty. */}
+          <h1 className="a3-ready-title" tabIndex={-1} data-page-heading>
+            {t('vr3.readiness.title.ready')}
+          </h1>
+          <ReadyLead project={project} analysis={analysis} clean={clean} />
+          <CreateOptionGate project={project} analysis={analysis} />
+          {/* DC-27: exactly one next step, and it names what that step decides. */}
+          <p className="a3-ready-next">{t('vr3.readiness.nextStep')}</p>
+          <ReadyFacts
+            project={project}
+            analysis={analysis}
+            clean={clean}
+            onRoute={routeTo}
           />
-        )}
-      />
-      <div className="a3-understanding-body">
-        <UnderstandingOverview
-          project={project}
-          analysis={analysis}
-          readinessPanel={<ReadinessRows project={project} analysis={analysis} />}
+          <button
+            type="button"
+            className="a3-ready-disclosure hit-target"
+            aria-expanded={detailsOpen}
+            aria-controls={detailsId}
+            onClick={toggleDetails}
+          >
+            <span className="a3-ready-disclosure-glyph" aria-hidden="true">
+              {detailsOpen ? '▾' : '▸'}
+            </span>
+            {detailsOpen ? t('vr3.readiness.detailsHide') : t('vr3.readiness.detailsShow')}
+          </button>
+        </div>
+        <ProjectVerification project={project} />
+      </div>
+
+      {/* Opens DOWNWARD: the outcome, the CTA and the building stay exactly
+          where they were. Rule 20's grammar — fade + 8px rise in, fade out —
+          and nothing else; `prefers-reduced-motion` zeroes both. */}
+      <div id={detailsId} className="a3-ready-details" hidden={!mounted}>
+        <motion.div
+          className="a3-ready-details-grid"
+          initial={false}
+          variants={fadeRise}
+          /* `hidden`, never `exit`: the shared `exit` variant is written for an
+             AnimatePresence UNMOUNT and keeps `opacity: 0` unconditionally, so
+             a persistent toggle driven from it would still animate 0 -> 1
+             under `prefers-reduced-motion` (rule 21). `hidden` collapses to the
+             visible value when motion is reduced, which makes the first paint
+             already the final state. */
+          animate={detailsOpen ? 'visible' : 'hidden'}
+          transition={transition(detailsOpen ? 'reveal' : 'feedback')}
+          onAnimationComplete={(definition) => {
+            if (definition === 'hidden') setMounted(false)
+          }}
+        >
+          <ReadyProvenance project={project} />
+          <ReadyEvidence project={project} />
+        </motion.div>
+      </div>
+
+      {reviewTabs.length > 0 ? (
+        <div className="a3-ready-review">
+          <UnderstandingTabList tabs={reviewTabs} current={tab} />
+          <div
+            id={`understanding-panel-${tab}`}
+            role="tabpanel"
+            aria-labelledby={`understanding-tab-${tab}`}
+            tabIndex={-1}
+            ref={reviewPanel}
+            className="a3-understanding-panel"
+          >
+            {tab === 'conflicts' ? (
+              <ConflictsPanel project={project} analysis={analysis} />
+            ) : (
+              <QuestionsPanel project={project} analysis={analysis} />
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {analysis.staleFactKeys.length > 0 ? (
+        <StaleState>
+          {t('vr3.understanding.staleNotice', { count: analysis.staleFactKeys.length })}
+        </StaleState>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * The lead sentence, derived from the two distinctions the product actually
+ * holds: `project.conflicts.length` says whether a conflict was ever FOUND,
+ * the live selectors say whether it was RESOLVED. No invented history.
+ */
+function ReadyLead({
+  project, analysis, clean,
+}: {
+  project: FixtureProject
+  analysis: ProjectAnalysis
+  clean: boolean
+}) {
+  const t = useT()
+  const state = readiness(project, analysis)
+  return (
+    <p className="a3-ready-lead">
+      {clean
+        ? t('vr3.readiness.lead.readyNoneFound', { required: state.requiredBaselineTotal })
+        : t('vr3.readiness.lead.readyResolved', {
+          resolved: project.conflicts.length,
+          open: openQuestions(project, analysis).length,
+          complete: state.requiredBaselineComplete,
+          required: state.requiredBaselineTotal,
+        })}
+    </p>
+  )
+}
+
+/**
+ * The tab list `UnderstandingStage` and `ReadyStage` share.
+ *
+ * Extracted rather than copied: roving tabindex, arrow semantics and the
+ * `understanding-tab-*` / `understanding-panel-*` id contract are ONE
+ * behaviour, and two implementations of it would drift on the next change.
+ */
+function UnderstandingTabList({
+  tabs, current,
+}: {
+  tabs: ReadonlyArray<{ id: UnderstandingTab; label: string }>
+  current: UnderstandingTab
+}) {
+  const s = useStore()
+  const t = useT()
+  const refs = useRef<Array<HTMLButtonElement | null>>([])
+
+  const move = (from: number, delta: 1 | -1) => {
+    const next = (from + delta + tabs.length) % tabs.length
+    s.setUnderstandingTab(tabs[next]!.id)
+    refs.current[next]?.focus()
+  }
+
+  return (
+    <div
+      className="a3-understanding-tabs"
+      role="tablist"
+      aria-label={t('vr3.understanding.tablist')}
+    >
+      {tabs.map((entry, index) => (
+        <button
+          key={entry.id}
+          ref={(el) => { refs.current[index] = el }}
+          type="button"
+          role="tab"
+          id={`understanding-tab-${entry.id}`}
+          aria-selected={current === entry.id}
+          aria-controls={`understanding-panel-${entry.id}`}
+          tabIndex={current === entry.id ? 0 : -1}
+          className={current === entry.id
+            ? 'a3-understanding-tab a3-understanding-tab-current hit-target'
+            : 'a3-understanding-tab hit-target'}
+          onClick={() => s.setUnderstandingTab(entry.id)}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); move(index, 1) }
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); move(index, -1) }
+          }}
+        >
+          {entry.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * The project verification card — the block the audit found in the worst
+ * position on the page (y 1835, 1 112 px after the CTA) carrying the only
+ * content the user is actually here to check.
+ *
+ * One building: identity photograph, name, usage, storeys, basement, then the
+ * three numbers the commercial scale rests on with their authority and, for
+ * BGF R+S, the source file it came from.
+ *
+ * `n >= 2`: a compact row per building — thumbnail, name, BGF R+S with its
+ * authority — and the full per-building detail moves into the disclosed
+ * region. The composition is written for `n`, not tuned to the one-building
+ * fixture.
+ */
+function ProjectVerification({ project }: { project: FixtureProject }) {
+  const t = useT()
+  const num = useLocalNumber()
+  const buildings = project.buildings
+
+  const sourceFile = (building: FixtureProject['buildings'][number]) => project.documents
+    .find((d) => d.id === building.evidenceDocIds[0])?.file
+    ?? building.evidenceDocIds[0] ?? building.id
+
+  if (buildings.length !== 1) {
+    return (
+      <section className="a3-verify" aria-labelledby="ready-verify-title">
+        <ul className="a3-verify-list">
+          <li className="a3-verify-list-head">
+            <p className="a3-verify-eyebrow" id="ready-verify-title">
+              {t('vr3.readiness.verify.many', { total: buildings.length })}
+            </p>
+          </li>
+          {buildings.map((building) => {
+            const asset = projectAsset(building.identityAssetId)
+            return (
+              <li key={building.id} className="a3-verify-list-item">
+                <div className="a3-verify-thumb">
+                  <MediaFrame
+                    ratio="tile"
+                    state={asset ? 'loaded' : 'fallback'}
+                    src={asset?.url}
+                    alt={asset ? t(asset.altKey) : undefined}
+                    seed={building.id}
+                    sourceId={asset?.assetId}
+                  />
+                </div>
+                <div className="a3-verify-list-body">
+                  <h2 className="a3-verify-list-name">{building.name}</h2>
+                  <p className="a3-verify-list-meta">
+                    {t(building.usageKey)} · {t(building.storeysKey)}
+                  </p>
+                  <p className="a3-verify-list-metric">
+                    <span className="a3-verify-list-label">
+                      {t('vr3.understanding.metric.bgf')}
+                    </span>
+                    <AuthorityTrace
+                      authority={(building.authority.bgfRSTotal ?? 'derived') as InformationAuthority}
+                      evidence={{ label: sourceFile(building) }}
+                    >
+                      <span className="numeric">{num(building.metrics.bgfRSTotal)}</span>
+                      <span className="a3-mro-unit">m²</span>
+                    </AuthorityTrace>
+                  </p>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      </section>
+    )
+  }
+
+  const building = buildings[0]
+  if (!building) return null
+  const asset = projectAsset(building.identityAssetId)
+
+  return (
+    <section className="a3-verify" aria-labelledby="ready-verify-title">
+      <div className="a3-verify-media">
+        <MediaFrame
+          ratio="pano"
+          state={asset ? 'loaded' : 'fallback'}
+          src={asset?.url}
+          alt={asset ? t(asset.altKey) : undefined}
+          seed={building.id}
+          sourceId={asset?.assetId}
         />
       </div>
-    </>
+      <div className="a3-verify-body">
+        <p className="a3-verify-eyebrow" id="ready-verify-title">
+          {t('vr3.readiness.verify.one', { index: 1, total: buildings.length })}
+        </p>
+        <h2 className="a3-verify-name">{building.name}</h2>
+        <p className="a3-verify-meta">{t(building.usageKey)}</p>
+        <p className="a3-verify-meta">
+          {t(building.storeysKey)}
+          {' · '}
+          {t(`vr3.building.underground.${building.undergroundLevel}`)}
+        </p>
+        <dl className="a3-verify-metrics">
+          {/* BGF R+S carries its evidence rather than a bare badge: it is the
+              number every commercial figure downstream is derived from. */}
+          <div className="a3-verify-metric">
+            <dt className="a3-verify-metric-label">{t('vr3.understanding.metric.bgf')}</dt>
+            <dd className="a3-verify-metric-value">
+              <AuthorityTrace
+                authority={(building.authority.bgfRSTotal ?? 'derived') as InformationAuthority}
+                /* Default (inline) layout, not `stacked`: the stacked variant
+                   adds an authority-coloured left rule and an indent, which
+                   would set BGF apart from the two metrics beside it in the
+                   same row for no informational reason — the word BERECHNET /
+                   DERIVED already carries the authority. */
+                evidence={{ label: sourceFile(building) }}
+              >
+                <span className="numeric">{num(building.metrics.bgfRSTotal)}</span>
+                <span className="a3-mro-unit">m²</span>
+              </AuthorityTrace>
+            </dd>
+          </div>
+          {building.metrics.wfl ? (
+            <MetricReadout
+              label={t('vr3.understanding.metric.wfl')}
+              value={num(building.metrics.wfl)}
+              unit="m²"
+              authority={(building.authority.wfl ?? 'sourceEvidenced') as InformationAuthority}
+            />
+          ) : null}
+          {building.metrics.units !== null ? (
+            <MetricReadout
+              label={t('vr3.understanding.metric.units')}
+              value={num(building.metrics.units)}
+              authority={(building.authority.units ?? 'sourceEvidenced') as InformationAuthority}
+            />
+          ) : null}
+        </dl>
+      </div>
+    </section>
+  )
+}
+
+/**
+ * The six confidence facts.
+ *
+ * Every one of them is stated EXACTLY ONCE on the collapsed page. At the audit
+ * baseline nine facts were rendered twenty-six times: a four-row readiness
+ * sheet, a four-tile metric strip, a verbatim subset of that sheet 940 px
+ * lower, and a second document count inside the provenance panel.
+ *
+ * On READY WITH REVIEW a fact that names something reviewable carries the
+ * route to it. On a clean pass the same facts carry none, because their own
+ * predicates are empty.
+ */
+function ReadyFacts({
+  project, analysis, clean, onRoute,
+}: {
+  project: FixtureProject
+  analysis: ProjectAnalysis
+  clean: boolean
+  onRoute: (tab: UnderstandingTab) => () => void
+}) {
+  const s = useStore()
+  const t = useT()
+  const num = useLocalNumber()
+  const state = readiness(project, analysis)
+  const dist = project.terminalDistribution
+  const facts = project.analysis
+  const openCount = openQuestions(project, analysis).length
+  const degraded = dist.warning + dist.lowConfidence + dist.failed
+
+  return (
+    <dl className="a3-ready-facts">
+      <ReadyFact
+        label={t('vr3.understanding.metric.documents')}
+        /* PU-11: `processedCount` counts FAILED as processed, so `n/n` would
+           claim a clean run while a document failed. The proportion is printed
+           only when nothing degraded; otherwise the distribution is. */
+        value={degraded === 0
+          ? t('vr3.readiness.fact.documentsClean', {
+            processed: dist.processed,
+            total: project.documents.length,
+            warning: dist.warning,
+          })
+          : t('vr3.understanding.terminalSummary', {
+            processed: dist.processed,
+            warning: dist.warning,
+            lowConfidence: dist.lowConfidence,
+            failed: dist.failed,
+          })}
+        route={degraded > 0 ? {
+          label: dist.failed > 0
+            ? t('vr3.readiness.routeToFailedDocuments')
+            : t('vr3.readiness.routeToDocuments'),
+          onSelect: () => s.setProjectStage('documents'),
+        } : undefined}
+      />
+      <ReadyFact
+        label={t('vr3.readiness.fact.values')}
+        value={clean
+          ? t('vr3.readiness.fact.valuesClean', { count: facts.valuesExtracted })
+          : t('vr3.readiness.fact.valuesReview', {
+            total: facts.valuesExtracted,
+            evidenced: facts.sourceEvidencedValues,
+            inferred: facts.aiInferredValues,
+          })}
+      />
+      <ReadyFact
+        label={t('vr3.readiness.row.requiredInformation')}
+        value={t('vr3.readiness.fact.requiredValue', {
+          done: state.requiredBaselineComplete,
+          total: state.requiredBaselineTotal,
+        })}
+      />
+      <ReadyFact
+        label={t('vr3.readiness.fact.conflicts')}
+        value={project.conflicts.length === 0
+          ? t('vr3.readiness.fact.conflictsNone')
+          : t('vr3.readiness.fact.conflictsResolved', { count: project.conflicts.length })}
+        route={project.conflicts.length > 0 ? {
+          label: t('vr3.readiness.routeToConflicts'),
+          onSelect: onRoute('conflicts'),
+        } : undefined}
+      />
+      <ReadyFact
+        label={t('vr3.readiness.row.openQuestions')}
+        value={openCount === 0
+          ? t('vr3.readiness.fact.questionsNone')
+          : t('vr3.readiness.row.openQuestionsValue', {
+            open: openCount, blocking: state.blockingQuestions,
+          })}
+        route={openCount > 0 ? {
+          label: t('vr3.readiness.routeToQuestions'),
+          onSelect: onRoute('questions'),
+        } : undefined}
+      />
+      <ReadyFact
+        label={t('vr3.readiness.fact.buildings')}
+        value={clean
+          ? t('vr3.readiness.fact.buildingsComplete', { count: project.buildings.length })
+          : num(project.buildings.length)}
+      />
+    </dl>
+  )
+}
+
+function ReadyFact({
+  label, value, route,
+}: {
+  label: string
+  value: ReactNode
+  route?: { label: string; onSelect: () => void }
+}) {
+  return (
+    <div className="a3-ready-fact">
+      <dt className="a3-ready-fact-label">{label}</dt>
+      {/* No tone colour here on purpose: `--color-status-success` is declared
+          never to be used as body text (tokens.css contrast note — 4.19:1 at
+          14px/700). `None found` and `0 warnings` ARE the meaning; green would
+          only repeat it below the contrast floor. */}
+      <dd className="a3-ready-fact-value">
+        {value}
+        {route ? (
+          <button
+            type="button"
+            className="a3-ready-fact-route hit-target"
+            onClick={route.onSelect}
+          >
+            {route.label}
+          </button>
+        ) : null}
+      </dd>
+    </div>
+  )
+}
+
+/** Disclosed column 1 — what the system understood, and from what. */
+function ReadyProvenance({ project }: { project: FixtureProject }) {
+  const s = useStore()
+  const t = useT()
+  const facts = project.analysis
+  const dist = project.terminalDistribution
+  const proportion = (count: number) => t('vr3.readiness.details.proportion', {
+    count, total: facts.valuesExtracted,
+  })
+
+  return (
+    <div className="a3-ready-details-col">
+      <h3 className="a3-ready-details-title">{t('vr3.understanding.understoodTitle')}</h3>
+      <p className="a3-understanding-copy">{t(facts.understandingKey)}</p>
+      <dl className="a3-readiness-rows">
+        {/* Three independent PROPORTIONS of the same total. Rendered as three
+            bare counts they read as a partition, and 42 + 0 + 42 does not sum
+            to 42. */}
+        <div className="a3-readiness-row">
+          <dt className="a3-readiness-row-label">{t('vr3.understanding.row.sourceEvidence')}</dt>
+          <dd className="a3-readiness-row-value">{proportion(facts.sourceEvidencedValues)}</dd>
+        </div>
+        <div className="a3-readiness-row">
+          <dt className="a3-readiness-row-label">{t('vr3.understanding.row.aiInferred')}</dt>
+          <dd className="a3-readiness-row-value">{proportion(facts.aiInferredValues)}</dd>
+        </div>
+        <div className="a3-readiness-row">
+          <dt className="a3-readiness-row-label">{t('vr3.understanding.row.manualConfirmed')}</dt>
+          <dd className="a3-readiness-row-value">{proportion(facts.manualOrConfirmedValues)}</dd>
+        </div>
+        <div className="a3-readiness-row">
+          <dt className="a3-readiness-row-label">
+            {t('vr3.readiness.details.documentOutcomes')}
+          </dt>
+          <dd className="a3-readiness-row-value">
+            {t('vr3.understanding.terminalSummary', {
+              processed: dist.processed,
+              warning: dist.warning,
+              lowConfidence: dist.lowConfidence,
+              failed: dist.failed,
+            })}
+          </dd>
+        </div>
+      </dl>
+      {/* Per-document forensic evidence lives in the Documents workspace and is
+          not reproduced here: one register, one place. */}
+      <button
+        type="button"
+        className="a3-ready-details-route hit-target"
+        onClick={() => s.setProjectStage('documents')}
+      >
+        {t('vr3.readiness.routeToDocuments')}
+      </button>
+    </div>
+  )
+}
+
+/** Disclosed column 2 — every recognised value with its authority and source. */
+function ReadyEvidence({ project }: { project: FixtureProject }) {
+  const t = useT()
+  const num = useLocalNumber()
+  return (
+    <div className="a3-ready-details-col">
+      <h3 className="a3-ready-details-title">{t('vr3.readiness.details.evidenceTitle')}</h3>
+      {project.buildings.map((building) => (
+        <div key={building.id} className="a3-ready-evidence">
+          <h4 className="a3-ready-evidence-name">{building.name}</h4>
+          <dl className="a3-readiness-rows">
+            <BuildingEvidenceRow
+              label={t('vr3.understanding.metric.bgf')}
+              value={num(building.metrics.bgfRSTotal)}
+              unit="m²"
+              authority={(building.authority.bgfRSTotal ?? 'derived') as InformationAuthority}
+            />
+            {building.metrics.wfl ? (
+              <BuildingEvidenceRow
+                label={t('vr3.understanding.metric.wfl')}
+                value={num(building.metrics.wfl)}
+                unit="m²"
+                authority={(building.authority.wfl ?? 'sourceEvidenced') as InformationAuthority}
+              />
+            ) : null}
+            {building.metrics.nuf ? (
+              <BuildingEvidenceRow
+                label={t('vr3.understanding.metric.nuf')}
+                value={num(building.metrics.nuf)}
+                unit="m²"
+                authority={(building.authority.nuf ?? 'sourceEvidenced') as InformationAuthority}
+              />
+            ) : null}
+            {building.metrics.units !== null ? (
+              <BuildingEvidenceRow
+                label={t('vr3.understanding.metric.units')}
+                value={num(building.metrics.units)}
+                authority={(building.authority.units ?? 'sourceEvidenced') as InformationAuthority}
+              />
+            ) : null}
+          </dl>
+          <p className="a3-building-evidence">
+            {t('vr3.understanding.buildingEvidence', {
+              files: building.evidenceDocIds
+                .map((id) => project.documents.find((d) => d.id === id)?.file ?? id)
+                .join(', '),
+            })}
+          </p>
+        </div>
+      ))}
+      <p className="a3-ready-evidence-hint">{t('vr3.readiness.details.sourceHint')}</p>
+    </div>
+  )
+}
+
+function BuildingEvidenceRow({
+  label, value, unit, authority,
+}: {
+  label: string
+  value: string
+  unit?: string
+  authority: InformationAuthority
+}) {
+  return (
+    <div className="a3-readiness-row">
+      <dt className="a3-readiness-row-label">{label}</dt>
+      <dd className="a3-readiness-row-value">
+        <AuthorityTrace authority={authority}>
+          <span className="numeric">{value}</span>
+          {unit ? <span className="a3-mro-unit">{unit}</span> : null}
+        </AuthorityTrace>
+      </dd>
+    </div>
   )
 }
 

@@ -263,18 +263,23 @@ describe('the clean route reaches readiness without review ceremony', () => {
     await openProject(user, 'Wohnhof Lindenhain')
     finishAnalysis()
 
-    await waitFor(() => expect(document.querySelector('.a3-readiness')).not.toBeNull())
+    await waitFor(() => expect(document.querySelector('.a3-ready')).not.toBeNull())
     const create = screen.getByRole('button', { name: 'Option anlegen' })
     expect(create).toBeEnabled()
-    // The readiness rows state the facts, and the metrics reconcile with
-    // the fixture: one building, 2.900 m², eight of eight documents.
-    // Scoped to the metrics strip: 2.900 m² is legitimately both the
-    // project total and its single building's area.
-    const metrics = document.querySelector('.a3-understanding-metrics') as HTMLElement
-    expect(within(metrics).getByText('2.900')).toBeInTheDocument()
-    expect(within(metrics).getByText('8/8')).toBeInTheDocument()
-    // No ceremonial acknowledgement of empty issue queues.
+    // The confidence facts state the six facts once each, and the verification
+    // card reconciles with the fixture: one building, 2.900 m², eight of eight
+    // documents. Scoped to the card: 2.900 m² is legitimately both the project
+    // total and its single building's area.
+    const verify = document.querySelector('.a3-verify') as HTMLElement
+    expect(within(verify).getByText('2.900')).toBeInTheDocument()
+    const facts = document.querySelector('.a3-ready-facts') as HTMLElement
+    expect(within(facts).getByText('8/8 verarbeitet · 0 Hinweise')).toBeInTheDocument()
+    // No ceremonial acknowledgement of empty issue queues, and — the clean-pass
+    // audit's PU-01 — no section titled `Prüfung erforderlich` above a table
+    // saying nothing requires review.
     expect(document.querySelector('.a3-cfr')).toBeNull()
+    expect(screen.queryByText('Prüfung erforderlich')).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
   })
 })
 
@@ -526,7 +531,7 @@ describe('Option creation hands off a gated, authority-aware baseline', () => {
     const user = userEvent.setup()
     await openProject(user, 'Wohnhof Lindenhain')
     finishAnalysis()
-    await waitFor(() => expect(document.querySelector('.a3-readiness')).not.toBeNull())
+    await waitFor(() => expect(document.querySelector('.a3-ready')).not.toBeNull())
 
     const st = () => useStore.getState()
     expect(st().projectBaseline).toBeNull()
@@ -573,7 +578,7 @@ describe('Option creation hands off a gated, authority-aware baseline', () => {
     const user = userEvent.setup()
     await openProject(user, 'Wohnhof Lindenhain')
     finishAnalysis()
-    await waitFor(() => expect(document.querySelector('.a3-readiness')).not.toBeNull())
+    await waitFor(() => expect(document.querySelector('.a3-ready')).not.toBeNull())
     const st = () => useStore.getState()
 
     // Scoped to the gate: the spine's step 3 shows the same words, and its
@@ -713,5 +718,116 @@ describe('Option creation hands off a gated, authority-aware baseline', () => {
     act(() => { st().clearOptionCreationError() })
     expect(st().optionCommit).toBeNull()
     expect(current().jobState).toBe('COMPLETE')
+  })
+})
+
+/**
+ * The clean-pass split (accepted 2026-09-05 Project Understanding audit).
+ *
+ * Two projects reach `PROJECT_READY_FOR_OPTION` and used to render the
+ * IDENTICAL composition. This block asserts the two things that made that
+ * wrong, from the surface rather than from the selector:
+ *
+ *   1. on a clean pass the page states no review it does not have;
+ *   2. on a ready state that DOES carry review work, every number it states
+ *      has a keyboard-reachable route to the thing it counts.
+ *
+ * (2) is a FIX, not a preservation. At the audit baseline `main` held five
+ * focusable elements on this state and not one of them was a route: the
+ * Conflicts and Questions surfaces unmounted the moment the gate opened, so
+ * seven open questions, eighteen attention values and one failed document
+ * were dead numerals.
+ */
+describe('the ready state branches on cleanliness, never on the gate', () => {
+  it('states no review on a clean pass, and mounts no surface that has nothing behind it', async () => {
+    const user = userEvent.setup()
+    await openProject(user, 'Wohnhof Lindenhain')
+    finishAnalysis()
+    await waitFor(() => expect(document.querySelector('.a3-ready')).not.toBeNull())
+
+    // PU-01: the section titled `Prüfung erforderlich` above a table saying
+    // nothing requires review.
+    expect(screen.queryByText('Prüfung erforderlich')).not.toBeInTheDocument()
+    // PU-03: the H1 claimed a resolution history on a project with no conflicts.
+    expect(screen.queryByText('Alle blockierenden strittigen Angaben sind entschieden.'))
+      .not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Bereit, eine Option anzulegen' }))
+      .toBeInTheDocument()
+    // A region is absent only when ITS OWN predicate is empty.
+    expect(demoProject('DEMO-HAPPY-01')!.conflicts).toHaveLength(0)
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+    // Six facts, each stated once, reachable without expanding anything.
+    expect(document.querySelectorAll('.a3-ready-fact')).toHaveLength(6)
+    expect(document.querySelector('.a3-ready-facts')!.tagName).toBe('DL')
+  })
+
+  it('keeps the disclosed region in the DOM under aria-expanded / aria-controls', async () => {
+    const user = userEvent.setup()
+    await openProject(user, 'Wohnhof Lindenhain')
+    finishAnalysis()
+    await waitFor(() => expect(document.querySelector('.a3-ready')).not.toBeNull())
+
+    const control = screen.getByRole('button', { name: /Analysedetails ansehen/ })
+    expect(control).toHaveAttribute('aria-expanded', 'false')
+    const region = document.getElementById(control.getAttribute('aria-controls')!)
+    // Visual removal is not semantic removal: the region exists, addressed by
+    // the control, before it is ever opened.
+    expect(region).not.toBeNull()
+    expect(region!.textContent).toContain('Was das System verstanden hat')
+
+    await user.click(control)
+    expect(screen.getByRole('button', { name: /Analysedetails ausblenden/ }))
+      .toHaveAttribute('aria-expanded', 'true')
+    expect(region!.hidden).toBe(false)
+    // The provenance reads as three proportions of one total, never as a
+    // partition that does not sum.
+    // Source-evidenced and manually-confirmed are BOTH 42 of 42: they overlap,
+    // which is exactly why they are stated as proportions and not as a split.
+    expect(within(region as HTMLElement).getAllByText('42 von 42 Werten')).toHaveLength(2)
+    expect(within(region as HTMLElement).getByText('0 von 42 Werten')).toBeTruthy()
+  })
+
+  it('restores a route to every number it states on a ready state that carries review work', async () => {
+    const user = userEvent.setup()
+    await openProject(user, 'Quartier Am Güterbogen')
+    finishAnalysis()
+    const st = () => useStore.getState()
+    const project = demoProject('DEMO-COMPLEX-01')!
+    act(() => {
+      for (const conflict of project.conflicts) {
+        st().resolveProjectConflict(conflict.id, {
+          kind: 'candidate', candidateId: conflict.recommendedCandidateId,
+        })
+      }
+    })
+    await waitFor(() => expect(document.querySelector('.a3-ready')).not.toBeNull())
+
+    // The gate is OPEN …
+    expect(screen.getByRole('button', { name: 'Option anlegen' }))
+      .not.toHaveAttribute('aria-disabled', 'true')
+    // … and the page nonetheless carries the three routes that vanished with
+    // it at the audit baseline.
+    expect(screen.getByRole('button', { name: 'Zu den strittigen Angaben' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Zu den offenen Fragen' }).length)
+      .toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: 'Fehlgeschlagene Dokumente ansehen' }))
+      .toBeInTheDocument()
+    // Both review surfaces are mounted again, each naming its own count.
+    expect(screen.getByRole('tab', { name: 'Strittige Angaben · 6' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Offene Fragen · 7' })).toBeInTheDocument()
+
+    // PU-11: `processedCount` counts FAILED as processed, so the fact must
+    // never print `36/36` while a document failed. It states the distribution.
+    const facts = document.querySelector('.a3-ready-facts') as HTMLElement
+    expect(facts.textContent).not.toContain('36/36')
+    expect(facts.textContent).toContain('1 fehlgeschlagen')
+
+    // The route opens the surface AND takes focus with it: switching a tab
+    // without moving focus leaves a keyboard user at the top of a page whose
+    // bottom silently changed.
+    await user.click(screen.getByRole('button', { name: 'Zu den strittigen Angaben' }))
+    expect(screen.getByRole('tab', { name: 'Strittige Angaben · 6' }))
+      .toHaveAttribute('aria-selected', 'true')
+    expect(document.querySelector('.a3-cfr')).not.toBeNull()
   })
 })

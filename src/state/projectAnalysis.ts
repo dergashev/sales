@@ -860,6 +860,41 @@ export function readiness(
   }
 }
 
+/**
+ * Which READY composition to render.
+ *
+ * PRESENTATION ONLY. It gates nothing, `canCreateOption` never reads it, and
+ * `readiness()` above does not know it exists — a test asserts that the gate's
+ * output is byte-identical with and without this function.
+ *
+ * The finding it encodes (accepted 2026-09-05 Project Understanding clean-pass
+ * audit): `PROJECT_READY_FOR_OPTION` is a GATE state, not a CLEANLINESS state.
+ * The gate reads `jobState`, unresolved BLOCKING conflicts, BLOCKING questions,
+ * `staleFactKeys` and required-field completion — and nothing else. A project
+ * with six decided conflicts, seven non-blocking open questions, twelve
+ * AI-inferred values and one failed document passes it, and used to render the
+ * identical composition as a project that never had a conflict at all. On the
+ * first that composition's copy is true and its routes are missing; on the
+ * second the copy is simply false.
+ *
+ * Every clause is derived from data the product already holds. Nothing here is
+ * a threshold or a judgement: it is the difference between NONE FOUND and
+ * RESOLVED, stated once.
+ */
+export function cleanPresentation(
+  project: FixtureProject, analysis: ProjectAnalysis,
+): boolean {
+  if (readiness(project, analysis).state !== 'PROJECT_READY_FOR_OPTION') return false
+  const dist = project.terminalDistribution
+  return project.conflicts.length === 0
+    && openQuestions(project, analysis).length === 0
+    && dist.warning === 0
+    && dist.lowConfidence === 0
+    && dist.failed === 0
+    && project.analysis.aiInferredValues === 0
+    && project.analysis.valuesRequiringAttention === 0
+}
+
 /* ──────────────────── baseline snapshot (VR3-02 input) ──────────────────── */
 
 /**
