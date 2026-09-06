@@ -826,7 +826,33 @@ export type KgContribution = Readonly<{
   authority: KgServiceAuthority
 }>
 
-/** Every contribution of every INCLUDED cost group, in DIN 276 order. */
+/**
+ * Every PRICED contribution of every INCLUDED cost group, in DIN 276 order.
+ *
+ * A CONTRIBUTION IS SOMETHING THAT CONTRIBUTES (VR3-TGA-01, QA-01).
+ *
+ * These rows become `Driver`s, and a driver is what every commercial surface
+ * lists as a priced position: the rail's `Im Angebot gewählt` recap, the
+ * Kostentreiber, the comparison, the export, the client projection. Each of
+ * them prints the row's amount as a signed number.
+ *
+ * So a decision with no cost authority must not be one. KG 400 declares
+ * fifteen — `Wärmeabgabe` and every other row whose own body text reads
+ * `keine gesonderte Preisgrundlage`, the bundled DHW rows, and
+ * `Hausanschlüsse`, which is the Bauherr's and outside the All3 offer
+ * entirely. Each of them reached the rail as `± 0 €`: a positive claim that
+ * All3 includes the item and charges nothing for it. For the Bauherr row that
+ * is not merely imprecise, it is the opposite of true.
+ *
+ * The guard is AUTHORITY, not the number. A genuinely free priced position
+ * keeps its zero — `costAuthorityOf` returns `direct` for it, and `± 0 €`
+ * then carries its one sanctioned meaning: measurably the same price as the
+ * baseline choice. That is also why a `singleChoice` sitting on its baseline
+ * variant (`Energieziel` at EH 55, `QNG-Siegel` at *kein QNG*) still appears:
+ * it IS priced, and at its current value it adds nothing.
+ *
+ * No sum moves — every row removed here was worth exactly zero.
+ */
 export function kgContributions(
   catalogue: KgCatalogue, decisions: KgDecisions,
 ): readonly KgContribution[] {
@@ -837,6 +863,7 @@ export function kgContributions(
       for (const service of group.services) {
         const exact = serviceContribution(catalogue, decisions, service)
         if (exact === null) continue
+        if (exact.isZero() && costAuthorityOf(service) !== 'direct') continue
         out.push({
           serviceId: service.id,
           group: chapter.group,

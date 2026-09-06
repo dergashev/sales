@@ -814,7 +814,7 @@ export function OfferPanel(
           <OriginPopover
             rows={[
               ...clientSafeDrivers.map((d) => ({
-                label: translatedDriverLabel(withoutBuildingPrefix(s, d), t),
+                label: translatedDriverLabel(withoutBuildingPrefix(s, d), t, lang),
                 value: moneyOut(present(d.exact), lang),
               })),
               ...(!s.regionalfaktorActive
@@ -1374,7 +1374,7 @@ export function OfferPanel(
                                   const isExcluded = d.key === 'kg300_excluded_adjustment'
                                     || d.key === 'kg400_excluded_adjustment'
                                   return (isExcluded ? `${t('offer.drivers.excludedHeading')} · ` : '')
-                                    + translatedDriverLabel(withoutBuildingPrefix(s, d), t)
+                                    + translatedDriverLabel(withoutBuildingPrefix(s, d), t, lang)
                                 }, s).map((row) => (
                                   <li key={row.key}
                                       className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
@@ -1430,7 +1430,7 @@ export function OfferPanel(
                     100-%-Summe der Spalte exakt. */}
                 {p.discountDriver && (
                   <tr>
-                    <td>{translatedDriverLabel(withoutBuildingPrefix(s, p.discountDriver), t)}</td>
+                    <td>{translatedDriverLabel(withoutBuildingPrefix(s, p.discountDriver), t, lang)}</td>
                     {/* SB-23: one signed-money formatter everywhere — this
                         used to compose the sign BEFORE `moneyLabel()`'s own
                         `≈` prefix (`− ≈ 910.000 €`), the exact inverted
@@ -1482,7 +1482,7 @@ export function OfferPanel(
                   <p className="a3-mtag">{tx('Im Angebot gewählt')}</p>
                   <ul>
                     {/* SB-13: same aggregation as the Level 2 children list above. */}
-                    {clientSafeContributionRows(looseChosen, (d) => translatedDriverLabel(withoutBuildingPrefix(s, d), t), s).map((row) => (
+                    {clientSafeContributionRows(looseChosen, (d) => translatedDriverLabel(withoutBuildingPrefix(s, d), t, lang), s).map((row) => (
                       <li key={row.key}
                           className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
                         <span className="text-text-secondary">
@@ -1499,7 +1499,7 @@ export function OfferPanel(
                 <div className={looseChosen.length > 0 ? 'mt-3 border-t border-border-subtle pt-2' : ''}>
                   <p className="a3-mtag">{t('offer.drivers.excludedHeading')}</p>
                   <ul>
-                    {clientSafeContributionRows(looseExcluded, (d) => translatedDriverLabel(withoutBuildingPrefix(s, d), t), s).map((row) => (
+                    {clientSafeContributionRows(looseExcluded, (d) => translatedDriverLabel(withoutBuildingPrefix(s, d), t, lang), s).map((row) => (
                       <li key={row.key}
                           className="flex justify-between gap-2 border-b border-border-subtle py-1 text-small">
                         <span className="text-text-secondary">{row.label}</span>
@@ -1969,7 +1969,7 @@ function driverLabel(
   // one building is included — without it, `translatedDriverLabel`'s own
   // key patterns never match and it silently falls back to raw German
   // (live Playwright finding, TASK_CANDIDATE, Nordfeld 2 buildings, EN).
-  const base = translatedDriverLabel(withoutBuildingPrefix(s, d), t)
+  const base = translatedDriverLabel(withoutBuildingPrefix(s, d), t, lang)
   // Суффикс «количество × ставка» выводится ИЗ ОСНОВАНИЯ вклада, а не по
   // списку ключей. Прежняя редакция перечисляла два ключа поимённо и брала
   // ставку из каталога напрямую — второй источник той же величины, который

@@ -1,5 +1,6 @@
 import { Decimal } from 'decimal.js'
 import type { Driver } from '../engine/calculate'
+import { kgCatalogues, serviceById as kgServiceById } from '../engine/kgConfiguration'
 
 /**
  * Authoritative boundary for the live client projection.
@@ -126,7 +127,29 @@ export function projectDriversForClient(
 export function translatedDriverLabel(
   d: Pick<Driver, 'key' | 'label'>,
   t: (key: string, values?: Readonly<Record<string, string | number>>) => string,
+  lang: 'de' | 'en' = 'de',
 ): string {
+  /**
+   * A KG service driver is a LOOKUP, not a reverse index.
+   *
+   * `kgDrivers` builds its label from `labelDe`, and this function's
+   * fall-through returned that German string verbatim — so the rail's
+   * `Im Angebot gewählt` recap listed `Wärmeerzeuger`, `Wärmeverteilung &
+   * Sanitärinstallation` and `Elektroinstallation & Datennetz` to an English
+   * reader. The catalogue stores both languages beside each other, exactly as
+   * `translatedChangeLabel` already relies on, so the right label is one
+   * lookup away and needs no delivery key at all.
+   *
+   * Pre-existing, and it grew with VR3-TGA-01: KG 400 now contributes named
+   * engineering decisions to that list rather than three generic positions.
+   */
+  if (d.key.startsWith('kg_')) {
+    const serviceId = d.key.slice(3)
+    for (const catalogue of kgCatalogues()) {
+      const service = kgServiceById(catalogue, serviceId)
+      if (service) return lang === 'en' ? service.labelEn : service.labelDe
+    }
+  }
   if (d.key === 'basis') return t('driver.baseService')
   if (d.key === 'basis_s') return t('driver.baseServiceSpecialAreas')
   if (d.key.startsWith('gebaeudeform_')) return t('driver.buildingForm')

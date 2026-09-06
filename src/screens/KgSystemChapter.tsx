@@ -157,7 +157,18 @@ export function KgSystemChapter({ chapter, group }: {
    * Pairing a `role="alert"` with a polite region delivers the same sentence
    * twice — a pitfall this repository has already recorded once.
    */
-  const [announcement, setAnnouncement] = useState('')
+  /**
+   * The announcement is stored UNRESOLVED — a key and its values, not a
+   * sentence.
+   *
+   * A resolved string is frozen in the language it was built in, so switching
+   * to English left the last cascade announcement in German until some other
+   * cascade happened to re-fire it. The live region is one of the few places
+   * a stale sentence is genuinely invisible to the person it misleads.
+   */
+  const [announcement, setAnnouncement] = useState<
+    { key: string; service: KgService; count: number } | null
+  >(null)
   /** The decision to focus after a cascade has made something open again. */
   const focusAfterCascade = useRef<string | null>(null)
   /**
@@ -294,12 +305,17 @@ export function KgSystemChapter({ chapter, group }: {
     s.previewOption(null)
     s.setKgServiceDecision(service.id, next)
     const resets = cascade.entries.filter((entry) => entry.effect === 'reset')
-    const name = label(service.labelDe, service.labelEn)
-    setAnnouncement(resets.length === 0
-      ? t('vr3.tga.cascade.announceNone', { decision: name })
-      : t(resets.length === 1
-        ? 'vr3.tga.cascade.announce'
-        : 'vr3.tga.cascade.announcePlural', { decision: name, count: resets.length }))
+    // The SERVICE, not its label: a label is already a language, and the one
+    // sentence a screen-reader user hears has to be in theirs.
+    setAnnouncement({
+      key: resets.length === 0
+        ? 'vr3.tga.cascade.announceNone'
+        : resets.length === 1
+          ? 'vr3.tga.cascade.announce'
+          : 'vr3.tga.cascade.announcePlural',
+      service,
+      count: resets.length,
+    })
     focusAfterCascade.current = resets[0]?.service.id ?? null
   }
 
@@ -622,7 +638,14 @@ export function KgSystemChapter({ chapter, group }: {
         />
       )}
 
-      <p className="sr-only" aria-live="polite">{announcement}</p>
+      <p className="sr-only" aria-live="polite">
+        {announcement
+          ? t(announcement.key, {
+            decision: label(announcement.service.labelDe, announcement.service.labelEn),
+            count: announcement.count,
+          })
+          : ''}
+      </p>
 
       {/* THE CONSEQUENCE DIALOGUE — what changes, before it changes (T-04). */}
       <Dialog

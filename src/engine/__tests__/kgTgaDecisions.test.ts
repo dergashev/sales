@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import Decimal from 'decimal.js'
 import {
+  allServices,
   blockedVariantReason,
   changedFromSource,
   chapterOf,
@@ -12,10 +13,14 @@ import {
   kgCascadeReset,
   kgCatalogue,
   kgChapterOverview,
+  kgContributions,
+  kgGroupAmounts,
+  kgTotal,
   kgChapterProgress,
   kgSystemProgress,
   proposalChanges,
   rendersAmount,
+  serviceById,
   serviceContribution,
   serviceDecision,
   systemServices,
@@ -404,6 +409,80 @@ describe('three buildings produce one decision with three values', () => {
     expect(drainage.applicability?.state).toBe('partial')
     const rows = chapterServiceById(chapterB, 'b-400-11')!.valueRows!
     expect(rows.filter((r) => r.notApplicable)).toHaveLength(2)
+  })
+})
+
+describe('a decision with no price basis never becomes a priced contribution', () => {
+  /**
+   * THE QA-01 REGRESSION TEST.
+   *
+   * Found by QA on candidate 917cb52. The KG 400 body said
+   * `keine gesonderte Preisgrundlage` correctly, and the commercial rail's
+   * `Im Angebot gewählt` recap then printed `± 0 €` for the same fifteen
+   * decisions — because each was still emitted as a zero-valued `Driver`,
+   * and every commercial surface renders a driver's amount as a signed
+   * number. For `Hausanschlüsse`, which is the Bauherr's, that reads as an
+   * All3 item included at no charge: the opposite of true.
+   *
+   * The rail was the symptom. This is the boundary.
+   */
+  it.each([
+    ['DEMO-HAPPY-01', A],
+    ['DEMO-COMPLEX-01', B],
+  ])('%s emits no zero-valued driver without cost authority', (_id, catalogue) => {
+    const rows = kgContributions(catalogue, included(catalogue))
+    const offenders = rows.filter((row) => {
+      const service = serviceById(catalogue, row.serviceId)!
+      return row.exact.isZero() && costAuthorityOf(service) !== 'direct'
+    })
+    expect(offenders.map((row) => row.serviceId)).toEqual([])
+  })
+
+  it('never lets a Bauherr decision reach the priced contributions at all', () => {
+    for (const catalogue of [A, B]) {
+      const priced = new Set(
+        kgContributions(catalogue, included(catalogue)).map((row) => row.serviceId),
+      )
+      const bauherr = allServices(catalogue)
+        .filter((service) => costAuthorityOf(service) === 'bauherr')
+      expect(bauherr.length).toBeGreaterThan(0)
+      for (const service of bauherr) expect(priced.has(service.id)).toBe(false)
+    }
+  })
+
+  it('lets the rail and the chapter body state the same thing', () => {
+    /**
+     * QA's own remedy, as an invariant: the KG 400 body's cost-authority text
+     * IS the source of truth for the rail line. Every row the commercial
+     * surfaces price is a decision the body calls `direkt bepreist`, and no
+     * other row reaches them at all — so the two can no longer disagree about
+     * whether All3 charges for something.
+     */
+    for (const catalogue of [A, B]) {
+      const rows = kgContributions(catalogue, included(catalogue))
+      expect(rows.length).toBeGreaterThan(0)
+      for (const row of rows) {
+        const service = serviceById(catalogue, row.serviceId)!
+        expect(costAuthorityOf(service)).toBe('direct')
+      }
+    }
+  })
+
+  it('keeps a priced decision sitting on its baseline variant', () => {
+    // `± 0 €` has exactly one true meaning — measurably the same price as the
+    // baseline choice — and a `singleChoice` at its baseline is it. Removing
+    // those too would trade one dishonest state for a missing one.
+    const rows = kgContributions(A, included(A))
+    expect(rows.map((row) => row.serviceId)).toContain('a-400-es')
+  })
+
+  it('moves no total by removing them', () => {
+    expect(kgTotal(A, included(A)).toFixed(2)).toBe(A.declaredNetTotal)
+    expect(kgTotal(B, included(B)).toFixed(2)).toBe(B.declaredNetTotal)
+    expect(kgGroupAmounts(A, included(A)).KG_400?.toFixed(2))
+      .toBe(A.declaredByCostGroup.KG_400)
+    expect(kgGroupAmounts(B, included(B)).KG_400?.toFixed(2))
+      .toBe(B.declaredByCostGroup.KG_400)
   })
 })
 

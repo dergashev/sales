@@ -131,7 +131,9 @@ type TopDriver = { label: string; exact: Decimal }
  *  §3's own tested computation inline. §3 itself is untouched — this is a
  *  new pure function, not a refactor of already-released, already-tested
  *  code. */
-function topCostDrivers(current: Candidate, t: ReturnType<typeof useT>): TopDriver[] {
+function topCostDrivers(
+  current: Candidate, t: ReturnType<typeof useT>, lang: 'de' | 'en' = 'de',
+): TopDriver[] {
   const { p, cfg } = current
   const clientDrivers = projectDriversForClient(p.result.drivers, 'praesentation', cfg.kg800ClientRevealed)
   const includedIds = includedBuildingIdsOf(cfg)
@@ -150,7 +152,7 @@ function topCostDrivers(current: Candidate, t: ReturnType<typeof useT>): TopDriv
     // here so "Größter Treiber" names an actual deviation (e.g.
     // "Untergeschoss"), never the base package itself.
     if (strippedKey === 'basis' || strippedKey === 'basis_s') continue
-    const label = translatedDriverLabel({ ...d, key: strippedKey }, t)
+    const label = translatedDriverLabel({ ...d, key: strippedKey }, t, lang)
     const existing = byLabel.get(label)
     if (existing) existing.exact = existing.exact.plus(d.exact)
     else byLabel.set(label, { label, exact: d.exact })
@@ -1048,7 +1050,7 @@ function OfferClimax({ current, projectName, priceUnavailable, onPrepare, headin
   const { p, cfg } = current
   const { fadeRise, transition } = useSemanticMotion()
   const hero = useMoneyCountUp(p.result.total.exact)
-  const topDrivers = topCostDrivers(current, t)
+  const topDrivers = topCostDrivers(current, t, language)
   const biggestDriver = topDrivers[0]
   const segments = buildKgCompositionSegments(p.kgSplit, (g) => t(`costGroup.${g}`))
 
