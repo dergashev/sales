@@ -214,11 +214,19 @@ function OptionRow({
         date: dayStamp(saved.savedAt, s.uiLanguage), version: saved.version,
       })
       : null,
+    /**
+     * `noch nicht konfiguriert` is a claim about the OPTION, not about the
+     * journal, so it is made from the lifecycle state. The journal is
+     * session state and does not survive a reload; saying "not configured
+     * yet" merely because no event is in memory contradicted the badge
+     * beside it, which reads the persisted configuration and correctly said
+     * `In Arbeit · Kalkulieren` — observed live after a reload at 1280.
+     */
     row.lastChangedAt
       ? t('vr3.option.meta.changed', {
         at: timeStamp(row.lastChangedAt, s.uiLanguage),
       })
-      : t('vr3.option.meta.notConfigured'),
+      : row.state === 'NEW' ? t('vr3.option.meta.notConfigured') : null,
   ].filter((entry): entry is string => Boolean(entry))
 
   const open = () => startContinuityTransition(reduced, () => s.openOption(row.id))
