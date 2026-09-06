@@ -227,7 +227,16 @@ test.describe('VR3-05 · client presentation, scenario and outputs', () => {
     // What-if 1 — decentralised heat, priced by the canonical calculator.
     await page.getByRole('radio', { name: /Dezentral je Gebäude/ }).click()
     await expect(bar).toContainText('Nicht gespeichertes Präsentations-Szenario')
-    await expect(bar).toContainText(/−.?310\.000/)
+    /**
+     * VR3-TGA-01 moved this number, and the move is the fix.
+     *
+     * It read −310 000 €: the plant-concept delta alone. Switching to
+     * per-building plants used to change no other row and left a shared-plant
+     * heat generator included at + 1 240 000 €, so the scenario priced a
+     * configuration that cannot be built — in the one place a client sees it.
+     * The cascade now drops that row with its parent.
+     */
+    await expect(bar).toContainText(/−.?1\.550\.000/)
     await expect(bar).toContainText('eine Änderung')
     await shot(page, 'T-041-scenario-1440')
 
@@ -372,7 +381,7 @@ test.describe('VR3-05 · client presentation, scenario and outputs', () => {
     // label, the state is named in words, and nothing is animating.
     const bar = page.locator('.a3-client-scenario-bar')
     await expect(bar).toContainText('Nicht gespeichertes Präsentations-Szenario')
-    await expect(bar).toContainText(/−.?310\.000/)
+    await expect(bar).toContainText(/−.?1\.550\.000/)
     const running = await page.evaluate(
       () => document.getAnimations().filter((a) => a.playState === 'running').length,
     )
@@ -495,7 +504,7 @@ test.describe('VR3-05 · client presentation, scenario and outputs', () => {
     // A live what-if: the money changes, the presenter does not move.
     const decentral = page.getByRole('radio', { name: /Dezentral je Gebäude/ })
     await decentral.click()
-    await expect(page.locator('.a3-client-scenario-bar')).toContainText(/−.?310\.000/)
+    await expect(page.locator('.a3-client-scenario-bar')).toContainText(/−.?1\.550\.000/)
     await page.waitForTimeout(700)
     const afterDecision = await page.evaluate(() => ({
       tag: document.activeElement?.tagName ?? null,
