@@ -7144,7 +7144,7 @@ const store = createStore<Store>((set, get) => {
       let removed: OptionConfig = fresh
       apply({
         kind: 'value.edited',
-        label: `Opportunity Option «${resolvedName}» angelegt`,
+        label: `Option «${resolvedName}» angelegt`,
         labelKey: 'vr3.journal.optionCreated',
         labelValues: { option: resolvedName },
         deltaExact: null,
@@ -7220,7 +7220,7 @@ const store = createStore<Store>((set, get) => {
       set({ options: s.options.map((o) => (o.id === id ? { ...o, name: trimmed } : o)) })
       apply({
         kind: 'value.edited',
-        label: `Opportunity Option «${previousName}» in «${trimmed}» umbenannt`,
+        label: `Option «${previousName}» in «${trimmed}» umbenannt`,
         labelKey: 'vr3.journal.optionRenamed',
         labelValues: { previous: previousName, next: trimmed },
         deltaExact: null,

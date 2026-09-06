@@ -3973,7 +3973,16 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    .a3-wfn-substatic · .a3-wfn-sublabel · .a3-wfn-substate. */
 .a3-wfn{inline-size:100%;border-bottom:var(--border-hairline);min-width:0}
 .a3-wfn-list{list-style:none;margin-inline:auto;padding:0;inline-size:100%;max-inline-size:var(--measure-workspace);display:flex;flex-wrap:nowrap;align-items:stretch;gap:var(--space-1);min-width:0}
-.a3-wfn-stage{display:flex;flex-direction:column;min-width:0}
+.a3-wfn-stage{display:flex;flex-direction:column;min-width:0;flex:1 1 0}
+/* Project → Option → Configurator IA (2026-09-06): the nested steps of
+   the CURRENT stage are a band under the whole rail, not a column of it.
+   Before this, a stage with seven members (Kalkulieren) sized itself to
+   them and took 726 of 1320 px, squeezing `Konfigurieren` to 74 px so its
+   own nowrap label overflowed under the next stage's marker — measured at
+   1440. Equal columns fix the squeeze; `max-content` keeps the members on
+   one line, spilling harmlessly to the right of their own column into a
+   row that holds nothing else, and the ceiling keeps that spill inside the
+   workspace measure so the page can never scroll sideways. */
 .a3-wfn-button,.a3-wfn-static{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-1) var(--space-3);background:transparent;border:0;border-bottom:var(--border-width-strong) solid transparent;text-align:start;color:var(--color-text-secondary);min-width:0}
 .a3-wfn-button:focus-visible,.a3-wfn-subbutton:focus-visible{outline:var(--border-width-focus-emphasis) solid var(--color-focus-ring);outline-offset:var(--border-width-focus-emphasis)}
 .a3-wfn-marker{flex:none;display:inline-flex;align-items:center;justify-content:center;inline-size:var(--space-5);block-size:var(--space-5);border:var(--border-hairline);font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-bold);font-variant-numeric:tabular-nums}
@@ -3985,7 +3994,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-wfn-current > .a3-wfn-button .a3-wfn-marker,.a3-wfn-current > .a3-wfn-static .a3-wfn-marker{border-color:var(--color-border-strong)}
 .a3-wfn-done > .a3-wfn-button .a3-wfn-marker,.a3-wfn-done > .a3-wfn-static .a3-wfn-marker{background:var(--color-surface-subtle);border-color:var(--color-border-strong)}
 .a3-wfn-locked > .a3-wfn-button,.a3-wfn-locked > .a3-wfn-static{color:var(--color-text-muted)}
-.a3-wfn-sub{list-style:none;margin:0;padding:0 0 var(--space-2) calc(var(--space-5) + var(--space-5));display:flex;flex-wrap:wrap;gap:var(--space-3);min-width:0}
+.a3-wfn-sub{list-style:none;margin-inline:auto;margin-block:0;padding:0 0 var(--space-2) calc(var(--space-5) + var(--space-3));display:flex;flex-wrap:wrap;gap:var(--space-3);inline-size:100%;max-inline-size:var(--measure-workspace);min-width:0}
 .a3-wfn-substep{min-width:0}
 .a3-wfn-subbutton,.a3-wfn-substatic{display:flex;align-items:baseline;gap:var(--space-2);padding:var(--space-1) 0;background:transparent;border:0;text-align:start;color:var(--color-text-secondary);min-width:0}
 .a3-wfn-sublabel{font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);white-space:nowrap}

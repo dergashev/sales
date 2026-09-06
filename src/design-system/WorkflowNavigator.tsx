@@ -96,6 +96,7 @@ export function WorkflowNavigator({
     (acc, stage, i) => (stage.onSelect ? [...acc, i] : acc), [],
   )
   const currentIndex = stages.findIndex((stage) => stage.state === 'current')
+  const current = currentIndex >= 0 ? stages[currentIndex] : undefined
   const [roving, setRoving] = useState(
     currentIndex >= 0 && stages[currentIndex]?.onSelect
       ? currentIndex
@@ -170,44 +171,65 @@ export function WorkflowNavigator({
                   {body}
                 </div>
               )}
-              {stage.state === 'current' && stage.steps && stage.steps.length > 0 ? (
-                <ol className="a3-wfn-sub">
-                  {stage.steps.map((step) => (
-                    <li
-                      key={step.id}
-                      className={`a3-wfn-substep ${STATE_CLASS[step.state]}`}
-                    >
-                      {step.onSelect ? (
-                        <button
-                          type="button"
-                          className="a3-wfn-subbutton hit-target"
-                          aria-current={step.state === 'current' ? 'step' : undefined}
-                          onClick={step.onSelect}
-                        >
-                          <span className="a3-wfn-sublabel">{step.label}</span>
-                          <span className="a3-wfn-substate">
-                            {t(STATE_KEY[step.state])}
-                          </span>
-                        </button>
-                      ) : (
-                        <span className="a3-wfn-substatic">
-                          <span className="a3-wfn-sublabel">{step.label}</span>
-                          <span className="a3-wfn-substate">
-                            {t(STATE_KEY[step.state])}
-                            {step.state === 'locked' && step.lockedReason
-                              ? ` · ${step.lockedReason}`
-                              : ''}
-                          </span>
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ol>
-              ) : null}
             </li>
           )
         })}
       </ol>
+      {/*
+        THE MEMBERS OF THE CURRENT STAGE, AS A BAND UNDER THE WHOLE RAIL.
+        
+        The contract is unchanged and is still the point: members render for
+        the CURRENT stage and for no other, there is no `showChildren` flag,
+        and the caller passes exactly what it always did. What moved is where
+        they are DRAWN. Inside their stage's own column they sized it: a
+        Kalkulieren with seven members took 726 of 1320 px and squeezed
+        `Konfigurieren` to 74, whose `nowrap` label then overflowed under the
+        next stage's marker — measured at 1440 on the Option workspace, the
+        first rail in this product whose current stage actually has members.
+        Widening the column is not available either: a stage row of four
+        equal columns is what keeps every stage label legible at 1280.
+
+        So the band spans the rail, and the association it loses by leaving
+        the `<li>` it regains as an accessible name that states which stage
+        these members belong to.
+      */}
+      {current && current.steps && current.steps.length > 0 ? (
+        <ol
+          className="a3-wfn-sub"
+          aria-label={t('ds.workflowNavigator.stepsOf', { stage: current.label })}
+        >
+          {current.steps.map((step) => (
+            <li
+              key={step.id}
+              className={`a3-wfn-substep ${STATE_CLASS[step.state]}`}
+            >
+              {step.onSelect ? (
+                <button
+                  type="button"
+                  className="a3-wfn-subbutton hit-target"
+                  aria-current={step.state === 'current' ? 'step' : undefined}
+                  onClick={step.onSelect}
+                >
+                  <span className="a3-wfn-sublabel">{step.label}</span>
+                  <span className="a3-wfn-substate">
+                    {t(STATE_KEY[step.state])}
+                  </span>
+                </button>
+              ) : (
+                <span className="a3-wfn-substatic">
+                  <span className="a3-wfn-sublabel">{step.label}</span>
+                  <span className="a3-wfn-substate">
+                    {t(STATE_KEY[step.state])}
+                    {step.state === 'locked' && step.lockedReason
+                      ? ` · ${step.lockedReason}`
+                      : ''}
+                  </span>
+                </span>
+              )}
+            </li>
+          ))}
+        </ol>
+      ) : null}
     </nav>
   )
 }
