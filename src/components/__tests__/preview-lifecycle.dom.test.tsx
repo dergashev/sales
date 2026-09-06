@@ -53,8 +53,11 @@ describe('AUD-01: der gerenderte Vorschau-Slot — menschlicher Text, zuverläss
 
     const preview = container.querySelector('.a3-preview')
     expect(preview).not.toBeNull()
-    expect(preview!.textContent).toContain('Wärmekonzept')
-    expect(preview!.textContent).toContain('Gebäudeweise Anlagen')
+    // VR3-TGA-01 renamed this decision to the audit's canonical name: it is
+    // the SCOPE decision of the heat system (`gemeinsame Anlage` vs `je
+    // Gebäude`), and calling it a "concept" hid that.
+    expect(preview!.textContent).toContain('Anlagenkonzept')
+    expect(preview!.textContent).toContain('Je Gebäude eine eigene Anlage')
     // The raw id pair must not reach the rendered slot — the exact class of
     // defect the audit screenshotted on the retired surface.
     expect(preview!.textContent).not.toMatch(/b-400-heat/)
@@ -111,7 +114,12 @@ describe('AUD-01: der gerenderte Vorschau-Slot — menschlicher Text, zuverläss
 
     // A real hover on a real label — the pointer path the audit found broken
     // on the retired control (F-009), proven on the canonical one.
-    const rows = screen.getAllByRole('radiogroup', { name: /^Entscheidung/ })
+    //
+    // VR3-TGA-01: KG 400's decisions live inside a system that opens in
+    // place, so reaching one means opening its system first. That is the
+    // interaction under test's own precondition now, not a detour.
+    await user.click(screen.getAllByRole('button', { name: /^Wärme/ })[0]!)
+    const rows = await screen.findAllByRole('radiogroup', { name: /^Entscheidung/ })
     await user.hover(rows[0]!.querySelectorAll('label')[1]!)
     await act(async () => { await new Promise((r) => setTimeout(r, 260)) })
 

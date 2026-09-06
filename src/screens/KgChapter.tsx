@@ -23,6 +23,7 @@ import { Button } from '../components/primitives'
 import { FormField } from '../components/designSystem'
 import { SemanticStatus, type SemanticStatusTone } from '../design-system/SemanticStatus'
 import { CommercialNumber } from '../design-system/CommercialNumber'
+import { KgSystemChapter } from './KgSystemChapter'
 import {
   KGConfigurationPage,
   ServiceDecisionRow,
@@ -62,6 +63,19 @@ export function KgChapter() {
   const en = s.uiLanguage === 'en'
   const identity = `KG${NNBSP}${group.slice(3)}`
   const serviceGroups = chapter.groups
+  /**
+   * ASK THE DATA, NEVER THE COST GROUP.
+   *
+   * A chapter renders as a source-aware system configurator because it
+   * DECLARES the parts of one — a Rahmen band, systems that carry a summary,
+   * decisions that carry a source. KG 400 is the first chapter to declare
+   * them, and it is deliberately not named here: the moment this reads
+   * `group === 'KG_400'`, the "one learned interaction grammar" this file has
+   * protected since VR3-03 is gone, and the next chapter to need the same
+   * capability has to be added to a switch instead of to a fixture.
+   */
+  const declaresSystems = chapter.groups.some((g) => g.summaryDe !== undefined)
+    || chapter.rahmen !== undefined
   const currentGroupId = activeGroupId ?? serviceGroups[0]?.id ?? null
 
   const includedGroups = KG_SCOPE_GROUPS.filter((g) => decisions.scope[g] === 'included')
@@ -194,7 +208,11 @@ export function KgChapter() {
             decided: progress.decidedDecisions, total: progress.requiredDecisions,
           }),
       }}
-      groupNav={serviceGroups.map((serviceGroup) => {
+      /* A system chapter navigates ITSELF — the eight rows are the index, and
+         a pill strip above them would be a second one that answers the same
+         question. (The released group nav is also the one the audit measured
+         as decorative: clicking a pill moved `aria-current` and nothing else.) */
+      groupNav={declaresSystems ? undefined : serviceGroups.map((serviceGroup) => {
         const counts = groupProgressOf(serviceGroup.id)
         return {
           id: serviceGroup.id,
@@ -205,7 +223,11 @@ export function KgChapter() {
           onSelect: () => setActiveGroupId(serviceGroup.id),
         }
       })}
-      context={<ChapterContext group={group} />}
+      /* The Kontext card is DISSOLVED for a system chapter: its buildings
+         belong in the Rahmen band, its counters in the overview summary and
+         its baseline status beside the buildings it describes. Nothing it
+         showed is lost, and the work stops being pushed below the fold. */
+      context={declaresSystems ? undefined : <ChapterContext group={group} />}
       previousAction={previous && (
         <Button onClick={() => s.openKgChapter(previous)}>
           {t('vr3.kg.page.previous', { group: `KG${NNBSP}${previous.slice(3)}` })}
@@ -231,7 +253,8 @@ export function KgChapter() {
         </Button>
       )}
     >
-      {serviceGroups.map((serviceGroup) => {
+      {declaresSystems && <KgSystemChapter chapter={chapter} group={group} />}
+      {!declaresSystems && serviceGroups.map((serviceGroup) => {
         const counts = groupProgressOf(serviceGroup.id)
         return (
           <ServiceGroup

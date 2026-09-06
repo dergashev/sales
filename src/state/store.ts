@@ -26,6 +26,8 @@ import {
 import {
   KG_SCOPE_GROUPS,
   initialDecisions as initialKgDecisions,
+  kgCascadeFor,
+  kgCascadeReset,
   kgCatalogue,
   kgCatalogues,
   kgChapterProgress,
@@ -43,6 +45,7 @@ import {
   type KgScopeDecision,
   type KgScopeGroup,
   type KgChapterProgress,
+  type KgService,
   type KgServiceDecisionRecord,
 } from '../engine/kgConfiguration'
 import {
@@ -7963,13 +7966,40 @@ const store = createStore<Store>((set, get) => {
       if (prev.state === decision.state
         && prev.variant === decision.variant
         && prev.quantity === decision.quantity) return
+      /**
+       * VR3-TGA-01 — THE CASCADE TRAVELS WITH THE PARENT.
+       *
+       * Measured on `06a4acf`: switching `Wärmekonzept` to per-building
+       * plants changed ZERO of sixteen rows and left a shared-plant heat
+       * generator included at + 1 240 000 €. The configuration was allowed
+       * to be self-contradictory, and only an arithmetic delta hinted at it.
+       *
+       * Every child whose precondition stops holding is reset in the SAME
+       * `set` and under the SAME journal event, so DC-29 undo restores the
+       * whole combination rather than the parent alone — which would leave
+       * exactly the impossible state this closes.
+       */
+      const cascade = kgCascadeFor(catalogue, s.kgConfig, serviceId, decision)
+      const resets = cascade.entries.filter((entry) => entry.effect === 'reset')
+      const previousOf = new Map(resets.map((entry) => [
+        entry.service.id, kgServiceDecision(s.kgConfig!, entry.service),
+      ]))
       const before = s.projection().result.total.exact
-      const write = (value: KgServiceDecisionRecord) => set((state) => {
+      const write = (
+        value: KgServiceDecisionRecord,
+        children: (service: KgService) => KgServiceDecisionRecord,
+      ) => set((state) => {
         if (!state.kgConfig) return {}
         return {
           kgConfig: {
             ...state.kgConfig,
-            services: { ...state.kgConfig.services, [serviceId]: value },
+            services: {
+              ...state.kgConfig.services,
+              [serviceId]: value,
+              ...Object.fromEntries(resets.map((entry) => [
+                entry.service.id, children(entry.service),
+              ])),
+            },
           },
           // ONE energy standard. The axis has a released home in the
           // building model, and exactly one surface still displays it from
@@ -7993,7 +8023,7 @@ const store = createStore<Store>((set, get) => {
             : {}),
         }
       })
-      write(decision)
+      write(decision, kgCascadeReset)
       const after = get().projection().result.total.exact
       const delta = after.minus(before)
       const labels = kgChangeLabels({ kind: 'kgService', serviceId, value: decision })
@@ -8005,8 +8035,12 @@ const store = createStore<Store>((set, get) => {
         kind: 'option.selected',
         label: labels.de,
         deltaExact: delta.isZero() ? null : delta,
-        inverse: () => write(prev),
-        forward: () => write(decision),
+        // ONE event, both directions: undo restores the parent AND every
+        // child the change reset, because half a restored cascade is the
+        // impossible combination again.
+        inverse: () => write(prev, (child) => previousOf.get(child.id)
+          ?? kgCascadeReset(child)),
+        forward: () => write(decision, kgCascadeReset),
         cause: { de: labels.de, en: labels.en, group },
       })
       if (!delta.isZero()) {

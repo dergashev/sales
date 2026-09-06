@@ -192,75 +192,79 @@
           "groups": [
             {
               "id": "a-kg400-heat",
-              "labelDe": "Wärme & Energiestandard",
-              "labelEn": "Heat & energy standard",
+              "labelDe": "Wärme",
+              "labelEn": "Heat",
               "services": [
                 {
                   "id": "a-400-01",
-                  "labelDe": "Wärmeerzeugung Wärmepumpe",
-                  "labelEn": "Heat pump plant",
-                  "summaryDe": "Zentrale Sole-Wasser-Wärmepumpe mit Pufferspeicher.",
-                  "summaryEn": "Central brine-water heat pump with buffer storage.",
+                  "labelDe": "Wärmeerzeuger",
+                  "labelEn": "Heat generator",
+                  "summaryDe": "Bestimmt die Warmwasserbereitung und die § 14a-Bewertung.",
+                  "summaryEn": "Determines domestic hot water and the § 14a assessment.",
                   "amount": "430000.00",
                   "baseline": "selected",
                   "kind": {
-                    "kind": "includeExclude"
-                  },
-                  "authority": "sourceEvidenced",
-                  "requiresDecision": false
-                },
-                {
-                  "id": "a-400-es",
-                  "labelDe": "Energiestandard",
-                  "labelEn": "Energy standard",
-                  "summaryDe": "Der Standard beschreibt das Gebäude; das Band verengt sich erst mit der Kundenbestätigung.",
-                  "summaryEn": "The standard describes the building; the band narrows only on customer confirmation.",
-                  "amount": "0.00",
-                  "baseline": "selected",
-                  "kind": {
                     "kind": "singleChoice",
-                    "baselineVariant": "eh55",
+                    "baselineVariant": "WE_LW_WP",
                     "variants": [
                       {
-                        "value": "geg",
-                        "labelDe": "GEG-Standard",
-                        "labelEn": "GEG standard",
-                        "delta": "-97000.00"
-                      },
-                      {
-                        "value": "eh55",
-                        "labelDe": "Effizienzhaus 55",
-                        "labelEn": "Efficiency house 55",
+                        "value": "WE_LW_WP",
+                        "labelDe": "Luft/Wasser-Wärmepumpe",
+                        "labelEn": "Air-to-water heat pump",
                         "delta": "0.00"
                       },
                       {
-                        "value": "eh40",
-                        "labelDe": "Effizienzhaus 40",
-                        "labelEn": "Efficiency house 40",
-                        "delta": "97000.00"
+                        "value": "WE_FW",
+                        "labelDe": "Fernwärme-Übergabestation",
+                        "labelEn": "District heating transfer station",
+                        "delta": "-64000.00"
                       },
                       {
-                        "value": "eh40nh",
-                        "labelDe": "Effizienzhaus 40 NH",
-                        "labelEn": "Efficiency house 40 NH",
-                        "delta": "195000.00"
+                        "value": "WE_SW_WP",
+                        "labelDe": "Sole/Wasser-Wärmepumpe (Erdsonde)",
+                        "labelEn": "Brine-to-water (ground-source) heat pump",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      },
+                      {
+                        "value": "WE_GAS_BW",
+                        "labelDe": "Gas-Brennwert in EE-Hybrid",
+                        "labelEn": "Gas condensing in RE-hybrid",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      },
+                      {
+                        "value": "WE_BIOMASSE",
+                        "labelDe": "Biomasse/Pellet-Kessel",
+                        "labelEn": "Biomass/pellet boiler",
+                        "delta": "0.00",
+                        "noPriceBasis": true
                       }
                     ]
                   },
-                  "authority": "assumed",
+                  "authority": "sourceEvidenced",
+                  "all3Standard": "WE_LW_WP",
+                  "costAuthority": "direct",
+                  "source": {
+                    "originDe": "03_Energiekonzept.pdf · S. 12",
+                    "originEn": "03_Energiekonzept.pdf · p. 12",
+                    "valueDe": "Fernwärme-Übergabestation",
+                    "valueEn": "District heating transfer station",
+                    "variant": "WE_FW"
+                  },
+                  "whyDe": "Kein gesetzlicher Anlagentyp vorgeschrieben — § 71 GModG ist entfallen. Bestimmt Warmwasserbereitung und die § 14a-Bewertung.",
+                  "whyEn": "No statutory plant type applies — § 71 GModG has been repealed. Determines domestic hot water and the § 14a assessment.",
+                  "scopeDe": "gilt für 1 Gebäude",
+                  "scopeEn": "applies to 1 building",
+                  "ruleId": "p14a",
+                  "offerNoteDe": "Wirkt sich auf das Angebot aus, Abschnitt 3.1 Heizung.",
+                  "offerNoteEn": "Appears in the offer, section 3.1 Heating.",
                   "requiresDecision": false
-                }
-              ]
-            },
-            {
-              "id": "a-kg400-services",
-              "labelDe": "Sanitär & Elektro",
-              "labelEn": "Plumbing & electrical",
-              "services": [
+                },
                 {
                   "id": "a-400-02",
-                  "labelDe": "Heizflächen, Verteilung & Sanitär",
-                  "labelEn": "Emitters, distribution & plumbing",
+                  "labelDe": "Wärmeverteilung & Sanitärinstallation",
+                  "labelEn": "Heat distribution & plumbing",
                   "summaryDe": "Fußbodenheizung, Steigleitungen und Sanitärinstallation je Wohnung.",
                   "summaryEn": "Underfloor heating, risers and per-dwelling plumbing.",
                   "amount": "580000.00",
@@ -269,12 +273,514 @@
                     "kind": "includeExclude"
                   },
                   "authority": "sourceEvidenced",
+                  "costAuthority": "direct",
+                  "scopeDe": "gilt für 1 Gebäude",
+                  "scopeEn": "applies to 1 building",
+                  "source": {
+                    "originDe": "Grundlage Gebäude · bestätigt",
+                    "originEn": "Building baseline · confirmed"
+                  },
                   "requiresDecision": false
                 },
                 {
+                  "id": "a-400-04",
+                  "labelDe": "Wärmeabgabe",
+                  "labelEn": "Heat emission",
+                  "summaryDe": "Bestimmt, ob ein wassergeführter Handtuchheizkörper möglich ist.",
+                  "summaryEn": "Determines whether a hydronic towel radiator is possible.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "WA_FBH_EL_BAD",
+                    "variants": [
+                      {
+                        "value": "WA_FBH_EL_BAD",
+                        "labelDe": "Fußbodenheizung + el. Zusatzheizkörper Bad",
+                        "labelEn": "Underfloor heating + electric supplementary radiator (bathroom)",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      },
+                      {
+                        "value": "WA_FBH",
+                        "labelDe": "Fußbodenheizung",
+                        "labelEn": "Underfloor heating",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      },
+                      {
+                        "value": "WA_KOMBI",
+                        "labelDe": "Kombiniert (Fußbodenheizung + Heizkörper)",
+                        "labelEn": "Combined (underfloor heating + radiators)",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      },
+                      {
+                        "value": "WA_HK",
+                        "labelDe": "Heizkörper",
+                        "labelEn": "Radiators",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "all3Standard": "WA_FBH_EL_BAD",
+                  "costAuthority": "noBasis",
+                  "costBasisDe": "in der Wärmeverteilung enthalten",
+                  "costBasisEn": "included in the heat distribution position",
+                  "whyDe": "Bestimmt durch den Wärmeerzeuger.",
+                  "whyEn": "Determined by the heat generator.",
+                  "scopeDe": "gilt für 1 Gebäude",
+                  "scopeEn": "applies to 1 building",
+                  "source": {
+                    "originDe": "Aus dem Wärmeerzeuger abgeleitet",
+                    "originEn": "Derived from the heat generator"
+                  },
+                  "offerNoteDe": "Die Wärmeabgabe ist in der Wärmeverteilung enthalten und ändert die Angebotssumme nicht. Die Entscheidung wird trotzdem im Angebot beschrieben, Abschnitt 3.1 Heizung.",
+                  "offerNoteEn": "Heat emission is included in the heat distribution position and does not change the offer total. The decision is still described in the offer, section 3.1 Heating.",
+                  "dependsOn": {
+                    "serviceId": "a-400-01",
+                    "requiresSelected": true
+                  },
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-400-16",
+                  "labelDe": "Handtuchheizkörper",
+                  "labelEn": "Towel radiator",
+                  "summaryDe": "Farbe und Bauform folgen in der Bemusterung.",
+                  "summaryEn": "Colour and form follow in the specification stage.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "HHK_ELEKTRO",
+                    "variants": [
+                      {
+                        "value": "HHK_ELEKTRO",
+                        "labelDe": "Elektrischer Handtuchheizkörper",
+                        "labelEn": "Electric towel radiator",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      },
+                      {
+                        "value": "HHK_WW",
+                        "labelDe": "Warmwasser-Handtuchheizkörper",
+                        "labelEn": "Hydronic towel radiator",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      },
+                      {
+                        "value": "HHK_KEIN",
+                        "labelDe": "Kein Handtuchheizkörper",
+                        "labelEn": "No towel radiator",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "all3Standard": "HHK_ELEKTRO",
+                  "costAuthority": "noBasis",
+                  "scopeDe": "je Wohnungstyp",
+                  "scopeEn": "per dwelling type",
+                  "blockedVariants": [
+                    {
+                      "value": "HHK_WW",
+                      "reasonDe": "nicht wählbar — die gewählte Wärmeabgabe führt keinen Heizkreis ins Bad",
+                      "reasonEn": "not selectable — the chosen heat emission carries no wet circuit into the bathroom"
+                    }
+                  ],
+                  "offerNoteDe": "Farbe und Bauform folgen in der Bemusterung.",
+                  "offerNoteEn": "Colour and form follow in the specification stage.",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-400-03m",
+                  "labelDe": "Wärmemengenzähler",
+                  "labelEn": "Heat meter",
+                  "summaryDe": "Fernauslesbar nach § 5 Abs. 2 HeizkostenV.",
+                  "summaryEn": "Remotely readable per § 5 (2) HeizkostenV.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "readOnlyRequired"
+                  },
+                  "authority": "derived",
+                  "costAuthority": "noBasis",
+                  "scopeDe": "gilt für 1 Gebäude",
+                  "scopeEn": "applies to 1 building",
+                  "whyDe": "Für einen Neubau ist die Fernauslesbarkeit vorgeschrieben.",
+                  "whyEn": "Remote readability is mandatory for a new build.",
+                  "source": {
+                    "originDe": "§ 5 Abs. 2 HeizkostenV",
+                    "originEn": "§ 5 (2) HeizkostenV",
+                    "valueDe": "fernauslesbar (Funk)",
+                    "valueEn": "remotely readable (wireless)"
+                  },
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-400-es",
+                  "labelDe": "Energieziel",
+                  "labelEn": "Energy target",
+                  "summaryDe": "Förderziel, nicht der gesetzliche Mindeststandard.",
+                  "summaryEn": "Funding target, not the statutory minimum.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "eh55",
+                    "variants": [
+                      {
+                        "value": "geg",
+                        "labelDe": "Gesetzlicher Mindeststandard",
+                        "labelEn": "Statutory minimum",
+                        "delta": "-97000.00"
+                      },
+                      {
+                        "value": "eh55",
+                        "labelDe": "Effizienzhaus 55",
+                        "labelEn": "Efficiency House 55",
+                        "delta": "0.00"
+                      },
+                      {
+                        "value": "eh40",
+                        "labelDe": "Effizienzhaus 40",
+                        "labelEn": "Efficiency House 40",
+                        "delta": "97000.00"
+                      },
+                      {
+                        "value": "eh40nh",
+                        "labelDe": "Effizienzhaus 40 NH",
+                        "labelEn": "Efficiency House 40 NH",
+                        "delta": "195000.00"
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "surface": "rahmen",
+                  "costAuthority": "direct",
+                  "source": {
+                    "originDe": "03_Energiekonzept.pdf · S. 4",
+                    "originEn": "03_Energiekonzept.pdf · p. 4"
+                  },
+                  "whyDe": "Förderziel nach KfW 297/298 — vorbehaltlich verfügbarer Bundesmittel, kein Rechtsanspruch. Der gesetzliche Mindeststandard wird davon nicht berührt.",
+                  "whyEn": "Funding target per KfW 297/298 — subject to available federal funds, no legal entitlement. The statutory minimum is unaffected by it.",
+                  "offerNoteDe": "Wirkt sich auf das Angebot aus, Abschnitt 1.4 Wärmeschutz.",
+                  "offerNoteEn": "Appears in the offer, section 1.4 Thermal protection.",
+                  "requiresDecision": false
+                }
+              ],
+              "summaryDe": "Luft/Wasser-Wärmepumpe · Fußbodenheizung · fernauslesbarer Zähler",
+              "summaryEn": "Air-to-water heat pump · underfloor heating · remotely readable meter",
+              "scopeDe": "gilt für 1 Gebäude",
+              "scopeEn": "applies to 1 building",
+              "costAuthority": "direct"
+            },
+            {
+              "id": "a-kg400-water",
+              "labelDe": "Trinkwasser & Warmwasser",
+              "labelEn": "Potable water & DHW",
+              "services": [
+                {
+                  "id": "a-400-07",
+                  "labelDe": "Warmwasserbereitung",
+                  "labelEn": "Domestic hot water generation",
+                  "summaryDe": "Bestimmt, ob eine Zirkulation erforderlich ist.",
+                  "summaryEn": "Determines whether circulation is required.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "WW_ZENTRAL_WP",
+                    "variants": [
+                      {
+                        "value": "WW_ZENTRAL_WP",
+                        "labelDe": "Zentral: Wärmepumpe + Warmwasserspeicher",
+                        "labelEn": "Central: heat pump + DHW cylinder",
+                        "delta": "0.00",
+                        "bundled": true
+                      },
+                      {
+                        "value": "WW_DEZ_FWST",
+                        "labelDe": "Dezentral: Wohnungs-Frischwasserstationen",
+                        "labelEn": "Decentralised fresh-water stations",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      },
+                      {
+                        "value": "WW_FW_KOMPAKT",
+                        "labelDe": "Fernwärme-Kompaktstation (Wohnungsstation)",
+                        "labelEn": "District-heating compact station (flat station)",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "all3Standard": "WW_ZENTRAL_WP",
+                  "costAuthority": "bundle",
+                  "costBasisDe": "in der Wärmeverteilung & Sanitärinstallation enthalten",
+                  "costBasisEn": "included in heat distribution & plumbing",
+                  "whyDe": "Ausgelegt auf 60/55 °C nach DVGW W 551:2004-04. Bestimmt durch den Wärmeerzeuger.",
+                  "whyEn": "Designed to 60/55 °C per DVGW W 551:2004-04. Determined by the heat generator.",
+                  "scopeDe": "gilt für 1 Gebäude",
+                  "scopeEn": "applies to 1 building",
+                  "source": {
+                    "originDe": "03_Energiekonzept.pdf · S. 14",
+                    "originEn": "03_Energiekonzept.pdf · p. 14",
+                    "valueDe": "Zentrale Warmwasserbereitung",
+                    "valueEn": "Central DHW generation",
+                    "variant": "WW_ZENTRAL_WP"
+                  },
+                  "dependsOn": {
+                    "serviceId": "a-400-01",
+                    "requiresSelected": true
+                  },
+                  "offerNoteDe": "Wirkt sich auf das Angebot aus, Abschnitt 3.2 Wasser.",
+                  "offerNoteEn": "Appears in the offer, section 3.2 Water.",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-400-08",
+                  "labelDe": "Zirkulation Warmwasser",
+                  "labelEn": "DHW circulation",
+                  "summaryDe": "Zirkulation erforderlich — Folge der zentralen Warmwasserbereitung.",
+                  "summaryEn": "Circulation required — a consequence of central DHW generation.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "readOnlyRequired"
+                  },
+                  "authority": "derived",
+                  "costAuthority": "bundle",
+                  "costBasisDe": "in der Wärmeverteilung & Sanitärinstallation enthalten",
+                  "costBasisEn": "included in heat distribution & plumbing",
+                  "whyDe": "Eine Hygienefolge, kein Schalter: bei zentraler Warmwasserbereitung ist die Zirkulation nach DVGW W 551 erforderlich.",
+                  "whyEn": "A hygiene consequence, not a toggle: central DHW generation requires circulation per DVGW W 551.",
+                  "scopeDe": "gilt für 1 Gebäude",
+                  "scopeEn": "applies to 1 building",
+                  "source": {
+                    "originDe": "Aus der Warmwasserbereitung abgeleitet",
+                    "originEn": "Derived from the DHW generation decision"
+                  },
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-400-13",
+                  "labelDe": "Dusche",
+                  "labelEn": "Shower",
+                  "summaryDe": "Barrierefrei nach DIN 18040-2.",
+                  "summaryEn": "Step-free per DIN 18040-2.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "DU_BODENGLEICH",
+                    "variants": [
+                      {
+                        "value": "DU_BODENGLEICH",
+                        "labelDe": "Bodengleiche Dusche",
+                        "labelEn": "Floor-level (curbless) shower",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      },
+                      {
+                        "value": "DU_WANNE",
+                        "labelDe": "Duschwanne (flach)",
+                        "labelEn": "Flat shower tray",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      },
+                      {
+                        "value": "DU_BADEWANNE",
+                        "labelDe": "Badewanne",
+                        "labelEn": "Bathtub",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "all3Standard": "DU_BODENGLEICH",
+                  "costAuthority": "noBasis",
+                  "scopeDe": "je Wohnungstyp",
+                  "scopeEn": "per dwelling type",
+                  "whyDe": "Die Barrierefreiheit nach DIN 18040-2 hängt an dieser Entscheidung.",
+                  "whyEn": "Step-free access per DIN 18040-2 depends on this decision.",
+                  "offerNoteDe": "Wirkt sich auf das Angebot aus, Abschnitt 3.6 Sanitär.",
+                  "offerNoteEn": "Appears in the offer, section 3.6 Sanitary.",
+                  "requiresDecision": false
+                }
+              ],
+              "summaryDe": "Zentral: Wärmepumpe + Warmwasserspeicher · Zirkulation erforderlich",
+              "summaryEn": "Central: heat pump + DHW cylinder · circulation required",
+              "scopeDe": "gilt für 1 Gebäude",
+              "scopeEn": "applies to 1 building",
+              "costAuthority": "bundle"
+            },
+            {
+              "id": "a-kg400-air",
+              "labelDe": "Lüftung & sommerlicher Komfort",
+              "labelEn": "Ventilation & summer comfort",
+              "services": [
+                {
+                  "id": "a-400-18",
+                  "labelDe": "Wohnungslüftung",
+                  "labelEn": "Dwelling ventilation",
+                  "summaryDe": "Das Lüftungskonzept nach DIN 1946-6 bestimmt die zulässigen Lösungen.",
+                  "summaryEn": "The DIN 1946-6 ventilation concept determines the admissible solutions.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "WL_ABLUFT_DACH",
+                    "variants": [
+                      {
+                        "value": "WL_ABLUFT_DACH",
+                        "labelDe": "Zentrale Abluftanlage über Dach, ALD-Nachströmung",
+                        "labelEn": "Central exhaust system over roof, outdoor-air-inlet supply",
+                        "delta": "0.00"
+                      },
+                      {
+                        "value": "WL_DEZ_WRG",
+                        "labelDe": "Dezentrale Lüftung mit Wärmerückgewinnung",
+                        "labelEn": "Decentralised ventilation with heat recovery",
+                        "delta": "132000.00"
+                      },
+                      {
+                        "value": "WL_ZENTRAL_WRG",
+                        "labelDe": "Zentrale Lüftung mit Wärmerückgewinnung",
+                        "labelEn": "Central ventilation with heat recovery",
+                        "delta": "132000.00"
+                      },
+                      {
+                        "value": "WL_FENSTER",
+                        "labelDe": "Freie/Fensterlüftung",
+                        "labelEn": "Natural/window ventilation",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "requiresDecision": true,
+                  "all3Standard": "WL_ABLUFT_DACH",
+                  "costAuthority": "direct",
+                  "whyDe": "Lüftungskonzept nach DIN 1946-6:2019-12 · Energieziel EH 55 verlangt Wärmerückgewinnung · DIN 18017-3:2022-05 für innenliegende Bäder",
+                  "whyEn": "Ventilation concept per DIN 1946-6:2019-12 · energy target EH 55 requires heat recovery · DIN 18017-3:2022-05 for internal bathrooms",
+                  "scopeDe": "gilt für 1 Gebäude",
+                  "scopeEn": "applies to 1 building",
+                  "source": {
+                    "originDe": "05_Lueftungskonzept.pdf · S. 3",
+                    "originEn": "05_Lueftungskonzept.pdf · p. 3"
+                  },
+                  "blockedVariants": [
+                    {
+                      "value": "WL_FENSTER",
+                      "reasonDe": "nicht zulässig — das Lüftungskonzept weist den Feuchteschutz nicht nutzerunabhängig nach",
+                      "reasonEn": "not admissible — the ventilation concept does not demonstrate moisture protection independently of the user"
+                    }
+                  ],
+                  "offerNoteDe": "Wirkt sich auf das Angebot aus, Abschnitt 3.7 Lüftung. Das Lüftungskonzept selbst ist eine eigene Planungsleistung.",
+                  "offerNoteEn": "Appears in the offer, section 3.7 Ventilation. The ventilation concept itself is a separate design service."
+                },
+                {
+                  "id": "a-400-08s",
+                  "labelDe": "Sommerlicher Wärmeschutz",
+                  "labelEn": "Summer thermal protection",
+                  "summaryDe": "Vereinfachter Nachweis über Sonneneintragskennwert · DIN 4108-2:2013-02.",
+                  "summaryEn": "Simplified solar-gain-factor verification · DIN 4108-2:2013-02.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "readOnlyRequired"
+                  },
+                  "authority": "derived",
+                  "costAuthority": "noBasis",
+                  "whyDe": "Aus der Gebäudehülle abgeleitet. Wird hier nicht entschieden, nur angezeigt.",
+                  "whyEn": "Derived from the building envelope. Shown here, not decided here.",
+                  "scopeDe": "aus Projekt übernommen",
+                  "scopeEn": "taken from the project",
+                  "source": {
+                    "originDe": "Grundlage Gebäude · Hüllcluster",
+                    "originEn": "Building baseline · envelope cluster"
+                  },
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-400-17",
+                  "labelDe": "Dunstabzug",
+                  "labelEn": "Cooker extraction",
+                  "summaryDe": "Keine Außenwanddurchdringung.",
+                  "summaryEn": "No external wall penetration.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "UMLUFT",
+                    "variants": [
+                      {
+                        "value": "UMLUFT",
+                        "labelDe": "Umluft (Aktivkohlefilter)",
+                        "labelEn": "Recirculation (charcoal filter)",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      },
+                      {
+                        "value": "ABLUFT",
+                        "labelDe": "Abluft (Mauerkasten/Schacht)",
+                        "labelEn": "Exhaust air (wall vent/duct)",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "all3Standard": "UMLUFT",
+                  "costAuthority": "noBasis",
+                  "scopeDe": "je Wohnungstyp",
+                  "scopeEn": "per dwelling type",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-400-19",
+                  "labelDe": "Tiefgaragen-/UG-Lüftung",
+                  "labelEn": "Underground garage ventilation",
+                  "summaryDe": "Entsteht automatisch, sobald die Gebäudegrundlage eine Tiefgarage enthält.",
+                  "summaryEn": "Appears automatically once the building baseline includes an underground garage.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "readOnlyRequired"
+                  },
+                  "authority": "derived",
+                  "costAuthority": "none",
+                  "applicability": {
+                    "state": "notApplicable",
+                    "reasonDe": "keine Tiefgarage und kein Untergeschoss im Projektumfang",
+                    "reasonEn": "no underground garage and no basement in the project scope"
+                  },
+                  "requiresDecision": false
+                }
+              ],
+              "summaryDe": "Lüftungskonzept nach DIN 1946-6 liegt vor · 2 Lösungen zulässig",
+              "summaryEn": "DIN 1946-6 ventilation concept on file · 2 admissible solutions",
+              "scopeDe": "gilt für 1 Gebäude",
+              "scopeEn": "applies to 1 building",
+              "costAuthority": "direct"
+            },
+            {
+              "id": "a-kg400-power",
+              "labelDe": "Elektro & Energie",
+              "labelEn": "Electrical & on-site energy",
+              "services": [
+                {
                   "id": "a-400-03",
-                  "labelDe": "Elektro & Datennetz",
-                  "labelEn": "Electrical & data",
+                  "labelDe": "Elektroinstallation & Datennetz",
+                  "labelEn": "Electrical & data installation",
                   "summaryDe": "Wohnungsverteilungen, Beleuchtung, Klingel- und Datennetz.",
                   "summaryEn": "Dwelling distribution boards, lighting, doorbell and data network.",
                   "amount": "380000.00",
@@ -283,25 +789,480 @@
                     "kind": "includeExclude"
                   },
                   "authority": "sourceEvidenced",
+                  "costAuthority": "direct",
+                  "scopeDe": "gilt für 1 Gebäude",
+                  "scopeEn": "applies to 1 building",
+                  "source": {
+                    "originDe": "Grundlage Gebäude · bestätigt",
+                    "originEn": "Building baseline · confirmed"
+                  },
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-400-21",
+                  "labelDe": "Ausstattungswert Elektro",
+                  "labelEn": "Electrical equipment level",
+                  "summaryDe": "Nach DIN 18015-2.",
+                  "summaryEn": "Per DIN 18015-2.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "AW2",
+                    "variants": [
+                      {
+                        "value": "AW1",
+                        "labelDe": "AW1 — Mindestausstattung",
+                        "labelEn": "AW1 — minimum equipment",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      },
+                      {
+                        "value": "AW2",
+                        "labelDe": "AW2 — Standardausstattung",
+                        "labelEn": "AW2 — standard equipment",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      },
+                      {
+                        "value": "AW3",
+                        "labelDe": "AW3 — Komfortausstattung",
+                        "labelEn": "AW3 — comfort equipment",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "all3Standard": "AW2",
+                  "costAuthority": "noBasis",
+                  "costBasisDe": "in der Elektroinstallation enthalten",
+                  "costBasisEn": "included in the electrical installation position",
+                  "scopeDe": "gilt für 1 Gebäude",
+                  "scopeEn": "applies to 1 building",
+                  "source": {
+                    "originDe": "DIN 18015-2 · All3-Standard",
+                    "originEn": "DIN 18015-2 · All3 standard",
+                    "valueDe": "AW2 — Standardausstattung",
+                    "valueEn": "AW2 — standard equipment",
+                    "variant": "AW2"
+                  },
+                  "offerNoteDe": "Wirkt sich auf das Angebot aus, Abschnitt 3.8 Elektro.",
+                  "offerNoteEn": "Appears in the offer, section 3.8 Electrical.",
                   "requiresDecision": false
                 },
                 {
                   "id": "a-400-90",
-                  "labelDe": "Photovoltaik Dachfläche",
-                  "labelEn": "Rooftop photovoltaics",
-                  "summaryDe": "Die Dachfläche trägt eine Anlage; der Kunde hat sie nicht beauftragt.",
-                  "summaryEn": "The roof can carry an array; the client has not commissioned one.",
+                  "labelDe": "Photovoltaikanlage",
+                  "labelEn": "Photovoltaic system",
+                  "summaryDe": "Einspeisung auf 60 % begrenzt, bis Messstelle und Steuerung geprüft sind.",
+                  "summaryEn": "Feed-in limited to 60 % until the metering point and control are verified.",
                   "amount": "165000.00",
                   "baseline": "notSelected",
                   "kind": {
                     "kind": "includeExclude"
                   },
                   "authority": "assumed",
+                  "costAuthority": "direct",
+                  "scopeDe": "gilt für 1 Gebäude",
+                  "scopeEn": "applies to 1 building",
+                  "whyDe": "Eine bundesweite Pflicht zur Solarenergie besteht für neue Wohngebäude erst ab 2030. Landesrecht ist gesondert zu prüfen.",
+                  "whyEn": "A federal obligation to install solar energy arises for new residential buildings only from 2030. State law is checked separately.",
+                  "source": {
+                    "originDe": "01_Auftraggeberbrief.pdf · S. 2",
+                    "originEn": "01_Auftraggeberbrief.pdf · p. 2",
+                    "valueDe": "Nicht spezifiziert",
+                    "valueEn": "Not specified"
+                  },
+                  "ruleId": "p14a",
+                  "offerNoteDe": "Wirkt sich auf das Angebot aus, Abschnitt 3.13 Photovoltaik.",
+                  "offerNoteEn": "Appears in the offer, section 3.13 Photovoltaics.",
                   "requiresDecision": true
+                },
+                {
+                  "id": "a-400-22",
+                  "labelDe": "E-Mobilitäts-Infrastruktur",
+                  "labelEn": "E-mobility infrastructure",
+                  "summaryDe": "GEIG § 6 greift erst über fünf Stellplätzen.",
+                  "summaryEn": "GEIG § 6 applies only above five parking spaces.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "readOnlyRequired"
+                  },
+                  "authority": "derived",
+                  "costAuthority": "none",
+                  "applicability": {
+                    "state": "notApplicable",
+                    "reasonDe": "4 Stellplätze im Projektumfang — GEIG § 6 greift erst über fünf",
+                    "reasonEn": "4 parking spaces in scope — GEIG § 6 applies only above five"
+                  },
+                  "requiresDecision": false
                 }
-              ]
+              ],
+              "summaryDe": "Ausstattungswert AW2 · PV möglich, nicht beauftragt · keine Stellplätze > 5",
+              "summaryEn": "Equipment level AW2 · PV possible, not commissioned · no more than 5 spaces",
+              "scopeDe": "gilt für 1 Gebäude",
+              "scopeEn": "applies to 1 building",
+              "costAuthority": "direct"
+            },
+            {
+              "id": "a-kg400-drain",
+              "labelDe": "Entwässerung",
+              "labelEn": "Drainage",
+              "services": [
+                {
+                  "id": "a-400-11",
+                  "labelDe": "Rückstausicherung",
+                  "labelEn": "Backwater protection",
+                  "summaryDe": "Entsteht, sobald ein Untergeschoss unter der Rückstauebene entwässert wird.",
+                  "summaryEn": "Appears once a basement drains below the backwater level.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "readOnlyRequired"
+                  },
+                  "authority": "derived",
+                  "costAuthority": "none",
+                  "applicability": {
+                    "state": "notApplicable",
+                    "reasonDe": "kein UG · Rückstauebene nicht berührt",
+                    "reasonEn": "no basement · backwater level not affected"
+                  },
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-400-11r",
+                  "labelDe": "Regenwasserentsorgung",
+                  "labelEn": "Stormwater disposal",
+                  "summaryDe": "Kommunale Vorgabe: Einleitung in die Mischkanalisation.",
+                  "summaryEn": "Municipal requirement: discharge to the combined sewer.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "readOnlyRequired"
+                  },
+                  "authority": "derived",
+                  "costAuthority": "noBasis",
+                  "scopeDe": "gilt für die gesamte Option",
+                  "scopeEn": "applies to the whole Option",
+                  "source": {
+                    "originDe": "Entwässerungssatzung der Gemeinde",
+                    "originEn": "Municipal drainage by-law",
+                    "valueDe": "Mischkanalisation vorhanden",
+                    "valueEn": "Combined sewer available"
+                  },
+                  "requiresDecision": false
+                }
+              ],
+              "summaryDe": "kein UG · Rückstauebene nicht berührt · Mischkanalisation vorhanden",
+              "summaryEn": "no basement · backwater level not affected · combined sewer available",
+              "applicability": {
+                "state": "notApplicable",
+                "reasonDe": "kein UG · Rückstauebene nicht berührt · Mischkanalisation vorhanden",
+                "reasonEn": "no basement · backwater level not affected · combined sewer available"
+              },
+              "costAuthority": "none"
+            },
+            {
+              "id": "a-kg400-comms",
+              "labelDe": "Kommunikation & Zutritt",
+              "labelEn": "Communications & access",
+              "services": [
+                {
+                  "id": "a-400-29",
+                  "labelDe": "Zutrittssystem",
+                  "labelEn": "Access control",
+                  "summaryDe": "Leser und Oberfläche folgen in der Bemusterung.",
+                  "summaryEn": "Readers and finish follow in the specification stage.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "ZK_MECH",
+                    "variants": [
+                      {
+                        "value": "ZK_MECH",
+                        "labelDe": "Mechanische Schließanlage",
+                        "labelEn": "Mechanical master-key system",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      },
+                      {
+                        "value": "ZK_RFID",
+                        "labelDe": "Elektronisch (RFID/Transponder)",
+                        "labelEn": "Electronic (RFID/transponder)",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      },
+                      {
+                        "value": "ZK_SMART",
+                        "labelDe": "Smartphone-/App-Zutritt",
+                        "labelEn": "Smartphone/app-based access",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "all3Standard": "ZK_MECH",
+                  "costAuthority": "noBasis",
+                  "scopeDe": "gilt für 1 Gebäude",
+                  "scopeEn": "applies to 1 building",
+                  "source": {
+                    "originDe": "01_Auftraggeberbrief.pdf · S. 5",
+                    "originEn": "01_Auftraggeberbrief.pdf · p. 5",
+                    "valueDe": "Mechanische Schließanlage",
+                    "valueEn": "Mechanical master-key system",
+                    "variant": "ZK_MECH"
+                  },
+                  "offerNoteDe": "Wirkt sich auf das Angebot aus, Abschnitt 2.11 Zutritt.",
+                  "offerNoteEn": "Appears in the offer, section 2.11 Access.",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-400-25",
+                  "labelDe": "Gebäudeverkabelung",
+                  "labelEn": "In-building cabling",
+                  "summaryDe": "Glasfaser bis in die Wohnung (FTTH).",
+                  "summaryEn": "Fibre to the dwelling (FTTH).",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "readOnlyRequired"
+                  },
+                  "authority": "derived",
+                  "costAuthority": "noBasis",
+                  "scopeDe": "gilt für 1 Gebäude",
+                  "scopeEn": "applies to 1 building",
+                  "whyDe": "Folgt aus der gesicherten FTTH-Verfügbarkeit am Grundstück.",
+                  "whyEn": "Follows from secured FTTH availability at the site.",
+                  "source": {
+                    "originDe": "Grundlage Projekt · Telekommunikation",
+                    "originEn": "Project baseline · telecommunications",
+                    "valueDe": "FTTH/Glasfaser gesichert",
+                    "valueEn": "FTTH/fibre secured"
+                  },
+                  "requiresDecision": false
+                }
+              ],
+              "summaryDe": "FTTH gesichert · mechanische Schließanlage",
+              "summaryEn": "FTTH secured · mechanical master-key system",
+              "scopeDe": "gilt für 1 Gebäude",
+              "scopeEn": "applies to 1 building",
+              "costAuthority": "noBasis"
+            },
+            {
+              "id": "a-kg400-lift",
+              "labelDe": "Aufzüge & Sonderanlagen",
+              "labelEn": "Lifts & special systems",
+              "services": [
+                {
+                  "id": "a-400-30",
+                  "labelDe": "Aufzugsantrieb",
+                  "labelEn": "Lift drive",
+                  "summaryDe": "Entsteht, sobald die Gebäudehöhe die Aufzugspflicht auslöst.",
+                  "summaryEn": "Appears once the building height triggers the lift requirement.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "readOnlyRequired"
+                  },
+                  "authority": "derived",
+                  "costAuthority": "none",
+                  "applicability": {
+                    "state": "notApplicable",
+                    "reasonDe": "Gebäudehöhe 11,4 m — unter der Aufzugspflicht (MBO § 39 Abs. 4)",
+                    "reasonEn": "building height 11.4 m — below the lift requirement (MBO § 39 (4))"
+                  },
+                  "requiresDecision": false
+                }
+              ],
+              "summaryDe": "Gebäudehöhe 11,4 m — unter der Aufzugspflicht (MBO § 39 Abs. 4)",
+              "summaryEn": "building height 11.4 m — below the lift requirement (MBO § 39 (4))",
+              "applicability": {
+                "state": "notApplicable",
+                "reasonDe": "Gebäudehöhe 11,4 m — unter der Aufzugspflicht (MBO § 39 Abs. 4)",
+                "reasonEn": "building height 11.4 m — below the lift requirement (MBO § 39 (4))"
+              },
+              "costAuthority": "none"
+            },
+            {
+              "id": "a-kg400-scope",
+              "labelDe": "Schnittstellen & Verantwortung",
+              "labelEn": "Interfaces & responsibility",
+              "services": [
+                {
+                  "id": "a-400-13g",
+                  "labelDe": "Leistungsgrenze TGA",
+                  "labelEn": "MEP scope boundary",
+                  "summaryDe": "Leitungsnetz bis 1,0 m außerhalb der Gebäudehülle bzw. bis zum vereinbarten Übergabepunkt.",
+                  "summaryEn": "Pipework and cabling to 1.0 m outside the building envelope, or to the agreed handover point.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "readOnlyRequired"
+                  },
+                  "authority": "sourceEvidenced",
+                  "costAuthority": "none",
+                  "scopeDe": "gilt für die gesamte Option",
+                  "scopeEn": "applies to the whole Option",
+                  "source": {
+                    "originDe": "All3-Standard · Leistungsverzeichnis",
+                    "originEn": "All3 standard · scope schedule",
+                    "valueDe": "Übergabepunkt Grundstücksgrenze",
+                    "valueEn": "Handover point at the property line"
+                  },
+                  "requiresDecision": false
+                },
+                {
+                  "id": "a-400-14",
+                  "labelDe": "Hausanschlüsse",
+                  "labelEn": "Utility house connections",
+                  "summaryDe": "Bauherr bis Grundstücksgrenze, All3 ab Übergabepunkt.",
+                  "summaryEn": "Client to the property line, All3 from the handover point.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "readOnlyRequired"
+                  },
+                  "authority": "sourceEvidenced",
+                  "costAuthority": "bauherr",
+                  "scopeDe": "Verantwortung je Medium",
+                  "scopeEn": "responsibility per medium",
+                  "source": {
+                    "originDe": "01_Auftraggeberbrief.pdf · S. 7",
+                    "originEn": "01_Auftraggeberbrief.pdf · p. 7"
+                  },
+                  "valueRows": [
+                    {
+                      "valueDe": "Bauherr bis Grundstücksgrenze",
+                      "valueEn": "Client to the property line",
+                      "labelDe": "Trinkwasser",
+                      "labelEn": "Potable water",
+                      "status": "ok"
+                    },
+                    {
+                      "valueDe": "Bauherr bis Grundstücksgrenze",
+                      "valueEn": "Client to the property line",
+                      "labelDe": "Schmutzwasser / Kanal",
+                      "labelEn": "Foul water / sewer",
+                      "status": "ok"
+                    },
+                    {
+                      "valueDe": "Bauherr bis Grundstücksgrenze",
+                      "valueEn": "Client to the property line",
+                      "labelDe": "Strom (NS-Netz)",
+                      "labelEn": "Electricity (LV grid)",
+                      "status": "ok"
+                    },
+                    {
+                      "valueDe": "Glasfaser gesichert",
+                      "valueEn": "Fibre secured",
+                      "labelDe": "Telekommunikation",
+                      "labelEn": "Telecommunications",
+                      "status": "ok"
+                    }
+                  ],
+                  "offerNoteDe": "Eine ungeklärte Schnittstelle wird als Bedingung ins Angebot übernommen, nicht als Betrag und nicht als Lücke.",
+                  "offerNoteEn": "An unresolved interface enters the offer as a condition — not as an amount and not as a gap.",
+                  "requiresDecision": false
+                }
+              ],
+              "summaryDe": "Leistungsgrenze bestätigt · 4 Hausanschlüsse beim Bauherrn",
+              "summaryEn": "Scope boundary confirmed · 4 house connections with the client",
+              "scopeDe": "gilt für die gesamte Option",
+              "scopeEn": "applies to the whole Option",
+              "costAuthority": "bauherr"
             }
           ],
+          "rahmen": [
+            {
+              "id": "energieziel",
+              "labelDe": "Energieziel",
+              "labelEn": "Energy target",
+              "valueDe": "",
+              "valueEn": "",
+              "metaDe": "Förderziel · Annahme",
+              "metaEn": "Funding target · assumption",
+              "editServiceId": "a-400-es"
+            },
+            {
+              "id": "mindeststandard",
+              "labelDe": "Gesetzlicher Mindeststandard",
+              "labelEn": "Statutory minimum",
+              "valueDe": "GModG § 10 · Niedrigstenergiegebäude",
+              "valueEn": "GModG § 10 · nearly zero-energy building",
+              "metaDe": "aus Bauantragsdatum abgeleitet",
+              "metaEn": "derived from the building-application date"
+            },
+            {
+              "id": "gebaeudeumfang",
+              "labelDe": "Gebäudeumfang",
+              "labelEn": "Building scope",
+              "valueDe": "",
+              "valueEn": "",
+              "metaDe": "",
+              "metaEn": "",
+              "derive": "buildingScope"
+            },
+            {
+              "id": "leistungsgrenze",
+              "labelDe": "Leistungsgrenze All3",
+              "labelEn": "All3 scope boundary",
+              "valueDe": "ab Übergabepunkt Grundstücksgrenze",
+              "valueEn": "from the handover point at the property line",
+              "metaDe": "Hausanschlüsse: Bauherr",
+              "metaEn": "House connections: client"
+            }
+          ],
+          "rules": [
+            {
+              "id": "p14a",
+              "titleDe": "§ 14a EnWG · steuerbare Verbrauchseinrichtungen",
+              "titleEn": "§ 14a EnWG · controllable consumption devices",
+              "bodyDe": "Diese Option enthält steuerbare Verbrauchseinrichtungen. Die garantierte Leistung wird gemeinsam bemessen, nicht je Gerät. Der Netzanschluss ist entsprechend auszulegen.",
+              "bodyEn": "This Option contains controllable consumption devices. The guaranteed power is measured jointly, not per device. The grid connection is sized accordingly.",
+              "sourceDe": "BNetzA BK6-22-300, Anlage 1 · Ziffer 2.4.1",
+              "sourceEn": "BNetzA BK6-22-300, annex 1 · clause 2.4.1"
+            }
+          ],
+          "bemusterung": {
+            "titleDe": "Spätere Bemusterung",
+            "titleEn": "Later specification",
+            "bodyDe": "In dieser Kostengruppe ist der Systemstandard festgelegt. Produkt- und Oberflächenauswahl folgt in der Bemusterung — sie verfeinert diese Entscheidungen, sie ersetzt sie nicht.",
+            "bodyEn": "This cost group fixes the system standard. Product and finish selection follows in the specification stage — it refines these decisions, it does not replace them.",
+            "decidedHeadingDe": "Hier bereits entschieden",
+            "decidedHeadingEn": "Already decided here",
+            "deferredHeadingDe": "Später zu bemustern",
+            "deferredHeadingEn": "To be specified later",
+            "rows": [
+              {
+                "decidedDe": "Bodengleiche Dusche · barrierefrei nach DIN 18040-2",
+                "decidedEn": "Floor-level shower · step-free per DIN 18040-2",
+                "deferredDe": "Duschabtrennung, Ablaufrinne, Sanitärkeramik",
+                "deferredEn": "Shower enclosure, drainage channel, sanitary ceramics"
+              },
+              {
+                "decidedDe": "Ausstattungswert Elektro AW2 · DIN 18015-2",
+                "decidedEn": "Electrical equipment level AW2 · DIN 18015-2",
+                "deferredDe": "Schalterprogramm, Farbe, KNX-Raumcontroller",
+                "deferredEn": "Switch range, colour, KNX room controller"
+              },
+              {
+                "decidedDe": "Zutritt mechanisch · Schließanlage",
+                "decidedEn": "Mechanical access · master-key system",
+                "deferredDe": "Zylinder, Oberfläche, Türsprech-Innenstation",
+                "deferredEn": "Cylinders, finish, intercom indoor station"
+              },
+              {
+                "decidedDe": "Handtuchheizkörper elektrisch",
+                "decidedEn": "Electric towel radiator",
+                "deferredDe": "Farbe, Bauform",
+                "deferredEn": "Colour, form"
+              }
+            ]
+          },
           "boundaryDe": "Wärme, Sanitär, Elektro, Energiestandard",
           "boundaryEn": "Heat, plumbing, electrical, energy standard"
         },
@@ -1086,29 +2047,15 @@
           "groups": [
             {
               "id": "b-kg400-heat",
-              "labelDe": "Wärme & Lüftung",
-              "labelEn": "Heat & ventilation",
+              "labelDe": "Wärme",
+              "labelEn": "Heat",
               "services": [
                 {
-                  "id": "b-400-01",
-                  "labelDe": "Wärmeerzeugung zentral",
-                  "labelEn": "Central heat generation",
-                  "summaryDe": "Gemeinsamer Ambient-Loop mit Wärmepumpen in der Energiezentrale.",
-                  "summaryEn": "Shared ambient loop with heat pumps in the energy centre.",
-                  "amount": "1240000.00",
-                  "baseline": "selected",
-                  "kind": {
-                    "kind": "includeExclude"
-                  },
-                  "authority": "sourceEvidenced",
-                  "requiresDecision": false
-                },
-                {
                   "id": "b-400-heat",
-                  "labelDe": "Wärmekonzept",
-                  "labelEn": "Heat concept",
-                  "summaryDe": "Ein zentraler Kreis für das Quartier oder gebäudeweise Anlagen.",
-                  "summaryEn": "One central loop for the quarter or building-level plants.",
+                  "labelDe": "Anlagenkonzept",
+                  "labelEn": "Plant concept",
+                  "summaryDe": "Bestimmt, wie viele Wärmeerzeuger die Option enthält.",
+                  "summaryEn": "Determines how many heat generators the Option contains.",
                   "amount": "0.00",
                   "baseline": "selected",
                   "kind": {
@@ -1117,66 +2064,334 @@
                     "variants": [
                       {
                         "value": "central",
-                        "labelDe": "Zentraler Ambient-Loop",
-                        "labelEn": "Central ambient loop",
+                        "labelDe": "Gemeinsame Anlage für alle 3 Gebäude",
+                        "labelEn": "One shared plant for all 3 buildings",
                         "delta": "0.00"
                       },
                       {
                         "value": "perBuilding",
-                        "labelDe": "Gebäudeweise Anlagen",
-                        "labelEn": "Building-level plants",
+                        "labelDe": "Je Gebäude eine eigene Anlage",
+                        "labelEn": "One plant per building",
                         "delta": "-310000.00"
                       }
                     ]
                   },
                   "authority": "assumed",
+                  "all3Standard": "central",
+                  "costAuthority": "direct",
+                  "scopeDe": "betrifft alle 3 Gebäude",
+                  "scopeEn": "affects all 3 buildings",
+                  "whyDe": "Bestimmt, wie viele Wärmeerzeuger die Option enthält. Änderung wirkt auf Wärmeerzeuger und Warmwasserbereitung.",
+                  "whyEn": "Determines how many heat generators the Option contains. A change affects the heat generator and domestic hot water.",
+                  "source": {
+                    "originDe": "04_Quartierskonzept.pdf · S. 9",
+                    "originEn": "04_Quartierskonzept.pdf · p. 9",
+                    "valueDe": "Gemeinsame Energiezentrale",
+                    "valueEn": "Shared energy centre",
+                    "variant": "central"
+                  },
+                  "offerNoteDe": "Wirkt sich auf das Angebot aus, Abschnitt 3.1 Heizung.",
+                  "offerNoteEn": "Appears in the offer, section 3.1 Heating.",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-400-01",
+                  "labelDe": "Wärmeerzeuger",
+                  "labelEn": "Heat generator",
+                  "summaryDe": "Gemeinsamer Ambient-Loop mit Wärmepumpen (Energiezentrale).",
+                  "summaryEn": "Shared ambient loop with heat pumps (energy centre).",
+                  "amount": "1240000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "costAuthority": "direct",
+                  "scopeDe": "1 gemeinsame Anlage",
+                  "scopeEn": "1 shared plant",
+                  "whyDe": "Kein gesetzlicher Anlagentyp vorgeschrieben — § 71 GModG ist entfallen. Bestimmt Warmwasserbereitung und die § 14a-Bewertung.",
+                  "whyEn": "No statutory plant type applies — § 71 GModG has been repealed. Determines domestic hot water and the § 14a assessment.",
+                  "source": {
+                    "originDe": "04_Quartierskonzept.pdf · S. 11",
+                    "originEn": "04_Quartierskonzept.pdf · p. 11",
+                    "valueDe": "Gemeinsamer Ambient-Loop",
+                    "valueEn": "Shared ambient loop"
+                  },
+                  "ruleId": "p14a",
+                  "dependsOn": {
+                    "serviceId": "b-400-heat",
+                    "requiresVariant": "central"
+                  },
+                  "offerNoteDe": "Wirkt sich auf das Angebot aus, Abschnitt 3.1 Heizung.",
+                  "offerNoteEn": "Appears in the offer, section 3.1 Heating.",
                   "requiresDecision": false
                 },
                 {
                   "id": "b-400-02",
-                  "labelDe": "Wärmeverteilung Kontorhaus",
-                  "labelEn": "Heat distribution Kontorhaus",
-                  "summaryDe": "Niedertemperatur-Verteilung mit Deckensegeln, Haus A.",
-                  "summaryEn": "Low-temperature distribution with ceiling sails, building A.",
-                  "amount": "520000.00",
+                  "labelDe": "Wärmeverteilung",
+                  "labelEn": "Heat distribution",
+                  "summaryDe": "Drei Werte, weil die Nutzung je Baukörper unterschiedlich ist.",
+                  "summaryEn": "Three values, because the use differs per building.",
+                  "amount": "1560000.00",
                   "baseline": "selected",
                   "kind": {
                     "kind": "includeExclude"
                   },
                   "authority": "sourceEvidenced",
-                  "buildingId": "B-BLDG-A",
+                  "costAuthority": "direct",
+                  "scopeDe": "je Gebäude",
+                  "scopeEn": "per building",
+                  "source": {
+                    "originDe": "Grundlage Gebäude · bestätigt",
+                    "originEn": "Building baseline · confirmed"
+                  },
+                  "valueRows": [
+                    {
+                      "valueDe": "Niedertemperatur-Verteilung mit Deckensegeln",
+                      "valueEn": "Low-temperature distribution with ceiling sails",
+                      "buildingId": "B-BLDG-A",
+                      "amount": "520000.00"
+                    },
+                    {
+                      "valueDe": "Fußbodenheizung und Wohnungsstationen",
+                      "valueEn": "Underfloor heating and dwelling stations",
+                      "buildingId": "B-BLDG-B",
+                      "amount": "460000.00"
+                    },
+                    {
+                      "valueDe": "Getrennte Zonen für Gewerbe-EG und Wohnen",
+                      "valueEn": "Separate zones for the commercial ground floor and dwellings",
+                      "buildingId": "B-BLDG-C",
+                      "amount": "580000.00"
+                    }
+                  ],
                   "requiresDecision": false
                 },
                 {
-                  "id": "b-400-03",
-                  "labelDe": "Wärmeverteilung Hofhaus",
-                  "labelEn": "Heat distribution Hofhaus",
-                  "summaryDe": "Fußbodenheizung und Wohnungsstationen, Haus B.",
-                  "summaryEn": "Underfloor heating and dwelling stations, building B.",
-                  "amount": "460000.00",
+                  "id": "b-400-05e",
+                  "labelDe": "Einzelraumregelung · hydraulischer Abgleich",
+                  "labelEn": "Individual room control · hydraulic balancing",
+                  "summaryDe": "Raumthermostat (einfach) · hydraulischer Abgleich mit raumweiser Heizlastberechnung.",
+                  "summaryEn": "Simple room thermostat · hydraulic balancing with room-by-room heat load calculation.",
+                  "amount": "0.00",
                   "baseline": "selected",
                   "kind": {
-                    "kind": "includeExclude"
+                    "kind": "readOnlyRequired"
                   },
-                  "authority": "sourceEvidenced",
-                  "buildingId": "B-BLDG-B",
+                  "authority": "derived",
+                  "costAuthority": "bundle",
+                  "costBasisDe": "in der Wärmeverteilung enthalten",
+                  "costBasisEn": "included in the heat distribution position",
+                  "scopeDe": "gilt für alle 3 Gebäude",
+                  "scopeEn": "applies to all 3 buildings",
+                  "whyDe": "GModG § 63 und § 60c — für Gebäude ab 6 Wohn-/Nutzungseinheiten gesetzlich, keine Zusatzleistung.",
+                  "whyEn": "GModG § 63 and § 60c — statutory for buildings with 6 or more dwelling/usage units, not an extra.",
+                  "source": {
+                    "originDe": "GModG § 63 · § 60c",
+                    "originEn": "GModG § 63 · § 60c"
+                  },
                   "requiresDecision": false
                 },
                 {
-                  "id": "b-400-04",
-                  "labelDe": "Wärmeverteilung Stadthaus",
-                  "labelEn": "Heat distribution Stadthaus",
-                  "summaryDe": "Getrennte Zonen für Gewerbe-EG und Wohnen, Haus C.",
-                  "summaryEn": "Separate zones for the commercial ground floor and dwellings, building C.",
-                  "amount": "580000.00",
+                  "id": "b-400-es",
+                  "labelDe": "Energieziel",
+                  "labelEn": "Energy target",
+                  "summaryDe": "Förderziel, nicht der gesetzliche Mindeststandard.",
+                  "summaryEn": "Funding target, not the statutory minimum.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "eh55",
+                    "variants": [
+                      {
+                        "value": "geg",
+                        "labelDe": "Gesetzlicher Mindeststandard",
+                        "labelEn": "Statutory minimum",
+                        "delta": "-540000.00"
+                      },
+                      {
+                        "value": "eh55",
+                        "labelDe": "Effizienzhaus 55",
+                        "labelEn": "Efficiency House 55",
+                        "delta": "0.00"
+                      },
+                      {
+                        "value": "eh40",
+                        "labelDe": "Effizienzhaus 40",
+                        "labelEn": "Efficiency House 40",
+                        "delta": "620000.00"
+                      },
+                      {
+                        "value": "eh40nh",
+                        "labelDe": "Effizienzhaus 40 NH",
+                        "labelEn": "Efficiency House 40 NH",
+                        "delta": "1180000.00"
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "surface": "rahmen",
+                  "costAuthority": "direct",
+                  "source": {
+                    "originDe": "03_Energiekonzept.pdf · S. 6",
+                    "originEn": "03_Energiekonzept.pdf · p. 6"
+                  },
+                  "whyDe": "Förderziel nach KfW 297/298 — vorbehaltlich verfügbarer Bundesmittel, kein Rechtsanspruch. Der gesetzliche Mindeststandard wird davon nicht berührt.",
+                  "whyEn": "Funding target per KfW 297/298 — subject to available federal funds, no legal entitlement. The statutory minimum is unaffected by it.",
+                  "offerNoteDe": "Wirkt sich auf das Angebot aus, Abschnitt 1.4 Wärmeschutz.",
+                  "offerNoteEn": "Appears in the offer, section 1.4 Thermal protection.",
+                  "requiresDecision": false
+                }
+              ],
+              "summaryDe": "Gemeinsamer Ambient-Loop · Niedertemperatur-Verteilung je Nutzung",
+              "summaryEn": "Shared ambient loop · low-temperature distribution per use",
+              "scopeDe": "gemeinsame Anlage · Verteilung je Gebäude",
+              "scopeEn": "shared plant · distribution per building",
+              "costAuthority": "direct"
+            },
+            {
+              "id": "b-kg400-water",
+              "labelDe": "Trinkwasser & Warmwasser",
+              "labelEn": "Potable water & DHW",
+              "services": [
+                {
+                  "id": "b-400-07",
+                  "labelDe": "Warmwasserbereitung",
+                  "labelEn": "Domestic hot water generation",
+                  "summaryDe": "Bestimmt, ob eine Zirkulation erforderlich ist.",
+                  "summaryEn": "Determines whether circulation is required.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "WW_ZENTRAL_WP",
+                    "variants": [
+                      {
+                        "value": "WW_ZENTRAL_WP",
+                        "labelDe": "Zentral je Gebäude: Wärmepumpe + Warmwasserspeicher",
+                        "labelEn": "Central per building: heat pump + DHW cylinder",
+                        "delta": "0.00",
+                        "bundled": true
+                      },
+                      {
+                        "value": "WW_DEZ_FWST",
+                        "labelDe": "Dezentral: Wohnungs-Frischwasserstationen",
+                        "labelEn": "Decentralised fresh-water stations",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      },
+                      {
+                        "value": "WW_FW_KOMPAKT",
+                        "labelDe": "Fernwärme-Kompaktstation (Wohnungsstation)",
+                        "labelEn": "District-heating compact station (flat station)",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "all3Standard": "WW_ZENTRAL_WP",
+                  "costAuthority": "bundle",
+                  "costBasisDe": "in der Sanitärinstallation enthalten",
+                  "costBasisEn": "included in the plumbing position",
+                  "whyDe": "Zirkulation 60/55 °C nach DVGW W 551:2004-04. Bestimmt durch den Wärmeerzeuger.",
+                  "whyEn": "Circulation at 60/55 °C per DVGW W 551:2004-04. Determined by the heat generator.",
+                  "scopeDe": "je Gebäude",
+                  "scopeEn": "per building",
+                  "source": {
+                    "originDe": "03_Energiekonzept.pdf · S. 16",
+                    "originEn": "03_Energiekonzept.pdf · p. 16",
+                    "valueDe": "Zentrale Warmwasserbereitung je Gebäude",
+                    "valueEn": "Central DHW generation per building",
+                    "variant": "WW_ZENTRAL_WP"
+                  },
+                  "dependsOn": {
+                    "serviceId": "b-400-01",
+                    "requiresSelected": true
+                  },
+                  "offerNoteDe": "Wirkt sich auf das Angebot aus, Abschnitt 3.2 Wasser.",
+                  "offerNoteEn": "Appears in the offer, section 3.2 Water.",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-400-06",
+                  "labelDe": "Sanitärinstallation",
+                  "labelEn": "Plumbing installation",
+                  "summaryDe": "Drei Werte, weil die Nutzung je Baukörper unterschiedlich ist.",
+                  "summaryEn": "Three values, because the use differs per building.",
+                  "amount": "2180000.00",
                   "baseline": "selected",
                   "kind": {
                     "kind": "includeExclude"
                   },
                   "authority": "sourceEvidenced",
-                  "buildingId": "B-BLDG-C",
+                  "costAuthority": "direct",
+                  "scopeDe": "je Gebäude",
+                  "scopeEn": "per building",
+                  "source": {
+                    "originDe": "Grundlage Gebäude · bestätigt",
+                    "originEn": "Building baseline · confirmed"
+                  },
+                  "valueRows": [
+                    {
+                      "valueDe": "Sanitärkerne je Geschoss für 340 Arbeitsplätze",
+                      "valueEn": "Sanitary cores per floor for 340 workplaces",
+                      "buildingId": "B-BLDG-A",
+                      "amount": "640000.00"
+                    },
+                    {
+                      "valueDe": "Steigezonen und Wohnungsinstallation, 46 Einheiten",
+                      "valueEn": "Riser zones and dwelling installation, 46 units",
+                      "buildingId": "B-BLDG-B",
+                      "amount": "720000.00"
+                    },
+                    {
+                      "valueDe": "Wohnungsinstallation plus Gewerbeanschlüsse im EG",
+                      "valueEn": "Dwelling installation plus commercial connections at ground level",
+                      "buildingId": "B-BLDG-C",
+                      "amount": "820000.00"
+                    }
+                  ],
                   "requiresDecision": false
                 },
+                {
+                  "id": "b-400-08",
+                  "labelDe": "Zirkulation Warmwasser",
+                  "labelEn": "DHW circulation",
+                  "summaryDe": "Zirkulation erforderlich — Folge der zentralen Warmwasserbereitung.",
+                  "summaryEn": "Circulation required — a consequence of central DHW generation.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "readOnlyRequired"
+                  },
+                  "authority": "derived",
+                  "costAuthority": "bundle",
+                  "costBasisDe": "in der Sanitärinstallation enthalten",
+                  "costBasisEn": "included in the plumbing position",
+                  "whyDe": "Eine Hygienefolge, kein Schalter: bei zentraler Warmwasserbereitung ist die Zirkulation nach DVGW W 551 erforderlich.",
+                  "whyEn": "A hygiene consequence, not a toggle: central DHW generation requires circulation per DVGW W 551.",
+                  "scopeDe": "je Gebäude",
+                  "scopeEn": "per building",
+                  "source": {
+                    "originDe": "Aus der Warmwasserbereitung abgeleitet",
+                    "originEn": "Derived from the DHW generation decision"
+                  },
+                  "requiresDecision": false
+                }
+              ],
+              "summaryDe": "Zentral je Gebäude · Zirkulation 60/55 °C nach DVGW W 551:2004-04",
+              "summaryEn": "Central per building · circulation at 60/55 °C per DVGW W 551:2004-04",
+              "scopeDe": "je Gebäude",
+              "scopeEn": "per building",
+              "costAuthority": "direct"
+            },
+            {
+              "id": "b-kg400-air",
+              "labelDe": "Lüftung & sommerlicher Komfort",
+              "labelEn": "Ventilation & summer comfort",
+              "services": [
                 {
                   "id": "b-400-05",
                   "labelDe": "Lüftungsanlagen",
@@ -1189,166 +2404,219 @@
                     "kind": "includeExclude"
                   },
                   "authority": "sourceEvidenced",
+                  "costAuthority": "direct",
+                  "scopeDe": "je Gebäude",
+                  "scopeEn": "per building",
+                  "whyDe": "Lüftungskonzept nach DIN 1946-6:2019-12 · Energieziel EH 55 verlangt Wärmerückgewinnung · DIN 18017-3:2022-05 für innenliegende Bäder",
+                  "whyEn": "Ventilation concept per DIN 1946-6:2019-12 · energy target EH 55 requires heat recovery · DIN 18017-3:2022-05 for internal bathrooms",
+                  "source": {
+                    "originDe": "05_Lueftungskonzept.pdf · S. 5",
+                    "originEn": "05_Lueftungskonzept.pdf · p. 5"
+                  },
+                  "valueRows": [
+                    {
+                      "valueDe": "Zentrale RLT-Anlage",
+                      "valueEn": "Central air-handling unit",
+                      "buildingId": "B-BLDG-A"
+                    },
+                    {
+                      "valueDe": "Dezentrale Lüftung mit Wärmerückgewinnung",
+                      "valueEn": "Decentralised ventilation with heat recovery",
+                      "buildingId": "B-BLDG-B"
+                    },
+                    {
+                      "valueDe": "Dezentrale Lüftung mit Wärmerückgewinnung",
+                      "valueEn": "Decentralised ventilation with heat recovery",
+                      "buildingId": "B-BLDG-C"
+                    }
+                  ],
+                  "offerNoteDe": "Wirkt sich auf das Angebot aus, Abschnitt 3.7 Lüftung.",
+                  "offerNoteEn": "Appears in the offer, section 3.7 Ventilation.",
                   "requiresDecision": false
                 },
                 {
-                  "id": "b-400-es",
-                  "labelDe": "Energiestandard",
-                  "labelEn": "Energy standard",
-                  "summaryDe": "Der Standard beschreibt das Gebäude; das Band verengt sich erst mit der Kundenbestätigung.",
-                  "summaryEn": "The standard describes the building; the band narrows only on customer confirmation.",
-                  "amount": "0.00",
-                  "baseline": "selected",
-                  "kind": {
-                    "kind": "singleChoice",
-                    "baselineVariant": "eh55",
-                    "variants": [
-                      {
-                        "value": "geg",
-                        "labelDe": "GEG-Standard",
-                        "labelEn": "GEG standard",
-                        "delta": "-540000.00"
-                      },
-                      {
-                        "value": "eh55",
-                        "labelDe": "Effizienzhaus 55",
-                        "labelEn": "Efficiency house 55",
-                        "delta": "0.00"
-                      },
-                      {
-                        "value": "eh40",
-                        "labelDe": "Effizienzhaus 40",
-                        "labelEn": "Efficiency house 40",
-                        "delta": "620000.00"
-                      },
-                      {
-                        "value": "eh40nh",
-                        "labelDe": "Effizienzhaus 40 NH",
-                        "labelEn": "Efficiency house 40 NH",
-                        "delta": "1180000.00"
-                      }
-                    ]
-                  },
-                  "authority": "assumed",
-                  "requiresDecision": false
-                }
-              ]
-            },
-            {
-              "id": "b-kg400-services",
-              "labelDe": "Sanitär & Elektro",
-              "labelEn": "Plumbing & electrical",
-              "services": [
-                {
-                  "id": "b-400-06",
-                  "labelDe": "Sanitärinstallation Kontorhaus",
-                  "labelEn": "Plumbing Kontorhaus",
-                  "summaryDe": "Sanitärkerne je Geschoss für 340 Arbeitsplätze.",
-                  "summaryEn": "Sanitary cores per floor for 340 workplaces.",
-                  "amount": "640000.00",
-                  "baseline": "selected",
-                  "kind": {
-                    "kind": "includeExclude"
-                  },
-                  "authority": "sourceEvidenced",
-                  "buildingId": "B-BLDG-A",
-                  "requiresDecision": false
-                },
-                {
-                  "id": "b-400-07",
-                  "labelDe": "Sanitärinstallation Hofhaus",
-                  "labelEn": "Plumbing Hofhaus",
-                  "summaryDe": "Steigezonen und Wohnungsinstallation, 46 Einheiten.",
-                  "summaryEn": "Riser zones and dwelling installation, 46 units.",
-                  "amount": "720000.00",
-                  "baseline": "selected",
-                  "kind": {
-                    "kind": "includeExclude"
-                  },
-                  "authority": "sourceEvidenced",
-                  "buildingId": "B-BLDG-B",
-                  "requiresDecision": false
-                },
-                {
-                  "id": "b-400-08",
-                  "labelDe": "Sanitärinstallation Stadthaus",
-                  "labelEn": "Plumbing Stadthaus",
-                  "summaryDe": "Wohnungsinstallation plus Gewerbeanschlüsse im EG.",
-                  "summaryEn": "Dwelling installation plus commercial connections at ground level.",
-                  "amount": "820000.00",
-                  "baseline": "selected",
-                  "kind": {
-                    "kind": "includeExclude"
-                  },
-                  "authority": "sourceEvidenced",
-                  "buildingId": "B-BLDG-C",
-                  "requiresDecision": false
-                },
-                {
-                  "id": "b-400-09",
-                  "labelDe": "Elektro & Datennetz Kontorhaus",
-                  "labelEn": "Electrical & data Kontorhaus",
-                  "summaryDe": "Bodentanks, Beleuchtung und strukturierte Verkabelung.",
-                  "summaryEn": "Floor boxes, lighting and structured cabling.",
-                  "amount": "780000.00",
-                  "baseline": "selected",
-                  "kind": {
-                    "kind": "includeExclude"
-                  },
-                  "authority": "sourceEvidenced",
-                  "buildingId": "B-BLDG-A",
-                  "requiresDecision": false
-                },
-                {
-                  "id": "b-400-10",
-                  "labelDe": "Elektro & Datennetz Hofhaus",
-                  "labelEn": "Electrical & data Hofhaus",
-                  "summaryDe": "Wohnungsverteilungen, Allgemeinstrom und Klingelanlage.",
-                  "summaryEn": "Dwelling boards, landlord supply and doorbell system.",
-                  "amount": "460000.00",
-                  "baseline": "selected",
-                  "kind": {
-                    "kind": "includeExclude"
-                  },
-                  "authority": "sourceEvidenced",
-                  "buildingId": "B-BLDG-B",
-                  "requiresDecision": false
-                },
-                {
-                  "id": "b-400-11",
-                  "labelDe": "Elektro & Datennetz Stadthaus",
-                  "labelEn": "Electrical & data Stadthaus",
-                  "summaryDe": "Wohnungsverteilungen plus Gewerbeunterverteilung im EG.",
-                  "summaryEn": "Dwelling boards plus a commercial sub-distribution at ground level.",
-                  "amount": "480000.00",
-                  "baseline": "selected",
-                  "kind": {
-                    "kind": "includeExclude"
-                  },
-                  "authority": "sourceEvidenced",
-                  "buildingId": "B-BLDG-C",
-                  "requiresDecision": false
-                },
-                {
-                  "id": "b-400-90",
-                  "labelDe": "Photovoltaik Dachflächen",
-                  "labelEn": "Rooftop photovoltaics",
-                  "summaryDe": "Alle drei Dächer sind geeignet; das Energiekonzept fordert sie nicht.",
-                  "summaryEn": "All three roofs are suitable; the energy concept does not require them.",
-                  "amount": "620000.00",
+                  "id": "b-400-92",
+                  "labelDe": "Gastronomie-Lüftung Gewerbe-EG",
+                  "labelEn": "Gastronomy ventilation, commercial ground floor",
+                  "summaryDe": "Das Nutzungskonzept nennt Gastronomie, der Auftraggeberbrief nur Gewerbe.",
+                  "summaryEn": "The use concept names gastronomy, the client brief only commercial use.",
+                  "amount": "420000.00",
                   "baseline": "notSelected",
                   "kind": {
                     "kind": "includeExclude"
                   },
                   "authority": "assumed",
+                  "costAuthority": "direct",
+                  "scopeDe": "betrifft 1 von 3 Gebäuden",
+                  "scopeEn": "affects 1 of 3 buildings",
+                  "source": {
+                    "originDe": "B-Q-01 · Konflikt aus der Dokumentenanalyse",
+                    "originEn": "B-Q-01 · conflict from the document analysis",
+                    "valueDe": "Nicht eindeutig",
+                    "valueEn": "Not unambiguous"
+                  },
+                  "offerNoteDe": "Wirkt sich auf das Angebot aus, Abschnitt 3.7 Lüftung.",
+                  "offerNoteEn": "Appears in the offer, section 3.7 Ventilation.",
                   "requiresDecision": true
                 },
                 {
+                  "id": "b-400-08s",
+                  "labelDe": "Sommerlicher Wärmeschutz",
+                  "labelEn": "Summer thermal protection",
+                  "summaryDe": "Thermische Gebäudesimulation für das Kontorhaus · DIN 4108-2:2013-02.",
+                  "summaryEn": "Thermal building simulation for the Kontorhaus · DIN 4108-2:2013-02.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "readOnlyRequired"
+                  },
+                  "authority": "derived",
+                  "costAuthority": "noBasis",
+                  "scopeDe": "aus Projekt übernommen",
+                  "scopeEn": "taken from the project",
+                  "whyDe": "Aus der Gebäudehülle abgeleitet. Wird hier nicht entschieden, nur angezeigt.",
+                  "whyEn": "Derived from the building envelope. Shown here, not decided here.",
+                  "source": {
+                    "originDe": "Grundlage Gebäude · Hüllcluster",
+                    "originEn": "Building baseline · envelope cluster"
+                  },
+                  "requiresDecision": false
+                }
+              ],
+              "summaryDe": "Zentrale RLT Kontorhaus · dezentrale WRG Hofhaus und Stadthaus",
+              "summaryEn": "Central AHU Kontorhaus · decentralised heat recovery Hofhaus and Stadthaus",
+              "scopeDe": "je Gebäude",
+              "scopeEn": "per building",
+              "costAuthority": "direct"
+            },
+            {
+              "id": "b-kg400-power",
+              "labelDe": "Elektro & Energie",
+              "labelEn": "Electrical & on-site energy",
+              "services": [
+                {
+                  "id": "b-400-09",
+                  "labelDe": "Elektroinstallation & Datennetz",
+                  "labelEn": "Electrical & data installation",
+                  "summaryDe": "Drei Werte, weil die Nutzung je Baukörper unterschiedlich ist.",
+                  "summaryEn": "Three values, because the use differs per building.",
+                  "amount": "1720000.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "includeExclude"
+                  },
+                  "authority": "sourceEvidenced",
+                  "costAuthority": "direct",
+                  "scopeDe": "je Gebäude",
+                  "scopeEn": "per building",
+                  "source": {
+                    "originDe": "Grundlage Gebäude · bestätigt",
+                    "originEn": "Building baseline · confirmed"
+                  },
+                  "valueRows": [
+                    {
+                      "valueDe": "Bodentanks, Beleuchtung und strukturierte Verkabelung",
+                      "valueEn": "Floor boxes, lighting and structured cabling",
+                      "buildingId": "B-BLDG-A",
+                      "amount": "780000.00"
+                    },
+                    {
+                      "valueDe": "Wohnungsverteilungen, Allgemeinstrom und Klingelanlage",
+                      "valueEn": "Dwelling boards, landlord supply and doorbell system",
+                      "buildingId": "B-BLDG-B",
+                      "amount": "460000.00"
+                    },
+                    {
+                      "valueDe": "Wohnungsverteilungen plus Gewerbeunterverteilung im EG",
+                      "valueEn": "Dwelling boards plus a commercial sub-distribution at ground level",
+                      "buildingId": "B-BLDG-C",
+                      "amount": "480000.00"
+                    }
+                  ],
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-400-21",
+                  "labelDe": "Ausstattungswert Elektro",
+                  "labelEn": "Electrical equipment level",
+                  "summaryDe": "Nach DIN 18015-2.",
+                  "summaryEn": "Per DIN 18015-2.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "AW2",
+                    "variants": [
+                      {
+                        "value": "AW1",
+                        "labelDe": "AW1 — Mindestausstattung",
+                        "labelEn": "AW1 — minimum equipment",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      },
+                      {
+                        "value": "AW2",
+                        "labelDe": "AW2 — Standardausstattung",
+                        "labelEn": "AW2 — standard equipment",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      },
+                      {
+                        "value": "AW3",
+                        "labelDe": "AW3 — Komfortausstattung",
+                        "labelEn": "AW3 — comfort equipment",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "all3Standard": "AW2",
+                  "costAuthority": "noBasis",
+                  "costBasisDe": "in der Elektroinstallation enthalten",
+                  "costBasisEn": "included in the electrical installation position",
+                  "scopeDe": "gilt für 3 Gebäude",
+                  "scopeEn": "applies to 3 buildings",
+                  "source": {
+                    "originDe": "DIN 18015-2 · All3-Standard",
+                    "originEn": "DIN 18015-2 · All3 standard",
+                    "valueDe": "AW2 — Standardausstattung",
+                    "valueEn": "AW2 — standard equipment",
+                    "variant": "AW2"
+                  },
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-400-22",
+                  "labelDe": "Leitungsinfrastruktur je Stellplatz",
+                  "labelEn": "Cabling infrastructure per parking space",
+                  "summaryDe": "Erforderlich · GEIG § 6 · 46 Stellplätze · Bauantrag vor 01.01.2027.",
+                  "summaryEn": "Required · GEIG § 6 · 46 parking spaces · building application before 01/01/2027.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "readOnlyRequired"
+                  },
+                  "authority": "sourceEvidenced",
+                  "costAuthority": "bundle",
+                  "costBasisDe": "in der Elektroinstallation enthalten",
+                  "costBasisEn": "included in the electrical installation position",
+                  "scopeDe": "gilt für 3 Gebäude",
+                  "scopeEn": "applies to 3 buildings",
+                  "whyDe": "Ab Bauantrag 01.01.2027 gilt: 50 % Vorverkabelung je Stellplatzgruppe und mindestens ein errichteter Ladepunkt — Leerrohre genügen dann nicht mehr. Für dieses Projekt gilt das noch nicht.",
+                  "whyEn": "From a building application dated 01/01/2027: 50 % pre-wiring per parking group and at least one built charge point — conduits will no longer suffice. That does not yet apply to this project.",
+                  "source": {
+                    "originDe": "GEIG § 6",
+                    "originEn": "GEIG § 6"
+                  },
+                  "requiresDecision": false
+                },
+                {
                   "id": "b-400-91",
-                  "labelDe": "E-Ladeinfrastruktur",
-                  "labelEn": "EV charging infrastructure",
-                  "summaryDe": "B-Q-04: Leerrohre sind im Ansatz, Ladepunkte sind zu entscheiden.",
-                  "summaryEn": "B-Q-04: conduits are allowed for, charge points are a decision.",
+                  "labelDe": "Ladepunkte",
+                  "labelEn": "Charge points",
+                  "summaryDe": "Optionale Erweiterung über die gesetzliche Grundausstattung hinaus.",
+                  "summaryEn": "Optional extension beyond the statutory baseline.",
                   "amount": "176000.00",
                   "baseline": "notSelected",
                   "kind": {
@@ -1361,27 +2629,495 @@
                     "maxQuantity": "100000"
                   },
                   "authority": "derived",
-                  "buildingId": "B-BLDG-C",
+                  "costAuthority": "direct",
+                  "scopeDe": "gilt für 3 Gebäude",
+                  "scopeEn": "applies to 3 buildings",
+                  "source": {
+                    "originDe": "B-Q-04 · Konflikt aus der Dokumentenanalyse",
+                    "originEn": "B-Q-04 · conflict from the document analysis",
+                    "valueDe": "Nicht spezifiziert",
+                    "valueEn": "Not specified"
+                  },
+                  "ruleId": "p14a",
+                  "offerNoteDe": "Wirkt sich auf das Angebot aus, Abschnitt 3.8 Elektro.",
+                  "offerNoteEn": "Appears in the offer, section 3.8 Electrical.",
                   "requiresDecision": true
                 },
                 {
-                  "id": "b-400-92",
-                  "labelDe": "Gastronomie-Lüftung Gewerbe-EG",
-                  "labelEn": "Gastronomy ventilation, commercial ground floor",
-                  "summaryDe": "B-Q-01: das Nutzungskonzept nennt Gastronomie, der Auftraggeberbrief nur Gewerbe.",
-                  "summaryEn": "B-Q-01: the use concept names gastronomy, the client brief only commercial.",
-                  "amount": "420000.00",
+                  "id": "b-400-90",
+                  "labelDe": "Photovoltaikanlage",
+                  "labelEn": "Photovoltaic system",
+                  "summaryDe": "Einspeisung auf 60 % begrenzt, bis Messstelle und Steuerung geprüft sind.",
+                  "summaryEn": "Feed-in limited to 60 % until the metering point and control are verified.",
+                  "amount": "620000.00",
                   "baseline": "notSelected",
                   "kind": {
                     "kind": "includeExclude"
                   },
                   "authority": "assumed",
-                  "buildingId": "B-BLDG-C",
+                  "costAuthority": "direct",
+                  "scopeDe": "gemeinsame Anlage",
+                  "scopeEn": "shared installation",
+                  "whyDe": "Eine bundesweite Pflicht zur Solarenergie besteht für neue Wohngebäude erst ab 2030. Landesrecht ist gesondert zu prüfen.",
+                  "whyEn": "A federal obligation to install solar energy arises for new residential buildings only from 2030. State law is checked separately.",
+                  "source": {
+                    "originDe": "03_Energiekonzept.pdf · S. 21",
+                    "originEn": "03_Energiekonzept.pdf · p. 21",
+                    "valueDe": "Nicht spezifiziert",
+                    "valueEn": "Not specified"
+                  },
+                  "ruleId": "p14a",
+                  "valueRows": [
+                    {
+                      "valueDe": "aus Dachfläche abgeleitet · 186 kWp",
+                      "valueEn": "derived from the roof area · 186 kWp",
+                      "labelDe": "PV-Leistung",
+                      "labelEn": "PV capacity",
+                      "noteDe": "abgeleitet",
+                      "noteEn": "derived"
+                    },
+                    {
+                      "valueDe": "Gemeinschaftliche Gebäudeversorgung schließt den Mieterstromzuschlag aus",
+                      "valueEn": "Communal building supply excludes the tenant-electricity surcharge",
+                      "labelDe": "PV-Vermarktung",
+                      "labelEn": "PV energy model",
+                      "noteDe": "ohne Preisgrundlage",
+                      "noteEn": "no price basis"
+                    },
+                    {
+                      "valueDe": "teilt die Preisgrundlage der PV-Anlage",
+                      "valueEn": "shares the price basis of the PV system",
+                      "labelDe": "Batteriespeicher",
+                      "labelEn": "Battery storage",
+                      "noteDe": "im Bündel",
+                      "noteEn": "bundled"
+                    }
+                  ],
+                  "offerNoteDe": "Wirkt sich auf das Angebot aus, Abschnitt 3.13 Photovoltaik.",
+                  "offerNoteEn": "Appears in the offer, section 3.13 Photovoltaics.",
                   "requiresDecision": true
                 }
-              ]
+              ],
+              "summaryDe": "AW2 · PV offen · E-Ladeinfrastruktur gesetzlich erforderlich",
+              "summaryEn": "AW2 · PV open · EV cabling infrastructure required by law",
+              "scopeDe": "gilt für 3 Gebäude",
+              "scopeEn": "applies to 3 buildings",
+              "costAuthority": "direct"
+            },
+            {
+              "id": "b-kg400-drain",
+              "labelDe": "Entwässerung",
+              "labelEn": "Drainage",
+              "services": [
+                {
+                  "id": "b-400-11",
+                  "labelDe": "Rückstausicherung",
+                  "labelEn": "Backwater protection",
+                  "summaryDe": "Abwasserhebeanlage für fäkalienhaltiges Abwasser unter der Rückstauebene.",
+                  "summaryEn": "Sewage lifting station for foul water below the backwater level.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "readOnlyRequired"
+                  },
+                  "authority": "derived",
+                  "costAuthority": "noBasis",
+                  "scopeDe": "betrifft 1 von 3 Gebäuden",
+                  "scopeEn": "affects 1 of 3 buildings",
+                  "whyDe": "DIN 1986-100:2016-12 · DIN EN 12056-4. Ein Rückstauverschluss ist nur bei untergeordneter Nutzung und weiteren Bedingungen zulässig, die im Angebot nicht bewertet werden können.",
+                  "whyEn": "DIN 1986-100:2016-12 · DIN EN 12056-4. A backwater valve is admissible only for subordinate use and under further conditions that an offer cannot assess.",
+                  "source": {
+                    "originDe": "Grundlage Gebäude · Untergeschosse",
+                    "originEn": "Building baseline · basement levels"
+                  },
+                  "valueRows": [
+                    {
+                      "valueDe": "Entwässerung unter der Rückstauebene · Abwasserhebeanlage",
+                      "valueEn": "Drainage below the backwater level · sewage lifting station",
+                      "buildingId": "B-BLDG-B",
+                      "noteDe": "ohne Preisgrundlage",
+                      "noteEn": "no price basis"
+                    },
+                    {
+                      "valueDe": "kein UG — nicht anwendbar",
+                      "valueEn": "no basement — not applicable",
+                      "buildingId": "B-BLDG-A",
+                      "notApplicable": true
+                    },
+                    {
+                      "valueDe": "kein UG — nicht anwendbar",
+                      "valueEn": "no basement — not applicable",
+                      "buildingId": "B-BLDG-C",
+                      "notApplicable": true
+                    }
+                  ],
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-400-11r",
+                  "labelDe": "Regenwasserentsorgung",
+                  "labelEn": "Stormwater disposal",
+                  "summaryDe": "Kommunale Vorgabe: Einleitung in Kanal, gedrosselt · Mischkanalisation.",
+                  "summaryEn": "Municipal requirement: throttled discharge to the sewer · combined system.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "readOnlyRequired"
+                  },
+                  "authority": "derived",
+                  "costAuthority": "noBasis",
+                  "scopeDe": "gilt für die gesamte Option",
+                  "scopeEn": "applies to the whole Option",
+                  "whyDe": "Projektvorgabe aus der Entwässerungssatzung. Bestimmt das Regenwassermanagement und muss mit der Dachretention übereinstimmen.",
+                  "whyEn": "A project requirement from the municipal drainage by-law. It determines stormwater management and must agree with the roof retention.",
+                  "source": {
+                    "originDe": "Entwässerungssatzung der Gemeinde",
+                    "originEn": "Municipal drainage by-law"
+                  },
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-400-19",
+                  "labelDe": "Tiefgaragen-Einfahrtstor",
+                  "labelEn": "Underground garage entrance gate",
+                  "summaryDe": "Entsteht automatisch, sobald die Gebäudegrundlage eine Tiefgarage enthält.",
+                  "summaryEn": "Appears automatically once the building baseline includes an underground garage.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "readOnlyRequired"
+                  },
+                  "authority": "derived",
+                  "costAuthority": "none",
+                  "applicability": {
+                    "state": "notApplicable",
+                    "reasonDe": "keine Tiefgarage im Projektumfang",
+                    "reasonEn": "no underground garage in the project scope"
+                  },
+                  "requiresDecision": false
+                }
+              ],
+              "summaryDe": "Rückstausicherung nur Hofhaus · Kontorhaus und Stadthaus ohne UG",
+              "summaryEn": "Backwater protection Hofhaus only · Kontorhaus and Stadthaus without basement",
+              "scopeDe": "1 von 3 Gebäuden",
+              "scopeEn": "1 of 3 buildings",
+              "applicability": {
+                "state": "partial",
+                "reasonDe": "nur das Hofhaus hat ein Untergeschoss",
+                "reasonEn": "only the Hofhaus has a basement"
+              },
+              "costAuthority": "noBasis"
+            },
+            {
+              "id": "b-kg400-comms",
+              "labelDe": "Kommunikation & Zutritt",
+              "labelEn": "Communications & access",
+              "services": [
+                {
+                  "id": "b-400-29",
+                  "labelDe": "Zutrittssystem",
+                  "labelEn": "Access control",
+                  "summaryDe": "Leser und Oberfläche folgen in der Bemusterung.",
+                  "summaryEn": "Readers and finish follow in the specification stage.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "singleChoice",
+                    "baselineVariant": "ZK_RFID",
+                    "variants": [
+                      {
+                        "value": "ZK_MECH",
+                        "labelDe": "Mechanische Schließanlage",
+                        "labelEn": "Mechanical master-key system",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      },
+                      {
+                        "value": "ZK_RFID",
+                        "labelDe": "Elektronisch (RFID/Transponder)",
+                        "labelEn": "Electronic (RFID/transponder)",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      },
+                      {
+                        "value": "ZK_SMART",
+                        "labelDe": "Smartphone-/App-Zutritt",
+                        "labelEn": "Smartphone/app-based access",
+                        "delta": "0.00",
+                        "noPriceBasis": true
+                      }
+                    ]
+                  },
+                  "authority": "assumed",
+                  "all3Standard": "ZK_MECH",
+                  "costAuthority": "noBasis",
+                  "scopeDe": "gilt für 3 Gebäude",
+                  "scopeEn": "applies to 3 buildings",
+                  "source": {
+                    "originDe": "01_Auftraggeberbrief.pdf · S. 9",
+                    "originEn": "01_Auftraggeberbrief.pdf · p. 9",
+                    "valueDe": "Elektronische Zugangskontrolle",
+                    "valueEn": "Electronic access control",
+                    "variant": "ZK_RFID"
+                  },
+                  "offerNoteDe": "Wirkt sich auf das Angebot aus, Abschnitt 2.11 Zutritt.",
+                  "offerNoteEn": "Appears in the offer, section 2.11 Access.",
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-400-25",
+                  "labelDe": "Gebäudeverkabelung",
+                  "labelEn": "In-building cabling",
+                  "summaryDe": "Glasfaser bis in die Wohnung (FTTH), je Gebäude.",
+                  "summaryEn": "Fibre to the dwelling (FTTH), per building.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "readOnlyRequired"
+                  },
+                  "authority": "derived",
+                  "costAuthority": "noBasis",
+                  "scopeDe": "gilt für 3 Gebäude",
+                  "scopeEn": "applies to 3 buildings",
+                  "source": {
+                    "originDe": "Grundlage Projekt · Telekommunikation",
+                    "originEn": "Project baseline · telecommunications",
+                    "valueDe": "Glasfaser in Planung/Ausbau",
+                    "valueEn": "Fibre planned/under rollout"
+                  },
+                  "requiresDecision": false
+                }
+              ],
+              "summaryDe": "FTTH je Gebäude · elektronische Zugangskontrolle",
+              "summaryEn": "FTTH per building · electronic access control",
+              "scopeDe": "gilt für 3 Gebäude",
+              "scopeEn": "applies to 3 buildings",
+              "costAuthority": "noBasis"
+            },
+            {
+              "id": "b-kg400-lift",
+              "labelDe": "Aufzüge & Sonderanlagen",
+              "labelEn": "Lifts & special systems",
+              "services": [
+                {
+                  "id": "b-400-27",
+                  "labelDe": "Anzahl Aufzüge",
+                  "labelEn": "Number of lifts",
+                  "summaryDe": "Aus der Gebäudegrundlage abgeleitet · elektrisch maschinenraumlos (MRL).",
+                  "summaryEn": "Derived from the building baseline · electric, machine-room-less (MRL).",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "readOnlyRequired"
+                  },
+                  "authority": "derived",
+                  "costAuthority": "noBasis",
+                  "scopeDe": "je Gebäude",
+                  "scopeEn": "per building",
+                  "whyDe": "Die Aufzugspflicht folgt aus der Gebäudehöhe (MBO § 39 Abs. 4), nicht aus der Geschosszahl.",
+                  "whyEn": "The lift requirement follows from the building height (MBO § 39 (4)), not from the number of storeys.",
+                  "source": {
+                    "originDe": "Grundlage Gebäude · Höhe",
+                    "originEn": "Building baseline · height"
+                  },
+                  "valueRows": [
+                    {
+                      "valueDe": "1 Personenaufzug",
+                      "valueEn": "1 passenger lift",
+                      "buildingId": "B-BLDG-A"
+                    },
+                    {
+                      "valueDe": "1 Personenaufzug",
+                      "valueEn": "1 passenger lift",
+                      "buildingId": "B-BLDG-B"
+                    },
+                    {
+                      "valueDe": "1 Personenaufzug",
+                      "valueEn": "1 passenger lift",
+                      "buildingId": "B-BLDG-C"
+                    }
+                  ],
+                  "requiresDecision": false
+                }
+              ],
+              "summaryDe": "3 Aufzüge aus der Gebäudegrundlage",
+              "summaryEn": "3 lifts from the building baseline",
+              "scopeDe": "je Gebäude",
+              "scopeEn": "per building",
+              "costAuthority": "noBasis"
+            },
+            {
+              "id": "b-kg400-scope",
+              "labelDe": "Schnittstellen & Verantwortung",
+              "labelEn": "Interfaces & responsibility",
+              "services": [
+                {
+                  "id": "b-400-13g",
+                  "labelDe": "Leistungsgrenze TGA",
+                  "labelEn": "MEP scope boundary",
+                  "summaryDe": "Leitungsnetz bis 1,0 m außerhalb der Gebäudehülle bzw. bis zum vereinbarten Übergabepunkt.",
+                  "summaryEn": "Pipework and cabling to 1.0 m outside the building envelope, or to the agreed handover point.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "readOnlyRequired"
+                  },
+                  "authority": "sourceEvidenced",
+                  "costAuthority": "none",
+                  "scopeDe": "gilt für die gesamte Option",
+                  "scopeEn": "applies to the whole Option",
+                  "source": {
+                    "originDe": "All3-Standard · Leistungsverzeichnis",
+                    "originEn": "All3 standard · scope schedule",
+                    "valueDe": "Übergabepunkt Grundstücksgrenze",
+                    "valueEn": "Handover point at the property line"
+                  },
+                  "requiresDecision": false
+                },
+                {
+                  "id": "b-400-14",
+                  "labelDe": "Hausanschlüsse",
+                  "labelEn": "Utility house connections",
+                  "summaryDe": "Bauherr bis Grundstücksgrenze, All3 ab Übergabepunkt.",
+                  "summaryEn": "Client to the property line, All3 from the handover point.",
+                  "amount": "0.00",
+                  "baseline": "selected",
+                  "kind": {
+                    "kind": "readOnlyRequired"
+                  },
+                  "authority": "sourceEvidenced",
+                  "costAuthority": "bauherr",
+                  "scopeDe": "Verantwortung je Medium",
+                  "scopeEn": "responsibility per medium",
+                  "source": {
+                    "originDe": "01_Auftraggeberbrief.pdf · S. 12",
+                    "originEn": "01_Auftraggeberbrief.pdf · p. 12"
+                  },
+                  "valueRows": [
+                    {
+                      "valueDe": "Bauherr bis Grundstücksgrenze",
+                      "valueEn": "Client to the property line",
+                      "labelDe": "Trinkwasser",
+                      "labelEn": "Potable water",
+                      "status": "ok"
+                    },
+                    {
+                      "valueDe": "Bauherr bis Grundstücksgrenze",
+                      "valueEn": "Client to the property line",
+                      "labelDe": "Schmutzwasser / Kanal",
+                      "labelEn": "Foul water / sewer",
+                      "status": "ok"
+                    },
+                    {
+                      "valueDe": "Bauherr bis Grundstücksgrenze",
+                      "valueEn": "Client to the property line",
+                      "labelDe": "Strom (NS-Netz)",
+                      "labelEn": "Electricity (LV grid)",
+                      "status": "ok"
+                    },
+                    {
+                      "valueDe": "Glasfaser in Planung/Ausbau — Verfügbarkeit offen",
+                      "valueEn": "Fibre planned/under rollout — availability open",
+                      "labelDe": "Telekommunikation",
+                      "labelEn": "Telecommunications",
+                      "status": "attention"
+                    }
+                  ],
+                  "offerNoteDe": "Eine ungeklärte Schnittstelle wird als Bedingung ins Angebot übernommen, nicht als Betrag und nicht als Lücke.",
+                  "offerNoteEn": "An unresolved interface enters the offer as a condition — not as an amount and not as a gap.",
+                  "requiresDecision": false
+                }
+              ],
+              "summaryDe": "Leistungsgrenze bestätigt · Telekommunikation ungeklärt",
+              "summaryEn": "Scope boundary confirmed · telecommunications unresolved",
+              "scopeDe": "gilt für die gesamte Option",
+              "scopeEn": "applies to the whole Option",
+              "costAuthority": "bauherr"
             }
           ],
+          "rahmen": [
+            {
+              "id": "energieziel",
+              "labelDe": "Energieziel",
+              "labelEn": "Energy target",
+              "valueDe": "",
+              "valueEn": "",
+              "metaDe": "Förderziel · Annahme",
+              "metaEn": "Funding target · assumption",
+              "editServiceId": "b-400-es"
+            },
+            {
+              "id": "mindeststandard",
+              "labelDe": "Gesetzlicher Mindeststandard",
+              "labelEn": "Statutory minimum",
+              "valueDe": "GModG § 10 · Niedrigstenergiegebäude",
+              "valueEn": "GModG § 10 · nearly zero-energy building",
+              "metaDe": "aus Bauantragsdatum abgeleitet",
+              "metaEn": "derived from the building-application date"
+            },
+            {
+              "id": "gebaeudeumfang",
+              "labelDe": "Gebäudeumfang",
+              "labelEn": "Building scope",
+              "valueDe": "",
+              "valueEn": "",
+              "metaDe": "",
+              "metaEn": "",
+              "derive": "buildingScope"
+            },
+            {
+              "id": "leistungsgrenze",
+              "labelDe": "Leistungsgrenze All3",
+              "labelEn": "All3 scope boundary",
+              "valueDe": "ab Übergabepunkt Grundstücksgrenze",
+              "valueEn": "from the handover point at the property line",
+              "metaDe": "1 Schnittstelle ungeklärt",
+              "metaEn": "1 interface unresolved"
+            }
+          ],
+          "rules": [
+            {
+              "id": "p14a",
+              "titleDe": "§ 14a EnWG · steuerbare Verbrauchseinrichtungen",
+              "titleEn": "§ 14a EnWG · controllable consumption devices",
+              "bodyDe": "Diese Option enthält steuerbare Verbrauchseinrichtungen: Wärmepumpe · Wallboxen · Batteriespeicher. Die garantierte Leistung wird gemeinsam bemessen, nicht je Gerät. Der Netzanschluss ist entsprechend auszulegen.",
+              "bodyEn": "This Option contains controllable consumption devices: heat pump · wallboxes · battery storage. The guaranteed power is measured jointly, not per device. The grid connection is sized accordingly.",
+              "sourceDe": "BNetzA BK6-22-300, Anlage 1 · Ziffer 2.4.1 · § 19 Abs. 2 NAV",
+              "sourceEn": "BNetzA BK6-22-300, annex 1 · clause 2.4.1 · § 19 (2) NAV",
+              "noteDe": "Die Summen-Bemessungsleistung der Ladeeinrichtungen überschreitet 12 kVA — die Inbetriebnahme bedarf der Zustimmung des Netzbetreibers (§ 19 Abs. 2 NAV). Diese Zustimmung ist nicht Bestandteil des Angebots.",
+              "noteEn": "The combined rated power of the charging equipment exceeds 12 kVA — commissioning requires the grid operator's consent (§ 19 (2) NAV). That consent is not part of the offer."
+            }
+          ],
+          "bemusterung": {
+            "titleDe": "Spätere Bemusterung",
+            "titleEn": "Later specification",
+            "bodyDe": "In dieser Kostengruppe ist der Systemstandard festgelegt. Produkt- und Oberflächenauswahl folgt in der Bemusterung — sie verfeinert diese Entscheidungen, sie ersetzt sie nicht.",
+            "bodyEn": "This cost group fixes the system standard. Product and finish selection follows in the specification stage — it refines these decisions, it does not replace them.",
+            "decidedHeadingDe": "Hier bereits entschieden",
+            "decidedHeadingEn": "Already decided here",
+            "deferredHeadingDe": "Später zu bemustern",
+            "deferredHeadingEn": "To be specified later",
+            "rows": [
+              {
+                "decidedDe": "Ausstattungswert Elektro AW2 · DIN 18015-2",
+                "decidedEn": "Electrical equipment level AW2 · DIN 18015-2",
+                "deferredDe": "Schalterprogramm, Farbe, KNX-Raumcontroller",
+                "deferredEn": "Switch range, colour, KNX room controller"
+              },
+              {
+                "decidedDe": "Zutritt elektronisch · RFID/Transponder",
+                "decidedEn": "Electronic access · RFID/transponder",
+                "deferredDe": "Leser, Oberfläche, Türsprech-Innenstation",
+                "deferredEn": "Readers, finish, intercom indoor station"
+              },
+              {
+                "decidedDe": "Einzelraumregelung Raumthermostat",
+                "decidedEn": "Individual room control, room thermostat",
+                "deferredDe": "Smart-Home-Raumregler, KNX",
+                "deferredEn": "Smart-home room controller, KNX"
+              }
+            ]
+          },
           "boundaryDe": "Wärme, Lüftung, Sanitär, Elektro",
           "boundaryEn": "Heat, ventilation, plumbing, electrical"
         },

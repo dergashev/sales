@@ -117,7 +117,11 @@ describe('Сквозной сценарий продажи', () => {
     act(() => {
       useStore.getState().openConfiguratorStepAt(CONFIGURATOR_STEP.KG_400_DETAILS)
     })
-    const es = await screen.findByRole('radiogroup', { name: /Energiestandard/ })
+    // VR3-TGA-01: the decision is now the Rahmen band's `Energieziel`, split
+    // from the statutory minimum it used to share a control with. Reached the
+    // way the user reaches it — through the band's own `ändern`.
+    await user.click(await screen.findByRole('button', { name: 'ändern' }))
+    const es = await screen.findByRole('radiogroup', { name: /Energieziel/ })
     await user.click(within(es).getAllByRole('radio')[2]!)
     // Путь до конвейера сам оставляет след: решённый конфликт,
     // подтверждённые параметры, созданный Option и подтверждённое здание.
@@ -144,11 +148,17 @@ describe('Сквозной сценарий продажи', () => {
     // prove had happened is exactly the thing this stage exists to replace —
     // and the count is asserted exactly so a hidden write fails here rather
     // than passing unnoticed.
-    expect(useStore.getState().journal).toHaveLength(36)
+    //
+    // VR3-TGA-01 adds ONE: KG 400's ventilation system now asks which
+    // solution the Lüftungskonzept admits, so `completeKgConfiguration`
+    // records one more real decision than before. The chapter gained a
+    // question it should always have asked, and M-4 makes that visible here
+    // rather than letting it pass as a silent write.
+    expect(useStore.getState().journal).toHaveLength(37)
 
     // Уход на другой экран и возврат: состояние переживает переход.
     goComparison()
-    expect(useStore.getState().journal).toHaveLength(36)
+    expect(useStore.getState().journal).toHaveLength(37)
     expect(activeBuilding(useStore.getState()).energiestandard).toBe('EH_40')
 
     // Гейт открывается на top-level шаге здания, а не обходится.
@@ -170,7 +180,9 @@ describe('Сквозной сценарий продажи', () => {
     expect(screen.getByRole('button', { name: 'Angebot prüfen' })).toBeInTheDocument()
     // +2 over the earlier assertions: Scope Boundaries confirmation and the
     // one building's configuration confirmation, both journal events.
-    expect(useStore.getState().journal).toHaveLength(38)
+    // (+1 again from VR3-TGA-01's ventilation decision — see the note on the
+    // 37 above; the offset between the two assertions is unchanged.)
+    expect(useStore.getState().journal).toHaveLength(39)
   })
 
   /**
@@ -349,7 +361,11 @@ describe('Сквозной сценарий продажи', () => {
     act(() => {
       useStore.getState().openConfiguratorStepAt(CONFIGURATOR_STEP.KG_400_DETAILS)
     })
-    const es = await screen.findByRole('radiogroup', { name: /Energiestandard/ })
+    // VR3-TGA-01: the decision is now the Rahmen band's `Energieziel`, split
+    // from the statutory minimum it used to share a control with. Reached the
+    // way the user reaches it — through the band's own `ändern`.
+    await user.click(await screen.findByRole('button', { name: 'ändern' }))
+    const es = await screen.findByRole('radiogroup', { name: /Energieziel/ })
     await user.click(within(es).getAllByRole('radio')[2]!)
     confirmWholeConfiguration()
     goExport()
@@ -373,7 +389,7 @@ describe('Сквозной сценарий продажи', () => {
     // Effizienzhaus 40"), not the engine's `EH_40` enum. The recap being
     // derived rather than hand-written is the subject; the label following
     // the decision's own copy is the improvement.
-    expect(within(box).getByText(/Energiestandard.*Effizienzhaus 40/))
+    expect(within(box).getByText(/Energieziel.*Effizienzhaus 40/))
       .toBeInTheDocument()
     // Binary contract (CPO decision, 22.08.2026): KG 200/500/600/800 start
     // determinate `excluded` — no KG coverage gap can appear in the recap

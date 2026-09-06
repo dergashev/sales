@@ -35,9 +35,22 @@ import {
  * and not in a screenshot.
  */
 
+/**
+ * VR3-TGA-01 restructured KG 400 and these counts moved with it.
+ *
+ * The chapter was three inclusion checkboxes and two variant services; it is
+ * now the eight canonical TGA systems, so it carries real engineering
+ * alternatives where it carried none, and the complex project's nine
+ * near-identical per-building rows became three decisions that state their
+ * scope once. The VR3-03 numbers were A 21/3/6 and B 43/7/11 — recorded here
+ * so the change is legible rather than silently absorbed.
+ *
+ * The TOTALS did not move, and that is the point: a restructure that changed
+ * what the chapter asks must not change what the Option costs.
+ */
 const DECLARED = {
-  'DEMO-HAPPY-01': { total: '6480000', uncertainty: '5', selected: 21, variants: 3, decisions: 6 },
-  'DEMO-COMPLEX-01': { total: '38740000', uncertainty: '6', selected: 43, variants: 7, decisions: 11 },
+  'DEMO-HAPPY-01': { total: '6480000', uncertainty: '5', selected: 31, variants: 11, decisions: 7 },
+  'DEMO-COMPLEX-01': { total: '38740000', uncertainty: '6', selected: 48, variants: 10, decisions: 11 },
 } as const
 
 /** Every cost group included, every explicit decision still open. This is the
@@ -222,7 +235,11 @@ describe('completion is derived from the domain, not from visiting', () => {
       expect(progress.decidedDecisions).toBe(0)
     }
     expect(kgConfigurationComplete(catalogue, decisions)).toBe(false)
-    expect(openKgDecisionCount(catalogue, decisions)).toBe(6)
+    // Seven, not six: KG 400's ventilation system now asks which solution the
+    // Lüftungskonzept admits, where the chapter previously asked nothing at
+    // all about it. An inapplicable decision is still not counted here — that
+    // is asserted directly in `kgTgaDecisions.test.ts`.
+    expect(openKgDecisionCount(catalogue, decisions)).toBe(7)
     expect(firstOutstandingKgGroup(catalogue, decisions)).toBe('KG_200')
   })
 

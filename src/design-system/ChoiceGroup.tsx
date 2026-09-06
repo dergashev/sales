@@ -113,6 +113,23 @@ export function ChoiceGroup<T extends string>({
                 value={option.value}
                 checked={checked}
                 disabled={option.disabled}
+                /**
+                 * AN UNAVAILABLE OPTION CARRIES ITS REASON IN ITS OWN NAME.
+                 *
+                 * The reason was already rendered — once, for the whole
+                 * group, via `aria-describedby`. That is enough when one
+                 * option is unavailable and ambiguous when two are, and a
+                 * disabled radio is skipped by keyboard navigation anyway, so
+                 * a user arriving at the group by any route heard "not
+                 * selectable" without ever hearing why. Folding the reason
+                 * into the option's accessible name makes "why can't I offer
+                 * this?" answerable wherever the option is encountered
+                 * (VR3-TGA-01; the group-level list below is unchanged and
+                 * remains the visible carrier).
+                 */
+                aria-label={option.disabled && option.disabledReason
+                  ? `${option.label} — ${option.disabledReason}`
+                  : undefined}
                 onChange={() => onChange(option.value)}
               />
               {/* State is never colour alone (rule 8): the glyph is a second

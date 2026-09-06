@@ -245,7 +245,12 @@ describe('Опции — нативная radio-группа (RADIO-001)', () =>
       useStore.getState().openConfiguratorStepAt(CONFIGURATOR_STEP.KG_400_DETAILS)
     })
 
-    const group = await screen.findByRole('radiogroup', { name: /Energiestandard/ })
+    // VR3-TGA-01: the same decision, under the name the Rahmen band gives it
+    // (`Energieziel` — split from the statutory minimum, which is derived and
+    // never a choice), and reached the way a user reaches it: the band's own
+    // `ändern`. Progressive disclosure is the change; RADIO-001 is not.
+    await user.click(await screen.findByRole('button', { name: 'ändern' }))
+    const group = await screen.findByRole('radiogroup', { name: /Energieziel/ })
     const radios = within(group).getAllByRole('radio')
     const checkedBefore = radios.findIndex((r) => (r as HTMLInputElement).checked)
 

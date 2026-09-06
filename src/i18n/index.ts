@@ -2485,6 +2485,90 @@ const de = {
   'vr3.client.save.error.calculation':
     'Die Kalkulation konnte das Ergebnis nicht bestätigen. Es wurde keine Option '
     + 'angelegt.',
+
+  /* ── VR3-TGA-01 · KG 400 as a source-aware system configurator ──────────
+     Copy authority: the approved target frames T-01…T-08 and
+     `tga-content-dictionary.md`. Nothing here is invented TGA prose. */
+
+  // Source baseline vs Option proposal — never one field, never one slot.
+  'vr3.tga.source.label': 'Kundendokumente',
+  'vr3.tga.source.notSpecified': 'Nicht spezifiziert',
+  'vr3.tga.proposal.label': 'Unser Vorschlag',
+  'vr3.tga.proposal.open': 'Entscheidung erforderlich',
+  'vr3.tga.matchesSource': 'Entspricht der Quelle',
+  'vr3.tga.changedFromSource': 'Vom Kundendokument abweichend',
+  'vr3.tga.restoreSource': 'Dokumentierte Lösung übernehmen',
+  'vr3.tga.all3Standard': 'All3-Standard',
+  'vr3.tga.notSelectable': 'nicht wählbar',
+  'vr3.tga.notApplicable': 'nicht anwendbar',
+  'vr3.tga.origin': 'Herkunft anzeigen',
+  'vr3.tga.originOf': 'Herkunft anzeigen · {decision}',
+  'vr3.tga.nachweis': 'Nachweis',
+
+  // What a euro is allowed to mean. `± 0 €` appears in none of them.
+  'vr3.tga.price.label': 'Preis',
+  'vr3.tga.price.direct': 'direkt bepreist',
+  'vr3.tga.price.bundle': 'im Bündel bepreist',
+  'vr3.tga.price.bundleNamed': 'im Bündel bepreist · {basis}',
+  'vr3.tga.price.indirect': 'indirekt wirksam',
+  'vr3.tga.price.noBasis': 'keine gesonderte Preisgrundlage',
+  'vr3.tga.price.bauherr': 'Bauherr · nicht Bestandteil des All3-Angebots',
+  'vr3.tga.price.noEffect': 'keine Preiswirkung',
+  'vr3.tga.price.baseline': 'im Ansatz',
+
+  // The overview.
+  'vr3.tga.system.state.decided': 'entschieden',
+  'vr3.tga.system.state.fromSource': 'aus Projekt übernommen',
+  'vr3.tga.system.state.open': '{count} Entscheidung offen',
+  'vr3.tga.system.state.openPlural': '{count} Entscheidungen offen',
+  'vr3.tga.system.state.partial': 'teilweise anwendbar',
+  'vr3.tga.system.state.notApplicable': 'nicht anwendbar',
+  'vr3.tga.system.expand': '{system} öffnen',
+  'vr3.tga.summary.systems': 'Systeme relevant',
+  'vr3.tga.summary.decided': 'entschieden',
+  'vr3.tga.summary.fromSource': 'aus Projekt übernommen',
+  'vr3.tga.summary.open': 'Entscheidungen offen',
+  'vr3.tga.summary.notApplicable': 'nicht anwendbar',
+  'vr3.tga.summary.partial': 'teilweise anwendbar',
+  'vr3.tga.summary.total': '{group} · {amount}',
+  'vr3.tga.summary.noTotal': '{group} · keine bepreiste Position',
+
+  // The Rahmen band.
+  'vr3.tga.rahmen.buildingsOne': '1 Gebäude · {name}',
+  'vr3.tga.rahmen.buildingsMany': '{count} Gebäude',
+  'vr3.tga.rahmen.buildingNames': '{names}',
+  'vr3.tga.rahmen.baselineConfirmed': 'Grundlage bestätigt',
+  'vr3.tga.rahmen.baselineOpen': 'Grundlage noch nicht gespeichert',
+  'vr3.tga.rahmen.edit': 'ändern',
+  'vr3.tga.rahmen.close': 'schließen',
+
+  // Changes from the client source — a first-class sales concept.
+  'vr3.tga.review.heading': 'Abweichungen von den Kundendokumenten',
+  'vr3.tga.review.none': 'Der Vorschlag folgt den Kundendokumenten in allen Punkten.',
+  'vr3.tga.review.count': '{count} Abweichung von den Kundendokumenten',
+  'vr3.tga.review.countPlural': '{count} Abweichungen von den Kundendokumenten',
+  'vr3.tga.review.open': 'Abweichungen prüfen',
+  'vr3.tga.review.close': 'Abweichungen schließen',
+  'vr3.tga.review.arrow': '{source} → {proposal}',
+  'vr3.tga.bemusterung.detail': 'Was hier entschieden ist, was später folgt',
+
+  // The consequence dialogue — what changes, before it changes.
+  'vr3.tga.cascade.title': '{decision} ändern',
+  'vr3.tga.cascade.sub': '{from} → {to}',
+  'vr3.tga.cascade.affected': 'Diese Entscheidungen ändern sich mit',
+  'vr3.tga.cascade.reset': 'wird zurückgesetzt',
+  'vr3.tga.cascade.preserve': 'bleibt gültig',
+  'vr3.tga.cascade.preserveWhy': 'bleibt auch nach dieser Änderung zulässig',
+  'vr3.tga.cascade.resetWhy': 'Voraussetzung entfällt · {price}',
+  'vr3.tga.cascade.total': 'Gesamt netto',
+  'vr3.tga.cascade.totals': '{before} → {after} · {delta}',
+  'vr3.tga.cascade.confirm': '{decision} ändern',
+  'vr3.tga.cascade.cancel': 'Abbrechen',
+  'vr3.tga.cascade.announce':
+    '{decision} geändert. {count} abhängige Entscheidung betroffen.',
+  'vr3.tga.cascade.announcePlural':
+    '{decision} geändert. {count} abhängige Entscheidungen betroffen.',
+  'vr3.tga.cascade.announceNone': '{decision} geändert. Keine abhängige Entscheidung betroffen.',
 } as const
 
 export type MessageKey = keyof typeof de
@@ -4701,6 +4785,76 @@ const en: Partial<Record<MessageKey, string>> = {
     'The presented Option changed. The scenario was not saved.',
   'vr3.client.save.error.calculation':
     'The calculation could not confirm the result. No Option was created.',
+
+  // ── VR3-TGA-01 · KG 400 as a source-aware system configurator ──────────
+  'vr3.tga.source.label': 'Client documents',
+  'vr3.tga.source.notSpecified': 'Not specified',
+  'vr3.tga.proposal.label': 'Our proposal',
+  'vr3.tga.proposal.open': 'Decision required',
+  'vr3.tga.matchesSource': 'Matches the source',
+  'vr3.tga.changedFromSource': 'Changed from the client document',
+  'vr3.tga.restoreSource': 'Use the documented solution',
+  'vr3.tga.all3Standard': 'All3 standard',
+  'vr3.tga.notSelectable': 'not selectable',
+  'vr3.tga.notApplicable': 'not applicable',
+  'vr3.tga.origin': 'Show origin',
+  'vr3.tga.originOf': 'Show origin · {decision}',
+  'vr3.tga.nachweis': 'Evidence',
+  'vr3.tga.price.label': 'Price',
+  'vr3.tga.price.direct': 'directly priced',
+  'vr3.tga.price.bundle': 'priced within a bundle',
+  'vr3.tga.price.bundleNamed': 'priced within a bundle · {basis}',
+  'vr3.tga.price.indirect': 'indirect commercial effect',
+  'vr3.tga.price.noBasis': 'no separate price basis',
+  'vr3.tga.price.bauherr': 'Client · not part of the All3 offer',
+  'vr3.tga.price.noEffect': 'no price effect',
+  'vr3.tga.price.baseline': 'in the current basis',
+  'vr3.tga.system.state.decided': 'decided',
+  'vr3.tga.system.state.fromSource': 'taken from the project',
+  'vr3.tga.system.state.open': '{count} decision open',
+  'vr3.tga.system.state.openPlural': '{count} decisions open',
+  'vr3.tga.system.state.partial': 'partly applicable',
+  'vr3.tga.system.state.notApplicable': 'not applicable',
+  'vr3.tga.system.expand': 'Open {system}',
+  'vr3.tga.summary.systems': 'systems relevant',
+  'vr3.tga.summary.decided': 'decided',
+  'vr3.tga.summary.fromSource': 'taken from the project',
+  'vr3.tga.summary.open': 'decisions open',
+  'vr3.tga.summary.notApplicable': 'not applicable',
+  'vr3.tga.summary.partial': 'partly applicable',
+  'vr3.tga.summary.total': '{group} · {amount}',
+  'vr3.tga.summary.noTotal': '{group} · no priced position',
+  'vr3.tga.rahmen.buildingsOne': '1 building · {name}',
+  'vr3.tga.rahmen.buildingsMany': '{count} buildings',
+  'vr3.tga.rahmen.buildingNames': '{names}',
+  'vr3.tga.rahmen.baselineConfirmed': 'Baseline confirmed',
+  'vr3.tga.rahmen.baselineOpen': 'Baseline not yet saved',
+  'vr3.tga.rahmen.edit': 'change',
+  'vr3.tga.rahmen.close': 'close',
+  'vr3.tga.review.heading': 'Deviations from the client documents',
+  'vr3.tga.review.none': 'The proposal follows the client documents throughout.',
+  'vr3.tga.review.count': '{count} deviation from the client documents',
+  'vr3.tga.review.countPlural': '{count} deviations from the client documents',
+  'vr3.tga.review.open': 'Review deviations',
+  'vr3.tga.review.close': 'Close deviations',
+  'vr3.tga.review.arrow': '{source} → {proposal}',
+  'vr3.tga.bemusterung.detail': 'What is decided here, what follows later',
+  'vr3.tga.cascade.title': 'Change {decision}',
+  'vr3.tga.cascade.sub': '{from} → {to}',
+  'vr3.tga.cascade.affected': 'These decisions change with it',
+  'vr3.tga.cascade.reset': 'will be reset',
+  'vr3.tga.cascade.preserve': 'stays valid',
+  'vr3.tga.cascade.preserveWhy': 'remains admissible after this change',
+  'vr3.tga.cascade.resetWhy': 'its precondition falls away · {price}',
+  'vr3.tga.cascade.total': 'Total net',
+  'vr3.tga.cascade.totals': '{before} → {after} · {delta}',
+  'vr3.tga.cascade.confirm': 'Change {decision}',
+  'vr3.tga.cascade.cancel': 'Cancel',
+  'vr3.tga.cascade.announce':
+    '{decision} changed. {count} dependent decision affected.',
+  'vr3.tga.cascade.announcePlural':
+    '{decision} changed. {count} dependent decisions affected.',
+  'vr3.tga.cascade.announceNone': '{decision} changed. No dependent decision affected.',
 }
 
 /**

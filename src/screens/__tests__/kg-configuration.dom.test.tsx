@@ -230,18 +230,39 @@ describe('the canonical KG page, six times (T-021–T-027)', () => {
       expect(screen.getByText(new RegExp(`^Konfigurator · KG.${group.slice(3)}$`)))
         .toBeInTheDocument()
       expect(screen.getAllByRole('region', { name: /./ }).length).toBeGreaterThan(0)
-      expect(screen.getByText('Kontext')).toBeInTheDocument()
       expect(screen.getAllByRole('button', { name: /Weiter zu|Weiter zum Terminplan/ }).length)
         .toBeGreaterThan(0)
-      // Every row carries a service name, a decision control, a state and an
-      // amount — the four-part contract, identically, in all six.
-      const rows = document.querySelectorAll('.a3-svcr')
-      expect(rows.length).toBeGreaterThan(2)
-      for (const row of rows) {
-        expect(row.querySelector('.a3-svcr-name')?.textContent?.length ?? 0)
-          .toBeGreaterThan(2)
-        expect(row.querySelector('.a3-svcr-status')).not.toBeNull()
-        expect(row.querySelector('.a3-svcr-amount')).not.toBeNull()
+      /**
+       * VR3-TGA-01: a chapter renders the anatomy its DATA declares.
+       *
+       * A chapter that declares TGA systems dissolves the Kontext card into
+       * a Rahmen band and an overview summary (AC 4 — nothing it showed is
+       * lost), and its rows are system rows rather than service rows. The
+       * contract this test protects is unchanged and is asserted on both
+       * shapes: every row names something, states something, and says what
+       * it costs. What is NOT allowed is a third shape, or a shape chosen by
+       * cost-group name rather than by content.
+       */
+      const systems = document.querySelectorAll('.a3-sys')
+      if (systems.length > 0) {
+        expect(screen.getByText(/Systeme relevant/)).toBeInTheDocument()
+        expect(document.querySelector('.a3-rahmen')).not.toBeNull()
+        for (const row of systems) {
+          expect(row.querySelector('.a3-sys-name')?.textContent?.length ?? 0)
+            .toBeGreaterThan(2)
+          expect(row.querySelector('.a3-sys-state')).not.toBeNull()
+          expect(row.querySelector('.a3-sys-cost')).not.toBeNull()
+        }
+      } else {
+        expect(screen.getByText('Kontext')).toBeInTheDocument()
+        const rows = document.querySelectorAll('.a3-svcr')
+        expect(rows.length).toBeGreaterThan(2)
+        for (const row of rows) {
+          expect(row.querySelector('.a3-svcr-name')?.textContent?.length ?? 0)
+            .toBeGreaterThan(2)
+          expect(row.querySelector('.a3-svcr-status')).not.toBeNull()
+          expect(row.querySelector('.a3-svcr-amount')).not.toBeNull()
+        }
       }
     }
     // Six distinct chapters, not one rendered six times by accident.
@@ -290,7 +311,11 @@ describe('the canonical KG page, six times (T-021–T-027)', () => {
     const qng = await screen.findByRole('radiogroup', { name: /QNG/ })
     await user.click(within(qng).getByRole('radio', { name: 'QNG-PLUS' }))
 
-    expect(screen.getByText(/setzt Energiestandard voraus/)).toBeInTheDocument()
+    // The dependency names the upstream decision by the name the user sees.
+    // It used to say `Energiestandard`; the Rahmen band calls that line
+    // `Energieziel`, and a warning that names a control nobody can find is
+    // the class of defect this whole ticket exists to remove.
+    expect(screen.getByText(/setzt Energieziel voraus/)).toBeInTheDocument()
     expect(kgChapterProgressFor(st(), 'KG_700')!.state).toBe('invalid')
     // A blocked position contributes nothing: the total never carries a
     // position the configuration itself refuses.

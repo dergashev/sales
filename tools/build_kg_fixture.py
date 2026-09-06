@@ -70,6 +70,136 @@ def chapter(g, tde, ten, nde, nen, groups):
             'scopeNoteDe': nde, 'scopeNoteEn': nen, 'groups': groups}
 
 
+# ── VR3-TGA-01 · KG 400 decision layer ───────────────────────────────────
+# These helpers exist so the eight TGA systems are DATA, not a second page.
+# `KgChapter.tsx` renders one composition for all six KG chapters and is
+# forbidden a `switch (group)`; a chapter that declares none of the fields
+# below therefore renders exactly as it did before.
+
+def _attach(obj, extras):
+    for key, value in extras.items():
+        if value is not None:
+            obj[key] = value
+    return obj
+
+def src(origin_de, origin_en, value_de=None, value_en=None, variant=None):
+    """What the CLIENT DOCUMENTS said. Never overwritten by a proposal."""
+    d = {'originDe': origin_de, 'originEn': origin_en}
+    if value_de is not None:
+        d['valueDe'] = value_de
+        d['valueEn'] = value_en
+    if variant is not None:
+        d['variant'] = variant
+    return d
+
+def na(reason_de, reason_en, state='notApplicable'):
+    """Applicability is a statement WITH A CAUSE, never an option `Keine ...`."""
+    return {'state': state, 'reasonDe': reason_de, 'reasonEn': reason_en}
+
+def blocked(value, reason_de, reason_en):
+    """A valid alternative that is not available HERE, shown with its reason."""
+    return {'value': value, 'reasonDe': reason_de, 'reasonEn': reason_en}
+
+def row(value_de, value_en, building=None, label_de=None, label_en=None,
+        amount=None, note_de=None, note_en=None, status=None,
+        not_applicable=None):
+    """One row of a value set inside ONE decision — never n separate rows.
+
+    `amount` is a NUMBER the UI formats. A pre-formatted "520.000 EUR" here
+    would be a second formatter deciding separators for a locale the fixture
+    cannot see — including rule 7's narrow no-break space.
+    """
+    d = {'valueDe': value_de, 'valueEn': value_en}
+    if building: d['buildingId'] = building
+    if label_de: d['labelDe'] = label_de; d['labelEn'] = label_en
+    if amount is not None: d['amount'] = money(amount)
+    if note_de: d['noteDe'] = note_de; d['noteEn'] = note_en
+    if status: d['status'] = status
+    if not_applicable: d['notApplicable'] = True
+    return d
+
+def tvar(v, de, en, delta=0, no_price_basis=False, bundled=False):
+    d = {'value': v, 'labelDe': de, 'labelEn': en, 'delta': money(delta)}
+    if no_price_basis: d['noPriceBasis'] = True
+    if bundled: d['bundled'] = True
+    return d
+
+def tchoice(sid, de, en, sde, sen, variants, baseline_variant, amount=0, **extras):
+    """A real engineering choice: alternatives, an All3 standard, a source."""
+    s = {
+        'id': sid, 'labelDe': de, 'labelEn': en,
+        'summaryDe': sde, 'summaryEn': sen,
+        'amount': money(amount), 'baseline': 'selected',
+        'kind': {'kind': 'singleChoice', 'baselineVariant': baseline_variant,
+                 'variants': variants},
+        'authority': extras.pop('authority', 'assumed'),
+    }
+    return _attach(s, extras)
+
+def tsvc(sid, de, en, sde, sen, amount=0, baseline='selected',
+         authority='sourceEvidenced', kind=None, **extras):
+    s = {
+        'id': sid, 'labelDe': de, 'labelEn': en,
+        'summaryDe': sde, 'summaryEn': sen,
+        'amount': money(amount), 'baseline': baseline,
+        'kind': kind or {'kind': 'includeExclude'},
+        'authority': authority,
+    }
+    return _attach(s, extras)
+
+def tread(sid, de, en, sde, sen, **extras):
+    """A DERIVED value: read-only, never re-asked, always names its cause."""
+    extras.setdefault('authority', 'derived')
+    return tsvc(sid, de, en, sde, sen, 0,
+                kind={'kind': 'readOnlyRequired'}, **extras)
+
+def system(gid, de, en, services, **extras):
+    """A group that is also a SYSTEM ROW in the overview."""
+    return _attach({'id': gid, 'labelDe': de, 'labelEn': en,
+                    'services': services}, extras)
+
+def rahmen(rid, de, en, value_de, value_en, meta_de, meta_en,
+           edit=None, derive=None):
+    """One condition everything below depends on. NOT a system."""
+    return _attach({'id': rid, 'labelDe': de, 'labelEn': en,
+                    'valueDe': value_de, 'valueEn': value_en,
+                    'metaDe': meta_de, 'metaEn': meta_en},
+                   {'editServiceId': edit, 'derive': derive})
+
+def rule(rid, title_de, title_en, body_de, body_en, source_de, source_en,
+         note_de=None, note_en=None):
+    """A cross-system rule stated ONCE and referenced, never restated."""
+    return _attach({'id': rid, 'titleDe': title_de, 'titleEn': title_en,
+                    'bodyDe': body_de, 'bodyEn': body_en,
+                    'sourceDe': source_de, 'sourceEn': source_en},
+                   {'noteDe': note_de, 'noteEn': note_en})
+
+def bemusterung(rows):
+    return {
+        'titleDe': 'Spätere Bemusterung',
+        'titleEn': 'Later specification',
+        'bodyDe': ('In dieser Kostengruppe ist der Systemstandard festgelegt. '
+                   'Produkt- und Oberflächenauswahl folgt in der Bemusterung — '
+                   'sie verfeinert diese Entscheidungen, sie ersetzt sie nicht.'),
+        'bodyEn': ('This cost group fixes the system standard. Product and '
+                   'finish selection follows in the specification stage — it '
+                   'refines these decisions, it does not replace them.'),
+        'decidedHeadingDe': 'Hier bereits entschieden',
+        'decidedHeadingEn': 'Already decided here',
+        'deferredHeadingDe': 'Später zu bemustern',
+        'deferredHeadingEn': 'To be specified later',
+        'rows': [{'decidedDe': a, 'decidedEn': b, 'deferredDe': c, 'deferredEn': d}
+                 for a, b, c, d in rows],
+    }
+
+def tga_chapter(g, tde, ten, nde, nen, groups, rahmen_entries, rules, bem):
+    ch = chapter(g, tde, ten, nde, nen, groups)
+    ch['rahmen'] = rahmen_entries
+    ch['rules'] = rules
+    ch['bemusterung'] = bem
+    return ch
+
+
 # The ledger row's CONCISE boundary. Separate from `scopeNote*`, which is the
 # KG page's lead: a row in a table of six needs the boundary in a glance, and
 # a full sentence there turned every row three lines tall.
@@ -83,7 +213,7 @@ def attach_boundaries(project_id, chapters):
         ch['boundaryEn'] = en
     return chapters
 
-# ── PROJECT A · DEMO-HAPPY-01 · 6.480.000 EUR net, ±5 % ──────────────────
+# ── PROJECT A · DEMO-HAPPY-01 · 6.480.000 EUR net, ±5 % ──────────────────
 A = [
  chapter('KG_200', 'Vorbereitende Maßnahmen', 'Preparatory works',
    'Baustelle, Baufeldfreimachung und Hausanschlüsse für den Wohnhof.',
@@ -124,33 +254,450 @@ A = [
          'Die Ansichten zeigen Balkone; der Umfang ist nicht bestätigt.',
          'The elevations show balconies; the extent is not confirmed.', 240000),
    ])]),
- chapter('KG_400', 'Technische Anlagen', 'Technical installations',
+ tga_chapter('KG_400', 'Technische Anlagen', 'Technical installations',
    'Wärme, Sanitär und Elektro für 18 Wohneinheiten.',
    'Heating, plumbing and electrical for 18 dwellings.',
-   [group('a-kg400-heat', 'Wärme & Energiestandard', 'Heat & energy standard', [
-     svc('a-400-01', 'Wärmeerzeugung Wärmepumpe', 'Heat pump plant',
-         'Zentrale Sole-Wasser-Wärmepumpe mit Pufferspeicher.',
-         'Central brine-water heat pump with buffer storage.', 430000),
-     choice('a-400-es', 'Energiestandard', 'Energy standard',
-         'Der Standard beschreibt das Gebäude; das Band verengt sich erst mit der Kundenbestätigung.',
-         'The standard describes the building; the band narrows only on customer confirmation.',
-         [variant('geg', 'GEG-Standard', 'GEG standard', -97000),
-          variant('eh55', 'Effizienzhaus 55', 'Efficiency house 55', 0),
-          variant('eh40', 'Effizienzhaus 40', 'Efficiency house 40', 97000),
-          variant('eh40nh', 'Effizienzhaus 40 NH', 'Efficiency house 40 NH', 195000)],
-         'eh55'),
-   ]),
-    group('a-kg400-services', 'Sanitär & Elektro', 'Plumbing & electrical', [
-     svc('a-400-02', 'Heizflächen, Verteilung & Sanitär', 'Emitters, distribution & plumbing',
-         'Fußbodenheizung, Steigleitungen und Sanitärinstallation je Wohnung.',
-         'Underfloor heating, risers and per-dwelling plumbing.', 580000),
-     svc('a-400-03', 'Elektro & Datennetz', 'Electrical & data',
-         'Wohnungsverteilungen, Beleuchtung, Klingel- und Datennetz.',
-         'Dwelling distribution boards, lighting, doorbell and data network.', 380000),
-     required('a-400-90', 'Photovoltaik Dachfläche', 'Rooftop photovoltaics',
-         'Die Dachfläche trägt eine Anlage; der Kunde hat sie nicht beauftragt.',
-         'The roof can carry an array; the client has not commissioned one.', 165000),
-   ])]),
+   [
+    # ── 1 · Wärme ────────────────────────────────────────────────────────
+    system('a-kg400-heat', 'Wärme', 'Heat', [
+      tchoice('a-400-01', 'Wärmeerzeuger', 'Heat generator',
+        'Bestimmt die Warmwasserbereitung und die § 14a-Bewertung.',
+        'Determines domestic hot water and the § 14a assessment.',
+        [tvar('WE_LW_WP', 'Luft/Wasser-Wärmepumpe', 'Air-to-water heat pump', 0),
+         tvar('WE_FW', 'Fernwärme-Übergabestation', 'District heating transfer station', -64000),
+         tvar('WE_SW_WP', 'Sole/Wasser-Wärmepumpe (Erdsonde)', 'Brine-to-water (ground-source) heat pump',
+              no_price_basis=True),
+         tvar('WE_GAS_BW', 'Gas-Brennwert in EE-Hybrid', 'Gas condensing in RE-hybrid',
+              no_price_basis=True),
+         tvar('WE_BIOMASSE', 'Biomasse/Pellet-Kessel', 'Biomass/pellet boiler',
+              no_price_basis=True)],
+        'WE_LW_WP', amount=430000,
+        all3Standard='WE_LW_WP',
+        authority='sourceEvidenced',
+        costAuthority='direct',
+        source=src('03_Energiekonzept.pdf · S. 12', '03_Energiekonzept.pdf · p. 12',
+                   'Fernwärme-Übergabestation', 'District heating transfer station', 'WE_FW'),
+        whyDe=('Kein gesetzlicher Anlagentyp vorgeschrieben — § 71 GModG ist entfallen. '
+               'Bestimmt Warmwasserbereitung und die § 14a-Bewertung.'),
+        whyEn=('No statutory plant type applies — § 71 GModG has been repealed. '
+               'Determines domestic hot water and the § 14a assessment.'),
+        scopeDe='gilt für 1 Gebäude', scopeEn='applies to 1 building',
+        ruleId='p14a',
+        offerNoteDe='Wirkt sich auf das Angebot aus, Abschnitt 3.1 Heizung.',
+        offerNoteEn='Appears in the offer, section 3.1 Heating.'),
+      tsvc('a-400-02', 'Wärmeverteilung & Sanitärinstallation',
+        'Heat distribution & plumbing',
+        'Fußbodenheizung, Steigleitungen und Sanitärinstallation je Wohnung.',
+        'Underfloor heating, risers and per-dwelling plumbing.', 580000,
+        costAuthority='direct',
+        scopeDe='gilt für 1 Gebäude', scopeEn='applies to 1 building',
+        source=src('Grundlage Gebäude · bestätigt', 'Building baseline · confirmed')),
+      tchoice('a-400-04', 'Wärmeabgabe', 'Heat emission',
+        'Bestimmt, ob ein wassergeführter Handtuchheizkörper möglich ist.',
+        'Determines whether a hydronic towel radiator is possible.',
+        [tvar('WA_FBH_EL_BAD', 'Fußbodenheizung + el. Zusatzheizkörper Bad',
+              'Underfloor heating + electric supplementary radiator (bathroom)',
+              no_price_basis=True),
+         tvar('WA_FBH', 'Fußbodenheizung', 'Underfloor heating', no_price_basis=True),
+         tvar('WA_KOMBI', 'Kombiniert (Fußbodenheizung + Heizkörper)',
+              'Combined (underfloor heating + radiators)', no_price_basis=True),
+         tvar('WA_HK', 'Heizkörper', 'Radiators', no_price_basis=True)],
+        'WA_FBH_EL_BAD',
+        all3Standard='WA_FBH_EL_BAD',
+        costAuthority='noBasis',
+        costBasisDe='in der Wärmeverteilung enthalten',
+        costBasisEn='included in the heat distribution position',
+        whyDe='Bestimmt durch den Wärmeerzeuger.',
+        whyEn='Determined by the heat generator.',
+        scopeDe='gilt für 1 Gebäude', scopeEn='applies to 1 building',
+        source=src('Aus dem Wärmeerzeuger abgeleitet', 'Derived from the heat generator'),
+        offerNoteDe=('Die Wärmeabgabe ist in der Wärmeverteilung enthalten und ändert die '
+                     'Angebotssumme nicht. Die Entscheidung wird trotzdem im Angebot '
+                     'beschrieben, Abschnitt 3.1 Heizung.'),
+        offerNoteEn=('Heat emission is included in the heat distribution position and does '
+                     'not change the offer total. The decision is still described in the '
+                     'offer, section 3.1 Heating.'),
+        dependsOn={'serviceId': 'a-400-01', 'requiresSelected': True}),
+      tchoice('a-400-16', 'Handtuchheizkörper', 'Towel radiator',
+        'Farbe und Bauform folgen in der Bemusterung.',
+        'Colour and form follow in the specification stage.',
+        [tvar('HHK_ELEKTRO', 'Elektrischer Handtuchheizkörper', 'Electric towel radiator',
+              no_price_basis=True),
+         tvar('HHK_WW', 'Warmwasser-Handtuchheizkörper', 'Hydronic towel radiator',
+              no_price_basis=True),
+         tvar('HHK_KEIN', 'Kein Handtuchheizkörper', 'No towel radiator',
+              no_price_basis=True)],
+        'HHK_ELEKTRO',
+        all3Standard='HHK_ELEKTRO',
+        costAuthority='noBasis',
+        scopeDe='je Wohnungstyp', scopeEn='per dwelling type',
+        blockedVariants=[blocked('HHK_WW',
+          'nicht wählbar — die gewählte Wärmeabgabe führt keinen Heizkreis ins Bad',
+          'not selectable — the chosen heat emission carries no wet circuit into the bathroom')],
+        offerNoteDe='Farbe und Bauform folgen in der Bemusterung.',
+        offerNoteEn='Colour and form follow in the specification stage.'),
+      tread('a-400-03m', 'Wärmemengenzähler', 'Heat meter',
+        'Fernauslesbar nach § 5 Abs. 2 HeizkostenV.',
+        'Remotely readable per § 5 (2) HeizkostenV.',
+        costAuthority='noBasis',
+        scopeDe='gilt für 1 Gebäude', scopeEn='applies to 1 building',
+        whyDe='Für einen Neubau ist die Fernauslesbarkeit vorgeschrieben.',
+        whyEn='Remote readability is mandatory for a new build.',
+        source=src('§ 5 Abs. 2 HeizkostenV', '§ 5 (2) HeizkostenV',
+                   'fernauslesbar (Funk)', 'remotely readable (wireless)')),
+      # Rendered in the RAHMEN band, not inside a system: it is a condition
+      # everything below depends on, and the audit splits it from the
+      # statutory minimum, which is derived and never a choice.
+      tchoice('a-400-es', 'Energieziel', 'Energy target',
+        'Förderziel, nicht der gesetzliche Mindeststandard.',
+        'Funding target, not the statutory minimum.',
+        [tvar('geg', 'Gesetzlicher Mindeststandard', 'Statutory minimum', -97000),
+         tvar('eh55', 'Effizienzhaus 55', 'Efficiency House 55', 0),
+         tvar('eh40', 'Effizienzhaus 40', 'Efficiency House 40', 97000),
+         tvar('eh40nh', 'Effizienzhaus 40 NH', 'Efficiency House 40 NH', 195000)],
+        'eh55',
+        surface='rahmen',
+        costAuthority='direct',
+        source=src('03_Energiekonzept.pdf · S. 4', '03_Energiekonzept.pdf · p. 4'),
+        whyDe=('Förderziel nach KfW 297/298 — vorbehaltlich verfügbarer Bundesmittel, '
+               'kein Rechtsanspruch. Der gesetzliche Mindeststandard wird davon nicht '
+               'berührt.'),
+        whyEn=('Funding target per KfW 297/298 — subject to available federal funds, no '
+               'legal entitlement. The statutory minimum is unaffected by it.'),
+        offerNoteDe='Wirkt sich auf das Angebot aus, Abschnitt 1.4 Wärmeschutz.',
+        offerNoteEn='Appears in the offer, section 1.4 Thermal protection.'),
+    ],
+      summaryDe='Luft/Wasser-Wärmepumpe · Fußbodenheizung · fernauslesbarer Zähler',
+      summaryEn='Air-to-water heat pump · underfloor heating · remotely readable meter',
+      scopeDe='gilt für 1 Gebäude', scopeEn='applies to 1 building',
+      costAuthority='direct'),
+
+    # ── 2 · Trinkwasser & Warmwasser ─────────────────────────────────────
+    system('a-kg400-water', 'Trinkwasser & Warmwasser', 'Potable water & DHW', [
+      tchoice('a-400-07', 'Warmwasserbereitung', 'Domestic hot water generation',
+        'Bestimmt, ob eine Zirkulation erforderlich ist.',
+        'Determines whether circulation is required.',
+        [tvar('WW_ZENTRAL_WP', 'Zentral: Wärmepumpe + Warmwasserspeicher',
+              'Central: heat pump + DHW cylinder', bundled=True),
+         tvar('WW_DEZ_FWST', 'Dezentral: Wohnungs-Frischwasserstationen',
+              'Decentralised fresh-water stations', no_price_basis=True),
+         tvar('WW_FW_KOMPAKT', 'Fernwärme-Kompaktstation (Wohnungsstation)',
+              'District-heating compact station (flat station)', no_price_basis=True)],
+        'WW_ZENTRAL_WP',
+        all3Standard='WW_ZENTRAL_WP',
+        costAuthority='bundle',
+        costBasisDe='in der Wärmeverteilung & Sanitärinstallation enthalten',
+        costBasisEn='included in heat distribution & plumbing',
+        whyDe=('Ausgelegt auf 60/55 °C nach DVGW W 551:2004-04. '
+               'Bestimmt durch den Wärmeerzeuger.'),
+        whyEn=('Designed to 60/55 °C per DVGW W 551:2004-04. '
+               'Determined by the heat generator.'),
+        scopeDe='gilt für 1 Gebäude', scopeEn='applies to 1 building',
+        source=src('03_Energiekonzept.pdf · S. 14', '03_Energiekonzept.pdf · p. 14',
+                   'Zentrale Warmwasserbereitung', 'Central DHW generation',
+                   'WW_ZENTRAL_WP'),
+        dependsOn={'serviceId': 'a-400-01', 'requiresSelected': True},
+        offerNoteDe='Wirkt sich auf das Angebot aus, Abschnitt 3.2 Wasser.',
+        offerNoteEn='Appears in the offer, section 3.2 Water.'),
+      tread('a-400-08', 'Zirkulation Warmwasser', 'DHW circulation',
+        'Zirkulation erforderlich — Folge der zentralen Warmwasserbereitung.',
+        'Circulation required — a consequence of central DHW generation.',
+        costAuthority='bundle',
+        costBasisDe='in der Wärmeverteilung & Sanitärinstallation enthalten',
+        costBasisEn='included in heat distribution & plumbing',
+        whyDe=('Eine Hygienefolge, kein Schalter: bei zentraler Warmwasserbereitung '
+               'ist die Zirkulation nach DVGW W 551 erforderlich.'),
+        whyEn=('A hygiene consequence, not a toggle: central DHW generation requires '
+               'circulation per DVGW W 551.'),
+        scopeDe='gilt für 1 Gebäude', scopeEn='applies to 1 building',
+        source=src('Aus der Warmwasserbereitung abgeleitet',
+                   'Derived from the DHW generation decision')),
+      tchoice('a-400-13', 'Dusche', 'Shower',
+        'Barrierefrei nach DIN 18040-2.', 'Step-free per DIN 18040-2.',
+        [tvar('DU_BODENGLEICH', 'Bodengleiche Dusche', 'Floor-level (curbless) shower',
+              no_price_basis=True),
+         tvar('DU_WANNE', 'Duschwanne (flach)', 'Flat shower tray', no_price_basis=True),
+         tvar('DU_BADEWANNE', 'Badewanne', 'Bathtub', no_price_basis=True)],
+        'DU_BODENGLEICH',
+        all3Standard='DU_BODENGLEICH',
+        costAuthority='noBasis',
+        scopeDe='je Wohnungstyp', scopeEn='per dwelling type',
+        whyDe='Die Barrierefreiheit nach DIN 18040-2 hängt an dieser Entscheidung.',
+        whyEn='Step-free access per DIN 18040-2 depends on this decision.',
+        offerNoteDe='Wirkt sich auf das Angebot aus, Abschnitt 3.6 Sanitär.',
+        offerNoteEn='Appears in the offer, section 3.6 Sanitary.'),
+    ],
+      summaryDe='Zentral: Wärmepumpe + Warmwasserspeicher · Zirkulation erforderlich',
+      summaryEn='Central: heat pump + DHW cylinder · circulation required',
+      scopeDe='gilt für 1 Gebäude', scopeEn='applies to 1 building',
+      costAuthority='bundle'),
+
+    # ── 3 · Lüftung & sommerlicher Komfort ───────────────────────────────
+    system('a-kg400-air', 'Lüftung & sommerlicher Komfort',
+      'Ventilation & summer comfort', [
+      tchoice('a-400-18', 'Wohnungslüftung', 'Dwelling ventilation',
+        'Das Lüftungskonzept nach DIN 1946-6 bestimmt die zulässigen Lösungen.',
+        'The DIN 1946-6 ventilation concept determines the admissible solutions.',
+        [tvar('WL_ABLUFT_DACH', 'Zentrale Abluftanlage über Dach, ALD-Nachströmung',
+              'Central exhaust system over roof, outdoor-air-inlet supply', 0),
+         tvar('WL_DEZ_WRG', 'Dezentrale Lüftung mit Wärmerückgewinnung',
+              'Decentralised ventilation with heat recovery', 132000),
+         tvar('WL_ZENTRAL_WRG', 'Zentrale Lüftung mit Wärmerückgewinnung',
+              'Central ventilation with heat recovery', 132000),
+         tvar('WL_FENSTER', 'Freie/Fensterlüftung', 'Natural/window ventilation',
+              no_price_basis=True)],
+        'WL_ABLUFT_DACH',
+        requiresDecision=True,
+        all3Standard='WL_ABLUFT_DACH',
+        costAuthority='direct',
+        whyDe=('Lüftungskonzept nach DIN 1946-6:2019-12 · Energieziel EH 55 verlangt '
+               'Wärmerückgewinnung · DIN 18017-3:2022-05 für innenliegende Bäder'),
+        whyEn=('Ventilation concept per DIN 1946-6:2019-12 · energy target EH 55 requires '
+               'heat recovery · DIN 18017-3:2022-05 for internal bathrooms'),
+        scopeDe='gilt für 1 Gebäude', scopeEn='applies to 1 building',
+        source=src('05_Lueftungskonzept.pdf · S. 3', '05_Lueftungskonzept.pdf · p. 3'),
+        blockedVariants=[blocked('WL_FENSTER',
+          ('nicht zulässig — das Lüftungskonzept weist den Feuchteschutz nicht '
+           'nutzerunabhängig nach'),
+          ('not admissible — the ventilation concept does not demonstrate moisture '
+           'protection independently of the user'))],
+        offerNoteDe=('Wirkt sich auf das Angebot aus, Abschnitt 3.7 Lüftung. Das '
+                     'Lüftungskonzept selbst ist eine eigene Planungsleistung.'),
+        offerNoteEn=('Appears in the offer, section 3.7 Ventilation. The ventilation '
+                     'concept itself is a separate design service.')),
+      tread('a-400-08s', 'Sommerlicher Wärmeschutz', 'Summer thermal protection',
+        'Vereinfachter Nachweis über Sonneneintragskennwert · DIN 4108-2:2013-02.',
+        'Simplified solar-gain-factor verification · DIN 4108-2:2013-02.',
+        costAuthority='noBasis',
+        whyDe='Aus der Gebäudehülle abgeleitet. Wird hier nicht entschieden, nur angezeigt.',
+        whyEn='Derived from the building envelope. Shown here, not decided here.',
+        scopeDe='aus Projekt übernommen', scopeEn='taken from the project',
+        source=src('Grundlage Gebäude · Hüllcluster', 'Building baseline · envelope cluster')),
+      tchoice('a-400-17', 'Dunstabzug', 'Cooker extraction',
+        'Keine Außenwanddurchdringung.', 'No external wall penetration.',
+        [tvar('UMLUFT', 'Umluft (Aktivkohlefilter)', 'Recirculation (charcoal filter)',
+              no_price_basis=True),
+         tvar('ABLUFT', 'Abluft (Mauerkasten/Schacht)', 'Exhaust air (wall vent/duct)',
+              no_price_basis=True)],
+        'UMLUFT',
+        all3Standard='UMLUFT',
+        costAuthority='noBasis',
+        scopeDe='je Wohnungstyp', scopeEn='per dwelling type'),
+      tread('a-400-19', 'Tiefgaragen-/UG-Lüftung', 'Underground garage ventilation',
+        'Entsteht automatisch, sobald die Gebäudegrundlage eine Tiefgarage enthält.',
+        'Appears automatically once the building baseline includes an underground garage.',
+        costAuthority='none',
+        applicability=na('keine Tiefgarage und kein Untergeschoss im Projektumfang',
+                         'no underground garage and no basement in the project scope')),
+    ],
+      summaryDe='Lüftungskonzept nach DIN 1946-6 liegt vor · 2 Lösungen zulässig',
+      summaryEn='DIN 1946-6 ventilation concept on file · 2 admissible solutions',
+      scopeDe='gilt für 1 Gebäude', scopeEn='applies to 1 building',
+      costAuthority='direct'),
+
+    # ── 4 · Elektro & Energie ────────────────────────────────────────────
+    system('a-kg400-power', 'Elektro & Energie', 'Electrical & on-site energy', [
+      tsvc('a-400-03', 'Elektroinstallation & Datennetz', 'Electrical & data installation',
+        'Wohnungsverteilungen, Beleuchtung, Klingel- und Datennetz.',
+        'Dwelling distribution boards, lighting, doorbell and data network.', 380000,
+        costAuthority='direct',
+        scopeDe='gilt für 1 Gebäude', scopeEn='applies to 1 building',
+        source=src('Grundlage Gebäude · bestätigt', 'Building baseline · confirmed')),
+      tchoice('a-400-21', 'Ausstattungswert Elektro', 'Electrical equipment level',
+        'Nach DIN 18015-2.', 'Per DIN 18015-2.',
+        [tvar('AW1', 'AW1 — Mindestausstattung', 'AW1 — minimum equipment',
+              no_price_basis=True),
+         tvar('AW2', 'AW2 — Standardausstattung', 'AW2 — standard equipment',
+              no_price_basis=True),
+         tvar('AW3', 'AW3 — Komfortausstattung', 'AW3 — comfort equipment',
+              no_price_basis=True)],
+        'AW2',
+        all3Standard='AW2',
+        costAuthority='noBasis',
+        costBasisDe='in der Elektroinstallation enthalten',
+        costBasisEn='included in the electrical installation position',
+        scopeDe='gilt für 1 Gebäude', scopeEn='applies to 1 building',
+        source=src('DIN 18015-2 · All3-Standard', 'DIN 18015-2 · All3 standard',
+                   'AW2 — Standardausstattung', 'AW2 — standard equipment', 'AW2'),
+        offerNoteDe='Wirkt sich auf das Angebot aus, Abschnitt 3.8 Elektro.',
+        offerNoteEn='Appears in the offer, section 3.8 Electrical.'),
+      tsvc('a-400-90', 'Photovoltaikanlage', 'Photovoltaic system',
+        'Einspeisung auf 60 % begrenzt, bis Messstelle und Steuerung geprüft sind.',
+        'Feed-in limited to 60 % until the metering point and control are verified.',
+        165000, baseline='notSelected', authority='assumed',
+        kind={'kind': 'requiredDecision'},
+        costAuthority='direct',
+        scopeDe='gilt für 1 Gebäude', scopeEn='applies to 1 building',
+        whyDe=('Eine bundesweite Pflicht zur Solarenergie besteht für neue '
+               'Wohngebäude erst ab 2030. Landesrecht ist gesondert zu prüfen.'),
+        whyEn=('A federal obligation to install solar energy arises for new residential '
+               'buildings only from 2030. State law is checked separately.'),
+        source=src('01_Auftraggeberbrief.pdf · S. 2', '01_Auftraggeberbrief.pdf · p. 2',
+                   'Nicht spezifiziert', 'Not specified'),
+        ruleId='p14a',
+        offerNoteDe='Wirkt sich auf das Angebot aus, Abschnitt 3.13 Photovoltaik.',
+        offerNoteEn='Appears in the offer, section 3.13 Photovoltaics.'),
+      tread('a-400-22', 'E-Mobilitäts-Infrastruktur', 'E-mobility infrastructure',
+        'GEIG § 6 greift erst über fünf Stellplätzen.',
+        'GEIG § 6 applies only above five parking spaces.',
+        costAuthority='none',
+        applicability=na('4 Stellplätze im Projektumfang — GEIG § 6 greift erst über fünf',
+                         '4 parking spaces in scope — GEIG § 6 applies only above five')),
+    ],
+      summaryDe='Ausstattungswert AW2 · PV möglich, nicht beauftragt · keine Stellplätze > 5',
+      summaryEn='Equipment level AW2 · PV possible, not commissioned · no more than 5 spaces',
+      scopeDe='gilt für 1 Gebäude', scopeEn='applies to 1 building',
+      costAuthority='direct'),
+
+    # ── 5 · Entwässerung ─────────────────────────────────────────────────
+    system('a-kg400-drain', 'Entwässerung', 'Drainage', [
+      tread('a-400-11', 'Rückstausicherung', 'Backwater protection',
+        'Entsteht, sobald ein Untergeschoss unter der Rückstauebene entwässert wird.',
+        'Appears once a basement drains below the backwater level.',
+        costAuthority='none',
+        applicability=na('kein UG · Rückstauebene nicht berührt',
+                         'no basement · backwater level not affected')),
+      tread('a-400-11r', 'Regenwasserentsorgung', 'Stormwater disposal',
+        'Kommunale Vorgabe: Einleitung in die Mischkanalisation.',
+        'Municipal requirement: discharge to the combined sewer.',
+        costAuthority='noBasis',
+        scopeDe='gilt für die gesamte Option', scopeEn='applies to the whole Option',
+        source=src('Entwässerungssatzung der Gemeinde', 'Municipal drainage by-law',
+                   'Mischkanalisation vorhanden', 'Combined sewer available')),
+    ],
+      summaryDe='kein UG · Rückstauebene nicht berührt · Mischkanalisation vorhanden',
+      summaryEn='no basement · backwater level not affected · combined sewer available',
+      applicability=na('kein UG · Rückstauebene nicht berührt · Mischkanalisation vorhanden',
+                       'no basement · backwater level not affected · combined sewer available'),
+      costAuthority='none'),
+
+    # ── 6 · Kommunikation & Zutritt ──────────────────────────────────────
+    system('a-kg400-comms', 'Kommunikation & Zutritt', 'Communications & access', [
+      tchoice('a-400-29', 'Zutrittssystem', 'Access control',
+        'Leser und Oberfläche folgen in der Bemusterung.',
+        'Readers and finish follow in the specification stage.',
+        [tvar('ZK_MECH', 'Mechanische Schließanlage', 'Mechanical master-key system',
+              no_price_basis=True),
+         tvar('ZK_RFID', 'Elektronisch (RFID/Transponder)', 'Electronic (RFID/transponder)',
+              no_price_basis=True),
+         tvar('ZK_SMART', 'Smartphone-/App-Zutritt', 'Smartphone/app-based access',
+              no_price_basis=True)],
+        'ZK_MECH',
+        all3Standard='ZK_MECH',
+        costAuthority='noBasis',
+        scopeDe='gilt für 1 Gebäude', scopeEn='applies to 1 building',
+        source=src('01_Auftraggeberbrief.pdf · S. 5', '01_Auftraggeberbrief.pdf · p. 5',
+                   'Mechanische Schließanlage', 'Mechanical master-key system', 'ZK_MECH'),
+        offerNoteDe='Wirkt sich auf das Angebot aus, Abschnitt 2.11 Zutritt.',
+        offerNoteEn='Appears in the offer, section 2.11 Access.'),
+      tread('a-400-25', 'Gebäudeverkabelung', 'In-building cabling',
+        'Glasfaser bis in die Wohnung (FTTH).', 'Fibre to the dwelling (FTTH).',
+        costAuthority='noBasis',
+        scopeDe='gilt für 1 Gebäude', scopeEn='applies to 1 building',
+        whyDe='Folgt aus der gesicherten FTTH-Verfügbarkeit am Grundstück.',
+        whyEn='Follows from secured FTTH availability at the site.',
+        source=src('Grundlage Projekt · Telekommunikation',
+                   'Project baseline · telecommunications',
+                   'FTTH/Glasfaser gesichert', 'FTTH/fibre secured')),
+    ],
+      summaryDe='FTTH gesichert · mechanische Schließanlage',
+      summaryEn='FTTH secured · mechanical master-key system',
+      scopeDe='gilt für 1 Gebäude', scopeEn='applies to 1 building',
+      costAuthority='noBasis'),
+
+    # ── 7 · Aufzüge & Sonderanlagen ──────────────────────────────────────
+    system('a-kg400-lift', 'Aufzüge & Sonderanlagen', 'Lifts & special systems', [
+      tread('a-400-30', 'Aufzugsantrieb', 'Lift drive',
+        'Entsteht, sobald die Gebäudehöhe die Aufzugspflicht auslöst.',
+        'Appears once the building height triggers the lift requirement.',
+        costAuthority='none',
+        applicability=na('Gebäudehöhe 11,4 m — unter der Aufzugspflicht (MBO § 39 Abs. 4)',
+                         'building height 11.4 m — below the lift requirement (MBO § 39 (4))')),
+    ],
+      summaryDe='Gebäudehöhe 11,4 m — unter der Aufzugspflicht (MBO § 39 Abs. 4)',
+      summaryEn='building height 11.4 m — below the lift requirement (MBO § 39 (4))',
+      applicability=na('Gebäudehöhe 11,4 m — unter der Aufzugspflicht (MBO § 39 Abs. 4)',
+                       'building height 11.4 m — below the lift requirement (MBO § 39 (4))'),
+      costAuthority='none'),
+
+    # ── 8 · Schnittstellen & Verantwortung ───────────────────────────────
+    system('a-kg400-scope', 'Schnittstellen & Verantwortung',
+      'Interfaces & responsibility', [
+      tread('a-400-13g', 'Leistungsgrenze TGA', 'MEP scope boundary',
+        'Leitungsnetz bis 1,0 m außerhalb der Gebäudehülle bzw. bis zum vereinbarten Übergabepunkt.',
+        'Pipework and cabling to 1.0 m outside the building envelope, or to the agreed handover point.',
+        authority='sourceEvidenced',
+        costAuthority='none',
+        scopeDe='gilt für die gesamte Option', scopeEn='applies to the whole Option',
+        source=src('All3-Standard · Leistungsverzeichnis', 'All3 standard · scope schedule',
+                   'Übergabepunkt Grundstücksgrenze', 'Handover point at the property line')),
+      tread('a-400-14', 'Hausanschlüsse', 'Utility house connections',
+        'Bauherr bis Grundstücksgrenze, All3 ab Übergabepunkt.',
+        'Client to the property line, All3 from the handover point.',
+        authority='sourceEvidenced',
+        costAuthority='bauherr',
+        scopeDe='Verantwortung je Medium', scopeEn='responsibility per medium',
+        source=src('01_Auftraggeberbrief.pdf · S. 7', '01_Auftraggeberbrief.pdf · p. 7'),
+        valueRows=[
+          row('Bauherr bis Grundstücksgrenze', 'Client to the property line',
+              label_de='Trinkwasser', label_en='Potable water', status='ok'),
+          row('Bauherr bis Grundstücksgrenze', 'Client to the property line',
+              label_de='Schmutzwasser / Kanal', label_en='Foul water / sewer', status='ok'),
+          row('Bauherr bis Grundstücksgrenze', 'Client to the property line',
+              label_de='Strom (NS-Netz)', label_en='Electricity (LV grid)', status='ok'),
+          row('Glasfaser gesichert', 'Fibre secured',
+              label_de='Telekommunikation', label_en='Telecommunications', status='ok'),
+        ],
+        offerNoteDe=('Eine ungeklärte Schnittstelle wird als Bedingung ins Angebot '
+                     'übernommen, nicht als Betrag und nicht als Lücke.'),
+        offerNoteEn=('An unresolved interface enters the offer as a condition — not as '
+                     'an amount and not as a gap.')),
+    ],
+      summaryDe='Leistungsgrenze bestätigt · 4 Hausanschlüsse beim Bauherrn',
+      summaryEn='Scope boundary confirmed · 4 house connections with the client',
+      scopeDe='gilt für die gesamte Option', scopeEn='applies to the whole Option',
+      costAuthority='bauherr'),
+   ],
+   [
+    rahmen('energieziel', 'Energieziel', 'Energy target', '', '',
+           'Förderziel · Annahme', 'Funding target · assumption', edit='a-400-es'),
+    rahmen('mindeststandard', 'Gesetzlicher Mindeststandard', 'Statutory minimum',
+           'GModG § 10 · Niedrigstenergiegebäude', 'GModG § 10 · nearly zero-energy building',
+           'aus Bauantragsdatum abgeleitet', 'derived from the building-application date'),
+    rahmen('gebaeudeumfang', 'Gebäudeumfang', 'Building scope', '', '', '', '',
+           derive='buildingScope'),
+    rahmen('leistungsgrenze', 'Leistungsgrenze All3', 'All3 scope boundary',
+           'ab Übergabepunkt Grundstücksgrenze', 'from the handover point at the property line',
+           'Hausanschlüsse: Bauherr', 'House connections: client'),
+   ],
+   [
+    rule('p14a', '§ 14a EnWG · steuerbare Verbrauchseinrichtungen',
+         '§ 14a EnWG · controllable consumption devices',
+         ('Diese Option enthält steuerbare Verbrauchseinrichtungen. Die garantierte '
+          'Leistung wird gemeinsam bemessen, nicht je Gerät. Der Netzanschluss ist '
+          'entsprechend auszulegen.'),
+         ('This Option contains controllable consumption devices. The guaranteed power '
+          'is measured jointly, not per device. The grid connection is sized '
+          'accordingly.'),
+         'BNetzA BK6-22-300, Anlage 1 · Ziffer 2.4.1',
+         'BNetzA BK6-22-300, annex 1 · clause 2.4.1'),
+   ],
+   bemusterung([
+     ('Bodengleiche Dusche · barrierefrei nach DIN 18040-2',
+      'Floor-level shower · step-free per DIN 18040-2',
+      'Duschabtrennung, Ablaufrinne, Sanitärkeramik',
+      'Shower enclosure, drainage channel, sanitary ceramics'),
+     ('Ausstattungswert Elektro AW2 · DIN 18015-2',
+      'Electrical equipment level AW2 · DIN 18015-2',
+      'Schalterprogramm, Farbe, KNX-Raumcontroller',
+      'Switch range, colour, KNX room controller'),
+     ('Zutritt mechanisch · Schließanlage',
+      'Mechanical access · master-key system',
+      'Zylinder, Oberfläche, Türsprech-Innenstation',
+      'Cylinders, finish, intercom indoor station'),
+     ('Handtuchheizkörper elektrisch', 'Electric towel radiator',
+      'Farbe, Bauform', 'Colour, form'),
+   ])),
  chapter('KG_500', 'Außenanlagen', 'External works',
    'Wege, Bepflanzung und Spielfläche im Innenhof.',
    'Paths, planting and play area in the courtyard.',
@@ -231,7 +778,7 @@ A = [
 A_DECLARED = {'KG_200': 180000, 'KG_300': 4020000, 'KG_400': 1390000,
               'KG_500': 300000, 'KG_600': 100000, 'KG_700': 490000}
 
-# ── PROJECT B · DEMO-COMPLEX-01 · 38.740.000 EUR net, ±6 % ───────────────
+# ── PROJECT B · DEMO-COMPLEX-01 · 38.740.000 EUR net, ±6 % ───────────────
 BA, BB, BC = 'B-BLDG-A', 'B-BLDG-B', 'B-BLDG-C'
 
 B = [
@@ -330,75 +877,515 @@ B = [
          'B-Q-02: the client brief leaves shell-and-core versus fit-out open.',
          1240000, building=BA),
    ])]),
- chapter('KG_400', 'Technische Anlagen', 'Technical installations',
+ tga_chapter('KG_400', 'Technische Anlagen', 'Technical installations',
    'Wärme, Lüftung, Sanitär und Elektro für drei Baukörper mit unterschiedlicher Nutzung.',
    'Heat, ventilation, plumbing and electrical for three buildings with different uses.',
-   [group('b-kg400-heat', 'Wärme & Lüftung', 'Heat & ventilation', [
-     svc('b-400-01', 'Wärmeerzeugung zentral', 'Central heat generation',
-         'Gemeinsamer Ambient-Loop mit Wärmepumpen in der Energiezentrale.',
-         'Shared ambient loop with heat pumps in the energy centre.', 1240000),
-     choice('b-400-heat', 'Wärmekonzept', 'Heat concept',
-         'Ein zentraler Kreis für das Quartier oder gebäudeweise Anlagen.',
-         'One central loop for the quarter or building-level plants.',
-         [variant('central', 'Zentraler Ambient-Loop', 'Central ambient loop', 0),
-          variant('perBuilding', 'Gebäudeweise Anlagen', 'Building-level plants', -310000)],
-         'central'),
-     svc('b-400-02', 'Wärmeverteilung Kontorhaus', 'Heat distribution Kontorhaus',
-         'Niedertemperatur-Verteilung mit Deckensegeln, Haus A.',
-         'Low-temperature distribution with ceiling sails, building A.', 520000, building=BA),
-     svc('b-400-03', 'Wärmeverteilung Hofhaus', 'Heat distribution Hofhaus',
-         'Fußbodenheizung und Wohnungsstationen, Haus B.',
-         'Underfloor heating and dwelling stations, building B.', 460000, building=BB),
-     svc('b-400-04', 'Wärmeverteilung Stadthaus', 'Heat distribution Stadthaus',
-         'Getrennte Zonen für Gewerbe-EG und Wohnen, Haus C.',
-         'Separate zones for the commercial ground floor and dwellings, building C.',
-         580000, building=BC),
-     svc('b-400-05', 'Lüftungsanlagen', 'Ventilation plants',
-         'Zentrale RLT für das Kontorhaus, dezentrale Geräte im Wohnungsbau.',
-         'Central AHU for the Kontorhaus, decentralised units in the dwellings.', 1720000),
-     choice('b-400-es', 'Energiestandard', 'Energy standard',
-         'Der Standard beschreibt das Gebäude; das Band verengt sich erst mit der Kundenbestätigung.',
-         'The standard describes the building; the band narrows only on customer confirmation.',
-         [variant('geg', 'GEG-Standard', 'GEG standard', -540000),
-          variant('eh55', 'Effizienzhaus 55', 'Efficiency house 55', 0),
-          variant('eh40', 'Effizienzhaus 40', 'Efficiency house 40', 620000),
-          variant('eh40nh', 'Effizienzhaus 40 NH', 'Efficiency house 40 NH', 1180000)],
-         'eh55'),
-   ]),
-    group('b-kg400-services', 'Sanitär & Elektro', 'Plumbing & electrical', [
-     svc('b-400-06', 'Sanitärinstallation Kontorhaus', 'Plumbing Kontorhaus',
-         'Sanitärkerne je Geschoss für 340 Arbeitsplätze.',
-         'Sanitary cores per floor for 340 workplaces.', 640000, building=BA),
-     svc('b-400-07', 'Sanitärinstallation Hofhaus', 'Plumbing Hofhaus',
-         'Steigezonen und Wohnungsinstallation, 46 Einheiten.',
-         'Riser zones and dwelling installation, 46 units.', 720000, building=BB),
-     svc('b-400-08', 'Sanitärinstallation Stadthaus', 'Plumbing Stadthaus',
-         'Wohnungsinstallation plus Gewerbeanschlüsse im EG.',
-         'Dwelling installation plus commercial connections at ground level.',
-         820000, building=BC),
-     svc('b-400-09', 'Elektro & Datennetz Kontorhaus', 'Electrical & data Kontorhaus',
-         'Bodentanks, Beleuchtung und strukturierte Verkabelung.',
-         'Floor boxes, lighting and structured cabling.', 780000, building=BA),
-     svc('b-400-10', 'Elektro & Datennetz Hofhaus', 'Electrical & data Hofhaus',
-         'Wohnungsverteilungen, Allgemeinstrom und Klingelanlage.',
-         'Dwelling boards, landlord supply and doorbell system.', 460000, building=BB),
-     svc('b-400-11', 'Elektro & Datennetz Stadthaus', 'Electrical & data Stadthaus',
-         'Wohnungsverteilungen plus Gewerbeunterverteilung im EG.',
-         'Dwelling boards plus a commercial sub-distribution at ground level.',
-         480000, building=BC),
-     required('b-400-90', 'Photovoltaik Dachflächen', 'Rooftop photovoltaics',
-         'Alle drei Dächer sind geeignet; das Energiekonzept fordert sie nicht.',
-         'All three roofs are suitable; the energy concept does not require them.', 620000),
-     quantity('b-400-91', 'E-Ladeinfrastruktur', 'EV charging infrastructure',
-         'B-Q-04: Leerrohre sind im Ansatz, Ladepunkte sind zu entscheiden.',
-         'B-Q-04: conduits are allowed for, charge points are a decision.',
-         8000, 22, 'Ladepunkte', 'charge points', baseline='notSelected',
-         building=BC),
-     required('b-400-92', 'Gastronomie-Lüftung Gewerbe-EG', 'Gastronomy ventilation, commercial ground floor',
-         'B-Q-01: das Nutzungskonzept nennt Gastronomie, der Auftraggeberbrief nur Gewerbe.',
-         'B-Q-01: the use concept names gastronomy, the client brief only commercial.',
-         420000, building=BC),
-   ])]),
+   [
+    # ── 1 · Wärme ────────────────────────────────────────────────────────
+    system('b-kg400-heat', 'Wärme', 'Heat', [
+      # The SCOPE decision comes first in its system: it decides how many
+      # heat generators the Option contains, so every row below it depends
+      # on the answer.
+      tchoice('b-400-heat', 'Anlagenkonzept', 'Plant concept',
+        'Bestimmt, wie viele Wärmeerzeuger die Option enthält.',
+        'Determines how many heat generators the Option contains.',
+        [tvar('central', 'Gemeinsame Anlage für alle 3 Gebäude',
+              'One shared plant for all 3 buildings', 0),
+         tvar('perBuilding', 'Je Gebäude eine eigene Anlage',
+              'One plant per building', -310000)],
+        'central',
+        all3Standard='central',
+        costAuthority='direct',
+        scopeDe='betrifft alle 3 Gebäude', scopeEn='affects all 3 buildings',
+        whyDe=('Bestimmt, wie viele Wärmeerzeuger die Option enthält. Änderung wirkt '
+               'auf Wärmeerzeuger und Warmwasserbereitung.'),
+        whyEn=('Determines how many heat generators the Option contains. A change '
+               'affects the heat generator and domestic hot water.'),
+        source=src('04_Quartierskonzept.pdf · S. 9', '04_Quartierskonzept.pdf · p. 9',
+                   'Gemeinsame Energiezentrale', 'Shared energy centre', 'central'),
+        offerNoteDe='Wirkt sich auf das Angebot aus, Abschnitt 3.1 Heizung.',
+        offerNoteEn='Appears in the offer, section 3.1 Heating.'),
+      tsvc('b-400-01', 'Wärmeerzeuger', 'Heat generator',
+        'Gemeinsamer Ambient-Loop mit Wärmepumpen (Energiezentrale).',
+        'Shared ambient loop with heat pumps (energy centre).', 1240000,
+        costAuthority='direct',
+        scopeDe='1 gemeinsame Anlage', scopeEn='1 shared plant',
+        whyDe=('Kein gesetzlicher Anlagentyp vorgeschrieben — § 71 GModG ist entfallen. '
+               'Bestimmt Warmwasserbereitung und die § 14a-Bewertung.'),
+        whyEn=('No statutory plant type applies — § 71 GModG has been repealed. '
+               'Determines domestic hot water and the § 14a assessment.'),
+        source=src('04_Quartierskonzept.pdf · S. 11', '04_Quartierskonzept.pdf · p. 11',
+                   'Gemeinsamer Ambient-Loop', 'Shared ambient loop'),
+        ruleId='p14a',
+        # THE P0-1 REGRESSION GUARD, expressed as data.
+        # Measured on 06a4acf: switching the concept to per-building changed
+        # ZERO rows and left this shared plant included at + 1.240.000 EUR.
+        # The dependency makes that combination unrepresentable rather than
+        # merely discouraged.
+        dependsOn={'serviceId': 'b-400-heat', 'requiresVariant': 'central'},
+        offerNoteDe='Wirkt sich auf das Angebot aus, Abschnitt 3.1 Heizung.',
+        offerNoteEn='Appears in the offer, section 3.1 Heating.'),
+      # THREE BUILDINGS, ONE DECISION (AC 25). This replaces three
+      # near-identical services whose only difference was a building name.
+      tsvc('b-400-02', 'Wärmeverteilung', 'Heat distribution',
+        'Drei Werte, weil die Nutzung je Baukörper unterschiedlich ist.',
+        'Three values, because the use differs per building.', 1560000,
+        costAuthority='direct',
+        scopeDe='je Gebäude', scopeEn='per building',
+        source=src('Grundlage Gebäude · bestätigt', 'Building baseline · confirmed'),
+        valueRows=[
+          row('Niedertemperatur-Verteilung mit Deckensegeln',
+              'Low-temperature distribution with ceiling sails',
+              building='B-BLDG-A', amount=520000),
+          row('Fußbodenheizung und Wohnungsstationen',
+              'Underfloor heating and dwelling stations',
+              building='B-BLDG-B', amount=460000),
+          row('Getrennte Zonen für Gewerbe-EG und Wohnen',
+              'Separate zones for the commercial ground floor and dwellings',
+              building='B-BLDG-C', amount=580000),
+        ]),
+      tread('b-400-05e', 'Einzelraumregelung · hydraulischer Abgleich',
+        'Individual room control · hydraulic balancing',
+        'Raumthermostat (einfach) · hydraulischer Abgleich mit raumweiser Heizlastberechnung.',
+        'Simple room thermostat · hydraulic balancing with room-by-room heat load calculation.',
+        costAuthority='bundle',
+        costBasisDe='in der Wärmeverteilung enthalten',
+        costBasisEn='included in the heat distribution position',
+        scopeDe='gilt für alle 3 Gebäude', scopeEn='applies to all 3 buildings',
+        whyDe=('GModG § 63 und § 60c — für Gebäude ab 6 Wohn-/Nutzungseinheiten '
+               'gesetzlich, keine Zusatzleistung.'),
+        whyEn=('GModG § 63 and § 60c — statutory for buildings with 6 or more '
+               'dwelling/usage units, not an extra.'),
+        source=src('GModG § 63 · § 60c', 'GModG § 63 · § 60c')),
+      tchoice('b-400-es', 'Energieziel', 'Energy target',
+        'Förderziel, nicht der gesetzliche Mindeststandard.',
+        'Funding target, not the statutory minimum.',
+        [tvar('geg', 'Gesetzlicher Mindeststandard', 'Statutory minimum', -540000),
+         tvar('eh55', 'Effizienzhaus 55', 'Efficiency House 55', 0),
+         tvar('eh40', 'Effizienzhaus 40', 'Efficiency House 40', 620000),
+         tvar('eh40nh', 'Effizienzhaus 40 NH', 'Efficiency House 40 NH', 1180000)],
+        'eh55',
+        surface='rahmen',
+        costAuthority='direct',
+        source=src('03_Energiekonzept.pdf · S. 6', '03_Energiekonzept.pdf · p. 6'),
+        whyDe=('Förderziel nach KfW 297/298 — vorbehaltlich verfügbarer Bundesmittel, '
+               'kein Rechtsanspruch. Der gesetzliche Mindeststandard wird davon nicht '
+               'berührt.'),
+        whyEn=('Funding target per KfW 297/298 — subject to available federal funds, no '
+               'legal entitlement. The statutory minimum is unaffected by it.'),
+        offerNoteDe='Wirkt sich auf das Angebot aus, Abschnitt 1.4 Wärmeschutz.',
+        offerNoteEn='Appears in the offer, section 1.4 Thermal protection.'),
+    ],
+      summaryDe='Gemeinsamer Ambient-Loop · Niedertemperatur-Verteilung je Nutzung',
+      summaryEn='Shared ambient loop · low-temperature distribution per use',
+      scopeDe='gemeinsame Anlage · Verteilung je Gebäude',
+      scopeEn='shared plant · distribution per building',
+      costAuthority='direct'),
+
+    # ── 2 · Trinkwasser & Warmwasser ─────────────────────────────────────
+    system('b-kg400-water', 'Trinkwasser & Warmwasser', 'Potable water & DHW', [
+      tchoice('b-400-07', 'Warmwasserbereitung', 'Domestic hot water generation',
+        'Bestimmt, ob eine Zirkulation erforderlich ist.',
+        'Determines whether circulation is required.',
+        [tvar('WW_ZENTRAL_WP', 'Zentral je Gebäude: Wärmepumpe + Warmwasserspeicher',
+              'Central per building: heat pump + DHW cylinder', bundled=True),
+         tvar('WW_DEZ_FWST', 'Dezentral: Wohnungs-Frischwasserstationen',
+              'Decentralised fresh-water stations', no_price_basis=True),
+         tvar('WW_FW_KOMPAKT', 'Fernwärme-Kompaktstation (Wohnungsstation)',
+              'District-heating compact station (flat station)', no_price_basis=True)],
+        'WW_ZENTRAL_WP',
+        all3Standard='WW_ZENTRAL_WP',
+        costAuthority='bundle',
+        costBasisDe='in der Sanitärinstallation enthalten',
+        costBasisEn='included in the plumbing position',
+        whyDe=('Zirkulation 60/55 °C nach DVGW W 551:2004-04. '
+               'Bestimmt durch den Wärmeerzeuger.'),
+        whyEn=('Circulation at 60/55 °C per DVGW W 551:2004-04. '
+               'Determined by the heat generator.'),
+        scopeDe='je Gebäude', scopeEn='per building',
+        source=src('03_Energiekonzept.pdf · S. 16', '03_Energiekonzept.pdf · p. 16',
+                   'Zentrale Warmwasserbereitung je Gebäude',
+                   'Central DHW generation per building', 'WW_ZENTRAL_WP'),
+        dependsOn={'serviceId': 'b-400-01', 'requiresSelected': True},
+        offerNoteDe='Wirkt sich auf das Angebot aus, Abschnitt 3.2 Wasser.',
+        offerNoteEn='Appears in the offer, section 3.2 Water.'),
+      tsvc('b-400-06', 'Sanitärinstallation', 'Plumbing installation',
+        'Drei Werte, weil die Nutzung je Baukörper unterschiedlich ist.',
+        'Three values, because the use differs per building.', 2180000,
+        costAuthority='direct',
+        scopeDe='je Gebäude', scopeEn='per building',
+        source=src('Grundlage Gebäude · bestätigt', 'Building baseline · confirmed'),
+        valueRows=[
+          row('Sanitärkerne je Geschoss für 340 Arbeitsplätze',
+              'Sanitary cores per floor for 340 workplaces',
+              building='B-BLDG-A', amount=640000),
+          row('Steigezonen und Wohnungsinstallation, 46 Einheiten',
+              'Riser zones and dwelling installation, 46 units',
+              building='B-BLDG-B', amount=720000),
+          row('Wohnungsinstallation plus Gewerbeanschlüsse im EG',
+              'Dwelling installation plus commercial connections at ground level',
+              building='B-BLDG-C', amount=820000),
+        ]),
+      tread('b-400-08', 'Zirkulation Warmwasser', 'DHW circulation',
+        'Zirkulation erforderlich — Folge der zentralen Warmwasserbereitung.',
+        'Circulation required — a consequence of central DHW generation.',
+        costAuthority='bundle',
+        costBasisDe='in der Sanitärinstallation enthalten',
+        costBasisEn='included in the plumbing position',
+        whyDe=('Eine Hygienefolge, kein Schalter: bei zentraler Warmwasserbereitung '
+               'ist die Zirkulation nach DVGW W 551 erforderlich.'),
+        whyEn=('A hygiene consequence, not a toggle: central DHW generation requires '
+               'circulation per DVGW W 551.'),
+        scopeDe='je Gebäude', scopeEn='per building',
+        source=src('Aus der Warmwasserbereitung abgeleitet',
+                   'Derived from the DHW generation decision')),
+    ],
+      summaryDe='Zentral je Gebäude · Zirkulation 60/55 °C nach DVGW W 551:2004-04',
+      summaryEn='Central per building · circulation at 60/55 °C per DVGW W 551:2004-04',
+      scopeDe='je Gebäude', scopeEn='per building',
+      costAuthority='direct'),
+
+    # ── 3 · Lüftung & sommerlicher Komfort ───────────────────────────────
+    system('b-kg400-air', 'Lüftung & sommerlicher Komfort',
+      'Ventilation & summer comfort', [
+      tsvc('b-400-05', 'Lüftungsanlagen', 'Ventilation plants',
+        'Zentrale RLT für das Kontorhaus, dezentrale Geräte im Wohnungsbau.',
+        'Central AHU for the Kontorhaus, decentralised units in the dwellings.', 1720000,
+        costAuthority='direct',
+        scopeDe='je Gebäude', scopeEn='per building',
+        whyDe=('Lüftungskonzept nach DIN 1946-6:2019-12 · Energieziel EH 55 verlangt '
+               'Wärmerückgewinnung · DIN 18017-3:2022-05 für innenliegende Bäder'),
+        whyEn=('Ventilation concept per DIN 1946-6:2019-12 · energy target EH 55 requires '
+               'heat recovery · DIN 18017-3:2022-05 for internal bathrooms'),
+        source=src('05_Lueftungskonzept.pdf · S. 5', '05_Lueftungskonzept.pdf · p. 5'),
+        valueRows=[
+          row('Zentrale RLT-Anlage', 'Central air-handling unit', building='B-BLDG-A'),
+          row('Dezentrale Lüftung mit Wärmerückgewinnung',
+              'Decentralised ventilation with heat recovery', building='B-BLDG-B'),
+          row('Dezentrale Lüftung mit Wärmerückgewinnung',
+              'Decentralised ventilation with heat recovery', building='B-BLDG-C'),
+        ],
+        offerNoteDe='Wirkt sich auf das Angebot aus, Abschnitt 3.7 Lüftung.',
+        offerNoteEn='Appears in the offer, section 3.7 Ventilation.'),
+      tsvc('b-400-92', 'Gastronomie-Lüftung Gewerbe-EG',
+        'Gastronomy ventilation, commercial ground floor',
+        'Das Nutzungskonzept nennt Gastronomie, der Auftraggeberbrief nur Gewerbe.',
+        'The use concept names gastronomy, the client brief only commercial use.',
+        420000, baseline='notSelected', authority='assumed',
+        kind={'kind': 'requiredDecision'},
+        costAuthority='direct',
+        scopeDe='betrifft 1 von 3 Gebäuden', scopeEn='affects 1 of 3 buildings',
+        source=src('B-Q-01 · Konflikt aus der Dokumentenanalyse',
+                   'B-Q-01 · conflict from the document analysis',
+                   'Nicht eindeutig', 'Not unambiguous'),
+        offerNoteDe='Wirkt sich auf das Angebot aus, Abschnitt 3.7 Lüftung.',
+        offerNoteEn='Appears in the offer, section 3.7 Ventilation.'),
+      tread('b-400-08s', 'Sommerlicher Wärmeschutz', 'Summer thermal protection',
+        'Thermische Gebäudesimulation für das Kontorhaus · DIN 4108-2:2013-02.',
+        'Thermal building simulation for the Kontorhaus · DIN 4108-2:2013-02.',
+        costAuthority='noBasis',
+        scopeDe='aus Projekt übernommen', scopeEn='taken from the project',
+        whyDe='Aus der Gebäudehülle abgeleitet. Wird hier nicht entschieden, nur angezeigt.',
+        whyEn='Derived from the building envelope. Shown here, not decided here.',
+        source=src('Grundlage Gebäude · Hüllcluster', 'Building baseline · envelope cluster')),
+    ],
+      summaryDe='Zentrale RLT Kontorhaus · dezentrale WRG Hofhaus und Stadthaus',
+      summaryEn='Central AHU Kontorhaus · decentralised heat recovery Hofhaus and Stadthaus',
+      scopeDe='je Gebäude', scopeEn='per building',
+      costAuthority='direct'),
+
+    # ── 4 · Elektro & Energie ────────────────────────────────────────────
+    system('b-kg400-power', 'Elektro & Energie', 'Electrical & on-site energy', [
+      tsvc('b-400-09', 'Elektroinstallation & Datennetz', 'Electrical & data installation',
+        'Drei Werte, weil die Nutzung je Baukörper unterschiedlich ist.',
+        'Three values, because the use differs per building.', 1720000,
+        costAuthority='direct',
+        scopeDe='je Gebäude', scopeEn='per building',
+        source=src('Grundlage Gebäude · bestätigt', 'Building baseline · confirmed'),
+        valueRows=[
+          row('Bodentanks, Beleuchtung und strukturierte Verkabelung',
+              'Floor boxes, lighting and structured cabling',
+              building='B-BLDG-A', amount=780000),
+          row('Wohnungsverteilungen, Allgemeinstrom und Klingelanlage',
+              'Dwelling boards, landlord supply and doorbell system',
+              building='B-BLDG-B', amount=460000),
+          row('Wohnungsverteilungen plus Gewerbeunterverteilung im EG',
+              'Dwelling boards plus a commercial sub-distribution at ground level',
+              building='B-BLDG-C', amount=480000),
+        ]),
+      tchoice('b-400-21', 'Ausstattungswert Elektro', 'Electrical equipment level',
+        'Nach DIN 18015-2.', 'Per DIN 18015-2.',
+        [tvar('AW1', 'AW1 — Mindestausstattung', 'AW1 — minimum equipment',
+              no_price_basis=True),
+         tvar('AW2', 'AW2 — Standardausstattung', 'AW2 — standard equipment',
+              no_price_basis=True),
+         tvar('AW3', 'AW3 — Komfortausstattung', 'AW3 — comfort equipment',
+              no_price_basis=True)],
+        'AW2',
+        all3Standard='AW2',
+        costAuthority='noBasis',
+        costBasisDe='in der Elektroinstallation enthalten',
+        costBasisEn='included in the electrical installation position',
+        scopeDe='gilt für 3 Gebäude', scopeEn='applies to 3 buildings',
+        source=src('DIN 18015-2 · All3-Standard', 'DIN 18015-2 · All3 standard',
+                   'AW2 — Standardausstattung', 'AW2 — standard equipment', 'AW2')),
+      # GEIG: a STATUTORY BASELINE, not a preference. Split from the
+      # optional upgrade below, which is where a real choice exists.
+      tread('b-400-22', 'Leitungsinfrastruktur je Stellplatz',
+        'Cabling infrastructure per parking space',
+        'Erforderlich · GEIG § 6 · 46 Stellplätze · Bauantrag vor 01.01.2027.',
+        'Required · GEIG § 6 · 46 parking spaces · building application before 01/01/2027.',
+        authority='sourceEvidenced',
+        costAuthority='bundle',
+        costBasisDe='in der Elektroinstallation enthalten',
+        costBasisEn='included in the electrical installation position',
+        scopeDe='gilt für 3 Gebäude', scopeEn='applies to 3 buildings',
+        whyDe=('Ab Bauantrag 01.01.2027 gilt: 50 % Vorverkabelung je Stellplatzgruppe '
+               'und mindestens ein errichteter Ladepunkt — Leerrohre genügen dann nicht '
+               'mehr. Für dieses Projekt gilt das noch nicht.'),
+        whyEn=('From a building application dated 01/01/2027: 50 % pre-wiring per parking '
+               'group and at least one built charge point — conduits will no longer '
+               'suffice. That does not yet apply to this project.'),
+        source=src('GEIG § 6', 'GEIG § 6')),
+      tsvc('b-400-91', 'Ladepunkte', 'Charge points',
+        'Optionale Erweiterung über die gesetzliche Grundausstattung hinaus.',
+        'Optional extension beyond the statutory baseline.',
+        176000, baseline='notSelected', authority='derived',
+        kind={'kind': 'quantity', 'unitAmount': money(8000), 'baselineQuantity': '22',
+              'unitDe': 'Ladepunkte', 'unitEn': 'charge points',
+              'minQuantity': '0', 'maxQuantity': '100000'},
+        costAuthority='direct',
+        scopeDe='gilt für 3 Gebäude', scopeEn='applies to 3 buildings',
+        source=src('B-Q-04 · Konflikt aus der Dokumentenanalyse',
+                   'B-Q-04 · conflict from the document analysis',
+                   'Nicht spezifiziert', 'Not specified'),
+        ruleId='p14a',
+        offerNoteDe='Wirkt sich auf das Angebot aus, Abschnitt 3.8 Elektro.',
+        offerNoteEn='Appears in the offer, section 3.8 Electrical.'),
+      tsvc('b-400-90', 'Photovoltaikanlage', 'Photovoltaic system',
+        'Einspeisung auf 60 % begrenzt, bis Messstelle und Steuerung geprüft sind.',
+        'Feed-in limited to 60 % until the metering point and control are verified.',
+        620000, baseline='notSelected', authority='assumed',
+        kind={'kind': 'requiredDecision'},
+        costAuthority='direct',
+        scopeDe='gemeinsame Anlage', scopeEn='shared installation',
+        whyDe=('Eine bundesweite Pflicht zur Solarenergie besteht für neue '
+               'Wohngebäude erst ab 2030. Landesrecht ist gesondert zu prüfen.'),
+        whyEn=('A federal obligation to install solar energy arises for new residential '
+               'buildings only from 2030. State law is checked separately.'),
+        source=src('03_Energiekonzept.pdf · S. 21', '03_Energiekonzept.pdf · p. 21',
+                   'Nicht spezifiziert', 'Not specified'),
+        ruleId='p14a',
+        valueRows=[
+          row('aus Dachfläche abgeleitet · 186 kWp',
+              'derived from the roof area · 186 kWp',
+              label_de='PV-Leistung', label_en='PV capacity',
+              note_de='abgeleitet', note_en='derived'),
+          row('Gemeinschaftliche Gebäudeversorgung schließt den Mieterstromzuschlag aus',
+              'Communal building supply excludes the tenant-electricity surcharge',
+              label_de='PV-Vermarktung', label_en='PV energy model',
+              note_de='ohne Preisgrundlage', note_en='no price basis'),
+          row('teilt die Preisgrundlage der PV-Anlage',
+              'shares the price basis of the PV system',
+              label_de='Batteriespeicher', label_en='Battery storage',
+              note_de='im Bündel', note_en='bundled'),
+        ],
+        offerNoteDe='Wirkt sich auf das Angebot aus, Abschnitt 3.13 Photovoltaik.',
+        offerNoteEn='Appears in the offer, section 3.13 Photovoltaics.'),
+    ],
+      summaryDe='AW2 · PV offen · E-Ladeinfrastruktur gesetzlich erforderlich',
+      summaryEn='AW2 · PV open · EV cabling infrastructure required by law',
+      scopeDe='gilt für 3 Gebäude', scopeEn='applies to 3 buildings',
+      costAuthority='direct'),
+
+    # ── 5 · Entwässerung ─────────────────────────────────────────────────
+    system('b-kg400-drain', 'Entwässerung', 'Drainage', [
+      tread('b-400-11', 'Rückstausicherung', 'Backwater protection',
+        'Abwasserhebeanlage für fäkalienhaltiges Abwasser unter der Rückstauebene.',
+        'Sewage lifting station for foul water below the backwater level.',
+        costAuthority='noBasis',
+        scopeDe='betrifft 1 von 3 Gebäuden', scopeEn='affects 1 of 3 buildings',
+        whyDe=('DIN 1986-100:2016-12 · DIN EN 12056-4. Ein Rückstauverschluss ist nur '
+               'bei untergeordneter Nutzung und weiteren Bedingungen zulässig, die im '
+               'Angebot nicht bewertet werden können.'),
+        whyEn=('DIN 1986-100:2016-12 · DIN EN 12056-4. A backwater valve is admissible '
+               'only for subordinate use and under further conditions that an offer '
+               'cannot assess.'),
+        source=src('Grundlage Gebäude · Untergeschosse',
+                   'Building baseline · basement levels'),
+        valueRows=[
+          row('Entwässerung unter der Rückstauebene · Abwasserhebeanlage',
+              'Drainage below the backwater level · sewage lifting station',
+              building='B-BLDG-B',
+              note_de='ohne Preisgrundlage', note_en='no price basis'),
+          row('kein UG — nicht anwendbar', 'no basement — not applicable',
+              building='B-BLDG-A', not_applicable=True),
+          row('kein UG — nicht anwendbar', 'no basement — not applicable',
+              building='B-BLDG-C', not_applicable=True),
+        ]),
+      tread('b-400-11r', 'Regenwasserentsorgung', 'Stormwater disposal',
+        'Kommunale Vorgabe: Einleitung in Kanal, gedrosselt · Mischkanalisation.',
+        'Municipal requirement: throttled discharge to the sewer · combined system.',
+        costAuthority='noBasis',
+        scopeDe='gilt für die gesamte Option', scopeEn='applies to the whole Option',
+        whyDe=('Projektvorgabe aus der Entwässerungssatzung. Bestimmt das '
+               'Regenwassermanagement und muss mit der Dachretention übereinstimmen.'),
+        whyEn=('A project requirement from the municipal drainage by-law. It determines '
+               'stormwater management and must agree with the roof retention.'),
+        source=src('Entwässerungssatzung der Gemeinde', 'Municipal drainage by-law')),
+      tread('b-400-19', 'Tiefgaragen-Einfahrtstor', 'Underground garage entrance gate',
+        'Entsteht automatisch, sobald die Gebäudegrundlage eine Tiefgarage enthält.',
+        'Appears automatically once the building baseline includes an underground garage.',
+        costAuthority='none',
+        applicability=na('keine Tiefgarage im Projektumfang',
+                         'no underground garage in the project scope')),
+    ],
+      summaryDe='Rückstausicherung nur Hofhaus · Kontorhaus und Stadthaus ohne UG',
+      summaryEn='Backwater protection Hofhaus only · Kontorhaus and Stadthaus without basement',
+      scopeDe='1 von 3 Gebäuden', scopeEn='1 of 3 buildings',
+      applicability=na('nur das Hofhaus hat ein Untergeschoss',
+                       'only the Hofhaus has a basement', state='partial'),
+      costAuthority='noBasis'),
+
+    # ── 6 · Kommunikation & Zutritt ──────────────────────────────────────
+    system('b-kg400-comms', 'Kommunikation & Zutritt', 'Communications & access', [
+      tchoice('b-400-29', 'Zutrittssystem', 'Access control',
+        'Leser und Oberfläche folgen in der Bemusterung.',
+        'Readers and finish follow in the specification stage.',
+        [tvar('ZK_MECH', 'Mechanische Schließanlage', 'Mechanical master-key system',
+              no_price_basis=True),
+         tvar('ZK_RFID', 'Elektronisch (RFID/Transponder)', 'Electronic (RFID/transponder)',
+              no_price_basis=True),
+         tvar('ZK_SMART', 'Smartphone-/App-Zutritt', 'Smartphone/app-based access',
+              no_price_basis=True)],
+        'ZK_RFID',
+        all3Standard='ZK_MECH',
+        costAuthority='noBasis',
+        scopeDe='gilt für 3 Gebäude', scopeEn='applies to 3 buildings',
+        source=src('01_Auftraggeberbrief.pdf · S. 9', '01_Auftraggeberbrief.pdf · p. 9',
+                   'Elektronische Zugangskontrolle', 'Electronic access control',
+                   'ZK_RFID'),
+        offerNoteDe='Wirkt sich auf das Angebot aus, Abschnitt 2.11 Zutritt.',
+        offerNoteEn='Appears in the offer, section 2.11 Access.'),
+      tread('b-400-25', 'Gebäudeverkabelung', 'In-building cabling',
+        'Glasfaser bis in die Wohnung (FTTH), je Gebäude.',
+        'Fibre to the dwelling (FTTH), per building.',
+        costAuthority='noBasis',
+        scopeDe='gilt für 3 Gebäude', scopeEn='applies to 3 buildings',
+        source=src('Grundlage Projekt · Telekommunikation',
+                   'Project baseline · telecommunications',
+                   'Glasfaser in Planung/Ausbau', 'Fibre planned/under rollout')),
+    ],
+      summaryDe='FTTH je Gebäude · elektronische Zugangskontrolle',
+      summaryEn='FTTH per building · electronic access control',
+      scopeDe='gilt für 3 Gebäude', scopeEn='applies to 3 buildings',
+      costAuthority='noBasis'),
+
+    # ── 7 · Aufzüge & Sonderanlagen ──────────────────────────────────────
+    system('b-kg400-lift', 'Aufzüge & Sonderanlagen', 'Lifts & special systems', [
+      tread('b-400-27', 'Anzahl Aufzüge', 'Number of lifts',
+        'Aus der Gebäudegrundlage abgeleitet · elektrisch maschinenraumlos (MRL).',
+        'Derived from the building baseline · electric, machine-room-less (MRL).',
+        costAuthority='noBasis',
+        scopeDe='je Gebäude', scopeEn='per building',
+        whyDe=('Die Aufzugspflicht folgt aus der Gebäudehöhe (MBO § 39 Abs. 4), '
+               'nicht aus der Geschosszahl.'),
+        whyEn=('The lift requirement follows from the building height (MBO § 39 (4)), '
+               'not from the number of storeys.'),
+        source=src('Grundlage Gebäude · Höhe', 'Building baseline · height'),
+        valueRows=[
+          row('1 Personenaufzug', '1 passenger lift', building='B-BLDG-A'),
+          row('1 Personenaufzug', '1 passenger lift', building='B-BLDG-B'),
+          row('1 Personenaufzug', '1 passenger lift', building='B-BLDG-C'),
+        ]),
+    ],
+      summaryDe='3 Aufzüge aus der Gebäudegrundlage',
+      summaryEn='3 lifts from the building baseline',
+      scopeDe='je Gebäude', scopeEn='per building',
+      costAuthority='noBasis'),
+
+    # ── 8 · Schnittstellen & Verantwortung ───────────────────────────────
+    system('b-kg400-scope', 'Schnittstellen & Verantwortung',
+      'Interfaces & responsibility', [
+      tread('b-400-13g', 'Leistungsgrenze TGA', 'MEP scope boundary',
+        'Leitungsnetz bis 1,0 m außerhalb der Gebäudehülle bzw. bis zum vereinbarten Übergabepunkt.',
+        'Pipework and cabling to 1.0 m outside the building envelope, or to the agreed handover point.',
+        authority='sourceEvidenced',
+        costAuthority='none',
+        scopeDe='gilt für die gesamte Option', scopeEn='applies to the whole Option',
+        source=src('All3-Standard · Leistungsverzeichnis', 'All3 standard · scope schedule',
+                   'Übergabepunkt Grundstücksgrenze', 'Handover point at the property line')),
+      tread('b-400-14', 'Hausanschlüsse', 'Utility house connections',
+        'Bauherr bis Grundstücksgrenze, All3 ab Übergabepunkt.',
+        'Client to the property line, All3 from the handover point.',
+        authority='sourceEvidenced',
+        costAuthority='bauherr',
+        scopeDe='Verantwortung je Medium', scopeEn='responsibility per medium',
+        source=src('01_Auftraggeberbrief.pdf · S. 12', '01_Auftraggeberbrief.pdf · p. 12'),
+        valueRows=[
+          row('Bauherr bis Grundstücksgrenze', 'Client to the property line',
+              label_de='Trinkwasser', label_en='Potable water', status='ok'),
+          row('Bauherr bis Grundstücksgrenze', 'Client to the property line',
+              label_de='Schmutzwasser / Kanal', label_en='Foul water / sewer', status='ok'),
+          row('Bauherr bis Grundstücksgrenze', 'Client to the property line',
+              label_de='Strom (NS-Netz)', label_en='Electricity (LV grid)', status='ok'),
+          row('Glasfaser in Planung/Ausbau — Verfügbarkeit offen',
+              'Fibre planned/under rollout — availability open',
+              label_de='Telekommunikation', label_en='Telecommunications',
+              status='attention'),
+        ],
+        offerNoteDe=('Eine ungeklärte Schnittstelle wird als Bedingung ins Angebot '
+                     'übernommen, nicht als Betrag und nicht als Lücke.'),
+        offerNoteEn=('An unresolved interface enters the offer as a condition — not as '
+                     'an amount and not as a gap.')),
+    ],
+      summaryDe='Leistungsgrenze bestätigt · Telekommunikation ungeklärt',
+      summaryEn='Scope boundary confirmed · telecommunications unresolved',
+      scopeDe='gilt für die gesamte Option', scopeEn='applies to the whole Option',
+      costAuthority='bauherr'),
+   ],
+   [
+    rahmen('energieziel', 'Energieziel', 'Energy target', '', '',
+           'Förderziel · Annahme', 'Funding target · assumption', edit='b-400-es'),
+    rahmen('mindeststandard', 'Gesetzlicher Mindeststandard', 'Statutory minimum',
+           'GModG § 10 · Niedrigstenergiegebäude', 'GModG § 10 · nearly zero-energy building',
+           'aus Bauantragsdatum abgeleitet', 'derived from the building-application date'),
+    rahmen('gebaeudeumfang', 'Gebäudeumfang', 'Building scope', '', '', '', '',
+           derive='buildingScope'),
+    rahmen('leistungsgrenze', 'Leistungsgrenze All3', 'All3 scope boundary',
+           'ab Übergabepunkt Grundstücksgrenze', 'from the handover point at the property line',
+           '1 Schnittstelle ungeklärt', '1 interface unresolved'),
+   ],
+   [
+    rule('p14a', '§ 14a EnWG · steuerbare Verbrauchseinrichtungen',
+         '§ 14a EnWG · controllable consumption devices',
+         ('Diese Option enthält steuerbare Verbrauchseinrichtungen: Wärmepumpe · '
+          'Wallboxen · Batteriespeicher. Die garantierte Leistung wird gemeinsam '
+          'bemessen, nicht je Gerät. Der Netzanschluss ist entsprechend auszulegen.'),
+         ('This Option contains controllable consumption devices: heat pump · wallboxes · '
+          'battery storage. The guaranteed power is measured jointly, not per device. '
+          'The grid connection is sized accordingly.'),
+         'BNetzA BK6-22-300, Anlage 1 · Ziffer 2.4.1 · § 19 Abs. 2 NAV',
+         'BNetzA BK6-22-300, annex 1 · clause 2.4.1 · § 19 (2) NAV',
+         note_de=('Die Summen-Bemessungsleistung der Ladeeinrichtungen überschreitet '
+                  '12 kVA — die Inbetriebnahme bedarf der Zustimmung des Netzbetreibers '
+                  '(§ 19 Abs. 2 NAV). Diese Zustimmung ist nicht Bestandteil des Angebots.'),
+         note_en=('The combined rated power of the charging equipment exceeds 12 kVA — '
+                  'commissioning requires the grid operator\'s consent (§ 19 (2) NAV). '
+                  'That consent is not part of the offer.')),
+   ],
+   bemusterung([
+     ('Ausstattungswert Elektro AW2 · DIN 18015-2',
+      'Electrical equipment level AW2 · DIN 18015-2',
+      'Schalterprogramm, Farbe, KNX-Raumcontroller',
+      'Switch range, colour, KNX room controller'),
+     ('Zutritt elektronisch · RFID/Transponder',
+      'Electronic access · RFID/transponder',
+      'Leser, Oberfläche, Türsprech-Innenstation',
+      'Readers, finish, intercom indoor station'),
+     ('Einzelraumregelung Raumthermostat', 'Individual room control, room thermostat',
+      'Smart-Home-Raumregler, KNX', 'Smart-home room controller, KNX'),
+   ])),
  chapter('KG_500', 'Außenanlagen', 'External works',
    'Innenhof, Erschließung und Regenwasser für das Quartier.',
    'Courtyard, access and stormwater for the quarter.',
@@ -519,7 +1506,9 @@ def normalise(chapters):
             for s in g['services']:
                 kind = s['kind']['kind']
                 s['requiresDecision'] = bool(
-                    kind == 'requiredDecision' or s['id'] in EXPLICIT_QUANTITY_DECISIONS)
+                    s.get('requiresDecision')
+                    or kind == 'requiredDecision'
+                    or s['id'] in EXPLICIT_QUANTITY_DECISIONS)
                 if kind == 'requiredDecision':
                     # The control is a two-option decision; the kind name was
                     # only carrying the requirement, which now has its own field.
@@ -575,17 +1564,94 @@ b_groups, b_total, b_sel, b_var, b_dec = prove('DEMO-COMPLEX-01', B, B_DECLARED,
 
 # Counts the ticket's DEMO FIXTURES section declares. A mismatch is a fixture
 # defect, not a rounding question — so it fails the build, it does not warn.
+#
+# VR3-TGA-01 moved these. KG 400 was rebuilt from three inclusion checkboxes
+# into the eight canonical TGA systems, so the chapter now carries real
+# engineering alternatives where it carried none, and the complex project's
+# nine near-identical per-building rows became three decisions that state
+# their scope once. The VR3-03 numbers (A 21/3/6, B 43/7/11) described the
+# superseded shape and are recorded here so the change is legible rather than
+# silently absorbed.
 for name, got, want, what in [
-    ('DEMO-HAPPY-01', a_sel, 21, 'selected standard services'),
-    ('DEMO-HAPPY-01', a_var, 3, 'configured variants'),
-    ('DEMO-HAPPY-01', a_dec, 6, 'explicit non-selections'),
-    ('DEMO-COMPLEX-01', b_sel, 43, 'selected standard services'),
-    ('DEMO-COMPLEX-01', b_var, 7, 'configured variants'),
+    ('DEMO-HAPPY-01', a_sel, 31, 'selected standard services'),
+    ('DEMO-HAPPY-01', a_var, 11, 'configured variants'),
+    ('DEMO-HAPPY-01', a_dec, 7, 'explicit non-selections'),
+    ('DEMO-COMPLEX-01', b_sel, 48, 'selected standard services'),
+    ('DEMO-COMPLEX-01', b_var, 10, 'configured variants'),
     ('DEMO-COMPLEX-01', b_dec, 11, 'explicit non-selections'),
 ]:
     if got != want:
         raise SystemExit(f'{name}: {got} {what}, ticket declares {want}')
-print('DEMO-HAPPY-01 selected+variants =', a_sel + a_var, '(ticket: 24)')
+
+# ── VR3-TGA-01 · what the KG 400 chapter must be ─────────────────────────
+# These prove the CONTENT MODEL, not only the arithmetic: a KG 400 that adds
+# up correctly while offering no technical alternative is exactly the defect
+# the TGA audit measured, and the sums above cannot see it.
+TGA_SYSTEMS = [
+    'Wärme', 'Trinkwasser & Warmwasser', 'Lüftung & sommerlicher Komfort',
+    'Elektro & Energie', 'Entwässerung', 'Kommunikation & Zutritt',
+    'Aufzüge & Sonderanlagen', 'Schnittstellen & Verantwortung',
+]
+
+def prove_tga(name, chapters):
+    ch = next(c for c in chapters if c['group'] == 'KG_400')
+    names = [g['labelDe'] for g in ch['groups']]
+    if names != TGA_SYSTEMS:
+        raise SystemExit(f'{name} KG 400 systems: {names} != {TGA_SYSTEMS}')
+    for field in ('rahmen', 'bemusterung', 'rules'):
+        if not ch.get(field):
+            raise SystemExit(f'{name} KG 400 declares no {field}')
+    services = [s for g in ch['groups'] for s in g['services']]
+    # Every alternative must state what its euro is allowed to mean. A
+    # variant that is neither priced, nor bundled, nor explicitly without a
+    # price basis would render a bare "± 0 €" — the one thing the audit's
+    # cost-authority rule forbids outright.
+    for s in services:
+        if s['kind']['kind'] != 'singleChoice':
+            continue
+        base = s['kind']['baselineVariant']
+        for v in s['kind']['variants']:
+            priced = D(v['delta']) != 0
+            if not (priced or v.get('noPriceBasis') or v.get('bundled')
+                    or v['value'] == base):
+                raise SystemExit(
+                    f"{name} {s['id']}/{v['value']}: an alternative with no cost "
+                    'language would render a bare zero')
+    # A source baseline must never be merged into the proposal: where a
+    # decision names the variant its documents specified, that variant has to
+    # exist in the choice set, or "restore the documented solution" is a
+    # button that cannot work.
+    for s in services:
+        variant = (s.get('source') or {}).get('variant')
+        if variant is None:
+            continue
+        if s['kind']['kind'] != 'singleChoice':
+            raise SystemExit(f"{name} {s['id']}: a source variant on a non-choice")
+        if variant not in [v['value'] for v in s['kind']['variants']]:
+            raise SystemExit(
+                f"{name} {s['id']}: source variant {variant} is not an alternative")
+    # The All3 standard is a MARKER inside the choice set, never a selection
+    # and never a fourth state.
+    for s in services:
+        std = s.get('all3Standard')
+        if std is None:
+            continue
+        if std not in [v['value'] for v in s['kind']['variants']]:
+            raise SystemExit(
+                f"{name} {s['id']}: All3 standard {std} is not an alternative")
+    # A blocked alternative must be shown WITH ITS REASON, and it must be a
+    # real alternative rather than a value invented to be refused.
+    for s in services:
+        for b in s.get('blockedVariants', []):
+            if b['value'] not in [v['value'] for v in s['kind']['variants']]:
+                raise SystemExit(
+                    f"{name} {s['id']}: blocks {b['value']}, which is not an alternative")
+    configurable = [s for s in services if s['kind']['kind'] == 'singleChoice']
+    print(f'{name} KG 400: {len(ch["groups"])} systems · {len(services)} decisions · '
+          f'{len(configurable)} with alternatives')
+
+prove_tga('DEMO-HAPPY-01', A)
+prove_tga('DEMO-COMPLEX-01', B)
 
 doc = {
     '$comment': (

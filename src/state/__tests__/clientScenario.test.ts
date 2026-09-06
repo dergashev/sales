@@ -82,12 +82,25 @@ describe('VR3-05 · the presentation scenario is a branch, not an edit', () => {
     expect(totalOf(clientPresentedSnapshot(st()))).toBe('39160000.00')
   })
 
+  /**
+   * VR3-TGA-01 MOVED THIS NUMBER, AND THE MOVE IS THE FIX.
+   *
+   * It used to read −310 000 €: the plant-concept delta alone. The audit
+   * measured why — switching to per-building plants changed zero other rows
+   * and left `Wärmeerzeuger · Gemeinsamer Ambient-Loop` included at
+   * + 1 240 000 €, so the scenario priced a configuration that cannot be
+   * built. The cascade now drops that row with its parent, and the honest
+   * reduction is the concept's 310 000 € plus the shared plant's 1 240 000 €.
+   *
+   * A client-facing what-if is exactly where this mattered most: the old
+   * number was the one a salesperson would have said out loud in a meeting.
+   */
   it('prices the decentralised heat alternative as a signed reduction', () => {
     presentSavedComplexOption()
     decide('heatStrategy', 'perBuilding')
 
-    expect(clientScenarioDelta(st())!.toFixed(2)).toBe('-310000.00')
-    expect(totalOf(clientPresentedSnapshot(st()))).toBe('38430000.00')
+    expect(clientScenarioDelta(st())!.toFixed(2)).toBe('-1550000.00')
+    expect(totalOf(clientPresentedSnapshot(st()))).toBe('37190000.00')
   })
 
   it('composes two what-ifs into one canonical result', () => {
@@ -96,8 +109,9 @@ describe('VR3-05 · the presentation scenario is a branch, not an edit', () => {
     decide('heatStrategy', 'perBuilding')
 
     expect(st().clientScenario!.changes).toHaveLength(2)
-    expect(clientScenarioDelta(st())!.toFixed(2)).toBe('110000.00')
-    expect(totalOf(clientPresentedSnapshot(st()))).toBe('38850000.00')
+    // + 420 000 gastronomy − 1 550 000 heat (see the cascade note above).
+    expect(clientScenarioDelta(st())!.toFixed(2)).toBe('-1130000.00')
+    expect(totalOf(clientPresentedSnapshot(st()))).toBe('37610000.00')
   })
 
   it('counts decisions moved, not clicks: re-choosing replaces, baseline removes', () => {
@@ -285,7 +299,7 @@ describe('VR3-05 · a calculation failure keeps the last trusted scenario', () =
     decide('heatStrategy', 'perBuilding')
     expect(clientScenarioTrustedNow(st())).toBe(true)
     const trusted = totalOf(clientPresentedSnapshot(st()))
-    expect(trusted).toBe('38430000.00')
+    expect(trusted).toBe('37190000.00')
 
     act(() => { useStore.getState().setCommercialFault(true) })
 

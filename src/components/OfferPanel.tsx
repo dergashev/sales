@@ -1025,7 +1025,15 @@ export function OfferPanel(
                   состояния (решение TASK-22, вариант 2), и строки обязаны
                   быть объявлены, а не получаться из утилит. */}
               <span className="a3-preview-line">
-                {tx('Vorschau')} · {translatedChangeLabel(shownPreview.change, t, tx)}
+                {/* `lang` is not optional in practice: without it this
+                    returns the GERMAN label for every KG change, because
+                    `translatedChangeLabel` defaults to `de`. The delta chip
+                    at line ~664 already passed it; the preview and the
+                    journal chip below did not, so an English user read
+                    "Anlagenkonzept · Je Gebäude eine eigene Anlage" in the
+                    one place the product explains what a click will cost.
+                    Found by VR3-TGA-01's EN pass; pre-existing on 887c74c. */}
+                {tx('Vorschau')} · {translatedChangeLabel(shownPreview.change, t, tx, lang)}
               </span>
               <span className="a3-preview-line">
                 {shownPreview.futureTotal.prefix && (
@@ -1067,7 +1075,7 @@ export function OfferPanel(
           >
             {shownDelta && (<>
               <span>
-                {shownDelta.change ? translatedChangeLabel(shownDelta.change, t, tx) : shownDelta.label}
+                {shownDelta.change ? translatedChangeLabel(shownDelta.change, t, tx, lang) : shownDelta.label}
               </span>
               <span className="font-medium">
                 {signedOut(shownDelta.deltaExact, lang)}

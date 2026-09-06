@@ -53,6 +53,24 @@ export type KgServiceVariant = Readonly<{
   labelEn: string
   /** Effect RELATIVE to the baseline variant, which is therefore always 0. */
   delta: string
+  /**
+   * This alternative has NO cost option of its own (VR3-TGA-01).
+   *
+   * Measured in the source: 3 of the 5 heat generators carry no cost option
+   * at all, and 92.7 % of option rows carry none. Such an alternative must
+   * say `keine gesonderte Preisgrundlage` — never `± 0 €`, which is a
+   * positive claim that two options cost the same, and never a blank.
+   *
+   * Its `delta` stays `0.00` because the product has no basis on which to
+   * move the total, not because it knows the total does not move. Those are
+   * different statements and only one of them is true here.
+   */
+  noPriceBasis?: boolean
+  /**
+   * Priced, but inside another position — which one is named in the label
+   * the UI shows. `delta` is `0.00` for the same reason as above.
+   */
+  bundled?: boolean
 }>
 
 export type KgServiceKind =
@@ -91,6 +109,176 @@ export type KgServiceDependency = Readonly<{
 
 export type KgServiceAuthority = 'sourceEvidenced' | 'derived' | 'assumed'
 
+/* ── VR3-TGA-01 · the decision layer ───────────────────────────────────── */
+
+/**
+ * WHAT A EURO IS ALLOWED TO MEAN (audit `tga-cost-authority-map.md`).
+ *
+ * Measured, not assumed: **15 of 206** source option rows carry any cost
+ * option at all. 92.7 % of them carry none — so "no separate price basis" is
+ * the NORMAL state of a TGA decision, and the interface has to be able to say
+ * it without lying.
+ *
+ * `± 0 €` may only ever mean *measurably the same price as the baseline
+ * choice*. It may never stand for "excluded", "unknown" or "we have no basis
+ * for this": those are three different statements and the product used to
+ * print the same thing for all of them.
+ */
+export type KgCostAuthority =
+  /** A real cost option exists for this exact decision/value relationship. */
+  | 'direct'
+  /** Priced, but inside another system's position — which one is named. */
+  | 'bundle'
+  /** Moves money somewhere else, with no amount of its own. */
+  | 'indirect'
+  /** No cost option exists. NOT zero, NOT blank, NOT `± 0 €`. */
+  | 'noBasis'
+  /** Outside the All3 offer. Never carries an amount, never `± 0 €`. */
+  | 'bauherr'
+  /** Nothing is rendered — the row has no commercial dimension at all. */
+  | 'none'
+
+/**
+ * Applicability is a STATEMENT WITH A CAUSE, never an option named `Keine …`.
+ *
+ * The audit is explicit: `Keine Tiefgaragenlüftung` is not an engineering
+ * alternative a salesperson chooses, it is a consequence of the project
+ * having no underground garage. Offering it as a choice invites a decision
+ * nobody is entitled to make and hides the real reason.
+ */
+export type KgApplicability = Readonly<{
+  state: 'notApplicable' | 'partial'
+  reasonDe: string
+  reasonEn: string
+}>
+
+/**
+ * A valid alternative that is NOT available here, shown with its reason.
+ *
+ * Shown, not hidden and not merely `disabled`: a salesperson asked "why can't
+ * I offer window ventilation?" needs the answer on the row, and a bare
+ * disabled radio answers nothing. The reason travels into the accessible name
+ * so it is not a sighted-only affordance.
+ */
+export type KgBlockedVariant = Readonly<{
+  value: string
+  reasonDe: string
+  reasonEn: string
+}>
+
+/**
+ * One row of a value set INSIDE a single decision (frames T-03, T-06, T-08).
+ *
+ * The audit's multi-building rule in one type: three buildings produce three
+ * values inside ONE decision, never nine near-identical rows, and the building
+ * name appears once. The same shape carries the per-medium responsibility set
+ * of `Hausanschlüsse`, which is why the label is not assumed to be a building.
+ */
+export type KgValueRow = Readonly<{
+  /** A building this value belongs to; its name is resolved from Option state. */
+  buildingId?: string
+  /** Used when the row is not a building — a medium, a capacity, a model. */
+  labelDe?: string
+  labelEn?: string
+  valueDe: string
+  valueEn: string
+  /**
+   * A decimal money string this row contributes, formatted by the UI.
+   *
+   * NOT pre-formatted copy. A fixture that writes `520.000 €` is a second
+   * formatter — it decides the thousands separator, the currency position and
+   * the number/unit separator for a locale it cannot see, and rule 7's narrow
+   * no-break space is exactly the kind of thing it gets wrong.
+   */
+  amount?: string
+  /** A word where an amount would be a lie: `abgeleitet`, `im Bündel`. */
+  noteDe?: string
+  noteEn?: string
+  /** A resolved/unresolved interface, never colour alone. */
+  status?: 'ok' | 'attention'
+  notApplicable?: boolean
+}>
+
+/**
+ * WHAT THE CLIENT DOCUMENTS SAID — kept separate from what All3 proposes.
+ *
+ * The heart of the chapter. Changing the proposal must never overwrite this,
+ * because it is EVIDENCE, not a default: it is what the salesperson compares
+ * against when the client asks "why is this different from what we sent you".
+ */
+export type KgSourceBaseline = Readonly<{
+  /** The documented value, or absent when the source does not specify it. */
+  valueDe?: string
+  valueEn?: string
+  /** Which variant of this decision the source value corresponds to. */
+  variant?: string
+  /** `03_Energiekonzept.pdf · S. 12`, a Project fact, or who entered it. */
+  originDe: string
+  originEn: string
+}>
+
+/** A cross-system rule stated ONCE and referenced, never restated. */
+export type KgSystemRule = Readonly<{
+  id: string
+  titleDe: string
+  titleEn: string
+  bodyDe: string
+  bodyEn: string
+  /** The consequence, when there is one beyond the statement itself. */
+  noteDe?: string
+  noteEn?: string
+  sourceDe: string
+  sourceEn: string
+}>
+
+/**
+ * One line of the Rahmen band: a condition everything below depends on.
+ *
+ * NOT a system and NOT a second configuration form. Three of the four are
+ * read-only context; only `Energieziel` is a decision, and it says so by
+ * carrying `editServiceId`.
+ */
+export type KgRahmenEntry = Readonly<{
+  id: string
+  labelDe: string
+  labelEn: string
+  valueDe: string
+  valueEn: string
+  /** `Förderziel · Annahme`, `aus Bauantragsdatum abgeleitet`. */
+  metaDe: string
+  metaEn: string
+  /** Present only where the Rahmen line is genuinely editable. */
+  editServiceId?: string
+  /**
+   * The value comes from live Option state, not from the fixture.
+   *
+   * `buildingScope` is the only one, and it exists because the building set
+   * is the Option's, not the catalogue's: writing "1 Gebäude · Lindenhof"
+   * into a fixture would be the chapter asserting a building scope instead of
+   * reading the one the user confirmed — the very class of defect that made
+   * KG 400 unbuildable in the first place.
+   */
+  derive?: 'buildingScope'
+}>
+
+/** The Bemusterung boundary: stated once, at the foot. Never a ninth system. */
+export type KgBemusterungBoundary = Readonly<{
+  titleDe: string
+  titleEn: string
+  bodyDe: string
+  bodyEn: string
+  decidedHeadingDe: string
+  decidedHeadingEn: string
+  deferredHeadingDe: string
+  deferredHeadingEn: string
+  rows: ReadonlyArray<Readonly<{
+    decidedDe: string
+    decidedEn: string
+    deferredDe: string
+    deferredEn: string
+  }>>
+}>
+
 export type KgService = Readonly<{
   id: string
   labelDe: string
@@ -106,6 +294,40 @@ export type KgService = Readonly<{
   authority: KgServiceAuthority
   buildingId?: string
   dependsOn?: KgServiceDependency
+
+  /* ── VR3-TGA-01 · optional decision layer ────────────────────────────
+   * Every field below is optional BY DESIGN. A KG chapter that declares
+   * none of them renders exactly as it did before, which is what lets one
+   * composition serve all six chapters without a `switch (group)`. */
+
+  /** What the client documentation says. Never overwritten by a proposal. */
+  source?: KgSourceBaseline
+  /** Which variant is the All3 standard — a marker, not a selection. */
+  all3Standard?: string
+  /** Why this decision exists and what it determines, in the user's terms. */
+  whyDe?: string
+  whyEn?: string
+  /** The Option-scope statement: `gilt für 1 Gebäude`, `je Gebäude`. */
+  scopeDe?: string
+  scopeEn?: string
+  /** What a euro is allowed to mean here. Absent ⇒ the released behaviour. */
+  costAuthority?: KgCostAuthority
+  /** Names the bundle when `costAuthority` is `bundle`. */
+  costBasisDe?: string
+  costBasisEn?: string
+  /** Not applicable, with its cause. Renders a statement, never a control. */
+  applicability?: KgApplicability
+  /** Valid-but-unavailable alternatives, shown with their reason. */
+  blockedVariants?: readonly KgBlockedVariant[]
+  /** A value set inside ONE decision (T-03/T-06/T-08), never n rows. */
+  valueRows?: readonly KgValueRow[]
+  /** What the Offer will say, and where. Client-safe. */
+  offerNoteDe?: string
+  offerNoteEn?: string
+  /** Renders in the Rahmen band instead of inside a system. */
+  surface?: 'rahmen'
+  /** References a cross-system rule declared once on the chapter. */
+  ruleId?: string
 }>
 
 export type KgServiceGroup = Readonly<{
@@ -113,6 +335,21 @@ export type KgServiceGroup = Readonly<{
   labelDe: string
   labelEn: string
   services: readonly KgService[]
+
+  /* ── VR3-TGA-01 · the group becomes a SYSTEM ROW ─────────────────────
+   * The overview answers, at a glance: what is proposed, what is still
+   * open, what scope it applies to, and what its commercial state is. */
+
+  /** `Luft/Wasser-Wärmepumpe · Fußbodenheizung · fernauslesbarer Zähler`. */
+  summaryDe?: string
+  summaryEn?: string
+  /** `gilt für 1 Gebäude`, `gemeinsame Anlage · Verteilung je Gebäude`. */
+  scopeDe?: string
+  scopeEn?: string
+  /** Not applicable / partially applicable, with its cause. */
+  applicability?: KgApplicability
+  /** The system's commercial state when no amount is rendered. */
+  costAuthority?: KgCostAuthority
 }>
 
 export type KgChapter = Readonly<{
@@ -126,6 +363,17 @@ export type KgChapter = Readonly<{
   boundaryDe: string
   boundaryEn: string
   groups: readonly KgServiceGroup[]
+
+  /* ── VR3-TGA-01 · chapter-level composition ──────────────────────────
+   * Declared by the chapter, so a chapter that declares neither renders
+   * neither — one composition, six chapters, no `switch (group)`. */
+
+  /** The persistent band of cross-cutting conditions above the systems. */
+  rahmen?: readonly KgRahmenEntry[]
+  /** The later-specification boundary, stated once at the foot. */
+  bemusterung?: KgBemusterungBoundary
+  /** Cross-system rules, each stated ONCE and referenced by `ruleId`. */
+  rules?: readonly KgSystemRule[]
 }>
 
 export type KgCatalogue = Readonly<{
@@ -239,6 +487,232 @@ export function serviceDecision(
   return decisions.services[service.id] ?? initialServiceDecision(service)
 }
 
+/* ── VR3-TGA-01 · applicability, surfaces and cost language ────────────── */
+
+/**
+ * Does this decision exist for THIS project at all?
+ *
+ * `notApplicable` is the audit's own word for a decision the project makes
+ * moot — no underground garage, no garage ventilation. It is not "excluded"
+ * (a commercial choice) and not "undecided" (work outstanding), and conflating
+ * it with either is how the product came to count work nobody could do.
+ *
+ * `partial` still applies, to some buildings: it is applicable, and it says so
+ * per building inside the one decision.
+ */
+export function isApplicable(service: KgService): boolean {
+  return service.applicability?.state !== 'notApplicable'
+}
+
+/** The decisions a system actually presents — the Rahmen's own are not its. */
+export function systemServices(group: KgServiceGroup): readonly KgService[] {
+  return group.services.filter((service) => service.surface !== 'rahmen')
+}
+
+/** Every service the chapter declares, including the Rahmen's. */
+export function chapterServices(chapter: KgChapter): readonly KgService[] {
+  return chapter.groups.flatMap((group) => group.services)
+}
+
+export function chapterServiceById(
+  chapter: KgChapter, id: string,
+): KgService | null {
+  return chapterServices(chapter).find((service) => service.id === id) ?? null
+}
+
+export function chapterRuleById(
+  chapter: KgChapter, id: string,
+): KgSystemRule | null {
+  return chapter.rules?.find((rule) => rule.id === id) ?? null
+}
+
+/**
+ * What this decision's euro is allowed to mean.
+ *
+ * Defaults to `direct` only where the fixture actually carries an amount or a
+ * variant delta, and to `none` otherwise — so a chapter that declares no cost
+ * authority keeps the behaviour it had, and a TGA row that declares one is
+ * held to it.
+ */
+export function costAuthorityOf(service: KgService): KgCostAuthority {
+  if (service.costAuthority) return service.costAuthority
+  if (service.kind.kind === 'singleChoice') {
+    return service.kind.variants.some((variant) => variant.delta !== '0.00')
+      ? 'direct'
+      : 'none'
+  }
+  return new Decimal(service.amount).isZero() ? 'none' : 'direct'
+}
+
+/**
+ * May a euro amount be rendered for this decision?
+ *
+ * The audit's binding rule, as a predicate rather than a habit: **no `+ €`
+ * without a real cost authority for that exact relationship.** Everything
+ * else states its basis in words.
+ */
+export function rendersAmount(service: KgService): boolean {
+  const authority = costAuthorityOf(service)
+  return authority === 'direct'
+}
+
+/** Why an otherwise valid alternative cannot be chosen here, or `null`. */
+export function blockedVariantReason(
+  service: KgService, variant: string, en: boolean,
+): string | null {
+  const blocked = service.blockedVariants?.find((entry) => entry.value === variant)
+  if (!blocked) return null
+  return en ? blocked.reasonEn : blocked.reasonDe
+}
+
+/**
+ * Has this decision moved away from what the client documents said?
+ *
+ * `null` when the source does not specify the decision at all — which is a
+ * third state, not a deviation, and the UI says so in its own words.
+ */
+export function changedFromSource(
+  decisions: KgDecisions, service: KgService,
+): boolean | null {
+  const source = service.source
+  if (!source || source.variant === undefined) return null
+  const decision = serviceDecision(decisions, service)
+  if (decision.state === 'undecided') return null
+  const current = decision.variant ?? (
+    service.kind.kind === 'singleChoice' ? service.kind.baselineVariant : undefined
+  )
+  if (current === undefined) return null
+  return current !== source.variant
+}
+
+/** Every decision in the chapter that now differs from the client source. */
+export function proposalChanges(
+  chapter: KgChapter, decisions: KgDecisions,
+): readonly KgService[] {
+  return chapterServices(chapter).filter((service) =>
+    isApplicable(service) && changedFromSource(decisions, service) === true)
+}
+
+/* ── VR3-TGA-01 · the system overview ──────────────────────────────────── */
+
+export type KgSystemState =
+  | 'notApplicable' | 'partial' | 'open' | 'fromSource' | 'decided'
+
+export type KgSystemProgress = Readonly<{
+  groupId: string
+  state: KgSystemState
+  /** Required decisions that are applicable AND still unanswered. */
+  openDecisions: number
+  /** Applicable decisions that differ from the client source. */
+  changedFromSource: number
+  /** The system's own priced contribution, or `null` when it has none. */
+  amount: Decimal | null
+  costAuthority: KgCostAuthority
+}>
+
+/**
+ * One system row's state — the whole of what the overview needs.
+ *
+ * Ordered deliberately: `notApplicable` outranks everything, because a system
+ * the project makes moot cannot also be "open"; `partial` next; then real
+ * outstanding work; then provenance. A row never reports two of these at once,
+ * which is the state-grammar rule that a single green tick may never carry
+ * more than one axis.
+ */
+export function kgSystemProgress(
+  catalogue: KgCatalogue, decisions: KgDecisions, group: KgServiceGroup,
+): KgSystemProgress {
+  const services = systemServices(group)
+  const applicable = services.filter(isApplicable)
+  const open = applicable.filter((service) =>
+    service.requiresDecision
+    && serviceDecision(decisions, service).state === 'undecided').length
+  const changed = applicable.filter((service) =>
+    changedFromSource(decisions, service) === true).length
+  const contributions = applicable
+    .map((service) => serviceContribution(catalogue, decisions, service))
+    .filter((value): value is Decimal => value !== null)
+  const amount = contributions.length === 0
+    ? null
+    : contributions.reduce((sum, value) => sum.plus(value), new Decimal(0))
+  const authority = group.costAuthority
+    ?? (amount === null ? 'noBasis' : 'direct')
+  const state: KgSystemState = group.applicability?.state === 'notApplicable'
+    ? 'notApplicable'
+    : group.applicability?.state === 'partial'
+      ? 'partial'
+      : open > 0
+        ? 'open'
+        : applicable.every((service) => service.authority === 'sourceEvidenced')
+          && applicable.length > 0
+          && changed === 0
+          ? 'fromSource'
+          : 'decided'
+  return {
+    groupId: group.id,
+    state,
+    openDecisions: open,
+    changedFromSource: changed,
+    amount,
+    costAuthority: authority,
+  }
+}
+
+export type KgChapterOverview = Readonly<{
+  relevantSystems: number
+  decided: number
+  fromSource: number
+  open: number
+  notApplicable: number
+  partial: number
+  proposalChanges: number
+  amount: Decimal | null
+  directlyPriced: number
+  withoutPriceBasis: number
+}>
+
+/**
+ * The one summary line above the systems.
+ *
+ * Every number here has to correspond to something a user can act on: an
+ * "open" count that includes decisions nobody is entitled to make is the
+ * artificial completion metric the audit called out, and it is why
+ * `notApplicable` systems are counted separately rather than as outstanding
+ * work.
+ */
+export function kgChapterOverview(
+  catalogue: KgCatalogue, decisions: KgDecisions, chapter: KgChapter,
+): KgChapterOverview {
+  const progress = chapter.groups.map(
+    (group) => kgSystemProgress(catalogue, decisions, group),
+  )
+  const relevant = progress.filter(
+    (entry) => entry.state !== 'notApplicable',
+  )
+  const amounts = progress
+    .map((entry) => entry.amount)
+    .filter((value): value is Decimal => value !== null)
+  const applicable = chapter.groups
+    .flatMap(systemServices)
+    .filter(isApplicable)
+  return {
+    relevantSystems: relevant.length,
+    decided: progress.filter((entry) => entry.state === 'decided').length,
+    fromSource: progress.filter((entry) => entry.state === 'fromSource').length,
+    open: progress.filter((entry) => entry.state === 'open').length,
+    notApplicable: progress.filter((entry) => entry.state === 'notApplicable').length,
+    partial: progress.filter((entry) => entry.state === 'partial').length,
+    proposalChanges: proposalChanges(chapter, decisions).length,
+    amount: amounts.length === 0
+      ? null
+      : amounts.reduce((sum, value) => sum.plus(value), new Decimal(0)),
+    directlyPriced: applicable.filter((service) =>
+      costAuthorityOf(service) === 'direct').length,
+    withoutPriceBasis: applicable.filter((service) =>
+      costAuthorityOf(service) === 'noBasis').length,
+  }
+}
+
 /* ── validation ────────────────────────────────────────────────────────── */
 
 export type KgQuantityProblem = 'notANumber' | 'belowMinimum' | 'aboveMaximum'
@@ -312,6 +786,10 @@ export function serviceContribution(
 ): Decimal | null {
   const decision = serviceDecision(decisions, service)
   if (decision.state !== 'selected') return null
+  // A decision the project makes moot contributes nothing — and contributes
+  // `null`, not `0`: there is no priced position here, which is a different
+  // statement from a position that happens to be free (rule 16).
+  if (!isApplicable(service)) return null
   if (dependencyBlocker(catalogue, decisions, service)) return null
   const base = new Decimal(service.amount)
   switch (service.kind.kind) {
@@ -468,7 +946,15 @@ export function kgChapterProgress(
   const services = chapter
     ? chapter.groups.flatMap((g) => g.services)
     : []
-  const required = services.filter((s) => s.requiresDecision)
+  /**
+   * A decision the project makes moot is not outstanding work.
+   *
+   * Counting it would produce exactly the artificial completion metric the
+   * TGA audit named: a chapter that can never be finished because it is
+   * waiting on an answer nobody is entitled to give. `notApplicable` is a
+   * statement about the project, not a gap in the configuration.
+   */
+  const required = services.filter((s) => s.requiresDecision && isApplicable(s))
   const decided = required.filter((s) =>
     serviceDecision(decisions, s).state !== 'undecided')
   const invalid = services.filter((s) => {
@@ -573,4 +1059,98 @@ export function unpricedIncludedKgGroups(
   const amounts = kgGroupAmounts(catalogue, decisions)
   return KG_SCOPE_GROUPS.filter((g) =>
     decisions.scope[g] === 'included' && amounts[g] === null)
+}
+
+/* ── VR3-TGA-01 · cascading change ─────────────────────────────────────── */
+
+export type KgCascadeEffect = 'reset' | 'preserve'
+
+export type KgCascadeEntry = Readonly<{
+  service: KgService
+  group: KgScopeGroup
+  effect: KgCascadeEffect
+  /** What the decision holds now, so the dialogue can name it. */
+  currentVariant?: string
+  /** Its contribution today — what is at stake if it resets. */
+  currentAmount: Decimal | null
+}>
+
+export type KgCascade = Readonly<{
+  entries: readonly KgCascadeEntry[]
+  /** Does this change destroy something priced or client-relevant? */
+  material: boolean
+}>
+
+/**
+ * WHAT WOULD CHANGE, computed BEFORE the change is applied.
+ *
+ * The audit's five-step cascade, steps 1 and 2: reach every child by a live
+ * edge, and classify it. A child whose dependency still holds under the new
+ * value is `preserve` — and it is returned, not filtered out, because a
+ * dialogue that lists only losses reads as a warning and never tells the user
+ * whether the rest of their work is safe.
+ *
+ * `material` is the audit's own threshold for step 3: a reset that destroys a
+ * decision with real cost authority, or one the client sees, must be shown
+ * before it happens. Everything else may simply happen.
+ */
+export function kgCascadeFor(
+  catalogue: KgCatalogue,
+  decisions: KgDecisions,
+  serviceId: string,
+  next: KgServiceDecisionRecord,
+): KgCascade {
+  const after: KgDecisions = {
+    ...decisions,
+    services: { ...decisions.services, [serviceId]: next },
+  }
+  const entries: KgCascadeEntry[] = []
+  for (const service of allServices(catalogue)) {
+    if (service.id === serviceId) continue
+    if (service.dependsOn?.serviceId !== serviceId) continue
+    if (!isApplicable(service)) continue
+    const decision = serviceDecision(decisions, service)
+    // A decision nobody has taken cannot be destroyed by this change.
+    if (decision.state === 'undecided') continue
+    const blockedBefore = dependencyBlocker(catalogue, decisions, service) !== null
+    const blockedAfter = dependencyBlocker(catalogue, after, service) !== null
+    if (blockedBefore || !blockedAfter) {
+      entries.push({
+        service,
+        group: groupOfService(catalogue, service.id) ?? 'KG_400',
+        effect: 'preserve',
+        currentVariant: decision.variant,
+        currentAmount: serviceContribution(catalogue, decisions, service),
+      })
+      continue
+    }
+    entries.push({
+      service,
+      group: groupOfService(catalogue, service.id) ?? 'KG_400',
+      effect: 'reset',
+      currentVariant: decision.variant,
+      currentAmount: serviceContribution(catalogue, decisions, service),
+    })
+  }
+  const material = entries.some((entry) => entry.effect === 'reset' && (
+    entry.currentAmount !== null
+    || costAuthorityOf(entry.service) === 'direct'
+    || costAuthorityOf(entry.service) === 'bundle'
+  ))
+  return { entries, material }
+}
+
+/**
+ * The state a cascaded child returns to.
+ *
+ * `undecided` where the domain demands an answer — the row re-enters
+ * `Entscheidung offen` and the user is told where it is. `notSelected`
+ * otherwise, because a service that was included on a precondition that no
+ * longer holds is not included any more, and pretending it is undecided would
+ * invent work nobody owes.
+ */
+export function kgCascadeReset(service: KgService): KgServiceDecisionRecord {
+  return service.requiresDecision
+    ? { state: 'undecided' }
+    : { state: 'notSelected' }
 }

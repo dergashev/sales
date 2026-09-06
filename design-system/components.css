@@ -3141,7 +3141,14 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-kgp{min-width:0}
 .a3-kgp-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-5);margin-bottom:var(--space-5)}
 .a3-kgp-identity{min-width:0}
-.a3-kgp-title{font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:var(--type-heading-weight);color:var(--color-text-primary);margin:var(--space-1) 0 var(--space-2);overflow-wrap:break-word;hyphens:auto}
+/* A CHAPTER TITLE IS NOT A HERO METRIC (VR3-TGA-01, AC 5).
+   `--type-heading-1-desktop` is 48px — the exact size rule 31 reserves for
+   the Leitkennzahl and the Bauzeit. Printing the words "KG 400 · Technische
+   Anlagen" at it makes a label compete with the two numbers the whole
+   layout exists to rank, and the approved target frames set this heading at
+   32/40 for exactly that reason. The page keeps its `h1`; it stops
+   borrowing the hero's weight. */
+.a3-kgp-title{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:var(--type-heading-weight);color:var(--color-text-primary);margin:var(--space-1) 0 var(--space-2);overflow-wrap:break-word;hyphens:auto}
 .a3-kgp-progress{flex:0 0 auto;text-align:right}
 .a3-kgp-groupnav{margin-bottom:var(--space-4)}
 .a3-kgp-groupnav ul{display:flex;flex-wrap:wrap;gap:var(--space-2);list-style:none;margin:0;padding:0}
@@ -3156,6 +3163,10 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    rest. Giving the panel a `minmax(15rem, 560px)` let it claim half the
    stage and collapsed the service rows to one character per line. */
 .a3-kgp-stage{display:grid;grid-template-columns:minmax(0,1fr) var(--measure-context-panel-compact);gap:var(--space-5);align-items:start}
+/* A chapter that dissolved its context card gets the WHOLE stage. Leaving
+   the two-column template in place reserved a 20rem hole beside the work
+   and squeezed the system rows for a panel that is not there. */
+.a3-kgp-stage:not(:has(> .a3-kgp-context)){grid-template-columns:minmax(0,1fr)}
 .a3-kgp-services{min-width:0}
 .a3-kgp-context{min-width:0;border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-4)}
 .a3-kgp-dock{display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);margin-top:var(--space-5);padding-top:var(--space-4);border-top:var(--border-hairline)}
@@ -3264,6 +3275,191 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
   .a3-svcr-control{order:3;flex:1 1 100%}
   .a3-svcr-status{order:1;min-width:12ch}
   .a3-svcr-amount{order:2}
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   VR3-TGA-01 · Rahmen · Übersicht · System
+   Classes: .a3-rahmen · .a3-rahmen-grid · .a3-rahmen-cell · .a3-rahmen-key ·
+   .a3-rahmen-val · .a3-rahmen-meta · .a3-rahmen-act · .a3-sysum ·
+   .a3-sysum-fact · .a3-sysum-count · .a3-sysum-sep · .a3-sysum-total ·
+   .a3-sys · .a3-sys-h · .a3-sys-btn · .a3-sys-tw · .a3-sys-id ·
+   .a3-sys-name · .a3-sys-meta · .a3-sys-scope · .a3-sys-state ·
+   .a3-sys-glyph · .a3-sys-cost · .a3-sys-body · .a3-dec · .a3-dec-head ·
+   .a3-dec-name · .a3-dec-scope · .a3-dec-src · .a3-dec-srck · .a3-dec-srcv ·
+   .a3-dec-prop · .a3-dec-propk · .a3-dec-propv · .a3-dec-changed ·
+   .a3-dec-changed-mark · .a3-dec-why · .a3-dec-price · .a3-dec-pricek ·
+   .a3-dec-pricev · .a3-dec-note · .a3-dec-na · .a3-vrows · .a3-vrow ·
+   .a3-vrow-k · .a3-vrow-v · .a3-vrow-a · .a3-vrow-st · .a3-srule ·
+   .a3-srule-k · .a3-srule-b · .a3-srule-n · .a3-srule-s · .a3-bem ·
+   .a3-bem-h · .a3-bem-b · .a3-bem-t · .a3-conseq · .a3-conseq-sub ·
+   .a3-conseq-lbl · .a3-conseq-row · .a3-conseq-k · .a3-conseq-v ·
+   .a3-conseq-tot · .a3-conseq-acts
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Rahmen ───────────────────────────────────────────────────────────────
+   A BAND, not a card: the four conditions are context for everything below,
+   and boxing them would make them read as a fifth thing to work through.
+   Its top and bottom rules are the whole of its chrome. */
+.a3-rahmen{border-top:var(--border-contrast-2px);border-bottom:var(--border-hairline);padding:var(--space-2) 0;margin-bottom:var(--space-2)}
+/* Four fields on ONE row at both supported widths (contract), and `auto-fit`
+   rather than a fixed `repeat(4, 1fr)` so the band recomposes instead of
+   overflowing when a translation runs long. */
+/* FOUR FIELDS ON ONE ROW, at 1440 and at 1280 (responsive contract).
+   `auto-fit` + a 16ch floor gave three columns as soon as a German label
+   ran long, and the fourth condition — the All3 scope boundary, the one a
+   salesperson is asked about in the meeting — dropped onto its own line.
+   Four explicit tracks; the long labels wrap inside their own cell. */
+.a3-rahmen-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-3) var(--space-4);margin:0}
+.a3-rahmen-cell{min-width:0}
+.a3-rahmen-key{font-size:var(--type-caption-size);line-height:var(--type-caption-line);letter-spacing:var(--tracking-caption);text-transform:uppercase;color:var(--color-text-secondary)}
+.a3-rahmen-val{margin:0;font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-rahmen-meta{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
+.a3-rahmen-act{margin:0}
+
+/* ── Overview summary ─────────────────────────────────────────────────── */
+.a3-sysum{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2);margin:0 0 var(--space-2);padding-bottom:var(--space-2);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-sysum-fact{display:inline-flex;align-items:baseline;gap:var(--space-1)}
+.a3-sysum-count{color:var(--color-text-primary);font-variant-numeric:tabular-nums}
+.a3-sysum-sep{padding-right:var(--space-1);color:var(--color-text-muted)}
+.a3-sysum-total{margin-left:auto;color:var(--color-text-primary);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* ── System row ───────────────────────────────────────────────────────────
+   A row, not a card. Eight bordered cards would be the "excessive bordered
+   cards" pattern the product deliberately avoids, and the overview's job is
+   to be scannable in one pass. The hairline between rows is the whole of the
+   separation. */
+.a3-sys{border-bottom:var(--border-hairline)}
+.a3-sys:last-of-type{border-bottom:0}
+.a3-sys-h{margin:0;font-size:inherit;font-weight:inherit}
+/* DENSITY IS THE POINT OF AN OVERVIEW. Eight systems have to be scannable
+   in one pass, so the row spends its height on the three lines that carry
+   meaning and nothing on padding around them. Measured: 93px → 73px, which
+   is 160px of the page back across the eight rows. The 44px hit target is
+   unaffected — `min-height` still enforces it (rule 23). */
+.a3-sys-btn{position:relative;display:flex;width:100%;align-items:flex-start;gap:var(--space-3);min-height:var(--size-hit-target-default);padding:var(--space-2) var(--space-1);background:none;border:0;text-align:left;cursor:pointer;color:inherit;font:inherit}
+.a3-sys-btn:hover .a3-sys-name{text-decoration:underline}
+.a3-sys-btn:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:calc(var(--border-width-focus) * -1)}
+.a3-sys-tw{flex:0 0 auto;width:1ch;color:var(--color-text-secondary);line-height:var(--type-body-line)}
+.a3-sys-id{flex:1 1 22ch;min-width:0;display:grid;gap:2px}
+.a3-sys-name{font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-sys-meta{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
+.a3-sys-scope{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-muted)}
+/* The state is a WORD plus a glyph, never a colour alone (rule 8). Its
+   colour is a second channel on top of the two that already carry it. */
+.a3-sys-state{flex:0 0 auto;display:inline-flex;align-items:baseline;gap:var(--space-1);font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);letter-spacing:var(--tracking-caption);text-transform:uppercase;white-space:nowrap;color:var(--color-text-secondary)}
+.a3-sys-glyph{font-weight:var(--font-weight-bold)}
+.a3-sys[data-state="decided"] .a3-sys-state{color:var(--color-status-success)}
+.a3-sys[data-state="open"] .a3-sys-state,.a3-sys[data-state="partial"] .a3-sys-state{color:var(--color-status-warning)}
+.a3-sys-cost{flex:0 0 auto;min-width:12ch;text-align:right;font-variant-numeric:tabular-nums;color:var(--color-text-primary);white-space:nowrap}
+/* NORMAL IS QUIET. A system with nothing outstanding recedes; the ones that
+   want attention are the only ones that get it (audit: "good/normal state
+   should remain visually quiet"). */
+.a3-sys[data-state="notApplicable"] .a3-sys-name,.a3-sys[data-state="notApplicable"] .a3-sys-meta,.a3-sys[data-state="notApplicable"] .a3-sys-cost{color:var(--color-text-muted)}
+.a3-sys-body{padding:0 var(--space-1) var(--space-3) calc(1ch + var(--space-3) + var(--space-1))}
+
+/* ── Decision block ───────────────────────────────────────────────────── */
+.a3-dec{border-top:var(--border-hairline);padding:var(--space-2) 0}
+.a3-dec:first-child{border-top:0;padding-top:0}
+.a3-dec-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:var(--space-2)}
+.a3-dec-name{font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-dec-scope{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);white-space:nowrap}
+/* SOURCE AND PROPOSAL ARE TWO LINES, ALWAYS.
+   The whole chapter turns on their being different things: one is evidence
+   from the client's own documents, the other is what All3 is offering. A
+   single field showing "the value" is the collapse this rebuild exists to
+   undo, so the two never share a slot even when they agree. */
+.a3-dec-src,.a3-dec-prop{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2);margin:var(--space-1) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-dec-srck,.a3-dec-propk{flex:0 0 auto;min-width:14ch;color:var(--color-text-secondary)}
+.a3-dec-srcv{color:var(--color-text-secondary);overflow-wrap:break-word}
+.a3-dec-propv{color:var(--color-text-primary);font-weight:var(--font-weight-bold);overflow-wrap:break-word}
+ /* Agreement is the NORMAL case, so it is the quiet one: a word and a
+   glyph, no rule down the side. Deviation gets the emphasis because
+   deviation is what a salesperson has to be able to explain. */
+.a3-dec-matches{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);margin:var(--space-1) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-dec-matches-mark{color:var(--color-status-success)}
+.a3-dec-changed{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);margin:var(--space-1) 0 0;padding-left:var(--space-3);border-left:var(--border-width-strong) solid var(--color-status-warning);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
+.a3-dec-changed-mark{color:var(--color-status-warning);font-weight:var(--font-weight-bold)}
+.a3-dec-why{margin:var(--space-1) 0 0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
+.a3-dec-price{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2);margin:var(--space-1) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-dec-pricek{flex:0 0 auto;min-width:14ch;color:var(--color-text-secondary)}
+.a3-dec-pricev{color:var(--color-text-primary);font-variant-numeric:tabular-nums}
+/* "No separate price basis" is a STATEMENT, and a muted one: it is the
+   normal state of 92.7 % of TGA option rows, so rendering it at full weight
+   would shout the ordinary case at the user eight times a screen. */
+.a3-dec-pricev[data-muted]{color:var(--color-text-secondary)}
+.a3-dec-note{margin:var(--space-1) 0 0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
+.a3-dec-na{margin:var(--space-2) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-muted)}
+.a3-dec[data-na] .a3-dec-name{color:var(--color-text-muted)}
+
+/* ── Value rows inside one decision ───────────────────────────────────── */
+.a3-vrows{list-style:none;margin:var(--space-2) 0 0;padding:0;border-top:var(--border-hairline)}
+.a3-vrow{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2);padding:var(--space-1) 0;border-bottom:var(--border-hairline);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-vrow:last-child{border-bottom:0}
+.a3-vrow-k{flex:0 0 auto;min-width:14ch;color:var(--color-text-primary);font-weight:var(--font-weight-bold)}
+.a3-vrow-v{flex:1 1 20ch;min-width:0;color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
+.a3-vrow-a{flex:0 0 auto;margin-left:auto;text-align:right;font-variant-numeric:tabular-nums;color:var(--color-text-primary);white-space:nowrap}
+.a3-vrow[data-na] .a3-vrow-k,.a3-vrow[data-na] .a3-vrow-v,.a3-vrow[data-na] .a3-vrow-a{color:var(--color-text-muted)}
+.a3-vrow-st{display:inline-flex;align-items:baseline;gap:var(--space-1);white-space:nowrap}
+.a3-vrow-st[data-tone="ok"]{color:var(--color-status-success)}
+.a3-vrow-st[data-tone="attention"]{color:var(--color-status-warning)}
+
+/* ── Cross-system rule ────────────────────────────────────────────────── */
+.a3-srule{margin:var(--space-3) 0 0;padding:var(--space-3);background:var(--color-surface-subtle);border-left:var(--border-width-strong) solid var(--color-border-default)}
+.a3-srule-k{margin:0;font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word}
+.a3-srule-b{margin:var(--space-1) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-srule-n{margin:var(--space-2) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
+.a3-srule-s{margin:var(--space-2) 0 0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-muted)}
+
+/* ── Bemusterung boundary ─────────────────────────────────────────────── */
+.a3-bem{margin-top:var(--space-4);padding-top:var(--space-3);border-top:var(--border-contrast-1px)}
+.a3-bem-h{margin:0;font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-bem-b{margin:var(--space-1) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
+/* Rule 3a: every table sits in its own horizontal scroll container. */
+.a3-bem-toggle{margin:var(--space-2) 0 0}
+.a3-bem-t{display:block;overflow-x:auto;width:100%;margin:var(--space-3) 0 0;border-collapse:collapse;font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-bem-t th{text-align:left;padding:var(--space-1) var(--space-3) var(--space-1) 0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);letter-spacing:var(--tracking-caption);text-transform:uppercase;color:var(--color-text-secondary);border-bottom:var(--border-hairline);white-space:nowrap}
+.a3-bem-t td{padding:var(--space-1) var(--space-3) var(--space-1) 0;color:var(--color-text-primary);vertical-align:top;border-bottom:var(--border-hairline)}
+.a3-bem-t td:last-child{color:var(--color-text-secondary)}
+
+/* The Rahmen's one editable line opens IN PLACE, below the band, so the
+   condition and the decision that sets it stay in one place. */
+.a3-rahmen-open{margin-top:var(--space-3);padding-top:var(--space-3);border-top:var(--border-hairline)}
+
+/* ── Deviations from the client documents ─────────────────────────────────
+   Offered only when there ARE any: a review of nothing is a step. */
+.a3-tgarev{margin-top:var(--space-4);padding-top:var(--space-3);border-top:var(--border-hairline)}
+.a3-tgarev-h{margin:0}
+.a3-tgarev-list{list-style:none;margin:var(--space-2) 0 0;padding:0;display:grid;gap:var(--space-2)}
+.a3-tgarev-list li{display:grid;gap:var(--space-1);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-tgarev-list b{color:var(--color-text-primary)}
+.a3-tgarev-list span{color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
+
+/* ── Consequence dialogue ─────────────────────────────────────────────────
+   What changes, BEFORE it changes (frame T-04). It names the decisions that
+   SURVIVE as well as the ones that reset: a dialogue that lists only losses
+   reads as a warning, and the user cannot tell whether the rest of their
+   work is safe. */
+.a3-conseq{display:grid;gap:var(--space-3);min-width:0}
+.a3-conseq-sub{margin:0;color:var(--color-text-secondary);font-variant-numeric:tabular-nums;overflow-wrap:break-word}
+.a3-conseq-lbl{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);letter-spacing:var(--tracking-caption);text-transform:uppercase;color:var(--color-text-secondary)}
+.a3-conseq-row{display:grid;grid-template-columns:minmax(0,14rem) minmax(0,1fr);gap:var(--space-2) var(--space-4);padding:var(--space-2) 0;border-top:var(--border-hairline)}
+.a3-conseq-k{display:grid;gap:var(--space-1);min-width:0}
+.a3-conseq-k b{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);font-weight:var(--type-label-weight)}
+.a3-conseq-v{display:grid;gap:var(--space-1);min-width:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
+.a3-conseq-v b{color:var(--color-text-primary);font-weight:var(--type-label-weight)}
+.a3-conseq-row[data-effect="reset"] .a3-conseq-v b{color:var(--color-status-warning)}
+.a3-conseq-row[data-effect="preserve"] .a3-conseq-v b{color:var(--color-status-success)}
+.a3-conseq-tot{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:var(--space-3);padding-top:var(--space-3);border-top:var(--border-contrast-1px);font-weight:var(--font-weight-bold);font-variant-numeric:tabular-nums}
+.a3-conseq-acts{display:flex;flex-wrap:wrap;gap:var(--space-3)}
+
+@media (max-width:1439px){
+  /* 1280: the system row gives up its horizontal three-column tail before
+     the identity gives up any width. State and money stay on the row; the
+     summary keeps its own line. */
+  .a3-sys-id{flex:1 1 18ch}
+  .a3-sys-cost{min-width:10ch}
+  .a3-rahmen-grid{gap:var(--space-2) var(--space-4)}
+  .a3-conseq-row{grid-template-columns:minmax(0,1fr)}
 }
 
 /* VR3-03 · product compositions of the two Konfigurator surfaces.
