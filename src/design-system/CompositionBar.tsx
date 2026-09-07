@@ -1,5 +1,5 @@
 import { Decimal } from 'decimal.js'
-import { useTx } from '../i18n'
+import { localizeMoneyText, localizePercentText, useTx, useUiLanguage } from '../i18n'
 import { formatDE, label as moneyLabel, present, NNBSP } from '../engine/money'
 
 /**
@@ -102,6 +102,12 @@ export function CompositionBar({
   onDark?: boolean
 }) {
   const tx = useTx()
+  // Rule 36: numerals follow the UI locale. The engine composes German
+  // (`formatDE`/`label`); the ONE re-typesetting bridge turns it into the
+  // reader's grouping — the rounding is untouched (see i18n/index.ts).
+  const language = useUiLanguage()
+  const money = (d: Decimal) => localizeMoneyText(moneyLabel(present(d), unit), language)
+  const pct = (d: Decimal) => localizePercentText(`${formatDE(d, 0)}${NNBSP}%`, language)
   const reconciled = reconcileComposition(segments, total)
   const hasRemainder = reconciled.remainder.greaterThan(0)
   const remainderLabel = incompleteLabel ?? tx('Preis nicht ermittelt')
@@ -115,7 +121,7 @@ export function CompositionBar({
         role="img"
         aria-label={
           reconciled.segments.map((s) =>
-            `${s.label} ${moneyLabel(present(s.value), unit)} · ${formatDE(s.percent, 0)}${NNBSP}%`,
+            `${s.label} ${money(s.value)} · ${pct(s.percent)}`,
           ).join(' · ') + (hasRemainder ? ` · ${remainderLabel}` : '')
         }
       >
@@ -148,16 +154,16 @@ export function CompositionBar({
                 style={{ background: CATEGORY_VAR(s.categorySlot) }}
               />
               <span className="flex-1">{s.label}</span>
-              <span className={`numeric ${primaryText}`}>{moneyLabel(present(s.value), unit)}</span>
-              <span className={`numeric ${secondaryText}`}>{formatDE(s.percent, 0)}{NNBSP}%</span>
+              <span className={`numeric ${primaryText}`}>{money(s.value)}</span>
+              <span className={`numeric ${secondaryText}`}>{pct(s.percent)}</span>
             </li>
           ))}
           {hasRemainder && (
             <li className={`flex items-center gap-2 text-small ${secondaryText}`}>
               <span aria-hidden="true" className="inline-block h-3 w-3 shrink-0" style={{ background: 'var(--color-dataviz-neutral)' }} />
               <span className="flex-1">{remainderLabel}</span>
-              <span className={`numeric ${primaryText}`}>{moneyLabel(present(reconciled.remainder), unit)}</span>
-              <span className="numeric">{formatDE(reconciled.remainderPercent, 0)}{NNBSP}%</span>
+              <span className={`numeric ${primaryText}`}>{money(reconciled.remainder)}</span>
+              <span className="numeric">{pct(reconciled.remainderPercent)}</span>
             </li>
           )}
         </ul>

@@ -6,10 +6,19 @@ import { CONFIGURATOR_STEP } from '../../state/chapters'
 import {
   confirmBuildingReviewSections, confirmWholeConfiguration, enterOptionWorkspace,
   completeBuildingScope, decideAllKgScope, completeKgConfiguration,
-  saveOptionBaseline, startClientPresentation,
+  saveOptionBaseline,
   openPresentStage,
 } from '../../test/offer-option'
 import { __resetStoreForTests, useStore } from '../../state/store'
+
+/**
+ * VR3-CP-00: Client Mode has no entry boundary any more — the gate dialog's
+ * "Kundenansicht starten" lands directly in the PresentationShell, whose one
+ * presenter bar (`region "Präsentation"`) is on screen in both the narrative
+ * and its honest "not ready" fallback. The gate's close and the shell swap
+ * are two renders, hence `findByRole`.
+ */
+const awaitClientShell = () => screen.findByRole('region', { name: 'Präsentation' })
 
 /**
  * Клавиатурные маршруты и фокус — правило проекта 22 и контракты
@@ -305,19 +314,19 @@ describe('Гейт режима презентации — блокировка 
     await user.click(praesentation)
     expect(useStore.getState().mode).toBe('intern')
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
-    // VR3-05 (T-034): Client Mode opens on its boundary screen; the
-    // narrative these suites are about begins one deliberate click later.
-    await startClientPresentation(user)
+    await awaitClientShell()
     expect(useStore.getState().mode).toBe('praesentation')
     expect(useStore.getState().gateOpen).toBe(false)
     await waitFor(() => expect(screen.queryByRole('dialog', { name: /Bereit für die Präsentation/ })).toBeNull())
-    // REDESIGN R3 WAVE 2a (ce17da51): Kundenansicht is now ONE
-    // PresentationShell document, not a per-chapter router that lands on
-    // whatever chapter was last open internally — its H1 is always the
-    // project's own name (§1 Projekt is always the opening section; here
-    // the Option isn't yet client-eligible either, so the shell's honest
-    // "not ready" fallback renders, whose H1 is the same project name).
-    expect(screen.getByRole('heading', { level: 1, name: 'Wohnhof Lindenhain' })).toHaveFocus()
+    // VR3-CP-00: the shell lands on chapter 1 "Angebot", never on whatever
+    // chapter was last open internally — its H1 is the project's own name
+    // (and the honest "not ready" fallback's H1 is the same project name),
+    // and that heading is the mode-entry focus target. Scoped to the stage
+    // (`<main>`): the printed sheet (`.a3-client-print-doc`, CSS
+    // `display:none` on screen) carries an H1 of the same name, and jsdom
+    // applies no stylesheet.
+    expect(within(screen.getByRole('main')).getByRole('heading', { level: 1, name: 'Wohnhof Lindenhain' }))
+      .toHaveFocus()
   })
 })
 
@@ -445,11 +454,12 @@ describe('DC-33 · единственная модалка системы — в
     await user.click(trigger)
     const dialog = screen.getByRole('dialog', { name: /Bereit für die Präsentation/ })
     expect(dialog.contains(document.activeElement)).toBe(true)
-    // Показано ИМЕННО то, что перестанет быть видимым. Ворота открываются
-    // теперь со стадии «Präsentieren», где Option уже сохранена, поэтому
-    // это полная формулировка профиля выдачи, а не её укороченный вариант
-    // для предшествующего шага Gebäude & Umfang.
-    expect(within(dialog).getByText(/Marge, Δ-Werte, KG-700-Modus/))
+    // Показано ИМЕННО то, что перестанет быть видимым. VR3-CP-00 оставил
+    // одну формулировку со ссылкой на профиль выдачи: перечень ярлыков
+    // («Marge, Δ-Werte, KG-700-Modus…») был вторым списком рядом с
+    // нормативным определением (output-model §6.5) и снят как заготовка
+    // для расхождения.
+    expect(within(dialog).getByText(/in der Kundenansicht ausgeblendet/))
       .toBeInTheDocument()
 
     await user.keyboard('{Escape}')
@@ -463,9 +473,7 @@ describe('DC-33 · единственная модалка системы — в
     openPresentStage()
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
-    // VR3-05 (T-034): Client Mode opens on its boundary screen; the
-    // narrative these suites are about begins one deliberate click later.
-    await startClientPresentation(user)
+    await awaitClientShell()
     expect(useStore.getState().mode).toBe('praesentation')
   })
 })
@@ -486,9 +494,7 @@ describe('Preparation navigation cleanup', () => {
     openPresentStage()
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
-    // VR3-05 (T-034): Client Mode opens on its boundary screen; the
-    // narrative these suites are about begins one deliberate click later.
-    await startClientPresentation(user)
+    await awaitClientShell()
 
     expect(screen.queryByRole('button', { name: /Rundgang/ })).toBeNull()
     act(() => useStore.getState().setTourOpen(true))

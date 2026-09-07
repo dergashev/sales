@@ -86,6 +86,12 @@ const OWNED_SURFACES = [
   'src/components/ClientNarrative.tsx',
   'src/components/ClientScenario.tsx',
   'src/components/ClientOutputs.tsx',
+  // VR3-CP-00: the ten-chapter proposal narrative. The chapters render ONE
+  // declared client projection, so the projection module is an owned
+  // surface too — it is where the client's strings are now resolved.
+  'src/components/ClientCommercial.tsx',
+  'src/components/ClientClosing.tsx',
+  'src/state/clientProposal.ts',
   // Documents workspace rebuild — the two canonical additions the accepted
   // 2026-09-05 audit required, plus the register they are composed into.
   'src/design-system/WorkflowNavigator.tsx',
@@ -207,12 +213,11 @@ describe('VR3-01 · nothing on the owned surfaces can reach EN untranslated', ()
       // test. Rendered raw it left "GESAMT NETTO · GRUNDLEISTUNG ALL3"
       // standing over an English presentation's largest number (QA-01's
       // family, cycle 2).
-      'src/components/ClientNarrative.tsx: tx(result.totalLabel)',
-      // The same label on the CLIENT-SAFE PRINT DOCUMENT — the artefact the
-      // client keeps. Its number was localised in cycle 2 and its label was
-      // not, so the sheet read "38,850,000" over "Gesamt netto ·
-      // Grundleistung All3" (QA-02). Bridged now, like its on-screen twin.
-      'src/components/ClientOutputs.tsx: tx(result.totalLabel)',
+      // VR3-CP-00 moved BOTH of those calls into the one client projection
+      // (`clientProposal.ts`): the stage and the sheet render the same
+      // already-bridged `signature`, so neither can forget the bridge.
+      // The rounding disclosure is the same class — engine-composed German
+      // with a dictionary row — bridged once, in the same place.
       'src/components/PresentationShell.tsx: tx(p.leadRate.denominatorLabel)',
       'src/components/PresentationShell.tsx: tx(p.result.totalLabel)',
       'src/components/PresentationShell.tsx: tx(p.result.totalLabel)',
@@ -227,6 +232,8 @@ describe('VR3-01 · nothing on the owned surfaces can reach EN untranslated', ()
       // the same label once more, on the stage that presents it.
       'src/screens/PraesentierenStage.tsx: tx(saved.result.totalLabel)',
       'src/screens/ProjectOptions.tsx: tx(saved.result.totalLabel)',
+      'src/state/clientProposal.ts: tx(result.total.disclosure)',
+      'src/state/clientProposal.ts: tx(result.totalLabel)',
     ])
   })
 
@@ -380,6 +387,9 @@ describe('VR3 · an engine-composed German label is never rendered bare', () => 
     'src/components/ClientNarrative.tsx',
     'src/components/ClientScenario.tsx',
     'src/components/ClientOutputs.tsx',
+    'src/components/ClientCommercial.tsx',
+    'src/components/ClientClosing.tsx',
+    'src/state/clientProposal.ts',
   ]
   /** Fields the engine composes in German by contract. */
   const BRIDGED_LABELS = ['totalLabel']

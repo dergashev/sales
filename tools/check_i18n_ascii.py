@@ -83,6 +83,9 @@ LOCALE_ASCII_ALLOWLIST = frozenset({
     # Documents workspace: the same 'quelle' family again — the register's
     # empty state names the source documents that are absent.
     'quelldokument', 'quelldokumente', 'quelldokumenten',
+    # VR3-CP-00: the client presentation's tax note — 'Umsatzsteuer' is
+    # 'Umsatz' + 'Steuer'; the 'ue' is a compound seam, not an umlaut.
+    'umsatzsteuer',
     'visuelt',  # Schriftname (Eigenname), keine Transliteration
     'zuerst',
 })

@@ -53,6 +53,19 @@ describe('D-28 component/specimen registry', () => {
       expect(source, consumer).toContain("from './Dialog'")
       expect(source, consumer).not.toContain('createPortal')
     }
+    /**
+     * The list above resolved against `src/components` only, so a modal
+     * opened from a CANONICAL Design System module was outside the check
+     * entirely — and the client-facing MediaGallery is exactly that: a
+     * full-screen inspection living in `src/design-system`. The import
+     * specifier differs by one path segment, which is why it is asserted
+     * separately rather than folded into the loop above.
+     */
+    for (const consumer of ['MediaGallery.tsx']) {
+      const source = readFileSync(resolve('src/design-system', consumer), 'utf8')
+      expect(source, consumer).toContain("from '../components/Dialog'")
+      expect(source, consumer).not.toContain('createPortal')
+    }
     expect(MOTION).toContain('useFramerReducedMotion')
     for (const token of [
       '--motion-feedback', '--motion-reveal', '--motion-reorder', '--stagger-wave',

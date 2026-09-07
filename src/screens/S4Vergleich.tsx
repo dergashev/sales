@@ -1,21 +1,24 @@
 import { useRef, useState } from "react";
-import { Decimal } from "decimal.js";
 import {
-  configForOption,
-  eligibleClientOptions,
-  projectionForOption,
   resolvedViewedOptionId,
   useStore,
   type OptionConfig,
 } from "../state/store";
-import { demoProject } from "../state/projectAnalysis";
 import {
-  NNBSP,
-  present,
-  formatDE,
-  rateLabel,
-  label as moneyLabel,
-} from "../engine/money";
+  COMPARISON_VISIBLE_COLUMN_LIMIT,
+  buildingLabel as buildingLabelOf,
+  comparisonColumns,
+  comparisonGroups,
+  comparisonRows,
+  delta,
+  formatDate,
+  money,
+  perBuilding,
+  visibleComparisonRows,
+  type ComparisonRow,
+} from "../state/optionComparison";
+import { demoProject } from "../state/projectAnalysis";
+import { NNBSP, present, label as moneyLabel } from "../engine/money";
 import { Button } from "../components/primitives";
 import {
   Badge,
@@ -48,13 +51,11 @@ import { buildKgCompositionSegments } from "../components/costComposition";
  * (VARIANT-001): звезда зарезервирована за целевым оффером и базу
  * сравнения не означает. Интервал точности у каждой Option свой: он
  * сужается подтверждениями, а подтверждения принадлежат Option (D-19).
+ *
+ * D-20: модель сравнения (колонки, строки, правило видимости, группы)
+ * живёт в `state/optionComparison.ts` и здесь только рисуется. Второго
+ * сравнения в продукте больше нет.
  */
-
-const ES_LABEL: Record<string, string> = {
-  GEG: "GEG",
-  EH_55: `EH${NNBSP}55`,
-  EH_40: `EH${NNBSP}40`,
-};
 
 export function S4Vergleich() {
   const s = useStore();
@@ -90,21 +91,10 @@ export function S4Vergleich() {
 // `fixtures/opportunities.json` this used to read is gone with the
 // portfolio it described.
   const project = demoProject(s.opportunityId);
-  // REDESIGN R3: only client-eligible Options (the PD-3 export-readiness
-  // signal — `eligibleClientOptions`) may become a column/selectable Option
-  // in Kundenansicht. Vorbereitung keeps seeing every created Option,
-  // ready or not — that is exactly what preparation work is for.
-  const eligibleIds = client
-    ? new Set(eligibleClientOptions(s).map((o) => o.id))
-    : null;
   const viewedId = resolvedViewedOptionId(s);
 
-  const cols = s.options.flatMap((o) => {
-    if (eligibleIds && !eligibleIds.has(o.id)) return [];
-    const cfg = configForOption(s, o.id);
-    const p = projectionForOption(s, o.id);
-    return cfg && p ? [{ option: o, cfg, p }] : [];
-  });
+  // D-20: the ONE comparison authority — client-mode eligibility included.
+  const cols = comparisonColumns(s);
 
   if (cols.length === 0) {
     if (client && s.options.length > 0) {
@@ -145,155 +135,19 @@ export function S4Vergleich() {
   // resolved directly on each `<th>` below (no header-level context line
   // duplicates them since ACCEPTANCE REMEDIATION cycle 2 / ACCEPT-01).
 
-  const money = (d: Decimal) => {
-    const pr = present(d);
-    return `${pr.prefix}${pr.prefix ? NNBSP : ""}${pr.display}`;
-  };
-  const delta = (d: Decimal) => {
-    if (d.isZero()) return "—";
-    const pr = present(d.abs());
-    const sign = d.isNegative() ? "−" : "+";
-    return `${sign}${NNBSP}${pr.prefix ? pr.prefix + NNBSP : ""}${pr.display}`;
-  };
-  const perBuilding = (cfg: OptionConfig, f: (id: string) => string) =>
-    Object.keys(cfg.buildings)
-      .filter((id) => cfg.included[id])
-      .map(f)
-      .join(" · ");
-  // QA (Rebuild Configurator Workspace, AC-11): falling back to the raw `id`
-  // whenever `client` was false leaked fixture ids (e.g. "DEMO-B-A") into
-  // Vorbereitung, which is still human-facing, just not the final client
-  // artifact. `stableName` is fixture-level data (present in every mode),
-  // so resolve it unconditionally — never the raw id.
+  // D-20: labels are the screen's business, values are not — the row model
+  // (order, groups, wording, visibility) belongs to `optionComparison`.
   const buildingLabel = (id: string, config: OptionConfig) =>
-    config.buildings[id]?.stableName ?? tx("Gebäude");
-
-  type Sub = { text: string; save: boolean } | null;
-  type Row = {
-    label: string;
-    group: string;
-    cells: string[];
-    subCells?: Sub[];
-  };
-
-  // VR2-05: the total + its delta now live in the column header itself
-  // (DC-11 anatomy: `columnHeader → cell → value.numeric → delta`), directly
-  // under Option identity — one coherent price/consequence scan path
-  // instead of a duplicate body row. Values/semantics are unchanged; only
-  // the row this exact total/delta pair renders in.
-  const rows: Row[] = [
-    {
-      // Each Option can carry a different building set and therefore a
-      // different typed denominator. The denominator travels with its cell;
-      // a shared row label may never borrow it from the base column.
-      group: "ERGEBNIS",
-      label: t("comparison.leadRate"),
-      cells: cols.map((c) => rateLabel(c.p.leadRate)),
-    },
-    {
-      group: "ERGEBNIS",
-      label: "Schätzunsicherheit",
-      cells: cols.map((c) => `±${NNBSP}${c.p.uncertaintyPp}${NNBSP}%`),
-    },
-    {
-      group: "ERGEBNIS",
-      label: "Bauzeit (ab OKBP)",
-      cells: cols.map(
-        (c) =>
-          `${c.p.duration.prefix}${c.p.duration.prefix ? NNBSP : ""}${c.p.duration.display}`,
-      ),
-    },
-    {
-      group: "ERGEBNIS",
-      label: "Fertigstellung",
-      cells: cols.map((c) => formatDate(c.p.duration.completionDate)),
-    },
-    {
-      group: "UMFANG",
-      label: "Gebäude im Angebot",
-      cells: cols.map((c) =>
-        perBuilding(c.cfg, (id) => buildingLabel(id, c.cfg)),
-      ),
-    },
-    {
-      group: "UMFANG",
-      label: "Untergeschoss",
-      cells: cols.map((c) =>
-        perBuilding(c.cfg, (id) =>
-          c.cfg.buildings[id]!.untergeschoss === "kein_ug"
-            ? `${buildingLabel(id, c.cfg)}: nicht Bestandteil`
-            : `${buildingLabel(id, c.cfg)}: enthalten`,
-        ),
-      ),
-    },
-    {
-      group: "UMFANG",
-      label: "BGF unterirdisch (m²)",
-      cells: cols.map((c) =>
-        formatDE(
-          Object.keys(c.cfg.buildings)
-            .filter(
-              (id) =>
-                c.cfg.included[id] &&
-                c.cfg.buildings[id]!.untergeschoss !== "kein_ug",
-            )
-            .reduce(
-              (a, id) => a.plus(c.cfg.buildings[id]!.bgfBelowGround),
-              new Decimal(0),
-            ),
-          2,
-        ),
-      ),
-    },
-    ...(!client
-      ? [
-          {
-            group: "UMFANG",
-            label: "KG 700",
-            cells: cols.map((c) =>
-              c.cfg.kg700Mode === "hoaiAho"
-                ? "nach HOAI und AHO als eigene Position"
-                : "im All3-Verfahren 70/22/8 verteilt",
-            ),
-          },
-        ]
-      : []),
-    {
-      group: "QUALITÄT",
-      label: "Energiestandard",
-      cells: cols.map((c) =>
-        perBuilding(
-          c.cfg,
-          (id) =>
-            `${buildingLabel(id, c.cfg)}: ${ES_LABEL[c.cfg.buildings[id]!.energiestandard]}`,
-        ),
-      ),
-    },
-    {
-      group: "QUALITÄT",
-      label: "Klassifikation nach MBO §2",
-      cells: cols.map((c) =>
-        perBuilding(c.cfg, (id) =>
-          c.cfg.buildings[id]!.gebaeudeklasse.confirmed
-            ? `${buildingLabel(id, c.cfg)}: ✓ bestätigt`
-            : `${buildingLabel(id, c.cfg)}: ▲ nicht bestätigt`,
-        ),
-      ),
-    },
-  ];
-
-  // «Различается» — вычисляется из ячеек, а не объявляется: строка с
-  // одинаковыми значениями во всех колонках различием не является.
-  const visible = rows.filter(
-    (r) => showAll || new Set(r.cells).size > 1 || r.group === "ERGEBNIS",
-  );
-  const groups = [...new Set(visible.map((r) => r.group))];
+    buildingLabelOf(id, config, tx);
+  const rows = comparisonRows(cols, { t, tx, client });
+  const visible = visibleComparisonRows(rows, showAll);
+  const groups = comparisonGroups(visible);
 
   // ACCEPTANCE REMEDIATION (cycle 2, ACCEPT-02): the shell (components.css
   // `--cmp-visible-cols`) always fits exactly three Option columns at the
   // full container width, at any supported viewport — a fourth+ Option is
   // the first one that ever needs the horizontal scrollport.
-  const mayOverflow = cols.length > 3;
+  const mayOverflow = cols.length > COMPARISON_VISIBLE_COLUMN_LIMIT;
 
   return (
     <div className="px-7 py-6">
@@ -795,11 +649,7 @@ function GroupRows({
 }: {
   group: string;
   span: number;
-  rows: Array<{
-    label: string;
-    cells: string[];
-    subCells?: Array<{ text: string; save: boolean } | null>;
-  }>;
+  rows: readonly ComparisonRow[];
 }) {
   if (!rows.length) return null;
   return (
@@ -815,7 +665,7 @@ function GroupRows({
         </th>
       </tr>
       {rows.map((r) => (
-        <tr key={r.label}>
+        <tr key={r.id}>
           <th scope="row" className="text-text-secondary">
             {r.label}
           </th>
@@ -838,9 +688,4 @@ function GroupRows({
       ))}
     </>
   );
-}
-
-function formatDate(iso: string): string {
-  const [y, m, d] = iso.split("-");
-  return `${d}.${m}.${y}`;
 }

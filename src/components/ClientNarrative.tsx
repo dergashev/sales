@@ -1,768 +1,565 @@
-import type { Ref } from 'react'
-import { Decimal } from 'decimal.js'
-import {
-  clientSchedulePhases,
-  clientScheduleDerivation,
-  useStore,
-  type ClientScenarioSnapshot,
-} from '../state/store'
-import type { SavedOptionVersion } from '../state/optionSave'
-import type { ScopeBuilding } from '../state/optionBuildingScope'
-import { scopeMetricValue } from '../state/optionBuildingScope'
-import { KG_SCOPE_GROUPS, chapterOf, kgCatalogue } from '../engine/kgConfiguration'
-import type { KgCatalogue, KgScopeDecision, KgScopeGroup } from '../engine/kgConfiguration'
-import { rateUnit } from '../engine/money'
-import { projectAsset } from '../assets/project-media'
+import type { ReactNode, Ref } from 'react'
+import type {
+  ClientBuilding,
+  ClientMetric,
+  ClientProposal,
+} from '../state/clientProposal'
 import { MediaFrame } from '../design-system/MediaFrame'
 import { CommercialNumber } from '../design-system/CommercialNumber'
-import { localizeMoneyText, useT, useTx } from '../i18n'
-import { Button } from './primitives'
+import { DataTable, type DataTableRow } from '../design-system/DataTable'
+import { EstimateUncertaintyBadge } from './EstimateUncertaintyBadge'
+import { localizeMoneyText, useT } from '../i18n'
 
 /**
- * VR3-05 — THE CLIENT NARRATIVE.
+ * VR3-CP-00 — THE CLIENT NARRATIVE, chapters 1–4.
  *
- * Six sections, in the order a client understands a project rather than the
- * order the internal workflow built it:
+ * ## What changed, and why
  *
- *   PROJECT → BUILDINGS → SCOPE → SERVICES → SCHEDULE → INVESTMENT
+ * The surface this replaces was an internal product screen with a client
+ * banner over it. Its first client-visible screen was an internal hygiene
+ * notice — an eyebrow reading `VORBEREITUNG → KUNDENPRÄSENTATION`, a
+ * headline about showing a saved Option rather than the working state, and a
+ * checklist naming preparation vocabulary — under a live region announcing
+ * that the client is looking at this screen. The price was chapter 6 of 6.
+ * There was no address, no offer date and no legal entity anywhere.
  *
- * The preparation journey runs the other way round — scope decisions before
- * buildings, KG order 200…700, money last as a consequence. That order is
- * correct for the person assembling the offer and wrong for the person
- * hearing it: a client needs to know WHAT this is and WHERE it stands before
- * a cost group means anything. The two orders are allowed to differ because
- * they answer different questions, and this module is where the second one
- * is written down.
+ * The order is now the order a proposal is actually made:
  *
- * ## Everything reads the presented snapshot
+ * ```
+ * 1 ANGEBOT       who this is for, and what it is
+ * 2 ÜBERBLICK     what it costs — early, at full scale
+ * 3 DAS PROJEKT   what we understood
+ * 4 DIE GEBÄUDE   how it is made up            (≥ 2 buildings)
+ * ```
  *
- * Every page takes its numbers, buildings, services and schedule from ONE
- * `ClientScenarioSnapshot` — the state the presentation is currently showing,
- * baseline or scenario. That is what makes a what-if recompose the STORY and
- * not just the total: the services page, the schedule page and the
- * investment page are three readings of the same object, so they cannot
- * disagree about which decisions are in force. A page that reached into the
- * store for its own copy would be the "one number, two meanings" defect the
- * programme has recorded twice already.
+ * ## One reading of one model
  *
- * ## Client-safe by absence
- *
- * There is no internal identifier, confidence value, OCR diagnostic, CRM
- * field or private note in this file — not hidden with CSS, not filtered out
- * at render time: ABSENT from what these components are given. The Option's
- * id is never rendered; its NAME is, because a client is told which offer
- * they are looking at. Asset ids reach the DOM only through `MediaFrame`'s
- * `sourceId` data attribute, which is audit tooling and not client content.
+ * Every chapter takes a `ClientProposal` and nothing else — no store, no
+ * engine, no catalogue. The live stage and the printed sheet are two
+ * renderings of the same object, so they cannot disagree about a fact
+ * neither of them computes. Anything absent from that object is absent from
+ * the client's screen by construction, which is the only form of the
+ * client-safety boundary that survives a new field being added upstream.
  */
-
-/* ────────────────────────────── the sections ─────────────────────────── */
-
-export const NARRATIVE_SECTIONS = [
-  'project', 'buildings', 'scope', 'services', 'schedule', 'investment',
-] as const
-
-export type NarrativeSectionId = typeof NARRATIVE_SECTIONS[number]
-
-export const SECTION_LABEL_KEY: Record<NarrativeSectionId, string> = {
-  project: 'vr3.client.nav.project',
-  buildings: 'vr3.client.nav.buildings',
-  scope: 'vr3.client.nav.scope',
-  services: 'vr3.client.nav.services',
-  schedule: 'vr3.client.nav.schedule',
-  investment: 'vr3.client.nav.investment',
-}
-
-/**
- * Everything the narrative needs, resolved once by the shell.
- *
- * A single prop rather than six: the pages must be reading ONE state, and a
- * type that can only be constructed whole is how that is enforced rather
- * than asked for.
- */
-export type ClientView = {
-  optionName: string
-  savedVersion: SavedOptionVersion | null
-  /** The state being shown: the saved baseline, or the scenario. */
-  presented: ClientScenarioSnapshot
-  /** The saved baseline, always — the authority the presentation speaks for. */
-  baseline: ClientScenarioSnapshot
-  projectName: string
-  projectHeroAssetId: string | null
-  language: 'de' | 'en'
-}
 
 /* ───────────────────────────── shared pieces ─────────────────────────── */
 
-/**
- * One narrative section, as a LANDMARK.
- *
- * `aria-label` carries the same word the rail carries, so moving through the
- * story announces WHERE the reader now is — the ticket's "section nav is
- * keyboard operable and announces location". Meeting-scale type does not
- * replace semantics; this is the semantics.
- */
-function PageFrame({ children, label }: {
-  children: React.ReactNode
+/** One chapter, as a landmark carrying the name the rail carries. */
+export function ChapterFrame({ children, label, tone }: {
+  children: ReactNode
   label: string
+  tone?: 'ground' | 'stage'
 }) {
   return (
-    <section aria-label={label} className="a3-client-page">
+    <section
+      aria-label={label}
+      className={tone === 'stage' ? 'a3-cp-chapter a3-cp-chapter-stage' : 'a3-cp-chapter'}
+    >
       {children}
     </section>
   )
 }
 
-function PageLede({ eyebrow, title, headingRef, lede }: {
+export function ChapterLede({ eyebrow, title, headingRef, lede }: {
   eyebrow: string
   title: string
   headingRef: Ref<HTMLHeadingElement>
   lede?: string
 }) {
   return (
-    <header className="a3-client-lede">
-      <p className="a3-client-eyebrow">{eyebrow}</p>
-      <h1 ref={headingRef} tabIndex={-1} className="a3-client-title">{title}</h1>
-      {lede ? <p className="a3-client-sub">{lede}</p> : null}
+    <header className="a3-cp-lede">
+      <p className="a3-cp-eyebrow">{eyebrow}</p>
+      <h1 ref={headingRef} tabIndex={-1} className="a3-cp-title">{title}</h1>
+      {lede ? <p className="a3-cp-sub">{lede}</p> : null}
     </header>
   )
 }
 
-/** A white editorial panel. The narrative's only container. */
 export function ClientPanel({ title, children, className }: {
   title?: string
-  children: React.ReactNode
+  children: ReactNode
   className?: string
 }) {
   return (
-    <article className={`a3-client-panel${className ? ` ${className}` : ''}`}>
-      {title ? <h2 className="a3-client-panel-title">{title}</h2> : null}
+    <article className={className ? `a3-cp-panel ${className}` : 'a3-cp-panel'}>
+      {title ? <h2 className="a3-cp-panel-title">{title}</h2> : null}
       {children}
     </article>
   )
 }
 
-/** A label/value row. The narrative's only table. */
 export function ClientFactRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="a3-client-row">
-      <span className="a3-client-row-label">{label}</span>
-      <span className="a3-client-row-value numeric">{value}</span>
+    <div className="a3-cp-row">
+      <span className="a3-cp-row-label">{label}</span>
+      <span className="a3-cp-row-value numeric">{value}</span>
     </div>
   )
 }
 
-function metricNumber(value: string | null): Decimal | null {
-  if (value === null) return null
-  const parsed = new Decimal(value)
-  return parsed.isZero() ? null : parsed
+/**
+ * A co-hero metric (DC-38 / rule 31).
+ *
+ * Three sizes and no more: `lead` is the single brand-accent total at 64 px,
+ * `co` is a black 48 px co-hero, `fact` is a supporting statement. The
+ * defect this replaces rendered the lead rate and the Bauzeit at 16 px with
+ * 14 px labels — key metrics at footnote size, beside a correct 64 px total.
+ *
+ * The unit sits on the same baseline at a smaller size, never on its own
+ * line and never in a footnote.
+ */
+export function MetricHero({ variant, label, value, unit, note, accent }: {
+  variant: 'lead' | 'co' | 'fact'
+  label: string
+  value: string
+  unit?: string | null
+  note?: string | null
+  accent?: boolean
+}) {
+  const valueClass = variant === 'lead'
+    ? 'a3-cp-metric-lead numeric'
+    : variant === 'co' ? 'a3-cp-metric-co numeric' : 'a3-cp-metric-fact'
+  return (
+    <div className="a3-cp-metric">
+      <p className="a3-cp-metric-label">{label}</p>
+      <p className={accent ? `${valueClass} a3-display-accent` : valueClass}>
+        {value}
+        {unit ? <span className="a3-cp-metric-unit">{unit}</span> : null}
+      </p>
+      {note ? <p className="a3-cp-metric-note">{note}</p> : null}
+    </div>
+  )
 }
 
-function areaText(value: string | null, language: 'de' | 'en'): string {
-  const exact = metricNumber(value)
-  if (exact === null) return '—'
-  return new Intl.NumberFormat(language === 'en' ? 'en-GB' : 'de-DE', {
-    maximumFractionDigits: 0,
-  }).format(exact.toNumber()) + ' ' + 'm²'
-}
-
-function monthsText(halfMonths: number | null, language: 'de' | 'en'): string {
-  if (halfMonths === null) return '—'
-  return new Intl.NumberFormat(language === 'en' ? 'en-GB' : 'de-DE', {
-    maximumFractionDigits: 1,
-  }).format(halfMonths / 2)
-}
-
-function dateText(iso: string | null, language: 'de' | 'en'): string {
-  if (!iso) return '—'
+function dateText(iso: string | null, language: 'de' | 'en'): string | null {
+  if (!iso) return null
   const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return '—'
+  if (Number.isNaN(date.getTime())) return null
   return new Intl.DateTimeFormat(language === 'en' ? 'en-GB' : 'de-DE', {
     day: 'numeric', month: 'long', year: 'numeric',
   }).format(date)
 }
 
-/** The buildings the presented Option actually sells. */
-function selectedBuildingsOf(view: ClientView): readonly ScopeBuilding[] {
-  const config = view.presented.config
-  return config.scopeBuildings.filter((b) => config.scopeSelected[b.id])
-}
+/* ───────────────────── chapter 1 · Angebot (F01) ─────────────────────── */
 
 /**
- * The six scope decisions, titled in the reader's language.
+ * The opening. A client must recognise their own project before a single
+ * commercial detail appears — which is why this is a full-bleed image with
+ * the identity set on it, and why nothing about All3's preparation process
+ * survives entry.
  *
- * ONE mapping, read by the scope section AND by the printed document. Two
- * copies of "which cost groups are in, and what are they called" is the
- * shape every "one number, two meanings" defect in this programme has had:
- * the screen and the sheet in the client's hand would drift on the first
- * edit, and drift silently.
+ * With no qualifying hero asset this renders `MediaFrame`'s designed
+ * fallback state, which is information-bearing. Never a grey rectangle.
  */
-export type ClientScopeRow = Readonly<{
-  group: KgScopeGroup
-  title: string
-  decision: KgScopeDecision | 'undecided'
-}>
-
-export function clientScopeRows(
-  view: ClientView,
-  catalogue: KgCatalogue | null,
-): readonly ClientScopeRow[] {
-  const decisions = view.presented.config.kgConfig
-  return KG_SCOPE_GROUPS.map((group) => {
-    const chapter = catalogue ? chapterOf(catalogue, group) : null
-    return {
-      group,
-      title: chapter
-        ? (view.language === 'en' ? chapter.titleEn : chapter.titleDe)
-        : group.replace('_', ' '),
-      decision: decisions?.scope[group] ?? 'undecided',
-    }
-  })
-}
-
-/**
- * A DIN 276 line's client title.
- *
- * `CostGroup` is wider than the six SCOPE groups (it carries KG 100, which
- * the Option's ledger does not decide), so the chapter lookup is guarded
- * rather than cast — and guarded in ONE place, for both consumers.
- */
-export function clientCostGroupTitle(
-  group: string,
-  catalogue: KgCatalogue | null,
-  language: 'de' | 'en',
-): string {
-  const scopeGroup = (KG_SCOPE_GROUPS as readonly string[]).includes(group)
-    ? group as KgScopeGroup
-    : null
-  const chapter = catalogue && scopeGroup ? chapterOf(catalogue, scopeGroup) : null
-  if (!chapter) return group.replace('_', ' ')
-  return language === 'en' ? chapter.titleEn : chapter.titleDe
-}
-
-/* ─────────────────────── §0 · entry (T-034) ───────────────────────────── */
-
-/**
- * The mode transition, as a screen rather than a fade.
- *
- * Client Mode is a client-safety boundary, and a boundary the presenter
- * crosses without noticing is not a boundary. This names the saved Option
- * being presented, states what is excluded, and asks for one deliberate
- * action — which is also the moment the room's attention is on the screen
- * for the first time, so it is composed to be looked at.
- */
-export function PresentationEntry({ view, onStart, onReturn, headingRef }: {
-  view: ClientView
-  onStart: () => void
-  onReturn: () => void
+export function ChapterAngebot({ proposal, headingRef }: {
+  proposal: ClientProposal
   headingRef: Ref<HTMLHeadingElement>
 }) {
   const t = useT()
-  const asset = view.projectHeroAssetId ? projectAsset(view.projectHeroAssetId) : null
+  const { identity } = proposal
+  const offerDate = dateText(identity.offerDateISO, proposal.language)
   return (
-    <section className="a3-client-entry a3-stage-deep">
-      <div className="a3-client-entry-media">
-        {asset ? (
-          <MediaFrame
-            ratio="hero" state="loaded" src={asset.url} alt={t(asset.altKey)}
-            seed={asset.assetId} sourceId={asset.assetId}
-          />
-        ) : (
-          <MediaFrame
-            ratio="hero" state="fallback" seed={view.projectName}
-            fallbackLabel={t('vr3.client.media.missing')}
-          />
-        )}
-      </div>
-      <div className="a3-client-entry-copy">
-        <p className="a3-client-eyebrow">{t('vr3.client.entry.eyebrow')}</p>
-        <h1 ref={headingRef} tabIndex={-1} className="a3-client-entry-title">
-          {t('vr3.client.entry.title')}
-        </h1>
-        <p className="a3-client-entry-lede">{t('vr3.client.entry.lede')}</p>
-        <ul className="a3-client-entry-checks" role="list">
-          <li>
-            <span aria-hidden="true" className="a3-client-check">✓</span>
-            {t('vr3.client.entry.check.baseline', { option: view.optionName })}
-          </li>
-          <li>
-            <span aria-hidden="true" className="a3-client-check">✓</span>
-            {t('vr3.client.entry.check.projection')}
-          </li>
-          <li>
-            <span aria-hidden="true" className="a3-client-check">✓</span>
-            {t('vr3.client.entry.check.scenario')}
-          </li>
-        </ul>
-        <div className="a3-client-entry-actions">
-          <Button variant="primary" onClick={onStart}>
-            {t('vr3.client.entry.start')}
-          </Button>
-          <Button variant="secondary" onClick={onReturn}>
-            {t('vr3.client.entry.return')}
-          </Button>
+    <ChapterFrame label={t('vr3.client.chapter.angebot')} tone="stage">
+      <div className="a3-cp-opening">
+        <div className="a3-cp-opening-media">
+          {identity.hero ? (
+            <MediaFrame
+              ratio="hero" state="loaded" src={identity.hero.url}
+              alt={identity.heroAlt ?? identity.projectName}
+              seed={identity.hero.assetId} sourceId={identity.hero.assetId}
+            />
+          ) : (
+            <MediaFrame
+              ratio="hero" state="fallback" seed={identity.projectName}
+              fallbackLabel={identity.projectName}
+            />
+          )}
+        </div>
+        <div className="a3-cp-opening-copy">
+          <p className="a3-cp-opening-eyebrow">{t('vr3.client.opening.eyebrow')}</p>
+          <h1 ref={headingRef} tabIndex={-1} className="a3-cp-opening-title">
+            {identity.projectName}
+          </h1>
+          {identity.addressLine ? (
+            <p className="a3-cp-opening-address">{identity.addressLine}</p>
+          ) : null}
+          <div className="a3-cp-opening-facts">
+            {offerDate ? (
+              <span className="a3-cp-opening-fact">
+                {t('vr3.client.opening.offerDate')}
+                {' '}
+                <b>{offerDate}</b>
+              </span>
+            ) : null}
+            <span className="a3-cp-opening-fact">
+              {t('vr3.client.opening.option')}
+              {' '}
+              <b>{identity.optionName}</b>
+            </span>
+            {identity.clientName ? (
+              <span className="a3-cp-opening-fact">
+                {t('vr3.client.opening.client')}
+                {' '}
+                <b>{identity.clientName}</b>
+              </span>
+            ) : null}
+            <span className="a3-cp-opening-entity">{identity.legalEntity}</span>
+          </div>
         </div>
       </div>
-    </section>
+    </ChapterFrame>
   )
 }
 
-/* ─────────────────── §1 · project identity (T-035) ────────────────────── */
+/* ──────────────── chapter 2 · Projektüberblick (F02/F04) ─────────────── */
 
-export function PageProjectIdentity({ view, headingRef }: {
-  view: ClientView
+/**
+ * The commercial climax, early.
+ *
+ * Three CO-HEROES, not a KPI grid (rule 31 / DC-38):
+ *
+ * - the total at 64 px in the brand accent, on white and only on white,
+ *   labelled with the DERIVED R-18 signature;
+ * - the lead rate at 48 px black, whose denominator names its norm inside
+ *   the metric label — never a bare `2.350 €/m²`;
+ * - the Bauzeit at 48 px black, with the SAME start boundary the internal
+ *   cockpit uses and the absolute completion date.
+ *
+ * Supporting facts appear only where a real Product field exists. There is
+ * no tile invented to fill the grid, and no marketing claim.
+ */
+export function ChapterUeberblick({ proposal, headingRef }: {
+  proposal: ClientProposal
   headingRef: Ref<HTMLHeadingElement>
 }) {
   const t = useT()
-  const s = useStore()
-  const asset = view.projectHeroAssetId ? projectAsset(view.projectHeroAssetId) : null
-  const buildings = selectedBuildingsOf(view)
-  const bgf = buildings.reduce((sum, b) => {
-    const value = scopeMetricValue(view.presented.config, b, 'bgfRSAbove')
-    return value === null ? sum : sum.plus(new Decimal(value))
-  }, new Decimal(0))
-  const derivation = clientScheduleDerivation(s, view.presented)
+  const { commercial, schedule, language } = proposal
+  const completion = dateText(schedule.completionISO, language)
+  const totalText = localizeMoneyText(
+    `${commercial.totalPrefix}${commercial.totalPrefix ? ' ' : ''}${commercial.totalDisplay}`,
+    language,
+  )
+  const durationText = localizeMoneyText(
+    `${schedule.durationPrefix}${schedule.durationPrefix ? ' ' : ''}${schedule.durationText}`,
+    language,
+  )
 
   return (
-    <section aria-label={t('vr3.client.nav.project')} className="a3-client-hero a3-stage-deep">
-      <div className="a3-client-hero-media">
-        {asset ? (
-          <MediaFrame
-            ratio="hero" state="loaded" src={asset.url} alt={t(asset.altKey)}
-            seed={asset.assetId} sourceId={asset.assetId}
+    <ChapterFrame label={t('vr3.client.chapter.ueberblick')}>
+      <ChapterLede
+        eyebrow={t('vr3.client.chapter.ueberblick')}
+        title={t('vr3.client.overview.title')}
+        headingRef={headingRef}
+      />
+      <div className="a3-cp-heroes">
+        <div className="a3-cp-hero-total">
+          <MetricHero
+            variant="lead"
+            accent
+            label={commercial.signature}
+            value={totalText}
+            unit="€"
           />
-        ) : (
-          <MediaFrame
-            ratio="hero" state="fallback" seed={view.projectName}
-            fallbackLabel={t('vr3.client.media.missing')}
-          />
-        )}
-      </div>
-      <div className="a3-client-hero-copy">
-        <p className="a3-client-eyebrow">
-          {t('vr3.client.identity.eyebrow', { option: view.optionName })}
-        </p>
-        <h1 ref={headingRef} tabIndex={-1} className="a3-client-hero-title">
-          {view.projectName}
-        </h1>
-        <p className="a3-client-hero-lede">
-          {t(buildings.length > 1
-            ? 'vr3.client.identity.lede.complex'
-            : 'vr3.client.identity.lede.single', { count: buildings.length })}
-        </p>
-        <dl className="a3-client-hero-metrics">
-          <div>
-            <dt>{t('vr3.client.identity.metric.buildings')}</dt>
-            <dd className="numeric">{buildings.length}</dd>
-          </div>
-          <div>
-            <dt>{t('vr3.client.identity.metric.bgf')}</dt>
-            <dd className="numeric">{areaText(bgf.toFixed(2), view.language)}</dd>
-          </div>
-          <div>
-            <dt>{t('vr3.client.identity.metric.completion')}</dt>
-            <dd className="numeric">
-              {dateText(derivation?.completionISO ?? null, view.language)}
-            </dd>
-          </div>
-        </dl>
-      </div>
-    </section>
-  )
-}
-
-/* ────────────────────── §2 · building stories (T-036) ─────────────────── */
-
-export function PageBuildings({ view, headingRef }: {
-  view: ClientView
-  headingRef: Ref<HTMLHeadingElement>
-}) {
-  const t = useT()
-  const buildings = selectedBuildingsOf(view)
-  return (
-    <PageFrame label={t('vr3.client.nav.buildings')}>
-      <PageLede
-        eyebrow={t('vr3.client.buildings.eyebrow')}
-        title={t(buildings.length > 1
-          ? 'vr3.client.buildings.title.many'
-          : 'vr3.client.buildings.title.one')}
-        headingRef={headingRef}
-      />
-      <div
-        className="a3-client-building-grid"
-        data-count={Math.min(buildings.length, 3)}
-      >
-        {buildings.map((building, index) => {
-          const asset = projectAsset(building.identityAssetId)
-          // The same A/B/C designation the preparation surface uses — a
-          // building's IDENTITY in this project, derived from its position
-          // in the Option's own scope, never its internal id. The site plan
-          // and the schedule name the same letters, so the client can follow
-          // one building across three sections.
-          const mark = String.fromCharCode(65 + index)
-          return (
-            <article key={building.id} className="a3-client-building">
-              <div className="a3-client-building-media">
-                {asset ? (
-                  <MediaFrame
-                    ratio="card" state="loaded" src={asset.url} alt={t(asset.altKey)}
-                    seed={asset.assetId} sourceId={asset.assetId}
-                  />
-                ) : (
-                  <MediaFrame
-                    ratio="card" state="fallback" seed={building.id}
-                    fallbackLabel={t('vr3.client.media.missing')}
-                  />
-                )}
-              </div>
-              <div className="a3-client-building-copy">
-                <p className="a3-client-eyebrow">
-                  {t('vr3.scope.building', { mark })}
-                </p>
-                <h2 className="a3-client-building-name">
-                  {`${mark} · ${building.name}`}
-                </h2>
-                <p className="a3-client-building-use">{t(building.usageKey)}</p>
-                <p className="a3-client-building-metric numeric">
-                  {areaText(
-                    scopeMetricValue(view.presented.config, building, 'bgfRSAbove'),
-                    view.language,
-                  )}
-                  {' '}
-                  <span className="a3-client-building-metric-unit">
-                    {t('vr3.client.buildings.metricLabel')}
-                  </span>
-                </p>
-              </div>
-            </article>
-          )
-        })}
-      </div>
-    </PageFrame>
-  )
-}
-
-/* ────────────────────────── §3 · scope (T-037) ────────────────────────── */
-
-export function PageScopeStory({ view, headingRef }: {
-  view: ClientView
-  headingRef: Ref<HTMLHeadingElement>
-}) {
-  const t = useT()
-  const s = useStore()
-  const catalogue = kgCatalogue(s.opportunityId)
-  const asset = view.projectHeroAssetId ? projectAsset(view.projectHeroAssetId) : null
-  const buildings = selectedBuildingsOf(view)
-
-  const rows = clientScopeRows(view, catalogue)
-  const included = rows.filter((r) => r.decision === 'included')
-  const excluded = rows.filter((r) => r.decision === 'excluded')
-
-  return (
-    <PageFrame label={t('vr3.client.nav.scope')}>
-      <PageLede
-        eyebrow={t('vr3.client.scope.eyebrow', { option: view.optionName })}
-        title={t('vr3.client.scope.title')}
-        headingRef={headingRef}
-      />
-      <div className="a3-client-split">
-        <ClientPanel title={t('vr3.client.scope.included')}>
-          <div className="a3-client-rows">
-            {included.map((row) => (
-              <ClientFactRow
-                key={row.group}
-                label={row.title}
-                value={t('vr3.client.scope.state.included')}
-              />
-            ))}
-          </div>
-          {excluded.length > 0 ? (
-            <>
-              <h3 className="a3-client-panel-subtitle">
-                {t('vr3.client.scope.excluded')}
-              </h3>
-              <div className="a3-client-rows">
-                {excluded.map((row) => (
-                  <ClientFactRow
-                    key={row.group}
-                    label={row.title}
-                    value={t('vr3.client.scope.state.excluded')}
-                  />
-                ))}
-              </div>
-            </>
-          ) : null}
-        </ClientPanel>
-        <ClientPanel title={t('vr3.client.scope.meaning')}>
-          <p className="a3-client-prose">
-            {t(included.length === KG_SCOPE_GROUPS.length
-              ? 'vr3.client.scope.meaning.complete'
-              : 'vr3.client.scope.meaning.partial', { count: buildings.length })}
-          </p>
-          <div className="a3-client-panel-media">
-            {asset ? (
-              <MediaFrame
-                ratio="pano" state="loaded" src={asset.url} alt={t(asset.altKey)}
-                seed={asset.assetId} sourceId={asset.assetId}
-              />
-            ) : (
-              <MediaFrame
-                ratio="pano" state="fallback" seed={view.projectName}
-                fallbackLabel={t('vr3.client.media.missing')}
-              />
-            )}
-          </div>
-        </ClientPanel>
-      </div>
-    </PageFrame>
-  )
-}
-
-/* ───────────────────────── §5 · schedule (T-039) ──────────────────────── */
-
-const PHASE_LABEL_KEY: Record<string, string> = {
-  planning: 'vr3.client.schedule.phase.planning',
-  tender: 'vr3.client.schedule.phase.tender',
-  execution: 'vr3.client.schedule.phase.execution',
-  handover: 'vr3.client.schedule.phase.handover',
-}
-
-export function PageScheduleStory({ view, headingRef, decision }: {
-  view: ClientView
-  headingRef: Ref<HTMLHeadingElement>
-  /** The handover what-if, rendered inside the sequence it changes. */
-  decision?: React.ReactNode
-}) {
-  const t = useT()
-  const s = useStore()
-  const derivation = clientScheduleDerivation(s, view.presented)
-  const phases = clientSchedulePhases(s, view.presented)
-  const buildings = selectedBuildingsOf(view)
-  const nameOf = (buildingId: string | null) =>
-    buildings.find((b) => b.id === buildingId)?.name ?? ''
-  const criticalPhase = phases.find((p) => p.id === derivation?.criticalPhaseId)
-  /**
-   * WHAT determines completion, not WHICH ROW is last.
-   *
-   * The critical phase is usually the handover, and "the handover
-   * determines completion" is true and says nothing — the handover is the
-   * end by definition. What a client needs is the building the handover is
-   * waiting for, which is exactly what its dependency names. This is also
-   * what makes the phased-handover what-if visible in words: change which
-   * building the handover follows and this sentence changes with it.
-   */
-  const criticalDriver = criticalPhase && !criticalPhase.buildingId
-    ? phases.find((p) => p.id === criticalPhase.dependsOn) ?? criticalPhase
-    : criticalPhase
-
-  return (
-    <PageFrame label={t('vr3.client.nav.schedule')}>
-      <PageLede
-        eyebrow={t('vr3.client.schedule.eyebrow', { option: view.optionName })}
-        title={t('vr3.client.schedule.title', {
-          completion: dateText(derivation?.completionISO ?? null, view.language),
-        })}
-        headingRef={headingRef}
-      />
-      <div className="a3-client-split">
-        <ClientPanel>
-          <p className="a3-client-bignumber numeric">
-            {monthsText(derivation?.totalHalfMonths ?? null, view.language)}
-          </p>
-          <p className="a3-client-prose">{t('vr3.client.schedule.duration')}</p>
-          <div className="a3-client-rows a3-client-rows-loose">
-            <div className="a3-client-stack">
-              <span className="a3-client-stack-value numeric">
-                {dateText(derivation?.startISO ?? null, view.language)}
-              </span>
-              <span className="a3-client-stack-label">
-                {t('vr3.client.schedule.start')}
-              </span>
-            </div>
-            <div className="a3-client-stack">
-              <span className="a3-client-stack-value numeric">
-                {dateText(derivation?.completionISO ?? null, view.language)}
-              </span>
-              <span className="a3-client-stack-label">
-                {t('vr3.client.schedule.completion')}
-              </span>
-            </div>
-          </div>
-        </ClientPanel>
-        <ClientPanel title={t('vr3.client.schedule.sequence')}>
-          <div className="a3-client-rows">
-            {phases.map((phase) => {
-              const window = derivation?.windows.find((w) => w.phase.id === phase.id)
-              const label = phase.buildingId
-                ? `${t(PHASE_LABEL_KEY[phase.kind] ?? phase.kind)} · ${nameOf(phase.buildingId)}`
-                : t(PHASE_LABEL_KEY[phase.kind] ?? phase.kind)
-              return (
-                <ClientFactRow
-                  key={phase.id}
-                  label={label}
-                  value={t('vr3.client.schedule.months', {
-                    months: monthsText(
-                      window ? window.phase.durationHalfMonths : phase.durationHalfMonths,
-                      view.language,
-                    ),
-                  })}
-                />
-              )
-            })}
-          </div>
-          {criticalPhase ? (
-            <div className="a3-client-callout">
-              <span aria-hidden="true" className="a3-client-callout-mark">→</span>
-              <div>
-                <p className="a3-client-callout-title">
-                  {t('vr3.client.schedule.critical', {
-                    phase: criticalDriver?.buildingId
-                      ? nameOf(criticalDriver.buildingId)
-                      : t(PHASE_LABEL_KEY[criticalDriver?.kind ?? 'handover']
-                        ?? 'vr3.client.schedule.phase.handover'),
-                  })}
-                </p>
-                <p className="a3-client-callout-body">
-                  {t('vr3.client.schedule.criticalBody')}
-                </p>
-              </div>
-            </div>
-          ) : null}
-          {decision}
-        </ClientPanel>
-      </div>
-    </PageFrame>
-  )
-}
-
-/* ──────────────────────── §6 · investment (T-040) ─────────────────────── */
-
-export function PageInvestment({ view, headingRef, onConclude, comparison }: {
-  view: ClientView
-  headingRef: Ref<HTMLHeadingElement>
-  onConclude: () => void
-  comparison?: React.ReactNode
-}) {
-  const t = useT()
-  const tx = useTx()
-  const s = useStore()
-  const result = view.presented.result
-  const derivation = clientScheduleDerivation(s, view.presented)
-  const buildings = selectedBuildingsOf(view)
-  const catalogue = kgCatalogue(s.opportunityId)
-
-  return (
-    <PageFrame label={t('vr3.client.nav.investment')}>
-      <PageLede
-        eyebrow={t('vr3.client.investment.eyebrow', { option: view.optionName })}
-        title={t('vr3.client.investment.title')}
-        headingRef={headingRef}
-      />
-      <div className="a3-client-split">
-        <ClientPanel>
-          {/* The hero's Declared Pricing Scope (R-18) is composed in German
-              by the engine, by contract. Rendered raw it left
-              "GESAMT NETTO · GRUNDLEISTUNG ALL3" standing over an English
-              presentation's largest number — `tx` is the bridge the delivery
-              already carries for exactly this label, and
-              `vr3-en-completeness` asserts that it resolves. */}
-          <p className="a3-client-eyebrow a3-client-eyebrow-onpanel">
-            {tx(result.totalLabel)}
-          </p>
-          <p className="a3-client-hero-number">
-            <CommercialNumber
-              exact={result.total.exact}
-              displayed={result.total}
-              language={view.language}
-              emphasis="hero"
-              className="a3-display-accent"
+          <p className="a3-cp-hero-qualifier">
+            {commercial.taxNote}
+            {' · '}
+            <EstimateUncertaintyBadge
+              presentation="compact" pp={commercial.uncertaintyPp} language={language}
             />
           </p>
-          <p className="a3-client-prose">
-            {t('vr3.client.investment.uncertainty', { pp: result.uncertaintyPp })}
-          </p>
-          <dl className="a3-client-metric-grid">
-            <div>
-              {/* ACCEPT-03. This tile used to name the DENOMINATOR as its
-                  term and print `display` as its value — "BGF oberirdisch /
-                  2.246" — so a €/m² rate stood under an area label with no
-                  unit at all, in both locales, and a client could only read
-                  it as an area. The engine composes this string —
-                  `rateUnit()` is `prefix · display · €/m²`, and the unit's
-                  area-vs-per-unit decision lives THERE, beside
-                  `rateLabel()`'s, so the two cannot disagree. Composing the
-                  parts here a second time is how the unit went missing in
-                  the first place.
-
-                  A rate without its denominator is a number nobody can
-                  check (rule 39 / DATA-001), so the term names both the
-                  metric and its norm — which is how rule 31 words the
-                  Leitkennzahl itself (`€/m² WFL nach WoFlV`) — and the
-                  value carries the number with its unit, which is what
-                  T-040 prints ("Lead rate" / "1,990 €/m²"). Keeping the
-                  norm out of the 180 px value cell is also what stops it
-                  wrapping mid-unit.
-
-                  The DENOMINATOR NAME stays German on purpose (LOCALE-009:
-                  normative denominators are never machine-translated). Its
-                  NUMERAL must not: `display` comes from `formatDE`, so the
-                  rate read "2.228" beside a hero reading "38,430,000" —
-                  `localizeMoneyText` re-typesets the numeral and leaves
-                  every letter alone. */}
-              <dt>
-                {`${t('vr3.client.investment.leadRate')} · ${result.leadRate.denominatorLabel}`}
-              </dt>
-              <dd className="numeric">
-                {localizeMoneyText(rateUnit(result.leadRate), view.language)}
-              </dd>
-            </div>
-            <div>
-              <dt>{t('vr3.client.investment.duration')}</dt>
-              <dd className="numeric">
-                {t('vr3.client.schedule.months', {
-                  months: monthsText(derivation?.totalHalfMonths ?? null, view.language),
-                })}
-              </dd>
-            </div>
-            <div>
-              <dt>{t('vr3.client.investment.buildings')}</dt>
-              <dd className="numeric">{buildings.length}</dd>
-            </div>
-            <div>
-              <dt>{t('vr3.client.investment.option')}</dt>
-              <dd>{view.optionName}</dd>
-            </div>
-          </dl>
-        </ClientPanel>
-        <ClientPanel title={t('vr3.client.investment.composition')}>
-          <div className="a3-client-rows">
-            {result.byCostGroup.map((line) => {
-              return (
-                <div key={line.group} className="a3-client-row">
-                  <span className="a3-client-row-label">
-                    {clientCostGroupTitle(line.group, catalogue, view.language)}
-                  </span>
-                  <span className="a3-client-row-value numeric">
-                    <CommercialNumber
-                      exact={line.exact}
-                      language={view.language}
-                      emphasis="compact"
-                      absentLabel={t('vr3.client.investment.notPriced')}
-                    />
-                  </span>
-                </div>
-              )
-            })}
+          {commercial.totalDisclosure ? (
+            <p className="a3-cp-hero-footnote">{commercial.totalDisclosure}</p>
+          ) : null}
+        </div>
+        <div className="a3-cp-hero-side">
+          <MetricHero
+            variant="co"
+            label={commercial.leadRateLabel}
+            value={localizeMoneyText(commercial.leadRateText, language)}
+            note={commercial.taxNote}
+          />
+        </div>
+        <div className="a3-cp-hero-side">
+          <MetricHero
+            variant="co"
+            label={t('vr3.client.overview.duration')}
+            value={durationText}
+            note={completion
+              ? `${schedule.startBoundary} · ${t('vr3.client.schedule.completion')} ${completion}`
+              : schedule.startBoundary}
+          />
+        </div>
+        {proposal.overview.map((metric: ClientMetric) => (
+          <div key={metric.label} className="a3-cp-hero-fact">
+            <MetricHero
+              variant="fact"
+              label={metric.label}
+              value={metric.value}
+              unit={metric.unit}
+              note={metric.note}
+            />
           </div>
-          {comparison}
-          <div className="a3-client-panel-actions">
-            <Button variant="primary" onClick={onConclude}>
-              {t('vr3.client.investment.conclude')}
-            </Button>
-          </div>
-        </ClientPanel>
+        ))}
       </div>
-    </PageFrame>
+      <p className="a3-cp-disclaimer">{t('vr3.client.overview.disclaimer')}</p>
+    </ChapterFrame>
   )
 }
 
-export { PageFrame, PageLede, areaText, monthsText, dateText, selectedBuildingsOf }
+/* ─────────────────── chapter 3 · Das Projekt (F03) ───────────────────── */
+
+/**
+ * What All3 understood, in client language.
+ *
+ * The metric rows carry their qualifier IN THE ROW LABEL — `BGF R+S
+ * oberirdisch`, `WFL nach WoFlV`, `NUF nach DIN 277` — never in a footnote,
+ * because a number whose denominator lives elsewhere is a number the reader
+ * has to trust rather than read. The combined `Σ WFL + Σ NUF` never appears:
+ * it is forbidden in every client profile.
+ *
+ * No extraction confidence, no conflict history, no authority state. A value
+ * a machine inferred is either expressed in client language or omitted; it
+ * is never shown as a confirmed fact, and the fact that a machine inferred
+ * it is preparation state, not client content.
+ */
+export function ChapterProjekt({ proposal, headingRef }: {
+  proposal: ClientProposal
+  headingRef: Ref<HTMLHeadingElement>
+}) {
+  const t = useT()
+  const { buildings, language } = proposal
+  const sum = (pick: (b: ClientBuilding) => string | null) => {
+    const values = buildings.map(pick).filter((v): v is string => v !== null)
+    if (values.length === 0) return null
+    const total = values.reduce((acc, v) => acc + Number(v.replace(/[.\s ]/g, '').replace(',', '.')), 0)
+    return new Intl.NumberFormat(language === 'en' ? 'en-GB' : 'de-DE', {
+      minimumFractionDigits: 2, maximumFractionDigits: 2,
+    }).format(total)
+  }
+  const units = buildings.reduce((n, b) => (b.units === null ? n : n + b.units), 0)
+
+  const rows: Array<[string, string | null]> = [
+    [t('vr3.client.project.metric.buildings'), String(buildings.length)],
+    [t('vr3.client.project.metric.storeys'),
+      buildings.length === 1 ? buildings[0]!.storeys : null],
+    [t('vr3.client.project.metric.units'), units > 0 ? String(units) : null],
+    [t('vr3.client.project.metric.bgfR'), sum((b) => b.bgfRAbove)],
+    [t('vr3.client.project.metric.bgfS'), sum((b) => b.bgfSAbove)],
+    [t('vr3.client.project.metric.bgfRS'), sum((b) => b.bgfRSAbove)],
+    [t('vr3.client.project.metric.bgfBelow'), sum((b) => b.bgfRSBelow)],
+    [t('vr3.client.project.metric.wfl'), sum((b) => b.wfl)],
+    [t('vr3.client.project.metric.nuf'), sum((b) => b.nuf)],
+  ]
+
+  return (
+    <ChapterFrame label={t('vr3.client.chapter.projekt')}>
+      <ChapterLede
+        eyebrow={t('vr3.client.chapter.projekt')}
+        title={t(buildings.length > 1
+          ? 'vr3.client.project.title.many'
+          : 'vr3.client.project.title.one', { count: buildings.length })}
+        headingRef={headingRef}
+      />
+      <div className="a3-cp-split">
+        <ClientPanel className="a3-cp-panel-plain">
+          <p className="a3-cp-prose">
+            {t(buildings.length > 1
+              ? 'vr3.client.project.lede.many'
+              : 'vr3.client.project.lede.one', { count: buildings.length })}
+          </p>
+          <p className="a3-cp-prose">{t('vr3.client.project.method')}</p>
+          {/*
+            Construction reaches the project story as two named client-grade
+            lines. A line whose answer differs by building carries its
+            building: stating one façade for a three-building Option is
+            false, and this is the only place that rule can be enforced.
+          */}
+          {proposal.construction.story.length > 0 ? (
+            <div className="a3-cp-construction">
+              <h2 className="a3-cp-panel-subtitle">
+                {t('vr3.client.project.construction')}
+              </h2>
+              {proposal.construction.story.map((line) => (
+                <div key={line.id} className="a3-cp-construction-line">
+                  <span className="a3-cp-construction-label">
+                    {line.label}
+                    {line.buildingName ? (
+                      <span className="a3-cp-construction-building">
+                        {line.buildingName}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="a3-cp-construction-value">
+                    {line.stateText ?? line.value}
+                  </span>
+                  {line.consequence ? (
+                    <span className="a3-cp-construction-note">{line.consequence}</span>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </ClientPanel>
+        <ClientPanel title={t('vr3.client.project.metrics')}>
+          <div className="a3-cp-rows">
+            {rows
+              .filter((row): row is [string, string] => row[1] !== null)
+              .map(([label, value]) => (
+                <ClientFactRow key={label} label={label} value={value} />
+              ))}
+          </div>
+        </ClientPanel>
+      </div>
+    </ChapterFrame>
+  )
+}
+
+/* ─────────────────── chapter 4 · Die Gebäude (F09) ───────────────────── */
+
+/**
+ * Present only at two buildings or more — a single building has no
+ * comparison to make and its facts belong in chapter 3.
+ *
+ * At 2–3 buildings the chapter is image-led, because at that count the
+ * client is recognising three houses. At 4 or more it becomes the canonical
+ * `DataTable` with a totals row, because at that count they are reading a
+ * register. `BuildingScopePanel` is deliberately not reused: it is a scope
+ * CONTROL, and a control on a client's screen invites an edit nobody meant.
+ */
+export function ChapterGebaeude({ proposal, headingRef }: {
+  proposal: ClientProposal
+  headingRef: Ref<HTMLHeadingElement>
+}) {
+  const t = useT()
+  const { buildings } = proposal
+  const asTable = buildings.length >= 4
+
+  return (
+    <ChapterFrame label={t('vr3.client.chapter.gebaeude')}>
+      <ChapterLede
+        eyebrow={t('vr3.client.chapter.gebaeude')}
+        title={t('vr3.client.buildings.title', { count: buildings.length })}
+        headingRef={headingRef}
+      />
+      {asTable
+        ? <BuildingRegister proposal={proposal} />
+        : (
+          <div className="a3-cp-building-grid" data-count={Math.min(buildings.length, 3)}>
+            {buildings.map((b) => (
+              <article key={b.id} className="a3-cp-building">
+                <div className="a3-cp-building-media">
+                  {b.identity ? (
+                    <MediaFrame
+                      ratio="card" state="loaded" src={b.identity.url}
+                      alt={b.identityAlt ?? b.name} seed={b.identity.assetId}
+                      sourceId={b.identity.assetId}
+                    />
+                  ) : (
+                    <MediaFrame
+                      ratio="card" state="fallback" seed={b.id} fallbackLabel={b.name}
+                    />
+                  )}
+                </div>
+                <div className="a3-cp-building-copy">
+                  <h2 className="a3-cp-building-name">{`${b.mark} · ${b.name}`}</h2>
+                  <p className="a3-cp-building-use">{b.usage}</p>
+                  <div className="a3-cp-rows">
+                    <ClientFactRow
+                      label={t('vr3.client.project.metric.storeys')} value={b.storeys}
+                    />
+                    {b.units !== null ? (
+                      <ClientFactRow
+                        label={t('vr3.client.project.metric.units')}
+                        value={String(b.units)}
+                      />
+                    ) : null}
+                    {b.bgfRSAbove ? (
+                      <ClientFactRow
+                        label={t('vr3.client.project.metric.bgfRS')} value={b.bgfRSAbove}
+                      />
+                    ) : null}
+                    {b.wfl ? (
+                      <ClientFactRow
+                        label={t('vr3.client.project.metric.wfl')} value={b.wfl}
+                      />
+                    ) : null}
+                    {b.nuf ? (
+                      <ClientFactRow
+                        label={t('vr3.client.project.metric.nuf')} value={b.nuf}
+                      />
+                    ) : null}
+                    {/*
+                      The basement decision is a material scope boundary, not
+                      a detail: a building with no underground level has no
+                      basement decision at all, and saying so is what keeps a
+                      reader from assuming one is included.
+                    */}
+                    <ClientFactRow
+                      label={t('vr3.client.buildings.basement')}
+                      value={b.basementText ?? ''}
+                    />
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+    </ChapterFrame>
+  )
+}
+
+function BuildingRegister({ proposal }: { proposal: ClientProposal }) {
+  const t = useT()
+  const { buildings, language } = proposal
+  const nf = new Intl.NumberFormat(language === 'en' ? 'en-GB' : 'de-DE', {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  })
+  const totalOf = (pick: (b: ClientBuilding) => string | null) => {
+    const values = buildings.map(pick).filter((v): v is string => v !== null)
+    if (values.length === 0) return null
+    return nf.format(values.reduce(
+      (acc, v) => acc + Number(v.replace(/[.\s ]/g, '').replace(',', '.')), 0))
+  }
+  const units = buildings.reduce((n, b) => (b.units === null ? n : n + b.units), 0)
+
+  const rows: DataTableRow[] = buildings.map((b) => ({
+    key: b.id,
+    header: `${b.mark} · ${b.name}`,
+    cells: [
+      { content: b.usage },
+      { content: b.storeys },
+      { content: b.units === null ? null : String(b.units), align: 'numeric', absent: b.units === null },
+      { content: b.bgfRSAbove ?? null, align: 'numeric', absent: b.bgfRSAbove === null },
+      { content: b.wfl ?? b.nuf ?? null, align: 'numeric', absent: b.wfl === null && b.nuf === null },
+    ],
+  }))
+  rows.push({
+    key: 'total',
+    header: t('vr3.client.buildings.total', { count: buildings.length }),
+    variant: 'sum',
+    cells: [
+      { content: '' },
+      { content: '' },
+      { content: units > 0 ? String(units) : null, align: 'numeric', absent: units === 0 },
+      { content: totalOf((b) => b.bgfRSAbove), align: 'numeric' },
+      { content: totalOf((b) => b.wfl ?? b.nuf), align: 'numeric' },
+    ],
+  })
+
+  return (
+    <DataTable
+      caption={t('vr3.client.buildings.tableCaption')}
+      columns={[
+        { key: 'building', header: t('vr3.client.buildings.colBuilding') },
+        { key: 'usage', header: t('vr3.client.buildings.colUsage') },
+        { key: 'storeys', header: t('vr3.client.project.metric.storeys') },
+        { key: 'units', header: t('vr3.client.project.metric.units'), align: 'numeric' },
+        { key: 'bgf', header: t('vr3.client.project.metric.bgfRS'), align: 'numeric' },
+        { key: 'area', header: t('vr3.client.buildings.colArea'), align: 'numeric' },
+      ]}
+      rows={rows}
+    />
+  )
+}
+
+export { CommercialNumber }

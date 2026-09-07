@@ -3103,7 +3103,13 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-choice-reason{margin:var(--space-1) 0 0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
 
 /* ── CommercialNumber ─────────────────────────────────────────────────── */
-.a3-cnum{font-variant-numeric:tabular-nums;font-family:var(--font-numeric);white-space:nowrap}
+/* The numeric policy is the TOKEN (`--font-numeric`, see tokens.css: Visuelt
+   Pro's `tnum` widens punctuation, so the Design System routes every numeral
+   through that one switch). This rule had bypassed it twice: a direct
+   `tabular-nums`, and `font-family:var(--font-numeric)` — a feature-settings
+   token in a family slot, which resolved to no known family and rendered
+   every CommercialNumber in the browser's fallback face. Both corrected. */
+.a3-cnum{font-feature-settings:var(--font-numeric);white-space:nowrap}
 .a3-cnum-hero{font-size:var(--type-display-numeric-desktop-size);line-height:var(--type-display-numeric-desktop-line);font-weight:var(--type-display-numeric-weight)}
 .a3-cnum-default{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-body-weight)}
 .a3-cnum-compact{font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-caption-weight)}
@@ -3923,6 +3929,8 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
   .a3-client-print-total{margin:0;font-size:var(--type-display-numeric-desktop-size);line-height:var(--type-display-numeric-desktop-line);font-weight:var(--type-display-numeric-weight)}
   .a3-client-print-total-label{margin:var(--space-2) 0 var(--space-4);font-size:var(--type-small-size);line-height:var(--type-small-line)}
   .a3-client-print-note{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line)}
+.a3-client-print-figure{margin:0 0 var(--space-3);break-inside:avoid}
+.a3-client-print-figure img{display:block;max-width:100%}
 }
 
 /* ── 1280 · recomposed, not squeezed ────────────────────────────────── */
@@ -4577,7 +4585,7 @@ a.a3-cockpit-effect:hover .a3-cockpit-effect-name{color:var(--color-text-primary
 /* The action column is exactly as wide as its own label (rule 3a). */
 .a3-dt a.a3-dt-go,.a3-dt button.a3-dt-go{white-space:nowrap;min-height:var(--size-hit-target-default)}
 .a3-dt .a3-dt-go>span[aria-hidden]{margin-left:var(--space-1);text-decoration:none}
-.a3-dt .a3-dt-num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;width:1%}
+.a3-dt .a3-dt-num{text-align:right;font-feature-settings:var(--font-numeric);white-space:nowrap;width:1%}
 .a3-dt .a3-dt-absent{color:var(--color-text-secondary);font-variant-numeric:normal;font-size:var(--type-caption-size)}
 .a3-dt tr.a3-dt-group th{font-weight:700}
 .a3-dt tr.a3-dt-indent th{padding-left:var(--space-5);color:var(--color-text-secondary)}
@@ -4655,3 +4663,324 @@ a.a3-cockpit-effect:hover .a3-cockpit-effect-name{color:var(--color-text-primary
 
 /* The schedule gate's way back to the step before it (VR3-TGA-UX-00). */
 .a3-sched-back{margin:var(--space-4) 0 0}
+
+/* ── MediaGallery · the canonical client-facing gallery (VR3-CP-00) ────────
+   One dominant view over supporting ones, and a full-screen inspection that
+   is the canonical Dialog wearing this panel — never a second modal. The
+   grid is three columns and the lead spans all of them, so at 1440 the
+   dominant image's long edge is the chapter's own measure and the
+   supporting views stay one legible row. Geometry only: every image state,
+   ratio and fallback belongs to MediaFrame. */
+.a3-mg{display:grid;gap:var(--space-4);min-width:0}
+.a3-mg-filters{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.a3-mg-filter{display:inline-flex;align-items:center;min-height:var(--size-hit-target-default);padding:0 var(--space-3);border:var(--border-hairline);background:var(--color-surface-default);color:var(--color-text-primary);font-size:var(--type-small-size);line-height:var(--type-small-line);cursor:pointer}
+.a3-mg-filter:hover{background:var(--color-surface-subtle)}
+.a3-mg-filter[aria-pressed="true"]{border:var(--border-selected);font-weight:var(--font-weight-bold)}
+.a3-mg-empty{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-mg-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-4);align-content:start}
+.a3-mg-cell{display:grid;gap:var(--space-2);min-width:0;align-content:start}
+.a3-mg-lead{grid-column:1 / -1}
+/* The trigger is laid OVER the frame, not wrapped around it: MediaFrame
+   renders a <figure>, which may not live inside a <button>. The overlay is
+   the whole frame, so the 44 × 44 hit target cannot reach a neighbour and
+   the focus ring draws on the image edge (R-04). */
+.a3-mg-media{position:relative;min-width:0}
+.a3-mg-media .a3-mg-open{position:absolute;inset:0;display:block;width:100%;margin:0;padding:0;border:0;background:transparent;cursor:pointer}
+.a3-mg-media .a3-mg-open:hover{border:var(--border-contrast-1px)}
+.a3-mg-caption{display:grid;gap:var(--space-1);margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
+.a3-mg-caption-text{display:block;overflow-wrap:break-word;hyphens:auto}
+.a3-mg-caption-context{display:block;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
+.a3-mg-dark .a3-mg-caption{color:var(--color-text-inverse)}
+.a3-mg-dark .a3-mg-caption-context{color:var(--color-text-stage-deep-secondary)}
+.a3-mg-dark .a3-mg-filter{background:var(--color-surface-stage-deep);color:var(--color-text-inverse)}
+
+/* The inspection panel. `panelClassName` replaces `.a3-modal` entirely, so
+   the deep stage carries the image and nothing competes with it. */
+.a3-mg-scrim{padding:var(--space-4)}
+.a3-mg-viewer{display:grid;gap:var(--space-4);width:100%;max-width:var(--measure-workspace);max-height:calc(100vh - 2 * var(--space-4));overflow:auto;padding:var(--space-5);background:var(--color-surface-stage-deep);color:var(--color-text-inverse);z-index:var(--layer-dialog)}
+.a3-mg-viewer-body{display:grid;gap:var(--space-4);min-width:0}
+.a3-mg-viewer-bar{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3);border-bottom:var(--border-hairline);padding-bottom:var(--space-2)}
+.a3-mg-viewer-title{flex:1 1 auto;margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-inverse);overflow-wrap:break-word}
+.a3-mg-viewer-pos{flex:0 0 auto;margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-stage-deep-secondary);font-variant-numeric:tabular-nums;white-space:nowrap}
+.a3-mg-viewer-close{flex:0 0 auto;display:inline-flex;align-items:center;min-height:var(--size-hit-target-default);padding:0 var(--space-3);border:var(--border-hairline);background:var(--color-surface-stage-deep);color:var(--color-text-inverse);font-size:var(--type-small-size);line-height:var(--type-small-line);cursor:pointer}
+.a3-mg-viewer-stage{min-width:0}
+.a3-mg-viewer-figure{min-width:0}
+.a3-mg-viewer-caption{display:grid;gap:var(--space-1);margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-inverse)}
+.a3-mg-viewer-context{display:block;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-stage-deep-secondary)}
+.a3-mg-viewer-nav{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+/* The boundaries stay in the DOM and in the tab order and simply refuse to
+   move — the same semantics the canonical Pagination contract carries. */
+.a3-mg-viewer-step{display:inline-flex;align-items:center;min-height:var(--size-hit-target-default);padding:0 var(--space-4);border:var(--border-hairline);background:var(--color-surface-stage-deep);color:var(--color-text-inverse);font-size:var(--type-small-size);line-height:var(--type-small-line);cursor:pointer}
+.a3-mg-viewer-step[aria-disabled="true"]{color:var(--color-text-stage-deep-secondary);cursor:default}
+
+@media (max-width:1439px){
+  .a3-mg-grid{gap:var(--space-3)}
+}
+
+/* ── Client presentation · the proposal narrative (VR3-CP-00) ─────────────
+   Prefix `a3-cp-`. A client-facing proposal deck shown full-screen in a
+   meeting at 1440×900 and 1280×800: one persistent presenter bar, one
+   scrolling stage, one chapter on the stage at a time. It reads as a
+   printed proposal, not a dashboard — hairlines and air carry the
+   hierarchy; there are no bordered cards, no fills, no shadows.
+
+   Geometry and type roles only. Every image state belongs to MediaFrame,
+   every table to DataTable or the compare table below, every dialog to the
+   canonical Dialog (the Varianten layer is that Dialog wearing
+   `.a3-cp-layer`), the choice control to RadioCardGroup. The chapter
+   measure is `--measure-workspace`, which tokens.css itself narrows at
+   1439px, so the deck recomposes with the rest of the product. */
+
+/* shell · bar · rail · stage */
+.a3-cp-shell{display:flex;flex:1 1 auto;flex-direction:column;min-height:0;min-width:0;background:var(--color-surface-default);color:var(--color-text-primary)}
+.a3-cp-bar{display:flex;flex:0 0 auto;align-items:center;gap:var(--space-5);min-height:var(--space-7);border-bottom:var(--border-hairline);background:var(--color-surface-default);padding:0 var(--space-5);z-index:var(--layer-header)}
+.a3-cp-bar-brand{display:inline-flex;flex:0 0 auto;align-items:center;min-height:var(--size-hit-target-default);font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);white-space:nowrap}
+.a3-cp-bar-actions{display:flex;flex:0 0 auto;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:var(--space-2);margin-left:auto}
+/* The rail is one horizontal row of real buttons. It scrolls rather than
+   wraps, so the bar keeps its one-row height at every chapter count; the
+   block padding is the room the focus ring needs inside a scroll box. */
+.a3-cp-rail{display:flex;flex:1 1 auto;align-items:stretch;gap:var(--space-1);min-width:0;overflow-x:auto;overflow-y:hidden;padding:var(--space-1) 0}
+/* Every rail control is a full 44 × 44 box of its own (R-04): the hit zone IS
+   the box, so two neighbours can never claim the same pointer. */
+.a3-cp-rail-item{appearance:none;display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;gap:var(--space-2);min-width:var(--size-hit-target-default);min-height:var(--size-hit-target-default);border:0;border-bottom:var(--border-width-strong) solid transparent;background:transparent;padding:0 var(--space-3);font:inherit;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);white-space:nowrap;cursor:pointer}
+.a3-cp-rail-item:hover{background:var(--color-surface-subtle)}
+/* Current chapter: weight AND the underline, never colour alone (rule 8). */
+.a3-cp-rail-item[aria-current]{font-weight:var(--font-weight-bold);border-bottom-color:var(--color-text-primary)}
+/* The rail is one ordered list between two step controls. The list scrolls
+   inside the rail so the bar keeps ONE row whatever the chapter count. */
+.a3-cp-rail-list{display:flex;flex:1 1 auto;align-items:stretch;gap:var(--space-1);list-style:none;margin:0;padding:0;min-width:0}
+.a3-cp-rail-list>li{display:flex;flex:0 0 auto;min-width:0}
+.a3-cp-rail-text{display:inline-block;min-width:0;white-space:nowrap}
+.a3-cp-rail-item[aria-current] .a3-cp-rail-index{color:var(--color-text-primary)}
+.a3-cp-rail-item:not([aria-current]){padding:0 var(--space-2)}
+.a3-cp-rail-step{appearance:none;display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;min-width:var(--size-hit-target-default);min-height:var(--size-hit-target-default);border:0;background:transparent;padding:0 var(--space-2);font:inherit;font-size:var(--type-heading-3-size);line-height:1;color:var(--color-text-primary);cursor:pointer}
+.a3-cp-rail-step:hover{background:var(--color-surface-subtle)}
+.a3-cp-fullscreen{min-width:var(--size-hit-target-default);padding-left:var(--space-2);padding-right:var(--space-2);font-size:var(--type-heading-3-size);line-height:1}
+.a3-cp-rail-step[aria-disabled="true"]{color:var(--color-text-secondary);cursor:default}
+.a3-cp-rail-step[aria-disabled="true"]:hover{background:transparent}
+.a3-cp-rail-index{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-cp-rail-item[aria-current] .a3-cp-rail-index{color:var(--color-text-primary)}
+/* The stage is the ONE scroller. It is a flex column so a short chapter can
+   still fill it — the dark opening paints to the bottom edge of the window
+   instead of stopping where its content stops. */
+/* Running identity under the bar: project · address · Indikatives Angebot ·
+   date. One caption row; it never competes with the chapter title. */
+.a3-cp-band{display:flex;flex:0 0 auto;flex-direction:column;min-width:0}
+.a3-cp-identity{display:flex;flex:0 0 auto;align-items:center;justify-content:space-between;gap:var(--space-2) var(--space-5);margin:0;min-height:var(--space-6);border-bottom:var(--border-hairline);padding:0 var(--space-5);font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-cp-identity-text{display:flex;flex:1 1 auto;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-4);margin:0;min-width:0}
+.a3-cp-identity>.a3-cp-bar-scenario{flex:0 0 auto}
+.a3-cp-identity-project{display:inline-block;font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-cp-identity-address,.a3-cp-identity-offer{display:inline-block;min-width:0;overflow-wrap:break-word}
+.a3-cp-stage{display:flex;flex:1 1 auto;flex-direction:column;min-height:0;min-width:0;overflow-y:auto;overflow-x:hidden;background:var(--color-surface-default)}
+.a3-cp-empty{display:grid;gap:var(--space-2);width:100%;max-width:var(--measure-wide);margin:0 auto;padding:var(--space-7) var(--space-6);font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-primary)}
+
+/* chapter */
+.a3-cp-chapter{display:grid;flex:1 0 auto;gap:var(--space-6);align-content:start;width:100%;max-width:var(--measure-workspace);min-width:0;margin:0 auto;padding:var(--space-7) var(--space-6);box-sizing:border-box;background:var(--color-surface-default);color:var(--color-text-primary)}
+/* The deep stage is full-bleed: the section spans the stage and its inline
+   padding grows so the CONTENT still sits on the chapter measure. */
+.a3-cp-chapter-stage{max-width:none;padding-left:max(var(--space-6),calc((100% - var(--measure-workspace)) / 2));padding-right:max(var(--space-6),calc((100% - var(--measure-workspace)) / 2));background:var(--color-surface-stage-deep);color:var(--color-text-stage-deep-primary)}
+.a3-cp-chapter-stage{align-content:center}
+/* Rule 31 / DC-38: the one orange, on white — the same scoped grant VR3-05
+   gave `.a3-client-panel`; on the deep stage the on-stage-deep entry. */
+.a3-cp-chapter .a3-display-accent{color:var(--color-text-display-accent)}
+.a3-cp-chapter-stage .a3-display-accent{color:var(--color-text-display-accent-on-stage-deep)}
+
+/* lede */
+.a3-cp-lede{display:grid;gap:var(--space-2);min-width:0}
+.a3-cp-eyebrow{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-label-weight);letter-spacing:var(--type-tracking-caps);text-transform:uppercase;color:var(--color-text-secondary)}
+.a3-cp-title{margin:0;max-width:26ch;font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:var(--type-heading-weight);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-cp-title:focus-visible,.a3-cp-opening-title:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--space-1)}
+.a3-cp-sub{margin:0;max-width:var(--measure-body-max);font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-secondary)}
+.a3-cp-chapter-stage .a3-cp-eyebrow,.a3-cp-chapter-stage .a3-cp-sub{color:var(--color-text-stage-deep-secondary)}
+.a3-cp-chapter-stage .a3-cp-title{color:var(--color-text-stage-deep-primary)}
+
+/* chapter 1 · the opening */
+.a3-cp-opening{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:var(--space-7);align-items:center;min-width:0}
+.a3-cp-opening-media{min-width:0}
+.a3-cp-opening-copy{display:grid;gap:var(--space-3);align-content:center;min-width:0}
+.a3-cp-opening-eyebrow{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-label-weight);letter-spacing:var(--type-tracking-caps);text-transform:uppercase;color:var(--color-text-stage-deep-secondary)}
+.a3-cp-opening-title{margin:0;font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:var(--type-heading-weight);color:var(--color-text-stage-deep-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-cp-opening-address{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-regular);color:var(--color-text-stage-deep-secondary);overflow-wrap:break-word}
+.a3-cp-opening-facts{display:grid;gap:var(--space-2);margin-top:var(--space-4);border-top:var(--border-width-default) solid var(--color-text-stage-deep-secondary);padding-top:var(--space-4)}
+/* One emphasis per fragment (rule 9): the value is bold, the pair shares one ink. */
+.a3-cp-opening-fact{display:block;font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-stage-deep-primary);overflow-wrap:break-word}
+.a3-cp-opening-fact b{font-weight:var(--font-weight-bold)}
+.a3-cp-opening-entity{display:block;margin-top:var(--space-2);font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-stage-deep-secondary)}
+
+/* chapter 2 · the three co-heroes (DC-38). A four-track grid: the total
+   spans it, each co-hero takes half, each supporting fact a quarter. */
+.a3-cp-heroes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-6) var(--space-5);align-items:start;min-width:0}
+.a3-cp-hero-total{grid-column:1 / -1;display:grid;gap:var(--space-2);min-width:0;border-bottom:var(--border-hairline);padding-bottom:var(--space-6)}
+.a3-cp-hero-side{grid-column:span 2;min-width:0}
+.a3-cp-hero-fact{grid-column:span 1;min-width:0;border-top:var(--border-hairline);padding-top:var(--space-3)}
+.a3-cp-hero-qualifier{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-cp-hero-footnote{margin:0;max-width:var(--measure-body-max);font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-cp-metric{display:grid;gap:var(--space-1);min-width:0}
+.a3-cp-metric-label{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word}
+/* `.numeric` right-aligns; a hero reads from the left edge like every other
+   line of the proposal, so the metric wins the alignment back. */
+.a3-cp-metric .a3-cp-metric-lead{margin:0;text-align:left;font-size:var(--type-display-numeric-desktop-size);line-height:var(--type-display-numeric-desktop-line);font-weight:var(--type-display-numeric-weight);color:var(--color-text-primary)}
+.a3-cp-metric .a3-cp-metric-co{margin:0;text-align:left;font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:var(--type-display-numeric-weight);color:var(--color-text-primary)}
+.a3-cp-metric-fact{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-label-weight);color:var(--color-text-primary);overflow-wrap:break-word}
+/* The unit shares the baseline at a smaller size — never its own line. */
+.a3-cp-metric-unit{display:inline;margin-left:var(--space-1);font-size:var(--type-heading-3-size);line-height:1;font-weight:var(--type-label-weight);white-space:nowrap}
+.a3-cp-metric-fact .a3-cp-metric-unit{font-size:var(--type-small-size);font-weight:var(--type-small-weight);color:var(--color-text-secondary)}
+.a3-cp-metric-note{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word}
+.a3-cp-disclaimer,.a3-cp-fineprint{margin:0;max-width:var(--measure-body-max);font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-cp-chapter-stage .a3-cp-disclaimer{color:var(--color-text-stage-deep-secondary)}
+
+/* panel · not a card: a hairline above and air, the title in heading-3. */
+.a3-cp-panel{display:grid;gap:var(--space-4);align-content:start;min-width:0;border-top:var(--border-hairline);padding-top:var(--space-5)}
+.a3-cp-panel-plain{border-top:none;padding-top:0}
+.a3-cp-panel-title{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--type-heading-weight);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-cp-panel-subtitle{margin:0;font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);color:var(--color-text-secondary)}
+.a3-cp-prose{margin:0;max-width:var(--measure-body-max);font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-cp-split{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-6) var(--space-7);align-items:start;min-width:0}
+
+/* label / value rows */
+.a3-cp-rows{display:grid;min-width:0}
+.a3-cp-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,max-content);gap:var(--space-4);align-items:baseline;border-bottom:var(--border-hairline);padding:var(--space-3) 0}
+.a3-cp-row-label{min-width:0;font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-cp-row-value{min-width:0;text-align:right;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-label-weight);color:var(--color-text-primary);overflow-wrap:break-word}
+
+/* chapter 3 · construction as label / value / consequence lines */
+.a3-cp-construction{display:grid;gap:var(--space-2);margin-top:var(--space-4);min-width:0}
+.a3-cp-construction-line{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.5fr);gap:var(--space-4);align-items:baseline;border-bottom:var(--border-hairline);padding:var(--space-3) 0;font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-cp-construction-label{display:block;min-width:0;color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-cp-construction-building{display:block;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-cp-construction-value{display:block;min-width:0;font-weight:var(--type-label-weight);color:var(--color-text-primary);overflow-wrap:break-word}
+.a3-cp-construction-note{display:block;min-width:0;color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
+
+/* chapter 4 · building tiles. Two or three houses are recognised, not
+   read: a three-building Option gets one row of three at 1440. */
+.a3-cp-building-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,28rem),1fr));gap:var(--space-6) var(--space-5);align-items:start;min-width:0}
+.a3-cp-building-grid[data-count="3"]{grid-template-columns:repeat(3,minmax(0,1fr))}
+.a3-cp-building{display:grid;gap:var(--space-4);align-content:start;min-width:0}
+.a3-cp-building-media{min-width:0}
+.a3-cp-building-copy{display:grid;gap:var(--space-2);min-width:0}
+.a3-cp-building-name{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--type-heading-weight);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-cp-building-use{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
+.a3-cp-building .a3-cp-rows{margin-top:var(--space-2)}
+.a3-cp-building .a3-cp-row{padding:var(--space-2) 0}
+.a3-cp-building .a3-cp-row-label,.a3-cp-building .a3-cp-row-value{font-size:var(--type-small-size);line-height:var(--type-small-line)}
+
+/* callout · an emphasised statement, a 2 px rule at its left, no fill */
+.a3-cp-callout{display:grid;gap:var(--space-1);margin:0;min-width:0;border-left:var(--border-contrast-2px);padding:var(--space-2) 0 var(--space-2) var(--space-4)}
+.a3-cp-callout-title{display:block;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-label-weight);color:var(--color-text-primary);overflow-wrap:break-word}
+.a3-cp-callout-body{display:block;max-width:var(--measure-body-max);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
+
+/* list · hairline separators, no bullets */
+.a3-cp-list{display:grid;list-style:none;margin:0;padding:0;min-width:0}
+/* Exclusions at FULL contrast: the excluded list is not greyed, it is the
+   list a client must be able to read from across the table. */
+.a3-cp-list-excluded .a3-cp-list-item{font-weight:var(--font-weight-bold)}
+.a3-cp-list-text{display:block;min-width:0}
+.a3-cp-list-building{display:block;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-medium);color:var(--color-text-secondary)}
+.a3-cp-scope-groups{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-6);min-width:0}
+.a3-cp-layer-open{display:flex;justify-content:flex-start;padding-top:var(--space-4)}
+.a3-cp-list-item{border-bottom:var(--border-hairline);padding:var(--space-3) 0;font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+
+/* chapters 7 · 9 · 10 compositions */
+.a3-cp-schedule{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:var(--space-6) var(--space-7);align-items:start;min-width:0}
+.a3-cp-schedule .a3-cp-callout{margin-top:var(--space-2)}
+.a3-cp-unavailable{margin:0;max-width:var(--measure-body-max);border-top:var(--border-hairline);padding-top:var(--space-5);font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-secondary)}
+.a3-cp-basis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr));gap:var(--space-6) var(--space-7);align-items:start;min-width:0}
+.a3-cp-closing{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-6) var(--space-7);align-items:start;min-width:0}
+/* The supported outputs are reused by reference and take the full measure. */
+.a3-cp-closing>:not(.a3-cp-panel){grid-column:1 / -1;min-width:0}
+.a3-cp-artefacts{display:grid;gap:var(--space-2);margin-top:var(--space-4);min-width:0}
+
+/* presenter bar · the what-if state, folded into the one bar */
+.a3-cp-bar-scenario{display:inline-flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);min-width:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary)}
+.a3-cp-bar-scenario[data-state="modified"]{border-left:var(--border-width-strong) solid var(--color-text-primary);padding-left:var(--space-3)}
+.a3-cp-bar-scenario-label{font-weight:var(--type-label-weight);white-space:nowrap}
+.a3-cp-bar-scenario-delta{font-weight:var(--font-weight-bold);white-space:nowrap}
+
+/* Varianten layer · the canonical Dialog wearing this panel (same layer,
+   height and overflow pattern as `.a3-modal`). */
+.a3-cp-layer-scrim{padding:var(--space-5)}
+.a3-cp-layer{display:grid;gap:var(--space-5);align-content:start;width:min(72rem,calc(100vw - 2 * var(--space-5)));max-height:calc(100vh - 2 * var(--space-5));overflow:auto;border:var(--border-contrast-2px);background:var(--color-surface-default);color:var(--color-text-primary);padding:var(--space-6);z-index:var(--layer-dialog)}
+.a3-cp-layer-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:var(--space-4);border-bottom:var(--border-hairline);padding-bottom:var(--space-4)}
+.a3-cp-layer-title{margin:0;font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:var(--type-heading-weight);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-cp-layer-actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2)}
+.a3-cp-layer-pick{display:flex;flex-wrap:wrap;gap:var(--space-2) var(--space-4);margin:0;min-width:0;border:0;padding:0}
+.a3-cp-layer-pick>legend{padding:0;margin-bottom:var(--space-2)}
+.a3-cp-layer-pick-item{display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--size-hit-target-default);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);cursor:pointer}
+.a3-cp-layer-pick-item input{margin:0;width:var(--size-icon-sm);height:var(--size-icon-sm);accent-color:var(--color-text-primary)}
+/* Rule 3a: the table sits in its own overflow-x container. */
+.a3-cp-layer-scroll{min-width:0;overflow-x:auto}
+.a3-cp-compare{width:100%;border-collapse:collapse;font-size:var(--type-table-body-size);line-height:var(--type-table-body-line);color:var(--color-text-primary)}
+.a3-cp-compare th,.a3-cp-compare td{border-bottom:var(--border-hairline);padding:var(--space-3) var(--space-4);text-align:left;vertical-align:baseline;overflow-wrap:break-word}
+.a3-cp-compare th:first-child,.a3-cp-compare td:first-child{padding-left:0}
+.a3-cp-compare th:last-child,.a3-cp-compare td:last-child{padding-right:0}
+.a3-cp-compare thead th{font-size:var(--type-table-header-size);line-height:var(--type-table-header-line);font-weight:var(--font-weight-bold);border-bottom:var(--border-contrast-1px)}
+.a3-cp-compare tbody th[scope="row"]{font-weight:var(--type-table-body-weight)}
+.a3-cp-compare-num{text-align:right;white-space:nowrap}
+.a3-cp-compare th.a3-cp-compare-num{text-align:right}
+.a3-cp-compare-group th{padding-top:var(--space-5);font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-label-weight);letter-spacing:var(--type-tracking-caps);text-transform:uppercase;color:var(--color-text-secondary)}
+.a3-cp-compare-presented{display:block;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-caption-weight);letter-spacing:normal;text-transform:none;color:var(--color-text-secondary);white-space:nowrap}
+.a3-cp-layer-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-4);border-top:var(--border-hairline);padding-top:var(--space-4)}
+.a3-cp-layer-switch{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.a3-cp-layer-note{margin:0;max-width:var(--measure-body-max);font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+
+/* what-ifs · decision groups inside the layer */
+.a3-cp-whatif{display:grid;gap:var(--space-4);min-width:0;border-top:var(--border-contrast-1px);padding-top:var(--space-5)}
+.a3-cp-whatif-open{margin:0;border-left:var(--size-status-accent-width) solid var(--color-status-warning);background:var(--color-surface-emphasis-warm);padding:var(--space-3) var(--space-4);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
+.a3-cp-whatif-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,20rem),1fr));gap:var(--space-5);align-items:start;min-width:0}
+.a3-cp-decision{min-width:0}
+
+/* revert / save dialogs · the released minimal dialog, on the dialog layer */
+.a3-cp-overlay{position:fixed;inset:0;z-index:var(--layer-dialog-backdrop);display:grid;place-items:center;background:var(--color-surface-overlay);padding:var(--space-5)}
+.a3-cp-modal{display:grid;gap:var(--space-4);width:min(100%,var(--measure-panel));max-height:calc(100vh - 2 * var(--space-5));overflow-y:auto;border:var(--border-contrast-2px);background:var(--color-surface-default);color:var(--color-text-primary);padding:var(--space-6);z-index:var(--layer-dialog)}
+.a3-cp-modal-title{margin:0;font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:var(--type-heading-weight);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-cp-modal-actions{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.a3-cp-field{display:grid;gap:var(--space-1);min-width:0}
+.a3-cp-field-label{font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-label-weight);letter-spacing:var(--type-tracking-caps);text-transform:uppercase;color:var(--color-text-secondary)}
+.a3-cp-field-input{box-sizing:border-box;width:100%;min-width:0;min-height:var(--size-hit-target-default);border:var(--border-default);background:var(--color-surface-default);padding:var(--space-2) var(--space-3);font:inherit;font-size:var(--type-input-size);line-height:var(--type-input-line);color:var(--color-text-primary)}
+.a3-cp-field-input:hover{border-color:var(--color-border-strong)}
+.a3-cp-field-input:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--space-1)}
+.a3-cp-field-input[aria-invalid="true"]{border:var(--border-error)}
+.a3-cp-field-error{margin:0;font-size:var(--type-error-size);line-height:var(--type-error-line);font-weight:var(--type-error-weight);color:var(--color-status-error)}
+
+/* the receipt a completed Save as New leaves behind (a status, toast layer) */
+.a3-cp-receipt{position:fixed;right:var(--space-7);bottom:var(--space-8);z-index:var(--layer-toast);display:grid;gap:var(--space-2);width:min(100%,var(--size-toast-max-width));border-left:var(--size-status-accent-width-prominent) solid var(--color-status-success);background:var(--color-surface-default);padding:var(--space-4)}
+.a3-cp-receipt-title{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-label-weight);color:var(--color-text-primary)}
+.a3-cp-receipt-body{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+
+/* 1280 · recomposed, not squeezed. tokens.css narrows `--measure-workspace`
+   at the same breakpoint; here the multi-column compositions become the
+   1280 composition and the chapter breathes a step less. */
+@media (max-width:1439px){
+  .a3-cp-chapter{gap:var(--space-5);padding:var(--space-6) var(--space-5)}
+  .a3-cp-scope-groups{grid-template-columns:minmax(0,1fr)}
+  /* The bar at 1280: tighter gaps so ten chapters, `Varianten · N`, the
+     Option name and the language switch share one row without clipping. */
+  .a3-cp-bar{gap:var(--space-2);padding:0 var(--space-3)}
+  .a3-cp-bar-actions{gap:var(--space-1)}
+  .a3-cp-rail-list{gap:0}
+  /* At 1280 the rail is numerals only: the current chapter is already named
+     by the stage's eyebrow and title directly beneath, and every button keeps
+     its full name for AT and on hover. Ten 44 px boxes + two steps fit beside
+     `Varianten · N` whatever the current chapter's name length. */
+  .a3-cp-rail-text{display:none}
+  .a3-cp-chapter-stage{padding-left:max(var(--space-5),calc((100% - var(--measure-workspace)) / 2));padding-right:max(var(--space-5),calc((100% - var(--measure-workspace)) / 2))}
+  .a3-cp-title,.a3-cp-opening-title{font-size:var(--type-heading-1-narrow-size);line-height:var(--type-heading-1-narrow-line)}
+  /* 1280 keeps the identity beside the image: stacking would push the
+     client's own name below the fold behind a full-width picture. */
+  .a3-cp-opening{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--space-5)}
+  .a3-cp-opening-copy{align-content:start}
+  .a3-cp-heroes{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-5) var(--space-5)}
+  .a3-cp-hero-side{grid-column:span 1}
+  .a3-cp-split,.a3-cp-schedule{grid-template-columns:minmax(0,1fr);gap:var(--space-5)}
+  .a3-cp-building-grid,.a3-cp-building-grid[data-count="3"]{grid-template-columns:repeat(auto-fill,minmax(min(100%,28rem),1fr));gap:var(--space-5) var(--space-4)}
+  .a3-cp-basis,.a3-cp-closing{gap:var(--space-5)}
+  .a3-cp-layer{padding:var(--space-5)}
+}
+
+/* Print: the deck is screen chrome; the printed sheet is `.a3-client-print-doc`,
+   which the existing print rules above reveal. The shell itself stays
+   printable (block, unclipped) because the sheet may be mounted inside it. */
+@media print{
+  .a3-cp-shell{display:block;min-height:auto;overflow:visible}
+  .a3-cp-band,.a3-cp-bar,.a3-cp-identity,.a3-cp-stage,.a3-cp-overlay,.a3-cp-receipt,.a3-cp-layer-scrim{display:none !important}
+}

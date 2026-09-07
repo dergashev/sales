@@ -7,7 +7,6 @@ import {
   decideAllKgScope, enterOptionWorkspace, completeBuildingScope,
   openPresentStage,
   saveOptionBaseline,
-  startClientPresentation,
 } from '../../test/offer-option'
 import { __resetStoreForTests, useStore } from '../../state/store'
 
@@ -116,26 +115,26 @@ describe('DC-21: происхождение раскрывается у кажд
     openPresentStage()
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
-    // VR3-05 (T-034): Client Mode opens on its boundary screen; the
-    // narrative these suites are about begins one deliberate click later.
-    await startClientPresentation(user)
+    // VR3-CP-00: Client Mode opens directly on chapter 1 of the proposal
+    // narrative (the entry boundary is gone); the price lives in chapter 5
+    // "Preiszusammensetzung", reached through the chapter rail. The
+    // chapter cross-fade resolves on a real tick, hence `findByRole`.
+    await user.click(await screen.findByRole('button', { name: /· Preiszusammensetzung$/ }))
+    await screen.findByRole('region', { name: 'Preiszusammensetzung' })
 
-    // VR3-05: the surface moved again — the approved client narrative
-    // (T-040) replaces the Kostentreiber extract with the Option's
-    // INVESTMENT COMPOSITION by cost group. The invariant this test exists
-    // to prove is unchanged and is what is asserted below: a client-facing
-    // attribution names the DIN 276 cost group, never a building. The new
-    // surface cannot break it by construction — it reads the KG catalogue's
-    // own chapter titles and never touches a building's display name — so
-    // this is a regression guard on that construction, not on a formatter.
-    await user.click(screen.getByRole('button', { name: 'Investition' }))
+    // The invariant this test exists to prove is unchanged and is what is
+    // asserted below: a client-facing attribution names the DIN 276 cost
+    // group, never a building. The composition table reads the KG
+    // catalogue's own chapter titles and never touches a building's
+    // display name — so this is a regression guard on that construction,
+    // not on a formatter.
     const composition = await screen.findByRole('heading', {
       level: 2, name: 'Zusammensetzung',
     })
     const panel = composition.closest('article') as HTMLElement
     expect(panel).not.toBeNull()
-    expect(within(panel).getByText('Baukonstruktion')).toBeInTheDocument()
-    expect(within(panel).getByText('Technische Anlagen')).toBeInTheDocument()
+    expect(within(panel).getByRole('rowheader', { name: /Baukonstruktion/ })).toBeInTheDocument()
+    expect(within(panel).getByRole('rowheader', { name: /Technische Anlagen/ })).toBeInTheDocument()
     expect(panel).not.toHaveTextContent('Haus A')
     expect(panel).not.toHaveTextContent('Haus B')
   })

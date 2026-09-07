@@ -7,6 +7,7 @@ import {
   rmdirSync,
   writeFileSync,
 } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
@@ -14,6 +15,17 @@ import { describe, expect, it } from 'vitest'
 const ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))))
 const WORKTREES = join(ROOT, '.worktrees')
 const PREVIEW = join(ROOT, '.preview')
+/**
+ * The vitest CLI is located the way Node locates it, not at a hardcoded
+ * `<ROOT>/node_modules/...`: a git worktree checkout under `.worktrees/`
+ * carries no `node_modules` of its own and resolves every package through
+ * the parent repository's tree, so the hardcoded path did not exist there
+ * and both cases failed before the discovery under test even ran.
+ */
+const VITEST_CLI = join(
+  dirname(createRequire(import.meta.url).resolve('vitest/package.json')),
+  'vitest.mjs',
+)
 
 function assertNestedDirIsExcluded(nestedRoot: string) {
   const dirExisted = existsSync(nestedRoot)
@@ -25,7 +37,7 @@ function assertNestedDirIsExcluded(nestedRoot: string) {
   try {
     const output = execFileSync(
       process.execPath,
-      [join(ROOT, 'node_modules/vitest/vitest.mjs'), 'list', '--filesOnly', '--run'],
+      [VITEST_CLI, 'list', '--filesOnly', '--run'],
       { cwd: ROOT, encoding: 'utf8' },
     )
     expect(output).toContain('src/test/validation-isolation.test.ts')

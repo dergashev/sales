@@ -1,44 +1,169 @@
-import { expect, test, type Page } from '@playwright/test'
-import { BUILDING_SCOPE, DEMO_COMPLEX_PROJECT_NAME, KONFIGURATOR_GATE, NAV } from '../anchors'
+import { expect, test, type Locator, type Page } from '@playwright/test'
+import {
+  CLIENT_PRESENTATION as CP, DEMO_COMPLEX_PROJECT_NAME, KONFIGURATOR_GATE, NAV, OPPORTUNITY,
+} from '../anchors'
 import { reachOptionWorkspace, saveBuildingScope } from '../journey'
 
 /**
- * VR3-05 — the client presentation, walked as a presenter walks it.
+ * VR3-05 / VR3-CP-00 — the client presentation, walked as a presenter walks it.
  *
- * Every state below is reached through the product's own gates: the Option
- * is configured, scheduled, reviewed and SAVED before Client Mode exists at
- * all, because that is the gate this ticket's first acceptance criterion is
- * about. Nothing is seeded, so a broken gate fails here rather than being
- * stepped over.
+ * The Client Mode is a ten-chapter proposal narrative (PresentationShell,
+ * model C "Bühne & Ebene"): one chapter on stage at a time, a single
+ * presenter bar (`.a3-cp-bar`) that carries the chapter rail, the Varianten
+ * layer (comparison + what-ifs, present only with ≥ 2 eligible Options) and
+ * chapter-specific evidence layers. There is no entry boundary any more:
+ * entering lands on chapter 1.
  *
- * The screenshots are the evidence T-034…T-045 are compared against. They
- * are named for the target they answer, so a reviewer can put them side by
- * side without being told which is which.
+ * Every state below is reached through the product's own gates — the Option
+ * is configured, scheduled, reviewed and SAVED before Client Mode exists —
+ * so a broken gate fails here rather than being stepped over. Screenshots
+ * go to `.artifacts/vr3-05`, named for the claim they evidence.
  */
 
 const EVIDENCE = '.artifacts/vr3-05'
 
-async function shot(page: Page, name: string) {
-  // The narrative swap is an AnimatePresence `mode="wait"` pair: the old
-  // section leaves before the new one enters. A screenshot taken between
-  // them photographs the previous section under the new nav state — the
-  // kind of evidence that looks like a bug and is only a race. Settling on
-  // "no animation is running" is the honest wait, and it costs nothing when
-  // reduced motion is on because then there is nothing to wait for.
+/* ───────────────────────────── small helpers ─────────────────────────── */
+
+async function settle(page: Page) {
+  // Chapter swaps are an AnimatePresence `mode="wait"` pair; photographing
+  // between exit and enter records the previous chapter under the new rail
+  // state. Waiting for "no animation running" is the honest wait and costs
+  // nothing under reduced motion.
   await page.waitForFunction(
     () => document.getAnimations().every((a) => a.playState !== 'running'),
-    undefined,
-    { timeout: 5_000 },
+    undefined, { timeout: 5_000 },
   ).catch(() => {})
-  await page.screenshot({ path: `${EVIDENCE}/${name}.png`, fullPage: false })
 }
 
-/** Navigate the narrative rail and wait for the section to actually be on. */
-async function toSection(page: Page, label: string, heading: RegExp) {
-  await page.getByRole('navigation', { name: 'Präsentation' })
-    .getByRole('button', { name: label }).click()
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(heading)
+async function shot(page: Page, name: string) {
+  await settle(page)
+  const w = page.viewportSize()?.width ?? 0
+  await page.screenshot({ path: `${EVIDENCE}/${name}-${w}.png`, fullPage: false })
 }
+
+// The landmark is named in the CLIENT's language, so both names resolve it.
+const rail = (page: Page) => page.getByRole('navigation', {
+  name: new RegExp(`^(${CP.railLabel}|${CP.railLabelEn})$`),
+})
+const chapterButtons = (page: Page) => rail(page).getByRole('listitem').getByRole('button')
+const bar = (page: Page) => page.locator(CP.cls.bar)
+
+/** `aria-label="{n} · {label}"` → the chapter's label. */
+async function chapterLabel(button: Locator): Promise<string> {
+  const aria = (await button.getAttribute('aria-label')) ?? ''
+  return aria.split(' · ').slice(1).join(' · ').trim()
+}
+
+/** The labels of every PRESENT chapter, in rail order. */
+async function presentChapters(page: Page): Promise<string[]> {
+  const items = chapterButtons(page)
+  const n = await items.count()
+  const labels: string[] = []
+  for (let i = 0; i < n; i += 1) labels.push(await chapterLabel(items.nth(i)))
+  return labels
+}
+
+/**
+ * Navigate by chapter label and wait until the stage has actually moved.
+ *
+ * The rail button is clicked as a pointer would click it. If the pointer
+ * cannot reach it (Chromium reports another element intercepting), that is
+ * recorded as a SOFT failure with the interceptor named, and the walk
+ * continues by the presenter's keyboard shortcuts so the remaining claims
+ * of the test are still verified rather than lost behind a timeout.
+ */
+async function toChapter(page: Page, label: string) {
+  const button = rail(page).getByRole('button', { name: new RegExp(`^\\d+ · ${label}$`) })
+  let intercepted: string | null = null
+  await button.click({ timeout: 5_000 }).catch((error: Error) => {
+    intercepted = error.message.split('\n').find((l) => /intercepts pointer events/.test(l))?.trim()
+      ?? error.message.split('\n')[0]!
+  })
+  if (intercepted) {
+    expect.soft(intercepted, `the rail button "${label}" must be reachable by pointer`).toBeNull()
+    const labels = await presentChapters(page)
+    const from = labels.indexOf(await chapterLabel(rail(page).locator('[aria-current="step"]')))
+    const to = labels.indexOf(label)
+    await page.locator('main').focus()
+    for (let i = 0; i < Math.abs(to - from); i += 1) {
+      await page.keyboard.press(to > from ? 'ArrowRight' : 'ArrowLeft')
+    }
+  }
+  await expect(button).toHaveAttribute('aria-current', 'step')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1)
+}
+
+/**
+ * The bar's contract: one row, constant height WHATEVER the Option count —
+ * and the rail must still show every chapter button in full. A rail
+ * squeezed into an overflow sliver puts chapter buttons under the step
+ * arrows, and a presenter cannot reach a chapter the client is asking for.
+ * Measured as what a pointer at each button's centre would actually hit.
+ */
+async function railGeometry(page: Page) {
+  return page.evaluate((sel) => {
+    const nav = document.querySelector(`${sel} nav`)!
+    const list = nav.querySelector('ol')!
+    const covered = Array.from(list.querySelectorAll('button')).flatMap((b) => {
+      const r = b.getBoundingClientRect()
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+      if (hit && b.contains(hit)) return []
+      const label = hit?.closest('[aria-label]')?.getAttribute('aria-label') ?? hit?.tagName ?? 'nothing'
+      return [`${b.getAttribute('aria-label')} → ${label}`]
+    })
+    return {
+      barHeight: document.querySelector(sel)!.getBoundingClientRect().height,
+      railWidth: Math.round(nav.getBoundingClientRect().width),
+      railOverflow: nav.scrollWidth - nav.clientWidth,
+      listOverflow: list.scrollWidth - list.clientWidth,
+      covered,
+    }
+  }, CP.cls.bar)
+}
+
+async function activeElement(page: Page) {
+  return page.evaluate(() => {
+    const el = document.activeElement as HTMLElement | null
+    return {
+      tag: el?.tagName ?? null,
+      isTheHeading: el !== null && el === document.querySelector('h1'),
+      role: el?.getAttribute('role') ?? (el as HTMLInputElement | null)?.type ?? null,
+      focusVisible: el?.matches(':focus-visible') ?? false,
+    }
+  })
+}
+
+/** The grouped euro amount in a text, e.g. `38.740.000` — never hard-coded. */
+function amountIn(text: string): string {
+  const m = text.match(/\d{1,3}(?:\.\d{3}){2,}/)
+  if (!m) throw new Error(`no grouped amount in: ${text.slice(0, 120)}`)
+  return m[0]
+}
+
+/**
+ * One projection, one number: the total on chapter 2's hero is the total on
+ * chapter 5's sum row and the total on the printed sheet. Returns the amount
+ * so a caller can compare states, never a fixture literal.
+ */
+async function assertOneTotal(page: Page): Promise<string> {
+  await toChapter(page, 'Projektüberblick')
+  const total = amountIn(await page.locator(CP.cls.heroTotal).innerText())
+  await toChapter(page, 'Preiszusammensetzung')
+  await expect(page.locator('main')).toContainText(total)
+  await page.emulateMedia({ media: 'print' })
+  await expect(page.locator(CP.cls.printTotal)).toContainText(total)
+  await page.emulateMedia({ media: 'screen' })
+  return total
+}
+
+const NOT_CLIENT_SAFE = [
+  /\bOPT-\d+\b/, /\bSNAP-[A-Z0-9-]+\b/, /\bDEMO-[A-Z0-9-]+\b/,
+  /Journal|Marge|interne Notiz/i, /Konfidenz|OCR/i,
+  // Preparation vocabulary that must never reach the client tree.
+  /gespeichert|Version \d|Vorbereitung|Kapitel \d+ von \d+/i,
+]
+
+/* ───────────────────────── the walk into Client Mode ─────────────────── */
 
 /** Decide all six cost groups, then confirm the scope. */
 async function decideScopeLedger(page: Page) {
@@ -136,15 +261,25 @@ async function configureAllChapters(page: Page) {
     const next = page.getByRole('button', { name: /^Weiter zu / })
     const blocked = async () => (await next.count()) > 0
       && (await next.first().getAttribute('aria-disabled')) === 'true'
-    // One pass per building the band offers (plus the landing one).
+    // One pass per building the band offers (plus the landing one). A second
+    // round is taken while the forward action is still blocked: switching
+    // the band re-renders the system list, and a pass that read the list
+    // before the swap answers nothing for that building.
     const buildingSegments = page.locator('.a3-rahmen label:has(input[type="radio"])')
     const buildingCount = Math.max(await buildingSegments.count(), 1)
-    for (let b = 0; b < buildingCount; b += 1) {
-      if (b > 0) {
-        if (!(await blocked())) break
-        await buildingSegments.nth(b).click()
+    for (let round = 0; round < 2; round += 1) {
+      for (let b = 0; b < buildingCount; b += 1) {
+        if (b > 0 || round > 0) {
+          if (!(await blocked())) break
+          if (buildingCount > 1) {
+            await buildingSegments.nth(b).click()
+            await expect(buildingSegments.nth(b).locator('input')).toBeChecked()
+            await settle(page)
+          }
+        }
+        await answerVisibleSystems()
       }
-      await answerVisibleSystems()
+      if (!(await blocked())) break
     }
     const toSchedule = page.getByRole('button', { name: 'Weiter zum Terminplan' })
     if (await toSchedule.count() > 0
@@ -183,536 +318,492 @@ async function confirmScheduleAndReview(page: Page) {
   await confirmReview.click()
 }
 
-async function saveAndEnterClientMode(page: Page) {
+async function saveOption(page: Page) {
   const save = page.getByRole('button', { name: 'Option speichern' })
   await expect(save).not.toHaveAttribute('aria-disabled', 'true', { timeout: 15_000 })
   await save.click()
-  const enter = page.getByRole('button', { name: 'Kundenpräsentation starten' })
-  await expect(enter).toBeVisible({ timeout: 15_000 })
-  await enter.click()
-  // The gate dialog, then the boundary screen.
-  const gateStart = page.getByRole('button', { name: 'Kundenansicht starten' })
-  if (await gateStart.count() > 0) await gateStart.click()
+  await expect(page.getByRole('button', { name: 'Kundenpräsentation starten' }))
+    .toBeVisible({ timeout: 15_000 })
 }
 
-async function reachClientMode(page: Page) {
+async function enterClientMode(page: Page) {
+  await page.getByRole('button', { name: 'Kundenpräsentation starten' }).click()
+  // The private preflight gate, then the stage — no boundary screen.
+  const gateStart = page.getByRole('button', { name: 'Kundenansicht starten' })
+  if (await gateStart.count() > 0) await gateStart.click()
+  await expect(bar(page)).toBeVisible({ timeout: 15_000 })
+  await expect(chapterButtons(page).first()).toHaveAttribute('aria-current', 'step')
+}
+
+/**
+ * A SECOND saved Option, through the product: the receipt's "Weitere Option
+ * anlegen" returns to the collection, the collection creates the Option, and
+ * the same configure → schedule → review → save walk makes it eligible. The
+ * Varianten layer — and with it every what-if — exists only with ≥ 2
+ * eligible Options, so the scenario tests need this and nothing else does.
+ */
+async function createSecondSavedOption(page: Page) {
+  await page.getByRole('button', { name: 'Weitere Option anlegen' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: /^Optionen/ }))
+    .toBeVisible({ timeout: 15_000 })
+  await page.getByRole('button', { name: 'Weitere Option anlegen' }).click()
+  // The saved Option offers `Präsentieren`; only the fresh one offers this.
+  await page.getByRole('button', { name: OPPORTUNITY.openNewOption }).last().click()
+  await expect(page.getByRole('heading', { level: 1, name: NAV.items.buildingScope }))
+    .toBeVisible({ timeout: 15_000 })
+  await saveBuildingScope(page)
+  await decideScopeLedger(page)
+  await configureAllChapters(page)
+  await confirmScheduleAndReview(page)
+  await saveOption(page)
+}
+
+async function reachClientMode(page: Page, opts: { secondOption?: boolean } = {}) {
   await page.goto('/')
   await reachOptionWorkspace(page, DEMO_COMPLEX_PROJECT_NAME)
   await saveBuildingScope(page)
   await decideScopeLedger(page)
   await configureAllChapters(page)
   await confirmScheduleAndReview(page)
-  await saveAndEnterClientMode(page)
+  await saveOption(page)
+  if (opts.secondOption) await createSecondSavedOption(page)
+  await enterClientMode(page)
 }
 
-test.describe('VR3-05 · client presentation, scenario and outputs', () => {
-  test('walks the complete narrative from a saved Option', async ({ page }) => {
-    test.setTimeout(180_000)
+/** Open the Varianten layer and choose a what-if by its radio label. */
+async function chooseWhatIf(page: Page, option: RegExp) {
+  const trigger = bar(page).getByRole('button', { name: /^Varianten · \d+$/ })
+  await trigger.click()
+  const layer = page.getByRole('dialog', { name: CP.variantenTitle })
+  await expect(layer).toBeVisible()
+  await layer.getByRole('radio', { name: option }).click()
+  return layer
+}
+
+/* ────────────────────────────────── tests ────────────────────────────── */
+
+test.describe('VR3-05 · client presentation narrative, Varianten and outputs', () => {
+  test.setTimeout(180_000)
+
+  test('walks every present chapter of the narrative from a saved Option', async ({ page }) => {
     await reachClientMode(page)
 
-    // T-034 — the boundary names the mode and the saved source Option.
-    await expect(page.getByRole('heading', { level: 1 }))
-      .toContainText('gespeicherte Option')
-    await expect(page.getByText(/Gespeicherter Stand · /)).toBeVisible()
-    // The Work → Present swap is a view transition across two shells; the
-    // boundary screen is only itself once it has finished.
-    await expect(page.getByRole('navigation', { name: 'Präsentation' })).toBeVisible()
-    await shot(page, 'T-034-entry-1440')
+    // Entry lands on chapter 1 with exactly one h1 — no boundary screen.
+    const items = chapterButtons(page)
+    const labels = await presentChapters(page)
+    expect(labels.length).toBeGreaterThanOrEqual(8)
+    // The present chapters are a subsequence of the fixed order; 1, 2, 5,
+    // 6, 7, 9, 10 are unconditional.
+    const order = labels.map((l) => CP.chapters.indexOf(l as typeof CP.chapters[number]))
+    expect(order).not.toContain(-1)
+    expect([...order].sort((a, b) => a - b)).toEqual(order)
+    for (const mandatory of ['Angebot', 'Projektüberblick', 'Preiszusammensetzung',
+      'Leistungsumfang', 'Terminplan', 'Grundlagen', 'Nächster Schritt']) {
+      expect(labels).toContain(mandatory)
+    }
+    await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1)
+    await expect(items.first()).toHaveAttribute('aria-current', 'step')
+    await shot(page, 'CP-01-entry-chapter-1')
 
-    await page.getByRole('button', { name: 'Präsentation starten' }).click()
+    // Every chapter: one h1, aria-current on exactly its own rail item.
+    for (let i = 0; i < labels.length; i += 1) {
+      await items.nth(i).click()
+      await expect(items.nth(i)).toHaveAttribute('aria-current', 'step')
+      await expect(rail(page).locator('[aria-current="step"]')).toHaveCount(1)
+      await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1)
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+      const slug = labels[i]!.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+      await shot(page, `CP-01-chapter-${String(i + 1).padStart(2, '0')}-${slug}`)
+    }
 
-    // T-035 — identity.
-    await expect(page.getByRole('heading', { level: 1, name: DEMO_COMPLEX_PROJECT_NAME }))
-      .toBeVisible()
-    await shot(page, 'T-035-identity-1440')
+    // The saved baseline is ONE number on the hero, the sum row and the sheet.
+    await assertOneTotal(page)
 
-    // The rail is the six target sections, in order, and nothing else.
-    const nav = page.getByRole('navigation', { name: 'Präsentation' })
-    await expect(nav.getByRole('button')).toHaveText(
-      ['Projekt', 'Gebäude', 'Umfang', 'Leistungen', 'Terminplan', 'Investition'],
-    )
+    // Evidence layers open over the stage and Esc returns to the SAME chapter.
+    await toChapter(page, 'Preiszusammensetzung')
+    await page.getByRole('button', { name: 'Kostentreiber und Regionalfaktor' }).click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await shot(page, 'CP-01-layer-kostentreiber')
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(rail(page).getByRole('button', { name: /Preiszusammensetzung$/ }))
+      .toHaveAttribute('aria-current', 'step')
 
-    await toSection(page, 'Gebäude', /Gebäudegeschichten|Aufgabe/)
-    await shot(page, 'T-036-buildings-1440')
+    // Presenter keys on the stage step chapters; Escape never exits.
+    await items.nth(1).click()
+    await page.locator('main').focus()
+    await page.keyboard.press('ArrowRight')
+    await expect(items.nth(2)).toHaveAttribute('aria-current', 'step')
+    await page.keyboard.press('PageDown')
+    await expect(items.nth(3)).toHaveAttribute('aria-current', 'step')
+    await page.keyboard.press('ArrowLeft')
+    await expect(items.nth(2)).toHaveAttribute('aria-current', 'step')
+    await page.keyboard.press('PageUp')
+    await expect(items.nth(1)).toHaveAttribute('aria-current', 'step')
+    await page.keyboard.press('Escape')
+    await expect(bar(page)).toBeVisible()
 
-    await toSection(page, 'Umfang', /Umfang\.$/)
-    await expect(page.getByRole('heading', { level: 2, name: 'Enthalten' })).toBeVisible()
-    await shot(page, 'T-037-scope-1440')
-
-    await toSection(page, 'Leistungen', /sichtbar gemacht\.$/)
-    await shot(page, 'T-038-services-1440')
-
-    await toSection(page, 'Terminplan', /^Ein abgestimmter Weg/)
-    await expect(page.getByRole('heading', { level: 2, name: 'Ablauf' })).toBeVisible()
-    await shot(page, 'T-039-schedule-1440')
-
-    await toSection(page, 'Investition', /gemeinsame\s+Entscheidung\.$/)
-    await expect(page.getByRole('heading', { level: 2, name: 'Zusammensetzung' }))
-      .toBeVisible()
-    await shot(page, 'T-040-investment-1440')
+    // "Beenden" is the one way out.
+    await bar(page).getByRole('button', { name: CP.exit }).click()
+    await expect(bar(page)).toHaveCount(0, { timeout: 10_000 })
   })
 
-  test('recomposes a scenario, reverts it and saves it as a descendant', async ({ page }) => {
-    test.setTimeout(180_000)
+  test('with one eligible Option the Varianten affordance is absent, not disabled', async ({ page }) => {
     await reachClientMode(page)
-    await page.getByRole('button', { name: 'Präsentation starten' }).click()
+    await expect(bar(page).getByRole('button', { name: /Varianten/ })).toHaveCount(0)
+    // And no what-if control is reachable anywhere on the client's screen.
+    await expect(page.getByRole('radio', { name: /Dezentral je Gebäude/ })).toHaveCount(0)
+  })
 
-    const nav = page.getByRole('navigation', { name: 'Präsentation' })
-    await nav.getByRole('button', { name: 'Leistungen' }).click()
+  /**
+   * The scenario lifecycle — recompose, gate the outputs, revert, save as a
+   * descendant — lives in the Varianten layer, which needs two eligible
+   * Options. The second one is created through the product (see
+   * `createSecondSavedOption`), which is why this test is the long one.
+   */
+  test('Varianten: recomposes a scenario, gates outputs, reverts and saves a descendant', async ({ page }) => {
+    await reachClientMode(page, { secondOption: true })
 
-    // The bar starts at the saved baseline and names its version.
-    const bar = page.locator('.a3-client-scenario-bar')
-    await expect(bar).toContainText('Gespeicherter Stand')
-    await expect(bar).toContainText('Version 1')
+    // With two eligible Options the actions gain `Varianten · 2`; the rail
+    // must still show every chapter button in full.
+    await shot(page, 'CP-02-bar-two-options')
+    const atRest = await railGeometry(page)
+    expect(atRest.barHeight).toBeLessThanOrEqual(56)
+    expect(atRest.covered, `every chapter button receives its own pointer with two Options `
+      + JSON.stringify(atRest)).toEqual([])
 
-    // What-if 1 — decentralised heat, priced by the canonical calculator.
-    await page.getByRole('radio', { name: /Dezentral je Gebäude/ }).click()
-    await expect(bar).toContainText('Nicht gespeichertes Präsentations-Szenario')
-    /**
-     * VR3-TGA-01 moved this number, and the move is the fix.
-     *
-     * It read −310 000 €: the plant-concept delta alone. Switching to
-     * per-building plants used to change no other row and left a shared-plant
-     * heat generator included at + 1 240 000 €, so the scenario priced a
-     * configuration that cannot be built — in the one place a client sees it.
-     * The cascade now drops that row with its parent.
-     */
-    await expect(bar).toContainText(/−.?1\.550\.000/)
-    await expect(bar).toContainText('eine Änderung')
-    await shot(page, 'T-041-scenario-1440')
+    const baseline = await assertOneTotal(page)
+
+    const trigger = bar(page).getByRole('button', { name: /^Varianten · \d+$/ })
+    await expect(trigger).toHaveText('Varianten · 2')
+    await trigger.click()
+    const layer = page.getByRole('dialog', { name: CP.variantenTitle })
+    await expect(layer).toBeVisible()
+    // The bounded comparison names both Options and offers the other one.
+    await expect(layer.getByRole('table')).toBeVisible()
+    await expect(layer.getByRole('button', { name: /zeigen$/ })).toHaveCount(1)
+    await expect(layer.getByRole('heading', { level: 3, name: CP.whatIf })).toBeVisible()
+    await shot(page, 'CP-02-varianten-layer')
+
+    // What-if 1 — decentralised heat. VR3-TGA-01 cascade: −1 550 000 €, not
+    // the −310 000 € plant-concept delta alone (see that ticket).
+    await layer.getByRole('radio', { name: /Dezentral je Gebäude/ }).click()
+    // A recalculation is not a document transition: the presenter keeps
+    // the caret on the radio they just pressed.
+    await page.waitForTimeout(700)
+    expect((await activeElement(page)).role).toBe('radio')
+    const scenario = page.locator(CP.cls.band).locator(CP.cls.scenarioSlot)
+    await expect(scenario).toContainText('Was-wäre-wenn-Stand')
+    await expect(scenario).toContainText(/−.?1\.550\.000/)
 
     // What-if 2 — gastronomy readiness composes with it.
-    await page.getByRole('radio', { name: /Gastronomie vorbereitet/ }).click()
-    // + 420 000 gastronomy − 1 550 000 heat (see the cascade note above).
-    await expect(bar).toContainText(/−.?1\.130\.000/)
-    await expect(bar).toContainText('2 Änderungen')
-    await shot(page, 'T-042-recalculation-1440')
+    await layer.getByRole('radio', { name: /Gastronomie vorbereitet/ }).click()
+    await expect(scenario).toContainText(/−.?1\.130\.000/)
+    await shot(page, 'CP-02-whatif-two-changes')
+    await layer.getByRole('button', { name: CP.variantenClose }).click()
+    await expect(layer).toHaveCount(0)
 
-    // The investment page recomposed with it — one result, not two.
-    await nav.getByRole('button', { name: 'Investition' }).click()
-    // 38 740 000 + 420 000 gastronomy − 1 550 000 heat (see the cascade note).
-    await expect(page.getByText('37.610.000\u202f€').first()).toBeVisible()
+    // The what-if slot joins the actions. The bar must still be one row of
+    // ≤ 56 px AND keep the chapter rail reachable — the second half is the
+    // one a wide slot can break, so it is measured, not assumed. Soft: the
+    // rest of the lifecycle below is still worth verifying if it fails.
+    await shot(page, 'CP-02-bar-with-scenario')
+    const withScenario = await railGeometry(page)
+    expect.soft(withScenario.barHeight, 'bar height with a what-if slot').toBeLessThanOrEqual(56)
+    expect.soft(withScenario.covered, `every chapter button receives its own pointer with a `
+      + `what-if slot ${JSON.stringify(withScenario)}`).toEqual([])
 
-    // T-043 — revert states the count and that the saved Option is untouched.
-    await toSection(page, 'Leistungen', /hidden|./)
-    await page.getByRole('button', { name: 'Zurücksetzen' }).click()
-    const revertDialog = page.getByRole('dialog')
-    await expect(revertDialog).toContainText('2 temporäre Änderungen')
-    await shot(page, 'T-043-revert-1440')
-    await page.getByRole('button', { name: /Änderungen verwerfen/ }).click()
-    await expect(bar).toContainText('Gespeicherter Stand')
-    await expect(bar).not.toContainText('Änderungen')
+    // The narrative recomposed with it — one result on every surface, and a
+    // different one from the saved baseline.
+    const recomposed = await assertOneTotal(page)
+    expect(recomposed).not.toBe(baseline)
+    await shot(page, 'CP-02-preis-recomposed')
 
-    // T-044 — save as new Option.
-    await page.getByRole('radio', { name: /Dezentral je Gebäude/ }).click()
-    await page.getByRole('button', { name: 'Als neue Option speichern' }).click()
-    await expect(page.getByRole('dialog')).toContainText('Quelle:')
-    await shot(page, 'T-044-save-new-1440')
-    await page.getByRole('dialog')
-      .getByRole('button', { name: 'Neue Option speichern', exact: true }).click()
-    // The receipt says which Option is presented and which stays active.
-    const receipt = page.locator('.a3-client-receipt')
-    await expect(receipt).toContainText('Szenario')
-    await expect(receipt).toContainText('Option 1')
-    await shot(page, 'M-12-save-receipt-1440')
-    // The scenario is spent and the descendant is the new baseline.
-    await expect(bar).toContainText('Gespeicherter Stand')
-  })
-
-  test('gates outputs by authority', async ({ page }) => {
-    test.setTimeout(180_000)
-    await reachClientMode(page)
-    await page.getByRole('button', { name: 'Präsentation starten' }).click()
-    const nav = page.getByRole('navigation', { name: 'Präsentation' })
-
-    // A saved baseline: all three outputs are open.
-    await nav.getByRole('button', { name: 'Investition' }).click()
-    await page.getByRole('button', { name: 'Abschließen & teilen' }).click()
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('Verbindlichkeit')
-    await expect(page.getByRole('button', { name: 'Versand vorbereiten' })).toBeVisible()
-    await shot(page, 'T-045-outputs-saved-1440')
-
-    // An unsaved scenario: PDF/print need an acknowledgement, email is routed.
-    await nav.getByRole('button', { name: 'Leistungen' }).click()
-    await page.getByRole('radio', { name: /Dezentral je Gebäude/ }).click()
-    await nav.getByRole('button', { name: 'Investition' }).click()
-    await page.getByRole('button', { name: 'Abschließen & teilen' }).click()
-
+    // Chapter 10 — an unsaved scenario gates PDF/print and routes email.
+    await toChapter(page, 'Nächster Schritt')
     await expect(page.getByText('Ein temporäres Szenario ist kein angenommenes Angebot'))
       .toBeVisible()
-    await expect(page.getByRole('button', { name: 'Prüfen & sichern' }))
-      .toHaveAttribute('aria-disabled', 'true')
+    const pdf = page.getByRole('button', { name: 'Prüfen & sichern' })
+    await expect(pdf).toHaveAttribute('aria-disabled', 'true')
     await expect(page.getByRole('button', { name: 'Als neue Option speichern' }).last())
       .toBeVisible()
-    await shot(page, 'T-045-outputs-unsaved-1440')
+    await shot(page, 'CP-03-outputs-unsaved')
+    await page.getByRole('checkbox', { name: /Was-wäre-wenn-Stand/ }).check()
+    await expect(pdf).not.toHaveAttribute('aria-disabled', 'true')
+    await pdf.click()
+    await expect(page.getByRole('dialog')).toContainText('Was-wäre-wenn-Stand')
+    await shot(page, 'CP-03-preflight-unsaved')
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
 
-    await page.getByRole('checkbox', { name: /nicht gespeichert/ }).check()
-    await expect(page.getByRole('button', { name: 'Prüfen & sichern' }))
-      .not.toHaveAttribute('aria-disabled', 'true')
-    await page.getByRole('button', { name: 'Prüfen & sichern' }).click()
-    await expect(page.getByRole('dialog')).toContainText('nicht gespeichertes Szenario')
-    await shot(page, 'T-045-preflight-1440')
+    // Revert names the count and leaves the presented Option untouched.
+    await scenario.getByRole('button', { name: 'Zurücksetzen' }).click()
+    const revert = page.getByRole('dialog')
+    await expect(revert).toContainText('2 temporäre Änderungen')
+    await shot(page, 'CP-04-revert')
+    await revert.getByRole('button', { name: /Änderungen verwerfen/ }).click()
+    await expect(scenario).toHaveCount(0)
+
+    // Save as new Option: the descendant becomes the presented baseline and
+    // a third eligible Option.
+    await chooseWhatIf(page, /Dezentral je Gebäude/)
+    await page.getByRole('dialog', { name: CP.variantenTitle })
+      .getByRole('button', { name: CP.variantenClose }).click()
+    await scenario.getByRole('button', { name: 'Als neue Option speichern' }).click()
+    const save = page.getByRole('dialog')
+    await expect(save).toContainText('Quelle:')
+    await shot(page, 'CP-05-save-as-new')
+    await save.getByRole('button', { name: 'Neue Option speichern', exact: true }).click()
+    const receipt = page.locator(CP.cls.receipt)
+    await expect(receipt).toContainText('angelegt')
+    await shot(page, 'CP-05-save-receipt')
+    await expect(scenario).toHaveCount(0)
+    await expect(trigger).toHaveText('Varianten · 3')
+  })
+
+  test('gates outputs by authority: a saved Option opens all three outputs', async ({ page }) => {
+    await reachClientMode(page)
+    await toChapter(page, 'Nächster Schritt')
+    await expect(page.getByRole('button', { name: 'Versand vorbereiten' })).toBeVisible()
+    const pdf = page.getByRole('button', { name: 'Prüfen & sichern' })
+    await expect(pdf).not.toHaveAttribute('aria-disabled', 'true')
+    await expect(page.getByText('Ein temporäres Szenario ist kein angenommenes Angebot'))
+      .toHaveCount(0)
+    await shot(page, 'CP-03-outputs-saved')
+
+    // The preflight lists the chapters the document actually contains — the
+    // rail's own list, not a fixed set.
+    await pdf.click()
+    const preflight = page.getByRole('dialog')
+    await expect(preflight).toBeVisible()
+    for (const label of await presentChapters(page)) {
+      await expect(preflight.getByRole('listitem').filter({ hasText: label })).toHaveCount(1)
+    }
+    await shot(page, 'CP-03-preflight-saved')
+    await page.keyboard.press('Escape')
+    await expect(preflight).toHaveCount(0)
   })
 
   test('contains no internal identifier, note or diagnostic', async ({ page }) => {
-    test.setTimeout(180_000)
     await reachClientMode(page)
-    await page.getByRole('button', { name: 'Präsentation starten' }).click()
-    const nav = page.getByRole('navigation', { name: 'Präsentation' })
-    for (const section of ['Projekt', 'Gebäude', 'Umfang', 'Leistungen', 'Terminplan', 'Investition']) {
-      await nav.getByRole('button', { name: section }).click()
-      const body = await page.locator('body').innerText()
-      expect(body).not.toMatch(/\bOPT-\d+\b/)
-      expect(body).not.toMatch(/\bSNAP-[A-Z0-9-]+\b/)
-      expect(body).not.toMatch(/\bDEMO-[A-Z0-9-]+\b/)
-      expect(body).not.toMatch(/Journal|Marge|interne Notiz/i)
-      expect(body).not.toMatch(/Konfidenz|OCR/i)
+    const sweep = async (context: string) => {
+      const text = await page.locator(CP.cls.shell).innerText()
+      for (const re of NOT_CLIENT_SAFE) {
+        expect(text, `${context}: client screen must not match ${re}`).not.toMatch(re)
+      }
+    }
+    const labels = await presentChapters(page)
+    for (const label of labels) {
+      await toChapter(page, label)
+      await sweep(`DE · ${label}`)
+    }
+    // The client-safe print tree carries the same obligation.
+    await page.emulateMedia({ media: 'print' })
+    const printed = await page.locator(CP.cls.printDoc).innerText()
+    for (const re of NOT_CLIENT_SAFE) {
+      expect(printed, `print tree must not match ${re}`).not.toMatch(re)
+    }
+    await page.emulateMedia({ media: 'screen' })
+
+    // EN is the same client, in the other language.
+    await page.locator(CP.cls.languageEn).click()
+    for (const label of [labels[0]!, 'Preiszusammensetzung', 'Nächster Schritt']) {
+      const index = labels.indexOf(label)
+      await chapterButtons(page).nth(index).click()
+      await settle(page)
+      await sweep(`EN · ${label}`)
     }
   })
 
-  test('recomposes at 1280 and keeps the scenario actions reachable', async ({ page }) => {
-    test.setTimeout(180_000)
+  test('recomposes at 1280×800: one-row bar ≤ 56 px, no sideways scroll, actions reachable', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 })
     await reachClientMode(page)
-    await page.getByRole('button', { name: 'Präsentation starten' }).click()
-    await shot(page, 'T-035-identity-1280')
 
-    await toSection(page, 'Gebäude', /Gebäudegeschichten|Aufgabe/)
-    // Three building stories stay one row at 1280 — the target's own
-    // responsive requirement, and the reason the grid is auto-fit on a
-    // card measure rather than a fixed three columns.
-    const cards = page.locator('.a3-client-building')
-    await expect(cards).toHaveCount(3)
-    const tops = await cards.evaluateAll(
-      (els) => els.map((el) => Math.round(el.getBoundingClientRect().top)),
-    )
-    expect(new Set(tops).size).toBe(1)
-    await shot(page, 'T-036-buildings-1280')
+    const geometry = async () => page.evaluate((sel) => {
+      const el = document.querySelector(sel)!
+      const r = el.getBoundingClientRect()
+      const children = Array.from(el.children).map((c) => c.getBoundingClientRect())
+      return {
+        height: r.height,
+        // One row: every direct child is vertically inside the bar's box.
+        oneRow: children.every((c) => c.top >= r.top - 1 && c.bottom <= r.bottom + 1),
+        overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      }
+    }, CP.cls.bar)
 
-    await toSection(page, 'Leistungen', /sichtbar gemacht\.$/)
-    await page.getByRole('radio', { name: /Dezentral je Gebäude/ }).click()
-    const bar = page.locator('.a3-client-scenario-bar')
-    // The commercial actions stay visible without overlaying the content.
-    await expect(bar.getByRole('button', { name: 'Zurücksetzen' })).toBeVisible()
-    await expect(bar.getByRole('button', { name: 'Als neue Option speichern' }))
-      .toBeVisible()
-    await shot(page, 'T-041-scenario-1280')
-
-    await toSection(page, 'Investition', /gemeinsame\s+Entscheidung\.$/)
-    await page.getByRole('button', { name: 'Abschließen & teilen' }).click()
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('Verbindlichkeit')
-    await shot(page, 'T-045-outputs-1280')
-
-    // Nothing scrolls sideways: a client presentation that needs a
-    // horizontal scrollbar has stopped being a composition.
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    )
-    expect(overflow).toBeLessThanOrEqual(0)
+    const labels = await presentChapters(page)
+    for (const label of labels) {
+      await toChapter(page, label)
+      const g = await geometry()
+      expect(g.height, `bar height on ${label}`).toBeLessThanOrEqual(56)
+      expect(g.oneRow, `bar is one row on ${label}`).toBe(true)
+      expect(g.overflow, `no horizontal overflow on ${label}`).toBeLessThanOrEqual(0)
+    }
+    // Every presenter action stays reachable on the smaller frame.
+    await expect(bar(page).getByRole('button', { name: CP.exit })).toBeVisible()
+    await expect(page.locator(CP.cls.languageEn)).toBeVisible()
+    await expect(rail(page).getByRole('button', { name: 'Nächstes Kapitel' })).toBeVisible()
+    await expect(chapterButtons(page).last()).toBeVisible()
+    await shot(page, 'CP-06-recomposition')
   })
 
-  test('reduced motion: sections replace directly and the delta survives', async ({ page }) => {
-    test.setTimeout(180_000)
+  test('reduced motion: chapters replace directly', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await reachClientMode(page)
-    await page.getByRole('button', { name: 'Präsentation starten' }).click()
-
-    await toSection(page, 'Leistungen', /sichtbar gemacht\.$/)
-    await page.getByRole('radio', { name: /Dezentral je Gebäude/ }).click()
-
-    // The meaning survives without the movement: the delta is a persistent
-    // label, the state is named in words, and nothing is animating.
-    const bar = page.locator('.a3-client-scenario-bar')
-    await expect(bar).toContainText('Nicht gespeichertes Präsentations-Szenario')
-    await expect(bar).toContainText(/−.?1\.550\.000/)
-    const running = await page.evaluate(
-      () => document.getAnimations().filter((a) => a.playState === 'running').length,
-    )
-    expect(running).toBe(0)
-    await shot(page, 'M-11-reduced-motion-1440')
+    for (const label of ['Terminplan', 'Preiszusammensetzung', 'Nächster Schritt']) {
+      await rail(page).getByRole('button', { name: new RegExp(`· ${label}$`) }).click()
+      // Nothing animates, and the incoming chapter is already the only one.
+      const running = await page.evaluate(
+        () => document.getAnimations().filter((a) => a.playState === 'running').length,
+      )
+      expect(running, `no animation runs on the way to ${label}`).toBe(0)
+      await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1)
+    }
+    await shot(page, 'M-11-reduced-motion')
   })
 
   /**
-   * M-10 — "Heading receives programmatic focus".
-   *
-   * ACCEPTANCE REMEDIATION (cycle 2). The reproduction the auditor recorded:
-   * navigate to Terminplan, wait 700 ms, and `document.activeElement` is
-   * BODY. Cause: the focus effect fired on the state change, but
-   * `AnimatePresence mode="wait"` mounts the incoming page only after the
-   * outgoing one has exited — so it addressed the heading that was leaving.
-   *
-   * This walks EVERY transition rather than the one that was reported: the
-   * defect was in the mechanism, not in one section, and a test that only
-   * covers Terminplan would let the same mechanism fail anywhere else.
+   * M-10 — "Heading receives programmatic focus". The defect the auditor
+   * recorded was in the MECHANISM (`AnimatePresence mode="wait"` mounting the
+   * incoming page after the focus effect ran), so every transition is
+   * walked, not one.
    */
-  test('M-10: every section move lands focus on the incoming heading', async ({ page }) => {
-    test.setTimeout(180_000)
+  test('M-10: every chapter move lands focus on the incoming heading', async ({ page }) => {
     await reachClientMode(page)
-    await page.getByRole('button', { name: 'Präsentation starten' }).click()
-
-    const sections: Array<[string, RegExp]> = [
-      ['Terminplan', /^Ein abgestimmter Weg/],
-      ['Gebäude', /Gebäudegeschichten|Aufgabe/],
-      ['Investition', /gemeinsame\s+Entscheidung\.$/],
-      ['Umfang', /Umfang\.$/],
-      ['Leistungen', /sichtbar gemacht\.$/],
-      ['Projekt', /Quartier/],
-    ]
-    for (const [label, heading] of sections) {
-      await toSection(page, label, heading)
+    const labels = await presentChapters(page)
+    for (const label of [...labels.slice(1), labels[0]!]) {
+      await toChapter(page, label)
       // The auditor's own wait, so a pass here answers the same question.
       await page.waitForTimeout(700)
-      const focused = await page.evaluate(() => {
-        const el = document.activeElement
-        return { tag: el?.tagName ?? null, text: el?.textContent?.trim() ?? null }
-      })
+      const focused = await activeElement(page)
       expect(focused.tag, `focus after navigating to ${label}`).toBe('H1')
-      expect(focused.text).toMatch(heading)
+      expect(focused.isTheHeading, `focus is on ${label}'s own heading`).toBe(true)
     }
-
-    // A focus move a keyboard user cannot SEE is only half of M-10. The strip
-    // is a NAVIGATION of ordinary buttons — not a tablist, so Tab and Enter
-    // are the right keys and arrows are correctly inert — and committing one
-    // from the keyboard must land a visible ring on the incoming heading
-    // rather than a silent caret.
-    await page.getByRole('navigation', { name: 'Präsentation' })
-      .getByRole('button', { name: 'Leistungen' }).focus()
+    // Committed from the keyboard, the move must land a VISIBLE ring.
+    await rail(page).getByRole('button', { name: /· Terminplan$/ }).focus()
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText(/sichtbar gemacht\.$/)
+    await expect(rail(page).getByRole('button', { name: /· Terminplan$/ }))
+      .toHaveAttribute('aria-current', 'step')
     await page.waitForTimeout(700)
-    const ring = await page.evaluate(() => {
-      const el = document.activeElement as HTMLElement | null
-      if (!el) return null
-      return { tag: el.tagName, visible: el.matches(':focus-visible') }
-    })
-    expect(ring?.tag).toBe('H1')
-    expect(ring?.visible, 'the incoming heading shows a visible focus ring').toBe(true)
-    // The width is READ, never asserted: this file is also run at 1280, and a
-    // 1280 frame filed under a 1440 name is the kind of evidence that proves
-    // whatever the reader already believes.
-    const w = page.viewportSize()?.width ?? 0
-    await shot(page, `M-10-heading-focus-${w}`)
+    const ring = await activeElement(page)
+    expect(ring.tag).toBe('H1')
+    expect(ring.focusVisible, 'the incoming heading shows a visible focus ring').toBe(true)
+    await shot(page, 'M-10-heading-focus')
   })
 
   test('M-10 under reduced motion: the direct cut still moves focus', async ({ page }) => {
-    test.setTimeout(180_000)
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await reachClientMode(page)
-    await page.getByRole('button', { name: 'Präsentation starten' }).click()
-
-    await toSection(page, 'Terminplan', /^Ein abgestimmter Weg/)
-    await page.waitForTimeout(700)
-    expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('H1')
-
-    await toSection(page, 'Investition', /gemeinsame\s+Entscheidung\.$/)
-    await page.waitForTimeout(700)
-    expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('H1')
+    for (const label of ['Terminplan', 'Grundlagen', 'Angebot']) {
+      await toChapter(page, label)
+      await page.waitForTimeout(700)
+      expect((await activeElement(page)).tag, `focus after ${label}`).toBe('H1')
+    }
   })
 
   /**
-   * The other half of the same mechanism, and the one that keeps M-10 from
-   * becoming a nuisance: focus follows a DOCUMENT TRANSITION, never an
-   * ordinary re-render.
+   * Focus follows a DOCUMENT TRANSITION, never an ordinary re-render. Mode
+   * entry is App.tsx's transition and lands on chapter 1's heading exactly
+   * once — the shell's own rule must settle there rather than fire again.
    *
-   * Entering Client Mode is a document transition and already has an owner —
-   * `App.tsx`'s scroll-and-focus effect, whose dependencies include
-   * `s.mode`, established long before VR3-05 ("after the transition
-   * `activeElement` stayed BODY and no context was announced"). The shell's
-   * own rule must therefore SETTLE on the boundary rather than fire a second
-   * time at it: one focus move for one transition.
-   *
-   * Choosing a scenario option is the opposite case. The screen recalculates
-   * — new total, new delta, a re-render of the whole narrative page — but
-   * the presenter has not gone anywhere, so the radio they just pressed must
-   * keep the caret. Deriving the wanted key during render is exactly what
-   * buys this: the key is unchanged, so the ref spends nothing.
+   * The recalculation half of this claim (a what-if changes the money, the
+   * presenter keeps the caret on the radio) is asserted in the Varianten
+   * test, the only place the control is reachable. A DE→EN switch was tried
+   * as a one-Option stand-in and is NOT asserted: it moves focus to the
+   * chapter heading, and whether a language switch counts as a document
+   * transition is a product call, not this test's (reported).
    */
   test('focus follows a document transition, not a recalculation', async ({ page }) => {
-    test.setTimeout(180_000)
     await reachClientMode(page)
-
-    // Mode entry: one owner, one move, landing on the boundary heading.
-    await expect(page.getByRole('heading', { level: 1 }))
-      .toContainText('Eine gespeicherte Option zeigen')
-    const onEntry = await page.evaluate(() => ({
-      tag: document.activeElement?.tagName ?? null,
-      text: document.activeElement?.textContent?.trim() ?? null,
-    }))
+    const onEntry = await activeElement(page)
     expect(onEntry.tag).toBe('H1')
-    expect(onEntry.text).toMatch(/Eine gespeicherte Option zeigen/)
-
-    await page.getByRole('button', { name: 'Präsentation starten' }).click()
-    await toSection(page, 'Leistungen', /sichtbar gemacht\.$/)
-
-    // A live what-if: the money changes, the presenter does not move.
-    const decentral = page.getByRole('radio', { name: /Dezentral je Gebäude/ })
-    await decentral.click()
-    await expect(page.locator('.a3-client-scenario-bar')).toContainText(/−.?1\.550\.000/)
+    expect(onEntry.isTheHeading, 'entry lands on chapter 1\'s heading').toBe(true)
+    // The rule spends nothing on a plain re-render of the same chapter: the
+    // Kostentreiber layer opens and closes, and focus returns to its trigger.
+    await toChapter(page, 'Preiszusammensetzung')
+    await page.getByRole('button', { name: 'Kostentreiber und Regionalfaktor' }).click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
     await page.waitForTimeout(700)
-    const afterDecision = await page.evaluate(() => ({
-      tag: document.activeElement?.tagName ?? null,
-      role: document.activeElement?.getAttribute('role')
-        ?? (document.activeElement as HTMLInputElement | null)?.type
-        ?? null,
-    }))
-    expect(afterDecision.tag, 'a recalculation must not pull focus to the heading')
-      .not.toBe('H1')
-    expect(afterDecision.role).toBe('radio')
+    const after = await activeElement(page)
+    expect(after.tag, 'closing a layer must not pull focus to the heading').toBe('BUTTON')
   })
 
   /**
-   * ACCEPT-02 — the scenario bar stays actionable WITHOUT overlaying the
-   * story it is a delta from.
-   *
-   * The bar used to be the last child of the scrolling `<main>`, held in
-   * view by `position: sticky; bottom: 0`, and the narrative page inside
-   * that `<main>` carried `min-height: 0` — which defeats a column flex
-   * item's automatic minimum size, so the page was laid out shorter than
-   * its own content and, having no `overflow` of its own, simply painted
-   * that content outside its box. The two together are why the Terminplan
-   * section — the tallest one, and the one carrying the phased-handover
-   * what-if — put its choice labels behind the bar at BOTH approved
-   * viewports (1440×900: labels y802–958 behind a bar at y818–900) and why
-   * scrolling could not free them: there was nothing to scroll, because the
-   * page had never claimed the height its content needed.
-   *
-   * A DOM test cannot see any of this. The markup was correct and the
-   * control was present, focusable and clickable — it was simply not
-   * READABLE, which is a geometry fact and belongs here.
-   *
-   * So this asserts the two halves of §17's "the scenario bar remains fully
-   * actionable" as GEOMETRY:
-   *
-   *   1. the bar occupies its own band — it does not intersect the region
-   *      the narrative is laid out in, so it cannot cover anything at any
-   *      content height, at rest or scrolled;
-   *   2. the scenario choice is fully READABLE inside that region — the
-   *      whole control, not a bisected fragment.
-   *
-   * It must not be satisfied by deleting the lever, so the control's
-   * existence is asserted first: the phased-handover decision is part of
-   * the demonstration fixture and part of this ticket's scope.
+   * ACCEPT-02 — nothing in the bar covers content. The stage is a sibling of
+   * the bar, laid out below it; this asserts that geometry at both approved
+   * viewports, plus a bar height that leaves the proposal the screen.
    */
   for (const [w, h] of [[1440, 900], [1280, 800]] as const) {
-    test(`ACCEPT-02: the scenario bar never covers a scenario choice at ${w}x${h}`,
-      async ({ page }) => {
-        test.setTimeout(180_000)
-        await page.setViewportSize({ width: w, height: h })
-        await reachClientMode(page)
-        await page.getByRole('button', { name: 'Präsentation starten' }).click()
-        await toSection(page, 'Terminplan', /^Ein abgestimmter Weg/)
-
-        // The lever exists. A "fix" that removed the phased-handover choice
-        // would satisfy every geometry assertion below and fail the ticket.
-        const choices = page.locator('.a3-client-schedule-decision label')
-        expect(await choices.count(),
-          'the phased-handover what-if must still be offered')
-          .toBeGreaterThan(0)
-
-        /**
-         * The bar's band and the narrative's band are disjoint.
-         *
-         * This is the structural claim, and it is what makes the defect
-         * unrepeatable rather than merely absent on this fixture: while the
-         * bar lives outside the scroll region, no content height can put
-         * anything behind it.
-         */
-        const bands = await page.evaluate(() => {
-          const main = document.querySelector('main')
-          const bar = document.querySelector('.a3-client-scenario-bar')
-          if (!main || !bar) return null
-          const m = main.getBoundingClientRect()
-          const b = bar.getBoundingClientRect()
-          return {
-            main: { top: m.top, bottom: m.bottom },
-            bar: { top: b.top, bottom: b.bottom },
-            scrollable: main.scrollHeight - main.clientHeight,
-            contained: main.contains(bar),
-          }
-        })
-        expect(bands).not.toBeNull()
-        // The bar is not INSIDE the scroller — that is the fix, stated.
-        expect(bands!.contained,
-          'the scenario bar must not live inside the scrolling narrative')
-          .toBe(false)
-        expect(bands!.bar.top,
-          'the bar must begin at or below the end of the narrative region')
-          .toBeGreaterThanOrEqual(bands!.main.bottom - 1)
-        // And it is fully on screen: "actionable" is the other half of the
-        // requirement, and a bar pushed off the bottom would pass the
-        // no-overlap check by not being there.
-        expect(bands!.bar.bottom).toBeLessThanOrEqual(h + 1)
-        expect(bands!.bar.top).toBeGreaterThanOrEqual(0)
-
-        /**
-         * And the choice is fully readable inside the narrative region.
-         *
-         * The page now claims the height its content needs, so the surplus
-         * is SCROLLABLE rather than painted outside the box — this asserts
-         * the consequence a presenter cares about: after bringing the
-         * decision into view, the whole card is visible, not a headless
-         * fragment cut off mid-sentence.
-         */
-        await choices.first().scrollIntoViewIfNeeded()
-        await page.waitForTimeout(200)
-        const clipped = await page.evaluate(() => {
-          const main = document.querySelector('main')
-          if (!main) return ['no narrative region']
-          const m = main.getBoundingClientRect()
-          const hits: string[] = []
-          for (const el of document.querySelectorAll('.a3-client-schedule-decision label')) {
-            const r = el.getBoundingClientRect()
-            if (r.top < m.top - 1 || r.bottom > m.bottom + 1) {
-              hits.push(`${(el.textContent ?? '').trim().slice(0, 40)}`
-                + ` @ ${Math.round(r.top)}-${Math.round(r.bottom)}`
-                + ` vs narrative ${Math.round(m.top)}-${Math.round(m.bottom)}`)
-            }
-          }
-          return hits
-        })
-        expect(clipped,
-          'a scenario choice must be readable in full, not bisected')
-          .toEqual([])
-
-        await shot(page, `ACCEPT-02-schedule-scenario-bar-${w}`)
-      })
+    test(`ACCEPT-02: the bar covers no content at ${w}x${h}`, async ({ page }) => {
+      await page.setViewportSize({ width: w, height: h })
+      await reachClientMode(page)
+      const bands = await page.evaluate((sel) => {
+        const barEl = document.querySelector(sel)!
+        const main = document.querySelector('main')!
+        const h1 = document.querySelector('h1')!
+        const b = barEl.getBoundingClientRect()
+        const m = main.getBoundingClientRect()
+        const t = h1.getBoundingClientRect()
+        return {
+          barHeight: b.height, barBottom: b.bottom, mainTop: m.top,
+          contained: barEl.contains(main) || main.contains(barEl),
+          h1: { top: t.top, bottom: t.bottom, left: t.left, right: t.right },
+        }
+      }, CP.cls.bar)
+      expect(bands.barHeight).toBeLessThanOrEqual(56)
+      expect(bands.contained, 'bar and stage are siblings').toBe(false)
+      expect(bands.mainTop, 'the stage begins below the bar').toBeGreaterThanOrEqual(bands.barBottom - 1)
+      // The first chapter's heading is fully on screen and below the bar.
+      expect(bands.h1.top).toBeGreaterThanOrEqual(bands.barBottom - 1)
+      expect(bands.h1.bottom).toBeLessThanOrEqual(h)
+      expect(bands.h1.left).toBeGreaterThanOrEqual(0)
+      expect(bands.h1.right).toBeLessThanOrEqual(w)
+      await shot(page, 'ACCEPT-02-bar-and-stage')
+    })
   }
 
   /**
-   * ACCEPT-01 — what the browser would actually PRINT.
-   *
-   * `@media print` hides the narrative and prints the client-safe document,
-   * so what a client keeps is only ever visible under print media. Reading
-   * the page's own text under `emulateMedia({ media: 'print' })` is the only
-   * place the cover-sheet defect was observable at all — which is exactly
-   * why it passed three green cycles.
+   * ACCEPT-01 — what the browser would actually PRINT. `@media print` hides
+   * the stage and shows the client-safe document, so its content is only
+   * observable under print media.
    */
-  test('ACCEPT-01: the printed document contains the six client sections',
-    async ({ page }) => {
-      test.setTimeout(180_000)
-      await reachClientMode(page)
-      await page.getByRole('button', { name: 'Präsentation starten' }).click()
-
-      await page.emulateMedia({ media: 'print' })
-      const printed = await page.evaluate(() => document.body.innerText)
-
-      // Section headings are `text-transform: uppercase`, and `innerText`
-      // returns the TRANSFORMED text — so the comparison is case-folded
-      // rather than asserting the casing the stylesheet chose.
-      const folded = printed.toLocaleLowerCase('de-DE')
-      for (const section of ['Projekt', 'Gebäude', 'Umfang', 'Leistungen',
-        'Terminplan', 'Investition', 'Annahmen']) {
-        expect(folded, `the printed sheet must contain "${section}"`)
-          .toContain(section.toLocaleLowerCase('de-DE'))
-      }
-      // Option, version and date (§16), and the lead metric with its unit.
-      expect(printed).toMatch(/Version\s*1/)
-      expect(printed).toContain('€/m²')
-      // Nothing internal came with the extra content.
-      expect(printed).not.toMatch(/\bDEMO-[A-Z0-9-]+\b/)
-      expect(printed).not.toMatch(/Konfidenz|OCR|Marge/i)
-
-      await shot(page, 'ACCEPT-01-print-media-1440')
-      await page.emulateMedia({ media: 'screen' })
-    })
+  test('ACCEPT-01: the printed document carries the chapters and no presenter control', async ({ page }) => {
+    await reachClientMode(page)
+    const labels = await presentChapters(page)
+    await page.emulateMedia({ media: 'print' })
+    const printed = await page.locator(CP.cls.printDoc).innerText()
+    // Section titles may be `text-transform: uppercase`; `innerText` returns
+    // the transformed text, so the comparison is case-folded.
+    const folded = printed.toLocaleLowerCase('de-DE')
+    /**
+     * Two chapters print their CONTENT under another heading by design
+     * (ClientOutputs.tsx): `Das Projekt`'s buildings print in the section
+     * titled by chapter 4 whenever chapter 4 is present, and `Architektur`
+     * prints as the hero image with no section of its own. Their titles are
+     * therefore not required; `Nächster Schritt` prints only when the Option
+     * carries supporting artefacts. The preflight's "ENTHALTEN" list names
+     * all three — a claim the sheet does not make word for word (reported).
+     */
+    const titledElsewhere = new Set(['Das Projekt', 'Architektur', 'Nächster Schritt'])
+    for (const label of labels) {
+      if (titledElsewhere.has(label)) continue
+      expect(folded, `the printed sheet must contain "${label}"`)
+        .toContain(label.toLocaleLowerCase('de-DE'))
+    }
+    expect(folded).toContain('projekt')
+    expect(printed).toContain('€/m²')
+    // No presenter vocabulary reaches paper.
+    expect(printed).not.toMatch(/Beenden|Vollbild|Varianten|Nächstes Kapitel|Vorheriges Kapitel/)
+    for (const re of NOT_CLIENT_SAFE) expect(printed).not.toMatch(re)
+    // And the presenter chrome is not printed at all.
+    const chromeVisible = await page.evaluate((sel) => {
+      const el = document.querySelector(sel) as HTMLElement | null
+      return el ? getComputedStyle(el).display !== 'none' : false
+    }, CP.cls.bar)
+    expect(chromeVisible).toBe(false)
+    await shot(page, 'ACCEPT-01-print-media')
+    await page.emulateMedia({ media: 'screen' })
+  })
 })

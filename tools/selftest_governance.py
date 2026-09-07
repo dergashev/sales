@@ -126,6 +126,12 @@ VR3_CAPABILITY_IDS = [
     # allowlist move together, and the gate now also requires both canonical
     # owner modules to exist, so the synthetic tree carries them too.
     'workflow-navigator', 'pagination',
+    # VR3-CP-00 — the canonical client-facing MediaGallery and the belated
+    # registration of the canonical DataTable. Same atomicity rule: this
+    # list and `verify.py`'s `expected` set move in one commit, or the
+    # "valid lifecycle metadata" branch passes against a manifest the gate
+    # itself would reject.
+    'media-gallery', 'data-table',
 ]
 VO_T4_IDS = [
     'canvas', 'paper', 'stage', 'stage-deep', 'media-frame',

@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PresentationShell } from '../PresentationShell'
 import {
@@ -14,31 +14,22 @@ import { useStore, __resetStoreForTests } from '../../state/store'
 /**
  * ACCEPT-01 — the artefact the client KEEPS must contain the presentation.
  *
- * `@media print` hides the whole narrative and prints `ClientPrintDocument`
- * instead, which is the right call: a client document is a document, not a
- * photograph of a meeting-scale stage. But that document carried only a
- * banner, an authority line, the project name, one number, one label and a
- * note — so the PDF a client keeps was a COVER SHEET, while the card
- * offering it promised "Kundennarrativ · gespeicherte Quelle ·
- * Szenario-Differenz · Kennzeichnung" and the preflight beside it listed all
- * six sections as ENTHALTEN. The output stated an authority it did not
- * carry, and the Acceptance Auditor failed the candidate for it.
+ * `@media print` hides the narrative stage and prints `ClientPrintDocument`
+ * instead. That document once carried only a banner, a project name, one
+ * number and a note — a COVER SHEET under an authority line promising the
+ * whole narrative. A suite that only asks about what a component renders
+ * can never report what it does not render, so this file asserts the
+ * CONTENT MODEL: every chapter of the proposal, read from the SAME
+ * `ClientProposal` the stage renders from (profile `clientPrint`).
  *
- * ## Why three green cycles did not catch it
- *
- * The existing print tests assert the total and its label — the two strings
- * that were there. A suite that only asks about what a component renders can
- * never report what it does not render, which is the same detection gap the
- * i18n negative-case guard exists to close, one layer up. So this file
- * asserts the CONTENT MODEL against the approved list rather than against
- * the current markup: target spec §16, "PDF includes client narrative,
- * buildings, scope, services, schedule, commercial result,
- * Option/version/date and approved assumptions".
- *
- * Every assertion below reads the SAME store the screen reads and compares
- * the sheet to it, so the sheet cannot pass by containing a plausible string
- * — it has to contain the presented Option's own buildings, its own scope
- * decisions and its own dates.
+ * Structure since VR3-CP-00: Client Mode opens directly on chapter 1 (no
+ * entry boundary); the print document is always mounted, carries no
+ * `aria-hidden` (medium selection is not exclusion), and its section titles
+ * are the chapter labels of the rail — Projektüberblick, Preiszusammensetzung
+ * (total, lead rate, uncertainty, composition rows with total row, cost
+ * drivers, Regionalfaktor row), Die Gebäude, Konstruktion, Leistungsumfang,
+ * Schnittstellen und Verantwortung, Terminplan, Grundlagen. The client-safe
+ * vocabulary applies to it as to the stage: no version, no "gespeichert".
  */
 
 beforeEach(() => __resetStoreForTests())
@@ -51,7 +42,7 @@ function Harness() {
   return <PresentationShell mainRef={mainRef} modeRef={modeRef} />
 }
 
-/** One saved, client-eligible Option off the complex fixture. */
+/** One saved, client-eligible Option off the complex fixture, presented. */
 function savedComplexOption(): void {
   enterOptionWorkspace('DEMO-COMPLEX-01')
   completeBuildingScope('PER_BUILDING')
@@ -60,8 +51,11 @@ function savedComplexOption(): void {
   act(() => { st().setMode('praesentation') })
 }
 
-async function startPresentation(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole('button', { name: 'Präsentation starten' }))
+/** Rail button by chapter label (`aria-label` is `n · <chapter>`), then
+ *  wait for the chapter section to mount after the cross-fade. */
+async function gotoChapter(user: ReturnType<typeof userEvent.setup>, label: string) {
+  await user.click(screen.getByRole('button', { name: new RegExp(`· ${label}$`) }))
+  await waitFor(() => expect(screen.getByRole('region', { name: label })).toBeInTheDocument())
 }
 
 const printDoc = () =>
@@ -73,106 +67,112 @@ const sectionTitles = () =>
   [...printDoc().querySelectorAll('.a3-client-print-section-title')]
     .map((el) => el.textContent?.trim() ?? '')
 
+const section = (title: string) =>
+  [...printDoc().querySelectorAll('.a3-client-print-section')]
+    .find((el) => el.querySelector('.a3-client-print-section-title')
+      ?.textContent?.trim() === title) as HTMLElement | undefined
+
 describe('ACCEPT-01 · the printed client document carries the whole narrative', () => {
-  it('prints a section for each of the six narrative sections', async () => {
-    const user = userEvent.setup()
+  it('prints a section for each narrative chapter, titled as the rail titles it', () => {
     savedComplexOption()
     render(<Harness />)
-    await startPresentation(user)
 
-    // The same six words the narrative rail and the output preflight use.
-    // Reading them from the dictionary keys rather than typing them is what
-    // keeps this test honest if a section is ever renamed.
+    // The same words the chapter rail and the output preflight use. The
+    // complex fixture has three buildings, so chapter 4 exists and the
+    // buildings print under ITS title.
     expect(sectionTitles()).toEqual(expect.arrayContaining([
-      'Projekt', 'Gebäude', 'Umfang', 'Leistungen', 'Terminplan', 'Investition',
+      'Projektüberblick', 'Preiszusammensetzung', 'Die Gebäude', 'Konstruktion',
+      'Leistungsumfang', 'Schnittstellen und Verantwortung', 'Terminplan', 'Grundlagen',
     ]))
+    // Medium selection, not exclusion: nothing in the sheet is aria-hidden.
+    expect(printDoc()).not.toHaveAttribute('aria-hidden')
+    expect(printDoc().querySelector('[aria-hidden="true"]')).toBeNull()
   })
 
-  it('names every building the presented Option sells', async () => {
-    const user = userEvent.setup()
+  it('names every building the presented Option sells', () => {
     savedComplexOption()
     render(<Harness />)
-    await startPresentation(user)
 
     const config = st().optionConfigs[st().activeOptionId!] ?? null
     const buildings = (config ?? st()).scopeBuildings
       .filter((b) => (config ?? st()).scopeSelected[b.id])
     expect(buildings.length).toBeGreaterThan(1)
+    const gebaeude = section('Die Gebäude')!
     for (const building of buildings) {
-      expect(printText()).toContain(building.name)
+      expect(gebaeude.textContent).toContain(building.name)
     }
   })
 
-  it('states the scope decisions, including what is NOT included', async () => {
-    const user = userEvent.setup()
+  it('states the scope decisions, including what is NOT included', () => {
     savedComplexOption()
     render(<Harness />)
-    await startPresentation(user)
 
     // The scope section's own rows: the state words the client reads. An
     // exclusion a client cannot read is the one that becomes a dispute.
-    const scope = [...printDoc().querySelectorAll('.a3-client-print-section')]
-      .find((el) => el.querySelector('.a3-client-print-section-title')
-        ?.textContent?.trim() === 'Umfang')
+    const scope = section('Leistungsumfang')
     expect(scope).toBeTruthy()
     const rows = scope!.querySelectorAll('.a3-client-print-row')
     // Six decidable cost groups, every one of them stated.
     expect(rows.length).toBe(6)
+    for (const row of rows) {
+      expect(row.textContent).toMatch(/Enthalten|Nicht enthalten|offen/i)
+    }
   })
 
-  it('states the schedule and the commercial result the stage states', async () => {
-    const user = userEvent.setup()
+  it('states the schedule and the commercial result the stage states', () => {
     savedComplexOption()
     render(<Harness />)
-    await startPresentation(user)
 
-    // Duration, the two dates and the sequence — the schedule section is
-    // not a heading over nothing.
-    const schedule = [...printDoc().querySelectorAll('.a3-client-print-section')]
-      .find((el) => el.querySelector('.a3-client-print-section-title')
-        ?.textContent?.trim() === 'Terminplan')
-    expect(schedule!.querySelectorAll('.a3-client-print-row').length)
-      .toBeGreaterThan(3)
+    // Duration, the two dates and the phases — the schedule section is not
+    // a heading over nothing.
+    const schedule = section('Terminplan')!
+    expect(schedule.querySelectorAll('.a3-client-print-row').length).toBeGreaterThan(3)
+    expect(schedule.textContent).toMatch(/Bauzeit/)
+    expect(schedule.textContent).toMatch(/Geplante Fertigstellung/)
 
     // The commercial result keeps its own hooks: the two locale regressions
-    // QA found are asserted against exactly these, and the composition is
-    // the DIN 276 split the investment section shows.
+    // QA found are asserted against exactly these.
     expect(printDoc().querySelector('.a3-client-print-total')).toBeTruthy()
     expect(printDoc().querySelector('.a3-client-print-total-label')).toBeTruthy()
-    const investment = [...printDoc().querySelectorAll('.a3-client-print-section')]
-      .find((el) => el.querySelector('.a3-client-print-section-title')
-        ?.textContent?.trim() === 'Investition')
-    expect(investment!.querySelectorAll('.a3-client-print-row').length)
-      .toBeGreaterThan(1)
+    const preis = section('Preiszusammensetzung')!
+    // The DIN 276 composition, its total row, the cost drivers and the
+    // Regionalfaktor row (rule 35, rule 40: present in either flag state).
+    expect(preis.querySelectorAll('.a3-client-print-row').length).toBeGreaterThan(1)
+    expect(preis.textContent).toMatch(/Zusammensetzung/)
+    expect(preis.textContent).toMatch(/Kostentreiber/)
+    expect(preis.textContent).toMatch(/Summe der Kostentreiber/)
+    expect(preis.textContent).toMatch(/Regionalfaktor/)
+    // The total appears as the hero AND as the composition's own sum row.
+    const total = printDoc().querySelector('.a3-client-print-total')!.textContent!.trim()
+    const totalRows = [...preis.querySelectorAll('.a3-client-print-row')]
+      .filter((row) => (row.textContent ?? '').includes(total))
+    expect(totalRows.length).toBeGreaterThan(0)
   })
 
-  it('names the Option, its version and a date, and states the assumptions', async () => {
-    const user = userEvent.setup()
+  it('names the Option and a date — never a version — and states the assumptions', () => {
     savedComplexOption()
     render(<Harness />)
-    await startPresentation(user)
 
     const meta = printDoc().querySelector('.a3-client-print-meta')?.textContent ?? ''
     const optionName = st().options.find((o) => o.id === st().activeOptionId)?.name ?? ''
     expect(optionName).not.toBe('')
     expect(meta).toContain(optionName)
-    expect(meta).toMatch(/Version\s*1/)
     // A date the client can check the sheet against, formatted by `Intl`.
-    expect(meta).toMatch(/\d{4}/)
+    expect(meta).toMatch(/Angebotsdatum: .*\d{4}/)
+    // Saved-version vocabulary is preparation state, not client content.
+    expect(meta).not.toMatch(/Version/)
 
-    expect(sectionTitles()).toContain('Annahmen')
+    expect(sectionTitles()).toContain('Grundlagen')
     // The approved statements are QUOTED from the client surface — the
     // uncertainty band is one of them, not a sentence written for paper.
     expect(printText()).toMatch(/Unschärfeband/)
   })
 
-  it('carries no internal identifier, note or diagnostic', async () => {
-    const user = userEvent.setup()
+  it('carries no internal identifier, note, diagnostic or preparation vocabulary', () => {
     savedComplexOption()
     render(<Harness />)
-    await startPresentation(user)
 
-    // The document grew by five sections; the client-safety boundary did
+    // The document grew by several sections; the client-safety boundary did
     // not move. Same assertions the live privacy walk makes, against the
     // model rather than the screen — because this content is invisible on
     // screen and would otherwise be checked by nothing.
@@ -180,6 +180,7 @@ describe('ACCEPT-01 · the printed client document carries the whole narrative',
     expect(text).not.toMatch(/\bDEMO-[A-Z0-9-]+\b/)
     expect(text).not.toMatch(/Journal|Marge|interne Notiz/i)
     expect(text).not.toMatch(/Konfidenz|OCR/i)
+    expect(text).not.toMatch(/gespeichert|Version|Vorbereitung|Kapitel \d+ von/)
     expect(printDoc().querySelector('[data-source-id]')).toBeNull()
   })
 })
@@ -187,35 +188,29 @@ describe('ACCEPT-01 · the printed client document carries the whole narrative',
 /**
  * ACCEPT-03 — a rate states its unit, or it is not a rate.
  *
- * The investment tile rendered `<dt>{leadRate.denominatorLabel}</dt>` over
- * `<dd>{display}</dd>`, so the lead metric read "BGF oberirdisch / 2.246" in
- * both locales: a €/m² rate under a Bruttogrundfläche label, with no unit
- * anywhere, which a client can only read as an area. The engine already
- * composes the whole string — `rateLabel()` → "≈ 2.246 €/m² BGF
- * oberirdisch" — and T-040 prints it with its unit ("Lead rate 1,990 €/m²").
- *
- * These assert the three parts that were lost, on the stage and on the
- * sheet: the UNIT, the `≈` PREFIX that says the number is rounded, and the
- * DENOMINATOR that makes the rate checkable (rule 39 / DATA-001). The
- * denominator stands in the TERM beside the metric's name — rule 31's own
- * wording of the Leitkennzahl — and the unit stands with the number, which
- * is also what keeps it out of a 180 px cell it would wrap inside.
+ * The lead metric once read "BGF oberirdisch / 2.246": a €/m² rate under a
+ * Bruttogrundfläche label with no unit anywhere. These assert the three
+ * parts that were lost, on the stage and on the sheet: the UNIT, the `≈`
+ * PREFIX that says the number is rounded, and the DENOMINATOR that makes
+ * the rate checkable (rule 39 / DATA-001). The denominator stands in the
+ * metric's LABEL beside its name — rule 31's own wording of the
+ * Leitkennzahl — and the unit stands with the number.
  */
 describe('ACCEPT-03 · the client lead metric states its unit', () => {
+  /** The co-hero lead rate of chapter 5: `MetricHero variant="co"`. */
   const rateTile = (region: HTMLElement) => {
-    const dd = region.querySelector('.a3-client-metric-grid dd')?.textContent ?? ''
-    const dt = region.querySelector('.a3-client-metric-grid dt')?.textContent ?? ''
-    return { dt, dd }
+    const value = region.querySelector('.a3-cp-metric-co') as HTMLElement
+    const label = value.closest('.a3-cp-metric')!.querySelector('.a3-cp-metric-label')
+    return { dt: label?.textContent ?? '', dd: value.textContent ?? '' }
   }
 
-  it('prints prefix, unit and denominator on the investment section (DE)', async () => {
+  it('prints prefix, unit and denominator on the Preiszusammensetzung chapter (DE)', async () => {
     const user = userEvent.setup()
     savedComplexOption()
     render(<Harness />)
-    await startPresentation(user)
-    await user.click(screen.getByRole('button', { name: 'Investition' }))
+    await gotoChapter(user, 'Preiszusammensetzung')
 
-    const region = await screen.findByRole('region', { name: 'Investition' })
+    const region = screen.getByRole('region', { name: 'Preiszusammensetzung' })
     const { dt, dd } = rateTile(region)
     expect(dt).toMatch(/Leitkennzahl/)
     // The norm the denominator comes from, still German (LOCALE-009).
@@ -230,11 +225,10 @@ describe('ACCEPT-03 · the client lead metric states its unit', () => {
     const user = userEvent.setup()
     savedComplexOption()
     render(<Harness />)
-    await startPresentation(user)
     act(() => { st().setUiLanguage('en') })
-    await user.click(screen.getByRole('button', { name: 'Investment' }))
+    await gotoChapter(user, 'Price composition')
 
-    const region = await screen.findByRole('region', { name: 'Investment' })
+    const region = screen.getByRole('region', { name: 'Price composition' })
     const { dt, dd } = rateTile(region)
     expect(dt).toMatch(/Lead rate/)
     // The NORM does not follow the reader (LOCALE-009)...
@@ -244,15 +238,15 @@ describe('ACCEPT-03 · the client lead metric states its unit', () => {
     expect(dd).not.toMatch(/\d{1,3}(?:\.\d{3})+/)
   })
 
-  it('states the same lead metric on the printed sheet', async () => {
-    const user = userEvent.setup()
+  it('states the same lead metric on the printed sheet', () => {
     savedComplexOption()
     render(<Harness />)
-    await startPresentation(user)
 
     // The sheet and the stage must not disagree about the lead metric: both
-    // go through the engine's composer, so both carry the unit.
-    expect(printText()).toContain('€/m²')
-    expect(printText()).toMatch(/Leitkennzahl/)
+    // render the one `ClientProposal`, so both carry the unit.
+    const preis = section('Preiszusammensetzung')!
+    expect(preis.textContent).toContain('€/m²')
+    expect(preis.textContent).toMatch(/Leitkennzahl/)
+    expect(preis.textContent).toMatch(/BGF|WFL|NUF/)
   })
 })

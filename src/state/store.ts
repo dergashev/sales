@@ -2280,6 +2280,21 @@ export type Store = {
   /** The Save-as-new-Option commitment, or `null` when the dialog is closed. */
   clientScenarioSave: ClientScenarioSaveCommit | null
   /**
+   * VR3-CP-00 — the chapter the client presentation is currently on.
+   *
+   * It lives HERE and not in the shell's React state for one measured
+   * reason: chapter position was local `useState`, so any remount of the
+   * shell silently returned the presenter to chapter 1 — mid-meeting, in
+   * front of the client. It must survive a remount within the session.
+   *
+   * It must equally NOT survive the session, and must never reach the URL.
+   * `mode` and `viewedOptionId` have no route encoder by contract, and a
+   * presentation is not a shareable place: it is a room. So this is reset
+   * to `null` in the same `set()` calls that reset `viewedOptionId`, and it
+   * is absent from the persisted payload.
+   */
+  presentationChapter: string | null
+  /**
    * Сколько Options было создано за жизнь Opportunity. Идентификатор берётся
    * отсюда, а не из длины списка: удалённый номер не переиспользуется, иначе
    * события журнала прежней Option начинают ссылаться на чужую (сплошное
@@ -2537,6 +2552,15 @@ export type Store = {
    * client-eligible (see `eligibleClientOptions`).
    */
   setViewedOption: (id: string) => void
+  /**
+   * VR3-CP-00 — move the client presentation to a chapter.
+   *
+   * Session state, deliberately: it survives a remount of the shell and is
+   * cleared with the session. It writes no journal entry, changes no
+   * preparation state, and never reaches the URL — Browser Back does not
+   * step through chapters, because a chapter is not a place.
+   */
+  setPresentationChapter: (chapter: string) => void
   /* ── VR3-05 · the presentation scenario ──────────────────────────────── */
   /**
    * Choose `value` on a supported presentation decision.
@@ -2711,6 +2735,7 @@ const NO_TRANSIENT = {
   clientScenarioTrusted: null,
   clientScenarioExportAcknowledged: false,
   clientScenarioSave: null,
+  presentationChapter: null,
 } as const
 
 /**
@@ -3272,8 +3297,21 @@ export function kgConfigurationCompleteFor(
  * `null` when the project declares no responsibility block.
  */
 export function responsibilityFor(
-  s: Pick<Store, 'responsibility' | 'opportunityId'>,
+  s: Pick<Store, 'responsibility' | 'opportunityId'>
+  & Partial<Pick<Store, 'scopeBuildings'>>,
 ): ResponsibilityProjection | null {
+  /**
+   * `scopeBuildings` is part of the Pick DELIBERATELY.
+   *
+   * `kgCatalogueFor` resolves per-building applicability, and its own
+   * docstring warns that a caller carrying no `scopeBuildings` silently
+   * reads the STATIC catalogue. This selector used to declare exactly such
+   * a narrow Pick, so responsibility was projected against an unresolved
+   * catalogue while every other client selector saw a resolved one — the
+   * same "one door, two readings" defect the client surfaces had (D-23).
+   * Widening the Pick is the whole fix: every existing caller passes the
+   * full store and now gets the resolved catalogue.
+   */
   return responsibilityProjection(kgCatalogueFor(s), s.responsibility)
 }
 
@@ -4175,6 +4213,28 @@ export function clientBaselineConfig(s: Store): OptionConfig | null {
  */
 export function clientBaselineSnapshot(s: Store): ClientScenarioSnapshot | null {
   const config = clientBaselineConfig(s)
+  if (!config) return null
+  try {
+    return deriveClientSnapshot(s, config)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * VR3-CP-00 — the SAME canonical derivation for ANY Option, by id.
+ *
+ * The Varianten layer compares Options, and a comparison column must state
+ * exactly the numbers the chapters state for the same Option — total,
+ * lead rate, uncertainty, duration, completion. Those come from the
+ * commercial result, not from the legacy proposal projection, so a column
+ * that read `projectionForOption` alone put two engines on one client
+ * screen (3.980.335 € beside 38.740.000 € for the same Option). Guarded
+ * like the baseline: `null` is the honest answer for a column that cannot
+ * be derived, and the model states the missing basis rather than a number.
+ */
+export function clientSnapshotForOption(s: Store, optionId: string): ClientScenarioSnapshot | null {
+  const config = configForOption(s, optionId)
   if (!config) return null
   try {
     return deriveClientSnapshot(s, config)
@@ -5830,6 +5890,7 @@ const store = createStore<Store>((set, get) => {
     clientScenarioTrusted: null,
     clientScenarioExportAcknowledged: false,
     clientScenarioSave: null,
+    presentationChapter: null,
     optionSeq: 0,
     discountPercent: null,
     offerDraft: {
@@ -6756,15 +6817,37 @@ const store = createStore<Store>((set, get) => {
         ...(entering && s.activeOptionId
           ? { clientScenario: emptyScenario(s.activeOptionId) }
           : {}),
+        // Chapter position is session state: it survives a remount inside
+        // the presentation and nothing beyond it.
+        ...(entering ? { presentationChapter: null } : {}),
         ...(leaving
           ? {
             clientScenario: null,
             clientScenarioTrusted: null,
             clientScenarioExportAcknowledged: false,
             clientScenarioSave: null,
+            presentationChapter: null,
           }
           : {}),
-        pipelineView: pipelineViewForBuildingGate(s, outputView),
+        /**
+         * D-18 — `Beenden` returns to the stage the presenter came from.
+         *
+         * Entering Client Mode rewrites `pipelineView` through
+         * `pipelineViewForOutputProfile`, and `praesentieren` is absent from
+         * the client-visible allowlist (correctly — it is an internal
+         * stage), so the view became `konfigurator` on entry and the exit
+         * faithfully restored… the Configurator. The presenter was dropped
+         * somewhere they never were.
+         *
+         * The fix is the RETURN TARGET, not the allowlist: widening
+         * `CLIENT_VISIBLE_PIPELINE_VIEWS` would make an internal stage
+         * client-visible, which is forbidden. Both entry doors — the
+         * Präsentieren stage and the portfolio card — lead to the same
+         * place, so both come back to it.
+         */
+        pipelineView: leaving && s.level === 'option' && s.activeOptionId
+          ? 'praesentieren'
+          : pipelineViewForBuildingGate(s, outputView),
         openConfiguratorStep: nearestActiveConfiguratorStep({
           coverage: s.coverage,
           mode: m,
@@ -7602,6 +7685,16 @@ const store = createStore<Store>((set, get) => {
         clientScenarioExportAcknowledged: false,
         clientScenarioSave: null,
       })
+    },
+
+    /**
+     * VR3-CP-00 — move to a chapter. Note what it does NOT reset: the
+     * presented Option and the scenario both survive, because a client
+     * asking to see the price of the other variant has not left the story.
+     */
+    setPresentationChapter: (chapter) => {
+      if (!isClientProjection(get().mode)) return
+      set({ presentationChapter: chapter })
     },
 
     /* ── VR3-05 · the presentation scenario ────────────────────────────── */

@@ -73,6 +73,8 @@ import { CompositionBar, type CompositionSegment } from './CompositionBar'
 import { WorkflowStepper, type WorkflowStep } from './WorkflowStepper'
 import { WorkflowNavigator, type WorkflowStage } from './WorkflowNavigator'
 import { Pagination } from './Pagination'
+import { DataTable } from './DataTable'
+import { MediaGallery, type MediaGalleryItem } from './MediaGallery'
 import { useSemanticMotion } from './motion'
 
 export type ContractStateDeclaration = Readonly<Record<DataStateKind, string>>
@@ -533,6 +535,77 @@ function WorkflowDirectionDemo() {
             : 'Weiter = direction.forward · Zurück = direction.backward (motion.ts, ADR-R1-05)'}
         </p>
       </div>
+    </div>
+  )
+}
+
+/**
+ * The canonical client-facing gallery, with its own filter state so the
+ * `aria-pressed` axis is a real toggle in the specimen and not a still.
+ * Assets are EXISTING provenanced option images (manifest:
+ * design-system/assets/options/manifest.json) — no new external asset was
+ * fetched to build this specimen.
+ */
+function MediaGalleryDemo() {
+  const [building, setBuilding] = useState<'all' | 'a' | 'b'>('all')
+  const items: MediaGalleryItem[] = [
+    {
+      id: 'lead', src: optionImage('fassade', 'timber')?.url ?? '',
+      alt: 'Strassenansicht mit durchgehend vertikaler Holzschalung',
+      caption: 'Strassenansicht', context: 'Haus A · Fassade Holz',
+      sourceId: 'fassade/timber',
+    },
+    {
+      id: 'balkone', src: optionImage('balkone', 'ja')?.url ?? '',
+      alt: 'Hofseite mit umlaufenden Balkonreihen',
+      caption: 'Hofseite', context: 'Haus A · Balkone',
+      sourceId: 'balkone/ja',
+    },
+    {
+      id: 'klinker', src: optionImage('fassade', 'klinker')?.url ?? '',
+      alt: 'Nachbargebaeude mit rotbrauner Klinkerfassade',
+      caption: 'Anschluss an den Bestand', context: 'Haus B · Fassade Klinker',
+      sourceId: 'fassade/klinker',
+    },
+    {
+      id: 'eg', src: optionImage('egBauweise', 'holz')?.url ?? '',
+      alt: 'Erdgeschoss als sichtbare Holzkonstruktion',
+      caption: 'Erdgeschoss', context: 'Haus B · Bauweise',
+      sourceId: 'egBauweise/holz',
+    },
+  ]
+  const shown = building === 'all'
+    ? items
+    : items.filter((item) => (building === 'a'
+      ? item.context?.startsWith('Haus A')
+      : item.context?.startsWith('Haus B')))
+  return (
+    <div className="grid gap-5">
+      <MediaGallery
+        items={shown}
+        label="Architektur · Musterprojekt Nordfeld"
+        emptyLabel="Für dieses Gebäude ist noch kein Bild hinterlegt."
+        closeLabel="Schliessen"
+        previousLabel="Vorheriges Bild"
+        nextLabel="Nächstes Bild"
+        positionLabel={(index, total) => `Bild ${index} / ${total}`}
+        filters={[
+          { id: 'all', label: 'Alle Gebäude', active: building === 'all', onSelect: () => setBuilding('all') },
+          { id: 'a', label: 'Haus A', active: building === 'a', onSelect: () => setBuilding('a') },
+          { id: 'b', label: 'Haus B', active: building === 'b', onSelect: () => setBuilding('b') },
+        ]}
+      />
+      {/* The empty axis, shown rather than described: a chapter with no
+          asset names the absence instead of rendering a hole. */}
+      <MediaGallery
+        items={[]}
+        label="Architektur · Haus C"
+        emptyLabel="Für dieses Gebäude ist noch kein Bild hinterlegt."
+        closeLabel="Schliessen"
+        previousLabel="Vorheriges Bild"
+        nextLabel="Nächstes Bild"
+        positionLabel={(index, total) => `Bild ${index} / ${total}`}
+      />
     </div>
   )
 }
@@ -1896,6 +1969,65 @@ export const COMPONENT_REGISTRY: Specimen[] = [
         />
       </div>
     ),
+  },
+  {
+    id: 'data-table', groupId: 'foundations', title: 'DataTable',
+    contractId: 'components-core · DataTable',
+    requirements: ['TABLE-001', 'TABLE-002', 'TABLE-003', 'TABLE-006'],
+    composedContracts: [],
+    interactionStates: ['default', 'hover', 'focus'],
+    dataStates: declareDataStates(
+      ['ready', 'partial', 'empty'],
+      'the table is markup and alignment; loading, error, stale and permission belong to the owner that supplies the rows',
+    ),
+    blockedVariants: [], maturity: 'alpha',
+    note: 'Registered belatedly: the module shipped with real product consumers (Kostendetails, Schnittstellen & Verantwortung) and no lifecycle entry at all — the only canonical module in that position.',
+    evidence: 'Every table carries a caption (visible or visually hidden), every column a <th scope="col"> and every row its own <th scope="row">; numerals align to the label first baseline and an absent amount renders as the muted "no amount" treatment, never as a zero (rule 16).',
+    render: () => (
+      <DataTable
+        caption="KG-Struktur · Option Basis"
+        columns={[
+          { key: 'kg', header: 'Kostengruppe' },
+          { key: 'sum', header: 'Kosten in €', align: 'numeric' },
+        ]}
+        rows={[
+          {
+            key: 'kg300', header: 'KG 300 · Baukonstruktion', variant: 'group',
+            cells: [{ content: formatDE(new Decimal('2148900')), align: 'numeric' }],
+          },
+          {
+            key: 'kg400', header: 'KG 400 · Technische Anlagen', variant: 'indent',
+            cells: [{ content: formatDE(new Decimal('612050')), align: 'numeric' }],
+          },
+          {
+            key: 'kg500', header: 'KG 500 · Außenanlagen', variant: 'indent',
+            cells: [{ content: 'Preis nicht ermittelt', align: 'numeric', absent: true }],
+          },
+          {
+            key: 'sum', header: 'Zwischensumme der kalkulierten Positionen', variant: 'sum',
+            cells: [{ content: formatDE(new Decimal('2760950')), align: 'numeric' }],
+          },
+        ]}
+      />
+    ),
+  },
+  {
+    id: 'media-gallery', groupId: 'domain', title: 'MediaGallery',
+    contractId: 'components-core · MediaGallery',
+    requirements: [
+      'MEDIA-GALLERY-001', 'MEDIA-GALLERY-002', 'MEDIA-GALLERY-003',
+      'MEDIA-GALLERY-004', 'DESIGN-05',
+    ],
+    composedContracts: ['MediaFrame', 'Dialog'],
+    interactionStates: ['default', 'hover', 'focus', 'selected', 'pressed'],
+    dataStates: declareDataStates(
+      ['ready', 'empty'],
+      'image load states belong to MediaFrame, and visibility belongs to the output profile that decides whether the chapter renders at all',
+    ),
+    blockedVariants: [], maturity: 'alpha',
+    note: 'One dominant view over supporting ones. Full-screen inspection is the canonical Dialog wearing this panel — there is no second modal and no createPortal in the module.',
+    evidence: 'Every visible string is a required prop, so the capability adds no i18n key and the position announcement is worded by the caller (never as a chapter counter); paging is ArrowLeft/ArrowRight/Home/End with boundaries that stay in the tab order as aria-disabled, and the paging transition uses the DIRECTION verb from motion.ts, which prefers-reduced-motion zeroes.',
+    render: () => <MediaGalleryDemo />,
   },
 ]
 

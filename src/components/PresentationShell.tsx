@@ -1,33 +1,39 @@
 import {
   useCallback, useEffect, useId, useRef, useState,
-  type Ref, type RefObject,
+  type KeyboardEvent as ReactKeyboardEvent, type Ref, type RefObject,
 } from 'react'
 import { Decimal } from 'decimal.js'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, type Variants } from 'framer-motion'
 import { demoProject } from '../state/projectAnalysis'
+import { PORTFOLIO_PROJECTS } from '../state/projectPortfolio'
 import all3Logo from '../../design-system/All3Logo.png'
 import {
-  clientBaselineSnapshot, clientPresentedSnapshot, configForOption,
-  eligibleClientOptions, latestSavedOptionVersion, projectionForOption,
-  resolvedViewedOptionId, useStore, type OfferSnapshot, type OptionConfig,
-  type Projection,
+  clientBaselineSnapshot, clientPresentedSnapshot, clientScenarioDelta,
+  configForOption, eligibleClientOptions, latestSavedOptionVersion,
+  projectionForOption, resolvedViewedOptionId, useStore,
+  type OfferSnapshot, type OptionConfig, type Projection,
 } from '../state/store'
 import {
-  NARRATIVE_SECTIONS, PageBuildings, PageInvestment, PageProjectIdentity,
-  PageScopeStory, PageScheduleStory, PresentationEntry, SECTION_LABEL_KEY,
-  type ClientView, type NarrativeSectionId,
-} from './ClientNarrative'
+  CHAPTER_LABEL_KEY, clientProposal,
+  type ClientChapterId, type ClientProposal, type ClientView,
+} from '../state/clientProposal'
+import { scenarioChangeCount } from '../state/clientScenario'
 import {
-  PageServices, ScenarioBar, ScenarioRevertDialog, ScenarioSaveDialog,
-  ScenarioSaveReceipt, ScheduleScenarioSlot,
+  ChapterAngebot, ChapterGebaeude, ChapterProjekt, ChapterUeberblick,
+} from './ClientNarrative'
+import { ChapterLeistungen, ChapterPreis } from './ClientCommercial'
+import {
+  ChapterAbschluss, ChapterArchitektur, ChapterGrundlagen, ChapterTerminplan,
+} from './ClientClosing'
+import {
+  ScenarioRevertDialog, ScenarioSaveDialog, ScenarioSaveReceipt, ScenarioState,
+  VariantenLayer,
 } from './ClientScenario'
-import { ClientPrintDocument, PageOutputs } from './ClientOutputs'
+import { ClientOutputsPanel, ClientPrintDocument } from './ClientOutputs'
 import { signedMoneyText } from '../design-system/CommercialNumber'
-import type { SavedOptionVersion } from '../state/optionSave'
 import { NNBSP, present, label as moneyLabel } from '../engine/money'
 import { localizeMoneyText, useT, useTx } from '../i18n'
 import { recipientForOpportunity, type ValidatedRecipient } from '../state/emailRecipient'
-import { SelectField } from './designSystem'
 import { SegmentedControl } from './controls'
 import { PartialState, EmptyState } from './DataStates'
 import { Dialog } from './Dialog'
@@ -39,55 +45,67 @@ import { DELIVERY_SIMULATION_MS, SEND_COMMIT_SIMULATION_MS } from '../config/ui-
 import { signed } from './OfferPanel'
 import { CompositionBar } from '../design-system/CompositionBar'
 import { buildKgCompositionSegments } from './costComposition'
-import { useSemanticMotion } from '../design-system/motion'
+import { startContinuityTransition, useSemanticMotion } from '../design-system/motion'
 import { Button, useCountUp } from './primitives'
 import { projectDriversForClient, translatedDriverLabel } from '../state/clientProjection'
-import { startContinuityTransition } from '../design-system/motion'
 
 /**
- * PresentationShell — VR2-06 client narrative shell.
+ * PresentationShell — VR3-CP-00 · MODEL C "Bühne & Ebene".
  *
- * The Present shell is its own composition, not the Work three-pane shell
- * with controls hidden: it owns ONE top bar (`ALL3` brand + narrative strip
- * + a compact Ansicht/mode/exit/language cluster, `App.tsx` renders no
- * `AppHeader` while `praesentation` is true) and shows exactly ONE
- * full-bleed narrative page at a time (`SECTION_ORDER`/`activeSection`)
- * instead of a scrolled stack of `SectionSheet` cards — the structural gap
- * `visual-recovery-audit-v2` named ("Present is separate from Work but not
- * a genuinely client narrative … sections read as stacked Product panels
- * rather than a sales narrative"). Every node below is either a canonical
- * All3 primitive (`MediaFrame`, `CompositionBar`, `ScheduleGantt`,
- * `SegmentedControl`, `SelectField`, `Badge`) or a product composition of
- * them; no parallel Design System exists here (VR2-06 DESIGN SYSTEM MODE:
- * PRESERVE).
+ * ```
+ * LAYER 1 · STORY      one full-viewport chapter at a time, presenter-paced,
+ *                      fixed semantic order (`CLIENT_CHAPTERS`)
+ * LAYER 2 · DECISION   Varianten — presented-Option switching, the bounded
+ *                      comparison and the what-ifs, opened over the stage
+ * LAYER 3 · EVIDENCE   chapter-specific detail (cost drivers, construction
+ *                      detail), opened over the stage, returning to the same
+ *                      narrative position
+ * ```
  *
- * The single source of "which Option is currently shown" remains
- * `resolvedViewedOptionId`/`setViewedOption` (Wave 1, `store.ts`) — no
- * section here reads `activeOptionId` for display, and switching the
- * viewed Option (top-bar Ansicht control or the §5 Optionen cards) never
- * mutates the internal active/preparation Option (VR2-06's CRITICAL CLIENT
- * MODE OPTION INVARIANT). Every page is a pure function of
- * `configForOption(viewedId)`/`projectionForOption(viewedId)`.
+ * A chapter is what the presenter walks through. A layer is what the client
+ * asks to inspect. Nothing here links to an internal pipeline view.
+ *
+ * ## One projection, one stage
+ *
+ * The shell resolves the presented state ONCE (`ClientView`), hands it to
+ * `clientProposal()` and renders chapters from the resulting `ClientProposal`
+ * — the same object the printed sheet renders from, built with the print
+ * profile. No chapter reaches for the store, so no chapter can disagree with
+ * another about a fact neither of them computes.
+ *
+ * ## What is deliberately not here any more
+ *
+ * The entry boundary ("Präsentation starten") is gone: the private preflight
+ * lives BEFORE entry, in the Präsentieren stage and `ClientOutputGateDialog`.
+ * Once the client sees the screen, the first thing on it is the proposal. The
+ * second persistent scenario band is gone: the what-if state is a slot of the
+ * one presenter bar. The shell-local `ClientOptionComparison` is gone: the
+ * comparison is `state/optionComparison.ts`, read by the Varianten layer and
+ * the project-tier route alike (D-20).
+ *
+ * ## Chapter position
+ *
+ * `s.presentationChapter` is store state so a remount of this component
+ * mid-meeting does not return the presenter to chapter 1. It is cleared on
+ * exit and never encoded in the URL (a presentation is a room, not a place).
+ *
+ * ## The send lifecycle
+ *
+ * VR2-08's offer → send → sent → delivered → snapshot flow is preserved as
+ * released and reached from chapter 10 through the client-safe output gate,
+ * where email is the one channel that requires a saved Option (M-3).
  */
 
 export type Candidate = { id: string; name: string; cfg: OptionConfig; p: Projection }
+
 /**
- * VR3-05 adds two phases at the two ends of the narrative.
- *
- * `entry` is the client-safety boundary made visible (T-034): Client Mode is
- * entered deliberately, naming the saved Option, or it is not a boundary at
- * all. `outputs` is the conclusion (T-045), where a state acquires an
- * AUTHORITY before it leaves the room.
- *
- * The middle — offer/send/sent/delivered/snapshot — is VR2-08's released
- * send lifecycle, reached from `outputs` by the one channel that requires a
- * saved Option. It is preserved rather than rebuilt: the immutable snapshot,
- * the validated recipient and the delivery proof are exactly what "email
- * requires a saved Option" needs on the other side of the gate.
+ * `narrative` is the story; everything else is VR2-08's released send
+ * lifecycle, reached from chapter 10's output gate and left again through
+ * the chapter rail (which is always the way back).
  */
 type PresentationFlow =
-  | 'entry' | 'narrative' | 'outputs'
-  | 'offer' | 'send' | 'sent' | 'delivered' | 'snapshot'
+  | 'narrative' | 'offer' | 'send' | 'sent' | 'delivered' | 'snapshot'
+
 
 function buildCandidate(
   s: Parameters<typeof configForOption>[0],
@@ -202,20 +220,28 @@ function useMoneyCountUp(exact: Decimal): { prefix: '≈' | ''; display: string 
   return { prefix: pr.prefix, display: counted }
 }
 
+
+/** Whether the element that received a key is a control that owns that key. */
+function keyBelongsToControl(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  return target.closest(
+    'input, select, textarea, button, a, [role="dialog"], [role="radiogroup"], '
+    + '[role="tablist"], [contenteditable="true"]',
+  ) !== null
+}
+
 export function PresentationShell({ mainRef, modeRef }: {
   mainRef: RefObject<HTMLElement>
   modeRef: RefObject<HTMLButtonElement>
 }) {
   const s = useStore()
   const t = useT()
-  // No `useTx()` here any more: the client shell's last two bridged
-  // literals became dictionary keys, so this component is fully keyed.
-// VR3-01: the project's display name now comes from the two-fixture
-// project register (`state/projectAnalysis`). The eight-row
-// `fixtures/opportunities.json` this used to read is gone with the
-// portfolio it described.
-  const opportunity = demoProject(s.opportunityId) ?? undefined
-  const projectName = opportunity?.name ?? s.opportunityId ?? ''
+  const tx = useTx()
+  const project = demoProject(s.opportunityId)
+  const projectName = project?.name ?? s.opportunityId ?? ''
+  // Identity (client, address) comes from the portfolio register — the one
+  // place the Product holds those fields. Composed at runtime, never literal.
+  const portfolioProject = PORTFOLIO_PROJECTS.find((p) => p.id === s.opportunityId) ?? null
 
   const eligible = eligibleClientOptions(s)
   const viewedId = resolvedViewedOptionId(s)
@@ -230,54 +256,32 @@ export function PresentationShell({ mainRef, modeRef }: {
     return c ? [c] : []
   })
 
-  const [activeSection, setActiveSection] = useState<NarrativeSectionId>('project')
-
   const latestViewedSnapshot = currentId
     ? [...s.snapshots].reverse().find((snapshot) => snapshot.optionId === currentId)
     : undefined
 
-  // VR2-08 — POST-SEND RE-ENTRY (M-3): `flow`/`delivery` are local React
-  // state, so without this they would always reset to 'narrative' on every
-  // mount — even reopening an Option the store already knows was sent,
-  // sending the ordinary portfolio route straight back to a prototype-style
-  // restart instead of the real, truthful Delivered state. The lazy
-  // initialisers below read the real snapshot truth ONCE, at first mount;
-  // `syncedOptionIdRef` + the effect further down re-derive the same truth
-  // whenever the VIEWED option actually changes (the "Ansicht" switcher),
-  // without ever fighting an in-session transition for the SAME option
-  // (offer → send → sent → delivered, or "Neue Version erstellen" back to
-  // narrative) — that effect only fires again once `currentId` itself
-  // changes.
+  // VR2-08 — POST-SEND RE-ENTRY (M-3): an Option the store already knows was
+  // sent reopens at its truthful Delivered state, never at a restart of the
+  // narrative. Lazy initialisers read the snapshot truth once, at mount; the
+  // effect below re-derives it only when the VIEWED Option changes.
   const [flow, setFlow] = useState<PresentationFlow>(
-    // VR3-05: a fresh presentation always begins at the entry boundary. An
-    // Option that was already sent reopens at its delivered artefact, which
-    // is VR2-08's own contract and not something the boundary re-asks.
-    () => (latestViewedSnapshot ? 'delivered' : 'entry'),
+    () => (latestViewedSnapshot ? 'delivered' : 'narrative'),
   )
   const [delivery, setDelivery] = useState<'sent' | 'delivered'>(
     () => (latestViewedSnapshot ? 'delivered' : 'sent'),
   )
   const [sentSnapshot, setSentSnapshot] = useState<OfferSnapshot | null>(null)
-  // VR2-08 — 'sending' is the real, visible commit step between the click
-  // and the snapshot existing (rule: "sending/committed state" between
-  // action and result); 'failed' models the one real, existing failure
-  // `sendOfferForOption` can produce (store.ts throws if the option cannot
-  // be resolved) — never a fabricated transport failure (the prototype has
-  // no transport to fail on its own; "Do NOT invent delivery evidence").
   const [sendStatus, setSendStatus] = useState<'idle' | 'sending' | 'failed'>('idle')
-  // VR3-05 — the two scenario commitments. Local, because a dialog being
-  // OPEN is screen state; everything the dialogs then commit is store state.
+  // The layers. OPEN is screen state; everything a layer commits is store state.
+  const [variantenOpen, setVariantenOpen] = useState(false)
   const [revertOpen, setRevertOpen] = useState(false)
   const [saveOpen, setSaveOpen] = useState(false)
-  const scenarioBarRef = useRef<HTMLDivElement>(null)
-  const { reduced, fadeRise } = useSemanticMotion()
+  const barRef = useRef<HTMLDivElement>(null)
+  const variantenTrigger = useRef<HTMLButtonElement>(null)
+  const { reduced, fadeRise, fadeOnly } = useSemanticMotion()
 
-  // VR2-09 — approved motion storyboard 5 "Presentation entry" (MODE), exit
-  // half: leaving Present back to Work is the same cross-shell swap as
-  // entering it (`ClientOutputGateDialog`), so it uses the same CONTINUITY
-  // edge (`startContinuityTransition`, view-transition cross-fade with the
-  // brand mark paired across both shells). Store semantics are untouched:
-  // `setMode('intern')` still runs synchronously inside the transition.
+  // Leaving Present back to Work is the same cross-shell swap as entering it:
+  // the CONTINUITY edge, with the brand mark paired across both shells.
   const exitToWork = () => startContinuityTransition(reduced, () => s.setMode('intern'))
 
   const syncedOptionIdRef = useRef<string | null>(currentId)
@@ -293,23 +297,14 @@ export function PresentationShell({ mainRef, modeRef }: {
       setDelivery('delivered')
       setFlow('delivered')
     } else {
-      // VR3-05: the boundary is crossed ONCE per presentation. Switching the
-      // presented Option — and above all saving a descendant from inside the
-      // meeting, which switches it — must not throw the presenter back to
-      // "Präsentation starten" in front of the client. The boundary exists
-      // to enter Client Mode, not to re-enter the narrative; `setMode` is
-      // what resets it, and that only happens on a real exit.
-      setFlow((current) => (current === 'entry' ? 'entry' : 'narrative'))
+      // Switching the presented Option keeps the chapter (store state) and
+      // returns any send flow to the story — a client asking to see the other
+      // variant has not left the narrative.
+      setFlow('narrative')
     }
-    // Deliberately keyed on `currentId` alone: a send/delivery happening for
-    // the option already being viewed is handled explicitly by `commitSend`,
-    // not by this re-entry sync.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentId])
 
-  // Reuse the validated CRM recipient contract already established for the
-  // synthetic DEMO-0001 opportunity. An unknown opportunity remains blocked;
-  // the client flow never invents or captures a recipient here.
   const recipient = recipientForOpportunity(s.opportunityId)
 
   useEffect(() => {
@@ -321,160 +316,175 @@ export function PresentationShell({ mainRef, modeRef }: {
     return () => window.clearTimeout(timer)
   }, [flow])
 
+  /* ---- the proposal: resolved once, rendered everywhere ---- */
+
+  const presented = clientPresentedSnapshot(s)
+  const baselineSnapshot = clientBaselineSnapshot(s)
+  const view: ClientView | null = current && presented && baselineSnapshot
+    ? {
+      optionName: current.name,
+      savedVersion: latestSavedOptionVersion(s, current.id),
+      presented,
+      baseline: baselineSnapshot,
+      projectName,
+      projectHeroAssetId: project?.heroAssetId ?? null,
+      language: s.uiLanguage,
+    }
+    : null
+  const deps = { t, tx }
+  const proposal: ClientProposal | null = view
+    ? clientProposal(s, view, 'clientLiveConfiguration', deps, portfolioProject)
+    : null
+  const printProposal: ClientProposal | null = view
+    ? clientProposal(s, view, 'clientPrint', deps, portfolioProject)
+    : null
+
+  const chapters: readonly ClientChapterId[] = proposal?.chapters ?? []
+  const storedChapter = s.presentationChapter as ClientChapterId | null
+  const activeChapter: ClientChapterId = storedChapter && chapters.includes(storedChapter)
+    ? storedChapter
+    : (chapters[0] ?? 'angebot')
+  const chapterIndex = chapters.indexOf(activeChapter)
+
+  // A rail click always lands in the narrative at that chapter — including
+  // from inside the send lifecycle, where the rail is the one way back.
+  const goTo = (id: ClientChapterId) => {
+    setFlow('narrative')
+    s.setPresentationChapter(id)
+  }
+  const step = (delta: 1 | -1) => {
+    const next = chapters[chapterIndex + delta]
+    if (next) goTo(next)
+  }
+
   /**
-   * Every narrative page is its own small "document" — moving to it focuses
-   * its own heading (M-10: "heading receives programmatic focus"; the same
-   * continuity contract App.tsx's scroll-reset effect gives every Work
-   * screen).
-   *
-   * MODE ENTRY IS NOT THIS EFFECT'S TRANSITION. It already has an owner:
-   * App.tsx's scroll-and-focus effect depends on `s.mode`, so crossing into
-   * Client Mode focuses the boundary heading there, as every document
-   * transition in the product has since acceptance defect 8. The rule below
-   * must therefore SETTLE on the first render rather than fire a second
-   * time at the same heading — one transition, one focus move.
-   *
-   * FOCUS IS SPENT BY THE REF, AND THE INTENT IS DERIVED DURING RENDER.
-   * Both halves are load-bearing, and each one is a bug on its own:
-   *
-   * - Focusing from an effect keyed on `[activeSection, flow]` addresses the
-   *   heading that is LEAVING. `AnimatePresence mode="wait"` mounts the
-   *   incoming page only after the outgoing one has exited, so the effect
-   *   runs while the new heading does not exist; once the old one detaches,
-   *   focus falls back to `<body>`. Acceptance reproduced exactly that —
-   *   navigate to Terminplan, wait 700 ms, `document.activeElement` is BODY.
-   *
-   * - Arming that intent from an effect is then too late for the transitions
-   *   that DO remount synchronously (the entry boundary into the narrative,
-   *   which lives outside the section swap): React attaches refs before it
-   *   runs effects, so the ref callback would fire with nothing armed and
-   *   the heading would never be focused.
-   *
-   * Deriving the wanted key during render satisfies both without branching
-   * on which kind of transition it is, and without a timer guessing when the
-   * DOM caught up. It is also why an ordinary re-render — a scenario
-   * decision, a recalculation — moves nothing: the key is unchanged, so the
-   * presenter keeps the control they just used.
+   * Presenter shortcuts. They never take a key from a focused control: a
+   * radio group's arrows, a text field's cursor and a dialog's own keys all
+   * keep their meaning (AC 49). Space is deliberately not a shortcut.
    */
-  const focusKey = flow === 'narrative' ? `section:${activeSection}` : `flow:${flow}`
-  const headingEl = useRef<HTMLHeadingElement | null>(null)
+  const onShellKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (flow !== 'narrative') return
+    if (variantenOpen || revertOpen || saveOpen) return
+    if (keyBelongsToControl(event.target)) return
+    if (event.key === 'ArrowRight' || event.key === 'PageDown') {
+      event.preventDefault()
+      step(1)
+    } else if (event.key === 'ArrowLeft' || event.key === 'PageUp') {
+      event.preventDefault()
+      step(-1)
+    }
+  }
+
+  /* ---- Vollbild: offered, never required; Esc leaves it natively ---- */
+
+  const fullscreenAvailable = typeof document !== 'undefined'
+    && typeof document.documentElement.requestFullscreen === 'function'
+    && document.fullscreenEnabled === true
+  const [fullscreen, setFullscreen] = useState(
+    () => typeof document !== 'undefined' && document.fullscreenElement !== null,
+  )
+  useEffect(() => {
+    const onChange = () => setFullscreen(document.fullscreenElement !== null)
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) void document.exitFullscreen()
+    else void document.documentElement.requestFullscreen()
+  }
+
+  /**
+   * Focus follows the chapter: moving to a chapter focuses its heading (one
+   * `<h1>` at a time), spent by the ref callback rather than an effect so the
+   * `AnimatePresence mode="wait"` remount cannot leave focus on `<body>`.
+   * Initialised to the first render's key: mode entry is App.tsx's transition
+   * and has already placed focus here, so this rule spends nothing there.
+   */
+  const focusKey = flow === 'narrative' ? `chapter:${activeChapter}` : `flow:${flow}`
   const wantedFocusKey = useRef<string>(focusKey)
-  // Initialised to the FIRST render's key: that render is mode entry, whose
-  // focus App.tsx has already placed on this very heading. Starting level
-  // means this rule spends nothing there and owns every move afterwards.
   const focusedKey = useRef<string>(focusKey)
   wantedFocusKey.current = focusKey
   const pageHeadingRef = useCallback((el: HTMLHeadingElement | null) => {
-    headingEl.current = el
     if (!el || focusedKey.current === wantedFocusKey.current) return
     focusedKey.current = wantedFocusKey.current
-    el.focus()
-  }, [])
+    // A chapter opens at its top, like a page — not scrolled to wherever the
+    // heading happens to sit. Focus is placed without a second scroll so the
+    // eyebrow above the title stays in view.
+    if (mainRef.current) mainRef.current.scrollTop = 0
+    el.focus({ preventScroll: true })
+  }, [mainRef])
 
-  // VR2-08: the deliberate 'sending' commit delay (see `commitSend` below)
-  // needs its own timer handle so unmount mid-flight cannot call `setState`
-  // on a gone component.
   const sendingTimerRef = useRef<number | null>(null)
   useEffect(() => () => {
     if (sendingTimerRef.current !== null) window.clearTimeout(sendingTimerRef.current)
   }, [])
 
-  // VR2-07: a nav tab click always lands in the narrative at that section —
-  // including from inside the offer/send/sent flow, where the narrative
-  // strip stays mounted (DC-22 anatomy) but previously did nothing while a
-  // flow was active. The approved Offer target relies on the strip itself
-  // as the only way back (no redundant "Zurück" chrome competing with the
-  // commercial result); this is what makes that true everywhere, not just
-  // for the one screen that needed it.
-  const goTo = (id: NarrativeSectionId) => {
-    setFlow('narrative')
-    setActiveSection(id)
-  }
+  /* ---- honest states: no Option, none eligible, projection error ---- */
 
-  // Kein client-präsentierbares Option: eigener, ehrlicher Zustand statt
-  // einer leeren Leinwand (AC 6/9/11/12) — dieselbe Unterscheidung, die
-  // S4Vergleich (Wave 1) schon für dieselbe Frage trifft: existiert die
-  // Option noch nicht, oder ist sie nur noch nicht bereit.
-  if (!current) {
+  if (!current || !view || !proposal || !printProposal) {
+    const projectionError = current !== null
     return (
-      <div className="flex min-h-0 flex-1 flex-col">
-        <PresentationTopBar
-          sections={[]} activeSection={activeSection}
-          candidates={[]} currentId={null} savedTotalOf={() => '—'}
-          onSwitch={() => {}} onExit={exitToWork} modeRef={modeRef}
-        />
-        <main ref={mainRef} tabIndex={-1}
-              className="min-h-0 flex-1 overflow-y-auto bg-surface-default outline-none px-7 py-6">
-          <h1 ref={pageHeadingRef} tabIndex={-1} className="text-heading-1 font-bold text-text-primary">
-            {projectName || t('shell.profile.client')}
-          </h1>
-          <p className="mt-4 text-body text-text-secondary">
-            <span aria-hidden="true">○ </span>
-            {/* `tx()` is a BRIDGE for German the generated delivery already
-                carries; handed a literal delivery never had, it returns the
-                German unchanged in EN — silently, which is how QA-01
-                shipped. These two sentences were exactly that, and they are
-                this ticket's own CLIENT MODE LOCKED state, so they become
-                dictionary keys with both rows. */}
-            {s.options.length > 0
-              ? t('presentation.empty.noneReady')
-              : t('presentation.empty.noOption')}
-          </p>
+      <div className="a3-cp-shell">
+        <div ref={barRef} className="a3-cp-band" role="region" aria-label={t('vr3.client.bar.label')}>
+          <PresenterBar
+            chapters={[]} activeChapter={null}
+            onNavigate={() => {}} onStep={() => {}}
+            variantenCount={0} onOpenVarianten={() => {}} variantenRef={variantenTrigger}
+            optionName={null}
+            fullscreen={fullscreen} fullscreenAvailable={fullscreenAvailable}
+            onToggleFullscreen={toggleFullscreen}
+            onExit={exitToWork} modeRef={modeRef}
+          />
+        </div>
+        <main ref={mainRef} tabIndex={-1} className="a3-cp-stage">
+          <div className="a3-cp-empty">
+            <h1 ref={pageHeadingRef} tabIndex={-1} className="a3-cp-title">
+              {projectionError
+                ? t('vr3.client.projectionError.title')
+                : (projectName || t('shell.profile.client'))}
+            </h1>
+            <p className="a3-cp-prose">
+              <span aria-hidden="true">{projectionError ? '! ' : '○ '}</span>
+              {projectionError
+                ? t('vr3.client.projectionError.body')
+                : s.options.length > 0
+                  ? t('presentation.empty.noneReady')
+                  : t('presentation.empty.noOption')}
+            </p>
+            {projectionError ? (
+              <div className="a3-cp-layer-open">
+                <Button variant="primary" onClick={exitToWork}>
+                  {t('vr3.client.projectionError.action')}
+                </Button>
+              </div>
+            ) : null}
+          </div>
         </main>
       </div>
     )
   }
 
-  // VR3-05 — the SALES narrative, six sections, in comprehension order.
-  // Deliberately not the preparation order and deliberately not variable:
-  // the target's rail is the same six on every frame, so a presenter builds
-  // one muscle memory and a client sees one document.
-  const sections = NARRATIVE_SECTIONS.map((id) => ({
-    id, label: t(SECTION_LABEL_KEY[id]),
-  }))
-  const showOptionen = candidates.length >= 2
-
-  const switchViewedOption = (id: string) => {
-    startContinuityTransition(reduced, () => s.setViewedOption(id))
-  }
+  /* ---- the send lifecycle (VR2-08, preserved) ---- */
 
   const startOffer = () => {
     setSentSnapshot(null)
     setSendStatus('idle')
     setDelivery('sent')
     setFlow('offer')
-    setActiveSection('investment')
   }
-
-  // A sent offer is a read-only artifact. Opening it must never restart the
-  // narrative or create a new version; the snapshot remains the source of
-  // truth even when the live Option has since changed.
   const openSentSnapshot = () => {
     if (!sentSnapshot && !latestViewedSnapshot) return
     setFlow('snapshot')
   }
-
   const closeSentSnapshot = () => setFlow('delivered')
-
   const backToNarrative = () => {
     setSentSnapshot(null)
     setSendStatus('idle')
-    setFlow('narrative')
-    setActiveSection('investment')
+    goTo('abschluss')
   }
 
-  // VR2-08 preflight (§9.3 EMAIL-001 condition #5, rule 16): a genuinely
-  // undetermined total is exactly the "not ready to send" case rule 16
-  // already names — sending it would freeze `Preis nicht ermittelt` into an
-  // immutable snapshot. Distinct blocking reason from a missing recipient,
-  // both intentional (rule 12: a blocked control always names why).
-  // KG 300/400/700 are structurally mandatory (store.ts `setCoverage`), so
-  // a fully CONFIGURED (`configurationComplete`) Option — the only kind
-  // `eligibleClientOptions` ever lets reach this screen — cannot itself
-  // drive `total.isZero()` today; this stays proportionate defence in
-  // depth against the underlying rule 16 condition rather than a currently
-  // click-reachable state (tested directly against `PresentationFlowScreen`
-  // — see presentation-shell.dom.test.tsx).
+  // Rule 16 / EMAIL-001 §9.3 #5: an undetermined total is "not ready to
+  // send" — it must never be frozen into an immutable snapshot.
   const priceUnavailable = current.p.result.total.exact.isZero()
   const canSend = recipient !== null && !priceUnavailable
   const galleryArtifacts = buildGalleryArtifacts(s.offerDraft.attachments, priceUnavailable, t)
@@ -490,168 +500,102 @@ export function PresentationShell({ mainRef, modeRef }: {
         setDelivery('sent')
         setFlow('sent')
       } catch {
-        // The one real, existing failure this call can produce (store.ts
-        // throws if the option cannot be resolved) — no snapshot is
-        // created, so the immutable-snapshot invariant holds on failure
-        // too. No fabricated provider/network failure exists to trigger
-        // here; the prototype has no transport layer capable of failing on
-        // its own ("Do NOT invent delivery evidence").
+        // The one real failure this call can produce (store.ts throws if the
+        // option cannot be resolved). No snapshot is created, so the
+        // immutable-snapshot invariant holds on failure too.
         setSendStatus('failed')
       }
     }, SEND_COMMIT_SIMULATION_MS)
   }
 
-  // VR3-05 — ONE resolved state for the whole narrative. Built here so the
-  // six pages cannot each reach for their own copy and disagree about which
-  // decisions are in force (the "one number, two meanings" class).
-  const presented = clientPresentedSnapshot(s)
-  const baselineSnapshot = clientBaselineSnapshot(s)
-  const view: ClientView | null = presented && baselineSnapshot
-    ? {
-      optionName: current.name,
-      savedVersion: latestSavedOptionVersion(s, current.id),
-      presented,
-      baseline: baselineSnapshot,
-      projectName,
-      projectHeroAssetId: opportunity?.heroAssetId ?? null,
-      language: s.uiLanguage,
-    }
-    : null
+  const scenarioChanged = scenarioChangeCount(s.clientScenario) > 0
+  const scenarioDelta = clientScenarioDelta(s)
+  const scenarioDeltaText = scenarioDelta ? signedMoneyText(scenarioDelta, s.uiLanguage) : null
 
-  // VR3-05 required state: PROJECTION ERROR. A presentation whose canonical
-  // derivation cannot produce a state has nothing honest to show a client,
-  // so it fails CLOSED and offers the route back to preparation rather than
-  // rendering a shell around an absent number.
-  if (!view) {
-    return (
-      <div className="flex min-h-0 flex-1 flex-col">
-        <PresentationTopBar
-          sections={[]} activeSection={activeSection}
-          candidates={[]} currentId={null} savedTotalOf={() => '—'}
-          onSwitch={() => {}} onExit={exitToWork} modeRef={modeRef}
+  const openSaveAsNew = () => { s.beginScenarioSaveAsNew(); setSaveOpen(true) }
+
+  const renderChapter = (id: ClientChapterId) => {
+    switch (id) {
+      case 'angebot': return <ChapterAngebot proposal={proposal} headingRef={pageHeadingRef} />
+      case 'ueberblick': return <ChapterUeberblick proposal={proposal} headingRef={pageHeadingRef} />
+      case 'projekt': return <ChapterProjekt proposal={proposal} headingRef={pageHeadingRef} />
+      case 'gebaeude': return <ChapterGebaeude proposal={proposal} headingRef={pageHeadingRef} />
+      case 'preis': return <ChapterPreis proposal={proposal} headingRef={pageHeadingRef} />
+      case 'leistungen': return <ChapterLeistungen proposal={proposal} headingRef={pageHeadingRef} />
+      case 'terminplan': return <ChapterTerminplan proposal={proposal} headingRef={pageHeadingRef} />
+      case 'architektur': return <ChapterArchitektur proposal={proposal} headingRef={pageHeadingRef} />
+      case 'grundlagen': return <ChapterGrundlagen proposal={proposal} headingRef={pageHeadingRef} />
+      case 'abschluss': return (
+        <ChapterAbschluss
+          proposal={proposal}
+          headingRef={pageHeadingRef}
+          outputs={(
+            <ClientOutputsPanel
+              view={view}
+              proposal={proposal}
+              onSaveAsNew={openSaveAsNew}
+              onEmail={startOffer}
+            />
+          )}
         />
-        <main ref={mainRef} tabIndex={-1}
-              className="min-h-0 flex-1 overflow-y-auto bg-surface-default outline-none px-7 py-6">
-          <h1 ref={pageHeadingRef} tabIndex={-1}
-              className="text-heading-1 font-bold text-text-primary">
-            {t('vr3.client.projectionError.title')}
-          </h1>
-          <p className="mt-4 text-body text-text-secondary">
-            <span aria-hidden="true">! </span>
-            {t('vr3.client.projectionError.body')}
-          </p>
-          <div className="mt-5">
-            <Button variant="primary" onClick={exitToWork}>
-              {t('vr3.client.projectionError.action')}
-            </Button>
-          </div>
-        </main>
-      </div>
-    )
+      )
+    }
   }
 
-  // One authority for "what does this Option cost": its own saved record.
-  const savedOf = (id: string) => latestSavedOptionVersion(s, id)
-  // ...and one authority for HOW it is typeset. `totalDisplay` is the string
-  // frozen at save time by `formatDE`, which is German by construction, so
-  // reusing it verbatim printed "38.740.000" inside an English presentation
-  // while the KG breakdown and the comparison delta beside it were already
-  // correctly "38,740,000" — two number systems in one client screen.
-  // `localizeMoneyText` re-typesets the ROUNDED numeral that is already
-  // there; it does not re-decide the rounding rule (see its own contract in
-  // i18n/index.ts), so the number and its `≈` prefix are untouched. `—`
-  // carries no numerals and passes through unchanged.
-  const savedTotalOf = (id: string) =>
-    localizeMoneyText(savedOf(id)?.result.totalDisplay ?? '—', s.uiLanguage)
-
-  const motionKey = flow === 'narrative' ? activeSection : flow
+  // Chapter change: the leaving chapter fades, the arriving one fades and
+  // rises — no slide. Reduced motion collapses both to immediate.
+  const chapterMotion: Variants = {
+    ...fadeRise,
+    ...(fadeOnly.exit ? { exit: fadeOnly.exit } : {}),
+  }
+  const motionKey = flow === 'narrative' ? activeChapter : flow
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <PresentationTopBar
-        sections={sections}
-        // The entry boundary is not a section of the narrative, so no rail
-        // item is current while it is on screen — an underline there would
-        // claim the presentation had already started.
-        activeSection={flow === 'entry' ? null : activeSection}
-        onNavigate={goTo}
-        optionName={current.name}
-        candidates={candidates} currentId={current.id}
-        savedTotalOf={savedTotalOf}
-        onSwitch={switchViewedOption}
-        onExit={exitToWork} modeRef={modeRef}
-      />
+    <div className="a3-cp-shell" onKeyDown={onShellKeyDown}>
+      {/* The presenter band: the one-row bar and the running identity
+          beneath it are ONE region, so the what-if state (which lives on the
+          identity row, where there is room for its delta and its two
+          actions without ever squeezing the chapter rail) is reached from the
+          same landmark as the rail. */}
+      <div ref={barRef} className="a3-cp-band" role="region" aria-label={t('vr3.client.bar.label')}>
+        <PresenterBar
+          chapters={chapters.map((id) => ({ id, label: t(CHAPTER_LABEL_KEY[id]) }))}
+          activeChapter={flow === 'narrative' ? activeChapter : null}
+          onNavigate={goTo}
+          onStep={step}
+          variantenCount={candidates.length}
+          onOpenVarianten={() => setVariantenOpen(true)}
+          variantenRef={variantenTrigger}
+          optionName={current.name}
+          fullscreen={fullscreen}
+          fullscreenAvailable={fullscreenAvailable}
+          onToggleFullscreen={toggleFullscreen}
+          onExit={exitToWork}
+          modeRef={modeRef}
+        />
+        <RunningIdentity
+          proposal={proposal}
+          scenarioSlot={(
+            <ScenarioState
+              view={view}
+              onRevert={() => setRevertOpen(true)}
+              onSaveAsNew={openSaveAsNew}
+            />
+          )}
+        />
+      </div>
 
-      <main ref={mainRef} tabIndex={-1}
-            className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surface-default outline-none">
-        {/* VR2-09 cohesion: the narrative page swap uses the canonical
-            `fadeRise` variants (`motion.ts`: fade + `--enter-shift` rise,
-            `--motion-reveal`/`--motion-feedback` durations, reduced-motion
-            collapse) — the same vocabulary every Work surface uses — instead
-            of a Present-local copy of that motion with literal `y: 8` /
-            `0.2` / `0.12` values (rule 20: "only the shared variants"). */}
-        {/* M-09 is a MODE transition, not a section change: the boundary
-            replaces the shell, it does not cross-fade with a narrative
-            section. Keeping it out of the section `AnimatePresence` is also
-            what stops the boundary and the first section from being mounted
-            at the same time while a `mode="wait"` exit is still settling —
-            two client screens in one document, one of which is stale. */}
-        {flow === 'entry' ? (
-          <PresentationEntry
-            view={view}
-            onStart={() => { setFlow('narrative'); setActiveSection('project') }}
-            onReturn={exitToWork}
-            headingRef={pageHeadingRef}
-          />
-        ) : (
+      <main ref={mainRef} tabIndex={-1} className="a3-cp-stage">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={motionKey}
-            variants={fadeRise}
+            variants={chapterMotion}
             initial="hidden"
             animate="visible"
             exit="exit"
-            /* ACCEPT-02: no `min-h-0` here either — the same automatic
-               minimum size the page needs has to survive its wrapper, or the
-               wrapper shrinks and the page overflows the wrapper instead. */
             className="flex flex-1 flex-col"
           >
-            {flow === 'outputs' ? (
-              <PageOutputs
-                view={view}
-                headingRef={pageHeadingRef}
-                onSaveAsNew={() => setSaveOpen(true)}
-                onEmail={startOffer}
-              />
-            ) : flow === 'narrative' ? (
-              activeSection === 'project' ? (
-                <PageProjectIdentity view={view} headingRef={pageHeadingRef} />
-              ) : activeSection === 'buildings' ? (
-                <PageBuildings view={view} headingRef={pageHeadingRef} />
-              ) : activeSection === 'scope' ? (
-                <PageScopeStory view={view} headingRef={pageHeadingRef} />
-              ) : activeSection === 'services' ? (
-                <PageServices view={view} headingRef={pageHeadingRef} />
-              ) : activeSection === 'schedule' ? (
-                <PageScheduleStory
-                  view={view} headingRef={pageHeadingRef}
-                  decision={<ScheduleScenarioSlot language={s.uiLanguage} />}
-                />
-              ) : (
-                <PageInvestment
-                  view={view}
-                  headingRef={pageHeadingRef}
-                  onConclude={() => setFlow('outputs')}
-                  comparison={showOptionen ? (
-                    <ClientOptionComparison
-                      candidates={candidates} currentId={current.id}
-                      onSwitch={switchViewedOption} language={s.uiLanguage}
-                      savedOf={savedOf}
-                    />
-                  ) : undefined}
-                />
-              )
-            ) : (
+            {flow === 'narrative' ? renderChapter(activeChapter) : (
               <PresentationFlowScreen
                 flow={flow}
                 delivery={delivery}
@@ -675,211 +619,147 @@ export function PresentationShell({ mainRef, modeRef }: {
             )}
           </motion.div>
         </AnimatePresence>
-        )}
-
       </main>
 
-      {/* The bar is persistent across every section, which is the point:
-          a presenter must not be able to navigate away from the fact that
-          the number on screen is a temporary one. It is suppressed only
-          for the entry boundary and the released send lifecycle, where a
-          scenario is by definition not what is being looked at.
+      {/* LAYER 2 — over the stage, back to the same chapter. */}
+      <VariantenLayer
+        view={view}
+        open={variantenOpen}
+        onClose={() => setVariantenOpen(false)}
+        returnFocusTo={variantenTrigger}
+      />
+      <ScenarioRevertDialog
+        open={revertOpen} onClose={() => setRevertOpen(false)}
+        view={view} returnFocusTo={barRef}
+      />
+      <ScenarioSaveDialog
+        open={saveOpen && s.clientScenarioSave?.stage === 'NAMING'}
+        onClose={() => { s.cancelScenarioSaveAsNew(); setSaveOpen(false) }}
+        view={view} returnFocusTo={barRef}
+      />
+      <ScenarioSaveReceipt view={view} />
 
-          ACCEPT-02. It used to be the LAST CHILD OF THE SCROLLING <main>,
-          held in view by `position: sticky; bottom: 0`. Sticky is the wrong
-          mechanism for a bar that must never hide anything: it keeps the bar
-          on screen by lifting it OVER the content still below it, so on the
-          Terminplan section — the tallest one, and the one that carries the
-          phased-handover what-if — the choice labels were painted over at
-          both approved viewports, and scrolling to the end of `main` could
-          not free them because the bar travels with the scrollport.
-
-          It is now a ROW OF THE SHELL, a sibling of the scroll region rather
-          than a passenger inside it. `main` is measured with the bar's band
-          already taken out, so the narrative simply has less height to use
-          and scrolls within it: the bar is always visible AND always beside
-          the content instead of on top of it, which is what T-041 shows and
-          what §17 means by "the scenario bar remains fully actionable".
-          `role="region"` keeps it inside a landmark now that it has left
-          `main`, so a screen-reader user can still reach it directly. */}
-      {view && (flow === 'narrative' || flow === 'outputs') ? (
-        <div
-          ref={scenarioBarRef}
-          role="region"
-          aria-label={t('vr3.client.scenario.region')}
-          className="shrink-0"
-        >
-          <ScenarioBar
-            view={view}
-            onRevert={() => setRevertOpen(true)}
-            onSaveAsNew={() => { s.beginScenarioSaveAsNew(); setSaveOpen(true) }}
-          />
-        </div>
-      ) : null}
-
-      {view ? (
-        <>
-          <ScenarioRevertDialog
-            open={revertOpen} onClose={() => setRevertOpen(false)}
-            view={view} returnFocusTo={scenarioBarRef}
-          />
-          <ScenarioSaveDialog
-            open={saveOpen && s.clientScenarioSave?.stage === 'NAMING'}
-            onClose={() => { s.cancelScenarioSaveAsNew(); setSaveOpen(false) }}
-            view={view} returnFocusTo={scenarioBarRef}
-          />
-          <ScenarioSaveReceipt view={view} />
-          <ClientPrintDocument view={view} />
-        </>
-      ) : null}
+      {/* The printed sheet: the SAME projection, print profile. */}
+      <ClientPrintDocument
+        proposal={printProposal}
+        scenario={{ changed: scenarioChanged, deltaText: scenarioDeltaText }}
+      />
     </div>
   )
 }
 
-/**
- * Option comparison, as a panel of the investment section.
- *
- * VR2-06 gave this a section of its own. The approved VR3-05 narrative has
- * exactly six sections and comparison is not one of them — but the CAPABILITY
- * is real and a presenter with two saved Options needs it, so it moves to
- * where the comparison is actually made: beside the number being compared.
- * Only client-eligible Options appear, and switching is `setViewedOption`,
- * which touches nothing but which Option is being shown.
- */
-function ClientOptionComparison({ candidates, currentId, onSwitch, language, savedOf }: {
-  candidates: Candidate[]
-  currentId: string
-  onSwitch: (id: string) => void
-  language: 'de' | 'en'
-  savedOf: (id: string) => SavedOptionVersion | null
-}) {
-  const t = useT()
-  const currentSaved = savedOf(currentId)
-  return (
-    <section className="a3-client-comparison" aria-label={t('vr3.client.comparison.title')}>
-      <h3 className="a3-client-panel-subtitle">{t('vr3.client.comparison.title')}</h3>
-      <div className="a3-client-rows">
-        {candidates.map((candidate) => {
-          const saved = savedOf(candidate.id)
-          const delta = saved && currentSaved
-            ? new Decimal(saved.result.totalExact)
-              .minus(new Decimal(currentSaved.result.totalExact))
-            : null
-          const presented = candidate.id === currentId
-          return (
-            <div key={candidate.id} className="a3-client-row">
-              <span className="a3-client-row-label">{candidate.name}</span>
-              <span className="a3-client-row-value numeric">
-                {saved ? localizeMoneyText(saved.result.totalDisplay, language) : '—'}
-                {delta && !delta.isZero() ? (
-                  <span className="a3-client-comparison-delta">
-                    {/* The 8px margin separates these two numbers for the
-                        eye, but nothing separated them in the TEXT: the row
-                        read "38.740.000+ 310.000 €" as one token to a screen
-                        reader and to anything else reading the accessible
-                        name. A visible space would double a gap the design
-                        already sets deliberately, so the separator is the
-                        delta's own name, clipped from view. */}
-                    <span className="sr-only">
-                      {` ${t('vr3.client.comparison.delta')} `}
-                    </span>
-                    {signedMoneyText(delta, language)}
-                  </span>
-                ) : null}
-              </span>
-              {presented ? (
-                <span className="a3-client-comparison-state">
-                  {t('vr3.client.comparison.presented')}
-                </span>
-              ) : (
-                <Button variant="ghost" onClick={() => onSwitch(candidate.id)}>
-                  {t('vr3.client.comparison.show')}
-                </Button>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </section>
-  )
-}
+/* ───────────────────────────── presenter bar ─────────────────────────── */
 
 /**
- * PresentationTopBar — the ONE Present-owned chrome bar (VR2-06): brand +
- * narrative strip + a compact Ansicht/mode/exit/language cluster. Replaces
- * both the generic `AppHeader` (not rendered while `praesentation`, see
- * `App.tsx`) and the previous second, Present-only bar underneath it —
- * "structurally recomposed", not Work chrome with parts hidden. The
- * mode-indicator + exit pairing is DC-22 `OutputProfileSwitch`'s own
- * anatomy (`modeIndicator` → `exitButton`, README GATE-003): both stay
- * directly visible, never folded into a menu.
+ * ONE client-safe presenter bar: brand · chapter rail · actions. One row at
+ * 1440 and at 1280, constant height whatever the Option count. It is
+ * physically part of the client's screen, so everything on it is client
+ * vocabulary: chapter names, `Varianten · N`, the presented Option's name,
+ * the what-if state, DE/EN, Vollbild, Beenden. Nothing else.
  */
-function PresentationTopBar({
-  sections, activeSection, optionName, onNavigate,
-  candidates, currentId, onSwitch, onExit, modeRef, savedTotalOf,
+function PresenterBar({
+  chapters, activeChapter, onNavigate, onStep, variantenCount, onOpenVarianten,
+  variantenRef, optionName, fullscreen, fullscreenAvailable,
+  onToggleFullscreen, onExit, modeRef,
 }: {
-  sections: Array<{ id: NarrativeSectionId; label: string }>
-  activeSection: NarrativeSectionId | null
-  optionName?: string
-  savedTotalOf: (id: string) => string
-  onNavigate?: (id: NarrativeSectionId) => void
-  candidates: Candidate[]
-  currentId: string | null
-  onSwitch: (id: string) => void
+  chapters: ReadonlyArray<{ id: ClientChapterId; label: string }>
+  activeChapter: ClientChapterId | null
+  onNavigate: (id: ClientChapterId) => void
+  onStep: (delta: 1 | -1) => void
+  variantenCount: number
+  onOpenVarianten: () => void
+  variantenRef: RefObject<HTMLButtonElement>
+  optionName: string | null
+  fullscreen: boolean
+  fullscreenAvailable: boolean
+  onToggleFullscreen: () => void
   onExit: () => void
   modeRef: RefObject<HTMLButtonElement>
 }) {
-  const tx = useTx()
   const t = useT()
   const s = useStore()
+  const index = activeChapter ? chapters.findIndex((c) => c.id === activeChapter) : -1
+  const atFirst = index <= 0
+  const atLast = index === -1 || index >= chapters.length - 1
 
   return (
-    <div className="a3-presentation-topbar a3-client-topbar">
-      <div className="a3-presentation-brand">
+    <div className="a3-cp-bar">
+      <div className="a3-cp-bar-brand">
         {/* `a3-brand-mark`: the one element both shells share, so the
             Work ⇄ Present CONTINUITY edge (view transition) can pair it. */}
         <img src={all3Logo} alt="All3" className="h-5 w-auto shrink-0 a3-brand-mark" />
       </div>
 
-      {sections.length > 0 && (
-        <nav aria-label={tx('Präsentation')} className="a3-presentation-nav">
-          <ul className="flex flex-wrap items-center gap-1" role="list">
-            {sections.map((sec) => (
-              <li key={sec.id}>
+      {chapters.length > 0 ? (
+        <nav aria-label={t('vr3.client.rail.label')} className="a3-cp-rail">
+          <button
+            type="button"
+            className="a3-cp-rail-step"
+            aria-label={t('vr3.client.bar.previous')}
+            aria-disabled={atFirst ? 'true' : undefined}
+            onClick={() => { if (!atFirst) onStep(-1) }}
+          >
+            <span aria-hidden="true">‹</span>
+          </button>
+          <ol className="a3-cp-rail-list" role="list">
+            {chapters.map((chapter, i) => (
+              <li key={chapter.id}>
+                {/* Ten chapters in ONE row at 1280: the rail shows every
+                    chapter's number and names only the current one. Every
+                    button still carries its full chapter name for AT and
+                    on hover, so the jump target is never a bare numeral. */}
                 <button
                   type="button"
-                  onClick={() => onNavigate?.(sec.id)}
-                  aria-current={activeSection === sec.id ? 'true' : undefined}
-                  className={'hit-target a3-presentation-tab' + (
-                    activeSection === sec.id ? ' a3-presentation-tab-current' : ''
-                  )}
+                  onClick={() => onNavigate(chapter.id)}
+                  aria-current={activeChapter === chapter.id ? 'step' : undefined}
+                  aria-label={`${i + 1} · ${chapter.label}`}
+                  title={chapter.label}
+                  className="a3-cp-rail-item"
                 >
-                  {sec.label}
+                  <span className="a3-cp-rail-index numeric" aria-hidden="true">{i + 1}</span>
+                  {activeChapter === chapter.id ? (
+                    <span className="a3-cp-rail-text" aria-hidden="true">{chapter.label}</span>
+                  ) : null}
                 </button>
               </li>
             ))}
-          </ul>
+          </ol>
+          <button
+            type="button"
+            className="a3-cp-rail-step"
+            aria-label={t('vr3.client.bar.next')}
+            aria-disabled={atLast ? 'true' : undefined}
+            onClick={() => { if (!atLast) onStep(1) }}
+          >
+            <span aria-hidden="true">›</span>
+          </button>
         </nav>
-      )}
+      ) : null}
 
-      <div className="a3-presentation-topbar-actions">
-        {candidates.length >= 2 && currentId ? (
-          <div className="a3-presentation-ansicht">
-            <OptionSwitcher
-              candidates={candidates} currentId={currentId}
-              onSwitch={onSwitch} savedTotalOf={savedTotalOf}
-            />
-          </div>
+      <div className="a3-cp-bar-actions">
+        {/* With exactly one eligible Option there is nothing to compare, so
+            the affordance is ABSENT — not disabled. */}
+        {variantenCount >= 2 ? (
+          <Button
+            ref={variantenRef}
+            variant="secondary"
+            onClick={onOpenVarianten}
+            aria-haspopup="dialog"
+          >
+            {`${t('vr3.client.varianten.open')} · ${variantenCount}`}
+          </Button>
         ) : null}
-        {/* VR3-05: with exactly one eligible Option there is nothing to
-            switch between, and the caption that used to stand here said the
-            Option's name a second time — the mode indicator to its right
-            already names it. One statement of which Option is on screen, in
-            the place the target puts it. */}
+        {optionName ? (
+          <p className="a3-mode-indicator" role="status" aria-live="polite" aria-atomic="true">
+            <span aria-hidden="true">◉</span>
+            <span>{optionName}</span>
+          </p>
+        ) : null}
         <div className="a3-language-control">
           <SegmentedControl
             layout="inline"
-            legend={tx('Sprache')}
+            legend={t('vr3.client.bar.language')}
+            legendHidden
             value={s.uiLanguage}
             onChange={(l) => s.setUiLanguage(l)}
             options={[
@@ -888,101 +768,62 @@ function PresentationTopBar({
             ]}
           />
         </div>
-        <div className="a3-output-profile a3-output-profile-compact">
-          <Button ref={modeRef} variant="secondary" onClick={onExit}>
-            {t('shell.profile.exit')}
+        {/* Icon-only, named for AT and on hover: the label's width is what
+            the chapter rail needs at 1280 to keep all ten chapters clickable
+            beside `Varianten · N`, the Option name and the language switch. */}
+        {fullscreenAvailable ? (
+          <Button
+            variant="ghost"
+            className="a3-cp-fullscreen"
+            onClick={onToggleFullscreen}
+            aria-pressed={fullscreen}
+            aria-label={t(fullscreen ? 'vr3.client.bar.exitFullscreen' : 'vr3.client.bar.fullscreen')}
+            title={t(fullscreen ? 'vr3.client.bar.exitFullscreen' : 'vr3.client.bar.fullscreen')}
+          >
+            <span aria-hidden="true">{fullscreen ? '⤡' : '⤢'}</span>
           </Button>
-          {/* The indicator names the MODE and the saved Option it is
-              presenting — the target's `CLIENT PRESENTATION · <Option>`.
-              Naming the Option here is what lets the redundant static
-              "Ansicht" label disappear when there is only one to show. */}
-          <p className="a3-mode-indicator" role="status" aria-live="polite" aria-atomic="true">
-            <span aria-hidden="true">◉</span>
-            <span>
-              {optionName
-                ? `${t('shell.profile.clientIndicator')} · ${optionName}`
-                : t('shell.profile.clientIndicator')}
-            </span>
-          </p>
-        </div>
+        ) : null}
+        <Button ref={modeRef} variant="secondary" onClick={onExit}>
+          {t('shell.profile.exit')}
+        </Button>
       </div>
     </div>
   )
 }
 
-/** Dieselbe Auswahl-Semantik wie S4Vergleich (Wave 1): SegmentedControl bis
- *  3 Optionen (LOCALE-004), sonst kanonisches SelectField — nur an einer
- *  Stelle wiederverwendet, die die GESAMTE Erzählung erreicht. */
-function OptionSwitcher({ candidates, currentId, onSwitch, savedTotalOf }: {
-  candidates: Candidate[]
-  currentId: string
-  onSwitch: (id: string) => void
-  savedTotalOf: (id: string) => string
+/**
+ * The running identity beneath the bar: project · address · `Indikatives
+ * Angebot · <date>`. Visible on every chapter without competing with it.
+ */
+function RunningIdentity({ proposal, scenarioSlot }: {
+  proposal: ClientProposal
+  scenarioSlot: React.ReactNode
 }) {
   const t = useT()
-  const current = candidates.find((c) => c.id === currentId)!
-  const legend = t('presentation.ansicht.legend')
-  // The SAVED baseline's own recorded total, never a re-derivation and never
-  // the legacy proposal projection: an Option's client-facing number is the
-  // one its save committed (M-3). Reading `c.p` here printed a total from a
-  // different engine beside the canonical one on the investment page — two
-  // numbers for one Option, in front of the client.
-  const segments = candidates.map((c) => ({
-    value: c.id,
-    label: `${c.name} · ${savedTotalOf(c.id)}`,
-  }))
-
+  const { identity, language } = proposal
+  const date = identity.offerDateISO
+    ? new Intl.DateTimeFormat(language === 'en' ? 'en-GB' : 'de-DE', {
+      day: 'numeric', month: 'long', year: 'numeric',
+    }).format(new Date(identity.offerDateISO))
+    : null
   return (
-    <div>
-      {segments.length <= 3 ? (
-        <SegmentedControl
-          layout="inline"
-          legend={legend}
-          value={currentId}
-          onChange={onSwitch}
-          options={segments}
-        />
-      ) : (
-        <SelectField
-          label={legend}
-          value={currentId}
-          onChange={(event) => onSwitch(event.target.value)}
-        >
-          {candidates.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name} · {savedTotalOf(c.id)}
-            </option>
-          ))}
-        </SelectField>
-      )}
-      {/* Eine knappe polite-Ansage pro Wechsel (a11y-Vertrag) — kein
-          Wert-für-Wert-Rieseln.
-
-          `savedTotalOf`, like the segments above and for the same reason:
-          the rule stated over `segments` was applied to `segments` only, so
-          this announcement and the >3-Option `SelectField` kept reading
-          `c.p` — the legacy proposal projection. A screen-reader user heard
-          ≈ 3.980.000 € for the Option everyone else saw priced at
-          38.430.000 €. One Option has one client-facing number, on every
-          path that states it. */}
-      <p className="sr-only" aria-live="polite">
-        {`${legend}: ${current.name} · ${savedTotalOf(current.id)}`}
+    <div className="a3-cp-identity">
+      <p className="a3-cp-identity-text">
+        <span className="a3-cp-identity-project">{identity.projectName}</span>
+        {identity.addressLine ? (
+          <span className="a3-cp-identity-address">{identity.addressLine}</span>
+        ) : null}
+        <span className="a3-cp-identity-offer">
+          {t('vr3.client.opening.eyebrow')}
+          {date ? ` · ${date}` : ''}
+        </span>
       </p>
+      {scenarioSlot}
     </div>
   )
 }
 
 type PageHeadingRef = Ref<HTMLHeadingElement>
-
-/* VR3-05 — §1…§6 of the client narrative moved to `ClientNarrative.tsx`,
-   `ClientScenario.tsx` and `ClientOutputs.tsx`. The six VR2-06 pages that
-   stood here (Identität · Umfang · Ergebnis · Zeitplan · Optionen ·
-   Nächster Schritt) are superseded rather than restyled: the approved
-   target replaces the narrative ITSELF, in a different order and with a
-   different subject, and keeping the old pages alongside the new ones
-   would have left the shell able to render two different client stories.
-   Option comparison survived the move — it is now a panel of §6, beside
-   the commercial result it compares, instead of a section of its own. */
 
 /** §"NÄCHSTER SCHRITT" → OFFER — the commercial climax (VR2-07, cycle 4).
  *

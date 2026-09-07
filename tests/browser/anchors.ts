@@ -271,3 +271,46 @@ export const VIEWPORT_GUARD = {
 export const COMPARISON = {
   headline: 'Entscheiden, nicht nur vergleichen.',
 }
+
+/**
+ * VR3-CP-00 · the client presentation as a ten-chapter proposal narrative.
+ *
+ * One presenter bar (`.a3-cp-bar`) carries the chapter rail — a `<nav>`
+ * named `Kapitel` whose buttons are labelled `{n} · {chapter}` and mark the
+ * current one with `aria-current="step"` — the Varianten layer trigger
+ * (present only with ≥ 2 eligible Options), the DE/EN control and `Beenden`.
+ * Chapters 4 and 8 are conditional (a second building; qualifying media),
+ * so `chapters` is the fixed ORDER, not the set a given Option presents.
+ * Strings are the DE copy from `src/i18n/index.ts` (`vr3.client.*`).
+ */
+export const CLIENT_PRESENTATION = {
+  railLabel: 'Kapitel',
+  /** The same landmark once the presenter switches the client to EN. */
+  railLabelEn: 'Chapters',
+  barLabel: 'Präsentation',
+  exit: 'Beenden',
+  variantenTitle: 'Die Optionen im Vergleich.',
+  variantenClose: 'Schließen',
+  whatIf: 'Was wäre, wenn',
+  chapters: [
+    'Angebot', 'Projektüberblick', 'Das Projekt', 'Die Gebäude',
+    'Preiszusammensetzung', 'Leistungsumfang', 'Terminplan', 'Architektur',
+    'Grundlagen', 'Nächster Schritt',
+  ],
+  cls: {
+    shell: '.a3-cp-shell',
+    bar: '.a3-cp-bar',
+    /** The presenter band: the bar plus the running-identity row beneath it,
+     *  which is where the what-if slot lives (so the rail keeps its row). */
+    band: '.a3-cp-band',
+    stage: '.a3-cp-stage',
+    scenarioSlot: '.a3-cp-bar-scenario',
+    receipt: '.a3-cp-receipt',
+    printDoc: '.a3-client-print-doc',
+    /** Chapter 2's lead hero and the printed sheet's total — one number. */
+    heroTotal: '.a3-cp-hero-total',
+    printTotal: '.a3-client-print-total',
+    languageEn: '.a3-language-control label:has(input[value="en"])',
+    languageDe: '.a3-language-control label:has(input[value="de"])',
+  },
+} as const

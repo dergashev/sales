@@ -20,27 +20,21 @@ import {
  * VR3-05 — ONE Option has ONE client-facing number, on every path that
  * states it.
  *
- * The rule already stood in `OptionSwitcher`, written out above `segments`:
- * an Option's client-facing total is the one its SAVE committed
+ * The rule: an Option's client-facing total is the one its SAVE committed
  * (`SavedOptionVersion.result.totalDisplay`), never the legacy proposal
- * projection. It had been applied to `segments` — and to `segments` only.
- * The same function's other two statements of the same number still read
- * `c.p.result.total`:
+ * projection. It was once applied to one switcher branch and forgotten in
+ * the other two — the failure mode "a rule that lives in each action's
+ * memory is a rule the next action forgets". So this file does not assert a
+ * formatted string; it asserts the INVARIANT on every client surface that
+ * states a number about an Option.
  *
- *   - the `sr-only` `aria-live` announcement fired on every switch, so a
- *     screen-reader user heard ≈ 3.980.000 € for the Option sighted users
- *     saw priced at 38.430.000 €;
- *   - the `SelectField` branch that replaces the segmented control above
- *     three Options — which Save as New makes ordinary to reach — printed
- *     the same wrong number visibly.
- *
- * This is the failure mode [[vr3-unified-konfigurator]] recorded as "a rule
- * that lives in each action's memory is a rule the next action forgets",
- * and the switcher is where [[vr3-client-presentation-scenarios]] already
- * recorded "two engines, one Option" once. So this file does not assert a
- * formatted string. It asserts the INVARIANT across BOTH switcher branches:
- * every number the switcher states about an Option is that Option's saved
- * total, and the legacy projection's total appears nowhere.
+ * Structure since VR3-CP-00: the top-bar `Ansicht` switcher (segmented
+ * control / >3-Option select) and the §6 comparison panel are gone. The
+ * presented Option is switched in the Varianten layer (`Varianten · N` →
+ * `<option> zeigen`; above three Options a participant picker chooses the
+ * columns), the bar's `role="status"` names the presented Option, and the
+ * number itself is stated by the chapters — chapter 2's hero, chapter 5 —
+ * and by the printed sheet, all reading the one `ClientProposal`.
  */
 
 beforeEach(() => __resetStoreForTests())
@@ -78,11 +72,38 @@ function buildSavedOptions(count: number): string[] {
   return ids
 }
 
-async function startPresentation(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole('button', { name: 'Präsentation starten' }))
+/** Rail button by chapter label, then wait for the chapter to mount. */
+async function gotoChapter(user: ReturnType<typeof userEvent.setup>, label: string) {
+  await user.click(screen.getByRole('button', { name: new RegExp(`· ${label}$`) }))
+  await waitFor(() => expect(screen.getByRole('region', { name: label })).toBeInTheDocument())
 }
 
-/** The saved total the switcher is required to state, and the legacy one it
+const openVarianten = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getByRole('button', { name: /^(Varianten|Variants) · \d+$/ }))
+  return screen.findByRole('dialog')
+}
+
+/** Switch the presented Option through the Varianten layer. */
+async function showOption(user: ReturnType<typeof userEvent.setup>, name: string) {
+  const layer = await openVarianten(user)
+  await user.click(within(layer).getByRole('button', { name: new RegExp(`${name}`) }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+}
+
+/** The chapter-2 hero: the one 64 px total (rule 31) and the co-hero rate. */
+const hero = () => {
+  const region = screen.getByRole('region', { name: /Projektüberblick|Project overview/ })
+  return {
+    total: region.querySelector('.a3-cp-hero-total .a3-cp-metric-lead')?.textContent ?? '',
+    totalLabel: region.querySelector('.a3-cp-hero-total .a3-cp-metric-label')?.textContent ?? '',
+    rate: region.querySelector('.a3-cp-hero-side .a3-cp-metric-co')?.textContent ?? '',
+    rateLabel: region.querySelector('.a3-cp-hero-side .a3-cp-metric-label')?.textContent ?? '',
+  }
+}
+
+const announcement = () => screen.getByRole('status').textContent ?? ''
+
+/** The saved total the stage is required to state, and the legacy one it
  *  must never state. Both read from the store, so neither is a literal. */
 function totals(id: string) {
   const saved = latestSavedOptionVersion(st(), id)!.result.totalDisplay
@@ -90,63 +111,86 @@ function totals(id: string) {
   return { saved, legacy }
 }
 
-/** `1234567` → `1.234.567`, the grouping the switcher would have printed.
- *  The two engines' totals differ by an order of magnitude, so this is a
- *  decisive discriminator even when two Options price identically. */
+/** `1234567` → `1.234.567`, the grouping a legacy total would print. The two
+ *  engines' totals differ by an order of magnitude, so this is a decisive
+ *  discriminator even when two Options price identically. */
 function grouped(value: { toFixed: (n: number) => string }): string {
   return new Intl.NumberFormat('de-DE').format(Math.round(Number(value.toFixed(2))))
 }
 
-describe('VR3-05 · the client Option switcher states one number per Option', () => {
-  it('the segmented control and its announcement both state the SAVED total', async () => {
+describe('VR3-05 · the client stage states one number per Option', () => {
+  it('the hero and the bar agree on the presented Option, and the hero states its SAVED total', async () => {
     const user = userEvent.setup()
     const [a, b] = buildSavedOptions(2)
     render(<Harness />)
-    await startPresentation(user)
+    await gotoChapter(user, 'Projektüberblick')
 
-    const switcher = screen.getByRole('radiogroup', { name: 'Ansicht' })
     const first = totals(a!)
+    // The bar names the presented Option; the hero states ITS saved total,
+    // never the second engine's total for the same Option. Queried by NAME,
+    // then read for the number: two Options may legitimately price the
+    // same, so the number is never the identifier here.
+    expect(announcement()).toMatch(/Option A/)
+    expect(hero().total).toContain(first.saved)
+    expect(hero().total).not.toContain(grouped(first.legacy))
 
-    // The visible segment and the polite announcement agree, and both agree
-    // with the Option's own saved record. Queried by NAME, then read for the
-    // number: two Options may legitimately price the same, so the number is
-    // never the identifier here.
-    const segment = (name: string) =>
-      within(switcher).getByRole('radio', { name: new RegExp(name) })
-        .closest('label') as HTMLElement
-    expect(segment('Option A')).toHaveTextContent(first.saved)
-    expect(segment('Option A')).not.toHaveTextContent(grouped(first.legacy))
-    const announcement = () => screen.getByText(/^Ansicht:/)
-    expect(announcement()).toHaveTextContent(first.saved)
-    // And never the second engine's total for the same Option.
-    expect(announcement()).not.toHaveTextContent(grouped(first.legacy))
-
-    // Switching restates the number, still from the saved record.
+    // Switching restates the number, still from the saved record, and the
+    // narrative position is kept.
     const second = totals(b!)
-    await user.click(within(switcher).getByRole('radio', { name: /Option B/ }))
+    await showOption(user, 'Option B zeigen')
     await waitFor(() => expect(st().viewedOptionId).toBe(b))
-    expect(announcement()).toHaveTextContent(second.saved)
-    expect(announcement()).not.toHaveTextContent(grouped(second.legacy))
+    expect(announcement()).toMatch(/Option B/)
+    expect(screen.getByRole('region', { name: 'Projektüberblick' })).toBeInTheDocument()
+    expect(hero().total).toContain(second.saved)
+    expect(hero().total).not.toContain(grouped(second.legacy))
   })
 
-  it('the >3-Option select branch states the SAVED total too', async () => {
+  it('above three Options the Varianten layer offers a participant picker, and a picked Option is presented with its SAVED total', async () => {
     const user = userEvent.setup()
     const ids = buildSavedOptions(4)
     render(<Harness />)
-    await startPresentation(user)
+    await gotoChapter(user, 'Projektüberblick')
 
-    // Above three Options the segmented control is replaced by the
-    // canonical select (LOCALE-004) — the branch that kept the defect.
+    // Above three Options the presenter chooses the participants through a
+    // client-safe control rather than being handed narrow columns — the
+    // branch that used to be a `<select>` and kept the defect.
     expect(screen.queryByRole('radiogroup', { name: 'Ansicht' })).toBeNull()
-    const select = screen.getByLabelText('Ansicht')
+    const layer = await openVarianten(user)
+    const picker = within(layer).getByRole('group', { name: /Bis zu 3 Optionen/ })
+    expect(within(picker).getAllByRole('checkbox')).toHaveLength(4)
+    expect(within(layer).getAllByRole('columnheader')).toHaveLength(1 + 3)
+    // Option D is not a column yet, so it cannot be shown yet.
+    expect(within(layer).queryByRole('button', { name: 'Option D zeigen' })).toBeNull()
 
-    ids.forEach((id, index) => {
-      const { saved, legacy } = totals(id)
-      const name = `Option ${String.fromCharCode(65 + index)}`
-      const option = within(select).getByRole('option', { name: new RegExp(name) })
-      expect(option).toHaveTextContent(saved)
-      expect(option).not.toHaveTextContent(grouped(legacy))
-    })
+    await user.click(within(picker).getByRole('checkbox', { name: 'Option D' }))
+    expect(within(layer).getAllByRole('columnheader')).toHaveLength(1 + 3)
+    await user.click(within(layer).getByRole('button', { name: 'Option D zeigen' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+    const d = ids[3]!
+    expect(st().viewedOptionId).toBe(d)
+    expect(announcement()).toMatch(/Option D/)
+    const { saved, legacy } = totals(d)
+    expect(hero().total).toContain(saved)
+    expect(hero().total).not.toContain(grouped(legacy))
+  })
+
+  it('the Varianten layer states the SAME facts about the presented Option as the chapters do (one Option, one number)', async () => {
+    const user = userEvent.setup()
+    buildSavedOptions(2)
+    render(<Harness />)
+    await gotoChapter(user, 'Projektüberblick')
+
+    // The lead rate the hero states for the presented Option …
+    const stageRate = hero().rate.replace(/\s/g, '')
+    const layer = await openVarianten(user)
+    // … is the lead rate the comparison states in the presented column.
+    const presentedIndex = within(layer).getAllByRole('columnheader')
+      .findIndex((th) => /wird gezeigt/.test(th.textContent ?? ''))
+    expect(presentedIndex).toBeGreaterThan(0)
+    const rateRow = within(layer).getByRole('row', { name: /^Leitkennzahl/ })
+    const cell = within(rateRow).getAllByRole('cell')[presentedIndex - 1]!
+    expect(cell.textContent!.replace(/\s/g, '')).toContain(stageRate)
   })
 })
 
@@ -156,13 +200,10 @@ describe('VR3-05 · the client Option switcher states one number per Option', ()
  * `SavedOptionResult.totalDisplay` is frozen at save time by `formatDE`,
  * which is German by construction: `.` thousands, `,` decimal. Reusing that
  * string verbatim printed "38.740.000" inside an English presentation while
- * the KG breakdown and the comparison delta 8 px away were already correctly
- * "38,740,000" — two number systems on one client screen, which is exactly
- * what CLAUDE.md rule 36 exists to prevent.
- *
- * The tests below assert FORMAT, not value: the sibling suite above already
- * pins WHICH number each surface states, and a suite that checks the value
- * only is how this shipped past a green build twice.
+ * the numbers 8 px away were already "38,740,000" — two number systems on
+ * one client screen, which is exactly what CLAUDE.md rule 36 exists to
+ * prevent. The tests below assert FORMAT, not value: the suite above pins
+ * WHICH number each surface states.
  */
 describe('VR3-05 · the saved total is typeset for the active UI language', () => {
   /** A DE-grouped numeral (1.234.567) that is NOT also valid EN grouping. */
@@ -170,73 +211,45 @@ describe('VR3-05 · the saved total is typeset for the active UI language', () =
   /** An EN-grouped numeral (1,234,567). */
   const EN_GROUPED = /\d{1,3}(?:,\d{3})+/
 
-  const switcherTexts = () => {
-    const group = screen.getByRole('radiogroup', { name: /Ansicht|Viewing/ })
-    return [...group.querySelectorAll('label')].map((l) => l.textContent ?? '')
-  }
-  const announcement = () => screen.getByText(/^(Ansicht|Viewing):/).textContent ?? ''
-
-  it('states DE grouping in DE and EN grouping in EN, on every switcher surface', async () => {
+  it('states DE grouping in DE and EN grouping in EN, on the hero and its rate', async () => {
     const user = userEvent.setup()
     buildSavedOptions(2)
     render(<Harness />)
-    await startPresentation(user)
+    await gotoChapter(user, 'Projektüberblick')
 
     // DE is the source language: dots, and no EN grouping anywhere.
-    for (const text of switcherTexts()) {
-      expect(text).toMatch(DE_GROUPED)
-      expect(text).not.toMatch(EN_GROUPED)
-    }
-    expect(announcement()).toMatch(DE_GROUPED)
+    expect(hero().total).toMatch(DE_GROUPED)
+    expect(hero().total).not.toMatch(EN_GROUPED)
+    expect(hero().rate).toMatch(DE_GROUPED)
 
     act(() => { st().setUiLanguage('en') })
 
     // EN: commas, and the frozen German numeral must be gone.
-    for (const text of switcherTexts()) {
-      expect(text).toMatch(EN_GROUPED)
-      expect(text).not.toMatch(DE_GROUPED)
-    }
-    expect(announcement()).toMatch(EN_GROUPED)
-    expect(announcement()).not.toMatch(DE_GROUPED)
+    await waitFor(() => expect(hero().total).toMatch(EN_GROUPED))
+    expect(hero().total).not.toMatch(DE_GROUPED)
+    expect(hero().rate).toMatch(EN_GROUPED)
+    expect(hero().rate).not.toMatch(DE_GROUPED)
   })
 
-  it('states EN grouping in the >3-Option select branch too', async () => {
-    const user = userEvent.setup()
-    buildSavedOptions(4)
-    render(<Harness />)
-    await startPresentation(user)
-    act(() => { st().setUiLanguage('en') })
-
-    const select = screen.getByLabelText(/Ansicht|Viewing/)
-    for (const option of [...select.querySelectorAll('option')]) {
-      const text = option.textContent ?? ''
-      expect(text).toMatch(EN_GROUPED)
-      expect(text).not.toMatch(DE_GROUPED)
-    }
-  })
-
-  it('states EN grouping in the Investition comparison rows, and separates the delta', async () => {
+  it('states EN grouping in the Varianten comparison cells, and never glues a digit to a sign', async () => {
     const user = userEvent.setup()
     buildSavedOptions(2)
     render(<Harness />)
-    await startPresentation(user)
     act(() => { st().setUiLanguage('en') })
 
-    await user.click(screen.getByRole('button', { name: 'Investment' }))
-    const panel = await screen.findByRole('region', { name: 'Other saved Options' })
-    const values = [...panel.querySelectorAll('.a3-client-row-value')]
-    expect(values.length).toBeGreaterThan(0)
+    const layer = await openVarianten(user)
+    const cells = within(layer).getAllByRole('cell')
+      // Money cells only: a date cell ('28 January 2028') carries a four-digit
+      // year and no grouping, so it is not what this assertion is about.
+      .filter((cell) => /\d{1,3}[.,]\d{3}/.test(cell.textContent ?? ''))
+    expect(cells.length).toBeGreaterThan(0)
 
-    for (const value of values) {
-      const text = value.textContent ?? ''
-      expect(text).toMatch(EN_GROUPED)
-      // The frozen German total was the one thing on this row that did not
-      // re-typeset, so its absence IS the fix.
+    for (const cell of cells) {
+      const text = cell.textContent ?? ''
+      // The German numeral must have re-typeset with the rest of the screen.
       expect(text).not.toMatch(DE_GROUPED)
-      // And the total must not be glued to the delta: the row read
-      // "38.740.000+ 310,000 €" as a single token to any reader of the
-      // accessible name. A separator exists, so no digit is ever followed
-      // immediately by a sign.
+      expect(text).toMatch(EN_GROUPED)
+      // A separator exists, so no digit is ever followed immediately by a sign.
       expect(text).not.toMatch(/\d[+−-]/)
     }
   })
@@ -245,19 +258,15 @@ describe('VR3-05 · the saved total is typeset for the active UI language', () =
 /**
  * The same defect on the artefact the client KEEPS.
  *
- * `ClientPrintDocument` is the client-safe document both PDF and print drive.
- * Every string in it goes through `t()` or `signedMoneyText(…, language)` —
- * except the total, which printed `Displayed.display` straight from
- * `formatDE`. An English presentation therefore handed the client a sheet
- * reading "38.740.000" directly beneath an authority line that had already
- * localised its own delta to "+ 310,000 €".
+ * `ClientPrintDocument` is the client-safe document both PDF and print
+ * drive. An English presentation once handed the client a sheet reading
+ * "38.740.000" directly beneath a line that had already localised its own
+ * delta to "+ 310,000 €".
  */
 describe('VR3-05 · the client print document typesets its total for the reader', () => {
-  it('prints the total AND its label in the reader\'s language (QA-02)', async () => {
-    const user = userEvent.setup()
+  it('prints the total AND its label in the reader\'s language (QA-02)', () => {
     buildSavedOptions(1)
     render(<Harness />)
-    await startPresentation(user)
 
     const label = () =>
       document.querySelector('.a3-client-print-total-label')?.textContent?.trim() ?? ''
@@ -278,11 +287,9 @@ describe('VR3-05 · the client print document typesets its total for the reader'
     expect(label()).toMatch(/net total/i)
   })
 
-  it('prints EN grouping under EN and DE grouping under DE', async () => {
-    const user = userEvent.setup()
+  it('prints EN grouping under EN and DE grouping under DE', () => {
     buildSavedOptions(1)
     render(<Harness />)
-    await startPresentation(user)
 
     const printTotal = () =>
       document.querySelector('.a3-client-print-total')?.textContent?.trim() ?? ''
@@ -298,42 +305,33 @@ describe('VR3-05 · the client print document typesets its total for the reader'
 })
 
 /**
- * The hero is rule 31's largest element, and it had two of the same defect.
- *
- * Found by looking at the EN screenshot rather than at the report: the
- * scope eyebrow over a "38,430,000 €" hero still read
- * "GESAMT NETTO · GRUNDLEISTUNG ALL3", and the lead rate beside it read
- * "2.228" — German grouping — while every other number on the panel had
- * already re-typeset. The DENOMINATOR NAME is a separate matter and must
- * stay German (LOCALE-009: normative denominators are never machine
- * translated), which is why it is asserted to SURVIVE below.
+ * The hero is rule 31's largest element, and it had two of the same defect:
+ * an EN screen whose total label still read "GESAMT NETTO · GRUNDLEISTUNG
+ * ALL3", and a lead rate beside it still in German grouping. The DENOMINATOR
+ * NAME is a separate matter and must stay German (LOCALE-009: normative
+ * denominators are never machine translated), which is why it is asserted
+ * to SURVIVE below.
  */
-describe('VR3-05 · the client investment hero speaks one language', () => {
-  it('bridges the scope label and re-typesets the rate, keeping the normative denominator', async () => {
+describe('VR3-05 · the client hero speaks one language', () => {
+  it('bridges the total label and re-typesets the rate, keeping the normative denominator', async () => {
     const user = userEvent.setup()
     buildSavedOptions(1)
     render(<Harness />)
-    await startPresentation(user)
     act(() => { st().setUiLanguage('en') })
-    await user.click(screen.getByRole('button', { name: 'Investment' }))
+    await gotoChapter(user, 'Project overview')
 
-    const panel = (await screen.findByRole('region', { name: 'Investment' }))
-    const eyebrow = panel.querySelector('.a3-client-eyebrow-onpanel')?.textContent ?? ''
-    // The scope label is bridged, so the German original is gone.
-    expect(eyebrow).not.toMatch(/Gesamt netto/i)
-    expect(eyebrow).toMatch(/net total/i)
+    const { totalLabel, rate, rateLabel } = hero()
+    // The total's label is bridged, so the German original is gone.
+    expect(totalLabel).not.toMatch(/Gesamt netto/i)
+    expect(totalLabel).toMatch(/net total/i)
 
-    const rateValue = panel.querySelector('.a3-client-metric-grid dd')?.textContent ?? ''
-    expect(rateValue).not.toMatch(/\d{1,3}(?:\.\d{3})+/)
-
-    // ACCEPT-03: the value now carries the UNIT the tile used to omit...
-    expect(rateValue).toContain('€/m²')
+    expect(rate).not.toMatch(/\d{1,3}(?:\.\d{3})+/)
+    // ACCEPT-03: the value carries the UNIT the tile used to omit...
+    expect(rate).toContain('€/m²')
     // ...and the normative denominator name is deliberately NOT translated.
-    // It stands in the TERM beside the metric's own name, which is how
-    // rule 31 words the Leitkennzahl and what keeps the 180 px value cell
-    // from wrapping mid-unit. So the German norm is asserted where it lives.
-    const rateTerm = panel.querySelector('.a3-client-metric-grid dt')?.textContent ?? ''
-    expect(rateTerm).toMatch(/lead rate/i)
-    expect(rateTerm).toMatch(/BGF|WFL|NUF/)
+    // It stands in the LABEL beside the metric's own name, which is how
+    // rule 31 words the Leitkennzahl.
+    expect(rateLabel).toMatch(/lead rate/i)
+    expect(rateLabel).toMatch(/BGF|WFL|NUF/)
   })
 })

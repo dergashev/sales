@@ -2884,3 +2884,134 @@ permission`. Named notApplicableReason правила 30.
 
 Плотность `density="compact"` (`.a3-drow-compact`) — операционная строка реестра
 64–72 px, выше только при переносе имени файла на две строки.
+
+---
+
+## 15. Раздел Client-Presentation-Medien · VR3-CP-00
+
+Источник: тикет бэклога VR3-CP-00 («клиентская презентация как повествование
+предложения»). Раздел добавляет **одну каноническую возможность** —
+`MediaGallery` — и **регистрирует уже существующую** `DataTable` (её контракт
+живёт в §5 «Раздел 7.4 — Tables и disclosure» и здесь не дублируется).
+
+Раздел намеренно верхнеуровневый, а не вложен в §2–§8: §9.1 называет число
+контрактов примитивов в §2–§8, и новый заголовок внутри этих разделов сделал
+бы это утверждение ложным. Раздел — не примитив: это доменная медиа-композиция
+поверх `MediaFrame` и канонического `Dialog`.
+
+### MediaGallery
+
+**Закрывает:** MEDIA-GALLERY-001 · MEDIA-GALLERY-002 · MEDIA-GALLERY-003 ·
+MEDIA-GALLERY-004 · (вместе с MediaFrame — DESIGN-05; вместе с Dialog —
+DIALOG-001)
+
+**Анатомия:**
+`section.a3-mg[aria-label]` (`.a3-mg-dark` — модификатор глубокой сцены) →
+`div.a3-mg-filters[role="group"]` → `button.a3-mg-filter.hit-target[aria-pressed]` ·
+`ul.a3-mg-grid` → `li.a3-mg-cell` (первый элемент дополнительно `.a3-mg-lead`,
+занимает всю ширину сетки) → `div.a3-mg-media` → `MediaFrame` +
+`button.a3-mg-open.hit-target[aria-label]` (наложение на всю рамку) →
+`p.a3-mg-caption` → `span.a3-mg-caption-text` + `span.a3-mg-caption-context` ·
+пусто → `p.a3-mg-empty`.
+Полноэкранный осмотр — **канонический `Dialog`** с `panelClassName="a3-mg-viewer"`
+и `scrimClassName="a3-mg-scrim"`: `div.a3-mg-viewer-body[onKeyDown]` →
+`div.a3-mg-viewer-bar` (`h2.a3-mg-viewer-title[id]` + `p.a3-mg-viewer-pos[role="status"]`
++ `button.a3-mg-viewer-close.hit-target`) → `div.a3-mg-viewer-stage` →
+`div.a3-mg-viewer-figure` (варианты `direction.forward` / `direction.backward`) →
+`p.a3-mg-viewer-caption` → `div.a3-mg-viewer-nav` →
+`button.a3-mg-viewer-step.hit-target[aria-disabled]` ×2.
+
+**Варианты:** `default` (светлая поверхность) · `onDark` (`.a3-mg-dark`, подписи
+на глубокой сцене) · `filtered` (набор фильтр-чипов над сеткой) ·
+`single` (один элемент: ведущее изображение без поддерживающего ряда).
+
+**Состояния:**
+
+*Взаимодействие*: `default` · `hover` (рамка ведущего и поддерживающих
+изображений получает `--border-contrast-1px`; аффорданс, никакой новой
+информации — R-05) · `focus` (глобальный двухслойный ring на наложенной
+кнопке; контур рисуется по краю изображения, `overflow` его не режет) ·
+`selected` (активный фильтр-чип: `--border-selected` + Bold, плюс
+`aria-pressed="true"` — не только цвет) ·
+`pressed` (применим у фильтр-чипа — нативное `button:active`; у плитки
+изображения удержание не несёт собственного смысла и визуально совпадает
+с `hover`) ·
+`disabled` — notApplicableReason: галерея ничего не запрещает; границы
+листания несут `aria-disabled` и остаются в DOM и в порядке Tab, что состоянием
+`disabled` контракта не является ·
+`loading` — принадлежит `MediaFrame` (`state="loading"`, плоский skeleton без
+shimmer): галерея передаёт состояние кадру и своей полосы загрузки не имеет.
+
+*Данные*: `ready` (все элементы имеют `src`, `alt` и `caption`; ведущее
+изображение — первое) · `empty` (`items` пуст → `p.a3-mg-empty` с текстом
+`emptyLabel`; глава при этом обычно не выводится вовсе) ·
+`loading` — notApplicableReason: единица загрузки здесь — изображение, и его
+объявляет `MediaFrame`; галерея без элементов неотличима от пустой ·
+`partial` — notApplicableReason: элемент без `src` в галерею не попадает, а
+элемент без описания невозможен — `alt` и `caption` обязательны типом ·
+`stale` — notApplicableReason: изображение не является расчётной величиной и
+не устаревает вслед за калькуляцией; устаревание объявляет владелец главы ·
+`error` — notApplicableReason: сбой загрузки конкретного изображения — это
+`MediaFrame state="error"` с собственным retry; галерея не показывает второй
+ошибки поверх ·
+`permission` — notApplicableReason: видимость главы решает профиль выдачи
+(OUT-*) до рендера; галерея, которую не должно быть видно, не рендерится.
+
+**MEDIA-GALLERY-001.** Одно доминирующее изображение и поддерживающие. Ведущий
+элемент занимает всю ширину сетки при соотношении 16:9, поддерживающие —
+трёхколоночный ряд при 3:2. На ширине 1440 px длинная сторона ведущего
+изображения — собственная мера главы, то есть заведомо больше 640 px; сжатие
+до размера поддерживающей плитки контрактом запрещено.
+
+**MEDIA-GALLERY-002.** Каждый элемент несёт `caption` и `alt`. `caption`
+называет контекст (здание, опция), `alt` описывает содержимое кадра и приходит
+от вызывающего — галерея его не сочиняет и не подставляет `caption` вместо
+него. `sourceId` уходит в data-атрибут `MediaFrame` и клиенту не показывается.
+
+**MEDIA-GALLERY-003.** Осмотр — **канонический `Dialog`**. Ловушка фокуса,
+Escape, инертный фон и возврат фокуса принадлежат ему; второго модального
+слоя, собственного `createPortal` и собственного обработчика Escape в этой
+возможности нет. Проверяется машинно в `src/design-system/__tests__/registry.test.ts`.
+
+**MEDIA-GALLERY-004.** Все видимые строки — обязательные пропсы
+(`label`, `emptyLabel`, `closeLabel`, `previousLabel`, `nextLabel`,
+`positionLabel`). Возможность не читает словарь и не добавляет ключей i18n:
+перевод приходит от потребителя. Объявление позиции формулирует **вызывающий**
+через `positionLabel(index, total)`; формулировка вида «Kapitel N von M» и
+любая «N von M», читающаяся как счётчик глав, запрещена — внутри презентации
+клиент услышит её как обещание оставшихся глав.
+
+**Клавиатура:** плитка — настоящий `<button>`, активация Enter/Space нативная,
+порядок Tab — порядок DOM. Внутри полноэкранного осмотра: `ArrowRight` — следующее
+изображение, `ArrowLeft` — предыдущее, `Home` — первое, `End` — последнее,
+`Escape` — закрытие (владелец — `Dialog`). Листание **упирается** в границы, а не
+зацикливается; граничная кнопка остаётся в DOM и в порядке Tab с `aria-disabled`
+— та же семантика границы, что у канонической `Pagination`. Зона нажатия и
+фокуса каждого контрола 44 × 44 px через `.hit-target::before` (R-04); наложение
+`.a3-mg-open` покрывает всю рамку, поэтому зона соседа не задевает.
+
+**Screen reader:** `section` с обязательным `aria-label`; доступное имя плитки —
+`caption` и, при наличии, `context`; `alt` живёт на самом изображении и звучит
+в осмотре. Панель осмотра — `role="dialog"` с `aria-labelledby` на
+`h2.a3-mg-viewer-title`. Позиция объявляется вежливо через `role="status"` на
+видимой строке `.a3-mg-viewer-pos` — одна и та же строка и видима, и объявляется,
+второй скрытой копии нет. Фильтр-чип несёт `aria-pressed`; выбор никогда не
+передаётся одним цветом (правило 8).
+
+**Токены:** `--space-1/-2/-3/-4/-5` · `--border-hairline` ·
+`--border-contrast-1px` · `--border-selected` · `--color-surface-default` ·
+`--color-surface-subtle` · `--color-surface-stage-deep` ·
+`--color-text-primary/-secondary/-inverse` ·
+`--color-text-stage-deep-secondary` · `--size-hit-target-default` ·
+`--font-weight-bold` · `--type-small-size/-line` · `--type-caption-size/-line` ·
+`--type-heading-3-size/-line` · `--measure-workspace` · `--layer-dialog` ·
+`--size-ratio-media-hero` и `--size-ratio-media-card` (через `MediaFrame`).
+
+**Запреты:** собственный `createPortal` и второй модальный слой · собственный
+обработчик `Escape` · собственный `useReducedMotion` (только `useSemanticMotion`) ·
+`<div onclick>` вместо `<button>` · `alt`, собранный из `caption` ·
+`sourceId` в видимом тексте · формулировка позиции, читающаяся как счётчик глав ·
+собственные ключи i18n и чтение словаря внутри возможности ·
+импорт `src/design-system/Gallery.tsx` (это QA-витрина, а не продуктовая галерея).
+
+---

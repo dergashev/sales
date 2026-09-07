@@ -6079,6 +6079,15 @@ class Verifier:
             # src/design-system/registry.tsx and consumed by real product
             # surfaces, not by the gallery.
             'workflow-navigator', 'pagination',
+            # VR3-CP-00 (client presentation as a proposal narrative): the
+            # first canonical GALLERY this system has had — one dominant
+            # view over supporting ones, full-screen inspection through the
+            # canonical Dialog — and the registration of `DataTable`, which
+            # shipped as a canonical module with real product consumers and
+            # no lifecycle entry at all. Both are declared in
+            # src/design-system/registry.tsx and contracted in
+            # design-system/components-core.md §15.
+            'media-gallery', 'data-table',
         }
         by_id = {}
         for entry in capabilities:

@@ -12,7 +12,6 @@ import {
   completeBuildingScope,
   completeKgConfiguration,
   saveOptionBaseline,
-  startClientPresentation,
 } from '../../test/offer-option'
 import { activeBuilding, __resetStoreForTests, useStore } from '../../state/store'
 import { CONFIGURATOR_STEP } from '../../state/chapters'
@@ -60,6 +59,35 @@ const goScopeBoundaries = () => act(() => {
   st.setPipelineView('konfigurator')
   st.openConfiguratorStepAt(CONFIGURATOR_STEP.SCOPE_BOUNDARIES)
 })
+
+/**
+ * VR3-CP-00: Client Mode has no entry boundary any more. The gate dialog's
+ * "Kundenansicht starten" lands directly on chapter 1 "Angebot" of the
+ * ten-chapter narrative, and exactly ONE chapter is in the DOM at a time
+ * (the gate's close and the shell swap are two renders, hence `findByRole`).
+ * A client-surface invariant therefore has to be asserted against every
+ * chapter, not against one body — `forEachChapter` walks the presenter bar's
+ * chapter rail (`nav "Kapitel"`, buttons named `{n} · {label}`) and runs the
+ * check once per landed chapter.
+ */
+const CLIENT_BAR = 'Präsentation'
+const RAIL_ITEM = /^\d+ · (.+)$/
+const awaitNarrative = () => screen.findByRole('region', { name: 'Angebot' })
+async function forEachChapter(
+  user: ReturnType<typeof userEvent.setup>,
+  check: (chapterLabel: string) => void,
+) {
+  const rail = screen.getByRole('navigation', { name: 'Kapitel' })
+  const labels = within(rail).getAllByRole('button')
+    .map((b) => b.getAttribute('aria-label')?.match(RAIL_ITEM)?.[1] ?? null)
+    .filter((l): l is string => l !== null)
+  expect(labels.length).toBeGreaterThanOrEqual(9)
+  for (const label of labels) {
+    await user.click(within(rail).getByRole('button', { name: new RegExp(`· ${label}$`) }))
+    await screen.findByRole('region', { name: label })
+    check(label)
+  }
+}
 
 /**
  * Путь до конвейера: корень → карточка → разрешить конфликт →
@@ -317,16 +345,15 @@ describe('Сквозной сценарий продажи', () => {
     confirmWholeConfiguration()
     await user.click(within(modus).getAllByRole('radio')[1]!)
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
-    // VR3-05 (T-034): Client Mode opens on its boundary screen; the
-    // narrative these suites are about begins one deliberate click later.
-    await startClientPresentation(user)
-    // REDESIGN R3 WAVE 2a (ce17da51): Kundenansicht is now ONE continuous
-    // PresentationShell document, not a per-chapter router — every
-    // narrative section (incl. §3 Ergebnis, the only place a commercial
-    // total renders) is already in the DOM at once. No "Export" nav item
-    // exists to click through any more; a single body-wide check already
-    // covers the entire client surface.
+    await awaitNarrative()
+    // VR3-CP-00: one chapter at a time, so the invariant is walked through
+    // every chapter (incl. 5 Preiszusammensetzung, the one place a
+    // commercial total renders) — margin does not exist anywhere in the
+    // client tree, it is not merely hidden by style.
     expect(screen.queryByText(/Marge Eigenleistung/)).not.toBeInTheDocument()
+    await forEachChapter(user, () => {
+      expect(screen.queryByText(/Marge Eigenleistung|Marge/)).not.toBeInTheDocument()
+    })
   })
 
   it('гейт готовности называет пункты вместо кольца и процентов (DC-26)', async () => {
@@ -506,12 +533,12 @@ describe('Сквозной сценарий продажи', () => {
     goPresent()
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
-    // VR3-05 (T-034): Client Mode opens on its boundary screen; the
-    // narrative these suites are about begins one deliberate click later.
-    await startClientPresentation(user)
+    await awaitNarrative()
 
-    expect(screen.queryByText(/Deckungsentscheidung noch offen/)).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Hinweis' })).toBeNull()
+    await forEachChapter(user, () => {
+      expect(screen.queryByText(/Deckungsentscheidung noch offen/)).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Hinweis' })).toBeNull()
+    })
   })
 
   it('клиентская поверхность не цитирует реестр требований (MODE-001, дефект 13)', async () => {
@@ -524,9 +551,7 @@ describe('Сквозной сценарий продажи', () => {
     const modes = screen.getByRole('radiogroup', { name: 'Ansicht' })
     await user.click(within(modes).getAllByRole('radio')[1]!)
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
-    // VR3-05 (T-034): Client Mode opens on its boundary screen; the
-    // narrative these suites are about begins one deliberate click later.
-    await startClientPresentation(user)
+    await awaitNarrative()
     expect(useStore.getState().mode).toBe('praesentation')
 
     // Коды реестра — доказательная база подготовки, не язык переговоров.
@@ -534,11 +559,12 @@ describe('Сквозной сценарий продажи', () => {
     // `KG 300`/`DIN 276` кодами реестра не являются и остаются.
     const REGISTRY = /\b(?:CALC|XSC|VARIANT|MODE|OUT|GATE|LOCALE|EMAIL|SECURITY|DEMO|DC|RM|CORE|SCHED|DATA|OPTION|DRIVER|ANALYSIS|PROGRESS|STATE|LAYOUT|TOKEN|COLOR|TYPE|BORDER|MOTION|KEY|TABS|SOURCE|COMPLEX|METRIC|CHANGE|VERSION|SCOPE|PRINT|NOTE|ARCH|A11Y)-\d{2,3}\b|\bR-\d{2}\b|\bD-\d{2}\b/
 
-    // REDESIGN R3 WAVE 2a (ce17da51): the whole narrative — §1 Projekt
-    // through §6 Angebot — renders in ONE PresentationShell document at
-    // once (no per-chapter router to click through any more), so one
-    // whole-body check already covers every narrative section.
+    // VR3-CP-00: one chapter renders at a time, so the check is walked
+    // through all ten (chapter 10 includes the client-safe output gates).
     expect((document.body.textContent ?? '').match(REGISTRY)?.[0] ?? null).toBeNull()
+    await forEachChapter(user, () => {
+      expect((document.body.textContent ?? '').match(REGISTRY)?.[0] ?? null).toBeNull()
+    })
   })
 
   it('клиентский профиль исключает внутреннюю навигацию, действия и идентификаторы из DOM', async () => {
@@ -557,41 +583,52 @@ describe('Сквозной сценарий продажи', () => {
     goPresent()
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
-    // VR3-05 (T-034): Client Mode opens on its boundary screen; the
-    // narrative these suites are about begins one deliberate click later.
-    await startClientPresentation(user)
+    await awaitNarrative()
 
-    // REDESIGN R3 WAVE 2a (ce17da51): Kundenansicht is now ONE continuous
-    // PresentationShell document — no per-chapter router, no Sidebar, no
-    // OfferPanel rail, no "Kapitel X von Y" step counter (explicitly
-    // forbidden by the shell's own contract: the narrative strip is story
-    // navigation, never a workflow stepper). §1 Projekt is always the
-    // shell's opening section, so its H1 (the project's own name, not a
-    // leftover internal chapter title) is the mode-entry focus target.
-    expect(screen.getByText(/Kundenansicht — der Kunde sieht diesen Bildschirm/))
-      .toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 1, name: 'Wohnhof Lindenhain' }))
+    // VR3-CP-00: Client Mode is the ten-chapter PresentationShell with ONE
+    // presenter bar (`region "Präsentation"`) — no Sidebar, no OfferPanel
+    // rail, no "Kapitel X von Y" step counter (the chapter rail is story
+    // navigation, never a workflow stepper). Chapter 1 "Angebot" is always
+    // the landing, so its H1 (the project's own name, not a leftover
+    // internal chapter title) is the mode-entry focus target, and the bar's
+    // live region names the presented Option in client vocabulary.
+    const bar = screen.getByRole('region', { name: CLIENT_BAR })
+    expect(within(bar).getByRole('status')).toHaveTextContent('Option 1')
+    // Scoped to the stage: the printed sheet (`.a3-client-print-doc`, CSS
+    // `display:none` on screen) carries its own H1 of the same name, and
+    // jsdom applies no stylesheet.
+    expect(within(screen.getByRole('main')).getByRole('heading', { level: 1, name: 'Wohnhof Lindenhain' }))
       .toHaveFocus()
     expect(screen.queryByText(/Kapitel \d+ von \d+/)).toBeNull()
     expect(screen.getByRole('button', { name: 'Beenden' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Einstellungen/ })).toBeNull()
-    expect(screen.queryByRole('button', { name: /Grundlagen/ })).toBeNull()
+    // "Grundlagen" is a client chapter now (9 · Grundlagen). The internal
+    // configurator step of the same name must still not exist here: every
+    // button named so lives inside the chapter rail, nowhere else.
+    const rail = screen.getByRole('navigation', { name: 'Kapitel' })
+    for (const b of screen.getAllByRole('button', { name: /Grundlagen/ })) {
+      expect(rail.contains(b)).toBe(true)
+    }
     expect(screen.queryByRole('button', { name: /Baunebenkosten KG 700/ })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Rundgang durch das Werkzeug' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Kundenansicht prüfen' })).toBeNull()
-    expect(screen.queryByText(/Journal|Marge|interne Notiz/i)).toBeNull()
-    // The whole narrative (incl. §2 Umfang's building rows and §5
-    // Optionen, when it exists) is already in the DOM at once — a single
-    // whole-body pass already covers what used to need one nav click per
-    // chapter.
-    expect(screen.queryAllByRole('button', {
-      name: /Frage an den Kunden|Zur Opportunity-Karte/,
-    })).toHaveLength(0)
-    expect(document.body).not.toHaveTextContent(
-      /(?:D-19|VARIANT-001|XSC-08|HOAI und AHO|70\/22\/8|clientPrint|clientSafe|R-07|EMAIL-007)/,
-    )
-    expect(document.body.textContent).not.toMatch(/\b(?:DEMO|OPT|SNAP|BM)-[A-Z0-9-]+\b/)
-    expect(document.querySelector('[data-driver-id]')).toBeNull()
+    // One chapter is in the DOM at a time, so the body-wide hygiene pass
+    // (incl. 4 Die Gebäude's building rows and 10 Nächster Schritt's
+    // output cards) runs once per landed chapter.
+    const assertClientHygiene = () => {
+      expect(screen.queryByText(/Journal|Marge|interne Notiz/i)).toBeNull()
+      expect(screen.queryByText(/Kapitel \d+ von \d+/)).toBeNull()
+      expect(screen.queryAllByRole('button', {
+        name: /Frage an den Kunden|Zur Opportunity-Karte|Kundenansicht prüfen|Option wechseln/,
+      })).toHaveLength(0)
+      expect(document.body).not.toHaveTextContent(
+        /(?:D-19|VARIANT-001|XSC-08|HOAI und AHO|70\/22\/8|clientPrint|clientSafe|R-07|EMAIL-007)/,
+      )
+      expect(document.body.textContent).not.toMatch(/\b(?:DEMO|OPT|SNAP|BM)-[A-Z0-9-]+\b/)
+      expect(document.querySelector('[data-driver-id]')).toBeNull()
+    }
+    assertClientHygiene()
+    await forEachChapter(user, assertClientHygiene)
 
     await user.click(screen.getByRole('button', { name: 'Beenden' }))
     expect(useStore.getState().mode).toBe('intern')
@@ -632,19 +669,20 @@ describe('Сквозной сценарий продажи', () => {
     goPresent()
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
-    // VR3-05 (T-034): Client Mode opens on its boundary screen; the
-    // narrative these suites are about begins one deliberate click later.
-    await startClientPresentation(user)
+    await awaitNarrative()
     expect(useStore.getState().mode).toBe('praesentation')
 
     // Inside Kundenansicht the whole Option context header is not rendered,
     // so the internal switcher does not exist in client DOM at all — the
     // strongest form of the invariant this case was written for. The
-    // presented Option is still NAMED, by the mode indicator (T-034/T-035).
+    // presented Option is still NAMED, by the presenter bar's live region
+    // (VR3-CP-00). The second Option is unsaved, hence not client-eligible,
+    // so the client-side "Varianten" layer is absent too — by design.
     expect(screen.queryByRole('button', { name: /Option wechseln/ })).toBeNull()
     expect(screen.queryByRole('combobox', { name: 'Opportunity Option' })).toBeNull()
-    expect(screen.getByText(/Kundenansicht — der Kunde sieht diesen Bildschirm · Option 1/))
-      .toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Varianten/ })).toBeNull()
+    const bar = screen.getByRole('region', { name: CLIENT_BAR })
+    expect(within(bar).getByRole('status')).toHaveTextContent('Option 1')
 
     // Раньше: выбор в этом контроле молча переключал `activeOptionId` даже
     // в клиентском виде. Контрола для этого больше нет — состояние
@@ -659,18 +697,17 @@ describe('Сквозной сценарий продажи', () => {
     goPresent()
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
-    // VR3-05 (T-034): Client Mode opens on its boundary screen; the
-    // narrative these suites are about begins one deliberate click later.
-    await startClientPresentation(user)
+    await awaitNarrative()
 
     expect(useStore.getState().mode).toBe('praesentation')
     expect(useStore.getState().level).toBe('option')
+    expect(screen.getByRole('region', { name: CLIENT_BAR })).toBeInTheDocument()
 
     act(() => useStore.getState().openOpportunity(useStore.getState().opportunityId!))
 
     expect(useStore.getState().mode).toBe('intern')
     expect(useStore.getState().level).toBe('opportunity')
-    expect(screen.queryByText('Kundenansicht — der Kunde sieht diesen Bildschirm')).toBeNull()
+    expect(screen.queryByRole('region', { name: CLIENT_BAR })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Beenden' })).toBeNull()
   })
 })

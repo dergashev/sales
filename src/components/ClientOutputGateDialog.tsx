@@ -71,9 +71,11 @@ export function ClientOutputGateDialog({ returnFocusTo }: {
       initialFocusRef={titleRef}
       returnFocusTo={returnFocusTo}
     >
-        <h4 ref={titleRef} id={titleId} tabIndex={-1} className="outline-none">
+        {/* D-10: the dialog's title is its top-level heading, not an h4
+            floating under a page it does not belong to. */}
+        <h2 ref={titleRef} id={titleId} tabIndex={-1} className="outline-none">
           {tx('Bereit für die Präsentation?')}
-        </h4>
+        </h2>
 
         {/* Чек-лист DC-23: что готово и что мешает — фактами состояния,
             а не бодрым «всё хорошо». */}
@@ -110,11 +112,11 @@ export function ClientOutputGateDialog({ returnFocusTo }: {
         {/* Что перестанет быть видимым. Состав групп определён нормативом
             (output-model §6.5) — второй перечень рядом с определением стал
             бы заготовкой для расхождения, поэтому здесь общая формулировка
-            и ссылка на профиль, а не список ярлыков. */}
+            и ссылка на профиль, а не список ярлыков. VR3-CP-00 снял и вторую
+            формулировку с перечнем ярлыков («Marge, Δ-Werte, KG-700-Modus…»):
+            это был тот самый второй перечень. */}
         <div className="a3-hidelist">
-          {s.pipelineView === 'buildingScope'
-            ? tx('Interne Bearbeitungshinweise und Quellenreferenzen werden in der Kundenansicht ausgeblendet.')
-            : tx('Ausgeblendet werden Marge, Δ-Werte, KG-700-Modus, Coaching-Hinweise und interne Notizen. Der Umfang folgt dem Ausgabeprofil, nicht dieser Liste.')}
+          {tx('Interne Bearbeitungshinweise und Quellenreferenzen werden in der Kundenansicht ausgeblendet.')}
         </div>
 
         {/* Плотность (D-16): рекомендация, не запрет, и переключение —

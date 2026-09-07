@@ -105,8 +105,17 @@ export type SavedOptionVersion = Readonly<{
  * client-safe for the contract it was validated against. Bumping this number
  * invalidates every stored baseline's client eligibility on purpose: a
  * projection whose allowlist has changed has not been checked.
+ *
+ * **2 — VR3-CP-00.** What Client Presentation exposes changed materially:
+ * the proposal now carries project address, offer date and legal entity;
+ * per-building storeys, units, the BGF split, WFL/NUF and the basement
+ * state; KG 300 construction answers; the DIN 276 composition with its
+ * per-row commercial state; the responsibility projection; cost drivers and
+ * the Regionalfaktor row; and project imagery — in the export as well as on
+ * the stage. That is a different allowlist, so it is a different contract,
+ * and a baseline saved against version 1 was never validated for it.
  */
-export const CLIENT_PROJECTION_VERSION = 1
+export const CLIENT_PROJECTION_VERSION = 2
 
 /** The transient half of the commitment. It never enters an undoable record. */
 export type OptionSaveCommit = Readonly<{

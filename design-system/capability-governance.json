@@ -411,6 +411,30 @@
           "pattern": "<Pagination"
         }
       ]
+    },
+    {
+      "id": "media-gallery",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/components/ClientClosing.tsx",
+          "pattern": "<MediaGallery"
+        }
+      ]
+    },
+    {
+      "id": "data-table",
+      "disposition": "ACTIVE",
+      "productConsumers": [
+        {
+          "path": "src/screens/CostDetails.tsx",
+          "pattern": "<DataTable"
+        },
+        {
+          "path": "src/screens/ResponsibilityStage.tsx",
+          "pattern": "<DataTable"
+        }
+      ]
     }
   ]
 }
