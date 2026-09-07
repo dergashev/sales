@@ -925,12 +925,29 @@ export function KgSystemChapter({ chapter, group }: {
        * in every chapter.
        */
       if (buildingIds.length > 0) {
+        /**
+         * WORK THAT LIVES UNDER ANOTHER BUILDING IS NAMED HERE. The chapter's
+         * completion counts every building while the rows show one, so a
+         * `Weiter` that stays blocked by decisions the reader cannot see
+         * would be a refusal without a route. The buildings still owing a
+         * decision are listed beside the switch, from the same selector the
+         * summary line uses.
+         */
+        const openElsewhere = buildingIds
+          .filter((id) => id !== activeBuilding)
+          .map((id) => ({ id, open: kgChapterOverview(catalogue, decisions, chapterForBuilding(chapter, id)).open }))
+          .filter((entry) => entry.open > 0)
+          .map((entry) => `${buildingNameOf(entry.id)} (${entry.open})`)
         return {
           id: entry.id,
           label: label(entry.labelDe, entry.labelEn),
           value: buildingNameOf(activeBuilding ?? undefined),
           meta: buildingIds.length > 1
-            ? t('vr3.kg.band.perBuilding', { count: buildingIds.length })
+            ? [
+              t('vr3.kg.band.perBuilding', { count: buildingIds.length }),
+              ...(openElsewhere.length > 0
+                ? [t('vr3.kg.band.openElsewhere', { names: openElsewhere.join(' · ') })] : []),
+            ].join(' · ')
             : (s.scopeSaved ? t('vr3.tga.rahmen.baselineConfirmed') : t('vr3.tga.rahmen.baselineOpen')),
           control: buildingControl,
         }

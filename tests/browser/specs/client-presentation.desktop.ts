@@ -67,30 +67,27 @@ async function decideScopeLedger(page: Page) {
  * exactly. This walks the six chapters and takes that answer.
  */
 async function configureAllChapters(page: Page) {
-  // Six cost groups, then Schnittstellen & Verantwortung (VR3-TGA-UX-00),
-  // then the forward action to the schedule — with one spare iteration.
-  for (let chapter = 0; chapter < 9; chapter += 1) {
-    /**
-     * VR3-TGA-01: a chapter may present its decisions inside SYSTEMS that
-     * open one at a time. An outstanding decision inside a collapsed system
-     * is real work the user has to do, so the walk has to do it too — the
-     * previous version simply never saw those controls and then failed on
-     * the forward action they block, which is the correct refusal reported
-     * at the wrong place.
-     */
+  /**
+   * VR3-KG-UNIFY-00: every chapter presents its decisions inside SYSTEMS that
+   * open one at a time, and a per-building chapter (KG 300) shows ONE
+   * building's rows while its completion counts every building. So one
+   * chapter may take several passes: answer the visible systems, and if the
+   * forward action is still blocked, switch to the next building the band
+   * offers and answer again. The band names the buildings still owing a
+   * decision, which is exactly what a user follows.
+   */
+  const answerVisibleSystems = async () => {
     const systems = page.locator('.a3-sys-btn')
     const systemCount = await systems.count()
     for (let sys = 0; sys < systemCount; sys += 1) {
       const button = systems.nth(sys)
       const state = await button.locator('.a3-sys-state').innerText().catch(() => '')
-      if (!/offen/i.test(state)) continue
+      if (!/offen|open/i.test(state)) continue
       if (await button.getAttribute('aria-expanded') !== 'true') await button.click()
       /**
-       * VR3-TGA-UX-00: a KG 400 decision commits on an EXPLICIT Übernehmen
-       * (decision pattern contract: "Resolve only on explicit commit"), and a
-       * committed editor LEAVES the DOM. So the open groups are re-queried on
-       * every pass rather than counted once: the second unresolved editor is
-       * `nth(0)` after the first has been applied, not `nth(1)`.
+       * A decision commits on an EXPLICIT Übernehmen (decision pattern
+       * contract), and a committed editor LEAVES the DOM. So the open groups
+       * are re-queried on every pass rather than counted once.
        */
       for (let pass = 0; pass < 8; pass += 1) {
         const body = page.locator('.a3-sys-body:not([hidden])')
@@ -106,34 +103,48 @@ async function configureAllChapters(page: Page) {
         if (!group) break
         /**
          * The SAME answer the rest of this walk gives: an include/exclude
-         * decision is recorded as NOT included, which is the fixture baseline
-         * the declared demonstration totals hold at. Including it instead
-         * silently moves the baseline for every downstream spec — the client
-         * scenario then had nothing left to change, because the walk had
-         * already made the change for it.
-         *
-         * A decision among real ALTERNATIVES has no such answer, so it takes
-         * the first — the All3 standard wherever one is marked.
+         * decision is recorded as NOT included — the fixture baseline the
+         * declared demonstration totals hold at. The pair is recognised by
+         * its VALUES (`included`/`excluded`), because a scope decision may
+         * carry the domain's own words (`Nicht im All3-Leistungsumfang`).
+         * A decision among real ALTERNATIVES takes the first.
          */
-        const exclude = group.getByRole('radio', { name: 'nicht aufnehmen' })
-        if (await exclude.count() > 0) await group.locator('label').nth(1).click()
+        const exclude = group.locator('input[value="excluded"]')
+        if (await exclude.count() > 0) await group.locator('label:has(input[value="excluded"])').click()
         else await group.locator('label').first().click()
-        const apply = body.getByRole('button', { name: 'Übernehmen' })
+        const apply = body.getByRole('button', { name: /^(Übernehmen|Apply)$/ })
         if (await apply.count() > 0) await apply.first().click()
         else break
       }
-      await button.click()
+      if (await button.getAttribute('aria-expanded') === 'true') await button.click()
     }
-    const groups = page.getByRole('radiogroup')
+    // Legacy inline radiogroups, where a chapter still renders them.
+    const groups = page.locator('.a3-kgp').getByRole('radiogroup')
     const count = await groups.count()
     for (let i = 0; i < count; i += 1) {
       const group = groups.nth(i)
       const radios = group.getByRole('radio')
       if (await radios.count() < 2) continue
-      const checked = await group.getByRole('radio', { checked: true }).count()
-      if (checked > 0) continue
-      // "nicht aufnehmen" — the second radio of an include/exclude pair.
+      if (await group.getByRole('radio', { checked: true }).count() > 0) continue
       await group.locator('label').nth(1).click()
+    }
+  }
+
+  // Six cost groups, then Schnittstellen & Verantwortung (VR3-TGA-UX-00),
+  // then the forward action to the schedule — with one spare iteration.
+  for (let chapter = 0; chapter < 9; chapter += 1) {
+    const next = page.getByRole('button', { name: /^Weiter zu / })
+    const blocked = async () => (await next.count()) > 0
+      && (await next.first().getAttribute('aria-disabled')) === 'true'
+    // One pass per building the band offers (plus the landing one).
+    const buildingSegments = page.locator('.a3-rahmen label:has(input[type="radio"])')
+    const buildingCount = Math.max(await buildingSegments.count(), 1)
+    for (let b = 0; b < buildingCount; b += 1) {
+      if (b > 0) {
+        if (!(await blocked())) break
+        await buildingSegments.nth(b).click()
+      }
+      await answerVisibleSystems()
     }
     const toSchedule = page.getByRole('button', { name: 'Weiter zum Terminplan' })
     if (await toSchedule.count() > 0
@@ -141,7 +152,6 @@ async function configureAllChapters(page: Page) {
       await toSchedule.click()
       return
     }
-    const next = page.getByRole('button', { name: /^Weiter zu / })
     if (await next.count() === 0) break
     await expect(next.first()).not.toHaveAttribute('aria-disabled', 'true', { timeout: 15_000 })
     await next.first().click()
