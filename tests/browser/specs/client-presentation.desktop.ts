@@ -85,11 +85,25 @@ async function configureAllChapters(page: Page) {
       const state = await button.locator('.a3-sys-state').innerText().catch(() => '')
       if (!/offen/i.test(state)) continue
       if (await button.getAttribute('aria-expanded') !== 'true') await button.click()
-      const open = page.locator('.a3-sys-body:not([hidden])').getByRole('radiogroup')
-      const openCount = await open.count()
-      for (let i = 0; i < openCount; i += 1) {
-        const group = open.nth(i)
-        if (await group.getByRole('radio', { checked: true }).count() > 0) continue
+      /**
+       * VR3-TGA-UX-00: a KG 400 decision commits on an EXPLICIT Übernehmen
+       * (decision pattern contract: "Resolve only on explicit commit"), and a
+       * committed editor LEAVES the DOM. So the open groups are re-queried on
+       * every pass rather than counted once: the second unresolved editor is
+       * `nth(0)` after the first has been applied, not `nth(1)`.
+       */
+      for (let pass = 0; pass < 8; pass += 1) {
+        const body = page.locator('.a3-sys-body:not([hidden])')
+        const groups = body.getByRole('radiogroup')
+        const total = await groups.count()
+        let group = null
+        for (let i = 0; i < total; i += 1) {
+          if (await groups.nth(i).getByRole('radio', { checked: true }).count() === 0) {
+            group = groups.nth(i)
+            break
+          }
+        }
+        if (!group) break
         /**
          * The SAME answer the rest of this walk gives: an include/exclude
          * decision is recorded as NOT included, which is the fixture baseline
@@ -104,15 +118,9 @@ async function configureAllChapters(page: Page) {
         const exclude = group.getByRole('radio', { name: 'nicht aufnehmen' })
         if (await exclude.count() > 0) await group.locator('label').nth(1).click()
         else await group.locator('label').first().click()
-        /**
-         * VR3-TGA-UX-00: a KG 400 decision commits on an EXPLICIT Übernehmen
-         * (decision pattern contract: "Resolve only on explicit commit"), so
-         * choosing an alternative is no longer the write — the walk presses
-         * the commit the way a user does.
-         */
-        const apply = page.locator('.a3-sys-body:not([hidden])')
-          .getByRole('button', { name: 'Übernehmen' })
+        const apply = body.getByRole('button', { name: 'Übernehmen' })
         if (await apply.count() > 0) await apply.first().click()
+        else break
       }
       await button.click()
     }
