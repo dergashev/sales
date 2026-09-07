@@ -123,6 +123,9 @@ describe('Сквозной сценарий продажи', () => {
     await user.click(await screen.findByRole('button', { name: 'ändern' }))
     const es = await screen.findByRole('radiogroup', { name: /Energieziel/ })
     await user.click(within(es).getAllByRole('radio')[2]!)
+    // VR3-TGA-UX-00: choosing is a draft; `Übernehmen` is the one write.
+    await user.click(within(es.closest('.a3-dec-editor') as HTMLElement)
+      .getByRole('button', { name: 'Übernehmen' }))
     // Путь до конвейера сам оставляет след: решённый конфликт,
     // подтверждённые параметры, созданный Option и подтверждённое здание.
     // KG 300/400/700 are mandatory now ("Rebuild Project Card Workflow"
@@ -154,11 +157,17 @@ describe('Сквозной сценарий продажи', () => {
     // records one more real decision than before. The chapter gained a
     // question it should always have asked, and M-4 makes that visible here
     // rather than letting it pass as a silent write.
-    expect(useStore.getState().journal).toHaveLength(37)
+    //
+    // VR3-TGA-UX-00 adds ONE more: the review has a thirteenth section —
+    // Schnittstellen & Verantwortung, its own owner now instead of a fact
+    // inside KG 400's fingerprint — and reading it is one more
+    // acknowledgement somebody gave. Choosing the energy target is still ONE
+    // event: the alternatives are a draft until `Übernehmen`.
+    expect(useStore.getState().journal).toHaveLength(38)
 
     // Уход на другой экран и возврат: состояние переживает переход.
     goComparison()
-    expect(useStore.getState().journal).toHaveLength(37)
+    expect(useStore.getState().journal).toHaveLength(38)
     expect(activeBuilding(useStore.getState()).energiestandard).toBe('EH_40')
 
     // Гейт открывается на top-level шаге здания, а не обходится.
@@ -182,7 +191,8 @@ describe('Сквозной сценарий продажи', () => {
     // one building's configuration confirmation, both journal events.
     // (+1 again from VR3-TGA-01's ventilation decision — see the note on the
     // 37 above; the offset between the two assertions is unchanged.)
-    expect(useStore.getState().journal).toHaveLength(39)
+    // 38 + the two events above (VR3-TGA-UX-00: the thirteenth review section).
+    expect(useStore.getState().journal).toHaveLength(40)
   })
 
   /**
@@ -377,6 +387,8 @@ describe('Сквозной сценарий продажи', () => {
     await user.click(await screen.findByRole('button', { name: 'ändern' }))
     const es = await screen.findByRole('radiogroup', { name: /Energieziel/ })
     await user.click(within(es).getAllByRole('radio')[2]!)
+    await user.click(within(es.closest('.a3-dec-editor') as HTMLElement)
+      .getByRole('button', { name: 'Übernehmen' }))
     confirmWholeConfiguration()
     goExport()
     await user.click(screen.getByRole('button', { name: 'Angebot prüfen' }))

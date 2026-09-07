@@ -269,7 +269,7 @@ describe('the Schedule is a stage: unavailable, then separately confirmable', ()
 })
 
 describe('Final Validation stays long, and every issue has a route', () => {
-  it('carries twelve sections under seven index entries, and counts them', async () => {
+  it('carries thirteen sections under eight index entries, and counts them', async () => {
     const user = userEvent.setup()
     reachSchedule()
     render(<App />)
@@ -277,12 +277,15 @@ describe('Final Validation stays long, and every issue has a route', () => {
     await user.click(screen.getByRole('button', { name: 'Terminplan bestätigen' }))
     openValidation()
 
-    expect(screen.getByText('Finale Prüfung · 12 Abschnitte')).toBeInTheDocument()
+    // VR3-TGA-UX-00: thirteen — the interface/responsibility matrix is its own
+    // section now, exactly once, instead of a fact inside KG 400's fingerprint.
+    expect(screen.getByText('Finale Prüfung · 13 Abschnitte')).toBeInTheDocument()
     const index = screen.getByRole('navigation', { name: 'Prüfabschnitte' })
-    // Seven entries, one of which stands for the six cost groups.
-    expect(within(index).getAllByRole('button')).toHaveLength(7)
+    // Eight entries, one of which stands for the six cost groups.
+    expect(within(index).getAllByRole('button')).toHaveLength(8)
     expect(within(index).getByText('KG 200 – 700')).toBeInTheDocument()
-    expect(within(index).getAllByText('0 von 12 geprüft').length).toBeGreaterThan(0)
+    expect(within(index).getByText('Schnittstellen')).toBeInTheDocument()
+    expect(within(index).getAllByText('0 von 13 geprüft').length).toBeGreaterThan(0)
 
     // Twelve real sections, each a landmark with its own heading. Scoped to
     // the review itself: the commercial rail beside it has headings of its
@@ -297,6 +300,7 @@ describe('Final Validation stays long, and every issue has a route', () => {
       'Projektgrundlage', 'Gebäude und Kennzahlen',
       'Leistungsabgrenzung — sechs Entscheidungen',
       'KG 200 · Vorbereitende Maßnahmen', 'KG 700 · Baunebenkosten',
+      'Schnittstellen & Verantwortung',
       'Terminplan', 'Annahmen und zulässige Hinweise', 'Kommerzielles Ergebnis',
     ]) {
       expect(screen.getByRole('heading', { level: 3, name: title })).toBeInTheDocument()
@@ -335,12 +339,12 @@ describe('Final Validation stays long, and every issue has a route', () => {
     const save = screen.getByRole('button', { name: 'Option speichern' })
     expect(save).toHaveAttribute('aria-disabled', 'true')
     expect(screen.getByText('Finale Prüfung bestätigt')).toBeInTheDocument()
-    expect(screen.getByText(/Noch 12 Abschnitte zu prüfen/)).toBeInTheDocument()
+    expect(screen.getByText(/Noch 13 Abschnitte zu prüfen/)).toBeInTheDocument()
 
     const first = screen.getAllByRole('button', { name: 'Abschnitt geprüft' })[0]!
     await user.click(first)
     expect(reviewProgressFor(st()).reviewed).toBe(1)
-    expect(screen.getAllByText('1 von 12 geprüft').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('1 von 13 geprüft').length).toBeGreaterThan(0)
 
     // The remaining eleven, then the confirmation.
     for (const button of screen.getAllByRole('button', { name: 'Abschnitt geprüft' })) {

@@ -119,6 +119,9 @@ describe('AUD-01: der gerenderte Vorschau-Slot — menschlicher Text, zuverläss
     // place, so reaching one means opening its system first. That is the
     // interaction under test's own precondition now, not a detour.
     await user.click(screen.getAllByRole('button', { name: /^Wärme/ })[0]!)
+    // VR3-TGA-UX-00: a decided decision is a summary; its alternatives — and
+    // therefore the hover preview — exist in edit mode, one `Ändern` away.
+    await user.click(await screen.findByRole('button', { name: 'Ändern · Wärmeerzeuger' }))
     const rows = await screen.findAllByRole('radiogroup', { name: /^Entscheidung/ })
     await user.hover(rows[0]!.querySelectorAll('label')[1]!)
     await act(async () => { await new Promise((r) => setTimeout(r, 260)) })

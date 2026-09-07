@@ -17,6 +17,7 @@ import { ActionGate } from '../design-system/ActionGate'
 import { SemanticStatus } from '../design-system/SemanticStatus'
 import { Leistungsabgrenzung } from './Leistungsabgrenzung'
 import { KgChapter } from './KgChapter'
+import { ResponsibilityStage } from './ResponsibilityStage'
 import { ScheduleStage } from './ScheduleStage'
 import { FinalValidation } from './FinalValidation'
 
@@ -73,11 +74,13 @@ export function S3Konfigurator() {
   const { direction, reduced } = useSemanticMotion()
   const stageIndex = group
     ? KG_SCOPE_GROUPS.indexOf(group) + 1
-    : currentId === CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE
+    : currentId === CONFIGURATOR_STEP.RESPONSIBILITY
       ? KG_SCOPE_GROUPS.length + 1
-      : currentId === CONFIGURATOR_STEP.FINAL_VALIDATION
+      : currentId === CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE
         ? KG_SCOPE_GROUPS.length + 2
-        : 0
+        : currentId === CONFIGURATOR_STEP.FINAL_VALIDATION
+          ? KG_SCOPE_GROUPS.length + 3
+          : 0
   const previousStageIndexRef = useRef(stageIndex)
   const stageDirection = stageIndex >= previousStageIndexRef.current ? 'forward' : 'backward'
   useEffect(() => { previousStageIndexRef.current = stageIndex }, [stageIndex])
@@ -108,6 +111,30 @@ export function S3Konfigurator() {
       )
     }
     if (currentId === CONFIGURATOR_STEP.SCOPE_BOUNDARIES) return <Leistungsabgrenzung />
+    if (currentId === CONFIGURATOR_STEP.RESPONSIBILITY) {
+      // VR3-TGA-UX-00: behind the same six-decision gate as the cost groups,
+      // for the same reason — the interface matrix describes an Option whose
+      // scope exists. It is not a cost group, so it never reads `kgConfig.scope`.
+      return scopeComplete ? <ResponsibilityStage /> : (
+        <ActionGate
+          status="locked"
+          prerequisites={[{
+            id: 'scopeDecisions',
+            label: t('vr3.kg.gate.decisionsPrereq'),
+            met: false,
+            detail: t('vr3.kg.gate.decisionsDetail', { decided, total }),
+          }]}
+          route={{
+            label: t('vr3.kg.gate.decisionsRoute'),
+            onSelect: () => s.openConfiguratorStepAt(CONFIGURATOR_STEP.SCOPE_BOUNDARIES),
+          }}
+        >
+          <h1 className="a3-hero-title" data-page-heading tabIndex={-1}>
+            {t('vr3.responsibility.heading')}
+          </h1>
+        </ActionGate>
+      )
+    }
     if (currentId === CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE) return <ScheduleStage />
     if (currentId === CONFIGURATOR_STEP.FINAL_VALIDATION) return <FinalValidation />
     if (!group) return <Leistungsabgrenzung />

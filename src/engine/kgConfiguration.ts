@@ -1,6 +1,7 @@
 import Decimal from 'decimal.js'
 import catalogueFixture from '../fixtures/kg-configuration.json'
 import type { CostAuthority, CostGroup, Driver } from './calculate'
+import type { ResponsibilityCatalogue } from './responsibility'
 
 /**
  * The canonical KG configuration model (VR3-03, targets T-018–T-028).
@@ -71,6 +72,15 @@ export type KgServiceVariant = Readonly<{
    * the UI shows. `delta` is `0.00` for the same reason as above.
    */
   bundled?: boolean
+  /**
+   * The ONE differentiator an option card shows under the solution name
+   * (VR3-TGA-UX-00). `label` stays the human name and the journal's word for
+   * the choice; a technical qualifier that used to share the label now has
+   * its own slot, so the primary copy is a name and the secondary copy is a
+   * distinction. Absent where the name already distinguishes.
+   */
+  detailDe?: string
+  detailEn?: string
 }>
 
 export type KgServiceKind =
@@ -248,13 +258,23 @@ export type KgRahmenEntry = Readonly<{
   /**
    * The value comes from live Option state, not from the fixture.
    *
-   * `buildingScope` is the only one, and it exists because the building set
-   * is the Option's, not the catalogue's: writing "1 Gebäude · Lindenhof"
-   * into a fixture would be the chapter asserting a building scope instead of
-   * reading the one the user confirmed — the very class of defect that made
-   * KG 400 unbuildable in the first place.
+   * `buildingScope` exists because the building set is the Option's, not the
+   * catalogue's: writing "1 Gebäude · Lindenhof" into a fixture would be the
+   * chapter asserting a building scope instead of reading the one the user
+   * confirmed — the very class of defect that made KG 400 unbuildable in the
+   * first place. VR3-TGA-UX-00 adds two of the same kind: `sourceDocuments`
+   * (the project baseline's document count) and `responsibility` (the scope
+   * boundary, read from the Option's responsibility owner and never authored
+   * twice).
    */
-  derive?: 'buildingScope'
+  derive?: 'buildingScope' | 'sourceDocuments' | 'responsibility'
+  /**
+   * The formal statement BEHIND the value, disclosed on demand — the
+   * statutory minimum behind the funding target. The band shows orientation;
+   * the regulation waits in the entry's evidence disclosure.
+   */
+  basisDe?: string
+  basisEn?: string
 }>
 
 /** The Bemusterung boundary: stated once, at the foot. Never a ninth system. */
@@ -395,6 +415,14 @@ export type KgCatalogue = Readonly<{
   declaredNetTotal: string
   declaredByCostGroup: Readonly<Record<KgScopeGroup, string>>
   chapters: readonly KgChapter[]
+  /**
+   * VR3-TGA-UX-00 — `Schnittstellen & Verantwortung`, the project's own
+   * block rather than an eighth KG 400 system. Read by the dedicated
+   * Configurator step through `engine/responsibility.ts`; optional as a
+   * matter of shape so a catalogue that declares none simply has no step
+   * content.
+   */
+  responsibility?: ResponsibilityCatalogue
 }>
 
 const CATALOGUES = (catalogueFixture as { catalogues: KgCatalogue[] }).catalogues

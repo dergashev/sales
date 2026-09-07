@@ -211,34 +211,44 @@
                         "value": "WE_LW_WP",
                         "labelDe": "Luft/Wasser-Wärmepumpe",
                         "labelEn": "Air-to-water heat pump",
-                        "delta": "0.00"
+                        "delta": "0.00",
+                        "detailDe": "Außenluft als Wärmequelle · elektrisch",
+                        "detailEn": "outdoor air as heat source · electric"
                       },
                       {
                         "value": "WE_FW",
                         "labelDe": "Fernwärme-Übergabestation",
                         "labelEn": "District heating transfer station",
-                        "delta": "-64000.00"
+                        "delta": "-64000.00",
+                        "detailDe": "Anschluss an das Fernwärmenetz",
+                        "detailEn": "connection to the district-heating network"
                       },
                       {
                         "value": "WE_SW_WP",
                         "labelDe": "Sole/Wasser-Wärmepumpe (Erdsonde)",
                         "labelEn": "Brine-to-water (ground-source) heat pump",
                         "delta": "0.00",
-                        "noPriceBasis": true
+                        "noPriceBasis": true,
+                        "detailDe": "Erdwärme über Sonden",
+                        "detailEn": "ground heat via boreholes"
                       },
                       {
                         "value": "WE_GAS_BW",
                         "labelDe": "Gas-Brennwert in EE-Hybrid",
                         "labelEn": "Gas condensing in RE-hybrid",
                         "delta": "0.00",
-                        "noPriceBasis": true
+                        "noPriceBasis": true,
+                        "detailDe": "Gaskessel mit erneuerbarem Anteil",
+                        "detailEn": "gas boiler with a renewable share"
                       },
                       {
                         "value": "WE_BIOMASSE",
                         "labelDe": "Biomasse/Pellet-Kessel",
                         "labelEn": "Biomass/pellet boiler",
                         "delta": "0.00",
-                        "noPriceBasis": true
+                        "noPriceBasis": true,
+                        "detailDe": "Holzpellets als Brennstoff",
+                        "detailEn": "wood pellets as fuel"
                       }
                     ]
                   },
@@ -640,28 +650,36 @@
                     "variants": [
                       {
                         "value": "WL_ABLUFT_DACH",
-                        "labelDe": "Zentrale Abluftanlage über Dach, ALD-Nachströmung",
-                        "labelEn": "Central exhaust system over roof, outdoor-air-inlet supply",
-                        "delta": "0.00"
+                        "labelDe": "Zentrale Abluftanlage",
+                        "labelEn": "Central extract-air system",
+                        "delta": "0.00",
+                        "detailDe": "Abluft über Dach · Nachströmung über Außenluftdurchlässe (ALD)",
+                        "detailEn": "extract over roof · supply through outdoor-air inlets (ALD)"
                       },
                       {
                         "value": "WL_DEZ_WRG",
                         "labelDe": "Dezentrale Lüftung mit Wärmerückgewinnung",
                         "labelEn": "Decentralised ventilation with heat recovery",
-                        "delta": "132000.00"
+                        "delta": "132000.00",
+                        "detailDe": "raumweise Geräte in der Außenwand",
+                        "detailEn": "room-by-room units in the external wall"
                       },
                       {
                         "value": "WL_ZENTRAL_WRG",
                         "labelDe": "Zentrale Lüftung mit Wärmerückgewinnung",
                         "labelEn": "Central ventilation with heat recovery",
-                        "delta": "132000.00"
+                        "delta": "132000.00",
+                        "detailDe": "Zentralgerät und Kanalnetz",
+                        "detailEn": "central unit and duct network"
                       },
                       {
                         "value": "WL_FENSTER",
                         "labelDe": "Freie/Fensterlüftung",
                         "labelEn": "Natural/window ventilation",
                         "delta": "0.00",
-                        "noPriceBasis": true
+                        "noPriceBasis": true,
+                        "detailDe": "nur bei nachgewiesener Zulässigkeit",
+                        "detailEn": "only where admissibility is demonstrated"
                       }
                     ]
                   },
@@ -766,8 +784,8 @@
                   "requiresDecision": false
                 }
               ],
-              "summaryDe": "Lüftungskonzept nach DIN 1946-6 liegt vor · 2 Lösungen zulässig",
-              "summaryEn": "DIN 1946-6 ventilation concept on file · 2 admissible solutions",
+              "summaryDe": "Zentrale Abluftanlage · ALD-Nachströmung",
+              "summaryEn": "Central extract-air system · outdoor-air inlets (ALD)",
               "scopeDe": "gilt für 1 Gebäude",
               "scopeEn": "applies to 1 building",
               "costAuthority": "direct"
@@ -1086,94 +1104,6 @@
                 "reasonEn": "building height 11.4 m — below the lift requirement (MBO § 39 (4))"
               },
               "costAuthority": "none"
-            },
-            {
-              "id": "a-kg400-scope",
-              "labelDe": "Schnittstellen & Verantwortung",
-              "labelEn": "Interfaces & responsibility",
-              "services": [
-                {
-                  "id": "a-400-13g",
-                  "labelDe": "Leistungsgrenze TGA",
-                  "labelEn": "MEP scope boundary",
-                  "summaryDe": "Leitungsnetz bis 1,0 m außerhalb der Gebäudehülle bzw. bis zum vereinbarten Übergabepunkt.",
-                  "summaryEn": "Pipework and cabling to 1.0 m outside the building envelope, or to the agreed handover point.",
-                  "amount": "0.00",
-                  "baseline": "selected",
-                  "kind": {
-                    "kind": "readOnlyRequired"
-                  },
-                  "authority": "sourceEvidenced",
-                  "costAuthority": "none",
-                  "scopeDe": "gilt für die gesamte Option",
-                  "scopeEn": "applies to the whole Option",
-                  "source": {
-                    "originDe": "All3-Standard · Leistungsverzeichnis",
-                    "originEn": "All3 standard · scope schedule",
-                    "valueDe": "Übergabepunkt Grundstücksgrenze",
-                    "valueEn": "Handover point at the property line"
-                  },
-                  "requiresDecision": false
-                },
-                {
-                  "id": "a-400-14",
-                  "labelDe": "Hausanschlüsse",
-                  "labelEn": "Utility house connections",
-                  "summaryDe": "Bauherr bis Grundstücksgrenze, All3 ab Übergabepunkt.",
-                  "summaryEn": "Client to the property line, All3 from the handover point.",
-                  "amount": "0.00",
-                  "baseline": "selected",
-                  "kind": {
-                    "kind": "readOnlyRequired"
-                  },
-                  "authority": "sourceEvidenced",
-                  "costAuthority": "bauherr",
-                  "scopeDe": "Verantwortung je Medium",
-                  "scopeEn": "responsibility per medium",
-                  "source": {
-                    "originDe": "01_Auftraggeberbrief.pdf · S. 7",
-                    "originEn": "01_Auftraggeberbrief.pdf · p. 7"
-                  },
-                  "valueRows": [
-                    {
-                      "valueDe": "Bauherr bis Grundstücksgrenze",
-                      "valueEn": "Client to the property line",
-                      "labelDe": "Trinkwasser",
-                      "labelEn": "Potable water",
-                      "status": "ok"
-                    },
-                    {
-                      "valueDe": "Bauherr bis Grundstücksgrenze",
-                      "valueEn": "Client to the property line",
-                      "labelDe": "Schmutzwasser / Kanal",
-                      "labelEn": "Foul water / sewer",
-                      "status": "ok"
-                    },
-                    {
-                      "valueDe": "Bauherr bis Grundstücksgrenze",
-                      "valueEn": "Client to the property line",
-                      "labelDe": "Strom (NS-Netz)",
-                      "labelEn": "Electricity (LV grid)",
-                      "status": "ok"
-                    },
-                    {
-                      "valueDe": "Glasfaser gesichert",
-                      "valueEn": "Fibre secured",
-                      "labelDe": "Telekommunikation",
-                      "labelEn": "Telecommunications",
-                      "status": "ok"
-                    }
-                  ],
-                  "offerNoteDe": "Eine ungeklärte Schnittstelle wird als Bedingung ins Angebot übernommen, nicht als Betrag und nicht als Lücke.",
-                  "offerNoteEn": "An unresolved interface enters the offer as a condition — not as an amount and not as a gap.",
-                  "requiresDecision": false
-                }
-              ],
-              "summaryDe": "Leistungsgrenze bestätigt · 4 Hausanschlüsse beim Bauherrn",
-              "summaryEn": "Scope boundary confirmed · 4 house connections with the client",
-              "scopeDe": "gilt für die gesamte Option",
-              "scopeEn": "applies to the whole Option",
-              "costAuthority": "bauherr"
             }
           ],
           "rahmen": [
@@ -1185,16 +1115,9 @@
               "valueEn": "",
               "metaDe": "Förderziel · Annahme",
               "metaEn": "Funding target · assumption",
-              "editServiceId": "a-400-es"
-            },
-            {
-              "id": "mindeststandard",
-              "labelDe": "Gesetzlicher Mindeststandard",
-              "labelEn": "Statutory minimum",
-              "valueDe": "GModG § 10 · Niedrigstenergiegebäude",
-              "valueEn": "GModG § 10 · nearly zero-energy building",
-              "metaDe": "aus Bauantragsdatum abgeleitet",
-              "metaEn": "derived from the building-application date"
+              "editServiceId": "a-400-es",
+              "basisDe": "Gesetzlicher Mindeststandard: GModG § 10 · Niedrigstenergiegebäude · aus Bauantragsdatum abgeleitet",
+              "basisEn": "Statutory minimum: GModG § 10 · nearly zero-energy building · derived from the building-application date"
             },
             {
               "id": "gebaeudeumfang",
@@ -1207,13 +1130,24 @@
               "derive": "buildingScope"
             },
             {
+              "id": "quelle",
+              "labelDe": "Quelle",
+              "labelEn": "Source",
+              "valueDe": "",
+              "valueEn": "",
+              "metaDe": "",
+              "metaEn": "",
+              "derive": "sourceDocuments"
+            },
+            {
               "id": "leistungsgrenze",
-              "labelDe": "Leistungsgrenze All3",
-              "labelEn": "All3 scope boundary",
-              "valueDe": "ab Übergabepunkt Grundstücksgrenze",
-              "valueEn": "from the handover point at the property line",
-              "metaDe": "Hausanschlüsse: Bauherr",
-              "metaEn": "House connections: client"
+              "labelDe": "Leistungsgrenze",
+              "labelEn": "Scope boundary",
+              "valueDe": "",
+              "valueEn": "",
+              "metaDe": "",
+              "metaEn": "",
+              "derive": "responsibility"
             }
           ],
           "rules": [
@@ -1230,8 +1164,8 @@
           "bemusterung": {
             "titleDe": "Spätere Bemusterung",
             "titleEn": "Later specification",
-            "bodyDe": "In dieser Kostengruppe ist der Systemstandard festgelegt. Produkt- und Oberflächenauswahl folgt in der Bemusterung — sie verfeinert diese Entscheidungen, sie ersetzt sie nicht.",
-            "bodyEn": "This cost group fixes the system standard. Product and finish selection follows in the specification stage — it refines these decisions, it does not replace them.",
+            "bodyDe": "Hier wird das System festgelegt; Produkte und Oberflächen werden später in der Bemusterung verfeinert, nicht ersetzt.",
+            "bodyEn": "The system is fixed here; products and finishes are refined later in the specification stage, not replaced.",
             "decidedHeadingDe": "Hier bereits entschieden",
             "decidedHeadingEn": "Already decided here",
             "deferredHeadingDe": "Später zu bemustern",
@@ -1611,7 +1545,80 @@
           "boundaryDe": "Planung, Beratung, Nachweise",
           "boundaryEn": "Design, consultancy, certification"
         }
-      ]
+      ],
+      "responsibility": {
+        "version": 1,
+        "scopeBoundary": {
+          "labelDe": "Leistungsgrenze TGA",
+          "labelEn": "MEP scope boundary",
+          "summaryDe": "Leitungsnetz bis 1,0 m außerhalb der Gebäudehülle bzw. bis zum vereinbarten Übergabepunkt.",
+          "summaryEn": "Pipework and cabling to 1.0 m outside the building envelope, or to the agreed handover point.",
+          "handoverDe": "Übergabepunkt Grundstücksgrenze",
+          "handoverEn": "Handover point at the property line",
+          "scopeDe": "gilt für die gesamte Option",
+          "scopeEn": "applies to the whole Option",
+          "authority": "sourceEvidenced",
+          "costAuthority": "none",
+          "source": {
+            "originDe": "All3-Standard · Leistungsverzeichnis",
+            "originEn": "All3 standard · scope schedule",
+            "valueDe": "Übergabepunkt Grundstücksgrenze",
+            "valueEn": "Handover point at the property line"
+          }
+        },
+        "connections": {
+          "labelDe": "Hausanschlüsse",
+          "labelEn": "Utility house connections",
+          "summaryDe": "Bauherr bis Grundstücksgrenze, All3 ab Übergabepunkt.",
+          "summaryEn": "Client to the property line, All3 from the handover point.",
+          "all3FromDe": "Übergabepunkt",
+          "all3FromEn": "Handover point",
+          "scopeDe": "Verantwortung je Medium",
+          "scopeEn": "responsibility per medium",
+          "authority": "sourceEvidenced",
+          "costAuthority": "bauherr",
+          "source": {
+            "originDe": "01_Auftraggeberbrief.pdf · S. 7",
+            "originEn": "01_Auftraggeberbrief.pdf · p. 7"
+          },
+          "media": [
+            {
+              "id": "potableWater",
+              "labelDe": "Trinkwasser",
+              "labelEn": "Potable water",
+              "clientDe": "Bauherr bis Grundstücksgrenze",
+              "clientEn": "Client to the property line",
+              "status": "ok"
+            },
+            {
+              "id": "foulWater",
+              "labelDe": "Schmutzwasser / Kanal",
+              "labelEn": "Foul water / sewer",
+              "clientDe": "Bauherr bis Grundstücksgrenze",
+              "clientEn": "Client to the property line",
+              "status": "ok"
+            },
+            {
+              "id": "electricityLv",
+              "labelDe": "Strom (NS-Netz)",
+              "labelEn": "Electricity (LV grid)",
+              "clientDe": "Bauherr bis Grundstücksgrenze",
+              "clientEn": "Client to the property line",
+              "status": "ok"
+            },
+            {
+              "id": "telecommunications",
+              "labelDe": "Telekommunikation",
+              "labelEn": "Telecommunications",
+              "clientDe": "Glasfaser gesichert",
+              "clientEn": "Fibre secured",
+              "status": "ok"
+            }
+          ],
+          "offerNoteDe": "Eine ungeklärte Schnittstelle wird als Bedingung ins Angebot übernommen, nicht als Betrag und nicht als Lücke.",
+          "offerNoteEn": "An unresolved interface enters the offer as a condition — not as an amount and not as a gap."
+        }
+      }
     },
     {
       "projectId": "DEMO-COMPLEX-01",
@@ -2390,8 +2397,8 @@
                   "requiresDecision": false
                 }
               ],
-              "summaryDe": "Zentral je Gebäude · Zirkulation 60/55 °C nach DVGW W 551:2004-04",
-              "summaryEn": "Central per building · circulation at 60/55 °C per DVGW W 551:2004-04",
+              "summaryDe": "Zentral je Gebäude · Zirkulation erforderlich",
+              "summaryEn": "Central per building · circulation required",
               "scopeDe": "je Gebäude",
               "scopeEn": "per building",
               "costAuthority": "direct"
@@ -2954,94 +2961,6 @@
               "scopeDe": "je Gebäude",
               "scopeEn": "per building",
               "costAuthority": "noBasis"
-            },
-            {
-              "id": "b-kg400-scope",
-              "labelDe": "Schnittstellen & Verantwortung",
-              "labelEn": "Interfaces & responsibility",
-              "services": [
-                {
-                  "id": "b-400-13g",
-                  "labelDe": "Leistungsgrenze TGA",
-                  "labelEn": "MEP scope boundary",
-                  "summaryDe": "Leitungsnetz bis 1,0 m außerhalb der Gebäudehülle bzw. bis zum vereinbarten Übergabepunkt.",
-                  "summaryEn": "Pipework and cabling to 1.0 m outside the building envelope, or to the agreed handover point.",
-                  "amount": "0.00",
-                  "baseline": "selected",
-                  "kind": {
-                    "kind": "readOnlyRequired"
-                  },
-                  "authority": "sourceEvidenced",
-                  "costAuthority": "none",
-                  "scopeDe": "gilt für die gesamte Option",
-                  "scopeEn": "applies to the whole Option",
-                  "source": {
-                    "originDe": "All3-Standard · Leistungsverzeichnis",
-                    "originEn": "All3 standard · scope schedule",
-                    "valueDe": "Übergabepunkt Grundstücksgrenze",
-                    "valueEn": "Handover point at the property line"
-                  },
-                  "requiresDecision": false
-                },
-                {
-                  "id": "b-400-14",
-                  "labelDe": "Hausanschlüsse",
-                  "labelEn": "Utility house connections",
-                  "summaryDe": "Bauherr bis Grundstücksgrenze, All3 ab Übergabepunkt.",
-                  "summaryEn": "Client to the property line, All3 from the handover point.",
-                  "amount": "0.00",
-                  "baseline": "selected",
-                  "kind": {
-                    "kind": "readOnlyRequired"
-                  },
-                  "authority": "sourceEvidenced",
-                  "costAuthority": "bauherr",
-                  "scopeDe": "Verantwortung je Medium",
-                  "scopeEn": "responsibility per medium",
-                  "source": {
-                    "originDe": "01_Auftraggeberbrief.pdf · S. 12",
-                    "originEn": "01_Auftraggeberbrief.pdf · p. 12"
-                  },
-                  "valueRows": [
-                    {
-                      "valueDe": "Bauherr bis Grundstücksgrenze",
-                      "valueEn": "Client to the property line",
-                      "labelDe": "Trinkwasser",
-                      "labelEn": "Potable water",
-                      "status": "ok"
-                    },
-                    {
-                      "valueDe": "Bauherr bis Grundstücksgrenze",
-                      "valueEn": "Client to the property line",
-                      "labelDe": "Schmutzwasser / Kanal",
-                      "labelEn": "Foul water / sewer",
-                      "status": "ok"
-                    },
-                    {
-                      "valueDe": "Bauherr bis Grundstücksgrenze",
-                      "valueEn": "Client to the property line",
-                      "labelDe": "Strom (NS-Netz)",
-                      "labelEn": "Electricity (LV grid)",
-                      "status": "ok"
-                    },
-                    {
-                      "valueDe": "Glasfaser in Planung/Ausbau — Verfügbarkeit offen",
-                      "valueEn": "Fibre planned/under rollout — availability open",
-                      "labelDe": "Telekommunikation",
-                      "labelEn": "Telecommunications",
-                      "status": "attention"
-                    }
-                  ],
-                  "offerNoteDe": "Eine ungeklärte Schnittstelle wird als Bedingung ins Angebot übernommen, nicht als Betrag und nicht als Lücke.",
-                  "offerNoteEn": "An unresolved interface enters the offer as a condition — not as an amount and not as a gap.",
-                  "requiresDecision": false
-                }
-              ],
-              "summaryDe": "Leistungsgrenze bestätigt · Telekommunikation ungeklärt",
-              "summaryEn": "Scope boundary confirmed · telecommunications unresolved",
-              "scopeDe": "gilt für die gesamte Option",
-              "scopeEn": "applies to the whole Option",
-              "costAuthority": "bauherr"
             }
           ],
           "rahmen": [
@@ -3053,16 +2972,9 @@
               "valueEn": "",
               "metaDe": "Förderziel · Annahme",
               "metaEn": "Funding target · assumption",
-              "editServiceId": "b-400-es"
-            },
-            {
-              "id": "mindeststandard",
-              "labelDe": "Gesetzlicher Mindeststandard",
-              "labelEn": "Statutory minimum",
-              "valueDe": "GModG § 10 · Niedrigstenergiegebäude",
-              "valueEn": "GModG § 10 · nearly zero-energy building",
-              "metaDe": "aus Bauantragsdatum abgeleitet",
-              "metaEn": "derived from the building-application date"
+              "editServiceId": "b-400-es",
+              "basisDe": "Gesetzlicher Mindeststandard: GModG § 10 · Niedrigstenergiegebäude · aus Bauantragsdatum abgeleitet",
+              "basisEn": "Statutory minimum: GModG § 10 · nearly zero-energy building · derived from the building-application date"
             },
             {
               "id": "gebaeudeumfang",
@@ -3075,13 +2987,24 @@
               "derive": "buildingScope"
             },
             {
+              "id": "quelle",
+              "labelDe": "Quelle",
+              "labelEn": "Source",
+              "valueDe": "",
+              "valueEn": "",
+              "metaDe": "",
+              "metaEn": "",
+              "derive": "sourceDocuments"
+            },
+            {
               "id": "leistungsgrenze",
-              "labelDe": "Leistungsgrenze All3",
-              "labelEn": "All3 scope boundary",
-              "valueDe": "ab Übergabepunkt Grundstücksgrenze",
-              "valueEn": "from the handover point at the property line",
-              "metaDe": "1 Schnittstelle ungeklärt",
-              "metaEn": "1 interface unresolved"
+              "labelDe": "Leistungsgrenze",
+              "labelEn": "Scope boundary",
+              "valueDe": "",
+              "valueEn": "",
+              "metaDe": "",
+              "metaEn": "",
+              "derive": "responsibility"
             }
           ],
           "rules": [
@@ -3100,8 +3023,8 @@
           "bemusterung": {
             "titleDe": "Spätere Bemusterung",
             "titleEn": "Later specification",
-            "bodyDe": "In dieser Kostengruppe ist der Systemstandard festgelegt. Produkt- und Oberflächenauswahl folgt in der Bemusterung — sie verfeinert diese Entscheidungen, sie ersetzt sie nicht.",
-            "bodyEn": "This cost group fixes the system standard. Product and finish selection follows in the specification stage — it refines these decisions, it does not replace them.",
+            "bodyDe": "Hier wird das System festgelegt; Produkte und Oberflächen werden später in der Bemusterung verfeinert, nicht ersetzt.",
+            "bodyEn": "The system is fixed here; products and finishes are refined later in the specification stage, not replaced.",
             "decidedHeadingDe": "Hier bereits entschieden",
             "decidedHeadingEn": "Already decided here",
             "deferredHeadingDe": "Später zu bemustern",
@@ -3590,7 +3513,80 @@
           "boundaryDe": "Planung, Gutachten, Nachweise",
           "boundaryEn": "Design, surveys, certification"
         }
-      ]
+      ],
+      "responsibility": {
+        "version": 1,
+        "scopeBoundary": {
+          "labelDe": "Leistungsgrenze TGA",
+          "labelEn": "MEP scope boundary",
+          "summaryDe": "Leitungsnetz bis 1,0 m außerhalb der Gebäudehülle bzw. bis zum vereinbarten Übergabepunkt.",
+          "summaryEn": "Pipework and cabling to 1.0 m outside the building envelope, or to the agreed handover point.",
+          "handoverDe": "Übergabepunkt Grundstücksgrenze",
+          "handoverEn": "Handover point at the property line",
+          "scopeDe": "gilt für die gesamte Option",
+          "scopeEn": "applies to the whole Option",
+          "authority": "sourceEvidenced",
+          "costAuthority": "none",
+          "source": {
+            "originDe": "All3-Standard · Leistungsverzeichnis",
+            "originEn": "All3 standard · scope schedule",
+            "valueDe": "Übergabepunkt Grundstücksgrenze",
+            "valueEn": "Handover point at the property line"
+          }
+        },
+        "connections": {
+          "labelDe": "Hausanschlüsse",
+          "labelEn": "Utility house connections",
+          "summaryDe": "Bauherr bis Grundstücksgrenze, All3 ab Übergabepunkt.",
+          "summaryEn": "Client to the property line, All3 from the handover point.",
+          "all3FromDe": "Übergabepunkt",
+          "all3FromEn": "Handover point",
+          "scopeDe": "Verantwortung je Medium",
+          "scopeEn": "responsibility per medium",
+          "authority": "sourceEvidenced",
+          "costAuthority": "bauherr",
+          "source": {
+            "originDe": "01_Auftraggeberbrief.pdf · S. 12",
+            "originEn": "01_Auftraggeberbrief.pdf · p. 12"
+          },
+          "media": [
+            {
+              "id": "potableWater",
+              "labelDe": "Trinkwasser",
+              "labelEn": "Potable water",
+              "clientDe": "Bauherr bis Grundstücksgrenze",
+              "clientEn": "Client to the property line",
+              "status": "ok"
+            },
+            {
+              "id": "foulWater",
+              "labelDe": "Schmutzwasser / Kanal",
+              "labelEn": "Foul water / sewer",
+              "clientDe": "Bauherr bis Grundstücksgrenze",
+              "clientEn": "Client to the property line",
+              "status": "ok"
+            },
+            {
+              "id": "electricityLv",
+              "labelDe": "Strom (NS-Netz)",
+              "labelEn": "Electricity (LV grid)",
+              "clientDe": "Bauherr bis Grundstücksgrenze",
+              "clientEn": "Client to the property line",
+              "status": "ok"
+            },
+            {
+              "id": "telecommunications",
+              "labelDe": "Telekommunikation",
+              "labelEn": "Telecommunications",
+              "clientDe": "Glasfaser in Planung/Ausbau — Verfügbarkeit offen",
+              "clientEn": "Fibre planned/under rollout — availability open",
+              "status": "attention"
+            }
+          ],
+          "offerNoteDe": "Eine ungeklärte Schnittstelle wird als Bedingung ins Angebot übernommen, nicht als Betrag und nicht als Lücke.",
+          "offerNoteEn": "An unresolved interface enters the offer as a condition — not as an amount and not as a gap."
+        }
+      }
     }
   ]
 }

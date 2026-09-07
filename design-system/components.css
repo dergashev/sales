@@ -3180,6 +3180,10 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-kgp-services{min-width:0}
 .a3-kgp-context{min-width:0;border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-4)}
 .a3-kgp-dock{display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);margin-top:var(--space-5);padding-top:var(--space-4);border-top:var(--border-hairline)}
+/* A system configurator (VR3-TGA-UX-00) composes its head and dock tighter:
+   the same anatomy, spent on the seven rows rather than on air around them. */
+.a3-kgp[data-variant="systems"] .a3-kgp-head{margin-bottom:var(--space-3)}
+.a3-kgp[data-variant="systems"] .a3-kgp-dock{margin-top:var(--space-3);padding-top:var(--space-3)}
 
 /* ── ServiceGroup ─────────────────────────────────────────────────────── */
 .a3-svcg{border:var(--border-contrast-1px);background:var(--color-surface-default);margin-bottom:var(--space-4);min-width:0}
@@ -3307,103 +3311,168 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    ══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Rahmen ───────────────────────────────────────────────────────────────
-   A BAND, not a card: the four conditions are context for everything below,
-   and boxing them would make them read as a fifth thing to work through.
-   Its top and bottom rules are the whole of its chrome. */
-.a3-rahmen{border-top:var(--border-contrast-2px);border-bottom:var(--border-hairline);padding:var(--space-2) 0;margin-bottom:var(--space-2)}
-/* Four fields on ONE row at both supported widths (contract), and `auto-fit`
-   rather than a fixed `repeat(4, 1fr)` so the band recomposes instead of
-   overflowing when a translation runs long. */
-/* FOUR FIELDS ON ONE ROW, at 1440 and at 1280 (responsive contract).
-   `auto-fit` + a 16ch floor gave three columns as soon as a German label
-   ran long, and the fourth condition — the All3 scope boundary, the one a
-   salesperson is asked about in the meeting — dropped onto its own line.
-   Four explicit tracks; the long labels wrap inside their own cell. */
-.a3-rahmen-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-3) var(--space-4);margin:0}
-.a3-rahmen-cell{min-width:0}
+   A BAND, not a card: four conditions everything below depends on. Its top
+   and bottom rules are the whole of its chrome. The value line may carry
+   ONE action — a toggle that opens the decision in place (Energieziel) or a
+   link to the step that owns the value (Leistungsgrenze → Verantwortung). */
+.a3-rahmen{border-top:var(--border-contrast-2px);border-bottom:var(--border-hairline);padding:var(--space-2) 0;margin-bottom:0}
+.a3-rahmen-grid{display:grid;grid-template-columns:1.1fr 1fr .8fr 1.5fr;gap:var(--space-2) var(--space-4);margin:0}
+.a3-rahmen-cell{display:grid;grid-template-columns:minmax(0,1fr);gap:0;min-width:0;align-content:start}
 .a3-rahmen-key{font-size:var(--type-caption-size);line-height:var(--type-caption-line);letter-spacing:var(--tracking-caption);text-transform:uppercase;color:var(--color-text-secondary)}
-.a3-rahmen-val{margin:0;font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+/* Value, action and meta share ONE line where they fit: the band is a
+   glance, not a table. The hit target of the action stays 44 px through
+   `.a3-linkbtn`'s min-height; its visible line stays a caption. */
+.a3-rahmen-val{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 var(--space-2);margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-rahmen-act{font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-medium);min-height:var(--type-caption-line);margin-block:calc((var(--type-caption-line) - var(--size-hit-target-default)) / 2);padding-block:calc((var(--size-hit-target-default) - var(--type-caption-line)) / 2)}
 .a3-rahmen-meta{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
-.a3-rahmen-act{margin:0}
+.a3-rahmen-open{margin:var(--space-3) 0 0;padding-top:var(--space-2);border-top:var(--border-hairline)}
 
-/* ── Overview summary ─────────────────────────────────────────────────── */
-.a3-sysum{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2);margin:0 0 var(--space-2);padding-bottom:var(--space-2);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+/* ── Overview summary ─────────────────────────────────────────────────────
+   One line, derived from the canonical overview. Good numbers are quiet;
+   the exceptions (open, changed from source) are the only loud ones. */
+.a3-sysum{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2);margin:0;padding:var(--space-2) 0;border-bottom:var(--border-hairline);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
 .a3-sysum-fact{display:inline-flex;align-items:baseline;gap:var(--space-1)}
 .a3-sysum-count{color:var(--color-text-primary);font-variant-numeric:tabular-nums}
+.a3-sysum-fact[data-tone="ok"] .a3-sysum-count{color:var(--color-status-success)}
+.a3-sysum-fact[data-tone="warn"]{color:var(--color-status-warning)}
+.a3-sysum-fact[data-tone="warn"] .a3-sysum-count{color:var(--color-status-warning);font-weight:var(--font-weight-bold)}
+.a3-sysum-fact[data-tone="quiet"] .a3-sysum-count{color:var(--color-text-secondary)}
 .a3-sysum-sep{padding-right:var(--space-1);color:var(--color-text-muted)}
-.a3-sysum-total{margin-left:auto;color:var(--color-text-primary);font-variant-numeric:tabular-nums;white-space:nowrap}
+.a3-sysum-total{margin-left:auto;color:var(--color-text-primary);font-weight:var(--font-weight-bold);font-variant-numeric:tabular-nums;white-space:nowrap}
 
 /* ── System row ───────────────────────────────────────────────────────────
-   A row, not a card. Eight bordered cards would be the "excessive bordered
-   cards" pattern the product deliberately avoids, and the overview's job is
-   to be scannable in one pass. The hairline between rows is the whole of the
-   separation. */
+   Seven compact rows, not seven cards: pictogram · system · current
+   solution (one strong line, one quiet line) · one state · local price.
+   Attention order is fixed — open › changed › configured › project ›
+   not applicable — and is carried by a left accent PLUS the state word,
+   never by colour alone (rule 8). The row is 62–72 px; the hairline between
+   rows is the whole of the separation. */
+.a3-systems{min-width:0}
 .a3-sys{border-bottom:var(--border-hairline)}
 .a3-sys:last-of-type{border-bottom:0}
 .a3-sys-h{margin:0;font-size:inherit;font-weight:inherit}
-/* DENSITY IS THE POINT OF AN OVERVIEW. Eight systems have to be scannable
-   in one pass, so the row spends its height on the three lines that carry
-   meaning and nothing on padding around them. Measured: 93px → 73px, which
-   is 160px of the page back across the eight rows. The 44px hit target is
-   unaffected — `min-height` still enforces it (rule 23). */
-.a3-sys-btn{position:relative;display:flex;width:100%;align-items:flex-start;gap:var(--space-3);min-height:var(--size-hit-target-default);padding:var(--space-2) var(--space-1);background:none;border:0;text-align:left;cursor:pointer;color:inherit;font:inherit}
+.a3-sys-btn,.a3-sys-row{position:relative;display:grid;grid-template-columns:var(--space-7) minmax(11ch,.8fr) minmax(16ch,1.4fr) auto minmax(10ch,max-content) var(--space-4);gap:var(--space-3);align-items:center;width:100%;min-height:var(--size-hit-target-default);padding:var(--space-2) var(--space-2) var(--space-2) var(--space-1);background:none;border:0;border-left:var(--space-1) solid transparent;text-align:left;color:inherit;font:inherit}
+.a3-sys-btn{cursor:pointer}
+.a3-sys-btn:hover{background:var(--color-surface-subtle)}
 .a3-sys-btn:hover .a3-sys-name{text-decoration:underline}
 .a3-sys-btn:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:calc(var(--border-width-focus) * -1)}
-.a3-sys-tw{flex:0 0 auto;width:1ch;color:var(--color-text-secondary);line-height:var(--type-body-line)}
-.a3-sys-id{flex:1 1 22ch;min-width:0;display:grid;gap:2px}
+.a3-sys-pict{display:grid;place-items:center;width:var(--space-7);height:var(--space-7);border:var(--border-hairline);background:var(--color-surface-subtle)}
+.a3-sys-pict img{display:block;width:var(--space-5);height:var(--space-5)}
 .a3-sys-name{font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
-.a3-sys-meta{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
-.a3-sys-scope{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-muted)}
-/* The state is a WORD plus a glyph, never a colour alone (rule 8). Its
-   colour is a second channel on top of the two that already carry it. */
-.a3-sys-state{flex:0 0 auto;display:inline-flex;align-items:baseline;gap:var(--space-1);font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);letter-spacing:var(--tracking-caption);text-transform:uppercase;white-space:nowrap;color:var(--color-text-secondary)}
+.a3-sys-sol{display:grid;gap:2px;min-width:0}
+.a3-sys-solp{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-sys-sols{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
+.a3-sys-state{display:inline-flex;align-items:baseline;gap:var(--space-1);justify-self:end;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-bold);letter-spacing:var(--tracking-caption);text-transform:uppercase;white-space:nowrap;color:var(--color-text-secondary)}
 .a3-sys-glyph{font-weight:var(--font-weight-bold)}
 .a3-sys[data-state="decided"] .a3-sys-state{color:var(--color-status-success)}
-.a3-sys[data-state="open"] .a3-sys-state,.a3-sys[data-state="partial"] .a3-sys-state{color:var(--color-status-warning)}
-.a3-sys-cost{flex:0 0 auto;min-width:12ch;text-align:right;font-variant-numeric:tabular-nums;color:var(--color-text-primary);white-space:nowrap}
-/* NORMAL IS QUIET. A system with nothing outstanding recedes; the ones that
-   want attention are the only ones that get it (audit: "good/normal state
-   should remain visually quiet"). */
-.a3-sys[data-state="notApplicable"] .a3-sys-name,.a3-sys[data-state="notApplicable"] .a3-sys-meta,.a3-sys[data-state="notApplicable"] .a3-sys-cost{color:var(--color-text-muted)}
-.a3-sys-body{padding:0 var(--space-1) var(--space-3) calc(1ch + var(--space-3) + var(--space-1))}
+.a3-sys[data-attention="deviation"] .a3-sys-state,.a3-sys[data-state="open"] .a3-sys-state,.a3-sys[data-state="partial"] .a3-sys-state{color:var(--color-status-warning)}
+.a3-sys[data-state="fromSource"] .a3-sys-state,.a3-sys[data-state="notApplicable"] .a3-sys-state{color:var(--color-text-secondary);font-weight:var(--font-weight-medium)}
+.a3-sys-cost{justify-self:end;text-align:right;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);font-variant-numeric:tabular-nums;color:var(--color-text-primary);white-space:nowrap}
+.a3-sys-tw{justify-self:end;color:var(--color-text-secondary)}
+/* Exceptions are loud enough to scan; normal is quiet. */
+.a3-sys[data-attention="open"] > .a3-sys-h > .a3-sys-btn{border-left-color:var(--color-status-warning);background:var(--color-surface-emphasis-warm)}
+.a3-sys[data-attention="deviation"] > .a3-sys-h > .a3-sys-btn{border-left-color:var(--color-border-warning)}
+.a3-sys[data-state="notApplicable"] .a3-sys-name,.a3-sys[data-state="notApplicable"] .a3-sys-solp,.a3-sys[data-state="notApplicable"] .a3-sys-cost{color:var(--color-text-muted)}
+.a3-sys[data-state="notApplicable"] .a3-sys-pict{opacity:.55}
+.a3-sys-why{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);justify-self:end}
+.a3-sys-nareason{padding:0 var(--space-2) var(--space-3) calc(var(--space-7) + var(--space-3) + var(--space-1))}
+.a3-sys-nareason p{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
+/* The focused workspace sits UNDER its row, on the subtle surface, aligned
+   to the solution column. */
+.a3-sys-body{padding:0 var(--space-4) var(--space-4) calc(var(--space-7) + var(--space-3) + var(--space-1));background:var(--color-surface-subtle)}
+.a3-sys[aria-expanded="true"]{background:var(--color-surface-subtle)}
 
-/* ── Decision block ───────────────────────────────────────────────────── */
-.a3-dec{border-top:var(--border-hairline);padding:var(--space-2) 0}
-.a3-dec:first-child{border-top:0;padding-top:0}
-.a3-dec-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:var(--space-2)}
-.a3-dec-name{font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
-.a3-dec-scope{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);white-space:nowrap}
-/* SOURCE AND PROPOSAL ARE TWO LINES, ALWAYS.
-   The whole chapter turns on their being different things: one is evidence
-   from the client's own documents, the other is what All3 is offering. A
-   single field showing "the value" is the collapse this rebuild exists to
-   undo, so the two never share a slot even when they agree. */
-.a3-dec-src,.a3-dec-prop{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2);margin:var(--space-1) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line)}
-.a3-dec-srck,.a3-dec-propk{flex:0 0 auto;min-width:14ch;color:var(--color-text-secondary)}
-.a3-dec-srcv{color:var(--color-text-secondary);overflow-wrap:break-word}
-.a3-dec-propv{color:var(--color-text-primary);font-weight:var(--font-weight-bold);overflow-wrap:break-word}
- /* Agreement is the NORMAL case, so it is the quiet one: a word and a
-   glyph, no rule down the side. Deviation gets the emphasis because
-   deviation is what a salesperson has to be able to explain. */
-.a3-dec-matches{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);margin:var(--space-1) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
-.a3-dec-matches-mark{color:var(--color-status-success)}
-.a3-dec-changed{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);margin:var(--space-1) 0 0;padding-left:var(--space-3);border-left:var(--border-width-strong) solid var(--color-status-warning);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
-.a3-dec-changed-mark{color:var(--color-status-warning);font-weight:var(--font-weight-bold)}
-.a3-dec-why{margin:var(--space-1) 0 0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
-.a3-dec-price{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2);margin:var(--space-1) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line)}
-.a3-dec-pricek{flex:0 0 auto;min-width:14ch;color:var(--color-text-secondary)}
-.a3-dec-pricev{color:var(--color-text-primary);font-variant-numeric:tabular-nums}
-/* "No separate price basis" is a STATEMENT, and a muted one: it is the
-   normal state of 92.7 % of TGA option rows, so rendering it at full weight
-   would shout the ordinary case at the user eight times a screen. */
-.a3-dec-pricev[data-muted]{color:var(--color-text-secondary)}
-.a3-dec-note{margin:var(--space-1) 0 0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
-.a3-dec-na{margin:var(--space-2) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-muted)}
+/* ── System detail header ─────────────────────────────────────────────── */
+.a3-sysd-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:var(--space-3);padding:var(--space-3) 0;border-bottom:var(--border-hairline)}
+.a3-sysd-id{min-width:0;flex:1 1 24ch}
+.a3-sysd-h{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--type-heading-weight);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-sysd-h:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--border-width-focus)}
+.a3-sysd-sum{margin:var(--space-1) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
+.a3-sysd-badges{display:flex;flex-wrap:wrap;gap:var(--space-2);margin:0}
+.a3-sysd-badge{display:inline-block;padding:var(--space-1) var(--space-2);border:var(--border-hairline);background:var(--color-surface-default);font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* ── Decision grammar ─────────────────────────────────────────────────────
+   NAME · current proposal + relation · price phrase · Ändern — a statement
+   of current truth. The editor and the evidence are progressive. */
+.a3-decs{list-style:none;margin:0;padding:0}
+.a3-dec{border-bottom:var(--border-hairline);padding:var(--space-1) 0;border-left:var(--space-1) solid transparent;margin-left:calc(-1 * var(--space-1) - var(--space-2));padding-left:var(--space-2)}
+.a3-dec:last-child{border-bottom:0}
+.a3-dec[data-attention="open"]{border-left-color:var(--color-status-warning)}
+.a3-dec[data-attention="deviation"]{border-left-color:var(--color-border-warning)}
+.a3-dec-line{display:grid;grid-template-columns:minmax(12ch,.7fr) minmax(18ch,1.5fr) minmax(0,max-content) auto;gap:var(--space-3);align-items:center;min-height:var(--size-hit-target-default)}
+.a3-dec-name{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-dec-name:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--border-width-focus)}
+.a3-dec-current{display:grid;gap:2px;min-width:0}
+.a3-dec-value{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-dec[data-muted] .a3-dec-value{font-weight:var(--font-weight-medium)}
+.a3-dec[data-attention="open"] .a3-dec-value{color:var(--color-status-warning)}
+.a3-dec-rel{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-2);font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-medium);color:var(--color-text-secondary)}
+.a3-dec-rel[data-tone="match"]{color:var(--color-status-success)}
+.a3-dec-rel[data-tone="changed"],.a3-dec-rel[data-tone="missing"]{color:var(--color-status-warning)}
+.a3-dec-rel[data-tone="project"],.a3-dec-rel[data-tone="derived"],.a3-dec-rel[data-tone="quiet"]{color:var(--color-text-secondary);font-weight:var(--font-weight-regular)}
+.a3-dec-relmark{font-weight:var(--font-weight-bold)}
+.a3-dec-relmark:empty{display:none}
+.a3-dec-reldetail{color:var(--color-text-primary);font-weight:var(--font-weight-regular)}
+.a3-dec-price{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.a3-dec-price:empty{display:none}
+.a3-dec-act{display:flex;align-items:center;justify-content:flex-end;gap:var(--space-3);justify-self:end;min-width:0}
+.a3-dec-act:empty{display:none}
+.a3-dec-change.a3-btn{font-size:var(--type-caption-size);line-height:var(--type-caption-line);padding:var(--space-1) var(--space-3);min-height:var(--size-control-visual-md)}
+.a3-dec-na{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-muted);overflow-wrap:break-word;hyphens:auto}
 .a3-dec[data-na] .a3-dec-name{color:var(--color-text-muted)}
+/* The deviation is EXPLICIT and ADJACENT — never a comparison of distant rows.
+   Strong but not alarmist: warning, never error. */
+.a3-dec-dev{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-2);margin:0 0 var(--space-2);padding:var(--space-1) var(--space-3);border-left:var(--border-width-strong) solid var(--color-border-warning);background:var(--color-surface-emphasis-warm)}
+.a3-dec-devk{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-dec-devb{display:inline;margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
+.a3-dec-dev .a3-linkbtn{font-size:var(--type-caption-size);line-height:var(--type-caption-line);min-height:var(--type-caption-line);margin:0 0 0 var(--space-2);color:var(--color-text-primary)}
+/* ONE disclosure per decision, on the line. */
+.a3-dec-evbtn{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);text-decoration:none;justify-content:flex-start;white-space:nowrap}
+.a3-dec-evbtn:hover{text-decoration:underline;color:var(--color-text-primary)}
+.a3-dec-ev{display:grid;gap:var(--space-3);margin:0 0 var(--space-2);padding:var(--space-3);border:var(--border-hairline);background:var(--color-surface-default)}
+.a3-ev{min-width:0}
+.a3-ev-h{margin:0 0 var(--space-1);font-size:var(--type-caption-size);line-height:var(--type-caption-line);letter-spacing:var(--tracking-caption);text-transform:uppercase;color:var(--color-text-secondary)}
+.a3-ev-rows{display:grid;gap:var(--space-1);margin:0}
+.a3-ev-row{display:grid;grid-template-columns:minmax(10ch,14ch) minmax(0,1fr);gap:var(--space-3);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-ev-row dt{color:var(--color-text-secondary)}
+.a3-ev-row dd{margin:0;color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+
+/* ── Decision editor ──────────────────────────────────────────────────────
+   Edit mode only: the valid alternatives, one plain consequence, and the
+   explicit commit. `container-type` lets the ChoiceGroup's grid layout
+   decide its column count from the EDITOR's width (720 px), not the page's. */
+.a3-dec-editor{container-type:inline-size;margin:var(--space-3) 0 0;padding:var(--space-3);border:var(--border-contrast-1px);background:var(--color-surface-default)}
+.a3-dec-editor-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:var(--space-2);margin-bottom:var(--space-2);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
+.a3-dec-editor-note{margin:var(--space-2) 0 0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
+.a3-dec-editor-acts{display:flex;flex-wrap:wrap;gap:var(--space-2);margin-top:var(--space-3)}
+
+/* ── ChoiceGroup · card layouts (VR3-TGA-UX-00) ───────────────────────────
+   `stack` is one column, always; `grid` is two columns from 720 px of editor
+   width and one column below. Every card has fixed slots: check · media ·
+   name / differentiator / badge · consequence. Never a horizontal strip. */
+.a3-choice[data-layout]{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-2);border:0;width:100%}
+.a3-choice[data-layout] .a3-choice-option{display:grid;grid-template-columns:var(--size-icon-sm) auto minmax(0,1fr) auto;align-items:center;gap:var(--space-2) var(--space-3);min-height:var(--size-hit-target-default);padding:var(--space-2) var(--space-3);border:var(--border-contrast-1px);background:var(--color-surface-default);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-medium)}
+.a3-choice[data-layout] .a3-choice-option[data-checked]{border-color:var(--color-selection-border);box-shadow:inset 0 0 0 var(--border-width-default) var(--color-selection-border);background:var(--color-surface-selected);font-weight:var(--font-weight-medium)}
+.a3-choice[data-layout] .a3-choice-media{display:grid;place-items:center;width:var(--space-7);height:calc(var(--space-6) + var(--space-1));border:var(--border-hairline);background:var(--color-surface-subtle);pointer-events:none}
+.a3-choice[data-layout] .a3-choice-media img{display:block;width:var(--space-7);height:calc(var(--space-6) + var(--space-1))}
+.a3-choice[data-layout] .a3-choice-media:empty{display:none}
+.a3-choice[data-layout] .a3-choice-text{display:grid;gap:2px;min-width:0;pointer-events:none}
+.a3-choice[data-layout] .a3-choice-label{font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-choice-description{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
+.a3-choice-badge{justify-self:start;font-size:var(--type-caption-size);line-height:var(--type-caption-line);padding:0 var(--space-1);border:var(--border-hairline);color:var(--color-text-secondary)}
+.a3-choice[data-layout] .a3-choice-consequence{flex-basis:auto;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--color-text-primary)}
+.a3-choice[data-layout] .a3-choice-option:has(.a3-choice-input:focus-visible){outline-offset:calc(-1 * var(--border-width-focus))}
+/* An unavailable alternative recedes and keeps its reason (ChoiceGroup lists it). */
+.a3-choice[data-layout] .a3-choice-option[data-disabled="true"]{background:var(--color-action-disabled-bg);border-color:var(--color-action-disabled-border)}
+.a3-choice[data-layout] .a3-choice-option[data-disabled="true"] .a3-choice-label,.a3-choice[data-layout] .a3-choice-option[data-disabled="true"] .a3-choice-description,.a3-choice[data-layout] .a3-choice-option[data-disabled="true"] .a3-choice-consequence{color:var(--color-action-disabled-text)}
+.a3-choice[data-layout] .a3-choice-option[data-disabled="true"] .a3-choice-media{opacity:.5}
+@container (min-width: 720px){
+  .a3-choice[data-layout="grid"]{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 
 /* ── Value rows inside one decision ───────────────────────────────────── */
 .a3-vrows{list-style:none;margin:var(--space-2) 0 0;padding:0;border-top:var(--border-hairline)}
-.a3-vrow{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2);padding:var(--space-1) 0;border-bottom:var(--border-hairline);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-vrow{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2);padding:var(--space-1) 0;border-bottom:var(--border-hairline);font-size:var(--type-caption-size);line-height:var(--type-caption-line)}
 .a3-vrow:last-child{border-bottom:0}
 .a3-vrow-k{flex:0 0 auto;min-width:14ch;color:var(--color-text-primary);font-weight:var(--font-weight-bold)}
 .a3-vrow-v{flex:1 1 20ch;min-width:0;color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
@@ -3413,36 +3482,23 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-vrow-st[data-tone="ok"]{color:var(--color-status-success)}
 .a3-vrow-st[data-tone="attention"]{color:var(--color-status-warning)}
 
-/* ── Cross-system rule ────────────────────────────────────────────────── */
-.a3-srule{margin:var(--space-3) 0 0;padding:var(--space-3);background:var(--color-surface-subtle);border-left:var(--border-width-strong) solid var(--color-border-default)}
-.a3-srule-k{margin:0;font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word}
+/* ── Cross-system rule (inside the evidence) ──────────────────────────── */
+.a3-srule{margin:0;padding:var(--space-3);background:var(--color-surface-subtle);border-left:var(--border-width-strong) solid var(--color-border-default)}
+.a3-srule-k{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word}
 .a3-srule-b{margin:var(--space-1) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
 .a3-srule-n{margin:var(--space-2) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
 .a3-srule-s{margin:var(--space-2) 0 0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-muted)}
 
-/* ── Bemusterung boundary ─────────────────────────────────────────────── */
-.a3-bem{margin-top:var(--space-4);padding-top:var(--space-3);border-top:var(--border-contrast-1px)}
-.a3-bem-h{margin:0;font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
-.a3-bem-b{margin:var(--space-1) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
-/* Rule 3a: every table sits in its own horizontal scroll container. */
-.a3-bem-toggle{margin:var(--space-2) 0 0}
+/* ── Bemusterung boundary · ONE compact sentence ──────────────────────── */
+.a3-bem{margin-top:var(--space-2);padding:var(--space-1) var(--space-3);border-left:var(--border-width-strong) solid var(--color-border-default);background:var(--color-surface-subtle)}
+.a3-bem-line{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 var(--space-2);margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-bem-h{color:var(--color-text-primary);font-size:var(--type-caption-size);line-height:var(--type-caption-line)}
+.a3-bem-b{min-width:0;overflow-wrap:break-word;hyphens:auto}
+.a3-bem-toggle{font-size:var(--type-caption-size);line-height:var(--type-caption-line);min-height:var(--type-caption-line);margin-block:calc((var(--type-caption-line) - var(--size-hit-target-default)) / 2);padding-block:calc((var(--size-hit-target-default) - var(--type-caption-line)) / 2)}
 .a3-bem-t{display:block;overflow-x:auto;width:100%;margin:var(--space-3) 0 0;border-collapse:collapse;font-size:var(--type-small-size);line-height:var(--type-small-line)}
 .a3-bem-t th{text-align:left;padding:var(--space-1) var(--space-3) var(--space-1) 0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);letter-spacing:var(--tracking-caption);text-transform:uppercase;color:var(--color-text-secondary);border-bottom:var(--border-hairline);white-space:nowrap}
 .a3-bem-t td{padding:var(--space-1) var(--space-3) var(--space-1) 0;color:var(--color-text-primary);vertical-align:top;border-bottom:var(--border-hairline)}
 .a3-bem-t td:last-child{color:var(--color-text-secondary)}
-
-/* The Rahmen's one editable line opens IN PLACE, below the band, so the
-   condition and the decision that sets it stay in one place. */
-.a3-rahmen-open{margin-top:var(--space-3);padding-top:var(--space-3);border-top:var(--border-hairline)}
-
-/* ── Deviations from the client documents ─────────────────────────────────
-   Offered only when there ARE any: a review of nothing is a step. */
-.a3-tgarev{margin-top:var(--space-4);padding-top:var(--space-3);border-top:var(--border-hairline)}
-.a3-tgarev-h{margin:0}
-.a3-tgarev-list{list-style:none;margin:var(--space-2) 0 0;padding:0;display:grid;gap:var(--space-2)}
-.a3-tgarev-list li{display:grid;gap:var(--space-1);font-size:var(--type-small-size);line-height:var(--type-small-line)}
-.a3-tgarev-list b{color:var(--color-text-primary)}
-.a3-tgarev-list span{color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
 
 /* ── Consequence dialogue ─────────────────────────────────────────────────
    What changes, BEFORE it changes (frame T-04). It names the decisions that
@@ -3466,8 +3522,10 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
   /* 1280: the system row gives up its horizontal three-column tail before
      the identity gives up any width. State and money stay on the row; the
      summary keeps its own line. */
-  .a3-sys-id{flex:1 1 18ch}
-  .a3-sys-cost{min-width:10ch}
+  .a3-sys-btn,.a3-sys-row{grid-template-columns:var(--space-6) minmax(10ch,.75fr) minmax(14ch,1.3fr) auto minmax(9ch,max-content) var(--space-4);gap:var(--space-2)}
+  .a3-sys-pict{width:var(--space-6);height:var(--space-6)}
+  .a3-sys-body,.a3-sys-nareason{padding-left:calc(var(--space-6) + var(--space-2) + var(--space-1))}
+  .a3-dec-line{grid-template-columns:minmax(11ch,.7fr) minmax(16ch,1.5fr) minmax(0,max-content) auto}
   .a3-rahmen-grid{gap:var(--space-2) var(--space-4)}
   .a3-conseq-row{grid-template-columns:minmax(0,1fr)}
 }
@@ -4543,3 +4601,26 @@ a.a3-cockpit-effect:hover .a3-cockpit-effect-name{color:var(--color-text-primary
   .a3-cockpit-kg th,.a3-cockpit-kg td{padding:3px 0}
   .a3-cockpit-cta{padding:6px var(--space-4) 10px}
 }
+
+/* ── SCHNITTSTELLEN & VERANTWORTUNG · the interim step (VR3-TGA-UX-00) ─────
+   INTERIM / STRUCTURAL TARGET — NOT THE FINAL RESPONSIBILITY MATRIX DESIGN.
+   The page proves ownership and position; its composition is the retired
+   KG 400 content, recomposed only enough to stand on its own page. */
+.a3-resp{display:grid;gap:var(--space-4);min-width:0}
+.a3-resp-interim{padding:var(--space-3) var(--space-4);border:var(--border-warning);background:var(--color-surface-default)}
+.a3-resp-interim-k{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);letter-spacing:var(--tracking-caption);text-transform:uppercase;font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-resp-interim-b{margin:var(--space-1) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
+.a3-resp-empty{margin:0;color:var(--color-text-secondary)}
+.a3-resp-boundary{min-width:0}
+.a3-resp-boundary-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2);margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--type-heading-weight);color:var(--color-text-primary)}
+.a3-resp-boundary-k{font-weight:var(--font-weight-bold)}
+.a3-resp-boundary-v{font-weight:var(--font-weight-regular);color:var(--color-text-primary)}
+.a3-resp-boundary-b{margin:var(--space-1) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
+.a3-resp-origin{display:flex;flex-wrap:wrap;gap:var(--space-2);margin:var(--space-2) 0 0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-resp-origin-k{flex:0 0 auto;min-width:8ch;text-transform:uppercase;letter-spacing:var(--tracking-caption)}
+.a3-resp-table{margin:0}
+.a3-resp-note{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
+.a3-resp-owner{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-muted);overflow-wrap:break-word}
+
+/* The schedule gate's way back to the step before it (VR3-TGA-UX-00). */
+.a3-sched-back{margin:var(--space-4) 0 0}

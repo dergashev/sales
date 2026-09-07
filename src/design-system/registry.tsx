@@ -1527,6 +1527,31 @@ export const COMPONENT_REGISTRY: Specimen[] = [
             { value: 'perBuilding', label: 'Gebäudeweise Anlagen' },
           ]}
         />
+        {/* VR3-TGA-UX-00 · the CARD layout for engineering alternatives: one
+            column (`stack`) for five or more or long names, a two-column grid
+            (`grid`) for two to four short ones. Each card has fixed slots —
+            name, one differentiator, a neutral badge, the consequence. */}
+        <ChoiceGroup
+          legend="Entscheidung Wärmeerzeuger"
+          value="WE_LW_WP"
+          layout="stack"
+          onChange={() => {}}
+          options={[
+            {
+              value: 'WE_LW_WP', label: 'Luft/Wasser-Wärmepumpe',
+              description: 'Außenluft als Wärmequelle · elektrisch',
+              badge: 'All3-Standard', consequence: 'im Ansatz',
+            },
+            {
+              value: 'WE_FW', label: 'Fernwärme-Übergabestation',
+              description: 'Anschluss an das Fernwärmenetz', consequence: `− 64.000 €`,
+            },
+            {
+              value: 'WE_SW_WP', label: 'Sole/Wasser-Wärmepumpe (Erdsonde)',
+              description: 'Erdwärme über Sonden', consequence: 'keine Preiswirkung',
+            },
+          ]}
+        />
       </div>
     ),
   },

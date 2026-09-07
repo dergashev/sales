@@ -12,6 +12,7 @@ import {
   reviewReadyToConfirmFor,
   reviewSectionInputsFor,
   reviewSectionStatusFor,
+  responsibilityFor,
   savedBaselineMatchesLiveResult,
   scheduleCriticalPhaseFor,
   scheduleDerivationFor,
@@ -300,6 +301,42 @@ export function FinalValidation() {
         label: `KG${NNBSP}${group.slice(3)}`,
         value: t(`vr3.review.value.scope.${s.kgConfig?.scope[group] ?? 'undecided'}`),
       }))
+    }
+    if (sectionId === 'responsibility') {
+      // VR3-TGA-UX-00: read through the ONE selector every consumer uses.
+      // No amount row — the house connections are the Bauherr's, and the
+      // boundary carries no cost authority; the section says so in words.
+      const responsibility = responsibilityFor(s)
+      if (!responsibility) {
+        return [{
+          id: 'absent',
+          label: t('vr3.review.row.boundary'),
+          value: t('vr3.review.value.absent'),
+        }]
+      }
+      const en = s.uiLanguage === 'en'
+      return [
+        {
+          id: 'boundary',
+          label: t('vr3.review.row.boundary'),
+          value: en
+            ? responsibility.scopeBoundary.handoverEn
+            : responsibility.scopeBoundary.handoverDe,
+        },
+        {
+          id: 'connections',
+          label: t('vr3.review.row.connections'),
+          value: t('vr3.review.value.connections', {
+            settled: responsibility.media.length - responsibility.unresolved.length,
+            total: responsibility.media.length,
+          }),
+        },
+        {
+          id: 'costAuthority',
+          label: t('vr3.review.row.costAuthority'),
+          value: t('vr3.tga.price.bauherr'),
+        },
+      ]
     }
     if (sectionId === 'schedule') {
       return [

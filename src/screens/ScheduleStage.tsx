@@ -116,6 +116,17 @@ export function ScheduleStage() {
           <h1 className="a3-hero-title" data-page-heading tabIndex={-1}>
             {t('vr3.schedule.heading.locked')}
           </h1>
+          {/* VR3-TGA-UX-00: the step before the schedule is reachable from
+              the locked gate too — Previous resolves to the same registry
+              order whether or not the schedule is available yet. */}
+          <p className="a3-sched-back">
+            <Button
+              variant="secondary"
+              onClick={() => s.openConfiguratorStepAt(CONFIGURATOR_STEP.RESPONSIBILITY)}
+            >
+              {t('vr3.schedule.action.toResponsibility')}
+            </Button>
+          </p>
         </ActionGate>
       </div>
     )
@@ -421,6 +432,15 @@ export function ScheduleStage() {
         )}
         actions={(
           <>
+            {/* VR3-TGA-UX-00: the step before the schedule is Schnittstellen &
+                Verantwortung. Previous resolves to the same registry order the
+                spine and the KG 700 dock use. */}
+            <Button
+              variant="secondary"
+              onClick={() => s.openConfiguratorStepAt(CONFIGURATOR_STEP.RESPONSIBILITY)}
+            >
+              {t('vr3.schedule.action.toResponsibility')}
+            </Button>
             <Button
               variant="primary"
               disabled={!readyToConfirm}

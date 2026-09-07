@@ -33,6 +33,7 @@ export type ReviewGroupId =
   | 'buildings'
   | 'scope'
   | 'costGroups'
+  | 'responsibility'
   | 'schedule'
   | 'assumptions'
   | 'commercialResult'
@@ -42,6 +43,7 @@ export type ReviewSectionId =
   | 'buildings'
   | 'scopeDecisions'
   | 'kg200' | 'kg300' | 'kg400' | 'kg500' | 'kg600' | 'kg700'
+  | 'responsibility'
   | 'schedule'
   | 'assumptions'
   | 'commercialResult'
@@ -52,6 +54,7 @@ export type ReviewRoute =
   | 'buildingScope'
   | 'scopeBoundaries'
   | 'kg200' | 'kg300' | 'kg400' | 'kg500' | 'kg600' | 'kg700'
+  | 'responsibility'
   | 'schedule'
 
 export type ReviewSectionDefinition = Readonly<{
@@ -63,13 +66,15 @@ export type ReviewSectionDefinition = Readonly<{
 }>
 
 /**
- * The twelve sections, in reading order, grouped into the seven index
- * entries the approved index shows beneath its own Overview anchor.
+ * The thirteen sections, in reading order, grouped into the eight index
+ * entries beneath the Overview anchor.
  *
- * Twelve rather than eight because the six cost groups are six sections: a
- * single "KG 200–700 reviewed" tick would be one acknowledgement standing
- * for six independent bodies of decisions, and the count in the header
- * ("9 von 12 geprüft") is the count the target states.
+ * Twelve in VR3-04 rather than eight because the six cost groups are six
+ * sections: a single "KG 200–700 reviewed" tick would be one acknowledgement
+ * standing for six independent bodies of decisions. VR3-TGA-UX-00 adds the
+ * thirteenth: the interface/responsibility matrix, which used to be reviewed
+ * implicitly inside KG 400's fingerprint and now has its own owner, its own
+ * section and its own route.
  */
 export const REVIEW_SECTIONS: readonly ReviewSectionDefinition[] = [
   { id: 'projectBaseline', groupId: 'projectBaseline', titleKey: 'vr3.review.section.projectBaseline', route: 'project' },
@@ -81,6 +86,10 @@ export const REVIEW_SECTIONS: readonly ReviewSectionDefinition[] = [
   { id: 'kg500', groupId: 'costGroups', titleKey: 'vr3.review.section.kg500', route: 'kg500' },
   { id: 'kg600', groupId: 'costGroups', titleKey: 'vr3.review.section.kg600', route: 'kg600' },
   { id: 'kg700', groupId: 'costGroups', titleKey: 'vr3.review.section.kg700', route: 'kg700' },
+  // VR3-TGA-UX-00: responsibility truth left the KG 400 section's fingerprint
+  // and is represented HERE, exactly once — moving it out of the chapter must
+  // not make it disappear from Option readiness.
+  { id: 'responsibility', groupId: 'responsibility', titleKey: 'vr3.review.section.responsibility', route: 'responsibility' },
   { id: 'schedule', groupId: 'schedule', titleKey: 'vr3.review.section.schedule', route: 'schedule' },
   { id: 'assumptions', groupId: 'assumptions', titleKey: 'vr3.review.section.assumptions', route: 'project' },
   { id: 'commercialResult', groupId: 'commercialResult', titleKey: 'vr3.review.section.commercialResult', route: 'scopeBoundaries' },
@@ -98,6 +107,7 @@ export const REVIEW_GROUPS: readonly Readonly<{
   { id: 'buildings', titleKey: 'vr3.review.group.buildings', sectionIds: ['buildings'] },
   { id: 'scope', titleKey: 'vr3.review.group.scope', sectionIds: ['scopeDecisions'] },
   { id: 'costGroups', titleKey: 'vr3.review.group.costGroups', sectionIds: ['kg200', 'kg300', 'kg400', 'kg500', 'kg600', 'kg700'] },
+  { id: 'responsibility', titleKey: 'vr3.review.group.responsibility', sectionIds: ['responsibility'] },
   { id: 'schedule', titleKey: 'vr3.review.group.schedule', sectionIds: ['schedule'] },
   { id: 'assumptions', titleKey: 'vr3.review.group.assumptions', sectionIds: ['assumptions'] },
   { id: 'commercialResult', titleKey: 'vr3.review.group.commercialResult', sectionIds: ['commercialResult'] },

@@ -93,7 +93,8 @@ export const OPTION_STAGES: readonly OptionStageId[] = [
 /** A nested step of a stage. Slugs are also the URL segment. */
 export type OptionStepId =
   | 'gebaeude-umfang' | 'leistungsabgrenzung'
-  | 'kg200' | 'kg300' | 'kg400' | 'kg500' | 'kg600' | 'kg700' | 'terminplan'
+  | 'kg200' | 'kg300' | 'kg400' | 'kg500' | 'kg600' | 'kg700'
+  | 'verantwortung' | 'terminplan'
   | 'finale-pruefung' | 'speichern'
 
 export type OptionDestination = Readonly<{
@@ -111,7 +112,9 @@ export const KG_STEP_ID: Readonly<Record<KgScopeGroup, OptionStepId>> = {
 /** The nested steps a stage declares, in order. */
 export const OPTION_STAGE_STEPS: Readonly<Record<OptionStageId, readonly OptionStepId[]>> = {
   konfigurieren: ['gebaeude-umfang', 'leistungsabgrenzung'],
-  kalkulieren: [...KG_SCOPE_GROUPS.map((g) => KG_STEP_ID[g]), 'terminplan'],
+  // VR3-TGA-UX-00: `verantwortung` sits between the last cost group and the
+  // schedule — the canonical order the registry (`chapters.ts`) declares.
+  kalkulieren: [...KG_SCOPE_GROUPS.map((g) => KG_STEP_ID[g]), 'verantwortung', 'terminplan'],
   pruefen: ['finale-pruefung', 'speichern'],
   praesentieren: [],
 }
@@ -137,6 +140,7 @@ const STEP_NAV: Readonly<Record<OptionStepId, OptionNav>> = {
   kg500: { view: 'konfigurator', step: CONFIGURATOR_STEP.KG_500_DETAILS },
   kg600: { view: 'konfigurator', step: CONFIGURATOR_STEP.KG_600_DETAILS },
   kg700: { view: 'konfigurator', step: CONFIGURATOR_STEP.KG_700_DETAILS },
+  verantwortung: { view: 'konfigurator', step: CONFIGURATOR_STEP.RESPONSIBILITY },
   terminplan: { view: 'konfigurator', step: CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE },
   'finale-pruefung': { view: 'konfigurator', step: CONFIGURATOR_STEP.FINAL_VALIDATION },
   speichern: { view: 'konfigurator', step: CONFIGURATOR_STEP.FINAL_VALIDATION },
@@ -173,6 +177,9 @@ export function destinationOfNav(
   if (view !== 'konfigurator') return { stage: 'konfigurieren', step: 'gebaeude-umfang' }
   if (step === CONFIGURATOR_STEP.SCOPE_BOUNDARIES) {
     return { stage: 'konfigurieren', step: 'leistungsabgrenzung' }
+  }
+  if (step === CONFIGURATOR_STEP.RESPONSIBILITY) {
+    return { stage: 'kalkulieren', step: 'verantwortung' }
   }
   if (step === CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE) {
     return { stage: 'kalkulieren', step: 'terminplan' }

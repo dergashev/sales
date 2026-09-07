@@ -53,6 +53,10 @@ const OWNED_SURFACES = [
   // `scope-catalog.json` precedent for a large domain catalogue.
   'src/screens/Leistungsabgrenzung.tsx',
   'src/screens/KgChapter.tsx',
+  // VR3-TGA-UX-00 — the friendly KG 400 configurator and the interim
+  // Schnittstellen & Verantwortung step.
+  'src/screens/KgSystemChapter.tsx',
+  'src/screens/ResponsibilityStage.tsx',
   'src/design-system/ScopeDecisionLedger.tsx',
   'src/design-system/KGConfiguration.tsx',
   'src/design-system/CommercialRail.tsx',

@@ -19,6 +19,7 @@ import {
 } from '../state/store'
 import { useT } from '../i18n'
 import { NNBSP } from '../engine/money'
+import { CONFIGURATOR_STEP } from '../state/chapters'
 import { Button } from '../components/primitives'
 import { FormField } from '../components/designSystem'
 import { SemanticStatus, type SemanticStatusTone } from '../design-system/SemanticStatus'
@@ -196,9 +197,14 @@ export function KgChapter() {
 
   return (
     <KGConfigurationPage
+      variant={declaresSystems ? 'systems' : undefined}
       identity={t('vr3.kg.page.identity', { group: identity })}
       title={`${identity} · ${t(`costGroup.${group}`)}`}
-      lead={en ? chapter.scopeNoteEn : chapter.scopeNoteDe}
+      /* VR3-TGA-UX-00: a system chapter's lede is the QUESTION it answers —
+         "which engineering solution are we proposing?" — the mental model the
+         audit asks the page to establish first. Other chapters keep their
+         scope note; the difference is declared by the data, not by the id. */
+      lead={declaresSystems ? t('vr3.tga.lede') : (en ? chapter.scopeNoteEn : chapter.scopeNoteDe)}
       progress={{
         tone: progress.state === 'complete' ? 'ok'
           : progress.state === 'invalid' ? 'error' : 'attention',
@@ -243,13 +249,16 @@ export function KgChapter() {
               open: progress.requiredDecisions - progress.decidedDecisions,
             })}
           onClick={() => {
+            // VR3-TGA-UX-00: the last cost group continues to Schnittstellen &
+            // Verantwortung, which continues to the schedule — one canonical
+            // order, the same one the registry and the spine declare.
             if (next) s.openKgChapter(next)
-            else s.openConfiguratorStepAt('commercialSchedule')
+            else s.openConfiguratorStepAt(CONFIGURATOR_STEP.RESPONSIBILITY)
           }}
         >
           {next
             ? t('vr3.kg.page.next', { group: `KG${NNBSP}${next.slice(3)}` })
-            : t('vr3.kg.page.toSchedule')}
+            : t('vr3.kg.page.toResponsibility')}
         </Button>
       )}
     >

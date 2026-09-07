@@ -67,7 +67,9 @@ async function decideScopeLedger(page: Page) {
  * exactly. This walks the six chapters and takes that answer.
  */
 async function configureAllChapters(page: Page) {
-  for (let chapter = 0; chapter < 8; chapter += 1) {
+  // Six cost groups, then Schnittstellen & Verantwortung (VR3-TGA-UX-00),
+  // then the forward action to the schedule — with one spare iteration.
+  for (let chapter = 0; chapter < 9; chapter += 1) {
     /**
      * VR3-TGA-01: a chapter may present its decisions inside SYSTEMS that
      * open one at a time. An outstanding decision inside a collapsed system
@@ -102,6 +104,15 @@ async function configureAllChapters(page: Page) {
         const exclude = group.getByRole('radio', { name: 'nicht aufnehmen' })
         if (await exclude.count() > 0) await group.locator('label').nth(1).click()
         else await group.locator('label').first().click()
+        /**
+         * VR3-TGA-UX-00: a KG 400 decision commits on an EXPLICIT Übernehmen
+         * (decision pattern contract: "Resolve only on explicit commit"), so
+         * choosing an alternative is no longer the write — the walk presses
+         * the commit the way a user does.
+         */
+        const apply = page.locator('.a3-sys-body:not([hidden])')
+          .getByRole('button', { name: 'Übernehmen' })
+        if (await apply.count() > 0) await apply.first().click()
       }
       await button.click()
     }

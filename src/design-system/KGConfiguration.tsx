@@ -1,6 +1,7 @@
 import { useId, type ReactNode } from 'react'
 import { ChoiceGroup, type ChoiceOption } from './ChoiceGroup'
 import { SemanticStatus, type SemanticStatusTone } from './SemanticStatus'
+import { Button } from '../components/primitives'
 
 /**
  * The canonical KG Configuration page (VR3-03, targets T-021–T-027).
@@ -36,7 +37,7 @@ export type KgGroupNavItem = {
 
 export function KGConfigurationPage({
   identity, title, lead, progress, groupNav, children, context,
-  previousAction, nextAction, notice,
+  previousAction, nextAction, notice, variant,
 }: {
   /** `CONFIGURATOR · KG 400` — position before name, as the target does. */
   identity: string
@@ -52,9 +53,14 @@ export function KGConfigurationPage({
   nextAction?: ReactNode
   /** A dependency or validation notice that belongs to the whole chapter. */
   notice?: ReactNode
+  /**
+   * `systems` — the page carries a system configurator (VR3-TGA-UX-00) and
+   * composes its head and dock tighter; the anatomy is unchanged.
+   */
+  variant?: 'systems'
 }) {
   return (
-    <div className="a3-kgp">
+    <div className="a3-kgp" data-variant={variant}>
       <div className="a3-kgp-head">
         <div className="a3-kgp-identity">
           <p className="a3-cap">{identity}</p>
@@ -336,42 +342,54 @@ export function ServiceDetailPanel({
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   VR3-TGA-01 · the source-aware system configurator
+   VR3-TGA-01 → VR3-TGA-UX-00 · the friendly engineering-solution configurator
    ══════════════════════════════════════════════════════════════════════════
 
-   THE CHAPTER STOPPED BEING A LIST OF POSITIONS.
+   THE CHAPTER ANSWERS ONE QUESTION: which engineering solution are we
+   proposing for this Option?
 
-   The forensic audit measured KG 400 rendering five rows against a source of
-   72 parameters, and the three rows carrying the entire subtotal offering no
-   technical alternative at all: the product asked *shall we include heating?*
-   where the source asked *which heating system?*.
+   VR3-TGA-01 made KG 400 a source-aware system configurator and got the
+   semantics right — eight systems, a source baseline beside every proposal,
+   cost authority on every euro. The UX audit (`docs/audit/
+   kg400-friendly-3bfb0bc/`) measured what it cost: a configured chapter of
+   1,214 px in which decided choices still looked like open forms, every
+   alternative set stayed expanded, source and proposal were repeated even
+   when identical, and regulation sat beside the control. The composition
+   below keeps every one of those semantics and moves the weight:
 
-   The composition below answers the second question. It is `Rahmen ·
-   Übersicht · System`: a band of the conditions everything depends on, a list
-   of the eight canonical systems, and one system open in place at a time.
+   - the overview is seven COMPACT ROWS — pictogram, system, current solution
+     (one strong line, one quiet line), one dominant state, local price;
+   - ONE system is open at a time, as a focused workspace under its row;
+   - a DECIDED decision is a summary — name, proposal, source relation, price
+     phrase, `Ändern` — and its alternatives are absent from the DOM until
+     `Ändern` is pressed; an UNRESOLVED decision opens its editor at once;
+   - technical basis, regulation, provenance and price authority live behind
+     ONE disclosure, `Grundlage & Herkunft`.
 
-   ONE COMPOSITION, SIX CHAPTERS — STILL. Every part of this is driven by what
-   the chapter's own data declares. A KG chapter that declares no Rahmen
-   renders no band, one that declares no system metadata renders the released
-   service group, and `KgChapter.tsx` still contains no `switch (group)`.
+   Attention order is fixed and is the CSS's job to make legible:
+   needs decision › changed from source › configured › project-derived ›
+   not applicable. Meaning is never colour alone (rule 8).
+
+   STILL ONE COMPOSITION, SIX CHAPTERS. Everything here is driven by what the
+   chapter's data declares; `KgChapter.tsx` still contains no `switch (group)`.
 */
 
 /**
  * The Rahmen band — the conditions every decision below depends on.
  *
- * Context, NOT a second configuration form. Three of its four lines are
- * read-only; the one that is a decision says so by offering an action, and
- * opening it reveals the same decision composition used everywhere else
- * rather than a private editor.
+ * Orientation, not a fifth thing to configure: energy target, building scope,
+ * source, scope boundary. An entry's action is either a TOGGLE that opens
+ * the decision in place (`expanded` given) or a LINK to the step that owns
+ * the value (`expanded` absent) — the scope boundary is read here and edited
+ * in Schnittstellen & Verantwortung, never in two places.
  */
 export function RahmenBand({ entries, children }: {
   entries: ReadonlyArray<{
     id: string
     label: string
     value: string
-    meta: string
-    /** Present only where the line is genuinely editable. */
-    action?: { label: string; expanded: boolean; onToggle: () => void }
+    meta?: string
+    action?: { label: string; expanded?: boolean; onToggle: () => void; accessibleName?: string }
   }>
   /** The expanded decision, when one is open. */
   children?: ReactNode
@@ -383,20 +401,21 @@ export function RahmenBand({ entries, children }: {
         {entries.map((entry) => (
           <div className="a3-rahmen-cell" key={entry.id}>
             <dt className="a3-rahmen-key">{entry.label}</dt>
-            <dd className="a3-rahmen-val">{entry.value}</dd>
-            <dd className="a3-rahmen-meta">{entry.meta}</dd>
-            {entry.action && (
-              <dd className="a3-rahmen-act">
+            <dd className="a3-rahmen-val">
+              {entry.value}
+              {entry.action && (
                 <button
                   type="button"
-                  className="a3-linkbtn hit-target"
+                  className="a3-linkbtn a3-rahmen-act"
                   aria-expanded={entry.action.expanded}
+                  aria-label={entry.action.accessibleName}
                   onClick={entry.action.onToggle}
                 >
                   {entry.action.label}
                 </button>
-              </dd>
-            )}
+              )}
+            </dd>
+            {entry.meta && <dd className="a3-rahmen-meta">{entry.meta}</dd>}
           </div>
         ))}
       </dl>
@@ -405,16 +424,22 @@ export function RahmenBand({ entries, children }: {
   )
 }
 
-/** The one summary line above the systems. Every number is actionable. */
+export type SummaryTone = 'ok' | 'warn' | 'quiet'
+
+/**
+ * The one summary line above the systems, derived from the canonical
+ * overview and never counted twice. A zero fact is not a fact; the caller
+ * omits it. Exceptions are the only loud numbers.
+ */
 export function SystemOverviewSummary({ facts, total }: {
-  facts: ReadonlyArray<{ id: string; count: number; label: string }>
+  facts: ReadonlyArray<{ id: string; count: number; label: string; tone?: SummaryTone }>
   /** `KG 400 · 1.390.000 €`, or the honest absence of a total. */
   total: ReactNode
 }) {
   return (
     <p className="a3-sysum">
       {facts.map((fact, index) => (
-        <span className="a3-sysum-fact" key={fact.id}>
+        <span className="a3-sysum-fact" key={fact.id} data-tone={fact.tone}>
           {index > 0 && <span className="a3-sysum-sep" aria-hidden="true">·</span>}
           <b className="a3-sysum-count">{fact.count}</b>
           <span>{fact.label}</span>
@@ -428,62 +453,99 @@ export function SystemOverviewSummary({ facts, total }: {
 export type SystemRowState =
   'decided' | 'fromSource' | 'open' | 'partial' | 'notApplicable'
 
+/** The exception a row carries, if any. Drives the left accent and nothing else. */
+export type SystemAttention = 'open' | 'deviation' | null
+
 /**
- * One system in the overview — a button that opens in place.
+ * One system in the overview — a compact row that opens in place.
  *
- * A `<button aria-expanded>` controlling a region, not a link and not a
- * navigation: the audit rejected drill-down precisely because it costs a
- * navigation on every visit, and because the chapter's value is being able to
- * see the other seven systems while deciding one.
+ * A `<button aria-expanded>` controlling a region, not a link: the chapter's
+ * value is seeing the other six systems while deciding one. Its accessible
+ * name is the SYSTEM AND ITS STATE (`Wärme · konfiguriert`), and the solution
+ * line is its description — not a concatenation of every descendant string,
+ * which is what a screen-reader user heard before this ticket.
  *
- * A not-applicable system is PRESENT and states its cause. It is not hidden,
- * because "why is there no drainage decision?" is a question the salesperson
- * will otherwise ask a colleague.
+ * A not-applicable system is PRESENT and quiet: it explains project logic
+ * ("why is there no drainage decision?") through a one-step `Warum?`
+ * disclosure, and it never opens into an empty configuration workspace.
  */
 export function SystemRow({
-  id, name, summary, scope, state, stateLabel, stateGlyph, commercial,
-  expanded, onToggle, children,
+  id, name, pictogram, solution, state, stateLabel, stateGlyph, attention = null,
+  commercial, expanded, onToggle, notApplicable, children,
 }: {
   id: string
   name: string
-  /** What is proposed, in one line. */
-  summary: string
-  /** `gilt für 1 Gebäude`, `gemeinsame Anlage · Verteilung je Gebäude`. */
-  scope?: string
+  /** The system pictogram — a fixed small identifier, decorative. */
+  pictogram?: ReactNode
+  /** The current solution: one strong line, one quiet line. */
+  solution: { primary: string; secondary?: string }
   state: SystemRowState
   /** The state in WORDS — never colour alone (rule 8). */
   stateLabel: string
   /** The state's glyph, paired with the word, never replacing it. */
   stateGlyph: string
+  attention?: SystemAttention
   /** An amount, or the cost state in words. Never a bare zero. */
   commercial: ReactNode
   expanded: boolean
   onToggle: () => void
+  /** Present for a not-applicable system: the reason, one step away. */
+  notApplicable?: { whyLabel: string; reason: string; open: boolean; onToggle: () => void }
   children?: ReactNode
 }) {
   const bodyId = `sysbody-${id}`
-  const applicable = state !== 'notApplicable'
+  const solutionId = `syssol-${id}`
+  const cells = (
+    <>
+      <span className="a3-sys-pict" aria-hidden="true">{pictogram}</span>
+      <span className="a3-sys-name">{name}</span>
+      <span className="a3-sys-sol" id={solutionId}>
+        <span className="a3-sys-solp">{solution.primary}</span>
+        {solution.secondary && <span className="a3-sys-sols">{solution.secondary}</span>}
+      </span>
+      <span className="a3-sys-state">
+        <span className="a3-sys-glyph" aria-hidden="true">{stateGlyph}</span>
+        {stateLabel}
+      </span>
+      <span className="a3-sys-cost">{commercial}</span>
+    </>
+  )
+  if (notApplicable) {
+    return (
+      <section className="a3-sys" data-state="notApplicable">
+        <div className="a3-sys-row">
+          {cells}
+          <button
+            type="button"
+            className="a3-linkbtn a3-sys-why"
+            aria-expanded={notApplicable.open}
+            aria-controls={bodyId}
+            aria-label={`${notApplicable.whyLabel} · ${name}`}
+            onClick={notApplicable.onToggle}
+          >
+            {notApplicable.whyLabel}
+          </button>
+        </div>
+        <div id={bodyId} className="a3-sys-nareason" hidden={!notApplicable.open}>
+          {notApplicable.open && <p>{notApplicable.reason}</p>}
+        </div>
+      </section>
+    )
+  }
   return (
-    <section className="a3-sys" data-state={state}>
+    <section className="a3-sys" data-state={state} data-attention={attention ?? undefined}>
       <h3 className="a3-sys-h">
         <button
           type="button"
           className="a3-sys-btn hit-target"
           aria-expanded={expanded}
           aria-controls={bodyId}
+          aria-label={`${name} · ${stateLabel}`}
+          aria-describedby={solutionId}
           onClick={onToggle}
         >
-          <span className="a3-sys-tw" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
-          <span className="a3-sys-id">
-            <span className="a3-sys-name">{name}</span>
-            <span className="a3-sys-meta">{summary}</span>
-            {scope && applicable && <span className="a3-sys-scope">{scope}</span>}
-          </span>
-          <span className="a3-sys-state">
-            <span className="a3-sys-glyph" aria-hidden="true">{stateGlyph}</span>
-            {stateLabel}
-          </span>
-          <span className="a3-sys-cost">{commercial}</span>
+          {cells}
+          <span className="a3-sys-tw" aria-hidden="true">{expanded ? '⌃' : '⌄'}</span>
         </button>
       </h3>
       <div id={bodyId} className="a3-sys-body" hidden={!expanded}>
@@ -494,104 +556,216 @@ export function SystemRow({
 }
 
 /**
- * The canonical decision composition.
- *
- * Everything the audit's silent-demo test asks of one row, in the order a
- * salesperson reads it: what the client documents said, what All3 proposes,
- * what else is available, what is unavailable and why, what it costs, and
- * what the offer will say. Progressive by construction — a block renders only
- * the parts its own data declares.
+ * The focused system's orientation header: what is proposed, for what scope,
+ * at what commercial state — so the user need not reconstruct the system
+ * from its decision rows.
  */
-export function DecisionBlock({
-  name, scope, source, proposal, why, control, valueRows, price, note, rule,
-  changedFromSource, matchesSource, restore, notApplicable,
-}: {
-  name: string
-  scope?: string
-  /** What the CLIENT DOCUMENTS said, with its provenance control. */
-  source?: { label: string; value: string; origin?: ReactNode }
-  /** What All3 currently proposes, stated before the control. */
-  proposal?: { label: string; value: ReactNode }
-  why?: string
-  control?: ReactNode
-  valueRows?: ReactNode
-  /** The commercial consequence in the vocabulary its authority permits. */
-  price?: { label: string; value: string; muted?: boolean; origin?: ReactNode }
-  /** What the Offer will say, and where. */
-  note?: string
-  rule?: ReactNode
-  /** `Vom Quell-Dokument abweichend`, with the way back. */
-  changedFromSource?: string
-  /** The quiet opposite: the documented solution is being retained. */
-  matchesSource?: string
-  restore?: { label: string; onRestore: () => void }
-  /** A statement WITH A CAUSE — never an option named `Keine …`. */
-  notApplicable?: string
+export function SystemDetailHeader({ heading, summary, badges }: {
+  heading: string
+  summary?: string
+  badges: readonly string[]
 }) {
   return (
-    <div className="a3-dec" data-na={notApplicable ? true : undefined}>
-      <div className="a3-dec-head">
-        <span className="a3-dec-name">{name}</span>
-        {scope && <span className="a3-dec-scope">{scope}</span>}
+    <div className="a3-sysd-head">
+      <div className="a3-sysd-id">
+        <h4 className="a3-sysd-h" tabIndex={-1}>{heading}</h4>
+        {summary && <p className="a3-sysd-sum">{summary}</p>}
       </div>
-      {notApplicable ? (
-        <p className="a3-dec-na">{notApplicable}</p>
-      ) : (
-        <>
-          {source && (
-            <p className="a3-dec-src">
-              <span className="a3-dec-srck">{source.label}</span>
-              <span className="a3-dec-srcv">{source.value}</span>
-              {source.origin}
-            </p>
-          )}
-          {proposal && (
-            <p className="a3-dec-prop">
-              <span className="a3-dec-propk">{proposal.label}</span>
-              <span className="a3-dec-propv">{proposal.value}</span>
-            </p>
-          )}
-          {matchesSource && (
-            <p className="a3-dec-matches">
-              <span className="a3-dec-matches-mark" aria-hidden="true">✓</span>
-              <span>{matchesSource}</span>
-            </p>
-          )}
-          {changedFromSource && (
-            <p className="a3-dec-changed">
-              <span className="a3-dec-changed-mark" aria-hidden="true">↻</span>
-              <span>{changedFromSource}</span>
-              {restore && (
-                <button
-                  type="button"
-                  className="a3-linkbtn hit-target"
-                  onClick={restore.onRestore}
-                >
-                  {restore.label}
-                </button>
-              )}
-            </p>
-          )}
-          {why && <p className="a3-dec-why">{why}</p>}
-          {control}
-          {valueRows}
-          {price && (
-            <p className="a3-dec-price">
-              <span className="a3-dec-pricek">{price.label}</span>
-              <span
-                className="a3-dec-pricev"
-                data-muted={price.muted || undefined}
-              >
-                {price.value}
-              </span>
-              {price.origin}
-            </p>
-          )}
-          {rule}
-          {note && <p className="a3-dec-note">{note}</p>}
-        </>
+      {badges.length > 0 && (
+        <p className="a3-sysd-badges">
+          {badges.map((badge) => <span className="a3-sysd-badge" key={badge}>{badge}</span>)}
+        </p>
       )}
     </div>
+  )
+}
+
+/** The relation a proposal has to the client documents (or the project). */
+export type DecisionRelationTone = 'match' | 'changed' | 'missing' | 'project' | 'derived' | 'quiet'
+
+/**
+ * ONE decision grammar, every parameter type (decision pattern contract).
+ *
+ *   DECISION NAME   Current proposal              price phrase   [Ändern]
+ *                   source relation
+ *   [deviation card]  [value rows]  [editor — edit mode only]
+ *   [Grundlage & Herkunft ▸]  [evidence panel]
+ *
+ * The summary is a statement of current Option truth; the editor is a
+ * temporary selection workspace; the evidence is a disclosure, not a third
+ * permanent row. A read-only decision simply has no `action`.
+ */
+export function DecisionRow({
+  id, name, current, relation, price, action, deviation, valueRows, editor,
+  evidence, attention, muted,
+}: {
+  id: string
+  name: string
+  /** The proposal, in one human-readable line. */
+  current: string
+  relation?: { tone: DecisionRelationTone; label: string; detail?: string }
+  /** The local commercial phrase — an amount, or the authority in words. Never a bare zero. */
+  price?: string
+  /** `Ändern`, where the decision is editable. */
+  action?: ReactNode
+  /** The explicit, adjacent deviation — never a manual comparison of distant rows. */
+  deviation?: { title: string; body: string; restore?: ReactNode }
+  valueRows?: ReactNode
+  editor?: ReactNode
+  evidence?: {
+    label: string
+    accessibleName: string
+    open: boolean
+    onToggle: () => void
+    children: ReactNode
+  }
+  attention?: 'open' | 'deviation'
+  /** Project-derived and other quiet states recede. */
+  muted?: boolean
+}) {
+  const evidenceId = `evidence-${id}`
+  return (
+    <li
+      className="a3-dec"
+      data-decision={id}
+      data-attention={attention}
+      data-muted={muted || undefined}
+    >
+      <div className="a3-dec-line">
+        <span className="a3-dec-name" data-decision-heading tabIndex={-1}>{name}</span>
+        <span className="a3-dec-current">
+          <span className="a3-dec-value">{current}</span>
+          {relation && (
+            <span className="a3-dec-rel" data-tone={relation.tone}>
+              <span className="a3-dec-relmark" aria-hidden="true">
+                {relation.tone === 'match' ? '✓'
+                  : relation.tone === 'changed' || relation.tone === 'missing' ? '!' : ''}
+              </span>
+              {relation.label}
+              {relation.detail && <span className="a3-dec-reldetail">{relation.detail}</span>}
+            </span>
+          )}
+        </span>
+        <span className="a3-dec-price">{price}</span>
+        <span className="a3-dec-act">
+          {/* ONE disclosure per decision, on the line: the evidence is one
+              step away and costs the row no height until it is opened. */}
+          {evidence && (
+            <button
+              type="button"
+              className="a3-linkbtn a3-dec-evbtn"
+              aria-expanded={evidence.open}
+              aria-controls={evidenceId}
+              aria-label={evidence.accessibleName}
+              onClick={evidence.onToggle}
+            >
+              <span aria-hidden="true">{evidence.open ? '▾ ' : '▸ '}</span>
+              {evidence.label}
+            </button>
+          )}
+          {action}
+        </span>
+      </div>
+      {deviation && (
+        <aside className="a3-dec-dev" aria-label={deviation.title}>
+          <p className="a3-dec-devk">{deviation.title}</p>
+          <p className="a3-dec-devb">
+            {deviation.body}
+            {deviation.restore}
+          </p>
+        </aside>
+      )}
+      {valueRows}
+      {editor}
+      {evidence && (
+        <div id={evidenceId} className="a3-dec-ev" hidden={!evidence.open}>
+          {evidence.open && evidence.children}
+        </div>
+      )}
+    </li>
+  )
+}
+
+/** A decision the project makes moot, or one whose precondition lapsed — a quiet statement. */
+export function DecisionQuiet({ id, name, statement }: {
+  id: string
+  name: string
+  statement: string
+}) {
+  return (
+    <li className="a3-dec" data-decision={id} data-na>
+      <div className="a3-dec-line">
+        <span className="a3-dec-name">{name}</span>
+        <span className="a3-dec-current"><span className="a3-dec-na">{statement}</span></span>
+      </div>
+    </li>
+  )
+}
+
+/**
+ * The edit-mode workspace under a decision: the valid alternatives, the
+ * dependency consequence in plain language, and the explicit commit. It
+ * exists only while editing (or while a decision is genuinely unresolved),
+ * so a settled answer never looks like a question.
+ */
+export function DecisionEditor({ heading, hint, children, note, apply, cancel, onEscape }: {
+  heading: string
+  hint?: string
+  children: ReactNode
+  /** The plain-language consequence a choice needs to be made safely. */
+  note?: string
+  apply: { label: string; onApply: () => void; disabled?: boolean; disabledReason?: string }
+  cancel?: { label: string; onCancel: () => void }
+  onEscape?: () => void
+}) {
+  return (
+    <div
+      className="a3-dec-editor"
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape' || !onEscape) return
+        event.stopPropagation()
+        onEscape()
+      }}
+    >
+      <div className="a3-dec-editor-head">
+        <b>{heading}</b>
+        {hint && <span className="a3-cap">{hint}</span>}
+      </div>
+      {children}
+      {note && <p className="a3-dec-editor-note">{note}</p>}
+      <div className="a3-dec-editor-acts">
+        <Button
+          variant="primary"
+          disabled={apply.disabled}
+          disabledReason={apply.disabledReason}
+          onClick={apply.onApply}
+        >
+          {apply.label}
+        </Button>
+        {cancel && <Button onClick={cancel.onCancel}>{cancel.label}</Button>}
+      </div>
+    </div>
+  )
+}
+
+/** One labelled group inside the evidence disclosure. */
+export function EvidenceSection({ label, rows }: {
+  label: string
+  rows: ReadonlyArray<{ k: string; v: ReactNode }>
+}) {
+  if (rows.length === 0) return null
+  return (
+    <section className="a3-ev" aria-label={label}>
+      <p className="a3-ev-h">{label}</p>
+      <dl className="a3-ev-rows">
+        {rows.map((row) => (
+          <div className="a3-ev-row" key={row.k}>
+            <dt>{row.k}</dt>
+            <dd>{row.v}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   )
 }
 
@@ -599,9 +773,8 @@ export function DecisionBlock({
  * A value set inside ONE decision.
  *
  * Three buildings produce three values here, never nine rows in the overview,
- * and the building name appears exactly once. The same component carries the
- * per-medium responsibility set of `Hausanschlüsse`, where each row's status
- * is a word beside a glyph rather than a colour.
+ * and the building name appears exactly once. Status is a word beside a
+ * glyph rather than a colour.
  */
 export function DecisionValueRows({ rows }: {
   rows: ReadonlyArray<{
@@ -640,11 +813,8 @@ export function DecisionValueRows({ rows }: {
 }
 
 /**
- * A cross-system rule, stated ONCE and referenced.
- *
- * The §14a rule touches heat, e-mobility and storage. Restating it on each of
- * them is how three screens come to disagree about the same law; this renders
- * the one rule object the chapter declares, wherever it is referenced.
+ * A cross-system rule, stated ONCE and referenced — inside the evidence
+ * disclosure, where the formal basis belongs.
  */
 export function SystemRuleNote({ title, body, note, source }: {
   title: string
@@ -662,7 +832,11 @@ export function SystemRuleNote({ title, body, note, source }: {
   )
 }
 
-/** The later-specification boundary — a statement, never a ninth system. */
+/**
+ * The later-specification boundary — ONE compact sentence at the foot, never
+ * a ninth system. The two-column mapping is progressive: the boundary's job
+ * is to answer "is this decided here or later?" in a glance.
+ */
 export function BemusterungBoundary({
   title, body, decidedHeading, deferredHeading, rows, detail,
 }: {
@@ -671,33 +845,24 @@ export function BemusterungBoundary({
   decidedHeading: string
   deferredHeading: string
   rows: ReadonlyArray<{ decided: string; deferred: string }>
-  /**
-   * The two-column detail is PROGRESSIVE.
-   *
-   * The boundary's job at the foot of the chapter is to answer "is this
-   * decided here or later?" — one sentence. Frame T-01 draws exactly that;
-   * the full mapping belongs to the reader who asks for it, and rendering it
-   * unconditionally costs the overview a fifth of its height for a table
-   * nobody scrolls to.
-   */
   detail?: { label: string; open: boolean; onToggle: () => void }
 }) {
   return (
     <section className="a3-bem" aria-label={title}>
-      <h3 className="a3-bem-h">{title}</h3>
-      <p className="a3-bem-b">{body}</p>
-      {detail && rows.length > 0 && (
-        <p className="a3-bem-toggle">
+      <p className="a3-bem-line">
+        <b className="a3-bem-h">{title}</b>
+        <span className="a3-bem-b">{body}</span>
+        {detail && rows.length > 0 && (
           <button
             type="button"
-            className="a3-linkbtn hit-target"
+            className="a3-linkbtn a3-bem-toggle"
             aria-expanded={detail.open}
             onClick={detail.onToggle}
           >
             {detail.label}
           </button>
-        </p>
-      )}
+        )}
+      </p>
       {rows.length > 0 && (!detail || detail.open) && (
         <table className="a3-bem-t">
           <thead>

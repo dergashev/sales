@@ -118,10 +118,16 @@ def row(value_de, value_en, building=None, label_de=None, label_en=None,
     if not_applicable: d['notApplicable'] = True
     return d
 
-def tvar(v, de, en, delta=0, no_price_basis=False, bundled=False):
+def tvar(v, de, en, delta=0, no_price_basis=False, bundled=False,
+         detail_de=None, detail_en=None):
+    """One alternative. `detail_*` is the ONE differentiator an option card
+    shows under the solution name (VR3-TGA-UX-00): a technical qualifier that
+    used to share the label with the human name now has its own slot, so the
+    primary copy stays a name and the secondary copy stays a distinction."""
     d = {'value': v, 'labelDe': de, 'labelEn': en, 'delta': money(delta)}
     if no_price_basis: d['noPriceBasis'] = True
     if bundled: d['bundled'] = True
+    if detail_de: d['detailDe'] = detail_de; d['detailEn'] = detail_en
     return d
 
 def tchoice(sid, de, en, sde, sen, variants, baseline_variant, amount=0, **extras):
@@ -159,12 +165,19 @@ def system(gid, de, en, services, **extras):
                     'services': services}, extras)
 
 def rahmen(rid, de, en, value_de, value_en, meta_de, meta_en,
-           edit=None, derive=None):
-    """One condition everything below depends on. NOT a system."""
+           edit=None, derive=None, basis_de=None, basis_en=None):
+    """One condition everything below depends on. NOT a system.
+
+    `basis_*` is the formal statement BEHIND the value — the statutory
+    minimum behind the funding target — and it lives in the entry's own
+    evidence disclosure rather than in a fifth band cell (VR3-TGA-UX-00: the
+    band is orientation, the regulation is on demand).
+    """
     return _attach({'id': rid, 'labelDe': de, 'labelEn': en,
                     'valueDe': value_de, 'valueEn': value_en,
                     'metaDe': meta_de, 'metaEn': meta_en},
-                   {'editServiceId': edit, 'derive': derive})
+                   {'editServiceId': edit, 'derive': derive,
+                    'basisDe': basis_de, 'basisEn': basis_en})
 
 def rule(rid, title_de, title_en, body_de, body_en, source_de, source_en,
          note_de=None, note_en=None):
@@ -178,18 +191,65 @@ def bemusterung(rows):
     return {
         'titleDe': 'Spätere Bemusterung',
         'titleEn': 'Later specification',
-        'bodyDe': ('In dieser Kostengruppe ist der Systemstandard festgelegt. '
-                   'Produkt- und Oberflächenauswahl folgt in der Bemusterung — '
-                   'sie verfeinert diese Entscheidungen, sie ersetzt sie nicht.'),
-        'bodyEn': ('This cost group fixes the system standard. Product and '
-                   'finish selection follows in the specification stage — it '
-                   'refines these decisions, it does not replace them.'),
+        # ONE clause (VR3-TGA-UX-00): the boundary's job at the foot of the
+        # chapter is "is this decided here or later?" in a glance. The full
+        # decided/deferred mapping stays behind the disclosure.
+        'bodyDe': ('Hier wird das System festgelegt; Produkte und Oberflächen '
+                   'werden später in der Bemusterung verfeinert, nicht ersetzt.'),
+        'bodyEn': ('The system is fixed here; products and finishes are refined '
+                   'later in the specification stage, not replaced.'),
         'decidedHeadingDe': 'Hier bereits entschieden',
         'decidedHeadingEn': 'Already decided here',
         'deferredHeadingDe': 'Später zu bemustern',
         'deferredHeadingEn': 'To be specified later',
         'rows': [{'decidedDe': a, 'decidedEn': b, 'deferredDe': c, 'deferredEn': d}
                  for a, b, c, d in rows],
+    }
+
+# ── VR3-TGA-UX-00 · Schnittstellen & Verantwortung — its OWN catalogue block ──
+# The responsibility matrix used to be the eighth "system" of KG 400: two
+# read-only services (`a/b-400-13g`, `a/b-400-14`) whose value rows carried
+# the four utility media. It is not an engineering system a salesperson
+# configures, so it moves out of the chapter into a catalogue-level block the
+# dedicated Configurator step reads. The DATA is the same data — every value,
+# source, status, cost authority and offer note below is transcribed from the
+# retired services, so the relocation is lossless by construction.
+
+def medium(mid, label_de, label_en, client_de, client_en, status='ok'):
+    """One utility medium: who delivers up to where, and whether it is settled."""
+    return {'id': mid, 'labelDe': label_de, 'labelEn': label_en,
+            'clientDe': client_de, 'clientEn': client_en, 'status': status}
+
+def responsibility(boundary_source, connections_source, media):
+    """The Option's interface & responsibility truth, seeded from the project."""
+    return {
+        'version': 1,
+        'scopeBoundary': {
+            'labelDe': 'Leistungsgrenze TGA', 'labelEn': 'MEP scope boundary',
+            'summaryDe': ('Leitungsnetz bis 1,0 m außerhalb der Gebäudehülle bzw. bis zum '
+                          'vereinbarten Übergabepunkt.'),
+            'summaryEn': ('Pipework and cabling to 1.0 m outside the building envelope, or to '
+                          'the agreed handover point.'),
+            'handoverDe': 'Übergabepunkt Grundstücksgrenze',
+            'handoverEn': 'Handover point at the property line',
+            'scopeDe': 'gilt für die gesamte Option', 'scopeEn': 'applies to the whole Option',
+            'authority': 'sourceEvidenced', 'costAuthority': 'none',
+            'source': boundary_source,
+        },
+        'connections': {
+            'labelDe': 'Hausanschlüsse', 'labelEn': 'Utility house connections',
+            'summaryDe': 'Bauherr bis Grundstücksgrenze, All3 ab Übergabepunkt.',
+            'summaryEn': 'Client to the property line, All3 from the handover point.',
+            'all3FromDe': 'Übergabepunkt', 'all3FromEn': 'Handover point',
+            'scopeDe': 'Verantwortung je Medium', 'scopeEn': 'responsibility per medium',
+            'authority': 'sourceEvidenced', 'costAuthority': 'bauherr',
+            'source': connections_source,
+            'media': media,
+            'offerNoteDe': ('Eine ungeklärte Schnittstelle wird als Bedingung ins Angebot '
+                            'übernommen, nicht als Betrag und nicht als Lücke.'),
+            'offerNoteEn': ('An unresolved interface enters the offer as a condition — not '
+                            'as an amount and not as a gap.'),
+        },
     }
 
 def tga_chapter(g, tde, ten, nde, nen, groups, rahmen_entries, rules, bem):
@@ -263,14 +323,24 @@ A = [
       tchoice('a-400-01', 'Wärmeerzeuger', 'Heat generator',
         'Bestimmt die Warmwasserbereitung und die § 14a-Bewertung.',
         'Determines domestic hot water and the § 14a assessment.',
-        [tvar('WE_LW_WP', 'Luft/Wasser-Wärmepumpe', 'Air-to-water heat pump', 0),
-         tvar('WE_FW', 'Fernwärme-Übergabestation', 'District heating transfer station', -64000),
+        [tvar('WE_LW_WP', 'Luft/Wasser-Wärmepumpe', 'Air-to-water heat pump', 0,
+              detail_de='Außenluft als Wärmequelle · elektrisch',
+              detail_en='outdoor air as heat source · electric'),
+         tvar('WE_FW', 'Fernwärme-Übergabestation', 'District heating transfer station', -64000,
+              detail_de='Anschluss an das Fernwärmenetz',
+              detail_en='connection to the district-heating network'),
          tvar('WE_SW_WP', 'Sole/Wasser-Wärmepumpe (Erdsonde)', 'Brine-to-water (ground-source) heat pump',
-              no_price_basis=True),
+              no_price_basis=True,
+              detail_de='Erdwärme über Sonden',
+              detail_en='ground heat via boreholes'),
          tvar('WE_GAS_BW', 'Gas-Brennwert in EE-Hybrid', 'Gas condensing in RE-hybrid',
-              no_price_basis=True),
+              no_price_basis=True,
+              detail_de='Gaskessel mit erneuerbarem Anteil',
+              detail_en='gas boiler with a renewable share'),
          tvar('WE_BIOMASSE', 'Biomasse/Pellet-Kessel', 'Biomass/pellet boiler',
-              no_price_basis=True)],
+              no_price_basis=True,
+              detail_de='Holzpellets als Brennstoff',
+              detail_en='wood pellets as fuel')],
         'WE_LW_WP', amount=430000,
         all3Standard='WE_LW_WP',
         authority='sourceEvidenced',
@@ -438,14 +508,21 @@ A = [
       tchoice('a-400-18', 'Wohnungslüftung', 'Dwelling ventilation',
         'Das Lüftungskonzept nach DIN 1946-6 bestimmt die zulässigen Lösungen.',
         'The DIN 1946-6 ventilation concept determines the admissible solutions.',
-        [tvar('WL_ABLUFT_DACH', 'Zentrale Abluftanlage über Dach, ALD-Nachströmung',
-              'Central exhaust system over roof, outdoor-air-inlet supply', 0),
+        [tvar('WL_ABLUFT_DACH', 'Zentrale Abluftanlage', 'Central extract-air system', 0,
+              detail_de='Abluft über Dach · Nachströmung über Außenluftdurchlässe (ALD)',
+              detail_en='extract over roof · supply through outdoor-air inlets (ALD)'),
          tvar('WL_DEZ_WRG', 'Dezentrale Lüftung mit Wärmerückgewinnung',
-              'Decentralised ventilation with heat recovery', 132000),
+              'Decentralised ventilation with heat recovery', 132000,
+              detail_de='raumweise Geräte in der Außenwand',
+              detail_en='room-by-room units in the external wall'),
          tvar('WL_ZENTRAL_WRG', 'Zentrale Lüftung mit Wärmerückgewinnung',
-              'Central ventilation with heat recovery', 132000),
+              'Central ventilation with heat recovery', 132000,
+              detail_de='Zentralgerät und Kanalnetz',
+              detail_en='central unit and duct network'),
          tvar('WL_FENSTER', 'Freie/Fensterlüftung', 'Natural/window ventilation',
-              no_price_basis=True)],
+              no_price_basis=True,
+              detail_de='nur bei nachgewiesener Zulässigkeit',
+              detail_en='only where admissibility is demonstrated')],
         'WL_ABLUFT_DACH',
         requiresDecision=True,
         all3Standard='WL_ABLUFT_DACH',
@@ -490,8 +567,8 @@ A = [
         applicability=na('keine Tiefgarage und kein Untergeschoss im Projektumfang',
                          'no underground garage and no basement in the project scope')),
     ],
-      summaryDe='Lüftungskonzept nach DIN 1946-6 liegt vor · 2 Lösungen zulässig',
-      summaryEn='DIN 1946-6 ventilation concept on file · 2 admissible solutions',
+      summaryDe='Zentrale Abluftanlage · ALD-Nachströmung',
+      summaryEn='Central extract-air system · outdoor-air inlets (ALD)',
       scopeDe='gilt für 1 Gebäude', scopeEn='applies to 1 building',
       costAuthority='direct'),
 
@@ -619,56 +696,22 @@ A = [
       applicability=na('Gebäudehöhe 11,4 m — unter der Aufzugspflicht (MBO § 39 Abs. 4)',
                        'building height 11.4 m — below the lift requirement (MBO § 39 (4))'),
       costAuthority='none'),
-
-    # ── 8 · Schnittstellen & Verantwortung ───────────────────────────────
-    system('a-kg400-scope', 'Schnittstellen & Verantwortung',
-      'Interfaces & responsibility', [
-      tread('a-400-13g', 'Leistungsgrenze TGA', 'MEP scope boundary',
-        'Leitungsnetz bis 1,0 m außerhalb der Gebäudehülle bzw. bis zum vereinbarten Übergabepunkt.',
-        'Pipework and cabling to 1.0 m outside the building envelope, or to the agreed handover point.',
-        authority='sourceEvidenced',
-        costAuthority='none',
-        scopeDe='gilt für die gesamte Option', scopeEn='applies to the whole Option',
-        source=src('All3-Standard · Leistungsverzeichnis', 'All3 standard · scope schedule',
-                   'Übergabepunkt Grundstücksgrenze', 'Handover point at the property line')),
-      tread('a-400-14', 'Hausanschlüsse', 'Utility house connections',
-        'Bauherr bis Grundstücksgrenze, All3 ab Übergabepunkt.',
-        'Client to the property line, All3 from the handover point.',
-        authority='sourceEvidenced',
-        costAuthority='bauherr',
-        scopeDe='Verantwortung je Medium', scopeEn='responsibility per medium',
-        source=src('01_Auftraggeberbrief.pdf · S. 7', '01_Auftraggeberbrief.pdf · p. 7'),
-        valueRows=[
-          row('Bauherr bis Grundstücksgrenze', 'Client to the property line',
-              label_de='Trinkwasser', label_en='Potable water', status='ok'),
-          row('Bauherr bis Grundstücksgrenze', 'Client to the property line',
-              label_de='Schmutzwasser / Kanal', label_en='Foul water / sewer', status='ok'),
-          row('Bauherr bis Grundstücksgrenze', 'Client to the property line',
-              label_de='Strom (NS-Netz)', label_en='Electricity (LV grid)', status='ok'),
-          row('Glasfaser gesichert', 'Fibre secured',
-              label_de='Telekommunikation', label_en='Telecommunications', status='ok'),
-        ],
-        offerNoteDe=('Eine ungeklärte Schnittstelle wird als Bedingung ins Angebot '
-                     'übernommen, nicht als Betrag und nicht als Lücke.'),
-        offerNoteEn=('An unresolved interface enters the offer as a condition — not as '
-                     'an amount and not as a gap.')),
-    ],
-      summaryDe='Leistungsgrenze bestätigt · 4 Hausanschlüsse beim Bauherrn',
-      summaryEn='Scope boundary confirmed · 4 house connections with the client',
-      scopeDe='gilt für die gesamte Option', scopeEn='applies to the whole Option',
-      costAuthority='bauherr'),
    ],
    [
     rahmen('energieziel', 'Energieziel', 'Energy target', '', '',
-           'Förderziel · Annahme', 'Funding target · assumption', edit='a-400-es'),
-    rahmen('mindeststandard', 'Gesetzlicher Mindeststandard', 'Statutory minimum',
-           'GModG § 10 · Niedrigstenergiegebäude', 'GModG § 10 · nearly zero-energy building',
-           'aus Bauantragsdatum abgeleitet', 'derived from the building-application date'),
+           'Förderziel · Annahme', 'Funding target · assumption', edit='a-400-es',
+           basis_de=('Gesetzlicher Mindeststandard: GModG § 10 · Niedrigstenergiegebäude '
+                     '· aus Bauantragsdatum abgeleitet'),
+           basis_en=('Statutory minimum: GModG § 10 · nearly zero-energy building · '
+                     'derived from the building-application date')),
     rahmen('gebaeudeumfang', 'Gebäudeumfang', 'Building scope', '', '', '', '',
            derive='buildingScope'),
-    rahmen('leistungsgrenze', 'Leistungsgrenze All3', 'All3 scope boundary',
-           'ab Übergabepunkt Grundstücksgrenze', 'from the handover point at the property line',
-           'Hausanschlüsse: Bauherr', 'House connections: client'),
+    rahmen('quelle', 'Quelle', 'Source', '', '', '', '',
+           derive='sourceDocuments'),
+    # READ from the Option's responsibility owner, never authored here: the
+    # band shows the boundary CONSEQUENCE and links to the step that owns it.
+    rahmen('leistungsgrenze', 'Leistungsgrenze', 'Scope boundary', '', '', '', '',
+           derive='responsibility'),
    ],
    [
     rule('p14a', '§ 14a EnWG · steuerbare Verbrauchseinrichtungen',
@@ -1058,8 +1101,8 @@ B = [
         source=src('Aus der Warmwasserbereitung abgeleitet',
                    'Derived from the DHW generation decision')),
     ],
-      summaryDe='Zentral je Gebäude · Zirkulation 60/55 °C nach DVGW W 551:2004-04',
-      summaryEn='Central per building · circulation at 60/55 °C per DVGW W 551:2004-04',
+      summaryDe='Zentral je Gebäude · Zirkulation erforderlich',
+      summaryEn='Central per building · circulation required',
       scopeDe='je Gebäude', scopeEn='per building',
       costAuthority='direct'),
 
@@ -1321,58 +1364,20 @@ B = [
       summaryEn='3 lifts from the building baseline',
       scopeDe='je Gebäude', scopeEn='per building',
       costAuthority='noBasis'),
-
-    # ── 8 · Schnittstellen & Verantwortung ───────────────────────────────
-    system('b-kg400-scope', 'Schnittstellen & Verantwortung',
-      'Interfaces & responsibility', [
-      tread('b-400-13g', 'Leistungsgrenze TGA', 'MEP scope boundary',
-        'Leitungsnetz bis 1,0 m außerhalb der Gebäudehülle bzw. bis zum vereinbarten Übergabepunkt.',
-        'Pipework and cabling to 1.0 m outside the building envelope, or to the agreed handover point.',
-        authority='sourceEvidenced',
-        costAuthority='none',
-        scopeDe='gilt für die gesamte Option', scopeEn='applies to the whole Option',
-        source=src('All3-Standard · Leistungsverzeichnis', 'All3 standard · scope schedule',
-                   'Übergabepunkt Grundstücksgrenze', 'Handover point at the property line')),
-      tread('b-400-14', 'Hausanschlüsse', 'Utility house connections',
-        'Bauherr bis Grundstücksgrenze, All3 ab Übergabepunkt.',
-        'Client to the property line, All3 from the handover point.',
-        authority='sourceEvidenced',
-        costAuthority='bauherr',
-        scopeDe='Verantwortung je Medium', scopeEn='responsibility per medium',
-        source=src('01_Auftraggeberbrief.pdf · S. 12', '01_Auftraggeberbrief.pdf · p. 12'),
-        valueRows=[
-          row('Bauherr bis Grundstücksgrenze', 'Client to the property line',
-              label_de='Trinkwasser', label_en='Potable water', status='ok'),
-          row('Bauherr bis Grundstücksgrenze', 'Client to the property line',
-              label_de='Schmutzwasser / Kanal', label_en='Foul water / sewer', status='ok'),
-          row('Bauherr bis Grundstücksgrenze', 'Client to the property line',
-              label_de='Strom (NS-Netz)', label_en='Electricity (LV grid)', status='ok'),
-          row('Glasfaser in Planung/Ausbau — Verfügbarkeit offen',
-              'Fibre planned/under rollout — availability open',
-              label_de='Telekommunikation', label_en='Telecommunications',
-              status='attention'),
-        ],
-        offerNoteDe=('Eine ungeklärte Schnittstelle wird als Bedingung ins Angebot '
-                     'übernommen, nicht als Betrag und nicht als Lücke.'),
-        offerNoteEn=('An unresolved interface enters the offer as a condition — not as '
-                     'an amount and not as a gap.')),
-    ],
-      summaryDe='Leistungsgrenze bestätigt · Telekommunikation ungeklärt',
-      summaryEn='Scope boundary confirmed · telecommunications unresolved',
-      scopeDe='gilt für die gesamte Option', scopeEn='applies to the whole Option',
-      costAuthority='bauherr'),
    ],
    [
     rahmen('energieziel', 'Energieziel', 'Energy target', '', '',
-           'Förderziel · Annahme', 'Funding target · assumption', edit='b-400-es'),
-    rahmen('mindeststandard', 'Gesetzlicher Mindeststandard', 'Statutory minimum',
-           'GModG § 10 · Niedrigstenergiegebäude', 'GModG § 10 · nearly zero-energy building',
-           'aus Bauantragsdatum abgeleitet', 'derived from the building-application date'),
+           'Förderziel · Annahme', 'Funding target · assumption', edit='b-400-es',
+           basis_de=('Gesetzlicher Mindeststandard: GModG § 10 · Niedrigstenergiegebäude '
+                     '· aus Bauantragsdatum abgeleitet'),
+           basis_en=('Statutory minimum: GModG § 10 · nearly zero-energy building · '
+                     'derived from the building-application date')),
     rahmen('gebaeudeumfang', 'Gebäudeumfang', 'Building scope', '', '', '', '',
            derive='buildingScope'),
-    rahmen('leistungsgrenze', 'Leistungsgrenze All3', 'All3 scope boundary',
-           'ab Übergabepunkt Grundstücksgrenze', 'from the handover point at the property line',
-           '1 Schnittstelle ungeklärt', '1 interface unresolved'),
+    rahmen('quelle', 'Quelle', 'Source', '', '', '', '',
+           derive='sourceDocuments'),
+    rahmen('leistungsgrenze', 'Leistungsgrenze', 'Scope boundary', '', '', '', '',
+           derive='responsibility'),
    ],
    [
     rule('p14a', '§ 14a EnWG · steuerbare Verbrauchseinrichtungen',
@@ -1590,11 +1595,16 @@ b_groups, b_total, b_sel, b_var, b_dec = prove('DEMO-COMPLEX-01', B, B_DECLARED,
 # their scope once. The VR3-03 numbers (A 21/3/6, B 43/7/11) described the
 # superseded shape and are recorded here so the change is legible rather than
 # silently absorbed.
+#
+# VR3-TGA-UX-00 moved two more: `Leistungsgrenze TGA` and `Hausanschlüsse`
+# (read-only, selected, worth nothing) left KG 400 for the catalogue's own
+# `responsibility` block, so A 31 → 29 and B 48 → 46 selected services. No
+# amount moved with them.
 for name, got, want, what in [
-    ('DEMO-HAPPY-01', a_sel, 31, 'selected standard services'),
+    ('DEMO-HAPPY-01', a_sel, 29, 'selected standard services'),
     ('DEMO-HAPPY-01', a_var, 11, 'configured variants'),
     ('DEMO-HAPPY-01', a_dec, 7, 'explicit non-selections'),
-    ('DEMO-COMPLEX-01', b_sel, 48, 'selected standard services'),
+    ('DEMO-COMPLEX-01', b_sel, 46, 'selected standard services'),
     ('DEMO-COMPLEX-01', b_var, 10, 'configured variants'),
     ('DEMO-COMPLEX-01', b_dec, 11, 'explicit non-selections'),
 ]:
@@ -1608,8 +1618,25 @@ for name, got, want, what in [
 TGA_SYSTEMS = [
     'Wärme', 'Trinkwasser & Warmwasser', 'Lüftung & sommerlicher Komfort',
     'Elektro & Energie', 'Entwässerung', 'Kommunikation & Zutritt',
-    'Aufzüge & Sonderanlagen', 'Schnittstellen & Verantwortung',
+    'Aufzüge & Sonderanlagen',
 ]
+# VR3-TGA-UX-00: `Schnittstellen & Verantwortung` is no longer a system of
+# KG 400. It is the catalogue's own `responsibility` block, read by the
+# dedicated Configurator step, and proved separately below.
+RESPONSIBILITY_MEDIA = ['potableWater', 'foulWater', 'electricityLv', 'telecommunications']
+
+def prove_responsibility(name, block):
+    ids = [m['id'] for m in block['connections']['media']]
+    if ids != RESPONSIBILITY_MEDIA:
+        raise SystemExit(f'{name} responsibility media: {ids} != {RESPONSIBILITY_MEDIA}')
+    for m in block['connections']['media']:
+        if m['status'] not in ('ok', 'attention'):
+            raise SystemExit(f"{name} {m['id']}: status {m['status']} is not ok|attention")
+    # The Bauherr's side of the handover never becomes an All3 amount.
+    if block['connections']['costAuthority'] != 'bauherr':
+        raise SystemExit(f'{name}: house connections must stay Bauherr-owned')
+    if block['scopeBoundary']['costAuthority'] != 'none':
+        raise SystemExit(f'{name}: the scope boundary carries no cost authority')
 
 def prove_tga(name, chapters):
     ch = next(c for c in chapters if c['group'] == 'KG_400')
@@ -1671,6 +1698,34 @@ def prove_tga(name, chapters):
 prove_tga('DEMO-HAPPY-01', A)
 prove_tga('DEMO-COMPLEX-01', B)
 
+RESP_A = responsibility(
+    src('All3-Standard · Leistungsverzeichnis', 'All3 standard · scope schedule',
+        'Übergabepunkt Grundstücksgrenze', 'Handover point at the property line'),
+    src('01_Auftraggeberbrief.pdf · S. 7', '01_Auftraggeberbrief.pdf · p. 7'),
+    [medium('potableWater', 'Trinkwasser', 'Potable water',
+            'Bauherr bis Grundstücksgrenze', 'Client to the property line'),
+     medium('foulWater', 'Schmutzwasser / Kanal', 'Foul water / sewer',
+            'Bauherr bis Grundstücksgrenze', 'Client to the property line'),
+     medium('electricityLv', 'Strom (NS-Netz)', 'Electricity (LV grid)',
+            'Bauherr bis Grundstücksgrenze', 'Client to the property line'),
+     medium('telecommunications', 'Telekommunikation', 'Telecommunications',
+            'Glasfaser gesichert', 'Fibre secured')])
+RESP_B = responsibility(
+    src('All3-Standard · Leistungsverzeichnis', 'All3 standard · scope schedule',
+        'Übergabepunkt Grundstücksgrenze', 'Handover point at the property line'),
+    src('01_Auftraggeberbrief.pdf · S. 12', '01_Auftraggeberbrief.pdf · p. 12'),
+    [medium('potableWater', 'Trinkwasser', 'Potable water',
+            'Bauherr bis Grundstücksgrenze', 'Client to the property line'),
+     medium('foulWater', 'Schmutzwasser / Kanal', 'Foul water / sewer',
+            'Bauherr bis Grundstücksgrenze', 'Client to the property line'),
+     medium('electricityLv', 'Strom (NS-Netz)', 'Electricity (LV grid)',
+            'Bauherr bis Grundstücksgrenze', 'Client to the property line'),
+     medium('telecommunications', 'Telekommunikation', 'Telecommunications',
+            'Glasfaser in Planung/Ausbau — Verfügbarkeit offen',
+            'Fibre planned/under rollout — availability open', status='attention')])
+prove_responsibility('DEMO-HAPPY-01', RESP_A)
+prove_responsibility('DEMO-COMPLEX-01', RESP_B)
+
 doc = {
     '$comment': (
         'DEMO / NON-PRODUCTION PRODUCT FIXTURE (VR3-03). Every service, amount '
@@ -1695,11 +1750,11 @@ doc = {
         {'projectId': 'DEMO-HAPPY-01', 'uncertaintyPercent': '5',
          'declaredNetTotal': money(a_total),
          'declaredByCostGroup': {k: money(v) for k, v in a_groups.items()},
-         'chapters': A},
+         'chapters': A, 'responsibility': RESP_A},
         {'projectId': 'DEMO-COMPLEX-01', 'uncertaintyPercent': '6',
          'declaredNetTotal': money(b_total),
          'declaredByCostGroup': {k: money(v) for k, v in b_groups.items()},
-         'chapters': B},
+         'chapters': B, 'responsibility': RESP_B},
     ],
 }
 OUT.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')

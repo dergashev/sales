@@ -38,6 +38,7 @@ const STEP_LABEL_KEY: Readonly<Record<OptionStepId, string | null>> = {
   // `KG 200` is a DIN 276 identifier, not product copy: it is the same
   // string in both locales and belongs in no dictionary.
   kg200: null, kg300: null, kg400: null, kg500: null, kg600: null, kg700: null,
+  verantwortung: 'vr3.spine.step.responsibility',
   terminplan: 'vr3.spine.step.schedule',
   'finale-pruefung': 'vr3.spine.step.finalValidation',
   speichern: 'vr3.journey.step.save',
@@ -63,7 +64,8 @@ export function optionStageLabel(t: Translate, stage: OptionStageId): string {
 export function optionDestinationLabel(
   t: Translate, destination: OptionDestination,
 ): string {
-  if (destination.stage === 'kalkulieren' && destination.step !== 'terminplan') {
+  if (destination.stage === 'kalkulieren'
+    && destination.step !== 'terminplan' && destination.step !== 'verantwortung') {
     return optionStageLabel(t, 'kalkulieren')
   }
   return destination.step

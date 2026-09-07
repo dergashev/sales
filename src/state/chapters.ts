@@ -23,6 +23,15 @@ export const CONFIGURATOR_STEP = {
   AREAS: 'areas',
   KG_700_DETAILS: 'kg700Details',
   KG_800_DETAILS: 'kg800Details',
+  /**
+   * VR3-TGA-UX-00 — `Schnittstellen & Verantwortung`, a dedicated step
+   * between the last cost group and the schedule. It is NOT a cost group:
+   * it carries the Option's interface/responsibility truth (scope boundary,
+   * handover point, four utility media), which used to be misclassified as
+   * the eighth "system" of KG 400. Language-independent identity; the
+   * translated label is a dictionary key and the URL slug is `verantwortung`.
+   */
+  RESPONSIBILITY: 'responsibility',
   COMMERCIAL_SCHEDULE: 'commercialSchedule',
   FINAL_VALIDATION: 'finalValidation',
 } as const
@@ -141,6 +150,22 @@ export const CONFIGURATOR_STEPS: readonly ConfiguratorStep[] = [
     scope: 'project',
     visibility: 'internalOnly',
     applicability: { kind: 'includedKg', group: 'KG_700' },
+  },
+  {
+    /**
+     * VR3-TGA-UX-00 — the interim Responsibility Matrix step. Position is
+     * final (after KG 700, before the schedule); the composition is the
+     * INTERIM / STRUCTURAL TARGET, not the final matrix design, which is a
+     * future user-led target. `required` because every Option has a scope
+     * boundary; `clientSafe` because the boundary and the house connections
+     * are exactly the interface facts a client offer states. It gates
+     * nothing: the schedule keeps its own released prerequisite.
+     */
+    id: CONFIGURATOR_STEP.RESPONSIBILITY,
+    label: 'Schnittstellen & Verantwortung',
+    scope: 'project',
+    visibility: 'clientSafe',
+    applicability: { kind: 'required' },
   },
   {
     // Task 03 (deep-coherence audit, F-27): the chapter's only content is

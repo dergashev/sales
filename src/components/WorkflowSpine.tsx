@@ -1,3 +1,4 @@
+import { CONFIGURATOR_STEP } from '../state/chapters'
 import {
   canBeginConfiguration,
   clientModeAvailableForOption,
@@ -8,6 +9,7 @@ import {
   kgScopeDecisionsComplete,
   kgScopeStatus,
   optionSaveStageFor,
+  responsibilityFor,
   useStore,
 } from '../state/store'
 import { KG_SCOPE_GROUPS, type KgScopeGroup } from '../engine/kgConfiguration'
@@ -181,6 +183,17 @@ export function OptionWorkflowNavigator() {
    */
   const decisionsComplete = kgScopeDecisionsComplete(s)
   const kgComplete = kgConfigurationCompleteFor(s)
+  /**
+   * VR3-TGA-UX-00 — the responsibility step's state is DATA-DERIVED where the
+   * data speaks and visit-based where it does not: a matrix with an
+   * unresolved medium is never `done`, a settled one is done once it has
+   * been looked at. It gates nothing — the schedule keeps its own released
+   * prerequisite (`kgComplete`) and this step is not part of it.
+   */
+  const responsibility = responsibilityFor(s)
+  const responsibilityVisited = s.visitedConfiguratorSteps
+    .includes(CONFIGURATOR_STEP.RESPONSIBILITY)
+  const responsibilitySettled = (responsibility?.unresolved.length ?? 0) === 0
   const scheduleConfirmed = s.scheduleConfirmation !== null
   const reviewConfirmed = s.reviewConfirmation !== null
   const saveStage = optionSaveStageFor(s)
@@ -291,6 +304,13 @@ export function OptionWorkflowNavigator() {
         : undefined,
       steps: [
         ...KG_SCOPE_GROUPS.map(kgStep),
+        step(
+          'kalkulieren', 'verantwortung', t('vr3.spine.step.responsibility'),
+          !decisionsComplete
+            ? 'locked'
+            : responsibilityVisited && responsibilitySettled ? 'done' : 'upcoming',
+          t('vr3.spine.reason.needsScopeDecisions'),
+        ),
         step(
           'kalkulieren', 'terminplan', t('vr3.spine.step.schedule'),
           !kgComplete ? 'locked' : scheduleConfirmed ? 'done' : 'upcoming',

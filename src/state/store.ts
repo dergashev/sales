@@ -49,6 +49,14 @@ import {
   type KgServiceDecisionRecord,
 } from '../engine/kgConfiguration'
 import {
+  initialResponsibility,
+  isOptionResponsibility,
+  responsibilityFingerprint,
+  responsibilityProjection,
+  type OptionResponsibility,
+  type ResponsibilityProjection,
+} from '../engine/responsibility'
+import {
   applyScenarioChanges,
   availablePresentationDecisions,
   emptyScenario,
@@ -541,6 +549,16 @@ export type OptionConfig = {
   kgConfig: KgDecisions | null
   /** Fingerprint of the six scope decisions at the moment they were confirmed. */
   kgScopeConfirmedFingerprint: string | null
+  /**
+   * VR3-TGA-UX-00 — the Option's interface/responsibility record, the ONE
+   * editable owner of `Schnittstellen & Verantwortung` (`engine/
+   * responsibility.ts`). Seeded from the project catalogue when the Option is
+   * created, exactly as `kgConfig` is. `null` for an Option persisted before
+   * this contract; `responsibilityFor` reads such an Option through the one
+   * legacy adapter (seed on read, never written back) so nothing is lost and
+   * nothing is duplicated.
+   */
+  responsibility: OptionResponsibility | null
   fields: { wfl: FieldState; bgfOber: FieldState; we: FieldState }
   esConfirmed: boolean
   regionalfaktorActive: boolean
@@ -629,7 +647,7 @@ const OPTION_CONFIG_KEYS = [
   'scopeCatalogChoices', 'scopeCatalogProvenance', 'scopeCatalogQuantities',
   'kg800ClientRevealed',
   'scopeBoundariesConfirmedFingerprint',
-  'kgConfig', 'kgScopeConfirmedFingerprint', 'fields',
+  'kgConfig', 'kgScopeConfirmedFingerprint', 'responsibility', 'fields',
   'esConfirmed', 'regionalfaktorActive', 'risikoAktiv',
   'openConfiguratorStep', 'visitedConfiguratorSteps', 'scopeBuildingId', 'discountPercent',
   'offerDraft', 'constructionStartDate',
@@ -655,7 +673,7 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
   | 'scopeCatalogChoices' | 'scopeCatalogProvenance' | 'scopeCatalogQuantities'
   | 'kg800ClientRevealed'
   | 'scopeBoundariesConfirmedFingerprint'
-  | 'kgConfig' | 'kgScopeConfirmedFingerprint'
+  | 'kgConfig' | 'kgScopeConfirmedFingerprint' | 'responsibility'
   | 'esConfirmed' | 'regionalfaktorActive' | 'risikoAktiv' | 'discountPercent'
   | 'constructionStartDate'
   | 'scopeBuildings' | 'scopeSelected' | 'scopeEdits' | 'scopeConfirmations'
@@ -668,7 +686,7 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
     | 'configurationVisitedChapters' | 'scopeBoundariesConfirmedFingerprint'
     | 'constructionStartDate' | 'kg700ModeAutoFallback'
     | 'scopeCatalogChoices' | 'scopeCatalogProvenance' | 'scopeCatalogQuantities'
-    | 'kg800ClientRevealed' | 'kgConfig' | 'kgScopeConfirmedFingerprint'
+    | 'kg800ClientRevealed' | 'kgConfig' | 'kgScopeConfirmedFingerprint' | 'responsibility'
     | 'schedulePhases' | 'scheduleEdits' | 'scheduleStartDate'
     | 'schedulePlannedCompletion' | 'scheduleDependencyConfirmed'
     | 'scheduleConfirmation' | 'reviewAcknowledged' | 'reviewConfirmation'> & {
@@ -720,6 +738,14 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
     kgConfig?: KgDecisions | null
     kgScopeConfirmedFingerprint?: string | null
     /**
+     * VR3-TGA-UX-00 — the responsibility record. Optional as a matter of
+     * shape: an Option saved before this contract has none, and
+     * `responsibilityFor` reads it through the one legacy adapter. No
+     * persistence version bump — bumping discards every stored Option, and
+     * an absent optional key is exactly what the adapter exists for.
+     */
+    responsibility?: OptionResponsibility | null
+    /**
      * VR3-04 — the schedule and the review.
      *
      * A reload must not lose a CONFIRMED schedule or a review somebody has
@@ -749,7 +775,7 @@ const PERSISTED_CONFIG_KEYS = [
   'scopeCatalogChoices', 'scopeCatalogProvenance', 'scopeCatalogQuantities',
   'kg800ClientRevealed',
   'scopeBoundariesConfirmedFingerprint',
-  'kgConfig', 'kgScopeConfirmedFingerprint', 'esConfirmed',
+  'kgConfig', 'kgScopeConfirmedFingerprint', 'responsibility', 'esConfirmed',
   'regionalfaktorActive', 'risikoAktiv', 'discountPercent',
   'constructionStartDate',
   'scopeBuildings', 'scopeSelected', 'scopeEdits', 'scopeConfirmations',
@@ -773,6 +799,7 @@ const LEGACY_PERSISTED_CONFIG_KEYS = PERSISTED_CONFIG_KEYS.filter(
     && key !== 'kg800ClientRevealed'
     && key !== 'kgConfig'
     && key !== 'kgScopeConfirmedFingerprint'
+    && key !== 'responsibility'
     && key !== 'schedulePhases'
     && key !== 'scheduleEdits'
     && key !== 'scheduleStartDate'
@@ -1208,6 +1235,7 @@ function defaultOptionConfig(coverage: Coverage = INITIAL_COVERAGE): OptionConfi
     scopeBoundariesConfirmedFingerprint: null,
     kgConfig: null,
     kgScopeConfirmedFingerprint: null,
+    responsibility: null,
     fields: legacyFieldsFromReview(INITIAL_REVIEW),
     esConfirmed: false,
     regionalfaktorActive: false,
@@ -1504,6 +1532,10 @@ function isPersistedProposalConfig(value: unknown): value is PersistedProposalCo
     && typeof value.constructionStartDate !== 'string') return false
   if (!isPersistedOptionSchedule(value)) return false
   if (!isPersistedOptionReview(value)) return false
+  // VR3-TGA-UX-00: absent (legacy) or null are valid; a present record must
+  // have the shape `engine/responsibility.ts` can read.
+  if (value.responsibility !== undefined && value.responsibility !== null
+    && !isOptionResponsibility(value.responsibility)) return false
   return value.discountPercent === null || Decimal.isDecimal(value.discountPercent)
 }
 
@@ -1768,6 +1800,10 @@ function restoredOptionConfig(
       : migrateCoverage(persisted.coverage),
     kgConfig: persisted.kgConfig ?? null,
     kgScopeConfirmedFingerprint: persisted.kgScopeConfirmedFingerprint ?? null,
+    // VR3-TGA-UX-00: `null` here is the legacy state `responsibilityFor`
+    // reads through its adapter. Nothing is seeded on rehydrate on purpose —
+    // a restore must not manufacture a record the user never had.
+    responsibility: persisted.responsibility ?? null,
     // Absent in payloads saved before KG 200/500/600/800 catalogs existed.
     scopeCatalogChoices: persisted.scopeCatalogChoices ?? base.scopeCatalogChoices,
     scopeCatalogProvenance:
@@ -1971,6 +2007,8 @@ export type Store = {
   /** See the matching field on `OptionConfig` for the full contract. */
   kgConfig: KgDecisions | null
   kgScopeConfirmedFingerprint: string | null
+  /** See the matching field on `OptionConfig` for the full contract. */
+  responsibility: OptionResponsibility | null
   /**
    * The most recent causal cost change (T-028, M-07).
    *
@@ -3202,6 +3240,21 @@ export function kgConfigurationCompleteFor(
 }
 
 /**
+ * VR3-TGA-UX-00 — THE responsibility selector.
+ *
+ * Every consumer reads this and nothing else: the dedicated step, the KG 400
+ * Rahmen band's read-only boundary line, the review section and its
+ * fingerprint. Catalogue + record, resolved once; a legacy Option (record
+ * `null`) is answered through the engine's one adapter and flagged as such.
+ * `null` when the project declares no responsibility block.
+ */
+export function responsibilityFor(
+  s: Pick<Store, 'responsibility' | 'opportunityId'>,
+): ResponsibilityProjection | null {
+  return responsibilityProjection(kgCatalogueFor(s), s.responsibility)
+}
+
+/**
  * THE commercial result, derived. Throws if the engine cannot answer.
  *
  * It is derived from `computeProjection` rather than beside it, so the rail
@@ -3612,7 +3665,24 @@ export function reviewSectionInputsFor(s: Store): ReviewSectionInput[] {
     }] : [])
   }
 
-  // 10 — the schedule. It can only be reached with a confirmed schedule, so
+  // 10 — Schnittstellen & Verantwortung (VR3-TGA-UX-00). The matrix left the
+  // KG 400 fingerprint and is represented here exactly once. An unresolved
+  // medium is a CONDITION the offer names — a permitted warning, never a
+  // blocker (it gates neither the schedule nor the save) and never an amount.
+  const responsibility = responsibilityFor(s)
+  push('responsibility',
+    responsibilityFingerprint(responsibility),
+    (responsibility?.unresolved ?? []).map((medium): ReviewIssue => ({
+      id: `responsibilityOpen:${medium.id}`,
+      sectionId: 'responsibility',
+      severity: 'permittedWarning',
+      // One key per medium: the medium's name is a language, and an issue
+      // stores identities, never sentences (recorded pitfall, TGA-01).
+      messageKey: `vr3.review.issue.responsibilityOpen.${medium.id}`,
+      route: 'responsibility',
+    })))
+
+  // 11 — the schedule. It can only be reached with a confirmed schedule, so
   // an issue here means the confirmation was LOST after the review began:
   // an edit, a withdrawn dependency acceptance, a building leaving the
   // scope. The sentence names which, because "not confirmed" is not a route.
@@ -3638,7 +3708,7 @@ export function reviewSectionInputsFor(s: Store): ReviewSectionInput[] {
   }
   push('schedule', scheduleFingerprintFor(s), scheduleIssueList)
 
-  // 11 — assumptions and the warnings the Product permits to travel with an
+  // 12 — assumptions and the warnings the Product permits to travel with an
   // indicative offer. These are `permittedWarning`, never blockers: an
   // indicative offer that could not carry a permitted assumption would not
   // be an indicative offer.
@@ -3665,7 +3735,7 @@ export function reviewSectionInputsFor(s: Store): ReviewSectionInput[] {
       }]),
     ])
 
-  // 12 — the canonical commercial result. A result whose own composition
+  // 13 — the canonical commercial result. A result whose own composition
   // does not sum to its own total is a release blocker (rule 32), and this
   // is the surface that says so instead of printing it anyway.
   const result = commercialResult(s)
@@ -7204,6 +7274,10 @@ const store = createStore<Store>((set, get) => {
         fresh.kgConfig = initialKgDecisions(catalogue)
         fresh.kgScopeConfirmedFingerprint = null
         fresh.coverage = coverageFromKgDecisions(fresh.kgConfig)
+        // VR3-TGA-UX-00: the responsibility record is seeded the same way,
+        // at the same moment, from the same catalogue — one owner from the
+        // Option's first second, never a dual write with the KG 400 chapter.
+        fresh.responsibility = initialResponsibility(catalogue)
       }
       // VR3-04: the Option INHERITS the project's schedule model the same
       // way it inherits the building scope — phases, durations, dependencies
@@ -8359,6 +8433,10 @@ const store = createStore<Store>((set, get) => {
       }
       if (route === 'schedule') {
         get().openConfiguratorStepAt(CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE)
+        return
+      }
+      if (route === 'responsibility') {
+        get().openConfiguratorStepAt(CONFIGURATOR_STEP.RESPONSIBILITY)
         return
       }
       const group = `KG_${route.slice(2)}` as KgScopeGroup

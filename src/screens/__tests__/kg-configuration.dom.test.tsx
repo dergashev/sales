@@ -245,7 +245,9 @@ describe('the canonical KG page, six times (T-021–T-027)', () => {
        */
       const systems = document.querySelectorAll('.a3-sys')
       if (systems.length > 0) {
-        expect(screen.getByText(/Systeme relevant/)).toBeInTheDocument()
+        // VR3-TGA-UX-00: the summary line counts systems, configured, changed
+        // from source, open and not applicable — zero facts are omitted.
+        expect(screen.getByText(/^Systeme$/)).toBeInTheDocument()
         expect(document.querySelector('.a3-rahmen')).not.toBeNull()
         for (const row of systems) {
           expect(row.querySelector('.a3-sys-name')?.textContent?.length ?? 0)

@@ -12,7 +12,7 @@ import { __resetStoreForTests, useStore } from '../store'
 beforeEach(() => __resetStoreForTests())
 
 describe('semantic Configurator workflow', () => {
-  it('derives the eight-stage internal workflow: the ledger, all six cost groups, the schedule', () => {
+  it('derives the ten-stage internal workflow: the ledger, six cost groups, responsibility, schedule, review', () => {
     const s = useStore.getState()
     // VR3-03: every cost group is a stage of the journey ALWAYS, whatever its
     // scope decision. Filtering the registry by `coverage === 'included'` is
@@ -28,6 +28,9 @@ describe('semantic Configurator workflow', () => {
       'Außenanlagen KG 500',
       'Ausstattung KG 600',
       'Baunebenkosten KG 700',
+      // VR3-TGA-UX-00: the interface/responsibility matrix, between the last
+      // cost group and the schedule — position final, composition interim.
+      'Schnittstellen & Verantwortung',
       'Terminplan',
       'Finale Prüfung',
     ])
@@ -78,6 +81,7 @@ describe('semantic Configurator workflow', () => {
       CONFIGURATOR_STEP.KG_500_DETAILS,
       CONFIGURATOR_STEP.KG_600_DETAILS,
       CONFIGURATOR_STEP.KG_700_DETAILS,
+      CONFIGURATOR_STEP.RESPONSIBILITY,
       CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE,
       // VR3-04: Final Validation is the last preparation stage, and it is
       // `internalOnly` — it appears in `intern` and never in a client
@@ -86,7 +90,7 @@ describe('semantic Configurator workflow', () => {
     ])
   })
 
-  it('excluding every cost group still leaves all nine stages — nothing disappears', () => {
+  it('excluding every cost group still leaves all ten stages — nothing disappears', () => {
     const s = useStore.getState()
     const allExcluded = Object.fromEntries(
       Object.entries(s.coverage).map(([group]) => [group, 'excluded' as const]),
@@ -100,6 +104,7 @@ describe('semantic Configurator workflow', () => {
       CONFIGURATOR_STEP.KG_500_DETAILS,
       CONFIGURATOR_STEP.KG_600_DETAILS,
       CONFIGURATOR_STEP.KG_700_DETAILS,
+      CONFIGURATOR_STEP.RESPONSIBILITY,
       CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE,
       // VR3-04: Final Validation is the last preparation stage, and it is
       // `internalOnly` — it appears in `intern` and never in a client
@@ -127,16 +132,34 @@ describe('semantic Configurator workflow', () => {
       CONFIGURATOR_STEP.KG_400_DETAILS,
       CONFIGURATOR_STEP.KG_500_DETAILS,
       CONFIGURATOR_STEP.KG_600_DETAILS,
+      // The interface matrix states exactly the facts a client offer states
+      // (boundary, house connections) — `clientSafe`, unlike KG 700.
+      CONFIGURATOR_STEP.RESPONSIBILITY,
       CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE,
     ])
   })
 
   it('normalizes a removed/hidden current step to the next active semantic step', () => {
     const s = useStore.getState()
+    // KG 700 is hidden in a client projection; the next active step is now
+    // the responsibility matrix, not the schedule (VR3-TGA-UX-00).
     expect(nearestActiveConfiguratorStep({
       coverage: s.coverage,
       mode: 'praesentation',
-    }, CONFIGURATOR_STEP.KG_700_DETAILS)).toBe(CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE)
+    }, CONFIGURATOR_STEP.KG_700_DETAILS)).toBe(CONFIGURATOR_STEP.RESPONSIBILITY)
+  })
+
+  it('places the responsibility step after KG 700 and before the schedule, exactly once', () => {
+    const ids = CONFIGURATOR_STEPS.map((step) => step.id)
+    const at = ids.indexOf(CONFIGURATOR_STEP.RESPONSIBILITY)
+    expect(ids.filter((id) => id === CONFIGURATOR_STEP.RESPONSIBILITY)).toHaveLength(1)
+    expect(ids[at - 1]).toBe(CONFIGURATOR_STEP.KG_700_DETAILS)
+    expect(ids[at + 1]).toBe(CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE)
+    const step = CONFIGURATOR_STEPS[at]!
+    // Required, project-scoped and NOT a cost group: it gates nothing and no
+    // scope decision can make it disappear.
+    expect(step.applicability).toEqual({ kind: 'required' })
+    expect(step.scope).toBe('project')
   })
 
   it('migrates only meaningful v1 progress numbers, not the retired Ground step; the retired Energy (4) and Areas (5) chapters land on Scope Boundaries', () => {

@@ -1,4 +1,4 @@
-import { useId, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 
 /**
  * ChoiceGroup — the canonical RECORDED DECISION (VR3-03, targets T-018–T-027).
@@ -40,11 +40,33 @@ export type ChoiceOption<T extends string> = {
   disabled?: boolean
   /** An unavailable option exists only together with its visible reason. */
   disabledReason?: string
+  /**
+   * VR3-TGA-UX-00 — the option CARD's fixed slots, for the `stack`/`grid`
+   * layouts: ONE differentiator under the name, an optional neutral badge
+   * (`All3-Standard`, informative and never "required") and an optional
+   * supportive image the caller has already decided is decorative. All three
+   * are absent from the released inline layout, whose options are words.
+   */
+  description?: string
+  badge?: string
+  media?: ReactNode
 }
+
+/**
+ * How the options are laid out (VR3-TGA-UX-00, decision pattern contract).
+ *
+ * `inline` is the released segmented row — two or three words side by side.
+ * `stack` is ONE column of full-width option cards, the layout for five or
+ * more alternatives or for any long technical name. `grid` is two columns of
+ * cards where the editor is wide enough (a container query decides, at
+ * 720 px) and one column where it is not. The caller chooses from option
+ * count and copy length — deterministically, never per decision.
+ */
+export type ChoiceLayout = 'inline' | 'stack' | 'grid'
 
 export function ChoiceGroup<T extends string>({
   legend, legendHidden, value, options, onChange, onPreview,
-  density = 'default', invalid, describedBy, footer,
+  density = 'default', invalid, describedBy, footer, layout = 'inline', autoFocus = false,
 }: {
   legend: string
   /** The row or heading already names the decision. */
@@ -59,9 +81,28 @@ export function ChoiceGroup<T extends string>({
   invalid?: boolean
   describedBy?: string
   footer?: ReactNode
+  layout?: ChoiceLayout
+  /**
+   * Put focus on the checked option — or the first enabled one when nothing
+   * is checked — as the group mounts. Entering edit mode (VR3-TGA-UX-00) is
+   * the one caller: `Ändern` opens the alternatives and the keyboard user
+   * arrives INSIDE them, on the current answer, rather than back at the top.
+   */
+  autoFocus?: boolean
 }) {
   const name = useId()
   const groupRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!autoFocus) return
+    const radios = [...(groupRef.current?.querySelectorAll<HTMLInputElement>(
+      'input[type="radio"]:not(:disabled)',
+    ) ?? [])]
+    const target = radios.find((radio) => radio.checked) ?? radios[0]
+    target?.focus()
+    // Mount only: re-running on every value change would drag focus back to
+    // the group while the user is already elsewhere in the editor.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFocus])
   const reasons = options
     .filter((o) => o.disabled && o.disabledReason)
     .map((o) => o.disabledReason!)
@@ -78,6 +119,7 @@ export function ChoiceGroup<T extends string>({
         aria-describedby={[describedBy, reasons.length > 0 ? reasonId : null]
           .filter(Boolean).join(' ') || undefined}
         className={density === 'compact' ? 'a3-choice a3-choice-compact' : 'a3-choice'}
+        data-layout={layout === 'inline' ? undefined : layout}
         onKeyDown={(event) => {
           // Native radios already move focus AND selection with the arrows.
           // Home/End are the two the platform does not give for free, and the
@@ -136,7 +178,14 @@ export function ChoiceGroup<T extends string>({
                   carrier beside the word, and it is decorative because the
                   input already exposes `checked`. */}
               <span className="a3-choice-check" aria-hidden="true">{checked ? '✓' : ''}</span>
-              <span className="a3-choice-label">{option.label}</span>
+              {option.media && <span className="a3-choice-media" aria-hidden="true">{option.media}</span>}
+              <span className="a3-choice-text">
+                <span className="a3-choice-label">{option.label}</span>
+                {option.description && (
+                  <span className="a3-choice-description">{option.description}</span>
+                )}
+                {option.badge && <span className="a3-choice-badge">{option.badge}</span>}
+              </span>
               {option.consequence && (
                 <span className="a3-choice-consequence">{option.consequence}</span>
               )}

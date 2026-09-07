@@ -254,14 +254,20 @@ describe('Опции — нативная radio-группа (RADIO-001)', () =>
     const radios = within(group).getAllByRole('radio')
     const checkedBefore = radios.findIndex((r) => (r as HTMLInputElement).checked)
 
+    const journalBefore = useStore.getState().journal.length
     radios[checkedBefore]!.focus()
     await user.keyboard('{ArrowDown}')
 
     const checkedAfter = within(group).getAllByRole('radio')
       .findIndex((r) => (r as HTMLInputElement).checked)
     expect(checkedAfter).not.toBe(checkedBefore)
-    // Выбор стрелкой — такое же событие журнала, как выбор мышью (M-4).
-    expect(useStore.getState().journal.length).toBeGreaterThan(0)
+    // VR3-TGA-UX-00: the arrow MOVES and SELECTS the draft (RADIO-001 holds);
+    // the WRITE is the explicit `Übernehmen` — the same one commit for the
+    // keyboard as for the pointer, and the same one journal event (M-4).
+    expect(useStore.getState().journal.length).toBe(journalBefore)
+    const editor = group.closest('.a3-dec-editor')!
+    await user.click(within(editor as HTMLElement).getByRole('button', { name: 'Übernehmen' }))
+    expect(useStore.getState().journal.length).toBe(journalBefore + 1)
   })
 })
 

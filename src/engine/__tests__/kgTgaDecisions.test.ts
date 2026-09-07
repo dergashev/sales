@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import Decimal from 'decimal.js'
 import {
   allServices,
   blockedVariantReason,
@@ -28,6 +27,13 @@ import {
   type KgDecisions,
   type KgScopeGroup,
 } from '../kgConfiguration'
+import {
+  RESPONSIBILITY_MEDIA,
+  initialResponsibility,
+  isOptionResponsibility,
+  responsibilityFingerprint,
+  responsibilityProjection,
+} from '../responsibility'
 
 /**
  * KG 400 AS A SOURCE-AWARE SYSTEM CONFIGURATOR (VR3-TGA-01).
@@ -54,22 +60,38 @@ function included(catalogue = A): KgDecisions {
 const chapterA = chapterOf(A, CHAPTER)!
 const chapterB = chapterOf(B, CHAPTER)!
 
-describe('the eight canonical TGA systems', () => {
-  it('are present once, in order, on both demonstration projects', () => {
+describe('the seven canonical TGA systems', () => {
+  it('are present once, in order, on both demonstration projects — and the responsibility matrix is not one of them', () => {
+    // VR3-TGA-UX-00: `Schnittstellen & Verantwortung` was the eighth "system";
+    // it is a statement about who delivers up to where, not an engineering
+    // system a salesperson configures, and it now lives in the catalogue's
+    // own `responsibility` block (see the describe at the end of this file).
     const names = [
       'Wärme', 'Trinkwasser & Warmwasser', 'Lüftung & sommerlicher Komfort',
       'Elektro & Energie', 'Entwässerung', 'Kommunikation & Zutritt',
-      'Aufzüge & Sonderanlagen', 'Schnittstellen & Verantwortung',
+      'Aufzüge & Sonderanlagen',
     ]
     expect(chapterA.groups.map((g) => g.labelDe)).toEqual(names)
     expect(chapterB.groups.map((g) => g.labelDe)).toEqual(names)
+    for (const chapter of [chapterA, chapterB]) {
+      expect(chapter.groups.some((g) => /Verantwortung|responsibility/i.test(g.labelDe + g.labelEn)))
+        .toBe(false)
+      expect(chapter.groups.flatMap((g) => g.services).map((s) => s.id))
+        .not.toEqual(expect.arrayContaining([expect.stringMatching(/-400-1(3g|4)$/)]))
+    }
   })
 
   it('declares a Rahmen band, a cross-system rule and a Bemusterung boundary', () => {
     for (const chapter of [chapterA, chapterB]) {
+      // The band is ORIENTATION: energy target, building scope, source count,
+      // and the scope boundary READ from the responsibility owner. The
+      // statutory minimum moved behind the energy target's own evidence.
       expect(chapter.rahmen?.map((r) => r.id)).toEqual([
-        'energieziel', 'mindeststandard', 'gebaeudeumfang', 'leistungsgrenze',
+        'energieziel', 'gebaeudeumfang', 'quelle', 'leistungsgrenze',
       ])
+      expect(chapter.rahmen?.find((r) => r.id === 'quelle')?.derive).toBe('sourceDocuments')
+      expect(chapter.rahmen?.find((r) => r.id === 'leistungsgrenze')?.derive).toBe('responsibility')
+      expect(chapter.rahmen?.find((r) => r.id === 'leistungsgrenze')?.valueDe).toBe('')
       expect(chapter.rules?.map((r) => r.id)).toContain('p14a')
       expect(chapter.bemusterung).toBeTruthy()
     }
@@ -251,16 +273,19 @@ describe('a euro renders only where there is cost authority', () => {
     expect(central.delta).toBe(decentral.delta)
   })
 
-  it('never gives a Bauherr-owned row an amount', () => {
-    for (const chapter of [chapterA, chapterB]) {
+  it('keeps the Bauherr-owned rows OUT of the chapter, and unpriced where they now live', () => {
+    // VR3-TGA-UX-00: `Hausanschlüsse` is the Bauherr's and it left KG 400 for
+    // the responsibility block. No KG 400 service is Bauherr-owned any more,
+    // and the block that now carries them still carries no amount at all.
+    for (const [catalogue, chapter] of [[A, chapterA], [B, chapterB]] as const) {
       const owned = chapter.groups
         .flatMap((g) => g.services)
         .filter((s) => costAuthorityOf(s) === 'bauherr')
-      expect(owned.length).toBeGreaterThan(0)
-      for (const service of owned) {
-        expect(rendersAmount(service)).toBe(false)
-        expect(new Decimal(service.amount).isZero()).toBe(true)
-      }
+      expect(owned).toEqual([])
+      expect(catalogue.responsibility?.connections.costAuthority).toBe('bauherr')
+      expect(catalogue.responsibility?.scopeBoundary.costAuthority).toBe('none')
+      // Nothing about the block is a number: no `amount`, no `delta`.
+      expect(JSON.stringify(catalogue.responsibility)).not.toMatch(/"(amount|delta)"/)
     }
   })
 
@@ -448,15 +473,14 @@ describe('a decision with no price basis never becomes a priced contribution', (
     expect(offenders.map((row) => row.serviceId)).toEqual([])
   })
 
-  it('never lets a Bauherr decision reach the priced contributions at all', () => {
+  it('never lets the relocated responsibility rows reach the priced contributions at all', () => {
     for (const catalogue of [A, B]) {
-      const priced = new Set(
-        kgContributions(catalogue, included(catalogue)).map((row) => row.serviceId),
-      )
-      const bauherr = allServices(catalogue)
-        .filter((service) => costAuthorityOf(service) === 'bauherr')
-      expect(bauherr.length).toBeGreaterThan(0)
-      for (const service of bauherr) expect(priced.has(service.id)).toBe(false)
+      const priced = kgContributions(catalogue, included(catalogue)).map((row) => row.serviceId)
+      // The retired service ids are gone from the catalogue and therefore
+      // from every contribution; the block that replaced them produces none.
+      expect(priced.some((id) => /-400-1(3g|4)$/.test(id))).toBe(false)
+      expect(allServices(catalogue).filter((s) => costAuthorityOf(s) === 'bauherr')).toEqual([])
+      expect(catalogue.responsibility).toBeTruthy()
     }
   })
 
@@ -535,14 +559,16 @@ describe('the ten things this Product must never say', () => {
 
   it('states the statutory minimum and the funding target as two axes', () => {
     const rahmen = chapterA.rahmen!
-    const statutory = rahmen.find((r) => r.id === 'mindeststandard')!
     const funding = rahmen.find((r) => r.id === 'energieziel')!
-    // They must never share a UI slot: the statutory minimum is derived from
-    // the building-application date and is not a choice at all.
-    expect(statutory.editServiceId).toBeUndefined()
-    expect(statutory.metaDe).toContain('Bauantragsdatum')
+    // The funding target is the CHOICE; the statutory minimum is not a choice
+    // at all — it is derived from the building-application date and travels
+    // as the BASIS behind the target (VR3-TGA-UX-00: the band is orientation,
+    // the regulation is on demand). Two axes, one cell, never one control.
     expect(funding.editServiceId).toBe('a-400-es')
     expect(funding.metaDe).toContain('Förderziel')
+    expect(funding.basisDe).toContain('GModG')
+    expect(funding.basisDe).toContain('Bauantragsdatum')
+    expect(rahmen.some((r) => r.id === 'mindeststandard')).toBe(false)
   })
 
   it('never presents funding as an entitlement', () => {
@@ -658,5 +684,83 @@ describe('the resting state after a cascade', () => {
       expect(rendersAmount(entry.service)).toBe(true)
       expect(entry.currentAmount.isZero()).toBe(false)
     }
+  })
+})
+
+/**
+ * SCHNITTSTELLEN & VERANTWORTUNG LEFT THE CHAPTER (VR3-TGA-UX-00).
+ *
+ * The audit's `responsibility-matrix-relocation-map.md`: one canonical
+ * editable owner, a lossless and idempotent migration, a legacy adapter that
+ * is not a second owner, and no euro anywhere near it.
+ */
+describe('Schnittstellen & Verantwortung — its own owner, outside KG 400', () => {
+  it('carries the four media, in order, on both projects, with the same values the retired rows had', () => {
+    for (const catalogue of [A, B]) {
+      const block = catalogue.responsibility!
+      expect(block.connections.media.map((m) => m.id)).toEqual([...RESPONSIBILITY_MEDIA])
+      expect(block.scopeBoundary.handoverDe).toBe('Übergabepunkt Grundstücksgrenze')
+      expect(block.connections.media[0]!.clientDe).toBe('Bauherr bis Grundstücksgrenze')
+      expect(block.connections.offerNoteDe).toContain('Bedingung')
+    }
+    // The one unresolved interface of the complex project survived the move.
+    expect(B.responsibility!.connections.media.find((m) => m.id === 'telecommunications')!.status)
+      .toBe('attention')
+    expect(A.responsibility!.connections.media.every((m) => m.status === 'ok')).toBe(true)
+  })
+
+  it('seeds the Option record from the catalogue — idempotently', () => {
+    const once = initialResponsibility(A)!
+    const twice = initialResponsibility(A)!
+    expect(once).toEqual(twice)
+    expect(once.version).toBe(1)
+    expect(Object.keys(once.media).sort()).toEqual([...RESPONSIBILITY_MEDIA].sort())
+    expect(isOptionResponsibility(once)).toBe(true)
+    expect(initialResponsibility(null)).toBeNull()
+  })
+
+  it('reads a legacy Option (no record) through ONE adapter and says so', () => {
+    const legacy = responsibilityProjection(B, null)!
+    const owned = responsibilityProjection(B, initialResponsibility(B))!
+    expect(legacy.origin).toBe('legacy')
+    expect(owned.origin).toBe('record')
+    // Same truth either way — the adapter seeds, it does not invent.
+    expect(legacy.media).toEqual(owned.media)
+    expect(legacy.unresolved.map((m) => m.id)).toEqual(['telecommunications'])
+    expect(responsibilityProjection(null, null)).toBeNull()
+  })
+
+  it('lets the record win where it holds a status, and never rewrites the catalogue', () => {
+    const record = initialResponsibility(B)!
+    const settled = {
+      ...record,
+      media: { ...record.media, telecommunications: { status: 'ok' as const, note: 'Netzbetreiber bestätigt' } },
+    }
+    const projection = responsibilityProjection(B, settled)!
+    expect(projection.unresolved).toEqual([])
+    expect(projection.media.find((m) => m.id === 'telecommunications')!.note).toBe('Netzbetreiber bestätigt')
+    expect(B.responsibility!.connections.media.find((m) => m.id === 'telecommunications')!.status)
+      .toBe('attention')
+  })
+
+  it('fingerprints every fact the review shows, so a changed status reopens the section', () => {
+    const before = responsibilityFingerprint(responsibilityProjection(B, initialResponsibility(B)))
+    const record = initialResponsibility(B)!
+    const after = responsibilityFingerprint(responsibilityProjection(B, {
+      ...record,
+      media: { ...record.media, telecommunications: { status: 'ok' } },
+    }))
+    expect(before).not.toBe(after)
+    expect(responsibilityFingerprint(null)).toBe('none')
+  })
+
+  it('refuses a malformed persisted record', () => {
+    expect(isOptionResponsibility(null)).toBe(false)
+    expect(isOptionResponsibility({ version: 1, seededFrom: 1, media: {} })).toBe(false)
+    expect(isOptionResponsibility({
+      version: 1, seededFrom: 1,
+      media: { potableWater: { status: 'maybe' }, foulWater: { status: 'ok' },
+        electricityLv: { status: 'ok' }, telecommunications: { status: 'ok' } },
+    })).toBe(false)
   })
 })

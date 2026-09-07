@@ -49,8 +49,11 @@ import {
  * what the chapter asks must not change what the Option costs.
  */
 const DECLARED = {
-  'DEMO-HAPPY-01': { total: '6480000', uncertainty: '5', selected: 31, variants: 11, decisions: 7 },
-  'DEMO-COMPLEX-01': { total: '38740000', uncertainty: '6', selected: 48, variants: 10, decisions: 11 },
+  // VR3-TGA-UX-00: `Leistungsgrenze TGA` and `Hausanschlüsse` (read-only,
+  // selected, worth nothing) left KG 400 for the catalogue's own
+  // `responsibility` block — A 31 → 29, B 48 → 46. No amount moved with them.
+  'DEMO-HAPPY-01': { total: '6480000', uncertainty: '5', selected: 29, variants: 11, decisions: 7 },
+  'DEMO-COMPLEX-01': { total: '38740000', uncertainty: '6', selected: 46, variants: 10, decisions: 11 },
 } as const
 
 /** Every cost group included, every explicit decision still open. This is the
