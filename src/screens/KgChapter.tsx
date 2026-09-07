@@ -204,7 +204,11 @@ export function KgChapter() {
          "which engineering solution are we proposing?" — the mental model the
          audit asks the page to establish first. Other chapters keep their
          scope note; the difference is declared by the data, not by the id. */
-      lead={declaresSystems ? t('vr3.tga.lede') : (en ? chapter.scopeNoteEn : chapter.scopeNoteDe)}
+      lead={declaresSystems
+        // VR3-KG-UNIFY-00: every chapter declares ITS question; the TGA
+        // sentence stays the fallback for a catalogue that declares none.
+        ? ((en ? chapter.questionEn : chapter.questionDe) ?? t('vr3.tga.lede'))
+        : (en ? chapter.scopeNoteEn : chapter.scopeNoteDe)}
       progress={{
         tone: progress.state === 'complete' ? 'ok'
           : progress.state === 'invalid' ? 'error' : 'attention',

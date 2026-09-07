@@ -48,7 +48,38 @@ export type WorkflowSubStep = {
   onSelect?: () => void
   /** Required when `state === 'locked'`: a lock always names its reason. */
   lockedReason?: string
+  /**
+   * VR3-KG-UNIFY-00 — the word the PROGRESSION shows where the full label
+   * would not fit eight segments at 1280 (`Verantwortung` for
+   * `Schnittstellen & Verantwortung`). The full label stays the accessible
+   * name and the tooltip; the visible word is contained in it (label-in-name).
+   */
+  shortLabel?: string
+  /**
+   * A member that needs a human before it can be complete, with the reason
+   * (`Prüfung erforderlich · 1 ungültige Eingabe`). An explicit mark and a
+   * word — never red alone (rule 8). Ignored while the member is current,
+   * whose own surface already states the problem.
+   */
+  attention?: string
+  /**
+   * A member the user explicitly took OUT of scope. It stays visible in its
+   * place and reads `außerhalb Umfang` — neither fabricated complete nor
+   * removed (navigation contract, D-016).
+   */
+  outOfScope?: boolean
 }
+
+/**
+ * How a stage draws its members while it is current (VR3-KG-UNIFY-00).
+ *
+ * `list` is the released band of label + state pairs. `progression` is ONE
+ * contiguous row of equal segments — glyph + short label — for a stage whose
+ * members are an ORDERED SEQUENCE the user walks (the eight Configurator
+ * chapters). The disclosure rule is identical for both: members render for
+ * the current stage and for no other.
+ */
+export type WorkflowStepsPresentation = 'list' | 'progression'
 
 export type WorkflowStage = WorkflowSubStep & {
   /**
@@ -57,6 +88,7 @@ export type WorkflowStage = WorkflowSubStep & {
    * option the caller can switch off.
    */
   steps?: ReadonlyArray<WorkflowSubStep>
+  stepsPresentation?: WorkflowStepsPresentation
 }
 
 // One fully-written class name per state: verify.py's DS-CLASS-EXISTS greps
@@ -81,6 +113,18 @@ const GLYPH: Record<WorkflowStageState, string> = {
   done: '✓',
   upcoming: '',
   locked: '',
+}
+
+/**
+ * The progression's marks. Each state has a DIFFERENT shape, so a locked and
+ * an upcoming chapter are told apart without colour; the word travels in the
+ * accessible name.
+ */
+const PROGRESSION_GLYPH: Record<WorkflowStageState, string> = {
+  current: '●',
+  done: '✓',
+  upcoming: '○',
+  locked: '–',
 }
 
 export function WorkflowNavigator({
@@ -193,7 +237,75 @@ export function WorkflowNavigator({
         the `<li>` it regains as an accessible name that states which stage
         these members belong to.
       */}
-      {current && current.steps && current.steps.length > 0 ? (
+      {current && current.steps && current.steps.length > 0
+        && current.stepsPresentation === 'progression' ? (
+        /*
+          THE COMPACT CHAPTER PROGRESSION (VR3-KG-UNIFY-00, navigation
+          contract). Eight destinations as ONE contiguous row of equal
+          segments, visually continuous at 1440 and 1280: a mark and a short
+          label per member, the current one carried by the accent underline
+          and `aria-current="step"`. It is the same `<ol>` of the same
+          members with the same routes — a projection of the registry, never
+          a second order — so the released list above is what it replaces,
+          not what it competes with.
+        */
+          <ol
+            className="a3-wfn-prog"
+            aria-label={t('ds.workflowNavigator.progressionOf', { stage: current.label })}
+          >
+            {current.steps.map((step) => {
+              const attention = step.attention && step.state !== 'current' ? step.attention : undefined
+              const stateText = step.outOfScope
+                ? t('ds.workflowNavigator.state.outOfScope')
+                : attention
+                  ? `${t('ds.workflowNavigator.state.attention')} · ${attention}`
+                  : `${t(STATE_KEY[step.state])}${
+                    step.state === 'locked' && step.lockedReason ? ` · ${step.lockedReason}` : ''}`
+              const glyph = step.outOfScope ? '—' : attention ? '!' : PROGRESSION_GLYPH[step.state]
+              const visible = step.shortLabel ?? step.label
+              // The full label IS the accessible name; the visible short word
+              // is contained in it, so label-in-name holds for voice users.
+              const name = `${step.label} · ${stateText}`
+              const title = visible === step.label ? undefined : step.label
+              const body = (
+                <>
+                  <span className="a3-wfn-segmark" aria-hidden="true">{glyph}</span>
+                  <span className="a3-wfn-seglabel">{visible}</span>
+                </>
+              )
+              return (
+                <li
+                  key={step.id}
+                  className={`a3-wfn-seg ${STATE_CLASS[step.state]}`}
+                  data-attention={attention ? true : undefined}
+                  data-out-of-scope={step.outOfScope || undefined}
+                >
+                  {step.onSelect ? (
+                    <button
+                      type="button"
+                      className="a3-wfn-segbtn hit-target"
+                      aria-current={step.state === 'current' ? 'step' : undefined}
+                      aria-label={name}
+                      title={title}
+                      onClick={step.onSelect}
+                    >
+                      {body}
+                    </button>
+                  ) : (
+                    <span
+                      className="a3-wfn-segstatic"
+                      aria-current={step.state === 'current' ? 'step' : undefined}
+                      title={title}
+                    >
+                      {body}
+                      <span className="sr-only">{` · ${stateText}`}</span>
+                    </span>
+                  )}
+                </li>
+              )
+            })}
+          </ol>
+        ) : current && current.steps && current.steps.length > 0 ? (
         <ol
           className="a3-wfn-sub"
           aria-label={t('ds.workflowNavigator.stepsOf', { stage: current.label })}

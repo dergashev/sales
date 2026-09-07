@@ -390,6 +390,12 @@ export function RahmenBand({ entries, children }: {
     value: string
     meta?: string
     action?: { label: string; expanded?: boolean; onToggle: () => void; accessibleName?: string }
+    /**
+     * VR3-KG-UNIFY-00 — a CONTEXT SWITCH that stands in for the value: the
+     * building whose decisions a per-building chapter shows. The control
+     * names the current value itself, so the text is not repeated beside it.
+     */
+    control?: ReactNode
   }>
   /** The expanded decision, when one is open. */
   children?: ReactNode
@@ -399,10 +405,10 @@ export function RahmenBand({ entries, children }: {
     <section className="a3-rahmen" aria-label={entries.map((e) => e.label).join(' · ')}>
       <dl className="a3-rahmen-grid">
         {entries.map((entry) => (
-          <div className="a3-rahmen-cell" key={entry.id}>
+          <div className="a3-rahmen-cell" key={entry.id} data-control={entry.control ? true : undefined}>
             <dt className="a3-rahmen-key">{entry.label}</dt>
             <dd className="a3-rahmen-val">
-              {entry.value}
+              {entry.control ?? entry.value}
               {entry.action && (
                 <button
                   type="button"

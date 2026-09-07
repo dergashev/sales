@@ -196,7 +196,10 @@ describe('the rails', () => {
     // AC-8: exactly one current stage, and at most one current nested step.
     expect(rail().querySelectorAll('.a3-wfn-stage > [aria-current="step"]'))
       .toHaveLength(1)
-    expect(rail().querySelectorAll('.a3-wfn-sub [aria-current="step"]').length)
+    // VR3-KG-UNIFY-00: the Kalkulieren members render as the compact chapter
+    // progression (`.a3-wfn-prog`); the released list (`.a3-wfn-sub`) is what
+    // a stage without an ordered sequence still uses. Either way, one current.
+    expect(rail().querySelectorAll('.a3-wfn-sub [aria-current="step"], .a3-wfn-prog [aria-current="step"]').length)
       .toBeLessThanOrEqual(1)
 
     // AC-4: every one of the four can become current. Each is reached by

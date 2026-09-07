@@ -42,10 +42,16 @@ export type Segment<T extends string> = {
  * `Kompakt umschalten`.
  */
 export function SegmentedControl<T extends string>({
-  legend, value, options, onChange, helperText, layout = 'stack',
+  legend, legendHidden = false, value, options, onChange, helperText, layout = 'stack',
   size = 'default', disabled, disabledReason,
 }: {
   legend: string
+  /**
+   * VR3-KG-UNIFY-00 — the surrounding composition already names the control
+   * visibly (a band cell whose key reads `GEBÄUDE`); the legend then stays
+   * the accessible name only. Same additive pattern as `ChoiceGroup`.
+   */
+  legendHidden?: boolean
   value: T
   options: ReadonlyArray<Segment<T>>
   onChange: (v: T) => void
@@ -93,7 +99,7 @@ export function SegmentedControl<T extends string>({
       className={`a3-segmented-fieldset ${layoutClass}`}
       data-size={size === 'compact' ? 'compact' : undefined}
     >
-      <legend>
+      <legend className={legendHidden ? 'sr-only' : undefined}>
         {legend}
       </legend>
       {/* Имя группы обязано быть у ТОГО элемента, который несёт роль:

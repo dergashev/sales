@@ -249,18 +249,28 @@ export function OptionWorkflowNavigator() {
   const kgStep = (group: KgScopeGroup): WorkflowSubStep => {
     const decision = s.kgConfig?.scope[group] ?? 'undecided'
     const progress = kgChapterProgressFor(s, group)
+    const excluded = decision === 'excluded'
     const stepState: WorkflowStageState = !decisionsComplete
       ? 'locked'
       // An excluded group is DECIDED, so it is done rather than skipped-and-
       // absent: the decision is visible, and the step stays reachable so its
       // own surface can explain and reopen it.
-      : decision === 'excluded' || progress?.state === 'complete'
+      : excluded || progress?.state === 'complete'
         ? 'done'
         : 'upcoming'
-    return step(
-      'kalkulieren', KG_STEP_ID[group], `KG ${group.slice(3)}`, stepState,
-      t('vr3.spine.reason.needsScopeDecisions'), true,
-    )
+    return {
+      ...step(
+        'kalkulieren', KG_STEP_ID[group], `KG ${group.slice(3)}`, stepState,
+        t('vr3.spine.reason.needsScopeDecisions'), true,
+      ),
+      // VR3-KG-UNIFY-00 — the progression tells the two apart: an excluded
+      // chapter reads `außerhalb Umfang` rather than a fabricated tick, and a
+      // chapter holding an invalid or contradicted answer carries its mark.
+      outOfScope: excluded || undefined,
+      attention: decisionsComplete && !excluded && progress?.state === 'invalid'
+        ? t('vr3.kg.page.blockedInvalid')
+        : undefined,
+    }
   }
 
   const stages: WorkflowStage[] = [
@@ -302,20 +312,34 @@ export function OptionWorkflowNavigator() {
       onSelect: gateOpen && decisionsComplete
         ? go({ stage: 'kalkulieren', step: KG_STEP_ID.KG_200 })
         : undefined,
+      /**
+       * VR3-KG-UNIFY-00 — the eight calculation destinations are ONE ordered
+       * sequence the user walks, so they render as the compact progression:
+       * `KG 200 → … → KG 700 → Verantwortung → Terminplan`, contiguous at
+       * 1440 and 1280. Same members, same routes, same completion truth as
+       * before; only the drawing changed.
+       */
+      stepsPresentation: 'progression',
       steps: [
         ...KG_SCOPE_GROUPS.map(kgStep),
-        step(
-          'kalkulieren', 'verantwortung', t('vr3.spine.step.responsibility'),
-          !decisionsComplete
-            ? 'locked'
-            : responsibilityVisited && responsibilitySettled ? 'done' : 'upcoming',
-          t('vr3.spine.reason.needsScopeDecisions'),
-        ),
-        step(
-          'kalkulieren', 'terminplan', t('vr3.spine.step.schedule'),
-          !kgComplete ? 'locked' : scheduleConfirmed ? 'done' : 'upcoming',
-          t('vr3.kg.gate.scheduleReason'),
-        ),
+        {
+          ...step(
+            'kalkulieren', 'verantwortung', t('vr3.spine.step.responsibility'),
+            !decisionsComplete
+              ? 'locked'
+              : responsibilityVisited && responsibilitySettled ? 'done' : 'upcoming',
+            t('vr3.spine.reason.needsScopeDecisions'),
+          ),
+          shortLabel: t('vr3.progression.responsibility'),
+        },
+        {
+          ...step(
+            'kalkulieren', 'terminplan', t('vr3.spine.step.schedule'),
+            !kgComplete ? 'locked' : scheduleConfirmed ? 'done' : 'upcoming',
+            t('vr3.kg.gate.scheduleReason'),
+          ),
+          shortLabel: t('vr3.progression.schedule'),
+        },
       ],
     },
     {

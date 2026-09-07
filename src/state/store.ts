@@ -47,6 +47,7 @@ import {
   type KgScopeGroup,
   type KgChapterProgress,
   type KgServiceDecisionRecord,
+  withBuildingApplicability,
 } from '../engine/kgConfiguration'
 import {
   initialResponsibility,
@@ -3145,12 +3146,34 @@ export function kgGroupOfStep(id: ConfiguratorStepId): KgScopeGroup | null {
     .find(([, step]) => step === id)?.[0] ?? null
 }
 
-/** The catalogue this Option is priced against, or `null`. */
+/**
+ * The catalogue this Option is priced against, or `null`.
+ *
+ * VR3-KG-UNIFY-00 — RESOLVED AGAINST THE OPTION'S BUILDINGS. A construction
+ * decision that exists only for a building with a basement declares that
+ * condition (`appliesWhen`) and the catalogue is resolved here, once, at the
+ * one door every consumer already reads — so "applicability follows the
+ * actual Building baseline" is true by construction rather than per surface.
+ * A caller that carries no `scopeBuildings` (a narrow engine `Pick`) reads
+ * the static catalogue, which is what the fixture's own proofs describe.
+ * Memoised on the building facts, so the catalogue keeps its identity across
+ * renders and `useMemo` consumers stay stable.
+ */
 export function kgCatalogueFor(
-  s: Pick<Store, 'opportunityId'>,
+  s: Pick<Store, 'opportunityId'> & Partial<Pick<Store, 'scopeBuildings'>>,
 ): KgCatalogue | null {
-  return kgCatalogue(s.opportunityId)
+  const base = kgCatalogue(s.opportunityId)
+  if (!base || !s.scopeBuildings || s.scopeBuildings.length === 0) return base
+  const facts = s.scopeBuildings.map((b) => ({ id: b.id, undergroundLevel: b.undergroundLevel }))
+  const key = facts.map((f) => `${f.id}=${f.undergroundLevel}`).join('|')
+  const cached = RESOLVED_CATALOGUES.get(base)
+  if (cached && cached.key === key) return cached.catalogue
+  const catalogue = withBuildingApplicability(base, facts)
+  RESOLVED_CATALOGUES.set(base, { key, catalogue })
+  return catalogue
 }
+
+const RESOLVED_CATALOGUES = new WeakMap<KgCatalogue, { key: string; catalogue: KgCatalogue }>()
 
 /** The Option's KG decisions, or `null` when it has no configuration. */
 export function kgDecisionsFor(

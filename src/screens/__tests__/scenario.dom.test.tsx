@@ -163,11 +163,15 @@ describe('Сквозной сценарий продажи', () => {
     // inside KG 400's fingerprint — and reading it is one more
     // acknowledgement somebody gave. Choosing the energy target is still ONE
     // event: the alternatives are a draft until `Übernehmen`.
-    expect(useStore.getState().journal).toHaveLength(38)
+    // VR3-KG-UNIFY-00: the balcony support system became a REQUIRED decision
+    // once balconies are in scope, so completing KG 300 records one more event.
+    expect(useStore.getState().journal).toHaveLength(39)
 
     // Уход на другой экран и возврат: состояние переживает переход.
     goComparison()
-    expect(useStore.getState().journal).toHaveLength(38)
+    // VR3-KG-UNIFY-00: the balcony support system became a REQUIRED decision
+    // once balconies are in scope, so completing KG 300 records one more event.
+    expect(useStore.getState().journal).toHaveLength(39)
     expect(activeBuilding(useStore.getState()).energiestandard).toBe('EH_40')
 
     // Гейт открывается на top-level шаге здания, а не обходится.
@@ -192,7 +196,8 @@ describe('Сквозной сценарий продажи', () => {
     // (+1 again from VR3-TGA-01's ventilation decision — see the note on the
     // 37 above; the offset between the two assertions is unchanged.)
     // 38 + the two events above (VR3-TGA-UX-00: the thirteenth review section).
-    expect(useStore.getState().journal).toHaveLength(40)
+    // VR3-KG-UNIFY-00: one more required decision (balcony support) on the walked building.
+    expect(useStore.getState().journal).toHaveLength(41)
   })
 
   /**

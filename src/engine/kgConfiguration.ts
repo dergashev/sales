@@ -81,6 +81,26 @@ export type KgServiceVariant = Readonly<{
    */
   detailDe?: string
   detailEn?: string
+  /**
+   * VR3-KG-UNIFY-00 — the authority of THIS alternative, where it differs
+   * from the decision's. A basement scope decision carries one directly
+   * priced position and one alternative that is the Bauherr's; naming the
+   * authority on the variant keeps that a fixture fact, not a component's
+   * guess. Absent ⇒ `bundled` / `noPriceBasis` / the service's own.
+   */
+  costAuthority?: KgCostAuthority
+  /**
+   * Choosing this alternative REMOVES the position from the All3 offer.
+   *
+   * `Nicht im All3-Leistungsumfang` is a legitimate answer to a scope
+   * decision, and it is neither `notSelected` (the decision IS answered) nor
+   * a priced variant with a negative delta (which would put a `direct` zero
+   * into the drivers and `± 0 €` into the rail — QA-01). The contribution
+   * is `null`, the phrase is the variant's own authority (`bauherr` when the
+   * owner is confirmed, `noBasis` while it is open), and the offer states
+   * the exclusion in words (`offerNote`).
+   */
+  excludesPosition?: boolean
 }>
 
 export type KgServiceKind =
@@ -113,6 +133,14 @@ export type KgServiceKind =
 export type KgServiceDependency = Readonly<{
   serviceId: string
   requiresVariant?: string
+  /**
+   * VR3-KG-UNIFY-00 — the upstream may hold ANY of these. A timber colour
+   * family exists under two of the five façade compositions (full timber and
+   * rendered-ground-floor-timber-above); one `requiresVariant` cannot say so,
+   * and two dependencies cannot either. Same semantics as `requiresVariant`
+   * for blocking and suspension.
+   */
+  requiresVariantIn?: readonly string[]
   requiresSelected?: boolean
   appliesToVariants?: readonly string[]
 }>
@@ -156,6 +184,33 @@ export type KgApplicability = Readonly<{
   state: 'notApplicable' | 'partial'
   reasonDe: string
   reasonEn: string
+}>
+
+/**
+ * VR3-KG-UNIFY-00 — applicability that FOLLOWS THE BUILDING, live.
+ *
+ * `applicability` above is a statement the catalogue makes. A basement scope
+ * decision is different: whether it exists is a property of the Building the
+ * Option confirmed (`ScopeBuilding.undergroundLevel`), and the catalogue must
+ * not assert it twice. So the service declares WHICH building fact governs
+ * it and which values keep it alive; `withBuildingApplicability` resolves the
+ * declaration against the Option's buildings and writes the derived
+ * `applicability` — with the reason the declaration carries — before any
+ * selector sees the catalogue. A catalogue that reaches a selector without
+ * being resolved keeps whatever static applicability it declared, so the pure
+ * engine and its tests read the same shape either way.
+ */
+export type KgBuildingCondition = Readonly<{
+  fact: 'undergroundLevel'
+  oneOf: readonly string[]
+  reasonDe: string
+  reasonEn: string
+}>
+
+/** The building facts the condition may read — a projection of `ScopeBuilding`. */
+export type KgBuildingFacts = Readonly<{
+  id: string
+  undergroundLevel: string
 }>
 
 /**
@@ -344,6 +399,42 @@ export type KgService = Readonly<{
   surface?: 'rahmen'
   /** References a cross-system rule declared once on the chapter. */
   ruleId?: string
+
+  /* ── VR3-KG-UNIFY-00 · the construction configurator ────────────────── */
+
+  /**
+   * The two answers of an `includeExclude` SCOPE decision, in the domain's
+   * own words: `Im All3-Leistungsumfang` / `Nicht im All3-Leistungsumfang`.
+   * The generic `Enthalten` / `Nicht enthalten` remains the fallback.
+   */
+  includeLabelDe?: string
+  includeLabelEn?: string
+  excludeLabelDe?: string
+  excludeLabelEn?: string
+  /**
+   * What the row says about money once the position is EXCLUDED. Exclusion
+   * is never `0 €` and is not automatically `Bauseits`: until responsibility
+   * is confirmed it reads `nicht im All3-Angebot · Verantwortung offen`.
+   */
+  excludedPhraseDe?: string
+  excludedPhraseEn?: string
+  /** Applicability derived from the Option's Building at read time. */
+  appliesWhen?: KgBuildingCondition
+  /**
+   * A READ-ONLY value derived from other decisions of the chapter.
+   *
+   * The roof requirement follows from access AND greening; the window
+   * requirement profile follows from format and operable share. `from` names
+   * the governing decisions in order, `byValues` maps their joined variant
+   * values (`OCCUPIED|GREEN`) to the sentence, and the fallback answers when
+   * a governor is unanswered. Nothing here is a price.
+   */
+  derived?: Readonly<{
+    from: readonly string[]
+    byValues: Readonly<Record<string, Readonly<{ valueDe: string; valueEn: string }>>>
+    fallbackDe: string
+    fallbackEn: string
+  }>
 }>
 
 export type KgServiceGroup = Readonly<{
@@ -383,6 +474,25 @@ export type KgServiceGroup = Readonly<{
     scopeDe?: string
     scopeEn?: string
   }>>>
+  /**
+   * VR3-KG-UNIFY-00 — the key of this system's pictogram in the shared KG
+   * visual registry (`src/config/kg-visuals.ts`). Data, never an id parse:
+   * `slab`, `site`, `facade`. Absent ⇒ the registry falls back to the
+   * group-id suffix KG 400 has always used.
+   */
+  visual?: string
+  /** Applicability derived from the Option's Building at read time (whole row). */
+  appliesWhen?: KgBuildingCondition
+  /**
+   * VR3-KG-UNIFY-00 — the building whose decisions this system row holds.
+   *
+   * A construction system is decided PER BUILDING. Rather than one row per
+   * building per system (three foundations, three façades …) the chapter
+   * shows one row per system and the building context chooses which
+   * building's rows are live. A group with no `buildingId` is shared by the
+   * Option and is shown under every building.
+   */
+  buildingId?: string
 }>
 
 export type KgChapter = Readonly<{
@@ -396,6 +506,14 @@ export type KgChapter = Readonly<{
   boundaryDe: string
   boundaryEn: string
   groups: readonly KgServiceGroup[]
+  /**
+   * VR3-KG-UNIFY-00 — the Sales QUESTION this chapter answers, as its lede:
+   * `Welche Baukonstruktionslösung schlagen wir für diese Option vor?`.
+   * Every KG chapter carries one; the dictionary's TGA sentence is the
+   * fallback for a catalogue that declares none.
+   */
+  questionDe?: string
+  questionEn?: string
 
   /* ── VR3-TGA-01 · chapter-level composition ──────────────────────────
    * Declared by the chapter, so a chapter that declares neither renders
@@ -565,6 +683,116 @@ export function chapterRuleById(
   chapter: KgChapter, id: string,
 ): KgSystemRule | null {
   return chapter.rules?.find((rule) => rule.id === id) ?? null
+}
+
+/* ── VR3-KG-UNIFY-00 · building context ────────────────────────────────── */
+
+/**
+ * The buildings this chapter decides FOR, in catalogue order — the ids its
+ * building-scoped groups and services name. Empty for a chapter that is
+ * shared by the whole Option (every KG but the construction chapter today).
+ */
+export function chapterBuildingIds(chapter: KgChapter): readonly string[] {
+  const ids: string[] = []
+  for (const group of chapter.groups) {
+    for (const id of [group.buildingId, ...group.services.map((s) => s.buildingId)]) {
+      if (id && !ids.includes(id)) ids.push(id)
+    }
+  }
+  return ids
+}
+
+/**
+ * ONE PAGE, ONE BUILDING AT A TIME.
+ *
+ * The construction chapter decides per building, but three foundations,
+ * three façades and three roofs as nine rows is the overview the audit
+ * measured as "cost-code administration". The projection keeps every SHARED
+ * group and, of the building-scoped ones, exactly the current building's
+ * services and groups — so the rows are one row per system and the building
+ * context switches which building's answers they show. Nothing is written
+ * and nothing is dropped from the catalogue; a projection is a view.
+ *
+ * `null` (no building context) returns the chapter unchanged.
+ */
+export function chapterForBuilding(chapter: KgChapter, buildingId: string | null): KgChapter {
+  if (!buildingId) return chapter
+  const groups = chapter.groups
+    .filter((group) => !group.buildingId || group.buildingId === buildingId)
+    .map((group) => ({
+      ...group,
+      services: group.services.filter((service) =>
+        !service.buildingId || service.buildingId === buildingId),
+    }))
+    .filter((group) => group.services.length > 0)
+  return { ...chapter, groups }
+}
+
+/**
+ * RESOLVE the catalogue's building-derived applicability against the
+ * Option's confirmed buildings — the one place `appliesWhen` is read.
+ *
+ * Returns the same catalogue object when nothing declares a condition, so a
+ * memoising caller can rely on identity. Where a condition names a building
+ * the Option does not carry, the service keeps its static declaration: an
+ * unknown building is not evidence of anything.
+ */
+export function withBuildingApplicability(
+  catalogue: KgCatalogue, buildings: readonly KgBuildingFacts[],
+): KgCatalogue {
+  const byId = new Map(buildings.map((b) => [b.id, b]))
+  let touched = false
+  const resolve = <T extends { buildingId?: string; appliesWhen?: KgBuildingCondition; applicability?: KgApplicability }>(
+    item: T,
+  ): T => {
+    const condition = item.appliesWhen
+    if (!condition || !item.buildingId) return item
+    const building = byId.get(item.buildingId)
+    if (!building) return item
+    const holds = condition.oneOf.includes(building[condition.fact])
+    const derived: KgApplicability | undefined = holds
+      ? undefined
+      : { state: 'notApplicable', reasonDe: condition.reasonDe, reasonEn: condition.reasonEn }
+    const same = (item.applicability?.state === derived?.state)
+      && (item.applicability?.reasonDe === derived?.reasonDe)
+    if (same) return item
+    touched = true
+    const { applicability: _dropped, ...rest } = item
+    return (derived ? { ...rest, applicability: derived } : rest) as T
+  }
+  const chapters = catalogue.chapters.map((chapter) => ({
+    ...chapter,
+    groups: chapter.groups.map((group) => ({
+      ...resolve(group),
+      services: group.services.map(resolve),
+    })),
+  }))
+  return touched ? { ...catalogue, chapters } : catalogue
+}
+
+/**
+ * The value of a DERIVED read-only decision, in the reader's language.
+ *
+ * Looks up the governing decisions' current variants (baseline where none is
+ * chosen), joins them with `|` in declared order and reads the sentence the
+ * fixture authored for that combination. An unanswered governor, or a
+ * combination the fixture does not name, yields the fallback — never a guess.
+ */
+export function derivedValue(
+  catalogue: KgCatalogue, decisions: KgDecisions, service: KgService, language: 'de' | 'en',
+): string | null {
+  const derived = service.derived
+  if (!derived) return null
+  const key = derived.from.map((id) => {
+    const governor = serviceById(catalogue, id)
+    if (!governor || governor.kind.kind !== 'singleChoice') return ''
+    const decision = serviceDecision(decisions, governor)
+    if (decision.state !== 'selected') return ''
+    return decision.variant ?? governor.kind.baselineVariant
+  })
+  const stated = key.every(Boolean) ? derived.byValues[key.join('|')] : undefined
+  if (stated) return language === 'en' ? stated.valueEn : stated.valueDe
+  return language === 'en' ? derived.fallbackEn : derived.fallbackDe
 }
 
 /**
@@ -847,6 +1075,9 @@ export function dependencyBlocker(
   const state = serviceDecision(decisions, upstream)
   if (dep.requiresSelected && state.state !== 'selected') return dep.serviceId
   if (dep.requiresVariant && state.variant !== dep.requiresVariant) return dep.serviceId
+  if (dep.requiresVariantIn && !dep.requiresVariantIn.includes(state.variant ?? '')) {
+    return dep.serviceId
+  }
   return null
 }
 
@@ -921,13 +1152,14 @@ function suspensionOf(
   if (!isApplicable(upstream)) return upstream
   const state = serviceDecision(decisions, upstream)
   if (dep.requiresSelected && state.state !== 'selected') return upstream
-  if (dep.requiresVariant) {
+  if (dep.requiresVariant || dep.requiresVariantIn) {
     const current = state.state === 'selected'
       ? state.variant ?? (upstream.kind.kind === 'singleChoice'
         ? upstream.kind.baselineVariant
         : undefined)
       : undefined
-    if (current !== dep.requiresVariant) return upstream
+    if (dep.requiresVariant && current !== dep.requiresVariant) return upstream
+    if (dep.requiresVariantIn && !dep.requiresVariantIn.includes(current ?? '')) return upstream
   }
   return suspensionOf(catalogue, decisions, upstream, seen)
 }
@@ -988,6 +1220,10 @@ export function serviceContribution(
       // assumption this function makes on the fixture's behalf.
       const wanted = decision.variant ?? service.kind.baselineVariant
       const chosen = service.kind.variants.find((v) => v.value === wanted)
+      // `Nicht im All3-Leistungsumfang` chosen: the position has left the
+      // offer. `null`, not `0` — there is no priced position here (rule 16),
+      // and a `direct` zero would become a `± 0 €` driver (QA-01).
+      if (chosen?.excludesPosition) return null
       return chosen ? base.plus(new Decimal(chosen.delta)) : base
     }
     case 'quantity': {
@@ -1165,6 +1401,7 @@ export function contributionCostAuthority(
   service: KgService, decision: KgServiceDecisionRecord,
 ): KgCostAuthority {
   const chosen = selectedVariant(service, decision)
+  if (chosen?.costAuthority) return chosen.costAuthority
   if (chosen?.bundled) return 'bundle'
   if (chosen?.noPriceBasis) return 'noBasis'
   return costAuthorityOf(service)
@@ -1273,8 +1510,8 @@ export function kgDeltaAgainstStandard(
   if (!standard) return null
   // A side with no price basis cannot take part in a difference: the product
   // does not know that the price did not move, only that it has no basis.
-  if (chosen.noPriceBasis || chosen.bundled) return null
-  if (standard.noPriceBasis || standard.bundled) return null
+  if (chosen.noPriceBasis || chosen.bundled || chosen.excludesPosition) return null
+  if (standard.noPriceBasis || standard.bundled || standard.excludesPosition) return null
   return {
     referenceDe: standard.labelDe,
     referenceEn: standard.labelEn,

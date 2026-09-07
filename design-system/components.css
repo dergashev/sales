@@ -3326,6 +3326,11 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-rahmen-act{font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-medium);min-height:var(--type-caption-line);margin-block:calc((var(--type-caption-line) - var(--size-hit-target-default)) / 2);padding-block:calc((var(--size-hit-target-default) - var(--type-caption-line)) / 2)}
 .a3-rahmen-meta{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
 .a3-rahmen-open{margin:var(--space-3) 0 0;padding-top:var(--space-2);border-top:var(--border-hairline)}
+/* A band cell that carries a CONTEXT SWITCH instead of a value (VR3-KG-UNIFY-00:
+   the building whose rows a per-building chapter shows). */
+.a3-rahmen-cell[data-control]{grid-column:span 2}
+.a3-rahmen-cell[data-control] .a3-rahmen-val{font-weight:var(--font-weight-medium)}
+.a3-rahmen-cell[data-control] .a3-segmented-fieldset{gap:0}
 
 /* ── Overview summary ─────────────────────────────────────────────────────
    One line, derived from the canonical overview. Good numbers are quiet;
@@ -4230,11 +4235,17 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    one horizontal band; a stage's own members render only while it is
    current, which is why the band is one row deep at Documents and never
    scrolls sideways at 1280.
+   VR3-KG-UNIFY-00: a stage may draw its members as a PROGRESSION instead —
+   .a3-wfn-prog > .a3-wfn-seg > (.a3-wfn-segbtn | .a3-wfn-segstatic) >
+   .a3-wfn-segmark + .a3-wfn-seglabel — one contiguous row of equal
+   segments for an ordered sequence (the eight Configurator chapters).
    Classes: .a3-wfn · .a3-wfn-list · .a3-wfn-stage · .a3-wfn-current ·
    .a3-wfn-done · .a3-wfn-upcoming · .a3-wfn-locked · .a3-wfn-button ·
    .a3-wfn-static · .a3-wfn-marker · .a3-wfn-text · .a3-wfn-label ·
    .a3-wfn-state · .a3-wfn-sub · .a3-wfn-substep · .a3-wfn-subbutton ·
-   .a3-wfn-substatic · .a3-wfn-sublabel · .a3-wfn-substate. */
+   .a3-wfn-substatic · .a3-wfn-sublabel · .a3-wfn-substate · .a3-wfn-prog ·
+   .a3-wfn-seg · .a3-wfn-segbtn · .a3-wfn-segstatic · .a3-wfn-segmark ·
+   .a3-wfn-seglabel. */
 .a3-wfn{inline-size:100%;border-bottom:var(--border-hairline);min-width:0}
 .a3-wfn-list{list-style:none;margin-inline:auto;padding:0;inline-size:100%;max-inline-size:var(--measure-workspace);display:flex;flex-wrap:nowrap;align-items:stretch;gap:var(--space-1);min-width:0}
 .a3-wfn-stage{display:flex;flex-direction:column;min-width:0;flex:1 1 0}
@@ -4264,9 +4275,29 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-wfn-sublabel{font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);white-space:nowrap}
 .a3-wfn-substate{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-muted);white-space:nowrap}
 .a3-wfn-sub .a3-wfn-current .a3-wfn-sublabel{font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+/* The compact chapter progression: equal segments, hairlines between them,
+   the current one carried by the accent underline and the warm surface.
+   Every segment is a 44 px target; the mark is a shape per state, the word
+   lives in the accessible name (rule 8). */
+.a3-wfn-prog{list-style:none;margin-inline:auto;margin-block:0;padding:0;display:flex;flex-wrap:nowrap;align-items:stretch;inline-size:100%;max-inline-size:var(--measure-workspace);min-width:0;border-top:var(--border-hairline)}
+.a3-wfn-seg{flex:1 1 0;min-width:0;display:flex;border-inline-end:var(--border-hairline)}
+.a3-wfn-seg:last-child{border-inline-end:0}
+.a3-wfn-segbtn,.a3-wfn-segstatic{position:relative;display:flex;align-items:center;justify-content:center;gap:var(--space-1);inline-size:100%;min-height:var(--size-hit-target-default);padding:var(--space-2) var(--space-1);background:transparent;border:0;border-bottom:var(--border-width-strong) solid transparent;font:inherit;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-medium);color:var(--color-text-secondary);text-align:center;min-width:0}
+.a3-wfn-segbtn{cursor:pointer}
+.a3-wfn-segbtn:hover{background:var(--color-surface-subtle)}
+.a3-wfn-segbtn:focus-visible{outline:var(--border-width-focus-emphasis) solid var(--color-focus-ring);outline-offset:calc(var(--border-width-focus-emphasis) * -1)}
+.a3-wfn-segmark{flex:none;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-bold)}
+.a3-wfn-seglabel{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.a3-wfn-seg.a3-wfn-current > .a3-wfn-segbtn,.a3-wfn-seg.a3-wfn-current > .a3-wfn-segstatic{border-bottom-color:var(--color-brand-accent);background:var(--color-surface-emphasis-warm);color:var(--color-text-primary);font-weight:var(--font-weight-bold)}
+.a3-wfn-seg.a3-wfn-current .a3-wfn-segmark{color:var(--color-brand-accent)}
+.a3-wfn-seg.a3-wfn-done > .a3-wfn-segbtn,.a3-wfn-seg.a3-wfn-done > .a3-wfn-segstatic{color:var(--color-text-primary)}
+.a3-wfn-seg.a3-wfn-done .a3-wfn-segmark{color:var(--color-status-success)}
+.a3-wfn-seg.a3-wfn-locked > .a3-wfn-segbtn,.a3-wfn-seg.a3-wfn-locked > .a3-wfn-segstatic,.a3-wfn-seg[data-out-of-scope] > .a3-wfn-segbtn,.a3-wfn-seg[data-out-of-scope] > .a3-wfn-segstatic{color:var(--color-text-muted)}
+.a3-wfn-seg[data-attention] .a3-wfn-segmark{color:var(--color-status-warning)}
 @media (max-width:1439px){
   .a3-wfn-list{gap:0}
   .a3-wfn-button,.a3-wfn-static{padding-inline:var(--space-2)}
+  .a3-wfn-segbtn,.a3-wfn-segstatic{padding-inline:var(--space-1);gap:var(--space-1)}
 }
 
 /* Pagination. Structure: .a3-pgn > .a3-pgn-range + .a3-pgn-controls

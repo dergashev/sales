@@ -1244,7 +1244,39 @@ export const COMPONENT_REGISTRY: Specimen[] = [
         { id: 'validate', label: 'Prüfen', state: 'upcoming' },
         { id: 'present', label: 'Präsentieren', state: 'upcoming' },
       ]
-      return <WorkflowNavigator stages={stages} ariaLabel="Projektablauf (Beispiel)" />
+      /**
+       * VR3-KG-UNIFY-00 — the same capability with its second presentation:
+       * a current stage whose members are an ORDERED SEQUENCE draws them as
+       * the compact chapter progression. Same members, same disclosure rule.
+       */
+      const progression: WorkflowStage[] = [
+        { id: 'configure', label: 'Konfigurieren', state: 'done', onSelect: () => {} },
+        {
+          id: 'calculate',
+          label: 'Kalkulieren',
+          state: 'current',
+          onSelect: () => {},
+          stepsPresentation: 'progression',
+          steps: [
+            { id: 'kg200', label: 'KG 200', state: 'done', onSelect: () => {} },
+            { id: 'kg300', label: 'KG 300', state: 'current', onSelect: () => {} },
+            { id: 'kg400', label: 'KG 400', state: 'upcoming', onSelect: () => {}, attention: '1 ungültige Eingabe' },
+            { id: 'kg500', label: 'KG 500', state: 'done', onSelect: () => {}, outOfScope: true },
+            { id: 'kg600', label: 'KG 600', state: 'upcoming', onSelect: () => {} },
+            { id: 'kg700', label: 'KG 700', state: 'upcoming', onSelect: () => {} },
+            { id: 'verantwortung', label: 'Schnittstellen & Verantwortung', shortLabel: 'Verantwortung', state: 'upcoming', onSelect: () => {} },
+            { id: 'terminplan', label: 'Terminplan', state: 'locked', lockedReason: 'Kostengruppen offen' },
+          ],
+        },
+        { id: 'validate', label: 'Prüfen', state: 'upcoming' },
+        { id: 'present', label: 'Präsentieren', state: 'upcoming' },
+      ]
+      return (
+        <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
+          <WorkflowNavigator stages={stages} ariaLabel="Projektablauf (Beispiel)" />
+          <WorkflowNavigator stages={progression} ariaLabel="Optionsablauf (Beispiel · Kapitelprogression)" />
+        </div>
+      )
     },
   },
   {

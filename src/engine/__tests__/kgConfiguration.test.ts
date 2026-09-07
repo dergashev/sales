@@ -52,8 +52,16 @@ const DECLARED = {
   // VR3-TGA-UX-00: `Leistungsgrenze TGA` and `Hausanschlüsse` (read-only,
   // selected, worth nothing) left KG 400 for the catalogue's own
   // `responsibility` block — A 31 → 29, B 48 → 46. No amount moved with them.
-  'DEMO-HAPPY-01': { total: '6480000', uncertainty: '5', selected: 29, variants: 11, decisions: 7 },
-  'DEMO-COMPLEX-01': { total: '38740000', uncertainty: '6', selected: 46, variants: 10, decisions: 11 },
+  //
+  // VR3-KG-UNIFY-00: KG 300 rebuilt into the 20 audited construction records
+  // PER BUILDING (kg300-content-dictionary.md). Each building now carries 6
+  // selected read-only/scope records, 18 configured variants and 1 explicit
+  // balcony decision; B keeps `b-300-90`/`b-300-91` as explicit decisions and
+  // drops the two superseded quarter-level choices (`b-300-ug`,
+  // `b-300-facade`, both at a baseline delta of 0). A 29/11/7 → 31/28/8,
+  // B 46/10/11 → 53/59/17. The TOTALS did not move — proved below.
+  'DEMO-HAPPY-01': { total: '6480000', uncertainty: '5', selected: 31, variants: 28, decisions: 8 },
+  'DEMO-COMPLEX-01': { total: '38740000', uncertainty: '6', selected: 53, variants: 59, decisions: 17 },
 } as const
 
 /** Every cost group included, every explicit decision still open. This is the

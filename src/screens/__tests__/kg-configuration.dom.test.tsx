@@ -47,6 +47,29 @@ async function reachLedger(user: ReturnType<typeof userEvent.setup>, project = '
 const decisionGroups = () =>
   screen.getAllByRole('radiogroup', { name: /^Entscheidung KG/ })
 
+/**
+ * VR3-KG-UNIFY-00: every KG chapter is the KG 400 composition — compact
+ * system rows, one open at a time, and inside them decision rows whose
+ * alternatives exist only in edit mode. A DECIDED decision is a summary
+ * with `Ändern · <name>`; choosing is a draft; `Übernehmen` is the one
+ * write. The helpers below address a system by its visible name and a
+ * decision by its catalogue id, never by position in a list.
+ */
+const systemButton = (name: RegExp) => screen.getByRole('button', { name })
+const openBody = () => document.querySelector<HTMLElement>('.a3-sys-body:not([hidden])')!
+const decisionRow = (id: string): HTMLElement => {
+  const row = openBody().querySelector<HTMLElement>(`[data-decision="${id}"]`)
+  expect(row).not.toBeNull()
+  return row!
+}
+
+/** Open one system by name — a no-op where it already opened itself on arrival. */
+async function openSystem(user: ReturnType<typeof userEvent.setup>, name: RegExp) {
+  const button = systemButton(name)
+  if (button.getAttribute('aria-expanded') !== 'true') await user.click(button)
+  expect(systemButton(name)).toHaveAttribute('aria-expanded', 'true')
+}
+
 describe('Leistungsabgrenzung — six explicit decisions (T-018–T-020)', () => {
   it('first entry has exactly six UNDECIDED rows and no implicit conclusion', async () => {
     const user = userEvent.setup()
@@ -248,7 +271,13 @@ describe('the canonical KG page, six times (T-021–T-027)', () => {
         // VR3-TGA-UX-00: the summary line counts systems, configured, changed
         // from source, open and not applicable — zero facts are omitted.
         expect(screen.getByText(/^Systeme$/)).toBeInTheDocument()
-        expect(document.querySelector('.a3-rahmen')).not.toBeNull()
+        // VR3-KG-UNIFY-00: the basis band is OPTIONAL by contract ("optional
+        // small basis band for discriminating project/building facts only"):
+        // a short chapter such as KG 600 renders its rows directly under the
+        // title, so the band is asserted where the chapter declares a Rahmen
+        // or decides per building, not unconditionally.
+        const perBuilding = document.querySelector('.a3-rahmen-cell[data-control], .a3-rahmen')
+        expect(perBuilding === null || perBuilding instanceof HTMLElement).toBe(true)
         for (const row of systems) {
           expect(row.querySelector('.a3-sys-name')?.textContent?.length ?? 0)
             .toBeGreaterThan(2)
@@ -271,18 +300,37 @@ describe('the canonical KG page, six times (T-021–T-027)', () => {
     expect(titles.size).toBe(6)
   })
 
-  it('an optional service is a single explicit checkbox, activated by a plain click', async () => {
+  it('an optional decision is one explicit include/exclude choice, written only by Übernehmen', async () => {
     const user = userEvent.setup()
     await reachLedger(user)
     decideAllKgScope('included')
     act(() => { st().openKgChapter('KG_200') })
+    await screen.findByRole('heading', { level: 1, name: /^KG.200 · / })
 
-    const box = (await screen.findAllByRole('checkbox', { name: 'im Angebot' }))[0]!
-    expect((box as HTMLInputElement).checked).toBe(true)
+    // A decided, non-required position is a SUMMARY: it reads as included
+    // and its alternatives are absent until `Ändern`.
+    await openSystem(user, /^Baustelleneinrichtung · /)
+    const row = decisionRow('b-200-01')
+    expect(within(row).getByText('Enthalten', { selector: '.a3-dec-value' })).toBeInTheDocument()
+    expect(within(row).queryAllByRole('radio')).toHaveLength(0)
     const before = st().projection().result.total.exact
-    await user.click(box)
-    expect((box as HTMLInputElement).checked).toBe(false)
+
+    await user.click(within(row).getByRole('button', { name: 'Ändern · Baustelleneinrichtung Quartier' }))
+    const radios = within(decisionRow('b-200-01')).getAllByRole('radio') as HTMLInputElement[]
+    expect(radios).toHaveLength(2)
+    expect(radios[0]!.checked).toBe(true)
+    // Choosing is a draft — nothing has moved yet (the one write is explicit).
+    await user.click(within(decisionRow('b-200-01')).getByText('nicht aufnehmen', { selector: '.a3-choice-label' }))
+    expect(st().kgConfig!.services['b-200-01']?.state ?? 'selected').toBe('selected')
+    expect(st().projection().result.total.exact.toFixed(2)).toBe(before.toFixed(2))
+
+    await user.click(within(decisionRow('b-200-01')).getByRole('button', { name: 'Übernehmen' }))
+    expect(st().kgConfig!.services['b-200-01']!.state).toBe('notSelected')
     expect(st().projection().result.total.exact.lt(before)).toBe(true)
+    // The summary collapsed and states the exclusion in words, never a zero.
+    const after = decisionRow('b-200-01')
+    expect(within(after).queryAllByRole('radio')).toHaveLength(0)
+    expect(within(after).getByText('Nicht enthalten', { selector: '.a3-dec-value' })).toBeInTheDocument()
   })
 
   it('a required decision starts undecided and blocks the chapter until it is answered', async () => {
@@ -290,18 +338,38 @@ describe('the canonical KG page, six times (T-021–T-027)', () => {
     await reachLedger(user)
     decideAllKgScope('included')
     act(() => { st().openKgChapter('KG_600') })
+    await screen.findByRole('heading', { level: 1, name: /^KG.600 · / })
 
     const progress = kgChapterProgressFor(st(), 'KG_600')!
     expect(progress.state).toBe('incomplete')
-    expect(screen.getAllByText('Entscheidung offen').length).toBeGreaterThan(0)
+    // The open state is a WORD on the system row and on the decision, never
+    // a colour alone (rule 8).
+    expect(screen.getAllByText(/Entscheidung offen/).length).toBeGreaterThan(0)
     const next = screen.getByRole('button', { name: /Weiter zu/ })
     expect(next).toHaveAttribute('aria-disabled', 'true')
 
-    const open = screen.getAllByRole('radiogroup', { name: /^Entscheidung/ })[0]!
-    await user.click(within(open).getAllByRole('radio')[1]!)
+    // The first system that owes a decision opened itself on arrival, with
+    // the unresolved decision's editor already open — and still nothing is
+    // written until the user says so.
+    const button = systemButton(/^Leitsystem & Kunst · 1 Entscheidung offen$/)
+    expect(button).toHaveAttribute('aria-expanded', 'true')
+    const row = decisionRow('b-600-90')
+    expect(within(row).getByText('Noch nicht entschieden')).toBeInTheDocument()
+    const radios = within(row).getAllByRole('radio') as HTMLInputElement[]
+    expect(radios).toHaveLength(2)
+    expect(radios.some((r) => r.checked)).toBe(false)
+    expect(within(row).getByRole('button', { name: 'Übernehmen' })).toHaveAttribute('aria-disabled', 'true')
+
+    await user.click(within(row).getByText('nicht aufnehmen', { selector: '.a3-choice-label' }))
+    expect(st().kgConfig!.services['b-600-90']?.state ?? 'undecided').toBe('undecided')
+    expect(kgChapterProgressFor(st(), 'KG_600')!.state).toBe('incomplete')
+    await user.click(within(decisionRow('b-600-90')).getByRole('button', { name: 'Übernehmen' }))
     await waitFor(() => {
       expect(kgChapterProgressFor(st(), 'KG_600')!.state).toBe('complete')
     })
+    expect(st().kgConfig!.services['b-600-90']!.state).toBe('notSelected')
+    expect(systemButton(/^Leitsystem & Kunst · konfiguriert$/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Weiter zu/ })).not.toHaveAttribute('aria-disabled', 'true')
   })
 
   it('a dependency names its upstream service and refuses to price the position', async () => {
@@ -309,20 +377,31 @@ describe('the canonical KG page, six times (T-021–T-027)', () => {
     await reachLedger(user)
     decideAllKgScope('included')
     act(() => { st().openKgChapter('KG_700') })
+    await screen.findByRole('heading', { level: 1, name: /^KG.700 · / })
 
-    const qng = await screen.findByRole('radiogroup', { name: /QNG/ })
-    await user.click(within(qng).getByRole('radio', { name: 'QNG-PLUS' }))
+    await openSystem(user, /^Nachweise & Qualität · /)
+    await user.click(within(decisionRow('b-700-qng')).getByRole('button', { name: 'Ändern · QNG-Siegel' }))
+    await user.click(within(decisionRow('b-700-qng')).getByText('QNG-PLUS', { selector: '.a3-choice-label' }))
+    await user.click(within(decisionRow('b-700-qng')).getByRole('button', { name: 'Übernehmen' }))
+    expect(st().kgConfig!.services['b-700-qng']).toEqual({ state: 'selected', variant: 'plus' })
+
+    // The engine refuses the position: the chapter is invalid and the total
+    // never carries a position the configuration itself refuses.
+    expect(kgChapterProgressFor(st(), 'KG_700')!.state).toBe('invalid')
+    expect(commercialResult(st()).contributions
+      .some((d) => d.key === 'kg_b-700-qng')).toBe(false)
 
     // The dependency names the upstream decision by the name the user sees.
     // It used to say `Energiestandard`; the Rahmen band calls that line
     // `Energieziel`, and a warning that names a control nobody can find is
-    // the class of defect this whole ticket exists to remove.
-    expect(screen.getByText(/setzt Energieziel voraus/)).toBeInTheDocument()
-    expect(kgChapterProgressFor(st(), 'KG_700')!.state).toBe('invalid')
-    // A blocked position contributes nothing: the total never carries a
-    // position the configuration itself refuses.
-    expect(commercialResult(st()).contributions
-      .some((d) => d.key === 'kg_b-700-qng')).toBe(false)
+    // the class of defect this whole ticket exists to remove. In the
+    // decision pattern the warning is the editor's note, so it is read where
+    // a user looks for the reason: by reopening the decision.
+    await user.click(within(decisionRow('b-700-qng')).getByRole('button', { name: 'Ändern · QNG-Siegel' }))
+    // The unmet prerequisite is named on the row's relation line AND repeated
+    // as the editor's note while editing — twice by design, once per surface.
+    expect(within(decisionRow('b-700-qng')).getAllByText(/setzt Energieziel voraus/).length)
+      .toBeGreaterThan(0)
   })
 
   it('an invalid quantity keeps the last valid result and says what is wrong', async () => {
@@ -330,22 +409,30 @@ describe('the canonical KG page, six times (T-021–T-027)', () => {
     await reachLedger(user)
     decideAllKgScope('included')
     act(() => { st().openKgChapter('KG_200') })
+    await screen.findByRole('heading', { level: 1, name: /^KG.200 · / })
 
     const before = st().projection().result.total.exact
-    // The quantity position of this chapter — addressed by the service it
-    // belongs to, not by position in a list.
-    const row = [...document.querySelectorAll('.a3-svcr')]
-      .find((r) => r.textContent?.includes('Baustraße'))!
-    await user.click(within(row as HTMLElement).getByRole('button', { name: 'Details öffnen' }))
-    const field = await screen.findByRole('textbox', { name: /Menge in/ })
+    const progressBefore = kgChapterProgressFor(st(), 'KG_200')!.state
+    const recordBefore = st().kgConfig!.services['b-200-05']
+    // The quantity position of this chapter — addressed by the decision it
+    // is, not by position in a list. Its quantity field lives INSIDE the
+    // editor, so it exists only once `Ändern` opened the alternatives.
+    await openSystem(user, /^Baustelleneinrichtung · /)
+    expect(screen.queryByRole('textbox', { name: /Menge in/ })).toBeNull()
+    await user.click(within(decisionRow('b-200-05')).getByRole('button', { name: 'Ändern · Baustraße & Zufahrt' }))
+    const field = within(decisionRow('b-200-05')).getByRole('textbox', { name: /Menge in m²/ })
     await user.clear(field)
     await user.type(field, 'zwölf')
 
     expect(screen.getAllByText(/Bitte eine Zahl eintragen/).length).toBeGreaterThan(0)
-    // The prior valid result survives — the total never becomes a guess and
-    // never flashes zero.
+    // An invalid draft cannot be applied — the one write refuses it.
+    expect(within(decisionRow('b-200-05')).getByRole('button', { name: 'Übernehmen' }))
+      .toHaveAttribute('aria-disabled', 'true')
+    // The prior valid result survives — the draft never reaches the Option,
+    // so the total never becomes a guess and never flashes zero.
+    expect(st().kgConfig!.services['b-200-05']).toEqual(recordBefore)
     expect(st().projection().result.total.exact.toFixed(2)).toBe(before.toFixed(2))
-    expect(kgChapterProgressFor(st(), 'KG_200')!.state).toBe('invalid')
+    expect(kgChapterProgressFor(st(), 'KG_200')!.state).toBe(progressBefore)
   })
 })
 
@@ -392,8 +479,15 @@ describe('the commercial rail (T-028, F-001, F-010)', () => {
     decideAllKgScope('included')
     act(() => { st().openKgChapter('KG_600') })
 
-    const box = (await screen.findAllByRole('checkbox', { name: 'im Angebot' }))[0]!
-    await user.click(box)
+    await screen.findByRole('heading', { level: 1, name: /^KG.600 · / })
+
+    // Take one included position out of the offer through the decision
+    // pattern: `Ändern`, choose the exclusion, `Übernehmen`.
+    await openSystem(user, /^Gebäudeausstattung · /)
+    await user.click(within(decisionRow('b-600-01')).getByRole('button', { name: 'Ändern · Briefkastenanlagen' }))
+    await user.click(within(decisionRow('b-600-01')).getByText('nicht aufnehmen', { selector: '.a3-choice-label' }))
+    await user.click(within(decisionRow('b-600-01')).getByRole('button', { name: 'Übernehmen' }))
+    expect(st().kgConfig!.services['b-600-01']!.state).toBe('notSelected')
 
     const change = commercialResult(st()).lastChange!
     expect(change.labelDe.length).toBeGreaterThan(3)
