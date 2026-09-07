@@ -591,6 +591,51 @@
      alone lands on exactly 320/360/400 at the three reference widths. See
      `.a3-rail-sticky-top` in components.css. */
   --size-rail-header-budget: clamp(320px, 25vw, 400px);
+  /* VR3-COST-00 — the Configurator commercial rail has ONE width authority.
+     Before this token the rail was constrained twice: `--panel-right-width`
+     on the `<aside>` and a CSS-file-local `clamp(16rem,18vw,17rem)` on
+     `.a3-config-work-shell>.a3-config-work-rail`, so the width that actually
+     shipped (259 px at 1440, 256 px at 1280) was owned by neither contract.
+     Measured against the approved target frames: 304 px at 1280, 317 px at
+     1440, 336 px from 1527 px up. The main workspace keeps 976 px at 1280,
+     far above the 560 px floor — the Configurator stays the workspace. */
+  --panel-right-width-configurator: clamp(304px, 22vw, 336px);
+  /* VR3-COST-00 — the pinned commercial band's height budget, restored on
+     EVERY surface (the Configurator carried a local `max-height:none` that
+     switched the contract off exactly where the band was tallest: 553 px,
+     75 % of the rail at 1280). Re-derived by measurement against the target
+     band: signature (up to two lines) + the 36/32 px hero + the reserved
+     change-feedback slot + the completeness line + the band's own padding.
+     Same 0.25-slope shape as the header budget above, one quarter its size.
+     It holds FIVE things and all five are permanent: the commercial
+     signature, the hero, the commercial basis (uncertainty · net · one
+     provenance affordance), the PRE-RESERVED change-feedback region, and the
+     completeness line. The change region is reserved rather than borrowed
+     from the basis line, because a transient message that takes a permanent
+     commercial fact off the screen for four seconds removes exactly the fact
+     the reader is quoting from. */
+  --size-rail-band-budget: clamp(212px, 16.4vw, 244px);
+  /* VR3-COST-00 — the reserved height of `Auswahl mit Preiswirkung`.
+     Exactly three rows at the canonical hit-target height, so adding,
+     replacing, removing or re-ranking an effect changes the block's
+     CONTENTS and never the position of the DIN 276 composition, the CTA or
+     the reading anchor. Fewer than three does not shrink it; more than
+     three never adds a fourth row. Derived from
+     `--size-hit-target-default` rather than measured against a font,
+     because the row IS the press target: one number governs both, and they
+     cannot drift apart. */
+  --size-rail-effects-slot: calc(3 * var(--size-hit-target-default));
+  /* VR3-COST-00 — the commercial basis (uncertainty · net · provenance) is
+     PERMANENT and has its own line; the committed change has its own
+     pre-reserved region beside it. They are never the same slot: the
+     approved target's earlier idea of swapping one for the other was
+     corrected by the delivery task, because the basis is what a salesperson
+     is quoting from at the moment the change lands. */
+  --size-cockpit-basis-slot: 20px;
+  /* The pre-reserved change-feedback region: empty and silent most of the
+     time, and the same height either way, so a commit and its expiry both
+     cost ZERO downstream geometry. */
+  --size-cockpit-change-slot: 34px;
   --panel-left-width: 208px;  /* [provisional] навигационный сайдбар оболочки;
                                  введён при пересборке прототипа 05.08 — правой
                                  панели токен уже существовал, левой не было.

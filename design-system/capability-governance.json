@@ -326,10 +326,11 @@
     {
       "id": "commercial-rail",
       "disposition": "ACTIVE",
+      "note": "Still adopted by the Configurator rail, and the recorded proof moves from CommercialRailChange to CommercialRailStatus. VR3-COST-00 rebuilt the rail as a compact commercial cockpit, and the change block was the one part of this capability the task removed on purpose: CommercialRailChange is a durable in-flow 'what changed' section that STAYS, which is exactly the activity-feed behaviour the rebuild retires ('remove the large in-flow Zuletzt geaendert pattern'; 'the in-flow expiring geaendert marker must be removed/recomposed'). Committed change now renders into a pre-reserved zero-shift slot in the sticky band, and the cockpit already owns the one polite live region the accessibility contract allows, so adopting a primitive that carries its own aria-live would have created a second one. CommercialRailScope and CommercialRailChange remain canonical catalogue shapes with registry specimens; CommercialRailStatus remains in product use.",
       "productConsumers": [
         {
           "path": "src/components/OfferPanel.tsx",
-          "pattern": "<CommercialRailChange"
+          "pattern": "<CommercialRailStatus"
         }
       ]
     },

@@ -16,6 +16,16 @@ export type OutputMode = 'intern' | 'praesentation'
 export type PipelineView =
   | 'buildingScope' | 'konfigurator' | 'praesentieren' | 'vergleich' | 'export'
   | 'einstellungen' | 'grundlagen'
+  /**
+   * VR3-COST-00 · the Option's complete commercial explanation, as a page.
+   *
+   * Deliberately absent from `CLIENT_VISIBLE_PIPELINE_VIEWS`: it carries
+   * price basis, derivation marks, the Regionalfaktor counterfactual and the
+   * commercial change history — internal preparation, not a client surface.
+   * `pipelineViewForOutputProfile` therefore returns the Configurator for it
+   * in Kundenansicht, exactly as it does for the other internal destinations.
+   */
+  | 'kostendetails'
 
 export type ProductLevel = 'liste' | 'opportunity' | 'option'
 

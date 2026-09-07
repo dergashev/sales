@@ -1,6 +1,6 @@
 import Decimal from 'decimal.js'
 import catalogueFixture from '../fixtures/kg-configuration.json'
-import type { CostGroup, Driver } from './calculate'
+import type { CostAuthority, CostGroup, Driver } from './calculate'
 
 /**
  * The canonical KG configuration model (VR3-03, targets T-018–T-028).
@@ -124,19 +124,15 @@ export type KgServiceAuthority = 'sourceEvidenced' | 'derived' | 'assumed'
  * for this": those are three different statements and the product used to
  * print the same thing for all of them.
  */
-export type KgCostAuthority =
-  /** A real cost option exists for this exact decision/value relationship. */
-  | 'direct'
-  /** Priced, but inside another system's position — which one is named. */
-  | 'bundle'
-  /** Moves money somewhere else, with no amount of its own. */
-  | 'indirect'
-  /** No cost option exists. NOT zero, NOT blank, NOT `± 0 €`. */
-  | 'noBasis'
-  /** Outside the All3 offer. Never carries an amount, never `± 0 €`. */
-  | 'bauherr'
-  /** Nothing is rendered — the row has no commercial dimension at all. */
-  | 'none'
+/**
+ * VR3-COST-00: the union itself MOVED to `calculate.ts` as `CostAuthority`,
+ * beside the `Driver` shape that now carries it across the engine boundary.
+ * The name published here is kept verbatim — TGA's own surfaces, tests and
+ * fixtures all read it — but there is exactly ONE declaration, so the
+ * commercial cockpit and the TGA chapter can never coin a seventh state
+ * between them. Values are still produced here (`costAuthorityOf`).
+ */
+export type KgCostAuthority = CostAuthority
 
 /**
  * Applicability is a STATEMENT WITH A CAUSE, never an option named `Keine …`.
@@ -987,6 +983,16 @@ export type KgContribution = Readonly<{
   exact: Decimal
   buildingId?: string
   authority: KgServiceAuthority
+  /**
+   * VR3-COST-00: what this contribution's euro is allowed to mean. The
+   * catalogue has always known it (`costAuthorityOf`); it stopped here and
+   * never reached `Driver`, so every commercial surface downstream had to
+   * assume `direct`. Carrying it is additive and moves no money.
+   */
+  costAuthority: KgCostAuthority
+  /** The carrying position, when `costAuthority` is `bundle`. */
+  costBasisDe?: string
+  costBasisEn?: string
 }>
 
 /**
@@ -1035,6 +1041,11 @@ export function kgContributions(
           labelEn: service.labelEn,
           exact,
           authority: service.authority,
+          costAuthority: contributionCostAuthority(
+            service, serviceDecision(decisions, service),
+          ),
+          ...(service.costBasisDe ? { costBasisDe: service.costBasisDe } : {}),
+          ...(service.costBasisEn ? { costBasisEn: service.costBasisEn } : {}),
           ...(service.buildingId ? { buildingId: service.buildingId } : {}),
         })
       }
@@ -1090,7 +1101,168 @@ export function kgDrivers(
     block: c.group === 'KG_300' || c.group === 'KG_400'
       ? ('bauwerk' as const)
       : ('separatePosition' as const),
+    // VR3-COST-00: the authority the catalogue already computed reaches the
+    // commercial surfaces instead of being dropped at this boundary.
+    costAuthority: c.costAuthority,
+    ...(c.costBasisDe ? { bundleLabelDe: c.costBasisDe } : {}),
+    ...(c.costBasisEn ? { bundleLabelEn: c.costBasisEn } : {}),
   }))
+}
+
+/** The alternative a `singleChoice` decision currently stands on, or `null`. */
+export function selectedVariant(
+  service: KgService, decision: KgServiceDecisionRecord,
+): KgServiceVariant | null {
+  if (service.kind.kind !== 'singleChoice') return null
+  const wanted = decision.variant ?? service.kind.baselineVariant
+  return service.kind.variants.find((v) => v.value === wanted) ?? null
+}
+
+/**
+ * The authority of the CURRENT selection, not merely of the decision.
+ *
+ * `costAuthorityOf` answers for the service. A `singleChoice` answers per
+ * ALTERNATIVE: three of the five heat generators carry no cost option, and
+ * the fixture says so on the variant (`noPriceBasis`, `bundled`) — which
+ * `KgSystemChapter` already renders. Reading only the service level would
+ * report `direkt bepreist` for a chosen alternative that has no price basis
+ * at all, which is the exact fabricated commercial claim §4 of the Cost
+ * Driver contract forbids.
+ *
+ * Additive by construction: `costAuthorityOf`, `rendersAmount` and the
+ * cascade rule are untouched, and a decision whose variant declares nothing
+ * resolves exactly as it did before.
+ */
+export function contributionCostAuthority(
+  service: KgService, decision: KgServiceDecisionRecord,
+): KgCostAuthority {
+  const chosen = selectedVariant(service, decision)
+  if (chosen?.bundled) return 'bundle'
+  if (chosen?.noPriceBasis) return 'noBasis'
+  return costAuthorityOf(service)
+}
+
+/**
+ * A commercially real selection that carries NO amount of its own.
+ *
+ * These are the rows §2.6/§2.7 of the Cost Driver contract describe: chosen,
+ * part of the Option, and priced somewhere else — or nowhere. They are
+ * deliberately NOT contributions (`kgContributions` only emits something that
+ * contributes), so without this producer they were invisible to every
+ * commercial surface, and their absence read as "not selected".
+ *
+ * NOTHING HERE IS ARITHMETIC. It selects and classifies; no amount is read,
+ * derived or invented, and a row that already produced a contribution is
+ * excluded so one selection can never be counted twice.
+ */
+export type KgSelectionWithoutBasis = Readonly<{
+  serviceId: string
+  group: KgScopeGroup
+  groupId: string
+  labelDe: string
+  labelEn: string
+  /** The chosen alternative, where the decision has one. */
+  valueDe: string | null
+  valueEn: string | null
+  costAuthority: KgCostAuthority
+  costBasisDe?: string
+  costBasisEn?: string
+  buildingId?: string
+}>
+
+export function kgSelectionsWithoutBasis(
+  catalogue: KgCatalogue, decisions: KgDecisions,
+): readonly KgSelectionWithoutBasis[] {
+  const contributed = new Set(
+    kgContributions(catalogue, decisions).map((c) => c.serviceId),
+  )
+  const out: KgSelectionWithoutBasis[] = []
+  for (const chapter of catalogue.chapters) {
+    if (decisions.scope[chapter.group] !== 'included') continue
+    for (const group of chapter.groups) {
+      for (const service of group.services) {
+        if (contributed.has(service.id)) continue
+        const decision = serviceDecision(decisions, service)
+        if (decision.state !== 'selected') continue
+        if (!isApplicable(service)) continue
+        if (dependencyBlocker(catalogue, decisions, service)) continue
+        if (dependencySuspension(catalogue, decisions, service)) continue
+        const authority = contributionCostAuthority(service, decision)
+        // `direct` cannot land here — a directly priced selection produced a
+        // contribution — and `none` has no commercial dimension to state.
+        if (authority === 'direct' || authority === 'none') continue
+        const chosen = selectedVariant(service, decision)
+        out.push({
+          serviceId: service.id,
+          group: chapter.group,
+          groupId: group.id,
+          labelDe: service.labelDe,
+          labelEn: service.labelEn,
+          valueDe: chosen ? chosen.labelDe : null,
+          valueEn: chosen ? chosen.labelEn : null,
+          costAuthority: authority,
+          ...(service.costBasisDe ? { costBasisDe: service.costBasisDe } : {}),
+          ...(service.costBasisEn ? { costBasisEn: service.costBasisEn } : {}),
+          ...(service.buildingId ? { buildingId: service.buildingId } : {}),
+        })
+      }
+    }
+  }
+  return out
+}
+
+/**
+ * The delta of the CURRENT alternative against the declared All3 standard.
+ *
+ * Reference level 1 of the Cost Driver contract §5.2 — "the alternative it
+ * replaced within the same decision" — and the only one the product can
+ * state per ROW rather than per Option. Nothing is invented: the standard is
+ * declared by the fixture (`all3Standard`), both deltas are declared by the
+ * fixture, and the difference between two declared numbers against a NAMED
+ * reference is the whole computation.
+ *
+ * `null` — an ABSENT delta, never a zero — whenever the reference does not
+ * exist, the decision is not a choice between alternatives, the selection
+ * already stands on the standard, or either side carries no price basis.
+ * An empty delta is a correct and common state; `± 0 €` in its place would
+ * be a positive claim that two options cost the same.
+ */
+export type KgStandardDelta = Readonly<{
+  referenceDe: string
+  referenceEn: string
+  delta: Decimal
+}>
+
+export function kgDeltaAgainstStandard(
+  service: KgService, decision: KgServiceDecisionRecord,
+): KgStandardDelta | null {
+  if (service.kind.kind !== 'singleChoice') return null
+  const standardValue = service.all3Standard
+  if (!standardValue) return null
+  const chosen = selectedVariant(service, decision)
+  if (!chosen || chosen.value === standardValue) return null
+  const standard = service.kind.variants.find((v) => v.value === standardValue)
+  if (!standard) return null
+  // A side with no price basis cannot take part in a difference: the product
+  // does not know that the price did not move, only that it has no basis.
+  if (chosen.noPriceBasis || chosen.bundled) return null
+  if (standard.noPriceBasis || standard.bundled) return null
+  return {
+    referenceDe: standard.labelDe,
+    referenceEn: standard.labelEn,
+    delta: new Decimal(chosen.delta).minus(new Decimal(standard.delta)),
+  }
+}
+
+/** The service behind a `kg_<serviceId>` driver key, across every catalogue. */
+export function kgServiceOfDriverKey(key: string): KgService | null {
+  if (!key.startsWith('kg_')) return null
+  const serviceId = key.slice(3)
+  for (const catalogue of kgCatalogues()) {
+    const service = serviceById(catalogue, serviceId)
+    if (service) return service
+  }
+  return null
 }
 
 /* ── completion ────────────────────────────────────────────────────────── */

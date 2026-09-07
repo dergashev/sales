@@ -2260,8 +2260,18 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 /* VR2-04 — a reusable Configurator work-stage composition consumed by the
    live KG 300 and KG 700 chapters. It composes existing controls, sheets,
    navigation and rail metrics; no parallel control API is introduced. */
-.a3-config-work-shell>.a3-config-work-rail{width:clamp(16rem,18vw,17rem);max-width:clamp(16rem,18vw,17rem)}
-.a3-config-work-rail .a3-rail-header-budget{max-height:none;overflow:visible;padding:var(--space-3) var(--space-4) var(--space-2)}
+/* VR3-COST-00 — the two rules that used to live here are GONE, and both were
+   contract breaches rather than styling:
+
+   1. `.a3-config-work-shell>.a3-config-work-rail{width:clamp(16rem,18vw,17rem)}`
+      was a SECOND width authority beside `--panel-right-width` on the
+      `<aside>` itself, so the width that shipped belonged to neither
+      contract. The rail now resolves ONE authority — see `.a3-rail` /
+      `.a3-cockpit` below.
+   2. `.a3-config-work-rail .a3-rail-header-budget{max-height:none}` switched
+      the StickyCommercialBand height contract OFF on the one surface where
+      the band was tallest (553 px, 75 % of the rail at 1280). The budget is
+      restored on every surface; the compact cockpit is what makes it fit. */
 /* VR2-09 (final cohesion): ONE rail metric hierarchy at both supported
    widths. Before: 48 px at 1440 — measured `≈ 3.818.000` alone at 226 px in a
    226 px content box, the `€` unit painted off-viewport (hb scrollWidth 277 >
@@ -4345,4 +4355,191 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 @media (max-width:1439px){
   .a3-option-shell{padding-inline:var(--space-5)}
   .a3-option-main{padding-block:var(--space-3) var(--space-6)}
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   VR3-COST-00 · COMMERCIAL COCKPIT (Configurator rail) and KOSTENDETAILS.
+
+   ONE WIDTH AUTHORITY. `.a3-rail` declares its width exactly once, from a
+   local custom property; a surface variant sets the property, never a second
+   `width` declaration. The Configurator's own value comes from
+   `--panel-right-width-configurator`, measured against the approved target:
+   304 px at 1280, 317 px at 1440, 336 px from 1527 up.
+
+   THE RAIL IS A PROJECTION, AND SO IS ITS LAYOUT. Four blocks in a fixed
+   order — commercial result, selected effects, DIN 276 composition, the
+   route to the full explanation — and nothing may be inserted between them
+   transiently: the change slot is a swap inside a reserved box and the
+   effects block is a reserved slot, so a committed decision changes contents
+   and never geometry.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.a3-rail{width:var(--a3-rail-width,var(--panel-right-width));min-width:var(--a3-rail-width,var(--panel-right-width));max-width:var(--a3-rail-width,var(--panel-right-width))}
+.a3-config-work-rail{--a3-rail-width:var(--panel-right-width-configurator)}
+/* The scroll anchor compensates the pinned band, and reads THE SAME token
+   the band is capped to, so the two can never disagree again. */
+.a3-cockpit{scroll-padding-top:var(--size-rail-band-budget)}
+/* The Geist-Vorschau overlay is a zero-height anchor's absolutely positioned
+   child, so its BOX sits over the block below even at `opacity:0`. Measured
+   with `elementFromPoint`: an invisible preview intercepted the point over
+   the secondary commercial facts. It carries no interactive content in any
+   state, so it never needs to receive a pointer. */
+.a3-cockpit .a3-preview-slot,.a3-cockpit .a3-preview{pointer-events:none}
+
+/* ── 1 · the commercial result ─────────────────────────────────────────── */
+.a3-cockpit .a3-rail-band-budget{max-height:var(--size-rail-band-budget);overflow:hidden;padding:10px var(--space-5);border-bottom:var(--border-hairline)}
+.a3-cockpit-sig{margin:0 0 var(--space-1);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--type-small-weight);color:var(--color-text-secondary)}
+/* THE single dominant commercial number, and the rail's only brand accent.
+   `--type-heading-1-narrow` (36/44) is the released Configurator precedent
+   and fits the narrow rail with its unit at both widths; DC-38's 64 px does
+   not, and a key metric rendered at footnote size is the rule-31 violation
+   this replaces. Deliberate, measured deviation — see the change manifest. */
+.a3-cockpit-hero{margin:0;font-weight:var(--type-display-numeric-weight);font-size:var(--type-heading-1-narrow-size);line-height:var(--type-heading-1-narrow-line);color:var(--color-text-display-accent);white-space:nowrap;font-variant-numeric:tabular-nums;letter-spacing:-.015em}
+.a3-cockpit-hero .a3-cockpit-unit{font-size:var(--type-body-size);line-height:1;font-weight:var(--type-display-numeric-weight);margin-left:1px}
+.a3-cockpit-hero-absent{margin:0}
+/* THE CHANGE-FEEDBACK SLOT. It holds either the permanent commercial basis
+   or, for its four-second life, the committed change — reserved for the
+   taller of the two, so the swap costs zero geometry and obscures no
+   persistent commercial fact. */
+.a3-cockpit-basis{min-height:var(--size-cockpit-basis-slot);margin:6px 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-cockpit-basis p{margin:0}
+.a3-cockpit-changeslot{min-height:var(--size-cockpit-change-slot);margin:6px 0 0;display:flex;align-items:flex-start}
+.a3-cockpit-changeslot p{margin:0}
+.a3-cockpit-change{border-left:var(--size-status-accent-width) solid var(--color-status-success);padding-left:var(--space-2);font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary)}
+.a3-cockpit-change[data-direction="increase"]{border-left-color:var(--color-status-warning)}
+.a3-cockpit-change[data-direction="neutral"]{border-left-color:var(--color-border-default)}
+.a3-cockpit-change b{font-weight:700;font-variant-numeric:tabular-nums}
+.a3-cockpit-change .a3-cockpit-ref{color:var(--color-text-secondary)}
+.a3-cockpit-complete{margin:6px 0 0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary);border-left:var(--size-status-accent-width) solid var(--color-status-warning);padding-left:var(--space-2)}
+.a3-cockpit-complete[data-settled="true"]{border-left-color:var(--color-status-success)}
+
+/* ── secondary commercial facts: visible, compact, never a second hero ─── */
+.a3-cockpit-facts{display:flex;flex-direction:column;gap:4px;padding:4px var(--space-5);border-bottom:var(--border-hairline)}
+.a3-cockpit-fact{display:grid;grid-template-columns:minmax(0,1fr)}
+/* The value leads, the denominator follows ON THE SAME BASELINE at caption
+   size. The brief budgets each secondary fact at 20 px, and a second line
+   here is a line the DIN composition does not get. */
+.a3-cockpit-fact .a3-cockpit-fact-v{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:break-word}
+.a3-cockpit-fact .a3-cockpit-fact-k{font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-small-weight);font-variant-numeric:normal;color:var(--color-text-secondary);margin-left:var(--space-2)}
+
+/* ── 2/3 · sections ───────────────────────────────────────────────────── */
+.a3-cockpit-sect{padding:6px var(--space-5);border-bottom:var(--border-hairline)}
+.a3-cockpit-sect>h3{margin:0 0 4px;font-size:var(--type-caption-size);line-height:var(--type-caption-line);letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--color-text-secondary)}
+
+/* THE RESERVED SLOT. 0, 1, 2, 3 and more-than-3 selected effects all leave
+   the DIN 276 composition and the CTA exactly where they were. */
+.a3-cockpit-effects{min-height:var(--size-rail-effects-slot);display:flex;flex-direction:column;margin:0;padding:0;list-style:none}
+.a3-cockpit-effects>li{border-bottom:var(--border-hairline)}
+.a3-cockpit-effects>li:last-child{border-bottom:none}
+.a3-cockpit-effect{display:grid;width:100%;min-height:var(--size-hit-target-default);grid-template-columns:minmax(0,1fr) max-content;gap:var(--space-3);align-items:center;align-content:center;text-align:left;text-decoration:none;color:inherit;border:none;background:none;font:inherit;padding:2px 0;cursor:pointer}
+div.a3-cockpit-effect{cursor:default}
+.a3-cockpit-effect-name{font-size:var(--type-small-size);line-height:var(--type-small-line);overflow-wrap:break-word;hyphens:manual}
+a.a3-cockpit-effect .a3-cockpit-effect-name{text-decoration:underline;text-underline-offset:3px}
+a.a3-cockpit-effect:hover .a3-cockpit-effect-name{color:var(--color-text-primary)}
+.a3-cockpit-effect-arrow{color:var(--color-text-secondary)}
+.a3-cockpit-effect-amount{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.a3-cockpit-effect-state{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-cockpit-effect-state::before{content:" \00B7 "}
+/* A committed change emphasises the row it moved, briefly and in place — no
+   block enters the flow, so downstream geometry cannot move. */
+.a3-cockpit-effect[data-changed="true"]{background:var(--color-surface-subtle);box-shadow:-8px 0 0 var(--color-surface-subtle),8px 0 0 var(--color-surface-subtle);transition:background var(--motion-reveal) var(--motion-easing-standard)}
+.a3-cockpit-effects-empty{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+/* The overflow COUNT, reserved as the last line OF THE EFFECTS BLOCK — the
+   list it counts. Always present, so the block's height does not depend on
+   whether anything is hidden; it simply carries no text when nothing is, and
+   so appears and disappears without moving the DIN table below it. */
+.a3-cockpit-more{min-height:var(--type-caption-line);margin:var(--space-1) 0 0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+
+/* DIN 276 — top level only, numerals aligned to the label's FIRST baseline. */
+.a3-cockpit-kg{width:100%;border-collapse:collapse}
+.a3-cockpit-kg th,.a3-cockpit-kg td{vertical-align:baseline;padding:5px 0;border-bottom:var(--border-hairline)}
+.a3-cockpit-kg thead th{font-size:11px;line-height:14px;color:var(--color-text-secondary);text-align:left;font-weight:var(--type-small-weight);padding-bottom:2px}
+.a3-cockpit-kg thead th.a3-cockpit-num{text-align:right;padding-left:var(--space-2)}
+.a3-cockpit-kg tbody th{font-weight:var(--type-small-weight);text-align:left;font-size:var(--type-caption-size);line-height:var(--type-caption-line);overflow-wrap:break-word;hyphens:manual;padding-right:var(--space-1)}
+.a3-cockpit-kg td.a3-cockpit-num{width:1%;white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums;font-size:var(--type-caption-size);line-height:var(--type-caption-line)}
+.a3-cockpit-kg td.a3-cockpit-share{width:1%;white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);padding-left:var(--space-1)}
+.a3-cockpit-kg td.a3-cockpit-state{text-align:right;white-space:nowrap;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-cockpit-kg tr.a3-cockpit-kg-total th,.a3-cockpit-kg tr.a3-cockpit-kg-total td{font-weight:700;border-bottom:none;padding-top:var(--space-2);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-cockpit-kg tr[data-changed="true"] td.a3-cockpit-num{background:var(--color-surface-subtle);transition:background var(--motion-reveal) var(--motion-easing-standard)}
+.a3-cockpit-note{margin:6px 0 0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+
+/* ── 4 · the one route to the full explanation ─────────────────────────── */
+.a3-cockpit-cta{padding:6px var(--space-5) 10px}
+.a3-cockpit-cta>a,.a3-cockpit-cta>button{display:flex;width:100%;align-items:center;justify-content:center;min-height:var(--size-hit-target-default);border:var(--border-contrast-1px);background:var(--color-surface-default);color:var(--color-text-primary);font-size:var(--type-small-size);font-weight:700;text-decoration:none;cursor:pointer}
+.a3-cockpit-cta>a:hover,.a3-cockpit-cta>button:hover{background:var(--color-surface-subtle)}
+.a3-cockpit-footer{padding:var(--space-3) var(--space-5) var(--space-4)}
+
+/* ── the compact orientation strip (variant="level1") ──────────────────── */
+.a3-cockpit-level1 .a3-cockpit-facts{border-bottom:none}
+
+/* ── DataTable · the canonical semantic table (VR3-COST-00) ────────────── */
+/* Every table sits in its own horizontal scroll container (rule 3a): a
+   numeral column is `max-content` and a font metric is not a pixel count, so
+   the container — never the page — is what yields. */
+.a3-dt-scroll{overflow-x:auto}
+.a3-dt{width:100%;border-collapse:collapse;font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-dt-caption{text-align:left;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);padding-bottom:var(--space-2)}
+.a3-dt th,.a3-dt td{border-bottom:var(--border-hairline);padding:var(--space-2) var(--space-3) var(--space-2) 0;vertical-align:baseline;text-align:left}
+.a3-dt thead th{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);font-weight:var(--type-small-weight)}
+/* A row's own name breaks at ITS word boundaries or not at all. `hyphens:auto`
+   in a squeezed column produced `Wärmever-teilung` and `Objektpla-nung` —
+   breaks the language does not have, which the brief forbids outright. */
+.a3-dt tbody th{font-weight:var(--type-small-weight);overflow-wrap:break-word;hyphens:manual;min-width:14ch}
+/* The action column is exactly as wide as its own label (rule 3a). */
+.a3-dt a.a3-dt-go,.a3-dt button.a3-dt-go{white-space:nowrap;min-height:var(--size-hit-target-default)}
+.a3-dt .a3-dt-go>span[aria-hidden]{margin-left:var(--space-1);text-decoration:none}
+.a3-dt .a3-dt-num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;width:1%}
+.a3-dt .a3-dt-absent{color:var(--color-text-secondary);font-variant-numeric:normal;font-size:var(--type-caption-size)}
+.a3-dt tr.a3-dt-group th{font-weight:700}
+.a3-dt tr.a3-dt-indent th{padding-left:var(--space-5);color:var(--color-text-secondary)}
+.a3-dt tr.a3-dt-sum th,.a3-dt tr.a3-dt-sum td{font-weight:700;border-top:var(--border-contrast-1px);border-bottom:none}
+.a3-dt-tag{display:inline-block;font-size:var(--type-caption-size);line-height:var(--type-caption-line);padding:0 6px;border:var(--border-hairline);color:var(--color-text-secondary);white-space:nowrap}
+.a3-dt-tag[data-tone="warning"]{border-color:var(--color-status-warning);color:var(--color-status-warning)}
+.a3-dt-tag[data-tone="success"]{border-color:var(--color-status-success);color:var(--color-status-success)}
+
+/* ── KOSTENDETAILS · the Option's commercial explanation, as a page ─────── */
+/* One reading column, one section rhythm, one provenance surface. Nothing
+   here opens a layer over a layer: the whole point of the page is that the
+   `Alle Details → Details → Herkunft` chain has nowhere left to live. */
+.a3-costdetails{padding:var(--space-5) var(--space-7) var(--space-7);max-width:var(--content-max-width)}
+.a3-costdetails-head{padding-bottom:var(--space-4);border-bottom:var(--border-hairline)}
+.a3-costdetails-sub{margin:var(--space-2) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+/* An ANCHOR list, not a tab set: every section stays in the document, so
+   Ctrl-F, print and a screen reader's heading list all reach all eight. */
+.a3-costdetails-nav{display:flex;gap:var(--space-5);overflow-x:auto;border-bottom:var(--border-hairline);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-costdetails-nav a{display:inline-flex;align-items:center;min-height:var(--size-hit-target-default);padding:var(--space-2) 0;color:var(--color-text-secondary);text-decoration:none;white-space:nowrap}
+.a3-costdetails-nav a:hover{color:var(--color-text-primary);text-decoration:underline;text-underline-offset:var(--size-text-underline-offset)}
+.a3-costdetails-sect{margin-top:var(--space-6);scroll-margin-top:var(--space-5)}
+.a3-costdetails-sect>h2{margin:0 0 var(--space-3);font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--type-heading-weight)}
+.a3-costdetails-lede{margin:0 0 var(--space-3);max-width:var(--measure-wide);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-costdetails-empty{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-costdetails-note{margin:var(--space-2) 0 0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-costdetails-callout{margin:var(--space-3) 0 0;border-left:var(--size-status-accent-width) solid var(--color-text-primary);padding:var(--space-2) var(--space-3);font-size:var(--type-small-size);line-height:var(--type-small-line);background:var(--color-surface-default)}
+.a3-costdetails-callout[data-tone="warning"]{border-left-color:var(--color-status-warning)}
+/* §A · compact by contract — the rail's summary said once more, not the rail
+   rebuilt at triple size. */
+.a3-costdetails-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--space-5);border:var(--border-hairline);padding:var(--space-5)}
+.a3-costdetails-cell{display:flex;flex-direction:column;gap:var(--space-1);min-width:0}
+.a3-costdetails-k{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-costdetails-v{font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:break-word}
+.a3-costdetails-hero{font-size:var(--type-heading-1-narrow-size);line-height:var(--type-heading-1-narrow-line);font-weight:var(--type-display-numeric-weight);color:var(--color-text-display-accent);font-variant-numeric:tabular-nums;overflow-wrap:break-word}
+.a3-costdetails-range{margin-top:var(--space-2)}
+/* §H · the history, with Rückgängig beside the change it reverses. */
+.a3-costdetails-history{list-style:none;margin:0;padding:0}
+.a3-costdetails-history>li{display:grid;grid-template-columns:104px minmax(0,1fr) max-content max-content;gap:var(--space-3);align-items:baseline;border-bottom:var(--border-hairline);padding:var(--space-2) 0;font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.a3-costdetails-when{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);font-variant-numeric:tabular-nums}
+.a3-costdetails-delta{font-weight:700;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+
+/* 1280 · the rail is 4 % narrower and the viewport 100 px shorter, so its own
+   rhythm tightens and nothing is hidden (the target frames' own compaction
+   pass). Keyed on the supported-width breakpoint the left rail already uses. */
+@media (max-width:1439px){
+  .a3-cockpit .a3-rail-band-budget{padding:6px var(--space-4)}
+  .a3-cockpit-hero{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line)}
+  .a3-cockpit-hero .a3-cockpit-unit{font-size:var(--type-small-size)}
+  .a3-cockpit-facts{padding:4px var(--space-4)}
+  .a3-cockpit-fact .a3-cockpit-fact-v{font-size:var(--type-small-size);line-height:var(--type-small-line)}
+  .a3-cockpit-sect{padding:6px var(--space-4)}
+  .a3-cockpit-kg th,.a3-cockpit-kg td{padding:3px 0}
+  .a3-cockpit-cta{padding:6px var(--space-4) 10px}
 }

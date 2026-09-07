@@ -26,6 +26,36 @@ export type CostGroup = 'KG_100' | 'KG_200' | 'KG_300' | 'KG_400'
 export type Coverage = Record<CostGroup, CoverageState>
 
 /**
+ * What a euro amount is ALLOWED to mean for one contribution.
+ *
+ * ONE union, declared once, for the whole product (VR3-COST-00 · Cost Driver
+ * contract §4). It was authored by VR3-TGA-01 as `KgCostAuthority` inside
+ * `kgConfiguration.ts`, which is where its VALUES are produced; it lives here
+ * because `Driver` — the shape every commercial surface consumes — is what
+ * has to carry it, and a second union beside this one is exactly the
+ * "one axis, two vocabularies" failure the contract forbids
+ * (`kgConfiguration.ts` re-exports the name it already published).
+ *
+ * `± 0 €` may only ever mean *measurably the same price as the baseline
+ * choice*. It may never stand for "excluded", "unknown", "bundled" or "we
+ * have no basis for this": those are four different statements, and the
+ * product used to print the same thing for all of them.
+ */
+export type CostAuthority =
+  /** A real cost option exists for this exact decision/value relationship. */
+  | 'direct'
+  /** Priced, but inside another position — which one is named. */
+  | 'bundle'
+  /** Moves money somewhere else, with no amount of its own. */
+  | 'indirect'
+  /** No cost option exists. NOT zero, NOT blank, NOT `± 0 €`. */
+  | 'noBasis'
+  /** Outside the All3 offer. Never carries an amount, never `± 0 €`. */
+  | 'bauherr'
+  /** Nothing is rendered — the row has no commercial dimension at all. */
+  | 'none'
+
+/**
  * Leistungsabgrenzung groups considered by the binary-scope contract.
  *
  * Ticket "Rebuild Project Card Workflow" supersedes the 22.08.2026 "MAKE
@@ -200,6 +230,22 @@ export type Driver = {
    * ревью 26, находки 9 и 20).
    */
   block: 'bauwerk' | 'separatePosition' | 'surcharge' | 'discount'
+  /**
+   * What this contribution's euro is allowed to MEAN (VR3-COST-00 §4).
+   *
+   * Optional because the producer declares it: a contribution built by a
+   * producer that has no cost-authority concept carries none, and a reader
+   * MUST treat the absence as unknown rather than as `direct`. Missing
+   * authority is not evidence of direct pricing — that inference is the one
+   * failure this axis exists to prevent.
+   *
+   * `kgDrivers()` computes the authority upstream and used to DROP it here;
+   * carrying it is additive and changes no price.
+   */
+  costAuthority?: CostAuthority
+  /** Names the carrying position when `costAuthority` is `bundle`. */
+  bundleLabelDe?: string
+  bundleLabelEn?: string
 }
 
 /** Сумма вкладов одного места сметы. Один обход, одно определение. */
@@ -308,6 +354,20 @@ export function deriveCompleteness(
     completeness: reasons.length ? 'incomplete' : 'complete',
     reasons,
   }
+}
+
+/**
+ * What the Regionalfaktor adds to a Bauwerk block — the ONE definition.
+ *
+ * `calculateBuilding` applies it when the factor is active; the commercial
+ * result states the same quantity as a COUNTERFACTUAL when it is not
+ * (rule 40: the rail must always be able to say what the factor WOULD add).
+ * The formula was previously written twice — here and again inside the
+ * rail's own view code — which is the class of duplicate `CLAUDE.md` names
+ * as its costliest: two copies of one rule diverge on the first edit.
+ */
+export function regionalFactorEffect(bauwerk: Decimal, factor: Decimal): Decimal {
+  return bauwerk.mul(factor.minus(1))
 }
 
 export function calculateBuilding(
@@ -461,7 +521,7 @@ export function calculateBuilding(
   // Регион-фактор — к блоку Bauwerk, не к итогу. Выключен по умолчанию (D-15).
   let regional = new Decimal(0)
   if (cat.regionalFactor.active) {
-    regional = bauwerk.mul(cat.regionalFactor.value.minus(1))
+    regional = regionalFactorEffect(bauwerk, cat.regionalFactor.value)
     drivers.push({
       key: 'regionalfaktor', exact: regional, label: 'Regionalfaktor',
       origin: 'decision' as const, block: 'bauwerk' as const,

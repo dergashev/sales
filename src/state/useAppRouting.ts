@@ -71,7 +71,8 @@ export function currentRoute(s: Store): AppRoute | null {
   const view = pipelineViewForBuildingGate(
     s, pipelineViewForOutputProfile(s.mode, s.pipelineView),
   )
-  if (view === 'export' || view === 'einstellungen' || view === 'grundlagen') {
+  if (view === 'export' || view === 'einstellungen' || view === 'grundlagen'
+    || view === 'kostendetails') {
     return { kind: 'option', projectId, optionId, view, step: null }
   }
   // `vergleich` is no longer reachable as an Option-level view — comparison
@@ -144,7 +145,7 @@ function applyRoute(s: Store, route: AppRoute): RouteNotice {
   }
   s.openOption(route.optionId)
   if (route.view === 'export' || route.view === 'einstellungen'
-      || route.view === 'grundlagen') {
+      || route.view === 'grundlagen' || route.view === 'kostendetails') {
     s.setPipelineView(route.view)
     return null
   }

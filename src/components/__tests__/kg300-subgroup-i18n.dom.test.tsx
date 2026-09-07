@@ -83,8 +83,12 @@ describe('KG 300 subgroup labels translate in EN (AC-1/AC-2)', () => {
     // Switch UI language to EN.
     await user.click(screen.getAllByRole('radio', { name: 'EN' })[0]!)
 
-    await user.click(screen.getByRole('button', { name: 'Show all details' }))
-    await user.click(screen.getByRole('button', { name: 'KG 300 subgroups' }))
+    // VR3-COST-00: the KG 300 subgroup breakdown is DIN 276's second level
+    // and lives on Kostendetails § C — a page, reached by one click from the
+    // cockpit, instead of the `Alle Details → KG 300 Untergruppen` chain
+    // inside the retired all-cost modal. The subject of this test (EN
+    // coverage for the eight labels, AC-1/AC-2) is unchanged.
+    await user.click(screen.getByRole('button', { name: 'All cost details' }))
 
     const rendered = document.body.textContent ?? ''
 

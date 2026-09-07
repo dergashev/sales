@@ -31,10 +31,13 @@ import {
   kgChapterProgress,
   kgConfigurationComplete,
   kgDrivers,
+  kgDeltaAgainstStandard,
   kgGroupAmounts,
+  kgSelectionsWithoutBasis,
   kgTotal,
   openKgDecisionCount,
   scopeDecisionsComplete,
+  selectedVariant as kgSelectedVariant,
   serviceById as kgServiceById,
   serviceDecision as kgServiceDecision,
   unpricedIncludedKgGroups,
@@ -65,6 +68,7 @@ import {
   scopeCounts,
   type CommercialCause,
   type CommercialChange,
+  type CommercialDecisionFact,
   type CommercialResult,
   type CommercialTrust,
 } from './commercialResult'
@@ -116,9 +120,10 @@ import {
   stepIdFromLegacyChapter,
   type ConfiguratorStepId,
 } from './chapters'
-import { withRegionalFactor } from './catalog'
+import { CATALOG, withRegionalFactor } from './catalog'
 import {
   bgfAboveGround, calculateBuilding, calculateKg800, kgSplit, sumOfBlock,
+  regionalFactorEffect,
   SCOPE_BOUNDARIES_DECIDABLE_GROUPS,
   totalLabel as calculationTotalLabel,
   type BuildingInput, type Coverage, type CoverageState,
@@ -2051,6 +2056,19 @@ export type Store = {
      *  render site call `translatedChangeLabel` instead of showing the
      *  German-only `label` untranslated in EN mode. */
     change?: PriceChange
+    /** VR3-COST-00: the piece of the change that a `PriceChange` cannot
+     *  represent — today only KG 700's automatic calculation-basis switch —
+     *  carried as an i18n KEY rather than composed German prose, so the
+     *  cockpit's change slot stays one language in EN.
+     *
+     *  Task 05 left this as a documented gap ("the rare fallback-transition
+     *  text is a known remaining gap"): it was rare only in that task's
+     *  evidenced scenario. On this surface the trigger is an ordinary KG 700
+     *  coverage toggle, so the gap renders `KG700 enthalten` inside an
+     *  otherwise English rail — which AC 63 (`EN is complete`) does not
+     *  allow. The permanent journal `label` a few lines above is untouched:
+     *  it is a German record of record, not UI copy. */
+    noteKey?: string
     deltaExact: Decimal
     percent: Decimal | null
   } | null
@@ -3197,6 +3215,36 @@ export function kgConfigurationCompleteFor(
  * what a reader sees when it does. Merging the two is how VR3-03 came to
  * declare a `status` field and then hard-code it to `'ready'`.
  */
+/**
+ * The per-decision facts every commercial surface reads (VR3-COST-00).
+ *
+ * Built HERE, once, from the catalogue and the decisions, so no view has to
+ * reach into `kgCatalogues()` to answer "which alternative is selected" or
+ * "what is this choice's delta against the declared All3 standard". Both
+ * answers are fixture-declared; neither is derived from a price the view
+ * happens to have on screen.
+ */
+function commercialDecisionFacts(
+  catalogue: KgCatalogue, decisions: KgDecisions,
+): Record<string, CommercialDecisionFact> {
+  const facts: Record<string, CommercialDecisionFact> = {}
+  for (const chapter of catalogue.chapters) {
+    for (const group of chapter.groups) {
+      for (const service of group.services) {
+        const decision = kgServiceDecision(decisions, service)
+        if (decision.state !== 'selected') continue
+        const variant = kgSelectedVariant(service, decision)
+        facts[`kg_${service.id}`] = {
+          valueDe: variant ? variant.labelDe : null,
+          valueEn: variant ? variant.labelEn : null,
+          standard: kgDeltaAgainstStandard(service, decision),
+        }
+      }
+    }
+  }
+  return facts
+}
+
 function deriveCommercialResult(s: Store, projection: Projection): CommercialResult {
   if (s.commercialFault) {
     // The controlled failure mechanism, from the SAME place a genuine engine
@@ -3238,11 +3286,34 @@ function deriveCommercialResult(s: Store, projection: Projection): CommercialRes
     leadRate: projection.leadRate,
     byCostGroup: lines,
     contributions: projection.result.drivers,
+    selectionsWithoutBasis: catalogue && decisions
+      ? kgSelectionsWithoutBasis(catalogue, decisions)
+      : [],
+    decisionFacts: catalogue && decisions
+      ? commercialDecisionFacts(catalogue, decisions)
+      : {},
+    bauwerk: projection.result.bauwerk,
+    regionalFactor: {
+      active: s.regionalfaktorActive,
+      value: CATALOG.regionalFactor.value,
+      // ONE definition of the quantity, shared with `calculateBuilding`
+      // (VR3-COST-00 §3). The rail no longer owns a second copy of it.
+      effect: regionalFactorEffect(
+        projection.result.bauwerk, CATALOG.regionalFactor.value,
+      ),
+    },
     scope: {
       ...counts,
       selectedServices: progress.reduce((n, p) => n + p.selectedServiceCount, 0),
-      openDecisions: catalogue && decisions
-        ? openKgDecisionCount(catalogue, decisions) : 0,
+      // ONE completeness authority on BOTH bases (VR3-COST-00, gate 7).
+      // Identical to `openKgDecisionCount` wherever a KG configuration
+      // exists — `kgConfigurationProjection` builds this very reason from
+      // it — and truthful on the proposal basis, which used to report a
+      // hard-coded 0 that the compact cockpit now renders.
+      openDecisions: projection.result.incompleteReasons.reduce(
+        (n, reason) => (reason.code === 'openMaterialIssues' ? n + reason.count : n),
+        0,
+      ),
       invalidServices: progress.reduce(
         (n, p) => n + p.invalidServiceIds.length + p.blockedServiceIds.length, 0,
       ),
@@ -6076,15 +6147,18 @@ const store = createStore<Store>((set, get) => {
             : fallbackReverted
               ? `${groupLabel} ${COVERAGE_LABEL[st]} · KG 700: Berechnung automatisch zurück auf All3-Verfahren umgestellt`
               : `${groupLabel} ${COVERAGE_LABEL[st]}`,
-          // Task 05 rework (QA AC-2): the fallback branches above compose an
-          // extra German KG 700 auto-fallback explanation that a plain
-          // `coverage` PriceChange cannot represent — only the common case
-          // (no fallback transition) gets a translatable `change`; the rare
-          // fallback-transition text is a known remaining gap (out of scope
-          // here — QA's evidenced scenario is a plain KG toggle, not one
-          // that triggers the KG 700 auto-fallback).
-          change: fallbackApplied || fallbackReverted
-            ? undefined : { kind: 'coverage', group: g, value: st },
+          // VR3-COST-00: the decision itself is ALWAYS a plain `coverage`
+          // change — a KG group moved to a coverage state — so it always
+          // carries its translatable form. What the fallback branches add is
+          // not a different decision but a consequence OF it, and it now
+          // travels as `noteKey` (below) instead of forcing the render site
+          // back onto the German-only `label`.
+          change: { kind: 'coverage', group: g, value: st },
+          noteKey: fallbackApplied
+            ? 'coverage.kg700.fallbackApplied'
+            : fallbackReverted
+              ? 'coverage.kg700.fallbackReverted'
+              : undefined,
           deltaExact: delta,
           percent: before.isZero() ? null : delta.div(before).mul(100),
         },
@@ -7946,6 +8020,15 @@ const store = createStore<Store>((set, get) => {
         set({
           activeDelta: {
             label: labels.de,
+            // VR3-COST-00: `labels` above already holds BOTH languages, and
+            // the journal event two lines up carries both in `cause`. The
+            // cockpit's change slot was the one consumer left reading only
+            // `labels.de`, which put `KG 700 enthalten` inside an otherwise
+            // English rail on the most ordinary change this surface has —
+            // a Leistungsabgrenzung scope toggle. Handing the render site
+            // the `PriceChange` lets `translatedChangeLabel` reach the same
+            // `kgChangeLabels` and pick the right side of it.
+            change: { kind: 'kgScope', group, value: decision },
             deltaExact: delta,
             percent: before.isZero() ? null : delta.div(before).mul(100),
           },
@@ -8044,6 +8127,10 @@ const store = createStore<Store>((set, get) => {
         set({
           activeDelta: {
             label: labels.de,
+            // Same as `setKgScopeDecision` above: the TGA service decision is
+            // the other ordinary change this cockpit reports, and it has the
+            // same two-language `labels` in hand.
+            change: { kind: 'kgService', serviceId, value: decision },
             deltaExact: delta,
             percent: before.isZero() ? null : delta.div(before).mul(100),
           },

@@ -17,6 +17,18 @@ import { localizeMoneyText, localizePercentText, useTx, type UiLanguage } from '
 type EstimateUncertaintyBadgeProps =
   { language: UiLanguage } & (
     | { presentation: 'compact'; pp: number }
+    /**
+     * VR3-COST-00 · the interval alone, for a line that already names what
+     * it qualifies. In the commercial cockpit the amount is directly above
+     * and the word `netto` directly beside, so repeating
+     * `Schätzunsicherheit` cost the narrow rail a whole wrapped line and
+     * told the reader nothing the surrounding line did not.
+     *
+     * A THIRD PRESENTATION OF THE SAME COMPONENT, not a local copy: the
+     * numeral, the narrow space and the locale re-typesetting all stay
+     * where they already are (DC-3 keeps one owner).
+     */
+    | { presentation: 'inline'; pp: number }
     | { presentation: 'range'; pp: number; totalExact: Decimal }
   )
 
@@ -31,6 +43,13 @@ export function EstimateUncertaintyBadge(props: EstimateUncertaintyBadgeProps) {
   // `tx()` resolves the DE prose against the dictionary (rule 36) instead of
   // concatenating a translated fragment onto a hardcoded string.
   const tx = useTx()
+  if (props.presentation === 'inline') {
+    return (
+      <span className="numeric">
+        {localizePercentText(`±${NNBSP}${props.pp}${NNBSP}%`, props.language)}
+      </span>
+    )
+  }
   if (props.presentation === 'compact') {
     return (
       <span className="text-body text-text-secondary">

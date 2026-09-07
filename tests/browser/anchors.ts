@@ -142,6 +142,63 @@ export const BUILDING_SCOPE = {
   progress: (confirmed: number, total: number) => `${confirmed} von ${total} bestätigt`,
 }
 
+/**
+ * VR3-COST-00 · the commercial cockpit and its Kostendetails page.
+ *
+ * Every string is the DE copy the app actually renders, from
+ * `src/i18n/index.ts`'s `commercial.*` / `costDetails.*` block. The three
+ * class hooks are the canonical Design System classes the cockpit is built
+ * from — the shipped app has no `data-testid` anywhere, and the geometry gate
+ * has to measure BOXES, which a role cannot address.
+ */
+export const COCKPIT = {
+  landmark: 'Angebot',
+  effectsHeading: 'Auswahl mit Preiswirkung',
+  effectsList: 'Aktuell gewählte Auswahl mit Preiswirkung',
+  dinHeading: 'Kostengruppen nach DIN 276',
+  cta: 'Alle Kostendetails',
+  origin: /^Herkunft anzeigen/,
+  toDecision: (decision: string) => `Zur Entscheidung · ${decision}`,
+  cls: {
+    rail: 'aside.a3-cockpit',
+    band: '.a3-rail-band-budget',
+    hero: '.a3-cockpit-hero',
+    basis: '.a3-cockpit-basis',
+    change: '.a3-cockpit-change',
+    complete: '.a3-cockpit-complete',
+    effects: '.a3-cockpit-effects',
+    effect: '.a3-cockpit-effect',
+    kg: '.a3-cockpit-kg',
+    ctaBlock: '.a3-cockpit-cta',
+    sect: '.a3-cockpit-sect',
+  },
+} as const
+
+export const COST_DETAILS = {
+  title: 'Kostendetails',
+  path: (projectId: string, optionId: string) =>
+    `/projekt/${projectId}/option/${optionId}/kostendetails`,
+  sections: [
+    'A · Kaufmännische Zusammenfassung',
+    'B · Aktuell gewählte Auswahl mit Preiswirkung',
+    'C · Zusammensetzung nach DIN 276',
+    'D · Beitragsverzeichnis',
+    'E · Offen, ohne Preisgrundlage, Bauseits und ausgeschlossen',
+    'F · Regionalfaktor',
+    'G · Preisgrundlage und Herkunft',
+    'H · Änderungsverlauf',
+  ],
+  ledgerSum: 'Summe der Beiträge',
+  noAmount: 'kein Betrag',
+  states: {
+    noBasis: 'keine gesonderte Preisgrundlage',
+    bundle: /^im Bündel bepreist/,
+    bauseits: 'Bauseits',
+    notInScope: 'Nicht im All3-Umfang',
+  },
+  regionalInactive: 'nicht aktiviert',
+} as const
+
 export const KONFIGURATOR_GATE = {
   locked: 'Konfigurator gesperrt',
   available: 'Konfigurator verfügbar',

@@ -398,12 +398,19 @@ describe('the commercial rail (T-028, F-001, F-010)', () => {
     expect(change.labelEn.length).toBeGreaterThan(3)
     expect(change.group).toBe('KG_600')
     expect(change.signedExact.isNegative()).toBe(true)
-    // And the rail says so, durably — not only for the chip's four seconds.
-    // The block cross-fades in (M-07, `AnimatePresence mode="wait"`), so the
-    // new label lands one settled frame after the click, never synchronously.
-    const rail = screen.getByRole('region', { name: 'Zuletzt geändert' })
-    await waitFor(() => expect(rail).toHaveTextContent(change.labelDe))
-    expect(rail.textContent).toMatch(/−/)
+    // VR3-COST-00: the rail states the change in the COMMERCIAL-BASIS
+    // slot — the same reserved box that otherwise carries `± n % · netto ·
+    // Herkunft` — for the change's own four-second life. The durable record
+    // moved to Kostendetails § H, which is where a history belongs; what the
+    // cockpit owes the reader is the CURRENT state plus a brief, named
+    // account of what just moved it.
+    const slot = document.querySelector('.a3-cockpit-change')
+    expect(slot).not.toBeNull()
+    await waitFor(() => expect(slot!.textContent ?? '').toContain(change.labelDe))
+    expect(slot!.textContent).toMatch(/−/)
+    // The delta NAMES its reference: an unqualified signed number is the one
+    // thing every commercial source in the audit's research refuses to ship.
+    expect(slot!.textContent).toContain('gegenüber')
   })
 
   it('names the included scope and calls an incomplete result a subtotal', async () => {
@@ -411,9 +418,16 @@ describe('the commercial rail (T-028, F-001, F-010)', () => {
     await reachLedger(user)
     decideAllKgScope('included')
 
-    const scope = screen.getByRole('region', { name: 'Enthaltener Umfang' })
-    expect(scope).toHaveTextContent('6 von 6')
-    expect(scope).toHaveTextContent('offene Entscheidungen')
+    // VR3-COST-00: completeness is ONE line, immediately below the amount,
+    // in a fixed slot with all three counts always present — and it reads
+    // the canonical selector, never a counter the view keeps for itself.
+    const completeness = document.querySelector('.a3-cockpit-complete')
+    expect(completeness).not.toBeNull()
+    expect(completeness!.textContent).toContain('6/6 im Angebot')
+    expect(completeness!.textContent).toContain('0 ausgeschlossen')
+    // The open-decision count is real: it comes from the engine's own
+    // completeness reasons, and it is what makes this result a subtotal.
+    expect(completeness!.textContent).toMatch(/[1-9]\d* offen/)
     // R-18 / rule 16: an offer with open decisions is a SUBTOTAL of the
     // priced positions, and it says so rather than implying a total.
     expect(commercialResult(st()).coverage).toBe('subtotal')
@@ -432,7 +446,7 @@ describe('the commercial rail (T-028, F-001, F-010)', () => {
 
     // The rail's hero prints the CURRENT rounded display and nothing else:
     // a counted value would put a number on screen that is not the result.
-    const shown = () => document.querySelector('.a3-hb-total .a3-hb-num')?.textContent ?? ''
+    const shown = () => document.querySelector('.a3-cockpit-hero')?.textContent ?? ''
     expect(shown()).toContain(st().projection().result.total.display)
     act(() => { st().setKgScopeDecision('KG_300', 'excluded') })
     expect(shown()).toContain(st().projection().result.total.display)

@@ -264,7 +264,17 @@ describe('Сквозной сценарий продажи', () => {
     // this ticket must not invent a narrowing. 6.480.000 € ± 5 % is
     // therefore 6.156.000 € to 6.804.000 €, and the band shows both in
     // money because that is what gets asked in a negotiation.
-    expect(screen.getByText(/6\.156\.000/)).toBeInTheDocument()
+    //
+    // VR3-COST-00 moved WHERE it is shown, not WHETHER. In the compact rail
+    // the range bar restated one number as three — its edges are a pure
+    // symmetric function of the total and its marker is always centred — for
+    // about 80 px of a column that had none to spare, so the rail keeps the
+    // immediate fact (`± n %`) and the money edges live on Kostendetails § A,
+    // one click away. Uncertainty is reduced in footprint; it is not removed.
+    expect(document.querySelector('.a3-cockpit-basis')?.textContent ?? '')
+      .toMatch(/±/)
+    await user.click(screen.getByRole('button', { name: 'Alle Kostendetails' }))
+    expect(await screen.findByText(/6\.156\.000/)).toBeInTheDocument()
     expect(screen.getByText(/6\.804\.000/)).toBeInTheDocument()
   })
 

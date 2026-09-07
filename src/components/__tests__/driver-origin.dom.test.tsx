@@ -60,18 +60,25 @@ describe('DC-21: происхождение раскрывается у кажд
     expect(drivers.length).toBeGreaterThan(20)
     expect(drivers.every((d) => d.basis === null)).toBe(true)
 
-    await user.click(screen.getByRole('button', { name: 'Alle Details ansehen' }))
-    // Task 04 (F-35, rail a11y): each row's trigger now carries its own
-    // driver-specific accessible name ("Details · <label>") so a
-    // screen-reader buttons list can tell 12+ rows apart — the visible
-    // text stays "Details", matched here by prefix.
-    const details = screen.getAllByRole('button', { name: /^Details/ })
-    expect(details.length).toBe(drivers.length)
+    // VR3-COST-00: the explanation of every contribution is the
+    // Beitragsverzeichnis on Kostendetails § D — ONE table, reached by one
+    // click, instead of `Alle Details → Details → Herkunft` opened
+    // twenty-plus times. The defect this test exists for (a detail surface
+    // crashing on a contribution kind it did not expect) is now impossible
+    // by shape rather than by a fixed popover: every row renders the same
+    // four cells, so a `basis: null` set cannot take the screen down.
+    await user.click(screen.getByRole('button', { name: 'Alle Kostendetails' }))
 
-    for (const btn of details) {
-      await user.click(btn)
-      await user.click(btn)
-    }
+    const ledger = await screen.findByRole('heading', {
+      level: 2, name: /Beitragsverzeichnis/,
+    })
+    const section = ledger.closest('section') as HTMLElement
+    expect(section).not.toBeNull()
+    // Every contribution is listed, and the ledger says so in its own lede.
+    expect(section.textContent).toContain(String(drivers.length))
+    // And it reconciles — which is what makes it composition rather than the
+    // selection basket beside it (those two must never be confused).
+    expect(section.textContent).toContain('Summe der Beiträge')
   })
 
   it('ein Beitrag ohne Rechenbasis nennt Kostengruppe und Betrag — und erfindet keine Menge', async () => {
@@ -79,16 +86,17 @@ describe('DC-21: происхождение раскрывается у кажд
     render(<App />)
     await enterPipeline(user)
 
-    await user.click(screen.getByRole('button', { name: 'Alle Details ansehen' }))
-    const row = document.querySelector('[data-driver-id^="kg_"]')
-    expect(row).not.toBeNull()
-    await user.click(row!.querySelector('button')!)
+    await user.click(screen.getByRole('button', { name: 'Alle Kostendetails' }))
 
-    const text = document.body.textContent ?? ''
-    // The popover states what IS known — the DIN 276 group the contribution
-    // belongs to — and prints neither a quantity nor a rate it does not
-    // have. A fabricated "Angewendet auf" line beside a declared amount is
-    // the same class of defect as a quantity in the wrong unit.
+    const ledger = await screen.findByRole('heading', {
+      level: 2, name: /Beitragsverzeichnis/,
+    })
+    const text = (ledger.closest('section') as HTMLElement).textContent ?? ''
+    // The ledger states what IS known — the DIN 276 group the contribution
+    // belongs to and its price basis — and prints neither a quantity nor a
+    // rate it does not have. A fabricated "Angewendet auf" line beside a
+    // declared amount is the same class of defect as a quantity in the
+    // wrong unit.
     expect(text).toContain('KG')
     expect(text).not.toContain('Angewendet auf')
     expect(text).not.toContain('Satz')

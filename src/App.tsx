@@ -7,6 +7,7 @@ import { Button } from './components/primitives'
 import { ACCOUNT_PORTRAIT_ASSET_ID, identityAsset } from './assets/identity-media'
 import { ClientOutputGateDialog } from './components/ClientOutputGateDialog'
 import { OfferPanel } from './components/OfferPanel'
+import { CostDetails } from './screens/CostDetails'
 import { PresentationShell } from './components/PresentationShell'
 import { UndoToast } from './components/UndoToast'
 import { ConfigurationModeReadiness, ModeChangeNotice, S3Konfigurator } from './screens/S3Konfigurator'
@@ -305,6 +306,11 @@ export function App() {
                 {renderedView === 'praesentieren' && <PraesentierenStage modeRef={modeRef} />}
                 {renderedView === 'export' && <S5Export />}
                 {renderedView === 'einstellungen' && <S6Einstellungen />}
+                {/* VR3-COST-00 · the Option's complete commercial
+                    explanation. A page, not a modal — which is what makes
+                    Browser Back return to the exact stage and step the
+                    reader came from, through the released router. */}
+                {renderedView === 'kostendetails' && <CostDetails />}
               </div>
             </div>
           </main>
@@ -323,7 +329,11 @@ export function App() {
                scope is saved and Leistungsabgrenzung has been entered; the
                completion count and the saved receipt live in the centre,
                where the decision is. */
-            renderedView === 'buildingScope' || konfiguratorGate ? null
+            /* Kostendetails IS the commercial surface: the rail beside it
+               would be the same figures a second time, in a third of the
+               width, competing with the explanation the reader came for. */
+            renderedView === 'buildingScope' || renderedView === 'kostendetails'
+              || konfiguratorGate ? null
             : !s.pricingStarted
               ? <ConfigurationModeReadiness />
               : renderedView === 'konfigurator' && s.configurationModeEditing

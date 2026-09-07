@@ -55,10 +55,16 @@ export type ProjectRouteStage =
  * model removes.
  */
 export type OptionRouteView =
-  | OptionStageId | 'export' | 'einstellungen' | 'grundlagen'
+  | OptionStageId | 'export' | 'einstellungen' | 'grundlagen' | 'kostendetails'
 
+/**
+ * `kostendetails` joins the three destinations that are NOT stages
+ * (VR3-COST-00). It is read-oriented by contract, so it may never carry a
+ * step — which is exactly what this list already guarantees — and
+ * `ProjectStage`/`OptionStageId` stay untouched: there is no fifth stage.
+ */
 const EXTRA_OPTION_VIEWS: readonly OptionRouteView[] = [
-  'export', 'einstellungen', 'grundlagen',
+  'export', 'einstellungen', 'grundlagen', 'kostendetails',
 ]
 
 export type AppRoute =

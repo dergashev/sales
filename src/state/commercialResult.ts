@@ -1,6 +1,11 @@
 import Decimal from 'decimal.js'
 import type { CostGroup, Driver } from '../engine/calculate'
-import { KG_SCOPE_GROUPS, type KgScopeDecision } from '../engine/kgConfiguration'
+import {
+  KG_SCOPE_GROUPS,
+  type KgScopeDecision,
+  type KgSelectionWithoutBasis,
+  type KgStandardDelta,
+} from '../engine/kgConfiguration'
 import type { Displayed, Rate } from '../engine/money'
 
 /**
@@ -120,8 +125,50 @@ export type CommercialScopeSummary = Readonly<{
   undecidedGroups: number
   decidableGroups: number
   selectedServices: number
+  /**
+   * Open commercial decisions, from ONE authority (VR3-COST-00, gate 7).
+   *
+   * This used to read `openKgDecisionCount` on the KG basis and a literal
+   * `0` on the proposal basis — a knowingly false count, harmless only
+   * while nothing rendered it. The compact cockpit renders it beside the
+   * amount, so it now comes from the completeness reasons the ENGINE
+   * already produces (`IncompleteReason.openMaterialIssues`), which is the
+   * same number on the KG basis and a truthful one on the other. No
+   * eligibility rule changed; a second counter was removed.
+   */
   openDecisions: number
   invalidServices: number
+}>
+
+/**
+ * The Regionalfaktor, as a STATEMENT rather than a formula (rule 40, D-15).
+ *
+ * `effect` is what the factor contributes when it is active and what it
+ * WOULD contribute when it is not — one quantity, one definition
+ * (`regionalFactorEffect`, `engine/calculate.ts`). The rail used to compute
+ * the counterfactual itself, which made the view a second calculator of a
+ * released formula.
+ */
+/**
+ * The per-decision facts a commercial surface needs and cannot derive from a
+ * `Driver`: which alternative is currently selected, and — where the fixture
+ * declares an All3 standard — the delta against that NAMED reference.
+ *
+ * Keyed by the driver key, so a surface looks a row up rather than reaching
+ * into the catalogue itself. `standard: null` means there is no meaningful
+ * reference, and the correct rendering of that is an EMPTY delta, never zero.
+ */
+export type CommercialDecisionFact = Readonly<{
+  valueDe: string | null
+  valueEn: string | null
+  standard: KgStandardDelta | null
+}>
+
+export type CommercialRegionalFactor = Readonly<{
+  active: boolean
+  value: Decimal
+  /** Applied to the Bauwerk block, never to the total (CALC-009). */
+  effect: Decimal
 }>
 
 export type CommercialResult = Readonly<{
@@ -137,6 +184,21 @@ export type CommercialResult = Readonly<{
   leadRate: Rate
   byCostGroup: readonly CommercialGroupLine[]
   contributions: readonly Driver[]
+  /**
+   * Selections that are commercially real and carry NO amount of their own
+   * (VR3-COST-00 · Cost Driver contract §2.6/§2.7).
+   *
+   * They are deliberately absent from `contributions`, because a
+   * contribution is something that contributes. Without them the product
+   * could not distinguish "not selected" from "selected, priced inside
+   * another position" — and rendered the second as the first.
+   */
+  selectionsWithoutBasis: readonly KgSelectionWithoutBasis[]
+  /** Per-decision facts, by driver key. See `CommercialDecisionFact`. */
+  decisionFacts: Readonly<Record<string, CommercialDecisionFact>>
+  /** The Bauwerk block the Regionalfaktor and the KG shares apply to. */
+  bauwerk: Decimal
+  regionalFactor: CommercialRegionalFactor
   scope: CommercialScopeSummary
   lastChange: CommercialChange | null
   /**

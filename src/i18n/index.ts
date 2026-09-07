@@ -2576,6 +2576,184 @@ const de = {
   'vr3.tga.cascade.announcePlural':
     '{decision} geändert. {count} abhängige Entscheidungen betroffen.',
   'vr3.tga.cascade.announceNone': '{decision} geändert. Keine abhängige Entscheidung betroffen.',
+
+  /* ── VR3-COST-00 · commercial cockpit and Kostendetails ────────────────
+     The price-authority vocabulary is NOT repeated here: it is
+     `vr3.tga.price.*` above, authored by VR3-TGA-01, and one axis may not
+     have two dictionaries. Only the cockpit's own copy lives below. */
+  'commercial.completeness.heading': 'Vollständigkeit des Angebots',
+  'commercial.effects.heading': 'Auswahl mit Preiswirkung',
+  'commercial.effects.listLabel': 'Aktuell gewählte Auswahl mit Preiswirkung',
+  'commercial.effects.empty': 'Keine preiswirksame Auswahl in der aktuellen Konfiguration.',
+  'commercial.effects.more': 'weitere {count} Auswahlen',
+  'commercial.effects.moreWithoutAmount':
+    'weitere {count} Auswahlen, davon {without} ohne eigenen Betrag',
+  'commercial.effects.moreLink': 'in den Kostendetails',
+  'commercial.effects.toDecision': 'Zur Entscheidung',
+  'commercial.effects.toDecisionNamed': 'Zur Entscheidung · {decision}',
+  'commercial.effects.notSummed':
+    'Die Summe dieser Auswahlen ist nicht der ausgewiesene Betrag: dieser enthält '
+    + 'zusätzlich Grundkosten, abgeleitete Kosten und nicht konfigurierbare Positionen. '
+    + 'Die vollständige Zusammensetzung steht in den Abschnitten C und D.',
+  'commercial.effects.announce': '{decision} · Beitrag {amount}.',
+  'commercial.effects.announceNoAmount': '{decision} · {state}, kein eigener Betrag.',
+  'commercial.state.reduction': 'Minderung',
+  'commercial.state.noPriceEffect': 'ohne Preiswirkung',
+  'commercial.authority.unknown': 'Preisgrundlage nicht bestimmt',
+  'commercial.authority.bauseits': 'Bauseits',
+  'commercial.din.heading': 'Kostengruppen nach DIN 276',
+  'commercial.din.caption': 'Kostengruppen nach DIN 276, oberste Ebene',
+  'commercial.din.colGroup': 'Kostengruppe',
+  'commercial.din.colAmount': 'Betrag',
+  'commercial.din.colShare': 'Anteil',
+  'commercial.din.noteSubtotal':
+    'Anteile bezogen auf die Zwischensumme · unabhängig gerundet',
+  'commercial.din.noteTotal': 'Anteile bezogen auf den Gesamtbetrag · unabhängig gerundet',
+  'commercial.din.excluded': 'Nicht im All3-Umfang',
+  'commercial.din.undecided': 'Noch offen',
+  'commercial.completeness.line':
+    '{included}/{total} im Angebot · {excluded} ausgeschlossen · {open} offen',
+  'commercial.basis.origin': 'Herkunft',
+  'commercial.change.against': 'gegenüber {reference}',
+  'commercial.change.currentState': 'aktuellem Stand',
+  // The KG 700 calculation basis follows the KG 700 coverage decision
+  // automatically. It is a CONSEQUENCE of the change, not a second decision,
+  // so it is phrased as one — and it lives as a key, not as German prose
+  // composed into `activeDelta.label`, so the EN rail stays English.
+  'coverage.kg700.fallbackApplied':
+    'KG 700: Berechnung automatisch auf HOAI/AHO umgestellt',
+  'coverage.kg700.fallbackReverted':
+    'KG 700: Berechnung automatisch zurück auf All3-Verfahren umgestellt',
+  'commercial.cta.costDetails': 'Alle Kostendetails',
+  'costDetails.title': 'Kostendetails',
+  'costDetails.subtitle': '{option} · Grundlage vom {date} · alle Beträge netto',
+  'costDetails.back': 'Zurück zur Konfiguration',
+  'costDetails.nav.label': 'Abschnitte',
+  'costDetails.nav.summary': 'Übersicht',
+  'costDetails.nav.selection': 'Auswahl',
+  'costDetails.nav.din': 'DIN 276',
+  'costDetails.nav.ledger': 'Beiträge',
+  'costDetails.nav.open': 'Offen & Bauseits',
+  'costDetails.nav.regional': 'Regionalfaktor',
+  'costDetails.nav.origin': 'Herkunft',
+  'costDetails.nav.history': 'Verlauf',
+  'costDetails.a.heading': 'A · Kaufmännische Zusammenfassung',
+  'costDetails.a.leadRate': 'Leitkennzahl',
+  'costDetails.a.duration': 'Bauzeit',
+  'costDetails.a.completeness': 'Vollständigkeit',
+  'costDetails.a.completenessValue': '{included} / {total}',
+  'costDetails.a.completenessDetail':
+    'Kostengruppen im Angebot · {open} Entscheidungen offen',
+  'costDetails.a.furtherRates': 'Weitere Bezugsgrößen',
+  'costDetails.a.uncertaintyLabel': 'Bandbreite der Schätzung',
+  'costDetails.a.atAGlance': 'Auf einen Blick',
+  'costDetails.a.readOnly':
+    'Diese Seite erklärt, wie der aktuelle Betrag zustande kommt. Werte werden hier '
+    + 'gelesen, nicht geändert — jede Auswahl führt über „Zur Entscheidung" zurück an '
+    + 'ihre Stelle im Konfigurator.',
+  'costDetails.b.heading': 'B · Aktuell gewählte Auswahl mit Preiswirkung',
+  'costDetails.b.caption': 'Alle gewählten Entscheidungen mit kaufmännischer Wirkung',
+  'costDetails.b.colDecision': 'Entscheidung',
+  'costDetails.b.colValue': 'Gewählt',
+  'costDetails.b.colContribution': 'Beitrag',
+  'costDetails.b.colReference': 'Referenz',
+  'costDetails.b.colDelta': 'Delta',
+  'costDetails.b.colKg': 'KG',
+  'costDetails.b.colAuthority': 'Preisgrundlage',
+  'costDetails.b.colAction': 'Aktion',
+  'costDetails.b.noAmount': 'kein Betrag',
+  'costDetails.b.selected': 'aufgenommen',
+  'costDetails.b.empty': 'In dieser Option ist derzeit keine preiswirksame Auswahl getroffen.',
+  'costDetails.c.heading': 'C · Zusammensetzung nach DIN 276',
+  'costDetails.c.ledeSubtotal':
+    'Zweite Gliederungsebene, wie sie eine Kostenschätzung nach DIN 276 zulässt. '
+    + 'Anteile beziehen sich auf die Zwischensumme, nicht auf einen vollständigen Gesamtbetrag.',
+  'costDetails.c.ledeTotal':
+    'Zweite Gliederungsebene, wie sie eine Kostenschätzung nach DIN 276 zulässt. '
+    + 'Anteile beziehen sich auf den ausgewiesenen Gesamtbetrag.',
+  'costDetails.c.caption': 'Kostengruppen nach DIN 276, erste und zweite Ebene',
+  'costDetails.c.colScope': 'Umfang',
+  'costDetails.c.all3': 'All3',
+  'costDetails.d.heading': 'D · Beitragsverzeichnis',
+  'costDetails.d.lede':
+    'Alle {count} Beiträge, die den ausgewiesenen Betrag bilden — gruppiert nach '
+    + 'Kostengruppe, mit Herkunft je Zeile.',
+  'costDetails.d.reconciles': 'Diese Summe stimmt mit dem ausgewiesenen Betrag überein.',
+  'costDetails.d.drift': 'Die Summe weicht um {drift} vom ausgewiesenen Betrag ab.',
+  'costDetails.d.caption': 'Beiträge zum ausgewiesenen Betrag',
+  'costDetails.d.colOrigin': 'Ursprung',
+  'costDetails.d.sum': 'Summe der Beiträge',
+  'costDetails.d.unattributed': 'Ohne Kostengruppenzuordnung',
+  'costDetails.origin.base': 'Grundkosten',
+  'costDetails.origin.fact': 'abgeleitet',
+  'costDetails.origin.decision': 'Auswahl',
+  'costDetails.origin.scope': 'Leistungsabgrenzung',
+  'costDetails.e.heading': 'E · Offen, ohne Preisgrundlage, Bauseits und ausgeschlossen',
+  'costDetails.e.lede':
+    'Diese Zeilen tragen bewusst keinen Betrag. Unbekannt ist nicht null, Bauseits ist '
+    + 'nicht null, und keine Preisgrundlage ist nicht null.',
+  'costDetails.e.caption': 'Positionen ohne eigenen Betrag',
+  'costDetails.e.colPosition': 'Position',
+  'costDetails.e.colState': 'Zustand',
+  'costDetails.e.colMeaning': 'Bedeutung',
+  'costDetails.e.empty': 'Jede Position dieser Option trägt eine eigene Preisgrundlage.',
+  'costDetails.e.meaning.undecidedGroup': 'Noch keine ausdrückliche Entscheidung getroffen.',
+  'costDetails.e.meaning.excludedGroup': 'Ausdrücklich nicht im Angebot.',
+  'costDetails.e.meaning.unpricedGroup': 'Enthalten, aber ohne kalkulierte Position.',
+  'costDetails.e.meaning.noBasis':
+    'Gewählt und kaufmännisch wirksam, aber ohne eigene Preisgrundlage.',
+  'costDetails.e.meaning.bundle':
+    'Im Preis einer anderen Position enthalten; kein eigener Betrag.',
+  'costDetails.e.meaning.indirect':
+    'Verändert den Preis an anderer Stelle, ohne eigenen Betrag.',
+  'costDetails.e.meaning.bauherr': 'Außerhalb des All3-Umfangs. Kein Betrag, kein Nullwert.',
+  'costDetails.e.meaning.unknownAuthority':
+    'Die Preisgrundlage dieser Auswahl ist nicht bestimmt; ein Betrag wird deshalb '
+    + 'nicht ausgewiesen.',
+  'costDetails.e.toScope': 'Zur Leistungsabgrenzung',
+  'costDetails.f.heading': 'F · Regionalfaktor',
+  'costDetails.f.inactive':
+    'Nicht aktiviert. Die Kalkulation läuft auf Bundesdurchschnitt. Aktiviert würde der '
+    + 'Regionalfaktor {amount} auf den Bauwerksblock hinzufügen — dieser Betrag ist nicht '
+    + 'im ausgewiesenen Betrag enthalten.',
+  'costDetails.f.active':
+    'Aktiviert. Der Regionalfaktor trägt {amount} zum Bauwerksblock bei; dieser Betrag '
+    + 'ist im ausgewiesenen Betrag enthalten.',
+  'costDetails.f.caption': 'Regionalfaktor dieser Option',
+  'costDetails.f.colField': 'Feld',
+  'costDetails.f.colValue': 'Wert',
+  'costDetails.f.state': 'Zustand',
+  'costDetails.f.stateInactive': 'nicht aktiviert',
+  'costDetails.f.stateActive': 'aktiviert',
+  'costDetails.f.reference': 'Bezugsgröße',
+  'costDetails.f.referenceValue': 'Bauwerksblock KG 300 + KG 400 + UG',
+  'costDetails.f.effect': 'Rechnerische Wirkung',
+  'costDetails.f.effectNotIncluded': '{amount} · nicht enthalten',
+  'costDetails.f.effectIncluded': '{amount} · enthalten',
+  'costDetails.f.inSnapshot': 'Teil des gespeicherten Angebots',
+  'costDetails.f.inSnapshotValue': 'ja — der Zustand des Schalters wird mitgespeichert',
+  'costDetails.g.heading': 'G · Preisgrundlage und Herkunft',
+  'costDetails.g.lede':
+    'Eine Herkunftsfläche, die dem Fokus folgt — nicht vierzehn einzeln geöffnete Ebenen.',
+  'costDetails.g.caption': 'Preisgrundlage der ausgewiesenen Werte',
+  'costDetails.g.colValue': 'Wert',
+  'costDetails.g.colBasis': 'Grundlage',
+  'costDetails.g.colSource': 'Quelle',
+  'costDetails.g.colRounding': 'Rundung',
+  'costDetails.g.basisSum': 'Summe der kalkulierten Positionen',
+  'costDetails.g.basisRate': 'Ausgewiesener Betrag ÷ {denominator}',
+  'costDetails.g.basisDuration': 'Terminmodell über BGF oberirdisch',
+  'costDetails.g.sourceRule': 'Regelsatz · Projektgrundlage',
+  'costDetails.g.sourceArea': '{denominator} · {quantity} m²',
+  'costDetails.g.sourceSchedule': 'Beginn OKBP · Fertigstellung {date}',
+  'costDetails.g.noRounding': 'ohne Rundungsdifferenz',
+  'costDetails.h.heading': 'H · Änderungsverlauf',
+  'costDetails.h.lede':
+    'Kaufmännische Änderungen dieser Option, neueste zuerst. Rückgängig steht bei der '
+    + 'Änderung, die es umkehrt.',
+  'costDetails.h.listLabel': 'Änderungsverlauf dieser Option',
+  'costDetails.h.empty': 'Für diese Option ist noch keine kaufmännische Änderung verzeichnet.',
+  'costDetails.h.noAmount': 'ohne Betragswirkung',
 } as const
 
 export type MessageKey = keyof typeof de
@@ -4869,6 +5047,174 @@ const en: Partial<Record<MessageKey, string>> = {
   'vr3.tga.cascade.announcePlural':
     '{decision} changed. {count} dependent decisions affected.',
   'vr3.tga.cascade.announceNone': '{decision} changed. No dependent decision affected.',
+
+  'commercial.completeness.heading': 'Completeness of the offer',
+  'commercial.effects.heading': 'Selected commercial options',
+  'commercial.effects.listLabel': 'Currently selected options with a price effect',
+  'commercial.effects.empty': 'No priced selection in the current configuration.',
+  'commercial.effects.more': '{count} further selections',
+  'commercial.effects.moreWithoutAmount':
+    '{count} further selections, {without} of them without an amount of their own',
+  'commercial.effects.moreLink': 'in the cost details',
+  'commercial.effects.toDecision': 'Go to decision',
+  'commercial.effects.toDecisionNamed': 'Go to decision · {decision}',
+  'commercial.effects.notSummed':
+    'The sum of these selections is not the stated amount: that also contains base costs, '
+    + 'derived costs and positions that cannot be configured. The complete composition is '
+    + 'in sections C and D.',
+  'commercial.effects.announce': '{decision} · contribution {amount}.',
+  'commercial.effects.announceNoAmount': '{decision} · {state}, no amount of its own.',
+  'commercial.state.reduction': 'Reduction',
+  'commercial.state.noPriceEffect': 'no price effect',
+  'commercial.authority.unknown': 'Price basis not determined',
+  'commercial.authority.bauseits': 'Outside the All3 scope',
+  'commercial.din.heading': 'Cost groups per DIN 276',
+  'commercial.din.caption': 'Cost groups per DIN 276, top level',
+  'commercial.din.colGroup': 'Cost group',
+  'commercial.din.colAmount': 'Amount',
+  'commercial.din.colShare': 'Share',
+  'commercial.din.noteSubtotal': 'Shares relate to the subtotal · rounded independently',
+  'commercial.din.noteTotal': 'Shares relate to the total · rounded independently',
+  'commercial.din.excluded': 'Outside the All3 scope',
+  'commercial.din.undecided': 'Still open',
+  'commercial.completeness.line':
+    '{included}/{total} in the offer · {excluded} excluded · {open} open',
+  'commercial.basis.origin': 'Source',
+  'commercial.change.against': 'against {reference}',
+  'commercial.change.currentState': 'the current state',
+  'coverage.kg700.fallbackApplied':
+    'KG 700: calculation basis switched automatically to HOAI/AHO',
+  'coverage.kg700.fallbackReverted':
+    'KG 700: calculation basis switched automatically back to the All3 method',
+  'commercial.cta.costDetails': 'All cost details',
+  'costDetails.title': 'Cost details',
+  'costDetails.subtitle': '{option} · basis of {date} · all amounts net',
+  'costDetails.back': 'Back to the configuration',
+  'costDetails.nav.label': 'Sections',
+  'costDetails.nav.summary': 'Overview',
+  'costDetails.nav.selection': 'Selection',
+  'costDetails.nav.din': 'DIN 276',
+  'costDetails.nav.ledger': 'Contributions',
+  'costDetails.nav.open': 'Open & out of scope',
+  'costDetails.nav.regional': 'Regional factor',
+  'costDetails.nav.origin': 'Source',
+  'costDetails.nav.history': 'History',
+  'costDetails.a.heading': 'A · Commercial summary',
+  'costDetails.a.leadRate': 'Lead rate',
+  'costDetails.a.duration': 'Construction time',
+  'costDetails.a.completeness': 'Completeness',
+  'costDetails.a.completenessValue': '{included} / {total}',
+  'costDetails.a.completenessDetail': 'cost groups in the offer · {open} decisions open',
+  'costDetails.a.furtherRates': 'Further reference values',
+  'costDetails.a.uncertaintyLabel': 'Range of the estimate',
+  'costDetails.a.atAGlance': 'At a glance',
+  'costDetails.a.readOnly':
+    'This page explains how the current amount comes about. Values are read here, not '
+    + 'changed — every selection leads back to its place in the configurator via '
+    + '\u201cGo to decision\u201d.',
+  'costDetails.b.heading': 'B · Currently selected options with a price effect',
+  'costDetails.b.caption': 'All selected decisions with a commercial effect',
+  'costDetails.b.colDecision': 'Decision',
+  'costDetails.b.colValue': 'Selected',
+  'costDetails.b.colContribution': 'Contribution',
+  'costDetails.b.colReference': 'Reference',
+  'costDetails.b.colDelta': 'Delta',
+  'costDetails.b.colKg': 'CG',
+  'costDetails.b.colAuthority': 'Price basis',
+  'costDetails.b.colAction': 'Action',
+  'costDetails.b.noAmount': 'no amount',
+  'costDetails.b.selected': 'included',
+  'costDetails.b.empty': 'This Option currently carries no selection with a price effect.',
+  'costDetails.c.heading': 'C · Composition per DIN 276',
+  'costDetails.c.ledeSubtotal':
+    'Second level of the structure, as a DIN 276 cost estimate permits. Shares relate to '
+    + 'the subtotal, not to a complete total.',
+  'costDetails.c.ledeTotal':
+    'Second level of the structure, as a DIN 276 cost estimate permits. Shares relate to '
+    + 'the stated total.',
+  'costDetails.c.caption': 'Cost groups per DIN 276, first and second level',
+  'costDetails.c.colScope': 'Scope',
+  'costDetails.c.all3': 'All3',
+  'costDetails.d.heading': 'D · Contribution ledger',
+  'costDetails.d.lede':
+    'All {count} contributions that build the stated amount — grouped by cost group, with '
+    + 'the source on every row.',
+  'costDetails.d.reconciles': 'This sum agrees with the stated amount.',
+  'costDetails.d.drift': 'The sum differs from the stated amount by {drift}.',
+  'costDetails.d.caption': 'Contributions to the stated amount',
+  'costDetails.d.colOrigin': 'Origin',
+  'costDetails.d.sum': 'Sum of the contributions',
+  'costDetails.d.unattributed': 'Without a cost-group attribution',
+  'costDetails.origin.base': 'Base cost',
+  'costDetails.origin.fact': 'derived',
+  'costDetails.origin.decision': 'Selection',
+  'costDetails.origin.scope': 'Scope boundary',
+  'costDetails.e.heading': 'E · Open, without a price basis, out of scope and excluded',
+  'costDetails.e.lede':
+    'These rows deliberately carry no amount. Unknown is not zero, out of scope is not '
+    + 'zero, and no price basis is not zero.',
+  'costDetails.e.caption': 'Positions without an amount of their own',
+  'costDetails.e.colPosition': 'Position',
+  'costDetails.e.colState': 'State',
+  'costDetails.e.colMeaning': 'Meaning',
+  'costDetails.e.empty': 'Every position of this Option carries a price basis of its own.',
+  'costDetails.e.meaning.undecidedGroup': 'No explicit decision has been taken yet.',
+  'costDetails.e.meaning.excludedGroup': 'Explicitly not part of the offer.',
+  'costDetails.e.meaning.unpricedGroup': 'Included, but with no calculated position.',
+  'costDetails.e.meaning.noBasis':
+    'Selected and commercially effective, but without a price basis of its own.',
+  'costDetails.e.meaning.bundle':
+    'Contained in the price of another position; no amount of its own.',
+  'costDetails.e.meaning.indirect':
+    'Changes the price elsewhere, with no amount of its own.',
+  'costDetails.e.meaning.bauherr':
+    'Outside the All3 scope. No amount, and not a zero value.',
+  'costDetails.e.meaning.unknownAuthority':
+    'The price basis of this selection is not determined, so no amount is stated.',
+  'costDetails.e.toScope': 'Go to the scope boundaries',
+  'costDetails.f.heading': 'F · Regional factor',
+  'costDetails.f.inactive':
+    'Not activated. The calculation runs on the national average. Activated, the regional '
+    + 'factor would add {amount} to the building block — that amount is not contained in '
+    + 'the stated amount.',
+  'costDetails.f.active':
+    'Activated. The regional factor contributes {amount} to the building block; that '
+    + 'amount is contained in the stated amount.',
+  'costDetails.f.caption': 'Regional factor of this Option',
+  'costDetails.f.colField': 'Field',
+  'costDetails.f.colValue': 'Value',
+  'costDetails.f.state': 'State',
+  'costDetails.f.stateInactive': 'not activated',
+  'costDetails.f.stateActive': 'activated',
+  'costDetails.f.reference': 'Reference quantity',
+  'costDetails.f.referenceValue': 'Building block KG 300 + KG 400 + basement',
+  'costDetails.f.effect': 'Calculated effect',
+  'costDetails.f.effectNotIncluded': '{amount} · not included',
+  'costDetails.f.effectIncluded': '{amount} · included',
+  'costDetails.f.inSnapshot': 'Part of the saved offer',
+  'costDetails.f.inSnapshotValue': 'yes — the state of the switch is saved with it',
+  'costDetails.g.heading': 'G · Price basis and source',
+  'costDetails.g.lede':
+    'One source surface that follows the focus — not fourteen separately opened layers.',
+  'costDetails.g.caption': 'Price basis of the stated values',
+  'costDetails.g.colValue': 'Value',
+  'costDetails.g.colBasis': 'Basis',
+  'costDetails.g.colSource': 'Source',
+  'costDetails.g.colRounding': 'Rounding',
+  'costDetails.g.basisSum': 'Sum of the calculated positions',
+  'costDetails.g.basisRate': 'Stated amount \u00f7 {denominator}',
+  'costDetails.g.basisDuration': 'Schedule model over BGF above ground',
+  'costDetails.g.sourceRule': 'Rate set · project basis',
+  'costDetails.g.sourceArea': '{denominator} · {quantity} m\u00b2',
+  'costDetails.g.sourceSchedule': 'Start OKBP · completion {date}',
+  'costDetails.g.noRounding': 'no rounding difference',
+  'costDetails.h.heading': 'H · Change history',
+  'costDetails.h.lede':
+    'Commercial changes of this Option, newest first. Undo sits beside the change it '
+    + 'reverses.',
+  'costDetails.h.listLabel': 'Change history of this Option',
+  'costDetails.h.empty': 'No commercial change has been recorded for this Option yet.',
+  'costDetails.h.noAmount': 'no amount effect',
 }
 
 /**
