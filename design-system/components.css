@@ -3410,7 +3410,12 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-dec:last-child{border-bottom:0}
 .a3-dec[data-attention="open"]{border-left-color:var(--color-status-warning)}
 .a3-dec[data-attention="deviation"]{border-left-color:var(--color-border-warning)}
-.a3-dec-line{display:grid;grid-template-columns:minmax(12ch,.7fr) minmax(18ch,1.5fr) minmax(0,max-content) auto;gap:var(--space-3);align-items:center;min-height:var(--size-hit-target-default)}
+/* The price column is CAPPED, not `max-content`: a commercial phrase can
+   be a sentence — `Preis nicht ermittelt · <the condition blocking it>` —
+   and `max-content` made that column demand the whole sentence on one
+   line, pushing the row's disclosure out from under it. Capped in `ch`
+   (rule 3a) so an amount still sits on one line and a sentence wraps. */
+.a3-dec-line{display:grid;grid-template-columns:minmax(12ch,.7fr) minmax(18ch,1.5fr) minmax(0,32ch) auto;gap:var(--space-3);align-items:center;min-height:var(--size-hit-target-default)}
 .a3-dec-name{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
 .a3-dec-name:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--border-width-focus)}
 .a3-dec-current{display:grid;gap:2px;min-width:0}
@@ -3424,7 +3429,11 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-dec-relmark{font-weight:var(--font-weight-bold)}
 .a3-dec-relmark:empty{display:none}
 .a3-dec-reldetail{color:var(--color-text-primary);font-weight:var(--font-weight-regular)}
-.a3-dec-price{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+/* `white-space:nowrap` used to guard money from breaking mid-amount. It
+   is not needed for that — rule 7's U+202F between number and unit is
+   already non-breaking — and it is what stopped a sentence-length price
+   phrase from wrapping at all. */
+.a3-dec-price{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);font-variant-numeric:tabular-nums;text-align:right;overflow-wrap:break-word;hyphens:auto}
 .a3-dec-price:empty{display:none}
 .a3-dec-act{display:flex;align-items:center;justify-content:flex-end;gap:var(--space-3);justify-self:end;min-width:0}
 .a3-dec-act:empty{display:none}

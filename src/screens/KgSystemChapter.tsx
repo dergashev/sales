@@ -422,7 +422,20 @@ export function KgSystemChapter({ chapter, group }: {
      * are different statements and only one of them is true here." The key
      * asserted the false one and has been retired.
      */
-    if (variant.noPriceBasis) return blockedPricingPhrase(service)
+    /**
+     * The SHORT phrase on an alternative; the condition belongs to the
+     * decision, once.
+     *
+     * `consequence` is a one-line slot under a solution name in a
+     * deterministic option-card grid. The first cut of this fix put the
+     * full condition sentence here too, and the browser said no: the card
+     * titles broke one character per line and the sentence ran past the
+     * card edge at both supported widths. The condition is a property of
+     * the DECISION, not of each way of answering it, so `pricePhraseOf`
+     * states it on the decision line and every alternative carries the
+     * canonical rule-16 phrase.
+     */
+    if (variant.noPriceBasis) return t('vr3.tga.price.notDetermined')
     const current = decision.variant
       ?? (service.kind.kind === 'singleChoice' ? service.kind.baselineVariant : undefined)
     if (variant.value === current) return t('vr3.tga.price.baseline')
