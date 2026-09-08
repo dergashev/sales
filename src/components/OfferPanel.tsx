@@ -3,9 +3,10 @@ import { AnimatePresence, motion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { Decimal } from 'decimal.js'
 import {
-  activeBuilding, commercialSnapshot, includedBuildingIds, projectProjection,
-  translatedChangeLabel, useStore,
+  activeBuilding, commercialSnapshot, includedBuildingIds, kgCatalogueFor,
+  projectProjection, translatedChangeLabel, useStore,
 } from '../state/store'
+import { optionCommercialProjection } from '../state/optionCommercialProjection'
 import type { PriceChange } from '../state/store'
 import { effectiveFactValue } from '../state/buildingReview'
 import {
@@ -287,6 +288,18 @@ export function OfferPanel(
   const snapshot = commercialSnapshot(s)
   const p = snapshot.projection
   const commercial = snapshot.result
+  /**
+   * B2 · requirement 9 — the rail's area metrics, from the SNAPSHOT's own
+   * result rather than from a fresh derivation, so the rail still renders
+   * exactly one instant (QA-01) while gaining the segment denominators.
+   *
+   * What this replaces: a single `p.leadRate`, which for any complex fell
+   * back to BGF above ground, so a mixed-use Option's WFL and commercial
+   * NUF were unreachable on every internal surface.
+   */
+  const areaProjection = optionCommercialProjection(
+    s, snapshot.result, kgCatalogueFor(s), s.kgConfig,
+  )
   const t = useT()
   const tx = useTx()
   const lang: UiLanguage = s.uiLanguage
@@ -602,20 +615,56 @@ export function OfferPanel(
       {/* ── secondary commercial facts: compact, never a second hero ────── */}
       {!scopeEmpty && !priceUnavailable && (
         <div className="a3-cockpit-facts">
-          <div className="a3-cockpit-fact">
-            <span className="a3-cockpit-fact-v">
-              {p.leadRate.prefix && (
-                <span aria-hidden="true">{p.leadRate.prefix}{NNBSP}</span>
-              )}
-              {localizeMoneyText(p.leadRate.display, lang)}{NNBSP}€/m²
-              {/* The rate NEVER appears without its denominator: `€/m²`
-                  alone is not a commercial statement, it is half of one.
-                  On the SAME line, at caption size, because the brief
-                  budgets this fact at 20 px — a second line here is a line
-                  the DIN composition loses. */}
-              <span className="a3-cockpit-fact-k">{tx(p.leadRate.denominatorLabel)}</span>
-            </span>
-          </div>
+          {/* One row per APPLICABLE metric, in the projection's own order:
+              the segment Leitkennzahlen first, the construction scale last.
+              WFL and NUF are separate rows because they are separate
+              measurements — there is no row here that could hold a blended
+              denominator (rule 39, R-11, DATA-001). */}
+          {areaProjection.metrics.map((metric) => (
+            <div className="a3-cockpit-fact" key={metric.id} data-metric={metric.id}>
+              <span className="a3-cockpit-fact-v">
+                {metric.rate.prefix && (
+                  <span aria-hidden="true">{metric.rate.prefix}{NNBSP}</span>
+                )}
+                {localizeMoneyText(metric.rate.display, lang)}{NNBSP}€/m²
+                {/* The rate NEVER appears without its denominator: `€/m²`
+                    alone is not a commercial statement, it is half of one.
+                    On the SAME line, at caption size, because the brief
+                    budgets this fact at 20 px — a second line here is a line
+                    the DIN composition loses. */}
+                <span className="a3-cockpit-fact-k">
+                  {tx(metric.rate.denominatorLabel)}
+                </span>
+              </span>
+            </div>
+          ))}
+          {/* B2 · requirement 9 — the Energy standard belongs on the Option
+              summary, not only inside the cost chapter that prices it: it is
+              a scope decision the whole offer is prepared under, and the
+              audit found it absent from every summary surface. */}
+          {areaProjection.energy && (
+            <div className="a3-cockpit-fact" data-axis="energy">
+              <span className="a3-cockpit-fact-v">
+                {lang === 'en'
+                  ? areaProjection.energy.variantLabelEn
+                  : areaProjection.energy.variantLabelDe}
+                <span className="a3-cockpit-fact-k">{t('b2.metric.energy')}</span>
+              </span>
+            </div>
+          )}
+          {/* A segment that applies and has no area keeps its norm on screen.
+              `—` would read as "residential only" on a mixed-use Option. */}
+          {areaProjection.gaps.map((gap) => (
+            <div className="a3-cockpit-fact" key={`gap-${gap.id}`}>
+              <span className="a3-cockpit-fact-k">
+                {tx(gap.denominatorLabel)}
+                {NNBSP}
+                ·
+                {NNBSP}
+                {t('b2.metric.denominatorUnknown')}
+              </span>
+            </div>
+          ))}
           <div className="a3-cockpit-fact">
             <span className="a3-cockpit-fact-v">
               {p.duration.prefix && (

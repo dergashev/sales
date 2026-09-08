@@ -1957,6 +1957,7 @@
                 },
                 {
                   "id": "a-400-es",
+                  "scopeAxis": "energy",
                   "labelDe": "Energieziel",
                   "labelEn": "Energy target",
                   "summaryDe": "Förderziel, nicht der gesetzliche Mindeststandard.",
@@ -3133,6 +3134,7 @@
               "services": [
                 {
                   "id": "a-700-qng",
+                  "scopeAxis": "qng",
                   "labelDe": "QNG-Siegel",
                   "labelEn": "QNG label",
                   "summaryDe": "Das Siegel beschreibt das Nachweisverfahren, nicht das Gebäude.",
@@ -3168,6 +3170,7 @@
                 },
                 {
                   "id": "a-700-dgnb",
+                  "scopeAxis": "dgnb",
                   "labelDe": "DGNB-Zertifikat",
                   "labelEn": "DGNB certificate",
                   "summaryDe": "Auditierung und Dokumentation eines dritten Prüfers.",
@@ -8249,6 +8252,7 @@
                 },
                 {
                   "id": "b-400-es",
+                  "scopeAxis": "energy",
                   "labelDe": "Energieziel",
                   "labelEn": "Energy target",
                   "summaryDe": "Förderziel, nicht der gesetzliche Mindeststandard.",
@@ -9635,6 +9639,7 @@
               "services": [
                 {
                   "id": "b-700-qng",
+                  "scopeAxis": "qng",
                   "labelDe": "QNG-Siegel",
                   "labelEn": "QNG label",
                   "summaryDe": "QNG-PLUS setzt den Energiestandard Effizienzhaus 40 NH voraus.",
@@ -9678,6 +9683,7 @@
                 },
                 {
                   "id": "b-700-dgnb",
+                  "scopeAxis": "dgnb",
                   "labelDe": "DGNB-Zertifikat",
                   "labelEn": "DGNB certificate",
                   "summaryDe": "Auditierung und Dokumentation eines dritten Prüfers.",

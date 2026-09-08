@@ -75,6 +75,12 @@ import { WorkflowNavigator, type WorkflowStage } from './WorkflowNavigator'
 import { Pagination } from './Pagination'
 import { DataTable } from './DataTable'
 import { MediaGallery, type MediaGalleryItem } from './MediaGallery'
+import {
+  OptionMetricSummary, type OptionMetricSummaryLabels,
+} from './OptionMetricSummary'
+import type {
+  OptionCommercialProjection,
+} from '../state/optionCommercialProjection'
 import { useSemanticMotion } from './motion'
 
 export type ContractStateDeclaration = Readonly<Record<DataStateKind, string>>
@@ -605,6 +611,109 @@ function MediaGalleryDemo() {
         previousLabel="Vorheriges Bild"
         nextLabel="Nächstes Bild"
         positionLabel={(index, total) => `Bild ${index} / ${total}`}
+      />
+    </div>
+  )
+}
+
+/**
+ * B2 · a MIXED-USE Option summary, which is the shape that proves the
+ * contract: two segment metrics with two different norms, plus the
+ * construction scale, plus a segment whose denominator is not yet known.
+ *
+ * The projection is built literally here rather than driven from the store,
+ * because a specimen must render the same way every time it is opened — and
+ * because the point being demonstrated is the SHAPE of the contract, not a
+ * fixture's current arithmetic.
+ */
+const OMS_LABELS: OptionMetricSummaryLabels = {
+  netTotal: 'Netto',
+  energy: 'Energiestandard',
+  baselineSuffix: 'Standard',
+  segment: {
+    wfl: 'Leitkennzahl Wohnen',
+    nuf: 'Leitkennzahl Nichtwohnen',
+  },
+  scale: 'Baumaßstab',
+  notAdditive: 'Zwei Leitkennzahlen, zwei Bezugsflächen: jede setzt die Nettosumme zu ihrer '
+    + 'eigenen normativen Fläche ins Verhältnis. Sie sind kein Anteil und werden nicht addiert.',
+  denominatorUnknown: 'nicht ermittelt',
+  useProfile: {
+    residential: 'Wohnen',
+    nonResidential: 'Nichtwohnen',
+    mixed: 'Gemischte Nutzung',
+    unknown: 'Nutzung nicht klassifiziert',
+  },
+}
+
+function omsProjection(
+  overrides: Partial<OptionCommercialProjection> = {},
+): OptionCommercialProjection {
+  const total = new Decimal('38740000')
+  return {
+    resultVersion: 7,
+    netTotal: present(total),
+    totalLabel: 'Gesamt netto · Grundleistung All3',
+    coverage: 'total',
+    useProfile: 'mixed',
+    metrics: [
+      {
+        id: 'wfl', role: 'segment',
+        rate: rate(total, new Decimal('7030'), 'WFL_WOFLV'),
+        segmentLabelKey: 'b2.metric.segment.residential',
+      },
+      {
+        id: 'nuf', role: 'segment',
+        rate: rate(total, new Decimal('5280'), 'NUF_DIN277'),
+        segmentLabelKey: 'b2.metric.segment.nonResidential',
+      },
+      {
+        id: 'bgfAbove', role: 'scale',
+        rate: rate(total, new Decimal('17250'), 'BGF_ABOVE_GROUND'),
+        segmentLabelKey: null,
+      },
+    ],
+    gaps: [],
+    metricsAreAdditive: false,
+    energy: {
+      axis: 'energy', serviceId: 'b-400-es',
+      labelDe: 'Energieziel', labelEn: 'Energy target',
+      variantLabelDe: 'Effizienzhaus 55', variantLabelEn: 'Efficiency House 55',
+      variantId: 'eh55', isBaseline: true,
+    },
+    qng: null,
+    dgnb: null,
+    buildingsInScope: 3,
+    ...overrides,
+  }
+}
+
+function OptionMetricSummaryDemo() {
+  return (
+    <div className="a3-specimen-stack">
+      <OptionMetricSummary
+        projection={omsProjection()}
+        language="de"
+        variant="card"
+        labels={OMS_LABELS}
+      />
+      {/* PARTIAL: the commercial NUF has not been measured yet. The norm
+          stays on screen so the reader is not told this is a residential
+          offer (rule 16 · SCOPE-001). */}
+      <OptionMetricSummary
+        projection={omsProjection({
+          metrics: omsProjection().metrics.filter((m) => m.id !== 'nuf'),
+          gaps: [{
+            id: 'nuf',
+            segmentLabelKey: 'b2.metric.segment.nonResidential',
+            denominatorLabel: 'NUF nach DIN 277',
+          }],
+          coverage: 'subtotal',
+          totalLabel: 'Zwischensumme der kalkulierten Positionen',
+        })}
+        language="de"
+        variant="rail"
+        labels={OMS_LABELS}
       />
     </div>
   )
@@ -2028,6 +2137,22 @@ export const COMPONENT_REGISTRY: Specimen[] = [
     note: 'One dominant view over supporting ones. Full-screen inspection is the canonical Dialog wearing this panel — there is no second modal and no createPortal in the module.',
     evidence: 'Every visible string is a required prop, so the capability adds no i18n key and the position announcement is worded by the caller (never as a chapter counter); paging is ArrowLeft/ArrowRight/Home/End with boundaries that stay in the tab order as aria-disabled, and the paging transition uses the DIRECTION verb from motion.ts, which prefers-reduced-motion zeroes.',
     render: () => <MediaGalleryDemo />,
+  },
+  {
+    id: 'b2-option-metric-summary', groupId: 'domain', title: 'OptionMetricSummary',
+    contractId: 'components-core · OptionMetricSummary',
+    requirements: ['DC-38', 'R-11', 'R-18', 'DATA-001', 'SCOPE-001'],
+    composedContracts: ['CommercialNumber', 'SemanticStatus'],
+    interactionStates: ['default'],
+    dataStates: declareDataStates(
+      ['ready', 'partial'],
+      'the projection is derived synchronously from a CommercialResult its owner already holds; loading, error and stale are that result\'s own states and are rendered by the surface around this summary',
+    ),
+    blockedVariants: [],
+    maturity: 'alpha',
+    note: 'Takes an OptionCommercialProjection, never numeric props: five surfaces read this one object, so a rate cannot reach a card under another metric\'s label. A blended WFL+NUF denominator is unrepresentable — the projection has no field that could hold one.',
+    evidence: 'The mixed-use specimen shows both segment metrics with their norms spelled out and the explicit non-additivity sentence; the partial state shows a segment whose denominator is unknown keeping its norm on screen rather than printing 0.',
+    render: () => <OptionMetricSummaryDemo />,
   },
 ]
 

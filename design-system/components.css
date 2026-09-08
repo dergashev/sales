@@ -5197,3 +5197,46 @@ a.a3-cockpit-effect:hover .a3-cockpit-effect-name{color:var(--color-text-primary
   .a3-cp-shell{display:block;min-height:auto;overflow:visible}
   .a3-cp-band,.a3-cp-bar,.a3-cp-identity,.a3-cp-stage,.a3-cp-overlay,.a3-cp-receipt,.a3-cp-layer-scrim{display:none !important}
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   B2 · Option preparation and decision truth
+   Classes: .a3-oms · .a3-oms-card · .a3-oms-rail · .a3-oms-total ·
+   .a3-oms-total-value · .a3-oms-total-label · .a3-oms-facts · .a3-oms-fact ·
+   .a3-oms-fact-k · .a3-oms-fact-v · .a3-oms-fact-note ·
+   .a3-oms-fact-denominator · .a3-oms-note
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── OptionMetricSummary ──────────────────────────────────────────────────
+   A summary of MONEY PER AREA, so every row is a label/value pair whose
+   value column is `max-content`: a rate must never wrap between its figure
+   and its unit, and a normative denominator (`NUF nach DIN 277`) must never
+   be clipped into ambiguity. The label column takes the remaining width and
+   wraps as a unit, which is why the denominator is a block-level span
+   inside it rather than a sibling column. */
+.a3-oms{display:grid;gap:var(--space-2);min-width:0}
+.a3-oms-total{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-2);min-width:0}
+.a3-oms-total-value{font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+/* The scope label is a CAPTION beside the amount, never a second heading:
+   `Netto · Zwischensubtotal…` is one sentence about one number. */
+.a3-oms-total-label{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
+.a3-oms-facts{display:grid;gap:var(--space-1);margin:0;min-width:0}
+.a3-oms-fact{display:grid;grid-template-columns:minmax(0,1fr) max-content;align-items:baseline;column-gap:var(--space-3);min-width:0}
+.a3-oms-fact-k{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);min-width:0;overflow-wrap:break-word;hyphens:auto}
+/* The norm belongs to the metric's NAME (rule 31), so it sits with the label
+   and not with the number — and it is a block so a long norm wraps under
+   its own metric rather than pushing the value column off the card. */
+.a3-oms-fact-denominator{display:block;color:var(--color-text-primary)}
+.a3-oms-fact-v{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);font-feature-settings:var(--font-numeric);white-space:nowrap}
+.a3-oms-fact-note{font-weight:var(--type-caption-weight);color:var(--color-text-secondary);white-space:normal}
+/* An unknown denominator is a sentence, so its row is allowed to wrap. */
+.a3-oms-fact:has(.a3-sst) .a3-oms-fact-v{white-space:normal}
+.a3-oms-note{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);max-width:var(--measure-band);overflow-wrap:break-word}
+.a3-oms-rail .a3-oms-fact-v{font-size:var(--type-body-size);line-height:var(--type-body-line)}
+
+@media (max-width: 1439px){
+  /* At 1280 the rate keeps its own line rather than competing with a
+     wrapped normative label for one row's width. Whole segments move; no
+     figure is ever truncated into ambiguity. */
+  .a3-oms-fact{grid-template-columns:minmax(0,1fr);row-gap:0}
+  .a3-oms-fact-v{justify-self:start}
+}

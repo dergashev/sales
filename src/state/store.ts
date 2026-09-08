@@ -96,6 +96,10 @@ import {
  */
 import { optionNav, optionOpenDestination } from './optionLifecycle'
 import {
+  optionCommercialProjection,
+  type OptionCommercialProjection,
+} from './optionCommercialProjection'
+import {
   buildingScopeFingerprint,
   buildingScopeSaved as scopeIsSaved,
   buildingScopeStage,
@@ -3166,14 +3170,16 @@ function leaveOptionWorkspace(s: Store) {
  * becomes a silent navigation failure.
  */
 /**
- * The KG catalogue's energy-standard services, and the released building
- * axis each variant maps onto.
+ * The released building axis each energy VARIANT maps onto.
  *
- * Named explicitly, in one place: a bridge derived from a string pattern is
- * a bridge that breaks silently when a fixture id changes.
+ * The companion set of energy service ids that used to live here is gone.
+ * Its own comment said a bridge derived from a string is a bridge that
+ * breaks silently — and a hardcoded id list is that bridge, one catalogue
+ * later: it named `a-400-es` and `b-400-es`, so a third project's energy
+ * service would have moved the price without moving the building axis. The
+ * axis is now DECLARED by the service (`KgService.scopeAxis`, B2), which is
+ * the same fact stated by the data that owns it.
  */
-const ENERGY_STANDARD_SERVICE_IDS = new Set(['a-400-es', 'b-400-es'])
-
 const ENERGY_STANDARD_OF_VARIANT: Readonly<Record<string, BuildingInput['energiestandard'] | undefined>> = {
   geg: 'GEG',
   eh55: 'EH_55',
@@ -4266,6 +4272,49 @@ export function clientSnapshotForOption(s: Store, optionId: string): ClientScena
   } catch {
     return null
   }
+}
+
+/**
+ * THE Option commercial projection, for ANY Option (B2, requirement 9).
+ *
+ * One function, so an Option card, the Offer panel, Validate, the cost
+ * detail, the export inputs and the client projection cannot each answer
+ * "what is this Option worth, per which area" differently. It projects the
+ * canonical `CommercialResult` — it never re-derives one — and it carries
+ * that result's own `version`, so two surfaces can PROVE they agree instead
+ * of assuming it.
+ *
+ * `null` is the honest answer for an Option whose result cannot be derived,
+ * exactly as `clientSnapshotForOption` already answers: a summary that
+ * cannot be computed states so and never publishes a zero (rule 16).
+ */
+export function optionCommercialProjectionFor(
+  s: Store, optionId: string | null,
+): OptionCommercialProjection | null {
+  if (!optionId) return null
+  const snapshot = clientSnapshotForOption(s, optionId)
+  if (!snapshot) return null
+  const overlay = { ...s, ...snapshot.config }
+  return optionCommercialProjection(
+    overlay, snapshot.result, kgCatalogueFor(overlay), snapshot.config.kgConfig,
+  )
+}
+
+/**
+ * The ACTIVE Option's projection, through the GUARDED commercial snapshot.
+ *
+ * Deliberately not `optionCommercialProjectionFor(s, s.activeOptionId)`:
+ * that path derives a fresh result and throws on failure, while the live
+ * internal surfaces must keep showing the last trusted result with its
+ * stale label (`commercialSnapshot`'s released contract). The projection of
+ * a stale result is still a truthful projection — of a result that says so.
+ */
+export function activeOptionCommercialProjection(
+  s: Store,
+): OptionCommercialProjection {
+  return optionCommercialProjection(
+    s, commercialResult(s), kgCatalogueFor(s), s.kgConfig,
+  )
 }
 
 /**
@@ -8328,7 +8377,7 @@ const store = createStore<Store>((set, get) => {
           // same Option — the cross-surface contradiction this ticket
           // exists to close. The bridge is deliberate and narrow: one axis,
           // one map, named here rather than inferred from a string.
-          ...(ENERGY_STANDARD_SERVICE_IDS.has(serviceId)
+          ...(service.scopeAxis === 'energy'
             && value.state === 'selected' && value.variant
             && ENERGY_STANDARD_OF_VARIANT[value.variant]
             ? {

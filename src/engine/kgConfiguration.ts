@@ -350,12 +350,41 @@ export type KgBemusterungBoundary = Readonly<{
   }>>
 }>
 
+/**
+ * An OPTION-LEVEL scope-decision axis (B2, Product Owner requirement 14).
+ *
+ * Energy efficiency, QNG and DGNB are not late KG answers. They are scope
+ * decisions the whole Option is prepared under: KG 300, KG 400, the cost
+ * detail, the exports and the client projection all READ them, and the audit
+ * found them editable in two different cost chapters instead — the Energy
+ * target inside KG 400 and both certifications inside KG 700 — which is a
+ * decision configured where its consequences land rather than where it is
+ * taken.
+ *
+ * The axis is DECLARED BY THE DATA and never inferred from a service id.
+ * Two catalogues already carry two ids for the same axis (`a-400-es` and
+ * `b-400-es`), a third project would carry a third, and the private
+ * `ENERGY_STANDARD_SERVICE_IDS` set this marker replaces was exactly the
+ * "bridge derived from a string" its own comment warned about. A service
+ * that declares an axis is edited ONCE, in Configure · Scope decisions; its
+ * cost chapter shows the value it must live with and the route back to the
+ * decision.
+ */
+export type KgScopeAxis = 'energy' | 'qng' | 'dgnb'
+
 export type KgService = Readonly<{
   id: string
   labelDe: string
   labelEn: string
   summaryDe: string
   summaryEn: string
+  /**
+   * The Option-level axis this service IS, when it is one. Absent for every
+   * ordinary cost decision, which is the overwhelming majority — an absent
+   * marker means "configured in its own cost chapter", the released
+   * behaviour, unchanged.
+   */
+  scopeAxis?: KgScopeAxis
   /** Base amount. For `singleChoice` this is 0 and the variant carries the effect. */
   amount: string
   baseline: 'selected' | 'notSelected'

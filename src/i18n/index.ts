@@ -1593,6 +1593,12 @@ const de = {
   'vr3.option.meta.notConfigured': 'noch nicht konfiguriert',
   'vr3.option.meta.baseline': 'aus der Projektgrundlage vom {date}',
   'vr3.option.meta.saved': 'gespeichert {date} · Version {version}',
+  /* B2: the saved RECEIPT keeps its amount on the card. The headline now
+     states the Option's current projection, so the committed figure has to
+     stay somewhere or a save stops being visible at all — and `{label}` is
+     the saved version's own Declared-Pricing-Scope label (R-18), not the
+     live one, because a receipt states what was committed. */
+  'vr3.option.meta.savedTotal': 'gespeichert {date} · Version {version} · {label} {total}',
   'vr3.option.baselineMoved': 'Projektverständnis seit dem geändert',
   'vr3.option.lifecycle.NEW': 'Neu',
   'vr3.option.lifecycle.BOUNDARIES_OPEN': 'In Arbeit · Leistungsabgrenzung',
@@ -3201,6 +3207,27 @@ const de = {
   'vr3.responsibility.legacy':
     'Aus einer älteren gespeicherten Option gelesen · aus der Projektgrundlage ergänzt.',
   'vr3.responsibility.empty': 'Für dieses Projekt ist keine Schnittstellenmatrix hinterlegt.',
+
+  /* ── B2 · Option-Kennzahlen (Anforderung 9) ──────────────────────────────
+     Der Nenner gehört zum NAMEN der Kennzahl, nicht zur Zahl (Regel 31), und
+     WFL und NUF werden nie zu einem Nenner addiert (Regel 39, R-11). */
+  'b2.metric.netTotal': 'Netto',
+  'b2.metric.energy': 'Energiestandard',
+  'b2.metric.baseline': 'Standard',
+  'b2.metric.segment.wfl': 'Leitkennzahl Wohnen',
+  'b2.metric.segment.nonResidential': 'Leitkennzahl Nichtwohnen',
+  'b2.metric.segment.nuf': 'Leitkennzahl Nichtwohnen',
+  'b2.metric.segment.residential': 'Leitkennzahl Wohnen',
+  'b2.metric.scale': 'Baumaßstab',
+  'b2.metric.notAdditive':
+    'Zwei Leitkennzahlen, zwei Bezugsflächen: jede setzt die Nettosumme zu ihrer '
+    + 'eigenen normativen Fläche ins Verhältnis. Sie sind kein Anteil und werden '
+    + 'nicht addiert.',
+  'b2.metric.denominatorUnknown': 'nicht ermittelt',
+  'b2.metric.useProfile.residential': 'Wohnen',
+  'b2.metric.useProfile.nonResidential': 'Nichtwohnen',
+  'b2.metric.useProfile.mixed': 'Gemischte Nutzung',
+  'b2.metric.useProfile.unknown': 'Nutzung nicht klassifiziert',
 } as const
 
 export type MessageKey = keyof typeof de
@@ -3211,6 +3238,23 @@ export type MessageKey = keyof typeof de
  * (`src/i18n/__tests__/en-remainder.dom.test.tsx`).
  */
 const en: Partial<Record<MessageKey, string>> = {
+  /* ── B2 · Option metrics (requirement 9) ────────────────────────────── */
+  'b2.metric.netTotal': 'Net',
+  'b2.metric.energy': 'Energy standard',
+  'b2.metric.baseline': 'standard',
+  'b2.metric.segment.wfl': 'Lead metric residential',
+  'b2.metric.segment.nonResidential': 'Lead metric non-residential',
+  'b2.metric.segment.nuf': 'Lead metric non-residential',
+  'b2.metric.segment.residential': 'Lead metric residential',
+  'b2.metric.scale': 'Construction scale',
+  'b2.metric.notAdditive':
+    'Two lead metrics, two reference areas: each relates the net total to its own '
+    + 'normative area. They are not shares and they are not added together.',
+  'b2.metric.denominatorUnknown': 'not determined',
+  'b2.metric.useProfile.residential': 'Residential',
+  'b2.metric.useProfile.nonResidential': 'Non-residential',
+  'b2.metric.useProfile.mixed': 'Mixed use',
+  'b2.metric.useProfile.unknown': 'Use not classified',
   // VR2-00: internal Grundlagen QA surface — product-locale EN so nothing
   // in the visible specimen shell reads as untranslated diagnostic content.
   'grundlagen.specimen.badge': 'Internal · QA specimen',
@@ -4543,6 +4587,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'vr3.option.meta.notConfigured': 'not configured yet',
   'vr3.option.meta.baseline': 'from the project baseline of {date}',
   'vr3.option.meta.saved': 'saved {date} · version {version}',
+  'vr3.option.meta.savedTotal': 'saved {date} · version {version} · {label} {total}',
   'vr3.option.baselineMoved': 'Project understanding has changed since',
   'vr3.option.lifecycle.NEW': 'New',
   'vr3.option.lifecycle.BOUNDARIES_OPEN': 'In progress · Scope decisions',

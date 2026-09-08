@@ -5,6 +5,7 @@ import {
 import {
   configForOption,
   latestSavedOptionVersion,
+  optionCommercialProjectionFor,
   useStore,
 } from '../state/store'
 import { scopeSelectedIds } from '../state/optionBuildingScope'
@@ -35,6 +36,8 @@ import { Badge, FormField } from '../components/designSystem'
 import { useBaselineDisclosure, baselineDate } from '../components/OptionContextHeader'
 import { CreateOptionButton } from '../components/OptionCreation'
 import { startContinuityTransition, useSemanticMotion } from '../design-system/motion'
+import { OptionMetricSummary } from '../design-system/OptionMetricSummary'
+import { useOptionMetricLabels } from '../components/optionMetrics'
 import type { FixtureProject, ProjectAnalysis } from '../state/projectAnalysis'
 
 /**
@@ -114,6 +117,8 @@ function OptionRow({
   const nameFieldId = useId()
   const nameId = useId()
   const disclosure = useBaselineDisclosure()
+  const metricLabels = useOptionMetricLabels()
+  const projection = optionCommercialProjectionFor(s, row.id)
 
   useEffect(() => {
     if (!renaming) return
@@ -166,8 +171,11 @@ function OptionRow({
       })
       : null,
     saved
-      ? t('vr3.option.meta.saved', {
-        date: dayStamp(saved.savedAt, s.uiLanguage), version: saved.version,
+      ? t('vr3.option.meta.savedTotal', {
+        date: dayStamp(saved.savedAt, s.uiLanguage),
+        version: saved.version,
+        label: tx(saved.result.totalLabel),
+        total: savedTotal(saved.result.totalExact, s.uiLanguage),
       })
       : null,
     /**
@@ -237,18 +245,24 @@ function OptionRow({
           </span>
         </div>
         <div className="a3-optrow-value">
-          {saved ? (
-            <>
-              {/* The engine composes a total's label in German by contract
-                  (it must name its Declared Pricing Scope, R-18); the UI
-                  bridges it, exactly as every other surface that prints one
-                  does. The saved version's own string is used, not the live
-                  one: a receipt states what was committed. */}
-              <span className="a3-optrow-valuelabel">{tx(saved.result.totalLabel)}</span>
-              <span className="a3-optrow-amount numeric">
-                {savedTotal(saved.result.totalExact, s.uiLanguage)}
-              </span>
-            </>
+          {/* B2 · requirement 9 — ONE shared projection, so this card, the
+              Offer panel, Calculate, the cost detail and the exports state
+              the same money over the same denominators. What used to stand
+              here was the SAVED version's receipt, which is a different
+              claim: it stated a committed total beside a stage that had
+              since moved, and it could not carry a segment metric or the
+              Energy standard at all. The saved receipt is still on the card
+              — as the dated fact it is, in the meta line below.
+
+              `null` keeps the released absence: an Option whose result
+              cannot be derived says so and never prints a zero (rule 16). */}
+          {projection ? (
+            <OptionMetricSummary
+              projection={projection}
+              language={s.uiLanguage}
+              variant="card"
+              labels={metricLabels}
+            />
           ) : (
             <>
               <span className="a3-optrow-valuelabel">{t('vr3.rail.status.subtotal')}</span>
