@@ -90,6 +90,14 @@ async function toChapter(page: Page, label: string) {
     }
   }
   await expect(button).toHaveAttribute('aria-current', 'step')
+  // The rail flips `aria-current` from store state the moment it is clicked,
+  // while `AnimatePresence mode="wait"` still has the OUTGOING chapter (and
+  // its own single h1) on screen. Waiting only for those two therefore
+  // returns with the previous chapter still painted — which is how a
+  // one-shot assertion in this file came to measure chapter 1's colours
+  // while the rail already said chapter 2. The incoming chapter's own
+  // landmark is the honest signal that the swap finished.
+  await expect(page.getByRole('region', { name: label })).toBeVisible()
   await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1)
 }
 
@@ -797,7 +805,10 @@ test.describe('VR3-05 · client presentation narrative, Varianten and outputs', 
     await page.getByRole('button', { name: /^(Varianten|Variants) · \d+$/ }).click()
     const layer = page.getByRole('dialog')
     await expect(layer).toBeVisible()
-    await layer.getByRole('radio', { name: /Alle Zeilen|All rows/ }).click()
+    // The canonical choice control puts the whole label in the hit area and
+    // keeps the input `sr-only`, so a pointer reaches the label — clicking
+    // the input is intercepted, exactly as the DOM suites already note.
+    await layer.locator('label:has(input[value="all"])').click()
 
     const rowText = async (label: RegExp) => {
       const row = layer.getByRole('row').filter({ has: page.getByRole('rowheader', { name: label }) })
@@ -833,7 +844,7 @@ test.describe('VR3-05 · client presentation narrative, Varianten and outputs', 
   test('chapter 2 states the total in the brand accent, and nothing else does', async ({ page }) => {
     await reachClientMode(page)
     await toChapter(page, 'Projektüberblick')
-    const accents = await page.evaluate((shell) => {
+    const accentTexts = () => page.evaluate((shell) => {
       const out: string[] = []
       for (const node of document.querySelectorAll(`${shell} *`)) {
         const colour = getComputedStyle(node).color
@@ -843,7 +854,19 @@ test.describe('VR3-05 · client presentation narrative, Varianten and outputs', 
       }
       return out
     }, CP.cls.shell)
-    expect(accents.length, 'the total carries the brand accent').toBeGreaterThan(0)
+    await expect
+      .poll(async () => (await accentTexts()).length,
+        { message: 'the total carries the brand accent' })
+      .toBeGreaterThan(0)
+    // Rule 31: ONE accent on the chapter. The accented nodes are the total
+    // and the parts of it — its unit sits on the same baseline and inherits
+    // the colour, which is the approved treatment — and nothing else.
+    const accents = await accentTexts()
+    const total = (await page.locator('.a3-cp-metric-lead').first().innerText()).replace(/\s/g, '')
+    expect(total, 'the lead metric states the total').toMatch(/\d/)
+    expect(accents.every((text) => total.includes(text.replace(/\s/g, ''))),
+      `every accented node belongs to the total "${total}": ${JSON.stringify(accents)}`)
+      .toBe(true)
     await shot(page, 'ACCEPT-03-accent')
   })
 
