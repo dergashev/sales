@@ -209,16 +209,46 @@ for (const { label: viewportLabel, viewport } of VIEWPORTS) {
       await expect(qng).toBeVisible()
       await expect(page.getByRole('radiogroup', { name: 'DGNB-Zertifikat' })).toBeVisible()
 
-      // An unavailable choice carries its reason AND the action that enables
-      // it — never a greyed-out control alone (rule 12).
       const plus = qng.getByRole('radio', { name: /QNG-PLUS/ })
-      await expect(plus).toBeDisabled()
       const axis = page.locator('.a3-axis', { has: qng })
-      await expect(axis).toContainText(/setzt Energieziel/i)
+
+      /**
+       * THE EARLIEST PREREQUISITE FIRST. Before the six inclusion decisions
+       * are taken, a priced certificate is unreachable because KG 700 is
+       * undecided — and that is the reason shown, with the row above on this
+       * same screen as its route. No enabling action is offered here, on
+       * purpose: setting the Energy target would unblock nothing, and a
+       * recovery that does not recover costs the user a click and leaves the
+       * choice refused.
+       */
+      await expect(plus).toBeDisabled()
+      await expect(axis).toContainText(/KG.700 ist noch nicht entschieden/)
+      await expect(page.getByRole('button', { name: /Energieziel auf .* setzen/ }))
+        .toHaveCount(0)
+
+      // With the scope decided, the DEPENDENCY becomes the live reason — and
+      // now the enabling action appears, because now it enables something.
+      for (let pass = 0; pass < 8; pass += 1) {
+        const index = await page.evaluate(() => {
+          const radios = [...document.querySelectorAll('main input[type=radio]')]
+          return radios.findIndex((r) => !(r as HTMLInputElement).checked
+            && !(r as HTMLInputElement).disabled
+            && /^\s*enthalten/.test((r.closest('label')?.textContent ?? '').replace(/^✓/, '')))
+        })
+        if (index < 0) break
+        await page.locator('main input[type=radio]').nth(index)
+          .locator('xpath=ancestor::label[1]').click()
+      }
+
+      const qngAfter = page.getByRole('radiogroup', { name: 'QNG-Siegel' })
+      await expect(qngAfter.getByRole('radio', { name: /QNG-PLUS/ })).toBeDisabled()
+      await expect(page.locator('.a3-axis', { has: qngAfter }))
+        .toContainText(/Effizienzhaus 40 NH/)
       const enable = page.getByRole('button', { name: /Energieziel auf .* setzen/ })
       await expect(enable).toBeVisible()
       await enable.click()
-      await expect(qng.getByRole('radio', { name: /QNG-PLUS/ })).toBeEnabled()
+      await expect(page.getByRole('radiogroup', { name: 'QNG-Siegel' })
+        .getByRole('radio', { name: /QNG-PLUS/ })).toBeEnabled()
 
       await expectNoHorizontalOverflow(page)
     })

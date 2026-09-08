@@ -408,6 +408,18 @@ function ScopeAxis({ axis, service }: { axis: KgScopeAxis; service: KgService })
    * click rather than a route to somewhere else and back.
    */
   const enabling = (() => {
+    /**
+     * ONLY when the upstream AXIS is what is missing.
+     *
+     * The browser caught this: with KG 700 still undecided, every priced
+     * QNG variant is unreachable for that reason, and the offer to set the
+     * Energy target would have unblocked nothing — a recovery that does not
+     * recover is worse than none, because the user spends the click and the
+     * choice is still refused. The group decision is the earlier
+     * prerequisite and the row above on this same screen is its route, so
+     * this action waits until that one is settled.
+     */
+    if (groupDecision !== 'included') return null
     const required = requiredUpstreamVariant(catalogue, service)
     if (!required?.variant) return null
     const upstreamAxis = required.service.scopeAxis
