@@ -271,6 +271,24 @@ describe('one projection, so surfaces cannot disagree', () => {
     expect(card.metrics.map((m) => [m.id, m.rate.display, m.rate.denominatorLabel]))
       .toEqual(rail.metrics.map((m) => [m.id, m.rate.display, m.rate.denominatorLabel]))
     expect(card.energy?.variantId).toBe(rail.energy?.variantId)
+
+    /**
+     * AC-3 — the chain that reaches the exports and Client Mode.
+     *
+     * These two paths are genuinely independent derivations of one
+     * configuration: the card projects `clientSnapshotForOption`'s result
+     * (the same function `clientBaselineSnapshot` and the client projection
+     * use) and the rail projects the guarded `commercialSnapshot`'s. Their
+     * agreement is what makes every downstream consumer agree, because none
+     * of them re-prices — `clientProposal` takes a `CommercialResult` and
+     * the export surfaces read the same one.
+     *
+     * The literal anchors that chain to the DECLARED fixture total, which
+     * `clientScenario.test.ts` asserts from the client side. One number,
+     * two suites, opposite ends of the product.
+     */
+    expect(card.netTotal.exact.toFixed(2)).toBe('38740000.00')
+    expect(rail.netTotal.exact.toFixed(2)).toBe('38740000.00')
   })
 
   it("keeps each Option's projection to itself when the workspace switches", () => {
