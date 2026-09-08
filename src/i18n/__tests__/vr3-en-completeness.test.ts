@@ -225,6 +225,19 @@ describe('VR3-01 · nothing on the owned surfaces can reach EN untranslated', ()
       'src/components/PresentationShell.tsx: tx(p.result.totalLabel)',
       'src/components/PresentationShell.tsx: tx(snapshot.totalLabel)',
       'src/design-system/WorkflowStepper.tsx: tx(key)',
+      /**
+       * B2 · requirement 9 — Validate now reviews the Option's applicable
+       * area metrics, so it bridges the SAME engine-composed denominator
+       * label `PresentationShell` already bridges above
+       * (`p.leadRate.denominatorLabel`). It is the accepted class, not a new
+       * exemption: `DENOMINATOR_LABEL` is German by contract because the
+       * norm belongs to the metric's name (rule 31), every one of its values
+       * has an EN row in the delivery, and the next test in this file proves
+       * each one resolves. A segment with no denominator prints the same
+       * label beside `nicht ermittelt`, which is the second call.
+       */
+      'src/screens/FinalValidation.tsx: tx(gap.denominatorLabel)',
+      'src/screens/FinalValidation.tsx: tx(metric.rate.denominatorLabel)',
       // The Option card's metric is the SAVED version's total, and a saved
       // total carries the same engine-composed German label every other
       // surface bridges (R-18). The live-projection call it replaces was

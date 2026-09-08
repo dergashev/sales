@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Decimal } from 'decimal.js'
 import {
-  commercialSnapshot, includedBuildingIds, useStore,
+  commercialSnapshot, includedBuildingIds, kgCatalogueFor, useStore,
 } from '../state/store'
 import {
   commercialComposition,
@@ -15,6 +15,7 @@ import {
   type SelectedCommercialEffect,
 } from '../state/commercialProjection'
 import { optionNav, type OptionDestination } from '../state/optionLifecycle'
+import { optionCommercialProjection } from '../state/optionCommercialProjection'
 import { translatedDriverLabel } from '../state/clientProjection'
 import { splitKg300 } from '../engine/risk'
 import type { CostGroup } from '../engine/calculate'
@@ -78,6 +79,16 @@ export function CostDetails() {
   const snapshot = commercialSnapshot(s)
   const p = snapshot.projection
   const commercial = snapshot.result
+  /**
+   * B2 · requirement 9 — the area metrics from the ONE shared projection,
+   * built on the SNAPSHOT's own result so this page still renders exactly
+   * one instant. A cost explanation that named a different denominator from
+   * the summary it explains would be the cross-surface disagreement this
+   * projection exists to make impossible.
+   */
+  const areaProjection = optionCommercialProjection(
+    s, snapshot.result, kgCatalogueFor(s), s.kgConfig,
+  )
   const headingRef = useRef<HTMLHeadingElement>(null)
 
   const buildingIds = includedBuildingIds(s)
@@ -172,14 +183,39 @@ export function CostDetails() {
               />
             </div>
           </div>
-          <div className="a3-costdetails-cell">
-            <span className="a3-costdetails-k">{t('costDetails.a.leadRate')}</span>
-            <span className="a3-costdetails-v">
-              {p.leadRate.prefix && <span aria-hidden="true">{p.leadRate.prefix}{NNBSP}</span>}
-              {localizeMoneyText(p.leadRate.display, lang)}{NNBSP}€/m²
-            </span>
-            <span className="a3-costdetails-k">{tx(p.leadRate.denominatorLabel)}</span>
-          </div>
+          {/* B2 · requirement 9 — the SAME shared projection the Option
+              card, the Offer panel and Validate read, so the complete cost
+              explanation cannot state a different denominator from the
+              summary it explains. One cell per applicable metric: the
+              segment Leitkennzahlen first, the construction scale last. */}
+          {areaProjection.metrics.map((metric) => (
+            <div className="a3-costdetails-cell" key={metric.id} data-metric={metric.id}>
+              <span className="a3-costdetails-k">
+                {metric.role === 'segment'
+                  ? t('costDetails.a.leadRate')
+                  : t('b2.metric.scale')}
+              </span>
+              <span className="a3-costdetails-v">
+                {metric.rate.prefix && (
+                  <span aria-hidden="true">{metric.rate.prefix}{NNBSP}</span>
+                )}
+                {localizeMoneyText(metric.rate.display, lang)}{NNBSP}€/m²
+              </span>
+              <span className="a3-costdetails-k">
+                {tx(metric.rate.denominatorLabel)}
+              </span>
+            </div>
+          ))}
+          {/* A segment that applies with no area keeps its norm on screen. */}
+          {areaProjection.gaps.map((gap) => (
+            <div className="a3-costdetails-cell" key={`gap-${gap.id}`}>
+              <span className="a3-costdetails-k">{t('costDetails.a.leadRate')}</span>
+              <span className="a3-costdetails-v">
+                {t('b2.metric.denominatorUnknown')}
+              </span>
+              <span className="a3-costdetails-k">{tx(gap.denominatorLabel)}</span>
+            </div>
+          ))}
           <div className="a3-costdetails-cell">
             <span className="a3-costdetails-k">{t('costDetails.a.duration')}</span>
             <span className="a3-costdetails-v">
@@ -209,12 +245,10 @@ export function CostDetails() {
         <p className="a3-costdetails-note">
           {t('costDetails.a.furtherRates')}
           {': '}
-          {p.secondaryRateBgf.denominatorType !== p.leadRate.denominatorType && (<>
-            {p.secondaryRateBgf.prefix && `${p.secondaryRateBgf.prefix}${NNBSP}`}
-            {localizeMoneyText(p.secondaryRateBgf.display, lang)}{NNBSP}€/m²{' '}
-            {tx(p.secondaryRateBgf.denominatorLabel)}
-            {p.perUnit ? ' · ' : ''}
-          </>)}
+          {/* The BGF scale is a CELL above now, so repeating it here would
+              print one denominator twice on one surface — the duplication
+              this ticket's whole point is to remove. Only the per-unit rate
+              remains, which no cell carries. */}
           {p.perUnit && (<>
             {p.perUnit.prefix && `${p.perUnit.prefix}${NNBSP}`}
             {localizeMoneyText(p.perUnit.display, lang)}{NNBSP}€{' '}

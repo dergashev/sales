@@ -4,6 +4,7 @@ import {
   clientModeLockReasonFor,
   commercialResult,
   finalValidationAvailableFor,
+  kgCatalogueFor,
   kgChapterProgressFor,
   latestSavedOptionVersion,
   optionReviewStageFor,
@@ -27,10 +28,11 @@ import {
 } from '../state/optionReview'
 import { KG_SCOPE_GROUPS, type KgScopeGroup } from '../engine/kgConfiguration'
 import { scopeSelectedIds, scopeBuilding, scopeMetricValue, selectedBgfRSTotal } from '../state/optionBuildingScope'
+import { optionCommercialProjection } from '../state/optionCommercialProjection'
 import { halfMonthsToMonths } from '../engine/schedule'
-import { NNBSP } from '../engine/money'
+import { NNBSP, rateUnit } from '../engine/money'
 import { CONFIGURATOR_STEP } from '../state/chapters'
-import { useT } from '../i18n'
+import { localizeMoneyText, useT, useTx } from '../i18n'
 import { useLocalNumber } from '../lib/localNumber'
 import { Button } from '../components/primitives'
 import { ActionGate } from '../design-system/ActionGate'
@@ -69,6 +71,7 @@ import { SaveFailureNotice, SaveReceipt } from '../design-system/SaveReceipt'
 export function FinalValidation() {
   const s = useStore()
   const t = useT()
+  const tx = useTx()
   const num = useLocalNumber()
 
   const available = finalValidationAvailableFor(s)
@@ -81,6 +84,14 @@ export function FinalValidation() {
   const clientAvailable = clientModeAvailableForOption(s, s.activeOptionId)
   const unsaved = unsavedWorkingChangesFor(s)
   const result = commercialResult(s)
+  /**
+   * B2 · requirement 9 — the ONE shared projection, on the surface where a
+   * seller signs the Option off. Built from `result` itself, so Validate
+   * cannot review a denominator the Offer panel is not showing.
+   */
+  const areaProjection = optionCommercialProjection(
+    s, result, kgCatalogueFor(s), s.kgConfig,
+  )
   const heading = useRef<HTMLHeadingElement>(null)
 
   /**
@@ -402,6 +413,51 @@ export function FinalValidation() {
               emphasis="default"
             />
           ),
+        },
+        /**
+         * B2 · requirement 9 — the applicable area metrics, from the ONE
+         * shared projection. The audit found Validate repeating net and
+         * DIN 276 values with "the segment-denominator policy absent", so
+         * the surface where a seller signs off on an Option could not show
+         * the metric the offer is quoted in.
+         *
+         * One row per applicable metric, each naming its norm; a segment
+         * that applies with no area keeps its norm and says the denominator
+         * is not determined (rule 16).
+         */
+        ...areaProjection.metrics.map((metric) => {
+          // The denominator is bridged ONCE: the metric's role decides the
+          // words in front of it, not whether it needs bridging.
+          const denominator = tx(metric.rate.denominatorLabel)
+          const role = metric.role === 'segment'
+            ? t(metric.segmentLabelKey ?? 'b2.metric.scale')
+            : t('b2.metric.scale')
+          return {
+            id: `rate-${metric.id}`,
+            label: `${role} · ${denominator}`,
+            value: localizeMoneyText(rateUnit(metric.rate), s.uiLanguage),
+          }
+        }),
+        ...areaProjection.gaps.map((gap) => ({
+          id: `rate-gap-${gap.id}`,
+          label: `${t(gap.segmentLabelKey)} · ${tx(gap.denominatorLabel)}`,
+          value: t('b2.metric.denominatorUnknown'),
+        })),
+        ...(areaProjection.metrics.filter((m) => m.role === 'segment').length > 1
+          ? [{
+            id: 'rate-note',
+            label: t('b2.metric.useProfile.mixed'),
+            value: t('b2.metric.notAdditive'),
+          }]
+          : []),
+        {
+          id: 'energy',
+          label: t('b2.metric.energy'),
+          value: areaProjection.energy
+            ? (s.uiLanguage === 'en'
+              ? areaProjection.energy.variantLabelEn
+              : areaProjection.energy.variantLabelDe)
+            : t('vr3.review.value.absent'),
         },
         {
           id: 'uncertainty',
