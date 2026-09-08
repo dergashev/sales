@@ -11,7 +11,7 @@ import {
   driversSum, kgSplit, totalLabel,
   type BuildingInput, type Catalog, type Coverage,
 } from '../calculate'
-import { label, present, rate, rateLabel, MONEY } from '../money'
+import { label, present, quantityLabel, rate, rateLabel, MONEY } from '../money'
 import {
   durationDeltaDays, durationDeltaLabel, modelDuration, presentDuration,
   projectTotalEnd, wholeCalendarMonths,
@@ -299,6 +299,40 @@ describe('Подвал: режим отделки и паркинг — две �
           .toBe(r.total.exact.toFixed(2))
       }
     }
+  })
+})
+
+describe('правило 7: количество, набранное один раз (`quantityLabel`)', () => {
+  const NNBSP = ' '
+
+  it('группирует по-немецки и отделяет единицу узким неразрывным пробелом', () => {
+    // Ровно тот дефект, ради которого функция появилась: сырая строка из
+    // стора печаталась как «9500 m²» — ни немецкой группировки, ни U+202F.
+    expect(quantityLabel('9500', 'm²')).toBe(`9.500${NNBSP}m²`)
+    expect(quantityLabel('2200', 'm²')).toBe(`2.200${NNBSP}m²`)
+    expect(quantityLabel('740', 'm²')).toBe(`740${NNBSP}m²`)
+  })
+
+  it('счётная величина остаётся целой — ложной точности не возникает', () => {
+    // Правило 36 / F-11: «4,00 Anschlüsse» читается как измерение, которого
+    // не существует. Решает сама величина, а не список ключей.
+    expect(quantityLabel('4', 'Anschlüsse')).toBe(`4${NNBSP}Anschlüsse`)
+    expect(quantityLabel('3', 'Anlagen')).toBe(`3${NNBSP}Anlagen`)
+    expect(quantityLabel('4', 'Anschlüsse')).not.toMatch(/4[.,]0/)
+  })
+
+  it('собственная точность значения сохраняется, а не навязывается', () => {
+    expect(quantityLabel('1187.5', 'm²')).toBe(`1.187,5${NNBSP}m²`)
+    expect(quantityLabel('12.25', 'm²')).toBe(`12,25${NNBSP}m²`)
+  })
+
+  it('неразбираемый ввод возвращается как есть — читатель видит, что набрал', () => {
+    // Вместе с ним строка ошибки называет проблему (`quantityProblem`).
+    // Подменять его на ноль означало бы показать посчитанную величину там,
+    // где счёта не было (правило 16).
+    expect(quantityLabel('zwölf', 'm²')).toBe(`zwölf${NNBSP}m²`)
+    expect(quantityLabel('', 'm²')).toBe(`${NNBSP}m²`)
+    expect(quantityLabel('1.187,5', 'm²')).toContain('m²')
   })
 })
 

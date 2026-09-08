@@ -80,6 +80,40 @@ export function label(d: Displayed, unit = '€'): string {
 }
 
 /**
+ * A DRIVING QUANTITY, typeset once (rule 7, rule 36).
+ *
+ * `KgServiceKind.quantity` stores its value locale-free, exactly as the user
+ * typed it, so an invalid entry can be shown back to them (rule 12). That raw
+ * string is the right thing inside the FIELD and the wrong thing everywhere
+ * else: printed as-is a site clearance of 9500 square metres reads
+ * `9500 m²` — neither German grouping nor the narrow no-break space rule 7
+ * requires between a number and its unit.
+ *
+ * The value's OWN precision is preserved rather than forced to a fixed
+ * number of places: a count stays `4`, and an entered `1187.5` stays
+ * `1.187,5`. That is the same distinction `SCOPE_QUANTITY_IS_COUNT` draws
+ * for the other catalogue, made here from the value instead of from a list,
+ * because the value already knows.
+ *
+ * German is produced here and `localizeMoneyText` re-typesets it for EN —
+ * the chain money already uses. An UNPARSEABLE raw string is returned with
+ * its unit and no grouping: the reader has to see what they actually typed
+ * beside the error that names the problem.
+ */
+export function quantityLabel(raw: string, unit: string): string {
+  const trimmed = raw.trim()
+  const fraction = trimmed.split('.')[1]
+  let value: Decimal
+  try {
+    value = new Decimal(trimmed)
+  } catch {
+    return `${trimmed}${NNBSP}${unit}`
+  }
+  if (!value.isFinite()) return `${trimmed}${NNBSP}${unit}`
+  return `${formatDE(value, fraction ? fraction.length : 0)}${NNBSP}${unit}`
+}
+
+/**
  * Ставка с **типизированным знаменателем**.
  *
  * Знаменатель — не подпись, а ссылка на конкретную площадь с её типом.

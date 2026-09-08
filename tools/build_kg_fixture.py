@@ -51,6 +51,42 @@ def variant(v, de, en, delta):
 
 def quantity(sid, de, en, sde, sen, unit_amount, qty, unit_de, unit_en,
              baseline='selected', building=None):
+    """A position Sales configures by its DRIVING QUANTITY, not by a lump.
+
+    THE RATE IS NOT A NEW COST. `amount` is computed here as
+    `unit_amount x qty`, so a position converted from a flat `svc` to this
+    helper keeps its declared euro to the cent as long as the pair
+    multiplies back to the amount it had. That is the whole safety property
+    of the conversion, and `kgConfiguration.test.ts` proves it per cost
+    group against `declaredByCostGroup`.
+
+    WHY THAT MATTERS HERE (task "surface KG 200/500/600 option by option").
+    The ticket asked for a `ScopeCatalogChapter` over `scope-catalog.json`.
+    Fresh repository truth superseded that premise: VR3-03 deleted the
+    scope-catalog grammar on purpose (see the docblock at the head of
+    `src/screens/S3Konfigurator.tsx`), `scopeCatalogDrivers` runs only in
+    `proposalProjection`, and `proposalProjection` runs only when an Option
+    has no `kgConfig` -- which no reachable Option ever is. Surfacing that
+    catalogue would therefore have shipped ~20 Sales-selectable controls
+    with a structurally guaranteed zero price effect, the exact defect the
+    pricing-coverage invariant exists to forbid.
+
+    So the missing DEPTH is added on the canonical live grammar instead.
+    Ten KG 200/500/600 positions that were flat include/exclude rows now
+    name the quantity that drives them. The unit rate is a re-expression of
+    each position's OWN declared demonstration amount at a declared
+    quantity -- never a rate imported from `scope-catalog.json`, whose
+    KG 200/500/600 items describe the same physical scope under an
+    incompatible model and would double-count it.
+
+    PROVENANCE MOVES WITH THE SHAPE, deliberately. `svc` defaults to
+    `sourceEvidenced`; this helper declares `derived`, and the ten converted
+    positions therefore change authority. That is the honest direction, not a
+    side effect: the old lump claimed the documents evidenced 44.000 EUR,
+    while the composed value says 2.200 m2 x 20 EUR/m2 -- and the quantity is
+    a declared demonstration figure, not a measurement read off a drawing.
+    All five pre-existing quantity positions already declare `derived`.
+    """
     return {
         'id': sid, 'labelDe': de, 'labelEn': en,
         'summaryDe': sde, 'summaryEn': sen,
@@ -1138,24 +1174,26 @@ A = [
      scopeDe='gilt für den gesamten Wohnhof', scopeEn='applies to the whole courtyard',
      visual='site', costAuthority='direct'),
     system('a-kg200-clearance', 'Baufeld & Bestand', 'Site clearance & existing structures', [
-     svc('a-200-02', 'Baufeldfreimachung & Rodung', 'Site clearance',
+     quantity('a-200-02', 'Baufeldfreimachung & Rodung', 'Site clearance',
          'Oberboden abtragen, Bewuchs entfernen, Baufeld herstellen.',
-         'Topsoil removal, vegetation clearance, site preparation.', 44000),
+         'Topsoil removal, vegetation clearance, site preparation.',
+         20, 2200, 'm²', 'm²'),
      required('a-200-90', 'Rückbau Bestandsgebäude', 'Demolition of existing structure',
          'Auf dem Grundstück steht kein Bestand — die Position ist zu entscheiden, nicht anzunehmen.',
          'No existing structure on the plot — a decision, not an assumption.', 145000),
    ],
-     summaryDe='Baufeldfreimachung im Paket · Rückbau Bestand zu entscheiden',
-     summaryEn='Site clearance in the package · demolition of existing structure to decide',
+     summaryDe='2.200 m² Baufeldfreimachung · Rückbau Bestand zu entscheiden',
+     summaryEn='2,200 m² site clearance · demolition of existing structure to decide',
      scopeDe='gilt für den gesamten Wohnhof', scopeEn='applies to the whole courtyard',
      visual='clearance', costAuthority='direct'),
     system('a-kg200-connections', 'Erschließung & Hausanschlüsse', 'Connections & access', [
-     svc('a-200-03', 'Hausanschlüsse Ver- und Entsorgung', 'Utility connections',
+     quantity('a-200-03', 'Hausanschlüsse Ver- und Entsorgung', 'Utility connections',
          'Strom, Wasser, Abwasser und Telekommunikation bis zur Gebäudekante.',
-         'Power, water, sewage and telecoms up to the building edge.', 68000),
+         'Power, water, sewage and telecoms up to the building edge.',
+         17000, 4, 'Anschlüsse', 'connections'),
    ],
-     summaryDe='Strom, Wasser, Abwasser und Telekommunikation bis zur Gebäudekante',
-     summaryEn='Power, water, sewage and telecoms up to the building edge',
+     summaryDe='4 Anschlüsse: Strom, Wasser, Abwasser und Telekommunikation',
+     summaryEn='4 connections: power, water, sewage and telecoms',
      scopeDe='gilt für den gesamten Wohnhof', scopeEn='applies to the whole courtyard',
      visual='connections', costAuthority='direct'),
    ]),
@@ -1645,15 +1683,17 @@ A = [
      scopeDe='gilt für den gesamten Wohnhof', scopeEn='applies to the whole courtyard',
      visual='path', costAuthority='direct'),
     system('a-kg500-planting', 'Bepflanzung & Spiel', 'Landscape & play', [
-     svc('a-500-02', 'Bepflanzung & Rasen', 'Planting & lawn',
+     quantity('a-500-02', 'Bepflanzung & Rasen', 'Planting & lawn',
          'Rasenflächen, Sträucher und vier Hofbäume.',
-         'Lawn areas, shrubs and four courtyard trees.', 74000),
-     svc('a-500-03', 'Spielfläche', 'Play area',
+         'Lawn areas, shrubs and four courtyard trees.',
+         100, 740, 'm²', 'm²'),
+     quantity('a-500-03', 'Spielfläche', 'Play area',
          'Spielgeräte, Fallschutz und Einfassung nach DIN EN 1176.',
-         'Play equipment, impact protection and edging to DIN EN 1176.', 58000),
+         'Play equipment, impact protection and edging to DIN EN 1176.',
+         400, 145, 'm²', 'm²'),
    ],
-     summaryDe='Rasen, Sträucher und vier Hofbäume · Spielfläche nach DIN EN 1176',
-     summaryEn='Lawn, shrubs and four courtyard trees · play area to DIN EN 1176',
+     summaryDe='740 m² Rasen, Sträucher und vier Hofbäume · 145 m² Spielfläche',
+     summaryEn='740 m² lawn, shrubs and four courtyard trees · 145 m² play area',
      scopeDe='gilt für den gesamten Wohnhof', scopeEn='applies to the whole courtyard',
      visual='planting', costAuthority='direct'),
     system('a-kg500-water', 'Einfriedung & Regenwasser', 'Water & boundaries', [
@@ -1798,16 +1838,17 @@ B = [
      scopeDe='gilt für das gesamte Quartier', scopeEn='applies to the whole quarter',
      visual='site', costAuthority='direct'),
     system('b-kg200-clearance', 'Baufeld & Bestand', 'Site clearance & existing structures', [
-     svc('b-200-02', 'Baufeldfreimachung & Rodung', 'Site clearance',
+     quantity('b-200-02', 'Baufeldfreimachung & Rodung', 'Site clearance',
          'Oberboden, Bewuchs und Restfundamente der Logistikfläche.',
-         'Topsoil, vegetation and residual foundations of the logistics yard.', 190000),
+         'Topsoil, vegetation and residual foundations of the logistics yard.',
+         20, 9500, 'm²', 'm²'),
      svc('b-200-03', 'Rückbau Ladeplatte', 'Loading-slab demolition',
          'Provisorischer Ansatz: der Lageplan zeigt die Platte, der Auftrag schweigt (B-Q-05).',
          'Provisional allowance: the site plan shows the slab, the brief is silent (B-Q-05).',
          240000, authority='assumed'),
    ],
-     summaryDe='Baufeldfreimachung · Rückbau Ladeplatte als provisorischer Ansatz (B-Q-05)',
-     summaryEn='Site clearance · loading-slab demolition as a provisional allowance (B-Q-05)',
+     summaryDe='9.500 m² Baufeldfreimachung · Rückbau Ladeplatte als provisorischer Ansatz (B-Q-05)',
+     summaryEn='9,500 m² site clearance · loading-slab demolition as a provisional allowance (B-Q-05)',
      scopeDe='gilt für das gesamte Quartier', scopeEn='applies to the whole quarter',
      visual='clearance', costAuthority='direct'),
     system('b-kg200-connections', 'Erschließung & Hausanschlüsse', 'Connections & access', [
@@ -2463,21 +2504,24 @@ B = [
    # kg-chapter-migration-map.md (Access & hardscape · Landscape & play ·
    # Water & boundaries · Garage access). No amount, kind or id changed.
    [system('b-kg500-path', 'Wege & Platzflächen', 'Access & hardscape', [
-     svc('b-500-02', 'Wege & Platzflächen', 'Paths & paved areas',
+     quantity('b-500-02', 'Wege & Platzflächen', 'Paths & paved areas',
          'Erschließung der drei Hauseingänge und der Feuerwehrzufahrt.',
-         'Access to the three entrances and the fire-service route.', 380000),
+         'Access to the three entrances and the fire-service route.',
+         380, 1000, 'm²', 'm²'),
    ],
-     summaryDe='Erschließung der drei Hauseingänge und der Feuerwehrzufahrt',
-     summaryEn='Access to the three entrances and the fire-service route',
+     summaryDe='1.000 m² Erschließung der drei Hauseingänge und der Feuerwehrzufahrt',
+     summaryEn='1,000 m² access to the three entrances and the fire-service route',
      scopeDe='gilt für das gesamte Quartier', scopeEn='applies to the whole quarter',
      visual='path', costAuthority='direct'),
     system('b-kg500-planting', 'Innenhof, Bepflanzung & Spiel', 'Landscape & play', [
-     svc('b-500-01', 'Innenhof & Aufenthaltsflächen', 'Courtyard & amenity areas',
+     quantity('b-500-01', 'Innenhof & Aufenthaltsflächen', 'Courtyard & amenity areas',
          'Gemeinschaftlicher Hof, B-Q-07: als Quartierspaket geführt.',
-         'Shared courtyard, B-Q-07: carried as a quarter-wide package.', 620000),
-     svc('b-500-03', 'Bepflanzung & Baumpflanzung', 'Planting & tree planting',
+         'Shared courtyard, B-Q-07: carried as a quarter-wide package.',
+         200, 3100, 'm²', 'm²'),
+     quantity('b-500-03', 'Bepflanzung & Baumpflanzung', 'Planting & tree planting',
          'Hofbäume, Strauchpflanzungen und Ausgleichsflächen.',
-         'Courtyard trees, shrub planting and compensation areas.', 290000),
+         'Courtyard trees, shrub planting and compensation areas.',
+         100, 2900, 'm²', 'm²'),
      choice('b-500-package', 'Freianlagen-Paket', 'External-works package',
          'B-Q-07 ist beantwortet: ein Quartierspaket, die Zuordnung je Haus wird abgeleitet.',
          'B-Q-07 is answered: one quarter package, the per-building share is derived.',
@@ -2488,20 +2532,21 @@ B = [
          'Bei 94 Wohneinheiten üblich, im Auftrag nicht benannt.',
          'Usual for 94 dwellings, not named in the brief.', 120000),
    ],
-     summaryDe='Innenhof und Bepflanzung als Quartierspaket (B-Q-07) · Spielfläche zu entscheiden',
-     summaryEn='Courtyard and planting as a quarter package (B-Q-07) · play area to decide',
+     summaryDe='3.100 m² Innenhof und 2.900 m² Bepflanzung als Quartierspaket (B-Q-07) · Spielfläche zu entscheiden',
+     summaryEn='3,100 m² courtyard and 2,900 m² planting as a quarter package (B-Q-07) · play area to decide',
      scopeDe='gilt für das gesamte Quartier', scopeEn='applies to the whole quarter',
      visual='planting', costAuthority='direct'),
     system('b-kg500-water', 'Regenwasser & Einfriedung', 'Water & boundaries', [
-     svc('b-500-04', 'Regenwasserbewirtschaftung', 'Stormwater management',
+     quantity('b-500-04', 'Regenwasserbewirtschaftung', 'Stormwater management',
          'Retention, Mulden-Rigolen und Notüberlauf.',
-         'Retention, swale-trench systems and emergency overflow.', 340000),
+         'Retention, swale-trench systems and emergency overflow.',
+         100, 3400, 'm²', 'm²'),
      svc('b-500-05', 'Einfriedung & Müllstandplätze', 'Enclosure & refuse areas',
          'Drei überdachte Standplätze und die Quartierseinfriedung.',
          'Three roofed refuse areas and the quarter enclosure.', 130000),
    ],
-     summaryDe='Retention, Mulden-Rigolen und Notüberlauf · drei Müllstandplätze und Einfriedung',
-     summaryEn='Retention, swale-trench systems and overflow · three refuse areas and enclosure',
+     summaryDe='3.400 m² Retention, Mulden-Rigolen und Notüberlauf · drei Müllstandplätze und Einfriedung',
+     summaryEn='3,400 m² retention, swale-trench systems and overflow · three refuse areas and enclosure',
      scopeDe='gilt für das gesamte Quartier', scopeEn='applies to the whole quarter',
      visual='water', costAuthority='direct'),
     system('b-kg500-ramp', 'Tiefgaragenzufahrt', 'Garage access', [
@@ -2521,9 +2566,10 @@ B = [
    # kg-chapter-migration-map.md (Building equipment · Shared-use equipment ·
    # Wayfinding & art). No amount, kind or id changed.
    [system('b-kg600-mailbox', 'Gebäudeausstattung', 'Building equipment', [
-     svc('b-600-01', 'Briefkastenanlagen', 'Letterbox installations',
+     quantity('b-600-01', 'Briefkastenanlagen', 'Letterbox installations',
          'Drei Anlagen mit Paketfächern für 94 Wohneinheiten und Gewerbe.',
-         'Three installations with parcel boxes for 94 dwellings and commercial units.', 96000),
+         'Three installations with parcel boxes for 94 dwellings and commercial units.',
+         32000, 3, 'Anlagen', 'installations'),
    ],
      summaryDe='Drei Briefkastenanlagen mit Paketfächern für 94 Wohneinheiten und Gewerbe',
      summaryEn='Three letterbox installations with parcel boxes for 94 dwellings and commercial units',
@@ -3008,7 +3054,12 @@ doc = {
         'STRINGS, never JSON numbers. A singleChoice service carries the '
         'RELATIVE effect of each variant against its baseline variant, exactly '
         'as the released Mehrpreis/Minderpreis semantics do, so the baseline '
-        'variant contributes nothing and the declared totals hold.'
+        'variant contributes nothing and the declared totals hold. A quantity '
+        'service prices as unitAmount x quantity, and its declared `amount` '
+        'is exactly unitAmount x baselineQuantity — that identity is what '
+        'lets a flat position become Sales-configurable without moving a '
+        'declared subtotal, and it is enforced per position by '
+        'src/engine/__tests__/pricingCoverage.invariant.test.ts.'
     ),
     'catalogues': [
         {'projectId': 'DEMO-HAPPY-01', 'uncertaintyPercent': '5',

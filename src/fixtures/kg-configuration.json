@@ -1,5 +1,5 @@
 {
-  "$comment": "DEMO / NON-PRODUCTION PRODUCT FIXTURE (VR3-03). Every service, amount and variant below is a demonstration value: it exists to make Product behaviour legible, and it is not All3 production pricing, a quotation or calculation authority. Transcribed from the approved VR3-00 package (artifacts/VR3-00-global-design-audit/06-demo-fixtures/demo-project-fixtures.md and 03-target/1440x900/T-018.png at ba0263bfdf838cc30e4167da3b09e3f654fbf961) and PROVED by src/engine/__tests__/kgConfiguration.test.ts: every cost group’s baseline services sum to its declared subtotal, the six subtotals sum to the declared net total, and the service counts match the ticket. Bilingual copy is stored inline as labelDe/labelEn, following the released src/fixtures/scope-catalog.json precedent for a large domain catalogue; UI chrome remains i18n keys (rule 36). Amounts are decimal STRINGS, never JSON numbers. A singleChoice service carries the RELATIVE effect of each variant against its baseline variant, exactly as the released Mehrpreis/Minderpreis semantics do, so the baseline variant contributes nothing and the declared totals hold.",
+  "$comment": "DEMO / NON-PRODUCTION PRODUCT FIXTURE (VR3-03). Every service, amount and variant below is a demonstration value: it exists to make Product behaviour legible, and it is not All3 production pricing, a quotation or calculation authority. Transcribed from the approved VR3-00 package (artifacts/VR3-00-global-design-audit/06-demo-fixtures/demo-project-fixtures.md and 03-target/1440x900/T-018.png at ba0263bfdf838cc30e4167da3b09e3f654fbf961) and PROVED by src/engine/__tests__/kgConfiguration.test.ts: every cost group’s baseline services sum to its declared subtotal, the six subtotals sum to the declared net total, and the service counts match the ticket. Bilingual copy is stored inline as labelDe/labelEn, following the released src/fixtures/scope-catalog.json precedent for a large domain catalogue; UI chrome remains i18n keys (rule 36). Amounts are decimal STRINGS, never JSON numbers. A singleChoice service carries the RELATIVE effect of each variant against its baseline variant, exactly as the released Mehrpreis/Minderpreis semantics do, so the baseline variant contributes nothing and the declared totals hold. A quantity service prices as unitAmount x quantity, and its declared `amount` is exactly unitAmount x baselineQuantity — that identity is what lets a flat position become Sales-configurable without moving a declared subtotal, and it is enforced per position by src/engine/__tests__/pricingCoverage.invariant.test.ts.",
   "catalogues": [
     {
       "projectId": "DEMO-HAPPY-01",
@@ -62,9 +62,15 @@
                   "amount": "44000.00",
                   "baseline": "selected",
                   "kind": {
-                    "kind": "includeExclude"
+                    "kind": "quantity",
+                    "unitAmount": "20.00",
+                    "baselineQuantity": "2200",
+                    "unitDe": "m²",
+                    "unitEn": "m²",
+                    "minQuantity": "0",
+                    "maxQuantity": "100000"
                   },
-                  "authority": "sourceEvidenced",
+                  "authority": "derived",
                   "requiresDecision": false
                 },
                 {
@@ -82,8 +88,8 @@
                   "requiresDecision": true
                 }
               ],
-              "summaryDe": "Baufeldfreimachung im Paket · Rückbau Bestand zu entscheiden",
-              "summaryEn": "Site clearance in the package · demolition of existing structure to decide",
+              "summaryDe": "2.200 m² Baufeldfreimachung · Rückbau Bestand zu entscheiden",
+              "summaryEn": "2,200 m² site clearance · demolition of existing structure to decide",
               "scopeDe": "gilt für den gesamten Wohnhof",
               "scopeEn": "applies to the whole courtyard",
               "visual": "clearance",
@@ -103,14 +109,20 @@
                   "amount": "68000.00",
                   "baseline": "selected",
                   "kind": {
-                    "kind": "includeExclude"
+                    "kind": "quantity",
+                    "unitAmount": "17000.00",
+                    "baselineQuantity": "4",
+                    "unitDe": "Anschlüsse",
+                    "unitEn": "connections",
+                    "minQuantity": "0",
+                    "maxQuantity": "100000"
                   },
-                  "authority": "sourceEvidenced",
+                  "authority": "derived",
                   "requiresDecision": false
                 }
               ],
-              "summaryDe": "Strom, Wasser, Abwasser und Telekommunikation bis zur Gebäudekante",
-              "summaryEn": "Power, water, sewage and telecoms up to the building edge",
+              "summaryDe": "4 Anschlüsse: Strom, Wasser, Abwasser und Telekommunikation",
+              "summaryEn": "4 connections: power, water, sewage and telecoms",
               "scopeDe": "gilt für den gesamten Wohnhof",
               "scopeEn": "applies to the whole courtyard",
               "visual": "connections",
@@ -2768,9 +2780,15 @@
                   "amount": "74000.00",
                   "baseline": "selected",
                   "kind": {
-                    "kind": "includeExclude"
+                    "kind": "quantity",
+                    "unitAmount": "100.00",
+                    "baselineQuantity": "740",
+                    "unitDe": "m²",
+                    "unitEn": "m²",
+                    "minQuantity": "0",
+                    "maxQuantity": "100000"
                   },
-                  "authority": "sourceEvidenced",
+                  "authority": "derived",
                   "requiresDecision": false
                 },
                 {
@@ -2782,14 +2800,20 @@
                   "amount": "58000.00",
                   "baseline": "selected",
                   "kind": {
-                    "kind": "includeExclude"
+                    "kind": "quantity",
+                    "unitAmount": "400.00",
+                    "baselineQuantity": "145",
+                    "unitDe": "m²",
+                    "unitEn": "m²",
+                    "minQuantity": "0",
+                    "maxQuantity": "100000"
                   },
-                  "authority": "sourceEvidenced",
+                  "authority": "derived",
                   "requiresDecision": false
                 }
               ],
-              "summaryDe": "Rasen, Sträucher und vier Hofbäume · Spielfläche nach DIN EN 1176",
-              "summaryEn": "Lawn, shrubs and four courtyard trees · play area to DIN EN 1176",
+              "summaryDe": "740 m² Rasen, Sträucher und vier Hofbäume · 145 m² Spielfläche",
+              "summaryEn": "740 m² lawn, shrubs and four courtyard trees · 145 m² play area",
               "scopeDe": "gilt für den gesamten Wohnhof",
               "scopeEn": "applies to the whole courtyard",
               "visual": "planting",
@@ -3389,9 +3413,15 @@
                   "amount": "190000.00",
                   "baseline": "selected",
                   "kind": {
-                    "kind": "includeExclude"
+                    "kind": "quantity",
+                    "unitAmount": "20.00",
+                    "baselineQuantity": "9500",
+                    "unitDe": "m²",
+                    "unitEn": "m²",
+                    "minQuantity": "0",
+                    "maxQuantity": "100000"
                   },
-                  "authority": "sourceEvidenced",
+                  "authority": "derived",
                   "requiresDecision": false
                 },
                 {
@@ -3409,8 +3439,8 @@
                   "requiresDecision": false
                 }
               ],
-              "summaryDe": "Baufeldfreimachung · Rückbau Ladeplatte als provisorischer Ansatz (B-Q-05)",
-              "summaryEn": "Site clearance · loading-slab demolition as a provisional allowance (B-Q-05)",
+              "summaryDe": "9.500 m² Baufeldfreimachung · Rückbau Ladeplatte als provisorischer Ansatz (B-Q-05)",
+              "summaryEn": "9,500 m² site clearance · loading-slab demolition as a provisional allowance (B-Q-05)",
               "scopeDe": "gilt für das gesamte Quartier",
               "scopeEn": "applies to the whole quarter",
               "visual": "clearance",
@@ -9094,14 +9124,20 @@
                   "amount": "380000.00",
                   "baseline": "selected",
                   "kind": {
-                    "kind": "includeExclude"
+                    "kind": "quantity",
+                    "unitAmount": "380.00",
+                    "baselineQuantity": "1000",
+                    "unitDe": "m²",
+                    "unitEn": "m²",
+                    "minQuantity": "0",
+                    "maxQuantity": "100000"
                   },
-                  "authority": "sourceEvidenced",
+                  "authority": "derived",
                   "requiresDecision": false
                 }
               ],
-              "summaryDe": "Erschließung der drei Hauseingänge und der Feuerwehrzufahrt",
-              "summaryEn": "Access to the three entrances and the fire-service route",
+              "summaryDe": "1.000 m² Erschließung der drei Hauseingänge und der Feuerwehrzufahrt",
+              "summaryEn": "1,000 m² access to the three entrances and the fire-service route",
               "scopeDe": "gilt für das gesamte Quartier",
               "scopeEn": "applies to the whole quarter",
               "visual": "path",
@@ -9121,9 +9157,15 @@
                   "amount": "620000.00",
                   "baseline": "selected",
                   "kind": {
-                    "kind": "includeExclude"
+                    "kind": "quantity",
+                    "unitAmount": "200.00",
+                    "baselineQuantity": "3100",
+                    "unitDe": "m²",
+                    "unitEn": "m²",
+                    "minQuantity": "0",
+                    "maxQuantity": "100000"
                   },
-                  "authority": "sourceEvidenced",
+                  "authority": "derived",
                   "requiresDecision": false
                 },
                 {
@@ -9135,9 +9177,15 @@
                   "amount": "290000.00",
                   "baseline": "selected",
                   "kind": {
-                    "kind": "includeExclude"
+                    "kind": "quantity",
+                    "unitAmount": "100.00",
+                    "baselineQuantity": "2900",
+                    "unitDe": "m²",
+                    "unitEn": "m²",
+                    "minQuantity": "0",
+                    "maxQuantity": "100000"
                   },
-                  "authority": "sourceEvidenced",
+                  "authority": "derived",
                   "requiresDecision": false
                 },
                 {
@@ -9184,8 +9232,8 @@
                   "requiresDecision": true
                 }
               ],
-              "summaryDe": "Innenhof und Bepflanzung als Quartierspaket (B-Q-07) · Spielfläche zu entscheiden",
-              "summaryEn": "Courtyard and planting as a quarter package (B-Q-07) · play area to decide",
+              "summaryDe": "3.100 m² Innenhof und 2.900 m² Bepflanzung als Quartierspaket (B-Q-07) · Spielfläche zu entscheiden",
+              "summaryEn": "3,100 m² courtyard and 2,900 m² planting as a quarter package (B-Q-07) · play area to decide",
               "scopeDe": "gilt für das gesamte Quartier",
               "scopeEn": "applies to the whole quarter",
               "visual": "planting",
@@ -9205,9 +9253,15 @@
                   "amount": "340000.00",
                   "baseline": "selected",
                   "kind": {
-                    "kind": "includeExclude"
+                    "kind": "quantity",
+                    "unitAmount": "100.00",
+                    "baselineQuantity": "3400",
+                    "unitDe": "m²",
+                    "unitEn": "m²",
+                    "minQuantity": "0",
+                    "maxQuantity": "100000"
                   },
-                  "authority": "sourceEvidenced",
+                  "authority": "derived",
                   "requiresDecision": false
                 },
                 {
@@ -9225,8 +9279,8 @@
                   "requiresDecision": false
                 }
               ],
-              "summaryDe": "Retention, Mulden-Rigolen und Notüberlauf · drei Müllstandplätze und Einfriedung",
-              "summaryEn": "Retention, swale-trench systems and overflow · three refuse areas and enclosure",
+              "summaryDe": "3.400 m² Retention, Mulden-Rigolen und Notüberlauf · drei Müllstandplätze und Einfriedung",
+              "summaryEn": "3,400 m² retention, swale-trench systems and overflow · three refuse areas and enclosure",
               "scopeDe": "gilt für das gesamte Quartier",
               "scopeEn": "applies to the whole quarter",
               "visual": "water",
@@ -9308,9 +9362,15 @@
                   "amount": "96000.00",
                   "baseline": "selected",
                   "kind": {
-                    "kind": "includeExclude"
+                    "kind": "quantity",
+                    "unitAmount": "32000.00",
+                    "baselineQuantity": "3",
+                    "unitDe": "Anlagen",
+                    "unitEn": "installations",
+                    "minQuantity": "0",
+                    "maxQuantity": "100000"
                   },
-                  "authority": "sourceEvidenced",
+                  "authority": "derived",
                   "requiresDecision": false
                 }
               ],

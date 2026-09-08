@@ -37,7 +37,9 @@ import { kgCatalogueFor, responsibilityFor, useStore } from '../state/store'
 import { activeDocumentCount, demoProject } from '../state/projectAnalysis'
 import { CONFIGURATOR_STEP } from '../state/chapters'
 import { localizeMoneyText, useT } from '../i18n'
-import { NNBSP, label as moneyLabel, present } from '../engine/money'
+import {
+  NNBSP, formatDE, label as moneyLabel, present, quantityLabel,
+} from '../engine/money'
 import { Button } from '../components/primitives'
 import { FormField } from '../components/designSystem'
 import { CommercialNumber, signedMoneyText } from '../design-system/CommercialNumber'
@@ -579,9 +581,14 @@ export function KgSystemChapter({ chapter, group }: {
       return label(service.excludeLabelDe, service.excludeLabelEn) || t('vr3.tga.decision.notIncluded')
     }
     if (service.kind.kind === 'quantity') {
+      // Grouped, and joined to its unit by rule 7's narrow no-break space.
+      // The raw store string belongs in the FIELD — printed on a reading
+      // line it says `9500 m²`, which is neither German nor rule 7.
       return t('vr3.tga.decision.quantityOf', {
-        quantity: decision.quantity ?? service.kind.baselineQuantity,
-        unit: label(service.kind.unitDe, service.kind.unitEn),
+        quantity: localizeMoneyText(quantityLabel(
+          decision.quantity ?? service.kind.baselineQuantity,
+          label(service.kind.unitDe, service.kind.unitEn),
+        ), s.uiLanguage),
       })
     }
     return label(service.includeLabelDe, service.includeLabelEn) || t('vr3.tga.decision.included')
@@ -1466,12 +1473,18 @@ function QuantityDraft({ service, value, onChange }: {
   if (service.kind.kind !== 'quantity') return null
   const problem = quantityProblem(service, value)
   const unit = s.uiLanguage === 'en' ? service.kind.unitEn : service.kind.unitDe
+  const rate = new DecimalCtor(service.kind.unitAmount)
   return (
     <FormField
       label={t('vr3.kg.service.quantityLabel', { unit })}
       htmlFor={id}
       helperText={t('vr3.kg.service.quantityHelper', {
-        unitAmount: service.kind.unitAmount, unit,
+        // ONE number formatter. `17000.00` printed raw is neither grouped
+        // nor German; the template already owns the narrow space before €.
+        unitAmount: localizeMoneyText(
+          formatDE(rate, rate.isInteger() ? 0 : 2), s.uiLanguage,
+        ),
+        unit,
       })}
       error={problem ? t(`vr3.kg.service.quantity.${problem}`) : undefined}
     >

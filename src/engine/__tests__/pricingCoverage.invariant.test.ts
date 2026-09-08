@@ -5,9 +5,14 @@ import { describe, expect, it } from 'vitest'
 import catalogFixture from '../../fixtures/catalog.json'
 import {
   costAuthorityOf,
+  initialDecisions,
   kgCatalogues,
+  quantityProblem,
   rendersAmount,
+  serviceContribution,
   type KgCostAuthority,
+  type KgDecisions,
+  type KgScopeGroup,
   type KgService,
   type KgServiceVariant,
 } from '../kgConfiguration'
@@ -1143,6 +1148,262 @@ function filesReferencing(needle: string): string[] {
     .filter((file) => withoutComments(readFileSync(file, 'utf8')).includes(needle))
     .map((file) => path.relative(SRC_ROOT, file))
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+ * FLÄCHE 6 · DIE MENGENGETRIEBENEN KG-200/500/600-POSITIONEN
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Die zehn Positionen, die diese Aufgabe von einer PAUSCHALE zu einer
+ * MENGE gemacht hat — namentlich, damit ein späteres Zurückflachen auffällt.
+ *
+ * WARUM DIESE LISTE ABGESCHRIEBEN IST UND DIE ANDEREN NICHT. Der Rest
+ * dieser Datei liest bewusst über die echten Fixtures, damit ein neuer
+ * Eintrag die Prüfung nicht umgehen kann. Hier ist die Frage aber eine
+ * andere: nicht «erfüllt jede Mengenposition den Vertrag» (das prüft der
+ * erste Test unten über ALLE), sondern «sind diese zehn Positionen
+ * überhaupt noch Mengenpositionen». Eine Liste, die aus den Daten
+ * abgeleitet wird, kann diese Frage nicht stellen — sie würde stillschweigend
+ * mitschrumpfen. Der `expectedAmount` steht daneben, weil die ganze
+ * Sicherheitseigenschaft der Umstellung genau dieses Produkt ist.
+ */
+const QUANTIFIED_SCOPE_POSITIONS: ReadonlyArray<{
+  id: string; project: string; group: KgScopeGroup
+  unitAmount: string; baselineQuantity: string; expectedAmount: string
+}> = [
+  { id: 'a-200-02', project: 'DEMO-HAPPY-01', group: 'KG_200', unitAmount: '20.00', baselineQuantity: '2200', expectedAmount: '44000.00' },
+  { id: 'a-200-03', project: 'DEMO-HAPPY-01', group: 'KG_200', unitAmount: '17000.00', baselineQuantity: '4', expectedAmount: '68000.00' },
+  { id: 'a-500-02', project: 'DEMO-HAPPY-01', group: 'KG_500', unitAmount: '100.00', baselineQuantity: '740', expectedAmount: '74000.00' },
+  { id: 'a-500-03', project: 'DEMO-HAPPY-01', group: 'KG_500', unitAmount: '400.00', baselineQuantity: '145', expectedAmount: '58000.00' },
+  { id: 'b-200-02', project: 'DEMO-COMPLEX-01', group: 'KG_200', unitAmount: '20.00', baselineQuantity: '9500', expectedAmount: '190000.00' },
+  { id: 'b-500-01', project: 'DEMO-COMPLEX-01', group: 'KG_500', unitAmount: '200.00', baselineQuantity: '3100', expectedAmount: '620000.00' },
+  { id: 'b-500-02', project: 'DEMO-COMPLEX-01', group: 'KG_500', unitAmount: '380.00', baselineQuantity: '1000', expectedAmount: '380000.00' },
+  { id: 'b-500-03', project: 'DEMO-COMPLEX-01', group: 'KG_500', unitAmount: '100.00', baselineQuantity: '2900', expectedAmount: '290000.00' },
+  { id: 'b-500-04', project: 'DEMO-COMPLEX-01', group: 'KG_500', unitAmount: '100.00', baselineQuantity: '3400', expectedAmount: '340000.00' },
+  { id: 'b-600-01', project: 'DEMO-COMPLEX-01', group: 'KG_600', unitAmount: '32000.00', baselineQuantity: '3', expectedAmount: '96000.00' },
+]
+
+/** Jede Mengenposition beider Kataloge, mit ihrem Projekt und ihrer KG. */
+function quantityServices(): Array<{
+  project: string; group: KgScopeGroup; service: KgService
+  kind: Extract<KgService['kind'], { kind: 'quantity' }>
+}> {
+  const out: Array<{
+    project: string; group: KgScopeGroup; service: KgService
+    kind: Extract<KgService['kind'], { kind: 'quantity' }>
+  }> = []
+  for (const catalogue of kgCatalogues()) {
+    for (const chapter of catalogue.chapters) {
+      for (const serviceGroup of chapter.groups) {
+        for (const service of serviceGroup.services) {
+          if (service.kind.kind !== 'quantity') continue
+          out.push({
+            project: catalogue.projectId, group: chapter.group, service,
+            kind: service.kind,
+          })
+        }
+      }
+    }
+  }
+  return out
+}
+
+/**
+ * Der Vertrag EINER Mengenposition, als Prädikat statt als Erwartung.
+ *
+ * `amount` ist der deklarierte Betrag, aus dem die Kapitelsumme gebildet
+ * ist. Eine Mengenposition rechnet ihn aber nicht mehr ab, sondern
+ * `unitAmount × Menge`. Fallen die beiden auseinander, dann verschiebt die
+ * BASISLAGE Geld — und genau das darf die Umstellung von einer Pauschale
+ * auf eine Menge nicht tun.
+ */
+function quantityPositionViolations(
+  kind: Extract<KgService['kind'], { kind: 'quantity' }>, amount: string,
+): string[] {
+  const problems: string[] = []
+  const product = new Decimal(kind.unitAmount).mul(new Decimal(kind.baselineQuantity))
+  if (!product.equals(new Decimal(amount))) {
+    problems.push(`Basislage verschiebt Geld: ${kind.unitAmount} × ${kind.baselineQuantity}`
+      + ` = ${product.toFixed(2)}, deklariert ${amount}`)
+  }
+  if (new Decimal(kind.unitAmount).lte(0)) problems.push('Satz ist nicht positiv')
+  if (!kind.unitDe.trim() || !kind.unitEn.trim()) problems.push('Einheit fehlt in einer Sprache')
+  return problems
+}
+
+describe('Fläche 6 · mengengetriebene KG-200/500/600-Positionen bewegen echtes Geld', () => {
+  it('jede Mengenposition multipliziert exakt auf ihren deklarierten Betrag zurück', () => {
+    const rows = quantityServices()
+    // Nicht leerlaufend: findet der Sweep nichts, prüft dieser Test nichts.
+    expect(rows.length).toBeGreaterThanOrEqual(QUANTIFIED_SCOPE_POSITIONS.length)
+    const violations = rows.flatMap(({ project, group, service, kind }) =>
+      quantityPositionViolations(kind, service.amount)
+        .map((problem) => `${project} · ${group} · ${service.id}: ${problem}`))
+    expect(violations).toEqual([])
+  })
+
+  it('die zehn neu bespielten Positionen SIND Mengenpositionen — und tragen genau ihren alten Betrag', () => {
+    const byId = new Map(quantityServices().map((row) => [`${row.project}|${row.service.id}`, row]))
+    const missing: string[] = []
+    for (const expected of QUANTIFIED_SCOPE_POSITIONS) {
+      const row = byId.get(`${expected.project}|${expected.id}`)
+      if (!row) {
+        missing.push(`${expected.project} · ${expected.id}: keine Mengenposition mehr`)
+        continue
+      }
+      expect(row.group, `${expected.id} hat die Kostengruppe gewechselt`).toBe(expected.group)
+      expect(row.kind.unitAmount).toBe(expected.unitAmount)
+      expect(row.kind.baselineQuantity).toBe(expected.baselineQuantity)
+      // Der eigentliche Satz dieser Aufgabe: der Betrag ist UNVERÄNDERT.
+      expect(row.service.amount).toBe(expected.expectedAmount)
+    }
+    expect(missing).toEqual([])
+  })
+
+  it('eine Mengenposition liefert in JEDER Mengenlage einen Betrag — nie `null`, nie eine stille Null', () => {
+    // Die vier Lagen, in denen eine Menge stehen kann. Die dritte und
+    // vierte sind der Grund für den Test: eine ungültige oder fehlende
+    // Eingabe darf die Position nicht aus der Summe fallen lassen, denn
+    // dann wäre der Gesamtbetrag still kleiner geworden.
+    const ENTRIES = ['4711', '', '   ', 'zwölf'] as const
+    const violations: string[] = []
+    let checked = 0
+    for (const catalogue of kgCatalogues()) {
+      const base = initialDecisions(catalogue)
+      for (const { service, kind } of quantityServices()
+        .filter((row) => row.project === catalogue.projectId)) {
+        for (const entry of ENTRIES) {
+          const decisions: KgDecisions = {
+            ...base,
+            services: {
+              ...base.services,
+              [service.id]: { state: 'selected', quantity: entry },
+            },
+          }
+          const contribution = serviceContribution(catalogue, decisions, service)
+          checked += 1
+          if (contribution === null) {
+            violations.push(`${service.id} · «${entry}»: Beitrag ist null`)
+            continue
+          }
+          const problem = quantityProblem(service, entry)
+          // Eine ungültige Eingabe rechnet mit der letzten GÜLTIGEN Menge
+          // weiter (der Basislage) und sagt das in der Zeile. Sie rechnet
+          // nicht mit null, und sie rechnet nicht mit dem, was dasteht.
+          const expected = problem
+            ? new Decimal(kind.unitAmount).mul(new Decimal(kind.baselineQuantity))
+            : new Decimal(kind.unitAmount).mul(new Decimal(entry))
+          if (!contribution.equals(expected)) {
+            violations.push(`${service.id} · «${entry}»: ${contribution.toFixed(2)}`
+              + ` statt ${expected.toFixed(2)}`)
+          }
+          if (contribution.isZero()) {
+            violations.push(`${service.id} · «${entry}»: stille Null`)
+          }
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(0)
+    expect(violations).toEqual([])
+  })
+
+  it('jede Mengenposition nennt ihre Einheit in BEIDEN Sprachen — sonst liest EN die deutsche', () => {
+    const violations = quantityServices()
+      .filter(({ kind }) => !kind.unitDe.trim() || !kind.unitEn.trim())
+      .map(({ project, service }) => `${project} · ${service.id}`)
+    expect(violations).toEqual([])
+    expect(quantityServices().length).toBeGreaterThan(0)
+  })
+
+  it('SELBSTTEST · das Prädikat lehnt eine Umstellung ab, die die Basislage verschiebt', () => {
+    // Genau der Fehler, den die Umstellung machen könnte: eine hübsche
+    // runde Menge zu einem Satz, der nicht mehr auf den Betrag zurückführt.
+    expect(quantityPositionViolations(
+      { kind: 'quantity', unitAmount: '20.00', baselineQuantity: '2200', unitDe: 'm²', unitEn: 'm²', minQuantity: '0', maxQuantity: '100000' },
+      '44000.00',
+    )).toEqual([])
+    expect(quantityPositionViolations(
+      { kind: 'quantity', unitAmount: '21.00', baselineQuantity: '2200', unitDe: 'm²', unitEn: 'm²', minQuantity: '0', maxQuantity: '100000' },
+      '44000.00',
+    )).not.toEqual([])
+    expect(quantityPositionViolations(
+      { kind: 'quantity', unitAmount: '20.00', baselineQuantity: '2200', unitDe: 'm²', unitEn: '', minQuantity: '0', maxQuantity: '100000' },
+      '44000.00',
+    )).not.toEqual([])
+  })
+})
+
+/* ═════════════════════════════════════════════════════════════════════════
+ * FLÄCHE 7 · DER LEGACY-KATALOG BLEIBT UNERREICHBAR
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+/**
+ * WARUM KG 200/500/600 NICHT über `scope-catalog.json` bespielt wurde.
+ *
+ * Das Ticket verlangte ein `ScopeCatalogChapter` über `engine/scopeCatalog.ts`.
+ * Die Repository-Wahrheit widerlegte die Prämisse, und zwar strukturell:
+ *
+ *  1. `scopeCatalogDrivers` läuft AUSSCHLIESSLICH in `proposalProjection`.
+ *  2. `proposalProjection` läuft nur, wenn eine Option KEIN `kgConfig` hat.
+ *  3. Die Beiträge verlangen zusätzlich `coverage[KG] === 'included'`.
+ *  4. Der einzige Produktivschreiber von `'included'` ist
+ *     `setKgScopeDecision`, dessen erste Zeile bei fehlendem `kgConfig`
+ *     zurückkehrt. `setCoverage` hat keinen einzigen Produktivaufrufer.
+ *
+ * (2) und (4) schließen einander aus. Der Katalog kann in KEINEM
+ * erreichbaren Produktzustand einen Euro bewegen. Ein Kapitel darüber hätte
+ * rund zwanzig Sales-wählbare Kontrollpunkte mit garantiert null
+ * Preiswirkung ausgeliefert — genau der Zustand, den Fläche 1 bis 4
+ * verbieten.
+ *
+ * Deshalb prüft diese Fläche das, was die Entscheidung TRÄGT: solange der
+ * Katalog keine Oberfläche hat, ist er kein Sales-wählbarer Kontrollpunkt.
+ * Baut jemand morgen doch eine, fällt dieser Test — und zwingt damit, den
+ * Katalog im selben Schritt auch BEPREISBAR zu machen, statt still eine
+ * wirkungslose Auswahl auszuliefern.
+ */
+const SCOPE_CATALOG_MUTATORS = ['setScopeCatalogChoice', 'setScopeCatalogQuantity'] as const
+
+describe('Fläche 7 · der Legacy-Leistungsumfang-Katalog ist keine Sales-Fläche', () => {
+  it('KEINE `.tsx`-Fläche ruft einen Katalog-Mutator — der strukturelle Beweis', () => {
+    for (const mutator of SCOPE_CATALOG_MUTATORS) {
+      const callers = filesReferencing(mutator)
+      // Nicht leerlaufend: findet der Scanner gar nichts, wurde der Mutator
+      // umbenannt und diese ganze Fläche ist neu zu bewerten.
+      expect(callers.length, `${mutator} existiert nicht mehr unter diesem Namen`)
+        .toBeGreaterThan(0)
+      expect(
+        callers.filter((file) => file.endsWith('.tsx')),
+        `${mutator} hat eine Oberfläche bekommen — dann muss der Katalog im
+         selben Schritt einen erreichbaren Preisweg bekommen (Fläche 4)`,
+      ).toEqual([])
+      expect(
+        callers.filter((file) => !file.startsWith('state/')),
+        `${mutator} wird außerhalb des zustandsführenden Moduls genannt`,
+      ).toEqual([])
+    }
+  })
+
+  it('`scopeCatalogDrivers` wird von keiner Oberfläche gerufen — der Preisweg bleibt im Zustandsmodul', () => {
+    const callers = filesReferencing('scopeCatalogDrivers')
+    expect(callers.length).toBeGreaterThan(0)
+    expect(callers.filter((file) => file.endsWith('.tsx'))).toEqual([])
+  })
+
+  it('die KG-200/500/600-Tiefe liegt statt dessen im LEBENDEN Katalog — und ist dort wirklich angekommen', () => {
+    // Die Gegenprobe zur Ausnahme: der Legacy-Katalog ist unerreichbar, ALSO
+    // muss die Konfigurierbarkeit woanders liegen. Läge sie nirgends, wäre
+    // die Ausnahme oben eine Ausrede statt einer Begründung.
+    const byGroup = new Map<KgScopeGroup, number>()
+    for (const { group } of quantityServices()) {
+      byGroup.set(group, (byGroup.get(group) ?? 0) + 1)
+    }
+    for (const group of ['KG_200', 'KG_500', 'KG_600'] as const) {
+      expect(byGroup.get(group) ?? 0, `${group} hat keine einzige Mengenposition`)
+        .toBeGreaterThan(0)
+    }
+  })
+})
 
 describe('Fläche 5 · die ruhenden KG-300-/400-Gruppen sind KEIN Sales-wählbarer Kontrollpunkt', () => {
   const DORMANT_GROUPS: OptionGroup[] = [...KG300_GROUPS, ...KG400_GROUPS]

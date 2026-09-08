@@ -17,8 +17,9 @@ import {
   kgGroupOfStep,
   useStore,
 } from '../state/store'
-import { useT } from '../i18n'
-import { NNBSP } from '../engine/money'
+import { Decimal } from 'decimal.js'
+import { localizeMoneyText, useT } from '../i18n'
+import { NNBSP, formatDE } from '../engine/money'
 import { CONFIGURATOR_STEP } from '../state/chapters'
 import { Button } from '../components/primitives'
 import { FormField } from '../components/designSystem'
@@ -409,12 +410,18 @@ function QuantityField({ service }: { service: KgService }) {
   const raw = decision.quantity ?? service.kind.baselineQuantity
   const problem = quantityProblem(service, raw)
   const unit = s.uiLanguage === 'en' ? service.kind.unitEn : service.kind.unitDe
+  const rate = new Decimal(service.kind.unitAmount)
   return (
     <FormField
       label={t('vr3.kg.service.quantityLabel', { unit })}
       htmlFor={id}
       helperText={t('vr3.kg.service.quantityHelper', {
-        unitAmount: service.kind.unitAmount, unit,
+        // Same one formatter as the systems chapter: a raw `17000.00` is
+        // neither grouped nor German.
+        unitAmount: localizeMoneyText(
+          formatDE(rate, rate.isInteger() ? 0 : 2), s.uiLanguage,
+        ),
+        unit,
       })}
       error={problem ? t(`vr3.kg.service.quantity.${problem}`) : undefined}
     >
