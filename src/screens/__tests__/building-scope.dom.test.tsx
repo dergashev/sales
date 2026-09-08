@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { act, render, screen, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
 import { enterOptionWorkspace } from '../../test/offer-option'
@@ -333,6 +333,42 @@ describe('Gebäude & Umfang · authorised edit (T-015)', () => {
     })[0]!)
     expect(useStore.getState().scopeConflicts['A-BLDG-01']?.bgfRSAbove).toBeUndefined()
     expect(useStore.getState().scopeEdits['A-BLDG-01']?.bgfRSAbove?.value).toBe('3000.00')
+  })
+
+  /**
+   * B2 · AC-8 — the gate's recovery RETURNS FOCUS, not just the view.
+   *
+   * `navigation-and-blocker-patterns.md` names this case by building:
+   * "`Go to Hofhaus`, for example, focuses that building's first unresolved
+   * baseline fact". A route that only switches the reviewed building leaves
+   * a keyboard user where they were, which makes it a statement rather than
+   * a route.
+   */
+  it('sends the user to the named building AND puts focus on its outstanding action', async () => {
+    const user = userEvent.setup()
+    await openScope('DEMO-COMPLEX-01')
+
+    const save = screen.getByRole('button', { name: 'Gebäudeumfang speichern' })
+    expect(save).toHaveAttribute('aria-disabled', 'true')
+
+    /**
+     * The gate names BUILDINGS rather than saying "unavailable" — one
+     * primary route to the earliest unmet prerequisite and a secondary route
+     * per remaining building, which is why this is `getAllByRole`. Hofhaus
+     * is deliberately not the first: the point is that the route goes where
+     * it SAYS, not to whatever happens to be open.
+     */
+    const routes = screen.getAllByRole('button', { name: /^Zu Gebäude|^Zu Hofhaus|^Zu / })
+    const hofhaus = routes.find((b) => /Hofhaus/.test(b.textContent ?? ''))!
+    expect(hofhaus).toBeInTheDocument()
+    await user.click(hofhaus)
+
+    // The baseline on screen is THAT building's, and focus is on the action
+    // it is asking for.
+    await waitFor(() => {
+      expect(document.activeElement)
+        .toHaveAccessibleName('Gebäudegrundlage bestätigen · Gebäude B · Hofhaus')
+    })
   })
 
   /**

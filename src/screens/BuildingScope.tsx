@@ -181,6 +181,14 @@ export function BuildingScope() {
   const num = useLocalNumber()
   const motionSpec = useSemanticMotion()
   const [announcement, setAnnouncement] = useState('')
+  /**
+   * The building whose first unresolved action the gate has asked for.
+   *
+   * Held here rather than in the store because it is transient interaction
+   * state with no journal entry and no persistence — the same reason the
+   * announcement above lives here.
+   */
+  const [focusRequest, setFocusRequest] = useState<string | null>(null)
   const stage = buildingScopeStage(s)
 
   const selectedIds = scopeSelectedIds(s)
@@ -287,13 +295,15 @@ export function BuildingScope() {
                   s.scopeBuildings.findIndex((b) => b.id === active.id),
                 )}
                 onAnnounce={announce}
+                focusRequested={focusRequest === active.id}
+                onFocusTaken={() => setFocusRequest(null)}
               />
             </motion.div>
           </AnimatePresence>
         ) : (
           <EmptyState>{t('vr3.scope.empty')}</EmptyState>
         )}
-        gate={<SaveGate onAnnounce={announce} />}
+        gate={<SaveGate onAnnounce={announce} onRequestFocus={setFocusRequest} />}
       />
       <p className="sr-only" role="status" aria-live="polite">{announcement}</p>
       <p className="sr-only">
@@ -418,15 +428,48 @@ type DraftEdit = {
 }
 
 function Baseline({
-  building, designation: mark, onAnnounce,
+  building, designation: mark, onAnnounce, focusRequested, onFocusTaken,
 }: {
   building: ScopeBuilding
   designation: string
   onAnnounce: (message: string) => void
+  /** The gate sent the user here and asked for its outstanding action. */
+  focusRequested?: boolean
+  onFocusTaken?: () => void
 }) {
   const s = useStore()
   const t = useT()
   const [draft, setDraft] = useState<DraftEdit | null>(null)
+  const sheetRef = useRef<HTMLDivElement>(null)
+
+  /**
+   * The recovery's focus, taken once, by the surface that OWNS the target.
+   *
+   * The first unresolved thing is a conflict resolution if this building has
+   * one, then a source proposal, then the confirmation — the same order the
+   * gate's prerequisites list them in. Taken on the effect rather than in
+   * the click handler, so it happens after this baseline has actually
+   * mounted (`AnimatePresence mode="wait"` means that is later than the
+   * click, by the exit transition).
+   */
+  useEffect(() => {
+    if (!focusRequested) return
+    const target = sheetRef.current?.querySelector<HTMLElement>(
+      '.a3-bsp-conflict button, .a3-bsp-candidate button, .a3-bsp-baseline-actions button',
+    )
+    if (!target) return
+    target.focus()
+    // Bringing it into view is a COURTESY, not the contract: the focus above
+    // is what the recovery owes the user. `scrollIntoView` is unimplemented
+    // in the test environment, and an exception thrown from this effect
+    // remounted the sheet and took the focus straight back off — the failure
+    // looked exactly like "focus was never taken".
+    target.scrollIntoView?.({ block: 'nearest' })
+    onFocusTaken?.()
+    // The request is consumed on arrival; re-running would fight the user
+    // for focus every time this building's baseline re-renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusRequested, building.id])
   const name = `${t('vr3.scope.building', { mark })} · ${building.name}`
   const isConfirmed = scopeBuildingConfirmed(s, building.id)
   const isStale = scopeBuildingStale(s, building.id)
@@ -476,45 +519,47 @@ function Baseline({
   ]
 
   return (
-    <BuildingBaselineSheet
-      title={t('vr3.scope.baseline.title', { building: name })}
-      authorityLabel={t('vr3.scope.baseline.authority', {
-        authority: t(overallAuthorityKey(building)),
-      })}
-      rows={rows}
-      notice={draft ? (
-        <div className="a3-bsp-consequence" role="note">
-          <SemanticStatus tone="attention" label={t('vr3.scope.edit.consequenceTitle')} />
-          <p className="a3-bsp-consequence-detail">{t('vr3.scope.edit.consequenceDetail')}</p>
-        </div>
-      ) : isStale ? (
-        <StaleState>{t('vr3.scope.stale.building', { building: name })}</StaleState>
-      ) : undefined}
-      actions={isConfirmed ? (
-        <p className="a3-bsp-confirmed" tabIndex={-1}>
-          <SemanticStatus tone="ok" label={t('vr3.scope.confirmed.label')} />
-          <span className="a3-bsp-confirmed-meta">
-            {t('vr3.scope.confirmed.meta', {
-              actor: confirmation?.actor ?? '',
-              at: (confirmation?.at ?? '').slice(0, 10),
-            })}
-          </span>
-        </p>
-      ) : (
-        <Button
-          variant="primary"
-          onClick={() => {
-            s.confirmScopeBuilding(building.id)
-            onAnnounce(t('vr3.scope.announce.confirmed', { building: name }))
-          }}
-          disabled={Boolean(draft)}
-          disabledReason={draft ? t('vr3.scope.confirm.blockedByEdit') : undefined}
-          aria-label={`${t('vr3.scope.confirm.action')} · ${name}`}
-        >
-          {t('vr3.scope.confirm.action')}
-        </Button>
-      )}
-    />
+    <div ref={sheetRef}>
+      <BuildingBaselineSheet
+        title={t('vr3.scope.baseline.title', { building: name })}
+        authorityLabel={t('vr3.scope.baseline.authority', {
+          authority: t(overallAuthorityKey(building)),
+        })}
+        rows={rows}
+        notice={draft ? (
+          <div className="a3-bsp-consequence" role="note">
+            <SemanticStatus tone="attention" label={t('vr3.scope.edit.consequenceTitle')} />
+            <p className="a3-bsp-consequence-detail">{t('vr3.scope.edit.consequenceDetail')}</p>
+          </div>
+        ) : isStale ? (
+          <StaleState>{t('vr3.scope.stale.building', { building: name })}</StaleState>
+        ) : undefined}
+        actions={isConfirmed ? (
+          <p className="a3-bsp-confirmed" tabIndex={-1}>
+            <SemanticStatus tone="ok" label={t('vr3.scope.confirmed.label')} />
+            <span className="a3-bsp-confirmed-meta">
+              {t('vr3.scope.confirmed.meta', {
+                actor: confirmation?.actor ?? '',
+                at: (confirmation?.at ?? '').slice(0, 10),
+              })}
+            </span>
+          </p>
+        ) : (
+          <Button
+            variant="primary"
+            onClick={() => {
+              s.confirmScopeBuilding(building.id)
+              onAnnounce(t('vr3.scope.announce.confirmed', { building: name }))
+            }}
+            disabled={Boolean(draft)}
+            disabledReason={draft ? t('vr3.scope.confirm.blockedByEdit') : undefined}
+            aria-label={`${t('vr3.scope.confirm.action')} · ${name}`}
+          >
+            {t('vr3.scope.confirm.action')}
+          </Button>
+        )}
+      />
+    </div>
   )
 }
 
@@ -957,7 +1002,27 @@ function ScopeNotice({ onAnnounce }: { onAnnounce: (message: string) => void }) 
  * because the next long surface with a blocked action needs the same thing
  * and a page-specific copy is how two gates come to behave differently.
  */
-function SaveGate({ onAnnounce }: { onAnnounce: (message: string) => void }) {
+function SaveGate({ onAnnounce, onRequestFocus }: {
+  onAnnounce: (message: string) => void
+  /**
+   * RECOVERY RETURNS FOCUS, and it does so DECLARATIVELY.
+   *
+   * `navigation-and-blocker-patterns.md` is explicit: "Recovery stores
+   * `{returnRoute, focusTarget}`. Completing the prerequisite returns the
+   * user to the blocked decision and restores focus to the action or first
+   * unresolved item" — and names this exact case: "`Go to Hofhaus`, for
+   * example, focuses that building's first unresolved baseline fact".
+   *
+   * The gate REQUESTS the focus and the baseline takes it when it mounts,
+   * rather than the gate reaching into the DOM after the click. The first
+   * cut did reach in, on the next animation frame, and it silently did
+   * nothing: the baseline is inside `AnimatePresence mode="wait"`, so the
+   * new building's sheet does not exist yet one frame later. A focus that
+   * depends on winning a race against an exit transition is a focus that
+   * works until the transition timing changes.
+   */
+  onRequestFocus: (buildingId: string) => void
+}) {
   const s = useStore()
   const t = useT()
   const num = useLocalNumber()
@@ -1009,18 +1074,25 @@ function SaveGate({ onAnnounce }: { onAnnounce: (message: string) => void }) {
       onSelect: () => {
         const group = document.querySelector<HTMLInputElement>('.a3-sbc-input')
         group?.focus()
-        group?.scrollIntoView({ block: 'nearest' })
+        // Same courtesy, same guard as the baseline's recovery above.
+        group?.scrollIntoView?.({ block: 'nearest' })
       },
     }
     : conflicted[0]
       ? {
         label: t('vr3.scope.gate.conflictRoute', { building: conflicted[0].name }),
-        onSelect: () => s.setScopeActiveBuilding(conflicted[0]!.id),
+        onSelect: () => {
+          s.setScopeActiveBuilding(conflicted[0]!.id)
+          onRequestFocus(conflicted[0]!.id)
+        },
       }
       : unconfirmed[0]
         ? {
           label: t('vr3.scope.gate.route', { building: unconfirmed[0].name }),
-          onSelect: () => s.setScopeActiveBuilding(unconfirmed[0]!.id),
+          onSelect: () => {
+            s.setScopeActiveBuilding(unconfirmed[0]!.id)
+            onRequestFocus(unconfirmed[0]!.id)
+          },
         }
         : undefined
 
@@ -1030,7 +1102,10 @@ function SaveGate({ onAnnounce }: { onAnnounce: (message: string) => void }) {
     .map((building) => ({
       id: building.id,
       label: t('vr3.scope.gate.route', { building: building.name }),
-      onSelect: () => s.setScopeActiveBuilding(building.id),
+      onSelect: () => {
+        s.setScopeActiveBuilding(building.id)
+        onRequestFocus(building.id)
+      },
     }))
 
   return (
