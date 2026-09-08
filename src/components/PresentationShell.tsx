@@ -980,7 +980,9 @@ function OfferClimax({ current, projectName, priceUnavailable, onPrepare, headin
               <span>{t('presentation.schedule.durationFromOkbp')}</span>
               <span className="numeric shrink-0">
                 {p.duration.prefix && <span aria-hidden="true">{p.duration.prefix}{NNBSP}</span>}
-                {durationNumber(p.duration, language)}{NNBSP}{language === 'en' ? 'months' : 'Monate'}
+                {t('vr3.client.schedule.durationValue', {
+                  months: durationNumber(p.duration, language),
+                })}
               </span>
             </li>
             {biggestDriver && (
@@ -1089,8 +1091,14 @@ function OfferClimax({ current, projectName, priceUnavailable, onPrepare, headin
                 </p>
                 {openArtifactData.id === 'praesentation' && !priceUnavailable && (
                   <p className="mt-3 numeric text-heading-3 font-bold text-text-primary">
-                    {p.result.total.prefix ? `${p.result.total.prefix}${NNBSP}` : ''}
-                    {p.result.total.display}{NNBSP}€
+                    {/* The same amount as the hero above it, and the same
+                        rule: the engine composes German, the client reads
+                        their own grouping. */}
+                    {localizeMoneyText(
+                      `${p.result.total.prefix ? `${p.result.total.prefix}${NNBSP}` : ''}`
+                      + `${p.result.total.display}${NNBSP}€`,
+                      language,
+                    )}
                   </p>
                 )}
               </>
@@ -1194,6 +1202,17 @@ export function PresentationFlowScreen({
   const t = useT()
   const tx = useTx()
   const language = useStore().uiLanguage
+  /**
+   * Money, for the reader.
+   *
+   * `moneyLabel(present(x))` composes the engine's GERMAN grouping by
+   * contract, and this lifecycle rendered it straight into the DOM: on the
+   * Final Review screen an English-speaking client read `≈ 3.980.000 €`
+   * under an interface that had relocalised every other word around it,
+   * including its own `Language` field. One helper rather than four call
+   * sites, so the next amount added here cannot forget the rule.
+   */
+  const money = (exact: Decimal) => localizeMoneyText(moneyLabel(present(exact)), language)
   const { p } = current
   // Declared unconditionally, before any of this function's several early
   // returns (rules of hooks) — only actually rendered/opened from the
@@ -1236,7 +1255,7 @@ export function PresentationFlowScreen({
             <div className="text-right shrink-0">
               <p className="a3-cap">{current.name}</p>
               <p className="numeric mt-1 text-heading-2 font-bold text-text-primary">
-                {priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(present(p.result.total.exact))}
+                {priceUnavailable ? t('money.priceNotDetermined') : money(p.result.total.exact)}
               </p>
             </div>
           </div>
@@ -1275,7 +1294,7 @@ export function PresentationFlowScreen({
               <dl className="a3-presentation-rule-list">
                 <div className="a3-presentation-rule-row">
                   <span>{tx(p.result.totalLabel)}</span>
-                  <b className="numeric">{priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(present(p.result.total.exact))}</b>
+                  <b className="numeric">{priceUnavailable ? t('money.priceNotDetermined') : money(p.result.total.exact)}</b>
                 </div>
                 <div className="a3-presentation-rule-row">
                   <span>{tx('Schätzunsicherheit')}</span>
@@ -1283,7 +1302,7 @@ export function PresentationFlowScreen({
                 </div>
                 <div className="a3-presentation-rule-row">
                   <span>{t('presentation.flow.completion')}</span>
-                  <b>{formatDate(p.duration.completionDate, language)}</b>
+                  <b>{formatCalendarDate(p.duration.completionDate, language)}</b>
                 </div>
               </dl>
             </div>
@@ -1359,8 +1378,8 @@ export function PresentationFlowScreen({
     ? new Decimal(snapshot.totalExact).isZero()
     : priceUnavailable
   const displayTotal = snapshot
-    ? (snapshotPriceUnavailable ? t('money.priceNotDetermined') : moneyLabel(present(new Decimal(snapshot.totalExact))))
-    : (priceUnavailable ? t('money.priceNotDetermined') : moneyLabel(present(p.result.total.exact)))
+    ? (snapshotPriceUnavailable ? t('money.priceNotDetermined') : money(new Decimal(snapshot.totalExact)))
+    : (priceUnavailable ? t('money.priceNotDetermined') : money(p.result.total.exact))
   const historicalArtifacts = snapshot
     ? buildGalleryArtifacts(snapshot.attachmentIds, snapshotPriceUnavailable, t).filter((a) => a.available)
     : galleryArtifacts.filter((a) => a.available)
@@ -1482,6 +1501,30 @@ export function PresentationFlowScreen({
   )
 }
 
+/**
+ * A client-facing CALENDAR date, in the form every chapter of the narrative
+ * uses (`30. September 2028` / `30 September 2028`).
+ *
+ * The review screen used the numeric receipt form below, so one client
+ * session stated the same completion date two ways — `30. September 2028`
+ * on the schedule chapter and `28/01/2028` here. Both go through `Intl`;
+ * what differed was the convention, and a fact stated two ways is the class
+ * this ticket has been closing everywhere else.
+ */
+function formatCalendarDate(iso: string, language: 'de' | 'en'): string {
+  const date = new Date(iso.includes('T') ? iso : `${iso}T12:00:00`)
+  if (Number.isNaN(date.getTime())) return '—'
+  return new Intl.DateTimeFormat(language === 'en' ? 'en-GB' : 'de-DE', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  }).format(date)
+}
+
+/**
+ * A delivery-receipt TIMESTAMP: a numeric date and a clock time, which is
+ * how a receipt chronology reads in either language. Deliberately not the
+ * calendar form above — `Gesendet 30. September 2028, 14:12` reads as prose
+ * where a proof of delivery wants a stamp.
+ */
 function formatDate(iso: string, language: 'de' | 'en' = 'de', includeTime = false): string {
   const date = new Date(iso.includes('T') ? iso : `${iso}T12:00:00`)
   if (Number.isNaN(date.getTime())) return '—'

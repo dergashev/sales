@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PresentationShell, PresentationFlowScreen, type Candidate } from '../PresentationShell'
 import {
@@ -898,5 +898,124 @@ describe('PresentationShell — the scope chapter states three groups (AC 23)', 
       expect(panel.title, `"${panel.title}" names its own count`)
         .toMatch(new RegExp(`· ${panel.entries}$`))
     }
+  })
+})
+
+/**
+ * QA REWORK (QA-01) — the send lifecycle states its money in the reader's
+ * language, like every other word on the same screen.
+ *
+ * `moneyLabel(present(x))` composes the engine's GERMAN grouping by
+ * contract, and four sites in this lifecycle rendered it straight into the
+ * DOM. On "Final review" an English-speaking client read `≈ 3.980.000 €`
+ * beside a `Language` field that said English and headings that had all
+ * relocalised — the money alone never moved. No suite reached this screen:
+ * the chapter guards are scoped to each chapter's own fact rows, and this
+ * is a sub-view behind two clicks of chapter 10.
+ */
+describe('PresentationShell — the send lifecycle speaks the reader\'s language', () => {
+  /** German grouping is dots between thousands; English is commas. */
+  const DE_GROUPED = /\d{1,3}\.\d{3}(?!\d)/
+  const EN_GROUPED = /\d{1,3},\d{3}(?!\d)/
+
+  /** Every amount the screen states, wherever it renders it. */
+  const amountsOnScreen = () => [...document.querySelectorAll('.numeric, b')]
+    .map((n) => n.textContent ?? '')
+    .filter((text) => /\d/.test(text) && /€/.test(text))
+
+  it('states the review total in English grouping, never the engine\'s German', async () => {
+    const user = userEvent.setup()
+    buildOneEligibleOption()
+    render(<Harness />)
+    act(() => { st().setUiLanguage('en') })
+
+    await gotoChapter(user, 'Next step')
+    await user.click(await screen.findByRole('button', { name: 'Prepare the send' }))
+    await user.click(await screen.findByRole(
+      'button', { name: /Review & send offer/ }, { timeout: 8000 },
+    ))
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /Ready to send/ })).toBeInTheDocument()
+    })
+
+    const amounts = amountsOnScreen()
+    expect(amounts.length, 'the review screen states an amount').toBeGreaterThan(0)
+    for (const amount of amounts) {
+      expect(amount, `"${amount}" states German grouping under an English UI`)
+        .not.toMatch(DE_GROUPED)
+    }
+    // At least one of them is a real grouped figure, so this is not a test
+    // that passes because the fixture happens to price below 1.000 €.
+    expect(amounts.some((a) => EN_GROUPED.test(a)),
+      `no grouped amount to check: ${JSON.stringify(amounts)}`).toBe(true)
+  })
+
+  it('states English grouping inside the artefact preview, one click from the same screen', async () => {
+    const user = userEvent.setup()
+    buildOneEligibleOption()
+    render(<Harness />)
+    // A fresh Option's persisted attachment default matches no catalog id,
+    // so the gallery is empty until a seller selects something in S5Export.
+    // This is that real selection, the same field that screen edits.
+    act(() => {
+      st().setOfferDraft({ attachments: ['praesentation'] })
+      st().setUiLanguage('en')
+    })
+
+    await gotoChapter(user, 'Next step')
+    await user.click(await screen.findByRole('button', { name: 'Prepare the send' }))
+    // The offer screen's artefact tiles open a preview of data this screen
+    // has already computed. The preview repeated the total and rendered it
+    // raw — the same defect as the hero above it, one click away, which is
+    // why no assertion on the screen itself could see it.
+    const tile = await screen.findByRole('button', { name: 'Offer presentation (PDF)' })
+    await user.click(tile)
+    const dialog = await screen.findByRole('dialog')
+
+    const amounts = [...dialog.querySelectorAll('.numeric, b')]
+      .map((n) => n.textContent ?? '')
+      .filter((text) => /\d/.test(text) && /€/.test(text))
+    expect(amounts.length, 'the preview states the amount').toBeGreaterThan(0)
+    for (const amount of amounts) {
+      expect(amount, `"${amount}" states German grouping under an English UI`)
+        .not.toMatch(DE_GROUPED)
+    }
+    expect(amounts.some((a) => EN_GROUPED.test(a)),
+      `no grouped amount to check: ${JSON.stringify(amounts)}`).toBe(true)
+  })
+
+  it('states the same completion date the schedule chapter states', async () => {
+    const user = userEvent.setup()
+    buildOneEligibleOption()
+    render(<Harness />)
+
+    await gotoChapter(user, 'Terminplan')
+    const chapterDate = (screen.getByRole('region', { name: 'Terminplan' })
+      .textContent ?? '').match(/\d{1,2}\. \p{L}+ \d{4}/u)?.[0]
+    expect(chapterDate, 'the schedule chapter states a completion date').toBeTruthy()
+
+    await reachOfferFlow(user)
+    await user.click(await screen.findByRole(
+      'button', { name: 'Angebot prüfen & senden →' }, { timeout: 8000 },
+    ))
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Bereit zum Senden' })).toBeInTheDocument()
+    })
+    // One fact, one rendering: the review screen used the numeric receipt
+    // form, so the same date read `30. September 2028` on the chapter and
+    // `30.09.2028` here.
+    expect(document.body.textContent, 'the review screen states it the same way')
+      .toContain(chapterDate)
+  })
+
+  it('keeps the delivery receipt a timestamp, not prose', async () => {
+    const user = userEvent.setup()
+    buildOneEligibleOption()
+    render(<Harness />)
+    await sendCurrentOption(user)
+    await user.click(screen.getByRole('button', { name: 'Versandnachweis' }))
+    const dialog = await screen.findByRole('dialog')
+    // A proof of delivery reads as a stamp: a numeric date and a clock time.
+    expect(dialog.textContent).toMatch(/\d{2}\.\d{2}\.\d{4},? \d{2}:\d{2}/)
   })
 })
