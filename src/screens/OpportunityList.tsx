@@ -567,12 +567,12 @@ export function OpportunityList({
             not to the fixture. */}
         <div className="a3-pf-results" ref={listRef}>
           {total === 0 ? (
-            <div className="a3-empty-spec">
+            <div className="a3-pf-empty">
               <EmptyState>{t('opplist.emptyAccount.sentence')}</EmptyState>
               <p className="a3-project-lede">{t('opplist.emptyAccount.detail')}</p>
             </div>
           ) : page.total === 0 ? (
-            <div className="a3-empty-spec">
+            <div className="a3-pf-empty">
               <EmptyState
                 action={(
                   <Button variant="secondary" onClick={clearAll}>

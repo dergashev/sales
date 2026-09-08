@@ -377,7 +377,8 @@ export const EVIDENCE = {
 export const DOCUMENT_SOURCE = {
   register: 'Dokumentseiten',
   inspect: 'Beleg ansehen',
-  openSource: /^Quelle öffnen · Seite \d+$/,
+  /** The accessible name (aria-label), not the visible short label. */
+  openSource: / · Quelle öffnen · .+, Seite \d+$/,
   position: /^Seite \d+ von \d+$/,
   citedClause: /^Zitierte Stelle: /,
   provenance: /^Herkunft: internal synthetic · All3/,
@@ -385,6 +386,10 @@ export const DOCUMENT_SOURCE = {
   retry: 'Erneut laden',
   back: 'Zurück zum Projektverständnis',
   cls: {
+    /* Every register row carries a viewer in its detail, and a detail that
+       is closed is `hidden`. The OPEN one is the only one under inspection,
+       so the anchor is the open detail, never `.a3-docsrc` first-of-many. */
+    openViewer: '.a3-drow-detail:not([hidden]) .a3-docsrc',
     viewer: '.a3-docsrc',
     frame: '.a3-docsrc-frame',
     embed: '.a3-docsrc-embed',

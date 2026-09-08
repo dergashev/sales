@@ -458,4 +458,135 @@ describe('VR3 · an engine-composed German label is never rendered bare', () => 
     }
     expect(translated).toEqual([])
   })
+
+  /**
+   * The keys the FIXTURE composes, which no static scan can see.
+   *
+   * The surfaces above resolve several key families by interpolation —
+   * `t(`vr3.docType.${doc.documentType}`)` and its siblings — so the value
+   * that completes the key lives in `src/fixtures/*.json`, not in the
+   * source. The static sweep therefore cannot check them, and it did not:
+   * replacing Leipzig's document pack introduced four document types
+   * (`sectionElevation`, `interfaces`, `schedule`, `planningRequirements`)
+   * that had no row in EITHER dictionary, and the register rendered the raw
+   * key `vr3.docType.sectionElevation` as its document type — in German, on
+   * the surface this ticket exists to make truthful. Nothing failed. A
+   * person looking at a browser found it.
+   *
+   * So the fixture is enumerated and every key it can compose is required
+   * in BOTH dictionaries. A new family belongs in `FIXTURE_KEY_FAMILIES`,
+   * and a new fixture value is then covered automatically — which is the
+   * whole point, because a fixture value is exactly what nobody remembers
+   * to translate.
+   */
+  const FIXTURE_KEY_FAMILIES: Array<{
+    prefix: string
+    values: (project: FixtureLike) => string[]
+  }> = [
+    {
+      prefix: 'vr3.docType.',
+      values: (p) => p.documents.map((d) => d.documentType),
+    },
+    {
+      prefix: 'vr3.sourceAuthority.',
+      values: (p) => p.documents.map((d) => d.sourceAuthority),
+    },
+    {
+      prefix: 'vr3.recognition.',
+      values: (p) => p.documents.map((d) => d.recognitionQuality),
+    },
+    {
+      prefix: 'vr3.medium.',
+      values: (p) => p.documents.map((d) => d.recognitionMedium),
+    },
+    {
+      prefix: 'vr3.building.underground.',
+      values: (p) => p.buildings.map((b) => b.undergroundLevel),
+    },
+    {
+      prefix: 'vr3.evidence.state.',
+      // Only the states that REACH the key. `AuthorityTrace` asks for a
+      // stale reason only when the item is stale or contradicted
+      // (`evidenceAuthorityTrace`), so `current` composes no key and must
+      // not be demanded of the dictionary — requiring a row for a sentence
+      // nothing can print is how a guard starts producing work instead of
+      // catching defects.
+      values: (p) => p.evidence
+        .map((e) => e.state)
+        .filter((state) => state === 'stale' || state === 'conflict'),
+    },
+  ]
+
+  /**
+   * Only the fields these families read. `Record<string, unknown>` would
+   * push the narrowing into every accessor; naming the fields keeps the
+   * families one line each and makes a missing fixture field a type error
+   * rather than an `undefined` that silently composes `vr3.docType.
+   * undefined` and passes.
+   */
+  type FixtureLike = {
+    id: string
+    documents: Array<{
+      documentType: string
+      sourceAuthority: string
+      recognitionQuality: string
+      recognitionMedium: string
+    }>
+    buildings: Array<{ undergroundLevel: string }>
+    evidence: Array<{ state: string }>
+  }
+
+  it('every key the demonstration fixtures compose has a DE and an EN row', () => {
+    const de = dictionaryKeys('de')
+    const en = dictionaryKeys('en')
+    const fixture = JSON.parse(
+      source('src/fixtures/vr3-demo-projects.json'),
+    ) as { projects: FixtureLike[] }
+
+    const missing: string[] = []
+    let checked = 0
+    for (const project of fixture.projects) {
+      for (const family of FIXTURE_KEY_FAMILIES) {
+        for (const value of new Set(family.values(project))) {
+          const key = `${family.prefix}${value}`
+          checked += 1
+          if (!de.has(key)) missing.push(`${project.id}: ${key} — no DE row`)
+          if (!en.has(key)) missing.push(`${project.id}: ${key} — no EN row`)
+        }
+      }
+    }
+    expect(missing).toEqual([])
+    // A sweep that matched nothing would report success forever.
+    expect(checked).toBeGreaterThan(FIXTURE_KEY_FAMILIES.length)
+  })
+
+  it('every literal dictionary key STORED in a fixture resolves in both languages', () => {
+    // The other half of the same class: fields like `labelKey`,
+    // `conceptKey`, `issueKey` and `requirementKey` hold a WHOLE key, so a
+    // fixture can name a row that was never written. Walking the file finds
+    // them without a list of field names to keep up to date.
+    const de = dictionaryKeys('de')
+    const en = dictionaryKeys('en')
+    const missing: string[] = []
+    let checked = 0
+    const walk = (node: unknown) => {
+      if (typeof node === 'string') {
+        if (!/^vr3\.[a-zA-Z][\w.]*$/.test(node)) return
+        // Only strings that are USED as keys: a value that merely looks like
+        // one but names no row would otherwise be reported as a defect of
+        // the dictionary rather than of the fixture. Both dictionaries
+        // missing it IS the defect; one of them missing it is too.
+        if (!de.has(node) && !en.has(node)) return
+        checked += 1
+        if (!de.has(node)) missing.push(`${node} — no DE row`)
+        if (!en.has(node)) missing.push(`${node} — no EN row`)
+        return
+      }
+      if (Array.isArray(node)) { node.forEach(walk); return }
+      if (node && typeof node === 'object') Object.values(node).forEach(walk)
+    }
+    walk(JSON.parse(source('src/fixtures/vr3-demo-projects.json')))
+    expect(missing).toEqual([])
+    expect(checked).toBeGreaterThan(50)
+  })
 })

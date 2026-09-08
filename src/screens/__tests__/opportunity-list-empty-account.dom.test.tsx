@@ -45,7 +45,7 @@ describe('Opportunities — Konto-Leerzustand', () => {
     // Stärker als „kein Knopf mit Namen X": der Leerzustand trägt
     // ÜBERHAUPT keine Aktion, während der Filter-Zweig genau eine trägt.
     const emptyState = screen.getByText('Es sind noch keine Opportunities vorhanden.')
-      .closest('.a3-empty-spec')!
+      .closest('.a3-pf-empty')!
     expect(emptyState.querySelectorAll('button')).toHaveLength(0)
     // Das editoriale Resümee nennt die Portfolio-Größe aus der Fixture —
     // bei leerer Fixture also null Projekte.

@@ -27,6 +27,22 @@ import {
  * to state the width it actually used.
  */
 
+/**
+ * Pick a city the way a person does.
+ *
+ * The dependent City filter is the canonical Combobox: a text input that
+ * owns a listbox, so there is no `selectOption` to call. Typing and
+ * committing is also the interaction the acceptance criterion is about —
+ * the value the user can still SEE has to keep agreeing with the filtered
+ * set, and a programmatic set would never exercise that.
+ */
+async function chooseCity(page: Page, city: string) {
+  const input = page.getByRole('combobox', { name: PORTFOLIO.city })
+  await input.fill(city)
+  await input.press('Enter')
+  await expect(input).toHaveValue(city)
+}
+
 /** No surface of this ticket may make the page scroll sideways. */
 async function expectNoHorizontalOverflow(page: Page) {
   const overflow = await page.evaluate(() => {
@@ -78,7 +94,16 @@ test.describe('the Projects register begins honestly', () => {
     expect(box.width).toBeGreaterThanOrEqual(44)
 
     await page.keyboard.press('Enter')
-    await expect(card.getByText(PORTFOLIO.integrations.notConnected)).toBeVisible()
+    // The sentence appears TWICE on purpose: once in the reserved visible
+    // slot, once in the card's polite live region. Asserting them apart is
+    // the point — a visible acknowledgement a screen reader never hears,
+    // or an announcement with nothing on screen, would each pass a laxer
+    // check that only counted one of them.
+    const notice = card.getByText(PORTFOLIO.integrations.notConnected)
+    await expect(notice).toHaveCount(2)
+    await expect(notice.first()).toBeVisible()
+    await expect(card.locator('[role="status"]'))
+      .toHaveText(PORTFOLIO.integrations.notConnected)
 
     // Nothing about the project moved: not the URL, not the history, not
     // the register. A placeholder that navigated would be a broken link
@@ -92,7 +117,7 @@ test.describe('the Projects register begins honestly', () => {
       name: `${PORTFOLIO.integrations.missionControl} · ${DEMO_PROJECT_TITLE}`,
     })
     await mission.click()
-    await expect(card.getByText(PORTFOLIO.integrations.notConnected)).toBeVisible()
+    await expect(card.getByText(PORTFOLIO.integrations.notConnected).first()).toBeVisible()
     expect(page.url()).toBe(url)
   })
 })
@@ -112,7 +137,9 @@ test.describe('filters survive the browser', () => {
 
     // A second filter that cannot agree with the first: zero results, and
     // the active filters STAY on screen so the reader can see what did it.
-    await page.getByLabel(PORTFOLIO.city).selectOption({ label: 'Leipzig' })
+    // City is the canonical Combobox — a text input with a listbox, not a
+    // native select — so it is driven the way a person drives it.
+    await chooseCity(page, 'Leipzig')
     await expect(page.locator(PORTFOLIO.cls.card)).toHaveCount(0)
     await expect(page.getByText(PORTFOLIO.emptyFiltered)).toBeVisible()
     const chips = page.locator(PORTFOLIO.cls.chips)
@@ -126,7 +153,7 @@ test.describe('filters survive the browser', () => {
 
     // …and it works a second time, which is the acceptance criterion that
     // the recovery is not a one-shot.
-    await page.getByLabel(PORTFOLIO.city).selectOption({ label: 'Leipzig' })
+    await chooseCity(page, 'Leipzig')
     await expect(page.locator(PORTFOLIO.cls.card)).toHaveCount(0)
     await chips.getByRole('button', { name: PORTFOLIO.chipRemove('Stadt: Leipzig') }).click()
     await expect(page.locator(PORTFOLIO.cls.card)).toHaveCount(1)
@@ -192,7 +219,7 @@ test.describe('Project Understanding shows the evidence, not a count of it', () 
     await expect(openSource).toBeVisible()
     await openSource.click()
 
-    const viewer = page.locator(DOCUMENT_SOURCE.cls.viewer).first()
+    const viewer = page.locator(DOCUMENT_SOURCE.cls.openViewer)
     await expect(viewer).toBeVisible()
     // The identity, the position and the cited clause are TEXT beside the
     // embed. Headless Chromium renders no PDF at all, which makes this the

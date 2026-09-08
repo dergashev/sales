@@ -377,7 +377,7 @@ describe('Уровень Projekte', () => {
     expect(screen.queryAllByRole('listitem')).toHaveLength(0)
     // Отличается от «в аккаунте вообще ничего нет» — тот сброса не предлагает.
     expect(screen.queryByText('Es sind noch keine Opportunities vorhanden.')).toBeNull()
-    expect(document.querySelector('.a3-empty-spec button')).not.toBeNull()
+    expect(document.querySelector('.a3-pf-empty button')).not.toBeNull()
   })
 
   it('Option нельзя создать, пока блокирующие расхождения не решены; свежая Option — без цены', async () => {

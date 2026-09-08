@@ -4167,6 +4167,13 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 /* RESULTS — the scroll target after a page change, so the reader returns
    to the list rather than to the top of the document. */
 .a3-pf-results{margin-top:var(--space-3);min-width:0;scroll-margin-top:var(--space-4)}
+/* The register's empty composition: the canonical state block, then the
+   sentence that says what to do about it. It used to reuse
+   `.a3-empty-spec` — DC-24's OWN two-column icon grid — as a wrapper, so
+   the state block was laid into the icon column and its sentence
+   rendered one character per line, 960px tall. Found in a real browser;
+   no unit test can see a column that is `--size-icon-lg` wide. */
+.a3-pf-empty{display:grid;gap:var(--space-3);align-content:start;min-width:0}
 .a3-pf-list{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-4);min-width:0}
 .a3-pf-card{display:grid;grid-template-columns:minmax(0,240px) minmax(0,1fr) minmax(0,232px);border:var(--border-contrast-1px);background:var(--color-surface-default);min-width:0}
 /* Media stays FULL CARD HEIGHT and is resized, never reduced to a
