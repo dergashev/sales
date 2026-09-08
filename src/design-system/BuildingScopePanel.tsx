@@ -92,34 +92,97 @@ export function BuildingIdentityGroup({
   )
 }
 
-export type BuildingIdentityStatus = 'confirmed' | 'stale' | 'open' | 'unselected'
+/**
+ * The scope state of one building — the DECISION, not its bookkeeping.
+ *
+ * `included` / `excluded` / `reviewRequired` are the three the audit asked
+ * for (Product Owner requirement 11), and the fourth exists because the
+ * Product genuinely has it: a building that IS in scope and whose baseline
+ * is already trusted is a different sentence from one still owing a
+ * confirmation, and collapsing them would hide the only progress this
+ * screen makes.
+ */
+export type BuildingScopeState =
+  /** In the offer, baseline confirmed and current. */
+  | 'confirmed'
+  /** In the offer, baseline still owes a confirmation. */
+  | 'included'
+  /** In the offer, and something about it needs a human. */
+  | 'reviewRequired'
+  /** Deliberately not in the offer. */
+  | 'excluded'
 
-const STATUS_TONE: Record<BuildingIdentityStatus, SemanticStatusTone> = {
+const SCOPE_TONE: Record<BuildingScopeState, SemanticStatusTone> = {
   confirmed: 'ok',
-  stale: 'stale',
-  open: 'neutral',
-  unselected: 'unknown',
+  included: 'neutral',
+  reviewRequired: 'attention',
+  excluded: 'unknown',
 }
 
-const STATUS_KEY: Record<BuildingIdentityStatus, string> = {
-  confirmed: 'vr3.scope.status.confirmed',
-  stale: 'vr3.scope.status.stale',
-  open: 'vr3.scope.status.open',
-  unselected: 'vr3.scope.status.unselected',
+const SCOPE_KEY: Record<BuildingScopeState, string> = {
+  confirmed: 'vr3.scope.state.confirmed',
+  included: 'vr3.scope.state.included',
+  reviewRequired: 'vr3.scope.state.reviewRequired',
+  excluded: 'vr3.scope.state.excluded',
 }
 
 /**
- * One building's identity: what it looks like, what it is called, what it is
- * for, and whether it is in scope.
- *
- * The image supports recognition — three buildings on one screen are told
- * apart by their facades long before their names are read — and it NEVER
- * replaces a label: the name, the use and the basement situation are text,
- * present whether the image loads or not.
+ * One FULLY-WRITTEN class name per state, for the reason `WorkflowNavigator`
+ * already records: `verify.py`'s DS-CLASS-EXISTS greps source for literal
+ * `a3-*` names, and an interpolated suffix leaves it only the bare prefix to
+ * match — so the styling of a state could go missing silently. It caught
+ * exactly that here.
  */
-export function BuildingIdentityCard({
-  name, designation, meta, media, selected, status, onToggle, onReview, reviewing,
-  reviewLabel, reviewAccessibleLabel, selectLabel,
+const SCOPE_CLASS: Record<BuildingScopeState, string> = {
+  confirmed: 'a3-sbc-confirmed',
+  included: 'a3-sbc-included-open',
+  reviewRequired: 'a3-sbc-reviewRequired',
+  excluded: 'a3-sbc-excluded-state',
+}
+
+/** Icon plus text, never colour alone (rule 8) — one glyph per state. */
+const SCOPE_GLYPH: Record<BuildingScopeState, string> = {
+  confirmed: '✓',
+  included: '■',
+  reviewRequired: '!',
+  excluded: '□',
+}
+
+/**
+ * SelectableBuildingCard — the decision that controls the whole offer, drawn
+ * like one (B2, Product Owner requirement 11;
+ * navigation-and-blocker-patterns.md "Selectable building card").
+ *
+ * WHAT WAS WRONG. The released card put a small native checkbox beside the
+ * words `Im Angebot`, with the confirmation state as a quiet chip on the
+ * same line. The audit measured the consequence and named it precisely:
+ * "inclusion is not visually dominant enough for a decision that controls
+ * the whole offer", at 1440 and at 1280, and for a single building as much
+ * as for three. Nothing was hidden — it was simply the quietest element on a
+ * card whose entire purpose is that one choice.
+ *
+ * WHAT THIS IS. A COMPOUND, not a bag of booleans. Its parts are named
+ * (`SelectionControl`, identity, `ScopeState`, `BaselineSummary`,
+ * `OpenBaseline`) and each renders one fact, so a caller cannot produce a
+ * card whose border says one thing and whose text says another: the border,
+ * the checkbox, the glyph and the words all read the same `state`.
+ *
+ * The native checkbox REMAINS the semantic control. It is not replaced by a
+ * styled div, a switch or a card-level click handler that fakes one — the
+ * platform's own checked semantics are what assistive technology and forced
+ * colours rely on. What changes is its size and its company: the whole
+ * selection row is its label, so the target is the row rather than a 16 px
+ * square, and nested links and buttons stop the toggle (rule 26) so
+ * `Open baseline` never silently removes a building from the offer.
+ *
+ * ONE AND MANY. The composition does not change between a single building
+ * and a complex; only its density does. A project that gains a building does
+ * not gain a different screen, and a single-building Option still requires
+ * an explicit included state rather than inheriting one.
+ */
+export function SelectableBuildingCard({
+  name, designation, meta, media, state, onToggle, selectLabel,
+  summary, reason, onOpenBaseline, openLabel, openAccessibleLabel, reviewing,
 }: {
   /** The building's own name — "Kontorhaus". */
   name: string
@@ -128,69 +191,84 @@ export function BuildingIdentityCard({
   /** Use and basement situation, as words. */
   meta: string
   media?: ReactNode
-  selected: boolean
-  status: BuildingIdentityStatus
+  state: BuildingScopeState
   onToggle: () => void
-  /** Opening this building's baseline. Absent when it is the only one. */
-  onReview?: () => void
-  reviewing?: boolean
-  reviewLabel?: string
-  /** Full accessible name; the visible label stays short (WCAG 2.5.3). */
-  reviewAccessibleLabel?: string
   /** Accessible name of the selection control — contains the identity. */
   selectLabel: string
+  /** The two or three numbers that make this building recognisable. */
+  summary?: ReactNode
+  /** Why this building needs a human, when it does. */
+  reason?: string
+  /** Opening this building's baseline. */
+  onOpenBaseline?: () => void
+  openLabel?: string
+  /** Full accessible name; the visible label stays short (WCAG 2.5.3). */
+  openAccessibleLabel?: string
+  reviewing?: boolean
 }) {
   const t = useT()
   const inputId = useId()
+  const reasonId = useId()
+  const included = state !== 'excluded'
   const classes = [
-    'a3-bsp-identity',
-    selected ? 'a3-bsp-identity-selected' : 'a3-bsp-identity-excluded',
-    reviewing ? 'a3-bsp-identity-reviewing' : '',
+    'a3-sbc',
+    included ? 'a3-sbc-included' : 'a3-sbc-excluded',
+    SCOPE_CLASS[state],
+    reviewing ? 'a3-sbc-reviewing' : '',
   ].filter(Boolean).join(' ')
   return (
-    <div className={classes}>
-      {media ? <div className="a3-bsp-identity-media">{media}</div> : null}
-      <div className="a3-bsp-identity-body">
-        {/* Selection and confirmation are two different facts and both are
-            visible — but they belong on one line: they answer "is it in the
-            offer" and "is its baseline trusted" about the SAME building, and
-            stacking them made the identity card taller than the baseline it
-            introduces. */}
-        <div className="a3-bsp-identity-select">
-          <input
-            id={inputId}
-            type="checkbox"
-            className="a3-bsp-identity-input hit-target"
-            checked={selected}
-            onChange={onToggle}
-            aria-label={selectLabel}
+    <div className={classes} data-scope-state={state}>
+      {/* THE SELECTION ROW IS THE CONTROL. A `<label>` wrapping the whole
+          row makes the row the checkbox's hit area, so the target is the
+          decision and not a 16 px square — without inventing a click
+          handler beside the native input, which is what would have
+          desynchronised pointer from keyboard. */}
+      <label className="a3-sbc-select" htmlFor={inputId}>
+        <input
+          id={inputId}
+          type="checkbox"
+          className="a3-sbc-input"
+          checked={included}
+          onChange={onToggle}
+          aria-label={selectLabel}
+          aria-describedby={reason ? reasonId : undefined}
+        />
+        <span className="a3-sbc-select-mark" aria-hidden="true">
+          {included ? '✓' : ''}
+        </span>
+        <span className="a3-sbc-select-text">
+          {t(included ? 'vr3.scope.selected' : 'vr3.scope.notSelected')}
+        </span>
+        <span className="a3-sbc-state">
+          <SemanticStatus
+            tone={SCOPE_TONE[state]}
+            label={`${SCOPE_GLYPH[state]} ${t(SCOPE_KEY[state])}`}
+            size="compact"
           />
-          <label className="a3-bsp-identity-select-label" htmlFor={inputId}>
-            {t(selected ? 'vr3.scope.selected' : 'vr3.scope.notSelected')}
-          </label>
-          <span className="a3-bsp-identity-status">
-            <SemanticStatus
-              tone={STATUS_TONE[status]}
-              label={t(STATUS_KEY[status])}
-              size="compact"
-            />
-          </span>
-        </div>
-        <p className="a3-bsp-identity-name">
-          <span className="a3-bsp-identity-designation">{designation}</span>
-          <span aria-hidden="true" className="a3-bsp-identity-sep"> · </span>
-          <span className="a3-bsp-identity-proper">{name}</span>
+        </span>
+      </label>
+      {media ? <div className="a3-sbc-media">{media}</div> : null}
+      <div className="a3-sbc-body">
+        <p className="a3-sbc-name">
+          <span className="a3-sbc-designation">{designation}</span>
+          <span aria-hidden="true" className="a3-sbc-sep"> · </span>
+          <span className="a3-sbc-proper">{name}</span>
         </p>
-        <p className="a3-bsp-identity-meta">{meta}</p>
-        {onReview && reviewLabel ? (
+        <p className="a3-sbc-meta">{meta}</p>
+        {summary ? <div className="a3-sbc-summary">{summary}</div> : null}
+        {reason ? <p className="a3-sbc-reason" id={reasonId}>{reason}</p> : null}
+        {onOpenBaseline && openLabel ? (
           <button
             type="button"
-            className="a3-bsp-identity-review hit-target"
-            onClick={onReview}
-            aria-pressed={Boolean(reviewing)}
-            aria-label={reviewAccessibleLabel}
+            className="a3-sbc-open hit-target"
+            /* Rule 26: a control inside a clickable container never
+               actuates the container. Without this, opening a baseline
+               would toggle the building out of the offer. */
+            onClick={(event) => { event.stopPropagation(); onOpenBaseline() }}
+            aria-pressed={reviewing === undefined ? undefined : Boolean(reviewing)}
+            aria-label={openAccessibleLabel}
           >
-            {reviewLabel}
+            {openLabel}
           </button>
         ) : null}
       </div>

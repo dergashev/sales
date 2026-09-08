@@ -49,26 +49,205 @@ export type ScopeMetricKey =
   | 'siteArea'
 
 /**
- * The metrics an authorised user may override on the Option's baseline.
+ * A closed-domain baseline fact: not a quantity, but a choice from a list.
  *
- * BGF values are deliberately NOT here. They are the plan-derived areas the
- * commercial scale rests on, and the baseline reports them with the authority
- * that produced them; replacing one by hand would move the commercial base
- * without evidence, which is a Product decision this ticket does not own
- * (its target shows exactly one editable metric, a usable area). Usable and
- * countable quantities are editable because a seller legitimately holds
- * later knowledge about them than the drawing set does.
+ * These three were display-only. They are facts the baseline states about a
+ * building, they are part of its material fingerprint, and requirement 10
+ * says every displayed value is editable — so they are edited with the
+ * control their data deserves (a select, not a number field) and recorded
+ * with the same authority trail as an area.
  */
-export const EDITABLE_SCOPE_METRICS = [
+export const SCOPE_CHOICE_FACTS = ['usage', 'storeys', 'underground'] as const
+
+export type ScopeChoiceFactKey = typeof SCOPE_CHOICE_FACTS[number]
+
+/** Every fact the baseline DISPLAYS, and therefore every fact it may edit. */
+export type ScopeFactKey = ScopeMetricKey | ScopeChoiceFactKey
+
+const CHOICE_FACTS = new Set<string>(SCOPE_CHOICE_FACTS)
+
+export function isScopeChoiceFact(key: string): key is ScopeChoiceFactKey {
+  return CHOICE_FACTS.has(key)
+}
+
+/**
+ * EVERY DISPLAYED FACT IS EDITABLE (B2, Product Owner requirement 10).
+ *
+ * The released list held seven of fifteen metrics, and its own docblock gave
+ * the reason BGF was excluded: "replacing one by hand would move the
+ * commercial base without evidence, which is a Product decision this ticket
+ * does not own". That was an honest boundary for the ticket that wrote it,
+ * and it is exactly the Product decision THIS ticket owns — the audit
+ * measured the consequence as "Only usable areas and quantities are
+ * editable; BGF, use, storeys, and basement are read-only", and requirement
+ * 10 answers it.
+ *
+ * The concern was real and is answered rather than dropped. An override
+ * still moves nothing without evidence: it records the value it replaced,
+ * its author, the time and a REQUIRED reason, it drops the fact's authority
+ * to `overridden`, and it un-confirms the building by arithmetic. What is
+ * new is that editing a BGF component now has to resolve its DERIVED
+ * dependants explicitly (`derivedImpact` below) — the commercial base cannot
+ * move silently, which is what "without evidence" was protecting.
+ */
+export const EDITABLE_SCOPE_FACTS: readonly ScopeFactKey[] = [
+  ...SCOPE_CHOICE_FACTS,
+  'bgfRAbove', 'bgfSAbove', 'bgfRSAbove',
+  'bgfRBelow', 'bgfSBelow', 'bgfRSBelow', 'bgfRSTotal',
   'wfl', 'nuf', 'commercialNuf', 'units', 'workplaces', 'parkingSpaces', 'siteArea',
-] as const
+]
 
-export type EditableScopeMetricKey = typeof EDITABLE_SCOPE_METRICS[number]
+const EDITABLE = new Set<string>(EDITABLE_SCOPE_FACTS)
 
-const EDITABLE = new Set<string>(EDITABLE_SCOPE_METRICS)
-
-export function isEditableScopeMetric(key: string): key is EditableScopeMetricKey {
+export function isEditableScopeFact(key: string): key is ScopeFactKey {
   return EDITABLE.has(key)
+}
+
+/* ────────────────────────── derived dependants ───────────────────────── */
+
+/**
+ * The BGF sums the baseline already states, as a graph.
+ *
+ * These are not new formulas. They are the arithmetic the fixture itself
+ * carries and the engine already relies on — `bgfRSAbove = bgfRAbove +
+ * bgfSAbove`, and so on up to `bgfRSTotal` — written down once so that
+ * editing a component can PREVIEW what it moves instead of leaving the
+ * totals to contradict their own parts.
+ *
+ * Verified against the demonstration baseline: Lindenhof 2 740 + 160 =
+ * 2 900; Hofhaus 4 620 + 180 = 4 800 and 4 800 + 980 = 5 780; Stadthaus
+ * 6 180 + 240 = 6 420 and 6 420 + 1 240 = 7 660.
+ */
+const DERIVED_SUMS: Readonly<Record<string, readonly ScopeMetricKey[]>> = {
+  bgfRSAbove: ['bgfRAbove', 'bgfSAbove'],
+  bgfRSBelow: ['bgfRBelow', 'bgfSBelow'],
+  bgfRSTotal: ['bgfRSAbove', 'bgfRSBelow'],
+}
+
+/** Which facts are computed from others, in evaluation order. */
+export const DERIVED_FACT_ORDER: readonly ScopeMetricKey[] = [
+  'bgfRSAbove', 'bgfRSBelow', 'bgfRSTotal',
+]
+
+export function isDerivedScopeFact(key: string): boolean {
+  return key in DERIVED_SUMS
+}
+
+/**
+ * Every fact that would have to change if `key` changed, in the order they
+ * must be recomputed. Transitive: editing `bgfRAbove` reaches `bgfRSTotal`
+ * through `bgfRSAbove`, and a preview that stopped at the first level would
+ * understate what the user is about to move.
+ */
+export function derivedDependants(key: ScopeFactKey): readonly ScopeMetricKey[] {
+  const out: ScopeMetricKey[] = []
+  let frontier: string[] = [key]
+  // Bounded by the order list, so a cycle in the table cannot loop forever.
+  for (const candidate of DERIVED_FACT_ORDER) {
+    const inputs = DERIVED_SUMS[candidate] ?? []
+    if (inputs.some((input) => frontier.includes(input))) {
+      out.push(candidate)
+      frontier = [...frontier, candidate]
+    }
+  }
+  return out
+}
+
+export type DerivedImpact = Readonly<{
+  key: ScopeMetricKey
+  /** What it says now. */
+  before: string | null
+  /** What the existing sums make it, once the edit lands. */
+  after: string
+  /** True when this dependant currently carries its OWN manual override. */
+  manual: boolean
+}>
+
+/**
+ * The before/after of every derived dependant, computed from the SAME sums
+ * the baseline already states.
+ *
+ * A dependant whose inputs are not all known is absent from the result: a
+ * sum with an unknown term is unknown, and rule 16 forbids answering it with
+ * a number.
+ */
+export function derivedImpact(
+  state: Pick<BuildingScopeState, 'scopeEdits'>,
+  building: ScopeBuilding,
+  key: ScopeFactKey,
+  nextValue: string,
+): readonly DerivedImpact[] {
+  if (isScopeChoiceFact(key)) return []
+  const values = new Map<string, string | null>()
+  for (const metric of Object.keys(building.metrics) as ScopeMetricKey[]) {
+    values.set(metric, scopeMetricValue(state, building, metric))
+  }
+  values.set(key, nextValue)
+
+  const out: DerivedImpact[] = []
+  for (const dependant of derivedDependants(key)) {
+    const inputs = DERIVED_SUMS[dependant] ?? []
+    const terms = inputs.map((input) => values.get(input) ?? null)
+    if (terms.some((term) => term === null)) continue
+    const sum = terms.reduce((acc, term) => acc + centsOf(term!), 0n)
+    const after = fromCents(sum)
+    const before = values.get(dependant) ?? null
+    values.set(dependant, after)
+    if (before === after) continue
+    out.push({
+      key: dependant,
+      before,
+      after,
+      manual: Boolean(state.scopeEdits[building.id]?.[dependant]),
+    })
+  }
+  return out
+}
+
+/**
+ * HOW a derived dependant is resolved. The user chooses; the Product does
+ * not pick for them, because both answers are legitimate and they mean
+ * different things.
+ *
+ * `recalculate` — the totals follow their parts, using the sums above and
+ * nothing else.
+ * `keepManual`  — the dependant keeps the value a person put there, and the
+ * disagreement becomes a NAMED CONFLICT rather than a silent contradiction
+ * between a total and its own components.
+ */
+export type DerivedResolution = 'recalculate' | 'keepManual'
+
+/**
+ * A derived fact that no longer agrees with its own inputs, because the user
+ * chose to keep it.
+ *
+ * It is stored, not derived, and deliberately so: the disagreement is a
+ * DECISION with an author and a time, and recomputing "does this still
+ * disagree?" from the sums would erase the fact that somebody chose it.
+ */
+export type ScopeConflict = Readonly<{
+  /** What the existing sums make this fact. */
+  derived: string
+  /** What the fact says instead — the value the user kept. */
+  kept: string
+  /** The edit that caused the disagreement. */
+  causedBy: ScopeFactKey
+  actor: string
+  at: string
+}>
+
+export function scopeConflictsOf(
+  state: Pick<BuildingScopeState, 'scopeConflicts'>,
+  buildingId: string,
+): Readonly<Partial<Record<string, ScopeConflict>>> {
+  return state.scopeConflicts[buildingId] ?? {}
+}
+
+export function scopeHasConflict(
+  state: Pick<BuildingScopeState, 'scopeConflicts'>,
+  buildingId: string,
+): boolean {
+  return Object.keys(scopeConflictsOf(state, buildingId)).length > 0
 }
 
 /** Counted quantities are integers; areas carry two decimals. */
@@ -138,6 +317,49 @@ export type BuildingScopeState = {
   scopeEdits: Readonly<Record<string, Readonly<Partial<Record<string, ScopeMetricEdit>>>>>
   scopeConfirmations: Readonly<Record<string, ScopeConfirmation>>
   scopeSaved: SavedBuildingScope | null
+  /** Derived facts the user chose to keep against their own inputs. */
+  scopeConflicts: Readonly<Record<string, Readonly<Partial<Record<string, ScopeConflict>>>>>
+  /** Re-analysis proposals, held BESIDE the current truth, never over it. */
+  scopeCandidates: Readonly<Record<string, Readonly<Partial<Record<string, ScopeCandidate>>>>>
+}
+
+/**
+ * A value a re-analysis proposes for a fact that already has one.
+ *
+ * It is held BESIDE the current truth and never written over it, which is
+ * the whole point (M-1/D-08, rule 14): a confirmed or manually overridden
+ * value is a human decision, and a fresh read of a document is a candidate
+ * for that decision — not a replacement for it. The user accepts it, keeps
+ * what they have, or opens the source; every path is an event.
+ *
+ * A re-analysis that proposes the value already in place records NO
+ * candidate: an identical read is not a change, and manufacturing a
+ * "conflict" out of agreement is the false invalidation the status model
+ * forbids.
+ */
+export type ScopeCandidate = Readonly<{
+  /** The proposed value. */
+  value: string
+  /** The value it is proposed against — the fact as it now stands. */
+  current: string | null
+  /** Which document the proposal came from. */
+  sourceDocId: string | null
+  at: string
+}>
+
+export function scopeCandidate(
+  state: Pick<BuildingScopeState, 'scopeCandidates'>,
+  buildingId: string,
+  key: ScopeFactKey,
+): ScopeCandidate | null {
+  return state.scopeCandidates[buildingId]?.[key] ?? null
+}
+
+export function scopeCandidateCount(
+  state: Pick<BuildingScopeState, 'scopeCandidates'>,
+  buildingId: string,
+): number {
+  return Object.keys(state.scopeCandidates[buildingId] ?? {}).length
 }
 
 /* ───────────────────────────── inheritance ───────────────────────────── */
@@ -213,9 +435,46 @@ export function scopeMetricValue(
 export function scopeMetricEdit(
   state: Pick<BuildingScopeState, 'scopeEdits'>,
   buildingId: string,
-  key: ScopeMetricKey,
+  key: ScopeFactKey,
 ): ScopeMetricEdit | null {
   return state.scopeEdits[buildingId]?.[key] ?? null
+}
+
+/** The building's own value for a closed-domain fact. */
+function choiceFactSource(building: ScopeBuilding, key: ScopeChoiceFactKey): string {
+  if (key === 'usage') return building.usageKey
+  if (key === 'storeys') return building.storeysKey
+  return building.undergroundLevel
+}
+
+/**
+ * The effective value of ANY displayed fact — quantity or choice.
+ *
+ * One reader, so the fingerprint, the editor, the projection and the screen
+ * cannot disagree about what a building's use currently IS. Before this,
+ * `usageKey` was read straight off the inherited baseline in four places,
+ * which is precisely why an edit to it could not have been expressed: there
+ * was no single place for the override to be seen.
+ */
+export function scopeFactValue(
+  state: Pick<BuildingScopeState, 'scopeEdits'>,
+  building: ScopeBuilding,
+  key: ScopeFactKey,
+): string | null {
+  const edit = state.scopeEdits[building.id]?.[key]
+  if (edit) return edit.value
+  return isScopeChoiceFact(key)
+    ? choiceFactSource(building, key)
+    : building.metrics[key] ?? null
+}
+
+/** The SOURCE value of any displayed fact, ignoring every override. */
+export function scopeFactSource(
+  building: ScopeBuilding, key: ScopeFactKey,
+): string | null {
+  return isScopeChoiceFact(key)
+    ? choiceFactSource(building, key)
+    : building.metrics[key] ?? null
 }
 
 /**
@@ -226,12 +485,18 @@ export function scopeMetricEdit(
 export function scopeMetricAuthority(
   state: Pick<BuildingScopeState, 'scopeEdits'>,
   building: ScopeBuilding,
-  key: ScopeMetricKey,
+  key: ScopeFactKey,
 ): string {
   if (state.scopeEdits[building.id]?.[key]) return 'overridden'
-  const declared = building.authority[key]
+  // The baseline declares `undergroundLevel`; the fact key is `underground`,
+  // because that is what the row is called. Named here rather than guessed.
+  const declared = building.authority[key === 'underground' ? 'undergroundLevel' : key]
   if (declared) return declared
-  return building.metrics[key] === null ? 'unknown' : 'sourceEvidenced'
+  // A DERIVED fact says so even where the baseline forgot to: a total that
+  // is the sum of two evidenced parts is derived, and calling it
+  // source-evidenced would claim a document states it directly.
+  if (isDerivedScopeFact(key)) return 'derived'
+  return scopeFactSource(building, key) === null ? 'unknown' : 'sourceEvidenced'
 }
 
 export function scopeSelectedIds(
@@ -264,9 +529,13 @@ export function buildingScopeFingerprint(
   return JSON.stringify({
     id: building.id,
     name: building.name,
-    usage: building.usageKey,
-    storeys: building.storeysKey,
-    underground: building.undergroundLevel,
+    // EFFECTIVE, not inherited. These three became editable in B2, and a
+    // fingerprint that kept reading the inherited value would leave a
+    // building confirmed after its USE changed — the one thing the
+    // fingerprint exists to make impossible.
+    usage: scopeFactValue(state, building, 'usage'),
+    storeys: scopeFactValue(state, building, 'storeys'),
+    underground: scopeFactValue(state, building, 'underground'),
     metrics,
   })
 }
@@ -295,14 +564,21 @@ export function scopeBuildingStale(
     && !scopeBuildingConfirmed(state, buildingId)
 }
 
-export type ScopeBuildingStatus = 'unselected' | 'open' | 'stale' | 'confirmed'
+export type ScopeBuildingStatus =
+  'unselected' | 'open' | 'stale' | 'conflict' | 'confirmed'
 
 export function scopeBuildingStatus(
   state: Pick<BuildingScopeState,
-    'scopeEdits' | 'scopeConfirmations' | 'scopeBuildings' | 'scopeSelected'>,
+    'scopeEdits' | 'scopeConfirmations' | 'scopeBuildings' | 'scopeSelected'
+    | 'scopeConflicts'>,
   buildingId: string,
 ): ScopeBuildingStatus {
   if (!state.scopeSelected[buildingId]) return 'unselected'
+  // A CONFLICT outranks a confirmation, and it must: a total that disagrees
+  // with its own components is not a baseline anybody can confirm, and
+  // letting the tick stand over it would be the unqualified CONFIRMED the
+  // interaction legend forbids.
+  if (scopeHasConflict(state, buildingId)) return 'conflict'
   if (scopeBuildingConfirmed(state, buildingId)) return 'confirmed'
   return scopeBuildingStale(state, buildingId) ? 'stale' : 'open'
 }
@@ -337,10 +613,12 @@ export function scopeFingerprint(
  */
 export function scopeReadyToSave(
   state: Pick<BuildingScopeState,
-    'scopeEdits' | 'scopeConfirmations' | 'scopeBuildings' | 'scopeSelected'>,
+    'scopeEdits' | 'scopeConfirmations' | 'scopeBuildings' | 'scopeSelected'
+    | 'scopeConflicts'>,
 ): boolean {
   const ids = scopeSelectedIds(state)
-  return ids.length > 0 && ids.every((id) => scopeBuildingConfirmed(state, id))
+  return ids.length > 0 && ids.every((id) =>
+    scopeBuildingConfirmed(state, id) && !scopeHasConflict(state, id))
 }
 
 /**
@@ -350,7 +628,8 @@ export function scopeReadyToSave(
  */
 export function buildingScopeSaved(
   state: Pick<BuildingScopeState,
-    'scopeEdits' | 'scopeConfirmations' | 'scopeBuildings' | 'scopeSelected' | 'scopeSaved'>,
+    'scopeEdits' | 'scopeConfirmations' | 'scopeBuildings' | 'scopeSelected' | 'scopeSaved'
+    | 'scopeConflicts'>,
 ): boolean {
   const saved = state.scopeSaved
   if (!saved) return false
@@ -364,7 +643,8 @@ export function buildingScopeSaved(
  */
 export function buildingScopeStale(
   state: Pick<BuildingScopeState,
-    'scopeEdits' | 'scopeConfirmations' | 'scopeBuildings' | 'scopeSelected' | 'scopeSaved'>,
+    'scopeEdits' | 'scopeConfirmations' | 'scopeBuildings' | 'scopeSelected' | 'scopeSaved'
+    | 'scopeConflicts'>,
 ): boolean {
   return state.scopeSaved !== null && !buildingScopeSaved(state)
 }
@@ -379,7 +659,8 @@ export type BuildingScopeStage =
 
 export function buildingScopeStage(
   state: Pick<BuildingScopeState,
-    'scopeEdits' | 'scopeConfirmations' | 'scopeBuildings' | 'scopeSelected' | 'scopeSaved'>,
+    'scopeEdits' | 'scopeConfirmations' | 'scopeBuildings' | 'scopeSelected' | 'scopeSaved'
+    | 'scopeConflicts'>,
 ): BuildingScopeStage {
   if (state.scopeBuildings.length === 0) return 'NO_BASELINE'
   if (buildingScopeSaved(state)) return 'SAVED'
@@ -395,10 +676,13 @@ export function buildingScopeStage(
  */
 export function scopeUnconfirmedBuildings(
   state: Pick<BuildingScopeState,
-    'scopeEdits' | 'scopeConfirmations' | 'scopeBuildings' | 'scopeSelected'>,
+    'scopeEdits' | 'scopeConfirmations' | 'scopeBuildings' | 'scopeSelected'
+    | 'scopeConflicts'>,
 ): ScopeBuilding[] {
   return state.scopeBuildings.filter((building) =>
-    state.scopeSelected[building.id] && !scopeBuildingConfirmed(state, building.id))
+    state.scopeSelected[building.id]
+      && (!scopeBuildingConfirmed(state, building.id)
+        || scopeHasConflict(state, building.id)))
 }
 
 /* ──────────────────────────── selected total ─────────────────────────── */
@@ -451,6 +735,8 @@ export type ScopeEditError =
   | 'negative'
   | 'notAnInteger'
   | 'tooLarge'
+  /** A choice outside its own closed domain — only reachable programmatically. */
+  | 'notInDomain'
 
 /** An area above this is not a building metric, it is a typing accident. */
 const MAX_AREA = 10_000_000n * 100n
@@ -461,6 +747,24 @@ const MAX_AREA = 10_000_000n * 100n
  * in the field with its message, and the prior confirmed value is still
  * exactly where it was.
  */
+/**
+ * The closed domain of one choice fact, in the words its own data uses.
+ *
+ * Passed IN rather than hardcoded here: the use keys live with the metric
+ * policy that classifies them (`optionCommercialProjection`) and the storey
+ * keys live in the project baseline, and a second copy of either list here
+ * is a second place for them to disagree.
+ */
+export function validateScopeChoice(
+  raw: string, domain: readonly string[],
+): { ok: true; value: string } | { ok: false; error: ScopeEditError } {
+  const trimmed = raw.trim()
+  if (trimmed === '') return { ok: false, error: 'empty' }
+  return domain.includes(trimmed)
+    ? { ok: true, value: trimmed }
+    : { ok: false, error: 'notInDomain' }
+}
+
 export function validateScopeMetric(
   key: ScopeMetricKey,
   raw: string,

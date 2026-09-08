@@ -64,7 +64,7 @@ import {
   BuildingBaselineProvenance,
   BuildingBaselineRow,
   BuildingBaselineSheet,
-  BuildingIdentityCard,
+  SelectableBuildingCard,
   BuildingIdentityGroup,
 } from './BuildingScopePanel'
 import { ConflictResolver } from './ConflictResolver'
@@ -1567,35 +1567,45 @@ export const COMPONENT_REGISTRY: Specimen[] = [
     composedContracts: ['MediaFrame', 'SemanticStatus', 'AuthorityTrace', 'ActionGate'],
     interactionStates: ['selected', 'excluded', 'reviewing', 'editing', 'confirmed'],
     dataStates: ALL_DATA_STATES, blockedVariants: [], maturity: 'alpha',
-    evidence: 'One system, two densities: a single building is a review, several are a comparison. Every metric, provenance line and edit renders inside exactly one named building, and the identity image supports recognition without ever replacing a label.',
+    note: 'SelectableBuildingCard (B2, requirement 11): the decision that controls the whole offer, drawn like one. FOUR carriers agree on every card and none is colour alone — the card border, the native checkbox, the state glyph and the state words. The native checkbox remains the semantic control; the whole selection row is its label, so the target is the decision rather than a 16px square.',
+    evidence: 'One system, two densities: a single building is a review, several are a comparison. Every metric, provenance line and edit renders inside exactly one named building, and the identity image supports recognition without ever replacing a label. All four scope states are shown; Review required never appears without naming why (rule 12), and Open baseline stops propagation so it cannot remove a building from the offer (rule 26).',
     render: () => (
       <BuildingIdentityGroup label="Gebäude im Angebotsumfang" density="comparison">
-        <BuildingIdentityCard
+        <SelectableBuildingCard
           designation="Gebäude A"
           name="Kontorhaus"
           meta="100 Prozent Büro · Kein UG"
-          selected
-          status="confirmed"
+          state="confirmed"
           onToggle={() => {}}
           selectLabel="Im Angebotsumfang führen · Gebäude A · Kontorhaus"
+          summary={<p className="a3-sbc-summary-line">{`6.030 m² BGF R+S`}</p>}
+          onOpenBaseline={() => {}}
+          openLabel="Grundlage"
+          openAccessibleLabel="Grundlage · Gebäude A · Kontorhaus"
         />
-        <BuildingIdentityCard
+        <SelectableBuildingCard
           designation="Gebäude B"
           name="Hofhaus"
           meta="100 Prozent Wohnen · UG"
-          selected
-          status="stale"
+          state="reviewRequired"
+          reason="1 Summe widerspricht ihren Bestandteilen"
           onToggle={() => {}}
           selectLabel="Im Angebotsumfang führen · Gebäude B · Hofhaus"
+          summary={<p className="a3-sbc-summary-line">{`5.780 m² BGF R+S`}</p>}
+          onOpenBaseline={() => {}}
+          openLabel="Grundlage"
+          openAccessibleLabel="Grundlage · Gebäude B · Hofhaus"
         />
-        <BuildingIdentityCard
+        <SelectableBuildingCard
           designation="Gebäude C"
           name="Stadthaus"
           meta="Erdgeschoss Gewerbe · Teil-UG"
-          selected={false}
-          status="unselected"
+          state="excluded"
           onToggle={() => {}}
           selectLabel="Im Angebotsumfang führen · Gebäude C · Stadthaus"
+          onOpenBaseline={() => {}}
+          openLabel="Grundlage"
+          openAccessibleLabel="Grundlage · Gebäude C · Stadthaus"
         />
       </BuildingIdentityGroup>
     ),

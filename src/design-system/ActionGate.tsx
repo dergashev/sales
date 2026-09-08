@@ -46,10 +46,37 @@ export type GatePrerequisite = {
   detail?: string
 }
 
+/**
+ * WHERE the gate sits relative to the action it explains (B2, Product Owner
+ * requirement 12; navigation-and-blocker-patterns.md "Contextual ActionGate").
+ *
+ * `inline` is the released placement: the gate and its action sit in the
+ * flow, wherever the surface puts them. That is correct for a short surface
+ * and wrong for a long one — the audit measured `Save building scope`, its
+ * blocker and its recovery routes all at the END of a multi-building
+ * baseline, below the initial viewport, so the reason a user could not save
+ * was off screen at the moment they looked for it.
+ *
+ * `dock` is the answer, and it is an explicit variant rather than a
+ * behaviour a caller can half-configure: the gate becomes a STICKY column
+ * that stays beside the affected decision at wide widths, and at 1280 it
+ * stacks immediately above its action instead. Same composition, same
+ * children, same states — only its relationship to the scroll changes.
+ */
+export type ActionGatePlacement = 'inline' | 'dock'
+
 export function ActionGate({
-  status, prerequisites, reason, route, alternative, error, children,
+  status, prerequisites, reason, route, secondaryRoutes, alternative, error,
+  placement = 'inline', children,
 }: {
   status: ActionGateStatus
+  placement?: ActionGatePlacement
+  /**
+   * Further routes that also resolve this gate, when more than one thing is
+   * outstanding. The PRIMARY route stays one, because a recovery with three
+   * equally weighted destinations is not a recovery.
+   */
+  secondaryRoutes?: ReadonlyArray<{ id: string; label: string; onSelect: () => void }>
   /** The unmet prerequisites, named. An empty list with `locked` is a bug. */
   prerequisites?: ReadonlyArray<GatePrerequisite>
   /**
@@ -102,7 +129,13 @@ export function ActionGate({
     hadError.current = hasError
   }, [hasError])
   return (
-    <div className={status === 'available' ? 'a3-gate a3-gate-open' : 'a3-gate a3-gate-closed'}>
+    <div
+      className={[
+        'a3-gate',
+        status === 'available' ? 'a3-gate-open' : 'a3-gate-closed',
+        placement === 'dock' ? 'a3-gate-dock' : 'a3-gate-inline',
+      ].join(' ')}
+    >
       <div className="a3-gate-action">{children}</div>
       <div className="a3-gate-explanation" id={reasonId}>
         <SemanticStatus
@@ -119,6 +152,21 @@ export function ActionGate({
                 {prerequisite.detail ? (
                   <span className="a3-gate-prereq-detail">{prerequisite.detail}</span>
                 ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {(secondaryRoutes ?? []).length > 0 ? (
+          <ul className="a3-gate-routes">
+            {(secondaryRoutes ?? []).map((secondary) => (
+              <li key={secondary.id}>
+                <button
+                  type="button"
+                  className="a3-gate-route hit-target"
+                  onClick={secondary.onSelect}
+                >
+                  {secondary.label}
+                </button>
               </li>
             ))}
           </ul>

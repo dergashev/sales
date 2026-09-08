@@ -10,6 +10,7 @@ import {
 } from '../engine/kgConfiguration'
 import type { CommercialCoverage, CommercialResult } from './commercialResult'
 import {
+  scopeFactValue,
   scopeMetricValue,
   scopeSelectedIds,
   type BuildingScopeState,
@@ -120,11 +121,55 @@ export const USE_KEYS: readonly string[] = Object.keys(USE_CLASS_OF_KEY)
  */
 export type OptionUseProfile = 'residential' | 'nonResidential' | 'mixed' | 'unknown'
 
+/**
+ * The EFFECTIVE use of a building — the override when one exists.
+ *
+ * Read through `scopeFactValue` rather than off `building.usageKey`, and the
+ * distinction is not academic: B2 made the use editable, and a projection
+ * that kept reading the inherited key would publish `€/m² WFL nach WoFlV`
+ * for a building the user had just reclassified as office. A test written
+ * for the editor caught exactly that here, which is the whole reason this
+ * one reader exists.
+ */
+function effectiveUseClass(
+  state: Pick<BuildingScopeState, 'scopeEdits'>,
+  building: ScopeBuilding,
+): BuildingUseClass | null {
+  return buildingUseClass(
+    scopeFactValue(state, building, 'usage') ?? building.usageKey,
+  )
+}
+
+/**
+ * The profile from the buildings' INHERITED uses.
+ *
+ * Kept for the callers that hold buildings and no edit state (the fixture
+ * proofs), and used by the projection only through `optionUseProfileOf`
+ * below, which knows about overrides.
+ */
 export function optionUseProfile(buildings: readonly ScopeBuilding[]): OptionUseProfile {
   let residential = false
   let nonResidential = false
   for (const building of buildings) {
     const useClass = buildingUseClass(building.usageKey)
+    if (useClass === 'residential') residential = true
+    if (useClass === 'nonResidential') nonResidential = true
+    if (useClass === 'mixed') { residential = true; nonResidential = true }
+  }
+  if (residential && nonResidential) return 'mixed'
+  if (residential) return 'residential'
+  return nonResidential ? 'nonResidential' : 'unknown'
+}
+
+/** The profile the projection uses: EFFECTIVE uses, overrides included. */
+export function optionUseProfileOf(
+  state: Pick<BuildingScopeState, 'scopeEdits'>,
+  buildings: readonly ScopeBuilding[],
+): OptionUseProfile {
+  let residential = false
+  let nonResidential = false
+  for (const building of buildings) {
+    const useClass = effectiveUseClass(state, building)
     if (useClass === 'residential') residential = true
     if (useClass === 'nonResidential') nonResidential = true
     if (useClass === 'mixed') { residential = true; nonResidential = true }
@@ -174,7 +219,7 @@ function segmentArea(
   let sum = new Decimal(0)
   let contributors = 0
   for (const building of buildings) {
-    const key = segmentMetric(buildingUseClass(building.usageKey), segment)
+    const key = segmentMetric(effectiveUseClass(state, building), segment)
     if (!key) continue
     contributors += 1
     const raw = scopeMetricValue(state, building, key)
@@ -369,7 +414,7 @@ export function optionCommercialProjection(
   const buildings = selected.size > 0
     ? scope.scopeBuildings.filter((b) => selected.has(b.id))
     : scope.scopeBuildings
-  const profile = optionUseProfile(buildings)
+  const profile = optionUseProfileOf(scope, buildings)
   const total = result.total.exact
   const priceDetermined = !total.isZero()
 

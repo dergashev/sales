@@ -3027,6 +3027,16 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    .a3-bsp-row-number · .a3-bsp-row-unit · .a3-bsp-row-provenance ·
    .a3-bsp-row-error. */
 .a3-bsp{display:grid;gap:var(--space-5);min-width:0;max-width:var(--measure-gallery)}
+/* B2 · requirement 12 — the baseline and its gate are TWO COLUMNS at 1440,
+   so the gate stays beside the decision instead of arriving after a
+   multi-building baseline the user has to scroll past. The head, the lead,
+   the notice and the selection strip keep the full width: they are about the
+   whole scope, not about the one baseline being reviewed. */
+.a3-bsp:has(.a3-bsp-gate){grid-template-columns:minmax(0,1fr) minmax(0,var(--measure-context-panel));align-items:start}
+.a3-bsp:has(.a3-bsp-gate) > .a3-bsp-head,
+.a3-bsp:has(.a3-bsp-gate) > .a3-bsp-lead,
+.a3-bsp:has(.a3-bsp-gate) > .a3-bsp-notice,
+.a3-bsp:has(.a3-bsp-gate) > .a3-bsp-selection{grid-column:1 / -1}
 .a3-bsp-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,max-content);gap:var(--space-4);align-items:start}
 .a3-bsp-head-copy{display:grid;gap:var(--space-2);min-width:0}
 .a3-bsp-eyebrow{margin:0;font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);font-weight:var(--font-weight-bold);letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-secondary)}
@@ -3034,6 +3044,16 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-bsp-progress{margin:0;font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);font-weight:var(--font-weight-bold);letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-secondary);text-align:right}
 .a3-bsp-lead{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-primary);max-width:var(--measure-body-max)}
 .a3-bsp-notice,.a3-bsp-selection,.a3-bsp-baseline,.a3-bsp-gate{min-width:0}
+
+@media (max-width: 1439px){
+  /* At 1280 the two columns become one and the gate stacks IMMEDIATELY
+     ABOVE its baseline's actions rather than beside them — whole segments
+     move, and the reason keeps its place in the reading order. The wide
+     composition is not squeezed into a column too narrow to read a
+     prerequisite in. */
+  .a3-bsp:has(.a3-bsp-gate){grid-template-columns:minmax(0,1fr)}
+  .a3-bsp:has(.a3-bsp-gate) > .a3-bsp-gate{order:-1}
+}
 .a3-bsp-identities{border:0;margin:0;padding:0;display:grid;gap:var(--space-4);min-width:0}
 .a3-bsp-identities-comparison{grid-template-columns:repeat(3,minmax(0,1fr))}
 .a3-bsp-identities-single{grid-template-columns:minmax(0,var(--measure-band))}
@@ -5280,3 +5300,102 @@ a.a3-cockpit-effect:hover .a3-cockpit-effect-name{color:var(--color-text-primary
 .a3-axes-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr));gap:var(--space-4);align-items:start}
 .a3-axis{min-width:0;background:var(--color-surface-default);border:var(--border-hairline);padding:var(--space-4)}
 .a3-axis-summary{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
+
+/* ── SelectableBuildingCard (B2, requirement 11) ──────────────────────────
+   Classes: .a3-sbc · .a3-sbc-included · .a3-sbc-excluded · .a3-sbc-confirmed ·
+   .a3-sbc-included-open · .a3-sbc-reviewRequired · .a3-sbc-excluded-state ·
+   .a3-sbc-reviewing · .a3-sbc-select ·
+   .a3-sbc-input · .a3-sbc-select-mark · .a3-sbc-select-text · .a3-sbc-state ·
+   .a3-sbc-media · .a3-sbc-body · .a3-sbc-name · .a3-sbc-designation ·
+   .a3-sbc-sep · .a3-sbc-proper · .a3-sbc-meta · .a3-sbc-summary ·
+   .a3-sbc-reason · .a3-sbc-open · .a3-sbc-summary-line
+
+   The decision that controls the whole offer, drawn like one. FOUR carriers
+   agree on every card and none of them is colour alone (rule 8): the card's
+   own border weight, the checkbox, the state glyph and the state words. */
+.a3-sbc{display:grid;grid-template-rows:auto auto 1fr;min-width:0;background:var(--color-surface-default);border:var(--border-hairline)}
+/* Included is a STRUCTURAL statement, so it is carried by the border of the
+   whole card and not by a tint: a card in the offer is enclosed, a card out
+   of it is not. */
+.a3-sbc-included{border:var(--border-contrast-1px)}
+.a3-sbc-excluded{border:var(--border-hairline)}
+.a3-sbc-reviewRequired{border-left:var(--size-status-accent-width) solid var(--color-status-warning)}
+.a3-sbc-confirmed{border-left:var(--size-status-accent-width) solid var(--color-status-success)}
+/* `included-open` and `excluded-state` carry no visual of their own: the
+   card's inclusion border and its state words already say both. They exist
+   as declared names so every state has one and none is interpolated. */
+.a3-sbc-included-open,.a3-sbc-excluded-state{min-width:0}
+.a3-sbc-reviewing{outline:var(--border-width-strong) solid var(--color-selection-border);outline-offset:calc(-1 * var(--border-width-strong))}
+/* The whole row is the checkbox's label, so the hit target IS the decision.
+   44px minimum without a `.hit-target` pseudo-element, because the row is
+   already taller than that (rule 23) and its zone touches no neighbour. */
+.a3-sbc-select{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-3);min-height:var(--size-hit-target-default);padding:var(--space-3) var(--space-4);border-bottom:var(--border-hairline);background:var(--color-surface-subtle);cursor:pointer;min-width:0}
+.a3-sbc-included > .a3-sbc-select{background:var(--color-surface-selected)}
+.a3-sbc-select:has(.a3-sbc-input:focus-visible){outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:calc(-1 * var(--border-width-focus))}
+/* The NATIVE checkbox stays the control and stays visible — scaled up,
+   because the released 16px square was the quietest thing on a card about
+   one decision. `accent-color` keeps the platform's own indicator. */
+.a3-sbc-input{flex:none;inline-size:var(--size-icon-md);block-size:var(--size-icon-md);margin:0;accent-color:var(--color-selection-border);cursor:pointer}
+.a3-sbc-select-mark{flex:none;min-inline-size:var(--size-icon-sm);font-weight:var(--font-weight-bold);color:var(--color-selection-border)}
+.a3-sbc-select-text{font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);min-width:0}
+.a3-sbc-state{margin-inline-start:auto;min-width:0}
+.a3-sbc-media{min-width:0}
+.a3-sbc-body{display:grid;gap:var(--space-2);align-content:start;padding:var(--space-4);min-width:0}
+/* Every caption is a BLOCK element: the text never relies on markup
+   whitespace, and a long name breaks on its own word boundaries (rule 37). */
+.a3-sbc-name{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-sbc-designation{display:inline}
+.a3-sbc-proper{display:inline}
+.a3-sbc-meta{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word}
+.a3-sbc-summary{display:grid;gap:var(--space-1);min-width:0}
+.a3-sbc-summary-line{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);font-feature-settings:var(--font-numeric)}
+.a3-sbc-reason{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary);overflow-wrap:break-word}
+.a3-sbc-open{position:relative;justify-self:start;border:var(--border-hairline);background:var(--color-surface-default);padding:var(--space-2) var(--space-3);font:inherit;font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);color:var(--color-text-primary);cursor:pointer}
+.a3-sbc-open:hover{background:var(--color-surface-subtle)}
+.a3-sbc-excluded .a3-sbc-name,.a3-sbc-excluded .a3-sbc-meta{color:var(--color-text-secondary)}
+
+@media (max-width: 1439px){
+  /* The composition does not change; the air inside it steps down. */
+  .a3-sbc-select{padding:var(--space-2) var(--space-3)}
+  .a3-sbc-body{padding:var(--space-3);gap:var(--space-1)}
+  .a3-sbc-name{font-size:var(--type-body-size);line-height:var(--type-body-line)}
+}
+
+/* ── ActionGate · contextual dock placement (B2, requirement 12) ──────────
+   Classes: .a3-gate-inline · .a3-gate-dock · .a3-gate-routes
+
+   The gate stays BESIDE the action it explains. At wide widths the dock is
+   sticky, so a long baseline scrolls past it and the reason a user cannot
+   save is never off screen at the moment they look for it. At 1280 it stops
+   being sticky and simply sits immediately above its action — whole segments
+   move, nothing is hidden, and the reason keeps its place in the reading
+   order either way. */
+.a3-gate-inline{min-width:0}
+.a3-gate-dock{position:sticky;inset-block-start:var(--space-4);align-self:start;min-width:0;background:var(--color-surface-default);border:var(--border-contrast-1px);padding:var(--space-4)}
+.a3-gate-routes{list-style:none;margin:var(--space-2) 0 0;padding:0;display:grid;gap:var(--space-1);min-width:0}
+
+@media (max-width: 1439px){
+  /* Not sticky at 1280: a sticky column here would eat the width the
+     baseline needs. It stacks directly above the action instead. */
+  .a3-gate-dock{position:static;padding:var(--space-3)}
+}
+
+/* ── Building baseline · edit source, impact and conflict (B2, req 10) ────
+   Classes: .a3-bsp-edit-source · .a3-bsp-impact · .a3-bsp-impact-detail ·
+   .a3-bsp-impact-rows · .a3-bsp-impact-row · .a3-bsp-impact-choice ·
+   .a3-bsp-impact-option · .a3-bsp-conflict · .a3-bsp-conflict-detail ·
+   .a3-bsp-candidate */
+.a3-bsp-edit-source{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);font-feature-settings:var(--font-numeric)}
+/* The impact panel is a DECISION, so it is enclosed and it is warm: the
+   user is being asked something, not told something. */
+.a3-bsp-impact{display:grid;gap:var(--space-2);border-left:var(--size-status-accent-width) solid var(--color-status-warning);background:var(--color-surface-emphasis-warm);padding:var(--space-3) var(--space-4);min-width:0}
+.a3-bsp-impact-detail{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary);max-width:var(--measure-band);overflow-wrap:break-word}
+.a3-bsp-impact-rows{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-1);min-width:0}
+.a3-bsp-impact-row{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);font-feature-settings:var(--font-numeric);overflow-wrap:break-word}
+.a3-bsp-impact-choice{display:grid;gap:var(--space-1);min-width:0}
+/* Native radios: the two outcomes are mutually exclusive by the platform's
+   own semantics, and the label is the whole row so the target is the choice. */
+.a3-bsp-impact-option{display:flex;align-items:center;gap:var(--space-2);min-height:var(--size-hit-target-default);cursor:pointer;font-size:var(--type-label-size);line-height:var(--type-label-line);color:var(--color-text-primary);min-width:0}
+.a3-bsp-impact-option input{flex:none;inline-size:var(--size-icon-sm);block-size:var(--size-icon-sm);margin:0;accent-color:var(--color-selection-border)}
+.a3-bsp-conflict,.a3-bsp-candidate{display:grid;gap:var(--space-2);margin-top:var(--space-2);border-left:var(--size-status-accent-width) solid var(--color-border-warning);background:var(--color-surface-default);padding:var(--space-2) var(--space-3);min-width:0}
+.a3-bsp-conflict-detail{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary);max-width:var(--measure-band);overflow-wrap:break-word}

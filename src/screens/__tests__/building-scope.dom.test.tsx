@@ -68,7 +68,16 @@ describe('Gebäude & Umfang · one building (T-013)', () => {
     expect(selectedBgfRSTotal(useStore.getState())).toBe('2900.00')
     const sheet = screen.getByRole('region', { name: /Grundlage · Gebäude A · Lindenhof/ })
     expect(within(sheet).getByText('2.740')).toBeInTheDocument()
-    expect(within(sheet).getByText('2.900')).toBeInTheDocument()
+    /**
+     * B2 · requirement 10 — `2.900` now appears TWICE, and correctly so.
+     * The baseline displays every fact, so `BGF R+S oberirdisch` and
+     * `BGF R+S gesamt` are both on screen, and for a building with no
+     * basement they are the same number. The released assertion used
+     * `getByText`, which requires exactly one match; the arithmetic it is
+     * really about is unchanged (2 740 + 160 = 2 900), so it is asserted per
+     * ROW instead of by scanning the sheet for a string.
+     */
+    expect(within(sheet).getAllByText('2.900').length).toBeGreaterThanOrEqual(2)
     expect(within(sheet).getByText('EG + 3 OG + DG')).toBeInTheDocument()
     expect(within(sheet).getByText('Kein UG')).toBeInTheDocument()
   })
@@ -230,23 +239,124 @@ describe('Gebäude & Umfang · authorised edit (T-015)', () => {
     expect(useStore.getState().scopeEdits['B-BLDG-B']?.wfl).toBeUndefined()
   })
 
-  it('never lets a BGF area be overridden by hand', async () => {
+  /**
+   * B2 · Product Owner requirement 10 — THE REPLACED CONTRACT.
+   *
+   * This test asserted that a BGF area could NOT be overridden by hand, and
+   * it was right to: the ticket that wrote it said so explicitly, on the
+   * grounds that "replacing one by hand would move the commercial base
+   * without evidence, which is a Product decision this ticket does not
+   * own". That decision is now taken — the audit measured the read-only BGF
+   * as a defect ("BGF, use, storeys, and basement are read-only") and
+   * requirement 10 makes every displayed value editable.
+   *
+   * The concern is answered rather than dropped, and this test now holds the
+   * answer: a BGF edit is possible, and it CANNOT move the commercial base
+   * silently, because its derived dependants must be resolved explicitly
+   * before the commit is allowed.
+   */
+  it('lets a BGF component be overridden, and refuses to commit until its derived sums are resolved', async () => {
     const user = userEvent.setup()
     await openScope()
-    expect(screen.queryByRole('button', {
-      name: `Ändern · BGF R oberirdisch · ${A_LINDENHOF}`,
-    })).toBeNull()
-    expect(screen.getByRole('button', {
-      name: `Ändern · Wohnfläche nach WoFlV · ${A_LINDENHOF}`,
-    })).toBeInTheDocument()
-    // The one editable metric really is editable, so the absence above is a
-    // decision and not a broken control.
+
     await user.click(screen.getByRole('button', {
-      name: `Ändern · Wohnfläche nach WoFlV · ${A_LINDENHOF}`,
+      name: `Ändern · BGF R oberirdisch · ${A_LINDENHOF}`,
     }))
-    expect(screen.getByRole('textbox', {
-      name: `Wohnfläche nach WoFlV · ${A_LINDENHOF}`,
-    })).toBeInTheDocument()
+    const field = screen.getByRole('textbox', {
+      name: `BGF R oberirdisch · ${A_LINDENHOF}`,
+    })
+    await user.clear(field)
+    await user.type(field, '2.840')
+    await user.type(screen.getByLabelText('Begründung'), 'Aufmass korrigiert')
+
+    // The impact is PREVIEWED before the commit: 2 840 + 160 = 3 000, and
+    // the total follows it. Both dependants are named with before → after.
+    const impact = screen.getByRole('group', { name: 'Abgeleitete Werte ändern sich mit' })
+    expect(impact).toHaveTextContent('BGF R+S oberirdisch: 2.900 → 3.000')
+    expect(impact).toHaveTextContent('BGF R+S gesamt: 2.900 → 3.000')
+
+    // And the commit is REFUSED while no outcome has been chosen: the
+    // Product does not pick for the user.
+    const commit = screen.getByRole('button', { name: 'Wert übernehmen' })
+    expect(commit).toHaveAttribute('aria-disabled', 'true')
+    expect(useStore.getState().scopeEdits['A-BLDG-01']?.bgfRAbove).toBeUndefined()
+
+    await user.click(within(impact).getByRole('radio', {
+      name: 'Abgeleitete Werte neu berechnen',
+    }))
+    await user.click(screen.getByRole('button', { name: 'Wert übernehmen' }))
+
+    // One decision, one journal event, and the sums follow their parts.
+    const edits = useStore.getState().scopeEdits['A-BLDG-01']!
+    expect(edits.bgfRAbove?.value).toBe('2840.00')
+    expect(edits.bgfRSAbove?.value).toBe('3000.00')
+    expect(edits.bgfRSTotal?.value).toBe('3000.00')
+    // …and the selected total, which the commercial base rests on, moved
+    // with them rather than contradicting them.
+    expect(selectedBgfRSTotal(useStore.getState())).toBe('3000.00')
+  })
+
+  it('keeps a manual total against its own components as a NAMED conflict, and blocks the save until it is resolved', async () => {
+    const user = userEvent.setup()
+    await openScope()
+
+    await user.click(screen.getByRole('button', {
+      name: `Ändern · BGF R oberirdisch · ${A_LINDENHOF}`,
+    }))
+    const field = screen.getByRole('textbox', {
+      name: `BGF R oberirdisch · ${A_LINDENHOF}`,
+    })
+    await user.clear(field)
+    await user.type(field, '2.840')
+    await user.type(screen.getByLabelText('Begründung'), 'Aufmass korrigiert')
+    const impact = screen.getByRole('group', { name: 'Abgeleitete Werte ändern sich mit' })
+    await user.click(within(impact).getByRole('radio', {
+      name: 'Manuelle Werte behalten',
+    }))
+    await user.click(screen.getByRole('button', { name: 'Wert übernehmen' }))
+
+    // The disagreement is NAMED, where it is, and it is not silent.
+    const conflicts = useStore.getState().scopeConflicts['A-BLDG-01']!
+    expect(conflicts.bgfRSAbove?.derived).toBe('3000.00')
+    expect(conflicts.bgfRSAbove?.kept).toBe('2900.00')
+    expect(screen.getAllByText('Widerspricht den eigenen Bestandteilen').length)
+      .toBeGreaterThan(0)
+
+    // A baseline whose total contradicts its parts is not one anybody can
+    // save, and the gate says which building and why.
+    expect(screen.getByRole('button', { name: 'Gebäudeumfang speichern' }))
+      .toHaveAttribute('aria-disabled', 'true')
+
+    // The resolution puts the sum back in agreement with its components.
+    await user.click(screen.getAllByRole('button', {
+      name: 'Summe wieder aus Bestandteilen bilden',
+    })[0]!)
+    expect(useStore.getState().scopeConflicts['A-BLDG-01']?.bgfRSAbove).toBeUndefined()
+    expect(useStore.getState().scopeEdits['A-BLDG-01']?.bgfRSAbove?.value).toBe('3000.00')
+  })
+
+  it('lets the building USE be changed through a select, and un-confirms the building by arithmetic', async () => {
+    const user = userEvent.setup()
+    await openScope()
+    await user.click(await confirmButton(A_LINDENHOF))
+    expect(useStore.getState().scopeConfirmations['A-BLDG-01']).toBeDefined()
+
+    // A closed-domain fact gets the control its data deserves: a select,
+    // not a number field, and not a read-only paragraph as before.
+    await user.click(screen.getByRole('button', {
+      name: `Ändern · Nutzung · ${A_LINDENHOF}`,
+    }))
+    const select = screen.getByRole('combobox', { name: `Nutzung · ${A_LINDENHOF}` })
+    await user.selectOptions(select, 'vr3.building.usage.office')
+    await user.type(screen.getByLabelText('Begründung'), 'Nutzung geändert')
+    await user.click(screen.getByRole('button', { name: 'Wert übernehmen' }))
+
+    expect(useStore.getState().scopeEdits['A-BLDG-01']?.usage?.value)
+      .toBe('vr3.building.usage.office')
+    // A building that changed its USE is not the building that was
+    // confirmed. The fingerprint reads the EFFECTIVE value now, so the
+    // confirmation lapses by arithmetic and not by remembering to clear it.
+    expect(scopeBuildingConfirmed(useStore.getState(), 'A-BLDG-01')).toBe(false)
   })
 })
 

@@ -2,22 +2,35 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useStore } from '../state/store'
 import {
-  EDITABLE_SCOPE_METRICS,
+  EDITABLE_SCOPE_FACTS,
   buildingScopeStage,
+  SCOPE_CHOICE_FACTS,
+  derivedImpact,
   isCountMetric,
+  isScopeChoiceFact,
   scopeBuilding,
   scopeBuildingConfirmed,
   scopeBuildingStale,
   scopeBuildingStatus,
+  scopeCandidate,
+  scopeCandidateCount,
   scopeConfirmedCount,
+  scopeConflictsOf,
+  scopeFactSource,
+  scopeFactValue,
+  scopeHasConflict,
   scopeMetricAuthority,
   scopeMetricEdit,
   scopeMetricValue,
   scopeSelectedIds,
   scopeUnconfirmedBuildings,
   selectedBgfRSTotal,
+  validateScopeChoice,
   validateScopeMetric,
+  type DerivedImpact,
+  type DerivedResolution,
   type ScopeBuilding,
+  type ScopeFactKey,
   type ScopeMetricKey,
 } from '../state/optionBuildingScope'
 import { useT } from '../i18n'
@@ -34,10 +47,14 @@ import {
   BuildingBaselineProvenance,
   BuildingBaselineRow,
   BuildingBaselineSheet,
-  BuildingIdentityCard,
   BuildingIdentityGroup,
   BuildingScopePanel,
+  SelectableBuildingCard,
+  type BuildingScopeState,
 } from '../design-system/BuildingScopePanel'
+import { USE_KEYS } from '../state/optionCommercialProjection'
+import { SelectField } from '../components/designSystem'
+import { STOREYS_KEYS } from '../state/projectAnalysis'
 import { useSemanticMotion } from '../design-system/motion'
 
 /**
@@ -56,9 +73,19 @@ import { useSemanticMotion } from '../design-system/motion'
  * nothing here for a second copy of a number to live in.
  */
 
-/** Facts in baseline order: identity first, then areas, then quantities. */
+/**
+ * EVERY DISPLAYED FACT, in baseline order (B2, requirement 10).
+ *
+ * The released list showed four of the seven BGF facts and hid the three
+ * sums' own components, which is part of why editing them was impossible to
+ * offer: `BGF R+S oberirdisch` was not on screen to be edited, and neither
+ * was the below-ground component it is built from. All fifteen are here now,
+ * with the derived sums in their place among their parts, so an edit's
+ * consequence is visible in the same table as its cause.
+ */
 const AREA_METRICS: ScopeMetricKey[] = [
-  'bgfRAbove', 'bgfSAbove', 'bgfRBelow', 'bgfRSTotal',
+  'bgfRAbove', 'bgfSAbove', 'bgfRSAbove',
+  'bgfRBelow', 'bgfSBelow', 'bgfRSBelow', 'bgfRSTotal',
 ]
 
 const QUANTITY_METRICS: ScopeMetricKey[] = [
@@ -66,9 +93,15 @@ const QUANTITY_METRICS: ScopeMetricKey[] = [
 ]
 
 const METRIC_LABEL_KEY: Record<string, string> = {
+  usage: 'vr3.scope.metric.usage',
+  storeys: 'vr3.scope.metric.storeys',
+  underground: 'vr3.scope.metric.underground',
   bgfRAbove: 'vr3.scope.metric.bgfRAbove',
   bgfSAbove: 'vr3.scope.metric.bgfSAbove',
+  bgfRSAbove: 'vr3.scope.metric.bgfRSAbove',
   bgfRBelow: 'vr3.scope.metric.bgfRBelow',
+  bgfSBelow: 'vr3.scope.metric.bgfSBelow',
+  bgfRSBelow: 'vr3.scope.metric.bgfRSBelow',
   bgfRSTotal: 'vr3.scope.metric.bgfRSTotal',
   wfl: 'vr3.scope.metric.wfl',
   nuf: 'vr3.scope.metric.nuf',
@@ -77,6 +110,30 @@ const METRIC_LABEL_KEY: Record<string, string> = {
   workplaces: 'vr3.scope.metric.workplaces',
   parkingSpaces: 'vr3.scope.metric.parkingSpaces',
   siteArea: 'vr3.scope.metric.siteArea',
+}
+
+/**
+ * The closed domain of each choice fact, and how to READ one of its values.
+ *
+ * The domains come from the modules that own them — the use keys from the
+ * metric policy that classifies them, the storey keys from the project
+ * baseline — so this screen holds no second copy of either list.
+ */
+const CHOICE_DOMAIN: Record<string, readonly string[]> = {
+  usage: USE_KEYS,
+  storeys: STOREYS_KEYS,
+  underground: ['none', 'partial', 'full'],
+}
+
+/** A choice value, in the user's language. */
+function choiceLabel(
+  t: (key: string, values?: Record<string, string | number>) => string,
+  key: string,
+  value: string,
+): string {
+  return key === 'underground'
+    ? t(UNDERGROUND_KEY[value as keyof typeof UNDERGROUND_KEY] ?? value)
+    : t(value)
 }
 
 const UNDERGROUND_KEY = {
@@ -251,6 +308,28 @@ const SAVE_STAGE_MS = 200
 
 /* ─────────────────────────────── identity ────────────────────────────── */
 
+/**
+ * The Option's scope state for one building, from the released status.
+ *
+ * `reviewRequired` is the audit's own word, and it covers the three ways a
+ * selected building genuinely needs a human: a sum that contradicts its own
+ * components, a re-analysis proposal nobody has decided, and a confirmation
+ * that no longer matches what it confirmed. The released card said `Prüfung
+ * offen` for the first visit and `Erneut prüfen` for staleness, and had no
+ * word at all for the other two — because neither state existed yet.
+ */
+function scopeStateOf(
+  s: ReturnType<typeof useStore>, buildingId: string,
+): BuildingScopeState {
+  const status = scopeBuildingStatus(s, buildingId)
+  if (status === 'unselected') return 'excluded'
+  if (status === 'confirmed') {
+    return scopeCandidateCount(s, buildingId) > 0 ? 'reviewRequired' : 'confirmed'
+  }
+  if (status === 'conflict' || status === 'stale') return 'reviewRequired'
+  return scopeCandidateCount(s, buildingId) > 0 ? 'reviewRequired' : 'included'
+}
+
 function IdentityCard({
   building, designation: mark, reviewing, showReview,
 }: {
@@ -261,14 +340,33 @@ function IdentityCard({
 }) {
   const s = useStore()
   const t = useT()
+  const num = useLocalNumber()
   const asset = projectAsset(building.identityAssetId)
   const name = `${t('vr3.scope.building', { mark })} · ${building.name}`
-  const status = scopeBuildingStatus(s, building.id)
+  const state = scopeStateOf(s, building.id)
+  const conflicts = Object.keys(scopeConflictsOf(s, building.id)).length
+  const candidates = scopeCandidateCount(s, building.id)
+
+  /** WHY this building needs a human — never `reviewRequired` on its own. */
+  const reason = state !== 'reviewRequired'
+    ? undefined
+    : conflicts > 0
+      ? t(conflicts === 1
+        ? 'vr3.scope.reviewReason.conflict'
+        : 'vr3.scope.reviewReason.conflicts', { count: conflicts })
+      : candidates > 0
+        ? t('vr3.scope.reviewReason.candidates', { count: candidates })
+        : scopeBuildingStale(s, building.id)
+          ? t('vr3.scope.reviewReason.stale')
+          : undefined
+
+  const bgf = scopeMetricValue(s, building, 'bgfRSTotal')
   return (
-    <BuildingIdentityCard
+    <SelectableBuildingCard
       name={building.name}
       designation={t('vr3.scope.building', { mark })}
-      meta={`${t(building.usageKey)} · ${t(UNDERGROUND_KEY[building.undergroundLevel])}`}
+      meta={`${choiceLabel(t, 'usage', scopeFactValue(s, building, 'usage') ?? building.usageKey)} · ${
+        choiceLabel(t, 'underground', scopeFactValue(s, building, 'underground') ?? building.undergroundLevel)}`}
       media={(
         <MediaFrame
           ratio="pano"
@@ -280,28 +378,44 @@ function IdentityCard({
           sourceId={asset?.assetId}
         />
       )}
-      selected={Boolean(s.scopeSelected[building.id])}
-      status={status}
+      state={state}
+      reason={reason}
       onToggle={() => s.toggleScopeBuilding(building.id)}
       // WCAG 2.5.3: the visible words are contained in the accessible name,
       // and the identity is IN it — a control that acts on one building is
       // never named by its verb alone.
       selectLabel={`${t('vr3.scope.selectAction')} · ${name}`}
-      onReview={showReview ? () => s.setScopeActiveBuilding(building.id) : undefined}
-      reviewing={reviewing}
+      summary={bgf === null ? undefined : (
+        <p className="a3-sbc-summary-line">
+          {t('vr3.scope.summary.bgf', { value: num(bgf, 0) })}
+        </p>
+      )}
+      onOpenBaseline={showReview ? () => s.setScopeActiveBuilding(building.id) : undefined}
+      reviewing={showReview ? reviewing : undefined}
       // The VISIBLE label stays short and the identity lives in the
       // accessible name — WCAG 2.5.3 is satisfied because the visible words
       // are CONTAINED in it, and three cards do not each carry a
       // two-line control that says the name a third time.
-      reviewLabel={showReview ? t('vr3.scope.reviewAction') : undefined}
-      reviewAccessibleLabel={showReview ? `${t('vr3.scope.reviewAction')} · ${name}` : undefined}
+      openLabel={showReview ? t('vr3.scope.reviewAction') : undefined}
+      openAccessibleLabel={showReview ? `${t('vr3.scope.reviewAction')} · ${name}` : undefined}
     />
   )
 }
 
 /* ─────────────────────────────── baseline ────────────────────────────── */
 
-type DraftEdit = { key: ScopeMetricKey; value: string; reason: string; error: string | null }
+type DraftEdit = {
+  key: ScopeFactKey
+  value: string
+  reason: string
+  error: string | null
+  /**
+   * The explicit outcome for this edit's derived dependants. `null` means
+   * the user has not chosen yet, and Save stays closed while it is — the
+   * Product does not pick for them (baseline-editing-model.md).
+   */
+  resolution: DerivedResolution | null
+}
 
 function Baseline({
   building, designation: mark, onAnnounce,
@@ -318,31 +432,33 @@ function Baseline({
   const isStale = scopeBuildingStale(s, building.id)
   const confirmation = s.scopeConfirmations[building.id]
 
+  /**
+   * EVERY DISPLAYED FACT IS A `MetricRow` NOW (B2, requirement 10).
+   *
+   * Use, storeys and the basement situation were three hand-written
+   * read-only rows here — which is exactly how they came to be the facts
+   * nobody could edit: they were not rows of the editable kind, they were
+   * paragraphs. They are the same row as an area now, with the control their
+   * data deserves, so "every displayed baseline row provides Edit" is true
+   * by construction rather than by remembering to add three more editors.
+   *
+   * A metric with no value and no override is still absent: an unknown
+   * quantity is not a row asking to be filled in from nothing (rule 16), and
+   * a `0.00` below-ground area on a building without a basement is the
+   * fixture saying "none" rather than a measurement.
+   */
   const rows = [
-    <BuildingBaselineRow
-      key="storeys"
-      label={t('vr3.scope.metric.storeys')}
-      value={t(building.storeysKey)}
-      provenance={(
-        <BuildingBaselineProvenance
-          authority={authorityPresentation(t, building.authority.storeys ?? 'sourceEvidenced')}
-          evidence={t('vr3.scope.evidence.planSet')}
-        />
-      )}
-    />,
-    <BuildingBaselineRow
-      key="underground"
-      label={t('vr3.scope.metric.underground')}
-      value={t(UNDERGROUND_KEY[building.undergroundLevel])}
-      provenance={(
-        <BuildingBaselineProvenance
-          authority={authorityPresentation(
-            t, building.authority.undergroundLevel ?? 'sourceEvidenced',
-          )}
-          evidence={t('vr3.scope.evidence.section')}
-        />
-      )}
-    />,
+    ...SCOPE_CHOICE_FACTS.map((key) => (
+      <MetricRow
+        key={key}
+        building={building}
+        metric={key}
+        buildingName={name}
+        draft={draft?.key === key ? draft : null}
+        onDraft={setDraft}
+        onAnnounce={onAnnounce}
+      />
+    )),
     ...[...AREA_METRICS, ...QUANTITY_METRICS]
       .filter((key) => scopeMetricValue(s, building, key) !== null
         && scopeMetricValue(s, building, key) !== '0.00')
@@ -436,7 +552,7 @@ function MetricRow({
   building, metric, buildingName, draft, onDraft, onAnnounce,
 }: {
   building: ScopeBuilding
-  metric: ScopeMetricKey
+  metric: ScopeFactKey
   buildingName: string
   draft: DraftEdit | null
   onDraft: (draft: DraftEdit | null) => void
@@ -447,17 +563,37 @@ function MetricRow({
   const num = useLocalNumber()
   const fieldId = useId()
   const reasonId = useId()
-  const value = scopeMetricValue(s, building, metric)
+  const choice = isScopeChoiceFact(metric)
+  const value = scopeFactValue(s, building, metric)
   const override = scopeMetricEdit(s, building.id, metric)
   const authority = scopeMetricAuthority(s, building, metric) as InformationAuthority
-  const editable = (EDITABLE_SCOPE_METRICS as readonly string[]).includes(metric)
-  const decimals = isCountMetric(metric) ? 0 : 0
-  const unit = isCountMetric(metric) ? undefined : t('vr3.scope.unit.area')
+  const conflict = scopeConflictsOf(s, building.id)[metric]
+  const candidate = scopeCandidate(s, building.id, metric)
+  // EVERY displayed fact (requirement 10). The list is the contract; this
+  // row does not decide what may be edited.
+  const editable = (EDITABLE_SCOPE_FACTS as readonly string[]).includes(metric)
+  const decimals = 0
+  const unit = choice || isCountMetric(metric) ? undefined : t('vr3.scope.unit.area')
   const label = t(METRIC_LABEL_KEY[metric] ?? metric)
+  const shown = value === null
+    ? undefined
+    : choice ? choiceLabel(t, metric, value) : num(value, decimals)
+
+  /**
+   * What this edit would move. Recomputed on every keystroke from the SAME
+   * function the store will use to apply it, so the panel cannot promise one
+   * outcome and the commit produce another.
+   */
+  const impacts: readonly DerivedImpact[] = draft && !choice && draft.error === null
+    ? impactOf(s, building, metric, draft.value, s.uiLanguage)
+    : []
+  const needsResolution = impacts.length > 0
 
   const commit = () => {
     if (!draft) return
-    const parsed = validateScopeMetric(metric, draft.value, s.uiLanguage)
+    const parsed = choice
+      ? validateScopeChoice(draft.value, CHOICE_DOMAIN[metric] ?? [])
+      : validateScopeMetric(metric as ScopeMetricKey, draft.value, s.uiLanguage)
     if (!parsed.ok) {
       onDraft({ ...draft, error: t(`vr3.scope.edit.error.${parsed.error}`) })
       return
@@ -466,7 +602,18 @@ function MetricRow({
       onDraft({ ...draft, error: t('vr3.scope.edit.error.reason') })
       return
     }
-    s.editScopeMetric(building.id, metric, parsed.value, draft.reason.trim())
+    // The derived dependants are RESOLVED BEFORE the commit, never after and
+    // never by default: the store refuses an unresolved edit that has them,
+    // and this is the surface that asks.
+    const derived = impactOf(s, building, metric, parsed.value, s.uiLanguage)
+    if (derived.length > 0 && !draft.resolution) {
+      onDraft({ ...draft, error: t('vr3.scope.impact.detail') })
+      return
+    }
+    s.editScopeMetric(
+      building.id, metric, parsed.value, draft.reason.trim(),
+      draft.resolution ?? undefined,
+    )
     onDraft(null)
     onAnnounce(t('vr3.scope.announce.edited', { metric: label, building: buildingName }))
   }
@@ -474,34 +621,64 @@ function MetricRow({
   return (
     <BuildingBaselineRow
       label={label}
-      value={value === null ? undefined : num(value, decimals)}
+      value={shown}
       unit={value === null ? undefined : unit}
       invalid={Boolean(draft?.error)}
       control={draft ? (
         <div className="a3-bsp-edit">
-          <FormField
-            /* The row's own `<dt>` already names this fact in the column
-               beside it; a second visible label under it would print the
-               same words twice. The accessible name still carries the
-               building, because a control that changes one building's area
-               must say which building it belongs to. */
-            label={<span className="sr-only">{`${label} · ${buildingName}`}</span>}
-            htmlFor={fieldId}
-            error={draft.error ?? undefined}
-          >
-            <input
+          {choice ? (
+            <SelectField
               id={fieldId}
-              className="a3-input numeric"
-              inputMode="decimal"
-              autoComplete="off"
+              label={<span className="sr-only">{`${label} · ${buildingName}`}</span>}
               value={draft.value}
-              onChange={(event) => onDraft({ ...draft, value: event.target.value, error: null })}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') { event.preventDefault(); commit() }
-                if (event.key === 'Escape') { event.preventDefault(); onDraft(null) }
-              }}
-            />
-          </FormField>
+              error={draft.error ?? undefined}
+              onChange={(event) => onDraft({
+                ...draft, value: event.target.value, error: null,
+              })}
+            >
+              {(CHOICE_DOMAIN[metric] ?? []).map((option) => (
+                <option key={option} value={option}>
+                  {choiceLabel(t, metric, option)}
+                </option>
+              ))}
+            </SelectField>
+          ) : (
+            <FormField
+              /* The row's own `<dt>` already names this fact in the column
+                 beside it; a second visible label under it would print the
+                 same words twice. The accessible name still carries the
+                 building, because a control that changes one building's area
+                 must say which building it belongs to. */
+              label={<span className="sr-only">{`${label} · ${buildingName}`}</span>}
+              htmlFor={fieldId}
+              error={draft.error ?? undefined}
+            >
+              <input
+                id={fieldId}
+                className="a3-input numeric"
+                inputMode="decimal"
+                autoComplete="off"
+                value={draft.value}
+                onChange={(event) => onDraft({ ...draft, value: event.target.value, error: null })}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') { event.preventDefault(); commit() }
+                  if (event.key === 'Escape') { event.preventDefault(); onDraft(null) }
+                }}
+              />
+            </FormField>
+          )}
+          {/* THE SOURCE VALUE, beside the field that replaces it. The editor
+              contract asks for it explicitly, and it is the one thing a
+              reader needs to judge an override they are about to make. */}
+          <p className="a3-bsp-edit-source">
+            {t('vr3.scope.edit.source')}
+            {': '}
+            {(() => {
+              const source = scopeFactSource(building, metric)
+              if (source === null) return t('vr3.scope.edit.sourceUnknown')
+              return choice ? choiceLabel(t, metric, source) : num(source, decimals)
+            })()}
+          </p>
           <FormField label={t('vr3.scope.edit.reasonLabel')} htmlFor={reasonId}>
             <input
               id={reasonId}
@@ -511,33 +688,156 @@ function MetricRow({
               onChange={(event) => onDraft({ ...draft, reason: event.target.value, error: null })}
             />
           </FormField>
+          {/* THE IMPACT PANEL — before/after, and the two explicit outcomes.
+              Rendered only when there is something to resolve, so an edit
+              with no dependants is not slowed by a question about nothing. */}
+          {needsResolution ? (
+            <div className="a3-bsp-impact" role="group" aria-label={t('vr3.scope.impact.title')}>
+              <SemanticStatus tone="attention" label={t('vr3.scope.impact.title')} />
+              <p className="a3-bsp-impact-detail">{t('vr3.scope.impact.detail')}</p>
+              <ul className="a3-bsp-impact-rows">
+                {impacts.map((impact) => (
+                  <li key={impact.key} className="a3-bsp-impact-row">
+                    {t(impact.manual ? 'vr3.scope.impact.rowManual' : 'vr3.scope.impact.row', {
+                      metric: t(METRIC_LABEL_KEY[impact.key] ?? impact.key),
+                      before: impact.before === null
+                        ? t('ds.authority.unknown')
+                        : num(impact.before, decimals),
+                      after: num(impact.after, decimals),
+                    })}
+                  </li>
+                ))}
+              </ul>
+              <div className="a3-bsp-impact-choice">
+                <label className="a3-bsp-impact-option">
+                  <input
+                    type="radio"
+                    name={`${fieldId}-resolution`}
+                    checked={draft.resolution === 'recalculate'}
+                    onChange={() => onDraft({ ...draft, resolution: 'recalculate', error: null })}
+                  />
+                  <span>{t('vr3.scope.impact.recalculate')}</span>
+                </label>
+                <label className="a3-bsp-impact-option">
+                  <input
+                    type="radio"
+                    name={`${fieldId}-resolution`}
+                    checked={draft.resolution === 'keepManual'}
+                    onChange={() => onDraft({ ...draft, resolution: 'keepManual', error: null })}
+                  />
+                  <span>{t('vr3.scope.impact.keep')}</span>
+                </label>
+              </div>
+              {draft.resolution === 'keepManual' ? (
+                <p className="a3-bsp-impact-detail">{t('vr3.scope.impact.keepHint')}</p>
+              ) : null}
+            </div>
+          ) : null}
           <div className="a3-bsp-edit-actions">
-            <Button variant="primary" onClick={commit}>{t('vr3.scope.edit.commit')}</Button>
+            <Button
+              variant="primary"
+              onClick={commit}
+              disabled={needsResolution && !draft.resolution}
+              disabledReason={needsResolution && !draft.resolution
+                ? t('vr3.scope.impact.detail')
+                : undefined}
+            >
+              {t('vr3.scope.edit.commit')}
+            </Button>
+            {/* Cancel discards the draft and makes NO event. */}
             <Button onClick={() => onDraft(null)}>{t('vr3.scope.edit.cancel')}</Button>
           </div>
         </div>
       ) : undefined}
       provenance={(
-        <BuildingBaselineProvenance
-          authority={authorityPresentation(t, authority)}
-          evidence={building.evidenceDocIds[0]}
-          override={override ? {
-            previous: override.previous === null
-              ? t('ds.authority.unknown')
-              : num(override.previous, decimals),
-            reason: override.reason,
-            actor: override.actor,
-            at: override.at.slice(0, 10),
-            label: t('ds.authority.overrodeValue', {
+        <>
+          <BuildingBaselineProvenance
+            authority={authorityPresentation(t, authority)}
+            evidence={building.evidenceDocIds[0]}
+            override={override ? {
               previous: override.previous === null
                 ? t('ds.authority.unknown')
-                : num(override.previous, decimals),
+                : choice
+                  ? choiceLabel(t, metric, override.previous)
+                  : num(override.previous, decimals),
               reason: override.reason,
               actor: override.actor,
               at: override.at.slice(0, 10),
-            }),
-          } : undefined}
-        />
+              label: t('ds.authority.overrodeValue', {
+                previous: override.previous === null
+                  ? t('ds.authority.unknown')
+                  : choice
+                    ? choiceLabel(t, metric, override.previous)
+                    : num(override.previous, decimals),
+                reason: override.reason,
+                actor: override.actor,
+                at: override.at.slice(0, 10),
+              }),
+            } : undefined}
+          />
+          {/* A SUM THAT CONTRADICTS ITS OWN COMPONENTS says so, where it is,
+              until somebody resolves it. This is what `Keep dependent manual
+              values` produces, and the whole reason that choice is safe to
+              offer: the disagreement is never silent. */}
+          {conflict ? (
+            <div className="a3-bsp-conflict" role="note">
+              <SemanticStatus tone="attention" label={t('vr3.scope.conflict.title')} />
+              <p className="a3-bsp-conflict-detail">
+                {t('vr3.scope.conflict.detail', {
+                  metric: label,
+                  kept: num(conflict.kept, decimals),
+                  derived: num(conflict.derived, decimals),
+                  cause: t(METRIC_LABEL_KEY[conflict.causedBy] ?? conflict.causedBy),
+                })}
+              </p>
+              <Button
+                onClick={() => {
+                  s.resolveScopeConflict(building.id, metric)
+                  onAnnounce(t('vr3.scope.conflict.resolve'))
+                }}
+              >
+                {t('vr3.scope.conflict.resolve')}
+              </Button>
+            </div>
+          ) : null}
+          {/* A RE-ANALYSIS PROPOSAL, beside the value it may not overwrite
+              (rule 14, D-08). Three explicit actions and no default. */}
+          {candidate ? (
+            <div className="a3-bsp-candidate" role="note">
+              <SemanticStatus tone="stale" label={t('vr3.scope.candidate.title')} />
+              <p className="a3-bsp-conflict-detail">
+                {t('vr3.scope.candidate.detail', {
+                  current: candidate.current === null
+                    ? t('ds.authority.unknown')
+                    : choice
+                      ? choiceLabel(t, metric, candidate.current)
+                      : num(candidate.current, decimals),
+                  candidate: choice
+                    ? choiceLabel(t, metric, candidate.value)
+                    : num(candidate.value, decimals),
+                })}
+              </p>
+              <div className="a3-bsp-edit-actions">
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    s.acceptScopeCandidate(
+                      building.id, metric, t('vr3.scope.candidate.reason'),
+                    )
+                    onAnnounce(t('vr3.scope.announce.edited', {
+                      metric: label, building: buildingName,
+                    }))
+                  }}
+                >
+                  {t('vr3.scope.candidate.accept')}
+                </Button>
+                <Button onClick={() => s.dismissScopeCandidate(building.id, metric)}>
+                  {t('vr3.scope.candidate.keep')}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </>
       )}
       actions={(
         <>
@@ -548,12 +848,14 @@ function MetricRow({
               // The field opens on the value the user is LOOKING AT, in the
               // format they are looking at it in. Seeding it with the raw
               // canonical string would ask them to edit a number the screen
-              // never showed them.
+              // never showed them. A choice opens on its own key, because
+              // that is what its select holds.
               onClick={() => onDraft({
                 key: metric,
-                value: value === null ? '' : num(value, decimals),
+                value: choice ? (value ?? '') : (value === null ? '' : num(value, decimals)),
                 reason: override?.reason ?? '',
                 error: null,
+                resolution: null,
               })}
               aria-label={`${t('vr3.scope.edit.open')} · ${label} · ${buildingName}`}
             >
@@ -579,6 +881,28 @@ function MetricRow({
       )}
     />
   )
+}
+
+/**
+ * The impact of a DRAFT value, parsed the way the commit will parse it.
+ *
+ * The draft holds what the user typed, in their locale; `derivedImpact`
+ * needs the canonical decimal string. Parsing here with the same validator
+ * the commit uses is what keeps the previewed before/after and the committed
+ * before/after the same numbers — a second parser here is how a promise and
+ * an outcome come to differ by a thousand.
+ */
+function impactOf(
+  state: Parameters<typeof derivedImpact>[0],
+  building: ScopeBuilding,
+  metric: ScopeFactKey,
+  raw: string,
+  locale: 'de' | 'en',
+): readonly DerivedImpact[] {
+  if (isScopeChoiceFact(metric)) return []
+  const parsed = validateScopeMetric(metric as ScopeMetricKey, raw, locale)
+  if (!parsed.ok) return []
+  return derivedImpact(state, building, metric, parsed.value)
 }
 
 /* ──────────────────────────── notices and gate ───────────────────────── */
@@ -618,6 +942,21 @@ function ScopeNotice({ onAnnounce }: { onAnnounce: (message: string) => void }) 
   return null
 }
 
+/**
+ * The save gate, as a CONTEXTUAL DOCK (B2, Product Owner requirement 12).
+ *
+ * The audit measured this exact control: `Save building scope`, its blocker
+ * and its recovery routes all sat at the END of a multi-building baseline,
+ * below the initial viewport, so the reason a user could not save was off
+ * screen at the moment they went looking for it. Nothing about the reasons
+ * was wrong — their PLACE was.
+ *
+ * It is the same `ActionGate` with `placement="dock"`: sticky beside the
+ * decision at 1440, stacked immediately above the action at 1280. The dock
+ * is a Design System placement rather than a local sticky wrapper here,
+ * because the next long surface with a blocked action needs the same thing
+ * and a page-specific copy is how two gates come to behave differently.
+ */
 function SaveGate({ onAnnounce }: { onAnnounce: (message: string) => void }) {
   const s = useStore()
   const t = useT()
@@ -628,13 +967,15 @@ function SaveGate({ onAnnounce }: { onAnnounce: (message: string) => void }) {
   const errorKey = s.scopeCommit?.errorKey ?? null
   const ready = selectedIds.length > 0 && unconfirmed.length === 0
   const saved = buildingScopeStage(s) === 'SAVED'
+  const conflicted = s.scopeBuildings.filter((building) =>
+    s.scopeSelected[building.id] && scopeHasConflict(s, building.id))
 
   const prerequisites: GatePrerequisite[] = [
     {
       id: 'selection',
       label: t('vr3.scope.prereq.selection'),
       met: selectedIds.length > 0,
-      detail: selectedIds.length > 0 ? undefined : t('vr3.scope.prereq.selectionDetail'),
+      detail: selectedIds.length > 0 ? undefined : t('vr3.scope.gate.noSelection'),
     },
     ...s.scopeBuildings
       .filter((building) => s.scopeSelected[building.id])
@@ -643,21 +984,62 @@ function SaveGate({ onAnnounce }: { onAnnounce: (message: string) => void }) {
         label: t('vr3.scope.prereq.building', {
           building: `${t('vr3.scope.building', { mark: designation(index) })} · ${building.name}`,
         }),
-        met: scopeBuildingConfirmed(s, building.id),
-        detail: scopeBuildingConfirmed(s, building.id)
-          ? undefined
-          : t('vr3.scope.prereq.buildingDetail'),
+        met: scopeBuildingConfirmed(s, building.id)
+          && !scopeHasConflict(s, building.id),
+        detail: scopeHasConflict(s, building.id)
+          ? t('vr3.scope.conflict.title')
+          : scopeBuildingConfirmed(s, building.id)
+            ? undefined
+            : t('vr3.scope.prereq.buildingDetail'),
       })),
   ]
 
+  /**
+   * ONE primary recovery, and it goes to the EARLIEST unmet prerequisite.
+   *
+   * Zero buildings first, because nothing else can be resolved until one is
+   * in scope: `Include at least one building` used to be a `disabledReason`
+   * with no route at all, so a user who had deselected everything was told
+   * what was wrong and given nowhere to go. The route focuses the selection
+   * group, which is the control that resolves it.
+   */
+  const route = selectedIds.length === 0
+    ? {
+      label: t('vr3.scope.gate.noSelectionRoute'),
+      onSelect: () => {
+        const group = document.querySelector<HTMLInputElement>('.a3-sbc-input')
+        group?.focus()
+        group?.scrollIntoView({ block: 'nearest' })
+      },
+    }
+    : conflicted[0]
+      ? {
+        label: t('vr3.scope.gate.conflictRoute', { building: conflicted[0].name }),
+        onSelect: () => s.setScopeActiveBuilding(conflicted[0]!.id),
+      }
+      : unconfirmed[0]
+        ? {
+          label: t('vr3.scope.gate.route', { building: unconfirmed[0].name }),
+          onSelect: () => s.setScopeActiveBuilding(unconfirmed[0]!.id),
+        }
+        : undefined
+
+  /** The other buildings that also owe something, when more than one does. */
+  const secondaryRoutes = unconfirmed
+    .slice(1)
+    .map((building) => ({
+      id: building.id,
+      label: t('vr3.scope.gate.route', { building: building.name }),
+      onSelect: () => s.setScopeActiveBuilding(building.id),
+    }))
+
   return (
     <ActionGate
+      placement="dock"
       status={errorKey ? 'error' : saving ? 'busy' : ready ? 'available' : 'locked'}
       prerequisites={prerequisites}
-      route={unconfirmed[0] ? {
-        label: t('vr3.scope.gate.route', { building: unconfirmed[0].name }),
-        onSelect: () => s.setScopeActiveBuilding(unconfirmed[0]!.id),
-      } : undefined}
+      route={route}
+      secondaryRoutes={secondaryRoutes}
       error={errorKey ? {
         message: t(errorKey),
         retryLabel: t('vr3.scope.save.retry'),
@@ -679,10 +1061,13 @@ function SaveGate({ onAnnounce }: { onAnnounce: (message: string) => void }) {
         disabled={!ready || saved}
         disabledReason={
           saved ? t('vr3.scope.save.alreadySaved')
-            : selectedIds.length === 0 ? t('vr3.scope.prereq.selectionDetail')
-              : t(unconfirmed.length === 1
-                ? 'vr3.scope.save.blocked.one'
-                : 'vr3.scope.save.blocked.many', { count: unconfirmed.length })
+            // `Include at least one building` — the target's own words, and
+            // now beside a route that reaches the selection.
+            : selectedIds.length === 0 ? t('vr3.scope.gate.noSelection')
+              : conflicted.length > 0 ? t('vr3.scope.conflict.title')
+                : t(unconfirmed.length === 1
+                  ? 'vr3.scope.save.blocked.one'
+                  : 'vr3.scope.save.blocked.many', { count: unconfirmed.length })
         }
         onClick={() => {
           s.beginBuildingScopeSave()

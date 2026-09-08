@@ -270,6 +270,24 @@ export const DEMO_PROJECTS: readonly FixtureProject[] = FIXTURE.projects
 
 export const NORMAL_LIST_PROJECT_COUNT = FIXTURE.normalListProjectCount
 
+/**
+ * The storey-structure values this Product knows, from the baselines that
+ * declare them (B2, requirement 10).
+ *
+ * `storeysKey` is a DESCRIPTION of a building's storey structure
+ * (`UG + EG + 4 OG`), not a value from a taxonomy — the fixture declares one
+ * per building and there is no separate domain anywhere. So the domain IS
+ * the declared set, collected here from the source that owns it rather than
+ * retyped as a second list in the editor that offers it. A fixture that
+ * gains a building gains its structure as a choice, automatically.
+ *
+ * Sorted, so the editor's option order is stable across renders and across
+ * projects.
+ */
+export const STOREYS_KEYS: readonly string[] = [...new Set(
+  DEMO_PROJECTS.flatMap((project) => project.buildings.map((b) => b.storeysKey)),
+)].sort()
+
 export function demoProject(projectId: string | null): FixtureProject | null {
   if (!projectId) return null
   return DEMO_PROJECTS.find((p) => p.id === projectId) ?? null

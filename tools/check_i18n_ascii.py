@@ -78,6 +78,9 @@ LOCALE_ASCII_ALLOWLIST = frozenset({
     'feuer', 'feuerwiderstand',
     'mauer', 'mauerwerk', 'verblendmauerwerk',
     'quelle', 'quellen', 'quellenreferenzen', 'quellenwert', 'quellwert',
+    # B2: the same 'quelle' family — the baseline editor names the source
+    # value it is proposed against, and the plural of it.
+    'quellwerte', 'quellwerten', 'quellvorschlag', 'quellvorschlaege',
     # VR3-01: same compound family as 'quellenreferenzen'/'quellenwert'.
     'quellenzuordnung',
     # Documents workspace: the same 'quelle' family again — the register's

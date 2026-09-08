@@ -120,6 +120,13 @@ import {
   type ScopeMetricEdit,
   type ScopeMetricKey,
   type SavedBuildingScope,
+  derivedImpact,
+  scopeFactSource,
+  scopeFactValue,
+  type DerivedResolution,
+  type ScopeCandidate,
+  type ScopeConflict,
+  type ScopeFactKey,
 } from './optionBuildingScope'
 import {
   isClientProjection,
@@ -517,6 +524,16 @@ export type OptionConfig = {
   scopeEdits: Record<string, Partial<Record<string, ScopeMetricEdit>>>
   scopeConfirmations: Record<string, ScopeConfirmation>
   scopeSaved: SavedBuildingScope | null
+  /**
+   * B2 — the two halves of authorised truth that are NOT the value itself:
+   * a derived fact the user chose to keep against its own inputs, and a
+   * re-analysis proposal held beside a value it may not overwrite. Both are
+   * per-Option, like every other field here, so switching Option switches
+   * them with everything else it owns (requirement: no edit leaks across
+   * Options).
+   */
+  scopeConflicts: Record<string, Partial<Record<string, ScopeConflict>>>
+  scopeCandidates: Record<string, Partial<Record<string, ScopeCandidate>>>
   /** Which selected building's baseline the surface is reviewing. */
   scopeActiveBuildingId: string | null
   configurationMode: ConfigurationMode
@@ -652,7 +669,7 @@ const OPTION_CONFIG_KEYS = [
   'buildings', 'activeBuildingId', 'included', 'buildingReviews',
   'buildingConfirmation', 'buildingSectionConfirmations',
   'scopeBuildings', 'scopeSelected', 'scopeEdits', 'scopeConfirmations',
-  'scopeSaved', 'scopeActiveBuildingId',
+  'scopeSaved', 'scopeConflicts', 'scopeCandidates', 'scopeActiveBuildingId',
   'configurationMode', 'configurationModeChosen',
   'pricingStarted', 'configurationVisitedChapters', 'sharedConfiguration',
   'buildingConfigState',
@@ -690,7 +707,7 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
   | 'esConfirmed' | 'regionalfaktorActive' | 'risikoAktiv' | 'discountPercent'
   | 'constructionStartDate'
   | 'scopeBuildings' | 'scopeSelected' | 'scopeEdits' | 'scopeConfirmations'
-  | 'scopeSaved' | 'scopeActiveBuildingId'
+  | 'scopeSaved' | 'scopeConflicts' | 'scopeCandidates' | 'scopeActiveBuildingId'
   | 'schedulePhases' | 'scheduleEdits' | 'scheduleStartDate'
   | 'schedulePlannedCompletion' | 'scheduleDependencyConfirmed'
   | 'scheduleConfirmation'
@@ -702,7 +719,15 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
     | 'kg800ClientRevealed' | 'kgConfig' | 'kgScopeConfirmedFingerprint' | 'responsibility'
     | 'schedulePhases' | 'scheduleEdits' | 'scheduleStartDate'
     | 'schedulePlannedCompletion' | 'scheduleDependencyConfirmed'
-    | 'scheduleConfirmation' | 'reviewAcknowledged' | 'reviewConfirmation'> & {
+    | 'scheduleConfirmation' | 'reviewAcknowledged' | 'reviewConfirmation'
+    | 'scopeConflicts' | 'scopeCandidates'> & {
+    /**
+     * Optional: an Option saved before B2 has neither, and an absent map is
+     * exactly the truth (no conflicts, no proposals) rather than a missing
+     * field to repair.
+     */
+    scopeConflicts?: Record<string, Partial<Record<string, ScopeConflict>>>
+    scopeCandidates?: Record<string, Partial<Record<string, ScopeCandidate>>>
     /** Optional while reading candidates saved before section review was durable. */
     buildingSectionConfirmations?: Record<
       string,
@@ -792,7 +817,7 @@ const PERSISTED_CONFIG_KEYS = [
   'regionalfaktorActive', 'risikoAktiv', 'discountPercent',
   'constructionStartDate',
   'scopeBuildings', 'scopeSelected', 'scopeEdits', 'scopeConfirmations',
-  'scopeSaved', 'scopeActiveBuildingId',
+  'scopeSaved', 'scopeConflicts', 'scopeCandidates', 'scopeActiveBuildingId',
   'schedulePhases', 'scheduleEdits', 'scheduleStartDate',
   'schedulePlannedCompletion', 'scheduleDependencyConfirmed', 'scheduleConfirmation',
   'reviewAcknowledged', 'reviewConfirmation',
@@ -1201,6 +1226,8 @@ function defaultOptionConfig(coverage: Coverage = INITIAL_COVERAGE): OptionConfi
     scopeBuildings: [],
     scopeSelected: {},
     scopeEdits: {},
+    scopeConflicts: {},
+    scopeCandidates: {},
     scopeConfirmations: {},
     scopeSaved: null,
     scopeActiveBuildingId: null,
@@ -1838,6 +1865,10 @@ function restoredOptionConfig(
     scopeBuildings: persisted.scopeBuildings ?? [],
     scopeSelected: persisted.scopeSelected ?? {},
     scopeEdits: persisted.scopeEdits ?? {},
+    // Optional in payloads written before B2: an older Option has no
+    // conflicts and no candidates, which is exactly an empty map.
+    scopeConflicts: persisted.scopeConflicts ?? {},
+    scopeCandidates: persisted.scopeCandidates ?? {},
     scopeConfirmations: persisted.scopeConfirmations ?? {},
     scopeSaved: persisted.scopeSaved ?? null,
     scopeActiveBuildingId: persisted.scopeActiveBuildingId ?? null,
@@ -1944,6 +1975,8 @@ export type Store = {
   scopeBuildings: readonly ScopeBuilding[]
   scopeSelected: Record<string, boolean>
   scopeEdits: Record<string, Partial<Record<string, ScopeMetricEdit>>>
+  scopeConflicts: Record<string, Partial<Record<string, ScopeConflict>>>
+  scopeCandidates: Record<string, Partial<Record<string, ScopeCandidate>>>
   scopeConfirmations: Record<string, ScopeConfirmation>
   scopeSaved: SavedBuildingScope | null
   scopeActiveBuildingId: string | null
@@ -2623,10 +2656,39 @@ export type Store = {
   cancelScopeRemoval: () => void
   /** Only a VALID value reaches the store; the field owns its own error. */
   editScopeMetric: (
-    buildingId: string, key: ScopeMetricKey, value: string, reason: string,
+    buildingId: string,
+    key: ScopeFactKey,
+    value: string,
+    reason: string,
+    /**
+     * How the derived dependants of this fact are resolved. REQUIRED when
+     * the edit has any (`derivedImpact` is non-empty): the Product does not
+     * choose for the user, because both answers are legitimate and they mean
+     * different things (baseline-editing-model.md). An edit with no
+     * dependants ignores it.
+     */
+    resolution?: DerivedResolution,
   ) => void
-  /** Recovers the value the override replaced, with its own event. */
-  revertScopeMetric: (buildingId: string, key: ScopeMetricKey) => void
+  revertScopeMetric: (buildingId: string, key: ScopeFactKey) => void
+  /**
+   * Re-analysis proposes source values for the Option's baseline.
+   *
+   * It NEVER writes one: a confirmed or manual value is a human decision and
+   * a fresh read is a candidate for it (rule 14, M-1/D-08). A proposal equal
+   * to the value already in place records nothing at all — an identical read
+   * is not a change, and turning agreement into a "conflict" is the false
+   * invalidation the status model forbids.
+   */
+  proposeScopeCandidates: (
+    buildingId: string,
+    proposals: ReadonlyArray<{ key: ScopeFactKey; value: string; sourceDocId?: string }>,
+  ) => void
+  /** Take the proposal as the new current value, with its trail. */
+  acceptScopeCandidate: (buildingId: string, key: ScopeFactKey, reason: string) => void
+  /** Keep what stands, and clear the proposal. Both are events. */
+  dismissScopeCandidate: (buildingId: string, key: ScopeFactKey) => void
+  /** Resolve a kept-derived conflict by letting the fact follow its inputs. */
+  resolveScopeConflict: (buildingId: string, key: ScopeFactKey) => void
   confirmScopeBuilding: (id: string) => void
   beginBuildingScopeSave: () => void
   advanceBuildingScopeSave: () => void
@@ -8933,39 +8995,106 @@ const store = createStore<Store>((set, get) => {
       if (get().scopeRemovalPending) set({ scopeRemovalPending: null })
     },
 
-    editScopeMetric: (buildingId, key, value, reason) => {
+    editScopeMetric: (buildingId, key, value, reason, resolution) => {
       const s = get()
       const building = scopeBuilding(s, buildingId)
       if (!building) return
       const current = s.scopeEdits[buildingId]?.[key]
       const previous = current
         ? current.previous
-        : building.metrics[key] ?? null
+        : scopeFactSource(building, key)
       // The same value again is not an override, and journalling it would
       // put an event with no change into the record (M-4 works the other
       // way round: no change without an event, not an event without one).
-      if ((current?.value ?? building.metrics[key] ?? null) === value) return
+      if (scopeFactValue(s, building, key) === value) return
+
+      /**
+       * B2 · requirement 10 — THE DERIVED DEPENDANTS ARE RESOLVED, NEVER
+       * SILENTLY FOLLOWED AND NEVER SILENTLY LEFT BEHIND.
+       *
+       * Editing a BGF component moves the sums the commercial scale rests
+       * on. The Product does not pick which way that goes: `recalculate`
+       * makes the totals follow their parts using the sums the baseline
+       * already states, and `keepManual` keeps what a person put there and
+       * records the disagreement as a NAMED CONFLICT. Doing neither would be
+       * a total that contradicts its own components with nothing saying so —
+       * which is the "material dependent metric changed silently" the
+       * editing model forbids.
+       *
+       * An unresolved edit WITH dependants is refused outright rather than
+       * defaulted: a default here would be the Product choosing, and the
+       * surface always asks first.
+       */
+      const impacts = derivedImpact(s, building, key, value)
+      if (impacts.length > 0 && !resolution) return
+
+      const at = new Date().toISOString()
       const edit: ScopeMetricEdit = {
-        value,
-        previous,
-        reason,
-        actor: SCOPE_ACTOR,
-        at: new Date().toISOString(),
+        value, previous, reason, actor: SCOPE_ACTOR, at,
       }
-      const before = s.scopeEdits
-      const after = {
-        ...before,
-        [buildingId]: { ...(before[buildingId] ?? {}), [key]: edit },
+      const beforeEdits = s.scopeEdits
+      const beforeConflicts = s.scopeConflicts
+      const ownEdits: Partial<Record<string, ScopeMetricEdit>> = {
+        ...(beforeEdits[buildingId] ?? {}), [key]: edit,
       }
-      set({ scopeEdits: after })
+      const ownConflicts: Partial<Record<string, ScopeConflict>> = {
+        ...(beforeConflicts[buildingId] ?? {}),
+      }
+
+      for (const impact of impacts) {
+        if (resolution === 'recalculate') {
+          // The dependant follows its inputs. Recorded as an override with
+          // the SAME trail as a hand-typed one, because it IS an authorised
+          // change to a displayed value and rule 14 does not exempt an
+          // automatic one from attribution.
+          ownEdits[impact.key] = {
+            value: impact.after,
+            previous: impact.before,
+            reason,
+            actor: SCOPE_ACTOR,
+            at,
+          }
+          delete ownConflicts[impact.key]
+        } else {
+          // Kept. The fact stays where it is and the disagreement is named.
+          // A dependant with no override of its own is pinned at its source
+          // value first, so "kept" means something a reader can see.
+          if (!ownEdits[impact.key] && impact.before !== null) {
+            ownEdits[impact.key] = {
+              value: impact.before,
+              previous: impact.before,
+              reason,
+              actor: SCOPE_ACTOR,
+              at,
+            }
+          }
+          ownConflicts[impact.key] = {
+            derived: impact.after,
+            kept: impact.before ?? impact.after,
+            causedBy: key,
+            actor: SCOPE_ACTOR,
+            at,
+          }
+        }
+      }
+
+      const afterEdits = { ...beforeEdits, [buildingId]: ownEdits }
+      const afterConflicts = { ...beforeConflicts, [buildingId]: ownConflicts }
+      const write = (
+        edits: typeof beforeEdits, conflicts: typeof beforeConflicts,
+      ) => set({ scopeEdits: edits, scopeConflicts: conflicts })
+      write(afterEdits, afterConflicts)
       apply({
         kind: 'value.edited',
         label: `${building.name}: ${key} überschrieben`,
         labelKey: 'vr3.journal.scopeMetricEdited',
         labelValues: { building: building.name, metric: key },
         deltaExact: null,
-        inverse: () => set({ scopeEdits: before }),
-        forward: () => set({ scopeEdits: after }),
+        // ONE event for the edit AND its resolution: they are one decision,
+        // and an undo that restored the component while leaving the totals
+        // recomputed would leave the baseline in a state nobody chose.
+        inverse: () => write(beforeEdits, beforeConflicts),
+        forward: () => write(afterEdits, afterConflicts),
       })
     },
 
@@ -8974,18 +9103,152 @@ const store = createStore<Store>((set, get) => {
       const building = scopeBuilding(s, buildingId)
       const current = s.scopeEdits[buildingId]?.[key]
       if (!building || !current) return
-      const before = s.scopeEdits
-      const { [key]: _removed, ...rest } = before[buildingId] ?? {}
-      const after = { ...before, [buildingId]: rest }
-      set({ scopeEdits: after })
+      const beforeEdits = s.scopeEdits
+      const beforeConflicts = s.scopeConflicts
+      const { [key]: _removed, ...restEdits } = beforeEdits[buildingId] ?? {}
+      // Reverting a fact to its source clears the conflict that fact held:
+      // a value back at its source no longer disagrees with anything, and
+      // history keeps the journal entry either way (`Revert does not erase
+      // history`).
+      const { [key]: _clearedConflict, ...restConflicts } = beforeConflicts[buildingId] ?? {}
+      const afterEdits = { ...beforeEdits, [buildingId]: restEdits }
+      const afterConflicts = { ...beforeConflicts, [buildingId]: restConflicts }
+      const write = (
+        edits: typeof beforeEdits, conflicts: typeof beforeConflicts,
+      ) => set({ scopeEdits: edits, scopeConflicts: conflicts })
+      write(afterEdits, afterConflicts)
       apply({
         kind: 'value.edited',
         label: `${building.name}: ${key} auf Quellwert zurückgesetzt`,
         labelKey: 'vr3.journal.scopeMetricReverted',
         labelValues: { building: building.name, metric: key },
         deltaExact: null,
-        inverse: () => set({ scopeEdits: before }),
-        forward: () => set({ scopeEdits: after }),
+        inverse: () => write(beforeEdits, beforeConflicts),
+        forward: () => write(afterEdits, afterConflicts),
+      })
+    },
+
+    resolveScopeConflict: (buildingId, key) => {
+      const s = get()
+      const building = scopeBuilding(s, buildingId)
+      const conflict = s.scopeConflicts[buildingId]?.[key]
+      if (!building || !conflict) return
+      const beforeEdits = s.scopeEdits
+      const beforeConflicts = s.scopeConflicts
+      const afterEdits = {
+        ...beforeEdits,
+        [buildingId]: {
+          ...(beforeEdits[buildingId] ?? {}),
+          [key]: {
+            value: conflict.derived,
+            previous: conflict.kept,
+            reason: conflict.causedBy,
+            actor: SCOPE_ACTOR,
+            at: new Date().toISOString(),
+          },
+        },
+      }
+      const { [key]: _resolved, ...restConflicts } = beforeConflicts[buildingId] ?? {}
+      const afterConflicts = { ...beforeConflicts, [buildingId]: restConflicts }
+      const write = (
+        edits: typeof beforeEdits, conflicts: typeof beforeConflicts,
+      ) => set({ scopeEdits: edits, scopeConflicts: conflicts })
+      write(afterEdits, afterConflicts)
+      apply({
+        kind: 'value.edited',
+        label: `${building.name}: ${key} folgt wieder seinen Bestandteilen`,
+        labelKey: 'vr3.journal.scopeConflictResolved',
+        labelValues: { building: building.name, metric: key },
+        deltaExact: null,
+        inverse: () => write(beforeEdits, beforeConflicts),
+        forward: () => write(afterEdits, afterConflicts),
+      })
+    },
+
+    proposeScopeCandidates: (buildingId, proposals) => {
+      const s = get()
+      const building = scopeBuilding(s, buildingId)
+      if (!building) return
+      const own: Partial<Record<string, ScopeCandidate>> = {
+        ...(s.scopeCandidates[buildingId] ?? {}),
+      }
+      let material = 0
+      const at = new Date().toISOString()
+      for (const proposal of proposals) {
+        const currentValue = scopeFactValue(s, building, proposal.key)
+        // AN IDENTICAL READ IS NOT A CHANGE. Recording a candidate here
+        // would mark a confirmed fact stale for agreeing with its own
+        // source — the false invalidation the status model names explicitly.
+        if (currentValue === proposal.value) {
+          delete own[proposal.key]
+          continue
+        }
+        own[proposal.key] = {
+          value: proposal.value,
+          current: currentValue,
+          sourceDocId: proposal.sourceDocId ?? building.evidenceDocIds[0] ?? null,
+          at,
+        }
+        material += 1
+      }
+      if (material === 0 && Object.keys(own).length
+        === Object.keys(s.scopeCandidates[buildingId] ?? {}).length) return
+      const before = s.scopeCandidates
+      const after = { ...before, [buildingId]: own }
+      set({ scopeCandidates: after })
+      apply({
+        kind: 'value.edited',
+        label: `${building.name}: ${material} neue Quellwerte vorgeschlagen`,
+        labelKey: 'vr3.journal.scopeCandidatesProposed',
+        labelValues: { building: building.name, count: material },
+        deltaExact: null,
+        inverse: () => set({ scopeCandidates: before }),
+        forward: () => set({ scopeCandidates: after }),
+      })
+    },
+
+    acceptScopeCandidate: (buildingId, key, reason) => {
+      const s = get()
+      const building = scopeBuilding(s, buildingId)
+      const candidate = s.scopeCandidates[buildingId]?.[key]
+      if (!building || !candidate) return
+      const beforeCandidates = s.scopeCandidates
+      const { [key]: _taken, ...restCandidates } = beforeCandidates[buildingId] ?? {}
+      set({
+        scopeCandidates: { ...beforeCandidates, [buildingId]: restCandidates },
+      })
+      /**
+       * Accepting routes through the ORDINARY edit, so the accepted value
+       * gets the same attribution, the same required reason, the same
+       * derived-dependency resolution and the same un-confirmation as a
+       * hand-typed one. A second write path here would be a second set of
+       * rules for the same fact.
+       *
+       * `recalculate` is the resolution because the user is accepting the
+       * SOURCE: a source that moves a component moves the sums that describe
+       * it, and keeping a manual total against a freshly evidenced part is a
+       * separate decision the user can still take by editing it.
+       */
+      get().editScopeMetric(buildingId, key, candidate.value, reason, 'recalculate')
+    },
+
+    dismissScopeCandidate: (buildingId, key) => {
+      const s = get()
+      const building = scopeBuilding(s, buildingId)
+      const candidate = s.scopeCandidates[buildingId]?.[key]
+      if (!building || !candidate) return
+      const before = s.scopeCandidates
+      const { [key]: _dismissed, ...rest } = before[buildingId] ?? {}
+      const after = { ...before, [buildingId]: rest }
+      set({ scopeCandidates: after })
+      apply({
+        kind: 'value.edited',
+        label: `${building.name}: Quellvorschlag für ${key} verworfen`,
+        labelKey: 'vr3.journal.scopeCandidateDismissed',
+        labelValues: { building: building.name, metric: key },
+        deltaExact: null,
+        inverse: () => set({ scopeCandidates: before }),
+        forward: () => set({ scopeCandidates: after }),
       })
     },
 

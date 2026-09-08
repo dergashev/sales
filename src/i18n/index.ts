@@ -1294,7 +1294,10 @@ const de = {
   'vr3.scope.metric.underground': 'Untergeschoss',
   'vr3.scope.metric.bgfRAbove': 'BGF R oberirdisch',
   'vr3.scope.metric.bgfSAbove': 'BGF S oberirdisch',
+  'vr3.scope.metric.bgfRSAbove': 'BGF R+S oberirdisch',
   'vr3.scope.metric.bgfRBelow': 'BGF R unterirdisch',
+  'vr3.scope.metric.bgfSBelow': 'BGF S unterirdisch',
+  'vr3.scope.metric.bgfRSBelow': 'BGF R+S unterirdisch',
   'vr3.scope.metric.bgfRSTotal': 'BGF R+S gesamt',
   'vr3.scope.metric.wfl': 'Wohnfläche nach WoFlV',
   'vr3.scope.metric.nuf': 'NUF nach DIN 277',
@@ -3258,6 +3261,52 @@ const de = {
   'vr3.progression.review': 'Prüfung',
   'vr3.progression.save': 'Speichern',
   'ds.workflowNavigator.state.stale': 'erneut prüfen',
+
+  /* ── B2 · Gebäudegrundlage: jeder angezeigte Wert ist editierbar ─────── */
+  'vr3.scope.state.confirmed': 'Im Angebot · Grundlage bestätigt',
+  'vr3.scope.state.included': 'Im Angebot',
+  'vr3.scope.state.reviewRequired': 'Prüfung erforderlich',
+  'vr3.scope.state.excluded': 'Nicht im Angebot',
+  'vr3.scope.metric.usage': 'Nutzung',
+  'vr3.scope.edit.error.notInDomain': 'Dieser Wert gehört nicht zur Auswahl.',
+  'vr3.scope.edit.source': 'Quellwert',
+  'vr3.scope.edit.sourceUnknown': 'kein Quellwert',
+  'vr3.scope.impact.title': 'Abgeleitete Werte ändern sich mit',
+  'vr3.scope.impact.detail':
+    'Diese Summen folgen dem Wert, den Sie ändern. Entscheiden Sie ausdrücklich, '
+    + 'was mit ihnen geschehen soll — stillschweigend bewegt das Produkt keine '
+    + 'kommerzielle Bezugsgröße.',
+  'vr3.scope.impact.row': '{metric}: {before} → {after}',
+  'vr3.scope.impact.rowManual': '{metric}: {before} → {after} · aktuell manuell gesetzt',
+  'vr3.scope.impact.recalculate': 'Abgeleitete Werte neu berechnen',
+  'vr3.scope.impact.keep': 'Manuelle Werte behalten',
+  'vr3.scope.impact.keepHint':
+    'Behalten erzeugt einen benannten Konflikt: die Summe widerspricht dann ihren '
+    + 'eigenen Bestandteilen, und das bleibt sichtbar, bis Sie es auflösen.',
+  'vr3.scope.conflict.title': 'Widerspricht den eigenen Bestandteilen',
+  'vr3.scope.conflict.detail':
+    '{metric} steht auf {kept}; aus seinen Bestandteilen ergibt sich {derived}. '
+    + 'Ausgelöst durch die Änderung an {cause}.',
+  'vr3.scope.conflict.resolve': 'Summe wieder aus Bestandteilen bilden',
+  'vr3.scope.candidate.title': 'Neue Analyse schlägt einen anderen Quellwert vor',
+  'vr3.scope.candidate.detail':
+    'Aktuell: {current} · Vorschlag: {candidate}. Der bestätigte Wert wurde nicht '
+    + 'überschrieben (D-08).',
+  'vr3.scope.candidate.accept': 'Neuen Quellwert übernehmen',
+  'vr3.scope.candidate.keep': 'Aktuellen Wert behalten',
+  'vr3.scope.candidate.reason': 'Aus erneuter Analyse übernommen',
+  'vr3.scope.gate.noSelection': 'Mindestens ein Gebäude aufnehmen',
+  'vr3.scope.gate.noSelectionRoute': 'Zur Gebäudeauswahl',
+  'vr3.scope.gate.conflictRoute': 'Widerspruch in {building} auflösen',
+  'vr3.scope.summary.bgf': '{value} m² BGF R+S',
+  'vr3.scope.summary.area': '{label}: {value} m²',
+  'vr3.scope.reviewReason.conflict': '{count} Summe widerspricht ihren Bestandteilen',
+  'vr3.scope.reviewReason.conflicts': '{count} Summen widersprechen ihren Bestandteilen',
+  'vr3.scope.reviewReason.candidates': '{count} neue Quellwerte zur Entscheidung',
+  'vr3.scope.reviewReason.stale': 'Grundlage hat sich seit der Bestätigung geändert',
+  'vr3.journal.scopeConflictResolved': '{building}: {metric} folgt wieder seinen Bestandteilen',
+  'vr3.journal.scopeCandidatesProposed': '{building}: {count} neue Quellwerte vorgeschlagen',
+  'vr3.journal.scopeCandidateDismissed': '{building}: Quellvorschlag für {metric} verworfen',
 } as const
 
 export type MessageKey = keyof typeof de
@@ -3313,6 +3362,51 @@ const en: Partial<Record<MessageKey, string>> = {
   'vr3.progression.review': 'Review',
   'vr3.progression.save': 'Save',
   'ds.workflowNavigator.state.stale': 'review again',
+
+  /* ── B2 · Building baseline: every displayed value is editable ───────── */
+  'vr3.scope.state.confirmed': 'Included · baseline confirmed',
+  'vr3.scope.state.included': 'Included',
+  'vr3.scope.state.reviewRequired': 'Review required',
+  'vr3.scope.state.excluded': 'Excluded',
+  'vr3.scope.metric.usage': 'Use',
+  'vr3.scope.edit.error.notInDomain': 'That value is not one of the choices.',
+  'vr3.scope.edit.source': 'Source value',
+  'vr3.scope.edit.sourceUnknown': 'no source value',
+  'vr3.scope.impact.title': 'Derived values change with it',
+  'vr3.scope.impact.detail':
+    'These sums follow the value you are changing. Decide explicitly what should '
+    + 'happen to them — the Product moves no commercial reference silently.',
+  'vr3.scope.impact.row': '{metric}: {before} → {after}',
+  'vr3.scope.impact.rowManual': '{metric}: {before} → {after} · currently set manually',
+  'vr3.scope.impact.recalculate': 'Recalculate listed derived values',
+  'vr3.scope.impact.keep': 'Keep dependent manual values',
+  'vr3.scope.impact.keepHint':
+    'Keeping them creates a named conflict: the sum then contradicts its own '
+    + 'components, and that stays visible until you resolve it.',
+  'vr3.scope.conflict.title': 'Contradicts its own components',
+  'vr3.scope.conflict.detail':
+    '{metric} reads {kept}; its components make it {derived}. Caused by the change '
+    + 'to {cause}.',
+  'vr3.scope.conflict.resolve': 'Make the sum follow its components again',
+  'vr3.scope.candidate.title': 'Re-analysis proposes a different source value',
+  'vr3.scope.candidate.detail':
+    'Current: {current} · proposed: {candidate}. The confirmed value was not '
+    + 'overwritten (D-08).',
+  'vr3.scope.candidate.accept': 'Accept new source value',
+  'vr3.scope.candidate.keep': 'Keep current value',
+  'vr3.scope.candidate.reason': 'Accepted from re-analysis',
+  'vr3.scope.gate.noSelection': 'Include at least one building',
+  'vr3.scope.gate.noSelectionRoute': 'Go to building selection',
+  'vr3.scope.gate.conflictRoute': 'Resolve the contradiction in {building}',
+  'vr3.scope.summary.bgf': '{value} m² BGF R+S',
+  'vr3.scope.summary.area': '{label}: {value} m²',
+  'vr3.scope.reviewReason.conflict': '{count} sum contradicts its components',
+  'vr3.scope.reviewReason.conflicts': '{count} sums contradict their components',
+  'vr3.scope.reviewReason.candidates': '{count} new source values to decide',
+  'vr3.scope.reviewReason.stale': 'The baseline changed since it was confirmed',
+  'vr3.journal.scopeConflictResolved': '{building}: {metric} follows its components again',
+  'vr3.journal.scopeCandidatesProposed': '{building}: {count} new source values proposed',
+  'vr3.journal.scopeCandidateDismissed': '{building}: source proposal for {metric} dismissed',
   // VR2-00: internal Grundlagen QA surface — product-locale EN so nothing
   // in the visible specimen shell reads as untranslated diagnostic content.
   'grundlagen.specimen.badge': 'Internal · QA specimen',
@@ -4346,7 +4440,10 @@ const en: Partial<Record<MessageKey, string>> = {
   'vr3.scope.metric.underground': 'Basement',
   'vr3.scope.metric.bgfRAbove': 'BGF R above grade',
   'vr3.scope.metric.bgfSAbove': 'BGF S above grade',
+  'vr3.scope.metric.bgfRSAbove': 'BGF R+S above grade',
   'vr3.scope.metric.bgfRBelow': 'BGF R below grade',
+  'vr3.scope.metric.bgfSBelow': 'BGF S below grade',
+  'vr3.scope.metric.bgfRSBelow': 'BGF R+S below grade',
   'vr3.scope.metric.bgfRSTotal': 'BGF R+S total',
   'vr3.scope.metric.wfl': 'Living area per WoFlV',
   'vr3.scope.metric.nuf': 'Usable floor area per DIN 277',
