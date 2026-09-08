@@ -14,7 +14,8 @@ import {
 import { __resetStoreForTests, useStore } from '../../state/store'
 import { OptionsWorkspace } from '../ProjectOptions'
 import { demoProject } from '../../state/projectAnalysis'
-import { LIFECYCLE_STATUSES, decodePortfolioQuery } from '../../state/projectPortfolio'
+import { decodePortfolioQuery } from '../../state/projectPortfolio'
+import { LIFECYCLE_STATUSES } from '../../state/projectLifecycle'
 import {
   PORTFOLIO_CARD_COUNT, PORTFOLIO_DISPLAY_ONLY_COUNT, PORTFOLIO_NAVIGABLE_COUNT,
   PORTFOLIO_TITLE, openProjectCard,
@@ -92,8 +93,12 @@ describe('Уровень Projekte', () => {
     render(<App />)
     const clean = cardOf(TITLES.lindenhain)
 
-    // 1 — жизненный цикл словом, не только цветом (правило 8).
-    expect(within(clean).getByText('Bereit zur Präsentation')).toBeInTheDocument()
+    // 1 — жизненный цикл словом, не только цветом (правило 8). Статус
+    // ВЫВЕДЕН из собственной правды проекта: в свежей сессии ни анализа,
+    // ни решённых расхождений, ни закреплённой основы нет — значит `Neu`.
+    // Прежде здесь стояло «Bereit zur Präsentation» из фикстуры, на той же
+    // карточке, где цена не рассчитана и Kundenansicht заблокирована.
+    expect(within(clean).getByText('Neu')).toBeInTheDocument()
     // 2 — канонический титул в точном формате.
     expect(within(clean).getByText(TITLES.lindenhain)).toBeInTheDocument()
     // 3 — клиент и ответственный полным именем.
@@ -163,8 +168,11 @@ describe('Уровень Projekte', () => {
 
   it('срок имеет три состояния: просрочен, близок и отсутствует', () => {
     render(<App />)
-    // Просрочен: слово, а не только цвет.
-    expect(within(cardOf(TITLES.guterbogen)).getByText('Überfällig')).toBeInTheDocument()
+    // Просрочен: слово, а не только цвет. Просрочку носит München —
+    // проект, по которому явно записано ожидание ответа клиента: у такого
+    // встреча и съезжает. Прежде она стояла у Leipzig, где встреча в
+    // прошлом противоречила бы состоянию `Neu` в той же карточке.
+    expect(within(cardOf(TITLES.muenchen)).getByText('Überfällig')).toBeInTheDocument()
     // Близок: обычная подсказка на человеческом языке.
     expect(within(cardOf(TITLES.hamburg)).getByText(/^in \d+ Tagen$/)).toBeInTheDocument()
     // Отсутствует: строка остаётся и говорит это.
@@ -233,12 +241,12 @@ describe('Уровень Projekte', () => {
     // По умолчанию — последнее изменение, новейшее первым.
     expect(sort.value).toBe('updatedDesc')
     expect(cardOrder()).toEqual([
-      TITLES.lindenhain, TITLES.hamburg, TITLES.wien, TITLES.muenchen, TITLES.guterbogen,
+      TITLES.lindenhain, TITLES.guterbogen, TITLES.hamburg, TITLES.wien, TITLES.muenchen,
     ])
 
     await user.selectOptions(sort, 'updatedAsc')
     expect(cardOrder()).toEqual([
-      TITLES.guterbogen, TITLES.muenchen, TITLES.wien, TITLES.hamburg, TITLES.lindenhain,
+      TITLES.muenchen, TITLES.wien, TITLES.hamburg, TITLES.guterbogen, TITLES.lindenhain,
     ])
 
     await user.selectOptions(sort, 'createdDesc')
@@ -278,11 +286,14 @@ describe('Уровень Projekte', () => {
       screen.getByRole('group', { name: 'Projektstatus' }),
     ).getByRole('checkbox', { name: label })
 
-    // ИЛИ внутри группы: два статуса дают объединение.
+    // ИЛИ внутри группы: два статуса дают объединение. В свежей сессии
+    // ОБА настоящих проекта выводят `Neu` — над ними ещё ничего не сделано
+    // — и Hamburg его объявляет как синтетическая запись реестра.
     await user.click(status('Neu'))
-    expect(cardOrder()).toEqual([TITLES.hamburg])
+    expect(cardOrder()).toEqual([TITLES.lindenhain, TITLES.guterbogen, TITLES.hamburg])
     await user.click(status('In Bearbeitung'))
-    expect(cardOrder()).toEqual([TITLES.hamburg, TITLES.wien])
+    expect(cardOrder())
+      .toEqual([TITLES.lindenhain, TITLES.guterbogen, TITLES.hamburg, TITLES.wien])
 
     // И между группами: тот же выбор плюс страна AT оставляет один.
     await user.type(screen.getByLabelText('Land'), 'AT')
@@ -485,8 +496,13 @@ describe('Уровень Projekte', () => {
     expect(screen.getByRole('heading', { name: 'Projects' })).toBeInTheDocument()
     // Содержимое КАРТОЧКИ, не только панели: статус жизненного цикла,
     // подписи метрик и обе подписи действий переводятся вместе с хромом.
-    // Дважды: подпись статуса на карточке и его же чекбокс в панели.
-    expect(screen.getAllByText('Ready to pitch')).toHaveLength(2)
+    // «Ready to pitch» переводится там, где он есть — подписью чекбокса
+    // фильтра. Ни одна карточка его не носит: статус требует явной проверки
+    // сохранённой версии Option в Kundenansicht.
+    expect(screen.getAllByText('Ready to pitch')).toHaveLength(1)
+    // Статус, который карточка ДЕЙСТВИТЕЛЬНО носит, тоже переведён — и
+    // проверять надо именно его, иначе тест доказывает перевод панели.
+    expect(screen.getAllByText('New').length).toBeGreaterThanOrEqual(2)
     expect(screen.getAllByText('Next client meeting')).toHaveLength(PORTFOLIO_CARD_COUNT)
     expect(screen.getAllByText('Total project value')).toHaveLength(PORTFOLIO_CARD_COUNT)
     expect(screen.getByText('No client meeting scheduled')).toBeInTheDocument()
@@ -502,66 +518,61 @@ describe('Уровень Projekte', () => {
     expect(screen.getByPlaceholderText(
       'Titel, Kunde, Verantwortliche, Stadt, Adresse, PLZ',
     )).toBeInTheDocument()
-    expect(screen.getAllByText('Bereit zur Präsentation')).toHaveLength(2)
+    // «Bereit zur Präsentation» остаётся членом закрытого набора и живёт
+    // подписью чекбокса фильтра — но НИ ОДНА карточка его не носит: этот
+    // статус требует явной проверки сохранённой версии Option в
+    // Kundenansicht, и никакая фикстура его выдать не может.
+    expect(screen.getAllByText('Bereit zur Präsentation')).toHaveLength(1)
     expect(screen.getByText('2.900 m²')).toBeInTheDocument()
     expect(screen.getByText('51.240.000 €')).toBeInTheDocument()
   })
 
-  it('заметка: тихая запись, чип вместо тоста, в презентации не существует (DC-43, правило 34)', async () => {
+  it('приватной заметки нет НИГДЕ — ни во внутреннем пространстве, ни в клиентском профиле', async () => {
     const user = userEvent.setup()
     render(<App />)
     await openProjectCard(user, 'Wohnhof Lindenhain')
 
-    // #16 Part 5/AC-07: Internal Note ist keine primäre Workflow-Stufe mehr —
-    // der EINZIGE Einstieg ist jetzt der Header-Utility-Button, der den
-    // kanonischen `Dialog` öffnet. VR3-01 hat ihn unverändert übernommen
-    // (`ProjectIdentityUtilities`), auf JEDER Projekt-Stufe.
-    await user.click(screen.getByRole('button', { name: 'Interne Notiz' }))
-    const field = screen.getByRole('textbox', { name: /Interne Notiz/ })
-    // Нейтральный статус — ЯСНЫЙ ТЕКСТ, не необъяснённая точка (NOTE-007).
-    expect(screen.getByText(/noch keine Änderungen/)).toBeInTheDocument()
+    /**
+     * Прежде здесь проверялась внутренняя заметка (DC-43): тихая запись,
+     * чип вместо тоста, отсутствие в презентации. Возможности больше нет —
+     * и это НЕ повод удалить проверку, а повод её развернуть.
+     *
+     * Гарантия, которую эта возможность обеспечивала, шире её самой:
+     * приватная запись рядом с проектом клиента — второе, неатрибутированное
+     * место для коммерческой правды, и политика полей исключает её из всех
+     * пяти клиентских профилей независимо от того, существует такая
+     * поверхность или нет (`NOTE-006`, `OUT-07`, §5.4 `output-model.md`).
+     *
+     * Поэтому тест теперь СТРАЖ ОТ ВОЗВРАТА: он проходит весь путь до
+     * клиентского профиля и утверждает, что ни точки входа, ни поля, ни
+     * CRM-синка нет ни на одной стороне. Возврат приватной заметки под
+     * любым именем, которое печатает эти слова, роняет его.
+     */
+    const noPrivateNoteSurface = () => {
+      expect(screen.queryByRole('button', { name: /Interne Notiz|Internal note/i })).toBeNull()
+      expect(screen.queryByRole('textbox', { name: /Interne Notiz|Internal note/i })).toBeNull()
+      expect(document.body.textContent).not.toContain('HubSpot-Projektkarte')
+      expect(document.body.textContent).not.toContain('HubSpot project card')
+    }
 
-    await user.type(field, 'Kunde will Klinker')
-    // До паузы — черновик: событие ещё не создано, тоста нет вообще.
-    expect(screen.getByText(/Entwurf, noch nicht gespeichert/)).toBeInTheDocument()
-    expect(useStore.getState().journal.filter((e) => e.kind === 'note.created'))
-      .toHaveLength(0)
+    // Внутреннее пространство проекта: возможности нет и здесь.
+    noPrivateNoteSurface()
+    // Журнал не может содержать событий, которых больше не существует.
+    expect(useStore.getState().journal.map((e) => e.kind))
+      .not.toContain('note.created')
 
-    // Тихая запись: событие журнала появляется, тост — нет (правило 34).
-    await act(() => new Promise((r) => setTimeout(r, 1000)))
-    expect(useStore.getState().journal.filter((e) => e.kind === 'note.created'))
-      .toHaveLength(1)
-    expect(useStore.getState().undoToast).toBeNull()
-    // Текст заметки в журнал не попадает: журнал читают на встрече.
-    expect(useStore.getState().journal.at(-1)!.label).not.toContain('Klinker')
-
-    // Синк — отдельное событие (правило 34).
-    await act(() => new Promise((r) => setTimeout(r, 1400)))
-    expect(useStore.getState().journal.filter((e) => e.kind === 'note.synced_to_hubspot'))
-      .toHaveLength(1)
-    expect(screen.getByText(/synchronisiert · HubSpot/)).toBeInTheDocument()
-
-    // В клиентский профиль входят только из Option через реальный gate.
-    // VR3-04: этот gate — сохранённая версия Option, а не подтверждённая
-    // конфигурация (аудит F-002), поэтому преамбула проходит весь путь:
-    // умфанг, шесть KG, терминплан, финальная проверка, сохранение.
+    // Клиентский профиль достигается через настоящий gate: умфанг, шесть
+    // KG, терминплан, финальная проверка, сохранение (VR3-04, аудит F-002).
     enterOptionWorkspace()
     await confirmBuildingReviewSections(user)
     completeBuildingScope('PER_BUILDING')
     completeKgConfiguration()
     saveOptionBaseline()
-    // `Präsentieren` is the Option stage whose ACTION enters the client
-    // projection (2026-09-06 IA audit): the mode switch left the retired
-    // left rail and is now the primary action of that stage's surface.
     act(() => { useStore.getState().setPipelineView('praesentieren') })
     await user.click(screen.getByRole('button', { name: 'Kundenansicht prüfen' }))
     await user.click(screen.getByRole('button', { name: 'Kundenansicht starten' }))
 
-    // In der Kundenansicht existiert die Notiz nicht im DOM — nicht einmal
-    // ihr Einstiegspunkt (NOTE-006: nicht versteckt, sondern nicht vorhanden).
-    expect(screen.queryByRole('button', { name: 'Interne Notiz' })).toBeNull()
-    expect(screen.queryByRole('textbox', { name: /Interne Notiz/ })).toBeNull()
-    expect(document.body.textContent).not.toContain('HubSpot-Projektkarte')
+    noPrivateNoteSurface()
   })
 })
 

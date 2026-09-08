@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import {
-  useCallback, useEffect, useId, useMemo, useRef, useState, type RefObject,
+  useCallback, useEffect, useId, useMemo, useRef, useState,
 } from 'react'
 import {
   configForOption,
@@ -31,12 +31,10 @@ import { Button } from '../components/primitives'
 import { Decimal } from 'decimal.js'
 import { label as moneyLabel, present } from '../engine/money'
 import { useT, useTx, localizeMoneyText } from '../i18n'
-import { InternalNote } from '../components/InternalNote'
 import { Badge, FormField } from '../components/designSystem'
 import { useBaselineDisclosure, baselineDate } from '../components/OptionContextHeader'
 import { CreateOptionButton } from '../components/OptionCreation'
 import { startContinuityTransition, useSemanticMotion } from '../design-system/motion'
-import { Dialog, type DialogHandle } from '../components/Dialog'
 import type { FixtureProject, ProjectAnalysis } from '../state/projectAnalysis'
 
 /**
@@ -94,48 +92,6 @@ function timeStamp(iso: string, language: 'de' | 'en'): string {
   return new Intl.DateTimeFormat(language === 'de' ? 'de-DE' : 'en-GB', {
     day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
   }).format(new Date(iso))
-}
-
-/**
- * Internal Note (DC-43) behind the canonical `Dialog`. Unchanged by this
- * ticket: same data, same autosave-on-idle, same NOTE-006 presentation-mode
- * hiding, same single entry point from the project context bar.
- */
-export function InternalNoteDialog({
-  open,
-  onOpenChange,
-  returnFocusTo,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  returnFocusTo: RefObject<HTMLElement>
-}) {
-  const t = useT()
-  const tx = useTx()
-  const titleId = useId()
-  const titleRef = useRef<HTMLHeadingElement>(null)
-  const dialogRef = useRef<DialogHandle>(null)
-  if (!open) return null
-  return (
-    <Dialog
-      ref={dialogRef}
-      open={open}
-      onOpenChange={(nextOpen) => { if (!nextOpen) onOpenChange(false) }}
-      labelledBy={titleId}
-      initialFocusRef={titleRef}
-      returnFocusTo={returnFocusTo}
-    >
-      <h2 ref={titleRef} id={titleId} tabIndex={-1} className="sr-only outline-none">
-        {tx('Interne Notiz')}
-      </h2>
-      <InternalNote />
-      <div className="a3-row mt-4">
-        <Button variant="ghost" onClick={() => dialogRef.current?.close()}>
-          {t('common.close')}
-        </Button>
-      </div>
-    </Dialog>
-  )
 }
 
 /* ────────────────────────────── one Option ───────────────────────────── */

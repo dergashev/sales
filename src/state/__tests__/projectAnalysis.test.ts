@@ -12,6 +12,7 @@ import {
   cancelJob,
   cleanPresentation,
   documentDisplayState,
+  documentLineage,
   eligibleDocuments,
   processedOutcomeCount,
   conflictResolved,
@@ -36,6 +37,9 @@ import {
   type FixtureProject,
   type ProjectAnalysis,
 } from '../projectAnalysis'
+import {
+  evidenceCounts, evidenceSource, reconcileEvidenceCounts,
+} from '../projectEvidence'
 
 /**
  * VR3-01 — the fixture and the gate, proved without rendering anything.
@@ -113,19 +117,23 @@ describe('VR3-01 fixture invariants (rule 32 — a number must reconcile with it
       .toEqual({ processed: 8, warning: 0, lowConfidence: 0, failed: 0 })
   })
 
-  it('Project B: 3 buildings, 36 documents, 6 initial blocking conflicts', () => {
+  it('Project B: 3 buildings, 13 documents, 6 initial blocking conflicts', () => {
     expect(B.buildings).toHaveLength(3)
-    expect(B.documents).toHaveLength(36)
+    // Twelve authored source documents plus the one the client re-sent. The
+    // register used to hold 36 records served by six schematic images; the
+    // pack that replaced them is the twelve-document set the audit's
+    // fixture-plan specifies, and every record now opens its own real file.
+    expect(B.documents).toHaveLength(13)
     expect(B.conflicts.filter((c) => c.blocking)).toHaveLength(6)
     expect(B.conflicts.map((c) => c.id))
       .toEqual(['B-CF-01', 'B-CF-02', 'B-CF-03', 'B-CF-04', 'B-CF-05', 'B-CF-06'])
   })
 
-  it('Project B terminal distribution is 28 + 4 + 3 + 1 = 36', () => {
+  it('Project B terminal distribution is 8 + 3 + 1 + 1 = 13', () => {
     const { processed, warning, lowConfidence, failed } = B.terminalDistribution
     expect({ processed, warning, lowConfidence, failed })
-      .toEqual({ processed: 28, warning: 4, lowConfidence: 3, failed: 1 })
-    expect(processed + warning + lowConfidence + failed).toBe(36)
+      .toEqual({ processed: 8, warning: 3, lowConfidence: 1, failed: 1 })
+    expect(processed + warning + lowConfidence + failed).toBe(13)
     // Declared distribution vs the register itself — the two cannot drift.
     const counted = { processed: 0, warning: 0, lowConfidence: 0, failed: 0 }
     const key = {
@@ -135,11 +143,11 @@ describe('VR3-01 fixture invariants (rule 32 — a number must reconcile with it
     for (const doc of B.documents) counted[key[doc.processingOutcome]] += 1
     expect(counted).toEqual(B.terminalDistribution)
     expect(B.documents.filter((d) => d.processingOutcome === 'WARNING').map((d) => d.id))
-      .toEqual(['B-DOC-13', 'B-DOC-21', 'B-DOC-34', 'B-DOC-36'])
+      .toEqual(['LEI-DOC-04', 'LEI-DOC-09', 'LEI-DOC-13'])
     expect(B.documents.filter((d) => d.processingOutcome === 'LOW_CONFIDENCE').map((d) => d.id))
-      .toEqual(['B-DOC-03', 'B-DOC-12', 'B-DOC-31'])
+      .toEqual(['LEI-DOC-08'])
     expect(B.documents.filter((d) => d.processingOutcome === 'FAILED').map((d) => d.id))
-      .toEqual(['B-DOC-24'])
+      .toEqual(['LEI-DOC-10'])
   })
 
   it('Project B total BGF R+S is 19.470 m², summed from the buildings themselves', () => {
@@ -205,15 +213,42 @@ describe('VR3-01 fixture invariants (rule 32 — a number must reconcile with it
       { documentType: 'other', count: 1 },
     ])
     expect(documentTypeTally(A).reduce((n, e) => n + e.count, 0)).toBe(8)
-    expect(documentTypeTally(B).reduce((n, e) => n + e.count, 0)).toBe(36)
+    expect(documentTypeTally(B).reduce((n, e) => n + e.count, 0)).toBe(13)
   })
 
-  it('duplicate and supersession relationships are inspectable', () => {
-    const duplicate = B.documents.find((d) => d.id === 'B-DOC-13')!
-    expect(duplicate.duplicateOf).toBe('B-DOC-06')
-    expect(B.documents.find((d) => d.id === 'B-DOC-06')!.supersedes).toBe('B-DOC-05')
-    expect(B.documents.find((d) => d.id === 'B-DOC-26')!.supersedes).toBe('B-DOC-25')
-    expect(B.documents.find((d) => d.id === 'B-DOC-25')!.supersedes).toBe('B-DOC-24')
+  it('a re-sent copy is a record of its own that names the file it duplicates', () => {
+    // A client folder holds the same plan twice more often than it holds a
+    // wrong one. The second arrival is a RECORD, not a thirteenth authored
+    // document: same bytes, same page count, the name the mail client gave
+    // it — which is why the register can say «inhaltsgleiches Doppel von …»
+    // and a reader can open both and see one document.
+    const duplicate = B.documents.find((d) => d.id === 'LEI-DOC-13')!
+    const source = B.documents.find((d) => d.id === 'LEI-DOC-03')!
+    expect(duplicate.duplicateOf).toBe('LEI-DOC-03')
+    expect(duplicate.file).not.toBe(source.file)
+    expect(duplicate.pages).toBe(source.pages)
+    expect(duplicate.version).toBe(source.version)
+    expect(duplicate.processingOutcome).toBe('WARNING')
+  })
+
+  it('lineage reads both directions, for any register that declares one', () => {
+    // The capability is proved on its own data rather than on whichever
+    // relationships the demo fixture happens to carry: a register whose
+    // lineage is only ever asserted through one fixture stops being tested
+    // the day that fixture is replaced — which is exactly what happened to
+    // the 36-record register this pack replaced.
+    const older = { ...B.documents[0]!, id: 'X-01', supersedes: null, duplicateOf: null }
+    const newer = { ...B.documents[0]!, id: 'X-02', supersedes: 'X-01', duplicateOf: null }
+    const copy = { ...B.documents[0]!, id: 'X-03', supersedes: null, duplicateOf: 'X-02' }
+    const register = { ...B, documents: [older, newer, copy] }
+
+    expect(documentLineage(register, 'X-02').supersedes?.id).toBe('X-01')
+    expect(documentLineage(register, 'X-01').supersededBy?.id).toBe('X-02')
+    expect(documentLineage(register, 'X-03').duplicateOf?.id).toBe('X-02')
+    expect(documentLineage(register, 'X-02').duplicates.map((d) => d.id)).toEqual(['X-03'])
+    // An unknown id is not an exception and not a fabricated relationship.
+    expect(documentLineage(register, 'X-99'))
+      .toEqual({ supersedes: null, supersededBy: null, duplicateOf: null, duplicates: [] })
   })
 
   it('every document is attributed to the project or to a real building', () => {
@@ -222,6 +257,60 @@ describe('VR3-01 fixture invariants (rule 32 — a number must reconcile with it
         expect(B.buildings.map((b) => b.id)).toContain(id)
       }
       expect(doc.projectLevel || doc.buildingIds.length === 1).toBe(true)
+    }
+  })
+  /**
+   * The evidence register is the project's UNDERSTANDING, and its counts are
+   * the numbers the product prints. They used to be four independent fixture
+   * literals about one set, and they disagreed: the single-building project
+   * declared 42 extracted values of which 42 were source-evidenced AND 42
+   * were manual/confirmed. `reconcileEvidenceCounts` states every rule that
+   * has to hold and names the ones that do not, so a drift is a sentence
+   * somebody can fix rather than a boolean somebody re-runs.
+   */
+  it('reconciles the evidence register of every project', () => {
+    for (const project of DEMO_PROJECTS) {
+      expect(reconcileEvidenceCounts(project), project.id).toEqual([])
+    }
+  })
+
+  it('makes the authority counts a partition, not four opinions', () => {
+    for (const project of DEMO_PROJECTS) {
+      const c = evidenceCounts(project)
+      expect(c.sourceEvidenced + c.derived + c.confirmed + c.overridden, project.id)
+        .toBe(c.total)
+      expect(c.total, project.id).toBe(project.evidence.length)
+      // Attention is an axis of its own, never part of the partition: an
+      // item can be source-evidenced AND contradicted at the same time.
+      expect(c.requiringAttention).toBeLessThanOrEqual(c.total)
+    }
+  })
+
+  it('cites a document the project actually has, on a page, at an anchor', () => {
+    // A citation that cannot be resolved is not a citation. This is the rule
+    // the product's own copy — «every value opens its source document» —
+    // asserted for months while the only route was a stage switch.
+    for (const project of DEMO_PROJECTS) {
+      const docIds = new Set(project.documents.map((d) => d.id))
+      for (const it of project.evidence) {
+        expect(docIds.has(it.sourceDocumentId), `${it.id} -> ${it.sourceDocumentId}`)
+          .toBe(true)
+        expect(it.sourcePage, it.id).toBeGreaterThan(0)
+        expect(it.sourceAnchorId, it.id).not.toBe('')
+        expect(evidenceSource(project, it), it.id).not.toBeNull()
+      }
+    }
+  })
+
+  it('never lets a re-analysis candidate discard confirmed or manual truth', () => {
+    // M-1 / D-08 at the item level: an overridden item keeps the value it
+    // replaced, and a contested one keeps the value being contested. An
+    // item that dropped either would have overwritten human truth.
+    for (const project of DEMO_PROJECTS) {
+      for (const it of project.evidence) {
+        if (it.authority === 'overridden') expect(it.previousValue, it.id).not.toBeNull()
+        if (it.state === 'conflict') expect(it.previousValue, it.id).not.toBeNull()
+      }
     }
   })
 })
@@ -235,12 +324,12 @@ describe('the analysis job (per-file truth, never a page spinner)', () => {
 
     const finished = runToCompletion(B)
     expect(finished.jobState).toBe('COMPLETE')
-    expect(processedCount(B, finished)).toBe(36)
+    expect(processedCount(B, finished)).toBe(13)
     const states = B.documents.map((d) => finished.documents[d.id]!.state)
     expect(states.every(isTerminal)).toBe(true)
-    expect(states.filter((s) => s === 'PROCESSED')).toHaveLength(28)
-    expect(states.filter((s) => s === 'WARNING')).toHaveLength(4)
-    expect(states.filter((s) => s === 'LOW_CONFIDENCE')).toHaveLength(3)
+    expect(states.filter((s) => s === 'PROCESSED')).toHaveLength(8)
+    expect(states.filter((s) => s === 'WARNING')).toHaveLength(3)
+    expect(states.filter((s) => s === 'LOW_CONFIDENCE')).toHaveLength(1)
     expect(states.filter((s) => s === 'FAILED')).toHaveLength(1)
   })
 
@@ -259,11 +348,12 @@ describe('the analysis job (per-file truth, never a page spinner)', () => {
       if (analysis.jobState === 'COMPLETE') break
     }
     expect(sawPartialFailure).toBe(true)
-    // …and it still finished, because B-DOC-26 provides current replacement
-    // evidence for the one file that failed.
+    // …and it still finished, because the TGA requirements (LEI-DOC-09)
+    // carry the house-connection responsibility that the unreadable
+    // interface sheet was the primary source for.
     expect(analysis.jobState).toBe('COMPLETE')
-    expect(analysis.documents['B-DOC-24']!.state).toBe('FAILED')
-    expect(processedCount(B, analysis)).toBe(36)
+    expect(analysis.documents['LEI-DOC-10']!.state).toBe('FAILED')
+    expect(processedCount(B, analysis)).toBe(13)
   })
 
   it('overall progress is derived from the real denominator and never exceeds it', () => {
@@ -303,25 +393,29 @@ describe('the analysis job (per-file truth, never a page spinner)', () => {
 
   it('retry re-queues one file and preserves the prior completed work', () => {
     const finished = runToCompletion(B)
-    const retried = retryDocument(finished, 'B-DOC-24')
-    expect(retried.documents['B-DOC-24']!.state).toBe('QUEUED')
-    expect(retried.documents['B-DOC-24']!.retries).toBe(1)
+    const retried = retryDocument(finished, 'LEI-DOC-10')
+    expect(retried.documents['LEI-DOC-10']!.state).toBe('QUEUED')
+    expect(retried.documents['LEI-DOC-10']!.retries).toBe(1)
     expect(retried.jobState).toBe('RUNNING')
-    expect(processedCount(B, retried)).toBe(35)
-    expect(retried.documents['B-DOC-06']!.state).toBe('PROCESSED')
+    expect(processedCount(B, retried)).toBe(12)
+    expect(retried.documents['LEI-DOC-03']!.state).toBe('PROCESSED')
   })
 
   it('replace links the old and the new evidence and removal keeps a record', () => {
     const finished = runToCompletion(B)
-    const replaced = replaceDocument(B, finished, 'B-DOC-24', '24_C_Grundriss_UG_REV-C.pdf')
-    expect(replaced.documents['B-DOC-24']!.replacementFile).toBe('24_C_Grundriss_UG_REV-C.pdf')
-    expect(replaced.documents['B-DOC-24']!.state).toBe('QUEUED')
+    const replaced = replaceDocument(
+      B, finished, 'LEI-DOC-10', '10_Schnittstellen_Hausanschluesse_RevC.pdf',
+    )
+    expect(replaced.documents['LEI-DOC-10']!.replacementFile)
+      .toBe('10_Schnittstellen_Hausanschluesse_RevC.pdf')
+    expect(replaced.documents['LEI-DOC-10']!.state).toBe('QUEUED')
 
-    const removed = removeDocument(B, finished, 'B-DOC-13', '2026-09-03T10:00:00.000Z')
-    expect(removed.documents['B-DOC-13']!.removedAt).toBe('2026-09-03T10:00:00.000Z')
+    // The re-sent copy is the record a person actually removes.
+    const removed = removeDocument(B, finished, 'LEI-DOC-13', '2026-09-03T10:00:00.000Z')
+    expect(removed.documents['LEI-DOC-13']!.removedAt).toBe('2026-09-03T10:00:00.000Z')
     // The row is still there — a removal is an audit record, not a deletion.
-    expect(Object.keys(removed.documents)).toContain('B-DOC-13')
-    expect(processedCount(B, removed)).toBe(35)
+    expect(Object.keys(removed.documents)).toContain('LEI-DOC-13')
+    expect(processedCount(B, removed)).toBe(12)
   })
 })
 
@@ -435,17 +529,17 @@ describe('re-analysis marks ONLY the affected values stale', () => {
     }
     expect(readiness(B, analysis).canCreateOption).toBe(true)
 
-    // B-DOC-11 is Building A's current office area schedule; it evidences
-    // B-CF-05 (Building A NUF) and nothing else.
-    const affected = affectedByDocuments(B, ['B-DOC-11'])
-    expect(affected.conflictIds).toEqual(['B-CF-05'])
+    // LEI-DOC-04 is the Hofhaus floor-plan set; it evidences B-CF-02
+    // (Building B unit count, 48 against 46) and nothing else.
+    const affected = affectedByDocuments(B, ['LEI-DOC-04'])
+    expect(affected.conflictIds).toEqual(['B-CF-02'])
 
-    const stale = replaceDocument(B, analysis, 'B-DOC-11', '11_A_Bueroflaechen_V3.pdf')
-    expect(stale.staleConflictIds).toEqual(['B-CF-05'])
+    const stale = replaceDocument(B, analysis, 'LEI-DOC-04', '04_Grundrisse_Hofhaus_RevC.pdf')
+    expect(stale.staleConflictIds).toEqual(['B-CF-02'])
     // The other five decisions are untouched — a source change must not
     // invalidate a confirmation it never touched.
     expect(conflictResolved(stale, 'B-CF-01')).toBe(true)
-    expect(conflictResolved(stale, 'B-CF-05')).toBe(false)
+    expect(conflictResolved(stale, 'B-CF-02')).toBe(false)
     const state = readiness(B, stale)
     expect(state.state).not.toBe('PROJECT_READY_FOR_OPTION')
     expect(state.canCreateOption).toBe(false)
@@ -478,7 +572,7 @@ describe('the project baseline snapshot Option creation consumes', () => {
     expect(snapshot.projectId).toBe('DEMO-COMPLEX-01')
     expect(snapshot.buildingCount).toBe(3)
     expect(snapshot.bgfRSTotal).toBe('19470.00')
-    expect(snapshot.documentCount).toBe(36)
+    expect(snapshot.documentCount).toBe(13)
     expect(snapshot.conflictDecisions).toHaveLength(6)
     expect(snapshot.terminalDistribution).toEqual(B.terminalDistribution)
     // Authority travels WITH the value: a snapshot without provenance would
@@ -508,7 +602,7 @@ describe('the deterministic reset and the seeded checkpoint', () => {
   it('the seeded checkpoint is the same state the manual journey produces', () => {
     const seeded = seededCheckpoint(B, '2026-09-03T14:00:00.000Z')
     expect(seeded.jobState).toBe('COMPLETE')
-    expect(processedCount(B, seeded)).toBe(36)
+    expect(processedCount(B, seeded)).toBe(13)
     expect(readiness(B, seeded).canCreateOption).toBe(true)
     expect(Object.keys(seeded.conflictDecisions)).toHaveLength(6)
     // …and it never becomes a third project.
@@ -543,10 +637,10 @@ describe('analysisWorkspaceState is a presentation of JobState, not a new one', 
       analysis = advanceJob(project, analysis)
     }
     expect(analysis.jobState).toBe('COMPLETE')
-    // The complex fixture ends with 4 warnings, 3 low confidence, 1 failed.
-    expect(attentionCount(project, analysis)).toBe(8)
+    // The complex fixture ends with 3 warnings, 1 low confidence, 1 failed.
+    expect(attentionCount(project, analysis)).toBe(5)
     expect(analysisWorkspaceState(project, analysis)).toBe('COMPLETE_WITH_ISSUES')
-    expect(processedOutcomeCount(project, analysis)).toBe(28)
+    expect(processedOutcomeCount(project, analysis)).toBe(8)
 
     const clean = demoProject('DEMO-HAPPY-01')!
     let happy = startJob(clean, initialProjectAnalysis(clean), '2026-09-05T10:00:00.000Z')
@@ -626,14 +720,19 @@ describe('cleanPresentation — the presentation split that gates nothing', () =
     // The GATE is open …
     expect(readiness(B, complex).state).toBe('PROJECT_READY_FOR_OPTION')
     expect(readiness(B, complex).canCreateOption).toBe(true)
-    // … and the project is nonetheless NOT a clean pass: seven questions are
-    // open, twelve values were inferred, eighteen need attention and one
+    // … and the project is nonetheless NOT a clean pass: questions are open,
+    // values were derived rather than read, some need attention and one
     // document failed. Reaching the gate says nothing about any of them.
+    //
+    // The last two facts are now DERIVED from the evidence register rather
+    // than read from four fixture literals that could disagree — and did:
+    // the single-building project used to declare 42 extracted values of
+    // which 42 were source-evidenced AND 42 were manual/confirmed.
     expect(cleanPresentation(B, complex)).toBe(false)
     expect(openQuestions(B, complex).length).toBe(7)
     expect(B.terminalDistribution.failed).toBe(1)
-    expect(B.analysis.aiInferredValues).toBe(12)
-    expect(B.analysis.valuesRequiringAttention).toBe(18)
+    expect(evidenceCounts(B).derived).toBeGreaterThan(0)
+    expect(evidenceCounts(B).requiringAttention).toBeGreaterThan(0)
   })
 
   it('is false in every state that does not reach the gate', () => {

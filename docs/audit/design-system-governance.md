@@ -193,6 +193,25 @@ narrower and of a different kind, recorded below.
 
 ### DS-GOV-EX-05 — InternalNote native textarea
 
+**VOID — closed 2026-09-08, subject removed.** This exception is closed, and
+it is closed for a reason its own removal condition never anticipated. The
+removal condition read "a canonical Textarea satisfies the note contract and
+the workflow has migrated" — that is not what happened. The **Internal note
+capability (DC-43) was removed from the product** together with its component,
+state, journal events and entry point (Product Owner requirement 8 of the
+accepted audit `docs/audit/project-option-workflow-ca68ace/`). `InternalNote.tsx`
+no longer exists, no native textarea remains under this record, and the note
+contract it was measured against is retired from `design-system/README.md`
+§2.6. The exception is therefore **void, not satisfied**: nothing migrated to
+a canonical primitive, and no canonical Textarea was released. Recording it as
+"satisfied" would credit the Design System with a migration that never
+occurred. The record stays visible as closed history — removing it silently
+would be the same defect it documents. Governance requires an exception's
+removal to move atomically with the mechanical checks; the paired mechanical
+change is the `GOV-RETIRED-PATH` entry for `InternalNote` in `tools/verify.py`,
+which now fails the build if the symbol returns to `src/**` under any name.
+The record below is retained as audit history only.
+
 - **Affected implementation / path:** native textarea in
   `src/components/InternalNote.tsx` (DC-43).
 - **Reason:** autosave, state and note semantics are product-owned; no

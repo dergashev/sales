@@ -364,14 +364,6 @@
       </div>
     </div>
 
-    <h3>Notiz — nur intern (DC-43)</h3>
-    <div class="a3-notecard" data-dc="43">
-      <label for="internalNote"><b>Interne Notiz</b></label>
-      <span class="a3-cap" id="internalNoteHelp">Nur intern · synchronisiert in die CRM-Projektkarte · in Kundenprofilen vollständig ausgeblendet.</span>
-      <textarea id="internalNote" aria-describedby="internalNoteHelp" oninput="noteInput()"></textarea>
-      <span class="a3-chip-src" id="noteChip" data-dc="1"><span class="a3-dot" style="background:var(--color-border-default)"></span><span id="noteChipTxt">→ CRM · noch keine Änderungen</span></span>
-    </div>
-
     <h3>Sprache (DC-45) — DE · EN heute, vorbereitet für FR · IT · ES</h3>
     <div class="a3-demo-panel" data-dc="45" style="max-width:560px">
       <div class="a3-seg" role="group" aria-label="Sprache">
@@ -777,9 +769,9 @@
           <span class="a3-form-disabled-reason" id="spec-owner-reason">Nicht änderbar · Berechtigung «Opportunity bearbeiten» fehlt.</span>
         </div>
         <div class="a3-form-field">
-          <label for="spec-note">Interne Notiz</label>
-          <textarea class="a3-textarea-field" id="spec-note" rows="3" aria-describedby="spec-note-helper">Gebäudeklasse beim nächsten Termin bestätigen.</textarea>
-          <div class="a3-textarea-meta"><span class="a3-form-helper" id="spec-note-helper">Nicht in Kundenausgaben sichtbar.</span><span class="a3-textarea-counter">55 von 500 Zeichen</span></div>
+          <label for="spec-note">Begründung der Entscheidung</label>
+          <textarea class="a3-textarea-field" id="spec-note" rows="3" aria-describedby="spec-note-helper">Wert aus der Flächenberechnung Rev C übernommen, Beschreibung ist älter.</textarea>
+          <div class="a3-textarea-meta"><span class="a3-form-helper" id="spec-note-helper">Wird mit Zeitpunkt und Person im Ereignisprotokoll gespeichert.</span><span class="a3-textarea-counter">71 von 500 Zeichen</span></div>
         </div>
       </section>
 
@@ -1176,15 +1168,6 @@ function setLang(l){
   document.getElementById('lgSum').textContent=(l==='en'?'≈ €'+nf.format(3818000):'≈ '+nf.format(3818000)+' €');
   document.getElementById('lgCap').textContent=d.cap(d);
   document.getElementById('lgBtn').textContent=d.btn;
-}
-
-/* Notiz (DC-43) */
-var noteT=null;
-function noteInput(){
-  var c=document.getElementById('noteChip'),t=document.getElementById('noteChipTxt');
-  c.querySelector('.a3-dot').style.background='var(--color-dataviz-category-1)';t.textContent='→ CRM · wird synchronisiert …';
-  clearTimeout(noteT);
-  noteT=setTimeout(function(){c.querySelector('.a3-dot').style.background='var(--color-dataviz-category-2)';t.textContent='✓ in CRM-Projektkarte synchronisiert'},900);
 }
 
 /* Ergänzte Kern-Spezimen */

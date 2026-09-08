@@ -421,6 +421,14 @@
      заменить геометрию отдельным ADR. */
   --size-text-underline-offset: 3px;
   --size-status-accent-width: 3px;
+  /* PROVISIONAL (rule 2, B1 project-truth): the source viewer's frame keeps
+     ONE height in every state — loaded, unavailable, analysis-failed — so a
+     missing file cannot collapse the region and make «missing» and «nothing
+     to inspect» render identically. 420 px shows a whole A4 page at the
+     width the register's detail region gives it, and it is the same number
+     at 1440 and 1280 because the frame's width, not its height, is what
+     narrows. Owner may accept it or replace the geometry by ADR. */
+  --size-source-viewer-height: 420px;
   --size-status-accent-width-prominent: 6px; /* PROVISIONAL (rule 2, VR2-08): double the status-accent border weight, for the ONE full-card "completion moment" surface (Delivered) — same status colour as --size-status-accent-width, never used as a second competing accent elsewhere. */
   --size-control-inset: 6px;
   --size-material-pattern-step: 7px;

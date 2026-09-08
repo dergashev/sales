@@ -1,0 +1,853 @@
+{
+  "$comment": "DEMO / NON-PRODUCTION. Twelve synthetic German construction-project documents for the demo project DEMO-COMPLEX-01 (Leipzig, three buildings), authored internally by All3 from the values in src/fixtures/vr3-demo-projects.json. No client material, no externally licensed content, no real organisation other than the fixture's invented client. Approved for internal Product work, test fixtures and clearly labelled client-demo environments; NEVER a tender, contract or valuation basis. Every page carries a visible DEMO marking. Generated file - do not hand-edit: change the generator and re-run it.",
+  "generator": "tools/build_leipzig_documents.py",
+  "project": {
+    "id": "DEMO-COMPLEX-01",
+    "name": "Quartier Am Güterbogen",
+    "city": "Leipzig",
+    "buildingIds": [
+      "B-BLDG-A",
+      "B-BLDG-B",
+      "B-BLDG-C"
+    ]
+  },
+  "documents": [
+    {
+      "id": "LEI-DOC-01",
+      "file": "leipzig/01_Projektbeschreibung_Quartier_RevB.pdf",
+      "title": "Projektbeschreibung Quartier Am Güterbogen",
+      "documentType": "projectDescription",
+      "revision": "Rev B",
+      "pages": 6,
+      "issuedAt": "2026-03-24",
+      "origin": "internal synthetic",
+      "author": "All3 · Produktteam Sales Platform 2.0 (synthetisch erzeugt)",
+      "createdAt": "2026-09-08",
+      "approvedClientDemoUse": true,
+      "licence": "in-house - All3 owns the asset. Synthetic demonstration material, authored internally from the demo fixture. Approved use: internal Product work, implementation, test fixtures and clearly labelled client-demo environments. Never a tender, contract or valuation basis; no external publication without legal and brand approval.",
+      "intendedUse": "evidence-source",
+      "demoFixture": true,
+      "projectLevel": true,
+      "buildingIds": [
+        "B-BLDG-A",
+        "B-BLDG-B",
+        "B-BLDG-C"
+      ],
+      "planNumber": "AGB-PB-001",
+      "source": "authored by All3 for the Leipzig demo fixture; every figure is read at build time from src/fixtures/vr3-demo-projects.json (DEMO-COMPLEX-01)",
+      "sourceService": "inhouse-generator",
+      "sourceUrl": "tools/build_leipzig_documents.py",
+      "retrievedAt": "2026-09-08",
+      "sha256": "f19562b0625917afb74f795dbf3f90392267e0efbf573f765e0e345bece572ed",
+      "bytes": 23968,
+      "anchors": [
+        {
+          "id": "LEI-DOC-01-A01",
+          "page": 3,
+          "labelDe": "Gebäudekennungen und Zuordnung der drei Häuser",
+          "labelEn": "Building identifiers and assignment of the three buildings"
+        },
+        {
+          "id": "LEI-DOC-01-A02",
+          "page": 3,
+          "labelDe": "Nutzungsverteilung je Gebäude",
+          "labelEn": "Use distribution per building"
+        },
+        {
+          "id": "LEI-DOC-01-A03",
+          "page": 4,
+          "labelDe": "Prioritätenreihenfolge des Auftraggebers",
+          "labelEn": "Client priority order"
+        },
+        {
+          "id": "LEI-DOC-01-A04",
+          "page": 5,
+          "labelDe": "Zieltermine Baubeginn und Gesamtfertigstellung",
+          "labelEn": "Target dates for construction start and overall completion"
+        },
+        {
+          "id": "LEI-DOC-01-A05",
+          "page": 6,
+          "labelDe": "Offene Punkte und getroffene Annahmen",
+          "labelEn": "Open points and the assumptions taken"
+        }
+      ]
+    },
+    {
+      "id": "LEI-DOC-02",
+      "file": "leipzig/02_Lageplan_RevC.pdf",
+      "title": "Lageplan und Erschließungskonzept",
+      "documentType": "sitePlan",
+      "revision": "Rev C",
+      "pages": 2,
+      "issuedAt": "2026-04-08",
+      "origin": "internal synthetic",
+      "author": "All3 · Produktteam Sales Platform 2.0 (synthetisch erzeugt)",
+      "createdAt": "2026-09-08",
+      "approvedClientDemoUse": true,
+      "licence": "in-house - All3 owns the asset. Synthetic demonstration material, authored internally from the demo fixture. Approved use: internal Product work, implementation, test fixtures and clearly labelled client-demo environments. Never a tender, contract or valuation basis; no external publication without legal and brand approval.",
+      "intendedUse": "evidence-source",
+      "demoFixture": true,
+      "projectLevel": true,
+      "buildingIds": [
+        "B-BLDG-A",
+        "B-BLDG-B",
+        "B-BLDG-C"
+      ],
+      "planNumber": "AGB-LP-002",
+      "source": "authored by All3 for the Leipzig demo fixture; every figure is read at build time from src/fixtures/vr3-demo-projects.json (DEMO-COMPLEX-01)",
+      "sourceService": "inhouse-generator",
+      "sourceUrl": "tools/build_leipzig_documents.py",
+      "retrievedAt": "2026-09-08",
+      "sha256": "ec718e28cbff09cc55479c69e8c4510e9e2cc243baf8b37ea390907e9702db3a",
+      "bytes": 16189,
+      "anchors": [
+        {
+          "id": "LEI-DOC-02-A01",
+          "page": 1,
+          "labelDe": "Grundstücksfläche: kein bestätigter Wert",
+          "labelEn": "Site area: no confirmed value available"
+        },
+        {
+          "id": "LEI-DOC-02-A02",
+          "page": 1,
+          "labelDe": "Gebäudekennungen und Lage im Baufeld",
+          "labelEn": "Building identifiers and position in the site"
+        },
+        {
+          "id": "LEI-DOC-02-A03",
+          "page": 2,
+          "labelDe": "Zufahrt und äußere Erschließung",
+          "labelEn": "Access and external site connection"
+        },
+        {
+          "id": "LEI-DOC-02-A04",
+          "page": 2,
+          "labelDe": "Baustelleneinrichtung und Logistikflächen",
+          "labelEn": "Site setup and logistics areas"
+        }
+      ]
+    },
+    {
+      "id": "LEI-DOC-03",
+      "file": "leipzig/03_Grundrisse_Kontorhaus_RevB.pdf",
+      "title": "Grundrisse Kontorhaus (B-BLDG-A)",
+      "documentType": "floorPlans",
+      "revision": "Rev B",
+      "pages": 8,
+      "issuedAt": "2026-05-12",
+      "origin": "internal synthetic",
+      "author": "All3 · Produktteam Sales Platform 2.0 (synthetisch erzeugt)",
+      "createdAt": "2026-09-08",
+      "approvedClientDemoUse": true,
+      "licence": "in-house - All3 owns the asset. Synthetic demonstration material, authored internally from the demo fixture. Approved use: internal Product work, implementation, test fixtures and clearly labelled client-demo environments. Never a tender, contract or valuation basis; no external publication without legal and brand approval.",
+      "intendedUse": "evidence-source",
+      "demoFixture": true,
+      "projectLevel": false,
+      "buildingIds": [
+        "B-BLDG-A"
+      ],
+      "planNumber": "AGB-A-GR-003",
+      "source": "authored by All3 for the Leipzig demo fixture; every figure is read at build time from src/fixtures/vr3-demo-projects.json (DEMO-COMPLEX-01)",
+      "sourceService": "inhouse-generator",
+      "sourceUrl": "tools/build_leipzig_documents.py",
+      "retrievedAt": "2026-09-08",
+      "sha256": "70afa969c45c70d0ed11ed97490695cc9e5770fa5ca5672c417c42cbc7d59dc5",
+      "bytes": 28396,
+      "anchors": [
+        {
+          "id": "LEI-DOC-03-A01",
+          "page": 1,
+          "labelDe": "Geschossigkeit Kontorhaus",
+          "labelEn": "Kontorhaus storey configuration"
+        },
+        {
+          "id": "LEI-DOC-03-A02",
+          "page": 1,
+          "labelDe": "Kontorhaus ohne Untergeschoss",
+          "labelEn": "Kontorhaus without basement"
+        },
+        {
+          "id": "LEI-DOC-03-A03",
+          "page": 7,
+          "labelDe": "BGF R+S oberirdisch Kontorhaus",
+          "labelEn": "Above-grade BGF R+S for the Kontorhaus"
+        },
+        {
+          "id": "LEI-DOC-03-A04",
+          "page": 7,
+          "labelDe": "Aufteilung der BGF in Bereich R und Bereich S",
+          "labelEn": "Split of BGF into region R and region S"
+        },
+        {
+          "id": "LEI-DOC-03-A05",
+          "page": 7,
+          "labelDe": "NUF nach DIN 277 Kontorhaus",
+          "labelEn": "NUF per DIN 277 for the Kontorhaus"
+        },
+        {
+          "id": "LEI-DOC-03-A06",
+          "page": 8,
+          "labelDe": "Arbeitsplätze je Geschoss und Zielbelegung",
+          "labelEn": "Workplaces per storey and target occupancy"
+        }
+      ]
+    },
+    {
+      "id": "LEI-DOC-04",
+      "file": "leipzig/04_Grundrisse_Hofhaus_RevB.pdf",
+      "title": "Grundrisse Hofhaus (B-BLDG-B)",
+      "documentType": "floorPlans",
+      "revision": "Rev B",
+      "pages": 10,
+      "issuedAt": "2026-05-12",
+      "origin": "internal synthetic",
+      "author": "All3 · Produktteam Sales Platform 2.0 (synthetisch erzeugt)",
+      "createdAt": "2026-09-08",
+      "approvedClientDemoUse": true,
+      "licence": "in-house - All3 owns the asset. Synthetic demonstration material, authored internally from the demo fixture. Approved use: internal Product work, implementation, test fixtures and clearly labelled client-demo environments. Never a tender, contract or valuation basis; no external publication without legal and brand approval.",
+      "intendedUse": "evidence-source",
+      "demoFixture": true,
+      "projectLevel": false,
+      "buildingIds": [
+        "B-BLDG-B"
+      ],
+      "planNumber": "AGB-B-GR-004",
+      "source": "authored by All3 for the Leipzig demo fixture; every figure is read at build time from src/fixtures/vr3-demo-projects.json (DEMO-COMPLEX-01)",
+      "sourceService": "inhouse-generator",
+      "sourceUrl": "tools/build_leipzig_documents.py",
+      "retrievedAt": "2026-09-08",
+      "sha256": "4cebb1a7608fdd772dc891f3f589f8fa215a242763cf1c0c3cdbd4ba62143429",
+      "bytes": 31964,
+      "anchors": [
+        {
+          "id": "LEI-DOC-04-A01",
+          "page": 1,
+          "labelDe": "Geschossigkeit Hofhaus",
+          "labelEn": "Hofhaus storey configuration"
+        },
+        {
+          "id": "LEI-DOC-04-A02",
+          "page": 1,
+          "labelDe": "Vollflächiges Untergeschoss Hofhaus",
+          "labelEn": "Hofhaus full-footprint basement"
+        },
+        {
+          "id": "LEI-DOC-04-A03",
+          "page": 2,
+          "labelDe": "BGF R+S unterirdisch Hofhaus",
+          "labelEn": "Below-grade BGF R+S for the Hofhaus"
+        },
+        {
+          "id": "LEI-DOC-04-A04",
+          "page": 2,
+          "labelDe": "Stellplätze im Untergeschoss Hofhaus",
+          "labelEn": "Parking spaces in the Hofhaus basement"
+        },
+        {
+          "id": "LEI-DOC-04-A05",
+          "page": 8,
+          "labelDe": "Wohneinheiten und Wohnungsschlüssel Hofhaus",
+          "labelEn": "Residential units and unit mix for the Hofhaus"
+        },
+        {
+          "id": "LEI-DOC-04-A06",
+          "page": 9,
+          "labelDe": "BGF R+S oberirdisch Hofhaus",
+          "labelEn": "Above-grade BGF R+S for the Hofhaus"
+        },
+        {
+          "id": "LEI-DOC-04-A07",
+          "page": 9,
+          "labelDe": "Wohnfläche nach WoFlV Hofhaus",
+          "labelEn": "Living area per WoFlV for the Hofhaus"
+        }
+      ]
+    },
+    {
+      "id": "LEI-DOC-05",
+      "file": "leipzig/05_Grundrisse_Stadthaus_RevC.pdf",
+      "title": "Grundrisse Stadthaus (B-BLDG-C)",
+      "documentType": "floorPlans",
+      "revision": "Rev C",
+      "pages": 10,
+      "issuedAt": "2026-06-03",
+      "origin": "internal synthetic",
+      "author": "All3 · Produktteam Sales Platform 2.0 (synthetisch erzeugt)",
+      "createdAt": "2026-09-08",
+      "approvedClientDemoUse": true,
+      "licence": "in-house - All3 owns the asset. Synthetic demonstration material, authored internally from the demo fixture. Approved use: internal Product work, implementation, test fixtures and clearly labelled client-demo environments. Never a tender, contract or valuation basis; no external publication without legal and brand approval.",
+      "intendedUse": "evidence-source",
+      "demoFixture": true,
+      "projectLevel": false,
+      "buildingIds": [
+        "B-BLDG-C"
+      ],
+      "planNumber": "AGB-C-GR-005",
+      "source": "authored by All3 for the Leipzig demo fixture; every figure is read at build time from src/fixtures/vr3-demo-projects.json (DEMO-COMPLEX-01)",
+      "sourceService": "inhouse-generator",
+      "sourceUrl": "tools/build_leipzig_documents.py",
+      "retrievedAt": "2026-09-08",
+      "sha256": "b37de233147663e60c9d152e6c3e9c916eaaedbd64dc4dc89d6d4fb45b1aaf6c",
+      "bytes": 32464,
+      "anchors": [
+        {
+          "id": "LEI-DOC-05-A01",
+          "page": 1,
+          "labelDe": "Geschossigkeit Stadthaus",
+          "labelEn": "Stadthaus storey configuration"
+        },
+        {
+          "id": "LEI-DOC-05-A02",
+          "page": 1,
+          "labelDe": "Umfang des Teil-Untergeschosses Stadthaus",
+          "labelEn": "Extent of the partial basement in the Stadthaus"
+        },
+        {
+          "id": "LEI-DOC-05-A03",
+          "page": 2,
+          "labelDe": "BGF R+S unterirdisch Stadthaus",
+          "labelEn": "Below-grade BGF R+S for the Stadthaus"
+        },
+        {
+          "id": "LEI-DOC-05-A04",
+          "page": 2,
+          "labelDe": "Stellplätze im Teil-Untergeschoss Stadthaus",
+          "labelEn": "Parking spaces in the Stadthaus partial basement"
+        },
+        {
+          "id": "LEI-DOC-05-A05",
+          "page": 3,
+          "labelDe": "Gewerbefläche NUF im Erdgeschoss Stadthaus",
+          "labelEn": "Commercial NUF on the Stadthaus ground floor"
+        },
+        {
+          "id": "LEI-DOC-05-A06",
+          "page": 9,
+          "labelDe": "BGF R+S oberirdisch Stadthaus",
+          "labelEn": "Above-grade BGF R+S for the Stadthaus"
+        },
+        {
+          "id": "LEI-DOC-05-A07",
+          "page": 9,
+          "labelDe": "Wohnfläche nach WoFlV Stadthaus",
+          "labelEn": "Living area per WoFlV for the Stadthaus"
+        },
+        {
+          "id": "LEI-DOC-05-A08",
+          "page": 10,
+          "labelDe": "Wohneinheiten und Wohnungsschlüssel Stadthaus",
+          "labelEn": "Residential units and unit mix for the Stadthaus"
+        }
+      ]
+    },
+    {
+      "id": "LEI-DOC-06",
+      "file": "leipzig/06_Schnitte_und_Ansichten_RevB.pdf",
+      "title": "Schnitte und Ansichten Quartier",
+      "documentType": "sectionElevation",
+      "revision": "Rev B",
+      "pages": 6,
+      "issuedAt": "2026-06-17",
+      "origin": "internal synthetic",
+      "author": "All3 · Produktteam Sales Platform 2.0 (synthetisch erzeugt)",
+      "createdAt": "2026-09-08",
+      "approvedClientDemoUse": true,
+      "licence": "in-house - All3 owns the asset. Synthetic demonstration material, authored internally from the demo fixture. Approved use: internal Product work, implementation, test fixtures and clearly labelled client-demo environments. Never a tender, contract or valuation basis; no external publication without legal and brand approval.",
+      "intendedUse": "evidence-source",
+      "demoFixture": true,
+      "projectLevel": false,
+      "buildingIds": [
+        "B-BLDG-A",
+        "B-BLDG-B",
+        "B-BLDG-C"
+      ],
+      "planNumber": "AGB-SA-006",
+      "source": "authored by All3 for the Leipzig demo fixture; every figure is read at build time from src/fixtures/vr3-demo-projects.json (DEMO-COMPLEX-01)",
+      "sourceService": "inhouse-generator",
+      "sourceUrl": "tools/build_leipzig_documents.py",
+      "retrievedAt": "2026-09-08",
+      "sha256": "f76bd59a8b6301eb7ace647220abebcb3a2cd6891032a3c9437b6d16e6453316",
+      "bytes": 24389,
+      "anchors": [
+        {
+          "id": "LEI-DOC-06-A01",
+          "page": 1,
+          "labelDe": "Geschosshöhen und Gebäudehöhen der drei Häuser",
+          "labelEn": "Storey and building heights of the three buildings"
+        },
+        {
+          "id": "LEI-DOC-06-A02",
+          "page": 4,
+          "labelDe": "Umfang der Unterbauung im Schnitt Stadthaus",
+          "labelEn": "Extent of the basement shown in the Stadthaus section"
+        },
+        {
+          "id": "LEI-DOC-06-A03",
+          "page": 5,
+          "labelDe": "Fassadenaufbau und Materialität je Haus",
+          "labelEn": "Facade build-up and materials per building"
+        },
+        {
+          "id": "LEI-DOC-06-A04",
+          "page": 6,
+          "labelDe": "Dachaufbau, Begrünung und Aufbauten",
+          "labelEn": "Roof build-up, greening and rooftop plant"
+        }
+      ]
+    },
+    {
+      "id": "LEI-DOC-07",
+      "file": "leipzig/07_Flaechenberechnung_DIN277_WoFlV_RevC.pdf",
+      "title": "Flächenberechnung nach DIN 277 und WoFlV",
+      "documentType": "areaSchedule",
+      "revision": "Rev C",
+      "pages": 8,
+      "issuedAt": "2026-07-22",
+      "origin": "internal synthetic",
+      "author": "All3 · Produktteam Sales Platform 2.0 (synthetisch erzeugt)",
+      "createdAt": "2026-09-08",
+      "approvedClientDemoUse": true,
+      "licence": "in-house - All3 owns the asset. Synthetic demonstration material, authored internally from the demo fixture. Approved use: internal Product work, implementation, test fixtures and clearly labelled client-demo environments. Never a tender, contract or valuation basis; no external publication without legal and brand approval.",
+      "intendedUse": "evidence-source",
+      "demoFixture": true,
+      "projectLevel": true,
+      "buildingIds": [
+        "B-BLDG-A",
+        "B-BLDG-B",
+        "B-BLDG-C"
+      ],
+      "planNumber": "AGB-FB-007",
+      "source": "authored by All3 for the Leipzig demo fixture; every figure is read at build time from src/fixtures/vr3-demo-projects.json (DEMO-COMPLEX-01)",
+      "sourceService": "inhouse-generator",
+      "sourceUrl": "tools/build_leipzig_documents.py",
+      "retrievedAt": "2026-09-08",
+      "sha256": "8a6d78d9a8e03f7c7bf97e614e0754e3ffbfb494ebe3d4ab889981a9f21ffe74",
+      "bytes": 28020,
+      "anchors": [
+        {
+          "id": "LEI-DOC-07-A01",
+          "page": 3,
+          "labelDe": "BGF R+S gesamt Kontorhaus",
+          "labelEn": "Total BGF R+S for the Kontorhaus"
+        },
+        {
+          "id": "LEI-DOC-07-A02",
+          "page": 4,
+          "labelDe": "BGF R+S gesamt Hofhaus",
+          "labelEn": "Total BGF R+S for the Hofhaus"
+        },
+        {
+          "id": "LEI-DOC-07-A03",
+          "page": 5,
+          "labelDe": "BGF R+S gesamt Stadthaus",
+          "labelEn": "Total BGF R+S for the Stadthaus"
+        },
+        {
+          "id": "LEI-DOC-07-A04",
+          "page": 6,
+          "labelDe": "Summe BGF R+S oberirdisch Projekt",
+          "labelEn": "Project sum of above-grade BGF R+S"
+        },
+        {
+          "id": "LEI-DOC-07-A05",
+          "page": 6,
+          "labelDe": "Summe BGF R+S unterirdisch Projekt",
+          "labelEn": "Project sum of below-grade BGF R+S"
+        },
+        {
+          "id": "LEI-DOC-07-A06",
+          "page": 6,
+          "labelDe": "Summe BGF R+S gesamt Projekt",
+          "labelEn": "Project total BGF R+S"
+        },
+        {
+          "id": "LEI-DOC-07-A07",
+          "page": 7,
+          "labelDe": "Summe Wohnfläche nach WoFlV Projekt",
+          "labelEn": "Project sum of living area per WoFlV"
+        },
+        {
+          "id": "LEI-DOC-07-A08",
+          "page": 7,
+          "labelDe": "Summe NUF nach DIN 277 Projekt",
+          "labelEn": "Project sum of NUF per DIN 277"
+        },
+        {
+          "id": "LEI-DOC-07-A09",
+          "page": 7,
+          "labelDe": "Summe Gewerbefläche NUF Projekt",
+          "labelEn": "Project sum of commercial NUF"
+        },
+        {
+          "id": "LEI-DOC-07-A10",
+          "page": 8,
+          "labelDe": "Grundstücksfläche ohne bestätigten Wert",
+          "labelEn": "Site area without a confirmed value"
+        }
+      ]
+    },
+    {
+      "id": "LEI-DOC-08",
+      "file": "leipzig/08_Baubeschreibung_RevB.pdf",
+      "title": "Baubeschreibung Quartier Am Güterbogen",
+      "documentType": "buildingDescription",
+      "revision": "Rev B",
+      "pages": 12,
+      "issuedAt": "2026-07-08",
+      "origin": "internal synthetic",
+      "author": "All3 · Produktteam Sales Platform 2.0 (synthetisch erzeugt)",
+      "createdAt": "2026-09-08",
+      "approvedClientDemoUse": true,
+      "licence": "in-house - All3 owns the asset. Synthetic demonstration material, authored internally from the demo fixture. Approved use: internal Product work, implementation, test fixtures and clearly labelled client-demo environments. Never a tender, contract or valuation basis; no external publication without legal and brand approval.",
+      "intendedUse": "evidence-source",
+      "demoFixture": true,
+      "projectLevel": true,
+      "buildingIds": [
+        "B-BLDG-A",
+        "B-BLDG-B",
+        "B-BLDG-C"
+      ],
+      "planNumber": "AGB-BB-008",
+      "source": "authored by All3 for the Leipzig demo fixture; every figure is read at build time from src/fixtures/vr3-demo-projects.json (DEMO-COMPLEX-01)",
+      "sourceService": "inhouse-generator",
+      "sourceUrl": "tools/build_leipzig_documents.py",
+      "retrievedAt": "2026-09-08",
+      "sha256": "74fadaf2e1e16896e798175c31246da4726eac7fc8de1bb81c9e6d043b09f78f",
+      "bytes": 35506,
+      "anchors": [
+        {
+          "id": "LEI-DOC-08-A01",
+          "page": 2,
+          "labelDe": "Konstruktionssystem der drei Gebäude",
+          "labelEn": "Structural system of the three buildings"
+        },
+        {
+          "id": "LEI-DOC-08-A02",
+          "page": 4,
+          "labelDe": "Materialien und Güten des Holzbaus",
+          "labelEn": "Timber materials and strength grades"
+        },
+        {
+          "id": "LEI-DOC-08-A03",
+          "page": 6,
+          "labelDe": "Aufbau der Gebäudehülle und Fassadenmaterial",
+          "labelEn": "Envelope build-up and facade material"
+        },
+        {
+          "id": "LEI-DOC-08-A04",
+          "page": 9,
+          "labelDe": "Brandschutzanforderungen und Gebäudeklasse",
+          "labelEn": "Fire protection requirements and building class"
+        },
+        {
+          "id": "LEI-DOC-08-A05",
+          "page": 10,
+          "labelDe": "Schallschutzanforderungen je Bauteil",
+          "labelEn": "Acoustic requirements per building element"
+        },
+        {
+          "id": "LEI-DOC-08-A06",
+          "page": 11,
+          "labelDe": "Ausbaustandard nach Nutzungsart",
+          "labelEn": "Fit-out standard by type of use"
+        }
+      ]
+    },
+    {
+      "id": "LEI-DOC-09",
+      "file": "leipzig/09_TGA_Anforderungen_RevC.pdf",
+      "title": "TGA-Anforderungen Quartier Am Güterbogen",
+      "documentType": "technicalConcept",
+      "revision": "Rev C",
+      "pages": 10,
+      "issuedAt": "2026-08-19",
+      "origin": "internal synthetic",
+      "author": "All3 · Produktteam Sales Platform 2.0 (synthetisch erzeugt)",
+      "createdAt": "2026-09-08",
+      "approvedClientDemoUse": true,
+      "licence": "in-house - All3 owns the asset. Synthetic demonstration material, authored internally from the demo fixture. Approved use: internal Product work, implementation, test fixtures and clearly labelled client-demo environments. Never a tender, contract or valuation basis; no external publication without legal and brand approval.",
+      "intendedUse": "evidence-source",
+      "demoFixture": true,
+      "projectLevel": true,
+      "buildingIds": [
+        "B-BLDG-A",
+        "B-BLDG-B",
+        "B-BLDG-C"
+      ],
+      "planNumber": "AGB-TGA-009",
+      "source": "authored by All3 for the Leipzig demo fixture; every figure is read at build time from src/fixtures/vr3-demo-projects.json (DEMO-COMPLEX-01)",
+      "sourceService": "inhouse-generator",
+      "sourceUrl": "tools/build_leipzig_documents.py",
+      "retrievedAt": "2026-09-08",
+      "sha256": "83b3dc759e6009abf6a89a01e22917e3051e170ecf49b7d30b89c24edc1340db",
+      "bytes": 31869,
+      "anchors": [
+        {
+          "id": "LEI-DOC-09-A01",
+          "page": 2,
+          "labelDe": "Fernwärme-Hausanschluss und Übergabegrenze",
+          "labelEn": "District heating connection and handover boundary"
+        },
+        {
+          "id": "LEI-DOC-09-A02",
+          "page": 3,
+          "labelDe": "Wärmeverteilung und Übergabestationen je Einheit",
+          "labelEn": "Heat distribution and per-unit transfer stations"
+        },
+        {
+          "id": "LEI-DOC-09-A03",
+          "page": 5,
+          "labelDe": "Lüftungsanforderung Gewerbe im Erdgeschoss",
+          "labelEn": "Ventilation requirement for the commercial ground floor"
+        },
+        {
+          "id": "LEI-DOC-09-A04",
+          "page": 6,
+          "labelDe": "Trinkwasser, Abwasser und Trinkwasserhygiene",
+          "labelEn": "Domestic water, drainage and water hygiene"
+        },
+        {
+          "id": "LEI-DOC-09-A05",
+          "page": 7,
+          "labelDe": "Ladeinfrastruktur: Anzahl und Mengenautorität",
+          "labelEn": "Charging infrastructure: quantity and quantity authority"
+        },
+        {
+          "id": "LEI-DOC-09-A06",
+          "page": 8,
+          "labelDe": "Verantwortung und Beantragung der Hausanschlüsse",
+          "labelEn": "Responsibility and application for house connections"
+        },
+        {
+          "id": "LEI-DOC-09-A07",
+          "page": 9,
+          "labelDe": "Messkonzept, Zählung und Gebäudeautomation",
+          "labelEn": "Metering concept and building automation"
+        },
+        {
+          "id": "LEI-DOC-09-A08",
+          "page": 10,
+          "labelDe": "Telekommunikationsschnittstelle ist offen",
+          "labelEn": "Telecommunications interface remains open"
+        }
+      ]
+    },
+    {
+      "id": "LEI-DOC-10",
+      "file": "leipzig/10_Schnittstellen_Hausanschluesse_RevB.pdf",
+      "title": "Schnittstellen und Hausanschlüsse",
+      "documentType": "interfaces",
+      "revision": "Rev B",
+      "pages": 5,
+      "issuedAt": "2026-08-05",
+      "origin": "internal synthetic",
+      "author": "All3 · Produktteam Sales Platform 2.0 (synthetisch erzeugt)",
+      "createdAt": "2026-09-08",
+      "approvedClientDemoUse": true,
+      "licence": "in-house - All3 owns the asset. Synthetic demonstration material, authored internally from the demo fixture. Approved use: internal Product work, implementation, test fixtures and clearly labelled client-demo environments. Never a tender, contract or valuation basis; no external publication without legal and brand approval.",
+      "intendedUse": "evidence-source",
+      "demoFixture": true,
+      "projectLevel": true,
+      "buildingIds": [
+        "B-BLDG-A",
+        "B-BLDG-B",
+        "B-BLDG-C"
+      ],
+      "planNumber": "AGB-SS-010",
+      "source": "authored by All3 for the Leipzig demo fixture; every figure is read at build time from src/fixtures/vr3-demo-projects.json (DEMO-COMPLEX-01)",
+      "sourceService": "inhouse-generator",
+      "sourceUrl": "tools/build_leipzig_documents.py",
+      "retrievedAt": "2026-09-08",
+      "sha256": "5500fe5c305d4ec6854e403a61266ac8e1bd0a8a21b7712f99ff71d6fa5a8fc4",
+      "bytes": 21632,
+      "anchors": [
+        {
+          "id": "LEI-DOC-10-A01",
+          "page": 1,
+          "labelDe": "Verantwortungsmatrix der Medien",
+          "labelEn": "Responsibility matrix for the utilities"
+        },
+        {
+          "id": "LEI-DOC-10-A02",
+          "page": 2,
+          "labelDe": "Übergabepunkt Fernwärme im Hofhaus",
+          "labelEn": "District heating handover point in the Hofhaus"
+        },
+        {
+          "id": "LEI-DOC-10-A03",
+          "page": 3,
+          "labelDe": "Übergabepunkte Strom je Gebäude",
+          "labelEn": "Electricity handover points per building"
+        },
+        {
+          "id": "LEI-DOC-10-A04",
+          "page": 4,
+          "labelDe": "Übergabepunkte Wasser und Abwasser",
+          "labelEn": "Water and drainage handover points"
+        },
+        {
+          "id": "LEI-DOC-10-A05",
+          "page": 5,
+          "labelDe": "Konflikt der Telekommunikationsschnittstelle",
+          "labelEn": "Conflict in the telecommunications interface"
+        }
+      ]
+    },
+    {
+      "id": "LEI-DOC-11",
+      "file": "leipzig/11_Terminrahmen_RevB.pdf",
+      "title": "Terminrahmen Quartier Am Güterbogen",
+      "documentType": "schedule",
+      "revision": "Rev B",
+      "pages": 4,
+      "issuedAt": "2026-08-26",
+      "origin": "internal synthetic",
+      "author": "All3 · Produktteam Sales Platform 2.0 (synthetisch erzeugt)",
+      "createdAt": "2026-09-08",
+      "approvedClientDemoUse": true,
+      "licence": "in-house - All3 owns the asset. Synthetic demonstration material, authored internally from the demo fixture. Approved use: internal Product work, implementation, test fixtures and clearly labelled client-demo environments. Never a tender, contract or valuation basis; no external publication without legal and brand approval.",
+      "intendedUse": "evidence-source",
+      "demoFixture": true,
+      "projectLevel": true,
+      "buildingIds": [
+        "B-BLDG-A",
+        "B-BLDG-B",
+        "B-BLDG-C"
+      ],
+      "planNumber": "AGB-TR-011",
+      "source": "authored by All3 for the Leipzig demo fixture; every figure is read at build time from src/fixtures/vr3-demo-projects.json (DEMO-COMPLEX-01)",
+      "sourceService": "inhouse-generator",
+      "sourceUrl": "tools/build_leipzig_documents.py",
+      "retrievedAt": "2026-09-08",
+      "sha256": "f92cc47603784952e1e06c4de3a2103ea87845abfdee8f74aaee78e6e051e203",
+      "bytes": 19612,
+      "anchors": [
+        {
+          "id": "LEI-DOC-11-A01",
+          "page": 1,
+          "labelDe": "Zieltermin Baubeginn",
+          "labelEn": "Target date for construction start"
+        },
+        {
+          "id": "LEI-DOC-11-A02",
+          "page": 1,
+          "labelDe": "Zieltermin Gesamtfertigstellung",
+          "labelEn": "Target date for overall completion"
+        },
+        {
+          "id": "LEI-DOC-11-A03",
+          "page": 2,
+          "labelDe": "Phasen des Terminrahmens",
+          "labelEn": "Phases of the schedule frame"
+        },
+        {
+          "id": "LEI-DOC-11-A04",
+          "page": 3,
+          "labelDe": "Abhängigkeiten und Vorläufe der Phasen",
+          "labelEn": "Phase dependencies and declared overlaps"
+        },
+        {
+          "id": "LEI-DOC-11-A05",
+          "page": 4,
+          "labelDe": "Offene Frage B-Q-08 zur Übergabeform",
+          "labelEn": "Open question B-Q-08 on the handover form"
+        }
+      ]
+    },
+    {
+      "id": "LEI-DOC-12",
+      "file": "leipzig/12_Planungsanforderungen_und_Freigaben_RevB.pdf",
+      "title": "Planungsanforderungen und Freigaben",
+      "documentType": "planningRequirements",
+      "revision": "Rev B",
+      "pages": 6,
+      "issuedAt": "2026-09-02",
+      "origin": "internal synthetic",
+      "author": "All3 · Produktteam Sales Platform 2.0 (synthetisch erzeugt)",
+      "createdAt": "2026-09-08",
+      "approvedClientDemoUse": true,
+      "licence": "in-house - All3 owns the asset. Synthetic demonstration material, authored internally from the demo fixture. Approved use: internal Product work, implementation, test fixtures and clearly labelled client-demo environments. Never a tender, contract or valuation basis; no external publication without legal and brand approval.",
+      "intendedUse": "evidence-source",
+      "demoFixture": true,
+      "projectLevel": true,
+      "buildingIds": [
+        "B-BLDG-A",
+        "B-BLDG-B",
+        "B-BLDG-C"
+      ],
+      "planNumber": "AGB-PA-012",
+      "source": "authored by All3 for the Leipzig demo fixture; every figure is read at build time from src/fixtures/vr3-demo-projects.json (DEMO-COMPLEX-01)",
+      "sourceService": "inhouse-generator",
+      "sourceUrl": "tools/build_leipzig_documents.py",
+      "retrievedAt": "2026-09-08",
+      "sha256": "9edadbf2cf6856d3a3e6ae033c5ec32518e753e07e6c990152c0caa32e59040c",
+      "bytes": 23763,
+      "anchors": [
+        {
+          "id": "LEI-DOC-12-A01",
+          "page": 1,
+          "labelDe": "Gestaltungsvorgaben des Auftraggebers",
+          "labelEn": "Client design requirements"
+        },
+        {
+          "id": "LEI-DOC-12-A02",
+          "page": 2,
+          "labelDe": "Leistungsphasen und geforderter Planungsstand",
+          "labelEn": "Design stages and required design status"
+        },
+        {
+          "id": "LEI-DOC-12-A03",
+          "page": 3,
+          "labelDe": "Energetischer Standard GEG und Effizienzhaus",
+          "labelEn": "Energy standard per GEG and Effizienzhaus level"
+        },
+        {
+          "id": "LEI-DOC-12-A04",
+          "page": 4,
+          "labelDe": "QNG-Absicht für die Wohnhäuser",
+          "labelEn": "QNG intent for the residential buildings"
+        },
+        {
+          "id": "LEI-DOC-12-A05",
+          "page": 5,
+          "labelDe": "DGNB-Absicht für das Kontorhaus",
+          "labelEn": "DGNB intent for the Kontorhaus"
+        },
+        {
+          "id": "LEI-DOC-12-A06",
+          "page": 6,
+          "labelDe": "Freigabeprozess und Entscheidungswege",
+          "labelEn": "Approval process and decision paths"
+        }
+      ]
+    }
+  ],
+  "duplicates": [
+    {
+      "id": "LEI-DOC-13",
+      "duplicateOf": "LEI-DOC-03",
+      "file": "leipzig/03_Grundrisse_Kontorhaus_RevB.pdf",
+      "uploadName": "Grundrisse Kontorhaus (1).pdf",
+      "receivedAt": "2026-05-19",
+      "sha256": "70afa969c45c70d0ed11ed97490695cc9e5770fa5ca5672c417c42cbc7d59dc5",
+      "bytes": 28396,
+      "pages": 8,
+      "origin": "internal synthetic",
+      "author": "All3 · Produktteam Sales Platform 2.0 (synthetisch erzeugt)",
+      "createdAt": "2026-09-08",
+      "approvedClientDemoUse": true,
+      "licence": "in-house - All3 owns the asset. Synthetic demonstration material, authored internally from the demo fixture. Approved use: internal Product work, implementation, test fixtures and clearly labelled client-demo environments. Never a tender, contract or valuation basis; no external publication without legal and brand approval.",
+      "demoFixture": true
+    }
+  ],
+  "anchorCount": 74,
+  "tgaDownstreamAnchors": [
+    "LEI-DOC-09-A01",
+    "LEI-DOC-09-A03",
+    "LEI-DOC-09-A05",
+    "LEI-DOC-09-A06",
+    "LEI-DOC-09-A07",
+    "LEI-DOC-09-A08"
+  ]
+}

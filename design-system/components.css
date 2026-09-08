@@ -47,10 +47,10 @@
    sheet padding = 96 px), and the page's own horizontal rhythm already comes
    from the screen's own padding, not from the sheet. Vertical padding is left
    untouched: it is the sheet's internal top/bottom breathing room, unrelated
-   to left-edge alignment. `.a3-notecard` keeps its own narrower geometry
-   (intentionally preserved, different content role — README/CLAUDE.md rule
-   on Interne Notiz) so it is excluded here. */
-.a3-page .a3-sheet:not(.a3-notecard){padding-left:0;padding-right:0}
+   to left-edge alignment. The rule used to exempt one sheet variant with a
+   narrower geometry of its own; that capability is gone, so the exemption
+   went with it rather than staying as a selector nobody could explain. */
+.a3-page .a3-sheet{padding-left:0;padding-right:0}
 /* F06/F33 · every chapter body is laid out through a `grid gap-*` column
    (S3Konfigurator's per-chapter wrapper), making each `.a3-sheet` a CSS
    grid item. Grid items default to `min-width:auto` (content-based
@@ -1332,15 +1332,13 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-driver-table .a3-drv.a3-sum>*{border-bottom:none;border-top:var(--border-contrast-1px);font-weight:700}
 .a3-bmark{border-left:var(--border-width-strong) solid var(--color-text-primary);background:var(--color-surface-subtle);padding:var(--space-3) var(--space-4);font-size:var(--type-small-size);line-height:var(--type-small-line);margin-bottom:var(--space-4)}
 
-/* DC-41 / DC-43 · EmailComposer / InternalNote. Structure: .a3-mailcard >
-   .a3-mailrow > .a3-lb + value; .a3-notecard > label + textarea + actions.
-   Classes: .a3-mailcard · .a3-notecard · .a3-mailrow · .a3-lb. */
-.a3-mailcard,.a3-notecard{border:var(--border-default);background:var(--color-surface-default);padding:var(--space-4);max-width:var(--measure-panel);display:flex;flex-direction:column;gap:var(--space-3)}
+/* DC-41 · EmailComposer. Structure: .a3-mailcard > .a3-mailrow > .a3-lb +
+   value.
+   Classes: .a3-mailcard · .a3-mailrow · .a3-lb. */
+.a3-mailcard{border:var(--border-default);background:var(--color-surface-default);padding:var(--space-4);max-width:var(--measure-panel);display:flex;flex-direction:column;gap:var(--space-3)}
 .a3-mailrow{display:flex;gap:var(--space-3);align-items:baseline;flex-wrap:wrap;font-size:var(--type-small-size)}
 .a3-mailrow .a3-lb{min-width:var(--space-8);color:var(--color-text-secondary);flex:none}
 .a3-mailrow input{border:var(--border-default);font:inherit;font-size:var(--type-small-size);padding:var(--space-2) var(--space-3);flex:1;min-width:var(--measure-form-control)}
-.a3-notecard textarea{border:var(--border-default);font:inherit;font-size:var(--type-body-size);line-height:var(--type-body-line);padding:var(--space-3);resize:vertical;min-height:var(--space-8)}
-.a3-notecard textarea::placeholder{color:var(--color-text-secondary)}
 
 /* DC-14 · GuidedTourStep. Structure: .a3-tour-stage > .a3-tour-cutout +
    .a3-tour-card[role=dialog] > content + .a3-tour-actions.
@@ -2736,14 +2734,13 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    Classes: .a3-project-shell · .a3-project-context ·
    .a3-project-context-media · .a3-project-context-identity ·
    .a3-project-context-name · .a3-project-context-meta ·
-   .a3-project-context-utilities · .a3-project-main. */
+   .a3-project-main. */
 .a3-project-shell{display:flex;flex-direction:column;align-items:stretch;min-height:100%;min-width:0;padding-inline:var(--space-6)}
 .a3-project-context{display:flex;align-items:center;gap:var(--space-4);inline-size:100%;max-inline-size:var(--measure-workspace);margin-inline:auto;padding-block:var(--space-1);border-bottom:var(--border-hairline);min-width:0}
 .a3-project-context-media{flex:none;display:block;inline-size:56px}
 .a3-project-context-identity{display:grid;gap:var(--space-1);min-width:0}
 .a3-project-context-name{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-bold);overflow-wrap:break-word}
 .a3-project-context-meta{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word}
-.a3-project-context-utilities{margin-inline-start:auto;display:flex;flex-wrap:wrap;gap:var(--space-2)}
 .a3-project-main{display:grid;gap:var(--space-3);align-content:start;padding-block:var(--space-3) var(--space-7);min-width:0;inline-size:100%;max-inline-size:var(--measure-workspace);margin-inline:auto}
 .a3-project-stage-head{outline:0;min-width:0}
 .a3-project-stage-continue{display:flex;flex-wrap:wrap;gap:var(--space-3)}
@@ -2789,7 +2786,6 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    .a3-ready-fact-value · .a3-ready-fact-route · .a3-ready-disclosure ·
    .a3-ready-disclosure-glyph · .a3-ready-details · .a3-ready-details-grid ·
    .a3-ready-details-col · .a3-ready-details-title · .a3-ready-details-route ·
-   .a3-ready-evidence · .a3-ready-evidence-name · .a3-ready-evidence-hint ·
    .a3-ready-review. */
 .a3-ready{display:grid;gap:var(--space-5);align-content:start;min-width:0}
 .a3-ready-primary{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--gutter-workspace);align-items:start;min-width:0}
@@ -2809,15 +2805,94 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-ready-disclosure{display:inline-flex;align-items:center;gap:var(--space-2);justify-self:start;background:var(--color-surface-default);border:var(--border-contrast-1px);padding:var(--space-3) var(--space-4);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
 .a3-ready-disclosure-glyph{font-size:var(--type-caption-size);line-height:1}
 .a3-ready-details{min-width:0}
-.a3-ready-details-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--gutter-workspace);align-items:start;min-width:0}
+.a3-ready-details-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--gutter-workspace);align-items:start;min-width:0}
 .a3-ready-details-col{display:grid;gap:var(--space-3);align-content:start;min-width:0}
 .a3-ready-details-title{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
 .a3-ready-details-route{justify-self:start;background:transparent;border:var(--border-contrast-1px);padding:var(--space-2) var(--space-4);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary)}
-.a3-ready-evidence{display:grid;gap:var(--space-2);min-width:0}
-.a3-ready-evidence-name{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
-.a3-ready-evidence-hint{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
 /* The restored review band. It exists only where its own predicate does. */
 .a3-ready-review{display:grid;gap:var(--space-3);min-width:0}
+
+/* PROJECT UNDERSTANDING · the four evidence groups. Structure:
+   .a3-evgroups > .a3-evgroups-head + .a3-evgroups-grid > .a3-evgroup ·
+   .a3-evgroup > .a3-evgroup-head + (.a3-evlist | .a3-evgroup-empty) +
+   .a3-evgroup-disclosure + .a3-evlist.a3-evlist-disclosed ·
+   .a3-evitem > .a3-evitem-label + .a3-evitem-body.
+   Product-specific composition of canonical primitives: the value envelope
+   is `AuthorityTrace`, the attention marker is `SemanticStatus`; nothing
+   here is a new system capability.
+
+   TWO COLUMNS at 1440 and 1280 alike, not four: four groups side by side
+   would give each ~330 px, and a requirement sentence with its source,
+   authority and downstream line does not read in 330 px. Two columns of
+   ~660 px carry a full sentence on one or two lines at both widths, and the
+   grid is the SAME composition rather than a squeezed one — the second row
+   simply starts lower.
+
+   Classes: .a3-evgroups · .a3-evgroups-head · .a3-evgroups-title ·
+   .a3-evgroups-lede · .a3-evgroups-grid · .a3-evgroup · .a3-evgroup-head ·
+   .a3-evgroup-title · .a3-evgroup-count · .a3-evgroup-empty ·
+   .a3-evgroup-disclosure · .a3-evgroup-disclosure-glyph · .a3-evlist ·
+   .a3-evlist-disclosed · .a3-evitem · .a3-evitem-label ·
+   .a3-evitem-applies · .a3-evitem-body · .a3-evitem-requirement ·
+   .a3-evitem-conflict · .a3-evitem-meta · .a3-evitem-source ·
+   .a3-evitem-nosource · .a3-evitem-downstream. */
+.a3-evgroups{display:grid;gap:var(--space-4);min-width:0}
+.a3-evgroups-head{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:var(--space-2) var(--space-4);min-width:0}
+.a3-evgroups-title{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-evgroups-lede{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);max-width:60ch}
+.a3-evgroups-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--gutter-workspace);align-items:start;min-width:0}
+.a3-evgroup{display:grid;gap:var(--space-2);align-content:start;min-width:0;border-top:var(--border-contrast-1px);padding-top:var(--space-3)}
+.a3-evgroup-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-3);flex-wrap:wrap;min-width:0}
+.a3-evgroup-title{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-evgroup-count{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);flex:none}
+.a3-evgroup-empty{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);max-width:52ch}
+.a3-evgroup-disclosure{display:inline-flex;align-items:center;gap:var(--space-2);justify-self:start;background:transparent;border:0;padding:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary);text-decoration:underline;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset)}
+.a3-evgroup-disclosure-glyph{font-size:var(--type-caption-size);line-height:1;text-decoration:none}
+.a3-evlist{margin:0;display:grid;gap:0;min-width:0}
+/* The disclosed rest is INSET, so «the rest of this group» reads as part of
+   the group rather than as a second list beside it. */
+.a3-evlist-disclosed{border-left:var(--border-hairline);padding-left:var(--space-3)}
+.a3-evitem{display:grid;gap:var(--space-1);padding:var(--space-3) 0;border-bottom:var(--border-hairline);min-width:0}
+/* Attention is a RULE plus the item's own words and glyph, never colour on
+   its own (rule 8): the `SemanticStatus` inside the value envelope already
+   says what is wrong, and this only makes the row findable while scanning. */
+.a3-evitem[data-attention]{border-left:var(--size-status-accent-width) solid var(--color-status-warning);padding-left:var(--space-3)}
+.a3-evitem-label{display:grid;gap:0;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+/* Applicability is a BLOCK element, so the line never depends on markup
+   whitespace to separate it from the label (rule 37). */
+.a3-evitem-applies{display:block;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-regular);color:var(--color-text-secondary)}
+.a3-evitem-body{margin:0;display:grid;gap:var(--space-2);min-width:0}
+.a3-evitem-requirement{font-weight:var(--font-weight-medium)}
+.a3-evitem-conflict{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary);max-width:56ch}
+.a3-evitem-meta{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3);min-width:0}
+.a3-evitem-source{background:transparent;border:0;padding:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary);text-decoration:underline;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset)}
+.a3-evitem-nosource{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-evitem-downstream{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+
+/* DOCUMENT SOURCE VIEWER · the document's own file, with the facts in the
+   chrome rather than in the picture. Structure:
+   .a3-docsrc > .a3-docsrc-identity + .a3-docsrc-frame + .a3-docsrc-provenance.
+
+   The frame has a FIXED height in both states, so a missing file does not
+   collapse the region into nothing — «missing» and «nothing to inspect» must
+   not render identically.
+
+   Classes: .a3-docsrc · .a3-docsrc-identity · .a3-docsrc-file ·
+   .a3-docsrc-meta · .a3-docsrc-position · .a3-docsrc-anchor ·
+   .a3-docsrc-frame · .a3-docsrc-embed · .a3-docsrc-reason ·
+   .a3-docsrc-recovery · .a3-docsrc-provenance. */
+.a3-docsrc{display:grid;gap:var(--space-3);min-width:0}
+.a3-docsrc-identity{display:grid;gap:0;min-width:0}
+.a3-docsrc-file{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:anywhere}
+.a3-docsrc-meta{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
+.a3-docsrc-position{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary);font-variant-numeric:tabular-nums}
+.a3-docsrc-anchor{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary);overflow-wrap:break-word}
+.a3-docsrc-frame{display:grid;gap:var(--space-3);align-content:center;justify-items:start;min-height:var(--size-source-viewer-height);border:var(--border-default);background:var(--color-surface-subtle);padding:var(--space-3);min-width:0}
+.a3-docsrc-frame:not([data-empty]){padding:0;align-content:stretch;justify-items:stretch}
+.a3-docsrc-embed{display:block;width:100%;height:var(--size-source-viewer-height);border:0}
+.a3-docsrc-reason{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary);max-width:56ch}
+.a3-docsrc-recovery{display:flex;flex-wrap:wrap;gap:var(--space-2) var(--space-3)}
+.a3-docsrc-provenance{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
 
 /* Project verification card — the recognised building, promoted from y 1835
    to the first viewport. Structure: .a3-verify > .a3-verify-media +
@@ -4030,7 +4105,9 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    .a3-pf-value-note · .a3-pf-actions · .a3-pf-note · .a3-pf-aside ·
    .a3-pf-deadline · .a3-pf-deadline-label · .a3-pf-deadline-value ·
    .a3-pf-deadline-clock · .a3-pf-deadline-cue · .a3-pf-dates ·
-   .a3-pf-date. */
+   .a3-pf-date · .a3-pf-aside-meta · .a3-pf-links · .a3-pf-links-legend ·
+   .a3-pf-links-row ·
+   .a3-pf-link · .a3-pf-links-notice. */
 
 /* HEAD — one full-width band. `.a3-portfolio-head` keeps its two-column
    baseline layout; what changed is that the second column is now the live
@@ -4198,6 +4275,28 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-pf-date dt{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
 .a3-pf-date dd{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary);text-align:right;font-variant-numeric:tabular-nums}
 
+/* CRM CROSS-REFERENCES — `Project in HubSpot` · `Project in Mission Control`.
+   Tertiary metadata, not actions: they sit in the aside's bottom band, below
+   the record dates, and use the canonical `ghost` Button. They are STACKED
+   rather than laid side by side because `Projekt in Mission Control` is 27
+   characters and the aside is 232 px at 1440 and 200 px at 1280 — a two-up
+   row would break the label mid-word at both widths. Stacked, each label
+   wraps at its own space and the 44 px pointer/focus zones (`.a3-btn::before`,
+   44 px tall and centred) cannot overlap at any gap.
+   The two overrides on `.a3-pf-link` are ALIGNMENT ONLY — a cross-reference
+   reads from the same left edge as the label above it. Colour, type, weight,
+   focus ring and hit zone all stay the canonical ghost's. */
+.a3-pf-aside-meta{min-width:0;display:grid;gap:var(--space-3)}
+.a3-pf-links{min-width:0;display:grid;gap:var(--space-2)}
+.a3-pf-links-legend{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-medium);letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-secondary)}
+.a3-pf-links-row{display:grid;gap:var(--space-1);min-width:0;justify-items:stretch}
+.a3-pf-link{justify-content:flex-start;text-align:left;padding-left:0;padding-right:0}
+/* RESERVED SLOT: one caption line of height whether or not it has words, so
+   pressing a metadata button never reflows the register — the reservation
+   rule the delta chip lives by, applied one card down. */
+.a3-pf-links-notice{min-height:var(--type-caption-line);min-width:0}
+.a3-pf-links-notice p{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
+
 /* 1280 is recomposed, not squeezed: media and aside narrow to 200 px, the
    filter grid drops to two columns with the status set full-width beneath
    it, and the metric strip keeps ALL FOUR columns because the body is still
@@ -4212,6 +4311,13 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 @media (max-width:1300px){
   .a3-pf-panel-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .a3-pf-panel-grid>.a3-pf-status{grid-column:1 / -1}
+}
+/* 1280: the evidence groups keep TWO columns — at ~600 px each a
+   requirement sentence still reads on one or two lines — but the head band
+   stacks, because a title and a 60ch lede on one baseline would push the
+   lede to three lines in the remaining width. */
+@media (max-width:1365px){
+  .a3-evgroups-head{display:grid;gap:var(--space-1)}
 }
 
 /* ══════════════════════════════════════════════════════════════════════

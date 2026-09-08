@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useStore } from '../state/store'
+import { projectBaselineChangesSinceConfirmation, useStore } from '../state/store'
 import {
   ANY,
   DEFAULT_PORTFOLIO_QUERY,
-  LIFECYCLE_STATUSES,
   PORTFOLIO_PROJECTS,
   PORTFOLIO_SORTS,
   activeFilterCount,
@@ -15,19 +14,26 @@ import {
   encodePortfolioQuery,
   invalidatedCity,
   latestPresentableSnapshot,
-  lifecycleStatusKey,
-  lifecycleStatusTone,
   managerOptions,
   portfolioPage,
   portfolioTitle,
   portfolioValue,
+  resolveProjectLifecycles,
   selectPortfolio,
   type DeadlineState,
   type PortfolioAggregate,
   type PortfolioProject,
   type PortfolioQuery,
+  type PortfolioRow,
   type PortfolioSort,
 } from '../state/projectPortfolio'
+import {
+  LIFECYCLE_STATUSES,
+  lifecycleStatusKey,
+  lifecycleStatusTone,
+  loadedOptionFacts,
+  type LifecycleStatus,
+} from '../state/projectLifecycle'
 import { Button } from '../components/primitives'
 import { Combobox } from '../components/controls'
 import { FormField, SelectField } from '../components/designSystem'
@@ -199,8 +205,37 @@ export function OpportunityList({
   const countries = useMemo(() => countryOptions(projects), [projects])
   const cities = useMemo(() => cityOptions(projects, query.country), [projects, query.country])
   const managers = useMemo(() => managerOptions(projects), [projects])
+
+  /**
+   * RESOLVE the lifecycle, then filter, then sort, then slice.
+   *
+   * This is the one place a status is produced, and everything below reads
+   * the rows it returns — the cards, the status filter's results and the
+   * count sentence. The register cannot show a status its filter would
+   * disagree with, because there is no second value to disagree with.
+   *
+   * The Option facts are the OPEN project's only (`loadedOptionFacts`
+   * returns `null` when no project is open): per-project storage means no
+   * other project's Options are in memory, and the derivation treats an
+   * absent fact as absent rather than as satisfied.
+   */
+  const baselineChanges = projectBaselineChangesSinceConfirmation(s)
+  const rows = useMemo(() => resolveProjectLifecycles(projects, {
+    analyses: s.projectAnalyses,
+    readiness: s.projectReadiness,
+    options: loadedOptionFacts({
+      opportunityId: s.opportunityId,
+      savedOptionVersions: s.savedOptionVersions,
+      projectBaseline: s.projectBaseline,
+      baselineChangesSinceConfirmation: baselineChanges,
+    }),
+  }), [
+    projects, s.projectAnalyses, s.projectReadiness, s.opportunityId,
+    s.savedOptionVersions, s.projectBaseline, baselineChanges,
+  ])
+
   // Filter → sort the WHOLE result set → slice. Never the other way round.
-  const shown = useMemo(() => selectPortfolio(projects, query), [projects, query])
+  const shown = useMemo(() => selectPortfolio(rows, query), [rows, query])
   const page = portfolioPage(shown, query.page)
   const filtersActive = activeFilterCount(query)
   const total = projects.length
@@ -284,17 +319,25 @@ export function OpportunityList({
   const changeCountry = (country: string) => {
     const stale = invalidatedCity(projects, country, query.city)
     if (stale) {
-      setCityResetNotice(t('portfolio.filter.cityReset', {
+      const notice = t('portfolio.filter.cityReset', {
         city: stale,
         country: country === ANY ? t('portfolio.filter.any') : country,
-      }))
+      })
+      /* A live region only speaks when its content CHANGES. Two country
+         changes that invalidate the same city produce the same sentence, and
+         the second reset would have been silent — the announcement is the
+         only signal that a value the user can still see in the select has
+         just stopped applying. A trailing space makes the string new without
+         making it read differently, the same device the CRM placeholders use
+         for a repeated press. */
+      setCityResetNotice((prev) => (prev === notice ? `${notice} ` : notice))
     } else {
       setCityResetNotice('')
     }
     patch({ country, city: stale ? ANY : query.city })
   }
 
-  const toggleStatus = (status: (typeof LIFECYCLE_STATUSES)[number], checked: boolean) => {
+  const toggleStatus = (status: LifecycleStatus, checked: boolean) => {
     patch({
       statuses: checked
         ? [...query.statuses, status]
@@ -613,7 +656,7 @@ export function OpportunityList({
 function PortfolioCard({
   project, language, onOpen, onOpenClientView,
 }: {
-  project: PortfolioProject
+  project: PortfolioRow
   language: Locale
   /** `null` for a display-only record: there is nothing to open. */
   onOpen: (() => void) | null
@@ -836,18 +879,123 @@ function PortfolioCard({
             value right, 64 px → 32 px. No record is removed; two
             record-keeping dates simply stop outweighing the one fact that
             makes somebody act today. */}
-        <dl className="a3-pf-dates">
-          <div className="a3-pf-date">
-            <dt>{t('portfolio.card.created')}</dt>
-            <dd><time dateTime={project.createdAt}>{formatDate(project.createdAt, language)}</time></dd>
-          </div>
-          <div className="a3-pf-date">
-            <dt>{t('portfolio.card.updated')}</dt>
-            <dd><time dateTime={project.updatedAt}>{formatDate(project.updatedAt, language)}</time></dd>
-          </div>
-        </dl>
+        {/* ONE bottom band. The record dates and the CRM cross-references are
+            both record-keeping metadata and they read as one block, so the
+            aside still has exactly two children and `space-between` still
+            means "urgency at the top, bookkeeping at the bottom" — adding a
+            third child would have stranded the dates in mid-column. */}
+        <div className="a3-pf-aside-meta">
+          <dl className="a3-pf-dates">
+            <div className="a3-pf-date">
+              <dt>{t('portfolio.card.created')}</dt>
+              <dd><time dateTime={project.createdAt}>{formatDate(project.createdAt, language)}</time></dd>
+            </div>
+            <div className="a3-pf-date">
+              <dt>{t('portfolio.card.updated')}</dt>
+              <dd><time dateTime={project.updatedAt}>{formatDate(project.updatedAt, language)}</time></dd>
+            </div>
+          </dl>
+
+          <ProjectIntegrationLinks projectTitle={title} />
+        </div>
       </div>
     </>
+  )
+}
+
+/* ───────────────────── CRM placeholders on the card ─────────────────── */
+
+/** The systems a project is cross-referenced in. Closed set, one label each. */
+const INTEGRATION_TARGETS = [
+  { id: 'hubspot', labelKey: 'portfolio.card.integrations.hubspot' },
+  { id: 'missionControl', labelKey: 'portfolio.card.integrations.missionControl' },
+] as const
+
+/**
+ * `Project in HubSpot` and `Project in Mission Control` — the two CRM
+ * cross-references the register was asked for.
+ *
+ * They are DELIBERATELY inert, and inert in a way a reader can tell apart
+ * from broken. Three properties make that true:
+ *
+ * 1. **They are real, enabled controls.** A disabled button would say "this
+ *    project is not in HubSpot", which is a claim about the data. The truth
+ *    is about the ENVIRONMENT — no integration is connected in a
+ *    demonstration — so the control works, and what it returns is that
+ *    sentence.
+ * 2. **They write nothing.** No navigation, no history entry, no URL change,
+ *    no store write, no journal event. The acknowledgement is component
+ *    state that expires; nothing about the project or its Option can be
+ *    different afterwards. That is the whole reason this is a placeholder
+ *    and not a stub of an integration.
+ * 3. **The acknowledgement has a reserved slot.** It appears in space the
+ *    card already paid for, so pressing a metadata button never reflows the
+ *    register — the same reservation rule the delta chip lives by.
+ *
+ * Tertiary weight comes from the canonical `ghost` Button variant, which
+ * also carries the 44 px pointer and focus target. No local button.
+ */
+function ProjectIntegrationLinks({ projectTitle }: { projectTitle: string }) {
+  const t = useT()
+  const { reduced, fadeOnly } = useSemanticMotion()
+  const [acknowledged, setAcknowledged] = useState<string>('')
+
+  // The acknowledgement is transient by construction: it expires, and the
+  // timer is cleared on unmount so a card that leaves the page (a filter, a
+  // page change) cannot set state after it is gone.
+  useEffect(() => {
+    if (acknowledged === '') return
+    const timer = window.setTimeout(() => setAcknowledged(''), 6000)
+    return () => window.clearTimeout(timer)
+  }, [acknowledged])
+
+  const notice = t('portfolio.card.integrations.notConnected')
+
+  return (
+    <div className="a3-pf-links" role="group" aria-label={t('portfolio.card.integrations.legend')}>
+      <p className="a3-pf-links-legend">{t('portfolio.card.integrations.legend')}</p>
+      <div className="a3-pf-links-row">
+        {INTEGRATION_TARGETS.map((target) => {
+          const label = t(target.labelKey)
+          return (
+            <Button
+              key={target.id}
+              variant="ghost"
+              className="a3-pf-link"
+              aria-label={t('portfolio.card.actionOn', { action: label, name: projectTitle })}
+              /* Re-pressing the same button must re-announce. Restating the
+                 sentence on an unchanged string would be silent in a live
+                 region, so the target id makes each press a new value while
+                 the SENTENCE stays the one string above. */
+              onClick={() => setAcknowledged(
+                acknowledged === target.id ? `${target.id} ` : target.id,
+              )}
+            >
+              {label}
+            </Button>
+          )
+        })}
+      </div>
+      {/* Reserved slot: present in the layout whether or not it has words. */}
+      <div className="a3-pf-links-notice">
+        <AnimatePresence initial={false}>
+          {acknowledged !== '' && (
+            <motion.p
+              key={acknowledged}
+              variants={reduced ? undefined : fadeOnly}
+              initial={reduced ? false : 'hidden'}
+              animate={reduced ? undefined : 'visible'}
+              exit={reduced ? undefined : 'hidden'}
+            >
+              {notice}
+            </motion.p>
+          )}
+        </AnimatePresence>
+      </div>
+      <p className="sr-only" role="status" aria-live="polite">
+        {acknowledged !== '' ? notice : ''}
+      </p>
+    </div>
   )
 }
 

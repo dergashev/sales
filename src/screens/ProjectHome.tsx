@@ -33,6 +33,18 @@ import {
   type ProjectAnalysis,
 } from '../state/projectAnalysis'
 import {
+  EVIDENCE_GROUPS,
+  downstreamRefKey,
+  evidenceAuthorityTrace,
+  evidenceCounts,
+  evidenceGroupKey,
+  evidenceGroupView,
+  evidenceSource,
+  needsAttention,
+  type EvidenceGroup,
+  type FixtureEvidenceItem,
+} from '../state/projectEvidence'
+import {
   ANY_TYPE,
   DEFAULT_DOCUMENTS_QUERY,
   DOCUMENTS_PAGE_SIZE,
@@ -47,7 +59,7 @@ import {
   type DocumentsQuery,
 } from '../state/projectDocumentsView'
 import { formatDE } from '../engine/money'
-import { localizeMoneyText, useT, useTx } from '../i18n'
+import { localizeMoneyText, useT } from '../i18n'
 import { Button } from '../components/primitives'
 import { Combobox, SegmentedControl } from '../components/controls'
 import { FormField, PageHeader, SectionSheet } from '../components/designSystem'
@@ -64,8 +76,9 @@ import { Pagination } from '../design-system/Pagination'
 import { ConflictResolver } from '../design-system/ConflictResolver'
 import { QuestionItem, QuestionQueue } from '../design-system/QuestionQueue'
 import { projectAsset } from '../assets/project-media'
+import { documentAnchor, documentAsset } from '../assets/document-media'
 import { useSemanticMotion } from '../design-system/motion'
-import { InternalNoteDialog, OptionsWorkspace } from './ProjectOptions'
+import { OptionsWorkspace } from './ProjectOptions'
 import { CreateOptionGate } from '../components/OptionCreation'
 import { S4Vergleich } from './S4Vergleich'
 
@@ -360,7 +373,19 @@ function DocumentsWorkspace({
   const t = useT()
   const { reduced, fadeRise, transition } = useSemanticMotion()
   const [query, patchQuery] = useDocumentsQuery()
-  const [openDetailId, setOpenDetailId] = useState<string | null>(null)
+  /**
+   * Which source viewer is OPEN — from the URL, not from component state.
+   *
+   * An id the project does not have is dropped HERE, the only layer that
+   * knows the register: a copied link naming a foreign document opens the
+   * plain register rather than an empty viewer.
+   */
+  const openDetailId = project.documents.some((d) => d.id === query.open)
+    ? query.open
+    : null
+  const setOpenDetailId = (next: string | null) => {
+    patchQuery({ open: next ?? '' })
+  }
   const [announcement, setAnnouncement] = useState('')
   const registerHeadingRef = useRef<HTMLHeadingElement>(null)
   const running = analysis.jobState === 'RUNNING' || analysis.jobState === 'PARTIAL_FAILURE'
@@ -609,6 +634,7 @@ function DocumentsWorkspace({
                     associationLabel={association(doc)}
                     openDetailId={openDetailId}
                     onToggleDetail={setOpenDetailId}
+                    citedAnchorId={query.open === doc.id ? (query.anchor || null) : null}
                     // M-01: the queue is ADMITTED in place, one canonical
                     // `fadeRise` per row with the bounded causal wave — never
                     // a stagger longer than the reveal itself, and nothing at
@@ -708,7 +734,7 @@ function AnalysisRail({
     <dl className="a3-docws-facts">
       <div className="a3-docws-fact">
         <dt>{t('vr3.documents.rail.result.values')}</dt>
-        <dd className="numeric">{project.analysis.valuesExtracted}</dd>
+        <dd className="numeric">{evidenceCounts(project).total}</dd>
       </div>
       <div className="a3-docws-fact">
         <dt>{t('vr3.documents.rail.result.buildings')}</dt>
@@ -790,7 +816,7 @@ function AnalysisRail({
 
 function DocumentRegisterRow({
   project, analysis, doc, rowState, associationLabel, openDetailId,
-  onToggleDetail, rowMotion,
+  onToggleDetail, citedAnchorId, rowMotion,
 }: {
   project: FixtureProject
   analysis: ProjectAnalysis
@@ -799,6 +825,12 @@ function DocumentRegisterRow({
   associationLabel: string
   openDetailId: string | null
   onToggleDetail: (id: string | null) => void
+  /**
+   * The anchor an evidence item cited to get here, or `null` when the row was
+   * simply inspected. It is what makes «opens its source document» true: the
+   * viewer names the clause and the page the citation pointed at.
+   */
+  citedAnchorId: string | null
   rowMotion?: Parameters<typeof DocumentRow>[0]['rowMotion']
 }) {
   const s = useStore()
@@ -807,7 +839,6 @@ function DocumentRegisterRow({
   const terminal = rowState === 'PROCESSED' || rowState === 'WARNING'
     || rowState === 'LOW_CONFIDENCE' || rowState === 'FAILED' || rowState === 'REMOVED'
   const lineage = documentLineage(project, doc.id)
-  const asset = doc.previewAssetId ? projectAsset(doc.previewAssetId) : null
   const active = activeDocumentId(project, analysis) === doc.id
   const open = openDetailId === doc.id
 
@@ -869,25 +900,11 @@ function DocumentRegisterRow({
       detailOpen={open}
       onToggleDetail={() => onToggleDetail(open ? null : doc.id)}
       detail={(
-        <>
-          <p className="a3-doc-detail-meta">
-            {t(`vr3.sourceAuthority.${doc.sourceAuthority}`)}
-            {' · '}
-            {doc.issuedAt}
-          </p>
-          {rowState === 'FAILED' ? (
-            <p className="a3-doc-detail-meta">{t('vr3.evidence.failedPreview')}</p>
-          ) : null}
-          <MediaFrame
-            ratio="tile"
-            state={rowState === 'FAILED' ? 'error' : asset ? 'loaded' : 'unavailable'}
-            src={asset?.url}
-            alt={asset ? t(asset.altKey) : undefined}
-            seed={doc.id}
-            sourceId={asset?.assetId}
-            caption={t('vr3.evidence.assetCaption', { label: doc.file })}
-          />
-        </>
+        <DocumentSourceViewer
+          doc={doc}
+          rowState={rowState}
+          citedAnchorId={citedAnchorId}
+        />
       )}
     />
   )
@@ -998,6 +1015,7 @@ function UnderstandingOverview({
   const t = useT()
   const num = useLocalNumber()
   const state = readiness(project, analysis)
+  const counts = evidenceCounts(project)
   const dist = project.terminalDistribution
 
   return (
@@ -1034,28 +1052,34 @@ function UnderstandingOverview({
           <p className="a3-understanding-copy">
             {t(project.analysis.understandingKey)}
             {' '}
-            {t('vr3.understanding.valuesExtracted', { count: project.analysis.valuesExtracted })}
-            {project.analysis.valuesRequiringAttention > 0
-              ? `; ${t('vr3.understanding.valuesAttention', { count: project.analysis.valuesRequiringAttention })}`
+            {t('vr3.understanding.valuesExtracted', { count: counts.total })}
+            {counts.requiringAttention > 0
+              ? `; ${t('vr3.understanding.valuesAttention', { count: counts.requiringAttention })}`
               : ''}
           </p>
           <dl className="a3-readiness-rows">
             <div className="a3-readiness-row">
               <dt className="a3-readiness-row-label">{t('vr3.understanding.row.sourceEvidence')}</dt>
               <dd className="a3-readiness-row-value">
-                {t('vr3.understanding.row.values', { count: project.analysis.sourceEvidencedValues })}
+                {t('vr3.understanding.row.values', { count: counts.sourceEvidenced })}
               </dd>
             </div>
             <div className="a3-readiness-row">
-              <dt className="a3-readiness-row-label">{t('vr3.understanding.row.aiInferred')}</dt>
+              <dt className="a3-readiness-row-label">{t('vr3.understanding.row.derived')}</dt>
               <dd className="a3-readiness-row-value">
-                {t('vr3.understanding.row.values', { count: project.analysis.aiInferredValues })}
+                {t('vr3.understanding.row.values', { count: counts.derived })}
               </dd>
             </div>
             <div className="a3-readiness-row">
               <dt className="a3-readiness-row-label">{t('vr3.understanding.row.manualConfirmed')}</dt>
               <dd className="a3-readiness-row-value">
-                {t('vr3.understanding.row.values', { count: project.analysis.manualOrConfirmedValues })}
+                {t('vr3.understanding.row.values', { count: counts.confirmed })}
+              </dd>
+            </div>
+            <div className="a3-readiness-row">
+              <dt className="a3-readiness-row-label">{t('vr3.understanding.row.overridden')}</dt>
+              <dd className="a3-readiness-row-value">
+                {t('vr3.understanding.row.values', { count: counts.overridden })}
               </dd>
             </div>
             <div className="a3-readiness-row">
@@ -1171,6 +1195,22 @@ function UnderstandingOverview({
           })}
         </ul>
       </SectionSheet>
+
+      {/* «Evidence detail» — the last beat of the reveal order this block
+          declares at the top, and the reason a reader opens Project
+          Understanding at all.
+
+          The four groups used to be mounted ONLY in `ReadyStage`, which made
+          them a REWARD for having resolved every conflict: on the complex
+          project — the one with six of them — the page that exists to
+          explain what was understood showed aggregate counts and nothing
+          else until the work was already finished. They are facts the
+          analysis produced, not a readiness state, and a contested item says
+          so on its own row (its `state`, and the competing value beside the
+          confirmed one). So they belong on BOTH presentations of this stage:
+          the reader sees the same four groups before and after the gate
+          opens, and watches the contested ones settle. */}
+      <EvidenceGroups project={project} />
     </div>
   )
 }
@@ -1584,6 +1624,15 @@ function ReadyStage({
         <ProjectVerification project={project} />
       </div>
 
+      {/* The four groups are the page's CONTENT, not a disclosure: the
+          reader came here to see what was understood. They sit directly after
+          the outcome band and BEFORE the disclosed analysis detail, for two
+          reasons that agree — «what do we know» reads before «how the run
+          went», and the heading order stays h1 → h2 → h3 down the page. Put
+          after the details region, this h2 followed the provenance column's
+          h3 and the document outline read backwards. */}
+      <EvidenceGroups project={project} />
+
       {/* Opens DOWNWARD: the outcome, the CTA and the building stay exactly
           where they were. Rule 20's grammar — fade + 8px rise in, fade out —
           and nothing else; `prefers-reduced-motion` zeroes both. */}
@@ -1605,7 +1654,6 @@ function ReadyStage({
           }}
         >
           <ReadyProvenance project={project} />
-          <ReadyEvidence project={project} />
         </motion.div>
       </div>
 
@@ -1886,7 +1934,7 @@ function ReadyFacts({
   const num = useLocalNumber()
   const state = readiness(project, analysis)
   const dist = project.terminalDistribution
-  const facts = project.analysis
+  const counts = evidenceCounts(project)
   const openCount = openQuestions(project, analysis).length
   const degraded = dist.warning + dist.lowConfidence + dist.failed
 
@@ -1919,11 +1967,11 @@ function ReadyFacts({
       <ReadyFact
         label={t('vr3.readiness.fact.values')}
         value={clean
-          ? t('vr3.readiness.fact.valuesClean', { count: facts.valuesExtracted })
+          ? t('vr3.readiness.fact.valuesClean', { count: counts.total })
           : t('vr3.readiness.fact.valuesReview', {
-            total: facts.valuesExtracted,
-            evidenced: facts.sourceEvidencedValues,
-            inferred: facts.aiInferredValues,
+            total: counts.total,
+            evidenced: counts.sourceEvidenced,
+            inferred: counts.derived,
           })}
       />
       <ReadyFact
@@ -2001,8 +2049,9 @@ function ReadyProvenance({ project }: { project: FixtureProject }) {
   const t = useT()
   const facts = project.analysis
   const dist = project.terminalDistribution
+  const counts = evidenceCounts(project)
   const proportion = (count: number) => t('vr3.readiness.details.proportion', {
-    count, total: facts.valuesExtracted,
+    count, total: counts.total,
   })
 
   return (
@@ -2010,20 +2059,27 @@ function ReadyProvenance({ project }: { project: FixtureProject }) {
       <h3 className="a3-ready-details-title">{t('vr3.understanding.understoodTitle')}</h3>
       <p className="a3-understanding-copy">{t(facts.understandingKey)}</p>
       <dl className="a3-readiness-rows">
-        {/* Three independent PROPORTIONS of the same total. Rendered as three
-            bare counts they read as a partition, and 42 + 0 + 42 does not sum
-            to 42. */}
+        {/* FOUR proportions that now genuinely partition one set. They used
+            to be three independent fixture literals, printed as `n von total`
+            precisely because they did NOT add up — 42 + 0 + 42 out of 42 on
+            the single-building project. They are derived from the evidence
+            register, so the partition is a property of the data rather than a
+            hope about it, and `reconcileEvidenceCounts` proves it. */}
         <div className="a3-readiness-row">
           <dt className="a3-readiness-row-label">{t('vr3.understanding.row.sourceEvidence')}</dt>
-          <dd className="a3-readiness-row-value">{proportion(facts.sourceEvidencedValues)}</dd>
+          <dd className="a3-readiness-row-value">{proportion(counts.sourceEvidenced)}</dd>
         </div>
         <div className="a3-readiness-row">
-          <dt className="a3-readiness-row-label">{t('vr3.understanding.row.aiInferred')}</dt>
-          <dd className="a3-readiness-row-value">{proportion(facts.aiInferredValues)}</dd>
+          <dt className="a3-readiness-row-label">{t('vr3.understanding.row.derived')}</dt>
+          <dd className="a3-readiness-row-value">{proportion(counts.derived)}</dd>
         </div>
         <div className="a3-readiness-row">
           <dt className="a3-readiness-row-label">{t('vr3.understanding.row.manualConfirmed')}</dt>
-          <dd className="a3-readiness-row-value">{proportion(facts.manualOrConfirmedValues)}</dd>
+          <dd className="a3-readiness-row-value">{proportion(counts.confirmed)}</dd>
+        </div>
+        <div className="a3-readiness-row">
+          <dt className="a3-readiness-row-label">{t('vr3.understanding.row.overridden')}</dt>
+          <dd className="a3-readiness-row-value">{proportion(counts.overridden)}</dd>
         </div>
         <div className="a3-readiness-row">
           <dt className="a3-readiness-row-label">
@@ -2053,77 +2109,422 @@ function ReadyProvenance({ project }: { project: FixtureProject }) {
 }
 
 
-/** Disclosed column 2 — every recognised value with its authority and source. */
-function ReadyEvidence({ project }: { project: FixtureProject }) {
+/* ─────────────────────────── the source viewer ───────────────────────── */
+
+/**
+ * A document's own source, in a viewer that stays a viewer in every state.
+ *
+ * What this replaces: a `MediaFrame` pointed at one of six schematic SVGs
+ * shared by thirty-six records. The audit's words were «It reads as a UI
+ * placeholder, not a Project PDF», and the deeper problem was that two
+ * different documents rendered the same picture — evidence that is
+ * interchangeable is not evidence.
+ *
+ * Three rules the states obey:
+ *
+ * 1. **The chrome carries the facts, never the picture.** Filename, type,
+ *    revision, issue date, `Seite n von m` and the cited clause are TEXT
+ *    outside the embedded page. A reader who cannot see the rendering — a
+ *    screen reader, a blocked plugin, a failed fetch — still gets the
+ *    document's identity and their position in it.
+ * 2. **Nothing collapses.** `unavailable` and `error` keep the viewer's box,
+ *    name the file, say why, and offer a way on. A detail region that
+ *    shrinks to nothing when a file is missing makes «missing» and «nothing
+ *    to inspect» look identical.
+ * 3. **A failed ANALYSIS is not a missing FILE.** A `FAILED` row means the
+ *    analysis could not read the document; the document itself may open
+ *    perfectly. The two reasons are stated separately because the recovery
+ *    is different — retry the analysis, versus regenerate the pack.
+ */
+function DocumentSourceViewer({
+  doc, rowState, citedAnchorId,
+}: {
+  doc: FixtureDocument
+  rowState: DocumentRowState
+  citedAnchorId: string | null
+}) {
+  const s = useStore()
   const t = useT()
-  const num = useLocalNumber()
-  return (
-    <div className="a3-ready-details-col">
-      <h3 className="a3-ready-details-title">{t('vr3.readiness.details.evidenceTitle')}</h3>
-      {project.buildings.map((building) => (
-        <div key={building.id} className="a3-ready-evidence">
-          <h4 className="a3-ready-evidence-name">{building.name}</h4>
-          <dl className="a3-readiness-rows">
-            <BuildingEvidenceRow
-              label={t('vr3.understanding.metric.bgf')}
-              value={num(building.metrics.bgfRSTotal)}
-              unit="m²"
-              authority={(building.authority.bgfRSTotal ?? 'derived') as InformationAuthority}
-            />
-            {building.metrics.wfl ? (
-              <BuildingEvidenceRow
-                label={t('vr3.understanding.metric.wfl')}
-                value={num(building.metrics.wfl)}
-                unit="m²"
-                authority={(building.authority.wfl ?? 'sourceEvidenced') as InformationAuthority}
-              />
-            ) : null}
-            {building.metrics.nuf ? (
-              <BuildingEvidenceRow
-                label={t('vr3.understanding.metric.nuf')}
-                value={num(building.metrics.nuf)}
-                unit="m²"
-                authority={(building.authority.nuf ?? 'sourceEvidenced') as InformationAuthority}
-              />
-            ) : null}
-            {building.metrics.units !== null ? (
-              <BuildingEvidenceRow
-                label={t('vr3.understanding.metric.units')}
-                value={num(building.metrics.units)}
-                authority={(building.authority.units ?? 'sourceEvidenced') as InformationAuthority}
-              />
-            ) : null}
-          </dl>
-          <p className="a3-building-evidence">
-            {t('vr3.understanding.buildingEvidence', {
-              files: building.evidenceDocIds
-                .map((id) => project.documents.find((d) => d.id === id)?.file ?? id)
-                .join(', '),
-            })}
+  const language = s.uiLanguage as 'de' | 'en'
+  /**
+   * `reloadKey` re-mounts the embed and nothing else. Retry here means «ask
+   * the browser for this file again», which is a different act from the
+   * analysis retry in the row's own actions — and conflating them would
+   * offer to re-run an analysis because a picture did not paint.
+   */
+  const [reloadKey, setReloadKey] = useState(0)
+  const asset = documentAsset(doc.id)
+  const anchor = citedAnchorId ? documentAnchor(doc.id, citedAnchorId) : null
+  const page = anchor?.page ?? 1
+  const pages = asset?.pages ?? doc.pages
+
+  const identity = (
+    <div className="a3-docsrc-identity">
+      <p className="a3-docsrc-file">{doc.file}</p>
+      <p className="a3-docsrc-meta">
+        {t(`vr3.docType.${doc.documentType}`)}
+        {' · '}
+        {doc.version}
+        {' · '}
+        {t(`vr3.sourceAuthority.${doc.sourceAuthority}`)}
+        {' · '}
+        {doc.issuedAt}
+      </p>
+      {/* Position in the document, as words. `Seite 4 von 12` is the fact a
+          reader needs to know where they are, and it must not depend on the
+          rendered page image being visible at all. */}
+      {pages !== null ? (
+        <p className="a3-docsrc-position">
+          {t('vr3.evidence.viewer.position', { page, pages })}
+        </p>
+      ) : null}
+      {anchor ? (
+        <p className="a3-docsrc-anchor">
+          {t('vr3.evidence.viewer.citedClause', {
+            label: language === 'en' ? anchor.labelEn : anchor.labelDe,
+            anchor: anchor.id,
+          })}
+        </p>
+      ) : null}
+    </div>
+  )
+
+  if (!asset) {
+    /**
+     * No authored file for this record. A schematic preview may still exist
+     * from the legacy image model — and it is shown, LABELLED as a schematic
+     * and not as the source. That distinction is the whole point: a
+     * schematic presented as the document is what let two unrelated records
+     * render the same picture and read as the same evidence.
+     */
+    const schematic = doc.previewAssetId ? projectAsset(doc.previewAssetId) : null
+    return (
+      <div className="a3-docsrc" data-state="unavailable">
+        {identity}
+        <div className="a3-docsrc-frame" data-empty>
+          <p className="a3-docsrc-reason">
+            {rowState === 'FAILED'
+              ? t('vr3.evidence.viewer.analysisFailed')
+              : t('vr3.evidence.viewer.unavailable')}
           </p>
+          {schematic ? (
+            <MediaFrame
+              ratio="tile"
+              state={rowState === 'FAILED' ? 'error' : 'loaded'}
+              src={schematic.url}
+              alt={t(schematic.altKey)}
+              seed={doc.id}
+              sourceId={schematic.assetId}
+              caption={t('vr3.evidence.viewer.schematicOnly')}
+            />
+          ) : null}
+          <div className="a3-docsrc-recovery">
+            <Button variant="secondary" onClick={() => setReloadKey((n) => n + 1)}>
+              {t('vr3.evidence.viewer.retry')}
+            </Button>
+            <Button variant="ghost" onClick={() => s.setProjectStage('understanding')}>
+              {t('vr3.evidence.viewer.back')}
+            </Button>
+          </div>
         </div>
-      ))}
-      <p className="a3-ready-evidence-hint">{t('vr3.readiness.details.sourceHint')}</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="a3-docsrc" data-state="loaded">
+      {identity}
+      {rowState === 'FAILED' ? (
+        /* The file opens; the ANALYSIS of it did not. Both facts, separately. */
+        <p className="a3-docsrc-reason">{t('vr3.evidence.viewer.analysisFailed')}</p>
+      ) : null}
+      <div className="a3-docsrc-frame">
+        {/* `<object>` rather than `<iframe>`: its children are the native
+            fallback when the browser will not render a PDF, so the offer of a
+            way on is part of the element instead of a second state somebody
+            has to detect. The fragment asks the viewer for the cited page. */}
+        <object
+          key={reloadKey}
+          className="a3-docsrc-embed"
+          type="application/pdf"
+          data={`${asset.url}#page=${page}`}
+          aria-label={t('vr3.evidence.viewer.embedLabel', {
+            file: doc.file, page, pages: asset.pages,
+          })}
+        >
+          <p className="a3-docsrc-reason">{t('vr3.evidence.viewer.noInlineViewer')}</p>
+        </object>
+      </div>
+      {/* Provenance, on the artefact itself: this is authored demonstration
+          material and must never be mistaken for a client's own document. */}
+      <p className="a3-docsrc-provenance">
+        {t('vr3.evidence.viewer.provenance', {
+          origin: asset.origin, author: asset.author,
+        })}
+      </p>
     </div>
   )
 }
 
-function BuildingEvidenceRow({
-  label, value, unit, authority,
-}: {
-  label: string
-  value: string
-  unit?: string
-  authority: InformationAuthority
-}) {
+/* ───────────────── the four evidence groups (requirement 7) ──────────── */
+
+/**
+ * What the analysis understood, in four groups a person can scan.
+ *
+ * This replaces a disclosed column that listed four metrics per building and
+ * ended with the sentence «every value opens its source document» — printed
+ * beside a filename in a `<span>`, with no route anywhere. The audit's
+ * finding was not that the column was ugly; it was that the page emphasised
+ * AGGREGATE COUNTS and gave the reader nothing that explains the KG 300 and
+ * KG 400 decisions waiting downstream.
+ *
+ * Four properties are structural, not stylistic:
+ *
+ * 1. **Two to four items per group, then disclosure.** The head is the
+ *    group's `primary` items, capped in `evidenceGroupView`, so a group that
+ *    grew cannot quietly become a register again. `Alle N anzeigen` opens the
+ *    REST inside the group — it never replaces the page.
+ * 2. **Every item carries its own authority AND its own state.** They are two
+ *    axes: a confirmed value that newer evidence contradicts is not an
+ *    ordinary source-evidenced one, and the canonical `AuthorityTrace` shows
+ *    the difference because the model keeps the fields apart.
+ * 3. **A citation is addressable.** The source control opens the document at
+ *    the cited page and anchor, through the URL, so it survives a reload and
+ *    Back undoes it. That is what makes the sentence the product already
+ *    printed true.
+ * 4. **Counts reconcile.** The band states `evidenceCounts().total` and each
+ *    heading states `visible / total`; the four group totals sum to it by
+ *    construction, and `reconcileEvidenceCounts` proves it.
+ */
+function EvidenceGroups({ project }: { project: FixtureProject }) {
+  const t = useT()
+  const headingId = useId()
+  const counts = evidenceCounts(project)
   return (
-    <div className="a3-readiness-row">
-      <dt className="a3-readiness-row-label">{label}</dt>
-      <dd className="a3-readiness-row-value">
-        <AuthorityTrace authority={authority}>
-          <span className="numeric">{value}</span>
-          {unit ? <span className="a3-mro-unit">{unit}</span> : null}
+    <section className="a3-evgroups" aria-labelledby={headingId}>
+      <div className="a3-evgroups-head">
+        <h2 id={headingId} className="a3-evgroups-title">
+          {t('vr3.evidence.title')}
+        </h2>
+        <p className="a3-evgroups-lede">
+          {t('vr3.evidence.lede', { count: counts.total })}
+        </p>
+      </div>
+      <div className="a3-evgroups-grid">
+        {EVIDENCE_GROUPS.map((group) => (
+          <EvidenceGroupPanel key={group} project={project} group={group} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function EvidenceGroupPanel({
+  project, group,
+}: {
+  project: FixtureProject
+  group: EvidenceGroup
+}) {
+  const t = useT()
+  const headingId = useId()
+  const listId = useId()
+  const [expanded, setExpanded] = useState(false)
+  const view = evidenceGroupView(project, group)
+
+  return (
+    <section className="a3-evgroup" aria-labelledby={headingId}>
+      <div className="a3-evgroup-head">
+        <h3 id={headingId} className="a3-evgroup-title">{t(evidenceGroupKey(group))}</h3>
+        {/* `visible / total` on the heading, so "why am I not seeing all of
+            them" is answered where the question arises rather than by the
+            disclosure control alone. */}
+        <p className="a3-evgroup-count numeric">
+          {t('vr3.evidence.groupCount', { visible: view.visibleCount, total: view.total })}
+        </p>
+      </div>
+      {view.attentionCount > 0 ? (
+        <SemanticStatus
+          tone="attention"
+          size="compact"
+          label={t('vr3.evidence.groupAttention', { count: view.attentionCount })}
+        />
+      ) : null}
+
+      {/* An empty group states that nothing of this kind was FOUND. It does
+          not disappear and it does not fabricate a default: a single
+          residential building with a brief and eight drawings genuinely has
+          no building-services requirement, and «absence is not a default
+          requirement» is the rule that makes that sentence necessary. */}
+      {view.total === 0 ? (
+        <p className="a3-evgroup-empty">{t('vr3.evidence.groupEmpty')}</p>
+      ) : (
+        <dl className="a3-evlist">
+          {view.visible.map((item) => (
+            <EvidenceItemRow key={item.id} project={project} item={item} />
+          ))}
+        </dl>
+      )}
+
+      {view.disclosed.length > 0 ? (
+        <>
+          <button
+            type="button"
+            className="a3-evgroup-disclosure hit-target"
+            aria-expanded={expanded}
+            aria-controls={listId}
+            onClick={() => setExpanded((open) => !open)}
+          >
+            <span className="a3-evgroup-disclosure-glyph" aria-hidden="true">
+              {expanded ? '▾' : '▸'}
+            </span>
+            {expanded
+              ? t('vr3.evidence.showLess')
+              : t('vr3.evidence.showAll', { count: view.disclosed.length })}
+          </button>
+          {/* Stays in the DOM under `aria-controls`; `hidden` is the state,
+              never a `display:none` set from a style. This is the REST of the
+              group, not a different screen. */}
+          <dl id={listId} className="a3-evlist a3-evlist-disclosed" hidden={!expanded}>
+            {view.disclosed.map((item) => (
+              <EvidenceItemRow key={item.id} project={project} item={item} />
+            ))}
+          </dl>
+        </>
+      ) : null}
+    </section>
+  )
+}
+
+/**
+ * One evidence item: what it says, what it applies to, where it came from,
+ * how much weight it carries, and who reads it next.
+ *
+ * The value and its authority are ONE object (`AuthorityTrace`'s own
+ * contract), so they cannot drift into two independently rendered things.
+ * STATE travels in the `freshness` slot, which is how the envelope says
+ * "needs review" without losing where the value came from.
+ */
+function EvidenceItemRow({
+  project, item,
+}: {
+  project: FixtureProject
+  item: FixtureEvidenceItem
+}) {
+  const s = useStore()
+  const t = useT()
+  const num = useLocalNumber()
+  const source = evidenceSource(project, item)
+  const trace = evidenceAuthorityTrace(item)
+  const attention = needsAttention(item.state)
+
+  const applies = item.projectLevel
+    ? t('vr3.evidence.appliesProject')
+    : t('vr3.evidence.appliesBuildings', {
+      names: item.buildingIds
+        .map((id) => project.buildings.find((b) => b.id === id)?.name ?? id)
+        .join(' · '),
+    })
+
+  /**
+   * Follow the citation: open the Documents register with THIS document's
+   * viewer open at THIS anchor. Two writes, one intent — the register's own
+   * URL state and the stage — and no third place remembers anything.
+   */
+  const openSource = () => {
+    if (!source) return
+    if (typeof window !== 'undefined') {
+      const search = encodeDocumentsQuery({
+        ...decodeDocumentsQuery(window.location.search),
+        open: source.documentId,
+        anchor: item.sourceAnchorId,
+        page: 1,
+      }, window.location.search)
+      window.history.pushState(
+        null, '',
+        `${window.location.pathname}${search ? `?${search}` : ''}`,
+      )
+    }
+    s.setProjectStage('documents')
+  }
+
+  return (
+    <div className="a3-evitem" data-attention={attention || undefined}>
+      <dt className="a3-evitem-label">
+        {t(item.labelKey)}
+        <span className="a3-evitem-applies">{applies}</span>
+      </dt>
+      <dd className="a3-evitem-body">
+        <AuthorityTrace
+          layout="stacked"
+          authority={trace.authority}
+          evidence={source
+            ? { label: source.file, version: source.version, issuedAt: source.issuedAt }
+            : undefined}
+          confirmation={item.confirmedBy && item.confirmedAt
+            ? { actor: item.confirmedBy, at: item.confirmedAt }
+            : undefined}
+          override={item.authority === 'overridden' && item.previousValue && item.reasonKey
+            ? {
+              previous: item.previousValue,
+              reason: t(item.reasonKey),
+              actor: item.confirmedBy ?? '',
+              at: item.confirmedAt ?? '',
+            }
+            : undefined}
+          freshness={trace.stale
+            ? {
+              staleReason: item.reasonKey
+                ? t(item.reasonKey)
+                : t(`vr3.evidence.state.${item.state}`),
+            }
+            : undefined}
+        >
+          {item.value !== null ? (
+            <>
+              <span className="numeric">{num(item.value)}</span>
+              {item.unit ? <span className="a3-mro-unit">{item.unit}</span> : null}
+            </>
+          ) : (
+            <span className="a3-evitem-requirement">{t(item.requirementKey!)}</span>
+          )}
         </AuthorityTrace>
+
+        {/* A contested value is shown BESIDE the value it contests, never
+            instead of it: newer evidence marks confirmed truth for review, it
+            does not overwrite it (M-1 / D-08). */}
+        {item.state === 'conflict' && item.previousValue ? (
+          <p className="a3-evitem-conflict">
+            {t('vr3.evidence.conflictCandidate', { value: num(item.previousValue) })}
+          </p>
+        ) : null}
+
+        <div className="a3-evitem-meta">
+          {source ? (
+            <button
+              type="button"
+              className="a3-evitem-source hit-target"
+              onClick={openSource}
+              aria-label={t('vr3.evidence.openSourceOn', {
+                file: source.file, page: source.page, label: t(item.labelKey),
+              })}
+            >
+              {t('vr3.evidence.openSource', { page: source.page })}
+            </button>
+          ) : (
+            /* A value whose source has left the project keeps the value and
+               loses the citation. Saying so is the stronger claim. */
+            <p className="a3-evitem-nosource">{t('vr3.evidence.sourceMissing')}</p>
+          )}
+          {item.downstreamRefs.length > 0 ? (
+            <p className="a3-evitem-downstream">
+              {t('vr3.evidence.downstream', {
+                consumers: item.downstreamRefs
+                  .map((ref) => t(downstreamRefKey(ref)))
+                  .join(' · '),
+              })}
+            </p>
+          ) : null}
+        </div>
       </dd>
     </div>
   )
@@ -2143,17 +2544,17 @@ function BuildingEvidenceRow({
  * open; it is 56px of it (48px at 1280), on one line, and the page H1 now
  * names the TASK.
  *
- * The internal note (DC-43) is a released Opportunity-level capability and
- * survives unchanged: it does not exist in a client projection at all, and
- * it stays a tertiary utility at the end of the bar rather than competing
- * with the analysis for attention.
+ * The bar carries IDENTITY and nothing else. It used to end in a tertiary
+ * `Interne Notiz` utility; that capability is gone — a private note beside
+ * the client's own project was a second, unattributed place for commercial
+ * truth to live, and the field policy that kept it out of every client
+ * profile stands whether or not such a surface exists. Its wrapper went
+ * with it: an empty utilities box with `margin-inline-start:auto` would
+ * have kept reserving the right-hand end of the bar for nothing.
  */
 function ProjectContextBar({ project }: { project: FixtureProject }) {
   const s = useStore()
   const t = useT()
-  const tx = useTx()
-  const [noteOpen, setNoteOpen] = useState(false)
-  const noteButtonRef = useRef<HTMLButtonElement>(null)
   const asset = projectAsset(project.heroAssetId)
 
   if (s.mode === 'praesentation') return null
@@ -2178,20 +2579,6 @@ function ProjectContextBar({ project }: { project: FixtureProject }) {
           {project.city}
         </p>
       </div>
-      <div className="a3-project-context-utilities">
-        <Button
-          ref={noteButtonRef}
-          variant="ghost"
-          onClick={() => setNoteOpen(true)}
-        >
-          {tx('Interne Notiz')}
-        </Button>
-      </div>
-      <InternalNoteDialog
-        open={noteOpen}
-        onOpenChange={setNoteOpen}
-        returnFocusTo={noteButtonRef}
-      />
     </div>
   )
 }

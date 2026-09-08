@@ -3,7 +3,6 @@ import {
   ANY,
   DEFAULT_PORTFOLIO_QUERY,
   DISPLAY_ONLY_PORTFOLIO_COUNT,
-  LIFECYCLE_STATUSES,
   NAVIGABLE_PORTFOLIO_COUNT,
   PORTFOLIO_PROJECTS,
   PORTFOLIO_PROJECT_COUNT,
@@ -16,21 +15,35 @@ import {
   invalidatedCity,
   isNavigableProject,
   latestPresentableSnapshot,
-  lifecycleStatusTone,
   managerOptions,
   PORTFOLIO_PAGE_SIZE,
   portfolioPage,
   portfolioTitle,
   portfolioValue,
   projectIdOfSavedVersion,
+  resolveProjectLifecycles,
   selectPortfolio,
   type PortfolioQuery,
 } from '../projectPortfolio'
+import { LIFECYCLE_STATUSES, lifecycleStatusTone } from '../projectLifecycle'
 import { CLIENT_PROJECTION_VERSION, type SavedOptionVersion } from '../optionSave'
 
 const byId = (id: string) => PORTFOLIO_PROJECTS.find((p) => p.id === id)!
+
+/**
+ * The register as a FRESH SESSION renders it.
+ *
+ * A record has no lifecycle status; a ROW does, and only
+ * `resolveProjectLifecycles` produces one. A fresh session has no analysis,
+ * no readiness ledger and no loaded Option workspace, so this is also the
+ * boot state every ordering and filter assertion below is written against.
+ */
+const ROWS = resolveProjectLifecycles(PORTFOLIO_PROJECTS, {
+  analyses: {}, readiness: {}, options: null,
+})
+const rowStatus = (id: string) => ROWS.find((p) => p.id === id)!.lifecycleStatus
 const titles = (q: Partial<PortfolioQuery>) =>
-  selectPortfolio(PORTFOLIO_PROJECTS, { ...DEFAULT_PORTFOLIO_QUERY, ...q }).map(portfolioTitle)
+  selectPortfolio(ROWS, { ...DEFAULT_PORTFOLIO_QUERY, ...q }).map(portfolioTitle)
 
 /** Titles come from the register itself, keyed by id — see the note in
  *  `src/test/portfolio.ts` on why they are never spelled out as literals. */
@@ -72,6 +85,46 @@ describe('the register: five records, two of them journeys', () => {
       expect(['neutral', 'progress', 'ok', 'attention', 'stale'])
         .toContain(lifecycleStatusTone(status))
     }
+  })
+
+  it('gives a RECORD no status, and a ROW exactly one', () => {
+    // The split is the mechanism, not a naming preference: a record has no
+    // field a card or a filter could read as "current truth", and every row
+    // carries one value from the closed set. `resolveProjectLifecycles` is
+    // the only producer, so the card and the status filter read the same
+    // field and cannot disagree.
+    for (const record of PORTFOLIO_PROJECTS) {
+      expect(record).not.toHaveProperty('lifecycleStatus')
+      expect(['derived', 'declaredSynthetic']).toContain(record.lifecycle.kind)
+    }
+    expect(ROWS).toHaveLength(PORTFOLIO_PROJECTS.length)
+    for (const row of ROWS) {
+      expect(LIFECYCLE_STATUSES).toContain(row.lifecycleStatus)
+    }
+  })
+
+  it('derives a real project and lets only a display record declare', () => {
+    // A navigable project's fixture contributes at most an explicit human
+    // hold; it cannot name a status. A display-only record has no journey to
+    // derive from, so its synthetic status is its own — and is restricted to
+    // the values a synthetic record can honestly be in.
+    for (const record of PORTFOLIO_PROJECTS) {
+      expect(record.lifecycle.kind)
+        .toBe(record.displayOnly ? 'declaredSynthetic' : 'derived')
+      if (record.lifecycle.kind === 'declaredSynthetic') {
+        expect(['ready_to_pitch', 'review_required'])
+          .not.toContain(record.lifecycle.status)
+      }
+    }
+  })
+
+  it('starts both navigable projects at New in a fresh session', () => {
+    // Nothing has been analysed, decided or committed, so there is nothing
+    // for `New` to be untrue about. This is the assertion the old fixture
+    // could not make: it printed `Ready to pitch` on a card that had no
+    // calculated price and a disabled client view.
+    expect(rowStatus('DEMO-HAPPY-01')).toBe('new')
+    expect(rowStatus('DEMO-COMPLEX-01')).toBe('new')
   })
 })
 
@@ -231,12 +284,27 @@ describe('search, filters and their combination', () => {
   })
 
   it('combines groups with AND and statuses with OR', () => {
-    expect(titles({ statuses: ['new'] })).toEqual([T.hamburg])
-    expect(titles({ statuses: ['new', 'in_progress'] })).toEqual([T.hamburg, T.wien])
+    // In a fresh session BOTH navigable projects derive `new` — nobody has
+    // run an analysis, decided a conflict or committed a baseline — and
+    // Hamburg declares it. That is three cards, in last-modified order.
+    expect(titles({ statuses: ['new'] }))
+      .toEqual([T.lindenhain, T.guterbogen, T.hamburg])
+    expect(titles({ statuses: ['new', 'in_progress'] }))
+      .toEqual([T.lindenhain, T.guterbogen, T.hamburg, T.wien])
     // AND across groups narrows the OR result.
     expect(titles({ statuses: ['new', 'in_progress'], country: 'AT' })).toEqual([T.wien])
     // No selected status is every status, never nothing.
     expect(titles({ statuses: [] })).toHaveLength(5)
+  })
+
+  it('offers `ready_to_pitch` as a filter and finds nothing to force it', () => {
+    // The status is a supported member of the closed set and the filter
+    // offers it. What no fixture can do is SATISFY it: readiness needs an
+    // explicit Client Mode review of one exact saved Option version, and a
+    // fresh session has none. An empty result here is the honest one.
+    expect(LIFECYCLE_STATUSES).toContain('ready_to_pitch')
+    expect(titles({ statuses: ['ready_to_pitch'] })).toEqual([])
+    expect(titles({ statuses: ['review_required'] })).toEqual([])
   })
 
   it('offers options from the whole register, and narrows cities by country', () => {
@@ -272,12 +340,12 @@ describe('search, filters and their combination', () => {
 describe('the four chronological orders are deterministic', () => {
   it('defaults to last modified, newest first', () => {
     expect(DEFAULT_PORTFOLIO_QUERY.sort).toBe('updatedDesc')
-    expect(titles({})).toEqual([T.lindenhain, T.hamburg, T.wien, T.muenchen, T.guterbogen])
+    expect(titles({})).toEqual([T.lindenhain, T.guterbogen, T.hamburg, T.wien, T.muenchen])
   })
 
   it('reverses cleanly and orders by creation independently', () => {
     expect(titles({ sort: 'updatedAsc' }))
-      .toEqual([T.guterbogen, T.muenchen, T.wien, T.hamburg, T.lindenhain])
+      .toEqual([T.muenchen, T.wien, T.hamburg, T.guterbogen, T.lindenhain])
     expect(titles({ sort: 'createdDesc' }))
       .toEqual([T.hamburg, T.lindenhain, T.wien, T.muenchen, T.guterbogen])
     expect(titles({ sort: 'createdAsc' }))
@@ -286,13 +354,13 @@ describe('the four chronological orders are deterministic', () => {
 
   it('breaks a tie by identity, then by id', () => {
     const same = '2026-01-01T00:00:00+01:00'
-    const tied = PORTFOLIO_PROJECTS.map((p) => ({ ...p, updatedAt: same }))
+    const tied = ROWS.map((p) => ({ ...p, updatedAt: same }))
     const order = selectPortfolio(tied, DEFAULT_PORTFOLIO_QUERY).map(portfolioTitle)
     expect(order).toEqual([...order].sort((a, b) => a.localeCompare(b)))
     // Identical titles fall through to the id, and the result is stable.
     const clones = [
-      { ...PORTFOLIO_PROJECTS[0]!, id: 'B', updatedAt: same },
-      { ...PORTFOLIO_PROJECTS[0]!, id: 'A', updatedAt: same },
+      { ...ROWS[0]!, id: 'B', updatedAt: same },
+      { ...ROWS[0]!, id: 'A', updatedAt: same },
     ]
     expect(selectPortfolio(clones, DEFAULT_PORTFOLIO_QUERY).map((p) => p.id))
       .toEqual(['A', 'B'])
@@ -308,7 +376,7 @@ describe('urgency is orderable, not only visible', () => {
    */
   it('puts overdue first, then soonest, then no meeting at all', () => {
     expect(titles({ sort: 'meetingAsc' }))
-      .toEqual([T.guterbogen, T.wien, T.hamburg, T.muenchen, T.lindenhain])
+      .toEqual([T.muenchen, T.wien, T.hamburg, T.guterbogen, T.lindenhain])
   })
 
   it('does not depend on the clock', () => {
@@ -317,7 +385,7 @@ describe('urgency is orderable, not only visible', () => {
     // an event.
     const first = titles({ sort: 'meetingAsc' })
     expect(titles({ sort: 'meetingAsc' })).toEqual(first)
-    const unreadable = PORTFOLIO_PROJECTS.map((p) => (
+    const unreadable = ROWS.map((p) => (
       p.id === 'PORTFOLIO-AT-01' ? { ...p, nextClientMeetingAt: 'not-a-date' } : p
     ))
     // An unreadable stamp is «no meeting», never «the epoch».
@@ -325,7 +393,7 @@ describe('urgency is orderable, not only visible', () => {
       ...DEFAULT_PORTFOLIO_QUERY, sort: 'meetingAsc',
     }).map(portfolioTitle)
     expect(ordered.slice(-2)).toEqual([T.wien, T.lindenhain].sort((a, b) => a.localeCompare(b)))
-    expect(ordered[0]).toBe(T.guterbogen)
+    expect(ordered[0]).toBe(T.muenchen)
   })
 
   it('orders alphabetically by the ONE canonical title', () => {
@@ -343,7 +411,7 @@ describe('urgency is orderable, not only visible', () => {
 
 describe('the register pages at ten, and only past ten', () => {
   const stub = (n: number) => Array.from({ length: n }, (_, i) => ({
-    ...PORTFOLIO_PROJECTS[0]!, id: `P${String(i).padStart(3, '0')}`,
+    ...ROWS[0]!, id: `P${String(i).padStart(3, '0')}`,
   }))
 
   it('shows everything and paginates nothing at the threshold', () => {
@@ -380,7 +448,7 @@ describe('the register pages at ten, and only past ten', () => {
   })
 
   it('slices the set the sort already ordered, never the other way round', () => {
-    const many = [1, 2, 3].flatMap((round) => PORTFOLIO_PROJECTS.map((p, i) => ({
+    const many = [1, 2, 3].flatMap((round) => ROWS.map((p, i) => ({
       ...p,
       id: `${p.id}-${round}`,
       nextClientMeetingAt: p.nextClientMeetingAt

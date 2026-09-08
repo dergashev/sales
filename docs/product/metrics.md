@@ -242,9 +242,6 @@
 **Выход**
 `export.started` (какие артефакты) · `export.finished` (успех/ошибка) · `offer.sent_to_client` · `offer.emailed` (получатель, состав вложений — питает северную звезду) · `offer.printed`
 
-**Заметки (D-12)**
-`note.created` (режим: подготовка / тихая во время встречи) · `note.synced_to_hubspot` (успех/ошибка синка)
-
 **Встреча** (вводится вручную менеджером, иначе не измерить северную звезду и next-step rate)
 `meeting.scheduled` · `meeting.held` · `meeting.outcome` — значение из **закрытого списка раздела 13**, ровно одно (`detailangebot_angefordert` · `preisverhandlung` · `loi_vertrag` · `unterlagen_nachgereicht` · `zweittermin` · `keine_entscheidung` · `abgelehnt_preis` · `abgelehnt_umfang` · `abgelehnt_timing` · `abgelehnt_sonstiges`)
 

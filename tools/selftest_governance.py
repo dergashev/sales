@@ -358,6 +358,22 @@ CASES = [
         'GOV-RETIRED-PATH', 'cf7a7bf',
     ),
     (
+        # Возможность «Interne Notiz» (DC-43) удалена целиком, и единственное
+        # механическое доказательство запрета «не воссоздавать приватную
+        # заметку под другим именем» — эта ветка. Она обязана срабатывать
+        # адресно на живом символе и молчать на записи о снятии.
+        'GOV-RETIRED-PATH: InternalNote не возвращается',
+        {'src/Probe.tsx': 'export const InternalNote = () => null\n'},
+        'GOV-RETIRED-PATH', 'приватной заметки в продукте не существует',
+    ),
+    (
+        'GOV-RETIRED-PATH: запись о снятии InternalNote в комментарии молчит',
+        {'src/Probe.tsx': (
+            '// InternalNote снят 08.09.2026 вместе с возможностью DC-43\n'
+            'export const Probe = 1\n')},
+        None, None,
+    ),
+    (
         'GOV-RETIRED-PATH: общий .circle helper запрещён',
         {'src/local.css': '.circle{border-radius:50%}\n'},
         'GOV-RETIRED-PATH', '.circle',

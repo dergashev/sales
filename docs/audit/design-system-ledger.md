@@ -88,7 +88,7 @@
 | **Gebäudetyp-Auswahl** `.tgrid .tk` | DC-39 | классификация в прототипе не собрана |
 | **Gebäudekomplex-Umschalter** `.gname .dash` | DC-46/47 | прототип ведёт одно здание |
 | **Suche & Filter** | DC-34 | очередь S1 — один проект |
-| **Notiz** `.notecard` | DC-43 | не строился |
+| **Notiz** `.notecard` | DC-43 | **retired 08.09.2026** — возможность удалена из продукта, а не отложена: класс `.a3-notecard` снят из `components.css`, специмен снят из витрины `all3-design-system.html` вместе со скриптом `noteInput()`, контракт снят из README §2.6, запись реестра оставлена без контракта (README §2.5). Строка остаётся в разделе 1.2 не как долг, а как запись о снятии: возможности нет ни в одном из трёх слоёв, и различие между «не построено» и «удалено» здесь и названо |
 
 ### 1.3. Есть контракт — нет ни витрины, ни прототипа ⛔
 
@@ -193,8 +193,8 @@ Projekt-Karten DC-15 (`a3-pcard`, экран Opportunities) · классифи�
 | герои панели без обёртки | `.a3-heroband` (базовая линия) | DC-38 |
 
 **Неиспользуемое с живым контрактом** (очередь принятия — приоритизирует
-`TASK-13` §C): `a3-modal` DC-33 · `a3-savechip` DC-30 · `a3-notecard`
-DC-43 · `a3-mailcard` DC-41 · `a3-cmp` DC-11 · `a3-badge` DC-16 ·
+`TASK-13` §C): `a3-modal` DC-33 · `a3-savechip` DC-30 ·
+`a3-mailcard` DC-41 · `a3-cmp` DC-11 · `a3-badge` DC-16 ·
 `a3-hinweis` DC-7 · `a3-tour-*` DC-14 · `a3-empty-*` DC-24 ·
 `a3-form-field/-error/-helper` core §Input · `a3-tgrid`/`a3-tk` DC-39 ·
 `a3-fgrid`/`a3-f-*` DC-20 (вне объёма, D-21) · `a3-kg`/`a3-kg-child` D-16.

@@ -1,5 +1,5 @@
 {
-  "$comment": "DEMO / NON-PRODUCTION PRODUCT FIXTURE (VR3-01). Every name, value, cost, date and document here is synthetic and exists only to demonstrate Product behaviour. It is not calculation authority, a quotation or a real client record. Transcribed from the accepted VR3-00 fixture specification artifacts/VR3-00-global-design-audit/06-demo-fixtures/demo-project-fixtures.md; the counts, filenames, buildings, areas, source relations, questions, conflicts and media ids are invariants of that specification and are re-proved mechanically by src/fixtures/__tests__/vr3-demo-projects.test.ts. Prose is not stored here: every user-visible sentence is an i18n key (rule 36), resolved DE/EN from src/i18n. Numbers are decimal STRINGS, never JSON numbers, so no float ever enters the model. VR3 PORTFOLIO EXTENSION (Projects portfolio rebuild): each project now also carries a `portfolio` block — the ISO country code, postcode, street, lifecycle status, created/last-modified/next-client-meeting timestamps and the declared portfolio area metric. Those fields are PRESENTATION identity for the Projects register; they never enter the calculation, the Option or the client output. `owner` now carries the responsible manager's full first name and surname, because the portfolio filters on a person and initials are not a person.",
+  "$comment": "DEMO / NON-PRODUCTION PRODUCT FIXTURE (VR3-01). Every name, value, cost, date and document here is synthetic and exists only to demonstrate Product behaviour. It is not calculation authority, a quotation or a real client record. Transcribed from the accepted VR3-00 fixture specification artifacts/VR3-00-global-design-audit/06-demo-fixtures/demo-project-fixtures.md; the counts, filenames, buildings, areas, source relations, questions, conflicts and media ids are invariants of that specification and are re-proved mechanically by src/state/__tests__/projectAnalysis.test.ts (the path this comment used to name, src/fixtures/__tests__/vr3-demo-projects.test.ts, has never existed — a stale claim corrected 2026-09-08). Prose is not stored here: every user-visible sentence is an i18n key (rule 36), resolved DE/EN from src/i18n. Numbers are decimal STRINGS, never JSON numbers, so no float ever enters the model. VR3 PORTFOLIO EXTENSION (Projects portfolio rebuild): each project now also carries a `portfolio` block — the ISO country code, postcode, street, created/last-modified/next-client-meeting timestamps and the declared portfolio area metric. The block NO LONGER declares a lifecycle status: it declares `lifecycleHold`, the explicit human state (`on_hold` / `waiting_for_feedback` / `archive`) or `null`. A project's lifecycle status is DERIVED from its own committed truth by src/state/projectLifecycle.ts, so a fresh session shows both demonstration projects as `New` and no fixture can grant itself `Ready to pitch`. The timestamps tell ONE demonstration chronology and are the only thing that orders the register under the truthful last-modified sort: Freiburg 07.09 → Leipzig 05.09 → Hamburg 03.09 → Wien 02.09 → München 31.08. Changing a timestamp only to move a card, without the event that moved it, is not permitted. Those fields are PRESENTATION identity for the Projects register; they never enter the calculation, the Option or the client output. `owner` now carries the responsible manager's full first name and surname, because the portfolio filters on a person and initials are not a person.",
   "normalListProjectCount": 2,
   "projects": [
     {
@@ -15,9 +15,9 @@
         "countryCode": "DE",
         "postcode": "79100",
         "addressLine": "Lindenhain 12",
-        "lifecycleStatus": "ready_to_pitch",
+        "lifecycleHold": null,
         "createdAt": "2026-08-12T09:15:00+02:00",
-        "updatedAt": "2026-09-04T08:40:00+02:00",
+        "updatedAt": "2026-09-07T17:20:00+02:00",
         "nextClientMeetingAt": null,
         "areaMetric": "wfl"
       },
@@ -89,6 +89,7 @@
           "processingOutcome": "PROCESSED",
           "issueKey": null,
           "sourceAuthority": "confirmedClientInstruction",
+          "pages": null,
           "previewAssetId": "A-PLAN-EG"
         },
         {
@@ -108,6 +109,7 @@
           "processingOutcome": "PROCESSED",
           "issueKey": null,
           "sourceAuthority": "issuedArchitecturalDrawing",
+          "pages": null,
           "previewAssetId": "A-PLAN-EG"
         },
         {
@@ -127,6 +129,7 @@
           "processingOutcome": "PROCESSED",
           "issueKey": null,
           "sourceAuthority": "issuedArchitecturalDrawing",
+          "pages": null,
           "previewAssetId": "A-PLAN-EG"
         },
         {
@@ -146,6 +149,7 @@
           "processingOutcome": "PROCESSED",
           "issueKey": null,
           "sourceAuthority": "issuedArchitecturalDrawing",
+          "pages": null,
           "previewAssetId": "A-PLAN-EG"
         },
         {
@@ -165,6 +169,7 @@
           "processingOutcome": "PROCESSED",
           "issueKey": null,
           "sourceAuthority": "issuedArchitecturalDrawing",
+          "pages": null,
           "previewAssetId": "A-ELEVATIONS"
         },
         {
@@ -184,6 +189,7 @@
           "processingOutcome": "PROCESSED",
           "issueKey": null,
           "sourceAuthority": "issuedArchitecturalDrawing",
+          "pages": null,
           "previewAssetId": "A-ELEVATIONS"
         },
         {
@@ -203,6 +209,7 @@
           "processingOutcome": "PROCESSED",
           "issueKey": null,
           "sourceAuthority": "issuedArchitecturalDrawing",
+          "pages": null,
           "previewAssetId": "A-SECTION-AA"
         },
         {
@@ -222,19 +229,454 @@
           "processingOutcome": "PROCESSED",
           "issueKey": null,
           "sourceAuthority": "issuedArchitecturalDrawing",
+          "pages": null,
           "previewAssetId": "A-SECTION-AA"
         }
       ],
       "conflicts": [],
       "questions": [],
+      "evidence": [
+        {
+          "id": "A-EV-01",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.bgfTotal",
+          "value": "2900.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "sourceDocumentId": "A-DOC-02",
+          "sourceAnchorId": "A-DOC-02-A01",
+          "sourcePage": 1,
+          "authority": "derived",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "primary"
+        },
+        {
+          "id": "A-EV-02",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.wfl",
+          "value": "2120.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "sourceDocumentId": "A-DOC-03",
+          "sourceAnchorId": "A-DOC-03-A02",
+          "sourcePage": 2,
+          "authority": "confirmed",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-06-08T10:20:00+02:00",
+          "impact": "primary"
+        },
+        {
+          "id": "A-EV-03",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.units",
+          "value": "18",
+          "requirementKey": null,
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "sourceDocumentId": "A-DOC-02",
+          "sourceAnchorId": "A-DOC-02-A01",
+          "sourcePage": 1,
+          "authority": "confirmed",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-06-08T10:20:00+02:00",
+          "impact": "primary"
+        },
+        {
+          "id": "A-EV-04",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.storeys",
+          "value": null,
+          "requirementKey": "vr3.building.storeys.a1",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "sourceDocumentId": "A-DOC-03",
+          "sourceAnchorId": "A-DOC-03-A01",
+          "sourcePage": 1,
+          "authority": "confirmed",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-06-08T10:20:00+02:00",
+          "impact": "primary"
+        },
+        {
+          "id": "A-EV-05",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.usage",
+          "value": null,
+          "requirementKey": "vr3.building.usage.residentialMfh",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "sourceDocumentId": "A-DOC-01",
+          "sourceAnchorId": "A-DOC-01-A01",
+          "sourcePage": 1,
+          "authority": "confirmed",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "scopeDecision"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-06-08T10:20:00+02:00",
+          "impact": "secondary"
+        },
+        {
+          "id": "A-EV-06",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.underground",
+          "value": null,
+          "requirementKey": "vr3.building.underground.none",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "sourceDocumentId": "A-DOC-08",
+          "sourceAnchorId": "A-DOC-08-A01",
+          "sourcePage": 1,
+          "authority": "confirmed",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300",
+            "scopeDecision"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-06-08T10:20:00+02:00",
+          "impact": "secondary"
+        },
+        {
+          "id": "A-EV-07",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.nuf",
+          "value": "2240.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "sourceDocumentId": "A-DOC-03",
+          "sourceAnchorId": "A-DOC-03-A02",
+          "sourcePage": 2,
+          "authority": "confirmed",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-06-08T10:20:00+02:00",
+          "impact": "secondary"
+        },
+        {
+          "id": "A-EV-08",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.bgfRAbove",
+          "value": "2740.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "sourceDocumentId": "A-DOC-02",
+          "sourceAnchorId": "A-DOC-02-A01",
+          "sourcePage": 1,
+          "authority": "derived",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "A-EV-09",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.bgfSAbove",
+          "value": "160.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "sourceDocumentId": "A-DOC-02",
+          "sourceAnchorId": "A-DOC-02-A01",
+          "sourcePage": 1,
+          "authority": "derived",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "A-EV-10",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.siteArea",
+          "value": "3860.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "A-DOC-01",
+          "sourceAnchorId": "A-DOC-01-A02",
+          "sourcePage": 2,
+          "authority": "confirmed",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-06-08T10:20:00+02:00",
+          "impact": "secondary"
+        },
+        {
+          "id": "A-EV-11",
+          "group": "design",
+          "labelKey": "vr3.evidence.label.accessibility",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.a.accessibility",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "sourceDocumentId": "A-DOC-01",
+          "sourceAnchorId": "A-DOC-01-A03",
+          "sourcePage": 3,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "scopeDecision",
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "primary"
+        },
+        {
+          "id": "A-EV-12",
+          "group": "design",
+          "labelKey": "vr3.evidence.label.facade",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.a.facade",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "sourceDocumentId": "A-DOC-05",
+          "sourceAnchorId": "A-DOC-05-A01",
+          "sourcePage": 1,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg300",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "primary"
+        },
+        {
+          "id": "A-EV-13",
+          "group": "design",
+          "labelKey": "vr3.evidence.label.balconies",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.a.balconies",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "sourceDocumentId": "A-DOC-01",
+          "sourceAnchorId": "A-DOC-01-A03",
+          "sourcePage": 3,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "primary"
+        },
+        {
+          "id": "A-EV-14",
+          "group": "design",
+          "labelKey": "vr3.evidence.label.roof",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.a.roof",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "sourceDocumentId": "A-DOC-06",
+          "sourceAnchorId": "A-DOC-06-A01",
+          "sourcePage": 1,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "A-EV-15",
+          "group": "construction",
+          "labelKey": "vr3.evidence.label.storeyHeight",
+          "value": "2.75",
+          "requirementKey": null,
+          "unit": "m",
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "sourceDocumentId": "A-DOC-07",
+          "sourceAnchorId": "A-DOC-07-A01",
+          "sourcePage": 1,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "primary"
+        },
+        {
+          "id": "A-EV-16",
+          "group": "construction",
+          "labelKey": "vr3.evidence.label.basementScope",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.a.basementScope",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "sourceDocumentId": "A-DOC-08",
+          "sourceAnchorId": "A-DOC-08-A01",
+          "sourcePage": 1,
+          "authority": "confirmed",
+          "state": "current",
+          "downstreamRefs": [
+            "scopeDecision",
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-06-08T10:20:00+02:00",
+          "impact": "primary"
+        },
+        {
+          "id": "A-EV-17",
+          "group": "construction",
+          "labelKey": "vr3.evidence.label.structure",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.a.structure",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "A-BLDG-01"
+          ],
+          "sourceDocumentId": "A-DOC-01",
+          "sourceAnchorId": "A-DOC-01-A04",
+          "sourcePage": 4,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg300",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        }
+      ],
       "analysis": {
         "requiredFields": 12,
         "requiredFieldsComplete": 12,
-        "valuesExtracted": 42,
-        "sourceEvidencedValues": 42,
-        "aiInferredValues": 0,
-        "manualOrConfirmedValues": 42,
-        "valuesRequiringAttention": 0,
         "understandingKey": "vr3.project.DEMO-HAPPY-01.understanding"
       },
       "terminalDistribution": {
@@ -301,10 +743,10 @@
         "countryCode": "DE",
         "postcode": "04109",
         "addressLine": "Am Güterbogen 5",
-        "lifecycleStatus": "review_required",
-        "createdAt": "2026-05-21T11:00:00+02:00",
-        "updatedAt": "2026-08-29T16:20:00+02:00",
-        "nextClientMeetingAt": "2026-09-01T14:00:00+02:00",
+        "lifecycleHold": null,
+        "createdAt": "2026-03-16T11:00:00+02:00",
+        "updatedAt": "2026-09-05T18:35:00+02:00",
+        "nextClientMeetingAt": "2026-09-15T14:00:00+02:00",
         "areaMetric": "nuf"
       },
       "projectTypeKey": "vr3.project.type.quarter",
@@ -348,10 +790,10 @@
             "workplaces": "sourceEvidenced"
           },
           "evidenceDocIds": [
-            "B-DOC-06",
-            "B-DOC-07",
-            "B-DOC-09",
-            "B-DOC-11"
+            "LEI-DOC-01",
+            "LEI-DOC-03",
+            "LEI-DOC-06",
+            "LEI-DOC-07"
           ],
           "geometryComplete": true
         },
@@ -391,10 +833,10 @@
             "parkingSpaces": "sourceEvidenced"
           },
           "evidenceDocIds": [
-            "B-DOC-15",
-            "B-DOC-17",
-            "B-DOC-18",
-            "B-DOC-22"
+            "LEI-DOC-01",
+            "LEI-DOC-04",
+            "LEI-DOC-06",
+            "LEI-DOC-07"
           ],
           "geometryComplete": true
         },
@@ -436,661 +878,40 @@
             "height": "userEntered"
           },
           "evidenceDocIds": [
-            "B-DOC-26",
-            "B-DOC-28",
-            "B-DOC-29",
-            "B-DOC-30",
-            "B-DOC-33"
+            "LEI-DOC-01",
+            "LEI-DOC-05",
+            "LEI-DOC-06",
+            "LEI-DOC-07"
           ],
           "geometryComplete": true
         }
       ],
       "documents": [
         {
-          "id": "B-DOC-01",
-          "file": "01_Auftraggeberbrief_Quartier.pdf",
-          "documentType": "clientBrief",
-          "projectLevel": true,
-          "buildingIds": [],
-          "version": "V1",
-          "issuedAt": "2025-11-12",
-          "supersedes": null,
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "nativePdf",
-          "processingOutcome": "PROCESSED",
-          "issueKey": "vr3.doc.issue.b01",
-          "sourceAuthority": "historicalClientInstruction",
-          "previewAssetId": "B-SITE-PLAN"
-        },
-        {
-          "id": "B-DOC-02",
-          "file": "02_Auftraggeberbrief_Nachtrag.pdf",
-          "documentType": "clientBriefAddendum",
-          "projectLevel": true,
-          "buildingIds": [],
-          "version": "V2",
-          "issuedAt": "2026-03-18",
-          "supersedes": "B-DOC-01",
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "nativePdf",
-          "processingOutcome": "PROCESSED",
-          "issueKey": "vr3.doc.issue.b02",
-          "sourceAuthority": "currentClientInstruction",
-          "previewAssetId": "B-SITE-PLAN"
-        },
-        {
-          "id": "B-DOC-03",
-          "file": "03_Projektbeschreibung_Entwurf.docx.pdf",
+          "id": "LEI-DOC-01",
+          "file": "01_Projektbeschreibung_Quartier_RevB.pdf",
           "documentType": "projectDescription",
-          "projectLevel": true,
-          "buildingIds": [],
-          "version": "V3",
-          "issuedAt": "2026-04-02",
-          "supersedes": "B-DOC-02",
-          "duplicateOf": null,
-          "recognitionQuality": "medium",
-          "recognitionMedium": "converted",
-          "processingOutcome": "LOW_CONFIDENCE",
-          "issueKey": "vr3.doc.issue.b03",
-          "sourceAuthority": "currentDescriptionBelowDrawings",
-          "previewAssetId": "B-SITE-PLAN"
-        },
-        {
-          "id": "B-DOC-04",
-          "file": "04_Flaechenliste_Gesamt_FINAL.xlsx.pdf",
-          "documentType": "areaSchedule",
           "projectLevel": true,
           "buildingIds": [
             "B-BLDG-A",
             "B-BLDG-B",
             "B-BLDG-C"
           ],
-          "version": "FINAL",
-          "issuedAt": "2026-04-28",
+          "version": "REV-B",
+          "issuedAt": "2026-03-24",
           "supersedes": null,
           "duplicateOf": null,
           "recognitionQuality": "high",
           "recognitionMedium": "nativePdf",
           "processingOutcome": "PROCESSED",
-          "issueKey": "vr3.doc.issue.b04",
-          "sourceAuthority": "coordinatedSchedulePending",
-          "previewAssetId": "B-SITE-PLAN"
+          "issueKey": "vr3.doc.issue.b01",
+          "sourceAuthority": "currentClientInstruction",
+          "pages": 6,
+          "previewAssetId": null
         },
         {
-          "id": "B-DOC-05",
-          "file": "05_A_Grundriss_EG_REV-A.pdf",
-          "documentType": "floorPlan",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-A"
-          ],
-          "version": "REV-A",
-          "issuedAt": "2026-01-22",
-          "supersedes": null,
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "vector",
-          "processingOutcome": "PROCESSED",
-          "issueKey": "vr3.doc.issue.b05",
-          "sourceAuthority": "supersededArchitecturalDrawing",
-          "previewAssetId": "B-PLAN-A"
-        },
-        {
-          "id": "B-DOC-06",
-          "file": "06_A_Grundriss_EG_REV-B.pdf",
-          "documentType": "floorPlan",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-A"
-          ],
-          "version": "REV-B",
-          "issuedAt": "2026-04-21",
-          "supersedes": "B-DOC-05",
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "vector",
-          "processingOutcome": "PROCESSED",
-          "issueKey": null,
-          "sourceAuthority": "currentIssuedArchitecturalDrawing",
-          "previewAssetId": "B-PLAN-A"
-        },
-        {
-          "id": "B-DOC-07",
-          "file": "07_A_Grundriss_OG1-5_REV-B.pdf",
-          "documentType": "floorPlans",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-A"
-          ],
-          "version": "REV-B",
-          "issuedAt": "2026-04-21",
-          "supersedes": null,
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "vector",
-          "processingOutcome": "PROCESSED",
-          "issueKey": "vr3.doc.issue.b07",
-          "sourceAuthority": "currentIssuedArchitecturalDrawing",
-          "previewAssetId": "B-PLAN-A"
-        },
-        {
-          "id": "B-DOC-08",
-          "file": "08_A_Ansichten_FINAL.pdf",
-          "documentType": "elevations",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-A"
-          ],
-          "version": "FINAL",
-          "issuedAt": "2026-04-22",
-          "supersedes": null,
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "vector",
-          "processingOutcome": "PROCESSED",
-          "issueKey": null,
-          "sourceAuthority": "currentIssuedArchitecturalDrawing",
-          "previewAssetId": "B-ELEVATIONS"
-        },
-        {
-          "id": "B-DOC-09",
-          "file": "09_A_Schnitt_AA_FINAL.pdf",
-          "documentType": "section",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-A"
-          ],
-          "version": "FINAL",
-          "issuedAt": "2026-04-22",
-          "supersedes": null,
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "vector",
-          "processingOutcome": "PROCESSED",
-          "issueKey": null,
-          "sourceAuthority": "currentIssuedArchitecturalDrawing",
-          "previewAssetId": "B-SECTION"
-        },
-        {
-          "id": "B-DOC-10",
-          "file": "10_A_Bueroflaechen_V1.pdf",
-          "documentType": "areaSchedule",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-A"
-          ],
-          "version": "V1",
-          "issuedAt": "2026-02-10",
-          "supersedes": null,
-          "duplicateOf": null,
-          "recognitionQuality": "medium",
-          "recognitionMedium": "nativePdf",
-          "processingOutcome": "PROCESSED",
-          "issueKey": "vr3.doc.issue.b10",
-          "sourceAuthority": "supersededDisciplineSchedule",
-          "previewAssetId": "B-PLAN-A"
-        },
-        {
-          "id": "B-DOC-11",
-          "file": "11_A_Bueroflaechen_V2.pdf",
-          "documentType": "areaSchedule",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-A"
-          ],
-          "version": "V2",
-          "issuedAt": "2026-04-26",
-          "supersedes": "B-DOC-10",
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "nativePdf",
-          "processingOutcome": "PROCESSED",
-          "issueKey": "vr3.doc.issue.b11",
-          "sourceAuthority": "currentCoordinatedSchedule",
-          "previewAssetId": "B-PLAN-A"
-        },
-        {
-          "id": "B-DOC-12",
-          "file": "12_A_Brandschutzkonzept_REV-A_SCAN.pdf",
-          "documentType": "fireStrategy",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-A"
-          ],
-          "version": "REV-A",
-          "issuedAt": "2026-03-11",
-          "supersedes": null,
-          "duplicateOf": null,
-          "recognitionQuality": "low",
-          "recognitionMedium": "skewedScan",
-          "processingOutcome": "LOW_CONFIDENCE",
-          "issueKey": "vr3.doc.issue.b12",
-          "sourceAuthority": "supportingTechnicalDocument",
-          "previewAssetId": "B-SECTION"
-        },
-        {
-          "id": "B-DOC-13",
-          "file": "13_A_Grundriss_EG_REV-B_KOPIE.pdf",
-          "documentType": "floorPlanDuplicate",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-A"
-          ],
-          "version": "REV-B",
-          "issuedAt": "2026-04-21",
-          "supersedes": null,
-          "duplicateOf": "B-DOC-06",
-          "recognitionQuality": "high",
-          "recognitionMedium": "vector",
-          "processingOutcome": "WARNING",
-          "issueKey": "vr3.doc.issue.b13",
-          "sourceAuthority": "duplicateNoAdditionalAuthority",
-          "previewAssetId": "B-PLAN-A"
-        },
-        {
-          "id": "B-DOC-14",
-          "file": "14_B_Grundriss_UG_V1.pdf",
-          "documentType": "floorPlan",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-B"
-          ],
-          "version": "V1",
-          "issuedAt": "2025-12-09",
-          "supersedes": null,
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "vector",
-          "processingOutcome": "PROCESSED",
-          "issueKey": "vr3.doc.issue.b14",
-          "sourceAuthority": "supersededArchitecturalDrawing",
-          "previewAssetId": "B-PLAN-B"
-        },
-        {
-          "id": "B-DOC-15",
-          "file": "15_B_Grundriss_UG_FINAL-REV.pdf",
-          "documentType": "floorPlan",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-B"
-          ],
-          "version": "FINAL-REV",
-          "issuedAt": "2026-05-03",
-          "supersedes": "B-DOC-14",
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "vector",
-          "processingOutcome": "PROCESSED",
-          "issueKey": "vr3.doc.issue.b15",
-          "sourceAuthority": "currentIssuedArchitecturalDrawing",
-          "previewAssetId": "B-PLAN-B"
-        },
-        {
-          "id": "B-DOC-16",
-          "file": "16_B_Grundriss_EG_REV-A.pdf",
-          "documentType": "floorPlan",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-B"
-          ],
-          "version": "REV-A",
-          "issuedAt": "2026-02-19",
-          "supersedes": null,
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "vector",
-          "processingOutcome": "PROCESSED",
-          "issueKey": "vr3.doc.issue.b16",
-          "sourceAuthority": "supersededArchitecturalDrawing",
-          "previewAssetId": "B-PLAN-B"
-        },
-        {
-          "id": "B-DOC-17",
-          "file": "17_B_Grundriss_EG_REV-B.pdf",
-          "documentType": "floorPlan",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-B"
-          ],
-          "version": "REV-B",
-          "issuedAt": "2026-04-24",
-          "supersedes": "B-DOC-16",
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "vector",
-          "processingOutcome": "PROCESSED",
-          "issueKey": "vr3.doc.issue.b17",
-          "sourceAuthority": "currentIssuedArchitecturalDrawing",
-          "previewAssetId": "B-PLAN-B"
-        },
-        {
-          "id": "B-DOC-18",
-          "file": "18_B_Grundriss_OG1-4_FINAL.pdf",
-          "documentType": "floorPlans",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-B"
-          ],
-          "version": "FINAL",
-          "issuedAt": "2026-04-24",
-          "supersedes": null,
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "vector",
-          "processingOutcome": "PROCESSED",
-          "issueKey": null,
-          "sourceAuthority": "currentIssuedArchitecturalDrawing",
-          "previewAssetId": "B-PLAN-B"
-        },
-        {
-          "id": "B-DOC-19",
-          "file": "19_B_Ansichten_Nord_Ost_FINAL.pdf",
-          "documentType": "elevations",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-B"
-          ],
-          "version": "FINAL",
-          "issuedAt": "2026-04-25",
-          "supersedes": null,
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "vector",
-          "processingOutcome": "PROCESSED",
-          "issueKey": null,
-          "sourceAuthority": "currentIssuedArchitecturalDrawing",
-          "previewAssetId": "B-ELEVATIONS"
-        },
-        {
-          "id": "B-DOC-20",
-          "file": "20_B_Ansichten_Sued_West_FINAL.pdf",
-          "documentType": "elevations",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-B"
-          ],
-          "version": "FINAL",
-          "issuedAt": "2026-04-25",
-          "supersedes": null,
-          "duplicateOf": null,
-          "recognitionQuality": "medium",
-          "recognitionMedium": "raster",
-          "processingOutcome": "PROCESSED",
-          "issueKey": "vr3.doc.issue.b20",
-          "sourceAuthority": "currentIssuedGeometryCrossCheck",
-          "previewAssetId": "B-ELEVATIONS"
-        },
-        {
-          "id": "B-DOC-21",
-          "file": "21_B_Schnitt_BB_SCAN.pdf",
-          "documentType": "section",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-B"
-          ],
-          "version": "V2",
-          "issuedAt": "2026-03-30",
-          "supersedes": null,
-          "duplicateOf": null,
-          "recognitionQuality": "low",
-          "recognitionMedium": "faintScan",
-          "processingOutcome": "WARNING",
-          "issueKey": "vr3.doc.issue.b21",
-          "sourceAuthority": "supportingArchitecturalEvidence",
-          "previewAssetId": "B-SECTION"
-        },
-        {
-          "id": "B-DOC-22",
-          "file": "22_B_Wohnflaechenberechnung_V2.pdf",
-          "documentType": "areaSchedule",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-B"
-          ],
-          "version": "V2",
-          "issuedAt": "2026-04-27",
-          "supersedes": null,
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "nativePdf",
-          "processingOutcome": "PROCESSED",
-          "issueKey": "vr3.doc.issue.b22",
-          "sourceAuthority": "currentCoordinatedSchedule",
-          "previewAssetId": "B-PLAN-B"
-        },
-        {
-          "id": "B-DOC-23",
-          "file": "23_B_Baubeschreibung_FINAL.pdf",
-          "documentType": "buildingDescription",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-B"
-          ],
-          "version": "FINAL",
-          "issuedAt": "2026-04-29",
-          "supersedes": null,
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "nativePdf",
-          "processingOutcome": "PROCESSED",
-          "issueKey": "vr3.doc.issue.b23",
-          "sourceAuthority": "currentDescriptionConflicting",
-          "previewAssetId": "B-PLAN-B"
-        },
-        {
-          "id": "B-DOC-24",
-          "file": "24_C_Grundriss_UG_V1_SCAN.pdf",
-          "documentType": "floorPlan",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-C"
-          ],
-          "version": "V1",
-          "issuedAt": "2025-12-15",
-          "supersedes": null,
-          "duplicateOf": null,
-          "recognitionQuality": "veryLow",
-          "recognitionMedium": "croppedScan",
-          "processingOutcome": "FAILED",
-          "issueKey": "vr3.doc.issue.b24",
-          "sourceAuthority": "historicalEvidenceOnly",
-          "previewAssetId": "B-PLAN-C"
-        },
-        {
-          "id": "B-DOC-25",
-          "file": "25_C_Grundriss_UG_REV-A.pdf",
-          "documentType": "floorPlan",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-C"
-          ],
-          "version": "REV-A",
-          "issuedAt": "2026-03-14",
-          "supersedes": "B-DOC-24",
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "vector",
-          "processingOutcome": "PROCESSED",
-          "issueKey": "vr3.doc.issue.b25",
-          "sourceAuthority": "supersededArchitecturalDrawing",
-          "previewAssetId": "B-PLAN-C"
-        },
-        {
-          "id": "B-DOC-26",
-          "file": "26_C_Grundriss_UG_FINAL-REV.pdf",
-          "documentType": "floorPlan",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-C"
-          ],
-          "version": "FINAL-REV",
-          "issuedAt": "2026-05-05",
-          "supersedes": "B-DOC-25",
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "vector",
-          "processingOutcome": "PROCESSED",
-          "issueKey": "vr3.doc.issue.b26",
-          "sourceAuthority": "currentIssuedArchitecturalDrawing",
-          "previewAssetId": "B-PLAN-C"
-        },
-        {
-          "id": "B-DOC-27",
-          "file": "27_C_Grundriss_EG_V2.pdf",
-          "documentType": "floorPlan",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-C"
-          ],
-          "version": "V2",
-          "issuedAt": "2026-03-26",
-          "supersedes": null,
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "vector",
-          "processingOutcome": "PROCESSED",
-          "issueKey": "vr3.doc.issue.b27",
-          "sourceAuthority": "supersededArchitecturalDrawing",
-          "previewAssetId": "B-PLAN-C"
-        },
-        {
-          "id": "B-DOC-28",
-          "file": "28_C_Grundriss_EG_V3.pdf",
-          "documentType": "floorPlan",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-C"
-          ],
-          "version": "V3",
-          "issuedAt": "2026-05-05",
-          "supersedes": "B-DOC-27",
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "vector",
-          "processingOutcome": "PROCESSED",
-          "issueKey": "vr3.doc.issue.b28",
-          "sourceAuthority": "currentIssuedArchitecturalDrawing",
-          "previewAssetId": "B-PLAN-C"
-        },
-        {
-          "id": "B-DOC-29",
-          "file": "29_C_Grundriss_OG1-5_REV-B.pdf",
-          "documentType": "floorPlans",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-C"
-          ],
-          "version": "REV-B",
-          "issuedAt": "2026-05-05",
-          "supersedes": null,
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "vector",
-          "processingOutcome": "PROCESSED",
-          "issueKey": "vr3.doc.issue.b29",
-          "sourceAuthority": "currentIssuedArchitecturalDrawing",
-          "previewAssetId": "B-PLAN-C"
-        },
-        {
-          "id": "B-DOC-30",
-          "file": "30_C_Grundriss_OG6_FINAL.pdf",
-          "documentType": "floorPlan",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-C"
-          ],
-          "version": "FINAL",
-          "issuedAt": "2026-05-05",
-          "supersedes": null,
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "vector",
-          "processingOutcome": "PROCESSED",
-          "issueKey": "vr3.doc.issue.b30",
-          "sourceAuthority": "currentIssuedArchitecturalDrawing",
-          "previewAssetId": "B-PLAN-C"
-        },
-        {
-          "id": "B-DOC-31",
-          "file": "31_C_Ansichten_FINAL_SCAN.pdf",
-          "documentType": "elevations",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-C"
-          ],
-          "version": "FINAL",
-          "issuedAt": "2026-05-06",
-          "supersedes": null,
-          "duplicateOf": null,
-          "recognitionQuality": "low",
-          "recognitionMedium": "compressedRaster",
-          "processingOutcome": "LOW_CONFIDENCE",
-          "issueKey": "vr3.doc.issue.b31",
-          "sourceAuthority": "currentIssuedLowRecognition",
-          "previewAssetId": "B-ELEVATIONS"
-        },
-        {
-          "id": "B-DOC-32",
-          "file": "32_C_Schnitt_CC_REV-A.pdf",
-          "documentType": "section",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-C"
-          ],
-          "version": "REV-A",
-          "issuedAt": "2026-03-28",
-          "supersedes": null,
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "vector",
-          "processingOutcome": "PROCESSED",
-          "issueKey": "vr3.doc.issue.b32",
-          "sourceAuthority": "supersededArchitecturalDrawing",
-          "previewAssetId": "B-SECTION"
-        },
-        {
-          "id": "B-DOC-33",
-          "file": "33_C_Schnitt_CC_FINAL-REV.pdf",
-          "documentType": "section",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-C"
-          ],
-          "version": "FINAL-REV",
-          "issuedAt": "2026-05-06",
-          "supersedes": "B-DOC-32",
-          "duplicateOf": null,
-          "recognitionQuality": "high",
-          "recognitionMedium": "vector",
-          "processingOutcome": "PROCESSED",
-          "issueKey": "vr3.doc.issue.b33",
-          "sourceAuthority": "currentIssuedArchitecturalDrawing",
-          "previewAssetId": "B-SECTION"
-        },
-        {
-          "id": "B-DOC-34",
-          "file": "34_C_Nutzungskonzept_REV-B.pdf",
-          "documentType": "useConcept",
-          "projectLevel": false,
-          "buildingIds": [
-            "B-BLDG-C"
-          ],
-          "version": "REV-B",
-          "issuedAt": "2026-04-30",
-          "supersedes": null,
-          "duplicateOf": null,
-          "recognitionQuality": "medium",
-          "recognitionMedium": "nativePdf",
-          "processingOutcome": "WARNING",
-          "issueKey": "vr3.doc.issue.b34",
-          "sourceAuthority": "currentDisciplineConcept",
-          "previewAssetId": "B-PLAN-C"
-        },
-        {
-          "id": "B-DOC-35",
-          "file": "35_Freianlagenplan_REV-A.pdf",
+          "id": "LEI-DOC-02",
+          "file": "02_Lageplan_RevC.pdf",
           "documentType": "sitePlan",
           "projectLevel": true,
           "buildingIds": [
@@ -1098,20 +919,147 @@
             "B-BLDG-B",
             "B-BLDG-C"
           ],
-          "version": "REV-A",
-          "issuedAt": "2026-04-16",
+          "version": "REV-C",
+          "issuedAt": "2026-04-08",
           "supersedes": null,
           "duplicateOf": null,
           "recognitionQuality": "high",
-          "recognitionMedium": "vector",
+          "recognitionMedium": "nativePdf",
           "processingOutcome": "PROCESSED",
           "issueKey": "vr3.doc.issue.b35",
           "sourceAuthority": "currentSiteEvidence",
-          "previewAssetId": "B-SITE-PLAN"
+          "pages": 2,
+          "previewAssetId": null
         },
         {
-          "id": "B-DOC-36",
-          "file": "36_TGA_Energiekonzept_FINAL.pdf",
+          "id": "LEI-DOC-03",
+          "file": "03_Grundrisse_Kontorhaus_RevB.pdf",
+          "documentType": "floorPlans",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "version": "REV-B",
+          "issuedAt": "2026-05-12",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "nativePdf",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b11",
+          "sourceAuthority": "currentIssuedArchitecturalDrawing",
+          "pages": 8,
+          "previewAssetId": null
+        },
+        {
+          "id": "LEI-DOC-04",
+          "file": "04_Grundrisse_Hofhaus_RevB.pdf",
+          "documentType": "floorPlans",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "version": "REV-B",
+          "issuedAt": "2026-05-12",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "medium",
+          "recognitionMedium": "nativePdf",
+          "processingOutcome": "WARNING",
+          "issueKey": "vr3.doc.issue.b21",
+          "sourceAuthority": "currentIssuedArchitecturalDrawing",
+          "pages": 10,
+          "previewAssetId": null
+        },
+        {
+          "id": "LEI-DOC-05",
+          "file": "05_Grundrisse_Stadthaus_RevC.pdf",
+          "documentType": "floorPlans",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "version": "REV-C",
+          "issuedAt": "2026-06-03",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "nativePdf",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b26",
+          "sourceAuthority": "currentIssuedArchitecturalDrawing",
+          "pages": 10,
+          "previewAssetId": null
+        },
+        {
+          "id": "LEI-DOC-06",
+          "file": "06_Schnitte_und_Ansichten_RevB.pdf",
+          "documentType": "sectionElevation",
+          "projectLevel": true,
+          "buildingIds": [
+            "B-BLDG-A",
+            "B-BLDG-B",
+            "B-BLDG-C"
+          ],
+          "version": "REV-B",
+          "issuedAt": "2026-06-17",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "nativePdf",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b33",
+          "sourceAuthority": "currentIssuedGeometryCrossCheck",
+          "pages": 6,
+          "previewAssetId": null
+        },
+        {
+          "id": "LEI-DOC-07",
+          "file": "07_Flaechenberechnung_DIN277_WoFlV_RevC.pdf",
+          "documentType": "areaSchedule",
+          "projectLevel": true,
+          "buildingIds": [
+            "B-BLDG-A",
+            "B-BLDG-B",
+            "B-BLDG-C"
+          ],
+          "version": "REV-C",
+          "issuedAt": "2026-07-22",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "nativePdf",
+          "processingOutcome": "PROCESSED",
+          "issueKey": "vr3.doc.issue.b04",
+          "sourceAuthority": "currentCoordinatedSchedule",
+          "pages": 8,
+          "previewAssetId": null
+        },
+        {
+          "id": "LEI-DOC-08",
+          "file": "08_Baubeschreibung_RevB.pdf",
+          "documentType": "buildingDescription",
+          "projectLevel": true,
+          "buildingIds": [
+            "B-BLDG-A",
+            "B-BLDG-B",
+            "B-BLDG-C"
+          ],
+          "version": "REV-B",
+          "issuedAt": "2026-07-08",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "low",
+          "recognitionMedium": "nativePdf",
+          "processingOutcome": "LOW_CONFIDENCE",
+          "issueKey": "vr3.doc.issue.b12",
+          "sourceAuthority": "supportingTechnicalDocument",
+          "pages": 12,
+          "previewAssetId": null
+        },
+        {
+          "id": "LEI-DOC-09",
+          "file": "09_TGA_Anforderungen_RevC.pdf",
           "documentType": "technicalConcept",
           "projectLevel": true,
           "buildingIds": [
@@ -1119,8 +1067,8 @@
             "B-BLDG-B",
             "B-BLDG-C"
           ],
-          "version": "FINAL",
-          "issuedAt": "2026-05-07",
+          "version": "REV-C",
+          "issuedAt": "2026-08-19",
           "supersedes": null,
           "duplicateOf": null,
           "recognitionQuality": "medium",
@@ -1128,7 +1076,94 @@
           "processingOutcome": "WARNING",
           "issueKey": "vr3.doc.issue.b36",
           "sourceAuthority": "currentTechnicalConceptStale",
-          "previewAssetId": "B-SITE-PLAN"
+          "pages": 10,
+          "previewAssetId": null
+        },
+        {
+          "id": "LEI-DOC-10",
+          "file": "10_Schnittstellen_Hausanschluesse_RevB.pdf",
+          "documentType": "interfaces",
+          "projectLevel": true,
+          "buildingIds": [
+            "B-BLDG-A",
+            "B-BLDG-B",
+            "B-BLDG-C"
+          ],
+          "version": "REV-B",
+          "issuedAt": "2026-08-05",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "veryLow",
+          "recognitionMedium": "nativePdf",
+          "processingOutcome": "FAILED",
+          "issueKey": null,
+          "sourceAuthority": "supportingTechnicalDocument",
+          "pages": 5,
+          "previewAssetId": null
+        },
+        {
+          "id": "LEI-DOC-11",
+          "file": "11_Terminrahmen_RevB.pdf",
+          "documentType": "schedule",
+          "projectLevel": true,
+          "buildingIds": [
+            "B-BLDG-A",
+            "B-BLDG-B",
+            "B-BLDG-C"
+          ],
+          "version": "REV-B",
+          "issuedAt": "2026-08-26",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "nativePdf",
+          "processingOutcome": "PROCESSED",
+          "issueKey": null,
+          "sourceAuthority": "currentDisciplineConcept",
+          "pages": 4,
+          "previewAssetId": null
+        },
+        {
+          "id": "LEI-DOC-12",
+          "file": "12_Planungsanforderungen_und_Freigaben_RevB.pdf",
+          "documentType": "planningRequirements",
+          "projectLevel": true,
+          "buildingIds": [
+            "B-BLDG-A",
+            "B-BLDG-B",
+            "B-BLDG-C"
+          ],
+          "version": "REV-B",
+          "issuedAt": "2026-09-02",
+          "supersedes": null,
+          "duplicateOf": null,
+          "recognitionQuality": "high",
+          "recognitionMedium": "nativePdf",
+          "processingOutcome": "PROCESSED",
+          "issueKey": null,
+          "sourceAuthority": "currentDisciplineConcept",
+          "pages": 6,
+          "previewAssetId": null
+        },
+        {
+          "id": "LEI-DOC-13",
+          "file": "Grundrisse Kontorhaus (1).pdf",
+          "documentType": "floorPlanDuplicate",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "version": "REV-B",
+          "issuedAt": "2026-05-12",
+          "supersedes": null,
+          "duplicateOf": "LEI-DOC-03",
+          "recognitionQuality": "high",
+          "recognitionMedium": "nativePdf",
+          "processingOutcome": "WARNING",
+          "issueKey": "vr3.doc.issue.b13",
+          "sourceAuthority": "currentIssuedArchitecturalDrawing",
+          "pages": 8,
+          "previewAssetId": null
         }
       ],
       "conflicts": [
@@ -1146,7 +1181,7 @@
               "id": "B-CF-01-a",
               "value": "19710.00",
               "displayValue": "19.710",
-              "docId": "B-DOC-04",
+              "docId": "LEI-DOC-01",
               "authority": "coordinatedSchedulePending",
               "superseded": false,
               "recommended": false
@@ -1155,7 +1190,7 @@
               "id": "B-CF-01-b",
               "value": "19470.00",
               "displayValue": "19.470",
-              "docId": "B-DOC-33",
+              "docId": "LEI-DOC-07",
               "authority": "currentIssuedArchitecturalDrawing",
               "superseded": false,
               "recommended": true,
@@ -1165,7 +1200,7 @@
           "recommendedCandidateId": "B-CF-01-b",
           "resolutionAuthority": "confirmed",
           "staleDocIds": [
-            "B-DOC-04"
+            "LEI-DOC-01"
           ],
           "factKeys": [
             "bgfRSTotal"
@@ -1185,7 +1220,7 @@
               "id": "B-CF-02-a",
               "value": "48",
               "displayValue": "48",
-              "docId": "B-DOC-23",
+              "docId": "LEI-DOC-01",
               "authority": "currentDescriptionConflicting",
               "superseded": false,
               "recommended": false
@@ -1194,7 +1229,7 @@
               "id": "B-CF-02-b",
               "value": "46",
               "displayValue": "46",
-              "docId": "B-DOC-22",
+              "docId": "LEI-DOC-04",
               "authority": "currentCoordinatedSchedule",
               "superseded": false,
               "recommended": true
@@ -1203,7 +1238,7 @@
           "recommendedCandidateId": "B-CF-02-b",
           "resolutionAuthority": "sourceEvidenced",
           "staleDocIds": [
-            "B-DOC-23"
+            "LEI-DOC-01"
           ],
           "factKeys": [
             "units"
@@ -1222,7 +1257,7 @@
             {
               "id": "B-CF-03-a",
               "valueKey": "vr3.conflict.B-CF-03.candidate.full",
-              "docId": "B-DOC-25",
+              "docId": "LEI-DOC-05",
               "authority": "supersededArchitecturalDrawing",
               "superseded": true,
               "recommended": false
@@ -1230,7 +1265,7 @@
             {
               "id": "B-CF-03-b",
               "valueKey": "vr3.conflict.B-CF-03.candidate.partial",
-              "docId": "B-DOC-26",
+              "docId": "LEI-DOC-06",
               "authority": "currentIssuedArchitecturalDrawing",
               "superseded": false,
               "recommended": true
@@ -1239,8 +1274,7 @@
           "recommendedCandidateId": "B-CF-03-b",
           "resolutionAuthority": "confirmed",
           "staleDocIds": [
-            "B-DOC-25",
-            "B-DOC-32"
+            "LEI-DOC-09"
           ],
           "factKeys": [
             "undergroundLevel",
@@ -1261,7 +1295,7 @@
               "id": "B-CF-04-a",
               "value": "1080.00",
               "displayValue": "1.080",
-              "docId": "B-DOC-27",
+              "docId": "LEI-DOC-07",
               "authority": "supersededArchitecturalDrawing",
               "superseded": true,
               "recommended": false
@@ -1270,7 +1304,7 @@
               "id": "B-CF-04-b",
               "value": "920.00",
               "displayValue": "920",
-              "docId": "B-DOC-28",
+              "docId": "LEI-DOC-05",
               "authority": "currentIssuedArchitecturalDrawing",
               "superseded": false,
               "recommended": true
@@ -1279,7 +1313,7 @@
           "recommendedCandidateId": "B-CF-04-b",
           "resolutionAuthority": "sourceEvidenced",
           "staleDocIds": [
-            "B-DOC-27"
+            "LEI-DOC-09"
           ],
           "factKeys": [
             "commercialNuf"
@@ -1299,7 +1333,7 @@
               "id": "B-CF-05-a",
               "value": "4520.00",
               "displayValue": "4.520",
-              "docId": "B-DOC-10",
+              "docId": "LEI-DOC-07",
               "authority": "supersededDisciplineSchedule",
               "superseded": true,
               "recommended": false
@@ -1308,7 +1342,7 @@
               "id": "B-CF-05-b",
               "value": "4360.00",
               "displayValue": "4.360",
-              "docId": "B-DOC-11",
+              "docId": "LEI-DOC-03",
               "authority": "currentCoordinatedSchedule",
               "superseded": false,
               "recommended": true
@@ -1317,7 +1351,7 @@
           "recommendedCandidateId": "B-CF-05-b",
           "resolutionAuthority": "sourceEvidenced",
           "staleDocIds": [
-            "B-DOC-10"
+            "LEI-DOC-08"
           ],
           "factKeys": [
             "nuf"
@@ -1336,7 +1370,7 @@
             {
               "id": "B-CF-06-a",
               "valueKey": "vr3.conflict.B-CF-06.candidate.six",
-              "docId": "B-DOC-12",
+              "docId": "LEI-DOC-08",
               "authority": "supportingTechnicalDocument",
               "superseded": false,
               "recommended": false,
@@ -1345,7 +1379,7 @@
             {
               "id": "B-CF-06-b",
               "valueKey": "vr3.conflict.B-CF-06.candidate.five",
-              "docId": "B-DOC-07",
+              "docId": "LEI-DOC-03",
               "authority": "currentIssuedArchitecturalDrawing",
               "superseded": false,
               "recommended": true
@@ -1354,7 +1388,7 @@
           "recommendedCandidateId": "B-CF-06-b",
           "resolutionAuthority": "sourceEvidenced",
           "staleDocIds": [
-            "B-DOC-12"
+            "LEI-DOC-08"
           ],
           "factKeys": [
             "storeys"
@@ -1375,8 +1409,8 @@
           "blocking": false,
           "assumptionPermitted": true,
           "evidenceDocIds": [
-            "B-DOC-34",
-            "B-DOC-02"
+            "LEI-DOC-09",
+            "LEI-DOC-01"
           ]
         },
         {
@@ -1392,7 +1426,7 @@
           "blocking": false,
           "assumptionPermitted": true,
           "evidenceDocIds": [
-            "B-DOC-02"
+            "LEI-DOC-08"
           ]
         },
         {
@@ -1408,8 +1442,8 @@
           "blocking": false,
           "assumptionPermitted": false,
           "evidenceDocIds": [
-            "B-DOC-14",
-            "B-DOC-15"
+            "LEI-DOC-04",
+            "LEI-DOC-07"
           ]
         },
         {
@@ -1425,8 +1459,8 @@
           "blocking": false,
           "assumptionPermitted": true,
           "evidenceDocIds": [
-            "B-DOC-26",
-            "B-DOC-36"
+            "LEI-DOC-05",
+            "LEI-DOC-09"
           ]
         },
         {
@@ -1442,8 +1476,8 @@
           "blocking": false,
           "assumptionPermitted": true,
           "evidenceDocIds": [
-            "B-DOC-35",
-            "B-DOC-01"
+            "LEI-DOC-02",
+            "LEI-DOC-01"
           ]
         },
         {
@@ -1459,7 +1493,7 @@
           "blocking": false,
           "assumptionPermitted": false,
           "evidenceDocIds": [
-            "B-DOC-12"
+            "LEI-DOC-08"
           ]
         },
         {
@@ -1475,7 +1509,7 @@
           "blocking": false,
           "assumptionPermitted": false,
           "evidenceDocIds": [
-            "B-DOC-35"
+            "LEI-DOC-02"
           ]
         },
         {
@@ -1490,7 +1524,9 @@
           "status": "open",
           "blocking": false,
           "assumptionPermitted": true,
-          "evidenceDocIds": []
+          "evidenceDocIds": [
+            "LEI-DOC-11"
+          ]
         },
         {
           "id": "B-DS-01",
@@ -1505,8 +1541,8 @@
           "blocking": false,
           "assumptionPermitted": false,
           "evidenceDocIds": [
-            "B-DOC-31",
-            "B-DOC-33"
+            "LEI-DOC-06",
+            "LEI-DOC-05"
           ]
         },
         {
@@ -1522,24 +1558,2016 @@
           "blocking": false,
           "assumptionPermitted": false,
           "evidenceDocIds": [
-            "B-DOC-36"
+            "LEI-DOC-09"
           ]
+        }
+      ],
+      "evidence": [
+        {
+          "id": "B-EV-01",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.bgfRSAbove",
+          "value": "17250.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-07",
+          "sourceAnchorId": "LEI-DOC-07-A04",
+          "sourcePage": 6,
+          "authority": "derived",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "primary"
+        },
+        {
+          "id": "B-EV-02",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.bgfRSBelow",
+          "value": "2220.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-07",
+          "sourceAnchorId": "LEI-DOC-07-A05",
+          "sourcePage": 6,
+          "authority": "derived",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-03",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.bgfTotal",
+          "value": "19470.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-07",
+          "sourceAnchorId": "LEI-DOC-07-A06",
+          "sourcePage": 6,
+          "authority": "derived",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "scopeDecision",
+            "kg300",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "primary"
+        },
+        {
+          "id": "B-EV-04",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.wfl",
+          "value": "7030.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-07",
+          "sourceAnchorId": "LEI-DOC-07-A07",
+          "sourcePage": 7,
+          "authority": "derived",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "primary"
+        },
+        {
+          "id": "B-EV-05",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.nuf",
+          "value": "4360.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-07",
+          "sourceAnchorId": "LEI-DOC-07-A08",
+          "sourcePage": 7,
+          "authority": "derived",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-06",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.commercialNuf",
+          "value": "920.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-07",
+          "sourceAnchorId": "LEI-DOC-07-A09",
+          "sourcePage": 7,
+          "authority": "derived",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "scopeDecision",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-07",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.siteArea",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.siteAreaOpen",
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-02",
+          "sourceAnchorId": "LEI-DOC-02-A01",
+          "sourcePage": 1,
+          "authority": "sourceEvidenced",
+          "state": "unknown",
+          "downstreamRefs": [
+            "buildingBaseline"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "primary"
+        },
+        {
+          "id": "B-EV-08",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.usage",
+          "value": null,
+          "requirementKey": "vr3.building.usage.office",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "sourceDocumentId": "LEI-DOC-01",
+          "sourceAnchorId": "LEI-DOC-01-A02",
+          "sourcePage": 3,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "scopeDecision"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-09",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.storeys",
+          "value": null,
+          "requirementKey": "vr3.building.storeys.bA",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "sourceDocumentId": "LEI-DOC-03",
+          "sourceAnchorId": "LEI-DOC-03-A01",
+          "sourcePage": 1,
+          "authority": "confirmed",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-09-04T09:40:00+02:00",
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-10",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.underground",
+          "value": null,
+          "requirementKey": "vr3.building.underground.none",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "sourceDocumentId": "LEI-DOC-03",
+          "sourceAnchorId": "LEI-DOC-03-A02",
+          "sourcePage": 1,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300",
+            "scopeDecision"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-11",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.bgfRAbove",
+          "value": "5820.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "sourceDocumentId": "LEI-DOC-03",
+          "sourceAnchorId": "LEI-DOC-03-A04",
+          "sourcePage": 7,
+          "authority": "derived",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-12",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.bgfSAbove",
+          "value": "210.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "sourceDocumentId": "LEI-DOC-03",
+          "sourceAnchorId": "LEI-DOC-03-A04",
+          "sourcePage": 7,
+          "authority": "derived",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-13",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.bgfRSAbove",
+          "value": "6030.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "sourceDocumentId": "LEI-DOC-03",
+          "sourceAnchorId": "LEI-DOC-03-A03",
+          "sourcePage": 7,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-14",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.bgfRSBelow",
+          "value": "0.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "sourceDocumentId": "LEI-DOC-03",
+          "sourceAnchorId": "LEI-DOC-03-A02",
+          "sourcePage": 1,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-15",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.bgfTotal",
+          "value": "6030.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "sourceDocumentId": "LEI-DOC-07",
+          "sourceAnchorId": "LEI-DOC-07-A01",
+          "sourcePage": 3,
+          "authority": "confirmed",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-09-04T09:40:00+02:00",
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-16",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.nuf",
+          "value": "4360.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "sourceDocumentId": "LEI-DOC-03",
+          "sourceAnchorId": "LEI-DOC-03-A05",
+          "sourcePage": 7,
+          "authority": "confirmed",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-09-04T09:40:00+02:00",
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-17",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.workplaces",
+          "value": "340",
+          "requirementKey": null,
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "sourceDocumentId": "LEI-DOC-03",
+          "sourceAnchorId": "LEI-DOC-03-A06",
+          "sourcePage": 8,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg400",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-18",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.buildingHeight",
+          "value": "21.50",
+          "requirementKey": null,
+          "unit": "m",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "sourceDocumentId": "LEI-DOC-06",
+          "sourceAnchorId": "LEI-DOC-06-A01",
+          "sourcePage": 1,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-19",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.usage",
+          "value": null,
+          "requirementKey": "vr3.building.usage.residential",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "sourceDocumentId": "LEI-DOC-01",
+          "sourceAnchorId": "LEI-DOC-01-A02",
+          "sourcePage": 3,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "scopeDecision"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-20",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.storeys",
+          "value": null,
+          "requirementKey": "vr3.building.storeys.bB",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "sourceDocumentId": "LEI-DOC-04",
+          "sourceAnchorId": "LEI-DOC-04-A01",
+          "sourcePage": 1,
+          "authority": "confirmed",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-09-04T09:40:00+02:00",
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-21",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.underground",
+          "value": null,
+          "requirementKey": "vr3.building.underground.full",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "sourceDocumentId": "LEI-DOC-04",
+          "sourceAnchorId": "LEI-DOC-04-A02",
+          "sourcePage": 1,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300",
+            "scopeDecision"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-22",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.bgfRSAbove",
+          "value": "4800.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "sourceDocumentId": "LEI-DOC-04",
+          "sourceAnchorId": "LEI-DOC-04-A06",
+          "sourcePage": 9,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-23",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.bgfRBelow",
+          "value": "980.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "sourceDocumentId": "LEI-DOC-04",
+          "sourceAnchorId": "LEI-DOC-04-A03",
+          "sourcePage": 2,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-24",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.bgfRSBelow",
+          "value": "980.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "sourceDocumentId": "LEI-DOC-04",
+          "sourceAnchorId": "LEI-DOC-04-A03",
+          "sourcePage": 2,
+          "authority": "derived",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-25",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.bgfTotal",
+          "value": "5780.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "sourceDocumentId": "LEI-DOC-07",
+          "sourceAnchorId": "LEI-DOC-07-A02",
+          "sourcePage": 4,
+          "authority": "confirmed",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-09-04T09:40:00+02:00",
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-26",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.wfl",
+          "value": "3410.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "sourceDocumentId": "LEI-DOC-04",
+          "sourceAnchorId": "LEI-DOC-04-A07",
+          "sourcePage": 9,
+          "authority": "confirmed",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-09-04T09:40:00+02:00",
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-27",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.units",
+          "value": "46",
+          "requirementKey": null,
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "sourceDocumentId": "LEI-DOC-04",
+          "sourceAnchorId": "LEI-DOC-04-A05",
+          "sourcePage": 8,
+          "authority": "confirmed",
+          "state": "conflict",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300",
+            "kg400",
+            "export"
+          ],
+          "previousValue": "48",
+          "reasonKey": "vr3.evidence.reason.b.unitCountContested",
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-09-04T09:40:00+02:00",
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-28",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.parkingSpaces",
+          "value": "36",
+          "requirementKey": null,
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "sourceDocumentId": "LEI-DOC-04",
+          "sourceAnchorId": "LEI-DOC-04-A04",
+          "sourcePage": 2,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300",
+            "kg400"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-29",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.buildingHeight",
+          "value": "15.40",
+          "requirementKey": null,
+          "unit": "m",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "sourceDocumentId": "LEI-DOC-06",
+          "sourceAnchorId": "LEI-DOC-06-A01",
+          "sourcePage": 1,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-30",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.usage",
+          "value": null,
+          "requirementKey": "vr3.building.usage.mixed",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "sourceDocumentId": "LEI-DOC-01",
+          "sourceAnchorId": "LEI-DOC-01-A02",
+          "sourcePage": 3,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "scopeDecision"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-31",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.storeys",
+          "value": null,
+          "requirementKey": "vr3.building.storeys.bC",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "sourceDocumentId": "LEI-DOC-05",
+          "sourceAnchorId": "LEI-DOC-05-A01",
+          "sourcePage": 1,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-32",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.underground",
+          "value": null,
+          "requirementKey": "vr3.building.underground.partial",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "sourceDocumentId": "LEI-DOC-05",
+          "sourceAnchorId": "LEI-DOC-05-A02",
+          "sourcePage": 1,
+          "authority": "confirmed",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300",
+            "scopeDecision"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-09-04T09:40:00+02:00",
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-33",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.bgfRSAbove",
+          "value": "6420.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "sourceDocumentId": "LEI-DOC-05",
+          "sourceAnchorId": "LEI-DOC-05-A06",
+          "sourcePage": 9,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-34",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.bgfRBelow",
+          "value": "1240.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "sourceDocumentId": "LEI-DOC-05",
+          "sourceAnchorId": "LEI-DOC-05-A03",
+          "sourcePage": 2,
+          "authority": "confirmed",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-09-04T09:40:00+02:00",
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-35",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.bgfRSBelow",
+          "value": "1240.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "sourceDocumentId": "LEI-DOC-05",
+          "sourceAnchorId": "LEI-DOC-05-A03",
+          "sourcePage": 2,
+          "authority": "derived",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-36",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.bgfTotal",
+          "value": "7660.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "sourceDocumentId": "LEI-DOC-07",
+          "sourceAnchorId": "LEI-DOC-07-A03",
+          "sourcePage": 5,
+          "authority": "confirmed",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-09-04T09:40:00+02:00",
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-37",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.wfl",
+          "value": "3620.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "sourceDocumentId": "LEI-DOC-05",
+          "sourceAnchorId": "LEI-DOC-05-A07",
+          "sourcePage": 9,
+          "authority": "confirmed",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-09-04T09:40:00+02:00",
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-38",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.commercialNuf",
+          "value": "920.00",
+          "requirementKey": null,
+          "unit": "m²",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "sourceDocumentId": "LEI-DOC-05",
+          "sourceAnchorId": "LEI-DOC-05-A05",
+          "sourcePage": 3,
+          "authority": "confirmed",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "scopeDecision",
+            "kg300",
+            "kg400",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-09-04T09:40:00+02:00",
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-39",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.units",
+          "value": "48",
+          "requirementKey": null,
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "sourceDocumentId": "LEI-DOC-05",
+          "sourceAnchorId": "LEI-DOC-05-A08",
+          "sourcePage": 10,
+          "authority": "confirmed",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300",
+            "kg400",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-09-04T09:40:00+02:00",
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-40",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.parkingSpaces",
+          "value": "22",
+          "requirementKey": null,
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "sourceDocumentId": "LEI-DOC-05",
+          "sourceAnchorId": "LEI-DOC-05-A04",
+          "sourcePage": 2,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300",
+            "kg400"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-41",
+          "group": "geometry",
+          "labelKey": "vr3.evidence.label.buildingHeight",
+          "value": "22.20",
+          "requirementKey": null,
+          "unit": "m",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "sourceDocumentId": "LEI-DOC-06",
+          "sourceAnchorId": "LEI-DOC-06-A01",
+          "sourcePage": 1,
+          "authority": "overridden",
+          "state": "current",
+          "downstreamRefs": [
+            "buildingBaseline",
+            "kg300"
+          ],
+          "previousValue": "23.80",
+          "reasonKey": "vr3.evidence.reason.b.heightFromSection",
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-09-04T09:40:00+02:00",
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-42",
+          "group": "design",
+          "labelKey": "vr3.evidence.label.facadeHierarchy",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.facadeHierarchy",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "sourceDocumentId": "LEI-DOC-12",
+          "sourceAnchorId": "LEI-DOC-12-A01",
+          "sourcePage": 1,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "scopeDecision",
+            "kg300",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "primary"
+        },
+        {
+          "id": "B-EV-43",
+          "group": "design",
+          "labelKey": "vr3.evidence.label.exposedTimber",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.exposedTimber",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "sourceDocumentId": "LEI-DOC-12",
+          "sourceAnchorId": "LEI-DOC-12-A01",
+          "sourcePage": 1,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "scopeDecision",
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "primary"
+        },
+        {
+          "id": "B-EV-44",
+          "group": "design",
+          "labelKey": "vr3.evidence.label.roof",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.roofGreening",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B",
+            "B-BLDG-C"
+          ],
+          "sourceDocumentId": "LEI-DOC-12",
+          "sourceAnchorId": "LEI-DOC-12-A01",
+          "sourcePage": 1,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-45",
+          "group": "design",
+          "labelKey": "vr3.evidence.label.photovoltaic",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.photovoltaicIntent",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "sourceDocumentId": "LEI-DOC-12",
+          "sourceAnchorId": "LEI-DOC-12-A01",
+          "sourcePage": 1,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "scopeDecision",
+            "kg400"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-46",
+          "group": "design",
+          "labelKey": "vr3.evidence.label.facade",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.facadeBuildUp",
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-06",
+          "sourceAnchorId": "LEI-DOC-06-A03",
+          "sourcePage": 5,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg300",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-47",
+          "group": "design",
+          "labelKey": "vr3.evidence.label.energyStandard",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.energyStandardResidential",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B",
+            "B-BLDG-C"
+          ],
+          "sourceDocumentId": "LEI-DOC-12",
+          "sourceAnchorId": "LEI-DOC-12-A03",
+          "sourcePage": 3,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "scopeDecision",
+            "kg300",
+            "kg400",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "primary"
+        },
+        {
+          "id": "B-EV-48",
+          "group": "design",
+          "labelKey": "vr3.evidence.label.energyStandard",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.energyStandardOffice",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "sourceDocumentId": "LEI-DOC-12",
+          "sourceAnchorId": "LEI-DOC-12-A03",
+          "sourcePage": 3,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "scopeDecision",
+            "kg400"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-49",
+          "group": "design",
+          "labelKey": "vr3.evidence.label.certification",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.qngIntent",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B",
+            "B-BLDG-C"
+          ],
+          "sourceDocumentId": "LEI-DOC-12",
+          "sourceAnchorId": "LEI-DOC-12-A04",
+          "sourcePage": 4,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "scopeDecision",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-50",
+          "group": "design",
+          "labelKey": "vr3.evidence.label.certification",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.dgnbIntent",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "sourceDocumentId": "LEI-DOC-12",
+          "sourceAnchorId": "LEI-DOC-12-A05",
+          "sourcePage": 5,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "scopeDecision",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-51",
+          "group": "design",
+          "labelKey": "vr3.evidence.label.accessibility",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.accessibility",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "sourceDocumentId": "LEI-DOC-12",
+          "sourceAnchorId": "LEI-DOC-12-A04",
+          "sourcePage": 4,
+          "authority": "sourceEvidenced",
+          "state": "stale",
+          "downstreamRefs": [
+            "scopeDecision",
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": "vr3.evidence.reason.b.unitMixUnderReview",
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-52",
+          "group": "design",
+          "labelKey": "vr3.evidence.label.priorities",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.priorityOrder",
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-01",
+          "sourceAnchorId": "LEI-DOC-01-A03",
+          "sourcePage": 4,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "scopeDecision",
+            "schedule",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "primary"
+        },
+        {
+          "id": "B-EV-53",
+          "group": "design",
+          "labelKey": "vr3.evidence.label.designStage",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.designStage",
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-12",
+          "sourceAnchorId": "LEI-DOC-12-A02",
+          "sourcePage": 2,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "scopeDecision",
+            "schedule"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-54",
+          "group": "construction",
+          "labelKey": "vr3.evidence.label.structure",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.structuralSystem",
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-08",
+          "sourceAnchorId": "LEI-DOC-08-A01",
+          "sourcePage": 2,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg300",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "primary"
+        },
+        {
+          "id": "B-EV-55",
+          "group": "construction",
+          "labelKey": "vr3.evidence.label.materials",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.timberMaterials",
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-08",
+          "sourceAnchorId": "LEI-DOC-08-A02",
+          "sourcePage": 4,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-56",
+          "group": "construction",
+          "labelKey": "vr3.evidence.label.envelope",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.envelope",
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-08",
+          "sourceAnchorId": "LEI-DOC-08-A03",
+          "sourcePage": 6,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg300",
+            "kg400"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-57",
+          "group": "construction",
+          "labelKey": "vr3.evidence.label.fireProtection",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.fireClass",
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-08",
+          "sourceAnchorId": "LEI-DOC-08-A04",
+          "sourcePage": 9,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "scopeDecision",
+            "kg300",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "primary"
+        },
+        {
+          "id": "B-EV-58",
+          "group": "construction",
+          "labelKey": "vr3.evidence.label.acoustics",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.acoustics",
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-08",
+          "sourceAnchorId": "LEI-DOC-08-A05",
+          "sourcePage": 10,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "primary"
+        },
+        {
+          "id": "B-EV-59",
+          "group": "construction",
+          "labelKey": "vr3.evidence.label.fitOut",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.fitOutStandard",
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-08",
+          "sourceAnchorId": "LEI-DOC-08-A06",
+          "sourcePage": 11,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "scopeDecision",
+            "kg300",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "primary"
+        },
+        {
+          "id": "B-EV-60",
+          "group": "construction",
+          "labelKey": "vr3.evidence.label.commercialHandover",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.commercialHandover",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "sourceDocumentId": "LEI-DOC-08",
+          "sourceAnchorId": "LEI-DOC-08-A06",
+          "sourcePage": 11,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "scopeDecision",
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-61",
+          "group": "construction",
+          "labelKey": "vr3.evidence.label.storeyHeight",
+          "value": "2.85",
+          "requirementKey": null,
+          "unit": "m",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-A"
+          ],
+          "sourceDocumentId": "LEI-DOC-06",
+          "sourceAnchorId": "LEI-DOC-06-A01",
+          "sourcePage": 1,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-62",
+          "group": "construction",
+          "labelKey": "vr3.evidence.label.storeyHeight",
+          "value": "2.55",
+          "requirementKey": null,
+          "unit": "m",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-B"
+          ],
+          "sourceDocumentId": "LEI-DOC-06",
+          "sourceAnchorId": "LEI-DOC-06-A01",
+          "sourcePage": 1,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-63",
+          "group": "construction",
+          "labelKey": "vr3.evidence.label.storeyHeight",
+          "value": "2.55",
+          "requirementKey": null,
+          "unit": "m",
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "sourceDocumentId": "LEI-DOC-06",
+          "sourceAnchorId": "LEI-DOC-06-A01",
+          "sourcePage": 1,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-64",
+          "group": "construction",
+          "labelKey": "vr3.evidence.label.basementScope",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.basementScopeC",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "sourceDocumentId": "LEI-DOC-06",
+          "sourceAnchorId": "LEI-DOC-06-A02",
+          "sourcePage": 4,
+          "authority": "confirmed",
+          "state": "current",
+          "downstreamRefs": [
+            "scopeDecision",
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": "sales-user",
+          "confirmedAt": "2026-09-04T09:40:00+02:00",
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-65",
+          "group": "construction",
+          "labelKey": "vr3.evidence.label.siteLogistics",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.siteLogistics",
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-02",
+          "sourceAnchorId": "LEI-DOC-02-A04",
+          "sourcePage": 2,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg300",
+            "schedule"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-66",
+          "group": "construction",
+          "labelKey": "vr3.evidence.label.siteAccess",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.siteAccess",
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-02",
+          "sourceAnchorId": "LEI-DOC-02-A03",
+          "sourcePage": 2,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg300",
+            "schedule"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-67",
+          "group": "construction",
+          "labelKey": "vr3.evidence.label.scheduleTargets",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.scheduleTargets",
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-11",
+          "sourceAnchorId": "LEI-DOC-11-A02",
+          "sourcePage": 1,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "schedule",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-68",
+          "group": "construction",
+          "labelKey": "vr3.evidence.label.handoverForm",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.handoverFormOpen",
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-11",
+          "sourceAnchorId": "LEI-DOC-11-A05",
+          "sourcePage": 4,
+          "authority": "sourceEvidenced",
+          "state": "unknown",
+          "downstreamRefs": [
+            "schedule",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-69",
+          "group": "tga",
+          "labelKey": "vr3.evidence.label.heatSource",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.districtHeating",
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-09",
+          "sourceAnchorId": "LEI-DOC-09-A01",
+          "sourcePage": 2,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg400",
+            "scopeDecision",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "primary"
+        },
+        {
+          "id": "B-EV-70",
+          "group": "tga",
+          "labelKey": "vr3.evidence.label.heatDistribution",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.heatDistribution",
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-09",
+          "sourceAnchorId": "LEI-DOC-09-A02",
+          "sourcePage": 3,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg400"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-71",
+          "group": "tga",
+          "labelKey": "vr3.evidence.label.ventilationCommercial",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.commercialVentilation",
+          "unit": null,
+          "projectLevel": false,
+          "buildingIds": [
+            "B-BLDG-C"
+          ],
+          "sourceDocumentId": "LEI-DOC-09",
+          "sourceAnchorId": "LEI-DOC-09-A03",
+          "sourcePage": 5,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg400",
+            "scopeDecision",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "primary"
+        },
+        {
+          "id": "B-EV-72",
+          "group": "tga",
+          "labelKey": "vr3.evidence.label.water",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.waterHygiene",
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-09",
+          "sourceAnchorId": "LEI-DOC-09-A04",
+          "sourcePage": 6,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg400"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-73",
+          "group": "tga",
+          "labelKey": "vr3.evidence.label.chargingPoints",
+          "value": "12",
+          "requirementKey": null,
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-09",
+          "sourceAnchorId": "LEI-DOC-09-A05",
+          "sourcePage": 7,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg400",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-74",
+          "group": "tga",
+          "labelKey": "vr3.evidence.label.chargingAuthority",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.chargingQuantityAuthority",
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-09",
+          "sourceAnchorId": "LEI-DOC-09-A05",
+          "sourcePage": 7,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg400",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-75",
+          "group": "tga",
+          "labelKey": "vr3.evidence.label.conduitPreparation",
+          "value": "58",
+          "requirementKey": null,
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-09",
+          "sourceAnchorId": "LEI-DOC-09-A05",
+          "sourcePage": 7,
+          "authority": "derived",
+          "state": "current",
+          "downstreamRefs": [
+            "kg400",
+            "kg300"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-76",
+          "group": "tga",
+          "labelKey": "vr3.evidence.label.houseConnections",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.houseConnectionResponsibility",
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-09",
+          "sourceAnchorId": "LEI-DOC-09-A06",
+          "sourcePage": 8,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg400",
+            "scopeDecision",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "primary"
+        },
+        {
+          "id": "B-EV-77",
+          "group": "tga",
+          "labelKey": "vr3.evidence.label.metering",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.meteringControls",
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-09",
+          "sourceAnchorId": "LEI-DOC-09-A07",
+          "sourcePage": 9,
+          "authority": "sourceEvidenced",
+          "state": "current",
+          "downstreamRefs": [
+            "kg400",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "secondary"
+        },
+        {
+          "id": "B-EV-78",
+          "group": "tga",
+          "labelKey": "vr3.evidence.label.telecom",
+          "value": null,
+          "requirementKey": "vr3.evidence.req.b.telecomOpen",
+          "unit": null,
+          "projectLevel": true,
+          "buildingIds": [],
+          "sourceDocumentId": "LEI-DOC-09",
+          "sourceAnchorId": "LEI-DOC-09-A08",
+          "sourcePage": 10,
+          "authority": "sourceEvidenced",
+          "state": "unknown",
+          "downstreamRefs": [
+            "kg400",
+            "scopeDecision",
+            "export"
+          ],
+          "previousValue": null,
+          "reasonKey": null,
+          "confirmedBy": null,
+          "confirmedAt": null,
+          "impact": "primary"
         }
       ],
       "analysis": {
         "requiredFields": 34,
         "requiredFieldsComplete": 34,
-        "valuesExtracted": 141,
-        "sourceEvidencedValues": 123,
-        "aiInferredValues": 12,
-        "manualOrConfirmedValues": 6,
-        "valuesRequiringAttention": 18,
         "understandingKey": "vr3.project.DEMO-COMPLEX-01.understanding"
       },
       "terminalDistribution": {
-        "processed": 28,
-        "warning": 4,
-        "lowConfidence": 3,
+        "processed": 8,
+        "warning": 3,
+        "lowConfidence": 1,
         "failed": 1
       },
       "schedule": {

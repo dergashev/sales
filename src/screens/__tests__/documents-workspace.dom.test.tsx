@@ -58,24 +58,24 @@ describe('the register is the working object', () => {
     const user = userEvent.setup()
     await openProject(user, COMPLEX)
 
-    // Thirty-six documents: four pages, ten rows, an honest range.
+    // Thirteen documents: two pages, ten rows, an honest range.
     expect(document.querySelectorAll('.a3-drow')).toHaveLength(10)
     const pages = screen.getByRole('navigation', { name: 'Dokumentseiten' })
-    expect(within(pages).getByText('1–10 von 36 Dokumenten')).toBeInTheDocument()
+    expect(within(pages).getByText('1–10 von 13 Dokumenten')).toBeInTheDocument()
     // The boundary keeps its place in the DOM and in the tab order and
     // refuses to move (canonical Pagination's `aria-disabled` contract).
     expect(within(pages).getByRole('button', { name: 'Zurück' }))
       .toHaveAttribute('aria-disabled', 'true')
 
-    await user.click(within(pages).getByRole('button', { name: 'Seite 4' }))
-    expect(within(pages).getByText('31–36 von 36 Dokumenten')).toBeInTheDocument()
-    expect(document.querySelectorAll('.a3-drow')).toHaveLength(6)
+    await user.click(within(pages).getByRole('button', { name: 'Seite 2' }))
+    expect(within(pages).getByText('11–13 von 13 Dokumenten')).toBeInTheDocument()
+    expect(document.querySelectorAll('.a3-drow')).toHaveLength(3)
     expect(within(pages).getByRole('button', { name: 'Weiter' }))
       .toHaveAttribute('aria-disabled', 'true')
     // A page change is announced and takes focus to the register heading,
     // rather than leaving the reader where the button was.
     expect(document.activeElement).toHaveClass('a3-docws-count-text')
-    expect(rail().textContent).toContain('Seite 4 von 4, Dokumente 31–36 von 36.')
+    expect(rail().textContent).toContain('Seite 2 von 2, Dokumente 11–13 von 13.')
   })
 
   it('shows every result and no controls at all below the threshold', async () => {
@@ -91,22 +91,25 @@ describe('the register is the working object', () => {
     await openProject(user, COMPLEX)
     const pages = () => screen.getByRole('navigation', { name: 'Dokumentseiten' })
 
-    await user.click(within(pages()).getByRole('button', { name: 'Seite 3' }))
-    expect(within(pages()).getByText('21–30 von 36 Dokumenten')).toBeInTheDocument()
+    // Thirteen documents paginate to two pages, so the last page is page 2.
+    await user.click(within(pages()).getByRole('button', { name: 'Seite 2' }))
+    expect(within(pages()).getByText('11–13 von 13 Dokumenten')).toBeInTheDocument()
 
-    // Searching from page 3 lands on page 1 of the NEW result set…
-    await user.type(screen.getByRole('searchbox', { name: /Dokumente suchen/ }), 'grundriss')
-    expect(within(pages()).getByText('1–10 von 16 Dokumenten')).toBeInTheDocument()
+    // Searching from the last page lands on page 1 of the NEW result set —
+    // twelve of the thirteen files carry a revision in their name, so the
+    // result is still large enough to paginate…
+    await user.type(screen.getByRole('searchbox', { name: /Dokumente suchen/ }), 'rev')
+    expect(within(pages()).getByText('1–10 von 12 Dokumenten')).toBeInTheDocument()
     // …and narrowing further below the threshold retires the control.
     await user.clear(screen.getByRole('searchbox', { name: /Dokumente suchen/ }))
-    await user.type(screen.getByRole('searchbox', { name: /Dokumente suchen/ }), 'schnitt')
+    await user.type(screen.getByRole('searchbox', { name: /Dokumente suchen/ }), 'grundriss')
     expect(screen.queryByRole('navigation', { name: 'Dokumentseiten' }))
       .not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 2, name: /von 36 Dokumenten$/ }))
+    expect(screen.getByRole('heading', { level: 2, name: /von 13 Dokumenten$/ }))
       .toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Filter zurücksetzen' }))
-    expect(screen.getByRole('heading', { level: 2, name: '36 Dokumente' }))
+    expect(screen.getByRole('heading', { level: 2, name: '13 Dokumente' }))
       .toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Filter zurücksetzen' }))
       .not.toBeInTheDocument()
@@ -119,32 +122,35 @@ describe('the register is the working object', () => {
       const pages = screen.getByRole('navigation', { name: 'Dokumentseiten' })
       await user.click(within(pages).getByRole('button', { name: 'Seite 2' }))
 
+      // Page 2 is the last page and holds the remaining three rows; every
+      // one of them carries the action.
       const inspects = document.querySelectorAll('.a3-drow-action-inspect')
-      expect(inspects).toHaveLength(10)
+      expect(inspects).toHaveLength(3)
       await user.click(inspects[0] as HTMLElement)
       expect(inspects[0]).toHaveAttribute('aria-expanded', 'true')
       const detail = document.querySelector('.a3-drow-detail') as HTMLElement
       expect(detail.hidden).toBe(false)
       // The register context is exactly where it was.
-      expect(within(pages).getByText('11–20 von 36 Dokumenten')).toBeInTheDocument()
+      expect(within(pages).getByText('11–13 von 13 Dokumenten')).toBeInTheDocument()
     })
 })
 
 describe('scope is the project, never the page', () => {
-  it('the action counts the eligible set even from page 2 of 4', async () => {
+  it('the action counts the eligible set even from page 2 of 2', async () => {
     const user = userEvent.setup()
     await openProject(user, COMPLEX)
     const pages = screen.getByRole('navigation', { name: 'Dokumentseiten' })
     await user.click(within(pages).getByRole('button', { name: 'Seite 2' }))
 
     expect(within(rail()).getByRole('button', {
-      name: 'Alle 36 analysierbaren Dokumente analysieren',
+      name: 'Alle 13 analysierbaren Dokumente analysieren',
     })).toBeInTheDocument()
     expect(within(rail()).getByText(/Filter und Seiten ändern nur die Liste/))
       .toBeInTheDocument()
-    expect(railFact('Analysierbar')).toBe('36')
-    // Ten rows are visible; the operation is not about those ten.
-    expect(document.querySelectorAll('.a3-drow')).toHaveLength(10)
+    expect(railFact('Analysierbar')).toBe('13')
+    // Three rows are visible on the last page; the operation is not about
+    // those three.
+    expect(document.querySelectorAll('.a3-drow')).toHaveLength(3)
   })
 
   it('a removed document leaves the eligible count and the action agreeing', async () => {
@@ -153,10 +159,10 @@ describe('scope is the project, never the page', () => {
     const target = demoProject('DEMO-COMPLEX-01')!.documents[0]!
     act(() => useStore.getState().removeDocumentRow(target.id))
 
-    expect(railFact('Dokumente')).toBe('36')
-    expect(railFact('Analysierbar')).toBe('35')
+    expect(railFact('Dokumente')).toBe('13')
+    expect(railFact('Analysierbar')).toBe('12')
     expect(within(rail()).getByRole('button', {
-      name: 'Alle 35 analysierbaren Dokumente analysieren',
+      name: 'Alle 12 analysierbaren Dokumente analysieren',
     })).toBeInTheDocument()
   })
 })
@@ -203,14 +209,15 @@ describe('the rail tells the truth about the job', () => {
 
     expect(within(rail()).getByRole('heading', { name: 'Mit Hinweisen abgeschlossen' }))
       .toBeInTheDocument()
-    expect(railFact('Brauchen Aufmerksamkeit')).toBe('8')
+    // 3 warnings + 1 low confidence + 1 failed = 5 open outcomes.
+    expect(railFact('Brauchen Aufmerksamkeit')).toBe('5')
     // It does not auto-navigate: the user sees what happened and chooses.
     expect(useStore.getState().projectStage).toBe('documents')
     // The secondary action routes to the rows that need the decision.
     await user.click(within(rail()).getByRole('button', {
-      name: '8 Dokumente mit Hinweisen anzeigen',
+      name: '5 Dokumente mit Hinweisen anzeigen',
     }))
-    expect(document.querySelectorAll('.a3-drow')).toHaveLength(8)
+    expect(document.querySelectorAll('.a3-drow')).toHaveLength(5)
     // …and the primary one is the next stage, taken deliberately.
     await user.click(within(rail()).getByRole('button', { name: 'Projektverständnis prüfen' }))
     expect(useStore.getState().projectStage).toBe('understanding')

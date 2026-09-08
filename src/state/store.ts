@@ -24,6 +24,11 @@ import {
   type ProjectBaselineSnapshot,
 } from './projectAnalysis'
 import {
+  EMPTY_PROJECT_READINESS,
+  projectBaselineIdOf,
+  type ProjectReadinessLedger,
+} from './projectLifecycle'
+import {
   KG_SCOPE_GROUPS,
   initialDecisions as initialKgDecisions,
   kgCatalogue,
@@ -349,7 +354,6 @@ export type EventKind =
   | 'option.selected' | 'coverage.changed'
   | 'document.activated' | 'conflict.resolved'
   | 'offer.emailed' | 'offer.printed'
-  | 'note.created' | 'note.synced_to_hubspot'
   | 'state.restored'
   | 'undo'
 
@@ -2205,6 +2209,25 @@ export type Store = {
    */
   projectAnalyses: Record<string, ProjectAnalysis>
   /**
+   * The per-project Client-Mode review ledger — the ONE seam through which
+   * `Ready to pitch` can ever become true.
+   *
+   * Keyed by project id and kept across a project switch for the same reason
+   * `projectAnalyses` is: the Projects register has to answer "is this
+   * project ready" for every card while only ONE project's Option workspace
+   * is loaded, and a ledger that swapped with the workspace could answer for
+   * one card only.
+   *
+   * EMPTY at boot and never seeded from a fixture. That is the point: a
+   * demonstration record that granted itself a completed client review is
+   * precisely the fixture-driven readiness this slice removes. The Export &
+   * Client-Mode-review slice writes an entry when a person explicitly
+   * completes the review of one exact saved Option version;
+   * `projectReadyToPitch` reads it and re-checks that the version it names
+   * still exists and still carries the same fingerprint.
+   */
+  projectReadiness: ProjectReadinessLedger
+  /**
    * The project baseline committed into Option creation (VR3-02's input).
    * `null` until the user actually commits it — an uncommitted baseline is
    * absent, not an empty snapshot.
@@ -2216,15 +2239,6 @@ export type Store = {
   understandingTab: UnderstandingTab
   /** Подтверждены ли верхнеуровневые параметры проекта (часть гейта). */
   projectParamsConfirmed: boolean
-  /**
-   * Внутренняя заметка (DC-43). Принадлежит УРОВНЮ Opportunity, а не
-   * Option: продавец записывает услышанное о проекте, и переключение
-   * варианта не должно её менять. В клиентских профилях не существует
-   * (NOTE-006) — не скрыта, а отсутствует.
-   */
-  noteText: string
-  noteSavedAt: string | null
-  noteSyncedAt: string | null
   /**
    * Скидка в процентах — часть КОНФИГУРАЦИИ Option, а не состояние экрана.
    *
@@ -2554,10 +2568,6 @@ export type Store = {
    * (снапшот, M-3) Option. См. docstring реализации.
    */
   renameOption: (id: string, name: string) => void
-  /** Тихая запись заметки: событие журнала есть, тоста нет (правило 34). */
-  saveNote: (text: string) => void
-  /** Симуляция круга до CRM завершилась — отдельное событие (NOTE-003). */
-  markNoteSynced: () => void
   openOption: (id: string) => void
   /**
    * REDESIGN R3: switch which Option is PRESENTED in Kundenansicht.
@@ -5947,13 +5957,11 @@ const store = createStore<Store>((set, get) => {
     level: 'liste',
     opportunityId: null,
     projectAnalyses: initialProjectAnalyses(),
+    projectReadiness: EMPTY_PROJECT_READINESS,
     projectBaseline: null,
     projectStage: 'documents',
     understandingTab: 'overview',
     projectParamsConfirmed: false,
-    noteText: '',
-    noteSavedAt: null,
-    noteSyncedAt: null,
     options: [],
     activeOptionId: null,
     viewedOptionId: null,
@@ -7623,37 +7631,6 @@ const store = createStore<Store>((set, get) => {
       })
     },
 
-    saveNote: (text) => {
-      const prev = get().noteText
-      if (prev === text) return
-      const at = new Date().toLocaleTimeString('de-DE',
-        { hour: '2-digit', minute: '2-digit' })
-      set({ noteText: text, noteSavedAt: at })
-      apply({
-        kind: 'note.created',
-        // Текст заметки в подпись НЕ попадает: журнал читают на встрече,
-        // а заметка внутренняя. Событие фиксирует факт и объём правки.
-        label: `Interne Notiz gespeichert · ${text.length} Zeichen`,
-        deltaExact: null,
-        // Без `inverse` НАМЕРЕННО: событие с обратным действием получает
-        // тост (DC-29), а правило 34 требует тихой записи — «ни панели,
-        // ни тостов, ни автодополнений». Отмену набора даёт само поле;
-        // журнал фиксирует факт, но не предлагает откатить фразу, которую
-        // продавец только что услышал от клиента.
-      })
-    },
-
-    markNoteSynced: () => {
-      const at = new Date().toLocaleTimeString('de-DE',
-        { hour: '2-digit', minute: '2-digit' })
-      set({ noteSyncedAt: at })
-      apply({
-        kind: 'note.synced_to_hubspot',
-        label: `Notiz in die HubSpot-Projektkarte synchronisiert · ${at}`,
-        deltaExact: null,
-      })
-    },
-
     /**
      * Enter the Option workspace at the first stage that is not complete.
      *
@@ -7924,7 +7901,7 @@ const store = createStore<Store>((set, get) => {
         savedAt: new Date().toISOString(),
         savedBy: SCOPE_ACTOR,
         sourceOptionId: commit.sourceOptionId,
-        projectBaselineId: baseline ? `${baseline.projectId}@${baseline.at}` : null,
+        projectBaselineId: projectBaselineIdOf(baseline),
         buildingScopeFingerprint: scopeFingerprint(overlay),
         configurationFingerprint: snapshot.config.kgConfig
           ? kgScopeFingerprint(snapshot.config.kgConfig)
@@ -8717,7 +8694,7 @@ const store = createStore<Store>((set, get) => {
         version: commit.intendedVersion,
         savedAt: new Date().toISOString(),
         savedBy: SCOPE_ACTOR,
-        projectBaselineId: baseline ? `${baseline.projectId}@${baseline.at}` : null,
+        projectBaselineId: projectBaselineIdOf(baseline),
         buildingScopeFingerprint: scopeFingerprint(s),
         configurationFingerprint: s.kgConfig ? kgScopeFingerprint(s.kgConfig) : '',
         scheduleFingerprint: scheduleFingerprintFor(s),
@@ -9333,6 +9310,10 @@ function proposalProjectIdOf(state: Pick<Store, 'opportunityId'>): string {
  *   projectAnalyses             the project REGISTER's own state, already
  *                               keyed by project id — swapping it would
  *                               discard the analysis of every other project
+ *   projectReadiness            the same, one layer up: the Client-Mode
+ *                               review ledger is what the register reads to
+ *                               answer "is THIS project ready", for every
+ *                               card and not only the open one
  *   mode · level · projectStage · understandingTab · opportunityId
  *                               navigation, which `openOpportunity` sets
  *                               itself in the same write
@@ -9341,7 +9322,7 @@ function proposalProjectIdOf(state: Pick<Store, 'opportunityId'>): string {
  * and `INITIAL_SNAPSHOT` carries the same function identities anyway.
  */
 const PROJECT_SCOPED_KEEP: ReadonlySet<string> = new Set([
-  'uiLanguage', 'density', 'projectAnalyses',
+  'uiLanguage', 'density', 'projectAnalyses', 'projectReadiness',
   'mode', 'level', 'opportunityId', 'projectStage', 'understandingTab',
 ])
 

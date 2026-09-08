@@ -107,15 +107,12 @@ describe('proposal store recovery', () => {
     const activeTotal = st().projection().result.total.exact.toFixed()
     const activeUncertainty = st().projection().uncertaintyPp
     const storedTotal = projectionForOption(st(), 'OPT-01')!.result.total.exact.toFixed()
-    st().saveNote('must never leave the private session')
     const sentSnapshot = st().sendOffer('email')
 
     const raw = storage.getItem(proposalStorageKey('DEMO-0001'))!
     expect(raw).not.toContain('"journal"')
-    expect(raw).not.toContain('"noteText"')
     expect(raw).not.toContain('"fields"')
-    expect(raw).not.toContain('must never leave the private session')
-    // VR2-08 (M-3, SNAPSHOT BINDING): unlike `journal`/notes above, a sent
+    // VR2-08 (M-3, SNAPSHOT BINDING): unlike the `journal` above, a sent
     // snapshot is not private session scratch — it is the immutable record
     // of what the client actually received, and the ordinary portfolio
     // route must be able to re-show it after a genuine browser reload, not
@@ -145,7 +142,6 @@ describe('proposal store recovery', () => {
     expect(st().snapshots[0]).toEqual(sentSnapshot)
     expect(Object.isFrozen(st().snapshots)).toBe(true)
     expect(Object.isFrozen(st().snapshots[0])).toBe(true)
-    expect(st().noteText).toBe('')
     expect(st().options.map((option) => option.name)).toEqual(['Hausweise', 'Geteilt'])
     expect(st().activeOptionId).toBe('OPT-02')
     expect(wflConflict(st()).state).toBe('resolved')

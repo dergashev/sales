@@ -1,4 +1,5 @@
 import fixture from '../fixtures/vr3-demo-projects.json'
+import { evidenceCounts, type FixtureEvidenceItem } from './projectEvidence'
 
 /**
  * VR3-01 — project-level documentation analysis, information authority and
@@ -44,6 +45,22 @@ export type FixtureDocument = {
   processingOutcome: ProcessingOutcome
   issueKey: string | null
   sourceAuthority: string
+  /**
+   * How many pages the document has, or `null` when it is not known.
+   *
+   * The viewer states `Seite n von m` as TEXT, so a reader who cannot see
+   * the rendered page still knows where they are. `null` is honest for a
+   * record whose file has not been authored: the viewer then omits the
+   * position rather than claiming page 1 of 1.
+   */
+  pages: number | null
+  /**
+   * A schematic preview image, from the legacy image-preview model.
+   *
+   * Superseded by the real file: `src/assets/document-media.ts` resolves a
+   * document to its own PDF, and the viewer no longer renders an image at
+   * all. Kept `null`-able so records that never had a file remain valid.
+   */
   previewAssetId: string | null
 }
 
@@ -168,8 +185,19 @@ export type FixtureProjectPortfolio = {
   countryCode: string
   postcode: string
   addressLine: string
-  /** One of the seven canonical values in `projectPortfolio.ts`. */
-  lifecycleStatus: string
+  /**
+   * The EXPLICIT HUMAN state, or `null`.
+   *
+   * This field used to be `lifecycleStatus` and used to be the register's
+   * whole authority for what a project's commercial state was. It is not any
+   * more: a real project's status is DERIVED from its own committed truth by
+   * `projectLifecycle.ts`. What a fixture may still declare is the one thing
+   * a derivation must never invent — that a person parked the project
+   * (`on_hold`), recorded that it waits on an external party
+   * (`waiting_for_feedback`), or archived it. `null` means nobody has, and
+   * the status is whatever the project's truth says it is.
+   */
+  lifecycleHold: string | null
   createdAt: string
   updatedAt: string
   /** ISO timestamp with an unambiguous offset, or `null` when unscheduled. */
@@ -198,14 +226,27 @@ export type FixtureProject = {
   documents: FixtureDocument[]
   conflicts: FixtureConflict[]
   questions: FixtureQuestion[]
+  /**
+   * What the analysis understood, as individually addressable items — see
+   * [[projectEvidence]]. This register USED to exist as five numerals inside
+   * `analysis`, with nothing behind them and no agreement between them.
+   */
+  evidence: FixtureEvidenceItem[]
   analysis: {
+    /**
+     * The two numbers the GATE reads. They are about coverage of the required
+     * baseline fields, not about the evidence register, and `readiness()` is
+     * their only consumer.
+     */
     requiredFields: number
     requiredFieldsComplete: number
-    valuesExtracted: number
-    sourceEvidencedValues: number
-    aiInferredValues: number
-    manualOrConfirmedValues: number
-    valuesRequiringAttention: number
+    /**
+     * The five count literals that used to live here are gone. They are
+     * DERIVED from `evidence` by `evidenceCounts()`, because four independent
+     * numbers about one set can disagree — and in this fixture they did: the
+     * single-building project declared 42 extracted values of which 42 were
+     * source-evidenced AND 42 were manual/confirmed.
+     */
     understandingKey: string
   }
   terminalDistribution: {
@@ -886,13 +927,19 @@ export function cleanPresentation(
 ): boolean {
   if (readiness(project, analysis).state !== 'PROJECT_READY_FOR_OPTION') return false
   const dist = project.terminalDistribution
+  const counts = evidenceCounts(project)
   return project.conflicts.length === 0
     && openQuestions(project, analysis).length === 0
     && dist.warning === 0
     && dist.lowConfidence === 0
     && dist.failed === 0
-    && project.analysis.aiInferredValues === 0
-    && project.analysis.valuesRequiringAttention === 0
+    // ONE evidence clause, derived: no item is in a state that asks for a
+    // human. The retired second clause counted `aiInferredValues`, and
+    // carrying it over as «no derived item» would have been a different,
+    // wrong rule: a BGF total computed from two confirmed components is
+    // arithmetic, not uncertainty, and a project whose every value is
+    // confirmed would have failed the clean pass because it also adds up.
+    && counts.requiringAttention === 0
 }
 
 /* ──────────────────── baseline snapshot (VR3-02 input) ──────────────────── */

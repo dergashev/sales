@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { App } from '../../App'
 import { __resetStoreForTests, useStore } from '../../state/store'
 import { demoProject, readiness } from '../../state/projectAnalysis'
+import { evidenceCounts } from '../../state/projectEvidence'
 import {
   PORTFOLIO_CARD_COUNT, configureCtaName, openProjectCard,
 } from '../../test/portfolio'
@@ -210,22 +211,22 @@ describe('during the analysis: per-file truth', () => {
     finishAnalysis()
     act(() => useStore.getState().setProjectStage('documents'))
 
-    // Unfiltered: ten of thirty-six, because the register paginates from
+    // Unfiltered: ten of thirteen, because the register paginates from
     // the eleventh result.
-    expect(screen.getByRole('heading', { level: 2, name: '36 Dokumente' }))
+    expect(screen.getByRole('heading', { level: 2, name: '13 Dokumente' }))
       .toBeInTheDocument()
     expect(document.querySelectorAll('.a3-drow')).toHaveLength(10)
 
     await user.click(screen.getByRole('radio', { name: 'Aufmerksamkeit' }))
-    // 4 warnings + 3 low confidence + 1 failed = 8 rows listed…
-    expect(document.querySelectorAll('.a3-drow')).toHaveLength(8)
-    expect(screen.getByRole('heading', { level: 2, name: '8 von 36 Dokumenten' }))
+    // 3 warnings + 1 low confidence + 1 failed = 5 rows listed…
+    expect(document.querySelectorAll('.a3-drow')).toHaveLength(5)
+    expect(screen.getByRole('heading', { level: 2, name: '5 von 13 Dokumenten' }))
       .toBeInTheDocument()
-    // …while the rail's own facts still describe all thirty-six. Filtering
+    // …while the rail's own facts still describe all thirteen. Filtering
     // is presentation; it never narrows what the analysis covered.
     const rail = document.querySelector('.a3-docws-rail') as HTMLElement
     expect(within(rail).getByText('Analysierbar').parentElement)
-      .toHaveTextContent('36')
+      .toHaveTextContent('13')
     // A filter that is active offers its own way out.
     expect(screen.getByRole('button', { name: 'Filter zurücksetzen' }))
       .toBeInTheDocument()
@@ -239,7 +240,8 @@ describe('during the analysis: per-file truth', () => {
     await user.click(screen.getByRole('radio', { name: 'Aufmerksamkeit' }))
 
     const failed = [...document.querySelectorAll('.a3-drow')]
-      .find((row) => row.textContent?.includes('24_C_Grundriss_UG_V1_SCAN.pdf')) as HTMLElement
+      .find((row) => row.textContent
+        ?.includes('10_Schnittstellen_Hausanschluesse_RevB.pdf')) as HTMLElement
     expect(failed).toBeDefined()
     // The row carries the outcome as a word and the reason as text.
     expect(within(failed).getByText('Fehlgeschlagen')).toBeInTheDocument()
@@ -316,7 +318,8 @@ describe('the complex route: the gate, the comparison and the audit record', () 
     // Both competing values, each with the document that produced it.
     expect(within(first).getByText('19.710')).toBeInTheDocument()
     expect(within(first).getByText('19.470')).toBeInTheDocument()
-    expect(within(first).getByText(/04_Flaechenliste_Gesamt_FINAL/)).toBeInTheDocument()
+    expect(within(first).getByText(/01_Projektbeschreibung_Quartier_RevB/)).toBeInTheDocument()
+    expect(within(first).getByText(/07_Flaechenberechnung_DIN277_WoFlV_RevC/)).toBeInTheDocument()
     // The recommendation is labelled as a recommendation, never as truth.
     expect(within(first).getByText('Systemvorschlag')).toBeInTheDocument()
     expect(within(first).getByText('Empfohlener Wert')).toBeInTheDocument()
@@ -377,10 +380,13 @@ describe('the complex route: the gate, the comparison and the audit record', () 
     })
     expect(st().canCreateOptions()).toBe(true)
 
-    act(() => st().replaceDocumentRow('B-DOC-11', '11_A_Bueroflaechen_V3.pdf'))
+    // The Baubeschreibung is the source behind exactly two of the six
+    // decisions (`staleDocIds` of B-CF-05 and B-CF-06); replacing it must
+    // stale those two and nothing else.
+    act(() => st().replaceDocumentRow('LEI-DOC-08', '08_Baubeschreibung_RevC.pdf'))
     const analysis = st().projectAnalyses['DEMO-COMPLEX-01']!
-    expect(analysis.staleConflictIds).toEqual(['B-CF-05'])
-    // The five untouched decisions survive; manual work is not discarded.
+    expect(analysis.staleConflictIds).toEqual(['B-CF-05', 'B-CF-06'])
+    // The four untouched decisions survive; manual work is not discarded.
     expect(Object.keys(analysis.conflictDecisions)).toHaveLength(6)
     expect(st().canCreateOptions()).toBe(false)
   })
@@ -816,12 +822,30 @@ describe('the ready state branches on cleanliness, never on the gate', () => {
     expect(screen.getByRole('button', { name: /Analysedetails ausblenden/ }))
       .toHaveAttribute('aria-expanded', 'true')
     expect(region!.hidden).toBe(false)
-    // The provenance reads as three proportions of one total, never as a
-    // partition that does not sum.
-    // Source-evidenced and manually-confirmed are BOTH 42 of 42: they overlap,
-    // which is exactly why they are stated as proportions and not as a split.
-    expect(within(region as HTMLElement).getAllByText('42 von 42 Werten')).toHaveLength(2)
-    expect(within(region as HTMLElement).getByText('0 von 42 Werten')).toBeTruthy()
+
+    /**
+     * The provenance now reads as a PARTITION that actually sums.
+     *
+     * It used to be three fixture literals of which two were both «42 von 42
+     * Werten» — source-evidenced AND manually-confirmed, over 42 values — and
+     * the comment here defended the overlap by calling them proportions. They
+     * were not proportions of anything: nothing counted them.
+     *
+     * They are now derived from the evidence register, so the four rows are
+     * one set split four ways, and this test proves it by ARITHMETIC rather
+     * than by copying today's numbers: whatever the four rows say, they add
+     * up to the total the register holds. A future fixture change moves the
+     * numbers and keeps the test true; a fixture change that breaks the
+     * partition fails it.
+     */
+    const counts = evidenceCounts(demoProject('DEMO-HAPPY-01')!)
+    const rows = [...(region as HTMLElement).querySelectorAll('.a3-readiness-row-value')]
+      .map((node) => node.textContent ?? '')
+      .map((text) => /^(\d+) von (\d+) Werten$/.exec(text))
+      .filter((match): match is RegExpExecArray => match !== null)
+    expect(rows).toHaveLength(4)
+    for (const match of rows) expect(Number(match[2])).toBe(counts.total)
+    expect(rows.reduce((sum, match) => sum + Number(match[1]), 0)).toBe(counts.total)
   })
 
   it('restores a route to every number it states on a ready state that carries review work', async () => {
@@ -854,9 +878,9 @@ describe('the ready state branches on cleanliness, never on the gate', () => {
     expect(screen.getByRole('tab', { name: 'Offene Fragen · 7' })).toBeInTheDocument()
 
     // PU-11: `processedCount` counts FAILED as processed, so the fact must
-    // never print `36/36` while a document failed. It states the distribution.
+    // never print `13/13` while a document failed. It states the distribution.
     const facts = document.querySelector('.a3-ready-facts') as HTMLElement
-    expect(facts.textContent).not.toContain('36/36')
+    expect(facts.textContent).not.toContain('13/13')
     expect(facts.textContent).toContain('1 fehlgeschlagen')
 
     // The route opens the surface AND takes focus with it: switching a tab

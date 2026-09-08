@@ -11,7 +11,21 @@ import {
   type FixtureBuilding,
   type FixtureProject,
   type FixtureProjectPortfolio,
+  type ProjectAnalysis,
 } from './projectAnalysis'
+import {
+  DECLARABLE_LIFECYCLE_STATUSES,
+  EXPLICIT_PROJECT_HOLDS,
+  deriveProjectLifecycle,
+  isDeclarableLifecycleStatus,
+  isExplicitProjectHold,
+  isLifecycleStatus,
+  type DeclarableLifecycleStatus,
+  type ExplicitProjectHold,
+  type LifecycleStatus,
+  type LoadedOptionFacts,
+  type ProjectReadinessLedger,
+} from './projectLifecycle'
 
 /**
  * The PORTFOLIO contract — what the Projects register knows about a project
@@ -58,54 +72,13 @@ import {
  * commercial state IS. Collapsing the two would make "review required" mean
  * "the analysis found conflicts", and a project can perfectly well need a
  * commercial review with a spotless analysis.
- */
-export const LIFECYCLE_STATUSES = [
-  'new',
-  'in_progress',
-  'on_hold',
-  'review_required',
-  'waiting_for_feedback',
-  'ready_to_pitch',
-  'archive',
-] as const
-
-export type LifecycleStatus = (typeof LIFECYCLE_STATUSES)[number]
-
-export function isLifecycleStatus(value: string): value is LifecycleStatus {
-  return (LIFECYCLE_STATUSES as readonly string[]).includes(value)
-}
-
-/** Dictionary key for a status label. One mapping, no second list. */
-export function lifecycleStatusKey(status: LifecycleStatus): string {
-  return `portfolio.status.${status}`
-}
-
-/**
- * Status → canonical `SemanticStatus` tone.
  *
- * Two statuses share a tone where no honest distinct tone exists (`new` and
- * `archive` are both "not in flight"; `review_required` and
- * `waiting_for_feedback` both wait on a human). That is safe and deliberate:
- * the tone is never the carrier. Every status renders its own WORD next to
- * its own GLYPH (rule 8), so the distinction a reader needs is always in
- * text, and inventing a new tone per status would fork a canonical
- * capability to encode information the label already carries.
+ * WHERE THE VALUE COMES FROM lives in [[projectLifecycle]] and nowhere else.
+ * A navigable project's status is DERIVED from its own committed truth; the
+ * only thing a fixture may still declare is the explicit human state a
+ * derivation must never invent. This module holds the closed set, the label
+ * mapping and the tone; it does not decide.
  */
-export function lifecycleStatusTone(
-  status: LifecycleStatus,
-): 'neutral' | 'progress' | 'ok' | 'attention' | 'stale' {
-  switch (status) {
-    case 'in_progress': return 'progress'
-    case 'ready_to_pitch': return 'ok'
-    case 'review_required': return 'attention'
-    case 'waiting_for_feedback': return 'attention'
-    case 'on_hold': return 'stale'
-    case 'new':
-    case 'archive':
-    default: return 'neutral'
-  }
-}
-
 /* ───────────────────────────── aggregates ───────────────────────────── */
 
 export type PortfolioAreaMetric = 'wfl' | 'nuf'
@@ -201,6 +174,37 @@ function metricsFromBuildings(
 
 /* ─────────────────────────── the register ───────────────────────────── */
 
+/**
+ * WHERE a record's lifecycle status comes from — a discriminated union, so
+ * the record itself answers the question rather than a reader guessing.
+ *
+ * `derived` is a real project: its status is computed from its own committed
+ * truth by [[projectLifecycle]], and the only thing the fixture contributes
+ * is `hold` — the explicit `on_hold` / `waiting_for_feedback` / `archive`
+ * state a person sets and no derivation may infer.
+ *
+ * `declaredSynthetic` is a display-only register record. It has no
+ * documents, no analysis and no Option, so there is nothing to derive from;
+ * its status is synthetic register data exactly like its areas, its value
+ * and its next meeting. `assertDeclarable` refuses `ready_to_pitch` and
+ * `review_required` there, because those two assert a state of the product
+ * that no synthetic record can be in.
+ */
+export type PortfolioLifecycleSource =
+  | { kind: 'derived'; hold: ExplicitProjectHold | null }
+  | { kind: 'declaredSynthetic'; status: DeclarableLifecycleStatus }
+
+/**
+ * A register RECORD: everything the portfolio knows about a project that is
+ * not its current lifecycle status.
+ *
+ * The status is deliberately absent. It is added by
+ * `resolveProjectLifecycles`, which is the only producer, and the result is
+ * a `PortfolioRow`. Client-facing consumers (`clientProposal`,
+ * `optionComparison`, `PresentationShell`, `ClientScenario`) take a RECORD,
+ * so an internal workflow status has no field to travel into a client
+ * projection through.
+ */
 export type PortfolioProject = {
   id: string
   /** The project's own short name (breadcrumbs, journey, search). */
@@ -213,7 +217,7 @@ export type PortfolioProject = {
   addressLine: string
   /** Responsible manager, full first name and surname. */
   manager: string
-  lifecycleStatus: LifecycleStatus
+  lifecycle: PortfolioLifecycleSource
   createdAt: string
   updatedAt: string
   /** ISO timestamp WITH offset, or `null` when nothing is booked. */
@@ -240,7 +244,8 @@ type DisplayOnlyRecord = {
   city: string
   addressLine: string
   manager: string
-  lifecycleStatus: string
+  /** Synthetic register status. Refused if it asserts a product state. */
+  declaredLifecycle: string
   createdAt: string
   updatedAt: string
   nextClientMeetingAt: string | null
@@ -261,9 +266,37 @@ const DISPLAY_FIXTURE = displayFixture as unknown as {
   projects: DisplayOnlyRecord[]
 }
 
-function assertStatus(value: string, id: string): LifecycleStatus {
+/**
+ * A display-only record's declared status, refused unless it is one a
+ * synthetic record may honestly claim.
+ *
+ * `ready_to_pitch` and `review_required` are rejected HERE, at fixture load,
+ * and not filtered at render: a refused fixture is a failing test somebody
+ * fixes, a filtered one is a lie the product tells quietly.
+ */
+function assertDeclarable(value: string, id: string): DeclarableLifecycleStatus {
   if (!isLifecycleStatus(value)) {
     throw new Error(`portfolio: «${id}» declares unknown lifecycle status «${value}»`)
+  }
+  if (!isDeclarableLifecycleStatus(value)) {
+    throw new Error(
+      `portfolio: «${id}» declares «${value}», which asserts a product state a `
+      + 'display-only record cannot be in. Only '
+      + `${DECLARABLE_LIFECYCLE_STATUSES.join(', ')} may be declared.`,
+    )
+  }
+  return value
+}
+
+/** The explicit human state a real project's fixture may still declare. */
+function assertHold(value: string | null, id: string): ExplicitProjectHold | null {
+  if (value === null) return null
+  if (!isExplicitProjectHold(value)) {
+    throw new Error(
+      `portfolio: «${id}» declares lifecycle hold «${value}». A fixture may only `
+      + `declare an explicit human state (${EXPLICIT_PROJECT_HOLDS.join(', ')}); `
+      + 'every other status is derived from the project\'s own truth.',
+    )
   }
   return value
 }
@@ -279,7 +312,7 @@ function navigableEntry(project: FixtureProject): PortfolioProject {
     city: project.city,
     addressLine: block.addressLine,
     manager: project.owner,
-    lifecycleStatus: assertStatus(block.lifecycleStatus, project.id),
+    lifecycle: { kind: 'derived', hold: assertHold(block.lifecycleHold, project.id) },
     createdAt: block.createdAt,
     updatedAt: block.updatedAt,
     nextClientMeetingAt: block.nextClientMeetingAt,
@@ -301,7 +334,10 @@ function displayOnlyEntry(record: DisplayOnlyRecord): PortfolioProject {
     city: record.city,
     addressLine: record.addressLine,
     manager: record.manager,
-    lifecycleStatus: assertStatus(record.lifecycleStatus, record.id),
+    lifecycle: {
+      kind: 'declaredSynthetic',
+      status: assertDeclarable(record.declaredLifecycle, record.id),
+    },
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
     nextClientMeetingAt: record.nextClientMeetingAt,
@@ -337,6 +373,70 @@ export const PORTFOLIO_PROJECT_COUNT = PORTFOLIO_PROJECTS.length
 /** The one predicate the UI asks before offering any navigation at all. */
 export function isNavigableProject(id: string): boolean {
   return DEMO_PROJECTS.some((p) => p.id === id)
+}
+
+/* ────────────────────── lifecycle resolution ────────────────────────── */
+
+/**
+ * A register ROW: a record with its CURRENT lifecycle status stamped on.
+ *
+ * The distinction between a record and a row is the whole mechanism of this
+ * slice. `lifecycleStatus` exists on exactly one type, produced by exactly
+ * one function, and both the card and the status filter read that one field
+ * — so "the status on the card and the status filter disagree" has no way
+ * to happen. Reading a status off a raw `PortfolioProject` does not compile,
+ * which is the direction that matters: no client-facing consumer can pick up
+ * an internal workflow status, because the field is not on the record they
+ * take. The converse is NOT enforced — TypeScript is structural, so passing
+ * a row where a record is expected compiles silently — so the guarantee is
+ * that `PortfolioRow` never leaves this register, and today it does not:
+ * every client consumer sources `PORTFOLIO_PROJECTS` itself.
+ */
+export type PortfolioRow = PortfolioProject & { lifecycleStatus: LifecycleStatus }
+
+/**
+ * Everything the resolver needs from the store, as plain data.
+ *
+ * `analyses` is available for EVERY navigable project (`projectAnalyses` is
+ * keyed by project id and kept across a project switch). `options` is the
+ * ONE project whose Option workspace is currently loaded, or `null` — the
+ * per-project storage split means no other project's Options are in memory,
+ * and inventing them would be exactly the cross-project leak that split
+ * closed.
+ */
+export type LifecycleResolutionInput = {
+  analyses: Record<string, ProjectAnalysis>
+  readiness: ProjectReadinessLedger
+  options: LoadedOptionFacts | null
+}
+
+/**
+ * Records → rows. THE producer of a lifecycle status.
+ *
+ * Pure and total: five records in, five rows out, in order, every row
+ * carrying one of the seven closed statuses.
+ */
+export function resolveProjectLifecycles(
+  records: readonly PortfolioProject[],
+  input: LifecycleResolutionInput,
+): PortfolioRow[] {
+  return records.map((record) => ({
+    ...record,
+    lifecycleStatus: record.lifecycle.kind === 'declaredSynthetic'
+      ? record.lifecycle.status
+      : deriveProjectLifecycle({
+        projectId: record.id,
+        hold: record.lifecycle.hold,
+        analysis: input.analyses[record.id],
+        readiness: input.readiness[record.id],
+        // A project only contributes Option facts when its own workspace is
+        // the loaded one. `null` for every other project is not a gap: it is
+        // the truthful statement that this register cannot see them.
+        options: input.options && input.options.projectId === record.id
+          ? input.options
+          : null,
+      }),
+  }))
 }
 
 /**
@@ -445,7 +545,7 @@ function haystack(project: PortfolioProject): string {
   ].join(' ').toLowerCase()
 }
 
-export function matchesQuery(project: PortfolioProject, query: PortfolioQuery): boolean {
+export function matchesQuery(project: PortfolioRow, query: PortfolioQuery): boolean {
   const needle = query.text.trim().toLowerCase()
   if (needle !== '' && !haystack(project).includes(needle)) return false
   if (query.country !== ANY && project.countryCode !== query.country) return false
@@ -473,7 +573,7 @@ function meetingInstant(project: PortfolioProject): number | null {
   return Number.isNaN(at) ? null : at
 }
 
-function compareBy(sort: PortfolioSort, a: PortfolioProject, b: PortfolioProject): number {
+function compareBy(sort: PortfolioSort, a: PortfolioRow, b: PortfolioRow): number {
   if (sort === 'titleAsc') return breakTie(a, b)
   if (sort === 'meetingAsc') {
     /**
@@ -512,9 +612,9 @@ function compareBy(sort: PortfolioSort, a: PortfolioProject, b: PortfolioProject
  * so the slice deliberately lives in `portfolioPage` and never in here.
  */
 export function selectPortfolio(
-  projects: readonly PortfolioProject[],
+  projects: readonly PortfolioRow[],
   query: PortfolioQuery,
-): PortfolioProject[] {
+): PortfolioRow[] {
   return projects
     .filter((p) => matchesQuery(p, query))
     .slice()
@@ -534,7 +634,7 @@ export const PORTFOLIO_PAGE_SIZE = 10
 
 export type PortfolioPage = {
   /** The cards to render. */
-  rows: PortfolioProject[]
+  rows: PortfolioRow[]
   /** Clamped: a filter that shrinks the set never strands the reader. */
   page: number
   pageCount: number
@@ -554,7 +654,7 @@ export type PortfolioPage = {
  * never reach the DOM in the first place.
  */
 export function portfolioPage(
-  matching: readonly PortfolioProject[],
+  matching: readonly PortfolioRow[],
   page: number,
   pageSize = PORTFOLIO_PAGE_SIZE,
 ): PortfolioPage {

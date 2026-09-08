@@ -314,3 +314,80 @@ export const CLIENT_PRESENTATION = {
     languageDe: '.a3-language-control label:has(input[value="de"])',
   },
 } as const
+
+/**
+ * B1 · Project truth and evidence.
+ *
+ * The Projects register, its filters, and the four evidence groups of
+ * Project Understanding. Every string below is the DE copy the app renders
+ * on first load, from `src/i18n/index.ts`'s `portfolio.*` / `vr3.evidence.*`
+ * blocks — the same rule as everything above: no `data-testid` exists in
+ * `src/**`, so an anchor is a role, an `aria-*` attribute, an i18n string, or
+ * a canonical Design System class when a BOX has to be measured.
+ */
+export const PORTFOLIO = {
+  heading: PROJECT_LIST_HEADING,
+  filterToggle: /^Filter/,
+  filterLegend: 'Projekte filtern',
+  search: 'Projekte durchsuchen',
+  country: 'Land',
+  city: 'Stadt',
+  manager: 'Verantwortlich',
+  statusLegend: 'Projektstatus',
+  activeLegend: 'Aktive Filter',
+  clearAll: 'Alle Filter zurücksetzen',
+  chipRemove: (label: string) => `Filter entfernen: ${label}`,
+  any: 'Alle',
+  emptyFiltered: 'Kein Projekt entspricht den aktiven Filtern.',
+  /** A fresh session derives `New` for both navigable projects. */
+  statusNew: 'Neu',
+  integrations: {
+    legend: 'Verknüpfte Systeme',
+    hubspot: 'Projekt in HubSpot',
+    missionControl: 'Projekt in Mission Control',
+    notConnected: 'Integration in dieser Demonstration nicht verbunden',
+  },
+  cls: {
+    card: '.a3-pf-card',
+    links: '.a3-pf-links',
+    chips: '.a3-pf-chips',
+  },
+} as const
+
+export const EVIDENCE = {
+  title: 'Was wir verstanden haben',
+  groups: [
+    'Projekt und Geometrie',
+    'Planungsanforderungen',
+    'Bauliche Anforderungen',
+    'TGA-Anforderungen',
+  ],
+  groupCount: /^\d+ von \d+ gezeigt$/,
+  showAll: /^Alle \d+ weiteren anzeigen$/,
+  downstream: /^Wird gelesen von: /,
+  emptyGroup: 'Keine Anforderung dieser Art in den Quellen gefunden · nichts wird angenommen',
+  cls: {
+    groups: '.a3-evgroups',
+    group: '.a3-evgroup',
+    list: '.a3-evlist',
+    item: '.a3-evitem',
+  },
+} as const
+
+export const DOCUMENT_SOURCE = {
+  register: 'Dokumentseiten',
+  inspect: 'Beleg ansehen',
+  openSource: /^Quelle öffnen · Seite \d+$/,
+  position: /^Seite \d+ von \d+$/,
+  citedClause: /^Zitierte Stelle: /,
+  provenance: /^Herkunft: internal synthetic · All3/,
+  noInlineViewer: 'Dieser Browser zeigt PDF nicht direkt an.',
+  retry: 'Erneut laden',
+  back: 'Zurück zum Projektverständnis',
+  cls: {
+    viewer: '.a3-docsrc',
+    frame: '.a3-docsrc-frame',
+    embed: '.a3-docsrc-embed',
+    identity: '.a3-docsrc-identity',
+  },
+} as const

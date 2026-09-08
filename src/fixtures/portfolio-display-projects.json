@@ -1,5 +1,5 @@
 {
-  "$comment": "DEMO / NON-PRODUCTION PORTFOLIO FIXTURE. Three DISPLAY-ONLY project records that exist so the Projects portfolio can be searched, filtered and sorted against a realistic register. They are NOT projects: they have no documents, no analysis, no buildings, no Option, no schedule and no journey. `src/state/projectAnalysis.ts` never sees them, so `demoProject(id)` cannot resolve one and `openOpportunity(id)` has nothing to open — non-navigability is STRUCTURAL, not a disabled attribute someone can forget. Every number below carries `syntheticPortfolioFixture` provenance and must never enter the pricing engine, Option state, offer output or a client presentation. Identity, address, client and manager names are invented; the images are synthetic and registered in design-system/assets/projects/manifest.json. Source: the approved asset/record pack artifacts/project-list-portfolio-redesign/README.md, with the manager assignment taken from the backlog ticket, which supersedes the pack's earlier table.",
+  "$comment": "DEMO / NON-PRODUCTION PORTFOLIO FIXTURE. Three DISPLAY-ONLY project records that exist so the Projects portfolio can be searched, filtered and sorted against a realistic register. They are NOT projects: they have no documents, no analysis, no buildings, no Option, no schedule and no journey. `src/state/projectAnalysis.ts` never sees them, so `demoProject(id)` cannot resolve one and `openOpportunity(id)` has nothing to open — non-navigability is STRUCTURAL, not a disabled attribute someone can forget. Every number below carries `syntheticPortfolioFixture` provenance and must never enter the pricing engine, Option state, offer output or a client presentation. Identity, address, client and manager names are invented; the images are synthetic and registered in design-system/assets/projects/manifest.json. Source: the approved asset/record pack artifacts/project-list-portfolio-redesign/README.md, with the manager assignment taken from the backlog ticket, which supersedes the pack's earlier table. LIFECYCLE: the field is `declaredLifecycle`, not a status these records are IN. A display-only record has no documents, no analysis and no Option, so there is nothing to derive a lifecycle from; its status is synthetic register data exactly like its areas, its value and its next meeting. `projectPortfolio.assertDeclarable` refuses `ready_to_pitch` and `review_required` here, because those two assert a state of the product no synthetic record can be in — a real project's status is derived by `src/state/projectLifecycle.ts` and never read from a fixture.",
   "displayOnlyProjectCount": 3,
   "projects": [
     {
@@ -11,7 +11,7 @@
       "city": "Hamburg",
       "addressLine": "Hafenbogen 18",
       "manager": "Daniel Weber",
-      "lifecycleStatus": "new",
+      "declaredLifecycle": "new",
       "createdAt": "2026-08-28T10:05:00+02:00",
       "updatedAt": "2026-09-03T15:45:00+02:00",
       "nextClientMeetingAt": "2026-09-11T09:30:00+02:00",
@@ -40,7 +40,7 @@
       "city": "Wien",
       "addressLine": "Donauquartier 42",
       "manager": "Tobias Keller",
-      "lifecycleStatus": "in_progress",
+      "declaredLifecycle": "in_progress",
       "createdAt": "2026-07-18T08:30:00+02:00",
       "updatedAt": "2026-09-02T11:10:00+02:00",
       "nextClientMeetingAt": "2026-09-09T10:00:00+02:00",
@@ -69,10 +69,10 @@
       "city": "München",
       "addressLine": "Feldmark 6",
       "manager": "Miriam Schneider",
-      "lifecycleStatus": "waiting_for_feedback",
+      "declaredLifecycle": "waiting_for_feedback",
       "createdAt": "2026-06-29T13:20:00+02:00",
       "updatedAt": "2026-08-31T09:05:00+02:00",
-      "nextClientMeetingAt": "2026-09-18T14:30:00+02:00",
+      "nextClientMeetingAt": "2026-09-04T10:30:00+02:00",
       "heroAssetId": "P-MUENCHEN-FELDMARK",
       "metrics": {
         "provenance": "syntheticPortfolioFixture",

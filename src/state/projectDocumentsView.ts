@@ -38,10 +38,35 @@ export type DocumentsQuery = {
   status: DocumentStatusFilter
   /** 1-based. Clamped against the CURRENT result set by `documentsPage`. */
   page: number
+  /**
+   * The document whose viewer is OPEN, or `''`.
+   *
+   * It lives in the query — and therefore in the URL — because an evidence
+   * item cites a document, a page and an anchor inside it, and a citation
+   * that cannot be addressed is not a citation. While the open row was
+   * component-local state, the product printed «every value opens its
+   * source document» beside a filename in a `<span>` and the only route to
+   * evidence was a stage switch to the whole register.
+   *
+   * Being in the URL also makes Back the natural way out of a source: the
+   * reader returns to the register they came from, in the state they left
+   * it, without the screen having to remember anything.
+   */
+  open: string
+  /**
+   * The ANCHOR inside the open document that was cited, or `''`.
+   *
+   * The document alone is not the citation: an evidence item names a clause
+   * on a page, and opening page 1 of a twelve-page Baubeschreibung is not
+   * «opens its source». The anchor travels beside the document so the viewer
+   * can name the page position and the clause, and so the link survives a
+   * reload like every other bit of register state.
+   */
+  anchor: string
 }
 
 export const DEFAULT_DOCUMENTS_QUERY: DocumentsQuery = {
-  text: '', type: ANY_TYPE, status: 'all', page: 1,
+  text: '', type: ANY_TYPE, status: 'all', page: 1, open: '', anchor: '',
 }
 
 const PARAM = {
@@ -49,6 +74,8 @@ const PARAM = {
   type: 'doctype',
   status: 'docstatus',
   page: 'docpage',
+  open: 'docopen',
+  anchor: 'docanchor',
 } as const
 
 function isStatus(value: string | null): value is DocumentStatusFilter {
@@ -74,6 +101,9 @@ export function encodeDocumentsQuery(query: DocumentsQuery, existing = ''): stri
   write(PARAM.type, query.type, query.type !== ANY_TYPE)
   write(PARAM.status, query.status, query.status !== 'all')
   write(PARAM.page, String(query.page), query.page > 1)
+  write(PARAM.open, query.open, query.open !== '')
+  // An anchor without its document would address nothing.
+  write(PARAM.anchor, query.anchor, query.open !== '' && query.anchor !== '')
   return params.toString()
 }
 
@@ -87,9 +117,20 @@ export function decodeDocumentsQuery(search: string): DocumentsQuery {
     type: params.get(PARAM.type) ?? ANY_TYPE,
     status: isStatus(status) ? status : 'all',
     page: Number.isFinite(page) && page > 0 ? page : 1,
+    // A document id this project does not have is dropped by the SCREEN,
+    // which is the only layer that knows the register. Decoding cannot
+    // reject it without taking a dependency on the project.
+    open: params.get(PARAM.open) ?? '',
+    anchor: params.get(PARAM.anchor) ?? '',
   }
 }
 
+/**
+ * How many NARROWINGS are active. `open` is deliberately not one of them:
+ * opening a source shows a document, it does not filter the register, and
+ * counting it would make «Filter (1)» appear because somebody followed a
+ * citation.
+ */
 export function activeDocumentFilters(query: DocumentsQuery): number {
   return (query.text.trim() !== '' ? 1 : 0)
     + (query.type !== ANY_TYPE ? 1 : 0)

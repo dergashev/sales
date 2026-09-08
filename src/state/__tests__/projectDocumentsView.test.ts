@@ -48,6 +48,7 @@ function doc(id: string, over: Partial<FixtureDocument> = {}): FixtureDocument {
     processingOutcome: 'PROCESSED',
     issueKey: null,
     sourceAuthority: 'planner',
+    pages: null,
     previewAssetId: null,
     ...over,
   }
@@ -185,6 +186,7 @@ describe('the register query', () => {
   it('round-trips through the URL and preserves parameters it does not own', () => {
     const query: DocumentsQuery = {
       text: 'grundriss', type: 'floorPlan', status: 'attention', page: 3,
+      open: 'LEI-DOC-07', anchor: 'LEI-DOC-07-A03',
     }
     const search = encodeDocumentsQuery(query, '?q=lindenhain&sort=modified')
     expect(decodeDocumentsQuery(search)).toEqual(query)
@@ -199,7 +201,27 @@ describe('the register query', () => {
       .toBe('q=lindenhain&sort=modified')
     // Unknown values fall back rather than throwing at a reader.
     expect(decodeDocumentsQuery('?docstatus=nonsense&docpage=-3'))
-      .toEqual({ text: '', type: ANY_TYPE, status: 'all', page: 1 })
+      .toEqual({ text: '', type: ANY_TYPE, status: 'all', page: 1, open: '', anchor: '' })
+  })
+
+  it('carries an open source in the URL without counting it as a filter', () => {
+    // A citation must be addressable: an evidence item names a document, a
+    // page and an anchor, and following it has to survive a reload and be
+    // undone by Back. Opening one is NOT a narrowing of the register, so it
+    // must not make the filter counter claim a filter nobody applied.
+    const opened: DocumentsQuery = {
+      ...DEFAULT_DOCUMENTS_QUERY, open: 'LEI-DOC-09', anchor: 'LEI-DOC-09-A02',
+    }
+    const search = encodeDocumentsQuery(opened, '')
+    expect(search).toBe('docopen=LEI-DOC-09&docanchor=LEI-DOC-09-A02')
+    // An anchor with no document addresses nothing and is not written.
+    expect(encodeDocumentsQuery(
+      { ...DEFAULT_DOCUMENTS_QUERY, anchor: 'LEI-DOC-09-A02' }, '',
+    )).toBe('')
+    expect(decodeDocumentsQuery(search)).toEqual(opened)
+    expect(activeDocumentFilters(opened)).toBe(0)
+    // Closing it removes the parameter rather than blanking it.
+    expect(encodeDocumentsQuery(DEFAULT_DOCUMENTS_QUERY, search)).toBe('')
   })
 
   it('counts active filters so the reset offers itself only when it can act', () => {

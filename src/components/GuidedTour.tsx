@@ -69,11 +69,6 @@ const STEPS: Step[] = [
     title: 'Ein nächster Schritt, immer sichtbar',
     body: 'Am Ende jedes Kapitels steht genau eine empfohlene Fortsetzung. Springen ist erlaubt — der Preis geht dabei nicht verloren.',
   },
-  {
-    target: '.a3-notecard',
-    title: 'Notizen bleiben intern',
-    body: 'Was hier steht, synchronisiert in die CRM-Projektkarte und erscheint in keiner Kundenansicht. Gespeichert wird still, bestätigt nur durch den Chip.',
-  },
 ]
 
 function TourStepContent({
