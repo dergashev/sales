@@ -19,6 +19,32 @@ import { SemanticStatus, type SemanticStatusTone } from './SemanticStatus'
  * component in both cases and only its `density` differs, which is why a
  * project that gains a building does not gain a different screen.
  *
+ * WHERE `EvidenceValue` STANDS (B2, navigation-and-blocker-patterns.md).
+ *
+ * The accepted pattern asks for one `EvidenceValue` composition —
+ * `Display` / `Authority` / `SourceLink` / `Edit` / `History` / `Conflict` —
+ * used across BOTH Project Understanding and the Building baseline. Its six
+ * parts exist here and are delivered by B2, on the canonical row rather
+ * than as a second component beside it:
+ *
+ * ```
+ * EvidenceValue.Display     → BuildingBaselineRow  `label` / `value` / `unit`
+ * EvidenceValue.Authority   → BuildingBaselineProvenance  `authority`
+ * EvidenceValue.SourceLink  → BuildingBaselineProvenance  `evidence`
+ * EvidenceValue.Edit        → BuildingBaselineRow  `control` + `actions`
+ * EvidenceValue.History     → BuildingBaselineProvenance  `override`
+ * EvidenceValue.Conflict    → BuildingBaselineRow  `provenance` conflict slot
+ * ```
+ *
+ * WHAT IS NOT DELIVERED, STATED PLAINLY: the composition is not exported
+ * under the name `EvidenceValue`, and Project Understanding does not consume
+ * it yet. Adding a second component for a job this one already does would
+ * break the one-instance rule (D-28), and Project Understanding's evidence
+ * groups belong to the ticket that owns that surface — B2's boundary is "all
+ * displayed Building-baseline editing". Unifying the two under the shared
+ * name is a real remaining step, and it is a rename plus one adoption, not a
+ * reimplementation, precisely because the parts are already separated here.
+ *
  * A METRIC NEVER LEAVES ITS BUILDING.
  *
  * Every value, every provenance line and every edit control renders inside

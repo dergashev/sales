@@ -77,9 +77,19 @@ export type ConfiguratorWorkflowContext = Readonly<{
  * Ticket "Rebuild Project Card Workflow" removes three former steps from
  * this registry, superseding the sources named in each case:
  * - `ENERGY_CERTIFICATION` ("Energie & Zertifikate", Task 03) — its
- *   editable content (Energiestandard/QNG/DGNB + customer confirmation)
- *   moved into `ChapterUmfang` (Scope Boundaries); there is now exactly
- *   one editable location instead of two.
+ *   editable content (Energiestandard/QNG/DGNB + customer confirmation) is
+ *   edited in exactly ONE place, which since B2 is again the Scope
+ *   decisions step (`SCOPE_BOUNDARIES`, rendered by
+ *   `screens/Leistungsabgrenzung.tsx`).
+ *
+ *   This sentence used to name `ChapterUmfang`, a component that no longer
+ *   exists, and it was WRONG for two releases in a substance nobody would
+ *   have caught by reading it: the three axes had moved out again, into
+ *   KG 400 and KG 700, and this docblock still claimed the arrangement it
+ *   described. B2 (Product Owner requirement 14) restores the single
+ *   editable location, for the reason this line always gave — a decision
+ *   configured in two places is a decision with two answers — and the cost
+ *   chapters now show the value read-only with the route back to it.
  * - `AREAS` ("Flächen im Detail", Task 02) — Building Scope remains the
  *   authoritative editing location for building area values; a mandatory
  *   Configurator step duplicating that is no longer required.
