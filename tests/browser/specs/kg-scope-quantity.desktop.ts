@@ -9,7 +9,7 @@ import { reachOptionWorkspace, saveBuildingScope } from '../journey'
  * positions of the site-works, external-works and fit-out chapters shipped
  * as flat `includeExclude` services. They carried a declared euro amount
  * and no driving quantity at all, so the only two answers a seller could
- * give were «in» and «out». Clearing 3.300 m² instead of 2.200 m², or four
+ * give were «in» and «out». A clearance of 3.300 m² instead of 2.200 m², or four
  * house connections instead of three, was not a question the product could
  * be asked — the number that produces the money was frozen in the fixture.
  * KG 300 and KG 400 had been configurable for releases; the outer chapters

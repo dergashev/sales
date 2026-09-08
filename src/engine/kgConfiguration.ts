@@ -1248,7 +1248,27 @@ export function serviceContribution(
       // An invalid entry keeps the last VALID basis — the baseline quantity —
       // so the total stays a real number while the row states the problem.
       const raw = problem ? service.kind.baselineQuantity : decision.quantity!
-      return new Decimal(service.kind.unitAmount).mul(new Decimal(raw))
+      const exact = new Decimal(service.kind.unitAmount).mul(new Decimal(raw))
+      // A quantity of ZERO is `null`, for the same reason `excludesPosition`
+      // above is: there is no priced position here (rule 16), and a `direct`
+      // zero survives `kgContributions`'s own zero-filter to become a
+      // `± 0 €` driver (QA-01).
+      //
+      // ACCEPT-01 (Pre-Release Acceptance, candidate d1ace229). `0` is a
+      // VALID entry — `minQuantity` is `"0"` — so the seller can legitimately
+      // say "there is none of this". Two surfaces then disagreed about the
+      // same position: the chapter said `Preis nicht ermittelt`, while
+      // `Alle Kostendetails` § B, a table titled "…mit kaufmännischer
+      // Wirkung", printed `0 € · ohne Preiswirkung` — the phrase the
+      // pricing-coverage work retired — and § E, the section built for a
+      // position with no own amount, did not list it at all.
+      //
+      // Classifying it here rather than on either surface is what makes all
+      // fifteen quantity positions agree: every consumer already reads this
+      // one answer. NO AMOUNT MOVES — a zero added to a sum and a zero left
+      // out of it are the same number, and every baseline quantity is
+      // positive (`quantityPositionViolations` proves the rate is too).
+      return exact.isZero() ? null : exact
     }
     default:
       return base
@@ -1447,6 +1467,15 @@ export type KgSelectionWithoutBasis = Readonly<{
   valueDe: string | null
   valueEn: string | null
   costAuthority: KgCostAuthority
+  /**
+   * A `direct` position whose QUANTITY is zero (ACCEPT-01).
+   *
+   * It has a price basis — a rate — so it is not `noBasis`; it simply has
+   * nothing to apply the rate to. The distinction matters because the
+   * surfaces phrase the two differently, and because `direct` reaches this
+   * list only in this one case.
+   */
+  zeroQuantity?: true
   costBasisDe?: string
   costBasisEn?: string
   buildingId?: string
@@ -1470,9 +1499,24 @@ export function kgSelectionsWithoutBasis(
         if (dependencyBlocker(catalogue, decisions, service)) continue
         if (dependencySuspension(catalogue, decisions, service)) continue
         const authority = contributionCostAuthority(service, decision)
-        // `direct` cannot land here — a directly priced selection produced a
-        // contribution — and `none` has no commercial dimension to state.
-        if (authority === 'direct' || authority === 'none') continue
+        /**
+         * A `direct` QUANTITY position with a quantity of zero (ACCEPT-01).
+         *
+         * The guard below used to read "`direct` cannot land here — a
+         * directly priced selection produced a contribution". That premise
+         * stopped being true the moment `serviceContribution` started
+         * answering `null` for a zero quantity instead of a `0 €` driver:
+         * the position now produces no contribution, lands here, and would
+         * have been dropped — disappearing from BOTH § B and § E rather
+         * than merely from the wrong one.
+         *
+         * Narrowed rather than removed. Every other `direct` selection still
+         * cannot reach this line, and the test asserts exactly that, so the
+         * old guarantee is kept where it is still true.
+         */
+        const zeroQuantity = service.kind.kind === 'quantity'
+          && serviceContribution(catalogue, decisions, service) === null
+        if (!zeroQuantity && (authority === 'direct' || authority === 'none')) continue
         const chosen = selectedVariant(service, decision)
         out.push({
           serviceId: service.id,
@@ -1483,6 +1527,7 @@ export function kgSelectionsWithoutBasis(
           valueDe: chosen ? chosen.labelDe : null,
           valueEn: chosen ? chosen.labelEn : null,
           costAuthority: authority,
+          ...(zeroQuantity ? { zeroQuantity: true as const } : {}),
           ...(service.costBasisDe ? { costBasisDe: service.costBasisDe } : {}),
           ...(service.costBasisEn ? { costBasisEn: service.costBasisEn } : {}),
           ...(service.buildingId ? { buildingId: service.buildingId } : {}),

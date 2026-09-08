@@ -746,6 +746,8 @@ function openStateWord(
     case 'undecidedGroup': return t('commercial.din.undecided')
     case 'excludedGroup': return t('commercial.din.excluded')
     case 'unpricedGroup': return t('money.priceNotDetermined')
+    // The SAME sentence the chapter shows for this position (rule 16).
+    case 'zeroQuantity': return t('money.priceNotDetermined')
     case 'noBasis': return t('vr3.tga.price.noBasis')
     case 'bundle': {
       const basis = lang === 'en' ? row.bundleLabelEn : row.bundleLabelDe

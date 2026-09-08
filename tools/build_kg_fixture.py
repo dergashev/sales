@@ -98,6 +98,21 @@ def quantity(sid, de, en, sde, sen, unit_amount, qty, unit_de, unit_en,
         **({'buildingId': building} if building else {}),
     }
 
+# ACCEPT-02 (Pre-Release Acceptance, candidate d1ace229). A system summary is
+# STATIC FIXTURE PROSE; the quantity beside it is LIVE state. Writing the
+# baseline quantity into the summary made the two contradict each other the
+# moment a seller edited it: the collapsed row read
+# `Site clearance & existing structures | 0 m² | 2,200 m² site clearance`.
+#
+# The row already states the live quantity as its own leading line
+# (`solutionOf` -> `currentOf`), so the summary restating it was redundant
+# even while it was still true. A summary therefore names WHAT the system is
+# and never HOW MUCH of it there is.
+#
+# A count the user cannot edit is not affected and is kept: `18 Wohneinheiten`,
+# `94 Wohneinheiten`, `drei Baukörper`, `drei Müllstandplätze` have no quantity
+# control behind them and cannot go stale.
+
 def group(gid, de, en, services):
     return {'id': gid, 'labelDe': de, 'labelEn': en, 'services': services}
 
@@ -1182,8 +1197,8 @@ A = [
          'Auf dem Grundstück steht kein Bestand — die Position ist zu entscheiden, nicht anzunehmen.',
          'No existing structure on the plot — a decision, not an assumption.', 145000),
    ],
-     summaryDe='2.200 m² Baufeldfreimachung · Rückbau Bestand zu entscheiden',
-     summaryEn='2,200 m² site clearance · demolition of existing structure to decide',
+     summaryDe='Baufeldfreimachung im Paket · Rückbau Bestand zu entscheiden',
+     summaryEn='Site clearance in the package · demolition of existing structure to decide',
      scopeDe='gilt für den gesamten Wohnhof', scopeEn='applies to the whole courtyard',
      visual='clearance', costAuthority='direct'),
     system('a-kg200-connections', 'Erschließung & Hausanschlüsse', 'Connections & access', [
@@ -1192,8 +1207,8 @@ A = [
          'Power, water, sewage and telecoms up to the building edge.',
          17000, 4, 'Anschlüsse', 'connections'),
    ],
-     summaryDe='4 Anschlüsse: Strom, Wasser, Abwasser und Telekommunikation',
-     summaryEn='4 connections: power, water, sewage and telecoms',
+     summaryDe='Strom, Wasser, Abwasser und Telekommunikation bis zur Gebäudekante',
+     summaryEn='Power, water, sewage and telecoms up to the building edge',
      scopeDe='gilt für den gesamten Wohnhof', scopeEn='applies to the whole courtyard',
      visual='connections', costAuthority='direct'),
    ]),
@@ -1678,8 +1693,8 @@ A = [
          'Concrete-block paving, driveway and entrance areas.',
          320, 300, 'm²', 'm²'),
    ],
-     summaryDe='300 m² Betonsteinpflaster, Zufahrt und Hauseingangsbereiche',
-     summaryEn='300 m² concrete-block paving, driveway and entrance areas',
+     summaryDe='Betonsteinpflaster, Zufahrt und Hauseingangsbereiche',
+     summaryEn='Concrete-block paving, driveway and entrance areas',
      scopeDe='gilt für den gesamten Wohnhof', scopeEn='applies to the whole courtyard',
      visual='path', costAuthority='direct'),
     system('a-kg500-planting', 'Bepflanzung & Spiel', 'Landscape & play', [
@@ -1692,8 +1707,8 @@ A = [
          'Play equipment, impact protection and edging to DIN EN 1176.',
          400, 145, 'm²', 'm²'),
    ],
-     summaryDe='740 m² Rasen, Sträucher und vier Hofbäume · 145 m² Spielfläche',
-     summaryEn='740 m² lawn, shrubs and four courtyard trees · 145 m² play area',
+     summaryDe='Rasen, Sträucher und vier Hofbäume · Spielfläche nach DIN EN 1176',
+     summaryEn='Lawn, shrubs and four courtyard trees · play area to DIN EN 1176',
      scopeDe='gilt für den gesamten Wohnhof', scopeEn='applies to the whole courtyard',
      visual='planting', costAuthority='direct'),
     system('a-kg500-water', 'Einfriedung & Regenwasser', 'Water & boundaries', [
@@ -1735,8 +1750,8 @@ A = [
          'Überdachte Anlehnbügel im Hofbereich.',
          'Covered leaning racks in the courtyard.', 500, 84, 'Plätze', 'spaces'),
    ],
-     summaryDe='84 überdachte Fahrradplätze im Hofbereich',
-     summaryEn='84 covered bicycle spaces in the courtyard',
+     summaryDe='Überdachte Anlehnbügel im Hofbereich',
+     summaryEn='Covered leaning racks in the courtyard',
      scopeDe='gilt für den gesamten Wohnhof', scopeEn='applies to the whole courtyard',
      visual='bicycle', costAuthority='direct'),
     system('a-kg600-signage', 'Leitsystem & Kunst', 'Wayfinding & art', [
@@ -1833,8 +1848,8 @@ B = [
          'Base course and traffic areas during construction.',
          400, 250, 'm²', 'm²'),
    ],
-     summaryDe='Gemeinsame Einrichtung für drei Baukörper · 250 m² Baustraße',
-     summaryEn='Shared set-up for three buildings · 250 m² site road',
+     summaryDe='Gemeinsame Einrichtung für drei Baukörper · Baustraße und Zufahrt',
+     summaryEn='Shared set-up for three buildings · site road and access',
      scopeDe='gilt für das gesamte Quartier', scopeEn='applies to the whole quarter',
      visual='site', costAuthority='direct'),
     system('b-kg200-clearance', 'Baufeld & Bestand', 'Site clearance & existing structures', [
@@ -1847,8 +1862,8 @@ B = [
          'Provisional allowance: the site plan shows the slab, the brief is silent (B-Q-05).',
          240000, authority='assumed'),
    ],
-     summaryDe='9.500 m² Baufeldfreimachung · Rückbau Ladeplatte als provisorischer Ansatz (B-Q-05)',
-     summaryEn='9,500 m² site clearance · loading-slab demolition as a provisional allowance (B-Q-05)',
+     summaryDe='Baufeldfreimachung · Rückbau Ladeplatte als provisorischer Ansatz (B-Q-05)',
+     summaryEn='Site clearance · loading-slab demolition as a provisional allowance (B-Q-05)',
      scopeDe='gilt für das gesamte Quartier', scopeEn='applies to the whole quarter',
      visual='clearance', costAuthority='direct'),
     system('b-kg200-connections', 'Erschließung & Hausanschlüsse', 'Connections & access', [
@@ -2509,8 +2524,8 @@ B = [
          'Access to the three entrances and the fire-service route.',
          380, 1000, 'm²', 'm²'),
    ],
-     summaryDe='1.000 m² Erschließung der drei Hauseingänge und der Feuerwehrzufahrt',
-     summaryEn='1,000 m² access to the three entrances and the fire-service route',
+     summaryDe='Erschließung der drei Hauseingänge und der Feuerwehrzufahrt',
+     summaryEn='Access to the three entrances and the fire-service route',
      scopeDe='gilt für das gesamte Quartier', scopeEn='applies to the whole quarter',
      visual='path', costAuthority='direct'),
     system('b-kg500-planting', 'Innenhof, Bepflanzung & Spiel', 'Landscape & play', [
@@ -2532,8 +2547,8 @@ B = [
          'Bei 94 Wohneinheiten üblich, im Auftrag nicht benannt.',
          'Usual for 94 dwellings, not named in the brief.', 120000),
    ],
-     summaryDe='3.100 m² Innenhof und 2.900 m² Bepflanzung als Quartierspaket (B-Q-07) · Spielfläche zu entscheiden',
-     summaryEn='3,100 m² courtyard and 2,900 m² planting as a quarter package (B-Q-07) · play area to decide',
+     summaryDe='Innenhof und Bepflanzung als Quartierspaket (B-Q-07) · Spielfläche zu entscheiden',
+     summaryEn='Courtyard and planting as a quarter package (B-Q-07) · play area to decide',
      scopeDe='gilt für das gesamte Quartier', scopeEn='applies to the whole quarter',
      visual='planting', costAuthority='direct'),
     system('b-kg500-water', 'Regenwasser & Einfriedung', 'Water & boundaries', [
@@ -2545,8 +2560,8 @@ B = [
          'Drei überdachte Standplätze und die Quartierseinfriedung.',
          'Three roofed refuse areas and the quarter enclosure.', 130000),
    ],
-     summaryDe='3.400 m² Retention, Mulden-Rigolen und Notüberlauf · drei Müllstandplätze und Einfriedung',
-     summaryEn='3,400 m² retention, swale-trench systems and overflow · three refuse areas and enclosure',
+     summaryDe='Retention, Mulden-Rigolen und Notüberlauf · drei Müllstandplätze und Einfriedung',
+     summaryEn='Retention, swale-trench systems and overflow · three refuse areas and enclosure',
      scopeDe='gilt für das gesamte Quartier', scopeEn='applies to the whole quarter',
      visual='water', costAuthority='direct'),
     system('b-kg500-ramp', 'Tiefgaragenzufahrt', 'Garage access', [
@@ -2571,8 +2586,8 @@ B = [
          'Three installations with parcel boxes for 94 dwellings and commercial units.',
          32000, 3, 'Anlagen', 'installations'),
    ],
-     summaryDe='Drei Briefkastenanlagen mit Paketfächern für 94 Wohneinheiten und Gewerbe',
-     summaryEn='Three letterbox installations with parcel boxes for 94 dwellings and commercial units',
+     summaryDe='Briefkastenanlagen mit Paketfächern für 94 Wohneinheiten und Gewerbe',
+     summaryEn='Letterbox installations with parcel boxes for 94 dwellings and commercial units',
      scopeDe='gilt für das gesamte Quartier', scopeEn='applies to the whole quarter',
      visual='mailbox', costAuthority='direct'),
     system('b-kg600-bicycle', 'Gemeinschaftsausstattung', 'Shared-use equipment', [
@@ -2588,8 +2603,8 @@ B = [
          'Base equipment for the commercial unit, retail-only assumption (B-Q-01).',
          100000, authority='assumed'),
    ],
-     summaryDe='368 Fahrradplätze · Gemeinschaftsräume · Gewerbeküche als retail-only Ansatz (B-Q-01)',
-     summaryEn='368 bicycle spaces · shared rooms · commercial kitchen as a retail-only assumption (B-Q-01)',
+     summaryDe='Fahrradplätze · Gemeinschaftsräume · Gewerbeküche als retail-only Ansatz (B-Q-01)',
+     summaryEn='Bicycle spaces · shared rooms · commercial kitchen as a retail-only assumption (B-Q-01)',
      scopeDe='gilt für das gesamte Quartier', scopeEn='applies to the whole quarter',
      visual='bicycle', costAuthority='direct'),
     system('b-kg600-signage', 'Leitsystem & Kunst', 'Wayfinding & art', [

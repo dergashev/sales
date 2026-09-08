@@ -7,9 +7,11 @@ import {
   costAuthorityOf,
   initialDecisions,
   kgCatalogues,
+  kgSelectionsWithoutBasis,
   quantityProblem,
   rendersAmount,
   serviceContribution,
+  type KgCatalogue,
   type KgCostAuthority,
   type KgDecisions,
   type KgScopeGroup,
@@ -1231,6 +1233,23 @@ function quantityPositionViolations(
   return problems
 }
 
+/**
+ * Every KG group INCLUDED.
+ *
+ * `initialDecisions` leaves the scope undecided, and both
+ * `kgContributions` and `kgSelectionsWithoutBasis` skip a group that is not
+ * `included`. A test built on the initial state therefore inspects an empty
+ * list and passes without asserting anything — which is exactly what the
+ * first draft of the two tests below did.
+ */
+function allIncluded(catalogue: KgCatalogue): KgDecisions {
+  const base = initialDecisions(catalogue)
+  const scope = Object.fromEntries(
+    Object.keys(base.scope).map((group) => [group, 'included' as const]),
+  ) as KgDecisions['scope']
+  return { ...base, scope }
+}
+
 describe('Fläche 6 · mengengetriebene KG-200/500/600-Positionen bewegen echtes Geld', () => {
   it('jede Mengenposition multipliziert exakt auf ihren deklarierten Betrag zurück', () => {
     const rows = quantityServices()
@@ -1260,12 +1279,21 @@ describe('Fläche 6 · mengengetriebene KG-200/500/600-Positionen bewegen echtes
     expect(missing).toEqual([])
   })
 
-  it('eine Mengenposition liefert in JEDER Mengenlage einen Betrag — nie `null`, nie eine stille Null', () => {
-    // Die vier Lagen, in denen eine Menge stehen kann. Die dritte und
-    // vierte sind der Grund für den Test: eine ungültige oder fehlende
-    // Eingabe darf die Position nicht aus der Summe fallen lassen, denn
-    // dann wäre der Gesamtbetrag still kleiner geworden.
-    const ENTRIES = ['4711', '', '   ', 'zwölf'] as const
+  it('eine Mengenposition liefert in JEDER Mengenlage eine ERKLÄRTE Antwort — nie eine stille Null', () => {
+    // Die Mengenlagen, in denen eine Position stehen kann.
+    //
+    // `'0'` ist der Eintrag, der diesen Test überhaupt scharf macht, und er
+    // hat hier zuerst GEFEHLT (ACCEPT-01b, Pre-Release Acceptance auf
+    // d1ace229). Er ist die einzige GÜLTIGE Eingabe — `minQuantity` ist
+    // `"0"`, `quantityProblem` gibt `null` zurück — die ein vertraglich
+    // verbotenes Null-Ergebnis erzeugt. Ohne ihn stand die Eigenschaft im
+    // Test und wurde von keiner Zeile geprüft: die Suite war grün, während
+    // `Alle Kostendetails` § B `0 € · ohne Preiswirkung` druckte.
+    //
+    // Die anderen prüfen die Gegenrichtung: eine ungültige oder fehlende
+    // Eingabe darf die Position NICHT aus der Summe fallen lassen, sonst
+    // wäre der Gesamtbetrag still kleiner geworden.
+    const ENTRIES = ['4711', '0', '', '   ', 'zwölf'] as const
     const violations: string[] = []
     let checked = 0
     for (const catalogue of kgCatalogues()) {
@@ -1282,17 +1310,28 @@ describe('Fläche 6 · mengengetriebene KG-200/500/600-Positionen bewegen echtes
           }
           const contribution = serviceContribution(catalogue, decisions, service)
           checked += 1
-          if (contribution === null) {
-            violations.push(`${service.id} · «${entry}»: Beitrag ist null`)
-            continue
-          }
           const problem = quantityProblem(service, entry)
           // Eine ungültige Eingabe rechnet mit der letzten GÜLTIGEN Menge
           // weiter (der Basislage) und sagt das in der Zeile. Sie rechnet
           // nicht mit null, und sie rechnet nicht mit dem, was dasteht.
-          const expected = problem
-            ? new Decimal(kind.unitAmount).mul(new Decimal(kind.baselineQuantity))
-            : new Decimal(kind.unitAmount).mul(new Decimal(entry))
+          const basis = problem ? kind.baselineQuantity : entry
+          const expected = new Decimal(kind.unitAmount).mul(new Decimal(basis))
+          // EINE GÜLTIGE NULL IST KEIN BEITRAG VON NULL, sondern GAR KEIN
+          // Beitrag. `null` ist die einzige Antwort, die alle Flächen gleich
+          // lesen: das Kapitel sagt `Preis nicht ermittelt`, § B nennt die
+          // Position nicht, § E führt sie als Position ohne eigenen Betrag.
+          // Ein `0 €` an dieser Stelle wäre die stille Null (Regel 16).
+          if (expected.isZero()) {
+            if (contribution !== null) {
+              violations.push(`${service.id} · «${entry}»: stille Null`
+                + ` (${contribution.toFixed(2)}) statt einer nicht bepreisten Position`)
+            }
+            continue
+          }
+          if (contribution === null) {
+            violations.push(`${service.id} · «${entry}»: Beitrag ist null`)
+            continue
+          }
           if (!contribution.equals(expected)) {
             violations.push(`${service.id} · «${entry}»: ${contribution.toFixed(2)}`
               + ` statt ${expected.toFixed(2)}`)
@@ -1305,6 +1344,51 @@ describe('Fläche 6 · mengengetriebene KG-200/500/600-Positionen bewegen echtes
     }
     expect(checked).toBeGreaterThan(0)
     expect(violations).toEqual([])
+  })
+
+  it('eine Menge von NULL wird als Position OHNE eigenen Betrag berichtet — nicht verschwiegen', () => {
+    // ACCEPT-01, zweite Hälfte. Der Beitrag auf `null` zu setzen nimmt die
+    // Position aus § B — richtig — würde sie aber auch aus § E nehmen, dem
+    // Abschnitt, der genau für sie gebaut ist. Sie muss GENANNT werden, und
+    // zwar als das, was sie ist: bepreisbar, Menge null.
+    for (const catalogue of kgCatalogues()) {
+      const base = allIncluded(catalogue)
+      const rows = quantityServices().filter((r) => r.project === catalogue.projectId)
+      expect(rows.length).toBeGreaterThan(0)
+      for (const { service } of rows) {
+        const decisions: KgDecisions = {
+          ...base,
+          services: { ...base.services, [service.id]: { state: 'selected', quantity: '0' } },
+        }
+        // Kein Beitrag …
+        expect(
+          serviceContribution(catalogue, decisions, service),
+          `${service.id}: eine Menge von null ist kein Beitrag`,
+        ).toBeNull()
+        // … aber auch kein Schweigen.
+        const reported = kgSelectionsWithoutBasis(catalogue, decisions)
+          .find((row) => row.serviceId === service.id)
+        expect(reported, `${service.id} fehlt in § E`).toBeDefined()
+        expect(reported!.zeroQuantity, `${service.id} ist nicht als Menge-null erklärt`).toBe(true)
+      }
+    }
+  })
+
+  it('AUSNAHMELISTE · nur die Menge-null-Position lockert die `direct`-Sperre von § E', () => {
+    // Die Sperre lautete "eine direkt bepreiste Auswahl hat einen Beitrag
+    // erzeugt". Sie wurde VERENGT, nicht entfernt: in der Basislage darf
+    // weiterhin keine einzige `direct`-Auswahl in dieser Liste stehen.
+    for (const catalogue of kgCatalogues()) {
+      const decisions = allIncluded(catalogue)
+      // Nicht leerlaufend: die Liste muss überhaupt etwas enthalten, sonst
+      // prüft die Ausnahme nichts (genau der Fehler, den die erste Fassung
+      // dieses Tests machte — `initialDecisions` schließt jede Gruppe aus).
+      expect(kgSelectionsWithoutBasis(catalogue, decisions).length).toBeGreaterThan(0)
+      const strays = kgSelectionsWithoutBasis(catalogue, decisions)
+        .filter((row) => row.costAuthority === 'direct')
+        .map((row) => `${catalogue.projectId} · ${row.serviceId}`)
+      expect(strays).toEqual([])
+    }
   })
 
   it('jede Mengenposition nennt ihre Einheit in BEIDEN Sprachen — sonst liest EN die deutsche', () => {

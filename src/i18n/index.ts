@@ -2986,6 +2986,9 @@ const de = {
   'costDetails.e.meaning.indirect':
     'Verändert den Preis an anderer Stelle, ohne eigenen Betrag.',
   'costDetails.e.meaning.bauherr': 'Außerhalb des All3-Umfangs. Kein Betrag, kein Nullwert.',
+  'costDetails.e.meaning.zeroQuantity':
+    'Enthalten, Menge null. Der Preisansatz steht, es gibt nichts, worauf er '
+    + 'sich anwenden ließe — deshalb kein Betrag und kein Nullwert.',
   'costDetails.e.meaning.unknownAuthority':
     'Die Preisgrundlage dieser Auswahl ist nicht bestimmt; ein Betrag wird deshalb '
     + 'nicht ausgewiesen.',
@@ -5769,6 +5772,9 @@ const en: Partial<Record<MessageKey, string>> = {
     'Contained in the price of another position; no amount of its own.',
   'costDetails.e.meaning.indirect':
     'Changes the price elsewhere, with no amount of its own.',
+  'costDetails.e.meaning.zeroQuantity':
+    'Included, quantity zero. The rate stands; there is nothing to apply it '
+    + 'to — so no amount, and no zero either.',
   'costDetails.e.meaning.bauherr':
     'Outside the All3 scope. No amount, and not a zero value.',
   'costDetails.e.meaning.unknownAuthority':

@@ -218,6 +218,8 @@ export type SelectedCommercialEffect = Readonly<{
   destination: OptionDestination | null
   /** The underlying contribution, for surfaces that need its basis/provenance. */
   driver: Driver | null
+  /** A priced position whose quantity is zero: a rate, nothing to apply it to. */
+  zeroQuantity?: true
 }>
 
 export type SelectedCommercialEffects = Readonly<{
@@ -375,6 +377,7 @@ function effectFromSelection(
     reference: facts[`kg_${selection.serviceId}`]?.standard ?? null,
     destination: destinationOfGroup(selection.group),
     driver: null,
+    ...(selection.zeroQuantity ? { zeroQuantity: true as const } : {}),
   }
 }
 
@@ -557,6 +560,8 @@ export type OpenStateKind =
   | 'bundle'
   | 'indirect'
   | 'bauherr'
+  /** Included, priced by a rate, but the quantity entered is zero. */
+  | 'zeroQuantity'
   | 'unknownAuthority'
 
 export type OpenStateRow = Readonly<{
@@ -598,11 +603,15 @@ export function openCommercialStates(
   }
   for (const effect of effects.all) {
     if (effect.exact !== null) continue
-    const kind: OpenStateKind = effect.authority === 'bundle' ? 'bundle'
-      : effect.authority === 'indirect' ? 'indirect'
-        : effect.authority === 'bauherr' ? 'bauherr'
-          : effect.authority === 'noBasis' ? 'noBasis'
-            : 'unknownAuthority'
+    // A zero quantity is read BEFORE the authority: the position is `direct`
+    // and would otherwise be filed as an unknown authority, which is the one
+    // thing it is not.
+    const kind: OpenStateKind = effect.zeroQuantity ? 'zeroQuantity'
+      : effect.authority === 'bundle' ? 'bundle'
+        : effect.authority === 'indirect' ? 'indirect'
+          : effect.authority === 'bauherr' ? 'bauherr'
+            : effect.authority === 'noBasis' ? 'noBasis'
+              : 'unknownAuthority'
     rows.push({
       key: `effect:${effect.key}`,
       kind,

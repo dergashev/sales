@@ -156,10 +156,14 @@ function buildingScopeLabel(
  */
 export function effectStateLabel(
   effect: Pick<SelectedCommercialEffect,
-    'authority' | 'negative' | 'exact' | 'bundleLabelDe' | 'bundleLabelEn'>,
+    'authority' | 'negative' | 'exact' | 'bundleLabelDe' | 'bundleLabelEn'
+    | 'zeroQuantity'>,
   t: (key: string, values?: Readonly<Record<string, string | number>>) => string,
   lang: UiLanguage,
 ): string | null {
+  // A quantity of zero is not "no price effect": the rate is known and there
+  // is simply nothing to apply it to. It says what the chapter says.
+  if (effect.zeroQuantity) return t('vr3.tga.price.notDetermined')
   switch (effect.authority) {
     case 'direct': {
       if (effect.exact === null) return null
