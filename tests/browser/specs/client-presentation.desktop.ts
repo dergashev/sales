@@ -596,6 +596,13 @@ test.describe('VR3-05 · client presentation narrative, Varianten and outputs', 
     for (const label of labels) {
       await toChapter(page, label)
       await sweep(`DE · ${label}`)
+      // Asset provenance is internal and cannot be seen by a text sweep:
+      // `data-source-id` is an attribute. It reached the client tree on
+      // chapters 1, 4 and 8 of the candidate this assertion was added for.
+      expect(
+        await page.locator(`${CP.cls.shell} [data-source-id]`).count(),
+        `${label}: no asset provenance in the client DOM`,
+      ).toBe(0)
     }
     // The client-safe print tree carries the same obligation.
     await page.emulateMedia({ media: 'print' })
@@ -769,6 +776,77 @@ test.describe('VR3-05 · client presentation narrative, Varianten and outputs', 
    * the stage and shows the client-safe document, so its content is only
    * observable under print media.
    */
+  /**
+   * ACCEPTANCE REMEDIATION — the layer and the stage are one reading.
+   *
+   * The Varianten comparison used to build its scope rows from the legacy
+   * per-building map while the chapters read the declared client projection,
+   * so a client saw another fixture's building names and a completion date
+   * the stage contradicted for the very same Option.
+   */
+  test('the Varianten comparison agrees with the chapters it compares', async ({ page }) => {
+    await reachClientMode(page, { secondOption: true })
+    const labels = await presentChapters(page)
+
+    await toChapter(page, 'Terminplan')
+    const scheduleText = await page.locator(CP.cls.stage).innerText()
+
+    await toChapter(page, labels.includes('Die Gebäude') ? 'Die Gebäude' : 'Das Projekt')
+    const buildingsText = await page.locator(CP.cls.stage).innerText()
+
+    await page.getByRole('button', { name: /^(Varianten|Variants) · \d+$/ }).click()
+    const layer = page.getByRole('dialog')
+    await expect(layer).toBeVisible()
+    await layer.getByRole('radio', { name: /Alle Zeilen|All rows/ }).click()
+
+    const rowText = async (label: RegExp) => {
+      const row = layer.getByRole('row').filter({ has: page.getByRole('rowheader', { name: label }) })
+      if (await row.count() === 0) return null
+      return (await row.first().locator('td').first().innerText()).trim()
+    }
+
+    // No legacy fixture name may appear anywhere in the layer.
+    expect(await layer.innerText()).not.toMatch(/\bHaus [A-Z]\b/)
+
+    const completion = await rowText(/Geplante Fertigstellung|Planned completion/)
+    if (completion) {
+      expect(scheduleText, 'the layer states the completion the chapter states')
+        .toContain(completion)
+    }
+    const buildings = await rowText(/Gebäude im Angebot|Buildings in the proposal/)
+    if (buildings) {
+      for (const part of buildings.split(' · ')) {
+        if (!/^[A-Z]$/.test(part.trim())) continue
+      }
+      const first = buildings.split(' · ').slice(1, 2)[0]
+      if (first) {
+        expect(buildingsText, 'the layer names buildings the chapter names').toContain(first)
+      }
+    }
+    await shot(page, 'ACCEPT-01-varianten-vs-stage')
+  })
+
+  /**
+   * ACCEPTANCE REMEDIATION — the total is the one permitted brand accent
+   * (rule 31 and rule 5), and only on the white surface.
+   */
+  test('chapter 2 states the total in the brand accent, and nothing else does', async ({ page }) => {
+    await reachClientMode(page)
+    await toChapter(page, 'Projektüberblick')
+    const accents = await page.evaluate((shell) => {
+      const out: string[] = []
+      for (const node of document.querySelectorAll(`${shell} *`)) {
+        const colour = getComputedStyle(node).color
+        if (colour === 'rgb(253, 94, 0)' && (node.textContent ?? '').trim().length > 0) {
+          out.push((node.textContent ?? '').trim().slice(0, 40))
+        }
+      }
+      return out
+    }, CP.cls.shell)
+    expect(accents.length, 'the total carries the brand accent').toBeGreaterThan(0)
+    await shot(page, 'ACCEPT-03-accent')
+  })
+
   test('ACCEPT-01: the printed document carries the chapters and no presenter control', async ({ page }) => {
     await reachClientMode(page)
     const labels = await presentChapters(page)

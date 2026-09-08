@@ -4780,10 +4780,37 @@ a.a3-cockpit-effect:hover .a3-cockpit-effect-name{color:var(--color-text-primary
    padding grows so the CONTENT still sits on the chapter measure. */
 .a3-cp-chapter-stage{max-width:none;padding-left:max(var(--space-6),calc((100% - var(--measure-workspace)) / 2));padding-right:max(var(--space-6),calc((100% - var(--measure-workspace)) / 2));background:var(--color-surface-stage-deep);color:var(--color-text-stage-deep-primary)}
 .a3-cp-chapter-stage{align-content:center}
+/* ACCEPT-05 · the opening is a full-bleed HERO, so this tone keeps the deep
+   stage's ink and drops everything else: no measure, no padding, no gap.
+   The image fills the chapter and the copy carries its own inset — a
+   contained image in a padded two-column grid is a different spatial model,
+   not a narrower version of this one. Declared AFTER `-stage` on purpose:
+   equal specificity, and the later rule is the one that must win. */
+.a3-cp-chapter-hero{position:relative;gap:0;padding:0;align-content:stretch;overflow:hidden}
+/* ACCEPT-04 · the ground chapter 2's white tiles stand on. Full-bleed like
+   the deep stage, canvas rather than white, so a tile is a SURFACE and not
+   an outline — and so the total's brand orange keeps the white surface rule
+   5 grants it (the tile is `--color-surface-default`, the ground is not). */
+.a3-cp-chapter-tiles{max-width:none;padding-left:max(var(--space-6),calc((100% - var(--measure-workspace)) / 2));padding-right:max(var(--space-6),calc((100% - var(--measure-workspace)) / 2));background:var(--color-surface-canvas)}
+/* Lede · grid · disclaimer, and the GRID takes the stage that is left. The
+   chapter is composed to the window on purpose: sized by its own longest
+   sentence instead, row 2 grew to the height of a 3:2 photograph and pushed
+   the closing paragraph off the stage. */
+.a3-cp-chapter-tiles{align-content:stretch;grid-template-rows:max-content minmax(0,1fr) max-content;padding-top:var(--space-6);padding-bottom:var(--space-6)}
 /* Rule 31 / DC-38: the one orange, on white — the same scoped grant VR3-05
    gave `.a3-client-panel`; on the deep stage the on-stage-deep entry. */
 .a3-cp-chapter .a3-display-accent{color:var(--color-text-display-accent)}
 .a3-cp-chapter-stage .a3-display-accent{color:var(--color-text-display-accent-on-stage-deep)}
+/* ACCEPT-03 · the accent has to OUT-SPECIFY the metric's own colour.
+   `.a3-cp-chapter .a3-display-accent` and `.a3-cp-metric .a3-cp-metric-lead`
+   are both (0,2,0) and the metric rule is declared later, so it won the
+   cascade and the 64 px total rendered black — the one orange the whole
+   product is permitted, silently absent, on the largest element of the
+   client deck. Naming `.a3-cp-metric` here makes the grant (0,3,0) and the
+   win explicit rather than positional. It reaches nothing else: the class
+   is set only where `MetricHero` is asked for `accent`. */
+.a3-cp-chapter .a3-cp-metric .a3-display-accent{color:var(--color-text-display-accent)}
+.a3-cp-chapter-stage .a3-cp-metric .a3-display-accent{color:var(--color-text-display-accent-on-stage-deep)}
 
 /* lede */
 .a3-cp-lede{display:grid;gap:var(--space-2);min-width:0}
@@ -4794,25 +4821,82 @@ a.a3-cockpit-effect:hover .a3-cockpit-effect-name{color:var(--color-text-primary
 .a3-cp-chapter-stage .a3-cp-eyebrow,.a3-cp-chapter-stage .a3-cp-sub{color:var(--color-text-stage-deep-secondary)}
 .a3-cp-chapter-stage .a3-cp-title{color:var(--color-text-stage-deep-primary)}
 
-/* chapter 1 · the opening */
-.a3-cp-opening{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:var(--space-7);align-items:center;min-width:0}
-.a3-cp-opening-media{min-width:0}
-.a3-cp-opening-copy{display:grid;gap:var(--space-3);align-content:center;min-width:0}
-.a3-cp-opening-eyebrow{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-label-weight);letter-spacing:var(--type-tracking-caps);text-transform:uppercase;color:var(--color-text-stage-deep-secondary)}
-.a3-cp-opening-title{margin:0;font-size:var(--type-heading-1-desktop-size);line-height:var(--type-heading-1-desktop-line);font-weight:var(--type-heading-weight);color:var(--color-text-stage-deep-primary);overflow-wrap:break-word;hyphens:auto}
-.a3-cp-opening-address{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-regular);color:var(--color-text-stage-deep-secondary);overflow-wrap:break-word}
-.a3-cp-opening-facts{display:grid;gap:var(--space-2);margin-top:var(--space-4);border-top:var(--border-width-default) solid var(--color-text-stage-deep-secondary);padding-top:var(--space-4)}
-/* One emphasis per fragment (rule 9): the value is bold, the pair shares one ink. */
-.a3-cp-opening-fact{display:block;font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-stage-deep-primary);overflow-wrap:break-word}
-.a3-cp-opening-fact b{font-weight:var(--font-weight-bold)}
-.a3-cp-opening-entity{display:block;margin-top:var(--space-2);font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-stage-deep-secondary)}
+/* chapter 1 · the opening — a full-bleed hero (ACCEPT-05)
 
-/* chapter 2 · the three co-heroes (DC-38). A four-track grid: the total
-   spans it, each co-hero takes half, each supporting fact a quarter. */
-.a3-cp-heroes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-6) var(--space-5);align-items:start;min-width:0}
-.a3-cp-hero-total{grid-column:1 / -1;display:grid;gap:var(--space-2);min-width:0;border-bottom:var(--border-hairline);padding-bottom:var(--space-6)}
-.a3-cp-hero-side{grid-column:span 2;min-width:0}
-.a3-cp-hero-fact{grid-column:span 1;min-width:0;border-top:var(--border-hairline);padding-top:var(--space-3)}
+   The media is the chapter: absolutely positioned over the whole stage, with
+   MediaFrame kept as the primitive (and with it all six of its designed
+   states, the fallback included — never a grey rectangle). Its ratio box is
+   released to the stage's own height here; `object-cover` on the image does
+   the crop, so no aspect is baked into the composition.
+
+   The identity block sits ON the image, bottom-left, over a FLAT token
+   scrim. `--color-surface-overlay` is the declared 48 % overlay this system
+   already owns; a gradient is forbidden outright (rule 4), and inventing a
+   colour for the job is forbidden by rule 2. The scrim runs the full width
+   of the stage while its content keeps the chapter measure, which is what
+   the inline padding below buys. */
+.a3-cp-opening{position:relative;display:grid;align-content:end;min-height:100%;min-width:0}
+.a3-cp-opening-media{position:absolute;inset:0;min-width:0;overflow:hidden}
+.a3-cp-opening-media figure{display:block;height:100%}
+/* The ratio box gives up its aspect to the stage: both axes are definite
+   here, so `aspect-ratio` no longer has anything to resolve. */
+.a3-cp-opening-media figure>div{width:100%;height:100%}
+.a3-cp-opening-copy{position:relative;display:grid;gap:var(--space-2);min-width:0;background:var(--color-surface-overlay);padding:var(--space-7) max(var(--space-6),calc((100% - var(--measure-workspace)) / 2)) var(--space-5)}
+.a3-cp-opening-eyebrow{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-label-weight);letter-spacing:var(--type-tracking-caps);text-transform:uppercase;color:var(--color-text-stage-deep-secondary)}
+/* The one place in the deck a NAME is set at display size: the client has to
+   recognise their own project before any commercial detail exists. */
+.a3-cp-opening-title{margin:0;max-width:22ch;font-size:var(--type-display-numeric-desktop-size);line-height:var(--type-display-numeric-desktop-line);font-weight:var(--type-heading-weight);color:var(--color-text-stage-deep-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-cp-opening-address{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-regular);color:var(--color-text-stage-deep-primary);overflow-wrap:break-word}
+/* A hairline, then ONE footer row — the colophon of a proposal: what this is
+   and which Option it speaks for on the left, who offers it on the right. */
+.a3-cp-opening-facts{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:var(--space-2) var(--space-5);margin-top:var(--space-4);border-top:var(--border-hairline);padding-top:var(--space-4)}
+.a3-cp-opening-facts-left{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2) var(--space-5);margin:0;min-width:0}
+/* One emphasis per fragment (rule 9): the value is bold, the pair shares one ink. */
+.a3-cp-opening-fact{display:inline-block;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-stage-deep-primary);overflow-wrap:break-word}
+.a3-cp-opening-fact b{font-weight:var(--font-weight-bold)}
+.a3-cp-opening-entity{display:block;margin:0;min-width:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-stage-deep-secondary);text-align:right;overflow-wrap:break-word}
+
+/* chapter 2 · the approved TILE GRID (ACCEPT-04)
+
+   Four tracks, two rows. Row 1: the total takes two tracks, each co-hero
+   one. Row 2: each supporting fact one, the project image two. Rank is
+   carried by AREA and position, so the chapter is ranked before a word of
+   it is read — which is exactly what the linear text stack this replaces
+   could not do, however correct its type sizes were.
+
+   The tiles are white on the canvas ground the chapter paints. That is not
+   decoration: rule 5 permits the 64 px orange total on
+   `--color-surface-default` and nowhere else, so the tile IS the licence.
+   Hairline, no radius, no fill beyond the surface, no shadow. */
+.a3-cp-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:var(--space-4);align-items:stretch;min-width:0;min-height:0}
+.a3-cp-tile{display:grid;gap:var(--space-2);align-content:center;min-width:0;min-height:0;border:var(--border-hairline);background:var(--color-surface-default);color:var(--color-text-primary);padding:var(--space-5)}
+.a3-cp-tile-total{grid-column:span 2}
+/* No Energiestandard declared → the project tile takes the room the absent
+   tile would have held. An empty tile would state a fact that has none. */
+.a3-cp-tiles[data-energy="no"] .a3-cp-tile-project{grid-column:span 2}
+/* The media tile is an image with its own caption, so it packs to the top
+   while every other tile centres its few lines. */
+.a3-cp-tile-media{grid-column:span 2;align-content:stretch;grid-template-rows:minmax(0,1fr) max-content;gap:var(--space-3)}
+/* The frame takes the room the caption leaves, rather than the caption
+   taking what a fixed aspect ratio leaves: MediaFrame stays the primitive
+   and its ratio box gives up its aspect to the tile, exactly as the opening
+   hero does. `object-cover` on the image does the crop. */
+.a3-cp-tile-media-frame{position:relative;min-width:0;min-height:0;overflow:hidden}
+/* Taken OUT of flow on purpose: left in it, the ratio box has no definite
+   height to resolve `100%` against, falls back to its 3:2 aspect and makes
+   the photograph — not the composition — decide how tall the row is. */
+.a3-cp-tile-media-frame figure{position:absolute;inset:0;display:block}
+.a3-cp-tile-media-frame figure>div{width:100%;height:100%}
+.a3-cp-tile-media-copy{display:grid;gap:var(--space-1);min-width:0}
+/* Every tile label is a block CAPS label (rule 37): one line, its own row. */
+.a3-cp-tile .a3-cp-metric-label{display:block;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-label-weight);letter-spacing:var(--type-tracking-caps);text-transform:uppercase}
+/* A supporting fact is a THIRD size, under the 48 px co-heroes and well over
+   the footnote a key metric must never be set at (rule 31). */
+.a3-cp-tile .a3-cp-metric-fact{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:var(--type-heading-weight)}
+/* Retained identities: the total tile and the rate tile are named by the
+   suites that read one number off this chapter. They carry no geometry — the
+   tile classes above own that — so the two never disagree. */
+.a3-cp-hero-total,.a3-cp-hero-side{min-width:0}
 .a3-cp-hero-qualifier{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
 .a3-cp-hero-footnote{margin:0;max-width:var(--measure-body-max);font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
 .a3-cp-metric{display:grid;gap:var(--space-1);min-width:0}
@@ -4963,14 +5047,21 @@ a.a3-cockpit-effect:hover .a3-cockpit-effect-name{color:var(--color-text-primary
      its full name for AT and on hover. Ten 44 px boxes + two steps fit beside
      `Varianten · N` whatever the current chapter's name length. */
   .a3-cp-rail-text{display:none}
-  .a3-cp-chapter-stage{padding-left:max(var(--space-5),calc((100% - var(--measure-workspace)) / 2));padding-right:max(var(--space-5),calc((100% - var(--measure-workspace)) / 2))}
-  .a3-cp-title,.a3-cp-opening-title{font-size:var(--type-heading-1-narrow-size);line-height:var(--type-heading-1-narrow-line)}
-  /* 1280 keeps the identity beside the image: stacking would push the
-     client's own name below the fold behind a full-width picture. */
-  .a3-cp-opening{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--space-5)}
-  .a3-cp-opening-copy{align-content:start}
-  .a3-cp-heroes{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-5) var(--space-5)}
-  .a3-cp-hero-side{grid-column:span 1}
+  .a3-cp-chapter-stage,.a3-cp-chapter-tiles{padding-left:max(var(--space-5),calc((100% - var(--measure-workspace)) / 2));padding-right:max(var(--space-5),calc((100% - var(--measure-workspace)) / 2))}
+  /* The hero chapter owns no padding at any width — it is the image. */
+  .a3-cp-chapter-hero{padding:0}
+  .a3-cp-title{font-size:var(--type-heading-1-narrow-size);line-height:var(--type-heading-1-narrow-line)}
+  /* 1280 is a RECOMPOSITION of the opening, not a squeeze: the hero keeps
+     its full bleed and the identity keeps its place on the image, and only
+     the display size and the scrim's inset step down a rung. */
+  .a3-cp-opening-title{font-size:var(--type-display-numeric-narrow-size);line-height:var(--type-display-numeric-narrow-line)}
+  .a3-cp-opening-copy{padding:var(--space-6) max(var(--space-5),calc((100% - var(--measure-workspace)) / 2)) var(--space-4)}
+  .a3-cp-opening-address{font-size:var(--type-body-size);line-height:var(--type-body-line)}
+  /* The tile grid keeps all four tracks — the approved composition IS the
+     4/2 split, and dropping to two tracks would restack the chapter rather
+     than narrow it. Only the air between and inside the tiles steps down. */
+  .a3-cp-tiles{gap:var(--space-3)}
+  .a3-cp-tile{padding:var(--space-4)}
   .a3-cp-split,.a3-cp-schedule{grid-template-columns:minmax(0,1fr);gap:var(--space-5)}
   .a3-cp-building-grid,.a3-cp-building-grid[data-count="3"]{grid-template-columns:repeat(auto-fill,minmax(min(100%,28rem),1fr));gap:var(--space-5) var(--space-4)}
   .a3-cp-basis,.a3-cp-closing{gap:var(--space-5)}

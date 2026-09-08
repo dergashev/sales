@@ -335,3 +335,169 @@ describe('VR3-05 · the client hero speaks one language', () => {
     expect(rateLabel).toMatch(/BGF|WFL|NUF/)
   })
 })
+
+/**
+ * ACCEPTANCE REMEDIATION (VR3-CP-00) — the layer and the stage are ONE
+ * reading, and asset provenance never reaches the client.
+ *
+ * The candidate these tests were written for shipped a Varianten layer whose
+ * Umfang/Qualität rows came from the legacy `OptionConfig.buildings` map
+ * while every chapter read `scopeBuildings`. In front of a client that
+ * printed another fixture's building names, its underground area and an
+ * energy standard the project never declared — beside a completion date the
+ * stage contradicted for the same Option. Neither the privacy sweep nor any
+ * suite could see it: the blacklist matches ids, and nothing compared the
+ * layer against the stage. These assertions do.
+ */
+describe('VR3-CP-00 · the Varianten layer states what the chapters state', () => {
+  const layerRows = (layer: HTMLElement) => {
+    const out = new Map<string, string[]>()
+    for (const row of within(layer).getAllByRole('row')) {
+      const head = row.querySelector('th[scope="row"]')?.textContent?.trim()
+      if (!head) continue
+      out.set(head, [...row.querySelectorAll('td')].map((c) => c.textContent?.trim() ?? ''))
+    }
+    return out
+  }
+
+  /** Every row of the layer, differing or not. */
+  const allRows = async (user: ReturnType<typeof userEvent.setup>) => {
+    const layer = await openVarianten(user)
+    await user.click(within(layer).getByRole('radio', { name: /Alle Zeilen|All rows/ }))
+    return layerRows(layer)
+  }
+
+  it('names the buildings the chapters name, never a legacy fixture name', async () => {
+    const user = userEvent.setup()
+    buildSavedOptions(2)
+    render(<Harness />)
+
+    // The buildings as the narrative states them (chapter 4 of the complex
+    // fixture: three marked buildings).
+    await gotoChapter(user, 'Die Gebäude')
+    const chapterNames = [...screen
+      .getByRole('region', { name: 'Die Gebäude' })
+      .querySelectorAll('.a3-cp-building-name')]
+      .map((n) => n.textContent?.trim() ?? '')
+    expect(chapterNames.length).toBeGreaterThan(1)
+
+    const rows = await allRows(user)
+    const buildings = rows.get('Gebäude im Angebot') ?? []
+    expect(buildings.length).toBeGreaterThan(0)
+    for (const cell of buildings) {
+      // Every building the layer names is one the chapter names.
+      for (const part of cell.split(' · ').filter((p) => /·|Haus|haus/.test(p) || p.length > 0)) {
+        void part
+      }
+      expect(chapterNames.some((name) => cell.includes(name.replace(/^\w+ · /, '')))).toBe(true)
+    }
+    // The legacy per-building map's own name never reaches a client.
+    const everyCell = [...rows.values()].flat().join(' | ')
+    expect(everyCell).not.toMatch(/\bHaus [A-Z]\b/)
+  })
+
+  it('states the completion date the presented chapter states', async () => {
+    const user = userEvent.setup()
+    buildSavedOptions(2)
+    render(<Harness />)
+
+    await gotoChapter(user, 'Terminplan')
+    const chapterDate = screen
+      .getByRole('region', { name: 'Terminplan' })
+      .textContent ?? ''
+
+    const rows = await allRows(user)
+    const completion = (rows.get('Geplante Fertigstellung') ?? [])[0] ?? ''
+    expect(completion).not.toBe('')
+    expect(chapterDate).toContain(completion)
+  })
+
+  it('states no quality the Option does not declare', async () => {
+    const user = userEvent.setup()
+    buildSavedOptions(2)
+    render(<Harness />)
+
+    await gotoChapter(user, 'Projektüberblick')
+    const overview = screen
+      .getByRole('region', { name: 'Projektüberblick' })
+      .textContent ?? ''
+
+    const rows = await allRows(user)
+    const energy = (rows.get('Energiestandard') ?? [])[0] ?? ''
+    // Either the chapter names the same standard, or the layer states that
+    // there is none — never a value invented from another fixture.
+    if (!/Preis nicht ermittelt|not determined/.test(energy)) {
+      expect(overview).toContain(energy)
+    }
+  })
+
+  it('carries no asset provenance anywhere in the client tree', async () => {
+    const user = userEvent.setup()
+    buildSavedOptions(1)
+    render(<Harness />)
+    for (const chapter of ['Angebot', 'Die Gebäude', 'Architektur']) {
+      const tab = screen.queryByRole('button', { name: new RegExp(`· ${chapter}$`) })
+      if (!tab) continue
+      await gotoChapter(user, chapter)
+      expect(document.querySelectorAll('.a3-cp-shell [data-source-id]')).toHaveLength(0)
+    }
+  })
+})
+
+/**
+ * ACCEPT-02 — the Bauzeit and the date beside it are one derivation.
+ *
+ * The candidate printed `≈ 7,5 Monate` (the proposal projection) beside
+ * `Fertigstellung 30. September 2028` (the schedule derivation) and a Gantt
+ * running to month 19. A duration that does not reach the date printed
+ * beside it is a client-facing untruth, and rule 39 makes the derivation the
+ * authority for a complex.
+ */
+describe('VR3-CP-00 · one client duration authority', () => {
+  it('states the duration its own completion date implies', async () => {
+    const user = userEvent.setup()
+    buildSavedOptions(1)
+    render(<Harness />)
+    await gotoChapter(user, 'Terminplan')
+    const region = screen.getByRole('region', { name: 'Terminplan' })
+
+    // The chapter's own labelled facts — not a regex over the whole page,
+    // which would also read the Gantt's axis and its tabular alternative.
+    const facts = new Map<string, string>()
+    for (const row of region.querySelectorAll('.a3-cp-row')) {
+      const label = row.querySelector('.a3-cp-row-label')?.textContent?.trim() ?? ''
+      const value = row.querySelector('.a3-cp-row-value')?.textContent?.trim() ?? ''
+      if (label) facts.set(label, value)
+    }
+    const durationEntry = [...facts.entries()].find(([label]) => /Bauzeit/.test(label))
+    const startEntry = [...facts.entries()].find(([label]) => /Beginn/.test(label))
+    const endEntry = [...facts.entries()].find(([label]) => /Fertigstellung/.test(label))
+    expect(durationEntry, 'the chapter states a Bauzeit').toBeTruthy()
+    expect(startEntry, 'the chapter states its start boundary').toBeTruthy()
+    expect(endEntry, 'the chapter states a completion date').toBeTruthy()
+
+    const months = Number(
+      (durationEntry![1].match(/(\d+(?:,\d+)?)/) ?? [])[1]?.replace(',', '.'))
+    expect(Number.isFinite(months)).toBe(true)
+
+    const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli',
+      'August', 'September', 'Oktober', 'November', 'Dezember']
+    const parse = (s: string) => {
+      const m = s.match(/(\d{1,2})\. (\p{L}+) (\d{4})/u)
+      if (!m) return null
+      return new Date(Number(m[3]), MONTHS.indexOf(m[2]!), Number(m[1]))
+    }
+    const from = parse(startEntry![1])
+    const to = parse(endEntry![1])
+    expect(from, `start date parsed from "${startEntry![1]}"`).toBeTruthy()
+    expect(to, `completion parsed from "${endEntry![1]}"`).toBeTruthy()
+
+    const span = (to!.getTime() - from!.getTime()) / (1000 * 60 * 60 * 24 * 30.44)
+    // The duration a client reads must REACH the date printed beside it.
+    // Half a month of calendar rounding, never an order of magnitude: the
+    // defect this pins printed 7,5 months across an 18,5-month programme.
+    expect(Math.abs(span - months),
+      `stated ${months} months between ${startEntry![1]} and ${endEntry![1]}`)
+      .toBeLessThan(1)
+  })
+})

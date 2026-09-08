@@ -12,11 +12,12 @@ import {
 } from '../state/store'
 import {
   COMPARISON_VISIBLE_COLUMN_LIMIT,
-  comparisonColumns,
+  clientComparisonColumns,
+  clientComparisonRows,
   comparisonGroups,
-  comparisonRows,
   visibleComparisonRows,
 } from '../state/optionComparison'
+import { PORTFOLIO_PROJECTS } from '../state/projectPortfolio'
 import { scenarioChangeCount } from '../state/clientScenario'
 import type { PresentationDecision } from '../state/clientScenario'
 import type { ClientView } from '../state/clientProposal'
@@ -171,7 +172,16 @@ export function VariantenLayer({ view, open, onClose, returnFocusTo }: {
   const [showAll, setShowAll] = useState(false)
   const [participants, setParticipants] = useState<readonly string[] | null>(null)
 
-  const allColumns = useMemo(() => comparisonColumns(s), [s])
+  /**
+   * The columns are CLIENT PROPOSALS — the same object the chapters render.
+   * Reading anything else here is how the layer came to state another
+   * project's buildings and a completion date the stage contradicted.
+   */
+  const project = PORTFOLIO_PROJECTS.find((p) => p.id === s.opportunityId) ?? null
+  const allColumns = useMemo(
+    () => clientComparisonColumns(s, { t, tx }, project, view.language),
+    [s, t, tx, project, view.language],
+  )
   const presentedId = view.savedVersion?.optionId
     ?? allColumns[0]?.option.id ?? null
 
@@ -181,8 +191,8 @@ export function VariantenLayer({ view, open, onClose, returnFocusTo }: {
   const columns = allColumns.filter((c) => chosen.includes(c.option.id))
 
   const rows = useMemo(
-    () => comparisonRows(columns, { t, tx, client: true, language: view.language }),
-    [columns, t, tx, view.language],
+    () => clientComparisonRows(columns, { t, language: view.language }),
+    [columns, t, view.language],
   )
   const visible = visibleComparisonRows(rows, showAll)
   const groups = comparisonGroups(visible)

@@ -164,7 +164,9 @@ export function ChapterArchitektur({ proposal, headingRef }: {
           alt: item.alt,
           caption: item.caption,
           context: item.context ?? undefined,
-          sourceId: item.asset.assetId,
+          // No `sourceId`: asset provenance is internal and must not reach
+          // the client DOM (`data-source-id` on MediaFrame). The gallery
+          // needs the caption, not where the file came from.
         }))}
         label={t('vr3.client.architecture.galleryLabel')}
         emptyLabel={t('vr3.client.architecture.empty')}

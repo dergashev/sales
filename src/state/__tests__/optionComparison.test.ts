@@ -110,15 +110,13 @@ describe('comparisonRows — канонический набор строк', ()
     const cols = comparisonColumns(st())
     expect(comparisonRows(cols, deps(false)).map((r) => r.id)).toContain('kg-700')
     expect(comparisonRows(cols, deps(true)).map((r) => r.id)).not.toContain('kg-700')
-    // Клиентское чтение (VR3-CP-00): убирает две внутренние строки — KG 700
-    // и статус подтверждения класса MBO — и добавляет строку итога, потому
-    // что в слое «Varianten» итог живёт в теле таблицы, а не в шапке колонки.
+    // Ничего, кроме этой строки, клиентский флаг этой модели не забирает.
+    // Клиентская ПРЕЗЕНТАЦИЯ читает не эту функцию, а `clientComparisonRows`
+    // (VR3-CP-00): она строит те же группы из объявленной клиентской
+    // проекции. Здесь проверяется внутренний маршрут `/vergleich`.
     const internal = comparisonRows(cols, deps(false)).map((r) => r.id)
     const client = comparisonRows(cols, deps(true)).map((r) => r.id)
-    expect(client[0]).toBe('total')
-    expect(client).not.toContain('building-class')
-    expect(internal.filter((id) => id !== 'kg-700' && id !== 'building-class'))
-      .toEqual(client.filter((id) => id !== 'total'))
+    expect(internal.filter((id) => id !== 'kg-700')).toEqual(client)
   })
 
   it('идентификаторы строк уникальны', () => {

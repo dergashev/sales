@@ -218,10 +218,19 @@ export function ChapterPreis({ proposal, headingRef }: {
         eyebrow={t('vr3.client.chapter.preis')}
         title={t('vr3.client.price.title')}
         headingRef={headingRef}
-        lede={t('vr3.client.price.lede', {
-          rate: localizeMoneyText(commercial.leadRateText, language),
-          denominator: commercial.leadRate.denominatorLabel,
-        })}
+        // The rate NAMES the quantity it divides by. A lead rate whose
+        // reference area is stated nowhere is a number a client cannot
+        // check against the areas chapter 3 just showed them.
+        lede={commercial.leadDenominatorText
+          ? t('vr3.client.price.lede', {
+            rate: localizeMoneyText(commercial.leadRateText, language),
+            denominator: commercial.leadRate.denominatorLabel,
+            area: localizeMoneyText(commercial.leadDenominatorText, language),
+          })
+          : t('vr3.client.price.lede.noArea', {
+            rate: localizeMoneyText(commercial.leadRateText, language),
+            denominator: commercial.leadRate.denominatorLabel,
+          })}
       />
 
       <div className="a3-cp-split">
@@ -319,6 +328,24 @@ function ScopeList({ items, emphasis }: {
   )
 }
 
+/** One scope group: its name, how many answers it holds, and those answers. */
+function ScopeGroupPanel({ title, items, emptyText, emphasis }: {
+  title: string
+  items: readonly ClientScopeItem[]
+  emptyText: string
+  emphasis?: 'excluded'
+}) {
+  return (
+    <ClientPanel
+      title={items.length > 0 ? `${title} · ${items.length}` : title}
+    >
+      {items.length > 0
+        ? <ScopeList items={items} emphasis={emphasis} />
+        : <p className="a3-cp-prose">{emptyText}</p>}
+    </ClientPanel>
+  )
+}
+
 function ConstructionLines({ lines }: { lines: readonly ClientConstructionLine[] }) {
   return (
     <div className="a3-cp-construction">
@@ -398,22 +425,30 @@ export function ChapterLeistungen({ proposal, headingRef }: {
         </div>
       ) : null}
 
+      {/*
+        All THREE groups, always. A group that disappears when it happens to
+        be empty leaves the client reading two columns and guessing whether
+        the third was forgotten or answered; the empty state says which. The
+        count beside each title is the count of the list under it, so the
+        three add up to the decisions the Option actually carries.
+      */}
       <div className="a3-cp-scope-groups">
-        {scope.groups.considered.length > 0 ? (
-          <ClientPanel title={t('vr3.client.scope.considered')}>
-            <ScopeList items={scope.groups.considered} />
-          </ClientPanel>
-        ) : null}
-        <ClientPanel title={t('vr3.client.scope.includedSystem')}>
-          <ScopeList items={scope.groups.included} />
-        </ClientPanel>
-        <ClientPanel title={t('vr3.client.scope.excluded')}>
-          {scope.groups.excluded.length > 0 ? (
-            <ScopeList items={scope.groups.excluded} emphasis="excluded" />
-          ) : (
-            <p className="a3-cp-prose">{t('vr3.client.scope.noneExcluded')}</p>
-          )}
-        </ClientPanel>
+        <ScopeGroupPanel
+          title={t('vr3.client.scope.considered')}
+          items={scope.groups.considered}
+          emptyText={t('vr3.client.scope.noneConsidered')}
+        />
+        <ScopeGroupPanel
+          title={t('vr3.client.scope.includedSystem')}
+          items={scope.groups.included}
+          emptyText={t('vr3.client.scope.noneIncluded')}
+        />
+        <ScopeGroupPanel
+          title={t('vr3.client.scope.excluded')}
+          items={scope.groups.excluded}
+          emptyText={t('vr3.client.scope.noneExcluded')}
+          emphasis="excluded"
+        />
       </div>
 
       <ClientPanel title={t('vr3.client.scope.rowsTitle')}>

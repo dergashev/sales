@@ -1,7 +1,7 @@
 import { Decimal } from 'decimal.js'
 import type { CostGroup } from '../engine/calculate'
 import type { Rate } from '../engine/money'
-import { rateUnit } from '../engine/money'
+import { NNBSP, formatDE, rateUnit } from '../engine/money'
 import type {
   KgCatalogue,
   KgContribution,
@@ -214,6 +214,8 @@ export type ClientIdentity = Readonly<{
 }>
 
 export type ClientMetric = Readonly<{
+  /** Stable identity, so a consumer never has to match on a translated label. */
+  id: 'energy' | 'project'
   label: string
   value: string
   /** Rendered smaller on the same baseline, never as a footnote. */
@@ -236,6 +238,13 @@ export type ClientCommercial = Readonly<{
   leadRateText: string
   /** `Leitkennzahl · BGF oberirdisch` — the denominator names its norm. */
   leadRateLabel: string
+  /**
+   * The reference quantity the lead rate divides by, as a client reads it
+   * (`17.250,00 m²`). A rate without the quantity it refers to is a rate a
+   * client cannot check; the approved overview states both side by side.
+   * `null` only when the engine gives no usable denominator.
+   */
+  leadDenominatorText: string | null
   /** Copy only. The engine has no VAT field and this does not create one. */
   taxNote: string
   composition: readonly ClientCompositionRow[]
@@ -760,6 +769,16 @@ export function clientProposal(
     leadRateText: rateUnit(result.leadRate),
     // The denominator belongs IN the metric label and names its norm.
     leadRateLabel: `${t('vr3.client.investment.leadRate')} · ${result.leadRate.denominatorLabel}`,
+    leadDenominatorText: (() => {
+      const value = result.leadRate.denominator
+      if (!value.isFinite() || value.lessThanOrEqualTo(0)) return null
+      const numeral = areaText(value.toFixed(2), language)
+      if (numeral === null) return null
+      // An area names its unit; a count of units does not.
+      return result.leadRate.denominatorKind === 'area'
+        ? `${numeral}${NNBSP}m²`
+        : numeral
+    })(),
     taxNote: t('vr3.client.tax.net'),
     composition: compositionRows,
   }
@@ -805,6 +824,7 @@ export function clientProposal(
   const overview: ClientMetric[] = []
   if (energy) {
     overview.push({
+      id: 'energy',
       label: t('vr3.client.overview.energy'),
       // Text only — D-25 bars the badge.
       value: tx(String(energy)),
@@ -813,6 +833,7 @@ export function clientProposal(
     })
   }
   overview.push({
+    id: 'project',
     label: t('vr3.client.overview.project'),
     value: totalUnits > 0
       ? t('vr3.client.overview.buildingsUnits', {
@@ -846,12 +867,43 @@ export function clientProposal(
 
   const construction = constructionLines(catalogue, decisions, buildings, view, deps)
 
+  /**
+   * The three scope groups the client reads (ACCEPT-06).
+   *
+   * `considered` used to be derived from the chapter 2 overview metrics that
+   * carry a note — in practice the energy standard alone, so on a project
+   * that declares none the group was empty and the chapter rendered two of
+   * three groups with a third of the stage blank.
+   *
+   * The distinction the three groups actually carry is the one the released
+   * catalogue already makes. `KG 200` (vorbereitende Maßnahmen) and `KG 700`
+   * (Baunebenkosten — planning, site management, verification) are what an
+   * offer takes into account IN PRINCIPLE; `KG 300`–`KG 600` are the
+   * physical system All3 builds. A decided group lands in one of those two
+   * by its own identity; an undecided or excluded one is stated as not
+   * included, because a scope gap a client cannot read is the one that
+   * becomes a dispute. Nothing here is authored: every line is a released
+   * catalogue title or a construction answer the configurator recorded.
+   */
+  const CONSIDERED_IN_PRINCIPLE: readonly KgScopeGroup[] = ['KG_200', 'KG_700']
+  const consideredItems: ClientScopeItem[] = []
   const includedItems: ClientScopeItem[] = []
   const excludedItems: ClientScopeItem[] = []
   for (const row of scopeRows) {
     const item: ClientScopeItem = { id: row.group, text: row.title, buildingName: null }
-    if (row.decision === 'included') includedItems.push(item)
-    else excludedItems.push(item)
+    if (row.decision !== 'included') excludedItems.push(item)
+    else if (CONSIDERED_IN_PRINCIPLE.includes(row.group)) consideredItems.push(item)
+    else includedItems.push(item)
+  }
+  // The energy target is a quality the whole offer is measured against, not
+  // a position — it belongs with what is taken into account in principle.
+  for (const metric of overview) {
+    if (metric.note === null) continue
+    consideredItems.push({
+      id: `overview:${metric.label}`,
+      text: `${metric.label}: ${metric.value}`,
+      buildingName: null,
+    })
   }
   for (const line of construction.story) {
     const item: ClientScopeItem = {
@@ -871,9 +923,7 @@ export function clientProposal(
         : responsibility.scopeBoundary.summaryDe)
       : null,
     groups: {
-      considered: overview
-        .filter((m) => m.note !== null)
-        .map((m, i) => ({ id: `o${i}`, text: `${m.label}: ${m.value}`, buildingName: null })),
+      considered: consideredItems,
       included: includedItems,
       excluded: excludedItems,
     },
@@ -913,12 +963,41 @@ export function clientProposal(
   const critical = derivation ? scheduleCriticalPhase(derivation) : null
   void phases
 
-  // The duration's UNIT is Product copy with two rows; the numeral is the
-  // engine's German display, re-typeset by the caller's `localizeMoneyText`.
-  const durationMonths = projection.duration.display.replace(/[\s\u202f\u00a0]*Monate$/, '')
+  /**
+   * ONE client-safe duration authority (ACCEPT-02).
+   *
+   * The Bauzeit and the completion date must be two readings of the SAME
+   * released derivation, or the client is handed a duration that does not
+   * reach the date printed beside it. This surface used to take the months
+   * from `projection.duration` (the proposal projection: 7,5) and the date
+   * from `ScheduleDerivation` (30.09.2028) — a start plus 7,5 months lands
+   * nowhere near that date, and the Gantt drawn underneath ran to month 19.
+   * The internal cockpit states `Gesamtdauer 18,5 Monate · abgeleitet aus
+   * den Phasen` for the same Option, which is also what rule 39 requires of
+   * a complex: `max(start + dauer)`, never a sum and never a second engine.
+   *
+   * So when the derivation exists the client reads the derivation — months,
+   * completion date and phase windows alike. `projection.duration` remains
+   * the fallback for an Option whose phases cannot be placed, and nothing
+   * about either calculation changes: this is which released authority the
+   * client consumes, not a new number.
+   *
+   * The numeral is German here and re-typeset by the caller's
+   * `localizeMoneyText`; the UNIT is Product copy with a row per language.
+   * Half months print one decimal, whole months none — the same rule the
+   * internal schedule stage applies to every phase it shows.
+   */
+  const derivedHalfMonths = derivation?.totalHalfMonths ?? null
+  const derivedMonths = derivation?.totalMonths ?? null
+  const derivedDurationNumeral = derivedHalfMonths !== null && derivedMonths !== null
+    ? formatDE(derivedMonths, derivedHalfMonths % 2 === 0 ? 0 : 1)
+    : null
+  const durationMonths = derivedDurationNumeral
+    ?? projection.duration.display.replace(/[\s\u202f\u00a0]*Monate$/, '')
   const schedule: ClientSchedule = {
     durationText: t('vr3.client.schedule.durationValue', { months: durationMonths }),
-    durationPrefix: projection.duration.prefix,
+    // A derived duration is exact half months, so it carries no `≈`.
+    durationPrefix: derivedDurationNumeral !== null ? '' : projection.duration.prefix,
     // The internal cockpit's own word. One boundary, one name.
     startBoundary: t('vr3.client.schedule.boundary'),
     startISO: derivation?.startISO ?? null,

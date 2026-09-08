@@ -846,3 +846,57 @@ describe('PresentationShell — VR2-08 Send review / Delivered lifecycle', () =>
     expect(st().snapshots).toHaveLength(0)
   })
 })
+
+/**
+ * ACCEPTANCE REMEDIATION (VR3-CP-00) — the scope chapter always states all
+ * three groups.
+ *
+ * The candidate derived `Grundsätzlich berücksichtigt` from the chapter 2
+ * overview metrics that carry a note. In practice only the energy standard
+ * qualified, so on a project that declares none the group was empty, the
+ * panel vanished, and a client read two groups where the offer has three —
+ * with a third of the stage blank. A group that disappears when empty is
+ * indistinguishable from a group somebody forgot to fill in.
+ */
+describe('PresentationShell — the scope chapter states three groups (AC 23)', () => {
+  const scopePanels = () => {
+    const region = screen.getByRole('region', { name: /Leistungsumfang|Scope of services/ })
+    return [...region.querySelectorAll('.a3-cp-scope-groups .a3-cp-panel')]
+      .map((panel) => ({
+        title: panel.querySelector('.a3-cp-panel-title')?.textContent?.trim() ?? '',
+        entries: panel.querySelectorAll('.a3-cp-list-item').length,
+        text: panel.textContent ?? '',
+      }))
+  }
+
+  it('renders all three groups, and an empty one says so instead of vanishing', async () => {
+    const user = userEvent.setup()
+    buildOneEligibleOption()
+    render(<Harness />)
+    await gotoChapter(user, 'Leistungsumfang')
+
+    const panels = scopePanels()
+    expect(panels).toHaveLength(3)
+    expect(panels[0]!.title).toMatch(/Grundsätzlich berücksichtigt/)
+    expect(panels[1]!.title).toMatch(/Im All3-System enthalten/)
+    expect(panels[2]!.title).toMatch(/Nicht enthalten/)
+    // Every panel carries content: either answers, or the sentence that
+    // states there are none. Never an empty box and never a missing one.
+    for (const panel of panels) {
+      expect(panel.entries > 0 || panel.text.trim().length > panel.title.length).toBe(true)
+    }
+  })
+
+  it('counts what each group holds, so the three add up to the decisions taken', async () => {
+    const user = userEvent.setup()
+    buildOneEligibleOption()
+    render(<Harness />)
+    await gotoChapter(user, 'Leistungsumfang')
+
+    for (const panel of scopePanels()) {
+      if (panel.entries === 0) continue
+      expect(panel.title, `"${panel.title}" names its own count`)
+        .toMatch(new RegExp(`· ${panel.entries}$`))
+    }
+  })
+})

@@ -2,15 +2,22 @@ import { Decimal } from 'decimal.js'
 import {
   configForOption,
   eligibleClientOptions,
+  latestSavedOptionVersion,
   projectionForOption,
   type OptionConfig,
   type Projection,
   type Store,
   clientSnapshotForOption,
-  type ClientScenarioSnapshot,
 } from './store'
+import {
+  clientProposal,
+  type ClientProposal,
+  type ClientProposalDeps,
+  type ClientView,
+} from './clientProposal'
+import type { PortfolioProject } from './projectPortfolio'
 import { isClientProjection } from './clientProjection'
-import { NNBSP, formatDE, present, rateLabel, rateUnit } from '../engine/money'
+import { NNBSP, formatDE, present, rateLabel } from '../engine/money'
 
 /**
  * D-20 — ОДИН источник сравнения Options.
@@ -73,13 +80,6 @@ export type ComparisonColumn = Readonly<{
   option: Readonly<{ id: string; name: string }>
   cfg: OptionConfig
   p: Projection
-  /**
-   * The canonical commercial derivation of this Option — the reading every
-   * client chapter renders. `null` when it cannot be derived (or when the
-   * slice handed in is too narrow to derive it); the client rows then state
-   * the missing basis, never a number from another engine.
-   */
-  snapshot: ClientScenarioSnapshot | null
 }>
 
 /** A per-cell secondary line (today: the saved-state sub-caption). */
@@ -106,8 +106,6 @@ export type ComparisonRowDeps = Readonly<{
   t: ComparisonText
   tx: (deText: string) => string
   client: boolean
-  /** Client rows typeset dates for this locale; internal rows stay `de`. */
-  language?: 'de' | 'en'
 }>
 
 /* ─────────────────────────── formatting helpers ────────────────────────── */
@@ -170,16 +168,11 @@ export function comparisonColumns(
   const eligibleIds = isClientProjection(s.mode)
     ? new Set(eligibleClientOptions(s).map((o) => o.id))
     : null
-  // The canonical snapshot needs the whole store; a narrower slice (tests,
-  // the project-tier route's Pick) gets `null` and the internal rows below
-  // keep their released reading of `p`.
-  const full = 'snapshots' in s ? (s as Store) : null
   return s.options.flatMap((o) => {
     if (eligibleIds && !eligibleIds.has(o.id)) return []
     const cfg = configForOption(s, o.id)
     const p = projectionForOption(s, o.id)
-    const snapshot = full ? clientSnapshotForOption(full, o.id) : null
-    return cfg && p ? [{ option: o, cfg, p, snapshot }] : []
+    return cfg && p ? [{ option: o, cfg, p }] : []
   })
 }
 
@@ -197,138 +190,64 @@ export function comparisonRows(
   deps: ComparisonRowDeps,
 ): readonly ComparisonRow[] {
   const { t, tx, client } = deps
-  const language = deps.language ?? 'de'
   const name = (id: string, cfg: OptionConfig) => buildingLabel(id, cfg, tx)
-  /**
-   * The RESULT rows. In front of a client they read the canonical commercial
-   * derivation — the same object the chapters render — so the layer and the
-   * stage cannot state two totals for one Option. The internal route keeps
-   * its released reading of the proposal projection (`p`), which is the
-   * documented two-engine state of the preparation tier and not this
-   * module's to change. A client column without a snapshot states the
-   * missing basis; it never borrows the other engine's number.
-   */
-  const absent = t('vr3.client.investment.notPriced')
-  const clientDate = (iso: string | null | undefined) => {
-    if (!iso) return '—'
-    const d = new Date(iso)
-    if (Number.isNaN(d.getTime())) return '—'
-    return new Intl.DateTimeFormat(language === 'en' ? 'en-GB' : 'de-DE', {
-      day: 'numeric', month: 'long', year: 'numeric',
-    }).format(d)
-  }
-  const resultRows: ComparisonRow[] = client
-    ? [
-      {
-        id: 'total',
-        result: true,
-        group: t('vr3.client.varianten.group.result'),
-        label: t('vr3.client.varianten.row.total'),
-        cells: cols.map((c) => c.snapshot
-          ? `${c.snapshot.result.total.prefix}${c.snapshot.result.total.prefix ? NNBSP : ''}`
-            + `${c.snapshot.result.total.display}${NNBSP}€`
-          : absent),
-      },
-      {
-        id: 'lead-rate',
-        result: true,
-        group: t('vr3.client.varianten.group.result'),
-        label: t('comparison.leadRate'),
-        cells: cols.map((c) => c.snapshot
-          ? `${rateUnit(c.snapshot.result.leadRate)} · ${c.snapshot.result.leadRate.denominatorLabel}`
-          : absent),
-      },
-      {
-        id: 'uncertainty',
-        result: true,
-        group: t('vr3.client.varianten.group.result'),
-        label: t('vr3.client.varianten.row.uncertainty'),
-        cells: cols.map((c) => c.snapshot
-          ? `±${NNBSP}${c.snapshot.result.uncertaintyPp}${NNBSP}%`
-          : absent),
-      },
-      {
-        id: 'bauzeit',
-        result: true,
-        group: t('vr3.client.varianten.group.result'),
-        label: `${t('vr3.client.schedule.duration')} · ${t('vr3.client.schedule.boundary')}`,
-        cells: cols.map((c) => c.snapshot
-          ? `${c.snapshot.projection.duration.prefix}${c.snapshot.projection.duration.prefix ? NNBSP : ''}`
-            + t('vr3.client.schedule.durationValue', {
-              months: c.snapshot.projection.duration.display.replace(/[\s\u202f\u00a0]*Monate$/, ''),
-            })
-          : absent),
-      },
-      {
-        id: 'completion',
-        result: true,
-        group: t('vr3.client.varianten.group.result'),
-        label: t('vr3.client.schedule.completion'),
-        cells: cols.map((c) => clientDate(c.snapshot?.projection.duration.completionDate)),
-      },
-    ]
-    : [
-      {
-        // Each Option can carry a different building set and therefore a
-        // different typed denominator. The denominator travels with its cell;
-        // a shared row label may never borrow it from the base column.
-        id: 'lead-rate',
-        result: true,
-        group: 'ERGEBNIS',
-        label: t('comparison.leadRate'),
-        cells: cols.map((c) => rateLabel(c.p.leadRate)),
-      },
-      {
-        id: 'uncertainty',
-        result: true,
-        group: 'ERGEBNIS',
-        label: 'Schätzunsicherheit',
-        cells: cols.map((c) => `±${NNBSP}${c.p.uncertaintyPp}${NNBSP}%`),
-      },
-      {
-        id: 'bauzeit',
-        result: true,
-        group: 'ERGEBNIS',
-        label: 'Bauzeit (ab OKBP)',
-        cells: cols.map(
-          (c) =>
-            `${c.p.duration.prefix}${c.p.duration.prefix ? NNBSP : ''}${c.p.duration.display}`,
-        ),
-      },
-      {
-        id: 'completion',
-        result: true,
-        group: 'ERGEBNIS',
-        label: 'Fertigstellung',
-        cells: cols.map((c) => formatDate(c.p.duration.completionDate)),
-      },
-    ]
-  const groupScope = client ? t('vr3.client.varianten.group.scope') : 'UMFANG'
-  const groupQuality = client ? t('vr3.client.varianten.group.quality') : 'QUALITÄT'
   return [
-    ...resultRows,
+    {
+      // Each Option can carry a different building set and therefore a
+      // different typed denominator. The denominator travels with its cell;
+      // a shared row label may never borrow it from the base column.
+      id: 'lead-rate',
+      result: true,
+      group: 'ERGEBNIS',
+      label: t('comparison.leadRate'),
+      cells: cols.map((c) => rateLabel(c.p.leadRate)),
+    },
+    {
+      id: 'uncertainty',
+      result: true,
+      group: 'ERGEBNIS',
+      label: 'Schätzunsicherheit',
+      cells: cols.map((c) => `±${NNBSP}${c.p.uncertaintyPp}${NNBSP}%`),
+    },
+    {
+      id: 'bauzeit',
+      result: true,
+      group: 'ERGEBNIS',
+      label: 'Bauzeit (ab OKBP)',
+      cells: cols.map(
+        (c) =>
+          `${c.p.duration.prefix}${c.p.duration.prefix ? NNBSP : ''}${c.p.duration.display}`,
+      ),
+    },
+    {
+      id: 'completion',
+      result: true,
+      group: 'ERGEBNIS',
+      label: 'Fertigstellung',
+      cells: cols.map((c) => formatDate(c.p.duration.completionDate)),
+    },
     {
       id: 'buildings',
-      group: groupScope,
-      label: client ? t('vr3.client.varianten.row.buildings') : 'Gebäude im Angebot',
+      group: 'UMFANG',
+      label: 'Gebäude im Angebot',
       cells: cols.map((c) => perBuilding(c.cfg, (id) => name(id, c.cfg))),
     },
     {
       id: 'basement',
-      group: groupScope,
-      label: client ? t('vr3.client.buildings.basement') : 'Untergeschoss',
+      group: 'UMFANG',
+      label: 'Untergeschoss',
       cells: cols.map((c) =>
         perBuilding(c.cfg, (id) =>
           c.cfg.buildings[id]!.untergeschoss === 'kein_ug'
-            ? `${name(id, c.cfg)}: ${client ? t('vr3.client.buildings.basement.none') : 'nicht Bestandteil'}`
-            : `${name(id, c.cfg)}: ${client ? t('vr3.client.buildings.basement.present') : 'enthalten'}`,
+            ? `${name(id, c.cfg)}: nicht Bestandteil`
+            : `${name(id, c.cfg)}: enthalten`,
         ),
       ),
     },
     {
       id: 'bgf-below',
-      group: groupScope,
-      label: client ? t('vr3.client.project.metric.bgfBelow') : 'BGF unterirdisch (m²)',
+      group: 'UMFANG',
+      label: 'BGF unterirdisch (m²)',
       cells: cols.map((c) =>
         formatDE(
           Object.keys(c.cfg.buildings)
@@ -361,8 +280,8 @@ export function comparisonRows(
       : []),
     {
       id: 'energy-standard',
-      group: groupQuality,
-      label: client ? t('vr3.client.overview.energy') : 'Energiestandard',
+      group: 'QUALITÄT',
+      label: 'Energiestandard',
       cells: cols.map((c) =>
         perBuilding(
           c.cfg,
@@ -371,9 +290,9 @@ export function comparisonRows(
         ),
       ),
     },
-    ...(client ? [] : [{
+    {
       id: 'building-class',
-      group: groupQuality,
+      group: 'QUALITÄT',
       label: 'Klassifikation nach MBO §2',
       cells: cols.map((c) =>
         perBuilding(c.cfg, (id) =>
@@ -382,7 +301,177 @@ export function comparisonRows(
             : `${name(id, c.cfg)}: ▲ nicht bestätigt`,
         ),
       ),
-    }]),
+    },
+  ]
+}
+
+/* ─────────────────── the CLIENT reading of the same model ──────────────── */
+
+/**
+ * One comparison column, as a CLIENT sees it: a whole `ClientProposal`.
+ *
+ * The rows below state exactly what the chapters state, because they read
+ * the same object the chapters render. The reading this replaces built its
+ * cells from `OptionConfig.buildings` — the legacy per-building map, whose
+ * `stableName` is `Haus A` and which exists only in one fixture — while
+ * every chapter of the same presentation read `scopeBuildings`. Two building
+ * authorities in one client tree is how a client came to see `Haus A`,
+ * `400,00 m²` underground and an `EH 55` standard for a project whose
+ * buildings are `A · Kontorhaus`, `B · Hofhaus`, `C · Stadthaus`, whose
+ * underground area is `2.220,00 m²` and which declares no energy standard
+ * at all — and how the layer printed a completion date the stage
+ * contradicted for the same Option.
+ *
+ * The internal `/vergleich` route keeps `comparisonRows` and its released
+ * reading of the proposal projection: it is the preparation tier, it is not
+ * client-visible, and changing what it shows is not this ticket's to do.
+ * One module, one row model, one visibility rule — two declared readings,
+ * and the client's is the declared client projection.
+ */
+export type ClientComparisonColumn = Readonly<{
+  option: Readonly<{ id: string; name: string }>
+  proposal: ClientProposal
+}>
+
+export type ClientComparisonDeps = Readonly<{
+  t: ComparisonText
+  language: 'de' | 'en'
+}>
+
+/**
+ * Build a client comparison column per eligible Option.
+ *
+ * Only Options that pass `clientModeAvailableFor` become columns, exactly as
+ * before; an Option whose projection cannot be derived is omitted rather
+ * than shown with borrowed numbers.
+ */
+export function clientComparisonColumns(
+  s: Store,
+  deps: ClientProposalDeps,
+  project: PortfolioProject | null,
+  language: 'de' | 'en',
+): readonly ClientComparisonColumn[] {
+  return eligibleClientOptions(s).flatMap((option) => {
+    const presented = clientSnapshotForOption(s, option.id)
+    if (!presented) return []
+    const view: ClientView = {
+      optionName: option.name,
+      savedVersion: latestSavedOptionVersion(s, option.id),
+      presented,
+      baseline: presented,
+      projectName: project?.name ?? '',
+      projectHeroAssetId: null,
+      language,
+    }
+    try {
+      return [{
+        option,
+        proposal: clientProposal(s, view, 'clientLiveConfiguration', deps, project),
+      }]
+    } catch {
+      return []
+    }
+  })
+}
+
+/** The client rows: same model, same groups, client projection. */
+export function clientComparisonRows(
+  cols: readonly ClientComparisonColumn[],
+  deps: ClientComparisonDeps,
+): readonly ComparisonRow[] {
+  const { t, language } = deps
+  const absent = t('vr3.client.investment.notPriced')
+  const dateText = (iso: string | null) => {
+    if (!iso) return absent
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return absent
+    return new Intl.DateTimeFormat(language === 'en' ? 'en-GB' : 'de-DE', {
+      day: 'numeric', month: 'long', year: 'numeric',
+    }).format(d)
+  }
+  /** Per building, in the marks the chapters use — never a legacy id. */
+  const perBuildingText = (
+    col: ClientComparisonColumn,
+    line: (b: ClientProposal['buildings'][number]) => string | null,
+  ) => {
+    const parts = col.proposal.buildings
+      .map((b) => { const v = line(b); return v === null ? null : `${b.mark} · ${b.name}: ${v}` })
+      .filter((v): v is string => v !== null)
+    return parts.length > 0 ? parts.join(' · ') : absent
+  }
+  const result = t('vr3.client.varianten.group.result')
+  const scope = t('vr3.client.varianten.group.scope')
+  const quality = t('vr3.client.varianten.group.quality')
+  return [
+    {
+      id: 'total',
+      result: true,
+      group: result,
+      label: t('vr3.client.varianten.row.total'),
+      cells: cols.map((c) => {
+        const m = c.proposal.commercial
+        return `${m.totalPrefix}${m.totalPrefix ? NNBSP : ''}${m.totalDisplay}${NNBSP}€`
+      }),
+    },
+    {
+      id: 'lead-rate',
+      result: true,
+      group: result,
+      label: t('comparison.leadRate'),
+      cells: cols.map((c) =>
+        `${c.proposal.commercial.leadRateText} · ${c.proposal.commercial.leadRate.denominatorLabel}`),
+    },
+    {
+      id: 'uncertainty',
+      result: true,
+      group: result,
+      label: t('vr3.client.varianten.row.uncertainty'),
+      cells: cols.map((c) => `±${NNBSP}${c.proposal.commercial.uncertaintyPp}${NNBSP}%`),
+    },
+    {
+      id: 'bauzeit',
+      result: true,
+      group: result,
+      label: `${t('vr3.client.schedule.duration')} · ${t('vr3.client.schedule.boundary')}`,
+      cells: cols.map((c) => {
+        const sch = c.proposal.schedule
+        return `${sch.durationPrefix}${sch.durationPrefix ? NNBSP : ''}${sch.durationText}`
+      }),
+    },
+    {
+      id: 'completion',
+      result: true,
+      group: result,
+      label: t('vr3.client.schedule.completion'),
+      cells: cols.map((c) => dateText(c.proposal.schedule.completionISO)),
+    },
+    {
+      id: 'buildings',
+      group: scope,
+      label: t('vr3.client.varianten.row.buildings'),
+      cells: cols.map((c) => c.proposal.buildings.length > 0
+        ? c.proposal.buildings.map((b) => `${b.mark} · ${b.name}`).join(' · ')
+        : absent),
+    },
+    {
+      id: 'basement',
+      group: scope,
+      label: t('vr3.client.buildings.basement'),
+      cells: cols.map((c) => perBuildingText(c, (b) => b.basementText)),
+    },
+    {
+      id: 'bgf-below',
+      group: scope,
+      label: t('vr3.client.project.metric.bgfBelow'),
+      cells: cols.map((c) => perBuildingText(c, (b) => b.bgfRSBelow)),
+    },
+    {
+      id: 'energy-standard',
+      group: quality,
+      label: t('vr3.client.overview.energy'),
+      cells: cols.map((c) =>
+        c.proposal.overview.find((m) => m.id === 'energy')?.value ?? absent),
+    },
   ]
 }
 

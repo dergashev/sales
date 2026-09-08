@@ -44,17 +44,34 @@ import { localizeMoneyText, useT } from '../i18n'
 
 /* ───────────────────────────── shared pieces ─────────────────────────── */
 
-/** One chapter, as a landmark carrying the name the rail carries. */
+/**
+ * One chapter, as a landmark carrying the name the rail carries.
+ *
+ * Four tones, and each is a SPATIAL model rather than a colour:
+ *
+ * - default — the chapter measure on white, hairlines and air;
+ * - `stage` — full-bleed deep stage, content still on the measure;
+ * - `hero`  — the deep stage with NO measure and no padding at all: the
+ *   opening's image is the chapter (ACCEPT-05), and the copy carries its
+ *   own inset. A contained image inside a padded two-column grid is a
+ *   different spatial model, not a narrower version of this one;
+ * - `tiles` — the canvas ground the approved chapter-2 grid stands on, so
+ *   its white tiles are a surface rather than an outline (ACCEPT-04).
+ */
+const CHAPTER_TONE_CLASS: Record<'ground' | 'stage' | 'hero' | 'tiles', string> = {
+  ground: 'a3-cp-chapter',
+  stage: 'a3-cp-chapter a3-cp-chapter-stage',
+  hero: 'a3-cp-chapter a3-cp-chapter-stage a3-cp-chapter-hero',
+  tiles: 'a3-cp-chapter a3-cp-chapter-tiles',
+}
+
 export function ChapterFrame({ children, label, tone }: {
   children: ReactNode
   label: string
-  tone?: 'ground' | 'stage'
+  tone?: 'ground' | 'stage' | 'hero' | 'tiles'
 }) {
   return (
-    <section
-      aria-label={label}
-      className={tone === 'stage' ? 'a3-cp-chapter a3-cp-chapter-stage' : 'a3-cp-chapter'}
-    >
+    <section aria-label={label} className={CHAPTER_TONE_CLASS[tone ?? 'ground']}>
       {children}
     </section>
   )
@@ -131,6 +148,38 @@ export function MetricHero({ variant, label, value, unit, note, accent }: {
   )
 }
 
+/**
+ * `≈ 2.246 €/m²` → `['≈ 2.246', '€/m²']`; `18,5 Monate` → `['18,5', 'Monate']`.
+ *
+ * Rule 31 / DC-38: the unit is set smaller ON THE SAME BASELINE, never on
+ * its own line and never at footnote size. The composed string stays the one
+ * source of the unit — `money.ts` owns the `€/m²` vs `€` choice and says so
+ * in its own comment — so this decides only where the tail is TYPESET, and
+ * refuses to split anything whose tail still contains a digit.
+ */
+function splitUnit(text: string): [string, string | null] {
+  const cut = Math.max(text.lastIndexOf(' '), text.lastIndexOf(' '))
+  if (cut <= 0) return [text, null]
+  const tail = text.slice(cut + 1)
+  if (tail.length === 0 || /\d/.test(tail)) return [text, null]
+  return [text.slice(0, cut), tail]
+}
+
+/** Sum one area across the Option's buildings, in the reader's locale. */
+function sumArea(
+  buildings: readonly ClientBuilding[],
+  pick: (b: ClientBuilding) => string | null,
+  language: 'de' | 'en',
+): string | null {
+  const values = buildings.map(pick).filter((v): v is string => v !== null)
+  if (values.length === 0) return null
+  const total = values.reduce(
+    (acc, v) => acc + Number(v.replace(/[.\s ]/g, '').replace(',', '.')), 0)
+  return new Intl.NumberFormat(language === 'en' ? 'en-GB' : 'de-DE', {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  }).format(total)
+}
+
 function dateText(iso: string | null, language: 'de' | 'en'): string | null {
   if (!iso) return null
   const date = new Date(iso)
@@ -144,12 +193,33 @@ function dateText(iso: string | null, language: 'de' | 'en'): string | null {
 
 /**
  * The opening. A client must recognise their own project before a single
- * commercial detail appears — which is why this is a full-bleed image with
- * the identity set on it, and why nothing about All3's preparation process
- * survives entry.
+ * commercial detail appears — which is why the project image IS the chapter
+ * and the identity is set ON it, and why nothing about All3's preparation
+ * process survives entry.
+ *
+ * ## ACCEPT-05 — a full-bleed hero is a spatial model, not a bigger picture
+ *
+ * The surface this replaces put a CONTAINED 763 × 429 image in the left
+ * column of a padded two-column grid and left ~190 px of empty stage under
+ * it. That is a card layout wearing dark paint: at the one moment the
+ * client is meant to see their own project, two fifths of the stage were
+ * type and a fifth was nothing. So the geometry is now stated once and
+ * properly — the media fills the stage (`.a3-cp-chapter-hero` carries no
+ * measure and no padding), and the identity block sits on it, bottom-left,
+ * with its own inset.
+ *
+ * Legibility over an arbitrary photograph is carried by a FLAT token scrim
+ * (`--color-surface-overlay`, the declared 48 % overlay) behind the copy —
+ * never a gradient, which rule 4 forbids outright.
  *
  * With no qualifying hero asset this renders `MediaFrame`'s designed
- * fallback state, which is information-bearing. Never a grey rectangle.
+ * fallback state, which is information-bearing. Never a grey rectangle, and
+ * never an empty stage.
+ *
+ * `sourceId` is deliberately NOT passed (ACCEPT-07): `MediaFrame` renders it
+ * as `data-source-id`, and an asset-manifest identifier is provenance for
+ * QA — it has no business in a DOM a client can open. `seed` stays, because
+ * it selects the fallback's material variant and names nothing.
  */
 export function ChapterAngebot({ proposal, headingRef }: {
   proposal: ClientProposal
@@ -159,14 +229,14 @@ export function ChapterAngebot({ proposal, headingRef }: {
   const { identity } = proposal
   const offerDate = dateText(identity.offerDateISO, proposal.language)
   return (
-    <ChapterFrame label={t('vr3.client.chapter.angebot')} tone="stage">
+    <ChapterFrame label={t('vr3.client.chapter.angebot')} tone="hero">
       <div className="a3-cp-opening">
         <div className="a3-cp-opening-media">
           {identity.hero ? (
             <MediaFrame
               ratio="hero" state="loaded" src={identity.hero.url}
               alt={identity.heroAlt ?? identity.projectName}
-              seed={identity.hero.assetId} sourceId={identity.hero.assetId}
+              seed={identity.hero.assetId}
             />
           ) : (
             <MediaFrame
@@ -183,27 +253,34 @@ export function ChapterAngebot({ proposal, headingRef }: {
           {identity.addressLine ? (
             <p className="a3-cp-opening-address">{identity.addressLine}</p>
           ) : null}
+          {/*
+            A hairline, then ONE footer row: what this offer is and which
+            Option it speaks for on the left, who is offering it on the
+            right. It is the colophon of a proposal, not a fact list.
+          */}
           <div className="a3-cp-opening-facts">
-            {offerDate ? (
+            <p className="a3-cp-opening-facts-left">
+              {offerDate ? (
+                <span className="a3-cp-opening-fact">
+                  {t('vr3.client.opening.offerDate')}
+                  {' '}
+                  <b>{offerDate}</b>
+                </span>
+              ) : null}
               <span className="a3-cp-opening-fact">
-                {t('vr3.client.opening.offerDate')}
+                {t('vr3.client.opening.option')}
                 {' '}
-                <b>{offerDate}</b>
+                <b>{identity.optionName}</b>
               </span>
-            ) : null}
-            <span className="a3-cp-opening-fact">
-              {t('vr3.client.opening.option')}
-              {' '}
-              <b>{identity.optionName}</b>
-            </span>
-            {identity.clientName ? (
-              <span className="a3-cp-opening-fact">
-                {t('vr3.client.opening.client')}
-                {' '}
-                <b>{identity.clientName}</b>
-              </span>
-            ) : null}
-            <span className="a3-cp-opening-entity">{identity.legalEntity}</span>
+              {identity.clientName ? (
+                <span className="a3-cp-opening-fact">
+                  {t('vr3.client.opening.client')}
+                  {' '}
+                  <b>{identity.clientName}</b>
+                </span>
+              ) : null}
+            </p>
+            <p className="a3-cp-opening-entity">{identity.legalEntity}</p>
           </div>
         </div>
       </div>
@@ -214,45 +291,99 @@ export function ChapterAngebot({ proposal, headingRef }: {
 /* ──────────────── chapter 2 · Projektüberblick (F02/F04) ─────────────── */
 
 /**
- * The commercial climax, early.
+ * The commercial climax, early — the approved TILE GRID (ACCEPT-04).
  *
- * Three CO-HEROES, not a KPI grid (rule 31 / DC-38):
+ * ## Why a grid of tiles and not a text stack
  *
- * - the total at 64 px in the brand accent, on white and only on white,
- *   labelled with the DERIVED R-18 signature;
- * - the lead rate at 48 px black, whose denominator names its norm inside
- *   the metric label — never a bare `2.350 €/m²`;
+ * The surface this replaces set the same facts as a linear column on white:
+ * total, then rate, then Bauzeit, then one fact, then ~200 px of empty
+ * stage, no project image at all. Everything was legible and nothing was
+ * ranked — a reader scanning it had to read it. The approved composition
+ * puts each fact in its own white tile on the canvas ground, so rank is
+ * carried by AREA and position before a single word is read: the total
+ * takes a double-width tile on row 1, its two co-heroes sit beside it, and
+ * row 2 carries the supporting facts beside the project image.
+ *
+ * The hierarchy inside the tiles is DC-38 / rule 31 unchanged:
+ *
+ * - the total at 64 px in the brand accent — the ONE permitted orange, and
+ *   it is legal here precisely because the tile is white
+ *   (`--color-surface-default`) rather than the canvas it stands on;
+ * - the lead rate at 48 px black, whose denominator names its norm in the
+ *   metric label AND states its own area beneath, so the rate can be
+ *   checked rather than trusted;
  * - the Bauzeit at 48 px black, with the SAME start boundary the internal
  *   cockpit uses and the absolute completion date.
  *
- * Supporting facts appear only where a real Product field exists. There is
- * no tile invented to fill the grid, and no marketing claim.
+ * Every unit is set smaller on the SAME baseline, never on its own line.
+ *
+ * Each tile is composed from `ClientProposal` and nothing else. The
+ * Energiestandard tile is present exactly when the Option declares one —
+ * absent is absent, not an empty tile — and the media tile's caption is the
+ * buildings' own marks and names, never authored marketing prose.
  */
 export function ChapterUeberblick({ proposal, headingRef }: {
   proposal: ClientProposal
   headingRef: Ref<HTMLHeadingElement>
 }) {
   const t = useT()
-  const { commercial, schedule, language } = proposal
+  const { commercial, schedule, language, identity, buildings } = proposal
   const completion = dateText(schedule.completionISO, language)
   const totalText = localizeMoneyText(
-    `${commercial.totalPrefix}${commercial.totalPrefix ? ' ' : ''}${commercial.totalDisplay}`,
+    `${commercial.totalPrefix}${commercial.totalPrefix ? ' ' : ''}${commercial.totalDisplay}`,
     language,
   )
-  const durationText = localizeMoneyText(
-    `${schedule.durationPrefix}${schedule.durationPrefix ? ' ' : ''}${schedule.durationText}`,
+  const [durationValue, durationUnit] = splitUnit(localizeMoneyText(
+    `${schedule.durationPrefix}${schedule.durationPrefix ? ' ' : ''}${schedule.durationText}`,
     language,
-  )
+  ))
+  const [rateValue, rateUnitText] = splitUnit(
+    localizeMoneyText(commercial.leadRateText, language))
+
+  /*
+    The lead rate's own denominator, as a figure. A rate whose denominator is
+    only NAMED ("BGF oberirdisch") and never stated is a number the client
+    has to take on trust; the approved overview puts both on the tile. The
+    projection formats the figure — this composes the sentence.
+  */
+  const leadNote = commercial.leadDenominatorText
+    ? t('vr3.client.overview.leadArea', {
+      area: commercial.leadDenominatorText,
+      denominator: commercial.leadRate.denominatorLabel,
+      tax: commercial.taxNote,
+    })
+    : commercial.taxNote
+
+  /*
+    The project tile's supporting line. Storeys are stated only when every
+    building answers the same — naming ONE storey line for a three-building
+    Option would be false, which is the rule chapter 3 already follows.
+  */
+  const bgfRS = sumArea(buildings, (b) => b.bgfRSAbove, language)
+  const storeys = buildings.length > 0
+    && buildings.every((b) => b.storeys === buildings[0]!.storeys)
+    ? buildings[0]!.storeys
+    : null
+  const projectNote = [
+    storeys,
+    bgfRS === null ? null : t('vr3.client.overview.projectArea', { area: bgfRS }),
+  ].filter((part): part is string => part !== null).join(' · ') || null
+  // Resolved through the SAME key the projection resolved, so picking the
+  // project tile out of the supporting metrics is an identity, not a guess.
+  const projectLabel = t('vr3.client.overview.project')
 
   return (
-    <ChapterFrame label={t('vr3.client.chapter.ueberblick')}>
+    <ChapterFrame label={t('vr3.client.chapter.ueberblick')} tone="tiles">
       <ChapterLede
         eyebrow={t('vr3.client.chapter.ueberblick')}
         title={t('vr3.client.overview.title')}
         headingRef={headingRef}
       />
-      <div className="a3-cp-heroes">
-        <div className="a3-cp-hero-total">
+      <div
+        className="a3-cp-tiles"
+        data-energy={proposal.overview.length > 1 ? 'yes' : 'no'}
+      >
+        <div className="a3-cp-tile a3-cp-tile-total a3-cp-hero-total">
           <MetricHero
             variant="lead"
             accent
@@ -271,35 +402,74 @@ export function ChapterUeberblick({ proposal, headingRef }: {
             <p className="a3-cp-hero-footnote">{commercial.totalDisclosure}</p>
           ) : null}
         </div>
-        <div className="a3-cp-hero-side">
+        <div className="a3-cp-tile a3-cp-hero-side">
           <MetricHero
             variant="co"
             label={commercial.leadRateLabel}
-            value={localizeMoneyText(commercial.leadRateText, language)}
-            note={commercial.taxNote}
+            value={rateValue}
+            unit={rateUnitText}
+            note={leadNote}
           />
         </div>
-        <div className="a3-cp-hero-side">
+        <div className="a3-cp-tile">
           <MetricHero
             variant="co"
             label={t('vr3.client.overview.duration')}
-            value={durationText}
+            value={durationValue}
+            unit={durationUnit}
             note={completion
               ? `${schedule.startBoundary} · ${t('vr3.client.schedule.completion')} ${completion}`
               : schedule.startBoundary}
           />
         </div>
         {proposal.overview.map((metric: ClientMetric) => (
-          <div key={metric.label} className="a3-cp-hero-fact">
+          <div
+            key={metric.label}
+            className={metric.label === projectLabel
+              ? 'a3-cp-tile a3-cp-tile-project'
+              : 'a3-cp-tile'}
+          >
             <MetricHero
               variant="fact"
               label={metric.label}
               value={metric.value}
               unit={metric.unit}
-              note={metric.note}
+              note={metric.label === projectLabel
+                ? [metric.note, projectNote]
+                  .filter((part): part is string => part !== null && part !== '')
+                  .join(' · ') || null
+                : metric.note}
             />
           </div>
         ))}
+        {/*
+          The project image, IN the grid rather than beside it — the tile is
+          the second half of row 2 and carries the buildings it shows.
+          `sourceId` is not passed: asset provenance belongs to QA, never to
+          a DOM the client can open (ACCEPT-07).
+        */}
+        <div className="a3-cp-tile a3-cp-tile-media">
+          <div className="a3-cp-tile-media-frame">
+            {identity.hero ? (
+              <MediaFrame
+                ratio="card" state="loaded" src={identity.hero.url}
+                alt={identity.heroAlt ?? identity.projectName}
+                seed={identity.hero.assetId}
+              />
+            ) : (
+              <MediaFrame
+                ratio="card" state="fallback" seed={identity.projectName}
+                fallbackLabel={identity.projectName}
+              />
+            )}
+          </div>
+          <div className="a3-cp-tile-media-copy">
+            <p className="a3-cp-metric-label">{t('vr3.client.overview.volumes')}</p>
+            <p className="a3-cp-metric-note">
+              {buildings.map((b) => `${b.mark} · ${b.name}`).join(' · ')}
+            </p>
+          </div>
+        </div>
       </div>
       <p className="a3-cp-disclaimer">{t('vr3.client.overview.disclaimer')}</p>
     </ChapterFrame>
@@ -328,14 +498,7 @@ export function ChapterProjekt({ proposal, headingRef }: {
 }) {
   const t = useT()
   const { buildings, language } = proposal
-  const sum = (pick: (b: ClientBuilding) => string | null) => {
-    const values = buildings.map(pick).filter((v): v is string => v !== null)
-    if (values.length === 0) return null
-    const total = values.reduce((acc, v) => acc + Number(v.replace(/[.\s ]/g, '').replace(',', '.')), 0)
-    return new Intl.NumberFormat(language === 'en' ? 'en-GB' : 'de-DE', {
-      minimumFractionDigits: 2, maximumFractionDigits: 2,
-    }).format(total)
-  }
+  const sum = (pick: (b: ClientBuilding) => string | null) => sumArea(buildings, pick, language)
   const units = buildings.reduce((n, b) => (b.units === null ? n : n + b.units), 0)
 
   const rows: Array<[string, string | null]> = [
@@ -452,7 +615,6 @@ export function ChapterGebaeude({ proposal, headingRef }: {
                     <MediaFrame
                       ratio="card" state="loaded" src={b.identity.url}
                       alt={b.identityAlt ?? b.name} seed={b.identity.assetId}
-                      sourceId={b.identity.assetId}
                     />
                   ) : (
                     <MediaFrame
