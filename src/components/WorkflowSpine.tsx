@@ -27,7 +27,7 @@ import { useT } from '../i18n'
 import {
   WorkflowNavigator,
   type WorkflowStage,
-  type WorkflowStageState,
+  type WorkflowState,
   type WorkflowSubStep,
 } from '../design-system/WorkflowNavigator'
 
@@ -96,7 +96,7 @@ export function ProjectWorkflowNavigator({
     {
       id: 'documents',
       label: t('vr3.spine.step.documents'),
-      state: stage === 'documents' ? 'current' : analysed ? 'done' : 'upcoming',
+      state: stage === 'documents' ? 'current' : analysed ? 'done' : 'available',
       onSelect: () => s.setProjectStage('documents'),
     },
     {
@@ -106,8 +106,8 @@ export function ProjectWorkflowNavigator({
         ? 'current'
         : !analysed
           ? 'locked'
-          : ready ? 'done' : 'upcoming',
-      lockedReason: analysed ? undefined : t('vr3.spine.reason.needsAnalysis'),
+          : ready ? 'done' : 'available',
+      reason: analysed ? undefined : t('vr3.spine.reason.needsAnalysis'),
       onSelect: analysed ? () => s.setProjectStage('understanding') : undefined,
     },
     {
@@ -118,7 +118,7 @@ export function ProjectWorkflowNavigator({
       // the user followed a link the collection itself offered.
       state: stage === 'options' || stage === 'comparison'
         ? 'current'
-        : canOpenOptions ? 'upcoming' : 'locked',
+        : canOpenOptions ? 'available' : 'locked',
       /**
        * The readiness gate's OWN prerequisite, in the rail's own register.
        *
@@ -129,7 +129,7 @@ export function ProjectWorkflowNavigator({
        * printing the identical sentence in a caption two bands above it is
        * the duplicated label rule 9 forbids (and the DOM suite caught).
        */
-      lockedReason: canOpenOptions
+      reason: canOpenOptions
         ? undefined
         : !analysed
           ? t('vr3.spine.reason.needsAnalysis')
@@ -235,14 +235,19 @@ export function OptionWorkflowNavigator() {
     stage: OptionStageId,
     id: OptionStepId,
     label: string,
-    stepState: WorkflowStageState,
-    lockedReason?: string,
+    stepState: WorkflowState,
+    reason?: string,
     dead = false,
   ): WorkflowSubStep => ({
     id,
     label,
     state: here.step === id ? 'current' : stepState,
-    lockedReason: stepState === 'locked' ? lockedReason : undefined,
+    // `reason` belongs to the three states that must name their cause, and
+    // to no other: passing it on a `done` step would print a sentence about
+    // a prerequisite that has been met.
+    reason: stepState === 'locked' || stepState === 'warning' || stepState === 'stale'
+      ? reason
+      : undefined,
     onSelect: stepState === 'locked' && dead ? undefined : go({ stage, step: id }),
   })
 
@@ -250,27 +255,36 @@ export function OptionWorkflowNavigator() {
     const decision = s.kgConfig?.scope[group] ?? 'undecided'
     const progress = kgChapterProgressFor(s, group)
     const excluded = decision === 'excluded'
-    const stepState: WorkflowStageState = !decisionsComplete
+    /**
+     * ONE state, chosen once. The released version computed `done` here and
+     * then contradicted it with two side-channels beside it — `outOfScope`
+     * for an excluded group it had just called `done`, and `attention` for
+     * an invalid one — which is why the progression had to reassemble the
+     * truth in a three-branch ternary at render time.
+     *
+     * `outOfScope` and `warning` are now what they always were: STATES. An
+     * excluded group is out of scope, not done — a tick there was the
+     * fabricated completion the navigation contract (D-016) forbids, and it
+     * was only ever readable because the boolean overrode the glyph.
+     */
+    const stepState: WorkflowState = !decisionsComplete
       ? 'locked'
-      // An excluded group is DECIDED, so it is done rather than skipped-and-
-      // absent: the decision is visible, and the step stays reachable so its
-      // own surface can explain and reopen it.
-      : excluded || progress?.state === 'complete'
-        ? 'done'
-        : 'upcoming'
-    return {
-      ...step(
-        'kalkulieren', KG_STEP_ID[group], `KG ${group.slice(3)}`, stepState,
-        t('vr3.spine.reason.needsScopeDecisions'), true,
-      ),
-      // VR3-KG-UNIFY-00 — the progression tells the two apart: an excluded
-      // chapter reads `außerhalb Umfang` rather than a fabricated tick, and a
-      // chapter holding an invalid or contradicted answer carries its mark.
-      outOfScope: excluded || undefined,
-      attention: decisionsComplete && !excluded && progress?.state === 'invalid'
+      : excluded
+        ? 'outOfScope'
+        : progress?.state === 'invalid'
+          ? 'warning'
+          : progress?.state === 'complete'
+            ? 'done'
+            : 'available'
+    return step(
+      'kalkulieren', KG_STEP_ID[group], `KG ${group.slice(3)}`, stepState,
+      stepState === 'warning'
         ? t('vr3.kg.page.blockedInvalid')
-        : undefined,
-    }
+        : t('vr3.spine.reason.needsScopeDecisions'),
+      // A locked cost group has no gate surface of its own: the reason lives
+      // in the rail, so it is stated and not offered.
+      true,
+    )
   }
 
   const stages: WorkflowStage[] = [
@@ -279,23 +293,47 @@ export function OptionWorkflowNavigator() {
       label: t('vr3.journey.stage.configure'),
       state: here.stage === 'konfigurieren'
         ? 'current'
-        : gateOpen && boundariesConfirmed && !scopeStale ? 'done' : 'upcoming',
+        : gateOpen && boundariesConfirmed && !scopeStale ? 'done' : 'available',
       onSelect: go({ stage: 'konfigurieren', step: 'gebaeude-umfang' }),
+      /**
+       * B2 · requirement 15 — the SAME secondary navigator as Calculate.
+       *
+       * Configure and Validate used the released list band while Calculate
+       * used the compact progression, so three stages of one workflow taught
+       * three different secondary navigations. The progression is the one the
+       * audit named preferred, and there is now one geometry, one keyboard
+       * model and one state vocabulary across all three.
+       */
+      stepsPresentation: 'progression',
       steps: [
-        step(
-          'konfigurieren', 'gebaeude-umfang', t('nav.buildingScope'),
-          // A scope whose saved fingerprint no longer describes the selection
-          // is not done: a tick there would be the unqualified CONFIRMED the
-          // interaction legend forbids.
-          scopeStale ? 'current' : gateOpen ? 'done' : 'current',
-        ),
-        step(
-          'konfigurieren', 'leistungsabgrenzung', t('vr3.spine.step.scopeBoundaries'),
-          !gateOpen
-            ? 'locked'
-            : scopeStatus === 'confirmed' ? 'done' : 'upcoming',
-          t('vr3.spine.reason.needsBuildingScope'),
-        ),
+        {
+          ...step(
+            'konfigurieren', 'gebaeude-umfang', t('nav.buildingScope'),
+            // A scope whose saved fingerprint no longer describes the
+            // selection is STALE — it was settled and something moved under
+            // it. A tick there would be the unqualified CONFIRMED the
+            // interaction legend forbids, and `current` (what this said
+            // before the state vocabulary could express staleness) claimed
+            // the user was standing somewhere they were not.
+            scopeStale ? 'stale' : gateOpen ? 'done' : 'available',
+            t('vr3.scope.stale.scope'),
+          ),
+          shortLabel: t('vr3.progression.buildings'),
+        },
+        {
+          ...step(
+            'konfigurieren', 'leistungsabgrenzung', t('vr3.spine.step.scopeBoundaries'),
+            !gateOpen
+              ? 'locked'
+              : scopeStatus === 'recheck'
+                ? 'stale'
+                : scopeStatus === 'confirmed' ? 'done' : 'available',
+            !gateOpen
+              ? t('vr3.spine.reason.needsBuildingScope')
+              : t('vr3.kg.ledger.recheckReason'),
+          ),
+          shortLabel: t('vr3.progression.scopeDecisions'),
+        },
       ],
     },
     {
@@ -305,8 +343,8 @@ export function OptionWorkflowNavigator() {
         ? 'current'
         : kgComplete && scheduleConfirmed
           ? 'done'
-          : gateOpen && decisionsComplete ? 'upcoming' : 'locked',
-      lockedReason: !gateOpen
+          : gateOpen && decisionsComplete ? 'available' : 'locked',
+      reason: !gateOpen
         ? t('vr3.spine.reason.needsBuildingScope')
         : decisionsComplete ? undefined : t('vr3.spine.reason.needsScopeDecisions'),
       onSelect: gateOpen && decisionsComplete
@@ -327,15 +365,36 @@ export function OptionWorkflowNavigator() {
             'kalkulieren', 'verantwortung', t('vr3.spine.step.responsibility'),
             !decisionsComplete
               ? 'locked'
-              : responsibilityVisited && responsibilitySettled ? 'done' : 'upcoming',
+              : responsibilityVisited && responsibilitySettled ? 'done' : 'available',
             t('vr3.spine.reason.needsScopeDecisions'),
           ),
           shortLabel: t('vr3.progression.responsibility'),
         },
+        /**
+         * B2 · requirement 16 — ALL COST DETAILS, inside Calculate.
+         *
+         * It was a destination of its own, which `destinationOfNav` could not
+         * classify, so opening the complete cost explanation switched the
+         * visible secondary navigation back to Configure — the reported IA
+         * defect. It is a member of Calculate now: read-only calculation
+         * evidence, after Responsibility and before Schedule, and Calculate
+         * stays current while it is open.
+         *
+         * `available` and never `done`: an explanation is not a step you
+         * finish. It is locked only while there is no calculation to explain.
+         */
+        {
+          ...step(
+            'kalkulieren', 'alle-kosten', t('vr3.spine.step.costDetails'),
+            !decisionsComplete ? 'locked' : 'available',
+            t('vr3.spine.reason.needsScopeDecisions'),
+          ),
+          shortLabel: t('vr3.progression.costDetails'),
+        },
         {
           ...step(
             'kalkulieren', 'terminplan', t('vr3.spine.step.schedule'),
-            !kgComplete ? 'locked' : scheduleConfirmed ? 'done' : 'upcoming',
+            !kgComplete ? 'locked' : scheduleConfirmed ? 'done' : 'available',
             t('vr3.kg.gate.scheduleReason'),
           ),
           shortLabel: t('vr3.progression.schedule'),
@@ -347,23 +406,35 @@ export function OptionWorkflowNavigator() {
       label: t('vr3.journey.stage.validate'),
       state: here.stage === 'pruefen'
         ? 'current'
-        : saved ? 'done' : reviewAvailable ? 'upcoming' : 'locked',
-      lockedReason: reviewAvailable ? undefined : t('vr3.spine.reason.needsSchedule'),
+        : saved ? 'done' : reviewAvailable ? 'available' : 'locked',
+      reason: reviewAvailable ? undefined : t('vr3.spine.reason.needsSchedule'),
       onSelect: reviewAvailable
         ? go({ stage: 'pruefen', step: 'finale-pruefung' })
         : undefined,
+      // The same secondary navigator as Configure and Calculate (req 15).
+      stepsPresentation: 'progression',
       steps: [
-        step(
-          'pruefen', 'finale-pruefung', t('vr3.spine.step.finalValidation'),
-          reviewConfirmed ? 'done' : 'upcoming',
-        ),
-        step(
-          'pruefen', 'speichern', t('vr3.journey.step.save'),
-          saveStage === 'SAVED'
-            ? 'done'
-            : reviewConfirmed ? 'upcoming' : 'locked',
-          t('vr3.spine.reason.needsReview'),
-        ),
+        {
+          ...step(
+            'pruefen', 'finale-pruefung', t('vr3.spine.step.finalValidation'),
+            reviewConfirmed ? 'done' : 'available',
+          ),
+          shortLabel: t('vr3.progression.review'),
+        },
+        {
+          ...step(
+            'pruefen', 'speichern', t('vr3.journey.step.save'),
+            saveStage === 'SAVED'
+              ? 'done'
+              : saveStage === 'FAILED'
+                ? 'warning'
+                : reviewConfirmed ? 'available' : 'locked',
+            saveStage === 'FAILED'
+              ? t('vr3.spine.reason.saveFailed')
+              : t('vr3.spine.reason.needsReview'),
+          ),
+          shortLabel: t('vr3.progression.save'),
+        },
       ],
     },
     {
@@ -371,8 +442,8 @@ export function OptionWorkflowNavigator() {
       label: t('vr3.journey.stage.present'),
       state: here.stage === 'praesentieren'
         ? 'current'
-        : clientAvailable ? 'upcoming' : 'locked',
-      lockedReason: clientAvailable || clientLock === null
+        : clientAvailable ? 'available' : 'locked',
+      reason: clientAvailable || clientLock === null
         ? undefined
         : t(`vr3.client.lock.${clientLock}`),
       // Reachable while LOCKED, on purpose — the T-016 principle this

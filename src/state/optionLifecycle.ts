@@ -94,7 +94,18 @@ export const OPTION_STAGES: readonly OptionStageId[] = [
 export type OptionStepId =
   | 'gebaeude-umfang' | 'leistungsabgrenzung'
   | 'kg200' | 'kg300' | 'kg400' | 'kg500' | 'kg600' | 'kg700'
-  | 'verantwortung' | 'terminplan'
+  /**
+   * B2 · requirement 16 — the complete cost explanation, as a MEMBER of
+   * Calculate rather than a destination beside it.
+   *
+   * The route existed and the content was right; what was wrong was that it
+   * belonged to no stage. `destinationOfNav` could not classify
+   * `pipelineView: 'kostendetails'`, so it fell through to its default and
+   * opening the calculation's own explanation switched the visible secondary
+   * navigation back to Configure. Giving it a step id is what makes
+   * Calculate stay current while it is open.
+   */
+  | 'verantwortung' | 'alle-kosten' | 'terminplan'
   | 'finale-pruefung' | 'speichern'
 
 export type OptionDestination = Readonly<{
@@ -114,7 +125,12 @@ export const OPTION_STAGE_STEPS: Readonly<Record<OptionStageId, readonly OptionS
   konfigurieren: ['gebaeude-umfang', 'leistungsabgrenzung'],
   // VR3-TGA-UX-00: `verantwortung` sits between the last cost group and the
   // schedule — the canonical order the registry (`chapters.ts`) declares.
-  kalkulieren: [...KG_SCOPE_GROUPS.map((g) => KG_STEP_ID[g]), 'verantwortung', 'terminplan'],
+  // The canonical Calculate order (B2 target): the six cost groups, then
+  // Responsibility, then All cost details, then Schedule.
+  kalkulieren: [
+    ...KG_SCOPE_GROUPS.map((g) => KG_STEP_ID[g]),
+    'verantwortung', 'alle-kosten', 'terminplan',
+  ],
   pruefen: ['finale-pruefung', 'speichern'],
   praesentieren: [],
 }
@@ -141,6 +157,17 @@ const STEP_NAV: Readonly<Record<OptionStepId, OptionNav>> = {
   kg600: { view: 'konfigurator', step: CONFIGURATOR_STEP.KG_600_DETAILS },
   kg700: { view: 'konfigurator', step: CONFIGURATOR_STEP.KG_700_DETAILS },
   verantwortung: { view: 'konfigurator', step: CONFIGURATOR_STEP.RESPONSIBILITY },
+  /**
+   * Its own PipelineView, kept — the page is a full-width explanation and
+   * not a Configurator chapter. What changes is that the step it belongs to
+   * is now declared, so the round trip through `destinationOfNav` below
+   * resolves it to Calculate instead of to the default.
+   *
+   * The `step` it carries is the Configurator position to restore on the way
+   * back: leaving the explanation returns to the last cost decision, not to
+   * the top of the stage.
+   */
+  'alle-kosten': { view: 'kostendetails', step: null },
   terminplan: { view: 'konfigurator', step: CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE },
   'finale-pruefung': { view: 'konfigurator', step: CONFIGURATOR_STEP.FINAL_VALIDATION },
   speichern: { view: 'konfigurator', step: CONFIGURATOR_STEP.FINAL_VALIDATION },
@@ -174,6 +201,11 @@ export function destinationOfNav(
 ): OptionDestination {
   if (view === 'praesentieren') return { stage: 'praesentieren', step: null }
   if (view === 'buildingScope') return { stage: 'konfigurieren', step: 'gebaeude-umfang' }
+  // B2 · requirement 16. Without this line the complete cost explanation is
+  // an unclassifiable view, and the fall-through below answers `Configure`
+  // for it — the exact IA defect the audit measured: the calculation's own
+  // explanation switching the secondary navigation to another stage.
+  if (view === 'kostendetails') return { stage: 'kalkulieren', step: 'alle-kosten' }
   if (view !== 'konfigurator') return { stage: 'konfigurieren', step: 'gebaeude-umfang' }
   if (step === CONFIGURATOR_STEP.SCOPE_BOUNDARIES) {
     return { stage: 'konfigurieren', step: 'leistungsabgrenzung' }

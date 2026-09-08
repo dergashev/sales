@@ -1413,20 +1413,20 @@ export const COMPONENT_REGISTRY: Specimen[] = [
           id: 'understand',
           label: 'Verstehen',
           state: 'locked',
-          lockedReason: 'Dokumentanalyse fehlt',
+          reason: 'Dokumentanalyse fehlt',
         },
         {
           id: 'configure',
           label: 'Konfigurieren',
-          state: 'upcoming',
+          state: 'available',
           steps: [
-            { id: 'createOption', label: 'Option anlegen', state: 'upcoming' },
-            { id: 'buildingScope', label: 'Gebäude & Umfang', state: 'upcoming' },
+            { id: 'createOption', label: 'Option anlegen', state: 'available' },
+            { id: 'buildingScope', label: 'Gebäude & Umfang', state: 'available' },
           ],
         },
-        { id: 'calculate', label: 'Kalkulieren', state: 'upcoming' },
-        { id: 'validate', label: 'Prüfen', state: 'upcoming' },
-        { id: 'present', label: 'Präsentieren', state: 'upcoming' },
+        { id: 'calculate', label: 'Kalkulieren', state: 'available' },
+        { id: 'validate', label: 'Prüfen', state: 'available' },
+        { id: 'present', label: 'Präsentieren', state: 'available' },
       ]
       /**
        * VR3-KG-UNIFY-00 — the same capability with its second presentation:
@@ -1442,18 +1442,22 @@ export const COMPONENT_REGISTRY: Specimen[] = [
           onSelect: () => {},
           stepsPresentation: 'progression',
           steps: [
+            // All seven states of the ONE vocabulary, in one row: `warning`,
+            // `stale` and `outOfScope` are STATES here, not booleans beside
+            // a state that contradicts them (B2, requirement 15).
             { id: 'kg200', label: 'KG 200', state: 'done', onSelect: () => {} },
             { id: 'kg300', label: 'KG 300', state: 'current', onSelect: () => {} },
-            { id: 'kg400', label: 'KG 400', state: 'upcoming', onSelect: () => {}, attention: '1 ungültige Eingabe' },
-            { id: 'kg500', label: 'KG 500', state: 'done', onSelect: () => {}, outOfScope: true },
-            { id: 'kg600', label: 'KG 600', state: 'upcoming', onSelect: () => {} },
-            { id: 'kg700', label: 'KG 700', state: 'upcoming', onSelect: () => {} },
-            { id: 'verantwortung', label: 'Schnittstellen & Verantwortung', shortLabel: 'Verantwortung', state: 'upcoming', onSelect: () => {} },
-            { id: 'terminplan', label: 'Terminplan', state: 'locked', lockedReason: 'Kostengruppen offen' },
+            { id: 'kg400', label: 'KG 400', state: 'warning', onSelect: () => {}, reason: '1 ungültige Eingabe' },
+            { id: 'kg500', label: 'KG 500', state: 'outOfScope', onSelect: () => {} },
+            { id: 'kg600', label: 'KG 600', state: 'stale', onSelect: () => {}, reason: 'Grundlage hat sich geändert' },
+            { id: 'kg700', label: 'KG 700', state: 'available', onSelect: () => {} },
+            { id: 'verantwortung', label: 'Schnittstellen & Verantwortung', shortLabel: 'Verantwortung', state: 'available', onSelect: () => {} },
+            { id: 'alle-kosten', label: 'Alle Kostendetails', shortLabel: 'Kostendetails', state: 'available', onSelect: () => {} },
+            { id: 'terminplan', label: 'Terminplan', state: 'locked', reason: 'Kostengruppen offen' },
           ],
         },
-        { id: 'validate', label: 'Prüfen', state: 'upcoming' },
-        { id: 'present', label: 'Präsentieren', state: 'upcoming' },
+        { id: 'validate', label: 'Prüfen', state: 'available' },
+        { id: 'present', label: 'Präsentieren', state: 'available' },
       ]
       return (
         <div style={{ display: 'grid', gap: 'var(--space-5)' }}>

@@ -39,15 +39,58 @@ import { useT } from '../i18n'
  * (rule 8 — never colour or shape alone), and 44px hit targets.
  */
 
-export type WorkflowStageState = 'current' | 'done' | 'upcoming' | 'locked'
+/**
+ * ONE state vocabulary, as an EXPLICIT VARIANT (B2, Product Owner
+ * requirement 15; navigation-and-blocker-patterns.md).
+ *
+ * What this replaces is the shape, not the meanings. The released model was
+ * a four-value union (`current | done | upcoming | locked`) plus three
+ * side-channels bolted on beside it — `lockedReason`, `attention: string`
+ * and `outOfScope: boolean` — so a member's real state was spread across
+ * four props and had to be reassembled by every renderer, in the right
+ * order, from `outOfScope ? … : attention ? … : state`. Three of the seven
+ * states were therefore not states at all, and the contract this ticket is
+ * held to says it plainly: state is an explicit variant, and per-state
+ * boolean props are what a navigator must not accumulate.
+ *
+ * So there are seven values and ONE `reason`, and no combination to get
+ * wrong:
+ *
+ * - `current`   — exactly one, and it carries `aria-current="step"`;
+ * - `done`      — settled, including a group deliberately excluded;
+ * - `available` — reachable and not yet done (the released `upcoming`,
+ *                 renamed to say what it offers rather than when it is);
+ * - `locked`    — a prerequisite is missing, and `reason` NAMES it;
+ * - `warning`   — reachable, holding something that needs a human, and
+ *                 `reason` says what (the released `attention`);
+ * - `stale`     — was settled, and something under it moved since;
+ * - `outOfScope`— taken out by an explicit decision, still visible in place.
+ *
+ * `reason` belongs to `locked`, `warning` and `stale`. Nothing else reads it,
+ * and none of the three is allowed to appear without it — a state that says
+ * only that something is unavailable is the defect rule 12 forbids.
+ */
+export type WorkflowState =
+  | 'current' | 'done' | 'available' | 'locked' | 'warning' | 'stale' | 'outOfScope'
+
+/**
+ * The released name, kept as an alias because the top-level rail and the
+ * secondary navigator now share one vocabulary — there is no second union
+ * left for it to name.
+ */
+export type WorkflowStageState = WorkflowState
 
 export type WorkflowSubStep = {
   id: string
   label: string
-  state: WorkflowStageState
+  state: WorkflowState
   onSelect?: () => void
-  /** Required when `state === 'locked'`: a lock always names its reason. */
-  lockedReason?: string
+  /**
+   * Why this member is `locked`, `warning` or `stale`. Required for all
+   * three: a lock, a warning and a stale mark each name their cause or they
+   * are decoration (rule 12, rule 8).
+   */
+  reason?: string
   /**
    * VR3-KG-UNIFY-00 — the word the PROGRESSION shows where the full label
    * would not fit eight segments at 1280 (`Verantwortung` for
@@ -55,19 +98,6 @@ export type WorkflowSubStep = {
    * name and the tooltip; the visible word is contained in it (label-in-name).
    */
   shortLabel?: string
-  /**
-   * A member that needs a human before it can be complete, with the reason
-   * (`Prüfung erforderlich · 1 ungültige Eingabe`). An explicit mark and a
-   * word — never red alone (rule 8). Ignored while the member is current,
-   * whose own surface already states the problem.
-   */
-  attention?: string
-  /**
-   * A member the user explicitly took OUT of scope. It stays visible in its
-   * place and reads `außerhalb Umfang` — neither fabricated complete nor
-   * removed (navigation contract, D-016).
-   */
-  outOfScope?: boolean
 }
 
 /**
@@ -94,25 +124,52 @@ export type WorkflowStage = WorkflowSubStep & {
 // One fully-written class name per state: verify.py's DS-CLASS-EXISTS greps
 // source for literal `a3-*` names, and an interpolated suffix would leave it
 // only the bare prefix to match.
-const STATE_CLASS: Record<WorkflowStageState, string> = {
+const STATE_CLASS: Record<WorkflowState, string> = {
   current: 'a3-wfn-current',
   done: 'a3-wfn-done',
-  upcoming: 'a3-wfn-upcoming',
+  available: 'a3-wfn-upcoming',
   locked: 'a3-wfn-locked',
+  warning: 'a3-wfn-warning',
+  stale: 'a3-wfn-stale',
+  outOfScope: 'a3-wfn-outofscope',
 }
 
-const STATE_KEY: Record<WorkflowStageState, string> = {
+const STATE_KEY: Record<WorkflowState, string> = {
   current: 'ds.workflowNavigator.state.current',
   done: 'ds.workflowNavigator.state.done',
-  upcoming: 'ds.workflowNavigator.state.upcoming',
+  available: 'ds.workflowNavigator.state.upcoming',
   locked: 'ds.workflowNavigator.state.locked',
+  warning: 'ds.workflowNavigator.state.attention',
+  stale: 'ds.workflowNavigator.state.stale',
+  outOfScope: 'ds.workflowNavigator.state.outOfScope',
 }
 
-const GLYPH: Record<WorkflowStageState, string> = {
+const GLYPH: Record<WorkflowState, string> = {
   current: '',
   done: '✓',
-  upcoming: '',
+  available: '',
   locked: '',
+  warning: '!',
+  stale: '↻',
+  outOfScope: '—',
+}
+
+/** The three states that must name their cause, and nothing else may. */
+const REASON_STATES: ReadonlySet<WorkflowState> = new Set(['locked', 'warning', 'stale'])
+
+/**
+ * The state, in words, with its cause where it has one. ONE function, so the
+ * rail, the progression and the list cannot describe the same state in three
+ * different orders — which is exactly what the four-prop model made them do.
+ */
+function stateText(
+  t: (key: string, values?: Record<string, string | number>) => string,
+  step: { state: WorkflowState; reason?: string },
+): string {
+  const word = t(STATE_KEY[step.state])
+  return REASON_STATES.has(step.state) && step.reason
+    ? `${word} · ${step.reason}`
+    : word
 }
 
 /**
@@ -120,11 +177,14 @@ const GLYPH: Record<WorkflowStageState, string> = {
  * an upcoming chapter are told apart without colour; the word travels in the
  * accessible name.
  */
-const PROGRESSION_GLYPH: Record<WorkflowStageState, string> = {
+const PROGRESSION_GLYPH: Record<WorkflowState, string> = {
   current: '●',
   done: '✓',
-  upcoming: '○',
+  available: '○',
   locked: '–',
+  warning: '!',
+  stale: '↻',
+  outOfScope: '—',
 }
 
 export function WorkflowNavigator({
@@ -174,19 +234,14 @@ export function WorkflowNavigator({
     <nav className="a3-wfn" aria-label={ariaLabel}>
       <ol className="a3-wfn-list">
         {stages.map((stage, index) => {
-          const stateText = t(STATE_KEY[stage.state])
+          const stageStateText = stateText(t, stage)
           const glyph = GLYPH[stage.state] || String(index + 1)
           const body = (
             <>
               <span className="a3-wfn-marker" aria-hidden="true">{glyph}</span>
               <span className="a3-wfn-text">
                 <span className="a3-wfn-label">{stage.label}</span>
-                <span className="a3-wfn-state">
-                  {stateText}
-                  {stage.state === 'locked' && stage.lockedReason
-                    ? ` · ${stage.lockedReason}`
-                    : ''}
-                </span>
+                <span className="a3-wfn-state">{stageStateText}</span>
               </span>
             </>
           )
@@ -254,18 +309,15 @@ export function WorkflowNavigator({
             aria-label={t('ds.workflowNavigator.progressionOf', { stage: current.label })}
           >
             {current.steps.map((step) => {
-              const attention = step.attention && step.state !== 'current' ? step.attention : undefined
-              const stateText = step.outOfScope
-                ? t('ds.workflowNavigator.state.outOfScope')
-                : attention
-                  ? `${t('ds.workflowNavigator.state.attention')} · ${attention}`
-                  : `${t(STATE_KEY[step.state])}${
-                    step.state === 'locked' && step.lockedReason ? ` · ${step.lockedReason}` : ''}`
-              const glyph = step.outOfScope ? '—' : attention ? '!' : PROGRESSION_GLYPH[step.state]
+              // ONE state, ONE mark, ONE sentence. The released version
+              // reassembled all three from `outOfScope ? … : attention ? … :
+              // state` at every render site; the state is now the state.
+              const text = stateText(t, step)
+              const glyph = PROGRESSION_GLYPH[step.state]
               const visible = step.shortLabel ?? step.label
               // The full label IS the accessible name; the visible short word
               // is contained in it, so label-in-name holds for voice users.
-              const name = `${step.label} · ${stateText}`
+              const name = `${step.label} · ${text}`
               const title = visible === step.label ? undefined : step.label
               const body = (
                 <>
@@ -277,8 +329,7 @@ export function WorkflowNavigator({
                 <li
                   key={step.id}
                   className={`a3-wfn-seg ${STATE_CLASS[step.state]}`}
-                  data-attention={attention ? true : undefined}
-                  data-out-of-scope={step.outOfScope || undefined}
+                  data-state={step.state}
                 >
                   {step.onSelect ? (
                     <button
@@ -298,7 +349,7 @@ export function WorkflowNavigator({
                       title={title}
                     >
                       {body}
-                      <span className="sr-only">{` · ${stateText}`}</span>
+                      <span className="sr-only">{` · ${text}`}</span>
                     </span>
                   )}
                 </li>
@@ -314,6 +365,7 @@ export function WorkflowNavigator({
             <li
               key={step.id}
               className={`a3-wfn-substep ${STATE_CLASS[step.state]}`}
+              data-state={step.state}
             >
               {step.onSelect ? (
                 <button
@@ -330,22 +382,12 @@ export function WorkflowNavigator({
                       sentence that makes it a route rather than a refusal.
                       The top-level stage renders the reason in both branches
                       already; these two now agree. */}
-                  <span className="a3-wfn-substate">
-                    {t(STATE_KEY[step.state])}
-                    {step.state === 'locked' && step.lockedReason
-                      ? ` · ${step.lockedReason}`
-                      : ''}
-                  </span>
+                  <span className="a3-wfn-substate">{stateText(t, step)}</span>
                 </button>
               ) : (
                 <span className="a3-wfn-substatic">
                   <span className="a3-wfn-sublabel">{step.label}</span>
-                  <span className="a3-wfn-substate">
-                    {t(STATE_KEY[step.state])}
-                    {step.state === 'locked' && step.lockedReason
-                      ? ` · ${step.lockedReason}`
-                      : ''}
-                  </span>
+                  <span className="a3-wfn-substate">{stateText(t, step)}</span>
                 </span>
               )}
             </li>

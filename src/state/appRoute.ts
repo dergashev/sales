@@ -58,10 +58,16 @@ export type OptionRouteView =
   | OptionStageId | 'export' | 'einstellungen' | 'grundlagen' | 'kostendetails'
 
 /**
- * `kostendetails` joins the three destinations that are NOT stages
- * (VR3-COST-00). It is read-oriented by contract, so it may never carry a
- * step — which is exactly what this list already guarantees — and
- * `ProjectStage`/`OptionStageId` stay untouched: there is no fifth stage.
+ * `kostendetails` is kept here for DECODING ONLY (B2, requirement 16).
+ *
+ * VR3-COST-00 added it as a destination that is not a stage, arguing it is
+ * read-oriented and may never carry a step. Read-oriented it is; belonging
+ * to no stage is what made opening it switch the visible secondary
+ * navigation to Configure, because a view no stage claims falls through to
+ * the default. It is now a member of Calculate (`alle-kosten`), and
+ * `currentRoute` writes it that way. This entry stays so that a URL saved
+ * before the change still resolves instead of 404-ing — the same reason
+ * `vergleich` is still decoded one branch further down.
  */
 const EXTRA_OPTION_VIEWS: readonly OptionRouteView[] = [
   'export', 'einstellungen', 'grundlagen', 'kostendetails',

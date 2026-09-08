@@ -71,10 +71,21 @@ export function currentRoute(s: Store): AppRoute | null {
   const view = pipelineViewForBuildingGate(
     s, pipelineViewForOutputProfile(s.mode, s.pipelineView),
   )
-  if (view === 'export' || view === 'einstellungen' || view === 'grundlagen'
-    || view === 'kostendetails') {
+  if (view === 'export' || view === 'einstellungen' || view === 'grundlagen') {
     return { kind: 'option', projectId, optionId, view, step: null }
   }
+  /**
+   * B2 · requirement 16 — `kostendetails` left this list.
+   *
+   * It used to return here as a destination of its own, so the URL said
+   * `/kostendetails` while the surface it opened was the calculation's own
+   * explanation. It is a MEMBER of Calculate now, and `destinationOfNav`
+   * below resolves it to `kalkulieren/alle-kosten`, so the address, the
+   * stage rail and the progression all say the same thing. The older
+   * `/kostendetails` spelling still DECODES (`EXTRA_OPTION_VIEWS` keeps it),
+   * so a bookmark from before this ticket lands in the right place — it is
+   * simply no longer what the product writes.
+   */
   // `vergleich` is no longer reachable as an Option-level view — comparison
   // is a project destination — but a rehydrated payload can still carry it.
   if (view === 'vergleich') return { kind: 'project', projectId, stage: 'vergleich' }

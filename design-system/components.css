@@ -4376,7 +4376,8 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    .a3-wfn-segmark + .a3-wfn-seglabel — one contiguous row of equal
    segments for an ordered sequence (the eight Configurator chapters).
    Classes: .a3-wfn · .a3-wfn-list · .a3-wfn-stage · .a3-wfn-current ·
-   .a3-wfn-done · .a3-wfn-upcoming · .a3-wfn-locked · .a3-wfn-button ·
+   .a3-wfn-done · .a3-wfn-upcoming · .a3-wfn-locked · .a3-wfn-warning ·
+   .a3-wfn-stale · .a3-wfn-outofscope · .a3-wfn-button ·
    .a3-wfn-static · .a3-wfn-marker · .a3-wfn-text · .a3-wfn-label ·
    .a3-wfn-state · .a3-wfn-sub · .a3-wfn-substep · .a3-wfn-subbutton ·
    .a3-wfn-substatic · .a3-wfn-sublabel · .a3-wfn-substate · .a3-wfn-prog ·
@@ -4428,8 +4429,21 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-wfn-seg.a3-wfn-current .a3-wfn-segmark{color:var(--color-brand-accent)}
 .a3-wfn-seg.a3-wfn-done > .a3-wfn-segbtn,.a3-wfn-seg.a3-wfn-done > .a3-wfn-segstatic{color:var(--color-text-primary)}
 .a3-wfn-seg.a3-wfn-done .a3-wfn-segmark{color:var(--color-status-success)}
-.a3-wfn-seg.a3-wfn-locked > .a3-wfn-segbtn,.a3-wfn-seg.a3-wfn-locked > .a3-wfn-segstatic,.a3-wfn-seg[data-out-of-scope] > .a3-wfn-segbtn,.a3-wfn-seg[data-out-of-scope] > .a3-wfn-segstatic{color:var(--color-text-muted)}
-.a3-wfn-seg[data-attention] .a3-wfn-segmark{color:var(--color-status-warning)}
+/* B2 · one state vocabulary, so the drawing is keyed to the STATE and not to
+   a boolean beside it. `outOfScope` and `locked` are both quiet, and they are
+   told apart by their mark (`—` vs `–`) and by their word — never by tone
+   alone (rule 8). */
+.a3-wfn-seg.a3-wfn-locked > .a3-wfn-segbtn,.a3-wfn-seg.a3-wfn-locked > .a3-wfn-segstatic,.a3-wfn-seg.a3-wfn-outofscope > .a3-wfn-segbtn,.a3-wfn-seg.a3-wfn-outofscope > .a3-wfn-segstatic{color:var(--color-text-muted)}
+.a3-wfn-seg.a3-wfn-warning .a3-wfn-segmark{color:var(--color-status-warning)}
+.a3-wfn-seg.a3-wfn-warning > .a3-wfn-segbtn,.a3-wfn-seg.a3-wfn-warning > .a3-wfn-segstatic{color:var(--color-text-primary)}
+/* Stale is not a failure and not a completion: it was settled, and something
+   moved under it. Its own mark (`↻`) and its own word carry that. */
+.a3-wfn-seg.a3-wfn-stale .a3-wfn-segmark{color:var(--color-border-warning)}
+.a3-wfn-seg.a3-wfn-stale > .a3-wfn-segbtn,.a3-wfn-seg.a3-wfn-stale > .a3-wfn-segstatic{color:var(--color-text-primary)}
+/* The same three states at the TOP level and in the list band. */
+.a3-wfn-outofscope > .a3-wfn-button,.a3-wfn-outofscope > .a3-wfn-static{color:var(--color-text-muted)}
+.a3-wfn-warning > .a3-wfn-button .a3-wfn-marker,.a3-wfn-warning > .a3-wfn-static .a3-wfn-marker{border-color:var(--color-status-warning)}
+.a3-wfn-stale > .a3-wfn-button .a3-wfn-marker,.a3-wfn-stale > .a3-wfn-static .a3-wfn-marker{border-color:var(--color-border-warning)}
 @media (max-width:1439px){
   .a3-wfn-list{gap:0}
   .a3-wfn-button,.a3-wfn-static{padding-inline:var(--space-2)}

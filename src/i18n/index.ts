@@ -3248,6 +3248,16 @@ const de = {
   /* The read-only value a cost chapter shows, and its route back. */
   'b2.axes.readOnly': 'In der Leistungsabgrenzung festgelegt · {variant}',
   'b2.axes.readOnly.route': 'In der Leistungsabgrenzung ändern',
+
+  /* B2 · requirement 15/16 — the shared secondary navigator. */
+  'vr3.spine.step.costDetails': 'Alle Kostendetails',
+  'vr3.spine.reason.saveFailed': 'Speichern fehlgeschlagen · erneut versuchen',
+  'vr3.progression.buildings': 'Gebäude',
+  'vr3.progression.scopeDecisions': 'Abgrenzung',
+  'vr3.progression.costDetails': 'Kostendetails',
+  'vr3.progression.review': 'Prüfung',
+  'vr3.progression.save': 'Speichern',
+  'ds.workflowNavigator.state.stale': 'erneut prüfen',
 } as const
 
 export type MessageKey = keyof typeof de
@@ -3293,6 +3303,16 @@ const en: Partial<Record<MessageKey, string>> = {
   'b2.axes.enable': 'Set {service} to {variant}',
   'b2.axes.readOnly': 'Decided in Scope decisions · {variant}',
   'b2.axes.readOnly.route': 'Change in Scope decisions',
+
+  /* B2 · requirement 15/16 — the shared secondary navigator. */
+  'vr3.spine.step.costDetails': 'All cost details',
+  'vr3.spine.reason.saveFailed': 'Save failed · try again',
+  'vr3.progression.buildings': 'Buildings',
+  'vr3.progression.scopeDecisions': 'Scope',
+  'vr3.progression.costDetails': 'Cost details',
+  'vr3.progression.review': 'Review',
+  'vr3.progression.save': 'Save',
+  'ds.workflowNavigator.state.stale': 'review again',
   // VR2-00: internal Grundlagen QA surface — product-locale EN so nothing
   // in the visible specimen shell reads as untranslated diagnostic content.
   'grundlagen.specimen.badge': 'Internal · QA specimen',
