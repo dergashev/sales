@@ -335,6 +335,49 @@ describe('Gebäude & Umfang · authorised edit (T-015)', () => {
     expect(useStore.getState().scopeEdits['A-BLDG-01']?.bgfRSAbove?.value).toBe('3000.00')
   })
 
+  /**
+   * B2 · baseline-editing-model.md — "Cancel discards the draft and makes no
+   * event." Asserted because it is the one editor action whose correctness is
+   * invisible: a Cancel that wrote something would look exactly like a
+   * Cancel that did not, until an undo replayed it.
+   */
+  it('discards a draft on Cancel and on Escape, writing nothing and journalling nothing', async () => {
+    const user = userEvent.setup()
+    await openScope()
+    const journalBefore = useStore.getState().journal.length
+
+    await user.click(screen.getByRole('button', {
+      name: `Ändern · Wohnfläche nach WoFlV · ${A_LINDENHOF}`,
+    }))
+    const field = () => screen.getByRole('textbox', {
+      name: `Wohnfläche nach WoFlV · ${A_LINDENHOF}`,
+    })
+    await user.clear(field())
+    await user.type(field(), '9.999')
+    await user.type(screen.getByLabelText('Begründung'), 'sollte verworfen werden')
+
+    await user.click(screen.getByRole('button', { name: 'Abbrechen' }))
+    expect(screen.queryByRole('textbox', {
+      name: `Wohnfläche nach WoFlV · ${A_LINDENHOF}`,
+    })).toBeNull()
+    expect(useStore.getState().scopeEdits['A-BLDG-01']?.wfl).toBeUndefined()
+    expect(useStore.getState().journal.length).toBe(journalBefore)
+
+    // Escape is the same act from the keyboard, with the same absence of
+    // consequence.
+    await user.click(screen.getByRole('button', {
+      name: `Ändern · Wohnfläche nach WoFlV · ${A_LINDENHOF}`,
+    }))
+    await user.clear(field())
+    await user.type(field(), '8.888')
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('textbox', {
+      name: `Wohnfläche nach WoFlV · ${A_LINDENHOF}`,
+    })).toBeNull()
+    expect(useStore.getState().scopeEdits['A-BLDG-01']?.wfl).toBeUndefined()
+    expect(useStore.getState().journal.length).toBe(journalBefore)
+  })
+
   it('lets the building USE be changed through a select, and un-confirms the building by arithmetic', async () => {
     const user = userEvent.setup()
     await openScope()
