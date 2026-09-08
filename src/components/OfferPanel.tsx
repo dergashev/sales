@@ -638,20 +638,21 @@ export function OfferPanel(
               </span>
             </div>
           ))}
-          {/* B2 · requirement 9 — the Energy standard belongs on the Option
-              summary, not only inside the cost chapter that prices it: it is
-              a scope decision the whole offer is prepared under, and the
-              audit found it absent from every summary surface. */}
-          {areaProjection.energy && (
-            <div className="a3-cockpit-fact" data-axis="energy">
-              <span className="a3-cockpit-fact-v">
-                {lang === 'en'
-                  ? areaProjection.energy.variantLabelEn
-                  : areaProjection.energy.variantLabelDe}
-                <span className="a3-cockpit-fact-k">{t('b2.metric.energy')}</span>
-              </span>
-            </div>
-          )}
+          {/*
+            NO ENERGY ROW HERE, and the reason is a measured one.
+
+            Requirement 9 puts the Energy standard on the Option SUMMARIES,
+            and it is there: the Option card, Validate and the complete cost
+            detail all state it. This rail is not a summary — it is the
+            compact live cockpit, under a height budget the released suite
+            enforces to the pixel ("a committed change costs ZERO downstream
+            geometry"). An energy row breaks that, and not hypothetically:
+            the variant names differ in length (`Effizienzhaus 55` against
+            `Gesetzlicher Mindeststandard`), the longer one wraps in a
+            320 px column, and the browser suite caught the rail growing
+            27 px the first time a change was committed. Truncating it into
+            an ellipsis would trade a layout defect for an ambiguous one.
+          */}
           {/* A segment that applies and has no area keeps its norm on screen.
               `—` would read as "residential only" on a mixed-use Option. */}
           {areaProjection.gaps.map((gap) => (

@@ -176,8 +176,17 @@ export const COCKPIT = {
 
 export const COST_DETAILS = {
   title: 'Kostendetails',
+  /**
+   * B2 · requirement 16 — the complete cost explanation is a MEMBER of
+   * Calculate, and its address says so.
+   *
+   * It used to be `/kostendetails`, a destination belonging to no stage,
+   * which is exactly why opening it switched the visible secondary
+   * navigation back to Configure. The old spelling still decodes for a
+   * bookmark saved before the change; this is what the product writes.
+   */
   path: (projectId: string, optionId: string) =>
-    `/projekt/${projectId}/option/${optionId}/kostendetails`,
+    `/projekt/${projectId}/option/${optionId}/kalkulieren/alle-kosten`,
   sections: [
     'A · Kaufmännische Zusammenfassung',
     'B · Aktuell gewählte Auswahl mit Preiswirkung',

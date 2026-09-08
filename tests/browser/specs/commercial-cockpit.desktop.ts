@@ -30,6 +30,33 @@ import { reachOptionWorkspace, saveBuildingScope } from '../journey'
 
 const COMMITTABLE_AMOUNT = /100\.000|100,000/
 
+/**
+ * Click a decision option through its VISIBLE LABEL, and prove it landed.
+ *
+ * `force: true` on a visually hidden `<input>` dispatches at the input's own
+ * centre and lands on whatever is topmost there — so a shown undo toast in
+ * the bottom-left corner silently swallowed the click, and the helper
+ * carried on as if the decision had been taken. Found while validating B2:
+ * the Scope decisions surface grew (it owns the Energy/QNG/DGNB axes now),
+ * a decision row scrolled under the toast, and `reachConfiguredRail`
+ * quietly configured THREE cost groups instead of six. Every assertion
+ * downstream then measured a different Option than the one it named.
+ *
+ * The label is the intended click target — which is the released
+ * `ChoiceGroup` contract (its own docblock: "the native `<input>` inside its
+ * `<label>` owns the whole hit area") and what the audit's adjacent-defect
+ * note 5 recommends. The post-click check is what makes a silent no-op
+ * impossible to mistake for success again.
+ */
+async function chooseOption(page: Page, index: number) {
+  const input = page.locator('main input[type=radio]').nth(index)
+  await input.evaluate((el) => el.closest('label')?.scrollIntoView({ block: 'center' }))
+  await page.locator('main input[type=radio]').nth(index)
+    .locator('xpath=ancestor::label[1]')
+    .click()
+  await expect(input, `decision option ${index} did not register`).toBeChecked()
+}
+
 /** Reach a Configurator with a real, priced, six-group configuration. */
 async function reachConfiguredRail(page: Page) {
   await page.goto('/')
@@ -45,8 +72,16 @@ async function reachConfiguredRail(page: Page) {
         && /^\s*enthalten/.test((radio.closest('label')?.textContent ?? '').replace(/^✓/, '')))
     })
     if (index < 0) break
-    await page.locator('main input[type=radio]').nth(index).click({ force: true })
+    await chooseOption(page, index)
   }
+  // SIX cost groups, proved rather than assumed: the loop above used to be
+  // able to fall short without saying so.
+  const undecided = await page.evaluate(() => [...document
+    .querySelectorAll('main input[type=radio]')]
+    .filter((r) => !(r as HTMLInputElement).checked && !(r as HTMLInputElement).disabled
+      && /^\s*enthalten/.test((r.closest('label')?.textContent ?? '').replace(/^✓/, '')))
+    .length)
+  expect(undecided, 'a cost group was left undecided by the setup').toBe(0)
   await expect(page.locator(COCKPIT.cls.rail)).toBeVisible()
 }
 
@@ -80,7 +115,7 @@ async function commitOneChange(page: Page) {
       && new RegExp(pattern).test(radio.closest('label')?.textContent ?? ''))
   }, COMMITTABLE_AMOUNT.source)
   expect(index, 'no committable configuration decision on this surface').toBeGreaterThan(-1)
-  await page.locator('main input[type=radio]').nth(index).click({ force: true })
+  await chooseOption(page, index)
 }
 
 test.describe('Commercial cockpit · the compact live rail', () => {
@@ -312,7 +347,16 @@ test.describe('Kostendetails · the complete commercial explanation', () => {
       await reachConfiguredRail(page)
       await page.goto(`/projekt/${DEMO_PROJECT_ID}/option/OPT-01/kalkulieren/kg400`)
       const origin = page.url()
-      await page.getByRole('button', { name: COCKPIT.cta }).click()
+      /**
+       * Scoped to the RAIL. `Alle Kostendetails` names two controls now
+       * (B2, requirement 16): the rail's own CTA and the Calculate
+       * progression's segment for the same destination — which is the point
+       * of the requirement, since the explanation is a member of the stage.
+       * Two ways to one place is correct; an unscoped locator matching both
+       * is the test being imprecise about which one it means.
+       */
+      await page.locator(COCKPIT.cls.rail)
+        .getByRole('button', { name: COCKPIT.cta }).click()
       const costDetails = page.url()
 
       const go = page.locator('#kd-b button.a3-dt-go').first()
