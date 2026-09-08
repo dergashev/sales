@@ -241,27 +241,30 @@ describe('Опции — нативная radio-группа (RADIO-001)', () =>
   it('стрелка в группе опций двигает И выбирает, событие попадает в журнал', async () => {
     const user = userEvent.setup()
     await enterPipeline(user)
-    // Навигация настоящая, через интерфейс: дёргать store мимо React
-    // значило бы проверять не тот путь, которым ходит пользователь.
-    // VR3-03: Energiestandard is a CONFIGURED VARIANT of a KG 400 service
-    // now — the same decision, in the cost group whose services deliver it,
-    // rendered by the canonical `ChoiceGroup`. The contract under test is
-    // unchanged and is exactly what that control has to satisfy: a native
-    // radio group where an arrow both MOVES and SELECTS (RADIO-001), and
-    // where selecting by keyboard journals the same event as selecting by
-    // pointer (M-4).
+    /**
+     * Навигация настоящая, через интерфейс: дёргать store мимо React значило
+     * бы проверять не тот путь, которым ходит пользователь.
+     *
+     * B2 (требование 14): Energieziel — это ОСЬ уровня Option, и решается
+     * она в Configure · Leistungsabgrenzung, а не внутри KG 400, где её
+     * нашёл аудит. Проверяемый контракт от этого не меняется — он ровно тот
+     * же, которому обязан удовлетворять канонический `ChoiceGroup`: нативная
+     * radio-группа, где стрелка ОДНОВРЕМЕННО двигает и выбирает (RADIO-001),
+     * и где выбор с клавиатуры пишет то же событие, что выбор мышью (M-4).
+     *
+     * Изменилась одна вещь, и она принадлежит новому месту: у оси нет
+     * черновика с `Übernehmen`. Она фиксируется выбором — так же, как шесть
+     * решений о включении, рядом с которыми она теперь стоит. Поэтому
+     * стрелка здесь пишет событие сразу, а не после подтверждения.
+     */
     act(() => {
-      useStore.getState().openConfiguratorStepAt(CONFIGURATOR_STEP.KG_400_DETAILS)
+      useStore.getState().openConfiguratorStepAt(CONFIGURATOR_STEP.SCOPE_BOUNDARIES)
     })
 
-    // VR3-TGA-01: the same decision, under the name the Rahmen band gives it
-    // (`Energieziel` — split from the statutory minimum, which is derived and
-    // never a choice), and reached the way a user reaches it: the band's own
-    // `ändern`. Progressive disclosure is the change; RADIO-001 is not.
-    await user.click(await screen.findByRole('button', { name: 'ändern' }))
     const group = await screen.findByRole('radiogroup', { name: /Energieziel/ })
     const radios = within(group).getAllByRole('radio')
     const checkedBefore = radios.findIndex((r) => (r as HTMLInputElement).checked)
+    expect(checkedBefore).toBeGreaterThanOrEqual(0)
 
     const journalBefore = useStore.getState().journal.length
     radios[checkedBefore]!.focus()
@@ -270,12 +273,8 @@ describe('Опции — нативная radio-группа (RADIO-001)', () =>
     const checkedAfter = within(group).getAllByRole('radio')
       .findIndex((r) => (r as HTMLInputElement).checked)
     expect(checkedAfter).not.toBe(checkedBefore)
-    // VR3-TGA-UX-00: the arrow MOVES and SELECTS the draft (RADIO-001 holds);
-    // the WRITE is the explicit `Übernehmen` — the same one commit for the
-    // keyboard as for the pointer, and the same one journal event (M-4).
-    expect(useStore.getState().journal.length).toBe(journalBefore)
-    const editor = group.closest('.a3-dec-editor')!
-    await user.click(within(editor as HTMLElement).getByRole('button', { name: 'Übernehmen' }))
+    // RADIO-001 holds, and the selection IS the write: one arrow, one
+    // journalled decision with its own inverse (M-4).
     expect(useStore.getState().journal.length).toBe(journalBefore + 1)
   })
 })

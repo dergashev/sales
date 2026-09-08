@@ -75,6 +75,12 @@ export type OptionMetricSummaryLabels = {
   notAdditive: string
   /** `nicht ermittelt` — a denominator that does not exist yet. */
   denominatorUnknown: string
+  /**
+   * `Preis nicht ermittelt` — no calculated position exists at all, so
+   * there is no amount and no rate. The canonical rule-16 phrase, passed in
+   * from the product's own dictionary rather than reworded here.
+   */
+  priceNotDetermined: string
   useProfile: Readonly<Record<string, string>>
 }
 
@@ -90,13 +96,25 @@ export function OptionMetricSummary({
   ].filter(Boolean).join(' ')
 
   return (
-    <div className={classes} data-result-version={projection.resultVersion}>
+    <div
+      className={classes}
+      data-result-version={projection.resultVersion}
+      /* So a surface — and a test — can tell "no price yet" from "a price"
+         without parsing the words. */
+      data-price={projection.priceDetermined ? 'determined' : 'notDetermined'}
+    >
       <div className="a3-oms-total">
+        {/* An Option with no calculated position has no amount. Rendering
+            `netTotal` here would print `0 €` for every fresh Option, which
+            rule 16 forbids outright — the zero is the ABSENCE of a price,
+            not a price of nothing. `priceDetermined` carries the released
+            convention so this component does not re-derive it. */}
         <CommercialNumber
-          exact={projection.netTotal.exact}
-          displayed={projection.netTotal}
+          exact={projection.priceDetermined ? projection.netTotal.exact : null}
+          displayed={projection.priceDetermined ? projection.netTotal : undefined}
+          absentLabel={labels.priceNotDetermined}
           language={language}
-          emphasis={variant === 'card' ? 'default' : 'default'}
+          emphasis="default"
           className="a3-oms-total-value"
         />
         {/* The label is DERIVED from coverage by the result (R-18): a partial

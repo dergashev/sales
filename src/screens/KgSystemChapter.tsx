@@ -836,7 +836,16 @@ export function KgSystemChapter({ chapter, group }: {
       )
     }
 
-    const editable = service.kind.kind !== 'readOnlyRequired'
+    /**
+     * B2 · requirement 14 — an Option-level AXIS is not editable in the cost
+     * chapter that prices it. The Energy target lived here, which put a
+     * decision the whole Option is prepared under behind KG 400's own
+     * progression; it is now taken in Configure · Scope decisions and shown
+     * here with the route back. Read-only WITH a route, never read-only
+     * alone: a value editable nowhere is a dead end (rule 12).
+     */
+    const ownedElsewhere = Boolean(service.scopeAxis)
+    const editable = service.kind.kind !== 'readOnlyRequired' && !ownedElsewhere
     const unresolved = editable && service.requiresDecision && decision.state === 'undecided'
     const editing = options.inRahmen ? true : draft?.serviceId === service.id
     const showEditor = editable && (unresolved || editing)
@@ -856,7 +865,15 @@ export function KgSystemChapter({ chapter, group }: {
         price={pricePhraseOf(service, decision)}
         attention={unresolved ? 'open' : changed === true ? 'deviation' : undefined}
         muted={!editable}
-        action={editable && !showEditor ? (
+        action={ownedElsewhere ? (
+          <Button
+            className="a3-dec-change"
+            aria-label={`${t('b2.axes.readOnly.route')} · ${name}`}
+            onClick={() => s.openConfiguratorStepAt(CONFIGURATOR_STEP.SCOPE_BOUNDARIES)}
+          >
+            {t('b2.axes.readOnly.route')}
+          </Button>
+        ) : editable && !showEditor ? (
           <Button
             className="a3-dec-change"
             aria-label={t('vr3.tga.decision.changeOf', { decision: name })}

@@ -131,29 +131,34 @@ async function enterPipeline(user: ReturnType<typeof userEvent.setup>) {
   })
 }
 
+/**
+ * Choose the Option's Energy target — in Configure · Scope decisions, which
+ * is where it is decided (B2, Product Owner requirement 14).
+ *
+ * It used to be chosen inside KG 400, through that chapter's Rahmen band and
+ * its `ändern` → `Übernehmen` draft cycle. That is the arrangement this
+ * ticket removes: an Option-level scope decision reachable only from inside
+ * one of its consumers. The DECISION is identical — the same
+ * `setKgServiceDecision` on the same service, so the same single journal
+ * event and the same building axis the comparison screen reads — and it is
+ * committed on selection here, exactly like the six inclusion decisions it
+ * now sits beside.
+ */
+async function chooseEnergyTarget(user: ReturnType<typeof userEvent.setup>) {
+  act(() => {
+    useStore.getState().openConfiguratorStepAt(CONFIGURATOR_STEP.SCOPE_BOUNDARIES)
+  })
+  const es = await screen.findByRole('radiogroup', { name: /Energieziel/ })
+  await user.click(within(es).getAllByRole('radio')[2]!)
+}
+
 describe('Сквозной сценарий продажи', () => {
   it('доходит от очереди до отправки, не теряя состояние между экранами', async () => {
     const user = userEvent.setup()
     render(<App />)
     await enterPipeline(user)
 
-    // VR3-03: the Energiestandard is a configured variant of a KG 400
-    // service — the same decision, in the cost group whose services deliver
-    // it. Choosing it still writes the released building axis (one energy
-    // standard, one Option), which is what the comparison screen reads
-    // further down this very test.
-    act(() => {
-      useStore.getState().openConfiguratorStepAt(CONFIGURATOR_STEP.KG_400_DETAILS)
-    })
-    // VR3-TGA-01: the decision is now the Rahmen band's `Energieziel`, split
-    // from the statutory minimum it used to share a control with. Reached the
-    // way the user reaches it — through the band's own `ändern`.
-    await user.click(await screen.findByRole('button', { name: 'ändern' }))
-    const es = await screen.findByRole('radiogroup', { name: /Energieziel/ })
-    await user.click(within(es).getAllByRole('radio')[2]!)
-    // VR3-TGA-UX-00: choosing is a draft; `Übernehmen` is the one write.
-    await user.click(within(es.closest('.a3-dec-editor') as HTMLElement)
-      .getByRole('button', { name: 'Übernehmen' }))
+    await chooseEnergyTarget(user)
     // Путь до конвейера сам оставляет след: решённый конфликт,
     // подтверждённые параметры, созданный Option и подтверждённое здание.
     // KG 300/400/700 are mandatory now ("Rebuild Project Card Workflow"
@@ -410,17 +415,7 @@ describe('Сквозной сценарий продажи', () => {
     await enterPipeline(user)
 
     // Изменение, которое обязано попасть в итог встречи.
-    act(() => {
-      useStore.getState().openConfiguratorStepAt(CONFIGURATOR_STEP.KG_400_DETAILS)
-    })
-    // VR3-TGA-01: the decision is now the Rahmen band's `Energieziel`, split
-    // from the statutory minimum it used to share a control with. Reached the
-    // way the user reaches it — through the band's own `ändern`.
-    await user.click(await screen.findByRole('button', { name: 'ändern' }))
-    const es = await screen.findByRole('radiogroup', { name: /Energieziel/ })
-    await user.click(within(es).getAllByRole('radio')[2]!)
-    await user.click(within(es.closest('.a3-dec-editor') as HTMLElement)
-      .getByRole('button', { name: 'Übernehmen' }))
+    await chooseEnergyTarget(user)
     confirmWholeConfiguration()
     goExport()
     await user.click(screen.getByRole('button', { name: 'Angebot prüfen' }))

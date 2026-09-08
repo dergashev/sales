@@ -23,6 +23,9 @@ export function useOptionMetricLabels(): OptionMetricSummaryLabels {
     scale: t('b2.metric.scale'),
     notAdditive: t('b2.metric.notAdditive'),
     denominatorUnknown: t('b2.metric.denominatorUnknown'),
+    // The canonical rule-16 phrase, from the released key every other
+    // surface already prints — never a second wording of it.
+    priceNotDetermined: t('money.priceNotDetermined'),
     useProfile: {
       residential: t('b2.metric.useProfile.residential'),
       nonResidential: t('b2.metric.useProfile.nonResidential'),

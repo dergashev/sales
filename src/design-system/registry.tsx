@@ -638,6 +638,7 @@ const OMS_LABELS: OptionMetricSummaryLabels = {
   notAdditive: 'Zwei Leitkennzahlen, zwei Bezugsflächen: jede setzt die Nettosumme zu ihrer '
     + 'eigenen normativen Fläche ins Verhältnis. Sie sind kein Anteil und werden nicht addiert.',
   denominatorUnknown: 'nicht ermittelt',
+  priceNotDetermined: 'Preis nicht ermittelt',
   useProfile: {
     residential: 'Wohnen',
     nonResidential: 'Nichtwohnen',
@@ -652,6 +653,7 @@ function omsProjection(
   const total = new Decimal('38740000')
   return {
     resultVersion: 7,
+    priceDetermined: true,
     netTotal: present(total),
     totalLabel: 'Gesamt netto · Grundleistung All3',
     coverage: 'total',

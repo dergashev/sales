@@ -372,7 +372,86 @@ describe('the canonical KG page, six times (T-021–T-027)', () => {
     expect(screen.getByRole('button', { name: /Weiter zu/ })).not.toHaveAttribute('aria-disabled', 'true')
   })
 
-  it('a dependency names its upstream service and refuses to price the position', async () => {
+  /**
+   * B2 · requirement 14 — the dependency is now PREVENTED, not merely
+   * reported, because the two decisions it relates live on one screen.
+   *
+   * The replaced version of this test drove QNG inside KG 700, which is
+   * where the audit found it and where this ticket removes it from. Its
+   * subject survives in full and gains a stronger claim: the contradiction
+   * used to be reachable and then explained, and it is now unreachable
+   * through the UI, explained where it is refused, and still refused by the
+   * ENGINE for a state reached any other way (a payload saved before this
+   * ticket, for instance).
+   */
+  it('refuses an unreachable certificate on the screen that owns it, and names the enabling action', async () => {
+    const user = userEvent.setup()
+    await reachLedger(user)
+    decideAllKgScope('included')
+
+    // The axis lives in Configure · Scope decisions, beside the six
+    // inclusion decisions — not inside the cost group that prices it.
+    const qng = await screen.findByRole('radiogroup', { name: 'QNG-Siegel' })
+    const plus = within(qng).getByRole('radio', { name: /QNG-PLUS/ })
+    expect(plus).toBeDisabled()
+
+    // An unavailable choice exists only together with its reason (rule 12),
+    // and the reason names the upstream decision in the words the user sees
+    // on it — `Energieziel`, the label the Rahmen band itself uses. The
+    // reason is a sibling of the group, associated by `aria-describedby`, so
+    // it is read from the axis and not from the radiogroup element.
+    const axis = qng.closest('.a3-axis')!
+    expect(axis).toHaveTextContent(/setzt Energieziel/i)
+    expect(qng.getAttribute('aria-describedby')).toBeTruthy()
+
+    // …and the ENABLING ACTION is offered, because the upstream axis is on
+    // this same screen: one click, not a route away and back.
+    const enable = screen.getByRole('button', { name: /Energieziel auf .* setzen/ })
+    await user.click(enable)
+    expect(st().kgConfig!.services['b-400-es']).toEqual({
+      state: 'selected', variant: 'eh40nh',
+    })
+
+    // With the prerequisite met the same choice is reachable and priced.
+    const qngAfter = await screen.findByRole('radiogroup', { name: 'QNG-Siegel' })
+    const plusAfter = within(qngAfter).getByRole('radio', { name: /QNG-PLUS/ })
+    expect(plusAfter).toBeEnabled()
+    await user.click(plusAfter)
+    expect(st().kgConfig!.services['b-700-qng']).toEqual({
+      state: 'selected', variant: 'plus',
+    })
+    await waitFor(() => {
+      expect(commercialResult(st()).contributions
+        .some((d) => d.key === 'kg_b-700-qng')).toBe(true)
+    })
+  })
+
+  /**
+   * The ENGINE half of the same invariant, unchanged by where the decision is
+   * taken: a contradictory combination refuses the position rather than
+   * pricing it, and the chapter says it is invalid. Driven through the store
+   * because the UI above no longer allows the combination to be created —
+   * which is the point, and also why this half still has to be proved.
+   */
+  it('still refuses to price a contradicted certificate reached from outside the UI', async () => {
+    const user = userEvent.setup()
+    await reachLedger(user)
+    decideAllKgScope('included')
+    act(() => {
+      st().setKgServiceDecision('b-700-qng', { state: 'selected', variant: 'plus' })
+    })
+    expect(st().kgConfig!.services['b-700-qng']).toEqual({ state: 'selected', variant: 'plus' })
+    expect(kgChapterProgressFor(st(), 'KG_700')!.state).toBe('invalid')
+    expect(commercialResult(st()).contributions
+      .some((d) => d.key === 'kg_b-700-qng')).toBe(false)
+  })
+
+  /**
+   * B2 · requirement 14 — the cost chapter SHOWS the axis and routes back.
+   * Read-only alone would be a dead end; the route is what makes a read-only
+   * value a place to go rather than a wall (rule 12).
+   */
+  it('shows the certificate axis read-only in KG 700 with the route back to Scope decisions', async () => {
     const user = userEvent.setup()
     await reachLedger(user)
     decideAllKgScope('included')
@@ -380,28 +459,22 @@ describe('the canonical KG page, six times (T-021–T-027)', () => {
     await screen.findByRole('heading', { level: 1, name: /^KG.700 · / })
 
     await openSystem(user, /^Nachweise & Qualität · /)
-    await user.click(within(decisionRow('b-700-qng')).getByRole('button', { name: 'Ändern · QNG-Siegel' }))
-    await user.click(within(decisionRow('b-700-qng')).getByText('QNG-PLUS', { selector: '.a3-choice-label' }))
-    await user.click(within(decisionRow('b-700-qng')).getByRole('button', { name: 'Übernehmen' }))
-    expect(st().kgConfig!.services['b-700-qng']).toEqual({ state: 'selected', variant: 'plus' })
+    const row = decisionRow('b-700-qng')
+    // No editor here any more, and no `Ändern`: the chapter shows the value
+    // the Option was prepared under, and the route to the decision that owns
+    // it. The value itself is still the live one, so what KG 700 displays is
+    // exactly what Configure holds.
+    expect(within(row).queryByRole('button', { name: 'Ändern · QNG-Siegel' })).toBeNull()
+    expect(row).toHaveTextContent('kein QNG')
 
-    // The engine refuses the position: the chapter is invalid and the total
-    // never carries a position the configuration itself refuses.
-    expect(kgChapterProgressFor(st(), 'KG_700')!.state).toBe('invalid')
-    expect(commercialResult(st()).contributions
-      .some((d) => d.key === 'kg_b-700-qng')).toBe(false)
-
-    // The dependency names the upstream decision by the name the user sees.
-    // It used to say `Energiestandard`; the Rahmen band calls that line
-    // `Energieziel`, and a warning that names a control nobody can find is
-    // the class of defect this whole ticket exists to remove. In the
-    // decision pattern the warning is the editor's note, so it is read where
-    // a user looks for the reason: by reopening the decision.
-    await user.click(within(decisionRow('b-700-qng')).getByRole('button', { name: 'Ändern · QNG-Siegel' }))
-    // The unmet prerequisite is named on the row's relation line AND repeated
-    // as the editor's note while editing — twice by design, once per surface.
-    expect(within(decisionRow('b-700-qng')).getAllByText(/setzt Energieziel voraus/).length)
-      .toBeGreaterThan(0)
+    await user.click(within(row).getByRole('button', {
+      name: /In der Leistungsabgrenzung ändern · QNG-Siegel/,
+    }))
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1, name: 'Leistungsabgrenzung' }))
+        .toBeInTheDocument()
+    })
+    expect(screen.getByRole('radiogroup', { name: 'QNG-Siegel' })).toBeInTheDocument()
   })
 
   it('an invalid quantity keeps the last valid result and says what is wrong', async () => {

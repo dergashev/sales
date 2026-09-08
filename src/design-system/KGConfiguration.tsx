@@ -188,7 +188,20 @@ export type ServiceDecisionControl =
     onPreview?: (value: string | null) => void
   }
   /** A service the domain requires and the user cannot remove. */
-  | { kind: 'readOnly'; label: string }
+  /**
+   * A value this chapter SHOWS but does not own (B2, requirement 14).
+   *
+   * `owner` is the route back to the decision that does own it. It exists
+   * because a read-only row without one is the defect the audit measured
+   * from the other side: a value editable in two chapters has two answers,
+   * and a value editable in NEITHER is a dead end. Naming the owner turns
+   * the read-only row into a route (rule 12) instead of a wall.
+   */
+  | {
+    kind: 'readOnly'
+    label: string
+    owner?: { label: string; onSelect: () => void }
+  }
 
 export function ServiceDecisionRow({
   name, summary, control, controlLegend, status, amount, detail, detailToggle,
@@ -226,7 +239,18 @@ export function ServiceDecisionRow({
         </div>
         <div className="a3-svcr-control">
           {control.kind === 'readOnly' ? (
-            <span className="a3-svcr-readonly">{control.label}</span>
+            <span className="a3-svcr-readonly">
+              {control.label}
+              {control.owner ? (
+                <button
+                  type="button"
+                  className="a3-svcr-owner hit-target"
+                  onClick={control.owner.onSelect}
+                >
+                  {control.owner.label}
+                </button>
+              ) : null}
+            </span>
           ) : control.kind === 'toggle' ? (
             <label
               className="a3-svcr-toggle"

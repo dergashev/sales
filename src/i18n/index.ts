@@ -3228,6 +3228,26 @@ const de = {
   'b2.metric.useProfile.nonResidential': 'Nichtwohnen',
   'b2.metric.useProfile.mixed': 'Gemischte Nutzung',
   'b2.metric.useProfile.unknown': 'Nutzung nicht klassifiziert',
+
+  /* ── B2 · Energie & Zertifizierung in der Leistungsabgrenzung (Anf. 14) ── */
+  'b2.axes.heading': 'Energie & Zertifizierung',
+  'b2.axes.lede':
+    'Drei Festlegungen für die gesamte Option. Der Energiestandard ist eine Wahl; '
+    + 'QNG und DGNB sind eigene, voneinander unabhängige Achsen und können beide '
+    + 'gesetzt werden. KG 300, KG 400, die Kostendetails und die Kundenausgabe '
+    + 'lesen diese Werte.',
+  'b2.axes.baselineBadge': 'All3-Standard',
+  'b2.axes.blocked.groupExcluded':
+    '{group} ist nicht im Angebotsumfang — diese Wahl hätte keine Grundlage.',
+  'b2.axes.blocked.groupUndecided':
+    '{group} ist noch nicht entschieden — die Entscheidung steht in der Tabelle darüber.',
+  'b2.axes.blocked.requiresVariant': 'Setzt {service} · {variant} voraus.',
+  'b2.axes.blocked.selected': 'ausgewählt',
+  'b2.axes.blocked.generic': 'Eine vorgelagerte Festlegung fehlt.',
+  'b2.axes.enable': '{service} auf {variant} setzen',
+  /* The read-only value a cost chapter shows, and its route back. */
+  'b2.axes.readOnly': 'In der Leistungsabgrenzung festgelegt · {variant}',
+  'b2.axes.readOnly.route': 'In der Leistungsabgrenzung ändern',
 } as const
 
 export type MessageKey = keyof typeof de
@@ -3255,6 +3275,24 @@ const en: Partial<Record<MessageKey, string>> = {
   'b2.metric.useProfile.nonResidential': 'Non-residential',
   'b2.metric.useProfile.mixed': 'Mixed use',
   'b2.metric.useProfile.unknown': 'Use not classified',
+
+  /* ── B2 · Energy & certification in Scope decisions (requirement 14) ──── */
+  'b2.axes.heading': 'Energy & certification',
+  'b2.axes.lede':
+    'Three decisions for the whole Option. The energy standard is one choice; QNG '
+    + 'and DGNB are separate, mutually independent axes and both may be set. '
+    + 'KG 300, KG 400, the cost details and the client output read these values.',
+  'b2.axes.baselineBadge': 'All3 standard',
+  'b2.axes.blocked.groupExcluded':
+    '{group} is out of scope — this choice would have no basis.',
+  'b2.axes.blocked.groupUndecided':
+    '{group} has not been decided yet — the decision is in the table above.',
+  'b2.axes.blocked.requiresVariant': 'Requires {service} · {variant}.',
+  'b2.axes.blocked.selected': 'selected',
+  'b2.axes.blocked.generic': 'An upstream decision is missing.',
+  'b2.axes.enable': 'Set {service} to {variant}',
+  'b2.axes.readOnly': 'Decided in Scope decisions · {variant}',
+  'b2.axes.readOnly.route': 'Change in Scope decisions',
   // VR2-00: internal Grundlagen QA surface — product-locale EN so nothing
   // in the visible specimen shell reads as untranslated diagnostic content.
   'grundlagen.specimen.badge': 'Internal · QA specimen',
@@ -3612,7 +3650,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'configurator.scope.project': 'Applies to the entire complex',
   'configurator.scope.shared': 'Shared configuration · applies to {buildings}',
   'configurator.scopeBoundaries.goTo':
-    'Go to chapter {chapter} · Scope boundaries',
+    'Go to chapter {chapter} · Scope decisions',
   'configurator.scopeBoundaries.servicingIntro':
     'Site servicing belongs to KG 200 — its scope is decided in chapter {chapter}; its current status is shown here.',
   'configurator.scopeBoundaries.servicingStatus':
@@ -3655,22 +3693,22 @@ const en: Partial<Record<MessageKey, string>> = {
     'The existing configuration is preserved and resumes once the mode is confirmed.',
   'configurator.finalGate.label': 'Configuration not fully confirmed yet',
   'configurator.finalGate.scopeBoundariesOutstanding':
-    'Scope Boundaries has not been confirmed yet.',
+    'Scope decisions have not been confirmed yet.',
   'configurator.finalGate.buildingsOutstanding': 'Still to confirm: {buildings}.',
   'configurator.finalGate.action': 'Confirm now',
   'configurator.finalGate.exportBlockedReason':
     'Export is locked until the configuration is fully confirmed.',
   'offerPanel.empty.sentence': 'No cost group is included in the offer yet.',
   'offerPanel.empty.detail':
-    'Select at least one cost group in Scope Boundaries to get a calculation.',
-  'offerPanel.empty.action': 'Open Scope Boundaries',
+    'Select at least one cost group in Scope decisions to get a calculation.',
+  'offerPanel.empty.action': 'Open Scope decisions',
   'configurator.scope.emptyDetail':
     'Select at least one cost group above to get a calculation.',
   'configurator.overview.title': 'Configuration status',
   'configurator.overview.label': 'Configuration status for all buildings',
   'configurator.sidebar.title': 'Before pricing',
   'configurator.sidebar.body':
-    'Pricing starts only in Scope boundaries. The mode choice alone does not create a price.',
+    'Pricing starts only in Scope decisions. The mode choice alone does not create a price.',
   'journal.empty': 'Journal: no adopted changes yet',
   'journal.buildingScope.summaryOne': 'Journal: 1 event during preparation',
   'journal.buildingScope.summary': 'Journal: {count} events during preparation',
@@ -3720,10 +3758,10 @@ const en: Partial<Record<MessageKey, string>> = {
   'opplist.stage.ruhend': 'on hold',
   'opplist.stage.gewonnen': 'contract signed',
   'opplist.stage.verloren': 'lost',
-  'configurator.scope.confirmHeading': 'Confirm scope boundaries',
-  'configurator.scope.recheckTag': 'Review scope boundaries again',
-  'configurator.scope.confirmedTag': 'Scope boundaries confirmed.',
-  'chapter.scopeBoundaries': 'Scope boundaries',
+  'configurator.scope.confirmHeading': 'Confirm scope decisions',
+  'configurator.scope.recheckTag': 'Review scope decisions again',
+  'configurator.scope.confirmedTag': 'Scope decisions confirmed.',
+  'chapter.scopeBoundaries': 'Scope decisions',
   'chapter.kg200Details': 'Preliminary measures · KG 200',
   'chapter.kg300Details': 'KG 300 services',
   'chapter.kg400Details': 'KG 400 technical systems',
@@ -3805,7 +3843,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'vr3.kg.ledger.lede':
     'Make one explicit decision for every DIN 276 cost group. “Still open” is not the same as intentionally excluded.',
   'vr3.kg.ledger.caption':
-    'Scope boundaries: six cost groups, one explicit decision each.',
+    'Scope decisions: six cost groups, one explicit decision each.',
   'vr3.kg.ledger.column.group':
     'Cost group',
   'vr3.kg.ledger.column.decision':
@@ -3941,11 +3979,11 @@ const en: Partial<Record<MessageKey, string>> = {
   'vr3.kg.context.baselineOpen':
     'Building baseline open',
   'vr3.journal.kgScopeConfirmed':
-    'Scope boundaries confirmed',
+    'Scope decisions confirmed',
   'vr3.kg.gate.configurationTitle':
     'Configuration unavailable',
   'vr3.kg.gate.configurationPrereq':
-    'This Option’s scope boundaries',
+    'This Option’s scope decisions',
   'vr3.kg.gate.configurationDetail':
     'This Option was created before the current configuration contract and carries no cost-group decisions. Define the building scope again to begin configuring it.',
   'vr3.kg.gate.decisionsPrereq':
@@ -3953,11 +3991,11 @@ const en: Partial<Record<MessageKey, string>> = {
   'vr3.kg.gate.decisionsDetail':
     'Only {decided} of {total} cost groups are decided.',
   'vr3.kg.gate.decisionsRoute':
-    'Go to the scope boundaries',
+    'Go to the scope decisions',
   'vr3.kg.gate.skippedReason':
     'This cost group was intentionally excluded. There is nothing to configure here — the decision stays visible in the offer.',
   'vr3.kg.gate.reopenScope':
-    'Open the scope boundaries',
+    'Open the scope decisions',
   'vr3.kg.gate.chapterOutstanding':
     '{group} still has open decisions.',
   'vr3.kg.gate.scheduleReason':
@@ -4362,7 +4400,7 @@ const en: Partial<Record<MessageKey, string>> = {
     'The system knows what is missing and provides a direct recovery path. Disabled '
     + 'navigation would not be the explanation.',
   'vr3.konfigurator.lead.available':
-    'The Option baseline is confirmed and saved. Scope boundaries is the only current '
+    'The Option baseline is confirmed and saved. Scope decisions is the only current '
     + 'next step.',
   'vr3.konfigurator.prereq.scope': 'Building & scope saved',
   'vr3.konfigurator.blockedReason':
@@ -4378,7 +4416,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'vr3.konfigurator.receipt.savedAt': 'Saved on',
   'vr3.konfigurator.route.building': 'Review {building}',
   'vr3.konfigurator.route.scope': 'Go to Building & scope',
-  'vr3.konfigurator.start': 'Start scope boundaries',
+  'vr3.konfigurator.start': 'Start scope decisions',
   'vr3.journal.buildingConfirmed': 'Building {building} confirmed',
   'vr3.journal.scopeBuildingAdded': '{building} added to the offer scope',
   'vr3.journal.scopeBuildingRemoved': '{building} removed from the offer scope',
@@ -5090,7 +5128,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'vr3.spine.reason.needsOption': 'Option missing',
   'vr3.spine.reason.needsBuildingScope': 'Building scope not saved yet',
   'vr3.spine.reason.locked': 'Prerequisite missing',
-  'vr3.spine.reason.needsScopeDecisions': 'Scope boundaries still open',
+  'vr3.spine.reason.needsScopeDecisions': 'Scope decisions still open',
   'vr3.option.created.heading': '\u201c{option}\u201d is ready for its baseline',
   'vr3.option.created.lead':
     'Only Building & scope is available now. Select and confirm the building '
@@ -5301,7 +5339,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'vr3.review.row.decision': 'Decision',
   'vr3.review.row.services': 'Services',
   'vr3.review.row.amount': 'Amount',
-  'vr3.review.row.boundary': 'Scope boundary',
+  'vr3.review.row.boundary': 'Interface boundary',
   'vr3.review.row.connections': 'Utility connections',
   'vr3.review.row.costAuthority': 'Price basis',
   'vr3.review.value.connections': '{settled} of {total} settled',
@@ -5663,7 +5701,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'vr3.client.price.driverSum': 'Sum of cost drivers',
   'vr3.client.price.driverRest': 'Further items',
   'vr3.client.price.regionalFactor': 'Regional factor',
-  'vr3.client.scope.boundaryTitle': 'Scope boundary',
+  'vr3.client.scope.boundaryTitle': 'Interface boundary',
   'vr3.client.scope.considered': 'Considered in principle',
   'vr3.client.scope.noneExcluded': 'No exclusions. Every cost group is part of the proposal.',
   'vr3.client.scope.noneConsidered': 'No cross-cutting specifications are recorded for this proposal.',
@@ -5951,7 +5989,7 @@ const en: Partial<Record<MessageKey, string>> = {
   // ── VR3-TGA-UX-00 · Interfaces & responsibility (interim step) ─────────
   'vr3.responsibility.eyebrow': 'Configurator · responsibility',
   'vr3.responsibility.heading': 'Interfaces & responsibility',
-  'vr3.responsibility.lead': 'Scope boundaries and utility connections of this Option.',
+  'vr3.responsibility.lead': 'Interface boundaries and utility connections of this Option.',
   'vr3.responsibility.interim.title': 'Interim · structural target',
   'vr3.responsibility.interim.body':
     'Not the final Responsibility Matrix design. The existing truth moved here from '
@@ -5969,7 +6007,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'vr3.responsibility.status.ok': 'settled',
   'vr3.responsibility.status.attention': 'unresolved · verify',
   'vr3.responsibility.owner.note':
-    'Canonical owner: this step of the Option. KG 400 shows only the read-only scope boundary.',
+    'Canonical owner: this step of the Option. KG 400 shows only the read-only interface boundary.',
   'vr3.responsibility.legacy':
     'Read from an older saved Option · completed from the project baseline.',
   'vr3.responsibility.empty': 'No interface matrix is recorded for this project.',
@@ -6074,7 +6112,7 @@ const en: Partial<Record<MessageKey, string>> = {
   'costDetails.origin.base': 'Base cost',
   'costDetails.origin.fact': 'derived',
   'costDetails.origin.decision': 'Selection',
-  'costDetails.origin.scope': 'Scope boundary',
+  'costDetails.origin.scope': 'Scope decisions',
   'costDetails.e.heading': 'E · Open, without a price basis, out of scope and excluded',
   'costDetails.e.lede':
     'These rows deliberately carry no amount. Unknown is not zero, out of scope is not '
@@ -6100,7 +6138,7 @@ const en: Partial<Record<MessageKey, string>> = {
     'Outside the All3 scope. No amount, and not a zero value.',
   'costDetails.e.meaning.unknownAuthority':
     'The price basis of this selection is not determined, so no amount is stated.',
-  'costDetails.e.toScope': 'Go to the scope boundaries',
+  'costDetails.e.toScope': 'Go to the scope decisions',
   'costDetails.f.heading': 'F · Regional factor',
   'costDetails.f.inactive':
     'Not activated. The calculation runs on the national average. Activated, the regional '

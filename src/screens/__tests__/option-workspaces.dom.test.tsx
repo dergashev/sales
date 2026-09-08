@@ -71,10 +71,24 @@ describe('the Options collection is the home of every Option', () => {
     // The em-dash comparison row the audit measured on every Option 2+ is
     // gone: a difference is suppressed until both sides have a value.
     expect(surface.textContent).not.toContain('Unterschied zu')
-    // `Preis nicht ermittelt` is a quiet secondary line, not the metric.
-    const pending = surface.querySelector('.a3-optrow-pending')!
-    expect(pending).toHaveTextContent('Preis nicht ermittelt')
-    expect(surface.querySelector('.a3-optrow-amount')).toBeNull()
+    /**
+     * `Preis nicht ermittelt` is a quiet secondary line, not the metric.
+     *
+     * B2 moved the card's headline onto the ONE shared commercial projection
+     * (`OptionMetricSummary`), so the assertion now reads that summary's own
+     * state instead of the retired `.a3-optrow-amount`/`.a3-optrow-pending`
+     * pair. The behaviour under test is unchanged and is now stated by the
+     * data rather than inferred from which of two elements exists: a fresh
+     * Option has no calculated position, so the summary declares
+     * `data-price="notDetermined"`, prints the rule-16 phrase, and — because
+     * a rate over an absent numerator is not a rate — publishes no metric
+     * row at all.
+     */
+    const summary = surface.querySelector('.a3-oms')!
+    expect(summary).toHaveAttribute('data-price', 'notDetermined')
+    expect(summary.querySelector('.a3-oms-total-value'))
+      .toHaveTextContent('Preis nicht ermittelt')
+    expect(summary.querySelectorAll('[data-metric]')).toHaveLength(0)
   })
 
   it('AC-15: 11 Options paginate, and an invalid page cannot reach the DOM', async () => {

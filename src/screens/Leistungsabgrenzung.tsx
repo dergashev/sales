@@ -2,7 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import {
   KG_SCOPE_GROUPS,
   chapterOf,
+  groupOfService,
+  requiredUpstreamVariant,
+  serviceDecision as kgServiceDecision,
+  variantBlocker,
+  type KgScopeAxis,
   type KgScopeGroup,
+  type KgService,
 } from '../engine/kgConfiguration'
 import {
   kgCatalogueFor,
@@ -11,6 +17,8 @@ import {
   kgScopeStatus,
   useStore,
 } from '../state/store'
+import { axisServices } from '../state/optionCommercialProjection'
+import { ChoiceGroup } from '../design-system/ChoiceGroup'
 import { useT } from '../i18n'
 import { NNBSP } from '../engine/money'
 import { Button } from '../components/primitives'
@@ -31,12 +39,26 @@ import { M06_ROW_MS, M06_UNLOCK_MS } from '../config/ui-policy'
  * what each decision means downstream, and the one action that carries the
  * journey forward.
  *
- * THE FIRST ENTRY HAS SIX UNDECIDED ROWS AND NOTHING ELSE. No energy
- * standard, no certificates, no configuration-mode banner: the surface asks
- * one class of question, six times. Everything the old chapter also carried
- * moved to the KG it actually belongs to — Energiestandard into KG 400,
- * QNG and DGNB into KG 700 — because a decision configured in two places is
- * a decision with two answers.
+ * THE FIRST ENTRY HAS SIX UNDECIDED ROWS AND NOTHING DECIDED. The ledger
+ * asks one class of question, six times, and nothing above it competes with
+ * that.
+ *
+ * BELOW IT SIT THE THREE OPTION-LEVEL AXES (B2, Product Owner requirement
+ * 14): Energiestandard, QNG and DGNB. The previous revision of this
+ * docblock recorded the opposite arrangement — "moved to the KG it actually
+ * belongs to — Energiestandard into KG 400, QNG and DGNB into KG 700 —
+ * because a decision configured in two places is a decision with two
+ * answers". The diagnosis was right and the conclusion was one step short:
+ * moving a decision to where its MONEY lands is not the same as moving it to
+ * where it is TAKEN. KG 300, KG 400, the cost detail, the exports and the
+ * client projection all read these three values, so a decision reachable
+ * only from inside one of its consumers is a scope decision the user cannot
+ * find until they are already pricing.
+ *
+ * There is still exactly ONE editable location, which is what that earlier
+ * reasoning was protecting: the axes write the same `setKgServiceDecision`
+ * their cost chapters wrote, and those chapters now show the value
+ * read-only with the route back here.
  */
 export function Leistungsabgrenzung() {
   const s = useStore()
@@ -223,6 +245,12 @@ export function Leistungsabgrenzung() {
         )}
       />
 
+      {/* B2 · requirement 14 — the three Option-level axes, decided HERE and
+          read by KG 300/400, the cost detail, the exports and the client
+          projection. They sit after the six inclusion decisions because they
+          are decisions ABOUT the included scope, not a seventh inclusion. */}
+      <ScopeAxisSection />
+
       <div className="a3-abgrenzung-dock">
         <p className="a3-cap">
           {complete
@@ -251,6 +279,194 @@ export function Leistungsabgrenzung() {
       <p className="sr-only" aria-live="polite">
         {complete ? t('vr3.kg.ledger.announceComplete') : ''}
       </p>
+    </div>
+  )
+}
+
+/* ─────────────────── Energie & Zertifizierung (B2, req 14) ─────────────── */
+
+/**
+ * The Option's three scope-decision AXES, in the one place they are decided.
+ *
+ * The audit found the Energy target editable inside KG 400 and both
+ * certifications inside KG 700 — a decision configured where its
+ * consequences land rather than where it is taken, and one the whole Option
+ * is prepared under. What made that possible to fix without inventing a
+ * second store is that these are already KG catalogue services: this section
+ * writes the SAME `setKgServiceDecision` those chapters wrote, so there is
+ * one fact, one journal event and one undo — the chapters simply stop
+ * offering to change it and route here instead.
+ *
+ * Energy is ONE mutually exclusive axis by construction: a `ChoiceGroup` is
+ * a native radio group, so `geg`, `eh55`, `eh40` and `eh40nh` cannot be held
+ * together. QNG and DGNB are INDEPENDENT axes and may coexist — they are two
+ * separate groups, which is the same reason `options.ts` gives for keeping
+ * them apart from the energy standard: EH describes the building's energy
+ * quality, QNG and DGNB describe the procedure that certifies it, and
+ * neither follows from the other.
+ */
+function ScopeAxisSection() {
+  const s = useStore()
+  const t = useT()
+  const catalogue = kgCatalogueFor(s)
+  const decisions = s.kgConfig
+  if (!catalogue || !decisions) return null
+
+  const axes: readonly KgScopeAxis[] = ['energy', 'qng', 'dgnb']
+  const services = axes
+    .map((axis) => ({ axis, service: axisServices(catalogue, axis)[0] ?? null }))
+    .filter((entry): entry is { axis: KgScopeAxis; service: KgService } =>
+      entry.service !== null && entry.service.kind.kind === 'singleChoice')
+
+  if (services.length === 0) return null
+
+  return (
+    <section className="a3-axes" aria-labelledby="scope-axes-heading">
+      <div className="a3-axes-head">
+        <h2 className="a3-axes-title" id="scope-axes-heading">
+          {t('b2.axes.heading')}
+        </h2>
+        <p className="a3-axes-lede">{t('b2.axes.lede')}</p>
+      </div>
+      <div className="a3-axes-list">
+        {services.map(({ axis, service }) => (
+          <ScopeAxis key={axis} axis={axis} service={service} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function ScopeAxis({ axis, service }: { axis: KgScopeAxis; service: KgService }) {
+  const s = useStore()
+  const t = useT()
+  const catalogue = kgCatalogueFor(s)
+  const decisions = s.kgConfig
+  if (!catalogue || !decisions || service.kind.kind !== 'singleChoice') return null
+
+  const en = s.uiLanguage === 'en'
+  // Captured once: the narrowing is lost inside the closures below, and a
+  // non-null assertion per call site would be four chances to get it wrong.
+  const kind = service.kind
+  const decision = kgServiceDecision(decisions, service)
+  const current = decision.state === 'selected'
+    ? decision.variant ?? kind.baselineVariant
+    : kind.baselineVariant
+  const ownGroup = groupOfService(catalogue, service.id)
+  const groupDecision = ownGroup ? decisions.scope[ownGroup] : 'included'
+  const groupName = ownGroup ? `KG${NNBSP}${ownGroup.slice(3)}` : ''
+
+  /**
+   * The consequence of each alternative, from the SAME preview function that
+   * will compute it after the click. A second calculator here is how a
+   * promised consequence and its outcome come to disagree — the released
+   * contract the ledger above already follows.
+   */
+  const consequenceOf = (variant: string) => {
+    if (variant === current) return t('configurator.scopeCatalog.currentChoice')
+    const delta = s.optionDelta({
+      kind: 'kgService',
+      serviceId: service.id,
+      value: { state: 'selected', variant },
+    })
+    return delta.isZero() ? undefined : signedMoneyText(delta, s.uiLanguage)
+  }
+
+  /**
+   * Why a choice is unavailable, and what would enable it. Never one without
+   * the other (rule 12): a greyed-out certificate that does not say
+   * "requires Effizienzhaus 40 NH" states that something is impossible and
+   * nothing else.
+   */
+  const unavailability = (variant: string): { reason: string } | null => {
+    // A cost-bearing variant of a cost group that is out of scope cannot be
+    // reached, and the row above on this same screen is the way in.
+    if (variant !== kind.baselineVariant && groupDecision !== 'included') {
+      return {
+        reason: t(groupDecision === 'excluded'
+          ? 'b2.axes.blocked.groupExcluded'
+          : 'b2.axes.blocked.groupUndecided', { group: groupName }),
+      }
+    }
+    const blocker = variantBlocker(catalogue, decisions, service, variant)
+    if (!blocker) return null
+    const required = requiredUpstreamVariant(catalogue, service)
+    if (!required) return { reason: t('b2.axes.blocked.generic') }
+    return {
+      reason: t('b2.axes.blocked.requiresVariant', {
+        service: en ? required.service.labelEn : required.service.labelDe,
+        variant: required.variant
+          ? (en ? required.variant.labelEn : required.variant.labelDe)
+          : t('b2.axes.blocked.selected'),
+      }),
+    }
+  }
+
+  /**
+   * THE ENABLING ACTION. Offered only when this screen can actually perform
+   * it — the upstream axis is on this same screen, so setting it is one
+   * click rather than a route to somewhere else and back.
+   */
+  const enabling = (() => {
+    const required = requiredUpstreamVariant(catalogue, service)
+    if (!required?.variant) return null
+    const upstreamAxis = required.service.scopeAxis
+    if (!upstreamAxis) return null
+    const state = kgServiceDecision(decisions, required.service)
+    if (state.variant === required.variant.value) return null
+    const anyBlocked = kind.variants.some((v) => unavailability(v.value) !== null)
+    if (!anyBlocked) return null
+    return {
+      label: t('b2.axes.enable', {
+        service: en ? required.service.labelEn : required.service.labelDe,
+        variant: en ? required.variant.labelEn : required.variant.labelDe,
+      }),
+      onSelect: () => s.setKgServiceDecision(required.service.id, {
+        state: 'selected', variant: required.variant!.value,
+      }),
+    }
+  })()
+
+  return (
+    <div className="a3-axis" data-axis={axis}>
+      <ChoiceGroup
+        legend={en ? service.labelEn : service.labelDe}
+        layout="stack"
+        value={current}
+        options={kind.variants.map((variant) => {
+          const blocked = unavailability(variant.value)
+          return {
+            value: variant.value,
+            label: en ? variant.labelEn : variant.labelDe,
+            consequence: blocked ? undefined : consequenceOf(variant.value),
+            badge: variant.value === kind.baselineVariant
+              ? t('b2.axes.baselineBadge')
+              : undefined,
+            disabled: Boolean(blocked),
+            disabledReason: blocked?.reason,
+          }
+        })}
+        onChange={(variant) => s.setKgServiceDecision(service.id, {
+          state: 'selected', variant,
+        })}
+        onPreview={(variant) => s.previewOption(variant === null
+          ? null
+          : {
+            kind: 'kgService',
+            serviceId: service.id,
+            value: { state: 'selected', variant },
+          })}
+        footer={(
+          <>
+            <p className="a3-axis-summary">{en ? service.summaryEn : service.summaryDe}</p>
+            {enabling ? (
+              <Button variant="ghost" onClick={enabling.onSelect}>
+                {enabling.label}
+              </Button>
+            ) : null}
+          </>
+        )}
+      />
     </div>
   )
 }

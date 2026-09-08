@@ -3142,7 +3142,8 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    .a3-svcg-empty · .a3-svcr · .a3-svcr-main · .a3-svcr-identity ·
    .a3-svcr-name · .a3-svcr-summary · .a3-svcr-meta · .a3-svcr-control ·
    .a3-svcr-status · .a3-svcr-amount · .a3-svcr-warning ·
-   .a3-svcr-detail-toggle · .a3-svcr-readonly · .a3-svcd · .a3-svcd-fields ·
+   .a3-svcr-detail-toggle · .a3-svcr-readonly · .a3-svcr-owner · .a3-svcd ·
+   .a3-svcd-fields ·
    .a3-svcd-field · .a3-svcd-dependency · .a3-crc · .a3-crc-body ·
    .a3-crc-label · .a3-crc-amount · .a3-crc-meta · .a3-crs · .a3-crs-rows ·
    .a3-crs-row · .a3-crst
@@ -3298,7 +3299,12 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-svcr-toggle{position:relative;display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--size-hit-target-default);cursor:pointer;font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);color:var(--color-text-primary);white-space:nowrap}
 .a3-svcr-toggle input{width:var(--size-icon-md);height:var(--size-icon-md);accent-color:var(--color-selection-border);margin:0}
 .a3-svcr-toggle:has(input:focus-visible){outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--border-width-focus)}
-.a3-svcr-readonly{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-svcr-readonly{display:grid;justify-items:start;gap:var(--space-1);font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+/* The route to the owning decision. A link-shaped BUTTON, because it
+   navigates within the Option workspace rather than to a document, and
+   a 44px target through `.hit-target` without growing the caption row
+   (rule 23). */
+.a3-svcr-owner{position:relative;border:0;background:none;padding:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);text-decoration:underline;text-underline-offset:2px;cursor:pointer;text-align:left}
 .a3-svcr-warning{margin:var(--space-2) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
 .a3-svcr-detail-toggle{margin:var(--space-2) 0 0}
 
@@ -5216,6 +5222,10 @@ a.a3-cockpit-effect:hover .a3-cockpit-effect-name{color:var(--color-text-primary
 .a3-oms{display:grid;gap:var(--space-2);min-width:0}
 .a3-oms-total{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-2);min-width:0}
 .a3-oms-total-value{font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+/* A MISSING price is not a metric, so it is not typeset as one: quiet,
+   secondary and never the loudest thing on the card. The words still
+   carry it (rule 8) — only the emphasis steps down. */
+.a3-oms[data-price="notDetermined"] .a3-oms-total-value{font-weight:var(--type-caption-weight);color:var(--color-text-secondary)}
 /* The scope label is a CAPTION beside the amount, never a second heading:
    `Netto · Zwischensubtotal…` is one sentence about one number. */
 .a3-oms-total-label{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
@@ -5240,3 +5250,19 @@ a.a3-cockpit-effect:hover .a3-cockpit-effect-name{color:var(--color-text-primary
   .a3-oms-fact{grid-template-columns:minmax(0,1fr);row-gap:0}
   .a3-oms-fact-v{justify-self:start}
 }
+
+/* ── Scope decisions · the three Option-level axes (B2) ───────────────────
+   Classes: .a3-axes · .a3-axes-head · .a3-axes-title · .a3-axes-lede ·
+   .a3-axes-list · .a3-axis · .a3-axis-summary
+
+   Three axes side by side where the width allows and stacked where it does
+   not — whole axes move, never a variant out of its own group. `minmax` and
+   no fixed width, because a certification label is longer in English than in
+   German and longer again in French (rule 36). */
+.a3-axes{display:grid;gap:var(--space-4);margin-top:var(--space-7);padding-top:var(--space-6);border-top:var(--border-contrast-1px)}
+.a3-axes-head{display:grid;gap:var(--space-2)}
+.a3-axes-title{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-axes-lede{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);max-width:var(--measure-body-max)}
+.a3-axes-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr));gap:var(--space-4);align-items:start}
+.a3-axis{min-width:0;background:var(--color-surface-default);border:var(--border-hairline);padding:var(--space-4)}
+.a3-axis-summary{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}

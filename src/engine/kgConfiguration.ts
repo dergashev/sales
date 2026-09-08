@@ -1128,6 +1128,63 @@ export function dependencyBlocker(
 }
 
 /**
+ * Is a variant this service does NOT currently hold reachable at all?
+ *
+ * `dependencyBlocker` answers about the answer already given. Configure has
+ * to answer a different question BEFORE the click: may the user pick
+ * QNG-PREMIUM right now, and if not, what would make it available? An
+ * unavailable choice exists only together with its reason and the action
+ * that enables it (rule 12), and a reason cannot be produced by a function
+ * that only inspects the current selection.
+ *
+ * Returns the upstream service id that is standing in the way, or `null`
+ * when the variant is reachable. Same rules as `dependencyBlocker`,
+ * evaluated against the HYPOTHETICAL variant — one implementation of the
+ * dependency semantics, asked two different questions, rather than two
+ * implementations that can drift.
+ */
+export function variantBlocker(
+  catalogue: KgCatalogue,
+  decisions: KgDecisions,
+  service: KgService,
+  variant: string,
+): string | null {
+  const dep = service.dependsOn
+  if (!dep) return null
+  if (dep.appliesToVariants && !dep.appliesToVariants.includes(variant)) return null
+  const upstream = serviceById(catalogue, dep.serviceId)
+  if (!upstream) return dep.serviceId
+  const upstreamGroup = groupOfService(catalogue, dep.serviceId)
+  if (upstreamGroup && decisions.scope[upstreamGroup] !== 'included') return dep.serviceId
+  const state = serviceDecision(decisions, upstream)
+  if (dep.requiresSelected && state.state !== 'selected') return dep.serviceId
+  if (dep.requiresVariant && state.variant !== dep.requiresVariant) return dep.serviceId
+  if (dep.requiresVariantIn && !dep.requiresVariantIn.includes(state.variant ?? '')) {
+    return dep.serviceId
+  }
+  return null
+}
+
+/**
+ * The variant the blocking dependency would need upstream, in words the
+ * upstream service itself supplies. `null` when the dependency does not name
+ * one (it merely requires the upstream to be selected).
+ */
+export function requiredUpstreamVariant(
+  catalogue: KgCatalogue, service: KgService,
+): { service: KgService; variant: KgServiceVariant | null } | null {
+  const dep = service.dependsOn
+  if (!dep) return null
+  const upstream = serviceById(catalogue, dep.serviceId)
+  if (!upstream) return null
+  const wanted = dep.requiresVariant ?? dep.requiresVariantIn?.[0] ?? null
+  const variant = wanted && upstream.kind.kind === 'singleChoice'
+    ? upstream.kind.variants.find((v) => v.value === wanted) ?? null
+    : null
+  return { service: upstream, variant }
+}
+
+/**
  * DOES THIS DECISION EXIST AT ALL RIGHT NOW — and if not, because of whom?
  *
  * `dependencyBlocker` answers a narrower question: *is the answer this

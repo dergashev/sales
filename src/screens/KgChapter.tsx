@@ -126,6 +126,29 @@ export function KgChapter() {
     if (service.kind.kind === 'readOnlyRequired') {
       return { kind: 'readOnly', label: t('vr3.kg.service.mandatory') }
     }
+    /**
+     * B2 · requirement 14 — an Option-level AXIS is shown here and decided
+     * in Configure · Scope decisions. Read-only WITH the route back, never
+     * read-only alone: a value editable nowhere is a dead end, and a value
+     * editable in two chapters has two answers. The chapter still reads the
+     * live decision, so what it displays is exactly what Configure holds.
+     */
+    if (service.scopeAxis && service.kind.kind === 'singleChoice') {
+      const variantId = decision.state === 'selected'
+        ? decision.variant ?? service.kind.baselineVariant
+        : service.kind.baselineVariant
+      const variant = service.kind.variants.find((v) => v.value === variantId)
+      return {
+        kind: 'readOnly',
+        label: t('b2.axes.readOnly', {
+          variant: variant ? (en ? variant.labelEn : variant.labelDe) : variantId,
+        }),
+        owner: {
+          label: t('b2.axes.readOnly.route'),
+          onSelect: () => s.openConfiguratorStepAt(CONFIGURATOR_STEP.SCOPE_BOUNDARIES),
+        },
+      }
+    }
     if (service.kind.kind === 'singleChoice') {
       const variants = service.kind.variants
       return {

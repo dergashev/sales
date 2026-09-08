@@ -309,6 +309,22 @@ export function optionAxisValue(
 export type OptionCommercialProjection = Readonly<{
   /** The result's own version, so two surfaces can PROVE they agree. */
   resultVersion: number
+  /**
+   * IS THERE A PRICE AT ALL — the rule-16 question, asked once.
+   *
+   * A fresh Option has six undecided cost groups and therefore not one
+   * calculated position, so its total is `0`. That zero is an ABSENCE, not
+   * an amount, and rule 16 forbids rendering it as one. The released Offer
+   * panel already read the same signal (`total.exact.isZero()` →
+   * `Preis nicht ermittelt`); carrying it on the projection means every
+   * surface reads the released convention instead of re-deriving it — and
+   * that no surface can print `0 €` or, worse, `0 €/m²` for an Option
+   * nobody has configured yet.
+   *
+   * When this is `false`, `metrics` is EMPTY by construction: a rate whose
+   * numerator is an absence is not a smaller rate, it is not a rate.
+   */
+  priceDetermined: boolean
   netTotal: Displayed
   /** Derived from coverage, never assigned (R-18). */
   totalLabel: string
@@ -355,12 +371,18 @@ export function optionCommercialProjection(
     : scope.scopeBuildings
   const profile = optionUseProfile(buildings)
   const total = result.total.exact
+  const priceDetermined = !total.isZero()
 
   const metrics: OptionAreaMetric[] = []
   const gaps: OptionAreaMetricGap[] = []
 
-  const wantsResidential = profile === 'residential' || profile === 'mixed'
-  const wantsNonResidential = profile === 'nonResidential' || profile === 'mixed'
+  // No calculated position means no rate. Neither a zero rate nor a gap:
+  // the SEGMENT is not what is missing, the price is, and the summary says
+  // that once instead of once per denominator.
+  const wantsResidential = priceDetermined
+    && (profile === 'residential' || profile === 'mixed')
+  const wantsNonResidential = priceDetermined
+    && (profile === 'nonResidential' || profile === 'mixed')
 
   if (wantsResidential) {
     const area = segmentArea(scope, buildings, 'residential')
@@ -400,7 +422,7 @@ export function optionCommercialProjection(
   // The whole-project construction scale, always norm-independent and always
   // last: it orients, it is not the Option's Leitkennzahl (rule 39).
   const bgf = bgfAboveGround(scope, buildings)
-  if (bgf !== null && bgf.gt(0)) {
+  if (priceDetermined && bgf !== null && bgf.gt(0)) {
     metrics.push({
       id: 'bgfAbove',
       role: 'scale',
@@ -411,6 +433,7 @@ export function optionCommercialProjection(
 
   return {
     resultVersion: result.version,
+    priceDetermined,
     netTotal: result.total,
     totalLabel: result.totalLabel,
     coverage: result.coverage,
