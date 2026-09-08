@@ -3,6 +3,7 @@ import { clientModeLockReasonFor, useStore } from '../state/store'
 import { Button } from './primitives'
 import { useT, useTx } from '../i18n'
 import { NNBSP } from '../engine/money'
+import { riskIsInPrice } from '../engine/risk'
 import { Dialog, type DialogHandle } from './Dialog'
 import { startContinuityTransition, useSemanticMotion } from '../design-system/motion'
 
@@ -60,7 +61,23 @@ export function ClientOutputGateDialog({ returnFocusTo }: {
       ? []
       : ['Option noch nicht gespeichert — die Kundenansicht zeigt nur eine gespeicherte Option']),
   ]
-  const risksActive = Object.values(s.risikoAktiv).some(Boolean)
+  /**
+   * «Angewendet» und «im Preis» sind zwei Aussagen, nicht eine.
+   *
+   * Diese Zeile las bisher nur das Kennzeichen `risikoAktiv` und
+   * behauptete daraufhin, der Zuschlag sei im Preis enthalten. Ein
+   * Zuschlag, dessen Basis nicht auflösbar ist — `Bestand / Abbruchumfang`
+   * ohne enthaltene KG 200, oder eine noch unbepreiste KG 200 —, erreicht
+   * den Preis nicht. Die Checkliste hätte dem Verkäufer vor der
+   * Präsentation Geld bestätigt, das im Angebot nicht steht.
+   *
+   * Der Preis wird jetzt aus derselben Projektion gelesen, die ihn
+   * berechnet: `riskBasisStates` nennt für jeden angewendeten Zuschlag den
+   * Zustand seiner Basis.
+   */
+  const riskStates = p?.riskBasisStates ?? []
+  const risksInPrice = riskStates.filter(riskIsInPrice).length
+  const risksWithoutBasis = riskStates.length - risksInPrice
 
   return (
     <Dialog
@@ -93,10 +110,16 @@ export function ClientOutputGateDialog({ returnFocusTo }: {
                 </span>
                 {tx('Schätzunsicherheit')} ±{NNBSP}{p.uncertaintyPp}{NNBSP}%
               </div>
-              {risksActive && (
+              {risksInPrice > 0 && (
                 <div className="a3-item">
                   <span className="a3-warnc" aria-hidden="true">!</span>
                   {tx('Risikozuschlag ist aktiv und im Preis enthalten.')}
+                </div>
+              )}
+              {risksWithoutBasis > 0 && (
+                <div className="a3-item">
+                  <span className="a3-warnc" aria-hidden="true">!</span>
+                  {t('vr3.gate.riskWithoutBasis')}
                 </div>
               )}
             </>

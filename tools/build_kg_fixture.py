@@ -682,6 +682,18 @@ def kg300_building(p, b):
                      'als Bedingung benannt, nicht als Betrag.'),
         offerNoteEn=('Balconies included in the All3 scope. If excluded, the offer states the '
                      'position as a condition, not as an amount.'),
+        # Where the documents DO carry a balcony position the decision is
+        # priced (Haus A, 240.000 EUR) and needs no condition. Where they do
+        # not, including balconies is a required decision with no price
+        # basis whatever — and the reason is exactly the one the source line
+        # already states, so it is declared rather than left to be inferred
+        # from a missing number.
+        pricingConditionDe=(None if bal['amount'] else
+                            'keine Balkonposition in den Unterlagen · '
+                            'Menge und Ausführung noch nicht erfasst'),
+        pricingConditionEn=(None if bal['amount'] else
+                            'no balcony position in the documents · '
+                            'quantity and execution not yet captured'),
         **per_building, **INCLUDE_LABELS)
     d05 = tchoice(sid('balcony', 'support'), 'Tragsystem Balkone', 'Balcony support system',
         'Lastabtrag der Balkone; nur entscheidbar, solange Balkone im Umfang sind.',
@@ -710,6 +722,27 @@ def kg300_building(p, b):
                'Tragwerkskoeffizienten gibt es keine gesonderte Preisgrundlage.'),
         whyEn=('A material cost driver — without an approved system-specific structural '
                'coefficient there is no separate price basis.'),
+        # BLOCKED PRICING, declared rather than implied.
+        #
+        # This decision is a material cost driver whose own `whyDe` says so,
+        # and all three alternatives carry `noPriceBasis`. Until this field
+        # existed the option cards rendered `keine Preiswirkung` — a claim
+        # that choosing between a column, a diagonal and a cantilever does
+        # not move the price. It does; the product has no released
+        # coefficient for it. The CONDITION is the difference between those
+        # two statements, so it is named here and printed on the decision.
+        #
+        # The dormant `balkonTyp` rates in `derived-prototype.json`
+        # (diagonal 0 / stuetzen +140 / konsole +330 EUR/m2 BGF_S) cannot be
+        # adopted: their baseline is `diagonal` while this decision's is
+        # `BAL_COLUMNS` (re-basing would derive a new coefficient), there is
+        # no `konsole` alternative here and no `BAL_CANTILEVER` rate there,
+        # and their `BGF_S` denominator is DIN 277 special-purpose floor
+        # area, which decision D-26 explicitly forbade using as balcony
+        # area. Naming the condition is the honest state; a re-based rate
+        # would be an invented one.
+        pricingConditionDe='systemspezifischer Tragwerkskoeffizient noch nicht freigegeben',
+        pricingConditionEn='system-specific structural coefficient not yet approved',
         offerNoteDe='Balkone als stützengetragene, diagonal abgestützte oder auskragende Balkone gemäß Tragwerkskonzept.',
         offerNoteEn='Balconies as column-supported, diagonally braced or cantilevered balconies to the structural concept.',
         **per_building)
@@ -2767,6 +2800,20 @@ def prove_choice_integrity(name, services):
             if v.get('excludesPosition') and priced:
                 raise SystemExit(
                     f"{name} {s['id']}/{v['value']}: an excluded position cannot carry a delta")
+    # A REQUIRED decision that is entirely without a price basis is BLOCKED
+    # PRICING, and blocked pricing has to say what is blocking it. Without
+    # the condition the surface can only report the absence of a price,
+    # which reads as "this choice does not cost anything" — the opposite of
+    # true for a decision the catalogue itself calls a cost driver.
+    for s in services:
+        if not s.get('requiresDecision'):
+            continue
+        if s.get('costAuthority') != 'noBasis':
+            continue
+        if not (s.get('pricingConditionDe') and s.get('pricingConditionEn')):
+            raise SystemExit(
+                f"{name} {s['id']}: a required decision with no price basis must "
+                'declare pricingConditionDe/En — blocked pricing states its condition')
     # A source baseline must never be merged into the proposal: where a
     # decision names the variant its documents specified, that variant has to
     # exist in the choice set, or "restore the documented solution" is a

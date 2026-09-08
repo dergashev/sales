@@ -386,6 +386,23 @@ export type KgService = Readonly<{
   /** Names the bundle when `costAuthority` is `bundle`. */
   costBasisDe?: string
   costBasisEn?: string
+  /**
+   * BLOCKED PRICING — what is preventing a price, in the user's terms.
+   *
+   * `costAuthority: 'noBasis'` says only that no euro may be asserted. For
+   * a decision the catalogue itself calls a material cost driver that is
+   * not enough: the absence of a number reads as "this choice is free"
+   * unless the CONDITION is named. `Tragsystem Balkone` is the case that
+   * forced this field — three alternatives, all `noPriceBasis`, a `whyDe`
+   * beginning `Ein wesentlicher Kostentreiber`, and an option card that
+   * said `keine Preiswirkung`.
+   *
+   * A required decision with `noBasis` authority MUST declare it; the
+   * fixture generator refuses to build one that does not
+   * (`prove_choice_integrity`, `tools/build_kg_fixture.py`).
+   */
+  pricingConditionDe?: string
+  pricingConditionEn?: string
   /** Not applicable, with its cause. Renders a statement, never a control. */
   applicability?: KgApplicability
   /** Valid-but-unavailable alternatives, shown with their reason. */

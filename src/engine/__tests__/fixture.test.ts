@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { Decimal } from 'decimal.js'
 import demo from '../../fixtures/demo-0001.json'
 import catalog from '../../fixtures/catalog.json'
-import { KG300_SUBGROUPS, RISK_ITEMS, riskDriver, subgroupSum } from '../risk'
+import {
+  KG300_SUBGROUPS, RISK_ITEMS, riskDriver, resolveRiskBasis, riskSurchargeExceedsCap,
+  subgroupSum, type Kg200Basis, type RiskBases,
+} from '../risk'
 import {
   aggregateComplex, applyDiscount, calculateBuilding, deriveCompleteness,
   driversSum, kgSplit, totalLabel,
@@ -518,10 +521,18 @@ describe('Третий уровень KG 300 и надбавки за риск (
     expect(shares.toFixed(2)).toBe('1.00')
   })
 
+  /**
+   * Базы надбавок, как их подаёт расчёт. `kg200` объявляется отдельным
+   * состоянием, а не числом: KG 200 в `K_base` не входит и существует
+   * только по решению о включении группы.
+   */
+  const bases = (kg300: Decimal, kg200: Kg200Basis = { kind: 'notIncluded' }): RiskBases =>
+    ({ kg300Exact: kg300, kg200 })
+
   it('надбавка считается от СВОЕЙ базы, а не от группы целиком', () => {
     const kg300 = new Decimal('1000000')
     const baugrund = RISK_ITEMS.find((r) => r.id === 'RISK-BAUGRUND')!
-    const d = riskDriver(baugrund, kg300)!
+    const d = riskDriver(baugrund, bases(kg300))!
     // KG 320 = 11 % от KG 300; надбавка = 4 % от KG 320, а не от KG 300.
     expect(d.basis).toMatchObject({ kind: 'factor' })
     const b = d.basis as { kind: 'factor'; appliedTo: Decimal; factor: Decimal }
@@ -534,9 +545,136 @@ describe('Третий уровень KG 300 и надбавки за риск (
   it('риск с базой KG 300 берёт группу целиком — база названа в самой записи', () => {
     const kg300 = new Decimal('1000000')
     const statik = RISK_ITEMS.find((r) => r.id === 'RISK-STATIK')!
-    const d = riskDriver(statik, kg300)!
+    const d = riskDriver(statik, bases(kg300))!
     const b = d.basis as { kind: 'factor'; appliedTo: Decimal; factor: Decimal }
     expect(b.appliedTo.toFixed(2)).toBe('1000000.00')
     expect(d.exact.toFixed(2)).toBe('20000.00')
+  })
+
+  /**
+   * All SIX drivers of calculation-spec §1.4, and the exact numbers.
+   *
+   * The catalogue implemented TWO of them. The other four were not merely
+   * missing: `catalog.json`'s `internalConfig.riskDrivers` already declared
+   * all six and `S6Einstellungen` already PRINTED all six, so the product
+   * named four risk surcharges it could not apply under any state. One of
+   * them declared `KG 200`, a basis `riskDriver` could not resolve at all.
+   */
+  it('§1.4: все шесть драйверов существуют со своими ставками и базами', () => {
+    expect(RISK_ITEMS).toHaveLength(6)
+    // Порядок — порядок таблицы §1.4, не порядок дописывания.
+    expect(RISK_ITEMS.map((r) => [r.id, r.base, r.rate])).toEqual([
+      ['RISK-BAUGRUND', 'KG_320', '0.04'],
+      ['RISK-GRUNDWASSER', 'KG_320', '0.03'],
+      ['RISK-STATIK', 'KG_300', '0.02'],
+      ['RISK-BAUSTELLE', 'KG_300', '0.03'],
+      ['RISK-BESTAND', 'KG_200', '0.05'],
+      ['RISK-DENKMAL', 'KG_300', '0.03'],
+    ])
+    // Каждый несёт обе локали (правило 36) и способ снятия (D-02).
+    for (const r of RISK_ITEMS) {
+      expect(r.label.length).toBeGreaterThan(0)
+      expect(r.labelEn.length).toBeGreaterThan(0)
+      expect(r.remedy.length).toBeGreaterThan(0)
+      expect(r.remedyEn.length).toBeGreaterThan(0)
+    }
+  })
+
+  /**
+   * Ни одна объявленная база не остаётся неразрешимой.
+   *
+   * Это тот самый дефект в форме инварианта: `base: 'KG_200'` возвращал
+   * `undefined` и вызывающий отбрасывал драйвер молча. Теперь неизвестная
+   * база — объявленное состояние `unknownBase`, и его существование
+   * запрещено для КАЖДОГО элемента каталога.
+   */
+  it('каждая объявленная база разрешается движком — молчаливого пропуска нет', () => {
+    const kg300 = new Decimal('1000000')
+    for (const risk of RISK_ITEMS) {
+      for (const kg200 of [
+        { kind: 'notIncluded' } as const,
+        { kind: 'notDetermined' } as const,
+        { kind: 'amount', exact: new Decimal('500000') } as const,
+      ]) {
+        expect(resolveRiskBasis(risk, bases(kg300, kg200)).kind).not.toBe('unknownBase')
+      }
+    }
+  })
+
+  /**
+   * The KG 200 basis has three answers and none of them is a silent zero.
+   *
+   * KG 200 is not part of `K_base`; it exists only once the group is
+   * included and priced. `+5 %` of a group that is not in the offer is not
+   * zero — it is out of scope; `+5 %` of a group that still owes a position
+   * is not zero either — it is not determined (rule 16). Only a complete
+   * KG 200 amount produces money.
+   */
+  it('база KG 200: три состояния, ни одно не подменяется нулём', () => {
+    const kg300 = new Decimal('1000000')
+    const bestand = RISK_ITEMS.find((r) => r.id === 'RISK-BESTAND')!
+    expect(bestand.base).toBe('KG_200')
+
+    const outOfScope = resolveRiskBasis(bestand, bases(kg300, { kind: 'notIncluded' }))
+    expect(outOfScope).toEqual({ kind: 'outOfScope', reason: 'kg200NotIncluded' })
+    expect(riskDriver(bestand, bases(kg300, { kind: 'notIncluded' }))).toBeNull()
+
+    const unknown = resolveRiskBasis(bestand, bases(kg300, { kind: 'notDetermined' }))
+    expect(unknown).toEqual({ kind: 'notDetermined', reason: 'kg200NotDetermined' })
+    expect(riskDriver(bestand, bases(kg300, { kind: 'notDetermined' }))).toBeNull()
+
+    // A real KG 200 amount: 5 % of it, on ITS OWN base — never on KG 300.
+    const priced = riskDriver(
+      bestand, bases(kg300, { kind: 'amount', exact: new Decimal('325000') }),
+    )!
+    const b = priced.basis as { kind: 'factor'; appliedTo: Decimal; factor: Decimal }
+    expect(b.appliedTo.toFixed(2)).toBe('325000.00')
+    expect(priced.exact.toFixed(2)).toBe('16250.00')
+    expect(priced.scopeRefs).toEqual(['KG 200'])
+    // And decidedly NOT 5 % of KG 300, the denominator it would have
+    // borrowed had the base fallen through to the KG 300 branch.
+    expect(priced.exact.toFixed(2)).not.toBe(kg300.mul('0.05').toFixed(2))
+  })
+
+  /**
+   * The §1.4 cap is a WARNING threshold, not a clamp.
+   *
+   * The specification says the system "выдаёт предупреждение, а не молча
+   * суммирует" and gives no truncation rule. Inventing one would name a
+   * price no source states, so the predicate reports and never reduces.
+   */
+  it('§1.4: порог 12 % от Bauwerk сообщается, а не усекает', () => {
+    const cap = new Decimal(catalog.internalConfig.riskCapPercentOfBauwerk)
+    expect(cap.toFixed(0)).toBe('12')
+    const bauwerk = new Decimal('1000000')
+    expect(riskSurchargeExceedsCap(new Decimal('119999'), bauwerk, cap)).toBe(false)
+    expect(riskSurchargeExceedsCap(new Decimal('120000'), bauwerk, cap)).toBe(false)
+    expect(riskSurchargeExceedsCap(new Decimal('120001'), bauwerk, cap)).toBe(true)
+    // Нет базы — нет и порога: 12 % от нуля не является утверждением.
+    expect(riskSurchargeExceedsCap(new Decimal('1'), new Decimal(0), cap)).toBe(false)
+  })
+
+  /**
+   * `catalog.json` и `derived-prototype.json` описывают ОДИН каталог.
+   *
+   * `S6Einstellungen` печатает первый, движок исполняет второй. Пока они
+   * расходились, экран настроек называл шесть надбавок, а применить можно
+   * было две — «одна сущность, два имени», класс, который `CLAUDE.md`
+   * называет самым дорогим. Сверка поштучная, а не по количеству.
+   */
+  it('печатаемый каталог надбавок совпадает с исполняемым — поле за полем', () => {
+    const printed = catalog.internalConfig.riskDrivers
+    expect(printed).toHaveLength(RISK_ITEMS.length)
+    for (const [i, item] of RISK_ITEMS.entries()) {
+      const row = printed[i]!
+      // `catalog.json` печатает код параметра в подписи, движок держит его
+      // отдельным полем — сравнивается подпись без кода (DC-44).
+      expect(row.label.replace(/ \(`[^`]+`\)/, '')).toBe(item.label)
+      expect(row.base).toBe(item.base.replace('_', ' '))
+      expect(new Decimal(row.ratePercent).div(100).toFixed(2))
+        .toBe(new Decimal(item.rate).toFixed(2))
+      const code = / \(`([^`]+)`\)/.exec(row.label)?.[1]
+      expect(item.sourceParameter ?? undefined).toBe(code)
+    }
   })
 })

@@ -149,7 +149,8 @@ import {
   scopeCatalogDrivers, defaultScopeCatalogSelections, SCOPE_QUANTITY_UNIT,
   ALL_SCOPE_CATALOG_OPTIONS, KG200_CATALOG_OPTIONS, KG500_CATALOG_OPTIONS,
   KG600_CATALOG_OPTIONS, KG800_CATALOG_OPTIONS,
-  type ScopeQuantityKey,
+  unpricedScopeCatalogPositions,
+  type ScopeQuantityKey, type UnpricedScopePosition,
 } from '../engine/scopeCatalog'
 import derivedFx from '../fixtures/derived-prototype.json'
 
@@ -184,7 +185,10 @@ import {
   addHalfMonths, halfMonthsBetween, modelDuration, presentDuration,
   schedulePositionOf, shiftScheduleMetrics, type DurationDisplay,
 } from '../engine/schedule'
-import { RISK_ITEMS, riskDriver } from '../engine/risk'
+import {
+  RISK_ITEMS, riskOutcome,
+  type Kg200Basis, type RiskBases, type RiskBasisState,
+} from '../engine/risk'
 import {
   appendConflictResolution,
   buildingFingerprint,
@@ -1891,6 +1895,17 @@ export type Projection = {
   belowGround: ReturnType<typeof present>
   /** Интервал точности. Сужается ПОДТВЕРЖДЕНИЕМ, не выбором опции (D-19). */
   uncertaintyPp: number
+  /**
+   * Состояние базы каждой ПРИМЕНЁННОЙ надбавки за риск.
+   *
+   * «Применена» и «в цене» — разные утверждения, и до этой задачи ни одна
+   * поверхность не могла их различить: `ClientOutputGateDialog` объявлял
+   * «Risikozuschlag ist aktiv und im Preis enthalten» по одному булеву
+   * флагу `risikoAktiv`, а надбавка с неразрешимой базой в цену не
+   * попадала. Пустой массив означает «ни одна не применена», а НЕ «все
+   * применённые в цене».
+   */
+  riskBasisStates: readonly RiskBasisState[]
 }
 
 export type Store = {
@@ -4619,39 +4634,43 @@ export function coverageFromKgDecisions(decisions: KgDecisions): Coverage {
  * catalog groups (KG 200/500/600) are `included` but genuinely have no
  * price basis — as opposed to a genuinely DECIDED zero-rate variant (e.g.
  * "Baufreies Grundstück"), which is a real, calculated €0 and not a gap
- * (rule 16 forbids the latter, not the former). This reads only
- * already-computed inputs (the selected variant's own catalog `rate`, the
- * same `quantityOf` resolver `computeProjection` already uses to price
- * these groups) and applies no formula/rate/rounding of its own — it is a
- * completeness CLASSIFICATION of an existing decision, feeding the same
+ * (rule 16 forbids the latter, not the former). It is a completeness
+ * CLASSIFICATION of an existing decision, feeding the same
  * `IncompleteReason` mechanism `deriveCompleteness` (engine) already
- * produces per building. Deliberately NOT added to `src/engine/**`: the
- * task's own DONE CONDITION requires zero changes there.
+ * produces per building.
+ *
+ * The criterion itself no longer lives here. It is
+ * `unpricedScopeCatalogPositions` (`engine/scopeCatalog.ts`), beside the
+ * calculator whose `null` it classifies, because the same question is now
+ * asked by four surfaces and a second copy of the criterion diverges on
+ * the first edit.
+ *
+ * TWO defects the previous local criterion carried, both fixed by moving it:
+ *
+ * 1. **It required the WHOLE GROUP to price to zero** (`!groupSum(…)
+ *    .isZero() → continue`), so a group that prices ONE position claimed a
+ *    complete total while other included positions stayed unpriced. KG 200
+ *    hits this on its own defaults: `kg200-03` (20.000 €/Gebäude, quantity
+ *    derived from the project) and `kg200-06` (15.000 € pauschal) both
+ *    price, while `kg200-02` (Bodenaushub-Entsorgung, 12 €/t) and
+ *    `kg200-04` (Private Erschließung, 30 €/m²) are included with a
+ *    non-zero rate and NO quantity. Including KG 200 therefore produced a
+ *    total labelled complete with two silently dropped positions inside it
+ *    — exactly the aggregate claim rule 16 forbids.
+ * 2. **It treated an entered zero as a missing quantity** (`qty === null
+ *    || qty.lte(0)`). A quantity of zero is an answer: that scope is not in
+ *    this project, and the position is a calculated €0, not a gap.
+ *
+ * The group list stays the return type because `IncompleteReason` speaks in
+ * cost groups; the POSITIONS behind it are returned separately for the
+ * surfaces that must name them.
  */
 function unpricedScopeCatalogGroups(
   groups: readonly ('KG_200' | 'KG_500' | 'KG_600')[],
   isActive: (g: 'KG_200' | 'KG_500' | 'KG_600') => boolean,
-  groupSum: (label: string) => Decimal,
-  quantityOf: (key: ScopeQuantityKey) => Decimal | null,
-  selections: Record<string, string>,
+  positions: readonly UnpricedScopePosition[],
 ): CostGroup[] {
-  const out: CostGroup[] = []
-  for (const g of groups) {
-    if (!isActive(g) || !groupSum(g.replace('_', ' ')).isZero()) continue
-    const wouldHavePriced = ALL_SCOPE_CATALOG_OPTIONS
-      .filter((o) => o.kg === g)
-      .some((o) => {
-        const value = selections[o.id] ?? o.default
-        const variant = o.variants.find((v) => v.value === value)
-        if (!variant || new Decimal(variant.rate).isZero()) return false
-        if (o.basis.kind !== 'perQuantity') return false
-        const key = variant.quantityKeyOverride ?? o.basis.quantityKey
-        const qty = quantityOf(key)
-        return qty === null || qty.lte(0)
-      })
-    if (wouldHavePriced) out.push(g)
-  }
-  return out
+  return groups.filter((g) => isActive(g) && positions.some((p) => p.kg === g))
 }
 
 /**
@@ -4817,6 +4836,12 @@ function kgConfigurationProjection(
       ? null
       : rate(total, areas.units, 'WOHNEINHEITEN'),
     duration: proposalDuration(s),
+    // This pricing basis has never applied risk surcharges: it prices from
+    // the KG configuration's declared amounts, and `riskDriver` is not part
+    // of it. The list is therefore EMPTY, which is the honest answer —
+    // reporting the applied risks here would tell every consumer the
+    // surcharge reached a price it never reached.
+    riskBasisStates: [],
     aboveGround: present(total.minus(areas.belowGroundShare)),
     belowGround: present(areas.belowGroundShare),
     // The demonstration band is DECLARED by the fixture, not narrowed by a
@@ -5026,11 +5051,6 @@ function proposalProjection(s: ProjectionInput): Projection {
       )
   const kg300Exact = effectiveKgSplit.KG_300
   const kg400Exact = effectiveKgSplit.KG_400
-  for (const risk of RISK_ITEMS) {
-    if (!s.risikoAktiv[risk.id]) continue
-    const d = riskDriver(risk, kg300Exact)
-    if (d) optDrivers.push(d)
-  }
 
   // KG 200 / 500 / 600 / 800 (тикет "MAKE ALL KG 200–800 SELECTABLE…").
   // Количественные драйверы: выведенные (здания/квартиры — из уже
@@ -5074,6 +5094,55 @@ function proposalProjection(s: ProjectionInput): Projection {
     optDrivers.push(...scopeCatalogDrivers(
       KG600_CATALOG_OPTIONS, s.scopeCatalogChoices, scopeQuantityOf, kg300Plus400,
     ))
+  }
+
+  // SIDEBAR 02 (backlog 41b8ab39, SB-06/AC-3/AC-4): an included scope-
+  // catalog position with no price basis is an option-level completeness
+  // fact `calculateBuilding`/`deriveCompleteness` (engine, per-building)
+  // cannot see — it is computed once for the whole option here, not per
+  // building. Folded into the SAME `completeness`/`incompleteReasons`
+  // fields those already populate, not a second mechanism.
+  //
+  // Computed HERE, before the risk surcharges below, because the KG 200
+  // risk basis depends on it: a group that still owes a position cannot
+  // hand a complete denominator to a percentage.
+  const unpricedScopePositions = unpricedScopeCatalogPositions(
+    ALL_SCOPE_CATALOG_OPTIONS.filter(
+      (o) => o.kg !== 'KG_800' && scopeCatalogActive(o.kg),
+    ),
+    s.scopeCatalogChoices, scopeQuantityOf, kg300Plus400,
+  )
+
+  // Надбавки за риск — аддитивно после блока Bauwerk (calculation-spec §2:
+  // «модификаторы мультипликативны до регионального фактора, надбавки и
+  // скидка — аддитивны после»). База каждой — своя группа затрат, поэтому
+  // считается от разбиения блока, а не от итога: включив надбавку в базу
+  // распределения, мы растворили бы её в KG 300 — она перестала бы быть
+  // отдельной строкой и вдобавок увеличила бы собственную базу.
+  //
+  // Порядок вызова: ПОСЛЕ каталога KG 200, потому что база драйвера
+  // Bestand/Abbruch (calculation-spec §1.4, +5 % от KG 200) — это уже
+  // посчитанная сумма включённых позиций KG 200, а не доля блока Bauwerk:
+  // KG 200 в `K_base` не входит вовсе. Суммы блоков ниже считаются от
+  // готового списка, поэтому перестановка вкладов внутри `optDrivers`
+  // ничего не двигает — двигало бы отсутствие базы.
+  const kg200RiskBasis: Kg200Basis = !scopeCatalogActive('KG_200')
+    ? { kind: 'notIncluded' }
+    : unpricedScopePositions.some((position) => position.kg === 'KG_200')
+      ? { kind: 'notDetermined' }
+      : {
+          kind: 'amount',
+          exact: optDrivers
+            .filter((d) => d.scopeRefs.includes('KG 200'))
+            .reduce((sum, d) => sum.plus(d.exact), new Decimal(0)),
+        }
+  const riskBases: RiskBases = { kg300Exact, kg200: kg200RiskBasis }
+  const riskBasisStates: RiskBasisState[] = []
+  for (const risk of RISK_ITEMS) {
+    if (!s.risikoAktiv[risk.id]) continue
+    const { basis, driver } = riskOutcome(risk, riskBases)
+    riskBasisStates.push({ riskId: risk.id, basis })
+    if (driver) optDrivers.push(driver)
   }
 
   const separateSum = sumOfBlock([...baseDrivers, ...optDrivers], 'separatePosition')
@@ -5140,8 +5209,17 @@ function proposalProjection(s: ProjectionInput): Projection {
   // scenario.dom.test.tsx's ground-risk assertion during this task).
   // Active risk surcharges instead get their own reconciliation row,
   // exactly like the discount driver below (`discountDriver`).
+  // `block !== 'surcharge'` states GENERALLY what the paragraph above says
+  // about KG 300/400: a DIN 276 group row is the structural cost of that
+  // group, never that cost plus a risk surcharge standing on it. Until the
+  // KG 200 driver existed, only KG 320/KG 300 carried a surcharge and both
+  // rows were assembled from `effectiveKgSplit` rather than from this
+  // sweep, so the omission was invisible; `Bestand / Abbruchumfang` tags
+  // `KG 200`, whose row IS assembled from this sweep, and would have been
+  // counted twice — once in its own reconciliation line, once inside the
+  // group it surcharges.
   const kgGroupSum = (label: string) => allDrivers
-    .filter((d) => d.scopeRefs.includes(label))
+    .filter((d) => d.scopeRefs.includes(label) && d.block !== 'surcharge')
     .reduce((sum, d) => sum.plus(d.exact), new Decimal(0))
   const scopeCatalogGroupSplit: Partial<Record<CostGroup, Decimal>> = {
     ...(scopeCatalogActive('KG_200') ? { KG_200: kgGroupSum('KG 200') } : {}),
@@ -5163,16 +5241,8 @@ function proposalProjection(s: ProjectionInput): Projection {
     ...scopeCatalogGroupSplit,
   }
   const total = beforeDiscount.plus(sumOfBlock(allDrivers, 'discount'))
-  // SIDEBAR 02 (backlog 41b8ab39, SB-06/AC-3/AC-4): an included scope-
-  // catalog group with no price basis (KG 500 typically) is an
-  // option-level completeness fact `calculateBuilding`/`deriveCompleteness`
-  // (engine, per-building) cannot see — it is computed once for the whole
-  // option here, not per building. Folded into the SAME `completeness`/
-  // `incompleteReasons` fields those already populate, not a second
-  // mechanism.
   const unpricedScopeGroups = unpricedScopeCatalogGroups(
-    ['KG_200', 'KG_500', 'KG_600'], scopeCatalogActive, kgGroupSum,
-    scopeQuantityOf, s.scopeCatalogChoices,
+    ['KG_200', 'KG_500', 'KG_600'], scopeCatalogActive, unpricedScopePositions,
   )
   const completeness = perBuilding.every((r) => r.completeness === 'complete')
     && unpricedScopeGroups.length === 0
@@ -5272,6 +5342,7 @@ function proposalProjection(s: ProjectionInput): Projection {
     aboveGround: present(noUg),
     belowGround: present(ug),
     uncertaintyPp: 22 - narrowing,
+    riskBasisStates,
   }
 }
 

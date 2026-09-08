@@ -113,9 +113,112 @@ function euroPerUnit(rate: Decimal, unit: string): string {
 }
 
 /**
- * Вклад одного выбранного варианта. `null`, если ставка `0` (осознанный
- * нулевой вариант каталога, например «Baufreies Grundstück») или количество
- * недоступно (квантити ещё не введено/не выведено).
+ * Исход одного выбранного варианта — ТРИ состояния, а не «драйвер или
+ * `null`».
+ *
+ * Прежняя редакция возвращала `null` и в случае осознанного нулевого
+ * варианта каталога («Baufreies Grundstück» — настоящий, посчитанный 0 €),
+ * и в случае недоступного количества (цена НЕИЗВЕСТНА). Снаружи эти два
+ * случая неразличимы, и включённая позиция с непустой ставкой, у которой
+ * ещё нет количества, исчезала из расчёта молча — ровно тот класс, что
+ * запрещает правило 16: «неизвестно» никогда не равно нулю. Сумма при этом
+ * выглядела законченной, потому что рядом лежала другая позиция той же
+ * группы, чьё количество выводится из проекта.
+ *
+ * Числа не меняются: `priced` отдаёт тот же вклад, что прежде, остальные
+ * два исхода вклада не создают. Меняется только то, что вызывающий теперь
+ * ВИДИТ разницу и обязан её объявить.
+ */
+export type ScopeCatalogOutcome =
+  /** Позиция посчитана. */
+  | { kind: 'priced'; driver: Driver }
+  /**
+   * Решённый ноль: вариант объявляет ставку `0`, либо количество выведено
+   * и равно нулю. Коммерческое решение, а не пробел — цена определена и
+   * равна нулю.
+   */
+  | { kind: 'noCost'; reason: 'zeroRate' | 'zeroQuantity' }
+  /**
+   * Цена не определена: у ставки нет знаменателя. `quantityKey` называет
+   * то, чего не хватает, чтобы поверхность могла сказать это словами.
+   */
+  | { kind: 'notDetermined'; quantityKey: ScopeQuantityKey | null }
+
+export function scopeCatalogOutcome(
+  option: ScopeOption,
+  variant: ScopeVariant,
+  quantityOf: (key: ScopeQuantityKey) => Decimal | null,
+  kg300Plus400: Decimal,
+): ScopeCatalogOutcome {
+  const rate = new Decimal(variant.rate)
+  if (rate.isZero()) return { kind: 'noCost', reason: 'zeroRate' }
+  const scopeRef = option.kg.replace('_', ' ')
+  const evidenceMark = variant.evidenceClass === 'R' ? '' : ` ${'⚙'}`
+
+  if (option.basis.kind === 'percentOfKg300Kg400') {
+    if (kg300Plus400.lte(0)) return { kind: 'notDetermined', quantityKey: null }
+    const factor = rate.div(100)
+    return {
+      kind: 'priced',
+      driver: {
+        key: `scope_${option.id}_${variant.value}`,
+        origin: 'decision',
+        block: 'separatePosition',
+        exact: kg300Plus400.mul(factor),
+        label: `${option.labelDe} · ${variant.labelDe} · `
+          + `${formatDE(rate, 2)}${NNBSP}%${NNBSP}von KG 300+400${evidenceMark}`,
+        scopeRefs: [scopeRef],
+        basis: { kind: 'factor', appliedTo: kg300Plus400, factor },
+      },
+    }
+  }
+
+  if (option.basis.kind === 'flat') {
+    return {
+      kind: 'priced',
+      driver: {
+        key: `scope_${option.id}_${variant.value}`,
+        origin: 'decision',
+        block: 'separatePosition',
+        exact: rate,
+        label: `${option.labelDe} · ${variant.labelDe}${evidenceMark}`,
+        scopeRefs: [scopeRef],
+        basis: null,
+      },
+    }
+  }
+
+  const quantityKey = variant.quantityKeyOverride ?? option.basis.quantityKey
+  const qty = quantityOf(quantityKey)
+  // Отсутствующее количество и введённый ноль — разные ответы. Первое
+  // означает «ещё не знаем» и обязано быть объявлено; второе означает
+  // «этого в проекте нет» и является посчитанным нулём.
+  if (qty === null) return { kind: 'notDetermined', quantityKey }
+  if (qty.lte(0)) return { kind: 'noCost', reason: 'zeroQuantity' }
+  const unit = SCOPE_QUANTITY_UNIT[quantityKey]
+  // Task 04 (F-11 companion, rule 36): a count (Gebäude, Stellplätze, …)
+  // prints as a whole number — see `SCOPE_QUANTITY_IS_COUNT` docblock.
+  const qtyDecimals = SCOPE_QUANTITY_IS_COUNT.has(quantityKey) ? 0 : 2
+  return {
+    kind: 'priced',
+    driver: {
+      key: `scope_${option.id}_${variant.value}`,
+      origin: 'decision',
+      block: 'separatePosition',
+      exact: qty.mul(rate),
+      label: `${option.labelDe} · ${variant.labelDe} · `
+        + `${formatDE(qty, qtyDecimals)}${NNBSP}${unit} × ${euroPerUnit(rate, unit)}${evidenceMark}`,
+      scopeRefs: [scopeRef],
+      basis: null,
+    },
+  }
+}
+
+/**
+ * Вклад одного выбранного варианта — тонкая обёртка над
+ * `scopeCatalogOutcome`. Существует, чтобы у суммирующих поверхностей
+ * остался один и тот же ответ, что и прежде: непосчитанная позиция вклада
+ * не создаёт. Классификацию читает тот, кто обязан её объявить.
  */
 export function scopeCatalogDriver(
   option: ScopeOption,
@@ -123,55 +226,17 @@ export function scopeCatalogDriver(
   quantityOf: (key: ScopeQuantityKey) => Decimal | null,
   kg300Plus400: Decimal,
 ): Driver | null {
-  const rate = new Decimal(variant.rate)
-  if (rate.isZero()) return null
-  const scopeRef = option.kg.replace('_', ' ')
-  const evidenceMark = variant.evidenceClass === 'R' ? '' : ` ${'⚙'}`
+  const outcome = scopeCatalogOutcome(option, variant, quantityOf, kg300Plus400)
+  return outcome.kind === 'priced' ? outcome.driver : null
+}
 
-  if (option.basis.kind === 'percentOfKg300Kg400') {
-    if (kg300Plus400.lte(0)) return null
-    const factor = rate.div(100)
-    return {
-      key: `scope_${option.id}_${variant.value}`,
-      origin: 'decision',
-      block: 'separatePosition',
-      exact: kg300Plus400.mul(factor),
-      label: `${option.labelDe} · ${variant.labelDe} · `
-        + `${formatDE(rate, 2)}${NNBSP}%${NNBSP}von KG 300+400${evidenceMark}`,
-      scopeRefs: [scopeRef],
-      basis: { kind: 'factor', appliedTo: kg300Plus400, factor },
-    }
-  }
-
-  if (option.basis.kind === 'flat') {
-    return {
-      key: `scope_${option.id}_${variant.value}`,
-      origin: 'decision',
-      block: 'separatePosition',
-      exact: rate,
-      label: `${option.labelDe} · ${variant.labelDe}${evidenceMark}`,
-      scopeRefs: [scopeRef],
-      basis: null,
-    }
-  }
-
-  const quantityKey = variant.quantityKeyOverride ?? option.basis.quantityKey
-  const qty = quantityOf(quantityKey)
-  if (qty === null || qty.lte(0)) return null
-  const unit = SCOPE_QUANTITY_UNIT[quantityKey]
-  // Task 04 (F-11 companion, rule 36): a count (Gebäude, Stellplätze, …)
-  // prints as a whole number — see `SCOPE_QUANTITY_IS_COUNT` docblock.
-  const qtyDecimals = SCOPE_QUANTITY_IS_COUNT.has(quantityKey) ? 0 : 2
-  return {
-    key: `scope_${option.id}_${variant.value}`,
-    origin: 'decision',
-    block: 'separatePosition',
-    exact: qty.mul(rate),
-    label: `${option.labelDe} · ${variant.labelDe} · `
-      + `${formatDE(qty, qtyDecimals)}${NNBSP}${unit} × ${euroPerUnit(rate, unit)}${evidenceMark}`,
-    scopeRefs: [scopeRef],
-    basis: null,
-  }
+/** Выбранный вариант опции — `null`, если выбор не существует в каталоге. */
+export function selectedScopeVariant(
+  option: ScopeOption,
+  selections: Record<string, string>,
+): ScopeVariant | null {
+  const value = selections[option.id] ?? option.default
+  return option.variants.find((v) => v.value === value) ?? null
 }
 
 /** Вклады всех выбранных вариантов набора опций одной KG. */
@@ -183,11 +248,61 @@ export function scopeCatalogDrivers(
 ): Driver[] {
   const out: Driver[] = []
   for (const option of options) {
-    const value = selections[option.id] ?? option.default
-    const variant = option.variants.find((v) => v.value === value)
+    const variant = selectedScopeVariant(option, selections)
     if (!variant) continue
     const driver = scopeCatalogDriver(option, variant, quantityOf, kg300Plus400)
     if (driver) out.push(driver)
+  }
+  return out
+}
+
+/**
+ * Включённая позиция, чья цена НЕ определена.
+ *
+ * Одна функция — один критерий для всех поверхностей: правой панели,
+ * причины неполноты, экрана включения групп и клиентской выдачи. Прежде
+ * критерий существовал только внутри `unpricedScopeCatalogGroups`
+ * (`state/store.ts`), был групповым и срабатывал лишь при НУЛЕВОЙ сумме
+ * группы: KG 200 по умолчанию считает две позиции из выведенных величин
+ * (`kg200-03` × Gebäude и `kg200-06` пауш.), поэтому сумма группы не ноль,
+ * и две остальные включённые позиции с непустой ставкой — вывоз грунта
+ * (12 €/t) и приватная инфраструктура (30 €/m²) — выпадали ТИХО, а сводка
+ * при этом называла итог полным.
+ */
+export type UnpricedScopePosition = {
+  optionId: string
+  kg: ScopeOption['kg']
+  labelDe: string
+  labelEn: string
+  variantValue: string
+  variantLabelDe: string
+  variantLabelEn: string
+  /** Чего не хватает; `null` — не хватает самой базы KG 300+400. */
+  quantityKey: ScopeQuantityKey | null
+}
+
+export function unpricedScopeCatalogPositions(
+  options: readonly ScopeOption[],
+  selections: Record<string, string>,
+  quantityOf: (key: ScopeQuantityKey) => Decimal | null,
+  kg300Plus400: Decimal,
+): UnpricedScopePosition[] {
+  const out: UnpricedScopePosition[] = []
+  for (const option of options) {
+    const variant = selectedScopeVariant(option, selections)
+    if (!variant) continue
+    const outcome = scopeCatalogOutcome(option, variant, quantityOf, kg300Plus400)
+    if (outcome.kind !== 'notDetermined') continue
+    out.push({
+      optionId: option.id,
+      kg: option.kg,
+      labelDe: option.labelDe,
+      labelEn: option.labelEn,
+      variantValue: variant.value,
+      variantLabelDe: variant.labelDe,
+      variantLabelEn: variant.labelEn,
+      quantityKey: outcome.quantityKey,
+    })
   }
   return out
 }

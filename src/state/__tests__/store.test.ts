@@ -9,6 +9,7 @@ import {
 } from '../store'
 import { KG400_GROUPS, choiceBlocked } from '../../engine/options'
 import type { CostGroup } from '../../engine/calculate'
+import type { ScopeQuantityKey } from '../../engine/scopeCatalog'
 import type { JournalEvent, OfferSnapshot } from '../store'
 import { CONFIGURATOR_STEP } from '../chapters'
 import {
@@ -987,18 +988,181 @@ describe('Покрытие групп затрат (сценарий п. 11) - �
     expect(p.kgSplit.KG_500!.isZero()).toBe(true)
   })
 
-  // A group that DOES have a quantity (so it genuinely prices to a real,
-  // non-zero amount) must NOT be flagged unpriced merely because it is
-  // included — this is the negative case for the check above.
+  /**
+   * Every KG 500 position priced → the group is complete. This is the
+   * negative case for the check above.
+   *
+   * It provides ALL SEVEN external-works quantities, and that is the
+   * correction this ticket carries: it used to provide only
+   * `surface_parking_spaces` and still assert `complete`, because the old
+   * criterion asked whether the GROUP summed to zero rather than whether
+   * every included position was priced. One parking quantity made the
+   * group sum non-zero, and the other six included positions — each with a
+   * non-zero catalog rate and no quantity — were dropped silently under a
+   * total labelled `Gesamt netto`. KG 500 has no zero-rate variant at all,
+   * so "included and complete" genuinely means all seven quantities.
+   */
+  const KG500_QUANTITIES: Array<[ScopeQuantityKey, string]> = [
+    ['hardscape_area_m2', '900'],
+    ['vegetated_area_m2', '1400'],
+    ['sealed_connected_area_m2', '600'],
+    ['surface_parking_spaces', '20'],
+    ['bicycle_spaces', '40'],
+    ['amenity_area_m2', '120'],
+    ['external_light_count', '18'],
+  ]
+
   it('SIDEBAR 02 (SB-06): KG 500 mit echtem Preisansatz bleibt "complete"', () => {
     const st = () => useStore.getState()
     st().confirmGebaeudeklasse()
     st().setCoverage('KG_500', 'included')
-    st().setScopeCatalogQuantity('surface_parking_spaces', '20')
+    for (const [key, value] of KG500_QUANTITIES) {
+      st().setScopeCatalogQuantity(key, value)
+    }
     const p = st().projection()
     expect(p.result.completeness).toBe('complete')
     expect(p.result.totalLabel).toBe('Gesamt netto · Grundleistung All3')
     expect(p.result.incompleteReasons.some((r) => r.code === 'includedUnpriced')).toBe(false)
+  })
+
+  /**
+   * AC-3 END-TO-END: the KG 200 risk surcharge moves the real total through
+   * the real store path.
+   *
+   * `riskDriver()` resolved its basis from `kg300Exact` or a `splitKg300`
+   * subgroup only. `KG_200` was neither, so the Bestand/Abbruch driver of
+   * calculation-spec §1.4 returned `null` and `computeProjection` dropped
+   * it at `if (d) optDrivers.push(d)` — a driver the settings screen
+   * printed and the product could not apply under any state. Finding the
+   * fixture row would not have caught this; only running the calculation
+   * does.
+   *
+   * The three KG 200 basis states are asserted in ONE test on purpose:
+   * what makes the surcharge correct is not that it produces a number, but
+   * that it produces a number ONLY when its own group is complete.
+   */
+  it('AC-3: Risikozuschlag Bestand/Abbruch rechnet gegen die echte KG-200-Summe', () => {
+    const st = () => useStore.getState()
+    st().confirmGebaeudeklasse()
+
+    // (1) KG 200 not in the offer — the surcharge has no base and adds
+    // nothing. Out of scope is not zero-because-unknown: there is simply
+    // no KG 200 in this offer to surcharge.
+    const withoutKg200 = st().projection().result.total.exact
+    st().toggleRisiko('RISK-BESTAND')
+    expect(st().risikoAktiv['RISK-BESTAND']).toBe(true)
+    expect(st().projection().result.total.exact.toFixed(2))
+      .toBe(withoutKg200.toFixed(2))
+    expect(st().projection().riskBasisStates).toContainEqual({
+      riskId: 'RISK-BESTAND',
+      basis: { kind: 'outOfScope', reason: 'kg200NotIncluded' },
+    })
+
+    // (2) KG 200 included but still owing two quantities — the base is
+    // incomplete, so 5 % of it is NOT determined. A surcharge computed on
+    // a partial base would be a wrong number wearing the look of a right
+    // one (rule 16).
+    st().setCoverage('KG_200', 'included')
+    const partial = st().projection()
+    expect(partial.result.completeness).toBe('incomplete')
+    expect(partial.riskBasisStates).toContainEqual({
+      riskId: 'RISK-BESTAND',
+      basis: { kind: 'notDetermined', reason: 'kg200NotDetermined' },
+    })
+    expect(partial.result.drivers.some((d) => d.key === 'risk_RISK-BESTAND'))
+      .toBe(false)
+
+    // (3) KG 200 complete — the surcharge is 5 % of the KG 200 amount, on
+    // its OWN denominator.
+    st().setScopeCatalogQuantity('soil_disposal_t', '850')
+    st().setScopeCatalogQuantity('private_infrastructure_area_m2', '480')
+    const priced = st().projection()
+    expect(priced.result.completeness).toBe('complete')
+    const kg200 = priced.kgSplit.KG_200!
+    expect(kg200.isZero()).toBe(false)
+    const driver = priced.result.drivers.find((d) => d.key === 'risk_RISK-BESTAND')!
+    expect(driver).toBeTruthy()
+    expect(driver.exact.toFixed(2)).toBe(kg200.mul('0.05').toFixed(2))
+    expect(driver.scopeRefs).toEqual(['KG 200'])
+    const basis = driver.basis as { kind: 'factor'; appliedTo: Decimal; factor: Decimal }
+    expect(basis.appliedTo.toFixed(2)).toBe(kg200.toFixed(2))
+    // The surcharge is NOT folded into the group row it stands on: the
+    // DIN 276 row is the structural cost of KG 200, and the surcharge has
+    // its own reconciliation line. Counting it in both is a double count.
+    expect(kg200.toFixed(2)).not.toBe(kg200.plus(driver.exact).toFixed(2))
+
+    // And the total moved by exactly that amount.
+    const before = st().projection().result.total.exact
+    st().toggleRisiko('RISK-BESTAND')
+    const after = st().projection().result.total.exact
+    expect(before.minus(after).toFixed(2)).toBe(driver.exact.toFixed(2))
+  })
+
+  /**
+   * The other five drivers keep resolving against KG 300 and its subgroups,
+   * and each one moves the total on its own declared base.
+   */
+  it('AC-3: alle sechs §1.4-Treiber wirken auf ihre eigene erklärte Basis', () => {
+    const st = () => useStore.getState()
+    st().confirmGebaeudeklasse()
+    const kg300 = st().projection().kgSplit.KG_300
+    const kg320 = kg300.mul('0.11')
+    const expected: Record<string, Decimal> = {
+      'RISK-BAUGRUND': kg320.mul('0.04'),
+      'RISK-GRUNDWASSER': kg320.mul('0.03'),
+      'RISK-STATIK': kg300.mul('0.02'),
+      'RISK-BAUSTELLE': kg300.mul('0.03'),
+      'RISK-DENKMAL': kg300.mul('0.03'),
+    }
+    for (const [id, amount] of Object.entries(expected)) {
+      const before = st().projection().result.total.exact
+      st().toggleRisiko(id)
+      const p = st().projection()
+      const driver = p.result.drivers.find((d) => d.key === `risk_${id}`)!
+      expect(driver, id).toBeTruthy()
+      expect(driver.exact.toFixed(2), id).toBe(amount.toFixed(2))
+      expect(p.result.total.exact.minus(before).toFixed(2), id)
+        .toBe(amount.toFixed(2))
+      st().toggleRisiko(id)
+    }
+  })
+
+  /**
+   * The defect the group-sum criterion hid, pinned as a regression.
+   *
+   * KG 200 prices two of its six positions from values the project already
+   * owns — `kg200-03` (20.000 €/Gebäude) and `kg200-06` (15.000 €
+   * pauschal) — so the group sum is never zero and the old criterion never
+   * fired. `kg200-02` (Bodenaushub-Entsorgung, 12 €/t) and `kg200-04`
+   * (Private Erschließung, 30 €/m²) are included by default with a
+   * non-zero rate and no quantity: two positions the client is told are in
+   * scope, priced nowhere, under an aggregate the product called complete.
+   */
+  it('AC-6: KG 200 enthalten mit teilweise bepreisten Positionen bleibt "incomplete"', () => {
+    const st = () => useStore.getState()
+    st().confirmGebaeudeklasse()
+    expect(st().projection().result.completeness).toBe('complete')
+    st().setCoverage('KG_200', 'included')
+    const p = st().projection()
+    // The group DOES carry money — this is not the zero-sum case.
+    expect(p.kgSplit.KG_200!.isZero()).toBe(false)
+    expect(p.result.completeness).toBe('incomplete')
+    expect(p.result.totalLabel).toBe('Zwischensumme der kalkulierten Positionen')
+    expect(p.result.incompleteReasons).toContainEqual({
+      code: 'includedUnpriced', groups: ['KG_200'],
+    })
+    // No position is represented as a zero: the unpriced ones carry no
+    // driver at all, and the priced ones carry their real amount.
+    expect(p.result.drivers.filter((d) => d.scopeRefs.includes('KG 200'))
+      .every((d) => !d.exact.isZero())).toBe(true)
+    expect(p.result.drivers.some((d) => d.key.startsWith('scope_kg200-02'))).toBe(false)
+    expect(p.result.drivers.some((d) => d.key.startsWith('scope_kg200-04'))).toBe(false)
+    // Supplying the two missing quantities completes the group.
+    st().setScopeCatalogQuantity('soil_disposal_t', '850')
+    st().setScopeCatalogQuantity('private_infrastructure_area_m2', '480')
+    const done = st().projection()
+    expect(done.result.completeness).toBe('complete')
+    expect(done.result.totalLabel).toBe('Gesamt netto · Grundleistung All3')
   })
 
   it("KG 500 включена + количество для Stellplaetze -> реальная стоимость по выбранному варианту (D-27's 8%-of-Bauwerk formula retired, replaced by the real external-works catalog)", () => {
@@ -1054,7 +1218,11 @@ describe('Покрытие групп затрат (сценарий п. 11) - �
   it('Task 04 (F-12): KG-Zeilen (300/400/700 mandatory + 500/600) summieren exakt zum gedruckten Total, Prozentspalte summiert zu 100 %', () => {
     const st = () => useStore.getState()
     st().setCoverage('KG_500', 'included')
-    st().setScopeCatalogQuantity('surface_parking_spaces', '20')
+    // All seven external-works quantities — see `KG500_QUANTITIES` above for
+    // why one is not enough.
+    for (const [key, value] of KG500_QUANTITIES) {
+      st().setScopeCatalogQuantity(key, value)
+    }
     st().setCoverage('KG_600', 'included')
     st().setCoverage('KG_800', 'included')
     st().confirmGebaeudeklasse()

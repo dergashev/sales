@@ -596,25 +596,81 @@
   ]
  },
  "risiken": {
-  "$comment": "Risikozuschlag по D-02 и calculation-spec §1.4: «счёт за отсутствующий документ». Ставки и базы — из спецификации, не выведены. Применение НЕ по умолчанию: контрольный пример calculation-spec §6.1 надбавки не содержит, и молчаливое включение изменило бы нормативный спесимен (правило 32). Включается решением с событием, как Regionalfaktor (D-15).",
+  "$comment": "Risikozuschlag по D-02 и calculation-spec §1.4: «счёт за отсутствующий документ». Все ШЕСТЬ драйверов §1.4 — ставки и базы взяты из спецификации дословно, не выведены; те же шесть строк печатает internalConfig.riskDrivers в catalog.json, и S6Einstellungen читает теперь ЭТОТ список, чтобы у каталога не было двух редакций. Прежняя редакция реализовывала два драйвера из шести: экран настроек называл шесть, движок умел два, и четыре объявленных драйвера не могли изменить цену вовсе. База KG_200 требует кода, а не только строки фикстуры (см. resolveRiskBasis в engine/risk.ts). Применение НЕ по умолчанию: контрольный пример calculation-spec §6.1 надбавки не содержит, и молчаливое включение изменило бы нормативный спесимен (правило 32). Включается решением с событием, как Regionalfaktor (D-15). Порядок списка — порядок таблицы §1.4, тот же, что печатает internalConfig.riskDrivers: сверка каталогов поштучная и позиционная.",
   "items": [
    {
     "id": "RISK-BAUGRUND",
     "label": "Baugrundgutachten liegt nicht vor",
+    "labelEn": "No soil survey available",
     "kategorie": "Baugrund",
+    "kategorieEn": "Ground conditions",
     "wahrscheinlichkeit": "mittel",
     "base": "KG_320",
     "rate": "0.04",
-    "remedy": "Baugrundgutachten beibringen — der Zuschlag entfällt"
+    "remedy": "Baugrundgutachten beibringen — der Zuschlag entfällt",
+    "remedyEn": "Provide the soil survey — the surcharge is dropped"
+   },
+   {
+    "id": "RISK-GRUNDWASSER",
+    "label": "Grundwasser / Abdichtungsklasse offen",
+    "labelEn": "Groundwater / waterproofing class open",
+    "kategorie": "Baugrund",
+    "kategorieEn": "Ground conditions",
+    "wahrscheinlichkeit": "mittel",
+    "base": "KG_320",
+    "rate": "0.03",
+    "remedy": "Grundwasserstand und Abdichtungsklasse belegen — der Zuschlag entfällt",
+    "remedyEn": "Evidence the groundwater level and waterproofing class — the surcharge is dropped"
    },
    {
     "id": "RISK-STATIK",
     "label": "Statik nicht geprüft",
+    "labelEn": "Structural design not verified",
     "kategorie": "Tragwerk",
+    "kategorieEn": "Structure",
     "wahrscheinlichkeit": "niedrig",
     "base": "KG_300",
     "rate": "0.02",
-    "remedy": "Geprüfte Statik beibringen — der Zuschlag entfällt"
+    "remedy": "Geprüfte Statik beibringen — der Zuschlag entfällt",
+    "remedyEn": "Provide the verified structural design — the surcharge is dropped"
+   },
+   {
+    "id": "RISK-BAUSTELLE",
+    "label": "Beengte Baustelle / Kranstellung unklar",
+    "labelEn": "Constrained site / crane positioning unclear",
+    "kategorie": "Baustelle",
+    "kategorieEn": "Site",
+    "wahrscheinlichkeit": "mittel",
+    "base": "KG_300",
+    "rate": "0.03",
+    "remedy": "Baustelleneinrichtungs- und Kranstellungskonzept beibringen — der Zuschlag entfällt",
+    "remedyEn": "Provide the site set-up and crane positioning concept — the surcharge is dropped",
+    "sourceParameter": "C0.22"
+   },
+   {
+    "id": "RISK-BESTAND",
+    "label": "Bestandsgebäude / Abbruchumfang unklar",
+    "labelEn": "Existing building / demolition extent unclear",
+    "kategorie": "Bestand",
+    "kategorieEn": "Existing structures",
+    "wahrscheinlichkeit": "mittel",
+    "base": "KG_200",
+    "rate": "0.05",
+    "remedy": "Bestandsaufnahme und Abbruchumfang belegen — der Zuschlag entfällt",
+    "remedyEn": "Evidence the survey of existing structures and the demolition extent — the surcharge is dropped",
+    "sourceParameter": "C0.20"
+   },
+   {
+    "id": "RISK-DENKMAL",
+    "label": "Denkmalschutz / Erhaltungssatzung offen",
+    "labelEn": "Heritage protection / conservation statute open",
+    "kategorie": "Genehmigung",
+    "kategorieEn": "Permitting",
+    "wahrscheinlichkeit": "niedrig",
+    "base": "KG_300",
+    "rate": "0.03",
+    "remedy": "Auskunft der Denkmalbehörde beibringen — der Zuschlag entfällt",
+    "remedyEn": "Provide the heritage authority statement — the surcharge is dropped"
    }
   ]
  }

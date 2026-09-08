@@ -386,13 +386,43 @@ export function KgSystemChapter({ chapter, group }: {
   const excludedPhraseOf = (service: KgService): string =>
     label(service.excludedPhraseDe, service.excludedPhraseEn) || t('vr3.tga.price.notInOffer')
 
+  /**
+   * BLOCKED PRICING, in one place.
+   *
+   * `Preis nicht ermittelt` is the canonical rule-16 phrase and the whole
+   * product already speaks it; where the decision declares WHAT is blocking
+   * the price, the condition is named beside it rather than left to be
+   * guessed from a missing number.
+   */
+  const blockedPricingPhrase = (service: KgService): string => {
+    const condition = label(service.pricingConditionDe, service.pricingConditionEn)
+    return condition
+      ? t('vr3.tga.price.notDeterminedNamed', { condition })
+      : t('vr3.tga.price.notDetermined')
+  }
+
   const consequenceOf = (
     variant: KgServiceVariant, service: KgService, decision: KgServiceDecisionRecord,
   ): string => {
     if (variant.excludesPosition) return excludedPhraseOf(service)
     if (variant.costAuthority) return authorityPhrase(variant.costAuthority) ?? ''
     if (variant.bundled) return t('vr3.tga.price.bundle')
-    if (variant.noPriceBasis) return t('vr3.tga.price.noEffect')
+    /**
+     * An alternative with NO price basis says the price is not determined —
+     * never that there is no price effect.
+     *
+     * This line used to render `vr3.tga.price.noEffect`
+     * ("keine Preiswirkung" / "no price effect") for 83 decisions,
+     * `Tragsystem Balkone` among them: a choice between a column, a
+     * diagonal and a cantilever, whose own `whyDe` opens
+     * `Ein wesentlicher Kostentreiber`, told the seller it costs the same
+     * either way. `KgServiceVariant.noPriceBasis`'s own contract says the
+     * delta "stays `0.00` because the product has no basis on which to
+     * move the total, NOT because it knows the total does not move. Those
+     * are different statements and only one of them is true here." The key
+     * asserted the false one and has been retired.
+     */
+    if (variant.noPriceBasis) return blockedPricingPhrase(service)
     const current = decision.variant
       ?? (service.kind.kind === 'singleChoice' ? service.kind.baselineVariant : undefined)
     if (variant.value === current) return t('vr3.tga.price.baseline')
@@ -409,7 +439,14 @@ export function KgSystemChapter({ chapter, group }: {
       && service.excludedPhraseDe) return excludedPhraseOf(service)
     if (authority === 'bauherr') return t('vr3.tga.price.bauherr')
     const basis = label(service.costBasisDe, service.costBasisEn)
-    if (authority === 'noBasis') return t('vr3.tga.price.noBasis')
+    // A decision that declares its blocking condition states it here, on
+    // the decision line, once — the alternatives below repeat the short
+    // form. `keine gesonderte Preisgrundlage` remains correct for a
+    // position whose money simply lives elsewhere and states no condition.
+    if (authority === 'noBasis') {
+      return service.pricingConditionDe
+        ? blockedPricingPhrase(service) : t('vr3.tga.price.noBasis')
+    }
     if (authority === 'bundle') {
       return basis ? t('vr3.tga.price.bundleNamed', { basis }) : t('vr3.tga.price.bundle')
     }
@@ -422,7 +459,10 @@ export function KgSystemChapter({ chapter, group }: {
     if (chosen?.excludesPosition) return excludedPhraseOf(service)
     if (chosen?.costAuthority) return authorityPhrase(chosen.costAuthority, basis || undefined)
     if (chosen?.bundled) return t('vr3.tga.price.bundle')
-    if (chosen?.noPriceBasis) return t('vr3.tga.price.noBasis')
+    if (chosen?.noPriceBasis) {
+      return service.pricingConditionDe
+        ? blockedPricingPhrase(service) : t('vr3.tga.price.noBasis')
+    }
     const blocked = dependencyBlocker(catalogue, decisions, service) !== null
     const contribution = serviceContribution(catalogue, decisions, service)
     if (blocked || contribution === null || contribution.isZero()) {
