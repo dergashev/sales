@@ -295,6 +295,32 @@ export type ClientBuilding = Readonly<{
   identityAlt: string | null
 }>
 
+/**
+ * The Option's areas, summed across its buildings and formatted once.
+ *
+ * They live on the projection because a TOTAL is a fact about the Option,
+ * not a detail of how one chapter draws a table — and because every
+ * consumer that computed its own had to parse display strings to do it.
+ */
+export type ClientAreaTotals = Readonly<{
+  bgfRAbove: string | null
+  bgfSAbove: string | null
+  bgfRSAbove: string | null
+  bgfRSBelow: string | null
+  wfl: string | null
+  nuf: string | null
+  /**
+   * Living area where the building states one, usable area otherwise — the
+   * per-building fallback the building register's own column shows, summed
+   * on the same rule rather than mixing two totals under one heading.
+   */
+  wflOrNuf: string | null
+  /** Every building answers the same, or `null` — one storey line for a
+   *  three-building Option would be false. */
+  sharedStoreys: string | null
+  units: number
+}>
+
 export type ClientConstructionLine = Readonly<{
   id: string
   label: string
@@ -426,6 +452,7 @@ export type ClientProposal = Readonly<{
   overview: readonly ClientMetric[]
   commercial: ClientCommercial
   buildings: readonly ClientBuilding[]
+  areas: ClientAreaTotals
   construction: ClientConstruction
   scope: ClientScope
   responsibility: ClientResponsibility | null
@@ -462,13 +489,44 @@ export function buildingMark(index: number): string {
   return String.fromCharCode(65 + index)
 }
 
+function areaFormat(language: 'de' | 'en'): Intl.NumberFormat {
+  return new Intl.NumberFormat(language === 'en' ? 'en-GB' : 'de-DE', {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  })
+}
+
 function areaText(value: string | null, language: 'de' | 'en'): string | null {
   if (value === null) return null
   const n = Number(value)
   if (!Number.isFinite(n)) return null
-  return new Intl.NumberFormat(language === 'en' ? 'en-GB' : 'de-DE', {
-    minimumFractionDigits: 2, maximumFractionDigits: 2,
-  }).format(n)
+  return areaFormat(language).format(n)
+}
+
+/**
+ * Sum areas ONCE, from the engine's own values, and format the total once.
+ *
+ * The input is RAW: what `scopeMetricValue` returns, a plain numeric string.
+ * That is the whole point. The three consumers this replaces each summed the
+ * ALREADY FORMATTED per-building strings and parsed them back with a
+ * German-only parser (`replace(/[.\s ]/g, '').replace(',', '.')`), so in
+ * English `17,250.00` became `17.25` and `2,220.00` became `98,001.24` — a
+ * client-facing area off by three orders of magnitude, on three chapters,
+ * in the locale nobody demoed. A display string is an output; reading one
+ * back as a number is the defect, not the parser's dialect.
+ *
+ * `null` when no building states the metric — never a zero, which would
+ * claim an area the Option does not have.
+ */
+export function sumAreaValues(
+  values: readonly (string | null)[],
+  language: 'de' | 'en',
+): string | null {
+  const numbers = values
+    .filter((v): v is string => v !== null)
+    .map(Number)
+    .filter((n) => Number.isFinite(n))
+  if (numbers.length === 0) return null
+  return areaFormat(language).format(numbers.reduce((a, b) => a + b, 0))
 }
 
 /**
@@ -785,6 +843,14 @@ export function clientProposal(
 
   /* ---- buildings ---- */
 
+  /**
+   * The raw metric per building, read ONCE. The formatted per-building
+   * strings below and the summed totals further down are two renderings of
+   * these same numbers — never of each other.
+   */
+  const rawArea = (b: ScopeBuilding, key: 'bgfRSAbove' | 'bgfRAbove' | 'bgfSAbove'
+    | 'bgfRSBelow' | 'wfl' | 'nuf') => scopeMetricValue(config, b, key)
+
   const clientBuildings: ClientBuilding[] = buildings.map((b, index) => {
     const asset = projectAsset(b.identityAssetId)
     const hasBasement = b.undergroundLevel !== 'none'
@@ -798,12 +864,12 @@ export function clientProposal(
         const raw = scopeMetricValue(config, b, 'units')
         return raw === null ? null : Number(raw)
       })(),
-      bgfRSAbove: areaText(scopeMetricValue(config, b, 'bgfRSAbove'), language),
-      bgfRAbove: areaText(scopeMetricValue(config, b, 'bgfRAbove'), language),
-      bgfSAbove: areaText(scopeMetricValue(config, b, 'bgfSAbove'), language),
-      bgfRSBelow: areaText(scopeMetricValue(config, b, 'bgfRSBelow'), language),
-      wfl: areaText(scopeMetricValue(config, b, 'wfl'), language),
-      nuf: areaText(scopeMetricValue(config, b, 'nuf'), language),
+      bgfRSAbove: areaText(rawArea(b, 'bgfRSAbove'), language),
+      bgfRAbove: areaText(rawArea(b, 'bgfRAbove'), language),
+      bgfSAbove: areaText(rawArea(b, 'bgfSAbove'), language),
+      bgfRSBelow: areaText(rawArea(b, 'bgfRSBelow'), language),
+      wfl: areaText(rawArea(b, 'wfl'), language),
+      nuf: areaText(rawArea(b, 'nuf'), language),
       hasBasement,
       basementText: t(hasBasement
         ? 'vr3.client.buildings.basement.present'
@@ -813,10 +879,34 @@ export function clientProposal(
     }
   })
 
+  /* ---- area totals (chapters 2, 3 and 4 all state these) ---- */
+
+  const areaTotal = (key: 'bgfRSAbove' | 'bgfRAbove' | 'bgfSAbove'
+    | 'bgfRSBelow' | 'wfl' | 'nuf') =>
+    sumAreaValues(buildings.map((b) => rawArea(b, key)), language)
+
+  const totalUnitsOfOption = clientBuildings.reduce(
+    (sum, b) => (b.units === null ? sum : sum + b.units), 0)
+
+  const areas: ClientAreaTotals = {
+    bgfRAbove: areaTotal('bgfRAbove'),
+    bgfSAbove: areaTotal('bgfSAbove'),
+    bgfRSAbove: areaTotal('bgfRSAbove'),
+    bgfRSBelow: areaTotal('bgfRSBelow'),
+    wfl: areaTotal('wfl'),
+    nuf: areaTotal('nuf'),
+    wflOrNuf: sumAreaValues(
+      buildings.map((b) => rawArea(b, 'wfl') ?? rawArea(b, 'nuf')), language),
+    sharedStoreys: clientBuildings.length > 0
+      && clientBuildings.every((b) => b.storeys === clientBuildings[0]!.storeys)
+      ? clientBuildings[0]!.storeys
+      : null,
+    units: totalUnitsOfOption,
+  }
+
   /* ---- overview metrics (Chapter 2 supporting facts) ---- */
 
-  const totalUnits = clientBuildings.reduce(
-    (sum, b) => (b.units === null ? sum : sum + b.units), 0)
+  const totalUnits = areas.units
   const energy = buildings
     .map((b) => config.buildings[b.id]?.energiestandard)
     .find((e) => e !== undefined) ?? null
@@ -1133,6 +1223,7 @@ export function clientProposal(
     overview,
     commercial,
     buildings: clientBuildings,
+    areas,
     construction,
     scope,
     responsibility: clientResponsibility,

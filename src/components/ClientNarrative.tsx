@@ -1,6 +1,5 @@
 import type { ReactNode, Ref } from 'react'
 import type {
-  ClientBuilding,
   ClientMetric,
   ClientProposal,
 } from '../state/clientProposal'
@@ -163,21 +162,6 @@ function splitUnit(text: string): [string, string | null] {
   const tail = text.slice(cut + 1)
   if (tail.length === 0 || /\d/.test(tail)) return [text, null]
   return [text.slice(0, cut), tail]
-}
-
-/** Sum one area across the Option's buildings, in the reader's locale. */
-function sumArea(
-  buildings: readonly ClientBuilding[],
-  pick: (b: ClientBuilding) => string | null,
-  language: 'de' | 'en',
-): string | null {
-  const values = buildings.map(pick).filter((v): v is string => v !== null)
-  if (values.length === 0) return null
-  const total = values.reduce(
-    (acc, v) => acc + Number(v.replace(/[.\s ]/g, '').replace(',', '.')), 0)
-  return new Intl.NumberFormat(language === 'en' ? 'en-GB' : 'de-DE', {
-    minimumFractionDigits: 2, maximumFractionDigits: 2,
-  }).format(total)
 }
 
 function dateText(iso: string | null, language: 'de' | 'en'): string | null {
@@ -359,11 +343,9 @@ export function ChapterUeberblick({ proposal, headingRef }: {
     building answers the same — naming ONE storey line for a three-building
     Option would be false, which is the rule chapter 3 already follows.
   */
-  const bgfRS = sumArea(buildings, (b) => b.bgfRSAbove, language)
-  const storeys = buildings.length > 0
-    && buildings.every((b) => b.storeys === buildings[0]!.storeys)
-    ? buildings[0]!.storeys
-    : null
+  // Both come from the projection, which sums the engine's own values once.
+  const bgfRS = proposal.areas.bgfRSAbove
+  const storeys = proposal.areas.sharedStoreys
   const projectNote = [
     storeys,
     bgfRS === null ? null : t('vr3.client.overview.projectArea', { area: bgfRS }),
@@ -497,22 +479,25 @@ export function ChapterProjekt({ proposal, headingRef }: {
   headingRef: Ref<HTMLHeadingElement>
 }) {
   const t = useT()
-  const { buildings, language } = proposal
-  const sum = (pick: (b: ClientBuilding) => string | null) => sumArea(buildings, pick, language)
-  const units = buildings.reduce((n, b) => (b.units === null ? n : n + b.units), 0)
+  const { buildings, areas } = proposal
+  // The totals come from the projection. This chapter used to sum the
+  // FORMATTED per-building strings and parse them back, which is only
+  // correct in German: in English `17,250.00` was read as `17.25`.
+  const units = areas.units
 
   const rows: Array<[string, string | null]> = [
     [t('vr3.client.project.metric.buildings'), String(buildings.length)],
     [t('vr3.client.project.metric.storeys'),
       buildings.length === 1 ? buildings[0]!.storeys : null],
     [t('vr3.client.project.metric.units'), units > 0 ? String(units) : null],
-    [t('vr3.client.project.metric.bgfR'), sum((b) => b.bgfRAbove)],
-    [t('vr3.client.project.metric.bgfS'), sum((b) => b.bgfSAbove)],
-    [t('vr3.client.project.metric.bgfRS'), sum((b) => b.bgfRSAbove)],
-    [t('vr3.client.project.metric.bgfBelow'), sum((b) => b.bgfRSBelow)],
-    [t('vr3.client.project.metric.wfl'), sum((b) => b.wfl)],
-    [t('vr3.client.project.metric.nuf'), sum((b) => b.nuf)],
+    [t('vr3.client.project.metric.bgfR'), areas.bgfRAbove],
+    [t('vr3.client.project.metric.bgfS'), areas.bgfSAbove],
+    [t('vr3.client.project.metric.bgfRS'), areas.bgfRSAbove],
+    [t('vr3.client.project.metric.bgfBelow'), areas.bgfRSBelow],
+    [t('vr3.client.project.metric.wfl'), areas.wfl],
+    [t('vr3.client.project.metric.nuf'), areas.nuf],
   ]
+
 
   return (
     <ChapterFrame label={t('vr3.client.chapter.projekt')}>
@@ -672,17 +657,8 @@ export function ChapterGebaeude({ proposal, headingRef }: {
 
 function BuildingRegister({ proposal }: { proposal: ClientProposal }) {
   const t = useT()
-  const { buildings, language } = proposal
-  const nf = new Intl.NumberFormat(language === 'en' ? 'en-GB' : 'de-DE', {
-    minimumFractionDigits: 2, maximumFractionDigits: 2,
-  })
-  const totalOf = (pick: (b: ClientBuilding) => string | null) => {
-    const values = buildings.map(pick).filter((v): v is string => v !== null)
-    if (values.length === 0) return null
-    return nf.format(values.reduce(
-      (acc, v) => acc + Number(v.replace(/[.\s ]/g, '').replace(',', '.')), 0))
-  }
-  const units = buildings.reduce((n, b) => (b.units === null ? n : n + b.units), 0)
+  const { buildings, areas } = proposal
+  const units = areas.units
 
   const rows: DataTableRow[] = buildings.map((b) => ({
     key: b.id,
@@ -703,8 +679,8 @@ function BuildingRegister({ proposal }: { proposal: ClientProposal }) {
       { content: '' },
       { content: '' },
       { content: units > 0 ? String(units) : null, align: 'numeric', absent: units === 0 },
-      { content: totalOf((b) => b.bgfRSAbove), align: 'numeric' },
-      { content: totalOf((b) => b.wfl ?? b.nuf), align: 'numeric' },
+      { content: areas.bgfRSAbove, align: 'numeric' },
+      { content: areas.wflOrNuf, align: 'numeric' },
     ],
   })
 

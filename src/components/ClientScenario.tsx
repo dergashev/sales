@@ -289,7 +289,10 @@ export function VariantenLayer({ view, open, onClose, returnFocusTo }: {
                   <th scope="row">{row.label}</th>
                   {row.cells.map((cell, i) => (
                     <td key={columns[i]?.option.id ?? i} className="a3-cp-compare-num">
-                      {localizeMoneyText(cell, view.language)}
+                      {/* The model typesets each cell for the reader's
+                          locale; one blanket transform here re-typeset the
+                          rows the projection had already localised. */}
+                      {cell}
                     </td>
                   ))}
                 </tr>

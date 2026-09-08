@@ -225,7 +225,10 @@ export function ChapterPreis({ proposal, headingRef }: {
           ? t('vr3.client.price.lede', {
             rate: localizeMoneyText(commercial.leadRateText, language),
             denominator: commercial.leadRate.denominatorLabel,
-            area: localizeMoneyText(commercial.leadDenominatorText, language),
+            // Already localised by the projection (`areaText`). Passing it
+            // through the re-typesetter a second time turned `17,250.00`
+            // into `17.250.0` for an English reader.
+            area: commercial.leadDenominatorText,
           })
           : t('vr3.client.price.lede.noArea', {
             rate: localizeMoneyText(commercial.leadRateText, language),

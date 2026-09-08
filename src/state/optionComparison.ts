@@ -17,6 +17,7 @@ import {
 } from './clientProposal'
 import type { PortfolioProject } from './projectPortfolio'
 import { isClientProjection } from './clientProjection'
+import { localizeMoneyText, localizePercentText } from '../i18n'
 import { NNBSP, formatDE, present, rateLabel } from '../engine/money'
 
 /**
@@ -380,6 +381,18 @@ export function clientComparisonRows(
   deps: ClientComparisonDeps,
 ): readonly ComparisonRow[] {
   const { t, language } = deps
+  /**
+   * Each cell is typeset HERE, by the row that knows where its value came
+   * from. The render site used to apply one blanket `localizeMoneyText` to
+   * the whole heterogeneous array, which re-typeset rows the projection had
+   * already localised — an English reader saw `2.220.0 m²` underground —
+   * and would silently break again the first time somebody added a row from
+   * an already-localised field. `money` is for the engine's German output;
+   * `percent` also closes the space before `%` (rule 7); everything the
+   * projection localised is passed through untouched.
+   */
+  const money = (text: string) => localizeMoneyText(text, language)
+  const percent = (text: string) => localizePercentText(text, language)
   const absent = t('vr3.client.investment.notPriced')
   const dateText = (iso: string | null) => {
     if (!iso) return absent
@@ -410,7 +423,7 @@ export function clientComparisonRows(
       label: t('vr3.client.varianten.row.total'),
       cells: cols.map((c) => {
         const m = c.proposal.commercial
-        return `${m.totalPrefix}${m.totalPrefix ? NNBSP : ''}${m.totalDisplay}${NNBSP}€`
+        return money(`${m.totalPrefix}${m.totalPrefix ? NNBSP : ''}${m.totalDisplay}${NNBSP}€`)
       }),
     },
     {
@@ -419,14 +432,14 @@ export function clientComparisonRows(
       group: result,
       label: t('comparison.leadRate'),
       cells: cols.map((c) =>
-        `${c.proposal.commercial.leadRateText} · ${c.proposal.commercial.leadRate.denominatorLabel}`),
+        `${money(c.proposal.commercial.leadRateText)} · ${c.proposal.commercial.leadRate.denominatorLabel}`),
     },
     {
       id: 'uncertainty',
       result: true,
       group: result,
       label: t('vr3.client.varianten.row.uncertainty'),
-      cells: cols.map((c) => `±${NNBSP}${c.proposal.commercial.uncertaintyPp}${NNBSP}%`),
+      cells: cols.map((c) => percent(`±${NNBSP}${c.proposal.commercial.uncertaintyPp}${NNBSP}%`)),
     },
     {
       id: 'bauzeit',
@@ -435,7 +448,7 @@ export function clientComparisonRows(
       label: `${t('vr3.client.schedule.duration')} · ${t('vr3.client.schedule.boundary')}`,
       cells: cols.map((c) => {
         const sch = c.proposal.schedule
-        return `${sch.durationPrefix}${sch.durationPrefix ? NNBSP : ''}${sch.durationText}`
+        return money(`${sch.durationPrefix}${sch.durationPrefix ? NNBSP : ''}${sch.durationText}`)
       }),
     },
     {

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { act } from '@testing-library/react'
 import { __resetStoreForTests, useStore } from '../store'
+import { sumAreaValues } from '../clientProposal'
 import {
   COMPARISON_VISIBLE_COLUMN_LIMIT,
   comparisonColumns,
@@ -176,5 +177,49 @@ describe('COMPARISON_VISIBLE_COLUMN_LIMIT', () => {
     // Оболочка (components.css `--cmp-visible-cols`) вмещает ровно три
     // колонки; четвёртая — первая, которой нужен скроллпорт.
     expect(COMPARISON_VISIBLE_COLUMN_LIMIT).toBe(3)
+  })
+})
+
+/**
+ * ACCEPTANCE REMEDIATION (ACCEPT-08) — an area is summed from the engine's
+ * own values, never from what a chapter already printed.
+ *
+ * Three client chapters used to sum the FORMATTED per-building strings and
+ * parse them back with a German-only parser. In English `17,250.00` became
+ * `17.25` and `2,220.00` became `98,001.24`: a client-facing area wrong by
+ * three orders of magnitude, in the locale nobody demoed. The helper below
+ * is the one place the sum happens now, and it only ever sees raw values.
+ *
+ * The four-value cases matter on their own: the building register's totals
+ * row is the consumer that only appears at four buildings or more, which no
+ * fixture in this repository exercises.
+ */
+describe('sumAreaValues — the one place an area total is computed', () => {
+  it('sums raw engine values and formats the total once, per locale', () => {
+    const raw = ['6030.00', '4800.00', '6420.00']
+    expect(sumAreaValues(raw, 'de')).toBe('17.250,00')
+    expect(sumAreaValues(raw, 'en')).toBe('17,250.00')
+  })
+
+  it('states the same NUMBER in both locales, whatever the separators', () => {
+    const raw = ['6030.00', '4800.00', '6420.00', '2220.00']
+    const parse = (text: string, language: 'de' | 'en') => Number(
+      language === 'de'
+        ? text.replace(/\./g, '').replace(',', '.')
+        : text.replace(/,/g, ''))
+    expect(parse(sumAreaValues(raw, 'de')!, 'de'))
+      .toBe(parse(sumAreaValues(raw, 'en')!, 'en'))
+    expect(parse(sumAreaValues(raw, 'en')!, 'en')).toBe(19470)
+  })
+
+  it('is null when no building states the metric — never a zero', () => {
+    expect(sumAreaValues([], 'de')).toBeNull()
+    expect(sumAreaValues([null, null], 'en')).toBeNull()
+    // A single stated value is still a total.
+    expect(sumAreaValues([null, '630.00', null], 'de')).toBe('630,00')
+  })
+
+  it('ignores a value the engine could not express, rather than counting it as zero', () => {
+    expect(sumAreaValues(['6030.00', 'n/a', '4800.00'], 'de')).toBe('10.830,00')
   })
 })

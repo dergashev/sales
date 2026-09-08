@@ -32,7 +32,7 @@ import {
 import { ClientOutputsPanel, ClientPrintDocument } from './ClientOutputs'
 import { signedMoneyText } from '../design-system/CommercialNumber'
 import { NNBSP, present, label as moneyLabel } from '../engine/money'
-import { localizeMoneyText, useT, useTx } from '../i18n'
+import { localizeMoneyText, localizePercentText, useT, useTx } from '../i18n'
 import { recipientForOpportunity, type ValidatedRecipient } from '../state/emailRecipient'
 import { SegmentedControl } from './controls'
 import { PartialState, EmptyState } from './DataStates'
@@ -941,11 +941,16 @@ function OfferClimax({ current, projectName, priceUnavailable, onPrepare, headin
             <>
               <p className="numeric text-display-numeric font-bold" style={{ color: 'var(--color-brand-accent)' }}>
                 {hero.prefix && <span aria-hidden="true">{hero.prefix}{NNBSP}</span>}
-                {hero.display}
+                {/* The count-up emits the engine's German grouping; a client
+                    reading English must not be shown it. */}
+                {localizeMoneyText(hero.display, language)}
                 <span className="text-heading-2 text-text-inverse">{NNBSP}€</span>
               </p>
               <p className="mt-2 text-body text-text-inverse">{tx(p.result.totalLabel)}</p>
-              <p className="mt-1 text-small text-text-inverse">{tx('Schätzunsicherheit')} ±{NNBSP}{p.uncertaintyPp}{NNBSP}%</p>
+              <p className="mt-1 text-small text-text-inverse">
+                {tx('Schätzunsicherheit')}{' '}
+                {localizePercentText(`±${NNBSP}${p.uncertaintyPp}${NNBSP}%`, language)}
+              </p>
             </>
           )}
         </div>
@@ -968,7 +973,7 @@ function OfferClimax({ current, projectName, priceUnavailable, onPrepare, headin
               <span>{tx(p.leadRate.denominatorLabel)}</span>
               <span className="numeric shrink-0">
                 {p.leadRate.prefix && <span aria-hidden="true">{p.leadRate.prefix}{NNBSP}</span>}
-                {p.leadRate.display}{NNBSP}€/m²
+                {localizeMoneyText(p.leadRate.display, language)}{NNBSP}€/m²
               </span>
             </li>
             <li className="text-text-inverse">
@@ -1274,7 +1279,7 @@ export function PresentationFlowScreen({
                 </div>
                 <div className="a3-presentation-rule-row">
                   <span>{tx('Schätzunsicherheit')}</span>
-                  <b>±{NNBSP}{p.uncertaintyPp}{NNBSP}%</b>
+                  <b>{localizePercentText(`±${NNBSP}${p.uncertaintyPp}${NNBSP}%`, language)}</b>
                 </div>
                 <div className="a3-presentation-rule-row">
                   <span>{t('presentation.flow.completion')}</span>

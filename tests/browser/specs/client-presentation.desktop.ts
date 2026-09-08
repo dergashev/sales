@@ -870,6 +870,83 @@ test.describe('VR3-05 · client presentation narrative, Varianten and outputs', 
     await shot(page, 'ACCEPT-03-accent')
   })
 
+  /**
+   * ACCEPTANCE REMEDIATION (ACCEPT-08) — an area states the same NUMBER in
+   * both languages, on the stage and on the printed sheet.
+   *
+   * Three chapters summed the already-formatted per-building strings and
+   * parsed them back with a German-only parser; a fourth localised an
+   * already-localised figure. An English reader of a 17.250,00 m² project
+   * was shown `17.25`, `98,001.24` and `17.250.0`. Every existing sweep was
+   * blind to it: they prove a translation exists, not that a numeral
+   * survived translation.
+   */
+  test('every client area figure is the same number in DE and EN', async ({ page }) => {
+    await reachClientMode(page)
+    const labels = await presentChapters(page)
+
+    /**
+     * Every figure the chapter states in its OWN fact rows and metric notes,
+     * as numbers, in reading order. Not only the ones with a unit beside
+     * them: chapter 3 puts `(m²)` in the row LABEL and the bare figure in
+     * the value, which is exactly the shape the broken parser corrupted.
+     *
+     * Deliberately not the whole chapter text: the schedule's canonical
+     * Gantt renders its own dates and axis, which this ticket does not own.
+     */
+    const figuresOnScreen = async (language: 'de' | 'en') => page.evaluate(
+      ({ shell, lang }) => {
+        const scope = document.querySelector(shell)
+        const text = [...(scope?.querySelectorAll(
+          '.a3-cp-row-value, .a3-cp-metric-note, .a3-cp-metric-lead, .a3-cp-metric-co, .a3-cp-sub',
+        ) ?? [])].map((n) => (n as HTMLElement).innerText).join(' | ')
+        const out: number[] = []
+        for (const match of text.matchAll(/\d[\d.,\u202f\u00a0]*\d|\d/g)) {
+          const raw = match[0].replace(/[\u202f\u00a0]/g, '')
+          const value = lang === 'de'
+            ? raw.replace(/\./g, '').replace(',', '.')
+            : raw.replace(/,/g, '')
+          const n = Number(value)
+          if (Number.isFinite(n)) out.push(n)
+        }
+        return out
+      }, { shell: CP.cls.shell, lang: language })
+
+    const de = new Map<string, number[]>()
+    for (const label of labels) {
+      await toChapter(page, label)
+      de.set(label, await figuresOnScreen('de'))
+    }
+    expect([...de.values()].flat().length, 'the narrative states figures at all')
+      .toBeGreaterThan(10)
+
+    await page.locator(CP.cls.languageEn).click()
+    await settle(page)
+    const enLabels = await presentChapters(page)
+    expect(enLabels.length, 'the same chapters exist in English').toBe(labels.length)
+
+    for (let i = 0; i < enLabels.length; i += 1) {
+      await toChapter(page, enLabels[i]!)
+      const en = await figuresOnScreen('en')
+      // Every number a client reads is the same number in both languages.
+      expect(en, `chapter ${i + 1} (${labels[i]} / ${enLabels[i]}) states the same figures`)
+        .toEqual(de.get(labels[i]!))
+    }
+    await shot(page, 'ACCEPT-08-en-areas')
+
+    // The printed sheet carries the same obligation, in the language it is
+    // printed in — it is the artefact the client keeps.
+    await page.emulateMedia({ media: 'print' })
+    const printed = await page.locator(CP.cls.printDoc).innerText()
+    for (const match of printed.matchAll(/(\d[\d.,\u202f\u00a0 ]*\d)\s*m²/g)) {
+      const raw = match[1]!.replace(/[\u202f\u00a0 ]/g, '')
+      expect(raw, `the printed sheet states an English area, not a German one: ${raw}`)
+        .not.toMatch(/\.\d{3}/)
+    }
+    await page.emulateMedia({ media: 'screen' })
+    await page.locator(CP.cls.languageDe).click()
+  })
+
   test('ACCEPT-01: the printed document carries the chapters and no presenter control', async ({ page }) => {
     await reachClientMode(page)
     const labels = await presentChapters(page)

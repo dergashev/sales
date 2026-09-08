@@ -431,6 +431,26 @@ describe('VR3-CP-00 · the Varianten layer states what the chapters state', () =
     }
   })
 
+  it('typesets every layer cell for the reader, and none of them twice', async () => {
+    const user = userEvent.setup()
+    buildSavedOptions(2)
+    render(<Harness />)
+    act(() => { st().setUiLanguage('en') })
+    await waitFor(() => expect(screen.getByRole('region', { name: 'Proposal' })).toBeInTheDocument())
+
+    const rows = await allRows(user)
+    const cells = [...rows.values()].flat()
+    expect(cells.length).toBeGreaterThan(4)
+    for (const cell of cells) {
+      // German grouping has no place in an English layer...
+      expect(cell, `"${cell}" states German grouping in English`)
+        .not.toMatch(/\d{1,3}\.\d{3}(?!\d)/)
+      // ...and neither does a figure that has been through the
+      // re-typesetter twice, which is what produced `2.220.0`.
+      expect(cell, `"${cell}" was localised twice`).not.toMatch(/\d[.,]\d{3}[.,]\d(?!\d)/)
+    }
+  })
+
   it('carries no asset provenance anywhere in the client tree', async () => {
     const user = userEvent.setup()
     buildSavedOptions(1)
@@ -499,5 +519,123 @@ describe('VR3-CP-00 · one client duration authority', () => {
     expect(Math.abs(span - months),
       `stated ${months} months between ${startEntry![1]} and ${endEntry![1]}`)
       .toBeLessThan(1)
+  })
+})
+
+/**
+ * ACCEPTANCE REMEDIATION (ACCEPT-08) — a client area states the same NUMBER
+ * in both languages.
+ *
+ * Chapters 2, 3 and 4 summed the already-formatted per-building strings and
+ * parsed them back with a German-only parser, so an English reader of a
+ * 17.250,00 m² project was shown `17.25`, and `2.220,00 m²` underground
+ * became `98,001.24`. Chapter 5 localised an already-localised figure and
+ * printed `17.250.0`. Nothing in the suite could see it: key-coverage tests
+ * prove a translation exists, not that a numeral survived translation.
+ */
+describe('VR3-CP-00 · a client area is the same number in DE and EN', () => {
+  /** Read a decimal figure whatever the locale's separators are. */
+  const numeral = (text: string, language: 'de' | 'en'): number | null => {
+    const match = text.match(/\d[\d.,   ]*\d|\d/)
+    if (!match) return null
+    const raw = match[0].replace(/[   ]/g, '')
+    const value = language === 'de'
+      ? raw.replace(/\./g, '').replace(',', '.')
+      : raw.replace(/,/g, '')
+    const n = Number(value)
+    return Number.isFinite(n) ? n : null
+  }
+
+  const keyFigures = (language: 'de' | 'en') => {
+    const region = screen.getByRole('region', { name: language === 'de' ? 'Das Projekt' : 'The project' })
+    const out = new Map<string, number>()
+    const labels = [...region.querySelectorAll('.a3-cp-row-label')]
+    const values = [...region.querySelectorAll('.a3-cp-row-value')]
+    labels.forEach((label, i) => {
+      const text = values[i]?.textContent ?? ''
+      if (!/m²/.test(label.textContent ?? '')) return
+      const n = numeral(text, language)
+      if (n !== null) out.set((label.textContent ?? '').replace(/\s+/g, ' ').trim(), n)
+    })
+    return out
+  }
+
+  it('states chapter 3 key figures identically in both languages', async () => {
+    const user = userEvent.setup()
+    buildSavedOptions(1)
+    render(<Harness />)
+
+    await gotoChapter(user, 'Das Projekt')
+    const de = keyFigures('de')
+    expect(de.size, 'chapter 3 states area figures').toBeGreaterThan(2)
+
+    act(() => { st().setUiLanguage('en') })
+    await waitFor(() => expect(screen.getByRole('region', { name: 'The project' })).toBeInTheDocument())
+    const en = keyFigures('en')
+    expect(en.size, 'the English chapter states as many figures').toBe(de.size)
+
+    // Same figures, in the same order, as the same numbers.
+    const deValues = [...de.values()]
+    const enValues = [...en.values()]
+    expect(enValues).toEqual(deValues)
+    // And they are real areas, not a parser's decimal accident.
+    expect(Math.max(...deValues)).toBeGreaterThan(100)
+  })
+
+  it('states one reference area on chapter 2, in both tiles and both languages', async () => {
+    const user = userEvent.setup()
+    buildSavedOptions(1)
+    render(<Harness />)
+
+    const areasOfChapter2 = (language: 'de' | 'en') => {
+      const region = screen.getByRole('region', {
+        name: language === 'de' ? 'Projektüberblick' : 'Project overview',
+      })
+      const lead = region.querySelector('.a3-cp-hero-side .a3-cp-metric-note')?.textContent ?? ''
+      const project = region.querySelector('.a3-cp-tile-project .a3-cp-metric-note')?.textContent ?? ''
+      return { lead: numeral(lead, language), project: numeral(project, language) }
+    }
+
+    await gotoChapter(user, 'Projektüberblick')
+    const de = areasOfChapter2('de')
+    expect(de.lead, 'the lead-rate tile states its reference area').not.toBeNull()
+    expect(de.project, 'the project tile states the same area').not.toBeNull()
+    // The rate's denominator IS the project's area — one number, two tiles.
+    expect(de.project).toBe(de.lead)
+
+    act(() => { st().setUiLanguage('en') })
+    await waitFor(() => expect(screen.getByRole('region', { name: 'Project overview' })).toBeInTheDocument())
+    const en = areasOfChapter2('en')
+    expect(en.project).toBe(en.lead)
+    expect(en.lead).toBe(de.lead)
+  })
+
+  it('states the same reference area in chapter 5 as chapter 2 does', async () => {
+    const user = userEvent.setup()
+    buildSavedOptions(1)
+    render(<Harness />)
+
+    await gotoChapter(user, 'Projektüberblick')
+    const fromOverview = numeral(
+      screen.getByRole('region', { name: 'Projektüberblick' })
+        .querySelector('.a3-cp-hero-side .a3-cp-metric-note')?.textContent ?? '', 'de')
+
+    for (const [language, chapter] of [['de', 'Preiszusammensetzung'], ['en', 'Price composition']] as const) {
+      if (language === 'en') {
+        act(() => { st().setUiLanguage('en') })
+        await waitFor(() => expect(screen.getByRole('region', { name: 'Project overview' })).toBeInTheDocument())
+      }
+      await gotoChapter(user, chapter)
+      const lede = screen.getByRole('region', { name: chapter })
+        .querySelector('.a3-cp-sub')?.textContent ?? ''
+      // The lede states the RATE first (`≈ 2.246 €/m²`) and then the area it
+      // refers to, so the area is the first figure after the rate's unit.
+      const afterRate = lede.slice(lede.indexOf('€/m²') + 4)
+      expect(afterRate, `${language}: the lede names a rate and then an area`).not.toBe('')
+      // A double-localised figure printed `17.250.0` here and matched nothing.
+      expect(numeral(afterRate, language), `${language}: chapter 5 lede states the reference area`)
+        .toBe(fromOverview)
+      await gotoChapter(user, language === 'de' ? 'Projektüberblick' : 'Project overview')
+    }
   })
 })
