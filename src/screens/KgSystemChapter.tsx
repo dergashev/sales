@@ -1079,7 +1079,22 @@ export function KgSystemChapter({ chapter, group }: {
       label: label(entry.labelDe, entry.labelEn),
       value: shown,
       meta: label(entry.metaDe, entry.metaEn) || undefined,
-      ...(edited ? {
+      ...(edited?.scopeAxis ? {
+        /**
+         * B2 · requirement 14 — an Option-level AXIS is decided in
+         * Configure · Scope decisions, so the band's action IS the route
+         * there. It used to say `ändern` and open an editor; with the
+         * decision moved, `ändern` would open a read-only row and make the
+         * reader take a second step to find out they cannot change it here.
+         * An affordance that promises editing and delivers a redirect is
+         * worse than a redirect that says so.
+         */
+        action: {
+          label: t('b2.axes.readOnly.route'),
+          expanded: false,
+          onToggle: () => s.openConfiguratorStepAt(CONFIGURATOR_STEP.SCOPE_BOUNDARIES),
+        },
+      } : edited ? {
         action: {
           // The visible word IS the accessible name (label-in-name): there is
           // exactly one editable band entry, so `ändern` is unambiguous, and

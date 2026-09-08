@@ -451,6 +451,46 @@ describe('the canonical KG page, six times (T-021–T-027)', () => {
    * Read-only alone would be a dead end; the route is what makes a read-only
    * value a place to go rather than a wall (rule 12).
    */
+  /**
+   * The KG 400 half of requirement 10 — "no longer editable in KG400/KG700".
+   *
+   * KG 400 renders through `KgSystemChapter` and KG 700's certificate band
+   * through the same composition's decision rows, so the two halves take
+   * different code paths and both have to be proved. The Energy target is
+   * the one the audit found in KG 400.
+   */
+  it('shows the Energy target read-only in KG 400 with the route back to Scope decisions', async () => {
+    const user = userEvent.setup()
+    await reachLedger(user)
+    decideAllKgScope('included')
+    act(() => { st().openKgChapter('KG_400') })
+    await screen.findByRole('heading', { level: 1, name: /^KG.400 · / })
+
+    /**
+     * The Energy target is a RAHMEN decision, not a member of a system band —
+     * it frames the whole chapter, which is precisely why the audit found it
+     * sitting there as the Option's energy standard.
+     *
+     * So the band is where the assertion belongs: it used to offer `ändern`
+     * and open an editor, and it now offers the ROUTE to the decision that
+     * owns the axis. An affordance promising editing that delivers a
+     * redirect would be worse than a redirect that says so.
+     */
+    expect(screen.queryByRole('button', { name: 'ändern' })).toBeNull()
+    // The value the Option was prepared under is still stated, live.
+    expect(screen.getByText('Effizienzhaus 55')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', {
+      name: 'In der Leistungsabgrenzung ändern',
+    }))
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1, name: 'Leistungsabgrenzung' }))
+        .toBeInTheDocument()
+    })
+    // …and it lands on the axis that owns it.
+    expect(screen.getByRole('radiogroup', { name: 'Energieziel' })).toBeInTheDocument()
+  })
+
   it('shows the certificate axis read-only in KG 700 with the route back to Scope decisions', async () => {
     const user = userEvent.setup()
     await reachLedger(user)
