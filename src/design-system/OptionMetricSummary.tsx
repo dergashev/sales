@@ -1,4 +1,4 @@
-import { localizeMoneyText, type UiLanguage } from '../i18n'
+import { localizeMoneyText, translateText, type UiLanguage } from '../i18n'
 import { NNBSP, rateUnit } from '../engine/money'
 import { CommercialNumber } from './CommercialNumber'
 import { SemanticStatus } from './SemanticStatus'
@@ -38,6 +38,10 @@ import type {
  * - Two segment metrics presented as parts of one whole. When the Option is
  *   mixed-use the non-additivity is STATED, from the projection's own
  *   `metricsAreAdditive`, not left to each surface to remember.
+ * - A coverage qualifier in a language the reader is not reading. The
+ *   engine composes `totalLabel` in German by contract; this component
+ *   bridges it, for the same reason it takes a projection rather than
+ *   numeric props (ACCEPT-01).
  */
 
 export type OptionMetricSummaryVariant =
@@ -119,13 +123,29 @@ export function OptionMetricSummary({
         />
         {/* The label is DERIVED from coverage by the result (R-18): a partial
             offer says `Zwischensumme der kalkulierten Positionen` and never
-            the word `Gesamt`. This component prints what it is given. */}
+            the word `Gesamt`.
+
+            IT IS BRIDGED HERE, not by the caller. The engine composes it in
+            German by contract, so on the EN path it needs `translateText` —
+            and ACCEPT-01 is what happens when that duty sits with whoever
+            renders the projection: five surfaces, five chances to forget,
+            and the one that forgot printed `Netto · Zwischensumme der
+            kalkulierten Positionen` beside the largest number on an
+            otherwise English card. A caption the reader cannot read is an
+            Unqualified Total for that reader (R-18, rule 16), so this
+            component owes it the same guarantee it already gives the
+            denominators: derived from the projection, never re-stated by a
+            caller. `translateText` is a pure function of the delivery, not
+            a hook, so the gallery specimen still renders (D-28); it matches
+            on the whole German string and leaves anything the delivery does
+            not carry — normative denominators included (LOCALE-009) —
+            exactly as it found it. */}
         <span className="a3-oms-total-label">
           {labels.netTotal}
           {NNBSP}
           ·
           {NNBSP}
-          {projection.totalLabel}
+          {translateText(projection.totalLabel, language)}
         </span>
       </div>
 

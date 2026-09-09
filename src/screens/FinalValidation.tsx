@@ -161,7 +161,10 @@ export function FinalValidation() {
             },
             {
               id: 'total',
-              label: saved.result.totalLabel,
+              // The engine composes this caption in German by contract
+              // (R-18). Bridged like every other consumer of it — the
+              // receipt is the artefact the reader keeps.
+              label: tx(saved.result.totalLabel),
               value: (
                 <CommercialNumber
                   exact={result.total.exact}
@@ -404,7 +407,8 @@ export function FinalValidation() {
       return [
         {
           id: 'total',
-          label: result.totalLabel,
+          // Same engine-composed German caption, same bridge (R-18).
+          label: tx(result.totalLabel),
           value: (
             <CommercialNumber
               exact={result.total.exact}

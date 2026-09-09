@@ -105,6 +105,13 @@ const OWNED_SURFACES = [
   'src/components/OptionCreation.tsx',
   'src/components/optionLabels.ts',
   'src/screens/PraesentierenStage.tsx',
+  // B2 · ACCEPT-01. The Option card's commercial summary MOVED into this
+  // canonical component, and the surface that used to render the coverage
+  // caption kept its place on this list while the render that replaced it
+  // did not — so the guard went on passing over a file that no longer
+  // contained the thing it was guarding. A component that renders a
+  // product-owned string is a product surface, wherever it is filed.
+  'src/design-system/OptionMetricSummary.tsx',
 ]
 
 function source(relative: string): string {
@@ -238,6 +245,19 @@ describe('VR3-01 · nothing on the owned surfaces can reach EN untranslated', ()
        */
       'src/screens/FinalValidation.tsx: tx(gap.denominatorLabel)',
       'src/screens/FinalValidation.tsx: tx(metric.rate.denominatorLabel)',
+      /**
+       * ACCEPT-01, second and third sites. Validate's review row and the
+       * save receipt's row BOTH handed the engine's German coverage caption
+       * to a `label:` property, which the old bare-render sweep could not
+       * see because it only looked for a JSX interpolation. They are the
+       * same accepted class as every `totalLabel` entry around them — an
+       * R-18 qualifier with an EN row in the delivery — and they are now
+       * bridged like the rest. Recorded here rather than exempted: this
+       * list exists so a bridge call cannot appear without someone saying
+       * which German string it is for.
+       */
+      'src/screens/FinalValidation.tsx: tx(result.totalLabel)',
+      'src/screens/FinalValidation.tsx: tx(saved.result.totalLabel)',
       // The Option card's metric is the SAVED version's total, and a saved
       // total carries the same engine-composed German label every other
       // surface bridges (R-18). The live-projection call it replaces was
@@ -409,16 +429,51 @@ describe('VR3 · an engine-composed German label is never rendered bare', () => 
   /** Fields that must stay German (LOCALE-009). Bare is CORRECT here. */
   const DELIBERATELY_BARE = ['denominatorLabel']
 
-  it('renders every totalLabel through the tx bridge, on every owned surface', () => {
+  /**
+   * The two shapes that count as bridging an engine-composed German label:
+   * the product's hook (`tx`, from `useTx()`) and the pure function behind
+   * it (`translateText(x, language)`), which is what a canonical Design
+   * System component must use — a primitive that reaches into the store
+   * cannot be rendered by the gallery (D-28).
+   */
+  const BRIDGE_CALL = String.raw`(?:tx|translateText)\(\s*`
+
+  it('never lets an engine-composed label reach a surface unbridged', () => {
+    /**
+     * ACCEPT-01 CHANGED WHAT THIS SWEEP LOOKS AT, and the reason is the
+     * whole point of the describe block above it.
+     *
+     * The previous version matched one shape — a JSX interpolation,
+     * `{x.totalLabel}` — and therefore proved something much narrower than
+     * it read as. `B2` moved the Option card's caption into
+     * `OptionMetricSummary`, a file this list did not name, and rendered it
+     * as `{projection.totalLabel}`: invisible to the sweep because the file
+     * was not scanned. In the same candidate `FinalValidation` handed the
+     * same field to a row as `label: result.totalLabel`: invisible because
+     * a property is not a JSX interpolation. One guard, two blind spots,
+     * both of the same kind — the pattern enumerated the shapes a defect
+     * had taken BEFORE, so every new shape was a new hole.
+     *
+     * So it no longer enumerates shapes. On an owned surface the field may
+     * appear ONLY inside a bridge call. Property, prop, interpolation,
+     * template literal, argument, array element — all the same rule, and a
+     * shape nobody has thought of yet is covered by construction.
+     */
     const bare: string[] = []
     for (const surface of OWNED_SURFACES) {
       const text = withoutComments(source(surface))
       for (const field of BRIDGED_LABELS) {
-        // A JSX interpolation of the field that is NOT preceded by `tx(`.
-        // `{tx(x.totalLabel)}` is fine; `{x.totalLabel}` is the defect.
-        const pattern = new RegExp(String.raw`\{\s*([A-Za-z_$][\w$.?]*\.${field})\s*\}`, 'g')
+        const pattern = new RegExp(String.raw`\.${field}\b`, 'g')
         for (const match of text.matchAll(pattern)) {
-          bare.push(`${surface}: {${match[1]}} is not bridged`)
+          const before = text.slice(0, match.index)
+          // The bridge must open immediately before the expression: the
+          // call, then the identifier chain this `.field` terminates.
+          const bridged = new RegExp(BRIDGE_CALL + String.raw`[A-Za-z_$][\w$.?]*$`)
+            .test(before)
+          if (!bridged) {
+            const line = text.slice(0, match.index).split('\n').length
+            bare.push(`${surface}:${line}: .${field} is not bridged`)
+          }
         }
       }
     }
@@ -432,10 +487,14 @@ describe('VR3 · an engine-composed German label is never rendered bare', () => 
     let composed = 0
     for (const surface of OWNED_SURFACES) {
       const text = withoutComments(source(surface))
-      bridged += [...text.matchAll(/\btx\(\s*[A-Za-z_$][\w$.?]*\.totalLabel\s*\)/g)].length
+      bridged += [...text.matchAll(
+        new RegExp(BRIDGE_CALL + String.raw`[A-Za-z_$][\w$.?]*\.totalLabel\b`, 'g'),
+      )].length
       composed += [...text.matchAll(/\brate(?:Label|Unit)\(/g)].length
     }
-    expect(bridged).toBeGreaterThan(0)
+    // One per owned render site. A number, not a boolean: if a site is
+    // deleted or a whole surface drops out of the list, this notices.
+    expect(bridged).toBeGreaterThanOrEqual(10)
     // The normative denominator reaches the client through the engine's own
     // composer, which is the state this suite asserts is CORRECT: it is
     // what keeps the unit attached to the number (ACCEPT-03) while keeping
